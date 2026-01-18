@@ -1,21 +1,19 @@
 # ============================================================================
 # LocaNext Build Pipeline - Gitea Actions
 # ============================================================================
-# DEV MODE IS DEAD. Workers make all tests fast. QA is now the only mode.
+# ONE BUILD ONLY. Small installer (~150MB), first-run setup downloads deps+model.
 #
-# 3 MODES:
-#   - Build / Build QA:  ALL tests (~1000+), light installer (~150MB) - DEFAULT
-#   - Build QA FULL:     ALL tests (~1000+), offline installer (~2GB) - GITEA ONLY
+# MODES:
+#   - Build / Build QA:  ALL tests (~1000+), installer (~150MB) - DEFAULT
 #   - TROUBLESHOOT:      Smart checkpoint mode (resume from last failure)
 #
-# QA FULL bundles: Qwen model (2.3GB) + VC++ Redist + all deps
-# GitHub CANNOT run QA FULL (LFS limits). Gitea only.
+# Architecture: Small installer + first-run setup downloads Python deps + AI model
 #
 # VERSION: Auto-generated YY.MMDD.HHMM format (Pipeline Executive Power)
 # CHECKPOINT: Stored at /home/neil1988/.locanext_checkpoint (persistent)
 # ============================================================================
 
-name: Build LocaNext LIGHT Installer
+name: Build LocaNext Installer
 
 on:
   push:
@@ -41,7 +39,6 @@ jobs:
       mode: ${{ steps.check.outputs.mode }}
       skip_build: ${{ steps.check.outputs.skip_build }}
       skip_linux: ${{ steps.check.outputs.skip_linux }}
-      build_type: ${{ steps.check.outputs.build_type }}
       qa_mode: ${{ steps.check.outputs.qa_mode }}
     steps:
       - name: Checkout code
@@ -51,9 +48,8 @@ jobs:
         id: check
         run: |
           # ============================================================
-          # DEV MODE IS DEAD. QA is now the only mode.
-          # - "Build" or "Build QA" = QA mode (all tests, light installer)
-          # - "Build QA FULL" = QA FULL mode (all tests, offline installer)
+          # ONE BUILD ONLY. QA is the default mode.
+          # - "Build" or "Build QA" = QA mode (all tests, installer)
           # - "TROUBLESHOOT" = checkpoint mode
           # ============================================================
           TRIGGER=$(cat GITEA_TRIGGER.txt | grep -E "^Build.*$|^TROUBLESHOOT" | tail -1)
@@ -69,7 +65,7 @@ jobs:
             echo "[OK] Auto-generated version: $VERSION (semver-compatible)"
 
             # ============================================================
-            # 3 MODES: Build (QA), Build QA FULL, TROUBLESHOOT
+            # MODES: Build (QA), TROUBLESHOOT
             # ============================================================
 
             if echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
@@ -91,16 +87,7 @@ jobs:
 
             # QA MODE IS ALWAYS ON (DEV mode is dead)
             echo "qa_mode=true" >> $GITHUB_OUTPUT
-            echo "[QA MODE] Running ALL tests (~1000+) - this is now the default"
-
-            # Detect QA FULL (offline installer with bundled model)
-            if echo "$TRIGGER" | grep -q "QA FULL"; then
-              echo "build_type=FULL" >> $GITHUB_OUTPUT
-              echo "[QA FULL] Building offline installer (~2GB) with bundled Qwen model"
-            else
-              echo "build_type=LIGHT" >> $GITHUB_OUTPUT
-              echo "[QA] Building light installer (~150MB)"
-            fi
+            echo "[QA MODE] Running ALL tests (~1000+) - building installer (~150MB)"
           else
             echo "should_build=false" >> $GITHUB_OUTPUT
             echo "No build trigger found"
@@ -955,7 +942,7 @@ jobs:
   # Skips if TROUBLESHOOT mode (test-only, no build artifact)
   # ============================================================
   build-windows:
-    name: Build Windows LIGHT Installer
+    name: Build Windows Installer
     needs: [check-build-trigger, safety-checks]
     # Depends on safety-checks for official builds
     # TROUBLESHOOT_WINDOWS skips safety-checks via the if condition on safety-checks job
@@ -965,7 +952,6 @@ jobs:
     env:
       SKIP_BUILD: ${{ needs.check-build-trigger.outputs.skip_build }}
       BUILD_VERSION: ${{ needs.check-build-trigger.outputs.version }}
-      BUILD_TYPE: ${{ needs.check-build-trigger.outputs.build_type }}
       BUILD_MODE: ${{ needs.check-build-trigger.outputs.mode }}
 
     steps:
@@ -1001,7 +987,7 @@ jobs:
       # ROBUST VERSION: Use BUILD_VERSION env var from pipeline
       # NO fragile network calls or regex parsing - single source of truth
       # ============================================================
-      - name: Get Version and Build Type
+      - name: Get Version from Pipeline
         id: check
         run: |
           Write-Host "=== Getting Version from Pipeline (Robust) ===" -ForegroundColor Cyan
@@ -1017,15 +1003,6 @@ jobs:
 
           Write-Host "[OK] Version from pipeline: $version" -ForegroundColor Green
           "version=$version" >> $env:GITHUB_OUTPUT
-
-          # BUILD TYPE: Use BUILD_TYPE from pipeline env (set by check-build-trigger job)
-          $buildType = $env:BUILD_TYPE
-          if ([string]::IsNullOrEmpty($buildType)) {
-            $buildType = "LIGHT"  # Default to LIGHT if not set
-          }
-
-          Write-Host "[OK] Build type: $buildType" -ForegroundColor Green
-          "build_type=$buildType" >> $env:GITHUB_OUTPUT
         shell: powershell
 
       # Standard checkout - workspace cleanup handled at end of job
@@ -1242,21 +1219,16 @@ jobs:
           # SMART HASH COMPUTATION - Invalidate when dependencies change
           # ============================================================
 
-          # Compute requirements hash based on BUILD_TYPE (LIGHT vs FULL)
-          # LIGHT uses requirements-light.txt, FULL uses requirements.txt
-          $buildType = $env:BUILD_TYPE
-          if ([string]::IsNullOrEmpty($buildType)) { $buildType = "LIGHT" }
-
-          $reqFile = if ($buildType -eq "FULL") { "requirements.txt" } else { "requirements-light.txt" }
+          # Compute requirements hash for cache invalidation
+          $reqFile = "requirements.txt"
           $reqHash = ""
 
           if (Test-Path $reqFile) {
             $reqHash = (Get-FileHash $reqFile -Algorithm SHA256).Hash.Substring(0, 12)
-            Write-Host "[HASH] $reqFile ($buildType): $reqHash" -ForegroundColor Cyan
+            Write-Host "[HASH] $reqFile: $reqHash" -ForegroundColor Cyan
           } else {
             Write-Host "[WARN] $reqFile not found - using fallback hash" -ForegroundColor Yellow
-            # Fallback: hash build type + basic package list
-            $pipPackages = "fastapi uvicorn sqlalchemy asyncpg psycopg2-binary pydantic loguru lxml $buildType"
+            $pipPackages = "fastapi uvicorn sqlalchemy asyncpg psycopg2-binary pydantic loguru lxml"
             $reqHash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($pipPackages))).Replace("-","").Substring(0,12)
           }
 
@@ -1421,28 +1393,20 @@ jobs:
 
           # ============================================================
           # SMART HASH COMPUTATION - Same logic as Initialize step
-          # Uses requirements-light.txt for LIGHT builds, requirements.txt for FULL
           # ============================================================
-          $buildType = $env:BUILD_TYPE
-          if ([string]::IsNullOrEmpty($buildType)) { $buildType = "LIGHT" }
-
-          $reqFile = if ($buildType -eq "FULL") { "requirements.txt" } else { "requirements-light.txt" }
+          $reqFile = "requirements.txt"
           $reqHash = ""
 
           if (Test-Path $reqFile) {
             $reqHash = (Get-FileHash $reqFile -Algorithm SHA256).Hash.Substring(0, 12)
           } else {
             # Fallback hash
-            $pipPackages = "fastapi uvicorn sqlalchemy asyncpg psycopg2-binary pydantic loguru lxml $buildType"
+            $pipPackages = "fastapi uvicorn sqlalchemy asyncpg psycopg2-binary pydantic loguru lxml"
             $reqHash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($pipPackages))).Replace("-","").Substring(0,12)
           }
 
-          # Required packages for validation - LIGHT excludes faiss/huggingface
-          if ($buildType -eq "FULL") {
-            $requiredPackages = @("fastapi", "uvicorn", "sqlalchemy", "pandas", "pydantic", "faiss", "lxml", "asyncpg")
-          } else {
-            $requiredPackages = @("fastapi", "uvicorn", "sqlalchemy", "pandas", "pydantic", "lxml", "asyncpg")
-          }
+          # Required packages for validation
+          $requiredPackages = @("fastapi", "uvicorn", "sqlalchemy", "pandas", "pydantic", "lxml", "asyncpg")
 
           # Load manifest to check cached hash
           $cachedReqHash = ""
@@ -1517,21 +1481,11 @@ jobs:
             & "$targetDir\python.exe" "$targetDir\get-pip.py" --no-warn-script-location
             Remove-Item "$targetDir\get-pip.py"
 
-            # Install packages based on build type (LIGHT vs FULL)
-            # LIGHT: ~50MB Python (no ML) → 150MB installer
-            # FULL: ~800MB Python (with ML) → 600MB+ installer
-            $buildType = $env:BUILD_TYPE
-            if ([string]::IsNullOrEmpty($buildType)) { $buildType = "LIGHT" }
-
-            if ($buildType -eq "FULL") {
-              Write-Host "Installing FULL dependencies (including ML packages)..." -ForegroundColor Cyan
-              & "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements.txt
-              $criticalPackages = @("fastapi", "uvicorn", "sqlalchemy", "asyncpg", "psycopg2", "pydantic", "jose", "passlib", "loguru", "faiss", "lxml", "torch")
-            } else {
-              Write-Host "Installing LIGHT dependencies (no ML packages - ~800MB smaller)..." -ForegroundColor Cyan
-              & "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements-light.txt
-              $criticalPackages = @("fastapi", "uvicorn", "sqlalchemy", "asyncpg", "psycopg2", "pydantic", "jose", "passlib", "loguru", "lxml")
-            }
+            # Install all dependencies from requirements.txt
+            # First-run setup will download ML deps + model on user's machine
+            Write-Host "Installing dependencies from requirements.txt..." -ForegroundColor Cyan
+            & "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements.txt
+            $criticalPackages = @("fastapi", "uvicorn", "sqlalchemy", "asyncpg", "psycopg2", "pydantic", "jose", "passlib", "loguru", "lxml")
 
             # P36: Verify CRITICAL packages are installed (prevents asyncpg-style crashes)
             Write-Host "Verifying critical packages..."
@@ -1599,8 +1553,8 @@ jobs:
           & "tools\python\python.exe" -c "import pandas; print(f'[OK] pandas v{pandas.__version__}')"
           & "tools\python\python.exe" -c "import openpyxl; print('[OK] openpyxl ready')"
 
-          # Note: huggingface_hub is NOT checked - it's only needed for ML model downloads (FULL build)
-          # LIGHT builds don't include ML packages, so skip this check
+          # Note: ML packages (torch, faiss, etc.) are installed on first-run by the app
+          # The build includes huggingface_hub for model downloads but not the heavy ML packages
 
           # Check required files
           if (!(Test-Path "version.py")) { Write-Error "[ERROR] version.py not found"; exit 1 }
@@ -1618,84 +1572,8 @@ jobs:
         shell: powershell
 
       # ============================================================
-      # STEP 2.5: Download Qwen Model (FULL BUILD ONLY)
-      # Downloads ~2.3GB model and bundles it in the installer
-      # ============================================================
-      - name: Download Qwen Embedding Model (FULL only)
-        if: needs.check-build-trigger.outputs.build_type == 'FULL'
-        run: |
-          Write-Host "============================================" -ForegroundColor Cyan
-          Write-Host "  DOWNLOADING QWEN EMBEDDING MODEL (FULL BUILD)" -ForegroundColor Cyan
-          Write-Host "============================================" -ForegroundColor Cyan
-
-          $modelsDir = "models\qwen-embedding"
-          if (Test-Path $modelsDir) {
-            Write-Host "[SKIP] Model already exists at: $modelsDir"
-          } else {
-            Write-Host "Downloading Qwen/Qwen3-Embedding-0.6B (~2.3GB)..."
-            Write-Host "This may take 5-10 minutes..."
-
-            # Use embedded Python to download via sentence-transformers
-            & "tools\python\python.exe" -m pip install --quiet sentence-transformers
-
-            & "tools\python\python.exe" -c "from sentence_transformers import SentenceTransformer; print('Downloading Qwen model...'); model = SentenceTransformer('Qwen/Qwen3-Embedding-0.6B'); model.save('./models/qwen-embedding'); print('Model saved!'); emb = model.encode(['test']); print(f'Dim: {emb.shape[1]}'); print('SUCCESS!')"
-
-            if ($LASTEXITCODE -ne 0) {
-              Write-Error "[ERROR] Model download failed!"
-              exit 1
-            }
-          }
-
-          # Verify model
-          if (Test-Path "$modelsDir\model.safetensors") {
-            $size = [math]::Round((Get-Item "$modelsDir\model.safetensors").Length / 1GB, 2)
-            Write-Host "[OK] Qwen model downloaded: $size GB" -ForegroundColor Green
-          } else {
-            Write-Error "[ERROR] model.safetensors not found!"
-            exit 1
-          }
-        shell: powershell
-
-      # ============================================================
-      # STEP 2.6: Add Models to extraResources (FULL BUILD ONLY)
-      # Modifies package.json to include bundled model in installer
-      # ============================================================
-      - name: Add Models to extraResources (FULL only)
-        if: needs.check-build-trigger.outputs.build_type == 'FULL'
-        run: |
-          Write-Host "============================================" -ForegroundColor Cyan
-          Write-Host "  ADDING MODELS TO INSTALLER (FULL BUILD)" -ForegroundColor Cyan
-          Write-Host "============================================" -ForegroundColor Cyan
-
-          $pkgPath = "locaNext/package.json"
-          $pkg = Get-Content $pkgPath -Raw | ConvertFrom-Json
-
-          # Add models to extraResources
-          $modelsResource = @{
-            from = "../models"
-            to = "models"
-            filter = @("**/*")
-          }
-
-          # Check if models already in extraResources
-          $hasModels = $pkg.build.extraResources | Where-Object { $_.to -eq "models" }
-          if (!$hasModels) {
-            $pkg.build.extraResources += $modelsResource
-            # Write without BOM (Set-Content adds BOM in PowerShell 5.x which breaks electron-builder)
-            $json = $pkg | ConvertTo-Json -Depth 10
-            [System.IO.File]::WriteAllText($pkgPath, $json)
-            Write-Host "[OK] Added models to extraResources" -ForegroundColor Green
-          } else {
-            Write-Host "[SKIP] Models already in extraResources" -ForegroundColor Yellow
-          }
-
-          # Verify model size
-          $modelSize = [math]::Round((Get-ChildItem "models" -Recurse | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
-          Write-Host "[INFO] Model bundle size: $modelSize GB" -ForegroundColor Cyan
-        shell: powershell
-
-      # ============================================================
       # STEP 3: Build Electron app
+      # Note: Model is downloaded on first-run, not bundled in installer
       # ============================================================
       - name: Install Node Dependencies
         run: |
@@ -1825,12 +1703,10 @@ jobs:
       # ============================================================
       - name: Collect NSIS Installer
         run: |
-          $buildType = "${{ needs.check-build-trigger.outputs.build_type }}"
           $version = "${{ needs.check-build-trigger.outputs.version }}"
           $outDir = "installer_output"
 
           Write-Host "=== Collecting NSIS Installer ==="
-          Write-Host "Build Type: $buildType"
           Write-Host "Version: $version"
 
           # Create output directory
@@ -1855,12 +1731,8 @@ jobs:
 
           Write-Host "[OK] Found installer: $($installer.Name)"
 
-          # Rename to include version and build type
-          if ($buildType -eq "FULL") {
-            $newName = "LocaNext_v${version}_Full_Setup.exe"
-          } else {
-            $newName = "LocaNext_v${version}_Light_Setup.exe"
-          }
+          # Rename to include version
+          $newName = "LocaNext_v${version}_Setup.exe"
 
           Copy-Item $installer.FullName -Destination "$outDir\$newName"
 
@@ -2054,12 +1926,12 @@ jobs:
             & $pythonExe -c "import uvicorn; print('[OK] uvicorn')"
             Write-Host "[PASS] Embedded Python works!" -ForegroundColor Green
           } else {
-            Write-Host "[INFO] No embedded Python - LIGHT build (first-run setup will install)" -ForegroundColor Yellow
+            Write-Host "[INFO] No embedded Python found (first-run setup will install)" -ForegroundColor Yellow
           }
         shell: powershell
 
-      # NOTE: Backend health check skipped for LIGHT builds (no embedded Python)
-      # LIGHT builds test backend on first app launch via first-run-setup.js
+      # NOTE: Backend health check may be skipped if Python not fully bundled
+      # First-run setup handles dependency installation on user's machine
 
       - name: Cleanup Test Installation
         if: always()
@@ -2085,8 +1957,8 @@ jobs:
           Write-Host "  BUILD COMPLETE + CACHE SUMMARY" -ForegroundColor Cyan
           Write-Host "============================================" -ForegroundColor Cyan
           Write-Host ""
-          Write-Host "[SUCCESS] LocaNext LIGHT Build Complete!" -ForegroundColor Green
-          Write-Host "Output: installer_output\LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Light_Setup.exe"
+          Write-Host "[SUCCESS] LocaNext Build Complete!" -ForegroundColor Green
+          Write-Host "Output: installer_output\LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Setup.exe"
           Write-Host ""
 
           # Show cache status
@@ -2644,18 +2516,11 @@ jobs:
             Write-Host "No existing release found, creating new..."
           }
 
-          # Get build type
-          $BUILD_TYPE = "${{ needs.check-build-trigger.outputs.build_type }}"
-
-          # Create release body based on build type (simplified for YAML compatibility)
-          if ($BUILD_TYPE -eq "FULL") {
-            $BODY = "## LocaNext v$VERSION (FULL Build)\n\nIncludes Qwen embedding model. Ready to use!\n\n*Auto-released by Gitea Actions*"
-          } else {
-            $BODY = "## LocaNext v$VERSION (LIGHT Build)\n\nModel downloads on first launch (~2.3GB).\n\n*Auto-released by Gitea Actions*"
-          }
+          # Create release body
+          $BODY = "## LocaNext v$VERSION\n\nSmall installer (~150MB). First-run setup downloads deps + model.\n\n*Auto-released by Gitea Actions*"
 
           # Create release via API
-          $releaseName = if ($BUILD_TYPE -eq "FULL") { "LocaNext v$VERSION (FULL)" } else { "LocaNext v$VERSION (LIGHT)" }
+          $releaseName = "LocaNext v$VERSION"
           $releaseData = @{
             tag_name = $TAG
             name = $releaseName
@@ -2882,7 +2747,7 @@ jobs:
 
       # ============================================================
       # CLEANUP: Keep only last N releases to save disk space
-      # LIGHT builds ~100MB each, 20 releases = ~2GB max
+      # ~150MB each, 10 releases = ~1.5GB max
       # ============================================================
       - name: Cleanup Old Releases
         env:
@@ -2893,16 +2758,8 @@ jobs:
           Write-Host "  CLEANING UP OLD RELEASES" -ForegroundColor Cyan
           Write-Host "============================================" -ForegroundColor Cyan
 
-          # DISK TERRORISM PREVENTION
-          # FULL builds are ~2GB each, LIGHT builds are ~150MB each
-          # Keep fewer FULL releases to prevent disk bloat
-          $buildType = "${{ needs.check-build-trigger.outputs.build_type }}"
-          if ($buildType -eq "FULL") {
-            $MAX_RELEASES = 3   # 3 x 2GB = 6GB max for FULL releases
-            Write-Host "[QA FULL] Keeping only 3 releases (2GB each = 6GB max)" -ForegroundColor Yellow
-          } else {
-            $MAX_RELEASES = 10  # 10 x 150MB = 1.5GB max for LIGHT releases
-          }
+          # Keep last 10 releases (~1.5GB max)
+          $MAX_RELEASES = 10
           $GITEA_URL = if ($env:GITEA_URL) { $env:GITEA_URL } else { "http://localhost:3000" }
           $GITEA_REPO = "neilvibe/LocaNext"
 

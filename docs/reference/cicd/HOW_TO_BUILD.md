@@ -4,15 +4,16 @@
 
 ---
 
-## Build Modes
+## Build Mode
 
 | Mode | Trigger | Platform | Description |
 |------|---------|----------|-------------|
-| **QA** | `Build QA` | Both | ALL tests + light installer (~150MB) |
-| **QA FULL** | `Build QA FULL` | Gitea only | ALL tests + offline installer (~2GB) [TODO] |
+| **QA** | `Build` or `Build QA` | Both | ALL tests + installer (~150MB) |
 | **TROUBLESHOOT** | `TROUBLESHOOT` | Both | Smart checkpoint: resume from last failure |
 
 **QA is the default.** Workers technology makes 1000+ tests fast.
+
+**Architecture:** Small installer + first-run setup downloads deps + AI model
 
 ---
 
@@ -69,7 +70,6 @@ git add -A && git commit -m "Troubleshoot" && git push origin main && git push g
 | Mode | Checkpoint | Build Artifact | Use Case |
 |------|------------|----------------|----------|
 | QA | Clears | Yes (~150MB) | Official release |
-| QA FULL | Clears | Yes (~2GB) | Offline release (Gitea only) |
 | TROUBLESHOOT | Saves/Resumes | No | Fast debugging iteration |
 
 ---
@@ -125,14 +125,14 @@ ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -3
 
 | File | Location |
 |------|----------|
-| Portable ZIP | `installer_output/LocaNext_v25.1213.1640_Portable.zip` |
+| Installer | `installer_output/LocaNext_v25.1213.1640_Setup.exe` |
 | Auto-updater | `installer_output/latest.yml` |
 
 ---
 
 ## After Build: INSTALL vs UPDATE
 
-**⚠️ These are COMPLETELY DIFFERENT operations.**
+**These are COMPLETELY DIFFERENT operations.**
 
 | | UPDATE | INSTALL |
 |--|--------|---------|
@@ -167,4 +167,4 @@ Use INSTALL only for:
 
 ---
 
-*Last updated: 2026-01-11*
+*Last updated: 2026-01-18*
