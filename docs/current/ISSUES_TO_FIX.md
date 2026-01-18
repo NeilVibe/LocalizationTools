@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-18 (Session 50) | **Build:** 493 | **Open:** 5
+**Last Updated:** 2026-01-18 (Session 50) | **Build:** 493 | **Open:** 5 | **Pending Verification:** 3
 
 ---
 
@@ -9,21 +9,31 @@
 | Status | Count |
 |--------|-------|
 | **OPEN** | 5 |
-| **FIXED/CLOSED** | 133 |
+| **PENDING VERIFICATION** | 3 |
+| **FIXED/CLOSED** | 130 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
 
+## NEEDS VERIFICATION (Session 50 - Code Complete)
+
+### UI-113, BUG-044, UI-114: Session 50 Changes ⏳ NEEDS TESTING
+
+| Issue | Description | Fix Applied | Status |
+|-------|-------------|-------------|--------|
+| **UI-113** | Cell Edit Right-Click Menu | Added color picker (source colors only) + edit actions | ⏳ Code done, needs testing |
+| **BUG-044** | File Search Not Working | Wrong localStorage key: `'token'` → `'auth_token'` | ⏳ Code done, needs testing |
+| **UI-114** | Toast Cut Off | Added safe-area-insets, text wrapping, responsive styles | ⏳ Code done, needs testing |
+
+**To verify:**
+1. Test edit mode right-click in DEV mode - select text, right-click, apply color
+2. Test file search in offline mode - login offline, search for files
+3. Test toast with long messages - trigger an operation, check toast isn't cut off
+
+---
+
 ## RECENTLY FIXED (Session 48-50)
-
-### UI-113, BUG-044, UI-114: Session 50 Fixes ✅ FIXED
-
-| Issue | Description | Fix |
-|-------|-------------|-----|
-| **UI-113** | Cell Edit Right-Click Menu | Added color picker (source colors only) + edit actions |
-| **BUG-044** | File Search Not Working | Wrong localStorage key: `'token'` → `'auth_token'` |
-| **UI-114** | Toast Cut Off | Added safe-area-insets, text wrapping, responsive styles |
 
 ### BUG-043: Offline Storage Folder Creation ✅ FIXED (Session 50)
 
@@ -2161,4 +2171,4 @@ The following fixes have been coded but need manual DEV testing:
 
 ---
 
-*Updated 2026-01-18 | 133 Issues FIXED | 5 OPEN*
+*Updated 2026-01-18 | 130 Issues FIXED | 3 PENDING VERIFICATION | 5 OPEN*
