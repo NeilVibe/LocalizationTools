@@ -7,11 +7,10 @@ Add a line with the build command, then commit & push to main.
 GitHub Actions will automatically build when it detects the new line.
 
 FORMATS:
-  Build QA              → ALL tests (~1000+), light installer (~150MB) [DEFAULT]
-  Build TROUBLESHOOT    → Resume failed build, debug mode
+  Build / Build QA    → ALL tests (~1000+), installer (~150MB) [DEFAULT]
+  TROUBLESHOOT        → Resume failed build, debug mode
 
-NOTE: QA FULL mode (offline installer ~2GB) only available on Gitea.
-      GitHub has LFS limits that prevent bundling the Qwen model.
+Architecture: Small installer + first-run setup downloads deps + AI model
 
 WORKFLOW:
 1. Add build command to this file
@@ -20,37 +19,3 @@ WORKFLOW:
 
 QA MODE: All 1000+ tests run. Workers technology makes it fast.
 
-Build LIGHT v2512132159 - Unified version + TROUBLESHOOT mode
-Build LIGHT v2512132206 - Fix duplicate env
-Build LIGHT v2512132216 - Add version injection to safety-checks
-Build LIGHT v2512132223 - Fix installer version injection
-Build LIGHT v2512132236 - Async loop fix
-Build LIGHT v2512132255 - Test fixes
-Build LIGHT v2512132319 - All tests pass
-Build LIGHT v2512141557 - P27 Svelte 5 Full Latest
-Build LIGHT v2512141625 - ROBUST FIX: Node 20 + electron-builder config
-Build LIGHT v2512141700 - Fix SQLite fallback for Windows tests
-Build LIGHT v2512141730 - Skip backend test (no PostgreSQL on Windows runner)
-Build LIGHT v2512141745 - Remove useless server tests (match Gitea)
-Build LIGHT v2512152200 - P32+P33 Complete
-Build LIGHT v2512152208 - Fix test
-Build LIGHT v2512152244 - Unified CI config (GitHub + Gitea match)
-Build LIGHT v2512172220 - Build 298 (Lazy import fix + BUG-020 + FEAT-001 + BUG-016)
-Build LIGHT
-Build LIGHT - Test fix
-Build LIGHT
-Build LIGHT - Fix GitHub CI for clean DB environments
-Build LIGHT - Verify 56 mocked tests
-Build
-Build 416: All UI issues fixed (28/28)
-Build QA
-Build 424: macOS build test
-Build 425: Fix macOS build
-Build 426: macOS fix + gsudo
-Build 427: Fix semver for auto-updater
-Build 428: Simplified version check
-Build QA
-Build 493: BUG-043 Fix - Include .sql files in Windows build
-Build: Test GitHub PATCH support
-Build: Fix YAML syntax + retry
-Build: Fix LIGHT build huggingface_hub check

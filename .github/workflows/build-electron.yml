@@ -1,16 +1,13 @@
 name: Build LocaNext Installer
 
 # ============================================================================
-# DEV MODE IS DEAD. Workers make all tests fast. QA is now the only mode.
+# ONE BUILD ONLY. Workers make all tests fast.
 #
 # GitHub supports:
-#   - Build / Build QA: ALL tests (~1000+), light installer (~150MB)
+#   - Build / Build QA: ALL tests (~1000+), installer (~150MB)
 #   - TROUBLESHOOT: Smart checkpoint mode
 #
-# GitHub REJECTS:
-#   - Build QA FULL: REJECTED (LFS bandwidth limits, use Gitea instead)
-#
-# QA FULL is GITEA ONLY. Never GitHub.
+# Architecture: Small installer + first-run setup downloads deps + model
 # ============================================================================
 
 on:
@@ -40,27 +37,10 @@ jobs:
         id: check
         run: |
           # ============================================================
-          # DEV MODE IS DEAD. QA is now the only mode.
-          # GitHub REJECTS QA FULL (use Gitea for offline builds)
+          # ONE BUILD ONLY. QA is the default mode.
           # ============================================================
-          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "^Build( QA)?( FULL)?$|^TROUBLESHOOT" | tail -1)
+          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "^Build( QA)?$|^TROUBLESHOOT" | tail -1)
           echo "Trigger line: $TRIGGER"
-
-          # REJECT QA FULL on GitHub (LFS bandwidth limits)
-          if echo "$TRIGGER" | grep -q "QA FULL"; then
-            echo ""
-            echo "============================================"
-            echo "[REJECTED] QA FULL is GITEA ONLY"
-            echo "============================================"
-            echo "GitHub has LFS bandwidth limits."
-            echo "QA FULL builds (~2GB) must use Gitea."
-            echo ""
-            echo "Use: git push gitea main"
-            echo "============================================"
-            echo ""
-            echo "should_build=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
 
           if [ -n "$TRIGGER" ]; then
             echo "should_build=true" >> $GITHUB_OUTPUT
@@ -579,7 +559,7 @@ jobs:
   # BUILD WINDOWS INSTALLER
   # ============================================================
   build-windows:
-    name: Build Windows LIGHT Installer
+    name: Build Windows Installer
     runs-on: windows-latest
     needs: [check-build-trigger, safety-checks]
     if: needs.check-build-trigger.outputs.should_build == 'true' && needs.check-build-trigger.outputs.skip_build != 'yes'
@@ -651,7 +631,7 @@ jobs:
           Write-Host "Installing huggingface_hub..."
           & "tools\python\python.exe" -m pip install --no-warn-script-location huggingface_hub
 
-          # Install LIGHT backend dependencies (heavy ones like torch download post-install)
+          # Install backend dependencies (ML packages download on first-run)
           Write-Host "Installing light backend dependencies..."
           & "tools\python\python.exe" -m pip install --no-warn-script-location `
             fastapi uvicorn python-multipart python-socketio `
@@ -712,7 +692,7 @@ jobs:
           & "tools\python\python.exe" -c "import tqdm; print('[OK] tqdm ready')"
           & "tools\python\python.exe" -c "import yaml; print('[OK] pyyaml ready')"
 
-          # Model downloading (for LIGHT build post-install)
+          # Model downloading (first-run setup uses this)
           & "tools\python\python.exe" -c "import huggingface_hub; print(f'[OK] huggingface_hub v{huggingface_hub.__version__}')"
 
           Write-Host ""
@@ -1011,7 +991,7 @@ jobs:
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LocaNext-Windows-LIGHT-Setup
+          name: LocaNext-Windows-Setup
           path: |
             installer_output/*.exe
             installer_output/latest.yml
@@ -1290,7 +1270,7 @@ jobs:
       - name: Download Windows Installer
         uses: actions/download-artifact@v4
         with:
-          name: LocaNext-Windows-LIGHT-Setup
+          name: LocaNext-Windows-Setup
           path: artifacts/windows
 
       - name: Download macOS Installer
@@ -1303,19 +1283,19 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.check-build-trigger.outputs.version }}
-          name: LocaNext v${{ needs.check-build-trigger.outputs.version }} (LIGHT)
+          name: LocaNext v${{ needs.check-build-trigger.outputs.version }}
           draft: false
           prerelease: false
           body: |
-            ## LocaNext Desktop Application (LIGHT Build)
+            ## LocaNext Desktop Application
 
             **Version:** ${{ needs.check-build-trigger.outputs.version }}
-            **Build Type:** LIGHT (deps + model installed on first launch)
+            **Architecture:** Small installer + first-run setup
 
             ### 📥 Downloads
 
             **Windows:**
-            - `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Light_Setup.exe` (~150-200MB)
+            - `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Setup.exe` (~150-200MB)
 
             **macOS:**
             - `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_macOS.dmg` (~150-200MB)

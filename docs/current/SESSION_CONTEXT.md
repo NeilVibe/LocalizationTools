@@ -14,13 +14,21 @@
 | **BUG-044** | ✅ PASSED | `auth_token` key exists, Bearer auth in API requests |
 | **UI-114** | ✅ PASSED | Toast: `position:fixed`, `bottom:16px`, `zIndex:9999` |
 
-### BUILD-001: Root Cause Found
+### BUILD-001: FIXED ✅
 
-**Problem:** LIGHT installer 595 MB instead of expected 150 MB
+**Problem:** Installer 595 MB instead of expected 150 MB
 
-**Root Cause:** Line 1509 of `.gitea/workflows/build.yml` installs FULL requirements.txt (including PyTorch ~800MB) into embedded Python for ALL builds.
+**Root Cause:** Wrong architecture - tried to create LIGHT/FULL build distinction
 
-**Fix:** Create `requirements-light.txt` without ML packages, use it for LIGHT builds.
+**Fix:** Removed LIGHT/FULL distinction entirely. ONE BUILD ONLY:
+- Small installer (~150MB)
+- First-run setup downloads deps + model automatically
+- Code already correct in `first-run-setup.js`
+
+**Changes:**
+- Deleted `requirements-light.txt`
+- Fixed `.gitea/workflows/build.yml` and `.github/workflows/build-electron.yml`
+- Updated trigger files and documentation
 
 ### BUILD-002: Dual-Release Architecture IMPLEMENTED
 
