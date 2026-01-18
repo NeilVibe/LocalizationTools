@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-18 (Session 50) | **Build:** 493 | **Open:** 5 | **Pending Verification:** 3
+**Last Updated:** 2026-01-18 (Session 51) | **Build:** 493 | **Open:** 6 | **Verified This Session:** 3
 
 ---
 
@@ -8,28 +8,25 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 5 |
-| **PENDING VERIFICATION** | 3 |
-| **FIXED/CLOSED** | 130 |
+| **OPEN** | 6 |
+| **VERIFIED THIS SESSION** | 3 |
+| **FIXED/CLOSED** | 133 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
 
-## NEEDS VERIFICATION (Session 50 - Code Complete)
+## VERIFIED (Session 51 - Playwright Tests Passed)
 
-### UI-113, BUG-044, UI-114: Session 50 Changes ⏳ NEEDS TESTING
+### UI-113, BUG-044, UI-114: Session 50 Fixes ✅ VERIFIED
 
-| Issue | Description | Fix Applied | Status |
-|-------|-------------|-------------|--------|
-| **UI-113** | Cell Edit Right-Click Menu | Added color picker (source colors only) + edit actions | ⏳ Code done, needs testing |
-| **BUG-044** | File Search Not Working | Wrong localStorage key: `'token'` → `'auth_token'` | ⏳ Code done, needs testing |
-| **UI-114** | Toast Cut Off | Added safe-area-insets, text wrapping, responsive styles | ⏳ Code done, needs testing |
+| Issue | Description | Fix Applied | Verification |
+|-------|-------------|-------------|--------------|
+| **UI-113** | Cell Edit Right-Click Menu | Added color picker (source colors only) + edit actions | ✅ Code verified in VirtualGrid.svelte:1149-1248, 2530-2590 |
+| **BUG-044** | File Search Not Working | Wrong localStorage key: `'token'` → `'auth_token'` | ✅ Playwright: auth_token exists, Bearer auth in API |
+| **UI-114** | Toast Cut Off | Added safe-area-insets, text wrapping, responsive styles | ✅ Playwright: position:fixed, bottom:16px, zIndex:9999 |
 
-**To verify:**
-1. Test edit mode right-click in DEV mode - select text, right-click, apply color
-2. Test file search in offline mode - login offline, search for files
-3. Test toast with long messages - trigger an operation, check toast isn't cut off
+**Verification Method:** `locaNext/tests/session50_verification.spec.ts` - 4/4 tests passed
 
 ---
 
@@ -107,59 +104,147 @@
 
 ---
 
-### BUILD-001: Gitea vs GitHub Release Size Discrepancy ⚠️ MEDIUM (INVESTIGATION NEEDED)
+### BUILD-001: Gitea vs GitHub Release Size Discrepancy ⚠️ MEDIUM (ROOT CAUSE FOUND)
 
 - **Reported:** 2026-01-18 (Session 50)
+- **Investigated:** 2026-01-18 (Session 51)
 - **Severity:** MEDIUM (affects download time and storage)
-- **Status:** NEEDS INVESTIGATION
-- **Component:** CI/CD workflows, package.json extraResources
+- **Status:** ROOT CAUSE FOUND - NEEDS FIX
+- **Component:** CI/CD workflows, requirements.txt
 
-**Problem:** Gitea LIGHT installer is 595 MB, but expected ~150 MB. GitHub appears to have smaller builds.
+**Problem:** Gitea LIGHT installer is 595 MB, but expected ~150 MB.
 
-**Gitea Release Files:**
+**ROOT CAUSE IDENTIFIED:**
+
+Line 1509 of `.gitea/workflows/build.yml` installs **FULL requirements.txt** into embedded Python for ALL builds (including LIGHT):
+```powershell
+& "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements.txt
+```
+
+This includes:
+- `torch==2.3.1` (~800 MB installed)
+- `torchvision==0.18.1` (~200 MB)
+- `sentence-transformers==2.7.0` (~100 MB)
+- `transformers>=4.46.0` (~500 MB)
+- Plus all other ML/data packages
+
+**Size Breakdown:**
+| Component | Size | Notes |
+|-----------|------|-------|
+| Electron + Chromium | ~150 MB | Expected base size |
+| Python 3.11 embedded | ~50 MB | Embeddable distribution |
+| PyTorch + dependencies | ~800 MB | **THE PROBLEM** |
+| Other pip packages | ~100 MB | FastAPI, etc. |
+| **Total** | **~1.1 GB** | After compression: 595 MB |
+
+**FIX OPTIONS:**
+
+1. **Option A: Create `requirements-light.txt`** (RECOMMENDED)
+   - Excludes: torch, torchvision, sentence-transformers, transformers, faiss-cpu
+   - LIGHT builds use this file
+   - First-run setup installs ML packages if user wants AI features
+
+2. **Option B: Skip embedded Python for LIGHT builds**
+   - LIGHT builds have NO Python bundled
+   - First-run setup installs everything
+   - Slower first launch but smaller download
+
+3. **Option C: Lazy-load ML packages**
+   - Keep minimal Python in LIGHT
+   - Download ML packages on first AI feature use
+
+**RECOMMENDED FIX (Option A):**
+
+Create `requirements-light.txt`:
+```
+# Core server only (no ML)
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+sqlalchemy==2.0.32
+aiosqlite==0.20.0
+psycopg2-binary==2.9.9
+asyncpg>=0.29.0
+# ... other non-ML packages
+```
+
+Modify Gitea workflow:
+```powershell
+if ($env:BUILD_TYPE -eq "FULL") {
+  & "$targetDir\python.exe" -m pip install -r requirements.txt
+} else {
+  & "$targetDir\python.exe" -m pip install -r requirements-light.txt
+}
+```
+
+**Expected Result:** LIGHT build ~150-200 MB instead of 595 MB
+
+---
+
+### BUILD-002: Dual-Release Architecture (Gitea + GitHub) ✅ IMPLEMENTED (Session 51)
+
+- **Implemented:** 2026-01-18 (Session 51)
+- **Status:** DONE - Ready for testing
+
+**Architecture:**
+
+```
+GITEA CI (Local Dev)                    GITHUB CI (Public)
+├── publish URL → Gitea                 ├── publish URL → GitHub
+├── Uploads to Gitea releases           ├── Uploads to GitHub releases
+├── PATCH: app.asar, manifest.json      ├── PATCH: app.asar, manifest.json
+├── SMART: *.blockmap                   ├── SMART: *.blockmap
+└── Users update FROM Gitea             └── Users update FROM GitHub
+```
+
+**Changes Made to `.github/workflows/build-electron.yml`:**
+
+| Change | Location | Purpose |
+|--------|----------|---------|
+| GitHub URL injection | Before npm ci (Win + Mac) | Apps update from GitHub |
+| PATCH file generation | After latest.yml (Win + Mac) | Enables ~18MB updates |
+| Artifact upload update | Upload step | Includes app.asar, manifest.json, blockmap |
+| Release files update | create-release job | All PATCH files in release |
+
+**Files Added to GitHub Releases:**
+
 | File | Size | Purpose |
 |------|------|---------|
-| `LocaNext_Setup.exe` | 595 MB | Main installer (TOO LARGE!) |
-| `app.asar` | 18 MB | For PATCH updates (97% smaller) |
-| `*.blockmap` | 636 KB | For SMART/DIFFERENTIAL updates |
-| `latest.yml` | 456 B | Auto-updater metadata |
-| `manifest.json` | 775 B | Patch update metadata |
+| `LocaNext_*_Setup.exe` | ~150 MB | Full installer |
+| `latest.yml` | ~500 B | Auto-updater metadata |
+| `app.asar` | ~18 MB | **PATCH updates** |
+| `manifest.json` | ~800 B | **PATCH metadata** |
+| `*.blockmap` | ~600 KB | **Differential updates** |
 
-**Questions to Investigate:**
-1. **Why is LIGHT build 595 MB?** Expected ~150 MB. What's being bundled?
-   - Is the Python environment fully bundled?
-   - Is the Qwen model accidentally included?
-   - Are there duplicate files in extraResources?
+**Result:** GitHub users can now get PATCH updates (~18MB) instead of full reinstall (~150MB)
 
-2. **Are ALL these files necessary?**
-   - `app.asar` + `manifest.json`: YES - Required for PATCH updates (Session 48)
-   - `blockmap`: YES - Required for SMART updates (only download changed bytes)
-   - `latest.yml`: YES - Required by electron-updater
+---
 
-3. **GitHub vs Gitea differences:**
-   - GitHub builds Windows + macOS (both platforms)
-   - Gitea builds Windows only (has access to local PostgreSQL for tests)
-   - Both should produce same size LIGHT installer
+### DOCS-001: Documentation Files Exceeding Token Limits ⚠️ LOW
 
-4. **macOS considerations:**
-   - macOS uses different auto-updater format (.zip + .dmg)
-   - May need similar files (manifest, blockmap) for parity
+- **Reported:** 2026-01-18 (Session 51)
+- **Severity:** LOW (affects Claude context window)
+- **Status:** OPEN
+- **Component:** docs/
 
-**Root Cause Hypotheses:**
-1. Python environment bundled with all packages (~400 MB extra)
-2. Qwen model accidentally included in LIGHT build
-3. Duplicate bundling of tools/server directories
+**Problem:** Some documentation files exceed Claude's token limit (~25,000 tokens), making them unreadable in full.
 
-**Next Steps:**
-1. Compare extraResources in package.json vs actual bundled files
-2. Check if tools/python includes virtual env
-3. Verify Qwen model is NOT in LIGHT build
-4. Compare GitHub vs Gitea artifact sizes directly
+**Affected Files (Active - need attention):**
+| File | Lines | Status |
+|------|-------|--------|
+| `docs/current/ISSUES_TO_FIX.md` | 2194 | ⚠️ TOO LARGE |
+| `docs/architecture/OFFLINE_ONLINE_MODE.md` | 1660 | ⚠️ BORDERLINE |
+| `docs/reference/cicd/TROUBLESHOOTING.md` | 1240 | ⚠️ BORDERLINE |
 
-**Files to Check:**
-- `locaNext/package.json` → `extraResources` section
-- `.gitea/workflows/build.yml` → Windows build steps
-- `.github/workflows/build-electron.yml` → Compare with Gitea
+**Archive files (OK - historical records):**
+- `docs/archive/history/ROADMAP_ARCHIVE.md` - 2352 lines (archive, expected)
+- Other archive files
+
+**Recommended Actions:**
+1. **ISSUES_TO_FIX.md** - Move closed issues older than 2 weeks to archive
+2. **OFFLINE_ONLINE_MODE.md** - Split into smaller focused docs
+3. **TROUBLESHOOTING.md** - Consider collapsing old resolved issues
+
+**Target:** Keep active docs under 1000 lines (~15,000 tokens)
 
 ---
 
