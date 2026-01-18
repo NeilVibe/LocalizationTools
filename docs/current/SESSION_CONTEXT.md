@@ -1,35 +1,50 @@
 # Session Context
 
-> Last Updated: 2026-01-18 (Session 52 - BUILD-001 Implementation)
+> Last Updated: 2026-01-18 (Session 53 - Slim Installer COMPLETE)
 
 ---
 
-## SESSION 52: BUILD-001 Implementation ✅
+## SESSION 53: Slim Installer COMPLETE ✅
 
-### BUILD-001: IMPLEMENTED
+### BUILD-001: FULLY FIXED
 
-**Problem:** Installer 595 MB instead of expected 150 MB
+**Problem:** Installer 594 MB instead of expected 150 MB
 
-**Root Cause:** Wrong architecture - tried to create LIGHT/FULL build distinction
+**Root Cause:** PyTorch (~400MB) bundled in installer instead of downloaded on first-run
 
-**Solution:** ONE BUILD ONLY architecture:
-- Small installer (~150MB)
-- First-run setup downloads deps + model automatically
-- Code already correct in `first-run-setup.js`
+**Solution:** Industry-standard approach:
+- Create `requirements-build.txt` (server packages only, no torch)
+- Build uses slim requirements
+- First-run downloads PyTorch + model (~1.5GB)
 
 **Changes Made:**
 | File | Change |
 |------|--------|
-| `requirements-light.txt` | DELETED |
-| `.gitea/workflows/build.yml` | Removed all LIGHT/FULL logic |
-| `.github/workflows/build-electron.yml` | Removed LIGHT references |
-| `BUILD_TRIGGER.txt` | Simplified |
-| `GITEA_TRIGGER.txt` | Simplified |
-| `first-run-setup.js` | Fixed comments |
-| `HOW_TO_BUILD.md` | Updated |
-| `Roadmap.md` | Updated |
+| `requirements-build.txt` | NEW - server-only packages |
+| `.gitea/workflows/build.yml` | Line 1487: use requirements-build.txt |
+| `.gitea/workflows/build.yml` | Lines 1223, 1398: cache hash uses requirements-build.txt |
 
-**Build Status:** Gitea Run 495 ✅ SUCCESS
+**Results:**
+| Metric | Before | After |
+|--------|--------|-------|
+| Installer | 594 MB | **174 MB** (71% smaller) |
+| First-run download | ~1.2 GB | ~1.5 GB (includes PyTorch) |
+
+**Verification:**
+- Gitea Build 497 ✅ SUCCESS
+- Playground install ✅ SUCCESS
+- First-run setup ✅ PyTorch + Qwen model downloaded
+- App ✅ Fully functional
+
+**Build Status:** Gitea Run 497 ✅ SUCCESS
+
+---
+
+## SESSION 52: BUILD-001 Initial Attempt
+
+**What was tried:** Remove LIGHT/FULL build distinction
+**Result:** Installer still 594 MB (cache was restoring old Python with PyTorch)
+**Fixed in Session 53:** Cache hash changed to use requirements-build.txt
 
 ### IMPROVE-001: Launcher UI Discovery
 
