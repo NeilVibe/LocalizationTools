@@ -119,7 +119,7 @@
   let colorPickerPosition = $state({ x: 0, y: 0 });
   let textSelection = $state({ start: 0, end: 0, text: "" });
 
-  // Available colors for PAColor format
+  // Default colors for PAColor format (fallback if source has no colors)
   const PAColors = [
     { name: "Gold", hex: "0xffe9bd23", css: "#e9bd23" },
     { name: "Green", hex: "0xff67d173", css: "#67d173" },
@@ -130,6 +130,41 @@
     { name: "Cyan", hex: "0xff00bcd4", css: "#00bcd4" },
     { name: "Pink", hex: "0xffe91e63", css: "#e91e63" }
   ];
+
+  /**
+   * UI-113: Extract unique colors from source text
+   * Returns array of color objects {hex, css, name} found in source
+   */
+  function extractColorsFromSource(sourceText) {
+    if (!sourceText) return [];
+
+    const colorPattern = /<PAColor(0x[0-9a-fA-F]{6,8})>/gi;
+    const uniqueColors = new Map();
+    let match;
+
+    while ((match = colorPattern.exec(sourceText)) !== null) {
+      const hex = match[1].toLowerCase();
+      if (!uniqueColors.has(hex)) {
+        const css = hexToCSS(hex);
+        // Try to find a matching name from PAColors
+        const known = PAColors.find(c => c.hex.toLowerCase() === hex);
+        uniqueColors.set(hex, {
+          hex: hex,
+          css: css,
+          name: known?.name || css // Use CSS color as name if unknown
+        });
+      }
+    }
+
+    return Array.from(uniqueColors.values());
+  }
+
+  // UI-113: Derived state for colors available in current editing row's source
+  let sourceColors = $derived.by(() => {
+    if (!inlineEditingRowId) return [];
+    const row = getRowById(inlineEditingRowId);
+    return row ? extractColorsFromSource(row.source) : [];
+  });
 
   // Selected row state (click-based)
   let selectedRowId = $state(null);
@@ -1111,30 +1146,72 @@
    */
   let savedRange = null; // Store selection range for color picker
 
+  /**
+   * UI-113: Handle right-click in edit mode - show edit-specific context menu
+   */
   function handleEditContextMenu(e) {
     if (!inlineEditTextarea) return;
 
+    e.preventDefault();
+
     // Get text selection from contenteditable
     const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
+    const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+    const selectedText = sel ? sel.toString() : "";
 
-    const range = sel.getRangeAt(0);
-    const selectedText = sel.toString();
-
-    // Only show color picker if text is selected
-    if (selectedText.length > 0) {
-      e.preventDefault();
-      // Save the range so we can restore it when applying color
+    // Save the range for color application
+    if (range && selectedText.length > 0) {
       savedRange = range.cloneRange();
       textSelection = {
         start: 0,
         end: selectedText.length,
         text: selectedText
       };
-      colorPickerPosition = { x: e.clientX, y: e.clientY };
-      showColorPicker = true;
-      logger.userAction("Color picker opened", { selectedText: selectedText });
+    } else {
+      savedRange = null;
+      textSelection = { start: 0, end: 0, text: "" };
     }
+
+    // Show edit context menu (not just color picker)
+    colorPickerPosition = { x: e.clientX, y: e.clientY };
+    showColorPicker = true;
+    logger.userAction("Edit context menu opened", { hasSelection: selectedText.length > 0 });
+  }
+
+  /**
+   * UI-113: Edit actions for context menu
+   */
+  function handleEditCut() {
+    if (!inlineEditTextarea) return;
+    document.execCommand('cut');
+    closeColorPicker();
+    inlineEditTextarea.focus();
+  }
+
+  function handleEditCopy() {
+    if (!inlineEditTextarea) return;
+    document.execCommand('copy');
+    closeColorPicker();
+    inlineEditTextarea.focus();
+  }
+
+  function handleEditPaste() {
+    if (!inlineEditTextarea) return;
+    document.execCommand('paste');
+    closeColorPicker();
+    inlineEditTextarea.focus();
+  }
+
+  function handleEditSelectAll() {
+    if (!inlineEditTextarea) return;
+    closeColorPicker();
+    // Select all text in contenteditable
+    const range = document.createRange();
+    range.selectNodeContents(inlineEditTextarea);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    inlineEditTextarea.focus();
   }
 
   /**
@@ -2447,33 +2524,69 @@
     </div>
   {/if}
 
-  <!-- Color Picker Context Menu -->
+  <!-- UI-113: Edit Mode Context Menu (Color Picker + Edit Actions) -->
   {#if showColorPicker}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="color-picker-overlay" onclick={closeColorPicker}></div>
     <div
-      class="color-picker-menu"
+      class="edit-context-menu"
       style="left: {colorPickerPosition.x}px; top: {colorPickerPosition.y}px;"
     >
-      <div class="color-picker-header">
-        <span>Apply Color</span>
-        <button class="close-btn" onclick={closeColorPicker}>×</button>
-      </div>
-      <div class="color-picker-colors">
-        {#each PAColors as color}
-          <button
-            class="color-swatch"
-            style="background-color: {color.css};"
-            title={color.name}
-            onclick={() => applyColor(color)}
-          >
-            <span class="color-name">{color.name}</span>
-          </button>
-        {/each}
-      </div>
-      <div class="color-picker-preview">
-        <span class="preview-text">"{textSelection.text}"</span>
+      <!-- Color Section (only if source has colors AND text is selected) -->
+      {#if sourceColors.length > 0 && textSelection.text.length > 0}
+        <div class="edit-menu-section">
+          <div class="edit-menu-header">Apply Color</div>
+          <div class="color-picker-colors">
+            {#each sourceColors as color}
+              <button
+                class="color-swatch"
+                style="background-color: {color.css};"
+                title={color.name}
+                onclick={() => applyColor(color)}
+              >
+                <span class="color-name">{color.name}</span>
+              </button>
+            {/each}
+          </div>
+          {#if textSelection.text}
+            <div class="color-picker-preview">
+              <span class="preview-label">Selected:</span>
+              <span class="preview-text">"{textSelection.text.length > 30 ? textSelection.text.substring(0, 30) + '...' : textSelection.text}"</span>
+            </div>
+          {/if}
+        </div>
+        <div class="edit-menu-divider"></div>
+      {:else if textSelection.text.length > 0 && sourceColors.length === 0}
+        <div class="edit-menu-section">
+          <div class="edit-menu-hint">No colors in source text</div>
+        </div>
+        <div class="edit-menu-divider"></div>
+      {/if}
+
+      <!-- Edit Actions -->
+      <div class="edit-menu-section">
+        <button class="edit-menu-item" onclick={handleEditCut} disabled={!textSelection.text}>
+          <span class="edit-menu-icon">✂</span>
+          <span>Cut</span>
+          <span class="edit-menu-shortcut">Ctrl+X</span>
+        </button>
+        <button class="edit-menu-item" onclick={handleEditCopy} disabled={!textSelection.text}>
+          <span class="edit-menu-icon">📋</span>
+          <span>Copy</span>
+          <span class="edit-menu-shortcut">Ctrl+C</span>
+        </button>
+        <button class="edit-menu-item" onclick={handleEditPaste}>
+          <span class="edit-menu-icon">📝</span>
+          <span>Paste</span>
+          <span class="edit-menu-shortcut">Ctrl+V</span>
+        </button>
+        <div class="edit-menu-divider"></div>
+        <button class="edit-menu-item" onclick={handleEditSelectAll}>
+          <span class="edit-menu-icon">☑</span>
+          <span>Select All</span>
+          <span class="edit-menu-shortcut">Ctrl+A</span>
+        </button>
       </div>
     </div>
   {/if}
@@ -3252,6 +3365,87 @@
 
   .color-picker-preview .preview-text {
     font-style: italic;
+  }
+
+  .color-picker-preview .preview-label {
+    color: var(--cds-text-02);
+    margin-right: 0.25rem;
+  }
+
+  /* UI-113: Edit Context Menu (replaces simple color picker) */
+  .edit-context-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 220px;
+    background: var(--cds-layer-02);
+    border: 1px solid var(--cds-border-strong-01);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+  }
+
+  .edit-menu-section {
+    padding: 0.25rem 0;
+  }
+
+  .edit-menu-header {
+    padding: 0.5rem 0.75rem 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--cds-text-02);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .edit-menu-hint {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.7rem;
+    color: var(--cds-text-03);
+    font-style: italic;
+  }
+
+  .edit-menu-divider {
+    height: 1px;
+    background: var(--cds-border-subtle-01);
+    margin: 0.25rem 0;
+  }
+
+  .edit-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: none;
+    border: none;
+    color: var(--cds-text-01);
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-align: left;
+    gap: 0.5rem;
+  }
+
+  .edit-menu-item:hover:not(:disabled) {
+    background: var(--cds-layer-hover-02);
+  }
+
+  .edit-menu-item:disabled {
+    color: var(--cds-text-03);
+    cursor: not-allowed;
+  }
+
+  .edit-menu-icon {
+    width: 1rem;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+
+  .edit-menu-item span:nth-child(2) {
+    flex: 1;
+  }
+
+  .edit-menu-shortcut {
+    font-size: 0.65rem;
+    color: var(--cds-text-03);
   }
 
   /* Status-based cell colors (replaces Status column)
