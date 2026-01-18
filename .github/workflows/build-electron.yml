@@ -769,6 +769,40 @@ jobs:
       # ============================================================
       # STEP 3: Build Electron app
       # ============================================================
+
+      # ============================================================
+      # STEP 3.0: Set GitHub Release URL for Auto-Updates
+      # This makes apps built by GitHub CI update from GitHub releases
+      # (Gitea builds update from Gitea, GitHub builds update from GitHub)
+      # ============================================================
+      - name: Set GitHub Release URL for Auto-Updates
+        run: |
+          Write-Host "=== Setting GitHub Release URL ===" -ForegroundColor Cyan
+
+          $pkgPath = "locaNext/package.json"
+          $pkg = Get-Content $pkgPath -Raw
+
+          # Replace Gitea URL with GitHub releases URL
+          $giteaUrl = "http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest"
+          $githubUrl = "https://github.com/NeilVibe/LocalizationTools/releases/download/latest"
+
+          $pkg = $pkg -replace [regex]::Escape($giteaUrl), $githubUrl
+
+          # Write back
+          [System.IO.File]::WriteAllText($pkgPath, $pkg)
+
+          Write-Host "[OK] Publish URL changed to GitHub releases" -ForegroundColor Green
+          Write-Host "    Apps built here will auto-update from GitHub" -ForegroundColor Cyan
+
+          # Verify
+          $verify = Get-Content $pkgPath | Select-String "github.com"
+          if ($verify) {
+            Write-Host "[OK] Verified: $verify" -ForegroundColor Green
+          } else {
+            Write-Host "[WARN] Could not verify URL change" -ForegroundColor Yellow
+          }
+        shell: pwsh
+
       - name: Install Node Dependencies
         run: |
           cd locaNext
@@ -912,6 +946,68 @@ jobs:
           Get-Content "installer_output\latest.yml"
         shell: pwsh
 
+      # ============================================================
+      # STEP 5b: Generate PATCH Update Files (Game-Launcher Style)
+      # These enable ~18MB patch updates instead of 595MB full downloads
+      # ============================================================
+      - name: Generate PATCH Update Files
+        env:
+          VERSION: ${{ needs.check-build-trigger.outputs.version }}
+        run: |
+          Write-Host "=== Generating PATCH Update Files ===" -ForegroundColor Cyan
+
+          $resourcesDir = "locaNext\dist-electron\win-unpacked\resources"
+          $version = $env:VERSION
+
+          # 1. Copy app.asar for PATCH updates (~18MB instead of 595MB installer)
+          $asarPath = "$resourcesDir\app.asar"
+          if (Test-Path $asarPath) {
+            Copy-Item $asarPath "installer_output\app.asar"
+            $asarSize = (Get-Item "installer_output\app.asar").Length
+            $asarHash = (Get-FileHash "installer_output\app.asar" -Algorithm SHA256).Hash.ToLower()
+
+            Write-Host "[OK] app.asar copied" -ForegroundColor Green
+            Write-Host "    Size: $([math]::Round($asarSize/1MB, 2)) MB"
+            Write-Host "    SHA256: $($asarHash.Substring(0,16))..."
+
+            # 2. Generate manifest.json for PATCH updater
+            $manifest = @{
+              version = $version
+              buildDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+              components = @{
+                "app.asar" = @{
+                  version = $version
+                  sha256 = $asarHash
+                  size = $asarSize
+                  url = "app.asar"
+                  required = $true
+                }
+              }
+            }
+
+            $manifestJson = $manifest | ConvertTo-Json -Depth 5
+            [System.IO.File]::WriteAllText("installer_output\manifest.json", $manifestJson)
+            Write-Host "[OK] manifest.json generated" -ForegroundColor Green
+
+          } else {
+            Write-Host "[WARN] app.asar not found - PATCH updates disabled" -ForegroundColor Yellow
+          }
+
+          # 3. Copy blockmap for SMART/differential updates
+          $blockmap = Get-ChildItem "locaNext\dist-electron\*.blockmap" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($blockmap) {
+            Copy-Item $blockmap.FullName "installer_output\"
+            Write-Host "[OK] Blockmap copied: $($blockmap.Name)" -ForegroundColor Green
+            Write-Host "    Enables differential updates (download only changed bytes)"
+          } else {
+            Write-Host "[WARN] No blockmap found" -ForegroundColor Yellow
+          }
+
+          Write-Host ""
+          Write-Host "=== PATCH Update Files Ready ===" -ForegroundColor Cyan
+          Get-ChildItem "installer_output" | Format-Table Name, @{N='Size';E={"{0:N2} MB" -f ($_.Length/1MB)}}
+        shell: pwsh
+
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -919,6 +1015,9 @@ jobs:
           path: |
             installer_output/*.exe
             installer_output/latest.yml
+            installer_output/app.asar
+            installer_output/manifest.json
+            installer_output/*.blockmap
           retention-days: 7
 
       # ============================================================
@@ -1062,6 +1161,19 @@ jobs:
         run: |
           cd locaNext && npm ci
 
+      # Set GitHub Release URL for macOS auto-updates (same as Windows)
+      - name: Set GitHub Release URL for Auto-Updates
+        run: |
+          echo "=== Setting GitHub Release URL for macOS ==="
+
+          PKG_PATH="locaNext/package.json"
+
+          # Replace Gitea URL with GitHub releases URL
+          sed -i.bak 's|http://172.28.150.120:3000/neilvibe/LocaNext/releases/download/latest|https://github.com/NeilVibe/LocalizationTools/releases/download/latest|g' "$PKG_PATH"
+
+          echo "[OK] Publish URL changed to GitHub releases"
+          grep -o 'github.com[^"]*' "$PKG_PATH" | head -1 || echo "[WARN] Could not verify"
+
       - name: Update version.py
         run: |
           echo "VERSION = \"$BUILD_VERSION\"" > version.py
@@ -1105,11 +1217,70 @@ jobs:
           echo "[OK] macOS installer ready: $NEW_NAME"
           ls -lh installer_output/
 
+      # Generate PATCH files for macOS
+      - name: Generate PATCH Update Files for macOS
+        run: |
+          echo "=== Generating PATCH Update Files for macOS ==="
+
+          # macOS app.asar is inside the .app bundle
+          APP_PATH=$(find locaNext/dist-electron -name "*.app" -type d | head -1)
+
+          if [ -n "$APP_PATH" ]; then
+            ASAR_PATH="$APP_PATH/Contents/Resources/app.asar"
+
+            if [ -f "$ASAR_PATH" ]; then
+              cp "$ASAR_PATH" "installer_output/app.asar"
+              ASAR_SIZE=$(stat -f%z "installer_output/app.asar" 2>/dev/null || stat -c%s "installer_output/app.asar")
+              ASAR_HASH=$(shasum -a 256 "installer_output/app.asar" | cut -d' ' -f1)
+
+              echo "[OK] app.asar copied"
+              echo "    Size: $((ASAR_SIZE / 1024 / 1024)) MB"
+              echo "    SHA256: ${ASAR_HASH:0:16}..."
+
+              # Generate manifest.json
+              cat > installer_output/manifest.json << EOF
+{
+  "version": "$BUILD_VERSION",
+  "buildDate": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)",
+  "components": {
+    "app.asar": {
+      "version": "$BUILD_VERSION",
+      "sha256": "$ASAR_HASH",
+      "size": $ASAR_SIZE,
+      "url": "app.asar",
+      "required": true
+    }
+  }
+}
+EOF
+              echo "[OK] manifest.json generated"
+            else
+              echo "[WARN] app.asar not found in .app bundle"
+            fi
+          else
+            echo "[WARN] No .app bundle found"
+          fi
+
+          # Copy blockmap if exists
+          BLOCKMAP=$(find locaNext/dist-electron -name "*.blockmap" | head -1)
+          if [ -n "$BLOCKMAP" ]; then
+            cp "$BLOCKMAP" installer_output/
+            echo "[OK] Blockmap copied"
+          fi
+
+          echo ""
+          echo "=== macOS PATCH Files ==="
+          ls -lh installer_output/
+
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
           name: LocaNext-macOS-Setup
-          path: installer_output/*.dmg
+          path: |
+            installer_output/*.dmg
+            installer_output/app.asar
+            installer_output/manifest.json
+            installer_output/*.blockmap
           retention-days: 7
 
   # ============================================================
@@ -1198,6 +1369,9 @@ jobs:
           files: |
             artifacts/windows/*.exe
             artifacts/windows/latest.yml
+            artifacts/windows/app.asar
+            artifacts/windows/manifest.json
+            artifacts/windows/*.blockmap
             artifacts/macos/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

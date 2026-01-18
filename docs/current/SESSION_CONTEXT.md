@@ -1,6 +1,47 @@
 # Session Context
 
-> Last Updated: 2026-01-18 (Session 50 - BUG-043 Fix)
+> Last Updated: 2026-01-18 (Session 51 - Verification + BUILD-001 Investigation)
+
+---
+
+## SESSION 51: Verification + BUILD-001 Investigation
+
+### Verified Fixes (Playwright Tests)
+
+| Issue | Result | Evidence |
+|-------|--------|----------|
+| **UI-113** | ✅ Code Verified | VirtualGrid.svelte has edit context menu (lines 1149-1248, 2530-2590) |
+| **BUG-044** | ✅ PASSED | `auth_token` key exists, Bearer auth in API requests |
+| **UI-114** | ✅ PASSED | Toast: `position:fixed`, `bottom:16px`, `zIndex:9999` |
+
+### BUILD-001: Root Cause Found
+
+**Problem:** LIGHT installer 595 MB instead of expected 150 MB
+
+**Root Cause:** Line 1509 of `.gitea/workflows/build.yml` installs FULL requirements.txt (including PyTorch ~800MB) into embedded Python for ALL builds.
+
+**Fix:** Create `requirements-light.txt` without ML packages, use it for LIGHT builds.
+
+### BUILD-002: Dual-Release Architecture IMPLEMENTED
+
+**GitHub workflow changes made:**
+
+1. **GitHub URL Injection** - Apps built by GitHub update from GitHub releases
+2. **PATCH Files Generation** - app.asar, manifest.json, blockmap for both Windows + macOS
+3. **Release Files Updated** - All PATCH files included in GitHub releases
+
+**File changed:** `.github/workflows/build-electron.yml`
+
+```
+GITEA builds → Update from Gitea (local)
+GITHUB builds → Update from GitHub (public)
+```
+
+### DOCS-001: Added
+
+Documentation files exceeding token limits need to be trimmed:
+- `ISSUES_TO_FIX.md` - 2194 lines (too large)
+- `OFFLINE_ONLINE_MODE.md` - 1660 lines (borderline)
 
 ---
 
