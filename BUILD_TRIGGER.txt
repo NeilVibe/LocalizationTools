@@ -51,3 +51,4 @@ Build 427: Fix semver for auto-updater
 Build 428: Simplified version check
 Build QA
 Build 493: BUG-043 Fix - Include .sql files in Windows build
+Build: Test GitHub PATCH support

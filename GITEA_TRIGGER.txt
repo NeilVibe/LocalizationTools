@@ -162,3 +162,4 @@ Build skip_linux 489: Fix ASAR interception - use originalFs for all .asar file 
 Build skip_linux 490: Final patch update test
 Build skip_linux 491: BUG-043 Always show Offline Storage
 Build 492: BUG-043 Include .sql files in Windows build
+Build 494: Test LIGHT requirements + PATCH support
