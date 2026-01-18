@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-18 (Session 51) | **Build:** 493 | **Open:** 6 | **Verified This Session:** 3
+**Last Updated:** 2026-01-18 (Session 52) | **Build:** 495 | **Open:** 7 | **Verified This Session:** 3
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 6 |
+| **OPEN** | 7 |
 | **VERIFIED THIS SESSION** | 3 |
 | **FIXED/CLOSED** | 133 |
 | **NOT A BUG/BY DESIGN** | 4 |
@@ -104,26 +104,117 @@
 
 ---
 
-### BUILD-001: Installer Size Discrepancy ✅ FIXED (Session 52)
+### BUILD-001: Installer Size 594MB → Target 150MB ⚠️ IN PROGRESS
 
 - **Reported:** 2026-01-18 (Session 50)
-- **Fixed:** 2026-01-18 (Session 52)
-- **Status:** ✅ FIXED
+- **Status:** ⚠️ PARTIALLY DONE - Steps documented below
 
-**Problem:** Installer was 595 MB instead of expected ~150 MB.
+**Current State:** Installer is **594MB** (PyTorch + all packages bundled during build)
 
-**Root Cause:** Wrong architecture - tried to create LIGHT/FULL build distinction which was unnecessary.
+**Target:** **~150MB** installer + first-run downloads heavy deps
 
-**Solution:** ONE BUILD ONLY architecture:
-- Small installer (~150MB)
-- First-run setup downloads deps + model automatically
-- `first-run-setup.js` already had correct logic
+---
 
-**Changes Made:**
+#### STEP 1: Remove LIGHT/FULL Naming ✅ DONE (Session 52)
+
 - Deleted `requirements-light.txt`
-- Fixed `.gitea/workflows/build.yml` - removed all LIGHT/FULL logic
-- Fixed `.github/workflows/build-electron.yml` - removed LIGHT references
-- Updated trigger files and documentation
+- Removed all LIGHT/FULL logic from workflows
+- Simplified trigger files
+
+**Result:** Code is cleaner but installer still 594MB
+
+---
+
+#### STEP 2: Create requirements-build.txt ❌ TODO
+
+Create lightweight requirements file for BUILD ONLY (no ML packages):
+
+```
+# requirements-build.txt - Server packages only (~50MB)
+# ML packages downloaded at first-run via install_deps.py
+
+# Web framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart>=0.0.18
+python-socketio>=5.14.0
+
+# Database
+sqlalchemy==2.0.32
+aiosqlite==0.20.0
+psycopg2-binary==2.9.9
+asyncpg>=0.29.0
+
+# Auth
+python-jose[cryptography]>=3.4.0
+PyJWT==2.9.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.0
+python-dotenv==1.0.1
+
+# Validation
+pydantic==2.9.0
+pydantic-settings==2.5.2
+email-validator==2.2.0
+
+# Data (lightweight)
+pandas==2.2.2
+openpyxl==3.1.5
+xlrd==2.0.1
+httpx==0.27.0
+requests>=2.32.4
+
+# Utilities
+loguru==0.7.2
+lxml>=4.9.0
+tqdm==4.66.5
+pyyaml==6.0.2
+```
+
+**NOT included (downloaded at first-run):**
+- torch (~800MB)
+- transformers (~500MB)
+- sentence-transformers
+- faiss-cpu
+- model2vec
+
+---
+
+#### STEP 3: Modify Build Workflow ❌ TODO
+
+Change `.gitea/workflows/build.yml` line ~1487:
+
+```powershell
+# BEFORE (594MB):
+& "$targetDir\python.exe" -m pip install -r requirements.txt
+
+# AFTER (~150MB):
+& "$targetDir\python.exe" -m pip install -r requirements-build.txt
+```
+
+Also update verification to only check server packages.
+
+---
+
+#### STEP 4: First-Run Downloads Heavy Deps ✅ ALREADY WORKS
+
+`install_deps.py` already installs ALL packages including torch, transformers, etc.
+`first-run-setup.js` already calls it.
+
+**No changes needed here.**
+
+---
+
+#### Summary
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Remove LIGHT/FULL naming | ✅ DONE |
+| 2 | Create requirements-build.txt | ❌ TODO |
+| 3 | Modify build workflow | ❌ TODO |
+| 4 | First-run downloads ML deps | ✅ ALREADY WORKS |
+
+**After Steps 2-3:** Installer will be ~150MB, first-run downloads ~1.5GB (torch + model)
 
 ---
 
@@ -192,6 +283,38 @@ GITEA CI (Local Dev)                    GITHUB CI (Public)
 3. **TROUBLESHOOTING.md** - Consider collapsing old resolved issues
 
 **Target:** Keep active docs under 1000 lines (~15,000 tokens)
+
+---
+
+### IMPROVE-001: Unify First-Run Setup with Launcher.svelte UI ⚠️ LOW
+
+- **Reported:** 2026-01-18 (Session 52)
+- **Severity:** LOW (UX polish)
+- **Status:** OPEN - Future Enhancement
+- **Components:** `locaNext/electron/first-run-setup.js`, `locaNext/src/lib/components/Launcher.svelte`
+
+**Current State:**
+
+Two separate UIs exist:
+1. **`Launcher.svelte`** (846 lines) - Beautiful game-launcher style UI with:
+   - Dark gradient background (#1a1a2e to #16213e)
+   - "Start Offline" / "Login" buttons
+   - Server status indicator with ping animation
+   - Auto-update panel with progress bars
+   - Used for: Normal app launch (mode selection, login, auto-updates)
+
+2. **`first-run-setup.js`** - Simpler inline HTML UI with:
+   - 3 steps (Setup, Model Download, Verification)
+   - Progress bars and status messages
+   - Dark gradient (similar style)
+   - Used for: First-time dependency installation
+
+**Improvement Opportunity:**
+- Unify both UIs into single Launcher.svelte component
+- Show first-run setup steps within the same beautiful launcher UI
+- Consistent user experience from first install to daily use
+
+**Not Urgent:** Current first-run UI works fine. This is polish, not functionality.
 
 ---
 

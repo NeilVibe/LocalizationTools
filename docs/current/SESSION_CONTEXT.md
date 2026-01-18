@@ -29,7 +29,18 @@
 | `HOW_TO_BUILD.md` | Updated |
 | `Roadmap.md` | Updated |
 
-**Build Status:** Gitea Run 495 ⏳ RUNNING
+**Build Status:** Gitea Run 495 ✅ SUCCESS
+
+### IMPROVE-001: Launcher UI Discovery
+
+**Finding:** `Launcher.svelte` (846 lines) exists - beautiful game-launcher style UI with:
+- Dark gradient background, server status indicator
+- "Start Offline" / "Login" buttons
+- Auto-update panel with progress bars
+
+**But:** Not used for first-run setup. First-run has its own simpler inline HTML UI in `first-run-setup.js`.
+
+**Status:** Added as LOW PRIORITY improvement (IMPROVE-001) - unify both UIs later
 
 ---
 
