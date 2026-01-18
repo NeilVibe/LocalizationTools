@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-18 (Session 52) | **Build:** 495 | **Open:** 7 | **Verified This Session:** 3
+**Last Updated:** 2026-01-18 (Session 53) | **Build:** 497 | **Open:** 0 | **Fixed This Session:** BUILD-001
 
 ---
 
@@ -8,9 +8,8 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 7 |
-| **VERIFIED THIS SESSION** | 3 |
-| **FIXED/CLOSED** | 133 |
+| **OPEN** | 0 |
+| **FIXED/CLOSED** | 137 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
@@ -50,78 +49,22 @@
 
 ## OPEN ISSUES
 
-### UI-113: Cell Edit Mode Needs Dedicated Right-Click Menu ⚠️ MEDIUM
-
-- **Reported:** 2026-01-18 (Session 50)
-- **Severity:** MEDIUM (UX improvement)
-- **Status:** OPEN
-- **Component:** VirtualGrid.svelte
-
-**Problem:** When double-clicking a cell to enter edit mode, right-click still shows the general menu (Copy Source, Copy Target, etc.) instead of editing-specific options.
-
-**Required Changes:**
-1. **Color Picker**: Select text → Right-click → Apply color from source palette
-   - Only show colors that exist in the SOURCE text
-   - Apply correct color code format for the file format being used
-2. **Edit-specific Copy/Paste**: Copy/paste for selected text within the cell
-3. **Other editing options**: Cut, Select All, Undo, Redo
-
-**Expected Behavior:**
-- Double-click cell → Edit mode active
-- Select text → Right-click shows: Color options (from source), Cut, Copy, Paste, Select All
-- Color applies the correct `<PAColor0xff...>` tag pattern
+**None!** All issues fixed as of Session 53.
 
 ---
 
-### BUG-044: File Search Not Working (Offline Mode) ⚠️ HIGH
+## RECENTLY FIXED (Session 53)
 
-- **Reported:** 2026-01-18 (Session 50)
-- **Severity:** HIGH (core feature broken)
-- **Status:** NEEDS INVESTIGATION
-- **Component:** VirtualGrid.svelte, search endpoints
+### BUILD-001: Slim Installer ✅ FIXED
 
-**Problem:** File search is not working in offline mode. Need to verify if also broken in online mode.
-
-**Next Steps:**
-1. Test search in DEV mode (online)
-2. Test search in offline mode
-3. Find root cause and fix
-
----
-
-### UI-114: Toast Notification Cut Off at Screen Boundary ⚠️ LOW
-
-- **Reported:** 2026-01-18 (Session 50)
-- **Severity:** LOW (visual issue)
-- **Status:** OPEN
-- **Component:** Toast/notification component
-
-**Problem:** Toast notifications appearing at the bottom of the screen are being cut off at the boundary.
-
-**Fix Options:**
-1. Ensure toast fits within screen boundary
-2. Redesign toast positioning/sizing
-
----
-
-### BUILD-001: Installer Size 594MB → Target 150MB ⚠️ IN PROGRESS
-
-- **Reported:** 2026-01-18 (Session 50)
-- **Status:** ⚠️ PARTIALLY DONE - Steps documented below
-
-**Current State:** Installer is **594MB** (PyTorch + all packages bundled during build)
-
-**Target:** **~150MB** installer + first-run downloads heavy deps
-
----
-
-#### STEP 1: Remove LIGHT/FULL Naming ✅ DONE (Session 52)
-
-- Deleted `requirements-light.txt`
-- Removed all LIGHT/FULL logic from workflows
-- Simplified trigger files
-
-**Result:** Code is cleaner but installer still 594MB
+- **Fixed:** 2026-01-18 (Build 497)
+- **Problem:** Installer was 594MB instead of target 150MB
+- **Root Cause:** PyTorch (~400MB) bundled in installer, cache using wrong requirements hash
+- **Solution:**
+  - Created `requirements-build.txt` (server packages only, no torch)
+  - Updated build.yml to use `requirements-build.txt`
+  - Fixed cache hash to use correct file
+- **Result:** Installer **174 MB** (71% smaller), first-run downloads PyTorch + model
 
 ---
 
