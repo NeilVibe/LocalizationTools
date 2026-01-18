@@ -168,26 +168,31 @@
 <style>
   .toast-container {
     position: fixed;
-    bottom: 16px;
-    right: 16px;
+    /* UI-114 FIX: Use safe area insets to avoid being cut off */
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    right: max(16px, env(safe-area-inset-right, 16px));
     z-index: 9999;
     display: flex;
     flex-direction: column-reverse;
     gap: 8px;
     pointer-events: none;
+    /* UI-114 FIX: Ensure toast stays within viewport */
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
   }
 
   .toast {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
-    padding: 8px 12px;
+    padding: 10px 12px;
     border-radius: 6px;
     background: var(--cds-layer-02, #262626);
     border-left: 3px solid;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     pointer-events: auto;
-    max-width: 320px;
+    /* UI-114 FIX: Wider toast and allow wrapping */
+    max-width: min(400px, calc(100vw - 32px));
     animation: slideIn 0.2s ease-out;
     font-size: 0.8125rem;
   }
@@ -237,10 +242,11 @@
 
   .toast-message {
     color: var(--cds-text-primary, #f4f4f4);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    /* UI-114 FIX: Allow text wrapping instead of truncating */
+    white-space: normal;
+    word-break: break-word;
     display: block;
+    line-height: 1.4;
   }
 
   .toast-close {
@@ -279,10 +285,19 @@
     .toast-container {
       left: 16px;
       right: 16px;
+      bottom: max(16px, env(safe-area-inset-bottom, 16px));
     }
 
     .toast {
       max-width: none;
+    }
+  }
+
+  /* UI-114: Ensure toast is always visible above any fixed elements */
+  @media (max-height: 600px) {
+    .toast-container {
+      bottom: 8px;
+      max-height: calc(100vh - 60px);
     }
   }
 </style>
