@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-18 (Session 50) | **Build:** 492 | **Open:** 4
+**Last Updated:** 2026-01-18 (Session 50) | **Build:** 493 | **Open:** 5
 
 ---
 
@@ -8,14 +8,22 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 4 |
-| **FIXED/CLOSED** | 130 |
+| **OPEN** | 5 |
+| **FIXED/CLOSED** | 133 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
 
 ---
 
 ## RECENTLY FIXED (Session 48-50)
+
+### UI-113, BUG-044, UI-114: Session 50 Fixes ✅ FIXED
+
+| Issue | Description | Fix |
+|-------|-------------|-----|
+| **UI-113** | Cell Edit Right-Click Menu | Added color picker (source colors only) + edit actions |
+| **BUG-044** | File Search Not Working | Wrong localStorage key: `'token'` → `'auth_token'` |
+| **UI-114** | Toast Cut Off | Added safe-area-insets, text wrapping, responsive styles |
 
 ### BUG-043: Offline Storage Folder Creation ✅ FIXED (Session 50)
 
@@ -86,6 +94,62 @@
 **Fix Options:**
 1. Ensure toast fits within screen boundary
 2. Redesign toast positioning/sizing
+
+---
+
+### BUILD-001: Gitea vs GitHub Release Size Discrepancy ⚠️ MEDIUM (INVESTIGATION NEEDED)
+
+- **Reported:** 2026-01-18 (Session 50)
+- **Severity:** MEDIUM (affects download time and storage)
+- **Status:** NEEDS INVESTIGATION
+- **Component:** CI/CD workflows, package.json extraResources
+
+**Problem:** Gitea LIGHT installer is 595 MB, but expected ~150 MB. GitHub appears to have smaller builds.
+
+**Gitea Release Files:**
+| File | Size | Purpose |
+|------|------|---------|
+| `LocaNext_Setup.exe` | 595 MB | Main installer (TOO LARGE!) |
+| `app.asar` | 18 MB | For PATCH updates (97% smaller) |
+| `*.blockmap` | 636 KB | For SMART/DIFFERENTIAL updates |
+| `latest.yml` | 456 B | Auto-updater metadata |
+| `manifest.json` | 775 B | Patch update metadata |
+
+**Questions to Investigate:**
+1. **Why is LIGHT build 595 MB?** Expected ~150 MB. What's being bundled?
+   - Is the Python environment fully bundled?
+   - Is the Qwen model accidentally included?
+   - Are there duplicate files in extraResources?
+
+2. **Are ALL these files necessary?**
+   - `app.asar` + `manifest.json`: YES - Required for PATCH updates (Session 48)
+   - `blockmap`: YES - Required for SMART updates (only download changed bytes)
+   - `latest.yml`: YES - Required by electron-updater
+
+3. **GitHub vs Gitea differences:**
+   - GitHub builds Windows + macOS (both platforms)
+   - Gitea builds Windows only (has access to local PostgreSQL for tests)
+   - Both should produce same size LIGHT installer
+
+4. **macOS considerations:**
+   - macOS uses different auto-updater format (.zip + .dmg)
+   - May need similar files (manifest, blockmap) for parity
+
+**Root Cause Hypotheses:**
+1. Python environment bundled with all packages (~400 MB extra)
+2. Qwen model accidentally included in LIGHT build
+3. Duplicate bundling of tools/server directories
+
+**Next Steps:**
+1. Compare extraResources in package.json vs actual bundled files
+2. Check if tools/python includes virtual env
+3. Verify Qwen model is NOT in LIGHT build
+4. Compare GitHub vs Gitea artifact sizes directly
+
+**Files to Check:**
+- `locaNext/package.json` → `extraResources` section
+- `.gitea/workflows/build.yml` → Windows build steps
+- `.github/workflows/build-electron.yml` → Compare with Gitea
 
 ---
 
@@ -2097,4 +2161,4 @@ The following fixes have been coded but need manual DEV testing:
 
 ---
 
-*Updated 2026-01-18 | 130 Issues FIXED | 4 OPEN*
+*Updated 2026-01-18 | 133 Issues FIXED | 5 OPEN*
