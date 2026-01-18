@@ -34,7 +34,8 @@
   let contextMenuItem = $state(null);
 
   function getAuthHeaders() {
-    const token = localStorage.getItem('token');
+    // BUG-044 FIX: Was using wrong key 'token' instead of 'auth_token'
+    const token = localStorage.getItem('auth_token');
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   }
 

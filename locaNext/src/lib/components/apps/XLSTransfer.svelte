@@ -1399,7 +1399,7 @@
 
                 // Download file from download endpoint
                 try {
-                  const token = localStorage.getItem('token');
+                  const token = localStorage.getItem('auth_token');
                   const downloadResponse = await fetch(
                     `${API_BASE}/api/download/operation/${data.operation_id}`,
                     {
