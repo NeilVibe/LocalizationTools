@@ -1237,22 +1237,13 @@ jobs:
               echo "    Size: $((ASAR_SIZE / 1024 / 1024)) MB"
               echo "    SHA256: ${ASAR_HASH:0:16}..."
 
-              # Generate manifest.json
-              cat > installer_output/manifest.json << EOF
-{
-  "version": "$BUILD_VERSION",
-  "buildDate": "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)",
-  "components": {
-    "app.asar": {
-      "version": "$BUILD_VERSION",
-      "sha256": "$ASAR_HASH",
-      "size": $ASAR_SIZE,
-      "url": "app.asar",
-      "required": true
-    }
-  }
-}
-EOF
+              # Generate manifest.json (using printf to avoid YAML parsing issues)
+              printf '{\n  "version": "%s",\n  "buildDate": "%s",\n  "components": {\n    "app.asar": {\n      "version": "%s",\n      "sha256": "%s",\n      "size": %s,\n      "url": "app.asar",\n      "required": true\n    }\n  }\n}\n' \
+                "$BUILD_VERSION" \
+                "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+                "$BUILD_VERSION" \
+                "$ASAR_HASH" \
+                "$ASAR_SIZE" > installer_output/manifest.json
               echo "[OK] manifest.json generated"
             else
               echo "[WARN] app.asar not found in .app bundle"
