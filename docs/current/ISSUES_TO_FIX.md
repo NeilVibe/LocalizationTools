@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-18 (Session 50) | **Build:** 492 | **Open:** 1
+**Last Updated:** 2026-01-18 (Session 50) | **Build:** 492 | **Open:** 4
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 1 |
+| **OPEN** | 4 |
 | **FIXED/CLOSED** | 130 |
 | **NOT A BUG/BY DESIGN** | 4 |
 | **SUPERSEDED BY PHASE 10** | 2 |
@@ -34,6 +34,60 @@
 ---
 
 ## OPEN ISSUES
+
+### UI-113: Cell Edit Mode Needs Dedicated Right-Click Menu ⚠️ MEDIUM
+
+- **Reported:** 2026-01-18 (Session 50)
+- **Severity:** MEDIUM (UX improvement)
+- **Status:** OPEN
+- **Component:** VirtualGrid.svelte
+
+**Problem:** When double-clicking a cell to enter edit mode, right-click still shows the general menu (Copy Source, Copy Target, etc.) instead of editing-specific options.
+
+**Required Changes:**
+1. **Color Picker**: Select text → Right-click → Apply color from source palette
+   - Only show colors that exist in the SOURCE text
+   - Apply correct color code format for the file format being used
+2. **Edit-specific Copy/Paste**: Copy/paste for selected text within the cell
+3. **Other editing options**: Cut, Select All, Undo, Redo
+
+**Expected Behavior:**
+- Double-click cell → Edit mode active
+- Select text → Right-click shows: Color options (from source), Cut, Copy, Paste, Select All
+- Color applies the correct `<PAColor0xff...>` tag pattern
+
+---
+
+### BUG-044: File Search Not Working (Offline Mode) ⚠️ HIGH
+
+- **Reported:** 2026-01-18 (Session 50)
+- **Severity:** HIGH (core feature broken)
+- **Status:** NEEDS INVESTIGATION
+- **Component:** VirtualGrid.svelte, search endpoints
+
+**Problem:** File search is not working in offline mode. Need to verify if also broken in online mode.
+
+**Next Steps:**
+1. Test search in DEV mode (online)
+2. Test search in offline mode
+3. Find root cause and fix
+
+---
+
+### UI-114: Toast Notification Cut Off at Screen Boundary ⚠️ LOW
+
+- **Reported:** 2026-01-18 (Session 50)
+- **Severity:** LOW (visual issue)
+- **Status:** OPEN
+- **Component:** Toast/notification component
+
+**Problem:** Toast notifications appearing at the bottom of the screen are being cut off at the boundary.
+
+**Fix Options:**
+1. Ensure toast fits within screen boundary
+2. Redesign toast positioning/sizing
+
+---
 
 ### BUG-042: Trash Bin Cannot Be Accessed ⚠️ LOW (WINDOWS-SPECIFIC)
 
@@ -2043,4 +2097,4 @@ The following fixes have been coded but need manual DEV testing:
 
 ---
 
-*Updated 2026-01-18 | 130 Issues FIXED | 1 OPEN*
+*Updated 2026-01-18 | 130 Issues FIXED | 4 OPEN*
