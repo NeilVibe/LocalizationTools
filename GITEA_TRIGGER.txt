@@ -14,3 +14,4 @@ Build History (last 5):
 Build 497: Remove LIGHT/FULL - ONE BUILD ONLY
 Build 498: Fix PowerShell variable syntax
 Build 497: Slim installer (594MB -> 150MB)
+Build 498: Fix cache hash for slim installer
