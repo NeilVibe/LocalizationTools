@@ -1481,10 +1481,10 @@ jobs:
             & "$targetDir\python.exe" "$targetDir\get-pip.py" --no-warn-script-location
             Remove-Item "$targetDir\get-pip.py"
 
-            # Install all dependencies from requirements.txt
-            # First-run setup will download ML deps + model on user's machine
-            Write-Host "Installing dependencies from requirements.txt..." -ForegroundColor Cyan
-            & "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements.txt
+            # Install BUILD-TIME dependencies only (no PyTorch/transformers)
+            # First-run setup downloads ML deps + model on user's machine (~1.5GB)
+            Write-Host "Installing dependencies from requirements-build.txt..." -ForegroundColor Cyan
+            & "$targetDir\python.exe" -m pip install --no-warn-script-location -r requirements-build.txt
             $criticalPackages = @("fastapi", "uvicorn", "sqlalchemy", "asyncpg", "psycopg2", "pydantic", "jose", "passlib", "loguru", "lxml")
 
             # P36: Verify CRITICAL packages are installed (prevents asyncpg-style crashes)
