@@ -53,3 +53,4 @@ Build QA
 Build 493: BUG-043 Fix - Include .sql files in Windows build
 Build: Test GitHub PATCH support
 Build: Fix YAML syntax + retry
+Build: Fix LIGHT build huggingface_hub check
