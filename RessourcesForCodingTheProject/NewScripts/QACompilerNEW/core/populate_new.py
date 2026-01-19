@@ -82,6 +82,11 @@ DATASHEET_LOCATIONS = {
         "eng_pattern": "System_ENG*.xlsx",
         "cn_pattern": "System_ZHO-CN*.xlsx",
     },
+    "Contents": {
+        "folder": "Contents_LQA_All",
+        "eng_pattern": "Contents_LQA*.xlsx",  # Same file for both (no localization)
+        "cn_pattern": "Contents_LQA*.xlsx",   # Same file for both (no localization)
+    },
 }
 
 
