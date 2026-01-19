@@ -1,0 +1,1139 @@
+
+(cdenv38) C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source>main.py
+
+============================================================
+Update Tracker from TrackerUpdateFolder
+============================================================
+
+This mode updates the progress tracker WITHOUT rebuilding master files.
+Use it to retroactively add missing days to the tracker.
+
+Folder structure:
+  C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\TrackerUpdateFolder/
+  ├── QAfolder/           (tester QA files)
+  ├── Masterfolder_EN/    (manager stats)
+  └── Masterfolder_CN/    (manager stats)
+
+Discovering QA folders...
+  Found 0 QA folder(s)
+
+Master files: 6 EN, 6 CN
+
+Loading tester->language mapping...
+  Loaded 15 tester->language mappings
+
+Processing master files (manager stats)...
+  Using ORIGINAL category names (Skill, Help, Gimmick → mapped to master files)
+  Checking folder: C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\TrackerUpdateFolder\Masterfolder_EN
+    Found 6 xlsx files: ['Master_Character.xlsx', 'Master_Item.xlsx', 'Master_Knowledge.xlsx', 'Master_Quest.xlsx', 'Master_Region.xlsx', 'Master_System.xlsx']
+    Reading Master_Character.xlsx → category=Character
+      Sheet 'ANIMAL': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'CAMP': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'DEV': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'MAIN': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'MONSTER': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'NPC': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'OBJECT': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'PC': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'PET': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'QUEST': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'VEHICLE': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+    Reading Master_Item.xlsx → category=Item
+      Sheet 'Abyss_Gear': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Abyss_Item': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Armor': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Collectibles': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Crafting_Manual': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Document': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Major_Goods': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Monster_Item': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Ingested_Substances': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Others': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Poster': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Weapon': found STATUS_ columns for ['김헌동', '이재환']
+    Reading Master_Knowledge.xlsx → category=Knowledge
+      Sheet 'Abyss Gate': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'People': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet '피조물': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Mounts': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Contents': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Document': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Adventure': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Faction': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Gatherables': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Collectibles': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Territories': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Quests': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Memory Fragment': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Games': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Skills': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+    Reading Master_Quest.xlsx → category=Quest
+      Sheet 'Main Quest': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Faction_01': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Faction_02': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Faction_03': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Faction_etc': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Others': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Challenge Quest': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Minigame Quest': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+    Reading Master_Region.xlsx → category=Region
+      Sheet 'Abyss': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Crimson Desert': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Delesyia': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Demeniss': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Greymanes': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Hernand': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Pailune': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'No Faction': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Shop': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+    Reading Master_System.xlsx → category=System
+      Sheet 'How_To': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Menu': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Greymane': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Map': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Other': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Range': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+  Checking folder: C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\TrackerUpdateFolder\Masterfolder_CN
+    Found 6 xlsx files: ['Master_Character.xlsx', 'Master_Item.xlsx', 'Master_Knowledge.xlsx', 'Master_Quest.xlsx', 'Master_Region.xlsx', 'Master_System.xlsx']
+    Reading Master_Character.xlsx → category=Character
+      Sheet 'ANIMAL': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'CAMP': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'DEV': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'MAIN': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'MONSTER': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'NPC': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'OBJECT': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'PC': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'PET': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'QUEST': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'VEHICLE': found STATUS_ columns for ['뤄이롼', '리쓰한']
+    Reading Master_Item.xlsx → category=Item
+      Sheet 'Abyss_Gear': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Abyss_Item': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Armor': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Collectibles': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Crafting_Manual': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Document': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Ingested_Substances': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Major_Goods': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Monster_Item': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Others': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Poster': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Weapon': found STATUS_ columns for ['김춘애', '최석문']
+    Reading Master_Knowledge.xlsx → category=Knowledge
+      Sheet 'Abyss Gate': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'People': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet '피조물': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Mounts': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Contents': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Document': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Adventure': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Faction': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Gatherables': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Collectibles': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Territories': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Quests': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Memory Fragment': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Games': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Skills': found STATUS_ columns for ['김춘애', '리쓰한']
+    Reading Master_Quest.xlsx → category=Quest
+      Sheet 'Main Quest': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Faction_01': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Faction_02': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Faction_03': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Faction_etc': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Region Quest': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Daily': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Politics': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Challenge Quest': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Minigame Quest': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+    Reading Master_Region.xlsx → category=Region
+      Sheet '阿比斯': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '红色沙漠': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '德雷西亚': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '德梅尼斯': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '灰鬃': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '埃尔南德': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '佩伦': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '无势力': found STATUS_ columns for ['김세련', '최석문']
+      Sheet 'Shop': found STATUS_ columns for ['김세련', '최석문']
+    Reading Master_System.xlsx → category=System
+      Sheet 'How_To': found STATUS_ columns for ['김세련']
+      Sheet 'Menu': found STATUS_ columns for ['김세련']
+      Sheet 'Greymane': found STATUS_ columns for ['김세련']
+      Sheet 'Map': found STATUS_ columns for ['김세련']
+      Sheet 'Other': found STATUS_ columns for ['김세련']
+      Sheet 'Range': found STATUS_ columns for ['김세련']
+      Sheet 'Skills': found STATUS_ columns for ['김세련']
+  김찬용 (Character, 2026-01-16): FIXED=25, REPORTED=8, CHECKING=5, NON-ISSUE=124
+  장어진 (Character, 2026-01-16): FIXED=2, REPORTED=0, CHECKING=1, NON-ISSUE=5
+  뤄이롼 (Character, 2026-01-16): FIXED=0, REPORTED=0, CHECKING=0, NON-ISSUE=2
+  이재환 (Item, 2026-01-16): FIXED=39, REPORTED=7, CHECKING=3, NON-ISSUE=8
+  김헌동 (Item, 2026-01-16): FIXED=0, REPORTED=0, CHECKING=0, NON-ISSUE=2
+  김춘애 (Item, 2026-01-16): FIXED=0, REPORTED=2, CHECKING=0, NON-ISSUE=0
+  최석문 (Item, 2026-01-16): FIXED=0, REPORTED=12, CHECKING=4, NON-ISSUE=6
+  유지윤 (Knowledge, 2026-01-16): FIXED=6, REPORTED=12, CHECKING=0, NON-ISSUE=33
+  조서영 (Knowledge, 2026-01-16): FIXED=3, REPORTED=34, CHECKING=0, NON-ISSUE=8
+  김찬용 (Quest, 2026-01-16): FIXED=19, REPORTED=1, CHECKING=3, NON-ISSUE=37
+  성가은 (Quest, 2026-01-16): FIXED=21, REPORTED=2, CHECKING=0, NON-ISSUE=27
+  황하연 (Quest, 2026-01-16): FIXED=6, REPORTED=0, CHECKING=0, NON-ISSUE=8
+  김정원 (Quest, 2026-01-16): FIXED=1, REPORTED=0, CHECKING=5, NON-ISSUE=21
+  성가은 (Region, 2026-01-16): FIXED=40, REPORTED=89, CHECKING=4, NON-ISSUE=73
+  유지윤 (Region, 2026-01-16): FIXED=3, REPORTED=0, CHECKING=0, NON-ISSUE=25
+  조서영 (Region, 2026-01-16): FIXED=5, REPORTED=0, CHECKING=2, NON-ISSUE=1
+  황하연 (Region, 2026-01-16): FIXED=26, REPORTED=15, CHECKING=5, NON-ISSUE=28
+  김정원 (System, 2026-01-16): FIXED=19, REPORTED=2, CHECKING=2, NON-ISSUE=31
+  김찬용 (System, 2026-01-16): FIXED=5, REPORTED=4, CHECKING=0, NON-ISSUE=25
+  김헌동 (System, 2026-01-16): FIXED=2, REPORTED=0, CHECKING=0, NON-ISSUE=0
+  이재환 (System, 2026-01-16): FIXED=12, REPORTED=1, CHECKING=0, NON-ISSUE=5
+
+============================================================
+Updating Progress Tracker...
+============================================================
+    Writing manager stats: 6 categories
+      Category Character: 5 users
+        김찬용: fixed=25, reported=8, date=2026-01-16
+        김선우: fixed=0, reported=0, date=2026-01-16
+        장어진: fixed=2, reported=0, date=2026-01-16
+        뤄이롼: fixed=0, reported=0, date=2026-01-16
+        리쓰한: fixed=0, reported=0, date=2026-01-16
+      Category Item: 4 users
+        이재환: fixed=39, reported=7, date=2026-01-16
+        김헌동: fixed=0, reported=0, date=2026-01-16
+        김춘애: fixed=0, reported=2, date=2026-01-16
+        최석문: fixed=0, reported=12, date=2026-01-16
+      Category Knowledge: 6 users
+        김선우: fixed=0, reported=0, date=2026-01-16
+        유지윤: fixed=6, reported=12, date=2026-01-16
+        장어진: fixed=0, reported=0, date=2026-01-16
+        조서영: fixed=3, reported=34, date=2026-01-16
+        김춘애: fixed=0, reported=0, date=2026-01-16
+        리쓰한: fixed=0, reported=0, date=2026-01-16
+      Category Quest: 7 users
+        김찬용: fixed=19, reported=1, date=2026-01-16
+        성가은: fixed=21, reported=2, date=2026-01-16
+        황하연: fixed=6, reported=0, date=2026-01-16
+        김정원: fixed=1, reported=0, date=2026-01-16
+        김춘애: fixed=0, reported=0, date=2026-01-16
+        리쓰한: fixed=0, reported=0, date=2026-01-16
+        최석문: fixed=0, reported=0, date=2026-01-16
+      Category Region: 6 users
+        성가은: fixed=40, reported=89, date=2026-01-16
+        유지윤: fixed=3, reported=0, date=2026-01-16
+        조서영: fixed=5, reported=0, date=2026-01-16
+        황하연: fixed=26, reported=15, date=2026-01-16
+        김세련: fixed=0, reported=0, date=2026-01-16
+        최석문: fixed=0, reported=0, date=2026-01-16
+      Category System: 5 users
+        김정원: fixed=19, reported=2, date=2026-01-16
+        김찬용: fixed=5, reported=4, date=2026-01-16
+        김헌동: fixed=2, reported=0, date=2026-01-16
+        이재환: fixed=12, reported=1, date=2026-01-16
+        김세련: fixed=0, reported=0, date=2026-01-16
+  Loaded 15 tester->language mappings
+    Preserving workload data for 15 users
+  Loaded 15 tester->language mappings
+  Loaded 15 tester->type mappings
+
+  Saved: C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\LQA_Tester_ProgressTracker.xlsx
+  Updated manager stats for 33 user(s)
+
+============================================================
+Tracker Update Complete!
+============================================================
+
+(cdenv38) C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source>main.py
+
+============================================================
+Update Tracker from TrackerUpdateFolder
+============================================================
+
+This mode updates the progress tracker WITHOUT rebuilding master files.
+Use it to retroactively add missing days to the tracker.
+
+Folder structure:
+  C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\TrackerUpdateFolder/
+  ├── QAfolder/           (tester QA files)
+  ├── Masterfolder_EN/    (manager stats)
+  └── Masterfolder_CN/    (manager stats)
+
+Discovering QA folders...
+  Found 0 QA folder(s)
+
+Master files: 6 EN, 6 CN
+
+Loading tester->language mapping...
+  Loaded 15 tester->language mappings
+
+Processing master files (manager stats)...
+  Using ORIGINAL category names (Skill, Help, Gimmick → mapped to master files)
+  Checking folder: C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\TrackerUpdateFolder\Masterfolder_EN
+    Found 6 xlsx files: ['Master_Character.xlsx', 'Master_Item.xlsx', 'Master_Knowledge.xlsx', 'Master_Quest.xlsx', 'Master_Region.xlsx', 'Master_System.xlsx']
+    Reading Master_Character.xlsx → category=Character
+      Sheet 'ANIMAL': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'CAMP': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'DEV': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'MAIN': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'MONSTER': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'NPC': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'OBJECT': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'PC': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'PET': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'QUEST': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'VEHICLE': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+    Reading Master_Item.xlsx → category=Item
+      Sheet 'Abyss_Gear': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Abyss_Item': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Armor': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Collectibles': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Crafting_Manual': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Document': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Major_Goods': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Monster_Item': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Ingested_Substances': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Others': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Poster': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Weapon': found STATUS_ columns for ['김헌동', '이재환']
+    Reading Master_Knowledge.xlsx → category=Knowledge
+      Sheet 'Abyss Gate': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'People': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet '피조물': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Mounts': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Contents': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Document': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Adventure': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Faction': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Gatherables': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Collectibles': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Territories': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Quests': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Memory Fragment': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Games': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Skills': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+    Reading Master_Quest.xlsx → category=Quest
+      Sheet 'Main Quest': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Faction_01': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Faction_02': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Faction_03': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Faction_etc': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Others': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Challenge Quest': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Minigame Quest': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+    Reading Master_Region.xlsx → category=Region
+      Sheet 'Abyss': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Crimson Desert': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Delesyia': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Demeniss': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Greymanes': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Hernand': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Pailune': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'No Faction': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Shop': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+    Reading Master_System.xlsx → category=System
+      Sheet 'How_To': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Menu': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Greymane': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Map': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Other': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Range': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+  Checking folder: C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\TrackerUpdateFolder\Masterfolder_CN
+    Found 6 xlsx files: ['Master_Character.xlsx', 'Master_Item.xlsx', 'Master_Knowledge.xlsx', 'Master_Quest.xlsx', 'Master_Region.xlsx', 'Master_System.xlsx']
+    Reading Master_Character.xlsx → category=Character
+      Sheet 'ANIMAL': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'CAMP': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'DEV': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'MAIN': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'MONSTER': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'NPC': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'OBJECT': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'PC': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'PET': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'QUEST': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'VEHICLE': found STATUS_ columns for ['뤄이롼', '리쓰한']
+    Reading Master_Item.xlsx → category=Item
+      Sheet 'Abyss_Gear': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Abyss_Item': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Armor': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Collectibles': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Crafting_Manual': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Document': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Ingested_Substances': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Major_Goods': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Monster_Item': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Others': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Poster': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Weapon': found STATUS_ columns for ['김춘애', '최석문']
+    Reading Master_Knowledge.xlsx → category=Knowledge
+      Sheet 'Abyss Gate': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'People': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet '피조물': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Mounts': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Contents': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Document': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Adventure': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Faction': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Gatherables': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Collectibles': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Territories': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Quests': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Memory Fragment': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Games': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Skills': found STATUS_ columns for ['김춘애', '리쓰한']
+    Reading Master_Quest.xlsx → category=Quest
+      Sheet 'Main Quest': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Faction_01': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Faction_02': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Faction_03': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Faction_etc': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Region Quest': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Daily': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Politics': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Challenge Quest': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Minigame Quest': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+    Reading Master_Region.xlsx → category=Region
+      Sheet '阿比斯': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '红色沙漠': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '德雷西亚': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '德梅尼斯': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '灰鬃': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '埃尔南德': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '佩伦': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '无势力': found STATUS_ columns for ['김세련', '최석문']
+      Sheet 'Shop': found STATUS_ columns for ['김세련', '최석문']
+    Reading Master_System.xlsx → category=System
+      Sheet 'How_To': found STATUS_ columns for ['김세련']
+      Sheet 'Menu': found STATUS_ columns for ['김세련']
+      Sheet 'Greymane': found STATUS_ columns for ['김세련']
+      Sheet 'Map': found STATUS_ columns for ['김세련']
+      Sheet 'Other': found STATUS_ columns for ['김세련']
+      Sheet 'Range': found STATUS_ columns for ['김세련']
+      Sheet 'Skills': found STATUS_ columns for ['김세련']
+  김찬용 (Character, 2026-01-16): FIXED=25, REPORTED=8, CHECKING=5, NON-ISSUE=124
+  장어진 (Character, 2026-01-16): FIXED=2, REPORTED=0, CHECKING=1, NON-ISSUE=5
+  뤄이롼 (Character, 2026-01-16): FIXED=0, REPORTED=0, CHECKING=0, NON-ISSUE=2
+  이재환 (Item, 2026-01-16): FIXED=39, REPORTED=7, CHECKING=3, NON-ISSUE=8
+  김헌동 (Item, 2026-01-16): FIXED=0, REPORTED=0, CHECKING=0, NON-ISSUE=2
+  김춘애 (Item, 2026-01-16): FIXED=0, REPORTED=2, CHECKING=0, NON-ISSUE=0
+  최석문 (Item, 2026-01-16): FIXED=0, REPORTED=12, CHECKING=4, NON-ISSUE=6
+  유지윤 (Knowledge, 2026-01-16): FIXED=6, REPORTED=12, CHECKING=0, NON-ISSUE=33
+  조서영 (Knowledge, 2026-01-16): FIXED=3, REPORTED=34, CHECKING=0, NON-ISSUE=8
+  김찬용 (Quest, 2026-01-16): FIXED=19, REPORTED=1, CHECKING=3, NON-ISSUE=37
+  성가은 (Quest, 2026-01-16): FIXED=21, REPORTED=2, CHECKING=0, NON-ISSUE=27
+  황하연 (Quest, 2026-01-16): FIXED=6, REPORTED=0, CHECKING=0, NON-ISSUE=8
+  김정원 (Quest, 2026-01-16): FIXED=1, REPORTED=0, CHECKING=5, NON-ISSUE=21
+  성가은 (Region, 2026-01-16): FIXED=40, REPORTED=89, CHECKING=4, NON-ISSUE=73
+  유지윤 (Region, 2026-01-16): FIXED=3, REPORTED=0, CHECKING=0, NON-ISSUE=25
+  조서영 (Region, 2026-01-16): FIXED=5, REPORTED=0, CHECKING=2, NON-ISSUE=1
+  황하연 (Region, 2026-01-16): FIXED=26, REPORTED=15, CHECKING=5, NON-ISSUE=28
+  김정원 (System, 2026-01-16): FIXED=19, REPORTED=2, CHECKING=2, NON-ISSUE=31
+  김찬용 (System, 2026-01-16): FIXED=5, REPORTED=4, CHECKING=0, NON-ISSUE=25
+  김헌동 (System, 2026-01-16): FIXED=2, REPORTED=0, CHECKING=0, NON-ISSUE=0
+  이재환 (System, 2026-01-16): FIXED=12, REPORTED=1, CHECKING=0, NON-ISSUE=5
+
+============================================================
+Updating Progress Tracker...
+============================================================
+    Writing manager stats: 6 categories
+      Category Character: 5 users
+        김찬용: fixed=25, reported=8, date=2026-01-16
+        김선우: fixed=0, reported=0, date=2026-01-16
+        장어진: fixed=2, reported=0, date=2026-01-16
+        뤄이롼: fixed=0, reported=0, date=2026-01-16
+        리쓰한: fixed=0, reported=0, date=2026-01-16
+      Category Item: 4 users
+        이재환: fixed=39, reported=7, date=2026-01-16
+        김헌동: fixed=0, reported=0, date=2026-01-16
+        김춘애: fixed=0, reported=2, date=2026-01-16
+        최석문: fixed=0, reported=12, date=2026-01-16
+      Category Knowledge: 6 users
+        김선우: fixed=0, reported=0, date=2026-01-16
+        유지윤: fixed=6, reported=12, date=2026-01-16
+        장어진: fixed=0, reported=0, date=2026-01-16
+        조서영: fixed=3, reported=34, date=2026-01-16
+        김춘애: fixed=0, reported=0, date=2026-01-16
+        리쓰한: fixed=0, reported=0, date=2026-01-16
+      Category Quest: 7 users
+        김찬용: fixed=19, reported=1, date=2026-01-16
+        성가은: fixed=21, reported=2, date=2026-01-16
+        황하연: fixed=6, reported=0, date=2026-01-16
+        김정원: fixed=1, reported=0, date=2026-01-16
+        김춘애: fixed=0, reported=0, date=2026-01-16
+        리쓰한: fixed=0, reported=0, date=2026-01-16
+        최석문: fixed=0, reported=0, date=2026-01-16
+      Category Region: 6 users
+        성가은: fixed=40, reported=89, date=2026-01-16
+        유지윤: fixed=3, reported=0, date=2026-01-16
+        조서영: fixed=5, reported=0, date=2026-01-16
+        황하연: fixed=26, reported=15, date=2026-01-16
+        김세련: fixed=0, reported=0, date=2026-01-16
+        최석문: fixed=0, reported=0, date=2026-01-16
+      Category System: 5 users
+        김정원: fixed=19, reported=2, date=2026-01-16
+        김찬용: fixed=5, reported=4, date=2026-01-16
+        김헌동: fixed=2, reported=0, date=2026-01-16
+        이재환: fixed=12, reported=1, date=2026-01-16
+        김세련: fixed=0, reported=0, date=2026-01-16
+  Loaded 15 tester->language mappings
+    Preserving workload data for 15 users
+  Loaded 15 tester->language mappings
+  Loaded 15 tester->type mappings
+
+  Saved: C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\LQA_Tester_ProgressTracker.xlsx
+  Updated manager stats for 33 user(s)
+
+============================================================
+Tracker Update Complete!
+============================================================
+
+(cdenv38) C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source>main.py
+
+============================================================
+Update Tracker from TrackerUpdateFolder
+============================================================
+
+This mode updates the progress tracker WITHOUT rebuilding master files.
+Use it to retroactively add missing days to the tracker.
+
+Folder structure:
+  C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\TrackerUpdateFolder/
+  ├── QAfolder/           (tester QA files)
+  ├── Masterfolder_EN/    (manager stats)
+  └── Masterfolder_CN/    (manager stats)
+
+Discovering QA folders...
+  Found 0 QA folder(s)
+
+Master files: 6 EN, 6 CN
+
+Loading tester->language mapping...
+  Loaded 15 tester->language mappings
+
+Processing master files (manager stats)...
+  Using ORIGINAL category names (Skill, Help, Gimmick → mapped to master files)
+  Checking folder: C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\TrackerUpdateFolder\Masterfolder_EN
+    Found 6 xlsx files: ['Master_Character.xlsx', 'Master_Item.xlsx', 'Master_Knowledge.xlsx', 'Master_Quest.xlsx', 'Master_Region.xlsx', 'Master_System.xlsx']
+    Reading Master_Character.xlsx → category=Character
+      Sheet 'ANIMAL': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'CAMP': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'DEV': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'MAIN': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'MONSTER': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'NPC': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'OBJECT': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'PC': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'PET': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'QUEST': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+      Sheet 'VEHICLE': found STATUS_ columns for ['김선우', '김찬용', '장어진']
+    Reading Master_Item.xlsx → category=Item
+      Sheet 'Abyss_Gear': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Abyss_Item': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Armor': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Collectibles': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Crafting_Manual': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Document': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Major_Goods': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Monster_Item': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Ingested_Substances': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Others': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Poster': found STATUS_ columns for ['김헌동', '이재환']
+      Sheet 'Weapon': found STATUS_ columns for ['김헌동', '이재환']
+    Reading Master_Knowledge.xlsx → category=Knowledge
+      Sheet 'Abyss Gate': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'People': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet '피조물': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Mounts': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Contents': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Document': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Adventure': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Faction': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Gatherables': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Collectibles': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Territories': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Quests': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Memory Fragment': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Games': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+      Sheet 'Skills': found STATUS_ columns for ['김선우', '유지윤', '장어진', '조서영']
+    Reading Master_Quest.xlsx → category=Quest
+      Sheet 'Main Quest': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Faction_01': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Faction_02': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Faction_03': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Faction_etc': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Others': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Challenge Quest': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+      Sheet 'Minigame Quest': found STATUS_ columns for ['김정원', '김찬용', '성가은', '황하연']
+    Reading Master_Region.xlsx → category=Region
+      Sheet 'Abyss': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Crimson Desert': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Delesyia': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Demeniss': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Greymanes': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Hernand': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Pailune': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'No Faction': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+      Sheet 'Shop': found STATUS_ columns for ['성가은', '유지윤', '조서영', '황하연']
+    Reading Master_System.xlsx → category=System
+      Sheet 'How_To': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Menu': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Greymane': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Map': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Other': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+      Sheet 'Range': found STATUS_ columns for ['김정원', '김찬용', '김헌동', '이재환']
+  Checking folder: C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\TrackerUpdateFolder\Masterfolder_CN
+    Found 6 xlsx files: ['Master_Character.xlsx', 'Master_Item.xlsx', 'Master_Knowledge.xlsx', 'Master_Quest.xlsx', 'Master_Region.xlsx', 'Master_System.xlsx']
+    Reading Master_Character.xlsx → category=Character
+      Sheet 'ANIMAL': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'CAMP': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'DEV': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'MAIN': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'MONSTER': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'NPC': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'OBJECT': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'PC': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'PET': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'QUEST': found STATUS_ columns for ['뤄이롼', '리쓰한']
+      Sheet 'VEHICLE': found STATUS_ columns for ['뤄이롼', '리쓰한']
+    Reading Master_Item.xlsx → category=Item
+      Sheet 'Abyss_Gear': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Abyss_Item': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Armor': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Collectibles': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Crafting_Manual': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Document': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Ingested_Substances': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Major_Goods': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Monster_Item': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Others': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Poster': found STATUS_ columns for ['김춘애', '최석문']
+      Sheet 'Weapon': found STATUS_ columns for ['김춘애', '최석문']
+    Reading Master_Knowledge.xlsx → category=Knowledge
+      Sheet 'Abyss Gate': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'People': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet '피조물': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Mounts': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Contents': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Document': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Adventure': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Faction': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Gatherables': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Collectibles': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Territories': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Quests': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Memory Fragment': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Games': found STATUS_ columns for ['김춘애', '리쓰한']
+      Sheet 'Skills': found STATUS_ columns for ['김춘애', '리쓰한']
+    Reading Master_Quest.xlsx → category=Quest
+      Sheet 'Main Quest': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Faction_01': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Faction_02': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Faction_03': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Faction_etc': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Region Quest': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Daily': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Politics': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Challenge Quest': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+      Sheet 'Minigame Quest': found STATUS_ columns for ['김춘애', '리쓰한', '최석문']
+    Reading Master_Region.xlsx → category=Region
+      Sheet '阿比斯': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '红色沙漠': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '德雷西亚': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '德梅尼斯': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '灰鬃': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '埃尔南德': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '佩伦': found STATUS_ columns for ['김세련', '최석문']
+      Sheet '无势力': found STATUS_ columns for ['김세련', '최석문']
+      Sheet 'Shop': found STATUS_ columns for ['김세련', '최석문']
+    Reading Master_System.xlsx → category=System
+      Sheet 'How_To': found STATUS_ columns for ['김세련']
+      Sheet 'Menu': found STATUS_ columns for ['김세련']
+      Sheet 'Greymane': found STATUS_ columns for ['김세련']
+      Sheet 'Map': found STATUS_ columns for ['김세련']
+      Sheet 'Other': found STATUS_ columns for ['김세련']
+      Sheet 'Range': found STATUS_ columns for ['김세련']
+      Sheet 'Skills': found STATUS_ columns for ['김세련']
+  김찬용 (Character, 2026-01-16): FIXED=25, REPORTED=8, CHECKING=5, NON-ISSUE=124
+  장어진 (Character, 2026-01-16): FIXED=2, REPORTED=0, CHECKING=1, NON-ISSUE=5
+  뤄이롼 (Character, 2026-01-16): FIXED=0, REPORTED=0, CHECKING=0, NON-ISSUE=2
+  이재환 (Item, 2026-01-16): FIXED=39, REPORTED=7, CHECKING=3, NON-ISSUE=8
+  김헌동 (Item, 2026-01-16): FIXED=0, REPORTED=0, CHECKING=0, NON-ISSUE=2
+  김춘애 (Item, 2026-01-16): FIXED=0, REPORTED=2, CHECKING=0, NON-ISSUE=0
+  최석문 (Item, 2026-01-16): FIXED=0, REPORTED=12, CHECKING=4, NON-ISSUE=6
+  유지윤 (Knowledge, 2026-01-16): FIXED=6, REPORTED=12, CHECKING=0, NON-ISSUE=33
+  조서영 (Knowledge, 2026-01-16): FIXED=3, REPORTED=34, CHECKING=0, NON-ISSUE=8
+  김찬용 (Quest, 2026-01-16): FIXED=19, REPORTED=1, CHECKING=3, NON-ISSUE=37
+  성가은 (Quest, 2026-01-16): FIXED=21, REPORTED=2, CHECKING=0, NON-ISSUE=27
+  황하연 (Quest, 2026-01-16): FIXED=6, REPORTED=0, CHECKING=0, NON-ISSUE=8
+  김정원 (Quest, 2026-01-16): FIXED=1, REPORTED=0, CHECKING=5, NON-ISSUE=21
+  성가은 (Region, 2026-01-16): FIXED=40, REPORTED=89, CHECKING=4, NON-ISSUE=73
+  유지윤 (Region, 2026-01-16): FIXED=3, REPORTED=0, CHECKING=0, NON-ISSUE=25
+  조서영 (Region, 2026-01-16): FIXED=5, REPORTED=0, CHECKING=2, NON-ISSUE=1
+  황하연 (Region, 2026-01-16): FIXED=26, REPORTED=15, CHECKING=5, NON-ISSUE=28
+  김정원 (System, 2026-01-16): FIXED=19, REPORTED=2, CHECKING=2, NON-ISSUE=31
+  김찬용 (System, 2026-01-16): FIXED=5, REPORTED=4, CHECKING=0, NON-ISSUE=25
+  김헌동 (System, 2026-01-16): FIXED=2, REPORTED=0, CHECKING=0, NON-ISSUE=0
+  이재환 (System, 2026-01-16): FIXED=12, REPORTED=1, CHECKING=0, NON-ISSUE=5
+
+============================================================
+Updating Progress Tracker...
+============================================================
+
+[TRACKER DEBUG] STEP A: Loading/Creating Tracker
+  - Tracker path: C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\LQA_Tester_ProgressTracker.xlsx
+  - Tracker exists: True
+  - Sheets in workbook: ['DAILY', 'TOTAL', '_DAILY_DATA']
+  - _DAILY_DATA max_row BEFORE: 101
+  - _DAILY_DATA max_column BEFORE: 14
+
+[TRACKER DEBUG] STEP B: Calling update_daily_data_sheet()
+  - entries count: 0
+  - manager_stats count: 6
+  - manager_stats categories: ['Character', 'Item', 'Knowledge', 'Quest', 'Region', 'System']
+    - Character: 5 users
+      - 김찬용: fixed=25, reported=8
+      - 김선우: fixed=0, reported=0
+    - Item: 4 users
+      - 이재환: fixed=39, reported=7
+      - 김헌동: fixed=0, reported=0
+    - Knowledge: 6 users
+      - 김선우: fixed=0, reported=0
+      - 유지윤: fixed=6, reported=12
+    - Quest: 7 users
+      - 김찬용: fixed=19, reported=1
+      - 성가은: fixed=21, reported=2
+    - Region: 6 users
+      - 성가은: fixed=40, reported=89
+      - 유지윤: fixed=3, reported=0
+    - System: 5 users
+      - 김정원: fixed=19, reported=2
+      - 김찬용: fixed=5, reported=4
+
+======================================================================
+GRANULAR DEBUG: update_daily_data_sheet() - MANAGER STATS SECTION
+======================================================================
+
+[STEP 1] INPUTS RECEIVED:
+  - manager_stats type: <class 'dict'>
+  - manager_stats is None: False
+  - manager_stats length: 6
+  - Categories in manager_stats: ['Character', 'Item', 'Knowledge', 'Quest', 'Region', 'System']
+    - Character: 5 users -> ['김찬용', '김선우', '장어진']...
+    - Item: 4 users -> ['이재환', '김헌동', '김춘애']...
+    - Knowledge: 6 users -> ['김선우', '유지윤', '장어진']...
+    - Quest: 7 users -> ['김찬용', '성가은', '황하연']...
+    - Region: 6 users -> ['성가은', '유지윤', '조서영']...
+    - System: 5 users -> ['김정원', '김찬용', '김헌동']...
+
+[STEP 2] WORKSHEET STATE BEFORE WRITE:
+  - ws.max_row = 101
+  - ws.max_column = 14
+  - Header row (row 1): ['Date', 'User', 'Category', 'TotalRows', 'Done', 'Issues', 'NoIssue', 'Blocked', 'Fixed', 'Reported', 'Checking', 'NonIssue', 'WordCount', 'Korean']
+  - Row 2 sample: ['2026-01-06', '유지윤', 'Knowledge', 10844, 592, 60, 471, 61, 0, 0, 0, 0, None, None]
+
+[STEP 3] BUILDING EXISTING ROW INDEX:
+  - Starting actual_max_row = 101
+  - Scanning rows 2 to 102...
+    - Indexed row 2: user=유지윤, cat=Knowledge, date=2026-01-06
+    - Indexed row 3: user=조서영, cat=Knowledge, date=2026-01-06
+    - Indexed row 4: user=김헌동, cat=Item, date=2026-01-06
+    - Indexed row 5: user=이재환, cat=Item, date=2026-01-06
+    - Indexed row 6: user=성가은, cat=Region, date=2026-01-06
+    - Indexed row 7: user=황하연, cat=Region, date=2026-01-06
+    - Indexed row 8: user=김정원, cat=Character, date=2026-01-06
+    - Indexed row 9: user=김찬용, cat=Character, date=2026-01-06
+    - Indexed row 10: user=김춘애, cat=Knowledge, date=2026-01-06
+    - Indexed row 11: user=리쓰한, cat=Knowledge, date=2026-01-06
+    - Indexed row 12: user=최석문, cat=Item, date=2026-01-06
+    - Indexed row 13: user=유지윤, cat=Knowledge, date=2026-01-07
+    - Indexed row 14: user=김헌동, cat=Item, date=2026-01-07
+    - Indexed row 15: user=이재환, cat=Item, date=2026-01-07
+    - Indexed row 16: user=김정원, cat=Character, date=2026-01-07
+    - Indexed row 17: user=김찬용, cat=Character, date=2026-01-07
+    - Indexed row 18: user=김춘애, cat=Knowledge, date=2026-01-07
+    - Indexed row 19: user=리쓰한, cat=Knowledge, date=2026-01-07
+    - Indexed row 20: user=최석문, cat=Item, date=2026-01-07
+    - Indexed row 21: user=유지윤, cat=Knowledge, date=2026-01-08
+    - Indexed row 22: user=김헌동, cat=Item, date=2026-01-08
+    - Indexed row 23: user=이재환, cat=Item, date=2026-01-08
+    - Indexed row 24: user=김정원, cat=Character, date=2026-01-08
+    - Indexed row 25: user=김찬용, cat=Character, date=2026-01-08
+    - Indexed row 26: user=김춘애, cat=Knowledge, date=2026-01-08
+    - Indexed row 27: user=리쓰한, cat=Knowledge, date=2026-01-08
+    - Indexed row 28: user=조서영, cat=Knowledge, date=2026-01-08
+    - Indexed row 29: user=성가은, cat=Region, date=2026-01-08
+    - Indexed row 30: user=황하연, cat=Region, date=2026-01-08
+    - Indexed row 31: user=김세련, cat=Region, date=2026-01-08
+    - Indexed row 32: user=최석문, cat=Region, date=2026-01-08
+    - Indexed row 33: user=최석문, cat=Item, date=2026-01-08
+    - Indexed row 34: user=유지윤, cat=Knowledge, date=2026-01-10
+    - Indexed row 35: user=조서영, cat=Knowledge, date=2026-01-10
+    - Indexed row 36: user=김헌동, cat=Item, date=2026-01-10
+    - Indexed row 37: user=이재환, cat=Item, date=2026-01-10
+    - Indexed row 38: user=성가은, cat=Region, date=2026-01-10
+    - Indexed row 39: user=황하연, cat=Region, date=2026-01-10
+    - Indexed row 40: user=김정원, cat=Character, date=2026-01-10
+    - Indexed row 41: user=김찬용, cat=Character, date=2026-01-10
+    - Indexed row 42: user=김춘애, cat=Knowledge, date=2026-01-10
+    - Indexed row 43: user=리쓰한, cat=Knowledge, date=2026-01-10
+    - Indexed row 44: user=최석문, cat=Item, date=2026-01-10
+    - Indexed row 45: user=김세련, cat=Region, date=2026-01-10
+    - Indexed row 46: user=김정원, cat=Quest, date=2026-01-13
+    - Indexed row 47: user=김찬용, cat=Quest, date=2026-01-13
+    - Indexed row 48: user=성가은, cat=Quest, date=2026-01-13
+    - Indexed row 49: user=황하연, cat=Quest, date=2026-01-13
+    - Indexed row 50: user=김선우, cat=Knowledge, date=2026-01-13
+    - Indexed row 51: user=유지윤, cat=Knowledge, date=2026-01-13
+    - Indexed row 52: user=장어진, cat=Knowledge, date=2026-01-13
+    - Indexed row 53: user=조서영, cat=Knowledge, date=2026-01-12
+    - Indexed row 54: user=김헌동, cat=Item, date=2026-01-13
+    - Indexed row 55: user=이재환, cat=Item, date=2026-01-13
+    - Indexed row 56: user=성가은, cat=Region, date=2026-01-12
+    - Indexed row 57: user=황하연, cat=Region, date=2026-01-12
+    - Indexed row 58: user=김정원, cat=System, date=2026-01-12
+    - Indexed row 59: user=김찬용, cat=System, date=2026-01-12
+    - Indexed row 60: user=김찬용, cat=Character, date=2026-01-12
+    - Indexed row 61: user=김춘애, cat=Knowledge, date=2026-01-13
+    - Indexed row 62: user=리쓰한, cat=Knowledge, date=2026-01-13
+    - Indexed row 63: user=최석문, cat=Item, date=2026-01-13
+    - Indexed row 64: user=김세련, cat=Region, date=2026-01-13
+    - Indexed row 65: user=최석문, cat=Region, date=2026-01-13
+    - Indexed row 66: user=뤄이롼, cat=Character, date=2026-01-13
+    - Indexed row 67: user=김선우, cat=Character, date=2026-01-13
+    - Indexed row 68: user=황하연, cat=Quest, date=2026-01-14
+    - Indexed row 69: user=성가은, cat=Quest, date=2026-01-14
+    - Indexed row 70: user=김정원, cat=Quest, date=2026-01-14
+    - Indexed row 71: user=김찬용, cat=Quest, date=2026-01-14
+    - Indexed row 72: user=이재환, cat=Item, date=2026-01-14
+    - Indexed row 73: user=김헌동, cat=Item, date=2026-01-14
+    - Indexed row 74: user=조서영, cat=Region, date=2026-01-14
+    - Indexed row 75: user=유지윤, cat=Region, date=2026-01-14
+    - Indexed row 76: user=김헌동, cat=System, date=2026-01-15
+    - Indexed row 77: user=이재환, cat=System, date=2026-01-15
+    - Indexed row 78: user=김정원, cat=System, date=2026-01-15
+    - Indexed row 79: user=김찬용, cat=System, date=2026-01-15
+    - Indexed row 80: user=장어진, cat=Character, date=2026-01-14
+    - Indexed row 81: user=김춘애, cat=Knowledge, date=2026-01-14
+    - Indexed row 82: user=김춘애, cat=Item, date=2026-01-14
+    - Indexed row 83: user=최석문, cat=Item, date=2026-01-14
+    - Indexed row 84: user=김세련, cat=Region, date=2026-01-14
+    - Indexed row 85: user=리쓰한, cat=Character, date=2026-01-14
+    - Indexed row 86: user=뤄이롼, cat=Character, date=2026-01-14
+    - Indexed row 87: user=김정원, cat=Quest, date=2026-01-15
+    - Indexed row 88: user=성가은, cat=Quest, date=2026-01-15
+    - Indexed row 89: user=황하연, cat=Quest, date=2026-01-15
+    - Indexed row 90: user=조서영, cat=Region, date=2026-01-15
+    - Indexed row 91: user=유지윤, cat=Region, date=2026-01-15
+    - Indexed row 92: user=장어진, cat=Character, date=2026-01-15
+    - Indexed row 93: user=김선우, cat=Character, date=2026-01-15
+    - Indexed row 94: user=이재환, cat=Skill, date=2026-01-15
+    - Indexed row 95: user=김헌동, cat=Skill, date=2026-01-15
+    - Indexed row 96: user=최석문, cat=Quest, date=2026-01-15
+    - Indexed row 97: user=최석문, cat=Item, date=2026-01-15
+    - Indexed row 98: user=김춘애, cat=Item, date=2026-01-15
+    - Indexed row 99: user=김세련, cat=Region, date=2026-01-15
+    - Indexed row 100: user=리쓰한, cat=Character, date=2026-01-15
+    - Indexed row 101: user=뤄이롼, cat=Character, date=2026-01-15
+  - Final existing_user_cat count: 33
+  - Final actual_max_row: 101
+
+[STEP 4] WRITING MANAGER STATS TO EXCEL:
+
+  Processing category: Character (5 users)
+    User: 김찬용
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 25
+      - stats['reported']: 8
+      - file_date: 2026-01-16
+      -> UPDATING existing row 60
+    User: 김선우
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 93
+    User: 장어진
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 2
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 92
+    User: 뤄이롼
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 101
+    User: 리쓰한
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 100
+
+  Processing category: Item (4 users)
+    User: 이재환
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 39
+      - stats['reported']: 7
+      - file_date: 2026-01-16
+      -> UPDATING existing row 72
+    User: 김헌동
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 73
+    User: 김춘애
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 2
+      - file_date: 2026-01-16
+      -> UPDATING existing row 98
+    User: 최석문
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 12
+      - file_date: 2026-01-16
+      -> UPDATING existing row 97
+
+  Processing category: Knowledge (6 users)
+    User: 김선우
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 50
+    User: 유지윤
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 6
+      - stats['reported']: 12
+      - file_date: 2026-01-16
+      -> UPDATING existing row 51
+    User: 장어진
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 52
+    User: 조서영
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 3
+      - stats['reported']: 34
+      - file_date: 2026-01-16
+      -> UPDATING existing row 53
+    User: 김춘애
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 81
+    User: 리쓰한
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 62
+
+  Processing category: Quest (7 users)
+    User: 김찬용
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 19
+      - stats['reported']: 1
+      - file_date: 2026-01-16
+      -> UPDATING existing row 71
+    User: 성가은
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 21
+      - stats['reported']: 2
+      - file_date: 2026-01-16
+      -> UPDATING existing row 88
+    User: 황하연
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 6
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 89
+    User: 김정원
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 1
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 87
+    User: 김춘애
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> CREATING new row 102
+      -> VERIFY row 102: Date=2026-01-16, User=김춘애, Fixed=0
+    User: 리쓰한
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> CREATING new row 103
+      -> VERIFY row 103: Date=2026-01-16, User=리쓰한, Fixed=0
+    User: 최석문
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 96
+
+  Processing category: Region (6 users)
+    User: 성가은
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 40
+      - stats['reported']: 89
+      - file_date: 2026-01-16
+      -> UPDATING existing row 56
+    User: 유지윤
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 3
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 91
+    User: 조서영
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 5
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 90
+    User: 황하연
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 26
+      - stats['reported']: 15
+      - file_date: 2026-01-16
+      -> UPDATING existing row 57
+    User: 김세련
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 99
+    User: 최석문
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 65
+
+  Processing category: System (5 users)
+    User: 김정원
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 19
+      - stats['reported']: 2
+      - file_date: 2026-01-16
+      -> UPDATING existing row 78
+    User: 김찬용
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 5
+      - stats['reported']: 4
+      - file_date: 2026-01-16
+      -> UPDATING existing row 79
+    User: 김헌동
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 2
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> UPDATING existing row 76
+    User: 이재환
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 12
+      - stats['reported']: 1
+      - file_date: 2026-01-16
+      -> UPDATING existing row 77
+    User: 김세련
+      - stats type: <class 'dict'>
+      - stats keys: ['fixed', 'reported', 'checking', 'nonissue', 'lang']
+      - stats['fixed']: 0
+      - stats['reported']: 0
+      - file_date: 2026-01-16
+      -> CREATING new row 104
+      -> VERIFY row 104: Date=2026-01-16, User=김세련, Fixed=0
+
+[STEP 5] WRITE SUMMARY:
+  - Rows updated: 30
+  - Rows created: 3
+  - Final actual_max_row: 104
+  - ws.max_row after writes: 104
+
+[STEP 6] SAMPLE OF WRITTEN DATA:
+  Row 2: ['2026-01-06', '유지윤', 'Knowledge', 10844, 592, 60, 471, 61, 0, 0, 0, 0, None, None]
+  Row 3: ['2026-01-06', '조서영', 'Knowledge', 10844, 555, 60, 478, 17, 0, 0, 0, 0, None, None]
+  Row 4: ['2026-01-06', '김헌동', 'Item', 5567, 535, 26, 228, 281, 0, 0, 0, 0, None, None]
+  Row 5: ['2026-01-06', '이재환', 'Item', 5567, 726, 89, 423, 214, 0, 0, 0, 0, None, None]
+  Row 6: ['2026-01-06', '성가은', 'Region', 1765, 246, 30, 208, 8, 0, 0, 0, 0, None, None]
+======================================================================
+
+
+[TRACKER DEBUG] STEP C: After update_daily_data_sheet()
+  - _DAILY_DATA max_row AFTER: 104
+  - _DAILY_DATA max_column AFTER: 14
+  - Sample rows from _DAILY_DATA:
+    Row 1: ['Date', 'User', 'Category', 'TotalRows', 'Done', 'Issues', 'NoIssue', 'Blocked', 'Fixed', 'Reported', 'Checking', 'NonIssue', 'WordCount', 'Korean']
+    Row 2: ['2026-01-06', '유지윤', 'Knowledge', 10844, 592, 60, 471, 61, 0, 0, 0, 0, None, None]
+    Row 3: ['2026-01-06', '조서영', 'Knowledge', 10844, 555, 60, 478, 17, 0, 0, 0, 0, None, None]
+    Row 4: ['2026-01-06', '김헌동', 'Item', 5567, 535, 26, 228, 281, 0, 0, 0, 0, None, None]
+    Row 5: ['2026-01-06', '이재환', 'Item', 5567, 726, 89, 423, 214, 0, 0, 0, 0, None, None]
+    Row 6: ['2026-01-06', '성가은', 'Region', 1765, 246, 30, 208, 8, 0, 0, 0, 0, None, None]
+    Row 7: ['2026-01-06', '황하연', 'Region', 1765, 273, 32, 227, 14, 0, 0, 0, 0, None, None]
+
+[TRACKER DEBUG] STEP D: Rebuilding visible sheets
+  Loaded 15 tester->language mappings
+    Preserving workload data for 15 users
+  Loaded 15 tester->language mappings
+  Loaded 15 tester->type mappings
+
+[TRACKER DEBUG] STEP E: Saving workbook
+  - Saving to: C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\LQA_Tester_ProgressTracker.xlsx
+  - Save complete!
+
+[TRACKER DEBUG] STEP F: VERIFICATION - Reloading saved file
+  - Reloaded _DAILY_DATA max_row: 104
+  - Reloaded sample rows:
+    Row 1: ['Date', 'User', 'Category', 'TotalRows', 'Done', 'Issues', 'NoIssue', 'Blocked', 'Fixed', 'Reported', 'Checking', 'NonIssue', 'WordCount', 'Korean']
+    Row 2: ['2026-01-06', '유지윤', 'Knowledge', 10844, 592, 60, 471, 61, 0, 0, 0, 0, None, None]
+    Row 3: ['2026-01-06', '조서영', 'Knowledge', 10844, 555, 60, 478, 17, 0, 0, 0, 0, None, None]
+    Row 4: ['2026-01-06', '김헌동', 'Item', 5567, 535, 26, 228, 281, 0, 0, 0, 0, None, None]
+    Row 5: ['2026-01-06', '이재환', 'Item', 5567, 726, 89, 423, 214, 0, 0, 0, 0, None, None]
+    Row 6: ['2026-01-06', '성가은', 'Region', 1765, 246, 30, 208, 8, 0, 0, 0, 0, None, None]
+    Row 7: ['2026-01-06', '황하연', 'Region', 1765, 273, 32, 227, 14, 0, 0, 0, 0, None, None]
+
+  Saved: C:\Users\PEARL\Desktop\QACompiler_v26.119.2025_Source\LQA_Tester_ProgressTracker.xlsx
+  Updated manager stats for 33 user(s)
+
+============================================================
+Tracker Update Complete!
+============================================================
