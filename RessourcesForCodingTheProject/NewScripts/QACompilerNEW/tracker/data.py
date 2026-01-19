@@ -155,10 +155,35 @@ def update_daily_data_sheet(
     from datetime import datetime
     today = datetime.now().strftime("%Y-%m-%d")
 
+    print("\n" + "="*70)
+    print("GRANULAR DEBUG: update_daily_data_sheet() - MANAGER STATS SECTION")
+    print("="*70)
+
+    print(f"\n[STEP 1] INPUTS RECEIVED:")
+    print(f"  - manager_stats type: {type(manager_stats)}")
+    print(f"  - manager_stats is None: {manager_stats is None}")
+    print(f"  - manager_stats length: {len(manager_stats) if manager_stats else 0}")
+    if manager_stats:
+        print(f"  - Categories in manager_stats: {list(manager_stats.keys())}")
+        for cat, users in manager_stats.items():
+            print(f"    - {cat}: {len(users)} users -> {list(users.keys())[:3]}...")
+
+    print(f"\n[STEP 2] WORKSHEET STATE BEFORE WRITE:")
+    print(f"  - ws.max_row = {ws.max_row}")
+    print(f"  - ws.max_column = {ws.max_column}")
+    print(f"  - Header row (row 1): {[ws.cell(1, c).value for c in range(1, 15)]}")
+    if ws.max_row >= 2:
+        print(f"  - Row 2 sample: {[ws.cell(2, c).value for c in range(1, 15)]}")
+
     # Build index of existing rows: (user, category) -> {row, date}
     # This is needed because max_row may not update correctly after cell writes
     existing_user_cat = {}
     actual_max_row = ws.max_row  # Start from current sheet max row
+
+    print(f"\n[STEP 3] BUILDING EXISTING ROW INDEX:")
+    print(f"  - Starting actual_max_row = {actual_max_row}")
+    print(f"  - Scanning rows 2 to {ws.max_row + 1}...")
+
     for row in range(2, ws.max_row + 1):
         row_user = ws.cell(row, 2).value
         row_category = ws.cell(row, 3).value
@@ -168,25 +193,44 @@ def update_daily_data_sheet(
             # Keep the latest date row for each user/category combo
             if key not in existing_user_cat or str(row_date) > str(existing_user_cat[key]["date"]):
                 existing_user_cat[key] = {"row": row, "date": row_date}
+                print(f"    - Indexed row {row}: user={row_user}, cat={row_category}, date={row_date}")
             actual_max_row = max(actual_max_row, row)
 
+    print(f"  - Final existing_user_cat count: {len(existing_user_cat)}")
+    print(f"  - Final actual_max_row: {actual_max_row}")
+
+    print(f"\n[STEP 4] WRITING MANAGER STATS TO EXCEL:")
+    rows_created = 0
+    rows_updated = 0
+
     for category, users in manager_stats.items():
+        print(f"\n  Processing category: {category} ({len(users)} users)")
         for user, stats in users.items():
             # Get the date from manager_dates (file mtime), fallback to today
             file_date = manager_dates.get((category, user), today)
+
+            print(f"    User: {user}")
+            print(f"      - stats type: {type(stats)}")
+            print(f"      - stats keys: {list(stats.keys()) if isinstance(stats, dict) else 'NOT A DICT'}")
+            print(f"      - stats['fixed']: {stats.get('fixed', 'KEY NOT FOUND')}")
+            print(f"      - stats['reported']: {stats.get('reported', 'KEY NOT FOUND')}")
+            print(f"      - file_date: {file_date}")
 
             key = (user, category)
             if key in existing_user_cat:
                 # Update existing row's manager stats
                 found_row = existing_user_cat[key]["row"]
+                print(f"      -> UPDATING existing row {found_row}")
                 ws.cell(found_row, 9, stats["fixed"])      # Fixed
                 ws.cell(found_row, 10, stats["reported"])  # Reported
                 ws.cell(found_row, 11, stats["checking"])  # Checking
                 ws.cell(found_row, 12, stats["nonissue"])  # NonIssue
+                rows_updated += 1
             else:
                 # No existing row - create new row with manager stats only
                 actual_max_row += 1  # Increment our tracked max row
                 new_row = actual_max_row
+                print(f"      -> CREATING new row {new_row}")
                 ws.cell(new_row, 1, file_date)             # Date (from file mtime, not today!)
                 ws.cell(new_row, 2, user)                  # User
                 ws.cell(new_row, 3, category)              # Category
@@ -203,6 +247,22 @@ def update_daily_data_sheet(
                 ws.cell(new_row, 14, 0)                    # Korean
                 # Add to index so duplicates in same batch don't overwrite
                 existing_user_cat[key] = {"row": new_row, "date": file_date}
+                rows_created += 1
+
+                # VERIFY the write
+                print(f"      -> VERIFY row {new_row}: Date={ws.cell(new_row, 1).value}, User={ws.cell(new_row, 2).value}, Fixed={ws.cell(new_row, 9).value}")
+
+    print(f"\n[STEP 5] WRITE SUMMARY:")
+    print(f"  - Rows updated: {rows_updated}")
+    print(f"  - Rows created: {rows_created}")
+    print(f"  - Final actual_max_row: {actual_max_row}")
+    print(f"  - ws.max_row after writes: {ws.max_row}")
+
+    print(f"\n[STEP 6] SAMPLE OF WRITTEN DATA:")
+    for r in range(2, min(actual_max_row + 1, 7)):  # Show first 5 data rows
+        print(f"  Row {r}: {[ws.cell(r, c).value for c in range(1, 15)]}")
+
+    print("="*70 + "\n")
 
 
 def read_daily_data(wb: openpyxl.Workbook) -> Dict:
