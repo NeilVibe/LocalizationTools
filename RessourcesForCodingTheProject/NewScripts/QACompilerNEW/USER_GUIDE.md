@@ -285,17 +285,20 @@ QAfolder/
 
 ### Category Guide
 
-| Category | Contains | Output |
-|----------|----------|--------|
-| **Quest** | Main story, faction, daily quests | `QuestData_Map_All/` |
-| **Knowledge** | Encyclopedia entries | `Knowledge_LQA_All/` |
-| **Item** | Items, equipment, consumables | `ItemData_Map_All/` |
-| **Region** | Areas, locations, POIs | `Region_LQA_v3/` |
-| **System** | UI text, menus | *(via Skill+Help merge)* |
-| **Character** | NPCs, monsters | `Character_LQA_All/` |
-| **Skill** | Player abilities | `Skill_LQA_All/` |
-| **Help** | Tutorial, tips | `GameAdvice_LQA_All/` |
-| **Gimmick** | Interactive objects | `Gimmick_LQA_Output/` |
+| Category | Contains | Generation | Output |
+|----------|----------|------------|--------|
+| **Quest** | Main story, faction, daily quests | ✅ Auto | `QuestData_Map_All/` |
+| **Knowledge** | Encyclopedia entries | ✅ Auto | `Knowledge_LQA_All/` |
+| **Item** | Items, equipment, consumables | ✅ Auto | `ItemData_Map_All/` |
+| **Region** | Areas, locations, POIs | ✅ Auto | `Region_LQA_v3/` |
+| **Character** | NPCs, monsters | ✅ Auto | `Character_LQA_All/` |
+| **Skill** | Player abilities | ✅ Auto | `Skill_LQA_All/` |
+| **Help** | Tutorial, tips | ✅ Auto | `GameAdvice_LQA_All/` |
+| **Gimmick** | Interactive objects | ✅ Auto | `Gimmick_LQA_Output/` |
+| **System** | UI text, menus | 🔧 Manual | Use System Localizer (Section 5) |
+| **Contents** | Content instructions | 🔧 Manual | Prepared externally |
+
+> **Note:** System and Contents sheets are NOT auto-generated. System sheets are created via the System Localizer. Contents sheets are prepared manually/externally.
 
 ### Tester Sheet Columns (Generated Datasheets)
 
@@ -368,6 +371,46 @@ Master files include additional columns per tester:
 
 **Purpose:** Compile all QA files into master documents with progress tracking.
 
+### How Master Build Works (Technical)
+
+The master build process uses **content-based matching** to preserve all tester work:
+
+#### Step 1: Template Selection (Most Recent File)
+
+```
+Multiple QA files for same category:
+├── 김민영_Quest/file.xlsx  (modified Jan 15)
+├── 박지훈_Quest/file.xlsx  (modified Jan 16)  ← MOST RECENT = TEMPLATE
+└── 이수진_Quest/file.xlsx  (modified Jan 14)
+```
+
+The **most recent file** (by modification date) is used as the template structure.
+This ensures the master has the freshest column layout.
+
+#### Step 2: Content-Based Row Matching (2-Step Cascade)
+
+Each tester's data is matched to master rows using a 2-step cascade:
+
+| Category | Step 1 (Primary Match) | Step 2 (Fallback) |
+|----------|------------------------|-------------------|
+| **Standard** (Quest, Knowledge, etc.) | STRINGID + Translation | Translation only |
+| **Item** | ItemName + ItemDesc + STRINGID | ItemName + ItemDesc |
+| **Contents** | INSTRUCTIONS column | (unique, no fallback) |
+
+This prevents data loss even when row order changes between builds.
+
+#### Step 3: Data Preservation
+
+For each matched row, these columns are preserved:
+
+| From Tester QA | From Previous Master |
+|----------------|---------------------|
+| COMMENT_{User} | STATUS_{User} (manager status) |
+| TESTER_STATUS_{User} | MANAGER_COMMENT_{User} |
+| SCREENSHOT_{User} | |
+
+> **Key Benefit:** Manager work (status + comments) survives master rebuilds because matching is content-based, not row-index-based.
+
 ### Category Merging
 
 Some categories are **merged** into combined master files:
@@ -379,6 +422,7 @@ Some categories are **merged** into combined master files:
 | Item | `Master_Item.xlsx` |
 | Region | `Master_Region.xlsx` |
 | Character | `Master_Character.xlsx` |
+| Contents | `Master_Contents.xlsx` |
 | **Skill** | `Master_System.xlsx` ← *merged* |
 | **Help** | `Master_System.xlsx` ← *merged* |
 | **Gimmick** | `Master_Item.xlsx` ← *merged* |
@@ -393,6 +437,7 @@ Masterfolder_EN/
 ├── Master_Region.xlsx
 ├── Master_System.xlsx      ← includes Skill + Help
 ├── Master_Character.xlsx
+├── Master_Contents.xlsx
 ├── _TRACKER.xlsx           ← Progress tracking
 └── Images/
 ```
@@ -652,6 +697,7 @@ Tester folders must follow this format: **`이름_Category`**
 | Skill |
 | Help |
 | Gimmick |
+| Contents |
 
 #### Rules
 
