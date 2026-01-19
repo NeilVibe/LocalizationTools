@@ -75,7 +75,8 @@ DAILY_DATA_HEADERS = [
 def update_daily_data_sheet(
     wb: openpyxl.Workbook,
     daily_entries: List[Dict],
-    manager_stats: Dict = None
+    manager_stats: Dict = None,
+    manager_dates: Dict = None
 ) -> None:
     """
     Update hidden _DAILY_DATA sheet with new entries including manager stats.
@@ -87,11 +88,15 @@ def update_daily_data_sheet(
              word_count, korean}
         manager_stats: Optional dict of:
             {category: {user: {fixed, reported, checking, nonissue}}}
+        manager_dates: Optional dict of:
+            {(category, user): file_date} - dates from master file mtime
 
     Mode: REPLACE - same (date, user, category) overwrites existing row
     """
     if manager_stats is None:
         manager_stats = {}
+    if manager_dates is None:
+        manager_dates = {}
 
     ws = wb["_DAILY_DATA"]
 
@@ -154,7 +159,10 @@ def update_daily_data_sheet(
     for category, users in manager_stats.items():
         print(f"      Category {category}: {len(users)} users")
         for user, stats in users.items():
-            print(f"        {user}: fixed={stats.get('fixed',0)}, reported={stats.get('reported',0)}")
+            # Get the date from manager_dates (file mtime), fallback to today
+            file_date = manager_dates.get((category, user), today)
+            print(f"        {user}: fixed={stats.get('fixed',0)}, reported={stats.get('reported',0)}, date={file_date}")
+
             # Check if ANY row exists for this user/category (any date)
             found_row = None
             latest_date = None
@@ -177,7 +185,7 @@ def update_daily_data_sheet(
             else:
                 # No existing row - create new row with manager stats only
                 new_row = ws.max_row + 1
-                ws.cell(new_row, 1, today)                 # Date (today)
+                ws.cell(new_row, 1, file_date)             # Date (from file mtime, not today!)
                 ws.cell(new_row, 2, user)                  # User
                 ws.cell(new_row, 3, category)              # Category
                 ws.cell(new_row, 4, 0)                     # TotalRows

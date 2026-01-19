@@ -450,7 +450,8 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
         tracker_wb, tracker_path = get_or_create_tracker()
 
         # Update _DAILY_DATA with tester stats AND manager stats
-        update_daily_data_sheet(tracker_wb, entries, manager_stats)
+        # Pass manager_dates so new rows use file mtime, not today's date
+        update_daily_data_sheet(tracker_wb, entries, manager_stats, manager_dates)
 
         # Rebuild visible sheets
         build_daily_sheet(tracker_wb)
