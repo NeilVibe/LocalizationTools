@@ -170,18 +170,10 @@ def update_daily_data_sheet(
                 existing_user_cat[key] = {"row": row, "date": row_date}
             actual_max_row = max(actual_max_row, row)
 
-    print(f"    Writing manager stats: {len(manager_stats)} categories")
-    print(f"    Existing rows in _DAILY_DATA: {actual_max_row} (indexed {len(existing_user_cat)} user/category pairs)")
-
-    rows_updated = 0
-    rows_created = 0
-
     for category, users in manager_stats.items():
-        print(f"      Category {category}: {len(users)} users")
         for user, stats in users.items():
             # Get the date from manager_dates (file mtime), fallback to today
             file_date = manager_dates.get((category, user), today)
-            print(f"        {user}: fixed={stats.get('fixed',0)}, reported={stats.get('reported',0)}, date={file_date}")
 
             key = (user, category)
             if key in existing_user_cat:
@@ -212,9 +204,6 @@ def update_daily_data_sheet(
                 ws.cell(new_row, 14, 0)                    # Korean
                 # Add to index so duplicates in same batch don't overwrite
                 existing_user_cat[key] = {"row": new_row, "date": file_date}
-                rows_created += 1
-
-    print(f"    Manager stats write complete: {rows_updated} updated, {rows_created} created")
 
 
 def read_daily_data(wb: openpyxl.Workbook) -> Dict:
