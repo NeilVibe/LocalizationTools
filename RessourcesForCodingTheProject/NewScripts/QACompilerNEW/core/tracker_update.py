@@ -1,13 +1,23 @@
 """
 Tracker Update Module
 =====================
-Update tracker from QAFolderForTracker without rebuilding master files.
+Update tracker from TrackerUpdateFolder without rebuilding master files.
 
 Use case: Retroactively add missing days to the progress tracker.
 
+Folder Structure:
+    TrackerUpdateFolder/
+    ├── QAfolder/              # Tester QA files
+    │   └── Username_Category/
+    │       └── file.xlsx
+    ├── Masterfolder_EN/       # English master files (for manager stats)
+    │   └── Master_Quest.xlsx
+    └── Masterfolder_CN/       # Chinese master files (for manager stats)
+        └── Master_Quest.xlsx
+
 Workflow:
-1. Copy QA files for the missing day to QAFolderForTracker/
-2. Set file mtime to target date: touch -d "2025-01-18" QAFolderForTracker/*/*.xlsx
+1. Copy QA files and Master files to TrackerUpdateFolder/
+2. Set file dates via GUI (or use existing mtime)
 3. Run: python main.py --update-tracker
 """
 
@@ -19,33 +29,40 @@ from collections import defaultdict
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
-    QA_FOLDER_FOR_TRACKER, CATEGORIES, TRANSLATION_COLS,
-    load_tester_mapping
+    TRACKER_UPDATE_FOLDER, TRACKER_UPDATE_QA,
+    TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN,
+    CATEGORIES, TRANSLATION_COLS,
+    load_tester_mapping, get_target_master_category
 )
 from core.discovery import IMAGE_EXTENSIONS
 from core.excel_ops import safe_load_workbook, find_column_by_header
 from core.processing import count_words_english, count_chars_chinese
 
 
+# Valid manager status values
+VALID_MANAGER_STATUS = {"FIXED", "REPORTED", "CHECKING", "NON-ISSUE", "NON ISSUE"}
+
+
 # =============================================================================
-# FOLDER DISCOVERY
+# QA FOLDER DISCOVERY (Tester Stats)
 # =============================================================================
 
-def discover_tracker_folders() -> List[Dict]:
+def discover_tracker_qa_folders() -> List[Dict]:
     """
-    Discover QA folders in QAFolderForTracker, enriched with file_date from mtime.
+    Discover QA folders in TrackerUpdateFolder/QAfolder, enriched with file_date from mtime.
 
     Returns:
         List of dicts with {username, category, xlsx_path, folder_path, file_date, images}
     """
     folders = []
+    base_folder = TRACKER_UPDATE_QA
 
-    if not QA_FOLDER_FOR_TRACKER.exists():
-        print(f"  Creating folder: {QA_FOLDER_FOR_TRACKER}")
-        QA_FOLDER_FOR_TRACKER.mkdir(parents=True, exist_ok=True)
+    if not base_folder.exists():
+        print(f"  Creating folder: {base_folder}")
+        base_folder.mkdir(parents=True, exist_ok=True)
         return folders
 
-    for folder in QA_FOLDER_FOR_TRACKER.iterdir():
+    for folder in base_folder.iterdir():
         if not folder.is_dir():
             continue
 
@@ -99,7 +116,46 @@ def discover_tracker_folders() -> List[Dict]:
 
 
 # =============================================================================
-# STAT COUNTING
+# MASTER FILE DISCOVERY (Manager Stats)
+# =============================================================================
+
+def discover_tracker_master_files() -> List[Dict]:
+    """
+    Discover master files in TrackerUpdateFolder/Masterfolder_EN and Masterfolder_CN.
+
+    Returns:
+        List of dicts with {master_path, category, lang, file_date}
+    """
+    master_files = []
+
+    for master_folder, lang in [(TRACKER_UPDATE_MASTER_EN, "EN"), (TRACKER_UPDATE_MASTER_CN, "CN")]:
+        if not master_folder.exists():
+            master_folder.mkdir(parents=True, exist_ok=True)
+            continue
+
+        for xlsx_file in master_folder.glob("Master_*.xlsx"):
+            if xlsx_file.name.startswith("~"):
+                continue
+
+            # Extract category from filename (Master_Quest.xlsx -> Quest)
+            category = xlsx_file.stem.replace("Master_", "")
+
+            # Get file date from mtime
+            file_mtime = xlsx_file.stat().st_mtime
+            file_date = datetime.fromtimestamp(file_mtime).strftime("%Y-%m-%d")
+
+            master_files.append({
+                "master_path": xlsx_file,
+                "category": category,
+                "lang": lang,
+                "file_date": file_date,
+            })
+
+    return master_files
+
+
+# =============================================================================
+# TESTER STAT COUNTING
 # =============================================================================
 
 def count_sheet_stats(qa_ws, category: str, is_english: bool) -> Dict:
@@ -165,12 +221,12 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool) -> Dict:
     return stats
 
 
-def count_folder_stats(folder: Dict, tester_mapping: Dict) -> Dict:
+def count_qa_folder_stats(folder: Dict, tester_mapping: Dict) -> Dict:
     """
     Count all stats for a QA folder.
 
     Args:
-        folder: Folder dict from discover_tracker_folders()
+        folder: Folder dict from discover_tracker_qa_folders()
         tester_mapping: Dict mapping tester name -> "EN" or "CN"
 
     Returns:
@@ -229,6 +285,102 @@ def count_folder_stats(folder: Dict, tester_mapping: Dict) -> Dict:
 
 
 # =============================================================================
+# MANAGER STAT COUNTING
+# =============================================================================
+
+def count_manager_stats_from_master(master_info: Dict, tester_mapping: Dict) -> Dict:
+    """
+    Count manager stats (FIXED, REPORTED, CHECKING, NON-ISSUE) from a master file.
+
+    Args:
+        master_info: Dict from discover_tracker_master_files()
+        tester_mapping: Dict mapping tester name -> "EN" or "CN"
+
+    Returns:
+        Dict with {file_date, category, user_stats: {username: {fixed, reported, checking, nonissue}}}
+    """
+    master_path = master_info["master_path"]
+    category = master_info["category"]
+    file_date = master_info["file_date"]
+
+    result = {
+        "file_date": file_date,
+        "category": category,
+        "user_stats": defaultdict(lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}),
+    }
+
+    try:
+        wb = safe_load_workbook(master_path)
+
+        for sheet_name in wb.sheetnames:
+            if sheet_name == "STATUS":
+                continue
+
+            ws = wb[sheet_name]
+
+            # Find all STATUS_{User} columns
+            status_cols = {}
+            for col in range(1, ws.max_column + 1):
+                header = ws.cell(row=1, column=col).value
+                if header and str(header).startswith("STATUS_"):
+                    username = str(header).replace("STATUS_", "")
+                    status_cols[username] = col
+
+            if not status_cols:
+                continue
+
+            # Count status values per user
+            for row in range(2, ws.max_row + 1):
+                for username, col in status_cols.items():
+                    value = ws.cell(row=row, column=col).value
+                    if value:
+                        status_upper = str(value).strip().upper()
+                        if status_upper == "FIXED":
+                            result["user_stats"][username]["fixed"] += 1
+                        elif status_upper == "REPORTED":
+                            result["user_stats"][username]["reported"] += 1
+                        elif status_upper == "CHECKING":
+                            result["user_stats"][username]["checking"] += 1
+                        elif status_upper in ("NON-ISSUE", "NON ISSUE"):
+                            result["user_stats"][username]["nonissue"] += 1
+
+        wb.close()
+
+    except Exception as e:
+        print(f"  WARN: Error reading {master_path.name}: {e}")
+
+    return result
+
+
+def aggregate_manager_stats(master_files: List[Dict], tester_mapping: Dict) -> Tuple[Dict, Dict]:
+    """
+    Aggregate manager stats from all master files.
+
+    Returns:
+        Tuple of:
+        - manager_stats: {category: {user: {fixed, reported, checking, nonissue}}}
+        - manager_dates: {(category, user): file_date}
+    """
+    manager_stats = defaultdict(lambda: defaultdict(
+        lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}
+    ))
+    manager_dates = {}
+
+    for master_info in master_files:
+        result = count_manager_stats_from_master(master_info, tester_mapping)
+        category = result["category"]
+        file_date = result["file_date"]
+
+        for username, stats in result["user_stats"].items():
+            for key in ["fixed", "reported", "checking", "nonissue"]:
+                manager_stats[category][username][key] += stats[key]
+            # Track date for this user/category combo
+            manager_dates[(category, username)] = file_date
+
+    return dict(manager_stats), manager_dates
+
+
+# =============================================================================
 # MAIN FUNCTION
 # =============================================================================
 
@@ -236,63 +388,84 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
     """
     Main entry point for tracker-only update.
 
-    1. Discover folders in QAFolderForTracker/
-    2. For each: extract date from mtime, count stats
-    3. Update _DAILY_DATA sheet
-    4. Rebuild DAILY and TOTAL sheets
-    5. Save tracker
+    1. Discover QA folders in TrackerUpdateFolder/QAfolder
+    2. Discover Master files in TrackerUpdateFolder/Masterfolder_EN and CN
+    3. Count tester stats from QA files
+    4. Count manager stats from Master files
+    5. Update _DAILY_DATA sheet
+    6. Rebuild DAILY and TOTAL sheets
+    7. Save tracker
 
     Returns:
         Tuple of (success, message, entries)
     """
     print()
     print("=" * 60)
-    print("Update Tracker from QAFolderForTracker")
+    print("Update Tracker from TrackerUpdateFolder")
     print("=" * 60)
     print()
     print("This mode updates the progress tracker WITHOUT rebuilding master files.")
     print("Use it to retroactively add missing days to the tracker.")
     print()
-    print("Instructions:")
-    print("  1. Copy QA files for the missing day to QAFolderForTracker/")
-    print("  2. Set file date: touch -d '2025-01-18' QAFolderForTracker/*/*.xlsx")
-    print("  3. Run this command")
+    print("Folder structure:")
+    print(f"  {TRACKER_UPDATE_FOLDER}/")
+    print(f"  ├── QAfolder/           (tester QA files)")
+    print(f"  ├── Masterfolder_EN/    (manager stats)")
+    print(f"  └── Masterfolder_CN/    (manager stats)")
     print()
 
-    # Discover folders
-    print("Discovering folders in QAFolderForTracker...")
-    folders = discover_tracker_folders()
+    # Discover QA folders
+    print("Discovering QA folders...")
+    qa_folders = discover_tracker_qa_folders()
+    print(f"  Found {len(qa_folders)} QA folder(s)")
 
-    if not folders:
-        msg = "No valid QA folders found in QAFolderForTracker/"
+    # Discover master files
+    print("\nDiscovering master files...")
+    master_files = discover_tracker_master_files()
+    print(f"  Found {len(master_files)} master file(s)")
+
+    if not qa_folders and not master_files:
+        msg = "No QA folders or master files found in TrackerUpdateFolder"
         print(f"\n{msg}")
-        print(f"\nExpected format: QAFolderForTracker/{{Username}}_{{Category}}/")
-        print(f"Valid categories: {', '.join(CATEGORIES)}")
         return False, msg, []
-
-    print(f"  Found {len(folders)} folder(s)")
 
     # Load tester mapping
     print("\nLoading tester->language mapping...")
     tester_mapping = load_tester_mapping()
 
-    # Process each folder and build tracker entries
-    print("\nProcessing folders...")
     entries = []
-    for folder in folders:
-        username = folder["username"]
-        category = folder["category"]
-        file_date = folder["file_date"]
-        lang = tester_mapping.get(username, "EN")
-        in_mapping = username in tester_mapping
 
-        print(f"\n  {username}_{category} ({file_date})")
-        print(f"    Language: {lang}{'' if in_mapping else ' (not in mapping, default)'}")
+    # Process QA folders (tester stats)
+    if qa_folders:
+        print("\nProcessing QA folders (tester stats)...")
+        for folder in qa_folders:
+            username = folder["username"]
+            category = folder["category"]
+            file_date = folder["file_date"]
+            lang = tester_mapping.get(username, "EN")
+            in_mapping = username in tester_mapping
 
-        entry = count_folder_stats(folder, tester_mapping)
-        entries.append(entry)
+            print(f"\n  {username}_{category} ({file_date})")
+            print(f"    Language: {lang}{'' if in_mapping else ' (not in mapping, default)'}")
 
-        print(f"    Total: {entry['total_rows']}, Done: {entry['done']}, Issues: {entry['issues']}")
+            entry = count_qa_folder_stats(folder, tester_mapping)
+            entries.append(entry)
+
+            print(f"    Total: {entry['total_rows']}, Done: {entry['done']}, Issues: {entry['issues']}")
+
+    # Process master files (manager stats)
+    manager_stats = {}
+    manager_dates = {}
+    if master_files:
+        print("\nProcessing master files (manager stats)...")
+        manager_stats, manager_dates = aggregate_manager_stats(master_files, tester_mapping)
+
+        for category, users in manager_stats.items():
+            for username, stats in users.items():
+                total = stats["fixed"] + stats["reported"] + stats["checking"] + stats["nonissue"]
+                if total > 0:
+                    date = manager_dates.get((category, username), "unknown")
+                    print(f"  {username} ({category}, {date}): FIXED={stats['fixed']}, REPORTED={stats['reported']}, CHECKING={stats['checking']}, NON-ISSUE={stats['nonissue']}")
 
     # Update tracker
     print("\n" + "=" * 60)
@@ -306,8 +479,8 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
 
         tracker_wb, tracker_path = get_or_create_tracker()
 
-        # Update _DAILY_DATA (no manager stats in tracker-only mode)
-        update_daily_data_sheet(tracker_wb, entries, manager_stats={})
+        # Update _DAILY_DATA with tester stats AND manager stats
+        update_daily_data_sheet(tracker_wb, entries, manager_stats)
 
         # Rebuild visible sheets
         build_daily_sheet(tracker_wb)
@@ -320,11 +493,17 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
         tracker_wb.save(tracker_path)
 
         print(f"\n  Saved: {tracker_path}")
-        print(f"  Updated {len(entries)} entries from {len(set(e['date'] for e in entries))} unique date(s)")
+        if entries:
+            print(f"  Updated {len(entries)} tester entries from {len(set(e['date'] for e in entries))} unique date(s)")
+        if manager_stats:
+            total_users = sum(len(users) for users in manager_stats.values())
+            print(f"  Updated manager stats for {total_users} user(s)")
 
     except Exception as e:
         msg = f"Failed to update tracker: {e}"
         print(f"\nERROR: {msg}")
+        import traceback
+        traceback.print_exc()
         return False, msg, entries
 
     # Summary
@@ -333,17 +512,22 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
     print("=" * 60)
 
     # Group by date for summary
-    by_date = defaultdict(list)
-    for entry in entries:
-        by_date[entry["date"]].append(entry)
+    if entries:
+        by_date = defaultdict(list)
+        for entry in entries:
+            by_date[entry["date"]].append(entry)
 
-    print("\nSummary by date:")
-    for date in sorted(by_date.keys()):
-        date_entries = by_date[date]
-        total_done = sum(e["done"] for e in date_entries)
-        total_issues = sum(e["issues"] for e in date_entries)
-        users = [e["user"] for e in date_entries]
-        print(f"  {date}: {len(users)} user(s), {total_done} done, {total_issues} issues")
+        print("\nTester stats by date:")
+        for date in sorted(by_date.keys()):
+            date_entries = by_date[date]
+            total_done = sum(e["done"] for e in date_entries)
+            total_issues = sum(e["issues"] for e in date_entries)
+            users = [e["user"] for e in date_entries]
+            print(f"  {date}: {len(users)} user(s), {total_done} done, {total_issues} issues")
 
-    msg = f"Successfully updated tracker with {len(entries)} entries"
+    msg = f"Successfully updated tracker"
+    if entries:
+        msg += f" with {len(entries)} tester entries"
+    if manager_stats:
+        msg += f" and manager stats"
     return True, msg, entries
