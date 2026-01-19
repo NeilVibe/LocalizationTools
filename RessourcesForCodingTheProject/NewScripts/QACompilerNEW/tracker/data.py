@@ -111,7 +111,7 @@ def update_daily_data_sheet(
         if key[0] is not None:  # Only index non-empty rows
             existing[key] = row
 
-    # Update or insert entries
+    # Update or insert entries from daily_entries (tester stats)
     for entry in daily_entries:
         key = (entry["date"], entry["user"], entry["category"])
 
@@ -144,6 +144,21 @@ def update_daily_data_sheet(
         ws.cell(row, 12, user_manager_stats["nonissue"]) # NonIssue
         ws.cell(row, 13, entry.get("word_count", 0))     # WordCount
         ws.cell(row, 14, entry.get("korean", 0))         # Korean
+
+    # Also update manager stats for existing rows that weren't in daily_entries
+    # This handles the case where we're only updating manager stats (no QA folders)
+    for category, users in manager_stats.items():
+        for user, stats in users.items():
+            # Find existing rows for this user/category and update manager columns
+            for row in range(2, ws.max_row + 1):
+                row_user = ws.cell(row, 2).value
+                row_category = ws.cell(row, 3).value
+                if row_user == user and row_category == category:
+                    # Update manager stats columns only
+                    ws.cell(row, 9, stats["fixed"])      # Fixed
+                    ws.cell(row, 10, stats["reported"])  # Reported
+                    ws.cell(row, 11, stats["checking"])  # Checking
+                    ws.cell(row, 12, stats["nonissue"])  # NonIssue
 
 
 def read_daily_data(wb: openpyxl.Workbook) -> Dict:
