@@ -273,9 +273,15 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
 
     # Scan both EN and CN folders
     for master_folder in [TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN]:
+        print(f"  Checking folder: {master_folder}")
         if not master_folder.exists():
+            print(f"    Folder does not exist, creating...")
             master_folder.mkdir(parents=True, exist_ok=True)
             continue
+
+        # List all xlsx files for debug
+        all_xlsx = list(master_folder.glob("*.xlsx"))
+        print(f"    Found {len(all_xlsx)} xlsx files: {[f.name for f in all_xlsx]}")
 
         # Scan actual master files (not iterate over CATEGORIES)
         for master_path in master_folder.glob("Master_*.xlsx"):
@@ -300,28 +306,26 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
 
                     ws = wb[sheet_name]
 
-                    # Find all users via COMMENT_{User} or STATUS_{User} columns
-                    # COMMENT_{User} tells us who worked on this file
-                    users_in_file = set()
+                    # Find STATUS_{User} columns for counting manager stats
+                    # Note: STATUS_{User} is manager status (FIXED/REPORTED/etc)
+                    #       TESTER_STATUS_{User} is tester's original status (hidden)
                     status_cols = {}
 
                     for col in range(1, ws.max_column + 1):
                         header = ws.cell(row=1, column=col).value
                         if not header:
                             continue
-                        header_str = str(header)
+                        header_str = str(header).strip()
 
-                        # Find users from COMMENT_{User} columns
-                        if header_str.startswith("COMMENT_"):
-                            username = header_str.replace("COMMENT_", "")
-                            users_in_file.add(username)
-
-                        # Find STATUS_{User} columns for counting
+                        # Find STATUS_{User} columns (not TESTER_STATUS_{User})
                         if header_str.startswith("STATUS_"):
                             username = header_str.replace("STATUS_", "")
                             status_cols[username] = col
 
+                    print(f"      Sheet '{sheet_name}': found STATUS_ columns for {list(status_cols.keys())}")
+
                     if not status_cols:
+                        print(f"      Sheet '{sheet_name}': no STATUS_ columns found, skipping")
                         continue
 
                     # Count status values per user
