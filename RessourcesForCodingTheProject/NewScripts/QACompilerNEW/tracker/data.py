@@ -183,7 +183,6 @@ def update_daily_data_sheet(
                 ws.cell(found_row, 10, stats["reported"])  # Reported
                 ws.cell(found_row, 11, stats["checking"])  # Checking
                 ws.cell(found_row, 12, stats["nonissue"])  # NonIssue
-                rows_updated += 1
             else:
                 # No existing row - create new row with manager stats only
                 actual_max_row += 1  # Increment our tracked max row
