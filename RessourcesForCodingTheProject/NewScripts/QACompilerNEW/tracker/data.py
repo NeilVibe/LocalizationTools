@@ -158,7 +158,7 @@ def update_daily_data_sheet(
     # Build index of existing rows: (user, category) -> {row, date}
     # This is needed because max_row may not update correctly after cell writes
     existing_user_cat = {}
-    actual_max_row = 1  # Track actual max row ourselves (headers = row 1)
+    actual_max_row = ws.max_row  # Start from current sheet max row
     for row in range(2, ws.max_row + 1):
         row_user = ws.cell(row, 2).value
         row_category = ws.cell(row, 3).value
