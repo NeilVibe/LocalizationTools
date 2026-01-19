@@ -175,9 +175,9 @@ def update_daily_data_sheet(
     if ws.max_row >= 2:
         print(f"  - Row 2 sample: {[ws.cell(2, c).value for c in range(1, 15)]}")
 
-    # Build index of existing rows: (user, category) -> {row, date}
-    # This is needed because max_row may not update correctly after cell writes
-    existing_user_cat = {}
+    # Build index of existing rows: (date, user, category) -> row
+    # This matches how tester stats are keyed - each date gets its own row
+    existing_date_user_cat = {}
     actual_max_row = ws.max_row  # Start from current sheet max row
 
     print(f"\n[STEP 3] BUILDING EXISTING ROW INDEX:")
@@ -185,18 +185,16 @@ def update_daily_data_sheet(
     print(f"  - Scanning rows 2 to {ws.max_row + 1}...")
 
     for row in range(2, ws.max_row + 1):
+        row_date = ws.cell(row, 1).value
         row_user = ws.cell(row, 2).value
         row_category = ws.cell(row, 3).value
-        row_date = ws.cell(row, 1).value
-        if row_user and row_category:
-            key = (row_user, row_category)
-            # Keep the latest date row for each user/category combo
-            if key not in existing_user_cat or str(row_date) > str(existing_user_cat[key]["date"]):
-                existing_user_cat[key] = {"row": row, "date": row_date}
-                print(f"    - Indexed row {row}: user={row_user}, cat={row_category}, date={row_date}")
+        if row_date and row_user and row_category:
+            key = (str(row_date), row_user, row_category)
+            existing_date_user_cat[key] = row
+            print(f"    - Indexed row {row}: date={row_date}, user={row_user}, cat={row_category}")
             actual_max_row = max(actual_max_row, row)
 
-    print(f"  - Final existing_user_cat count: {len(existing_user_cat)}")
+    print(f"  - Final existing_date_user_cat count: {len(existing_date_user_cat)}")
     print(f"  - Final actual_max_row: {actual_max_row}")
 
     print(f"\n[STEP 4] WRITING MANAGER STATS TO EXCEL:")
@@ -216,21 +214,22 @@ def update_daily_data_sheet(
             print(f"      - stats['reported']: {stats.get('reported', 'KEY NOT FOUND')}")
             print(f"      - file_date: {file_date}")
 
-            key = (user, category)
-            if key in existing_user_cat:
-                # Update existing row's manager stats
-                found_row = existing_user_cat[key]["row"]
-                print(f"      -> UPDATING existing row {found_row}")
+            # Key includes DATE so each day gets its own row
+            key = (str(file_date), user, category)
+            if key in existing_date_user_cat:
+                # Update existing row for THIS DATE
+                found_row = existing_date_user_cat[key]
+                print(f"      -> UPDATING existing row {found_row} (same date {file_date})")
                 ws.cell(found_row, 9, stats["fixed"])      # Fixed
                 ws.cell(found_row, 10, stats["reported"])  # Reported
                 ws.cell(found_row, 11, stats["checking"])  # Checking
                 ws.cell(found_row, 12, stats["nonissue"])  # NonIssue
                 rows_updated += 1
             else:
-                # No existing row - create new row with manager stats only
+                # No row for THIS DATE - create new row
                 actual_max_row += 1  # Increment our tracked max row
                 new_row = actual_max_row
-                print(f"      -> CREATING new row {new_row}")
+                print(f"      -> CREATING new row {new_row} for date {file_date}")
                 ws.cell(new_row, 1, file_date)             # Date (from file mtime, not today!)
                 ws.cell(new_row, 2, user)                  # User
                 ws.cell(new_row, 3, category)              # Category
@@ -246,7 +245,7 @@ def update_daily_data_sheet(
                 ws.cell(new_row, 13, 0)                    # WordCount
                 ws.cell(new_row, 14, 0)                    # Korean
                 # Add to index so duplicates in same batch don't overwrite
-                existing_user_cat[key] = {"row": new_row, "date": file_date}
+                existing_date_user_cat[key] = new_row
                 rows_created += 1
 
                 # VERIFY the write
@@ -262,13 +261,12 @@ def update_daily_data_sheet(
     for r in range(2, min(actual_max_row + 1, 7)):  # Show first 5 data rows
         print(f"  Row {r}: {[ws.cell(r, c).value for c in range(1, 15)]}")
 
-    print(f"\n[STEP 7] VERIFY SPECIFIC UPDATED ROWS (checking Fixed/Reported columns):")
+    print(f"\n[STEP 7] VERIFY SPECIFIC UPDATED/CREATED ROWS (checking Fixed/Reported columns):")
     # Show a few rows that were just updated/created
-    updated_sample_rows = list(existing_user_cat.items())[-5:]  # Last 5 updated rows
-    for (user, cat), info in updated_sample_rows:
-        row_num = info["row"]
+    updated_sample_rows = list(existing_date_user_cat.items())[-10:]  # Last 10 rows
+    for (date, user, cat), row_num in updated_sample_rows:
         row_data = [ws.cell(row_num, c).value for c in range(1, 15)]
-        print(f"  Row {row_num} ({user}/{cat}): Fixed={row_data[8]}, Reported={row_data[9]}, Full={row_data}")
+        print(f"  Row {row_num} ({date}/{user}/{cat}): Fixed={row_data[8]}, Reported={row_data[9]}")
 
     print("="*70 + "\n")
 
