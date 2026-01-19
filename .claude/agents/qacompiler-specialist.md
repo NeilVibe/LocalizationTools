@@ -296,10 +296,46 @@ logger.warning(f"GDP-003: Matched {matched} / {total}")
 | `languageTOtester_list.txt` | Tester → Language code |
 | `TesterType.txt` | Tester → Type (Text/Gameplay) |
 
-## Build Executable
+## CI/CD - GitHub Actions Build
+
+**IMPORTANT:** QACompiler has its OWN workflow, separate from LocaNext!
+
+### Two Workflows in This Repo
+
+| Workflow | Trigger File | What It Builds |
+|----------|--------------|----------------|
+| **LocaNext** | `BUILD_TRIGGER.txt` | Electron app (.exe installer) |
+| **QACompiler** | `QACOMPILER_BUILD.txt` | PyInstaller exe + Inno Setup installer |
+
+### Trigger QACompiler Build
 
 ```bash
-# Use build script (prompts for drive letter)
+# Add "Build" to trigger file and push
+echo "Build" >> QACOMPILER_BUILD.txt
+git add QACOMPILER_BUILD.txt
+git commit -m "Trigger QACompiler build"
+git push origin main
+```
+
+### Workflow Details
+
+**File:** `.github/workflows/qacompiler-build.yml`
+
+**Triggers:**
+- Push to `QACOMPILER_BUILD.txt` with "Build" line
+- Manual dispatch via GitHub Actions UI
+
+**Outputs (GitHub Releases):**
+- `QACompiler_vX.X.X_Setup.exe` - Inno Setup installer
+- `QACompiler_vX.X.X_Portable.zip` - Portable ZIP
+- `QACompiler_vX.X.X_Source.zip` - Source code
+
+**Version Format:** `YY.MMDD.HHMM` (auto-generated, Korean time)
+
+### Local Build (Alternative)
+
+```bash
+# On Windows, in QACompilerNEW folder
 build_exe.bat
 
 # Output: dist/QACompiler/QACompiler.exe

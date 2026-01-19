@@ -40,8 +40,10 @@ QACompilerNEW/
 │   ├── __init__.py          # Package exports
 │   ├── discovery.py         # QA folder detection
 │   ├── excel_ops.py         # Workbook operations
+│   ├── matching.py          # Content-based row matching (shared)
 │   ├── processing.py        # Sheet processing
 │   ├── transfer.py          # File transfer (OLD + NEW → QAfolder)
+│   ├── tracker_update.py    # Tracker-only update (no master rebuild)
 │   └── compiler.py          # Main orchestration
 │
 ├── tracker/                  # Progress tracker modules
@@ -253,7 +255,7 @@ TRANSLATION_COLS = {
 System Excel layout: `CONTENT | STATUS | COMMENT | STRINGID | SCREENSHOT`
 Contents Excel layout: `CONTENT | INSTRUCTIONS | STATUS | COMMENT | SCREENSHOT`
 
-## GUI Layout
+## GUI Layout (1000x1000 window)
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -263,6 +265,7 @@ Contents Excel layout: `CONTENT | INSTRUCTIONS | STATUS | COMMENT | SCREENSHOT`
 │     ☑ Quest      ☑ Knowledge   ☑ Item            │
 │     ☑ Region     ☑ System      ☑ Character       │
 │     ☑ Skill      ☑ Help        ☑ Gimmick         │
+│     ☑ Contents                                   │
 │     [Select All] [Deselect] [Generate Selected]  │
 ├──────────────────────────────────────────────────┤
 │  2. Transfer QA Files                            │
@@ -277,10 +280,57 @@ Contents Excel layout: `CONTENT | INSTRUCTIONS | STATUS | COMMENT | SCREENSHOT`
 │     Calculate coverage + word counts             │
 │     [Run Coverage Analysis]                      │
 ├──────────────────────────────────────────────────┤
+│  5. System Sheet Localizer                       │
+│     Create localized System versions             │
+│     [Localize System Sheet]                      │
+├──────────────────────────────────────────────────┤
+│  6. Update Tracker Only                          │
+│     Retroactive tracker updates from             │
+│     TrackerUpdateFolder (no master rebuild)      │
+│     Set Date: [YYYY-MM-DD] [Set File Dates...]   │
+│     [Update Tracker]                             │
+├──────────────────────────────────────────────────┤
 │  Status: Ready                                   │
 │  [═══════════════════════════════════════]       │
 └──────────────────────────────────────────────────┘
 ```
+
+## TrackerUpdateFolder (Retroactive Tracker Updates)
+
+Update tracker without rebuilding master files. Useful for adding missing days.
+
+### Folder Structure
+```
+TrackerUpdateFolder/
+├── QAfolder/              # Tester QA files (for tester stats)
+│   └── Username_Category/
+│       └── file.xlsx
+├── Masterfolder_EN/       # English masters (for manager stats)
+│   └── Master_Quest.xlsx
+└── Masterfolder_CN/       # Chinese masters (for manager stats)
+    └── Master_Item.xlsx
+```
+
+### Stats Tracked
+| Source | Stats |
+|--------|-------|
+| QAfolder | ISSUE, NO ISSUE, BLOCKED, KOREAN, word count |
+| Masterfolder_EN/CN | FIXED, REPORTED, CHECKING, NON-ISSUE |
+
+### Workflow
+1. Copy QA files to `TrackerUpdateFolder/QAfolder/`
+2. Copy Master files to `TrackerUpdateFolder/Masterfolder_EN/` or `Masterfolder_CN/`
+3. (Optional) Set file dates via GUI → `Set File Dates...` button (select folder)
+4. Click `Update Tracker` → uses file mtime as tracker date
+
+**File date = tracker date.** Uses `os.utime()` (cross-platform).
+
+### CLI
+```bash
+python main.py --update-tracker
+```
+
+---
 
 ## Output Structure
 
@@ -428,7 +478,62 @@ Coverage and word count read from these columns (1-based):
 python coverage.py
 ```
 
-## Building Executable
+## CI/CD - GitHub Actions Build
+
+**IMPORTANT:** QACompiler has its OWN GitHub Actions workflow, separate from LocaNext!
+
+### Two Workflows in LocalizationTools Repo
+
+| Workflow | Trigger File | What It Builds | Output |
+|----------|--------------|----------------|--------|
+| **LocaNext** | `BUILD_TRIGGER.txt` | Electron desktop app | `.exe` installer |
+| **QACompiler** | `QACOMPILER_BUILD.txt` | PyInstaller exe + Inno Setup | Setup + Portable + Source |
+
+### How to Trigger QACompiler Build
+
+```bash
+# 1. Add "Build" to trigger file
+echo "Build" >> QACOMPILER_BUILD.txt
+
+# 2. Commit and push
+git add QACOMPILER_BUILD.txt
+git commit -m "Trigger QACompiler build"
+git push origin main
+
+# 3. Check GitHub Actions for build progress
+```
+
+### Workflow File
+
+**Location:** `.github/workflows/qacompiler-build.yml`
+
+**Triggers:**
+- Push to `QACOMPILER_BUILD.txt` containing "Build" line
+- Manual dispatch via GitHub Actions UI (workflow_dispatch)
+
+**Build Steps:**
+1. Setup Python 3.10 on Windows
+2. Install dependencies from `requirements.txt`
+3. Inject auto-generated version (YY.MMDD.HHMM format)
+4. Build with PyInstaller
+5. Create working folders (QAfolder, Masterfolder_EN, etc.)
+6. Build Inno Setup installer
+7. Create portable ZIP
+8. Create source ZIP
+9. Upload to GitHub Releases
+
+**Output Artifacts (GitHub Releases):**
+- `QACompiler_vX.X.X_Setup.exe` - Inno Setup installer (recommended)
+- `QACompiler_vX.X.X_Portable.zip` - Portable version (no install needed)
+- `QACompiler_vX.X.X_Source.zip` - Source code snapshot
+
+**Version Format:** `YY.MMDD.HHMM` (auto-generated, Korean Standard Time)
+
+Example: `26.0119.1430` = January 19, 2026 at 14:30 KST
+
+---
+
+## Building Executable (Local)
 
 ### Using `build_exe.bat`
 
