@@ -145,20 +145,49 @@ def update_daily_data_sheet(
         ws.cell(row, 13, entry.get("word_count", 0))     # WordCount
         ws.cell(row, 14, entry.get("korean", 0))         # Korean
 
-    # Also update manager stats for existing rows that weren't in daily_entries
+    # Also update/create rows for manager stats
     # This handles the case where we're only updating manager stats (no QA folders)
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+
     for category, users in manager_stats.items():
         for user, stats in users.items():
-            # Find existing rows for this user/category and update manager columns
+            # Check if ANY row exists for this user/category (any date)
+            found_row = None
+            latest_date = None
             for row in range(2, ws.max_row + 1):
                 row_user = ws.cell(row, 2).value
                 row_category = ws.cell(row, 3).value
+                row_date = ws.cell(row, 1).value
                 if row_user == user and row_category == category:
-                    # Update manager stats columns only
-                    ws.cell(row, 9, stats["fixed"])      # Fixed
-                    ws.cell(row, 10, stats["reported"])  # Reported
-                    ws.cell(row, 11, stats["checking"])  # Checking
-                    ws.cell(row, 12, stats["nonissue"])  # NonIssue
+                    # Keep track of the latest date row for this user/category
+                    if latest_date is None or str(row_date) > str(latest_date):
+                        latest_date = row_date
+                        found_row = row
+
+            if found_row:
+                # Update existing row's manager stats
+                ws.cell(found_row, 9, stats["fixed"])      # Fixed
+                ws.cell(found_row, 10, stats["reported"])  # Reported
+                ws.cell(found_row, 11, stats["checking"])  # Checking
+                ws.cell(found_row, 12, stats["nonissue"])  # NonIssue
+            else:
+                # No existing row - create new row with manager stats only
+                new_row = ws.max_row + 1
+                ws.cell(new_row, 1, today)                 # Date (today)
+                ws.cell(new_row, 2, user)                  # User
+                ws.cell(new_row, 3, category)              # Category
+                ws.cell(new_row, 4, 0)                     # TotalRows
+                ws.cell(new_row, 5, 0)                     # Done
+                ws.cell(new_row, 6, 0)                     # Issues
+                ws.cell(new_row, 7, 0)                     # NoIssue
+                ws.cell(new_row, 8, 0)                     # Blocked
+                ws.cell(new_row, 9, stats["fixed"])        # Fixed
+                ws.cell(new_row, 10, stats["reported"])    # Reported
+                ws.cell(new_row, 11, stats["checking"])    # Checking
+                ws.cell(new_row, 12, stats["nonissue"])    # NonIssue
+                ws.cell(new_row, 13, 0)                    # WordCount
+                ws.cell(new_row, 14, 0)                    # Korean
 
 
 def read_daily_data(wb: openpyxl.Workbook) -> Dict:

@@ -358,11 +358,12 @@ def aggregate_manager_stats(master_files: List[Dict], tester_mapping: Dict) -> T
 
     Returns:
         Tuple of:
-        - manager_stats: {category: {user: {fixed, reported, checking, nonissue}}}
+        - manager_stats: {category: {user: {fixed, reported, checking, nonissue, lang}}}
         - manager_dates: {(category, user): file_date}
     """
+    # Match compiler.py structure exactly
     manager_stats = defaultdict(lambda: defaultdict(
-        lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}
+        lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}
     ))
     manager_dates = {}
 
@@ -374,10 +375,17 @@ def aggregate_manager_stats(master_files: List[Dict], tester_mapping: Dict) -> T
         for username, stats in result["user_stats"].items():
             for key in ["fixed", "reported", "checking", "nonissue"]:
                 manager_stats[category][username][key] += stats[key]
+            # Set lang from tester mapping (match compiler.py line 269)
+            manager_stats[category][username]["lang"] = tester_mapping.get(username, "EN")
             # Track date for this user/category combo
             manager_dates[(category, username)] = file_date
 
-    return dict(manager_stats), manager_dates
+    # Convert nested defaultdicts to regular dicts (match compiler.py return)
+    result_stats = {}
+    for category, users in manager_stats.items():
+        result_stats[category] = dict(users)
+
+    return result_stats, manager_dates
 
 
 # =============================================================================
