@@ -155,7 +155,27 @@ def update_daily_data_sheet(
     from datetime import datetime
     today = datetime.now().strftime("%Y-%m-%d")
 
+    # Build index of existing rows: (user, category) -> {row, date}
+    # This is needed because max_row may not update correctly after cell writes
+    existing_user_cat = {}
+    actual_max_row = 1  # Track actual max row ourselves (headers = row 1)
+    for row in range(2, ws.max_row + 1):
+        row_user = ws.cell(row, 2).value
+        row_category = ws.cell(row, 3).value
+        row_date = ws.cell(row, 1).value
+        if row_user and row_category:
+            key = (row_user, row_category)
+            # Keep the latest date row for each user/category combo
+            if key not in existing_user_cat or str(row_date) > str(existing_user_cat[key]["date"]):
+                existing_user_cat[key] = {"row": row, "date": row_date}
+            actual_max_row = max(actual_max_row, row)
+
     print(f"    Writing manager stats: {len(manager_stats)} categories")
+    print(f"    Existing rows in _DAILY_DATA: {actual_max_row} (indexed {len(existing_user_cat)} user/category pairs)")
+
+    rows_updated = 0
+    rows_created = 0
+
     for category, users in manager_stats.items():
         print(f"      Category {category}: {len(users)} users")
         for user, stats in users.items():
@@ -163,28 +183,19 @@ def update_daily_data_sheet(
             file_date = manager_dates.get((category, user), today)
             print(f"        {user}: fixed={stats.get('fixed',0)}, reported={stats.get('reported',0)}, date={file_date}")
 
-            # Check if ANY row exists for this user/category (any date)
-            found_row = None
-            latest_date = None
-            for row in range(2, ws.max_row + 1):
-                row_user = ws.cell(row, 2).value
-                row_category = ws.cell(row, 3).value
-                row_date = ws.cell(row, 1).value
-                if row_user == user and row_category == category:
-                    # Keep track of the latest date row for this user/category
-                    if latest_date is None or str(row_date) > str(latest_date):
-                        latest_date = row_date
-                        found_row = row
-
-            if found_row:
+            key = (user, category)
+            if key in existing_user_cat:
                 # Update existing row's manager stats
+                found_row = existing_user_cat[key]["row"]
                 ws.cell(found_row, 9, stats["fixed"])      # Fixed
                 ws.cell(found_row, 10, stats["reported"])  # Reported
                 ws.cell(found_row, 11, stats["checking"])  # Checking
                 ws.cell(found_row, 12, stats["nonissue"])  # NonIssue
+                rows_updated += 1
             else:
                 # No existing row - create new row with manager stats only
-                new_row = ws.max_row + 1
+                actual_max_row += 1  # Increment our tracked max row
+                new_row = actual_max_row
                 ws.cell(new_row, 1, file_date)             # Date (from file mtime, not today!)
                 ws.cell(new_row, 2, user)                  # User
                 ws.cell(new_row, 3, category)              # Category
@@ -199,6 +210,11 @@ def update_daily_data_sheet(
                 ws.cell(new_row, 12, stats["nonissue"])    # NonIssue
                 ws.cell(new_row, 13, 0)                    # WordCount
                 ws.cell(new_row, 14, 0)                    # Korean
+                # Add to index so duplicates in same batch don't overwrite
+                existing_user_cat[key] = {"row": new_row, "date": file_date}
+                rows_created += 1
+
+    print(f"    Manager stats write complete: {rows_updated} updated, {rows_created} created")
 
 
 def read_daily_data(wb: openpyxl.Workbook) -> Dict:
