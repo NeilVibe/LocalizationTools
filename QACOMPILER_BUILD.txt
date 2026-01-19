@@ -24,3 +24,4 @@ Build
 Build - add TrackerUpdateFolder
 Build - all outputs with TrackerUpdateFolder
 Build - fix category mismatch in tracker-only update
+Build - Set File Dates now updates folders too
