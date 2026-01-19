@@ -26,3 +26,4 @@ Build - all outputs with TrackerUpdateFolder
 Build - fix category mismatch in tracker-only update
 Build - Set File Dates now updates folders too
 Build - fix date using file mtime not today
+Build - fix manager stats Excel write (track rows manually)
