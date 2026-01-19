@@ -150,8 +150,11 @@ def update_daily_data_sheet(
     from datetime import datetime
     today = datetime.now().strftime("%Y-%m-%d")
 
+    print(f"    Writing manager stats: {len(manager_stats)} categories")
     for category, users in manager_stats.items():
+        print(f"      Category {category}: {len(users)} users")
         for user, stats in users.items():
+            print(f"        {user}: fixed={stats.get('fixed',0)}, reported={stats.get('reported',0)}")
             # Check if ANY row exists for this user/category (any date)
             found_row = None
             latest_date = None
