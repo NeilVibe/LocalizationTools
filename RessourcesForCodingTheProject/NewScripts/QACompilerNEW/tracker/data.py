@@ -258,9 +258,17 @@ def update_daily_data_sheet(
     print(f"  - Final actual_max_row: {actual_max_row}")
     print(f"  - ws.max_row after writes: {ws.max_row}")
 
-    print(f"\n[STEP 6] SAMPLE OF WRITTEN DATA:")
+    print(f"\n[STEP 6] SAMPLE OF WRITTEN DATA (first 5 rows):")
     for r in range(2, min(actual_max_row + 1, 7)):  # Show first 5 data rows
         print(f"  Row {r}: {[ws.cell(r, c).value for c in range(1, 15)]}")
+
+    print(f"\n[STEP 7] VERIFY SPECIFIC UPDATED ROWS (checking Fixed/Reported columns):")
+    # Show a few rows that were just updated/created
+    updated_sample_rows = list(existing_user_cat.items())[-5:]  # Last 5 updated rows
+    for (user, cat), info in updated_sample_rows:
+        row_num = info["row"]
+        row_data = [ws.cell(row_num, c).value for c in range(1, 15)]
+        print(f"  Row {row_num} ({user}/{cat}): Fixed={row_data[8]}, Reported={row_data[9]}, Full={row_data}")
 
     print("="*70 + "\n")
 
