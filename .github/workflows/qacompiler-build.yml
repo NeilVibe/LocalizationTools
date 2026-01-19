@@ -211,6 +211,22 @@ jobs:
           Get-ChildItem -Path $sourcePath -Exclude $excludes | Copy-Item -Destination $tempDir -Recurse -Force
           Get-ChildItem -Path $tempDir -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
+          # Create working folders in source bundle (with .gitkeep)
+          $sourceFolders = @(
+            "QAfolder", "QAfolderOLD", "QAfolderNEW", "GeneratedDatasheets",
+            "Masterfolder_EN", "Masterfolder_EN\Images",
+            "Masterfolder_CN", "Masterfolder_CN\Images",
+            "TrackerUpdateFolder",
+            "TrackerUpdateFolder\QAfolder",
+            "TrackerUpdateFolder\Masterfolder_EN",
+            "TrackerUpdateFolder\Masterfolder_CN"
+          )
+          foreach ($folder in $sourceFolders) {
+            $path = "$tempDir\$folder"
+            New-Item -ItemType Directory -Path $path -Force | Out-Null
+            New-Item -ItemType File -Path "$path\.gitkeep" -Force | Out-Null
+          }
+
           Compress-Archive -Path "$tempDir\*" -DestinationPath $zipPath -Force
           Remove-Item -Path $tempDir -Recurse -Force
 
