@@ -153,7 +153,11 @@ jobs:
           $folders = @(
             "QAfolder", "QAfolderOLD", "QAfolderNEW", "GeneratedDatasheets",
             "Masterfolder_EN", "Masterfolder_EN\Images",
-            "Masterfolder_CN", "Masterfolder_CN\Images"
+            "Masterfolder_CN", "Masterfolder_CN\Images",
+            "TrackerUpdateFolder",
+            "TrackerUpdateFolder\QAfolder",
+            "TrackerUpdateFolder\Masterfolder_EN",
+            "TrackerUpdateFolder\Masterfolder_CN"
           )
 
           foreach ($folder in $folders) {
