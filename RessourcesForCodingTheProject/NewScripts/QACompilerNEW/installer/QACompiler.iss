@@ -84,6 +84,7 @@ Source: "..\dist\QACompiler\QAfolderNEW\*"; DestDir: "{app}\QAfolderNEW"; Flags:
 Source: "..\dist\QACompiler\GeneratedDatasheets\*"; DestDir: "{app}\GeneratedDatasheets"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "..\dist\QACompiler\Masterfolder_EN\*"; DestDir: "{app}\Masterfolder_EN"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "..\dist\QACompiler\Masterfolder_CN\*"; DestDir: "{app}\Masterfolder_CN"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\dist\QACompiler\TrackerUpdateFolder\*"; DestDir: "{app}\TrackerUpdateFolder"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 ; Tester list configuration
 Source: "..\languageTOtester_list.example.txt"; DestDir: "{app}"; Flags: ignoreversion
@@ -108,6 +109,10 @@ Name: "{app}\Masterfolder_EN"
 Name: "{app}\Masterfolder_EN\Images"
 Name: "{app}\Masterfolder_CN"
 Name: "{app}\Masterfolder_CN\Images"
+Name: "{app}\TrackerUpdateFolder"
+Name: "{app}\TrackerUpdateFolder\QAfolder"
+Name: "{app}\TrackerUpdateFolder\Masterfolder_EN"
+Name: "{app}\TrackerUpdateFolder\Masterfolder_CN"
 
 [Icons]
 ; Start Menu

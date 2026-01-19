@@ -332,6 +332,33 @@ git push origin main
 
 **Version Format:** `YY.MMDD.HHMM` (auto-generated, Korean time)
 
+### Adding New Folders to Build
+
+When adding new working folders, update **THREE places**:
+
+1. **Workflow** (`.github/workflows/qacompiler-build.yml`):
+   ```powershell
+   $folders = @(
+     "QAfolder",
+     "TrackerUpdateFolder",
+     "TrackerUpdateFolder\QAfolder",  # Subfolders too!
+     ...
+   )
+   # Workflow creates .gitkeep files to preserve empty folders in ZIP
+   ```
+
+2. **Inno Setup** (`installer/QACompiler.iss`):
+   ```ini
+   ; [Files] section - copy from dist
+   Source: "..\dist\QACompiler\TrackerUpdateFolder\*"; DestDir: "{app}\TrackerUpdateFolder"; Flags: ... skipifsourcedoesntexist
+
+   ; [Dirs] section - create if not exists
+   Name: "{app}\TrackerUpdateFolder"
+   Name: "{app}\TrackerUpdateFolder\QAfolder"
+   ```
+
+3. **config.py** - `ensure_folders_exist()` for runtime creation
+
 ### Local Build (Alternative)
 
 ```bash
