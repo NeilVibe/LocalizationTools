@@ -59,7 +59,10 @@ QACompilerNEW/
 ├── QAfolder/                  # Active tester work
 ├── QAfolderOLD/               # Previous round
 ├── QAfolderNEW/               # Current round (for merging)
-├── QAFolderForTracker/        # Retroactive tracker updates (set file mtime!)
+├── TrackerUpdateFolder/       # Retroactive tracker updates
+│   ├── QAfolder/              # Tester QA files (for tester stats)
+│   ├── Masterfolder_EN/       # English masters (for manager stats)
+│   └── Masterfolder_CN/       # Chinese masters (for manager stats)
 ├── Masterfolder_EN/           # English output
 └── Masterfolder_CN/           # Chinese output
 ```
@@ -147,17 +150,33 @@ CATEGORY_TO_MASTER = {
 
 **Retroactively add missing days to tracker WITHOUT rebuilding master files.**
 
+```
+TrackerUpdateFolder/
+├── QAfolder/           # Tester stats (ISSUE, NO ISSUE, BLOCKED, KOREAN)
+│   └── Username_Category/
+│       └── file.xlsx
+├── Masterfolder_EN/    # Manager stats (FIXED, REPORTED, CHECKING, NON-ISSUE)
+│   └── Master_Quest.xlsx
+└── Masterfolder_CN/    # Manager stats (Chinese masters)
+    └── Master_Item.xlsx
+```
+
 ```bash
 # CLI
 python main.py --update-tracker
 
 # Workflow
-1. Copy QA files to QAFolderForTracker/
-2. (Optional) Set file dates via GUI "Set File Dates" button
-3. Run "Update Tracker" - uses file mtime as tracker date
+1. Copy QA files to TrackerUpdateFolder/QAfolder/
+2. Copy Master files to TrackerUpdateFolder/Masterfolder_EN/ or CN/
+3. (Optional) Set file dates via GUI "Set File Dates..." button (select folder)
+4. Run "Update Tracker" - uses file mtime as tracker date
 ```
 
 **File date = tracker date.** Uses `os.utime()` (cross-platform).
+
+**Stats tracked:**
+- Tester: ISSUE, NO ISSUE, BLOCKED, KOREAN, word count
+- Manager: FIXED, REPORTED, CHECKING, NON-ISSUE (from STATUS_{Username} columns)
 
 ## Common Tasks
 
@@ -244,7 +263,15 @@ logger.warning(f"GDP-003: Matched {matched} / {total}")
 | Config/paths | `config.py` | - |
 | GUI | `gui/app.py` | - |
 
-## Recent Features (Session 55)
+## Recent Features (Session 56)
+
+| Feature | Description | Files |
+|---------|-------------|-------|
+| Unified TrackerUpdateFolder | QAfolder + Masterfolder_EN/CN subfolders | `config.py` |
+| Manager stats tracking | FIXED/REPORTED/CHECKING/NON-ISSUE from masters | `core/tracker_update.py` |
+| Folder picker for dates | GUI folder selection for Set File Dates | `gui/app.py` |
+
+## Session 55 Features
 
 | Feature | Description | Files |
 |---------|-------------|-------|
