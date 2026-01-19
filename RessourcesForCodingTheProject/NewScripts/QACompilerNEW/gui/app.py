@@ -14,7 +14,11 @@ import threading
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import CATEGORIES, ensure_folders_exist
+from config import (
+    CATEGORIES, ensure_folders_exist,
+    TRACKER_UPDATE_FOLDER, TRACKER_UPDATE_QA,
+    TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN
+)
 
 
 # =============================================================================
@@ -168,8 +172,8 @@ class QACompilerSuiteGUI:
 
         tracker_desc = ttk.Label(
             section6_frame,
-            text="Retroactively add missing days to tracker from QAFolderForTracker.\n"
-                 "Optionally set file dates before updating."
+            text="Retroactively add missing days to tracker from TrackerUpdateFolder.\n"
+                 "Place QA files in QAfolder/, Master files in Masterfolder_EN/ or Masterfolder_CN/"
         )
         tracker_desc.pack(pady=5)
 
@@ -184,13 +188,13 @@ class QACompilerSuiteGUI:
 
         set_date_btn = ttk.Button(
             date_frame,
-            text="Set File Dates",
+            text="Set File Dates...",
             command=self._do_set_file_dates,
             width=15
         )
         set_date_btn.pack(side="left", padx=5)
 
-        ttk.Label(date_frame, text="(Leave empty to use existing dates)").pack(side="left", padx=5)
+        ttk.Label(date_frame, text="(Select folder to update)").pack(side="left", padx=5)
 
         tracker_btn = ttk.Button(
             section6_frame,
@@ -544,7 +548,10 @@ class QACompilerSuiteGUI:
         messagebox.showerror("Error", f"System localization failed:\n{error_msg}")
 
     def _do_set_file_dates(self):
-        """Set LastWriteTime on all xlsx files in QAFolderForTracker."""
+        """Set LastWriteTime on all xlsx files in a selected folder."""
+        from tkinter import filedialog
+        import os
+
         date_str = self.tracker_date_var.get().strip()
 
         if not date_str:
@@ -560,19 +567,30 @@ class QACompilerSuiteGUI:
             messagebox.showerror("Invalid Date", f"Invalid date format: {date_str}\nUse YYYY-MM-DD (e.g., 2025-01-18)")
             return
 
-        # Find all xlsx files in QAFolderForTracker
-        from config import QA_FOLDER_FOR_TRACKER
-        import os
+        # Ensure TrackerUpdateFolder exists
+        TRACKER_UPDATE_FOLDER.mkdir(parents=True, exist_ok=True)
+        TRACKER_UPDATE_QA.mkdir(parents=True, exist_ok=True)
+        TRACKER_UPDATE_MASTER_EN.mkdir(parents=True, exist_ok=True)
+        TRACKER_UPDATE_MASTER_CN.mkdir(parents=True, exist_ok=True)
 
-        if not QA_FOLDER_FOR_TRACKER.exists():
-            messagebox.showwarning("Folder Missing", f"QAFolderForTracker not found:\n{QA_FOLDER_FOR_TRACKER}")
-            return
+        # Ask user to select folder
+        selected_folder = filedialog.askdirectory(
+            title="Select Folder to Set File Dates",
+            initialdir=str(TRACKER_UPDATE_FOLDER),
+            mustexist=True
+        )
 
-        xlsx_files = list(QA_FOLDER_FOR_TRACKER.rglob("*.xlsx"))
+        if not selected_folder:
+            return  # User cancelled
+
+        selected_path = Path(selected_folder)
+
+        # Find all xlsx files (recursively)
+        xlsx_files = list(selected_path.rglob("*.xlsx"))
         xlsx_files = [f for f in xlsx_files if not f.name.startswith("~")]
 
         if not xlsx_files:
-            messagebox.showwarning("No Files", "No xlsx files found in QAFolderForTracker")
+            messagebox.showwarning("No Files", f"No xlsx files found in:\n{selected_path}")
             return
 
         # Set mtime on all files
@@ -585,7 +603,7 @@ class QACompilerSuiteGUI:
                 print(f"  WARN: Could not set date on {xlsx_path.name}: {e}")
 
         self._set_status(f"Set date to {date_str} on {count} files")
-        messagebox.showinfo("Done", f"Set LastWriteTime to {date_str} on {count} file(s)")
+        messagebox.showinfo("Done", f"Set LastWriteTime to {date_str} on {count} file(s)\n\nFolder: {selected_path.name}")
 
     def _do_update_tracker(self):
         """Update tracker from QAFolderForTracker without rebuilding masters."""
