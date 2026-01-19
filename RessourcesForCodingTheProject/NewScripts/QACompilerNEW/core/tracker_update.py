@@ -31,8 +31,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
     TRACKER_UPDATE_FOLDER, TRACKER_UPDATE_QA,
     TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN,
-    CATEGORIES, TRANSLATION_COLS, CATEGORY_TO_MASTER,
-    load_tester_mapping, get_target_master_category
+    CATEGORIES, TRANSLATION_COLS,
+    load_tester_mapping
 )
 from core.discovery import IMAGE_EXTENSIONS
 from core.excel_ops import safe_load_workbook, find_column_by_header
@@ -253,12 +253,13 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
     """
     Aggregate manager stats from TrackerUpdateFolder master files.
 
-    IMPORTANT: Uses the same iteration pattern as compiler.py to ensure
-    category names match what's stored in _DAILY_DATA sheet.
+    Logic:
+    1. Scan Master_*.xlsx files directly
+    2. Extract category from filename (Master_System.xlsx → "System")
+    3. Find users via COMMENT_{User} or STATUS_{User} columns
+    4. Store stats under that master file's category
 
-    - Iterates over CATEGORIES (Skill, Help, Gimmick, Quest, etc.)
-    - Uses get_target_master_category() to find the master file
-    - Stores stats under the ORIGINAL category name (not the master file name)
+    This avoids duplicate counting when multiple categories map to same master.
 
     Returns:
         Tuple of:
@@ -270,23 +271,25 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
     ))
     manager_dates = {}
 
-    # Scan both EN and CN folders - SAME pattern as compiler.py line 228-274
+    # Scan both EN and CN folders
     for master_folder in [TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN]:
         if not master_folder.exists():
             master_folder.mkdir(parents=True, exist_ok=True)
             continue
 
-        for category in CATEGORIES:
-            # Map original category to master file name (e.g., Skill -> System)
-            target_category = get_target_master_category(category)
-            master_path = master_folder / f"Master_{target_category}.xlsx"
-
-            if not master_path.exists():
+        # Scan actual master files (not iterate over CATEGORIES)
+        for master_path in master_folder.glob("Master_*.xlsx"):
+            if master_path.name.startswith("~"):
                 continue
+
+            # Extract category from filename: Master_System.xlsx → "System"
+            category = master_path.stem.replace("Master_", "")
 
             # Get file date from mtime
             file_mtime = master_path.stat().st_mtime
             file_date = datetime.fromtimestamp(file_mtime).strftime("%Y-%m-%d")
+
+            print(f"    Reading {master_path.name} → category={category}")
 
             try:
                 wb = safe_load_workbook(master_path)
@@ -297,12 +300,25 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
 
                     ws = wb[sheet_name]
 
-                    # Find all STATUS_{User} columns
+                    # Find all users via COMMENT_{User} or STATUS_{User} columns
+                    # COMMENT_{User} tells us who worked on this file
+                    users_in_file = set()
                     status_cols = {}
+
                     for col in range(1, ws.max_column + 1):
                         header = ws.cell(row=1, column=col).value
-                        if header and str(header).startswith("STATUS_"):
-                            username = str(header).replace("STATUS_", "")
+                        if not header:
+                            continue
+                        header_str = str(header)
+
+                        # Find users from COMMENT_{User} columns
+                        if header_str.startswith("COMMENT_"):
+                            username = header_str.replace("COMMENT_", "")
+                            users_in_file.add(username)
+
+                        # Find STATUS_{User} columns for counting
+                        if header_str.startswith("STATUS_"):
+                            username = header_str.replace("STATUS_", "")
                             status_cols[username] = col
 
                     if not status_cols:
@@ -315,7 +331,6 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                             if value:
                                 status_upper = str(value).strip().upper()
                                 if status_upper == "FIXED":
-                                    # Store under ORIGINAL category (e.g., "Skill"), not target ("System")
                                     manager_stats[category][username]["fixed"] += 1
                                 elif status_upper == "REPORTED":
                                     manager_stats[category][username]["reported"] += 1
@@ -323,10 +338,11 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                                     manager_stats[category][username]["checking"] += 1
                                 elif status_upper in ("NON-ISSUE", "NON ISSUE"):
                                     manager_stats[category][username]["nonissue"] += 1
-                            # Always set lang (match compiler.py line 269)
-                            manager_stats[category][username]["lang"] = tester_mapping.get(username, "EN")
-                            # Track date
-                            manager_dates[(category, username)] = file_date
+
+                    # Set lang and date for all users found in this file
+                    for username in status_cols.keys():
+                        manager_stats[category][username]["lang"] = tester_mapping.get(username, "EN")
+                        manager_dates[(category, username)] = file_date
 
                 wb.close()
 
