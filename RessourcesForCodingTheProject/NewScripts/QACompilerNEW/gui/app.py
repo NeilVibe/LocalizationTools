@@ -169,9 +169,28 @@ class QACompilerSuiteGUI:
         tracker_desc = ttk.Label(
             section6_frame,
             text="Retroactively add missing days to tracker from QAFolderForTracker.\n"
-                 "Set file mtime to target date: touch -d '2025-01-18' QAFolderForTracker/*/*.xlsx"
+                 "Optionally set file dates before updating."
         )
         tracker_desc.pack(pady=5)
+
+        # Date picker row
+        date_frame = ttk.Frame(section6_frame)
+        date_frame.pack(fill="x", pady=5)
+
+        ttk.Label(date_frame, text="Set Date (YYYY-MM-DD):").pack(side="left", padx=5)
+        self.tracker_date_var = tk.StringVar(value="")
+        date_entry = ttk.Entry(date_frame, textvariable=self.tracker_date_var, width=15)
+        date_entry.pack(side="left", padx=5)
+
+        set_date_btn = ttk.Button(
+            date_frame,
+            text="Set File Dates",
+            command=self._do_set_file_dates,
+            width=15
+        )
+        set_date_btn.pack(side="left", padx=5)
+
+        ttk.Label(date_frame, text="(Leave empty to use existing dates)").pack(side="left", padx=5)
 
         tracker_btn = ttk.Button(
             section6_frame,
@@ -523,6 +542,50 @@ class QACompilerSuiteGUI:
         self._stop_progress()
         self._set_status("Localization failed - check console")
         messagebox.showerror("Error", f"System localization failed:\n{error_msg}")
+
+    def _do_set_file_dates(self):
+        """Set LastWriteTime on all xlsx files in QAFolderForTracker."""
+        date_str = self.tracker_date_var.get().strip()
+
+        if not date_str:
+            messagebox.showwarning("No Date", "Please enter a date (YYYY-MM-DD)")
+            return
+
+        # Validate date format
+        try:
+            from datetime import datetime
+            target_date = datetime.strptime(date_str, "%Y-%m-%d")
+            target_timestamp = target_date.timestamp()
+        except ValueError:
+            messagebox.showerror("Invalid Date", f"Invalid date format: {date_str}\nUse YYYY-MM-DD (e.g., 2025-01-18)")
+            return
+
+        # Find all xlsx files in QAFolderForTracker
+        from config import QA_FOLDER_FOR_TRACKER
+        import os
+
+        if not QA_FOLDER_FOR_TRACKER.exists():
+            messagebox.showwarning("Folder Missing", f"QAFolderForTracker not found:\n{QA_FOLDER_FOR_TRACKER}")
+            return
+
+        xlsx_files = list(QA_FOLDER_FOR_TRACKER.rglob("*.xlsx"))
+        xlsx_files = [f for f in xlsx_files if not f.name.startswith("~")]
+
+        if not xlsx_files:
+            messagebox.showwarning("No Files", "No xlsx files found in QAFolderForTracker")
+            return
+
+        # Set mtime on all files
+        count = 0
+        for xlsx_path in xlsx_files:
+            try:
+                os.utime(xlsx_path, (target_timestamp, target_timestamp))
+                count += 1
+            except Exception as e:
+                print(f"  WARN: Could not set date on {xlsx_path.name}: {e}")
+
+        self._set_status(f"Set date to {date_str} on {count} files")
+        messagebox.showinfo("Done", f"Set LastWriteTime to {date_str} on {count} file(s)")
 
     def _do_update_tracker(self):
         """Update tracker from QAFolderForTracker without rebuilding masters."""
