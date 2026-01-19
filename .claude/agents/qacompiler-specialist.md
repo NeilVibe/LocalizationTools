@@ -30,9 +30,11 @@ QACompilerNEW/
 ├── core/                      # Compiler pipeline
 │   ├── discovery.py          # Find valid tester folders
 │   ├── excel_ops.py          # Workbook operations
-│   ├── processing.py         # Row matching, string normalization
+│   ├── matching.py           # Content-based row matching (shared logic)
+│   ├── processing.py         # Sheet processing, user columns
 │   ├── transfer.py           # OLD+NEW merge logic
 │   ├── populate_new.py       # Auto-populate QAfolderNEW
+│   ├── tracker_update.py     # Tracker-only update (no master rebuild)
 │   └── compiler.py           # Main orchestration
 │
 ├── generators/                # 8 datasheet generators
@@ -57,6 +59,7 @@ QACompilerNEW/
 ├── QAfolder/                  # Active tester work
 ├── QAfolderOLD/               # Previous round
 ├── QAfolderNEW/               # Current round (for merging)
+├── QAFolderForTracker/        # Retroactive tracker updates (set file mtime!)
 ├── Masterfolder_EN/           # English output
 └── Masterfolder_CN/           # Chinese output
 ```
@@ -76,8 +79,20 @@ QACompilerNEW/
 ```
 1. GENERATE    Game XML → GeneratedDatasheets/*.xlsx
 2. TRANSFER    QAfolderOLD + GeneratedDatasheets → QAfolderNEW
-3. BUILD       QAfolder → Masterfolder_EN/CN
+3. BUILD       QAfolder → Masterfolder_EN/CN (content-based matching)
 4. TRACK       Master files → _TRACKER.xlsx (DAILY + TOTAL)
+5. TRACKER-ONLY (optional)  QAFolderForTracker → _TRACKER.xlsx (no master rebuild)
+```
+
+## GUI Sections
+
+```
+1. Generate Datasheets       - Select categories, generate from XML
+2. Transfer QA Files         - Merge OLD + NEW
+3. Build Master Files        - Compile to Masterfolder_EN/CN
+4. Coverage Analysis         - Calculate coverage %
+5. System Sheet Localizer    - Create localized System versions
+6. Update Tracker Only       - Retroactive tracker updates + Set File Dates
 ```
 
 ## Key Config (config.py)
@@ -88,14 +103,14 @@ RESOURCE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\StaticInfo")
 LANGUAGE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
 EXPORT_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
 
-# Categories
-CATEGORIES = ["Quest", "Knowledge", "Item", "Region", "System", "Character", "Skill", "Help", "Gimmick"]
+# Categories (10 total)
+CATEGORIES = ["Quest", "Knowledge", "Item", "Region", "System", "Character", "Skill", "Help", "Gimmick", "Contents"]
 
-# Category clustering
-CLUSTERING = {
-    "Skill": "System",
-    "Gimmick": "Item",
-    "Help": "Knowledge"
+# Category clustering (multiple categories → one master file)
+CATEGORY_TO_MASTER = {
+    "Skill": "System",   # Skill sheets → Master_System.xlsx
+    "Help": "System",    # Help sheets → Master_System.xlsx
+    "Gimmick": "Item",   # Gimmick sheets → Master_Item.xlsx
 }
 ```
 
@@ -112,6 +127,37 @@ CLUSTERING = {
 ❌ quest_김민영     (wrong order)
 ❌ 김민영_quest     (lowercase)
 ```
+
+## Content-Based Matching (core/matching.py)
+
+**Robust row matching for master build - handles mixed old/new structure files.**
+
+| Category | Primary Match | Fallback |
+|----------|---------------|----------|
+| Standard (Quest, Knowledge, etc.) | STRINGID + Translation | Translation only |
+| Item | ItemName + ItemDesc + STRINGID | ItemName + ItemDesc |
+| Contents | INSTRUCTIONS (col 2) | none |
+
+**Key functions:**
+- `build_master_index()` - O(1) lookup index for master worksheet
+- `find_matching_row_in_master()` - 2-step cascade matching
+- `extract_qa_row_data()` - Extract matching keys from QA row
+
+## Tracker-Only Update (core/tracker_update.py)
+
+**Retroactively add missing days to tracker WITHOUT rebuilding master files.**
+
+```bash
+# CLI
+python main.py --update-tracker
+
+# Workflow
+1. Copy QA files to QAFolderForTracker/
+2. (Optional) Set file dates via GUI "Set File Dates" button
+3. Run "Update Tracker" - uses file mtime as tracker date
+```
+
+**File date = tracker date.** Uses `os.utime()` (cross-platform).
 
 ## Common Tasks
 
@@ -155,6 +201,8 @@ python -m py_compile config.py main.py core/*.py generators/*.py tracker/*.py
 
 # Import test
 python -c "from generators import generate_datasheets; print('OK')"
+python -c "from core.matching import build_master_index; print('OK')"
+python -c "from core.tracker_update import update_tracker_only; print('OK')"
 
 # Run specific generator
 python main.py --generate quest
@@ -162,8 +210,14 @@ python main.py --generate quest
 # Full pipeline
 python main.py --all
 
+# Tracker-only update (no master rebuild)
+python main.py --update-tracker
+
 # List categories
 python main.py --list
+
+# Launch GUI
+python main.py
 ```
 
 ## GDP Logging for QACompiler
@@ -182,13 +236,25 @@ logger.warning(f"GDP-003: Matched {matched} / {total}")
 | Task | Primary File | Secondary |
 |------|--------------|-----------|
 | Datasheet generation | `generators/*.py` | `base.py` |
-| Transfer/merge | `core/transfer.py` | `processing.py` |
-| Master building | `core/compiler.py` | `excel_ops.py` |
+| Transfer/merge | `core/transfer.py` | `matching.py` |
+| Master building | `core/compiler.py` | `matching.py`, `processing.py` |
+| Content-based matching | `core/matching.py` | `config.py` (TRANSLATION_COLS) |
+| Tracker-only update | `core/tracker_update.py` | `tracker/data.py` |
 | Coverage tracking | `tracker/coverage.py` | `total.py` |
 | Config/paths | `config.py` | - |
 | GUI | `gui/app.py` | - |
 
-## Recent Fixes (Session 49)
+## Recent Features (Session 55)
+
+| Feature | Description | Files |
+|---------|-------------|-------|
+| Content-based matching | Robust row matching by content, not index | `core/matching.py` |
+| Tracker-only update | Add missing days without master rebuild | `core/tracker_update.py` |
+| Set File Dates (GUI) | Set mtime for retroactive entries | `gui/app.py` Section 6 |
+| Contents category | INSTRUCTIONS-based matching | `config.py`, `matching.py` |
+| GUI 1000x1000 | Larger window to fit Section 6 | `gui/app.py` |
+
+## Previous Fixes (Session 49)
 
 | Issue | Fix | File |
 |-------|-----|------|
