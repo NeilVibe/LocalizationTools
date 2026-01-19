@@ -400,8 +400,10 @@ def process_category(
             sheet_manager_status = manager_status.get(sheet_name, {})
 
             # Process the sheet (creates user columns internally)
+            # Uses content-based matching for robust row matching
             result = process_sheet(
                 master_ws, qa_ws, username, category,
+                is_english=is_english,
                 image_mapping=image_mapping,
                 xlsx_path=xlsx_path,
                 manager_status=sheet_manager_status
@@ -413,6 +415,13 @@ def process_category(
                 user_stats[username][key] += stats.get(key, 0)
             user_stats[username]["total"] += stats.get("total", 0)
             total_screenshots += result.get("screenshots", 0)
+
+            # Log match stats for debugging (content-based matching)
+            match_stats = result.get("match_stats", {})
+            if match_stats.get("unmatched", 0) > 0:
+                print(f"      [WARN] {sheet_name}: {match_stats['exact']} exact, {match_stats['fallback']} fallback, {match_stats['unmatched']} UNMATCHED")
+            elif match_stats.get("fallback", 0) > 0:
+                print(f"      {sheet_name}: {match_stats['exact']} exact, {match_stats['fallback']} fallback")
 
             # Count words (EN) or characters (CN) from translation column
             # ONLY count rows where STATUS is filled (DONE rows)

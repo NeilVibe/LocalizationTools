@@ -28,6 +28,9 @@ from core.excel_ops import (
     add_manager_dropdown
 )
 from core.discovery import discover_qa_folders, group_folders_by_language
+from core.matching import (
+    build_master_index, find_matching_row_in_master, extract_qa_row_data
+)
 
 
 # =============================================================================
@@ -304,6 +307,7 @@ def process_sheet(
     qa_ws,
     username: str,
     category: str,
+    is_english: bool = True,
     image_mapping: Dict = None,
     xlsx_path: Path = None,
     manager_status: Dict = None
@@ -311,17 +315,26 @@ def process_sheet(
     """
     Process a single sheet: copy COMMENT and SCREENSHOT from QA to master.
 
+    Uses CONTENT-BASED MATCHING to find correct master row for each QA row.
+    This enables processing QA files with mixed old/new structure.
+
+    Matching Strategy:
+    - Standard (Quest, Knowledge, etc.): STRINGID + Translation, fallback to Translation only
+    - Item: ItemName + ItemDesc + STRINGID, fallback to ItemName + ItemDesc
+    - Contents: INSTRUCTIONS column
+
     Args:
         master_ws: Master worksheet
         qa_ws: QA worksheet
         username: User identifier
         category: Category name
+        is_english: Whether file is English (affects column selection)
         image_mapping: Dict mapping original_name -> new_name
         xlsx_path: Path to QA xlsx file (for modification time)
         manager_status: Dict for preserving manager status
 
     Returns:
-        Dict with {comments, screenshots, stats, manager_restored}
+        Dict with {comments, screenshots, stats, manager_restored, match_stats}
     """
     if image_mapping is None:
         image_mapping = {}
@@ -350,10 +363,14 @@ def process_sheet(
         "comments": 0,
         "screenshots": 0,
         "stats": {"issue": 0, "no_issue": 0, "blocked": 0, "korean": 0, "total": 0},
-        "manager_restored": 0
+        "manager_restored": 0,
+        "match_stats": {"exact": 0, "fallback": 0, "unmatched": 0}
     }
 
-    # Process each row by INDEX (master is fresh from QA, same structure)
+    # Build master index for O(1) content-based matching
+    master_index = build_master_index(master_ws, category, is_english)
+
+    # Process each row using CONTENT-BASED MATCHING
     for qa_row in range(2, qa_ws.max_row + 1):
         # Skip empty rows - check column 1 (first column always has data if row is valid)
         first_col_value = qa_ws.cell(row=qa_row, column=1).value
@@ -361,7 +378,23 @@ def process_sheet(
             continue
 
         result["stats"]["total"] += 1
-        master_row = qa_row  # Direct index matching (always works - fresh rebuild)
+
+        # Extract QA row data for matching
+        qa_row_data = extract_qa_row_data(qa_ws, qa_row, category, is_english)
+
+        # Find matching master row using content-based matching
+        master_row, match_type = find_matching_row_in_master(qa_row_data, master_index, category)
+
+        if master_row is None:
+            # No match found - log and skip
+            result["match_stats"]["unmatched"] += 1
+            continue
+
+        # Track match type
+        if match_type == "exact":
+            result["match_stats"]["exact"] += 1
+        else:
+            result["match_stats"]["fallback"] += 1
 
         # Get QA STATUS
         should_compile_comment = False

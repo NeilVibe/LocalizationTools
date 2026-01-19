@@ -26,6 +26,7 @@ else:
 QA_FOLDER = SCRIPT_DIR / "QAfolder"
 QA_FOLDER_OLD = SCRIPT_DIR / "QAfolderOLD"
 QA_FOLDER_NEW = SCRIPT_DIR / "QAfolderNEW"
+QA_FOLDER_FOR_TRACKER = SCRIPT_DIR / "QAFolderForTracker"  # For retroactive tracker updates
 
 # Output paths (EN/CN separation)
 MASTER_FOLDER_EN = SCRIPT_DIR / "Masterfolder_EN"
@@ -197,6 +198,7 @@ def ensure_folders_exist():
     """Create all required folders if they don't exist."""
     folders = [
         QA_FOLDER,
+        QA_FOLDER_FOR_TRACKER,
         MASTER_FOLDER_EN,
         MASTER_FOLDER_CN,
         IMAGES_FOLDER_EN,

@@ -25,31 +25,14 @@ from config import (
 from core.discovery import discover_qa_folders_in
 from core.excel_ops import safe_load_workbook, find_column_by_header
 
-
-# =============================================================================
-# STRINGID NORMALIZATION
-# =============================================================================
-
-def sanitize_stringid_for_match(value) -> str:
-    """
-    Normalize STRINGID for comparison during transfer.
-
-    Handles:
-    - None values
-    - INT vs STRING type mismatch
-    - Scientific notation (e.g., "1.23E+15")
-    - Leading/trailing whitespace
-    """
-    if value is None:
-        return ""
-    s = str(value).strip()
-    # Handle scientific notation
-    if 'e' in s.lower():
-        try:
-            s = str(int(float(s)))
-        except (ValueError, OverflowError):
-            pass
-    return s
+# Import shared matching functions
+from core.matching import (
+    sanitize_stringid_for_match,
+    get_translation_column,
+    find_matching_row_for_transfer,
+    find_matching_row_for_contents_transfer,
+    find_matching_row_for_item_transfer,
+)
 
 
 # =============================================================================
@@ -71,14 +54,8 @@ def is_english_file(xlsx_path: Path) -> bool:
     return True
 
 
-def get_translation_column(category: str, is_english: bool) -> int:
-    """Get translation column index based on category and language."""
-    cols = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3})
-    return cols["eng"] if is_english else cols["other"]
-
-
 # =============================================================================
-# ROW MATCHING
+# FILE UTILITIES
 # =============================================================================
 
 def find_file_in_folder(filename: str, folder_path: Path) -> Optional[str]:
@@ -95,142 +72,6 @@ def find_file_in_folder(filename: str, folder_path: Path) -> Optional[str]:
         if f.is_file() and f.name.lower() == filename_lower:
             return f.name  # Return filename only, not full path
     return None
-
-
-def find_matching_row_for_transfer(
-    old_row_data: Dict,
-    new_ws,
-    category: str,
-    is_english: bool
-) -> Tuple[Optional[int], Optional[str]]:
-    """
-    Find matching row in NEW file for OLD row data.
-
-    Uses 2-step cascade:
-    1. STRINGID + Translation match (exact)
-    2. Translation only match (fallback)
-
-    Args:
-        old_row_data: dict with {stringid, translation, row_num}
-        new_ws: New worksheet to search in
-        category: Category name for column detection
-        is_english: Whether file is English
-
-    Returns:
-        Tuple of (new_row_num, match_type) or (None, None)
-        match_type: "stringid+trans" or "trans_only"
-    """
-    old_stringid = sanitize_stringid_for_match(old_row_data.get("stringid"))
-    old_trans = str(old_row_data.get("translation", "")).strip()
-
-    if not old_trans:
-        return None, None
-
-    trans_col = get_translation_column(category, is_english)
-    stringid_col = find_column_by_header(new_ws, "STRINGID")
-
-    # Step 1: Try STRINGID + Translation match
-    if old_stringid and stringid_col:
-        for row in range(2, new_ws.max_row + 1):
-            new_stringid = sanitize_stringid_for_match(new_ws.cell(row, stringid_col).value)
-            new_trans = str(new_ws.cell(row, trans_col).value or "").strip()
-
-            if new_stringid == old_stringid and new_trans == old_trans:
-                return row, "stringid+trans"
-
-    # Step 2: Fall back to Translation only
-    for row in range(2, new_ws.max_row + 1):
-        new_trans = str(new_ws.cell(row, trans_col).value or "").strip()
-        if new_trans == old_trans:
-            return row, "trans_only"
-
-    return None, None
-
-
-def find_matching_row_for_contents_transfer(
-    old_row_data: Dict,
-    new_ws
-) -> Tuple[Optional[int], Optional[str]]:
-    """
-    Contents-specific matching: uses INSTRUCTIONS column (col 2) as unique identifier.
-
-    Contents has no localization - just direct row matching by INSTRUCTIONS value.
-
-    Args:
-        old_row_data: dict with {instructions, row_num}
-        new_ws: New worksheet to search in
-
-    Returns:
-        Tuple of (new_row_num, match_type) or (None, None)
-        match_type: "instructions"
-    """
-    old_instructions = str(old_row_data.get("instructions", "")).strip()
-
-    if not old_instructions:
-        return None, None
-
-    instructions_col = 2  # INSTRUCTIONS is always column 2 for Contents
-
-    for row in range(2, new_ws.max_row + 1):
-        new_instructions = str(new_ws.cell(row, instructions_col).value or "").strip()
-        if new_instructions == old_instructions:
-            return row, "instructions"
-
-    return None, None
-
-
-def find_matching_row_for_item_transfer(
-    old_row_data: Dict,
-    new_ws,
-    is_english: bool
-) -> Tuple[Optional[int], Optional[str]]:
-    """
-    Item-specific matching: requires BOTH ItemName AND ItemDesc to match.
-
-    Uses 2-step cascade:
-    1. ItemName + ItemDesc + STRINGID (all 3 must match)
-    2. ItemName + ItemDesc (both must match, no STRINGID required)
-
-    Args:
-        old_row_data: dict with {item_name, item_desc, stringid, row_num}
-        new_ws: New worksheet to search in
-        is_english: Whether file is English
-
-    Returns:
-        Tuple of (new_row_num, match_type) or (None, None)
-        match_type: "name+desc+stringid" or "name+desc"
-    """
-    old_stringid = sanitize_stringid_for_match(old_row_data.get("stringid"))
-    old_item_name = str(old_row_data.get("item_name", "")).strip()
-    old_item_desc = str(old_row_data.get("item_desc", "")).strip()
-
-    # Need at least ItemName to match
-    if not old_item_name:
-        return None, None
-
-    name_col = TRANSLATION_COLS["Item"]["eng"] if is_english else TRANSLATION_COLS["Item"]["other"]
-    desc_col = ITEM_DESC_COLS["eng"] if is_english else ITEM_DESC_COLS["other"]
-    stringid_col = find_column_by_header(new_ws, "STRINGID")
-
-    # Step 1: Try ItemName + ItemDesc + STRINGID match
-    if old_stringid and stringid_col:
-        for row in range(2, new_ws.max_row + 1):
-            new_stringid = sanitize_stringid_for_match(new_ws.cell(row, stringid_col).value)
-            new_name = str(new_ws.cell(row, name_col).value or "").strip()
-            new_desc = str(new_ws.cell(row, desc_col).value or "").strip()
-
-            if new_stringid == old_stringid and new_name == old_item_name and new_desc == old_item_desc:
-                return row, "name+desc+stringid"
-
-    # Step 2: Fall back to ItemName + ItemDesc only
-    for row in range(2, new_ws.max_row + 1):
-        new_name = str(new_ws.cell(row, name_col).value or "").strip()
-        new_desc = str(new_ws.cell(row, desc_col).value or "").strip()
-
-        if new_name == old_item_name and new_desc == old_item_desc:
-            return row, "name+desc"
-
-    return None, None
 
 
 # =============================================================================

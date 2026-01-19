@@ -366,6 +366,12 @@ Output folders:
         help="Force GUI mode even with other arguments"
     )
 
+    parser.add_argument(
+        "--update-tracker", "-u",
+        action="store_true",
+        help="Update tracker from QAFolderForTracker (without rebuilding masters)"
+    )
+
     args = parser.parse_args()
 
     # Ensure folders exist
@@ -387,6 +393,20 @@ Output folders:
         from gui.app import run_gui
         run_gui()
         return
+
+    # Update tracker only (no rebuild)
+    if args.update_tracker:
+        print_banner()
+        try:
+            from core.tracker_update import update_tracker_only
+            success, message, entries = update_tracker_only()
+            sys.exit(0 if success else 1)
+        except ImportError as e:
+            print_error(f"Tracker update module not available: {e}")
+            sys.exit(1)
+        except Exception as e:
+            print_error(f"Tracker update failed: {e}")
+            sys.exit(1)
 
     # If no arguments, launch GUI
     if not any([args.generate, args.transfer, args.build, args.all]):

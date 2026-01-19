@@ -162,6 +162,25 @@ class QACompilerSuiteGUI:
         )
         localizer_btn.pack(pady=5, ipady=8)
 
+        # === Section 6: Update Tracker Only ===
+        section6_frame = ttk.LabelFrame(self.root, text="6. Update Tracker Only", padding=10)
+        section6_frame.pack(fill="x", padx=15, pady=5)
+
+        tracker_desc = ttk.Label(
+            section6_frame,
+            text="Retroactively add missing days to tracker from QAFolderForTracker.\n"
+                 "Set file mtime to target date: touch -d '2025-01-18' QAFolderForTracker/*/*.xlsx"
+        )
+        tracker_desc.pack(pady=5)
+
+        tracker_btn = ttk.Button(
+            section6_frame,
+            text="Update Tracker",
+            command=self._do_update_tracker,
+            width=BUTTON_WIDTH
+        )
+        tracker_btn.pack(pady=5, ipady=8)
+
         # === Status Bar ===
         self.status_var = tk.StringVar(value="Ready")
         status_frame = ttk.Frame(self.root)
@@ -504,6 +523,56 @@ class QACompilerSuiteGUI:
         self._stop_progress()
         self._set_status("Localization failed - check console")
         messagebox.showerror("Error", f"System localization failed:\n{error_msg}")
+
+    def _do_update_tracker(self):
+        """Update tracker from QAFolderForTracker without rebuilding masters."""
+        self._set_status("Updating tracker...")
+        self._start_progress()
+
+        def run():
+            try:
+                from core.tracker_update import update_tracker_only
+                success, message, entries = update_tracker_only()
+
+                self.root.after(0, lambda: self._on_update_tracker_complete(success, message, entries))
+            except Exception as e:
+                err_msg = str(e)
+                self.root.after(0, lambda msg=err_msg: self._on_update_tracker_error(msg))
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+
+    def _on_update_tracker_complete(self, success, message, entries):
+        """Handle tracker update completion."""
+        self._stop_progress()
+
+        if success:
+            self._set_status("Tracker update complete!")
+            # Build summary
+            if entries:
+                dates = sorted(set(e["date"] for e in entries))
+                users = sorted(set(e["user"] for e in entries))
+                total_done = sum(e["done"] for e in entries)
+                summary = (
+                    f"Tracker Updated!\n\n"
+                    f"Entries: {len(entries)}\n"
+                    f"Dates: {', '.join(dates)}\n"
+                    f"Users: {', '.join(users[:5])}{'...' if len(users) > 5 else ''}\n"
+                    f"Total Done: {total_done}\n\n"
+                    "Check console for details."
+                )
+            else:
+                summary = message
+            messagebox.showinfo("Success", summary)
+        else:
+            self._set_status("Tracker update failed - check console")
+            messagebox.showerror("Error", f"Tracker update failed:\n{message}")
+
+    def _on_update_tracker_error(self, error_msg):
+        """Handle tracker update error."""
+        self._stop_progress()
+        self._set_status("Tracker update failed - check console")
+        messagebox.showerror("Error", f"Tracker update failed:\n{error_msg}")
 
 
 # =============================================================================
