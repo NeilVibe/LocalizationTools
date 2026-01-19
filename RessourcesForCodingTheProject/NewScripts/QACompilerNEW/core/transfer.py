@@ -147,6 +147,38 @@ def find_matching_row_for_transfer(
     return None, None
 
 
+def find_matching_row_for_contents_transfer(
+    old_row_data: Dict,
+    new_ws
+) -> Tuple[Optional[int], Optional[str]]:
+    """
+    Contents-specific matching: uses INSTRUCTIONS column (col 2) as unique identifier.
+
+    Contents has no localization - just direct row matching by INSTRUCTIONS value.
+
+    Args:
+        old_row_data: dict with {instructions, row_num}
+        new_ws: New worksheet to search in
+
+    Returns:
+        Tuple of (new_row_num, match_type) or (None, None)
+        match_type: "instructions"
+    """
+    old_instructions = str(old_row_data.get("instructions", "")).strip()
+
+    if not old_instructions:
+        return None, None
+
+    instructions_col = 2  # INSTRUCTIONS is always column 2 for Contents
+
+    for row in range(2, new_ws.max_row + 1):
+        new_instructions = str(new_ws.cell(row, instructions_col).value or "").strip()
+        if new_instructions == old_instructions:
+            return row, "instructions"
+
+    return None, None
+
+
 def find_matching_row_for_item_transfer(
     old_row_data: Dict,
     new_ws,
@@ -437,9 +469,11 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
     Returns dict with:
         - stringid_trans_index: {(stringid, trans): (sheet_name, row, consumed)}
         - trans_index: {trans: [(sheet_name, row, consumed), ...]}
+        - contents_index: {instructions: (sheet_name, row, consumed)} (for Contents category)
     """
     trans_col = get_translation_column(category, is_english)
     is_item = category.lower() == "item"
+    is_contents = category.lower() == "contents"
 
     # For Item category, use different columns
     if is_item:
@@ -453,6 +487,8 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
     # For Item: index by (ItemName + ItemDesc + STRINGID) and (ItemName + ItemDesc)
     item_full_index = {}
     item_name_desc_index = defaultdict(list)
+    # For Contents: index by INSTRUCTIONS (col 2)
+    contents_index = {}
 
     for sheet_name in new_wb.sheetnames:
         ws = new_wb[sheet_name]
@@ -461,7 +497,13 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
         for row in range(2, ws.max_row + 1):
             stringid = sanitize_stringid_for_match(ws.cell(row, stringid_col).value) if stringid_col else ""
 
-            if is_item:
+            if is_contents:
+                # Contents: index by INSTRUCTIONS (col 2)
+                instructions = str(ws.cell(row, 2).value or "").strip()
+                if instructions:
+                    if instructions not in contents_index:
+                        contents_index[instructions] = {"sheet": sheet_name, "row": row, "consumed": False}
+            elif is_item:
                 item_name = str(ws.cell(row, name_col).value or "").strip()
                 item_desc = str(ws.cell(row, desc_col).value or "").strip()
 
@@ -493,6 +535,7 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
         "trans_only": trans_index,
         "item_full": item_full_index,
         "item_name_desc": item_name_desc_index,
+        "contents": contents_index,
     }
 
 
@@ -504,6 +547,7 @@ def collect_old_rows_with_data(old_wb, category: str, is_english: bool) -> List[
     """
     trans_col = get_translation_column(category, is_english)
     is_item = category.lower() == "item"
+    is_contents = category.lower() == "contents"
 
     if is_item:
         name_col = TRANSLATION_COLS["Item"]["eng"] if is_english else TRANSLATION_COLS["Item"]["other"]
@@ -541,7 +585,10 @@ def collect_old_rows_with_data(old_wb, category: str, is_english: bool) -> List[
                 "screenshot_hyperlink": screenshot_hyperlink,
             }
 
-            if is_item:
+            if is_contents:
+                # Contents: use INSTRUCTIONS (col 2) as matching key
+                row_data["instructions"] = str(ws.cell(row, 2).value or "").strip()
+            elif is_item:
                 row_data["item_name"] = str(ws.cell(row, name_col).value or "").strip()
                 row_data["item_desc"] = str(ws.cell(row, desc_col).value or "").strip()
             else:
@@ -568,8 +615,8 @@ def transfer_folder_data(
     NO per-sheet restriction - matches across ALL sheets in the workbook.
 
     Two-pass matching:
-    1. STRINGID + Translation (or ItemName+ItemDesc+STRINGID for Item)
-    2. Translation only fallback (or ItemName+ItemDesc for Item)
+    1. STRINGID + Translation (or ItemName+ItemDesc+STRINGID for Item, INSTRUCTIONS for Contents)
+    2. Translation only fallback (or ItemName+ItemDesc for Item, no fallback for Contents)
 
     Args:
         old_folder: dict with folder info
@@ -584,6 +631,7 @@ def transfer_folder_data(
     category = old_folder["category"]
     is_english = tester_mapping.get(username, "EN") == "EN"
     is_item = category.lower() == "item"
+    is_contents = category.lower() == "contents"
 
     # Load workbooks
     old_wb = safe_load_workbook(old_folder["xlsx_path"])
@@ -596,6 +644,7 @@ def transfer_folder_data(
         "unmatched": 0,
         "name_desc_stringid_match": 0,
         "name_desc_match": 0,
+        "instructions_match": 0,
     }
 
     # Build global index of NEW workbook
@@ -611,11 +660,21 @@ def transfer_folder_data(
     matches = []  # [(old_row_data, new_sheet, new_row, match_type), ...]
     unmatched_rows = []
 
-    # PASS 1: Exact match (STRINGID + Translation or ItemName+ItemDesc+STRINGID)
+    # PASS 1: Exact match (STRINGID + Translation, ItemName+ItemDesc+STRINGID, or INSTRUCTIONS)
     for old_row in old_rows:
         matched = False
 
-        if is_item:
+        if is_contents:
+            # Contents: match by INSTRUCTIONS (single-pass, no fallback needed)
+            instructions = old_row.get("instructions", "")
+            if instructions and instructions in new_index["contents"]:
+                entry = new_index["contents"][instructions]
+                if not entry["consumed"]:
+                    entry["consumed"] = True
+                    matches.append((old_row, entry["sheet"], entry["row"], "instructions"))
+                    stats["instructions_match"] += 1
+                    matched = True
+        elif is_item:
             key = (old_row["item_name"], old_row["item_desc"], old_row["stringid"])
             if old_row["stringid"] and key in new_index["item_full"]:
                 entry = new_index["item_full"][key]
@@ -638,11 +697,15 @@ def transfer_folder_data(
             unmatched_rows.append(old_row)
 
     # PASS 2: Fallback match (Translation only or ItemName+ItemDesc)
+    # Note: Contents has no fallback - INSTRUCTIONS is the unique identifier
     still_unmatched = []
     for old_row in unmatched_rows:
         matched = False
 
-        if is_item:
+        if is_contents:
+            # No fallback for Contents - INSTRUCTIONS must match exactly
+            pass
+        elif is_item:
             key = (old_row["item_name"], old_row["item_desc"])
             if key in new_index["item_name_desc"]:
                 for entry in new_index["item_name_desc"][key]:
@@ -692,7 +755,9 @@ def transfer_folder_data(
                     cell.hyperlink = actual_file
 
     # Print summary
-    if is_item:
+    if is_contents:
+        print(f"    Matched: {stats['instructions_match']} by INSTRUCTIONS, {stats['unmatched']} unmatched")
+    elif is_item:
         print(f"    Matched: {stats['name_desc_stringid_match']} exact + {stats['name_desc_match']} fallback, {stats['unmatched']} unmatched")
     else:
         print(f"    Matched: {stats['stringid_match']} exact + {stats['trans_only']} fallback, {stats['unmatched']} unmatched")
@@ -746,8 +811,13 @@ def print_transfer_report(stats: Dict):
     for (tester, category), data in sorted(stats.items()):
         total = data["total"]
         is_item = category.lower() == "item"
+        is_contents = category.lower() == "contents"
 
-        if is_item:
+        if is_contents:
+            # Contents: only has exact match (INSTRUCTIONS)
+            exact = data.get("instructions_match", 0)
+            fallback = 0
+        elif is_item:
             exact = data.get("name_desc_stringid_match", 0)
             fallback = data.get("name_desc_match", 0)
         else:
@@ -767,8 +837,8 @@ def print_transfer_report(stats: Dict):
     print("=" * 79)
     print()
     print("Legend:")
-    print("  Exact    = Strong match (STRINGID+Trans for most, ItemName+ItemDesc+STRINGID for Item)")
-    print("  Fallback = Weaker match (Trans only for most, ItemName+ItemDesc for Item)")
+    print("  Exact    = Strong match (STRINGID+Trans for most, ItemName+ItemDesc+STRINGID for Item, INSTRUCTIONS for Contents)")
+    print("  Fallback = Weaker match (Trans only for most, ItemName+ItemDesc for Item, N/A for Contents)")
     unmatched = grand_total - grand_exact - grand_fallback
     print(f"  Unmatched = {unmatched} rows (not transferred)")
     print()

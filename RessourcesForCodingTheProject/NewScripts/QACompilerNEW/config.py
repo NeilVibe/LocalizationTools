@@ -112,6 +112,7 @@ CATEGORIES = [
     "Skill",
     "Help",
     "Gimmick",
+    "Contents",
 ]
 
 # Category clustering: Multiple categories can merge into one master file
@@ -138,6 +139,7 @@ TRANSLATION_COLS = {
     "Skill": {"eng": 2, "other": 3},
     "Help": {"eng": 2, "other": 3},
     "Gimmick": {"eng": 2, "other": 3},
+    "Contents": {"eng": 2, "other": 2},  # INSTRUCTIONS column (matching key, no localization)
 }
 
 # Item description columns (for stricter Item matching)

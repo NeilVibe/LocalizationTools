@@ -109,6 +109,7 @@ python system_localizer.py --cli <input.xlsx> <language_folder>
 | 7 | Skill | `skill.py` | Player skills with knowledge linking |
 | 8 | Help | `help.py` | GameAdvice/Help system entries |
 | 9 | Gimmick | `gimmick.py` | Interactive gimmick objects |
+| 10 | Contents | (manual) | Manual content review sheets, no localization |
 
 ## Generator Details
 
@@ -163,6 +164,24 @@ python system_localizer.py --cli <input.xlsx> <language_folder>
 - GimmickAttributeGroup → GimmickInfo → DropItem
 - ItemInfo index for item names/descriptions
 - Hierarchical sheet output
+
+### Contents Category (Manual)
+**No generator** - Manual content review sheets.
+
+**Column Structure:**
+| Col | Header | Description |
+|-----|--------|-------------|
+| 1 | CONTENT | Text being reviewed |
+| 2 | INSTRUCTIONS | Unique identifier for row matching |
+| 3 | STATUS | Tester status (ISSUE, NO ISSUE, etc.) |
+| 4 | COMMENT | Tester notes |
+| 5 | SCREENSHOT | Screenshot reference |
+
+**Key Differences from Other Categories:**
+- No localization (single language)
+- INSTRUCTIONS used for row matching (like STRINGID in others)
+- No generator - testers create sheets manually
+- Outputs to `Master_Contents.xlsx` (standalone, no clustering)
 
 ## Shared Utilities (`generators/base.py`)
 
@@ -220,17 +239,19 @@ CATEGORY_TO_MASTER = {
 ```
 
 ### Transfer Column Mapping
-System category has a unique column layout (CONTENT in col 1):
+System and Contents categories have unique column layouts:
 ```python
 TRANSLATION_COLS = {
     "Quest": {"eng": 2, "other": 3},      # Standard layout
     "Knowledge": {"eng": 2, "other": 3},
     "Item": {"eng": 5, "other": 7},       # ItemName column
     "System": {"eng": 1, "other": 1},     # CONTENT column (single)
+    "Contents": {"eng": 2, "other": 2},   # INSTRUCTIONS column (matching key)
     # ... other categories use standard 2/3
 }
 ```
 System Excel layout: `CONTENT | STATUS | COMMENT | STRINGID | SCREENSHOT`
+Contents Excel layout: `CONTENT | INSTRUCTIONS | STATUS | COMMENT | SCREENSHOT`
 
 ## GUI Layout
 
