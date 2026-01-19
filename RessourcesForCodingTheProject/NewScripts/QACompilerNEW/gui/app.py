@@ -593,17 +593,31 @@ class QACompilerSuiteGUI:
             messagebox.showwarning("No Files", f"No xlsx files found in:\n{selected_path}")
             return
 
-        # Set mtime on all files
+        # Set mtime on all files AND their parent folders
         count = 0
+        folders_updated = set()
         for xlsx_path in xlsx_files:
             try:
+                # Set file mtime
                 os.utime(xlsx_path, (target_timestamp, target_timestamp))
                 count += 1
+
+                # Set parent folder mtime (track to avoid duplicates)
+                parent_folder = xlsx_path.parent
+                if parent_folder not in folders_updated:
+                    os.utime(parent_folder, (target_timestamp, target_timestamp))
+                    folders_updated.add(parent_folder)
             except Exception as e:
                 print(f"  WARN: Could not set date on {xlsx_path.name}: {e}")
 
-        self._set_status(f"Set date to {date_str} on {count} files")
-        messagebox.showinfo("Done", f"Set LastWriteTime to {date_str} on {count} file(s)\n\nFolder: {selected_path.name}")
+        # Also set mtime on the selected folder itself
+        try:
+            os.utime(selected_path, (target_timestamp, target_timestamp))
+        except Exception as e:
+            print(f"  WARN: Could not set date on root folder: {e}")
+
+        self._set_status(f"Set date to {date_str} on {count} files + {len(folders_updated)+1} folders")
+        messagebox.showinfo("Done", f"Set LastWriteTime to {date_str} on:\n• {count} file(s)\n• {len(folders_updated)+1} folder(s)\n\nFolder: {selected_path.name}")
 
     def _do_update_tracker(self):
         """Update tracker from QAFolderForTracker without rebuilding masters."""
