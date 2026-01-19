@@ -320,9 +320,12 @@ def process_category(
 
     daily_entries = []
 
-    # Get or create master
-    first_xlsx = qa_folders[0]["xlsx_path"]
-    master_wb, master_path = get_or_create_master(category, master_folder, first_xlsx, rebuild=rebuild)
+    # Get or create master (use most recent file as template for freshest structure)
+    sorted_by_mtime = sorted(qa_folders, key=lambda x: x["xlsx_path"].stat().st_mtime, reverse=True)
+    template_xlsx = sorted_by_mtime[0]["xlsx_path"]
+    template_user = sorted_by_mtime[0]["username"]
+    print(f"  Template: {template_user} (most recent file)")
+    master_wb, master_path = get_or_create_master(category, master_folder, template_xlsx, rebuild=rebuild)
 
     if master_wb is None:
         return daily_entries
