@@ -26,6 +26,7 @@
 | [3. Build Master Files](#-3-build-master-files) | Compile master documents |
 | [4. Coverage Analysis](#-4-coverage-analysis) | Check translation coverage |
 | [5. System Localizer](#-5-system-localizer) | Localize System sheets |
+| [6. Update Tracker](#-6-update-tracker-retroactive) | **Backfill missing days** |
 | [Folder Structure](#-folder-structure) | Where files go |
 | [Folder Naming Convention](#folder-naming-convention) | How to name tester folders |
 | [Troubleshooting](#-troubleshooting) | Common issues |
@@ -252,7 +253,7 @@ QAfolder/
 │  📋 1. Generate Datasheets                                 │
 │     ☑ Quest    ☑ Knowledge   ☑ Item                        │
 │     ☑ Region   ☑ System      ☑ Character                   │
-│     ☑ Skill    ☑ Help        ☑ Gimmick                     │
+│     ☑ Skill    ☑ Help        ☑ Gimmick    ☑ Contents       │
 │     [Select All] [Deselect All] [Generate Selected]        │
 ├────────────────────────────────────────────────────────────┤
 │  📁 2. Transfer QA Files                                   │
@@ -266,6 +267,10 @@ QAfolder/
 ├────────────────────────────────────────────────────────────┤
 │  🌐 5. System Sheet Localizer                              │
 │     [Localize System Sheet]                                │
+├────────────────────────────────────────────────────────────┤
+│  🔄 6. Update Tracker Only                                 │
+│     Date: [2025-01-16    ] [Set File Dates...]             │
+│     [Update Tracker]                                       │
 ├────────────────────────────────────────────────────────────┤
 │  Status: Ready                                             │
 │  [════════════════════════════════════════]                │
@@ -482,6 +487,83 @@ Creates `Coverage_Report_YYYYMMDD_HHMMSS.xlsx` with:
 
 ---
 
+## 🔄 6. Update Tracker (Retroactive)
+
+**Purpose:** Add missing days to the Progress Tracker WITHOUT rebuilding master files.
+
+### When to Use
+
+| Scenario | Use This Feature? |
+|----------|-------------------|
+| Forgot to run Build Master on a specific day | ✅ Yes |
+| Need to backfill tracker data for missed days | ✅ Yes |
+| Normal daily workflow | ❌ No - use Build Master Files |
+
+### Folder Structure
+
+```
+TrackerUpdateFolder/
+├── QAfolder/              ← Tester QA files (for tester stats)
+│   └── 김민영_Quest/
+│       └── file.xlsx
+├── Masterfolder_EN/       ← English master files (for manager stats)
+│   └── Master_Quest.xlsx
+└── Masterfolder_CN/       ← Chinese master files (for manager stats)
+    └── Master_Quest.xlsx
+```
+
+### Step-by-Step Process
+
+| Step | Action | Details |
+|------|--------|---------|
+| 1 | **Copy files** | Copy QA files and/or Master files to `TrackerUpdateFolder/` |
+| 2 | **Set date** | Enter target date (YYYY-MM-DD) in the date field |
+| 3 | **Click "Set File Dates"** | Select the folder containing your files |
+| 4 | **Click "Update Tracker"** | Updates tracker with the file date, not today |
+
+### Critical: File Date = Tracker Date
+
+The tracker uses the **file's Last Modified date** to determine which day to record:
+
+| File Modified Date | Tracker Entry Date |
+|-------------------|-------------------|
+| 2025-01-16 | 2025-01-16 |
+| 2025-01-18 | 2025-01-18 |
+
+**The "Set File Dates" button changes BOTH:**
+- ✅ xlsx files
+- ✅ Parent folders
+- ✅ Root selected folder
+
+### What Gets Updated
+
+| Source | Updates |
+|--------|---------|
+| **QAfolder/** files | Tester stats (Done, Issues, No Issue, Blocked, Korean) |
+| **Masterfolder_EN/** files | Manager stats (Fixed, Reported, Checking, Non-Issue) |
+| **Masterfolder_CN/** files | Manager stats (Fixed, Reported, Checking, Non-Issue) |
+
+### Example: Backfill January 16th
+
+```
+1. Copy your QA files from Jan 16th backup to:
+   TrackerUpdateFolder/QAfolder/
+
+2. Copy your Master files from Jan 16th backup to:
+   TrackerUpdateFolder/Masterfolder_EN/
+   TrackerUpdateFolder/Masterfolder_CN/
+
+3. Enter date: 2025-01-16
+
+4. Click "Set File Dates" → Select TrackerUpdateFolder
+
+5. Click "Update Tracker"
+
+Result: Tracker now has data for 2025-01-16!
+```
+
+---
+
 ## 🌐 5. System Localizer
 
 **Purpose:** Create localized System sheets for all languages.
@@ -531,7 +613,12 @@ QACompiler/
 │   ├── _TRACKER.xlsx
 │   └── Images/
 │
-└── Masterfolder_CN/         ← Chinese master output
+├── Masterfolder_CN/         ← Chinese master output
+│
+└── TrackerUpdateFolder/     ← For retroactive tracker updates (Section 6)
+    ├── QAfolder/            ← Tester files for backfill
+    ├── Masterfolder_EN/     ← Master files for manager stats
+    └── Masterfolder_CN/     ← Master files for manager stats
 ```
 
 ### Folder Naming Convention
