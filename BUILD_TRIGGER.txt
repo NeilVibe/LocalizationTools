@@ -19,3 +19,4 @@ WORKFLOW:
 
 QA MODE: All 1000+ tests run. Workers technology makes it fast.
 
+Build
