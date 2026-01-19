@@ -467,12 +467,40 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
         from tracker.daily import build_daily_sheet
         from tracker.total import build_total_sheet
 
+        print("\n[TRACKER DEBUG] STEP A: Loading/Creating Tracker")
         tracker_wb, tracker_path = get_or_create_tracker()
+        print(f"  - Tracker path: {tracker_path}")
+        print(f"  - Tracker exists: {tracker_path.exists()}")
+        print(f"  - Sheets in workbook: {tracker_wb.sheetnames}")
+
+        # Check _DAILY_DATA sheet state BEFORE update
+        dd_ws = tracker_wb["_DAILY_DATA"]
+        print(f"  - _DAILY_DATA max_row BEFORE: {dd_ws.max_row}")
+        print(f"  - _DAILY_DATA max_column BEFORE: {dd_ws.max_column}")
+
+        print("\n[TRACKER DEBUG] STEP B: Calling update_daily_data_sheet()")
+        print(f"  - entries count: {len(entries)}")
+        print(f"  - manager_stats count: {len(manager_stats)}")
+        print(f"  - manager_stats categories: {list(manager_stats.keys())}")
+        for cat, users in manager_stats.items():
+            print(f"    - {cat}: {len(users)} users")
+            for u, s in list(users.items())[:2]:  # Show first 2 users per category
+                print(f"      - {u}: fixed={s.get('fixed')}, reported={s.get('reported')}")
 
         # Update _DAILY_DATA with tester stats AND manager stats
         # Pass manager_dates so new rows use file mtime, not today's date
         update_daily_data_sheet(tracker_wb, entries, manager_stats, manager_dates)
 
+        # Check _DAILY_DATA sheet state AFTER update
+        print("\n[TRACKER DEBUG] STEP C: After update_daily_data_sheet()")
+        print(f"  - _DAILY_DATA max_row AFTER: {dd_ws.max_row}")
+        print(f"  - _DAILY_DATA max_column AFTER: {dd_ws.max_column}")
+        print(f"  - Sample rows from _DAILY_DATA:")
+        for r in range(1, min(dd_ws.max_row + 1, 8)):
+            row_data = [dd_ws.cell(r, c).value for c in range(1, 15)]
+            print(f"    Row {r}: {row_data}")
+
+        print("\n[TRACKER DEBUG] STEP D: Rebuilding visible sheets")
         # Rebuild visible sheets
         build_daily_sheet(tracker_wb)
         build_total_sheet(tracker_wb)
@@ -481,7 +509,22 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
         if "GRAPHS" in tracker_wb.sheetnames:
             del tracker_wb["GRAPHS"]
 
+        print("\n[TRACKER DEBUG] STEP E: Saving workbook")
+        print(f"  - Saving to: {tracker_path}")
         tracker_wb.save(tracker_path)
+        print(f"  - Save complete!")
+
+        # VERIFY: Reload and check
+        print("\n[TRACKER DEBUG] STEP F: VERIFICATION - Reloading saved file")
+        from core.excel_ops import safe_load_workbook
+        verify_wb = safe_load_workbook(tracker_path)
+        verify_ws = verify_wb["_DAILY_DATA"]
+        print(f"  - Reloaded _DAILY_DATA max_row: {verify_ws.max_row}")
+        print(f"  - Reloaded sample rows:")
+        for r in range(1, min(verify_ws.max_row + 1, 8)):
+            row_data = [verify_ws.cell(r, c).value for c in range(1, 15)]
+            print(f"    Row {r}: {row_data}")
+        verify_wb.close()
 
         print(f"\n  Saved: {tracker_path}")
         if entries:
