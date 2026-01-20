@@ -410,17 +410,17 @@ def clean_tmx_to_plain(xml_str):
     # STEP 4: Generic patterns (catch remaining placeholders)
     # =========================================================================
 
-    # 4a. Generic <ph val="X">...</ph> - extract val
-    def clean_generic_ph_val(content):
-        return GENERIC_PH_VAL_RE.sub(r'\1', content)
+    # 4a. DISABLED - Too aggressive, corrupts valid MemoQ content
+    # GENERIC_PH_VAL_RE was matching MemoQ <ph> tags and stripping &lt; &gt;
+    # def clean_generic_ph_val(content):
+    #     return GENERIC_PH_VAL_RE.sub(r'\1', content)
+    # xml_str = process_seg_contents(xml_str, clean_generic_ph_val)
 
-    xml_str = process_seg_contents(xml_str, clean_generic_ph_val)
-
-    # 4b. Generic <ph>text</ph> - extract inner text
-    def clean_generic_ph_text(content):
-        return GENERIC_PH_TEXT_RE.sub(r'\1', content)
-
-    xml_str = process_seg_contents(xml_str, clean_generic_ph_text)
+    # 4b. DISABLED - Too aggressive, corrupts valid MemoQ content
+    # GENERIC_PH_TEXT_RE was stripping <ph> wrappers from MemoQ placeholders
+    # def clean_generic_ph_text(content):
+    #     return GENERIC_PH_TEXT_RE.sub(r'\1', content)
+    # xml_str = process_seg_contents(xml_str, clean_generic_ph_text)
 
     # 4c. Generic empty <bpt>...<ept> pairs - remove entirely
     def clean_generic_bpt_ept_empty(content):
