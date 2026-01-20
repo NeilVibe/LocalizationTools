@@ -28,3 +28,4 @@ Build - Set File Dates now updates folders too
 Build - fix date using file mtime not today
 Build - fix manager stats Excel write (track rows manually)
 Build: EXPORT-aware duplicate translation resolution
+Build - Manager status fix 20260120_220513

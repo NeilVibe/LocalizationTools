@@ -819,7 +819,16 @@ python main.py --all
 | CHECKING | Under investigation |
 | NON-ISSUE | Marked as not an issue |
 
-These are preserved across rebuilds via comment text matching.
+**How Manager Status is Preserved:**
+
+Manager status (STATUS_{User}, MANAGER_COMMENT_{User}) is preserved across rebuilds using a two-stage matching system:
+
+1. **Stage 1 (QA -> Master Row):** Match QA rows to Master rows by STRINGID + Translation content
+2. **Stage 2 (Manager Lookup):** Use MASTER row's STRINGID + Tester comment to find manager status
+
+This ensures manager work is never lost, even when QA files have empty STRINGIDs.
+
+See `docs/TECHNICAL_MATCHING_SYSTEM.md` for technical details.
 
 ---
 
