@@ -129,13 +129,14 @@ def collect_manager_status(master_folder: Path) -> Dict:
     """
     Read existing Master files and collect all STATUS_{User} and MANAGER_COMMENT_{User} values.
 
-    KEYED BY COMMENT TEXT for matching after rebuild.
+    KEYED BY (STRINGID, COMMENT TEXT) for matching after rebuild.
+    This prevents collision when identical comments exist on different rows.
 
     Args:
         master_folder: Which Master folder to scan (EN or CN)
 
     Returns:
-        {category: {sheet_name: {comment_text: {user: {"status": val, "manager_comment": val}}}}}
+        {category: {sheet_name: {(stringid, comment_text): {user: {"status": val, "manager_comment": val}}}}}
     """
     manager_status = {}
 
@@ -157,7 +158,8 @@ def collect_manager_status(master_folder: Path) -> Dict:
                 ws = wb[sheet_name]
                 manager_status[category][sheet_name] = {}
 
-                # Find all COMMENT_{User}, STATUS_{User}, and MANAGER_COMMENT_{User} columns
+                # Find STRINGID column and all COMMENT_{User}, STATUS_{User}, MANAGER_COMMENT_{User} columns
+                stringid_col = find_column_by_header(ws, "STRINGID")
                 comment_cols = {}          # username -> col (tester comment)
                 status_cols = {}           # username -> col (manager status)
                 manager_comment_cols = {}  # username -> col (manager comment)
@@ -197,9 +199,18 @@ def collect_manager_status(master_folder: Path) -> Dict:
                                 full_comment = ws.cell(row=row, column=comment_col).value
                                 comment_text = extract_comment_text(full_comment)
                                 if comment_text:
-                                    if comment_text not in manager_status[category][sheet_name]:
-                                        manager_status[category][sheet_name][comment_text] = {}
-                                    manager_status[category][sheet_name][comment_text][username] = {
+                                    # Get STRINGID for this row (use empty string if not found)
+                                    stringid = ""
+                                    if stringid_col:
+                                        stringid_val = ws.cell(row=row, column=stringid_col).value
+                                        if stringid_val:
+                                            stringid = str(stringid_val).strip()
+
+                                    # Key = (stringid, comment_text) to prevent collision
+                                    key = (stringid, comment_text)
+                                    if key not in manager_status[category][sheet_name]:
+                                        manager_status[category][sheet_name][key] = {}
+                                    manager_status[category][sheet_name][key][username] = {
                                         "status": str(status_value).strip().upper() if has_status else None,
                                         "manager_comment": str(manager_comment_value).strip() if has_manager_comment else None
                                     }

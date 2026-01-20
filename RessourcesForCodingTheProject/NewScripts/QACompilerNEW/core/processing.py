@@ -428,6 +428,7 @@ def process_sheet(
 
         # Process COMMENT
         comment_text_for_lookup = None
+        stringid_for_lookup = ""  # For manager status key: (stringid, comment_text)
         if qa_comment_col and should_compile_comment:
             qa_comment = qa_ws.cell(row=qa_row, column=qa_comment_col).value
             if qa_comment and str(qa_comment).strip():
@@ -436,6 +437,8 @@ def process_sheet(
                 string_id = None
                 if qa_stringid_col:
                     string_id = qa_ws.cell(row=qa_row, column=qa_stringid_col).value
+                    if string_id:
+                        stringid_for_lookup = str(string_id).strip()
 
                 existing = master_ws.cell(row=master_row, column=master_comment_col).value
                 new_value = format_comment(qa_comment, string_id, existing, file_mod_time)
@@ -553,9 +556,11 @@ def process_sheet(
                     result["screenshots"] += 1
 
         # Apply manager STATUS and MANAGER_COMMENT
+        # Key = (stringid, comment_text) to match how we store in collect_manager_status()
         if comment_text_for_lookup and manager_status:
-            if comment_text_for_lookup in manager_status:
-                user_data = manager_status[comment_text_for_lookup]
+            manager_key = (stringid_for_lookup, comment_text_for_lookup)
+            if manager_key in manager_status:
+                user_data = manager_status[manager_key]
                 if username in user_data:
                     manager_info = user_data[username]
                     # Handle both old format (string) and new format (dict)
