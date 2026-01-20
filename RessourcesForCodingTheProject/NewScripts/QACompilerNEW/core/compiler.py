@@ -129,14 +129,31 @@ def collect_manager_status(master_folder: Path) -> Dict:
     """
     Read existing Master files and collect all STATUS_{User} and MANAGER_COMMENT_{User} values.
 
-    KEYED BY (STRINGID, COMMENT TEXT) for matching after rebuild.
-    This prevents collision when identical comments exist on different rows.
+    KEYED BY (STRINGID, TESTER_COMMENT_TEXT) - Manager status is paired with tester's comment.
+
+    Dict Structure:
+        {
+            category: {
+                sheet_name: {
+                    (stringid, tester_comment_text): {
+                        username: {
+                            "status": "FIXED",
+                            "manager_comment": "Fixed in build 5"
+                        }
+                    }
+                }
+            }
+        }
+
+    Matching Logic:
+        - Primary key: (stringid, tester_comment_text) - exact match
+        - Fallback key: ("", tester_comment_text) - when STRINGID changes but comment same
 
     Args:
         master_folder: Which Master folder to scan (EN or CN)
 
     Returns:
-        {category: {sheet_name: {(stringid, comment_text): {user: {"status": val, "manager_comment": val}}}}}
+        Dict with manager status keyed by (stringid, tester_comment_text)
     """
     manager_status = {}
 
@@ -158,11 +175,14 @@ def collect_manager_status(master_folder: Path) -> Dict:
                 ws = wb[sheet_name]
                 manager_status[category][sheet_name] = {}
 
-                # Find STRINGID column and all COMMENT_{User}, STATUS_{User}, MANAGER_COMMENT_{User} columns
+                # Find STRINGID column
                 stringid_col = find_column_by_header(ws, "STRINGID")
-                comment_cols = {}          # username -> col (tester comment)
-                status_cols = {}           # username -> col (manager status)
-                manager_comment_cols = {}  # username -> col (manager comment)
+
+                # Find all COMMENT_{User}, STATUS_{User}, MANAGER_COMMENT_{User} columns
+                comment_cols = {}          # username -> col (TESTER's comment)
+                status_cols = {}           # username -> col (MANAGER's status)
+                manager_comment_cols = {}  # username -> col (MANAGER's comment)
+
                 for col in range(1, ws.max_column + 1):
                     header = ws.cell(row=1, column=col).value
                     if header:
@@ -170,7 +190,7 @@ def collect_manager_status(master_folder: Path) -> Dict:
                         if header_str.startswith("COMMENT_"):
                             username = header_str.replace("COMMENT_", "")
                             comment_cols[username] = col
-                        elif header_str.startswith("STATUS_"):
+                        elif header_str.startswith("STATUS_") and not header_str.startswith("TESTER_STATUS_"):
                             username = header_str.replace("STATUS_", "")
                             status_cols[username] = col
                         elif header_str.startswith("MANAGER_COMMENT_"):
@@ -180,7 +200,7 @@ def collect_manager_status(master_folder: Path) -> Dict:
                 if not status_cols:
                     continue
 
-                # Collect values per row, keyed by comment text
+                # Collect manager status, keyed by (stringid, tester_comment_text)
                 for row in range(2, ws.max_row + 1):
                     for username, status_col in status_cols.items():
                         status_value = ws.cell(row=row, column=status_col).value
@@ -189,28 +209,42 @@ def collect_manager_status(master_folder: Path) -> Dict:
                         if manager_comment_col:
                             manager_comment_value = ws.cell(row=row, column=manager_comment_col).value
 
-                        # Only store if there's a status or manager comment
+                        # Only store if there's a manager status or manager comment
                         has_status = status_value and str(status_value).strip().upper() in VALID_MANAGER_STATUS
                         has_manager_comment = manager_comment_value and str(manager_comment_value).strip()
 
                         if has_status or has_manager_comment:
+                            # Get STRINGID for this row (from Master - reliable!)
+                            stringid = ""
+                            if stringid_col:
+                                stringid_val = ws.cell(row=row, column=stringid_col).value
+                                if stringid_val:
+                                    stringid = str(stringid_val).strip()
+
+                            # Get TESTER's comment text (this is what manager reviewed)
+                            tester_comment_text = ""
                             comment_col = comment_cols.get(username)
                             if comment_col:
                                 full_comment = ws.cell(row=row, column=comment_col).value
-                                comment_text = extract_comment_text(full_comment)
-                                if comment_text:
-                                    # Get STRINGID for this row (use empty string if not found)
-                                    stringid = ""
-                                    if stringid_col:
-                                        stringid_val = ws.cell(row=row, column=stringid_col).value
-                                        if stringid_val:
-                                            stringid = str(stringid_val).strip()
+                                tester_comment_text = extract_comment_text(full_comment)
 
-                                    # Key = (stringid, comment_text) to prevent collision
-                                    key = (stringid, comment_text)
-                                    if key not in manager_status[category][sheet_name]:
-                                        manager_status[category][sheet_name][key] = {}
-                                    manager_status[category][sheet_name][key][username] = {
+                            # Need tester comment to match (manager status is response to tester comment)
+                            if tester_comment_text:
+                                # Primary key: (stringid, tester_comment_text)
+                                key = (stringid, tester_comment_text)
+                                if key not in manager_status[category][sheet_name]:
+                                    manager_status[category][sheet_name][key] = {}
+                                manager_status[category][sheet_name][key][username] = {
+                                    "status": str(status_value).strip().upper() if has_status else None,
+                                    "manager_comment": str(manager_comment_value).strip() if has_manager_comment else None
+                                }
+
+                                # Fallback key: ("", tester_comment_text) - for when STRINGID changes
+                                fallback_key = ("", tester_comment_text)
+                                if fallback_key not in manager_status[category][sheet_name]:
+                                    manager_status[category][sheet_name][fallback_key] = {}
+                                if username not in manager_status[category][sheet_name][fallback_key]:
+                                    manager_status[category][sheet_name][fallback_key][username] = {
                                         "status": str(status_value).strip().upper() if has_status else None,
                                         "manager_comment": str(manager_comment_value).strip() if has_manager_comment else None
                                     }
