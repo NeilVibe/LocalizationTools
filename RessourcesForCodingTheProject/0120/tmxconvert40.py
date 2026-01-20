@@ -109,9 +109,14 @@ GENERIC_G_RE = re.compile(
 # Zero-width characters (ZWSP, ZWNJ, ZWJ, etc.)
 ZERO_WIDTH_RE = re.compile(r'[\u200b\u200c\u200d\u2060\ufeff]')
 
-# Various <br> formats to normalize
+# SUPER ROBUST: Catch ALL <br> variants - malformed or not
+# Handles: <br>, <br/>, <br />, <br/ (missing >), <br (missing / and >), br/>, &lt;br/&gt;, etc.
 BR_VARIANTS_RE = re.compile(
-    r'<br\s*/?>|<br\s*>|&lt;br\s*&gt;|&lt;br\s*/\s*&gt;',
+    r'<\s*br\s*/?\s*>|'           # <br>, <br/>, <br />, < br >, etc. (with closing >)
+    r'<\s*br\s*/(?=\s|[^>\s])|'   # <br/ followed by space or non-> (malformed, no >)
+    r'<\s*br(?=\s+[^/>\s])|'      # <br followed by space+text (malformed, no / or >)
+    r'br\s*/\s*>|'                # br/> missing opening <
+    r'&lt;\s*br\s*/?\s*&gt;',     # escaped variants &lt;br/&gt;
     flags=re.IGNORECASE
 )
 
