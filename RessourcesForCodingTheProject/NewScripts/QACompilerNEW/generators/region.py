@@ -38,6 +38,9 @@ from generators.base import (
     is_good_translation,
     autofit_worksheet,
     THIN_BORDER,
+    get_first_translation,
+    resolve_translation,
+    get_export_index,
 )
 
 log = get_logger("RegionGenerator")
@@ -84,6 +87,7 @@ class FactionNodeData:
     description: str       # From FactionNode.Desc
     knowledge_key: str
     node_type: str         # Main, Sub, etc.
+    source_file: str = ""
     children: List["FactionNodeData"] = field(default_factory=list)
 
 
@@ -93,6 +97,7 @@ class FactionData:
     strkey: str
     name: str              # Faction Name attribute
     knowledge_key: str
+    source_file: str = ""
     nodes: List[FactionNodeData] = field(default_factory=list)
 
 
@@ -102,6 +107,7 @@ class FactionGroupData:
     strkey: str
     group_name: str        # GroupName attribute - used as sheet tab name
     knowledge_key: str
+    source_file: str = ""
     factions: List[FactionData] = field(default_factory=list)
 
 
@@ -114,6 +120,7 @@ class ShopStage:
     category: str = ""
     npc_key: str = ""
     dev_comment: str = ""
+    source_file: str = ""
 
 
 @dataclass
@@ -122,6 +129,7 @@ class ShopGroup:
     tag_name: str
     name: str
     group: str
+    source_file: str = ""
     stages: List[ShopStage] = field(default_factory=list)
 
 
@@ -228,7 +236,8 @@ def parse_faction_node_recursive(
     elem,
     knowledge_lookup: Dict[str, str],
     global_seen: Set[str],
-    depth: int = 0
+    depth: int = 0,
+    source_file: str = ""
 ) -> Optional[FactionNodeData]:
     """Parse a FactionNode element and all its nested FactionNode children."""
     strkey = elem.get("StrKey") or ""
@@ -263,13 +272,14 @@ def parse_faction_node_recursive(
         description=description,
         knowledge_key=knowledge_key,
         node_type=node_type,
+        source_file=source_file,
     )
 
     # Parse nested FactionNodes
     for child_elem in elem:
         if child_elem.tag == "FactionNode":
             child_node = parse_faction_node_recursive(
-                child_elem, knowledge_lookup, global_seen, depth + 1
+                child_elem, knowledge_lookup, global_seen, depth + 1, source_file
             )
             if child_node:
                 node.children.append(child_node)
@@ -280,7 +290,8 @@ def parse_faction_node_recursive(
 def parse_faction_element(
     elem,
     knowledge_lookup: Dict[str, str],
-    global_seen: Set[str]
+    global_seen: Set[str],
+    source_file: str = ""
 ) -> Optional[FactionData]:
     """Parse a Faction element and all its FactionNode children."""
     strkey = elem.get("StrKey") or ""
@@ -297,12 +308,13 @@ def parse_faction_element(
         strkey=strkey,
         name=name,
         knowledge_key=knowledge_key,
+        source_file=source_file,
     )
 
     # Parse direct FactionNode children
     for child_elem in elem:
         if child_elem.tag == "FactionNode":
-            node = parse_faction_node_recursive(child_elem, knowledge_lookup, global_seen)
+            node = parse_faction_node_recursive(child_elem, knowledge_lookup, global_seen, 0, source_file)
             if node:
                 faction.nodes.append(node)
 
@@ -312,7 +324,8 @@ def parse_faction_element(
 def parse_faction_group_element(
     elem,
     knowledge_lookup: Dict[str, str],
-    global_seen: Set[str]
+    global_seen: Set[str],
+    source_file: str = ""
 ) -> Optional[FactionGroupData]:
     """Parse a FactionGroup element and all its Faction children."""
     strkey = elem.get("StrKey") or ""
@@ -329,12 +342,13 @@ def parse_faction_group_element(
         strkey=strkey,
         group_name=group_name,
         knowledge_key=knowledge_key,
+        source_file=source_file,
     )
 
     # Parse Faction children
     for child_elem in elem:
         if child_elem.tag == "Faction":
-            faction = parse_faction_element(child_elem, knowledge_lookup, global_seen)
+            faction = parse_faction_element(child_elem, knowledge_lookup, global_seen, source_file)
             if faction:
                 faction_group.factions.append(faction)
 
@@ -358,9 +372,10 @@ def parse_all_faction_groups(
         root_el = parse_xml_file(path)
         if root_el is None:
             continue
+        source_file = path.name
 
         for fg_elem in root_el.iter("FactionGroup"):
-            fg = parse_faction_group_element(fg_elem, knowledge_lookup, global_seen)
+            fg = parse_faction_group_element(fg_elem, knowledge_lookup, global_seen, source_file)
             if fg and fg.factions:
                 faction_groups.append(fg)
 
@@ -396,6 +411,7 @@ def parse_standalone_factions(
         root_el = parse_xml_file(path)
         if root_el is None:
             continue
+        source_file = path.name
 
         # Collect all Faction StrKeys that ARE inside FactionGroups
         factions_in_groups: Set[str] = set()
@@ -414,7 +430,7 @@ def parse_standalone_factions(
                 if strkey and strkey in factions_in_groups:
                     continue
 
-                faction = parse_faction_element(child, knowledge_lookup, global_seen)
+                faction = parse_faction_element(child, knowledge_lookup, global_seen, source_file)
                 if faction and faction.nodes:
                     standalone_factions.append(faction)
 
@@ -442,6 +458,7 @@ def parse_shop_file(shop_path: Path, global_seen: Set[str]) -> List[ShopGroup]:
         log.error("Failed to parse shop file")
         return []
 
+    source_file = shop_path.name
     merged_groups: OrderedDict[str, ShopGroup] = OrderedDict()
 
     for child in root_el:
@@ -476,6 +493,7 @@ def parse_shop_file(shop_path: Path, global_seen: Set[str]) -> List[ShopGroup]:
                 description=desc,
                 category=category,
                 npc_key=npc_key,
+                source_file=source_file,
             )
             new_stages.append(stage)
 
@@ -489,6 +507,7 @@ def parse_shop_file(shop_path: Path, global_seen: Set[str]) -> List[ShopGroup]:
                 tag_name=child.tag,
                 name=name,
                 group=group,
+                source_file=source_file,
                 stages=new_stages,
             )
 
@@ -503,8 +522,8 @@ def parse_shop_file(shop_path: Path, global_seen: Set[str]) -> List[ShopGroup]:
 # ROW GENERATION
 # =============================================================================
 
-# Row format: (depth, text, style_type, is_description)
-RowItem = Tuple[int, str, str, bool]
+# Row format: (depth, text, style_type, is_description, source_file)
+RowItem = Tuple[int, str, str, bool, str]
 
 
 def emit_faction_node_rows(node: FactionNodeData, depth: int) -> List[RowItem]:
@@ -512,10 +531,10 @@ def emit_faction_node_rows(node: FactionNodeData, depth: int) -> List[RowItem]:
     rows: List[RowItem] = []
 
     style = f"FactionNode_{node.node_type}" if node.node_type else "FactionNode"
-    rows.append((depth, node.name, style, False))
+    rows.append((depth, node.name, style, False, node.source_file))
 
     if node.description:
-        rows.append((depth + 1, node.description, "Description", True))
+        rows.append((depth + 1, node.description, "Description", True, node.source_file))
 
     for child in node.children:
         rows.extend(emit_faction_node_rows(child, depth + 1))
@@ -527,7 +546,7 @@ def emit_faction_rows(faction: FactionData, depth: int = 0) -> List[RowItem]:
     """Generate rows for a Faction and all its FactionNodes."""
     rows: List[RowItem] = []
 
-    rows.append((depth, faction.name, "Faction", False))
+    rows.append((depth, faction.name, "Faction", False, faction.source_file))
 
     for node in faction.nodes:
         rows.extend(emit_faction_node_rows(node, depth + 1))
@@ -550,7 +569,7 @@ def emit_standalone_faction_rows(standalone_factions: List[FactionData]) -> List
     rows: List[RowItem] = []
 
     for faction in standalone_factions:
-        rows.append((0, faction.name, "Faction", False))
+        rows.append((0, faction.name, "Faction", False, faction.source_file))
         for node in faction.nodes:
             rows.extend(emit_faction_node_rows(node, 1))
 
@@ -562,11 +581,11 @@ def emit_shop_rows(shop_groups: List[ShopGroup]) -> List[RowItem]:
     rows: List[RowItem] = []
 
     for group in shop_groups:
-        rows.append((0, group.name, "ShopGroup", False))
+        rows.append((0, group.name, "ShopGroup", False, group.source_file))
         for stage in group.stages:
-            rows.append((1, stage.name, "ShopStage", False))
+            rows.append((1, stage.name, "ShopStage", False, stage.source_file))
             if stage.description:
-                rows.append((2, stage.description, "Description", True))
+                rows.append((2, stage.description, "Description", True, stage.source_file))
 
     return rows
 
@@ -577,28 +596,27 @@ def emit_shop_rows(shop_groups: List[ShopGroup]) -> List[RowItem]:
 
 def get_translated_tab_name(
     korean_name: str,
-    eng_tbl: Dict[str, Tuple[str, str]],
-    lang_tbl: Optional[Dict[str, Tuple[str, str]]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
+    lang_tbl: Optional[Dict[str, List[Tuple[str, str]]]],
     lang_code: str,
     fallback: str = "Sheet"
 ) -> str:
     """Get translated sheet tab name."""
-    normalized = normalize_placeholders(korean_name)
     is_eng = lang_code.lower() == "eng"
 
     if is_eng:
-        trans, _ = eng_tbl.get(normalized, ("", ""))
+        trans, _ = get_first_translation(eng_tbl, korean_name)
         title = trans.strip() if trans else korean_name.strip()
     else:
         if lang_tbl:
-            trans, _ = lang_tbl.get(normalized, ("", ""))
+            trans, _ = get_first_translation(lang_tbl, korean_name)
             if trans and is_good_translation(trans):
                 title = trans.strip()
             else:
-                trans_eng, _ = eng_tbl.get(normalized, ("", ""))
+                trans_eng, _ = get_first_translation(eng_tbl, korean_name)
                 title = trans_eng.strip() if trans_eng else korean_name.strip()
         else:
-            trans_eng, _ = eng_tbl.get(normalized, ("", ""))
+            trans_eng, _ = get_first_translation(eng_tbl, korean_name)
             title = trans_eng.strip() if trans_eng else korean_name.strip()
 
     if not title:
@@ -615,9 +633,10 @@ def write_sheet_content(
     sheet,
     rows: List[RowItem],
     is_eng: bool,
-    eng_tbl: Dict[str, Tuple[str, str]],
-    lang_tbl: Optional[Dict[str, Tuple[str, str]]],
-    lang_code: str
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
+    lang_tbl: Optional[Dict[str, List[Tuple[str, str]]]],
+    lang_code: str,
+    export_index: Optional[Dict[str, Set[str]]] = None
 ) -> None:
     """Write rows to a sheet with proper formatting."""
 
@@ -643,14 +662,19 @@ def write_sheet_content(
     # Data rows (raw data, no deduplication)
     r_idx = 2
 
-    for (depth, text, style_type, is_desc) in rows:
+    for (depth, text, style_type, is_desc, source_file) in rows:
         fill, font, row_height = get_style(style_type)
-        normalized = normalize_placeholders(text)
 
-        trans_eng, sid_eng = eng_tbl.get(normalized, ("", ""))
+        if source_file and export_index:
+            trans_eng, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index)
+        else:
+            trans_eng, sid_eng = get_first_translation(eng_tbl, text)
         trans_other = sid_other = ""
         if not is_eng and lang_tbl:
-            trans_other, sid_other = lang_tbl.get(normalized, ("", ""))
+            if source_file and export_index:
+                trans_other, sid_other = resolve_translation(text, lang_tbl, source_file, export_index)
+            else:
+                trans_other, sid_other = get_first_translation(lang_tbl, text)
 
         # Original
         c_orig = sheet.cell(r_idx, 1, text)
@@ -732,10 +756,11 @@ def write_workbook(
     faction_groups: List[FactionGroupData],
     standalone_factions: List[FactionData],
     shop_groups: List[ShopGroup],
-    eng_tbl: Dict[str, Tuple[str, str]],
-    lang_tbl: Optional[Dict[str, Tuple[str, str]]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
+    lang_tbl: Optional[Dict[str, List[Tuple[str, str]]]],
     lang_code: str,
     out_path: Path,
+    export_index: Optional[Dict[str, Set[str]]] = None,
 ) -> None:
     """Generate Excel workbook for a language."""
     wb = Workbook()
@@ -763,7 +788,7 @@ def write_workbook(
         title = get_unique_title(title)
 
         sheet = wb.create_sheet(title=title)
-        write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code)
+        write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index)
 
         log.info("    Sheet '%s': %d rows", title, len(rows))
 
@@ -775,7 +800,7 @@ def write_workbook(
             title = get_unique_title(title)
 
             sheet = wb.create_sheet(title=title)
-            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code)
+            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index)
 
             log.info("    Sheet '%s': %d rows", title, len(rows))
 
@@ -784,7 +809,7 @@ def write_workbook(
         rows = emit_shop_rows(shop_groups)
         if rows:
             sheet = wb.create_sheet(title="Shop")
-            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code)
+            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index)
             log.info("    Sheet 'Shop': %d rows", len(rows))
 
     # Save
@@ -864,7 +889,10 @@ def generate_region_datasheets() -> Dict:
 
         eng_tbl = lang_tables.get("eng", {})
 
-        # 6. Generate workbooks
+        # 6. Get EXPORT index for context-aware duplicate resolution
+        export_index = get_export_index()
+
+        # 7. Generate workbooks
         log.info("Generating Excel workbooks...")
         total = len(lang_tables)
 
@@ -873,9 +901,9 @@ def generate_region_datasheets() -> Dict:
             out_path = output_folder / f"Region_LQA_{code.upper()}.xlsx"
 
             if code.lower() == "eng":
-                write_workbook(faction_groups, standalone_factions, shop_groups, eng_tbl, None, code, out_path)
+                write_workbook(faction_groups, standalone_factions, shop_groups, eng_tbl, None, code, out_path, export_index)
             else:
-                write_workbook(faction_groups, standalone_factions, shop_groups, eng_tbl, tbl, code, out_path)
+                write_workbook(faction_groups, standalone_factions, shop_groups, eng_tbl, tbl, code, out_path, export_index)
             result["files_created"] += 1
 
         log.info("=" * 70)

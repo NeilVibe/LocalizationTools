@@ -17,7 +17,7 @@ Key features:
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Set
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -33,6 +33,9 @@ from generators.base import (
     normalize_placeholders,
     autofit_worksheet,
     THIN_BORDER,
+    get_first_translation,
+    resolve_translation,
+    get_export_index,
 )
 
 log = get_logger("KnowledgeGenerator")
@@ -91,6 +94,7 @@ class KnowledgeItem:
     strkey: str
     name: str
     desc: str
+    source_file: str = ""
     levels: List[LevelLine] = field(default_factory=list)
 
 
@@ -101,6 +105,7 @@ class GroupNode:
     name: str
     desc: str
     icon: bool
+    source_file: str = ""
     children: List["GroupNode"] = field(default_factory=list)
     knowledges: List[KnowledgeItem] = field(default_factory=list)
 
@@ -157,7 +162,7 @@ def _get_style_for_depth(depth: int, is_icon: bool) -> Tuple[PatternFill, Font, 
 # EXTRACTION HELPERS
 # =============================================================================
 
-def extract_knowledge_info(node) -> Optional[KnowledgeItem]:
+def extract_knowledge_info(node, source_file: str = "") -> Optional[KnowledgeItem]:
     """Extract KnowledgeInfo element."""
     strkey = node.get("StrKey") or ""
     name = node.get("Name") or ""
@@ -170,7 +175,7 @@ def extract_knowledge_info(node) -> Optional[KnowledgeItem]:
     _collect_korean_string(name)
     _collect_korean_string(desc)
 
-    ki = KnowledgeItem(strkey=strkey, name=name, desc=desc)
+    ki = KnowledgeItem(strkey=strkey, name=name, desc=desc, source_file=source_file)
 
     for lvl in node.findall("LevelData"):
         lvl_no = lvl.get("Level") or ""
@@ -181,7 +186,7 @@ def extract_knowledge_info(node) -> Optional[KnowledgeItem]:
     return ki
 
 
-def extract_character_knowledge(node) -> Optional[KnowledgeItem]:
+def extract_character_knowledge(node, source_file: str = "") -> Optional[KnowledgeItem]:
     """Extract Knowledge element inside CharacterInfo."""
     strkey = node.get("StrKey") or ""
     name = node.get("Name") or ""
@@ -194,7 +199,7 @@ def extract_character_knowledge(node) -> Optional[KnowledgeItem]:
     _collect_korean_string(name)
     _collect_korean_string(desc)
 
-    ki = KnowledgeItem(strkey=strkey, name=name, desc=desc)
+    ki = KnowledgeItem(strkey=strkey, name=name, desc=desc, source_file=source_file)
 
     for lvl in node.findall("LevelData"):
         lvl_no = lvl.get("Level") or ""
@@ -229,8 +234,9 @@ def build_hierarchy(folder: Path) -> Tuple[List[GroupNode], Dict[str, GroupNode]
         root_el = parse_xml_file(path)
         if root_el is None:
             continue
+        source_file = path.name
 
-        def parse_group(node) -> Optional[GroupNode]:
+        def parse_group(node, src_file: str) -> Optional[GroupNode]:
             """Recursively parse KnowledgeGroupInfo and its nested children."""
             if node.tag != "KnowledgeGroupInfo":
                 return None
@@ -249,7 +255,7 @@ def build_hierarchy(folder: Path) -> Tuple[List[GroupNode], Dict[str, GroupNode]
                 existing = groups_by_key[strkey]
                 for ch in node:
                     if ch.tag == "KnowledgeInfo":
-                        ki = extract_knowledge_info(ch)
+                        ki = extract_knowledge_info(ch, src_file)
                         if ki:
                             existing.knowledges.append(ki)
                 return None
@@ -259,6 +265,7 @@ def build_hierarchy(folder: Path) -> Tuple[List[GroupNode], Dict[str, GroupNode]
                 name=name,
                 desc=desc,
                 icon=icon,
+                source_file=src_file,
             )
 
             if strkey:
@@ -267,38 +274,38 @@ def build_hierarchy(folder: Path) -> Tuple[List[GroupNode], Dict[str, GroupNode]
             # Process children
             for ch in node:
                 if ch.tag == "KnowledgeGroupInfo":
-                    child_group = parse_group(ch)
+                    child_group = parse_group(ch, src_file)
                     if child_group:
                         group.children.append(child_group)
                 elif ch.tag == "KnowledgeInfo":
-                    ki = extract_knowledge_info(ch)
+                    ki = extract_knowledge_info(ch, src_file)
                     if ki:
                         group.knowledges.append(ki)
 
             return group
 
-        def find_top_level_groups(node):
+        def find_top_level_groups(node, src_file: str):
             """Find KnowledgeGroupInfo that are direct children of root."""
             for ch in node:
                 if ch.tag == "KnowledgeGroupInfo":
                     strkey = ch.get("StrKey") or ""
                     if strkey and strkey in mega_roots_by_key:
-                        parse_group(ch)
+                        parse_group(ch, src_file)
                         continue
 
-                    group = parse_group(ch)
+                    group = parse_group(ch, src_file)
                     if group and group.strkey:
                         mega_roots_by_key[group.strkey] = group
                 else:
-                    find_top_level_groups(ch)
+                    find_top_level_groups(ch, src_file)
 
-        def find_character_knowledge(node):
+        def find_character_knowledge(node, src_file: str):
             """Find Knowledge nodes inside CharacterInfo etc."""
             for ch in node:
                 if ch.tag == "Knowledge":
                     group_key = ch.get("KnowledgeGroupKey") or ""
                     if group_key:
-                        ki = extract_character_knowledge(ch)
+                        ki = extract_character_knowledge(ch, src_file)
                         if ki:
                             pending_knowledges.append((group_key, ki))
                 if ch.tag == "CharacterInfo":
@@ -306,13 +313,13 @@ def build_hierarchy(folder: Path) -> Tuple[List[GroupNode], Dict[str, GroupNode]
                         if inner.tag == "Knowledge":
                             group_key = inner.get("KnowledgeGroupKey") or ""
                             if group_key:
-                                ki = extract_character_knowledge(inner)
+                                ki = extract_character_knowledge(inner, src_file)
                                 if ki:
                                     pending_knowledges.append((group_key, ki))
-                find_character_knowledge(ch)
+                find_character_knowledge(ch, src_file)
 
-        find_top_level_groups(root_el)
-        find_character_knowledge(root_el)
+        find_top_level_groups(root_el, source_file)
+        find_character_knowledge(root_el, source_file)
 
     mega_roots = list(mega_roots_by_key.values())
 
@@ -335,8 +342,8 @@ def build_hierarchy(folder: Path) -> Tuple[List[GroupNode], Dict[str, GroupNode]
 # ROW GENERATION
 # =============================================================================
 
-# (depth, text, needs_translation, is_icon_group, is_name_attribute)
-RowItem = Tuple[int, str, bool, bool, bool]
+# (depth, text, needs_translation, is_icon_group, is_name_attribute, source_file)
+RowItem = Tuple[int, str, bool, bool, bool, str]
 
 
 def emit_group_rows(group: GroupNode, depth: int) -> List[RowItem]:
@@ -345,11 +352,11 @@ def emit_group_rows(group: GroupNode, depth: int) -> List[RowItem]:
 
     # Emit group name
     if group.name and not should_ignore(group.name):
-        rows.append((depth, group.name, True, group.icon, True))
+        rows.append((depth, group.name, True, group.icon, True, group.source_file))
 
     # Emit group description
     if group.desc and not should_ignore(group.desc):
-        rows.append((depth + 1, group.desc, True, group.icon, False))
+        rows.append((depth + 1, group.desc, True, group.icon, False, group.source_file))
 
     # Emit child groups (recursively)
     for child in group.children:
@@ -368,19 +375,19 @@ def emit_knowledge_rows(kn: KnowledgeItem, depth: int) -> List[RowItem]:
 
     # Knowledge name
     if kn.name and not should_ignore(kn.name):
-        rows.append((depth, kn.name, True, False, True))
+        rows.append((depth, kn.name, True, False, True, kn.source_file))
 
     # Knowledge description
     if kn.desc and not should_ignore(kn.desc):
-        rows.append((depth + 1, kn.desc, True, False, False))
+        rows.append((depth + 1, kn.desc, True, False, False, kn.source_file))
 
     # Level data
     for lvl in kn.levels:
         label = f"Level {lvl.level}"
         if not should_ignore(label):
-            rows.append((depth + 1, label, False, False, False))
+            rows.append((depth + 1, label, False, False, False, kn.source_file))
         if lvl.desc and not should_ignore(lvl.desc):
-            rows.append((depth + 2, lvl.desc, True, False, False))
+            rows.append((depth + 2, lvl.desc, True, False, False, kn.source_file))
 
     return rows
 
@@ -391,10 +398,11 @@ def emit_knowledge_rows(kn: KnowledgeItem, depth: int) -> List[RowItem]:
 
 def write_workbook(
     mega_roots: List[GroupNode],
-    eng_tbl: Dict[str, Tuple[str, str]],
-    lang_tbl: Optional[Dict[str, Tuple[str, str]]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
+    lang_tbl: Optional[Dict[str, List[Tuple[str, str]]]],
     lang_code: str,
     out_path: Path,
+    export_index: Optional[Dict[str, Set[str]]] = None,
 ) -> None:
     """
     Write one workbook with one sheet per mega root.
@@ -416,8 +424,8 @@ def write_workbook(
             continue
 
         # Sheet title
-        normalized_name = normalize_placeholders(root_group.name)
-        title_eng = eng_tbl.get(normalized_name, ("", ""))[0].strip()
+        title_eng, _ = get_first_translation(eng_tbl, root_group.name)
+        title_eng = title_eng.strip()
         title_orig = root_group.name.strip() or "Sheet"
         title = (title_eng or title_orig)[:31]
         title = re.sub(r"[\\/*?:\[\]]", "_", title)
@@ -455,7 +463,7 @@ def write_workbook(
         # Data rows
         r_idx = 2
 
-        for (depth, text, needs_tr, is_icon, is_name_attr) in rows:
+        for (depth, text, needs_tr, is_icon, is_name_attr, source_file) in rows:
             fill, font, rh = _get_style_for_depth(depth, is_icon)
             if depth >= 2:
                 if is_name_attr or fill != _no_colour_fill:
@@ -467,11 +475,17 @@ def write_workbook(
 
             eng_tr, sid_eng = ("", "")
             if needs_tr:
-                eng_tr, sid_eng = eng_tbl.get(norm_text, ("", ""))
+                if source_file and export_index:
+                    eng_tr, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index)
+                else:
+                    eng_tr, sid_eng = get_first_translation(eng_tbl, text)
 
             other_tr, sid_other = ("", "")
             if needs_tr and not is_eng and lang_tbl is not None:
-                other_tr, sid_other = lang_tbl.get(norm_text, ("", ""))
+                if source_file and export_index:
+                    other_tr, sid_other = resolve_translation(text, lang_tbl, source_file, export_index)
+                else:
+                    other_tr, sid_other = get_first_translation(lang_tbl, text)
 
             sid = sid_eng if is_eng else sid_other
 
@@ -630,7 +644,10 @@ def generate_knowledge_datasheets() -> Dict:
 
         eng_tbl = lang_tables.get("eng", {})
 
-        # 3. Generate workbooks
+        # 3. Get EXPORT index for context-aware duplicate resolution
+        export_index = get_export_index()
+
+        # 4. Generate workbooks
         log.info("Generating Excel workbooks...")
         total = len(lang_tables)
 
@@ -638,9 +655,9 @@ def generate_knowledge_datasheets() -> Dict:
             log.info("(%d/%d) Processing language: %s", idx, total, code.upper())
             out_xlsx = output_folder / f"Knowledge_LQA_{code.upper()}.xlsx"
             if code.lower() == "eng":
-                write_workbook(mega_roots, eng_tbl, None, code, out_xlsx)
+                write_workbook(mega_roots, eng_tbl, None, code, out_xlsx, export_index)
             else:
-                write_workbook(mega_roots, eng_tbl, tbl, code, out_xlsx)
+                write_workbook(mega_roots, eng_tbl, tbl, code, out_xlsx, export_index)
             result["files_created"] += 1
 
         log.info("=" * 70)
