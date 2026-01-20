@@ -1,7 +1,10 @@
 # SESSION: Progress Tracker & Master File Updates
 
-**Date:** 2026-01-17
-**Status:** IMPLEMENTED (pending testing)
+**Date:** 2026-01-20
+**Status:** ✅ STABLE - WORKING
+
+> **Latest Fix (2026-01-20):** Manager status/comment preservation now works correctly.
+> Key change: Lookup uses (MASTER stringid, tester comment) instead of (QA stringid, comment).
 
 ---
 
