@@ -359,6 +359,9 @@ def process_sheet(
     master_manager_comment_col = get_or_create_user_manager_comment_column(master_ws, username, master_user_status_col)
     master_screenshot_col = get_or_create_user_screenshot_column(master_ws, username, master_manager_comment_col)
 
+    # Find STRINGID column in master (for manager status lookup)
+    master_stringid_col = find_column_by_header(master_ws, "STRINGID")
+
     result = {
         "comments": 0,
         "screenshots": 0,
@@ -427,18 +430,12 @@ def process_sheet(
             tester_status_cell.alignment = Alignment(horizontal='center', vertical='center')
 
         # Process COMMENT
-        comment_text_for_lookup = None
-        stringid_for_lookup = ""  # For manager status key: (stringid, comment_text)
         if qa_comment_col and should_compile_comment:
             qa_comment = qa_ws.cell(row=qa_row, column=qa_comment_col).value
             if qa_comment and str(qa_comment).strip():
-                comment_text_for_lookup = extract_comment_text(qa_comment)
-
                 string_id = None
                 if qa_stringid_col:
                     string_id = qa_ws.cell(row=qa_row, column=qa_stringid_col).value
-                    if string_id:
-                        stringid_for_lookup = str(string_id).strip()
 
                 existing = master_ws.cell(row=master_row, column=master_comment_col).value
                 new_value = format_comment(qa_comment, string_id, existing, file_mod_time)
@@ -556,9 +553,33 @@ def process_sheet(
                     result["screenshots"] += 1
 
         # Apply manager STATUS and MANAGER_COMMENT
-        # Key = (stringid, comment_text) to match how we store in collect_manager_status()
-        if comment_text_for_lookup and manager_status:
-            manager_key = (stringid_for_lookup, comment_text_for_lookup)
+        # Key = (stringid, tester_comment_text) - Manager status is paired with tester's comment
+        # STRINGID from MASTER row (reliable), comment from QA file (what tester wrote)
+
+        # Get tester's comment from QA file for lookup
+        tester_comment_for_lookup = ""
+        if qa_comment_col:
+            qa_comment_raw = qa_ws.cell(row=qa_row, column=qa_comment_col).value
+            if qa_comment_raw and str(qa_comment_raw).strip():
+                tester_comment_for_lookup = extract_comment_text(qa_comment_raw)
+
+        if manager_status and tester_comment_for_lookup:
+            # Get STRINGID from MASTER row (not QA file - QA file might have empty STRINGID!)
+            master_stringid = ""
+            if master_stringid_col:
+                stringid_val = master_ws.cell(row=master_row, column=master_stringid_col).value
+                if stringid_val:
+                    master_stringid = str(stringid_val).strip()
+
+            # Primary key: (stringid, tester_comment_text)
+            manager_key = (master_stringid, tester_comment_for_lookup)
+
+            # Fallback: ("", tester_comment_text) if exact match fails (STRINGID changed)
+            if manager_key not in manager_status:
+                fallback_key = ("", tester_comment_for_lookup)
+                if fallback_key in manager_status:
+                    manager_key = fallback_key
+
             if manager_key in manager_status:
                 user_data = manager_status[manager_key]
                 if username in user_data:
