@@ -263,6 +263,77 @@ logger.warning(f"GDP-003: Matched {matched} / {total}")
 | Config/paths | `config.py` | - |
 | GUI | `gui/app.py` | - |
 
+## EXPORT-Aware Duplicate Resolution (base.py)
+
+**Problem:** Same Korean text can have different translations depending on source file context.
+
+```
+Korean: "설명" (Description)
+├── StringId 1001 (skillinfo_pc.xml) → "Skill Description"
+├── StringId 1002 (iteminfo_pc.xml)  → "Item Description"
+└── StringId 1003 (questinfo.xml)    → "Quest Description"
+```
+
+**Solution:** Use EXPORT folder to disambiguate by matching source filename to EXPORT StringIDs.
+
+### Key Functions (base.py)
+
+| Function | Purpose |
+|----------|---------|
+| `build_export_stringid_index()` | Scans EXPORT folder, builds `{filename: {stringids}}` map |
+| `get_export_index()` | Lazy-loads and caches EXPORT index (module-level) |
+| `get_export_key()` | Normalizes filenames for matching |
+| `resolve_translation()` | Context-aware translation lookup with EXPORT matching |
+
+### How It Works
+
+```python
+# All generators now track source_file through data pipeline:
+# 1. Extraction: source_file = path.name
+# 2. Data classes: source_file: str = ""
+# 3. Row tuples: (depth, text, source_file)
+# 4. Write: resolve_translation(text, lang_tbl, source_file, export_index)
+
+# Resolution algorithm:
+def resolve_translation(korean_text, lang_table, data_filename, export_index):
+    candidates = lang_table.get(normalize(korean_text), [])
+    if len(candidates) == 1:
+        return candidates[0]  # Single match
+
+    # Multiple matches - use EXPORT to disambiguate
+    export_key = get_export_key(data_filename)  # "skillinfo_pc.staticinfo"
+    export_stringids = export_index.get(export_key, set())
+
+    for translation, stringid in candidates:
+        if stringid in export_stringids:
+            return (translation, stringid)  # EXPORT match!
+
+    return first_good_translation(candidates)  # Fallback
+```
+
+### All 8 Generators Updated
+
+| Generator | source_file tracking |
+|-----------|---------------------|
+| skill.py | SkillItem.source_file → RowItem tuple |
+| character.py | CharacterItem.source_file |
+| quest.py | Row builders track source_file |
+| item.py | ItemData.source_file |
+| region.py | All data classes have source_file |
+| knowledge.py | KnowledgeItem.source_file |
+| gimmick.py | GimmickEntry.source_file |
+| help.py | AdviceItem/Group.source_file |
+
+### Language Table Structure
+
+```python
+# Old: Single translation per Korean text
+{normalized_korean: (translation, stringid)}
+
+# New: List of ALL translations for duplicate handling
+{normalized_korean: [(translation, stringid), ...]}
+```
+
 ## Recent Features (Session 56)
 
 | Feature | Description | Files |
