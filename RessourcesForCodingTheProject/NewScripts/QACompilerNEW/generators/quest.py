@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Iterable
+from typing import Dict, List, Tuple, Optional, Iterable, Set
 
 from lxml import etree as ET
 from openpyxl import Workbook, load_workbook
@@ -50,6 +50,9 @@ from generators.base import (
     normalize_placeholders,
     THIN_BORDER,
     autofit_worksheet,
+    get_first_translation,
+    resolve_translation,
+    get_export_index,
 )
 
 log = get_logger("QuestGenerator")
@@ -117,16 +120,32 @@ _bold_font = Font(bold=True)
 # HELPER FUNCTIONS
 # =============================================================================
 
-def _tr(text: str, tbl: Dict[str, Tuple[str, str]]) -> str:
-    """Get translation from table."""
-    normalized = normalize_placeholders(text)
-    return tbl.get(normalized, ("", ""))[0]
+def _tr(
+    text: str,
+    tbl: Dict[str, List[Tuple[str, str]]],
+    source_file: str = "",
+    export_index: Optional[Dict] = None
+) -> str:
+    """Get translation from table (context-aware resolution with EXPORT fallback)."""
+    if source_file and export_index:
+        translation, _ = resolve_translation(text, tbl, source_file, export_index)
+    else:
+        translation, _ = get_first_translation(tbl, text)
+    return translation
 
 
-def _sid(text: str, tbl: Dict[str, Tuple[str, str]]) -> str:
-    """Get StringID from table."""
-    normalized = normalize_placeholders(text)
-    return tbl.get(normalized, ("", ""))[1]
+def _sid(
+    text: str,
+    tbl: Dict[str, List[Tuple[str, str]]],
+    source_file: str = "",
+    export_index: Optional[Dict] = None
+) -> str:
+    """Get StringID from table (context-aware resolution with EXPORT fallback)."""
+    if source_file and export_index:
+        _, stringid = resolve_translation(text, tbl, source_file, export_index)
+    else:
+        _, stringid = get_first_translation(tbl, text)
+    return stringid
 
 
 def _parse_vec3(s: str) -> Optional[Tuple[float, float, float]]:
@@ -772,36 +791,39 @@ def build_rows_main(
     scenario_folder: Path,
     quest_order: List[str],
     quest_groups: Dict[str, str],
-    lang_tbl: Dict[str, Tuple[str, str]],
-    eng_tbl: Dict[str, Tuple[str, str]],
+    lang_tbl: Dict[str, List[Tuple[str, str]]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
     id_tbl: Dict[str, str],
     stage2seq: Dict[str, str],
     name_map: Dict[str, str],
     seq_pos: Dict[str, Tuple[float, float, float]],
     group_meta: Dict[str, str],
+    export_index: Optional[Dict[str, Set[str]]] = None,
 ) -> List[Row]:
     """Build rows for Main Quest sheet."""
     log.info("Building rows for MAIN quests...")
 
-    quests: Dict[str, ET._Element] = {}
+    quests: Dict[str, Tuple[ET._Element, str]] = {}  # tag -> (element, source_file)
 
     if scenario_folder.exists():
         for p in _iter_quest_xml_files(scenario_folder):
             rt = parse_xml_file(p)
             if rt is None:
                 continue
+            source_file = p.name
 
             for q in rt.iter():
                 if q.get("Name") and (q.get("StartMission") or q.get("QuestStart")):
-                    quests[q.tag] = q
+                    quests[q.tag] = (q, source_file)
 
     rows: List[Row] = []
     current_group = None
 
     for qk in quest_order:
-        q = quests.get(qk)
-        if q is None:
+        qdata = quests.get(qk)
+        if qdata is None:
             continue
+        q, source_file = qdata
 
         grp = quest_groups.get(qk, "")
 
@@ -812,10 +834,10 @@ def build_rows_main(
             rows.append((
                 0,
                 kr_group,
-                _tr(kr_group, eng_tbl),
-                _tr(kr_group, lang_tbl),
+                _tr(kr_group, eng_tbl, source_file, export_index),
+                _tr(kr_group, lang_tbl, source_file, export_index),
                 "",
-                _sid(kr_group, eng_tbl),
+                _sid(kr_group, eng_tbl, source_file, export_index),
                 False, True,
                 "", "", "", ""
             ))
@@ -827,10 +849,10 @@ def build_rows_main(
         rows.append((
             1,
             kor,
-            _tr(kor, eng_tbl),
-            _tr(kor, lang_tbl),
+            _tr(kor, eng_tbl, source_file, export_index),
+            _tr(kor, lang_tbl, source_file, export_index),
             skn,
-            _sid(kor, eng_tbl),
+            _sid(kor, eng_tbl, source_file, export_index),
             bool(q.get("StageIcon")), True,
             "", "", "", ""
         ))
@@ -844,10 +866,10 @@ def build_rows_main(
             rows.append((
                 2,
                 mk,
-                _tr(mk, eng_tbl),
-                _tr(mk, lang_tbl),
+                _tr(mk, eng_tbl, source_file, export_index),
+                _tr(mk, lang_tbl, source_file, export_index),
                 id_tbl.get(msk.lower(), msk),
-                _sid(mk, eng_tbl),
+                _sid(mk, eng_tbl, source_file, export_index),
                 False, True,
                 cmd, "", "", ""
             ))
@@ -861,10 +883,10 @@ def build_rows_main(
                 rows.append((
                     3,
                     sk,
-                    _tr(sk, eng_tbl),
-                    _tr(sk, lang_tbl),
+                    _tr(sk, eng_tbl, source_file, export_index),
+                    _tr(sk, lang_tbl, source_file, export_index),
                     id_tbl.get(ssk.lower(), ssk),
-                    _sid(sk, eng_tbl),
+                    _sid(sk, eng_tbl, source_file, export_index),
                     False, True,
                     cmd2, "", "", ""
                 ))
@@ -880,8 +902,8 @@ def _bump_depth(rows: List[Row], inc: int = 1) -> List[Row]:
 
 def build_rows_faction(
     folder: Path,
-    lang_tbl: Dict[str, Tuple[str, str]],
-    eng_tbl: Dict[str, Tuple[str, str]],
+    lang_tbl: Dict[str, List[Tuple[str, str]]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
     id_tbl: Dict[str, str],
     stage2seq: Dict[str, str],
     name_map: Dict[str, str],
@@ -890,6 +912,7 @@ def build_rows_faction(
     node2fac: Dict[str, str],
     quest_conditions: Dict[str, Tuple[List[str], List[str]]] = None,
     branch_conditions: Dict[str, Tuple[List[str], List[str]]] = None,
+    export_index: Optional[Dict[str, Set[str]]] = None,
 ) -> Dict[str, List[Row]]:
     """Build rows for Faction Quest sheets.
 
@@ -937,6 +960,7 @@ def build_rows_faction(
         rt = parse_xml_file(p)
         if rt is None:
             continue
+        source_file = p.name
 
         for q in rt.iter():
             if not (q.get("Name") and (q.get("StartMission") or q.get("QuestStart"))):
@@ -971,9 +995,9 @@ def build_rows_faction(
 
             rows.append((
                 0,
-                kor, _tr(kor, eng_tbl), _tr(kor, lang_tbl),
+                kor, _tr(kor, eng_tbl, source_file, export_index), _tr(kor, lang_tbl, source_file, export_index),
                 id_tbl.get(quest_tag, ""),
-                _sid(kor, eng_tbl),
+                _sid(kor, eng_tbl, source_file, export_index),
                 bool(q.get("StageIcon")), True,
                 prereq_cmd, "", "", ""
             ))
@@ -985,9 +1009,9 @@ def build_rows_faction(
                 cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
                 rows.append((
                     1,
-                    mk, _tr(mk, eng_tbl), _tr(mk, lang_tbl),
+                    mk, _tr(mk, eng_tbl, source_file, export_index), _tr(mk, lang_tbl, source_file, export_index),
                     id_tbl.get(msk.lower(), msk),
-                    _sid(mk, eng_tbl),
+                    _sid(mk, eng_tbl, source_file, export_index),
                     False, True, cmd, "", "", ""
                 ))
 
@@ -998,9 +1022,9 @@ def build_rows_faction(
                     cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
                     rows.append((
                         2,
-                        sk, _tr(sk, eng_tbl), _tr(sk, lang_tbl),
+                        sk, _tr(sk, eng_tbl, source_file, export_index), _tr(sk, lang_tbl, source_file, export_index),
                         id_tbl.get(ssk.lower(), ssk),
-                        _sid(sk, eng_tbl),
+                        _sid(sk, eng_tbl, source_file, export_index),
                         False, True, cmd2, "", "", ""
                     ))
 
@@ -1012,12 +1036,13 @@ def build_rows_faction(
 
 def build_rows_daily(
     folder: Path,
-    lang_tbl: Dict[str, Tuple[str, str]],
-    eng_tbl: Dict[str, Tuple[str, str]],
+    lang_tbl: Dict[str, List[Tuple[str, str]]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
     id_tbl: Dict[str, str],
     stage2seq: Dict[str, str],
     name_map: Dict[str, str],
     seq_pos: Dict[str, Tuple[float, float, float]],
+    export_index: Optional[Dict[str, Set[str]]] = None,
 ) -> List[Row]:
     """Build rows for Daily Quest sheet."""
     log.info("Building rows for DAILY quests...")
@@ -1031,6 +1056,7 @@ def build_rows_daily(
         rt = parse_xml_file(p)
         if rt is None:
             continue
+        source_file = p.name
 
         for q in rt.iter():
             if not (q.get("Name") and q.get("StartMission")):
@@ -1044,9 +1070,9 @@ def build_rows_daily(
             _collect_korean_string(kor)
             rows.append((
                 0,
-                kor, _tr(kor, eng_tbl), _tr(kor, lang_tbl),
+                kor, _tr(kor, eng_tbl, source_file, export_index), _tr(kor, lang_tbl, source_file, export_index),
                 id_tbl.get(q.tag.lower(), ""),
-                _sid(kor, eng_tbl),
+                _sid(kor, eng_tbl, source_file, export_index),
                 bool(q.get("StageIcon")), True,
                 "", "", "", ""
             ))
@@ -1058,9 +1084,9 @@ def build_rows_daily(
                 cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
                 rows.append((
                     1,
-                    mk, _tr(mk, eng_tbl), _tr(mk, lang_tbl),
+                    mk, _tr(mk, eng_tbl, source_file, export_index), _tr(mk, lang_tbl, source_file, export_index),
                     id_tbl.get(msk.lower(), msk),
-                    _sid(mk, eng_tbl),
+                    _sid(mk, eng_tbl, source_file, export_index),
                     False, True, cmd, "", "", ""
                 ))
 
@@ -1071,9 +1097,9 @@ def build_rows_daily(
                     cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
                     rows.append((
                         2,
-                        sk, _tr(sk, eng_tbl), _tr(sk, lang_tbl),
+                        sk, _tr(sk, eng_tbl, source_file, export_index), _tr(sk, lang_tbl, source_file, export_index),
                         id_tbl.get(ssk.lower(), ssk),
-                        _sid(sk, eng_tbl),
+                        _sid(sk, eng_tbl, source_file, export_index),
                         False, True, cmd2, "", "", ""
                     ))
 
@@ -1099,13 +1125,14 @@ def _extract_item_command(el: ET._Element) -> str:
 
 def build_rows_challenge(
     folder: Path,
-    lang_tbl: Dict[str, Tuple[str, str]],
-    eng_tbl: Dict[str, Tuple[str, str]],
+    lang_tbl: Dict[str, List[Tuple[str, str]]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
     id_tbl: Dict[str, str],
     stage2seq: Dict[str, str],
     name_map: Dict[str, str],
     seq_pos: Dict[str, Tuple[float, float, float]],
     group_meta: Dict[str, str],
+    export_index: Optional[Dict[str, Set[str]]] = None,
 ) -> List[Row]:
     """Build rows for Challenge Quest sheet."""
     log.info("Building rows for CHALLENGE quests...")
@@ -1119,6 +1146,7 @@ def build_rows_challenge(
         rt = parse_xml_file(p)
         if rt is None:
             continue
+        source_file = p.name
 
         for q in rt:
             if not (q.get("Name") and q.get("StartMission")):
@@ -1130,8 +1158,8 @@ def build_rows_challenge(
             # Group header row (depth 4 for visual distinction)
             rows.append((
                 4,
-                group_name, _tr(group_name, eng_tbl), _tr(group_name, lang_tbl),
-                "", _sid(group_name, eng_tbl),
+                group_name, _tr(group_name, eng_tbl, source_file, export_index), _tr(group_name, lang_tbl, source_file, export_index),
+                "", _sid(group_name, eng_tbl, source_file, export_index),
                 False, True,
                 "", "", "", ""
             ))
@@ -1143,9 +1171,9 @@ def build_rows_challenge(
 
             rows.append((
                 0,
-                kor, _tr(kor, eng_tbl), _tr(kor, lang_tbl),
+                kor, _tr(kor, eng_tbl, source_file, export_index), _tr(kor, lang_tbl, source_file, export_index),
                 id_tbl.get(q.tag.lower(), ""),
-                _sid(kor, eng_tbl),
+                _sid(kor, eng_tbl, source_file, export_index),
                 False, True, cmd, "", "", ""
             ))
 
@@ -1156,9 +1184,9 @@ def build_rows_challenge(
                 cmd2 = build_command(m, id_tbl, stage2seq, name_map, seq_pos) if use_tp else _extract_item_command(m)
                 rows.append((
                     1,
-                    mk, _tr(mk, eng_tbl), _tr(mk, lang_tbl),
+                    mk, _tr(mk, eng_tbl, source_file, export_index), _tr(mk, lang_tbl, source_file, export_index),
                     id_tbl.get(msk.lower(), msk),
-                    _sid(mk, eng_tbl),
+                    _sid(mk, eng_tbl, source_file, export_index),
                     False, True, cmd2, "", "", ""
                 ))
 
@@ -1169,9 +1197,9 @@ def build_rows_challenge(
                     cmd3 = build_command(s, id_tbl, stage2seq, name_map, seq_pos) if use_tp else _extract_item_command(s)
                     rows.append((
                         2,
-                        sk, _tr(sk, eng_tbl), _tr(sk, lang_tbl),
+                        sk, _tr(sk, eng_tbl, source_file, export_index), _tr(sk, lang_tbl, source_file, export_index),
                         id_tbl.get(ssk.lower(), ssk),
-                        _sid(sk, eng_tbl),
+                        _sid(sk, eng_tbl, source_file, export_index),
                         False, True, cmd3, "", "", ""
                     ))
 
@@ -1181,12 +1209,13 @@ def build_rows_challenge(
 
 def build_rows_minigame(
     minigame_file: Path,
-    lang_tbl: Dict[str, Tuple[str, str]],
-    eng_tbl: Dict[str, Tuple[str, str]],
+    lang_tbl: Dict[str, List[Tuple[str, str]]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
     id_tbl: Dict[str, str],
     stage2seq: Dict[str, str],
     name_map: Dict[str, str],
     seq_pos: Dict[str, Tuple[float, float, float]],
+    export_index: Optional[Dict[str, Set[str]]] = None,
 ) -> List[Row]:
     """Build rows for Minigame Quest sheet."""
     log.info("Building rows for MINIGAME quests from: %s", minigame_file)
@@ -1200,6 +1229,7 @@ def build_rows_minigame(
         log.error("Failed to parse minigame file")
         return []
 
+    source_file = minigame_file.name
     rows: List[Row] = []
 
     for el in rt:
@@ -1216,9 +1246,9 @@ def build_rows_minigame(
         if "_mission" in tag.lower() and el.get("StartMission"):
             rows.append((
                 0,
-                name, _tr(name, eng_tbl), _tr(name, lang_tbl),
+                name, _tr(name, eng_tbl, source_file, export_index), _tr(name, lang_tbl, source_file, export_index),
                 id_tbl.get(tag.lower(), ""),
-                _sid(name, eng_tbl),
+                _sid(name, eng_tbl, source_file, export_index),
                 bool(el.get("StageIcon")), True,
                 "", "", "", ""
             ))
@@ -1230,9 +1260,9 @@ def build_rows_minigame(
                 cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
                 rows.append((
                     1,
-                    mk, _tr(mk, eng_tbl), _tr(mk, lang_tbl),
+                    mk, _tr(mk, eng_tbl, source_file, export_index), _tr(mk, lang_tbl, source_file, export_index),
                     id_tbl.get(msk.lower(), msk),
-                    _sid(mk, eng_tbl),
+                    _sid(mk, eng_tbl, source_file, export_index),
                     False, True, cmd, "", "", ""
                 ))
 
@@ -1243,9 +1273,9 @@ def build_rows_minigame(
                     cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
                     rows.append((
                         2,
-                        sk, _tr(sk, eng_tbl), _tr(sk, lang_tbl),
+                        sk, _tr(sk, eng_tbl, source_file, export_index), _tr(sk, lang_tbl, source_file, export_index),
                         id_tbl.get(ssk.lower(), ssk),
-                        _sid(sk, eng_tbl),
+                        _sid(sk, eng_tbl, source_file, export_index),
                         False, True, cmd2, "", "", ""
                     ))
 
@@ -1253,9 +1283,9 @@ def build_rows_minigame(
         elif group == "minigame" or el.find("Stage") is not None:
             rows.append((
                 0,
-                name, _tr(name, eng_tbl), _tr(name, lang_tbl),
+                name, _tr(name, eng_tbl, source_file, export_index), _tr(name, lang_tbl, source_file, export_index),
                 id_tbl.get(tag.lower(), ""),
-                _sid(name, eng_tbl),
+                _sid(name, eng_tbl, source_file, export_index),
                 bool(el.get("StageIcon")), True,
                 "", "", "", ""
             ))
@@ -1286,9 +1316,9 @@ def build_rows_minigame(
 
                 rows.append((
                     1,
-                    stage_name, _tr(stage_name, eng_tbl), _tr(stage_name, lang_tbl),
+                    stage_name, _tr(stage_name, eng_tbl, source_file, export_index), _tr(stage_name, lang_tbl, source_file, export_index),
                     id_tbl.get(stage_sk.lower(), stage_sk),
-                    _sid(stage_name, eng_tbl),
+                    _sid(stage_name, eng_tbl, source_file, export_index),
                     bool(stage.get("StageIcon")), True,
                     cmd, "", "", ""
                 ))
@@ -1502,7 +1532,10 @@ def generate_quest_datasheets() -> Dict:
         # 7. Parse Branch conditions from quest XML
         branch_conditions = parse_branch_conditions(FACTION_QUEST_FOLDER)
 
-        # 7. Process each language
+        # 8. Get EXPORT index for context-aware duplicate resolution
+        export_index = get_export_index()
+
+        # 9. Process each language
         log.info("Generating Excel workbooks...")
         total = len(lang_tables)
 
@@ -1514,30 +1547,30 @@ def generate_quest_datasheets() -> Dict:
                 SCENARIO_FOLDER, quest_order, quest_groups,
                 lang_tbl, eng_tbl, id_tbl,
                 stage2seq, name_map, seq_pos,
-                group_meta
+                group_meta, export_index
             )
 
             faction_groups = build_rows_faction(
                 FACTION_QUEST_FOLDER, lang_tbl, eng_tbl,
                 id_tbl, stage2seq, name_map, seq_pos,
                 quest2fac_map, node2fac_map,
-                quest_conditions, branch_conditions
+                quest_conditions, branch_conditions, export_index
             )
 
             rows_daily = build_rows_daily(
                 FACTION_QUEST_FOLDER, lang_tbl, eng_tbl,
-                id_tbl, stage2seq, name_map, seq_pos
+                id_tbl, stage2seq, name_map, seq_pos, export_index
             )
 
             rows_chal = build_rows_challenge(
                 CHALLENGE_FOLDER, lang_tbl, eng_tbl,
                 id_tbl, stage2seq, name_map, seq_pos,
-                group_meta
+                group_meta, export_index
             )
 
             rows_minigame = build_rows_minigame(
                 MINIGAME_FILE, lang_tbl, eng_tbl,
-                id_tbl, stage2seq, name_map, seq_pos
+                id_tbl, stage2seq, name_map, seq_pos, export_index
             )
 
             # Organize sheets

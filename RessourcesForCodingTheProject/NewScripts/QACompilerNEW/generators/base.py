@@ -5,18 +5,19 @@ Shared functionality for all datasheet generators.
 
 Contains:
 - XML parsing and sanitization
-- Language table loading
+- Language table loading (with duplicate handling)
 - Korean detection
 - Placeholder normalization
 - Excel autofit
 - Common styles
+- EXPORT-based duplicate translation resolution
 """
 
 import os
 import re
 import logging
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Iterator
+from typing import Dict, List, Tuple, Optional, Iterator, Set
 from dataclasses import dataclass
 
 from lxml import etree as ET
@@ -25,7 +26,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-from config import DEPTH_COLORS, STATUS_OPTIONS
+from config import DEPTH_COLORS, STATUS_OPTIONS, EXPORT_FOLDER
 
 # =============================================================================
 # LOGGING
@@ -83,6 +84,168 @@ def contains_korean(text: str) -> bool:
 def is_good_translation(text: str) -> bool:
     """Check if translation is valid (non-empty and no Korean)."""
     return bool(text) and not contains_korean(text)
+
+
+# =============================================================================
+# EXPORT STRINGID INDEX (for duplicate translation resolution)
+# =============================================================================
+
+_EXPORT_INDEX: Optional[Dict[str, Set[str]]] = None  # Module-level cache
+
+
+def build_export_stringid_index(export_folder: Path) -> Dict[str, Set[str]]:
+    """
+    Scan EXPORT folder and build: normalized_filename → {stringid_1, stringid_2, ...}
+
+    This allows us to determine which StringIDs belong to which source data file.
+    For example, skillinfo_pc.staticinfo.loc.xml contains StringIDs from skillinfo_pc.staticinfo.xml.
+
+    Args:
+        export_folder: Path to EXPORT folder containing .loc.xml files
+
+    Returns:
+        Dict mapping normalized filename (without .loc.xml) to set of StringIDs
+        Example: {"skillinfo_pc.staticinfo": {"1001", "1002", "1003"}}
+    """
+    index: Dict[str, Set[str]] = {}
+
+    if not export_folder.exists():
+        return index
+
+    # Scan all .loc.xml files recursively
+    for path in export_folder.rglob("*.loc.xml"):
+        if not path.is_file():
+            continue
+
+        # Normalize filename: remove .loc.xml to get base name
+        # "skillinfo_pc.staticinfo.loc.xml" → "skillinfo_pc.staticinfo"
+        filename_key = path.name.lower().replace(".loc.xml", "")
+
+        try:
+            # Parse the file to extract StringIDs
+            tree = ET.parse(str(path))
+            root = tree.getroot()
+
+            stringids: Set[str] = set()
+            for loc_str in root.iter("LocStr"):
+                sid = loc_str.get("StringId")
+                if sid:
+                    stringids.add(sid)
+
+            if stringids:
+                # Merge if multiple files have same base name (different folders)
+                if filename_key in index:
+                    index[filename_key].update(stringids)
+                else:
+                    index[filename_key] = stringids
+
+        except ET.XMLSyntaxError:
+            # Skip malformed files
+            continue
+        except Exception:
+            # Skip files that can't be read
+            continue
+
+    return index
+
+
+def get_export_index() -> Dict[str, Set[str]]:
+    """
+    Lazy-load and cache EXPORT index.
+
+    Returns:
+        Dict mapping normalized filename to set of StringIDs
+    """
+    global _EXPORT_INDEX
+    if _EXPORT_INDEX is None:
+        print("  Building EXPORT StringID index...")
+        _EXPORT_INDEX = build_export_stringid_index(EXPORT_FOLDER)
+        print(f"  Indexed {len(_EXPORT_INDEX)} EXPORT files")
+    return _EXPORT_INDEX
+
+
+def get_export_key(data_filename: str) -> str:
+    """
+    Convert data filename to export lookup key.
+
+    Args:
+        data_filename: e.g., "skillinfo_pc.staticinfo.xml"
+
+    Returns:
+        Normalized key: e.g., "skillinfo_pc.staticinfo"
+    """
+    return data_filename.lower().replace(".xml", "").replace(".loc", "")
+
+
+def resolve_translation(
+    korean_text: str,
+    lang_table: Dict[str, List[Tuple[str, str]]],
+    data_filename: str = "",
+    export_index: Optional[Dict[str, Set[str]]] = None
+) -> Tuple[str, str]:
+    """
+    Resolve correct translation using EXPORT mapping for duplicate disambiguation.
+
+    When the same Korean text appears in multiple files with different translations,
+    this function uses the EXPORT folder to find which StringID belongs to the
+    current data file, returning the context-appropriate translation.
+
+    Algorithm:
+    1. Normalize Korean text
+    2. Get all (translation, stringid) pairs for this text
+    3. If only one → use it
+    4. If multiple → find StringID that exists in matching EXPORT file
+    5. Fallback → first good translation (no Korean)
+
+    Args:
+        korean_text: The Korean source text to translate
+        lang_table: Language table with ALL translations stored as lists
+                    {normalized_korean: [(translation, stringid), ...]}
+        data_filename: Source data file name (e.g., "skillinfo_pc.staticinfo.xml")
+        export_index: Optional pre-loaded EXPORT index (uses global cache if None)
+
+    Returns:
+        Tuple of (translation, stringid). Returns ("", "") if not found.
+    """
+    if not korean_text:
+        return ("", "")
+
+    normalized = normalize_placeholders(korean_text)
+    if not normalized:
+        return ("", "")
+
+    # Get all translation candidates
+    candidates = lang_table.get(normalized)
+    if not candidates:
+        return ("", "")
+
+    # If only one candidate, return it
+    if len(candidates) == 1:
+        return candidates[0]
+
+    # Multiple candidates - try to disambiguate using EXPORT
+    if data_filename:
+        if export_index is None:
+            export_index = get_export_index()
+
+        export_key = get_export_key(data_filename)
+        export_stringids = export_index.get(export_key, set())
+
+        if export_stringids:
+            # Find candidate whose StringID is in this EXPORT file
+            for translation, stringid in candidates:
+                if stringid in export_stringids:
+                    print(f"    [DUPLICATE] Korean '{korean_text[:30]}...' has {len(candidates)} translations")
+                    print(f"    [RESOLVED] Using StringID {stringid} (matched {data_filename})")
+                    return (translation, stringid)
+
+    # Fallback: prefer good translation (no Korean)
+    for translation, stringid in candidates:
+        if is_good_translation(translation):
+            return (translation, stringid)
+
+    # Last resort: return first candidate
+    return candidates[0]
 
 
 # =============================================================================
@@ -176,17 +339,24 @@ def iter_xml_files(
 # LANGUAGE TABLE LOADING
 # =============================================================================
 
-def load_language_tables(folder: Path) -> Dict[str, Dict[str, Tuple[str, str]]]:
+def load_language_tables(folder: Path) -> Dict[str, Dict[str, List[Tuple[str, str]]]]:
     """
     Load all non-Korean language tables with normalized placeholder keys.
+
+    Stores ALL translations for each Korean text to support duplicate resolution.
+    When the same Korean text appears in multiple files with different context-specific
+    translations, we preserve all of them for later disambiguation using EXPORT mapping.
 
     Args:
         folder: Path to language data folder
 
     Returns:
-        {lang_code: {normalized_korean: (translation, stringid)}}
+        {lang_code: {normalized_korean: [(translation, stringid), ...]}}
+
+    Note: The list preserves all translations for a given Korean text.
+          Good translations (no Korean) are sorted to the front.
     """
-    tables: Dict[str, Dict[str, Tuple[str, str]]] = {}
+    tables: Dict[str, Dict[str, List[Tuple[str, str]]]] = {}
 
     for path in iter_xml_files(folder):
         stem = path.stem.lower()
@@ -200,7 +370,7 @@ def load_language_tables(folder: Path) -> Dict[str, Dict[str, Tuple[str, str]]]:
         if root_el is None:
             continue
 
-        tbl: Dict[str, Tuple[str, str]] = {}
+        tbl: Dict[str, List[Tuple[str, str]]] = {}
 
         for loc in root_el.iter("LocStr"):
             origin = loc.get("StrOrigin") or ""
@@ -212,17 +382,44 @@ def load_language_tables(folder: Path) -> Dict[str, Dict[str, Tuple[str, str]]]:
 
             normalized_origin = normalize_placeholders(origin)
 
-            # Prefer good translations (no Korean) over bad ones
-            if normalized_origin in tbl:
-                existing_tr, _ = tbl[normalized_origin]
-                if is_good_translation(tr) and not is_good_translation(existing_tr):
-                    tbl[normalized_origin] = (tr, sid)
-            else:
-                tbl[normalized_origin] = (tr, sid)
+            # Store ALL translations for this Korean text
+            if normalized_origin not in tbl:
+                tbl[normalized_origin] = []
+
+            # Add this translation (avoid exact duplicates)
+            entry = (tr, sid)
+            if entry not in tbl[normalized_origin]:
+                tbl[normalized_origin].append(entry)
+
+        # Sort each list: good translations first, then bad ones
+        for key in tbl:
+            tbl[key].sort(key=lambda x: (0 if is_good_translation(x[0]) else 1))
 
         tables[lang] = tbl
 
     return tables
+
+
+def get_first_translation(
+    lang_table: Dict[str, List[Tuple[str, str]]],
+    korean_text: str
+) -> Tuple[str, str]:
+    """
+    Simple lookup that returns the first (best) translation.
+
+    This provides backward compatibility for code that doesn't need
+    context-aware duplicate resolution.
+
+    Args:
+        lang_table: Language table {normalized_korean: [(translation, stringid), ...]}
+        korean_text: Korean text to translate
+
+    Returns:
+        (translation, stringid) or ("", "") if not found
+    """
+    normalized = normalize_placeholders(korean_text)
+    candidates = lang_table.get(normalized, [])
+    return candidates[0] if candidates else ("", "")
 
 
 # =============================================================================
@@ -353,9 +550,11 @@ class RowItem:
 def emit_rows_to_worksheet(
     ws,
     rows: List[RowItem],
-    lang_table: Dict[str, Tuple[str, str]],
+    lang_table: Dict[str, List[Tuple[str, str]]],
     lang_code: str,
-    include_translation_col: bool = True
+    include_translation_col: bool = True,
+    data_filename: str = "",
+    export_index: Optional[Dict[str, Set[str]]] = None
 ) -> None:
     """
     Write rows to a worksheet with translations.
@@ -363,9 +562,11 @@ def emit_rows_to_worksheet(
     Args:
         ws: Target worksheet
         rows: List of RowItem to write
-        lang_table: Language table {normalized_korean: (translation, stringid)}
+        lang_table: Language table {normalized_korean: [(translation, stringid), ...]}
         lang_code: Language code (e.g., "eng", "fre")
         include_translation_col: Whether to include Translation column (False for ENG)
+        data_filename: Source data file for context-aware duplicate resolution
+        export_index: Optional pre-loaded EXPORT index (uses global cache if None)
     """
     # Headers
     if include_translation_col:
@@ -380,10 +581,14 @@ def emit_rows_to_worksheet(
 
     current_row = 2
     for item in rows:
-        normalized = normalize_placeholders(item.text)
-
-        # Lookup translation
-        translation, stringid = lang_table.get(normalized, ("", ""))
+        # Use context-aware resolution if data_filename is provided
+        if data_filename:
+            translation, stringid = resolve_translation(
+                item.text, lang_table, data_filename, export_index
+            )
+        else:
+            # Fallback to simple first-translation lookup
+            translation, stringid = get_first_translation(lang_table, item.text)
 
         # Write cells
         col = 1

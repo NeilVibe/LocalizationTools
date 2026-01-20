@@ -36,6 +36,8 @@ from generators.base import (
     normalize_placeholders,
     autofit_worksheet,
     THIN_BORDER,
+    resolve_translation,
+    get_export_index,
 )
 
 log = get_logger("CharacterGenerator")
@@ -184,8 +186,8 @@ def build_character_groups(folder: Path) -> Dict[str, List[CharacterItem]]:
 
 def write_workbook(
     groups: Dict[str, List[CharacterItem]],
-    eng_tbl: Dict[str, Tuple[str, str]],
-    lang_tbl: Optional[Dict[str, Tuple[str, str]]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
+    lang_tbl: Optional[Dict[str, List[Tuple[str, str]]]],
     lang_code: str,
     out_path: Path,
 ) -> None:
@@ -240,17 +242,20 @@ def write_workbook(
             c.border = THIN_BORDER
         sheet.row_dimensions[1].height = 25
 
+        # Get EXPORT index for context-aware duplicate resolution
+        export_index = get_export_index()
+
         # Write data rows
         r_idx = 2
 
         for char in characters:
             fill = _row_fill_even if r_idx % 2 == 0 else _row_fill_odd
-            normalized_name = normalize_placeholders(char.name)
 
-            trans_eng, sid_eng = eng_tbl.get(normalized_name, ("", ""))
+            # Use source_file for EXPORT-aware duplicate resolution
+            trans_eng, sid_eng = resolve_translation(char.name, eng_tbl, char.source_file, export_index)
             trans_other, sid_other = ("", "")
             if not is_eng and lang_tbl is not None:
-                trans_other, sid_other = lang_tbl.get(normalized_name, ("", ""))
+                trans_other, sid_other = resolve_translation(char.name, lang_tbl, char.source_file, export_index)
 
             command = f"/create character {char.strkey}"
 

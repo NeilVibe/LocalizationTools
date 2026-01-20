@@ -35,6 +35,9 @@ from generators.base import (
     normalize_placeholders,
     autofit_worksheet,
     THIN_BORDER,
+    resolve_translation,
+    get_first_translation,
+    get_export_index,
 )
 
 log = get_logger("SkillGenerator")
@@ -89,6 +92,7 @@ class SkillItem:
     skill_desc: str
     learn_knowledge_key: str
     max_level: int
+    source_file: str = ""  # Track source file for EXPORT-aware resolution
     # Will be filled after knowledge linking
     knowledge: Optional[KnowledgeNode] = None
     use_own_desc: bool = False  # True if lost priority for knowledge key
@@ -241,6 +245,7 @@ def extract_skill_data(folder: Path) -> Tuple[List[SkillItem], Dict[str, Knowled
                 skill_desc=skill_desc,
                 learn_knowledge_key=learn_knowledge_key,
                 max_level=max_level,
+                source_file=skill_file.name,
             ))
 
     log.info("Found %d SkillInfo entries", len(skills))
@@ -277,22 +282,22 @@ def extract_skill_data(folder: Path) -> Tuple[List[SkillItem], Dict[str, Knowled
 # ROW GENERATION
 # =============================================================================
 
-# (depth, text)
-RowItem = Tuple[int, str]
+# (depth, text, source_file)
+RowItem = Tuple[int, str, str]
 
 
-def emit_knowledge_child_rows(child: KnowledgeNode, depth: int) -> List[RowItem]:
+def emit_knowledge_child_rows(child: KnowledgeNode, depth: int, source_file: str) -> List[RowItem]:
     """Emit rows for a knowledge child (sub-skill)."""
     rows: List[RowItem] = []
 
     if child.name:
-        rows.append((depth, child.name))
+        rows.append((depth, child.name, source_file))
 
     if child.desc:
-        rows.append((depth + 1, child.desc))
+        rows.append((depth + 1, child.desc, source_file))
 
     for nested in child.children:
-        rows.extend(emit_knowledge_child_rows(nested, depth + 1))
+        rows.extend(emit_knowledge_child_rows(nested, depth + 1, source_file))
 
     return rows
 
@@ -300,27 +305,28 @@ def emit_knowledge_child_rows(child: KnowledgeNode, depth: int) -> List[RowItem]
 def emit_skill_rows(skill: SkillItem) -> List[RowItem]:
     """Generate rows for a single skill with proper nesting."""
     rows: List[RowItem] = []
+    source_file = skill.source_file
 
     # Depth 0: SkillName (parent)
     if skill.skill_name:
-        rows.append((0, skill.skill_name))
+        rows.append((0, skill.skill_name, source_file))
 
     if skill.knowledge and not skill.use_own_desc:
         kn = skill.knowledge
 
         # Depth 1: Parent Knowledge Desc
         if kn.desc:
-            rows.append((1, kn.desc))
+            rows.append((1, kn.desc, source_file))
         elif skill.skill_desc:
-            rows.append((1, skill.skill_desc))
+            rows.append((1, skill.skill_desc, source_file))
 
         # Emit children (sub-skills)
         for child in kn.children:
-            rows.extend(emit_knowledge_child_rows(child, 1))
+            rows.extend(emit_knowledge_child_rows(child, 1, source_file))
     else:
         # No knowledge link or lost priority
         if skill.skill_desc:
-            rows.append((1, skill.skill_desc))
+            rows.append((1, skill.skill_desc, source_file))
 
     return rows
 
@@ -333,7 +339,7 @@ def emit_rows(skills: List[SkillItem]) -> List[RowItem]:
         rows.extend(emit_skill_rows(skill))
 
     # Postprocess: drop empty rows
-    rows = [(d, t) for (d, t) in rows if t and t.strip()]
+    rows = [(d, t, sf) for (d, t, sf) in rows if t and t.strip()]
 
     return rows
 
@@ -344,8 +350,8 @@ def emit_rows(skills: List[SkillItem]) -> List[RowItem]:
 
 def write_workbook(
     rows: List[RowItem],
-    eng_tbl: Dict[str, Tuple[str, str]],
-    lang_tbl: Optional[Dict[str, Tuple[str, str]]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
+    lang_tbl: Optional[Dict[str, List[Tuple[str, str]]]],
     lang_code: str,
     out_path: Path,
 ) -> None:
@@ -355,6 +361,9 @@ def write_workbook(
     ws.title = "Skills"
 
     is_eng = lang_code.lower() == "eng"
+
+    # Get EXPORT index for context-aware resolution
+    export_index = get_export_index()
 
     # Header row
     headers: List = []
@@ -406,12 +415,14 @@ def write_workbook(
     ws.add_data_validation(dv)
 
     # Write data rows
-    for row_idx, (depth, text) in enumerate(rows, start=2):
-        normalized = normalize_placeholders(text)
-        eng_tr, sid = eng_tbl.get(normalized, ("", ""))
+    for row_idx, (depth, text, source_file) in enumerate(rows, start=2):
+        # Use context-aware resolution for duplicate handling
+        eng_tr, sid = resolve_translation(text, eng_tbl, source_file, export_index)
         loc_tr = ""
         if lang_tbl:
-            loc_tr, sid = lang_tbl.get(normalized, (loc_tr, sid))
+            loc_tr, loc_sid = resolve_translation(text, lang_tbl, source_file, export_index)
+            if loc_sid:
+                sid = loc_sid
 
         fill, font, row_height = _get_style_for_depth(depth)
         indent = depth

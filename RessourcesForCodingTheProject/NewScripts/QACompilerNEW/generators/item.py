@@ -32,6 +32,8 @@ from generators.base import (
     is_good_translation,
     autofit_worksheet,
     THIN_BORDER,
+    resolve_translation,
+    get_export_index,
 )
 
 log = get_logger("ItemGenerator")
@@ -97,6 +99,7 @@ class ItemData:
     item_desc: str       # KOR original
     group_key: str
     group_name_kor: str  # KOR original
+    source_file: str = ""  # For EXPORT-based duplicate resolution
 
 
 # Row format
@@ -164,7 +167,7 @@ def sanitize_filename(name: str) -> str:
 def get_display_name(
     group_key: str,
     group_names: Dict[str, str],
-    eng_tbl: Dict[str, Tuple[str, str]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
 ) -> str:
     """Get display name: ENG preferred, else raw group_key."""
     if group_key == OTHERS_KEY:
@@ -174,8 +177,7 @@ def get_display_name(
 
     kor_name = group_names.get(group_key, "")
     if kor_name:
-        normalized = normalize_placeholders(kor_name)
-        eng_name = eng_tbl.get(normalized, ("", ""))[0]
+        eng_name, _ = get_first_translation(eng_tbl, kor_name)
         if eng_name and is_good_translation(eng_name):
             return sanitize_filename(eng_name)
 
@@ -211,10 +213,10 @@ def load_string_key_table(path: Path) -> Dict[str, str]:
 # =============================================================================
 
 def apply_depth_based_clustering(
-    group_items: Dict[str, List[Tuple[str, str, str]]],
+    group_items: Dict[str, List[Tuple[str, str, str, str]]],
     parent_of: Dict[str, str],
     group_names: Dict[str, str],
-    eng_tbl: Dict[str, Tuple[str, str]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
 ) -> Dict[str, Dict[str, List[str]]]:
     """Apply depth-based clustering to merge small groups into parents."""
     log.info("Applying depth-based clustering (threshold: %d items)", MERGE_UP_THRESHOLD)
@@ -296,7 +298,7 @@ def apply_depth_based_clustering(
     for group_key, items_list in group_items.items():
         sub = merge_target[group_key]
         folder = find_folder_at_blue(sub)
-        for ik, _, _ in items_list:
+        for ik, _, _, _ in items_list:
             structure[folder][sub].append(ik)
 
     log.info("Final structure:")
@@ -310,7 +312,7 @@ def apply_depth_based_clustering(
 def extract_monster_items(
     structure: Dict[str, Dict[str, List[str]]],
     group_names: Dict[str, str],
-    eng_tbl: Dict[str, Tuple[str, str]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
 ) -> Dict[str, Dict[str, List[str]]]:
     """Extract mon_ items to Monster_Item folder."""
     log.info("Extracting mon_ items to Monster_Item")
@@ -338,7 +340,7 @@ def extract_monster_items(
 def consolidate_small_folders(
     structure: Dict[str, Dict[str, List[str]]],
     group_names: Dict[str, str],
-    eng_tbl: Dict[str, Tuple[str, str]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
 ) -> Dict[str, Dict[str, List[str]]]:
     """Consolidate small folders into Others."""
     log.info("Consolidating small folders (<%d)", FOLDER_MIN_THRESHOLD)
@@ -469,16 +471,21 @@ def parse_master_groups(path: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
 def scan_resource_folder(
     folder: Path,
     knowledge_desc_map: Dict[str, str]
-) -> Tuple[Dict[str, List[Tuple[str, str, str]]], Dict[str, str]]:
-    """Scan resource folder for items."""
+) -> Tuple[Dict[str, List[Tuple[str, str, str, str]]], Dict[str, str]]:
+    """Scan resource folder for items. Returns (group_items, group_names).
+
+    group_items: {group_key: [(item_key, item_name, item_desc, source_file), ...]}
+    """
     log.info("Scanning resource folder for items: %s", folder)
-    group_items: Dict[str, List[Tuple[str, str, str]]] = {}
+    group_items: Dict[str, List[Tuple[str, str, str, str]]] = {}
     scanned_group_names: Dict[str, str] = {}
 
     for path in iter_xml_files(folder):
         root = parse_xml_file(path)
         if root is None:
             continue
+
+        source_file = path.name  # Track source file for EXPORT matching
 
         for g_el in root.iter("ItemGroupInfo"):
             g_key = g_el.get("StrKey") or ""
@@ -507,7 +514,7 @@ def scan_resource_folder(
                     # Collect Korean strings for coverage tracking
                     _collect_korean_string(name)
                     _collect_korean_string(desc)
-                    bucket.append((ik, name, desc))
+                    bucket.append((ik, name, desc, source_file))
 
     total_items = sum(len(v) for v in group_items.values())
     log.info("Group-item mapping built: Groups=%d  Total items=%d", len(group_items), total_items)
@@ -519,20 +526,21 @@ def scan_resource_folder(
 # =============================================================================
 
 def build_item_data(
-    group_items: Dict[str, List[Tuple[str, str, str]]],
+    group_items: Dict[str, List[Tuple[str, str, str, str]]],
     group_names: Dict[str, str],
 ) -> Dict[str, ItemData]:
     """Build complete item data mapping."""
     items: Dict[str, ItemData] = {}
     for gk, lst in group_items.items():
         kor = group_names.get(gk, "")
-        for ik, iname, idesc in lst:
+        for ik, iname, idesc, src_file in lst:
             items[ik] = ItemData(
                 strkey=ik,
                 item_name=iname,
                 item_desc=idesc,
                 group_key=gk,
                 group_name_kor=kor,
+                source_file=src_file,
             )
     log.info("Built data for %d items", len(items))
     return items
@@ -561,18 +569,22 @@ def build_rows_for_language(
     code: str,
     group_names: Dict[str, str],
     parent_of: Dict[str, str],
-    group_items: Dict[str, List[Tuple[str, str, str]]],
-    lang_tbl: Dict[str, Tuple[str, str]],
+    group_items: Dict[str, List[Tuple[str, str, str, str]]],
+    lang_tbl: Dict[str, List[Tuple[str, str]]],
     id_table: Dict[str, str],
-    eng_tbl: Dict[str, Tuple[str, str]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
 ) -> List[PrimaryRow]:
     """Build rows for a specific language."""
     log.info("Building rows for %s", code.upper())
 
-    def t(tbl: Dict[str, Tuple[str, str]], text: str) -> str:
+    # Get EXPORT index for context-aware duplicate resolution
+    export_index = get_export_index()
+
+    def t(tbl: Dict[str, List[Tuple[str, str]]], text: str, src_file: str = "") -> str:
         if not text:
             return ""
-        return tbl.get(normalize_placeholders(text), ("", ""))[0]
+        trans, _ = resolve_translation(text, tbl, src_file, export_index)
+        return trans
 
     rows: List[PrimaryRow] = []
     children_of = build_children_map(parent_of)
@@ -591,13 +603,13 @@ def build_rows_for_language(
         rows.append((depth, gk, kor, eng, loc,
                      "", "", "", "", "", "", "", "", "", True))
 
-        for ik, iname, idesc in sorted(group_items.get(gk, []), key=lambda x: x[0]):
-            ieng = t(eng_tbl, iname)
-            iloc = t(lang_tbl, iname)
-            deng = t(eng_tbl, idesc)
-            dloc = t(lang_tbl, idesc)
+        for ik, iname, idesc, src_file in sorted(group_items.get(gk, []), key=lambda x: x[0]):
+            ieng = t(eng_tbl, iname, src_file)
+            iloc = t(lang_tbl, iname, src_file)
+            deng = t(eng_tbl, idesc, src_file)
+            dloc = t(lang_tbl, idesc, src_file)
             num = id_table.get(ik.lower(), "<MISSING>")
-            sid = lang_tbl.get(normalize_placeholders(iname), ("", ""))[1]
+            _, sid = resolve_translation(iname, lang_tbl, src_file, export_index)
             rows.append((depth+1, gk, kor, eng, loc,
                          ik, num, iname, ieng, iloc, idesc, deng, dloc, sid, False))
 
@@ -728,7 +740,7 @@ def write_text_files(
     out_folder: Path,
     structure: Dict[str, Dict[str, List[str]]],
     group_names: Dict[str, str],
-    eng_tbl: Dict[str, Tuple[str, str]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
 ) -> Dict[str, List[Tuple[str, str, List[str]]]]:
     """Write text files with /create item commands."""
     out_folder.mkdir(parents=True, exist_ok=True)
@@ -787,9 +799,9 @@ def write_secondary_excel(
     folder_files: Dict[str, List[Tuple[str, str, List[str]]]],
     items: Dict[str, ItemData],
     group_names: Dict[str, str],
-    lang_tbl: Dict[str, Tuple[str, str]],
+    lang_tbl: Dict[str, List[Tuple[str, str]]],
     lang_code: str,
-    eng_tbl: Dict[str, Tuple[str, str]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
 ) -> None:
     """Write secondary Excel with STATUS column drop-down list."""
     def _add_status_validation(sh, status_col_idx: int, max_row: int) -> None:
@@ -809,8 +821,12 @@ def write_secondary_excel(
     wb.remove(wb.active)
     code = lang_code.upper()
 
-    def t(tbl: Dict[str, Tuple[str, str]], text: str) -> str:
-        return tbl.get(normalize_placeholders(text or ""), ("", ""))[0]
+    # Get EXPORT index for context-aware duplicate resolution
+    export_index = get_export_index()
+
+    def t(tbl: Dict[str, List[Tuple[str, str]]], text: str, src_file: str = "") -> str:
+        trans, _ = resolve_translation(text or "", tbl, src_file, export_index)
+        return trans
 
     width_map = {
         "Filename": 33,
@@ -869,22 +885,23 @@ def write_secondary_excel(
                 if not itm:
                     continue
                 sub_disp = get_display_name(itm.group_key, group_names, eng_tbl)
+                src = itm.source_file  # Use source_file for EXPORT-aware resolution
                 data_map = {
                     "Filename": fn,
                     "SubGroup": sub_disp,
                     "ItemName(KOR)": itm.item_name,
                     "ItemDesc(KOR)": itm.item_desc,
-                    "ItemName(ENG)": t(eng_tbl, itm.item_name),
-                    "ItemDesc(ENG)": t(eng_tbl, itm.item_desc),
+                    "ItemName(ENG)": t(eng_tbl, itm.item_name, src),
+                    "ItemDesc(ENG)": t(eng_tbl, itm.item_desc, src),
                     "ItemKey": ik,
                     "STATUS": "",
                     "COMMENT": "",
-                    "STRINGID": lang_tbl.get(normalize_placeholders(itm.item_name), ("", ""))[1],
+                    "STRINGID": resolve_translation(itm.item_name, lang_tbl, src, export_index)[1],
                     "SCREENSHOT": "",
                 }
                 if lang_code != "eng":
-                    data_map[f"ItemName({code})"] = t(lang_tbl, itm.item_name)
-                    data_map[f"ItemDesc({code})"] = t(lang_tbl, itm.item_desc)
+                    data_map[f"ItemName({code})"] = t(lang_tbl, itm.item_name, src)
+                    data_map[f"ItemDesc({code})"] = t(lang_tbl, itm.item_desc, src)
 
                 row_vals = [data_map.get(h, "") for h in headers]
                 rows_accum.append((sub_disp, ik, row_vals))

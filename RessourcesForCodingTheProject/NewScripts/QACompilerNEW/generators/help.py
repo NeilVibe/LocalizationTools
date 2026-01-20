@@ -15,7 +15,7 @@ Output:
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Set
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -29,6 +29,9 @@ from generators.base import (
     normalize_placeholders,
     autofit_worksheet,
     THIN_BORDER,
+    get_first_translation,
+    resolve_translation,
+    get_export_index,
 )
 
 log = get_logger("HelpGenerator")
@@ -69,6 +72,7 @@ class AdviceItem:
     strkey: str
     title: str
     desc: str
+    source_file: str = ""
 
 
 @dataclass
@@ -76,6 +80,7 @@ class AdviceGroup:
     """Group of GameAdvice items."""
     strkey: str
     group_name: str
+    source_file: str = ""
     items: List[AdviceItem] = field(default_factory=list)
 
 
@@ -131,6 +136,7 @@ def extract_gameadvice_data(folder: Path) -> List[AdviceGroup]:
         root_el = parse_xml_file(path)
         if root_el is None:
             continue
+        source_file = path.name
 
         # Find all GameAdviceGroupInfo elements
         for group_el in root_el.iter("GameAdviceGroupInfo"):
@@ -140,7 +146,7 @@ def extract_gameadvice_data(folder: Path) -> List[AdviceGroup]:
             # Collect Korean string for coverage tracking
             _collect_korean_string(group_name)
 
-            group = AdviceGroup(strkey=strkey, group_name=group_name)
+            group = AdviceGroup(strkey=strkey, group_name=group_name, source_file=source_file)
 
             # Find GameAdviceInfo children
             for item_el in group_el.iter("GameAdviceInfo"):
@@ -160,6 +166,7 @@ def extract_gameadvice_data(folder: Path) -> List[AdviceGroup]:
                     strkey=item_strkey,
                     title=title,
                     desc=desc,
+                    source_file=source_file,
                 ))
 
             # Only add group if it has items or a name
@@ -176,8 +183,8 @@ def extract_gameadvice_data(folder: Path) -> List[AdviceGroup]:
 # ROW GENERATION
 # =============================================================================
 
-# (depth, text, needs_translation)
-RowItem = Tuple[int, str, bool]
+# (depth, text, needs_translation, source_file)
+RowItem = Tuple[int, str, bool, str]
 
 
 def emit_rows(groups: List[AdviceGroup]) -> List[RowItem]:
@@ -187,20 +194,20 @@ def emit_rows(groups: List[AdviceGroup]) -> List[RowItem]:
     for group in groups:
         # Emit group name (depth 0)
         if group.group_name:
-            rows.append((0, group.group_name, True))
+            rows.append((0, group.group_name, True, group.source_file))
 
         # Emit items
         for item in group.items:
             # Title (depth 1)
             if item.title:
-                rows.append((1, item.title, True))
+                rows.append((1, item.title, True, item.source_file))
 
             # Description (depth 2)
             if item.desc:
-                rows.append((2, item.desc, True))
+                rows.append((2, item.desc, True, item.source_file))
 
     # Postprocess: drop empty rows (whitespace-only text)
-    rows = [(d, t, n) for (d, t, n) in rows if t and t.strip()]
+    rows = [(d, t, n, sf) for (d, t, n, sf) in rows if t and t.strip()]
 
     return rows
 
@@ -211,20 +218,22 @@ def emit_rows(groups: List[AdviceGroup]) -> List[RowItem]:
 
 def write_workbook(
     rows: List[RowItem],
-    eng_tbl: Dict[str, Tuple[str, str]],
-    lang_tbl: Optional[Dict[str, Tuple[str, str]]],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
+    lang_tbl: Optional[Dict[str, List[Tuple[str, str]]]],
     lang_code: str,
     out_path: Path,
+    export_index: Optional[Dict[str, Set[str]]] = None,
 ) -> None:
     """
     Write one workbook with ONE sheet (GameAdvice).
 
     Args:
-        rows: List of (depth, text, strkey) tuples
+        rows: List of (depth, text, needs_trans, source_file) tuples
         eng_tbl: English language table
         lang_tbl: Target language table (None for ENG)
         lang_code: Language code (e.g., "eng", "fre")
         out_path: Output file path
+        export_index: EXPORT StringID mapping for duplicate resolution
     """
     from openpyxl.worksheet.datavalidation import DataValidation
 
@@ -285,12 +294,19 @@ def write_workbook(
     ws.add_data_validation(dv)
 
     # Write data rows
-    for row_idx, (depth, text, needs_trans) in enumerate(rows, start=2):
-        normalized = normalize_placeholders(text)
-        eng_tr, sid = eng_tbl.get(normalized, ("", ""))
+    for row_idx, (depth, text, needs_trans, source_file) in enumerate(rows, start=2):
+        if source_file and export_index:
+            eng_tr, sid = resolve_translation(text, eng_tbl, source_file, export_index)
+        else:
+            eng_tr, sid = get_first_translation(eng_tbl, text)
         loc_tr = ""
         if lang_tbl:
-            loc_tr, sid = lang_tbl.get(normalized, (loc_tr, sid))
+            if source_file and export_index:
+                loc_tr, loc_sid = resolve_translation(text, lang_tbl, source_file, export_index)
+            else:
+                loc_tr, loc_sid = get_first_translation(lang_tbl, text)
+            if loc_sid:
+                sid = loc_sid
 
         fill, font, row_height = _get_style_for_depth(depth)
         indent = depth
@@ -403,11 +419,15 @@ def generate_help_datasheets() -> Dict:
         if not eng_tbl:
             log.warning("English language table not found!")
 
-        # 4. Write workbooks (one per language)
+        # 4. Get EXPORT index for context-aware duplicate resolution
+        export_index = get_export_index()
+
+        # 5. Write workbooks (one per language)
         # Always write English
         write_workbook(
             rows, eng_tbl, None, "eng",
-            output_folder / "LQA_GameAdvice_ENG.xlsx"
+            output_folder / "LQA_GameAdvice_ENG.xlsx",
+            export_index
         )
         result["files_created"] += 1
 
@@ -417,7 +437,8 @@ def generate_help_datasheets() -> Dict:
                 continue
             write_workbook(
                 rows, eng_tbl, lang_tbl, lang_code,
-                output_folder / f"LQA_GameAdvice_{lang_code.upper()}.xlsx"
+                output_folder / f"LQA_GameAdvice_{lang_code.upper()}.xlsx",
+                export_index
             )
             result["files_created"] += 1
 
