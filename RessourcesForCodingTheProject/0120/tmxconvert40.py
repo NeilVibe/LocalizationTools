@@ -15,6 +15,110 @@ import openpyxl
 import stat
 
 
+# ==============================================================================
+# COMPILED REGEX PATTERNS FOR clean_tmx_to_plain()
+# These strip placeholder formats from ANY CAT tool to plain text
+# ==============================================================================
+
+# --- MemoQ patterns ---
+# MemoQ bpt/ept with Staticinfo - extract {Staticinfo:Knowledge:ID#inner}
+MEMOQ_BPT_EPT_RE = re.compile(
+    r'<bpt\b[^>]*>&lt;mq:rxt\s+displaytext=&quot;([^&]*)&quot;\s+'
+    r'val=&quot;\{Staticinfo:Knowledge:([^#}]+)#&quot;&gt;</bpt>'
+    r'(.*?)<ept\b[^>]*>&lt;/mq:rxt[^>]*&gt;</ept>',
+    flags=re.DOTALL | re.IGNORECASE
+)
+
+# MemoQ <ph> with val attribute - extract the val
+MEMOQ_PH_VAL_RE = re.compile(
+    r'<ph\b[^>]*>&lt;mq:rxt(?:-req)?\s+displaytext="[^"]*"\s+val="([^"]+)"\s*/&gt;</ph>',
+    flags=re.DOTALL | re.IGNORECASE
+)
+
+# MemoQ <ph> with escaped quotes in val - extract the val
+MEMOQ_PH_VAL_ESCAPED_RE = re.compile(
+    r'<ph\b[^>]*>&lt;mq:rxt(?:-req)?\s+displaytext=&quot;[^&]*&quot;\s+'
+    r'val=&quot;([^&]+)&quot;\s*/&gt;</ph>',
+    flags=re.DOTALL | re.IGNORECASE
+)
+
+# MemoQ <ph type='fmt'> - remove entirely (formatting whitespace)
+MEMOQ_FMT_PH_RE = re.compile(
+    r"<ph\s+type=['\"]fmt['\"]>[^<]*</ph>",
+    flags=re.IGNORECASE
+)
+
+# --- Trados patterns ---
+# Trados bpt/ept - keep inner content only
+TRADOS_BPT_EPT_RE = re.compile(
+    r'<bpt\b[^>]*>(?:&lt;[^&]*&gt;|[^<]*)</bpt>(.*?)<ept\b[^>]*>(?:&lt;[^&]*&gt;|[^<]*)</ept>',
+    flags=re.DOTALL | re.IGNORECASE
+)
+
+# Trados <ph> with numeric placeholder like {1} - extract inner
+TRADOS_PH_NUM_RE = re.compile(
+    r'<ph\b[^>]*>\{(\d+)\}</ph>',
+    flags=re.IGNORECASE
+)
+
+# Trados <it> tags - remove entirely
+TRADOS_IT_RE = re.compile(
+    r'<it\b[^>]*>.*?</it>',
+    flags=re.DOTALL | re.IGNORECASE
+)
+
+# --- Phrase patterns ---
+# Phrase <ph> with double braces {{1}} - extract as {1}
+PHRASE_PH_RE = re.compile(
+    r'<ph\b[^>]*>\{\{(\d+)\}\}</ph>',
+    flags=re.IGNORECASE
+)
+
+# --- Generic patterns (catch-all) ---
+# Generic <ph> with val attribute - extract val
+GENERIC_PH_VAL_RE = re.compile(
+    r'<ph\b[^>]*\bval="([^"]+)"[^>]*>.*?</ph>',
+    flags=re.DOTALL | re.IGNORECASE
+)
+
+# Generic <ph> with text content - extract inner text
+GENERIC_PH_TEXT_RE = re.compile(
+    r'<ph\b[^>]*>([^<]+)</ph>',
+    flags=re.IGNORECASE
+)
+
+# Generic <bpt>...<ept> without inner content to preserve - remove entirely
+GENERIC_BPT_EPT_EMPTY_RE = re.compile(
+    r'<bpt\b[^>]*>[^<]*</bpt>\s*<ept\b[^>]*>[^<]*</ept>',
+    flags=re.DOTALL | re.IGNORECASE
+)
+
+# Generic <x/> self-closing tags - remove entirely
+GENERIC_X_RE = re.compile(
+    r'<x\b[^>]*/?>',
+    flags=re.IGNORECASE
+)
+
+# Generic <g>text</g> tags - extract inner text
+GENERIC_G_RE = re.compile(
+    r'<g\b[^>]*>(.*?)</g>',
+    flags=re.DOTALL | re.IGNORECASE
+)
+
+# --- Normalization patterns ---
+# Zero-width characters (ZWSP, ZWNJ, ZWJ, etc.)
+ZERO_WIDTH_RE = re.compile(r'[\u200b\u200c\u200d\u2060\ufeff]')
+
+# Various <br> formats to normalize
+BR_VARIANTS_RE = re.compile(
+    r'<br\s*/?>|<br\s*>|&lt;br\s*&gt;|&lt;br\s*/\s*&gt;',
+    flags=re.IGNORECASE
+)
+
+# Literal newlines (not already escaped)
+NEWLINE_RE = re.compile(r'(?<!&lt;br/&gt;)\n')
+
+
 # Remove XML declaration and DOCTYPE
 # --- XML Utilities ---
 
@@ -26,11 +130,9 @@ def replace_newlines_text(text):
     if text is None:
         return text
     # Replace literal newlines
-    cleaned = text.replace('
-', '&lt;br/&gt;')
+    cleaned = text.replace('\n', '&lt;br/&gt;')
     # Replace escaped newlines
-    cleaned = cleaned.replace('\
-', '&lt;br/&gt;')
+    cleaned = cleaned.replace('\\n', '&lt;br/&gt;')
     return cleaned
 
 def preprocess_tmx_content(raw_content):
@@ -42,10 +144,8 @@ def preprocess_tmx_content(raw_content):
     def replace_in_seg(match):
         seg_content = match.group(1)
         # Replace newlines with &lt;br/&gt;
-        cleaned = seg_content.replace('
-', '&lt;br/&gt;')
-        cleaned = cleaned.replace('\
-', '&lt;br/&gt;')
+        cleaned = seg_content.replace('\n', '&lt;br/&gt;')
+        cleaned = cleaned.replace('\\n', '&lt;br/&gt;')
         return f'<seg>{cleaned}</seg>'
     
     # Apply regex to find and clean all <seg> contents
@@ -80,9 +180,7 @@ def parse_xml_file(file_path):
         print(f"[ERROR] Error reading {file_path!r}: {e}")
         return None
     txt = re.sub(r'&(?!lt;|gt;|amp;|apos;|quot;)', '&amp;', txt)
-    wrapped = "<ROOT>
-" + txt + "
-</ROOT>"
+    wrapped = "<ROOT>\n" + txt + "\n</ROOT>"
     rec_parser = etree.XMLParser(recover=True)
     try:
         recovered = etree.fromstring(wrapped.encode('utf-8'), parser=rec_parser)
@@ -215,6 +313,154 @@ def postprocess_tmx_string(xml_str):
         return f"{open_tag}{content.rstrip()}{close_tag}"
 
     xml_str = re.sub(r'(<seg[^>]*>)(.*?)(</seg>)', trim_trailing_ws_in_seg, xml_str, flags=re.DOTALL)
+
+    return xml_str
+
+
+def clean_tmx_to_plain(xml_str):
+    """
+    Strip ALL placeholder formats from ANY CAT tool to plain text.
+
+    This function acts as a "clean slate" converter - it removes/extracts
+    placeholder content from MemoQ, Trados, Phrase, Wordfast, and other
+    CAT tools to produce plain text that can then be re-wrapped in MemoQ format.
+
+    Processing order matters - more specific patterns run first, then generic ones.
+
+    Args:
+        xml_str: TMX content as a string (may contain various CAT tool placeholders)
+
+    Returns:
+        TMX content with placeholders converted to plain text equivalents
+    """
+
+    # Helper function to process only inside <seg> tags
+    def process_seg_contents(content, processor_func):
+        """Apply processor_func only to content inside <seg>...</seg> tags"""
+        def seg_processor(match):
+            open_tag, inner, close_tag = match.groups()
+            return f"{open_tag}{processor_func(inner)}{close_tag}"
+        return re.sub(r'(<seg[^>]*>)(.*?)(</seg>)', seg_processor, content, flags=re.DOTALL)
+
+    # =========================================================================
+    # STEP 1: MemoQ-specific patterns (most specific first)
+    # =========================================================================
+
+    # 1a. MemoQ Staticinfo bpt/ept pairs → {Staticinfo:Knowledge:ID#inner}
+    def clean_memoq_staticinfo(content):
+        def repl(m):
+            ident = m.group(2)  # The ID (e.g., "Staticinfo" part after Knowledge:)
+            inner = m.group(3)  # Inner content between bpt and ept
+            return f"{{Staticinfo:Knowledge:{ident}#{inner}}}"
+        return MEMOQ_BPT_EPT_RE.sub(repl, content)
+
+    xml_str = process_seg_contents(xml_str, clean_memoq_staticinfo)
+
+    # 1b. MemoQ <ph> with val - extract the val
+    def clean_memoq_ph_val(content):
+        return MEMOQ_PH_VAL_RE.sub(r'\1', content)
+
+    xml_str = process_seg_contents(xml_str, clean_memoq_ph_val)
+
+    # 1c. MemoQ <ph> with escaped val - extract the val
+    def clean_memoq_ph_val_escaped(content):
+        return MEMOQ_PH_VAL_ESCAPED_RE.sub(r'\1', content)
+
+    xml_str = process_seg_contents(xml_str, clean_memoq_ph_val_escaped)
+
+    # 1d. MemoQ <ph type='fmt'> - remove entirely (formatting whitespace)
+    def clean_memoq_fmt(content):
+        return MEMOQ_FMT_PH_RE.sub('', content)
+
+    xml_str = process_seg_contents(xml_str, clean_memoq_fmt)
+
+    # =========================================================================
+    # STEP 2: Trados-specific patterns
+    # =========================================================================
+
+    # 2a. Trados bpt/ept pairs - keep inner content only
+    def clean_trados_bpt_ept(content):
+        return TRADOS_BPT_EPT_RE.sub(r'\1', content)
+
+    xml_str = process_seg_contents(xml_str, clean_trados_bpt_ept)
+
+    # 2b. Trados <ph>{1}</ph> - extract {1}
+    def clean_trados_ph_num(content):
+        return TRADOS_PH_NUM_RE.sub(r'{\1}', content)
+
+    xml_str = process_seg_contents(xml_str, clean_trados_ph_num)
+
+    # 2c. Trados <it> tags - remove entirely
+    def clean_trados_it(content):
+        return TRADOS_IT_RE.sub('', content)
+
+    xml_str = process_seg_contents(xml_str, clean_trados_it)
+
+    # =========================================================================
+    # STEP 3: Phrase-specific patterns
+    # =========================================================================
+
+    # 3a. Phrase <ph>{{1}}</ph> - extract as {1}
+    def clean_phrase_ph(content):
+        return PHRASE_PH_RE.sub(r'{\1}', content)
+
+    xml_str = process_seg_contents(xml_str, clean_phrase_ph)
+
+    # =========================================================================
+    # STEP 4: Generic patterns (catch remaining placeholders)
+    # =========================================================================
+
+    # 4a. Generic <ph val="X">...</ph> - extract val
+    def clean_generic_ph_val(content):
+        return GENERIC_PH_VAL_RE.sub(r'\1', content)
+
+    xml_str = process_seg_contents(xml_str, clean_generic_ph_val)
+
+    # 4b. Generic <ph>text</ph> - extract inner text
+    def clean_generic_ph_text(content):
+        return GENERIC_PH_TEXT_RE.sub(r'\1', content)
+
+    xml_str = process_seg_contents(xml_str, clean_generic_ph_text)
+
+    # 4c. Generic empty <bpt>...<ept> pairs - remove entirely
+    def clean_generic_bpt_ept_empty(content):
+        return GENERIC_BPT_EPT_EMPTY_RE.sub('', content)
+
+    xml_str = process_seg_contents(xml_str, clean_generic_bpt_ept_empty)
+
+    # 4d. Generic <x/> tags - remove
+    def clean_generic_x(content):
+        return GENERIC_X_RE.sub('', content)
+
+    xml_str = process_seg_contents(xml_str, clean_generic_x)
+
+    # 4e. Generic <g>text</g> tags - extract inner text
+    def clean_generic_g(content):
+        return GENERIC_G_RE.sub(r'\1', content)
+
+    xml_str = process_seg_contents(xml_str, clean_generic_g)
+
+    # =========================================================================
+    # STEP 5: Normalization
+    # =========================================================================
+
+    # 5a. Remove zero-width characters
+    def clean_zero_width(content):
+        return ZERO_WIDTH_RE.sub('', content)
+
+    xml_str = process_seg_contents(xml_str, clean_zero_width)
+
+    # 5b. Normalize <br> variants to &lt;br/&gt;
+    def normalize_br(content):
+        return BR_VARIANTS_RE.sub('&lt;br/&gt;', content)
+
+    xml_str = process_seg_contents(xml_str, normalize_br)
+
+    # 5c. Convert literal newlines to &lt;br/&gt;
+    def normalize_newlines(content):
+        return content.replace('\n', '&lt;br/&gt;')
+
+    xml_str = process_seg_contents(xml_str, normalize_newlines)
 
     return xml_str
 
@@ -480,8 +726,7 @@ def extract_korean_or_empty_translation(input_folder, output_file):
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(xml_str)
         logging.info(f"Extracted {count} LocStrs into: {output_file}")
-        print(f"[KOR-OR-EMPTY-EXTRACT] Successfully extracted {count} LocStrs into:
-{output_file}")
+        print(f"[KOR-OR-EMPTY-EXTRACT] Successfully extracted {count} LocStrs into: {output_file}")
         return True
     except Exception as e:
         logging.error(f"Error writing extracted XML {output_file}: {e}", exc_info=True)
@@ -513,6 +758,12 @@ def fix_and_combine_tmx_files(input_tmx_paths, output_tmx_path):
         # Remove XML declaration and DOCTYPE
         tmx_content = re.sub(r'^<\?xml[^>]*\?>\s*', '', tmx_content, flags=re.MULTILINE)
         tmx_content = re.sub(r'<!DOCTYPE[^>]*>\s*', '', tmx_content, flags=re.MULTILINE)
+
+        # UNIVERSAL TMX FIX: Clean to plain slate BEFORE applying MemoQ format
+        # This strips placeholder formats from ANY CAT tool (Trados, Phrase, etc.)
+        # so postprocess_tmx_string can apply clean MemoQ formatting
+        tmx_content = clean_tmx_to_plain(tmx_content)
+
         fixed_content = postprocess_tmx_string(tmx_content)
         try:
             parser = etree.XMLParser(recover=True)
@@ -621,8 +872,7 @@ def fix_and_combine_tmx_files(input_tmx_paths, output_tmx_path):
         with open(output_tmx_path, "w", encoding="utf-8") as f:
             f.write(xml_str)
         logging.info(f"[TMX-FIX] Fixed and combined TMX written to: {output_tmx_path}")
-        print(f"[TMX-FIX] Successfully fixed and combined TMX:
-{output_tmx_path}")
+        print(f"[TMX-FIX] Successfully fixed and combined TMX: {output_tmx_path}")
         return True
     except Exception as e:
         logging.error(f"Error writing fixed TMX {output_tmx_path}: {e}", exc_info=True)
@@ -768,8 +1018,7 @@ def concat_tmx_files_filtered(input_tmx_paths, output_tmx_path):
         with open(output_tmx_path, "w", encoding="utf-8") as f:
             f.write(xml_str)
         logging.info(f"[TMX-CONCAT] Concatenated TMX written to: {output_tmx_path}")
-        print(f"[TMX-CONCAT] Successfully concatenated TMX:
-{output_tmx_path}")
+        print(f"[TMX-CONCAT] Successfully concatenated TMX: {output_tmx_path}")
         return True
     except Exception as e:
         logging.error(f"[TMX-CONCAT] Error writing concatenated TMX {output_tmx_path}: {e}", exc_info=True)
@@ -1283,8 +1532,7 @@ def concatenate_all_xmls_to_single_xml(input_folder, output_file):
 
 
             logging.info(f"[CONCAT-XML] Successfully concatenated {total_locs} LocStrs into: {output_file}")
-        print(f"[CONCAT-XML] Successfully concatenated {total_locs} LocStrs into:
-{output_file}")
+        print(f"[CONCAT-XML] Successfully concatenated {total_locs} LocStrs into: {output_file}")
         return True
     except Exception as e:
         logging.error(f"[CONCAT-XML] Error writing output XML: {e}")
@@ -1305,8 +1553,7 @@ def clean_xml_folder_data(input_folder):
     - Removes legacy &desc; markers.
     """
 
-    # Pattern for Str="value" -> Group 1: Str=" , Group 2: value
-    str_attr_pattern = re.compile(r'(Str\s*=\s*")((?:[^"\\]|\\.)*)"', re.DOTALL)
+    # Pattern for Str="value" -> Group 1: Str=" , Group 2: value str_attr_pattern = re.compile(r'(Str\s*=\s*")((?:[^"\\]|\\.)*)"', re.DOTALL)
     zero_width_pattern = re.compile('[\u200B\u200C\u200D]')
 
     def make_file_writable(fpath):
@@ -1328,10 +1575,8 @@ def clean_xml_folder_data(input_folder):
         # 3. Normalize line breaks and BR tags
         val = val.replace('<br/>', '&lt;br/&gt;')
         val = val.replace('&amp;lt;br/&amp;gt;', '&lt;br/&gt;')
-        val = val.replace('
-', '&lt;br/&gt;')
-        val = val.replace('\
-', '&lt;br/&gt;')
+        val = val.replace('\n', '&lt;br/&gt;')
+        val = val.replace('\\n', '&lt;br/&gt;')
         val = val.replace('&amp;#10;', '&lt;br/&gt;')
         val = val.replace('&#10;', '&lt;br/&gt;')
         
@@ -1366,9 +1611,7 @@ def clean_xml_folder_data(input_folder):
                     o_val = loc.get("StrOrigin")
                     if o_val:
                         # Basic normalization for Source text as well
-                        new_o = o_val.replace('
-', '&lt;br/&gt;').replace('\
-', '&lt;br/&gt;')
+                        new_o = o_val.replace('\n', '&lt;br/&gt;').replace('\\n', '&lt;br/&gt;')
                         if new_o != o_val:
                             loc.set("StrOrigin", new_o)
 
@@ -1452,11 +1695,8 @@ def clean_tmx_folder_data(input_folder):
             flags=re.DOTALL | re.IGNORECASE
         )
         # 5) normalize newlines → &lt;br/&gt;
-        content = re.sub(r'\r
-|\r|
-', '&lt;br/&gt;', content)
-        content = content.replace('\
-', '&lt;br/&gt;')
+        content = re.sub(r'\r\n|\r|\n', '&lt;br/&gt;', content)
+        content = content.replace('\\n', '&lt;br/&gt;')
         # 6) normalize <br> variants → &lt;br/&gt;
         content = re.sub(r'&amp;lt;br\s*/&amp;gt;', '&lt;br/&gt;', content, flags=re.IGNORECASE)
         content = re.sub(r'<\s*br\s*/?\s*>', '&lt;br/&gt;', content, flags=re.IGNORECASE)
@@ -1876,8 +2116,7 @@ class ConverterGUI(tk.Tk):
         if ok:
             self.after(0, lambda: messagebox.showinfo(
                 "Success",
-                f"Combined {label} created:
-{out_file}"
+                f"Combined {label} created: {out_file}"
             ))
         else:
             self.after(0, lambda: messagebox.showerror(
@@ -1933,14 +2172,12 @@ class ConverterGUI(tk.Tk):
         if ok:
             self.after(0, lambda: messagebox.showinfo(
                 "Success",
-                f"Update MemoQ-TMX created:
-{out_file}"
+                f"Update MemoQ-TMX created: {out_file}"
             ))
         else:
             self.after(0, lambda: messagebox.showinfo(
                 "Info",
-                "No new or modified translation units found.
-The existing TMX is up to date."
+                "No new or modified translation units found. The existing TMX is up to date."
             ))
 
     def extract_korean_or_empty(self):
@@ -1968,8 +2205,7 @@ The existing TMX is up to date."
         if ok:
             self.after(0, lambda: messagebox.showinfo(
                 "Success",
-                f"Extracted all LocStr with Korean in Str or StrOrigin non-empty and Str empty into:
-{out_file}"
+                f"Extracted all LocStr with Korean in Str or StrOrigin non-empty and Str empty into: {out_file}"
             ))
         else:
             self.after(0, lambda: messagebox.showerror(
@@ -2007,8 +2243,7 @@ The existing TMX is up to date."
         if ok:
             self.after(0, lambda: messagebox.showinfo(
                 "Success",
-                f"Fixed and combined TMX written to:
-{out_tmx}"
+                f"Fixed and combined TMX written to: {out_tmx}"
             ))
         else:
             self.after(0, lambda: messagebox.showerror(
@@ -2063,8 +2298,7 @@ The existing TMX is up to date."
         if os.path.exists(output_base_folder):
             if not messagebox.askyesno(
                 "Overwrite Confirmation",
-                f"Output folder '{output_base_folder}' already exists.
-"
+                f"Output folder '{output_base_folder}' already exists. "
                 "Continue and overwrite files inside?"
             ):
                 return
@@ -2120,9 +2354,7 @@ The existing TMX is up to date."
         if ok:
             self.after(0, lambda: messagebox.showinfo(
                 "Success",
-                f"Extraction complete.
-Output folder:
-{output_base_folder}"
+                f"Extraction complete. Output folder: {output_base_folder}"
             ))
         else:
             self.after(0, lambda: messagebox.showerror(
@@ -2148,18 +2380,13 @@ Output folder:
         if paat_folder:
             self.after(0, lambda: messagebox.showinfo(
                 "Success",
-                f"Extraction for PAAT complete.
-See the folder:
-{paat_folder}
-inside the 'TO_SEND_TO_PAAT' master folder in your script directory."
+                f"Extraction for PAAT complete. See the folder: {paat_folder} inside the 'TO_SEND_TO_PAAT' master folder in your script directory."
             ))
         else:
             # POSITIVE message if nothing to extract (no Korean found)
             self.after(0, lambda: messagebox.showinfo(
                 "All Translations Done!",
-                "No Korean detected in any translation.
-All translations have been applied!
-No more strings to extract for PAAT. 🎉"
+                "No Korean detected in any translation. All translations have been applied! No more strings to extract for PAAT. 🎉"
             ))
 
     # --- TMX CONCATENATE ONLY GUI FUNCTION (FILTERED) ---
@@ -2191,8 +2418,7 @@ No more strings to extract for PAAT. 🎉"
         if ok:
             self.after(0, lambda: messagebox.showinfo(
                 "Success",
-                f"Concatenated TMX written to:
-{out_tmx}"
+                f"Concatenated TMX written to: {out_tmx}"
             ))
         else:
             self.after(0, lambda: messagebox.showerror(
@@ -2226,8 +2452,7 @@ No more strings to extract for PAAT. 🎉"
         if ok:
             self.after(0, lambda: messagebox.showinfo(
                 "Success",
-                f"All XMLs concatenated into:
-{out_file}"
+                f"All XMLs concatenated into: {out_file}"
             ))
         else:
             self.after(0, lambda: messagebox.showerror(
@@ -2271,10 +2496,7 @@ No more strings to extract for PAAT. 🎉"
         for folder, out_file, ok in results:
             status = "OK" if ok else "FAILED"
             summary.append(f"{os.path.basename(folder)}: {status} ({out_file})")
-        msg = "Batch NORMAL TMX complete:
-
-" + "
-".join(summary)
+        msg = "Batch NORMAL TMX complete:  " + " ".join(summary)
         self.after(0, lambda: messagebox.showinfo(
             "Batch Complete",
             msg
@@ -2361,10 +2583,7 @@ No more strings to extract for PAAT. 🎉"
         # Confirm
         if not messagebox.askyesno(
             "Confirm Clean",
-            f"Are you sure you want to clean ALL .xml files in:
-{folder}
-
-"
+            f"Are you sure you want to clean ALL .xml files in: {folder}  "
             "This will remove specific placeholders and replace all newlines with &lt;br/&gt; (xml newlines)."
         ):
             return
@@ -2385,8 +2604,7 @@ No more strings to extract for PAAT. 🎉"
         except Exception as e:
             self.after(0, lambda: messagebox.showerror(
                 "Error",
-                f"Error cleaning XML folder:
-{e}"
+                f"Error cleaning XML folder: {e}"
             ))
 
 
@@ -2433,8 +2651,7 @@ No more strings to extract for PAAT. 🎉"
         if os.path.exists(output_base_folder):
             if not messagebox.askyesno(
                 "Overwrite Confirmation",
-                f"Output folder '{output_base_folder}' already exists.
-"
+                f"Output folder '{output_base_folder}' already exists. "
                 "Continue and overwrite files inside?"
             ):
                 return
@@ -2455,9 +2672,7 @@ No more strings to extract for PAAT. 🎉"
         if ok:
             self.after(0, lambda: messagebox.showinfo(
                 "Success",
-                f"Extraction complete.
-Output folder:
-{output_base_folder}"
+                f"Extraction complete. Output folder: {output_base_folder}"
             ))
         else:
             self.after(0, lambda: messagebox.showerror(
@@ -2522,8 +2737,7 @@ Output folder:
         if os.path.exists(output_base_folder):
             if not messagebox.askyesno(
                 "Overwrite Confirmation",
-                f"Output folder '{output_base_folder}' already exists.
-"
+                f"Output folder '{output_base_folder}' already exists. "
                 "Continue and overwrite files inside?"
             ):
                 return
@@ -2546,9 +2760,7 @@ Output folder:
         if ok:
             self.after(0, lambda: messagebox.showinfo(
                 "Success",
-                f"Extraction complete.
-Output folder:
-{output_base_folder}"
+                f"Extraction complete. Output folder: {output_base_folder}"
             ))
         else:
             self.after(0, lambda: messagebox.showerror(
@@ -2568,10 +2780,7 @@ Output folder:
         # Confirm
         if not messagebox.askyesno(
             "Confirm Clean",
-            f"Are you sure you want to clean ALL .tmx files in:
-{folder}
-
-"
+            f"Are you sure you want to clean ALL .tmx files in: {folder}  "
             "This will normalise <seg> contents (line-breaks, placeholders, etc.)."
         ):
             return
@@ -2591,8 +2800,7 @@ Output folder:
         except Exception as e:
             self.after(0, lambda: messagebox.showerror(
                 "Error",
-                f"Error cleaning TMX folder:
-{e}"
+                f"Error cleaning TMX folder: {e}"
             ))
             
 def main():
