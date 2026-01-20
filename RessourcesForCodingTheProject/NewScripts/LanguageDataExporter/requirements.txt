@@ -1,0 +1,8 @@
+# Language XML to Categorized Excel Converter
+# Dependencies
+
+# Excel file generation
+openpyxl>=3.1.0
+
+# Optional: faster XML parsing (fallback to stdlib xml.etree if not installed)
+lxml>=4.9.0

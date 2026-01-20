@@ -1,0 +1,12 @@
+{
+  "description": "OPTIONAL: Override folder → category mappings. If empty, folder names are used directly as categories.",
+  "clusters": {},
+  "default_category": "Uncategorized",
+  "notes": [
+    "AUTO-DISCOVERY: Top-level folder names in EXPORT become categories automatically",
+    "Example: EXPORT/Character/*.loc.xml → Category = 'Character'",
+    "Example: EXPORT/Item/weapons/*.loc.xml → Category = 'Item'",
+    "Only add overrides here if you need to MERGE folders into one category",
+    "Example override: {'Item': ['Item', 'Gimmick']} merges both into 'Item'"
+  ]
+}
