@@ -55,7 +55,15 @@ status() {
 
             # Warn if CPU is high
             if (( $(echo "$CPU > 30" | bc -l) )); then
-                print_warning "CPU is high! Consider restart"
+                print_warning "CPU is high! Consider restart or force stop"
+            fi
+
+            # Check accumulated CPU time (warn if >30 minutes)
+            CPU_TIME=$(ps -p $GITEA_PID -o time --no-headers | tr -d ' ')
+            # Parse HH:MM:SS format
+            CPU_MINS=$(echo "$CPU_TIME" | awk -F: '{ if (NF==3) print $1*60+$2; else print $1 }')
+            if [ "$CPU_MINS" -gt 30 ] 2>/dev/null; then
+                print_warning "High CPU time accumulated: $CPU_TIME (possible runaway process)"
             fi
         fi
     else
@@ -171,15 +179,38 @@ stop_graceful() {
     echo ""
     echo -e "${BLUE}[GITEA SERVER]${NC}"
     if systemctl is-active --quiet gitea; then
-        echo "Stopping Gitea Server (systemctl stop)..."
-        sudo systemctl stop gitea
-        sleep 3
+        GITEA_PID=$(pgrep -f "gitea web" | head -1)
+        echo "Stopping Gitea Server (PID: $GITEA_PID)..."
 
-        if systemctl is-active --quiet gitea; then
-            print_warning "Gitea still running, will try kill..."
-            sudo systemctl kill gitea
+        # Start systemctl stop in background with timeout
+        sudo systemctl stop gitea &
+        STOP_PID=$!
+
+        # Wait up to 10 seconds for graceful stop
+        local waited=0
+        while [ $waited -lt 10 ]; do
+            if ! kill -0 $STOP_PID 2>/dev/null; then
+                # systemctl stop finished
+                break
+            fi
+            sleep 1
+            waited=$((waited + 1))
+            echo -n "."
+        done
+        echo ""
+
+        # Check if graceful stop worked
+        if pgrep -f "gitea web" > /dev/null; then
+            print_warning "Graceful stop timed out after 10s - force killing..."
+            sudo kill -9 $(pgrep -f "gitea web") 2>/dev/null
+            sleep 1
         fi
-        print_status "Gitea Server stopped"
+
+        if pgrep -f "gitea web" > /dev/null; then
+            print_error "Failed to stop Gitea - manual intervention needed"
+        else
+            print_status "Gitea Server stopped"
+        fi
     else
         echo "Gitea Server was not running"
     fi
