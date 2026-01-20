@@ -226,17 +226,38 @@ NEW column structure per user:
 COMMENT_{User} | TESTER_STATUS_{User} | STATUS_{User} | MANAGER_COMMENT_{User} | SCREENSHOT_{User}
 ```
 
-**Pairing Logic (from compiler.py:128-197):**
-- Manager status is KEYED BY COMMENT_TEXT for matching after rebuild
-- `collect_manager_status()` reads COMMENT_{User} + STATUS_{User} pairs
-- Needs to ALSO read MANAGER_COMMENT_{User}
-- Returns: `{category: {sheet_name: {comment_text: {user: {status, comment}}}}}`
+**Two-Stage Matching System (UPDATED 2026-01-20):**
 
-**Files to modify for Manager Comment:**
-1. `core/compiler.py:128` - `collect_manager_status()` - add MANAGER_COMMENT collection
-2. `core/processing.py:174` - `find_or_create_status_column()` - add MANAGER_COMMENT after STATUS
-3. `core/processing.py:488` - `process_qa_sheet()` - restore MANAGER_COMMENT alongside STATUS
-4. `core/excel_ops.py` - add `add_manager_comment_column()` if needed
+See `docs/TECHNICAL_MATCHING_SYSTEM.md` for full details.
+
+**Stage 1: QA -> Master Row (TRANSLATION matching)**
+- Match by: STRINGID + Translation content
+- Fallback: Translation only
+- Located in: `core/matching.py`
+
+**Stage 2: Manager Status Lookup (COMMENT matching)**
+- Match by: (MASTER stringid, TESTER comment)
+- CRITICAL: Uses STRINGID from MASTER row (reliable), NOT QA file (often empty!)
+- Located in: `core/compiler.py` (collect) and `core/processing.py` (restore)
+
+**Dict Structure:**
+```python
+manager_status = {
+    "Quest": {
+        "Main Quest": {
+            ("12345", "Typo here"): {  # (MASTER stringid, TESTER comment)
+                "John": {"status": "FIXED", "manager_comment": "Fixed build 5"}
+            }
+        }
+    }
+}
+```
+
+**Key Functions:**
+1. `core/compiler.py` - `collect_manager_status()` - PRELOAD old Master, create lookup dict
+2. `core/processing.py` - `process_sheet()` - RESTORE manager status during build
+3. `core/processing.py` - `extract_comment_text()` - Extract raw comment (before "---" delimiter)
+4. `core/matching.py` - Content-based matching with fallback
 
 ### Screenshot Hiding Logic
 

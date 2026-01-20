@@ -55,6 +55,14 @@ QACompilerNEW/
 | BLOCKED | CHECKING |
 | KOREAN | NON-ISSUE |
 
+## Manager Status Preservation
+
+Manager work is preserved via two-stage matching:
+1. **QA -> Master:** Match by STRINGID + Translation (fallback: Translation only)
+2. **Manager Lookup:** Match by MASTER stringid + Tester comment
+
+*See `docs/TECHNICAL_MATCHING_SYSTEM.md` for details.*
+
 ## Tester Mapping (languageTOtester_list.txt)
 
 ```
