@@ -77,11 +77,56 @@ LanguageDataExporter/
 |-----------|------------|
 | Language | Python 3.11+ |
 | Excel Generation | openpyxl |
-| XML Parsing | xml.etree.ElementTree, lxml |
+| XML Parsing | lxml (primary) with ElementTree fallback |
 | GUI | tkinter |
 | Packaging | PyInstaller |
 | Installer | Inno Setup |
 | CI/CD | GitHub Actions |
+
+---
+
+## XML Parsing (CRITICAL)
+
+### Parser Selection
+```python
+# Uses lxml if available, falls back to ElementTree
+try:
+    from lxml import etree as ET
+    USING_LXML = True
+except ImportError:
+    from xml.etree import ElementTree as ET
+    USING_LXML = False
+```
+
+### Case-Insensitive Attribute Matching
+**ALL attribute lookups try multiple case variations:**
+
+| Attribute | Variations Checked |
+|-----------|-------------------|
+| StringId | `StringId`, `StringID`, `stringid`, `STRINGID` |
+| StrOrigin | `StrOrigin`, `Strorigin`, `strorigin`, `STRORIGIN` |
+| Str | `Str`, `str`, `STR` |
+| SoundEventName | `SoundEventName`, `soundeventname`, `SOUNDEVENTNAME`, `EventName`, `eventname` |
+| LocStr (tag) | `LocStr`, `locstr`, `LOCSTR` |
+
+### XML Sanitization (from QACompiler)
+The parser includes battle-tested sanitization:
+1. Fix unescaped ampersands (`&` → `&amp;`)
+2. Handle newlines in `<seg>` elements
+3. Fix `<` and `&` in attribute values
+4. **Tag stack repair** for malformed XML
+5. Remove invalid control characters
+6. **lxml recovery mode** for corrupted files
+
+### Key Functions
+| Function | Purpose |
+|----------|---------|
+| `sanitize_xml_content()` | Clean malformed XML |
+| `parse_language_file()` | Parse languagedata_*.xml |
+| `parse_export_file()` | Extract StringIds from .loc.xml |
+| `parse_export_with_soundevent()` | Extract StringId + SoundEventName |
+| `build_stringid_soundevent_map()` | Build StringId→SoundEventName mapping |
+| `_find_folder_case_insensitive()` | Cross-platform folder matching |
 
 ---
 
@@ -114,9 +159,20 @@ LanguageDataExporter/
 | Category | Source | Assignment |
 |----------|--------|------------|
 | Sequencer | Sequencer/ folder | All sequencer files |
-| AIDialog | Dialog/AIDialog/ | AI/ambient dialog |
-| QuestDialog | Dialog/QuestDialog/ + StageCloseDialog | Quest-related |
+| AIDialog | Dialog/AIDialog/ | AI/ambient dialog (DEFAULT for unknown dialog) |
+| QuestDialog | Dialog/QuestDialog/ + Dialog/StageCloseDialog/ | Quest-related |
 | NarrationDialog | Dialog/NarrationDialog/ | Narration/tutorials |
+
+**Dialog Folder Mapping (case-insensitive):**
+```python
+DIALOG_CATEGORIES = {
+    "aidialog": "AIDialog",
+    "narrationdialog": "NarrationDialog",
+    "questdialog": "QuestDialog",
+    "stageclosedialog": "QuestDialog",  # Maps to QuestDialog!
+}
+# Default: AIDialog (for unknown dialog subfolders)
+```
 
 **VRS Ordering:** STORY strings sorted by VoiceRecordingSheet EventName (Column W) for chronological story order.
 
@@ -313,7 +369,7 @@ python main.py -v                   # Verbose logging
 
 ### Build Trigger
 ```bash
-echo "Build 005" >> LANGUAGEDATAEXPORTER_BUILD.txt
+echo "Build 011" >> LANGUAGEDATAEXPORTER_BUILD.txt
 git add -A && git commit -m "Build: LanguageDataExporter" && git push
 ```
 
@@ -322,8 +378,19 @@ File: `.github/workflows/languagedataexporter-build.yml`
 
 **Jobs:**
 1. **validate** - Check trigger, generate version (YY.MMDD.HHMM format)
-2. **safety-checks** - Syntax, imports, flake8, pip-audit security
+2. **safety-checks** - Comprehensive validation (see below)
 3. **build-release** - PyInstaller + Inno Setup → GitHub Release
+
+### Safety Checks (Build 011+)
+| Check | Purpose |
+|-------|---------|
+| `py_compile` | Syntax validation for ALL .py files |
+| Import validation | Test all critical imports work |
+| GUI import test | Verify `from gui import launch_gui` works |
+| Full app test | Run `python main.py --help` |
+| flake8 | Critical errors only (E9,F63,F7,F82) |
+| pip-audit | Security vulnerability scan |
+| pytest | Run tests (continue-on-error for Windows-specific) |
 
 **Artifact Creation (QACompiler-style):**
 - All artifacts centralized in `installer_output/` folder
@@ -337,15 +404,15 @@ File: `.github/workflows/languagedataexporter-build.yml`
 | `*_Portable.zip` | Standalone exe + working folders |
 | `*_Source.zip` | Python source (excludes build artifacts) |
 
-**Separate Upload Artifacts:**
-- `LanguageDataExporter-Setup`
-- `LanguageDataExporter-Portable`
-- `LanguageDataExporter-Source`
+### PyInstaller Spec (CRITICAL)
+**DO NOT copy Python packages as data files!**
+```python
+# WRONG - breaks relative imports
+datas=[('exporter', 'exporter')]
 
-**Artifacts:**
-- `LanguageDataExporter_v{VERSION}_Setup.exe`
-- `LanguageDataExporter_v{VERSION}_Portable.zip`
-- `LanguageDataExporter_v{VERSION}_Source.zip`
+# CORRECT - let PyInstaller analyze imports
+hiddenimports=['exporter', 'exporter.xml_parser', ...]
+```
 
 ---
 
@@ -397,31 +464,65 @@ The installer creates `settings.json` with user-selected paths. This file is **l
 
 ---
 
-## Recent Features
+## Recent Features / Build History
 
-### Runtime Path Configuration (Build 006)
-- settings.json is now properly loaded at runtime
-- Case-insensitive folder matching for cross-platform support
-- Fixes "No StringID to Category mapping found" errors
+### Build 011 - CI/CD + PyInstaller Fix
+- Improved CI with full app test (`--help`)
+- Fixed PyInstaller spec (modules as hiddenimports, NOT datas)
+- Fixes "ValueError: attempted relative import beyond top-level package"
 
-### VRS Ordering (Build 005)
-- Chronological story ordering via VoiceRecordingSheet
-- EventName → SoundEventName mapping
-- STORY categories sorted by VRS position
+### Build 010 - Case-Insensitive Everything
+- ALL attribute/tag names case-insensitive
+- StringId, StrOrigin, Str, SoundEventName, LocStr variations
 
-### Two-Tier Clustering
-- Simplified to 4 STORY categories
-- GAME_DATA keyword-based clustering
-- Color-coded Excel output
+### Build 009 - lxml + Correct Attributes
+- Use lxml with recovery mode (like QACompiler)
+- Fixed attribute name: `StringId` not `StringID`
+- Battle-tested XML sanitization
 
-### Word Count Reports
-- Per-language word/character counting
+### Build 008 - GUI Default
+- GUI launches by default (just double-click)
+- Use `--cli` flag for command-line mode
+
+### Build 007 - Debug Logging
+- Comprehensive debug output for troubleshooting
+- Shows path resolution, folder discovery, XML parsing
+
+### Build 006 - Settings.json Loading
+- settings.json properly loaded at runtime
+- Case-insensitive folder matching
+- Fixes "No StringID to Category mapping found"
+
+### Build 005 - VRS Ordering + Triple Artifacts
+- VoiceRecordingSheet-based story ordering
+- QACompiler-style Setup/Portable/Source artifacts
+
+### Core Features
+- Two-tier clustering (4 STORY + 10 GAME_DATA categories)
+- Word/character counting (17 languages)
 - Korean detection for untranslated text
-- Summary sheet across all languages
 
 ---
 
 ## Debugging Tips
+
+### Interpreting Debug Output
+The app prints extensive debug info with `[DEBUG ...]` prefixes:
+
+```
+[DEBUG CONFIG] settings.json exists? True/False
+[DEBUG CONFIG] LOC_FOLDER = ... exists? True/False
+[DEBUG XML_PARSER] Using lxml for XML parsing
+[DEBUG XML_PARSER] Found X LocStr elements
+[DEBUG CATEGORY_MAPPER] Files processed: X, StringIDs found: Y
+```
+
+**Key things to check:**
+1. `settings.json exists?` - Is runtime config loaded?
+2. `LOC_FOLDER exists?` - Are paths correct?
+3. `Using lxml` - Is lxml available?
+4. `Found X LocStr elements` - Are entries being parsed?
+5. `StringIDs found: Y` - Are mappings being built?
 
 ### VRS Not Loading
 1. Check path exists: `ls -la F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__`
@@ -437,6 +538,17 @@ The installer creates `settings.json` with user-selected paths. This file is **l
 1. Check `GeneratedExcel/` folder permissions
 2. Verify openpyxl installed: `pip show openpyxl`
 3. Test with single language: `python main.py --lang eng`
+
+### No StringIDs Found
+1. Check debug output: `[DEBUG XML_PARSER] Found X LocStr elements`
+2. Verify attribute names match (case variations are tried)
+3. Check if EXPORT folder has .loc.xml files
+4. Ensure lxml is installed: `pip show lxml`
+
+### Import Errors (ValueError)
+1. Check PyInstaller spec doesn't copy modules as datas
+2. Modules must be in `hiddenimports`, NOT `datas`
+3. Run `python main.py --help` to test import chain
 
 ---
 
