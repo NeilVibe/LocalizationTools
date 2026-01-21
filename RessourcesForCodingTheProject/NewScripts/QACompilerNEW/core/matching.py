@@ -19,7 +19,7 @@ from pathlib import Path
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import TRANSLATION_COLS, ITEM_DESC_COLS
+from config import TRANSLATION_COLS, ITEM_DESC_COLS, SCRIPT_COLS, SCRIPT_TYPE_CATEGORIES
 from core.excel_ops import find_column_by_header
 
 
@@ -125,6 +125,26 @@ def extract_qa_row_data(qa_ws, row: int, category: str, is_english: bool) -> Dic
             "row": row,
         }
 
+    elif category_lower in SCRIPT_TYPE_CATEGORIES:
+        # Sequencer/Dialog: use Translation (Text) + EventName
+        # EventName is used as STRINGID and for fallback matching
+        trans_col = get_translation_column(category, is_english)
+        translation = str(qa_ws.cell(row, trans_col).value or "").strip()
+        # For Script-type, EventName is the primary identifier - find it by header
+        eventname_col = find_column_by_header(qa_ws, "EventName")
+        eventname = ""
+        if eventname_col:
+            eventname = str(qa_ws.cell(row, eventname_col).value or "").strip()
+        # Use EventName as stringid if no STRINGID column exists
+        if not stringid and eventname:
+            stringid = eventname
+        return {
+            "translation": translation,
+            "eventname": eventname,
+            "stringid": stringid,
+            "row": row,
+        }
+
     else:
         # Standard: use Translation
         trans_col = get_translation_column(category, is_english)
@@ -198,6 +218,32 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
                 # Fallback: name + desc only
                 fallback_key = (item_name, item_desc)
                 index["fallback"][fallback_key].append(row)
+
+    elif category_lower in SCRIPT_TYPE_CATEGORIES:
+        # Sequencer/Dialog: index by (Translation, EventName) with EventName-only fallback
+        # DIFFERENT from standard: Fallback is EventName ONLY, not Translation only
+        trans_col = get_translation_column(category, is_english)
+        eventname_col = find_column_by_header(master_ws, "EventName")
+
+        for row in range(2, master_ws.max_row + 1):
+            stringid = sanitize_stringid_for_match(master_ws.cell(row, stringid_col).value) if stringid_col else ""
+            translation = str(master_ws.cell(row, trans_col).value or "").strip()
+            eventname = ""
+            if eventname_col:
+                eventname = str(master_ws.cell(row, eventname_col).value or "").strip()
+            # Use EventName as stringid if not found
+            if not stringid and eventname:
+                stringid = eventname
+
+            # Primary: translation + eventname (both must match)
+            if translation and eventname:
+                key = (translation, eventname)
+                if key not in index["primary"]:
+                    index["primary"][key] = row
+
+            # Fallback: EventName ONLY (NOT translation only!)
+            if eventname:
+                index["fallback"][eventname].append(row)
 
     else:
         # Standard: index by (STRINGID, Translation) and Translation only
@@ -273,6 +319,33 @@ def find_matching_row_in_master(
                     if row not in consumed:
                         consumed.add(row)
                         return row, "fallback"
+
+        return None, None
+
+    elif category_lower in SCRIPT_TYPE_CATEGORIES:
+        # Sequencer/Dialog: try translation + eventname first, then EventName ONLY fallback
+        translation = qa_row_data.get("translation", "")
+        eventname = qa_row_data.get("eventname", "")
+        stringid = qa_row_data.get("stringid", "")
+        # Use EventName as fallback key if available
+        if not eventname and stringid:
+            eventname = stringid
+
+        # Primary: translation + eventname (both must match)
+        if translation and eventname:
+            key = (translation, eventname)
+            if key in master_index["primary"]:
+                row = master_index["primary"][key]
+                if row not in consumed:
+                    consumed.add(row)
+                    return row, "exact"
+
+        # Fallback: EventName ONLY (NOT translation only!)
+        if eventname and eventname in master_index["fallback"]:
+            for row in master_index["fallback"][eventname]:
+                if row not in consumed:
+                    consumed.add(row)
+                    return row, "fallback"
 
         return None, None
 

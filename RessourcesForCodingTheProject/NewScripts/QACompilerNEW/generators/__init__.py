@@ -99,6 +99,11 @@ def generate_datasheets(categories: List[str]) -> Dict:
                 # Combine Skill and Help strings into System
                 results["korean_strings"]["Skill"] = skill_korean
                 results["korean_strings"]["Help"] = help_korean
+            elif category == "script":
+                from generators.script import generate_script_datasheets, get_collected_korean_strings
+                result = generate_script_datasheets()
+                korean_strings = get_collected_korean_strings()
+                results["korean_strings"]["Script"] = korean_strings
             else:
                 results["errors"].append(f"Unknown category: {category}")
                 continue

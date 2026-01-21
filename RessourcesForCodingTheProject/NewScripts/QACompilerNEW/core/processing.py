@@ -18,7 +18,7 @@ from openpyxl.utils import get_column_letter
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
-    CATEGORIES, TRANSLATION_COLS, TRACKER_STYLES,
+    CATEGORIES, TRANSLATION_COLS, TRACKER_STYLES, SCRIPT_TYPE_CATEGORIES,
     get_target_master_category, load_tester_mapping
 )
 from core.excel_ops import (
@@ -346,18 +346,33 @@ def process_sheet(
     if xlsx_path:
         file_mod_time = datetime.fromtimestamp(xlsx_path.stat().st_mtime)
 
+    # Detect if Script category (uses MEMO instead of COMMENT, no SCREENSHOT)
+    is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
+
     # Find columns in QA worksheet
     qa_status_col = find_column_by_header(qa_ws, "STATUS")
-    qa_comment_col = find_column_by_header(qa_ws, "COMMENT")
-    qa_screenshot_col = find_column_by_header(qa_ws, "SCREENSHOT")
+    # Script uses MEMO column instead of COMMENT
+    if is_script:
+        qa_comment_col = find_column_by_header(qa_ws, "MEMO")
+        qa_screenshot_col = None  # Script has no SCREENSHOT
+    else:
+        qa_comment_col = find_column_by_header(qa_ws, "COMMENT")
+        qa_screenshot_col = find_column_by_header(qa_ws, "SCREENSHOT")
     qa_stringid_col = find_column_by_header(qa_ws, "STRINGID")
+    # For Script, also check for EventName as STRINGID
+    if is_script and not qa_stringid_col:
+        qa_stringid_col = find_column_by_header(qa_ws, "EventName")
 
     # Find or create user columns in master
+    # Note: Script category has NO SCREENSHOT column
     master_comment_col = get_or_create_user_comment_column(master_ws, username)
     master_tester_status_col = get_or_create_tester_status_column(master_ws, username, master_comment_col)
     master_user_status_col = get_or_create_user_status_column(master_ws, username, master_comment_col)
     master_manager_comment_col = get_or_create_user_manager_comment_column(master_ws, username, master_user_status_col)
-    master_screenshot_col = get_or_create_user_screenshot_column(master_ws, username, master_manager_comment_col)
+    if not is_script:
+        master_screenshot_col = get_or_create_user_screenshot_column(master_ws, username, master_manager_comment_col)
+    else:
+        master_screenshot_col = None  # Script has no screenshot column
 
     # Find STRINGID column in master (for manager status lookup)
     master_stringid_col = find_column_by_header(master_ws, "STRINGID")
@@ -467,8 +482,8 @@ def process_sheet(
                     )
                     result["comments"] += 1
 
-        # Process SCREENSHOT
-        if qa_screenshot_col:
+        # Process SCREENSHOT (not for Script category)
+        if qa_screenshot_col and master_screenshot_col:
             qa_screenshot_cell = qa_ws.cell(row=qa_row, column=qa_screenshot_col)
             screenshot_value = qa_screenshot_cell.value
             screenshot_hyperlink = qa_screenshot_cell.hyperlink

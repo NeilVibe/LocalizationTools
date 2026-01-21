@@ -18,7 +18,7 @@ from collections import defaultdict
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
-    CATEGORIES, CATEGORY_TO_MASTER, TRANSLATION_COLS,
+    CATEGORIES, CATEGORY_TO_MASTER, TRANSLATION_COLS, SCRIPT_TYPE_CATEGORIES,
     MASTER_FOLDER_EN, MASTER_FOLDER_CN,
     IMAGES_FOLDER_EN, IMAGES_FOLDER_CN,
     TRACKER_PATH,
@@ -414,8 +414,12 @@ def process_category(
         print(f"\n  Processing: {username}")
 
         # Copy images FIRST to get mapping for screenshot links
-        image_mapping = copy_images_with_unique_names(qf, images_folder, skip_images=fixed_screenshots)
-        total_images += len(image_mapping)
+        # Script-type categories (Sequencer/Dialog) have NO screenshots - skip image copying
+        if category.lower() in SCRIPT_TYPE_CATEGORIES:
+            image_mapping = {}
+        else:
+            image_mapping = copy_images_with_unique_names(qf, images_folder, skip_images=fixed_screenshots)
+            total_images += len(image_mapping)
 
         # Load QA workbook
         qa_wb = safe_load_workbook(xlsx_path)

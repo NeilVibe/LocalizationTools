@@ -61,6 +61,7 @@ MODULES_TO_CHECK = [
     "generators.knowledge",
     "generators.help",
     "generators.gimmick",
+    "generators.script",
 
     # Core
     "core.compiler",

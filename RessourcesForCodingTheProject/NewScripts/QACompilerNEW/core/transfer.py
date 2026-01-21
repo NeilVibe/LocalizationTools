@@ -19,7 +19,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
     QA_FOLDER, QA_FOLDER_OLD, QA_FOLDER_NEW,
-    TRANSLATION_COLS, ITEM_DESC_COLS, CATEGORIES,
+    TRANSLATION_COLS, ITEM_DESC_COLS, SCRIPT_COLS, SCRIPT_TYPE_CATEGORIES, CATEGORIES,
     load_tester_mapping
 )
 from core.discovery import discover_qa_folders_in
@@ -311,10 +311,13 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
         - stringid_trans_index: {(stringid, trans): (sheet_name, row, consumed)}
         - trans_index: {trans: [(sheet_name, row, consumed), ...]}
         - contents_index: {instructions: (sheet_name, row, consumed)} (for Contents category)
+        - script_full_index: {(trans, eventname): ...} (for Script category)
+        - script_eventname_index: {eventname: [...]} (for Script category fallback)
     """
     trans_col = get_translation_column(category, is_english)
     is_item = category.lower() == "item"
     is_contents = category.lower() == "contents"
+    is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
 
     # For Item category, use different columns
     if is_item:
@@ -330,6 +333,9 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
     item_name_desc_index = defaultdict(list)
     # For Contents: index by INSTRUCTIONS (col 2)
     contents_index = {}
+    # For Script: index by (Translation + EventName) and EventName only (fallback)
+    script_full_index = {}
+    script_eventname_index = defaultdict(list)
 
     for sheet_name in new_wb.sheetnames:
         ws = new_wb[sheet_name]
@@ -358,6 +364,26 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
                     # Fallback: name + desc only
                     key2 = (item_name, item_desc)
                     item_name_desc_index[key2].append({"sheet": sheet_name, "row": row, "consumed": False})
+            elif is_script:
+                # Script: index by (Translation + EventName) with EventName-only fallback
+                trans = str(ws.cell(row, trans_col).value or "").strip()
+                eventname_col = find_column_by_header(ws, "EventName")
+                eventname = ""
+                if eventname_col:
+                    eventname = str(ws.cell(row, eventname_col).value or "").strip()
+                # Use EventName as stringid if not present
+                if not stringid and eventname:
+                    stringid = eventname
+
+                # Full index: translation + eventname
+                if trans and eventname:
+                    key = (trans, eventname)
+                    if key not in script_full_index:
+                        script_full_index[key] = {"sheet": sheet_name, "row": row, "consumed": False}
+
+                # Fallback: EventName ONLY (NOT translation only!)
+                if eventname:
+                    script_eventname_index[eventname].append({"sheet": sheet_name, "row": row, "consumed": False})
             else:
                 trans = str(ws.cell(row, trans_col).value or "").strip()
 
@@ -377,6 +403,8 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
         "item_full": item_full_index,
         "item_name_desc": item_name_desc_index,
         "contents": contents_index,
+        "script_full": script_full_index,
+        "script_eventname": script_eventname_index,
     }
 
 
@@ -389,6 +417,7 @@ def collect_old_rows_with_data(old_wb, category: str, is_english: bool) -> List[
     trans_col = get_translation_column(category, is_english)
     is_item = category.lower() == "item"
     is_contents = category.lower() == "contents"
+    is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
 
     if is_item:
         name_col = TRANSLATION_COLS["Item"]["eng"] if is_english else TRANSLATION_COLS["Item"]["other"]
@@ -399,9 +428,15 @@ def collect_old_rows_with_data(old_wb, category: str, is_english: bool) -> List[
     for sheet_name in old_wb.sheetnames:
         ws = old_wb[sheet_name]
 
-        comment_col = find_column_by_header(ws, "COMMENT")
+        # Script category uses MEMO instead of COMMENT, and has no SCREENSHOT
+        if is_script:
+            comment_col = find_column_by_header(ws, "MEMO")  # Script uses MEMO
+            screenshot_col = None  # Script has NO screenshot
+        else:
+            comment_col = find_column_by_header(ws, "COMMENT")
+            screenshot_col = find_column_by_header(ws, "SCREENSHOT")
+
         status_col = find_column_by_header(ws, "STATUS")
-        screenshot_col = find_column_by_header(ws, "SCREENSHOT")
         stringid_col = find_column_by_header(ws, "STRINGID")
 
         for row in range(2, ws.max_row + 1):
@@ -432,6 +467,17 @@ def collect_old_rows_with_data(old_wb, category: str, is_english: bool) -> List[
             elif is_item:
                 row_data["item_name"] = str(ws.cell(row, name_col).value or "").strip()
                 row_data["item_desc"] = str(ws.cell(row, desc_col).value or "").strip()
+            elif is_script:
+                # Script: use Translation + EventName
+                row_data["translation"] = str(ws.cell(row, trans_col).value or "").strip()
+                eventname_col = find_column_by_header(ws, "EventName")
+                eventname = ""
+                if eventname_col:
+                    eventname = str(ws.cell(row, eventname_col).value or "").strip()
+                row_data["eventname"] = eventname
+                # Use EventName as stringid if not present
+                if not stringid and eventname:
+                    row_data["stringid"] = eventname
             else:
                 row_data["translation"] = str(ws.cell(row, trans_col).value or "").strip()
 
@@ -473,6 +519,7 @@ def transfer_folder_data(
     is_english = tester_mapping.get(username, "EN") == "EN"
     is_item = category.lower() == "item"
     is_contents = category.lower() == "contents"
+    is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
 
     # Load workbooks
     old_wb = safe_load_workbook(old_folder["xlsx_path"])
@@ -486,6 +533,8 @@ def transfer_folder_data(
         "name_desc_stringid_match": 0,
         "name_desc_match": 0,
         "instructions_match": 0,
+        "script_full_match": 0,      # Script: Translation + EventName
+        "script_eventname_match": 0,  # Script: EventName only fallback
     }
 
     # Build global index of NEW workbook
@@ -501,7 +550,7 @@ def transfer_folder_data(
     matches = []  # [(old_row_data, new_sheet, new_row, match_type), ...]
     unmatched_rows = []
 
-    # PASS 1: Exact match (STRINGID + Translation, ItemName+ItemDesc+STRINGID, or INSTRUCTIONS)
+    # PASS 1: Exact match (STRINGID + Translation, ItemName+ItemDesc+STRINGID, INSTRUCTIONS, or Translation+EventName)
     for old_row in old_rows:
         matched = False
 
@@ -524,6 +573,16 @@ def transfer_folder_data(
                     matches.append((old_row, entry["sheet"], entry["row"], "name+desc+stringid"))
                     stats["name_desc_stringid_match"] += 1
                     matched = True
+        elif is_script:
+            # Script: match by Translation + EventName
+            key = (old_row.get("translation", ""), old_row.get("eventname", ""))
+            if key[0] and key[1] and key in new_index["script_full"]:
+                entry = new_index["script_full"][key]
+                if not entry["consumed"]:
+                    entry["consumed"] = True
+                    matches.append((old_row, entry["sheet"], entry["row"], "script_full"))
+                    stats["script_full_match"] += 1
+                    matched = True
         else:
             key = (old_row["stringid"], old_row["translation"])
             if old_row["stringid"] and old_row["translation"] and key in new_index["stringid_trans"]:
@@ -537,8 +596,9 @@ def transfer_folder_data(
         if not matched:
             unmatched_rows.append(old_row)
 
-    # PASS 2: Fallback match (Translation only or ItemName+ItemDesc)
+    # PASS 2: Fallback match (Translation only, ItemName+ItemDesc, or EventName only)
     # Note: Contents has no fallback - INSTRUCTIONS is the unique identifier
+    # Note: Script uses EventName-only fallback (NOT Translation only!)
     still_unmatched = []
     for old_row in unmatched_rows:
         matched = False
@@ -554,6 +614,17 @@ def transfer_folder_data(
                         entry["consumed"] = True
                         matches.append((old_row, entry["sheet"], entry["row"], "name+desc"))
                         stats["name_desc_match"] += 1
+                        matched = True
+                        break
+        elif is_script:
+            # Script: fallback to EventName ONLY (NOT Translation only!)
+            eventname = old_row.get("eventname", "")
+            if eventname and eventname in new_index["script_eventname"]:
+                for entry in new_index["script_eventname"][eventname]:
+                    if not entry["consumed"]:
+                        entry["consumed"] = True
+                        matches.append((old_row, entry["sheet"], entry["row"], "script_eventname"))
+                        stats["script_eventname_match"] += 1
                         matched = True
                         break
         else:
@@ -577,9 +648,15 @@ def transfer_folder_data(
     for old_row, new_sheet, new_row_num, match_type in matches:
         ws = new_wb[new_sheet]
 
-        comment_col = find_column_by_header(ws, "COMMENT")
+        # Script uses MEMO instead of COMMENT, and has NO SCREENSHOT
+        if is_script:
+            comment_col = find_column_by_header(ws, "MEMO")
+            screenshot_col = None  # Script has no SCREENSHOT
+        else:
+            comment_col = find_column_by_header(ws, "COMMENT")
+            screenshot_col = find_column_by_header(ws, "SCREENSHOT")
+
         status_col = find_column_by_header(ws, "STATUS")
-        screenshot_col = find_column_by_header(ws, "SCREENSHOT")
 
         if comment_col and old_row["comment"]:
             ws.cell(new_row_num, comment_col, old_row["comment"])
@@ -600,6 +677,8 @@ def transfer_folder_data(
         print(f"    Matched: {stats['instructions_match']} by INSTRUCTIONS, {stats['unmatched']} unmatched")
     elif is_item:
         print(f"    Matched: {stats['name_desc_stringid_match']} exact + {stats['name_desc_match']} fallback, {stats['unmatched']} unmatched")
+    elif is_script:
+        print(f"    Matched: {stats['script_full_match']} exact + {stats['script_eventname_match']} fallback, {stats['unmatched']} unmatched")
     else:
         print(f"    Matched: {stats['stringid_match']} exact + {stats['trans_only']} fallback, {stats['unmatched']} unmatched")
 
@@ -653,6 +732,7 @@ def print_transfer_report(stats: Dict):
         total = data["total"]
         is_item = category.lower() == "item"
         is_contents = category.lower() == "contents"
+        is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
 
         if is_contents:
             # Contents: only has exact match (INSTRUCTIONS)
@@ -661,6 +741,9 @@ def print_transfer_report(stats: Dict):
         elif is_item:
             exact = data.get("name_desc_stringid_match", 0)
             fallback = data.get("name_desc_match", 0)
+        elif is_script:
+            exact = data.get("script_full_match", 0)
+            fallback = data.get("script_eventname_match", 0)
         else:
             exact = data.get("stringid_match", 0)
             fallback = data.get("trans_only", 0)
@@ -678,8 +761,10 @@ def print_transfer_report(stats: Dict):
     print("=" * 79)
     print()
     print("Legend:")
-    print("  Exact    = Strong match (STRINGID+Trans for most, ItemName+ItemDesc+STRINGID for Item, INSTRUCTIONS for Contents)")
-    print("  Fallback = Weaker match (Trans only for most, ItemName+ItemDesc for Item, N/A for Contents)")
+    print("  Exact    = Strong match (STRINGID+Trans for most, ItemName+ItemDesc+STRINGID for Item,")
+    print("             INSTRUCTIONS for Contents, Translation+EventName for Script)")
+    print("  Fallback = Weaker match (Trans only for most, ItemName+ItemDesc for Item,")
+    print("             N/A for Contents, EventName only for Script)")
     unmatched = grand_total - grand_exact - grand_fallback
     print(f"  Unmatched = {unmatched} rows (not transferred)")
     print()
