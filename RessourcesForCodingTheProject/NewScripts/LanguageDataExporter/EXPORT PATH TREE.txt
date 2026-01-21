@@ -1,0 +1,1943 @@
+==================================================
+DIRECTORY TREE: F:/perforce/cd/mainline/resource/GameData/stringtable/export__
+==================================================
+.
+├── Dialog
+│   ├── AIDialog
+│   │   ├── AIDialogStringInfo.staticinfo.loc.xml
+│   │   ├── AIDialogStringInfo.staticinfo_2.loc.xml
+│   │   ├── AIDialogStringInfo.staticinfo_3.loc.xml
+│   │   ├── LocalGameStringInfo.staticinfo.loc.xml
+│   │   └── aidialogstringinfo_Criminal.staticinfo.loc.xml
+│   ├── NarrationDialog
+│   │   ├── gimmickinfo_background_misc.staticinfo.loc.xml
+│   │   ├── gimmickinfo_puzzle_tower.staticinfo.loc.xml
+│   │   ├── gimmickinfo_puzzle_unique.staticinfo.loc.xml
+│   │   ├── item_boardpaper.staticinfo.loc.xml
+│   │   ├── item_book.staticinfo.loc.xml
+│   │   └── item_quest_normal.staticinfo.loc.xml
+│   ├── QuestDialog
+│   │   ├── LocalGameStringInfo.staticinfo.loc.xml
+│   │   ├── QuestDialog_Hello.staticinfo.loc.xml
+│   │   ├── QuestDialog_Quest.staticinfo.loc.xml
+│   │   ├── QuestDialog_contents.staticinfo.loc.xml
+│   │   ├── QuestDialog_contents.staticinfo_2.loc.xml
+│   │   ├── QuestDialog_faction.staticinfo.loc.xml
+│   │   ├── QuestDialog_main.staticinfo.loc.xml
+│   │   ├── QuestDialog_main.staticinfo_2.loc.xml
+│   │   ├── questdialog_pywel_Delesyia.staticinfo.loc.xml
+│   │   ├── questdialog_pywel_Demeniss.staticinfo.loc.xml
+│   │   ├── questdialog_pywel_Hernand.staticinfo.loc.xml
+│   │   └── questdialog_pywel_Pailune.staticinfo.loc.xml
+│   └── StageCloseDialog
+│       ├── quest_faction_wyvern_tamers.staticinfo.loc.xml
+│       ├── quest_main_chapter02_goldengreed.staticinfo.loc.xml
+│       ├── quest_main_chapter03_wolfhill.staticinfo.loc.xml
+│       ├── quest_main_chapter05_gatecrasher.staticinfo.loc.xml
+│       ├── quest_main_chapter06_brokenshield.staticinfo.loc.xml
+│       ├── quest_main_chapter07_homecoming.staticinfo.loc.xml
+│       ├── quest_main_chapter08_bloodcoronation.staticinfo.loc.xml
+│       ├── quest_main_chapter09_desertsage.staticinfo.loc.xml
+│       ├── quest_main_chapter10_counterattack.staticinfo.loc.xml
+│       ├── quest_node_cal_calphadecastle_shieldwithoutcompromise.staticinfo.loc.xml
+│       ├── quest_node_crim_enlightenshrine_goblin_treasure.staticinfo.loc.xml
+│       ├── quest_node_crim_fortmanub_sacked_fortress.staticinfo.loc.xml
+│       ├── quest_node_crim_helmaravillage_desert_harrier.staticinfo.loc.xml
+│       ├── quest_node_crim_isvatufortress_thief_headquarters.staticinfo.loc.xml
+│       ├── quest_node_crim_redmountainfort_crimson_mountains_fortress.staticinfo.loc.xml
+│       ├── quest_node_crim_tashkalp_tommaso.staticinfo.loc.xml
+│       ├── quest_node_del_marniairlab_marni_mine_fortress.staticinfo.loc.xml
+│       ├── quest_node_del_marnilab_marni_mine_fortress.staticinfo.loc.xml
+│       ├── quest_node_del_marnimechfactory_marni_tank_fortress.staticinfo.loc.xml
+│       ├── quest_node_del_snakeshrine_giant_serpent.staticinfo.loc.xml
+│       ├── quest_node_del_stonebackcrabwetlands_landspider_swamp.staticinfo.loc.xml
+│       ├── quest_node_del_valvegardwallfort_marni_barrier_fortress.staticinfo.loc.xml
+│       ├── quest_node_dem_bloodsteelcamp_righteousarrows.staticinfo.loc.xml
+│       ├── quest_node_dem_brookfieldmanor_elimoor.staticinfo.loc.xml
+│       ├── quest_node_dem_flame_knights.staticinfo.loc.xml
+│       ├── quest_node_dem_hexesanctuary.staticinfo.loc.xml
+│       ├── quest_node_dem_jijeongtemple.staticinfo.loc.xml
+│       ├── quest_node_dem_southcourt_caliburnclan_ii.staticinfo.loc.xml
+│       ├── quest_node_dem_sungrovemanor_marchell_marseille.staticinfo.loc.xml
+│       ├── quest_node_dem_truthgate_ancientruins.staticinfo.loc.xml
+│       ├── quest_node_dem_windmeremanor_byron_caliburnclan_iv.staticinfo.loc.xml
+│       ├── quest_node_her_bluemontmanor_roberts_lopette.staticinfo.loc.xml
+│       ├── quest_node_her_brokenchurch_reglegoblin.staticinfo.loc.xml
+│       ├── quest_node_her_forthellwood_hellhounds.staticinfo.loc.xml
+│       ├── quest_node_her_greystonemanor_felix.staticinfo.loc.xml
+│       ├── quest_node_her_hernandcastle.staticinfo.loc.xml
+│       ├── quest_node_her_kharonsovillage_rumsxovillage.staticinfo.loc.xml
+│       ├── quest_node_her_oakenshieldmanor_serkis.staticinfo.loc.xml
+│       ├── quest_node_her_portpervin_bleed_ruffians.staticinfo.loc.xml
+│       ├── quest_node_her_spidercastle.staticinfo.loc.xml
+│       ├── quest_node_her_velluavillage.staticinfo.loc.xml
+│       ├── quest_node_kwe_destructiontower_black_tower.staticinfo.loc.xml
+│       ├── quest_node_kwe_harpynest.staticinfo.loc.xml
+│       ├── quest_node_kwe_lonelyjackal.staticinfo.loc.xml
+│       ├── quest_node_kwe_longleaftreevillage.staticinfo.loc.xml
+│       ├── quest_node_kwe_odeckvillage.staticinfo.loc.xml
+│       ├── quest_node_kwe_windsongmountain_taitan.staticinfo.loc.xml
+│       └── quest_node_neut_marnisoutpost.staticinfo.loc.xml
+├── None
+│   ├── Board
+│   │   └── boardinfo.staticinfo.loc.xml
+│   ├── EquipType
+│   │   └── equiptypeinfo.staticinfo.loc.xml
+│   └── GameAdvice
+│       └── GameAdviceInfo.staticinfo.loc.xml
+├── Platform
+│   └── PlatformService
+│       └── Platform_Achievements.staticinfo.loc.xml
+├── Sequencer
+│   ├── Faction
+│   │   ├── Faction_Alfonso
+│   │   │   ├── cd_seq_node_her_lioncrestmanorcontact_0200.loc.xml
+│   │   │   ├── cd_seq_node_her_lioncrestmanorcontact_0300.loc.xml
+│   │   │   ├── cd_seq_node_her_lioncrestmanorcontact_0500.loc.xml
+│   │   │   ├── cd_seq_node_her_lioncrestmanorcontact_0600.loc.xml
+│   │   │   ├── cd_seq_node_her_lioncrestmanorcontact_0700.loc.xml
+│   │   │   ├── cd_seq_node_her_lioncrestmanorcontact_0800.loc.xml
+│   │   │   ├── cd_seq_node_her_lioncrestmanorcontact_0900.loc.xml
+│   │   │   └── cd_seq_node_her_lioncrestmanorcontact_1100.loc.xml
+│   │   ├── Faction_AncientGodAeserion
+│   │   │   ├── cd_boss_ancientpeople_9000.loc.xml
+│   │   │   ├── cd_seq_praevus_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_primus_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_priscus_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_quest_five_finger_mountain_9000.loc.xml
+│   │   │   ├── cd_seq_quest_three_brothers_cliff_1600.loc.xml
+│   │   │   ├── cd_seq_quest_three_brothers_cliff_9000.loc.xml
+│   │   │   └── cd_seq_quest_three_brothers_cliff_9030.loc.xml
+│   │   ├── Faction_Antumbra
+│   │   │   ├── cd_seq_quest_black_tower_9000.loc.xml
+│   │   │   ├── cd_seq_quest_black_tower_9100.loc.xml
+│   │   │   ├── cd_seq_quest_black_tower_9200.loc.xml
+│   │   │   └── cd_seq_quest_black_tower_9300.loc.xml
+│   │   ├── Faction_Azerian
+│   │   │   ├── cd_boss_dragonslayer_0100.loc.xml
+│   │   │   └── cd_boss_dragonslayer_9000.loc.xml
+│   │   ├── Faction_Beighen
+│   │   │   ├── cd_seq_node_dem_eyeofice_0100.loc.xml
+│   │   │   ├── cd_seq_quest_extinguishedfire_mountain_9000.loc.xml
+│   │   │   ├── cd_seq_skullknight_bossencounter_ambush.loc.xml
+│   │   │   └── cd_seq_skullknight_bossencounter_stand.loc.xml
+│   │   ├── Faction_Byron
+│   │   │   ├── cd_boss_fullplatearmortroll_0110.loc.xml
+│   │   │   ├── cd_boss_fullplatearmortroll_9000.loc.xml
+│   │   │   ├── cd_seq_faction_mansion_byron_0010.loc.xml
+│   │   │   ├── cd_seq_faction_mansion_byron_1200.loc.xml
+│   │   │   └── cd_seq_node_dem_windmeremanor_horserace_0200.loc.xml
+│   │   ├── Faction_Celeste_Hernand
+│   │   │   ├── cd_boss_spiderqueen_9000.loc.xml
+│   │   │   ├── cd_seq_contents_wanted_her_0010.loc.xml
+│   │   │   ├── cd_seq_gwenkraver_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_gwenkraver_bossencounter_stand.loc.xml
+│   │   │   ├── cd_seq_hamondbeindel_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_hamondbeindel_bossencounter_stand.loc.xml
+│   │   │   ├── cd_seq_onetimequest_hernand_03020.loc.xml
+│   │   │   ├── cd_seq_onetimequest_wolfmolar_mountain_04130_01.loc.xml
+│   │   │   ├── cd_seq_onetimequest_wolfmolar_mountain_05080.loc.xml
+│   │   │   ├── cd_seq_quest_gwenkraver_9000.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_3400.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_3800.loc.xml
+│   │   │   ├── cd_seq_quest_senia_village_9000.loc.xml
+│   │   │   ├── cd_seq_quest_wolfmolar_mountain_0400.loc.xml
+│   │   │   ├── cd_seq_quest_wolfmolar_mountain_0440.loc.xml
+│   │   │   ├── cd_seq_quest_wolfmolar_mountain_0450.loc.xml
+│   │   │   └── cd_seq_quest_wolfmolar_mountain_0460.loc.xml
+│   │   ├── Faction_Crimson_Desert_Daily
+│   │   │   ├── cd_seq_node_crim_varnia_daily_0100.loc.xml
+│   │   │   ├── cd_seq_node_crim_varnia_daily_0200.loc.xml
+│   │   │   ├── cd_seq_node_crim_varnia_daily_0400.loc.xml
+│   │   │   ├── cd_seq_node_crim_varnia_daily_0500.loc.xml
+│   │   │   ├── cd_seq_node_crim_varnia_daily_0600.loc.xml
+│   │   │   ├── cd_seq_node_crim_varnia_daily_0900.loc.xml
+│   │   │   ├── cd_seq_node_crim_varnia_daily_1000.loc.xml
+│   │   │   ├── cd_seq_node_crim_varnia_daily_1100.loc.xml
+│   │   │   ├── cd_seq_node_her_helmaravillageconstruction_0100.loc.xml
+│   │   │   └── cd_seq_node_her_helmaravillageconstruction_0200.loc.xml
+│   │   ├── Faction_Crimson_Desert_Request
+│   │   │   ├── cd_seq_node_crim_muiquunvillage_carriage_0100.loc.xml
+│   │   │   ├── cd_seq_node_crim_muiquunvillage_carriage_0200.loc.xml
+│   │   │   ├── cd_seq_node_crim_rockvillage_0100.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_1000.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_1100.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_1200.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_1300.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_1400.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_1500.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_1600.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_1700.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_1800.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_2100.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_2100_01.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_2200.loc.xml
+│   │   │   ├── cd_seq_quest_faction_saltroadtradepost_1000.loc.xml
+│   │   │   ├── cd_seq_quest_faction_saltroadtradepost_1100.loc.xml
+│   │   │   ├── cd_seq_quest_faction_saltroadtradepost_1200.loc.xml
+│   │   │   ├── cd_seq_quest_faction_saltroadtradepost_1300.loc.xml
+│   │   │   ├── cd_seq_quest_faction_saltroadtradepost_1400.loc.xml
+│   │   │   ├── cd_seq_quest_faction_saltroadtradepost_1500.loc.xml
+│   │   │   ├── cd_seq_quest_faction_saltroadtradepost_1600.loc.xml
+│   │   │   ├── cd_seq_quest_faction_saltroadtradepost_1700.loc.xml
+│   │   │   ├── cd_seq_quest_faction_saltroadtradepost_1800.loc.xml
+│   │   │   ├── cd_seq_quest_hyenamolar_valley_4100.loc.xml
+│   │   │   ├── cd_seq_quest_hyenamolar_valley_4200.loc.xml
+│   │   │   ├── cd_seq_quest_redwindtradingassociation_0200.loc.xml
+│   │   │   ├── cd_seq_quest_redwindtradingassociation_0300.loc.xml
+│   │   │   └── cd_seq_quest_redwindtradingassociation_0400.loc.xml
+│   │   ├── Faction_Crimson_Desert_Situation
+│   │   │   └── cd_seq_faction_urdavah_dragon_boss_0600.loc.xml
+│   │   ├── Faction_DelesyiaInstitute
+│   │   │   ├── cd_seq_faction_delesyiainstitute_0110.loc.xml
+│   │   │   ├── cd_seq_faction_delesyiainstitute_0210.loc.xml
+│   │   │   ├── cd_seq_faction_delesyiainstitute_0310.loc.xml
+│   │   │   ├── cd_seq_faction_delesyiainstitute_0410.loc.xml
+│   │   │   ├── cd_seq_faction_delesyiainstitute_0510.loc.xml
+│   │   │   ├── cd_seq_faction_delesyiainstitute_0520.loc.xml
+│   │   │   ├── cd_seq_faction_delesyiainstitute_0610.loc.xml
+│   │   │   ├── cd_seq_faction_delesyiainstitute_0620.loc.xml
+│   │   │   ├── cd_seq_faction_delesyiainstitute_1700.loc.xml
+│   │   │   └── cd_seq_faction_delesyiainstitute_1800.loc.xml
+│   │   ├── Faction_Delesyia_Daily
+│   │   │   ├── cd_seq_faction_goblin_brewery_1000.loc.xml
+│   │   │   ├── cd_seq_faction_goblin_brewery_1100.loc.xml
+│   │   │   ├── cd_seq_node_del_delesyiacastle_daily_0200.loc.xml
+│   │   │   ├── cd_seq_node_del_delesyiacastle_daily_0300.loc.xml
+│   │   │   ├── cd_seq_node_del_delesyiacastle_daily_0400.loc.xml
+│   │   │   ├── cd_seq_node_del_delesyiacastle_daily_0500.loc.xml
+│   │   │   ├── cd_seq_node_del_delesyiacastle_daily_0600.loc.xml
+│   │   │   ├── cd_seq_node_del_delesyiacastle_daily_0800.loc.xml
+│   │   │   ├── cd_seq_node_del_delesyiacastle_daily_0900.loc.xml
+│   │   │   ├── cd_seq_node_del_marnipark_0100.loc.xml
+│   │   │   ├── cd_seq_node_del_marnipark_0200.loc.xml
+│   │   │   ├── cd_seq_node_del_portdelesyia_0100.loc.xml
+│   │   │   ├── cd_seq_node_del_portdelesyia_0200.loc.xml
+│   │   │   ├── cd_seq_node_del_rustfieldscrapyard_0100.loc.xml
+│   │   │   ├── cd_seq_node_del_rustfieldscrapyard_0200.loc.xml
+│   │   │   ├── cd_seq_node_her_sweetbloomplantationconstruction_0400.loc.xml
+│   │   │   └── cd_seq_node_her_sweetbloomplantationconstruction_0600.loc.xml
+│   │   ├── Faction_Delesyia_Request
+│   │   │   ├── cd_seq_node_del_cornfieldfarm_0100.loc.xml
+│   │   │   ├── cd_seq_node_del_cornfieldfarm_0120.loc.xml
+│   │   │   ├── cd_seq_node_del_redfoxtradepost_questioning_0100.loc.xml
+│   │   │   ├── cd_seq_node_del_redfoxtradepost_questioning_0200.loc.xml
+│   │   │   ├── cd_seq_node_del_redfoxtradepost_questioning_0300.loc.xml
+│   │   │   ├── cd_seq_node_del_redfoxtradepost_questioning_0400.loc.xml
+│   │   │   ├── cd_seq_node_del_redfoxtradepost_questioning_0500.loc.xml
+│   │   │   ├── cd_seq_node_del_redfoxtradepost_questioning_0600.loc.xml
+│   │   │   ├── cd_seq_node_del_redfoxtradepost_questioning_0700.loc.xml
+│   │   │   ├── cd_seq_node_del_redfoxtradepost_questioning_0800.loc.xml
+│   │   │   ├── cd_seq_node_del_redfoxtradepost_questioning_0900.loc.xml
+│   │   │   ├── cd_seq_node_dewhavencastle_disappeared_0100.loc.xml
+│   │   │   ├── cd_seq_node_dewhavencastle_disappeared_1100.loc.xml
+│   │   │   ├── cd_seq_node_dewhavencastle_disappeared_1200.loc.xml
+│   │   │   ├── cd_seq_node_dewhavencastle_disappeared_1300.loc.xml
+│   │   │   ├── cd_seq_node_dewhavencastle_disappeared_1400.loc.xml
+│   │   │   ├── cd_seq_node_dewhavencastle_disappeared_1500.loc.xml
+│   │   │   ├── cd_seq_node_dewhavencastle_disappeared_1600.loc.xml
+│   │   │   ├── cd_seq_node_dewhavencastle_disappeared_1700.loc.xml
+│   │   │   ├── cd_seq_node_dewhavencastle_disappeared_1900.loc.xml
+│   │   │   ├── cd_seq_node_fullharvestfarm_0100.loc.xml
+│   │   │   ├── cd_seq_node_fullharvestfarm_0200.loc.xml
+│   │   │   └── cd_seq_quest_hawkstoneruins_0100.loc.xml
+│   │   ├── Faction_Demeniss_Daily
+│   │   │   ├── cd_boss_dragonslayer_0400.loc.xml
+│   │   │   ├── cd_seq_node_dem_azerianmanor_0100.loc.xml
+│   │   │   ├── cd_seq_node_dem_azerianmanor_0200.loc.xml
+│   │   │   ├── cd_seq_node_dem_demenisscastle_daily_0100.loc.xml
+│   │   │   ├── cd_seq_node_dem_demenisscastle_daily_0200.loc.xml
+│   │   │   ├── cd_seq_node_dem_demenisscastle_daily_0300.loc.xml
+│   │   │   ├── cd_seq_node_dem_demenisscastle_daily_0400.loc.xml
+│   │   │   ├── cd_seq_node_dem_demenisscastle_daily_0500.loc.xml
+│   │   │   ├── cd_seq_node_dem_demenisscastle_daily_0600.loc.xml
+│   │   │   ├── cd_seq_node_dem_demenisscastle_daily_0700.loc.xml
+│   │   │   ├── cd_seq_node_dem_demenisscastle_daily_0900.loc.xml
+│   │   │   ├── cd_seq_node_dem_demenisscastle_daily_1100.loc.xml
+│   │   │   ├── cd_seq_node_dem_demenisscastle_daily_1300.loc.xml
+│   │   │   ├── cd_seq_node_dem_demenisscastle_daily_1400.loc.xml
+│   │   │   ├── cd_seq_node_dem_hayrooffarm_0100.loc.xml
+│   │   │   ├── cd_seq_node_dem_hayrooffarm_0200.loc.xml
+│   │   │   ├── cd_seq_node_dem_lacusfarm_0100.loc.xml
+│   │   │   ├── cd_seq_node_dem_lacusfarm_0200.loc.xml
+│   │   │   ├── cd_seq_node_dem_royaltomb_0100.loc.xml
+│   │   │   ├── cd_seq_node_dem_royaltomb_0200.loc.xml
+│   │   │   ├── cd_seq_node_her_silvermoonhqconstruction_0110.loc.xml
+│   │   │   ├── cd_seq_node_her_silvermoonhqconstruction_0120.loc.xml
+│   │   │   └── cd_seq_quest_chaserenemy_bleed_0300.loc.xml
+│   │   ├── Faction_Demeniss_Request
+│   │   │   ├── cd_seq_quest_carriagefence_seizure_0100.loc.xml
+│   │   │   └── cd_seq_quest_hiddencave_0200.loc.xml
+│   │   ├── Faction_Dewhaven
+│   │   │   ├── cd_boss_dragonslayer_ii_9000.loc.xml
+│   │   │   ├── cd_seq_balthazar_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_balthazar_bossencounter_stand.loc.xml
+│   │   │   ├── cd_seq_faction_dewhavencastle_0110.loc.xml
+│   │   │   ├── cd_seq_faction_dewhavencastle_0210.loc.xml
+│   │   │   ├── cd_seq_faction_dewhavencastle_0310.loc.xml
+│   │   │   ├── cd_seq_faction_dewhavencastle_0410.loc.xml
+│   │   │   ├── cd_seq_faction_dewhavencastle_0510.loc.xml
+│   │   │   ├── cd_seq_faction_dewhavencastle_0520.loc.xml
+│   │   │   ├── cd_seq_faction_dewhavencastle_0610.loc.xml
+│   │   │   └── cd_seq_faction_dewhavencastle_0620.loc.xml
+│   │   ├── Faction_Elimoor
+│   │   │   ├── cd_seq_faction_caliburnclan_i_0100.loc.xml
+│   │   │   ├── cd_seq_faction_caliburnclan_ii_0100.loc.xml
+│   │   │   ├── cd_seq_faction_caliburnclan_iii_0300.loc.xml
+│   │   │   ├── cd_seq_node_dem_brookfieldmanor_elemore_0100.loc.xml
+│   │   │   └── cd_seq_node_dem_brookfieldmanor_elemore_0200.loc.xml
+│   │   ├── Faction_Empty_Crimson_Desert
+│   │   │   ├── cd_seq_goldenarmor_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_goldenarmor_bossencounter_stand.loc.xml
+│   │   │   ├── cd_seq_node_crim_helmaravillage_explosionfactory_0100.loc.xml
+│   │   │   ├── cd_seq_node_crim_helmaravillage_explosionfactory_0400.loc.xml
+│   │   │   ├── cd_seq_quest_goldenarmor_9000.loc.xml
+│   │   │   ├── cd_seq_quest_mask_liberator_leader_8000.loc.xml
+│   │   │   ├── cd_seq_quest_mask_liberator_leader_8100.loc.xml
+│   │   │   ├── cd_seq_quest_mask_liberator_leader_9000.loc.xml
+│   │   │   ├── cd_seq_thefaceless_bossencounter_ambush.loc.xml
+│   │   │   └── cd_seq_thefaceless_bossencounter_stand.loc.xml
+│   │   ├── Faction_Felix
+│   │   │   ├── cd_boss_minegolem_9000.loc.xml
+│   │   │   ├── cd_seq_node_her_greystonemanor_1100.loc.xml
+│   │   │   ├── cd_seq_node_her_greystonemanor_1200.loc.xml
+│   │   │   ├── cd_seq_node_her_greystonemanor_1310.loc.xml
+│   │   │   ├── cd_seq_node_her_greystonemanor_1330.loc.xml
+│   │   │   └── cd_seq_node_her_greystonemanor_1400.loc.xml
+│   │   ├── Faction_GorthakIron
+│   │   │   ├── cd_seq_quest_gorthakiron_0100.loc.xml
+│   │   │   ├── cd_seq_quest_gorthakiron_0200.loc.xml
+│   │   │   ├── cd_seq_quest_gorthakiron_1120.loc.xml
+│   │   │   ├── cd_seq_quest_gorthakiron_1220.loc.xml
+│   │   │   ├── cd_seq_quest_gorthakiron_1320.loc.xml
+│   │   │   ├── cd_seq_quest_gorthakiron_1420.loc.xml
+│   │   │   ├── cd_seq_quest_gorthakiron_1520.loc.xml
+│   │   │   ├── cd_seq_quest_gorthakiron_1530.loc.xml
+│   │   │   ├── cd_seq_quest_gorthakiron_1620.loc.xml
+│   │   │   └── cd_seq_quest_gorthakiron_1630.loc.xml
+│   │   ├── Faction_Grace
+│   │   │   ├── cd_seq_node_her_glenbrightmanor_grace_0400.loc.xml
+│   │   │   ├── cd_seq_node_her_glenbrightmanor_grace_0500.loc.xml
+│   │   │   ├── cd_seq_node_her_glenbrightmanor_grace_0510.loc.xml
+│   │   │   ├── cd_seq_quest_flowerdustbeefarm_bear_0100.loc.xml
+│   │   │   ├── cd_seq_quest_flowerdustbeefarm_bear_0200.loc.xml
+│   │   │   ├── cd_seq_quest_grace_dominion_2000.loc.xml
+│   │   │   ├── cd_seq_quest_hotballoon_1100.loc.xml
+│   │   │   ├── cd_seq_quest_hotballoon_1200.loc.xml
+│   │   │   └── cd_seq_quest_hotballoon_1301.loc.xml
+│   │   ├── Faction_Graymane
+│   │   │   ├── cd_seq_basecamp_funcnpc_craftsmith.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0020.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0030.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0031.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0040.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0050.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0060.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0061.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0070.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0080.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0090.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0100.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0101.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0110.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0120.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0121.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0130.loc.xml
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0140.loc.xml
+│   │   │   ├── cd_seq_basecamp_scoutfrommarius_0200.loc.xml
+│   │   │   ├── cd_seq_basecamp_scoutfrommarius_0210.loc.xml
+│   │   │   ├── cd_seq_basecamp_scoutfrommarius_0220.loc.xml
+│   │   │   ├── cd_seq_basecamp_scoutfrommarius_0300.loc.xml
+│   │   │   ├── cd_seq_basecamp_scoutfrommarius_0310.loc.xml
+│   │   │   ├── cd_seq_basecamp_scoutfrommarius_0320.loc.xml
+│   │   │   ├── cd_seq_basecamp_scoutfrommarius_0400.loc.xml
+│   │   │   ├── cd_seq_basecamp_scoutfrommarius_0410.loc.xml
+│   │   │   ├── cd_seq_basecamp_scoutfrommarius_0420.loc.xml
+│   │   │   ├── cd_seq_faction_graymane_0100.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0100.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0110.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0120.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0130.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0140.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0200.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0230.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0300.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0310.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0330.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0400.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0410.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0600.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0630.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0800.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_0810.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_1000.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_1010.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_1030.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_1900.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_1920.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_2000.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_2010.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_2200.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_2210.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_7400.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_7500.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_7510.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_8000.loc.xml
+│   │   │   └── cd_seq_quest_greymanecamp_8010.loc.xml
+│   │   ├── Faction_Hernand_Daily
+│   │   │   ├── cd_seq_node_her_halsiushospital_1000.loc.xml
+│   │   │   ├── cd_seq_node_her_halsiushospital_1100.loc.xml
+│   │   │   ├── cd_seq_node_her_halsiushospital_1200.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_0500.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_0600.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_0100.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_0200.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_0300.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_0400.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_0600.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_0700.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_0800.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_1000.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_1100.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_1200.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_1400.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_1500.loc.xml
+│   │   │   ├── cd_seq_node_her_hernandcastle_daily_1700.loc.xml
+│   │   │   ├── cd_seq_node_her_ruinedchapelconstruction_0100.loc.xml
+│   │   │   ├── cd_seq_node_her_ruinedchapelconstruction_0200.loc.xml
+│   │   │   ├── cd_seq_node_her_streamsidepier_0100.loc.xml
+│   │   │   ├── cd_seq_node_her_streamsidepier_0200.loc.xml
+│   │   │   ├── cd_seq_node_her_velluavillageconstruction_0100.loc.xml
+│   │   │   ├── cd_seq_quest_chaserenemy_bleed_0400.loc.xml
+│   │   │   └── cd_seq_quest_deerking_boss_2500.loc.xml
+│   │   ├── Faction_Hernand_Request
+│   │   │   ├── cd_seq_node_calphadecastle_misappropriation_1000.loc.xml
+│   │   │   ├── cd_seq_node_calphadecastle_misappropriation_1100.loc.xml
+│   │   │   ├── cd_seq_node_calphadecastle_misappropriation_1200.loc.xml
+│   │   │   ├── cd_seq_node_calphadecastle_misappropriation_1300.loc.xml
+│   │   │   ├── cd_seq_node_calphadecastle_misappropriation_1400.loc.xml
+│   │   │   ├── cd_seq_node_calphadecastle_misappropriation_1500.loc.xml
+│   │   │   ├── cd_seq_node_calphadecastle_misappropriation_1600.loc.xml
+│   │   │   ├── cd_seq_node_calphadecastle_misappropriation_1700.loc.xml
+│   │   │   ├── cd_seq_node_calphadecastle_misappropriation_1800.loc.xml
+│   │   │   ├── cd_seq_node_goldleafguildhouse_1300.loc.xml
+│   │   │   ├── cd_seq_node_goldleafguildhouse_1500.loc.xml
+│   │   │   ├── cd_seq_node_goldleafguildhouse_1600.loc.xml
+│   │   │   ├── cd_seq_node_goldleafguildhouse_1700.loc.xml
+│   │   │   ├── cd_seq_node_goldleafguildhouse_1800.loc.xml
+│   │   │   ├── cd_seq_node_goldleafguildhouse_1900.loc.xml
+│   │   │   ├── cd_seq_node_goldleafguildhouse_2100.loc.xml
+│   │   │   ├── cd_seq_node_goldleafguildhouse_3100.loc.xml
+│   │   │   ├── cd_seq_node_goldleafguildhouse_3200.loc.xml
+│   │   │   ├── cd_seq_node_goldleafguildhouse_3300.loc.xml
+│   │   │   ├── cd_seq_node_her_saddlecap_0200.loc.xml
+│   │   │   ├── cd_seq_node_her_saddlecap_0300.loc.xml
+│   │   │   ├── cd_seq_node_her_saddlewindranch_0100.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_1000.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_1100.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_1200.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_1300.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_1400.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_1500.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_1600.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_1700.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_1800.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_legendaryhunter_0010.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_legendaryhunter_0020.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_legendaryhunter_0200.loc.xml
+│   │   │   ├── cd_seq_quest_riventainmonastery_0700.loc.xml
+│   │   │   ├── cd_seq_quest_sunsetvillage_0200.loc.xml
+│   │   │   └── cd_seq_quest_sunsetvillage_0300.loc.xml
+│   │   ├── Faction_Hernand_Situation
+│   │   │   ├── cd_seq_gears_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_gears_bossencounter_stand.loc.xml
+│   │   │   ├── cd_seq_quest_gears_9000.loc.xml
+│   │   │   └── imp_banquet_boss_morufort_0240.loc.xml
+│   │   ├── Faction_JiJeong_Temple
+│   │   │   ├── cd_seq_enc_ocumer_000_00.loc.xml
+│   │   │   ├── cd_seq_quest_orcumer_boss_1100.loc.xml
+│   │   │   ├── cd_seq_quest_orcumer_boss_1200.loc.xml
+│   │   │   ├── cd_seq_quest_orcumer_boss_1400.loc.xml
+│   │   │   └── cd_seq_quest_orcumer_boss_9000.loc.xml
+│   │   ├── Faction_KharonsoVillage
+│   │   │   ├── cd_seq_quest_rumsxo_village_2800_02.loc.xml
+│   │   │   └── cd_seq_quest_rumsxo_village_9000.loc.xml
+│   │   ├── Faction_LongleafTree
+│   │   │   ├── cd_seq_node_kwe_longbranchvillage_0200.loc.xml
+│   │   │   ├── cd_seq_node_kwe_longleaftreevillage_0200.loc.xml
+│   │   │   ├── cd_seq_node_kwe_longleaftreevillage_0300.loc.xml
+│   │   │   ├── cd_seq_node_kwe_longleaftreevillage_0500.loc.xml
+│   │   │   ├── cd_seq_node_kwe_longleaftreevillage_0500_01.loc.xml
+│   │   │   ├── cd_seq_node_kwe_longleaftreevillage_0500_02.loc.xml
+│   │   │   ├── cd_seq_node_kwe_longleaftreevillage_1100.loc.xml
+│   │   │   ├── cd_seq_quest_maze_forest_kusunsla_5400.loc.xml
+│   │   │   ├── cd_seq_quest_maze_forest_kusunsla_8000.loc.xml
+│   │   │   └── cd_seq_quest_maze_forest_kusunsla_8001.loc.xml
+│   │   ├── Faction_Marchell
+│   │   │   ├── cd_boss_circusmachine_9000.loc.xml
+│   │   │   ├── cd_seq_quest_demeniss_circus_0200.loc.xml
+│   │   │   ├── cd_seq_quest_demeniss_circus_0300.loc.xml
+│   │   │   ├── cd_seq_quest_demeniss_circus_0400.loc.xml
+│   │   │   └── cd_seq_quest_demeniss_circus_0600.loc.xml
+│   │   ├── Faction_MarniAirLab
+│   │   │   ├── cd_boss_airplane_9000.loc.xml
+│   │   │   └── cd_seq_quest_medium_tank_9000.loc.xml
+│   │   ├── Faction_MarniLab
+│   │   │   ├── cd_boss_marnitank_9000.loc.xml
+│   │   │   └── cd_seq_quest_marni_experiment_machineboss_9000.loc.xml
+│   │   ├── Faction_MarniOilRig
+│   │   │   ├── cd_seq_quest_node_del_marnilab_0100.loc.xml
+│   │   │   └── cd_seq_quest_node_del_marnilab_0200.loc.xml
+│   │   ├── Faction_MarnisOutpost
+│   │   │   └── cd_seq_quest_marni_machineknight_9000.loc.xml
+│   │   ├── Faction_Muiquun
+│   │   │   ├── cd_seq_node_crim_muiquunvillage_owlsofthemist_0300.loc.xml
+│   │   │   └── cd_seq_quest_outlawvillag_1010.loc.xml
+│   │   ├── Faction_Nobility2Stjar
+│   │   │   ├── cd_boss_titan_9999_new.loc.xml
+│   │   │   ├── cd_seq_faction_titan_0200.loc.xml
+│   │   │   ├── cd_seq_faction_titan_0310.loc.xml
+│   │   │   ├── cd_seq_faction_titan_0400.loc.xml
+│   │   │   ├── cd_seq_quest_black_wall_0600_13.loc.xml
+│   │   │   └── cd_seq_quest_black_wall_8100.loc.xml
+│   │   ├── Faction_Odeck
+│   │   │   ├── cd_seq_faction_odeck_0100.loc.xml
+│   │   │   ├── cd_seq_faction_odeck_0300.loc.xml
+│   │   │   ├── cd_seq_faction_odeck_0400.loc.xml
+│   │   │   ├── cd_seq_quest_demeniss_south_9000.loc.xml
+│   │   │   ├── cd_seq_quest_okuro_boss_00.loc.xml
+│   │   │   ├── cd_seq_tarandus_bossencounter_ambush.loc.xml
+│   │   │   └── cd_seq_tarandus_bossencounter_stand.loc.xml
+│   │   ├── Faction_Pailune
+│   │   │   ├── cd_boss_blood_golem_9000_new.loc.xml
+│   │   │   ├── cd_boss_karanda_9000.loc.xml
+│   │   │   ├── cd_seq_faction_the_drunken_black_bears_0900.loc.xml
+│   │   │   ├── cd_seq_faction_the_drunken_black_bears_1100.loc.xml
+│   │   │   ├── cd_seq_faction_the_drunken_black_bears_1700.loc.xml
+│   │   │   ├── cd_seq_faction_the_drunken_black_bears_2100.loc.xml
+│   │   │   ├── cd_seq_node_kwe_lonelyjackal_0100.loc.xml
+│   │   │   ├── cd_seq_node_kwe_lonelyjackal_0200.loc.xml
+│   │   │   ├── cd_seq_northernwarrior_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_northernwarrior_bossencounter_stand.loc.xml
+│   │   │   ├── cd_seq_quest_highland_whitebear_9000.loc.xml
+│   │   │   ├── cd_seq_quest_norhernwarrior_9000.loc.xml
+│   │   │   ├── cd_seq_whitebear_bossencounter_ambush.loc.xml
+│   │   │   └── cd_seq_whitebear_bossencounter_stand.loc.xml
+│   │   ├── Faction_Pailune_Daily
+│   │   │   ├── cd_seq_basecamp_rescuepailuneleader_0200.loc.xml
+│   │   │   ├── cd_seq_node_kwe_pailune_daily_0000.loc.xml
+│   │   │   ├── cd_seq_node_kwe_pailune_daily_0100.loc.xml
+│   │   │   ├── cd_seq_node_kwe_pailune_daily_0300.loc.xml
+│   │   │   ├── cd_seq_node_kwe_pailune_daily_0400.loc.xml
+│   │   │   ├── cd_seq_node_kwe_pailune_daily_0900.loc.xml
+│   │   │   ├── cd_seq_node_kwe_pailune_daily_1000.loc.xml
+│   │   │   ├── cd_seq_node_kwe_pailune_daily_1100.loc.xml
+│   │   │   └── cd_seq_node_kwe_pailune_daily_1200.loc.xml
+│   │   ├── Faction_Pailune_Request
+│   │   │   ├── cd_seq_faction_horpbothharpoonery_0000.loc.xml
+│   │   │   └── cd_seq_faction_horpbothharpoonery_0300.loc.xml
+│   │   ├── Faction_PororinVillage
+│   │   │   ├── cd_seq_faction_pororinvillage_0120.loc.xml
+│   │   │   ├── cd_seq_faction_pororinvillage_0220.loc.xml
+│   │   │   ├── cd_seq_faction_pororinvillage_0320.loc.xml
+│   │   │   ├── cd_seq_faction_pororinvillage_0420.loc.xml
+│   │   │   ├── cd_seq_faction_pororinvillage_0520.loc.xml
+│   │   │   ├── cd_seq_faction_pororinvillage_0530.loc.xml
+│   │   │   ├── cd_seq_faction_pororinvillage_0610.loc.xml
+│   │   │   ├── cd_seq_faction_pororinvillage_0620.loc.xml
+│   │   │   ├── cd_seq_node_her_pororinvillage_bell_1000.loc.xml
+│   │   │   ├── cd_seq_node_her_pororinvillage_bell_1100.loc.xml
+│   │   │   ├── cd_seq_node_her_pororinvillage_bell_1200.loc.xml
+│   │   │   ├── cd_seq_node_her_pororinvillage_bell_1300.loc.xml
+│   │   │   ├── cd_seq_node_her_pororinvillage_bell_1400.loc.xml
+│   │   │   ├── cd_seq_node_her_pororinvillage_bell_1500.loc.xml
+│   │   │   ├── cd_seq_node_her_pororinvillage_bell_1600.loc.xml
+│   │   │   ├── cd_seq_node_her_pororinvillage_bell_1700.loc.xml
+│   │   │   ├── cd_seq_quest_folorin_1600_01.loc.xml
+│   │   │   ├── cd_seq_quest_folorin_1700.loc.xml
+│   │   │   ├── cd_seq_quest_folorin_2900.loc.xml
+│   │   │   ├── cd_seq_quest_folorin_2910.loc.xml
+│   │   │   ├── cd_seq_quest_folorin_2920.loc.xml
+│   │   │   ├── cd_seq_quest_folorin_3900.loc.xml
+│   │   │   ├── cd_seq_quest_folorin_6000.loc.xml
+│   │   │   ├── cd_seq_quest_folorin_6000_01.loc.xml
+│   │   │   ├── cd_seq_quest_folorin_6000_02.loc.xml
+│   │   │   ├── cd_seq_quest_folorin_6000_03.loc.xml
+│   │   │   ├── cd_seq_quest_folorin_6000_04.loc.xml
+│   │   │   ├── cd_seq_quest_folorin_6100.loc.xml
+│   │   │   ├── cd_seq_quest_giant_ent_0002.loc.xml
+│   │   │   ├── cd_seq_quest_giant_ent_0900_01.loc.xml
+│   │   │   └── cd_seq_quest_giant_ent_end.loc.xml
+│   │   ├── Faction_RedWindTradingAssociation
+│   │   │   ├── cd_seq_quest_wolf_rider_3800.loc.xml
+│   │   │   ├── cd_seq_quest_wolf_rider_3900.loc.xml
+│   │   │   └── cd_seq_quest_wolf_rider_4100.loc.xml
+│   │   ├── Faction_RedfoxTrade
+│   │   │   ├── cd_seq_quest_redfox_forest_0400.loc.xml
+│   │   │   ├── cd_seq_quest_redfox_forest_9000.loc.xml
+│   │   │   └── cd_seq_quest_redfox_forest_9100.loc.xml
+│   │   ├── Faction_Roberts
+│   │   │   ├── cd_seq_faction_bleed_ruffians_pervin_1000_01.loc.xml
+│   │   │   ├── cd_seq_node_her_bluemontmanor_0300.loc.xml
+│   │   │   ├── cd_seq_node_her_bluemontmanor_0400.loc.xml
+│   │   │   ├── cd_seq_node_her_bluemontmanor_0500.loc.xml
+│   │   │   ├── cd_seq_node_her_bluemontmanor_0600.loc.xml
+│   │   │   ├── cd_seq_node_her_bluemontmanor_0700.loc.xml
+│   │   │   ├── cd_seq_node_her_bluemontmanor_0800.loc.xml
+│   │   │   ├── cd_seq_node_her_crane_0500.loc.xml
+│   │   │   ├── cd_seq_node_her_crane_0600.loc.xml
+│   │   │   ├── cd_seq_quest_loppet_9000.loc.xml
+│   │   │   ├── cd_seq_quest_vicious_wolf_forest_2100.loc.xml
+│   │   │   ├── cd_seq_quest_vicious_wolf_forest_2200.loc.xml
+│   │   │   └── cd_seq_quest_vicious_wolf_forest_9000.loc.xml
+│   │   ├── Faction_SandSages
+│   │   │   ├── cd_boss_samuel_9000.loc.xml
+│   │   │   ├── cd_seq_faction_goblin_treasure_trove_0400.loc.xml
+│   │   │   ├── cd_seq_faction_goblin_treasure_trove_0600.loc.xml
+│   │   │   ├── cd_seq_quest_landspider_bismuthqueen_9000.loc.xml
+│   │   │   └── cd_seq_samuel_bossencounter_ambush.loc.xml
+│   │   ├── Faction_ScholarStoneInstitute
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_0410.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_0450.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_0620.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_0630.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_0720.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_0730.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_2020.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_2120.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_2210.loc.xml
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_2220.loc.xml
+│   │   │   └── cd_seq_quest_faction_scholarstoneinstitute_2320.loc.xml
+│   │   ├── Faction_Serkis
+│   │   │   ├── cd_boss_walterbliss_9000.loc.xml
+│   │   │   ├── cd_seq_faction_bleed_moru_slave_0300.loc.xml
+│   │   │   ├── cd_seq_faction_oakenshieldmanor_serkis_1000.loc.xml
+│   │   │   ├── cd_seq_faction_oakenshieldmanor_serkis_1100.loc.xml
+│   │   │   ├── cd_seq_faction_oakenshieldmanor_serkis_1200.loc.xml
+│   │   │   ├── cd_seq_faction_oakenshieldmanor_serkis_2010.loc.xml
+│   │   │   ├── cd_seq_faction_oakenshieldmanor_serkis_2300.loc.xml
+│   │   │   ├── cd_seq_faction_oakenshieldmanor_serkis_2600.loc.xml
+│   │   │   ├── cd_seq_faction_oakenshieldmanor_serkis_3100.loc.xml
+│   │   │   ├── cd_seq_faction_oakenshieldmanor_serkis_3110.loc.xml
+│   │   │   ├── cd_seq_faction_oakenshieldmanor_serkis_3400.loc.xml
+│   │   │   ├── cd_seq_lanford_bossencounter_stand.loc.xml
+│   │   │   ├── cd_seq_m10m04_encounter_9905_0080.loc.xml
+│   │   │   ├── cd_seq_quest_deerking_boss_0200.loc.xml
+│   │   │   ├── cd_seq_quest_deerking_boss_0400.loc.xml
+│   │   │   ├── cd_seq_quest_deerking_boss_0500.loc.xml
+│   │   │   ├── cd_seq_quest_deerking_boss_1600_01.loc.xml
+│   │   │   ├── cd_seq_quest_deerking_boss_1600_04.loc.xml
+│   │   │   ├── cd_seq_quest_deerking_boss_1600_05.loc.xml
+│   │   │   ├── cd_seq_quest_deerking_boss_1600_09.loc.xml
+│   │   │   ├── cd_seq_quest_deerking_boss_1600_11.loc.xml
+│   │   │   └── cd_seq_quest_deerking_boss_9000.loc.xml
+│   │   ├── Faction_ShieldLanford
+│   │   │   ├── cd_seq_darkking_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_funcnpc_wantedfence.loc.xml
+│   │   │   ├── cd_seq_node_calphadenorthdepot_counterattack_0100.loc.xml
+│   │   │   ├── cd_seq_quest_calphadecastle_darkking_0100.loc.xml
+│   │   │   ├── cd_seq_quest_calphadecastle_darkking_0300.loc.xml
+│   │   │   └── cd_seq_quest_penance_lake_9000.loc.xml
+│   │   ├── Faction_SilvermoonTroll
+│   │   │   ├── cd_seq_faction_troll_guild_0100.loc.xml
+│   │   │   ├── cd_seq_faction_troll_guild_0200.loc.xml
+│   │   │   ├── cd_seq_faction_troll_guild_0300.loc.xml
+│   │   │   ├── cd_seq_faction_troll_guild_0400.loc.xml
+│   │   │   ├── cd_seq_faction_troll_guild_0500.loc.xml
+│   │   │   └── cd_seq_quest_ragingtempest_9000.loc.xml
+│   │   ├── Faction_Skoghorn
+│   │   │   ├── cd_seq_quest_node_kwe_skoghornvillage_0150.loc.xml
+│   │   │   ├── cd_seq_quest_whitehorn_boss_9000.loc.xml
+│   │   │   └── quest_node_kwe_skoghornvillage_0100.loc.xml
+│   │   ├── Faction_Slum
+│   │   │   ├── cd_seq_faction_hernand_slum_1000.loc.xml
+│   │   │   ├── cd_seq_faction_hernand_slum_1020.loc.xml
+│   │   │   ├── cd_seq_faction_hernand_slum_1100.loc.xml
+│   │   │   ├── cd_seq_faction_hernand_slum_1200.loc.xml
+│   │   │   ├── cd_seq_faction_hernand_slum_1300.loc.xml
+│   │   │   ├── cd_seq_faction_hernand_slum_1500.loc.xml
+│   │   │   ├── cd_seq_faction_hernand_slum_1600.loc.xml
+│   │   │   └── cd_seq_faction_hernand_slum_1700.loc.xml
+│   │   ├── Faction_Solumen_Church_Hernand
+│   │   │   ├── cd_seq_faction_her_eastgoblincamp_0100.loc.xml
+│   │   │   ├── cd_seq_faction_seniavillage_1700.loc.xml
+│   │   │   ├── cd_seq_faction_seniavillage_1710.loc.xml
+│   │   │   ├── cd_seq_faction_seniavillage_1800.loc.xml
+│   │   │   ├── cd_seq_faction_seniavillage_1900.loc.xml
+│   │   │   ├── cd_seq_faction_seniavillage_1900_01.loc.xml
+│   │   │   ├── cd_seq_faction_seniavillage_2100.loc.xml
+│   │   │   ├── cd_seq_faction_seniavillage_2200.loc.xml
+│   │   │   ├── cd_seq_onetimequest_witch_forest_0700_05.loc.xml
+│   │   │   ├── cd_seq_onetimequest_witch_forest_0700_06.loc.xml
+│   │   │   ├── cd_seq_onetimequest_witch_forest_0700_07.loc.xml
+│   │   │   ├── cd_seq_onetimequest_witch_forest_0700_08.loc.xml
+│   │   │   ├── cd_seq_onetimequest_witch_forest_0700_09.loc.xml
+│   │   │   ├── cd_seq_onetimequest_witch_forest_0700_10.loc.xml
+│   │   │   ├── cd_seq_onetimequest_witch_forest_0700_12.loc.xml
+│   │   │   ├── cd_seq_onetimequest_witch_forest_0700_13.loc.xml
+│   │   │   ├── cd_seq_onetimequest_witch_forest_0700_14.loc.xml
+│   │   │   ├── cd_seq_onetimequest_witch_forest_0700_15.loc.xml
+│   │   │   ├── cd_seq_onetimequest_witch_forest_0700_16.loc.xml
+│   │   │   ├── cd_seq_quest_witch_forest_9000.loc.xml
+│   │   │   └── cd_seq_sizlek_bossencounter_ambush.loc.xml
+│   │   ├── Faction_Tariv
+│   │   │   ├── cd_boss_ancientstonegolem_9000.loc.xml
+│   │   │   ├── cd_boss_hexemarie_9000.loc.xml
+│   │   │   ├── cd_seq_hexemarie_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_node_dem_tarivvillage_2000.loc.xml
+│   │   │   └── cd_seq_node_dem_tarivvillage_2100.loc.xml
+│   │   ├── Faction_Tashkalp
+│   │   │   ├── cd_seq_node_crim_tashkalp_0500.loc.xml
+│   │   │   ├── cd_seq_node_crim_tashkalp_2000.loc.xml
+│   │   │   ├── cd_seq_quest_hyenamolar_valley_3200.loc.xml
+│   │   │   ├── cd_seq_quest_hyenamolar_valley_3300.loc.xml
+│   │   │   └── cd_seq_quest_storm_cliff_9000.loc.xml
+│   │   ├── Faction_Thorel_Demeniss
+│   │   │   ├── cd_boss_blissredsentinel_9000.loc.xml
+│   │   │   └── cd_seq_blissredsentinel_bossencounter_ambush.loc.xml
+│   │   ├── Faction_Urdavah
+│   │   │   ├── cd_seq_quest_faction_urdavah_1020.loc.xml
+│   │   │   ├── cd_seq_quest_faction_urdavah_1120.loc.xml
+│   │   │   ├── cd_seq_quest_faction_urdavah_1220.loc.xml
+│   │   │   ├── cd_seq_quest_faction_urdavah_1320.loc.xml
+│   │   │   ├── cd_seq_quest_faction_urdavah_2020.loc.xml
+│   │   │   ├── cd_seq_quest_faction_urdavah_2030.loc.xml
+│   │   │   ├── cd_seq_quest_faction_urdavah_2120.loc.xml
+│   │   │   └── cd_seq_quest_faction_urdavah_2130.loc.xml
+│   │   ├── Faction_Vellua
+│   │   │   ├── cd_boss_knightcatfish_9000.loc.xml
+│   │   │   ├── cd_seq_crogg_bossencounter_stand.loc.xml
+│   │   │   ├── cd_seq_faction_velluavillage_0400.loc.xml
+│   │   │   ├── cd_seq_faction_velluavillage_0600.loc.xml
+│   │   │   ├── cd_seq_faction_velluavillage_0700.loc.xml
+│   │   │   ├── cd_seq_faction_velluavillage_1000.loc.xml
+│   │   │   ├── cd_seq_faction_velluavillage_2000.loc.xml
+│   │   │   ├── cd_seq_faction_velluavillage_2500.loc.xml
+│   │   │   ├── cd_seq_faction_velluavillage_2600.loc.xml
+│   │   │   ├── cd_seq_quest_storm_cliff_0110.loc.xml
+│   │   │   ├── cd_seq_quest_storm_cliff_9900_02.loc.xml
+│   │   │   ├── cd_seq_quest_storm_cliff_9900_05.loc.xml
+│   │   │   ├── cd_seq_quest_storm_cliff_9900_51.loc.xml
+│   │   │   └── cd_seq_quest_storm_cliff_9900_52.loc.xml
+│   │   ├── Faction_Wells
+│   │   │   ├── cd_boss_silenthulkingkoo_9000.loc.xml
+│   │   │   ├── cd_seq_karzul_bossencounter_stand.loc.xml
+│   │   │   └── cd_seq_quest_darkmoon_mount_4000.loc.xml
+│   │   └── Faction_Witch
+│   │       ├── cd_seq_faction_witch_encounter_0100.loc.xml
+│   │       ├── cd_seq_faction_witch_encounter_0200.loc.xml
+│   │       ├── cd_seq_faction_witch_encounter_0400.loc.xml
+│   │       ├── cd_seq_faction_witch_encounter_0500.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0100.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0110.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0120.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0130.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0200.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0210.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0220.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0230.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0300.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0310.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0320.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0330.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0400.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0410.loc.xml
+│   │       ├── cd_seq_faction_witch_end_0420.loc.xml
+│   │       ├── cd_seq_faction_witch_inactive_narration_0100.loc.xml
+│   │       ├── cd_seq_faction_witch_inactive_narration_0200.loc.xml
+│   │       ├── cd_seq_faction_witch_inactive_narration_0300.loc.xml
+│   │       ├── cd_seq_faction_witch_inactive_narration_0400.loc.xml
+│   │       ├── cd_seq_quest_greywolf_camp_8000.loc.xml
+│   │       ├── cd_seq_quest_hernand_south_1500.loc.xml
+│   │       └── cd_seq_quest_maze_forest_kusunsla_2110.loc.xml
+│   ├── Main
+│   │   ├── Chapter_1
+│   │   │   ├── cd_seq_onetimequest_hernand_03010.loc.xml
+│   │   │   ├── cd_seq_onetimequest_hernand_04010.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0100.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0100_01.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0110.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0300.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0300_02.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0400.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0400_01.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0400_02.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0500_01.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0600.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0600_01.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0610.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0900.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_0900_02.loc.xml
+│   │   │   └── cd_seq_quest_meetalustain_0950.loc.xml
+│   │   ├── Chapter_10
+│   │   │   ├── cd_seq_quest_marnidragon_boss_0130.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_0210.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_0230.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_0810.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_5010.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_5020.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_5030.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_5120.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_5140.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_5150.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_5300.loc.xml
+│   │   │   └── cd_seq_quest_marnidragon_boss_7650.loc.xml
+│   │   ├── Chapter_11
+│   │   │   ├── cd_boss_marnidragon_9999_new.loc.xml
+│   │   │   ├── cd_seq_quest_caliburn_boss_0499_03.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_4100.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_4130.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_6200_01.loc.xml
+│   │   │   ├── cd_seq_quest_marnidragon_boss_6950.loc.xml
+│   │   │   └── cd_seq_quest_marnidragon_boss_8500.loc.xml
+│   │   ├── Chapter_12
+│   │   │   ├── cd_boss_caliburn_9000.loc.xml
+│   │   │   ├── cd_boss_caliburn_9999.loc.xml
+│   │   │   ├── cd_seq_quest_caliburn_boss_0001_00.loc.xml
+│   │   │   ├── cd_seq_quest_caliburn_boss_0300.loc.xml
+│   │   │   ├── cd_seq_quest_caliburn_boss_0400.loc.xml
+│   │   │   ├── cd_seq_quest_caliburn_boss_1300.loc.xml
+│   │   │   ├── cd_seq_quest_caliburn_boss_myurdinumbra_9000.loc.xml
+│   │   │   ├── cd_seq_quest_red_barrier_9900_01.loc.xml
+│   │   │   ├── cd_seq_quest_red_barrier_9900_02.loc.xml
+│   │   │   ├── cd_seq_quest_red_barrier_9900_03.loc.xml
+│   │   │   ├── cd_seq_quest_red_barrier_9900_04.loc.xml
+│   │   │   ├── cd_seq_quest_red_barrier_9900_05.loc.xml
+│   │   │   ├── cd_seq_quest_red_barrier_9900_06.loc.xml
+│   │   │   ├── cd_seq_quest_red_barrier_9900_07.loc.xml
+│   │   │   ├── cd_seq_quest_red_barrier_9900_08.loc.xml
+│   │   │   └── cd_seq_quest_red_barrier_9900_09.loc.xml
+│   │   ├── Chapter_2
+│   │   │   ├── cd_seq_m11m05_encounter_9905_0150.loc.xml
+│   │   │   ├── cd_seq_m11m05_encounter_9905_0155.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_0600.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_3300.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_1100.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_1100_03.loc.xml
+│   │   │   ├── cd_seq_quest_meetalustain_1200_01.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0100.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0150.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0200.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0200_01.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0300_01.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0300_02.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0400.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0500.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0600.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0700.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0800.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0900.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_0910.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_1050.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_1100.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_1200.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_1200_02.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_1300.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_1300_01.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_1300_02.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_1400.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_1500.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_1700.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_1900.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_2000.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_2100.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_2200.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_2250.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_4400.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_9000.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_9000_01.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_9000_02.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_9000_03.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_9000_04.loc.xml
+│   │   │   ├── cd_seq_quest_splithorn_boss_9000_07.loc.xml
+│   │   │   └── cd_seq_quest_splithorn_boss_9100.loc.xml
+│   │   ├── Chapter_3
+│   │   │   ├── cd_seq_basecamp_greywolf_beforescout_group_0010.loc.xml
+│   │   │   ├── cd_seq_basecamp_scoutfrommarius_0100.loc.xml
+│   │   │   ├── cd_seq_onetimequest_hernand_04030.loc.xml
+│   │   │   ├── cd_seq_quest_greywolf_camp_1400.loc.xml
+│   │   │   ├── cd_seq_quest_greywolf_camp_2700.loc.xml
+│   │   │   ├── cd_seq_quest_greywolf_camp_6000.loc.xml
+│   │   │   ├── cd_seq_quest_greywolf_camp_6300.loc.xml
+│   │   │   ├── cd_seq_quest_greywolf_camp_6400.loc.xml
+│   │   │   ├── cd_seq_quest_greywolf_camp_6500.loc.xml
+│   │   │   ├── cd_seq_quest_greywolf_camp_7100.loc.xml
+│   │   │   ├── cd_seq_quest_greywolf_camp_7200.loc.xml
+│   │   │   ├── cd_seq_quest_greywolf_camp_7200_04.loc.xml
+│   │   │   ├── cd_seq_quest_greywolf_camp_7300.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_region_2900.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_0420.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_0600.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_1900.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_1910.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_1920.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_1991.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_2700.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_2720.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_2800.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_3500.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_3600.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_3900.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_3910.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_3920.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_3940.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_3950.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_3960.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_5400.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_9000.loc.xml
+│   │   │   ├── cd_seq_quest_reeddevil_boss_9000_06.loc.xml
+│   │   │   └── cd_seq_reeddevil_bossencounter_ambush.loc.xml
+│   │   ├── Chapter_4
+│   │   │   ├── cd_seq_quest_faction_scholarstoneinstitute_0100.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_1100.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_1120.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_1600.loc.xml
+│   │   │   ├── cd_seq_quest_greymanecamp_1620.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_region_1500.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_region_1600.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_region_1700.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_region_2000.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_region_2200.loc.xml
+│   │   │   ├── cd_seq_quest_hernand_region_2300.loc.xml
+│   │   │   ├── cd_seq_quest_trolluniversity_0100.loc.xml
+│   │   │   ├── cd_seq_quest_trolluniversity_0250.loc.xml
+│   │   │   ├── cd_seq_quest_trolluniversity_0300.loc.xml
+│   │   │   ├── cd_seq_quest_trolluniversity_0400.loc.xml
+│   │   │   ├── cd_seq_quest_trolluniversity_0450.loc.xml
+│   │   │   ├── cd_seq_quest_trolluniversity_0500.loc.xml
+│   │   │   ├── cd_seq_quest_trolluniversity_0600.loc.xml
+│   │   │   ├── cd_seq_quest_trolluniversity_0650.loc.xml
+│   │   │   └── cd_seq_quest_trolluniversity_2500_02.loc.xml
+│   │   ├── Chapter_5
+│   │   │   ├── cd_boss_crowman_9010.loc.xml
+│   │   │   ├── cd_seq_quest_crowman_boss_0200.loc.xml
+│   │   │   ├── cd_seq_quest_crowman_boss_0600.loc.xml
+│   │   │   ├── cd_seq_quest_crowman_boss_1000.loc.xml
+│   │   │   ├── cd_seq_quest_crowman_boss_1000_01.loc.xml
+│   │   │   ├── cd_seq_quest_crowman_boss_3400.loc.xml
+│   │   │   ├── cd_seq_quest_crowman_boss_4000.loc.xml
+│   │   │   ├── cd_seq_quest_crowman_boss_4200.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_0500.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_0500_01.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_1600.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_1800.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_2400.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_2500.loc.xml
+│   │   │   ├── cd_seq_quest_imp_banquet_9000.loc.xml
+│   │   │   └── cd_seq_quest_silver_armor_boss_0010.loc.xml
+│   │   ├── Chapter_6
+│   │   │   ├── cd_seq_quest_silver_armor_boss_0100.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_0200.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_0200_01.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_0300.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_0301.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_0305.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_0310.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_0910.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_0911_01.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_2050.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_2051.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_3100.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_3200.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_5200_01.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_5200_02.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_5200_04.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_5300_02.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_5300_03.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_5300_04.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_5900.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_6000.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_6300.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_6500.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_6700.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_6800.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_7000.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_7010.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8000_01.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8010.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8100.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8400_01.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8400_02.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8400_03.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8400_04.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8400_05.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8400_06.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8400_07.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8400_08.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8400_09.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8400_10.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_01.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_02.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_03.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_04.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_05.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_06.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_07.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_08.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_11.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_12.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_13.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_14.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_15.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_16.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_8600_17.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_9000.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_9000_01.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_9000_02.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_9000_04.loc.xml
+│   │   │   ├── cd_seq_quest_silver_armor_boss_9100.loc.xml
+│   │   │   └── cd_seq_quest_silver_armor_boss_9400.loc.xml
+│   │   ├── Chapter_7
+│   │   │   ├── cd_seq_ludvig_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_quest_beforewar_00.loc.xml
+│   │   │   ├── cd_seq_quest_beforewar_01.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_0010.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_0090.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_0100.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_0100_01.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_0150.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_0230.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_0240.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_0600.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_1800.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_1850.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_2000.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_2500.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_3150.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_5800.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_6600.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_7400.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_8250.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_8600.loc.xml
+│   │   │   ├── cd_seq_quest_ludvig_boss_9900.loc.xml
+│   │   │   ├── cd_seq_quest_mjordin_boss_3000.loc.xml
+│   │   │   ├── cd_seq_quest_mjordin_boss_3400.loc.xml
+│   │   │   ├── cd_seq_quest_mjordin_boss_5000.loc.xml
+│   │   │   ├── cd_seq_quest_mjordin_boss_5100.loc.xml
+│   │   │   ├── cd_seq_quest_mjordin_boss_5200.loc.xml
+│   │   │   ├── cd_seq_quest_mjordin_boss_5250.loc.xml
+│   │   │   ├── cd_seq_quest_mjordin_boss_5300.loc.xml
+│   │   │   ├── cd_seq_quest_mjordin_boss_5350.loc.xml
+│   │   │   ├── cd_seq_quest_mjordin_boss_5400.loc.xml
+│   │   │   ├── cd_seq_quest_mjordin_boss_6000.loc.xml
+│   │   │   ├── cd_seq_quest_mjordin_boss_9000.loc.xml
+│   │   │   ├── cd_seq_quest_silverwolf_mountain_2900.loc.xml
+│   │   │   ├── cd_seq_quest_silverwolf_mountain_2950.loc.xml
+│   │   │   ├── cd_seq_quest_silverwolf_mountain_2950_01.loc.xml
+│   │   │   ├── cd_seq_quest_silverwolf_mountain_2950_02.loc.xml
+│   │   │   ├── cd_seq_quest_silverwolf_mountain_2950_03.loc.xml
+│   │   │   ├── cd_seq_quest_silverwolf_mountain_2950_08.loc.xml
+│   │   │   ├── cd_seq_quest_silverwolf_mountain_3200.loc.xml
+│   │   │   └── cd_seq_quest_titan_boss_0700.loc.xml
+│   │   ├── Chapter_8
+│   │   │   ├── cd_boss_blissredknight_9000.loc.xml
+│   │   │   ├── cd_boss_crimsonwingedduke_9000.loc.xml
+│   │   │   ├── cd_seq_faction_mansion_byron_0020.loc.xml
+│   │   │   ├── cd_seq_faction_mansion_marseille_0020.loc.xml
+│   │   │   ├── cd_seq_fortain_bossencounter_stand.loc.xml
+│   │   │   ├── cd_seq_gregor_bossencounter_ambush.loc.xml
+│   │   │   ├── cd_seq_gregor_bossencounter_stand.loc.xml
+│   │   │   ├── cd_seq_node_dem_thornrosefort_wellsbrigade_0400.loc.xml
+│   │   │   ├── cd_seq_node_dem_thornrosefort_wellsbrigade_1200.loc.xml
+│   │   │   ├── cd_seq_node_dem_thornrosefort_wellsbrigade_1400.loc.xml
+│   │   │   ├── cd_seq_node_dem_thornrosefort_wellsbrigade_2000_01.loc.xml
+│   │   │   ├── cd_seq_node_dem_thornrosefort_wellsbrigade_2000_02.loc.xml
+│   │   │   ├── cd_seq_node_dem_thornrosefort_wellsbrigade_2000_03.loc.xml
+│   │   │   ├── cd_seq_node_dem_thornrosefort_wellsbrigade_2000_04.loc.xml
+│   │   │   ├── cd_seq_node_dem_thornrosefort_wellsbrigade_2000_06.loc.xml
+│   │   │   ├── cd_seq_quest_bloodcoronation_0150.loc.xml
+│   │   │   ├── cd_seq_quest_bloodcoronation_0640.loc.xml
+│   │   │   ├── cd_seq_quest_bloodcoronation_2500.loc.xml
+│   │   │   ├── cd_seq_quest_bloodcoronation_3100.loc.xml
+│   │   │   ├── cd_seq_quest_bloodcoronation_3350.loc.xml
+│   │   │   ├── cd_seq_quest_bloodcoronation_3400.loc.xml
+│   │   │   ├── cd_seq_quest_bloodcoronation_3800.loc.xml
+│   │   │   ├── cd_seq_quest_bloodcoronation_5000.loc.xml
+│   │   │   ├── cd_seq_quest_demeniss_south_0200.loc.xml
+│   │   │   ├── cd_seq_quest_demeniss_south_0200_05.loc.xml
+│   │   │   ├── cd_seq_quest_lake_faith_4900.loc.xml
+│   │   │   ├── cd_seq_quest_shipgrave_sea_0800.loc.xml
+│   │   │   ├── cd_seq_quest_shipgrave_sea_1000_02.loc.xml
+│   │   │   ├── cd_seq_quest_shipgrave_sea_1600.loc.xml
+│   │   │   ├── cd_seq_quest_shipgrave_sea_1700.loc.xml
+│   │   │   ├── cd_seq_quest_shipgrave_sea_1800.loc.xml
+│   │   │   ├── cd_seq_quest_shipgrave_sea_2200.loc.xml
+│   │   │   └── cd_seq_quest_shipgrave_sea_3000.loc.xml
+│   │   ├── Chapter_9
+│   │   │   ├── cd_seq_quest_dragon_boss_9000.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1100.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1150.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1200_01.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1200_02.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1200_03.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1200_04.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1200_05.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1200_06.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1300_01.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1300_02.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1300_03.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1400.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_1800.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_9000.loc.xml
+│   │   │   ├── cd_seq_quest_goblin_master_9100.loc.xml
+│   │   │   ├── cd_seq_quest_hexe_sanctuary_3000.loc.xml
+│   │   │   ├── cd_seq_quest_hexe_sanctuary_3400_03.loc.xml
+│   │   │   ├── cd_seq_quest_hexe_sanctuary_3550.loc.xml
+│   │   │   └── cd_seq_quest_orcumer_boss_1300.loc.xml
+│   │   ├── Epilogue
+│   │   │   ├── cd_seq_quest_caliburn_boss_3400.loc.xml
+│   │   │   ├── cd_seq_quest_caliburn_boss_3500.loc.xml
+│   │   │   ├── cd_seq_quest_caliburn_boss_3600.loc.xml
+│   │   │   ├── cd_seq_quest_caliburn_boss_3700.loc.xml
+│   │   │   ├── cd_seq_quest_caliburn_boss_3800.loc.xml
+│   │   │   ├── cd_seq_quest_caliburn_boss_3900.loc.xml
+│   │   │   └── cd_seq_quest_epilogue_0100.loc.xml
+│   │   └── Prologue
+│   │       ├── cd_seq_quest_intro_0100.loc.xml
+│   │       ├── cd_seq_quest_intro_0100_01.loc.xml
+│   │       ├── cd_seq_quest_intro_0100_02.loc.xml
+│   │       ├── cd_seq_quest_intro_0100_03.loc.xml
+│   │       ├── cd_seq_quest_intro_0300.loc.xml
+│   │       ├── cd_seq_quest_intro_0310.loc.xml
+│   │       ├── cd_seq_quest_intro_0320.loc.xml
+│   │       ├── cd_seq_quest_intro_0450.loc.xml
+│   │       └── cd_seq_quest_intro_0500.loc.xml
+│   ├── Other
+│   │   ├── Challenge_Adventure
+│   │   │   └── cd_seq_m11m05_encounter_9905_0040.loc.xml
+│   │   ├── Church
+│   │   │   └── cd_seq_funcnpc_church_block.loc.xml
+│   │   ├── Contribution
+│   │   │   ├── cd_seq_funcnpc_contribution.loc.xml
+│   │   │   └── cd_seq_funcnpc_troll_contribution.loc.xml
+│   │   ├── Dev
+│   │   │   ├── cd_seq_basecamp_domestic.loc.xml
+│   │   │   ├── cd_seq_basecamp_domestic_butcher.loc.xml
+│   │   │   ├── cd_seq_basecamp_domestic_sell.loc.xml
+│   │   │   └── cd_seq_basecamp_funcnpc_lanch.loc.xml
+│   │   ├── HumanDocumentary
+│   │   │   └── cd_quest_documentary_tommaso_009.loc.xml
+│   │   ├── Minigame
+│   │   │   ├── cd_minigame_armwrest_base.loc.xml
+│   │   │   ├── cd_minigame_duel.loc.xml
+│   │   │   ├── cd_minigame_duel_mainweapon.loc.xml
+│   │   │   ├── cd_minigame_duel_pistol.loc.xml
+│   │   │   ├── cd_minigame_duel_spear.loc.xml
+│   │   │   ├── cd_minigame_duel_unarmed.loc.xml
+│   │   │   ├── cd_minigame_duel_wrestling.loc.xml
+│   │   │   ├── cd_minigame_handwrest_base.loc.xml
+│   │   │   ├── cd_minigame_race_0000.loc.xml
+│   │   │   ├── cd_minigame_race_0100.loc.xml
+│   │   │   ├── cd_minigame_race_0200.loc.xml
+│   │   │   ├── cd_minigame_rockpapersci_base.loc.xml
+│   │   │   └── cd_minigame_timeattack_base.loc.xml
+│   │   ├── Police
+│   │   │   ├── cd_seq_quest_bounty_hunter_0100.loc.xml
+│   │   │   ├── cd_seq_quest_bounty_hunter_0200.loc.xml
+│   │   │   ├── cd_seq_quest_bounty_hunter_0201.loc.xml
+│   │   │   ├── cd_seq_quest_bounty_hunter_0300.loc.xml
+│   │   │   ├── cd_seq_quest_bounty_hunter_0400.loc.xml
+│   │   │   ├── cd_seq_quest_bounty_hunter_0500.loc.xml
+│   │   │   ├── cd_seq_quest_crime_police_hernand_0200.loc.xml
+│   │   │   ├── cd_seq_quest_crime_police_hernand_0300.loc.xml
+│   │   │   ├── cd_seq_quest_crime_police_hernand_0400.loc.xml
+│   │   │   ├── cd_seq_quest_crime_police_hernand_0500.loc.xml
+│   │   │   ├── cd_seq_quest_crime_police_hernand_0600.loc.xml
+│   │   │   ├── cd_seq_quest_jewel_hunter_0100.loc.xml
+│   │   │   ├── cd_seq_quest_jewel_hunter_0200.loc.xml
+│   │   │   ├── cd_seq_quest_jewel_hunter_0201.loc.xml
+│   │   │   ├── cd_seq_quest_jewel_hunter_0300.loc.xml
+│   │   │   ├── cd_seq_quest_jewel_hunter_0400.loc.xml
+│   │   │   ├── cd_seq_quest_jewel_hunter_0500.loc.xml
+│   │   │   ├── cd_seq_quest_trade_hunter_0100.loc.xml
+│   │   │   ├── cd_seq_quest_trade_hunter_0200.loc.xml
+│   │   │   ├── cd_seq_quest_trade_hunter_0201.loc.xml
+│   │   │   ├── cd_seq_quest_trade_hunter_0300.loc.xml
+│   │   │   ├── cd_seq_quest_trade_hunter_0400.loc.xml
+│   │   │   └── cd_seq_quest_trade_hunter_0500.loc.xml
+│   │   ├── Research
+│   │   │   ├── cd_seq_funcnpc_nhm_research.loc.xml
+│   │   │   ├── cd_seq_funcnpc_research.loc.xml
+│   │   │   └── cd_seq_funcnpc_shay_research.loc.xml
+│   │   ├── RoyalSupply
+│   │   │   └── cd_seq_funcnpc_royalsupply_hernand_00.loc.xml
+│   │   ├── Shop
+│   │   │   ├── cd_seq_basecamp_funcnpc_barbershop.loc.xml
+│   │   │   ├── cd_seq_basecamp_funcnpc_carriage.loc.xml
+│   │   │   ├── cd_seq_basecamp_funcnpc_clothes.loc.xml
+│   │   │   ├── cd_seq_basecamp_funcnpc_cook.loc.xml
+│   │   │   ├── cd_seq_basecamp_funcnpc_dye.loc.xml
+│   │   │   ├── cd_seq_basecamp_funcnpc_farmer.loc.xml
+│   │   │   ├── cd_seq_basecamp_funcnpc_jeweler.loc.xml
+│   │   │   ├── cd_seq_basecamp_funcnpc_smithy.loc.xml
+│   │   │   ├── cd_seq_basecamp_funcnpc_stable.loc.xml
+│   │   │   ├── cd_seq_basecamp_funcnpc_supplies.loc.xml
+│   │   │   ├── cd_seq_basecamp_funcnpc_warehouse.loc.xml
+│   │   │   ├── cd_seq_funcnpc_airship.loc.xml
+│   │   │   ├── cd_seq_funcnpc_animalstolen.loc.xml
+│   │   │   ├── cd_seq_funcnpc_artwork.loc.xml
+│   │   │   ├── cd_seq_funcnpc_bank.loc.xml
+│   │   │   ├── cd_seq_funcnpc_butcher.loc.xml
+│   │   │   ├── cd_seq_funcnpc_carriage.loc.xml
+│   │   │   ├── cd_seq_funcnpc_carriagefence.loc.xml
+│   │   │   ├── cd_seq_funcnpc_charlatanstore_demeniss_west.loc.xml
+│   │   │   ├── cd_seq_funcnpc_church.loc.xml
+│   │   │   ├── cd_seq_funcnpc_clothes.loc.xml
+│   │   │   ├── cd_seq_funcnpc_craftsmith.loc.xml
+│   │   │   ├── cd_seq_funcnpc_dye.loc.xml
+│   │   │   ├── cd_seq_funcnpc_fishing.loc.xml
+│   │   │   ├── cd_seq_funcnpc_furniture.loc.xml
+│   │   │   ├── cd_seq_funcnpc_general.loc.xml
+│   │   │   ├── cd_seq_funcnpc_goblinbroker.loc.xml
+│   │   │   ├── cd_seq_funcnpc_grocery.loc.xml
+│   │   │   ├── cd_seq_funcnpc_horsesstolen.loc.xml
+│   │   │   ├── cd_seq_funcnpc_horsetool.loc.xml
+│   │   │   ├── cd_seq_funcnpc_leather.loc.xml
+│   │   │   ├── cd_seq_funcnpc_mercenary.loc.xml
+│   │   │   ├── cd_seq_funcnpc_petshop_dog.loc.xml
+│   │   │   ├── cd_seq_funcnpc_pororin_dye.loc.xml
+│   │   │   ├── cd_seq_funcnpc_pub.loc.xml
+│   │   │   ├── cd_seq_funcnpc_seatdealer.loc.xml
+│   │   │   ├── cd_seq_funcnpc_smithy.loc.xml
+│   │   │   ├── cd_seq_funcnpc_smuggler.loc.xml
+│   │   │   ├── cd_seq_funcnpc_stable.loc.xml
+│   │   │   ├── cd_seq_funcnpc_stonestore_nodesk.loc.xml
+│   │   │   ├── cd_seq_funcnpc_trader.loc.xml
+│   │   │   ├── cd_seq_funcnpc_trader_nodesk.loc.xml
+│   │   │   ├── cd_seq_funcnpc_troll_trader.loc.xml
+│   │   │   ├── cd_seq_funcnpc_wanderer.loc.xml
+│   │   │   └── cd_seq_funcnpc_witchstore.loc.xml
+│   │   └── Witch
+│   │       ├── cd_seq_funcnpc_witchstore_goodness.loc.xml
+│   │       ├── cd_seq_funcnpc_witchstore_modesty.loc.xml
+│   │       ├── cd_seq_funcnpc_witchstore_power.loc.xml
+│   │       └── cd_seq_funcnpc_witchstore_wisdom.loc.xml
+│   └── Sequencer
+│       ├── cd_seq_entrance_her_asylum_01.loc.xml
+│       ├── cd_seq_entrance_her_castle_room.loc.xml
+│       ├── cd_seq_faction_mansion_byron_0800.loc.xml
+│       ├── cd_seq_faction_mansion_byron_0810.loc.xml
+│       ├── cd_seq_faction_mansion_marseille_4100.loc.xml
+│       ├── cd_seq_memory_abandonedhouse_0001.loc.xml
+│       ├── cd_seq_memory_abandonedminevillage_0001.loc.xml
+│       ├── cd_seq_memory_alustainroom_0001.loc.xml
+│       ├── cd_seq_memory_anchorforest_0001.loc.xml
+│       ├── cd_seq_memory_animalcave_0001.loc.xml
+│       ├── cd_seq_memory_animalpaintinglover_0001.loc.xml
+│       ├── cd_seq_memory_antumbraaltar_0001.loc.xml
+│       ├── cd_seq_memory_antumbrafanatic_0001.loc.xml
+│       ├── cd_seq_memory_archeryrange_0001.loc.xml
+│       ├── cd_seq_memory_arcosahouse_0001.loc.xml
+│       ├── cd_seq_memory_attackedcarriage_0001.loc.xml
+│       ├── cd_seq_memory_azureiansister_0001.loc.xml
+│       ├── cd_seq_memory_bariklair_0001.loc.xml
+│       ├── cd_seq_memory_baronbarrel_0001.loc.xml
+│       ├── cd_seq_memory_bigtreeroots_0001.loc.xml
+│       ├── cd_seq_memory_blockedsupply_0001.loc.xml
+│       ├── cd_seq_memory_bloodtombstone_0001.loc.xml
+│       ├── cd_seq_memory_bloodyfarmhouse_0001.loc.xml
+│       ├── cd_seq_memory_bluemontmanoralley_0001.loc.xml
+│       ├── cd_seq_memory_bolmen_0001.loc.xml
+│       ├── cd_seq_memory_bolsteinnruins_0001.loc.xml
+│       ├── cd_seq_memory_boneandsword_0001.loc.xml
+│       ├── cd_seq_memory_bonecollectorwagon_0001.loc.xml
+│       ├── cd_seq_memory_bonesrobbed_0001.loc.xml
+│       ├── cd_seq_memory_brokenmill_0001.loc.xml
+│       ├── cd_seq_memory_brokenraft_0001.loc.xml
+│       ├── cd_seq_memory_brokenwindmill_0001.loc.xml
+│       ├── cd_seq_memory_brookfieldmanor_0001.loc.xml
+│       ├── cd_seq_memory_bumpercrop_0001.loc.xml
+│       ├── cd_seq_memory_bursadaislandruins_0001.loc.xml
+│       ├── cd_seq_memory_carnagestreet_0001.loc.xml
+│       ├── cd_seq_memory_castleruincamp_0001.loc.xml
+│       ├── cd_seq_memory_caveentrance_0001.loc.xml
+│       ├── cd_seq_memory_caveofbones_0001.loc.xml
+│       ├── cd_seq_memory_cliffunderhome_0001.loc.xml
+│       ├── cd_seq_memory_crowdedbranch_0001.loc.xml
+│       ├── cd_seq_memory_crowmanribentain_0001.loc.xml
+│       ├── cd_seq_memory_crowmanribentain_0002.loc.xml
+│       ├── cd_seq_memory_cryingrock_0001.loc.xml
+│       ├── cd_seq_memory_danteandbleed_0001.loc.xml
+│       ├── cd_seq_memory_deadtree_0001.loc.xml
+│       ├── cd_seq_memory_deadtreeroad_0001.loc.xml
+│       ├── cd_seq_memory_deathsandpit_0001.loc.xml
+│       ├── cd_seq_memory_delesiaacademy_0001.loc.xml
+│       ├── cd_seq_memory_delesyiabell_0001.loc.xml
+│       ├── cd_seq_memory_demenisscabin_0001.loc.xml
+│       ├── cd_seq_memory_demenissfuture_0001.loc.xml
+│       ├── cd_seq_memory_desertcrocodile_0001.loc.xml
+│       ├── cd_seq_memory_desertshipwreck_0001.loc.xml
+│       ├── cd_seq_memory_desertswamp_0001.loc.xml
+│       ├── cd_seq_memory_desperatesituation_0001.loc.xml
+│       ├── cd_seq_memory_destroyedmerchantship_0001.loc.xml
+│       ├── cd_seq_memory_dinosaurbones_0001.loc.xml
+│       ├── cd_seq_memory_dumpbell_0001.loc.xml
+│       ├── cd_seq_memory_dungeon_0001.loc.xml
+│       ├── cd_seq_memory_edgealtar_0001.loc.xml
+│       ├── cd_seq_memory_emptycoffin_0001.loc.xml
+│       ├── cd_seq_memory_emptyranch_0001.loc.xml
+│       ├── cd_seq_memory_emptythrone_0001.loc.xml
+│       ├── cd_seq_memory_endlessdanger_0001.loc.xml
+│       ├── cd_seq_memory_enthunterden_0001.loc.xml
+│       ├── cd_seq_memory_enthunterlair_0001.loc.xml
+│       ├── cd_seq_memory_fallenballon_0001.loc.xml
+│       ├── cd_seq_memory_fallenexplorer_0001.loc.xml
+│       ├── cd_seq_memory_fireflyswarm_0001.loc.xml
+│       ├── cd_seq_memory_firesidetale_0001.loc.xml
+│       ├── cd_seq_memory_fishermanplace_0001.loc.xml
+│       ├── cd_seq_memory_fishingspot_0001.loc.xml
+│       ├── cd_seq_memory_fivefingermountain_0001.loc.xml
+│       ├── cd_seq_memory_forsakenhome_0001.loc.xml
+│       ├── cd_seq_memory_giantballista_0001.loc.xml
+│       ├── cd_seq_memory_giantbone_0001.loc.xml
+│       ├── cd_seq_memory_giantboots_0001.loc.xml
+│       ├── cd_seq_memory_giantroots_0001.loc.xml
+│       ├── cd_seq_memory_godsgarden_0001.loc.xml
+│       ├── cd_seq_memory_godtreecamp_0001.loc.xml
+│       ├── cd_seq_memory_greatmarnigrace_0001.loc.xml
+│       ├── cd_seq_memory_greyrift_0001.loc.xml
+│       ├── cd_seq_memory_guardiandeity_0001.loc.xml
+│       ├── cd_seq_memory_hall_0001.loc.xml
+│       ├── cd_seq_memory_halsius_0001.loc.xml
+│       ├── cd_seq_memory_hayrooffarmwindmill_0001.loc.xml
+│       ├── cd_seq_memory_hellwoodfortgoblin_0001.loc.xml
+│       ├── cd_seq_memory_helmaravillage_0001.loc.xml
+│       ├── cd_seq_memory_hernandcampsite_0001.loc.xml
+│       ├── cd_seq_memory_hernandcastle_0001.loc.xml
+│       ├── cd_seq_memory_hernandcastle_0002.loc.xml
+│       ├── cd_seq_memory_hernandgibbet_0001.loc.xml
+│       ├── cd_seq_memory_herograve_0001.loc.xml
+│       ├── cd_seq_memory_hexedwaters_0001.loc.xml
+│       ├── cd_seq_memory_hiddentreasure_0001.loc.xml
+│       ├── cd_seq_memory_holyglass_0001.loc.xml
+│       ├── cd_seq_memory_hooflakecave_0001.loc.xml
+│       ├── cd_seq_memory_horseshoelake_0001.loc.xml
+│       ├── cd_seq_memory_humanunderbridge_0001.loc.xml
+│       ├── cd_seq_memory_iguanahatchery_0001.loc.xml
+│       ├── cd_seq_memory_insightfield_0001.loc.xml
+│       ├── cd_seq_memory_ironwing_0001.loc.xml
+│       ├── cd_seq_memory_johndoe_0001.loc.xml
+│       ├── cd_seq_memory_johndoe_2_0001.loc.xml
+│       ├── cd_seq_memory_jungleruins_0001.loc.xml
+│       ├── cd_seq_memory_kidnappedwitch_0001.loc.xml
+│       ├── cd_seq_memory_knottedhollow_0001.loc.xml
+│       ├── cd_seq_memory_kukucraft_0001.loc.xml
+│       ├── cd_seq_memory_ladyjustice_0001.loc.xml
+│       ├── cd_seq_memory_lakealtar_0001.loc.xml
+│       ├── cd_seq_memory_lampkeeperpatrol_0001.loc.xml
+│       ├── cd_seq_memory_lightningstriketree_0001.loc.xml
+│       ├── cd_seq_memory_lioncrestmanor_0001.loc.xml
+│       ├── cd_seq_memory_loggingcabin_0001.loc.xml
+│       ├── cd_seq_memory_longleaftree_0001.loc.xml
+│       ├── cd_seq_memory_longleaftree_0002.loc.xml
+│       ├── cd_seq_memory_longleaftree_0003.loc.xml
+│       ├── cd_seq_memory_maidstales_0001.loc.xml
+│       ├── cd_seq_memory_marnifirstmeet_0001.loc.xml
+│       ├── cd_seq_memory_marniinvitation_0001.loc.xml
+│       ├── cd_seq_memory_marnimansion_0001.loc.xml
+│       ├── cd_seq_memory_marnisecretplace_0001.loc.xml
+│       ├── cd_seq_memory_mentalcareroom_0001.loc.xml
+│       ├── cd_seq_memory_merchantrefuge_0001.loc.xml
+│       ├── cd_seq_memory_meteorhouse_0001.loc.xml
+│       ├── cd_seq_memory_missingstatue_0001.loc.xml
+│       ├── cd_seq_memory_mjordinludvig_0001.loc.xml
+│       ├── cd_seq_memory_morefirepower_0001.loc.xml
+│       ├── cd_seq_memory_mossygenerator_0001.loc.xml
+│       ├── cd_seq_memory_motherandson_0001.loc.xml
+│       ├── cd_seq_memory_muralcave_0001.loc.xml
+│       ├── cd_seq_memory_mushroomcave_0001.loc.xml
+│       ├── cd_seq_memory_mushroomrock_0001.loc.xml
+│       ├── cd_seq_memory_mysterytower_0001.loc.xml
+│       ├── cd_seq_memory_noenterzone_0001.loc.xml
+│       ├── cd_seq_memory_oakenshieldmanor_0001.loc.xml
+│       ├── cd_seq_memory_oakenshieldmanorhall_0001.loc.xml
+│       ├── cd_seq_memory_oasismonument_0001.loc.xml
+│       ├── cd_seq_memory_oasisshelter_0001.loc.xml
+│       ├── cd_seq_memory_odeckhuntercamp_0001.loc.xml
+│       ├── cd_seq_memory_oldbattlefield_0001.loc.xml
+│       ├── cd_seq_memory_oldgrave_0001.loc.xml
+│       ├── cd_seq_memory_oldkingofthesea_0001.loc.xml
+│       ├── cd_seq_memory_oldquarry_0001.loc.xml
+│       ├── cd_seq_memory_ominousprophecy_0001.loc.xml
+│       ├── cd_seq_memory_orccamp_0001.loc.xml
+│       ├── cd_seq_memory_orcneutralzone_0001.loc.xml
+│       ├── cd_seq_memory_ownerlessgrave_0001.loc.xml
+│       ├── cd_seq_memory_pailoonoldtree_0001.loc.xml
+│       ├── cd_seq_memory_pailoonwatergate_0001.loc.xml
+│       ├── cd_seq_memory_pailunesecretbase_0001.loc.xml
+│       ├── cd_seq_memory_paintedcave_0001.loc.xml
+│       ├── cd_seq_memory_painterregret_0001.loc.xml
+│       ├── cd_seq_memory_petrifiedhumans_0001.loc.xml
+│       ├── cd_seq_memory_pharmacy_0001.loc.xml
+│       ├── cd_seq_memory_pororincave_0001.loc.xml
+│       ├── cd_seq_memory_precariousrock_0001.loc.xml
+│       ├── cd_seq_memory_precipicecoffin_0001.loc.xml
+│       ├── cd_seq_memory_raremineral_0001.loc.xml
+│       ├── cd_seq_memory_rectangularstone_0001.loc.xml
+│       ├── cd_seq_memory_reeddevil_0001.loc.xml
+│       ├── cd_seq_memory_reeddevil_0002.loc.xml
+│       ├── cd_seq_memory_rescuerequest_0001.loc.xml
+│       ├── cd_seq_memory_reventinewinery_0001.loc.xml
+│       ├── cd_seq_memory_ridgehunterleathermaker_0001.loc.xml
+│       ├── cd_seq_memory_righthandstone_0001.loc.xml
+│       ├── cd_seq_memory_riverdam_0001.loc.xml
+│       ├── cd_seq_memory_riverwardoutpost_0001.loc.xml
+│       ├── cd_seq_memory_rockcreviceruins_0001.loc.xml
+│       ├── cd_seq_memory_rockingstone_0001.loc.xml
+│       ├── cd_seq_memory_rockshelter_0001.loc.xml
+│       ├── cd_seq_memory_rockshroudruins_0001.loc.xml
+│       ├── cd_seq_memory_roofless_0001.loc.xml
+│       ├── cd_seq_memory_rootfortress_0001.loc.xml
+│       ├── cd_seq_memory_rordofbones_0001.loc.xml
+│       ├── cd_seq_memory_royaltomb_0001.loc.xml
+│       ├── cd_seq_memory_ruinedhouse_0001.loc.xml
+│       ├── cd_seq_memory_ruinedhouse_0002.loc.xml
+│       ├── cd_seq_memory_ruinssite_0001.loc.xml
+│       ├── cd_seq_memory_safetyflowerbush_0001.loc.xml
+│       ├── cd_seq_memory_saltroadruins_0001.loc.xml
+│       ├── cd_seq_memory_sandhole_0001.loc.xml
+│       ├── cd_seq_memory_savagefangstele_0001.loc.xml
+│       ├── cd_seq_memory_scaryhole_0001.loc.xml
+│       ├── cd_seq_memory_sculptor_0001.loc.xml
+│       ├── cd_seq_memory_seagullhouse_0001.loc.xml
+│       ├── cd_seq_memory_seutiyaleulodeulig_0001.loc.xml
+│       ├── cd_seq_memory_shipwreck_0001.loc.xml
+│       ├── cd_seq_memory_shipwreckmemory.loc.xml
+│       ├── cd_seq_memory_shipwreckoakbarrel_0001.loc.xml
+│       ├── cd_seq_memory_silenceshipwreck_0001.loc.xml
+│       ├── cd_seq_memory_silverbrookruins_0001.loc.xml
+│       ├── cd_seq_memory_sinkhole_0001.loc.xml
+│       ├── cd_seq_memory_skybluepool_0001.loc.xml
+│       ├── cd_seq_memory_smokyforest_0001.loc.xml
+│       ├── cd_seq_memory_smugglerdock_0001.loc.xml
+│       ├── cd_seq_memory_splithornrobber_0001.loc.xml
+│       ├── cd_seq_memory_stonealtar_0001.loc.xml
+│       ├── cd_seq_memory_stonemireruins_0001.loc.xml
+│       ├── cd_seq_memory_storywell_0001.loc.xml
+│       ├── cd_seq_memory_suspiciouscult_0002.loc.xml
+│       ├── cd_seq_memory_swordandthrone_0001.loc.xml
+│       ├── cd_seq_memory_testtomarni_0001.loc.xml
+│       ├── cd_seq_memory_timestopvillage_0001.loc.xml
+│       ├── cd_seq_memory_toalfonso_0001.loc.xml
+│       ├── cd_seq_memory_trainthief_0001.loc.xml
+│       ├── cd_seq_memory_treeforesttomb_0001.loc.xml
+│       ├── cd_seq_memory_treeofaxes_0001.loc.xml
+│       ├── cd_seq_memory_trolluniversity_0001.loc.xml
+│       ├── cd_seq_memory_underthebridge_0001.loc.xml
+│       ├── cd_seq_memory_unknowncave_0001.loc.xml
+│       ├── cd_seq_memory_upliontower_0001.loc.xml
+│       ├── cd_seq_memory_valleyrockwatchtower_0001.loc.xml
+│       ├── cd_seq_memory_vatnhollcamp_0001.loc.xml
+│       ├── cd_seq_memory_verheimruins_0001.loc.xml
+│       ├── cd_seq_memory_vikingtomb_0001.loc.xml
+│       ├── cd_seq_memory_vinevillage_0001.loc.xml
+│       ├── cd_seq_memory_wagongrave_0001.loc.xml
+│       ├── cd_seq_memory_wagononatree_0001.loc.xml
+│       ├── cd_seq_memory_warnews_0001.loc.xml
+│       ├── cd_seq_memory_waterfallscabin_0001.loc.xml
+│       ├── cd_seq_memory_weirdskull_0001.loc.xml
+│       ├── cd_seq_memory_whycowdead_0001.loc.xml
+│       ├── cd_seq_memory_whykidnapscholar_0001.loc.xml
+│       ├── cd_seq_memory_whystolengoathorn_0001.loc.xml
+│       ├── cd_seq_memory_windmillcoastshipwreck_0001.loc.xml
+│       ├── cd_seq_memory_wisdomwell_0001.loc.xml
+│       ├── cd_seq_memory_woodengazebo_0001.loc.xml
+│       ├── cd_seq_memory_woodknot_0001.loc.xml
+│       ├── cd_seq_memory_wreckedtradingship_0001.loc.xml
+│       ├── cd_seq_memory_zianetomb_0001.loc.xml
+│       ├── cd_seq_memory_zoohole_0001.loc.xml
+│       ├── cd_seq_quest_bloodcoronation_5100.loc.xml
+│       ├── cd_seq_quest_delesyian_1000.loc.xml
+│       ├── cd_seq_quest_delesyian_town_2400.loc.xml
+│       ├── cd_seq_quest_demeniss_0200.loc.xml
+│       ├── cd_seq_quest_demeniss_0200_03.loc.xml
+│       ├── cd_seq_quest_demeniss_south_2100.loc.xml
+│       ├── cd_seq_quest_demeniss_south_2100_01.loc.xml
+│       ├── cd_seq_quest_demeniss_south_2200.loc.xml
+│       ├── cd_seq_quest_demeniss_south_2200_01.loc.xml
+│       ├── cd_seq_quest_hernand_1100.loc.xml
+│       ├── cd_seq_quest_hernand_1200.loc.xml
+│       ├── cd_seq_quest_hernand_1300.loc.xml
+│       ├── cd_seq_quest_hernand_1900.loc.xml
+│       ├── cd_seq_quest_hernand_2200.loc.xml
+│       ├── cd_seq_quest_hernand_2400.loc.xml
+│       ├── cd_seq_quest_shaipresent_0100.loc.xml
+│       ├── cd_seq_quest_silver_armor_boss_1600.loc.xml
+│       ├── cd_seq_quest_spawnmainroad_trade_0020.loc.xml
+│       ├── gimmick_kukuegg_hatch_01.loc.xml
+│       ├── gimmick_sleep_bed_left.loc.xml
+│       └── gimmick_sleep_bed_right.loc.xml
+├── System
+│   ├── DyeColorGroup
+│   │   └── DyeColorGroupInfo.staticinfo.loc.xml
+│   ├── Entitlement
+│   │   └── platformentitlementinfo.staticinfo.loc.xml
+│   ├── FailMessage
+│   │   └── FailMessageInfo.staticinfo.loc.xml
+│   ├── Gimmick
+│   │   ├── gimmickinfo_background_bell.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_cart.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_chimney.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_container.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_convertitem.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_crate.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_display.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_door.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_fire.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_flag.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_fortbarricade.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_fortgate.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_fountain.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_furniture.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_gallows.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_ice.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_jail.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_lamp.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_misc.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_prop.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_ropechain.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_straw.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_swingbridge.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_tent.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_totem.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_vine.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_watchtower.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_water.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_wheel.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_window.staticinfo.loc.xml
+│   │   ├── gimmickinfo_battle_bomb.staticinfo.loc.xml
+│   │   ├── gimmickinfo_battle_boss.staticinfo.loc.xml
+│   │   ├── gimmickinfo_docking_aircastle.staticinfo.loc.xml
+│   │   ├── gimmickinfo_docking_character.staticinfo.loc.xml
+│   │   ├── gimmickinfo_docking_equip.staticinfo.loc.xml
+│   │   ├── gimmickinfo_func.staticinfo.loc.xml
+│   │   ├── gimmickinfo_func_abyss.staticinfo.loc.xml
+│   │   ├── gimmickinfo_func_action.staticinfo.loc.xml
+│   │   ├── gimmickinfo_func_faction.staticinfo.loc.xml
+│   │   ├── gimmickinfo_func_minigame.staticinfo.loc.xml
+│   │   ├── gimmickinfo_func_quest.staticinfo.loc.xml
+│   │   ├── gimmickinfo_func_rewardbox.staticinfo.loc.xml
+│   │   ├── gimmickinfo_interruption.staticinfo.loc.xml
+│   │   ├── gimmickinfo_item_book.staticinfo.loc.xml
+│   │   ├── gimmickinfo_item_collect.staticinfo.loc.xml
+│   │   ├── gimmickinfo_item_interface.staticinfo.loc.xml
+│   │   ├── gimmickinfo_pipe.staticinfo.loc.xml
+│   │   ├── gimmickinfo_puzzle_abyss.staticinfo.loc.xml
+│   │   ├── gimmickinfo_puzzle_common.staticinfo.loc.xml
+│   │   ├── gimmickinfo_puzzle_forest.staticinfo.loc.xml
+│   │   ├── gimmickinfo_puzzle_maze.staticinfo.loc.xml
+│   │   ├── gimmickinfo_puzzle_superconductor.staticinfo.loc.xml
+│   │   ├── gimmickinfo_puzzle_temple.staticinfo.loc.xml
+│   │   ├── gimmickinfo_puzzle_tower.staticinfo.loc.xml
+│   │   ├── gimmickinfo_puzzle_unique.staticinfo.loc.xml
+│   │   ├── gimmickinfo_puzzle_unused.staticinfo.loc.xml
+│   │   ├── gimmickinfo_structure_automata.staticinfo.loc.xml
+│   │   ├── gimmickinfo_structure_cogwheel.staticinfo.loc.xml
+│   │   ├── gimmickinfo_structure_crafttool.staticinfo.loc.xml
+│   │   ├── gimmickinfo_structure_crane.staticinfo.loc.xml
+│   │   ├── gimmickinfo_structure_crank.staticinfo.loc.xml
+│   │   ├── gimmickinfo_structure_factory.staticinfo.loc.xml
+│   │   ├── gimmickinfo_structure_megastructure.staticinfo.loc.xml
+│   │   ├── gimmickinfo_structure_powerplant.staticinfo.loc.xml
+│   │   ├── gimmickinfo_structure_turret.staticinfo.loc.xml
+│   │   ├── gimmickinfo_switch.staticinfo.loc.xml
+│   │   └── gimmickinfo_switch_dialturn.staticinfo.loc.xml
+│   ├── GlobalGameEvent
+│   │   └── GlobalGameEventInfo.staticinfo.loc.xml
+│   ├── Interaction
+│   │   └── interactioninfo.staticinfo.loc.xml
+│   ├── Inventory
+│   │   └── InventoryInfo.staticinfo.loc.xml
+│   ├── ItemGroup
+│   │   ├── ItemEquip_Backpack.staticinfo.loc.xml
+│   │   ├── Item_Collection_Prop.staticinfo.loc.xml
+│   │   ├── item_Socket.staticinfo.loc.xml
+│   │   ├── item_ammo.staticinfo.loc.xml
+│   │   ├── item_boardpaper.staticinfo.loc.xml
+│   │   ├── item_book.staticinfo.loc.xml
+│   │   ├── item_convertitem_animal.staticinfo.loc.xml
+│   │   ├── item_craftmaterial_alchemy.staticinfo.loc.xml
+│   │   ├── item_craftmaterial_equipment.staticinfo.loc.xml
+│   │   ├── item_food.staticinfo.loc.xml
+│   │   ├── item_food_horse.staticinfo.loc.xml
+│   │   ├── item_food_potion.staticinfo.loc.xml
+│   │   ├── item_gimmick.staticinfo.loc.xml
+│   │   ├── item_inventorybag.staticinfo.loc.xml
+│   │   ├── item_junk.staticinfo.loc.xml
+│   │   ├── item_key.staticinfo.loc.xml
+│   │   ├── item_money.staticinfo.loc.xml
+│   │   ├── item_quest_normal.staticinfo.loc.xml
+│   │   ├── item_quest_others.staticinfo.loc.xml
+│   │   ├── item_recipe_food.staticinfo.loc.xml
+│   │   ├── item_specialitem.staticinfo.loc.xml
+│   │   ├── item_trade.staticinfo.loc.xml
+│   │   ├── item_trap.staticinfo.loc.xml
+│   │   ├── item_treasuremap.staticinfo.loc.xml
+│   │   ├── itemequip_KuKu_special.staticinfo.loc.xml
+│   │   ├── itemequip_accessory.staticinfo.loc.xml
+│   │   ├── itemequip_armor_mon_chain.staticinfo.loc.xml
+│   │   ├── itemequip_armor_mon_fabric.staticinfo.loc.xml
+│   │   ├── itemequip_armor_mon_leather.staticinfo.loc.xml
+│   │   ├── itemequip_armor_mon_plate.staticinfo.loc.xml
+│   │   ├── itemequip_armor_player_fabric.staticinfo.loc.xml
+│   │   ├── itemequip_armor_player_leather.staticinfo.loc.xml
+│   │   ├── itemequip_armor_player_plate.staticinfo.loc.xml
+│   │   ├── itemequip_armor_special_player.staticinfo.loc.xml
+│   │   ├── itemequip_cash_pre_order.staticinfo.loc.xml
+│   │   ├── itemequip_contributionitem.staticinfo.loc.xml
+│   │   ├── itemequip_pet_armor.staticinfo.loc.xml
+│   │   ├── itemequip_tools.staticinfo.loc.xml
+│   │   ├── itemequip_vehicle_armor.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_fist.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandaxe.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandcannon.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehanddagger.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandmace.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandrapier.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandshield.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandsword.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandtowershield.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_range.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_special_player.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandalebard.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandaxe.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandhammer.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandspear.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandsword.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandwarhammer.staticinfo.loc.xml
+│   │   └── itemgroupinfo.staticinfo.loc.xml
+│   ├── LocalStringInfo
+│   │   ├── LocalGameStringInfo.staticinfo.loc.xml
+│   │   └── LocalGameStringInfo_UI.staticinfo.loc.xml
+│   ├── LookAt
+│   │   ├── characterinfo_quest.staticinfo.loc.xml
+│   │   ├── gimmickinfo_background_misc.staticinfo.loc.xml
+│   │   ├── item_boardpaper.staticinfo.loc.xml
+│   │   ├── item_book.staticinfo.loc.xml
+│   │   ├── item_key.staticinfo.loc.xml
+│   │   ├── item_quest_normal.staticinfo.loc.xml
+│   │   ├── item_quest_others.staticinfo.loc.xml
+│   │   ├── item_recipe_food.staticinfo.loc.xml
+│   │   └── item_treasuremap.staticinfo.loc.xml
+│   ├── MultiChange
+│   │   ├── Item_CraftInfo.staticinfo.loc.xml
+│   │   ├── item_Socket.staticinfo.loc.xml
+│   │   ├── item_ammo.staticinfo.loc.xml
+│   │   ├── item_craftmaterial_equipment.staticinfo.loc.xml
+│   │   ├── item_food.staticinfo.loc.xml
+│   │   ├── item_food_potion.staticinfo.loc.xml
+│   │   ├── item_money.staticinfo.loc.xml
+│   │   ├── item_quest_normal.staticinfo.loc.xml
+│   │   ├── item_quest_others.staticinfo.loc.xml
+│   │   ├── item_specialitem.staticinfo.loc.xml
+│   │   ├── itemequip_KuKu_special.staticinfo.loc.xml
+│   │   ├── itemequip_accessory.staticinfo.loc.xml
+│   │   ├── itemequip_armor_player_fabric.staticinfo.loc.xml
+│   │   ├── itemequip_armor_player_leather.staticinfo.loc.xml
+│   │   ├── itemequip_armor_player_plate.staticinfo.loc.xml
+│   │   ├── itemequip_armor_special_player.staticinfo.loc.xml
+│   │   ├── itemequip_cash_pre_order.staticinfo.loc.xml
+│   │   ├── itemequip_contributionitem.staticinfo.loc.xml
+│   │   ├── itemequip_tools.staticinfo.loc.xml
+│   │   ├── itemequip_vehicle_armor.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_fist.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandaxe.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandcannon.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehanddagger.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandmace.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandrapier.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandshield.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandsword.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandtowershield.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_range.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_special_player.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandalebard.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandaxe.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandhammer.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandspear.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandsword.staticinfo.loc.xml
+│   │   └── itemequip_weapon_twohandwarhammer.staticinfo.loc.xml
+│   ├── PatternDescription
+│   │   └── patterndescriptioninfo.staticinfo.loc.xml
+│   ├── Quest
+│   │   ├── 16_questgroupinfo_benchmark.staticinfo.loc.xml
+│   │   ├── Contents_MiniGame.staticinfo.loc.xml
+│   │   ├── Contents_Pet.staticinfo.loc.xml
+│   │   ├── Contents_SpawnMainRoad.staticinfo.loc.xml
+│   │   ├── Contents_WeatherChange.staticinfo.loc.xml
+│   │   ├── QuestGroupInfo_Benchmark.staticinfo.loc.xml
+│   │   ├── QuestGroupInfo_Contents.staticinfo.loc.xml
+│   │   ├── QuestGroupInfo_Schedule.staticinfo.loc.xml
+│   │   ├── cd_autospawn_filter.staticinfo.loc.xml
+│   │   ├── cd_getout_region.staticinfo.loc.xml
+│   │   ├── challenge_abyss.staticinfo.loc.xml
+│   │   ├── challenge_adventure.staticinfo.loc.xml
+│   │   ├── challenge_sealedartifact.staticinfo.loc.xml
+│   │   ├── contents_legendanimal.staticinfo.loc.xml
+│   │   ├── contents_reward.staticinfo.loc.xml
+│   │   ├── contents_shop_all.staticinfo.loc.xml
+│   │   ├── gate_entrance.staticinfo.loc.xml
+│   │   ├── quest_documentary_human.staticinfo.loc.xml
+│   │   ├── quest_faction_wyvern_tamers.staticinfo.loc.xml
+│   │   ├── quest_greywolf_camp_pailune.staticinfo.loc.xml
+│   │   ├── quest_main_chapter00_prologue.staticinfo.loc.xml
+│   │   ├── quest_main_chapter01_firstmeet.staticinfo.loc.xml
+│   │   ├── quest_main_chapter02_goldengreed.staticinfo.loc.xml
+│   │   ├── quest_main_chapter03_wolfhill.staticinfo.loc.xml
+│   │   ├── quest_main_chapter04_masterknowledge.staticinfo.loc.xml
+│   │   ├── quest_main_chapter05_gatecrasher.staticinfo.loc.xml
+│   │   ├── quest_main_chapter06_brokenshield.staticinfo.loc.xml
+│   │   ├── quest_main_chapter07_homecoming.staticinfo.loc.xml
+│   │   ├── quest_main_chapter08_bloodcoronation.staticinfo.loc.xml
+│   │   ├── quest_main_chapter09_desertsage.staticinfo.loc.xml
+│   │   ├── quest_main_chapter10_counterattack.staticinfo.loc.xml
+│   │   ├── quest_main_chapter11_realitytruth.staticinfo.loc.xml
+│   │   ├── quest_main_chapter12_abyss.staticinfo.loc.xml
+│   │   ├── quest_main_epilogue.staticinfo.loc.xml
+│   │   ├── quest_miseenscene.staticinfo.loc.xml
+│   │   ├── quest_miseenscene_complete100.staticinfo.loc.xml
+│   │   ├── quest_node_cal_calphadecastle_shieldwithoutcompromise.staticinfo.loc.xml
+│   │   ├── quest_node_crim_desolatestonealtar.staticinfo.loc.xml
+│   │   ├── quest_node_crim_enlightenshrine_goblin_treasure.staticinfo.loc.xml
+│   │   ├── quest_node_crim_fortmanub_sacked_fortress.staticinfo.loc.xml
+│   │   ├── quest_node_crim_helmaravillage_desert_harrier.staticinfo.loc.xml
+│   │   ├── quest_node_crim_howlsandscamp_goblin_riders.staticinfo.loc.xml
+│   │   ├── quest_node_crim_isvatufortress_thief_headquarters.staticinfo.loc.xml
+│   │   ├── quest_node_crim_muiquunvillage.staticinfo.loc.xml
+│   │   ├── quest_node_crim_redmountainfort_crimson_mountains_fortress.staticinfo.loc.xml
+│   │   ├── quest_node_crim_stompsandfortruins_troll_riders.staticinfo.loc.xml
+│   │   ├── quest_node_crim_tashkalp_tommaso.staticinfo.loc.xml
+│   │   ├── quest_node_crim_urdavah.staticinfo.loc.xml
+│   │   ├── quest_node_crim_varnia.staticinfo.loc.xml
+│   │   ├── quest_node_del_delesyiacastle.staticinfo.loc.xml
+│   │   ├── quest_node_del_delesyiainstitute.staticinfo.loc.xml
+│   │   ├── quest_node_del_dewhavencastle_delesyian_alliance.staticinfo.loc.xml
+│   │   ├── quest_node_del_marniairlab_marni_mine_fortress.staticinfo.loc.xml
+│   │   ├── quest_node_del_marnilab_marni_mine_fortress.staticinfo.loc.xml
+│   │   ├── quest_node_del_marnimechfactory_marni_tank_fortress.staticinfo.loc.xml
+│   │   ├── quest_node_del_marnipark_delesyia_park.staticinfo.loc.xml
+│   │   ├── quest_node_del_marniworkshop.staticinfo.loc.xml
+│   │   ├── quest_node_del_node_del_marniaircastle.staticinfo.loc.xml
+│   │   ├── quest_node_del_snakeshrine_giant_serpent.staticinfo.loc.xml
+│   │   ├── quest_node_del_stonebackcrabwetlands_landspider_swamp.staticinfo.loc.xml
+│   │   ├── quest_node_del_timberton.staticinfo.loc.xml
+│   │   ├── quest_node_del_valvegardwallfort_marni_barrier_fortress.staticinfo.loc.xml
+│   │   ├── quest_node_dem_azerianmanor.staticinfo.loc.xml
+│   │   ├── quest_node_dem_bloodsteelcamp_righteousarrows.staticinfo.loc.xml
+│   │   ├── quest_node_dem_brookfieldmanor_elimoor.staticinfo.loc.xml
+│   │   ├── quest_node_dem_demenisscastle.staticinfo.loc.xml
+│   │   ├── quest_node_dem_eastcourt_caliburnclan_iii.staticinfo.loc.xml
+│   │   ├── quest_node_dem_eyeofice_frozen_creater.staticinfo.loc.xml
+│   │   ├── quest_node_dem_flame_knights.staticinfo.loc.xml
+│   │   ├── quest_node_dem_goldengoblinwinemaker.staticinfo.loc.xml
+│   │   ├── quest_node_dem_hexesanctuary.staticinfo.loc.xml
+│   │   ├── quest_node_dem_jijeongtemple.staticinfo.loc.xml
+│   │   ├── quest_node_dem_nightexpeditioncamp.staticinfo.loc.xml
+│   │   ├── quest_node_dem_node_dem_thornrosefort_wellsbrigade.staticinfo.loc.xml
+│   │   ├── quest_node_dem_silvermoonhq_troll_guild.staticinfo.loc.xml
+│   │   ├── quest_node_dem_southcourt_caliburnclan_ii.staticinfo.loc.xml
+│   │   ├── quest_node_dem_sungrovemanor_marchell_marseille.staticinfo.loc.xml
+│   │   ├── quest_node_dem_tarivvillage.staticinfo.loc.xml
+│   │   ├── quest_node_dem_truthgate_ancientruins.staticinfo.loc.xml
+│   │   ├── quest_node_dem_windmeremanor_byron_caliburnclan_iv.staticinfo.loc.xml
+│   │   ├── quest_node_her_bluemontmanor_roberts_lopette.staticinfo.loc.xml
+│   │   ├── quest_node_her_brokenchurch_reglegoblin.staticinfo.loc.xml
+│   │   ├── quest_node_her_fortanvil_bleed_moru.staticinfo.loc.xml
+│   │   ├── quest_node_her_forthellwood_hellhounds.staticinfo.loc.xml
+│   │   ├── quest_node_her_fortwarspike_bleed_ruffians.staticinfo.loc.xml
+│   │   ├── quest_node_her_glenbrightmanor_grace.staticinfo.loc.xml
+│   │   ├── quest_node_her_goldleafguildhouse.staticinfo.loc.xml
+│   │   ├── quest_node_her_greymanecamp.staticinfo.loc.xml
+│   │   ├── quest_node_her_greystonemanor_felix.staticinfo.loc.xml
+│   │   ├── quest_node_her_halsiushospital.staticinfo.loc.xml
+│   │   ├── quest_node_her_hernandcastle.staticinfo.loc.xml
+│   │   ├── quest_node_her_hernandchurch.staticinfo.loc.xml
+│   │   ├── quest_node_her_kharonsovillage_rumsxovillage.staticinfo.loc.xml
+│   │   ├── quest_node_her_lioncrestmanor_alfonso.staticinfo.loc.xml
+│   │   ├── quest_node_her_oakenshieldmanor_serkis.staticinfo.loc.xml
+│   │   ├── quest_node_her_pororinvillage.staticinfo.loc.xml
+│   │   ├── quest_node_her_portpervin_bleed_ruffians.staticinfo.loc.xml
+│   │   ├── quest_node_her_scholastoneinstitute.staticinfo.loc.xml
+│   │   ├── quest_node_her_seniavillage.staticinfo.loc.xml
+│   │   ├── quest_node_her_slum.staticinfo.loc.xml
+│   │   ├── quest_node_her_spidercastle.staticinfo.loc.xml
+│   │   ├── quest_node_her_velluavillage.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_ashclawkeep_drunken_black_bears.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_beighenvillage.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_destructiontower_black_tower.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_echotower_goblintower.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_harpynest.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_lonelyjackal.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_longleaftreevillage.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_odeckvillage.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_pailune.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_skallcovevillage.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_skoghornvillage.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_solskarvillage_pailune_nobilityi.staticinfo.loc.xml
+│   │   ├── quest_node_kwe_windsongmountain_taitan.staticinfo.loc.xml
+│   │   ├── quest_node_liberation_common.staticinfo.loc.xml
+│   │   ├── quest_node_neut_gorthakironmaker_redorc.staticinfo.loc.xml
+│   │   ├── quest_node_neut_marnisoutpost.staticinfo.loc.xml
+│   │   ├── quest_node_thiefcamp_common.staticinfo.loc.xml
+│   │   ├── quest_qa.staticinfo.loc.xml
+│   │   ├── quest_test.staticinfo.loc.xml
+│   │   ├── quest_witch.staticinfo.loc.xml
+│   │   ├── questgroupinfo.staticinfo.loc.xml
+│   │   ├── questgroupinfo_levelspawn.staticinfo.loc.xml
+│   │   ├── schedule_abyssruins.staticinfo.loc.xml
+│   │   ├── schedule_animal.staticinfo.loc.xml
+│   │   ├── schedule_animal_beast.staticinfo.loc.xml
+│   │   ├── schedule_monster.staticinfo.loc.xml
+│   │   ├── schedule_monster_creature.staticinfo.loc.xml
+│   │   ├── schedule_npc.staticinfo.loc.xml
+│   │   ├── schedule_puzzle.staticinfo.loc.xml
+│   │   ├── schedule_thief.staticinfo.loc.xml
+│   │   ├── schedule_tower.staticinfo.loc.xml
+│   │   └── shop_world.staticinfo.loc.xml
+│   ├── Skill
+│   │   ├── skillinfo.staticinfo.loc.xml
+│   │   ├── skillinfo_actionrestriction.staticinfo.loc.xml
+│   │   ├── skillinfo_ai.staticinfo.loc.xml
+│   │   ├── skillinfo_buffedaction.staticinfo.loc.xml
+│   │   ├── skillinfo_bufflevel.staticinfo.loc.xml
+│   │   ├── skillinfo_bufflevel_material.staticinfo.loc.xml
+│   │   ├── skillinfo_damage.staticinfo.loc.xml
+│   │   ├── skillinfo_equip.staticinfo.loc.xml
+│   │   ├── skillinfo_faction.staticinfo.loc.xml
+│   │   ├── skillinfo_gimmick.staticinfo.loc.xml
+│   │   ├── skillinfo_item.staticinfo.loc.xml
+│   │   ├── skillinfo_mon.staticinfo.loc.xml
+│   │   ├── skillinfo_pc.staticinfo.loc.xml
+│   │   ├── skillinfo_stage.staticinfo.loc.xml
+│   │   └── skillinfo_vehicle.staticinfo.loc.xml
+│   ├── Socket
+│   │   └── socketinfo.staticinfo.loc.xml
+│   ├── SubLevel
+│   │   └── sublevelinfo.staticinfo.loc.xml
+│   ├── SymbolText
+│   │   └── SymbolText.loc.xml
+│   ├── Ui
+│   │   ├── GameAdviceInfo.staticinfo.loc.xml
+│   │   ├── SkillTreeGroupInfo.staticinfo.loc.xml
+│   │   ├── SkillTreeInfo.staticinfo.loc.xml
+│   │   └── UIMapTextureInfo.staticinfo.loc.xml
+│   └── UiSocialAction
+│       └── UiSocialActionInfo.staticinfo.loc.xml
+├── World
+│   ├── Character
+│   │   ├── characterinfo_Animal.staticinfo.loc.xml
+│   │   ├── characterinfo_Camp.staticinfo.loc.xml
+│   │   ├── characterinfo_animal_unique.staticinfo.loc.xml
+│   │   ├── characterinfo_main_unique.staticinfo.loc.xml
+│   │   ├── characterinfo_monster.staticinfo.loc.xml
+│   │   ├── characterinfo_monster_unique.staticinfo.loc.xml
+│   │   ├── characterinfo_npc.staticinfo.loc.xml
+│   │   ├── characterinfo_npc.staticinfo_2.loc.xml
+│   │   ├── characterinfo_npc_shop.staticinfo.loc.xml
+│   │   ├── characterinfo_npc_unique.staticinfo.loc.xml
+│   │   ├── characterinfo_object.staticinfo.loc.xml
+│   │   ├── characterinfo_pc.staticinfo.loc.xml
+│   │   ├── characterinfo_pet.staticinfo.loc.xml
+│   │   ├── characterinfo_quest.staticinfo.loc.xml
+│   │   └── characterinfo_vehicle.staticinfo.loc.xml
+│   ├── Faction
+│   │   ├── FactionEventProcessInfo.staticinfo.loc.xml
+│   │   ├── FactionEventProcessInfo_Main.staticinfo.loc.xml
+│   │   ├── FactionInfo_Abyss.staticinfo.loc.xml
+│   │   ├── FactionInfo_CrimsonDesert.staticinfo.loc.xml
+│   │   ├── FactionInfo_Delesyia.staticinfo.loc.xml
+│   │   ├── FactionInfo_Demeniss.staticinfo.loc.xml
+│   │   ├── FactionInfo_Graymane.staticinfo.loc.xml
+│   │   ├── FactionInfo_Hernand.staticinfo.loc.xml
+│   │   ├── FactionInfo_Kweiden.staticinfo.loc.xml
+│   │   ├── FactionInfo_World.staticinfo.loc.xml
+│   │   └── NodeInfo_Misc.staticinfo.loc.xml
+│   ├── Item
+│   │   ├── ItemEquip_Backpack.staticinfo.loc.xml
+│   │   ├── Item_Collection_Prop.staticinfo.loc.xml
+│   │   ├── item_Socket.staticinfo.loc.xml
+│   │   ├── item_ammo.staticinfo.loc.xml
+│   │   ├── item_boardpaper.staticinfo.loc.xml
+│   │   ├── item_book.staticinfo.loc.xml
+│   │   ├── item_convertitem_animal.staticinfo.loc.xml
+│   │   ├── item_craftmaterial_alchemy.staticinfo.loc.xml
+│   │   ├── item_craftmaterial_equipment.staticinfo.loc.xml
+│   │   ├── item_food.staticinfo.loc.xml
+│   │   ├── item_food_horse.staticinfo.loc.xml
+│   │   ├── item_food_potion.staticinfo.loc.xml
+│   │   ├── item_gimmick.staticinfo.loc.xml
+│   │   ├── item_inventorybag.staticinfo.loc.xml
+│   │   ├── item_key.staticinfo.loc.xml
+│   │   ├── item_money.staticinfo.loc.xml
+│   │   ├── item_quest_normal.staticinfo.loc.xml
+│   │   ├── item_quest_others.staticinfo.loc.xml
+│   │   ├── item_recipe_food.staticinfo.loc.xml
+│   │   ├── item_specialitem.staticinfo.loc.xml
+│   │   ├── item_trade.staticinfo.loc.xml
+│   │   ├── item_trap.staticinfo.loc.xml
+│   │   ├── item_treasuremap.staticinfo.loc.xml
+│   │   ├── itemequip_KuKu_special.staticinfo.loc.xml
+│   │   ├── itemequip_accessory.staticinfo.loc.xml
+│   │   ├── itemequip_armor_mon_chain.staticinfo.loc.xml
+│   │   ├── itemequip_armor_mon_fabric.staticinfo.loc.xml
+│   │   ├── itemequip_armor_mon_leather.staticinfo.loc.xml
+│   │   ├── itemequip_armor_mon_plate.staticinfo.loc.xml
+│   │   ├── itemequip_armor_player_fabric.staticinfo.loc.xml
+│   │   ├── itemequip_armor_player_leather.staticinfo.loc.xml
+│   │   ├── itemequip_armor_player_plate.staticinfo.loc.xml
+│   │   ├── itemequip_armor_special_player.staticinfo.loc.xml
+│   │   ├── itemequip_cash_pre_order.staticinfo.loc.xml
+│   │   ├── itemequip_contributionitem.staticinfo.loc.xml
+│   │   ├── itemequip_pet_armor.staticinfo.loc.xml
+│   │   ├── itemequip_tools.staticinfo.loc.xml
+│   │   ├── itemequip_vehicle_armor.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_fist.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandaxe.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandcannon.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehanddagger.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandmace.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandrapier.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandshield.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandsword.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_onehandtowershield.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_range.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_special_player.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandalebard.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandaxe.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandhammer.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandspear.staticinfo.loc.xml
+│   │   ├── itemequip_weapon_twohandsword.staticinfo.loc.xml
+│   │   └── itemequip_weapon_twohandwarhammer.staticinfo.loc.xml
+│   ├── Knowledge
+│   │   ├── 9_knowledgeinfo_skill.staticinfo.loc.xml
+│   │   ├── KnowledgeInfo_AbyssGate.staticinfo.loc.xml
+│   │   ├── KnowledgeInfo_Character.staticinfo.loc.xml
+│   │   ├── KnowledgeInfo_Character_Animal.staticinfo.loc.xml
+│   │   ├── KnowledgeInfo_Character_Riding.staticinfo.loc.xml
+│   │   ├── KnowledgeInfo_Contents.staticinfo.loc.xml
+│   │   ├── KnowledgeInfo_CraftingRecipe.staticinfo.loc.xml
+│   │   ├── KnowledgeInfo_Discover.staticinfo.loc.xml
+│   │   ├── KnowledgeInfo_Faction.staticinfo.loc.xml
+│   │   ├── KnowledgeInfo_Item.staticinfo.loc.xml
+│   │   ├── KnowledgeInfo_Node.staticinfo.loc.xml
+│   │   ├── KnowledgeInfo_Quest.staticinfo.loc.xml
+│   │   ├── KnowledgeInfo_Skill.staticinfo.loc.xml
+│   │   ├── characterinfo_Animal.staticinfo.loc.xml
+│   │   ├── characterinfo_Camp.staticinfo.loc.xml
+│   │   ├── characterinfo_animal_unique.staticinfo.loc.xml
+│   │   ├── characterinfo_main_unique.staticinfo.loc.xml
+│   │   ├── characterinfo_monster.staticinfo.loc.xml
+│   │   ├── characterinfo_monster_unique.staticinfo.loc.xml
+│   │   ├── characterinfo_npc_shop.staticinfo.loc.xml
+│   │   ├── characterinfo_npc_unique.staticinfo.loc.xml
+│   │   ├── characterinfo_quest.staticinfo.loc.xml
+│   │   ├── characterinfo_vehicle.staticinfo.loc.xml
+│   │   └── item_food.staticinfo.loc.xml
+│   ├── Npc
+│   │   ├── characterinfo_main_unique.staticinfo.loc.xml
+│   │   ├── characterinfo_npc_shop.staticinfo.loc.xml
+│   │   └── characterinfo_npc_unique.staticinfo.loc.xml
+│   └── Region
+│       └── regioninfo.staticinfo.loc.xml
+└── languagedata.xml
+==================================================
