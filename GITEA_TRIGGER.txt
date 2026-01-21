@@ -17,3 +17,4 @@ Build 497: Slim installer (594MB -> 150MB)
 Build 498: Fix cache hash for slim installer
 Build 498: QACompilerNEW tracker-only + content-based matching
 Build 499 - Fix manager status preservation
+Build - QACompiler Sequencer/Dialog categories
