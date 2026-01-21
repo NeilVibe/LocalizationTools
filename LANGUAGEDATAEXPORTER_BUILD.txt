@@ -13,3 +13,4 @@ Build 005 - QACompiler-style triple artifact separation
 Build 006 - Fix settings.json loading + case-insensitive folder matching
 Build 007 - Add comprehensive debug logging for troubleshooting
 Build 008 - GUI is now the default (just double-click to launch)
+Build 009 - CRITICAL FIX: Use lxml + correct attribute names (StringId not StringID)
