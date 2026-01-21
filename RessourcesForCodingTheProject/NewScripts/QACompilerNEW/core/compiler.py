@@ -19,6 +19,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
     CATEGORIES, CATEGORY_TO_MASTER, TRANSLATION_COLS, SCRIPT_TYPE_CATEGORIES,
+    SCRIPT_COLS,
     MASTER_FOLDER_EN, MASTER_FOLDER_CN,
     IMAGES_FOLDER_EN, IMAGES_FOLDER_CN,
     TRACKER_PATH,
@@ -40,6 +41,9 @@ from core.processing import (
 
 # Valid manager status values
 VALID_MANAGER_STATUS = {"FIXED", "REPORTED", "CHECKING", "NON-ISSUE", "NON ISSUE"}
+
+# Valid tester status values (rows with these are "done")
+VALID_TESTER_STATUS = {"ISSUE", "NO ISSUE", "BLOCKED", "KOREAN"}
 
 
 # =============================================================================
@@ -322,6 +326,301 @@ def collect_manager_stats_for_tracker() -> Dict:
 
 
 # =============================================================================
+# SCRIPT-TYPE PREPROCESSING (Sequencer/Dialog optimization)
+# =============================================================================
+
+def preprocess_script_category(
+    qa_folders: List[Dict],
+    is_english: bool = True
+) -> Dict:
+    """
+    Preprocess Script-type category files to build global universe of rows WITH status.
+
+    This optimization scans ALL QA files and collects only rows that have been checked
+    (have a STATUS value). This dramatically speeds up processing for large files
+    like Sequencer/Dialog which can have thousands of unchecked rows.
+
+    Args:
+        qa_folders: List of folder dicts from discovery (all for this category)
+        is_english: Whether these are English files
+
+    Returns:
+        Dict with:
+            - "rows": {(eventname, text): row_data} - all unique rows with status
+            - "row_count": int - total rows with status
+            - "source_files": int - number of files scanned
+    """
+    # SCRIPT_COLS already imported from config at module level
+
+    universe = {}  # (eventname, text) -> row_data
+    source_files = 0
+
+    print(f"  [PREPROCESS] Scanning {len(qa_folders)} QA files for rows with STATUS...")
+
+    for qf in qa_folders:
+        xlsx_path = qf["xlsx_path"]
+        username = qf["username"]
+        source_files += 1
+
+        try:
+            wb = safe_load_workbook(xlsx_path)
+
+            for sheet_name in wb.sheetnames:
+                if sheet_name == "STATUS":
+                    continue
+
+                ws = wb[sheet_name]
+
+                # Find columns by NAME (not position!)
+                status_col = find_column_by_header(ws, SCRIPT_COLS.get("status", "STATUS"))
+                text_col = find_column_by_header(ws, SCRIPT_COLS.get("translation", "Text"))
+                eventname_col = find_column_by_header(ws, SCRIPT_COLS.get("stringid", "EventName"))
+                memo_col = find_column_by_header(ws, SCRIPT_COLS.get("comment", "MEMO"))
+
+                if not status_col or not text_col or not eventname_col:
+                    continue
+
+                # Scan rows for those with STATUS
+                for row in range(2, ws.max_row + 1):
+                    status_val = ws.cell(row=row, column=status_col).value
+                    if not status_val:
+                        continue
+
+                    status_upper = str(status_val).strip().upper()
+                    if status_upper not in VALID_TESTER_STATUS:
+                        continue
+
+                    # This row has a valid status - add to universe
+                    eventname = str(ws.cell(row=row, column=eventname_col).value or "").strip()
+                    text = str(ws.cell(row=row, column=text_col).value or "").strip()
+
+                    if not eventname and not text:
+                        continue
+
+                    key = (eventname, text)
+
+                    # Store row data (first occurrence wins, but track all sources)
+                    if key not in universe:
+                        universe[key] = {
+                            "eventname": eventname,
+                            "text": text,
+                            "sheet": sheet_name,
+                            "sources": [(username, xlsx_path, sheet_name, row)],
+                        }
+                    else:
+                        # Track additional sources for debugging
+                        universe[key]["sources"].append((username, xlsx_path, sheet_name, row))
+
+            wb.close()
+
+        except Exception as e:
+            print(f"    WARN: Error preprocessing {xlsx_path.name}: {e}")
+
+    print(f"  [PREPROCESS] Found {len(universe)} unique rows with STATUS from {source_files} files")
+
+    return {
+        "rows": universe,
+        "row_count": len(universe),
+        "source_files": source_files,
+    }
+
+
+def create_filtered_script_template(
+    template_path: Path,
+    universe: Dict,
+    output_path: Path = None
+) -> Path:
+    """
+    Create a filtered template workbook containing ONLY rows from the universe.
+
+    This creates a temporary workbook that will be used as the master template,
+    containing only rows that have been checked by at least one tester.
+
+    IMPORTANT: Preserves FULL row data from source files (all columns), not just
+    the columns used for matching. Uses the most recent file for column structure.
+
+    Args:
+        template_path: Path to a QA file to use as structure template
+        universe: Dict from preprocess_script_category() with "rows" key
+        output_path: Optional output path (default: temp file)
+
+    Returns:
+        Path to the filtered template workbook
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    # SCRIPT_COLS already imported from config at module level
+    import tempfile
+
+    # Load template for structure (column headers)
+    template_wb = safe_load_workbook(template_path)
+
+    # Create new filtered workbook
+    filtered_wb = Workbook()
+    # Remove default sheet
+    if "Sheet" in filtered_wb.sheetnames:
+        del filtered_wb["Sheet"]
+
+    rows_data = universe.get("rows", {})
+
+    # Group rows by sheet name
+    rows_by_sheet = {}
+    for key, data in rows_data.items():
+        sheet = data.get("sheet", "Script")
+        if sheet not in rows_by_sheet:
+            rows_by_sheet[sheet] = []
+        rows_by_sheet[sheet].append(data)
+
+    # Cache of loaded source workbooks (avoid reloading same file multiple times)
+    source_wb_cache = {}
+
+    def get_source_row_data(sources, sheet_name, num_cols):
+        """
+        Fetch full row data from source file.
+        Returns list of cell values for all columns.
+        """
+        if not sources:
+            return None
+
+        # Use first source (username, xlsx_path, sheet_name, row)
+        username, xlsx_path, src_sheet, src_row = sources[0]
+        xlsx_path = Path(xlsx_path) if not isinstance(xlsx_path, Path) else xlsx_path
+
+        # Load from cache or open new
+        cache_key = str(xlsx_path)
+        if cache_key not in source_wb_cache:
+            try:
+                source_wb_cache[cache_key] = safe_load_workbook(xlsx_path)
+            except Exception as e:
+                print(f"    WARN: Could not load source {xlsx_path.name}: {e}")
+                return None
+
+        wb = source_wb_cache[cache_key]
+        if src_sheet not in wb.sheetnames:
+            return None
+
+        ws = wb[src_sheet]
+        # Get all cell values for this row
+        row_values = []
+        for col in range(1, num_cols + 1):
+            row_values.append(ws.cell(row=src_row, column=col).value)
+        return row_values
+
+    # Process each sheet from template
+    for sheet_name in template_wb.sheetnames:
+        if sheet_name == "STATUS":
+            continue
+
+        template_ws = template_wb[sheet_name]
+        num_cols = template_ws.max_column
+
+        # Create filtered sheet
+        filtered_ws = filtered_wb.create_sheet(sheet_name)
+
+        # Copy header row (row 1) with all columns and styles
+        for col in range(1, num_cols + 1):
+            src_cell = template_ws.cell(row=1, column=col)
+            dst_cell = filtered_ws.cell(row=1, column=col)
+            dst_cell.value = src_cell.value
+            if src_cell.has_style:
+                dst_cell.font = Font(
+                    bold=src_cell.font.bold,
+                    color=src_cell.font.color,
+                    size=src_cell.font.size
+                )
+                if src_cell.fill.patternType:
+                    dst_cell.fill = PatternFill(
+                        start_color=src_cell.fill.start_color.rgb if src_cell.fill.start_color.rgb else "FFFFFF",
+                        end_color=src_cell.fill.end_color.rgb if src_cell.fill.end_color.rgb else "FFFFFF",
+                        fill_type=src_cell.fill.fill_type
+                    )
+                dst_cell.alignment = Alignment(
+                    horizontal=src_cell.alignment.horizontal,
+                    vertical=src_cell.alignment.vertical,
+                    wrap_text=src_cell.alignment.wrap_text
+                )
+
+        # Find column positions in template for matching
+        text_col = find_column_by_header(template_ws, SCRIPT_COLS.get("translation", "Text"))
+        eventname_col = find_column_by_header(template_ws, SCRIPT_COLS.get("stringid", "EventName"))
+
+        if not text_col or not eventname_col:
+            continue
+
+        # Build index of rows in template (by key) for quick lookup
+        template_rows = {}
+        for row in range(2, template_ws.max_row + 1):
+            eventname = str(template_ws.cell(row=row, column=eventname_col).value or "").strip()
+            text = str(template_ws.cell(row=row, column=text_col).value or "").strip()
+            key = (eventname, text)
+            if key not in template_rows:
+                template_rows[key] = row
+
+        # Copy only rows that are in the universe
+        sheet_rows = rows_by_sheet.get(sheet_name, [])
+        dst_row = 2
+        rows_from_template = 0
+        rows_from_source = 0
+
+        for row_data in sheet_rows:
+            key = (row_data["eventname"], row_data["text"])
+
+            # Try to find row in template first (most efficient)
+            src_row = template_rows.get(key)
+            if src_row:
+                # Copy entire row from template (ALL columns)
+                for col in range(1, num_cols + 1):
+                    src_cell = template_ws.cell(row=src_row, column=col)
+                    dst_cell = filtered_ws.cell(row=dst_row, column=col)
+                    dst_cell.value = src_cell.value
+                dst_row += 1
+                rows_from_template += 1
+            else:
+                # Row not in template - fetch from source file
+                source_values = get_source_row_data(row_data.get("sources"), sheet_name, num_cols)
+                if source_values:
+                    for col, value in enumerate(source_values, 1):
+                        filtered_ws.cell(row=dst_row, column=col).value = value
+                    rows_from_source += 1
+                else:
+                    # Fallback: create minimal row with just key columns
+                    filtered_ws.cell(row=dst_row, column=eventname_col).value = row_data["eventname"]
+                    filtered_ws.cell(row=dst_row, column=text_col).value = row_data["text"]
+                dst_row += 1
+
+        # Set column widths
+        for col in range(1, num_cols + 1):
+            col_letter = filtered_ws.cell(row=1, column=col).column_letter
+            filtered_ws.column_dimensions[col_letter].width = 20
+
+        if rows_from_source > 0:
+            print(f"    Sheet '{sheet_name}': {rows_from_template} from template, {rows_from_source} from source files")
+
+    # Close cached source workbooks
+    for wb in source_wb_cache.values():
+        try:
+            wb.close()
+        except:
+            pass
+
+    template_wb.close()
+
+    # Save to temp file or specified path
+    if output_path is None:
+        fd, temp_path = tempfile.mkstemp(suffix=".xlsx", prefix="filtered_script_")
+        output_path = Path(temp_path)
+        import os
+        os.close(fd)
+
+    filtered_wb.save(output_path)
+    filtered_wb.close()
+
+    print(f"  [PREPROCESS] Created filtered template with {len(rows_data)} rows: {output_path.name}")
+
+    return output_path
+
+
+# =============================================================================
 # CATEGORY PROCESSING
 # =============================================================================
 
@@ -365,11 +664,34 @@ def process_category(
 
     daily_entries = []
 
+    # Determine if EN or CN for word counting
+    is_english = (lang_label == "EN")
+
     # Get or create master (use most recent file as template for freshest structure)
     sorted_by_mtime = sorted(qa_folders, key=lambda x: x["xlsx_path"].stat().st_mtime, reverse=True)
     template_xlsx = sorted_by_mtime[0]["xlsx_path"]
     template_user = sorted_by_mtime[0]["username"]
-    print(f"  Template: {template_user} (most recent file)")
+
+    # OPTIMIZATION: For Script-type categories (Sequencer/Dialog), preprocess to filter
+    # out rows without STATUS. This dramatically speeds up processing for large files.
+    filtered_template_path = None
+    if category.lower() in SCRIPT_TYPE_CATEGORIES:
+        print(f"  [OPTIMIZATION] Script-type category detected - preprocessing...")
+        universe = preprocess_script_category(qa_folders, is_english)
+
+        if universe["row_count"] == 0:
+            print(f"  [SKIP] No rows with STATUS found in any QA file")
+            return daily_entries
+
+        # Create filtered template containing only rows with STATUS
+        filtered_template_path = create_filtered_script_template(
+            template_xlsx, universe
+        )
+        template_xlsx = filtered_template_path
+        print(f"  Template: FILTERED ({universe['row_count']} rows with STATUS)")
+    else:
+        print(f"  Template: {template_user} (most recent file)")
+
     master_wb, master_path = get_or_create_master(category, master_folder, template_xlsx, rebuild=rebuild)
 
     if master_wb is None:
@@ -396,10 +718,12 @@ def process_category(
     total_images = 0
     total_screenshots = 0
 
-    # Determine if EN or CN for word counting
-    is_english = (lang_label == "EN")
+    # Get translation column for word counting (is_english already defined above)
+    # For Script-type: will be found by NAME ("Text") per worksheet
+    # For other categories: use position-based from config
+    is_script_category = category.lower() in SCRIPT_TYPE_CATEGORIES
     trans_col_key = "eng" if is_english else "other"
-    trans_col = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3}).get(trans_col_key, 2)
+    trans_col_default = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3}).get(trans_col_key, 2)
 
     # Process each QA folder
     for qf in qa_folders:
@@ -478,6 +802,16 @@ def process_category(
             # Count words (EN) or characters (CN) from translation column
             # ONLY count rows where STATUS is filled (DONE rows)
             qa_status_col = find_column_by_header(qa_ws, "STATUS")
+
+            # Script-type: find "Text" column by NAME (more robust)
+            # Other categories: use position-based from config
+            if is_script_category:
+                trans_col = find_column_by_header(qa_ws, SCRIPT_COLS.get("translation", "Text"))
+                if not trans_col:
+                    trans_col = trans_col_default  # Fallback to position
+            else:
+                trans_col = trans_col_default
+
             for row in range(2, qa_ws.max_row + 1):
                 if qa_status_col:
                     status_val = qa_ws.cell(row, qa_status_col).value
@@ -533,6 +867,14 @@ def process_category(
         print(f"  Hidden: {hidden_rows} rows with no comments (unhide in Excel if needed)")
     if total_images > 0:
         print(f"  Images: {total_images} copied to Images/, {total_screenshots} hyperlinks updated")
+
+    # Cleanup: Remove filtered template temp file if it was created
+    if filtered_template_path and filtered_template_path.exists():
+        try:
+            filtered_template_path.unlink()
+            print(f"  [CLEANUP] Removed temp filtered template")
+        except Exception as e:
+            print(f"  [WARN] Could not remove temp file: {e}")
 
     return daily_entries
 
