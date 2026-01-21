@@ -313,7 +313,7 @@ python main.py -v                   # Verbose logging
 
 ### Build Trigger
 ```bash
-echo "Build 002" >> LANGUAGEDATAEXPORTER_BUILD.txt
+echo "Build 005" >> LANGUAGEDATAEXPORTER_BUILD.txt
 git add -A && git commit -m "Build: LanguageDataExporter" && git push
 ```
 
@@ -321,9 +321,26 @@ git add -A && git commit -m "Build: LanguageDataExporter" && git push
 File: `.github/workflows/languagedataexporter-build.yml`
 
 **Jobs:**
-1. **validate** - Check trigger, generate version
-2. **safety-checks** - Syntax, imports, flake8, security audit
-3. **build-release** - PyInstaller + Inno Setup, GitHub Release
+1. **validate** - Check trigger, generate version (YY.MMDD.HHMM format)
+2. **safety-checks** - Syntax, imports, flake8, pip-audit security
+3. **build-release** - PyInstaller + Inno Setup → GitHub Release
+
+**Artifact Creation (QACompiler-style):**
+- All artifacts centralized in `installer_output/` folder
+- Working folders include `.gitkeep` for structure preservation
+- Source ZIP uses temp directory for clean packaging
+
+**Three Separate Artifacts:**
+| Artifact | Description |
+|----------|-------------|
+| `*_Setup.exe` | Installer with drive selection wizard |
+| `*_Portable.zip` | Standalone exe + working folders |
+| `*_Source.zip` | Python source (excludes build artifacts) |
+
+**Separate Upload Artifacts:**
+- `LanguageDataExporter-Setup`
+- `LanguageDataExporter-Portable`
+- `LanguageDataExporter-Source`
 
 **Artifacts:**
 - `LanguageDataExporter_v{VERSION}_Setup.exe`
