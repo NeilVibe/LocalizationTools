@@ -388,8 +388,22 @@ def process_sheet(
     # Build master index for O(1) content-based matching
     master_index = build_master_index(master_ws, category, is_english)
 
+    # OPTIMIZATION: For Script-type categories, pre-filter to only rows WITH status
+    # This dramatically speeds up processing for large files (Sequencer/Dialog can have 10,000+ rows)
+    rows_to_process = []
+    if is_script and qa_status_col:
+        valid_statuses = {"ISSUE", "NO ISSUE", "BLOCKED", "KOREAN"}
+        for qa_row in range(2, qa_ws.max_row + 1):
+            status_val = qa_ws.cell(row=qa_row, column=qa_status_col).value
+            if status_val and str(status_val).strip().upper() in valid_statuses:
+                rows_to_process.append(qa_row)
+        print(f"      [OPTIMIZATION] {len(rows_to_process)} rows with STATUS (skipping {qa_ws.max_row - 1 - len(rows_to_process)} empty rows)")
+    else:
+        # Non-Script categories: process all rows
+        rows_to_process = list(range(2, qa_ws.max_row + 1))
+
     # Process each row using CONTENT-BASED MATCHING
-    for qa_row in range(2, qa_ws.max_row + 1):
+    for qa_row in rows_to_process:
         # Skip empty rows - check column 1 (first column always has data if row is valid)
         first_col_value = qa_ws.cell(row=qa_row, column=1).value
         if first_col_value is None or str(first_col_value).strip() == "":

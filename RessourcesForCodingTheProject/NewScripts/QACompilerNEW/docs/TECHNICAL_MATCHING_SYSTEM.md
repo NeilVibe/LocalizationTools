@@ -131,6 +131,85 @@ manager_status = {
 - Primary: `INSTRUCTIONS` column value (col 2)
 - No fallback
 
+### Script-Type Categories (Sequencer, Dialog)
+
+**Stage 1 Keys:**
+- Primary: `(Translation, EventName)` - Both must match
+- Fallback: `EventName ONLY` (NOT Translation only - different from standard!)
+
+**Column Detection:** ALL columns found BY NAME (not position):
+- Translation: `"Text"` column header
+- StringID: `"EventName"` column header (EventName = STRINGID for Script-type)
+- Status: `"STATUS"` column header
+- Comment: `"MEMO"` column header (maps to COMMENT)
+- No SCREENSHOT column
+
+**Why EventName-only fallback?** EventName is the true unique identifier for Script data. If translation text changes but EventName stays same, it's the same row.
+
+---
+
+## Script-Type Preprocessing Optimization
+
+**Problem:** Sequencer/Dialog files have 10,000+ rows, but only ~100-500 have been checked (have STATUS).
+
+**Solution:** Preprocess to build universe of ACTIVE rows only.
+
+### Preprocessing Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  preprocess_script_category()                                       │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. Scan ALL QA files for the category (all testers)                │
+│  2. Find columns BY NAME: Text, EventName, STATUS, MEMO             │
+│  3. Collect rows with STATUS in {ISSUE, NO ISSUE, BLOCKED, KOREAN}  │
+│  4. Build universe: {(eventname, text): {data + sources}}           │
+│  5. Return: {rows: {...}, row_count: N, source_files: M}            │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              v
+┌─────────────────────────────────────────────────────────────────────┐
+│  create_filtered_script_template()                                  │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. Load most recent QA file for column STRUCTURE                   │
+│  2. Create new workbook with same headers (ALL columns)             │
+│  3. For each row in universe:                                       │
+│     - Try to copy from template file (full row)                     │
+│     - If not found: fetch from SOURCE file (full row)               │
+│  4. Save as temp file                                               │
+│  5. Return filtered template path                                   │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              v
+┌─────────────────────────────────────────────────────────────────────┐
+│  Master created from filtered template                              │
+│  Contains ONLY rows with STATUS (active rows)                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Processing Optimization
+
+In `process_sheet()`, Script-type categories pre-filter rows:
+
+```python
+if is_script and qa_status_col:
+    # Only process rows with valid STATUS
+    rows_to_process = [row for row in range(2, max_row+1)
+                       if status_val in VALID_STATUSES]
+else:
+    # Other categories: process all rows
+    rows_to_process = list(range(2, max_row+1))
+```
+
+### Performance
+
+| Metric | Without Optimization | With Optimization |
+|--------|---------------------|-------------------|
+| Rows processed | 10,000 | 100 (only active) |
+| Template size | 10,000 rows | 100 rows |
+| Matching operations | 10,000 | 100 |
+| Memory usage | High | Low |
+
 ---
 
 ## Key Functions

@@ -230,17 +230,25 @@ TRANSLATION_COLS = {
     "Dialog": {"eng": 2, "other": 3},     # Text column → Master_Script
 }
 
-# Script-type category column mapping (applies to Sequencer and Dialog)
-# Uses unique matching: Primary = Text + EventName, Fallback = EventName ONLY
+# =============================================================================
+# SCRIPT-TYPE CATEGORIES (Sequencer, Dialog)
+# =============================================================================
+# Script-type categories are special:
+# - ALL columns detected BY NAME (not position) using find_column_by_header()
+# - Unique matching: Primary = (Text, EventName), Fallback = EventName ONLY
+# - MEMO column maps to COMMENT (no separate COMMENT column)
+# - NO SCREENSHOT column
+# - Preprocessing optimization: Only rows with STATUS are processed
+
 SCRIPT_COLS = {
-    "translation": "Text",       # Column header for translation text
-    "stringid": "EventName",     # Column header for StringID (EventName)
-    "status": "STATUS",          # Status column
-    "comment": "MEMO",           # MEMO maps to COMMENT for Script-type categories
-    # NO SCREENSHOT column for Script-type categories
+    "translation": "Text",       # Column NAME for text content (found by header search)
+    "stringid": "EventName",     # Column NAME for unique ID (EventName = STRINGID)
+    "status": "STATUS",          # Column NAME for tester status
+    "comment": "MEMO",           # Column NAME for comments (MEMO maps to COMMENT)
+    # NO SCREENSHOT for Script-type
 }
 
-# Categories that use Script-type matching logic (MEMO, EventName, no screenshots)
+# Categories that use Script-type logic (preprocessing + name-based columns)
 SCRIPT_TYPE_CATEGORIES = {"sequencer", "dialog"}
 
 # Item description columns (for stricter Item matching)

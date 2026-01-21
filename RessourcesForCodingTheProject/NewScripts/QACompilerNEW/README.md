@@ -266,6 +266,86 @@ Script Excel layout: `EventName | Text | Translation | STATUS | MEMO` (no SCREEN
 - Primary: Translation (Text) + EventName (both must match)
 - Fallback: EventName ONLY (not Translation only like other categories)
 
+## Script-Type Optimization (Sequencer/Dialog)
+
+Sequencer and Dialog files can have **thousands of rows** (10,000+), but only a fraction have been checked (have STATUS). The compiler includes a **preprocessing optimization** that dramatically speeds up master file creation.
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  PREPROCESSING PHASE (Script-type only)                             │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. Scan ALL QA files for the category (all testers)                │
+│  2. Build GLOBAL UNIVERSE of rows WITH STATUS                       │
+│     - Key: (EventName, Text)                                        │
+│     - Only rows with ISSUE/NO ISSUE/BLOCKED/KOREAN                  │
+│  3. Create FILTERED TEMPLATE containing only active rows            │
+│     - Full row data preserved (all columns)                         │
+│     - Fetches from source files when needed                         │
+│  4. Master built from filtered template (clean, no empty rows)      │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  PROCESSING PHASE (also optimized)                                  │
+├─────────────────────────────────────────────────────────────────────┤
+│  - For each QA file, SKIP rows without STATUS before matching       │
+│  - Only rows with STATUS are processed                              │
+│  - Prints: "[OPTIMIZATION] 100 rows with STATUS (skipping 9900)"    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Column Detection (Script-type)
+
+**ALL columns are detected BY NAME, not position:**
+
+| Column | Config Key | Header Name | Purpose |
+|--------|------------|-------------|---------|
+| Translation | `translation` | `Text` | Text content for matching |
+| StringID | `stringid` | `EventName` | Unique identifier (EventName = STRINGID) |
+| Status | `status` | `STATUS` | Tester status |
+| Comment | `comment` | `MEMO` | Tester notes (MEMO maps to COMMENT) |
+
+**No SCREENSHOT column** for Script-type categories.
+
+### Category Clustering
+
+Both Sequencer and Dialog merge into `Master_Script.xlsx`:
+
+```
+Sequencer QA files  ─┐                    ┌─ Sequencer sheet(s)
+                     ├──► Master_Script.xlsx ─┤
+Dialog QA files     ─┘                    └─ Dialog sheet(s)
+```
+
+Processing order:
+1. **Sequencer**: Preprocessed → filtered template → creates Master_Script.xlsx
+2. **Dialog**: Preprocessed → filtered template → appends to Master_Script.xlsx
+
+### Performance Impact
+
+| Scenario | Without Optimization | With Optimization |
+|----------|---------------------|-------------------|
+| 10,000 rows, 100 with STATUS | Process all 10,000 | Process only 100 |
+| Template creation | Full 10,000 row template | 100 row filtered template |
+| Matching operations | 10,000 lookups | 100 lookups |
+
+### Config (`config.py`)
+
+```python
+# Script-type categories (use preprocessing + name-based columns)
+SCRIPT_TYPE_CATEGORIES = {"sequencer", "dialog"}
+
+# Column name mapping for Script-type
+SCRIPT_COLS = {
+    "translation": "Text",       # Column header for text content
+    "stringid": "EventName",     # EventName acts as STRINGID
+    "status": "STATUS",
+    "comment": "MEMO",           # MEMO maps to COMMENT
+    # NO SCREENSHOT for Script-type
+}
+```
+
 ## GUI Layout (1000x1000 window)
 
 ```

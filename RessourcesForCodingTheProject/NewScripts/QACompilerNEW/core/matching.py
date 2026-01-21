@@ -57,6 +57,9 @@ def get_translation_column(category: str, is_english: bool) -> int:
     """
     Get translation column index based on category and language.
 
+    NOTE: For Script-type categories (Sequencer/Dialog), use get_translation_column_by_name()
+    instead, which finds the "Text" column by header name.
+
     Args:
         category: Category name
         is_english: True for English files
@@ -66,6 +69,31 @@ def get_translation_column(category: str, is_english: bool) -> int:
     """
     cols = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3})
     return cols["eng"] if is_english else cols["other"]
+
+
+def get_translation_column_by_name(ws, category: str) -> int:
+    """
+    Get translation column index by searching for column header name.
+
+    For Script-type categories (Sequencer/Dialog), finds the "Text" column.
+    For other categories, falls back to position-based detection.
+
+    Args:
+        ws: Worksheet to search
+        category: Category name
+
+    Returns:
+        Column index (1-based), or None if not found
+    """
+    category_lower = category.lower()
+
+    if category_lower in SCRIPT_TYPE_CATEGORIES:
+        # Script-type: find "Text" column by name
+        text_col = find_column_by_header(ws, SCRIPT_COLS.get("translation", "Text"))
+        return text_col
+
+    # Other categories: not implemented (use position-based)
+    return None
 
 
 def get_item_desc_column(is_english: bool) -> int:
@@ -128,7 +156,11 @@ def extract_qa_row_data(qa_ws, row: int, category: str, is_english: bool) -> Dic
     elif category_lower in SCRIPT_TYPE_CATEGORIES:
         # Sequencer/Dialog: use Translation (Text) + EventName
         # EventName is used as STRINGID and for fallback matching
-        trans_col = get_translation_column(category, is_english)
+        # Use NAME-based detection for "Text" column (not position!)
+        trans_col = get_translation_column_by_name(qa_ws, category)
+        if not trans_col:
+            # Fallback to position if header not found
+            trans_col = get_translation_column(category, is_english)
         translation = str(qa_ws.cell(row, trans_col).value or "").strip()
         # For Script-type, EventName is the primary identifier - find it by header
         eventname_col = find_column_by_header(qa_ws, "EventName")
@@ -222,7 +254,11 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
     elif category_lower in SCRIPT_TYPE_CATEGORIES:
         # Sequencer/Dialog: index by (Translation, EventName) with EventName-only fallback
         # DIFFERENT from standard: Fallback is EventName ONLY, not Translation only
-        trans_col = get_translation_column(category, is_english)
+        # Use NAME-based detection for "Text" column (not position!)
+        trans_col = get_translation_column_by_name(master_ws, category)
+        if not trans_col:
+            # Fallback to position if header not found
+            trans_col = get_translation_column(category, is_english)
         eventname_col = find_column_by_header(master_ws, "EventName")
 
         for row in range(2, master_ws.max_row + 1):
