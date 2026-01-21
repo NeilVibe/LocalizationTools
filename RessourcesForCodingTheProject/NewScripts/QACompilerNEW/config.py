@@ -195,15 +195,18 @@ CATEGORIES = [
     "Help",
     "Gimmick",
     "Contents",
-    "Script",
+    "Sequencer",  # → Master_Script.xlsx
+    "Dialog",     # → Master_Script.xlsx
 ]
 
 # Category clustering: Multiple categories can merge into one master file
 # Key = input category from folder name, Value = target master file category
 CATEGORY_TO_MASTER = {
-    "Skill": "System",   # Skill -> Master_System.xlsx
-    "Help": "System",    # Help (GameAdvice) -> Master_System.xlsx
-    "Gimmick": "Item",   # Gimmick -> Master_Item.xlsx
+    "Skill": "System",      # Skill -> Master_System.xlsx
+    "Help": "System",       # Help (GameAdvice) -> Master_System.xlsx
+    "Gimmick": "Item",      # Gimmick -> Master_Item.xlsx
+    "Sequencer": "Script",  # Sequencer -> Master_Script.xlsx
+    "Dialog": "Script",     # Dialog -> Master_Script.xlsx
     # All others map to themselves (Quest->Quest, Knowledge->Knowledge, etc.)
 }
 
@@ -223,7 +226,22 @@ TRANSLATION_COLS = {
     "Help": {"eng": 2, "other": 3},
     "Gimmick": {"eng": 2, "other": 3},
     "Contents": {"eng": 2, "other": 2},  # INSTRUCTIONS column (matching key, no localization)
+    "Sequencer": {"eng": 2, "other": 3},  # Text column → Master_Script
+    "Dialog": {"eng": 2, "other": 3},     # Text column → Master_Script
 }
+
+# Script-type category column mapping (applies to Sequencer and Dialog)
+# Uses unique matching: Primary = Text + EventName, Fallback = EventName ONLY
+SCRIPT_COLS = {
+    "translation": "Text",       # Column header for translation text
+    "stringid": "EventName",     # Column header for StringID (EventName)
+    "status": "STATUS",          # Status column
+    "comment": "MEMO",           # MEMO maps to COMMENT for Script-type categories
+    # NO SCREENSHOT column for Script-type categories
+}
+
+# Categories that use Script-type matching logic (MEMO, EventName, no screenshots)
+SCRIPT_TYPE_CATEGORIES = {"sequencer", "dialog"}
 
 # Item description columns (for stricter Item matching)
 ITEM_DESC_COLS = {

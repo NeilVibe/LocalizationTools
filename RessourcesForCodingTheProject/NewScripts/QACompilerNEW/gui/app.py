@@ -177,14 +177,27 @@ class QACompilerSuiteGUI:
         )
         tracker_desc.pack(pady=5)
 
-        # Date picker row
+        # Date/Time picker row
         date_frame = ttk.Frame(section6_frame)
         date_frame.pack(fill="x", pady=5)
 
-        ttk.Label(date_frame, text="Set Date (YYYY-MM-DD):").pack(side="left", padx=5)
+        ttk.Label(date_frame, text="Date:").pack(side="left", padx=5)
         self.tracker_date_var = tk.StringVar(value="")
-        date_entry = ttk.Entry(date_frame, textvariable=self.tracker_date_var, width=15)
-        date_entry.pack(side="left", padx=5)
+        date_entry = ttk.Entry(date_frame, textvariable=self.tracker_date_var, width=12)
+        date_entry.pack(side="left", padx=2)
+
+        ttk.Label(date_frame, text="Time:").pack(side="left", padx=5)
+        self.tracker_time_var = tk.StringVar(value="12:00")
+        time_entry = ttk.Entry(date_frame, textvariable=self.tracker_time_var, width=6)
+        time_entry.pack(side="left", padx=2)
+
+        most_recent_btn = ttk.Button(
+            date_frame,
+            text="Most Recent",
+            command=self._set_most_recent_datetime,
+            width=12
+        )
+        most_recent_btn.pack(side="left", padx=5)
 
         set_date_btn = ttk.Button(
             date_frame,
@@ -193,8 +206,6 @@ class QACompilerSuiteGUI:
             width=15
         )
         set_date_btn.pack(side="left", padx=5)
-
-        ttk.Label(date_frame, text="(Select folder to update)").pack(side="left", padx=5)
 
         tracker_btn = ttk.Button(
             section6_frame,
@@ -547,24 +558,41 @@ class QACompilerSuiteGUI:
         self._set_status("Localization failed - check console")
         messagebox.showerror("Error", f"System localization failed:\n{error_msg}")
 
+    def _set_most_recent_datetime(self):
+        """Set date/time fields to current system datetime."""
+        from datetime import datetime
+        now = datetime.now()
+        self.tracker_date_var.set(now.strftime("%Y-%m-%d"))
+        self.tracker_time_var.set(now.strftime("%H:%M"))
+
     def _do_set_file_dates(self):
         """Set LastWriteTime on all xlsx files in a selected folder."""
         from tkinter import filedialog
         import os
 
         date_str = self.tracker_date_var.get().strip()
+        time_str = self.tracker_time_var.get().strip()
 
         if not date_str:
             messagebox.showwarning("No Date", "Please enter a date (YYYY-MM-DD)")
             return
 
-        # Validate date format
+        # Default time if not provided
+        if not time_str:
+            time_str = "12:00"
+
+        # Validate datetime format
         try:
             from datetime import datetime
-            target_date = datetime.strptime(date_str, "%Y-%m-%d")
-            target_timestamp = target_date.timestamp()
+            datetime_str = f"{date_str} {time_str}"
+            target_datetime = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
+            target_timestamp = target_datetime.timestamp()
         except ValueError:
-            messagebox.showerror("Invalid Date", f"Invalid date format: {date_str}\nUse YYYY-MM-DD (e.g., 2025-01-18)")
+            messagebox.showerror(
+                "Invalid Date/Time",
+                f"Invalid format: {date_str} {time_str}\n"
+                "Use YYYY-MM-DD HH:MM (e.g., 2025-01-18 14:30)"
+            )
             return
 
         # Ensure TrackerUpdateFolder exists
