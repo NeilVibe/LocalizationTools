@@ -164,42 +164,109 @@ jobs:
           pyinstaller LanguageDataExporter.spec --clean
           echo "PyInstaller build complete"
 
-      - name: Create working folders
+      - name: Create output directory and working folders
         run: |
-          cd ${{ env.PROJECT_PATH }}/dist/LanguageDataExporter
-          mkdir -p GeneratedExcel
-          echo "Working folders created"
+          $projectPath = "${{ env.PROJECT_PATH }}"
+          $distPath = "$projectPath\dist\LanguageDataExporter"
+
+          # Create centralized output directory for all artifacts
+          New-Item -ItemType Directory -Path "$projectPath\installer_output" -Force
+
+          # Create working folders in dist (for portable ZIP)
+          $workingFolders = @("GeneratedExcel")
+          foreach ($folder in $workingFolders) {
+            $path = "$distPath\$folder"
+            New-Item -ItemType Directory -Path $path -Force | Out-Null
+            New-Item -ItemType File -Path "$path\.gitkeep" -Force | Out-Null
+          }
+
+          Write-Host "Working folders created with .gitkeep files"
 
       - name: Build Inno Setup installer
         run: |
-          # Download and install Inno Setup
           choco install innosetup -y
 
-          # Build installer
-          cd ${{ env.PROJECT_PATH }}
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=${{ env.VERSION }} installer/LanguageDataExporter.iss
+          $projectPath = "${{ env.PROJECT_PATH }}"
+          $version = "${{ env.VERSION }}"
+          $issPath = "$projectPath\installer\LanguageDataExporter.iss"
+          $outputDir = "$projectPath\installer_output"
 
-          echo "Installer built successfully"
+          # Build installer with version and output directory
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$version /O"$outputDir" $issPath
+
+          # Rename output to include version
+          $installerFile = Get-ChildItem -Path $outputDir -Filter "*.exe" | Select-Object -First 1
+          if ($installerFile) {
+            $newName = "LanguageDataExporter_v${version}_Setup.exe"
+            Rename-Item -Path $installerFile.FullName -NewName $newName
+            Write-Host "Installer: $newName"
+          }
 
       - name: Create portable ZIP
         run: |
-          cd ${{ env.PROJECT_PATH }}/dist
-          Compress-Archive -Path LanguageDataExporter -DestinationPath "LanguageDataExporter_v${{ env.VERSION }}_Portable.zip"
+          $version = "${{ env.VERSION }}"
+          $projectPath = "${{ env.PROJECT_PATH }}"
+          $distPath = "$projectPath\dist\LanguageDataExporter"
+          $zipPath = "$projectPath\installer_output\LanguageDataExporter_v${version}_Portable.zip"
+
+          # Create portable ZIP from dist folder
+          Compress-Archive -Path "$distPath\*" -DestinationPath $zipPath -Force
+
+          $size = (Get-Item $zipPath).Length / 1MB
+          Write-Host "Portable ZIP: $([math]::Round($size, 1)) MB"
 
       - name: Create source ZIP
         run: |
-          cd ${{ env.PROJECT_PATH }}
-          # Create source archive excluding build artifacts
-          $exclude = @('dist', 'build', '__pycache__', '*.pyc', '.git')
-          Get-ChildItem -Exclude $exclude | Compress-Archive -DestinationPath "dist/LanguageDataExporter_v${{ env.VERSION }}_Source.zip"
+          $version = "${{ env.VERSION }}"
+          $projectPath = "${{ env.PROJECT_PATH }}"
+          $zipPath = "$projectPath\installer_output\LanguageDataExporter_v${version}_Source.zip"
 
-      - name: Upload artifacts
+          # Create temp directory for clean source
+          $tempDir = New-Item -ItemType Directory -Path "$env:TEMP\LDE_Source" -Force
+          $excludes = @("dist", "build", "__pycache__", "*.pyc", "installer_output", ".pytest_cache")
+
+          # Copy source files excluding build artifacts
+          Get-ChildItem -Path $projectPath -Exclude $excludes | Copy-Item -Destination $tempDir -Recurse -Force
+
+          # Remove any __pycache__ directories that got copied
+          Get-ChildItem -Path $tempDir -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+          # Create working folders in source bundle
+          $sourceFolders = @("GeneratedExcel")
+          foreach ($folder in $sourceFolders) {
+            $path = "$tempDir\$folder"
+            New-Item -ItemType Directory -Path $path -Force | Out-Null
+            New-Item -ItemType File -Path "$path\.gitkeep" -Force | Out-Null
+          }
+
+          # Create source ZIP
+          Compress-Archive -Path "$tempDir\*" -DestinationPath $zipPath -Force
+
+          # Cleanup temp directory
+          Remove-Item -Path $tempDir -Recurse -Force
+
+          $size = (Get-Item $zipPath).Length / 1MB
+          Write-Host "Source ZIP: $([math]::Round($size, 1)) MB"
+
+      - name: Upload Setup artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LanguageDataExporter-v${{ env.VERSION }}
-          path: |
-            ${{ env.PROJECT_PATH }}/dist/*.exe
-            ${{ env.PROJECT_PATH }}/dist/*.zip
+          name: LanguageDataExporter-Setup
+          path: ${{ env.PROJECT_PATH }}/installer_output/*_Setup.exe
+          retention-days: 30
+
+      - name: Upload Portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LanguageDataExporter-Portable
+          path: ${{ env.PROJECT_PATH }}/installer_output/*_Portable.zip
+          retention-days: 30
+
+      - name: Upload Source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LanguageDataExporter-Source
+          path: ${{ env.PROJECT_PATH }}/installer_output/*_Source.zip
           retention-days: 30
 
       - name: Create GitHub Release
@@ -221,7 +288,7 @@ jobs:
 
             ### Downloads
             - **Setup.exe**: Installer with drive selection
-            - **Portable.zip**: Standalone executable
+            - **Portable.zip**: Standalone executable with working folders
             - **Source.zip**: Python source code
 
             ### STORY Categories (VRS-ordered)
@@ -230,9 +297,8 @@ jobs:
             ### GAME_DATA Categories
             - Item, Quest, Character, Gimmick, Skill, Knowledge, Faction, UI, Region, System_Misc
           files: |
-            ${{ env.PROJECT_PATH }}/dist/LanguageDataExporter_v${{ env.VERSION }}_Setup.exe
-            ${{ env.PROJECT_PATH }}/dist/LanguageDataExporter_v${{ env.VERSION }}_Portable.zip
-            ${{ env.PROJECT_PATH }}/dist/LanguageDataExporter_v${{ env.VERSION }}_Source.zip
+            ${{ env.PROJECT_PATH }}/installer_output/*.exe
+            ${{ env.PROJECT_PATH }}/installer_output/*.zip
           draft: false
           prerelease: false
         env:
