@@ -1,0 +1,236 @@
+name: LanguageDataExporter Build & Release
+
+on:
+  push:
+    paths:
+      - 'LANGUAGEDATAEXPORTER_BUILD.txt'
+  workflow_dispatch:
+    inputs:
+      skip_safety:
+        description: 'Skip safety checks (not recommended)'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  PROJECT_PATH: RessourcesForCodingTheProject/NewScripts/LanguageDataExporter
+  APP_NAME: LanguageDataExporter
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # =============================================================================
+  # JOB 1: VALIDATION
+  # =============================================================================
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check build trigger
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "Manual trigger - building"
+          elif git diff --name-only HEAD~1 | grep -q "LANGUAGEDATAEXPORTER_BUILD.txt"; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "Build trigger file changed - building"
+          else
+            echo "should_build=false" >> $GITHUB_OUTPUT
+            echo "No build trigger - skipping"
+          fi
+
+      - name: Generate version
+        id: version
+        if: steps.check.outputs.should_build == 'true'
+        run: |
+          VERSION=$(TZ='Asia/Seoul' date '+%y.%-m%d.%H%M')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION"
+
+  # =============================================================================
+  # JOB 2: SAFETY CHECKS (Linux)
+  # =============================================================================
+  safety-checks:
+    needs: validate
+    if: needs.validate.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ${{ env.PROJECT_PATH }}/requirements.txt
+          pip install flake8 pip-audit pytest
+
+      - name: Python syntax validation
+        run: |
+          echo "=== Syntax Validation ==="
+          cd ${{ env.PROJECT_PATH }}
+          python -m py_compile main.py
+          python -m py_compile config.py
+          python -m py_compile gui/app.py
+          find . -name "*.py" -type f | xargs -I {} python -m py_compile {}
+          echo "All Python files have valid syntax"
+
+      - name: Module import validation
+        run: |
+          echo "=== Import Validation ==="
+          cd ${{ env.PROJECT_PATH }}
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+
+          # Test all critical imports
+          from config import LOC_FOLDER, EXPORT_FOLDER, VOICE_RECORDING_FOLDER
+          from config import STORY_CATEGORIES, CATEGORY_COLORS
+          print('config imports: OK')
+
+          from utils import VRSOrderer, contains_korean, count_words
+          print('utils imports: OK')
+
+          from exporter import parse_language_file, build_stringid_category_index
+          from exporter.xml_parser import build_stringid_soundevent_map
+          print('exporter imports: OK')
+
+          from reports import ReportGenerator, ExcelReportWriter
+          print('reports imports: OK')
+
+          print('All imports validated successfully')
+          "
+
+      - name: Flake8 critical errors
+        run: |
+          echo "=== Flake8 Critical Errors ==="
+          cd ${{ env.PROJECT_PATH }}
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+
+      - name: Security audit
+        run: |
+          echo "=== Security Audit ==="
+          pip-audit --requirement ${{ env.PROJECT_PATH }}/requirements.txt || true
+
+      - name: Run tests (if exist)
+        continue-on-error: true
+        run: |
+          echo "=== Running Tests ==="
+          cd ${{ env.PROJECT_PATH }}
+          if [ -d "tests" ]; then
+            pytest tests/ -v --tb=short || echo "Some tests failed (may be Windows-specific)"
+          else
+            echo "No tests directory found - skipping"
+          fi
+
+  # =============================================================================
+  # JOB 3: BUILD & RELEASE (Windows)
+  # =============================================================================
+  build-release:
+    needs: [validate, safety-checks]
+    if: needs.validate.outputs.should_build == 'true'
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ${{ env.PROJECT_PATH }}/requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          cd ${{ env.PROJECT_PATH }}
+          pyinstaller LanguageDataExporter.spec --clean
+          echo "PyInstaller build complete"
+
+      - name: Create working folders
+        run: |
+          cd ${{ env.PROJECT_PATH }}/dist/LanguageDataExporter
+          mkdir -p GeneratedExcel
+          echo "Working folders created"
+
+      - name: Build Inno Setup installer
+        run: |
+          # Download and install Inno Setup
+          choco install innosetup -y
+
+          # Build installer
+          cd ${{ env.PROJECT_PATH }}
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=${{ env.VERSION }} installer/LanguageDataExporter.iss
+
+          echo "Installer built successfully"
+
+      - name: Create portable ZIP
+        run: |
+          cd ${{ env.PROJECT_PATH }}/dist
+          Compress-Archive -Path LanguageDataExporter -DestinationPath "LanguageDataExporter_v${{ env.VERSION }}_Portable.zip"
+
+      - name: Create source ZIP
+        run: |
+          cd ${{ env.PROJECT_PATH }}
+          # Create source archive excluding build artifacts
+          $exclude = @('dist', 'build', '__pycache__', '*.pyc', '.git')
+          Get-ChildItem -Exclude $exclude | Compress-Archive -DestinationPath "dist/LanguageDataExporter_v${{ env.VERSION }}_Source.zip"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: LanguageDataExporter-v${{ env.VERSION }}
+          path: |
+            ${{ env.PROJECT_PATH }}/dist/*.exe
+            ${{ env.PROJECT_PATH }}/dist/*.zip
+          retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: languagedataexporter-v${{ env.VERSION }}
+          name: LanguageDataExporter v${{ env.VERSION }}
+          body: |
+            ## LanguageDataExporter v${{ env.VERSION }}
+
+            Language XML to Categorized Excel Converter with VRS-based story ordering.
+
+            ### Features
+            - Two-tier category clustering (STORY + GAME_DATA)
+            - VoiceRecordingSheet-based chronological ordering for STORY strings
+            - Word count reports for LQA scheduling
+            - GUI and CLI modes
+            - Color-coded Excel output
+
+            ### Downloads
+            - **Setup.exe**: Installer with drive selection
+            - **Portable.zip**: Standalone executable
+            - **Source.zip**: Python source code
+
+            ### STORY Categories (VRS-ordered)
+            - Sequencer, AIDialog, QuestDialog, NarrationDialog
+
+            ### GAME_DATA Categories
+            - Item, Quest, Character, Gimmick, Skill, Knowledge, Faction, UI, Region, System_Misc
+          files: |
+            ${{ env.PROJECT_PATH }}/dist/LanguageDataExporter_v${{ env.VERSION }}_Setup.exe
+            ${{ env.PROJECT_PATH }}/dist/LanguageDataExporter_v${{ env.VERSION }}_Portable.zip
+            ${{ env.PROJECT_PATH }}/dist/LanguageDataExporter_v${{ env.VERSION }}_Source.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

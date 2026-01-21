@@ -2,17 +2,28 @@
 Excel Writer for categorized language data.
 
 Generates Excel files with openpyxl, styled with headers and proper column widths.
+STORY category strings are ordered by VoiceRecordingSheet EventName for
+chronological story order.
 """
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TYPE_CHECKING
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
 
+if TYPE_CHECKING:
+    from utils.vrs_ordering import VRSOrderer
+
 logger = logging.getLogger(__name__)
+
+# Import STORY_CATEGORIES from config
+try:
+    from config import STORY_CATEGORIES
+except ImportError:
+    STORY_CATEGORIES = ["Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"]
 
 # Excel styling constants
 HEADER_FONT = Font(bold=True, size=11)
@@ -53,6 +64,66 @@ def _set_column_widths(ws, headers: List[str]):
         ws.column_dimensions[col_letter].width = width
 
 
+def _sort_entries_for_output(
+    entries: List[Dict],
+    category_index: Dict[str, str],
+    default_category: str,
+    vrs_orderer: Optional["VRSOrderer"] = None,
+    stringid_to_soundevent: Optional[Dict[str, str]] = None,
+) -> List[Dict]:
+    """
+    Sort entries for Excel output.
+
+    - STORY categories (Sequencer, AIDialog, QuestDialog, NarrationDialog)
+      are sorted by VoiceRecordingSheet EventName for chronological story order
+    - Other categories are grouped together alphabetically
+
+    Args:
+        entries: Raw language entries
+        category_index: {StringID: Category} mapping
+        default_category: Fallback category
+        vrs_orderer: VRSOrderer for story ordering
+        stringid_to_soundevent: {StringID: SoundEventName} mapping
+
+    Returns:
+        Sorted list of entries
+    """
+    if not vrs_orderer or not vrs_orderer.loaded or not stringid_to_soundevent:
+        # No VRS ordering available - just sort by category name
+        return sorted(entries, key=lambda e: category_index.get(e.get("string_id", ""), default_category))
+
+    # Separate STORY and non-STORY entries
+    story_entries = []
+    other_entries = []
+
+    for entry in entries:
+        string_id = entry.get("string_id", "")
+        category = category_index.get(string_id, default_category)
+
+        if category in STORY_CATEGORIES:
+            story_entries.append(entry)
+        else:
+            other_entries.append(entry)
+
+    # Sort STORY entries by VRS order (chronological story order)
+    def story_sort_key(entry):
+        string_id = entry.get("string_id", "")
+        category = category_index.get(string_id, default_category)
+        sound_event = stringid_to_soundevent.get(string_id, "")
+        vrs_position = vrs_orderer.get_position(sound_event)
+        # Sort by: category order, then VRS position
+        cat_order = STORY_CATEGORIES.index(category) if category in STORY_CATEGORIES else 999
+        return (cat_order, vrs_position)
+
+    sorted_story = sorted(story_entries, key=story_sort_key)
+
+    # Sort other entries by category name
+    sorted_other = sorted(other_entries, key=lambda e: category_index.get(e.get("string_id", ""), default_category))
+
+    # STORY entries first, then other categories
+    return sorted_story + sorted_other
+
+
 def write_language_excel(
     lang_code: str,
     lang_data: List[Dict],
@@ -60,10 +131,15 @@ def write_language_excel(
     category_index: Dict[str, str],
     output_path: Path,
     include_english: bool = True,
-    default_category: str = "Uncategorized"
+    default_category: str = "Uncategorized",
+    vrs_orderer: Optional["VRSOrderer"] = None,
+    stringid_to_soundevent: Optional[Dict[str, str]] = None,
 ) -> bool:
     """
     Write Excel file for one language.
+
+    STORY category strings (Sequencer, AIDialog, QuestDialog, NarrationDialog)
+    are sorted by VoiceRecordingSheet EventName for chronological story order.
 
     Args:
         lang_code: Language code (e.g., "eng", "fre")
@@ -73,6 +149,8 @@ def write_language_excel(
         output_path: Path to output Excel file
         include_english: Whether to include English column
         default_category: Category for unmapped StringIDs
+        vrs_orderer: VRSOrderer for story ordering (optional)
+        stringid_to_soundevent: {StringID: SoundEventName} mapping (optional)
 
     Returns:
         True if successful, False otherwise
@@ -101,9 +179,18 @@ def write_language_excel(
         _apply_header_style(ws)
         _set_column_widths(ws, headers)
 
+        # Sort data: STORY categories by VRS order, others alphabetically by category
+        sorted_data = _sort_entries_for_output(
+            lang_data,
+            category_index,
+            default_category,
+            vrs_orderer,
+            stringid_to_soundevent,
+        )
+
         # Write data rows
         row_num = 2
-        for entry in lang_data:
+        for entry in sorted_data:
             string_id = entry.get('string_id', '')
             str_origin = entry.get('str_origin', '')
             str_value = entry.get('str', '')

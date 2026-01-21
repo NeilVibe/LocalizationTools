@@ -159,3 +159,84 @@ def parse_export_file(xml_path: Path) -> List[str]:
     except Exception as e:
         logger.warning(f"Error parsing EXPORT file {xml_path}: {e}")
         return []
+
+
+def parse_export_with_soundevent(xml_path: Path) -> List[Dict]:
+    """
+    Parse an EXPORT .loc.xml file and extract StringID with SoundEventName.
+
+    Used for VoiceRecordingSheet ordering of STORY strings.
+
+    Args:
+        xml_path: Path to the .loc.xml file
+
+    Returns:
+        List of dicts with {"string_id", "sound_event"} for entries that have SoundEventName
+    """
+    if not xml_path.exists():
+        logger.warning(f"EXPORT file not found: {xml_path}")
+        return []
+
+    try:
+        content = xml_path.read_text(encoding='utf-8')
+        content = sanitize_xml_content(content)
+        root = ET.fromstring(content)
+
+        results = []
+
+        for elem in root.iter():
+            string_id = elem.get('StringID') or elem.get('StringId')
+            sound_event = elem.get('SoundEventName')
+
+            if string_id and sound_event:
+                results.append({
+                    'string_id': string_id.strip(),
+                    'sound_event': sound_event.strip(),
+                })
+
+        return results
+
+    except ET.ParseError as e:
+        logger.warning(f"XML parse error in EXPORT file {xml_path}: {e}")
+        return []
+    except Exception as e:
+        logger.warning(f"Error parsing EXPORT file {xml_path}: {e}")
+        return []
+
+
+def build_stringid_soundevent_map(export_folder: Path) -> Dict[str, str]:
+    """
+    Build a mapping of StringID to SoundEventName from EXPORT folder.
+
+    Only includes entries that have a SoundEventName (voiced lines).
+
+    Args:
+        export_folder: Path to EXPORT folder
+
+    Returns:
+        {StringID: SoundEventName} mapping
+    """
+    if not export_folder.exists():
+        logger.error(f"EXPORT folder not found: {export_folder}")
+        return {}
+
+    stringid_to_soundevent: Dict[str, str] = {}
+
+    # Only scan Dialog and Sequencer folders (STORY content)
+    story_folders = ["Dialog", "Sequencer"]
+
+    for folder in story_folders:
+        folder_path = export_folder / folder
+        if not folder_path.exists():
+            continue
+
+        for xml_file in folder_path.rglob("*.loc.xml"):
+            entries = parse_export_with_soundevent(xml_file)
+            for entry in entries:
+                sid = entry['string_id']
+                snd = entry['sound_event']
+                if sid not in stringid_to_soundevent:
+                    stringid_to_soundevent[sid] = snd
+
+    logger.info(f"Built {len(stringid_to_soundevent)} StringID → SoundEventName mappings")
+    return stringid_to_soundevent

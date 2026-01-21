@@ -3,12 +3,17 @@ Exporter package for Language XML to Categorized Excel Converter.
 
 Modules:
 - xml_parser: Parse languagedata_*.xml files
-- category_mapper: Build StringID → Category from EXPORT folder
+- category_mapper: Build StringID → Category from EXPORT folder (two-tier clustering)
 - excel_writer: Generate Excel files with openpyxl
 """
 
 from .xml_parser import parse_language_file, discover_language_files
-from .category_mapper import build_stringid_category_index, load_cluster_config
+from .category_mapper import (
+    build_stringid_category_index,
+    load_cluster_config,
+    analyze_categories,
+    TwoTierCategoryMapper,
+)
 from .excel_writer import write_language_excel
 
 __all__ = [
@@ -16,5 +21,7 @@ __all__ = [
     "discover_language_files",
     "build_stringid_category_index",
     "load_cluster_config",
+    "analyze_categories",
+    "TwoTierCategoryMapper",
     "write_language_excel",
 ]

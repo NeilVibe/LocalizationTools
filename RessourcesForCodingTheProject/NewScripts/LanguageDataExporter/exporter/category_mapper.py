@@ -1,8 +1,9 @@
 """
 Category Mapper for EXPORT folder structure.
 
-Scans the EXPORT folder and builds a StringID → Category mapping
-based on folder structure. Auto-discovers folder names as categories.
+Implements two-tier clustering algorithm:
+- Tier 1 (STORY): Dialog and Sequencer with fine-grained categories
+- Tier 2 (GAME_DATA): System/World/None/Platform with keyword clustering
 """
 
 import json
@@ -17,123 +18,225 @@ logger = logging.getLogger(__name__)
 
 def load_cluster_config(config_path: Path) -> Dict:
     """
-    Load optional category cluster configuration from JSON file.
+    Load category cluster configuration from JSON file.
 
-    The config is OPTIONAL - if not present or empty, folder names
-    are used directly as categories.
+    The config controls the two-tier clustering behavior:
+    - enabled: Whether to use two-tier clustering
+    - tiers: Tier-specific settings
+    - default_category: Fallback for unmapped files
 
     Args:
         config_path: Path to category_clusters.json
 
     Returns:
-        Dictionary with:
-        - clusters: {category_name: [folder_paths]} (optional overrides)
-        - default_category: fallback category name
+        Dictionary with clustering configuration
     """
     if not config_path.exists():
-        logger.info("No cluster config found. Using auto-discovery (folder names = categories)")
+        logger.info("No cluster config found. Using two-tier clustering with defaults.")
         return {
-            "clusters": {},
-            "default_category": "Uncategorized"
+            "enabled": True,
+            "default_category": "Uncategorized",
+            "tiers": {}
         }
 
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
 
-        # Validate required fields
-        if "clusters" not in config:
-            config["clusters"] = {}
-        if "default_category" not in config:
-            config["default_category"] = "Uncategorized"
+        # Ensure required fields
+        config.setdefault("enabled", True)
+        config.setdefault("default_category", "Uncategorized")
+        config.setdefault("tiers", {})
 
-        if config["clusters"]:
-            logger.info(f"Loaded cluster config with {len(config['clusters'])} category overrides")
-        else:
-            logger.info("Cluster config empty. Using auto-discovery (folder names = categories)")
-
+        logger.info(f"Loaded cluster config: two-tier={config.get('enabled', True)}")
         return config
 
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON in cluster config: {e}")
-        return {"clusters": {}, "default_category": "Uncategorized"}
+        return {"enabled": True, "default_category": "Uncategorized", "tiers": {}}
     except Exception as e:
         logger.error(f"Error loading cluster config: {e}")
-        return {"clusters": {}, "default_category": "Uncategorized"}
+        return {"enabled": True, "default_category": "Uncategorized", "tiers": {}}
 
 
-def _build_folder_to_category_map(clusters: Dict[str, List[str]]) -> Dict[str, str]:
+class TwoTierCategoryMapper:
     """
-    Build a reverse mapping from folder path to category (for overrides only).
+    Maps EXPORT files to categories using two-tier clustering.
 
-    Args:
-        clusters: {category_name: [folder_paths]}
+    Tier 1 (STORY): 4 categories ordered by VoiceRecordingSheet
+    - Sequencer: All sequencer files (story cutscenes)
+    - AIDialog: Ambient/NPC dialog
+    - QuestDialog: Quest-related dialog
+    - NarrationDialog: Narration/tutorial text
 
-    Returns:
-        {folder_path: category_name}
+    Tier 2 (GAME_DATA): Keyword-based clustering
+    - Item, Quest, Character, Gimmick, Skill, Knowledge, Faction, UI, Region, System_Misc
     """
-    folder_to_category = {}
 
-    for category, folders in clusters.items():
-        for folder in folders:
-            # Normalize folder path (use forward slashes)
-            normalized = folder.replace('\\', '/').strip('/')
-            folder_to_category[normalized] = category
-            folder_to_category[normalized.lower()] = category  # Case-insensitive lookup
+    # Dialog subfolder → simplified STORY category
+    # Maps to the 4 STORY categories from config
+    DIALOG_CATEGORIES = {
+        "aidialog": "AIDialog",
+        "narrationdialog": "NarrationDialog",
+        "questdialog": "QuestDialog",
+        "stageclosedialog": "QuestDialog",  # StageClose is quest-related
+    }
 
-    return folder_to_category
+    # GameData keyword patterns (folder, keyword, category)
+    GAMEDATA_PATTERNS = [
+        # Special folder mappings
+        ("folder", "lookat", "Item"),
+        ("folder", "patterndescription", "Item"),
+        # Item-related
+        ("keyword", "item", "Item"),
+        ("keyword", "weapon", "Item"),
+        ("keyword", "armor", "Item"),
+        ("keyword", "itemequip", "Item"),
+        # Quest-related
+        ("folder", "quest", "Quest"),
+        ("keyword", "schedule_", "Quest"),
+        # Character-related
+        ("folder", "character", "Character"),
+        ("folder", "npc", "Character"),
+        ("keyword", "monster", "Character"),
+        ("keyword", "animal", "Character"),
+        # Other categories
+        ("folder", "gimmick", "Gimmick"),
+        ("folder", "skill", "Skill"),
+        ("folder", "knowledge", "Knowledge"),
+        ("folder", "faction", "Faction"),
+        ("folder", "ui", "UI"),
+        ("keyword", "localstringinfo", "UI"),
+        ("keyword", "symboltext", "UI"),
+        ("folder", "region", "Region"),
+    ]
 
+    def __init__(self, export_folder: Path, config: Dict):
+        """
+        Initialize two-tier category mapper.
 
-def _get_category_from_path(file_path: Path, export_folder: Path) -> Optional[str]:
-    """
-    Extract category from file path.
+        Args:
+            export_folder: Root EXPORT folder path
+            config: Cluster configuration dict
+        """
+        self.export_folder = export_folder
+        self.config = config
+        self.default_category = config.get("default_category", "Uncategorized")
+        self.enabled = config.get("enabled", True)
 
-    AUTO-DISCOVERY LOGIC:
-    - Use the TOP-LEVEL folder name as the category
-    - e.g., EXPORT/Character/npc.loc.xml → "Character"
-    - e.g., EXPORT/System/Quest/main.loc.xml → "System"
-    - Files directly in EXPORT root → None (will use default)
+    def get_category(self, file_path: Path) -> str:
+        """
+        Get category for a file using two-tier clustering.
 
-    Args:
-        file_path: Absolute path to the file
-        export_folder: Root EXPORT folder
+        Args:
+            file_path: Path to the .loc.xml file
 
-    Returns:
-        Category name (top-level folder) or None if in root
-    """
-    try:
-        relative = file_path.relative_to(export_folder)
+        Returns:
+            Category string
+        """
+        if not self.enabled:
+            # Fall back to simple top-level folder
+            return self._get_simple_category(file_path)
+
+        # Get relative path
+        try:
+            if file_path.is_absolute():
+                relative = file_path.relative_to(self.export_folder)
+            else:
+                relative = file_path
+        except ValueError:
+            return self.default_category
+
         parts = relative.parts
-
-        # Need at least folder + filename
         if len(parts) < 2:
-            return None  # File is in EXPORT root
+            return self.default_category
 
-        # First part is the top-level folder = category
-        return parts[0]
+        top_level = parts[0].lower()
 
-    except ValueError:
-        return None
+        # Tier 1: STORY (Dialog and Sequencer)
+        if top_level == "dialog":
+            return self._categorize_dialog(relative)
+        elif top_level == "sequencer":
+            return self._categorize_sequencer(file_path)
+
+        # Tier 2: GAME_DATA (System, World, None, Platform)
+        return self._categorize_gamedata(relative, file_path)
+
+    def _get_simple_category(self, file_path: Path) -> str:
+        """Get simple category from top-level folder."""
+        try:
+            relative = file_path.relative_to(self.export_folder)
+            parts = relative.parts
+            if len(parts) < 2:
+                return self.default_category
+            return parts[0]
+        except ValueError:
+            return self.default_category
+
+    def _categorize_dialog(self, relative: Path) -> str:
+        """Categorize Dialog files by subfolder."""
+        parts = relative.parts
+        if len(parts) < 3:
+            return "AIDialog"  # Default for dialog without subfolder
+
+        subfolder = parts[1].lower()
+        return self.DIALOG_CATEGORIES.get(subfolder, "AIDialog")
+
+    def _categorize_sequencer(self, file_path: Path) -> str:
+        """
+        Return 'Sequencer' for all sequencer files.
+
+        All sequencer content is grouped together and ordered
+        by VoiceRecordingSheet EventName for chronological story order.
+        """
+        return "Sequencer"
+
+    def _categorize_gamedata(self, relative: Path, file_path: Path) -> str:
+        """Categorize GAME_DATA tier files by keywords."""
+        path_str = str(relative).lower().replace("\\", "/")
+        filename = file_path.name.lower()
+
+        # Remove extension for matching
+        if filename.endswith(".loc.xml"):
+            filename_base = filename[:-8]
+        elif filename.endswith(".xml"):
+            filename_base = filename[:-4]
+        else:
+            filename_base = filename
+
+        # Check patterns
+        for match_type, pattern, category in self.GAMEDATA_PATTERNS:
+            if match_type == "folder":
+                # Check if pattern appears as folder in path
+                if f"/{pattern}/" in path_str or path_str.startswith(f"{pattern}/"):
+                    return category
+                # Also check second-level folder
+                parts = relative.parts
+                if len(parts) >= 2 and parts[1].lower() == pattern:
+                    return category
+            elif match_type == "keyword":
+                # Check if pattern appears anywhere in path or filename
+                if pattern in path_str or pattern in filename_base:
+                    return category
+
+        return "System_Misc"
 
 
 def build_stringid_category_index(
     export_folder: Path,
-    clusters: Dict[str, List[str]],
+    clusters: Dict,
     default_category: str = "Uncategorized"
 ) -> Dict[str, str]:
     """
     Scan EXPORT folder and build StringID → Category mapping.
 
-    AUTO-DISCOVERY ALGORITHM:
-    1. Walk EXPORT folder recursively
-    2. For each .loc.xml file, use TOP-LEVEL folder name as category
-    3. If clusters config has overrides, apply them
-    4. Extract all StringIDs from file
-    5. Assign category to each StringID
+    Uses two-tier clustering algorithm:
+    - Tier 1: Dialog (by folder) and Sequencer (by filename)
+    - Tier 2: GameData (by keywords)
 
     Args:
         export_folder: Path to EXPORT folder
-        clusters: {category_name: [folder_paths]} optional overrides
+        clusters: Cluster configuration (can be legacy format or new format)
         default_category: Category for files in EXPORT root
 
     Returns:
@@ -143,9 +246,18 @@ def build_stringid_category_index(
         logger.error(f"EXPORT folder not found: {export_folder}")
         return {}
 
-    # Build override lookup (if any)
-    override_map = _build_folder_to_category_map(clusters)
-    has_overrides = bool(override_map)
+    # Create mapper (handle both old and new config formats)
+    if isinstance(clusters, dict) and "enabled" in clusters:
+        config = clusters
+    else:
+        # Legacy format - convert to new format
+        config = {
+            "enabled": True,
+            "default_category": default_category,
+            "tiers": {}
+        }
+
+    mapper = TwoTierCategoryMapper(export_folder, config)
 
     # Result: StringID → Category
     stringid_to_category: Dict[str, str] = {}
@@ -161,27 +273,8 @@ def build_stringid_category_index(
     for xml_file in export_folder.rglob("*.loc.xml"):
         stats["files_processed"] += 1
 
-        # AUTO-DISCOVER: Get category from top-level folder name
-        category = _get_category_from_path(xml_file, export_folder)
-
-        if category is None:
-            category = default_category
-        else:
-            # Check for override in clusters config
-            if has_overrides:
-                # Get full relative path for override matching
-                try:
-                    relative = xml_file.relative_to(export_folder)
-                    folder_path = str(relative.parent).replace('\\', '/')
-                    if folder_path in override_map:
-                        category = override_map[folder_path]
-                    elif folder_path.lower() in override_map:
-                        category = override_map[folder_path.lower()]
-                    elif category.lower() in override_map:
-                        category = override_map[category.lower()]
-                except ValueError:
-                    pass
-
+        # Get category using two-tier clustering
+        category = mapper.get_category(xml_file)
         stats["categories_used"].add(category)
 
         # Extract StringIDs from file
@@ -201,7 +294,7 @@ def build_stringid_category_index(
     # Log summary
     logger.info(f"Processed {stats['files_processed']} EXPORT files")
     logger.info(f"Found {stats['stringids_found']} unique StringIDs")
-    logger.info(f"Auto-discovered categories: {sorted(stats['categories_used'])}")
+    logger.info(f"Categories: {sorted(stats['categories_used'])}")
 
     return stringid_to_category
 
@@ -223,3 +316,27 @@ def get_category(
         Category name
     """
     return category_index.get(string_id, default_category)
+
+
+def analyze_categories(export_folder: Path, config: Dict) -> Dict[str, int]:
+    """
+    Analyze EXPORT folder and return category distribution.
+
+    Args:
+        export_folder: Path to EXPORT folder
+        config: Cluster configuration
+
+    Returns:
+        {category: file_count} mapping
+    """
+    if not export_folder.exists():
+        return {}
+
+    mapper = TwoTierCategoryMapper(export_folder, config)
+    category_counts: Dict[str, int] = {}
+
+    for xml_file in export_folder.rglob("*.loc.xml"):
+        category = mapper.get_category(xml_file)
+        category_counts[category] = category_counts.get(category, 0) + 1
+
+    return category_counts

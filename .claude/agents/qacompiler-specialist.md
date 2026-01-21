@@ -101,10 +101,8 @@ QACompilerNEW/
 ## Key Config (config.py)
 
 ```python
-# Perforce paths - MUST match user's drive
-RESOURCE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\StaticInfo")
-LANGUAGE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
-EXPORT_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
+# Drive letter is NOW configurable via settings.json at runtime!
+# Default F: paths in source, but settings.json overrides at runtime
 
 # Categories (10 total)
 CATEGORIES = ["Quest", "Knowledge", "Item", "Region", "System", "Character", "Skill", "Help", "Gimmick", "Contents"]
@@ -116,6 +114,40 @@ CATEGORY_TO_MASTER = {
     "Gimmick": "Item",   # Gimmick sheets → Master_Item.xlsx
 }
 ```
+
+## Runtime Drive Configuration (settings.json)
+
+**Problem solved:** PyInstaller compiles config.py at build time, so patching the .py file after install doesn't work - Python uses frozen bytecode.
+
+**Solution:** config.py now reads `settings.json` at runtime.
+
+### How It Works
+
+```python
+# config.py loads settings at import time
+_SETTINGS = _load_settings()  # Reads settings.json
+_DRIVE_LETTER = _SETTINGS.get('drive_letter', 'F')  # Default F:
+
+# All paths use _apply_drive_letter()
+RESOURCE_FOLDER = Path(_apply_drive_letter(r"F:\perforce\...", _DRIVE_LETTER))
+```
+
+### settings.json Format
+
+```json
+{"drive_letter": "D", "version": "1.0"}
+```
+
+**Location:** Same folder as QACompiler.exe
+
+### Change Drive After Install
+
+Just edit `settings.json`:
+```json
+{"drive_letter": "E", "version": "1.0"}
+```
+
+No reinstall needed!
 
 ## Critical Naming Convention
 
@@ -367,9 +399,57 @@ def resolve_translation(korean_text, lang_table, data_filename, export_index):
 | `languageTOtester_list.txt` | Tester → Language code |
 | `TesterType.txt` | Tester → Type (Text/Gameplay) |
 
-## CI/CD - GitHub Actions Build
+## CI/CD - Comprehensive Validation (5 Checks)
 
-**IMPORTANT:** QACompiler has its OWN workflow, separate from LocaNext!
+**IMPORTANT:** QACompiler has its OWN workflow with COMPREHENSIVE validation!
+
+### CI Pipeline Structure (3 Jobs)
+
+```
+Job 1: validation (Ubuntu, ~30s)
+  └─ Check trigger, generate version YY.MMDD.HHMM
+
+Job 2: safety-checks (Ubuntu, ~2min)
+  ├─ CHECK 1: Python Syntax (py_compile)
+  ├─ CHECK 2: Module Imports (catches missing 'import sys')
+  ├─ CHECK 3: Flake8 (undefined names, errors)
+  ├─ CHECK 4: Security Audit (pip-audit)
+  └─ CHECK 5: Pytest Tests
+
+Job 3: build-and-release (Windows, ~10min)
+  └─ Only runs if validation passes
+```
+
+### What CI Catches
+
+| Bug Type | Check That Catches It |
+|----------|----------------------|
+| Missing `import sys` | CHECK 2: Module Import Validation |
+| Undefined variable names | CHECK 3: Flake8 (F821/F822) |
+| Syntax errors | CHECK 1: Python Syntax Validation |
+| Unused imports | CHECK 3: Flake8 (F401) - warning only |
+| Vulnerable dependencies | CHECK 4: pip-audit - warning only |
+
+### Local Validation (BEFORE pushing!)
+
+```bash
+cd RessourcesForCodingTheProject/NewScripts/QACompilerNEW
+
+# Full validation (mirrors CI)
+python ci_validate.py
+
+# Quick check (skip slow tests)
+python ci_validate.py --quick
+
+# Show fix suggestions
+python ci_validate.py --fix
+```
+
+### FAIL FAST Philosophy
+
+Validation errors stop build BEFORE PyInstaller runs (saves ~10 minutes).
+
+## CI/CD - GitHub Actions Build
 
 ### Two Workflows in This Repo
 
