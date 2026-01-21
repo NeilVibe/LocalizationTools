@@ -95,6 +95,66 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
+      # ============================================================
+      # CI VALIDATION - Catch import errors before building
+      # This would have caught the missing 'import sys' bug!
+      # ============================================================
+      - name: Validate Python Imports
+        if: steps.check.outputs.should_build == 'true'
+        shell: pwsh
+        run: |
+          cd ${{ env.QACOMPILER_PATH }}
+          Write-Host "=== CI VALIDATION ==="
+          Write-Host "Checking all module imports..."
+
+          python -c @"
+          import sys
+          import importlib
+          sys.path.insert(0, '.')
+
+          modules = [
+              'config',
+              'main',
+              'gui.app',
+              'generators',
+              'generators.base',
+              'generators.quest',
+              'generators.item',
+              'generators.skill',
+              'generators.character',
+              'generators.region',
+              'generators.knowledge',
+              'generators.help',
+              'generators.gimmick',
+              'core.compiler',
+              'core.discovery',
+              'tracker.coverage',
+              'system_localizer',
+          ]
+
+          errors = []
+          for mod in modules:
+              try:
+                  importlib.import_module(mod)
+                  print(f'  [PASS] {mod}')
+              except Exception as e:
+                  print(f'  [FAIL] {mod}: {e}')
+                  errors.append(mod)
+
+          if errors:
+              print(f'\n[ERROR] {len(errors)} modules failed to import!')
+              print('Fix these errors before building.')
+              sys.exit(1)
+          else:
+              print(f'\n[OK] All {len(modules)} modules imported successfully!')
+          "@
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "[FATAL] Validation failed - aborting build"
+            exit 1
+          }
+          Write-Host "[OK] Validation passed"
+
       - name: Inject Version
         if: steps.check.outputs.should_build == 'true'
         shell: pwsh

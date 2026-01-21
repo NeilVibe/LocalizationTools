@@ -27,6 +27,7 @@ Output per-language Excel files with:
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Iterable, Set
 
