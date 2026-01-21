@@ -35,6 +35,7 @@ from generators.base import (
     THIN_BORDER,
     resolve_translation,
     get_export_index,
+    get_first_translation,
 )
 
 log = get_logger("ItemGenerator")
