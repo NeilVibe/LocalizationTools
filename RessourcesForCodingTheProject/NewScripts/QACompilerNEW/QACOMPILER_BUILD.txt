@@ -1,1 +1,2 @@
 Build - manager stats fix
+Build - Script-type optimization (Sequencer/Dialog)
