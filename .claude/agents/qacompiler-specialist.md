@@ -37,7 +37,7 @@ QACompilerNEW/
 │   ├── tracker_update.py     # Tracker-only update (no master rebuild)
 │   └── compiler.py           # Main orchestration
 │
-├── generators/                # 8 datasheet generators
+├── generators/                # 9 datasheet generators
 │   ├── base.py               # Shared utilities (XML, Excel, styles)
 │   ├── quest.py              # Quest (largest, most complex)
 │   ├── item.py               # Items
@@ -46,7 +46,8 @@ QACompilerNEW/
 │   ├── skill.py              # Skills
 │   ├── character.py          # Characters
 │   ├── help.py               # GameAdvice (simplest)
-│   └── gimmick.py            # Gimmicks
+│   ├── gimmick.py            # Gimmicks
+│   └── script.py             # Script template (Sequencer/Dialog)
 │
 ├── tracker/                   # Progress tracking
 │   ├── coverage.py           # Coverage % + word counts (largest)
@@ -104,15 +105,20 @@ QACompilerNEW/
 # Drive letter is NOW configurable via settings.json at runtime!
 # Default F: paths in source, but settings.json overrides at runtime
 
-# Categories (10 total)
-CATEGORIES = ["Quest", "Knowledge", "Item", "Region", "System", "Character", "Skill", "Help", "Gimmick", "Contents"]
+# Categories (12 total)
+CATEGORIES = ["Quest", "Knowledge", "Item", "Region", "System", "Character", "Skill", "Help", "Gimmick", "Contents", "Sequencer", "Dialog"]
 
 # Category clustering (multiple categories → one master file)
 CATEGORY_TO_MASTER = {
-    "Skill": "System",   # Skill sheets → Master_System.xlsx
-    "Help": "System",    # Help sheets → Master_System.xlsx
-    "Gimmick": "Item",   # Gimmick sheets → Master_Item.xlsx
+    "Skill": "System",       # Skill sheets → Master_System.xlsx
+    "Help": "System",        # Help sheets → Master_System.xlsx
+    "Gimmick": "Item",       # Gimmick sheets → Master_Item.xlsx
+    "Sequencer": "Script",   # Sequencer sheets → Master_Script.xlsx
+    "Dialog": "Script",      # Dialog sheets → Master_Script.xlsx
 }
+
+# Script-type categories use unique column structure
+SCRIPT_TYPE_CATEGORIES = {"sequencer", "dialog"}  # Uses MEMO (not COMMENT), no SCREENSHOT
 ```
 
 ## Runtime Drive Configuration (settings.json)
@@ -172,11 +178,30 @@ No reinstall needed!
 | Standard (Quest, Knowledge, etc.) | STRINGID + Translation | Translation only |
 | Item | ItemName + ItemDesc + STRINGID | ItemName + ItemDesc |
 | Contents | INSTRUCTIONS (col 2) | none |
+| Script-type (Sequencer, Dialog) | Translation + EventName | EventName ONLY (not Translation!) |
 
 **Key functions:**
 - `build_master_index()` - O(1) lookup index for master worksheet
 - `find_matching_row_in_master()` - 2-step cascade matching
 - `extract_qa_row_data()` - Extract matching keys from QA row
+
+## Script-Type Categories (Sequencer/Dialog)
+
+**Unique structure for script/dialog LQA files:**
+
+| Aspect | Script-Type | Standard |
+|--------|-------------|----------|
+| Comment column | MEMO | COMMENT |
+| Screenshot | NO | Yes |
+| Primary match | Translation + EventName | STRINGID + Translation |
+| Fallback match | EventName ONLY | Translation only |
+| Master output | Master_Script.xlsx | Master_{Category}.xlsx |
+
+**Column layout:** `EventName | Text | Translation | STATUS | MEMO` (no SCREENSHOT)
+
+**Folder naming:**
+- `Username_Sequencer` → Master_Script.xlsx
+- `Username_Dialog` → Master_Script.xlsx
 
 ## Tracker-Only Update (core/tracker_update.py)
 
