@@ -8,17 +8,18 @@ with two-tier category assignment from EXPORT folder structure.
 Features:
 - Two-tier clustering: STORY (Dialog/Sequencer) + GAME_DATA (keyword-based)
 - Word count reports for LQA scheduling
-- GUI mode with tkinter interface
+- GUI mode with tkinter interface (DEFAULT)
 - Conditional English column based on target language
 
 Usage:
-    python main.py                    # Convert all languages (CLI)
-    python main.py --gui              # Launch GUI
-    python main.py --lang eng         # Convert specific language
-    python main.py --lang eng,fre     # Convert multiple languages
-    python main.py --dry-run          # Show what would be generated
-    python main.py --list-categories  # List discovered categories
-    python main.py --word-count       # Generate word count report only
+    python main.py                    # Launch GUI (default)
+    python main.py --cli              # Run CLI mode, convert all languages
+    python main.py --lang eng         # CLI: specific language
+    python main.py --lang eng,fre     # CLI: multiple languages
+    python main.py --dry-run          # CLI: show what would be generated
+    python main.py --list-categories  # CLI: list discovered categories
+    python main.py --word-count       # CLI: include word count report
+    python main.py --word-count-only  # CLI: only word count report
 """
 
 import argparse
@@ -354,9 +355,9 @@ def main():
     )
 
     parser.add_argument(
-        "--gui",
+        "--cli",
         action="store_true",
-        help="Launch GUI mode"
+        help="Run in CLI mode (default is GUI)"
     )
 
     parser.add_argument(
@@ -407,8 +408,12 @@ def main():
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    # GUI mode
-    if args.gui:
+    # Check if any CLI-specific args were passed
+    cli_args_used = (args.cli or args.lang or args.output or args.dry_run or
+                     args.list_categories or args.word_count or args.word_count_only)
+
+    # Default to GUI unless CLI args are used
+    if not cli_args_used:
         launch_gui()
         return
 
