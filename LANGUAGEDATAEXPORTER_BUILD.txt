@@ -6,3 +6,4 @@ Modify this file to trigger a new build via GitHub Actions.
 Build History:
 --------------
 Build 001 - Initial CI/CD setup with VRS ordering support
+Build 002 - Fix missing spec file
