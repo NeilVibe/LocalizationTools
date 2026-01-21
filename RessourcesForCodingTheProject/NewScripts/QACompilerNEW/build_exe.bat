@@ -7,8 +7,8 @@ REM Requirements: Python 3.8+ with pip
 REM
 REM FEATURE: Drive Selection
 REM   The default LOC path uses F: drive. If your Perforce is on a different
-REM   drive (D:, E:, etc.), this script will automatically update all paths
-REM   before building.
+REM   drive (D:, E:, etc.), this script will create a settings.json file
+REM   that configures the app to use your drive at runtime.
 REM ============================================================================
 
 echo.
@@ -40,27 +40,6 @@ echo.
 echo Selected drive: %DRIVE_LETTER%:
 echo.
 
-REM ============================================================================
-REM STEP 0.5: UPDATE PATHS IF NOT F DRIVE
-REM ============================================================================
-if /i not "%DRIVE_LETTER%"=="F" (
-    echo [0/4] Updating paths from F: to %DRIVE_LETTER%: ...
-
-    REM Backup original files
-    copy /Y "config.py" "config.py.bak" >nul 2>&1
-    copy /Y "system_localizer.py" "system_localizer.py.bak" >nul 2>&1
-
-    REM Update paths using helper script (proper UTF-8 handling)
-    python drive_replacer.py %DRIVE_LETTER%
-    if errorlevel 1 (
-        echo ERROR: Failed to update paths
-        pause
-        exit /b 1
-    )
-
-    echo.
-)
-
 REM Check Python
 python --version >nul 2>&1
 if errorlevel 1 (
@@ -89,20 +68,11 @@ echo [3/4] Building executable...
 pyinstaller QACompiler.spec --clean
 if errorlevel 1 (
     echo ERROR: Build failed
-    REM Restore backups if build failed
-    if exist "config.py.bak" (
-        copy /Y "config.py.bak" "config.py" >nul 2>&1
-        del "config.py.bak" >nul 2>&1
-    )
-    if exist "system_localizer.py.bak" (
-        copy /Y "system_localizer.py.bak" "system_localizer.py" >nul 2>&1
-        del "system_localizer.py.bak" >nul 2>&1
-    )
     pause
     exit /b 1
 )
 
-echo [4/4] Copying required folders to dist...
+echo [4/4] Setting up dist folder...
 REM Create empty folders that the app expects
 if not exist "dist\QACompiler\QAfolder" mkdir "dist\QACompiler\QAfolder"
 if not exist "dist\QACompiler\QAfolderOLD" mkdir "dist\QACompiler\QAfolderOLD"
@@ -113,20 +83,23 @@ if not exist "dist\QACompiler\Masterfolder_EN\Images" mkdir "dist\QACompiler\Mas
 if not exist "dist\QACompiler\Masterfolder_CN" mkdir "dist\QACompiler\Masterfolder_CN"
 if not exist "dist\QACompiler\Masterfolder_CN\Images" mkdir "dist\QACompiler\Masterfolder_CN\Images"
 
-REM Copy config and tester list
+REM Copy tester list
 copy /Y "languageTOtester_list.txt" "dist\QACompiler\" >nul 2>&1
 copy /Y "languageTOtester_list.example.txt" "dist\QACompiler\" >nul 2>&1
 
 REM ============================================================================
-REM CLEANUP: Restore original files (keep source unchanged)
+REM CREATE SETTINGS.JSON (if not default F: drive)
 REM ============================================================================
-if exist "config.py.bak" (
-    copy /Y "config.py.bak" "config.py" >nul 2>&1
-    del "config.py.bak" >nul 2>&1
-)
-if exist "system_localizer.py.bak" (
-    copy /Y "system_localizer.py.bak" "system_localizer.py" >nul 2>&1
-    del "system_localizer.py.bak" >nul 2>&1
+REM The app reads drive letter from settings.json at runtime.
+REM This allows one exe to work with any drive - just change settings.json!
+if /i not "%DRIVE_LETTER%"=="F" (
+    echo.
+    echo Creating settings.json with drive letter %DRIVE_LETTER%:
+    python drive_replacer.py %DRIVE_LETTER% "dist\QACompiler\settings.json"
+    if errorlevel 1 (
+        echo WARNING: Failed to create settings.json
+        echo          The app will default to F: drive.
+    )
 )
 
 echo.
@@ -134,13 +107,21 @@ echo ========================================
 echo   BUILD COMPLETE!
 echo ========================================
 echo.
-echo Drive used: %DRIVE_LETTER%:
-echo LOC path:   %DRIVE_LETTER%:\perforce\cd\mainline\resource\GameData\stringtable\loc
+echo Drive configured: %DRIVE_LETTER%:
+echo LOC path:         %DRIVE_LETTER%:\perforce\cd\mainline\resource\GameData\stringtable\loc
 echo.
 echo Executable location: dist\QACompiler\QACompiler.exe
 echo.
+if /i not "%DRIVE_LETTER%"=="F" (
+    echo NOTE: settings.json was created with drive %DRIVE_LETTER%:
+    echo       To change the drive later, edit dist\QACompiler\settings.json
+    echo.
+)
 echo To distribute:
 echo   1. Copy the entire "dist\QACompiler" folder
 echo   2. Users double-click QACompiler.exe to run
+echo.
+echo TIP: To change the drive on any installation:
+echo      Edit settings.json in the app folder.
 echo.
 pause

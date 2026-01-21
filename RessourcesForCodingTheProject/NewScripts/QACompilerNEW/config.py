@@ -10,6 +10,7 @@ All paths, constants, categories, and mappings in one place.
 VERSION = "2.0.0"
 
 import sys
+import json
 from pathlib import Path
 
 # =============================================================================
@@ -21,6 +22,71 @@ if getattr(sys, 'frozen', False):
     SCRIPT_DIR = Path(sys.executable).parent
 else:
     SCRIPT_DIR = Path(__file__).parent
+
+
+# =============================================================================
+# RUNTIME SETTINGS (loaded from settings.json)
+# =============================================================================
+
+def _load_settings() -> dict:
+    """Load runtime settings from settings.json next to the executable.
+
+    Settings file format:
+    {
+        "drive_letter": "D",  // Drive letter without colon (default: "F")
+        "version": "1.0"
+    }
+
+    Returns:
+        Dict with settings, or empty dict if file not found/invalid.
+    """
+    settings_file = SCRIPT_DIR / "settings.json"
+
+    if not settings_file.exists():
+        return {}
+
+    try:
+        with open(settings_file, 'r', encoding='utf-8') as f:
+            settings = json.load(f)
+
+        # Validate drive_letter if present
+        if 'drive_letter' in settings:
+            drive = settings['drive_letter']
+            if not isinstance(drive, str) or len(drive) != 1 or not drive.isalpha():
+                print(f"  WARNING: Invalid drive_letter in settings.json: '{drive}'. Using default F:")
+                del settings['drive_letter']
+
+        return settings
+    except json.JSONDecodeError as e:
+        print(f"  WARNING: Invalid JSON in settings.json: {e}. Using defaults.")
+        return {}
+    except Exception as e:
+        print(f"  WARNING: Error reading settings.json: {e}. Using defaults.")
+        return {}
+
+
+def _apply_drive_letter(path_str: str, drive_letter: str) -> str:
+    """Replace the default F: drive with the configured drive letter.
+
+    Args:
+        path_str: Path string potentially starting with F:
+        drive_letter: Single letter drive (e.g., "D")
+
+    Returns:
+        Path string with drive letter replaced.
+    """
+    if path_str.startswith("F:") or path_str.startswith("f:"):
+        return f"{drive_letter.upper()}:{path_str[2:]}"
+    return path_str
+
+
+# Load settings at module import time
+_SETTINGS = _load_settings()
+_DRIVE_LETTER = _SETTINGS.get('drive_letter', 'F')
+
+# Log drive letter if non-default
+if _DRIVE_LETTER != 'F':
+    print(f"  Using custom drive letter: {_DRIVE_LETTER}:")
 
 # QA Folder paths
 QA_FOLDER = SCRIPT_DIR / "QAfolder"
@@ -51,9 +117,10 @@ TESTER_TYPE_FILE = SCRIPT_DIR / "TesterType.txt"
 # =============================================================================
 
 # Default paths - can be overridden via GUI or config file
-RESOURCE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\StaticInfo")
-LANGUAGE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
-EXPORT_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
+# Drive letter is configurable via settings.json
+RESOURCE_FOLDER = Path(_apply_drive_letter(r"F:\perforce\cd\mainline\resource\GameData\StaticInfo", _DRIVE_LETTER))
+LANGUAGE_FOLDER = Path(_apply_drive_letter(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc", _DRIVE_LETTER))
+EXPORT_FOLDER = Path(_apply_drive_letter(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__", _DRIVE_LETTER))
 
 # Additional export paths for coverage (strings inherently tested but not in Excel)
 EXPORT_LOOKAT_FOLDER = EXPORT_FOLDER / "System" / "LookAt"   # Additional for Item
@@ -66,31 +133,39 @@ DATASHEET_OUTPUT = SCRIPT_DIR / "GeneratedDatasheets"
 # QUEST GENERATOR PATHS
 # =============================================================================
 
-# Quest-specific paths
-QUESTGROUPINFO_FILE = Path(
-    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\questgroupinfo.staticinfo.xml"
-)
-SCENARIO_FOLDER = Path(
-    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\scenario"
-)
-FACTION_QUEST_FOLDER = Path(
-    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\quest\faction"
-)
-CHALLENGE_FOLDER = Path(
-    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\Challenge"
-)
-MINIGAME_FILE = Path(
-    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\contents\contents_minigame.staticinfo.xml"
-)
-STRINGKEYTABLE_FILE = Path(
-    r"F:\perforce\cd\mainline\resource\editordata\StaticInfo__\StaticInfo_StringKeyTable.xml"
-)
-SEQUENCER_FOLDER = Path(
-    r"F:\perforce\cd\mainline\resource\sequencer\stageseq"
-)
-FACTIONINFO_FOLDER = Path(
-    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo"
-)
+# Quest-specific paths (drive letter configurable via settings.json)
+QUESTGROUPINFO_FILE = Path(_apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\questgroupinfo.staticinfo.xml",
+    _DRIVE_LETTER
+))
+SCENARIO_FOLDER = Path(_apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\scenario",
+    _DRIVE_LETTER
+))
+FACTION_QUEST_FOLDER = Path(_apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\quest\faction",
+    _DRIVE_LETTER
+))
+CHALLENGE_FOLDER = Path(_apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\Challenge",
+    _DRIVE_LETTER
+))
+MINIGAME_FILE = Path(_apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\contents\contents_minigame.staticinfo.xml",
+    _DRIVE_LETTER
+))
+STRINGKEYTABLE_FILE = Path(_apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\editordata\StaticInfo__\StaticInfo_StringKeyTable.xml",
+    _DRIVE_LETTER
+))
+SEQUENCER_FOLDER = Path(_apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\sequencer\stageseq",
+    _DRIVE_LETTER
+))
+FACTIONINFO_FOLDER = Path(_apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo",
+    _DRIVE_LETTER
+))
 
 # Teleport reference file (optional - falls back gracefully if not found)
 TELEPORT_SOURCE_FILE = SCRIPT_DIR / "Quest_LQA_ENG_1231_seon_final_final.xlsx"
@@ -99,9 +174,10 @@ TELEPORT_SOURCE_FILE = SCRIPT_DIR / "Quest_LQA_ENG_1231_seon_final_final.xlsx"
 # VOICE RECORDING SHEET PATH (for Quest coverage calculation)
 # =============================================================================
 
-VOICE_RECORDING_SHEET_FOLDER = Path(
-    r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__"
-)
+VOICE_RECORDING_SHEET_FOLDER = Path(_apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__",
+    _DRIVE_LETTER
+))
 
 # =============================================================================
 # CATEGORIES
@@ -300,3 +376,48 @@ def load_tester_type_mapping() -> dict:
 
     print(f"  Loaded {len(mapping)} tester->type mappings")
     return mapping
+
+
+def get_runtime_settings() -> dict:
+    """Get the current runtime settings for debugging/inspection.
+
+    Returns:
+        Dict containing:
+        - settings_file: Path to settings.json
+        - settings_exists: Whether settings.json was found
+        - drive_letter: Currently configured drive letter
+        - loaded_settings: Raw settings dict from file (or empty)
+    """
+    return {
+        'settings_file': str(SCRIPT_DIR / "settings.json"),
+        'settings_exists': (SCRIPT_DIR / "settings.json").exists(),
+        'drive_letter': _DRIVE_LETTER,
+        'loaded_settings': _SETTINGS.copy(),
+    }
+
+
+def create_default_settings_file() -> bool:
+    """Create a default settings.json file with F: drive.
+
+    Useful for users who want to customize the drive letter.
+
+    Returns:
+        True if file was created, False if it already exists.
+    """
+    settings_file = SCRIPT_DIR / "settings.json"
+
+    if settings_file.exists():
+        return False
+
+    default_settings = {
+        "drive_letter": "F",
+        "version": "1.0"
+    }
+
+    try:
+        with open(settings_file, 'w', encoding='utf-8') as f:
+            json.dump(default_settings, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"  ERROR: Failed to create settings.json: {e}")
+        return False
