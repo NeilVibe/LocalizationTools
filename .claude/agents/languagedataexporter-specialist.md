@@ -232,21 +232,21 @@ OUTPUT_FOLDER = SCRIPT_DIR / "GeneratedExcel"
 ## CLI Commands
 
 ```bash
-# Basic usage
-python main.py                      # Convert all languages
-python main.py --lang eng           # Single language
-python main.py --lang eng,fre,ger   # Multiple languages
+# Default (GUI)
+python main.py                      # Launch GUI (default!)
 
-# Reports
+# CLI mode
+python main.py --cli                # Convert all languages (CLI)
+python main.py --lang eng           # Single language (CLI)
+python main.py --lang eng,fre,ger   # Multiple languages (CLI)
+
+# Reports (CLI)
 python main.py --word-count         # Include word count report
 python main.py --word-count-only    # Only word count report
 
-# Analysis
+# Analysis (CLI)
 python main.py --list-categories    # Show category distribution
 python main.py --dry-run            # Preview without writing
-
-# GUI
-python main.py --gui                # Launch GUI
 
 # Debug
 python main.py -v                   # Verbose logging
