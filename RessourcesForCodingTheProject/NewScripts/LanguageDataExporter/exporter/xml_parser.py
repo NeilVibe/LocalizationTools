@@ -2,33 +2,106 @@
 XML Parser for language data files.
 
 Parses languagedata_*.xml files and extracts LocStr elements.
+Uses lxml for robust parsing with recovery mode for malformed XML.
+
+IMPORTANT: Attribute names are case-sensitive!
+- StringId (not StringID)
+- StrOrigin
+- Str
+- SoundEventName
 """
 
 import re
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional
-from xml.etree import ElementTree as ET
+
+# Try lxml first (more robust), fallback to standard library
+try:
+    from lxml import etree as ET
+    USING_LXML = True
+except ImportError:
+    from xml.etree import ElementTree as ET
+    USING_LXML = False
 
 logger = logging.getLogger(__name__)
+print(f"[DEBUG XML_PARSER] Using {'lxml' if USING_LXML else 'xml.etree.ElementTree'} for XML parsing")
 
 
-def sanitize_xml_content(content: str) -> str:
+# =============================================================================
+# XML SANITIZATION (from QACompiler - battle-tested)
+# =============================================================================
+
+_bad_entity_re = re.compile(r'&(?!lt;|gt;|amp;|apos;|quot;)')
+
+
+def _fix_bad_entities(txt: str) -> str:
+    """Fix unescaped ampersands."""
+    return _bad_entity_re.sub("&amp;", txt)
+
+
+def _preprocess_newlines(raw: str) -> str:
+    """Handle newlines in seg elements."""
+    def repl(m: re.Match) -> str:
+        inner = m.group(1).replace("\n", "&lt;br/&gt;").replace("\r\n", "&lt;br/&gt;")
+        return f"<seg>{inner}</seg>"
+    return re.sub(r"<seg>(.*?)</seg>", repl, raw, flags=re.DOTALL)
+
+
+def sanitize_xml_content(raw: str) -> str:
     """
     Sanitize XML content to handle common issues.
 
-    Handles:
-    - Unescaped ampersands
-    - Invalid XML characters
-    - Malformed CDATA sections
+    Uses QACompiler's battle-tested sanitization:
+    - Fix unescaped ampersands
+    - Handle newlines in segments
+    - Fix < and & in attribute values
+    - Tag stack repair for malformed XML
+    - Remove invalid control characters
     """
-    # Replace unescaped ampersands (but not already-escaped ones)
-    content = re.sub(r'&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)', '&amp;', content)
-
     # Remove invalid XML characters (control chars except tab, newline, carriage return)
-    content = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', content)
+    raw = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', raw)
 
-    return content
+    # Fix entities
+    raw = _fix_bad_entities(raw)
+    raw = _preprocess_newlines(raw)
+
+    # Fix < and & in attribute values
+    raw = re.sub(r'="([^"]*<[^"]*)"',
+                 lambda m: '="' + m.group(1).replace("<", "&lt;") + '"', raw)
+    raw = re.sub(r'="([^"]*&[^ltgapoqu][^"]*)"',
+                 lambda m: '="' + m.group(1).replace("&", "&amp;") + '"', raw)
+
+    # Tag stack repair for malformed XML
+    tag_open = re.compile(r"<([A-Za-z0-9_]+)(\s[^>]*)?>")
+    tag_close = re.compile(r"</([A-Za-z0-9_]+)>")
+    stack: List[str] = []
+    out: List[str] = []
+
+    for line in raw.splitlines():
+        stripped = line.strip()
+        mo = tag_open.match(stripped)
+        if mo:
+            stack.append(mo.group(1))
+            out.append(line)
+            continue
+        mc = tag_close.match(stripped)
+        if mc:
+            if stack and stack[-1] == mc.group(1):
+                stack.pop()
+                out.append(line)
+            else:
+                out.append(stack and f"</{stack.pop()}>" or line)
+            continue
+        if stripped.startswith("</>"):
+            out.append(stack and line.replace("</>", f"</{stack.pop()}>") or line)
+            continue
+        out.append(line)
+
+    while stack:
+        out.append(f"</{stack.pop()}>")
+
+    return "\n".join(out)
 
 
 def parse_language_file(xml_path: Path) -> List[Dict]:
@@ -42,7 +115,7 @@ def parse_language_file(xml_path: Path) -> List[Dict]:
         List of dictionaries with:
         - str_origin: Original Korean text
         - str: Translated text
-        - string_id: The StringID
+        - string_id: The StringId
 
     Example return:
         [
@@ -50,41 +123,64 @@ def parse_language_file(xml_path: Path) -> List[Dict]:
             {"str_origin": "철검", "str": "Iron Sword", "string_id": "2001"},
         ]
     """
+    print(f"[DEBUG XML_PARSER] parse_language_file: {xml_path}")
+
     if not xml_path.exists():
+        print(f"[DEBUG XML_PARSER] ERROR: File not found!")
         logger.error(f"Language file not found: {xml_path}")
         return []
 
     try:
         # Read and sanitize content
         content = xml_path.read_text(encoding='utf-8')
+        print(f"[DEBUG XML_PARSER] Read {len(content)} bytes")
         content = sanitize_xml_content(content)
 
-        # Parse XML
-        root = ET.fromstring(content)
+        # Parse XML (with lxml recovery mode if available)
+        if USING_LXML:
+            # Wrap in root for safety
+            wrapped = f"<ROOT>\n{content}\n</ROOT>"
+            try:
+                root = ET.fromstring(
+                    wrapped.encode("utf-8"),
+                    parser=ET.XMLParser(huge_tree=True)
+                )
+            except ET.XMLSyntaxError:
+                # Try recovery mode
+                root = ET.fromstring(
+                    wrapped.encode("utf-8"),
+                    parser=ET.XMLParser(recover=True, huge_tree=True)
+                )
+        else:
+            root = ET.fromstring(content)
 
         entries = []
 
         # Find all LocStr elements
-        # Structure: <LocStrTable><LocStr StringID="..." StrOrigin="..." Str="..."/></LocStrTable>
+        # IMPORTANT: Attribute names are case-sensitive!
+        # The actual XML uses: StringId (not StringID), StrOrigin, Str
         for loc_str in root.iter('LocStr'):
-            string_id = loc_str.get('StringID', '')
-            str_origin = loc_str.get('StrOrigin', '')
-            str_value = loc_str.get('Str', '')
+            # Try both cases for StringId (some files may differ)
+            string_id = loc_str.get('StringId') or loc_str.get('StringID') or ''
+            str_origin = loc_str.get('StrOrigin') or ''
+            str_value = loc_str.get('Str') or ''
 
-            if string_id:  # Only include if we have a StringID
+            if string_id:  # Only include if we have a StringId
                 entries.append({
                     'str_origin': str_origin,
                     'str': str_value,
                     'string_id': string_id,
                 })
 
+        print(f"[DEBUG XML_PARSER] Parsed {len(entries)} LocStr entries from {xml_path.name}")
+        if entries and len(entries) > 0:
+            print(f"[DEBUG XML_PARSER] First entry: StringId={entries[0]['string_id']}")
+
         logger.info(f"Parsed {len(entries)} entries from {xml_path.name}")
         return entries
 
-    except ET.ParseError as e:
-        logger.error(f"XML parse error in {xml_path}: {e}")
-        return []
     except Exception as e:
+        print(f"[DEBUG XML_PARSER] ERROR parsing: {type(e).__name__}: {e}")
         logger.error(f"Error parsing {xml_path}: {e}")
         return []
 
@@ -145,13 +241,13 @@ def discover_language_files(loc_folder: Path) -> Dict[str, Path]:
 
 def parse_export_file(xml_path: Path) -> List[str]:
     """
-    Parse an EXPORT .loc.xml file and extract all StringIDs.
+    Parse an EXPORT .loc.xml file and extract all StringIds.
 
     Args:
         xml_path: Path to the .loc.xml file
 
     Returns:
-        List of StringIDs found in the file
+        List of StringIds found in the file
     """
     if not xml_path.exists():
         logger.warning(f"EXPORT file not found: {xml_path}")
@@ -162,22 +258,33 @@ def parse_export_file(xml_path: Path) -> List[str]:
         content = xml_path.read_text(encoding='utf-8')
         content = sanitize_xml_content(content)
 
-        # Parse XML
-        root = ET.fromstring(content)
+        # Parse XML (with lxml recovery mode if available)
+        if USING_LXML:
+            wrapped = f"<ROOT>\n{content}\n</ROOT>"
+            try:
+                root = ET.fromstring(
+                    wrapped.encode("utf-8"),
+                    parser=ET.XMLParser(huge_tree=True)
+                )
+            except ET.XMLSyntaxError:
+                root = ET.fromstring(
+                    wrapped.encode("utf-8"),
+                    parser=ET.XMLParser(recover=True, huge_tree=True)
+                )
+        else:
+            root = ET.fromstring(content)
 
         string_ids = []
 
-        # Find all elements with StringID attribute
-        for elem in root.iter():
-            string_id = elem.get('StringID')
+        # Find all LocStr elements with StringId attribute
+        # IMPORTANT: Try both StringId and StringID (case varies between files!)
+        for elem in root.iter('LocStr'):
+            string_id = elem.get('StringId') or elem.get('StringID')
             if string_id:
                 string_ids.append(string_id)
 
         return string_ids
 
-    except ET.ParseError as e:
-        logger.warning(f"XML parse error in EXPORT file {xml_path}: {e}")
-        return []
     except Exception as e:
         logger.warning(f"Error parsing EXPORT file {xml_path}: {e}")
         return []
@@ -185,7 +292,7 @@ def parse_export_file(xml_path: Path) -> List[str]:
 
 def parse_export_with_soundevent(xml_path: Path) -> List[Dict]:
     """
-    Parse an EXPORT .loc.xml file and extract StringID with SoundEventName.
+    Parse an EXPORT .loc.xml file and extract StringId with SoundEventName.
 
     Used for VoiceRecordingSheet ordering of STORY strings.
 
@@ -202,12 +309,28 @@ def parse_export_with_soundevent(xml_path: Path) -> List[Dict]:
     try:
         content = xml_path.read_text(encoding='utf-8')
         content = sanitize_xml_content(content)
-        root = ET.fromstring(content)
+
+        # Parse XML (with lxml recovery mode if available)
+        if USING_LXML:
+            wrapped = f"<ROOT>\n{content}\n</ROOT>"
+            try:
+                root = ET.fromstring(
+                    wrapped.encode("utf-8"),
+                    parser=ET.XMLParser(huge_tree=True)
+                )
+            except ET.XMLSyntaxError:
+                root = ET.fromstring(
+                    wrapped.encode("utf-8"),
+                    parser=ET.XMLParser(recover=True, huge_tree=True)
+                )
+        else:
+            root = ET.fromstring(content)
 
         results = []
 
-        for elem in root.iter():
-            string_id = elem.get('StringID') or elem.get('StringId')
+        # Find LocStr elements with both StringId and SoundEventName
+        for elem in root.iter('LocStr'):
+            string_id = elem.get('StringId') or elem.get('StringID')
             sound_event = elem.get('SoundEventName')
 
             if string_id and sound_event:
@@ -218,9 +341,6 @@ def parse_export_with_soundevent(xml_path: Path) -> List[Dict]:
 
         return results
 
-    except ET.ParseError as e:
-        logger.warning(f"XML parse error in EXPORT file {xml_path}: {e}")
-        return []
     except Exception as e:
         logger.warning(f"Error parsing EXPORT file {xml_path}: {e}")
         return []
