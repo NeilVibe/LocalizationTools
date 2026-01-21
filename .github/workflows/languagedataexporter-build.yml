@@ -105,13 +105,30 @@ jobs:
 
           from exporter import parse_language_file, build_stringid_category_index
           from exporter.xml_parser import build_stringid_soundevent_map
+          from exporter.xml_parser import parse_export_file, parse_export_with_soundevent
+          from exporter.category_mapper import TwoTierCategoryMapper
           print('exporter imports: OK')
 
           from reports import ReportGenerator, ExcelReportWriter
           print('reports imports: OK')
 
+          # Test GUI import (critical for default mode)
+          from gui import launch_gui
+          print('gui imports: OK')
+
           print('All imports validated successfully')
           "
+
+      - name: Full application test
+        run: |
+          echo "=== Application Test ==="
+          cd ${{ env.PROJECT_PATH }}
+          # Test --help works (validates full import chain)
+          python main.py --help
+          echo "main.py --help: OK"
+          # Test --list-categories (validates config and mapper)
+          python main.py --list-categories 2>&1 || echo "list-categories: expected fail (no data folder)"
+          echo "Application test complete"
 
       - name: Flake8 critical errors
         run: |

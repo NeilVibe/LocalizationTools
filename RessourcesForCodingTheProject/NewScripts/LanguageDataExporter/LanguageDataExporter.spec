@@ -18,27 +18,39 @@ a = Analysis(
     pathex=[str(PROJECT_DIR)],
     binaries=[],
     datas=[
-        # Configuration files
-        ('config.py', '.'),
+        # Configuration files ONLY (NOT Python modules!)
         ('category_clusters.json', '.'),
-
-        # Modules (Python packages)
-        ('utils', 'utils'),
-        ('exporter', 'exporter'),
-        ('reports', 'reports'),
-        ('clustering', 'clustering'),
-        ('gui', 'gui'),
-
-        # Documentation (optional)
         ('README.md', '.'),
     ],
     hiddenimports=[
+        # Our own packages (PyInstaller analyzes these, NOT copied as data)
+        'config',
+        'utils',
+        'utils.language_utils',
+        'utils.vrs_ordering',
+        'exporter',
+        'exporter.xml_parser',
+        'exporter.category_mapper',
+        'exporter.excel_writer',
+        'reports',
+        'reports.word_counter',
+        'reports.report_generator',
+        'reports.excel_report',
+        'clustering',
+        'clustering.tier_classifier',
+        'clustering.dialog_clusterer',
+        'clustering.sequencer_clusterer',
+        'clustering.gamedata_clusterer',
+        'gui',
+        'gui.app',
+
         # Excel processing
         'openpyxl',
         'openpyxl.styles',
         'openpyxl.utils',
         'openpyxl.cell',
         'openpyxl.worksheet',
+        'openpyxl.workbook',
 
         # XML parsing
         'lxml',
