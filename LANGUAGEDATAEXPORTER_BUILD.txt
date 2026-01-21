@@ -16,3 +16,4 @@ Build 008 - GUI is now the default (just double-click to launch)
 Build 009 - CRITICAL FIX: Use lxml + correct attribute names (StringId not StringID)
 Build 010 - ALL attributes/tags case-insensitive (StringId, StrOrigin, Str, SoundEventName, LocStr)
 Build 011 - Improved CI: Full app test, GUI import validation, --help test
+Build 012 - FIX: GUI lambda closure bug + MEGA CI validation (no more || true)

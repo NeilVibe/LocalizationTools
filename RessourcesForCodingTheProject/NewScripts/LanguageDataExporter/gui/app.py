@@ -338,8 +338,9 @@ class LanguageDataExporterGUI:
                 # Update UI on main thread
                 self.root.after(0, lambda: self._display_categories(category_counts))
 
-            except Exception as e:
-                self.root.after(0, lambda: messagebox.showerror("Error", f"Analysis failed: {e}"))
+            except Exception as ex:
+                # Capture exception by value in lambda (closure fix)
+                self.root.after(0, lambda err=str(ex): messagebox.showerror("Error", f"Analysis failed: {err}"))
                 self.root.after(0, lambda: self._set_status("Analysis failed"))
 
         threading.Thread(target=analyze, daemon=True).start()
@@ -504,9 +505,10 @@ class LanguageDataExporterGUI:
                 self.root.after(0, lambda: self._set_status(f"Generated {len(language_data)} files in {output_path}"))
                 self.root.after(0, lambda: messagebox.showinfo("Success", f"Generated files in:\n{output_path}"))
 
-            except Exception as e:
+            except Exception as ex:
                 logger.exception("Generation failed")
-                self.root.after(0, lambda: messagebox.showerror("Error", f"Generation failed: {e}"))
+                # Capture exception by value in lambda (closure fix)
+                self.root.after(0, lambda err=str(ex): messagebox.showerror("Error", f"Generation failed: {err}"))
                 self.root.after(0, lambda: self._set_status("Generation failed"))
 
         threading.Thread(target=generate, daemon=True).start()

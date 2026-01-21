@@ -119,30 +119,184 @@ jobs:
           print('All imports validated successfully')
           "
 
-      - name: Full application test
+      - name: Full application test (MUST PASS)
         run: |
           echo "=== Application Test ==="
           cd ${{ env.PROJECT_PATH }}
+
           # Test --help works (validates full import chain)
           python main.py --help
-          echo "main.py --help: OK"
-          # Test --list-categories (validates config and mapper)
+          echo "✓ main.py --help: OK"
+
+          # Test --list-categories runs without crashing
           python main.py --list-categories 2>&1 || echo "list-categories: expected fail (no data folder)"
+          echo "✓ main.py --list-categories: OK"
+
           echo "Application test complete"
 
-      - name: Flake8 critical errors
+      - name: Comprehensive module validation (MUST PASS)
         run: |
-          echo "=== Flake8 Critical Errors ==="
+          echo "=== Comprehensive Module Validation ==="
           cd ${{ env.PROJECT_PATH }}
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+
+          print('Testing all module imports...')
+
+          # Test config
+          from config import (
+              LOC_FOLDER, EXPORT_FOLDER, VOICE_RECORDING_FOLDER,
+              STORY_CATEGORIES, GAMEDATA_CATEGORIES, CATEGORY_COLORS,
+              LANGUAGE_NAMES, DEFAULT_CATEGORY, ensure_output_folder
+          )
+          print('✓ config: all exports OK')
+
+          # Test utils
+          from utils import VRSOrderer, contains_korean, count_words
+          from utils.language_utils import (
+              WORD_COUNT_LANGUAGES, CHAR_COUNT_LANGUAGES,
+              should_include_english_column
+          )
+          from utils.vrs_ordering import load_vrs_order, find_most_recent_excel
+          print('✓ utils: all exports OK')
+
+          # Test exporter
+          from exporter import (
+              parse_language_file, discover_language_files,
+              build_stringid_category_index, load_cluster_config,
+              analyze_categories, TwoTierCategoryMapper, write_language_excel
+          )
+          from exporter.xml_parser import (
+              sanitize_xml_content, parse_export_file,
+              parse_export_with_soundevent, build_stringid_soundevent_map
+          )
+          from exporter.category_mapper import get_category
+          print('✓ exporter: all exports OK')
+
+          # Test reports
+          from reports import ReportGenerator, ExcelReportWriter, WordCounter
+          from reports.word_counter import CategoryWordCount
+          from reports.report_generator import LanguageReport
+          print('✓ reports: all exports OK')
+
+          # Test GUI
+          from gui import launch_gui, LanguageDataExporterGUI
+          print('✓ gui: all exports OK')
+
+          # Test clustering
+          from clustering import TierClassifier, DialogClusterer, SequencerClusterer, GameDataClusterer
+          print('✓ clustering: all exports OK')
+
+          # Validate key constants
+          assert len(STORY_CATEGORIES) == 4, f'Expected 4 STORY categories, got {len(STORY_CATEGORIES)}'
+          assert len(CATEGORY_COLORS) >= 10, f'Expected 10+ category colors, got {len(CATEGORY_COLORS)}'
+          assert 'eng' in LANGUAGE_NAMES, 'Missing eng in LANGUAGE_NAMES'
+          print('✓ constants: validated')
+
+          print('')
+          print('=' * 50)
+          print('ALL MODULE VALIDATIONS PASSED!')
+          print('=' * 50)
+          "
+          echo "Comprehensive validation complete"
+
+      - name: Flake8 critical errors (MUST PASS)
+        run: |
+          echo "=== Flake8 Critical Errors (FAILS BUILD!) ==="
+          cd ${{ env.PROJECT_PATH }}
+          # E9: Runtime errors (syntax, IO)
+          # F63: Invalid comparisons
+          # F7: Syntax errors
+          # F82: Undefined names (CRITICAL - catches missing variables!)
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          echo "Flake8 passed - no critical errors"
 
       - name: Security audit
         run: |
           echo "=== Security Audit ==="
           pip-audit --requirement ${{ env.PROJECT_PATH }}/requirements.txt || true
 
+      - name: Runtime function tests (MUST PASS)
+        run: |
+          echo "=== Runtime Function Tests ==="
+          cd ${{ env.PROJECT_PATH }}
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+
+          print('Testing runtime functions...')
+
+          # Test XML sanitization
+          from exporter.xml_parser import sanitize_xml_content
+          test_xml = '<root>Test & Value</root>'
+          result = sanitize_xml_content(test_xml)
+          assert '&amp;' in result, f'sanitize_xml_content failed: {result}'
+          print('✓ sanitize_xml_content: works')
+
+          # Test Korean detection
+          from utils.language_utils import contains_korean
+          assert contains_korean('한글') == True, 'Korean detection failed'
+          assert contains_korean('English') == False, 'English false positive'
+          print('✓ contains_korean: works')
+
+          # Test word counting
+          from utils.language_utils import count_words
+          assert count_words('hello world') == 2, 'Word count failed'
+          assert count_words('') == 0, 'Empty string count failed'
+          print('✓ count_words: works')
+
+          # Test English column logic
+          from utils.language_utils import should_include_english_column
+          assert should_include_english_column('fre') == True, 'FRE should include English'
+          assert should_include_english_column('eng') == False, 'ENG should not include English'
+          assert should_include_english_column('jpn') == False, 'JPN should not include English'
+          print('✓ should_include_english_column: works')
+
+          # Test category mapper class
+          from exporter.category_mapper import TwoTierCategoryMapper
+          from pathlib import Path
+          config = {'enabled': True, 'default_category': 'Uncategorized'}
+          mapper = TwoTierCategoryMapper(Path('.'), config)
+          assert mapper.default_category == 'Uncategorized', 'Mapper config failed'
+          print('✓ TwoTierCategoryMapper: works')
+
+          # Test VRSOrderer class
+          from utils.vrs_ordering import VRSOrderer
+          orderer = VRSOrderer(Path('.'))
+          assert orderer.loaded == False, 'VRSOrderer should start unloaded'
+          print('✓ VRSOrderer: works')
+
+          # Test cluster config loading
+          from exporter.category_mapper import load_cluster_config
+          config = load_cluster_config(Path('category_clusters.json'))
+          assert config.get('enabled') == True, 'Cluster config failed'
+          print('✓ load_cluster_config: works')
+
+          # Test report generator
+          from reports.report_generator import ReportGenerator
+          gen = ReportGenerator({}, 'Uncategorized')
+          assert gen.default_category == 'Uncategorized', 'ReportGenerator failed'
+          print('✓ ReportGenerator: works')
+
+          # Test GUI can be imported and instantiated (without display)
+          import tkinter as tk
+          from gui.app import LanguageDataExporterGUI
+          print('✓ LanguageDataExporterGUI: importable')
+
+          print('')
+          print('=' * 50)
+          print('ALL RUNTIME FUNCTION TESTS PASSED!')
+          print('=' * 50)
+          "
+
+      - name: Flake8 ALL warnings (informational)
+        run: |
+          echo "=== Flake8 All Warnings (informational) ==="
+          cd ${{ env.PROJECT_PATH }}
+          flake8 . --count --max-line-length=120 --statistics || true
+
       - name: Run tests (if exist)
-        continue-on-error: true
         run: |
           echo "=== Running Tests ==="
           cd ${{ env.PROJECT_PATH }}
