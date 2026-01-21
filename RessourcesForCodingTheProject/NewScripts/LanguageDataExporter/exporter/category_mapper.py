@@ -69,8 +69,12 @@ class TwoTierCategoryMapper:
     - QuestDialog: Quest-related dialog
     - NarrationDialog: Narration/tutorial text
 
-    Tier 2 (GAME_DATA): Keyword-based clustering
-    - Item, Quest, Character, Gimmick, Skill, Knowledge, Faction, UI, Region, System_Misc
+    Tier 2 (GAME_DATA): TWO-PHASE matching algorithm
+    - Phase 1: Priority keywords (override folder matching)
+    - Phase 2: Standard patterns (folder-first, then keywords)
+
+    Example: World/Knowledge/KnowledgeInfo_Item.xml
+    - Phase 1: "item" in filename → Returns "Item" (not Knowledge!)
     """
 
     # Dialog subfolder → simplified STORY category
@@ -82,28 +86,44 @@ class TwoTierCategoryMapper:
         "stageclosedialog": "QuestDialog",  # StageClose is quest-related
     }
 
-    # GameData keyword patterns (folder, keyword, category)
-    GAMEDATA_PATTERNS = [
-        # Special folder mappings
+    # ==========================================================================
+    # PRIORITY KEYWORDS - Checked FIRST, before any folder matching!
+    # ==========================================================================
+    # These keywords in filename OVERRIDE folder-based categorization.
+    # Example: KnowledgeInfo_Item.xml in Knowledge/ folder → Item (not Knowledge)
+    PRIORITY_KEYWORDS = [
+        ("item", "Item"),
+        ("quest", "Quest"),
+        ("skill", "Skill"),
+        ("character", "Character"),
+        ("faction", "Faction"),
+        ("region", "Region"),
+    ]
+
+    # ==========================================================================
+    # STANDARD PATTERNS - Folder-first matching (Phase 2)
+    # ==========================================================================
+    # Only checked if no priority keyword matched.
+    STANDARD_PATTERNS = [
+        # Special folder mappings (Item shortcuts)
         ("folder", "lookat", "Item"),
         ("folder", "patterndescription", "Item"),
-        # Item-related
-        ("keyword", "item", "Item"),
+        # Item keywords (fallback if not in priority)
         ("keyword", "weapon", "Item"),
         ("keyword", "armor", "Item"),
         ("keyword", "itemequip", "Item"),
-        # Quest-related
+        # Quest folder + keywords
         ("folder", "quest", "Quest"),
         ("keyword", "schedule_", "Quest"),
-        # Character-related
+        # Character folders + keywords
         ("folder", "character", "Character"),
         ("folder", "npc", "Character"),
         ("keyword", "monster", "Character"),
         ("keyword", "animal", "Character"),
-        # Other categories
+        # Other category folders
         ("folder", "gimmick", "Gimmick"),
         ("folder", "skill", "Skill"),
-        ("folder", "knowledge", "Knowledge"),
+        ("folder", "knowledge", "Knowledge"),  # Only if no priority keyword!
         ("folder", "faction", "Faction"),
         ("folder", "ui", "UI"),
         ("keyword", "localstringinfo", "UI"),
@@ -192,7 +212,15 @@ class TwoTierCategoryMapper:
         return "Sequencer"
 
     def _categorize_gamedata(self, relative: Path, file_path: Path) -> str:
-        """Categorize GAME_DATA tier files by keywords."""
+        """
+        Categorize GAME_DATA tier files using TWO-PHASE matching.
+
+        Phase 1: Check PRIORITY KEYWORDS (override folder matching)
+        Phase 2: Check STANDARD PATTERNS (folder-first)
+
+        Example: World/Knowledge/KnowledgeInfo_Item.xml
+        - Phase 1: "item" in filename → Returns "Item" (not Knowledge!)
+        """
         path_str = str(relative).lower().replace("\\", "/")
         filename = file_path.name.lower()
 
@@ -204,8 +232,18 @@ class TwoTierCategoryMapper:
         else:
             filename_base = filename
 
-        # Check patterns
-        for match_type, pattern, category in self.GAMEDATA_PATTERNS:
+        # =====================================================================
+        # PHASE 1: Priority Keywords (checked FIRST!)
+        # =====================================================================
+        for keyword, category in self.PRIORITY_KEYWORDS:
+            if keyword in filename_base:
+                logger.debug(f"Priority keyword '{keyword}' matched in {filename} → {category}")
+                return category
+
+        # =====================================================================
+        # PHASE 2: Standard Patterns (folder-first)
+        # =====================================================================
+        for match_type, pattern, category in self.STANDARD_PATTERNS:
             if match_type == "folder":
                 # Check if pattern appears as folder in path
                 if f"/{pattern}/" in path_str or path_str.startswith(f"{pattern}/"):
