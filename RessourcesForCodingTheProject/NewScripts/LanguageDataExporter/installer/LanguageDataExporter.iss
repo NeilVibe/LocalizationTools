@@ -38,26 +38,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-; Main application
-Source: "..\dist\LanguageDataExporter\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\dist\LanguageDataExporter\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs
-
-; Configuration files
-Source: "..\dist\LanguageDataExporter\config.py"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\dist\LanguageDataExporter\category_clusters.json"; DestDir: "{app}"; Flags: ignoreversion
-
-; Python packages
-Source: "..\dist\LanguageDataExporter\utils\*"; DestDir: "{app}\utils"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "..\dist\LanguageDataExporter\exporter\*"; DestDir: "{app}\exporter"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "..\dist\LanguageDataExporter\reports\*"; DestDir: "{app}\reports"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "..\dist\LanguageDataExporter\clustering\*"; DestDir: "{app}\clustering"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "..\dist\LanguageDataExporter\gui\*"; DestDir: "{app}\gui"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-
-; Documentation
-Source: "..\dist\LanguageDataExporter\README.md"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-
-; Create output folder
-Source: ""; DestDir: "{app}\GeneratedExcel"; Flags: skipifsourcedoesntexist
+; Main application and PyInstaller runtime
+; PyInstaller bundles everything into exe + _internal folder
+Source: "..\dist\LanguageDataExporter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Dirs]
 Name: "{app}\GeneratedExcel"; Permissions: users-modify
