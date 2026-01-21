@@ -1,6 +1,68 @@
 # Session Context
 
-> Last Updated: 2026-01-18 (Session 54)
+> Last Updated: 2026-01-21 (Session 55)
+
+---
+
+## SESSION 55: QACompiler Runtime Config + Comprehensive CI ✅
+
+### Problem: Drive Letter Not Working After Install
+
+**User Report:** Friend installed QACompiler on D: drive, config shows D:, but app still looks for F:
+
+**Root Cause:** PyInstaller compiles config.py into bytecode at build time. Installer patched the `.py` file, but Python uses the frozen bytecode - so F: was permanently baked in.
+
+### Solution: Runtime settings.json
+
+| File | Change |
+|------|--------|
+| `config.py` | Added `_load_settings()` - reads drive from `settings.json` at runtime |
+| `installer/QACompiler.iss` | Writes `settings.json` instead of patching config.py |
+| `tracker/coverage.py` | Now imports paths from config.py (no more duplicates) |
+| `system_localizer.py` | Imports LANGUAGE_FOLDER from config.py |
+| `drive_replacer.py` | Creates `settings.json` instead of modifying source |
+| `build_exe.bat` | Simplified - creates `settings.json` in dist folder |
+
+**Test Results:** PyInstaller simulation passed - F: at compile time + D: in settings.json = app uses D: ✓
+
+### Comprehensive CI Validation (5 Checks, 3 Jobs)
+
+**New Pipeline Structure:**
+```
+Job 1: validation (Ubuntu, ~30s)
+  └─ Check trigger, generate version
+
+Job 2: safety-checks (Ubuntu, ~2min)
+  ├─ CHECK 1: Python Syntax (py_compile)
+  ├─ CHECK 2: Module Imports (catches missing 'import sys')
+  ├─ CHECK 3: Flake8 (undefined names, errors)
+  ├─ CHECK 4: Security Audit (pip-audit)
+  └─ CHECK 5: Pytest Tests
+
+Job 3: build-and-release (Windows, ~10min)
+  └─ Only runs if validation passes
+```
+
+**CI Caught Real Bugs:**
+- `generators/quest.py` - missing `import sys`
+- `generators/item.py` - missing `import sys`
+- `generators/item.py` - missing `get_first_translation` import
+
+**Local Validation:**
+```bash
+python ci_validate.py        # Full check
+python ci_validate.py --quick  # Fast check
+```
+
+### Files Modified
+
+| Category | Files |
+|----------|-------|
+| Runtime Config | `config.py`, `installer/QACompiler.iss`, `drive_replacer.py`, `build_exe.bat` |
+| Import Fixes | `tracker/coverage.py`, `system_localizer.py` |
+| Bug Fixes | `generators/quest.py`, `generators/item.py` |
+| CI Pipeline | `.github/workflows/qacompiler-build.yml`, `ci_validate.py` |
+| Tests | `test_runtime_config.py`, `test_pyinstaller_simulation.py` |
 
 ---
 
@@ -22,54 +84,34 @@ All in `.claude/agents/` with **opus model** for maximum power:
 | `security-auditor` | OWASP, secrets, injection, auth |
 | `qacompiler-specialist` | QACompilerNEW project |
 
-### Docs Cleanup (DOCS-001)
-
-| File | Before | After |
-|------|--------|-------|
-| ISSUES_TO_FIX.md | 2272 | 90 |
-| OFFLINE_ONLINE_MODE.md | 1660 | 150 |
-| SESSION_CONTEXT.md | 435 | 65 |
-
----
-
-## SESSION 53: Slim Installer COMPLETE ✅
-
-### BUILD-001: FULLY FIXED
-
-**Problem:** Installer 594 MB → Target 150 MB
-
-**Root Cause:** PyTorch (~400MB) bundled instead of downloaded on first-run
-
-**Solution:** Industry-standard approach:
-- Create `requirements-build.txt` (server packages only, no torch)
-- Build uses slim requirements
-- First-run downloads PyTorch + model (~1.5GB)
-
-**Changes:**
-| File | Change |
-|------|--------|
-| `requirements-build.txt` | NEW - server-only packages |
-| `.gitea/workflows/build.yml` | Lines 1223, 1398, 1487: use requirements-build.txt |
-
-**Results:**
-| Metric | Before | After |
-|--------|--------|-------|
-| Installer | 594 MB | **174 MB** (71% smaller) |
-| First-run | ~1.2 GB | ~1.5 GB (includes PyTorch) |
-
-**Verified:** Build 497 ✅ | Install ✅ | First-run ✅ | App ✅
-
 ---
 
 ## Recent Sessions Summary
 
 | Session | Achievement |
 |---------|-------------|
-| **52** | BUILD-001 initial attempt (cache issue found) |
-| **51** | UI-113, BUG-044, UI-114 verified; BUILD-002 dual-release |
-| **50** | BUG-043 fixed (SQL files not bundled) |
-| **49** | QACompiler fixes |
-| **48** | Patch updater COMPLETE (ASAR interception fix) |
+| **55** | QACompiler runtime config fix + comprehensive CI (5 checks) |
+| **54** | Custom subagents + docs cleanup |
+| **53** | Slim installer (594→174 MB) |
+| **52** | BUILD-001 initial attempt |
+| **51** | UI-113, BUG-044, UI-114 verified |
+
+---
+
+## QACompiler CI Quick Reference
+
+```bash
+# Trigger QACompiler build
+echo "Build - description" >> QACOMPILER_BUILD.txt
+git add -A && git commit -m "QACompiler: description" && git push origin main
+
+# Check build status
+gh run list --workflow=qacompiler-build.yml --limit 1
+
+# Local validation before push
+cd RessourcesForCodingTheProject/NewScripts/QACompilerNEW
+python ci_validate.py --quick
+```
 
 ---
 
@@ -80,23 +122,6 @@ All in `.claude/agents/` with **opus model** for maximum power:
 | **HIGH** | AsyncSessionWrapper fakes async | `dependencies.py:33-143` |
 | **MEDIUM** | SQLite repos use private methods | `row_repo.py`, `tm_repo.py` |
 
-**Fix:** Replace with `aiosqlite` for true async SQLite.
-
 ---
 
-## Quick Commands
-
-```bash
-# DEV servers
-./scripts/start_all_servers.sh --with-vite
-
-# Build trigger
-echo "Build NNN" >> GITEA_TRIGGER.txt && git add -A && git commit -m "Build NNN" && git push origin main && git push gitea main
-
-# Check build
-python3 -c "import sqlite3; c=sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor(); c.execute('SELECT id,status FROM action_run ORDER BY id DESC LIMIT 1'); r=c.fetchone(); print(f'Run {r[0]}: {[\"?\",\"SUCCESS\",\"FAIL\",\"CANCEL\",\"SKIP\",\"WAIT\",\"RUN\"][r[1]]}')"
-```
-
----
-
-*Session 53 | Build 497 | Slim Installer Complete*
+*Session 55 | QACompiler v26.121.1431 | Runtime Config + CI Complete*

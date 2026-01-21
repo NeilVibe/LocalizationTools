@@ -1,12 +1,122 @@
 {
-  "description": "OPTIONAL: Override folder → category mappings. If empty, folder names are used directly as categories.",
-  "clusters": {},
+  "enabled": true,
   "default_category": "Uncategorized",
-  "notes": [
-    "AUTO-DISCOVERY: Top-level folder names in EXPORT become categories automatically",
-    "Example: EXPORT/Character/*.loc.xml → Category = 'Character'",
-    "Example: EXPORT/Item/weapons/*.loc.xml → Category = 'Item'",
-    "Only add overrides here if you need to MERGE folders into one category",
-    "Example override: {'Item': ['Item', 'Gimmick']} merges both into 'Item'"
-  ]
+  "description": "Two-tier clustering for LanguageDataExporter with VRS-ordered STORY categories",
+
+  "tiers": {
+    "STORY": {
+      "description": "4 STORY categories ordered by VoiceRecordingSheet EventName",
+      "folders": ["Dialog", "Sequencer"],
+      "categories": ["Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"],
+
+      "dialog_mappings": {
+        "aidialog": "AIDialog",
+        "narrationdialog": "NarrationDialog",
+        "questdialog": "QuestDialog",
+        "stageclosedialog": "QuestDialog",
+        "_default": "AIDialog"
+      },
+
+      "sequencer_mapping": "Sequencer",
+
+      "ordering": {
+        "source": "VoiceRecordingSheet",
+        "column": "EventName (Column W)",
+        "key_attribute": "SoundEventName",
+        "description": "STORY strings are ordered by EventName position for chronological story order"
+      }
+    },
+
+    "GAME_DATA": {
+      "description": "Keyword-based clustering for game data",
+      "folders": ["System", "World", "None", "Platform"],
+
+      "categories": {
+        "Item": {
+          "folders": ["LookAt", "PatternDescription"],
+          "keywords": ["item", "weapon", "armor", "itemequip"]
+        },
+        "Quest": {
+          "folders": ["Quest"],
+          "keywords": ["quest", "schedule_"]
+        },
+        "Character": {
+          "folders": ["Character", "Npc"],
+          "keywords": ["monster", "animal"]
+        },
+        "Gimmick": {
+          "folders": ["Gimmick"],
+          "keywords": []
+        },
+        "Skill": {
+          "folders": ["Skill"],
+          "keywords": []
+        },
+        "Knowledge": {
+          "folders": ["Knowledge"],
+          "keywords": []
+        },
+        "Faction": {
+          "folders": ["Faction"],
+          "keywords": []
+        },
+        "UI": {
+          "folders": ["Ui"],
+          "keywords": ["localstringinfo", "symboltext"]
+        },
+        "Region": {
+          "folders": ["Region"],
+          "keywords": []
+        }
+      },
+
+      "default_category": "System_Misc"
+    }
+  },
+
+  "language_config": {
+    "word_count_languages": [
+      "eng", "fre", "ger", "spa", "por", "ita", "rus", "tur", "pol",
+      "kor", "tha", "vie", "ind", "msa"
+    ],
+    "char_count_languages": [
+      "jpn", "zho-cn", "zho-tw"
+    ],
+    "english_column_languages": [
+      "fre", "ger", "spa", "por", "ita", "rus", "tur", "pol",
+      "kor", "tha", "vie", "ind", "msa"
+    ],
+    "no_english_column_languages": [
+      "eng", "jpn", "zho-cn", "zho-tw"
+    ]
+  },
+
+  "category_colors": {
+    "Sequencer": "FFE599",
+    "AIDialog": "C6EFCE",
+    "QuestDialog": "C6EFCE",
+    "NarrationDialog": "C6EFCE",
+    "Item": "D9D2E9",
+    "Quest": "D9D2E9",
+    "Character": "F8CBAD",
+    "Gimmick": "D9D2E9",
+    "Skill": "D9D2E9",
+    "Knowledge": "D9D2E9",
+    "Faction": "D9D2E9",
+    "UI": "A9D08E",
+    "Region": "F8CBAD",
+    "System_Misc": "D9D9D9",
+    "Uncategorized": "DDD9C4"
+  },
+
+  "notes": {
+    "story_ordering": "STORY strings are sorted by VoiceRecordingSheet EventName for chronological story order. EventName in VRS = SoundEventName in EXPORT XML.",
+    "tier_1_story": "Dialog and Sequencer folders get 4 categories: Sequencer, AIDialog, QuestDialog, NarrationDialog.",
+    "tier_2_gamedata": "System/World/None/Platform folders get keyword-based categories.",
+    "special_rules": [
+      "LookAt/ folder -> Item (readable items in game)",
+      "PatternDescription/ folder -> Item (item patterns)",
+      "StageCloseDialog maps to QuestDialog"
+    ]
+  }
 }
