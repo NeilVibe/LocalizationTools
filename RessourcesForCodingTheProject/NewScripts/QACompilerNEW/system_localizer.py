@@ -31,7 +31,7 @@ from copy import copy
 
 # Add parent to path for config import
 sys.path.insert(0, str(Path(__file__).parent))
-from config import DATASHEET_OUTPUT
+from config import DATASHEET_OUTPUT, LANGUAGE_FOLDER
 
 # GUI imports
 try:
@@ -393,8 +393,8 @@ def localize_system_sheet(
 class SystemLocalizerGUI:
     """Simple GUI for System Sheet Localizer."""
 
-    # Default LOC folder (same as main QA compiler)
-    DEFAULT_LOC_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc"
+    # Default LOC folder - imported from config.py (uses settings.json drive letter)
+    DEFAULT_LOC_FOLDER = str(LANGUAGE_FOLDER)
 
     def __init__(self):
         self.root = tk.Tk()

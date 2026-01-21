@@ -188,25 +188,15 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  ConfigPath: String;
-  ConfigContent: AnsiString;
-  NewContent: String;
+  SettingsPath: String;
+  SettingsContent: String;
 begin
   if CurStep = ssPostInstall then
   begin
-    // Update config.py with selected drive
-    if DriveLetter <> 'F' then
-    begin
-      ConfigPath := ExpandConstant('{app}\_internal\config.py');
-      if FileExists(ConfigPath) then
-      begin
-        LoadStringFromFile(ConfigPath, ConfigContent);
-        NewContent := String(ConfigContent);
-        StringChange(NewContent, 'F:\perforce', DriveLetter + ':\perforce');
-        StringChange(NewContent, 'F:\\perforce', DriveLetter + ':\\perforce');
-        SaveStringToFile(ConfigPath, AnsiString(NewContent), False);
-      end;
-    end;
+    // Write settings.json with selected drive letter
+    SettingsPath := ExpandConstant('{app}\settings.json');
+    SettingsContent := '{"drive_letter": "' + DriveLetter + '", "version": "1.0"}';
+    SaveStringToFile(SettingsPath, AnsiString(SettingsContent), False);
   end;
 end;
 

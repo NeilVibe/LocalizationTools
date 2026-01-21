@@ -22,6 +22,10 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from lxml import etree as ET
 
+# Add parent directory to path for config import
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config import LANGUAGE_FOLDER, EXPORT_FOLDER, VOICE_RECORDING_SHEET_FOLDER
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
@@ -77,18 +81,19 @@ TRANSLATION_COLUMN = {
     "Help":       2,            # English (ENG)
 }
 
-# Language data folder
-LANGUAGE_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
+# Language data folder - imported from config.py (uses settings.json drive letter)
+# LANGUAGE_FOLDER is imported above
 
-# Export folder (for analyzing unconsumed strings)
-EXPORT_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
+# Export folder - imported from config.py (uses settings.json drive letter)
+# EXPORT_FOLDER is imported above
 
 # Additional export paths for word count (inherently tested but not in Excel)
 EXPORT_LOOKAT_FOLDER = EXPORT_FOLDER / "System" / "LookAt"    # Additional for Item
 EXPORT_QUEST_FOLDER = EXPORT_FOLDER / "System" / "Quest"      # Additional for Quest
 
-# Voice Recording Sheet folder
-VOICE_RECORDING_FOLDER = Path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
+# Voice Recording Sheet folder - imported from config.py (uses settings.json drive letter)
+# Alias for compatibility with rest of this file
+VOICE_RECORDING_FOLDER = VOICE_RECORDING_SHEET_FOLDER
 
 # Non-priority folders (under System/) - excluded from CLEAN report
 NON_PRIORITY_FOLDERS = {"ItemGroup", "Gimmick", "MultiChange"}
