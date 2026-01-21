@@ -373,9 +373,38 @@ python main.py --dry-run --lang eng
 
 ---
 
+## Runtime Configuration (settings.json)
+
+The installer creates `settings.json` with user-selected paths. This file is **loaded at runtime** by `config.py`.
+
+**Format:**
+```json
+{
+  "drive_letter": "F",
+  "loc_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\loc",
+  "export_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\export__",
+  "vrs_folder": "F:\\perforce\\cd\\mainline\\resource\\editordata\\VoiceRecordingSheet__"
+}
+```
+
+**How it works:**
+1. Installer prompts for drive letter during installation
+2. Creates `settings.json` with full paths using selected drive
+3. `config.py` loads settings.json at module import time
+4. Falls back to F: drive defaults if file missing/invalid
+
+**To change paths after install:** Edit `settings.json` directly.
+
+---
+
 ## Recent Features
 
-### VRS Ordering (Latest)
+### Runtime Path Configuration (Build 006)
+- settings.json is now properly loaded at runtime
+- Case-insensitive folder matching for cross-platform support
+- Fixes "No StringID to Category mapping found" errors
+
+### VRS Ordering (Build 005)
 - Chronological story ordering via VoiceRecordingSheet
 - EventName → SoundEventName mapping
 - STORY categories sorted by VRS position

@@ -3,10 +3,16 @@ Configuration for Language XML to Categorized Excel Converter.
 
 Paths, constants, and configuration for the exporter.
 Now integrated with utils/language_utils for language classification.
+
+Paths can be configured via settings.json (created by installer).
 """
 
 from pathlib import Path
 import sys
+import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Detect if running as PyInstaller bundle
 if getattr(sys, 'frozen', False):
@@ -15,18 +21,50 @@ else:
     SCRIPT_DIR = Path(__file__).parent
 
 # =============================================================================
+# Settings Loading (from installer-generated settings.json)
+# =============================================================================
+
+def _load_settings() -> dict:
+    """
+    Load runtime settings from settings.json if it exists.
+
+    The installer creates this file with the user's selected drive letter.
+    Falls back to defaults if file doesn't exist or is invalid.
+    """
+    settings_path = SCRIPT_DIR / "settings.json"
+
+    if settings_path.exists():
+        try:
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+            logger.info(f"Loaded settings from {settings_path}")
+            return settings
+        except (json.JSONDecodeError, IOError) as e:
+            logger.warning(f"Failed to load settings.json: {e}")
+
+    return {}
+
+# Load settings at module level
+_SETTINGS = _load_settings()
+
+# =============================================================================
 # Perforce Paths (Source Data)
 # =============================================================================
 
+# Get paths from settings.json if available, otherwise use F: drive defaults
+_loc = _SETTINGS.get("loc_folder")
+_export = _SETTINGS.get("export_folder")
+_vrs = _SETTINGS.get("vrs_folder")
+
 # LOC folder: Contains languagedata_*.xml files
-LOC_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
+LOC_FOLDER = Path(_loc) if _loc else Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
 
 # EXPORT folder: Contains categorized .loc.xml files
-EXPORT_FOLDER = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
+EXPORT_FOLDER = Path(_export) if _export else Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
 
 # VoiceRecordingSheet folder: Contains Excel files with EventName ordering
 # Used to order STORY strings (Sequencer, Dialog) in chronological story order
-VOICE_RECORDING_FOLDER = Path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
+VOICE_RECORDING_FOLDER = Path(_vrs) if _vrs else Path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
 
 # =============================================================================
 # Output Configuration

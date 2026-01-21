@@ -204,11 +204,37 @@ def parse_export_with_soundevent(xml_path: Path) -> List[Dict]:
         return []
 
 
+def _find_folder_case_insensitive(parent: Path, name: str) -> Optional[Path]:
+    """
+    Find a folder by name, case-insensitively.
+
+    Args:
+        parent: Parent directory to search in
+        name: Folder name to find (case-insensitive)
+
+    Returns:
+        Path to folder if found, None otherwise
+    """
+    if not parent.exists():
+        return None
+
+    name_lower = name.lower()
+    try:
+        for item in parent.iterdir():
+            if item.is_dir() and item.name.lower() == name_lower:
+                return item
+    except PermissionError:
+        pass
+
+    return None
+
+
 def build_stringid_soundevent_map(export_folder: Path) -> Dict[str, str]:
     """
     Build a mapping of StringID to SoundEventName from EXPORT folder.
 
     Only includes entries that have a SoundEventName (voiced lines).
+    Uses case-insensitive folder matching for cross-platform compatibility.
 
     Args:
         export_folder: Path to EXPORT folder
@@ -223,13 +249,17 @@ def build_stringid_soundevent_map(export_folder: Path) -> Dict[str, str]:
     stringid_to_soundevent: Dict[str, str] = {}
 
     # Only scan Dialog and Sequencer folders (STORY content)
-    story_folders = ["Dialog", "Sequencer"]
+    # Use case-insensitive matching for cross-platform compatibility
+    story_folder_names = ["Dialog", "Sequencer"]
 
-    for folder in story_folders:
-        folder_path = export_folder / folder
-        if not folder_path.exists():
+    for folder_name in story_folder_names:
+        # Find folder case-insensitively
+        folder_path = _find_folder_case_insensitive(export_folder, folder_name)
+        if folder_path is None:
+            logger.debug(f"STORY folder not found: {folder_name}")
             continue
 
+        logger.debug(f"Scanning STORY folder: {folder_path}")
         for xml_file in folder_path.rglob("*.loc.xml"):
             entries = parse_export_with_soundevent(xml_file)
             for entry in entries:
