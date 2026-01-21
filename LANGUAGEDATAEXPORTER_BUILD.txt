@@ -18,3 +18,4 @@ Build 010 - ALL attributes/tags case-insensitive (StringId, StrOrigin, Str, Soun
 Build 011 - Improved CI: Full app test, GUI import validation, --help test
 Build 012 - FIX: GUI lambda closure bug + MEGA CI validation (no more || true)
 Build 013 - FIX: Remove double-dot relative imports + Direct module import tests
+Build 014 - UI Simplification + Unified Report (General + Detailed Summary sheets)
