@@ -9,24 +9,14 @@ import logging
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-try:
-    # When running as part of the package
-    from ..utils.language_utils import (
-        contains_korean,
-        count_words,
-        count_chars,
-        is_word_count_language,
-        is_char_count_language,
-    )
-except ImportError:
-    # When running from within the package directory
-    from utils.language_utils import (
-        contains_korean,
-        count_words,
-        count_chars,
-        is_word_count_language,
-        is_char_count_language,
-    )
+# Use absolute imports (works when running main.py directly)
+from utils.language_utils import (
+    contains_korean,
+    count_words,
+    count_chars,
+    is_word_count_language,
+    is_char_count_language,
+)
 
 logger = logging.getLogger(__name__)
 

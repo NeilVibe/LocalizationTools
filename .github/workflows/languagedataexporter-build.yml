@@ -124,7 +124,7 @@ jobs:
           echo "=== Application Test ==="
           cd ${{ env.PROJECT_PATH }}
 
-          # Test --help works (validates full import chain)
+          # Test --help works (validates argparse)
           python main.py --help
           echo "✓ main.py --help: OK"
 
@@ -132,6 +132,20 @@ jobs:
           python main.py --list-categories 2>&1 || echo "list-categories: expected fail (no data folder)"
           echo "✓ main.py --list-categories: OK"
 
+          # CRITICAL: Test all imports work when running from this directory
+          # This catches "ValueError: attempted relative import beyond top-level package"
+          # We test each module that main.py imports
+          echo "Testing direct module imports (catches relative import bugs)..."
+
+          # These must ALL succeed - no || true allowed!
+          python -c "import config; print('✓ config')"
+          python -c "import utils; print('✓ utils')"
+          python -c "import exporter; print('✓ exporter')"
+          python -c "import clustering; print('✓ clustering')"
+          python -c "import reports; print('✓ reports')"
+          python -c "import gui; print('✓ gui')"
+
+          echo "✓ All module imports validated"
           echo "Application test complete"
 
       - name: Comprehensive module validation (MUST PASS)
