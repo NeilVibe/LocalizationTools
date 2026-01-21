@@ -32,3 +32,4 @@ Build - Manager status fix 20260120_220513
 Build - Fix runtime drive config (settings.json)
 Build - Fix missing sys import + Add CI validation
 Build - Comprehensive CI validation (5 checks)
+Build - Fix missing get_first_translation import
