@@ -203,6 +203,31 @@ No reinstall needed!
 - `Username_Sequencer` → Master_Script.xlsx
 - `Username_Dialog` → Master_Script.xlsx
 
+## Column Detection: Name vs Position
+
+**IMPORTANT:** QACompiler uses a MIX of column detection methods:
+
+| Column | Detection Method | Notes |
+|--------|------------------|-------|
+| STATUS | **By header NAME** | `find_column_by_header("STATUS")` |
+| COMMENT | **By header NAME** | `find_column_by_header("COMMENT")` |
+| MEMO | **By header NAME** | Script-type only: `find_column_by_header("MEMO")` |
+| SCREENSHOT | **By header NAME** | `find_column_by_header("SCREENSHOT")` |
+| STRINGID | **By header NAME** | `find_column_by_header("STRINGID")` |
+| EventName | **By header NAME** | Script-type only: `find_column_by_header("EventName")` |
+| **Translation** | **HARDCODED POSITION** | Uses `TRANSLATION_COLS[category]["eng"/"other"]` |
+
+**Why Translation uses position:**
+- Translation column position varies by category (Item uses col 5/7, standard uses 2/3)
+- Position is configured in `config.py` TRANSLATION_COLS
+- Allows different layouts per category without changing header names
+
+**Key functions:**
+- `find_column_by_header(ws, name)` → Searches row 1 for matching header, returns column index
+- `get_translation_column(category, is_english)` → Returns hardcoded position from TRANSLATION_COLS
+
+**If column positions don't match TRANSLATION_COLS:** Matching will fail silently (wrong column data used)
+
 ## Tracker-Only Update (core/tracker_update.py)
 
 **Retroactively add missing days to tracker WITHOUT rebuilding master files.**
