@@ -112,6 +112,8 @@ python system_localizer.py --cli <input.xlsx> <language_folder>
 | 8 | Help | `help.py` | GameAdvice/Help system entries |
 | 9 | Gimmick | `gimmick.py` | Interactive gimmick objects |
 | 10 | Contents | (manual) | Manual content review sheets, no localization |
+| 11 | Sequencer | `script.py` | Script data → Master_Script.xlsx (EventName matching) |
+| 12 | Dialog | `script.py` | Dialog data → Master_Script.xlsx (EventName matching) |
 
 ## Generator Details
 
@@ -235,13 +237,15 @@ DATASHEET_OUTPUT = SCRIPT_DIR / "GeneratedDatasheets"
 ### Category Clustering
 ```python
 CATEGORY_TO_MASTER = {
-    "Skill": "System",   # Skill → Master_System.xlsx
-    "Help": "System",    # Help → Master_System.xlsx
+    "Skill": "System",       # Skill → Master_System.xlsx
+    "Help": "System",        # Help → Master_System.xlsx
+    "Sequencer": "Script",   # Sequencer → Master_Script.xlsx
+    "Dialog": "Script",      # Dialog → Master_Script.xlsx
 }
 ```
 
 ### Transfer Column Mapping
-System and Contents categories have unique column layouts:
+System, Contents, and Script categories have unique column layouts:
 ```python
 TRANSLATION_COLS = {
     "Quest": {"eng": 2, "other": 3},      # Standard layout
@@ -249,11 +253,18 @@ TRANSLATION_COLS = {
     "Item": {"eng": 5, "other": 7},       # ItemName column
     "System": {"eng": 1, "other": 1},     # CONTENT column (single)
     "Contents": {"eng": 2, "other": 2},   # INSTRUCTIONS column (matching key)
+    "Sequencer": {"eng": 2, "other": 3},  # Text column → Script
+    "Dialog": {"eng": 2, "other": 3},     # Text column → Script
     # ... other categories use standard 2/3
 }
 ```
 System Excel layout: `CONTENT | STATUS | COMMENT | STRINGID | SCREENSHOT`
 Contents Excel layout: `CONTENT | INSTRUCTIONS | STATUS | COMMENT | SCREENSHOT`
+Script Excel layout: `EventName | Text | Translation | STATUS | MEMO` (no SCREENSHOT, MEMO=COMMENT)
+
+**Script Matching Logic (Sequencer/Dialog):**
+- Primary: Translation (Text) + EventName (both must match)
+- Fallback: EventName ONLY (not Translation only like other categories)
 
 ## GUI Layout (1000x1000 window)
 
