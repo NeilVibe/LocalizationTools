@@ -195,6 +195,7 @@ CATEGORIES = [
     "Help",
     "Gimmick",
     "Contents",
+    "Script",
 ]
 
 # Category clustering: Multiple categories can merge into one master file
