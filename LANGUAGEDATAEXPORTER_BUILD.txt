@@ -10,3 +10,4 @@ Build 002 - Fix missing spec file
 Build 003 - Fix ISS file for PyInstaller output
 Build 004 - Add permissions for GitHub Release
 Build 005 - QACompiler-style triple artifact separation
+Build 006 - Fix settings.json loading + case-insensitive folder matching
