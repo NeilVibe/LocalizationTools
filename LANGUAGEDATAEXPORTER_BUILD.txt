@@ -8,3 +8,4 @@ Build History:
 Build 001 - Initial CI/CD setup with VRS ordering support
 Build 002 - Fix missing spec file
 Build 003 - Fix ISS file for PyInstaller output
+Build 004 - Add permissions for GitHub Release
