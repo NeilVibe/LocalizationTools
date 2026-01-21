@@ -197,7 +197,13 @@ No reinstall needed!
 | Fallback match | EventName ONLY | Translation only |
 | Master output | Master_Script.xlsx | Master_{Category}.xlsx |
 
-**Column layout:** `EventName | Text | Translation | STATUS | MEMO` (no SCREENSHOT)
+**Column layout:** ⚠️ **TO BE CONFIRMED** - Actual source files have different structure:
+- Col 1: Group
+- Col 2: SequenceName
+- Col 3: Dialog Voice
+- Col 4+: TBD
+
+**Current TRANSLATION_COLS setting:** `{"eng": 2, "other": 3}` - **MAY NEED UPDATE** once actual structure confirmed.
 
 **Folder naming:**
 - `Username_Sequencer` → Master_Script.xlsx
