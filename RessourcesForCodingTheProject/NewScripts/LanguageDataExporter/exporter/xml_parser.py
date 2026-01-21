@@ -156,14 +156,28 @@ def parse_language_file(xml_path: Path) -> List[Dict]:
 
         entries = []
 
-        # Find all LocStr elements
-        # IMPORTANT: Attribute names are case-sensitive!
-        # The actual XML uses: StringId (not StringID), StrOrigin, Str
-        for loc_str in root.iter('LocStr'):
-            # Try both cases for StringId (some files may differ)
-            string_id = loc_str.get('StringId') or loc_str.get('StringID') or ''
-            str_origin = loc_str.get('StrOrigin') or ''
-            str_value = loc_str.get('Str') or ''
+        # Find all LocStr elements (try different tag casings)
+        loc_str_elements = list(root.iter('LocStr'))
+        if not loc_str_elements:
+            loc_str_elements = list(root.iter('locstr'))
+        if not loc_str_elements:
+            loc_str_elements = list(root.iter('LOCSTR'))
+
+        print(f"[DEBUG XML_PARSER] Found {len(loc_str_elements)} LocStr elements")
+
+        # If still none, list what tags ARE in the file
+        if not loc_str_elements:
+            all_tags = set(elem.tag for elem in root.iter())
+            print(f"[DEBUG XML_PARSER] Tags in file: {list(all_tags)[:20]}")
+
+        for loc_str in loc_str_elements:
+            # Try all case variations for attributes
+            string_id = (loc_str.get('StringId') or loc_str.get('StringID') or
+                        loc_str.get('stringid') or loc_str.get('STRINGID') or '')
+            str_origin = (loc_str.get('StrOrigin') or loc_str.get('Strorigin') or
+                         loc_str.get('strorigin') or loc_str.get('STRORIGIN') or '')
+            str_value = (loc_str.get('Str') or loc_str.get('str') or
+                        loc_str.get('STR') or '')
 
             if string_id:  # Only include if we have a StringId
                 entries.append({
@@ -276,10 +290,17 @@ def parse_export_file(xml_path: Path) -> List[str]:
 
         string_ids = []
 
-        # Find all LocStr elements with StringId attribute
-        # IMPORTANT: Try both StringId and StringID (case varies between files!)
-        for elem in root.iter('LocStr'):
-            string_id = elem.get('StringId') or elem.get('StringID')
+        # Find all LocStr elements (try different tag casings)
+        loc_str_elements = list(root.iter('LocStr'))
+        if not loc_str_elements:
+            loc_str_elements = list(root.iter('locstr'))
+        if not loc_str_elements:
+            loc_str_elements = list(root.iter('LOCSTR'))
+
+        # Try all case variations for StringId attribute
+        for elem in loc_str_elements:
+            string_id = (elem.get('StringId') or elem.get('StringID') or
+                        elem.get('stringid') or elem.get('STRINGID'))
             if string_id:
                 string_ids.append(string_id)
 
@@ -328,10 +349,21 @@ def parse_export_with_soundevent(xml_path: Path) -> List[Dict]:
 
         results = []
 
+        # Find all LocStr elements (try different tag casings)
+        loc_str_elements = list(root.iter('LocStr'))
+        if not loc_str_elements:
+            loc_str_elements = list(root.iter('locstr'))
+        if not loc_str_elements:
+            loc_str_elements = list(root.iter('LOCSTR'))
+
         # Find LocStr elements with both StringId and SoundEventName
-        for elem in root.iter('LocStr'):
-            string_id = elem.get('StringId') or elem.get('StringID')
-            sound_event = elem.get('SoundEventName')
+        for elem in loc_str_elements:
+            # Try all case variations
+            string_id = (elem.get('StringId') or elem.get('StringID') or
+                        elem.get('stringid') or elem.get('STRINGID'))
+            sound_event = (elem.get('SoundEventName') or elem.get('Soundeventname') or
+                          elem.get('soundeventname') or elem.get('SOUNDEVENTNAME') or
+                          elem.get('EventName') or elem.get('eventname') or elem.get('EVENTNAME'))
 
             if string_id and sound_event:
                 results.append({
