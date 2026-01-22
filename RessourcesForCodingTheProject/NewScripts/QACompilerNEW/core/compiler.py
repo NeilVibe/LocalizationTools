@@ -276,6 +276,10 @@ def collect_manager_stats_for_tracker() -> Dict:
     Returns:
         {category: {user: {fixed, reported, checking, nonissue, lang}}}
     """
+    print("\n" + "="*60)
+    print("[COLLECT_MANAGER_STATS] Starting collection from Master files...")
+    print("="*60)
+
     tester_mapping = load_tester_mapping()
     manager_stats = defaultdict(lambda: defaultdict(
         lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}
@@ -283,6 +287,7 @@ def collect_manager_stats_for_tracker() -> Dict:
 
     # Scan both EN and CN folders
     for master_folder in [MASTER_FOLDER_EN, MASTER_FOLDER_CN]:
+        print(f"\n[SCAN] Folder: {master_folder}")
         # Track processed master files to avoid re-reading (clustered categories share masters)
         processed_masters = set()
 
@@ -294,9 +299,11 @@ def collect_manager_stats_for_tracker() -> Dict:
             if master_path in processed_masters:
                 continue
             if not master_path.exists():
+                print(f"  [SKIP] {master_path.name} - does not exist")
                 continue
 
             processed_masters.add(master_path)
+            print(f"\n  [READ] {master_path.name}")
 
             try:
                 wb = safe_load_workbook(master_path)
@@ -309,19 +316,28 @@ def collect_manager_stats_for_tracker() -> Dict:
 
                     # Find all STATUS_{User} columns
                     status_cols = {}
+                    all_headers = []
                     for col in range(1, ws.max_column + 1):
                         header = ws.cell(row=1, column=col).value
-                        if header and str(header).startswith("STATUS_"):
-                            username = str(header).replace("STATUS_", "")
-                            status_cols[username] = col
+                        if header:
+                            all_headers.append(str(header))
+                            if str(header).startswith("STATUS_"):
+                                username = str(header).replace("STATUS_", "")
+                                status_cols[username] = col
 
                     if not status_cols:
+                        # Show headers to debug why no STATUS_ columns found
+                        status_like = [h for h in all_headers if "STATUS" in h.upper()]
+                        print(f"    [SHEET] {sheet_name}: NO STATUS_ columns (headers with STATUS: {status_like[:5]})")
                         continue
+
+                    print(f"    [SHEET] {sheet_name}: Found STATUS_ columns for users: {list(status_cols.keys())}")
 
                     # Count status values per user
                     # USE SHEET_NAME AS CATEGORY (not outer loop category!)
                     # Master_System.xlsx has sheets "Skill", "Help", "System" → use those
                     # Master_Script.xlsx has sheets "Sequencer", "Dialog" → use those
+                    sheet_counts = defaultdict(lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
                     for row in range(2, ws.max_row + 1):
                         for username, col in status_cols.items():
                             value = ws.cell(row=row, column=col).value
@@ -329,20 +345,47 @@ def collect_manager_stats_for_tracker() -> Dict:
                                 status_upper = str(value).strip().upper()
                                 if status_upper == "FIXED":
                                     manager_stats[sheet_name][username]["fixed"] += 1
+                                    sheet_counts[username]["fixed"] += 1
                                 elif status_upper == "REPORTED":
                                     manager_stats[sheet_name][username]["reported"] += 1
+                                    sheet_counts[username]["reported"] += 1
                                 elif status_upper == "CHECKING":
                                     manager_stats[sheet_name][username]["checking"] += 1
+                                    sheet_counts[username]["checking"] += 1
                                 elif status_upper in ("NON-ISSUE", "NON ISSUE"):
                                     manager_stats[sheet_name][username]["nonissue"] += 1
+                                    sheet_counts[username]["nonissue"] += 1
                             manager_stats[sheet_name][username]["lang"] = tester_mapping.get(username, "EN")
+
+                    # Print counts for this sheet
+                    for username, counts in sheet_counts.items():
+                        total = counts["fixed"] + counts["reported"] + counts["checking"] + counts["nonissue"]
+                        if total > 0:
+                            print(f"      [{username}] fixed={counts['fixed']}, reported={counts['reported']}, checking={counts['checking']}, nonissue={counts['nonissue']}")
 
                 wb.close()
 
             except Exception as e:
                 print(f"  WARN: Error reading {master_path.name} for manager stats: {e}")
 
-    return dict(manager_stats)
+    # Summary
+    result = dict(manager_stats)
+    print(f"\n[COLLECT_MANAGER_STATS] SUMMARY:")
+    print(f"  Categories found: {list(result.keys())}")
+    total_users = 0
+    total_stats = {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}
+    for cat, users in result.items():
+        total_users += len(users)
+        for user, stats in users.items():
+            total_stats["fixed"] += stats["fixed"]
+            total_stats["reported"] += stats["reported"]
+            total_stats["checking"] += stats["checking"]
+            total_stats["nonissue"] += stats["nonissue"]
+    print(f"  Total users: {total_users}")
+    print(f"  Total stats: fixed={total_stats['fixed']}, reported={total_stats['reported']}, checking={total_stats['checking']}, nonissue={total_stats['nonissue']}")
+    print("="*60 + "\n")
+
+    return result
 
 
 # =============================================================================
