@@ -583,7 +583,7 @@ python main.py --list-categories
 &nbsp;&nbsp;<span style="color: #C00000; font-weight: bold;">PHASE 1: PRIORITY KEYWORDS (checked FIRST!)</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;gimmick &rarr; Gimmick | item &rarr; Item | quest &rarr; Quest<br>
 &nbsp;&nbsp;&nbsp;&nbsp;skill &rarr; Skill | character &rarr; Character<br>
-&nbsp;&nbsp;&nbsp;&nbsp;faction &rarr; Faction | region &rarr; Region<br>
+&nbsp;&nbsp;&nbsp;&nbsp;region &rarr; Region | faction &rarr; Faction<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<em>IF MATCH FOUND &rarr; RETURN IMMEDIATELY</em><br><br>
 &nbsp;&nbsp;<span style="color: #5B9BD5; font-weight: bold;">PHASE 2: FOLDER + KEYWORD PATTERNS</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;(Only if Phase 1 didn't match)<br><br>
@@ -720,19 +720,19 @@ python main.py --list-categories
         <td><span class="priority-badge" style="background: #5B9BD5;">5</span></td>
         <td><code>character</code></td>
         <td><strong>Character</strong></td>
-        <td><code>gimmickinfo_character</code> &rarr; Character</td>
+        <td><code>npcinfo_character</code> &rarr; Character</td>
     </tr>
     <tr>
         <td><span class="priority-badge" style="background: #7C7C7C;">6</span></td>
-        <td><code>faction</code></td>
-        <td><strong>Faction</strong></td>
-        <td><code>regioninfo_faction</code> &rarr; Faction</td>
-    </tr>
-    <tr>
-        <td><span class="priority-badge" style="background: #7C7C7C;">7</span></td>
         <td><code>region</code></td>
         <td><strong>Region</strong></td>
         <td><code>uiinfo_region</code> &rarr; Region</td>
+    </tr>
+    <tr>
+        <td><span class="priority-badge" style="background: #7C7C7C;">7</span></td>
+        <td><code>faction</code></td>
+        <td><strong>Faction</strong></td>
+        <td><code>uiinfo_faction</code> &rarr; Faction</td>
     </tr>
 </table>
 
@@ -892,7 +892,7 @@ python main.py --list-categories
         <td><code>skillinfo_faction</code></td>
         <td>skill, faction</td>
         <td><strong>Skill</strong></td>
-        <td>skill is priority 4, faction is 6</td>
+        <td>skill is priority 4, faction is 7</td>
     </tr>
 </table>
 

@@ -97,8 +97,8 @@ class TwoTierCategoryMapper:
         ("quest", "Quest"),
         ("skill", "Skill"),
         ("character", "Character"),
+        ("region", "Region"),  # region before faction
         ("faction", "Faction"),
-        ("region", "Region"),
     ]
 
     # ==========================================================================

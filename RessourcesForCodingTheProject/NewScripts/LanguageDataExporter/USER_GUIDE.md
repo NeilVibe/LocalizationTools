@@ -333,7 +333,7 @@ This section explains the **complete category clustering algorithm** - the core 
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
 │  │  PHASE 1: Check PRIORITY KEYWORDS in filename (checked FIRST!)        │  │
 │  │     gimmick → Gimmick | item → Item | quest → Quest | skill → Skill   │  │
-│  │     character → Character | faction → Faction | region → Region       │  │
+│  │     character → Character | region → Region | faction → Faction       │  │
 │  │     IF MATCH FOUND → RETURN IMMEDIATELY (skip Phase 2)                │  │
 │  │                                                                       │  │
 │  │  PHASE 2: Check FOLDER PATTERNS + SECONDARY KEYWORDS                  │  │
@@ -393,8 +393,8 @@ PRIORITY_KEYWORDS (checked in this exact order):
 3. "quest"     → Quest
 4. "skill"     → Skill
 5. "character" → Character
-6. "faction"   → Faction
-7. "region"    → Region
+6. "region"    → Region
+7. "faction"   → Faction
 ```
 
 **The matching is SUBSTRING-based and CASE-INSENSITIVE:**
