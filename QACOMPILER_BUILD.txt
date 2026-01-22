@@ -36,3 +36,4 @@ Build - Fix missing get_first_translation import
 Build - Sequencer/Dialog categories + DateTime picker
 Build - Script preprocessing robustness fix
 Build - Pick most recent xlsx in folder
+Build - USER_GUIDE Script-type documentation
