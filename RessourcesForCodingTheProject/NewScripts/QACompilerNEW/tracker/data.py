@@ -117,6 +117,11 @@ def update_daily_data_sheet(
             existing[key] = row
 
     # Update or insert entries from daily_entries (tester stats)
+    print(f"\n[MANAGER STATS LOOKUP DEBUG] Processing {len(daily_entries)} daily entries...")
+    print(f"  manager_stats keys: {list(manager_stats.keys()) if manager_stats else 'EMPTY'}")
+    lookup_hits = 0
+    lookup_misses = 0
+
     for entry in daily_entries:
         key = (entry["date"], entry["user"], entry["category"])
 
@@ -129,10 +134,31 @@ def update_daily_data_sheet(
         # Get manager stats for this user/category
         category = entry["category"]
         user = entry["user"]
-        user_manager_stats = manager_stats.get(category, {}).get(
+
+        # Debug: Check what's available for this category
+        category_stats = manager_stats.get(category, {})
+        user_manager_stats = category_stats.get(
             user,
             {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}
         )
+
+        # Track hits vs misses
+        has_category = category in manager_stats
+        has_user = user in category_stats
+        has_any_stats = (user_manager_stats["fixed"] > 0 or user_manager_stats["reported"] > 0 or
+                        user_manager_stats["checking"] > 0 or user_manager_stats["nonissue"] > 0)
+
+        if has_any_stats:
+            lookup_hits += 1
+            print(f"    [HIT] {user}/{category}: fixed={user_manager_stats['fixed']}, reported={user_manager_stats['reported']}, checking={user_manager_stats['checking']}, nonissue={user_manager_stats['nonissue']}")
+        else:
+            lookup_misses += 1
+            if not has_category:
+                print(f"    [MISS] {user}/{category}: Category NOT in manager_stats (available: {list(manager_stats.keys())[:5]}...)")
+            elif not has_user:
+                print(f"    [MISS] {user}/{category}: User NOT in category (available users: {list(category_stats.keys())[:5]}...)")
+            else:
+                print(f"    [MISS] {user}/{category}: Stats all zero (has_category={has_category}, has_user={has_user})")
 
         # Write row data according to schema
         ws.cell(row, 1, entry["date"])
