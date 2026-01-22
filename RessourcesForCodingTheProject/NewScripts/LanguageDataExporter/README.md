@@ -32,8 +32,8 @@ Language XML to Categorized Excel Converter with VRS-based story ordering.
 | 3 | quest | Quest |
 | 4 | skill | Skill |
 | 5 | character | Character |
-| 6 | faction | Faction |
-| 7 | region | Region |
+| 6 | region | Region |
+| 7 | faction | Faction |
 
 **Phase 2: Standard Patterns** (folder-first, then keywords)
 
