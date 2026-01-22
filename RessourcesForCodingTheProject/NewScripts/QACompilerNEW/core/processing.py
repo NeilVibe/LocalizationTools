@@ -410,8 +410,6 @@ def process_sheet(
         if first_col_value is None or str(first_col_value).strip() == "":
             continue
 
-        result["stats"]["total"] += 1
-
         # Extract QA row data for matching
         qa_row_data = extract_qa_row_data(qa_ws, qa_row, category, is_english)
 
@@ -422,6 +420,9 @@ def process_sheet(
             # No match found - log and skip
             result["match_stats"]["unmatched"] += 1
             continue
+
+        # Only count rows that successfully matched (for accurate tracker stats)
+        result["stats"]["total"] += 1
 
         # Track match type
         if match_type == "exact":
