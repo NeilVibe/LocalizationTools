@@ -254,120 +254,94 @@ def count_qa_folder_stats(folder: Dict, tester_mapping: Dict) -> Dict:
 def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
     """
     Aggregate manager stats from TrackerUpdateFolder master files.
-
-    Logic:
-    1. Scan Master_*.xlsx files directly
-    2. Use SHEET NAMES as category (not master filename!)
-       - Master_Script.xlsx has tabs "Sequencer", "Dialog" → uses those as categories
-       - Master_System.xlsx has tabs "Skill", "Help", "System" → uses those as categories
-       This preserves the REAL category names from QA folders.
-    3. Find users via STATUS_{User} columns
-    4. Store stats under the REAL category name
-
-    This avoids duplicate counting while preserving original category names.
-
-    Returns:
-        Tuple of:
-        - manager_stats: {category: {user: {fixed, reported, checking, nonissue, lang}}}
-        - manager_dates: {(category, user): file_date}
     """
     manager_stats = defaultdict(lambda: defaultdict(
         lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}
     ))
     manager_dates = {}
 
-    # Scan both EN and CN folders
+    # LOG FILE - same as compiler.py
+    log_path = Path(__file__).parent.parent / "MANAGER_STATS_DEBUG.log"
+    log_lines = [f"=== TRACKER UPDATE - MANAGER STATS === {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"]
+
     for master_folder in [TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN]:
-        print(f"  Checking folder: {master_folder}")
         if not master_folder.exists():
-            print(f"    Folder does not exist, creating...")
             master_folder.mkdir(parents=True, exist_ok=True)
             continue
 
-        # List all xlsx files for debug
-        all_xlsx = list(master_folder.glob("*.xlsx"))
-        print(f"    Found {len(all_xlsx)} xlsx files: {[f.name for f in all_xlsx]}")
+        folder_label = "EN" if "EN" in str(master_folder) else "CN"
 
-        # Scan actual master files (not iterate over CATEGORIES)
         for master_path in master_folder.glob("Master_*.xlsx"):
             if master_path.name.startswith("~"):
                 continue
 
-            # Get file date from mtime
             file_mtime = master_path.stat().st_mtime
             file_date = datetime.fromtimestamp(file_mtime).strftime("%Y-%m-%d")
 
-            print(f"    Reading {master_path.name}")
-
             try:
                 wb = safe_load_workbook(master_path)
-
                 for sheet_name in wb.sheetnames:
                     if sheet_name == "STATUS":
                         continue
 
-                    # USE SHEET NAME AS CATEGORY (not master filename!)
-                    # Master_Script.xlsx has tabs "Sequencer", "Dialog" → use those
-                    # Master_System.xlsx has tabs "Skill", "Help", "System" → use those
-                    # This preserves the REAL category names from QA folders
                     category = sheet_name
-
                     ws = wb[sheet_name]
 
-                    # Find STATUS_{User} columns for counting manager stats
-                    # Note: STATUS_{User} is manager status (FIXED/REPORTED/etc)
-                    #       TESTER_STATUS_{User} is tester's original status (hidden)
                     status_cols = {}
-
                     for col in range(1, ws.max_column + 1):
                         header = ws.cell(row=1, column=col).value
-                        if not header:
-                            continue
-                        header_str = str(header).strip()
-
-                        # Find STATUS_{User} columns (not TESTER_STATUS_{User})
-                        if header_str.startswith("STATUS_"):
-                            username = header_str.replace("STATUS_", "")
-                            status_cols[username] = col
-
-                    print(f"      Sheet '{sheet_name}' → category={category}: found STATUS_ columns for {list(status_cols.keys())}")
+                        if header and str(header).startswith("STATUS_"):
+                            status_cols[str(header).replace("STATUS_", "")] = col
 
                     if not status_cols:
-                        print(f"      Sheet '{sheet_name}': no STATUS_ columns found, skipping")
+                        log_lines.append(f"[{folder_label}] {master_path.name}/{sheet_name}: NO STATUS_ COLUMNS")
                         continue
 
-                    # Count status values per user
                     for row in range(2, ws.max_row + 1):
                         for username, col in status_cols.items():
                             value = ws.cell(row=row, column=col).value
                             if value:
-                                status_upper = str(value).strip().upper()
-                                if status_upper == "FIXED":
-                                    manager_stats[category][username]["fixed"] += 1
-                                elif status_upper == "REPORTED":
-                                    manager_stats[category][username]["reported"] += 1
-                                elif status_upper == "CHECKING":
-                                    manager_stats[category][username]["checking"] += 1
-                                elif status_upper in ("NON-ISSUE", "NON ISSUE"):
-                                    manager_stats[category][username]["nonissue"] += 1
+                                v = str(value).strip().upper()
+                                if v == "FIXED": manager_stats[category][username]["fixed"] += 1
+                                elif v == "REPORTED": manager_stats[category][username]["reported"] += 1
+                                elif v == "CHECKING": manager_stats[category][username]["checking"] += 1
+                                elif v in ("NON-ISSUE", "NON ISSUE"): manager_stats[category][username]["nonissue"] += 1
 
-                    # Set lang and date for all users found in this file
                     for username in status_cols.keys():
                         manager_stats[category][username]["lang"] = tester_mapping.get(username, "EN")
                         manager_dates[(category, username)] = file_date
 
+                    # Log per-sheet summary
+                    for u in status_cols.keys():
+                        s = manager_stats[category][u]
+                        t = s["fixed"] + s["reported"] + s["checking"] + s["nonissue"]
+                        if t > 0:
+                            log_lines.append(f"[{folder_label}] {category}/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']}")
+
                 wb.close()
-
             except Exception as e:
-                print(f"  WARN: Error reading {master_path.name} for manager stats: {e}")
+                log_lines.append(f"[ERROR] {master_path.name}: {e}")
 
-    # Convert nested defaultdicts to regular dicts (CRITICAL for .get() to work!)
-    # dict(users) only converts one level, inner stats dicts may still be defaultdicts
+    # Convert nested defaultdicts to regular dicts
     result_stats = {}
     for category, users_dd in manager_stats.items():
         result_stats[category] = {}
         for user, stats_dd in users_dd.items():
-            result_stats[category][user] = dict(stats_dd)  # Convert inner defaultdict too
+            result_stats[category][user] = dict(stats_dd)
+
+    # Summary and write log
+    total_f = sum(s["fixed"] for u in result_stats.values() for s in u.values())
+    total_r = sum(s["reported"] for u in result_stats.values() for s in u.values())
+    total_c = sum(s["checking"] for u in result_stats.values() for s in u.values())
+    total_n = sum(s["nonissue"] for u in result_stats.values() for s in u.values())
+    log_lines.append(f"\n=== TOTALS: F={total_f} R={total_r} C={total_c} N={total_n} ===")
+
+    try:
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(log_lines))
+        print(f"[LOG] Manager stats debug: {log_path}")
+    except Exception as e:
+        print(f"[LOG ERROR] {e}")
 
     return result_stats, manager_dates
 
