@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Tuple
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import TRACKER_PATH
+from config import TRACKER_PATH, get_target_master_category
 from core.excel_ops import safe_load_workbook
 
 
@@ -133,14 +133,16 @@ def update_daily_data_sheet(
 
         category = entry["category"]
         user = entry["user"]
-        category_stats = manager_stats.get(category, {})
+        # Map folder category to target master category for lookup (e.g., Sequencer→Script, Help→System)
+        lookup_category = get_target_master_category(category)
+        category_stats = manager_stats.get(lookup_category, {})
         user_manager_stats = category_stats.get(user, {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
 
         has_stats = any(user_manager_stats[k] > 0 for k in ["fixed", "reported", "checking", "nonissue"])
         if has_stats:
             lookup_hits += 1
         else:
-            reason = "NO_CAT" if category not in manager_stats else ("NO_USER" if user not in category_stats else "ZERO")
+            reason = "NO_CAT" if lookup_category not in manager_stats else ("NO_USER" if user not in category_stats else "ZERO")
             lookup_misses.append(f"{user}/{category}:{reason}")
 
         # Write row data according to schema

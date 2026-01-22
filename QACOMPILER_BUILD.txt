@@ -48,3 +48,4 @@ Build - DEBUG: Trace manager stats collection and lookup
 Build - FIX: Fully convert nested defaultdicts to regular dicts
 Build - Add MANAGER_STATS_DEBUG.log (concise auto-generated)
 Build - Log file works for BOTH compilation AND tracker update
+Build - CRITICAL: Fix category mismatch (use target_category not sheet_name)
