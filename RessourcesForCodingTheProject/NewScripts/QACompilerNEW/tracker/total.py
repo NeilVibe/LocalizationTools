@@ -10,10 +10,43 @@ from openpyxl.utils import get_column_letter
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import TRACKER_STYLES, CATEGORIES, load_tester_mapping, load_tester_type_mapping
+
+
+# =============================================================================
+# DATE COMPARISON HELPER
+# =============================================================================
+
+def _parse_date_for_comparison(d):
+    """
+    Parse date value for proper comparison (not string comparison!).
+
+    String comparison fails: "2024-02" > "2024-12" = True (WRONG!)
+    This function converts to datetime for proper comparison.
+    """
+    if d is None:
+        return datetime.min
+    if isinstance(d, datetime):
+        return d
+    if isinstance(d, str):
+        try:
+            # Try YYYY-MM-DD format
+            return datetime.strptime(d[:10], "%Y-%m-%d")
+        except (ValueError, TypeError):
+            try:
+                # Try other common formats
+                return datetime.strptime(d[:10], "%d/%m/%Y")
+            except (ValueError, TypeError):
+                return datetime.min
+    # Excel date (numeric)
+    try:
+        return datetime(1899, 12, 30) + timedelta(days=int(d))
+    except:
+        return datetime.min
 
 
 # =============================================================================
@@ -217,7 +250,9 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
         key = (user, category)
 
         # Keep the row with the latest date for each (user, category)
-        if key not in latest_data or str(date) > str(latest_data[key]["date"]):
+        # FIXED: Use proper date comparison, not string comparison!
+        # String comparison fails: "2024-02" > "2024-12" = True (WRONG!)
+        if key not in latest_data or _parse_date_for_comparison(date) > _parse_date_for_comparison(latest_data[key]["date"]):
             latest_data[key] = {
                 "date": date,
                 "category": category,
