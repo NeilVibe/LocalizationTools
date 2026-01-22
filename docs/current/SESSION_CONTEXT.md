@@ -1,6 +1,74 @@
 # Session Context
 
-> Last Updated: 2026-01-21 (Session 55)
+> Last Updated: 2026-01-22 (Session 56)
+
+---
+
+## SESSION 56: QACompiler Progress Tracker Manager Stats Fix
+
+### Problem Solved: Category Mismatch Bug
+
+**Symptom:** Progress Tracker showed nearly ZERO for Fixed/Reported/Checking/NonIssue, and very HIGH Pending - even though Master file compilation was PERFECT.
+
+**Root Cause Identified via MANAGER_STATS_DEBUG.log:**
+```
+manager_stats categories: ['ANIMAL', 'CAMP', 'DEV', 'MAIN', 'MONSTER', 'NPC'...]
+HITS: 0, MISSES: 55
+MISS DETAILS: ['김선우/Character:NO_CAT', '김세련/Help:NO_CAT'...]
+```
+
+**The Bug:** Category key mismatch
+- Tester stats used **folder category**: `Character`, `Quest`, `Help`, `Sequencer`
+- Manager stats used **sheet names inside Master**: `MAIN`, `NPC`, `QUEST`, `ANIMAL`
+- These NEVER matched → 0 HITS, all lookups failed
+
+**Fix Applied (3 files):**
+
+| File | Change |
+|------|--------|
+| `core/compiler.py` | `manager_stats[target_category]` instead of `manager_stats[sheet_name]` |
+| `core/tracker_update.py` | Extract `target_category` from filename, not sheet_name |
+| `tracker/data.py` | Added `get_target_master_category()` import + lookup mapping |
+
+**Both paths now use `target_category`** (Character, Script, System) as the key.
+
+### PENDING ISSUE: Sequencer/Dialog Categories Not Counted
+
+**User Report:** After the fix, most categories work BUT Sequencer and Dialog are not getting counted.
+
+**Category Mapping:**
+```
+Sequencer → get_target_master_category() → "Script"
+Dialog → get_target_master_category() → "Script"
+```
+
+**Investigation Needed:**
+1. Check new `MANAGER_STATS_DEBUG.log` for:
+   - Are `[EN] Script/username` lines present? (collection working?)
+   - In LOOKUP PHASE, do Sequencer/Dialog show `NO_CAT` or `NO_USER`?
+2. Possible causes:
+   - Master_Script.xlsx structure different?
+   - STATUS_ columns not found in Script sheets?
+   - EventName-based matching issue for Script-type?
+
+**Next Steps:**
+1. User will provide new log file after running with the fix
+2. Check if Script category stats are being collected
+3. Check if lookup is finding them for Sequencer/Dialog entries
+
+### Files Modified This Session
+
+```
+RessourcesForCodingTheProject/NewScripts/QACompilerNEW/core/compiler.py
+RessourcesForCodingTheProject/NewScripts/QACompilerNEW/core/tracker_update.py
+RessourcesForCodingTheProject/NewScripts/QACompilerNEW/tracker/data.py
+```
+
+### Build Status
+
+- Build completed successfully on GitHub Actions
+- Version includes category mismatch fix
+- Pending: Sequencer/Dialog investigation after user provides log
 
 ---
 
