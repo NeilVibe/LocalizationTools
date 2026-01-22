@@ -323,10 +323,10 @@
     <strong>30-Second Workflow</strong>
     <ol>
         <li>Double-click <code>LanguageDataExporter.exe</code></li>
-        <li>Click <span class="button">Analyze Categories</span> to see distribution</li>
         <li>Click <span class="button button-green">Generate Language Excels</span> to create files</li>
         <li>Find output in <code>GeneratedExcel/</code> folder</li>
     </ol>
+    <p style="margin-top: 10px; font-size: 12px; color: #666;"><em>Optional: Click "Analyze Categories" first to preview the category distribution before exporting.</em></p>
 </div>
 
 <h3>What It Does</h3>
@@ -467,8 +467,8 @@
         <th>Output</th>
     </tr>
     <tr>
-        <td><span class="button">Analyze Categories</span></td>
-        <td>Scans EXPORT folder, shows distribution</td>
+        <td><span class="button">Analyze Categories</span><br><small style="color: #888;">(Optional)</small></td>
+        <td><strong>Informational only</strong> - Scans EXPORT folder and shows category distribution. Not required for export (export does this automatically).</td>
         <td>TreeView updated</td>
     </tr>
     <tr>
@@ -554,166 +554,378 @@ python main.py --list-categories
     </tr>
 </table>
 
-<!-- CATEGORY SYSTEM -->
+<!-- CATEGORY SYSTEM - THE ALGORITHM -->
 <div class="page-break"></div>
-<h2 id="category-system">5. Category System</h2>
+<h2 id="category-system">5. Category System (THE ALGORITHM)</h2>
 
-<div class="info-box">
-    <strong>Two-Tier Architecture</strong><br><br>
-    LanguageDataExporter uses a two-tier category system:<br>
-    <strong>TIER 1: STORY</strong> - VRS-ordered chronological content<br>
-    <strong>TIER 2: GAME_DATA</strong> - Keyword-based categories
+<p>This section explains the <strong>complete category clustering algorithm</strong> - the core logic that determines which category each string belongs to.</p>
+
+<div class="important-box">
+    <strong>This is the Most Important Section!</strong><br>
+    Understanding the algorithm helps you predict exactly which category any file will be assigned to.
 </div>
 
-<h3>TIER 1: STORY Categories</h3>
+<h3>Algorithm Overview</h3>
+
+<div class="folder-structure" style="background: #f8f9fa; color: #333; border: 2px solid #5B9BD5; font-size: 13px;">
+<strong style="color: #5B9BD5;">CATEGORY CLUSTERING ALGORITHM</strong><br><br>
+<strong>INPUT:</strong> File path from EXPORT folder<br><br>
+<strong>STEP 1: DETERMINE TIER</strong><br>
+&nbsp;&nbsp;Is file in Dialog/ or Sequencer/ folder?<br>
+&nbsp;&nbsp;&nbsp;&nbsp;YES &rarr; <span style="background: #FFE599; padding: 2px 6px;">TIER 1 (STORY)</span> &rarr; Folder-based categorization<br>
+&nbsp;&nbsp;&nbsp;&nbsp;NO &rarr; <span style="background: #D9D2E9; padding: 2px 6px;">TIER 2 (GAME_DATA)</span> &rarr; Two-phase keyword matching<br><br>
+<strong>STEP 2A: TIER 1 - STORY</strong><br>
+&nbsp;&nbsp;Sequencer/ &rarr; Sequencer<br>
+&nbsp;&nbsp;Dialog/AIDialog/ &rarr; AIDialog<br>
+&nbsp;&nbsp;Dialog/QuestDialog/ &rarr; QuestDialog<br>
+&nbsp;&nbsp;Dialog/NarrationDialog/ &rarr; NarrationDialog<br><br>
+<strong>STEP 2B: TIER 2 - GAME_DATA (Two-Phase)</strong><br>
+&nbsp;&nbsp;<span style="color: #C00000; font-weight: bold;">PHASE 1: PRIORITY KEYWORDS (checked FIRST!)</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;gimmick &rarr; Gimmick | item &rarr; Item | quest &rarr; Quest<br>
+&nbsp;&nbsp;&nbsp;&nbsp;skill &rarr; Skill | character &rarr; Character<br>
+&nbsp;&nbsp;&nbsp;&nbsp;faction &rarr; Faction | region &rarr; Region<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<em>IF MATCH FOUND &rarr; RETURN IMMEDIATELY</em><br><br>
+&nbsp;&nbsp;<span style="color: #5B9BD5; font-weight: bold;">PHASE 2: FOLDER + KEYWORD PATTERNS</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;(Only if Phase 1 didn't match)<br><br>
+<strong>OUTPUT:</strong> Category name
+</div>
+
+<h3>Step 1: Tier Classification</h3>
+
+<table>
+    <tr>
+        <th>Top-Level Folder</th>
+        <th>Tier</th>
+        <th>Processing Method</th>
+    </tr>
+    <tr>
+        <td><code>Dialog/</code></td>
+        <td><span style="background: #FFE599; padding: 2px 8px;">TIER 1 (STORY)</span></td>
+        <td>Subfolder determines category</td>
+    </tr>
+    <tr>
+        <td><code>Sequencer/</code></td>
+        <td><span style="background: #FFE599; padding: 2px 8px;">TIER 1 (STORY)</span></td>
+        <td>All files &rarr; Sequencer</td>
+    </tr>
+    <tr>
+        <td><code>System/</code></td>
+        <td><span style="background: #D9D2E9; padding: 2px 8px;">TIER 2 (GAME_DATA)</span></td>
+        <td>Two-phase keyword matching</td>
+    </tr>
+    <tr>
+        <td><code>World/</code></td>
+        <td><span style="background: #D9D2E9; padding: 2px 8px;">TIER 2 (GAME_DATA)</span></td>
+        <td>Two-phase keyword matching</td>
+    </tr>
+    <tr>
+        <td><code>None/</code>, <code>Platform/</code></td>
+        <td><span style="background: #D9D2E9; padding: 2px 8px;">TIER 2 (GAME_DATA)</span></td>
+        <td>Two-phase keyword matching</td>
+    </tr>
+</table>
+
+<h3>Step 2A: TIER 1 - STORY Categories</h3>
 
 <div class="tier-story">
-    <strong>STORY content is sorted chronologically using VoiceRecordingSheet ordering.</strong>
+    <strong>STORY content uses simple folder-based categorization and is sorted chronologically using VRS.</strong>
 </div>
 
 <table>
     <tr>
+        <th>Folder Path</th>
         <th>Category</th>
         <th>Color</th>
-        <th>Source Folder</th>
-        <th>Description</th>
+        <th>Ordering</th>
     </tr>
     <tr>
+        <td><code>Sequencer/*.loc.xml</code></td>
         <td><span class="category-color" style="background: #FFE599;"></span><strong>Sequencer</strong></td>
         <td>Light Orange</td>
-        <td><code>Sequencer/</code></td>
-        <td>Story cutscenes, major moments</td>
+        <td>VRS chronological</td>
     </tr>
     <tr>
+        <td><code>Dialog/AIDialog/*.loc.xml</code></td>
         <td><span class="category-color" style="background: #C6EFCE;"></span><strong>AIDialog</strong></td>
         <td>Light Green</td>
-        <td><code>Dialog/AIDialog/</code></td>
-        <td>NPC ambient conversation</td>
+        <td>VRS chronological</td>
     </tr>
     <tr>
+        <td><code>Dialog/QuestDialog/*.loc.xml</code></td>
         <td><span class="category-color" style="background: #C6EFCE;"></span><strong>QuestDialog</strong></td>
         <td>Light Green</td>
-        <td><code>Dialog/QuestDialog/</code></td>
-        <td>Quest dialogue trees</td>
+        <td>VRS chronological</td>
     </tr>
     <tr>
+        <td><code>Dialog/NarrationDialog/*.loc.xml</code></td>
         <td><span class="category-color" style="background: #C6EFCE;"></span><strong>NarrationDialog</strong></td>
         <td>Light Green</td>
-        <td><code>Dialog/NarrationDialog/</code></td>
-        <td>Tutorial text, narration</td>
+        <td>VRS chronological</td>
+    </tr>
+    <tr>
+        <td><code>Dialog/StageCloseDialog/*.loc.xml</code></td>
+        <td><span class="category-color" style="background: #C6EFCE;"></span><strong>QuestDialog</strong> (mapped)</td>
+        <td>Light Green</td>
+        <td>VRS chronological</td>
     </tr>
 </table>
 
-<h3>TIER 2: GAME_DATA Categories</h3>
+<h3>Step 2B: TIER 2 - GAME_DATA Two-Phase Matching</h3>
 
 <div class="tier-gamedata">
-    <strong>GAME_DATA uses a two-phase matching algorithm:</strong><br>
-    <em>Phase 1: Priority Keywords (checked FIRST!)</em><br>
-    <em>Phase 2: Standard Patterns (folder + keywords)</em>
+    <strong>This is the core algorithm for non-story content. It uses two phases, checked in order.</strong>
 </div>
 
-<h4>Priority Keywords (Override Everything!)</h4>
+<h4>PHASE 1: Priority Keywords (CHECKED FIRST!)</h4>
 
 <div class="warning-box">
-    <strong>Priority keywords in the filename OVERRIDE folder location!</strong><br>
-    Example: <code>KnowledgeInfo_Item.xml</code> in Knowledge/ folder &rarr; <strong>Item</strong> (not Knowledge!)
+    <strong>CRITICAL:</strong> Priority keywords <strong>completely override</strong> folder location!<br><br>
+    A file named <code>KnowledgeInfo_Item.xml</code> in the <code>Knowledge/</code> folder will be categorized as <strong>Item</strong>, not Knowledge, because "item" is found in the filename.
 </div>
+
+<p>The algorithm extracts the filename and checks if it contains any priority keyword. <strong>First match wins and immediately returns.</strong></p>
 
 <table>
     <tr>
         <th>Priority</th>
         <th>Keyword</th>
         <th>Category</th>
-        <th>Note</th>
+        <th>Example Match</th>
     </tr>
     <tr>
         <td><span class="priority-badge priority-1">1</span></td>
         <td><code>gimmick</code></td>
         <td><strong>Gimmick</strong></td>
-        <td>HIGHEST - wins over all</td>
+        <td><code>gimmickinfo_item_book</code> &rarr; Gimmick</td>
     </tr>
     <tr>
         <td><span class="priority-badge priority-2">2</span></td>
         <td><code>item</code></td>
         <td><strong>Item</strong></td>
-        <td>Overrides Knowledge/Quest</td>
+        <td><code>KnowledgeInfo_Item</code> &rarr; Item</td>
     </tr>
     <tr>
         <td><span class="priority-badge priority-3">3</span></td>
         <td><code>quest</code></td>
         <td><strong>Quest</strong></td>
-        <td>Overrides folder matching</td>
+        <td><code>characterinfo_quest</code> &rarr; Quest</td>
     </tr>
     <tr>
         <td><span class="priority-badge" style="background: #70AD47;">4</span></td>
         <td><code>skill</code></td>
         <td><strong>Skill</strong></td>
-        <td></td>
+        <td><code>factioninfo_skill</code> &rarr; Skill</td>
     </tr>
     <tr>
         <td><span class="priority-badge" style="background: #5B9BD5;">5</span></td>
         <td><code>character</code></td>
         <td><strong>Character</strong></td>
-        <td></td>
+        <td><code>gimmickinfo_character</code> &rarr; Character</td>
     </tr>
     <tr>
         <td><span class="priority-badge" style="background: #7C7C7C;">6</span></td>
         <td><code>faction</code></td>
         <td><strong>Faction</strong></td>
-        <td></td>
+        <td><code>regioninfo_faction</code> &rarr; Faction</td>
     </tr>
     <tr>
         <td><span class="priority-badge" style="background: #7C7C7C;">7</span></td>
         <td><code>region</code></td>
         <td><strong>Region</strong></td>
-        <td></td>
+        <td><code>uiinfo_region</code> &rarr; Region</td>
     </tr>
 </table>
 
-<h4>Standard Patterns (Phase 2)</h4>
+<div class="info-box">
+    <strong>Matching is SUBSTRING-based and CASE-INSENSITIVE</strong><br>
+    "item" matches: <code>Item</code>, <code>item</code>, <code>KnowledgeInfo_Item</code>, <code>itemequip</code>
+</div>
+
+<h4>PHASE 2: Standard Patterns (Only if Phase 1 didn't match)</h4>
 
 <table>
     <tr>
+        <th>Match Type</th>
+        <th>Pattern</th>
         <th>Category</th>
         <th>Color</th>
-        <th>Folders</th>
-        <th>Keywords</th>
     </tr>
     <tr>
+        <td>Folder</td>
+        <td><code>lookat/</code>, <code>patterndescription/</code></td>
         <td><span class="category-color" style="background: #D9D2E9;"></span><strong>Item</strong></td>
         <td>Light Purple</td>
-        <td><code>LookAt/</code>, <code>PatternDescription/</code></td>
-        <td><code>weapon</code>, <code>armor</code></td>
     </tr>
     <tr>
+        <td>Keyword</td>
+        <td><code>weapon</code>, <code>armor</code></td>
+        <td><span class="category-color" style="background: #D9D2E9;"></span><strong>Item</strong></td>
+        <td>Light Purple</td>
+    </tr>
+    <tr>
+        <td>Folder</td>
+        <td><code>quest/</code></td>
         <td><span class="category-color" style="background: #D9D2E9;"></span><strong>Quest</strong></td>
         <td>Light Purple</td>
-        <td><code>Quest/</code></td>
-        <td><code>schedule_</code></td>
     </tr>
     <tr>
+        <td>Keyword</td>
+        <td><code>schedule_</code></td>
+        <td><span class="category-color" style="background: #D9D2E9;"></span><strong>Quest</strong></td>
+        <td>Light Purple</td>
+    </tr>
+    <tr>
+        <td>Folder</td>
+        <td><code>character/</code>, <code>npc/</code></td>
         <td><span class="category-color" style="background: #F8CBAD;"></span><strong>Character</strong></td>
         <td>Light Peach</td>
-        <td><code>Character/</code>, <code>Npc/</code></td>
-        <td><code>monster</code>, <code>animal</code></td>
     </tr>
     <tr>
+        <td>Keyword</td>
+        <td><code>monster</code>, <code>animal</code></td>
+        <td><span class="category-color" style="background: #F8CBAD;"></span><strong>Character</strong></td>
+        <td>Light Peach</td>
+    </tr>
+    <tr>
+        <td>Folder</td>
+        <td><code>skill/</code></td>
+        <td><span class="category-color" style="background: #D9D2E9;"></span><strong>Skill</strong></td>
+        <td>Light Purple</td>
+    </tr>
+    <tr>
+        <td>Folder</td>
+        <td><code>knowledge/</code></td>
         <td><span class="category-color" style="background: #D9D2E9;"></span><strong>Knowledge</strong></td>
         <td>Light Purple</td>
-        <td><code>Knowledge/</code></td>
-        <td>-</td>
     </tr>
     <tr>
+        <td>Folder</td>
+        <td><code>faction/</code></td>
+        <td><span class="category-color" style="background: #D9D2E9;"></span><strong>Faction</strong></td>
+        <td>Light Purple</td>
+    </tr>
+    <tr>
+        <td>Folder</td>
+        <td><code>ui/</code></td>
         <td><span class="category-color" style="background: #A9D08E;"></span><strong>UI</strong></td>
         <td>Light Teal</td>
-        <td><code>Ui/</code></td>
-        <td><code>localstringinfo</code>, <code>symboltext</code></td>
     </tr>
     <tr>
+        <td>Keyword</td>
+        <td><code>localstringinfo</code>, <code>symboltext</code></td>
+        <td><span class="category-color" style="background: #A9D08E;"></span><strong>UI</strong></td>
+        <td>Light Teal</td>
+    </tr>
+    <tr>
+        <td>Folder</td>
+        <td><code>region/</code></td>
+        <td><span class="category-color" style="background: #F8CBAD;"></span><strong>Region</strong></td>
+        <td>Light Peach</td>
+    </tr>
+    <tr>
+        <td>(default)</td>
+        <td>(no match)</td>
         <td><span class="category-color" style="background: #D9D9D9;"></span><strong>System_Misc</strong></td>
         <td>Light Grey</td>
-        <td>(default)</td>
-        <td>-</td>
+    </tr>
+</table>
+
+<h3>Algorithm Walkthrough Examples</h3>
+
+<div class="success-box">
+    <strong>Example 1: File with "Item" keyword in Knowledge folder</strong><br><br>
+    <code>World/Knowledge/KnowledgeInfo_Item.xml</code><br><br>
+    <strong>Step 1:</strong> Top folder is "World/" &rarr; TIER 2 (GAME_DATA)<br>
+    <strong>Step 2B Phase 1:</strong> Check "knowledgeinfo_item"<br>
+    &nbsp;&nbsp;&bull; "gimmick"? NO<br>
+    &nbsp;&nbsp;&bull; "item"? <strong style="color: green;">YES</strong> &rarr; <strong>RETURN "Item"</strong><br><br>
+    <strong>Result: Item</strong> (NOT Knowledge!)
+</div>
+
+<div class="success-box">
+    <strong>Example 2: Gimmick file with multiple keywords</strong><br><br>
+    <code>System/Gimmick/gimmickinfo_item_book.xml</code><br><br>
+    <strong>Step 1:</strong> Top folder is "System/" &rarr; TIER 2 (GAME_DATA)<br>
+    <strong>Step 2B Phase 1:</strong> Check "gimmickinfo_item_book"<br>
+    &nbsp;&nbsp;&bull; "gimmick"? <strong style="color: green;">YES</strong> &rarr; <strong>RETURN "Gimmick"</strong><br>
+    &nbsp;&nbsp;(Note: "item" is also present but gimmick is checked FIRST)<br><br>
+    <strong>Result: Gimmick</strong> (gimmick has HIGHEST priority)
+</div>
+
+<div class="success-box">
+    <strong>Example 3: File with no priority keywords</strong><br><br>
+    <code>World/Knowledge/KnowledgeBase.xml</code><br><br>
+    <strong>Step 1:</strong> Top folder is "World/" &rarr; TIER 2 (GAME_DATA)<br>
+    <strong>Step 2B Phase 1:</strong> Check "knowledgebase"<br>
+    &nbsp;&nbsp;&bull; gimmick? NO | item? NO | quest? NO | skill? NO<br>
+    &nbsp;&nbsp;&bull; character? NO | faction? NO | region? NO<br>
+    &nbsp;&nbsp;&bull; No match &rarr; Continue to Phase 2<br>
+    <strong>Step 2B Phase 2:</strong> Check folder patterns<br>
+    &nbsp;&nbsp;&bull; "knowledge/" in path? <strong style="color: green;">YES</strong> &rarr; <strong>RETURN "Knowledge"</strong><br><br>
+    <strong>Result: Knowledge</strong>
+</div>
+
+<h3>Priority Keyword Conflict Resolution</h3>
+
+<p>When a filename contains <strong>multiple</strong> priority keywords, the <strong>first match in priority order wins</strong>:</p>
+
+<table>
+    <tr>
+        <th>Filename</th>
+        <th>Contains</th>
+        <th>Winner</th>
+        <th>Why</th>
+    </tr>
+    <tr>
+        <td><code>gimmickinfo_item_book</code></td>
+        <td>gimmick, item</td>
+        <td><strong>Gimmick</strong></td>
+        <td>gimmick is priority 1</td>
+    </tr>
+    <tr>
+        <td><code>characterinfo_quest</code></td>
+        <td>character, quest</td>
+        <td><strong>Quest</strong></td>
+        <td>quest is priority 3, character is 5</td>
+    </tr>
+    <tr>
+        <td><code>skillinfo_faction</code></td>
+        <td>skill, faction</td>
+        <td><strong>Skill</strong></td>
+        <td>skill is priority 4, faction is 6</td>
+    </tr>
+</table>
+
+<h3>Golden Rules Summary</h3>
+
+<table>
+    <tr>
+        <th>Rule</th>
+        <th>Explanation</th>
+    </tr>
+    <tr>
+        <td><strong>Tier First</strong></td>
+        <td>Dialog/Sequencer &rarr; STORY, everything else &rarr; GAME_DATA</td>
+    </tr>
+    <tr>
+        <td><strong>Priority Keywords Win</strong></td>
+        <td>Phase 1 keywords override ALL folder matching</td>
+    </tr>
+    <tr>
+        <td><strong>Gimmick is #1</strong></td>
+        <td>"gimmick" in filename &rarr; always Gimmick category</td>
+    </tr>
+    <tr>
+        <td><strong>Order Matters</strong></td>
+        <td>Priority keywords checked in specific order (1-7)</td>
+    </tr>
+    <tr>
+        <td><strong>Substring Match</strong></td>
+        <td>Keywords match anywhere in filename (case-insensitive)</td>
+    </tr>
+    <tr>
+        <td><strong>Knowledge is Catch-All</strong></td>
+        <td>Only matches if NO priority keyword found</td>
     </tr>
 </table>
 
