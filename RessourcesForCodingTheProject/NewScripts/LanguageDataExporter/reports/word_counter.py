@@ -12,6 +12,7 @@ from typing import Dict, List, Optional
 # Use absolute imports (works when running main.py directly)
 from utils.language_utils import (
     contains_korean,
+    count_source_words,
     count_words,
     count_chars,
     is_word_count_language,
@@ -124,10 +125,9 @@ class WordCounter:
             cat_count = category_data[category]
             cat_count.total_strings += 1
 
-            # Count Korean source words
-            if str_origin and not contains_korean(str_value):
-                # Only count Korean if translation doesn't have Korean
-                cat_count.korean_words += count_words(str_origin)
+            # Count Korean source words - ALWAYS count (for total workload)
+            if str_origin:
+                cat_count.korean_words += count_source_words(str_origin)
 
             # Count translation
             if str_value:
@@ -135,6 +135,7 @@ class WordCounter:
                     # Translation still has Korean = untranslated
                     cat_count.untranslated += 1
                 else:
+                    # Complete translation - count target words/chars
                     cat_count.translation_count += self.count_text(str_value)
 
         # Add categories to result

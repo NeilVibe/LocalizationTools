@@ -6,6 +6,7 @@ Shared utilities for language detection, text processing, and VRS ordering.
 
 from .language_utils import (
     contains_korean,
+    count_source_words,
     count_words,
     count_chars,
     get_word_count_for_language,
@@ -29,6 +30,7 @@ from .vrs_ordering import (
 __all__ = [
     # Language utilities
     "contains_korean",
+    "count_source_words",
     "count_words",
     "count_chars",
     "get_word_count_for_language",
