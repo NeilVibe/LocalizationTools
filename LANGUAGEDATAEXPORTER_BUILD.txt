@@ -21,3 +21,4 @@ Build 013 - FIX: Remove double-dot relative imports + Direct module import tests
 Build 014 - UI Simplification + Unified Report (General + Detailed Summary sheets)
 Build 015 - Priority Keywords: item/quest/skill/character/faction/region OVERRIDE folder matching
 Build 016: Gimmick priority + dead code cleanup
+Build 017: Bundle USER_GUIDE.pdf/html in installer
