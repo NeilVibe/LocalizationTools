@@ -368,8 +368,15 @@ def collect_manager_stats_for_tracker() -> Dict:
             except Exception as e:
                 print(f"  WARN: Error reading {master_path.name} for manager stats: {e}")
 
+    # Convert nested defaultdicts to regular dicts (CRITICAL for .get() to work!)
+    # dict(manager_stats) only converts outer level, inner defaultdicts remain
+    result = {}
+    for cat, users_dd in manager_stats.items():
+        result[cat] = {}
+        for user, stats_dd in users_dd.items():
+            result[cat][user] = dict(stats_dd)  # Convert inner defaultdict too
+
     # Summary
-    result = dict(manager_stats)
     print(f"\n[COLLECT_MANAGER_STATS] SUMMARY:")
     print(f"  Categories found: {list(result.keys())}")
     total_users = 0

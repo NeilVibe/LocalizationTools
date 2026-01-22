@@ -45,3 +45,4 @@ Build - CRITICAL: Fix zero bug (manager stats creating zero rows)
 Build - Fix manager stats triple-counting for clustered categories
 Build - FIX: Script-type manager status (EventName as STRINGID) + debug output
 Build - DEBUG: Trace manager stats collection and lookup
+Build - FIX: Fully convert nested defaultdicts to regular dicts
