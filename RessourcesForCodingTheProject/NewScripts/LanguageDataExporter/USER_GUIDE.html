@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LanguageDataExporter - User Guide</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+        }
+
+        h1 {
+            color: #fff;
+            background: linear-gradient(135deg, #5B9BD5, #2E75B6);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(91, 155, 213, 0.3);
+        }
+
+        h2 {
+            color: #fff;
+            background: #70AD47;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            color: #5B9BD5;
+            border-bottom: 3px solid #5B9BD5;
+            padding-bottom: 8px;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #C00000;
+            margin-top: 20px;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: #FFD700;
+            color: #333;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .important-box {
+            background: linear-gradient(135deg, #FFF2CC, #FFE4B5);
+            border-left: 5px solid #FF8C00;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, #FFCCCC, #FFE0E0);
+            border-left: 5px solid #C00000;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .success-box {
+            background: linear-gradient(135deg, #E2EFDA, #D5E8C6);
+            border-left: 5px solid #70AD47;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #DEEBF7, #BDD7EE);
+            border-left: 5px solid #5B9BD5;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #5B9BD5;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 32px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .workflow-box {
+            background: linear-gradient(135deg, #E2EFDA, #C5E0B4);
+            border: 2px solid #70AD47;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .tier-story {
+            background: linear-gradient(135deg, #FFE599, #FFD966);
+            border: 2px solid #BF8F00;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .tier-gamedata {
+            background: linear-gradient(135deg, #D9D2E9, #B4A7D6);
+            border: 2px solid #674EA7;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        th {
+            background: #5B9BD5;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        tr:hover {
+            background: #e8f4fd;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            color: #C00000;
+        }
+
+        .folder-structure {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+
+        .folder-structure .folder {
+            color: #DCDCAA;
+        }
+
+        .folder-structure .file {
+            color: #9CDCFE;
+        }
+
+        .folder-structure .comment {
+            color: #6A9955;
+        }
+
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #5B9BD5, #2E75B6);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .button-green {
+            background: linear-gradient(135deg, #70AD47, #548235);
+        }
+
+        .button-orange {
+            background: linear-gradient(135deg, #FF8C00, #CC7000);
+        }
+
+        .arrow {
+            color: #70AD47;
+            font-size: 24px;
+            margin: 0 10px;
+        }
+
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .flow-box {
+            background: white;
+            border: 2px solid #5B9BD5;
+            border-radius: 8px;
+            padding: 10px 15px;
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .toc {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .toc li {
+            padding: 5px 0;
+            border-bottom: 1px dotted #ccc;
+        }
+
+        .toc a {
+            color: #5B9BD5;
+            text-decoration: none;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .category-color {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            vertical-align: middle;
+            margin-right: 8px;
+            border: 1px solid #999;
+        }
+
+        .priority-badge {
+            display: inline-block;
+            background: #C00000;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .priority-1 { background: #C00000; }
+        .priority-2 { background: #FF8C00; }
+        .priority-3 { background: #FFD700; color: #333; }
+    </style>
+</head>
+<body>
+
+<h1>LanguageDataExporter<br><span style="font-size: 0.6em; font-weight: normal;">User Guide</span></h1>
+
+<div style="text-align: center;">
+    <span class="version-badge">Version 1.0.16</span>
+</div>
+
+<p style="text-align: center; font-size: 1.1em; color: #666;">
+    <strong>Language XML to Categorized Excel Converter</strong><br>
+    with VRS-based Story Ordering
+</p>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+    <h3>Table of Contents</h3>
+    <ul>
+        <li><a href="#quick-start">1. Quick Start</a></li>
+        <li><a href="#installation">2. Installation</a></li>
+        <li><a href="#gui-mode">3. GUI Mode</a></li>
+        <li><a href="#cli-mode">4. CLI Mode</a></li>
+        <li><a href="#category-system">5. Category System</a></li>
+        <li><a href="#vrs-ordering">6. VRS Ordering</a></li>
+        <li><a href="#word-count">7. Word Count Reports</a></li>
+        <li><a href="#output-files">8. Output Files</a></li>
+        <li><a href="#troubleshooting">9. Troubleshooting</a></li>
+    </ul>
+</div>
+
+<!-- QUICK START -->
+<h2 id="quick-start">1. Quick Start</h2>
+
+<div class="success-box">
+    <strong>30-Second Workflow</strong>
+    <ol>
+        <li>Double-click <code>LanguageDataExporter.exe</code></li>
+        <li>Click <span class="button">Analyze Categories</span> to see distribution</li>
+        <li>Click <span class="button button-green">Generate Language Excels</span> to create files</li>
+        <li>Find output in <code>GeneratedExcel/</code> folder</li>
+    </ol>
+</div>
+
+<h3>What It Does</h3>
+
+<div class="flow-diagram">
+    <div class="flow-box">Language XML<br><small>(loc folder)</small></div>
+    <span class="arrow">&#10132;</span>
+    <div class="flow-box" style="border-color: #70AD47;"><strong>LanguageData<br>Exporter</strong></div>
+    <span class="arrow">&#10132;</span>
+    <div class="flow-box">Categorized<br>Excel Files</div>
+</div>
+
+<table>
+    <tr>
+        <th>Feature</th>
+        <th>Description</th>
+        <th>Output</th>
+    </tr>
+    <tr>
+        <td><strong>Language Export</strong></td>
+        <td>Convert XML to categorized Excel</td>
+        <td><code>LanguageData_{LANG}.xlsx</code></td>
+    </tr>
+    <tr>
+        <td><strong>Word Count Report</strong></td>
+        <td>LQA scheduling metrics</td>
+        <td><code>WordCountReport.xlsx</code></td>
+    </tr>
+    <tr>
+        <td><strong>VRS Ordering</strong></td>
+        <td>Chronological story order</td>
+        <td>Sorted STORY rows</td>
+    </tr>
+    <tr>
+        <td><strong>Two-Tier Clustering</strong></td>
+        <td>STORY + GAME_DATA categories</td>
+        <td>Color-coded cells</td>
+    </tr>
+</table>
+
+<!-- INSTALLATION -->
+<div class="page-break"></div>
+<h2 id="installation">2. Installation</h2>
+
+<h3>Requirements</h3>
+
+<table>
+    <tr>
+        <th>Requirement</th>
+        <th>Details</th>
+    </tr>
+    <tr>
+        <td><strong>OS</strong></td>
+        <td>Windows 10/11</td>
+    </tr>
+    <tr>
+        <td><strong>Disk Space</strong></td>
+        <td>~50 MB</td>
+    </tr>
+    <tr>
+        <td><strong>Network</strong></td>
+        <td>Access to game data folders</td>
+    </tr>
+    <tr>
+        <td><strong>Drive</strong></td>
+        <td>Perforce sync on D:, E:, or F:</td>
+    </tr>
+</table>
+
+<h3>Installation Steps</h3>
+
+<p><span class="step-number">1</span> <strong>Download</strong> - Get <code>LanguageDataExporter-Setup.exe</code> from GitHub Releases</p>
+
+<p><span class="step-number">2</span> <strong>Run Installer</strong> - Double-click and follow the prompts</p>
+
+<p><span class="step-number">3</span> <strong>Configure Drive Letter</strong></p>
+
+<div class="info-box">
+    <strong>Drive Configuration</strong><br><br>
+    On first launch, select your Perforce drive letter:<br><br>
+    <code>F:</code> (Default) - Most common<br>
+    <code>D:</code> or <code>E:</code> - Alternative drives<br><br>
+    This sets paths to LOC, EXPORT, and VRS folders.
+</div>
+
+<p><span class="step-number">4</span> <strong>Launch</strong> - Double-click <code>LanguageDataExporter.exe</code></p>
+
+<h3>Folder Structure</h3>
+
+<div class="folder-structure">
+<span class="folder">LanguageDataExporter/</span><br>
+&#9500;&#9472;&#9472; <span class="file">LanguageDataExporter.exe</span> <span class="comment">&larr; Main application</span><br>
+&#9500;&#9472;&#9472; <span class="file">settings.json</span> <span class="comment">&larr; Your drive configuration</span><br>
+&#9500;&#9472;&#9472; <span class="file">category_clusters.json</span> <span class="comment">&larr; Category colors/keywords</span><br>
+&#9500;&#9472;&#9472; <span class="folder">GeneratedExcel/</span> <span class="comment">&larr; Output folder</span><br>
+&#9474;&nbsp;&nbsp; &#9500;&#9472;&#9472; <span class="file">LanguageData_ENG.xlsx</span><br>
+&#9474;&nbsp;&nbsp; &#9500;&#9472;&#9472; <span class="file">LanguageData_FRE.xlsx</span><br>
+&#9474;&nbsp;&nbsp; &#9500;&#9472;&#9472; <span class="file">WordCountReport.xlsx</span><br>
+&#9474;&nbsp;&nbsp; &#9492;&#9472;&#9472; <span class="file">_Summary.xlsx</span><br>
+&#9492;&#9472;&#9472; <span class="folder">_internal/</span> <span class="comment">&larr; Python runtime</span>
+</div>
+
+<!-- GUI MODE -->
+<div class="page-break"></div>
+<h2 id="gui-mode">3. GUI Mode</h2>
+
+<p>Launch by double-clicking <code>LanguageDataExporter.exe</code></p>
+
+<h3>Interface Layout</h3>
+
+<div class="folder-structure" style="background: #f8f9fa; color: #333; border: 2px solid #5B9BD5;">
+<strong style="color: #5B9BD5;">LanguageDataExporter</strong><br><br>
+<strong>CONFIGURED PATHS</strong><br>
+&#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;<br>
+&#9474; LOC Folder:&nbsp;&nbsp;&nbsp; F:\perforce\...\loc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: green;">[OK]</span> &#9474;<br>
+&#9474; EXPORT Folder: F:\perforce\...\export__ <span style="color: green;">[OK]</span> &#9474;<br>
+&#9474; Output Folder: GeneratedExcel&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: green;">[OK]</span> &#9474;<br>
+&#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;<br><br>
+<strong>CATEGORY ANALYSIS</strong><br>
+&#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9488;<br>
+&#9474; <span style="background: #5B9BD5; color: white; padding: 2px 8px;">[Analyze Categories]</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &#9474;<br>
+&#9474;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &#9474;<br>
+&#9474; Category&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Files | Tier&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &#9474;<br>
+&#9474; Sequencer&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp; 340 | STORY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &#9474;<br>
+&#9474; Item&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |&nbsp;&nbsp; 340 | GAME_DATA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &#9474;<br>
+&#9492;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9496;<br><br>
+<strong>EXPORT ACTIONS</strong><br>
+<span style="background: #70AD47; color: white; padding: 4px 12px;">[Generate Word Count Report]</span>&nbsp;
+<span style="background: #5B9BD5; color: white; padding: 4px 12px;">[Generate Language Excels]</span>
+</div>
+
+<h3>GUI Actions</h3>
+
+<table>
+    <tr>
+        <th>Button</th>
+        <th>What It Does</th>
+        <th>Output</th>
+    </tr>
+    <tr>
+        <td><span class="button">Analyze Categories</span></td>
+        <td>Scans EXPORT folder, shows distribution</td>
+        <td>TreeView updated</td>
+    </tr>
+    <tr>
+        <td><span class="button button-green">Generate Word Count Report</span></td>
+        <td>Creates LQA metrics report</td>
+        <td><code>WordCountReport.xlsx</code></td>
+    </tr>
+    <tr>
+        <td><span class="button">Generate Language Excels</span></td>
+        <td>Creates all language files</td>
+        <td><code>LanguageData_*.xlsx</code></td>
+    </tr>
+</table>
+
+<!-- CLI MODE -->
+<div class="page-break"></div>
+<h2 id="cli-mode">4. CLI Mode</h2>
+
+<h3>Basic Commands</h3>
+
+<div class="folder-structure">
+<span class="comment"># Run with GUI (default)</span><br>
+python main.py<br><br>
+<span class="comment"># Run in CLI mode</span><br>
+python main.py --cli<br><br>
+<span class="comment"># Process specific languages</span><br>
+python main.py --cli --lang eng,fre,ger<br><br>
+<span class="comment"># Generate word count report</span><br>
+python main.py --cli --word-count<br><br>
+<span class="comment"># Preview without writing files</span><br>
+python main.py --cli --dry-run<br><br>
+<span class="comment"># Show category distribution</span><br>
+python main.py --list-categories
+</div>
+
+<h3>CLI Arguments Reference</h3>
+
+<table>
+    <tr>
+        <th>Argument</th>
+        <th>Description</th>
+        <th>Example</th>
+    </tr>
+    <tr>
+        <td><code>--cli</code></td>
+        <td>Run in command-line mode</td>
+        <td><code>--cli</code></td>
+    </tr>
+    <tr>
+        <td><code>--lang</code></td>
+        <td>Process specific languages</td>
+        <td><code>--lang eng,fre</code></td>
+    </tr>
+    <tr>
+        <td><code>--word-count</code></td>
+        <td>Include word count report</td>
+        <td><code>--word-count</code></td>
+    </tr>
+    <tr>
+        <td><code>--word-count-only</code></td>
+        <td>Only generate word count report</td>
+        <td><code>--word-count-only</code></td>
+    </tr>
+    <tr>
+        <td><code>--dry-run</code></td>
+        <td>Preview without writing</td>
+        <td><code>--dry-run</code></td>
+    </tr>
+    <tr>
+        <td><code>--list-categories</code></td>
+        <td>Show category distribution</td>
+        <td><code>--list-categories</code></td>
+    </tr>
+    <tr>
+        <td><code>--output</code></td>
+        <td>Custom output folder</td>
+        <td><code>--output D:\Out</code></td>
+    </tr>
+    <tr>
+        <td><code>-v</code></td>
+        <td>Enable debug logging</td>
+        <td><code>-v</code></td>
+    </tr>
+</table>
+
+<!-- CATEGORY SYSTEM -->
+<div class="page-break"></div>
+<h2 id="category-system">5. Category System</h2>
+
+<div class="info-box">
+    <strong>Two-Tier Architecture</strong><br><br>
+    LanguageDataExporter uses a two-tier category system:<br>
+    <strong>TIER 1: STORY</strong> - VRS-ordered chronological content<br>
+    <strong>TIER 2: GAME_DATA</strong> - Keyword-based categories
+</div>
+
+<h3>TIER 1: STORY Categories</h3>
+
+<div class="tier-story">
+    <strong>STORY content is sorted chronologically using VoiceRecordingSheet ordering.</strong>
+</div>
+
+<table>
+    <tr>
+        <th>Category</th>
+        <th>Color</th>
+        <th>Source Folder</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td><span class="category-color" style="background: #FFE599;"></span><strong>Sequencer</strong></td>
+        <td>Light Orange</td>
+        <td><code>Sequencer/</code></td>
+        <td>Story cutscenes, major moments</td>
+    </tr>
+    <tr>
+        <td><span class="category-color" style="background: #C6EFCE;"></span><strong>AIDialog</strong></td>
+        <td>Light Green</td>
+        <td><code>Dialog/AIDialog/</code></td>
+        <td>NPC ambient conversation</td>
+    </tr>
+    <tr>
+        <td><span class="category-color" style="background: #C6EFCE;"></span><strong>QuestDialog</strong></td>
+        <td>Light Green</td>
+        <td><code>Dialog/QuestDialog/</code></td>
+        <td>Quest dialogue trees</td>
+    </tr>
+    <tr>
+        <td><span class="category-color" style="background: #C6EFCE;"></span><strong>NarrationDialog</strong></td>
+        <td>Light Green</td>
+        <td><code>Dialog/NarrationDialog/</code></td>
+        <td>Tutorial text, narration</td>
+    </tr>
+</table>
+
+<h3>TIER 2: GAME_DATA Categories</h3>
+
+<div class="tier-gamedata">
+    <strong>GAME_DATA uses a two-phase matching algorithm:</strong><br>
+    <em>Phase 1: Priority Keywords (checked FIRST!)</em><br>
+    <em>Phase 2: Standard Patterns (folder + keywords)</em>
+</div>
+
+<h4>Priority Keywords (Override Everything!)</h4>
+
+<div class="warning-box">
+    <strong>Priority keywords in the filename OVERRIDE folder location!</strong><br>
+    Example: <code>KnowledgeInfo_Item.xml</code> in Knowledge/ folder &rarr; <strong>Item</strong> (not Knowledge!)
+</div>
+
+<table>
+    <tr>
+        <th>Priority</th>
+        <th>Keyword</th>
+        <th>Category</th>
+        <th>Note</th>
+    </tr>
+    <tr>
+        <td><span class="priority-badge priority-1">1</span></td>
+        <td><code>gimmick</code></td>
+        <td><strong>Gimmick</strong></td>
+        <td>HIGHEST - wins over all</td>
+    </tr>
+    <tr>
+        <td><span class="priority-badge priority-2">2</span></td>
+        <td><code>item</code></td>
+        <td><strong>Item</strong></td>
+        <td>Overrides Knowledge/Quest</td>
+    </tr>
+    <tr>
+        <td><span class="priority-badge priority-3">3</span></td>
+        <td><code>quest</code></td>
+        <td><strong>Quest</strong></td>
+        <td>Overrides folder matching</td>
+    </tr>
+    <tr>
+        <td><span class="priority-badge" style="background: #70AD47;">4</span></td>
+        <td><code>skill</code></td>
+        <td><strong>Skill</strong></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><span class="priority-badge" style="background: #5B9BD5;">5</span></td>
+        <td><code>character</code></td>
+        <td><strong>Character</strong></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><span class="priority-badge" style="background: #7C7C7C;">6</span></td>
+        <td><code>faction</code></td>
+        <td><strong>Faction</strong></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><span class="priority-badge" style="background: #7C7C7C;">7</span></td>
+        <td><code>region</code></td>
+        <td><strong>Region</strong></td>
+        <td></td>
+    </tr>
+</table>
+
+<h4>Standard Patterns (Phase 2)</h4>
+
+<table>
+    <tr>
+        <th>Category</th>
+        <th>Color</th>
+        <th>Folders</th>
+        <th>Keywords</th>
+    </tr>
+    <tr>
+        <td><span class="category-color" style="background: #D9D2E9;"></span><strong>Item</strong></td>
+        <td>Light Purple</td>
+        <td><code>LookAt/</code>, <code>PatternDescription/</code></td>
+        <td><code>weapon</code>, <code>armor</code></td>
+    </tr>
+    <tr>
+        <td><span class="category-color" style="background: #D9D2E9;"></span><strong>Quest</strong></td>
+        <td>Light Purple</td>
+        <td><code>Quest/</code></td>
+        <td><code>schedule_</code></td>
+    </tr>
+    <tr>
+        <td><span class="category-color" style="background: #F8CBAD;"></span><strong>Character</strong></td>
+        <td>Light Peach</td>
+        <td><code>Character/</code>, <code>Npc/</code></td>
+        <td><code>monster</code>, <code>animal</code></td>
+    </tr>
+    <tr>
+        <td><span class="category-color" style="background: #D9D2E9;"></span><strong>Knowledge</strong></td>
+        <td>Light Purple</td>
+        <td><code>Knowledge/</code></td>
+        <td>-</td>
+    </tr>
+    <tr>
+        <td><span class="category-color" style="background: #A9D08E;"></span><strong>UI</strong></td>
+        <td>Light Teal</td>
+        <td><code>Ui/</code></td>
+        <td><code>localstringinfo</code>, <code>symboltext</code></td>
+    </tr>
+    <tr>
+        <td><span class="category-color" style="background: #D9D9D9;"></span><strong>System_Misc</strong></td>
+        <td>Light Grey</td>
+        <td>(default)</td>
+        <td>-</td>
+    </tr>
+</table>
+
+<!-- VRS ORDERING -->
+<div class="page-break"></div>
+<h2 id="vrs-ordering">6. VRS Ordering</h2>
+
+<div class="info-box">
+    <strong>What is VRS?</strong><br><br>
+    <strong>VoiceRecordingSheet (VRS)</strong> is the master Excel file containing all voiced lines in chronological story order. LanguageDataExporter uses VRS to sort STORY content so LQA reviewers see dialogue in the order players experience it.
+</div>
+
+<h3>How It Works</h3>
+
+<div class="flow-diagram">
+    <div class="flow-box">VRS Excel<br><small>(EventName)</small></div>
+    <span class="arrow">&#10132;</span>
+    <div class="flow-box">EXPORT XMLs<br><small>(SoundEventName)</small></div>
+    <span class="arrow">&#10132;</span>
+    <div class="flow-box" style="border-color: #70AD47;"><strong>Sorted<br>Output</strong></div>
+</div>
+
+<table>
+    <tr>
+        <th>Step</th>
+        <th>Action</th>
+        <th>Result</th>
+    </tr>
+    <tr>
+        <td><span class="step-number">1</span></td>
+        <td>Load VoiceRecordingSheet.xlsx</td>
+        <td>Read EventName from Column W</td>
+    </tr>
+    <tr>
+        <td><span class="step-number">2</span></td>
+        <td>Scan EXPORT XMLs</td>
+        <td>Extract SoundEventName attribute</td>
+    </tr>
+    <tr>
+        <td><span class="step-number">3</span></td>
+        <td>Match StringID to EventName</td>
+        <td>Build ordering map</td>
+    </tr>
+    <tr>
+        <td><span class="step-number">4</span></td>
+        <td>Sort STORY entries</td>
+        <td>Chronological story order!</td>
+    </tr>
+</table>
+
+<div class="success-box">
+    <strong>Result:</strong> STORY strings appear in Excel in <strong>chronological story order</strong>. LQA reviewers see content as players experience it.
+</div>
+
+<!-- WORD COUNT -->
+<div class="page-break"></div>
+<h2 id="word-count">7. Word Count Reports</h2>
+
+<h3>Report Purpose</h3>
+
+<table>
+    <tr>
+        <th>Use Case</th>
+        <th>How It Helps</th>
+    </tr>
+    <tr>
+        <td><strong>Schedule Work</strong></td>
+        <td>Estimate LQA time based on word counts</td>
+    </tr>
+    <tr>
+        <td><strong>Track Progress</strong></td>
+        <td>Compare counts across languages</td>
+    </tr>
+    <tr>
+        <td><strong>Find Untranslated</strong></td>
+        <td>Identify strings still containing Korean</td>
+    </tr>
+</table>
+
+<h3>Counting Method</h3>
+
+<table>
+    <tr>
+        <th>Language Type</th>
+        <th>Method</th>
+        <th>Languages</th>
+    </tr>
+    <tr>
+        <td><strong>European/SEA</strong></td>
+        <td>Word count</td>
+        <td>ENG, FRE, GER, SPA, POR, ITA, RUS, TUR, POL, THA, VIE, IND, MSA</td>
+    </tr>
+    <tr>
+        <td><strong>CJK</strong></td>
+        <td>Character count</td>
+        <td>JPN, ZHO-CN, ZHO-TW</td>
+    </tr>
+</table>
+
+<div class="important-box">
+    <strong>Untranslated Detection</strong><br><br>
+    A string is marked <strong>untranslated</strong> if the translation still contains Korean characters (Unicode U+AC00-U+D7A3).<br><br>
+    Example: <code>"Hello 안녕"</code> &rarr; Marked as untranslated
+</div>
+
+<!-- OUTPUT FILES -->
+<h2 id="output-files">8. Output Files</h2>
+
+<h3>Language Excel Files</h3>
+
+<p><strong>Filename:</strong> <code>LanguageData_{LANG}.xlsx</code></p>
+
+<table>
+    <tr>
+        <th>Column</th>
+        <th>Width</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td><strong>StrOrigin</strong></td>
+        <td>45</td>
+        <td>Korean source text</td>
+    </tr>
+    <tr>
+        <td><strong>Str</strong></td>
+        <td>45</td>
+        <td>Translated text</td>
+    </tr>
+    <tr>
+        <td><strong>StringID</strong></td>
+        <td>15</td>
+        <td>Unique identifier</td>
+    </tr>
+    <tr>
+        <td><strong>English</strong></td>
+        <td>45</td>
+        <td>English reference (EU languages only)</td>
+    </tr>
+    <tr>
+        <td><strong>Category</strong></td>
+        <td>20</td>
+        <td>Color-coded category</td>
+    </tr>
+</table>
+
+<div class="info-box">
+    <strong>Note:</strong> CJK languages (JPN, ZHO-CN, ZHO-TW) don't include the English column.
+</div>
+
+<!-- TROUBLESHOOTING -->
+<div class="page-break"></div>
+<h2 id="troubleshooting">9. Troubleshooting</h2>
+
+<table>
+    <tr>
+        <th>Issue</th>
+        <th>Cause</th>
+        <th>Solution</th>
+    </tr>
+    <tr>
+        <td><strong>Path NOT FOUND</strong></td>
+        <td>Wrong drive letter</td>
+        <td>Edit <code>settings.json</code> or run <code>drive_replacer.py</code></td>
+    </tr>
+    <tr>
+        <td><strong>No language files</strong></td>
+        <td>LOC folder empty</td>
+        <td>Check Perforce sync status</td>
+    </tr>
+    <tr>
+        <td><strong>VRS not loaded</strong></td>
+        <td>Missing VRS folder</td>
+        <td>Verify VRS path in settings</td>
+    </tr>
+    <tr>
+        <td><strong>Empty output</strong></td>
+        <td>No .loc.xml files</td>
+        <td>Check EXPORT folder exists</td>
+    </tr>
+    <tr>
+        <td><strong>Wrong category</strong></td>
+        <td>Priority keyword conflict</td>
+        <td>Check filename for keywords</td>
+    </tr>
+</table>
+
+<div class="warning-box">
+    <strong>Debug Mode</strong><br><br>
+    Run with <code>-v</code> flag for detailed logging:<br>
+    <code>python main.py --cli -v</code>
+</div>
+
+<hr>
+
+<p style="text-align: center; color: #666; margin-top: 40px;">
+    <strong>LanguageDataExporter</strong> &bull; Version 1.0.16 &bull; January 2025<br>
+    <a href="https://github.com/NeilVibe/LocalizationTools" style="color: #5B9BD5;">GitHub Repository</a>
+</p>
+
+</body>
+</html>
