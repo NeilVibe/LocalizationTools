@@ -20,3 +20,4 @@ Build 012 - FIX: GUI lambda closure bug + MEGA CI validation (no more || true)
 Build 013 - FIX: Remove double-dot relative imports + Direct module import tests
 Build 014 - UI Simplification + Unified Report (General + Detailed Summary sheets)
 Build 015 - Priority Keywords: item/quest/skill/character/faction/region OVERRIDE folder matching
+Build 016: Gimmick priority + dead code cleanup
