@@ -257,11 +257,14 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
 
     Logic:
     1. Scan Master_*.xlsx files directly
-    2. Extract category from filename (Master_System.xlsx → "System")
-    3. Find users via COMMENT_{User} or STATUS_{User} columns
-    4. Store stats under that master file's category
+    2. Use SHEET NAMES as category (not master filename!)
+       - Master_Script.xlsx has tabs "Sequencer", "Dialog" → uses those as categories
+       - Master_System.xlsx has tabs "Skill", "Help", "System" → uses those as categories
+       This preserves the REAL category names from QA folders.
+    3. Find users via STATUS_{User} columns
+    4. Store stats under the REAL category name
 
-    This avoids duplicate counting when multiple categories map to same master.
+    This avoids duplicate counting while preserving original category names.
 
     Returns:
         Tuple of:
@@ -290,14 +293,11 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
             if master_path.name.startswith("~"):
                 continue
 
-            # Extract category from filename: Master_System.xlsx → "System"
-            category = master_path.stem.replace("Master_", "")
-
             # Get file date from mtime
             file_mtime = master_path.stat().st_mtime
             file_date = datetime.fromtimestamp(file_mtime).strftime("%Y-%m-%d")
 
-            print(f"    Reading {master_path.name} → category={category}")
+            print(f"    Reading {master_path.name}")
 
             try:
                 wb = safe_load_workbook(master_path)
@@ -305,6 +305,12 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                 for sheet_name in wb.sheetnames:
                     if sheet_name == "STATUS":
                         continue
+
+                    # USE SHEET NAME AS CATEGORY (not master filename!)
+                    # Master_Script.xlsx has tabs "Sequencer", "Dialog" → use those
+                    # Master_System.xlsx has tabs "Skill", "Help", "System" → use those
+                    # This preserves the REAL category names from QA folders
+                    category = sheet_name
 
                     ws = wb[sheet_name]
 
@@ -324,7 +330,7 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                             username = header_str.replace("STATUS_", "")
                             status_cols[username] = col
 
-                    print(f"      Sheet '{sheet_name}': found STATUS_ columns for {list(status_cols.keys())}")
+                    print(f"      Sheet '{sheet_name}' → category={category}: found STATUS_ columns for {list(status_cols.keys())}")
 
                     if not status_cols:
                         print(f"      Sheet '{sheet_name}': no STATUS_ columns found, skipping")
