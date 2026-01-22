@@ -317,6 +317,12 @@ def collect_manager_stats_for_tracker() -> Dict:
 
             try:
                 wb = safe_load_workbook(master_path)
+
+                # GRANULAR: Log all sheets for EVERY category
+                log_lines.append(f"\n=== {target_category.upper()} [{folder_label}] ===")
+                log_lines.append(f"Master file: {master_path}")
+                log_lines.append(f"Sheets found: {wb.sheetnames}")
+
                 for sheet_name in wb.sheetnames:
                     if sheet_name == "STATUS":
                         continue
@@ -324,14 +330,31 @@ def collect_manager_stats_for_tracker() -> Dict:
 
                     # Find STATUS_{User} columns
                     status_cols = {}
+                    all_headers = []
                     for col in range(1, ws.max_column + 1):
                         header = ws.cell(row=1, column=col).value
-                        if header and str(header).startswith("STATUS_"):
-                            status_cols[str(header).replace("STATUS_", "")] = col
+                        if header:
+                            all_headers.append(str(header))
+                            if str(header).startswith("STATUS_"):
+                                status_cols[str(header).replace("STATUS_", "")] = col
+
+                    # GRANULAR: Log headers for ALL sheets
+                    log_lines.append(f"  Sheet '{sheet_name}': rows={ws.max_row}, cols={ws.max_column}")
+                    log_lines.append(f"    STATUS_ columns: {list(status_cols.keys()) if status_cols else 'NONE FOUND'}")
 
                     if not status_cols:
-                        log_lines.append(f"[{folder_label}] {master_path.name}/{sheet_name}: NO STATUS_ COLUMNS")
                         continue
+
+                    # GRANULAR: Sample values for ALL categories
+                    sample_values = {}
+                    for username, col in status_cols.items():
+                        vals = []
+                        for r in range(2, min(12, ws.max_row + 1)):  # First 10 data rows
+                            v = ws.cell(row=r, column=col).value
+                            if v:
+                                vals.append(str(v).strip())
+                        sample_values[username] = vals[:5] if vals else ["(empty)"]
+                    log_lines.append(f"    Sample STATUS values: {sample_values}")
 
                     # Count - key by target_category (not sheet_name) to match tester stats
                     for row in range(2, ws.max_row + 1):
@@ -349,12 +372,10 @@ def collect_manager_stats_for_tracker() -> Dict:
                                     manager_stats[target_category][username]["nonissue"] += 1
                             manager_stats[target_category][username]["lang"] = tester_mapping.get(username, "EN")
 
-                    # Log per-sheet summary
+                    # Log per-sheet summary (ALL users, even if 0)
                     for u in status_cols.keys():
                         s = manager_stats[target_category][u]
-                        t = s["fixed"] + s["reported"] + s["checking"] + s["nonissue"]
-                        if t > 0:
-                            log_lines.append(f"[{folder_label}] {target_category}/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']}")
+                        log_lines.append(f"    {target_category}/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']}")
 
                 wb.close()
             except Exception as e:

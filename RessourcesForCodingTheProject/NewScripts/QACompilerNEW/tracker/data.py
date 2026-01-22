@@ -123,6 +123,16 @@ def update_daily_data_sheet(
     log_lines = ["\n=== LOOKUP PHASE ==="]
     log_lines.append(f"daily_entries: {len(daily_entries)}, manager_stats categories: {list(manager_stats.keys())}")
 
+    # GRANULAR: Show Script category users from manager_stats
+    if "Script" in manager_stats:
+        script_users = list(manager_stats["Script"].keys())
+        log_lines.append(f"Script category users in manager_stats: {script_users}")
+        for u in script_users[:5]:  # First 5 users
+            s = manager_stats["Script"][u]
+            log_lines.append(f"  Script/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']}")
+    else:
+        log_lines.append("WARNING: 'Script' category NOT in manager_stats!")
+
     lookup_hits = 0
     lookup_misses = []
 
@@ -137,6 +147,10 @@ def update_daily_data_sheet(
         lookup_category = get_target_master_category(category)
         category_stats = manager_stats.get(lookup_category, {})
         user_manager_stats = category_stats.get(user, {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
+
+        # GRANULAR: Log every Sequencer/Dialog lookup
+        if category in ("Sequencer", "Dialog"):
+            log_lines.append(f"[LOOKUP] {user}/{category} -> lookup_category='{lookup_category}', found_in_stats={lookup_category in manager_stats}, user_in_cat={user in category_stats}, stats={user_manager_stats}")
 
         has_stats = any(user_manager_stats[k] > 0 for k in ["fixed", "reported", "checking", "nonissue"])
         if has_stats:

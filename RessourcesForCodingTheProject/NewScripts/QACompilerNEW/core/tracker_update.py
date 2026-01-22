@@ -282,6 +282,12 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
 
             try:
                 wb = safe_load_workbook(master_path)
+
+                # GRANULAR: Log all sheets for this category
+                log_lines.append(f"\n=== {target_category.upper()} [{folder_label}] ===")
+                log_lines.append(f"Master file: {master_path}")
+                log_lines.append(f"Sheets found: {wb.sheetnames}")
+
                 for sheet_name in wb.sheetnames:
                     if sheet_name == "STATUS":
                         continue
@@ -296,9 +302,23 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                         if header and str(header).startswith("STATUS_"):
                             status_cols[str(header).replace("STATUS_", "")] = col
 
+                    # GRANULAR: Log headers for ALL sheets
+                    log_lines.append(f"  Sheet '{sheet_name}': rows={ws.max_row}, cols={ws.max_column}")
+                    log_lines.append(f"    STATUS_ columns: {list(status_cols.keys()) if status_cols else 'NONE FOUND'}")
+
                     if not status_cols:
-                        log_lines.append(f"[{folder_label}] {master_path.name}/{sheet_name}: NO STATUS_ COLUMNS")
                         continue
+
+                    # GRANULAR: Sample values for ALL categories
+                    sample_values = {}
+                    for username, col in status_cols.items():
+                        vals = []
+                        for r in range(2, min(12, ws.max_row + 1)):  # First 10 data rows
+                            v = ws.cell(row=r, column=col).value
+                            if v:
+                                vals.append(str(v).strip())
+                        sample_values[username] = vals[:5] if vals else ["(empty)"]
+                    log_lines.append(f"    Sample STATUS values: {sample_values}")
 
                     for row in range(2, ws.max_row + 1):
                         for username, col in status_cols.items():
@@ -314,12 +334,10 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                         manager_stats[category][username]["lang"] = tester_mapping.get(username, "EN")
                         manager_dates[(category, username)] = file_date
 
-                    # Log per-sheet summary
+                    # Log per-sheet summary (ALL users, even if 0)
                     for u in status_cols.keys():
                         s = manager_stats[category][u]
-                        t = s["fixed"] + s["reported"] + s["checking"] + s["nonissue"]
-                        if t > 0:
-                            log_lines.append(f"[{folder_label}] {category}/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']}")
+                        log_lines.append(f"    {category}/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']}")
 
                 wb.close()
             except Exception as e:
