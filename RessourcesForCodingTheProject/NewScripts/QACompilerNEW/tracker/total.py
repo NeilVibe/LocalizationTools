@@ -239,6 +239,8 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
     # First pass: find the latest date for each (user, category)
     latest_data = {}  # (user, category) -> row data
 
+    print("\n[DEBUG TOTAL] Reading _DAILY_DATA rows...")
+    rows_read = 0
     for row in range(2, data_ws.max_row + 1):
         date = data_ws.cell(row, 1).value
         user = data_ws.cell(row, 2).value
@@ -247,12 +249,20 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
         if not user or not date:
             continue
 
+        rows_read += 1
+        done_val = data_ws.cell(row, 5).value or 0
+
         key = (user, category)
 
         # Keep the row with the latest date for each (user, category)
         # FIXED: Use proper date comparison, not string comparison!
         # String comparison fails: "2024-02" > "2024-12" = True (WRONG!)
-        if key not in latest_data or _parse_date_for_comparison(date) > _parse_date_for_comparison(latest_data[key]["date"]):
+        is_newer = key not in latest_data or _parse_date_for_comparison(date) > _parse_date_for_comparison(latest_data[key]["date"])
+
+        if is_newer:
+            old_date = latest_data[key]["date"] if key in latest_data else "N/A"
+            old_done = latest_data[key]["done"] if key in latest_data else "N/A"
+            print(f"  [PICK] {user}/{category}: date={date} done={done_val} (was: date={old_date} done={old_done})")
             latest_data[key] = {
                 "date": date,
                 "category": category,
@@ -286,6 +296,15 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
         user_data[user]["checking"] += data["checking"]
         user_data[user]["nonissue"] += data["nonissue"]
         user_data[user]["korean"] += data.get("korean", 0)
+
+    # Debug: show users with 0 done
+    print(f"\n[DEBUG TOTAL] Aggregated {len(user_data)} users:")
+    zero_users = [u for u, d in user_data.items() if d["done"] == 0]
+    if zero_users:
+        print(f"  [WARN] Users with done=0: {zero_users}")
+        for zu in zero_users[:5]:  # Show first 5
+            cats = [(cat, data["date"], data["done"]) for (u, cat), data in latest_data.items() if u == zu]
+            print(f"    {zu}: {cats}")
 
     return latest_data, dict(user_data)
 
