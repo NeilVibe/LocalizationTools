@@ -375,7 +375,10 @@ def process_sheet(
         master_screenshot_col = None  # Script has no screenshot column
 
     # Find STRINGID column in master (for manager status lookup)
+    # Script-type categories use EventName instead of STRINGID
     master_stringid_col = find_column_by_header(master_ws, "STRINGID")
+    if not master_stringid_col and is_script:
+        master_stringid_col = find_column_by_header(master_ws, "EventName")
 
     result = {
         "comments": 0,
