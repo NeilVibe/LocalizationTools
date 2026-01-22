@@ -47,3 +47,4 @@ Build - FIX: Script-type manager status (EventName as STRINGID) + debug output
 Build - DEBUG: Trace manager stats collection and lookup
 Build - FIX: Fully convert nested defaultdicts to regular dicts
 Build - Add MANAGER_STATS_DEBUG.log (concise auto-generated)
+Build - Log file works for BOTH compilation AND tracker update
