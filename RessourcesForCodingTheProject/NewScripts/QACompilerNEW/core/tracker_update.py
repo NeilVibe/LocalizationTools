@@ -361,10 +361,13 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
             except Exception as e:
                 print(f"  WARN: Error reading {master_path.name} for manager stats: {e}")
 
-    # Convert nested defaultdicts to regular dicts
+    # Convert nested defaultdicts to regular dicts (CRITICAL for .get() to work!)
+    # dict(users) only converts one level, inner stats dicts may still be defaultdicts
     result_stats = {}
-    for category, users in manager_stats.items():
-        result_stats[category] = dict(users)
+    for category, users_dd in manager_stats.items():
+        result_stats[category] = {}
+        for user, stats_dd in users_dd.items():
+            result_stats[category][user] = dict(stats_dd)  # Convert inner defaultdict too
 
     return result_stats, manager_dates
 
