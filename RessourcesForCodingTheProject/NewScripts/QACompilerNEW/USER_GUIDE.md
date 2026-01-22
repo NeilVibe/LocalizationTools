@@ -27,6 +27,7 @@
 | [4. Coverage Analysis](#-4-coverage-analysis) | Check translation coverage |
 | [5. System Localizer](#-5-system-localizer) | Localize System sheets |
 | [6. Update Tracker](#-6-update-tracker-retroactive) | **Backfill missing days** |
+| [Category Reference](#-category-reference) | Category clustering and column layouts |
 | [Folder Structure](#-folder-structure) | Where files go |
 | [Folder Naming Convention](#folder-naming-convention) | How to name tester folders |
 | [Troubleshooting](#-troubleshooting) | Common issues |
@@ -297,8 +298,29 @@ QAfolder/
 | **Gimmick** | Interactive objects | ✅ Auto | `Gimmick_LQA_Output/` |
 | **System** | UI text, menus | 🔧 Manual | Use System Localizer (Section 5) |
 | **Contents** | Content instructions | 🔧 Manual | Prepared externally |
+| **Sequencer** | Cutscene/event scripts | 🔧 Manual | Script-type (see below) |
+| **Dialog** | NPC dialogue scripts | 🔧 Manual | Script-type (see below) |
 
 > **Note:** System and Contents sheets are NOT auto-generated. System sheets are created via the System Localizer. Contents sheets are prepared manually/externally.
+
+### Script-Type Categories (Sequencer & Dialog)
+
+Sequencer and Dialog are special **Script-type** categories with different column layouts:
+
+| Feature | Standard Categories | Script-Type (Sequencer/Dialog) |
+|---------|--------------------|---------------------------------|
+| **Master Output** | Various (Quest, Item, etc.) | `Master_Script.xlsx` |
+| **Comment Column** | COMMENT | MEMO |
+| **Row Matching** | STRINGID | EventName |
+| **SCREENSHOT** | ✅ Yes | ❌ No |
+| **Typical Size** | 1,000-5,000 rows | 10,000+ rows |
+
+**Key Differences:**
+- Uses `MEMO` column instead of `COMMENT`
+- Uses `EventName` for matching (acts as the identifier like STRINGID does for other categories)
+- NO SCREENSHOT column
+- Both Sequencer and Dialog merge into `Master_Script.xlsx`
+- Testers commonly use "NON-ISSUE" (with hyphen) - the code accepts both "NON-ISSUE" and "NO ISSUE"
 
 ### Tester Sheet Columns (Generated Datasheets)
 
@@ -332,6 +354,12 @@ Master files include additional columns per tester:
 | `NO ISSUE` | Checked, looks good | 🟢 Green |
 | `BLOCKED` | Cannot test | 🟡 Yellow |
 | `KOREAN` | Still in Korean | 🟠 Orange |
+
+> **Note on "NO ISSUE" vs "NON-ISSUE":** The code accepts BOTH formats:
+> - `NO ISSUE` (with space) - standard format used by most categories
+> - `NON-ISSUE` (with hyphen) - also accepted, commonly used in Script-type categories
+>
+> Both are treated identically by the system - use whichever your testers prefer.
 
 ---
 
@@ -387,6 +415,8 @@ Multiple QA files for same category:
 The **most recent file** (by modification date) is used as the template structure.
 This ensures the master has the freshest column layout.
 
+> **Multiple XLSX in Same Folder:** When a tester folder contains multiple xlsx files, the **most recently modified** file is used. This is useful when testers save multiple versions - only the latest matters.
+
 #### Step 2: Content-Based Row Matching (2-Step Cascade)
 
 Each tester's data is matched to master rows using a 2-step cascade:
@@ -426,6 +456,8 @@ Some categories are **merged** into combined master files:
 | **Skill** | `Master_System.xlsx` ← *merged* |
 | **Help** | `Master_System.xlsx` ← *merged* |
 | **Gimmick** | `Master_Item.xlsx` ← *merged* |
+| **Sequencer** | `Master_Script.xlsx` ← *merged* |
+| **Dialog** | `Master_Script.xlsx` ← *merged* |
 
 ### Output Structure
 
@@ -438,6 +470,7 @@ Masterfolder_EN/
 ├── Master_System.xlsx      ← includes Skill + Help
 ├── Master_Character.xlsx
 ├── Master_Contents.xlsx
+├── Master_Script.xlsx      ← includes Sequencer + Dialog
 ├── _TRACKER.xlsx           ← Progress tracking
 └── Images/
 ```
@@ -633,6 +666,150 @@ Step 2: English Text → Korean → Target Language (fallback)
 
 ---
 
+## 📚 Category Reference
+
+This section provides detailed reference information about category clustering, column layouts, and special processing.
+
+### Category Clustering Diagram
+
+Categories are **clustered** into master files. Some categories share a master file:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  CATEGORY CLUSTERING (What merges where)                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Quest ────────────────────► Master_Quest.xlsx              │
+│  Knowledge ────────────────► Master_Knowledge.xlsx          │
+│  Item ─────────┬───────────► Master_Item.xlsx               │
+│  Gimmick ──────┘                                            │
+│  Region ───────────────────► Master_Region.xlsx             │
+│  System ───────┬───────────► Master_System.xlsx             │
+│  Skill ────────┤                                            │
+│  Help ─────────┘                                            │
+│  Character ────────────────► Master_Character.xlsx          │
+│  Contents ─────────────────► Master_Contents.xlsx           │
+│  Sequencer ────┬───────────► Master_Script.xlsx             │
+│  Dialog ───────┘                                            │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Column Layout by Category Type
+
+Different category types have different column structures:
+
+| Type | Categories | Key Columns |
+|------|------------|-------------|
+| **Standard** | Quest, Knowledge, Region, Character | STRINGID \| Translation \| STATUS \| COMMENT \| SCREENSHOT |
+| **Item** | Item, Gimmick | ItemName \| ItemDesc \| STRINGID \| STATUS \| COMMENT \| SCREENSHOT |
+| **System** | System, Skill, Help | CONTENT \| STATUS \| COMMENT \| STRINGID \| SCREENSHOT |
+| **Contents** | Contents | CONTENT \| INSTRUCTIONS \| STATUS \| COMMENT \| SCREENSHOT |
+| **Script** | Sequencer, Dialog | EventName \| Text \| Translation \| STATUS \| MEMO (no SCREENSHOT) |
+
+#### Detailed Column Reference
+
+<details>
+<summary><b>Standard Categories (Quest, Knowledge, Region, Character)</b></summary>
+
+| Column | Description | Editable? |
+|--------|-------------|-----------|
+| Original (KR) | Korean source text | ❌ |
+| English (ENG) | English translation | ❌ |
+| Translation | Target language | ❌ |
+| **STATUS** | Issue status dropdown | ✅ |
+| **COMMENT** | Tester notes | ✅ |
+| STRINGID | Unique identifier (for matching) | ❌ |
+| **SCREENSHOT** | Screenshot reference | ✅ |
+
+</details>
+
+<details>
+<summary><b>Item Categories (Item, Gimmick)</b></summary>
+
+| Column | Description | Editable? |
+|--------|-------------|-----------|
+| ItemName | Item name | ❌ |
+| ItemDesc | Item description | ❌ |
+| STRINGID | Unique identifier | ❌ |
+| **STATUS** | Issue status dropdown | ✅ |
+| **COMMENT** | Tester notes | ✅ |
+| **SCREENSHOT** | Screenshot reference | ✅ |
+
+</details>
+
+<details>
+<summary><b>System Categories (System, Skill, Help)</b></summary>
+
+| Column | Description | Editable? |
+|--------|-------------|-----------|
+| CONTENT | System text content | ❌ |
+| **STATUS** | Issue status dropdown | ✅ |
+| **COMMENT** | Tester notes | ✅ |
+| STRINGID | Unique identifier | ❌ |
+| **SCREENSHOT** | Screenshot reference | ✅ |
+
+</details>
+
+<details>
+<summary><b>Contents Category</b></summary>
+
+| Column | Description | Editable? |
+|--------|-------------|-----------|
+| CONTENT | Content text | ❌ |
+| INSTRUCTIONS | Context instructions | ❌ |
+| **STATUS** | Issue status dropdown | ✅ |
+| **COMMENT** | Tester notes | ✅ |
+| **SCREENSHOT** | Screenshot reference | ✅ |
+
+</details>
+
+<details>
+<summary><b>Script Categories (Sequencer, Dialog)</b></summary>
+
+| Column | Description | Editable? |
+|--------|-------------|-----------|
+| EventName | Event identifier (used for matching) | ❌ |
+| Text | Original text | ❌ |
+| Translation | Target language | ❌ |
+| **STATUS** | Issue status dropdown | ✅ |
+| **MEMO** | Tester notes (NOT "COMMENT") | ✅ |
+
+> **Note:** Script categories do NOT have a SCREENSHOT column.
+
+</details>
+
+### Script-Type Optimization (Clean Slate Processing)
+
+Script files (Sequencer/Dialog) can have **10,000+ rows**, making full processing slow. The system uses "clean slate" preprocessing:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  SCRIPT-TYPE OPTIMIZATION                                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Original Script File (10,000+ rows)                        │
+│  ├── Row 1: (no status)     ← SKIPPED                       │
+│  ├── Row 2: (no status)     ← SKIPPED                       │
+│  ├── Row 3: STATUS=ISSUE    ← PROCESSED                     │
+│  ├── Row 4: (no status)     ← SKIPPED                       │
+│  ├── Row 5: STATUS=NO ISSUE ← PROCESSED                     │
+│  └── ... (10,000 more)                                      │
+│                                                             │
+│  Filtered Template: Only rows WITH STATUS are processed     │
+│  Result: Much faster than processing all 10,000+ rows       │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**How it works:**
+1. Script files are scanned for rows that have a STATUS value
+2. Only rows WITH STATUS (ISSUE, NO ISSUE, BLOCKED, etc.) are included
+3. Creates a "clean slate" template with only the checked rows
+4. This dramatically speeds up processing for large script files
+
+---
+
 ## 📂 Folder Structure
 
 ```
@@ -686,18 +863,20 @@ Tester folders must follow this format: **`이름_Category`**
 
 #### Valid Categories
 
-| Category |
-|----------|
-| Quest |
-| Knowledge |
-| Item |
-| Region |
-| System |
-| Character |
-| Skill |
-| Help |
-| Gimmick |
-| Contents |
+| Category | Type | Master Output |
+|----------|------|---------------|
+| Quest | Standard | Master_Quest.xlsx |
+| Knowledge | Standard | Master_Knowledge.xlsx |
+| Item | Item | Master_Item.xlsx |
+| Region | Standard | Master_Region.xlsx |
+| System | System | Master_System.xlsx |
+| Character | Standard | Master_Character.xlsx |
+| Skill | System | Master_System.xlsx |
+| Help | System | Master_System.xlsx |
+| Gimmick | Item | Master_Item.xlsx |
+| Contents | Contents | Master_Contents.xlsx |
+| Sequencer | Script | Master_Script.xlsx |
+| Dialog | Script | Master_Script.xlsx |
 
 #### Rules
 
