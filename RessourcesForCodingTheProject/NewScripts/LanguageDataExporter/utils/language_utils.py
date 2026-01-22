@@ -98,15 +98,39 @@ def contains_korean(text: Optional[str]) -> bool:
 # WORD/CHARACTER COUNTING
 # =============================================================================
 
-def count_words(text: Optional[str]) -> int:
+def count_source_words(text: Optional[str]) -> int:
     """
-    Count words in text (for European/SEA languages).
+    Count words in SOURCE text (Korean StrOrigin).
 
     Splits by whitespace and counts tokens.
-    Returns 0 if text is empty or contains Korean (untranslated).
+    Does NOT skip Korean - this is for counting Korean source words.
 
     Args:
-        text: Text to count words in
+        text: Source text to count words in
+
+    Returns:
+        Word count (0 if empty or None)
+
+    Example:
+        >>> count_source_words("안녕하세요 반갑습니다")
+        2
+        >>> count_source_words("Hello World")
+        2
+    """
+    if not text:
+        return 0
+    return len(str(text).split())
+
+
+def count_words(text: Optional[str]) -> int:
+    """
+    Count words in TRANSLATION text (for European/SEA languages).
+
+    Splits by whitespace and counts tokens.
+    Returns 0 if text contains Korean (= untranslated).
+
+    Args:
+        text: Translation text to count words in
 
     Returns:
         Word count (0 if Korean detected, empty, or None)
