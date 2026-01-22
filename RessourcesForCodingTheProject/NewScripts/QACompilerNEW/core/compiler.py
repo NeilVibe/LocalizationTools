@@ -43,7 +43,9 @@ from core.processing import (
 VALID_MANAGER_STATUS = {"FIXED", "REPORTED", "CHECKING", "NON-ISSUE", "NON ISSUE"}
 
 # Valid tester status values (rows with these are "done")
-VALID_TESTER_STATUS = {"ISSUE", "NO ISSUE", "BLOCKED", "KOREAN"}
+# NOTE: Script-type categories (Sequencer/Dialog) use "NON-ISSUE" (with hyphen)
+# while other categories use "NO ISSUE" (with space). Accept both.
+VALID_TESTER_STATUS = {"ISSUE", "NO ISSUE", "NON-ISSUE", "BLOCKED", "KOREAN"}
 
 
 # =============================================================================
@@ -349,80 +351,170 @@ def preprocess_script_category(
             - "rows": {(eventname, text): row_data} - all unique rows with status
             - "row_count": int - total rows with status
             - "source_files": int - number of files scanned
+            - "errors": List of error messages encountered
     """
+    import traceback
     # SCRIPT_COLS already imported from config at module level
 
     universe = {}  # (eventname, text) -> row_data
     source_files = 0
+    errors = []  # Track errors for debugging
 
     print(f"  [PREPROCESS] Scanning {len(qa_folders)} QA files for rows with STATUS...")
 
+    if not qa_folders:
+        print(f"    [WARN] No QA folders provided")
+        return {"rows": {}, "row_count": 0, "source_files": 0, "errors": ["No QA folders provided"]}
+
     for qf in qa_folders:
-        xlsx_path = qf["xlsx_path"]
-        username = qf["username"]
+        xlsx_path = qf.get("xlsx_path")
+        username = qf.get("username", "unknown")
+
+        if xlsx_path is None:
+            errors.append(f"Missing xlsx_path for user {username}")
+            continue
+
         source_files += 1
 
         try:
+            # Validate file exists
+            if not xlsx_path.exists():
+                errors.append(f"File not found: {xlsx_path}")
+                print(f"    [WARN] File not found: {xlsx_path}")
+                continue
+
             wb = safe_load_workbook(xlsx_path)
 
             for sheet_name in wb.sheetnames:
                 if sheet_name == "STATUS":
                     continue
 
-                ws = wb[sheet_name]
+                try:
+                    ws = wb[sheet_name]
 
-                # Find columns by NAME (not position!)
-                status_col = find_column_by_header(ws, SCRIPT_COLS.get("status", "STATUS"))
-                text_col = find_column_by_header(ws, SCRIPT_COLS.get("translation", "Text"))
-                eventname_col = find_column_by_header(ws, SCRIPT_COLS.get("stringid", "EventName"))
-                memo_col = find_column_by_header(ws, SCRIPT_COLS.get("comment", "MEMO"))
-
-                if not status_col or not text_col or not eventname_col:
-                    continue
-
-                # Scan rows for those with STATUS
-                for row in range(2, ws.max_row + 1):
-                    status_val = ws.cell(row=row, column=status_col).value
-                    if not status_val:
+                    # Check for empty sheet
+                    if ws.max_row is None or ws.max_row < 2:
                         continue
 
-                    status_upper = str(status_val).strip().upper()
-                    if status_upper not in VALID_TESTER_STATUS:
+                    # Find columns by NAME (not position!)
+                    status_col = find_column_by_header(ws, SCRIPT_COLS.get("status", "STATUS"))
+                    text_col = find_column_by_header(ws, SCRIPT_COLS.get("translation", "Text"))
+                    eventname_col = find_column_by_header(ws, SCRIPT_COLS.get("stringid", "EventName"))
+                    memo_col = find_column_by_header(ws, SCRIPT_COLS.get("comment", "MEMO"))
+
+                    if not status_col or not text_col or not eventname_col:
+                        # Not a script sheet - skip silently
                         continue
 
-                    # This row has a valid status - add to universe
-                    eventname = str(ws.cell(row=row, column=eventname_col).value or "").strip()
-                    text = str(ws.cell(row=row, column=text_col).value or "").strip()
+                    # Scan rows for those with STATUS
+                    # SIMPLE APPROACH: If STATUS has ANY value (not empty), include the row
+                    # Don't be overly strict about what the status value is - if a tester
+                    # touched the row (put anything in STATUS), we want to process it.
+                    for row in range(2, ws.max_row + 1):
+                        try:
+                            status_val = ws.cell(row=row, column=status_col).value
+                            if not status_val:
+                                continue
 
-                    if not eventname and not text:
-                        continue
+                            # Just check if STATUS has any non-empty value
+                            status_str = str(status_val).strip()
+                            if not status_str:
+                                continue
 
-                    key = (eventname, text)
+                            # This row has a status value - add to universe
+                            eventname = str(ws.cell(row=row, column=eventname_col).value or "").strip()
+                            text = str(ws.cell(row=row, column=text_col).value or "").strip()
 
-                    # Store row data (first occurrence wins, but track all sources)
-                    if key not in universe:
-                        universe[key] = {
-                            "eventname": eventname,
-                            "text": text,
-                            "sheet": sheet_name,
-                            "sources": [(username, xlsx_path, sheet_name, row)],
-                        }
-                    else:
-                        # Track additional sources for debugging
-                        universe[key]["sources"].append((username, xlsx_path, sheet_name, row))
+                            if not eventname and not text:
+                                continue
+
+                            key = (eventname, text)
+
+                            # Store row data (first occurrence wins, but track all sources)
+                            if key not in universe:
+                                universe[key] = {
+                                    "eventname": eventname,
+                                    "text": text,
+                                    "sheet": sheet_name,
+                                    "sources": [(username, xlsx_path, sheet_name, row)],
+                                }
+                            else:
+                                # Track additional sources for debugging
+                                universe[key]["sources"].append((username, xlsx_path, sheet_name, row))
+
+                        except Exception as row_err:
+                            err_msg = f"Error reading row {row} in {xlsx_path.name}/{sheet_name}: {row_err}"
+                            errors.append(err_msg)
+                            # Continue processing other rows
+
+                except Exception as sheet_err:
+                    err_msg = f"Error processing sheet '{sheet_name}' in {xlsx_path.name}: {sheet_err}"
+                    errors.append(err_msg)
+                    print(f"    [WARN] {err_msg}")
+                    # Continue with other sheets
 
             wb.close()
 
         except Exception as e:
-            print(f"    WARN: Error preprocessing {xlsx_path.name}: {e}")
+            err_msg = f"Error preprocessing {xlsx_path.name}: {type(e).__name__}: {e}"
+            errors.append(err_msg)
+            print(f"    [ERROR] {err_msg}")
+            traceback.print_exc()
+            # Continue with other files
 
     print(f"  [PREPROCESS] Found {len(universe)} unique rows with STATUS from {source_files} files")
+    if errors:
+        print(f"  [PREPROCESS] Encountered {len(errors)} error(s) during preprocessing")
 
     return {
         "rows": universe,
         "row_count": len(universe),
         "source_files": source_files,
+        "errors": errors,
     }
+
+
+def _safe_get_color_rgb(color_obj) -> str:
+    """
+    Safely extract RGB color string from an openpyxl color object.
+
+    Handles various color types:
+    - RGB colors (string like "FFFFFF")
+    - Indexed colors (integer)
+    - None values
+    - Theme colors
+
+    Args:
+        color_obj: An openpyxl Color object
+
+    Returns:
+        RGB string (e.g., "FFFFFF") or "FFFFFF" as fallback
+    """
+    if color_obj is None:
+        return "FFFFFF"
+
+    rgb = getattr(color_obj, 'rgb', None)
+
+    # rgb can be None
+    if rgb is None:
+        return "FFFFFF"
+
+    # rgb can be an integer (indexed color) - just use white
+    if isinstance(rgb, int):
+        return "FFFFFF"
+
+    # rgb can be a string - validate it's a valid hex color
+    if isinstance(rgb, str):
+        # Some colors start with "00" for alpha channel
+        if len(rgb) == 8:
+            return rgb[2:]  # Strip alpha channel
+        elif len(rgb) == 6:
+            return rgb
+        else:
+            return "FFFFFF"
+
+    # Unknown type - fallback
+    return "FFFFFF"
 
 
 def create_filtered_script_template(
@@ -446,178 +538,252 @@ def create_filtered_script_template(
 
     Returns:
         Path to the filtered template workbook
+
+    Raises:
+        Exception: Re-raises any exception after printing full traceback
     """
+    import traceback
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     # SCRIPT_COLS already imported from config at module level
     import tempfile
 
-    # Load template for structure (column headers)
-    template_wb = safe_load_workbook(template_path)
+    try:
+        # Load template for structure (column headers)
+        print(f"  [FILTERED TEMPLATE] Loading template: {template_path.name}")
+        template_wb = safe_load_workbook(template_path)
+    except Exception as e:
+        print(f"  [ERROR] Failed to load template workbook: {template_path}")
+        print(f"  [ERROR] Exception: {type(e).__name__}: {e}")
+        traceback.print_exc()
+        raise
 
-    # Create new filtered workbook
-    filtered_wb = Workbook()
-    # Remove default sheet
-    if "Sheet" in filtered_wb.sheetnames:
-        del filtered_wb["Sheet"]
+    try:
+        # Create new filtered workbook
+        filtered_wb = Workbook()
+        # Remove default sheet
+        if "Sheet" in filtered_wb.sheetnames:
+            del filtered_wb["Sheet"]
 
-    rows_data = universe.get("rows", {})
+        rows_data = universe.get("rows", {})
 
-    # Group rows by sheet name
-    rows_by_sheet = {}
-    for key, data in rows_data.items():
-        sheet = data.get("sheet", "Script")
-        if sheet not in rows_by_sheet:
-            rows_by_sheet[sheet] = []
-        rows_by_sheet[sheet].append(data)
+        if not rows_data:
+            print(f"  [WARN] Universe is empty - no rows to filter")
 
-    # Cache of loaded source workbooks (avoid reloading same file multiple times)
-    source_wb_cache = {}
+        # Group rows by sheet name
+        rows_by_sheet = {}
+        for key, data in rows_data.items():
+            sheet = data.get("sheet", "Script")
+            if sheet not in rows_by_sheet:
+                rows_by_sheet[sheet] = []
+            rows_by_sheet[sheet].append(data)
 
-    def get_source_row_data(sources, sheet_name, num_cols):
-        """
-        Fetch full row data from source file.
-        Returns list of cell values for all columns.
-        """
-        if not sources:
-            return None
+        # Cache of loaded source workbooks (avoid reloading same file multiple times)
+        source_wb_cache = {}
 
-        # Use first source (username, xlsx_path, sheet_name, row)
-        username, xlsx_path, src_sheet, src_row = sources[0]
-        xlsx_path = Path(xlsx_path) if not isinstance(xlsx_path, Path) else xlsx_path
-
-        # Load from cache or open new
-        cache_key = str(xlsx_path)
-        if cache_key not in source_wb_cache:
-            try:
-                source_wb_cache[cache_key] = safe_load_workbook(xlsx_path)
-            except Exception as e:
-                print(f"    WARN: Could not load source {xlsx_path.name}: {e}")
+        def get_source_row_data(sources, sheet_name, num_cols):
+            """
+            Fetch full row data from source file.
+            Returns list of cell values for all columns.
+            """
+            if not sources:
                 return None
 
-        wb = source_wb_cache[cache_key]
-        if src_sheet not in wb.sheetnames:
-            return None
+            # Use first source (username, xlsx_path, sheet_name, row)
+            username, xlsx_path, src_sheet, src_row = sources[0]
+            xlsx_path = Path(xlsx_path) if not isinstance(xlsx_path, Path) else xlsx_path
 
-        ws = wb[src_sheet]
-        # Get all cell values for this row
-        row_values = []
-        for col in range(1, num_cols + 1):
-            row_values.append(ws.cell(row=src_row, column=col).value)
-        return row_values
+            # Load from cache or open new
+            cache_key = str(xlsx_path)
+            if cache_key not in source_wb_cache:
+                try:
+                    source_wb_cache[cache_key] = safe_load_workbook(xlsx_path)
+                except Exception as e:
+                    print(f"    WARN: Could not load source {xlsx_path.name}: {e}")
+                    return None
 
-    # Process each sheet from template
-    for sheet_name in template_wb.sheetnames:
-        if sheet_name == "STATUS":
-            continue
+            wb = source_wb_cache[cache_key]
+            if src_sheet not in wb.sheetnames:
+                return None
 
-        template_ws = template_wb[sheet_name]
-        num_cols = template_ws.max_column
+            ws = wb[src_sheet]
+            # Get all cell values for this row
+            row_values = []
+            for col in range(1, num_cols + 1):
+                row_values.append(ws.cell(row=src_row, column=col).value)
+            return row_values
 
-        # Create filtered sheet
-        filtered_ws = filtered_wb.create_sheet(sheet_name)
+        # Process each sheet from template
+        for sheet_name in template_wb.sheetnames:
+            if sheet_name == "STATUS":
+                continue
 
-        # Copy header row (row 1) with all columns and styles
-        for col in range(1, num_cols + 1):
-            src_cell = template_ws.cell(row=1, column=col)
-            dst_cell = filtered_ws.cell(row=1, column=col)
-            dst_cell.value = src_cell.value
-            if src_cell.has_style:
-                dst_cell.font = Font(
-                    bold=src_cell.font.bold,
-                    color=src_cell.font.color,
-                    size=src_cell.font.size
-                )
-                if src_cell.fill.patternType:
-                    dst_cell.fill = PatternFill(
-                        start_color=src_cell.fill.start_color.rgb if src_cell.fill.start_color.rgb else "FFFFFF",
-                        end_color=src_cell.fill.end_color.rgb if src_cell.fill.end_color.rgb else "FFFFFF",
-                        fill_type=src_cell.fill.fill_type
-                    )
-                dst_cell.alignment = Alignment(
-                    horizontal=src_cell.alignment.horizontal,
-                    vertical=src_cell.alignment.vertical,
-                    wrap_text=src_cell.alignment.wrap_text
-                )
+            try:
+                template_ws = template_wb[sheet_name]
+                num_cols = template_ws.max_column
 
-        # Find column positions in template for matching
-        text_col = find_column_by_header(template_ws, SCRIPT_COLS.get("translation", "Text"))
-        eventname_col = find_column_by_header(template_ws, SCRIPT_COLS.get("stringid", "EventName"))
+                if num_cols == 0 or num_cols is None:
+                    print(f"    [SKIP] Sheet '{sheet_name}' has no columns")
+                    continue
 
-        if not text_col or not eventname_col:
-            continue
+                # Create filtered sheet
+                filtered_ws = filtered_wb.create_sheet(sheet_name)
 
-        # Build index of rows in template (by key) for quick lookup
-        template_rows = {}
-        for row in range(2, template_ws.max_row + 1):
-            eventname = str(template_ws.cell(row=row, column=eventname_col).value or "").strip()
-            text = str(template_ws.cell(row=row, column=text_col).value or "").strip()
-            key = (eventname, text)
-            if key not in template_rows:
-                template_rows[key] = row
-
-        # Copy only rows that are in the universe
-        sheet_rows = rows_by_sheet.get(sheet_name, [])
-        dst_row = 2
-        rows_from_template = 0
-        rows_from_source = 0
-
-        for row_data in sheet_rows:
-            key = (row_data["eventname"], row_data["text"])
-
-            # Try to find row in template first (most efficient)
-            src_row = template_rows.get(key)
-            if src_row:
-                # Copy entire row from template (ALL columns)
+                # Copy header row (row 1) with all columns and styles
+                # Use try/except for each cell to avoid one bad cell breaking the whole sheet
                 for col in range(1, num_cols + 1):
-                    src_cell = template_ws.cell(row=src_row, column=col)
-                    dst_cell = filtered_ws.cell(row=dst_row, column=col)
-                    dst_cell.value = src_cell.value
-                dst_row += 1
-                rows_from_template += 1
-            else:
-                # Row not in template - fetch from source file
-                source_values = get_source_row_data(row_data.get("sources"), sheet_name, num_cols)
-                if source_values:
-                    for col, value in enumerate(source_values, 1):
-                        filtered_ws.cell(row=dst_row, column=col).value = value
-                    rows_from_source += 1
-                else:
-                    # Fallback: create minimal row with just key columns
-                    filtered_ws.cell(row=dst_row, column=eventname_col).value = row_data["eventname"]
-                    filtered_ws.cell(row=dst_row, column=text_col).value = row_data["text"]
-                dst_row += 1
+                    try:
+                        src_cell = template_ws.cell(row=1, column=col)
+                        dst_cell = filtered_ws.cell(row=1, column=col)
+                        dst_cell.value = src_cell.value
 
-        # Set column widths
-        for col in range(1, num_cols + 1):
-            col_letter = filtered_ws.cell(row=1, column=col).column_letter
-            filtered_ws.column_dimensions[col_letter].width = 20
+                        # Copy styles - but don't fail if styling fails
+                        if src_cell.has_style:
+                            try:
+                                # Copy font (safe - most properties are simple types)
+                                dst_cell.font = Font(
+                                    bold=src_cell.font.bold if src_cell.font.bold else False,
+                                    color=src_cell.font.color,
+                                    size=src_cell.font.size if src_cell.font.size else 11
+                                )
+                            except Exception as font_err:
+                                pass  # Font copy failed - not critical
 
-        if rows_from_source > 0:
-            print(f"    Sheet '{sheet_name}': {rows_from_template} from template, {rows_from_source} from source files")
+                            try:
+                                # Copy fill - this is where errors commonly occur
+                                if src_cell.fill and src_cell.fill.patternType and src_cell.fill.patternType != 'none':
+                                    start_rgb = _safe_get_color_rgb(src_cell.fill.start_color)
+                                    end_rgb = _safe_get_color_rgb(src_cell.fill.end_color)
+                                    dst_cell.fill = PatternFill(
+                                        start_color=start_rgb,
+                                        end_color=end_rgb,
+                                        fill_type=src_cell.fill.fill_type if src_cell.fill.fill_type else "solid"
+                                    )
+                            except Exception as fill_err:
+                                pass  # Fill copy failed - not critical
 
-    # Close cached source workbooks
-    for wb in source_wb_cache.values():
+                            try:
+                                # Copy alignment
+                                dst_cell.alignment = Alignment(
+                                    horizontal=src_cell.alignment.horizontal,
+                                    vertical=src_cell.alignment.vertical,
+                                    wrap_text=src_cell.alignment.wrap_text if src_cell.alignment.wrap_text else False
+                                )
+                            except Exception as align_err:
+                                pass  # Alignment copy failed - not critical
+
+                    except Exception as cell_err:
+                        print(f"    [WARN] Error copying header cell {col} in sheet '{sheet_name}': {cell_err}")
+
+                # Find column positions in template for matching
+                text_col = find_column_by_header(template_ws, SCRIPT_COLS.get("translation", "Text"))
+                eventname_col = find_column_by_header(template_ws, SCRIPT_COLS.get("stringid", "EventName"))
+
+                if not text_col or not eventname_col:
+                    print(f"    [SKIP] Sheet '{sheet_name}' missing required columns (Text or EventName)")
+                    continue
+
+                # Build index of rows in template (by key) for quick lookup
+                template_rows = {}
+                max_row = template_ws.max_row
+                if max_row is None or max_row < 2:
+                    print(f"    [SKIP] Sheet '{sheet_name}' has no data rows")
+                    continue
+
+                for row in range(2, max_row + 1):
+                    try:
+                        eventname = str(template_ws.cell(row=row, column=eventname_col).value or "").strip()
+                        text = str(template_ws.cell(row=row, column=text_col).value or "").strip()
+                        key = (eventname, text)
+                        if key not in template_rows:
+                            template_rows[key] = row
+                    except Exception as row_err:
+                        print(f"    [WARN] Error reading template row {row} in sheet '{sheet_name}': {row_err}")
+
+                # Copy only rows that are in the universe
+                sheet_rows = rows_by_sheet.get(sheet_name, [])
+                dst_row = 2
+                rows_from_template = 0
+                rows_from_source = 0
+
+                for row_data in sheet_rows:
+                    try:
+                        key = (row_data["eventname"], row_data["text"])
+
+                        # Try to find row in template first (most efficient)
+                        src_row = template_rows.get(key)
+                        if src_row:
+                            # Copy entire row from template (ALL columns)
+                            for col in range(1, num_cols + 1):
+                                src_cell = template_ws.cell(row=src_row, column=col)
+                                dst_cell = filtered_ws.cell(row=dst_row, column=col)
+                                dst_cell.value = src_cell.value
+                            dst_row += 1
+                            rows_from_template += 1
+                        else:
+                            # Row not in template - fetch from source file
+                            source_values = get_source_row_data(row_data.get("sources"), sheet_name, num_cols)
+                            if source_values:
+                                for col, value in enumerate(source_values, 1):
+                                    filtered_ws.cell(row=dst_row, column=col).value = value
+                                rows_from_source += 1
+                            else:
+                                # Fallback: create minimal row with just key columns
+                                filtered_ws.cell(row=dst_row, column=eventname_col).value = row_data["eventname"]
+                                filtered_ws.cell(row=dst_row, column=text_col).value = row_data["text"]
+                            dst_row += 1
+                    except Exception as copy_err:
+                        print(f"    [WARN] Error copying row data for key {row_data.get('eventname', '?')}: {copy_err}")
+                        dst_row += 1  # Still increment to avoid getting stuck
+
+                # Set column widths
+                for col in range(1, num_cols + 1):
+                    try:
+                        col_letter = filtered_ws.cell(row=1, column=col).column_letter
+                        filtered_ws.column_dimensions[col_letter].width = 20
+                    except Exception:
+                        pass  # Column width is not critical
+
+                if rows_from_source > 0:
+                    print(f"    Sheet '{sheet_name}': {rows_from_template} from template, {rows_from_source} from source files")
+
+            except Exception as sheet_err:
+                print(f"    [ERROR] Failed to process sheet '{sheet_name}': {sheet_err}")
+                traceback.print_exc()
+                # Continue with other sheets
+
+        # Close cached source workbooks
+        for wb in source_wb_cache.values():
+            try:
+                wb.close()
+            except:
+                pass
+
+        template_wb.close()
+
+        # Save to temp file or specified path
+        if output_path is None:
+            fd, temp_path = tempfile.mkstemp(suffix=".xlsx", prefix="filtered_script_")
+            output_path = Path(temp_path)
+            import os
+            os.close(fd)
+
         try:
-            wb.close()
-        except:
-            pass
+            filtered_wb.save(output_path)
+            filtered_wb.close()
+            print(f"  [PREPROCESS] Created filtered template with {len(rows_data)} rows: {output_path.name}")
+        except Exception as save_err:
+            print(f"  [ERROR] Failed to save filtered template: {save_err}")
+            traceback.print_exc()
+            raise
 
-    template_wb.close()
+        return output_path
 
-    # Save to temp file or specified path
-    if output_path is None:
-        fd, temp_path = tempfile.mkstemp(suffix=".xlsx", prefix="filtered_script_")
-        output_path = Path(temp_path)
-        import os
-        os.close(fd)
-
-    filtered_wb.save(output_path)
-    filtered_wb.close()
-
-    print(f"  [PREPROCESS] Created filtered template with {len(rows_data)} rows: {output_path.name}")
-
-    return output_path
+    except Exception as e:
+        print(f"  [ERROR] create_filtered_script_template failed:")
+        print(f"  [ERROR] {type(e).__name__}: {e}")
+        traceback.print_exc()
+        raise
 
 
 # =============================================================================
@@ -815,7 +981,8 @@ def process_category(
             for row in range(2, qa_ws.max_row + 1):
                 if qa_status_col:
                     status_val = qa_ws.cell(row, qa_status_col).value
-                    if not status_val or str(status_val).strip().upper() not in ["ISSUE", "NO ISSUE", "BLOCKED", "KOREAN"]:
+                    # Accept both "NO ISSUE" (standard) and "NON-ISSUE" (Script-type)
+                    if not status_val or str(status_val).strip().upper() not in ["ISSUE", "NO ISSUE", "NON-ISSUE", "BLOCKED", "KOREAN"]:
                         continue  # Skip rows not marked as done
                 cell_value = qa_ws.cell(row, trans_col).value
                 if is_english:

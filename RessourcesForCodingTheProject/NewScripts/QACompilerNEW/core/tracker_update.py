@@ -164,7 +164,8 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool) -> Dict:
             status_upper = str(status_value).strip().upper()
             if status_upper == "ISSUE":
                 stats["issue"] += 1
-            elif status_upper == "NO ISSUE":
+            elif status_upper in ("NO ISSUE", "NON-ISSUE"):
+                # Accept both "NO ISSUE" (standard) and "NON-ISSUE" (Script-type)
                 stats["no_issue"] += 1
             elif status_upper == "BLOCKED":
                 stats["blocked"] += 1
@@ -172,7 +173,8 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool) -> Dict:
                 stats["korean"] += 1
 
             # Count words/chars for DONE rows
-            if status_upper in ["ISSUE", "NO ISSUE", "BLOCKED", "KOREAN"]:
+            # Accept both "NO ISSUE" (standard) and "NON-ISSUE" (Script-type)
+            if status_upper in ["ISSUE", "NO ISSUE", "NON-ISSUE", "BLOCKED", "KOREAN"]:
                 cell_value = qa_ws.cell(row, trans_col).value
                 if is_english:
                     stats["word_count"] += count_words_english(cell_value)

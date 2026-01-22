@@ -284,7 +284,8 @@ DEPTH_COLORS = [
 ]
 
 # Status dropdown options
-STATUS_OPTIONS = ["ISSUE", "NO ISSUE", "BLOCKED", "KOREAN"]
+# NOTE: Script-type categories use "NON-ISSUE" while others use "NO ISSUE"
+STATUS_OPTIONS = ["ISSUE", "NO ISSUE", "NON-ISSUE", "BLOCKED", "KOREAN"]
 
 # Manager status options
 MANAGER_STATUS_OPTIONS = ["FIXED", "REPORTED", "CHECKING", "NON ISSUE"]

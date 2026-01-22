@@ -12,6 +12,7 @@ from tkinter import ttk, messagebox
 from pathlib import Path
 import threading
 import sys
+import traceback
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
@@ -281,10 +282,12 @@ class QACompilerSuiteGUI:
 
                 self.root.after(0, lambda: self._on_generate_complete(results))
             except ImportError:
+                traceback.print_exc()  # Always print full traceback to terminal
                 self.root.after(0, lambda: self._on_generate_error(
                     "Generator modules not yet implemented.\nPlease run from original scripts."
                 ))
             except Exception as e:
+                traceback.print_exc()  # Always print full traceback to terminal
                 err_msg = str(e)
                 self.root.after(0, lambda msg=err_msg: self._on_generate_error(msg))
 
@@ -342,6 +345,7 @@ class QACompilerSuiteGUI:
                 self.root.after(0, lambda: self._on_transfer_complete(success))
 
             except ImportError as e:
+                traceback.print_exc()  # Always print full traceback to terminal
                 # Fallback to original compile_qa
                 try:
                     sys.path.insert(0, str(Path(__file__).parent.parent.parent / "QAExcelCompiler"))
@@ -349,9 +353,11 @@ class QACompilerSuiteGUI:
                     success = transfer_qa_files()
                     self.root.after(0, lambda: self._on_transfer_complete(success))
                 except Exception as e2:
+                    traceback.print_exc()  # Always print full traceback to terminal
                     err_msg = str(e2)
                     self.root.after(0, lambda msg=err_msg: self._on_transfer_error(msg))
             except Exception as e:
+                traceback.print_exc()  # Always print full traceback to terminal
                 err_msg = str(e)
                 self.root.after(0, lambda msg=err_msg: self._on_transfer_error(msg))
 
@@ -402,6 +408,7 @@ class QACompilerSuiteGUI:
 
                 self.root.after(0, self._on_build_complete)
             except ImportError:
+                traceback.print_exc()  # Always print full traceback to terminal
                 # Fallback to original compile_qa
                 try:
                     sys.path.insert(0, str(Path(__file__).parent.parent.parent / "QAExcelCompiler"))
@@ -409,9 +416,11 @@ class QACompilerSuiteGUI:
                     compile_main()
                     self.root.after(0, self._on_build_complete)
                 except Exception as e:
+                    traceback.print_exc()  # Always print full traceback to terminal
                     err_msg = str(e)
                     self.root.after(0, lambda msg=err_msg: self._on_build_error(msg))
             except Exception as e:
+                traceback.print_exc()  # Always print full traceback to terminal
                 err_msg = str(e)
                 self.root.after(0, lambda msg=err_msg: self._on_build_error(msg))
 
@@ -458,9 +467,11 @@ class QACompilerSuiteGUI:
 
                 self.root.after(0, lambda: self._on_coverage_complete(report))
             except ImportError as e:
+                traceback.print_exc()  # Always print full traceback to terminal
                 err_msg = f"Coverage module not available: {e}"
                 self.root.after(0, lambda msg=err_msg: self._on_coverage_error(msg))
             except Exception as e:
+                traceback.print_exc()  # Always print full traceback to terminal
                 err_msg = str(e)
                 self.root.after(0, lambda msg=err_msg: self._on_coverage_error(msg))
 
@@ -523,6 +534,7 @@ class QACompilerSuiteGUI:
 
                 self.root.after(0, lambda: self._on_localizer_complete(result, output_folder))
             except Exception as e:
+                traceback.print_exc()  # Always print full traceback to terminal
                 err_msg = str(e)
                 self.root.after(0, lambda msg=err_msg: self._on_localizer_error(msg))
 
@@ -659,6 +671,7 @@ class QACompilerSuiteGUI:
 
                 self.root.after(0, lambda: self._on_update_tracker_complete(success, message, entries))
             except Exception as e:
+                traceback.print_exc()  # Always print full traceback to terminal
                 err_msg = str(e)
                 self.root.after(0, lambda msg=err_msg: self._on_update_tracker_error(msg))
 
