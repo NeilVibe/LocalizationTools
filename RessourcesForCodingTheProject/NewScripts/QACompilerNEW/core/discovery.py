@@ -58,17 +58,21 @@ def discover_qa_folders(base_folder: Path = None) -> List[Dict]:
             print(f"WARN: Unknown category '{category}' in folder {folder.name}")
             continue
 
-        # Find xlsx file (must be exactly 1)
+        # Find xlsx file (pick most recent if multiple)
         xlsx_files = list(folder.glob("*.xlsx"))
         xlsx_files = [f for f in xlsx_files if not f.name.startswith("~$")]
 
         if len(xlsx_files) == 0:
             print(f"WARN: No xlsx in folder: {folder.name}")
             continue
-        if len(xlsx_files) > 1:
-            print(f"WARN: Multiple xlsx in folder: {folder.name}, using first: {xlsx_files[0].name}")
 
-        xlsx_path = xlsx_files[0]
+        if len(xlsx_files) > 1:
+            # Sort by modification time (most recent first) and pick the newest
+            xlsx_files_sorted = sorted(xlsx_files, key=lambda x: x.stat().st_mtime, reverse=True)
+            xlsx_path = xlsx_files_sorted[0]
+            print(f"  INFO: Multiple xlsx in {folder.name} ({len(xlsx_files)} files), using most recent: {xlsx_path.name}")
+        else:
+            xlsx_path = xlsx_files[0]
 
         # Find images
         images = [f for f in folder.iterdir()
@@ -127,8 +131,12 @@ def discover_qa_folders_in(base_folder: Path) -> List[Dict]:
         if not xlsx_files:
             continue
 
-        # Use the largest xlsx file (likely the real one)
-        xlsx_path = max(xlsx_files, key=lambda x: x.stat().st_size)
+        # Use the most recent xlsx file (by modification time)
+        if len(xlsx_files) > 1:
+            xlsx_path = max(xlsx_files, key=lambda x: x.stat().st_mtime)
+            print(f"  INFO: Multiple xlsx in {folder.name} ({len(xlsx_files)} files), using most recent: {xlsx_path.name}")
+        else:
+            xlsx_path = xlsx_files[0]
 
         # Collect images
         images = [f for f in folder.iterdir()
