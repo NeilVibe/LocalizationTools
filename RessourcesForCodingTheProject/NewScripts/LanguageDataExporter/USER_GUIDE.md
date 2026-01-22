@@ -29,9 +29,8 @@
 
 ```
 1. Double-click LanguageDataExporter.exe
-2. Click "Analyze Categories" to see distribution
-3. Click "Generate Language Excels" to create files
-4. Find output in GeneratedExcel/ folder
+2. Click "Generate Language Excels" to create files
+3. Find output in GeneratedExcel/ folder
 ```
 
 ### Output Location
@@ -159,18 +158,6 @@ python main.py --gui    # Explicit GUI mode
 │  │ Output Folder: GeneratedExcel                  [OK]       │  │
 │  └───────────────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
-│  CATEGORY ANALYSIS                                              │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │ [Analyze Categories]                                      │  │
-│  │                                                           │  │
-│  │ Category          │ Files │ Tier                          │  │
-│  │ ──────────────────┼───────┼────────                       │  │
-│  │ Sequencer         │   340 │ STORY                         │  │
-│  │ AIDialog          │   156 │ STORY                         │  │
-│  │ Item              │   340 │ GAME_DATA                     │  │
-│  │ System_Misc       │  1240 │ GAME_DATA                     │  │
-│  └───────────────────────────────────────────────────────────┘  │
-├─────────────────────────────────────────────────────────────────┤
 │  EXPORT ACTIONS                                                 │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │ [Generate Word Count Report]  [Generate Language Excels]  │  │
@@ -183,13 +170,10 @@ python main.py --gui    # Explicit GUI mode
 
 ### GUI Actions
 
-| Button | What It Does | Output | Required? |
-|--------|--------------|--------|-----------|
-| **Analyze Categories** | Shows category distribution (informational only) | TreeView updated | Optional |
-| **Generate Word Count Report** | Creates LQA metrics report | `WordCountReport.xlsx` | Main action |
-| **Generate Language Excels** | Creates all language files | `LanguageData_*.xlsx` | Main action |
-
-> **Note:** "Analyze Categories" is **optional and informational only**. The export process automatically performs category clustering - you don't need to click Analyze first. It's just there to preview the category breakdown before exporting.
+| Button | What It Does | Output |
+|--------|--------------|--------|
+| **Generate Word Count Report** | Creates LQA metrics report | `WordCountReport.xlsx` |
+| **Generate Language Excels** | Creates all language files | `LanguageData_*.xlsx` |
 
 ### Path Status Indicators
 

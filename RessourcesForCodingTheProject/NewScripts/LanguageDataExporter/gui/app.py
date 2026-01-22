@@ -28,7 +28,6 @@ from exporter import (
     discover_language_files,
     build_stringid_category_index,
     load_cluster_config,
-    analyze_categories,
     write_language_excel,
 )
 from exporter.excel_writer import write_summary_excel
@@ -43,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 WINDOW_TITLE = "Language Data Exporter v3.0"
 WINDOW_WIDTH = 700
-WINDOW_HEIGHT = 500
+WINDOW_HEIGHT = 320
 
 # Languages to EXCLUDE (Korean is source, not target)
 EXCLUDED_LANGUAGES = {"kor"}
@@ -57,9 +56,6 @@ class LanguageDataExporterGUI:
         self.root.title(WINDOW_TITLE)
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.root.resizable(True, True)
-
-        # Category data
-        self.category_data = {}
 
         # Build UI
         self._build_ui()
@@ -84,10 +80,7 @@ class LanguageDataExporterGUI:
         # === Section 1: Path Info (Read-Only) ===
         self._build_path_info_section()
 
-        # === Section 2: Category Analysis ===
-        self._build_cluster_section()
-
-        # === Section 3: Export Actions ===
+        # === Section 2: Export Actions ===
         self._build_export_section()
 
         # === Section 4: Status ===
@@ -140,51 +133,10 @@ class LanguageDataExporterGUI:
         else:
             self.export_status.config(text="NOT FOUND", foreground="red")
 
-    def _build_cluster_section(self):
-        """Build cluster analysis section."""
-        section = ttk.LabelFrame(self.root, text="Category Analysis", padding=10)
-        section.grid(row=2, column=0, sticky="nsew", padx=15, pady=5)
-        section.columnconfigure(0, weight=1)
-        section.rowconfigure(1, weight=1)
-
-        # Button frame
-        btn_frame = ttk.Frame(section)
-        btn_frame.grid(row=0, column=0, sticky="w", pady=5)
-
-        ttk.Button(
-            btn_frame,
-            text="Analyze Categories",
-            command=self._analyze_categories
-        ).pack(side="left", padx=5)
-
-        # TreeView for category display
-        tree_frame = ttk.Frame(section)
-        tree_frame.grid(row=1, column=0, sticky="nsew", pady=5)
-        tree_frame.columnconfigure(0, weight=1)
-        tree_frame.rowconfigure(0, weight=1)
-
-        columns = ("category", "files", "tier")
-        self.category_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=10)
-
-        self.category_tree.heading("category", text="Category")
-        self.category_tree.heading("files", text="Files")
-        self.category_tree.heading("tier", text="Tier")
-
-        self.category_tree.column("category", width=200)
-        self.category_tree.column("files", width=80, anchor="center")
-        self.category_tree.column("tier", width=100, anchor="center")
-
-        # Scrollbar
-        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.category_tree.yview)
-        self.category_tree.configure(yscrollcommand=scrollbar.set)
-
-        self.category_tree.grid(row=0, column=0, sticky="nsew")
-        scrollbar.grid(row=0, column=1, sticky="ns")
-
     def _build_export_section(self):
         """Build export actions section."""
         section = ttk.LabelFrame(self.root, text="Generate Report", padding=10)
-        section.grid(row=3, column=0, sticky="ew", padx=15, pady=5)
+        section.grid(row=2, column=0, sticky="ew", padx=15, pady=5)
 
         btn_frame = ttk.Frame(section)
         btn_frame.pack(fill="x", pady=5)
@@ -206,7 +158,7 @@ class LanguageDataExporterGUI:
     def _build_status_section(self):
         """Build status display section."""
         section = ttk.LabelFrame(self.root, text="Status", padding=10)
-        section.grid(row=4, column=0, sticky="ew", padx=15, pady=10)
+        section.grid(row=3, column=0, sticky="ew", padx=15, pady=10)
         section.columnconfigure(0, weight=1)
 
         # Progress bar
@@ -214,64 +166,8 @@ class LanguageDataExporterGUI:
         self.progress.grid(row=0, column=0, sticky="ew", pady=5)
 
         # Status label
-        self.status_label = ttk.Label(section, text="Ready - Click 'Generate Word Count Report' to start")
+        self.status_label = ttk.Label(section, text="Ready")
         self.status_label.grid(row=1, column=0, sticky="w", pady=5)
-
-    # =========================================================================
-    # CATEGORY ANALYSIS
-    # =========================================================================
-
-    def _analyze_categories(self):
-        """Analyze EXPORT folder and show category distribution."""
-        if not EXPORT_FOLDER.exists():
-            messagebox.showerror("Error", f"EXPORT folder not found:\n{EXPORT_FOLDER}")
-            return
-
-        self._set_status("Analyzing categories...")
-        self.progress["value"] = 0
-
-        def analyze():
-            try:
-                # Load config
-                config = load_cluster_config(CLUSTER_CONFIG)
-
-                # Analyze categories
-                category_counts = analyze_categories(EXPORT_FOLDER, config)
-
-                # Update UI on main thread
-                self.root.after(0, lambda: self._display_categories(category_counts))
-
-            except Exception as ex:
-                self.root.after(0, lambda err=str(ex): messagebox.showerror("Error", f"Analysis failed: {err}"))
-                self.root.after(0, lambda: self._set_status("Analysis failed"))
-
-        threading.Thread(target=analyze, daemon=True).start()
-
-    def _display_categories(self, category_counts):
-        """Display category counts in TreeView."""
-        # Clear existing items
-        for item in self.category_tree.get_children():
-            self.category_tree.delete(item)
-
-        # Determine tier for each category
-        def get_tier(category):
-            if category.startswith("Dialog_"):
-                return "STORY"
-            elif category.startswith("Seq_"):
-                return "STORY"
-            else:
-                return "GAME_DATA"
-
-        # Add items sorted by count
-        total_files = 0
-        for category, count in sorted(category_counts.items(), key=lambda x: -x[1]):
-            tier = get_tier(category)
-            self.category_tree.insert("", "end", values=(category, count, tier))
-            total_files += count
-
-        self.category_data = category_counts
-        self._set_status(f"Found {len(category_counts)} categories, {total_files} files")
-        self.progress["value"] = 100
 
     # =========================================================================
     # REPORT GENERATION
