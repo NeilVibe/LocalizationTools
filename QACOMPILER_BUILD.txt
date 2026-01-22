@@ -41,3 +41,4 @@ Build - CRITICAL: Fix tracker showing 0
 Build - Disable strict datasheet blocking
 Build - CRITICAL: Fix tracker date comparison
 Build - Fix tracker category: use sheet names not master filename
+Build - CRITICAL: Fix zero bug (manager stats creating zero rows)
