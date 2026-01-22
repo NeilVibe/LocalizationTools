@@ -275,6 +275,8 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
             if master_path.name.startswith("~"):
                 continue
 
+            # Extract target_category from filename (e.g., Master_Character.xlsx → "Character")
+            target_category = master_path.stem.replace("Master_", "")
             file_mtime = master_path.stat().st_mtime
             file_date = datetime.fromtimestamp(file_mtime).strftime("%Y-%m-%d")
 
@@ -284,7 +286,8 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                     if sheet_name == "STATUS":
                         continue
 
-                    category = sheet_name
+                    # Use target_category (from filename) as key to match compiler.py
+                    category = target_category
                     ws = wb[sheet_name]
 
                     status_cols = {}

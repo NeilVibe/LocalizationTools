@@ -333,28 +333,28 @@ def collect_manager_stats_for_tracker() -> Dict:
                         log_lines.append(f"[{folder_label}] {master_path.name}/{sheet_name}: NO STATUS_ COLUMNS")
                         continue
 
-                    # Count
+                    # Count - key by target_category (not sheet_name) to match tester stats
                     for row in range(2, ws.max_row + 1):
                         for username, col in status_cols.items():
                             value = ws.cell(row=row, column=col).value
                             if value:
                                 v = str(value).strip().upper()
                                 if v == "FIXED":
-                                    manager_stats[sheet_name][username]["fixed"] += 1
+                                    manager_stats[target_category][username]["fixed"] += 1
                                 elif v == "REPORTED":
-                                    manager_stats[sheet_name][username]["reported"] += 1
+                                    manager_stats[target_category][username]["reported"] += 1
                                 elif v == "CHECKING":
-                                    manager_stats[sheet_name][username]["checking"] += 1
+                                    manager_stats[target_category][username]["checking"] += 1
                                 elif v in ("NON-ISSUE", "NON ISSUE"):
-                                    manager_stats[sheet_name][username]["nonissue"] += 1
-                            manager_stats[sheet_name][username]["lang"] = tester_mapping.get(username, "EN")
+                                    manager_stats[target_category][username]["nonissue"] += 1
+                            manager_stats[target_category][username]["lang"] = tester_mapping.get(username, "EN")
 
                     # Log per-sheet summary
                     for u in status_cols.keys():
-                        s = manager_stats[sheet_name][u]
+                        s = manager_stats[target_category][u]
                         t = s["fixed"] + s["reported"] + s["checking"] + s["nonissue"]
                         if t > 0:
-                            log_lines.append(f"[{folder_label}] {sheet_name}/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']}")
+                            log_lines.append(f"[{folder_label}] {target_category}/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']}")
 
                 wb.close()
             except Exception as e:
