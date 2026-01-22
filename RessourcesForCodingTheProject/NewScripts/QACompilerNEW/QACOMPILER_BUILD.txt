@@ -1,2 +1,3 @@
 Build - manager stats fix
 Build - Script-type optimization (Sequencer/Dialog)
+Build - Script preprocessing robustness fix
