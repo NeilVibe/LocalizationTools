@@ -279,7 +279,7 @@ Sequencer and Dialog files can have **thousands of rows** (10,000+), but only a 
 │  1. Scan ALL QA files for the category (all testers)                │
 │  2. Build GLOBAL UNIVERSE of rows WITH STATUS                       │
 │     - Key: (EventName, Text)                                        │
-│     - Only rows with ISSUE/NO ISSUE/BLOCKED/KOREAN                  │
+│     - Any row with non-empty STATUS (ISSUE/NON-ISSUE/NO ISSUE/etc)  │
 │  3. Create FILTERED TEMPLATE containing only active rows            │
 │     - Full row data preserved (all columns)                         │
 │     - Fetches from source files when needed                         │
@@ -344,6 +344,33 @@ SCRIPT_COLS = {
     "comment": "MEMO",           # MEMO maps to COMMENT
     # NO SCREENSHOT for Script-type
 }
+```
+
+### Robustness (Build 016+)
+
+The preprocessing is designed to be **fault-tolerant**:
+
+| Feature | Behavior |
+|---------|----------|
+| **Any STATUS value** | If STATUS has ANY non-empty value, row is included |
+| **NON-ISSUE support** | Both "NON-ISSUE" (hyphen) and "NO ISSUE" (space) accepted |
+| **Safe color handling** | Handles indexed colors, None, alpha channels without crashing |
+| **Error recovery** | Continues processing if one file/sheet/row fails |
+| **Full tracebacks** | All errors print full traceback to terminal (not messageboxes) |
+| **Edge case handling** | Empty sheets, missing columns, non-existent files handled gracefully |
+
+### Testing
+
+```bash
+# Run Script-type preprocessing tests
+cd QACompilerNEW
+python3 tests/test_script_preprocessing.py
+
+# Tests include:
+# - Color handling (5 tests)
+# - Preprocessing (7 tests)
+# - Filtered template creation (8 tests)
+# - Edge cases (5 tests)
 ```
 
 ## GUI Layout (1000x1000 window)

@@ -392,10 +392,11 @@ def process_sheet(
     # This dramatically speeds up processing for large files (Sequencer/Dialog can have 10,000+ rows)
     rows_to_process = []
     if is_script and qa_status_col:
-        valid_statuses = {"ISSUE", "NO ISSUE", "BLOCKED", "KOREAN"}
+        # SIMPLE APPROACH: If STATUS has ANY value (not empty), include the row
+        # Accept both "NON-ISSUE" (Script-type) and "NO ISSUE" (other categories)
         for qa_row in range(2, qa_ws.max_row + 1):
             status_val = qa_ws.cell(row=qa_row, column=qa_status_col).value
-            if status_val and str(status_val).strip().upper() in valid_statuses:
+            if status_val and str(status_val).strip():  # Any non-empty value
                 rows_to_process.append(qa_row)
         print(f"      [OPTIMIZATION] {len(rows_to_process)} rows with STATUS (skipping {qa_ws.max_row - 1 - len(rows_to_process)} empty rows)")
     else:
@@ -439,10 +440,11 @@ def process_sheet(
                     result["stats"]["issue"] += 1
                     should_compile_comment = True
                     status_type = "ISSUE"
-                elif status_upper == "NO ISSUE":
+                elif status_upper in ("NO ISSUE", "NON-ISSUE"):
+                    # Accept both "NO ISSUE" (standard) and "NON-ISSUE" (Script-type)
                     result["stats"]["no_issue"] += 1
                     should_compile_comment = True
-                    status_type = "NO ISSUE"
+                    status_type = "NO ISSUE"  # Normalize to "NO ISSUE" for consistency
                 elif status_upper == "BLOCKED":
                     result["stats"]["blocked"] += 1
                     should_compile_comment = True
@@ -483,7 +485,7 @@ def process_sheet(
                     elif status_type == "KOREAN":
                         cell.fill = PatternFill(start_color="E6E6FA", end_color="E6E6FA", fill_type="solid")
                         cell.font = Font(bold=True, color="800080")
-                    elif status_type == "NO ISSUE":
+                    elif status_type in ("NO ISSUE", "NON-ISSUE"):
                         cell.fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
                         cell.font = Font(bold=True, color="2E7D32")
 
@@ -989,7 +991,8 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
         # Find rows to hide due to tester status (BLOCKED, KOREAN, NO ISSUE)
         rows_non_issue_by_tester = set()
         rows_with_issue_status = set()
-        TESTER_HIDE_STATUSES = {"BLOCKED", "KOREAN", "NO ISSUE"}
+        # Accept both "NO ISSUE" (standard) and "NON-ISSUE" (Script-type)
+        TESTER_HIDE_STATUSES = {"BLOCKED", "KOREAN", "NO ISSUE", "NON-ISSUE"}
         for row in range(2, ws.max_row + 1):
             has_issue = False
             has_any_status = False
