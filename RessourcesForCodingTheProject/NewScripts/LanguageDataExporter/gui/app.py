@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 WINDOW_TITLE = "Language Data Exporter v3.0"
 WINDOW_WIDTH = 700
-WINDOW_HEIGHT = 320
+WINDOW_HEIGHT = 400
 
 # Languages to EXCLUDE (Korean is source, not target)
 EXCLUDED_LANGUAGES = {"kor"}
