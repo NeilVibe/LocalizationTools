@@ -117,48 +117,31 @@ def update_daily_data_sheet(
             existing[key] = row
 
     # Update or insert entries from daily_entries (tester stats)
-    print(f"\n[MANAGER STATS LOOKUP DEBUG] Processing {len(daily_entries)} daily entries...")
-    print(f"  manager_stats keys: {list(manager_stats.keys()) if manager_stats else 'EMPTY'}")
+    # Concise log - append to same file
+    from pathlib import Path
+    log_path = Path(__file__).parent.parent / "MANAGER_STATS_DEBUG.log"
+    log_lines = ["\n=== LOOKUP PHASE ==="]
+    log_lines.append(f"daily_entries: {len(daily_entries)}, manager_stats categories: {list(manager_stats.keys())}")
+
     lookup_hits = 0
-    lookup_misses = 0
+    lookup_misses = []
 
     for entry in daily_entries:
         key = (entry["date"], entry["user"], entry["category"])
+        row = existing.get(key) or ws.max_row + 1
+        existing[key] = row
 
-        if key in existing:
-            row = existing[key]
-        else:
-            row = ws.max_row + 1
-            existing[key] = row
-
-        # Get manager stats for this user/category
         category = entry["category"]
         user = entry["user"]
-
-        # Debug: Check what's available for this category
         category_stats = manager_stats.get(category, {})
-        user_manager_stats = category_stats.get(
-            user,
-            {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}
-        )
+        user_manager_stats = category_stats.get(user, {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
 
-        # Track hits vs misses
-        has_category = category in manager_stats
-        has_user = user in category_stats
-        has_any_stats = (user_manager_stats["fixed"] > 0 or user_manager_stats["reported"] > 0 or
-                        user_manager_stats["checking"] > 0 or user_manager_stats["nonissue"] > 0)
-
-        if has_any_stats:
+        has_stats = any(user_manager_stats[k] > 0 for k in ["fixed", "reported", "checking", "nonissue"])
+        if has_stats:
             lookup_hits += 1
-            print(f"    [HIT] {user}/{category}: fixed={user_manager_stats['fixed']}, reported={user_manager_stats['reported']}, checking={user_manager_stats['checking']}, nonissue={user_manager_stats['nonissue']}")
         else:
-            lookup_misses += 1
-            if not has_category:
-                print(f"    [MISS] {user}/{category}: Category NOT in manager_stats (available: {list(manager_stats.keys())[:5]}...)")
-            elif not has_user:
-                print(f"    [MISS] {user}/{category}: User NOT in category (available users: {list(category_stats.keys())[:5]}...)")
-            else:
-                print(f"    [MISS] {user}/{category}: Stats all zero (has_category={has_category}, has_user={has_user})")
+            reason = "NO_CAT" if category not in manager_stats else ("NO_USER" if user not in category_stats else "ZERO")
+            lookup_misses.append(f"{user}/{category}:{reason}")
 
         # Write row data according to schema
         ws.cell(row, 1, entry["date"])
@@ -176,138 +159,60 @@ def update_daily_data_sheet(
         ws.cell(row, 13, entry.get("word_count", 0))     # WordCount
         ws.cell(row, 14, entry.get("korean", 0))         # Korean
 
-    # Also update/create rows for manager stats
-    # IMPORTANT: In normal compilation (daily_entries not empty), manager stats should
-    # ONLY UPDATE existing rows, NOT create new ones with zeros.
-    # Creating new rows with zeros causes TOTAL to show 0 (picks latest date = zero row)
+    # Write lookup summary to log
+    log_lines.append(f"HITS: {lookup_hits}, MISSES: {len(lookup_misses)}")
+    if lookup_misses:
+        log_lines.append(f"MISS DETAILS: {lookup_misses[:10]}{'...' if len(lookup_misses) > 10 else ''}")
+    try:
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write("\n".join(log_lines) + "\n")
+    except:
+        pass
+
+    # Manager stats row handling
     from datetime import datetime
     today = datetime.now().strftime("%Y-%m-%d")
-
-    # Determine mode: if daily_entries has data, we're in normal compilation
-    # In that case, skip creating new rows for manager stats (only update existing)
     normal_compilation_mode = len(daily_entries) > 0
 
-    print("\n" + "="*70)
-    print("GRANULAR DEBUG: update_daily_data_sheet() - MANAGER STATS SECTION")
-    print("="*70)
-
-    print(f"\n[STEP 1] INPUTS RECEIVED:")
-    print(f"  - manager_stats type: {type(manager_stats)}")
-    print(f"  - manager_stats is None: {manager_stats is None}")
-    print(f"  - manager_stats length: {len(manager_stats) if manager_stats else 0}")
-    if manager_stats:
-        print(f"  - Categories in manager_stats: {list(manager_stats.keys())}")
-        for cat, users in manager_stats.items():
-            print(f"    - {cat}: {len(users)} users -> {list(users.keys())[:3]}...")
-
-    print(f"\n[STEP 2] WORKSHEET STATE BEFORE WRITE:")
-    print(f"  - ws.max_row = {ws.max_row}")
-    print(f"  - ws.max_column = {ws.max_column}")
-    print(f"  - Header row (row 1): {[ws.cell(1, c).value for c in range(1, 15)]}")
-    if ws.max_row >= 2:
-        print(f"  - Row 2 sample: {[ws.cell(2, c).value for c in range(1, 15)]}")
-
-    # Build index of existing rows: (date, user, category) -> row
-    # This matches how tester stats are keyed - each date gets its own row
+    # Build existing row index
     existing_date_user_cat = {}
-    actual_max_row = ws.max_row  # Start from current sheet max row
-
-    print(f"\n[STEP 3] BUILDING EXISTING ROW INDEX:")
-    print(f"  - Starting actual_max_row = {actual_max_row}")
-    print(f"  - Scanning rows 2 to {ws.max_row + 1}...")
-
+    actual_max_row = ws.max_row
     for row in range(2, ws.max_row + 1):
         row_date = ws.cell(row, 1).value
         row_user = ws.cell(row, 2).value
         row_category = ws.cell(row, 3).value
         if row_date and row_user and row_category:
-            key = (str(row_date), row_user, row_category)
-            existing_date_user_cat[key] = row
-            print(f"    - Indexed row {row}: date={row_date}, user={row_user}, cat={row_category}")
+            existing_date_user_cat[(str(row_date), row_user, row_category)] = row
             actual_max_row = max(actual_max_row, row)
 
-    print(f"  - Final existing_date_user_cat count: {len(existing_date_user_cat)}")
-    print(f"  - Final actual_max_row: {actual_max_row}")
-
-    print(f"\n[STEP 4] WRITING MANAGER STATS TO EXCEL:")
+    # Process manager stats rows
     rows_created = 0
     rows_updated = 0
-
     for category, users in manager_stats.items():
-        print(f"\n  Processing category: {category} ({len(users)} users)")
         for user, stats in users.items():
-            # Get the date from manager_dates (file mtime), fallback to today
             file_date = manager_dates.get((category, user), today)
-
-            print(f"    User: {user}")
-            print(f"      - stats type: {type(stats)}")
-            print(f"      - stats keys: {list(stats.keys()) if isinstance(stats, dict) else 'NOT A DICT'}")
-            print(f"      - stats['fixed']: {stats.get('fixed', 'KEY NOT FOUND')}")
-            print(f"      - stats['reported']: {stats.get('reported', 'KEY NOT FOUND')}")
-            print(f"      - file_date: {file_date}")
-
-            # Key includes DATE so each day gets its own row
             key = (str(file_date), user, category)
-            if key in existing_date_user_cat:
-                # Update existing row for THIS DATE
-                found_row = existing_date_user_cat[key]
-                print(f"      -> UPDATING existing row {found_row} (same date {file_date})")
-                ws.cell(found_row, 9, stats["fixed"])      # Fixed
-                ws.cell(found_row, 10, stats["reported"])  # Reported
-                ws.cell(found_row, 11, stats["checking"])  # Checking
-                ws.cell(found_row, 12, stats["nonissue"])  # NonIssue
-                rows_updated += 1
-            else:
-                # No row for THIS DATE
-                # In normal compilation mode: SKIP creating new rows (they'd have Done=0)
-                # In tracker-update mode: CREATE new rows (manager stats only, no tester data)
-                if normal_compilation_mode:
-                    print(f"      -> SKIPPING (normal compilation mode - no zero rows)")
-                    continue
 
-                # Tracker-update mode: Create new row with zeros for tester stats
-                actual_max_row += 1  # Increment our tracked max row
+            if key in existing_date_user_cat:
+                found_row = existing_date_user_cat[key]
+                ws.cell(found_row, 9, stats["fixed"])
+                ws.cell(found_row, 10, stats["reported"])
+                ws.cell(found_row, 11, stats["checking"])
+                ws.cell(found_row, 12, stats["nonissue"])
+                rows_updated += 1
+            elif not normal_compilation_mode:
+                actual_max_row += 1
                 new_row = actual_max_row
-                print(f"      -> CREATING new row {new_row} for date {file_date}")
-                ws.cell(new_row, 1, file_date)             # Date (from file mtime, not today!)
-                ws.cell(new_row, 2, user)                  # User
-                ws.cell(new_row, 3, category)              # Category
-                ws.cell(new_row, 4, 0)                     # TotalRows
-                ws.cell(new_row, 5, 0)                     # Done
-                ws.cell(new_row, 6, 0)                     # Issues
-                ws.cell(new_row, 7, 0)                     # NoIssue
-                ws.cell(new_row, 8, 0)                     # Blocked
-                ws.cell(new_row, 9, stats["fixed"])        # Fixed
-                ws.cell(new_row, 10, stats["reported"])    # Reported
-                ws.cell(new_row, 11, stats["checking"])    # Checking
-                ws.cell(new_row, 12, stats["nonissue"])    # NonIssue
-                ws.cell(new_row, 13, 0)                    # WordCount
-                ws.cell(new_row, 14, 0)                    # Korean
-                # Add to index so duplicates in same batch don't overwrite
+                ws.cell(new_row, 1, file_date)
+                ws.cell(new_row, 2, user)
+                ws.cell(new_row, 3, category)
+                for c in [4,5,6,7,8,13,14]: ws.cell(new_row, c, 0)
+                ws.cell(new_row, 9, stats["fixed"])
+                ws.cell(new_row, 10, stats["reported"])
+                ws.cell(new_row, 11, stats["checking"])
+                ws.cell(new_row, 12, stats["nonissue"])
                 existing_date_user_cat[key] = new_row
                 rows_created += 1
-
-                # VERIFY the write
-                print(f"      -> VERIFY row {new_row}: Date={ws.cell(new_row, 1).value}, User={ws.cell(new_row, 2).value}, Fixed={ws.cell(new_row, 9).value}")
-
-    print(f"\n[STEP 5] WRITE SUMMARY:")
-    print(f"  - Rows updated: {rows_updated}")
-    print(f"  - Rows created: {rows_created}")
-    print(f"  - Final actual_max_row: {actual_max_row}")
-    print(f"  - ws.max_row after writes: {ws.max_row}")
-
-    print(f"\n[STEP 6] SAMPLE OF WRITTEN DATA (first 5 rows):")
-    for r in range(2, min(actual_max_row + 1, 7)):  # Show first 5 data rows
-        print(f"  Row {r}: {[ws.cell(r, c).value for c in range(1, 15)]}")
-
-    print(f"\n[STEP 7] VERIFY SPECIFIC UPDATED/CREATED ROWS (checking Fixed/Reported columns):")
-    # Show a few rows that were just updated/created
-    updated_sample_rows = list(existing_date_user_cat.items())[-10:]  # Last 10 rows
-    for (date, user, cat), row_num in updated_sample_rows:
-        row_data = [ws.cell(row_num, c).value for c in range(1, 15)]
-        print(f"  Row {row_num} ({date}/{user}/{cat}): Fixed={row_data[8]}, Reported={row_data[9]}")
-
-    print("="*70 + "\n")
 
 
 def read_daily_data(wb: openpyxl.Workbook) -> Dict:

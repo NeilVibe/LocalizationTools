@@ -14,9 +14,33 @@ Handles:
 from pathlib import Path
 from typing import Dict, List, Optional
 from collections import defaultdict
+from datetime import datetime
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# =============================================================================
+# DEBUG LOG FILE
+# =============================================================================
+# All debug output is written to this file for easy inspection after compilation
+_LOG_FILE = Path(__file__).parent.parent / "debug_manager_stats.log"
+
+def _log(msg: str):
+    """Write to both console and log file."""
+    print(msg)
+    try:
+        with open(_LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(msg + "\n")
+    except:
+        pass
+
+def _clear_log():
+    """Clear log file at start of compilation."""
+    try:
+        with open(_LOG_FILE, "w", encoding="utf-8") as f:
+            f.write(f"=== Manager Stats Debug Log - {datetime.now().isoformat()} ===\n\n")
+    except:
+        pass
 from config import (
     CATEGORIES, CATEGORY_TO_MASTER, TRANSLATION_COLS, SCRIPT_TYPE_CATEGORIES,
     SCRIPT_COLS,
@@ -269,128 +293,96 @@ def collect_manager_status(master_folder: Path) -> Dict:
 def collect_manager_stats_for_tracker() -> Dict:
     """
     Read all Master files (EN + CN) and count FIXED/REPORTED/CHECKING/NON-ISSUE per user per category.
-
-    IMPORTANT: Uses sheet_name as category (not outer loop category) to avoid
-    triple-counting for clustered categories like Skill/Help/System → Master_System.xlsx.
-
-    Returns:
-        {category: {user: {fixed, reported, checking, nonissue, lang}}}
     """
-    print("\n" + "="*60)
-    print("[COLLECT_MANAGER_STATS] Starting collection from Master files...")
-    print("="*60)
-
     tester_mapping = load_tester_mapping()
     manager_stats = defaultdict(lambda: defaultdict(
         lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}
     ))
 
-    # Scan both EN and CN folders
+    # LOG FILE - auto-generated, concise
+    log_path = Path(__file__).parent.parent / "MANAGER_STATS_DEBUG.log"
+    log_lines = [f"=== MANAGER STATS DEBUG === {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"]
+
     for master_folder in [MASTER_FOLDER_EN, MASTER_FOLDER_CN]:
-        print(f"\n[SCAN] Folder: {master_folder}")
-        # Track processed master files to avoid re-reading (clustered categories share masters)
         processed_masters = set()
+        folder_label = "EN" if "EN" in str(master_folder) else "CN"
 
         for category in CATEGORIES:
             target_category = get_target_master_category(category)
             master_path = master_folder / f"Master_{target_category}.xlsx"
 
-            # Skip if already processed or doesn't exist
-            if master_path in processed_masters:
+            if master_path in processed_masters or not master_path.exists():
                 continue
-            if not master_path.exists():
-                print(f"  [SKIP] {master_path.name} - does not exist")
-                continue
-
             processed_masters.add(master_path)
-            print(f"\n  [READ] {master_path.name}")
 
             try:
                 wb = safe_load_workbook(master_path)
-
                 for sheet_name in wb.sheetnames:
                     if sheet_name == "STATUS":
                         continue
-
                     ws = wb[sheet_name]
 
-                    # Find all STATUS_{User} columns
+                    # Find STATUS_{User} columns
                     status_cols = {}
-                    all_headers = []
                     for col in range(1, ws.max_column + 1):
                         header = ws.cell(row=1, column=col).value
-                        if header:
-                            all_headers.append(str(header))
-                            if str(header).startswith("STATUS_"):
-                                username = str(header).replace("STATUS_", "")
-                                status_cols[username] = col
+                        if header and str(header).startswith("STATUS_"):
+                            status_cols[str(header).replace("STATUS_", "")] = col
 
                     if not status_cols:
-                        # Show headers to debug why no STATUS_ columns found
-                        status_like = [h for h in all_headers if "STATUS" in h.upper()]
-                        print(f"    [SHEET] {sheet_name}: NO STATUS_ columns (headers with STATUS: {status_like[:5]})")
+                        log_lines.append(f"[{folder_label}] {master_path.name}/{sheet_name}: NO STATUS_ COLUMNS")
                         continue
 
-                    print(f"    [SHEET] {sheet_name}: Found STATUS_ columns for users: {list(status_cols.keys())}")
-
-                    # Count status values per user
-                    # USE SHEET_NAME AS CATEGORY (not outer loop category!)
-                    # Master_System.xlsx has sheets "Skill", "Help", "System" → use those
-                    # Master_Script.xlsx has sheets "Sequencer", "Dialog" → use those
-                    sheet_counts = defaultdict(lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0})
+                    # Count
                     for row in range(2, ws.max_row + 1):
                         for username, col in status_cols.items():
                             value = ws.cell(row=row, column=col).value
                             if value:
-                                status_upper = str(value).strip().upper()
-                                if status_upper == "FIXED":
+                                v = str(value).strip().upper()
+                                if v == "FIXED":
                                     manager_stats[sheet_name][username]["fixed"] += 1
-                                    sheet_counts[username]["fixed"] += 1
-                                elif status_upper == "REPORTED":
+                                elif v == "REPORTED":
                                     manager_stats[sheet_name][username]["reported"] += 1
-                                    sheet_counts[username]["reported"] += 1
-                                elif status_upper == "CHECKING":
+                                elif v == "CHECKING":
                                     manager_stats[sheet_name][username]["checking"] += 1
-                                    sheet_counts[username]["checking"] += 1
-                                elif status_upper in ("NON-ISSUE", "NON ISSUE"):
+                                elif v in ("NON-ISSUE", "NON ISSUE"):
                                     manager_stats[sheet_name][username]["nonissue"] += 1
-                                    sheet_counts[username]["nonissue"] += 1
                             manager_stats[sheet_name][username]["lang"] = tester_mapping.get(username, "EN")
 
-                    # Print counts for this sheet
-                    for username, counts in sheet_counts.items():
-                        total = counts["fixed"] + counts["reported"] + counts["checking"] + counts["nonissue"]
-                        if total > 0:
-                            print(f"      [{username}] fixed={counts['fixed']}, reported={counts['reported']}, checking={counts['checking']}, nonissue={counts['nonissue']}")
+                    # Log per-sheet summary
+                    for u in status_cols.keys():
+                        s = manager_stats[sheet_name][u]
+                        t = s["fixed"] + s["reported"] + s["checking"] + s["nonissue"]
+                        if t > 0:
+                            log_lines.append(f"[{folder_label}] {sheet_name}/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']}")
 
                 wb.close()
-
             except Exception as e:
-                print(f"  WARN: Error reading {master_path.name} for manager stats: {e}")
+                log_lines.append(f"[ERROR] {master_path.name}: {e}")
 
-    # Convert nested defaultdicts to regular dicts (CRITICAL for .get() to work!)
-    # dict(manager_stats) only converts outer level, inner defaultdicts remain
+    # Convert nested defaultdicts to regular dicts
     result = {}
     for cat, users_dd in manager_stats.items():
         result[cat] = {}
         for user, stats_dd in users_dd.items():
-            result[cat][user] = dict(stats_dd)  # Convert inner defaultdict too
+            result[cat][user] = dict(stats_dd)
 
     # Summary
-    print(f"\n[COLLECT_MANAGER_STATS] SUMMARY:")
-    print(f"  Categories found: {list(result.keys())}")
-    total_users = 0
-    total_stats = {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0}
-    for cat, users in result.items():
-        total_users += len(users)
-        for user, stats in users.items():
-            total_stats["fixed"] += stats["fixed"]
-            total_stats["reported"] += stats["reported"]
-            total_stats["checking"] += stats["checking"]
-            total_stats["nonissue"] += stats["nonissue"]
-    print(f"  Total users: {total_users}")
-    print(f"  Total stats: fixed={total_stats['fixed']}, reported={total_stats['reported']}, checking={total_stats['checking']}, nonissue={total_stats['nonissue']}")
-    print("="*60 + "\n")
+    total_f = sum(s["fixed"] for u in result.values() for s in u.values())
+    total_r = sum(s["reported"] for u in result.values() for s in u.values())
+    total_c = sum(s["checking"] for u in result.values() for s in u.values())
+    total_n = sum(s["nonissue"] for u in result.values() for s in u.values())
+
+    log_lines.append(f"\n=== TOTALS: F={total_f} R={total_r} C={total_c} N={total_n} ===")
+    log_lines.append(f"Categories: {list(result.keys())}")
+
+    # Write log file
+    try:
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(log_lines))
+        print(f"[LOG] Manager stats debug: {log_path}")
+    except Exception as e:
+        print(f"[LOG ERROR] {e}")
 
     return result
 
