@@ -39,3 +39,4 @@ Build - Pick most recent xlsx in folder
 Build - USER_GUIDE Script-type documentation
 Build - CRITICAL: Fix tracker showing 0
 Build - Disable strict datasheet blocking
+Build - CRITICAL: Fix tracker date comparison
