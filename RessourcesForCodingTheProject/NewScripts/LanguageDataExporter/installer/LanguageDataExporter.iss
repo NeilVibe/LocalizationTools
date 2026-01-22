@@ -37,10 +37,19 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
+[Components]
+Name: "main"; Description: "Main Application"; Types: full compact custom; Flags: fixed
+Name: "docs"; Description: "User Guide (PDF & HTML)"; Types: full
+
 [Files]
 ; Main application and PyInstaller runtime
 ; PyInstaller bundles everything into exe + _internal folder
-Source: "..\dist\LanguageDataExporter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\LanguageDataExporter\*"; DestDir: "{app}"; Components: main; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; Documentation files
+Source: "..\USER_GUIDE.pdf"; DestDir: "{app}"; Components: docs; Flags: ignoreversion
+Source: "..\USER_GUIDE.html"; DestDir: "{app}"; Components: docs; Flags: ignoreversion
+Source: "..\README.md"; DestDir: "{app}"; Components: docs; Flags: ignoreversion
 
 [Dirs]
 Name: "{app}\GeneratedExcel"; Permissions: users-modify
@@ -48,6 +57,7 @@ Name: "{app}\GeneratedExcel"; Permissions: users-modify
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 Name: "{group}\{#AppName} (GUI)"; Filename: "{app}\{#AppExeName}"; Parameters: "--gui"
+Name: "{group}\User Guide"; Filename: "{app}\USER_GUIDE.pdf"; Components: docs
 Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
