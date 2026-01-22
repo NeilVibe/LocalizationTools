@@ -183,11 +183,13 @@ python main.py --gui    # Explicit GUI mode
 
 ### GUI Actions
 
-| Button | What It Does | Output |
-|--------|--------------|--------|
-| **Analyze Categories** | Scans EXPORT folder, shows distribution | TreeView updated |
-| **Generate Word Count Report** | Creates LQA metrics report | `WordCountReport.xlsx` |
-| **Generate Language Excels** | Creates all language files | `LanguageData_*.xlsx` |
+| Button | What It Does | Output | Required? |
+|--------|--------------|--------|-----------|
+| **Analyze Categories** | Shows category distribution (informational only) | TreeView updated | Optional |
+| **Generate Word Count Report** | Creates LQA metrics report | `WordCountReport.xlsx` | Main action |
+| **Generate Language Excels** | Creates all language files | `LanguageData_*.xlsx` | Main action |
+
+> **Note:** "Analyze Categories" is **optional and informational only**. The export process automatically performs category clustering - you don't need to click Analyze first. It's just there to preview the category breakdown before exporting.
 
 ### Path Status Indicators
 
@@ -298,115 +300,222 @@ TOTAL                        :   3161 files
 
 ---
 
-## Category System
+## Category System (THE ALGORITHM)
 
-### Two-Tier Architecture
+This section explains the **complete category clustering algorithm** - the core logic that determines which category each string belongs to.
 
-LanguageDataExporter uses a **two-tier category system**:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    CATEGORY CLUSTERING                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  TIER 1: STORY (VRS-Ordered)                                    │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │  Dialog/           Sequencer/                           │    │
-│  │  ├── AIDialog/     └── *.loc.xml → Sequencer            │    │
-│  │  ├── QuestDialog/                                       │    │
-│  │  ├── NarrationDialog/                                   │    │
-│  │  └── StageCloseDialog/ → QuestDialog                    │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                 │
-│  TIER 2: GAME_DATA (Keyword-Based)                              │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │  System/    World/    None/    Platform/                │    │
-│  │  └── Two-Phase Matching:                                │    │
-│  │      Phase 1: Priority Keywords (override folders)      │    │
-│  │      Phase 2: Folder + Keyword patterns                 │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### TIER 1: STORY Categories
-
-STORY content is sorted **chronologically** using VoiceRecordingSheet ordering.
-
-| Category | Source Folder | Description |
-|----------|---------------|-------------|
-| **Sequencer** | `Sequencer/` | Story cutscenes, major moments |
-| **AIDialog** | `Dialog/AIDialog/` | NPC ambient conversation |
-| **QuestDialog** | `Dialog/QuestDialog/` | Quest dialogue trees |
-| **NarrationDialog** | `Dialog/NarrationDialog/` | Tutorial text, narration |
-
-> **Note:** `StageCloseDialog/` maps to **QuestDialog** category.
-
-### TIER 2: GAME_DATA Categories
-
-GAME_DATA uses a **two-phase matching algorithm**:
-
-#### Phase 1: Priority Keywords (Checked FIRST!)
-
-Priority keywords **override** folder-based categorization. If a filename contains a priority keyword, it goes to that category regardless of which folder it's in.
-
-| Priority | Keyword | Category | Example |
-|----------|---------|----------|---------|
-| 1 | `gimmick` | Gimmick | `gimmickinfo_item_book.xml` → **Gimmick** |
-| 2 | `item` | Item | `KnowledgeInfo_Item.xml` → **Item** |
-| 3 | `quest` | Quest | `CharacterInfo_Quest.xml` → **Quest** |
-| 4 | `skill` | Skill | `FactionInfo_Skill.xml` → **Skill** |
-| 5 | `character` | Character | `GimmickInfo_Character.xml` → **Character** |
-| 6 | `faction` | Faction | `RegionInfo_Faction.xml` → **Faction** |
-| 7 | `region` | Region | `UIInfo_Region.xml` → **Region** |
-
-> **Important:** Gimmick has HIGHEST priority. Any file with "gimmick" in the name goes to Gimmick category, even if it also contains "item", "quest", etc.
-
-#### Phase 2: Standard Patterns (Folder + Keywords)
-
-Only checked if Phase 1 doesn't match:
-
-| Category | Folders | Keywords |
-|----------|---------|----------|
-| **Item** | `LookAt/`, `PatternDescription/` | `weapon`, `armor` |
-| **Quest** | `Quest/` | `schedule_` |
-| **Character** | `Character/`, `Npc/` | `monster`, `animal` |
-| **Skill** | `Skill/` | - |
-| **Knowledge** | `Knowledge/` | - |
-| **Faction** | `Faction/` | - |
-| **UI** | `Ui/` | `localstringinfo`, `symboltext` |
-| **Region** | `Region/` | - |
-| **System_Misc** | (default) | - |
-
-### Category Matching Example
+### Overview: Two-Tier Architecture
 
 ```
-File: World/Knowledge/KnowledgeInfo_Item.xml
-
-Phase 1: Check priority keywords in filename
-  ✓ "gimmick" in "KnowledgeInfo_Item"? NO
-  ✓ "item" in "KnowledgeInfo_Item"? YES → Returns "Item"
-
-Result: Item (NOT Knowledge!)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     CATEGORY CLUSTERING ALGORITHM                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  INPUT: File path from EXPORT folder (e.g., World/Knowledge/ItemInfo.xml)   │
+│                                                                             │
+│  STEP 1: DETERMINE TIER                                                     │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │  Is file in Dialog/ or Sequencer/ folder?                             │  │
+│  │     YES → TIER 1 (STORY) → Use folder-based categorization            │  │
+│  │     NO  → TIER 2 (GAME_DATA) → Use two-phase keyword matching         │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  STEP 2A: TIER 1 - STORY (Folder-Based)                                     │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │  Sequencer/        → Sequencer                                        │  │
+│  │  Dialog/AIDialog/  → AIDialog                                         │  │
+│  │  Dialog/QuestDialog/ → QuestDialog                                    │  │
+│  │  Dialog/NarrationDialog/ → NarrationDialog                            │  │
+│  │  Dialog/StageCloseDialog/ → QuestDialog (mapped)                      │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  STEP 2B: TIER 2 - GAME_DATA (Two-Phase Matching)                           │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │  PHASE 1: Check PRIORITY KEYWORDS in filename (checked FIRST!)        │  │
+│  │     gimmick → Gimmick | item → Item | quest → Quest | skill → Skill   │  │
+│  │     character → Character | faction → Faction | region → Region       │  │
+│  │     IF MATCH FOUND → RETURN IMMEDIATELY (skip Phase 2)                │  │
+│  │                                                                       │  │
+│  │  PHASE 2: Check FOLDER PATTERNS + SECONDARY KEYWORDS                  │  │
+│  │     LookAt/, PatternDescription/ → Item                               │  │
+│  │     Quest/ → Quest | schedule_ keyword → Quest                        │  │
+│  │     Character/, Npc/ → Character | monster, animal → Character        │  │
+│  │     Skill/ → Skill | Knowledge/ → Knowledge | Faction/ → Faction      │  │
+│  │     Ui/ → UI | localstringinfo, symboltext → UI                       │  │
+│  │     Region/ → Region                                                  │  │
+│  │     (no match) → System_Misc                                          │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  OUTPUT: Category name (e.g., "Item", "Quest", "Sequencer")                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Step 1: Tier Classification
+
+The algorithm first determines which tier a file belongs to based on its **top-level folder**:
+
+| Top-Level Folder | Tier | Processing Method |
+|------------------|------|-------------------|
+| `Dialog/` | TIER 1 (STORY) | Subfolder determines category |
+| `Sequencer/` | TIER 1 (STORY) | All files → Sequencer category |
+| `System/` | TIER 2 (GAME_DATA) | Two-phase keyword matching |
+| `World/` | TIER 2 (GAME_DATA) | Two-phase keyword matching |
+| `None/` | TIER 2 (GAME_DATA) | Two-phase keyword matching |
+| `Platform/` | TIER 2 (GAME_DATA) | Two-phase keyword matching |
+
+### Step 2A: TIER 1 - STORY Categories
+
+STORY content uses **simple folder-based categorization**:
+
+| Folder Path | Category | Description | Ordering |
+|-------------|----------|-------------|----------|
+| `Sequencer/*.loc.xml` | **Sequencer** | Story cutscenes, major moments | VRS chronological |
+| `Dialog/AIDialog/*.loc.xml` | **AIDialog** | NPC ambient conversation | VRS chronological |
+| `Dialog/QuestDialog/*.loc.xml` | **QuestDialog** | Quest dialogue trees | VRS chronological |
+| `Dialog/NarrationDialog/*.loc.xml` | **NarrationDialog** | Tutorial text, narration | VRS chronological |
+| `Dialog/StageCloseDialog/*.loc.xml` | **QuestDialog** | Stage completion (mapped) | VRS chronological |
+
+> **Key Point:** STORY categories are sorted **chronologically** using VoiceRecordingSheet (VRS) EventName ordering. This ensures LQA reviewers see content in the order players experience it.
+
+### Step 2B: TIER 2 - GAME_DATA Two-Phase Matching
+
+This is the **core algorithm** for non-story content. It uses two phases, checked in order:
+
+#### PHASE 1: Priority Keywords (CHECKED FIRST!)
+
+The algorithm extracts the **filename** (without extension) and checks if it contains any priority keyword. **First match wins and immediately returns.**
+
 ```
-File: System/Gimmick/gimmickinfo_item_book.xml
-
-Phase 1: Check priority keywords in filename
-  ✓ "gimmick" in "gimmickinfo_item_book"? YES → Returns "Gimmick"
-
-Result: Gimmick (NOT Item!)
+PRIORITY_KEYWORDS (checked in this exact order):
+1. "gimmick"   → Gimmick
+2. "item"      → Item
+3. "quest"     → Quest
+4. "skill"     → Skill
+5. "character" → Character
+6. "faction"   → Faction
+7. "region"    → Region
 ```
 
-### Golden Rules
+**The matching is SUBSTRING-based and CASE-INSENSITIVE:**
+- `gimmickinfo_item_book.xml` → Contains "gimmick" → **Gimmick**
+- `KnowledgeInfo_Item.xml` → Contains "item" → **Item**
+- `characterinfo_quest.xml` → Contains "quest" (checked before "character") → **Quest**
+
+> **CRITICAL:** Priority keywords **completely override** folder location. A file named `KnowledgeInfo_Item.xml` in the `Knowledge/` folder will be categorized as **Item**, not Knowledge, because "item" is found in the filename.
+
+#### PHASE 2: Standard Patterns (Only if Phase 1 didn't match)
+
+If no priority keyword was found, the algorithm checks folder paths and secondary keywords:
+
+| Match Type | Pattern | Category | Example |
+|------------|---------|----------|---------|
+| Folder | `lookat/` | Item | `System/LookAt/LookAtInfo.xml` |
+| Folder | `patterndescription/` | Item | `World/PatternDescription/Pattern.xml` |
+| Keyword | `weapon` | Item | `WeaponData.xml` |
+| Keyword | `armor` | Item | `ArmorInfo.xml` |
+| Folder | `quest/` | Quest | `System/Quest/QuestData.xml` |
+| Keyword | `schedule_` | Quest | `schedule_daily.xml` |
+| Folder | `character/` | Character | `World/Character/CharInfo.xml` |
+| Folder | `npc/` | Character | `System/Npc/NpcData.xml` |
+| Keyword | `monster` | Character | `MonsterInfo.xml` |
+| Keyword | `animal` | Character | `AnimalData.xml` |
+| Folder | `skill/` | Skill | `System/Skill/SkillInfo.xml` |
+| Folder | `knowledge/` | Knowledge | `World/Knowledge/KnowledgeBase.xml` |
+| Folder | `faction/` | Faction | `System/Faction/FactionInfo.xml` |
+| Folder | `ui/` | UI | `System/Ui/UIStrings.xml` |
+| Keyword | `localstringinfo` | UI | `LocalStringInfo.xml` |
+| Keyword | `symboltext` | UI | `SymbolText.xml` |
+| Folder | `region/` | Region | `System/Region/RegionInfo.xml` |
+| (default) | (no match) | System_Misc | Everything else |
+
+### Complete Algorithm Walkthrough Examples
+
+**Example 1: File in Knowledge folder with "Item" in name**
+```
+Input:  World/Knowledge/KnowledgeInfo_Item.xml
+
+Step 1: Tier Classification
+  - Top folder is "World/" → TIER 2 (GAME_DATA)
+
+Step 2B: Two-Phase Matching
+  PHASE 1: Check priority keywords in filename "KnowledgeInfo_Item"
+    - "gimmick" in "knowledgeinfo_item"? NO
+    - "item" in "knowledgeinfo_item"? YES → RETURN "Item"
+
+OUTPUT: Item (NOT Knowledge!)
+```
+
+**Example 2: Gimmick file with multiple keywords**
+```
+Input:  System/Gimmick/gimmickinfo_item_book.xml
+
+Step 1: Tier Classification
+  - Top folder is "System/" → TIER 2 (GAME_DATA)
+
+Step 2B: Two-Phase Matching
+  PHASE 1: Check priority keywords in filename "gimmickinfo_item_book"
+    - "gimmick" in "gimmickinfo_item_book"? YES → RETURN "Gimmick"
+    (Note: "item" is also present but "gimmick" is checked FIRST)
+
+OUTPUT: Gimmick (gimmick has HIGHEST priority)
+```
+
+**Example 3: File with no priority keywords**
+```
+Input:  World/Knowledge/KnowledgeBase.xml
+
+Step 1: Tier Classification
+  - Top folder is "World/" → TIER 2 (GAME_DATA)
+
+Step 2B: Two-Phase Matching
+  PHASE 1: Check priority keywords in filename "KnowledgeBase"
+    - "gimmick"? NO | "item"? NO | "quest"? NO | "skill"? NO
+    - "character"? NO | "faction"? NO | "region"? NO
+    - No match → Continue to Phase 2
+
+  PHASE 2: Check folder patterns
+    - "knowledge/" in path? YES → RETURN "Knowledge"
+
+OUTPUT: Knowledge
+```
+
+**Example 4: Story content (Dialog)**
+```
+Input:  Dialog/AIDialog/AIDialogStringInfo.xml
+
+Step 1: Tier Classification
+  - Top folder is "Dialog/" → TIER 1 (STORY)
+
+Step 2A: Folder-based categorization
+  - Subfolder is "AIDialog/" → RETURN "AIDialog"
+
+OUTPUT: AIDialog (will be VRS-ordered)
+```
+
+### Priority Keyword Conflict Resolution
+
+When a filename contains **multiple** priority keywords, the **first match in priority order wins**:
+
+| Filename | Contains | Winner | Why |
+|----------|----------|--------|-----|
+| `gimmickinfo_item_book` | gimmick, item | **Gimmick** | gimmick is priority 1 |
+| `characterinfo_quest` | character, quest | **Quest** | quest is priority 3, character is 5 |
+| `skillinfo_faction` | skill, faction | **Skill** | skill is priority 4, faction is 6 |
+| `item_region_data` | item, region | **Item** | item is priority 2, region is 7 |
+
+### Summary: Golden Rules
 
 | Rule | Explanation |
 |------|-------------|
-| **Gimmick wins all** | Any file with "gimmick" → Gimmick category |
-| **Priority > Folder** | Priority keywords override folder location |
-| **STORY = VRS order** | Dialog/Sequencer sorted chronologically |
-| **GAME_DATA = Alpha** | Other categories sorted alphabetically |
+| **Tier First** | Dialog/Sequencer → STORY, everything else → GAME_DATA |
+| **Priority Keywords Win** | Phase 1 keywords override ALL folder matching |
+| **Gimmick is #1** | "gimmick" in filename → always Gimmick category |
+| **Order Matters** | Priority keywords checked in specific order (1-7) |
+| **Substring Match** | Keywords match anywhere in filename (case-insensitive) |
+| **STORY = VRS Order** | Dialog/Sequencer content sorted chronologically |
+| **GAME_DATA = Alphabetical** | Other content sorted by category name |
+| **Knowledge is Catch-All** | Only matches if NO priority keyword found |
 
 ---
 
