@@ -92,6 +92,7 @@ class TwoTierCategoryMapper:
     # These keywords in filename OVERRIDE folder-based categorization.
     # Example: KnowledgeInfo_Item.xml in Knowledge/ folder → Item (not Knowledge)
     PRIORITY_KEYWORDS = [
+        ("gimmick", "Gimmick"),  # FIRST - gimmick wins over all other categories
         ("item", "Item"),
         ("quest", "Quest"),
         ("skill", "Skill"),
@@ -111,7 +112,7 @@ class TwoTierCategoryMapper:
         # Item keywords (fallback if not in priority)
         ("keyword", "weapon", "Item"),
         ("keyword", "armor", "Item"),
-        ("keyword", "itemequip", "Item"),
+        # Note: "itemequip" removed - caught by priority keyword "item"
         # Quest folder + keywords
         ("folder", "quest", "Quest"),
         ("keyword", "schedule_", "Quest"),
@@ -120,8 +121,7 @@ class TwoTierCategoryMapper:
         ("folder", "npc", "Character"),
         ("keyword", "monster", "Character"),
         ("keyword", "animal", "Character"),
-        # Other category folders
-        ("folder", "gimmick", "Gimmick"),
+        # Other category folders (gimmick handled by priority keyword)
         ("folder", "skill", "Skill"),
         ("folder", "knowledge", "Knowledge"),  # Only if no priority keyword!
         ("folder", "faction", "Faction"),

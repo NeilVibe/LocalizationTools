@@ -3,6 +3,7 @@ GameData Clusterer - Classifies GAME_DATA tier content by keywords.
 
 TWO-PHASE MATCHING ALGORITHM:
 1. PRIORITY KEYWORDS (checked FIRST, override folder matching):
+   - gimmick → Gimmick (HIGHEST PRIORITY - wins over all others)
    - item → Item
    - quest → Quest
    - skill → Skill
@@ -14,7 +15,6 @@ TWO-PHASE MATCHING ALGORITHM:
    - LookAt/, PatternDescription/ → Item
    - Quest/ → Quest
    - Character/, Npc/ → Character
-   - Gimmick/ → Gimmick
    - Skill/ → Skill
    - Knowledge/ → Knowledge (only if no priority keyword!)
    - Faction/ → Faction
@@ -24,6 +24,9 @@ TWO-PHASE MATCHING ALGORITHM:
 
 Example: World/Knowledge/KnowledgeInfo_Item.xml
 - Phase 1: "item" in filename → Returns "Item" (not Knowledge!)
+
+Example: System/Gimmick/gimmickinfo_item_book.xml
+- Phase 1: "gimmick" in filename → Returns "Gimmick" (gimmick wins over item!)
 """
 
 import logging
@@ -39,6 +42,7 @@ logger = logging.getLogger(__name__)
 # Example: KnowledgeInfo_Item.xml in Knowledge/ folder → Item (not Knowledge)
 
 PRIORITY_KEYWORDS: List[Tuple[str, str]] = [
+    ("gimmick", "Gimmick"),  # FIRST - gimmick wins over all other categories
     ("item", "Item"),
     ("quest", "Quest"),
     ("skill", "Skill"),
@@ -62,7 +66,7 @@ STANDARD_PATTERNS: List[Tuple[str, str, str]] = [
     # Item keywords (fallback if not in priority)
     ("keyword", "weapon", "Item"),
     ("keyword", "armor", "Item"),
-    ("keyword", "itemequip", "Item"),
+    # Note: "itemequip" removed - caught by priority keyword "item"
 
     # Quest folder + keywords
     ("folder", "quest", "Quest"),
@@ -74,8 +78,7 @@ STANDARD_PATTERNS: List[Tuple[str, str, str]] = [
     ("keyword", "monster", "Character"),
     ("keyword", "animal", "Character"),
 
-    # Other category folders
-    ("folder", "gimmick", "Gimmick"),
+    # Other category folders (gimmick handled by priority keyword)
     ("folder", "skill", "Skill"),
     ("folder", "knowledge", "Knowledge"),  # Only if no priority keyword!
     ("folder", "faction", "Faction"),

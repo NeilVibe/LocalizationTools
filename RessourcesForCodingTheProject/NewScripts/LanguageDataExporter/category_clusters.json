@@ -34,7 +34,7 @@
       "categories": {
         "Item": {
           "folders": ["LookAt", "PatternDescription"],
-          "keywords": ["item", "weapon", "armor", "itemequip"]
+          "keywords": ["item", "weapon", "armor"]
         },
         "Quest": {
           "folders": ["Quest"],
@@ -46,7 +46,8 @@
         },
         "Gimmick": {
           "folders": ["Gimmick"],
-          "keywords": []
+          "keywords": ["gimmick"],
+          "priority": "HIGHEST - gimmick keyword checked FIRST, wins over all other categories"
         },
         "Skill": {
           "folders": ["Skill"],
