@@ -21,19 +21,35 @@ Language XML to Categorized Excel Converter with VRS-based story ordering.
 | QuestDialog | Quest-related dialog |
 | NarrationDialog | Narration/tutorial text |
 
-### GAME_DATA (Keyword-Based)
-| Category | Keywords/Folders |
-|----------|------------------|
-| Item | item, weapon, armor, LookAt/, PatternDescription/ |
-| Quest | quest, Quest/, schedule_ |
-| Character | character, Character/, Npc/, monster, animal |
-| Gimmick | Gimmick/ |
-| Skill | Skill/ |
-| Knowledge | Knowledge/ |
-| Faction | Faction/ |
-| UI | Ui/, LocalStringInfo, SymbolText |
-| Region | Region/ |
-| System_Misc | (default fallback) |
+### GAME_DATA (Two-Phase Keyword Matching)
+
+**Phase 1: Priority Keywords** (checked FIRST, override folder matching)
+
+| Priority | Keyword | Category |
+|----------|---------|----------|
+| 1 | gimmick | Gimmick |
+| 2 | item | Item |
+| 3 | quest | Quest |
+| 4 | skill | Skill |
+| 5 | character | Character |
+| 6 | faction | Faction |
+| 7 | region | Region |
+
+**Phase 2: Standard Patterns** (folder-first, then keywords)
+
+| Category | Folders | Extra Keywords |
+|----------|---------|----------------|
+| Item | LookAt/, PatternDescription/ | weapon, armor |
+| Quest | Quest/ | schedule_ |
+| Character | Character/, Npc/ | monster, animal |
+| Skill | Skill/ | - |
+| Knowledge | Knowledge/ | - |
+| Faction | Faction/ | - |
+| UI | Ui/ | localstringinfo, symboltext |
+| Region | Region/ | - |
+| System_Misc | (default) | - |
+
+**Note:** Priority keywords override folder matching. Example: `gimmickinfo_item_book.xml` → Gimmick (not Item).
 
 ## Usage
 
