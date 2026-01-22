@@ -225,29 +225,17 @@ def populate_qa_folder_new(
                 missing_or_stale.append(f"{category}: {status_msg}")
             print(f"  {marker} {category}: {status_msg}")
 
-        # STRICT: If ANY is bad, stop immediately
+        # NON-BLOCKING: Warn but continue (strict mode disabled)
         if not all_fresh:
             print()
-            print("=" * 60)
-            print("STOPPED: Cannot proceed with missing or stale datasheets!")
-            print("=" * 60)
-            print()
-            print("The following datasheets need attention:")
+            print("[WARN] Some datasheets may be missing or stale:")
             for item in missing_or_stale:
                 print(f"  - {item}")
             print()
-            print("ACTION REQUIRED:")
-            print("  1. Run 'Generate Datasheets' (select ALL categories)")
-            print("  2. Wait for generation to complete")
-            print("  3. Try 'Transfer' again")
+            print("[CONTINUING ANYWAY] Strict mode disabled - proceeding with transfer...")
+        else:
             print()
-            return False, (
-                f"STRICT MODE: {len(missing_or_stale)} datasheet(s) missing or stale.\n"
-                f"Run 'Generate Datasheets' first, then try again."
-            )
-
-        print()
-        print("[OK] All datasheets are present and fresh!")
+            print("[OK] All datasheets are present and fresh!")
     else:
         print("[1/4] Freshness check SKIPPED (force=True)")
         print("      WARNING: This may cause issues if datasheets are stale!")
