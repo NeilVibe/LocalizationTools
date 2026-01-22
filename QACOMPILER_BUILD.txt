@@ -43,3 +43,4 @@ Build - CRITICAL: Fix tracker date comparison
 Build - Fix tracker category: use sheet names not master filename
 Build - CRITICAL: Fix zero bug (manager stats creating zero rows)
 Build - Fix manager stats triple-counting for clustered categories
+Build - FIX: Script-type manager status (EventName as STRINGID) + debug output

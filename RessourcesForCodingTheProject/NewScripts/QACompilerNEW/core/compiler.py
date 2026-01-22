@@ -181,8 +181,11 @@ def collect_manager_status(master_folder: Path) -> Dict:
                 ws = wb[sheet_name]
                 manager_status[category][sheet_name] = {}
 
-                # Find STRINGID column
+                # Find STRINGID column (or EventName for Script-type categories)
                 stringid_col = find_column_by_header(ws, "STRINGID")
+                if not stringid_col:
+                    # Script-type categories use EventName instead of STRINGID
+                    stringid_col = find_column_by_header(ws, "EventName")
 
                 # Find all COMMENT_{User}, STATUS_{User}, MANAGER_COMMENT_{User} columns
                 comment_cols = {}          # username -> col (TESTER's comment)
@@ -975,10 +978,14 @@ def process_category(
 
             # Log match stats for debugging (content-based matching)
             match_stats = result.get("match_stats", {})
+            manager_restored = result.get("manager_restored", 0)
             if match_stats.get("unmatched", 0) > 0:
                 print(f"      [WARN] {sheet_name}: {match_stats['exact']} exact, {match_stats['fallback']} fallback, {match_stats['unmatched']} UNMATCHED")
             elif match_stats.get("fallback", 0) > 0:
                 print(f"      {sheet_name}: {match_stats['exact']} exact, {match_stats['fallback']} fallback")
+            # Log manager status restoration
+            if manager_restored > 0:
+                print(f"      [MANAGER] {sheet_name}: Restored {manager_restored} manager status entries")
 
             # Count words (EN) or characters (CN) from translation column
             # ONLY count rows where STATUS is filled (DONE rows)
