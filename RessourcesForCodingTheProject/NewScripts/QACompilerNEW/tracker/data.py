@@ -151,9 +151,15 @@ def update_daily_data_sheet(
         ws.cell(row, 14, entry.get("korean", 0))         # Korean
 
     # Also update/create rows for manager stats
-    # This handles the case where we're only updating manager stats (no QA folders)
+    # IMPORTANT: In normal compilation (daily_entries not empty), manager stats should
+    # ONLY UPDATE existing rows, NOT create new ones with zeros.
+    # Creating new rows with zeros causes TOTAL to show 0 (picks latest date = zero row)
     from datetime import datetime
     today = datetime.now().strftime("%Y-%m-%d")
+
+    # Determine mode: if daily_entries has data, we're in normal compilation
+    # In that case, skip creating new rows for manager stats (only update existing)
+    normal_compilation_mode = len(daily_entries) > 0
 
     print("\n" + "="*70)
     print("GRANULAR DEBUG: update_daily_data_sheet() - MANAGER STATS SECTION")
@@ -226,7 +232,14 @@ def update_daily_data_sheet(
                 ws.cell(found_row, 12, stats["nonissue"])  # NonIssue
                 rows_updated += 1
             else:
-                # No row for THIS DATE - create new row
+                # No row for THIS DATE
+                # In normal compilation mode: SKIP creating new rows (they'd have Done=0)
+                # In tracker-update mode: CREATE new rows (manager stats only, no tester data)
+                if normal_compilation_mode:
+                    print(f"      -> SKIPPING (normal compilation mode - no zero rows)")
+                    continue
+
+                # Tracker-update mode: Create new row with zeros for tester stats
                 actual_max_row += 1  # Increment our tracked max row
                 new_row = actual_max_row
                 print(f"      -> CREATING new row {new_row} for date {file_date}")
