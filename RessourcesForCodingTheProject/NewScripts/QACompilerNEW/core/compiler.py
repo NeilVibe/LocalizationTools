@@ -297,17 +297,33 @@ def collect_manager_status(master_folder: Path) -> Dict:
                             manager_comment_cols[username] = col
 
                 # DEBUG: Log column structure for Script categories
-                if category.lower() in ("sequencer", "dialog"):
+                is_script_cat = category.lower() in ("sequencer", "dialog")
+                if is_script_cat:
+                    _script_debug_log(f"")
+                    _script_debug_log(f"{'='*60}")
                     _script_debug_log(f"[COLLECT] {category}/{sheet_name}")
-                    _script_debug_log(f"  All headers: {all_headers}")
-                    _script_debug_log(f"  COMMENT_ cols: {list(comment_cols.keys())}")
-                    _script_debug_log(f"  STATUS_ cols: {list(status_cols.keys())}")
-                    _script_debug_log(f"  STRINGID col: {stringid_col}")
+                    _script_debug_log(f"{'='*60}")
+                    _script_debug_log(f"  All headers ({len(all_headers)} cols):")
+                    # Log headers with column positions
+                    for idx, h in enumerate(all_headers, 1):
+                        _script_debug_log(f"    Col {idx}: {h}")
+                    _script_debug_log(f"")
+                    _script_debug_log(f"  COMMENT_ columns found: {list(comment_cols.items())}")
+                    _script_debug_log(f"  STATUS_ columns found: {list(status_cols.items())}")
+                    _script_debug_log(f"  MANAGER_COMMENT_ columns found: {list(manager_comment_cols.items())}")
+                    _script_debug_log(f"  STRINGID/EventName col: {stringid_col}")
 
                 if not status_cols:
+                    if is_script_cat:
+                        _script_debug_log(f"  [SKIP] No STATUS_ columns found - skipping sheet")
                     continue
 
                 # Collect manager status, keyed by (stringid, tester_comment_text)
+                # DEBUG: Track Script category stats
+                script_debug_rows_with_status = 0
+                script_debug_rows_stored = 0
+                script_debug_rows_skipped_no_comment = 0
+
                 for row in range(2, ws.max_row + 1):
                     for username, status_col in status_cols.items():
                         status_value = ws.cell(row=row, column=status_col).value
@@ -321,6 +337,8 @@ def collect_manager_status(master_folder: Path) -> Dict:
                         has_manager_comment = manager_comment_value and str(manager_comment_value).strip()
 
                         if has_status or has_manager_comment:
+                            script_debug_rows_with_status += 1
+
                             # Get STRINGID for this row (from Master - reliable!)
                             stringid = ""
                             if stringid_col:
@@ -335,8 +353,28 @@ def collect_manager_status(master_folder: Path) -> Dict:
                                 full_comment = ws.cell(row=row, column=comment_col).value
                                 tester_comment_text = extract_comment_text(full_comment)
 
+                            # DEBUG: Log EVERY row with STATUS for Script categories
+                            if is_script_cat:
+                                _script_debug_log(f"")
+                                _script_debug_log(f"  [ROW {row}] User: {username}")
+                                _script_debug_log(f"    STATUS col {status_col}: '{status_value}'")
+                                _script_debug_log(f"    has_status (valid manager status): {has_status}")
+                                _script_debug_log(f"    has_manager_comment: {has_manager_comment}")
+                                _script_debug_log(f"    STRINGID/EventName col {stringid_col}: '{stringid}'")
+                                _script_debug_log(f"    COMMENT col for {username}: {comment_col}")
+                                if comment_col:
+                                    raw_comment = ws.cell(row=row, column=comment_col).value
+                                    _script_debug_log(f"    Raw COMMENT value: '{raw_comment}'")
+                                    _script_debug_log(f"    Extracted tester_comment_text: '{tester_comment_text}'")
+                                else:
+                                    _script_debug_log(f"    [WARN] No COMMENT_ column found for user {username}")
+
                             # Need tester comment to match (manager status is response to tester comment)
                             if tester_comment_text:
+                                script_debug_rows_stored += 1
+                                if is_script_cat:
+                                    _script_debug_log(f"    --> STORED (has tester comment)")
+
                                 # Primary key: (stringid, tester_comment_text)
                                 key = (stringid, tester_comment_text)
                                 if key not in manager_status[category][sheet_name]:
@@ -355,11 +393,20 @@ def collect_manager_status(master_folder: Path) -> Dict:
                                         "status": str(status_value).strip().upper() if has_status else None,
                                         "manager_comment": str(manager_comment_value).strip() if has_manager_comment else None
                                     }
+                            else:
+                                script_debug_rows_skipped_no_comment += 1
+                                if is_script_cat:
+                                    _script_debug_log(f"    --> SKIPPED (no tester comment text)")
 
                 # DEBUG: Log collected entries for Script categories
-                if category.lower() in ("sequencer", "dialog"):
+                if is_script_cat:
                     entries_count = len(manager_status[category].get(sheet_name, {}))
-                    _script_debug_log(f"  Collected entries: {entries_count}")
+                    _script_debug_log(f"")
+                    _script_debug_log(f"  [SUMMARY] {category}/{sheet_name}:")
+                    _script_debug_log(f"    Rows with valid STATUS_: {script_debug_rows_with_status}")
+                    _script_debug_log(f"    Rows STORED (had comment): {script_debug_rows_stored}")
+                    _script_debug_log(f"    Rows SKIPPED (no comment): {script_debug_rows_skipped_no_comment}")
+                    _script_debug_log(f"    Final entries in dict: {entries_count}")
                     _script_debug_flush()
 
             wb.close()
