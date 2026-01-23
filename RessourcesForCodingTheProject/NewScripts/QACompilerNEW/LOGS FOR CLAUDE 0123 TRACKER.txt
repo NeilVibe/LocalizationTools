@@ -1,0 +1,2632 @@
+MANAGER STAT DEBUG
+=== MANAGER STATS DEBUG === 2026-01-22 22:31:46
+
+[EN] Quest/김선우: F=4 R=0 C=0 N=8
+[EN] Quest/김찬용: F=13 R=1 C=0 N=34
+[EN] Quest/성가은: F=23 R=2 C=0 N=36
+[EN] Quest/장어진: F=0 R=0 C=0 N=66
+[EN] Quest/김선우: F=6 R=0 C=0 N=9
+[EN] Quest/김찬용: F=13 R=1 C=0 N=34
+[EN] Quest/성가은: F=23 R=2 C=0 N=36
+[EN] Quest/장어진: F=0 R=0 C=0 N=66
+[EN] Quest/김선우: F=6 R=0 C=0 N=10
+[EN] Quest/김찬용: F=13 R=1 C=0 N=34
+[EN] Quest/성가은: F=23 R=2 C=0 N=36
+[EN] Quest/장어진: F=0 R=0 C=0 N=68
+[EN] Quest/김선우: F=6 R=0 C=0 N=10
+[EN] Quest/김찬용: F=13 R=1 C=0 N=34
+[EN] Quest/성가은: F=34 R=2 C=7 N=36
+[EN] Quest/장어진: F=0 R=0 C=0 N=68
+[EN] Quest/김선우: F=6 R=0 C=0 N=10
+[EN] Quest/김찬용: F=13 R=1 C=0 N=34
+[EN] Quest/성가은: F=34 R=2 C=7 N=36
+[EN] Quest/장어진: F=0 R=0 C=0 N=68
+[EN] Quest/김선우: F=6 R=0 C=0 N=10
+[EN] Quest/김찬용: F=13 R=1 C=0 N=34
+[EN] Quest/성가은: F=34 R=2 C=7 N=36
+[EN] Quest/장어진: F=0 R=0 C=0 N=68
+[EN] Quest/김선우: F=6 R=0 C=0 N=10
+[EN] Quest/김찬용: F=13 R=1 C=0 N=34
+[EN] Quest/성가은: F=34 R=2 C=7 N=36
+[EN] Quest/이재환: F=1 R=0 C=0 N=0
+[EN] Quest/장어진: F=0 R=0 C=0 N=68
+[EN] Quest/김선우: F=6 R=0 C=0 N=10
+[EN] Quest/김찬용: F=13 R=1 C=0 N=34
+[EN] Quest/성가은: F=34 R=2 C=7 N=36
+[EN] Quest/이재환: F=1 R=0 C=0 N=0
+[EN] Quest/장어진: F=0 R=0 C=0 N=68
+[EN] Quest/김선우: F=25 R=0 C=0 N=13
+[EN] Quest/김찬용: F=13 R=1 C=0 N=34
+[EN] Quest/성가은: F=34 R=2 C=7 N=36
+[EN] Quest/이재환: F=1 R=0 C=0 N=0
+[EN] Quest/장어진: F=0 R=0 C=0 N=68
+[EN] Quest/김선우: F=25 R=0 C=0 N=13
+[EN] Quest/김찬용: F=13 R=1 C=0 N=34
+[EN] Quest/성가은: F=34 R=2 C=7 N=36
+[EN] Quest/이재환: F=1 R=0 C=0 N=0
+[EN] Quest/장어진: F=0 R=0 C=0 N=68
+[EN] Item/김헌동: F=0 R=0 C=0 N=1
+[EN] Item/이재환: F=13 R=0 C=0 N=0
+[EN] Item/김헌동: F=0 R=0 C=0 N=1
+[EN] Item/이재환: F=13 R=0 C=0 N=2
+[EN] Item/김헌동: F=0 R=0 C=0 N=1
+[EN] Item/이재환: F=13 R=0 C=0 N=2
+[EN] Item/김헌동: F=0 R=0 C=0 N=1
+[EN] Item/이재환: F=13 R=0 C=0 N=2
+[EN] Item/김헌동: F=0 R=0 C=0 N=3
+[EN] Item/이재환: F=13 R=0 C=0 N=2
+[EN] Item/김헌동: F=0 R=0 C=0 N=3
+[EN] Item/이재환: F=13 R=0 C=0 N=2
+[EN] Item/김헌동: F=0 R=0 C=0 N=122
+[EN] Item/이재환: F=13 R=0 C=0 N=2
+[EN] Region/성가은: F=2 R=0 C=0 N=2
+[EN] Region/유지윤: F=0 R=0 C=0 N=1
+[EN] Region/황하연: F=7 R=0 C=0 N=1
+[EN] Region/성가은: F=4 R=0 C=0 N=5
+[EN] Region/유지윤: F=0 R=0 C=0 N=1
+[EN] Region/황하연: F=8 R=0 C=0 N=1
+[EN] Region/성가은: F=6 R=6 C=0 N=9
+[EN] Region/유지윤: F=0 R=0 C=0 N=1
+[EN] Region/조서영: F=0 R=0 C=0 N=2
+[EN] Region/황하연: F=13 R=0 C=0 N=6
+[EN] Region/성가은: F=6 R=6 C=0 N=9
+[EN] Region/유지윤: F=0 R=0 C=0 N=1
+[EN] Region/조서영: F=0 R=0 C=0 N=2
+[EN] Region/황하연: F=13 R=0 C=0 N=6
+[EN] Region/성가은: F=7 R=6 C=0 N=10
+[EN] Region/유지윤: F=0 R=0 C=0 N=1
+[EN] Region/조서영: F=0 R=0 C=0 N=2
+[EN] Region/황하연: F=13 R=0 C=0 N=11
+[EN] Region/성가은: F=7 R=6 C=0 N=10
+[EN] Region/유지윤: F=0 R=0 C=0 N=1
+[EN] Region/조서영: F=0 R=0 C=0 N=3
+[EN] Region/황하연: F=13 R=0 C=0 N=15
+[EN] Region/성가은: F=7 R=6 C=0 N=14
+[EN] Region/유지윤: F=0 R=2 C=0 N=1
+[EN] Region/조서영: F=0 R=0 C=0 N=4
+[EN] Region/황하연: F=13 R=2 C=0 N=17
+[EN] Region/성가은: F=21 R=6 C=1 N=21
+[EN] Region/유지윤: F=3 R=2 C=1 N=1
+[EN] Region/조서영: F=0 R=0 C=0 N=4
+[EN] Region/황하연: F=21 R=2 C=1 N=36
+[EN] System/김정원: F=6 R=0 C=0 N=1
+[EN] System/김찬용: F=4 R=0 C=0 N=0
+[EN] System/김정원: F=7 R=0 C=0 N=6
+[EN] System/김찬용: F=4 R=0 C=0 N=2
+[EN] System/유지윤: F=0 R=0 C=1 N=0
+[EN] System/이재환: F=2 R=0 C=0 N=1
+[EN] System/조서영: F=2 R=0 C=1 N=0
+[EN] System/김정원: F=8 R=0 C=0 N=20
+[EN] System/김찬용: F=5 R=0 C=3 N=8
+[EN] System/유지윤: F=0 R=0 C=1 N=1
+[EN] System/이재환: F=2 R=0 C=0 N=1
+[EN] System/조서영: F=2 R=0 C=1 N=0
+[EN] System/김정원: F=29 R=0 C=0 N=27
+[EN] System/김찬용: F=8 R=2 C=5 N=19
+[EN] System/김헌동: F=1 R=0 C=0 N=7
+[EN] System/유지윤: F=1 R=0 C=1 N=4
+[EN] System/이재환: F=11 R=1 C=1 N=5
+[EN] System/조서영: F=2 R=0 C=1 N=3
+[EN] System/김정원: F=29 R=0 C=0 N=27
+[EN] System/김찬용: F=8 R=2 C=5 N=19
+[EN] System/김헌동: F=1 R=0 C=0 N=7
+[EN] System/유지윤: F=1 R=0 C=1 N=4
+[EN] System/이재환: F=11 R=1 C=1 N=5
+[EN] System/조서영: F=2 R=0 C=1 N=3
+[EN] System/김헌동: F=8 R=0 C=0 N=109
+[EN] System/유지윤: F=19 R=0 C=23 N=4
+[EN] System/이재환: F=45 R=5 C=1 N=48
+[EN] System/조서영: F=16 R=0 C=17 N=38
+[EN] System/김헌동: F=8 R=0 C=0 N=109
+[EN] System/유지윤: F=19 R=0 C=23 N=4
+[EN] System/이재환: F=45 R=5 C=1 N=48
+[EN] System/조서영: F=16 R=0 C=17 N=38
+[EN] Character/김선우: F=5 R=0 C=0 N=2
+[EN] Character/김찬용: F=2 R=2 C=0 N=52
+[EN] Character/장어진: F=1 R=0 C=0 N=1
+[EN] Character/김선우: F=5 R=0 C=0 N=2
+[EN] Character/김찬용: F=2 R=2 C=0 N=57
+[EN] Character/장어진: F=1 R=0 C=0 N=1
+[EN] Character/김선우: F=5 R=0 C=0 N=2
+[EN] Character/김찬용: F=2 R=2 C=0 N=66
+[EN] Character/장어진: F=1 R=0 C=0 N=1
+[EN] Character/김선우: F=5 R=0 C=0 N=2
+[EN] Character/김찬용: F=2 R=2 C=0 N=74
+[EN] Character/장어진: F=1 R=0 C=0 N=1
+[EN] Character/김선우: F=5 R=0 C=0 N=2
+[EN] Character/김찬용: F=12 R=6 C=0 N=86
+[EN] Character/장어진: F=1 R=0 C=0 N=1
+[EN] Character/김선우: F=5 R=0 C=0 N=2
+[EN] Character/김찬용: F=17 R=7 C=2 N=111
+[EN] Character/장어진: F=2 R=0 C=0 N=4
+[EN] Character/김선우: F=5 R=0 C=0 N=2
+[EN] Character/김찬용: F=17 R=7 C=2 N=111
+[EN] Character/장어진: F=2 R=0 C=1 N=4
+[EN] Character/김선우: F=5 R=0 C=0 N=2
+[EN] Character/김찬용: F=17 R=7 C=2 N=111
+[EN] Character/장어진: F=2 R=0 C=1 N=4
+[EN] Character/김선우: F=5 R=0 C=0 N=2
+[EN] Character/김찬용: F=17 R=7 C=2 N=113
+[EN] Character/장어진: F=2 R=0 C=1 N=4
+[EN] Character/김선우: F=5 R=0 C=0 N=2
+[EN] Character/김찬용: F=17 R=7 C=2 N=113
+[EN] Character/장어진: F=2 R=0 C=1 N=4
+[EN] Character/김선우: F=5 R=0 C=0 N=2
+[EN] Character/김찬용: F=17 R=7 C=2 N=113
+[EN] Character/장어진: F=3 R=0 C=1 N=9
+[EN] Contents/김정원: F=1 R=2 C=0 N=4
+[EN] Contents/황하연: F=3 R=0 C=3 N=1
+[EN] Contents/김정원: F=1 R=2 C=0 N=4
+[EN] Contents/황하연: F=3 R=0 C=3 N=1
+[CN] Item/최석문: F=0 R=0 C=0 N=1
+[CN] Item/최석문: F=0 R=0 C=0 N=1
+[CN] Item/최석문: F=0 R=0 C=0 N=1
+[CN] Item/김춘애: F=0 R=1 C=0 N=0
+[CN] Item/최석문: F=0 R=1 C=0 N=1
+[CN] Item/김춘애: F=0 R=1 C=0 N=0
+[CN] Item/최석문: F=0 R=1 C=0 N=1
+[CN] Item/김춘애: F=0 R=1 C=0 N=0
+[CN] Item/최석문: F=0 R=1 C=0 N=1
+[CN] Item/김춘애: F=0 R=1 C=0 N=0
+[CN] Item/최석문: F=0 R=3 C=1 N=1
+[CN] Item/김춘애: F=0 R=1 C=0 N=0
+[CN] Item/최석문: F=0 R=4 C=1 N=1
+[CN] Item/김춘애: F=0 R=1 C=0 N=0
+[CN] Item/최석문: F=0 R=4 C=1 N=1
+[CN] Item/김춘애: F=0 R=1 C=0 N=0
+[CN] Item/최석문: F=0 R=4 C=1 N=1
+[CN] Character/뤄이롼: F=0 R=0 C=0 N=1
+[CN] Character/뤄이롼: F=0 R=0 C=0 N=1
+[CN] Character/뤄이롼: F=0 R=0 C=0 N=1
+[CN] Character/뤄이롼: F=0 R=0 C=0 N=1
+[CN] Character/뤄이롼: F=0 R=0 C=0 N=1
+[CN] Character/뤄이롼: F=0 R=0 C=0 N=1
+[CN] Character/뤄이롼: F=0 R=0 C=0 N=1
+[CN] Character/뤄이롼: F=0 R=0 C=0 N=1
+[CN] Character/뤄이롼: F=0 R=0 C=0 N=1
+[CN] Character/뤄이롼: F=0 R=0 C=0 N=1
+[CN] Character/뤄이롼: F=0 R=0 C=0 N=1
+
+=== TOTALS: F=285 R=34 C=63 N=713 ===
+Categories: ['Quest', 'Knowledge', 'Item', 'Region', 'System', 'Character', 'Contents', 'Script']
+=== LOOKUP PHASE ===
+daily_entries: 58, manager_stats categories: ['Quest', 'Knowledge', 'Item', 'Region', 'System', 'Character', 'Contents', 'Script']
+HITS: 33, MISSES: 25
+MISS DETAILS: ['김헌동/Quest:ZERO', '황하연/Quest:ZERO', '김정원/Quest:ZERO', '김선우/Knowledge:ZERO', '조서영/Knowledge:ZERO', '유지윤/Knowledge:ZERO', '장어진/Knowledge:ZERO', '유지윤/Sequencer:ZERO', '조서영/Sequencer:ZERO', '김정원/Dialog:ZERO']...
+
+=== LOOKUP PHASE ===
+daily_entries: 60, manager_stats categories: ['Character', 'Contents', 'Item', 'Knowledge', 'Quest', 'Region', 'Script', 'System']
+HITS: 33, MISSES: 27
+MISS DETAILS: ['김선우/Knowledge:ZERO', '김세련/Help:ZERO', '김세련/Item:ZERO', '김세련/Region:ZERO', '김세련/Skill:ZERO', '김세련/System:ZERO', '김정원/Dialog:ZERO', '김정원/Quest:ZERO', '김찬용/Dialog:ZERO', '김춘애/Knowledge:ZERO']...
+
+
+
+
+TRACKER UPDATE LOG
+=== TRACKER UPDATE DEBUG LOG === 2026-01-23T13:14:05.914790
+
+
+============================================================
+DISCOVER QA FOLDERS
+============================================================
+[13:14:05] [INFO] ==================================================
+[13:14:05] [INFO] UPDATE TRACKER ONLY - START
+[13:14:05] [INFO] ==================================================
+[13:14:05] [INFO] DISCOVER: Scanning C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\QAfolder
+[13:14:05] [INFO]   FOUND: 김선우_Character date=2026-01-20 xlsx=Character_LQA_ENG.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김선우_Knowledge date=2026-01-20 xlsx=Knowledge_LQA_ENG.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김선우_Quest date=2026-01-22 xlsx=Quest_LQA_ENG.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김세련_Help date=2026-01-20 xlsx=LQA_GameAdvice_ZHO-CN.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김세련_Item date=2026-01-22 xlsx=ITEM_WORKING_LQA_ZHO-CN_업데이트후.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김세련_Region date=2026-01-20 xlsx=Region_LQA_ZHO-CN.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김세련_Skill date=2026-01-20 xlsx=LQA_Skill_ZHO-CN.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김세련_System date=2026-01-20 xlsx=System_ZHO-CN.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김정원_Contents date=2026-01-20 xlsx=김정원_Contents.xlsx images=17
+[13:14:05] [INFO]   FOUND: 김정원_Dialog date=2026-01-22 xlsx=김정원_Dialog.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김정원_Quest date=2026-01-22 xlsx=김정원_Quest.xlsx images=48
+[13:14:05] [INFO]   FOUND: 김정원_System date=2026-01-20 xlsx=System_ENG.xlsx images=3
+[13:14:05] [INFO]   FOUND: 김찬용_Character date=2026-01-20 xlsx=Character_LQA_ENG.xlsx images=11
+[13:14:05] [INFO]   FOUND: 김찬용_Dialog date=2026-01-22 xlsx=김찬용_Dialog.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김찬용_Quest date=2026-01-22 xlsx=Quest_LQA_ENG.xlsx images=30
+[13:14:05] [INFO]   FOUND: 김찬용_System date=2026-01-20 xlsx=System_ENG.xlsx images=17
+[13:14:05] [INFO]   FOUND: 김춘애_Item date=2026-01-20 xlsx=ITEM_WORKING_LQA_ZHO-CN.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김춘애_Knowledge date=2026-01-20 xlsx=Knowledge_LQA_ZHO-CN.xlsx images=7
+[13:14:05] [INFO]   FOUND: 김춘애_Quest date=2026-01-22 xlsx=김춘애_Quest_LQA_ZHO-CN.xlsx images=26
+[13:14:05] [INFO]   FOUND: 김헌동_Help date=2026-01-20 xlsx=LQA_GameAdvice_ENG.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김헌동_Item date=2026-01-20 xlsx=ITEM_WORKING_LQA_ENG.xlsx images=19
+[13:14:05] [INFO]   FOUND: 김헌동_Quest date=2026-01-22 xlsx=김헌동_Quest.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김헌동_Skill date=2026-01-20 xlsx=LQA_Skill_ENG.xlsx images=0
+[13:14:05] [INFO]   FOUND: 김헌동_System date=2026-01-20 xlsx=System_ENG.xlsx images=0
+[13:14:05] [INFO]   FOUND: 뤄이롼_Character date=2026-01-20 xlsx=Character_LQA_ZHO-CN.xlsx images=0
+[13:14:05] [INFO]   FOUND: 뤄이롼_Quest date=2026-01-21 xlsx=Quest_LQA_ZHO-CN.xlsx images=0
+[13:14:05] [INFO]   FOUND: 뤄이롼_Sequencer date=2026-01-22 xlsx=260121 CN SCRIPT_v2.xlsx images=0
+[13:14:05] [INFO]   FOUND: 리쓰한_Character date=2026-01-20 xlsx=Character_LQA_ZHO-CN.xlsx images=0
+[13:14:05] [INFO]   FOUND: 리쓰한_Knowledge date=2026-01-20 xlsx=Knowledge_LQA_ZHO-CN.xlsx images=1
+[13:14:05] [INFO]   FOUND: 리쓰한_Quest date=2026-01-21 xlsx=리쓰한_Quest_LQA_ZHO-CN.xlsx images=2
+[13:14:05] [INFO]   FOUND: 리쓰한_Sequencer date=2026-01-22 xlsx=리쓰한_260121 CN SCRIPT_v2.xlsx images=0
+[13:14:05] [INFO]   FOUND: 성가은_Quest date=2026-01-21 xlsx=Quest_성가은.xlsx images=74
+[13:14:05] [INFO]   FOUND: 성가은_Region date=2026-01-20 xlsx=Region_LQA_ENG.xlsx images=126
+[13:14:05] [INFO]   FOUND: 유지윤_Help date=2026-01-20 xlsx=유지윤_LQA_GameAdvice_ENG.xlsx images=8
+[13:14:05] [INFO]   FOUND: 유지윤_Knowledge date=2026-01-20 xlsx=Knowledge_LQA_ENG.xlsx images=0
+[13:14:05] [INFO]   FOUND: 유지윤_Region date=2026-01-20 xlsx=Region_LQA_ENG.xlsx images=0
+[13:14:05] [INFO]   FOUND: 유지윤_Sequencer date=2026-01-21 xlsx=EN SCRIPT LQA.xlsx images=0
+[13:14:05] [INFO]   FOUND: 유지윤_Skill date=2026-01-21 xlsx=유지윤_LQA_Skill_ENG.xlsx images=2
+[13:14:05] [INFO]   FOUND: 유지윤_System date=2026-01-20 xlsx=System_ENG.xlsx images=3
+[13:14:05] [INFO]   FOUND: 이재환_Help date=2026-01-20 xlsx=LQA_GameAdvice_ENG.xlsx images=4
+[13:14:05] [INFO]   FOUND: 이재환_Item date=2026-01-20 xlsx=ITEM_WORKING_LQA_ENG.xlsx images=84
+[13:14:05] [INFO]   FOUND: 이재환_Quest date=2026-01-22 xlsx=이재환_Quest.xlsx images=4
+[13:14:05] [INFO]   FOUND: 이재환_Skill date=2026-01-20 xlsx=LQA_Skill_ENG.xlsx images=4
+[13:14:05] [INFO]   FOUND: 이재환_System date=2026-01-20 xlsx=System_ENG.xlsx images=4
+[13:14:05] [INFO]   FOUND: 장어진_Character date=2026-01-20 xlsx=Character_LQA_ENG.xlsx images=29
+[13:14:05] [INFO]   FOUND: 장어진_Knowledge date=2026-01-20 xlsx=Knowledge_LQA_ENG.xlsx images=52
+[13:14:05] [INFO]   FOUND: 장어진_Quest date=2026-01-22 xlsx=장어진_Quest_LQA_ENG.xlsx images=101
+[13:14:05] [INFO]   FOUND: 조서영_Help date=2026-01-20 xlsx=LQA_GameAdvice_ENG.xlsx images=0
+[13:14:05] [INFO]   FOUND: 조서영_Knowledge date=2026-01-20 xlsx=Knowledge_LQA_ENG.xlsx images=0
+[13:14:05] [INFO]   FOUND: 조서영_Region date=2026-01-20 xlsx=Region_LQA_ENG.xlsx images=0
+[13:14:05] [INFO]   FOUND: 조서영_Sequencer date=2026-01-22 xlsx=EN SCRIPT SEQUENCER.xlsx images=0
+[13:14:05] [INFO]   FOUND: 조서영_Skill date=2026-01-21 xlsx=LQA_Skill_ENG.xlsx images=1
+[13:14:05] [INFO]   FOUND: 조서영_System date=2026-01-20 xlsx=System_ENG.xlsx images=0
+[13:14:05] [INFO]   FOUND: 최석문_Item date=2026-01-20 xlsx=ITEM_WORKING_LQA_ZHO-CN.xlsx images=3
+[13:14:05] [INFO]   FOUND: 최석문_Quest date=2026-01-22 xlsx=Quest_LQA_ZHO-CN.xlsx images=24
+[13:14:05] [INFO]   FOUND: 최석문_Region date=2026-01-20 xlsx=Region_LQA_ZHO-CN.xlsx images=0
+[13:14:05] [INFO]   FOUND: 황하연_Contents date=2026-01-20 xlsx=Contents_LQA_20260119.xlsx images=16
+[13:14:05] [INFO]   FOUND: 황하연_Dialog date=2026-01-22 xlsx=황하연_Dialog.xlsx images=0
+[13:14:05] [INFO]   FOUND: 황하연_Quest date=2026-01-21 xlsx=황하연_Quest.xlsx images=17
+[13:14:05] [INFO]   FOUND: 황하연_Region date=2026-01-20 xlsx=Region_LQA_ENG.xlsx images=1
+[13:14:05] [INFO] DISCOVER: Found 60 valid QA folders
+
+============================================================
+QA FOLDER: 김선우_Character
+============================================================
+[13:14:05] [INFO] Master files found: EN=8, CN=6
+[13:14:05] [INFO] Tester mapping loaded: 15 entries
+[13:14:05] [INFO] Processing 60 QA folders...
+[13:14:05] [INFO] COUNT FOLDER: 김선우_Character date=2026-01-20 lang=EN
+[13:14:05] [INFO]   File: Character_LQA_ENG.xlsx
+[13:14:06] [INFO]   Sheets: ['ANIMAL', 'CAMP', 'DEV', 'MAIN', 'MONSTER', 'NPC', 'OBJECT', 'PC', 'PET', 'QUEST', 'VEHICLE']
+[13:14:06] [INFO]     SHEET 'ANIMAL': max_row=785, STATUS_col=4, trans_col=2
+[13:14:06] [INFO]     SHEET 'ANIMAL': total=784 issue=11 no_issue=452 blocked=65 korean=0 words=1083
+[13:14:06] [INFO]     SHEET 'CAMP': max_row=92, STATUS_col=4, trans_col=2
+[13:14:06] [INFO]     SHEET 'CAMP': total=91 issue=0 no_issue=58 blocked=0 korean=0 words=82
+[13:14:06] [INFO]     SHEET 'DEV': max_row=1066, STATUS_col=4, trans_col=2
+[13:14:06] [INFO]     SHEET 'DEV': total=1065 issue=0 no_issue=8 blocked=0 korean=0 words=15
+[13:14:06] [INFO]     SHEET 'MAIN': max_row=110, STATUS_col=4, trans_col=2
+[13:14:06] [INFO]     SHEET 'MAIN': total=109 issue=0 no_issue=53 blocked=26 korean=1 words=146
+[13:14:06] [INFO]     SHEET 'MONSTER': max_row=2175, STATUS_col=4, trans_col=2
+[13:14:06] [INFO]     SHEET 'MONSTER': total=2174 issue=2 no_issue=217 blocked=2 korean=3 words=747
+[13:14:06] [INFO]     SHEET 'NPC': max_row=3089, STATUS_col=4, trans_col=2
+[13:14:06] [INFO]     SHEET 'NPC': total=3088 issue=0 no_issue=25 blocked=0 korean=0 words=41
+[13:14:06] [INFO]     SHEET 'OBJECT': max_row=48, STATUS_col=4, trans_col=2
+[13:14:06] [INFO]     SHEET 'OBJECT': total=47 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:06] [INFO]     SHEET 'PC': max_row=10, STATUS_col=4, trans_col=2
+[13:14:06] [INFO]     SHEET 'PC': total=9 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:06] [INFO]     SHEET 'PET': max_row=17, STATUS_col=4, trans_col=2
+[13:14:06] [INFO]     SHEET 'PET': total=16 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:06] [INFO]     SHEET 'QUEST': max_row=172, STATUS_col=4, trans_col=2
+[13:14:06] [INFO]     SHEET 'QUEST': total=171 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:06] [INFO]     SHEET 'VEHICLE': max_row=154, STATUS_col=4, trans_col=2
+[13:14:06] [INFO]     SHEET 'VEHICLE': total=153 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:06] [INFO]   TOTALS: total=7707 done=923 issues=13 words=2114
+
+============================================================
+QA FOLDER: 김선우_Knowledge
+============================================================
+[13:14:06] [INFO] COUNT FOLDER: 김선우_Knowledge date=2026-01-20 lang=EN
+[13:14:06] [INFO]   File: Knowledge_LQA_ENG.xlsx
+[13:14:07] [INFO]   Sheets: ['Abyss Gate', 'People', '피조물', 'Mounts', 'Contents', 'Document', 'Adventure', 'Faction', 'Gatherables', 'Small Tools', 'Collectibles', 'Territories', 'Quests', 'Memory Fragment', 'Games', 'Skills']
+[13:14:07] [INFO]     SHEET 'Abyss Gate': max_row=276, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Abyss Gate': total=274 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'People': max_row=2445, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'People': total=2444 issue=37 no_issue=423 blocked=103 korean=0 words=2134
+[13:14:07] [INFO]     SHEET '피조물': max_row=1173, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET '피조물': total=1172 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Mounts': max_row=128, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Mounts': total=127 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Contents': max_row=600, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Contents': total=599 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Document': max_row=925, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Document': total=924 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Adventure': max_row=844, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Adventure': total=843 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Faction': max_row=581, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Faction': total=580 issue=0 no_issue=1 blocked=0 korean=0 words=1
+[13:14:07] [INFO]     SHEET 'Gatherables': max_row=357, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Gatherables': total=356 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Small Tools': max_row=45, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Small Tools': total=44 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Collectibles': max_row=351, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Collectibles': total=350 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Territories': max_row=2277, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Territories': total=2275 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Quests': max_row=846, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Quests': total=845 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Memory Fragment': max_row=537, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Memory Fragment': total=536 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Games': max_row=39, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Games': total=38 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Skills': max_row=805, STATUS_col=3, trans_col=2
+[13:14:07] [INFO]     SHEET 'Skills': total=802 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]   TOTALS: total=12209 done=564 issues=37 words=2135
+
+============================================================
+QA FOLDER: 김선우_Quest
+============================================================
+[13:14:07] [INFO] COUNT FOLDER: 김선우_Quest date=2026-01-22 lang=EN
+[13:14:07] [INFO]   File: Quest_LQA_ENG.xlsx
+[13:14:07] [INFO]   Sheets: ['Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:07] [INFO]     SHEET 'Main Quest': max_row=590, STATUS_col=5, trans_col=2
+[13:14:07] [INFO]     SHEET 'Main Quest': total=589 issue=16 no_issue=295 blocked=33 korean=191 words=1716
+[13:14:07] [INFO]     SHEET 'Faction_01': max_row=299, STATUS_col=5, trans_col=2
+[13:14:07] [INFO]     SHEET 'Faction_01': total=298 issue=5 no_issue=156 blocked=32 korean=100 words=880
+[13:14:07] [INFO]     SHEET 'Faction_02': max_row=343, STATUS_col=5, trans_col=2
+[13:14:07] [INFO]     SHEET 'Faction_02': total=342 issue=1 no_issue=51 blocked=7 korean=14 words=210
+[13:14:07] [INFO]     SHEET 'Faction_03': max_row=1283, STATUS_col=5, trans_col=2
+[13:14:07] [INFO]     SHEET 'Faction_03': total=1274 issue=32 no_issue=715 blocked=191 korean=234 words=3666
+[13:14:07] [INFO]     SHEET 'Faction_etc': max_row=73, STATUS_col=5, trans_col=2
+[13:14:07] [INFO]     SHEET 'Faction_etc': total=72 issue=0 no_issue=9 blocked=22 korean=18 words=85
+[13:14:07] [INFO]     SHEET 'Region Quest': max_row=978, STATUS_col=5, trans_col=2
+[13:14:07] [INFO]     SHEET 'Region Quest': total=967 issue=0 no_issue=1 blocked=0 korean=0 words=5
+[13:14:07] [INFO]     SHEET 'Daily': max_row=294, STATUS_col=5, trans_col=2
+[13:14:07] [INFO]     SHEET 'Daily': total=283 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:07] [INFO]     SHEET 'Politics': max_row=156, STATUS_col=5, trans_col=2
+[13:14:07] [INFO]     SHEET 'Politics': total=155 issue=0 no_issue=2 blocked=15 korean=12 words=49
+[13:14:07] [INFO]     SHEET 'Challenge Quest': max_row=1301, STATUS_col=5, trans_col=2
+[13:14:07] [INFO]     SHEET 'Challenge Quest': total=1274 issue=21 no_issue=470 blocked=376 korean=3 words=3252
+[13:14:07] [INFO]     SHEET 'Minigame Quest': max_row=102, STATUS_col=5, trans_col=2
+[13:14:07] [INFO]     SHEET 'Minigame Quest': total=100 issue=0 no_issue=8 blocked=34 korean=6 words=134
+[13:14:07] [INFO]   TOTALS: total=5354 done=3070 issues=75 words=9997
+
+============================================================
+QA FOLDER: 김세련_Help
+============================================================
+[13:14:07] [INFO] COUNT FOLDER: 김세련_Help date=2026-01-20 lang=CN
+[13:14:07] [INFO]   File: LQA_GameAdvice_ZHO-CN.xlsx
+[13:14:07] [INFO]   Sheets: ['GameAdvice']
+[13:14:07] [INFO]     SHEET 'GameAdvice': max_row=762, STATUS_col=4, trans_col=3
+[13:14:07] [INFO]     SHEET 'GameAdvice': total=761 issue=29 no_issue=153 blocked=103 korean=265 words=3699
+[13:14:07] [INFO]   TOTALS: total=761 done=550 issues=29 words=3699
+
+============================================================
+QA FOLDER: 김세련_Item
+============================================================
+[13:14:07] [INFO] COUNT FOLDER: 김세련_Item date=2026-01-22 lang=CN
+[13:14:07] [INFO]   File: ITEM_WORKING_LQA_ZHO-CN_업데이트후.xlsx
+[13:14:08] [INFO]   Sheets: ['Abyss_Gear', 'Abyss_Item', 'Armor', 'Collectibles', 'Crafting_Manual', 'Document', 'Ingested_Substances', 'Major_Goods', 'Monster_Item', 'Others', 'Poster', 'Weapons']
+[13:14:08] [INFO]     SHEET 'Abyss_Gear': max_row=209, STATUS_col=10, trans_col=7
+[13:14:08] [INFO]     SHEET 'Abyss_Gear': total=208 issue=2 no_issue=162 blocked=0 korean=43 words=840
+[13:14:08] [INFO]     SHEET 'Abyss_Item': max_row=152, STATUS_col=10, trans_col=7
+[13:14:08] [INFO]     SHEET 'Abyss_Item': total=151 issue=0 no_issue=151 blocked=0 korean=0 words=1359
+[13:14:08] [INFO]     SHEET 'Armor': max_row=413, STATUS_col=10, trans_col=7
+[13:14:08] [INFO]     SHEET 'Armor': total=412 issue=5 no_issue=132 blocked=0 korean=98 words=908
+[13:14:08] [INFO]     SHEET 'Collectibles': max_row=375, STATUS_col=10, trans_col=7
+[13:14:08] [INFO]     SHEET 'Collectibles': total=374 issue=7 no_issue=33 blocked=0 korean=0 words=221
+[13:14:08] [INFO]     SHEET 'Crafting_Manual': max_row=164, STATUS_col=10, trans_col=7
+[13:14:08] [INFO]     SHEET 'Crafting_Manual': total=163 issue=0 no_issue=16 blocked=0 korean=0 words=174
+[13:14:08] [INFO]     SHEET 'Document': max_row=128, STATUS_col=10, trans_col=7
+[13:14:08] [INFO]     SHEET 'Document': total=127 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:08] [INFO]     SHEET 'Ingested_Substances': max_row=575, STATUS_col=10, trans_col=7
+[13:14:08] [INFO]     SHEET 'Ingested_Substances': total=574 issue=5 no_issue=48 blocked=0 korean=2 words=150
+[13:14:08] [INFO]     SHEET 'Major_Goods': max_row=456, STATUS_col=10, trans_col=7
+[13:14:08] [INFO]     SHEET 'Major_Goods': total=455 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:08] [INFO]     SHEET 'Monster_Item': max_row=1658, STATUS_col=10, trans_col=7
+[13:14:08] [INFO]     SHEET 'Monster_Item': total=1657 issue=2 no_issue=0 blocked=0 korean=0 words=19
+[13:14:08] [INFO]     SHEET 'Others': max_row=1201, STATUS_col=10, trans_col=7
+[13:14:08] [INFO]     SHEET 'Others': total=1200 issue=1 no_issue=5 blocked=0 korean=3 words=41
+[13:14:08] [INFO]     SHEET 'Poster': max_row=102, STATUS_col=10, trans_col=7
+[13:14:08] [INFO]     SHEET 'Poster': total=101 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:08] [INFO]     SHEET 'Weapons': max_row=463, STATUS_col=10, trans_col=7
+[13:14:08] [INFO]     SHEET 'Weapons': total=462 issue=0 no_issue=1 blocked=0 korean=71 words=6
+[13:14:08] [INFO]   TOTALS: total=5884 done=787 issues=22 words=3718
+
+============================================================
+QA FOLDER: 김세련_Region
+============================================================
+[13:14:08] [INFO] COUNT FOLDER: 김세련_Region date=2026-01-20 lang=CN
+[13:14:08] [INFO]   File: Region_LQA_ZHO-CN.xlsx
+[13:14:08] [INFO]   Sheets: ['阿比斯', '红色沙漠', '德雷西亚', '德梅尼斯', '灰鬃', '埃尔南德', '佩伦', '无势力', 'Shop']
+[13:14:08] [INFO]     SHEET '阿比斯': max_row=2, STATUS_col=4, trans_col=3
+[13:14:08] [INFO]     SHEET '阿比斯': total=1 issue=0 no_issue=1 blocked=0 korean=0 words=3
+[13:14:08] [INFO]     SHEET '红色沙漠': max_row=208, STATUS_col=4, trans_col=3
+[13:14:08] [INFO]     SHEET '红色沙漠': total=207 issue=0 no_issue=99 blocked=7 korean=5 words=633
+[13:14:08] [INFO]     SHEET '德雷西亚': max_row=251, STATUS_col=4, trans_col=3
+[13:14:08] [INFO]     SHEET '德雷西亚': total=250 issue=0 no_issue=102 blocked=19 korean=4 words=707
+[13:14:08] [INFO]     SHEET '德梅尼斯': max_row=282, STATUS_col=4, trans_col=3
+[13:14:08] [INFO]     SHEET '德梅尼斯': total=281 issue=2 no_issue=123 blocked=6 korean=10 words=765
+[13:14:08] [INFO]     SHEET '灰鬃': max_row=2, STATUS_col=4, trans_col=3
+[13:14:08] [INFO]     SHEET '灰鬃': total=1 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:08] [INFO]     SHEET '埃尔南德': max_row=345, STATUS_col=4, trans_col=3
+[13:14:08] [INFO]     SHEET '埃尔南德': total=344 issue=2 no_issue=154 blocked=5 korean=10 words=960
+[13:14:08] [INFO]     SHEET '佩伦': max_row=156, STATUS_col=4, trans_col=3
+[13:14:08] [INFO]     SHEET '佩伦': total=155 issue=0 no_issue=75 blocked=8 korean=3 words=441
+[13:14:08] [INFO]     SHEET '无势力': max_row=1019, STATUS_col=4, trans_col=3
+[13:14:08] [INFO]     SHEET '无势力': total=1018 issue=7 no_issue=285 blocked=2 korean=129 words=1930
+[13:14:08] [INFO]     SHEET 'Shop': max_row=595, STATUS_col=4, trans_col=3
+[13:14:08] [INFO]     SHEET 'Shop': total=594 issue=11 no_issue=174 blocked=1 korean=4 words=5680
+[13:14:08] [INFO]   TOTALS: total=2851 done=1248 issues=22 words=11119
+
+============================================================
+QA FOLDER: 김세련_Skill
+============================================================
+[13:14:08] [INFO] COUNT FOLDER: 김세련_Skill date=2026-01-20 lang=CN
+[13:14:08] [INFO]   File: LQA_Skill_ZHO-CN.xlsx
+[13:14:08] [INFO]   Sheets: ['Skills']
+[13:14:08] [INFO]     SHEET 'Skills': max_row=1175, STATUS_col=4, trans_col=3
+[13:14:08] [INFO]     SHEET 'Skills': total=1174 issue=8 no_issue=53 blocked=0 korean=52 words=1075
+[13:14:08] [INFO]   TOTALS: total=1174 done=113 issues=8 words=1075
+
+============================================================
+QA FOLDER: 김세련_System
+============================================================
+[13:14:08] [INFO] COUNT FOLDER: 김세련_System date=2026-01-20 lang=CN
+[13:14:08] [INFO]   File: System_ZHO-CN.xlsx
+[13:14:08] [INFO]   Sheets: ['Menu', 'Greymane', 'Map', 'Other']
+[13:14:08] [INFO]     SHEET 'Menu': max_row=47, STATUS_col=2, trans_col=1
+[13:14:08] [INFO]     SHEET 'Menu': total=46 issue=1 no_issue=35 blocked=4 korean=0 words=129
+[13:14:08] [INFO]     SHEET 'Greymane': max_row=43, STATUS_col=2, trans_col=1
+[13:14:08] [INFO]     SHEET 'Greymane': total=42 issue=0 no_issue=25 blocked=7 korean=0 words=83
+[13:14:08] [INFO]     SHEET 'Map': max_row=33, STATUS_col=2, trans_col=1
+[13:14:08] [INFO]     SHEET 'Map': total=32 issue=1 no_issue=3 blocked=16 korean=0 words=41
+[13:14:08] [INFO]     SHEET 'Other': max_row=83, STATUS_col=2, trans_col=1
+[13:14:08] [INFO]     SHEET 'Other': total=82 issue=4 no_issue=64 blocked=1 korean=1 words=294
+[13:14:08] [INFO]   TOTALS: total=202 done=162 issues=6 words=547
+
+============================================================
+QA FOLDER: 김정원_Contents
+============================================================
+[13:14:08] [INFO] COUNT FOLDER: 김정원_Contents date=2026-01-20 lang=EN
+[13:14:08] [INFO]   File: 김정원_Contents.xlsx
+[13:14:08] [INFO]   Sheets: ['Sheet1', 'Trade Goods']
+[13:14:08] [INFO]     SHEET 'Sheet1': max_row=129, STATUS_col=3, trans_col=2
+[13:14:08] [INFO]     SHEET 'Sheet1': total=128 issue=14 no_issue=2 blocked=0 korean=2 words=6
+[13:14:08] [WARN]     SHEET 'Trade Goods': No STATUS column found
+[13:14:08] [INFO]   TOTALS: total=128 done=18 issues=14 words=6
+
+============================================================
+QA FOLDER: 김정원_Dialog
+============================================================
+[13:14:08] [INFO] COUNT FOLDER: 김정원_Dialog date=2026-01-22 lang=EN
+[13:14:08] [INFO]   File: 김정원_Dialog.xlsx
+[13:14:11] [INFO]   Sheets: ['Work Transform']
+[13:14:11] [INFO]     SHEET 'Work Transform': max_row=39238, STATUS_col=7, trans_col=2
+[13:14:11] [INFO]     SHEET 'Work Transform': total=39237 issue=85 no_issue=3095 blocked=0 korean=0 words=3180
+[13:14:11] [INFO]   TOTALS: total=39237 done=3180 issues=85 words=3180
+
+============================================================
+QA FOLDER: 김정원_Quest
+============================================================
+[13:14:11] [INFO] COUNT FOLDER: 김정원_Quest date=2026-01-22 lang=EN
+[13:14:11] [INFO]   File: 김정원_Quest.xlsx
+[13:14:11] [INFO]   Sheets: ['Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:11] [INFO]     SHEET 'Main Quest': max_row=590, STATUS_col=5, trans_col=2
+[13:14:11] [INFO]     SHEET 'Main Quest': total=589 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:11] [INFO]     SHEET 'Faction_01': max_row=299, STATUS_col=5, trans_col=2
+[13:14:11] [INFO]     SHEET 'Faction_01': total=298 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:11] [INFO]     SHEET 'Faction_02': max_row=343, STATUS_col=5, trans_col=2
+[13:14:11] [INFO]     SHEET 'Faction_02': total=342 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:11] [INFO]     SHEET 'Faction_03': max_row=1283, STATUS_col=5, trans_col=2
+[13:14:11] [INFO]     SHEET 'Faction_03': total=1274 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:11] [INFO]     SHEET 'Faction_etc': max_row=73, STATUS_col=5, trans_col=2
+[13:14:11] [INFO]     SHEET 'Faction_etc': total=72 issue=0 no_issue=0 blocked=3 korean=1 words=3
+[13:14:11] [INFO]     SHEET 'Region Quest': max_row=978, STATUS_col=5, trans_col=2
+[13:14:11] [INFO]     SHEET 'Region Quest': total=967 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:11] [INFO]     SHEET 'Daily': max_row=294, STATUS_col=5, trans_col=2
+[13:14:11] [INFO]     SHEET 'Daily': total=283 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:11] [INFO]     SHEET 'Politics': max_row=156, STATUS_col=5, trans_col=2
+[13:14:11] [INFO]     SHEET 'Politics': total=155 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:11] [INFO]     SHEET 'Challenge Quest': max_row=1301, STATUS_col=5, trans_col=2
+[13:14:11] [INFO]     SHEET 'Challenge Quest': total=1274 issue=41 no_issue=22 blocked=176 korean=265 words=1187
+[13:14:11] [INFO]     SHEET 'Minigame Quest': max_row=102, STATUS_col=5, trans_col=2
+[13:14:11] [INFO]     SHEET 'Minigame Quest': total=100 issue=25 no_issue=14 blocked=1 korean=22 words=58
+[13:14:11] [INFO]   TOTALS: total=5354 done=570 issues=66 words=1248
+
+============================================================
+QA FOLDER: 김정원_System
+============================================================
+[13:14:11] [INFO] COUNT FOLDER: 김정원_System date=2026-01-20 lang=EN
+[13:14:11] [INFO]   File: System_ENG.xlsx
+[13:14:11] [INFO]   Sheets: ['How_To', 'Menu', 'Greymane', 'Map', 'Other', 'Range']
+[13:14:11] [WARN]     SHEET 'How_To': No STATUS column found
+[13:14:11] [INFO]     SHEET 'Menu': max_row=47, STATUS_col=2, trans_col=1
+[13:14:11] [INFO]     SHEET 'Menu': total=46 issue=7 no_issue=25 blocked=1 korean=0 words=39
+[13:14:11] [INFO]     SHEET 'Greymane': max_row=43, STATUS_col=2, trans_col=1
+[13:14:11] [INFO]     SHEET 'Greymane': total=42 issue=5 no_issue=29 blocked=2 korean=0 words=60
+[13:14:11] [INFO]     SHEET 'Map': max_row=33, STATUS_col=2, trans_col=1
+[13:14:11] [INFO]     SHEET 'Map': total=32 issue=15 no_issue=3 blocked=1 korean=0 words=35
+[13:14:11] [INFO]     SHEET 'Other': max_row=83, STATUS_col=2, trans_col=1
+[13:14:11] [INFO]     SHEET 'Other': total=82 issue=23 no_issue=44 blocked=5 korean=0 words=134
+[13:14:11] [INFO]     SHEET 'Range': max_row=6, STATUS_col=1, trans_col=1
+[13:14:11] [INFO]     SHEET 'Range': total=5 issue=0 no_issue=0 blocked=1 korean=0 words=1
+[13:14:11] [INFO]   TOTALS: total=207 done=161 issues=50 words=269
+
+============================================================
+QA FOLDER: 김찬용_Character
+============================================================
+[13:14:11] [INFO] COUNT FOLDER: 김찬용_Character date=2026-01-20 lang=EN
+[13:14:11] [INFO]   File: Character_LQA_ENG.xlsx
+[13:14:12] [INFO]   Sheets: ['ANIMAL', 'CAMP', 'DEV', 'MAIN', 'MONSTER', 'NPC', 'OBJECT', 'PC', 'PET', 'QUEST', 'VEHICLE']
+[13:14:12] [INFO]     SHEET 'ANIMAL': max_row=785, STATUS_col=4, trans_col=2
+[13:14:12] [INFO]     SHEET 'ANIMAL': total=784 issue=53 no_issue=470 blocked=4 korean=0 words=1081
+[13:14:12] [INFO]     SHEET 'CAMP': max_row=92, STATUS_col=4, trans_col=2
+[13:14:12] [INFO]     SHEET 'CAMP': total=91 issue=5 no_issue=53 blocked=0 korean=0 words=82
+[13:14:12] [INFO]     SHEET 'DEV': max_row=1066, STATUS_col=4, trans_col=2
+[13:14:12] [INFO]     SHEET 'DEV': total=1065 issue=0 no_issue=9 blocked=0 korean=0 words=16
+[13:14:12] [INFO]     SHEET 'MAIN': max_row=110, STATUS_col=4, trans_col=2
+[13:14:12] [INFO]     SHEET 'MAIN': total=109 issue=6 no_issue=75 blocked=0 korean=0 words=148
+[13:14:12] [INFO]     SHEET 'MONSTER': max_row=2175, STATUS_col=4, trans_col=2
+[13:14:12] [INFO]     SHEET 'MONSTER': total=2174 issue=26 no_issue=396 blocked=2 korean=0 words=1188
+[13:14:12] [INFO]     SHEET 'NPC': max_row=3089, STATUS_col=4, trans_col=2
+[13:14:12] [INFO]     SHEET 'NPC': total=3088 issue=40 no_issue=276 blocked=0 korean=0 words=453
+[13:14:12] [INFO]     SHEET 'OBJECT': max_row=48, STATUS_col=4, trans_col=2
+[13:14:12] [INFO]     SHEET 'OBJECT': total=47 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:12] [INFO]     SHEET 'PC': max_row=10, STATUS_col=4, trans_col=2
+[13:14:12] [INFO]     SHEET 'PC': total=9 issue=0 no_issue=2 blocked=3 korean=0 words=17
+[13:14:12] [INFO]     SHEET 'PET': max_row=17, STATUS_col=4, trans_col=2
+[13:14:12] [INFO]     SHEET 'PET': total=16 issue=2 no_issue=8 blocked=1 korean=0 words=25
+[13:14:12] [INFO]     SHEET 'QUEST': max_row=172, STATUS_col=4, trans_col=2
+[13:14:12] [INFO]     SHEET 'QUEST': total=171 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:12] [INFO]     SHEET 'VEHICLE': max_row=154, STATUS_col=4, trans_col=2
+[13:14:12] [INFO]     SHEET 'VEHICLE': total=153 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:12] [INFO]   TOTALS: total=7707 done=1431 issues=132 words=3010
+
+============================================================
+QA FOLDER: 김찬용_Dialog
+============================================================
+[13:14:12] [INFO] COUNT FOLDER: 김찬용_Dialog date=2026-01-22 lang=EN
+[13:14:12] [INFO]   File: 김찬용_Dialog.xlsx
+[13:14:14] [INFO]   Sheets: ['Work Transform']
+[13:14:14] [INFO]     SHEET 'Work Transform': max_row=39238, STATUS_col=7, trans_col=2
+[13:14:14] [INFO]     SHEET 'Work Transform': total=39237 issue=63 no_issue=1060 blocked=0 korean=0 words=1140
+[13:14:14] [INFO]   TOTALS: total=39237 done=1123 issues=63 words=1140
+
+============================================================
+QA FOLDER: 김찬용_Quest
+============================================================
+[13:14:14] [INFO] COUNT FOLDER: 김찬용_Quest date=2026-01-22 lang=EN
+[13:14:14] [INFO]   File: Quest_LQA_ENG.xlsx
+[13:14:14] [INFO]   Sheets: ['Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:14] [INFO]     SHEET 'Main Quest': max_row=590, STATUS_col=5, trans_col=2
+[13:14:14] [INFO]     SHEET 'Main Quest': total=589 issue=49 no_issue=98 blocked=12 korean=40 words=723
+[13:14:14] [INFO]     SHEET 'Faction_01': max_row=299, STATUS_col=5, trans_col=2
+[13:14:14] [INFO]     SHEET 'Faction_01': total=298 issue=0 no_issue=1 blocked=0 korean=5 words=21
+[13:14:14] [INFO]     SHEET 'Faction_02': max_row=343, STATUS_col=5, trans_col=2
+[13:14:14] [INFO]     SHEET 'Faction_02': total=342 issue=1 no_issue=0 blocked=0 korean=0 words=4
+[13:14:14] [INFO]     SHEET 'Faction_03': max_row=1283, STATUS_col=5, trans_col=2
+[13:14:14] [INFO]     SHEET 'Faction_03': total=1274 issue=128 no_issue=146 blocked=283 korean=71 words=2119
+[13:14:14] [INFO]     SHEET 'Faction_etc': max_row=73, STATUS_col=5, trans_col=2
+[13:14:14] [INFO]     SHEET 'Faction_etc': total=72 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:14] [INFO]     SHEET 'Region Quest': max_row=978, STATUS_col=5, trans_col=2
+[13:14:14] [INFO]     SHEET 'Region Quest': total=967 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:14] [INFO]     SHEET 'Daily': max_row=294, STATUS_col=5, trans_col=2
+[13:14:14] [INFO]     SHEET 'Daily': total=283 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:14] [INFO]     SHEET 'Politics': max_row=156, STATUS_col=5, trans_col=2
+[13:14:14] [INFO]     SHEET 'Politics': total=155 issue=0 no_issue=0 blocked=5 korean=0 words=20
+[13:14:14] [INFO]     SHEET 'Challenge Quest': max_row=1301, STATUS_col=5, trans_col=2
+[13:14:14] [INFO]     SHEET 'Challenge Quest': total=1274 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:14] [INFO]     SHEET 'Minigame Quest': max_row=102, STATUS_col=5, trans_col=2
+[13:14:14] [INFO]     SHEET 'Minigame Quest': total=100 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:14] [INFO]   TOTALS: total=5354 done=839 issues=178 words=2887
+
+============================================================
+QA FOLDER: 김찬용_System
+============================================================
+[13:14:14] [INFO] COUNT FOLDER: 김찬용_System date=2026-01-20 lang=EN
+[13:14:14] [INFO]   File: System_ENG.xlsx
+[13:14:15] [INFO]   Sheets: ['How_To', 'Menu', 'Greymane', 'Map', 'Other', 'Range']
+[13:14:15] [WARN]     SHEET 'How_To': No STATUS column found
+[13:14:15] [INFO]     SHEET 'Menu': max_row=47, STATUS_col=2, trans_col=1
+[13:14:15] [INFO]     SHEET 'Menu': total=46 issue=4 no_issue=29 blocked=0 korean=0 words=39
+[13:14:15] [INFO]     SHEET 'Greymane': max_row=43, STATUS_col=2, trans_col=1
+[13:14:15] [INFO]     SHEET 'Greymane': total=42 issue=1 no_issue=34 blocked=1 korean=0 words=60
+[13:14:15] [INFO]     SHEET 'Map': max_row=33, STATUS_col=2, trans_col=1
+[13:14:15] [INFO]     SHEET 'Map': total=32 issue=10 no_issue=9 blocked=0 korean=0 words=35
+[13:14:15] [INFO]     SHEET 'Other': max_row=83, STATUS_col=2, trans_col=1
+[13:14:15] [INFO]     SHEET 'Other': total=82 issue=18 no_issue=53 blocked=1 korean=0 words=134
+[13:14:15] [INFO]     SHEET 'Range': max_row=6, STATUS_col=1, trans_col=1
+[13:14:15] [INFO]     SHEET 'Range': total=5 issue=0 no_issue=0 blocked=1 korean=0 words=1
+[13:14:15] [INFO]   TOTALS: total=207 done=161 issues=33 words=269
+
+============================================================
+QA FOLDER: 김춘애_Item
+============================================================
+[13:14:15] [INFO] COUNT FOLDER: 김춘애_Item date=2026-01-20 lang=CN
+[13:14:15] [INFO]   File: ITEM_WORKING_LQA_ZHO-CN.xlsx
+[13:14:15] [INFO]   Sheets: ['Abyss_Gear', 'Abyss_Item', 'Armor', 'Collectibles', 'Crafting_Manual', 'Document', 'Ingested_Substances', 'Major_Goods', 'Monster_Item', 'Others', 'Poster', 'Weapons']
+[13:14:15] [INFO]     SHEET 'Abyss_Gear': max_row=212, STATUS_col=10, trans_col=7
+[13:14:15] [INFO]     SHEET 'Abyss_Gear': total=211 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:15] [INFO]     SHEET 'Abyss_Item': max_row=160, STATUS_col=10, trans_col=7
+[13:14:15] [INFO]     SHEET 'Abyss_Item': total=159 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:15] [INFO]     SHEET 'Armor': max_row=413, STATUS_col=10, trans_col=7
+[13:14:15] [INFO]     SHEET 'Armor': total=412 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:15] [INFO]     SHEET 'Collectibles': max_row=375, STATUS_col=10, trans_col=7
+[13:14:15] [INFO]     SHEET 'Collectibles': total=374 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:15] [INFO]     SHEET 'Crafting_Manual': max_row=165, STATUS_col=10, trans_col=7
+[13:14:15] [INFO]     SHEET 'Crafting_Manual': total=164 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:15] [INFO]     SHEET 'Document': max_row=128, STATUS_col=10, trans_col=7
+[13:14:15] [INFO]     SHEET 'Document': total=127 issue=1 no_issue=31 blocked=0 korean=26 words=222
+[13:14:15] [INFO]     SHEET 'Ingested_Substances': max_row=575, STATUS_col=10, trans_col=7
+[13:14:15] [INFO]     SHEET 'Ingested_Substances': total=574 issue=6 no_issue=119 blocked=0 korean=9 words=406
+[13:14:15] [INFO]     SHEET 'Major_Goods': max_row=455, STATUS_col=10, trans_col=7
+[13:14:15] [INFO]     SHEET 'Major_Goods': total=454 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:15] [INFO]     SHEET 'Monster_Item': max_row=1658, STATUS_col=10, trans_col=7
+[13:14:15] [INFO]     SHEET 'Monster_Item': total=1657 issue=0 no_issue=82 blocked=0 korean=0 words=599
+[13:14:15] [INFO]     SHEET 'Others': max_row=1191, STATUS_col=10, trans_col=7
+[13:14:15] [INFO]     SHEET 'Others': total=1190 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:15] [INFO]     SHEET 'Poster': max_row=102, STATUS_col=10, trans_col=7
+[13:14:15] [INFO]     SHEET 'Poster': total=101 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:15] [INFO]     SHEET 'Weapons': max_row=463, STATUS_col=10, trans_col=7
+[13:14:15] [INFO]     SHEET 'Weapons': total=462 issue=28 no_issue=89 blocked=0 korean=118 words=984
+[13:14:15] [INFO]   TOTALS: total=5885 done=509 issues=35 words=2211
+
+============================================================
+QA FOLDER: 김춘애_Knowledge
+============================================================
+[13:14:15] [INFO] COUNT FOLDER: 김춘애_Knowledge date=2026-01-20 lang=CN
+[13:14:15] [INFO]   File: Knowledge_LQA_ZHO-CN.xlsx
+[13:14:16] [INFO]   Sheets: ['Abyss Gate', 'People', '피조물', 'Mounts', 'Contents', 'Document', 'Adventure', 'Faction', 'Gatherables', 'Small Tools', 'Collectibles', 'Territories', 'Quests', 'Memory Fragment', 'Games', 'Skills']
+[13:14:16] [INFO]     SHEET 'Abyss Gate': max_row=276, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Abyss Gate': total=274 issue=1 no_issue=40 blocked=0 korean=0 words=169
+[13:14:16] [INFO]     SHEET 'People': max_row=2445, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'People': total=2444 issue=0 no_issue=413 blocked=103 korean=19 words=4020
+[13:14:16] [INFO]     SHEET '피조물': max_row=1173, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET '피조물': total=1172 issue=1 no_issue=223 blocked=0 korean=67 words=772
+[13:14:16] [INFO]     SHEET 'Mounts': max_row=128, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Mounts': total=127 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:16] [INFO]     SHEET 'Contents': max_row=600, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Contents': total=599 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:16] [INFO]     SHEET 'Document': max_row=925, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Document': total=924 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:16] [INFO]     SHEET 'Adventure': max_row=844, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Adventure': total=843 issue=0 no_issue=4 blocked=3 korean=0 words=30
+[13:14:16] [INFO]     SHEET 'Faction': max_row=581, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Faction': total=580 issue=2 no_issue=133 blocked=15 korean=60 words=1033
+[13:14:16] [INFO]     SHEET 'Gatherables': max_row=357, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Gatherables': total=356 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:16] [INFO]     SHEET 'Small Tools': max_row=45, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Small Tools': total=44 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:16] [INFO]     SHEET 'Collectibles': max_row=351, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Collectibles': total=350 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:16] [INFO]     SHEET 'Territories': max_row=2277, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Territories': total=2275 issue=4 no_issue=596 blocked=359 korean=51 words=7778
+[13:14:16] [INFO]     SHEET 'Quests': max_row=846, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Quests': total=845 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:16] [INFO]     SHEET 'Memory Fragment': max_row=537, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Memory Fragment': total=536 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:16] [INFO]     SHEET 'Games': max_row=39, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Games': total=38 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:16] [INFO]     SHEET 'Skills': max_row=805, STATUS_col=4, trans_col=3
+[13:14:16] [INFO]     SHEET 'Skills': total=802 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:16] [INFO]   TOTALS: total=12209 done=2094 issues=8 words=13802
+
+============================================================
+QA FOLDER: 김춘애_Quest
+============================================================
+[13:14:16] [INFO] COUNT FOLDER: 김춘애_Quest date=2026-01-22 lang=CN
+[13:14:16] [INFO]   File: 김춘애_Quest_LQA_ZHO-CN.xlsx
+[13:14:17] [INFO]   Sheets: ['Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:17] [INFO]     SHEET 'Main Quest': max_row=590, STATUS_col=6, trans_col=3
+[13:14:17] [INFO]     SHEET 'Main Quest': total=589 issue=67 no_issue=445 blocked=30 korean=47 words=3485
+[13:14:17] [INFO]     SHEET 'Faction_01': max_row=299, STATUS_col=6, trans_col=3
+[13:14:17] [INFO]     SHEET 'Faction_01': total=298 issue=26 no_issue=167 blocked=31 korean=74 words=1574
+[13:14:17] [INFO]     SHEET 'Faction_02': max_row=343, STATUS_col=6, trans_col=3
+[13:14:17] [INFO]     SHEET 'Faction_02': total=342 issue=70 no_issue=175 blocked=42 korean=55 words=1972
+[13:14:17] [INFO]     SHEET 'Faction_03': max_row=1283, STATUS_col=6, trans_col=3
+[13:14:17] [INFO]     SHEET 'Faction_03': total=1274 issue=141 no_issue=687 blocked=224 korean=222 words=6656
+[13:14:17] [INFO]     SHEET 'Faction_etc': max_row=73, STATUS_col=6, trans_col=3
+[13:14:17] [INFO]     SHEET 'Faction_etc': total=72 issue=13 no_issue=11 blocked=24 korean=24 words=312
+[13:14:17] [INFO]     SHEET 'Region Quest': max_row=978, STATUS_col=6, trans_col=3
+[13:14:17] [INFO]     SHEET 'Region Quest': total=967 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:17] [INFO]     SHEET 'Daily': max_row=294, STATUS_col=6, trans_col=3
+[13:14:17] [INFO]     SHEET 'Daily': total=283 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:17] [INFO]     SHEET 'Politics': max_row=156, STATUS_col=6, trans_col=3
+[13:14:17] [INFO]     SHEET 'Politics': total=155 issue=0 no_issue=0 blocked=21 korean=0 words=182
+[13:14:17] [INFO]     SHEET 'Challenge Quest': max_row=1301, STATUS_col=6, trans_col=3
+[13:14:17] [INFO]     SHEET 'Challenge Quest': total=1274 issue=1 no_issue=0 blocked=1 korean=0 words=6
+[13:14:17] [INFO]     SHEET 'Minigame Quest': max_row=102, STATUS_col=6, trans_col=3
+[13:14:17] [INFO]     SHEET 'Minigame Quest': total=100 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:17] [INFO]   TOTALS: total=5354 done=2598 issues=318 words=14187
+
+============================================================
+QA FOLDER: 김헌동_Help
+============================================================
+[13:14:17] [INFO] COUNT FOLDER: 김헌동_Help date=2026-01-20 lang=EN
+[13:14:17] [INFO]   File: LQA_GameAdvice_ENG.xlsx
+[13:14:17] [INFO]   Sheets: ['GameAdvice']
+[13:14:17] [INFO]     SHEET 'GameAdvice': max_row=774, STATUS_col=3, trans_col=2
+[13:14:17] [INFO]     SHEET 'GameAdvice': total=773 issue=2 no_issue=149 blocked=38 korean=34 words=394
+[13:14:17] [INFO]   TOTALS: total=773 done=223 issues=2 words=394
+
+============================================================
+QA FOLDER: 김헌동_Item
+============================================================
+[13:14:17] [INFO] COUNT FOLDER: 김헌동_Item date=2026-01-20 lang=EN
+[13:14:17] [INFO]   File: ITEM_WORKING_LQA_ENG.xlsx
+[13:14:17] [INFO]   Sheets: ['Abyss_Gear', 'Abyss_Item', 'Armor', 'Collectibles', 'Crafting_Manual', 'Document', 'Ingested_Substances', 'Major_Goods', 'Monster_Item', 'Others', 'Poster', 'Weapons']
+[13:14:17] [INFO]     SHEET 'Abyss_Gear': max_row=212, STATUS_col=8, trans_col=5
+[13:14:17] [INFO]     SHEET 'Abyss_Gear': total=211 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:17] [INFO]     SHEET 'Abyss_Item': max_row=160, STATUS_col=8, trans_col=5
+[13:14:17] [INFO]     SHEET 'Abyss_Item': total=159 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:17] [INFO]     SHEET 'Armor': max_row=413, STATUS_col=8, trans_col=5
+[13:14:17] [INFO]     SHEET 'Armor': total=412 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:17] [INFO]     SHEET 'Collectibles': max_row=375, STATUS_col=8, trans_col=5
+[13:14:17] [INFO]     SHEET 'Collectibles': total=374 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:17] [INFO]     SHEET 'Crafting_Manual': max_row=165, STATUS_col=8, trans_col=5
+[13:14:17] [INFO]     SHEET 'Crafting_Manual': total=164 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:17] [INFO]     SHEET 'Document': max_row=128, STATUS_col=8, trans_col=5
+[13:14:17] [INFO]     SHEET 'Document': total=127 issue=0 no_issue=87 blocked=1 korean=0 words=260
+[13:14:17] [INFO]     SHEET 'Ingested_Substances': max_row=575, STATUS_col=8, trans_col=5
+[13:14:17] [INFO]     SHEET 'Ingested_Substances': total=574 issue=2 no_issue=109 blocked=2 korean=0 words=231
+[13:14:17] [INFO]     SHEET 'Major_Goods': max_row=455, STATUS_col=8, trans_col=5
+[13:14:17] [INFO]     SHEET 'Major_Goods': total=454 issue=0 no_issue=9 blocked=2 korean=0 words=29
+[13:14:17] [INFO]     SHEET 'Monster_Item': max_row=1658, STATUS_col=8, trans_col=5
+[13:14:17] [INFO]     SHEET 'Monster_Item': total=1657 issue=0 no_issue=1241 blocked=13 korean=8 words=3871
+[13:14:17] [INFO]     SHEET 'Others': max_row=1191, STATUS_col=8, trans_col=5
+[13:14:17] [INFO]     SHEET 'Others': total=1190 issue=3 no_issue=350 blocked=34 korean=49 words=1513
+[13:14:17] [INFO]     SHEET 'Poster': max_row=102, STATUS_col=8, trans_col=5
+[13:14:17] [INFO]     SHEET 'Poster': total=101 issue=0 no_issue=97 blocked=0 korean=0 words=228
+[13:14:17] [INFO]     SHEET 'Weapons': max_row=463, STATUS_col=8, trans_col=5
+[13:14:17] [INFO]     SHEET 'Weapons': total=462 issue=6 no_issue=18 blocked=115 korean=0 words=349
+[13:14:17] [INFO]   TOTALS: total=5885 done=2146 issues=11 words=6481
+
+============================================================
+QA FOLDER: 김헌동_Quest
+============================================================
+[13:14:17] [INFO] COUNT FOLDER: 김헌동_Quest date=2026-01-22 lang=EN
+[13:14:17] [INFO]   File: 김헌동_Quest.xlsx
+[13:14:18] [INFO]   Sheets: ['Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:18] [INFO]     SHEET 'Main Quest': max_row=590, STATUS_col=5, trans_col=2
+[13:14:18] [INFO]     SHEET 'Main Quest': total=589 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]     SHEET 'Faction_01': max_row=299, STATUS_col=5, trans_col=2
+[13:14:18] [INFO]     SHEET 'Faction_01': total=298 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]     SHEET 'Faction_02': max_row=343, STATUS_col=5, trans_col=2
+[13:14:18] [INFO]     SHEET 'Faction_02': total=342 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]     SHEET 'Faction_03': max_row=1283, STATUS_col=5, trans_col=2
+[13:14:18] [INFO]     SHEET 'Faction_03': total=1274 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]     SHEET 'Faction_etc': max_row=73, STATUS_col=5, trans_col=2
+[13:14:18] [INFO]     SHEET 'Faction_etc': total=72 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]     SHEET 'Region Quest': max_row=978, STATUS_col=5, trans_col=2
+[13:14:18] [INFO]     SHEET 'Region Quest': total=967 issue=6 no_issue=8 blocked=0 korean=0 words=48
+[13:14:18] [INFO]     SHEET 'Daily': max_row=294, STATUS_col=5, trans_col=2
+[13:14:18] [INFO]     SHEET 'Daily': total=283 issue=37 no_issue=3 blocked=14 korean=0 words=159
+[13:14:18] [INFO]     SHEET 'Politics': max_row=156, STATUS_col=5, trans_col=2
+[13:14:18] [INFO]     SHEET 'Politics': total=155 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]     SHEET 'Challenge Quest': max_row=1301, STATUS_col=5, trans_col=2
+[13:14:18] [INFO]     SHEET 'Challenge Quest': total=1274 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]     SHEET 'Minigame Quest': max_row=102, STATUS_col=5, trans_col=2
+[13:14:18] [INFO]     SHEET 'Minigame Quest': total=100 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]   TOTALS: total=5354 done=68 issues=43 words=207
+
+============================================================
+QA FOLDER: 김헌동_Skill
+============================================================
+[13:14:18] [INFO] COUNT FOLDER: 김헌동_Skill date=2026-01-20 lang=EN
+[13:14:18] [INFO]   File: LQA_Skill_ENG.xlsx
+[13:14:18] [INFO]   Sheets: ['Skills']
+[13:14:18] [INFO]     SHEET 'Skills': max_row=1175, STATUS_col=3, trans_col=2
+[13:14:18] [INFO]     SHEET 'Skills': total=1174 issue=68 no_issue=520 blocked=0 korean=7 words=3423
+[13:14:18] [INFO]   TOTALS: total=1174 done=595 issues=68 words=3423
+
+============================================================
+QA FOLDER: 김헌동_System
+============================================================
+[13:14:18] [INFO] COUNT FOLDER: 김헌동_System date=2026-01-20 lang=EN
+[13:14:18] [INFO]   File: System_ENG.xlsx
+[13:14:18] [INFO]   Sheets: ['How_To', 'Menu', 'Greymane', 'Map', 'Other', 'Range']
+[13:14:18] [WARN]     SHEET 'How_To': No STATUS column found
+[13:14:18] [INFO]     SHEET 'Menu': max_row=47, STATUS_col=2, trans_col=1
+[13:14:18] [INFO]     SHEET 'Menu': total=46 issue=0 no_issue=39 blocked=0 korean=1 words=53
+[13:14:18] [INFO]     SHEET 'Greymane': max_row=43, STATUS_col=2, trans_col=1
+[13:14:18] [INFO]     SHEET 'Greymane': total=42 issue=0 no_issue=42 blocked=0 korean=0 words=73
+[13:14:18] [INFO]     SHEET 'Map': max_row=33, STATUS_col=2, trans_col=1
+[13:14:18] [INFO]     SHEET 'Map': total=32 issue=0 no_issue=19 blocked=0 korean=2 words=41
+[13:14:18] [INFO]     SHEET 'Other': max_row=83, STATUS_col=2, trans_col=1
+[13:14:18] [INFO]     SHEET 'Other': total=82 issue=22 no_issue=36 blocked=3 korean=2 words=123
+[13:14:18] [INFO]     SHEET 'Range': max_row=6, STATUS_col=1, trans_col=1
+[13:14:18] [INFO]     SHEET 'Range': total=5 issue=0 no_issue=0 blocked=1 korean=0 words=1
+[13:14:18] [INFO]   TOTALS: total=207 done=167 issues=22 words=291
+
+============================================================
+QA FOLDER: 뤄이롼_Character
+============================================================
+[13:14:18] [INFO] COUNT FOLDER: 뤄이롼_Character date=2026-01-20 lang=CN
+[13:14:18] [INFO]   File: Character_LQA_ZHO-CN.xlsx
+[13:14:18] [INFO]   Sheets: ['ANIMAL', 'CAMP', 'DEV', 'MAIN', 'MONSTER', 'NPC', 'OBJECT', 'PC', 'PET', 'QUEST', 'VEHICLE']
+[13:14:18] [INFO]     SHEET 'ANIMAL': max_row=785, STATUS_col=5, trans_col=3
+[13:14:18] [INFO]     SHEET 'ANIMAL': total=784 issue=1 no_issue=338 blocked=105 korean=3 words=1465
+[13:14:18] [INFO]     SHEET 'CAMP': max_row=92, STATUS_col=5, trans_col=3
+[13:14:18] [INFO]     SHEET 'CAMP': total=91 issue=0 no_issue=54 blocked=1 korean=3 words=240
+[13:14:18] [INFO]     SHEET 'DEV': max_row=1066, STATUS_col=5, trans_col=3
+[13:14:18] [INFO]     SHEET 'DEV': total=1065 issue=0 no_issue=7 blocked=0 korean=0 words=30
+[13:14:18] [INFO]     SHEET 'MAIN': max_row=110, STATUS_col=5, trans_col=3
+[13:14:18] [INFO]     SHEET 'MAIN': total=109 issue=0 no_issue=58 blocked=12 korean=5 words=323
+[13:14:18] [INFO]     SHEET 'MONSTER': max_row=2175, STATUS_col=5, trans_col=3
+[13:14:18] [INFO]     SHEET 'MONSTER': total=2174 issue=1 no_issue=243 blocked=99 korean=9 words=2101
+[13:14:18] [INFO]     SHEET 'NPC': max_row=3089, STATUS_col=5, trans_col=3
+[13:14:18] [INFO]     SHEET 'NPC': total=3088 issue=1 no_issue=156 blocked=9 korean=1 words=719
+[13:14:18] [INFO]     SHEET 'OBJECT': max_row=48, STATUS_col=5, trans_col=3
+[13:14:18] [INFO]     SHEET 'OBJECT': total=47 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]     SHEET 'PC': max_row=10, STATUS_col=5, trans_col=3
+[13:14:18] [INFO]     SHEET 'PC': total=9 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]     SHEET 'PET': max_row=17, STATUS_col=5, trans_col=3
+[13:14:18] [INFO]     SHEET 'PET': total=16 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]     SHEET 'QUEST': max_row=172, STATUS_col=5, trans_col=3
+[13:14:18] [INFO]     SHEET 'QUEST': total=171 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]     SHEET 'VEHICLE': max_row=154, STATUS_col=5, trans_col=3
+[13:14:18] [INFO]     SHEET 'VEHICLE': total=153 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:18] [INFO]   TOTALS: total=7707 done=1106 issues=3 words=4878
+
+============================================================
+QA FOLDER: 뤄이롼_Quest
+============================================================
+[13:14:18] [INFO] COUNT FOLDER: 뤄이롼_Quest date=2026-01-21 lang=CN
+[13:14:18] [INFO]   File: Quest_LQA_ZHO-CN.xlsx
+[13:14:19] [INFO]   Sheets: ['Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:19] [INFO]     SHEET 'Main Quest': max_row=590, STATUS_col=6, trans_col=3
+[13:14:19] [INFO]     SHEET 'Main Quest': total=589 issue=0 no_issue=15 blocked=0 korean=1 words=90
+[13:14:19] [INFO]     SHEET 'Faction_01': max_row=299, STATUS_col=6, trans_col=3
+[13:14:19] [INFO]     SHEET 'Faction_01': total=298 issue=0 no_issue=203 blocked=37 korean=50 words=1534
+[13:14:19] [INFO]     SHEET 'Faction_02': max_row=343, STATUS_col=6, trans_col=3
+[13:14:19] [INFO]     SHEET 'Faction_02': total=342 issue=0 no_issue=69 blocked=17 korean=21 words=588
+[13:14:19] [INFO]     SHEET 'Faction_03': max_row=1283, STATUS_col=6, trans_col=3
+[13:14:19] [INFO]     SHEET 'Faction_03': total=1274 issue=0 no_issue=2 blocked=0 korean=0 words=18
+[13:14:19] [INFO]     SHEET 'Faction_etc': max_row=73, STATUS_col=6, trans_col=3
+[13:14:19] [INFO]     SHEET 'Faction_etc': total=72 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:19] [INFO]     SHEET 'Region Quest': max_row=978, STATUS_col=6, trans_col=3
+[13:14:19] [INFO]     SHEET 'Region Quest': total=967 issue=2 no_issue=794 blocked=117 korean=54 words=5328
+[13:14:19] [INFO]     SHEET 'Daily': max_row=294, STATUS_col=6, trans_col=3
+[13:14:19] [INFO]     SHEET 'Daily': total=283 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:19] [INFO]     SHEET 'Politics': max_row=156, STATUS_col=6, trans_col=3
+[13:14:19] [INFO]     SHEET 'Politics': total=155 issue=0 no_issue=5 blocked=0 korean=2 words=51
+[13:14:19] [INFO]     SHEET 'Challenge Quest': max_row=1301, STATUS_col=6, trans_col=3
+[13:14:19] [INFO]     SHEET 'Challenge Quest': total=1274 issue=0 no_issue=322 blocked=152 korean=151 words=3199
+[13:14:19] [INFO]     SHEET 'Minigame Quest': max_row=102, STATUS_col=6, trans_col=3
+[13:14:19] [INFO]     SHEET 'Minigame Quest': total=100 issue=0 no_issue=11 blocked=36 korean=53 words=218
+[13:14:19] [INFO]   TOTALS: total=5354 done=2114 issues=2 words=11026
+
+============================================================
+QA FOLDER: 뤄이롼_Sequencer
+============================================================
+[13:14:19] [INFO] COUNT FOLDER: 뤄이롼_Sequencer date=2026-01-22 lang=CN
+[13:14:19] [INFO]   File: 260121 CN SCRIPT_v2.xlsx
+[13:14:21] [INFO]   Sheets: ['ADR_0104']
+[13:14:21] [INFO]     SHEET 'ADR_0104': max_row=17132, STATUS_col=14, trans_col=3
+[13:14:21] [INFO]     SHEET 'ADR_0104': total=17126 issue=100 no_issue=696 blocked=0 korean=0 words=27544
+[13:14:21] [INFO]   TOTALS: total=17126 done=796 issues=100 words=27544
+
+============================================================
+QA FOLDER: 리쓰한_Character
+============================================================
+[13:14:21] [INFO] COUNT FOLDER: 리쓰한_Character date=2026-01-20 lang=CN
+[13:14:21] [INFO]   File: Character_LQA_ZHO-CN.xlsx
+[13:14:21] [INFO]   Sheets: ['ANIMAL', 'CAMP', 'DEV', 'MAIN', 'MONSTER', 'NPC', 'OBJECT', 'PC', 'PET', 'QUEST', 'VEHICLE']
+[13:14:21] [INFO]     SHEET 'ANIMAL': max_row=785, STATUS_col=5, trans_col=3
+[13:14:21] [INFO]     SHEET 'ANIMAL': total=784 issue=0 no_issue=5 blocked=1 korean=0 words=17
+[13:14:21] [INFO]     SHEET 'CAMP': max_row=92, STATUS_col=5, trans_col=3
+[13:14:21] [INFO]     SHEET 'CAMP': total=91 issue=0 no_issue=1 blocked=0 korean=0 words=4
+[13:14:21] [INFO]     SHEET 'DEV': max_row=1066, STATUS_col=5, trans_col=3
+[13:14:21] [INFO]     SHEET 'DEV': total=1065 issue=0 no_issue=2 blocked=0 korean=0 words=7
+[13:14:21] [INFO]     SHEET 'MAIN': max_row=110, STATUS_col=5, trans_col=3
+[13:14:21] [INFO]     SHEET 'MAIN': total=109 issue=0 no_issue=7 blocked=0 korean=0 words=24
+[13:14:21] [INFO]     SHEET 'MONSTER': max_row=2175, STATUS_col=5, trans_col=3
+[13:14:21] [INFO]     SHEET 'MONSTER': total=2174 issue=0 no_issue=3 blocked=0 korean=0 words=18
+[13:14:21] [INFO]     SHEET 'NPC': max_row=3089, STATUS_col=5, trans_col=3
+[13:14:21] [INFO]     SHEET 'NPC': total=3088 issue=1 no_issue=284 blocked=12 korean=0 words=1085
+[13:14:21] [INFO]     SHEET 'OBJECT': max_row=48, STATUS_col=5, trans_col=3
+[13:14:21] [INFO]     SHEET 'OBJECT': total=47 issue=0 no_issue=0 blocked=23 korean=0 words=116
+[13:14:21] [INFO]     SHEET 'PC': max_row=10, STATUS_col=5, trans_col=3
+[13:14:21] [INFO]     SHEET 'PC': total=9 issue=0 no_issue=0 blocked=4 korean=0 words=26
+[13:14:21] [INFO]     SHEET 'PET': max_row=17, STATUS_col=5, trans_col=3
+[13:14:21] [INFO]     SHEET 'PET': total=16 issue=0 no_issue=3 blocked=8 korean=0 words=36
+[13:14:21] [INFO]     SHEET 'QUEST': max_row=172, STATUS_col=5, trans_col=3
+[13:14:21] [INFO]     SHEET 'QUEST': total=171 issue=1 no_issue=113 blocked=1 korean=0 words=472
+[13:14:21] [INFO]     SHEET 'VEHICLE': max_row=154, STATUS_col=5, trans_col=3
+[13:14:21] [INFO]     SHEET 'VEHICLE': total=153 issue=0 no_issue=73 blocked=4 korean=1 words=440
+[13:14:21] [INFO]   TOTALS: total=7707 done=547 issues=2 words=2245
+
+============================================================
+QA FOLDER: 리쓰한_Knowledge
+============================================================
+[13:14:21] [INFO] COUNT FOLDER: 리쓰한_Knowledge date=2026-01-20 lang=CN
+[13:14:21] [INFO]   File: Knowledge_LQA_ZHO-CN.xlsx
+[13:14:22] [INFO]   Sheets: ['Abyss Gate', 'People', '피조물', 'Mounts', 'Contents', 'Document', 'Adventure', 'Faction', 'Gatherables', 'Small Tools', 'Collectibles', 'Territories', 'Quests', 'Memory Fragment', 'Games', 'Skills']
+[13:14:22] [INFO]     SHEET 'Abyss Gate': max_row=276, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Abyss Gate': total=274 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:22] [INFO]     SHEET 'People': max_row=2445, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'People': total=2444 issue=0 no_issue=1 blocked=0 korean=0 words=4
+[13:14:22] [INFO]     SHEET '피조물': max_row=1173, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET '피조물': total=1172 issue=0 no_issue=90 blocked=3 korean=24 words=313
+[13:14:22] [INFO]     SHEET 'Mounts': max_row=128, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Mounts': total=127 issue=3 no_issue=22 blocked=1 korean=17 words=128
+[13:14:22] [INFO]     SHEET 'Contents': max_row=600, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Contents': total=599 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:22] [INFO]     SHEET 'Document': max_row=925, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Document': total=924 issue=1 no_issue=96 blocked=9 korean=92 words=552
+[13:14:22] [INFO]     SHEET 'Adventure': max_row=844, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Adventure': total=843 issue=4 no_issue=310 blocked=42 korean=31 words=2243
+[13:14:22] [INFO]     SHEET 'Faction': max_row=581, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Faction': total=580 issue=0 no_issue=1 blocked=0 korean=0 words=10
+[13:14:22] [INFO]     SHEET 'Gatherables': max_row=357, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Gatherables': total=356 issue=3 no_issue=159 blocked=9 korean=65 words=580
+[13:14:22] [INFO]     SHEET 'Small Tools': max_row=45, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Small Tools': total=44 issue=0 no_issue=1 blocked=0 korean=0 words=2
+[13:14:22] [INFO]     SHEET 'Collectibles': max_row=351, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Collectibles': total=350 issue=1 no_issue=19 blocked=50 korean=179 words=795
+[13:14:22] [INFO]     SHEET 'Territories': max_row=2277, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Territories': total=2275 issue=0 no_issue=28 blocked=0 korean=0 words=147
+[13:14:22] [INFO]     SHEET 'Quests': max_row=846, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Quests': total=845 issue=0 no_issue=1 blocked=0 korean=0 words=4
+[13:14:22] [INFO]     SHEET 'Memory Fragment': max_row=537, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Memory Fragment': total=536 issue=0 no_issue=13 blocked=1 korean=15 words=74
+[13:14:22] [INFO]     SHEET 'Games': max_row=39, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Games': total=38 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:22] [INFO]     SHEET 'Skills': max_row=805, STATUS_col=4, trans_col=3
+[13:14:22] [INFO]     SHEET 'Skills': total=802 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:22] [INFO]   TOTALS: total=12209 done=1291 issues=12 words=4852
+
+============================================================
+QA FOLDER: 리쓰한_Quest
+============================================================
+[13:14:22] [INFO] COUNT FOLDER: 리쓰한_Quest date=2026-01-21 lang=CN
+[13:14:22] [INFO]   File: 리쓰한_Quest_LQA_ZHO-CN.xlsx
+[13:14:23] [INFO]   Sheets: ['Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:23] [INFO]     SHEET 'Main Quest': max_row=588, STATUS_col=6, trans_col=3
+[13:14:23] [INFO]     SHEET 'Main Quest': total=587 issue=37 no_issue=90 blocked=14 korean=27 words=884
+[13:14:23] [INFO]     SHEET 'Faction_01': max_row=299, STATUS_col=6, trans_col=3
+[13:14:23] [INFO]     SHEET 'Faction_01': total=298 issue=0 no_issue=2 blocked=1 korean=0 words=14
+[13:14:23] [INFO]     SHEET 'Faction_02': max_row=341, STATUS_col=6, trans_col=3
+[13:14:23] [INFO]     SHEET 'Faction_02': total=340 issue=0 no_issue=1 blocked=0 korean=0 words=5
+[13:14:23] [INFO]     SHEET 'Faction_03': max_row=1292, STATUS_col=6, trans_col=3
+[13:14:23] [INFO]     SHEET 'Faction_03': total=1283 issue=0 no_issue=2 blocked=1 korean=0 words=16
+[13:14:23] [INFO]     SHEET 'Faction_etc': max_row=73, STATUS_col=6, trans_col=3
+[13:14:23] [INFO]     SHEET 'Faction_etc': total=72 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:23] [INFO]     SHEET 'Region Quest': max_row=978, STATUS_col=6, trans_col=3
+[13:14:23] [INFO]     SHEET 'Region Quest': total=967 issue=0 no_issue=6 blocked=2 korean=0 words=43
+[13:14:23] [INFO]     SHEET 'Daily': max_row=294, STATUS_col=6, trans_col=3
+[13:14:23] [INFO]     SHEET 'Daily': total=283 issue=30 no_issue=168 blocked=16 korean=28 words=1357
+[13:14:23] [INFO]     SHEET 'Politics': max_row=156, STATUS_col=6, trans_col=3
+[13:14:23] [INFO]     SHEET 'Politics': total=155 issue=0 no_issue=3 blocked=25 korean=127 words=238
+[13:14:23] [INFO]     SHEET 'Challenge Quest': max_row=1301, STATUS_col=6, trans_col=3
+[13:14:23] [INFO]     SHEET 'Challenge Quest': total=1274 issue=7 no_issue=393 blocked=236 korean=11 words=3872
+[13:14:23] [INFO]     SHEET 'Minigame Quest': max_row=102, STATUS_col=6, trans_col=3
+[13:14:23] [INFO]     SHEET 'Minigame Quest': total=100 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:23] [INFO]   TOTALS: total=5359 done=1227 issues=74 words=6429
+
+============================================================
+QA FOLDER: 리쓰한_Sequencer
+============================================================
+[13:14:23] [INFO] COUNT FOLDER: 리쓰한_Sequencer date=2026-01-22 lang=CN
+[13:14:23] [INFO]   File: 리쓰한_260121 CN SCRIPT_v2.xlsx
+[13:14:25] [INFO]   Sheets: ['ADR_0104']
+[13:14:25] [INFO]     SHEET 'ADR_0104': max_row=17132, STATUS_col=14, trans_col=3
+[13:14:25] [INFO]     SHEET 'ADR_0104': total=17126 issue=55 no_issue=185 blocked=0 korean=0 words=12480
+[13:14:25] [INFO]   TOTALS: total=17126 done=240 issues=55 words=12480
+
+============================================================
+QA FOLDER: 성가은_Quest
+============================================================
+[13:14:25] [INFO] COUNT FOLDER: 성가은_Quest date=2026-01-21 lang=EN
+[13:14:25] [INFO]   File: Quest_성가은.xlsx
+[13:14:25] [INFO]   Sheets: ['Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:25] [INFO]     SHEET 'Main Quest': max_row=590, STATUS_col=5, trans_col=2
+[13:14:25] [INFO]     SHEET 'Main Quest': total=589 issue=54 no_issue=85 blocked=3 korean=12 words=564
+[13:14:25] [INFO]     SHEET 'Faction_01': max_row=299, STATUS_col=5, trans_col=2
+[13:14:25] [INFO]     SHEET 'Faction_01': total=298 issue=3 no_issue=0 blocked=1 korean=0 words=21
+[13:14:25] [INFO]     SHEET 'Faction_02': max_row=343, STATUS_col=5, trans_col=2
+[13:14:25] [INFO]     SHEET 'Faction_02': total=342 issue=1 no_issue=0 blocked=0 korean=1 words=4
+[13:14:25] [INFO]     SHEET 'Faction_03': max_row=1283, STATUS_col=5, trans_col=2
+[13:14:25] [INFO]     SHEET 'Faction_03': total=1274 issue=71 no_issue=165 blocked=20 korean=121 words=999
+[13:14:25] [INFO]     SHEET 'Faction_etc': max_row=73, STATUS_col=5, trans_col=2
+[13:14:25] [INFO]     SHEET 'Faction_etc': total=72 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:25] [INFO]     SHEET 'Region Quest': max_row=978, STATUS_col=5, trans_col=2
+[13:14:25] [INFO]     SHEET 'Region Quest': total=967 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:25] [INFO]     SHEET 'Daily': max_row=294, STATUS_col=5, trans_col=2
+[13:14:25] [INFO]     SHEET 'Daily': total=283 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:25] [INFO]     SHEET 'Politics': max_row=156, STATUS_col=5, trans_col=2
+[13:14:25] [INFO]     SHEET 'Politics': total=155 issue=0 no_issue=1 blocked=0 korean=0 words=3
+[13:14:25] [INFO]     SHEET 'Challenge Quest': max_row=1301, STATUS_col=5, trans_col=2
+[13:14:25] [INFO]     SHEET 'Challenge Quest': total=1274 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:25] [INFO]     SHEET 'Minigame Quest': max_row=102, STATUS_col=5, trans_col=2
+[13:14:25] [INFO]     SHEET 'Minigame Quest': total=100 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:25] [INFO]   TOTALS: total=5354 done=538 issues=129 words=1591
+
+============================================================
+QA FOLDER: 성가은_Region
+============================================================
+[13:14:25] [INFO] COUNT FOLDER: 성가은_Region date=2026-01-20 lang=EN
+[13:14:25] [INFO]   File: Region_LQA_ENG.xlsx
+[13:14:25] [INFO]   Sheets: ['Abyss', 'Crimson Desert', 'Delesyia', 'Demeniss', 'Greymanes', 'Hernand', 'Pailune', 'No Faction', 'Shop']
+[13:14:25] [INFO]     SHEET 'Abyss': max_row=2, STATUS_col=3, trans_col=2
+[13:14:25] [INFO]     SHEET 'Abyss': total=1 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:25] [INFO]     SHEET 'Crimson Desert': max_row=208, STATUS_col=3, trans_col=2
+[13:14:25] [INFO]     SHEET 'Crimson Desert': total=207 issue=5 no_issue=100 blocked=0 korean=0 words=296
+[13:14:25] [INFO]     SHEET 'Delesyia': max_row=251, STATUS_col=3, trans_col=2
+[13:14:25] [INFO]     SHEET 'Delesyia': total=250 issue=5 no_issue=112 blocked=2 korean=2 words=327
+[13:14:25] [INFO]     SHEET 'Demeniss': max_row=282, STATUS_col=3, trans_col=2
+[13:14:25] [INFO]     SHEET 'Demeniss': total=281 issue=6 no_issue=121 blocked=2 korean=6 words=318
+[13:14:25] [INFO]     SHEET 'Greymanes': max_row=2, STATUS_col=3, trans_col=2
+[13:14:25] [INFO]     SHEET 'Greymanes': total=1 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:25] [INFO]     SHEET 'Hernand': max_row=345, STATUS_col=3, trans_col=2
+[13:14:25] [INFO]     SHEET 'Hernand': total=344 issue=2 no_issue=162 blocked=0 korean=0 words=403
+[13:14:25] [INFO]     SHEET 'Pailune': max_row=156, STATUS_col=3, trans_col=2
+[13:14:25] [INFO]     SHEET 'Pailune': total=155 issue=3 no_issue=79 blocked=0 korean=0 words=167
+[13:14:25] [INFO]     SHEET 'No Faction': max_row=1019, STATUS_col=3, trans_col=2
+[13:14:25] [INFO]     SHEET 'No Faction': total=1018 issue=4 no_issue=413 blocked=0 korean=1 words=1408
+[13:14:25] [INFO]     SHEET 'Shop': max_row=595, STATUS_col=3, trans_col=2
+[13:14:25] [INFO]     SHEET 'Shop': total=594 issue=25 no_issue=155 blocked=13 korean=0 words=3054
+[13:14:25] [INFO]   TOTALS: total=2851 done=1218 issues=50 words=5973
+
+============================================================
+QA FOLDER: 유지윤_Help
+============================================================
+[13:14:25] [INFO] COUNT FOLDER: 유지윤_Help date=2026-01-20 lang=EN
+[13:14:25] [INFO]   File: 유지윤_LQA_GameAdvice_ENG.xlsx
+[13:14:25] [INFO]   Sheets: ['GameAdvice']
+[13:14:25] [INFO]     SHEET 'GameAdvice': max_row=772, STATUS_col=3, trans_col=2
+[13:14:25] [INFO]     SHEET 'GameAdvice': total=771 issue=55 no_issue=272 blocked=90 korean=354 words=3111
+[13:14:25] [INFO]   TOTALS: total=771 done=771 issues=55 words=3111
+
+============================================================
+QA FOLDER: 유지윤_Knowledge
+============================================================
+[13:14:25] [INFO] COUNT FOLDER: 유지윤_Knowledge date=2026-01-20 lang=EN
+[13:14:25] [INFO]   File: Knowledge_LQA_ENG.xlsx
+[13:14:26] [INFO]   Sheets: ['Abyss Gate', 'People', '피조물', 'Mounts', 'Contents', 'Document', 'Adventure', 'Faction', 'Gatherables', 'Small Tools', 'Collectibles', 'Territories', 'Quests', 'Memory Fragment', 'Games', 'Skills']
+[13:14:26] [INFO]     SHEET 'Abyss Gate': max_row=276, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Abyss Gate': total=274 issue=0 no_issue=0 blocked=1 korean=0 words=1
+[13:14:26] [INFO]     SHEET 'People': max_row=2445, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'People': total=2444 issue=2 no_issue=5 blocked=0 korean=0 words=14
+[13:14:26] [INFO]     SHEET '피조물': max_row=1173, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET '피조물': total=1172 issue=0 no_issue=1 blocked=1 korean=0 words=2
+[13:14:26] [INFO]     SHEET 'Mounts': max_row=128, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Mounts': total=127 issue=2 no_issue=42 blocked=3 korean=0 words=180
+[13:14:26] [INFO]     SHEET 'Contents': max_row=600, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Contents': total=599 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:26] [INFO]     SHEET 'Document': max_row=925, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Document': total=924 issue=18 no_issue=184 blocked=7 korean=4 words=651
+[13:14:26] [INFO]     SHEET 'Adventure': max_row=844, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Adventure': total=843 issue=7 no_issue=174 blocked=8 korean=0 words=671
+[13:14:26] [INFO]     SHEET 'Faction': max_row=581, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Faction': total=580 issue=11 no_issue=53 blocked=12 korean=1 words=345
+[13:14:26] [INFO]     SHEET 'Gatherables': max_row=357, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Gatherables': total=356 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:26] [INFO]     SHEET 'Small Tools': max_row=45, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Small Tools': total=44 issue=1 no_issue=0 blocked=0 korean=0 words=1
+[13:14:26] [INFO]     SHEET 'Collectibles': max_row=351, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Collectibles': total=350 issue=2 no_issue=107 blocked=47 korean=2 words=732
+[13:14:26] [INFO]     SHEET 'Territories': max_row=2277, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Territories': total=2275 issue=0 no_issue=35 blocked=0 korean=0 words=77
+[13:14:26] [INFO]     SHEET 'Quests': max_row=846, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Quests': total=845 issue=0 no_issue=1 blocked=0 korean=0 words=1
+[13:14:26] [INFO]     SHEET 'Memory Fragment': max_row=537, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Memory Fragment': total=536 issue=1 no_issue=190 blocked=1 korean=0 words=581
+[13:14:26] [INFO]     SHEET 'Games': max_row=39, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Games': total=38 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:26] [INFO]     SHEET 'Skills': max_row=805, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Skills': total=802 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:26] [INFO]   TOTALS: total=12209 done=923 issues=44 words=3256
+
+============================================================
+QA FOLDER: 유지윤_Region
+============================================================
+[13:14:26] [INFO] COUNT FOLDER: 유지윤_Region date=2026-01-20 lang=EN
+[13:14:26] [INFO]   File: Region_LQA_ENG.xlsx
+[13:14:26] [INFO]   Sheets: ['Abyss', 'Crimson Desert', 'Delesyia', 'Demeniss', 'Greymanes', 'Hernand', 'Pailune', 'No Faction', 'Shop']
+[13:14:26] [INFO]     SHEET 'Abyss': max_row=2, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Abyss': total=1 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:26] [INFO]     SHEET 'Crimson Desert': max_row=208, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Crimson Desert': total=207 issue=1 no_issue=87 blocked=1 korean=0 words=250
+[13:14:26] [INFO]     SHEET 'Delesyia': max_row=251, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Delesyia': total=250 issue=1 no_issue=101 blocked=0 korean=2 words=280
+[13:14:26] [INFO]     SHEET 'Demeniss': max_row=282, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Demeniss': total=281 issue=0 no_issue=10 blocked=0 korean=0 words=23
+[13:14:26] [INFO]     SHEET 'Greymanes': max_row=2, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Greymanes': total=1 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:26] [INFO]     SHEET 'Hernand': max_row=345, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Hernand': total=344 issue=0 no_issue=1 blocked=1 korean=0 words=7
+[13:14:26] [INFO]     SHEET 'Pailune': max_row=156, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Pailune': total=155 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:26] [INFO]     SHEET 'No Faction': max_row=1019, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'No Faction': total=1018 issue=2 no_issue=161 blocked=0 korean=0 words=555
+[13:14:26] [INFO]     SHEET 'Shop': max_row=595, STATUS_col=3, trans_col=2
+[13:14:26] [INFO]     SHEET 'Shop': total=594 issue=4 no_issue=154 blocked=4 korean=2 words=2852
+[13:14:26] [INFO]   TOTALS: total=2851 done=532 issues=8 words=3967
+
+============================================================
+QA FOLDER: 유지윤_Sequencer
+============================================================
+[13:14:26] [INFO] COUNT FOLDER: 유지윤_Sequencer date=2026-01-21 lang=EN
+[13:14:26] [INFO]   File: EN SCRIPT LQA.xlsx
+[13:14:27] [INFO]   Sheets: ['English Script']
+[13:14:27] [INFO]     SHEET 'English Script': max_row=16984, STATUS_col=7, trans_col=2
+[13:14:27] [INFO]     SHEET 'English Script': total=16983 issue=3 no_issue=45 blocked=0 korean=0 words=48
+[13:14:27] [INFO]   TOTALS: total=16983 done=48 issues=3 words=48
+
+============================================================
+QA FOLDER: 유지윤_Skill
+============================================================
+[13:14:27] [INFO] COUNT FOLDER: 유지윤_Skill date=2026-01-21 lang=EN
+[13:14:27] [INFO]   File: 유지윤_LQA_Skill_ENG.xlsx
+[13:14:27] [INFO]   Sheets: ['Skills']
+[13:14:27] [INFO]     SHEET 'Skills': max_row=1169, STATUS_col=3, trans_col=2
+[13:14:27] [INFO]     SHEET 'Skills': total=1168 issue=68 no_issue=259 blocked=0 korean=145 words=2885
+[13:14:27] [INFO]   TOTALS: total=1168 done=472 issues=68 words=2885
+
+============================================================
+QA FOLDER: 유지윤_System
+============================================================
+[13:14:27] [INFO] COUNT FOLDER: 유지윤_System date=2026-01-20 lang=EN
+[13:14:27] [INFO]   File: System_ENG.xlsx
+[13:14:27] [INFO]   Sheets: ['How_To', 'Menu', 'Greymane', 'Map', 'Other', 'Range']
+[13:14:27] [WARN]     SHEET 'How_To': No STATUS column found
+[13:14:27] [INFO]     SHEET 'Menu': max_row=47, STATUS_col=2, trans_col=1
+[13:14:27] [INFO]     SHEET 'Menu': total=46 issue=0 no_issue=34 blocked=3 korean=3 words=53
+[13:14:27] [INFO]     SHEET 'Greymane': max_row=43, STATUS_col=2, trans_col=1
+[13:14:27] [INFO]     SHEET 'Greymane': total=42 issue=3 no_issue=33 blocked=0 korean=1 words=67
+[13:14:27] [INFO]     SHEET 'Map': max_row=33, STATUS_col=2, trans_col=1
+[13:14:27] [INFO]     SHEET 'Map': total=32 issue=0 no_issue=19 blocked=2 korean=1 words=42
+[13:14:27] [INFO]     SHEET 'Other': max_row=83, STATUS_col=2, trans_col=1
+[13:14:27] [INFO]     SHEET 'Other': total=82 issue=4 no_issue=66 blocked=1 korean=2 words=135
+[13:14:27] [INFO]     SHEET 'Range': max_row=6, STATUS_col=1, trans_col=1
+[13:14:27] [INFO]     SHEET 'Range': total=5 issue=0 no_issue=0 blocked=1 korean=0 words=1
+[13:14:27] [INFO]   TOTALS: total=207 done=173 issues=7 words=298
+
+============================================================
+QA FOLDER: 이재환_Help
+============================================================
+[13:14:27] [INFO] COUNT FOLDER: 이재환_Help date=2026-01-20 lang=EN
+[13:14:27] [INFO]   File: LQA_GameAdvice_ENG.xlsx
+[13:14:27] [INFO]   Sheets: ['GameAdvice']
+[13:14:27] [INFO]     SHEET 'GameAdvice': max_row=774, STATUS_col=3, trans_col=2
+[13:14:27] [INFO]     SHEET 'GameAdvice': total=773 issue=29 no_issue=128 blocked=32 korean=34 words=394
+[13:14:27] [INFO]   TOTALS: total=773 done=223 issues=29 words=394
+
+============================================================
+QA FOLDER: 이재환_Item
+============================================================
+[13:14:27] [INFO] COUNT FOLDER: 이재환_Item date=2026-01-20 lang=EN
+[13:14:27] [INFO]   File: ITEM_WORKING_LQA_ENG.xlsx
+[13:14:28] [INFO]   Sheets: ['Abyss_Gear', 'Abyss_Item', 'Armor', 'Collectibles', 'Crafting_Manual', 'Document', 'Ingested_Substances', 'Major_Goods', 'Monster_Item', 'Others', 'Poster', 'Weapons']
+[13:14:28] [INFO]     SHEET 'Abyss_Gear': max_row=212, STATUS_col=8, trans_col=5
+[13:14:28] [INFO]     SHEET 'Abyss_Gear': total=211 issue=0 no_issue=142 blocked=0 korean=0 words=428
+[13:14:28] [INFO]     SHEET 'Abyss_Item': max_row=160, STATUS_col=8, trans_col=5
+[13:14:28] [INFO]     SHEET 'Abyss_Item': total=159 issue=0 no_issue=2 blocked=0 korean=0 words=4
+[13:14:28] [INFO]     SHEET 'Armor': max_row=413, STATUS_col=8, trans_col=5
+[13:14:28] [INFO]     SHEET 'Armor': total=412 issue=0 no_issue=7 blocked=5 korean=0 words=30
+[13:14:28] [INFO]     SHEET 'Collectibles': max_row=375, STATUS_col=8, trans_col=5
+[13:14:28] [INFO]     SHEET 'Collectibles': total=374 issue=0 no_issue=3 blocked=0 korean=0 words=9
+[13:14:28] [INFO]     SHEET 'Crafting_Manual': max_row=165, STATUS_col=8, trans_col=5
+[13:14:28] [INFO]     SHEET 'Crafting_Manual': total=164 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:28] [INFO]     SHEET 'Document': max_row=128, STATUS_col=8, trans_col=5
+[13:14:28] [INFO]     SHEET 'Document': total=127 issue=13 no_issue=75 blocked=0 korean=0 words=260
+[13:14:28] [INFO]     SHEET 'Ingested_Substances': max_row=575, STATUS_col=8, trans_col=5
+[13:14:28] [INFO]     SHEET 'Ingested_Substances': total=574 issue=35 no_issue=77 blocked=1 korean=0 words=231
+[13:14:28] [INFO]     SHEET 'Major_Goods': max_row=455, STATUS_col=8, trans_col=5
+[13:14:28] [INFO]     SHEET 'Major_Goods': total=454 issue=0 no_issue=9 blocked=2 korean=0 words=29
+[13:14:28] [INFO]     SHEET 'Monster_Item': max_row=1658, STATUS_col=8, trans_col=5
+[13:14:28] [INFO]     SHEET 'Monster_Item': total=1657 issue=6 no_issue=1247 blocked=3 korean=6 words=3871
+[13:14:28] [INFO]     SHEET 'Others': max_row=1191, STATUS_col=8, trans_col=5
+[13:14:28] [INFO]     SHEET 'Others': total=1190 issue=58 no_issue=125 blocked=30 korean=24 words=699
+[13:14:28] [INFO]     SHEET 'Poster': max_row=102, STATUS_col=8, trans_col=5
+[13:14:28] [INFO]     SHEET 'Poster': total=101 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:28] [INFO]     SHEET 'Weapons': max_row=463, STATUS_col=8, trans_col=5
+[13:14:28] [INFO]     SHEET 'Weapons': total=462 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:28] [INFO]   TOTALS: total=5885 done=1870 issues=112 words=5561
+
+============================================================
+QA FOLDER: 이재환_Quest
+============================================================
+[13:14:28] [INFO] COUNT FOLDER: 이재환_Quest date=2026-01-22 lang=EN
+[13:14:28] [INFO]   File: 이재환_Quest.xlsx
+[13:14:28] [INFO]   Sheets: ['Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:28] [INFO]     SHEET 'Main Quest': max_row=590, STATUS_col=5, trans_col=2
+[13:14:28] [INFO]     SHEET 'Main Quest': total=589 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:28] [INFO]     SHEET 'Faction_01': max_row=299, STATUS_col=5, trans_col=2
+[13:14:28] [INFO]     SHEET 'Faction_01': total=298 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:28] [INFO]     SHEET 'Faction_02': max_row=343, STATUS_col=5, trans_col=2
+[13:14:28] [INFO]     SHEET 'Faction_02': total=342 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:28] [INFO]     SHEET 'Faction_03': max_row=1283, STATUS_col=5, trans_col=2
+[13:14:28] [INFO]     SHEET 'Faction_03': total=1274 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:28] [INFO]     SHEET 'Faction_etc': max_row=73, STATUS_col=5, trans_col=2
+[13:14:28] [INFO]     SHEET 'Faction_etc': total=72 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:28] [INFO]     SHEET 'Region Quest': max_row=978, STATUS_col=5, trans_col=2
+[13:14:28] [INFO]     SHEET 'Region Quest': total=967 issue=40 no_issue=51 blocked=1 korean=11 words=371
+[13:14:28] [INFO]     SHEET 'Daily': max_row=294, STATUS_col=5, trans_col=2
+[13:14:28] [INFO]     SHEET 'Daily': total=283 issue=44 no_issue=30 blocked=9 korean=33 words=365
+[13:14:28] [INFO]     SHEET 'Politics': max_row=156, STATUS_col=5, trans_col=2
+[13:14:28] [INFO]     SHEET 'Politics': total=155 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:28] [INFO]     SHEET 'Challenge Quest': max_row=1301, STATUS_col=5, trans_col=2
+[13:14:28] [INFO]     SHEET 'Challenge Quest': total=1274 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:28] [INFO]     SHEET 'Minigame Quest': max_row=102, STATUS_col=5, trans_col=2
+[13:14:28] [INFO]     SHEET 'Minigame Quest': total=100 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:28] [INFO]   TOTALS: total=5354 done=219 issues=84 words=736
+
+============================================================
+QA FOLDER: 이재환_Skill
+============================================================
+[13:14:28] [INFO] COUNT FOLDER: 이재환_Skill date=2026-01-20 lang=EN
+[13:14:28] [INFO]   File: LQA_Skill_ENG.xlsx
+[13:14:28] [INFO]   Sheets: ['Skills']
+[13:14:28] [INFO]     SHEET 'Skills': max_row=1175, STATUS_col=3, trans_col=2
+[13:14:28] [INFO]     SHEET 'Skills': total=1174 issue=61 no_issue=515 blocked=0 korean=20 words=3425
+[13:14:28] [INFO]   TOTALS: total=1174 done=596 issues=61 words=3425
+
+============================================================
+QA FOLDER: 이재환_System
+============================================================
+[13:14:28] [INFO] COUNT FOLDER: 이재환_System date=2026-01-20 lang=EN
+[13:14:28] [INFO]   File: System_ENG.xlsx
+[13:14:28] [INFO]   Sheets: ['How_To', 'Menu', 'Greymane', 'Map', 'Other', 'Range']
+[13:14:28] [WARN]     SHEET 'How_To': No STATUS column found
+[13:14:28] [INFO]     SHEET 'Menu': max_row=47, STATUS_col=2, trans_col=1
+[13:14:28] [INFO]     SHEET 'Menu': total=46 issue=0 no_issue=39 blocked=0 korean=1 words=53
+[13:14:28] [INFO]     SHEET 'Greymane': max_row=43, STATUS_col=2, trans_col=1
+[13:14:28] [INFO]     SHEET 'Greymane': total=42 issue=2 no_issue=40 blocked=0 korean=0 words=73
+[13:14:28] [INFO]     SHEET 'Map': max_row=33, STATUS_col=2, trans_col=1
+[13:14:28] [INFO]     SHEET 'Map': total=32 issue=0 no_issue=19 blocked=0 korean=2 words=41
+[13:14:28] [INFO]     SHEET 'Other': max_row=83, STATUS_col=2, trans_col=1
+[13:14:28] [INFO]     SHEET 'Other': total=82 issue=36 no_issue=35 blocked=2 korean=1 words=136
+[13:14:28] [INFO]     SHEET 'Range': max_row=6, STATUS_col=1, trans_col=1
+[13:14:28] [INFO]     SHEET 'Range': total=5 issue=0 no_issue=0 blocked=1 korean=0 words=1
+[13:14:28] [INFO]   TOTALS: total=207 done=178 issues=38 words=304
+
+============================================================
+QA FOLDER: 장어진_Character
+============================================================
+[13:14:28] [INFO] COUNT FOLDER: 장어진_Character date=2026-01-20 lang=EN
+[13:14:28] [INFO]   File: Character_LQA_ENG.xlsx
+[13:14:29] [INFO]   Sheets: ['ANIMAL', 'CAMP', 'DEV', 'MAIN', 'MONSTER', 'NPC', 'OBJECT', 'PC', 'PET', 'QUEST', 'VEHICLE']
+[13:14:29] [INFO]     SHEET 'ANIMAL': max_row=785, STATUS_col=4, trans_col=2
+[13:14:29] [INFO]     SHEET 'ANIMAL': total=784 issue=2 no_issue=9 blocked=0 korean=0 words=15
+[13:14:29] [INFO]     SHEET 'CAMP': max_row=92, STATUS_col=4, trans_col=2
+[13:14:29] [INFO]     SHEET 'CAMP': total=91 issue=0 no_issue=2 blocked=0 korean=0 words=2
+[13:14:29] [INFO]     SHEET 'DEV': max_row=1066, STATUS_col=4, trans_col=2
+[13:14:29] [INFO]     SHEET 'DEV': total=1065 issue=0 no_issue=2 blocked=0 korean=0 words=3
+[13:14:29] [INFO]     SHEET 'MAIN': max_row=110, STATUS_col=4, trans_col=2
+[13:14:29] [INFO]     SHEET 'MAIN': total=109 issue=0 no_issue=13 blocked=0 korean=0 words=20
+[13:14:29] [INFO]     SHEET 'MONSTER': max_row=2175, STATUS_col=4, trans_col=2
+[13:14:29] [INFO]     SHEET 'MONSTER': total=2174 issue=0 no_issue=202 blocked=0 korean=0 words=445
+[13:14:29] [INFO]     SHEET 'NPC': max_row=3089, STATUS_col=4, trans_col=2
+[13:14:29] [INFO]     SHEET 'NPC': total=3088 issue=5 no_issue=499 blocked=0 korean=0 words=716
+[13:14:29] [INFO]     SHEET 'OBJECT': max_row=48, STATUS_col=4, trans_col=2
+[13:14:29] [INFO]     SHEET 'OBJECT': total=47 issue=1 no_issue=17 blocked=9 korean=0 words=64
+[13:14:29] [INFO]     SHEET 'PC': max_row=10, STATUS_col=4, trans_col=2
+[13:14:29] [INFO]     SHEET 'PC': total=9 issue=0 no_issue=1 blocked=0 korean=0 words=2
+[13:14:29] [INFO]     SHEET 'PET': max_row=17, STATUS_col=4, trans_col=2
+[13:14:29] [INFO]     SHEET 'PET': total=16 issue=1 no_issue=9 blocked=1 korean=0 words=25
+[13:14:29] [INFO]     SHEET 'QUEST': max_row=172, STATUS_col=4, trans_col=2
+[13:14:29] [INFO]     SHEET 'QUEST': total=171 issue=0 no_issue=126 blocked=0 korean=0 words=170
+[13:14:29] [INFO]     SHEET 'VEHICLE': max_row=154, STATUS_col=4, trans_col=2
+[13:14:29] [INFO]     SHEET 'VEHICLE': total=153 issue=6 no_issue=75 blocked=0 korean=0 words=198
+[13:14:29] [INFO]   TOTALS: total=7707 done=980 issues=15 words=1660
+
+============================================================
+QA FOLDER: 장어진_Knowledge
+============================================================
+[13:14:29] [INFO] COUNT FOLDER: 장어진_Knowledge date=2026-01-20 lang=EN
+[13:14:29] [INFO]   File: Knowledge_LQA_ENG.xlsx
+[13:14:30] [INFO]   Sheets: ['Abyss Gate', 'People', '피조물', 'Mounts', 'Contents', 'Document', 'Adventure', 'Faction', 'Gatherables', 'Small Tools', 'Collectibles', 'Territories', 'Quests', 'Memory Fragment', 'Games', 'Skills']
+[13:14:30] [INFO]     SHEET 'Abyss Gate': max_row=276, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Abyss Gate': total=274 issue=0 no_issue=1 blocked=0 korean=0 words=2
+[13:14:30] [INFO]     SHEET 'People': max_row=2445, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'People': total=2444 issue=0 no_issue=5 blocked=0 korean=0 words=13
+[13:14:30] [INFO]     SHEET '피조물': max_row=1173, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET '피조물': total=1172 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:30] [INFO]     SHEET 'Mounts': max_row=128, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Mounts': total=127 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:30] [INFO]     SHEET 'Contents': max_row=600, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Contents': total=599 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:30] [INFO]     SHEET 'Document': max_row=925, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Document': total=924 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:30] [INFO]     SHEET 'Adventure': max_row=844, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Adventure': total=843 issue=0 no_issue=2 blocked=2 korean=2 words=11
+[13:14:30] [INFO]     SHEET 'Faction': max_row=581, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Faction': total=580 issue=2 no_issue=3 blocked=0 korean=23 words=75
+[13:14:30] [INFO]     SHEET 'Gatherables': max_row=357, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Gatherables': total=356 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:30] [INFO]     SHEET 'Small Tools': max_row=45, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Small Tools': total=44 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:30] [INFO]     SHEET 'Collectibles': max_row=351, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Collectibles': total=350 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:30] [INFO]     SHEET 'Territories': max_row=2277, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Territories': total=2275 issue=15 no_issue=581 blocked=333 korean=25 words=4064
+[13:14:30] [INFO]     SHEET 'Quests': max_row=846, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Quests': total=845 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:30] [INFO]     SHEET 'Memory Fragment': max_row=537, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Memory Fragment': total=536 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:30] [INFO]     SHEET 'Games': max_row=39, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Games': total=38 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:30] [INFO]     SHEET 'Skills': max_row=805, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'Skills': total=802 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:30] [INFO]   TOTALS: total=12209 done=994 issues=17 words=4165
+
+============================================================
+QA FOLDER: 장어진_Quest
+============================================================
+[13:14:30] [INFO] COUNT FOLDER: 장어진_Quest date=2026-01-22 lang=EN
+[13:14:30] [INFO]   File: 장어진_Quest_LQA_ENG.xlsx
+[13:14:30] [INFO]   Sheets: ['Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:30] [INFO]     SHEET 'Main Quest': max_row=590, STATUS_col=5, trans_col=2
+[13:14:30] [INFO]     SHEET 'Main Quest': total=589 issue=3 no_issue=206 blocked=14 korean=15 words=858
+[13:14:30] [INFO]     SHEET 'Faction_01': max_row=299, STATUS_col=5, trans_col=2
+[13:14:30] [INFO]     SHEET 'Faction_01': total=298 issue=0 no_issue=17 blocked=0 korean=4 words=83
+[13:14:30] [INFO]     SHEET 'Faction_02': max_row=343, STATUS_col=5, trans_col=2
+[13:14:30] [INFO]     SHEET 'Faction_02': total=342 issue=6 no_issue=158 blocked=39 korean=109 words=798
+[13:14:30] [INFO]     SHEET 'Faction_03': max_row=1283, STATUS_col=5, trans_col=2
+[13:14:30] [INFO]     SHEET 'Faction_03': total=1274 issue=0 no_issue=280 blocked=65 korean=110 words=1423
+[13:14:30] [INFO]     SHEET 'Faction_etc': max_row=73, STATUS_col=5, trans_col=2
+[13:14:30] [INFO]     SHEET 'Faction_etc': total=72 issue=0 no_issue=0 blocked=1 korean=0 words=2
+[13:14:30] [INFO]     SHEET 'Region Quest': max_row=978, STATUS_col=5, trans_col=2
+[13:14:30] [INFO]     SHEET 'Region Quest': total=967 issue=158 no_issue=666 blocked=135 korean=8 words=3553
+[13:14:30] [INFO]     SHEET 'Daily': max_row=294, STATUS_col=5, trans_col=2
+[13:14:30] [INFO]     SHEET 'Daily': total=283 issue=28 no_issue=89 blocked=6 korean=1 words=489
+[13:14:30] [INFO]     SHEET 'Politics': max_row=156, STATUS_col=5, trans_col=2
+[13:14:30] [INFO]     SHEET 'Politics': total=155 issue=0 no_issue=1 blocked=9 korean=2 words=42
+[13:14:30] [INFO]     SHEET 'Challenge Quest': max_row=1301, STATUS_col=5, trans_col=2
+[13:14:30] [INFO]     SHEET 'Challenge Quest': total=1274 issue=0 no_issue=0 blocked=0 korean=1 words=1
+[13:14:30] [INFO]     SHEET 'Minigame Quest': max_row=102, STATUS_col=5, trans_col=2
+[13:14:30] [INFO]     SHEET 'Minigame Quest': total=100 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:30] [INFO]   TOTALS: total=5354 done=2131 issues=195 words=7249
+
+============================================================
+QA FOLDER: 조서영_Help
+============================================================
+[13:14:30] [INFO] COUNT FOLDER: 조서영_Help date=2026-01-20 lang=EN
+[13:14:30] [INFO]   File: LQA_GameAdvice_ENG.xlsx
+[13:14:30] [INFO]   Sheets: ['GameAdvice']
+[13:14:30] [INFO]     SHEET 'GameAdvice': max_row=774, STATUS_col=3, trans_col=2
+[13:14:30] [INFO]     SHEET 'GameAdvice': total=773 issue=14 no_issue=303 blocked=71 korean=339 words=2964
+[13:14:30] [INFO]   TOTALS: total=773 done=727 issues=14 words=2964
+
+============================================================
+QA FOLDER: 조서영_Knowledge
+============================================================
+[13:14:30] [INFO] COUNT FOLDER: 조서영_Knowledge date=2026-01-20 lang=EN
+[13:14:30] [INFO]   File: Knowledge_LQA_ENG.xlsx
+[13:14:31] [INFO]   Sheets: ['Abyss Gate', 'People', '피조물', 'Mounts', 'Contents', 'Document', 'Adventure', 'Faction', 'Gatherables', 'Small Tools', 'Collectibles', 'Territories', 'Quests', 'Memory Fragment', 'Games', 'Skills']
+[13:14:31] [INFO]     SHEET 'Abyss Gate': max_row=276, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Abyss Gate': total=274 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:31] [INFO]     SHEET 'People': max_row=2445, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'People': total=2444 issue=1 no_issue=2 blocked=0 korean=0 words=6
+[13:14:31] [INFO]     SHEET '피조물': max_row=1173, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET '피조물': total=1172 issue=30 no_issue=419 blocked=0 korean=0 words=825
+[13:14:31] [INFO]     SHEET 'Mounts': max_row=128, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Mounts': total=127 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:31] [INFO]     SHEET 'Contents': max_row=600, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Contents': total=599 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:31] [INFO]     SHEET 'Document': max_row=925, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Document': total=924 issue=0 no_issue=3 blocked=0 korean=0 words=3
+[13:14:31] [INFO]     SHEET 'Adventure': max_row=844, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Adventure': total=843 issue=3 no_issue=195 blocked=0 korean=0 words=510
+[13:14:31] [INFO]     SHEET 'Faction': max_row=581, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Faction': total=580 issue=1 no_issue=26 blocked=0 korean=0 words=71
+[13:14:31] [INFO]     SHEET 'Gatherables': max_row=357, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Gatherables': total=356 issue=2 no_issue=175 blocked=0 korean=2 words=332
+[13:14:31] [INFO]     SHEET 'Small Tools': max_row=45, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Small Tools': total=44 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:31] [INFO]     SHEET 'Collectibles': max_row=351, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Collectibles': total=350 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:31] [INFO]     SHEET 'Territories': max_row=2277, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Territories': total=2275 issue=1 no_issue=0 blocked=0 korean=0 words=2
+[13:14:31] [INFO]     SHEET 'Quests': max_row=846, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Quests': total=845 issue=6 no_issue=88 blocked=0 korean=0 words=1222
+[13:14:31] [INFO]     SHEET 'Memory Fragment': max_row=537, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Memory Fragment': total=536 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:31] [INFO]     SHEET 'Games': max_row=39, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Games': total=38 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:31] [INFO]     SHEET 'Skills': max_row=805, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Skills': total=802 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:31] [INFO]   TOTALS: total=12209 done=954 issues=44 words=2971
+
+============================================================
+QA FOLDER: 조서영_Region
+============================================================
+[13:14:31] [INFO] COUNT FOLDER: 조서영_Region date=2026-01-20 lang=EN
+[13:14:31] [INFO]   File: Region_LQA_ENG.xlsx
+[13:14:31] [INFO]   Sheets: ['Abyss', 'Crimson Desert', 'Delesyia', 'Demeniss', 'Greymanes', 'Hernand', 'Pailune', 'No Faction', 'Shop']
+[13:14:31] [INFO]     SHEET 'Abyss': max_row=2, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Abyss': total=1 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:31] [INFO]     SHEET 'Crimson Desert': max_row=208, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Crimson Desert': total=207 issue=0 no_issue=2 blocked=0 korean=0 words=7
+[13:14:31] [INFO]     SHEET 'Delesyia': max_row=251, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Delesyia': total=250 issue=0 no_issue=2 blocked=0 korean=0 words=7
+[13:14:31] [INFO]     SHEET 'Demeniss': max_row=282, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Demeniss': total=281 issue=2 no_issue=138 blocked=1 korean=0 words=338
+[13:14:31] [INFO]     SHEET 'Greymanes': max_row=2, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Greymanes': total=1 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:31] [INFO]     SHEET 'Hernand': max_row=345, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Hernand': total=344 issue=0 no_issue=170 blocked=0 korean=0 words=429
+[13:14:31] [INFO]     SHEET 'Pailune': max_row=156, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Pailune': total=155 issue=2 no_issue=80 blocked=0 korean=0 words=167
+[13:14:31] [INFO]     SHEET 'No Faction': max_row=1019, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'No Faction': total=1018 issue=1 no_issue=112 blocked=0 korean=0 words=363
+[13:14:31] [INFO]     SHEET 'Shop': max_row=595, STATUS_col=3, trans_col=2
+[13:14:31] [INFO]     SHEET 'Shop': total=594 issue=0 no_issue=3 blocked=0 korean=1 words=23
+[13:14:31] [INFO]   TOTALS: total=2851 done=514 issues=5 words=1334
+
+============================================================
+QA FOLDER: 조서영_Sequencer
+============================================================
+[13:14:31] [INFO] COUNT FOLDER: 조서영_Sequencer date=2026-01-22 lang=EN
+[13:14:31] [INFO]   File: EN SCRIPT SEQUENCER.xlsx
+[13:14:32] [INFO]   Sheets: ['English Script']
+[13:14:32] [INFO]     SHEET 'English Script': max_row=16984, STATUS_col=7, trans_col=2
+[13:14:32] [INFO]     SHEET 'English Script': total=16983 issue=25 no_issue=857 blocked=0 korean=0 words=882
+[13:14:32] [INFO]   TOTALS: total=16983 done=882 issues=25 words=882
+
+============================================================
+QA FOLDER: 조서영_Skill
+============================================================
+[13:14:32] [INFO] COUNT FOLDER: 조서영_Skill date=2026-01-21 lang=EN
+[13:14:32] [INFO]   File: LQA_Skill_ENG.xlsx
+[13:14:32] [INFO]   Sheets: ['Skills']
+[13:14:32] [INFO]     SHEET 'Skills': max_row=1169, STATUS_col=3, trans_col=2
+[13:14:32] [INFO]     SHEET 'Skills': total=1168 issue=78 no_issue=224 blocked=6 korean=98 words=2472
+[13:14:32] [INFO]   TOTALS: total=1168 done=406 issues=78 words=2472
+
+============================================================
+QA FOLDER: 조서영_System
+============================================================
+[13:14:32] [INFO] COUNT FOLDER: 조서영_System date=2026-01-20 lang=EN
+[13:14:32] [INFO]   File: System_ENG.xlsx
+[13:14:32] [INFO]   Sheets: ['How_To', 'Menu', 'Greymane', 'Map', 'Other', 'Range']
+[13:14:32] [WARN]     SHEET 'How_To': No STATUS column found
+[13:14:32] [INFO]     SHEET 'Menu': max_row=47, STATUS_col=2, trans_col=1
+[13:14:32] [INFO]     SHEET 'Menu': total=46 issue=0 no_issue=34 blocked=4 korean=2 words=53
+[13:14:32] [INFO]     SHEET 'Greymane': max_row=43, STATUS_col=2, trans_col=1
+[13:14:32] [INFO]     SHEET 'Greymane': total=42 issue=3 no_issue=36 blocked=0 korean=0 words=69
+[13:14:32] [INFO]     SHEET 'Map': max_row=33, STATUS_col=2, trans_col=1
+[13:14:32] [INFO]     SHEET 'Map': total=32 issue=0 no_issue=19 blocked=2 korean=0 words=41
+[13:14:32] [INFO]     SHEET 'Other': max_row=83, STATUS_col=2, trans_col=1
+[13:14:32] [INFO]     SHEET 'Other': total=82 issue=3 no_issue=68 blocked=1 korean=2 words=136
+[13:14:32] [INFO]     SHEET 'Range': max_row=6, STATUS_col=1, trans_col=1
+[13:14:32] [INFO]     SHEET 'Range': total=5 issue=0 no_issue=0 blocked=1 korean=0 words=1
+[13:14:32] [INFO]   TOTALS: total=207 done=175 issues=6 words=300
+
+============================================================
+QA FOLDER: 최석문_Item
+============================================================
+[13:14:32] [INFO] COUNT FOLDER: 최석문_Item date=2026-01-20 lang=CN
+[13:14:32] [INFO]   File: ITEM_WORKING_LQA_ZHO-CN.xlsx
+[13:14:33] [INFO]   Sheets: ['Abyss_Gear', 'Abyss_Item', 'Armor', 'Collectibles', 'Crafting_Manual', 'Document', 'Ingested_Substances', 'Major_Goods', 'Monster_Item', 'Others', 'Poster', 'Weapons']
+[13:14:33] [INFO]     SHEET 'Abyss_Gear': max_row=212, STATUS_col=10, trans_col=7
+[13:14:33] [INFO]     SHEET 'Abyss_Gear': total=211 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]     SHEET 'Abyss_Item': max_row=160, STATUS_col=10, trans_col=7
+[13:14:33] [INFO]     SHEET 'Abyss_Item': total=159 issue=1 no_issue=1 blocked=0 korean=0 words=12
+[13:14:33] [INFO]     SHEET 'Armor': max_row=413, STATUS_col=10, trans_col=7
+[13:14:33] [INFO]     SHEET 'Armor': total=412 issue=2 no_issue=12 blocked=0 korean=27 words=176
+[13:14:33] [INFO]     SHEET 'Collectibles': max_row=375, STATUS_col=10, trans_col=7
+[13:14:33] [INFO]     SHEET 'Collectibles': total=374 issue=0 no_issue=3 blocked=0 korean=250 words=931
+[13:14:33] [INFO]     SHEET 'Crafting_Manual': max_row=165, STATUS_col=10, trans_col=7
+[13:14:33] [INFO]     SHEET 'Crafting_Manual': total=164 issue=0 no_issue=0 blocked=0 korean=44 words=216
+[13:14:33] [INFO]     SHEET 'Document': max_row=128, STATUS_col=10, trans_col=7
+[13:14:33] [INFO]     SHEET 'Document': total=127 issue=1 no_issue=38 blocked=0 korean=27 words=267
+[13:14:33] [INFO]     SHEET 'Ingested_Substances': max_row=575, STATUS_col=10, trans_col=7
+[13:14:33] [INFO]     SHEET 'Ingested_Substances': total=574 issue=6 no_issue=119 blocked=0 korean=18 words=425
+[13:14:33] [INFO]     SHEET 'Major_Goods': max_row=455, STATUS_col=10, trans_col=7
+[13:14:33] [INFO]     SHEET 'Major_Goods': total=454 issue=0 no_issue=5 blocked=1 korean=10 words=43
+[13:14:33] [INFO]     SHEET 'Monster_Item': max_row=1658, STATUS_col=10, trans_col=7
+[13:14:33] [INFO]     SHEET 'Monster_Item': total=1657 issue=3 no_issue=1233 blocked=0 korean=3 words=8951
+[13:14:33] [INFO]     SHEET 'Others': max_row=1191, STATUS_col=10, trans_col=7
+[13:14:33] [INFO]     SHEET 'Others': total=1190 issue=17 no_issue=369 blocked=19 korean=56 words=2554
+[13:14:33] [INFO]     SHEET 'Poster': max_row=102, STATUS_col=10, trans_col=7
+[13:14:33] [INFO]     SHEET 'Poster': total=101 issue=0 no_issue=77 blocked=0 korean=1 words=512
+[13:14:33] [INFO]     SHEET 'Weapons': max_row=463, STATUS_col=10, trans_col=7
+[13:14:33] [INFO]     SHEET 'Weapons': total=462 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]   TOTALS: total=5885 done=2343 issues=30 words=14087
+
+============================================================
+QA FOLDER: 최석문_Quest
+============================================================
+[13:14:33] [INFO] COUNT FOLDER: 최석문_Quest date=2026-01-22 lang=CN
+[13:14:33] [INFO]   File: Quest_LQA_ZHO-CN.xlsx
+[13:14:33] [INFO]   Sheets: ['Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:33] [INFO]     SHEET 'Main Quest': max_row=589, STATUS_col=6, trans_col=3
+[13:14:33] [INFO]     SHEET 'Main Quest': total=588 issue=68 no_issue=377 blocked=0 korean=0 words=2213
+[13:14:33] [INFO]     SHEET 'Faction_01': max_row=299, STATUS_col=6, trans_col=3
+[13:14:33] [INFO]     SHEET 'Faction_01': total=298 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]     SHEET 'Faction_02': max_row=341, STATUS_col=6, trans_col=3
+[13:14:33] [INFO]     SHEET 'Faction_02': total=340 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]     SHEET 'Faction_03': max_row=1297, STATUS_col=6, trans_col=3
+[13:14:33] [INFO]     SHEET 'Faction_03': total=1288 issue=2 no_issue=2 blocked=0 korean=0 words=20
+[13:14:33] [INFO]     SHEET 'Faction_etc': max_row=73, STATUS_col=6, trans_col=3
+[13:14:33] [INFO]     SHEET 'Faction_etc': total=72 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]     SHEET 'Region Quest': max_row=974, STATUS_col=6, trans_col=3
+[13:14:33] [INFO]     SHEET 'Region Quest': total=963 issue=1 no_issue=1 blocked=0 korean=0 words=11
+[13:14:33] [INFO]     SHEET 'Daily': max_row=294, STATUS_col=6, trans_col=3
+[13:14:33] [INFO]     SHEET 'Daily': total=283 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]     SHEET 'Politics': max_row=156, STATUS_col=6, trans_col=3
+[13:14:33] [INFO]     SHEET 'Politics': total=155 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]     SHEET 'Challenge Quest': max_row=1302, STATUS_col=6, trans_col=3
+[13:14:33] [INFO]     SHEET 'Challenge Quest': total=1275 issue=0 no_issue=1 blocked=0 korean=0 words=9
+[13:14:33] [INFO]     SHEET 'Minigame Quest': max_row=104, STATUS_col=6, trans_col=3
+[13:14:33] [INFO]     SHEET 'Minigame Quest': total=100 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]   TOTALS: total=5362 done=452 issues=71 words=2253
+
+============================================================
+QA FOLDER: 최석문_Region
+============================================================
+[13:14:33] [INFO] COUNT FOLDER: 최석문_Region date=2026-01-20 lang=CN
+[13:14:33] [INFO]   File: Region_LQA_ZHO-CN.xlsx
+[13:14:33] [INFO]   Sheets: ['阿比斯', '红色沙漠', '德雷西亚', '德梅尼斯', '灰鬃', '埃尔南德', '佩伦', '无势力', 'Shop']
+[13:14:33] [INFO]     SHEET '阿比斯': max_row=2, STATUS_col=4, trans_col=3
+[13:14:33] [INFO]     SHEET '阿比斯': total=1 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]     SHEET '红色沙漠': max_row=208, STATUS_col=4, trans_col=3
+[13:14:33] [INFO]     SHEET '红色沙漠': total=207 issue=2 no_issue=1 blocked=0 korean=0 words=21
+[13:14:33] [INFO]     SHEET '德雷西亚': max_row=251, STATUS_col=4, trans_col=3
+[13:14:33] [INFO]     SHEET '德雷西亚': total=250 issue=39 no_issue=81 blocked=0 korean=0 words=698
+[13:14:33] [INFO]     SHEET '德梅尼斯': max_row=282, STATUS_col=4, trans_col=3
+[13:14:33] [INFO]     SHEET '德梅尼斯': total=281 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]     SHEET '灰鬃': max_row=2, STATUS_col=4, trans_col=3
+[13:14:33] [INFO]     SHEET '灰鬃': total=1 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]     SHEET '埃尔南德': max_row=345, STATUS_col=4, trans_col=3
+[13:14:33] [INFO]     SHEET '埃尔南德': total=344 issue=0 no_issue=1 blocked=0 korean=0 words=6
+[13:14:33] [INFO]     SHEET '佩伦': max_row=156, STATUS_col=4, trans_col=3
+[13:14:33] [INFO]     SHEET '佩伦': total=155 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]     SHEET '无势力': max_row=1019, STATUS_col=4, trans_col=3
+[13:14:33] [INFO]     SHEET '无势力': total=1018 issue=0 no_issue=61 blocked=0 korean=0 words=440
+[13:14:33] [INFO]     SHEET 'Shop': max_row=595, STATUS_col=4, trans_col=3
+[13:14:33] [INFO]     SHEET 'Shop': total=594 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:33] [INFO]   TOTALS: total=2851 done=185 issues=41 words=1165
+
+============================================================
+QA FOLDER: 황하연_Contents
+============================================================
+[13:14:33] [INFO] COUNT FOLDER: 황하연_Contents date=2026-01-20 lang=EN
+[13:14:33] [INFO]   File: Contents_LQA_20260119.xlsx
+[13:14:33] [INFO]   Sheets: ['Sheet1', 'Trade Goods']
+[13:14:33] [INFO]     SHEET 'Sheet1': max_row=129, STATUS_col=3, trans_col=2
+[13:14:33] [INFO]     SHEET 'Sheet1': total=128 issue=7 no_issue=2 blocked=3 korean=3 words=0
+[13:14:33] [WARN]     SHEET 'Trade Goods': No STATUS column found
+[13:14:33] [INFO]   TOTALS: total=128 done=15 issues=7 words=0
+
+============================================================
+QA FOLDER: 황하연_Dialog
+============================================================
+[13:14:33] [INFO] COUNT FOLDER: 황하연_Dialog date=2026-01-22 lang=EN
+[13:14:33] [INFO]   File: 황하연_Dialog.xlsx
+[13:14:36] [INFO]   Sheets: ['Work Transform', 'Sheet1']
+[13:14:36] [INFO]     SHEET 'Work Transform': max_row=39238, STATUS_col=7, trans_col=2
+[13:14:36] [INFO]     SHEET 'Work Transform': total=39237 issue=21 no_issue=3480 blocked=0 korean=0 words=3501
+[13:14:36] [WARN]     SHEET 'Sheet1': No STATUS column found
+[13:14:36] [INFO]   TOTALS: total=39237 done=3501 issues=21 words=3501
+
+============================================================
+QA FOLDER: 황하연_Quest
+============================================================
+[13:14:36] [INFO] COUNT FOLDER: 황하연_Quest date=2026-01-21 lang=EN
+[13:14:36] [INFO]   File: 황하연_Quest.xlsx
+[13:14:36] [INFO]   Sheets: ['Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:36] [INFO]     SHEET 'Main Quest': max_row=590, STATUS_col=5, trans_col=2
+[13:14:36] [INFO]     SHEET 'Main Quest': total=589 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:36] [INFO]     SHEET 'Faction_01': max_row=299, STATUS_col=5, trans_col=2
+[13:14:36] [INFO]     SHEET 'Faction_01': total=298 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:36] [INFO]     SHEET 'Faction_02': max_row=343, STATUS_col=5, trans_col=2
+[13:14:36] [INFO]     SHEET 'Faction_02': total=342 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:36] [INFO]     SHEET 'Faction_03': max_row=1283, STATUS_col=5, trans_col=2
+[13:14:36] [INFO]     SHEET 'Faction_03': total=1274 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:36] [INFO]     SHEET 'Faction_etc': max_row=73, STATUS_col=5, trans_col=2
+[13:14:36] [INFO]     SHEET 'Faction_etc': total=72 issue=3 no_issue=3 blocked=0 korean=13 words=11
+[13:14:36] [INFO]     SHEET 'Region Quest': max_row=978, STATUS_col=5, trans_col=2
+[13:14:36] [INFO]     SHEET 'Region Quest': total=967 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:36] [INFO]     SHEET 'Daily': max_row=294, STATUS_col=5, trans_col=2
+[13:14:36] [INFO]     SHEET 'Daily': total=283 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:36] [INFO]     SHEET 'Politics': max_row=156, STATUS_col=5, trans_col=2
+[13:14:36] [INFO]     SHEET 'Politics': total=155 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:36] [INFO]     SHEET 'Challenge Quest': max_row=1301, STATUS_col=5, trans_col=2
+[13:14:36] [INFO]     SHEET 'Challenge Quest': total=1274 issue=22 no_issue=172 blocked=61 korean=3 words=1020
+[13:14:36] [INFO]     SHEET 'Minigame Quest': max_row=102, STATUS_col=5, trans_col=2
+[13:14:36] [INFO]     SHEET 'Minigame Quest': total=100 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:36] [INFO]   TOTALS: total=5354 done=277 issues=25 words=1031
+
+============================================================
+QA FOLDER: 황하연_Region
+============================================================
+[13:14:36] [INFO] COUNT FOLDER: 황하연_Region date=2026-01-20 lang=EN
+[13:14:36] [INFO]   File: Region_LQA_ENG.xlsx
+[13:14:36] [INFO]   Sheets: ['Abyss', 'Crimson Desert', 'Delesyia', 'Demeniss', 'Greymanes', 'Hernand', 'Pailune', 'No Faction', 'Shop']
+[13:14:36] [INFO]     SHEET 'Abyss': max_row=2, STATUS_col=3, trans_col=2
+[13:14:36] [INFO]     SHEET 'Abyss': total=1 issue=0 no_issue=0 blocked=0 korean=0 words=0
+[13:14:36] [INFO]     SHEET 'Crimson Desert': max_row=208, STATUS_col=3, trans_col=2
+[13:14:36] [INFO]     SHEET 'Crimson Desert': total=207 issue=7 no_issue=98 blocked=1 korean=0 words=297
+[13:14:36] [INFO]     SHEET 'Delesyia': max_row=251, STATUS_col=3, trans_col=2
+[13:14:36] [INFO]     SHEET 'Delesyia': total=250 issue=1 no_issue=115 blocked=2 korean=2 words=325
+[13:14:36] [INFO]     SHEET 'Demeniss': max_row=282, STATUS_col=3, trans_col=2
+[13:14:36] [INFO]     SHEET 'Demeniss': total=281 issue=9 no_issue=125 blocked=5 korean=2 words=338
+[13:14:36] [INFO]     SHEET 'Greymanes': max_row=2, STATUS_col=3, trans_col=2
+[13:14:36] [INFO]     SHEET 'Greymanes': total=1 issue=0 no_issue=1 blocked=0 korean=0 words=1
+[13:14:36] [INFO]     SHEET 'Hernand': max_row=345, STATUS_col=3, trans_col=2
+[13:14:36] [INFO]     SHEET 'Hernand': total=344 issue=0 no_issue=167 blocked=4 korean=1 words=434
+[13:14:36] [INFO]     SHEET 'Pailune': max_row=156, STATUS_col=3, trans_col=2
+[13:14:36] [INFO]     SHEET 'Pailune': total=155 issue=4 no_issue=77 blocked=1 korean=0 words=167
+[13:14:36] [INFO]     SHEET 'No Faction': max_row=1019, STATUS_col=3, trans_col=2
+[13:14:36] [INFO]     SHEET 'No Faction': total=1018 issue=4 no_issue=417 blocked=2 korean=1 words=1427
+[13:14:36] [INFO]     SHEET 'Shop': max_row=595, STATUS_col=3, trans_col=2
+[13:14:36] [INFO]     SHEET 'Shop': total=594 issue=14 no_issue=143 blocked=14 korean=2 words=3019
+[13:14:36] [INFO]   TOTALS: total=2851 done=1219 issues=39 words=6008
+
+============================================================
+MANAGER STATS AGGREGATION
+============================================================
+[13:14:36] [INFO] MANAGER STATS: Starting aggregation
+[13:14:36] [INFO] SCAN FOLDER: EN (C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_EN)
+[13:14:36] [INFO] MASTER FILE: Character [EN] date=2026-01-22
+[13:14:36] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_EN\Master_Character.xlsx
+[13:14:38] [INFO]   Sheets: ['STATUS', 'ANIMAL', 'CAMP', 'DEV', 'MAIN', 'MONSTER', 'NPC', 'OBJECT', 'PC', 'PET', 'QUEST', 'VEHICLE']
+[13:14:38] [INFO]   SHEET 'ANIMAL': rows=935, cols=18
+[13:14:38] [INFO]     STATUS_ columns: ['김선우', '김찬용', '장어진']
+[13:14:38] [INFO]     Sample values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+[13:14:38] [INFO]     Character/김선우: F=5 R=0 C=0 N=2
+[13:14:38] [INFO]     Character/김찬용: F=2 R=2 C=0 N=52
+[13:14:38] [INFO]     Character/장어진: F=1 R=0 C=0 N=1
+[13:14:38] [INFO]   SHEET 'CAMP': rows=242, cols=18
+[13:14:38] [INFO]     STATUS_ columns: ['김선우', '김찬용', '장어진']
+[13:14:38] [INFO]     Sample values: {'김선우': ['(empty)'], '김찬용': ['NON-ISSUE'], '장어진': ['(empty)']}
+[13:14:38] [INFO]     Character/김선우: F=5 R=0 C=0 N=2
+[13:14:38] [INFO]     Character/김찬용: F=2 R=2 C=0 N=57
+[13:14:38] [INFO]     Character/장어진: F=1 R=0 C=0 N=1
+[13:14:38] [INFO]   SHEET 'DEV': rows=1216, cols=18
+[13:14:38] [INFO]     STATUS_ columns: ['김선우', '김찬용', '장어진']
+[13:14:38] [INFO]     Sample values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+[13:14:38] [INFO]     Character/김선우: F=5 R=0 C=0 N=2
+[13:14:38] [INFO]     Character/김찬용: F=2 R=2 C=0 N=66
+[13:14:38] [INFO]     Character/장어진: F=1 R=0 C=0 N=1
+[13:14:38] [INFO]   SHEET 'MAIN': rows=260, cols=18
+[13:14:38] [INFO]     STATUS_ columns: ['김선우', '김찬용', '장어진']
+[13:14:38] [INFO]     Sample values: {'김선우': ['(empty)'], '김찬용': ['NON-ISSUE'], '장어진': ['(empty)']}
+[13:14:38] [INFO]     Character/김선우: F=5 R=0 C=0 N=2
+[13:14:38] [INFO]     Character/김찬용: F=2 R=2 C=0 N=74
+[13:14:38] [INFO]     Character/장어진: F=1 R=0 C=0 N=1
+[13:14:38] [INFO]   SHEET 'MONSTER': rows=2325, cols=18
+[13:14:38] [INFO]     STATUS_ columns: ['김선우', '김찬용', '장어진']
+[13:14:38] [INFO]     Sample values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+[13:14:38] [INFO]     Character/김선우: F=5 R=0 C=0 N=2
+[13:14:38] [INFO]     Character/김찬용: F=12 R=6 C=0 N=86
+[13:14:38] [INFO]     Character/장어진: F=1 R=0 C=0 N=1
+[13:14:38] [INFO]   SHEET 'NPC': rows=3239, cols=18
+[13:14:38] [INFO]     STATUS_ columns: ['김선우', '김찬용', '장어진']
+[13:14:38] [INFO]     Sample values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+[13:14:38] [INFO]     Character/김선우: F=5 R=0 C=0 N=2
+[13:14:38] [INFO]     Character/김찬용: F=17 R=7 C=2 N=111
+[13:14:38] [INFO]     Character/장어진: F=2 R=0 C=0 N=4
+[13:14:38] [INFO]   SHEET 'OBJECT': rows=198, cols=18
+[13:14:38] [INFO]     STATUS_ columns: ['김선우', '김찬용', '장어진']
+[13:14:38] [INFO]     Sample values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['CHECKING']}
+[13:14:38] [INFO]     Character/김선우: F=5 R=0 C=0 N=2
+[13:14:38] [INFO]     Character/김찬용: F=17 R=7 C=2 N=111
+[13:14:38] [INFO]     Character/장어진: F=2 R=0 C=1 N=4
+[13:14:38] [INFO]   SHEET 'PC': rows=160, cols=18
+[13:14:38] [INFO]     STATUS_ columns: ['김선우', '김찬용', '장어진']
+[13:14:38] [INFO]     Sample values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+[13:14:38] [INFO]     Character/김선우: F=5 R=0 C=0 N=2
+[13:14:38] [INFO]     Character/김찬용: F=17 R=7 C=2 N=111
+[13:14:38] [INFO]     Character/장어진: F=2 R=0 C=1 N=4
+[13:14:38] [INFO]   SHEET 'PET': rows=167, cols=18
+[13:14:38] [INFO]     STATUS_ columns: ['김선우', '김찬용', '장어진']
+[13:14:38] [INFO]     Sample values: {'김선우': ['(empty)'], '김찬용': ['NON-ISSUE'], '장어진': ['(empty)']}
+[13:14:38] [INFO]     Character/김선우: F=5 R=0 C=0 N=2
+[13:14:38] [INFO]     Character/김찬용: F=17 R=7 C=2 N=113
+[13:14:38] [INFO]     Character/장어진: F=2 R=0 C=1 N=4
+[13:14:38] [INFO]   SHEET 'QUEST': rows=322, cols=18
+[13:14:38] [INFO]     STATUS_ columns: ['김선우', '김찬용', '장어진']
+[13:14:38] [INFO]     Sample values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+[13:14:38] [INFO]     Character/김선우: F=5 R=0 C=0 N=2
+[13:14:38] [INFO]     Character/김찬용: F=17 R=7 C=2 N=113
+[13:14:38] [INFO]     Character/장어진: F=2 R=0 C=1 N=4
+[13:14:38] [INFO]   SHEET 'VEHICLE': rows=304, cols=18
+[13:14:38] [INFO]     STATUS_ columns: ['김선우', '김찬용', '장어진']
+[13:14:38] [INFO]     Sample values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+[13:14:38] [INFO]     Character/김선우: F=5 R=0 C=0 N=2
+[13:14:38] [INFO]     Character/김찬용: F=17 R=7 C=2 N=113
+[13:14:38] [INFO]     Character/장어진: F=3 R=0 C=1 N=9
+[13:14:38] [INFO] MASTER FILE: Contents [EN] date=2026-01-22
+[13:14:38] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_EN\Master_Contents.xlsx
+[13:14:38] [INFO]   Sheets: ['STATUS', 'Sheet1', 'Trade Goods']
+[13:14:38] [INFO]   SHEET 'Sheet1': rows=229, cols=12
+[13:14:38] [INFO]     STATUS_ columns: ['김정원', '황하연']
+[13:14:38] [INFO]     Sample values: {'김정원': ['(empty)'], '황하연': ['FIXED', 'CHECKING']}
+[13:14:38] [INFO]     Contents/김정원: F=1 R=2 C=0 N=4
+[13:14:38] [INFO]     Contents/황하연: F=3 R=0 C=3 N=1
+[13:14:38] [INFO]   SHEET 'Trade Goods': rows=127, cols=12
+[13:14:38] [INFO]     STATUS_ columns: ['김정원', '황하연']
+[13:14:38] [INFO]     Sample values: {'김정원': ['(empty)'], '황하연': ['(empty)']}
+[13:14:38] [INFO]     Contents/김정원: F=1 R=2 C=0 N=4
+[13:14:38] [INFO]     Contents/황하연: F=3 R=0 C=3 N=1
+[13:14:38] [INFO] MASTER FILE: Item [EN] date=2026-01-22
+[13:14:38] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_EN\Master_Item.xlsx
+[13:14:39] [INFO]   Sheets: ['STATUS', 'Abyss_Gear', 'Abyss_Item', 'Armor', 'Collectibles', 'Crafting_Manual', 'Document', 'Ingested_Substances', 'Major_Goods', 'Monster_Item', 'Others', 'Poster', 'Weapons']
+[13:14:39] [INFO]   SHEET 'Abyss_Gear': rows=312, cols=17
+[13:14:39] [INFO]     STATUS_ columns: ['김헌동', '이재환']
+[13:14:39] [INFO]     Sample values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+[13:14:39] [INFO]     Item/김헌동: F=0 R=0 C=0 N=0
+[13:14:39] [INFO]     Item/이재환: F=0 R=0 C=0 N=0
+[13:14:39] [INFO]   SHEET 'Abyss_Item': rows=260, cols=17
+[13:14:39] [INFO]     STATUS_ columns: ['김헌동', '이재환']
+[13:14:39] [INFO]     Sample values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+[13:14:39] [INFO]     Item/김헌동: F=0 R=0 C=0 N=0
+[13:14:39] [INFO]     Item/이재환: F=0 R=0 C=0 N=0
+[13:14:39] [INFO]   SHEET 'Armor': rows=513, cols=17
+[13:14:39] [INFO]     STATUS_ columns: ['김헌동', '이재환']
+[13:14:39] [INFO]     Sample values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+[13:14:39] [INFO]     Item/김헌동: F=0 R=0 C=0 N=0
+[13:14:39] [INFO]     Item/이재환: F=0 R=0 C=0 N=0
+[13:14:39] [INFO]   SHEET 'Collectibles': rows=475, cols=17
+[13:14:39] [INFO]     STATUS_ columns: ['김헌동', '이재환']
+[13:14:39] [INFO]     Sample values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+[13:14:39] [INFO]     Item/김헌동: F=0 R=0 C=0 N=0
+[13:14:39] [INFO]     Item/이재환: F=0 R=0 C=0 N=0
+[13:14:39] [INFO]   SHEET 'Crafting_Manual': rows=265, cols=17
+[13:14:39] [INFO]     STATUS_ columns: ['김헌동', '이재환']
+[13:14:39] [INFO]     Sample values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+[13:14:39] [INFO]     Item/김헌동: F=0 R=0 C=0 N=0
+[13:14:39] [INFO]     Item/이재환: F=0 R=0 C=0 N=0
+[13:14:39] [INFO]   SHEET 'Document': rows=228, cols=17
+[13:14:39] [INFO]     STATUS_ columns: ['김헌동', '이재환']
+[13:14:39] [INFO]     Sample values: {'김헌동': ['(empty)'], '이재환': ['FIXED']}
+[13:14:39] [INFO]     Item/김헌동: F=0 R=0 C=0 N=1
+[13:14:39] [INFO]     Item/이재환: F=13 R=0 C=0 N=0
+[13:14:39] [INFO]   SHEET 'Ingested_Substances': rows=675, cols=17
+[13:14:39] [INFO]     STATUS_ columns: ['김헌동', '이재환']
+[13:14:39] [INFO]     Sample values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+[13:14:39] [INFO]     Item/김헌동: F=0 R=0 C=0 N=1
+[13:14:39] [INFO]     Item/이재환: F=13 R=0 C=0 N=2
+[13:14:39] [INFO]   SHEET 'Major_Goods': rows=555, cols=17
+[13:14:39] [INFO]     STATUS_ columns: ['김헌동', '이재환']
+[13:14:39] [INFO]     Sample values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+[13:14:39] [INFO]     Item/김헌동: F=0 R=0 C=0 N=1
+[13:14:39] [INFO]     Item/이재환: F=13 R=0 C=0 N=2
+[13:14:39] [INFO]   SHEET 'Monster_Item': rows=1758, cols=17
+[13:14:39] [INFO]     STATUS_ columns: ['김헌동', '이재환']
+[13:14:39] [INFO]     Sample values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+[13:14:39] [INFO]     Item/김헌동: F=0 R=0 C=0 N=1
+[13:14:39] [INFO]     Item/이재환: F=13 R=0 C=0 N=2
+[13:14:39] [INFO]   SHEET 'Others': rows=1291, cols=17
+[13:14:39] [INFO]     STATUS_ columns: ['김헌동', '이재환']
+[13:14:39] [INFO]     Sample values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+[13:14:39] [INFO]     Item/김헌동: F=0 R=0 C=0 N=3
+[13:14:39] [INFO]     Item/이재환: F=13 R=0 C=0 N=2
+[13:14:39] [INFO]   SHEET 'Poster': rows=202, cols=17
+[13:14:39] [INFO]     STATUS_ columns: ['김헌동', '이재환']
+[13:14:39] [INFO]     Sample values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+[13:14:39] [INFO]     Item/김헌동: F=0 R=0 C=0 N=3
+[13:14:39] [INFO]     Item/이재환: F=13 R=0 C=0 N=2
+[13:14:39] [INFO]   SHEET 'Weapons': rows=563, cols=17
+[13:14:39] [INFO]     STATUS_ columns: ['김헌동', '이재환']
+[13:14:39] [INFO]     Sample values: {'김헌동': ['NON ISSUE'], '이재환': ['(empty)']}
+[13:14:39] [INFO]     Item/김헌동: F=0 R=0 C=0 N=122
+[13:14:39] [INFO]     Item/이재환: F=13 R=0 C=0 N=2
+[13:14:39] [INFO] MASTER FILE: Knowledge [EN] date=2026-01-22
+[13:14:39] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_EN\Master_Knowledge.xlsx
+[13:14:41] [INFO]   Sheets: ['STATUS', 'Abyss Gate', 'People', '피조물', 'Mounts', 'Contents', 'Document', 'Adventure', 'Faction', 'Gatherables', 'Small Tools', 'Collectibles', 'Territories', 'Quests', 'Memory Fragment', 'Games', 'Skills']
+[13:14:41] [INFO]   SHEET 'Abyss Gate': rows=476, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'People': rows=2645, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET '피조물': rows=1373, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Mounts': rows=328, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Contents': rows=800, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Document': rows=1125, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Adventure': rows=1044, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Faction': rows=781, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Gatherables': rows=557, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Small Tools': rows=245, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Collectibles': rows=551, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Territories': rows=2477, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Quests': rows=1046, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Memory Fragment': rows=737, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Games': rows=239, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]   SHEET 'Skills': rows=1005, cols=22
+[13:14:41] [INFO]     STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+[13:14:41] [INFO]     Sample values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+[13:14:41] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:41] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:41] [INFO] MASTER FILE: Quest [EN] date=2026-01-22
+[13:14:41] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_EN\Master_Quest.xlsx
+[13:14:43] [INFO]   Sheets: ['STATUS', 'Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:43] [INFO]   SHEET 'Main Quest': rows=990, cols=44
+[13:14:43] [INFO]     STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+[13:14:43] [INFO]     Sample values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['FIXED'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['NON ISSUE'], '황하연': ['(empty)']}
+[13:14:43] [INFO]     Quest/김선우: F=4 R=0 C=0 N=8
+[13:14:43] [INFO]     Quest/김정원: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/김찬용: F=13 R=1 C=0 N=34
+[13:14:43] [INFO]     Quest/김헌동: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/성가은: F=23 R=2 C=0 N=36
+[13:14:43] [INFO]     Quest/이재환: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/장어진: F=0 R=0 C=0 N=66
+[13:14:43] [INFO]     Quest/황하연: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]   SHEET 'Faction_01': rows=699, cols=44
+[13:14:43] [INFO]     STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+[13:14:43] [INFO]     Sample values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+[13:14:43] [INFO]     Quest/김선우: F=6 R=0 C=0 N=9
+[13:14:43] [INFO]     Quest/김정원: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/김찬용: F=13 R=1 C=0 N=34
+[13:14:43] [INFO]     Quest/김헌동: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/성가은: F=23 R=2 C=0 N=36
+[13:14:43] [INFO]     Quest/이재환: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/장어진: F=0 R=0 C=0 N=66
+[13:14:43] [INFO]     Quest/황하연: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]   SHEET 'Faction_02': rows=743, cols=44
+[13:14:43] [INFO]     STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+[13:14:43] [INFO]     Sample values: {'김선우': ['NON ISSUE'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+[13:14:43] [INFO]     Quest/김선우: F=6 R=0 C=0 N=10
+[13:14:43] [INFO]     Quest/김정원: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/김찬용: F=13 R=1 C=0 N=34
+[13:14:43] [INFO]     Quest/김헌동: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/성가은: F=23 R=2 C=0 N=36
+[13:14:43] [INFO]     Quest/이재환: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/장어진: F=0 R=0 C=0 N=68
+[13:14:43] [INFO]     Quest/황하연: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]   SHEET 'Faction_03': rows=1683, cols=44
+[13:14:43] [INFO]     STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+[13:14:43] [INFO]     Sample values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+[13:14:43] [INFO]     Quest/김선우: F=6 R=0 C=0 N=10
+[13:14:43] [INFO]     Quest/김정원: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/김찬용: F=13 R=1 C=0 N=34
+[13:14:43] [INFO]     Quest/김헌동: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/성가은: F=34 R=2 C=7 N=36
+[13:14:43] [INFO]     Quest/이재환: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/장어진: F=0 R=0 C=0 N=68
+[13:14:43] [INFO]     Quest/황하연: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]   SHEET 'Faction_etc': rows=473, cols=44
+[13:14:43] [INFO]     STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+[13:14:43] [INFO]     Sample values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+[13:14:43] [INFO]     Quest/김선우: F=6 R=0 C=0 N=10
+[13:14:43] [INFO]     Quest/김정원: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/김찬용: F=13 R=1 C=0 N=34
+[13:14:43] [INFO]     Quest/김헌동: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/성가은: F=34 R=2 C=7 N=36
+[13:14:43] [INFO]     Quest/이재환: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/장어진: F=0 R=0 C=0 N=68
+[13:14:43] [INFO]     Quest/황하연: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]   SHEET 'Region Quest': rows=1378, cols=44
+[13:14:43] [INFO]     STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+[13:14:43] [INFO]     Sample values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+[13:14:43] [INFO]     Quest/김선우: F=6 R=0 C=0 N=10
+[13:14:43] [INFO]     Quest/김정원: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/김찬용: F=13 R=1 C=0 N=34
+[13:14:43] [INFO]     Quest/김헌동: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/성가은: F=34 R=2 C=7 N=36
+[13:14:43] [INFO]     Quest/이재환: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/장어진: F=0 R=0 C=0 N=68
+[13:14:43] [INFO]     Quest/황하연: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]   SHEET 'Daily': rows=694, cols=44
+[13:14:43] [INFO]     STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+[13:14:43] [INFO]     Sample values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+[13:14:43] [INFO]     Quest/김선우: F=6 R=0 C=0 N=10
+[13:14:43] [INFO]     Quest/김정원: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/김찬용: F=13 R=1 C=0 N=34
+[13:14:43] [INFO]     Quest/김헌동: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/성가은: F=34 R=2 C=7 N=36
+[13:14:43] [INFO]     Quest/이재환: F=1 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/장어진: F=0 R=0 C=0 N=68
+[13:14:43] [INFO]     Quest/황하연: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]   SHEET 'Politics': rows=556, cols=44
+[13:14:43] [INFO]     STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+[13:14:43] [INFO]     Sample values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+[13:14:43] [INFO]     Quest/김선우: F=6 R=0 C=0 N=10
+[13:14:43] [INFO]     Quest/김정원: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/김찬용: F=13 R=1 C=0 N=34
+[13:14:43] [INFO]     Quest/김헌동: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/성가은: F=34 R=2 C=7 N=36
+[13:14:43] [INFO]     Quest/이재환: F=1 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/장어진: F=0 R=0 C=0 N=68
+[13:14:43] [INFO]     Quest/황하연: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]   SHEET 'Challenge Quest': rows=1701, cols=44
+[13:14:43] [INFO]     STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+[13:14:43] [INFO]     Sample values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+[13:14:43] [INFO]     Quest/김선우: F=25 R=0 C=0 N=13
+[13:14:43] [INFO]     Quest/김정원: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/김찬용: F=13 R=1 C=0 N=34
+[13:14:43] [INFO]     Quest/김헌동: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/성가은: F=34 R=2 C=7 N=36
+[13:14:43] [INFO]     Quest/이재환: F=1 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/장어진: F=0 R=0 C=0 N=68
+[13:14:43] [INFO]     Quest/황하연: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]   SHEET 'Minigame Quest': rows=502, cols=44
+[13:14:43] [INFO]     STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+[13:14:43] [INFO]     Sample values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+[13:14:43] [INFO]     Quest/김선우: F=25 R=0 C=0 N=13
+[13:14:43] [INFO]     Quest/김정원: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/김찬용: F=13 R=1 C=0 N=34
+[13:14:43] [INFO]     Quest/김헌동: F=0 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/성가은: F=34 R=2 C=7 N=36
+[13:14:43] [INFO]     Quest/이재환: F=1 R=0 C=0 N=0
+[13:14:43] [INFO]     Quest/장어진: F=0 R=0 C=0 N=68
+[13:14:43] [INFO]     Quest/황하연: F=0 R=0 C=0 N=0
+[13:14:43] [INFO] MASTER FILE: Region [EN] date=2026-01-22
+[13:14:43] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_EN\Master_Region.xlsx
+[13:14:44] [INFO]   Sheets: ['STATUS', 'Abyss', 'Crimson Desert', 'Delesyia', 'Demeniss', 'Greymanes', 'Hernand', 'Pailune', 'No Faction', 'Shop']
+[13:14:44] [INFO]   SHEET 'Abyss': rows=210, cols=22
+[13:14:44] [INFO]     STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+[13:14:44] [INFO]     Sample values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+[13:14:44] [INFO]     Region/성가은: F=0 R=0 C=0 N=0
+[13:14:44] [INFO]     Region/유지윤: F=0 R=0 C=0 N=0
+[13:14:44] [INFO]     Region/조서영: F=0 R=0 C=0 N=0
+[13:14:44] [INFO]     Region/황하연: F=0 R=0 C=0 N=0
+[13:14:44] [INFO]   SHEET 'Crimson Desert': rows=408, cols=22
+[13:14:44] [INFO]     STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+[13:14:44] [INFO]     Sample values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+[13:14:44] [INFO]     Region/성가은: F=2 R=0 C=0 N=2
+[13:14:44] [INFO]     Region/유지윤: F=0 R=0 C=0 N=1
+[13:14:44] [INFO]     Region/조서영: F=0 R=0 C=0 N=0
+[13:14:44] [INFO]     Region/황하연: F=7 R=0 C=0 N=1
+[13:14:44] [INFO]   SHEET 'Delesyia': rows=451, cols=22
+[13:14:44] [INFO]     STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+[13:14:44] [INFO]     Sample values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+[13:14:44] [INFO]     Region/성가은: F=4 R=0 C=0 N=5
+[13:14:44] [INFO]     Region/유지윤: F=0 R=0 C=0 N=1
+[13:14:44] [INFO]     Region/조서영: F=0 R=0 C=0 N=0
+[13:14:44] [INFO]     Region/황하연: F=8 R=0 C=0 N=1
+[13:14:44] [INFO]   SHEET 'Demeniss': rows=482, cols=22
+[13:14:44] [INFO]     STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+[13:14:44] [INFO]     Sample values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+[13:14:44] [INFO]     Region/성가은: F=6 R=6 C=0 N=9
+[13:14:44] [INFO]     Region/유지윤: F=0 R=0 C=0 N=1
+[13:14:44] [INFO]     Region/조서영: F=0 R=0 C=0 N=2
+[13:14:44] [INFO]     Region/황하연: F=13 R=0 C=0 N=6
+[13:14:44] [INFO]   SHEET 'Greymanes': rows=210, cols=22
+[13:14:44] [INFO]     STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+[13:14:44] [INFO]     Sample values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+[13:14:44] [INFO]     Region/성가은: F=6 R=6 C=0 N=9
+[13:14:44] [INFO]     Region/유지윤: F=0 R=0 C=0 N=1
+[13:14:44] [INFO]     Region/조서영: F=0 R=0 C=0 N=2
+[13:14:44] [INFO]     Region/황하연: F=13 R=0 C=0 N=6
+[13:14:44] [INFO]   SHEET 'Hernand': rows=545, cols=22
+[13:14:44] [INFO]     STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+[13:14:44] [INFO]     Sample values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+[13:14:44] [INFO]     Region/성가은: F=7 R=6 C=0 N=10
+[13:14:44] [INFO]     Region/유지윤: F=0 R=0 C=0 N=1
+[13:14:44] [INFO]     Region/조서영: F=0 R=0 C=0 N=2
+[13:14:44] [INFO]     Region/황하연: F=13 R=0 C=0 N=11
+[13:14:44] [INFO]   SHEET 'Pailune': rows=356, cols=22
+[13:14:44] [INFO]     STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+[13:14:44] [INFO]     Sample values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+[13:14:44] [INFO]     Region/성가은: F=7 R=6 C=0 N=10
+[13:14:44] [INFO]     Region/유지윤: F=0 R=0 C=0 N=1
+[13:14:44] [INFO]     Region/조서영: F=0 R=0 C=0 N=3
+[13:14:44] [INFO]     Region/황하연: F=13 R=0 C=0 N=15
+[13:14:44] [INFO]   SHEET 'No Faction': rows=1219, cols=22
+[13:14:44] [INFO]     STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+[13:14:44] [INFO]     Sample values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+[13:14:44] [INFO]     Region/성가은: F=7 R=6 C=0 N=14
+[13:14:44] [INFO]     Region/유지윤: F=0 R=2 C=0 N=1
+[13:14:44] [INFO]     Region/조서영: F=0 R=0 C=0 N=4
+[13:14:44] [INFO]     Region/황하연: F=13 R=2 C=0 N=17
+[13:14:44] [INFO]   SHEET 'Shop': rows=795, cols=22
+[13:14:44] [INFO]     STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+[13:14:44] [INFO]     Sample values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+[13:14:44] [INFO]     Region/성가은: F=21 R=6 C=1 N=21
+[13:14:44] [INFO]     Region/유지윤: F=3 R=2 C=1 N=1
+[13:14:44] [INFO]     Region/조서영: F=0 R=0 C=0 N=4
+[13:14:44] [INFO]     Region/황하연: F=21 R=2 C=1 N=36
+[13:14:44] [INFO] MASTER FILE: Script [EN] date=2026-01-22
+[13:14:44] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_EN\Master_Script.xlsx
+[13:14:46] [INFO]   Sheets: ['STATUS', 'English Script', 'Work Transform']
+[13:14:46] [INFO]   SHEET 'English Script': rows=1778, cols=16
+[13:14:46] [INFO]     STATUS_ columns: ['유지윤', '조서영']
+[13:14:46] [INFO]     Sample values: {'유지윤': ['(empty)'], '조서영': ['(empty)']}
+[13:14:46] [INFO]     Script/유지윤: F=0 R=0 C=0 N=0
+[13:14:46] [INFO]     Script/조서영: F=0 R=0 C=0 N=0
+[13:14:46] [INFO]   SHEET 'Work Transform': rows=7954, cols=20
+[13:14:46] [INFO]     STATUS_ columns: ['김정원', '김찬용', '황하연']
+[13:14:46] [INFO]     Sample values: {'김정원': ['(empty)'], '김찬용': ['(empty)'], '황하연': ['(empty)']}
+[13:14:46] [INFO]     Script/김정원: F=0 R=0 C=0 N=0
+[13:14:46] [INFO]     Script/김찬용: F=0 R=0 C=0 N=0
+[13:14:46] [INFO]     Script/황하연: F=0 R=0 C=0 N=0
+[13:14:46] [INFO] MASTER FILE: System [EN] date=2026-01-22
+[13:14:46] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_EN\Master_System.xlsx
+[13:14:47] [INFO]   Sheets: ['STATUS', 'How_To', 'Menu', 'Greymane', 'Map', 'Other', 'Range', 'Skills', 'GameAdvice']
+[13:14:47] [INFO]   SHEET 'How_To': rows=387, cols=39
+[13:14:47] [INFO]     STATUS_ columns: ['김정원', '김찬용', '김헌동', '유지윤', '이재환', '조서영']
+[13:14:47] [INFO]     Sample values: {'김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['(empty)'], '조서영': ['(empty)']}
+[13:14:47] [INFO]     System/김정원: F=0 R=0 C=0 N=0
+[13:14:47] [INFO]     System/김찬용: F=0 R=0 C=0 N=0
+[13:14:47] [INFO]     System/김헌동: F=0 R=0 C=0 N=0
+[13:14:47] [INFO]     System/유지윤: F=0 R=0 C=0 N=0
+[13:14:47] [INFO]     System/이재환: F=0 R=0 C=0 N=0
+[13:14:47] [INFO]     System/조서영: F=0 R=0 C=0 N=0
+[13:14:47] [INFO]   SHEET 'Menu': rows=347, cols=31
+[13:14:47] [INFO]     STATUS_ columns: ['김정원', '김찬용', '김헌동', '유지윤', '이재환', '조서영']
+[13:14:47] [INFO]     Sample values: {'김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['(empty)'], '조서영': ['(empty)']}
+[13:14:47] [INFO]     System/김정원: F=6 R=0 C=0 N=1
+[13:14:47] [INFO]     System/김찬용: F=4 R=0 C=0 N=0
+[13:14:47] [INFO]     System/김헌동: F=0 R=0 C=0 N=0
+[13:14:47] [INFO]     System/유지윤: F=0 R=0 C=0 N=0
+[13:14:47] [INFO]     System/이재환: F=0 R=0 C=0 N=0
+[13:14:47] [INFO]     System/조서영: F=0 R=0 C=0 N=0
+[13:14:47] [INFO]   SHEET 'Greymane': rows=343, cols=31
+[13:14:47] [INFO]     STATUS_ columns: ['김정원', '김찬용', '김헌동', '유지윤', '이재환', '조서영']
+[13:14:47] [INFO]     Sample values: {'김정원': ['NON ISSUE'], '김찬용': ['NON ISSUE'], '김헌동': ['(empty)'], '유지윤': ['CHECKING'], '이재환': ['(empty)'], '조서영': ['CHECKING']}
+[13:14:47] [INFO]     System/김정원: F=7 R=0 C=0 N=6
+[13:14:47] [INFO]     System/김찬용: F=4 R=0 C=0 N=2
+[13:14:47] [INFO]     System/김헌동: F=0 R=0 C=0 N=0
+[13:14:47] [INFO]     System/유지윤: F=0 R=0 C=1 N=0
+[13:14:47] [INFO]     System/이재환: F=2 R=0 C=0 N=1
+[13:14:47] [INFO]     System/조서영: F=2 R=0 C=1 N=0
+[13:14:47] [INFO]   SHEET 'Map': rows=333, cols=31
+[13:14:47] [INFO]     STATUS_ columns: ['김정원', '김찬용', '김헌동', '유지윤', '이재환', '조서영']
+[13:14:47] [INFO]     Sample values: {'김정원': ['FIXED'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['(empty)'], '조서영': ['(empty)']}
+[13:14:47] [INFO]     System/김정원: F=8 R=0 C=0 N=20
+[13:14:47] [INFO]     System/김찬용: F=5 R=0 C=3 N=8
+[13:14:47] [INFO]     System/김헌동: F=0 R=0 C=0 N=0
+[13:14:47] [INFO]     System/유지윤: F=0 R=0 C=1 N=1
+[13:14:47] [INFO]     System/이재환: F=2 R=0 C=0 N=1
+[13:14:47] [INFO]     System/조서영: F=2 R=0 C=1 N=0
+[13:14:47] [INFO]   SHEET 'Other': rows=383, cols=31
+[13:14:47] [INFO]     STATUS_ columns: ['김정원', '김찬용', '김헌동', '유지윤', '이재환', '조서영']
+[13:14:47] [INFO]     Sample values: {'김정원': ['FIXED'], '김찬용': ['CHECKING', 'CHECKING'], '김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['CHECKING'], '조서영': ['(empty)']}
+[13:14:47] [INFO]     System/김정원: F=29 R=0 C=0 N=27
+[13:14:47] [INFO]     System/김찬용: F=8 R=2 C=5 N=19
+[13:14:47] [INFO]     System/김헌동: F=1 R=0 C=0 N=7
+[13:14:47] [INFO]     System/유지윤: F=1 R=0 C=1 N=4
+[13:14:47] [INFO]     System/이재환: F=11 R=1 C=1 N=5
+[13:14:47] [INFO]     System/조서영: F=2 R=0 C=1 N=3
+[13:14:47] [INFO]   SHEET 'Range': rows=310, cols=31
+[13:14:47] [INFO]     STATUS_ columns: ['김정원', '김찬용', '김헌동', '유지윤', '이재환', '조서영']
+[13:14:47] [INFO]     Sample values: {'김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['(empty)'], '조서영': ['(empty)']}
+[13:14:47] [INFO]     System/김정원: F=29 R=0 C=0 N=27
+[13:14:47] [INFO]     System/김찬용: F=8 R=2 C=5 N=19
+[13:14:47] [INFO]     System/김헌동: F=1 R=0 C=0 N=7
+[13:14:47] [INFO]     System/유지윤: F=1 R=0 C=1 N=4
+[13:14:47] [INFO]     System/이재환: F=11 R=1 C=1 N=5
+[13:14:47] [INFO]     System/조서영: F=2 R=0 C=1 N=3
+[13:14:47] [INFO]   SHEET 'Skills': rows=1369, cols=22
+[13:14:47] [INFO]     STATUS_ columns: ['김헌동', '유지윤', '이재환', '조서영']
+[13:14:47] [INFO]     Sample values: {'김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['(empty)'], '조서영': ['(empty)']}
+[13:14:47] [INFO]     System/김헌동: F=8 R=0 C=0 N=109
+[13:14:47] [INFO]     System/유지윤: F=19 R=0 C=23 N=4
+[13:14:47] [INFO]     System/이재환: F=45 R=5 C=1 N=48
+[13:14:47] [INFO]     System/조서영: F=16 R=0 C=17 N=38
+[13:14:47] [INFO]   SHEET 'GameAdvice': rows=972, cols=22
+[13:14:47] [INFO]     STATUS_ columns: ['김헌동', '유지윤', '이재환', '조서영']
+[13:14:47] [INFO]     Sample values: {'김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['(empty)'], '조서영': ['(empty)']}
+[13:14:47] [INFO]     System/김헌동: F=8 R=0 C=0 N=109
+[13:14:47] [INFO]     System/유지윤: F=19 R=0 C=23 N=4
+[13:14:47] [INFO]     System/이재환: F=45 R=5 C=1 N=48
+[13:14:47] [INFO]     System/조서영: F=16 R=0 C=17 N=38
+[13:14:47] [INFO] SCAN FOLDER: CN (C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_CN)
+[13:14:47] [INFO] MASTER FILE: Character [CN] date=2026-01-22
+[13:14:47] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_CN\Master_Character.xlsx
+[13:14:48] [INFO]   Sheets: ['STATUS', 'ANIMAL', 'CAMP', 'DEV', 'MAIN', 'MONSTER', 'NPC', 'OBJECT', 'PC', 'PET', 'QUEST', 'VEHICLE']
+[13:14:48] [INFO]   SHEET 'ANIMAL': rows=885, cols=14
+[13:14:48] [INFO]     STATUS_ columns: ['뤄이롼', '리쓰한']
+[13:14:48] [INFO]     Sample values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:48] [INFO]     Character/뤄이롼: F=0 R=0 C=0 N=1
+[13:14:48] [INFO]     Character/리쓰한: F=0 R=0 C=0 N=0
+[13:14:48] [INFO]   SHEET 'CAMP': rows=192, cols=14
+[13:14:48] [INFO]     STATUS_ columns: ['뤄이롼', '리쓰한']
+[13:14:48] [INFO]     Sample values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:48] [INFO]     Character/뤄이롼: F=0 R=0 C=0 N=1
+[13:14:48] [INFO]     Character/리쓰한: F=0 R=0 C=0 N=0
+[13:14:48] [INFO]   SHEET 'DEV': rows=1166, cols=14
+[13:14:48] [INFO]     STATUS_ columns: ['뤄이롼', '리쓰한']
+[13:14:48] [INFO]     Sample values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:48] [INFO]     Character/뤄이롼: F=0 R=0 C=0 N=1
+[13:14:48] [INFO]     Character/리쓰한: F=0 R=0 C=0 N=0
+[13:14:48] [INFO]   SHEET 'MAIN': rows=210, cols=14
+[13:14:48] [INFO]     STATUS_ columns: ['뤄이롼', '리쓰한']
+[13:14:48] [INFO]     Sample values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:48] [INFO]     Character/뤄이롼: F=0 R=0 C=0 N=1
+[13:14:48] [INFO]     Character/리쓰한: F=0 R=0 C=0 N=0
+[13:14:48] [INFO]   SHEET 'MONSTER': rows=2275, cols=14
+[13:14:48] [INFO]     STATUS_ columns: ['뤄이롼', '리쓰한']
+[13:14:48] [INFO]     Sample values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:48] [INFO]     Character/뤄이롼: F=0 R=0 C=0 N=1
+[13:14:48] [INFO]     Character/리쓰한: F=0 R=0 C=0 N=0
+[13:14:48] [INFO]   SHEET 'NPC': rows=3189, cols=14
+[13:14:48] [INFO]     STATUS_ columns: ['뤄이롼', '리쓰한']
+[13:14:48] [INFO]     Sample values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:48] [INFO]     Character/뤄이롼: F=0 R=0 C=0 N=1
+[13:14:48] [INFO]     Character/리쓰한: F=0 R=0 C=0 N=0
+[13:14:48] [INFO]   SHEET 'OBJECT': rows=148, cols=14
+[13:14:48] [INFO]     STATUS_ columns: ['뤄이롼', '리쓰한']
+[13:14:48] [INFO]     Sample values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:48] [INFO]     Character/뤄이롼: F=0 R=0 C=0 N=1
+[13:14:48] [INFO]     Character/리쓰한: F=0 R=0 C=0 N=0
+[13:14:48] [INFO]   SHEET 'PC': rows=110, cols=14
+[13:14:48] [INFO]     STATUS_ columns: ['뤄이롼', '리쓰한']
+[13:14:48] [INFO]     Sample values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:48] [INFO]     Character/뤄이롼: F=0 R=0 C=0 N=1
+[13:14:48] [INFO]     Character/리쓰한: F=0 R=0 C=0 N=0
+[13:14:48] [INFO]   SHEET 'PET': rows=117, cols=14
+[13:14:48] [INFO]     STATUS_ columns: ['뤄이롼', '리쓰한']
+[13:14:48] [INFO]     Sample values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:48] [INFO]     Character/뤄이롼: F=0 R=0 C=0 N=1
+[13:14:48] [INFO]     Character/리쓰한: F=0 R=0 C=0 N=0
+[13:14:48] [INFO]   SHEET 'QUEST': rows=272, cols=14
+[13:14:48] [INFO]     STATUS_ columns: ['뤄이롼', '리쓰한']
+[13:14:48] [INFO]     Sample values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:48] [INFO]     Character/뤄이롼: F=0 R=0 C=0 N=1
+[13:14:48] [INFO]     Character/리쓰한: F=0 R=0 C=0 N=0
+[13:14:48] [INFO]   SHEET 'VEHICLE': rows=254, cols=14
+[13:14:48] [INFO]     STATUS_ columns: ['뤄이롼', '리쓰한']
+[13:14:48] [INFO]     Sample values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:48] [INFO]     Character/뤄이롼: F=0 R=0 C=0 N=1
+[13:14:48] [INFO]     Character/리쓰한: F=0 R=0 C=0 N=0
+[13:14:48] [INFO] MASTER FILE: Item [CN] date=2026-01-22
+[13:14:48] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_CN\Master_Item.xlsx
+[13:14:49] [INFO]   Sheets: ['STATUS', 'Abyss_Gear', 'Abyss_Item', 'Armor', 'Collectibles', 'Crafting_Manual', 'Document', 'Ingested_Substances', 'Major_Goods', 'Monster_Item', 'Others', 'Poster', 'Weapons']
+[13:14:49] [INFO]   SHEET 'Abyss_Gear': rows=359, cols=24
+[13:14:49] [INFO]     STATUS_ columns: ['김세련', '김춘애', '최석문']
+[13:14:49] [INFO]     Sample values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+[13:14:49] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/김춘애: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/최석문: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]   SHEET 'Abyss_Item': rows=302, cols=24
+[13:14:49] [INFO]     STATUS_ columns: ['김세련', '김춘애', '최석문']
+[13:14:49] [INFO]     Sample values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+[13:14:49] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/김춘애: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/최석문: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]   SHEET 'Armor': rows=563, cols=24
+[13:14:49] [INFO]     STATUS_ columns: ['김세련', '김춘애', '최석문']
+[13:14:49] [INFO]     Sample values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+[13:14:49] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/김춘애: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/최석문: F=0 R=0 C=0 N=1
+[13:14:49] [INFO]   SHEET 'Collectibles': rows=525, cols=24
+[13:14:49] [INFO]     STATUS_ columns: ['김세련', '김춘애', '최석문']
+[13:14:49] [INFO]     Sample values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+[13:14:49] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/김춘애: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/최석문: F=0 R=0 C=0 N=1
+[13:14:49] [INFO]   SHEET 'Crafting_Manual': rows=314, cols=24
+[13:14:49] [INFO]     STATUS_ columns: ['김세련', '김춘애', '최석문']
+[13:14:49] [INFO]     Sample values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+[13:14:49] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/김춘애: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/최석문: F=0 R=0 C=0 N=1
+[13:14:49] [INFO]   SHEET 'Document': rows=278, cols=24
+[13:14:49] [INFO]     STATUS_ columns: ['김세련', '김춘애', '최석문']
+[13:14:49] [INFO]     Sample values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+[13:14:49] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/김춘애: F=0 R=1 C=0 N=0
+[13:14:49] [INFO]     Item/최석문: F=0 R=1 C=0 N=1
+[13:14:49] [INFO]   SHEET 'Ingested_Substances': rows=725, cols=24
+[13:14:49] [INFO]     STATUS_ columns: ['김세련', '김춘애', '최석문']
+[13:14:49] [INFO]     Sample values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+[13:14:49] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/김춘애: F=0 R=1 C=0 N=0
+[13:14:49] [INFO]     Item/최석문: F=0 R=1 C=0 N=1
+[13:14:49] [INFO]   SHEET 'Major_Goods': rows=606, cols=24
+[13:14:49] [INFO]     STATUS_ columns: ['김세련', '김춘애', '최석문']
+[13:14:49] [INFO]     Sample values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+[13:14:49] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/김춘애: F=0 R=1 C=0 N=0
+[13:14:49] [INFO]     Item/최석문: F=0 R=1 C=0 N=1
+[13:14:49] [INFO]   SHEET 'Monster_Item': rows=1808, cols=24
+[13:14:49] [INFO]     STATUS_ columns: ['김세련', '김춘애', '최석문']
+[13:14:49] [INFO]     Sample values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+[13:14:49] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/김춘애: F=0 R=1 C=0 N=0
+[13:14:49] [INFO]     Item/최석문: F=0 R=3 C=1 N=1
+[13:14:49] [INFO]   SHEET 'Others': rows=1351, cols=24
+[13:14:49] [INFO]     STATUS_ columns: ['김세련', '김춘애', '최석문']
+[13:14:49] [INFO]     Sample values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+[13:14:49] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/김춘애: F=0 R=1 C=0 N=0
+[13:14:49] [INFO]     Item/최석문: F=0 R=4 C=1 N=1
+[13:14:49] [INFO]   SHEET 'Poster': rows=252, cols=24
+[13:14:49] [INFO]     STATUS_ columns: ['김세련', '김춘애', '최석문']
+[13:14:49] [INFO]     Sample values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+[13:14:49] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/김춘애: F=0 R=1 C=0 N=0
+[13:14:49] [INFO]     Item/최석문: F=0 R=4 C=1 N=1
+[13:14:49] [INFO]   SHEET 'Weapons': rows=613, cols=24
+[13:14:49] [INFO]     STATUS_ columns: ['김세련', '김춘애', '최석문']
+[13:14:49] [INFO]     Sample values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+[13:14:49] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:49] [INFO]     Item/김춘애: F=0 R=1 C=0 N=0
+[13:14:49] [INFO]     Item/최석문: F=0 R=4 C=1 N=1
+[13:14:49] [INFO] MASTER FILE: Knowledge [CN] date=2026-01-22
+[13:14:49] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_CN\Master_Knowledge.xlsx
+[13:14:51] [INFO]   Sheets: ['STATUS', 'Abyss Gate', 'People', '피조물', 'Mounts', 'Contents', 'Document', 'Adventure', 'Faction', 'Gatherables', 'Small Tools', 'Collectibles', 'Territories', 'Quests', 'Memory Fragment', 'Games', 'Skills']
+[13:14:51] [INFO]   SHEET 'Abyss Gate': rows=376, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'People': rows=2545, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET '피조물': rows=1273, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Mounts': rows=228, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Contents': rows=700, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Document': rows=1025, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Adventure': rows=944, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Faction': rows=681, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Gatherables': rows=457, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Small Tools': rows=145, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Collectibles': rows=451, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Territories': rows=2377, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Quests': rows=946, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Memory Fragment': rows=637, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Games': rows=139, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]   SHEET 'Skills': rows=905, cols=13
+[13:14:51] [INFO]     STATUS_ columns: ['김춘애', '리쓰한']
+[13:14:51] [INFO]     Sample values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+[13:14:51] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:51] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:51] [INFO] MASTER FILE: Quest [CN] date=2026-01-22
+[13:14:51] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_CN\Master_Quest.xlsx
+[13:14:52] [INFO]   Sheets: ['STATUS', 'Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+[13:14:52] [INFO]   SHEET 'Main Quest': rows=789, cols=25
+[13:14:52] [INFO]     STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+[13:14:52] [INFO]     Sample values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Quest/김춘애: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/뤄이롼: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/리쓰한: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Faction_01': rows=499, cols=25
+[13:14:52] [INFO]     STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+[13:14:52] [INFO]     Sample values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Quest/김춘애: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/뤄이롼: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/리쓰한: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Faction_02': rows=541, cols=25
+[13:14:52] [INFO]     STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+[13:14:52] [INFO]     Sample values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Quest/김춘애: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/뤄이롼: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/리쓰한: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Faction_03': rows=1497, cols=25
+[13:14:52] [INFO]     STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+[13:14:52] [INFO]     Sample values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Quest/김춘애: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/뤄이롼: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/리쓰한: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Faction_etc': rows=273, cols=25
+[13:14:52] [INFO]     STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+[13:14:52] [INFO]     Sample values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Quest/김춘애: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/뤄이롼: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/리쓰한: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Region Quest': rows=1174, cols=25
+[13:14:52] [INFO]     STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+[13:14:52] [INFO]     Sample values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Quest/김춘애: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/뤄이롼: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/리쓰한: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Daily': rows=494, cols=25
+[13:14:52] [INFO]     STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+[13:14:52] [INFO]     Sample values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Quest/김춘애: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/뤄이롼: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/리쓰한: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Politics': rows=356, cols=25
+[13:14:52] [INFO]     STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+[13:14:52] [INFO]     Sample values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Quest/김춘애: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/뤄이롼: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/리쓰한: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Challenge Quest': rows=1502, cols=25
+[13:14:52] [INFO]     STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+[13:14:52] [INFO]     Sample values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Quest/김춘애: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/뤄이롼: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/리쓰한: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Minigame Quest': rows=304, cols=25
+[13:14:52] [INFO]     STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+[13:14:52] [INFO]     Sample values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Quest/김춘애: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/뤄이롼: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/리쓰한: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Quest/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO] MASTER FILE: Region [CN] date=2026-01-22
+[13:14:52] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_CN\Master_Region.xlsx
+[13:14:52] [INFO]   Sheets: ['STATUS', '阿比斯', '红色沙漠', '德雷西亚', '德梅尼斯', '灰鬃', '埃尔南德', '佩伦', '无势力', 'Shop']
+[13:14:52] [INFO]   SHEET '阿比斯': rows=110, cols=13
+[13:14:52] [INFO]     STATUS_ columns: ['김세련', '최석문']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Region/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Region/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET '红色沙漠': rows=308, cols=13
+[13:14:52] [INFO]     STATUS_ columns: ['김세련', '최석문']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Region/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Region/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET '德雷西亚': rows=351, cols=13
+[13:14:52] [INFO]     STATUS_ columns: ['김세련', '최석문']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Region/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Region/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET '德梅尼斯': rows=382, cols=13
+[13:14:52] [INFO]     STATUS_ columns: ['김세련', '최석문']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Region/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Region/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET '灰鬃': rows=110, cols=13
+[13:14:52] [INFO]     STATUS_ columns: ['김세련', '최석문']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Region/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Region/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET '埃尔南德': rows=445, cols=13
+[13:14:52] [INFO]     STATUS_ columns: ['김세련', '최석문']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Region/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Region/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET '佩伦': rows=256, cols=13
+[13:14:52] [INFO]     STATUS_ columns: ['김세련', '최석문']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Region/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Region/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET '无势力': rows=1119, cols=13
+[13:14:52] [INFO]     STATUS_ columns: ['김세련', '최석문']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Region/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Region/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Shop': rows=695, cols=13
+[13:14:52] [INFO]     STATUS_ columns: ['김세련', '최석문']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+[13:14:52] [INFO]     Region/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]     Region/최석문: F=0 R=0 C=0 N=0
+[13:14:52] [INFO] MASTER FILE: System [CN] date=2026-01-22
+[13:14:52] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\TrackerUpdateFolder\Masterfolder_CN\Master_System.xlsx
+[13:14:52] [INFO]   Sheets: ['STATUS', 'Menu', 'Greymane', 'Map', 'Other', 'Skills', 'GameAdvice']
+[13:14:52] [INFO]   SHEET 'Menu': rows=97, cols=6
+[13:14:52] [INFO]     STATUS_ columns: ['김세련']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)']}
+[13:14:52] [INFO]     System/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Greymane': rows=93, cols=6
+[13:14:52] [INFO]     STATUS_ columns: ['김세련']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)']}
+[13:14:52] [INFO]     System/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Map': rows=83, cols=6
+[13:14:52] [INFO]     STATUS_ columns: ['김세련']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)']}
+[13:14:52] [INFO]     System/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Other': rows=133, cols=6
+[13:14:52] [INFO]     STATUS_ columns: ['김세련']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)']}
+[13:14:52] [INFO]     System/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'Skills': rows=1225, cols=8
+[13:14:52] [INFO]     STATUS_ columns: ['김세련']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)']}
+[13:14:52] [INFO]     System/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO]   SHEET 'GameAdvice': rows=812, cols=8
+[13:14:52] [INFO]     STATUS_ columns: ['김세련']
+[13:14:52] [INFO]     Sample values: {'김세련': ['(empty)']}
+[13:14:52] [INFO]     System/김세련: F=0 R=0 C=0 N=0
+[13:14:52] [INFO] MANAGER TOTALS: F=285 R=34 C=63 N=713
+
+============================================================
+TRACKER UPDATE COMPLETE
+============================================================
+[13:14:53] [INFO] STEP A: Loading/Creating Tracker
+[13:14:53] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\LQA_Tester_ProgressTracker.xlsx
+[13:14:53] [INFO]   Sheets: ['DAILY', 'TOTAL', '_DAILY_DATA']
+[13:14:53] [INFO]   _DAILY_DATA BEFORE: rows=286, cols=14
+[13:14:53] [INFO] STEP B: Calling update_daily_data_sheet()
+[13:14:53] [INFO]   entries=60, manager_stats categories=['Character', 'Contents', 'Item', 'Knowledge', 'Quest', 'Region', 'Script', 'System']
+[13:14:53] [INFO]     Character/김찬용: F=17 R=7 C=2 N=113
+[13:14:53] [INFO]     Character/장어진: F=3 R=0 C=1 N=9
+[13:14:53] [INFO]     Character/김선우: F=5 R=0 C=0 N=2
+[13:14:53] [INFO]     Character/뤄이롼: F=0 R=0 C=0 N=1
+[13:14:53] [INFO]     Character/리쓰한: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Contents/황하연: F=3 R=0 C=3 N=1
+[13:14:53] [INFO]     Contents/김정원: F=1 R=2 C=0 N=4
+[13:14:53] [INFO]     Item/김헌동: F=0 R=0 C=0 N=122
+[13:14:53] [INFO]     Item/이재환: F=13 R=0 C=0 N=2
+[13:14:53] [INFO]     Item/김세련: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Item/김춘애: F=0 R=1 C=0 N=0
+[13:14:53] [INFO]     Item/최석문: F=0 R=4 C=1 N=1
+[13:14:53] [INFO]     Knowledge/김선우: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Knowledge/유지윤: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Knowledge/장어진: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Knowledge/조서영: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Knowledge/김춘애: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Knowledge/리쓰한: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Quest/장어진: F=0 R=0 C=0 N=68
+[13:14:53] [INFO]     Quest/김찬용: F=13 R=1 C=0 N=34
+[13:14:53] [INFO]     Quest/김선우: F=25 R=0 C=0 N=13
+[13:14:53] [INFO]     Quest/성가은: F=34 R=2 C=7 N=36
+[13:14:53] [INFO]     Quest/김정원: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Quest/김헌동: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Quest/이재환: F=1 R=0 C=0 N=0
+[13:14:53] [INFO]     Quest/황하연: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Quest/김춘애: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Quest/뤄이롼: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Quest/리쓰한: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Quest/최석문: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Region/성가은: F=21 R=6 C=1 N=21
+[13:14:53] [INFO]     Region/유지윤: F=3 R=2 C=1 N=1
+[13:14:53] [INFO]     Region/조서영: F=0 R=0 C=0 N=4
+[13:14:53] [INFO]     Region/황하연: F=21 R=2 C=1 N=36
+[13:14:53] [INFO]     Region/김세련: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Region/최석문: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Script/유지윤: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Script/조서영: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Script/김정원: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Script/김찬용: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     Script/황하연: F=0 R=0 C=0 N=0
+[13:14:53] [INFO]     System/김정원: F=29 R=0 C=0 N=27
+[13:14:53] [INFO]     System/김찬용: F=8 R=2 C=5 N=19
+[13:14:53] [INFO]     System/김헌동: F=8 R=0 C=0 N=109
+[13:14:53] [INFO]     System/유지윤: F=19 R=0 C=23 N=4
+[13:14:53] [INFO]     System/이재환: F=45 R=5 C=1 N=48
+[13:14:53] [INFO]     System/조서영: F=16 R=0 C=17 N=38
+[13:14:53] [INFO]     System/김세련: F=0 R=0 C=0 N=0
+[13:14:53] [INFO] STEP C: After update_daily_data_sheet()
+[13:14:53] [INFO]   _DAILY_DATA AFTER: rows=288, cols=14
+[13:14:53] [INFO]   Row 1: ['Date', 'User', 'Category', 'TotalRows', 'Done', 'Issues', 'NoIssue', 'Blocked', 'Fixed', 'Reported', 'Checking', 'NonIssue', 'WordCount', 'Korean']
+[13:14:53] [INFO]   Row 2: ['2026-01-06', '유지윤', 'Knowledge', 10844, 592, 60, 471, 61, 0, 0, 0, 0, None, None]
+[13:14:53] [INFO]   Row 3: ['2026-01-06', '조서영', 'Knowledge', 10844, 555, 60, 478, 17, 0, 0, 0, 0, None, None]
+[13:14:53] [INFO]   Row 4: ['2026-01-06', '김헌동', 'Item', 5567, 535, 26, 228, 281, 0, 0, 0, 0, None, None]
+[13:14:53] [INFO]   Row 5: ['2026-01-06', '이재환', 'Item', 5567, 726, 89, 423, 214, 0, 0, 0, 0, None, None]
+[13:14:53] [INFO]   Row 6: ['2026-01-06', '성가은', 'Region', 1765, 246, 30, 208, 8, 0, 0, 0, 0, None, None]
+[13:14:53] [INFO]   Row 7: ['2026-01-06', '황하연', 'Region', 1765, 273, 32, 227, 14, 0, 0, 0, 0, None, None]
+[13:14:53] [INFO] STEP D: Rebuilding DAILY and TOTAL sheets
+[13:14:53] [INFO] STEP E: Saving workbook
+[13:14:53] [INFO]   Path: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\LQA_Tester_ProgressTracker.xlsx
+[13:14:53] [INFO]   Save complete!
+[13:14:53] [INFO] STEP F: VERIFICATION - Reloading saved file
+[13:14:53] [INFO]   Reloaded _DAILY_DATA: rows=288
+[13:14:53] [INFO]   Row 1: ['Date', 'User', 'Category', 'TotalRows', 'Done', 'Issues', 'NoIssue', 'Blocked', 'Fixed', 'Reported', 'Checking', 'NonIssue', 'WordCount', 'Korean']
+[13:14:53] [INFO]   Row 2: ['2026-01-06', '유지윤', 'Knowledge', 10844, 592, 60, 471, 61, 0, 0, 0, 0, None, None]
+[13:14:53] [INFO]   Row 3: ['2026-01-06', '조서영', 'Knowledge', 10844, 555, 60, 478, 17, 0, 0, 0, 0, None, None]
+[13:14:53] [INFO]   Row 4: ['2026-01-06', '김헌동', 'Item', 5567, 535, 26, 228, 281, 0, 0, 0, 0, None, None]
+[13:14:53] [INFO]   Row 5: ['2026-01-06', '이재환', 'Item', 5567, 726, 89, 423, 214, 0, 0, 0, 0, None, None]
+[13:14:53] [INFO]   Row 6: ['2026-01-06', '성가은', 'Region', 1765, 246, 30, 208, 8, 0, 0, 0, 0, None, None]
+[13:14:53] [INFO]   Row 7: ['2026-01-06', '황하연', 'Region', 1765, 273, 32, 227, 14, 0, 0, 0, 0, None, None]
+
+============================================================
+FINAL SUMMARY
+============================================================
+[13:14:53] [INFO] ==================================================
+[13:14:53] [INFO] UPDATE TRACKER ONLY - COMPLETE
+[13:14:53] [INFO] ==================================================
+[13:14:53] [INFO] SUMMARY BY DATE:
+[13:14:53] [INFO]   2026-01-20: users=['김선우', '김선우', '김세련', '김세련', '김세련', '김세련', '김정원', '김정원', '김찬용', '김찬용', '김춘애', '김춘애', '김헌동', '김헌동', '김헌동', '김헌동', '뤄이롼', '리쓰한', '리쓰한', '성가은', '유지윤', '유지윤', '유지윤', '유지윤', '이재환', '이재환', '이재환', '이재환', '장어진', '장어진', '조서영', '조서영', '조서영', '조서영', '최석문', '최석문', '황하연', '황하연'] done=28599 issues=1129
+[13:14:53] [INFO]   2026-01-21: users=['뤄이롼', '리쓰한', '성가은', '유지윤', '유지윤', '조서영', '황하연'] done=5082 issues=379
+[13:14:53] [INFO]   2026-01-22: users=['김선우', '김세련', '김정원', '김정원', '김찬용', '김찬용', '김춘애', '김헌동', '뤄이롼', '리쓰한', '이재환', '장어진', '조서영', '최석문', '황하연'] done=20456 issues=1401
+[13:14:53] [INFO] RESULT: Successfully updated tracker with 60 tester entries and manager stats
