@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # =============================================================================
 
 _COMPILER_LOG_FILE = Path(__file__).parent.parent / "COMPILER_DEBUG.log"
-_COMPILER_LOG_ENABLED = True  # Set to False to disable verbose logging
+_COMPILER_LOG_ENABLED = False  # Set to True for verbose logging
 _COMPILER_LOG_LINES = []  # Buffer for batch writing
 
 
