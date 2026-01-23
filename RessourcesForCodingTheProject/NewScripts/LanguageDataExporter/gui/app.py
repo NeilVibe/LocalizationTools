@@ -22,6 +22,10 @@ from config import (
     EXPORT_FOLDER,
     OUTPUT_FOLDER,
     CLUSTER_CONFIG,
+    TOSUBMIT_FOLDER,
+    TRACKER_PATH,
+    TRACKER_CATEGORIES,
+    ensure_tosubmit_folder,
 )
 from exporter import (
     parse_language_file,
@@ -29,10 +33,14 @@ from exporter import (
     build_stringid_category_index,
     load_cluster_config,
     write_language_excel,
+    discover_submit_files,
+    prepare_all_for_submit,
+    collect_correction_stats,
 )
 from exporter.excel_writer import write_summary_excel
 from utils.language_utils import should_include_english_column, LANGUAGE_NAMES as LANG_DISPLAY
 from reports import ReportGenerator, ExcelReportWriter
+from tracker import CorrectionTracker
 
 logger = logging.getLogger(__name__)
 
@@ -135,25 +143,44 @@ class LanguageDataExporterGUI:
 
     def _build_export_section(self):
         """Build export actions section."""
-        section = ttk.LabelFrame(self.root, text="Generate Report", padding=10)
+        section = ttk.LabelFrame(self.root, text="Generate & Submit", padding=10)
         section.grid(row=2, column=0, sticky="ew", padx=15, pady=5)
 
-        btn_frame = ttk.Frame(section)
-        btn_frame.pack(fill="x", pady=5)
+        # Row 1: Generate buttons
+        btn_frame1 = ttk.Frame(section)
+        btn_frame1.pack(fill="x", pady=5)
 
         ttk.Button(
-            btn_frame,
+            btn_frame1,
             text="Generate Word Count Report",
             command=self._generate_report,
-            width=35
-        ).pack(side="left", padx=10, ipady=8)
+            width=28
+        ).pack(side="left", padx=5, ipady=8)
 
         ttk.Button(
-            btn_frame,
+            btn_frame1,
             text="Generate Language Excels",
             command=self._generate_language_excels,
-            width=35
-        ).pack(side="left", padx=10, ipady=8)
+            width=28
+        ).pack(side="left", padx=5, ipady=8)
+
+        # Row 2: Submit preparation button
+        btn_frame2 = ttk.Frame(section)
+        btn_frame2.pack(fill="x", pady=5)
+
+        ttk.Button(
+            btn_frame2,
+            text="Prepare For Submit",
+            command=self._prepare_for_submit,
+            width=28
+        ).pack(side="left", padx=5, ipady=8)
+
+        ttk.Button(
+            btn_frame2,
+            text="Open ToSubmit Folder",
+            command=self._open_tosubmit_folder,
+            width=28
+        ).pack(side="left", padx=5, ipady=8)
 
     def _build_status_section(self):
         """Build status display section."""
@@ -330,6 +357,125 @@ class LanguageDataExporterGUI:
     def _set_status(self, text):
         """Update status label."""
         self.status_label["text"] = text
+
+    # =========================================================================
+    # SUBMIT PREPARATION
+    # =========================================================================
+
+    def _open_tosubmit_folder(self):
+        """Open the ToSubmit folder in file explorer."""
+        import subprocess
+        import platform
+
+        ensure_tosubmit_folder()
+
+        try:
+            if platform.system() == "Windows":
+                subprocess.run(["explorer", str(TOSUBMIT_FOLDER)], check=False)
+            elif platform.system() == "Darwin":  # macOS
+                subprocess.run(["open", str(TOSUBMIT_FOLDER)], check=False)
+            else:  # Linux
+                subprocess.run(["xdg-open", str(TOSUBMIT_FOLDER)], check=False)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open folder: {e}")
+
+    def _prepare_for_submit(self):
+        """Prepare files in ToSubmit folder for LQA submission."""
+        # Check if ToSubmit folder exists
+        if not TOSUBMIT_FOLDER.exists():
+            ensure_tosubmit_folder()
+            messagebox.showinfo(
+                "ToSubmit Folder Created",
+                f"The ToSubmit folder has been created at:\n{TOSUBMIT_FOLDER}\n\n"
+                "Please copy your Excel files there first, then run this again."
+            )
+            return
+
+        # Discover files
+        files = discover_submit_files(TOSUBMIT_FOLDER)
+        if not files:
+            messagebox.showwarning(
+                "No Files Found",
+                f"No languagedata_*.xlsx files found in:\n{TOSUBMIT_FOLDER}\n\n"
+                "Please copy your Excel files there first."
+            )
+            return
+
+        # Get file list for confirmation
+        file_list = "\n".join(f"  - {f[1]}" for f in files)
+
+        # Confirm with user (destructive operation)
+        confirm = messagebox.askyesno(
+            "Confirm Submission Preparation",
+            f"This will OVERWRITE the following {len(files)} files:\n\n"
+            f"{file_list}\n\n"
+            "Operations:\n"
+            "1. Create backup of all files\n"
+            "2. Apply corrections (Correction → Str)\n"
+            "3. Keep only: StrOrigin, Str, StringID\n"
+            "4. Update progress tracker\n\n"
+            "Continue?"
+        )
+
+        if not confirm:
+            return
+
+        self._set_status("Preparing files for submit...")
+        self.progress["value"] = 0
+
+        def prepare():
+            try:
+                # Collect stats BEFORE preparation (while Correction column exists)
+                self.root.after(0, lambda: self._set_status("Collecting correction stats..."))
+                correction_stats = collect_correction_stats(TOSUBMIT_FOLDER)
+
+                # Prepare files
+                def progress_cb(pct, msg):
+                    self.root.after(0, lambda p=pct: self._update_progress(p * 0.7))
+                    self.root.after(0, lambda m=msg: self._set_status(m))
+
+                results = prepare_all_for_submit(TOSUBMIT_FOLDER, progress_cb)
+
+                # Update tracker
+                self.root.after(0, lambda: self._set_status("Updating progress tracker..."))
+                self.root.after(0, lambda: self._update_progress(75))
+
+                tracker = CorrectionTracker(TRACKER_PATH, TRACKER_CATEGORIES)
+                tracker.update_and_rebuild(correction_stats)
+
+                self.root.after(0, lambda: self._update_progress(100))
+
+                # Build result message
+                if results["errors"]:
+                    error_msg = "\n".join(results["errors"])
+                    self.root.after(0, lambda: messagebox.showwarning(
+                        "Completed with Errors",
+                        f"Processed {results['files_processed']} files\n"
+                        f"Applied {results['total_corrections']} corrections\n\n"
+                        f"Errors:\n{error_msg}\n\n"
+                        f"Backup: {results['backup_folder']}"
+                    ))
+                else:
+                    self.root.after(0, lambda: messagebox.showinfo(
+                        "Success",
+                        f"Prepared {results['files_processed']} files for submission!\n\n"
+                        f"Corrections applied: {results['total_corrections']}\n"
+                        f"Backup folder: {results['backup_folder']}\n\n"
+                        f"Tracker updated: {TRACKER_PATH.name}"
+                    ))
+
+                self.root.after(0, lambda: self._set_status(
+                    f"Ready - {results['files_processed']} files prepared"
+                ))
+
+            except Exception as ex:
+                logger.exception("Submit preparation failed")
+                self.root.after(0, lambda err=str(ex): messagebox.showerror(
+                    "Error", f"Preparation failed: {err}"
+                ))
+                self.root.after(0, lambda: self._set_status("Preparation failed"))
+
+        threading.Thread(target=prepare, daemon=True).start()
 
 
 def launch_gui():

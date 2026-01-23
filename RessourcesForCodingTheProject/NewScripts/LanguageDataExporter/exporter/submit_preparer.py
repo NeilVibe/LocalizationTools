@@ -8,6 +8,7 @@ Transforms Excel files in ToSubmit folder for final submission:
 """
 
 import logging
+import re
 import shutil
 from pathlib import Path
 from datetime import datetime
@@ -103,12 +104,16 @@ def _detect_column_indices(ws) -> Dict[str, int]:
 
     Returns dict mapping column name to 1-based index.
     Handles both EU and Asian column structures.
+    Works with both normal and read-only worksheets.
     """
     indices = {}
-    for col in range(1, ws.max_column + 1):
-        header = ws.cell(row=1, column=col).value
-        if header:
-            indices[header] = col
+    # Handle read-only worksheets where max_column may be None
+    # Iterate over first row directly instead of using max_column
+    first_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))
+    if first_row and first_row[0]:
+        for col, header in enumerate(first_row[0], 1):
+            if header:
+                indices[str(header)] = col
     return indices
 
 
@@ -288,6 +293,10 @@ def prepare_all_for_submit(
     return results
 
 
+# Pre-compiled Korean pattern for performance
+KOREAN_PATTERN = re.compile(r'[\uAC00-\uD7AF]+')
+
+
 def collect_correction_stats(submit_folder: Path) -> Dict:
     """
     Collect correction statistics from files in ToSubmit folder.
@@ -300,15 +309,14 @@ def collect_correction_stats(submit_folder: Path) -> Dict:
             - pending: count of rows without Correction value
             - kr_words: count of Korean words in corrected+pending
     """
-    import re
-
     stats = {}
 
     files = discover_submit_files(submit_folder)
 
     for file_path, lang_code in files:
         try:
-            wb = load_workbook(file_path, read_only=True)
+            # Don't use read_only=True - we need full worksheet access
+            wb = load_workbook(file_path)
             ws = wb.active
 
             col_indices = _detect_column_indices(ws)
@@ -318,6 +326,8 @@ def collect_correction_stats(submit_folder: Path) -> Dict:
             str_origin_col = col_indices.get("StrOrigin")
 
             if not all([str_col, category_col, str_origin_col]):
+                logger.warning(f"Skipping {lang_code}: missing required columns. Found: {list(col_indices.keys())}")
+                wb.close()
                 continue
 
             lang_stats = {}
@@ -335,8 +345,7 @@ def collect_correction_stats(submit_folder: Path) -> Dict:
                     }
 
                 # Count Korean words in StrOrigin (source language)
-                korean_pattern = re.compile(r'[\uAC00-\uD7AF]+')
-                korean_matches = korean_pattern.findall(str(str_origin))
+                korean_matches = KOREAN_PATTERN.findall(str(str_origin))
                 kr_word_count = len(korean_matches) if korean_matches else 0
 
                 lang_stats[category]["kr_words"] += kr_word_count
