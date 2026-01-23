@@ -1,0 +1,6 @@
+# DataListGenerator Build Trigger
+# Add "Build" on a new line to trigger CI/CD build
+# Format: Build [optional comment]
+#
+# Example:
+# Build v3.0.0 initial release
