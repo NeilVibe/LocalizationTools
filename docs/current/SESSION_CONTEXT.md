@@ -1,6 +1,114 @@
 # Session Context
 
-> Last Updated: 2026-01-22 (Session 56)
+> Last Updated: 2026-01-23 (Session 57)
+
+---
+
+## SESSION 57: LanguageDataExporter v2.0 - Correction Workflow ✅
+
+### What Was Built
+
+Complete LQA correction workflow for LanguageDataExporter with 3 major features:
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Column Order Change** | New column structure with Correction column | ✅ |
+| **Prepare For Submit** | Transform files for LQA submission | ✅ |
+| **Progress Tracker** | Track correction progress weekly | ✅ |
+
+### New Column Structure
+
+**EU Languages (6 columns):**
+```
+StrOrigin | ENG from LOC | Str | Correction | Category | StringID
+```
+
+**Asian Languages (5 columns):**
+```
+StrOrigin | Str | Correction | Category | StringID
+```
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `exporter/submit_preparer.py` | Prepare files for submission (backup, apply corrections, 3-col output) |
+| `tracker/__init__.py` | Module exports |
+| `tracker/data.py` | WeeklyDataManager with REPLACE mode |
+| `tracker/weekly.py` | WEEKLY sheet builder |
+| `tracker/total.py` | TOTAL sheet with 2 tables |
+| `tracker/tracker.py` | CorrectionTracker orchestrator |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `exporter/excel_writer.py` | New column order, Correction column |
+| `exporter/__init__.py` | Added submit_preparer exports |
+| `config.py` | TOSUBMIT_FOLDER, TRACKER_PATH, TRACKER_CATEGORIES |
+| `gui/app.py` | "Prepare For Submit" + "Open ToSubmit Folder" buttons |
+| `USER_GUIDE.md` | Complete documentation of new features |
+
+### Full Workflow
+
+```
+1. Generate Language Excels → GeneratedExcel/LanguageData_*.xlsx (6 cols)
+2. Copy to ToSubmit/ folder
+3. LQA fills Correction column
+4. Click "Prepare For Submit"
+   → Creates backup
+   → Applies corrections (Correction → Str)
+   → Outputs 3 columns: StrOrigin, Str, StringID
+   → Updates Progress Tracker
+5. Submit final files
+```
+
+### Progress Tracker Structure
+
+```
+Correction_ProgressTracker.xlsx
+├── WEEKLY       # Week-over-week progress per language
+├── TOTAL        # Per-language summary + Per-category completion
+└── _WEEKLY_DATA # Raw data (hidden, REPLACE mode)
+```
+
+### Builds Completed
+
+| Build | Description | Status |
+|-------|-------------|--------|
+| **023** | Code: Correction column, Prepare For Submit, Tracker | ✅ SUCCESS |
+| **024** | Docs: Updated USER_GUIDE.md to v2.0 | ✅ SUCCESS |
+
+### Latest Release
+
+```
+Version: v26.123.1625
+Files:
+  - LanguageDataExporter_v26.123.1625_Setup.exe
+  - LanguageDataExporter_v26.123.1625_Portable.zip
+  - LanguageDataExporter_v26.123.1625_Source.zip
+```
+
+### Key Implementation Details
+
+1. **REPLACE Mode**: Same (week, language, category) key overwrites instead of duplicating
+2. **Korean Pattern**: Pre-compiled regex at module level for performance
+3. **Backup System**: Auto-creates `ToSubmit/backup_YYYYMMDD_HHMMSS/` before processing
+4. **Week Calculation**: `get_week_start()` returns Monday date (YYYY-MM-DD)
+
+### CI/CD Reference
+
+```bash
+# Trigger LanguageDataExporter build
+echo "Build NNN - description" >> LANGUAGEDATAEXPORTER_BUILD.txt
+git add -A && git commit -m "Build NNN: description" && git push origin main
+
+# Check build status
+gh run list --workflow=languagedataexporter-build.yml --limit 1
+
+# Workflow file
+.github/workflows/languagedataexporter-build.yml
+```
 
 ---
 
@@ -158,11 +266,11 @@ All in `.claude/agents/` with **opus model** for maximum power:
 
 | Session | Achievement |
 |---------|-------------|
+| **57** | LanguageDataExporter v2.0 - Correction Workflow (Column change, Prepare For Submit, Progress Tracker) |
+| **56** | QACompiler Progress Tracker Manager Stats Fix |
 | **55** | QACompiler runtime config fix + comprehensive CI (5 checks) |
 | **54** | Custom subagents + docs cleanup |
 | **53** | Slim installer (594→174 MB) |
-| **52** | BUILD-001 initial attempt |
-| **51** | UI-113, BUG-044, UI-114 verified |
 
 ---
 
