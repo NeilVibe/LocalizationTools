@@ -369,8 +369,11 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                     status_cols = {}
                     for col in range(1, ws.max_column + 1):
                         header = ws.cell(row=1, column=col).value
-                        if header and str(header).startswith("STATUS_"):
-                            status_cols[str(header).replace("STATUS_", "")] = col
+                        if header:
+                            header_str = str(header)
+                            header_upper = header_str.upper()
+                            if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+                                status_cols[header_str[7:]] = col  # Skip "STATUS_" prefix
 
                     _tracker_log(f"  SHEET '{sheet_name}': rows={ws.max_row}, cols={ws.max_column}")
                     _tracker_log(f"    STATUS_ columns: {list(status_cols.keys()) if status_cols else 'NONE'}")
