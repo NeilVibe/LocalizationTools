@@ -11,16 +11,62 @@ Matching Strategy by Category:
 - Standard (Quest, Knowledge, etc.): STRINGID + Translation, fallback to Translation only
 - Item: ItemName + ItemDesc + STRINGID, fallback to ItemName + ItemDesc
 - Contents: INSTRUCTIONS column (no fallback needed, unique identifier)
+- Script (Sequencer/Dialog): Translation + EventName, fallback to EventName only
 """
 
 from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
 from pathlib import Path
+from datetime import datetime
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import TRANSLATION_COLS, ITEM_DESC_COLS, SCRIPT_COLS, SCRIPT_TYPE_CATEGORIES
 from core.excel_ops import find_column_by_header
+
+
+# =============================================================================
+# GRANULAR DEBUG LOGGING
+# =============================================================================
+
+_MATCH_LOG_FILE = Path(__file__).parent.parent / "MATCHING_DEBUG.log"
+_MATCH_LOG_ENABLED = True  # Set to False to disable verbose logging
+_MATCH_LOG_LINES = []  # Buffer for batch writing
+
+
+def _match_log(msg: str, level: str = "INFO"):
+    """Add message to match log buffer."""
+    if not _MATCH_LOG_ENABLED:
+        return
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    _MATCH_LOG_LINES.append(f"[{timestamp}] [{level}] {msg}")
+
+
+def _match_log_flush(header: str = None):
+    """Flush log buffer to file."""
+    global _MATCH_LOG_LINES
+    if not _MATCH_LOG_LINES:
+        return
+    try:
+        mode = "a" if _MATCH_LOG_FILE.exists() else "w"
+        with open(_MATCH_LOG_FILE, mode, encoding="utf-8") as f:
+            if header:
+                f.write(f"\n{'='*60}\n{header}\n{'='*60}\n")
+            f.write("\n".join(_MATCH_LOG_LINES) + "\n")
+        _MATCH_LOG_LINES = []
+    except Exception as e:
+        print(f"[MATCH LOG ERROR] {e}")
+
+
+def _match_log_clear():
+    """Clear log file for fresh run."""
+    global _MATCH_LOG_LINES
+    _MATCH_LOG_LINES = []
+    try:
+        with open(_MATCH_LOG_FILE, "w", encoding="utf-8") as f:
+            f.write(f"=== MATCHING DEBUG LOG === {datetime.now().isoformat()}\n\n")
+    except:
+        pass
 
 
 # =============================================================================
@@ -213,9 +259,14 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
     - Standard: primary=(stringid, trans), fallback=trans
     - Item: primary=(name, desc, stringid), fallback=(name, desc)
     - Contents: primary=instructions (no fallback)
+    - Script: primary=(translation, eventname), fallback=eventname
     """
     category_lower = category.lower()
     stringid_col = find_column_by_header(master_ws, "STRINGID")
+
+    # GRANULAR DEBUG: Log index building start
+    _match_log(f"BUILD INDEX: category={category}, is_english={is_english}, max_row={master_ws.max_row}")
+    _match_log(f"  STRINGID column found: {stringid_col}")
 
     index = {
         "primary": {},
@@ -299,13 +350,23 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
                 # Fallback: trans only
                 index["fallback"][translation].append(row)
 
+    # GRANULAR DEBUG: Log index summary
+    _match_log(f"  INDEX BUILT: primary_keys={len(index['primary'])}, fallback_keys={len(index['fallback'])}")
+    if len(index['primary']) == 0:
+        _match_log(f"  WARNING: No primary keys indexed! Matching will fail.", "WARN")
+    # Sample first 3 primary keys for debugging
+    sample_keys = list(index['primary'].keys())[:3]
+    _match_log(f"  Sample primary keys: {sample_keys}")
+    _match_log_flush(f"INDEX: {category}")
+
     return index
 
 
 def find_matching_row_in_master(
     qa_row_data: Dict,
     master_index: Dict,
-    category: str
+    category: str,
+    log_failures: bool = True
 ) -> Tuple[Optional[int], Optional[str]]:
     """
     Find matching master row using 2-step cascade.
@@ -314,6 +375,7 @@ def find_matching_row_in_master(
         qa_row_data: Dict from extract_qa_row_data()
         master_index: Dict from build_master_index()
         category: Category name
+        log_failures: If True, log detailed info for unmatched rows
 
     Returns:
         Tuple of (row_num, match_type) or (None, None) if no match
@@ -321,6 +383,7 @@ def find_matching_row_in_master(
     """
     category_lower = category.lower()
     consumed = master_index["consumed"]
+    qa_row_num = qa_row_data.get("row", "?")
 
     if category_lower == "contents":
         # Contents: match by INSTRUCTIONS
@@ -330,6 +393,8 @@ def find_matching_row_in_master(
             if row not in consumed:
                 consumed.add(row)
                 return row, "exact"
+        if log_failures:
+            _match_log(f"UNMATCHED QA row {qa_row_num}: instructions='{instructions[:50]}...' not in index", "MISS")
         return None, None
 
     elif category_lower == "item":
@@ -356,6 +421,8 @@ def find_matching_row_in_master(
                         consumed.add(row)
                         return row, "fallback"
 
+        if log_failures:
+            _match_log(f"UNMATCHED QA row {qa_row_num}: item_name='{item_name[:30] if item_name else ''}', item_desc='{item_desc[:30] if item_desc else ''}', stringid='{stringid}'", "MISS")
         return None, None
 
     elif category_lower in SCRIPT_TYPE_CATEGORIES:
@@ -383,6 +450,8 @@ def find_matching_row_in_master(
                     consumed.add(row)
                     return row, "fallback"
 
+        if log_failures:
+            _match_log(f"UNMATCHED QA row {qa_row_num}: eventname='{eventname}', translation='{translation[:40] if translation else ''}...'", "MISS")
         return None, None
 
     else:
@@ -406,6 +475,8 @@ def find_matching_row_in_master(
                     consumed.add(row)
                     return row, "fallback"
 
+        if log_failures:
+            _match_log(f"UNMATCHED QA row {qa_row_num}: stringid='{stringid}', translation='{translation[:40] if translation else ''}...'", "MISS")
         return None, None
 
 

@@ -235,11 +235,13 @@ def collect_manager_status(master_folder: Path) -> Dict:
                 comment_cols = {}          # username -> col (TESTER's comment)
                 status_cols = {}           # username -> col (MANAGER's status)
                 manager_comment_cols = {}  # username -> col (MANAGER's comment)
+                all_headers = []  # DEBUG: Track all headers
 
                 for col in range(1, ws.max_column + 1):
                     header = ws.cell(row=1, column=col).value
                     if header:
                         header_str = str(header)
+                        all_headers.append(header_str)  # DEBUG
                         if header_str.startswith("COMMENT_"):
                             username = header_str.replace("COMMENT_", "")
                             comment_cols[username] = col
@@ -249,6 +251,14 @@ def collect_manager_status(master_folder: Path) -> Dict:
                         elif header_str.startswith("MANAGER_COMMENT_"):
                             username = header_str.replace("MANAGER_COMMENT_", "")
                             manager_comment_cols[username] = col
+
+                # DEBUG: Log column structure for Script categories
+                if category.lower() in ("sequencer", "dialog"):
+                    print(f"[DEBUG] collect_manager_status: {category}/{sheet_name}")
+                    print(f"  All headers: {all_headers}")
+                    print(f"  COMMENT_ cols: {list(comment_cols.keys())}")
+                    print(f"  STATUS_ cols: {list(status_cols.keys())}")
+                    print(f"  STRINGID col: {stringid_col}")
 
                 if not status_cols:
                     continue
@@ -302,10 +312,21 @@ def collect_manager_status(master_folder: Path) -> Dict:
                                         "manager_comment": str(manager_comment_value).strip() if has_manager_comment else None
                                     }
 
+                # DEBUG: Log collected entries for Script categories
+                if category.lower() in ("sequencer", "dialog"):
+                    entries_count = len(manager_status[category].get(sheet_name, {}))
+                    print(f"  Collected entries: {entries_count}")
+
             wb.close()
 
         except Exception as e:
             print(f"  WARN: Error reading {master_path.name} for preprocess: {e}")
+
+    # DEBUG: Summary for Script
+    for cat in ["Sequencer", "Dialog"]:
+        if cat in manager_status:
+            total_keys = sum(len(sheet_data) for sheet_data in manager_status[cat].values())
+            print(f"[DEBUG] collect_manager_status TOTAL for {cat}: {total_keys} keys")
 
     return manager_status
 
