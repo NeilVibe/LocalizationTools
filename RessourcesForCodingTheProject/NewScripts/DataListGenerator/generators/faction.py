@@ -9,8 +9,8 @@ from typing import List, Set
 
 from openpyxl.styles import PatternFill
 
-from .base import BaseGenerator, DataEntry
-from ..utils.xml_parser import iter_xml_files, parse_xml_file
+from generators.base import BaseGenerator, DataEntry
+from utils.xml_parser import iter_xml_files, parse_xml_file
 
 
 class FactionGenerator(BaseGenerator):

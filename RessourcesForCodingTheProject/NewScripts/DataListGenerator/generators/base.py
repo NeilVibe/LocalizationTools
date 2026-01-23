@@ -11,7 +11,7 @@ from typing import List, Dict
 
 from openpyxl.styles import PatternFill
 
-from ..utils.excel_writer import write_data_list_excel
+from utils.excel_writer import write_data_list_excel
 
 
 @dataclass
