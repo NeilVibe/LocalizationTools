@@ -516,7 +516,7 @@ class DataToolGUI:
                 self._log(f"  Skipping {lang_code.upper()} - no data loaded")
                 continue
 
-            output_path = TRANSLATIONS_FOLDER / f"Translated_{lang_code.upper()}.xlsx"
+            output_path = TRANSLATIONS_FOLDER / f"Glossary_{lang_code.upper()}.xlsx"
             stats = self._generate_translation_excel(
                 items_with_category, lang_code, lang_table, output_path, eng_table
             )
