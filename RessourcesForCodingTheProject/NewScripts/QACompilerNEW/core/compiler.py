@@ -20,25 +20,45 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # =============================================================================
-# DEBUG LOG FILE
+# GRANULAR DEBUG LOGGING
 # =============================================================================
-# All debug output is written to this file for easy inspection after compilation
-_LOG_FILE = Path(__file__).parent.parent / "debug_manager_stats.log"
 
-def _log(msg: str):
-    """Write to both console and log file."""
-    print(msg)
-    try:
-        with open(_LOG_FILE, "a", encoding="utf-8") as f:
-            f.write(msg + "\n")
-    except:
-        pass
+_COMPILER_LOG_FILE = Path(__file__).parent.parent / "COMPILER_DEBUG.log"
+_COMPILER_LOG_ENABLED = True  # Set to False to disable verbose logging
+_COMPILER_LOG_LINES = []  # Buffer for batch writing
 
-def _clear_log():
-    """Clear log file at start of compilation."""
+
+def _compiler_log(msg: str, level: str = "INFO"):
+    """Add message to compiler log buffer."""
+    if not _COMPILER_LOG_ENABLED:
+        return
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    _COMPILER_LOG_LINES.append(f"[{timestamp}] [{level}] {msg}")
+
+
+def _compiler_log_flush(header: str = None):
+    """Flush log buffer to file."""
+    global _COMPILER_LOG_LINES
+    if not _COMPILER_LOG_LINES:
+        return
     try:
-        with open(_LOG_FILE, "w", encoding="utf-8") as f:
-            f.write(f"=== Manager Stats Debug Log - {datetime.now().isoformat()} ===\n\n")
+        mode = "a" if _COMPILER_LOG_FILE.exists() else "w"
+        with open(_COMPILER_LOG_FILE, mode, encoding="utf-8") as f:
+            if header:
+                f.write(f"\n{'='*60}\n{header}\n{'='*60}\n")
+            f.write("\n".join(_COMPILER_LOG_LINES) + "\n")
+        _COMPILER_LOG_LINES = []
+    except Exception as e:
+        print(f"[COMPILER LOG ERROR] {e}")
+
+
+def _compiler_log_clear():
+    """Clear log file for fresh run."""
+    global _COMPILER_LOG_LINES
+    _COMPILER_LOG_LINES = []
+    try:
+        with open(_COMPILER_LOG_FILE, "w", encoding="utf-8") as f:
+            f.write(f"=== COMPILER DEBUG LOG === {datetime.now().isoformat()}\n\n")
     except:
         pass
 from config import (
