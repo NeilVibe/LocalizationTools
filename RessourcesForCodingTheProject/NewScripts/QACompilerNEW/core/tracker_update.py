@@ -210,7 +210,13 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool, sheet_name: str = 
 
     _tracker_log(f"    SHEET '{sheet_name}': max_row={qa_ws.max_row}, STATUS_col={status_col}, trans_col={trans_col}")
 
+    # SCRIPT GRANULAR DEBUG
+    is_script = category.lower() in ("sequencer", "dialog")
+    if is_script:
+        _tracker_log(f"    *** SCRIPT TESTER STATS DEBUG ***")
+
     # Process each row
+    rows_with_status = []
     for row in range(2, qa_ws.max_row + 1):
         # Skip empty rows
         first_col_value = qa_ws.cell(row=row, column=1).value
@@ -223,6 +229,9 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool, sheet_name: str = 
         status_value = qa_ws.cell(row=row, column=status_col).value
         if status_value:
             status_upper = str(status_value).strip().upper()
+            if is_script:
+                rows_with_status.append((row, status_upper))
+
             if status_upper == "ISSUE":
                 stats["issue"] += 1
             elif status_upper in ("NO ISSUE", "NON-ISSUE"):
@@ -232,6 +241,17 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool, sheet_name: str = 
                 stats["blocked"] += 1
             elif status_upper == "KOREAN":
                 stats["korean"] += 1
+
+    # SCRIPT GRANULAR DEBUG: Show all rows with STATUS
+    if is_script:
+        if rows_with_status:
+            _tracker_log(f"    FOUND {len(rows_with_status)} ROWS WITH STATUS:")
+            for r, s in rows_with_status[:30]:  # Show first 30
+                _tracker_log(f"      Row {r}: '{s}'")
+            if len(rows_with_status) > 30:
+                _tracker_log(f"      ... and {len(rows_with_status) - 30} more")
+        else:
+            _tracker_log(f"    *** NO STATUS VALUES FOUND! ***", "WARN")
 
             # Count words/chars for DONE rows
             # Accept both "NO ISSUE" (standard) and "NON-ISSUE" (Script-type)
@@ -300,6 +320,17 @@ def count_qa_folder_stats(folder: Dict, tester_mapping: Dict) -> Dict:
     done = total_stats["issue"] + total_stats["no_issue"] + total_stats["blocked"] + total_stats["korean"]
 
     _tracker_log(f"  TOTALS: total={total_stats['total']} done={done} issues={total_stats['issue']} words={total_stats['word_count']}")
+
+    # SCRIPT GRANULAR DEBUG: Show the entry that will be written
+    is_script = category.lower() in ("sequencer", "dialog")
+    if is_script:
+        _tracker_log(f"")
+        _tracker_log(f"  *** SCRIPT ENTRY TO BE WRITTEN ***")
+        _tracker_log(f"    date={file_date}, user={username}, category={category}")
+        _tracker_log(f"    done={done}, issues={total_stats['issue']}, no_issue={total_stats['no_issue']}")
+        _tracker_log(f"    blocked={total_stats['blocked']}, korean={total_stats['korean']}")
+        _tracker_log(f"")
+
     _tracker_log_flush(f"QA FOLDER: {username}_{category}")
 
     return {
@@ -376,13 +407,53 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
                                 status_cols[header_str[7:]] = col  # Skip "STATUS_" prefix
 
                     _tracker_log(f"  SHEET '{sheet_name}': rows={ws.max_row}, cols={ws.max_column}")
+
+                    # SCRIPT GRANULAR DEBUG: Show ALL headers for Script category
+                    is_script = target_category.upper() == "SCRIPT"
+                    if is_script:
+                        _tracker_log(f"")
+                        _tracker_log(f"  *** SCRIPT CATEGORY DETAILED DEBUG ***")
+                        _tracker_log(f"  ALL COLUMN HEADERS:")
+                        for col in range(1, min(ws.max_column + 1, 30)):  # First 30 columns
+                            h = ws.cell(row=1, column=col).value
+                            _tracker_log(f"    Col {col}: '{h}'")
+
                     _tracker_log(f"    STATUS_ columns: {list(status_cols.keys()) if status_cols else 'NONE'}")
 
                     if not status_cols:
                         _tracker_log(f"    SKIP: No STATUS_ columns", "WARN")
                         continue
 
-                    # Sample values for debugging
+                    # SCRIPT GRANULAR DEBUG: Check EVERY row for values
+                    if is_script:
+                        _tracker_log(f"")
+                        _tracker_log(f"  SCANNING ALL {ws.max_row - 1} ROWS FOR STATUS VALUES:")
+                        rows_with_values = []
+                        for r in range(2, ws.max_row + 1):
+                            for username, col in status_cols.items():
+                                v = ws.cell(row=r, column=col).value
+                                if v and str(v).strip():
+                                    rows_with_values.append((r, username, str(v).strip()))
+
+                        if rows_with_values:
+                            _tracker_log(f"  FOUND {len(rows_with_values)} ROWS WITH STATUS VALUES:")
+                            for r, u, v in rows_with_values[:50]:  # Show first 50
+                                _tracker_log(f"    Row {r}: {u} = '{v}'")
+                            if len(rows_with_values) > 50:
+                                _tracker_log(f"    ... and {len(rows_with_values) - 50} more")
+                        else:
+                            _tracker_log(f"  *** NO STATUS VALUES FOUND IN ANY ROW! ***", "WARN")
+                            _tracker_log(f"  Checking raw cell values for first STATUS column...")
+                            if status_cols:
+                                first_user = list(status_cols.keys())[0]
+                                first_col = status_cols[first_user]
+                                _tracker_log(f"    Column {first_col} ({first_user}) first 20 rows:")
+                                for r in range(2, min(22, ws.max_row + 1)):
+                                    raw_val = ws.cell(row=r, column=first_col).value
+                                    _tracker_log(f"      Row {r}: raw='{raw_val}' type={type(raw_val).__name__}")
+                        _tracker_log(f"")
+
+                    # Sample values for debugging (all categories)
                     sample_values = {}
                     for username, col in status_cols.items():
                         vals = []
