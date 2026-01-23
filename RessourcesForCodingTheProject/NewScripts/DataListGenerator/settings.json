@@ -1,0 +1,9 @@
+{
+    "drive_letter": "F",
+    "version": "3.0",
+    "paths": {
+        "factioninfo": "F:\\perforce\\cd\\mainline\\resource\\GameData\\StaticInfo\\factioninfo",
+        "skillinfo": "F:\\perforce\\cd\\mainline\\resource\\GameData\\StaticInfo\\skillinfo",
+        "loc_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\loc"
+    }
+}
