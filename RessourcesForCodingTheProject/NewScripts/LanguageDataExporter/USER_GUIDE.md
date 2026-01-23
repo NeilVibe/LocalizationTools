@@ -17,9 +17,11 @@
 7. [VRS Ordering](#-vrs-ordering)
 8. [Word Count Reports](#-word-count-reports)
 9. [Output Files](#-output-files)
-10. [Configuration](#-configuration)
-11. [Troubleshooting](#-troubleshooting)
-12. [Reference](#-reference)
+10. [LQA Correction Workflow](#-lqa-correction-workflow) ← **NEW**
+11. [Progress Tracker](#-progress-tracker) ← **NEW**
+12. [Configuration](#-configuration)
+13. [Troubleshooting](#-troubleshooting)
+14. [Reference](#-reference)
 
 ---
 
@@ -31,19 +33,27 @@
 1. Double-click LanguageDataExporter.exe
 2. Click "Generate Language Excels" to create files
 3. Find output in GeneratedExcel/ folder
+4. Copy files to ToSubmit/ folder for LQA review
+5. After corrections, click "Prepare For Submit"
 ```
 
 ### Output Location
 
 ```
 LanguageDataExporter/
-└── GeneratedExcel/
-    ├── LanguageData_ENG.xlsx      # English
-    ├── LanguageData_FRE.xlsx      # French
-    ├── LanguageData_GER.xlsx      # German
-    ├── ...                        # Other languages
-    ├── _Summary.xlsx              # Overview
-    └── WordCountReport.xlsx       # LQA scheduling
+├── GeneratedExcel/                 # Generated files
+│   ├── LanguageData_ENG.xlsx       # English (with Correction column)
+│   ├── LanguageData_FRE.xlsx       # French (with Correction column)
+│   ├── ...                         # Other languages
+│   ├── _Summary.xlsx               # Overview
+│   └── WordCountReport.xlsx        # LQA scheduling
+│
+├── ToSubmit/                       # LQA staging area
+│   ├── LanguageData_ENG.xlsx       # Files being reviewed
+│   ├── LanguageData_FRE.xlsx       # Fill Correction column here
+│   └── backup_YYYYMMDD_HHMMSS/     # Auto-backup before submit
+│
+└── Correction_ProgressTracker.xlsx # Weekly/Total progress tracking
 ```
 
 ---
@@ -90,11 +100,13 @@ On first launch, configure your Perforce drive:
 
 ```
 LanguageDataExporter/
-├── LanguageDataExporter.exe    # Main application
-├── settings.json               # Your drive configuration
-├── category_clusters.json      # Category colors/keywords
-├── GeneratedExcel/             # Output folder (created on first run)
-└── _internal/                  # Python runtime
+├── LanguageDataExporter.exe          # Main application
+├── settings.json                     # Your drive configuration
+├── category_clusters.json            # Category colors/keywords
+├── GeneratedExcel/                   # Generated Excel files
+├── ToSubmit/                         # LQA staging folder (created on first use)
+├── Correction_ProgressTracker.xlsx   # Progress tracking (created on first submit)
+└── _internal/                        # Python runtime
 ```
 
 ---
@@ -105,7 +117,9 @@ LanguageDataExporter/
 |---------|-------------|--------|
 | **Language Export** | Convert XML to categorized Excel | `LanguageData_{LANG}.xlsx` |
 | **Word Count Report** | LQA scheduling metrics | `WordCountReport.xlsx` |
-| **Category Analysis** | View file distribution | GUI TreeView |
+| **Correction Column** | Empty column for LQA corrections | In each Excel file |
+| **Prepare For Submit** | Apply corrections, create final files | 3-column output |
+| **Progress Tracker** | Track correction progress weekly | `Correction_ProgressTracker.xlsx` |
 | **VRS Ordering** | Chronological story order | Sorted STORY rows |
 | **Two-Tier Clustering** | STORY + GAME_DATA categories | Color-coded cells |
 
@@ -149,7 +163,7 @@ python main.py --gui    # Explicit GUI mode
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  LanguageDataExporter                                      [─][□][×]│
+│  LanguageDataExporter v3.0                                 [─][□][×]│
 ├─────────────────────────────────────────────────────────────────┤
 │  CONFIGURED PATHS                                               │
 │  ┌───────────────────────────────────────────────────────────┐  │
@@ -158,9 +172,10 @@ python main.py --gui    # Explicit GUI mode
 │  │ Output Folder: GeneratedExcel                  [OK]       │  │
 │  └───────────────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
-│  EXPORT ACTIONS                                                 │
+│  GENERATE & SUBMIT                                              │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │ [Generate Word Count Report]  [Generate Language Excels]  │  │
+│  │ [Prepare For Submit]          [Open ToSubmit Folder]      │  │
 │  └───────────────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
 │  ████████████████████████░░░░░░░░░░░░░░░░░░░░░░░  45%          │
@@ -173,7 +188,9 @@ python main.py --gui    # Explicit GUI mode
 | Button | What It Does | Output |
 |--------|--------------|--------|
 | **Generate Word Count Report** | Creates LQA metrics report | `WordCountReport.xlsx` |
-| **Generate Language Excels** | Creates all language files | `LanguageData_*.xlsx` |
+| **Generate Language Excels** | Creates files with Correction column | `LanguageData_*.xlsx` |
+| **Prepare For Submit** | Apply corrections, output 3 columns | Final submission files |
+| **Open ToSubmit Folder** | Opens ToSubmit folder in explorer | - |
 
 ### Path Status Indicators
 
@@ -612,26 +629,41 @@ A string is marked **untranslated** if the translation still contains Korean cha
 
 **Example:** `LanguageData_FRE.xlsx` (French)
 
-#### Columns (EU Languages)
+#### Columns (EU Languages - 6 columns)
 
-| Column | Width | Description |
-|--------|-------|-------------|
-| **StrOrigin** | 45 | Korean source text |
-| **Str** | 45 | Translated text |
-| **StringID** | 15 | Unique identifier |
-| **English** | 45 | English reference |
-| **Category** | 20 | Color-coded category |
+| Column | Header | Width | Description |
+|--------|--------|-------|-------------|
+| A | **StrOrigin** | 45 | Korean source text |
+| B | **ENG from LOC** | 45 | English reference (from languagedata_eng.xml) |
+| C | **Str** | 45 | Translated text |
+| D | **Correction** | 45 | **Empty - for LQA corrections** |
+| E | **Category** | 20 | Color-coded category |
+| F | **StringID** | 15 | Unique identifier |
 
-#### Columns (CJK Languages)
+#### Columns (Asian Languages - 5 columns)
 
-| Column | Width | Description |
-|--------|-------|-------------|
-| **StrOrigin** | 45 | Korean source text |
-| **Str** | 45 | Translated text |
-| **StringID** | 15 | Unique identifier |
-| **Category** | 20 | Color-coded category |
+| Column | Header | Width | Description |
+|--------|--------|-------|-------------|
+| A | **StrOrigin** | 45 | Korean source text |
+| B | **Str** | 45 | Translated text |
+| C | **Correction** | 45 | **Empty - for LQA corrections** |
+| D | **Category** | 20 | Color-coded category |
+| E | **StringID** | 15 | Unique identifier |
 
-> **Note:** CJK languages (JPN, ZHO-CN, ZHO-TW) don't include English column.
+> **Note:** Asian languages (JPN, ZHO-CN, ZHO-TW, ENG) don't include English reference column.
+
+#### The Correction Column
+
+The **Correction** column is the key to the LQA workflow:
+
+| Scenario | What To Do |
+|----------|------------|
+| Translation is correct | Leave Correction column **empty** |
+| Translation needs fix | Enter corrected text in Correction column |
+
+When you click **"Prepare For Submit"**, the tool will:
+1. If Correction has value → Use Correction as final Str
+2. If Correction is empty → Keep original Str unchanged
 
 ### Category Colors
 
@@ -662,6 +694,184 @@ A string is marked **untranslated** if the translation still contains Korean cha
 | **Row Count** | Number of entries |
 | **File Generated** | Output filename |
 | **Include English** | Yes/No |
+
+---
+
+## LQA Correction Workflow
+
+### Complete Workflow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        LQA CORRECTION WORKFLOW                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  STEP 1: GENERATE                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  Click "Generate Language Excels"                                       │ │
+│  │  Output: GeneratedExcel/LanguageData_*.xlsx                             │ │
+│  │  Columns: StrOrigin | ENG | Str | Correction | Category | StringID     │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                    ↓                                         │
+│  STEP 2: STAGE FOR REVIEW                                                    │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  Copy files from GeneratedExcel/ → ToSubmit/                            │ │
+│  │  (Or click "Open ToSubmit Folder" and drag files there)                 │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                    ↓                                         │
+│  STEP 3: LQA REVIEW (Manual)                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  Open each file in ToSubmit/                                            │ │
+│  │  Review Str column (current translation)                                │ │
+│  │  IF correction needed: Fill Correction column                           │ │
+│  │  IF no correction needed: Leave Correction empty                        │ │
+│  │  Save file                                                              │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                    ↓                                         │
+│  STEP 4: PREPARE FOR SUBMIT                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  Click "Prepare For Submit" button                                      │ │
+│  │  Tool will:                                                             │ │
+│  │    1. Create backup in ToSubmit/backup_YYYYMMDD_HHMMSS/                 │ │
+│  │    2. Apply corrections (Correction → Str)                              │ │
+│  │    3. Output only 3 columns: StrOrigin | Str | StringID                 │ │
+│  │    4. Update Progress Tracker                                           │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                    ↓                                         │
+│  STEP 5: SUBMIT                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  Files in ToSubmit/ are now ready for final submission                  │ │
+│  │  Final columns: StrOrigin | Str | StringID (3 columns only)             │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Step-by-Step Instructions
+
+#### Step 1: Generate Excel Files
+
+1. Launch LanguageDataExporter
+2. Click **"Generate Language Excels"**
+3. Wait for processing to complete
+4. Files created in `GeneratedExcel/` folder
+
+#### Step 2: Stage for Review
+
+1. Click **"Open ToSubmit Folder"** (creates folder if needed)
+2. Copy files from `GeneratedExcel/` to `ToSubmit/`
+3. Only copy languages you want to review
+
+#### Step 3: LQA Review
+
+For each file in `ToSubmit/`:
+
+1. Open the Excel file
+2. Review each row:
+   - **StrOrigin** = Korean source (reference)
+   - **ENG from LOC** = English translation (reference)
+   - **Str** = Current translation to review
+3. If translation is **correct**: Leave Correction column empty
+4. If translation needs **fix**: Enter corrected text in Correction column
+5. Save the file
+
+#### Step 4: Prepare for Submit
+
+1. Click **"Prepare For Submit"** button
+2. Confirm the operation (this will modify files)
+3. Tool automatically:
+   - Creates backup of all files
+   - Applies corrections
+   - Strips to 3 columns
+   - Updates progress tracker
+
+#### Step 5: Submit
+
+Files in `ToSubmit/` are now in final format:
+- Only 3 columns: `StrOrigin | Str | StringID`
+- Corrections have been applied
+- Ready for import back to game
+
+### Backup System
+
+Every time you click "Prepare For Submit", a backup is created:
+
+```
+ToSubmit/
+├── LanguageData_ENG.xlsx           # Current (modified)
+├── LanguageData_FRE.xlsx           # Current (modified)
+├── backup_20260123_161045/         # Backup from Jan 23, 16:10:45
+│   ├── LanguageData_ENG.xlsx       # Original with Correction column
+│   └── LanguageData_FRE.xlsx       # Original with Correction column
+└── backup_20260122_143022/         # Older backup
+    └── ...
+```
+
+---
+
+## Progress Tracker
+
+### Overview
+
+The **Correction Progress Tracker** (`Correction_ProgressTracker.xlsx`) tracks your LQA correction progress over time. It's automatically updated when you click "Prepare For Submit".
+
+### Tracker Structure
+
+```
+Correction_ProgressTracker.xlsx
+├── WEEKLY          # Week-over-week progress (visible)
+├── TOTAL           # Summary tables (visible)
+└── _WEEKLY_DATA    # Raw data storage (hidden)
+```
+
+### WEEKLY Sheet
+
+Shows progress week by week:
+
+| Language | Week | Corrected | Pending | % Done | KR Words |
+|----------|------|-----------|---------|--------|----------|
+| ENG | 2026-01-20 | 5,234 | 18,766 | 21.8% | 15,234 |
+| ENG | 2026-01-27 | 8,456 | 15,544 | 35.2% | 25,123 |
+| FRE | 2026-01-20 | 3,456 | 20,544 | 14.4% | 10,765 |
+| FRE | 2026-01-27 | 6,789 | 17,211 | 28.3% | 18,432 |
+
+### TOTAL Sheet
+
+**Table 1: Per-Language Summary**
+
+| Language | Corrected | Pending | Total | % Complete | Korean Words |
+|----------|-----------|---------|-------|------------|--------------|
+| ENG | 15,234 | 8,766 | 24,000 | 63.5% | 45,234 |
+| FRE | 12,456 | 11,544 | 24,000 | 51.9% | 38,765 |
+| GER | 10,890 | 13,110 | 24,000 | 45.4% | 32,456 |
+
+**Table 2: Per-Category Completion**
+
+| Category | ENG | FRE | GER | Total KR Words |
+|----------|-----|-----|-----|----------------|
+| Sequencer | 72.3% | 65.1% | 58.4% | 125,000 |
+| AIDialog | 45.2% | 38.9% | 42.1% | 89,000 |
+| Item | 85.9% | 82.3% | 79.8% | 45,000 |
+
+### How Tracking Works
+
+1. **Before** "Prepare For Submit" runs, the tool scans files in ToSubmit/
+2. For each file, it counts:
+   - **Corrected**: Rows where Correction column has value
+   - **Pending**: Rows where Correction column is empty
+   - **KR Words**: Korean word count in StrOrigin
+3. Data is stored with current week (Monday date)
+4. Same week + language + category = **overwrites** (no duplicates)
+
+### Week Calculation
+
+Progress is tracked by **week** (Monday start):
+
+| Date | Week Start |
+|------|------------|
+| Wednesday Jan 22 | 2026-01-20 (Monday) |
+| Friday Jan 24 | 2026-01-20 (Monday) |
+| Monday Jan 27 | 2026-01-27 (Monday) |
 
 ---
 
@@ -784,7 +994,13 @@ LanguageDataExporter/
 ├── exporter/
 │   ├── xml_parser.py          # XML parsing
 │   ├── category_mapper.py     # Two-tier clustering
-│   └── excel_writer.py        # Excel output
+│   ├── excel_writer.py        # Excel output
+│   └── submit_preparer.py     # LQA submission preparation
+├── tracker/                   # Progress tracking module
+│   ├── data.py                # Weekly data manager
+│   ├── weekly.py              # WEEKLY sheet builder
+│   ├── total.py               # TOTAL sheet builder
+│   └── tracker.py             # Main tracker orchestrator
 ├── reports/
 │   ├── word_counter.py        # Word/char counting
 │   └── excel_report.py        # Report generation
@@ -793,7 +1009,7 @@ LanguageDataExporter/
 │   ├── dialog_clusterer.py    # Dialog categories
 │   └── sequencer_clusterer.py # Sequencer logic
 ├── gui/
-│   └── app.py                 # tkinter GUI
+│   └── app.py                 # tkinter GUI (4 buttons)
 └── utils/
     ├── language_utils.py      # Korean detection
     └── vrs_ordering.py        # VRS sorting
@@ -811,5 +1027,5 @@ LanguageDataExporter/
 
 ---
 
-*Last updated: January 2025*
-*Version: 1.0.16*
+*Last updated: January 2026*
+*Version: 2.0.0 - Added Correction Workflow, Prepare For Submit, Progress Tracker*
