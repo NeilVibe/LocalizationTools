@@ -709,6 +709,38 @@ dist\QACompiler\
 
 ---
 
+## Troubleshooting & Debug Logs
+
+### Debug Log Files
+
+| File | Purpose | When Generated |
+|------|---------|----------------|
+| `MATCHING_DEBUG.log` | Row matching failures (STRINGID, Translation mismatches) | During Build |
+| `MANAGER_STATS_DEBUG.log` | Manager stats collection + tracker lookup phase | During Build |
+
+### Known Issues
+
+See `docs/ISSUE_TRACKER_MATCHING.md` and `docs/ISSUE_TRACKER_INVESTIGATION_SESSION.md` for details.
+
+#### Issue: Tracker Shows Low or Zero Stats
+
+**Symptoms:**
+- Tester stats (Issues, No Issue, etc.) are 0 or lower than expected
+- Manager stats (Fixed, Reported, etc.) show MISS in debug log
+
+**Potential Causes:**
+1. **Row matching failing** - Check `MATCHING_DEBUG.log` for `UNMATCHED` entries
+2. **Script categories (Sequencer/Dialog) with no STATUS** - Pre-filter skips empty rows
+3. **Master files missing** - Check `Masterfolder_EN/` and `Masterfolder_CN/`
+4. **STATUS_{User} columns missing** - Check Master file headers
+
+**Debug Steps:**
+1. Run Build and check console for `[WARN] ... UNMATCHED` messages
+2. Open `MATCHING_DEBUG.log` to see which rows failed and why
+3. Open `MANAGER_STATS_DEBUG.log` to see lookup hits/misses
+
+---
+
 ## Notes
 
 - Generators require access to game resource paths (Perforce)

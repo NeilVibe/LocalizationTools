@@ -349,12 +349,22 @@ def process_sheet(
     # Detect if Script category (uses MEMO instead of COMMENT, no SCREENSHOT)
     is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
 
+    # DEBUG: Log manager_status for Script categories
+    # NOTE: manager_status here is already sheet-level: {(stringid, comment): {username: info}}
+    if is_script:
+        print(f"[DEBUG] process_sheet: {category}/{sheet_name}/{username}")
+        print(f"  manager_status keys (sheet-level): {len(manager_status)}")
+        if manager_status:
+            sample_keys = list(manager_status.keys())[:3]
+            print(f"  Sample keys: {sample_keys}")
+
     # Find columns in QA worksheet
     qa_status_col = find_column_by_header(qa_ws, "STATUS")
     # Script uses MEMO column instead of COMMENT
     if is_script:
         qa_comment_col = find_column_by_header(qa_ws, "MEMO")
         qa_screenshot_col = None  # Script has no SCREENSHOT
+        print(f"  QA MEMO column: {qa_comment_col}")  # DEBUG
     else:
         qa_comment_col = find_column_by_header(qa_ws, "COMMENT")
         qa_screenshot_col = find_column_by_header(qa_ws, "SCREENSHOT")
@@ -598,6 +608,10 @@ def process_sheet(
             if qa_comment_raw and str(qa_comment_raw).strip():
                 tester_comment_for_lookup = extract_comment_text(qa_comment_raw)
 
+        # DEBUG: Log lookup attempts for Script
+        if is_script and qa_row <= 5:  # First 5 rows only
+            print(f"  [DEBUG] Row {qa_row}: tester_comment='{tester_comment_for_lookup[:30] if tester_comment_for_lookup else 'EMPTY'}...'")
+
         if manager_status and tester_comment_for_lookup:
             # Get STRINGID from MASTER row (not QA file - QA file might have empty STRINGID!)
             master_stringid = ""
@@ -608,6 +622,11 @@ def process_sheet(
 
             # Primary key: (stringid, tester_comment_text)
             manager_key = (master_stringid, tester_comment_for_lookup)
+
+            # DEBUG: Log lookup for Script
+            if is_script and qa_row <= 5:
+                found = manager_key in manager_status
+                print(f"  [DEBUG] Row {qa_row}: key={manager_key[:50] if str(manager_key)[:50] else manager_key}, found={found}")
 
             # Fallback: ("", tester_comment_text) if exact match fails (STRINGID changed)
             if manager_key not in manager_status:
