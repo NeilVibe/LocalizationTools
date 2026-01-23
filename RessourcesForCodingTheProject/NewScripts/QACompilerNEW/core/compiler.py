@@ -462,42 +462,61 @@ def collect_manager_stats_for_tracker() -> Dict:
                         continue
                     ws = wb[sheet_name]
 
-                    # Find STATUS_{User} columns (case-insensitive to match column creation)
+                    # Find STATUS_{User} and COMMENT_{User} columns (case-insensitive)
                     status_cols = {}
+                    comment_cols = {}
                     all_headers = []
                     for col in range(1, ws.max_column + 1):
                         header = ws.cell(row=1, column=col).value
                         if header:
                             header_str = str(header)
                             header_upper = header_str.upper()
-                            all_headers.append(header_str)
+                            all_headers.append(f"col{col}:{header_str}")
                             if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
                                 status_cols[header_str[7:]] = col  # Skip "STATUS_" prefix
+                            elif header_upper.startswith("COMMENT_"):
+                                comment_cols[header_str[8:]] = col  # Skip "COMMENT_" prefix
 
                     # GRANULAR: Log headers for ALL sheets
                     log_lines.append(f"  Sheet '{sheet_name}': rows={ws.max_row}, cols={ws.max_column}")
-                    log_lines.append(f"    STATUS_ columns: {list(status_cols.keys()) if status_cols else 'NONE FOUND'}")
+                    log_lines.append(f"    ALL HEADERS: {all_headers}")
+                    log_lines.append(f"    STATUS_ columns: {status_cols if status_cols else 'NONE FOUND'}")
+                    log_lines.append(f"    COMMENT_ columns: {comment_cols if comment_cols else 'NONE FOUND'}")
 
                     if not status_cols:
                         continue
 
-                    # GRANULAR: Sample values for ALL categories
+                    # GRANULAR: Find ALL non-empty STATUS values with row numbers
                     sample_values = {}
+                    all_found_values = {}  # username -> [(row, value), ...]
                     for username, col in status_cols.items():
-                        vals = []
-                        for r in range(2, min(12, ws.max_row + 1)):  # First 10 data rows
+                        found = []
+                        for r in range(2, ws.max_row + 1):
                             v = ws.cell(row=r, column=col).value
-                            if v:
-                                vals.append(str(v).strip())
-                        sample_values[username] = vals[:5] if vals else ["(empty)"]
+                            if v and str(v).strip():
+                                found.append((r, str(v).strip()))
+                        all_found_values[username] = found
+                        if found:
+                            sample_values[username] = [f"row{r}:{v}" for r, v in found[:5]]
+                        else:
+                            sample_values[username] = ["(ALL EMPTY - 0 values in entire column!)"]
                     log_lines.append(f"    Sample STATUS values: {sample_values}")
+                    # Log total count per user
+                    for username, found in all_found_values.items():
+                        total_found = len(found)
+                        if total_found > 0:
+                            log_lines.append(f"    [{username}] TOTAL non-empty STATUS values: {total_found}")
+                        else:
+                            log_lines.append(f"    [{username}] WARNING: ZERO non-empty STATUS values in column {status_cols[username]}!")
 
                     # Count - key by target_category (not sheet_name) to match tester stats
+                    unrecognized_statuses = {}  # Track any status values that don't match expected
                     for row in range(2, ws.max_row + 1):
                         for username, col in status_cols.items():
                             value = ws.cell(row=row, column=col).value
                             if value:
-                                v = str(value).strip().upper()
+                                v_raw = str(value).strip()
+                                v = v_raw.upper()
                                 if v == "FIXED":
                                     manager_stats[target_category][username]["fixed"] += 1
                                 elif v == "REPORTED":
@@ -506,12 +525,40 @@ def collect_manager_stats_for_tracker() -> Dict:
                                     manager_stats[target_category][username]["checking"] += 1
                                 elif v in ("NON-ISSUE", "NON ISSUE"):
                                     manager_stats[target_category][username]["nonissue"] += 1
+                                else:
+                                    # Track unrecognized status values
+                                    if username not in unrecognized_statuses:
+                                        unrecognized_statuses[username] = []
+                                    if len(unrecognized_statuses[username]) < 5:
+                                        unrecognized_statuses[username].append(f"row{row}:'{v_raw}'")
                             manager_stats[target_category][username]["lang"] = tester_mapping.get(username, "EN")
+                    # Log unrecognized statuses
+                    if unrecognized_statuses:
+                        log_lines.append(f"    UNRECOGNIZED STATUS VALUES (not FIXED/REPORTED/CHECKING/NON-ISSUE):")
+                        for username, vals in unrecognized_statuses.items():
+                            log_lines.append(f"      [{username}]: {vals}")
+
+                    # Count PENDING issues (COMMENT exists but no final STATUS)
+                    pending_counts = {}
+                    for username in status_cols.keys():
+                        status_col = status_cols.get(username)
+                        comment_col = comment_cols.get(username)
+                        if comment_col:
+                            pending = 0
+                            for r in range(2, ws.max_row + 1):
+                                comment_val = ws.cell(row=r, column=comment_col).value
+                                status_val = ws.cell(row=r, column=status_col).value if status_col else None
+                                # Has comment but no manager status = PENDING
+                                if comment_val and str(comment_val).strip():
+                                    if not status_val or str(status_val).strip().upper() not in ("FIXED", "NON-ISSUE", "NON ISSUE"):
+                                        pending += 1
+                            pending_counts[username] = pending
 
                     # Log per-sheet summary (ALL users, even if 0)
                     for u in status_cols.keys():
                         s = manager_stats[target_category][u]
-                        log_lines.append(f"    {target_category}/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']}")
+                        pending = pending_counts.get(u, 0)
+                        log_lines.append(f"    {target_category}/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']} | PENDING={pending}")
 
                 wb.close()
             except Exception as e:
