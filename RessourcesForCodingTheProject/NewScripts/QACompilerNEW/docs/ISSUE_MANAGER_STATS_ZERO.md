@@ -1,10 +1,36 @@
 # ISSUE: Manager Stats Show ZERO (Tester Issues Not Counted)
 
-**Status:** OPEN - ACTIVE INVESTIGATION
+**Status:** OPEN - AWAITING USER LOG
 **Priority:** CRITICAL
 **Date:** 2026-01-23
-**Updated:** 2026-01-23 (added granular logging)
+**Updated:** 2026-01-23 20:50 (ULTRA-GRANULAR LOGGING IMPLEMENTED)
 **Reported By:** User
+**Commit:** 94069ec
+
+---
+
+## CURRENT STATUS
+
+### What's Done ✅
+1. **Ultra-granular logging implemented** in `core/compiler.py`
+2. **Test scenarios created** in `tests/test_user_scenario.py`
+3. **Code pushed to GitHub** - commit 94069ec
+
+### What's Needed ⏳
+1. User copies updated `core/compiler.py` to Windows
+2. User runs full compilation on REAL data
+3. User sends `MANAGER_STATS_DEBUG.log` file
+4. Claude analyzes log to find exact root cause
+
+### File to Update on Windows
+```
+core/compiler.py  →  Copy to Windows QACompilerNEW folder
+```
+
+### Log File to Send Back
+```
+MANAGER_STATS_DEBUG.log  →  Created after running compilation
+```
 
 ---
 
@@ -181,6 +207,8 @@ From MISS DETAILS:
 | 2026-01-23 | Initial investigation | Found case sensitivity bug (NOT THE ROOT CAUSE) |
 | 2026-01-23 | User reports still broken | Confirmed - Script shows ALL ZEROS |
 | 2026-01-23 | Log analysis | Found Sample STATUS always (empty) for Script |
+| 2026-01-23 20:48 | **ULTRA-GRANULAR LOGGING** | Implemented full logging - every row, every cell |
+| 2026-01-23 20:50 | **Pushed to GitHub** | Commit 94069ec - awaiting user test |
 
 ---
 
@@ -189,3 +217,51 @@ From MISS DETAILS:
 - `LOG FOR CLAUDE 0123 1647.txt` - Full debug log with ZEROS
 - `LOGS FOR CLAUDE 0123 TRACKER.txt` - Tracker update log
 - `ISSUE_TRACKER_INVESTIGATION_SESSION.md` - Previous investigation (WRONG FIX)
+
+---
+
+## What The New Logging Captures
+
+The `MANAGER_STATS_DEBUG.log` file will show:
+
+```
+================================================================================
+MANAGER STATS COLLECTION - ULTRA GRANULAR DEBUG LOG
+================================================================================
+
+[CONFIG] All settings, folder paths, category mappings
+[CONFIG] Tester mapping: who belongs to EN vs CN
+
+[CATEGORY LOOP] For each category:
+    - Target master file path
+    - File exists? Yes/No
+    - Already processed? Yes/No
+
+[SHEET] For each sheet in workbook:
+    - All column headers with type identification
+    - STATUS_{User} columns found
+    - COMMENT_{User} columns found
+    - TESTER_STATUS_{User} columns found
+
+[ROW] For each data row:
+    [ROW 5] ID=EVT001
+      [유지윤] STATUS='FIXED' COMMENT='Typo' -> COUNTED as FIXED
+      [조서영] STATUS='' COMMENT='Issue here' -> PENDING (no manager status)
+
+[SUMMARY] Per-sheet and global totals
+    - Total FIXED/REPORTED/CHECKING/NON-ISSUE
+    - Total PENDING (issues awaiting manager review)
+    - Any UNRECOGNIZED status values
+```
+
+---
+
+## Quick Reference
+
+| Item | Value |
+|------|-------|
+| **Updated File** | `core/compiler.py` |
+| **GitHub Commit** | 94069ec |
+| **Output Log** | `MANAGER_STATS_DEBUG.log` |
+| **Test File** | `tests/test_user_scenario.py` |
+| **Issue Doc** | This file |
