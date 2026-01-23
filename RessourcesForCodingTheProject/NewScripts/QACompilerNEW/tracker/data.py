@@ -120,8 +120,11 @@ def update_daily_data_sheet(
     # Concise log - append to same file
     from pathlib import Path
     log_path = Path(__file__).parent.parent / "MANAGER_STATS_DEBUG.log"
-    log_lines = ["\n=== LOOKUP PHASE ==="]
-    log_lines.append(f"daily_entries: {len(daily_entries)}, manager_stats categories: {list(manager_stats.keys())}")
+    log_lines = ["\n" + "="*60]
+    log_lines.append("LOOKUP PHASE - update_daily_data_sheet()")
+    log_lines.append("="*60)
+    log_lines.append(f"daily_entries count: {len(daily_entries)}")
+    log_lines.append(f"manager_stats categories: {list(manager_stats.keys())}")
 
     # GRANULAR: Show Script category users from manager_stats
     if "Script" in manager_stats:
@@ -132,6 +135,14 @@ def update_daily_data_sheet(
             log_lines.append(f"  Script/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']}")
     else:
         log_lines.append("WARNING: 'Script' category NOT in manager_stats!")
+
+    # GRANULAR: Show daily_entries for Script-type categories
+    log_lines.append("")
+    log_lines.append("--- SCRIPT-TYPE daily_entries (Sequencer/Dialog) ---")
+    script_entries = [e for e in daily_entries if e["category"] in ("Sequencer", "Dialog")]
+    log_lines.append(f"Found {len(script_entries)} Script-type daily_entries:")
+    for e in script_entries:
+        log_lines.append(f"  {e['user']}/{e['category']}: issues={e['issues']}, done={e['done']}, date={e['date']}")
 
     lookup_hits = 0
     lookup_misses = []
@@ -150,7 +161,16 @@ def update_daily_data_sheet(
 
         # GRANULAR: Log every Sequencer/Dialog lookup
         if category in ("Sequencer", "Dialog"):
-            log_lines.append(f"[LOOKUP] {user}/{category} -> lookup_category='{lookup_category}', found_in_stats={lookup_category in manager_stats}, user_in_cat={user in category_stats}, stats={user_manager_stats}")
+            log_lines.append(f"")
+            log_lines.append(f"[LOOKUP] {user}/{category}")
+            log_lines.append(f"  entry.issues={entry['issues']} (tester's ISSUE count from QA file)")
+            log_lines.append(f"  lookup_category='{lookup_category}' (from get_target_master_category)")
+            log_lines.append(f"  '{lookup_category}' in manager_stats? {lookup_category in manager_stats}")
+            if lookup_category in manager_stats:
+                log_lines.append(f"  manager_stats['{lookup_category}'] users: {list(manager_stats[lookup_category].keys())[:10]}")
+            log_lines.append(f"  '{user}' in category_stats? {user in category_stats}")
+            log_lines.append(f"  user_manager_stats: {user_manager_stats}")
+            log_lines.append(f"  --> PENDING will be: {entry['issues']} - {user_manager_stats['fixed']} - {user_manager_stats['reported']} - {user_manager_stats['checking']} - {user_manager_stats['nonissue']} = {max(0, entry['issues'] - user_manager_stats['fixed'] - user_manager_stats['reported'] - user_manager_stats['checking'] - user_manager_stats['nonissue'])}")
 
         has_stats = any(user_manager_stats[k] > 0 for k in ["fixed", "reported", "checking", "nonissue"])
         if has_stats:
@@ -175,10 +195,40 @@ def update_daily_data_sheet(
         ws.cell(row, 13, entry.get("word_count", 0))     # WordCount
         ws.cell(row, 14, entry.get("korean", 0))         # Korean
 
+        # GRANULAR: Log what was written for Script-type categories
+        if category in ("Sequencer", "Dialog"):
+            pending = max(0, entry["issues"] - user_manager_stats["fixed"] - user_manager_stats["reported"] - user_manager_stats["checking"] - user_manager_stats["nonissue"])
+            log_lines.append(f"  [WRITTEN] row {row}: Issues={entry['issues']}, Fixed={user_manager_stats['fixed']}, Reported={user_manager_stats['reported']}, Checking={user_manager_stats['checking']}, NonIssue={user_manager_stats['nonissue']} => PENDING={pending}")
+
     # Write lookup summary to log
+    log_lines.append(f"")
+    log_lines.append(f"--- LOOKUP SUMMARY ---")
     log_lines.append(f"HITS: {lookup_hits}, MISSES: {len(lookup_misses)}")
     if lookup_misses:
         log_lines.append(f"MISS DETAILS: {lookup_misses[:10]}{'...' if len(lookup_misses) > 10 else ''}")
+
+    # GRANULAR: Script category summary
+    script_entries_written = [e for e in daily_entries if e["category"] in ("Sequencer", "Dialog")]
+    if script_entries_written:
+        log_lines.append(f"")
+        log_lines.append(f"--- SCRIPT CATEGORY SUMMARY ---")
+        total_script_issues = sum(e["issues"] for e in script_entries_written)
+        total_script_done = sum(e["done"] for e in script_entries_written)
+        log_lines.append(f"Total Script-type entries: {len(script_entries_written)}")
+        log_lines.append(f"Total Script Issues (tester): {total_script_issues}")
+        log_lines.append(f"Total Script Done (tester): {total_script_done}")
+        # Get manager stats for Script
+        script_stats = manager_stats.get("Script", {})
+        total_fixed = sum(s.get("fixed", 0) for s in script_stats.values())
+        total_reported = sum(s.get("reported", 0) for s in script_stats.values())
+        total_checking = sum(s.get("checking", 0) for s in script_stats.values())
+        total_nonissue = sum(s.get("nonissue", 0) for s in script_stats.values())
+        log_lines.append(f"Total Script manager_stats: Fixed={total_fixed}, Reported={total_reported}, Checking={total_checking}, NonIssue={total_nonissue}")
+        expected_pending = total_script_issues - total_fixed - total_reported - total_checking - total_nonissue
+        log_lines.append(f"Expected PENDING for Script: {total_script_issues} - {total_fixed} - {total_reported} - {total_checking} - {total_nonissue} = {max(0, expected_pending)}")
+    log_lines.append("")
+    log_lines.append("="*60)
+
     try:
         with open(log_path, "a", encoding="utf-8") as f:
             f.write("\n".join(log_lines) + "\n")
