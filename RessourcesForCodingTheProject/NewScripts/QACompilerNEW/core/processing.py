@@ -396,10 +396,27 @@ def process_sheet(
     # Find columns in QA worksheet
     qa_status_col = find_column_by_header(qa_ws, "STATUS")
     # Script uses MEMO column instead of COMMENT
+    # BUT: Dialog files may have COMMENT instead of MEMO - check both!
     if is_script:
+        # DEBUG: Log ALL QA headers to see what columns are available
+        qa_headers = []
+        for col in range(1, min(qa_ws.max_column + 1, 20)):  # First 20 columns
+            header = qa_ws.cell(row=1, column=col).value
+            if header:
+                qa_headers.append(f"Col{col}:{header}")
+        _script_debug_log(f"  QA file headers: {qa_headers}")
+
         qa_comment_col = find_column_by_header(qa_ws, "MEMO")
+        if not qa_comment_col:
+            # Fallback: Dialog files may use COMMENT instead of MEMO
+            qa_comment_col = find_column_by_header(qa_ws, "COMMENT")
+            if qa_comment_col:
+                _script_debug_log(f"  QA MEMO column: None (using COMMENT fallback at col {qa_comment_col})")
+            else:
+                _script_debug_log(f"  QA MEMO column: None (no COMMENT fallback either)")
+        else:
+            _script_debug_log(f"  QA MEMO column: {qa_comment_col}")
         qa_screenshot_col = None  # Script has no SCREENSHOT
-        _script_debug_log(f"  QA MEMO column: {qa_comment_col}")
     else:
         qa_comment_col = find_column_by_header(qa_ws, "COMMENT")
         qa_screenshot_col = find_column_by_header(qa_ws, "SCREENSHOT")
