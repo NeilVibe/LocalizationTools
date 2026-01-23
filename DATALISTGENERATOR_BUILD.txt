@@ -7,3 +7,4 @@
 Build v3.0.0 initial release
 Build v3.0.1 fix imports
 Build v3.0.2 fix skill source file
+Build v3.0.3 glossary filename
