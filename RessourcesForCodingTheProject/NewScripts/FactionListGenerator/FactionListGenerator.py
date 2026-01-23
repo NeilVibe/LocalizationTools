@@ -517,7 +517,8 @@ def generate_translation_excel(
     items_with_category: List[Tuple[str, str]],
     lang_code: str,
     lang_table: Dict[str, str],
-    output_path: Path
+    output_path: Path,
+    eng_table: Optional[Dict[str, str]] = None
 ) -> Dict[str, int]:
     """
     Generate a translation Excel file for a single language.
@@ -527,16 +528,25 @@ def generate_translation_excel(
         lang_code: Language code (e.g., "eng", "fre")
         lang_table: Translation lookup table
         output_path: Output file path
+        eng_table: English translation table (for European languages)
 
     Returns:
         Stats dict: {"translated": N, "missing": M}
     """
+    # Asian languages don't get English column
+    ASIAN_LANGUAGES = {"zho-cn", "zho-tw", "jpn", "kor"}
+    include_english = lang_code.lower() not in ASIAN_LANGUAGES and eng_table is not None
+
     wb = Workbook()
     ws = wb.active
     ws.title = f"Translation_{lang_code.upper()}"
 
-    # Headers
-    headers = ["SourceText (Korean)", f"Translation ({lang_code.upper()})", "Category"]
+    # Headers - add English column for European languages
+    if include_english:
+        headers = ["SourceText (Korean)", "English", f"Translation ({lang_code.upper()})", "Category"]
+    else:
+        headers = ["SourceText (Korean)", f"Translation ({lang_code.upper()})", "Category"]
+
     for col, header in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.fill = HEADER_FILL
@@ -557,10 +567,29 @@ def generate_translation_excel(
             unique_items.append((item, category))
 
     for row_idx, (korean, category) in enumerate(unique_items, start=2):
-        # Source (Korean)
+        col_offset = 0
+
+        # Column 1: Source (Korean)
         ws.cell(row=row_idx, column=1, value=korean).border = THIN_BORDER
 
-        # Translation
+        # Column 2 (European only): English
+        if include_english:
+            eng_translation = eng_table.get(korean, "")
+            eng_is_untranslated = (
+                not eng_translation or
+                eng_translation == korean or
+                eng_translation.strip() == korean.strip()
+            )
+            if eng_is_untranslated:
+                eng_cell = ws.cell(row=row_idx, column=2, value="NO_TRANSLATION")
+                eng_cell.fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
+            else:
+                eng_cell = ws.cell(row=row_idx, column=2, value=eng_translation)
+            eng_cell.border = THIN_BORDER
+            col_offset = 1
+
+        # Translation column
+        translation_col = 2 + col_offset
         translation = lang_table.get(korean, "")
 
         # Check if translation is missing, empty, or same as Korean (untranslated)
@@ -571,20 +600,22 @@ def generate_translation_excel(
         )
 
         if is_untranslated:
-            target_cell = ws.cell(row=row_idx, column=2, value="NO_TRANSLATION")
+            target_cell = ws.cell(row=row_idx, column=translation_col, value="NO_TRANSLATION")
             target_cell.fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
             missing_count += 1
         else:
-            target_cell = ws.cell(row=row_idx, column=2, value=translation)
+            target_cell = ws.cell(row=row_idx, column=translation_col, value=translation)
             translated_count += 1
 
         target_cell.border = THIN_BORDER
 
         # Category (filename)
-        ws.cell(row=row_idx, column=3, value=category).border = THIN_BORDER
+        category_col = 3 + col_offset
+        ws.cell(row=row_idx, column=category_col, value=category).border = THIN_BORDER
 
     # Auto-fit columns
-    for col_idx in range(1, 4):
+    num_cols = 4 if include_english else 3
+    for col_idx in range(1, num_cols + 1):
         max_length = 0
         column_letter = get_column_letter(col_idx)
         for row in ws.iter_rows(min_col=col_idx, max_col=col_idx):
@@ -920,6 +951,12 @@ class FactionToolGUI:
 
         TRANSLATIONS_FOLDER.mkdir(parents=True, exist_ok=True)
 
+        # Load English table first (for European languages)
+        eng_table = None
+        if "eng" in lang_files:
+            self._log("  Loading English table for European languages...")
+            eng_table = load_language_table(lang_files["eng"])
+
         total_langs = len(lang_files)
         translated_langs = []
         total_translated = 0
@@ -936,9 +973,9 @@ class FactionToolGUI:
                 self._log(f"  Skipping {lang_code.upper()} - no data loaded")
                 continue
 
-            # Generate translation file
+            # Generate translation file (pass eng_table for European languages)
             output_path = TRANSLATIONS_FOLDER / f"Translated_{lang_code.upper()}.xlsx"
-            stats = generate_translation_excel(items_with_category, lang_code, lang_table, output_path)
+            stats = generate_translation_excel(items_with_category, lang_code, lang_table, output_path, eng_table)
 
             translated_langs.append(lang_code.upper())
             total_translated += stats["translated"]
