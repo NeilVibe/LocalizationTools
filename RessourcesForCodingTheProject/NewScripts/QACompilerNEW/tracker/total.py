@@ -285,6 +285,9 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
         "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "korean": 0
     })
 
+    # GRANULAR: Track Script category data
+    script_category_data = []
+
     for (user, category), data in latest_data.items():
         user_data[user]["total_rows"] += data["total_rows"]
         user_data[user]["done"] += data["done"]
@@ -296,6 +299,30 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
         user_data[user]["checking"] += data["checking"]
         user_data[user]["nonissue"] += data["nonissue"]
         user_data[user]["korean"] += data.get("korean", 0)
+
+        # GRANULAR: Track Script-type categories (Sequencer/Dialog)
+        if category in ("Sequencer", "Dialog"):
+            pending = max(0, data["issues"] - data["fixed"] - data["reported"] - data["checking"] - data["nonissue"])
+            script_category_data.append({
+                "user": user,
+                "category": category,
+                "date": data["date"],
+                "issues": data["issues"],
+                "fixed": data["fixed"],
+                "reported": data["reported"],
+                "checking": data["checking"],
+                "nonissue": data["nonissue"],
+                "pending": pending
+            })
+
+    # GRANULAR: Log Script category data
+    if script_category_data:
+        print(f"\n[DEBUG TOTAL] Script category breakdown ({len(script_category_data)} entries):")
+        for scd in script_category_data:
+            print(f"  {scd['user']}/{scd['category']}: issues={scd['issues']}, fixed={scd['fixed']}, reported={scd['reported']}, checking={scd['checking']}, nonissue={scd['nonissue']} => PENDING={scd['pending']}")
+        total_script_issues = sum(s["issues"] for s in script_category_data)
+        total_script_pending = sum(s["pending"] for s in script_category_data)
+        print(f"  TOTAL Script: issues={total_script_issues}, pending={total_script_pending}")
 
     # Debug: show users with 0 done
     print(f"\n[DEBUG TOTAL] Aggregated {len(user_data)} users:")

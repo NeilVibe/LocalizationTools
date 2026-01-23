@@ -381,11 +381,17 @@ def process_sheet(
     # NOTE: manager_status here is already sheet-level: {(stringid, comment): {username: info}}
     if is_script:
         file_name = xlsx_path.name if xlsx_path else "unknown"
-        _script_debug_log(f"[PROCESS] {category}/{file_name}/{username}")
+        _script_debug_log(f"")
+        _script_debug_log(f"{'='*60}")
+        _script_debug_log(f"[PROCESS_SHEET] {category}/{file_name}/{username}")
+        _script_debug_log(f"{'='*60}")
         _script_debug_log(f"  manager_status keys (sheet-level): {len(manager_status)}")
         if manager_status:
             sample_keys = list(manager_status.keys())[:3]
             _script_debug_log(f"  Sample keys: {sample_keys}")
+        _script_debug_log(f"  qa_ws.max_row: {qa_ws.max_row}")
+        _script_debug_log(f"  master_ws.max_row: {master_ws.max_row}")
+        _script_debug_flush()
 
     # Find columns in QA worksheet
     qa_status_col = find_column_by_header(qa_ws, "STATUS")
@@ -436,11 +442,22 @@ def process_sheet(
     if is_script and qa_status_col:
         # SIMPLE APPROACH: If STATUS has ANY value (not empty), include the row
         # Accept both "NON-ISSUE" (Script-type) and "NO ISSUE" (other categories)
+        status_distribution = {}  # Track what statuses we find
         for qa_row in range(2, qa_ws.max_row + 1):
             status_val = qa_ws.cell(row=qa_row, column=qa_status_col).value
             if status_val and str(status_val).strip():  # Any non-empty value
                 rows_to_process.append(qa_row)
+                status_upper = str(status_val).strip().upper()
+                status_distribution[status_upper] = status_distribution.get(status_upper, 0) + 1
         print(f"      [OPTIMIZATION] {len(rows_to_process)} rows with STATUS (skipping {qa_ws.max_row - 1 - len(rows_to_process)} empty rows)")
+
+        # DEBUG: Log status distribution for Script categories
+        _script_debug_log(f"  STATUS column found at col {qa_status_col}")
+        _script_debug_log(f"  rows_to_process: {len(rows_to_process)}")
+        _script_debug_log(f"  STATUS distribution in QA file:")
+        for status, count in sorted(status_distribution.items()):
+            _script_debug_log(f"    {status}: {count}")
+        _script_debug_flush()
     else:
         # Non-Script categories: process all rows
         rows_to_process = list(range(2, qa_ws.max_row + 1))
@@ -706,6 +723,23 @@ def process_sheet(
                             top=Side(style='thin', color='228B22'),
                             bottom=Side(style='thin', color='228B22')
                         )
+
+    # DEBUG: Log final stats for Script categories
+    if is_script:
+        _script_debug_log(f"")
+        _script_debug_log(f"[PROCESS_SHEET RESULT] {category}/{username}")
+        _script_debug_log(f"  rows_to_process: {len(rows_to_process)}")
+        _script_debug_log(f"  stats.total: {result['stats']['total']} (rows that matched master)")
+        _script_debug_log(f"  stats.issue: {result['stats']['issue']} <-- THIS IS ISSUE COUNT")
+        _script_debug_log(f"  stats.no_issue: {result['stats']['no_issue']}")
+        _script_debug_log(f"  stats.blocked: {result['stats']['blocked']}")
+        _script_debug_log(f"  stats.korean: {result['stats']['korean']}")
+        _script_debug_log(f"  match_stats.exact: {result['match_stats']['exact']}")
+        _script_debug_log(f"  match_stats.fallback: {result['match_stats']['fallback']}")
+        _script_debug_log(f"  match_stats.unmatched: {result['match_stats']['unmatched']}")
+        _script_debug_log(f"  comments written: {result['comments']}")
+        _script_debug_log(f"  manager_restored: {result['manager_restored']}")
+        _script_debug_flush()
 
     return result
 

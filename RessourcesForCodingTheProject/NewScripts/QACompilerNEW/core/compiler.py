@@ -1220,6 +1220,19 @@ def process_category(
     target_master = get_target_master_category(category)
     cluster_info = f" -> Master_{target_master}" if target_master != category else ""
 
+    # SCRIPT DEBUG: Log when processing Script-type categories
+    is_script_category = category.lower() in SCRIPT_TYPE_CATEGORIES
+    if is_script_category:
+        _script_debug_log(f"")
+        _script_debug_log(f"{'='*60}")
+        _script_debug_log(f"[PROCESS_CATEGORY] {category} [{lang_label}]")
+        _script_debug_log(f"{'='*60}")
+        _script_debug_log(f"  target_master: {target_master}")
+        _script_debug_log(f"  qa_folders count: {len(qa_folders)}")
+        for qf in qa_folders:
+            _script_debug_log(f"    - {qf.get('username')}: {qf.get('xlsx_path')}")
+        _script_debug_flush()
+
     print(f"\n{'='*50}")
     print(f"Processing: {category} [{lang_label}] ({len(qa_folders)} folders){cluster_info}")
     print(f"{'='*50}")
@@ -1411,6 +1424,18 @@ def process_category(
         }
         print(f"    [DEBUG] daily_entry: {entry['date']} | {entry['user']} | {entry['category']} | done={entry['done']}, issues={entry['issues']}")
         daily_entries.append(entry)
+
+        # SCRIPT DEBUG: Detailed logging for Script-type categories
+        if is_script_category:
+            _script_debug_log(f"")
+            _script_debug_log(f"[DAILY_ENTRY CREATED] {category}/{username}")
+            _script_debug_log(f"  date: {file_mod_date}")
+            _script_debug_log(f"  category: {category} (lookup will use: {target_master})")
+            _script_debug_log(f"  total_rows: {stats['total']}")
+            _script_debug_log(f"  done: {entry['done']} (issue={stats['issue']} + no_issue={stats['no_issue']} + blocked={stats['blocked']} + korean={stats['korean']})")
+            _script_debug_log(f"  issues: {stats['issue']} <-- THIS IS THE TESTER ISSUE COUNT")
+            _script_debug_log(f"  word_count: {user_wordcount[username]}")
+            _script_debug_flush()
 
     # Update STATUS sheet with user stats
     update_status_sheet(master_wb, all_users, dict(user_stats))
