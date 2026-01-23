@@ -1,0 +1,911 @@
+=== MANAGER STATS DEBUG === 2026-01-23 16:40:17
+
+
+=== QUEST [EN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_EN\Master_Quest.xlsx
+Sheets found: ['STATUS', 'Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+  Sheet 'Main Quest': rows=990, cols=44
+    STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+    Sample STATUS values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['FIXED'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['NON ISSUE'], '황하연': ['(empty)']}
+    Quest/김선우: F=4 R=0 C=0 N=8
+    Quest/김정원: F=0 R=0 C=0 N=0
+    Quest/김찬용: F=13 R=1 C=0 N=34
+    Quest/김헌동: F=0 R=0 C=0 N=0
+    Quest/성가은: F=23 R=2 C=0 N=36
+    Quest/이재환: F=0 R=0 C=0 N=0
+    Quest/장어진: F=0 R=0 C=0 N=66
+    Quest/황하연: F=0 R=0 C=0 N=0
+  Sheet 'Faction_01': rows=699, cols=44
+    STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+    Sample STATUS values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+    Quest/김선우: F=6 R=0 C=0 N=9
+    Quest/김정원: F=0 R=0 C=0 N=0
+    Quest/김찬용: F=13 R=1 C=0 N=34
+    Quest/김헌동: F=0 R=0 C=0 N=0
+    Quest/성가은: F=23 R=2 C=0 N=36
+    Quest/이재환: F=0 R=0 C=0 N=0
+    Quest/장어진: F=0 R=0 C=0 N=66
+    Quest/황하연: F=0 R=0 C=0 N=0
+  Sheet 'Faction_02': rows=743, cols=44
+    STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+    Sample STATUS values: {'김선우': ['NON ISSUE'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+    Quest/김선우: F=6 R=0 C=0 N=10
+    Quest/김정원: F=0 R=0 C=0 N=0
+    Quest/김찬용: F=13 R=1 C=0 N=34
+    Quest/김헌동: F=0 R=0 C=0 N=0
+    Quest/성가은: F=23 R=2 C=0 N=36
+    Quest/이재환: F=0 R=0 C=0 N=0
+    Quest/장어진: F=0 R=0 C=0 N=68
+    Quest/황하연: F=0 R=0 C=0 N=0
+  Sheet 'Faction_03': rows=1683, cols=44
+    STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+    Sample STATUS values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+    Quest/김선우: F=6 R=0 C=0 N=10
+    Quest/김정원: F=0 R=0 C=0 N=0
+    Quest/김찬용: F=13 R=1 C=0 N=34
+    Quest/김헌동: F=0 R=0 C=0 N=0
+    Quest/성가은: F=34 R=2 C=7 N=36
+    Quest/이재환: F=0 R=0 C=0 N=0
+    Quest/장어진: F=0 R=0 C=0 N=68
+    Quest/황하연: F=0 R=0 C=0 N=0
+  Sheet 'Faction_etc': rows=473, cols=44
+    STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+    Sample STATUS values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+    Quest/김선우: F=6 R=0 C=0 N=10
+    Quest/김정원: F=0 R=0 C=0 N=0
+    Quest/김찬용: F=13 R=1 C=0 N=34
+    Quest/김헌동: F=0 R=0 C=0 N=0
+    Quest/성가은: F=34 R=2 C=7 N=36
+    Quest/이재환: F=0 R=0 C=0 N=0
+    Quest/장어진: F=0 R=0 C=0 N=68
+    Quest/황하연: F=0 R=0 C=0 N=0
+  Sheet 'Region Quest': rows=1378, cols=44
+    STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+    Sample STATUS values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+    Quest/김선우: F=6 R=0 C=0 N=10
+    Quest/김정원: F=0 R=0 C=0 N=0
+    Quest/김찬용: F=13 R=1 C=0 N=34
+    Quest/김헌동: F=0 R=0 C=0 N=0
+    Quest/성가은: F=34 R=2 C=7 N=36
+    Quest/이재환: F=0 R=0 C=0 N=0
+    Quest/장어진: F=0 R=0 C=0 N=68
+    Quest/황하연: F=0 R=0 C=0 N=0
+  Sheet 'Daily': rows=694, cols=44
+    STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+    Sample STATUS values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+    Quest/김선우: F=6 R=0 C=0 N=10
+    Quest/김정원: F=0 R=0 C=0 N=0
+    Quest/김찬용: F=13 R=1 C=0 N=34
+    Quest/김헌동: F=0 R=0 C=0 N=0
+    Quest/성가은: F=34 R=2 C=7 N=36
+    Quest/이재환: F=1 R=0 C=0 N=0
+    Quest/장어진: F=0 R=0 C=0 N=68
+    Quest/황하연: F=0 R=0 C=0 N=0
+  Sheet 'Politics': rows=556, cols=44
+    STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+    Sample STATUS values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+    Quest/김선우: F=6 R=0 C=0 N=10
+    Quest/김정원: F=0 R=0 C=0 N=0
+    Quest/김찬용: F=13 R=1 C=0 N=34
+    Quest/김헌동: F=0 R=0 C=0 N=0
+    Quest/성가은: F=34 R=2 C=7 N=36
+    Quest/이재환: F=1 R=0 C=0 N=0
+    Quest/장어진: F=0 R=0 C=0 N=68
+    Quest/황하연: F=0 R=0 C=0 N=0
+  Sheet 'Challenge Quest': rows=1701, cols=44
+    STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+    Sample STATUS values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+    Quest/김선우: F=25 R=0 C=0 N=13
+    Quest/김정원: F=0 R=0 C=0 N=0
+    Quest/김찬용: F=13 R=1 C=0 N=34
+    Quest/김헌동: F=0 R=0 C=0 N=0
+    Quest/성가은: F=34 R=2 C=7 N=36
+    Quest/이재환: F=1 R=0 C=0 N=0
+    Quest/장어진: F=0 R=0 C=0 N=68
+    Quest/황하연: F=0 R=0 C=0 N=0
+  Sheet 'Minigame Quest': rows=502, cols=44
+    STATUS_ columns: ['김선우', '김정원', '김찬용', '김헌동', '성가은', '이재환', '장어진', '황하연']
+    Sample STATUS values: {'김선우': ['(empty)'], '김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '성가은': ['(empty)'], '이재환': ['(empty)'], '장어진': ['(empty)'], '황하연': ['(empty)']}
+    Quest/김선우: F=25 R=0 C=0 N=13
+    Quest/김정원: F=0 R=0 C=0 N=0
+    Quest/김찬용: F=13 R=1 C=0 N=34
+    Quest/김헌동: F=0 R=0 C=0 N=0
+    Quest/성가은: F=34 R=2 C=7 N=36
+    Quest/이재환: F=1 R=0 C=0 N=0
+    Quest/장어진: F=0 R=0 C=0 N=68
+    Quest/황하연: F=0 R=0 C=0 N=0
+
+=== KNOWLEDGE [EN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_EN\Master_Knowledge.xlsx
+Sheets found: ['STATUS', 'Abyss Gate', 'People', '피조물', 'Mounts', 'Contents', 'Document', 'Adventure', 'Faction', 'Gatherables', 'Small Tools', 'Collectibles', 'Territories', 'Quests', 'Memory Fragment', 'Games', 'Skills']
+  Sheet 'Abyss Gate': rows=476, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'People': rows=2645, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet '피조물': rows=1373, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Mounts': rows=328, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Contents': rows=800, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Document': rows=1125, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Adventure': rows=1044, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Faction': rows=781, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Gatherables': rows=557, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Small Tools': rows=245, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Collectibles': rows=551, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Territories': rows=2477, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Quests': rows=1046, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Memory Fragment': rows=737, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Games': rows=239, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Skills': rows=1005, cols=22
+    STATUS_ columns: ['김선우', '유지윤', '장어진', '조서영']
+    Sample STATUS values: {'김선우': ['(empty)'], '유지윤': ['(empty)'], '장어진': ['(empty)'], '조서영': ['(empty)']}
+    Knowledge/김선우: F=0 R=0 C=0 N=0
+    Knowledge/유지윤: F=0 R=0 C=0 N=0
+    Knowledge/장어진: F=0 R=0 C=0 N=0
+    Knowledge/조서영: F=0 R=0 C=0 N=0
+
+=== ITEM [EN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_EN\Master_Item.xlsx
+Sheets found: ['STATUS', 'Abyss_Gear', 'Abyss_Item', 'Armor', 'Collectibles', 'Crafting_Manual', 'Document', 'Ingested_Substances', 'Major_Goods', 'Monster_Item', 'Others', 'Poster', 'Weapons']
+  Sheet 'Abyss_Gear': rows=312, cols=17
+    STATUS_ columns: ['김헌동', '이재환']
+    Sample STATUS values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+    Item/김헌동: F=0 R=0 C=0 N=0
+    Item/이재환: F=0 R=0 C=0 N=0
+  Sheet 'Abyss_Item': rows=260, cols=17
+    STATUS_ columns: ['김헌동', '이재환']
+    Sample STATUS values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+    Item/김헌동: F=0 R=0 C=0 N=0
+    Item/이재환: F=0 R=0 C=0 N=0
+  Sheet 'Armor': rows=513, cols=17
+    STATUS_ columns: ['김헌동', '이재환']
+    Sample STATUS values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+    Item/김헌동: F=0 R=0 C=0 N=0
+    Item/이재환: F=0 R=0 C=0 N=0
+  Sheet 'Collectibles': rows=475, cols=17
+    STATUS_ columns: ['김헌동', '이재환']
+    Sample STATUS values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+    Item/김헌동: F=0 R=0 C=0 N=0
+    Item/이재환: F=0 R=0 C=0 N=0
+  Sheet 'Crafting_Manual': rows=265, cols=17
+    STATUS_ columns: ['김헌동', '이재환']
+    Sample STATUS values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+    Item/김헌동: F=0 R=0 C=0 N=0
+    Item/이재환: F=0 R=0 C=0 N=0
+  Sheet 'Document': rows=228, cols=17
+    STATUS_ columns: ['김헌동', '이재환']
+    Sample STATUS values: {'김헌동': ['(empty)'], '이재환': ['FIXED']}
+    Item/김헌동: F=0 R=0 C=0 N=1
+    Item/이재환: F=13 R=0 C=0 N=0
+  Sheet 'Ingested_Substances': rows=675, cols=17
+    STATUS_ columns: ['김헌동', '이재환']
+    Sample STATUS values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+    Item/김헌동: F=0 R=0 C=0 N=1
+    Item/이재환: F=13 R=0 C=0 N=2
+  Sheet 'Major_Goods': rows=555, cols=17
+    STATUS_ columns: ['김헌동', '이재환']
+    Sample STATUS values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+    Item/김헌동: F=0 R=0 C=0 N=1
+    Item/이재환: F=13 R=0 C=0 N=2
+  Sheet 'Monster_Item': rows=1758, cols=17
+    STATUS_ columns: ['김헌동', '이재환']
+    Sample STATUS values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+    Item/김헌동: F=0 R=0 C=0 N=1
+    Item/이재환: F=13 R=0 C=0 N=2
+  Sheet 'Others': rows=1291, cols=17
+    STATUS_ columns: ['김헌동', '이재환']
+    Sample STATUS values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+    Item/김헌동: F=0 R=0 C=0 N=3
+    Item/이재환: F=13 R=0 C=0 N=2
+  Sheet 'Poster': rows=202, cols=17
+    STATUS_ columns: ['김헌동', '이재환']
+    Sample STATUS values: {'김헌동': ['(empty)'], '이재환': ['(empty)']}
+    Item/김헌동: F=0 R=0 C=0 N=3
+    Item/이재환: F=13 R=0 C=0 N=2
+  Sheet 'Weapons': rows=563, cols=17
+    STATUS_ columns: ['김헌동', '이재환']
+    Sample STATUS values: {'김헌동': ['NON ISSUE'], '이재환': ['(empty)']}
+    Item/김헌동: F=0 R=0 C=0 N=122
+    Item/이재환: F=13 R=0 C=0 N=2
+
+=== REGION [EN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_EN\Master_Region.xlsx
+Sheets found: ['STATUS', 'Abyss', 'Crimson Desert', 'Delesyia', 'Demeniss', 'Greymanes', 'Hernand', 'Pailune', 'No Faction', 'Shop']
+  Sheet 'Abyss': rows=210, cols=22
+    STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+    Sample STATUS values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+    Region/성가은: F=0 R=0 C=0 N=0
+    Region/유지윤: F=0 R=0 C=0 N=0
+    Region/조서영: F=0 R=0 C=0 N=0
+    Region/황하연: F=0 R=0 C=0 N=0
+  Sheet 'Crimson Desert': rows=408, cols=22
+    STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+    Sample STATUS values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+    Region/성가은: F=2 R=0 C=0 N=2
+    Region/유지윤: F=0 R=0 C=0 N=1
+    Region/조서영: F=0 R=0 C=0 N=0
+    Region/황하연: F=7 R=0 C=0 N=1
+  Sheet 'Delesyia': rows=451, cols=22
+    STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+    Sample STATUS values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+    Region/성가은: F=4 R=0 C=0 N=5
+    Region/유지윤: F=0 R=0 C=0 N=1
+    Region/조서영: F=0 R=0 C=0 N=0
+    Region/황하연: F=8 R=0 C=0 N=1
+  Sheet 'Demeniss': rows=482, cols=22
+    STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+    Sample STATUS values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+    Region/성가은: F=6 R=6 C=0 N=9
+    Region/유지윤: F=0 R=0 C=0 N=1
+    Region/조서영: F=0 R=0 C=0 N=2
+    Region/황하연: F=13 R=0 C=0 N=6
+  Sheet 'Greymanes': rows=210, cols=22
+    STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+    Sample STATUS values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+    Region/성가은: F=6 R=6 C=0 N=9
+    Region/유지윤: F=0 R=0 C=0 N=1
+    Region/조서영: F=0 R=0 C=0 N=2
+    Region/황하연: F=13 R=0 C=0 N=6
+  Sheet 'Hernand': rows=545, cols=22
+    STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+    Sample STATUS values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+    Region/성가은: F=7 R=6 C=0 N=10
+    Region/유지윤: F=0 R=0 C=0 N=1
+    Region/조서영: F=0 R=0 C=0 N=2
+    Region/황하연: F=13 R=0 C=0 N=11
+  Sheet 'Pailune': rows=356, cols=22
+    STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+    Sample STATUS values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+    Region/성가은: F=7 R=6 C=0 N=10
+    Region/유지윤: F=0 R=0 C=0 N=1
+    Region/조서영: F=0 R=0 C=0 N=3
+    Region/황하연: F=13 R=0 C=0 N=15
+  Sheet 'No Faction': rows=1219, cols=22
+    STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+    Sample STATUS values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+    Region/성가은: F=7 R=6 C=0 N=14
+    Region/유지윤: F=0 R=2 C=0 N=1
+    Region/조서영: F=0 R=0 C=0 N=4
+    Region/황하연: F=13 R=2 C=0 N=17
+  Sheet 'Shop': rows=795, cols=22
+    STATUS_ columns: ['성가은', '유지윤', '조서영', '황하연']
+    Sample STATUS values: {'성가은': ['(empty)'], '유지윤': ['(empty)'], '조서영': ['(empty)'], '황하연': ['(empty)']}
+    Region/성가은: F=21 R=6 C=1 N=21
+    Region/유지윤: F=3 R=2 C=1 N=1
+    Region/조서영: F=0 R=0 C=0 N=4
+    Region/황하연: F=21 R=2 C=1 N=36
+
+=== SYSTEM [EN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_EN\Master_System.xlsx
+Sheets found: ['STATUS', 'How_To', 'Menu', 'Greymane', 'Map', 'Other', 'Range', 'Skills', 'GameAdvice']
+  Sheet 'How_To': rows=387, cols=39
+    STATUS_ columns: ['김정원', '김찬용', '김헌동', '유지윤', '이재환', '조서영']
+    Sample STATUS values: {'김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['(empty)'], '조서영': ['(empty)']}
+    System/김정원: F=0 R=0 C=0 N=0
+    System/김찬용: F=0 R=0 C=0 N=0
+    System/김헌동: F=0 R=0 C=0 N=0
+    System/유지윤: F=0 R=0 C=0 N=0
+    System/이재환: F=0 R=0 C=0 N=0
+    System/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Menu': rows=347, cols=31
+    STATUS_ columns: ['김정원', '김찬용', '김헌동', '유지윤', '이재환', '조서영']
+    Sample STATUS values: {'김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['(empty)'], '조서영': ['(empty)']}
+    System/김정원: F=6 R=0 C=0 N=1
+    System/김찬용: F=4 R=0 C=0 N=0
+    System/김헌동: F=0 R=0 C=0 N=0
+    System/유지윤: F=0 R=0 C=0 N=0
+    System/이재환: F=0 R=0 C=0 N=0
+    System/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Greymane': rows=343, cols=31
+    STATUS_ columns: ['김정원', '김찬용', '김헌동', '유지윤', '이재환', '조서영']
+    Sample STATUS values: {'김정원': ['NON ISSUE'], '김찬용': ['NON ISSUE'], '김헌동': ['(empty)'], '유지윤': ['CHECKING'], '이재환': ['(empty)'], '조서영': ['CHECKING']}
+    System/김정원: F=7 R=0 C=0 N=6
+    System/김찬용: F=4 R=0 C=0 N=2
+    System/김헌동: F=0 R=0 C=0 N=0
+    System/유지윤: F=0 R=0 C=1 N=0
+    System/이재환: F=2 R=0 C=0 N=1
+    System/조서영: F=2 R=0 C=1 N=0
+  Sheet 'Map': rows=333, cols=31
+    STATUS_ columns: ['김정원', '김찬용', '김헌동', '유지윤', '이재환', '조서영']
+    Sample STATUS values: {'김정원': ['FIXED'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['(empty)'], '조서영': ['(empty)']}
+    System/김정원: F=8 R=0 C=0 N=20
+    System/김찬용: F=5 R=0 C=3 N=8
+    System/김헌동: F=0 R=0 C=0 N=0
+    System/유지윤: F=0 R=0 C=1 N=1
+    System/이재환: F=2 R=0 C=0 N=1
+    System/조서영: F=2 R=0 C=1 N=0
+  Sheet 'Other': rows=383, cols=31
+    STATUS_ columns: ['김정원', '김찬용', '김헌동', '유지윤', '이재환', '조서영']
+    Sample STATUS values: {'김정원': ['FIXED'], '김찬용': ['CHECKING', 'CHECKING'], '김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['CHECKING'], '조서영': ['(empty)']}
+    System/김정원: F=29 R=0 C=0 N=27
+    System/김찬용: F=8 R=2 C=5 N=19
+    System/김헌동: F=1 R=0 C=0 N=7
+    System/유지윤: F=1 R=0 C=1 N=4
+    System/이재환: F=11 R=1 C=1 N=5
+    System/조서영: F=2 R=0 C=1 N=3
+  Sheet 'Range': rows=310, cols=31
+    STATUS_ columns: ['김정원', '김찬용', '김헌동', '유지윤', '이재환', '조서영']
+    Sample STATUS values: {'김정원': ['(empty)'], '김찬용': ['(empty)'], '김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['(empty)'], '조서영': ['(empty)']}
+    System/김정원: F=29 R=0 C=0 N=27
+    System/김찬용: F=8 R=2 C=5 N=19
+    System/김헌동: F=1 R=0 C=0 N=7
+    System/유지윤: F=1 R=0 C=1 N=4
+    System/이재환: F=11 R=1 C=1 N=5
+    System/조서영: F=2 R=0 C=1 N=3
+  Sheet 'Skills': rows=1369, cols=22
+    STATUS_ columns: ['김헌동', '유지윤', '이재환', '조서영']
+    Sample STATUS values: {'김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['(empty)'], '조서영': ['(empty)']}
+    System/김헌동: F=8 R=0 C=0 N=109
+    System/유지윤: F=19 R=0 C=23 N=4
+    System/이재환: F=45 R=5 C=1 N=48
+    System/조서영: F=16 R=0 C=17 N=38
+  Sheet 'GameAdvice': rows=972, cols=22
+    STATUS_ columns: ['김헌동', '유지윤', '이재환', '조서영']
+    Sample STATUS values: {'김헌동': ['(empty)'], '유지윤': ['(empty)'], '이재환': ['(empty)'], '조서영': ['(empty)']}
+    System/김헌동: F=8 R=0 C=0 N=109
+    System/유지윤: F=19 R=0 C=23 N=4
+    System/이재환: F=45 R=5 C=1 N=48
+    System/조서영: F=16 R=0 C=17 N=38
+
+=== CHARACTER [EN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_EN\Master_Character.xlsx
+Sheets found: ['STATUS', 'ANIMAL', 'CAMP', 'DEV', 'MAIN', 'MONSTER', 'NPC', 'OBJECT', 'PC', 'PET', 'QUEST', 'VEHICLE']
+  Sheet 'ANIMAL': rows=935, cols=18
+    STATUS_ columns: ['김선우', '김찬용', '장어진']
+    Sample STATUS values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+    Character/김선우: F=5 R=0 C=0 N=2
+    Character/김찬용: F=2 R=2 C=0 N=52
+    Character/장어진: F=1 R=0 C=0 N=1
+  Sheet 'CAMP': rows=242, cols=18
+    STATUS_ columns: ['김선우', '김찬용', '장어진']
+    Sample STATUS values: {'김선우': ['(empty)'], '김찬용': ['NON-ISSUE'], '장어진': ['(empty)']}
+    Character/김선우: F=5 R=0 C=0 N=2
+    Character/김찬용: F=2 R=2 C=0 N=57
+    Character/장어진: F=1 R=0 C=0 N=1
+  Sheet 'DEV': rows=1216, cols=18
+    STATUS_ columns: ['김선우', '김찬용', '장어진']
+    Sample STATUS values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+    Character/김선우: F=5 R=0 C=0 N=2
+    Character/김찬용: F=2 R=2 C=0 N=66
+    Character/장어진: F=1 R=0 C=0 N=1
+  Sheet 'MAIN': rows=260, cols=18
+    STATUS_ columns: ['김선우', '김찬용', '장어진']
+    Sample STATUS values: {'김선우': ['(empty)'], '김찬용': ['NON-ISSUE'], '장어진': ['(empty)']}
+    Character/김선우: F=5 R=0 C=0 N=2
+    Character/김찬용: F=2 R=2 C=0 N=74
+    Character/장어진: F=1 R=0 C=0 N=1
+  Sheet 'MONSTER': rows=2325, cols=18
+    STATUS_ columns: ['김선우', '김찬용', '장어진']
+    Sample STATUS values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+    Character/김선우: F=5 R=0 C=0 N=2
+    Character/김찬용: F=12 R=6 C=0 N=86
+    Character/장어진: F=1 R=0 C=0 N=1
+  Sheet 'NPC': rows=3239, cols=18
+    STATUS_ columns: ['김선우', '김찬용', '장어진']
+    Sample STATUS values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+    Character/김선우: F=5 R=0 C=0 N=2
+    Character/김찬용: F=17 R=7 C=2 N=111
+    Character/장어진: F=2 R=0 C=0 N=4
+  Sheet 'OBJECT': rows=198, cols=18
+    STATUS_ columns: ['김선우', '김찬용', '장어진']
+    Sample STATUS values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['CHECKING']}
+    Character/김선우: F=5 R=0 C=0 N=2
+    Character/김찬용: F=17 R=7 C=2 N=111
+    Character/장어진: F=2 R=0 C=1 N=4
+  Sheet 'PC': rows=160, cols=18
+    STATUS_ columns: ['김선우', '김찬용', '장어진']
+    Sample STATUS values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+    Character/김선우: F=5 R=0 C=0 N=2
+    Character/김찬용: F=17 R=7 C=2 N=111
+    Character/장어진: F=2 R=0 C=1 N=4
+  Sheet 'PET': rows=167, cols=18
+    STATUS_ columns: ['김선우', '김찬용', '장어진']
+    Sample STATUS values: {'김선우': ['(empty)'], '김찬용': ['NON-ISSUE'], '장어진': ['(empty)']}
+    Character/김선우: F=5 R=0 C=0 N=2
+    Character/김찬용: F=17 R=7 C=2 N=113
+    Character/장어진: F=2 R=0 C=1 N=4
+  Sheet 'QUEST': rows=322, cols=18
+    STATUS_ columns: ['김선우', '김찬용', '장어진']
+    Sample STATUS values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+    Character/김선우: F=5 R=0 C=0 N=2
+    Character/김찬용: F=17 R=7 C=2 N=113
+    Character/장어진: F=2 R=0 C=1 N=4
+  Sheet 'VEHICLE': rows=304, cols=18
+    STATUS_ columns: ['김선우', '김찬용', '장어진']
+    Sample STATUS values: {'김선우': ['(empty)'], '김찬용': ['(empty)'], '장어진': ['(empty)']}
+    Character/김선우: F=5 R=0 C=0 N=2
+    Character/김찬용: F=17 R=7 C=2 N=113
+    Character/장어진: F=3 R=0 C=1 N=9
+
+=== CONTENTS [EN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_EN\Master_Contents.xlsx
+Sheets found: ['STATUS', 'Sheet1', 'Trade Goods']
+  Sheet 'Sheet1': rows=229, cols=12
+    STATUS_ columns: ['김정원', '황하연']
+    Sample STATUS values: {'김정원': ['(empty)'], '황하연': ['FIXED', 'CHECKING']}
+    Contents/김정원: F=1 R=2 C=0 N=4
+    Contents/황하연: F=3 R=0 C=3 N=1
+  Sheet 'Trade Goods': rows=127, cols=12
+    STATUS_ columns: ['김정원', '황하연']
+    Sample STATUS values: {'김정원': ['(empty)'], '황하연': ['(empty)']}
+    Contents/김정원: F=1 R=2 C=0 N=4
+    Contents/황하연: F=3 R=0 C=3 N=1
+
+=== SCRIPT [EN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_EN\Master_Script.xlsx
+Sheets found: ['STATUS', 'English Script', 'Work Transform']
+  Sheet 'English Script': rows=1778, cols=16
+    STATUS_ columns: ['유지윤', '조서영']
+    Sample STATUS values: {'유지윤': ['(empty)'], '조서영': ['(empty)']}
+    Script/유지윤: F=0 R=0 C=0 N=0
+    Script/조서영: F=0 R=0 C=0 N=0
+  Sheet 'Work Transform': rows=7954, cols=20
+    STATUS_ columns: ['김정원', '김찬용', '황하연']
+    Sample STATUS values: {'김정원': ['(empty)'], '김찬용': ['(empty)'], '황하연': ['(empty)']}
+    Script/김정원: F=0 R=0 C=0 N=0
+    Script/김찬용: F=0 R=0 C=0 N=0
+    Script/황하연: F=0 R=0 C=0 N=0
+
+=== QUEST [CN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_CN\Master_Quest.xlsx
+Sheets found: ['STATUS', 'Main Quest', 'Faction_01', 'Faction_02', 'Faction_03', 'Faction_etc', 'Region Quest', 'Daily', 'Politics', 'Challenge Quest', 'Minigame Quest']
+  Sheet 'Main Quest': rows=789, cols=25
+    STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+    Sample STATUS values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+    Quest/김춘애: F=0 R=0 C=0 N=0
+    Quest/뤄이롼: F=0 R=0 C=0 N=0
+    Quest/리쓰한: F=0 R=0 C=0 N=0
+    Quest/최석문: F=0 R=0 C=0 N=0
+  Sheet 'Faction_01': rows=499, cols=25
+    STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+    Sample STATUS values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+    Quest/김춘애: F=0 R=0 C=0 N=0
+    Quest/뤄이롼: F=0 R=0 C=0 N=0
+    Quest/리쓰한: F=0 R=0 C=0 N=0
+    Quest/최석문: F=0 R=0 C=0 N=0
+  Sheet 'Faction_02': rows=541, cols=25
+    STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+    Sample STATUS values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+    Quest/김춘애: F=0 R=0 C=0 N=0
+    Quest/뤄이롼: F=0 R=0 C=0 N=0
+    Quest/리쓰한: F=0 R=0 C=0 N=0
+    Quest/최석문: F=0 R=0 C=0 N=0
+  Sheet 'Faction_03': rows=1497, cols=25
+    STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+    Sample STATUS values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+    Quest/김춘애: F=0 R=0 C=0 N=0
+    Quest/뤄이롼: F=0 R=0 C=0 N=0
+    Quest/리쓰한: F=0 R=0 C=0 N=0
+    Quest/최석문: F=0 R=0 C=0 N=0
+  Sheet 'Faction_etc': rows=273, cols=25
+    STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+    Sample STATUS values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+    Quest/김춘애: F=0 R=0 C=0 N=0
+    Quest/뤄이롼: F=0 R=0 C=0 N=0
+    Quest/리쓰한: F=0 R=0 C=0 N=0
+    Quest/최석문: F=0 R=0 C=0 N=0
+  Sheet 'Region Quest': rows=1174, cols=25
+    STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+    Sample STATUS values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+    Quest/김춘애: F=0 R=0 C=0 N=0
+    Quest/뤄이롼: F=0 R=0 C=0 N=0
+    Quest/리쓰한: F=0 R=0 C=0 N=0
+    Quest/최석문: F=0 R=0 C=0 N=0
+  Sheet 'Daily': rows=494, cols=25
+    STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+    Sample STATUS values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+    Quest/김춘애: F=0 R=0 C=0 N=0
+    Quest/뤄이롼: F=0 R=0 C=0 N=0
+    Quest/리쓰한: F=0 R=0 C=0 N=0
+    Quest/최석문: F=0 R=0 C=0 N=0
+  Sheet 'Politics': rows=356, cols=25
+    STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+    Sample STATUS values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+    Quest/김춘애: F=0 R=0 C=0 N=0
+    Quest/뤄이롼: F=0 R=0 C=0 N=0
+    Quest/리쓰한: F=0 R=0 C=0 N=0
+    Quest/최석문: F=0 R=0 C=0 N=0
+  Sheet 'Challenge Quest': rows=1502, cols=25
+    STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+    Sample STATUS values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+    Quest/김춘애: F=0 R=0 C=0 N=0
+    Quest/뤄이롼: F=0 R=0 C=0 N=0
+    Quest/리쓰한: F=0 R=0 C=0 N=0
+    Quest/최석문: F=0 R=0 C=0 N=0
+  Sheet 'Minigame Quest': rows=304, cols=25
+    STATUS_ columns: ['김춘애', '뤄이롼', '리쓰한', '최석문']
+    Sample STATUS values: {'김춘애': ['(empty)'], '뤄이롼': ['(empty)'], '리쓰한': ['(empty)'], '최석문': ['(empty)']}
+    Quest/김춘애: F=0 R=0 C=0 N=0
+    Quest/뤄이롼: F=0 R=0 C=0 N=0
+    Quest/리쓰한: F=0 R=0 C=0 N=0
+    Quest/최석문: F=0 R=0 C=0 N=0
+
+=== KNOWLEDGE [CN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_CN\Master_Knowledge.xlsx
+Sheets found: ['STATUS', 'Abyss Gate', 'People', '피조물', 'Mounts', 'Contents', 'Document', 'Adventure', 'Faction', 'Gatherables', 'Small Tools', 'Collectibles', 'Territories', 'Quests', 'Memory Fragment', 'Games', 'Skills']
+  Sheet 'Abyss Gate': rows=376, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'People': rows=2545, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet '피조물': rows=1273, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Mounts': rows=228, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Contents': rows=700, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Document': rows=1025, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Adventure': rows=944, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Faction': rows=681, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Gatherables': rows=457, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Small Tools': rows=145, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Collectibles': rows=451, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Territories': rows=2377, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Quests': rows=946, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Memory Fragment': rows=637, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Games': rows=139, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'Skills': rows=905, cols=13
+    STATUS_ columns: ['김춘애', '리쓰한']
+    Sample STATUS values: {'김춘애': ['(empty)'], '리쓰한': ['(empty)']}
+    Knowledge/김춘애: F=0 R=0 C=0 N=0
+    Knowledge/리쓰한: F=0 R=0 C=0 N=0
+
+=== ITEM [CN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_CN\Master_Item.xlsx
+Sheets found: ['STATUS', 'Abyss_Gear', 'Abyss_Item', 'Armor', 'Collectibles', 'Crafting_Manual', 'Document', 'Ingested_Substances', 'Major_Goods', 'Monster_Item', 'Others', 'Poster', 'Weapons']
+  Sheet 'Abyss_Gear': rows=359, cols=24
+    STATUS_ columns: ['김세련', '김춘애', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+    Item/김세련: F=0 R=0 C=0 N=0
+    Item/김춘애: F=0 R=0 C=0 N=0
+    Item/최석문: F=0 R=0 C=0 N=0
+  Sheet 'Abyss_Item': rows=302, cols=24
+    STATUS_ columns: ['김세련', '김춘애', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+    Item/김세련: F=0 R=0 C=0 N=0
+    Item/김춘애: F=0 R=0 C=0 N=0
+    Item/최석문: F=0 R=0 C=0 N=0
+  Sheet 'Armor': rows=563, cols=24
+    STATUS_ columns: ['김세련', '김춘애', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+    Item/김세련: F=0 R=0 C=0 N=0
+    Item/김춘애: F=0 R=0 C=0 N=0
+    Item/최석문: F=0 R=0 C=0 N=1
+  Sheet 'Collectibles': rows=525, cols=24
+    STATUS_ columns: ['김세련', '김춘애', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+    Item/김세련: F=0 R=0 C=0 N=0
+    Item/김춘애: F=0 R=0 C=0 N=0
+    Item/최석문: F=0 R=0 C=0 N=1
+  Sheet 'Crafting_Manual': rows=314, cols=24
+    STATUS_ columns: ['김세련', '김춘애', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+    Item/김세련: F=0 R=0 C=0 N=0
+    Item/김춘애: F=0 R=0 C=0 N=0
+    Item/최석문: F=0 R=0 C=0 N=1
+  Sheet 'Document': rows=278, cols=24
+    STATUS_ columns: ['김세련', '김춘애', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+    Item/김세련: F=0 R=0 C=0 N=0
+    Item/김춘애: F=0 R=1 C=0 N=0
+    Item/최석문: F=0 R=1 C=0 N=1
+  Sheet 'Ingested_Substances': rows=725, cols=24
+    STATUS_ columns: ['김세련', '김춘애', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+    Item/김세련: F=0 R=0 C=0 N=0
+    Item/김춘애: F=0 R=1 C=0 N=0
+    Item/최석문: F=0 R=1 C=0 N=1
+  Sheet 'Major_Goods': rows=606, cols=24
+    STATUS_ columns: ['김세련', '김춘애', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+    Item/김세련: F=0 R=0 C=0 N=0
+    Item/김춘애: F=0 R=1 C=0 N=0
+    Item/최석문: F=0 R=1 C=0 N=1
+  Sheet 'Monster_Item': rows=1808, cols=24
+    STATUS_ columns: ['김세련', '김춘애', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+    Item/김세련: F=0 R=0 C=0 N=0
+    Item/김춘애: F=0 R=1 C=0 N=0
+    Item/최석문: F=0 R=3 C=1 N=1
+  Sheet 'Others': rows=1351, cols=24
+    STATUS_ columns: ['김세련', '김춘애', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+    Item/김세련: F=0 R=0 C=0 N=0
+    Item/김춘애: F=0 R=1 C=0 N=0
+    Item/최석문: F=0 R=4 C=1 N=1
+  Sheet 'Poster': rows=252, cols=24
+    STATUS_ columns: ['김세련', '김춘애', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+    Item/김세련: F=0 R=0 C=0 N=0
+    Item/김춘애: F=0 R=1 C=0 N=0
+    Item/최석문: F=0 R=4 C=1 N=1
+  Sheet 'Weapons': rows=613, cols=24
+    STATUS_ columns: ['김세련', '김춘애', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '김춘애': ['(empty)'], '최석문': ['(empty)']}
+    Item/김세련: F=0 R=0 C=0 N=0
+    Item/김춘애: F=0 R=1 C=0 N=0
+    Item/최석문: F=0 R=4 C=1 N=1
+
+=== REGION [CN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_CN\Master_Region.xlsx
+Sheets found: ['STATUS', '阿比斯', '红色沙漠', '德雷西亚', '德梅尼斯', '灰鬃', '埃尔南德', '佩伦', '无势力', 'Shop']
+  Sheet '阿比斯': rows=110, cols=13
+    STATUS_ columns: ['김세련', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+    Region/김세련: F=0 R=0 C=0 N=0
+    Region/최석문: F=0 R=0 C=0 N=0
+  Sheet '红色沙漠': rows=308, cols=13
+    STATUS_ columns: ['김세련', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+    Region/김세련: F=0 R=0 C=0 N=0
+    Region/최석문: F=0 R=0 C=0 N=0
+  Sheet '德雷西亚': rows=351, cols=13
+    STATUS_ columns: ['김세련', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+    Region/김세련: F=0 R=0 C=0 N=0
+    Region/최석문: F=0 R=0 C=0 N=0
+  Sheet '德梅尼斯': rows=382, cols=13
+    STATUS_ columns: ['김세련', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+    Region/김세련: F=0 R=0 C=0 N=0
+    Region/최석문: F=0 R=0 C=0 N=0
+  Sheet '灰鬃': rows=110, cols=13
+    STATUS_ columns: ['김세련', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+    Region/김세련: F=0 R=0 C=0 N=0
+    Region/최석문: F=0 R=0 C=0 N=0
+  Sheet '埃尔南德': rows=445, cols=13
+    STATUS_ columns: ['김세련', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+    Region/김세련: F=0 R=0 C=0 N=0
+    Region/최석문: F=0 R=0 C=0 N=0
+  Sheet '佩伦': rows=256, cols=13
+    STATUS_ columns: ['김세련', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+    Region/김세련: F=0 R=0 C=0 N=0
+    Region/최석문: F=0 R=0 C=0 N=0
+  Sheet '无势力': rows=1119, cols=13
+    STATUS_ columns: ['김세련', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+    Region/김세련: F=0 R=0 C=0 N=0
+    Region/최석문: F=0 R=0 C=0 N=0
+  Sheet 'Shop': rows=695, cols=13
+    STATUS_ columns: ['김세련', '최석문']
+    Sample STATUS values: {'김세련': ['(empty)'], '최석문': ['(empty)']}
+    Region/김세련: F=0 R=0 C=0 N=0
+    Region/최석문: F=0 R=0 C=0 N=0
+
+=== SYSTEM [CN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_CN\Master_System.xlsx
+Sheets found: ['STATUS', 'Menu', 'Greymane', 'Map', 'Other', 'Skills', 'GameAdvice']
+  Sheet 'Menu': rows=97, cols=6
+    STATUS_ columns: ['김세련']
+    Sample STATUS values: {'김세련': ['(empty)']}
+    System/김세련: F=0 R=0 C=0 N=0
+  Sheet 'Greymane': rows=93, cols=6
+    STATUS_ columns: ['김세련']
+    Sample STATUS values: {'김세련': ['(empty)']}
+    System/김세련: F=0 R=0 C=0 N=0
+  Sheet 'Map': rows=83, cols=6
+    STATUS_ columns: ['김세련']
+    Sample STATUS values: {'김세련': ['(empty)']}
+    System/김세련: F=0 R=0 C=0 N=0
+  Sheet 'Other': rows=133, cols=6
+    STATUS_ columns: ['김세련']
+    Sample STATUS values: {'김세련': ['(empty)']}
+    System/김세련: F=0 R=0 C=0 N=0
+  Sheet 'Skills': rows=1225, cols=8
+    STATUS_ columns: ['김세련']
+    Sample STATUS values: {'김세련': ['(empty)']}
+    System/김세련: F=0 R=0 C=0 N=0
+  Sheet 'GameAdvice': rows=812, cols=8
+    STATUS_ columns: ['김세련']
+    Sample STATUS values: {'김세련': ['(empty)']}
+    System/김세련: F=0 R=0 C=0 N=0
+
+=== CHARACTER [CN] ===
+Master file: C:\Users\PEARL\Desktop\QACompiler_v26.122.1852_Source\Masterfolder_CN\Master_Character.xlsx
+Sheets found: ['STATUS', 'ANIMAL', 'CAMP', 'DEV', 'MAIN', 'MONSTER', 'NPC', 'OBJECT', 'PC', 'PET', 'QUEST', 'VEHICLE']
+  Sheet 'ANIMAL': rows=885, cols=14
+    STATUS_ columns: ['뤄이롼', '리쓰한']
+    Sample STATUS values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+    Character/뤄이롼: F=0 R=0 C=0 N=1
+    Character/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'CAMP': rows=192, cols=14
+    STATUS_ columns: ['뤄이롼', '리쓰한']
+    Sample STATUS values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+    Character/뤄이롼: F=0 R=0 C=0 N=1
+    Character/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'DEV': rows=1166, cols=14
+    STATUS_ columns: ['뤄이롼', '리쓰한']
+    Sample STATUS values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+    Character/뤄이롼: F=0 R=0 C=0 N=1
+    Character/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'MAIN': rows=210, cols=14
+    STATUS_ columns: ['뤄이롼', '리쓰한']
+    Sample STATUS values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+    Character/뤄이롼: F=0 R=0 C=0 N=1
+    Character/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'MONSTER': rows=2275, cols=14
+    STATUS_ columns: ['뤄이롼', '리쓰한']
+    Sample STATUS values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+    Character/뤄이롼: F=0 R=0 C=0 N=1
+    Character/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'NPC': rows=3189, cols=14
+    STATUS_ columns: ['뤄이롼', '리쓰한']
+    Sample STATUS values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+    Character/뤄이롼: F=0 R=0 C=0 N=1
+    Character/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'OBJECT': rows=148, cols=14
+    STATUS_ columns: ['뤄이롼', '리쓰한']
+    Sample STATUS values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+    Character/뤄이롼: F=0 R=0 C=0 N=1
+    Character/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'PC': rows=110, cols=14
+    STATUS_ columns: ['뤄이롼', '리쓰한']
+    Sample STATUS values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+    Character/뤄이롼: F=0 R=0 C=0 N=1
+    Character/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'PET': rows=117, cols=14
+    STATUS_ columns: ['뤄이롼', '리쓰한']
+    Sample STATUS values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+    Character/뤄이롼: F=0 R=0 C=0 N=1
+    Character/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'QUEST': rows=272, cols=14
+    STATUS_ columns: ['뤄이롼', '리쓰한']
+    Sample STATUS values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+    Character/뤄이롼: F=0 R=0 C=0 N=1
+    Character/리쓰한: F=0 R=0 C=0 N=0
+  Sheet 'VEHICLE': rows=254, cols=14
+    STATUS_ columns: ['뤄이롼', '리쓰한']
+    Sample STATUS values: {'뤄이롼': ['(empty)'], '리쓰한': ['(empty)']}
+    Character/뤄이롼: F=0 R=0 C=0 N=1
+    Character/리쓰한: F=0 R=0 C=0 N=0
+
+=== TOTALS: F=285 R=34 C=63 N=713 ===
+Categories: ['Quest', 'Knowledge', 'Item', 'Region', 'System', 'Character', 'Contents', 'Script']
+=== LOOKUP PHASE ===
+daily_entries: 58, manager_stats categories: ['Quest', 'Knowledge', 'Item', 'Region', 'System', 'Character', 'Contents', 'Script']
+HITS: 33, MISSES: 25
+MISS DETAILS: ['김정원/Quest:ZERO', '김헌동/Quest:ZERO', '황하연/Quest:ZERO', '김선우/Knowledge:ZERO', '유지윤/Knowledge:ZERO', '장어진/Knowledge:ZERO', '조서영/Knowledge:ZERO', '유지윤/Sequencer:ZERO', '조서영/Sequencer:ZERO', '황하연/Dialog:ZERO']...
