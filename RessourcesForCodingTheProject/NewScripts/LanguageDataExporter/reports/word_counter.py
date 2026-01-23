@@ -26,10 +26,11 @@ logger = logging.getLogger(__name__)
 class CategoryWordCount:
     """Word/character count data for a single category."""
     category: str
-    korean_words: int = 0       # Words in Korean source (StrOrigin)
-    translation_count: int = 0  # Words/chars in translation (Str)
-    total_strings: int = 0      # Number of strings
-    untranslated: int = 0       # Strings still containing Korean
+    korean_words: int = 0               # Words in Korean source (StrOrigin)
+    translation_count: int = 0          # Words/chars in translation (Str)
+    total_strings: int = 0              # Number of strings
+    untranslated_strings: int = 0       # Count of strings still containing Korean
+    untranslated_korean_words: int = 0  # Korean words from untranslated strings (actual workload)
 
 
 @dataclass
@@ -40,7 +41,8 @@ class LanguageWordCount:
     total_korean_words: int = 0
     total_translation_count: int = 0
     total_strings: int = 0
-    total_untranslated: int = 0
+    total_untranslated_strings: int = 0       # Count of untranslated strings
+    total_untranslated_korean_words: int = 0  # Korean words from untranslated strings
     is_char_count: bool = False  # True for CJK languages
 
     def add_category(self, cat_count: CategoryWordCount):
@@ -49,7 +51,8 @@ class LanguageWordCount:
         self.total_korean_words += cat_count.korean_words
         self.total_translation_count += cat_count.translation_count
         self.total_strings += cat_count.total_strings
-        self.total_untranslated += cat_count.untranslated
+        self.total_untranslated_strings += cat_count.untranslated_strings
+        self.total_untranslated_korean_words += cat_count.untranslated_korean_words
 
 
 class WordCounter:
@@ -126,17 +129,25 @@ class WordCounter:
             cat_count.total_strings += 1
 
             # Count Korean source words - ALWAYS count (for total workload)
+            source_word_count = 0
             if str_origin:
-                cat_count.korean_words += count_source_words(str_origin)
+                source_word_count = count_source_words(str_origin)
+                cat_count.korean_words += source_word_count
 
             # Count translation
             if str_value:
                 if contains_korean(str_value):
                     # Translation still has Korean = untranslated
-                    cat_count.untranslated += 1
+                    cat_count.untranslated_strings += 1
+                    # Track the Korean words that need translation
+                    cat_count.untranslated_korean_words += source_word_count
                 else:
                     # Complete translation - count target words/chars
                     cat_count.translation_count += self.count_text(str_value)
+            else:
+                # No translation at all = untranslated
+                cat_count.untranslated_strings += 1
+                cat_count.untranslated_korean_words += source_word_count
 
         # Add categories to result
         for cat_count in sorted(category_data.values(), key=lambda x: x.category):
