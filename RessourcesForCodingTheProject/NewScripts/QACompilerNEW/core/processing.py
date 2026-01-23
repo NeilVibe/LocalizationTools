@@ -918,11 +918,11 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
             if debug:
                 print(f"    [DEBUG] Cleared AutoFilter from sheet: {sheet_name}")
 
-        # Find all COMMENT_{User} columns
+        # Find all COMMENT_{User} columns (case-insensitive)
         comment_cols = []
         for col in range(1, ws.max_column + 1):
             header = ws.cell(row=1, column=col).value
-            if header and str(header).startswith("COMMENT_"):
+            if header and str(header).upper().startswith("COMMENT_"):
                 comment_cols.append(col)
                 if debug:
                     print(f"    [DEBUG] Found comment column: {header} at col {col}")
@@ -1009,11 +1009,11 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
 
         hidden_columns_total += hidden_cols_this_sheet
 
-        # === HIDE EMPTY SCREENSHOT_{User} COLUMNS ===
+        # === HIDE EMPTY SCREENSHOT_{User} COLUMNS (case-insensitive) ===
         # Even if user has comments, hide SCREENSHOT column if ALL cells are empty
         for col in range(1, ws.max_column + 1):
             header = ws.cell(row=1, column=col).value
-            if header and str(header).startswith("SCREENSHOT_"):
+            if header and str(header).upper().startswith("SCREENSHOT_"):
                 # Check if column is already hidden
                 col_letter = get_column_letter(col)
                 if ws.column_dimensions[col_letter].hidden:
@@ -1033,11 +1033,11 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
                     if debug:
                         print(f"    [DEBUG] Hidden empty SCREENSHOT column: {header}")
 
-        # === FIND TESTER_STATUS_{User} columns for tester status hiding ===
+        # === FIND TESTER_STATUS_{User} columns for tester status hiding (case-insensitive) ===
         tester_status_cols = []
         for col in range(1, ws.max_column + 1):
             header = ws.cell(row=1, column=col).value
-            if header and str(header).startswith("TESTER_STATUS_"):
+            if header and str(header).upper().startswith("TESTER_STATUS_"):
                 tester_status_cols.append(col)
                 if debug:
                     print(f"    [DEBUG] Found tester status column: {header} at col {col}")
@@ -1070,12 +1070,14 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
             if rows_non_issue_by_tester:
                 print(f"    [DEBUG] {len(rows_non_issue_by_tester)} rows with only non-ISSUE tester status (will hide)")
 
-        # === FIND STATUS_{User} columns for manager status hiding ===
+        # === FIND STATUS_{User} columns for manager status hiding (case-insensitive) ===
         manager_status_cols = []
         for col in range(1, ws.max_column + 1):
             header = ws.cell(row=1, column=col).value
-            if header and str(header).startswith("STATUS_") and not str(header).startswith("TESTER_STATUS_"):
-                manager_status_cols.append(col)
+            if header:
+                header_upper = str(header).upper()
+                if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+                    manager_status_cols.append(col)
                 if debug:
                     print(f"    [DEBUG] Found manager status column: {header} at col {col}")
 
@@ -1164,10 +1166,11 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
                 continue
 
             header_str = str(header)
+            header_upper = header_str.upper()  # Case-insensitive comparison
             col_letter = get_column_letter(col)
 
             # COMMENT_{User} columns: auto-width based on content
-            if header_str.startswith("COMMENT_"):
+            if header_upper.startswith("COMMENT_"):
                 max_content_len = len(header_str)  # Start with header length
                 for row in range(2, ws.max_row + 1):
                     cell_value = ws.cell(row=row, column=col).value
@@ -1182,15 +1185,15 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
                 ws.column_dimensions[col_letter].width = width
 
             # SCREENSHOT_{User} columns: fixed width
-            elif header_str.startswith("SCREENSHOT_"):
+            elif header_upper.startswith("SCREENSHOT_"):
                 ws.column_dimensions[col_letter].width = SCREENSHOT_WIDTH
 
             # STATUS_{User} columns: fixed width
-            elif header_str.startswith("STATUS_") and not header_str.startswith("TESTER_STATUS_"):
+            elif header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
                 ws.column_dimensions[col_letter].width = STATUS_WIDTH
 
             # TESTER_STATUS_{User} columns: fixed width (hidden anyway)
-            elif header_str.startswith("TESTER_STATUS_"):
+            elif header_upper.startswith("TESTER_STATUS_"):
                 ws.column_dimensions[col_letter].width = STATUS_WIDTH
 
         # === PHASE 2: Auto-fit row heights ===

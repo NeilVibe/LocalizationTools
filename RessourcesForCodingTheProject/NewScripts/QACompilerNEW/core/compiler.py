@@ -170,11 +170,12 @@ def collect_fixed_screenshots(master_folder: Path) -> set:
                     header = ws.cell(row=1, column=col).value
                     if header:
                         header_str = str(header)
-                        if header_str.startswith("SCREENSHOT_"):
-                            username = header_str.replace("SCREENSHOT_", "")
+                        header_upper = header_str.upper()  # Case-insensitive
+                        if header_upper.startswith("SCREENSHOT_"):
+                            username = header_str[11:]  # Skip "SCREENSHOT_" prefix
                             screenshot_cols[username] = col
-                        elif header_str.startswith("STATUS_"):
-                            username = header_str.replace("STATUS_", "")
+                        elif header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+                            username = header_str[7:]  # Skip "STATUS_" prefix
                             status_cols[username] = col
 
                 # Collect screenshots where status is FIXED
@@ -283,15 +284,16 @@ def collect_manager_status(master_folder: Path) -> Dict:
                     header = ws.cell(row=1, column=col).value
                     if header:
                         header_str = str(header)
+                        header_upper = header_str.upper()  # Case-insensitive comparison
                         all_headers.append(header_str)  # DEBUG
-                        if header_str.startswith("COMMENT_"):
-                            username = header_str.replace("COMMENT_", "")
+                        if header_upper.startswith("COMMENT_"):
+                            username = header_str[8:]  # Skip "COMMENT_" prefix
                             comment_cols[username] = col
-                        elif header_str.startswith("STATUS_") and not header_str.startswith("TESTER_STATUS_"):
-                            username = header_str.replace("STATUS_", "")
+                        elif header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+                            username = header_str[7:]  # Skip "STATUS_" prefix
                             status_cols[username] = col
-                        elif header_str.startswith("MANAGER_COMMENT_"):
-                            username = header_str.replace("MANAGER_COMMENT_", "")
+                        elif header_upper.startswith("MANAGER_COMMENT_"):
+                            username = header_str[16:]  # Skip "MANAGER_COMMENT_" prefix
                             manager_comment_cols[username] = col
 
                 # DEBUG: Log column structure for Script categories
@@ -413,15 +415,17 @@ def collect_manager_stats_for_tracker() -> Dict:
                         continue
                     ws = wb[sheet_name]
 
-                    # Find STATUS_{User} columns
+                    # Find STATUS_{User} columns (case-insensitive to match column creation)
                     status_cols = {}
                     all_headers = []
                     for col in range(1, ws.max_column + 1):
                         header = ws.cell(row=1, column=col).value
                         if header:
-                            all_headers.append(str(header))
-                            if str(header).startswith("STATUS_"):
-                                status_cols[str(header).replace("STATUS_", "")] = col
+                            header_str = str(header)
+                            header_upper = header_str.upper()
+                            all_headers.append(header_str)
+                            if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+                                status_cols[header_str[7:]] = col  # Skip "STATUS_" prefix
 
                     # GRANULAR: Log headers for ALL sheets
                     log_lines.append(f"  Sheet '{sheet_name}': rows={ws.max_row}, cols={ws.max_column}")
