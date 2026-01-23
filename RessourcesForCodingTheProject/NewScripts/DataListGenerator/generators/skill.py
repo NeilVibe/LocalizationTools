@@ -1,7 +1,7 @@
 """
 Skill Generator for DataListGenerator
 ======================================
-Extracts skill names from skillinfo XML files.
+Extracts skill names from skillinfo_pc.staticinfo.xml ONLY.
 """
 
 from pathlib import Path
@@ -10,14 +10,16 @@ from typing import List, Set
 from openpyxl.styles import PatternFill
 
 from generators.base import BaseGenerator, DataEntry
-from utils.xml_parser import iter_xml_files, parse_xml_file
+from utils.xml_parser import parse_xml_file
 
 
 class SkillGenerator(BaseGenerator):
-    """Generator for skill names from skillinfo XML files.
+    """Generator for skill names from skillinfo_pc.staticinfo.xml.
 
     Extracts SkillName attribute from SkillInfo elements:
     <SkillInfo Key="..." StrKey="..." SkillName="파이어볼" SkillDesc="..." />
+
+    ONLY reads from skillinfo_pc.staticinfo.xml (same as QACompiler).
     """
 
     name = "Skill"
@@ -32,42 +34,44 @@ class SkillGenerator(BaseGenerator):
         }
 
     def extract(self) -> List[DataEntry]:
-        """Extract skill names from all XML files in the folder."""
+        """Extract skill names from skillinfo_pc.staticinfo.xml ONLY."""
         entries: List[DataEntry] = []
         seen_names: Set[str] = set()
 
-        xml_files = iter_xml_files(self.xml_folder)
+        # ONLY read from skillinfo_pc.staticinfo.xml (same as QACompiler)
+        skill_file = self.xml_folder / "skillinfo_pc.staticinfo.xml"
 
-        if not xml_files:
-            print(f"  No XML files found in {self.xml_folder}")
+        if not skill_file.exists():
+            print(f"  ERROR: Skill file not found: {skill_file}")
             return entries
 
-        print(f"  Found {len(xml_files)} XML files to parse...")
+        print(f"  Reading from: {skill_file.name}")
 
-        for path in xml_files:
-            root = parse_xml_file(path)
-            if root is None:
+        root = parse_xml_file(skill_file)
+        if root is None:
+            print(f"  ERROR: Failed to parse {skill_file.name}")
+            return entries
+
+        source_file = skill_file.name
+
+        # Find all SkillInfo elements and extract SkillName
+        for skill_elem in root.iter("SkillInfo"):
+            skill_name = skill_elem.get("SkillName") or ""
+
+            # Skip empty names or duplicates
+            if not skill_name or skill_name in seen_names:
                 continue
 
-            source_file = path.name
+            # Skip placeholder names (often start with underscore or are just numbers)
+            if skill_name.startswith("_") or skill_name.isdigit():
+                continue
 
-            # Find all SkillInfo elements and extract SkillName
-            for skill_elem in root.iter("SkillInfo"):
-                skill_name = skill_elem.get("SkillName") or ""
+            entries.append(DataEntry(
+                name=skill_name,
+                entry_type="Skill",
+                source_file=source_file
+            ))
+            seen_names.add(skill_name)
 
-                # Skip empty names or duplicates
-                if not skill_name or skill_name in seen_names:
-                    continue
-
-                # Skip placeholder names (often start with underscore or are just numbers)
-                if skill_name.startswith("_") or skill_name.isdigit():
-                    continue
-
-                entries.append(DataEntry(
-                    name=skill_name,
-                    entry_type="Skill",
-                    source_file=source_file
-                ))
-                seen_names.add(skill_name)
-
+        print(f"  Found {len(entries)} unique skill names")
         return entries
