@@ -1,7 +1,7 @@
 # Investigation Session: Tracker Stats MISS Issue
 
 **Date:** 2026-01-23
-**Status:** Under Investigation
+**Status:** WAITING FOR DEBUG LOG (code confirmed buggy, Master has data)
 **Priority:** HIGH
 
 ---
@@ -316,6 +316,110 @@ Watch for:
 2. Check if COMMENT_{User} columns exist in Master_Script.xlsx
 3. Check if QA MEMO column has text
 4. Verify EventName consistency between QA and Master
+
+---
+
+## Session 3: Code Bug Confirmed (2026-01-23)
+
+### CRITICAL DISCOVERY
+
+**User confirmed Master_Script.xlsx HAS the data:**
+> "masterfile look fine. i see the comment i see the status i see the people i see the matching manager status/comments as well"
+
+**This confirms: CODE BUG, not missing data.**
+
+The code reads the STATUS_{User} columns as empty, but the actual file contains data. Something in the collection logic is failing silently.
+
+### Status: WAITING FOR DEBUG LOG
+
+**Current Status:** `WAITING_FOR_DEBUG_LOG`
+
+### What Was Done
+
+1. Added automatic debug logging to `SCRIPT_DEBUG.log` file
+2. Logging added to both `core/compiler.py` and `core/processing.py`
+3. Debug functions: `_script_debug_log()`, `_script_debug_flush()`, `_script_debug_clear()`
+4. Log is cleared at start of each compilation, writes automatically
+
+### Files Modified (Commit on GitHub)
+
+| File | Changes |
+|------|---------|
+| `core/compiler.py` | Added Script debug logging in `collect_manager_status()` |
+| `core/processing.py` | Added Script debug logging in `process_sheet()` |
+
+### User Action Required
+
+1. **Download updated files** from GitHub:
+   - `core/compiler.py`
+   - `core/processing.py`
+2. **Run FULL compilation** (not tracker-only update)
+3. **Send `SCRIPT_DEBUG.log`** file (created in QACompilerNEW folder)
+
+### What the Debug Log Will Show
+
+The log captures:
+
+**Collection Phase (`[COLLECT]`):**
+```
+[HH:MM:SS] [COLLECT] Sequencer/English Script
+[HH:MM:SS]   All headers: [list of all column headers]
+[HH:MM:SS]   COMMENT_ cols: {user: col_idx, ...}
+[HH:MM:SS]   STATUS_ cols: {user: col_idx, ...}
+[HH:MM:SS]   STRINGID col: X
+[HH:MM:SS]   EventName col: X
+[HH:MM:SS]   Collected entries: N
+```
+
+**Processing Phase (`[PROCESS]`):**
+```
+[HH:MM:SS] [PROCESS] Sequencer/English Script/유지윤
+[HH:MM:SS]   manager_status keys (sheet-level): N
+[HH:MM:SS]   Sample keys: [(stringid, comment), ...]
+[HH:MM:SS]   QA MEMO column: X
+[HH:MM:SS]   [DEBUG] Row 2: tester_comment='...'
+[HH:MM:SS]   [DEBUG] Row 2: key=(...), found=True/False
+```
+
+### What to Look For (Scenarios)
+
+**Scenario A: No COMMENT_ columns found**
+```
+COMMENT_ cols: {}
+```
+→ Bug: Manager status collection requires COMMENT_{User} columns but they're not being detected
+
+**Scenario B: COMMENT_ columns found but 0 entries collected**
+```
+COMMENT_ cols: {'유지윤': 5, ...}
+Collected entries: 0
+```
+→ Bug: Columns exist but iteration logic isn't capturing the data
+
+**Scenario C: Entries collected but not found during lookup**
+```
+Collected entries: 50
+...
+[DEBUG] Row 2: key=(...), found=False
+```
+→ Bug: Keys don't match between collection and lookup (STRINGID/EventName mismatch)
+
+**Scenario D: Everything looks correct**
+```
+Collected entries: 50
+[DEBUG] Row 2: key=(...), found=True
+```
+→ Bug is elsewhere (tracker write phase)
+
+### Hypothesis
+
+Based on log analysis showing `F=0 R=0 C=0 N=0` for Script while other categories work:
+
+1. **Most likely:** COMMENT_{User} columns in Master_Script.xlsx are not being detected (different header format?)
+2. **Second:** EventName column not found (Script uses EventName, not STRINGID for matching)
+3. **Third:** Manager status IS collected but keying is wrong during restoration
+
+The debug log will definitively answer which scenario applies.
 
 ---
 
