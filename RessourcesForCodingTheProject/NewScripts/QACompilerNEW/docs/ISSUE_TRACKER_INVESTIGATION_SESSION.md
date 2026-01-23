@@ -6,6 +6,47 @@
 
 ---
 
+## 🚨 CLAUDE MEMORY WIPE RECOVERY - READ THIS FIRST 🚨
+
+**IF YOUR MEMORY WAS WIPED, HERE'S WHAT'S HAPPENING:**
+
+### The Bug
+- Progress Tracker shows **0 manager stats** for Sequencer/Dialog categories
+- User CONFIRMED: Master_Script.xlsx **HAS the data** (comments, status, users visible in file)
+- Therefore: **CODE BUG** - the code isn't reading data that EXISTS in the file
+
+### Current Status: WAITING FOR `SCRIPT_DEBUG.log`
+
+Debug logging was added to `core/compiler.py` and `core/processing.py`. User needs to:
+1. Download updated files from GitHub
+2. Run FULL compilation
+3. Send `SCRIPT_DEBUG.log` file
+
+### What You'll Receive
+User will send `SCRIPT_DEBUG.log` showing:
+- `[COLLECT]` lines = what was read from OLD Master_Script.xlsx
+- `[PROCESS]` lines = what was looked up during NEW Master creation
+
+### How to Analyze the Log
+
+**Look for Scenario A/B/C/D (detailed below in Session 3)**
+
+Quick diagnosis:
+- `COMMENT_ cols: {}` → Headers not detected
+- `Collected entries: 0` → No data captured despite columns existing
+- `found=False` on all rows → Key mismatch between collect and lookup
+- `found=True` but still 0 stats → Bug in tracker write phase
+
+### Key Files
+- `core/compiler.py` - `collect_manager_status()` function collects from old Master
+- `core/processing.py` - `process_sheet()` restores to new Master
+- Script categories (Sequencer/Dialog) use `MEMO` column, not `COMMENT`
+- Script categories use `EventName` column, not `STRINGID`
+
+---
+
+---
+
 ## Problem Statement
 
 The Progress Tracker (`LQA_Tester_ProgressTracker.xlsx`) shows incorrect stats:
