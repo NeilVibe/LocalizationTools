@@ -355,35 +355,31 @@ def filter_excel_by_factions(
     faction_names: Set[str],
     output_path: Path
 ) -> Tuple[int, int, List[Tuple[int, str]]]:
-    """Filter an Excel file by removing rows containing faction names."""
+    """Filter an Excel file by removing rows where Column A exactly matches a faction name."""
     wb = load_workbook(input_path)
 
     total_removed = 0
     removed_details: List[Tuple[int, str]] = []
-    faction_names_lower = {name.lower() for name in faction_names if name}
+
+    # Exact match set (case-sensitive for Korean)
+    faction_names_clean = {name.strip() for name in faction_names if name}
 
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
         rows_to_delete = []
 
         for row_idx in range(2, ws.max_row + 1):
-            row_values = []
-            matched_faction = None
+            # Only check Column A (column 1)
+            cell_value = ws.cell(row=row_idx, column=1).value
 
-            for col_idx in range(1, ws.max_column + 1):
-                cell_value = ws.cell(row=row_idx, column=col_idx).value
-                if cell_value:
-                    row_values.append(str(cell_value))
+            if cell_value is None:
+                continue
 
-            row_text = " ".join(row_values).lower()
+            col_a_value = str(cell_value).strip()
 
-            for faction_name in faction_names_lower:
-                if faction_name and faction_name in row_text:
-                    matched_faction = faction_name
-                    break
-
-            if matched_faction:
-                rows_to_delete.append((row_idx, matched_faction))
+            # Exact match on Column A only
+            if col_a_value in faction_names_clean:
+                rows_to_delete.append((row_idx, col_a_value))
 
         for row_idx, matched in reversed(rows_to_delete):
             ws.delete_rows(row_idx)
