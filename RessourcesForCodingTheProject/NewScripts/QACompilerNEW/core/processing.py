@@ -380,7 +380,8 @@ def process_sheet(
     # DEBUG: Log manager_status for Script categories
     # NOTE: manager_status here is already sheet-level: {(stringid, comment): {username: info}}
     if is_script:
-        _script_debug_log(f"[PROCESS] {category}/{sheet_name}/{username}")
+        file_name = xlsx_path.name if xlsx_path else "unknown"
+        _script_debug_log(f"[PROCESS] {category}/{file_name}/{username}")
         _script_debug_log(f"  manager_status keys (sheet-level): {len(manager_status)}")
         if manager_status:
             sample_keys = list(manager_status.keys())[:3]
