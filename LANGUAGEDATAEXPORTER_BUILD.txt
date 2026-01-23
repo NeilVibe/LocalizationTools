@@ -27,3 +27,4 @@ Build 019: Fix priority order (region > faction) + fix doc examples
 Build 020: Remove Analyze Categories button (not needed, clustering is automatic)
 Build 021: FIX: Korean word count was always 0 (count_words skipped Korean text)
 Build 022: GUI size fix (320 → 400px height)
+Build 023 - Add Correction column, Prepare For Submit button, Progress Tracker
