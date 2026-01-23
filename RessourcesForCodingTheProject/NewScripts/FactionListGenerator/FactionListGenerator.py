@@ -428,7 +428,7 @@ def read_first_column_from_excel(file_path: Path) -> List[str]:
 def concatenate_excel_lists(
     folder_path: Path,
     output_path: Path
-) -> Tuple[List[str], List[Tuple[str, List[str]]]]:
+) -> Tuple[List[Tuple[str, str]], List[Tuple[str, List[str]]]]:
     """
     Read all Excel files in folder and concatenate their first columns.
 
@@ -438,7 +438,7 @@ def concatenate_excel_lists(
 
     Returns:
         Tuple of:
-        - all_items: Flat list of all items (no headers)
+        - items_with_category: List of (item, category) tuples
         - sections: List of (filename, items) for each file
     """
     excel_files = sorted(folder_path.glob("*.xlsx"))
@@ -451,14 +451,16 @@ def concatenate_excel_lists(
     ws = wb.active
     ws.title = "Combined List"
 
-    # Set column header
-    header_cell = ws.cell(row=1, column=1, value="Item")
-    header_cell.fill = HEADER_FILL
-    header_cell.font = HEADER_FONT
-    header_cell.alignment = HEADER_ALIGNMENT
-    header_cell.border = THIN_BORDER
+    # Set column headers
+    headers = ["Item", "Category"]
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGNMENT
+        cell.border = THIN_BORDER
 
-    all_items: List[str] = []
+    items_with_category: List[Tuple[str, str]] = []
     sections: List[Tuple[str, List[str]]] = []
     current_row = 2
 
@@ -467,7 +469,7 @@ def concatenate_excel_lists(
         if excel_file.name.startswith("~$"):
             continue
 
-        file_name = excel_file.stem  # Filename without extension
+        file_name = excel_file.stem  # Filename without extension (= category)
         items = read_first_column_from_excel(excel_file)
 
         if not items:
@@ -480,27 +482,31 @@ def concatenate_excel_lists(
         header_cell.fill = YELLOW_FILL
         header_cell.font = BOLD_FONT
         header_cell.border = THIN_BORDER
+        ws.cell(row=current_row, column=2, value="").border = THIN_BORDER
         current_row += 1
 
-        # Add items
+        # Add items with category
         for item in items:
             ws.cell(row=current_row, column=1, value=item).border = THIN_BORDER
-            all_items.append(item)
+            ws.cell(row=current_row, column=2, value=file_name).border = THIN_BORDER
+            items_with_category.append((item, file_name))
             current_row += 1
 
-    # Auto-fit column width
-    max_length = 0
-    for row in ws.iter_rows(min_col=1, max_col=1):
-        for cell in row:
-            if cell.value:
-                max_length = max(max_length, len(str(cell.value)))
-    ws.column_dimensions['A'].width = min(max_length + 2, 60)
+    # Auto-fit column widths
+    for col_idx in range(1, 3):
+        max_length = 0
+        column_letter = get_column_letter(col_idx)
+        for row in ws.iter_rows(min_col=col_idx, max_col=col_idx):
+            for cell in row:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+        ws.column_dimensions[column_letter].width = min(max_length + 2, 60)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(output_path)
     print(f"  Saved: {output_path}")
 
-    return all_items, sections
+    return items_with_category, sections
 
 
 # =============================================================================
@@ -508,7 +514,7 @@ def concatenate_excel_lists(
 # =============================================================================
 
 def generate_translation_excel(
-    korean_items: List[str],
+    items_with_category: List[Tuple[str, str]],
     lang_code: str,
     lang_table: Dict[str, str],
     output_path: Path
@@ -517,7 +523,7 @@ def generate_translation_excel(
     Generate a translation Excel file for a single language.
 
     Args:
-        korean_items: List of Korean strings to translate
+        items_with_category: List of (korean_text, category) tuples
         lang_code: Language code (e.g., "eng", "fre")
         lang_table: Translation lookup table
         output_path: Output file path
@@ -530,7 +536,7 @@ def generate_translation_excel(
     ws.title = f"Translation_{lang_code.upper()}"
 
     # Headers
-    headers = ["SourceText (Korean)", f"Translation ({lang_code.upper()})"]
+    headers = ["SourceText (Korean)", f"Translation ({lang_code.upper()})", "Category"]
     for col, header in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.fill = HEADER_FILL
@@ -542,31 +548,43 @@ def generate_translation_excel(
     translated_count = 0
     missing_count = 0
 
-    # Remove duplicates while preserving order
+    # Remove duplicates while preserving order (keep first category)
     seen = set()
     unique_items = []
-    for item in korean_items:
+    for item, category in items_with_category:
         if item and item not in seen:
             seen.add(item)
-            unique_items.append(item)
+            unique_items.append((item, category))
 
-    for row_idx, korean in enumerate(unique_items, start=2):
+    for row_idx, (korean, category) in enumerate(unique_items, start=2):
         # Source (Korean)
         ws.cell(row=row_idx, column=1, value=korean).border = THIN_BORDER
 
         # Translation
-        translation = lang_table.get(korean, "NO_TRANSLATION")
-        target_cell = ws.cell(row=row_idx, column=2, value=translation)
-        target_cell.border = THIN_BORDER
+        translation = lang_table.get(korean, "")
 
-        if translation == "NO_TRANSLATION":
+        # Check if translation is missing, empty, or same as Korean (untranslated)
+        is_untranslated = (
+            not translation or
+            translation == korean or
+            translation.strip() == korean.strip()
+        )
+
+        if is_untranslated:
+            target_cell = ws.cell(row=row_idx, column=2, value="NO_TRANSLATION")
             target_cell.fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
             missing_count += 1
         else:
+            target_cell = ws.cell(row=row_idx, column=2, value=translation)
             translated_count += 1
 
+        target_cell.border = THIN_BORDER
+
+        # Category (filename)
+        ws.cell(row=row_idx, column=3, value=category).border = THIN_BORDER
+
     # Auto-fit columns
-    for col_idx in range(1, 3):
+    for col_idx in range(1, 4):
         max_length = 0
         column_letter = get_column_letter(col_idx)
         for row in ws.iter_rows(min_col=col_idx, max_col=col_idx):
@@ -864,15 +882,15 @@ class FactionToolGUI:
         self._update_progress(10, 100, "Concatenating lists...")
 
         combined_path = OUTPUT_FOLDER / "CombinedList.xlsx"
-        all_items, sections = concatenate_excel_lists(folder_path, combined_path)
+        items_with_category, sections = concatenate_excel_lists(folder_path, combined_path)
 
-        if not all_items:
+        if not items_with_category:
             self._log("ERROR: No items found in Excel files!")
             messagebox.showerror("Error", "No items found in the Excel files!")
             return
 
-        self._log(f"  Total items: {len(all_items)}")
-        self._log(f"  Unique items: {len(set(all_items))}")
+        self._log(f"  Total items: {len(items_with_category)}")
+        self._log(f"  Unique items: {len(set(item for item, _ in items_with_category))}")
         for filename, items in sections:
             self._log(f"    [{filename}]: {len(items)} items")
 
@@ -920,7 +938,7 @@ class FactionToolGUI:
 
             # Generate translation file
             output_path = TRANSLATIONS_FOLDER / f"Translated_{lang_code.upper()}.xlsx"
-            stats = generate_translation_excel(all_items, lang_code, lang_table, output_path)
+            stats = generate_translation_excel(items_with_category, lang_code, lang_table, output_path)
 
             translated_langs.append(lang_code.upper())
             total_translated += stats["translated"]
@@ -937,13 +955,13 @@ class FactionToolGUI:
         self._log(f"Output folder: {TRANSLATIONS_FOLDER}")
 
         # Show completion message
-        unique_count = len(set(all_items))
+        unique_count = len(set(item for item, _ in items_with_category))
         avg_translated = total_translated / len(translated_langs) if translated_langs else 0
         avg_missing = total_missing / len(translated_langs) if translated_langs else 0
 
         message = f"List Concatenator + Translator Complete!\n\n"
         message += f"Source files: {len(sections)}\n"
-        message += f"Total items: {len(all_items)}\n"
+        message += f"Total items: {len(items_with_category)}\n"
         message += f"Unique items: {unique_count}\n\n"
         message += f"Languages translated: {len(translated_langs)}\n"
         message += f"Avg. translated per lang: {int(avg_translated)}\n"
