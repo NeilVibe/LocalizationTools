@@ -1,0 +1,1 @@
+Build v3.0.4 - Full XML sanitization
