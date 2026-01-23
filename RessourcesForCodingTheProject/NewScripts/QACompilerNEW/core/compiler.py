@@ -427,142 +427,268 @@ def collect_manager_status(master_folder: Path) -> Dict:
 def collect_manager_stats_for_tracker() -> Dict:
     """
     Read all Master files (EN + CN) and count FIXED/REPORTED/CHECKING/NON-ISSUE per user per category.
+
+    ULTRA-GRANULAR LOGGING: Every row, every cell, every decision is logged.
     """
     tester_mapping = load_tester_mapping()
     manager_stats = defaultdict(lambda: defaultdict(
         lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}
     ))
 
-    # LOG FILE - auto-generated, concise
+    # LOG FILE - ULTRA GRANULAR
     log_path = Path(__file__).parent.parent / "MANAGER_STATS_DEBUG.log"
-    log_lines = [f"=== MANAGER STATS DEBUG === {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"]
+    L = []  # Log lines
+
+    def log(msg, indent=0):
+        L.append("  " * indent + msg)
+
+    log(f"{'='*80}")
+    log(f"MANAGER STATS COLLECTION - ULTRA GRANULAR DEBUG LOG")
+    log(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    log(f"{'='*80}")
+    log("")
+
+    # Log configuration
+    log(f"[CONFIG] MASTER_FOLDER_EN: {MASTER_FOLDER_EN}")
+    log(f"[CONFIG] MASTER_FOLDER_CN: {MASTER_FOLDER_CN}")
+    log(f"[CONFIG] CATEGORIES: {CATEGORIES}")
+    log(f"[CONFIG] CATEGORY_TO_MASTER: {CATEGORY_TO_MASTER}")
+    log(f"[CONFIG] Tester mapping loaded: {len(tester_mapping)} entries")
+    for tester, lang in tester_mapping.items():
+        log(f"  {tester} -> {lang}", 1)
+    log("")
+
+    # Track global stats
+    global_row_count = 0
+    global_status_found = 0
+    global_status_empty = 0
+    global_comment_found = 0
+    global_pending = 0
 
     for master_folder in [MASTER_FOLDER_EN, MASTER_FOLDER_CN]:
         processed_masters = set()
         folder_label = "EN" if "EN" in str(master_folder) else "CN"
 
+        log(f"{'='*80}")
+        log(f"PROCESSING FOLDER: {master_folder} [{folder_label}]")
+        log(f"{'='*80}")
+        log(f"Folder exists: {master_folder.exists()}")
+        if master_folder.exists():
+            log(f"Folder contents: {list(master_folder.glob('*.xlsx'))}")
+        log("")
+
         for category in CATEGORIES:
             target_category = get_target_master_category(category)
             master_path = master_folder / f"Master_{target_category}.xlsx"
 
-            if master_path in processed_masters or not master_path.exists():
+            log(f"[CATEGORY LOOP] category={category} -> target={target_category}")
+            log(f"  Looking for: {master_path}", 1)
+            log(f"  File exists: {master_path.exists()}", 1)
+            log(f"  Already processed: {master_path in processed_masters}", 1)
+
+            if master_path in processed_masters:
+                log(f"  SKIP: Already processed this master file", 1)
                 continue
+            if not master_path.exists():
+                log(f"  SKIP: File does not exist", 1)
+                continue
+
             processed_masters.add(master_path)
+            log(f"  PROCESSING: {master_path.name}", 1)
 
             try:
                 wb = safe_load_workbook(master_path)
-
-                # GRANULAR: Log all sheets for EVERY category
-                log_lines.append(f"\n=== {target_category.upper()} [{folder_label}] ===")
-                log_lines.append(f"Master file: {master_path}")
-                log_lines.append(f"Sheets found: {wb.sheetnames}")
+                log("")
+                log(f"{'~'*60}")
+                log(f"MASTER FILE: {master_path.name} [{folder_label}]")
+                log(f"{'~'*60}")
+                log(f"Workbook loaded successfully")
+                log(f"Sheet names: {wb.sheetnames}")
+                log(f"Total sheets: {len(wb.sheetnames)}")
+                log("")
 
                 for sheet_name in wb.sheetnames:
                     if sheet_name == "STATUS":
+                        log(f"[SHEET SKIP] '{sheet_name}' - STATUS summary sheet, skipping")
                         continue
-                    ws = wb[sheet_name]
 
-                    # Find STATUS_{User} and COMMENT_{User} columns (case-insensitive)
+                    ws = wb[sheet_name]
+                    log(f"-" * 50)
+                    log(f"[SHEET] '{sheet_name}'")
+                    log(f"  Dimensions: rows={ws.max_row}, cols={ws.max_column}")
+                    log("")
+
+                    # Find ALL columns and log them
+                    log(f"  [COLUMN SCAN] Reading all {ws.max_column} columns...")
                     status_cols = {}
                     comment_cols = {}
+                    tester_status_cols = {}
+                    manager_comment_cols = {}
+                    stringid_col = None
+                    eventname_col = None
                     all_headers = []
+
                     for col in range(1, ws.max_column + 1):
                         header = ws.cell(row=1, column=col).value
-                        if header:
-                            header_str = str(header)
-                            header_upper = header_str.upper()
-                            all_headers.append(f"col{col}:{header_str}")
-                            if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
-                                status_cols[header_str[7:]] = col  # Skip "STATUS_" prefix
-                            elif header_upper.startswith("COMMENT_"):
-                                comment_cols[header_str[8:]] = col  # Skip "COMMENT_" prefix
+                        header_str = str(header) if header else "(EMPTY)"
+                        header_upper = header_str.upper() if header else ""
+                        all_headers.append((col, header_str))
 
-                    # GRANULAR: Log headers for ALL sheets
-                    log_lines.append(f"  Sheet '{sheet_name}': rows={ws.max_row}, cols={ws.max_column}")
-                    log_lines.append(f"    ALL HEADERS: {all_headers}")
-                    log_lines.append(f"    STATUS_ columns: {status_cols if status_cols else 'NONE FOUND'}")
-                    log_lines.append(f"    COMMENT_ columns: {comment_cols if comment_cols else 'NONE FOUND'}")
+                        log(f"    Col {col}: '{header_str}'", 2)
+
+                        if header:
+                            if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
+                                username = header_str[7:]
+                                status_cols[username] = col
+                                log(f"      -> STATUS_ column for user '{username}'", 3)
+                            elif header_upper.startswith("TESTER_STATUS_"):
+                                username = header_str[14:]
+                                tester_status_cols[username] = col
+                                log(f"      -> TESTER_STATUS_ column for user '{username}' (ignored for manager stats)", 3)
+                            elif header_upper.startswith("COMMENT_"):
+                                username = header_str[8:]
+                                comment_cols[username] = col
+                                log(f"      -> COMMENT_ column for user '{username}'", 3)
+                            elif header_upper.startswith("MANAGER_COMMENT_"):
+                                username = header_str[16:]
+                                manager_comment_cols[username] = col
+                                log(f"      -> MANAGER_COMMENT_ column for user '{username}'", 3)
+                            elif header_upper == "STRINGID":
+                                stringid_col = col
+                                log(f"      -> STRINGID column", 3)
+                            elif header_upper == "EVENTNAME":
+                                eventname_col = col
+                                log(f"      -> EVENTNAME column", 3)
+
+                    log("")
+                    log(f"  [COLUMN SUMMARY]")
+                    log(f"    STATUS_ columns ({len(status_cols)}): {status_cols}")
+                    log(f"    COMMENT_ columns ({len(comment_cols)}): {comment_cols}")
+                    log(f"    TESTER_STATUS_ columns ({len(tester_status_cols)}): {tester_status_cols}")
+                    log(f"    MANAGER_COMMENT_ columns ({len(manager_comment_cols)}): {manager_comment_cols}")
+                    log(f"    STRINGID column: {stringid_col}")
+                    log(f"    EVENTNAME column: {eventname_col}")
+                    log("")
 
                     if not status_cols:
+                        log(f"  [SKIP SHEET] No STATUS_ columns found - nothing to count")
                         continue
 
-                    # GRANULAR: Find ALL non-empty STATUS values with row numbers
-                    sample_values = {}
-                    all_found_values = {}  # username -> [(row, value), ...]
-                    for username, col in status_cols.items():
-                        found = []
-                        for r in range(2, ws.max_row + 1):
-                            v = ws.cell(row=r, column=col).value
-                            if v and str(v).strip():
-                                found.append((r, str(v).strip()))
-                        all_found_values[username] = found
-                        if found:
-                            sample_values[username] = [f"row{r}:{v}" for r, v in found[:5]]
-                        else:
-                            sample_values[username] = ["(ALL EMPTY - 0 values in entire column!)"]
-                    log_lines.append(f"    Sample STATUS values: {sample_values}")
-                    # Log total count per user
-                    for username, found in all_found_values.items():
-                        total_found = len(found)
-                        if total_found > 0:
-                            log_lines.append(f"    [{username}] TOTAL non-empty STATUS values: {total_found}")
-                        else:
-                            log_lines.append(f"    [{username}] WARNING: ZERO non-empty STATUS values in column {status_cols[username]}!")
+                    # ROW-BY-ROW SCAN
+                    log(f"  [ROW SCAN] Processing {ws.max_row - 1} data rows (2 to {ws.max_row})...")
+                    log("")
 
-                    # Count - key by target_category (not sheet_name) to match tester stats
-                    unrecognized_statuses = {}  # Track any status values that don't match expected
+                    sheet_stats = {u: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "empty": 0, "unrecognized": []} for u in status_cols.keys()}
+                    sheet_pending = {u: [] for u in status_cols.keys()}
+
                     for row in range(2, ws.max_row + 1):
+                        global_row_count += 1
+
+                        # Get identifying info for this row
+                        stringid_val = ws.cell(row=row, column=stringid_col).value if stringid_col else None
+                        eventname_val = ws.cell(row=row, column=eventname_col).value if eventname_col else None
+                        row_id = stringid_val or eventname_val or f"row{row}"
+
+                        row_has_any_data = False
+                        row_log_lines = []
+
                         for username, col in status_cols.items():
-                            value = ws.cell(row=row, column=col).value
-                            if value:
-                                v_raw = str(value).strip()
-                                v = v_raw.upper()
-                                if v == "FIXED":
-                                    manager_stats[target_category][username]["fixed"] += 1
-                                elif v == "REPORTED":
-                                    manager_stats[target_category][username]["reported"] += 1
-                                elif v == "CHECKING":
-                                    manager_stats[target_category][username]["checking"] += 1
-                                elif v in ("NON-ISSUE", "NON ISSUE"):
-                                    manager_stats[target_category][username]["nonissue"] += 1
+                            status_val = ws.cell(row=row, column=col).value
+                            comment_col = comment_cols.get(username)
+                            comment_val = ws.cell(row=row, column=comment_col).value if comment_col else None
+                            tester_status_col = tester_status_cols.get(username)
+                            tester_status_val = ws.cell(row=row, column=tester_status_col).value if tester_status_col else None
+
+                            # Determine what happened
+                            status_str = str(status_val).strip() if status_val else ""
+                            status_upper = status_str.upper()
+                            comment_str = str(comment_val).strip() if comment_val else ""
+                            tester_status_str = str(tester_status_val).strip() if tester_status_val else ""
+
+                            has_comment = bool(comment_str)
+                            has_status = bool(status_str)
+
+                            if has_comment or has_status:
+                                row_has_any_data = True
+                                global_comment_found += 1 if has_comment else 0
+
+                                action = ""
+                                if has_status:
+                                    global_status_found += 1
+                                    if status_upper == "FIXED":
+                                        manager_stats[target_category][username]["fixed"] += 1
+                                        sheet_stats[username]["fixed"] += 1
+                                        action = "COUNTED as FIXED"
+                                    elif status_upper == "REPORTED":
+                                        manager_stats[target_category][username]["reported"] += 1
+                                        sheet_stats[username]["reported"] += 1
+                                        action = "COUNTED as REPORTED"
+                                    elif status_upper == "CHECKING":
+                                        manager_stats[target_category][username]["checking"] += 1
+                                        sheet_stats[username]["checking"] += 1
+                                        action = "COUNTED as CHECKING"
+                                    elif status_upper in ("NON-ISSUE", "NON ISSUE"):
+                                        manager_stats[target_category][username]["nonissue"] += 1
+                                        sheet_stats[username]["nonissue"] += 1
+                                        action = "COUNTED as NON-ISSUE"
+                                    else:
+                                        sheet_stats[username]["unrecognized"].append(f"row{row}:'{status_str}'")
+                                        action = f"UNRECOGNIZED STATUS: '{status_str}'"
                                 else:
-                                    # Track unrecognized status values
-                                    if username not in unrecognized_statuses:
-                                        unrecognized_statuses[username] = []
-                                    if len(unrecognized_statuses[username]) < 5:
-                                        unrecognized_statuses[username].append(f"row{row}:'{v_raw}'")
-                            manager_stats[target_category][username]["lang"] = tester_mapping.get(username, "EN")
-                    # Log unrecognized statuses
-                    if unrecognized_statuses:
-                        log_lines.append(f"    UNRECOGNIZED STATUS VALUES (not FIXED/REPORTED/CHECKING/NON-ISSUE):")
-                        for username, vals in unrecognized_statuses.items():
-                            log_lines.append(f"      [{username}]: {vals}")
+                                    global_status_empty += 1
+                                    sheet_stats[username]["empty"] += 1
+                                    if has_comment:
+                                        global_pending += 1
+                                        sheet_pending[username].append(row)
+                                        action = "PENDING (has comment, no manager status)"
+                                    else:
+                                        action = "EMPTY (no comment, no status)"
 
-                    # Count PENDING issues (COMMENT exists but no final STATUS)
-                    pending_counts = {}
+                                manager_stats[target_category][username]["lang"] = tester_mapping.get(username, "EN")
+
+                                row_log_lines.append(
+                                    f"      [{username}] STATUS='{status_str}' COMMENT='{comment_str[:30]}{'...' if len(comment_str) > 30 else ''}' "
+                                    f"TESTER_STATUS='{tester_status_str}' -> {action}"
+                                )
+
+                        # Log row if it had data (limit to first 50 rows with data to avoid massive logs)
+                        if row_has_any_data and sum(sheet_stats[u]["fixed"] + sheet_stats[u]["reported"] + sheet_stats[u]["checking"] + sheet_stats[u]["nonissue"] + len(sheet_pending[u]) for u in status_cols.keys()) <= 100:
+                            log(f"    [ROW {row}] ID={row_id}")
+                            for line in row_log_lines:
+                                log(line)
+
+                    # Sheet summary
+                    log("")
+                    log(f"  [SHEET SUMMARY] '{sheet_name}'")
                     for username in status_cols.keys():
-                        status_col = status_cols.get(username)
-                        comment_col = comment_cols.get(username)
-                        if comment_col:
-                            pending = 0
-                            for r in range(2, ws.max_row + 1):
-                                comment_val = ws.cell(row=r, column=comment_col).value
-                                status_val = ws.cell(row=r, column=status_col).value if status_col else None
-                                # Has comment but no manager status = PENDING
-                                if comment_val and str(comment_val).strip():
-                                    if not status_val or str(status_val).strip().upper() not in ("FIXED", "NON-ISSUE", "NON ISSUE"):
-                                        pending += 1
-                            pending_counts[username] = pending
-
-                    # Log per-sheet summary (ALL users, even if 0)
-                    for u in status_cols.keys():
-                        s = manager_stats[target_category][u]
-                        pending = pending_counts.get(u, 0)
-                        log_lines.append(f"    {target_category}/{u}: F={s['fixed']} R={s['reported']} C={s['checking']} N={s['nonissue']} | PENDING={pending}")
+                        s = sheet_stats[username]
+                        pending_list = sheet_pending[username]
+                        log(f"    {username}:")
+                        log(f"      FIXED={s['fixed']} REPORTED={s['reported']} CHECKING={s['checking']} NON-ISSUE={s['nonissue']}")
+                        log(f"      EMPTY={s['empty']} PENDING={len(pending_list)}")
+                        if s['unrecognized']:
+                            log(f"      UNRECOGNIZED: {s['unrecognized'][:10]}")
+                        if pending_list:
+                            log(f"      PENDING rows (first 20): {pending_list[:20]}")
+                    log("")
 
                 wb.close()
             except Exception as e:
-                log_lines.append(f"[ERROR] {master_path.name}: {e}")
+                import traceback
+                log(f"[ERROR] Failed to process {master_path}: {e}")
+                log(f"[TRACEBACK] {traceback.format_exc()}")
+
+    # GLOBAL SUMMARY
+    log("")
+    log(f"{'='*80}")
+    log(f"GLOBAL SUMMARY")
+    log(f"{'='*80}")
+    log(f"Total rows scanned: {global_row_count}")
+    log(f"Total STATUS cells with values: {global_status_found}")
+    log(f"Total STATUS cells empty: {global_status_empty}")
+    log(f"Total COMMENT cells found: {global_comment_found}")
+    log(f"Total PENDING (comment but no final status): {global_pending}")
+    log("")
 
     # Convert nested defaultdicts to regular dicts
     result = {}
@@ -571,20 +697,26 @@ def collect_manager_stats_for_tracker() -> Dict:
         for user, stats_dd in users_dd.items():
             result[cat][user] = dict(stats_dd)
 
-    # Summary
+    # Final result summary
+    log(f"[FINAL RESULT] Categories: {list(result.keys())}")
+    for cat, users in result.items():
+        log(f"  {cat}:")
+        for user, stats in users.items():
+            log(f"    {user}: F={stats['fixed']} R={stats['reported']} C={stats['checking']} N={stats['nonissue']} lang={stats['lang']}")
+
     total_f = sum(s["fixed"] for u in result.values() for s in u.values())
     total_r = sum(s["reported"] for u in result.values() for s in u.values())
     total_c = sum(s["checking"] for u in result.values() for s in u.values())
     total_n = sum(s["nonissue"] for u in result.values() for s in u.values())
-
-    log_lines.append(f"\n=== TOTALS: F={total_f} R={total_r} C={total_c} N={total_n} ===")
-    log_lines.append(f"Categories: {list(result.keys())}")
+    log("")
+    log(f"[TOTALS] FIXED={total_f} REPORTED={total_r} CHECKING={total_c} NON-ISSUE={total_n}")
+    log(f"{'='*80}")
 
     # Write log file
     try:
         with open(log_path, "w", encoding="utf-8") as f:
-            f.write("\n".join(log_lines))
-        print(f"[LOG] Manager stats debug: {log_path}")
+            f.write("\n".join(L))
+        print(f"[LOG] Manager stats debug ({len(L)} lines): {log_path}")
     except Exception as e:
         print(f"[LOG ERROR] {e}")
 
