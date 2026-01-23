@@ -118,19 +118,20 @@ class ExcelReportWriter:
         """
         Write General Summary sheet.
 
-        Columns: Language | Total Strings | Korean Words | Translation Words/Chars | Untranslated | Count Type
+        Columns: Language | Total Strings | Korean Words | Translation Count | Untranslated Strings | Untranslated KR Words | Count Type
         """
         ws = wb.create_sheet("General Summary")
 
         # Title
-        ws.merge_cells('A1:F1')
+        ws.merge_cells('A1:G1')
         title_cell = ws.cell(row=1, column=1, value="Word Count Summary - All Languages")
         title_cell.font = TITLE_FONT
         title_cell.fill = TITLE_FILL
         title_cell.alignment = Alignment(horizontal="center", vertical="center")
 
         # Headers (row 3)
-        headers = ["Language", "Total Strings", "Korean Words", "Translation Count", "Untranslated", "Count Type"]
+        headers = ["Language", "Total Strings", "Korean Words", "Translation Count",
+                   "Untranslated Strings", "Untranslated KR Words", "Count Type"]
         for col, header in enumerate(headers, 1):
             cell = ws.cell(row=3, column=col, value=header)
             cell.font = HEADER_FONT
@@ -140,10 +141,6 @@ class ExcelReportWriter:
 
         # Data rows
         row = 4
-        grand_total_strings = 0
-        grand_total_korean = 0
-        grand_total_translation = 0
-        grand_total_untranslated = 0
 
         for lang_code in sorted(report.languages.keys()):
             lang_report = report.languages[lang_code]
@@ -153,23 +150,21 @@ class ExcelReportWriter:
             ws.cell(row=row, column=2, value=wc.total_strings).alignment = DATA_ALIGNMENT
             ws.cell(row=row, column=3, value=wc.total_korean_words).alignment = DATA_ALIGNMENT
             ws.cell(row=row, column=4, value=wc.total_translation_count).alignment = DATA_ALIGNMENT
-            ws.cell(row=row, column=5, value=wc.total_untranslated).alignment = DATA_ALIGNMENT
-            ws.cell(row=row, column=6, value=lang_report.count_type).alignment = DATA_ALIGNMENT
+            ws.cell(row=row, column=5, value=wc.total_untranslated_strings).alignment = DATA_ALIGNMENT
+            ws.cell(row=row, column=6, value=wc.total_untranslated_korean_words).alignment = DATA_ALIGNMENT
+            ws.cell(row=row, column=7, value=lang_report.count_type).alignment = DATA_ALIGNMENT
 
-            # Highlight untranslated if > 0
-            if wc.total_untranslated > 0:
+            # Highlight untranslated columns if > 0
+            if wc.total_untranslated_strings > 0:
                 ws.cell(row=row, column=5).fill = UNTRANSLATED_FILL
+            if wc.total_untranslated_korean_words > 0:
+                ws.cell(row=row, column=6).fill = UNTRANSLATED_FILL
 
             # Apply borders and number format
-            for col in range(1, 7):
+            for col in range(1, 8):
                 ws.cell(row=row, column=col).border = THIN_BORDER
-                if col in (2, 3, 4, 5):
+                if col in (2, 3, 4, 5, 6):
                     ws.cell(row=row, column=col).number_format = "#,##0"
-
-            grand_total_strings = wc.total_strings  # Same for all
-            grand_total_korean = wc.total_korean_words  # Same for all
-            grand_total_translation += wc.total_translation_count
-            grand_total_untranslated += wc.total_untranslated
 
             row += 1
 
@@ -178,8 +173,9 @@ class ExcelReportWriter:
         ws.column_dimensions['B'].width = 15
         ws.column_dimensions['C'].width = 15
         ws.column_dimensions['D'].width = 18
-        ws.column_dimensions['E'].width = 15
-        ws.column_dimensions['F'].width = 12
+        ws.column_dimensions['E'].width = 20
+        ws.column_dimensions['F'].width = 22
+        ws.column_dimensions['G'].width = 12
 
         # Freeze header
         ws.freeze_panes = 'A4'
@@ -190,7 +186,7 @@ class ExcelReportWriter:
 
         Each table has:
         - Title row with language name
-        - Headers: Category | Strings | Korean Words | Translation Words/Chars | Untranslated
+        - Headers: Category | Strings | Korean Words | Translation Words/Chars | Untranslated Strings | Untranslated KR Words
         - Data rows per category
         - Total row
         - Blank rows before next table
@@ -206,17 +202,18 @@ class ExcelReportWriter:
             count_label = lang_report.count_type
 
             # === Language Title ===
-            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
             title_cell = ws.cell(row=row, column=1, value=f"{lang_report.display_name} ({count_label})")
             title_cell.font = TITLE_FONT
             title_cell.fill = TITLE_FILL
             title_cell.alignment = Alignment(horizontal="center", vertical="center")
-            for col in range(1, 6):
+            for col in range(1, 7):
                 ws.cell(row=row, column=col).border = THIN_BORDER
             row += 1
 
             # === Headers ===
-            headers = ["Category", "Strings", "Korean Words", f"Translation {count_label}", "Untranslated"]
+            headers = ["Category", "Strings", "Korean Words", f"Translation {count_label}",
+                       "Untranslated Strings", "Untranslated KR Words"]
             for col, header in enumerate(headers, 1):
                 cell = ws.cell(row=row, column=col, value=header)
                 cell.font = HEADER_FONT
@@ -235,24 +232,29 @@ class ExcelReportWriter:
                     ws.cell(row=row, column=2, value=cat_count.total_strings).alignment = DATA_ALIGNMENT
                     ws.cell(row=row, column=3, value=cat_count.korean_words).alignment = DATA_ALIGNMENT
                     ws.cell(row=row, column=4, value=cat_count.translation_count).alignment = DATA_ALIGNMENT
-                    ws.cell(row=row, column=5, value=cat_count.untranslated).alignment = DATA_ALIGNMENT
+                    ws.cell(row=row, column=5, value=cat_count.untranslated_strings).alignment = DATA_ALIGNMENT
+                    ws.cell(row=row, column=6, value=cat_count.untranslated_korean_words).alignment = DATA_ALIGNMENT
 
-                    # Highlight untranslated
-                    if cat_count.untranslated > 0:
+                    # Highlight untranslated columns
+                    if cat_count.untranslated_strings > 0:
                         ws.cell(row=row, column=5).fill = UNTRANSLATED_FILL
                     else:
                         ws.cell(row=row, column=5).fill = cat_fill
+                    if cat_count.untranslated_korean_words > 0:
+                        ws.cell(row=row, column=6).fill = UNTRANSLATED_FILL
+                    else:
+                        ws.cell(row=row, column=6).fill = cat_fill
                 else:
                     ws.cell(row=row, column=1, value=category).alignment = CATEGORY_ALIGNMENT
-                    for col in range(2, 6):
+                    for col in range(2, 7):
                         ws.cell(row=row, column=col, value=0).alignment = DATA_ALIGNMENT
                         ws.cell(row=row, column=col).fill = cat_fill
 
                 # Apply borders and category color
-                for col in range(1, 6):
+                for col in range(1, 7):
                     cell = ws.cell(row=row, column=col)
                     cell.border = THIN_BORDER
-                    if col < 5 or (cat_count and cat_count.untranslated == 0) or not cat_count:
+                    if col < 5:
                         cell.fill = cat_fill
                     if col > 1:
                         cell.number_format = "#,##0"
@@ -268,7 +270,8 @@ class ExcelReportWriter:
                 wc.total_strings,
                 wc.total_korean_words,
                 wc.total_translation_count,
-                wc.total_untranslated
+                wc.total_untranslated_strings,
+                wc.total_untranslated_korean_words
             ]
 
             for col, total in enumerate(totals, 2):
@@ -278,10 +281,13 @@ class ExcelReportWriter:
                 cell.alignment = DATA_ALIGNMENT
                 cell.number_format = "#,##0"
 
+                # Highlight untranslated totals if > 0
                 if col == 5 and total > 0:
                     cell.fill = UNTRANSLATED_FILL
+                if col == 6 and total > 0:
+                    cell.fill = UNTRANSLATED_FILL
 
-            for col in range(1, 6):
+            for col in range(1, 7):
                 ws.cell(row=row, column=col).border = THIN_BORDER
 
             row += 1
@@ -294,7 +300,8 @@ class ExcelReportWriter:
         ws.column_dimensions['B'].width = 12
         ws.column_dimensions['C'].width = 15
         ws.column_dimensions['D'].width = 20
-        ws.column_dimensions['E'].width = 15
+        ws.column_dimensions['E'].width = 20
+        ws.column_dimensions['F'].width = 22
 
         # Freeze first column
         ws.freeze_panes = 'B1'
