@@ -14,12 +14,11 @@ import argparse
 import sys
 from pathlib import Path
 
-# Ensure package imports work when running as script
-if __name__ == "__main__":
-    sys.path.insert(0, str(Path(__file__).parent.parent))
+# Ensure imports work
+sys.path.insert(0, str(Path(__file__).parent))
 
-from DataListGenerator.config import OUTPUT_FOLDER, TRANSLATIONS_FOLDER
-from DataListGenerator.gui import DataToolGUI
+from config import OUTPUT_FOLDER, TRANSLATIONS_FOLDER
+from gui.app import DataToolGUI
 
 
 def main():

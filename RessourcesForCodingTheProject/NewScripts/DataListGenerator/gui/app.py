@@ -15,16 +15,16 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill
 from openpyxl.utils import get_column_letter
 
-from ..config import (
+from config import (
     FACTIONINFO_FOLDER, SKILLINFO_FOLDER, LOC_FOLDER,
     OUTPUT_FOLDER, TRANSLATIONS_FOLDER
 )
-from ..generators import FactionGenerator, SkillGenerator, DataEntry
-from ..utils.excel_writer import (
+from generators import FactionGenerator, SkillGenerator, DataEntry
+from utils.excel_writer import (
     THIN_BORDER, HEADER_FILL, HEADER_FONT, HEADER_ALIGNMENT,
     YELLOW_FILL, BOLD_FONT, auto_fit_columns
 )
-from ..translation_utils import (
+from translation_utils import (
     discover_language_files,
     load_language_table
 )
@@ -50,12 +50,6 @@ GENERATORS = {
         "folder": SKILLINFO_FOLDER,
         "desc": "SkillInfo/@SkillName"
     },
-    # Add more generators here:
-    # "Item": {
-    #     "class": ItemGenerator,
-    #     "folder": ITEMINFO_FOLDER,
-    #     "desc": "Item names and descriptions"
-    # },
 }
 
 
@@ -106,7 +100,7 @@ class DataToolGUI:
             text="Select which data lists to generate from XML files:"
         ).pack(anchor=tk.W, pady=(0, 5))
 
-        # Checkboxes in a grid (3 columns like QACompiler)
+        # Checkboxes in a grid (2 columns)
         checkbox_frame = ttk.Frame(section1_frame)
         checkbox_frame.pack(fill=tk.X, pady=5)
 
@@ -114,7 +108,6 @@ class DataToolGUI:
             var = tk.BooleanVar(value=True)
             self.generator_vars[name] = var
 
-            # Create frame for each checkbox with description
             cb_text = f"{name} ({info['desc']})"
             cb = ttk.Checkbutton(checkbox_frame, text=cb_text, variable=var)
             cb.grid(row=i // 2, column=i % 2, sticky="w", padx=10, pady=2)

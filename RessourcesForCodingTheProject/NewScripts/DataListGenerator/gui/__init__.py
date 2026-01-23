@@ -1,5 +1,5 @@
 """GUI module for DataListGenerator."""
 
-from .app import DataToolGUI
+from gui.app import DataToolGUI
 
 __all__ = ['DataToolGUI']
