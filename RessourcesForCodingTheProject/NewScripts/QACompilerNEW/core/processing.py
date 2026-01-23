@@ -34,6 +34,34 @@ from core.matching import (
 
 
 # =============================================================================
+# SCRIPT DEBUG LOGGING (shared log file with compiler.py)
+# =============================================================================
+
+_SCRIPT_DEBUG_FILE = Path(__file__).parent.parent / "SCRIPT_DEBUG.log"
+_SCRIPT_DEBUG_LINES = []
+
+
+def _script_debug_log(msg: str):
+    """Add message to Script debug log."""
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    _SCRIPT_DEBUG_LINES.append(f"[{timestamp}] {msg}")
+
+
+def _script_debug_flush():
+    """Flush Script debug log to file."""
+    global _SCRIPT_DEBUG_LINES
+    if not _SCRIPT_DEBUG_LINES:
+        return
+    try:
+        mode = "a" if _SCRIPT_DEBUG_FILE.exists() else "w"
+        with open(_SCRIPT_DEBUG_FILE, mode, encoding="utf-8") as f:
+            f.write("\n".join(_SCRIPT_DEBUG_LINES) + "\n")
+        _SCRIPT_DEBUG_LINES = []
+    except Exception as e:
+        print(f"[SCRIPT DEBUG ERROR] {e}")
+
+
+# =============================================================================
 # COMMENT FORMATTING
 # =============================================================================
 
@@ -352,11 +380,11 @@ def process_sheet(
     # DEBUG: Log manager_status for Script categories
     # NOTE: manager_status here is already sheet-level: {(stringid, comment): {username: info}}
     if is_script:
-        print(f"[DEBUG] process_sheet: {category}/{sheet_name}/{username}")
-        print(f"  manager_status keys (sheet-level): {len(manager_status)}")
+        _script_debug_log(f"[PROCESS] {category}/{sheet_name}/{username}")
+        _script_debug_log(f"  manager_status keys (sheet-level): {len(manager_status)}")
         if manager_status:
             sample_keys = list(manager_status.keys())[:3]
-            print(f"  Sample keys: {sample_keys}")
+            _script_debug_log(f"  Sample keys: {sample_keys}")
 
     # Find columns in QA worksheet
     qa_status_col = find_column_by_header(qa_ws, "STATUS")
@@ -364,7 +392,7 @@ def process_sheet(
     if is_script:
         qa_comment_col = find_column_by_header(qa_ws, "MEMO")
         qa_screenshot_col = None  # Script has no SCREENSHOT
-        print(f"  QA MEMO column: {qa_comment_col}")  # DEBUG
+        _script_debug_log(f"  QA MEMO column: {qa_comment_col}")
     else:
         qa_comment_col = find_column_by_header(qa_ws, "COMMENT")
         qa_screenshot_col = find_column_by_header(qa_ws, "SCREENSHOT")
@@ -610,7 +638,7 @@ def process_sheet(
 
         # DEBUG: Log lookup attempts for Script
         if is_script and qa_row <= 5:  # First 5 rows only
-            print(f"  [DEBUG] Row {qa_row}: tester_comment='{tester_comment_for_lookup[:30] if tester_comment_for_lookup else 'EMPTY'}...'")
+            _script_debug_log(f"  Row {qa_row}: tester_comment='{tester_comment_for_lookup[:30] if tester_comment_for_lookup else 'EMPTY'}...'")
 
         if manager_status and tester_comment_for_lookup:
             # Get STRINGID from MASTER row (not QA file - QA file might have empty STRINGID!)
@@ -626,7 +654,9 @@ def process_sheet(
             # DEBUG: Log lookup for Script
             if is_script and qa_row <= 5:
                 found = manager_key in manager_status
-                print(f"  [DEBUG] Row {qa_row}: key={manager_key[:50] if str(manager_key)[:50] else manager_key}, found={found}")
+                key_str = str(manager_key)[:80]
+                _script_debug_log(f"  Row {qa_row}: key={key_str}, found={found}")
+                _script_debug_flush()
 
             # Fallback: ("", tester_comment_text) if exact match fails (STRINGID changed)
             if manager_key not in manager_status:

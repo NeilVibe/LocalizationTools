@@ -94,6 +94,10 @@ print(f"[DEBUG CONFIG] VOICE_RECORDING_FOLDER exists? {VOICE_RECORDING_FOLDER.ex
 # Output folder for generated Excel files
 OUTPUT_FOLDER = SCRIPT_DIR / "GeneratedExcel"
 
+# ToSubmit folder for files prepared for LQA submission
+TOSUBMIT_FOLDER = SCRIPT_DIR / "ToSubmit"
+SUBMIT_FILE_PATTERN = "languagedata_*.xlsx"
+
 # =============================================================================
 # Language Configuration (imported from utils for consistency)
 # =============================================================================
@@ -201,21 +205,43 @@ EXPORT_FILE_EXTENSION = ".loc.xml"
 # Excel Configuration
 # =============================================================================
 
-# Column headers for Excel output
-COLUMN_HEADERS_EU = ["StrOrigin", "Str", "StringID", "English", "Category"]
-COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "StringID", "Category"]
+# Column headers for Excel output (new order with Correction column, StringID at end)
+COLUMN_HEADERS_EU = ["StrOrigin", "ENG from LOC", "Str", "Correction", "Category", "StringID"]
+COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Category", "StringID"]
 
 # Column widths (approximate)
 COLUMN_WIDTHS = {
     "StrOrigin": 40,
+    "ENG from LOC": 40,
     "Str": 40,
-    "StringID": 15,
-    "English": 40,
+    "Correction": 40,
     "Category": 20,
+    "StringID": 15,
 }
+
+
+# =============================================================================
+# Tracker Configuration
+# =============================================================================
+
+# Correction Progress Tracker file
+TRACKER_PATH = SCRIPT_DIR / "Correction_ProgressTracker.xlsx"
+
+# Categories to track (all STORY + GAMEDATA categories)
+TRACKER_CATEGORIES = [
+    "Sequencer", "AIDialog", "QuestDialog", "NarrationDialog",
+    "Item", "Quest", "Character", "Gimmick", "Skill",
+    "Knowledge", "Faction", "UI", "Region", "System_Misc"
+]
 
 
 def ensure_output_folder():
     """Create output folder if it doesn't exist."""
     OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
     return OUTPUT_FOLDER
+
+
+def ensure_tosubmit_folder():
+    """Create ToSubmit folder if it doesn't exist."""
+    TOSUBMIT_FOLDER.mkdir(parents=True, exist_ok=True)
+    return TOSUBMIT_FOLDER

@@ -61,6 +61,48 @@ def _compiler_log_clear():
             f.write(f"=== COMPILER DEBUG LOG === {datetime.now().isoformat()}\n\n")
     except:
         pass
+
+
+# =============================================================================
+# SCRIPT DEBUG LOGGING (for investigating Script manager status issue)
+# =============================================================================
+
+_SCRIPT_DEBUG_FILE = Path(__file__).parent.parent / "SCRIPT_DEBUG.log"
+_SCRIPT_DEBUG_LINES = []
+
+
+def _script_debug_log(msg: str):
+    """Add message to Script debug log."""
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    _SCRIPT_DEBUG_LINES.append(f"[{timestamp}] {msg}")
+
+
+def _script_debug_flush():
+    """Flush Script debug log to file."""
+    global _SCRIPT_DEBUG_LINES
+    if not _SCRIPT_DEBUG_LINES:
+        return
+    try:
+        mode = "a" if _SCRIPT_DEBUG_FILE.exists() else "w"
+        with open(_SCRIPT_DEBUG_FILE, mode, encoding="utf-8") as f:
+            f.write("\n".join(_SCRIPT_DEBUG_LINES) + "\n")
+        _SCRIPT_DEBUG_LINES = []
+    except Exception as e:
+        print(f"[SCRIPT DEBUG ERROR] {e}")
+
+
+def _script_debug_clear():
+    """Clear Script debug log for fresh run."""
+    global _SCRIPT_DEBUG_LINES
+    _SCRIPT_DEBUG_LINES = []
+    try:
+        with open(_SCRIPT_DEBUG_FILE, "w", encoding="utf-8") as f:
+            f.write(f"=== SCRIPT DEBUG LOG === {datetime.now().isoformat()}\n")
+            f.write(f"Investigating why Script manager status is empty\n\n")
+    except:
+        pass
+
+
 from config import (
     CATEGORIES, CATEGORY_TO_MASTER, TRANSLATION_COLS, SCRIPT_TYPE_CATEGORIES,
     SCRIPT_COLS,
@@ -254,11 +296,11 @@ def collect_manager_status(master_folder: Path) -> Dict:
 
                 # DEBUG: Log column structure for Script categories
                 if category.lower() in ("sequencer", "dialog"):
-                    print(f"[DEBUG] collect_manager_status: {category}/{sheet_name}")
-                    print(f"  All headers: {all_headers}")
-                    print(f"  COMMENT_ cols: {list(comment_cols.keys())}")
-                    print(f"  STATUS_ cols: {list(status_cols.keys())}")
-                    print(f"  STRINGID col: {stringid_col}")
+                    _script_debug_log(f"[COLLECT] {category}/{sheet_name}")
+                    _script_debug_log(f"  All headers: {all_headers}")
+                    _script_debug_log(f"  COMMENT_ cols: {list(comment_cols.keys())}")
+                    _script_debug_log(f"  STATUS_ cols: {list(status_cols.keys())}")
+                    _script_debug_log(f"  STRINGID col: {stringid_col}")
 
                 if not status_cols:
                     continue
@@ -315,7 +357,8 @@ def collect_manager_status(master_folder: Path) -> Dict:
                 # DEBUG: Log collected entries for Script categories
                 if category.lower() in ("sequencer", "dialog"):
                     entries_count = len(manager_status[category].get(sheet_name, {}))
-                    print(f"  Collected entries: {entries_count}")
+                    _script_debug_log(f"  Collected entries: {entries_count}")
+                    _script_debug_flush()
 
             wb.close()
 
@@ -326,7 +369,8 @@ def collect_manager_status(master_folder: Path) -> Dict:
     for cat in ["Sequencer", "Dialog"]:
         if cat in manager_status:
             total_keys = sum(len(sheet_data) for sheet_data in manager_status[cat].values())
-            print(f"[DEBUG] collect_manager_status TOTAL for {cat}: {total_keys} keys")
+            _script_debug_log(f"[COLLECT TOTAL] {cat}: {total_keys} keys")
+    _script_debug_flush()
 
     return manager_status
 
@@ -1183,6 +1227,11 @@ def run_compiler():
     Discovers QA folders, routes by language, processes categories,
     and updates the progress tracker.
     """
+    # Clear Script debug log for fresh run
+    _script_debug_clear()
+    _script_debug_log("=== STARTING FULL COMPILATION ===")
+    _script_debug_flush()
+
     print("=" * 60)
     print("QA Excel Compiler (EN/CN Separation + Manager Status)")
     print("=" * 60)

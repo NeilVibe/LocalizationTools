@@ -40,10 +40,11 @@ THIN_BORDER = Border(
 # Column widths
 DEFAULT_WIDTHS = {
     "StrOrigin": 45,
+    "ENG from LOC": 45,  # Renamed from "English"
     "Str": 45,
-    "StringID": 15,
-    "English": 45,
+    "Correction": 45,    # NEW column for LQA corrections
     "Category": 20,
+    "StringID": 15,      # Moved to end
 }
 
 
@@ -156,8 +157,8 @@ def write_language_excel(
         True if successful, False otherwise
 
     Column structure:
-    - European: StrOrigin | Str | StringID | English | Category
-    - Asian:    StrOrigin | Str | StringID | Category
+    - European: StrOrigin | ENG from LOC | Str | Correction | Category | StringID
+    - Asian:    StrOrigin | Str | Correction | Category | StringID
     """
     try:
         # Create workbook
@@ -166,10 +167,11 @@ def write_language_excel(
         ws.title = lang_code.upper()
 
         # Define headers based on language type
+        # New column order: Correction column added, StringID moved to end
         if include_english:
-            headers = ["StrOrigin", "Str", "StringID", "English", "Category"]
+            headers = ["StrOrigin", "ENG from LOC", "Str", "Correction", "Category", "StringID"]
         else:
-            headers = ["StrOrigin", "Str", "StringID", "Category"]
+            headers = ["StrOrigin", "Str", "Correction", "Category", "StringID"]
 
         # Write header row
         for col, header in enumerate(headers, 1):
@@ -201,11 +203,11 @@ def write_language_excel(
             # Get English translation if needed
             english = eng_lookup.get(string_id, '') if include_english else None
 
-            # Build row data
+            # Build row data (Correction column empty, to be filled during LQA)
             if include_english:
-                row_data = [str_origin, str_value, string_id, english, category]
+                row_data = [str_origin, english, str_value, "", category, string_id]
             else:
-                row_data = [str_origin, str_value, string_id, category]
+                row_data = [str_origin, str_value, "", category, string_id]
 
             # Write cells
             for col, value in enumerate(row_data, 1):
