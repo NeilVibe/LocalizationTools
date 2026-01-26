@@ -11,13 +11,14 @@ Features:
     - Substring matching: finds all entries where input is contained in StrOrigin
     - Multiple matches: formats as "1. XXX\n2. YYY" in same cell
     - Auto-discovers all language files
+    - Branch selection: mainline or cd_lambda
 """
 
 import re
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional
 from datetime import datetime
 
 # Try lxml first (more robust), fallback to standard library
@@ -36,6 +37,21 @@ except ImportError:
     raise
 
 import config
+
+# =============================================================================
+# BRANCH CONFIGURATION
+# =============================================================================
+
+BRANCHES = {
+    "mainline": {
+        "loc": Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc"),
+        "export": Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__"),
+    },
+    "cd_lambda": {
+        "loc": Path(r"F:\perforce\cd\cd_lambda\resource\GameData\stringtable\loc"),
+        "export": Path(r"F:\perforce\cd\cd_lambda\resource\GameData\stringtable\export__"),
+    },
+}
 
 # =============================================================================
 # XML SANITIZATION (from LanguageDataExporter - battle-tested)
@@ -60,32 +76,19 @@ def _preprocess_newlines(raw: str) -> str:
 def sanitize_xml_content(raw: str) -> str:
     """
     Sanitize XML content to handle common issues.
-    - Fix unescaped ampersands
-    - Handle newlines in segments
-    - Fix < and & in attribute values
-    - Remove invalid control characters
     """
-    # Remove invalid XML characters
     raw = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', raw)
-
-    # Fix entities
     raw = _fix_bad_entities(raw)
     raw = _preprocess_newlines(raw)
-
-    # Fix < and & in attribute values
     raw = re.sub(r'="([^"]*<[^"]*)"',
                  lambda m: '="' + m.group(1).replace("<", "&lt;") + '"', raw)
     raw = re.sub(r'="([^"]*&[^ltgapoqu][^"]*)"',
                  lambda m: '="' + m.group(1).replace("&", "&amp;") + '"', raw)
-
     return raw
 
 
 def parse_xml_file(xml_path: Path) -> ET.Element:
-    """
-    Parse XML file with sanitization and recovery mode.
-    Returns the root element.
-    """
+    """Parse XML file with sanitization and recovery mode."""
     content = xml_path.read_text(encoding='utf-8')
     content = sanitize_xml_content(content)
 
@@ -109,43 +112,32 @@ def parse_xml_file(xml_path: Path) -> ET.Element:
 # SEQUENCER STRORIGIN INDEX
 # =============================================================================
 
-def build_sequencer_strorigin_index(sequencer_folder: Path) -> Dict[str, str]:
+def build_sequencer_strorigin_index(sequencer_folder: Path, progress_callback=None) -> Dict[str, str]:
     """
     Scan Sequencer/*.loc.xml files and build StringID->StrOrigin mapping.
-
-    Args:
-        sequencer_folder: Path to Export/Sequencer folder
-
-    Returns:
-        Dictionary {StringID: StrOrigin}
     """
     if not sequencer_folder.exists():
-        print(f"WARNING: Sequencer folder not found: {sequencer_folder}")
         return {}
 
     index = {}
-    file_count = 0
+    xml_files = list(sequencer_folder.rglob("*.loc.xml"))
+    total = len(xml_files)
 
-    for xml_file in sequencer_folder.rglob("*.loc.xml"):
-        file_count += 1
+    for i, xml_file in enumerate(xml_files):
+        if progress_callback:
+            progress_callback(f"Indexing Sequencer... {i+1}/{total}")
         try:
             root = parse_xml_file(xml_file)
-
-            # Find all LocStr elements
             for elem in root.iter('LocStr'):
                 string_id = (elem.get('StringId') or elem.get('StringID') or
                             elem.get('stringid') or elem.get('STRINGID'))
                 str_origin = (elem.get('StrOrigin') or elem.get('Strorigin') or
                              elem.get('strorigin') or elem.get('STRORIGIN') or '')
-
                 if string_id and str_origin:
                     index[string_id] = str_origin
-
-        except Exception as e:
-            print(f"Error parsing {xml_file.name}: {e}")
+        except Exception:
             continue
 
-    print(f"Indexed {len(index)} StringIDs from {file_count} Sequencer files")
     return index
 
 
@@ -154,59 +146,40 @@ def build_sequencer_strorigin_index(sequencer_folder: Path) -> Dict[str, str]:
 # =============================================================================
 
 def discover_language_files(loc_folder: Path) -> Dict[str, Path]:
-    """
-    Find all languagedata_*.xml files.
-
-    Returns:
-        Dictionary {lang_code: Path} e.g. {"eng": Path(...), "fre": Path(...)}
-    """
+    """Find all languagedata_*.xml files."""
     if not loc_folder.exists():
-        print(f"WARNING: LOC folder not found: {loc_folder}")
         return {}
 
     lang_files = {}
-
     for xml_file in loc_folder.glob("languagedata_*.xml"):
-        # Extract language code: languagedata_eng.xml -> eng
         match = re.match(r'languagedata_(.+)\.xml', xml_file.name, re.IGNORECASE)
         if match:
             lang_code = match.group(1).lower()
             lang_files[lang_code] = xml_file
 
-    print(f"Discovered {len(lang_files)} language files: {list(lang_files.keys())}")
     return lang_files
 
 
-def build_translation_lookup(lang_files: Dict[str, Path]) -> Dict[str, Dict[str, str]]:
-    """
-    Parse all language files and build lookup.
-
-    Returns:
-        {lang_code: {StringID: translation}}
-    """
+def build_translation_lookup(lang_files: Dict[str, Path], progress_callback=None) -> Dict[str, Dict[str, str]]:
+    """Parse all language files and build lookup."""
     lookup = {}
+    total = len(lang_files)
 
-    for lang_code, xml_path in lang_files.items():
-        print(f"Parsing {lang_code}...")
+    for i, (lang_code, xml_path) in enumerate(lang_files.items()):
+        if progress_callback:
+            progress_callback(f"Loading {lang_code.upper()}... {i+1}/{total}")
         lookup[lang_code] = {}
 
         try:
             root = parse_xml_file(xml_path)
-
             for elem in root.iter('LocStr'):
                 string_id = (elem.get('StringId') or elem.get('StringID') or
                             elem.get('stringid') or elem.get('STRINGID'))
-                str_value = (elem.get('Str') or elem.get('str') or
-                            elem.get('STR') or '')
-
+                str_value = (elem.get('Str') or elem.get('str') or elem.get('STR') or '')
                 if string_id:
                     lookup[lang_code][string_id] = str_value
-
-        except Exception as e:
-            print(f"Error parsing {xml_path.name}: {e}")
+        except Exception:
             continue
-
-        print(f"  {lang_code}: {len(lookup[lang_code])} entries")
 
     return lookup
 
@@ -216,16 +189,7 @@ def build_translation_lookup(lang_files: Dict[str, Path]) -> Dict[str, Dict[str,
 # =============================================================================
 
 def find_matches(korean_input: str, strorigin_index: Dict[str, str]) -> List[str]:
-    """
-    Find all StringIDs where korean_input is a substring of StrOrigin.
-
-    Args:
-        korean_input: Korean text to search for
-        strorigin_index: {StringID: StrOrigin} mapping
-
-    Returns:
-        List of matching StringIDs
-    """
+    """Find all StringIDs where korean_input is a substring of StrOrigin."""
     if not korean_input.strip():
         return []
 
@@ -240,15 +204,8 @@ def find_matches(korean_input: str, strorigin_index: Dict[str, str]) -> List[str
 
 
 def format_multiple_matches(translations: List[str]) -> str:
-    """
-    Format multiple matches as numbered list.
-
-    Returns:
-        "1. XXX\n2. YYY\n3. ZZZ" or single value if only one match
-    """
-    # Filter out empty translations
+    """Format multiple matches as numbered list."""
     translations = [t for t in translations if t and t.strip()]
-
     if not translations:
         return ""
     if len(translations) == 1:
@@ -257,16 +214,11 @@ def format_multiple_matches(translations: List[str]) -> str:
 
 
 # =============================================================================
-# EXCEL OUTPUT
+# EXCEL I/O
 # =============================================================================
 
 def read_korean_input(excel_path: Path) -> List[str]:
-    """
-    Read Korean text from Column 1 of input Excel file.
-
-    Returns:
-        List of Korean text strings
-    """
+    """Read Korean text from Column 1 of input Excel file."""
     from openpyxl import load_workbook
 
     wb = load_workbook(excel_path, read_only=True)
@@ -283,21 +235,14 @@ def read_korean_input(excel_path: Path) -> List[str]:
 
 
 def get_ordered_languages(available_langs: List[str]) -> List[str]:
-    """
-    Get languages in preferred order, filtering to only available ones.
-    KOR is always first (input), then follow LANGUAGE_ORDER.
-    """
+    """Get languages in preferred order."""
     ordered = []
-
     for lang in config.LANGUAGE_ORDER:
         if lang in available_langs and lang != "kor":
             ordered.append(lang)
-
-    # Add any remaining languages not in LANGUAGE_ORDER
     for lang in available_langs:
         if lang not in ordered and lang != "kor":
             ordered.append(lang)
-
     return ordered
 
 
@@ -308,31 +253,24 @@ def write_output_excel(
     translation_lookup: Dict[str, Dict[str, str]],
     available_langs: List[str]
 ):
-    """
-    Write output Excel file with translations.
-
-    Columns: KOR (input) | ENG | FRE | GER | ...
-    """
+    """Write output Excel file with translations."""
     wb = Workbook()
     ws = wb.active
     ws.title = "Translations"
 
-    # Get ordered languages (excluding KOR since it's the input)
     ordered_langs = get_ordered_languages(available_langs)
 
-    # Write header row
+    # Header row
     headers = ["KOR (Input)"] + [config.LANGUAGE_NAMES.get(lang, lang.upper()) for lang in ordered_langs]
     for col, header in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal='center')
 
-    # Write data rows
+    # Data rows
     for row_idx, (korean_text, string_ids) in enumerate(zip(korean_inputs, matches_per_input), start=2):
-        # Column 1: Korean input
         ws.cell(row=row_idx, column=1, value=korean_text)
 
-        # For each language, get translations for all matching StringIDs
         for col_idx, lang_code in enumerate(ordered_langs, start=2):
             if not string_ids:
                 ws.cell(row=row_idx, column=col_idx, value="")
@@ -344,20 +282,15 @@ def write_output_excel(
                 if trans:
                     translations.append(trans)
 
-            # Format and write
             cell_value = format_multiple_matches(translations)
             cell = ws.cell(row=row_idx, column=col_idx, value=cell_value)
-
-            # Enable text wrapping for multiline content
             if "\n" in cell_value:
                 cell.alignment = Alignment(wrap_text=True, vertical='top')
 
-    # Auto-adjust column widths (approximate)
     for col_idx, _ in enumerate(headers, start=1):
         ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = 40
 
     wb.save(output_path)
-    print(f"Saved output to: {output_path}")
 
 
 # =============================================================================
@@ -368,66 +301,95 @@ class QuickTranslateApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("QuickTranslate")
-        self.root.geometry("600x300")
-        self.root.resizable(True, False)
+        self.root.geometry("500x280")
+        self.root.resizable(False, False)
+        self.root.configure(bg='#f0f0f0')
 
         # Variables
         self.input_path = tk.StringVar()
-        self.loc_folder = tk.StringVar(value=str(config.LOC_FOLDER))
-        self.export_folder = tk.StringVar(value=str(config.EXPORT_FOLDER))
+        self.selected_branch = tk.StringVar(value="mainline")
         self.status_text = tk.StringVar(value="Ready")
 
-        # Pre-loaded data (None until loaded)
-        self.strorigin_index = None
-        self.translation_lookup = None
-        self.available_langs = None
+        # Cached data
+        self.strorigin_index: Optional[Dict[str, str]] = None
+        self.translation_lookup: Optional[Dict[str, Dict[str, str]]] = None
+        self.available_langs: Optional[List[str]] = None
+        self.cached_branch: Optional[str] = None
 
         self._create_ui()
 
     def _create_ui(self):
-        # Main frame with padding
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        # Main container
+        main = tk.Frame(self.root, bg='#f0f0f0', padx=20, pady=15)
+        main.pack(fill=tk.BOTH, expand=True)
 
-        # Input file row
-        row = 0
-        ttk.Label(main_frame, text="Input Excel:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(main_frame, textvariable=self.input_path, width=50).grid(row=row, column=1, padx=5, pady=5)
-        ttk.Button(main_frame, text="Browse...", command=self._browse_input).grid(row=row, column=2, pady=5)
+        # Title
+        title = tk.Label(main, text="QuickTranslate", font=('Segoe UI', 16, 'bold'),
+                        bg='#f0f0f0', fg='#333')
+        title.pack(pady=(0, 15))
 
-        # LOC folder row
-        row += 1
-        ttk.Label(main_frame, text="LOC Folder:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(main_frame, textvariable=self.loc_folder, width=50).grid(row=row, column=1, padx=5, pady=5)
-        ttk.Button(main_frame, text="Browse...", command=self._browse_loc).grid(row=row, column=2, pady=5)
+        # Input file section
+        input_frame = tk.LabelFrame(main, text="Input Excel File", font=('Segoe UI', 9),
+                                    bg='#f0f0f0', fg='#555', padx=10, pady=8)
+        input_frame.pack(fill=tk.X, pady=(0, 12))
 
-        # EXPORT folder row
-        row += 1
-        ttk.Label(main_frame, text="EXPORT Folder:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(main_frame, textvariable=self.export_folder, width=50).grid(row=row, column=1, padx=5, pady=5)
-        ttk.Button(main_frame, text="Browse...", command=self._browse_export).grid(row=row, column=2, pady=5)
+        input_inner = tk.Frame(input_frame, bg='#f0f0f0')
+        input_inner.pack(fill=tk.X)
 
-        # Separator
-        row += 1
-        ttk.Separator(main_frame, orient=tk.HORIZONTAL).grid(row=row, column=0, columnspan=3, sticky=tk.EW, pady=10)
+        self.input_entry = tk.Entry(input_inner, textvariable=self.input_path,
+                                    font=('Segoe UI', 9), relief='solid', bd=1)
+        self.input_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4)
 
-        # Buttons row
-        row += 1
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=row, column=0, columnspan=3, pady=10)
+        browse_btn = tk.Button(input_inner, text="Browse", command=self._browse_input,
+                              font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
+                              padx=12, cursor='hand2')
+        browse_btn.pack(side=tk.RIGHT, padx=(8, 0))
 
-        ttk.Button(button_frame, text="Load Data", command=self._load_data).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Translate", command=self._translate).pack(side=tk.LEFT, padx=5)
+        # Branch selection section
+        branch_frame = tk.LabelFrame(main, text="Branch", font=('Segoe UI', 9),
+                                     bg='#f0f0f0', fg='#555', padx=10, pady=8)
+        branch_frame.pack(fill=tk.X, pady=(0, 15))
 
-        # Status row
-        row += 1
-        status_frame = ttk.Frame(main_frame)
-        status_frame.grid(row=row, column=0, columnspan=3, sticky=tk.EW, pady=5)
-        ttk.Label(status_frame, text="Status:").pack(side=tk.LEFT)
-        ttk.Label(status_frame, textvariable=self.status_text).pack(side=tk.LEFT, padx=5)
+        branch_inner = tk.Frame(branch_frame, bg='#f0f0f0')
+        branch_inner.pack()
 
-        # Configure grid weights
-        main_frame.columnconfigure(1, weight=1)
+        for branch_name in BRANCHES.keys():
+            btn = tk.Radiobutton(
+                branch_inner,
+                text=branch_name,
+                variable=self.selected_branch,
+                value=branch_name,
+                font=('Segoe UI', 10),
+                bg='#f0f0f0',
+                activebackground='#f0f0f0',
+                cursor='hand2',
+                padx=15
+            )
+            btn.pack(side=tk.LEFT, padx=5)
+
+        # Translate button
+        self.translate_btn = tk.Button(
+            main,
+            text="Translate",
+            command=self._translate,
+            font=('Segoe UI', 11, 'bold'),
+            bg='#4a90d9',
+            fg='white',
+            relief='flat',
+            padx=30,
+            pady=8,
+            cursor='hand2'
+        )
+        self.translate_btn.pack(pady=(0, 12))
+
+        # Status bar
+        status_frame = tk.Frame(main, bg='#e8e8e8', relief='solid', bd=1)
+        status_frame.pack(fill=tk.X, side=tk.BOTTOM)
+
+        status_label = tk.Label(status_frame, textvariable=self.status_text,
+                               font=('Segoe UI', 9), bg='#e8e8e8', fg='#666',
+                               anchor='w', padx=8, pady=4)
+        status_label.pack(fill=tk.X)
 
     def _browse_input(self):
         path = filedialog.askopenfilename(
@@ -437,60 +399,58 @@ class QuickTranslateApp:
         if path:
             self.input_path.set(path)
 
-    def _browse_loc(self):
-        path = filedialog.askdirectory(title="Select LOC Folder")
-        if path:
-            self.loc_folder.set(path)
-            config.update_settings(loc_folder=path)
-
-    def _browse_export(self):
-        path = filedialog.askdirectory(title="Select EXPORT Folder")
-        if path:
-            self.export_folder.set(path)
-            config.update_settings(export_folder=path)
-
-    def _load_data(self):
-        """Load Sequencer index and translation data."""
-        self.status_text.set("Loading data...")
+    def _update_status(self, text: str):
+        self.status_text.set(text)
         self.root.update()
 
-        try:
-            # Update paths from UI
-            loc_path = Path(self.loc_folder.get())
-            export_path = Path(self.export_folder.get())
-            sequencer_path = export_path / "Sequencer"
+    def _load_data_if_needed(self) -> bool:
+        """Load data if not cached or branch changed."""
+        branch = self.selected_branch.get()
 
-            # Build Sequencer StrOrigin index
-            self.status_text.set("Building Sequencer index...")
-            self.root.update()
-            self.strorigin_index = build_sequencer_strorigin_index(sequencer_path)
+        if self.cached_branch == branch and self.strorigin_index is not None:
+            return True  # Already loaded
 
-            if not self.strorigin_index:
-                messagebox.showwarning("Warning", f"No Sequencer data found in:\n{sequencer_path}")
-                self.status_text.set("No Sequencer data found")
-                return
+        paths = BRANCHES.get(branch)
+        if not paths:
+            messagebox.showerror("Error", f"Unknown branch: {branch}")
+            return False
 
-            # Discover and parse language files
-            self.status_text.set("Loading language files...")
-            self.root.update()
-            lang_files = discover_language_files(loc_path)
+        loc_folder = paths["loc"]
+        export_folder = paths["export"]
+        sequencer_folder = export_folder / "Sequencer"
 
-            if not lang_files:
-                messagebox.showwarning("Warning", f"No language files found in:\n{loc_path}")
-                self.status_text.set("No language files found")
-                return
+        # Validate paths
+        if not loc_folder.exists():
+            messagebox.showerror("Error", f"LOC folder not found:\n{loc_folder}")
+            return False
 
-            self.translation_lookup = build_translation_lookup(lang_files)
-            self.available_langs = list(lang_files.keys())
+        if not sequencer_folder.exists():
+            messagebox.showerror("Error", f"Sequencer folder not found:\n{sequencer_folder}")
+            return False
 
-            self.status_text.set(f"Loaded: {len(self.strorigin_index)} strings, {len(self.available_langs)} languages")
+        # Build Sequencer index
+        self.strorigin_index = build_sequencer_strorigin_index(
+            sequencer_folder, self._update_status
+        )
 
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to load data:\n{e}")
-            self.status_text.set(f"Error: {e}")
+        if not self.strorigin_index:
+            messagebox.showerror("Error", "No Sequencer data found.")
+            return False
+
+        # Load language files
+        lang_files = discover_language_files(loc_folder)
+        if not lang_files:
+            messagebox.showerror("Error", "No language files found.")
+            return False
+
+        self.translation_lookup = build_translation_lookup(lang_files, self._update_status)
+        self.available_langs = list(lang_files.keys())
+        self.cached_branch = branch
+
+        return True
 
     def _translate(self):
-        """Run translation lookup and generate output."""
+        """Run translation and generate output."""
         # Validate input
         if not self.input_path.get():
             messagebox.showwarning("Warning", "Please select an input Excel file.")
@@ -501,29 +461,24 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"Input file not found:\n{input_file}")
             return
 
-        # Load data if not already loaded
-        if self.strorigin_index is None or self.translation_lookup is None:
-            self._load_data()
-            if self.strorigin_index is None:
-                return
-
-        self.status_text.set("Reading input file...")
-        self.root.update()
+        # Disable button during processing
+        self.translate_btn.config(state='disabled')
 
         try:
-            # Read Korean input
+            # Load data if needed
+            if not self._load_data_if_needed():
+                return
+
+            # Read input
+            self._update_status("Reading input file...")
             korean_inputs = read_korean_input(input_file)
-            print(f"Read {len(korean_inputs)} Korean inputs")
 
             if not korean_inputs:
                 messagebox.showwarning("Warning", "No text found in input file.")
-                self.status_text.set("No input text found")
                 return
 
-            # Find matches for each input
-            self.status_text.set("Finding matches...")
-            self.root.update()
-
+            # Find matches
+            self._update_status("Finding matches...")
             matches_per_input = []
             total_matches = 0
 
@@ -532,12 +487,8 @@ class QuickTranslateApp:
                 matches_per_input.append(matches)
                 total_matches += len(matches)
 
-            print(f"Found {total_matches} total matches")
-
-            # Generate output
-            self.status_text.set("Writing output file...")
-            self.root.update()
-
+            # Write output
+            self._update_status("Writing output...")
             config.ensure_output_folder()
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_path = config.OUTPUT_FOLDER / f"QuickTranslate_{timestamp}.xlsx"
@@ -550,12 +501,15 @@ class QuickTranslateApp:
                 self.available_langs
             )
 
-            self.status_text.set(f"Done! {len(korean_inputs)} inputs, {total_matches} matches")
+            self._update_status(f"Done! {len(korean_inputs)} inputs, {total_matches} matches")
             messagebox.showinfo("Success", f"Output saved to:\n{output_path}")
 
         except Exception as e:
             messagebox.showerror("Error", f"Translation failed:\n{e}")
-            self.status_text.set(f"Error: {e}")
+            self._update_status(f"Error: {e}")
+
+        finally:
+            self.translate_btn.config(state='normal')
 
 
 # =============================================================================
