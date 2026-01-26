@@ -12,6 +12,7 @@ Features:
     - Multiple matches: formats as "1. XXX\n2. YYY" in same cell
     - Auto-discovers all language files
     - Branch selection: mainline or cd_lambda
+    - Direct StringID lookup
 """
 
 import re
@@ -293,6 +294,46 @@ def write_output_excel(
     wb.save(output_path)
 
 
+def write_stringid_lookup_excel(
+    output_path: Path,
+    string_id: str,
+    translation_lookup: Dict[str, Dict[str, str]],
+    available_langs: List[str]
+):
+    """
+    Write output Excel for a single StringID lookup.
+
+    Output format: StringID | ENG | FRE | GER | ...
+    """
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "StringID Lookup"
+
+    ordered_langs = get_ordered_languages(available_langs)
+
+    # Header row
+    headers = ["StringID"] + [config.LANGUAGE_NAMES.get(lang, lang.upper()) for lang in ordered_langs]
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal='center')
+
+    # Data row
+    ws.cell(row=2, column=1, value=string_id)
+
+    for col_idx, lang_code in enumerate(ordered_langs, start=2):
+        trans = translation_lookup.get(lang_code, {}).get(string_id, "")
+        cell = ws.cell(row=2, column=col_idx, value=trans)
+        cell.alignment = Alignment(wrap_text=True, vertical='top')
+
+    # Column widths
+    ws.column_dimensions['A'].width = 20
+    for col_idx in range(2, len(headers) + 1):
+        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = 40
+
+    wb.save(output_path)
+
+
 # =============================================================================
 # GUI APPLICATION
 # =============================================================================
@@ -301,12 +342,13 @@ class QuickTranslateApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("QuickTranslate")
-        self.root.geometry("500x280")
+        self.root.geometry("500x380")
         self.root.resizable(False, False)
         self.root.configure(bg='#f0f0f0')
 
         # Variables
         self.input_path = tk.StringVar()
+        self.string_id_input = tk.StringVar()
         self.selected_branch = tk.StringVar(value="mainline")
         self.status_text = tk.StringVar(value="Ready")
 
@@ -326,29 +368,12 @@ class QuickTranslateApp:
         # Title
         title = tk.Label(main, text="QuickTranslate", font=('Segoe UI', 16, 'bold'),
                         bg='#f0f0f0', fg='#333')
-        title.pack(pady=(0, 15))
+        title.pack(pady=(0, 12))
 
-        # Input file section
-        input_frame = tk.LabelFrame(main, text="Input Excel File", font=('Segoe UI', 9),
-                                    bg='#f0f0f0', fg='#555', padx=10, pady=8)
-        input_frame.pack(fill=tk.X, pady=(0, 12))
-
-        input_inner = tk.Frame(input_frame, bg='#f0f0f0')
-        input_inner.pack(fill=tk.X)
-
-        self.input_entry = tk.Entry(input_inner, textvariable=self.input_path,
-                                    font=('Segoe UI', 9), relief='solid', bd=1)
-        self.input_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4)
-
-        browse_btn = tk.Button(input_inner, text="Browse", command=self._browse_input,
-                              font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
-                              padx=12, cursor='hand2')
-        browse_btn.pack(side=tk.RIGHT, padx=(8, 0))
-
-        # Branch selection section
+        # Branch selection section (moved to top)
         branch_frame = tk.LabelFrame(main, text="Branch", font=('Segoe UI', 9),
-                                     bg='#f0f0f0', fg='#555', padx=10, pady=8)
-        branch_frame.pack(fill=tk.X, pady=(0, 15))
+                                     bg='#f0f0f0', fg='#555', padx=10, pady=6)
+        branch_frame.pack(fill=tk.X, pady=(0, 10))
 
         branch_inner = tk.Frame(branch_frame, bg='#f0f0f0')
         branch_inner.pack()
@@ -367,24 +392,48 @@ class QuickTranslateApp:
             )
             btn.pack(side=tk.LEFT, padx=5)
 
-        # Translate button
-        self.translate_btn = tk.Button(
-            main,
-            text="Translate",
-            command=self._translate,
-            font=('Segoe UI', 11, 'bold'),
-            bg='#4a90d9',
-            fg='white',
-            relief='flat',
-            padx=30,
-            pady=8,
-            cursor='hand2'
-        )
-        self.translate_btn.pack(pady=(0, 12))
+        # ===== Korean Match Section =====
+        korean_frame = tk.LabelFrame(main, text="Korean Text Match (from Excel)", font=('Segoe UI', 9),
+                                     bg='#f0f0f0', fg='#555', padx=10, pady=8)
+        korean_frame.pack(fill=tk.X, pady=(0, 10))
+
+        input_inner = tk.Frame(korean_frame, bg='#f0f0f0')
+        input_inner.pack(fill=tk.X)
+
+        self.input_entry = tk.Entry(input_inner, textvariable=self.input_path,
+                                    font=('Segoe UI', 9), relief='solid', bd=1)
+        self.input_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4)
+
+        browse_btn = tk.Button(input_inner, text="Browse", command=self._browse_input,
+                              font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
+                              padx=10, cursor='hand2')
+        browse_btn.pack(side=tk.LEFT, padx=(6, 0))
+
+        self.translate_btn = tk.Button(input_inner, text="Translate", command=self._translate,
+                                       font=('Segoe UI', 9, 'bold'), bg='#4a90d9', fg='white',
+                                       relief='flat', padx=10, cursor='hand2')
+        self.translate_btn.pack(side=tk.LEFT, padx=(6, 0))
+
+        # ===== StringID Lookup Section =====
+        stringid_frame = tk.LabelFrame(main, text="StringID Lookup", font=('Segoe UI', 9),
+                                       bg='#f0f0f0', fg='#555', padx=10, pady=8)
+        stringid_frame.pack(fill=tk.X, pady=(0, 10))
+
+        stringid_inner = tk.Frame(stringid_frame, bg='#f0f0f0')
+        stringid_inner.pack(fill=tk.X)
+
+        self.stringid_entry = tk.Entry(stringid_inner, textvariable=self.string_id_input,
+                                       font=('Segoe UI', 9), relief='solid', bd=1)
+        self.stringid_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4)
+
+        self.lookup_btn = tk.Button(stringid_inner, text="Lookup", command=self._lookup_stringid,
+                                    font=('Segoe UI', 9, 'bold'), bg='#5cb85c', fg='white',
+                                    relief='flat', padx=14, cursor='hand2')
+        self.lookup_btn.pack(side=tk.LEFT, padx=(6, 0))
 
         # Status bar
         status_frame = tk.Frame(main, bg='#e8e8e8', relief='solid', bd=1)
-        status_frame.pack(fill=tk.X, side=tk.BOTTOM)
+        status_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=(10, 0))
 
         status_label = tk.Label(status_frame, textvariable=self.status_text,
                                font=('Segoe UI', 9), bg='#e8e8e8', fg='#666',
@@ -403,12 +452,13 @@ class QuickTranslateApp:
         self.status_text.set(text)
         self.root.update()
 
-    def _load_data_if_needed(self) -> bool:
+    def _load_data_if_needed(self, need_sequencer: bool = True) -> bool:
         """Load data if not cached or branch changed."""
         branch = self.selected_branch.get()
 
-        if self.cached_branch == branch and self.strorigin_index is not None:
-            return True  # Already loaded
+        if self.cached_branch == branch and self.translation_lookup is not None:
+            if not need_sequencer or self.strorigin_index is not None:
+                return True  # Already loaded
 
         paths = BRANCHES.get(branch)
         if not paths:
@@ -424,18 +474,19 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"LOC folder not found:\n{loc_folder}")
             return False
 
-        if not sequencer_folder.exists():
-            messagebox.showerror("Error", f"Sequencer folder not found:\n{sequencer_folder}")
-            return False
+        if need_sequencer:
+            if not sequencer_folder.exists():
+                messagebox.showerror("Error", f"Sequencer folder not found:\n{sequencer_folder}")
+                return False
 
-        # Build Sequencer index
-        self.strorigin_index = build_sequencer_strorigin_index(
-            sequencer_folder, self._update_status
-        )
+            # Build Sequencer index
+            self.strorigin_index = build_sequencer_strorigin_index(
+                sequencer_folder, self._update_status
+            )
 
-        if not self.strorigin_index:
-            messagebox.showerror("Error", "No Sequencer data found.")
-            return False
+            if not self.strorigin_index:
+                messagebox.showerror("Error", "No Sequencer data found.")
+                return False
 
         # Load language files
         lang_files = discover_language_files(loc_folder)
@@ -450,7 +501,7 @@ class QuickTranslateApp:
         return True
 
     def _translate(self):
-        """Run translation and generate output."""
+        """Run Korean text translation and generate output."""
         # Validate input
         if not self.input_path.get():
             messagebox.showwarning("Warning", "Please select an input Excel file.")
@@ -461,12 +512,13 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"Input file not found:\n{input_file}")
             return
 
-        # Disable button during processing
+        # Disable buttons during processing
         self.translate_btn.config(state='disabled')
+        self.lookup_btn.config(state='disabled')
 
         try:
             # Load data if needed
-            if not self._load_data_if_needed():
+            if not self._load_data_if_needed(need_sequencer=True):
                 return
 
             # Read input
@@ -510,6 +562,60 @@ class QuickTranslateApp:
 
         finally:
             self.translate_btn.config(state='normal')
+            self.lookup_btn.config(state='normal')
+
+    def _lookup_stringid(self):
+        """Look up a single StringID and generate output."""
+        string_id = self.string_id_input.get().strip()
+
+        if not string_id:
+            messagebox.showwarning("Warning", "Please enter a StringID.")
+            return
+
+        # Disable buttons during processing
+        self.translate_btn.config(state='disabled')
+        self.lookup_btn.config(state='disabled')
+
+        try:
+            # Load data if needed (don't need Sequencer for direct StringID lookup)
+            if not self._load_data_if_needed(need_sequencer=False):
+                return
+
+            # Check if StringID exists in any language
+            found = False
+            for lang_code, lookup in self.translation_lookup.items():
+                if string_id in lookup:
+                    found = True
+                    break
+
+            if not found:
+                messagebox.showwarning("Warning", f"StringID not found: {string_id}")
+                self._update_status(f"StringID not found: {string_id}")
+                return
+
+            # Write output
+            self._update_status("Writing output...")
+            config.ensure_output_folder()
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = config.OUTPUT_FOLDER / f"StringID_{string_id}_{timestamp}.xlsx"
+
+            write_stringid_lookup_excel(
+                output_path,
+                string_id,
+                self.translation_lookup,
+                self.available_langs
+            )
+
+            self._update_status(f"Done! Lookup for {string_id}")
+            messagebox.showinfo("Success", f"Output saved to:\n{output_path}")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Lookup failed:\n{e}")
+            self._update_status(f"Error: {e}")
+
+        finally:
+            self.translate_btn.config(state='normal')
+            self.lookup_btn.config(state='normal')
 
 
 # =============================================================================
