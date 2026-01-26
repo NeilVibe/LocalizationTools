@@ -13,6 +13,7 @@ Features:
     - Auto-discovers all language files
     - Branch selection: mainline or cd_lambda
     - Direct StringID lookup
+    - Reverse Lookup: input text in any language -> find all translations
 """
 
 import re
@@ -38,6 +39,20 @@ except ImportError:
     raise
 
 import config
+
+# =============================================================================
+# KOREAN DETECTION
+# =============================================================================
+
+# Korean Hangul syllables range
+KOREAN_REGEX = re.compile(r'[\uac00-\ud7a3]')
+
+
+def is_korean_text(text: str) -> bool:
+    """Check if text contains Korean characters (indicates untranslated)."""
+    if not text:
+        return False
+    return bool(KOREAN_REGEX.search(text))
 
 # =============================================================================
 # BRANCH CONFIGURATION
@@ -142,6 +157,38 @@ def build_sequencer_strorigin_index(sequencer_folder: Path, progress_callback=No
     return index
 
 
+def scan_folder_for_strings(folder: Path, progress_callback=None) -> Dict[str, str]:
+    """
+    Recursively scan folder for XML files and extract StringID -> StrOrigin mapping.
+
+    Scans ALL .xml files (not just .loc.xml) to maximize coverage.
+    Returns {StringID: StrOrigin} dict.
+    """
+    if not folder.exists():
+        return {}
+
+    string_map = {}
+    xml_files = list(folder.rglob("*.xml"))
+    total = len(xml_files)
+
+    for i, xml_file in enumerate(xml_files):
+        if progress_callback:
+            progress_callback(f"Scanning folder... {i+1}/{total}")
+        try:
+            root = parse_xml_file(xml_file)
+            for elem in root.iter('LocStr'):
+                string_id = (elem.get('StringId') or elem.get('StringID') or
+                            elem.get('stringid') or elem.get('STRINGID'))
+                str_origin = (elem.get('StrOrigin') or elem.get('Strorigin') or
+                             elem.get('strorigin') or elem.get('STRORIGIN') or '')
+                if string_id and str_origin:
+                    string_map[string_id] = str_origin
+        except Exception:
+            continue
+
+    return string_map
+
+
 # =============================================================================
 # LANGUAGE FILE DISCOVERY AND PARSING
 # =============================================================================
@@ -183,6 +230,48 @@ def build_translation_lookup(lang_files: Dict[str, Path], progress_callback=None
             continue
 
     return lookup
+
+
+def build_reverse_lookup(translation_lookup: Dict[str, Dict[str, str]]) -> Dict[str, Dict[str, str]]:
+    """
+    Build reverse lookup: {lang_code: {translation_text: StringID}}.
+
+    This allows finding StringID from any translation text.
+    """
+    reverse = {}
+    for lang_code, id_to_text in translation_lookup.items():
+        reverse[lang_code] = {}
+        for string_id, text in id_to_text.items():
+            if text and text.strip():
+                # Store text -> StringID (trimmed for matching)
+                reverse[lang_code][text.strip()] = string_id
+    return reverse
+
+
+def read_text_file_lines(file_path: Path) -> List[str]:
+    """Read text file and return trimmed non-empty lines."""
+    lines = []
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            stripped = line.strip()
+            if stripped:
+                lines.append(stripped)
+    return lines
+
+
+def find_stringid_from_text(
+    text: str,
+    reverse_lookup: Dict[str, Dict[str, str]]
+) -> Optional[tuple]:
+    """
+    Find StringID by searching all languages for the text.
+
+    Returns (StringID, detected_lang_code) or None if not found.
+    """
+    for lang_code, text_to_id in reverse_lookup.items():
+        if text in text_to_id:
+            return (text_to_id[text], lang_code)
+    return None
 
 
 # =============================================================================
@@ -334,6 +423,127 @@ def write_stringid_lookup_excel(
     wb.save(output_path)
 
 
+def write_folder_translation_excel(
+    output_path: Path,
+    string_map: Dict[str, str],
+    translation_lookup: Dict[str, Dict[str, str]],
+    available_langs: List[str]
+):
+    """
+    Write Excel with one sheet per language.
+    Columns: StrOrigin | English | Translation | StringID
+
+    - "NO TRANSLATION" if translation is empty or contains Korean characters
+    """
+    wb = Workbook()
+    # Remove default sheet
+    default_sheet = wb.active
+    wb.remove(default_sheet)
+
+    ordered_langs = get_ordered_languages(available_langs)
+
+    # Get English lookup for reference
+    eng_lookup = translation_lookup.get("eng", {})
+
+    for lang_code in ordered_langs:
+        lang_name = config.LANGUAGE_NAMES.get(lang_code, lang_code.upper())
+        ws = wb.create_sheet(title=lang_name)
+        lang_lookup = translation_lookup.get(lang_code, {})
+
+        # Header row
+        headers = ["StrOrigin", "English", lang_name, "StringID"]
+        for col, header in enumerate(headers, start=1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal='center')
+
+        # Data rows
+        row_idx = 2
+        for string_id, str_origin in string_map.items():
+            # StrOrigin
+            ws.cell(row=row_idx, column=1, value=str_origin)
+
+            # English
+            eng_trans = eng_lookup.get(string_id, "")
+            if not eng_trans or is_korean_text(eng_trans):
+                eng_trans = "NO TRANSLATION"
+            ws.cell(row=row_idx, column=2, value=eng_trans)
+
+            # Target language translation
+            lang_trans = lang_lookup.get(string_id, "")
+            if not lang_trans or is_korean_text(lang_trans):
+                lang_trans = "NO TRANSLATION"
+            cell = ws.cell(row=row_idx, column=3, value=lang_trans)
+            if "\n" in lang_trans:
+                cell.alignment = Alignment(wrap_text=True, vertical='top')
+
+            # StringID
+            ws.cell(row=row_idx, column=4, value=string_id)
+
+            row_idx += 1
+
+        # Column widths
+        ws.column_dimensions['A'].width = 50  # StrOrigin
+        ws.column_dimensions['B'].width = 40  # English
+        ws.column_dimensions['C'].width = 40  # Translation
+        ws.column_dimensions['D'].width = 25  # StringID
+
+    wb.save(output_path)
+
+
+def write_reverse_lookup_excel(
+    output_path: Path,
+    input_texts: List[str],
+    stringid_map: Dict[str, str],  # input_text -> StringID
+    translation_lookup: Dict[str, Dict[str, str]],
+    available_langs: List[str]
+):
+    """
+    Write Excel with all languages in columns.
+    Columns: Input | KOR | ENG | FRE | GER | ...
+    """
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Reverse Lookup"
+
+    # Order: KOR first, then others
+    ordered_langs = ["kor"] + get_ordered_languages(available_langs)
+
+    # Header row
+    headers = ["Input"] + [config.LANGUAGE_NAMES.get(lang, lang.upper()) for lang in ordered_langs]
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal='center')
+
+    # Data rows
+    for row_idx, input_text in enumerate(input_texts, start=2):
+        # Write input text
+        ws.cell(row=row_idx, column=1, value=input_text)
+
+        string_id = stringid_map.get(input_text)
+        if not string_id:
+            # NOT FOUND - write "NOT FOUND" in KOR column, leave rest empty
+            ws.cell(row=row_idx, column=2, value="NOT FOUND")
+            continue
+
+        # For each language, get translation from translation_lookup[lang][string_id]
+        for col_idx, lang_code in enumerate(ordered_langs, start=2):
+            trans = translation_lookup.get(lang_code, {}).get(string_id, "")
+            if not trans or is_korean_text(trans):
+                trans = "NO TRANSLATION"
+            cell = ws.cell(row=row_idx, column=col_idx, value=trans)
+            if "\n" in trans:
+                cell.alignment = Alignment(wrap_text=True, vertical='top')
+
+    # Column widths
+    ws.column_dimensions['A'].width = 50  # Input
+    for col_idx in range(2, len(headers) + 1):
+        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = 40
+
+    wb.save(output_path)
+
+
 # =============================================================================
 # GUI APPLICATION
 # =============================================================================
@@ -342,13 +552,15 @@ class QuickTranslateApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("QuickTranslate")
-        self.root.geometry("500x380")
+        self.root.geometry("500x560")
         self.root.resizable(False, False)
         self.root.configure(bg='#f0f0f0')
 
         # Variables
         self.input_path = tk.StringVar()
         self.string_id_input = tk.StringVar()
+        self.folder_path = tk.StringVar()
+        self.reverse_file_path = tk.StringVar()
         self.selected_branch = tk.StringVar(value="mainline")
         self.status_text = tk.StringVar(value="Ready")
 
@@ -431,6 +643,50 @@ class QuickTranslateApp:
                                     relief='flat', padx=14, cursor='hand2')
         self.lookup_btn.pack(side=tk.LEFT, padx=(6, 0))
 
+        # ===== Translate Folder Section =====
+        folder_frame = tk.LabelFrame(main, text="Translate Folder (XML -> Multi-Language Excel)",
+                                     font=('Segoe UI', 9), bg='#f0f0f0', fg='#555', padx=10, pady=8)
+        folder_frame.pack(fill=tk.X, pady=(0, 10))
+
+        folder_inner = tk.Frame(folder_frame, bg='#f0f0f0')
+        folder_inner.pack(fill=tk.X)
+
+        self.folder_entry = tk.Entry(folder_inner, textvariable=self.folder_path,
+                                     font=('Segoe UI', 9), relief='solid', bd=1)
+        self.folder_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4)
+
+        folder_browse_btn = tk.Button(folder_inner, text="Browse", command=self._browse_folder,
+                                      font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
+                                      padx=10, cursor='hand2')
+        folder_browse_btn.pack(side=tk.LEFT, padx=(6, 0))
+
+        self.export_btn = tk.Button(folder_inner, text="Export", command=self._translate_folder,
+                                    font=('Segoe UI', 9, 'bold'), bg='#5cb85c', fg='white',
+                                    relief='flat', padx=14, cursor='hand2')
+        self.export_btn.pack(side=tk.LEFT, padx=(6, 0))
+
+        # ===== Reverse Lookup Section =====
+        reverse_frame = tk.LabelFrame(main, text="Reverse Lookup (Any Language -> All Languages)",
+                                      font=('Segoe UI', 9), bg='#f0f0f0', fg='#555', padx=10, pady=8)
+        reverse_frame.pack(fill=tk.X, pady=(0, 10))
+
+        reverse_inner = tk.Frame(reverse_frame, bg='#f0f0f0')
+        reverse_inner.pack(fill=tk.X)
+
+        self.reverse_entry = tk.Entry(reverse_inner, textvariable=self.reverse_file_path,
+                                      font=('Segoe UI', 9), relief='solid', bd=1)
+        self.reverse_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4)
+
+        reverse_browse_btn = tk.Button(reverse_inner, text="Browse", command=self._browse_reverse_file,
+                                       font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
+                                       padx=10, cursor='hand2')
+        reverse_browse_btn.pack(side=tk.LEFT, padx=(6, 0))
+
+        self.reverse_btn = tk.Button(reverse_inner, text="Find All", command=self._reverse_lookup,
+                                     font=('Segoe UI', 9, 'bold'), bg='#d9534f', fg='white',
+                                     relief='flat', padx=10, cursor='hand2')
+        self.reverse_btn.pack(side=tk.LEFT, padx=(6, 0))
+
         # Status bar
         status_frame = tk.Frame(main, bg='#e8e8e8', relief='solid', bd=1)
         status_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=(10, 0))
@@ -447,6 +703,21 @@ class QuickTranslateApp:
         )
         if path:
             self.input_path.set(path)
+
+    def _browse_folder(self):
+        """Open folder selection dialog."""
+        path = filedialog.askdirectory(title="Select Folder Containing XML Files")
+        if path:
+            self.folder_path.set(path)
+
+    def _browse_reverse_file(self):
+        """Open file selection dialog for text file."""
+        path = filedialog.askopenfilename(
+            title="Select Text File with List",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+        )
+        if path:
+            self.reverse_file_path.set(path)
 
     def _update_status(self, text: str):
         self.status_text.set(text)
@@ -512,9 +783,11 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"Input file not found:\n{input_file}")
             return
 
-        # Disable buttons during processing
+        # Disable all buttons during processing
         self.translate_btn.config(state='disabled')
         self.lookup_btn.config(state='disabled')
+        self.export_btn.config(state='disabled')
+        self.reverse_btn.config(state='disabled')
 
         try:
             # Load data if needed
@@ -563,6 +836,8 @@ class QuickTranslateApp:
         finally:
             self.translate_btn.config(state='normal')
             self.lookup_btn.config(state='normal')
+            self.export_btn.config(state='normal')
+            self.reverse_btn.config(state='normal')
 
     def _lookup_stringid(self):
         """Look up a single StringID and generate output."""
@@ -572,9 +847,11 @@ class QuickTranslateApp:
             messagebox.showwarning("Warning", "Please enter a StringID.")
             return
 
-        # Disable buttons during processing
+        # Disable all buttons during processing
         self.translate_btn.config(state='disabled')
         self.lookup_btn.config(state='disabled')
+        self.export_btn.config(state='disabled')
+        self.reverse_btn.config(state='disabled')
 
         try:
             # Load data if needed (don't need Sequencer for direct StringID lookup)
@@ -616,6 +893,155 @@ class QuickTranslateApp:
         finally:
             self.translate_btn.config(state='normal')
             self.lookup_btn.config(state='normal')
+            self.export_btn.config(state='normal')
+            self.reverse_btn.config(state='normal')
+
+    def _translate_folder(self):
+        """Process folder and generate multi-language Excel."""
+        # Validate folder path
+        if not self.folder_path.get():
+            messagebox.showwarning("Warning", "Please select a folder containing XML files.")
+            return
+
+        folder = Path(self.folder_path.get())
+        if not folder.exists():
+            messagebox.showerror("Error", f"Folder not found:\n{folder}")
+            return
+
+        # Disable all buttons during processing
+        self.translate_btn.config(state='disabled')
+        self.lookup_btn.config(state='disabled')
+        self.export_btn.config(state='disabled')
+        self.reverse_btn.config(state='disabled')
+
+        try:
+            # Scan folder for StringID -> StrOrigin mapping
+            self._update_status("Scanning folder for XML files...")
+            string_map = scan_folder_for_strings(folder, self._update_status)
+
+            if not string_map:
+                messagebox.showwarning("Warning", "No StringID/StrOrigin pairs found in folder.")
+                self._update_status("No data found")
+                return
+
+            # Load language files (don't need Sequencer for this)
+            if not self._load_data_if_needed(need_sequencer=False):
+                return
+
+            # Write output Excel
+            self._update_status("Writing multi-language Excel...")
+            config.ensure_output_folder()
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            folder_name = folder.name
+            output_path = config.OUTPUT_FOLDER / f"FolderTranslate_{folder_name}_{timestamp}.xlsx"
+
+            write_folder_translation_excel(
+                output_path,
+                string_map,
+                self.translation_lookup,
+                self.available_langs
+            )
+
+            lang_count = len(get_ordered_languages(self.available_langs))
+            self._update_status(f"Done! {len(string_map)} strings, {lang_count} languages")
+            messagebox.showinfo("Success", f"Output saved to:\n{output_path}\n\n"
+                               f"Strings: {len(string_map)}\nLanguage sheets: {lang_count}")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Folder translation failed:\n{e}")
+            self._update_status(f"Error: {e}")
+
+        finally:
+            self.translate_btn.config(state='normal')
+            self.lookup_btn.config(state='normal')
+            self.export_btn.config(state='normal')
+            self.reverse_btn.config(state='normal')
+
+    def _reverse_lookup(self):
+        """Perform reverse lookup from any language to all languages."""
+        # Validate file path
+        if not self.reverse_file_path.get():
+            messagebox.showwarning("Warning", "Please select a text file with list of strings.")
+            return
+
+        file_path = Path(self.reverse_file_path.get())
+        if not file_path.exists():
+            messagebox.showerror("Error", f"File not found:\n{file_path}")
+            return
+
+        # Disable all buttons during processing
+        self.translate_btn.config(state='disabled')
+        self.lookup_btn.config(state='disabled')
+        self.export_btn.config(state='disabled')
+        self.reverse_btn.config(state='disabled')
+
+        try:
+            # Load data if needed (don't need Sequencer for reverse lookup)
+            if not self._load_data_if_needed(need_sequencer=False):
+                return
+
+            # Read input file
+            self._update_status("Reading input file...")
+            input_texts = read_text_file_lines(file_path)
+
+            if not input_texts:
+                messagebox.showwarning("Warning", "No text found in input file.")
+                self._update_status("No input text")
+                return
+
+            # Build reverse lookup
+            self._update_status("Building reverse lookup...")
+            reverse_lookup = build_reverse_lookup(self.translation_lookup)
+
+            # Find StringID for each input text
+            self._update_status("Finding StringIDs...")
+            stringid_map = {}
+            not_found = []
+            detected_langs = set()
+
+            for text in input_texts:
+                result = find_stringid_from_text(text, reverse_lookup)
+                if result:
+                    string_id, lang = result
+                    stringid_map[text] = string_id
+                    detected_langs.add(lang)
+                else:
+                    not_found.append(text)
+
+            # Write output Excel
+            self._update_status("Writing output...")
+            config.ensure_output_folder()
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = config.OUTPUT_FOLDER / f"ReverseLookup_{timestamp}.xlsx"
+
+            write_reverse_lookup_excel(
+                output_path,
+                input_texts,
+                stringid_map,
+                self.translation_lookup,
+                self.available_langs
+            )
+
+            # Build summary
+            found_count = len(stringid_map)
+            total_count = len(input_texts)
+            detected_str = ", ".join(sorted(detected_langs)) if detected_langs else "N/A"
+
+            self._update_status(f"Done! {found_count}/{total_count} found")
+            messagebox.showinfo("Success",
+                f"Output saved to:\n{output_path}\n\n"
+                f"Found: {found_count}/{total_count}\n"
+                f"Detected languages: {detected_str}")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Reverse lookup failed:\n{e}")
+            self._update_status(f"Error: {e}")
+
+        finally:
+            self.translate_btn.config(state='normal')
+            self.lookup_btn.config(state='normal')
+            self.export_btn.config(state='normal')
+            self.reverse_btn.config(state='normal')
 
 
 # =============================================================================
