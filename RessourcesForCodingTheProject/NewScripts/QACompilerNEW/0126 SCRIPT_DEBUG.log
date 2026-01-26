@@ -1,0 +1,384 @@
+=== SCRIPT DEBUG LOG === 2026-01-26T12:32:42.323586
+Investigating why Script manager status is empty
+
+[12:32:42] === STARTING FULL COMPILATION ===
+[12:32:50] 
+[12:32:50] ============================================================
+[12:32:50] [COLLECT] Sequencer/English Script
+[12:32:50] ============================================================
+[12:32:50]   All headers (16 cols):
+[12:32:50]     Col 1: DialogType
+[12:32:50]     Col 2: Group
+[12:32:50]     Col 3: SequenceName
+[12:32:50]     Col 4: DialogVoice
+[12:32:50]     Col 5: RECORDING
+[12:32:50]     Col 6: Text
+[12:32:50]     Col 7: MEMO
+[12:32:50]     Col 8: EventName
+[12:32:50]     Col 9: COMMENT_유지윤
+[12:32:50]     Col 10: TESTER_STATUS_유지윤
+[12:32:50]     Col 11: STATUS_유지윤
+[12:32:50]     Col 12: MANAGER_COMMENT_유지윤
+[12:32:50]     Col 13: COMMENT_조서영
+[12:32:50]     Col 14: TESTER_STATUS_조서영
+[12:32:50]     Col 15: STATUS_조서영
+[12:32:50]     Col 16: MANAGER_COMMENT_조서영
+[12:32:50] 
+[12:32:50]   COMMENT_ columns found: [('유지윤', 9), ('조서영', 13)]
+[12:32:50]   STATUS_ columns found: [('유지윤', 11), ('조서영', 15)]
+[12:32:50]   MANAGER_COMMENT_ columns found: [('유지윤', 12), ('조서영', 16)]
+[12:32:50]   STRINGID/EventName col: 8
+[12:32:50] 
+[12:32:50]   [SUMMARY] Sequencer/English Script:
+[12:32:50]     Rows with valid STATUS_: 0
+[12:32:50]     Rows STORED (had comment): 0
+[12:32:50]     Rows SKIPPED (no comment): 0
+[12:32:50]     Final entries in dict: 0
+[12:32:50] 
+[12:32:50] ============================================================
+[12:32:50] [COLLECT] Sequencer/Work Transform
+[12:32:50] ============================================================
+[12:32:50]   All headers (20 cols):
+[12:32:50]     Col 1: DialogType
+[12:32:50]     Col 2: Group
+[12:32:50]     Col 3: SequenceName
+[12:32:50]     Col 4: DialogVoice
+[12:32:50]     Col 5: RECORDING
+[12:32:50]     Col 6: Text
+[12:32:50]     Col 7: SubTimelineName
+[12:32:50]     Col 8: EventName
+[12:32:50]     Col 9: COMMENT_김정원
+[12:32:50]     Col 10: TESTER_STATUS_김정원
+[12:32:50]     Col 11: STATUS_김정원
+[12:32:50]     Col 12: MANAGER_COMMENT_김정원
+[12:32:50]     Col 13: COMMENT_김찬용
+[12:32:50]     Col 14: TESTER_STATUS_김찬용
+[12:32:50]     Col 15: STATUS_김찬용
+[12:32:50]     Col 16: MANAGER_COMMENT_김찬용
+[12:32:50]     Col 17: COMMENT_황하연
+[12:32:50]     Col 18: TESTER_STATUS_황하연
+[12:32:50]     Col 19: STATUS_황하연
+[12:32:50]     Col 20: MANAGER_COMMENT_황하연
+[12:32:50] 
+[12:32:50]   COMMENT_ columns found: [('김정원', 9), ('김찬용', 13), ('황하연', 17)]
+[12:32:50]   STATUS_ columns found: [('김정원', 11), ('김찬용', 15), ('황하연', 19)]
+[12:32:50]   MANAGER_COMMENT_ columns found: [('김정원', 12), ('김찬용', 16), ('황하연', 20)]
+[12:32:50]   STRINGID/EventName col: 8
+[12:32:50] 
+[12:32:50]   [SUMMARY] Sequencer/Work Transform:
+[12:32:50]     Rows with valid STATUS_: 0
+[12:32:50]     Rows STORED (had comment): 0
+[12:32:50]     Rows SKIPPED (no comment): 0
+[12:32:50]     Final entries in dict: 0
+[12:32:51] 
+[12:32:51] ============================================================
+[12:32:51] [COLLECT] Dialog/English Script
+[12:32:51] ============================================================
+[12:32:51]   All headers (16 cols):
+[12:32:51]     Col 1: DialogType
+[12:32:51]     Col 2: Group
+[12:32:51]     Col 3: SequenceName
+[12:32:51]     Col 4: DialogVoice
+[12:32:51]     Col 5: RECORDING
+[12:32:51]     Col 6: Text
+[12:32:51]     Col 7: MEMO
+[12:32:51]     Col 8: EventName
+[12:32:51]     Col 9: COMMENT_유지윤
+[12:32:51]     Col 10: TESTER_STATUS_유지윤
+[12:32:51]     Col 11: STATUS_유지윤
+[12:32:51]     Col 12: MANAGER_COMMENT_유지윤
+[12:32:51]     Col 13: COMMENT_조서영
+[12:32:51]     Col 14: TESTER_STATUS_조서영
+[12:32:51]     Col 15: STATUS_조서영
+[12:32:51]     Col 16: MANAGER_COMMENT_조서영
+[12:32:51] 
+[12:32:51]   COMMENT_ columns found: [('유지윤', 9), ('조서영', 13)]
+[12:32:51]   STATUS_ columns found: [('유지윤', 11), ('조서영', 15)]
+[12:32:51]   MANAGER_COMMENT_ columns found: [('유지윤', 12), ('조서영', 16)]
+[12:32:51]   STRINGID/EventName col: 8
+[12:32:51] 
+[12:32:51]   [SUMMARY] Dialog/English Script:
+[12:32:51]     Rows with valid STATUS_: 0
+[12:32:51]     Rows STORED (had comment): 0
+[12:32:51]     Rows SKIPPED (no comment): 0
+[12:32:51]     Final entries in dict: 0
+[12:32:51] 
+[12:32:51] ============================================================
+[12:32:51] [COLLECT] Dialog/Work Transform
+[12:32:51] ============================================================
+[12:32:51]   All headers (20 cols):
+[12:32:51]     Col 1: DialogType
+[12:32:51]     Col 2: Group
+[12:32:51]     Col 3: SequenceName
+[12:32:51]     Col 4: DialogVoice
+[12:32:51]     Col 5: RECORDING
+[12:32:51]     Col 6: Text
+[12:32:51]     Col 7: SubTimelineName
+[12:32:51]     Col 8: EventName
+[12:32:51]     Col 9: COMMENT_김정원
+[12:32:51]     Col 10: TESTER_STATUS_김정원
+[12:32:51]     Col 11: STATUS_김정원
+[12:32:51]     Col 12: MANAGER_COMMENT_김정원
+[12:32:51]     Col 13: COMMENT_김찬용
+[12:32:51]     Col 14: TESTER_STATUS_김찬용
+[12:32:51]     Col 15: STATUS_김찬용
+[12:32:51]     Col 16: MANAGER_COMMENT_김찬용
+[12:32:51]     Col 17: COMMENT_황하연
+[12:32:51]     Col 18: TESTER_STATUS_황하연
+[12:32:51]     Col 19: STATUS_황하연
+[12:32:51]     Col 20: MANAGER_COMMENT_황하연
+[12:32:51] 
+[12:32:51]   COMMENT_ columns found: [('김정원', 9), ('김찬용', 13), ('황하연', 17)]
+[12:32:51]   STATUS_ columns found: [('김정원', 11), ('김찬용', 15), ('황하연', 19)]
+[12:32:51]   MANAGER_COMMENT_ columns found: [('김정원', 12), ('김찬용', 16), ('황하연', 20)]
+[12:32:51]   STRINGID/EventName col: 8
+[12:32:51] 
+[12:32:51]   [SUMMARY] Dialog/Work Transform:
+[12:32:51]     Rows with valid STATUS_: 0
+[12:32:51]     Rows STORED (had comment): 0
+[12:32:51]     Rows SKIPPED (no comment): 0
+[12:32:51]     Final entries in dict: 0
+[12:32:51] [COLLECT TOTAL] Sequencer: 0 keys
+[12:32:51] [COLLECT TOTAL] Dialog: 0 keys
+[12:36:04] 
+[12:36:04] ============================================================
+[12:36:04] [PROCESS_CATEGORY] Sequencer [EN]
+[12:36:04] ============================================================
+[12:36:04]   target_master: Script
+[12:36:04]   qa_folders count: 2
+[12:36:04]     - 유지윤: C:\Users\PEARL\Desktop\QACompiler_v26.126.1056_Source\QAfolder\유지윤_Sequencer\EN SCRIPT SEQUENCER.xlsx
+[12:36:04]     - 조서영: C:\Users\PEARL\Desktop\QACompiler_v26.126.1056_Source\QAfolder\조서영_Sequencer\EN SCRIPT SEQUENCER.xlsx
+[12:36:08] 
+[12:36:08] ============================================================
+[12:36:08] [PROCESS_SHEET] Sequencer/EN SCRIPT SEQUENCER.xlsx/유지윤
+[12:36:08] ============================================================
+[12:36:08]   manager_status keys (sheet-level): 0
+[12:36:08]   qa_ws.max_row: 16984
+[12:36:08]   master_ws.max_row: 2425
+[12:36:08]   QA file headers: ['Col1:DialogType', 'Col2:Group', 'Col3:SequenceName', 'Col4:DialogVoice', 'Col5:RECORDING', 'Col6:Text', 'Col7:STATUS', 'Col8:MEMO', 'Col9:EventName']
+[12:36:08]   QA MEMO column: 8
+[12:36:09]   STATUS column found at col 7
+[12:36:09]   rows_to_process: 1542
+[12:36:09]   STATUS distribution in QA file:
+[12:36:09]     ISSUE: 159
+[12:36:09]     NON-ISSUE: 1383
+[12:36:33] 
+[12:36:33] [PROCESS_SHEET RESULT] Sequencer/유지윤
+[12:36:33]   rows_to_process: 1542
+[12:36:33]   stats.total: 1542 (rows that matched master)
+[12:36:33]   stats.issue: 159 <-- THIS IS ISSUE COUNT
+[12:36:33]   stats.no_issue: 1383
+[12:36:33]   stats.blocked: 0
+[12:36:33]   stats.korean: 0
+[12:36:33]   match_stats.exact: 1542
+[12:36:33]   match_stats.fallback: 0
+[12:36:33]   match_stats.unmatched: 0
+[12:36:33]   comments written: 159
+[12:36:33]   manager_restored: 0
+[12:36:34] 
+[12:36:34] ============================================================
+[12:36:34] [PROCESS_SHEET] Sequencer/EN SCRIPT SEQUENCER.xlsx/조서영
+[12:36:34] ============================================================
+[12:36:34]   manager_status keys (sheet-level): 0
+[12:36:34]   qa_ws.max_row: 16984
+[12:36:34]   master_ws.max_row: 2475
+[12:36:34]   QA file headers: ['Col1:DialogType', 'Col2:Group', 'Col3:SequenceName', 'Col4:DialogVoice', 'Col5:RECORDING', 'Col6:Text', 'Col7:STATUS', 'Col8:MEMO', 'Col9:EventName']
+[12:36:34]   QA MEMO column: 8
+[12:36:35]   STATUS column found at col 7
+[12:36:35]   rows_to_process: 882
+[12:36:35]   STATUS distribution in QA file:
+[12:36:35]     ISSUE: 25
+[12:36:35]     NON-ISSUE: 857
+[12:36:35]   Row 4: tester_comment='EMPTY...'
+[12:36:48] 
+[12:36:48] [PROCESS_SHEET RESULT] Sequencer/조서영
+[12:36:48]   rows_to_process: 882
+[12:36:48]   stats.total: 882 (rows that matched master)
+[12:36:48]   stats.issue: 25 <-- THIS IS ISSUE COUNT
+[12:36:48]   stats.no_issue: 857
+[12:36:48]   stats.blocked: 0
+[12:36:48]   stats.korean: 0
+[12:36:48]   match_stats.exact: 882
+[12:36:48]   match_stats.fallback: 0
+[12:36:48]   match_stats.unmatched: 0
+[12:36:48]   comments written: 25
+[12:36:48]   manager_restored: 0
+[12:36:48] 
+[12:36:48] [DAILY_ENTRY CREATED] Sequencer/조서영
+[12:36:48]   date: 2026-01-22
+[12:36:48]   category: Sequencer (lookup will use: Script)
+[12:36:48]   total_rows: 882
+[12:36:48]   done: 882 (issue=25 + no_issue=857 + blocked=0 + korean=0)
+[12:36:48]   issues: 25 <-- THIS IS THE TESTER ISSUE COUNT
+[12:36:48]   word_count: 5569
+[12:36:48] 
+[12:36:48] [DAILY_ENTRY CREATED] Sequencer/유지윤
+[12:36:48]   date: 2026-01-23
+[12:36:48]   category: Sequencer (lookup will use: Script)
+[12:36:48]   total_rows: 1542
+[12:36:48]   done: 1542 (issue=159 + no_issue=1383 + blocked=0 + korean=0)
+[12:36:48]   issues: 159 <-- THIS IS THE TESTER ISSUE COUNT
+[12:36:48]   word_count: 10019
+[12:36:52] 
+[12:36:52] ============================================================
+[12:36:52] [PROCESS_CATEGORY] Dialog [EN]
+[12:36:52] ============================================================
+[12:36:52]   target_master: Script
+[12:36:52]   qa_folders count: 4
+[12:36:52]     - 김정원: C:\Users\PEARL\Desktop\QACompiler_v26.126.1056_Source\QAfolder\김정원_Dialog\김정원_Dialog.xlsx
+[12:36:52]     - 김찬용: C:\Users\PEARL\Desktop\QACompiler_v26.126.1056_Source\QAfolder\김찬용_Dialog\김찬용_Dialog.xlsx
+[12:36:52]     - 성가은: C:\Users\PEARL\Desktop\QACompiler_v26.126.1056_Source\QAfolder\성가은_Dialog\성가은_Dialog.xlsx
+[12:36:52]     - 황하연: C:\Users\PEARL\Desktop\QACompiler_v26.126.1056_Source\QAfolder\황하연_Dialog\황하연_Dialog.xlsx
+[12:37:15] 
+[12:37:15] ============================================================
+[12:37:15] [PROCESS_SHEET] Dialog/김정원_Dialog.xlsx/김정원
+[12:37:15] ============================================================
+[12:37:15]   manager_status keys (sheet-level): 0
+[12:37:15]   qa_ws.max_row: 39238
+[12:37:15]   master_ws.max_row: 19931
+[12:37:15]   QA file headers: ['Col1:DialogType', 'Col2:Group', 'Col3:SequenceName', 'Col4:DialogVoice', 'Col5:RECORDING', 'Col6:Text', 'Col7:STATUS', 'Col8:COMMENT', 'Col9:SubTimelineName', 'Col10:EventName']
+[12:37:15]   QA MEMO column: None (using COMMENT fallback at col 8)
+[12:37:57]   STATUS column found at col 7
+[12:37:57]   rows_to_process: 7033
+[12:37:57]   STATUS distribution in QA file:
+[12:37:57]     ISSUE: 191
+[12:37:57]     NON-ISSUE: 6842
+[12:37:57]   Row 2: tester_comment='EMPTY...'
+[12:44:08] 
+[12:44:08] [PROCESS_SHEET RESULT] Dialog/김정원
+[12:44:08]   rows_to_process: 7033
+[12:44:08]   stats.total: 7033 (rows that matched master)
+[12:44:08]   stats.issue: 191 <-- THIS IS ISSUE COUNT
+[12:44:08]   stats.no_issue: 6842
+[12:44:08]   stats.blocked: 0
+[12:44:08]   stats.korean: 0
+[12:44:08]   match_stats.exact: 7033
+[12:44:08]   match_stats.fallback: 0
+[12:44:08]   match_stats.unmatched: 0
+[12:44:08]   comments written: 191
+[12:44:08]   manager_restored: 0
+[12:44:12] 
+[12:44:12] ============================================================
+[12:44:12] [PROCESS_SHEET] Dialog/김찬용_Dialog.xlsx/김찬용
+[12:44:12] ============================================================
+[12:44:12]   manager_status keys (sheet-level): 0
+[12:44:12]   qa_ws.max_row: 39238
+[12:44:12]   master_ws.max_row: 19981
+[12:44:13]   QA file headers: ['Col1:DialogType', 'Col2:Group', 'Col3:SequenceName', 'Col4:DialogVoice', 'Col5:RECORDING', 'Col6:Text', 'Col7:STATUS', 'Col8:COMMENT', 'Col9:SubTimelineName', 'Col10:EventName']
+[12:44:13]   QA MEMO column: None (using COMMENT fallback at col 8)
+[12:45:29]   STATUS column found at col 7
+[12:45:29]   rows_to_process: 4088
+[12:45:29]   STATUS distribution in QA file:
+[12:45:29]     ISSUE: 279
+[12:45:29]     NON-ISSUE: 3809
+[12:50:18] 
+[12:50:18] [PROCESS_SHEET RESULT] Dialog/김찬용
+[12:50:18]   rows_to_process: 4088
+[12:50:18]   stats.total: 4088 (rows that matched master)
+[12:50:18]   stats.issue: 279 <-- THIS IS ISSUE COUNT
+[12:50:18]   stats.no_issue: 3809
+[12:50:18]   stats.blocked: 0
+[12:50:18]   stats.korean: 0
+[12:50:18]   match_stats.exact: 4088
+[12:50:18]   match_stats.fallback: 0
+[12:50:18]   match_stats.unmatched: 0
+[12:50:18]   comments written: 276
+[12:50:18]   manager_restored: 0
+[12:50:23] 
+[12:50:23] ============================================================
+[12:50:23] [PROCESS_SHEET] Dialog/성가은_Dialog.xlsx/성가은
+[12:50:23] ============================================================
+[12:50:23]   manager_status keys (sheet-level): 0
+[12:50:23]   qa_ws.max_row: 39238
+[12:50:23]   master_ws.max_row: 20031
+[12:50:23]   QA file headers: ['Col1:DialogType', 'Col2:Group', 'Col3:SequenceName', 'Col4:DialogVoice', 'Col5:RECORDING', 'Col6:Text', 'Col7:STATUS', 'Col8:COMMENT', 'Col9:SubTimelineName', 'Col10:EventName']
+[12:50:23]   QA MEMO column: None (using COMMENT fallback at col 8)
+[12:51:43]   STATUS column found at col 7
+[12:51:43]   rows_to_process: 1697
+[12:51:43]   STATUS distribution in QA file:
+[12:51:43]     ISSUE: 331
+[12:51:43]     NON-ISSUE: 1366
+[12:54:06] 
+[12:54:06] [PROCESS_SHEET RESULT] Dialog/성가은
+[12:54:06]   rows_to_process: 1697
+[12:54:06]   stats.total: 1697 (rows that matched master)
+[12:54:06]   stats.issue: 331 <-- THIS IS ISSUE COUNT
+[12:54:06]   stats.no_issue: 1366
+[12:54:06]   stats.blocked: 0
+[12:54:06]   stats.korean: 0
+[12:54:06]   match_stats.exact: 1697
+[12:54:06]   match_stats.fallback: 0
+[12:54:06]   match_stats.unmatched: 0
+[12:54:06]   comments written: 331
+[12:54:06]   manager_restored: 0
+[12:54:11] 
+[12:54:11] ============================================================
+[12:54:11] [PROCESS_SHEET] Dialog/황하연_Dialog.xlsx/황하연
+[12:54:11] ============================================================
+[12:54:11]   manager_status keys (sheet-level): 0
+[12:54:11]   qa_ws.max_row: 39238
+[12:54:11]   master_ws.max_row: 20081
+[12:54:11]   QA file headers: ['Col1:DialogType', 'Col2:Group', 'Col3:SequenceName', 'Col4:DialogVoice', 'Col5:RECORDING', 'Col6:Text', 'Col7:STATUS', 'Col8:COMMENT', 'Col9:SubTimelineName', 'Col10:EventName']
+[12:54:11]   QA MEMO column: None (using COMMENT fallback at col 8)
+[12:55:33]   STATUS column found at col 7
+[12:55:33]   rows_to_process: 7114
+[12:55:33]   STATUS distribution in QA file:
+[12:55:33]     ISSUE: 41
+[12:55:33]     NON-ISSUE: 7073
+[12:55:33]   Row 2: tester_comment='EMPTY...'
+[12:55:33]   Row 3: tester_comment='EMPTY...'
+[12:55:33]   Row 4: tester_comment='EMPTY...'
+[12:55:33]   Row 5: tester_comment='EMPTY...'
+[13:05:12] 
+[13:05:12] [PROCESS_SHEET RESULT] Dialog/황하연
+[13:05:12]   rows_to_process: 7114
+[13:05:12]   stats.total: 7114 (rows that matched master)
+[13:05:12]   stats.issue: 41 <-- THIS IS ISSUE COUNT
+[13:05:12]   stats.no_issue: 7073
+[13:05:12]   stats.blocked: 0
+[13:05:12]   stats.korean: 0
+[13:05:12]   match_stats.exact: 7114
+[13:05:12]   match_stats.fallback: 0
+[13:05:12]   match_stats.unmatched: 0
+[13:05:12]   comments written: 41
+[13:05:12]   manager_restored: 0
+[13:05:12] 
+[13:05:12] [DAILY_ENTRY CREATED] Dialog/김찬용
+[13:05:12]   date: 2026-01-23
+[13:05:12]   category: Dialog (lookup will use: Script)
+[13:05:12]   total_rows: 4088
+[13:05:12]   done: 4088 (issue=279 + no_issue=3809 + blocked=0 + korean=0)
+[13:05:12]   issues: 279 <-- THIS IS THE TESTER ISSUE COUNT
+[13:05:12]   word_count: 38611
+[13:05:12] 
+[13:05:12] [DAILY_ENTRY CREATED] Dialog/성가은
+[13:05:12]   date: 2026-01-23
+[13:05:12]   category: Dialog (lookup will use: Script)
+[13:05:12]   total_rows: 1697
+[13:05:12]   done: 1697 (issue=331 + no_issue=1366 + blocked=0 + korean=0)
+[13:05:12]   issues: 331 <-- THIS IS THE TESTER ISSUE COUNT
+[13:05:12]   word_count: 17569
+[13:05:12] 
+[13:05:12] [DAILY_ENTRY CREATED] Dialog/황하연
+[13:05:12]   date: 2026-01-23
+[13:05:12]   category: Dialog (lookup will use: Script)
+[13:05:12]   total_rows: 7114
+[13:05:12]   done: 7114 (issue=41 + no_issue=7073 + blocked=0 + korean=0)
+[13:05:12]   issues: 41 <-- THIS IS THE TESTER ISSUE COUNT
+[13:05:12]   word_count: 32498
+[13:05:12] 
+[13:05:12] [DAILY_ENTRY CREATED] Dialog/김정원
+[13:05:12]   date: 2026-01-23
+[13:05:12]   category: Dialog (lookup will use: Script)
+[13:05:12]   total_rows: 7033
+[13:05:12]   done: 7033 (issue=191 + no_issue=6842 + blocked=0 + korean=0)
+[13:05:12]   issues: 191 <-- THIS IS THE TESTER ISSUE COUNT
+[13:05:12]   word_count: 36119
+[13:18:57] 
+[13:18:57] ============================================================
+[13:18:57] [PROCESS_CATEGORY] Sequencer [CN]
+[13:18:57] ============================================================
+[13:18:57]   target_master: Script
+[13:18:57]   qa_folders count: 2
+[13:18:57]     - 김춘애: C:\Users\PEARL\Desktop\QACompiler_v26.126.1056_Source\QAfolder\김춘애_Sequencer\260121 CN SCRIPT_v2.xlsx
+[13:18:57]     - 리쓰한: C:\Users\PEARL\Desktop\QACompiler_v26.126.1056_Source\QAfolder\리쓰한_Sequencer\리쓰한_260121 CN SCRIPT_v2.xlsx
