@@ -285,8 +285,8 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
         "fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "korean": 0
     })
 
-    # GRANULAR: Track Script category data
-    script_category_data = []
+    # GRANULAR: Track all category data per user for debugging
+    user_category_breakdown = defaultdict(list)
 
     for (user, category), data in latest_data.items():
         user_data[user]["total_rows"] += data["total_rows"]
@@ -300,38 +300,53 @@ def read_latest_data_for_total(wb: openpyxl.Workbook) -> Tuple[Dict, Dict]:
         user_data[user]["nonissue"] += data["nonissue"]
         user_data[user]["korean"] += data.get("korean", 0)
 
-        # GRANULAR: Track Script-type categories (Sequencer/Dialog)
-        if category in ("Sequencer", "Dialog"):
-            pending = max(0, data["issues"] - data["fixed"] - data["reported"] - data["checking"] - data["nonissue"])
-            script_category_data.append({
-                "user": user,
-                "category": category,
-                "date": data["date"],
-                "issues": data["issues"],
-                "fixed": data["fixed"],
-                "reported": data["reported"],
-                "checking": data["checking"],
-                "nonissue": data["nonissue"],
-                "pending": pending
-            })
+        # GRANULAR: Track ALL categories for each user
+        pending = max(0, data["issues"] - data["fixed"] - data["reported"] - data["checking"] - data["nonissue"])
+        user_category_breakdown[user].append({
+            "category": category,
+            "date": data["date"],
+            "issues": data["issues"],
+            "fixed": data["fixed"],
+            "reported": data["reported"],
+            "checking": data["checking"],
+            "nonissue": data["nonissue"],
+            "pending": pending
+        })
 
-    # GRANULAR: Log Script category data
-    if script_category_data:
-        print(f"\n[DEBUG TOTAL] Script category breakdown ({len(script_category_data)} entries):")
-        for scd in script_category_data:
-            print(f"  {scd['user']}/{scd['category']}: issues={scd['issues']}, fixed={scd['fixed']}, reported={scd['reported']}, checking={scd['checking']}, nonissue={scd['nonissue']} => PENDING={scd['pending']}")
-        total_script_issues = sum(s["issues"] for s in script_category_data)
-        total_script_pending = sum(s["pending"] for s in script_category_data)
-        print(f"  TOTAL Script: issues={total_script_issues}, pending={total_script_pending}")
+    # GRANULAR: Log ALL user category breakdowns with PENDING calculation
+    print(f"\n[DEBUG TOTAL] ===== USER CATEGORY BREAKDOWN (from _DAILY_DATA) =====")
+    for user in sorted(user_category_breakdown.keys()):
+        categories = user_category_breakdown[user]
+        total_issues = sum(c["issues"] for c in categories)
+        total_fixed = sum(c["fixed"] for c in categories)
+        total_reported = sum(c["reported"] for c in categories)
+        total_checking = sum(c["checking"] for c in categories)
+        total_nonissue = sum(c["nonissue"] for c in categories)
+        total_pending = sum(c["pending"] for c in categories)
 
-    # Debug: show users with 0 done
-    print(f"\n[DEBUG TOTAL] Aggregated {len(user_data)} users:")
-    zero_users = [u for u, d in user_data.items() if d["done"] == 0]
-    if zero_users:
-        print(f"  [WARN] Users with done=0: {zero_users}")
-        for zu in zero_users[:5]:  # Show first 5
-            cats = [(cat, data["date"], data["done"]) for (u, cat), data in latest_data.items() if u == zu]
-            print(f"    {zu}: {cats}")
+        print(f"\n  [{user}] TOTAL: issues={total_issues}, fixed={total_fixed}, reported={total_reported}, checking={total_checking}, nonissue={total_nonissue} => PENDING={total_pending}")
+        for cat_data in categories:
+            print(f"    - {cat_data['category']}: issues={cat_data['issues']}, fixed={cat_data['fixed']}, reported={cat_data['reported']}, checking={cat_data['checking']}, nonissue={cat_data['nonissue']} => PENDING={cat_data['pending']}")
+
+    print(f"\n[DEBUG TOTAL] ===== AGGREGATED USER DATA =====")
+    print(f"  Total users: {len(user_data)}")
+
+    # Show users with PENDING=0 but issues > 0 (potential problems)
+    problem_users = []
+    for user, data in user_data.items():
+        agg_pending = max(0, data["issues"] - data["fixed"] - data["reported"] - data["checking"] - data["nonissue"])
+        if data["issues"] > 0 and agg_pending == 0:
+            problem_users.append((user, data["issues"], agg_pending))
+
+    if problem_users:
+        print(f"\n  [WARN] Users with issues > 0 but PENDING = 0:")
+        for user, issues, pending in problem_users:
+            print(f"    {user}: issues={issues}, PENDING={pending}")
+
+    # Show users with 0 issues (expected to have PENDING=0)
+    zero_issue_users = [u for u, d in user_data.items() if d["issues"] == 0]
+    if zero_issue_users:
+        print(f"\n  [INFO] Users with issues=0: {zero_issue_users}")
 
     return latest_data, dict(user_data)
 
@@ -431,6 +446,8 @@ def build_tester_section(
         "actual_done": 0
     }
 
+    print(f"\n[DEBUG TOTAL] ===== WRITING TO TOTAL SHEET: {section_title} =====")
+
     for idx, user in enumerate(users_list):
         data = user_data[user]
         total_rows = data["total_rows"]
@@ -445,6 +462,9 @@ def build_tester_section(
         nonissue = data["nonissue"]
         # Pending = Issues - Fixed - Reported - Checking - NonIssue
         pending = max(0, issues - fixed - reported - checking - nonissue)
+
+        # GRANULAR: Log every row being written to TOTAL sheet
+        print(f"  [{user}] issues={issues}, fixed={fixed}, reported={reported}, checking={checking}, nonissue={nonissue} => PENDING={pending}")
 
         # Workload Analysis calculations
         actual_done = done - blocked - korean  # Actual productive work
@@ -504,6 +524,9 @@ def build_tester_section(
             user_row_tracker.append((current_row, user))
 
         current_row += 1
+
+    # GRANULAR: Log section total
+    print(f"\n  [SECTION TOTAL] {section_title}: issues={section_total['issues']}, fixed={section_total['fixed']}, reported={section_total['reported']}, checking={section_total['checking']}, nonissue={section_total['nonissue']} => PENDING={section_total['pending']}")
 
     # Section subtotal row (with thick bottom border for separation)
     st = section_total
