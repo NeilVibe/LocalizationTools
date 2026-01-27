@@ -174,8 +174,8 @@ LanguageDataExporter/
 
 ### Trigger Build
 ```bash
-# From repo root:
-echo "Build: <description>" >> RessourcesForCodingTheProject/NewScripts/LanguageDataExporter/LANGUAGEDATAEXPORTER_BUILD.txt
+# From repo root (trigger file is at ROOT, not in project folder!):
+echo "Build: <description>" >> LANGUAGEDATAEXPORTER_BUILD.txt
 git add -A && git commit -m "Trigger LDE build" && git push origin main
 ```
 
