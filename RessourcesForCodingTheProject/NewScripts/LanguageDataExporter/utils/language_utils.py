@@ -208,13 +208,11 @@ def should_include_english_column(lang_code: str) -> bool:
     """
     Determine if English column should be included for this language.
 
-    English column is included for:
-    - European languages (FRE, GER, SPA, POR, ITA, RUS, TUR, POL)
-    - SEA languages (KOR, THA, VIE, IND, MSA)
-
-    English column is excluded for:
+    English column is EXCLUDED for:
     - English (ENG) - it IS the English
     - Asian languages with culturally distinct translation (JPN, ZHO-CN, ZHO-TW)
+
+    All other languages (including any hyphenated variants) GET the English column.
 
     Args:
         lang_code: Language code to check
@@ -222,4 +220,4 @@ def should_include_english_column(lang_code: str) -> bool:
     Returns:
         True if English column should be included
     """
-    return lang_code.lower() in ENGLISH_COLUMN_LANGUAGES
+    return lang_code.lower() not in NO_ENGLISH_COLUMN_LANGUAGES
