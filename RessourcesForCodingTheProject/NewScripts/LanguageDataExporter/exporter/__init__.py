@@ -6,6 +6,7 @@ Modules:
 - category_mapper: Build StringID → Category from EXPORT folder (two-tier clustering)
 - excel_writer: Generate Excel files with openpyxl
 - submit_preparer: Prepare files for LQA submission
+- locdev_merger: Merge corrections back to LOCDEV XML files
 """
 
 from .xml_parser import parse_language_file, discover_language_files
@@ -23,6 +24,18 @@ from .submit_preparer import (
     prepare_all_for_submit,
     collect_correction_stats,
 )
+from .locdev_merger import (
+    normalize_text,
+    parse_corrections_from_excel,
+    merge_corrections_to_locdev,
+    merge_all_corrections,
+)
+from .pattern_analyzer import (
+    extract_code_patterns,
+    cluster_patterns,
+    analyze_patterns,
+    generate_pattern_report,
+)
 
 __all__ = [
     "parse_language_file",
@@ -37,4 +50,14 @@ __all__ = [
     "prepare_file_for_submit",
     "prepare_all_for_submit",
     "collect_correction_stats",
+    # LOCDEV merger
+    "normalize_text",
+    "parse_corrections_from_excel",
+    "merge_corrections_to_locdev",
+    "merge_all_corrections",
+    # Pattern analyzer
+    "extract_code_patterns",
+    "cluster_patterns",
+    "analyze_patterns",
+    "generate_pattern_report",
 ]
