@@ -1,9 +1,9 @@
 """
 TOTAL sheet builder for Correction Progress Tracker.
 
-Contains two tables:
-1. Per-Language Summary (STRING count)
-2. Per-Category/Per-Language % Done (with Korean word count)
+Contains summary table showing per-language merge results:
+- Language, Corrections, Success, Fail, Success %
+- Professional formatting with color-coded success rates, bold totals
 """
 
 import logging
@@ -17,12 +17,43 @@ logger = logging.getLogger(__name__)
 
 TOTAL_SHEET_NAME = "TOTAL"
 
-# Styling
-HEADER_FONT = Font(bold=True, size=11)
-HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-HEADER_FONT_WHITE = Font(bold=True, size=11, color="FFFFFF")
-TITLE_FONT = Font(bold=True, size=14)
-SECTION_FONT = Font(bold=True, size=12)
+# =============================================================================
+# STYLING CONSTANTS (Professional Excel Theme)
+# =============================================================================
+
+# Colors (Microsoft Office Blue palette)
+BLUE_DARK = "1F4E79"
+BLUE_HEADER = "4472C4"
+BLUE_LIGHT = "D9E2F3"
+GREEN_SUCCESS = "C6EFCE"
+GREEN_DARK = "63BE7B"
+YELLOW_WARN = "FFEB9C"
+RED_FAIL = "FFC7CE"
+GRAY_ALT = "F2F2F2"
+
+# Title styling
+TITLE_FONT = Font(bold=True, size=16, color="FFFFFF")
+TITLE_FILL = PatternFill(start_color=BLUE_DARK, end_color=BLUE_DARK, fill_type="solid")
+TITLE_ALIGNMENT = Alignment(horizontal="center", vertical="center")
+
+# Header styling
+HEADER_FONT = Font(bold=True, size=11, color="FFFFFF")
+HEADER_FILL = PatternFill(start_color=BLUE_HEADER, end_color=BLUE_HEADER, fill_type="solid")
+HEADER_ALIGNMENT = Alignment(horizontal="center", vertical="center")
+
+# Data styling
+DATA_FONT = Font(size=10)
+DATA_ALIGNMENT = Alignment(horizontal="center", vertical="center")
+
+# Total row styling
+TOTAL_FONT = Font(bold=True, size=11)
+TOTAL_FILL = PatternFill(start_color=BLUE_LIGHT, end_color=BLUE_LIGHT, fill_type="solid")
+
+# Alternating row fills
+ROW_FILL_WHITE = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+ROW_FILL_ALT = PatternFill(start_color=GRAY_ALT, end_color=GRAY_ALT, fill_type="solid")
+
+# Borders
 THIN_BORDER = Border(
     left=Side(style='thin'),
     right=Side(style='thin'),
@@ -30,19 +61,54 @@ THIN_BORDER = Border(
     bottom=Side(style='thin')
 )
 
+HEADER_BORDER = Border(
+    left=Side(style='thin'),
+    right=Side(style='thin'),
+    top=Side(style='thin'),
+    bottom=Side(style='medium', color=BLUE_DARK)
+)
+
+TITLE_BORDER = Border(
+    left=Side(style='medium', color=BLUE_DARK),
+    right=Side(style='medium', color=BLUE_DARK),
+    top=Side(style='medium', color=BLUE_DARK),
+    bottom=Side(style='medium', color=BLUE_DARK)
+)
+
+TOTAL_BORDER = Border(
+    left=Side(style='thin'),
+    right=Side(style='thin'),
+    top=Side(style='double', color=BLUE_DARK),  # Double line above total
+    bottom=Side(style='medium', color=BLUE_DARK)
+)
+
+
+def get_success_rate_fill(rate: float) -> PatternFill:
+    """Return fill color based on success rate (0.0-1.0)."""
+    rate_pct = rate * 100
+    if rate_pct >= 95:
+        return PatternFill(start_color=GREEN_DARK, end_color=GREEN_DARK, fill_type="solid")
+    elif rate_pct >= 80:
+        return PatternFill(start_color=GREEN_SUCCESS, end_color=GREEN_SUCCESS, fill_type="solid")
+    elif rate_pct >= 60:
+        return PatternFill(start_color=YELLOW_WARN, end_color=YELLOW_WARN, fill_type="solid")
+    else:
+        return PatternFill(start_color=RED_FAIL, end_color=RED_FAIL, fill_type="solid")
+
 
 def build_total_sheet(
     wb: Workbook,
-    latest_data: Dict[str, Dict[str, Dict]],
-    categories: List[str]
+    latest_data: Dict[str, Dict],
+    categories: List[str] = None
 ) -> None:
     """
-    Build the TOTAL sheet with summary tables.
+    Build the TOTAL sheet with summary table.
 
     Args:
         wb: Workbook to add sheet to
-        latest_data: Dict[language, Dict[category, Dict]] from get_latest_week_data()
-        categories: List of category names to include in per-category table
+        latest_data: Dict[language, Dict] from get_latest_week_data()
+            Each dict has: Corrections, Success, Fail, MergeDate
+        categories: Not used in new schema (kept for API compatibility)
     """
     # Create or get sheet
     if TOTAL_SHEET_NAME in wb.sheetnames:
@@ -51,166 +117,172 @@ def build_total_sheet(
     ws = wb.create_sheet(TOTAL_SHEET_NAME, 1)  # Second position
 
     if not latest_data:
-        ws.cell(row=1, column=1, value="No data yet. Run 'Prepare For Submit' to collect data.")
+        ws.cell(row=1, column=1, value="No data yet. Run 'Merge to LOCDEV' to collect data.")
         return
 
     # Get sorted language list
     languages = sorted(latest_data.keys())
 
-    # =========================================================================
-    # Table 1: Per-Language Summary
-    # =========================================================================
-    _build_language_summary_table(ws, latest_data, languages, start_row=1)
+    # ==========================================================================
+    # TITLE ROW
+    # ==========================================================================
+    ws.merge_cells('A1:E1')
+    title_cell = ws.cell(row=1, column=1, value="MERGE SUMMARY - LATEST WEEK")
+    title_cell.font = TITLE_FONT
+    title_cell.fill = TITLE_FILL
+    title_cell.alignment = TITLE_ALIGNMENT
+    title_cell.border = TITLE_BORDER
 
-    # =========================================================================
-    # Table 2: Per-Category/Per-Language % Done
-    # =========================================================================
-    # Calculate start row (after table 1 + gap)
-    table2_start = len(languages) + 7
-    _build_category_table(ws, latest_data, languages, categories, start_row=table2_start)
+    # Apply border to merged cells
+    for col in range(2, 6):
+        ws.cell(row=1, column=col).border = TITLE_BORDER
+
+    # Empty row 2 for spacing
+    ws.row_dimensions[2].height = 8
+
+    # ==========================================================================
+    # HEADER ROW (row 3)
+    # ==========================================================================
+    header_row = 3
+    headers = ["Language", "Corrections", "Success", "Fail", "Success %"]
+    widths = [14, 14, 12, 10, 14]
+
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=header_row, column=col, value=header)
+        cell.font = HEADER_FONT
+        cell.fill = HEADER_FILL
+        cell.alignment = HEADER_ALIGNMENT
+        cell.border = HEADER_BORDER
 
     # Set column widths
-    ws.column_dimensions['A'].width = 15  # Category/Language column
+    for col, width in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(col)].width = width
 
-    logger.info(f"Built TOTAL sheet with {len(languages)} languages, {len(categories)} categories")
+    # ==========================================================================
+    # DATA ROWS
+    # ==========================================================================
+    data_row = header_row + 1
+    total_corrections = 0
+    total_success = 0
+    total_fail = 0
 
+    for idx, lang in enumerate(languages):
+        lang_data = latest_data.get(lang, {})
 
-def _build_language_summary_table(
-    ws,
-    data: Dict[str, Dict[str, Dict]],
-    languages: List[str],
-    start_row: int
-) -> int:
-    """
-    Build Table 1: Per-Language Summary.
+        corrections = lang_data.get("Corrections", 0)
+        success = lang_data.get("Success", 0)
+        fail = lang_data.get("Fail", 0)
+        success_rate = (success / corrections) if corrections > 0 else 0
 
-    | Language | Corrected | Pending | Total | % Complete | Korean Words |
-    """
-    # Section title
-    ws.cell(row=start_row, column=1, value="PER-LANGUAGE SUMMARY")
-    ws.cell(row=start_row, column=1).font = TITLE_FONT
+        total_corrections += corrections
+        total_success += success
+        total_fail += fail
 
-    # Headers (row + 2)
-    header_row = start_row + 2
-    headers = ["Language", "Corrected", "Pending", "Total", "% Complete", "Korean Words"]
+        # Alternating row color
+        row_fill = ROW_FILL_ALT if (idx % 2 == 0) else ROW_FILL_WHITE
 
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=header_row, column=col, value=header)
-        cell.font = HEADER_FONT_WHITE
-        cell.fill = HEADER_FILL
-        cell.alignment = Alignment(horizontal="center")
+        # Language (bold)
+        cell = ws.cell(row=data_row, column=1, value=lang)
+        cell.font = Font(bold=True, size=10)
+        cell.fill = row_fill
+        cell.alignment = DATA_ALIGNMENT
         cell.border = THIN_BORDER
 
-    # Data rows
-    data_row = header_row + 1
-    for lang in languages:
-        lang_data = data.get(lang, {})
+        # Corrections
+        cell = ws.cell(row=data_row, column=2, value=corrections)
+        cell.font = DATA_FONT
+        cell.fill = row_fill
+        cell.alignment = DATA_ALIGNMENT
+        cell.border = THIN_BORDER
+        cell.number_format = '#,##0'
 
-        # Aggregate across all categories
-        total_corrected = sum(cat.get("Corrected", 0) for cat in lang_data.values())
-        total_pending = sum(cat.get("Pending", 0) for cat in lang_data.values())
-        total_kr_words = sum(cat.get("KRWords", 0) for cat in lang_data.values())
-        total = total_corrected + total_pending
-        pct_complete = (total_corrected / total) if total > 0 else 0
+        # Success
+        cell = ws.cell(row=data_row, column=3, value=success)
+        cell.font = DATA_FONT
+        cell.fill = row_fill
+        cell.alignment = DATA_ALIGNMENT
+        cell.border = THIN_BORDER
+        cell.number_format = '#,##0'
 
-        ws.cell(row=data_row, column=1, value=lang)
-        ws.cell(row=data_row, column=2, value=total_corrected)
-        ws.cell(row=data_row, column=3, value=total_pending)
-        ws.cell(row=data_row, column=4, value=total)
+        # Fail
+        cell = ws.cell(row=data_row, column=4, value=fail)
+        cell.font = DATA_FONT
+        if fail > 0:
+            cell.fill = PatternFill(start_color=RED_FAIL, end_color=RED_FAIL, fill_type="solid")
+        else:
+            cell.fill = row_fill
+        cell.alignment = DATA_ALIGNMENT
+        cell.border = THIN_BORDER
+        cell.number_format = '#,##0'
 
-        pct_cell = ws.cell(row=data_row, column=5, value=pct_complete)
-        pct_cell.number_format = '0.0%'
-
-        ws.cell(row=data_row, column=6, value=total_kr_words)
-
-        # Apply borders and alignment
-        for col in range(1, 7):
-            ws.cell(row=data_row, column=col).border = THIN_BORDER
-            ws.cell(row=data_row, column=col).alignment = Alignment(horizontal="center")
+        # Success % with color gradient
+        cell = ws.cell(row=data_row, column=5, value=success_rate)
+        cell.font = Font(bold=True, size=10)
+        cell.fill = get_success_rate_fill(success_rate)
+        cell.alignment = DATA_ALIGNMENT
+        cell.border = THIN_BORDER
+        cell.number_format = '0.0%'
 
         data_row += 1
 
-    return data_row
+    # ==========================================================================
+    # TOTAL ROW
+    # ==========================================================================
+    total_success_rate = (total_success / total_corrections) if total_corrections > 0 else 0
 
+    # Language column - "TOTAL"
+    cell = ws.cell(row=data_row, column=1, value="TOTAL")
+    cell.font = TOTAL_FONT
+    cell.fill = TOTAL_FILL
+    cell.alignment = DATA_ALIGNMENT
+    cell.border = TOTAL_BORDER
 
-def _build_category_table(
-    ws,
-    data: Dict[str, Dict[str, Dict]],
-    languages: List[str],
-    categories: List[str],
-    start_row: int
-) -> int:
-    """
-    Build Table 2: Per-Category/Per-Language % Done.
+    # Corrections total
+    cell = ws.cell(row=data_row, column=2, value=total_corrections)
+    cell.font = TOTAL_FONT
+    cell.fill = TOTAL_FILL
+    cell.alignment = DATA_ALIGNMENT
+    cell.border = TOTAL_BORDER
+    cell.number_format = '#,##0'
 
-    | Category | ENG | FRE | GER | ... | Total KR Words |
-    """
-    # Section title
-    ws.cell(row=start_row, column=1, value="PER-CATEGORY COMPLETION")
-    ws.cell(row=start_row, column=1).font = TITLE_FONT
+    # Success total
+    cell = ws.cell(row=data_row, column=3, value=total_success)
+    cell.font = TOTAL_FONT
+    cell.fill = TOTAL_FILL
+    cell.alignment = DATA_ALIGNMENT
+    cell.border = TOTAL_BORDER
+    cell.number_format = '#,##0'
 
-    # Headers: Category + each language + Total KR Words
-    header_row = start_row + 2
-    headers = ["Category"] + languages + ["Total KR Words"]
+    # Fail total
+    cell = ws.cell(row=data_row, column=4, value=total_fail)
+    cell.font = TOTAL_FONT
+    if total_fail > 0:
+        cell.fill = PatternFill(start_color=RED_FAIL, end_color=RED_FAIL, fill_type="solid")
+    else:
+        cell.fill = TOTAL_FILL
+    cell.alignment = DATA_ALIGNMENT
+    cell.border = TOTAL_BORDER
+    cell.number_format = '#,##0'
 
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=header_row, column=col, value=header)
-        cell.font = HEADER_FONT_WHITE
-        cell.fill = HEADER_FILL
-        cell.alignment = Alignment(horizontal="center")
-        cell.border = THIN_BORDER
+    # Success % total with color
+    cell = ws.cell(row=data_row, column=5, value=total_success_rate)
+    cell.font = Font(bold=True, size=11, color="FFFFFF")
+    cell.fill = get_success_rate_fill(total_success_rate)
+    cell.alignment = DATA_ALIGNMENT
+    cell.border = TOTAL_BORDER
+    cell.number_format = '0.0%'
 
-        # Set width for language columns
-        if col > 1 and col < len(headers):
-            ws.column_dimensions[get_column_letter(col)].width = 8
-        elif col == len(headers):
-            ws.column_dimensions[get_column_letter(col)].width = 14
+    # ==========================================================================
+    # FINAL TOUCHES
+    # ==========================================================================
 
-    # Collect all categories that have data
-    all_cats_with_data: Set[str] = set()
-    for lang_data in data.values():
-        all_cats_with_data.update(lang_data.keys())
+    # Freeze header row
+    ws.freeze_panes = 'A4'
 
-    # Use predefined categories order, plus any extras
-    ordered_categories = [c for c in categories if c in all_cats_with_data]
-    extra_cats = sorted(all_cats_with_data - set(categories))
-    ordered_categories.extend(extra_cats)
+    # Set row heights
+    ws.row_dimensions[1].height = 28  # Title row
+    ws.row_dimensions[3].height = 22  # Header row
+    for row in range(4, data_row + 1):
+        ws.row_dimensions[row].height = 20
 
-    # Data rows
-    data_row = header_row + 1
-    for category in ordered_categories:
-        ws.cell(row=data_row, column=1, value=category)
-        ws.cell(row=data_row, column=1).border = THIN_BORDER
-
-        total_kr_words = 0
-
-        for col_idx, lang in enumerate(languages, 2):
-            lang_data = data.get(lang, {})
-            cat_data = lang_data.get(category, {})
-
-            corrected = cat_data.get("Corrected", 0)
-            pending = cat_data.get("Pending", 0)
-            kr_words = cat_data.get("KRWords", 0)
-            total = corrected + pending
-            pct = (corrected / total) if total > 0 else 0
-
-            total_kr_words += kr_words
-
-            if total > 0:
-                pct_cell = ws.cell(row=data_row, column=col_idx, value=pct)
-                pct_cell.number_format = '0.0%'
-            else:
-                ws.cell(row=data_row, column=col_idx, value="-")
-
-            ws.cell(row=data_row, column=col_idx).border = THIN_BORDER
-            ws.cell(row=data_row, column=col_idx).alignment = Alignment(horizontal="center")
-
-        # Total KR Words column
-        kr_col = len(languages) + 2
-        ws.cell(row=data_row, column=kr_col, value=total_kr_words)
-        ws.cell(row=data_row, column=kr_col).border = THIN_BORDER
-        ws.cell(row=data_row, column=kr_col).alignment = Alignment(horizontal="center")
-
-        data_row += 1
-
-    return data_row
+    logger.info(f"Built TOTAL sheet with {len(languages)} languages")

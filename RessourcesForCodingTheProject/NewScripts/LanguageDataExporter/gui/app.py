@@ -38,8 +38,8 @@ from exporter import (
     write_language_excel,
     discover_submit_files,
     prepare_all_for_submit,
-    collect_correction_stats,
     merge_all_corrections,
+    print_merge_report,
     analyze_patterns,
     generate_pattern_report,
 )
@@ -411,7 +411,7 @@ class LanguageDataExporterGUI:
             messagebox.showerror("Error", f"Could not open folder: {e}")
 
     def _prepare_for_submit(self):
-        """Prepare files in ToSubmit folder for LQA submission."""
+        """Prepare files in ToSubmit folder - extract rows with corrections."""
         # Check if ToSubmit folder exists
         if not TOSUBMIT_FOLDER.exists():
             ensure_tosubmit_folder()
@@ -442,9 +442,9 @@ class LanguageDataExporterGUI:
             f"{file_list}\n\n"
             "Operations:\n"
             "1. Create backup of all files\n"
-            "2. Apply corrections (Correction → Str)\n"
-            "3. Keep only: StrOrigin, Str, StringID\n"
-            "4. Update progress tracker\n\n"
+            "2. Extract rows with Correction values\n"
+            "3. Output only: StrOrigin, Correction, StringID\n\n"
+            "Note: Progress tracker is updated during 'Merge to LOCDEV'.\n\n"
             "Continue?"
         )
 
@@ -456,23 +456,12 @@ class LanguageDataExporterGUI:
 
         def prepare():
             try:
-                # Collect stats BEFORE preparation (while Correction column exists)
-                self.root.after(0, lambda: self._set_status("Collecting correction stats..."))
-                correction_stats = collect_correction_stats(TOSUBMIT_FOLDER)
-
                 # Prepare files
                 def progress_cb(pct, msg):
-                    self.root.after(0, lambda p=pct: self._update_progress(p * 0.7))
+                    self.root.after(0, lambda p=pct: self._update_progress(p))
                     self.root.after(0, lambda m=msg: self._set_status(m))
 
                 results = prepare_all_for_submit(TOSUBMIT_FOLDER, progress_cb)
-
-                # Update tracker
-                self.root.after(0, lambda: self._set_status("Updating progress tracker..."))
-                self.root.after(0, lambda: self._update_progress(75))
-
-                tracker = CorrectionTracker(TRACKER_PATH, TRACKER_CATEGORIES)
-                tracker.update_and_rebuild(correction_stats)
 
                 self.root.after(0, lambda: self._update_progress(100))
 
@@ -482,7 +471,7 @@ class LanguageDataExporterGUI:
                     self.root.after(0, lambda: messagebox.showwarning(
                         "Completed with Errors",
                         f"Processed {results['files_processed']} files\n"
-                        f"Applied {results['total_corrections']} corrections\n\n"
+                        f"Extracted {results['total_corrections']} corrections\n\n"
                         f"Errors:\n{error_msg}\n\n"
                         f"Backup: {results['backup_folder']}"
                     ))
@@ -490,9 +479,9 @@ class LanguageDataExporterGUI:
                     self.root.after(0, lambda: messagebox.showinfo(
                         "Success",
                         f"Prepared {results['files_processed']} files for submission!\n\n"
-                        f"Corrections applied: {results['total_corrections']}\n"
+                        f"Corrections extracted: {results['total_corrections']}\n"
                         f"Backup folder: {results['backup_folder']}\n\n"
-                        f"Tracker updated: {TRACKER_PATH.name}"
+                        f"Next step: Run 'Merge to LOCDEV' to apply and track."
                     ))
 
                 self.root.after(0, lambda: self._set_status(
@@ -509,7 +498,7 @@ class LanguageDataExporterGUI:
         threading.Thread(target=prepare, daemon=True).start()
 
     def _merge_to_locdev(self):
-        """Merge corrections from ToSubmit Excel files to LOCDEV XML files."""
+        """Merge corrections from ToSubmit Excel files to LOCDEV XML files and update tracker."""
         # Check if ToSubmit folder exists
         if not TOSUBMIT_FOLDER.exists():
             ensure_tosubmit_folder()
@@ -549,6 +538,7 @@ class LanguageDataExporterGUI:
             f"{file_list}\n\n"
             f"Into LOCDEV XML files at:\n{LOCDEV_FOLDER}\n\n"
             "Matching is STRICT: StringID + StrOrigin must BOTH match.\n\n"
+            "Progress tracker will be updated with merge results.\n\n"
             "Continue?"
         )
 
@@ -561,8 +551,19 @@ class LanguageDataExporterGUI:
         def merge():
             try:
                 self.root.after(0, lambda: self._update_progress(10))
+                self.root.after(0, lambda: self._set_status("Merging corrections..."))
 
                 results = merge_all_corrections(TOSUBMIT_FOLDER, LOCDEV_FOLDER)
+
+                # Print terminal report
+                print_merge_report(results)
+
+                self.root.after(0, lambda: self._update_progress(70))
+                self.root.after(0, lambda: self._set_status("Updating progress tracker..."))
+
+                # Update progress tracker with merge results
+                tracker = CorrectionTracker(TRACKER_PATH, TRACKER_CATEGORIES)
+                tracker.update_and_rebuild_from_merge(results)
 
                 self.root.after(0, lambda: self._update_progress(100))
 
@@ -574,22 +575,25 @@ class LanguageDataExporterGUI:
                     self.root.after(0, lambda: messagebox.showwarning(
                         "Completed with Errors",
                         f"Processed {results['files_processed']} files\n"
-                        f"Matched: {results['total_matched']}\n"
-                        f"Updated: {results['total_updated']}\n"
-                        f"Not found: {results['total_not_found']}\n\n"
+                        f"Corrections: {results['total_corrections']}\n"
+                        f"Success: {results['total_success']}\n"
+                        f"Fail: {results['total_fail']}\n\n"
+                        f"Tracker updated: {TRACKER_PATH.name}\n\n"
                         f"Errors:\n{error_msg}"
                     ))
                 else:
+                    success_rate = (results['total_success'] / results['total_corrections'] * 100) if results['total_corrections'] > 0 else 0
                     self.root.after(0, lambda: messagebox.showinfo(
                         "LOCDEV Merge Complete",
                         f"Processed {results['files_processed']} files\n\n"
-                        f"Corrections matched: {results['total_matched']}\n"
-                        f"Entries updated: {results['total_updated']}\n"
-                        f"Not found in LOCDEV: {results['total_not_found']}"
+                        f"Corrections: {results['total_corrections']}\n"
+                        f"Success: {results['total_success']} ({success_rate:.1f}%)\n"
+                        f"Fail: {results['total_fail']}\n\n"
+                        f"Tracker updated: {TRACKER_PATH.name}"
                     ))
 
                 self.root.after(0, lambda: self._set_status(
-                    f"Ready - {results['total_updated']} entries merged to LOCDEV"
+                    f"Ready - {results['total_success']} corrections merged to LOCDEV"
                 ))
 
             except Exception as ex:
