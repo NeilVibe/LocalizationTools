@@ -40,7 +40,7 @@ THIN_BORDER = Border(
 # Column widths
 DEFAULT_WIDTHS = {
     "StrOrigin": 45,
-    "ENG from LOC": 45,  # Renamed from "English"
+    "ENG": 45,
     "Str": 45,
     "Correction": 45,    # NEW column for LQA corrections
     "Category": 20,
@@ -157,7 +157,7 @@ def write_language_excel(
         True if successful, False otherwise
 
     Column structure:
-    - European: StrOrigin | ENG from LOC | Str | Correction | Category | StringID
+    - European: StrOrigin | ENG | Str | Correction | Category | StringID
     - Asian:    StrOrigin | Str | Correction | Category | StringID
     """
     try:
@@ -169,7 +169,7 @@ def write_language_excel(
         # Define headers based on language type
         # New column order: Correction column added, StringID moved to end
         if include_english:
-            headers = ["StrOrigin", "ENG from LOC", "Str", "Correction", "Category", "StringID"]
+            headers = ["StrOrigin", "ENG", "Str", "Correction", "Category", "StringID"]
         else:
             headers = ["StrOrigin", "Str", "Correction", "Category", "StringID"]
 
