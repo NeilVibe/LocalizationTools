@@ -37,3 +37,4 @@ Build: Workflow simplification + enhanced formatting
 Build 20260127-203537
 Build 20260127-210429 - Fix: Enable sheet protection BEFORE unlocking cells
 Build 20260127-211617 - Switch to xlsxwriter for working cell protection
+Build 20260127-211839 - Fix requirements (need both openpyxl and xlsxwriter)
