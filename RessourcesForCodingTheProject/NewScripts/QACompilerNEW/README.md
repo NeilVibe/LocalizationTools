@@ -598,7 +598,16 @@ python coverage.py
 
 ## CI/CD - GitHub Actions Build
 
-**IMPORTANT:** QACompiler has its OWN GitHub Actions workflow, separate from LocaNext!
+### ⚠️ GitHub Actions (NOT Gitea!)
+
+**IMPORTANT:** QACompiler uses **GitHub Actions**, NOT Gitea!
+
+| Aspect | Value |
+|--------|-------|
+| CI System | GitHub Actions |
+| Trigger File | `QACOMPILER_BUILD.txt` |
+| Push To | **GitHub only** (NOT Gitea) |
+| Check Status | [GitHub Actions](https://github.com/NeilVibe/LocalizationTools/actions) |
 
 ### Two Workflows in LocalizationTools Repo
 
@@ -610,15 +619,12 @@ python coverage.py
 ### How to Trigger QACompiler Build
 
 ```bash
-# 1. Add "Build" to trigger file
-echo "Build" >> QACOMPILER_BUILD.txt
+# From repo root (LocalizationTools/):
+echo "Build: <description>" >> RessourcesForCodingTheProject/NewScripts/QACompilerNEW/QACOMPILER_BUILD.txt
+git add -A && git commit -m "Trigger QAC build" && git push origin main
 
-# 2. Commit and push
-git add QACOMPILER_BUILD.txt
-git commit -m "Trigger QACompiler build"
-git push origin main
-
-# 3. Check GitHub Actions for build progress
+# Check build progress at:
+# https://github.com/NeilVibe/LocalizationTools/actions
 ```
 
 ### Workflow File

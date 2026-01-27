@@ -569,9 +569,77 @@ Track scripts by category for easy reference:
 
 ---
 
-**Last Updated**: 2025-11-18
+**Last Updated**: 2026-01-27
 **Total Reference Scripts**: ~83 (9 main + 74 secondary)
-**Scripts Built**: 0 (just getting started!)
+
+---
+
+## 🚀 CI/CD BUILD GUIDE (CRITICAL!)
+
+### Build Map - Which CI For Which Project?
+
+| Project | CI System | Trigger File | Push To | Check Status |
+|---------|-----------|--------------|---------|--------------|
+| **LocaNext** (main app) | Gitea Actions | `GITEA_TRIGGER.txt` (root) | GitHub + Gitea | `./scripts/gitea_control.sh status` |
+| **LanguageDataExporter** | GitHub Actions | `LANGUAGEDATAEXPORTER_BUILD.txt` | GitHub only | [GitHub Actions](https://github.com/NeilVibe/LocalizationTools/actions) |
+| **QACompilerNEW** | GitHub Actions | `QACOMPILER_BUILD.txt` | GitHub only | [GitHub Actions](https://github.com/NeilVibe/LocalizationTools/actions) |
+| **Other NewScripts** | None | N/A | GitHub only | No build needed |
+
+### Quick Reference Commands
+
+**LanguageDataExporter:**
+```bash
+echo "Build: <description>" >> RessourcesForCodingTheProject/NewScripts/LanguageDataExporter/LANGUAGEDATAEXPORTER_BUILD.txt
+git add -A && git commit -m "Trigger LDE build" && git push origin main
+```
+
+**QACompilerNEW:**
+```bash
+echo "Build: <description>" >> RessourcesForCodingTheProject/NewScripts/QACompilerNEW/QACOMPILER_BUILD.txt
+git add -A && git commit -m "Trigger QAC build" && git push origin main
+```
+
+**LocaNext (main app - NOT NewScripts!):**
+```bash
+echo "Build NNN: <description>" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "Build NNN: <description>" && git push origin main && git push gitea main
+```
+
+**Standalone scripts (no CI):**
+```bash
+git add -A && git commit -m "<description>" && git push origin main
+# Done - no build required, just use directly with Python
+```
+
+### Decision Tree: Do I Need a Build?
+
+```
+What did I modify?
+│
+├─ locaNext/ or server/ (main app)
+│  └─ YES → Use Gitea CI (GITEA_TRIGGER.txt + push to both remotes)
+│
+├─ NewScripts/LanguageDataExporter/
+│  └─ YES → Use GitHub Actions (LANGUAGEDATAEXPORTER_BUILD.txt + push to GitHub)
+│
+├─ NewScripts/QACompilerNEW/
+│  └─ YES → Use GitHub Actions (QACOMPILER_BUILD.txt + push to GitHub)
+│
+├─ NewScripts/<anything else>/
+│  └─ NO → Just push to GitHub, run directly with Python
+│
+└─ RessourcesForCodingTheProject/ (reference scripts)
+   └─ NO → Just push to GitHub, these are reference only
+```
+
+### Common Mistakes to Avoid
+
+| ❌ WRONG | ✅ CORRECT |
+|----------|-----------|
+| Trigger Gitea build for NewScripts | Use GitHub Actions for LDE/QAC, no build for others |
+| Push only to GitHub for LocaNext | Push to BOTH GitHub AND Gitea for LocaNext |
+| Trigger build for standalone scripts | Just push to GitHub, run with Python directly |
+| Investigate Gitea failures for NewScripts | Gitea is only for LocaNext main app |
 
 ---
 
