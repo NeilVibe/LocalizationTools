@@ -1,20 +1,18 @@
 """
 Excel Writer for categorized language data.
 
-Generates Excel files with openpyxl, styled with headers and proper column widths.
+Generates Excel files with xlsxwriter, styled with headers and proper column widths.
 STORY category strings are ordered by VoiceRecordingSheet EventName for
 chronological story order.
+
+Uses xlsxwriter instead of openpyxl for reliable cell protection.
 """
 
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, TYPE_CHECKING
 
-from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, Border, Side, PatternFill, Protection
-from openpyxl.utils import get_column_letter
-from openpyxl.cell.cell import TYPE_STRING
-from openpyxl.worksheet.protection import SheetProtection
+import xlsxwriter
 
 if TYPE_CHECKING:
     from utils.vrs_ordering import VRSOrderer
@@ -27,44 +25,15 @@ try:
 except ImportError:
     STORY_CATEGORIES = ["Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"]
 
-# Excel styling constants
-HEADER_FONT = Font(bold=True, size=11)
-HEADER_FILL = PatternFill(start_color="DAEEF3", end_color="DAEEF3", fill_type="solid")
-HEADER_ALIGNMENT = Alignment(horizontal="center", vertical="center")
-CELL_ALIGNMENT = Alignment(horizontal="left", vertical="top", wrap_text=True)
-THIN_BORDER = Border(
-    left=Side(style='thin'),
-    right=Side(style='thin'),
-    top=Side(style='thin'),
-    bottom=Side(style='thin')
-)
-
 # Column widths
 DEFAULT_WIDTHS = {
     "StrOrigin": 45,
     "ENG": 45,
     "Str": 45,
-    "Correction": 45,    # NEW column for LQA corrections
+    "Correction": 45,
     "Category": 20,
-    "StringID": 15,      # Moved to end
+    "StringID": 15,
 }
-
-
-def _apply_header_style(ws, row: int = 1):
-    """Apply styling to header row."""
-    for cell in ws[row]:
-        cell.font = HEADER_FONT
-        cell.fill = HEADER_FILL
-        cell.alignment = HEADER_ALIGNMENT
-        cell.border = THIN_BORDER
-
-
-def _set_column_widths(ws, headers: List[str]):
-    """Set column widths based on header names."""
-    for idx, header in enumerate(headers, 1):
-        col_letter = get_column_letter(idx)
-        width = DEFAULT_WIDTHS.get(header, 20)
-        ws.column_dimensions[col_letter].width = width
 
 
 def _sort_entries_for_output(
@@ -141,7 +110,7 @@ def write_language_excel(
     protect_sheet: bool = True,
 ) -> bool:
     """
-    Write Excel file for one language.
+    Write Excel file for one language using xlsxwriter.
 
     STORY category strings (Sequencer, AIDialog, QuestDialog, NarrationDialog)
     are sorted by VoiceRecordingSheet EventName for chronological story order.
@@ -182,25 +151,67 @@ def write_language_excel(
             filtered_count = original_count - len(lang_data)
             if filtered_count > 0:
                 logger.info(f"Filtered out {filtered_count} entries from excluded categories: {excluded_categories}")
-        # Create workbook
-        wb = Workbook()
-        ws = wb.active
-        ws.title = lang_code.upper()
+
+        # Ensure output directory exists
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create workbook with xlsxwriter
+        workbook = xlsxwriter.Workbook(str(output_path))
+        worksheet = workbook.add_worksheet(lang_code.upper())
 
         # Define headers based on language type
-        # New column order: Correction column added, StringID moved to end
         if include_english:
             headers = ["StrOrigin", "ENG", "Str", "Correction", "Category", "StringID"]
         else:
             headers = ["StrOrigin", "Str", "Correction", "Category", "StringID"]
 
-        # Write header row
-        for col, header in enumerate(headers, 1):
-            ws.cell(row=1, column=col, value=header)
+        # Find Correction column index (0-based for xlsxwriter)
+        correction_col_idx = headers.index("Correction") if "Correction" in headers else None
 
-        # Apply header styling
-        _apply_header_style(ws)
-        _set_column_widths(ws, headers)
+        # Create formats
+        header_format = workbook.add_format({
+            'bold': True,
+            'font_size': 11,
+            'bg_color': '#DAEEF3',
+            'align': 'center',
+            'valign': 'vcenter',
+            'border': 1,
+            'locked': True,
+        })
+
+        cell_format_locked = workbook.add_format({
+            'align': 'left',
+            'valign': 'top',
+            'text_wrap': True,
+            'border': 1,
+            'locked': True,
+        })
+
+        cell_format_unlocked = workbook.add_format({
+            'align': 'left',
+            'valign': 'top',
+            'text_wrap': True,
+            'border': 1,
+            'locked': False,  # This column is editable
+        })
+
+        # String format for StringID (prevent scientific notation)
+        string_format_locked = workbook.add_format({
+            'align': 'left',
+            'valign': 'top',
+            'border': 1,
+            'locked': True,
+            'num_format': '@',  # Text format
+        })
+
+        # Set column widths
+        for col_idx, header in enumerate(headers):
+            width = DEFAULT_WIDTHS.get(header, 20)
+            worksheet.set_column(col_idx, col_idx, width)
+
+        # Write header row
+        for col_idx, header in enumerate(headers):
+            worksheet.write(0, col_idx, header, header_format)
 
         # Sort data: STORY categories by VRS order, others alphabetically by category
         sorted_data = _sort_entries_for_output(
@@ -212,7 +223,7 @@ def write_language_excel(
         )
 
         # Write data rows
-        row_num = 2
+        row_num = 1  # Start from row 1 (0 is header)
         for entry in sorted_data:
             string_id = entry.get('string_id', '')
             str_origin = entry.get('str_origin', '')
@@ -230,74 +241,52 @@ def write_language_excel(
             else:
                 row_data = [str_origin, str_value, "", category, string_id]
 
-            # Write cells
-            for col, value in enumerate(row_data, 1):
-                cell = ws.cell(row=row_num, column=col, value=value)
-                cell.alignment = CELL_ALIGNMENT
-                cell.border = THIN_BORDER
+            # Write cells with appropriate format
+            for col_idx, value in enumerate(row_data):
+                # Determine format based on column
+                if col_idx == correction_col_idx:
+                    # Correction column - UNLOCKED (editable)
+                    fmt = cell_format_unlocked
+                elif headers[col_idx] == "StringID":
+                    # StringID - use string format to prevent scientific notation
+                    fmt = string_format_locked
+                else:
+                    # All other columns - LOCKED
+                    fmt = cell_format_locked
 
-                # Force StringID to TEXT format (prevent scientific notation like 1.23E+12)
-                if headers[col - 1] == "StringID" and value is not None:
-                    cell.value = str(value)
-                    cell.data_type = TYPE_STRING
+                worksheet.write(row_num, col_idx, value, fmt)
 
             row_num += 1
 
         # Freeze header row
-        ws.freeze_panes = 'A2'
+        worksheet.freeze_panes(1, 0)
 
         # Add auto-filter
-        ws.auto_filter.ref = ws.dimensions
+        if row_num > 1:
+            worksheet.autofilter(0, 0, row_num - 1, len(headers) - 1)
 
-        # =====================================================================
-        # SHEET PROTECTION - Only Correction column is EDITABLE
-        # =====================================================================
-        # How Excel protection works:
-        # 1. Each cell has a "locked" property (default: True)
-        # 2. When sheet protection is ENABLED, locked cells become read-only
-        # 3. Cells with locked=False remain editable even when sheet is protected
-        #
-        # IMPORTANT: Order matters! Must enable sheet protection FIRST,
-        # then unlock specific cells. See openpyxl docs.
-        # =====================================================================
+        # Protect sheet - only cells with locked=False can be edited
         if protect_sheet:
-            # Find Correction column index (1-based)
-            correction_col_idx = headers.index("Correction") + 1 if "Correction" in headers else None
-
-            if correction_col_idx is None:
-                logger.warning("protect_sheet=True but no Correction column found - entire sheet will be read-only")
-
-            # STEP 1: Enable sheet protection FIRST
-            ws.protection.sheet = True
-            ws.protection.formatCells = True
-            ws.protection.formatColumns = True
-            ws.protection.formatRows = True
-            ws.protection.insertColumns = False
-            ws.protection.insertRows = False
-            ws.protection.insertHyperlinks = False
-            ws.protection.deleteColumns = False
-            ws.protection.deleteRows = False
-            ws.protection.selectLockedCells = True
-            ws.protection.selectUnlockedCells = True
-            ws.protection.sort = True
-            ws.protection.autoFilter = True
-
-            # STEP 2: Unlock ONLY the Correction column (data rows, not header)
-            # All other cells remain locked by default
-            if correction_col_idx:
-                for row in range(2, row_num):  # Start from row 2 (skip header)
-                    cell = ws.cell(row=row, column=correction_col_idx)
-                    cell.protection = Protection(locked=False)
-
+            worksheet.protect('', {
+                'format_cells': True,
+                'format_columns': True,
+                'format_rows': True,
+                'insert_columns': False,
+                'insert_rows': False,
+                'insert_hyperlinks': False,
+                'delete_columns': False,
+                'delete_rows': False,
+                'select_locked_cells': True,
+                'sort': True,
+                'autofilter': True,
+                'pivot_tables': False,
+                'select_unlocked_cells': True,
+            })
             logger.info(f"Sheet protection enabled - only Correction column (col {correction_col_idx}) is editable")
 
-        # Ensure output directory exists
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        workbook.close()
 
-        # Save workbook
-        wb.save(output_path)
-
-        logger.info(f"Generated {output_path.name} with {row_num - 2} rows")
+        logger.info(f"Generated {output_path.name} with {row_num - 1} rows")
         return True
 
     except Exception as e:
@@ -322,49 +311,60 @@ def write_summary_excel(
         True if successful, False otherwise
     """
     try:
-        wb = Workbook()
+        # Ensure output directory exists
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        workbook = xlsxwriter.Workbook(str(output_path))
+
+        # Header format
+        header_format = workbook.add_format({
+            'bold': True,
+            'font_size': 11,
+            'bg_color': '#DAEEF3',
+            'align': 'center',
+            'valign': 'vcenter',
+            'border': 1,
+        })
+
+        cell_format = workbook.add_format({
+            'border': 1,
+        })
 
         # Languages sheet
-        ws_lang = wb.active
-        ws_lang.title = "Languages"
+        ws_lang = workbook.add_worksheet("Languages")
 
         headers = ["Language", "Rows", "File"]
-        for col, header in enumerate(headers, 1):
-            ws_lang.cell(row=1, column=col, value=header)
-        _apply_header_style(ws_lang)
+        ws_lang.set_column(0, 0, 15)
+        ws_lang.set_column(1, 1, 10)
+        ws_lang.set_column(2, 2, 40)
 
-        row = 2
+        for col, header in enumerate(headers):
+            ws_lang.write(0, col, header, header_format)
+
+        row = 1
         for lang, stats in sorted(language_stats.items()):
-            ws_lang.cell(row=row, column=1, value=lang.upper())
-            ws_lang.cell(row=row, column=2, value=stats.get("rows", 0))
-            ws_lang.cell(row=row, column=3, value=stats.get("file", ""))
+            ws_lang.write(row, 0, lang.upper(), cell_format)
+            ws_lang.write(row, 1, stats.get("rows", 0), cell_format)
+            ws_lang.write(row, 2, stats.get("file", ""), cell_format)
             row += 1
 
         # Categories sheet
-        ws_cat = wb.create_sheet("Categories")
+        ws_cat = workbook.add_worksheet("Categories")
 
         headers = ["Category", "StringIDs"]
-        for col, header in enumerate(headers, 1):
-            ws_cat.cell(row=1, column=col, value=header)
-        _apply_header_style(ws_cat)
+        ws_cat.set_column(0, 0, 25)
+        ws_cat.set_column(1, 1, 15)
 
-        row = 2
+        for col, header in enumerate(headers):
+            ws_cat.write(0, col, header, header_format)
+
+        row = 1
         for category, count in sorted(category_stats.items(), key=lambda x: -x[1]):
-            ws_cat.cell(row=row, column=1, value=category)
-            ws_cat.cell(row=row, column=2, value=count)
+            ws_cat.write(row, 0, category, cell_format)
+            ws_cat.write(row, 1, count, cell_format)
             row += 1
 
-        # Set column widths
-        ws_lang.column_dimensions['A'].width = 15
-        ws_lang.column_dimensions['B'].width = 10
-        ws_lang.column_dimensions['C'].width = 40
-
-        ws_cat.column_dimensions['A'].width = 25
-        ws_cat.column_dimensions['B'].width = 15
-
-        # Save
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        wb.save(output_path)
+        workbook.close()
 
         logger.info(f"Generated summary: {output_path.name}")
         return True
