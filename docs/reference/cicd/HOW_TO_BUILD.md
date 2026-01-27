@@ -1,170 +1,233 @@
 # How to Build
 
-**Quick guide to triggering CI/CD builds**
+**Complete guide to triggering CI/CD builds for ALL projects**
 
 ---
 
-## Build Mode
+## Quick Reference: All Workflows
 
-| Mode | Trigger | Platform | Description |
-|------|---------|----------|-------------|
-| **QA** | `Build` or `Build QA` | Both | ALL tests + installer (~150MB) |
-| **TROUBLESHOOT** | `TROUBLESHOOT` | Both | Smart checkpoint: resume from last failure |
-
-**QA is the default.** Workers technology makes 1000+ tests fast.
-
-**Architecture:** Small installer + first-run setup downloads deps + AI model
+| Project | CI Platform | Trigger File | Push To |
+|---------|-------------|--------------|---------|
+| **LocaNext** | Gitea Actions | `GITEA_TRIGGER.txt` | GitHub + Gitea |
+| **LanguageDataExporter** | GitHub Actions | `LANGUAGEDATAEXPORTER_BUILD.txt` | GitHub only |
+| **QACompilerNEW** | GitHub Actions | `QACOMPILER_BUILD.txt` | GitHub only |
 
 ---
 
-## Quick Start
+## 1. LocaNext (Gitea Actions)
+
+### Build Modes
+
+| Mode | Trigger | Description |
+|------|---------|-------------|
+| **Build / Build QA** | `Build` or `Build QA` | ALL 1000+ tests + installer (~150MB) |
+| **TROUBLESHOOT** | `TROUBLESHOOT` | Smart checkpoint: resume from last failure |
+| **SKIP_LINUX** | `Build SKIP_LINUX` | Skip tests, direct Windows build |
+
+### Trigger Build
 
 ```bash
-# QA build (default - all tests)
-echo "Build QA" >> GITEA_TRIGGER.txt
-git add -A && git commit -m "Build" && git push origin main && git push gitea main
+# Standard build (all tests)
+echo "Build NNN" >> GITEA_TRIGGER.txt
+git add -A && git commit -m "Build NNN: Description"
+git push origin main      # GitHub
+git push gitea main       # Gitea (REQUIRED - triggers build!)
 
-# Troubleshoot mode (saves checkpoint on failure)
+# Troubleshoot mode
 echo "TROUBLESHOOT" >> GITEA_TRIGGER.txt
 git add -A && git commit -m "Troubleshoot" && git push origin main && git push gitea main
 ```
 
----
-
-## TROUBLESHOOT Mode (Smart Checkpoint)
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    TROUBLESHOOT WORKFLOW                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  1. Trigger: TROUBLESHOOT                                        │
-│     ↓                                                            │
-│  2. CI checks for existing checkpoint                            │
-│     ├── No checkpoint? Run all tests                             │
-│     └── Checkpoint exists? Run that test first                   │
-│     ↓                                                            │
-│  3. If test FAILS:                                               │
-│     → Save checkpoint to ~/.locanext_checkpoint (PERSISTENT)     │
-│     → Exit with failure                                          │
-│     ↓                                                            │
-│  4. Fix the code                                                 │
-│     ↓                                                            │
-│  5. Trigger: TROUBLESHOOT (again)                                │
-│     → Runs failed test first                                     │
-│     → If passes, continues remaining tests                       │
-│     ↓                                                            │
-│  6. Repeat 3-5 until all tests pass                              │
-│     ↓                                                            │
-│  7. When done: Build QA (official clean build)                   │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Key:** Checkpoint persists across CI runs (stored in `~/.locanext_checkpoint` on host runner).
-
----
-
-## Mode Comparison
-
-| Mode | Checkpoint | Build Artifact | Use Case |
-|------|------------|----------------|----------|
-| QA | Clears | Yes (~150MB) | Official release |
-| TROUBLESHOOT | Saves/Resumes | No | Fast debugging iteration |
-
----
-
-## What Happens
-
-```
-You push "Build QA"
-         ↓
-Pipeline generates version: 25.1213.1640
-         ↓
-Injects into all files automatically
-         ↓
-Runs 1000+ tests
-         ↓
-Builds Windows installer (.exe)
-         ↓
-Done! Artifact in installer_output/
-```
-
----
-
-## Monitoring Build
-
-### Quick Status Check (SQL)
+### Check Build Status
 
 ```bash
-# Check build status via Gitea SQLite database
 python3 -c "
 import sqlite3
 c = sqlite3.connect('/home/neil1988/gitea/data/gitea.db').cursor()
 c.execute('SELECT id, status, title FROM action_run ORDER BY id DESC LIMIT 5')
-STATUS = {0:'UNKNOWN', 1:'SUCCESS', 2:'FAILURE', 3:'CANCELLED', 4:'SKIPPED', 5:'WAITING', 6:'RUNNING', 7:'BLOCKED'}
-for r in c.fetchall():
-    print(f'Run {r[0]}: {STATUS.get(r[1], r[1]):8} - {r[2]}')"
+STATUS = {0:'UNK', 1:'OK', 2:'FAIL', 3:'CANCEL', 4:'SKIP', 5:'WAIT', 6:'RUN', 7:'BLOCK'}
+for r in c.fetchall(): print(f'Run {r[0]}: {STATUS.get(r[1], r[1]):8} - {r[2]}')"
 ```
 
-**Status codes:** 0=UNKNOWN, 1=SUCCESS, 2=FAILURE, 3=CANCELLED, 4=SKIPPED, 5=WAITING, **6=RUNNING**, 7=BLOCKED
-
-### Other Methods
+### Gitea Management
 
 ```bash
-# Gitea UI (if available)
-http://172.28.150.120:3000/neilvibe/LocaNext/actions
+./scripts/gitea_control.sh status   # Check status
+./scripts/gitea_control.sh start    # Start Gitea + runners
+./scripts/gitea_control.sh stop     # Stop (saves ~60% CPU)
+```
 
-# Check latest logs (backup method)
-ls -lt ~/gitea/data/actions_log/neilvibe/LocaNext/ | head -3
+### Workflow Location
+`.gitea/workflows/build.yml`
+
+---
+
+## 2. LanguageDataExporter (GitHub Actions)
+
+### Trigger Build
+
+```bash
+echo "Build NNN - Description" >> LANGUAGEDATAEXPORTER_BUILD.txt
+git add LANGUAGEDATAEXPORTER_BUILD.txt
+git commit -m "Build NNN: Description"
+git push origin main      # GitHub only!
+```
+
+### Check Build Status
+
+```bash
+gh run list --workflow=languagedataexporter-build.yml --limit 5
+gh run view --log   # View latest run logs
+```
+
+### Build Artifacts
+
+| Artifact | Description |
+|----------|-------------|
+| `*_Setup.exe` | Installer with drive selection wizard |
+| `*_Portable.zip` | Standalone exe (no install) |
+| `*_Source.zip` | Python source code |
+
+### Workflow Location
+`.github/workflows/languagedataexporter-build.yml`
+
+### Jobs
+1. **validate** - Check trigger, generate version
+2. **safety-checks** - Syntax, imports, flake8, security
+3. **build-release** - PyInstaller + Inno Setup → GitHub Release
+
+---
+
+## 3. QACompilerNEW (GitHub Actions)
+
+### Trigger Build
+
+```bash
+echo "Build NNN - Description" >> QACOMPILER_BUILD.txt
+git add QACOMPILER_BUILD.txt
+git commit -m "Build NNN: Description"
+git push origin main      # GitHub only!
+```
+
+### Check Build Status
+
+```bash
+gh run list --workflow=qacompiler-build.yml --limit 5
+```
+
+### Workflow Location
+`.github/workflows/qacompiler-build.yml`
+
+---
+
+## Version Format (All Projects)
+
+**Format:** `YY.MMDD.HHMM` (Asia/Seoul timezone)
+
+**Example:** `26.127.1430` = Jan 27, 2026, 2:30 PM KST
+
+- Auto-generated by CI pipeline
+- Valid semver (electron-updater compatible)
+- Human readable
+
+---
+
+## TROUBLESHOOT Mode (LocaNext)
+
+Smart checkpoint system that persists across CI runs:
+
+```
+1. Trigger: TROUBLESHOOT
+   ↓
+2. No checkpoint? → Run all tests
+   Checkpoint exists? → Run that test first
+   ↓
+3. Test fails? → Save checkpoint, exit
+   ↓
+4. Fix code, push, trigger TROUBLESHOOT again
+   ↓
+5. Repeat until all pass
+   ↓
+6. Final: Build QA for official release
+```
+
+**Checkpoint location:** `/home/neil1988/.locanext_checkpoint`
+
+### Checkpoint Commands
+
+```bash
+# Check checkpoint
+cat ~/.locanext_checkpoint
+
+# Clear checkpoint (restart from beginning)
+rm ~/.locanext_checkpoint
+
+# Force Windows build (skip tests)
+echo "WINDOWS_BUILD" > ~/.locanext_checkpoint
 ```
 
 ---
 
-## Build Output
-
-| File | Location |
-|------|----------|
-| Installer | `installer_output/LocaNext_v25.1213.1640_Setup.exe` |
-| Auto-updater | `installer_output/latest.yml` |
-
----
-
-## After Build: INSTALL vs UPDATE
-
-**These are COMPLETELY DIFFERENT operations.**
+## After Build: INSTALL vs UPDATE (LocaNext)
 
 | | UPDATE | INSTALL |
 |--|--------|---------|
 | **What** | Auto-updater downloads new version | Fresh installation from .exe |
-| **When** | App already installed (most common!) | First time, clean slate, testing first-run |
+| **When** | App already installed (common!) | First time, clean slate |
 | **Time** | 30 sec - 2 min | 2-5 min |
-| **How** | Open app → notification → Download → Restart | `./scripts/playground_install.sh` |
+| **How** | Open app → Download → Restart | `./scripts/playground_install.sh` |
 
 ### UPDATE (Most Common)
-
-```
-1. Open LocaNext (already installed in Playground)
+1. Open LocaNext (already installed)
 2. App auto-checks on startup
 3. Download notification appears
 4. Click "Download" → "Install & Restart"
-5. App restarts with new version
-```
 
-### INSTALL (Only When Needed)
-
+### INSTALL (Fresh)
 ```bash
 ./scripts/playground_install.sh --launch --auto-login
 ```
 
-Use INSTALL only for:
-- First time setup
-- Testing first-run experience
-- Clean slate testing
-- Major version upgrades
+---
 
-**See CLAUDE.md "INSTALL vs UPDATE" section for details.**
+## Build Output Locations
+
+### LocaNext
+| File | Location |
+|------|----------|
+| Installer | `installer_output/LocaNext_v*.exe` |
+| Auto-updater | `installer_output/latest.yml` |
+
+### LanguageDataExporter / QACompiler
+| File | Location |
+|------|----------|
+| All artifacts | GitHub Releases page |
 
 ---
 
-*Last updated: 2026-01-18*
+## Troubleshooting
+
+### Gitea Build Stuck
+```bash
+# Check runner
+cat /tmp/act_runner.log | tail -20
+
+# Restart runner (if needed)
+./scripts/gitea_control.sh stop && sleep 3 && ./scripts/gitea_control.sh start
+```
+
+### GitHub Actions Failed
+```bash
+gh run view --log   # View logs
+gh run rerun        # Re-run failed
+```
+
+### Release Management (LocaNext)
+```bash
+./scripts/release_manager.sh list      # List releases
+./scripts/release_manager.sh cleanup   # Clean old releases
+```
+
+---
+
+*Last updated: 2026-01-27*
