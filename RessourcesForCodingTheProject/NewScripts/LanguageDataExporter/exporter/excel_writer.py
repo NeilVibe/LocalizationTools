@@ -11,8 +11,10 @@ from pathlib import Path
 from typing import Dict, List, Optional, TYPE_CHECKING
 
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill, Protection
 from openpyxl.utils import get_column_letter
+from openpyxl.cell.cell import TYPE_STRING
+from openpyxl.worksheet.protection import SheetProtection
 
 if TYPE_CHECKING:
     from utils.vrs_ordering import VRSOrderer
@@ -135,6 +137,8 @@ def write_language_excel(
     default_category: str = "Uncategorized",
     vrs_orderer: Optional["VRSOrderer"] = None,
     stringid_to_soundevent: Optional[Dict[str, str]] = None,
+    excluded_categories: Optional[set] = None,
+    protect_sheet: bool = True,
 ) -> bool:
     """
     Write Excel file for one language.
@@ -152,6 +156,8 @@ def write_language_excel(
         default_category: Category for unmapped StringIDs
         vrs_orderer: VRSOrderer for story ordering (optional)
         stringid_to_soundevent: {StringID: SoundEventName} mapping (optional)
+        excluded_categories: Set of category names to exclude (optional)
+        protect_sheet: If True, lock all columns except Correction (default: True)
 
     Returns:
         True if successful, False otherwise
@@ -159,8 +165,23 @@ def write_language_excel(
     Column structure:
     - European: StrOrigin | ENG | Str | Correction | Category | StringID
     - Asian:    StrOrigin | Str | Correction | Category | StringID
+
+    Sheet Protection:
+    - When protect_sheet=True, only the Correction column is editable
+    - All other columns are locked/read-only
+    - QA testers can only modify the Correction column
     """
     try:
+        # Filter out excluded categories BEFORE processing
+        if excluded_categories:
+            original_count = len(lang_data)
+            lang_data = [
+                entry for entry in lang_data
+                if category_index.get(entry.get('string_id', ''), default_category) not in excluded_categories
+            ]
+            filtered_count = original_count - len(lang_data)
+            if filtered_count > 0:
+                logger.info(f"Filtered out {filtered_count} entries from excluded categories: {excluded_categories}")
         # Create workbook
         wb = Workbook()
         ws = wb.active
@@ -215,6 +236,18 @@ def write_language_excel(
                 cell.alignment = CELL_ALIGNMENT
                 cell.border = THIN_BORDER
 
+                # Force StringID to TEXT format (prevent scientific notation like 1.23E+12)
+                if headers[col - 1] == "StringID" and value is not None:
+                    cell.value = str(value)
+                    cell.data_type = TYPE_STRING
+
+                # Apply cell protection: lock all except Correction column
+                if protect_sheet:
+                    if headers[col - 1] == "Correction":
+                        cell.protection = Protection(locked=False)
+                    else:
+                        cell.protection = Protection(locked=True)
+
             row_num += 1
 
         # Freeze header row
@@ -222,6 +255,35 @@ def write_language_excel(
 
         # Add auto-filter
         ws.auto_filter.ref = ws.dimensions
+
+        # Apply sheet protection (only Correction column editable)
+        if protect_sheet:
+            # Lock header row too
+            for cell in ws[1]:
+                cell.protection = Protection(locked=True)
+
+            # Enable sheet protection
+            # Allow: select cells, sort, filter, format columns
+            # Deny: edit locked cells, insert/delete rows/columns
+            ws.protection = SheetProtection(
+                sheet=True,
+                objects=False,
+                scenarios=False,
+                formatCells=True,
+                formatColumns=True,
+                formatRows=True,
+                insertColumns=False,
+                insertRows=False,
+                insertHyperlinks=False,
+                deleteColumns=False,
+                deleteRows=False,
+                selectLockedCells=True,
+                sort=True,
+                autoFilter=True,
+                pivotTables=False,
+                selectUnlockedCells=True,
+            )
+            logger.info(f"Sheet protection enabled - only Correction column is editable")
 
         # Ensure output directory exists
         output_path.parent.mkdir(parents=True, exist_ok=True)
