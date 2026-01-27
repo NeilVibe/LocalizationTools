@@ -206,13 +206,13 @@ EXPORT_FILE_EXTENSION = ".loc.xml"
 # =============================================================================
 
 # Column headers for Excel output (new order with Correction column, StringID at end)
-COLUMN_HEADERS_EU = ["StrOrigin", "ENG from LOC", "Str", "Correction", "Category", "StringID"]
+COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Category", "StringID"]
 COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Category", "StringID"]
 
 # Column widths (approximate)
 COLUMN_WIDTHS = {
     "StrOrigin": 40,
-    "ENG from LOC": 40,
+    "ENG": 40,
     "Str": 40,
     "Correction": 40,
     "Category": 20,
