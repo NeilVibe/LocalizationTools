@@ -1,8 +1,8 @@
-# LanguageDataExporter - User Guide
+# LanguageDataExporter - Complete User Guide
 
 **Language XML to Categorized Excel Converter with VRS-based Story Ordering**
 
-> Converts game localization XML files into organized Excel spreadsheets, with chronological story ordering and word count reports for LQA scheduling.
+> Converts game localization XML files into organized Excel spreadsheets, with chronological story ordering, word count reports, and full LQA correction workflow.
 
 ---
 
@@ -10,18 +10,23 @@
 
 1. [Quick Start](#-quick-start)
 2. [Installation](#-installation)
-3. [Features Overview](#-features-overview)
-4. [GUI Mode](#-gui-mode)
-5. [CLI Mode](#-cli-mode)
-6. [Category System](#-category-system)
-7. [VRS Ordering](#-vrs-ordering)
-8. [Word Count Reports](#-word-count-reports)
-9. [Output Files](#-output-files)
-10. [LQA Correction Workflow](#-lqa-correction-workflow) ← **NEW**
-11. [Progress Tracker](#-progress-tracker) ← **NEW**
-12. [Configuration](#-configuration)
-13. [Troubleshooting](#-troubleshooting)
-14. [Reference](#-reference)
+3. [Complete Workflow Overview](#-complete-workflow-overview)
+4. [Features Overview](#-features-overview)
+5. [GUI Mode](#-gui-mode)
+6. [CLI Mode](#-cli-mode)
+7. [Data Flow Architecture](#-data-flow-architecture)
+8. [Category System (THE ALGORITHM)](#-category-system-the-algorithm)
+9. [VRS Ordering](#-vrs-ordering)
+10. [Word Count Reports](#-word-count-reports)
+11. [Output Files](#-output-files)
+12. [LQA Correction Workflow](#-lqa-correction-workflow)
+13. [LOCDEV Merge (NEW!)](#-locdev-merge-new)
+14. [ENG/ZHO-CN Exclusions (NEW!)](#-engzho-cn-exclusions-new)
+15. [Code Pattern Analyzer (NEW!)](#-code-pattern-analyzer-new)
+16. [Progress Tracker](#-progress-tracker)
+17. [Configuration](#-configuration)
+18. [Troubleshooting](#-troubleshooting)
+19. [Reference](#-reference)
 
 ---
 
@@ -35,6 +40,7 @@
 3. Find output in GeneratedExcel/ folder
 4. Copy files to ToSubmit/ folder for LQA review
 5. After corrections, click "Prepare For Submit"
+6. (Optional) Click "Merge to LOCDEV" to push corrections back
 ```
 
 ### Output Location
@@ -42,9 +48,10 @@
 ```
 LanguageDataExporter/
 ├── GeneratedExcel/                 # Generated files
-│   ├── LanguageData_ENG.xlsx       # English (with Correction column)
-│   ├── LanguageData_FRE.xlsx       # French (with Correction column)
-│   ├── ...                         # Other languages
+│   ├── LanguageData_ENG.xlsx       # English (Dialog/Sequencer EXCLUDED)
+│   ├── LanguageData_ZHO-CN.xlsx    # Chinese (Dialog/Sequencer EXCLUDED)
+│   ├── LanguageData_FRE.xlsx       # French (ALL categories)
+│   ├── ...                         # Other languages (ALL categories)
 │   ├── _Summary.xlsx               # Overview
 │   └── WordCountReport.xlsx        # LQA scheduling
 │
@@ -93,6 +100,7 @@ On first launch, configure your Perforce drive:
 │  • LOC: F:\perforce\cd\...\loc              │
 │  • EXPORT: F:\perforce\cd\...\export__      │
 │  • VRS: F:\perforce\cd\...\VoiceRecording   │
+│  • LOCDEV: F:\perforce\cd\...\locdev__      │
 └─────────────────────────────────────────────┘
 ```
 
@@ -104,9 +112,93 @@ LanguageDataExporter/
 ├── settings.json                     # Your drive configuration
 ├── category_clusters.json            # Category colors/keywords
 ├── GeneratedExcel/                   # Generated Excel files
-├── ToSubmit/                         # LQA staging folder (created on first use)
-├── Correction_ProgressTracker.xlsx   # Progress tracking (created on first submit)
+├── ToSubmit/                         # LQA staging folder
+├── Correction_ProgressTracker.xlsx   # Progress tracking
 └── _internal/                        # Python runtime
+```
+
+---
+
+## Complete Workflow Overview
+
+### The Big Picture
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    LANGUAGEDATAEXPORTER - COMPLETE WORKFLOW                    ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐   ║
+║   │   SOURCE    │    │   PROCESS   │    │   OUTPUT    │    │   SUBMIT    │   ║
+║   │   DATA      │───▶│   ENGINE    │───▶│   FILES     │───▶│   WORKFLOW  │   ║
+║   └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘   ║
+║                                                                               ║
+║   ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║   │ SOURCE DATA (Read-Only, from Perforce)                                  │ ║
+║   │ ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │ ║
+║   │ │ LOC Folder  │  │EXPORT Folder│  │ VRS Folder  │  │LOCDEV Folder│     │ ║
+║   │ │ languagedata│  │  .loc.xml   │  │VoiceRecSheet│  │languagedata │     │ ║
+║   │ │  _*.xml     │  │  (category  │  │  (story     │  │  _*.xml     │     │ ║
+║   │ │ (ALL text)  │  │  structure) │  │   order)    │  │ (for merge) │     │ ║
+║   │ └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘     │ ║
+║   └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                     │                                         ║
+║                                     ▼                                         ║
+║   ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║   │ PROCESS ENGINE                                                          │ ║
+║   │                                                                         │ ║
+║   │  1. Parse LOC XMLs ──────────────────────────────▶ All StringIDs       │ ║
+║   │                                                                         │ ║
+║   │  2. Scan EXPORT folder ──────────────────────────▶ StringID → Category │ ║
+║   │     • Dialog/      → Tier 1 (STORY)                                    │ ║
+║   │     • Sequencer/   → Tier 1 (STORY)                                    │ ║
+║   │     • System/World/None/Platform/ → Tier 2 (GAME_DATA)                 │ ║
+║   │                                                                         │ ║
+║   │  3. Load VRS Excel ──────────────────────────────▶ EventName → Order   │ ║
+║   │                                                                         │ ║
+║   │  4. Sort STORY by VRS ───────────────────────────▶ Chronological order │ ║
+║   │                                                                         │ ║
+║   │  5. Apply ENG/ZHO-CN exclusions ─────────────────▶ Skip Dialog/Seq     │ ║
+║   │                                                                         │ ║
+║   └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                     │                                         ║
+║                                     ▼                                         ║
+║   ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║   │ OUTPUT FILES (GeneratedExcel/)                                          │ ║
+║   │                                                                         │ ║
+║   │  ┌─────────────────────────────────────────────────────────────────┐   │ ║
+║   │  │ LanguageData_{LANG}.xlsx                                        │   │ ║
+║   │  │ ┌──────────┬──────┬──────┬────────────┬──────────┬──────────┐  │   │ ║
+║   │  │ │StrOrigin │ ENG  │ Str  │ Correction │ Category │ StringID │  │   │ ║
+║   │  │ │(Korean)  │(ref) │(trans)│  (empty)   │ (color)  │  (TEXT)  │  │   │ ║
+║   │  │ └──────────┴──────┴──────┴────────────┴──────────┴──────────┘  │   │ ║
+║   │  └─────────────────────────────────────────────────────────────────┘   │ ║
+║   │                                                                         │ ║
+║   │  + WordCountReport.xlsx (LQA scheduling metrics)                       │ ║
+║   │  + _Summary.xlsx (overview)                                            │ ║
+║   │                                                                         │ ║
+║   └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                     │                                         ║
+║                                     ▼                                         ║
+║   ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║   │ SUBMIT WORKFLOW                                                         │ ║
+║   │                                                                         │ ║
+║   │  ┌────────────────┐   ┌────────────────┐   ┌────────────────┐          │ ║
+║   │  │ Copy to        │   │ LQA fills      │   │ Prepare For    │          │ ║
+║   │  │ ToSubmit/      │──▶│ Correction     │──▶│ Submit         │          │ ║
+║   │  │                │   │ column         │   │ (apply fixes)  │          │ ║
+║   │  └────────────────┘   └────────────────┘   └────────────────┘          │ ║
+║   │                                                    │                    │ ║
+║   │                                                    ▼                    │ ║
+║   │                                            ┌────────────────┐          │ ║
+║   │                                            │ Merge to       │          │ ║
+║   │                                            │ LOCDEV         │          │ ║
+║   │                                            │ (push to XML)  │          │ ║
+║   │                                            └────────────────┘          │ ║
+║   │                                                                         │ ║
+║   └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
 
 ---
@@ -119,30 +211,23 @@ LanguageDataExporter/
 | **Word Count Report** | LQA scheduling metrics | `WordCountReport.xlsx` |
 | **Correction Column** | Empty column for LQA corrections | In each Excel file |
 | **Prepare For Submit** | Apply corrections, create final files | 3-column output |
+| **Merge to LOCDEV** | Push corrections back to source XML | Updated LOCDEV XMLs |
+| **Code Pattern Analyzer** | Extract & cluster `{code}` patterns | `CodePatternReport.xlsx` |
 | **Progress Tracker** | Track correction progress weekly | `Correction_ProgressTracker.xlsx` |
 | **VRS Ordering** | Chronological story order | Sorted STORY rows |
 | **Two-Tier Clustering** | STORY + GAME_DATA categories | Color-coded cells |
+| **ENG/ZHO-CN Exclusion** | Skip Dialog/Sequencer for voiced langs | Smaller Excel files |
+| **StringID as TEXT** | Prevent scientific notation | Proper display in Excel |
 
-### Workflow Diagram
+### What's New in v3.0
 
-```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Language XML   │────▶│  LanguageData    │────▶│  Categorized    │
-│  (loc folder)   │     │  Exporter        │     │  Excel Files    │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-                               │
-                               ▼
-┌─────────────────┐     ┌──────────────────┐
-│  EXPORT XMLs    │────▶│  Category        │
-│  (export__)     │     │  Assignment      │
-└─────────────────┘     └──────────────────┘
-                               │
-                               ▼
-┌─────────────────┐     ┌──────────────────┐
-│  VRS Excel      │────▶│  Story Ordering  │
-│  (EventName)    │     │  (Chronological) │
-└─────────────────┘     └──────────────────┘
-```
+| Feature | Description |
+|---------|-------------|
+| **Merge to LOCDEV** | Push corrections back to LOCDEV XML files using strict (StringID + StrOrigin) matching |
+| **ENG/ZHO-CN Exclusion** | Dialog/Sequencer categories automatically excluded from voiced languages |
+| **Code Pattern Analyzer** | Extract `{code}` patterns, cluster by similarity, show top categories |
+| **StringID as TEXT** | Prevents Excel from showing `1.23E+12` for large numeric IDs |
+| **Sheet Protection** | All columns LOCKED except Correction - QA can only edit what they need |
 
 ---
 
@@ -176,6 +261,7 @@ python main.py --gui    # Explicit GUI mode
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │ [Generate Word Count Report]  [Generate Language Excels]  │  │
 │  │ [Prepare For Submit]          [Open ToSubmit Folder]      │  │
+│  │ [Merge to LOCDEV]             [Analyze Code Patterns]     │  │
 │  └───────────────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
 │  ████████████████████████░░░░░░░░░░░░░░░░░░░░░░░  45%          │
@@ -191,13 +277,8 @@ python main.py --gui    # Explicit GUI mode
 | **Generate Language Excels** | Creates files with Correction column | `LanguageData_*.xlsx` |
 | **Prepare For Submit** | Apply corrections, output 3 columns | Final submission files |
 | **Open ToSubmit Folder** | Opens ToSubmit folder in explorer | - |
-
-### Path Status Indicators
-
-| Status | Meaning |
-|--------|---------|
-| `[OK]` | Path exists and is accessible |
-| `[NOT FOUND]` | Path doesn't exist - check settings.json |
+| **Merge to LOCDEV** | Push corrections to LOCDEV XML files | Updated XML files |
+| **Analyze Code Patterns** | Extract & cluster `{code}` patterns | `CodePatternReport.xlsx` |
 
 ---
 
@@ -234,289 +315,224 @@ python main.py --cli --output D:\Reports
 python main.py --cli -v
 ```
 
-### CLI Arguments Reference
+---
 
-| Argument | Short | Description | Example |
-|----------|-------|-------------|---------|
-| `--cli` | | Run in command-line mode | `--cli` |
-| `--lang` | | Process specific languages (comma-separated) | `--lang eng,fre` |
-| `--word-count` | | Include word count report | `--word-count` |
-| `--word-count-only` | | Only generate word count report | `--word-count-only` |
-| `--dry-run` | | Preview without writing | `--dry-run` |
-| `--list-categories` | | Show category distribution | `--list-categories` |
-| `--output` | | Custom output folder | `--output D:\Out` |
-| `--verbose` | `-v` | Enable debug logging | `-v` |
-| `--gui` | | Force GUI mode | `--gui` |
+## Data Flow Architecture
 
-### Example Workflows
+### Source Folders Explained
 
-**Daily Export (All Languages):**
-```bash
-python main.py --cli --word-count
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                         SOURCE DATA ARCHITECTURE                               ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║  │ LOC FOLDER (languagedata_*.xml)                                         │ ║
+║  │ ═══════════════════════════════                                         │ ║
+║  │ Contains: ALL game text strings                                         │ ║
+║  │ Format: One file per language (languagedata_eng.xml, _fre.xml, etc.)    │ ║
+║  │ Structure:                                                              │ ║
+║  │   <LocStr StringId="12345" StrOrigin="몬스터" Str="Monster" />          │ ║
+║  │                                                                         │ ║
+║  │ Used for: Extracting all text to display in Excel                       │ ║
+║  └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                                                               ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║  │ EXPORT FOLDER (.loc.xml files)                                          │ ║
+║  │ ══════════════════════════════                                          │ ║
+║  │ Contains: Same StringIDs, but ORGANIZED BY CATEGORY                     │ ║
+║  │ Structure:                                                              │ ║
+║  │   export__/                                                             │ ║
+║  │   ├── Dialog/                   ← TIER 1 (STORY)                       │ ║
+║  │   │   ├── AIDialog/                                                     │ ║
+║  │   │   ├── QuestDialog/                                                  │ ║
+║  │   │   └── NarrationDialog/                                              │ ║
+║  │   ├── Sequencer/                ← TIER 1 (STORY)                       │ ║
+║  │   ├── System/                   ← TIER 2 (GAME_DATA)                   │ ║
+║  │   ├── World/                    ← TIER 2 (GAME_DATA)                   │ ║
+║  │   ├── None/                     ← TIER 2 (GAME_DATA)                   │ ║
+║  │   └── Platform/                 ← TIER 2 (GAME_DATA)                   │ ║
+║  │                                                                         │ ║
+║  │ Used for: Determining which CATEGORY each StringID belongs to          │ ║
+║  └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                                                               ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║  │ VRS FOLDER (VoiceRecordingSheet Excel)                                  │ ║
+║  │ ════════════════════════════════════                                    │ ║
+║  │ Contains: Master list of voiced lines in CHRONOLOGICAL STORY ORDER     │ ║
+║  │ Key Column: W (EventName / SoundEventName)                              │ ║
+║  │                                                                         │ ║
+║  │ Used for: Sorting STORY content (Dialog/Sequencer) chronologically     │ ║
+║  └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                                                               ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║  │ LOCDEV FOLDER (languagedata_*.xml)                                      │ ║
+║  │ ══════════════════════════════════                                      │ ║
+║  │ Contains: Development version of language files                         │ ║
+║  │ Format: Same as LOC folder                                              │ ║
+║  │                                                                         │ ║
+║  │ Used for: MERGE TO LOCDEV - pushing corrections back to source         │ ║
+║  └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-**Quick French Check:**
-```bash
-python main.py --cli --lang fre --dry-run
+### Why "Uncategorized" Can Happen
+
 ```
-
-**LQA Report Only:**
-```bash
-python main.py --cli --word-count-only
-```
-
-**Category Analysis:**
-```bash
-python main.py --list-categories
-```
-
-Output:
-```
-Two-Tier Category Distribution:
-
-Tier 1: STORY (VRS-ordered, chronological)
-  Sequencer                  :    340 files
-  AIDialog                   :    156 files
-  QuestDialog                :     89 files
-  NarrationDialog            :     45 files
-  ─────────────────────────────────────────
-  SUBTOTAL                   :    630 files
-
-Tier 2: GAME_DATA (Keyword-based)
-  System_Misc                :   1240 files
-  Item                       :    340 files
-  Character                  :    215 files
-  Quest                      :    180 files
-  UI                         :    156 files
-  Knowledge                  :    120 files
-  Skill                      :     95 files
-  Gimmick                    :     78 files
-  Faction                    :     65 files
-  Region                     :     42 files
-  ─────────────────────────────────────────
-  SUBTOTAL                   :   2531 files
-
-TOTAL                        :   3161 files
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                      UNDERSTANDING "UNCATEGORIZED"                             ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   "Uncategorized" means: StringID exists in LOC but NOT in EXPORT             ║
+║                                                                               ║
+║   ┌─────────────────────────────────────────────────────────────────────┐    ║
+║   │                                                                     │    ║
+║   │   LOC Folder                    EXPORT Folder                       │    ║
+║   │   ══════════                    ═════════════                       │    ║
+║   │                                                                     │    ║
+║   │   StringID: 1001  ──────────────▶  Found in Dialog/AI/  → AIDialog │    ║
+║   │   StringID: 1002  ──────────────▶  Found in System/UI/  → UI       │    ║
+║   │   StringID: 1003  ──────────────▶  Found in World/Item/ → Item     │    ║
+║   │   StringID: 1004  ──────────────▶  NOT FOUND!           → Uncateg. │    ║
+║   │                                          ↑                          │    ║
+║   │                                          │                          │    ║
+║   │                            This is a DATA ISSUE                    │    ║
+║   │                            (not our code's fault)                  │    ║
+║   │                                                                     │    ║
+║   └─────────────────────────────────────────────────────────────────────┘    ║
+║                                                                               ║
+║   IMPORTANT: This is NOT a bug in LanguageDataExporter!                      ║
+║                                                                               ║
+║   If strings are "Uncategorized", it means the content team needs to:        ║
+║   • Export those strings to the EXPORT folder structure                      ║
+║   • Or check if they're deprecated/internal strings                          ║
+║                                                                               ║
+║   Everything IN EXPORT gets categorized properly.                            ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
 
 ---
 
 ## Category System (THE ALGORITHM)
 
-This section explains the **complete category clustering algorithm** - the core logic that determines which category each string belongs to.
-
 ### Overview: Two-Tier Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                     CATEGORY CLUSTERING ALGORITHM                           │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  INPUT: File path from EXPORT folder (e.g., World/Knowledge/ItemInfo.xml)   │
-│                                                                             │
-│  STEP 1: DETERMINE TIER                                                     │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │  Is file in Dialog/ or Sequencer/ folder?                             │  │
-│  │     YES → TIER 1 (STORY) → Use folder-based categorization            │  │
-│  │     NO  → TIER 2 (GAME_DATA) → Use two-phase keyword matching         │  │
-│  └───────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│  STEP 2A: TIER 1 - STORY (Folder-Based)                                     │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │  Sequencer/        → Sequencer                                        │  │
-│  │  Dialog/AIDialog/  → AIDialog                                         │  │
-│  │  Dialog/QuestDialog/ → QuestDialog                                    │  │
-│  │  Dialog/NarrationDialog/ → NarrationDialog                            │  │
-│  │  Dialog/StageCloseDialog/ → QuestDialog (mapped)                      │  │
-│  └───────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│  STEP 2B: TIER 2 - GAME_DATA (Two-Phase Matching)                           │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │  PHASE 1: Check PRIORITY KEYWORDS in filename (checked FIRST!)        │  │
-│  │     gimmick → Gimmick | item → Item | quest → Quest | skill → Skill   │  │
-│  │     character → Character | region → Region | faction → Faction       │  │
-│  │     IF MATCH FOUND → RETURN IMMEDIATELY (skip Phase 2)                │  │
-│  │                                                                       │  │
-│  │  PHASE 2: Check FOLDER PATTERNS + SECONDARY KEYWORDS                  │  │
-│  │     LookAt/, PatternDescription/ → Item                               │  │
-│  │     Quest/ → Quest | schedule_ keyword → Quest                        │  │
-│  │     Character/, Npc/ → Character | monster, animal → Character        │  │
-│  │     Skill/ → Skill | Knowledge/ → Knowledge | Faction/ → Faction      │  │
-│  │     Ui/ → UI | localstringinfo, symboltext → UI                       │  │
-│  │     Region/ → Region                                                  │  │
-│  │     (no match) → System_Misc                                          │  │
-│  └───────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│  OUTPUT: Category name (e.g., "Item", "Quest", "Sequencer")                 │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                     CATEGORY CLUSTERING ALGORITHM                              ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║  INPUT: File path from EXPORT folder (e.g., World/Knowledge/ItemInfo.xml)    ║
+║                                                                               ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║  │  STEP 1: DETERMINE TIER                                                  │ ║
+║  │  ════════════════════════                                                │ ║
+║  │                                                                          │ ║
+║  │    Is file in Dialog/ or Sequencer/ folder?                              │ ║
+║  │       │                                                                  │ ║
+║  │       ├── YES ──▶ TIER 1 (STORY)                                        │ ║
+║  │       │           Folder-based categorization                            │ ║
+║  │       │           Sorted by VRS (chronological)                          │ ║
+║  │       │                                                                  │ ║
+║  │       └── NO ───▶ TIER 2 (GAME_DATA)                                    │ ║
+║  │                   Two-phase keyword matching                             │ ║
+║  │                   Sorted alphabetically by category                      │ ║
+║  │                                                                          │ ║
+║  └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                                                               ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║  │  STEP 2A: TIER 1 - STORY (Folder-Based)                                  │ ║
+║  │  ═════════════════════════════════════                                   │ ║
+║  │                                                                          │ ║
+║  │    Sequencer/           ──────────────────────▶  "Sequencer"            │ ║
+║  │    Dialog/AIDialog/     ──────────────────────▶  "AIDialog"             │ ║
+║  │    Dialog/QuestDialog/  ──────────────────────▶  "QuestDialog"          │ ║
+║  │    Dialog/NarrationDialog/ ───────────────────▶  "NarrationDialog"      │ ║
+║  │    Dialog/StageCloseDialog/ ──────────────────▶  "QuestDialog" (mapped) │ ║
+║  │    Dialog/(unknown)/    ──────────────────────▶  "AIDialog" (default)   │ ║
+║  │                                                                          │ ║
+║  └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                                                               ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║  │  STEP 2B: TIER 2 - GAME_DATA (Two-Phase Matching)                        │ ║
+║  │  ═════════════════════════════════════════════                           │ ║
+║  │                                                                          │ ║
+║  │    PHASE 1: Check PRIORITY KEYWORDS in filename (checked FIRST!)        │ ║
+║  │    ──────────────────────────────────────────────────────────           │ ║
+║  │       gimmick → Gimmick | item → Item | quest → Quest | skill → Skill   │ ║
+║  │       character → Character | region → Region | faction → Faction       │ ║
+║  │                                                                          │ ║
+║  │       IF MATCH FOUND → RETURN IMMEDIATELY (skip Phase 2)                │ ║
+║  │                                                                          │ ║
+║  │    PHASE 2: Check FOLDER PATTERNS + SECONDARY KEYWORDS                  │ ║
+║  │    ──────────────────────────────────────────────────────               │ ║
+║  │       LookAt/, PatternDescription/ → Item                               │ ║
+║  │       Quest/ → Quest | schedule_ keyword → Quest                        │ ║
+║  │       Character/, Npc/ → Character | monster, animal → Character        │ ║
+║  │       Skill/ → Skill | Knowledge/ → Knowledge | Faction/ → Faction      │ ║
+║  │       Ui/ → UI | localstringinfo, symboltext → UI                       │ ║
+║  │       Region/ → Region                                                  │ ║
+║  │       (no match) → System_Misc                                          │ ║
+║  │                                                                          │ ║
+║  └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                                                               ║
+║  OUTPUT: Category name (e.g., "Item", "Quest", "Sequencer")                  ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-### Step 1: Tier Classification
+### Priority Keywords (CRITICAL!)
 
-The algorithm first determines which tier a file belongs to based on its **top-level folder**:
+**Priority keywords are checked FIRST and override ALL folder matching:**
 
-| Top-Level Folder | Tier | Processing Method |
-|------------------|------|-------------------|
-| `Dialog/` | TIER 1 (STORY) | Subfolder determines category |
-| `Sequencer/` | TIER 1 (STORY) | All files → Sequencer category |
-| `System/` | TIER 2 (GAME_DATA) | Two-phase keyword matching |
-| `World/` | TIER 2 (GAME_DATA) | Two-phase keyword matching |
-| `None/` | TIER 2 (GAME_DATA) | Two-phase keyword matching |
-| `Platform/` | TIER 2 (GAME_DATA) | Two-phase keyword matching |
+| Priority | Keyword | Category |
+|----------|---------|----------|
+| 1 | `gimmick` | Gimmick |
+| 2 | `item` | Item |
+| 3 | `quest` | Quest |
+| 4 | `skill` | Skill |
+| 5 | `character` | Character |
+| 6 | `region` | Region |
+| 7 | `faction` | Faction |
 
-### Step 2A: TIER 1 - STORY Categories
+**Example:** `World/Knowledge/KnowledgeInfo_Item.xml`
+- Folder says "Knowledge"
+- But filename contains "item" (priority keyword)
+- **Result: "Item" (NOT Knowledge!)**
 
-STORY content uses **simple folder-based categorization**:
-
-| Folder Path | Category | Description | Ordering |
-|-------------|----------|-------------|----------|
-| `Sequencer/*.loc.xml` | **Sequencer** | Story cutscenes, major moments | VRS chronological |
-| `Dialog/AIDialog/*.loc.xml` | **AIDialog** | NPC ambient conversation | VRS chronological |
-| `Dialog/QuestDialog/*.loc.xml` | **QuestDialog** | Quest dialogue trees | VRS chronological |
-| `Dialog/NarrationDialog/*.loc.xml` | **NarrationDialog** | Tutorial text, narration | VRS chronological |
-| `Dialog/StageCloseDialog/*.loc.xml` | **QuestDialog** | Stage completion (mapped) | VRS chronological |
-
-> **Key Point:** STORY categories are sorted **chronologically** using VoiceRecordingSheet (VRS) EventName ordering. This ensures LQA reviewers see content in the order players experience it.
-
-### Step 2B: TIER 2 - GAME_DATA Two-Phase Matching
-
-This is the **core algorithm** for non-story content. It uses two phases, checked in order:
-
-#### PHASE 1: Priority Keywords (CHECKED FIRST!)
-
-The algorithm extracts the **filename** (without extension) and checks if it contains any priority keyword. **First match wins and immediately returns.**
+### Category Summary
 
 ```
-PRIORITY_KEYWORDS (checked in this exact order):
-1. "gimmick"   → Gimmick
-2. "item"      → Item
-3. "quest"     → Quest
-4. "skill"     → Skill
-5. "character" → Character
-6. "region"    → Region
-7. "faction"   → Faction
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                         ALL CATEGORIES AT A GLANCE                             ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║  TIER 1: STORY (VRS-ordered, chronological)                                  ║
+║  ─────────────────────────────────────────                                   ║
+║    │                                                                          ║
+║    ├── Sequencer      │ Story cutscenes, major moments  │ FFE599 (orange)   ║
+║    ├── AIDialog       │ NPC ambient conversation        │ C6EFCE (green)    ║
+║    ├── QuestDialog    │ Quest dialogue trees            │ C6EFCE (green)    ║
+║    └── NarrationDialog│ Tutorial text, narration        │ C6EFCE (green)    ║
+║                                                                               ║
+║  TIER 2: GAME_DATA (Keyword-based, alphabetical)                             ║
+║  ───────────────────────────────────────────────                             ║
+║    │                                                                          ║
+║    ├── Item           │ Weapons, armor, consumables     │ D9D2E9 (purple)   ║
+║    ├── Quest          │ Quest descriptions, objectives  │ D9D2E9 (purple)   ║
+║    ├── Character      │ NPCs, monsters, animals         │ F8CBAD (peach)    ║
+║    ├── Gimmick        │ Interactive objects             │ D9D2E9 (purple)   ║
+║    ├── Skill          │ Abilities, spells               │ D9D2E9 (purple)   ║
+║    ├── Knowledge      │ Lore, codex entries             │ D9D2E9 (purple)   ║
+║    ├── Faction        │ Faction names, descriptions     │ D9D2E9 (purple)   ║
+║    ├── UI             │ Interface text                  │ A9D08E (teal)     ║
+║    ├── Region         │ Location names                  │ F8CBAD (peach)    ║
+║    └── System_Misc    │ Everything else                 │ D9D9D9 (grey)     ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
-
-**The matching is SUBSTRING-based and CASE-INSENSITIVE:**
-- `gimmickinfo_item_book.xml` → Contains "gimmick" → **Gimmick**
-- `KnowledgeInfo_Item.xml` → Contains "item" → **Item**
-- `characterinfo_quest.xml` → Contains "quest" (checked before "character") → **Quest**
-
-> **CRITICAL:** Priority keywords **completely override** folder location. A file named `KnowledgeInfo_Item.xml` in the `Knowledge/` folder will be categorized as **Item**, not Knowledge, because "item" is found in the filename.
-
-#### PHASE 2: Standard Patterns (Only if Phase 1 didn't match)
-
-If no priority keyword was found, the algorithm checks folder paths and secondary keywords:
-
-| Match Type | Pattern | Category | Example |
-|------------|---------|----------|---------|
-| Folder | `lookat/` | Item | `System/LookAt/LookAtInfo.xml` |
-| Folder | `patterndescription/` | Item | `World/PatternDescription/Pattern.xml` |
-| Keyword | `weapon` | Item | `WeaponData.xml` |
-| Keyword | `armor` | Item | `ArmorInfo.xml` |
-| Folder | `quest/` | Quest | `System/Quest/QuestData.xml` |
-| Keyword | `schedule_` | Quest | `schedule_daily.xml` |
-| Folder | `character/` | Character | `World/Character/CharInfo.xml` |
-| Folder | `npc/` | Character | `System/Npc/NpcData.xml` |
-| Keyword | `monster` | Character | `MonsterInfo.xml` |
-| Keyword | `animal` | Character | `AnimalData.xml` |
-| Folder | `skill/` | Skill | `System/Skill/SkillInfo.xml` |
-| Folder | `knowledge/` | Knowledge | `World/Knowledge/KnowledgeBase.xml` |
-| Folder | `faction/` | Faction | `System/Faction/FactionInfo.xml` |
-| Folder | `ui/` | UI | `System/Ui/UIStrings.xml` |
-| Keyword | `localstringinfo` | UI | `LocalStringInfo.xml` |
-| Keyword | `symboltext` | UI | `SymbolText.xml` |
-| Folder | `region/` | Region | `System/Region/RegionInfo.xml` |
-| (default) | (no match) | System_Misc | Everything else |
-
-### Complete Algorithm Walkthrough Examples
-
-**Example 1: File in Knowledge folder with "Item" in name**
-```
-Input:  World/Knowledge/KnowledgeInfo_Item.xml
-
-Step 1: Tier Classification
-  - Top folder is "World/" → TIER 2 (GAME_DATA)
-
-Step 2B: Two-Phase Matching
-  PHASE 1: Check priority keywords in filename "KnowledgeInfo_Item"
-    - "gimmick" in "knowledgeinfo_item"? NO
-    - "item" in "knowledgeinfo_item"? YES → RETURN "Item"
-
-OUTPUT: Item (NOT Knowledge!)
-```
-
-**Example 2: Gimmick file with multiple keywords**
-```
-Input:  System/Gimmick/gimmickinfo_item_book.xml
-
-Step 1: Tier Classification
-  - Top folder is "System/" → TIER 2 (GAME_DATA)
-
-Step 2B: Two-Phase Matching
-  PHASE 1: Check priority keywords in filename "gimmickinfo_item_book"
-    - "gimmick" in "gimmickinfo_item_book"? YES → RETURN "Gimmick"
-    (Note: "item" is also present but "gimmick" is checked FIRST)
-
-OUTPUT: Gimmick (gimmick has HIGHEST priority)
-```
-
-**Example 3: File with no priority keywords**
-```
-Input:  World/Knowledge/KnowledgeBase.xml
-
-Step 1: Tier Classification
-  - Top folder is "World/" → TIER 2 (GAME_DATA)
-
-Step 2B: Two-Phase Matching
-  PHASE 1: Check priority keywords in filename "KnowledgeBase"
-    - "gimmick"? NO | "item"? NO | "quest"? NO | "skill"? NO
-    - "character"? NO | "faction"? NO | "region"? NO
-    - No match → Continue to Phase 2
-
-  PHASE 2: Check folder patterns
-    - "knowledge/" in path? YES → RETURN "Knowledge"
-
-OUTPUT: Knowledge
-```
-
-**Example 4: Story content (Dialog)**
-```
-Input:  Dialog/AIDialog/AIDialogStringInfo.xml
-
-Step 1: Tier Classification
-  - Top folder is "Dialog/" → TIER 1 (STORY)
-
-Step 2A: Folder-based categorization
-  - Subfolder is "AIDialog/" → RETURN "AIDialog"
-
-OUTPUT: AIDialog (will be VRS-ordered)
-```
-
-### Priority Keyword Conflict Resolution
-
-When a filename contains **multiple** priority keywords, the **first match in priority order wins**:
-
-| Filename | Contains | Winner | Why |
-|----------|----------|--------|-----|
-| `gimmickinfo_item_book` | gimmick, item | **Gimmick** | gimmick is priority 1 |
-| `characterinfo_quest` | character, quest | **Quest** | quest is priority 3, character is 5 |
-| `skillinfo_faction` | skill, faction | **Skill** | skill is priority 4, faction is 6 |
-| `item_region_data` | item, region | **Item** | item is priority 2, region is 7 |
-
-### Summary: Golden Rules
-
-| Rule | Explanation |
-|------|-------------|
-| **Tier First** | Dialog/Sequencer → STORY, everything else → GAME_DATA |
-| **Priority Keywords Win** | Phase 1 keywords override ALL folder matching |
-| **Gimmick is #1** | "gimmick" in filename → always Gimmick category |
-| **Order Matters** | Priority keywords checked in specific order (1-7) |
-| **Substring Match** | Keywords match anywhere in filename (case-insensitive) |
-| **STORY = VRS Order** | Dialog/Sequencer content sorted chronologically |
-| **GAME_DATA = Alphabetical** | Other content sorted by category name |
-| **Knowledge is Catch-All** | Only matches if NO priority keyword found |
 
 ---
 
@@ -529,95 +545,27 @@ When a filename contains **multiple** priority keywords, the **first match in pr
 ### How It Works
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    VRS ORDERING FLOW                            │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  1. Load VoiceRecordingSheet.xlsx                               │
-│     └── Read EventName from Column W                            │
-│     └── Store: EventName → Row Position                         │
-│                                                                 │
-│  2. Scan EXPORT XMLs                                            │
-│     └── Extract SoundEventName attribute from StringID          │
-│     └── Store: StringID → SoundEventName                        │
-│                                                                 │
-│  3. Sort STORY Entries                                          │
-│     └── For each entry: StringID → SoundEventName → VRS Row     │
-│     └── Sort by VRS row position                                │
-│                                                                 │
-│  4. Result: Chronological Story Order!                          │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                            VRS ORDERING FLOW                                   ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   1. Load VoiceRecordingSheet.xlsx                                           ║
+║      └── Read EventName from Column W                                        ║
+║      └── Store: EventName → Row Position (e.g., "seq_quest_01" → row 100)   ║
+║                                                                               ║
+║   2. Scan EXPORT XMLs (Dialog/, Sequencer/)                                  ║
+║      └── Extract SoundEventName attribute from each StringID                 ║
+║      └── Store: StringID → SoundEventName                                    ║
+║                                                                               ║
+║   3. Sort STORY Entries                                                      ║
+║      └── For each entry: StringID → SoundEventName → VRS Row                ║
+║      └── Sort by VRS row position                                           ║
+║                                                                               ║
+║   4. Result: Chronological Story Order!                                      ║
+║      └── LQA sees content in the order players experience it                ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
-
-### VRS Column Reference
-
-| Column | Index | Content |
-|--------|-------|---------|
-| **A** | 0 | Category (Sequencer, AIDialog, etc.) |
-| **W** | 22 | EventName (SoundEventName) - **Ordering Key** |
-
-### Example
-
-**VoiceRecordingSheet Row Order:**
-| Row | EventName |
-|-----|-----------|
-| 100 | cd_seq_quest_hernand_0100 |
-| 101 | cd_seq_quest_hernand_0200 |
-| 102 | cd_seq_quest_hernand_0300 |
-
-**Result in Excel:**
-STORY entries with these EventNames appear in rows 100, 101, 102 order.
-
----
-
-## Word Count Reports
-
-### Report Purpose
-
-Word count reports help LQA teams:
-- **Schedule work** based on word/character counts
-- **Track progress** across languages
-- **Identify untranslated** content (still contains Korean)
-
-### Report Structure
-
-**File:** `WordCountReport.xlsx`
-
-**Sheets:**
-
-1. **Summary** - All languages at a glance
-2. **ENG** - English breakdown by category
-3. **FRE** - French breakdown by category
-4. **GER** - German breakdown by category
-5. ... (one sheet per language)
-
-### Columns Per Language Sheet
-
-| Column | Description |
-|--------|-------------|
-| **Category** | Category name |
-| **Korean Source** | Word count of Korean StrOrigin |
-| **Translation** | Words (EU) or Characters (CJK) |
-| **Total Strings** | Number of text entries |
-| **Untranslated** | Strings still containing Korean |
-
-### Counting Method
-
-| Language Type | Method | Languages |
-|---------------|--------|-----------|
-| **European/SEA** | Word count | ENG, FRE, GER, SPA, POR, ITA, RUS, TUR, POL, THA, VIE, IND, MSA |
-| **CJK** | Character count | JPN, ZHO-CN, ZHO-TW |
-
-### Untranslated Detection
-
-A string is marked **untranslated** if the translation still contains Korean characters (Unicode range U+AC00-U+D7A3).
-
-| Translation | Untranslated? |
-|-------------|---------------|
-| `Hello World` | No |
-| `Hello 안녕` | Yes (contains Korean) |
-| `안녕하세요` | Yes (all Korean) |
 
 ---
 
@@ -627,73 +575,69 @@ A string is marked **untranslated** if the translation still contains Korean cha
 
 **Filename:** `LanguageData_{LANG}.xlsx`
 
-**Example:** `LanguageData_FRE.xlsx` (French)
-
 #### Columns (EU Languages - 6 columns)
 
-| Column | Header | Width | Description |
-|--------|--------|-------|-------------|
-| A | **StrOrigin** | 45 | Korean source text |
-| B | **ENG from LOC** | 45 | English reference (from languagedata_eng.xml) |
-| C | **Str** | 45 | Translated text |
-| D | **Correction** | 45 | **Empty - for LQA corrections** |
-| E | **Category** | 20 | Color-coded category |
-| F | **StringID** | 15 | Unique identifier |
+| Column | Header | Description |
+|--------|--------|-------------|
+| A | **StrOrigin** | Korean source text |
+| B | **ENG** | English reference |
+| C | **Str** | Translated text |
+| D | **Correction** | Empty - for LQA corrections |
+| E | **Category** | Color-coded category |
+| F | **StringID** | Unique identifier (TEXT format) |
 
 #### Columns (Asian Languages - 5 columns)
 
-| Column | Header | Width | Description |
-|--------|--------|-------|-------------|
-| A | **StrOrigin** | 45 | Korean source text |
-| B | **Str** | 45 | Translated text |
-| C | **Correction** | 45 | **Empty - for LQA corrections** |
-| D | **Category** | 20 | Color-coded category |
-| E | **StringID** | 15 | Unique identifier |
+| Column | Header | Description |
+|--------|--------|-------------|
+| A | **StrOrigin** | Korean source text |
+| B | **Str** | Translated text |
+| C | **Correction** | Empty - for LQA corrections |
+| D | **Category** | Color-coded category |
+| E | **StringID** | Unique identifier (TEXT format) |
 
-> **Note:** Asian languages (JPN, ZHO-CN, ZHO-TW, ENG) don't include English reference column.
+### StringID as TEXT (NEW!)
 
-#### The Correction Column
+StringID column is now formatted as TEXT to prevent Excel from displaying large numbers as scientific notation:
 
-The **Correction** column is the key to the LQA workflow:
+| Without TEXT format | With TEXT format |
+|---------------------|------------------|
+| `1.23457E+12` | `1234567890123` |
 
-| Scenario | What To Do |
-|----------|------------|
-| Translation is correct | Leave Correction column **empty** |
-| Translation needs fix | Enter corrected text in Correction column |
+### Sheet Protection (NEW!)
 
-When you click **"Prepare For Submit"**, the tool will:
-1. If Correction has value → Use Correction as final Str
-2. If Correction is empty → Keep original Str unchanged
+Generated Excel files have **sheet protection enabled** - only the Correction column is editable:
 
-### Category Colors
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                         SHEET PROTECTION                                       ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   ┌──────────┬──────┬──────┬────────────┬──────────┬──────────┐              ║
+║   │StrOrigin │ ENG  │ Str  │ Correction │ Category │ StringID │              ║
+║   ├──────────┼──────┼──────┼────────────┼──────────┼──────────┤              ║
+║   │  LOCKED  │LOCKED│LOCKED│  EDITABLE  │  LOCKED  │  LOCKED  │              ║
+║   │    🔒    │  🔒  │  🔒  │     ✏️      │    🔒    │    🔒    │              ║
+║   └──────────┴──────┴──────┴────────────┴──────────┴──────────┘              ║
+║                                                                               ║
+║   QA testers can ONLY modify the Correction column.                          ║
+║   All other columns are read-only to prevent accidental changes.             ║
+║                                                                               ║
+║   What's ALLOWED:                                                            ║
+║   ✓ Edit Correction column                                                   ║
+║   ✓ Select any cell                                                          ║
+║   ✓ Use filters and sorting                                                  ║
+║   ✓ Copy data                                                                ║
+║                                                                               ║
+║   What's BLOCKED:                                                            ║
+║   ✗ Edit StrOrigin, ENG, Str, Category, StringID                            ║
+║   ✗ Insert/delete rows or columns                                            ║
+║   ✗ Modify structure                                                         ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
-| Category | Color | Hex |
-|----------|-------|-----|
-| Sequencer | Light Orange | `FFE599` |
-| AIDialog | Light Green | `C6EFCE` |
-| QuestDialog | Light Green | `C6EFCE` |
-| NarrationDialog | Light Green | `C6EFCE` |
-| Item | Light Purple | `D9D2E9` |
-| Quest | Light Purple | `D9D2E9` |
-| Character | Light Peach | `F8CBAD` |
-| Gimmick | Light Purple | `D9D2E9` |
-| Skill | Light Purple | `D9D2E9` |
-| Knowledge | Light Purple | `D9D2E9` |
-| Faction | Light Purple | `D9D2E9` |
-| UI | Light Teal | `A9D08E` |
-| Region | Light Peach | `F8CBAD` |
-| System_Misc | Light Grey | `D9D9D9` |
-
-### Summary File
-
-**Filename:** `_Summary.xlsx`
-
-| Column | Description |
-|--------|-------------|
-| **Language** | Language code (ENG, FRE, etc.) |
-| **Row Count** | Number of entries |
-| **File Generated** | Output filename |
-| **Include English** | Yes/No |
+**No password required** - the protection prevents accidental edits, not malicious ones. QA testers don't need to enter anything to edit the Correction column.
 
 ---
 
@@ -702,110 +646,239 @@ When you click **"Prepare For Submit"**, the tool will:
 ### Complete Workflow Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        LQA CORRECTION WORKFLOW                               │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  STEP 1: GENERATE                                                            │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │  Click "Generate Language Excels"                                       │ │
-│  │  Output: GeneratedExcel/LanguageData_*.xlsx                             │ │
-│  │  Columns: StrOrigin | ENG | Str | Correction | Category | StringID     │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                    ↓                                         │
-│  STEP 2: STAGE FOR REVIEW                                                    │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │  Copy files from GeneratedExcel/ → ToSubmit/                            │ │
-│  │  (Or click "Open ToSubmit Folder" and drag files there)                 │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                    ↓                                         │
-│  STEP 3: LQA REVIEW (Manual)                                                 │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │  Open each file in ToSubmit/                                            │ │
-│  │  Review Str column (current translation)                                │ │
-│  │  IF correction needed: Fill Correction column                           │ │
-│  │  IF no correction needed: Leave Correction empty                        │ │
-│  │  Save file                                                              │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                    ↓                                         │
-│  STEP 4: PREPARE FOR SUBMIT                                                  │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │  Click "Prepare For Submit" button                                      │ │
-│  │  Tool will:                                                             │ │
-│  │    1. Create backup in ToSubmit/backup_YYYYMMDD_HHMMSS/                 │ │
-│  │    2. Apply corrections (Correction → Str)                              │ │
-│  │    3. Output only 3 columns: StrOrigin | Str | StringID                 │ │
-│  │    4. Update Progress Tracker                                           │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                    ↓                                         │
-│  STEP 5: SUBMIT                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │  Files in ToSubmit/ are now ready for final submission                  │ │
-│  │  Final columns: StrOrigin | Str | StringID (3 columns only)             │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                        LQA CORRECTION WORKFLOW                                 ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║  STEP 1: GENERATE                                                            ║
+║  ════════════════                                                            ║
+║    Click "Generate Language Excels"                                          ║
+║    Output: GeneratedExcel/LanguageData_*.xlsx                                ║
+║    Columns: StrOrigin | ENG | Str | Correction | Category | StringID        ║
+║                                                                               ║
+║                                    ↓                                          ║
+║                                                                               ║
+║  STEP 2: STAGE FOR REVIEW                                                    ║
+║  ════════════════════════                                                    ║
+║    Copy files from GeneratedExcel/ → ToSubmit/                               ║
+║    (Or click "Open ToSubmit Folder" and drag files there)                    ║
+║                                                                               ║
+║                                    ↓                                          ║
+║                                                                               ║
+║  STEP 3: LQA REVIEW (Manual)                                                 ║
+║  ═══════════════════════════                                                 ║
+║    Open each file in ToSubmit/                                               ║
+║    Review Str column (current translation)                                   ║
+║    IF correction needed: Fill Correction column                              ║
+║    IF no correction needed: Leave Correction empty                           ║
+║    Save file                                                                 ║
+║                                                                               ║
+║                                    ↓                                          ║
+║                                                                               ║
+║  STEP 4: PREPARE FOR SUBMIT                                                  ║
+║  ══════════════════════════                                                  ║
+║    Click "Prepare For Submit" button                                         ║
+║    Tool will:                                                                ║
+║      1. Create backup in ToSubmit/backup_YYYYMMDD_HHMMSS/                    ║
+║      2. Apply corrections (Correction → Str)                                 ║
+║      3. Output only 3 columns: StrOrigin | Str | StringID                    ║
+║      4. Update Progress Tracker                                              ║
+║                                                                               ║
+║                                    ↓                                          ║
+║                                                                               ║
+║  STEP 5: MERGE TO LOCDEV (Optional)                                          ║
+║  ══════════════════════════════════                                          ║
+║    Click "Merge to LOCDEV" button                                            ║
+║    Tool will:                                                                ║
+║      1. Read corrections from ToSubmit Excel files                           ║
+║      2. Match using STRICT criteria: StringID + StrOrigin must BOTH match   ║
+║      3. Update Str attribute in LOCDEV XML files                             ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-### Step-by-Step Instructions
+---
 
-#### Step 1: Generate Excel Files
+## LOCDEV Merge (NEW!)
 
-1. Launch LanguageDataExporter
-2. Click **"Generate Language Excels"**
-3. Wait for processing to complete
-4. Files created in `GeneratedExcel/` folder
+### What It Does
 
-#### Step 2: Stage for Review
+Pushes corrections from Excel files back to LOCDEV XML files. This is the final step to integrate LQA corrections into the game.
 
-1. Click **"Open ToSubmit Folder"** (creates folder if needed)
-2. Copy files from `GeneratedExcel/` to `ToSubmit/`
-3. Only copy languages you want to review
-
-#### Step 3: LQA Review
-
-For each file in `ToSubmit/`:
-
-1. Open the Excel file
-2. Review each row:
-   - **StrOrigin** = Korean source (reference)
-   - **ENG from LOC** = English translation (reference)
-   - **Str** = Current translation to review
-3. If translation is **correct**: Leave Correction column empty
-4. If translation needs **fix**: Enter corrected text in Correction column
-5. Save the file
-
-#### Step 4: Prepare for Submit
-
-1. Click **"Prepare For Submit"** button
-2. Confirm the operation (this will modify files)
-3. Tool automatically:
-   - Creates backup of all files
-   - Applies corrections
-   - Strips to 3 columns
-   - Updates progress tracker
-
-#### Step 5: Submit
-
-Files in `ToSubmit/` are now in final format:
-- Only 3 columns: `StrOrigin | Str | StringID`
-- Corrections have been applied
-- Ready for import back to game
-
-### Backup System
-
-Every time you click "Prepare For Submit", a backup is created:
+### How It Works
 
 ```
-ToSubmit/
-├── LanguageData_ENG.xlsx           # Current (modified)
-├── LanguageData_FRE.xlsx           # Current (modified)
-├── backup_20260123_161045/         # Backup from Jan 23, 16:10:45
-│   ├── LanguageData_ENG.xlsx       # Original with Correction column
-│   └── LanguageData_FRE.xlsx       # Original with Correction column
-└── backup_20260122_143022/         # Older backup
-    └── ...
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                           LOCDEV MERGE PROCESS                                 ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   ToSubmit/LanguageData_FRE.xlsx          LOCDEV/languagedata_fre.xml        ║
+║   ══════════════════════════════          ═══════════════════════════        ║
+║                                                                               ║
+║   ┌──────────┬───────────┬──────────┐    <LocStr                             ║
+║   │StrOrigin │ Correction│ StringID │      StringId="1001"                   ║
+║   ├──────────┼───────────┼──────────┤      StrOrigin="몬스터"                 ║
+║   │ 몬스터   │ Créature  │   1001   │      Str="Monstre"                     ║
+║   │ 철검     │           │   1002   │    />                                  ║
+║   │ 안녕     │ Bonjour!  │   1003   │                                        ║
+║   └──────────┴───────────┴──────────┘         │                              ║
+║         │                                      │                              ║
+║         │    STRICT MATCHING                   │                              ║
+║         │    ═══════════════                   │                              ║
+║         │                                      ▼                              ║
+║         │    Both must match:          <LocStr                               ║
+║         │    • StringID = "1001"         StringId="1001"                     ║
+║         │    • StrOrigin = "몬스터"       StrOrigin="몬스터"                  ║
+║         │                                Str="Créature"  ◀── UPDATED!        ║
+║         └───────────────────────────▶  />                                    ║
+║                                                                               ║
+║   NOTE: Row with StringID 1002 has empty Correction → NOT processed          ║
+║   NOTE: Only rows WITH Correction values are merged                          ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
+
+### Why STRICT Matching?
+
+The merge uses **STRICT matching** (StringID + StrOrigin must BOTH match) to prevent incorrect updates:
+
+| Scenario | StringID Match | StrOrigin Match | Result |
+|----------|---------------|-----------------|--------|
+| Perfect match | ✓ | ✓ | **UPDATED** |
+| Same ID, different source | ✓ | ✗ | No update (safety) |
+| Same source, different ID | ✗ | ✓ | No update (safety) |
+| Neither matches | ✗ | ✗ | No update |
+
+### Text Normalization
+
+Before matching, text is normalized to handle minor differences:
+
+1. **HTML unescape**: `&lt;` → `<`, `&amp;` → `&`
+2. **Strip whitespace**: Remove leading/trailing spaces
+3. **Collapse internal whitespace**: Multiple spaces → single space
+
+This ensures `"Hello   World"` matches `"Hello World"`.
+
+---
+
+## ENG/ZHO-CN Exclusions (NEW!)
+
+### What It Does
+
+For **ENG (English)** and **ZHO-CN (Simplified Chinese)**, the tool automatically **excludes Dialog and Sequencer categories** from the generated Excel files.
+
+### Why?
+
+These languages have **voiceover**. The Dialog/Sequencer content is handled separately through the voice recording pipeline, not through text-based LQA.
+
+### Categories Excluded
+
+| Category | Description |
+|----------|-------------|
+| Sequencer | Story cutscenes |
+| AIDialog | NPC ambient dialog |
+| QuestDialog | Quest dialog trees |
+| NarrationDialog | Tutorial/narration |
+
+### Result
+
+| Language | Categories Included |
+|----------|---------------------|
+| **ENG** | Item, Quest, Character, Skill, UI, etc. (NO Dialog/Sequencer) |
+| **ZHO-CN** | Item, Quest, Character, Skill, UI, etc. (NO Dialog/Sequencer) |
+| **FRE, GER, SPA, etc.** | ALL categories (including Dialog/Sequencer) |
+
+### Example
+
+```
+LanguageData_ENG.xlsx   →  ~50,000 rows (GAME_DATA only)
+LanguageData_FRE.xlsx   →  ~80,000 rows (ALL categories)
+LanguageData_GER.xlsx   →  ~80,000 rows (ALL categories)
+LanguageData_ZHO-CN.xlsx → ~50,000 rows (GAME_DATA only)
+```
+
+---
+
+## Code Pattern Analyzer (NEW!)
+
+### What It Does
+
+Scans languagedata XML files, extracts all `{code}` patterns (like `{ItemName}`, `{CharacterLevel}`), clusters them by similarity (80% threshold), and generates a report showing which categories each pattern appears in most.
+
+### Use Case
+
+- **Identify code patterns** used across the game
+- **Find similar patterns** that might need consistent translation handling
+- **Discover category distribution** to understand where patterns are used
+
+### How It Works
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                      CODE PATTERN ANALYZER FLOW                                ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║   1. SCAN LOC XMLs                                                           ║
+║      └── Parse languagedata_eng.xml (or first available)                     ║
+║      └── Extract all {code} patterns from StrOrigin + Str                    ║
+║      └── Build: {pattern: [(StringID, category), ...]}                       ║
+║                                                                               ║
+║   2. CLUSTER PATTERNS                                                        ║
+║      └── Use difflib.SequenceMatcher with 80% similarity threshold           ║
+║      └── Group similar patterns (e.g., {ItemName}, {itemname}, {Item_Name})  ║
+║                                                                               ║
+║   3. CALCULATE TOP 3 CATEGORIES                                              ║
+║      └── For each cluster, count occurrences per category                    ║
+║      └── Return TOP 3 categories with percentages                            ║
+║                                                                               ║
+║   4. OUTPUT EXCEL REPORT                                                     ║
+║      └── CodePatternReport.xlsx with 3 sheets                                ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### Output Report: CodePatternReport.xlsx
+
+#### Sheet 1: Cluster Summary
+
+| # | Representative Pattern | Variants | Total Uses | Top 1 Category | Top 2 Category | Top 3 Category |
+|---|------------------------|----------|------------|----------------|----------------|----------------|
+| 1 | `{ItemName}` | 3 | 15,234 | Item (72.3%) | Quest (15.1%) | UI (8.2%) |
+| 2 | `{CharacterName}` | 5 | 8,456 | Character (85%) | Quest (10%) | Dialog (5%) |
+| 3 | `{SkillLevel:0}` | 2 | 3,200 | Skill (90%) | UI (8%) | System (2%) |
+
+- **Dark blue headers** with white text
+- **Alternating row colors** for readability
+- **Category cells color-coded** by category type
+- **Bold percentages** when category dominates (>50%)
+
+#### Sheet 2: Cluster Details
+
+| Cluster | Pattern | Category | Count |
+|---------|---------|----------|-------|
+| 1 | `{ItemName}` | Item | 10,500 |
+| 1 | `{itemname}` | Item | 3,200 |
+| 1 | `{Item_Name}` | Quest | 1,534 |
+
+- Per-pattern breakdown with category-colored cells
+- Thick border lines between cluster groups
+
+#### Sheet 3: Statistics
+
+- Total unique patterns found
+- Total clusters created
+- Similarity threshold used
+- Top 10 clusters mini-table
+
+### Similarity Clustering
+
+Patterns are clustered using **difflib.SequenceMatcher** with an **80% similarity threshold**:
+
+| Pattern A | Pattern B | Similarity | Same Cluster? |
+|-----------|-----------|------------|---------------|
+| `{ItemName}` | `{itemname}` | 80% | Yes |
+| `{ItemName}` | `{Item_Name}` | 82% | Yes |
+| `{ItemName}` | `{CharacterName}` | 64% | No |
 
 ---
 
@@ -824,55 +897,6 @@ Correction_ProgressTracker.xlsx
 └── _WEEKLY_DATA    # Raw data storage (hidden)
 ```
 
-### WEEKLY Sheet
-
-Shows progress week by week:
-
-| Language | Week | Corrected | Pending | % Done | KR Words |
-|----------|------|-----------|---------|--------|----------|
-| ENG | 2026-01-20 | 5,234 | 18,766 | 21.8% | 15,234 |
-| ENG | 2026-01-27 | 8,456 | 15,544 | 35.2% | 25,123 |
-| FRE | 2026-01-20 | 3,456 | 20,544 | 14.4% | 10,765 |
-| FRE | 2026-01-27 | 6,789 | 17,211 | 28.3% | 18,432 |
-
-### TOTAL Sheet
-
-**Table 1: Per-Language Summary**
-
-| Language | Corrected | Pending | Total | % Complete | Korean Words |
-|----------|-----------|---------|-------|------------|--------------|
-| ENG | 15,234 | 8,766 | 24,000 | 63.5% | 45,234 |
-| FRE | 12,456 | 11,544 | 24,000 | 51.9% | 38,765 |
-| GER | 10,890 | 13,110 | 24,000 | 45.4% | 32,456 |
-
-**Table 2: Per-Category Completion**
-
-| Category | ENG | FRE | GER | Total KR Words |
-|----------|-----|-----|-----|----------------|
-| Sequencer | 72.3% | 65.1% | 58.4% | 125,000 |
-| AIDialog | 45.2% | 38.9% | 42.1% | 89,000 |
-| Item | 85.9% | 82.3% | 79.8% | 45,000 |
-
-### How Tracking Works
-
-1. **Before** "Prepare For Submit" runs, the tool scans files in ToSubmit/
-2. For each file, it counts:
-   - **Corrected**: Rows where Correction column has value
-   - **Pending**: Rows where Correction column is empty
-   - **KR Words**: Korean word count in StrOrigin
-3. Data is stored with current week (Monday date)
-4. Same week + language + category = **overwrites** (no duplicates)
-
-### Week Calculation
-
-Progress is tracked by **week** (Monday start):
-
-| Date | Week Start |
-|------|------------|
-| Wednesday Jan 22 | 2026-01-20 (Monday) |
-| Friday Jan 24 | 2026-01-20 (Monday) |
-| Monday Jan 27 | 2026-01-27 (Monday) |
-
 ---
 
 ## Configuration
@@ -881,14 +905,13 @@ Progress is tracked by **week** (Monday start):
 
 **Location:** `LanguageDataExporter/settings.json`
 
-**Created by:** Installer or `drive_replacer.py`
-
 ```json
 {
   "drive_letter": "F",
   "loc_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\loc",
   "export_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\export__",
-  "vrs_folder": "F:\\perforce\\cd\\mainline\\resource\\editordata\\VoiceRecordingSheet__"
+  "vrs_folder": "F:\\perforce\\cd\\mainline\\resource\\editordata\\VoiceRecordingSheet__",
+  "locdev_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\locdev__"
 }
 ```
 
@@ -899,20 +922,6 @@ Progress is tracked by **week** (Monday start):
 python drive_replacer.py D          # Set to D: drive
 python drive_replacer.py F          # Set to F: drive
 ```
-
-Or manually edit `settings.json`.
-
-### category_clusters.json
-
-**Location:** `LanguageDataExporter/category_clusters.json`
-
-Defines:
-- Priority keywords and categories
-- Folder mappings
-- Category colors
-- Language configuration
-
-**Rarely needs editing** - defaults work for standard game structure.
 
 ---
 
@@ -927,26 +936,9 @@ Defines:
 | **VRS not loaded** | Missing VRS folder | Verify VRS path in settings |
 | **Empty output** | No .loc.xml files | Check EXPORT folder exists |
 | **Wrong category** | Priority keyword conflict | Check filename for keywords |
-
-### Error Messages
-
-| Message | Meaning | Action |
-|---------|---------|--------|
-| `LOC folder not found` | Path doesn't exist | Fix `settings.json` |
-| `EXPORT folder not found` | Path doesn't exist | Fix `settings.json` |
-| `No .loc.xml files found` | EXPORT empty | Sync Perforce |
-| `VoiceRecordingSheet not loaded` | VRS missing | Check VRS folder |
-
-### Debug Mode
-
-```bash
-python main.py --cli -v
-```
-
-Shows detailed logging:
-- File discovery
-- Category assignment decisions
-- VRS ordering progress
+| **Uncategorized strings** | StringID not in EXPORT | Content team needs to export those strings |
+| **StringID shows as E+12** | Old version | Update to v3.0+ (TEXT format fix) |
+| **LOCDEV merge no matches** | StrOrigin mismatch | Check text normalization, whitespace |
 
 ---
 
@@ -954,33 +946,24 @@ Shows detailed logging:
 
 ### Supported Languages
 
-| Code | Language | Count Method | English Column |
-|------|----------|--------------|----------------|
-| ENG | English | Words | No |
-| FRE | French | Words | Yes |
-| GER | German | Words | Yes |
-| SPA | Spanish | Words | Yes |
-| POR | Portuguese | Words | Yes |
-| ITA | Italian | Words | Yes |
-| RUS | Russian | Words | Yes |
-| TUR | Turkish | Words | Yes |
-| POL | Polish | Words | Yes |
-| KOR | Korean | Words | Yes |
-| THA | Thai | Words | Yes |
-| VIE | Vietnamese | Words | Yes |
-| IND | Indonesian | Words | Yes |
-| MSA | Malay | Words | Yes |
-| JPN | Japanese | Characters | No |
-| ZHO-CN | Chinese (Simplified) | Characters | No |
-| ZHO-TW | Chinese (Traditional) | Characters | No |
-
-### File Patterns
-
-| Type | Pattern | Location |
-|------|---------|----------|
-| Language XML | `languagedata_*.xml` | LOC folder |
-| Category XML | `*.loc.xml` | EXPORT folder |
-| VRS Excel | `*.xlsx` (most recent) | VRS folder |
+| Code | Language | Count Method | English Column | Dialog/Seq Excluded |
+|------|----------|--------------|----------------|---------------------|
+| ENG | English | Words | No | **YES** |
+| ZHO-CN | Chinese (Simplified) | Characters | No | **YES** |
+| FRE | French | Words | Yes | No |
+| GER | German | Words | Yes | No |
+| SPA | Spanish | Words | Yes | No |
+| POR | Portuguese | Words | Yes | No |
+| ITA | Italian | Words | Yes | No |
+| RUS | Russian | Words | Yes | No |
+| TUR | Turkish | Words | Yes | No |
+| POL | Polish | Words | Yes | No |
+| THA | Thai | Words | Yes | No |
+| VIE | Vietnamese | Words | Yes | No |
+| IND | Indonesian | Words | Yes | No |
+| MSA | Malay | Words | Yes | No |
+| JPN | Japanese | Characters | No | No |
+| ZHO-TW | Chinese (Traditional) | Characters | No | No |
 
 ### Project Structure
 
@@ -995,37 +978,19 @@ LanguageDataExporter/
 │   ├── xml_parser.py          # XML parsing
 │   ├── category_mapper.py     # Two-tier clustering
 │   ├── excel_writer.py        # Excel output
-│   └── submit_preparer.py     # LQA submission preparation
+│   ├── submit_preparer.py     # LQA submission preparation
+│   ├── locdev_merger.py       # LOCDEV merge
+│   └── pattern_analyzer.py    # Code pattern analysis (NEW!)
 ├── tracker/                   # Progress tracking module
-│   ├── data.py                # Weekly data manager
-│   ├── weekly.py              # WEEKLY sheet builder
-│   ├── total.py               # TOTAL sheet builder
-│   └── tracker.py             # Main tracker orchestrator
-├── reports/
-│   ├── word_counter.py        # Word/char counting
-│   └── excel_report.py        # Report generation
-├── clustering/
-│   ├── gamedata_clusterer.py  # GAME_DATA logic
-│   ├── dialog_clusterer.py    # Dialog categories
-│   └── sequencer_clusterer.py # Sequencer logic
+├── reports/                   # Word count reports
 ├── gui/
-│   └── app.py                 # tkinter GUI (4 buttons)
+│   └── app.py                 # tkinter GUI
 └── utils/
-    ├── language_utils.py      # Korean detection
-    └── vrs_ordering.py        # VRS sorting
+    ├── language_utils.py      # Korean detection, language config
+    └── vrs_ordering.py        # VoiceRecordingSheet ordering
 ```
 
 ---
 
-## Support
-
-| Resource | Location |
-|----------|----------|
-| **GitHub Issues** | [Report bugs](https://github.com/NeilVibe/LocalizationTools/issues) |
-| **README** | `README.md` in project folder |
-| **This Guide** | `USER_GUIDE.md` |
-
----
-
 *Last updated: January 2026*
-*Version: 2.0.0 - Added Correction Workflow, Prepare For Submit, Progress Tracker*
+*Version: 3.1.0 - Added Code Pattern Analyzer with clustering and category reports*
