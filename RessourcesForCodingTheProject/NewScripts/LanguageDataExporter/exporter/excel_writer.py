@@ -157,7 +157,7 @@ def write_language_excel(
         vrs_orderer: VRSOrderer for story ordering (optional)
         stringid_to_soundevent: {StringID: SoundEventName} mapping (optional)
         excluded_categories: Set of category names to exclude (optional)
-        protect_sheet: If True, lock all columns except Correction (default: True)
+        protect_sheet: If True, only Correction column is editable (default: True)
 
     Returns:
         True if successful, False otherwise
@@ -167,7 +167,7 @@ def write_language_excel(
     - Asian:    StrOrigin | Str | Correction | Category | StringID
 
     Sheet Protection:
-    - When protect_sheet=True, only the Correction column is editable
+    - When protect_sheet=True, only the Correction column is EDITABLE
     - All other columns are locked/read-only
     - QA testers can only modify the Correction column
     """
@@ -250,17 +250,15 @@ def write_language_excel(
         ws.auto_filter.ref = ws.dimensions
 
         # =====================================================================
-        # SHEET PROTECTION - Only Correction column is editable
+        # SHEET PROTECTION - Only Correction column is EDITABLE
         # =====================================================================
         # How Excel protection works:
         # 1. Each cell has a "locked" property (default: True)
         # 2. When sheet protection is ENABLED, locked cells become read-only
         # 3. Cells with locked=False remain editable even when sheet is protected
         #
-        # Our approach:
-        # 1. Lock ALL cells first (headers + all data)
-        # 2. Explicitly unlock ONLY the Correction column data cells
-        # 3. Enable sheet protection to enforce the locking
+        # IMPORTANT: Order matters! Must enable sheet protection FIRST,
+        # then unlock specific cells. See openpyxl docs.
         # =====================================================================
         if protect_sheet:
             # Find Correction column index (1-based)
@@ -269,38 +267,28 @@ def write_language_excel(
             if correction_col_idx is None:
                 logger.warning("protect_sheet=True but no Correction column found - entire sheet will be read-only")
 
-            # STEP 1: Lock ALL cells (headers and data)
-            # row_num has been incremented past the last data row, so max_row is row_num - 1
-            for row in ws.iter_rows(min_row=1, max_row=row_num - 1):
-                for cell in row:
-                    cell.protection = Protection(locked=True, hidden=False)
+            # STEP 1: Enable sheet protection FIRST
+            ws.protection.sheet = True
+            ws.protection.formatCells = True
+            ws.protection.formatColumns = True
+            ws.protection.formatRows = True
+            ws.protection.insertColumns = False
+            ws.protection.insertRows = False
+            ws.protection.insertHyperlinks = False
+            ws.protection.deleteColumns = False
+            ws.protection.deleteRows = False
+            ws.protection.selectLockedCells = True
+            ws.protection.selectUnlockedCells = True
+            ws.protection.sort = True
+            ws.protection.autoFilter = True
 
             # STEP 2: Unlock ONLY the Correction column (data rows, not header)
+            # All other cells remain locked by default
             if correction_col_idx:
                 for row in range(2, row_num):  # Start from row 2 (skip header)
                     cell = ws.cell(row=row, column=correction_col_idx)
-                    cell.protection = Protection(locked=False, hidden=False)
+                    cell.protection = Protection(locked=False)
 
-            # STEP 3: Enable sheet protection
-            # In SheetProtection: True = ALLOW the action, False = DISALLOW
-            ws.protection = SheetProtection(
-                sheet=True,              # Enable protection
-                objects=False,           # Disallow: edit objects
-                scenarios=False,         # Disallow: edit scenarios
-                formatCells=True,        # Allow: format cells
-                formatColumns=True,      # Allow: format columns
-                formatRows=True,         # Allow: format rows
-                insertColumns=False,     # Disallow: insert columns
-                insertRows=False,        # Disallow: insert rows
-                insertHyperlinks=False,  # Disallow: insert hyperlinks
-                deleteColumns=False,     # Disallow: delete columns
-                deleteRows=False,        # Disallow: delete rows
-                selectLockedCells=True,  # Allow: select locked cells
-                sort=True,               # Allow: sort
-                autoFilter=True,         # Allow: use auto-filter
-                pivotTables=False,       # Disallow: pivot tables
-                selectUnlockedCells=True,  # Allow: select unlocked cells (Correction)
-            )
             logger.info(f"Sheet protection enabled - only Correction column (col {correction_col_idx}) is editable")
 
         # Ensure output directory exists
