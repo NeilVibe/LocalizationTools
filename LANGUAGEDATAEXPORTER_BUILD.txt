@@ -32,3 +32,4 @@ Build 024 - Documentation update for v2.0.0 features
 Build 025 - Fix ENG column logic: use blacklist instead of whitelist
 Build 026 - Rename ENG column header
 Build 027 - Add Code Pattern Analyzer feature
+Build 028 - Fix missing config.py (LOCDEV_FOLDER)
