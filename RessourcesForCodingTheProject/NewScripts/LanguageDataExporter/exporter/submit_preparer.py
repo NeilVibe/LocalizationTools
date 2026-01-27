@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Tuple, Callable
 
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+from openpyxl.cell.cell import TYPE_STRING
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +193,11 @@ def prepare_file_for_submit(input_path: Path, output_path: Path) -> Dict:
             # Write output row: StrOrigin, Str, StringID
             ws_out.cell(row=out_row, column=1, value=str_origin).alignment = CELL_ALIGNMENT
             ws_out.cell(row=out_row, column=2, value=final_str).alignment = CELL_ALIGNMENT
-            ws_out.cell(row=out_row, column=3, value=string_id).alignment = CELL_ALIGNMENT
+
+            # Force StringID to TEXT format (prevent scientific notation like 1.23E+12)
+            stringid_cell = ws_out.cell(row=out_row, column=3, value=str(string_id) if string_id else string_id)
+            stringid_cell.alignment = CELL_ALIGNMENT
+            stringid_cell.data_type = TYPE_STRING
 
             for col in range(1, 4):
                 ws_out.cell(row=out_row, column=col).border = THIN_BORDER

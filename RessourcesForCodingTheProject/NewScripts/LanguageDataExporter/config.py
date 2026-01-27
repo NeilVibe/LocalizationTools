@@ -79,6 +79,10 @@ EXPORT_FOLDER = Path(_export) if _export else Path(r"F:\perforce\cd\mainline\res
 # Used to order STORY strings (Sequencer, Dialog) in chronological story order
 VOICE_RECORDING_FOLDER = Path(_vrs) if _vrs else Path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
 
+# LOCDEV folder: Contains dev languagedata XML files for merging corrections back
+_locdev = _SETTINGS.get("locdev_folder")
+LOCDEV_FOLDER = Path(_locdev) if _locdev else Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\locdev__")
+
 print(f"[DEBUG CONFIG] === FINAL PATHS ===")
 print(f"[DEBUG CONFIG] LOC_FOLDER = {LOC_FOLDER}")
 print(f"[DEBUG CONFIG] LOC_FOLDER exists? {LOC_FOLDER.exists()}")
@@ -156,6 +160,13 @@ DEFAULT_CATEGORY = "Uncategorized"
 # STORY categories (ordered by VoiceRecordingSheet EventName)
 # These are ordered chronologically by story appearance
 STORY_CATEGORIES = ["Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"]
+
+# Categories to EXCLUDE for ENG and ZHO-CN exports (voiced/story content)
+# These languages get voiceover, so Dialog/Sequencer strings are handled separately
+DIALOG_SEQUENCER_EXCLUSION = {"Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"}
+
+# Languages that have DIALOG/SEQUENCER exclusion (voiced languages)
+LANGUAGES_WITH_DIALOG_EXCLUSION = {"eng", "zho-cn"}
 
 # GAME_DATA categories (keyword-based, no special ordering)
 GAMEDATA_CATEGORIES = [
