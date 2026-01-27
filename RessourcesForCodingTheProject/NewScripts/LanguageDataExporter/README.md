@@ -161,13 +161,30 @@ LanguageDataExporter/
 
 ## Build
 
-### Trigger CI/CD Build
+### ⚠️ CI/CD - GitHub Actions (NOT Gitea!)
+
+**IMPORTANT:** LanguageDataExporter uses **GitHub Actions**, NOT Gitea!
+
+| Aspect | Value |
+|--------|-------|
+| CI System | GitHub Actions |
+| Trigger File | `LANGUAGEDATAEXPORTER_BUILD.txt` |
+| Push To | **GitHub only** (NOT Gitea) |
+| Check Status | [GitHub Actions](https://github.com/NeilVibe/LocalizationTools/actions) |
+
+### Trigger Build
 ```bash
-echo "Build 002" >> LANGUAGEDATAEXPORTER_BUILD.txt
-git add -A && git commit -m "Build: LanguageDataExporter" && git push
+# From repo root:
+echo "Build: <description>" >> RessourcesForCodingTheProject/NewScripts/LanguageDataExporter/LANGUAGEDATAEXPORTER_BUILD.txt
+git add -A && git commit -m "Trigger LDE build" && git push origin main
 ```
 
-### Local Build
+### Build Output (GitHub Releases)
+- `LanguageDataExporter_vX.X.X_Setup.exe` - Installer
+- `LanguageDataExporter_vX.X.X_Portable.zip` - Portable version
+- `LanguageDataExporter_vX.X.X_Source.zip` - Source code
+
+### Local Build (Development)
 ```bash
 pip install pyinstaller
 pyinstaller LanguageDataExporter.spec --clean
