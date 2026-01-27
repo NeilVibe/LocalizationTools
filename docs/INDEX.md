@@ -13,6 +13,41 @@
 | **System architecture** | [architecture/ARCHITECTURE_SUMMARY.md](architecture/ARCHITECTURE_SUMMARY.md) |
 | **Offline mode design** | [architecture/OFFLINE_ONLINE_MODE.md](architecture/OFFLINE_ONLINE_MODE.md) |
 | **Debug protocol (GDP)** | [protocols/GRANULAR_DEBUG_PROTOCOL.md](protocols/GRANULAR_DEBUG_PROTOCOL.md) |
+| **How to build** | [reference/cicd/HOW_TO_BUILD.md](reference/cicd/HOW_TO_BUILD.md) |
+| **CI/CD troubleshooting** | [reference/cicd/TROUBLESHOOTING.md](reference/cicd/TROUBLESHOOTING.md) |
+
+---
+
+## CI/CD Workflows (CRITICAL!)
+
+| Project | CI Platform | Trigger File | Push To |
+|---------|-------------|--------------|---------|
+| **LocaNext** | Gitea Actions | `GITEA_TRIGGER.txt` | GitHub + Gitea |
+| **LanguageDataExporter** | GitHub Actions | `LANGUAGEDATAEXPORTER_BUILD.txt` | GitHub only |
+| **QACompilerNEW** | GitHub Actions | `QACOMPILER_BUILD.txt` | GitHub only |
+
+**Full docs:** [reference/cicd/HOW_TO_BUILD.md](reference/cicd/HOW_TO_BUILD.md)
+
+---
+
+## Claude Agents
+
+Custom agents in `.claude/agents/`:
+
+| Agent | Purpose |
+|-------|---------|
+| **ci-specialist** | CI/CD workflows, build triggers, release management |
+| **languagedataexporter-specialist** | LanguageDataExporter project |
+| **qacompiler-specialist** | QACompilerNEW project |
+| **newscripts-specialist** | All NewScripts projects overview |
+| **gdp-debugger** | Granular Debug Protocol for bug hunting |
+| **dev-tester** | DEV mode testing at localhost:5173 |
+| **vite-debugger** | Vite/Svelte frontend debugging |
+| **python-debugger** | Python/FastAPI backend debugging |
+| **nodejs-debugger** | Node.js/Electron debugging |
+| **windows-debugger** | Windows packaged app debugging |
+| **code-reviewer** | Code review for patterns/bugs |
+| **security-auditor** | Security vulnerability scanning |
 
 ---
 
@@ -37,7 +72,11 @@ docs/
 │
 ├── reference/            # STABLE REFERENCE DOCS
 │   ├── enterprise/               # Enterprise deployment
-│   ├── cicd/                     # CI/CD pipeline
+│   ├── cicd/                     # CI/CD pipeline ← WORKFLOWS HERE
+│   │   ├── HOW_TO_BUILD.md       # How to trigger builds
+│   │   ├── TROUBLESHOOTING.md    # Debug CI issues
+│   │   ├── CI_CD_HUB.md          # Pipeline overview
+│   │   └── ...
 │   ├── security/                 # Security docs
 │   └── api/                      # API reference
 │
@@ -64,6 +103,20 @@ docs/
 
 ---
 
+## CI/CD Reference
+
+| Doc | Description |
+|-----|-------------|
+| [HOW_TO_BUILD.md](reference/cicd/HOW_TO_BUILD.md) | **Start here** - Trigger builds for all projects |
+| [CI_CD_HUB.md](reference/cicd/CI_CD_HUB.md) | Pipeline overview and architecture |
+| [TROUBLESHOOTING.md](reference/cicd/TROUBLESHOOTING.md) | Debug CI failures |
+| [PIPELINE_ARCHITECTURE.md](reference/cicd/PIPELINE_ARCHITECTURE.md) | Detailed pipeline design |
+| [VERSION_SYSTEM.md](reference/cicd/VERSION_SYSTEM.md) | Version format (YY.MMDD.HHMM) |
+| [RUNNER_SERVICE_SETUP.md](reference/cicd/RUNNER_SERVICE_SETUP.md) | Runner configuration |
+| [GITEA_SAFETY_PROTOCOL.md](reference/cicd/GITEA_SAFETY_PROTOCOL.md) | Gitea CPU management |
+
+---
+
 ## Protocols
 
 | Protocol | Purpose |
@@ -78,9 +131,6 @@ docs/
 
 ### Enterprise Deployment
 See [reference/enterprise/](reference/enterprise/) for full deployment guide.
-
-### CI/CD
-See [reference/cicd/](reference/cicd/) for pipeline docs.
 
 ### Security
 See [reference/security/](reference/security/) for security hardening.
@@ -102,9 +152,23 @@ See [reference/security/](reference/security/) for security hardening.
 |----------|---------|
 | `CLAUDE.md` | Claude navigation hub (project root) |
 | `Roadmap.md` | Current priorities (project root) |
+| `.claude/agents/` | Custom Claude agents |
 | `testing_toolkit/` | Testing protocols and tools |
 | `scripts/` | Shell wrappers and utilities |
+| `RessourcesForCodingTheProject/NewScripts/` | Mini-projects |
 
 ---
 
-*Last updated: 2026-01-11*
+## NewScripts Projects
+
+| Project | CI/CD | Description |
+|---------|-------|-------------|
+| **LanguageDataExporter** | GitHub Actions | XML → Excel with VRS ordering |
+| **QACompilerNEW** | GitHub Actions | QA datasheet generation |
+| QuickTranslate | Manual | Korean translation lookup |
+| WordCountMaster | Manual | Word count reports |
+| GlossarySniffer | Manual | Glossary extraction |
+
+---
+
+*Last updated: 2026-01-27*
