@@ -105,13 +105,16 @@ Created by installer or `drive_replacer.py`:
 ### Language Excel Files
 `GeneratedExcel/LanguageData_{LANG}.xlsx`
 
-| Column | Description |
-|--------|-------------|
-| StrOrigin | Korean source text |
-| Str | Translated text |
-| StringID | Unique identifier |
-| English | English reference (EU languages only) |
-| Category | Assigned category |
+| Column | Description | Protected |
+|--------|-------------|-----------|
+| StrOrigin | Korean source text | Locked |
+| Str | Translated text | Locked |
+| Correction | Empty - for LQA corrections | **Editable** |
+| StringID | Unique identifier | Locked |
+| English | English reference (EU languages only) | Locked |
+| Category | Assigned category | Locked |
+
+**Sheet Protection:** Only the Correction column is editable. All other columns are locked to prevent accidental changes by QA testers.
 
 ### Word Count Report
 `GeneratedExcel/WordCountReport.xlsx`
@@ -193,6 +196,16 @@ pyinstaller LanguageDataExporter.spec --clean
 ## Dependencies
 
 - Python 3.11+
-- openpyxl >= 3.1.0
-- lxml >= 4.9.0 (optional)
+- xlsxwriter >= 3.1.0 (writing Excel files - reliable cell protection)
+- openpyxl >= 3.1.0 (reading Excel files - VRS ordering)
+- lxml >= 4.9.0 (optional, faster XML parsing)
 - tkinter (included with Python)
+
+### Excel Library Notes
+
+| Library | Purpose |
+|---------|---------|
+| **xlsxwriter** | Writing all Excel output (language files, reports) |
+| **openpyxl** | Reading VoiceRecordingSheet for VRS ordering |
+
+**Why xlsxwriter?** Provides reliable sheet protection where only the Correction column is editable. All other columns (StrOrigin, Str, Category, StringID) are locked to prevent accidental edits by QA testers.
