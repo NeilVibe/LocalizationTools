@@ -1,8 +1,9 @@
 # Language XML to Categorized Excel Converter
 # Dependencies
 
-# Excel file generation (xlsxwriter for reliable cell protection)
-xlsxwriter>=3.1.0
+# Excel file handling
+openpyxl>=3.1.0      # For READING Excel files (vrs_ordering.py)
+xlsxwriter>=3.1.0    # For WRITING Excel files (reliable cell protection)
 
 # Optional: faster XML parsing (fallback to stdlib xml.etree if not installed)
 lxml>=4.9.0
