@@ -619,8 +619,8 @@ python coverage.py
 ### How to Trigger QACompiler Build
 
 ```bash
-# From repo root (LocalizationTools/):
-echo "Build: <description>" >> RessourcesForCodingTheProject/NewScripts/QACompilerNEW/QACOMPILER_BUILD.txt
+# From repo root (trigger file is at ROOT, not in project folder!):
+echo "Build: <description>" >> QACOMPILER_BUILD.txt
 git add -A && git commit -m "Trigger QAC build" && git push origin main
 
 # Check build progress at:

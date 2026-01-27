@@ -578,24 +578,26 @@ Track scripts by category for easy reference:
 
 ### Build Map - Which CI For Which Project?
 
-| Project | CI System | Trigger File | Push To | Check Status |
-|---------|-----------|--------------|---------|--------------|
-| **LocaNext** (main app) | Gitea Actions | `GITEA_TRIGGER.txt` (root) | GitHub + Gitea | `./scripts/gitea_control.sh status` |
+| Project | CI System | Trigger File (at ROOT) | Push To | Check Status |
+|---------|-----------|------------------------|---------|--------------|
+| **LocaNext** (main app) | Gitea Actions | `GITEA_TRIGGER.txt` | GitHub + Gitea | `./scripts/gitea_control.sh status` |
 | **LanguageDataExporter** | GitHub Actions | `LANGUAGEDATAEXPORTER_BUILD.txt` | GitHub only | [GitHub Actions](https://github.com/NeilVibe/LocalizationTools/actions) |
 | **QACompilerNEW** | GitHub Actions | `QACOMPILER_BUILD.txt` | GitHub only | [GitHub Actions](https://github.com/NeilVibe/LocalizationTools/actions) |
 | **Other NewScripts** | None | N/A | GitHub only | No build needed |
+
+**⚠️ ALL trigger files are at the REPO ROOT, not in project folders!**
 
 ### Quick Reference Commands
 
 **LanguageDataExporter:**
 ```bash
-echo "Build: <description>" >> RessourcesForCodingTheProject/NewScripts/LanguageDataExporter/LANGUAGEDATAEXPORTER_BUILD.txt
+echo "Build: <description>" >> LANGUAGEDATAEXPORTER_BUILD.txt
 git add -A && git commit -m "Trigger LDE build" && git push origin main
 ```
 
 **QACompilerNEW:**
 ```bash
-echo "Build: <description>" >> RessourcesForCodingTheProject/NewScripts/QACompilerNEW/QACOMPILER_BUILD.txt
+echo "Build: <description>" >> QACOMPILER_BUILD.txt
 git add -A && git commit -m "Trigger QAC build" && git push origin main
 ```
 
