@@ -281,14 +281,27 @@ CHAR_COUNT_LANGUAGES = {"jpn", "zho-cn", "zho-tw"}
 
 ## CI/CD Pipeline
 
+### IMPORTANT: GitHub Actions (NOT Gitea!)
+
+**LanguageDataExporter builds on GitHub Actions, NOT Gitea.**
+
+| Project | CI Platform | Trigger File |
+|---------|-------------|--------------|
+| **LanguageDataExporter** | GitHub Actions | `LANGUAGEDATAEXPORTER_BUILD.txt` |
+| LocaNext | Gitea Actions | `GITEA_TRIGGER.txt` |
+| QACompilerNEW | GitHub Actions | `QACOMPILER_BUILD.txt` |
+
 ### Build Trigger
 ```bash
-echo "Build 015" >> LANGUAGEDATAEXPORTER_BUILD.txt
-git add -A && git commit -m "Build: LanguageDataExporter" && git push
+# Push to GitHub only (GitHub Actions)
+echo "Build 025 - Description" >> LANGUAGEDATAEXPORTER_BUILD.txt
+git add LANGUAGEDATAEXPORTER_BUILD.txt
+git commit -m "Build 025: Description"
+git push origin main
 ```
 
-### GitHub Actions Workflow
-File: `.github/workflows/languagedataexporter-build.yml`
+### Workflow File
+**Location:** `.github/workflows/languagedataexporter-build.yml`
 
 **Jobs:**
 1. **validate** - Check trigger, generate version (YY.MMDD.HHMM format)
