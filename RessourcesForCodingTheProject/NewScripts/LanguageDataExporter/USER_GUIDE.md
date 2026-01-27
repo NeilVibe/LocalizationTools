@@ -39,8 +39,8 @@
 2. Click "Generate Language Excels" to create files
 3. Find output in GeneratedExcel/ folder
 4. Copy files to ToSubmit/ folder for LQA review
-5. After corrections, click "Prepare For Submit"
-6. (Optional) Click "Merge to LOCDEV" to push corrections back
+5. After corrections, click "Merge to LOCDEV" to push corrections back
+6. (Optional) Click "Prepare For Submit" to create clean 3-column archive files
 ```
 
 ### Output Location
@@ -210,10 +210,10 @@ LanguageDataExporter/
 | **Language Export** | Convert XML to categorized Excel | `LanguageData_{LANG}.xlsx` |
 | **Word Count Report** | LQA scheduling metrics | `WordCountReport.xlsx` |
 | **Correction Column** | Empty column for LQA corrections | In each Excel file |
-| **Prepare For Submit** | Apply corrections, create final files | 3-column output |
-| **Merge to LOCDEV** | Push corrections back to source XML | Updated LOCDEV XMLs |
+| **Prepare For Submit** | Extract corrections to clean 3-column file | Archive files |
+| **Merge to LOCDEV** | Push corrections back to source XML + track progress | Updated LOCDEV XMLs + Tracker |
 | **Code Pattern Analyzer** | Extract & cluster `{code}` patterns | `CodePatternReport.xlsx` |
-| **Progress Tracker** | Track correction progress weekly | `Correction_ProgressTracker.xlsx` |
+| **Progress Tracker** | Track merge results (Success/Fail) weekly | `Correction_ProgressTracker.xlsx` |
 | **VRS Ordering** | Chronological story order | Sorted STORY rows |
 | **Two-Tier Clustering** | STORY + GAME_DATA categories | Color-coded cells |
 | **ENG/ZHO-CN Exclusion** | Skip Dialog/Sequencer for voiced langs | Smaller Excel files |
@@ -275,9 +275,9 @@ python main.py --gui    # Explicit GUI mode
 |--------|--------------|--------|
 | **Generate Word Count Report** | Creates LQA metrics report | `WordCountReport.xlsx` |
 | **Generate Language Excels** | Creates files with Correction column | `LanguageData_*.xlsx` |
-| **Prepare For Submit** | Apply corrections, output 3 columns | Final submission files |
+| **Prepare For Submit** | Extract corrections to 3-column archive | Clean archive files |
 | **Open ToSubmit Folder** | Opens ToSubmit folder in explorer | - |
-| **Merge to LOCDEV** | Push corrections to LOCDEV XML files | Updated XML files |
+| **Merge to LOCDEV** | Push corrections to LOCDEV + update tracker | Updated XML files + Tracker |
 | **Analyze Code Patterns** | Extract & cluster `{code}` patterns | `CodePatternReport.xlsx` |
 
 ---
@@ -675,24 +675,25 @@ Generated Excel files have **sheet protection enabled** - only the Correction co
 ║                                                                               ║
 ║                                    ↓                                          ║
 ║                                                                               ║
-║  STEP 4: PREPARE FOR SUBMIT                                                  ║
-║  ══════════════════════════                                                  ║
-║    Click "Prepare For Submit" button                                         ║
-║    Tool will:                                                                ║
-║      1. Create backup in ToSubmit/backup_YYYYMMDD_HHMMSS/                    ║
-║      2. Apply corrections (Correction → Str)                                 ║
-║      3. Output only 3 columns: StrOrigin | Str | StringID                    ║
-║      4. Update Progress Tracker                                              ║
-║                                                                               ║
-║                                    ↓                                          ║
-║                                                                               ║
-║  STEP 5: MERGE TO LOCDEV (Optional)                                          ║
-║  ══════════════════════════════════                                          ║
+║  STEP 4: MERGE TO LOCDEV (MAIN STEP!)                                        ║
+║  ════════════════════════════════════                                        ║
 ║    Click "Merge to LOCDEV" button                                            ║
 ║    Tool will:                                                                ║
 ║      1. Read corrections from ToSubmit Excel files                           ║
 ║      2. Match using STRICT criteria: StringID + StrOrigin must BOTH match   ║
 ║      3. Update Str attribute in LOCDEV XML files                             ║
+║      4. Update Progress Tracker with SUCCESS/FAIL counts                     ║
+║                                                                               ║
+║                                    ↓                                          ║
+║                                                                               ║
+║  STEP 5: PREPARE FOR SUBMIT (Optional, for archival)                         ║
+║  ═══════════════════════════════════════════════════                         ║
+║    Click "Prepare For Submit" button                                         ║
+║    Tool will:                                                                ║
+║      1. Create backup in ToSubmit/backup_YYYYMMDD_HHMMSS/                    ║
+║      2. Extract rows with Correction values only                             ║
+║      3. Output only 3 columns: StrOrigin | Correction | StringID             ║
+║    (Creates clean archive files for record-keeping)                          ║
 ║                                                                               ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -886,16 +887,31 @@ Patterns are clustered using **difflib.SequenceMatcher** with an **80% similarit
 
 ### Overview
 
-The **Correction Progress Tracker** (`Correction_ProgressTracker.xlsx`) tracks your LQA correction progress over time. It's automatically updated when you click "Prepare For Submit".
+The **Correction Progress Tracker** (`Correction_ProgressTracker.xlsx`) tracks your LQA merge results over time. It's automatically updated when you click **"Merge to LOCDEV"**.
+
+### What It Tracks
+
+| Metric | Description |
+|--------|-------------|
+| **Corrections** | Total rows with Correction values in Excel |
+| **Success** | Corrections that matched StringID + StrOrigin in LOCDEV |
+| **Fail** | Corrections that did NOT match (possibly outdated or typo) |
+| **Success %** | Success / Corrections × 100 |
 
 ### Tracker Structure
 
 ```
 Correction_ProgressTracker.xlsx
-├── WEEKLY          # Week-over-week progress (visible)
-├── TOTAL           # Summary tables (visible)
+├── WEEKLY          # Week-over-week merge results (visible)
+│   └── Language | Week | Corrections | Success | Fail | Success %
+├── TOTAL           # Summary per language (visible)
+│   └── Language | Corrections | Success | Fail | Success %
 └── _WEEKLY_DATA    # Raw data storage (hidden)
 ```
+
+### Weekly Grouping
+
+Data is grouped by **week** (Monday start) based on the **file modification time** of the Excel files in ToSubmit. This allows tracking corrections made in different weeks even if they're merged together.
 
 ---
 
@@ -993,4 +1009,4 @@ LanguageDataExporter/
 ---
 
 *Last updated: January 2026*
-*Version: 3.1.0 - Added Code Pattern Analyzer with clustering and category reports*
+*Version: 3.2.0 - Simplified workflow: Merge to LOCDEV now does merge + tracking, Prepare For Submit just extracts 3 columns*

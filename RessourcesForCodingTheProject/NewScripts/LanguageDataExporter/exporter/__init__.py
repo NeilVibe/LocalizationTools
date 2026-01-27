@@ -22,13 +22,13 @@ from .submit_preparer import (
     create_backup,
     prepare_file_for_submit,
     prepare_all_for_submit,
-    collect_correction_stats,
 )
 from .locdev_merger import (
     normalize_text,
     parse_corrections_from_excel,
     merge_corrections_to_locdev,
     merge_all_corrections,
+    print_merge_report,
 )
 from .pattern_analyzer import (
     extract_code_patterns,
@@ -49,12 +49,12 @@ __all__ = [
     "create_backup",
     "prepare_file_for_submit",
     "prepare_all_for_submit",
-    "collect_correction_stats",
     # LOCDEV merger
     "normalize_text",
     "parse_corrections_from_excel",
     "merge_corrections_to_locdev",
     "merge_all_corrections",
+    "print_merge_report",
     # Pattern analyzer
     "extract_code_patterns",
     "cluster_patterns",

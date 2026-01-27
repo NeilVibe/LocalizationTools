@@ -1,14 +1,13 @@
 """
 Submit Preparer for LQA submission.
 
-Transforms Excel files in ToSubmit folder for final submission:
-- If Correction column has value, replace Str with Correction
-- Output only: StrOrigin, Str, StringID
+Extracts Excel files in ToSubmit folder for clean submission format:
+- Extracts 3 columns: StrOrigin, Correction, StringID
+- Only rows with non-empty Correction are included
 - Creates backup before overwriting
 """
 
 import logging
-import re
 import shutil
 from pathlib import Path
 from datetime import datetime
@@ -21,7 +20,7 @@ from openpyxl.cell.cell import TYPE_STRING
 logger = logging.getLogger(__name__)
 
 # Output columns for submission (final structure)
-OUTPUT_COLUMNS = ["StrOrigin", "Str", "StringID"]
+OUTPUT_COLUMNS = ["StrOrigin", "Correction", "StringID"]
 
 # Excel styling constants
 HEADER_FONT = Font(bold=True, size=11)
@@ -120,7 +119,10 @@ def _detect_column_indices(ws) -> Dict[str, int]:
 
 def prepare_file_for_submit(input_path: Path, output_path: Path) -> Dict:
     """
-    Transform single file - apply corrections, extract columns.
+    Extract rows with corrections from Excel file for clean submission format.
+
+    Only includes rows where Correction column has a value.
+    Output: StrOrigin, Correction, StringID
 
     Args:
         input_path: Path to input Excel file
@@ -129,13 +131,13 @@ def prepare_file_for_submit(input_path: Path, output_path: Path) -> Dict:
     Returns:
         Dict with statistics: {
             "total_rows": int,
-            "corrections_applied": int,
+            "corrections_extracted": int,
             "error": str or None
         }
     """
     result = {
         "total_rows": 0,
-        "corrections_applied": 0,
+        "corrections_extracted": 0,
         "error": None
     }
 
@@ -149,12 +151,11 @@ def prepare_file_for_submit(input_path: Path, output_path: Path) -> Dict:
 
         # Required columns
         str_origin_col = col_indices.get("StrOrigin")
-        str_col = col_indices.get("Str")
         correction_col = col_indices.get("Correction")
         stringid_col = col_indices.get("StringID")
 
-        if not all([str_origin_col, str_col, stringid_col]):
-            result["error"] = f"Missing required columns. Found: {list(col_indices.keys())}"
+        if not all([str_origin_col, correction_col, stringid_col]):
+            result["error"] = f"Missing required columns (need StrOrigin, Correction, StringID). Found: {list(col_indices.keys())}"
             return result
 
         # Create output workbook
@@ -170,12 +171,11 @@ def prepare_file_for_submit(input_path: Path, output_path: Path) -> Dict:
             cell.alignment = HEADER_ALIGNMENT
             cell.border = THIN_BORDER
 
-        # Process data rows
+        # Process data rows - only include rows with corrections
         out_row = 2
         for in_row in range(2, ws_in.max_row + 1):
             str_origin = ws_in.cell(row=in_row, column=str_origin_col).value
-            str_value = ws_in.cell(row=in_row, column=str_col).value
-            correction = ws_in.cell(row=in_row, column=correction_col).value if correction_col else None
+            correction = ws_in.cell(row=in_row, column=correction_col).value
             string_id = ws_in.cell(row=in_row, column=stringid_col).value
 
             # Skip empty rows
@@ -184,15 +184,15 @@ def prepare_file_for_submit(input_path: Path, output_path: Path) -> Dict:
 
             result["total_rows"] += 1
 
-            # Apply correction if present
-            final_str = str_value
-            if correction and str(correction).strip():
-                final_str = correction
-                result["corrections_applied"] += 1
+            # Only include rows with non-empty Correction
+            if not correction or not str(correction).strip():
+                continue
 
-            # Write output row: StrOrigin, Str, StringID
+            result["corrections_extracted"] += 1
+
+            # Write output row: StrOrigin, Correction, StringID
             ws_out.cell(row=out_row, column=1, value=str_origin).alignment = CELL_ALIGNMENT
-            ws_out.cell(row=out_row, column=2, value=final_str).alignment = CELL_ALIGNMENT
+            ws_out.cell(row=out_row, column=2, value=str(correction).strip()).alignment = CELL_ALIGNMENT
 
             # Force StringID to TEXT format (prevent scientific notation like 1.23E+12)
             stringid_cell = ws_out.cell(row=out_row, column=3, value=str(string_id) if string_id else string_id)
@@ -206,7 +206,7 @@ def prepare_file_for_submit(input_path: Path, output_path: Path) -> Dict:
 
         # Set column widths
         ws_out.column_dimensions['A'].width = 45  # StrOrigin
-        ws_out.column_dimensions['B'].width = 45  # Str
+        ws_out.column_dimensions['B'].width = 45  # Correction
         ws_out.column_dimensions['C'].width = 15  # StringID
 
         # Freeze header row
@@ -218,8 +218,8 @@ def prepare_file_for_submit(input_path: Path, output_path: Path) -> Dict:
         # Save output
         wb_out.save(output_path)
 
-        logger.info(f"Prepared {output_path.name}: {result['total_rows']} rows, "
-                   f"{result['corrections_applied']} corrections applied")
+        logger.info(f"Prepared {output_path.name}: {result['corrections_extracted']} corrections "
+                   f"extracted from {result['total_rows']} total rows")
 
     except Exception as e:
         result["error"] = str(e)
@@ -233,7 +233,7 @@ def prepare_all_for_submit(
     progress_callback: Optional[Callable[[int, str], None]] = None
 ) -> Dict:
     """
-    Process all files in ToSubmit folder.
+    Process all files in ToSubmit folder - extract rows with corrections.
 
     Args:
         submit_folder: Path to ToSubmit folder
@@ -243,6 +243,7 @@ def prepare_all_for_submit(
         Dict with overall results: {
             "files_processed": int,
             "total_corrections": int,
+            "total_rows": int,
             "backup_folder": Path or None,
             "errors": List[str],
             "file_results": Dict[str, Dict]  # per-file stats
@@ -251,6 +252,7 @@ def prepare_all_for_submit(
     results = {
         "files_processed": 0,
         "total_corrections": 0,
+        "total_rows": 0,
         "backup_folder": None,
         "errors": [],
         "file_results": {}
@@ -276,7 +278,7 @@ def prepare_all_for_submit(
     total_files = len(files)
     for idx, (file_path, lang_code) in enumerate(files):
         if progress_callback:
-            progress = 10 + int((idx / total_files) * 85)
+            progress = 10 + int((idx / total_files) * 90)
             progress_callback(progress, f"Processing {lang_code}...")
 
         # Process file (overwrite in place)
@@ -287,83 +289,15 @@ def prepare_all_for_submit(
             results["errors"].append(f"{lang_code}: {file_result['error']}")
         else:
             results["files_processed"] += 1
-            results["total_corrections"] += file_result["corrections_applied"]
+            results["total_corrections"] += file_result["corrections_extracted"]
+            results["total_rows"] += file_result["total_rows"]
 
     if progress_callback:
         progress_callback(100, f"Completed: {results['files_processed']} files processed")
 
     logger.info(f"Submit preparation complete: {results['files_processed']} files, "
-               f"{results['total_corrections']} total corrections")
+               f"{results['total_corrections']} corrections extracted")
 
     return results
 
 
-# Pre-compiled Korean pattern for performance
-KOREAN_PATTERN = re.compile(r'[\uAC00-\uD7AF]+')
-
-
-def collect_correction_stats(submit_folder: Path) -> Dict:
-    """
-    Collect correction statistics from files in ToSubmit folder.
-
-    Used by tracker to gather data BEFORE preparation (when Correction column exists).
-
-    Returns:
-        Dict[lang_code, Dict[category, Dict]] with:
-            - corrected: count of rows with Correction value
-            - pending: count of rows without Correction value
-            - kr_words: count of Korean words in corrected+pending
-    """
-    stats = {}
-
-    files = discover_submit_files(submit_folder)
-
-    for file_path, lang_code in files:
-        try:
-            # Don't use read_only=True - we need full worksheet access
-            wb = load_workbook(file_path)
-            ws = wb.active
-
-            col_indices = _detect_column_indices(ws)
-            str_col = col_indices.get("Str")
-            correction_col = col_indices.get("Correction")
-            category_col = col_indices.get("Category")
-            str_origin_col = col_indices.get("StrOrigin")
-
-            if not all([str_col, category_col, str_origin_col]):
-                logger.warning(f"Skipping {lang_code}: missing required columns. Found: {list(col_indices.keys())}")
-                wb.close()
-                continue
-
-            lang_stats = {}
-
-            for row in range(2, ws.max_row + 1):
-                category = ws.cell(row=row, column=category_col).value or "Uncategorized"
-                str_origin = ws.cell(row=row, column=str_origin_col).value or ""
-                correction = ws.cell(row=row, column=correction_col).value if correction_col else None
-
-                if category not in lang_stats:
-                    lang_stats[category] = {
-                        "corrected": 0,
-                        "pending": 0,
-                        "kr_words": 0
-                    }
-
-                # Count Korean words in StrOrigin (source language)
-                korean_matches = KOREAN_PATTERN.findall(str(str_origin))
-                kr_word_count = len(korean_matches) if korean_matches else 0
-
-                lang_stats[category]["kr_words"] += kr_word_count
-
-                if correction and str(correction).strip():
-                    lang_stats[category]["corrected"] += 1
-                else:
-                    lang_stats[category]["pending"] += 1
-
-            stats[lang_code] = lang_stats
-            wb.close()
-
-        except Exception as e:
-            logger.error(f"Error collecting stats for {lang_code}: {e}")
-
-    return stats

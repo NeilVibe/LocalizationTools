@@ -4,12 +4,16 @@ LOCDEV Merger - Merge corrections from Excel back to LOCDEV XML files.
 QA testers return Excel files with corrections in "Correction" column.
 This module reads ONLY rows with corrections and merges them into LOCDEV
 languagedata XML files using STRICT matching: StrOrigin + StringID must BOTH match.
+
+Also tracks SUCCESS/FAIL for each correction to update the Progress Tracker.
 """
 
 import html
+import os
 import re
 import logging
 from pathlib import Path
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from lxml import etree
 
@@ -198,6 +202,25 @@ def merge_corrections_to_locdev(
     return result
 
 
+def get_file_mod_time(file_path: Path) -> Optional[datetime]:
+    """
+    Get the modification time of a file.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        datetime of last modification, or None if file doesn't exist
+    """
+    try:
+        if file_path.exists():
+            mtime = os.path.getmtime(file_path)
+            return datetime.fromtimestamp(mtime)
+    except Exception as e:
+        logger.warning(f"Could not get mod time for {file_path}: {e}")
+    return None
+
+
 def merge_all_corrections(
     submit_folder: Path,
     locdev_folder: Path,
@@ -218,20 +241,22 @@ def merge_all_corrections(
     Returns:
         Dict with overall results: {
             "files_processed": int,
-            "total_matched": int,
-            "total_updated": int,
-            "total_not_found": int,
+            "total_corrections": int,  # Total rows with Correction values
+            "total_success": int,      # Successfully merged (matched + updated)
+            "total_fail": int,         # Failed to match in LOCDEV
             "errors": List[str],
-            "file_results": Dict[str, Dict]
+            "file_results": Dict[str, Dict],  # Per-language results
+            "file_mod_times": Dict[str, datetime],  # Per-language file mod times
         }
     """
     results = {
         "files_processed": 0,
-        "total_matched": 0,
-        "total_updated": 0,
-        "total_not_found": 0,
+        "total_corrections": 0,
+        "total_success": 0,
+        "total_fail": 0,
         "errors": [],
         "file_results": {},
+        "file_mod_times": {},
     }
 
     if not submit_folder.exists():
@@ -262,6 +287,11 @@ def merge_all_corrections(
         else:
             continue
 
+        # Get file modification time for weekly tracking
+        file_mod_time = get_file_mod_time(excel_path)
+        if file_mod_time:
+            results["file_mod_times"][lang_code] = file_mod_time
+
         # Find corresponding LOCDEV XML file
         xml_candidates = [
             locdev_folder / f"languagedata_{lang_code.lower()}.xml",
@@ -285,6 +315,9 @@ def merge_all_corrections(
         if not corrections:
             logger.info(f"No corrections found in {excel_path.name}")
             results["file_results"][lang_code] = {
+                "corrections": 0,
+                "success": 0,
+                "fail": 0,
                 "matched": 0,
                 "updated": 0,
                 "not_found": 0,
@@ -294,17 +327,119 @@ def merge_all_corrections(
 
         # Merge corrections to LOCDEV
         file_result = merge_corrections_to_locdev(xml_path, corrections, dry_run)
+
+        # Calculate success/fail counts
+        # Success = corrections that matched in LOCDEV (whether updated or already same)
+        # Fail = corrections that did NOT match in LOCDEV
+        corrections_count = len(corrections)
+        success_count = file_result["matched"]
+        fail_count = file_result["not_found"]
+
+        # Add to file result
+        file_result["corrections"] = corrections_count
+        file_result["success"] = success_count
+        file_result["fail"] = fail_count
+
         results["file_results"][lang_code] = file_result
 
         results["files_processed"] += 1
-        results["total_matched"] += file_result["matched"]
-        results["total_updated"] += file_result["updated"]
-        results["total_not_found"] += file_result["not_found"]
+        results["total_corrections"] += corrections_count
+        results["total_success"] += success_count
+        results["total_fail"] += fail_count
         results["errors"].extend(file_result["errors"])
 
         logger.info(
-            f"Processed {lang_code}: matched={file_result['matched']}, "
-            f"updated={file_result['updated']}, not_found={file_result['not_found']}"
+            f"Processed {lang_code}: corrections={corrections_count}, "
+            f"success={success_count}, fail={fail_count}"
         )
 
     return results
+
+
+def print_merge_report(results: Dict) -> None:
+    """
+    Print a formatted terminal report of merge results.
+
+    Args:
+        results: The dict returned by merge_all_corrections()
+    """
+    # Box drawing characters for nice borders
+    H = "═"  # Horizontal
+    V = "║"  # Vertical
+    TL = "╔"  # Top-left
+    TR = "╗"  # Top-right
+    BL = "╚"  # Bottom-left
+    BR = "╝"  # Bottom-right
+    LT = "╠"  # Left-T
+    RT = "╣"  # Right-T
+    TT = "╦"  # Top-T
+    BT = "╩"  # Bottom-T
+    X = "╬"   # Cross
+
+    width = 72
+
+    print()
+    print(TL + H * (width - 2) + TR)
+    title = "LOCDEV MERGE REPORT"
+    print(V + title.center(width - 2) + V)
+    print(LT + H * (width - 2) + RT)
+
+    # Column widths
+    lang_w = 14
+    corr_w = 14
+    succ_w = 12
+    fail_w = 10
+    rate_w = 12
+
+    # Header
+    header = f"{V} {'LANGUAGE':<{lang_w}} {'CORRECTIONS':>{corr_w}} {'SUCCESS':>{succ_w}} {'FAIL':>{fail_w}} {'RATE':>{rate_w}} {V}"
+    print(header)
+    print(LT + H * (width - 2) + RT)
+
+    # Per-language rows
+    file_results = results.get("file_results", {})
+    for lang_code in sorted(file_results.keys()):
+        file_result = file_results[lang_code]
+        corrections = file_result.get("corrections", 0)
+        success = file_result.get("success", 0)
+        fail = file_result.get("fail", 0)
+        rate = (success / corrections * 100) if corrections > 0 else 0.0
+
+        # Color indicators
+        if rate >= 95:
+            status = "●"  # Green indicator
+        elif rate >= 80:
+            status = "◐"  # Half indicator
+        else:
+            status = "○"  # Empty indicator
+
+        row = f"{V} {lang_code.upper():<{lang_w}} {corrections:>{corr_w},} {success:>{succ_w},} {fail:>{fail_w},} {rate:>{rate_w - 2}.1f}% {status} {V}"
+        print(row)
+
+    # Separator before totals
+    print(LT + H * (width - 2) + RT)
+
+    # Totals
+    total_corr = results.get("total_corrections", 0)
+    total_succ = results.get("total_success", 0)
+    total_fail = results.get("total_fail", 0)
+    total_rate = (total_succ / total_corr * 100) if total_corr > 0 else 0.0
+
+    total_row = f"{V} {'TOTAL':<{lang_w}} {total_corr:>{corr_w},} {total_succ:>{succ_w},} {total_fail:>{fail_w},} {total_rate:>{rate_w - 2}.1f}%   {V}"
+    print(total_row)
+    print(BL + H * (width - 2) + BR)
+
+    # Errors section (if any)
+    errors = results.get("errors", [])
+    if errors:
+        print()
+        print("ERRORS:")
+        for error in errors[:5]:  # Show first 5 errors
+            print(f"  × {error}")
+        if len(errors) > 5:
+            print(f"  ... and {len(errors) - 5} more errors")
+
+    # Legend
+    print()
+    print("Legend: ● ≥95% success  ◐ ≥80% success  ○ <80% success")
+    print()
