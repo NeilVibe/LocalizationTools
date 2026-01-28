@@ -15,3 +15,6 @@ openpyxl>=3.1.0
 
 # Clipboard (optional)
 pyperclip>=1.8.0
+
+# Image processing (for PyInstaller splash screen resizing)
+Pillow>=10.0.0
