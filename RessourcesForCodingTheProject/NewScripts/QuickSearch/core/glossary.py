@@ -14,9 +14,14 @@ try:
 except ImportError:
     ahocorasick = None
 
-from .xml_parser import parse_multiple_files, extract_pairs
-from ..utils.language_utils import is_korean, is_word_boundary
-from ..utils.filters import glossary_filter, dedupe_glossary, count_glossary_occurrences
+try:
+    from core.xml_parser import parse_multiple_files, extract_pairs
+    from utils.language_utils import is_korean, is_word_boundary
+    from utils.filters import glossary_filter, dedupe_glossary, count_glossary_occurrences
+except ImportError:
+    from .xml_parser import parse_multiple_files, extract_pairs
+    from ..utils.language_utils import is_korean, is_word_boundary
+    from ..utils.filters import glossary_filter, dedupe_glossary, count_glossary_occurrences
 
 
 def extract_glossary(

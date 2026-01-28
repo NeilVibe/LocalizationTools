@@ -17,15 +17,26 @@ try:
 except ImportError:
     ahocorasick = None
 
-from .xml_parser import parse_multiple_files
-from .preprocessing import (
-    PreprocessedEntry,
-    preprocess_for_consistency_check,
-    build_term_glossary
-)
-from ..utils.language_utils import is_korean, is_word_boundary
-from ..utils.filters import glossary_filter
-from ..config import SOURCE_BASE_KR, SOURCE_BASE_ENG
+try:
+    from core.xml_parser import parse_multiple_files
+    from core.preprocessing import (
+        PreprocessedEntry,
+        preprocess_for_consistency_check,
+        build_term_glossary
+    )
+    from utils.language_utils import is_korean, is_word_boundary
+    from utils.filters import glossary_filter
+    from config import SOURCE_BASE_KR, SOURCE_BASE_ENG
+except ImportError:
+    from .xml_parser import parse_multiple_files
+    from .preprocessing import (
+        PreprocessedEntry,
+        preprocess_for_consistency_check,
+        build_term_glossary
+    )
+    from ..utils.language_utils import is_korean, is_word_boundary
+    from ..utils.filters import glossary_filter
+    from ..config import SOURCE_BASE_KR, SOURCE_BASE_ENG
 
 
 @dataclass

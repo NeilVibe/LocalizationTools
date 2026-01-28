@@ -10,15 +10,26 @@ from tkinter import ttk, filedialog, messagebox
 import threading
 from typing import Optional
 
-from ..config import (
-    APP_NAME, VERSION, GAMES, LANGUAGES,
-    get_settings, save_settings, load_settings,
-    get_ui_text, UI_LANGUAGES
-)
-from ..core.dictionary import DictionaryManager, create_dictionary, save_dictionary
-from ..core.search import search_one_line, search_multi_line, SearchResult
-from ..core.glossary import extract_glossary_with_validation, save_glossary
-from .dialogs import LineCheckDialog, TermCheckDialog, center_dialog
+try:
+    from config import (
+        APP_NAME, VERSION, GAMES, LANGUAGES,
+        get_settings, save_settings, load_settings,
+        get_ui_text, UI_LANGUAGES
+    )
+    from core.dictionary import DictionaryManager, create_dictionary, save_dictionary
+    from core.search import search_one_line, search_multi_line, SearchResult
+    from core.glossary import extract_glossary_with_validation, save_glossary
+    from gui.dialogs import LineCheckDialog, TermCheckDialog, center_dialog
+except ImportError:
+    from ..config import (
+        APP_NAME, VERSION, GAMES, LANGUAGES,
+        get_settings, save_settings, load_settings,
+        get_ui_text, UI_LANGUAGES
+    )
+    from ..core.dictionary import DictionaryManager, create_dictionary, save_dictionary
+    from ..core.search import search_one_line, search_multi_line, SearchResult
+    from ..core.glossary import extract_glossary_with_validation, save_glossary
+    from .dialogs import LineCheckDialog, TermCheckDialog, center_dialog
 
 
 class QuickSearchApp:
