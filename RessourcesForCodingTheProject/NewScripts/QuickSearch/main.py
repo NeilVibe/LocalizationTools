@@ -19,6 +19,13 @@ import argparse
 import sys
 import os
 
+# Handle PyInstaller splash screen
+try:
+    import pyi_splash
+    pyi_splash.update_text("Loading QuickSearch...")
+except ImportError:
+    pyi_splash = None
+
 # Add parent directory to path for package imports when running as script
 if __name__ == "__main__":
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -74,6 +81,10 @@ New Features:
 
     print("QuickSearch v1.0.0 - Modular Localization Tool")
     print("Loading GUI...")
+
+    # Close splash screen before showing GUI
+    if pyi_splash:
+        pyi_splash.close()
 
     app = QuickSearchApp()
     app.run()
