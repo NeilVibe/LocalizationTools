@@ -16,6 +16,42 @@
 
 ---
 
+## All CI/CD Workflows Overview
+
+| Project | CI System | Trigger File | Check Status |
+|---------|-----------|--------------|--------------|
+| **LocaNext** | Gitea Actions | `GITEA_TRIGGER.txt` | `./scripts/gitea_control.sh status` |
+| **QuickSearch** | GitHub Actions | `QUICKSEARCH_BUILD.txt` | `gh run list --workflow=quicksearch-build.yml` |
+| **QACompilerNEW** | GitHub Actions | `QACOMPILER_BUILD.txt` | `gh run list --workflow=qacompiler-build.yml` |
+| **LanguageDataExporter** | GitHub Actions | `LANGUAGEDATAEXPORTER_BUILD.txt` | `gh run list --workflow=languagedataexporter-build.yml` |
+| **DataListGenerator** | GitHub Actions | `DATALISTGENERATOR_BUILD.txt` | `gh run list --workflow=datalistgenerator-build.yml` |
+
+**⚠️ ALL trigger files are at the REPO ROOT, not in project folders!**
+
+### NewScripts CI Quick Commands
+
+```bash
+# QuickSearch
+echo "Build NNN: <description>" >> QUICKSEARCH_BUILD.txt
+git add -A && git commit -m "Build NNN: <description>" && git push origin main
+
+# QACompilerNEW
+echo "Build NNN: <description>" >> QACOMPILER_BUILD.txt
+git add -A && git commit -m "Build NNN: <description>" && git push origin main
+
+# LanguageDataExporter
+echo "Build NNN: <description>" >> LANGUAGEDATAEXPORTER_BUILD.txt
+git add -A && git commit -m "Build NNN: <description>" && git push origin main
+
+# DataListGenerator
+echo "Build NNN: <description>" >> DATALISTGENERATOR_BUILD.txt
+git add -A && git commit -m "Build NNN: <description>" && git push origin main
+```
+
+**For detailed NewScripts CI docs:** See [NewScripts README](../../RessourcesForCodingTheProject/NewScripts/README.md) or each project's `CI.md`
+
+---
+
 ## Quick Reference
 
 | Need | Go To |
