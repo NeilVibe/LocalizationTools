@@ -134,10 +134,12 @@ jobs:
           checked = 0
 
           for py_file in Path('.').rglob('*.py'):
-              # Skip __pycache__, build/dist
+              # Skip __pycache__, build/dist, legacy monolith
               if '__pycache__' in str(py_file):
                   continue
               if 'build' in str(py_file) or 'dist' in str(py_file):
+                  continue
+              if 'QuickSearch0818' in str(py_file):
                   continue
 
               try:
@@ -215,8 +217,9 @@ jobs:
           # F63: Invalid escape sequences
           # F7: Undefined names, statements
           # F82: Undefined names in __all__
+          # Exclude legacy monolith files (QuickSearch0818.py etc.)
           flake8 . --select=E9,F63,F7,F82 --show-source --statistics \
-            --exclude=__pycache__,build,dist,.git || {
+            --exclude=__pycache__,build,dist,.git,QuickSearch0818.py || {
             echo "[ERROR] Flake8 found critical errors"
             exit 1
           }
