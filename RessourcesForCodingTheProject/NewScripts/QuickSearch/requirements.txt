@@ -1,0 +1,17 @@
+# QuickSearch Dependencies
+# Python 3.10+ required
+
+# XML parsing
+lxml>=4.9.0
+
+# Data processing
+pandas>=2.0.0
+
+# Fast string matching for TERM CHECK
+pyahocorasick>=2.0.0
+
+# Excel support (optional, for dictionary export)
+openpyxl>=3.1.0
+
+# Clipboard (optional)
+pyperclip>=1.8.0

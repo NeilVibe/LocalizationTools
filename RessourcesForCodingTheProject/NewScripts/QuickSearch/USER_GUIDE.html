@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>QuickSearch XML v0818 - User Guide</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 2cm;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.5;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #2c3e50;
+      border-bottom: 3px solid #3498db;
+      padding-bottom: 10px;
+      font-size: 24pt;
+    }
+    h2 {
+      color: #2980b9;
+      border-bottom: 2px solid #bdc3c7;
+      padding-bottom: 5px;
+      margin-top: 30px;
+      font-size: 16pt;
+    }
+    h3 {
+      color: #34495e;
+      margin-top: 20px;
+      font-size: 13pt;
+    }
+    h4 {
+      color: #7f8c8d;
+      margin-top: 15px;
+      font-size: 11pt;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 15px 0;
+    }
+    th, td {
+      border: 1px solid #bdc3c7;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #3498db;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background-color: #ecf0f1;
+    }
+    code {
+      background-color: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 10pt;
+    }
+    pre {
+      background-color: #2c3e50;
+      color: #ecf0f1;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+      font-size: 10pt;
+    }
+    pre code {
+      background-color: transparent;
+      color: inherit;
+    }
+    .subtitle {
+      font-size: 14pt;
+      color: #7f8c8d;
+      margin-top: -10px;
+    }
+    .version-info {
+      font-size: 10pt;
+      color: #95a5a6;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bdc3c7;
+      margin: 20px 0;
+    }
+    .toc {
+      background-color: #f8f9fa;
+      padding: 15px 25px;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+    .toc ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .toc li {
+      margin: 5px 0;
+    }
+    .highlight {
+      background-color: #fff3cd;
+      padding: 2px 4px;
+      border-radius: 2px;
+    }
+    .important {
+      background-color: #d4edda;
+      border-left: 4px solid #28a745;
+      padding: 10px 15px;
+      margin: 15px 0;
+    }
+    ul, ol {
+      margin: 10px 0;
+    }
+    li {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+
+<h1>QuickSearch XML v0818 - User Guide</h1>
+<p class="subtitle"><strong>Translation Search &amp; QA Tool for CD Platform</strong></p>
+<p class="version-info">Version: 0818 | Author: Neil</p>
+
+<hr />
+
+<div class="toc">
+<h2>Table of Contents</h2>
+<ol>
+  <li><a href="#section1">Quick Start - CD Platform XML Search</a></li>
+  <li><a href="#section2">LINE CHECK - Translation Consistency QA</a></li>
+  <li><a href="#section3">Additional Features</a></li>
+  <li><a href="#section4">Configuration Options</a></li>
+  <li><a href="#section5">Troubleshooting</a></li>
+</ol>
+</div>
+
+<hr />
+
+<h2 id="section1">1. Quick Start - CD Platform XML Search</h2>
+
+<p>This section covers the most common use case: creating a searchable dictionary from a single CD platform XML file.</p>
+
+<h3>Step-by-Step Workflow</h3>
+
+<h4>Step 1: Launch QuickSearch</h4>
+
+<p>Double-click <code>QuickSearch0818.exe</code> (or run <code>QuickSearch0818.py</code>).</p>
+
+<p>The main window opens with two tabs:</p>
+<ul>
+  <li><strong>Quick Search</strong> - Search functionality (default)</li>
+  <li><strong>Glossary Checker</strong> - QA tools (LINE CHECK, Term Check)</li>
+</ul>
+
+<h4>Step 2: Create Dictionary</h4>
+
+<ol>
+  <li>Click the <strong>"Create Dictionary"</strong> button in the top-left area</li>
+  <li>The "Create New Dictionary" dialog appears with three sections:
+    <p><strong>Select Game:</strong></p>
+    <ul>
+      <li>BDO</li>
+      <li>BDM</li>
+      <li>BDC</li>
+      <li><strong>CD</strong> &larr; Select this for CD platform</li>
+    </ul>
+    <p><strong>Select Language:</strong></p>
+    <ul>
+      <li>DE (German)</li>
+      <li>EN (English)</li>
+      <li>FR (French)</li>
+      <li>IT (Italian)</li>
+      <li>PL (Polish)</li>
+      <li>ES/SP (Spanish)</li>
+      <li>PT (Portuguese)</li>
+      <li>RU (Russian)</li>
+      <li>And more...</li>
+    </ul>
+    <p><strong>Source Selection Mode:</strong></p>
+    <ul>
+      <li><strong>Select Files (XML/TXT)</strong> &larr; Recommended for single file</li>
+      <li>Select Folder (recursive)</li>
+    </ul>
+  </li>
+  <li>Select <strong>CD</strong> as the game platform</li>
+  <li>Select your target language (e.g., <strong>DE</strong> for German)</li>
+  <li>Ensure <strong>"Select Files (XML/TXT)"</strong> is selected</li>
+  <li>Click <strong>"Create"</strong></li>
+</ol>
+
+<h4>Step 3: Select Your XML File</h4>
+
+<p>A file dialog opens. Navigate to your XML file location and select it.</p>
+
+<p><strong>Supported formats:</strong></p>
+<ul>
+  <li><code>.xml</code> - LocStr XML format</li>
+  <li><code>.txt</code> / <code>.tsv</code> - Tab-delimited text files</li>
+</ul>
+
+<p>The progress bar shows dictionary creation status.</p>
+
+<h4>Step 4: Load and Search</h4>
+
+<ol>
+  <li>Once creation completes, click <strong>"Load Dictionary"</strong></li>
+  <li>Select the dictionary you just created (CD-DE, etc.)</li>
+  <li>Type your search term in the search box</li>
+  <li>Click <strong>"Search"</strong> or press Enter</li>
+  <li>Results display with:
+    <ul>
+      <li>Korean source text</li>
+      <li>Translated text</li>
+      <li>StringID (if available)</li>
+    </ul>
+  </li>
+</ol>
+
+<h3>Search Options</h3>
+
+<table>
+  <tr>
+    <th>Option</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><strong>Contains</strong></td>
+    <td>Find partial matches (default)</td>
+  </tr>
+  <tr>
+    <td><strong>Exact Match</strong></td>
+    <td>Find exact string matches only</td>
+  </tr>
+  <tr>
+    <td><strong>One Line</strong></td>
+    <td>Standard single-term search</td>
+  </tr>
+  <tr>
+    <td><strong>Multi Line</strong></td>
+    <td>Search multiple terms at once</td>
+  </tr>
+</table>
+
+<hr />
+
+<h2 id="section2">2. LINE CHECK - Translation Consistency QA</h2>
+
+<p>LINE CHECK identifies inconsistent translations where the same Korean source text has been translated differently in different locations.</p>
+
+<h3>What LINE CHECK Does</h3>
+
+<ul>
+  <li>Scans all translation entries in your files</li>
+  <li>Groups entries by Korean source text</li>
+  <li>Flags entries where the same source has multiple different translations</li>
+  <li>Generates a report showing all inconsistencies with file locations</li>
+</ul>
+
+<h3>When to Use LINE CHECK</h3>
+
+<ul>
+  <li>Before delivery to find translation inconsistencies</li>
+  <li>After merging multiple translators' work</li>
+  <li>For quality assurance on large XML files</li>
+  <li>To maintain glossary/terminology consistency</li>
+</ul>
+
+<h3>Two Check Modes</h3>
+
+<table>
+  <tr>
+    <th>Mode</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><strong>Source against Self</strong></td>
+    <td>Check selected files against themselves. Use when you want to find inconsistencies within your own translation files.</td>
+  </tr>
+  <tr>
+    <td><strong>Source against External Glossary</strong></td>
+    <td>Check selected files against a reference glossary. Use when you have an approved glossary to validate against.</td>
+  </tr>
+</table>
+
+<h3>Filter Configuration Options</h3>
+
+<p>These options control which entries are checked:</p>
+
+<table>
+  <tr>
+    <th>Setting</th>
+    <th>Default</th>
+    <th>Purpose</th>
+  </tr>
+  <tr>
+    <td><strong>Filter sentences</strong></td>
+    <td>ON (checked)</td>
+    <td>Skip entries where source ends with <code>.</code> <code>?</code> <code>!</code> - focuses on terms, not sentences</td>
+  </tr>
+  <tr>
+    <td><strong>Max source length</strong></td>
+    <td>15</td>
+    <td>Ignore source text longer than this (characters). Reduces noise from long sentences</td>
+  </tr>
+  <tr>
+    <td><strong>Min occurrence</strong></td>
+    <td>2</td>
+    <td>Only flag if the same source appears 2+ times. Must have multiple instances to detect inconsistency</td>
+  </tr>
+</table>
+
+<h3>How to Use LINE CHECK</h3>
+
+<h4>Step 1: Open Glossary Checker Tab</h4>
+
+<p>Click the <strong>"Glossary Checker"</strong> tab at the top of the window.</p>
+
+<h4>Step 2: Configure Options (Optional)</h4>
+
+<p>In the Options panel on the left:</p>
+
+<ol>
+  <li><strong>Filter sentences</strong> - Keep checked to focus on terminology</li>
+  <li><strong>Max source length</strong> - Adjust if needed (default 15 is good for terms)</li>
+  <li><strong>Minimum occurrence count</strong> - Keep at 2 (needs at least 2 to compare)</li>
+</ol>
+
+<h4>Step 3: Click Line Check</h4>
+
+<p>Click the <strong>"Line Check"</strong> button in the Buttons panel.</p>
+
+<h4>Step 4: Configure Check Mode</h4>
+
+<p>The "Line Check Configuration" dialog opens:</p>
+
+<p><strong>Check Mode:</strong></p>
+<ul>
+  <li>Select <strong>"Source against Self"</strong> for internal consistency check</li>
+  <li>Select <strong>"Source against External Glossary"</strong> to check against a reference</li>
+</ul>
+
+<p><strong>Source Data:</strong></p>
+<ul>
+  <li>Click <strong>"Select Files"</strong> to choose XML/TXT files to check</li>
+  <li>Or click <strong>"Select Folder"</strong> to check all files in a directory</li>
+</ul>
+
+<p><strong>External Glossary Data:</strong> (only for External mode)</p>
+<ul>
+  <li>Click <strong>"Select Files"</strong> to choose glossary files</li>
+  <li>Or click <strong>"Select Folder"</strong> for glossary directory</li>
+</ul>
+
+<h4>Step 5: Start Check</h4>
+
+<p>Click <strong>"Start Check"</strong> button.</p>
+
+<p>You'll be prompted to choose where to save the report file.</p>
+
+<h4>Step 6: Review Report</h4>
+
+<p>The report is saved as a <code>.txt</code> file with this format:</p>
+
+<pre><code>Korean_source_text_1
+  Translation_A    [file1.xml]
+  Translation_B    [file2.xml]
+
+Korean_source_text_2
+  TranslationX    [main.xml]
+  TranslationY    [update.xml]
+  TranslationZ    [patch.xml]</code></pre>
+
+<p><strong>How to read the report:</strong></p>
+<ul>
+  <li>Each Korean source text that has inconsistent translations is listed</li>
+  <li>Below it, each different translation variant is shown</li>
+  <li>The file(s) where each translation appears are listed in brackets</li>
+</ul>
+
+<h3>LINE CHECK Example</h3>
+
+<p><strong>Scenario:</strong> You have a CD platform German translation file. You want to check if any terms were translated inconsistently.</p>
+
+<ol>
+  <li>Go to <strong>Glossary Checker</strong> tab</li>
+  <li>Click <strong>"Line Check"</strong></li>
+  <li>Select <strong>"Source against Self"</strong></li>
+  <li>Click <strong>"Select Files"</strong> &rarr; choose your CD German XML file</li>
+  <li>Click <strong>"Start Check"</strong></li>
+  <li>Save report as <code>CD_DE_consistency_check.txt</code></li>
+  <li>Open report to review inconsistencies</li>
+</ol>
+
+<hr />
+
+<h2 id="section3">3. Additional Features</h2>
+
+<h3>Reference Dictionary</h3>
+
+<p>Load a second dictionary for side-by-side comparison:</p>
+
+<ol>
+  <li>Click <strong>"REFERENCE OFF"</strong> button</li>
+  <li>Select a reference dictionary</li>
+  <li>Button changes to show reference (e.g., "REFERENCE: CD-EN")</li>
+  <li>Search results now show both main and reference translations</li>
+</ol>
+
+<h3>Term Check</h3>
+
+<p>Similar to LINE CHECK but uses Aho-Corasick algorithm for faster term detection:</p>
+
+<ol>
+  <li>Go to <strong>Glossary Checker</strong> tab</li>
+  <li>Click <strong>"Term Check"</strong></li>
+  <li>Configure similarly to LINE CHECK</li>
+  <li>Detects terms that appear in source but may have inconsistent translations</li>
+</ol>
+
+<h3>Extract Glossary</h3>
+
+<p>Extract a glossary from translation files:</p>
+
+<ol>
+  <li>Go to <strong>Glossary Checker</strong> tab</li>
+  <li>Click <strong>"Extract Glossary"</strong></li>
+  <li>Select source files</li>
+  <li>Save extracted glossary as Excel or text file</li>
+</ol>
+
+<h3>Settings</h3>
+
+<p>Click <strong>"Settings"</strong> to customize:</p>
+
+<ul>
+  <li><strong>Font Family</strong> - Change display font</li>
+  <li><strong>Font Size</strong> - Adjust text size</li>
+  <li><strong>Colors</strong> - Set colors for Korean, Translation, and Reference text</li>
+  <li><strong>Styles</strong> - Bold/Italic options</li>
+  <li><strong>UI Language</strong> - English or Korean interface</li>
+</ul>
+
+<hr />
+
+<h2 id="section4">4. Configuration Options</h2>
+
+<h3>Dictionary Storage</h3>
+
+<p>Dictionaries are saved in the application directory:</p>
+
+<pre><code>QuickSearch/
+├── QuickSearch0818.py
+├── BDO/
+│   ├── DE/dictionary.pkl
+│   └── EN/dictionary.pkl
+├── CD/
+│   ├── DE/dictionary.pkl
+│   └── FR/dictionary.pkl
+└── qs_settings.json</code></pre>
+
+<h3>Settings File</h3>
+
+<p><code>qs_settings.json</code> stores your preferences:</p>
+
+<ul>
+  <li>Font family and size</li>
+  <li>Color settings</li>
+  <li>Style preferences</li>
+  <li>UI language selection</li>
+</ul>
+
+<hr />
+
+<h2 id="section5">5. Troubleshooting</h2>
+
+<h3>Common Issues</h3>
+
+<table>
+  <tr>
+    <th>Problem</th>
+    <th>Solution</th>
+  </tr>
+  <tr>
+    <td>"No files selected" warning</td>
+    <td>Make sure to select at least one XML or TXT file</td>
+  </tr>
+  <tr>
+    <td>Dictionary creation fails</td>
+    <td>Check that XML files are valid LocStr format</td>
+  </tr>
+  <tr>
+    <td>No search results</td>
+    <td>Verify dictionary is loaded (button shows "LOADED: CD-DE")</td>
+  </tr>
+  <tr>
+    <td>LINE CHECK finds nothing</td>
+    <td>Try reducing "Max source length" or lowering "Min occurrence" to 1</td>
+  </tr>
+</table>
+
+<h3>Supported File Formats</h3>
+
+<p><strong>XML Files (LocStr format):</strong></p>
+
+<pre><code>&lt;LocStr StringID="12345" StrOrigin="Korean text" Str="Translated text"/&gt;</code></pre>
+
+<p><strong>Tab-delimited TXT/TSV files:</strong></p>
+
+<ul>
+  <li>Column 6 (index 5): Korean source</li>
+  <li>Column 7 (index 6): Translation</li>
+</ul>
+
+<h3>Keyboard Shortcuts</h3>
+
+<table>
+  <tr>
+    <th>Shortcut</th>
+    <th>Action</th>
+  </tr>
+  <tr>
+    <td>Enter</td>
+    <td>Execute search</td>
+  </tr>
+  <tr>
+    <td>Ctrl+C</td>
+    <td>Copy selected text</td>
+  </tr>
+</table>
+
+<hr />
+
+<h2>Summary</h2>
+
+<div class="important">
+<p><strong>For CD Platform Single XML File Workflow:</strong></p>
+<ol>
+  <li>Create Dictionary &rarr; Select CD &rarr; Select Language &rarr; Select Files &rarr; Choose your XML</li>
+  <li>Load Dictionary &rarr; Select CD-[Language]</li>
+  <li>Search as needed</li>
+</ol>
+</div>
+
+<div class="important">
+<p><strong>For Translation Consistency QA:</strong></p>
+<ol>
+  <li>Glossary Checker tab &rarr; Line Check</li>
+  <li>Source against Self &rarr; Select Files &rarr; Choose XML(s)</li>
+  <li>Start Check &rarr; Save report &rarr; Review inconsistencies</li>
+</ol>
+</div>
+
+<hr />
+
+<p style="text-align: center; color: #95a5a6; font-size: 10pt;"><em>QuickSearch XML v0818 - Translation Search &amp; QA Tool</em></p>
+
+</body>
+</html>
