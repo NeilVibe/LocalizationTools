@@ -16,9 +16,7 @@ a = Analysis(
         ('config.py', '.'),
         ('README.md', '.'),
         ('USER_GUIDE.md', '.'),
-        # Images will be added when provided
-        # ('splash.png', '.'),
-        # ('icon.ico', '.'),
+        ('images', 'images'),
     ],
     hiddenimports=[
         'lxml',
@@ -56,23 +54,23 @@ a = Analysis(
     noarchive=False,
 )
 
-# Splash screen (uncomment when splash.png is provided)
-# splash = Splash(
-#     'splash.png',
-#     binaries=a.binaries,
-#     datas=a.datas,
-#     text_pos=(10, 290),
-#     text_size=10,
-#     text_color='black',
-# )
+# Splash screen
+splash = Splash(
+    'images/QSsplash.png',
+    binaries=a.binaries,
+    datas=a.datas,
+    text_pos=(10, 290),
+    text_size=10,
+    text_color='black',
+)
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
     pyz,
     a.scripts,
-    # splash,  # Uncomment when splash is enabled
-    # splash.binaries,  # Uncomment when splash is enabled
+    splash,
+    splash.binaries,
     [],
     exclude_binaries=True,
     name='QuickSearch',
@@ -86,7 +84,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    # icon='icon.ico',  # Uncomment when icon.ico is provided
+    icon='images/QSico.ico',
 )
 
 coll = COLLECT(
