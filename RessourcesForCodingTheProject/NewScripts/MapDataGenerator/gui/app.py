@@ -408,7 +408,8 @@ class MapDataGeneratorApp:
 
             except Exception as e:
                 log.exception("Error loading data")
-                self.root.after(0, lambda: self._on_load_error(str(e)))
+                error_msg = str(e)
+                self.root.after(0, lambda msg=error_msg: self._on_load_error(msg))
 
         threading.Thread(target=task, daemon=True).start()
 
