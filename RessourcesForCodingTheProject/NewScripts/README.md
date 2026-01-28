@@ -578,27 +578,45 @@ Track scripts by category for easy reference:
 
 ### Build Map - Which CI For Which Project?
 
-| Project | CI System | Trigger File (at ROOT) | Push To | Check Status |
-|---------|-----------|------------------------|---------|--------------|
-| **LocaNext** (main app) | Gitea Actions | `GITEA_TRIGGER.txt` | GitHub + Gitea | `./scripts/gitea_control.sh status` |
-| **LanguageDataExporter** | GitHub Actions | `LANGUAGEDATAEXPORTER_BUILD.txt` | GitHub only | [GitHub Actions](https://github.com/NeilVibe/LocalizationTools/actions) |
-| **QACompilerNEW** | GitHub Actions | `QACOMPILER_BUILD.txt` | GitHub only | [GitHub Actions](https://github.com/NeilVibe/LocalizationTools/actions) |
-| **Other NewScripts** | None | N/A | GitHub only | No build needed |
+| Project | CI System | Trigger File (at ROOT) | Workflow File | Check Status |
+|---------|-----------|------------------------|---------------|--------------|
+| **LocaNext** (main app) | Gitea Actions | `GITEA_TRIGGER.txt` | `.gitea/workflows/build.yml` | `./scripts/gitea_control.sh status` |
+| **QuickSearch** | GitHub Actions | `QUICKSEARCH_BUILD.txt` | `quicksearch-build.yml` | `gh run list --workflow=quicksearch-build.yml` |
+| **QACompilerNEW** | GitHub Actions | `QACOMPILER_BUILD.txt` | `qacompiler-build.yml` | `gh run list --workflow=qacompiler-build.yml` |
+| **LanguageDataExporter** | GitHub Actions | `LANGUAGEDATAEXPORTER_BUILD.txt` | `languagedataexporter-build.yml` | `gh run list --workflow=languagedataexporter-build.yml` |
+| **DataListGenerator** | GitHub Actions | `DATALISTGENERATOR_BUILD.txt` | `datalistgenerator-build.yml` | `gh run list --workflow=datalistgenerator-build.yml` |
+| **Other NewScripts** | None | N/A | N/A | No build needed |
 
 **⚠️ ALL trigger files are at the REPO ROOT, not in project folders!**
 
 ### Quick Reference Commands
 
-**LanguageDataExporter:**
+**QuickSearch:**
 ```bash
-echo "Build: <description>" >> LANGUAGEDATAEXPORTER_BUILD.txt
-git add -A && git commit -m "Trigger LDE build" && git push origin main
+echo "Build NNN: <description>" >> QUICKSEARCH_BUILD.txt
+git add -A && git commit -m "Build NNN: <description>" && git push origin main
+gh run list --workflow=quicksearch-build.yml --limit 3
 ```
 
 **QACompilerNEW:**
 ```bash
-echo "Build: <description>" >> QACOMPILER_BUILD.txt
-git add -A && git commit -m "Trigger QAC build" && git push origin main
+echo "Build NNN: <description>" >> QACOMPILER_BUILD.txt
+git add -A && git commit -m "Build NNN: <description>" && git push origin main
+gh run list --workflow=qacompiler-build.yml --limit 3
+```
+
+**LanguageDataExporter:**
+```bash
+echo "Build NNN: <description>" >> LANGUAGEDATAEXPORTER_BUILD.txt
+git add -A && git commit -m "Build NNN: <description>" && git push origin main
+gh run list --workflow=languagedataexporter-build.yml --limit 3
+```
+
+**DataListGenerator:**
+```bash
+echo "Build NNN: <description>" >> DATALISTGENERATOR_BUILD.txt
+git add -A && git commit -m "Build NNN: <description>" && git push origin main
+gh run list --workflow=datalistgenerator-build.yml --limit 3
 ```
 
 **LocaNext (main app - NOT NewScripts!):**
@@ -621,11 +639,17 @@ What did I modify?
 ├─ locaNext/ or server/ (main app)
 │  └─ YES → Use Gitea CI (GITEA_TRIGGER.txt + push to both remotes)
 │
-├─ NewScripts/LanguageDataExporter/
-│  └─ YES → Use GitHub Actions (LANGUAGEDATAEXPORTER_BUILD.txt + push to GitHub)
+├─ NewScripts/QuickSearch/
+│  └─ YES → Use GitHub Actions (QUICKSEARCH_BUILD.txt)
 │
 ├─ NewScripts/QACompilerNEW/
-│  └─ YES → Use GitHub Actions (QACOMPILER_BUILD.txt + push to GitHub)
+│  └─ YES → Use GitHub Actions (QACOMPILER_BUILD.txt)
+│
+├─ NewScripts/LanguageDataExporter/
+│  └─ YES → Use GitHub Actions (LANGUAGEDATAEXPORTER_BUILD.txt)
+│
+├─ NewScripts/DataListGenerator/
+│  └─ YES → Use GitHub Actions (DATALISTGENERATOR_BUILD.txt)
 │
 ├─ NewScripts/<anything else>/
 │  └─ NO → Just push to GitHub, run directly with Python
@@ -638,10 +662,10 @@ What did I modify?
 
 | ❌ WRONG | ✅ CORRECT |
 |----------|-----------|
-| Trigger Gitea build for NewScripts | Use GitHub Actions for LDE/QAC, no build for others |
+| Trigger Gitea build for NewScripts | Use GitHub Actions for NewScripts projects |
 | Push only to GitHub for LocaNext | Push to BOTH GitHub AND Gitea for LocaNext |
-| Trigger build for standalone scripts | Just push to GitHub, run with Python directly |
 | Investigate Gitea failures for NewScripts | Gitea is only for LocaNext main app |
+| Look for trigger files in project folders | ALL trigger files are at REPO ROOT |
 
 ---
 

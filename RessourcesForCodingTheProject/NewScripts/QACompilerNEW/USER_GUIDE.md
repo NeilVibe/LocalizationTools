@@ -361,6 +361,52 @@ Master files include additional columns per tester:
 >
 > Both are treated identically by the system - use whichever your testers prefer.
 
+### How Duplicate Text Gets the Correct StringID
+
+The same Korean text can appear in multiple game files with **different StringIDs**. The generator automatically finds the correct StringID for each occurrence using **EXPORT folder matching**.
+
+#### The Problem
+
+```
+Korean text "무기를 장착합니다" appears in:
+  - skillinfo_pc.xml      → Should get StringID_A
+  - iteminfo_weapon.xml   → Should get StringID_B
+
+Without smart matching, the system might assign the wrong StringID!
+```
+
+#### The Solution: EXPORT Folder Matching
+
+The generator matches each data file to its corresponding EXPORT file:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  SOURCE FILE              →    EXPORT FILE    →   STRINGID  │
+├─────────────────────────────────────────────────────────────┤
+│  skillinfo_pc.xml         →    EXPORT/skillinfo_pc.xml      │
+│  Korean "무기를 장착합니다"  →    Found StringID_A here!      │
+├─────────────────────────────────────────────────────────────┤
+│  iteminfo_weapon.xml      →    EXPORT/iteminfo_weapon.xml   │
+│  Korean "무기를 장착합니다"  →    Found StringID_B here!      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### How It Works
+
+1. **Track Source File** - Each text entry remembers which XML file it came from
+2. **Load All Translations** - Language tables store ALL (translation, stringid) pairs for each Korean text
+3. **Match via EXPORT** - When multiple StringIDs exist for the same Korean text:
+   - Look up the EXPORT file matching the source data file
+   - Find which StringID exists in that EXPORT file
+   - Return the correct (translation, stringid) pair
+4. **Fallback** - If no EXPORT match found, use the first valid translation
+
+#### Result
+
+Each generated datasheet has the **correct StringID** for each row, even when the same Korean text appears in multiple game files with different identifiers.
+
+> **Technical Note:** This matching is automatic and invisible to users. The EXPORT folder must be synced from Perforce for accurate StringID resolution.
+
 ---
 
 ## 📁 2. Transfer QA Files
