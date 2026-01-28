@@ -234,7 +234,6 @@ def save_settings(settings: Settings) -> bool:
 
 def get_settings() -> Settings:
     """Get current settings, loading if necessary."""
-    global _current_settings
     if _current_settings is None:
         return load_settings()
     return _current_settings
