@@ -1,0 +1,495 @@
+# MapDataGenerator - Build Workflow
+# ============================================================================
+# COMPREHENSIVE CI VALIDATION
+#
+# This workflow:
+# 1. Runs on changes to MAPDATAGENERATOR_BUILD.txt OR manual trigger
+# 2. VALIDATES CODE THOROUGHLY:
+#    - Python syntax validation (py_compile)
+#    - Module import validation (catches missing imports)
+#    - Flake8 code quality (undefined names, unused imports, errors)
+#    - Security audit (pip-audit for vulnerable dependencies)
+# 3. Builds standalone Windows executable with PyInstaller
+# 4. Creates Inno Setup installer
+# 5. Uploads to GitHub Releases
+#
+# FAIL FAST: Validation errors stop the build BEFORE PyInstaller runs
+# ============================================================================
+
+name: MapDataGenerator Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'MAPDATAGENERATOR_BUILD.txt'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.1)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+env:
+  MAPDATAGENERATOR_PATH: RessourcesForCodingTheProject/NewScripts/MapDataGenerator
+
+jobs:
+  # ============================================================
+  # JOB 1: VALIDATION (Runs on Ubuntu - faster, catches errors early)
+  # ============================================================
+  validation:
+    name: Code Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check build trigger
+        id: check
+        run: |
+          should_build=false
+
+          # Check if MAPDATAGENERATOR_BUILD.txt was modified
+          diff_output=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          if echo "$diff_output" | grep -q "MAPDATAGENERATOR_BUILD.txt"; then
+            trigger=$(grep -E "^Build" MAPDATAGENERATOR_BUILD.txt | tail -1 || echo "")
+            if [ -n "$trigger" ]; then
+              should_build=true
+              echo "Trigger: $trigger"
+            fi
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            should_build=true
+            echo "Manual trigger via workflow_dispatch"
+          fi
+
+          if [ "$should_build" = "false" ]; then
+            echo "No MapDataGenerator changes detected - skipping build"
+            echo "should_build=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "should_build=true" >> $GITHUB_OUTPUT
+
+          # AUTO-GENERATE VERSION: YY.MMDD.HHMM format (Korean time)
+          version=$(TZ='Asia/Seoul' date '+%y.%-m%d.%H%M')
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "[OK] Auto-generated version: $version (YY.MMDD.HHMM format)"
+
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      version: ${{ steps.check.outputs.version }}
+
+  # ============================================================
+  # JOB 2: SAFETY CHECKS (Syntax, Imports, Code Quality, Security)
+  # ============================================================
+  safety-checks:
+    name: Safety Checks (Syntax, Imports, Flake8, Security)
+    runs-on: ubuntu-latest
+    needs: validation
+    if: needs.validation.outputs.should_build == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies + validation tools
+        run: |
+          cd ${{ env.MAPDATAGENERATOR_PATH }}
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+          # Install validation tools
+          pip install flake8 pip-audit pytest
+
+          echo "[OK] All dependencies installed"
+
+      # ============================================================
+      # CHECK 1: Python Syntax Validation
+      # ============================================================
+      - name: Check 1 - Python Syntax Validation
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  CHECK 1: PYTHON SYNTAX VALIDATION                         ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          cd ${{ env.MAPDATAGENERATOR_PATH }}
+
+          python << 'EOF'
+          import sys
+          import py_compile
+          from pathlib import Path
+
+          errors = []
+          checked = 0
+
+          for py_file in Path('.').rglob('*.py'):
+              # Skip __pycache__, build/dist
+              if '__pycache__' in str(py_file):
+                  continue
+              if 'build' in str(py_file) or 'dist' in str(py_file):
+                  continue
+
+              try:
+                  py_compile.compile(str(py_file), doraise=True)
+                  checked += 1
+              except py_compile.PyCompileError as e:
+                  errors.append(f"{py_file}: {e}")
+                  print(f"  [FAIL] {py_file}")
+
+          if errors:
+              print(f"\n[ERROR] {len(errors)} syntax errors found!")
+              for e in errors:
+                  print(f"  {e}")
+              sys.exit(1)
+          else:
+              print(f"[OK] All {checked} Python files have valid syntax")
+          EOF
+
+      # ============================================================
+      # CHECK 2: Module Import Validation
+      # ============================================================
+      - name: Check 2 - Module Import Validation
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  CHECK 2: MODULE IMPORT VALIDATION                         ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          cd ${{ env.MAPDATAGENERATOR_PATH }}
+
+          python << 'EOF'
+          import sys
+          import importlib
+          sys.path.insert(0, '.')
+
+          modules = [
+              'config',
+              'core.xml_parser',
+              'core.language',
+              'core.linkage',
+              'core.search',
+              'core.dds_handler',
+              'utils.filters',
+          ]
+
+          errors = []
+          for mod in modules:
+              try:
+                  importlib.import_module(mod)
+                  print(f"  [PASS] {mod}")
+              except Exception as e:
+                  print(f"  [FAIL] {mod}: {e}")
+                  errors.append(mod)
+
+          if errors:
+              print(f"\n[ERROR] {len(errors)} modules failed to import!")
+              sys.exit(1)
+          else:
+              print(f"\n[OK] All {len(modules)} modules imported successfully!")
+          EOF
+
+      # ============================================================
+      # CHECK 3: Flake8 Code Quality (Critical Errors Only)
+      # ============================================================
+      - name: Check 3 - Flake8 Code Quality
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  CHECK 3: FLAKE8 CODE QUALITY                              ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          cd ${{ env.MAPDATAGENERATOR_PATH }}
+
+          # Only check for critical errors:
+          # E9: Runtime errors (syntax errors, IO errors)
+          # F63: Invalid escape sequences
+          # F7: Undefined names, statements
+          # F82: Undefined names in __all__
+          flake8 . --select=E9,F63,F7,F82 --show-source --statistics \
+            --exclude=__pycache__,build,dist,.git || {
+            echo "[ERROR] Flake8 found critical errors"
+            exit 1
+          }
+
+          echo "[OK] Flake8 critical error check passed"
+
+      # ============================================================
+      # CHECK 4: Security Audit
+      # ============================================================
+      - name: Check 4 - Security Audit
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  CHECK 4: SECURITY AUDIT (pip-audit)                       ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          cd ${{ env.MAPDATAGENERATOR_PATH }}
+
+          pip-audit --ignore-vuln PYSEC-2022-42969 2>&1 || {
+            echo "[WARN] Security audit found issues (non-blocking)"
+          }
+
+          echo "[OK] Security audit complete"
+        continue-on-error: true
+
+      - name: Safety Checks Summary
+        run: |
+          echo "============================================"
+          echo "[PASS] ALL SAFETY CHECKS PASSED"
+          echo "============================================"
+          echo ""
+          echo "Validated:"
+          echo "  1. Python syntax - OK"
+          echo "  2. Module imports - OK"
+          echo "  3. Flake8 critical errors - OK"
+          echo "  4. Security audit - Complete"
+          echo ""
+          echo "Ready for Windows build!"
+
+  # ============================================================
+  # JOB 3: BUILD WINDOWS (Only runs after validation passes)
+  # ============================================================
+  build-and-release:
+    name: Build & Release MapDataGenerator
+    runs-on: windows-latest
+    needs: [validation, safety-checks]
+    if: needs.validation.outputs.should_build == 'true'
+
+    env:
+      BUILD_VERSION: ${{ needs.validation.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          cd ${{ env.MAPDATAGENERATOR_PATH }}
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      # ============================================================
+      # FINAL VALIDATION ON WINDOWS
+      # ============================================================
+      - name: Windows Import Validation
+        shell: pwsh
+        run: |
+          cd ${{ env.MAPDATAGENERATOR_PATH }}
+          Write-Host "=== WINDOWS IMPORT VALIDATION ==="
+          Write-Host "Final check before PyInstaller..."
+
+          python -c @"
+          import sys
+          import importlib
+          sys.path.insert(0, '.')
+
+          modules = [
+              'config',
+              'core.xml_parser',
+              'core.language',
+              'core.linkage',
+              'core.search',
+              'core.dds_handler',
+              'utils.filters',
+          ]
+
+          errors = []
+          for mod in modules:
+              try:
+                  importlib.import_module(mod)
+                  print(f'  [PASS] {mod}')
+              except Exception as e:
+                  print(f'  [FAIL] {mod}: {e}')
+                  errors.append(mod)
+
+          if errors:
+              print(f'\n[ERROR] {len(errors)} modules failed to import!')
+              sys.exit(1)
+          else:
+              print(f'\n[OK] All {len(modules)} modules imported successfully!')
+          "@
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "[FATAL] Windows validation failed - aborting build"
+            exit 1
+          }
+          Write-Host "[OK] Windows validation passed"
+
+      - name: Inject Version
+        shell: pwsh
+        run: |
+          $version = "${{ env.BUILD_VERSION }}"
+          $mdgPath = "${{ env.MAPDATAGENERATOR_PATH }}"
+
+          Write-Host "=== VERSION INJECTION ==="
+          Write-Host "Version: $version"
+
+          # Update installer script version
+          $issPath = "$mdgPath\installer\MapDataGenerator.iss"
+          if (Test-Path $issPath) {
+            (Get-Content $issPath) -replace '#define MyAppVersion "[^"]*"', "#define MyAppVersion `"$version`"" | Set-Content $issPath
+            Write-Host "[OK] Updated: $issPath"
+          }
+
+          # Update config.py with version
+          $configPath = "$mdgPath\config.py"
+          if (Test-Path $configPath) {
+            $content = Get-Content $configPath -Raw
+            $content = $content -replace 'VERSION\s*=\s*"[^"]*"', "VERSION = `"$version`""
+            Set-Content $configPath $content
+            Write-Host "[OK] Updated: $configPath"
+          }
+
+      - name: Build executable with PyInstaller
+        shell: pwsh
+        run: |
+          cd ${{ env.MAPDATAGENERATOR_PATH }}
+          pyinstaller MapDataGenerator.spec --clean --noconfirm
+
+      - name: Verify build
+        shell: pwsh
+        run: |
+          $exePath = "${{ env.MAPDATAGENERATOR_PATH }}\dist\MapDataGenerator\MapDataGenerator.exe"
+          if (!(Test-Path $exePath)) {
+            Write-Error "Build failed - MapDataGenerator.exe not found"
+            exit 1
+          }
+          $size = (Get-Item $exePath).length / 1MB
+          Write-Host "Build successful! Size: $([math]::Round($size, 1)) MB"
+
+      - name: Create working folders
+        shell: pwsh
+        run: |
+          $distPath = "${{ env.MAPDATAGENERATOR_PATH }}\dist\MapDataGenerator"
+
+          $folders = @(
+            "logs",
+            "cache"
+          )
+
+          foreach ($folder in $folders) {
+            $path = "$distPath\$folder"
+            New-Item -ItemType Directory -Path $path -Force | Out-Null
+            New-Item -ItemType File -Path "$path\.gitkeep" -Force | Out-Null
+          }
+
+          Write-Host "Working folders created"
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y
+
+      - name: Compile installer
+        shell: pwsh
+        run: |
+          $issPath = "${{ env.MAPDATAGENERATOR_PATH }}\installer\MapDataGenerator.iss"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" $issPath
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          $version = "${{ env.BUILD_VERSION }}"
+          $distPath = "${{ env.MAPDATAGENERATOR_PATH }}\dist\MapDataGenerator"
+          $outDir = "${{ env.MAPDATAGENERATOR_PATH }}\installer\output"
+
+          New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+          $zipPath = "$outDir\MapDataGenerator_v${version}_Portable.zip"
+
+          Compress-Archive -Path "$distPath\*" -DestinationPath $zipPath -Force
+          $size = (Get-Item $zipPath).Length / 1MB
+          Write-Host "Portable ZIP: $([math]::Round($size, 1)) MB"
+
+      - name: Create source code ZIP
+        shell: pwsh
+        run: |
+          $version = "${{ env.BUILD_VERSION }}"
+          $sourcePath = "${{ env.MAPDATAGENERATOR_PATH }}"
+          $zipPath = "${{ env.MAPDATAGENERATOR_PATH }}\installer\output\MapDataGenerator_v${version}_Source.zip"
+
+          $tempDir = New-Item -ItemType Directory -Path "$env:TEMP\MapDataGenerator_Source" -Force
+          $excludes = @("dist", "build", "__pycache__", "*.pyc", "output", ".pytest_cache")
+
+          Get-ChildItem -Path $sourcePath -Exclude $excludes | Copy-Item -Destination $tempDir -Recurse -Force
+          Get-ChildItem -Path $tempDir -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+          Compress-Archive -Path "$tempDir\*" -DestinationPath $zipPath -Force
+          Remove-Item -Path $tempDir -Recurse -Force
+
+          $size = (Get-Item $zipPath).Length / 1MB
+          Write-Host "Source ZIP: $([math]::Round($size, 1)) MB"
+
+      - name: Upload Setup
+        uses: actions/upload-artifact@v4
+        with:
+          name: MapDataGenerator-Setup
+          path: ${{ env.MAPDATAGENERATOR_PATH }}/installer/output/*.exe
+          retention-days: 30
+
+      - name: Upload Portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: MapDataGenerator-Portable
+          path: ${{ env.MAPDATAGENERATOR_PATH }}/installer/output/*_Portable.zip
+          retention-days: 30
+
+      - name: Upload Source
+        uses: actions/upload-artifact@v4
+        with:
+          name: MapDataGenerator-Source
+          path: ${{ env.MAPDATAGENERATOR_PATH }}/installer/output/*_Source.zip
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mapdatagenerator-v${{ env.BUILD_VERSION }}
+          name: MapDataGenerator v${{ env.BUILD_VERSION }}
+          body: |
+            # MapDataGenerator v${{ env.BUILD_VERSION }}
+
+            **Crimson Desert Map/Region Data Visualization Tool**
+
+            ## Download
+
+            - **MapDataGenerator_v${{ env.BUILD_VERSION }}_Setup.exe** - Installer (recommended)
+            - **MapDataGenerator_v${{ env.BUILD_VERSION }}_Portable.zip** - Portable ZIP (no install)
+            - **MapDataGenerator_v${{ env.BUILD_VERSION }}_Source.zip** - Source code
+
+            ## CI Validation Passed
+
+            This build was validated with:
+            - Python syntax check
+            - Module import validation (catches missing imports)
+            - Flake8 code quality (undefined names, errors)
+            - Security audit (pip-audit)
+
+            ## Features
+
+            - **Multi-language Search**: Search across 13 languages
+            - **DDS Image Display**: View UITextureName images
+            - **Linkage Resolution**: StrKey → KnowledgeKey → UITextureName chain
+            - **Map Visualization**: Interactive matplotlib map with nodes and routes
+            - **Search Modes**: Contains, Exact, and Fuzzy matching
+
+          files: |
+            ${{ env.MAPDATAGENERATOR_PATH }}/installer/output/*.exe
+            ${{ env.MAPDATAGENERATOR_PATH }}/installer/output/*_Portable.zip
+            ${{ env.MAPDATAGENERATOR_PATH }}/installer/output/*_Source.zip
+          draft: false
+          prerelease: false

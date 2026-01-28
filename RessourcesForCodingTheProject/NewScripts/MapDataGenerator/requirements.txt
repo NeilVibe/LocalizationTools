@@ -1,0 +1,14 @@
+# MapDataGenerator Dependencies
+
+# XML parsing
+lxml>=4.9.0
+
+# Image handling
+Pillow>=10.0.0
+pillow-dds>=1.0.0
+
+# Map visualization
+matplotlib>=3.7.0
+
+# PyInstaller for packaging (dev only)
+# pyinstaller>=6.0.0

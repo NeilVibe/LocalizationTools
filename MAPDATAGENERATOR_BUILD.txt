@@ -1,0 +1,4 @@
+# MapDataGenerator Build Trigger
+# Add "Build NNN" to trigger a new CI build
+
+# Build History:
