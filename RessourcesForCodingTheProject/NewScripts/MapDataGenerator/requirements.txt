@@ -5,7 +5,7 @@ lxml>=4.9.0
 
 # Image handling
 Pillow>=10.0.0
-pillow-dds>=1.0.0
+# pillow-dds is Windows-only, installed separately in Windows build step
 
 # Map visualization
 matplotlib>=3.7.0
