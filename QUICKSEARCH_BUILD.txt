@@ -1,3 +1,4 @@
 # QuickSearch Build Trigger File
 # Add "Build NNN - Description" to trigger a build
 
+Build 001 - Initial release with splash and icon
