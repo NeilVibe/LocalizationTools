@@ -16,7 +16,10 @@ except ImportError:
 
 import pandas as pd
 
-from ..utils.language_utils import normalize_text, tokenize
+try:
+    from utils.language_utils import normalize_text, tokenize
+except ImportError:
+    from ..utils.language_utils import normalize_text, tokenize
 
 
 @dataclass

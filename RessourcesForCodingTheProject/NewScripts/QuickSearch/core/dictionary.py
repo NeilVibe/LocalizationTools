@@ -9,9 +9,14 @@ import pickle
 from typing import List, Dict, Optional, Tuple, Callable
 from dataclasses import dataclass, field
 
-from .xml_parser import parse_multiple_files, LocStrEntry
-from ..utils.language_utils import normalize_text, tokenize
-from ..config import get_dict_dir, GAMES, LANGUAGES
+try:
+    from core.xml_parser import parse_multiple_files, LocStrEntry
+    from utils.language_utils import normalize_text, tokenize
+    from config import get_dict_dir, GAMES, LANGUAGES
+except ImportError:
+    from .xml_parser import parse_multiple_files, LocStrEntry
+    from ..utils.language_utils import normalize_text, tokenize
+    from ..config import get_dict_dir, GAMES, LANGUAGES
 
 
 @dataclass

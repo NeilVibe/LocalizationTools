@@ -12,16 +12,28 @@ from typing import List, Dict, Optional, Callable, Tuple
 from collections import defaultdict
 from dataclasses import dataclass
 
-from .xml_parser import parse_multiple_files, parse_folder
-from .preprocessing import (
-    PreprocessedEntry,
-    preprocess_for_consistency_check,
-    group_by_source,
-    find_inconsistent_sources
-)
-from ..utils.language_utils import is_korean
-from ..utils.filters import glossary_filter
-from ..config import SOURCE_BASE_KR, SOURCE_BASE_ENG
+try:
+    from core.xml_parser import parse_multiple_files, parse_folder
+    from core.preprocessing import (
+        PreprocessedEntry,
+        preprocess_for_consistency_check,
+        group_by_source,
+        find_inconsistent_sources
+    )
+    from utils.language_utils import is_korean
+    from utils.filters import glossary_filter
+    from config import SOURCE_BASE_KR, SOURCE_BASE_ENG
+except ImportError:
+    from .xml_parser import parse_multiple_files, parse_folder
+    from .preprocessing import (
+        PreprocessedEntry,
+        preprocess_for_consistency_check,
+        group_by_source,
+        find_inconsistent_sources
+    )
+    from ..utils.language_utils import is_korean
+    from ..utils.filters import glossary_filter
+    from ..config import SOURCE_BASE_KR, SOURCE_BASE_ENG
 
 
 @dataclass

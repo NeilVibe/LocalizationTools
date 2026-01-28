@@ -7,7 +7,10 @@ One-line and multi-line search functionality.
 from typing import List, Optional, Tuple, Union
 from dataclasses import dataclass
 
-from .dictionary import Dictionary
+try:
+    from core.dictionary import Dictionary
+except ImportError:
+    from .dictionary import Dictionary
 
 
 @dataclass

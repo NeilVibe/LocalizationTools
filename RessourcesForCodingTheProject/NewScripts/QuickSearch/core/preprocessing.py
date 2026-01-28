@@ -8,8 +8,12 @@ Handles StringID matching for ENG BASE mode.
 from typing import List, Dict, Optional, Tuple, Callable
 from dataclasses import dataclass
 
-from .xml_parser import LocStrEntry, parse_multiple_files, build_stringid_lookup
-from ..config import SOURCE_BASE_KR, SOURCE_BASE_ENG
+try:
+    from core.xml_parser import LocStrEntry, parse_multiple_files, build_stringid_lookup
+    from config import SOURCE_BASE_KR, SOURCE_BASE_ENG
+except ImportError:
+    from .xml_parser import LocStrEntry, parse_multiple_files, build_stringid_lookup
+    from ..config import SOURCE_BASE_KR, SOURCE_BASE_ENG
 
 
 @dataclass

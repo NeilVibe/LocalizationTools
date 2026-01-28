@@ -10,12 +10,20 @@ from tkinter import ttk, filedialog, messagebox
 import threading
 from typing import Optional, Callable, List, Dict, Any
 
-from ..config import (
-    SOURCE_BASE_KR, SOURCE_BASE_ENG,
-    get_ui_text, get_settings, get_output_dir
-)
-from ..core.line_check import run_line_check, save_line_check_results
-from ..core.term_check import run_term_check, save_term_check_results
+try:
+    from config import (
+        SOURCE_BASE_KR, SOURCE_BASE_ENG,
+        get_ui_text, get_settings, get_output_dir
+    )
+    from core.line_check import run_line_check, save_line_check_results
+    from core.term_check import run_term_check, save_term_check_results
+except ImportError:
+    from ..config import (
+        SOURCE_BASE_KR, SOURCE_BASE_ENG,
+        get_ui_text, get_settings, get_output_dir
+    )
+    from ..core.line_check import run_line_check, save_line_check_results
+    from ..core.term_check import run_term_check, save_term_check_results
 
 
 def center_dialog(dialog: tk.Toplevel, parent: tk.Tk) -> None:
