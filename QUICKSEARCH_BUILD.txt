@@ -4,3 +4,4 @@
 Build 001 - Initial release with splash and icon
 Build 002 - Fix imports for CI compatibility
 Build 003 - Exclude legacy file from CI checks
+Build 004 - Fix config.py F824 flake8 error
