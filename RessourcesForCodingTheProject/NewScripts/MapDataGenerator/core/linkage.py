@@ -116,6 +116,17 @@ class DDSIndex:
 
         self._scanned = True
         log.info("Indexed %d DDS files from %s", count, texture_folder)
+
+        # DEBUG: Check for specific file
+        test_name = "cd_knowledgeimage_node_dem_demenisscastle"
+        if test_name in self._dds_files:
+            log.info("DEBUG: Found DemenissCastle DDS: %s", self._dds_files[test_name])
+        else:
+            log.warning("DEBUG: DemenissCastle DDS NOT in index! Looking for: %s", test_name)
+            # List some keys to see what format they're in
+            sample_keys = list(self._dds_files.keys())[:5]
+            log.warning("DEBUG: Sample indexed keys: %s", sample_keys)
+
         return count
 
     def find(self, ui_texture_name: str) -> Optional[Path]:
@@ -148,12 +159,14 @@ class DDSIndex:
         if name_with_ext in self._dds_files:
             return self._dds_files[name_with_ext]
 
-        # Log first few misses for debugging
-        if not hasattr(self, '_miss_count'):
-            self._miss_count = 0
-        if self._miss_count < 10:
-            log.debug("DDS not found: '%s' (tried: %s, %s)", original_name, lookup_name, name_with_ext)
-            self._miss_count += 1
+        # FALLBACK: Try partial/fuzzy matching for similar names
+        for key in self._dds_files.keys():
+            if lookup_name in key or key in lookup_name:
+                log.info("DDS fuzzy match: '%s' -> '%s'", original_name, key)
+                return self._dds_files[key]
+
+        # Log ALL misses with detail
+        log.warning("DDS NOT FOUND: '%s' (tried: '%s')", original_name, lookup_name)
 
         return None
 
@@ -260,6 +273,16 @@ class LinkageResolver:
                 ui_texture = (ki.get("UITextureName") or "").strip()
                 group_key = (ki.get("KnowledgeGroupKey") or "").strip()
 
+                # CRITICAL DEBUG: Check if we're getting wrong UITextureName from parent
+                if "null" in ui_texture.lower() or not ui_texture:
+                    # Check if parent has a different UITextureName
+                    parent = ki.getparent()
+                    if parent is not None:
+                        parent_tex = parent.get("UITextureName", "")
+                        child_tex = ki.get("UITextureName", "")
+                        log.warning("NESTING ISSUE? StrKey=%s, got UITexture='%s', parent has='%s', direct child attr='%s'",
+                                   strkey, ui_texture, parent_tex, child_tex)
+
                 lookup = KnowledgeLookup(
                     strkey=strkey,
                     name=name,
@@ -269,8 +292,24 @@ class LinkageResolver:
                     source_file=path.name
                 )
 
+                # IMPORTANT: Don't overwrite if existing entry has UITextureName and new one doesn't
+                existing = self._knowledge_lookup.get(strkey)
+                if existing and existing.ui_texture_name and not ui_texture:
+                    log.debug("Keeping existing UITexture for %s: '%s' (skipping empty)", strkey, existing.ui_texture_name)
+                    continue  # Keep the existing entry with valid UITextureName
+
                 self._knowledge_lookup[strkey] = lookup
                 count += 1
+
+                # DEBUG: Log specific entry AND check for parent attribute issues
+                if "DemenissCastle" in strkey or "null" in ui_texture.lower():
+                    log.info("DEBUG: Knowledge StrKey=%s, UITexture=%s (file=%s)", strkey, ui_texture, path.name)
+                    # Check if parent element has UITextureName that might be interfering
+                    parent = ki.getparent()
+                    if parent is not None:
+                        parent_texture = parent.get("UITextureName", "")
+                        if parent_texture:
+                            log.warning("DEBUG: Parent element '%s' also has UITextureName='%s'", parent.tag, parent_texture)
 
         self._stats['knowledge_loaded'] = count
         log.info("Knowledge lookup: %d entries", count)
@@ -295,97 +334,22 @@ class LinkageResolver:
         progress_callback=None
     ) -> int:
         """
-        Load MAP (Region) data from FactionNode XML files.
+        Load MAP (Region) data - KNOWLEDGE FIRST, then FactionNode for positions.
 
-        Uses knowledge lookup to get display names and UITextureName.
-        Does NOT filter by image existence - collects everything.
+        Priority: KnowledgeInfo (has UITextureName) > FactionNode (has position)
         """
         self._entries.clear()
         self._current_mode = DataMode.MAP
         count = 0
         with_image = 0
 
-        if not faction_folder or not faction_folder.exists():
-            log.error("Faction folder not found: %s", faction_folder)
-            return 0
-
-        log.info("Loading MAP data from: %s", faction_folder)
-
-        for path in iter_xml_files(faction_folder):
-            if progress_callback:
-                progress_callback(f"Loading {path.name}...")
-
-            root = parse_xml(path)
-            if root is None:
-                continue
-
-            for fn in root.iter("FactionNode"):
-                strkey = (fn.get("StrKey") or "").strip()
-                if not strkey:
-                    continue
-
-                # Skip duplicates
-                if strkey in self._entries:
-                    continue
-
-                # Get attributes
-                name_kr = (fn.get("Name") or "").strip()
-                desc_kr = (fn.get("Desc") or "").replace("<br/>", "\n").strip()
-                knowledge_key = (fn.get("KnowledgeKey") or "").strip()
-                node_type = (fn.get("Type") or "").strip()
-
-                # Lookup from Knowledge table
-                ui_texture = ""
-                if knowledge_key:
-                    knowledge = self._knowledge_lookup.get(knowledge_key)
-                    if knowledge:
-                        if not name_kr:
-                            name_kr = knowledge.name
-                        if not desc_kr:
-                            desc_kr = knowledge.desc
-                        ui_texture = knowledge.ui_texture_name
-
-                # Parse position
-                position = None
-                pos_str = (fn.get("WorldPosition") or "").strip()
-                if pos_str:
-                    parts = re.split(r"[,\s]+", pos_str)
-                    if len(parts) >= 3:
-                        try:
-                            position = (float(parts[0]), float(parts[1]), float(parts[2]))
-                        except ValueError:
-                            pass
-
-                # Check if DDS exists (but don't filter!)
-                dds_path = self._dds_index.find(ui_texture) if ui_texture else None
-                has_image = dds_path is not None
-
-                if has_image:
-                    with_image += 1
-
-                entry = DataEntry(
-                    strkey=strkey,
-                    name_kr=name_kr,
-                    desc_kr=desc_kr,
-                    ui_texture_name=ui_texture,
-                    dds_path=dds_path,
-                    has_image=has_image,
-                    position=position,
-                    knowledge_key=knowledge_key,
-                    source_file=path.name,
-                    entry_type=node_type,
-                )
-
-                self._entries[strkey] = entry
-                count += 1
-
-        # ALSO add KnowledgeInfo entries with images (for direct Knowledge search)
+        # =================================================================
+        # STEP 1: Load ALL KnowledgeInfo entries FIRST (they have UITextureName!)
+        # =================================================================
+        log.info("Loading Knowledge entries first (they have images)...")
         for strkey, knowledge in self._knowledge_lookup.items():
-            if strkey in self._entries:
-                continue  # Already added via FactionNode
-
             if not knowledge.name:
-                continue  # Skip entries without name
+                continue
 
             ui_texture = knowledge.ui_texture_name
             dds_path = self._dds_index.find(ui_texture) if ui_texture else None
@@ -401,7 +365,7 @@ class LinkageResolver:
                 ui_texture_name=ui_texture,
                 dds_path=dds_path,
                 has_image=has_image,
-                position=None,
+                position=None,  # Will be updated from FactionNode if available
                 knowledge_key=strkey,
                 source_file=knowledge.source_file,
                 entry_type="Knowledge",
@@ -409,6 +373,88 @@ class LinkageResolver:
 
             self._entries[strkey] = entry
             count += 1
+
+        log.info("Loaded %d Knowledge entries (%d with images)", count, with_image)
+
+        # =================================================================
+        # STEP 2: Process FactionNodes to ADD position data
+        # =================================================================
+        if not faction_folder or not faction_folder.exists():
+            log.warning("Faction folder not found: %s", faction_folder)
+        else:
+            log.info("Adding position data from FactionNodes: %s", faction_folder)
+            positions_added = 0
+
+            for path in iter_xml_files(faction_folder):
+                if progress_callback:
+                    progress_callback(f"Loading {path.name}...")
+
+                root = parse_xml(path)
+                if root is None:
+                    continue
+
+                for fn in root.iter("FactionNode"):
+                    strkey = (fn.get("StrKey") or "").strip()
+                    knowledge_key = (fn.get("KnowledgeKey") or "").strip()
+
+                    # Parse position
+                    position = None
+                    pos_str = (fn.get("WorldPosition") or "").strip()
+                    if pos_str:
+                        parts = re.split(r"[,\s]+", pos_str)
+                        if len(parts) >= 3:
+                            try:
+                                position = (float(parts[0]), float(parts[1]), float(parts[2]))
+                            except ValueError:
+                                pass
+
+                    # Try to find matching entry by KnowledgeKey first, then by StrKey
+                    existing = self._entries.get(knowledge_key) or self._entries.get(strkey)
+
+                    if existing and position:
+                        # UPDATE existing entry with position
+                        existing.position = position
+                        positions_added += 1
+                    elif strkey and strkey not in self._entries:
+                        # NEW entry from FactionNode (no matching Knowledge)
+                        name_kr = (fn.get("Name") or "").strip()
+                        desc_kr = (fn.get("Desc") or "").replace("<br/>", "\n").strip()
+                        node_type = (fn.get("Type") or "").strip()
+
+                        # Try to get UITextureName from Knowledge lookup
+                        ui_texture = ""
+                        if knowledge_key:
+                            knowledge = self._knowledge_lookup.get(knowledge_key)
+                            if knowledge:
+                                if not name_kr:
+                                    name_kr = knowledge.name
+                                if not desc_kr:
+                                    desc_kr = knowledge.desc
+                                ui_texture = knowledge.ui_texture_name
+
+                        dds_path = self._dds_index.find(ui_texture) if ui_texture else None
+                        has_image = dds_path is not None
+
+                        if has_image:
+                            with_image += 1
+
+                        entry = DataEntry(
+                            strkey=strkey,
+                            name_kr=name_kr,
+                            desc_kr=desc_kr,
+                            ui_texture_name=ui_texture,
+                            dds_path=dds_path,
+                            has_image=has_image,
+                            position=position,
+                            knowledge_key=knowledge_key,
+                            source_file=path.name,
+                            entry_type=node_type,
+                        )
+
+                        self._entries[strkey] = entry
+                        count += 1
+
+            log.info("Added position to %d entries from FactionNodes", positions_added)
 
         self._stats['entries_total'] = count
         self._stats['entries_with_image'] = with_image
