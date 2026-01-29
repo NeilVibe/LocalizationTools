@@ -11,7 +11,7 @@ Contains:
 
 from .xml_parser import parse_xml, sanitize_xml, iter_xml_files
 from .language import load_language_tables, get_translation
-from .linkage import LinkageResolver, FactionNode, KnowledgeInfo
+from .linkage import LinkageResolver, DataMode, DataEntry
 from .search import SearchEngine, SearchResult
 from .dds_handler import DDSHandler
 
@@ -22,8 +22,8 @@ __all__ = [
     'load_language_tables',
     'get_translation',
     'LinkageResolver',
-    'FactionNode',
-    'KnowledgeInfo',
+    'DataMode',
+    'DataEntry',
     'SearchEngine',
     'SearchResult',
     'DDSHandler',
