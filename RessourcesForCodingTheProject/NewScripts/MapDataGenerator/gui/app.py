@@ -222,30 +222,18 @@ class MapDataGeneratorApp:
         self._result_panel.pack(fill="both", expand=True, padx=5, pady=5)
         self._result_panel.set_load_more_callback(self._load_more_results)
 
-        # Right panel - 65%
+        # Right panel - 65% - IMAGE VIEWER ONLY (map is separate window)
         right_frame = ttk.Frame(self._main_paned)
         self._main_paned.add(right_frame, weight=2)
 
-        # Right panel uses vertical paned window
-        self._right_paned = ttk.PanedWindow(right_frame, orient="vertical")
-        self._right_paned.pack(fill="both", expand=True)
+        # Image viewer - takes full right panel
+        self._image_viewer = ImageViewer(right_frame)
+        self._image_viewer.pack(fill="both", expand=True)
 
-        # Image viewer (large!) - always visible, min height 300px
-        self._image_viewer = ImageViewer(self._right_paned)
-        self._image_viewer.config(height=350)  # Ensure minimum visible height
-        self._right_paned.add(self._image_viewer, weight=2)
-
-        # Map canvas (only visible in MAP mode)
-        self._map_frame = ttk.Frame(self._right_paned)
-        self._map_canvas = MapCanvas(
-            self._map_frame,
-            on_node_click=self._on_map_node_click
-        )
-        self._map_canvas.pack(fill="both", expand=True)
-        self._right_paned.add(self._map_frame, weight=3)
-
-        # Update visibility based on mode
-        self._update_mode_visibility()
+        # Map is OFF by default - opens in separate window when toggled
+        self._map_window: Optional[tk.Toplevel] = None
+        self._map_canvas: Optional[MapCanvas] = None
+        self._map_visible = False
 
         # Status bar
         self._create_status_bar()
@@ -275,6 +263,16 @@ class MapDataGeneratorApp:
             )
             btn.pack(side="left", padx=2)
             self._mode_buttons[mode] = btn
+
+        # Map toggle button (MAP mode only)
+        self._map_toggle_var = tk.BooleanVar(value=False)
+        self._map_toggle_btn = ttk.Checkbutton(
+            toolbar,
+            text="Show Map",
+            variable=self._map_toggle_var,
+            command=self._toggle_map
+        )
+        self._map_toggle_btn.pack(side="left", padx=20)
 
         # Stats display (right side)
         self._stats_label = ttk.Label(toolbar, text="", foreground="gray")
@@ -317,14 +315,8 @@ class MapDataGeneratorApp:
         # Update result panel headers
         self._result_panel.set_mode_headers(new_mode.value)
 
-        # Check if data for new mode is loaded, if not reload
-        needs_reload = False
-        if new_mode == DataMode.MAP and not self._resolver.faction_nodes:
-            needs_reload = True
-        elif new_mode == DataMode.CHARACTER and not self._resolver.characters:
-            needs_reload = True
-        elif new_mode == DataMode.ITEM and not self._resolver.items:
-            needs_reload = True
+        # Check if data for new mode is loaded using current_mode tracking
+        needs_reload = (self._resolver.current_mode != new_mode)
 
         if needs_reload and self._texture_folder:
             # Reload data for new mode
@@ -337,7 +329,7 @@ class MapDataGeneratorApp:
                 waypoint_folder=Path(settings.waypoint_folder),
                 character_folder=Path(settings.character_folder),
                 mode=new_mode,
-                            )
+            )
         elif self._search_engine:
             # Data already loaded, just update search engine mode
             self._search_engine.set_mode(new_mode)
@@ -353,22 +345,66 @@ class MapDataGeneratorApp:
 
     def _update_mode_visibility(self) -> None:
         """Update widget visibility based on current mode."""
+        # Map toggle button only visible in MAP mode
         if self._current_mode == DataMode.MAP:
-            # MAP mode: Show BOTH image and map with equal-ish weight
-            # Image viewer should still be visible and usable!
-            try:
-                self._right_paned.paneconfig(self._image_viewer, weight=2)
-                self._right_paned.paneconfig(self._map_frame, weight=2)
-            except tk.TclError:
-                pass
-            self._map_frame.pack(fill="both", expand=True)
+            self._map_toggle_btn.pack(side="left", padx=20)
         else:
-            # CHARACTER/ITEM mode: Hide map, show large image
-            try:
-                self._right_paned.paneconfig(self._image_viewer, weight=4)
-                self._right_paned.paneconfig(self._map_frame, weight=0)
-            except tk.TclError:
-                pass
+            self._map_toggle_btn.pack_forget()
+            # Close map window if open
+            if self._map_window:
+                self._map_window.destroy()
+                self._map_window = None
+                self._map_canvas = None
+                self._map_visible = False
+                self._map_toggle_var.set(False)
+
+    def _toggle_map(self) -> None:
+        """Toggle map window visibility."""
+        if self._map_toggle_var.get():
+            self._show_map_window()
+        else:
+            self._hide_map_window()
+
+    def _show_map_window(self) -> None:
+        """Show map in separate window."""
+        if self._map_window is not None:
+            self._map_window.focus_set()
+            return
+
+        # Create map window
+        self._map_window = tk.Toplevel(self.root)
+        self._map_window.title("Map View")
+        self._map_window.geometry("800x600")
+        self._map_window.protocol("WM_DELETE_WINDOW", self._hide_map_window)
+
+        # Position next to main window
+        x = self.root.winfo_x() + self.root.winfo_width() + 10
+        y = self.root.winfo_y()
+        self._map_window.geometry(f"+{x}+{y}")
+
+        # Create map canvas
+        self._map_canvas = MapCanvas(
+            self._map_window,
+            on_node_click=self._on_map_node_click
+        )
+        self._map_canvas.pack(fill="both", expand=True)
+
+        # Set data if available
+        if self._resolver and self._data_loaded and self._map_canvas:
+            lang_code = self._search_panel.get_language()
+            lang_table = self._lang_manager.get_table(lang_code)
+            self._map_canvas.set_data(self._resolver, lang_table)
+
+        self._map_visible = True
+
+    def _hide_map_window(self) -> None:
+        """Hide map window."""
+        if self._map_window:
+            self._map_window.destroy()
+            self._map_window = None
+            self._map_canvas = None
+        self._map_visible = False
+        self._map_toggle_var.set(False)
 
     def _update_stats(self) -> None:
         """Update stats display."""
@@ -423,7 +459,6 @@ class MapDataGeneratorApp:
             waypoint_folder=Path(settings.waypoint_folder),
             character_folder=Path(settings.character_folder),
             mode=self._current_mode,
-            require_image=True  # Can be set to False to see all entries
         )
 
     def _load_data(self) -> None:
@@ -624,7 +659,8 @@ class MapDataGeneratorApp:
         self._update_mode_visibility()
 
         # Update map (if MAP mode)
-        if self._current_mode == DataMode.MAP:
+        # Update map if visible
+        if self._current_mode == DataMode.MAP and self._map_canvas:
             lang_code = self._search_panel.get_language()
             lang_table = self._lang_manager.get_table(lang_code)
             self._map_canvas.set_data(self._resolver, lang_table)
@@ -734,8 +770,8 @@ class MapDataGeneratorApp:
         lang_table = self._lang_manager.get_table(lang_code)
         self._search_engine.set_language_table(lang_table)
 
-        # Update map (if MAP mode)
-        if self._current_mode == DataMode.MAP:
+        # Update map if visible
+        if self._current_mode == DataMode.MAP and self._map_canvas:
             self._map_canvas.set_data(self._resolver, lang_table)
 
         # Re-run search if there are results
@@ -755,8 +791,8 @@ class MapDataGeneratorApp:
         # Update image (GUARANTEED to exist due to image-first architecture)
         self._image_viewer.set_image(result.dds_path, result.ui_texture_name)
 
-        # Highlight on map (if MAP mode)
-        if self._current_mode == DataMode.MAP and result.position:
+        # Highlight on map if visible
+        if self._current_mode == DataMode.MAP and result.position and self._map_canvas:
             self._map_canvas.select_node(result.strkey)
 
     def _on_result_double_click(self, result: SearchResult) -> None:

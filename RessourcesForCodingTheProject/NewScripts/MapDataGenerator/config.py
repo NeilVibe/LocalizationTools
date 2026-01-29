@@ -12,9 +12,12 @@ Supports configurable drive letter via settings.json (like QACompiler):
 import os
 import sys
 import json
+import logging
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -62,10 +65,10 @@ def _load_drive_letter() -> str:
         if isinstance(drive, str) and len(drive) == 1 and drive.isalpha():
             return drive.upper()
         else:
-            print(f"  WARNING: Invalid drive_letter in settings.json: '{drive}'. Using F:")
+            log.warning("Invalid drive_letter in settings.json: '%s'. Using F:", drive)
             return "F"
     except Exception as e:
-        print(f"  WARNING: Error reading settings.json: {e}. Using F:")
+        log.warning("Error reading settings.json: %s. Using F:", e)
         return "F"
 
 
@@ -79,7 +82,7 @@ def _apply_drive_letter(path_str: str, drive_letter: str) -> str:
 # Load drive letter at module import
 _DRIVE_LETTER = _load_drive_letter()
 if _DRIVE_LETTER != 'F':
-    print(f"  MapDataGenerator: Using drive {_DRIVE_LETTER}:")
+    log.info("MapDataGenerator: Using drive %s:", _DRIVE_LETTER)
 
 
 # =============================================================================
