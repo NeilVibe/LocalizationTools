@@ -196,6 +196,24 @@ cat "/mnt/c/Users/MYCOM/Pictures/Screenshots/$(ls -t /mnt/c/Users/MYCOM/Pictures
    git push gitea main                            # Push to Gitea
    ./scripts/gitea_control.sh stop                # Stop Gitea (save resources)
    ```
+
+---
+
+## CI PARADIGMS (TWO DIFFERENT SYSTEMS!)
+
+| Project | Push To | CI System | Trigger |
+|---------|---------|-----------|---------|
+| **LocaNext** (main app) | GitHub + Gitea | **Gitea CI** (Windows runner) | `git push gitea main` |
+| **NewScripts** (personal tools) | GitHub only | **GitHub Actions** | `git push origin main` |
+
+**STOP CONFUSING THESE:**
+- LocaNext = Electron app, needs Windows build → Gitea CI with Windows runner
+- NewScripts (MapDataGenerator, QACompiler, etc.) = Python tools → GitHub Actions only
+
+**NewScripts CI trigger:** Just push to GitHub. If workflow exists in `.github/workflows/`, it runs automatically.
+
+---
+
 7. **WSL ↔ Windows** - CDP tests can run from WSL via `/mnt/c/Program\ Files/nodejs/node.exe`
 8. **Fix Everything** - No defer, no excuses, fix all issues
 9. **NEVER RESTART** - Restarting does NOT solve issues. ALWAYS follow this workflow:
