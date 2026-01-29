@@ -7,3 +7,4 @@ Build 002
 Build 003
 Build 004
 Build 005: Fix MAP mode to search KnowledgeInfo directly
+Build 006: Add configurable drive letter support
