@@ -12,9 +12,12 @@ Supports configurable drive letter via settings.json (like QACompiler):
 import os
 import sys
 import json
+import logging
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -62,10 +65,10 @@ def _load_drive_letter() -> str:
         if isinstance(drive, str) and len(drive) == 1 and drive.isalpha():
             return drive.upper()
         else:
-            print(f"  WARNING: Invalid drive_letter in settings.json: '{drive}'. Using F:")
+            log.warning("Invalid drive_letter in settings.json: '%s'. Using F:", drive)
             return "F"
     except Exception as e:
-        print(f"  WARNING: Error reading settings.json: {e}. Using F:")
+        log.warning("Error reading settings.json: %s. Using F:", e)
         return "F"
 
 
@@ -79,7 +82,7 @@ def _apply_drive_letter(path_str: str, drive_letter: str) -> str:
 # Load drive letter at module import
 _DRIVE_LETTER = _load_drive_letter()
 if _DRIVE_LETTER != 'F':
-    print(f"  MapDataGenerator: Using drive {_DRIVE_LETTER}:")
+    log.info("MapDataGenerator: Using drive %s:", _DRIVE_LETTER)
 
 
 # =============================================================================
@@ -165,8 +168,8 @@ FUZZY_THRESHOLD = 0.6
 # =============================================================================
 
 IMAGE_CACHE_SIZE = 50
-THUMBNAIL_SIZE = (512, 512)  # Large display by default
-MAX_INLINE_IMAGE_SIZE = (800, 800)  # Maximum display size before scaling
+THUMBNAIL_SIZE = (768, 768)  # Large display by default
+MAX_INLINE_IMAGE_SIZE = (1024, 1024)  # Maximum display size before scaling
 
 
 # =============================================================================
@@ -315,7 +318,7 @@ class Settings:
             search_limit=data.get('search_limit', DEFAULT_SEARCH_LIMIT),
             fuzzy_threshold=data.get('fuzzy_threshold', FUZZY_THRESHOLD),
             current_mode=data.get('current_mode', DEFAULT_MODE),
-            window_geometry=data.get('window_geometry', "1400x900"),
+            window_geometry=data.get('window_geometry', "1600x1000"),
         )
 
 
