@@ -538,7 +538,7 @@ class MapDataGeneratorApp:
 
         def task():
             try:
-                # 1. FIRST: Scan DDS files
+                # 1. FIRST: Scan DDS files for texture lookup
                 self._update_progress("Scanning texture folder for DDS files...")
                 dds_count = self._resolver.scan_textures(
                     texture_folder,
@@ -548,48 +548,38 @@ class MapDataGeneratorApp:
 
                 if dds_count == 0:
                     log.warning("No DDS files found in texture folder!")
-                    self._update_progress("WARNING: No DDS files found - check texture folder path")
+                    self._update_progress("WARNING: No DDS files found - check texture path")
 
-                # 2. Load knowledge info (needed for resolution chain)
-                self._update_progress("Loading KnowledgeInfo...")
-                self._resolver.load_knowledge_info(
+                # 2. Build knowledge lookup table FIRST (like DatasheetGenerator)
+                # KnowledgeInfo has: Names, UITextureName, Descriptions
+                self._update_progress("Building Knowledge lookup table...")
+                knowledge_count = self._resolver.build_knowledge_lookup(
                     knowledge_folder,
                     lambda msg: self._update_progress(msg)
                 )
+                self._update_progress(f"Indexed {knowledge_count} Knowledge entries")
 
                 # 3. Load mode-specific data
                 if mode == DataMode.MAP:
-                    self._update_progress("Loading FactionNodes...")
-                    self._resolver.load_faction_nodes_verified(
+                    # MAP mode: Load FactionNodes for positions + merge with Knowledge
+                    self._update_progress("Loading MAP data (FactionNodes + Knowledge)...")
+                    self._resolver.load_map_data(
                         faction_folder,
                         lambda msg: self._update_progress(msg)
                     )
 
-                    # Also add KnowledgeInfo entries with images to MAP mode
-                    self._update_progress("Adding KnowledgeInfo to MAP data...")
-                    self._resolver.load_map_data_from_knowledge(
-                        lambda msg: self._update_progress(msg)
-                    )
-
-                    self._update_progress("Loading routes...")
-                    self._resolver.load_routes(
-                        waypoint_folder,
-                        lambda msg: self._update_progress(msg)
-                    )
-
                 elif mode == DataMode.CHARACTER:
-                    self._update_progress("Loading Characters...")
-                    self._resolver.load_characters_verified(
+                    self._update_progress("Loading CHARACTER data...")
+                    self._resolver.load_character_data(
                         character_folder,
                         lambda msg: self._update_progress(msg)
                     )
 
                 elif mode == DataMode.ITEM:
-                    self._update_progress("Loading Items...")
-                    self._resolver.load_items_verified(
+                    self._update_progress("Loading ITEM data...")
+                    self._resolver.load_item_data(
                         knowledge_folder,
-                        lambda msg: self._update_progress(msg),
-                        require_image=require_image
+                        lambda msg: self._update_progress(msg)
                     )
 
                 # 4. Load language tables (lazy - only English and Korean)
