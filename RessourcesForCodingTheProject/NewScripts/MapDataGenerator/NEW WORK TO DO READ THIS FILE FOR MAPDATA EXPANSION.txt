@@ -1,0 +1,128 @@
+F:\perforce\common\mainline\commonresource\ui\texture\image
+
+thqts hte folder where all the images are pleae update hte texture load folder data that shte correct PATH
+
+AND i think we could expand that GUI to switch between map, character, item, anything that have an image basically. so lets do character and item as addition, and just switch button int he GUI to switch architecture. also load might need rework sot hazt it can be switched as well.
+
+the sturctuer for item and character :
+
+ITEM:
+   <KnowledgeGroupInfo Key="571" StrKey="KnowledgeGroup_Craft_Cooking" GroupName="요리 재료" Desc="요리 재료" KnowledgeGroupIcon="cd_icon_challenge_50 " UITextureName="cd_knowledgeimage_Knowledge_null">
+    <KnowledgeInfo StrKey="Knowledge_Salt" Name="소금" LocalizationDescription="음식 재료" Desc="먹으면 작은 용기를 주는 조미료.<br/>작지만 강한 맛으로 음식의 숨은 힘을 끌어낸다. 금과 소금 중, 사람에게 없으면 살아남지 못할 것은 단 하나뿐이다. 식료품 상점에서 구매할 수 있다." UITextureName="ItemIcon_Prefab_CD_T0000_Salt_0001">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Sugar" Name="설탕" LocalizationDescription="음식 재료" Desc="먹으면 작은 용기를 주는 조미료.<br/>입안에서 부드럽게 녹아 달콤함을 퍼뜨린다. 음식에 풍미를 더하고, 그 자체로도 유혹이 된다. 식료품 상점에서 구매할 수 있다." UITextureName="ItemIcon_Prefab_CD_T0000_Sugar_0001">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Water" Name="물" LocalizationDescription="음식 재료" Desc="먹으면 작은 용기를 주는 물.<br/>맑고 투명하며 자연의 순수를 담고 있다. 산과 들을 흐르며 생명을 키우고, 갈증을 씻어내어 사람들의 하루를 이어 준다. 식료품 상점에서 구매할 수 있다." UITextureName="ItemIcon_Prefab_CD_T0000_Water_0001">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Cooking_Oil" Name="요리용 기름" LocalizationDescription="음식 재료" Desc="먹으면 작은 용기를 주는 기름.<br/>구이와 튀김 등 다양한 요리에 쓰인다. 재료에 윤기를 더하고 맛을 깊게 만든다. 넉넉히 쓸 수 있는 이는 재물도 풍족하다는 뜻이 된다. 식료품 상점에서 구매할 수 있다." UITextureName="ItemIcon_Prefab_CD_T0000_Cooking_Oil_0001">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Egg" Name="계란" LocalizationDescription="음식 재료" Desc="먹으면 생명을 조금 채워주는 식재료.<br/>닭이 낳은 알로, 얇은 껍질 속에 노른자와 흰자를 품고 있다. 고소하고 부드러운 맛이 난다. 식료품 상점에서 구매할 수 있다." UITextureName="ItemIcon_Prefab_CD_T0000_Egg_0002">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Milk" Name="우유" LocalizationDescription="음식 재료" Desc="먹으면 생명을 조금 채워주는 우유.<br/>마신 뒤에도 고소한 향이 오래 남고, 자연이 준 영양과 따뜻함이 담겨 있어 일상에 자주 쓰인다. 식료품 상점에서 구매할 수 있다." UITextureName="ItemIcon_Prefab_CD_T0000_Milk_0001">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Cheese" Name="치즈" LocalizationDescription="음식 재료" Desc="먹으면 생명을 조금 채워주는 치즈.<br/>우유를 발효시켜 만든 식품으로 부드럽고 쫀득한 것부터 단단한 것까지 다양하며, 숙성 정도에 따라 향과 맛의 폭이 크게 달라진다. 주점에서 구매할 수 있다." UITextureName="ItemIcon_Prefab_CD_T0000_Cheese_0001">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Honey" Name="벌꿀" LocalizationDescription="음식 재료" Desc="먹으면 기력을 조금 채워주는 꿀.<br/>벌이 꽃에서 모은 자당을 농축해 만들었다. 진한 단맛 속에 꽃향기가 스며들어 귀한 감미료로 쓰인다. 오래 보관해도 맛이 잘 변하지 않는다. 양봉장의 벌통에서 획득할 수 있다." UITextureName="ItemIcon_Prefab_CD_T0000_HoneyTeamesh_0001">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_HoneyComb" Name="벌집" LocalizationDescription="음식 재료" Desc="먹으면 기력을 조금 채워주는 벌집.<br/>벌들이 지은 육각형 집으로 꿀이 가득하며, 씹으면 부드러운 밀랍과 꿀이 함께 퍼져 달콤함이 진하다. 사냥꾼과 채집가들이 귀하게 여긴다. 양봉장의 벌통에서 획득할 수 있다." UITextureName="ItemIcon_Prefab_cd_t0000_seockcheong_0002">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_WildHoney" Name="석청" LocalizationDescription="음식 재료" Desc="먹으면 기력을 조금 채워주는 꿀.<br/>돌 틈 벌집에서 채취한 꿀로 꽃향기와 풀 내음이 짙고, 험한 산길을 넘어야만 얻을 수 있는 귀한 단맛이다. 스콜라스톤과 페일룬의 절벽 바위틈에서 발견된다." UITextureName="ItemIcon_Prefab_CD_T0000_seockcheong_0001">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Wild_Honey" Name="목청" LocalizationDescription="음식 재료" Desc="먹으면 기력을 조금 채워주는 꿀.<br/>나무속에 숨은 벌집에서 얻은 꿀로 미세한 쓴맛이 단맛과 어우러져 독특한 맛을 낸다. 숲의 향이 배어 있어 일부 양봉꾼들이 귀하게 소지한다." UITextureName="ItemIcon_prefab_CD_T0000_Mokcheong_0001">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Rare_Collect_Dulse" Name="붉은 해초" LocalizationDescription="음식 재료" Desc="먹으면 공격이 조금 강해지는 해초.<br/>드물게 발견되는 붉은빛의 바다 식물로 짭조름하며 육향이 느껴진다고 한다. 베이컨을 닮은 맛 덕분에 별미로 사랑받는다. 데메니스, 델레시아의 모래사장 해안가에서 서식한다." UITextureName="ItemIcon_Prefab_cd_t0000_dulse_0001">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Rare_Collect_Chlorella" Name="클로렐라" LocalizationDescription="음식 재료" Desc="먹으면 몸속을 정화해 지상의 독을 막아내고 용기의 한계를 넘어서는 식재료.<br/>짙은 초록빛 가루가 물결처럼 퍼지며 영양이 풍부하다. 다만 향과 맛은 호불호가 갈린다. 에르난드, 페일룬의 늪지대에서 발견할 수 있다." UITextureName="ItemIcon_Prefab_cd_t0000_chlorella_0001">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Rare_Collect_Chocolate" Name="초콜릿" LocalizationDescription="음식 재료" Desc="먹으면 생명을 회복하는 음식.<br/>고급 원료로 만든 간식이다. 부드럽게 녹아 달콤함과 고소함을 오래 남기며, 한 조각만으로도 기분이 좋아진다. 휴대 간식으로도 인기다. 카카오와 우유를 섞어 만들 수 있다." UITextureName="ItemIcon_Prefab_cd_t0000_chocolate_0001">
+    </>
+   </>
+
+
+based off knowledge nodes we have the same UItexturename you see?
+
+and character
+
+ <KnowledgeGroupInfo Key="4" StrKey="KnowledgeGroup_Character_Animal" GroupName="생명체" Desc="파이웰 대륙에 존재하는 생명체들" KnowledgeGroupIcon="cd_knowledgeinfo_categoryicon_animal">
+  <KnowledgeGroupInfo Key="104" StrKey="KnowledgeGroup_Character_Animal_Temp" GroupName="육상 동물" Desc="거친 대지를 살아가는 생물들" KnowledgeGroupIcon="cd_icon_map_quest_main_icon_splithorn_cow" UITextureName="cd_knowledgeimage_Knowledge_null">
+   <KnowledgeGroupInfo Key="1041" StrKey="KnowledgeGroup_Character_Animal_DogAndCat" GroupName="개와 고양이" Desc="개와 고양이" KnowledgeGroupIcon="cd_icon_map_quest_main_icon_splithorn_cow" UITextureName="cd_knowledgeimage_Knowledge_null">
+    <KnowledgeInfo StrKey="Knowledge_Domestic_Beagle" Name="비글" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_Knowledge_Domestic_Beagle" 
+     Desc="호기심이 많고, 성격이 명랑한 개의 품종.<br/>축 처진 귀와 다양한 색상이 섞인 짧은 털이 특징이며 제일 흔한 조합은 검은색, 흰색, 그리고 갈색이다. 귀여운 외모와 달리 뛰어난 후각을 가진 타고난 사냥꾼들이다. 붉은사막을 제외한 파이웰 전역에서 만날 수 있다.">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_FrenchBullDog" Name="곧은귀 불독" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_Knowledge_CowDog" 
+     Desc="작지만 당당한 매력을 지닌 개의 품종.<br/>곧게 선 귀와 깊은 얼굴 주름이 특징이다. 유쾌한 표정 덕분에 쉽게 호감을 얻으며, 사교적인 성격으로 사람과 함께 노는 것을 좋아한다. 붉은사막을 제외한 파이웰 전역에서 만날 수 있다.">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Domestic_JindoDog" Name="진돗개" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_knowledge_jindodog"
+     Desc="강한 충성심과 높은 지능이 돋보이는 개의 품종.<br/>균형 잡힌 체형과 민첩함을 갖추어 경비견으로 인기가 많다. 가족을 지키려는 본능이 강하고, 한 번 인정한 주인에게 평생 변함없는 애정을 보이는 점 때문에 사랑받는다. 파이웰 전역에서 만날 수 있다.">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Shepherd" Name="셰퍼드" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_knowledge_shepherd"
+     Desc="다양한 임무를 수행하는 개의 품종.<br/>근육질의 탄탄한 몸을 갖추었으며, 상황 판단과 문제 해결 능력이 뛰어나다. 처음에는 가축을 지키기 위해 길렀지만, 능력을 인정받아 군대에서도 많이 기르기 시작했다. 남부에서 만날 수 있다.">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Domestic_Saluki" Name="살루키" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_Knowledge_Domestic_Saluki" 
+     Desc="우아한 외모로 인기가 많은 개의 품종.<br/>날씬한 체형에 깃털처럼 가볍고 부드러운 털이 인상적이다. 실내에서는 외모에 걸맞게 차분하게 행동하지만, 사냥 본능이 강하고, 산책하는 것을 좋아한다. 페일룬을 제외한 파이웰 전역에서 만날 수 있다.">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Domestic_GreatDane" Name="그레이트 데인" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_Knowledge_Domestic_GreatDane" 
+     Desc="'온화한 거인'이라는 별명을 가진 개의 품종.<br/>이들은 큰 체구에도 불구하고 친절하고 애정이 넘치며, 인간을 잘 따른다. 파이웰에서 제일 덩치가 큰 품종 중 하나로 꼽힌다. 파이웰 전역에서 만날 수 있다.">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Domestic_GreyHound" Name="그레이하운드" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_Knowledge_Domestic_GreyHound" 
+     Desc="날렵한 다리로 빠르게 달리는 개의 품종.<br/>사람의 눈이 쫓아가기 어려운 수준의 놀라운 속도를 자랑한다. 그러나 성격은 느긋하며, 집에서 빈둥거리는 것을 좋아한다. 파이웰 전역에서 만날 수 있다.">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Domestic_Malamute" Name="말라뮤트" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_Knowledge_Domestic_Malamute" 
+     Desc="늑대의 흔적이 가장 많이 남은 개의 품종.<br/>복슬복슬한 털에서 알 수 있듯이 추운 기후에 잘 적응하는 개이다. 지능이 높고 성격이 독립적이라 훈련은 다소 까다로운 편에 속한다.">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Domestic_Cat" Name="포로린 고양이" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_Knowledge_Domestic_Cat" 
+     Desc="파이웰에서 가장 흔히 볼 수 있는 고양이의 품종.<br/>파이웰의 우세종인 만큼, 개체마다 털색과 무늬가 다양하다. 거만하게 앉아 있는 모습을 보고 '파이웰의 주인'이라는 별명을 얻었다. 붉은사막을 제외한 파이웰 전역에서 만날 수 있다.">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Domestic_CatSkinney" Name="바르니시안 고양이" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_Knowledge_Domestic_CatSkinney" 
+     Desc="섬세하게 움직이는 고양이의 품종.<br/>긴 다리와 가느다란 몸 선을 자랑하는 이들은 사냥할 때는 그림자처럼 미끄러지며 움직인다. 성격이 까칠하여 사람을 쉽게 따르지 않는다. 남부에서 만날 수 있다.">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Domestic_CatFat" Name="달 고양이" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_Knowledge_Domestic_CatFat" 
+     Desc="파이웰에서 가장 느긋한 고양이의 품종.<br/>풍성한 지방층은 부드러운 배를 동글동글하게 만들어, 쓰다듬을 때마다 만족감을 준다. 사냥보다 낮잠을 더 좋아한다. 붉은사막을 제외한 파이웰 전역에서 만날 수 있다.">
+    </>
+    <KnowledgeInfo StrKey="Knowledge_Domestic_BritishCat" Name="에르난드 짧은 털 고양이" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_Knowledge_Domestic_BritishCat" 
+     Desc="걸어 다니는 털 뭉치 같은 고양이의 품종.<br/>두꺼우면서도 솜털같이 폭신한 짧은 털을 자랑하는 고양이다. 에르난드가 원산지이지만 인기가 많아 이웃 지역들로 빠르게 퍼져나갔다. 남부에서 만날 수 있다.">
+    </> 
+    <KnowledgeInfo StrKey="Knowledge_Domestic_Norwegianforest" Name="긴잎나무 숲 고양이" LocalizationDescription="동물 지식" UITextureName="cd_knowledgeimage_Knowledge_Domestic_Norwegianforest" 
+     Desc="숨겨진 매력을 가진 고양이의 품종.<br/>길고 두꺼운 털을 처음 보면 이들이 굼뜰 거라고 착각하기 쉽다. 하지만 방수가 되는 털을 활용하여 물고기를 사냥하는 모습은 놀랍도록 민첩하다. 붉은사막을 제외한 파이웰 전역에서 만날 수 있다.">
+    </>
+   </>
+
+
+also here very similiar just tazke the UITextname and show the image. you see? Also i need a rework the image should be as big as possible in the GUI make the GUI way bigge rnad have a nice place in the GUI dedicated for hte image thats as big as possible (as big as the resolution of the image let us do or even bigger if possible)
+
+
+use the method we do already for item, character to expand so that we can search for stuff and get the image automaticcaly please.
+
+ <CharacterInfo StrKey="NHM_Unique_Geoffroi_200010254" CharacterName="조프루아" EditorUsable="True" UseMacro="Macro_Unique_NPC Macro_NPC_Human_Male" ShareValueIndex="DefaultNPC StoreCraftsmith" UIIconPath="Cd_Knowledgeimage_Knowledge_Geoffroi"
+  AppearanceName="3_NPC/CD_NPC_South/CD_NHM_South/cd_nhm_south_10632" RegionKeyList="Region_Demenissian_Territory" Age="Adult" Job="Job_MerchantBlacksmith" WeaponType="<없음>" Memo="기능성 상인"
+  InteractionKey="Stun_Catch Dead_Catch Npc_Dialog1 Npc_Dialog2 Npc_Bind NpcBind_Release"
+  DialogVoice="Unique_Shop_Craftsmith" KnowledgeObtainType="Interaction">
+
+  <Knowledge KnowledgeGroupKey="KnowledgeGroup_Character_Demeniss_BattleShop" StrKey="Knowledge_Geoffroi" Name="조프루아" UITextureName="Cd_Knowledgeimage_Knowledge_Geoffroi" LocalizationDescription="인물지식"
+   Desc="데메니스의 대장장이.<br/>대장간이 도시 한가운데에 자리한 덕에 손님이 끊이지 않는다. 그러나 이는 지리적 이점만의 결과가 아닌, 언제나 더 강한 무기를 만들기 위해 기술을 끊임없이 연마해 온 노력 덕분이다.">
+  </>
+
+  <NpcInfo StoreKey="14" ExchangeGroupKey="30001" ExchangeButtonText="장비 제작" ShopName="데메니스 대장간" InteractionName="대장간 이용하기" ShopSceneKey="CD_ShopCam_HER_Weaponary_00" NpcFunctionTypeList="Repair"/>
+  <LevelInfo UseMacro="Macro_Level_NHM_01" Hp="1000"/>
+  <Reward RewardData="DropSet_Human_Common" Tags="Dead_Loot Threat"/>
+  <Reward RewardData="DropSet_Character_Merchant_Store" Tags="Dead_Loot Threat"/>
+  <UseMacroNode Name="Macro_NPC_Human_Common_FavoriteItem"/>
+  <UseMacroNode Name="Macro_NPC_Character_Merchant_Store_Equip_FavoriteItem"/>
+  <UseMacroNode Name="Macro_NPC_Character_Merchant_Store_Equip_FavoriteItem_Reward"/>
+  <UseMacroNode Name="Macro_NPC_Pickup_MyItem"/>
+  <UseMacroNode Name="Macro_NPC_Friendly_All"/>
+  <UseMacroNode Name="Macro_NPC_Friendly_All_DetectReaction"/>
+ </>
+
+
+someitme oyu see the UItextnure name is a bit lower? but we can still find it look :
+ <CharacterInfo StrKey="NHM_Unique_Geoffroi_200010254" CharacterName="조프루아" EditorUsable="True" UseMacro="Macro_Unique_NPC Macro_NPC_Human_Male" ShareValueIndex="DefaultNPC StoreCraftsmith" UIIconPath="Cd_Knowledgeimage_Knowledge_Geoffroi"
+
+
+starsts here and then below :
+  <Knowledge KnowledgeGroupKey="KnowledgeGroup_Character_Demeniss_BattleShop" StrKey="Knowledge_Geoffroi" Name="조프루아" UITextureName="Cd_Knowledgeimage_Knowledge_Geoffroi" LocalizationDescription="인물지식"
+
+
+see here? yeah? you must alreadyt knwo this frmo how we CREATE kwnoelge and even character and all that right? and then u can find hte uitextnuremae as well. please EXPAND the full project to have now MAP / CHARACTER / ITEM
+
+and maie sure the GUI is really spatious and nice. with BIG image well visible please. and make sur ehte path is correct I gave it to you at the bginning
