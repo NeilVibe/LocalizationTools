@@ -597,28 +597,62 @@ class LinkageResolver:
     # ITEM MODE: ITEMS (IMAGE-VERIFIED)
     # =========================================================================
 
+    def _find_ui_texture_in_element(self, elem) -> Optional[str]:
+        """
+        Find UITextureName from element or its children.
+
+        Checks:
+        1. Direct attribute on element
+        2. Nested UIMapTextureInfo elements
+        3. Nested LevelData/UIMapTextureInfo
+        """
+        # First check direct attribute
+        ui_texture = (elem.get("UITextureName") or "").strip()
+        if ui_texture:
+            return ui_texture
+
+        # Check nested UIMapTextureInfo
+        for child in elem.iter("UIMapTextureInfo"):
+            ui_texture = (child.get("UITextureName") or "").strip()
+            if ui_texture:
+                return ui_texture
+
+        # Check nested Knowledge elements (for CharacterInfo)
+        for child in elem.iter("Knowledge"):
+            ui_texture = (child.get("UITextureName") or "").strip()
+            if ui_texture:
+                return ui_texture
+
+        return None
+
     def load_items_verified(
         self,
         folder: Path,
-        progress_callback: Optional[callable] = None
+        progress_callback: Optional[callable] = None,
+        require_image: bool = True
     ) -> int:
         """
-        Load KnowledgeInfo items - ONLY those with verified images.
+        Load KnowledgeInfo items - with or without image verification.
 
         Args:
             folder: Path to knowledge info folder
             progress_callback: Optional callback
+            require_image: If True, skip entries without valid DDS file
 
         Returns:
-            Number of verified items loaded
+            Number of items loaded
         """
-        if not self._dds_index.is_scanned:
-            log.error("DDS index not scanned! Call scan_textures() first.")
-            return 0
+        if require_image and not self._dds_index.is_scanned:
+            log.warning("DDS index not scanned - loading without image verification")
+            require_image = False
 
         self._items.clear()
         count = 0
-        skipped = 0
+        skipped_no_texture = 0
+        skipped_no_dds = 0
+
+        # Debug: track texture names that weren't found
+        missing_textures: List[str] = []
 
         for path in iter_xml_files(folder):
             if progress_callback:
@@ -640,17 +674,25 @@ class LinkageResolver:
                     if not strkey:
                         continue
 
-                    ui_texture = (elem.get("UITextureName") or "").strip()
+                    # Try to find UITextureName (check element and children)
+                    ui_texture = self._find_ui_texture_in_element(elem)
 
                     if not ui_texture:
-                        skipped += 1
-                        continue  # No texture
+                        skipped_no_texture += 1
+                        continue  # No texture anywhere
 
-                    # VERIFY DDS exists
-                    dds_path = self._dds_index.find(ui_texture)
-                    if not dds_path:
-                        skipped += 1
-                        continue  # DDS not found
+                    # VERIFY DDS exists (if required)
+                    dds_path = None
+                    if require_image:
+                        dds_path = self._dds_index.find(ui_texture)
+                        if not dds_path:
+                            skipped_no_dds += 1
+                            if len(missing_textures) < 10:  # Log first 10
+                                missing_textures.append(ui_texture)
+                            continue  # DDS not found
+                    else:
+                        # No image verification - use placeholder path
+                        dds_path = Path(f"placeholder/{ui_texture}.dds")
 
                     name_kr = (elem.get("Name") or "").strip()
                     desc_kr = (elem.get("Desc") or "").replace("<br/>", "\n").strip()
@@ -669,8 +711,16 @@ class LinkageResolver:
                     count += 1
 
         self._stats['items_verified'] = count
-        self._stats['items_skipped'] = skipped
-        log.info("Loaded %d verified Items, skipped %d without images", count, skipped)
+        self._stats['items_skipped'] = skipped_no_texture + skipped_no_dds
+        self._stats['items_no_texture'] = skipped_no_texture
+        self._stats['items_no_dds'] = skipped_no_dds
+
+        log.info("Loaded %d Items: %d no texture, %d no DDS file",
+                 count, skipped_no_texture, skipped_no_dds)
+
+        if missing_textures:
+            log.warning("Sample missing textures: %s", missing_textures[:5])
+
         return count
 
     # =========================================================================

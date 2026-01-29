@@ -12,12 +12,14 @@ from typing import Optional, Tuple
 
 from PIL import Image
 
-# Import pillow-dds to register DDS format handler
-try:
-    import pillow_dds
-except ImportError:
-    pillow_dds = None
-    logging.warning("pillow-dds not installed. DDS support may be limited.")
+# Import pillow-dds to register DDS format handler (Windows only)
+# On non-Windows systems, DDS files are typically not available anyway
+import sys as _sys
+if _sys.platform == "win32":
+    try:
+        import pillow_dds  # noqa: F401 - imported for side effect (registers DDS handler)
+    except ImportError:
+        logging.warning("pillow-dds not installed. Run: pip install pillow-dds")
 
 log = logging.getLogger(__name__)
 

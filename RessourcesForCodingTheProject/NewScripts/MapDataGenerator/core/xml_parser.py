@@ -1,7 +1,7 @@
 """
 XML Parser Module
 
-Battle-hardened XML sanitization and parsing for Crimson Desert game data.
+Battle-hardened XML sanitization and parsing for game data.
 Handles malformed XML, bad entities, unclosed tags, and other common issues.
 """
 

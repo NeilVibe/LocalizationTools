@@ -157,6 +157,9 @@ class MapDataGeneratorApp:
         # Bind window close
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
+        # Auto-load data on startup (after window is shown)
+        self.root.after(100, self._auto_load_data)
+
     def _create_menu(self) -> None:
         """Create menu bar."""
         menubar = tk.Menu(self.root)
@@ -295,7 +298,7 @@ class MapDataGeneratorApp:
         self._status_label.pack(side="left", padx=5, pady=2, fill="x", expand=True)
 
     def _on_mode_change(self) -> None:
-        """Handle mode change."""
+        """Handle mode change - reload data for new mode if needed."""
         new_mode = DataMode(self._mode_var.get())
 
         if new_mode == self._current_mode:
@@ -313,8 +316,30 @@ class MapDataGeneratorApp:
         # Update result panel headers
         self._result_panel.set_mode_headers(new_mode.value)
 
-        # Update search engine mode
-        if self._search_engine:
+        # Check if data for new mode is loaded, if not reload
+        needs_reload = False
+        if new_mode == DataMode.MAP and not self._resolver.faction_nodes:
+            needs_reload = True
+        elif new_mode == DataMode.CHARACTER and not self._resolver.characters:
+            needs_reload = True
+        elif new_mode == DataMode.ITEM and not self._resolver.items:
+            needs_reload = True
+
+        if needs_reload and self._texture_folder:
+            # Reload data for new mode
+            settings = get_settings()
+            self._start_data_load(
+                texture_folder=self._texture_folder,
+                loc_folder=Path(settings.loc_folder),
+                faction_folder=Path(settings.faction_folder),
+                knowledge_folder=Path(settings.knowledge_folder),
+                waypoint_folder=Path(settings.waypoint_folder),
+                character_folder=Path(settings.character_folder),
+                mode=new_mode,
+                require_image=True
+            )
+        elif self._search_engine:
+            # Data already loaded, just update search engine mode
             self._search_engine.set_mode(new_mode)
 
             # Re-run search or show all entries
@@ -366,6 +391,39 @@ class MapDataGeneratorApp:
 
         self._stats_label.config(
             text=f"{get_ui_text('verified_entries')}: {verified} | {get_ui_text('skipped_no_image')}: {skipped}"
+        )
+
+    def _auto_load_data(self) -> None:
+        """Auto-load data on startup using saved paths."""
+        settings = get_settings()
+
+        # Check if essential paths exist
+        texture_path = Path(settings.texture_folder)
+        knowledge_path = Path(settings.knowledge_folder)
+
+        if not texture_path.exists():
+            log.warning("Texture folder not found: %s", texture_path)
+            self._progress_var.set("Texture folder not found - use File > Load Data")
+            return
+
+        if not knowledge_path.exists():
+            log.warning("Knowledge folder not found: %s", knowledge_path)
+            self._progress_var.set("Knowledge folder not found - use File > Load Data")
+            return
+
+        log.info("Auto-loading data from saved paths...")
+        self._progress_var.set("Auto-loading data...")
+
+        # Start loading with saved paths
+        self._start_data_load(
+            texture_folder=texture_path,
+            loc_folder=Path(settings.loc_folder),
+            faction_folder=Path(settings.faction_folder),
+            knowledge_folder=knowledge_path,
+            waypoint_folder=Path(settings.waypoint_folder),
+            character_folder=Path(settings.character_folder),
+            mode=self._current_mode,
+            require_image=True  # Can be set to False to see all entries
         )
 
     def _load_data(self) -> None:
@@ -452,7 +510,8 @@ class MapDataGeneratorApp:
                 knowledge_folder=Path(knowledge_var.get()),
                 waypoint_folder=Path(waypoint_var.get()),
                 character_folder=Path(character_var.get()),
-                mode=new_mode
+                mode=new_mode,
+                require_image=True
             )
 
         # Buttons
@@ -470,7 +529,8 @@ class MapDataGeneratorApp:
         knowledge_folder: Path,
         waypoint_folder: Path,
         character_folder: Path,
-        mode: DataMode
+        mode: DataMode,
+        require_image: bool = True
     ) -> None:
         """Start background data loading."""
         self._progress_bar.start()
@@ -478,13 +538,17 @@ class MapDataGeneratorApp:
 
         def task():
             try:
-                # 1. FIRST: Scan DDS files (CRITICAL for image-first)
+                # 1. FIRST: Scan DDS files
                 self._update_progress("Scanning texture folder for DDS files...")
                 dds_count = self._resolver.scan_textures(
                     texture_folder,
                     lambda msg: self._update_progress(msg)
                 )
                 self._update_progress(f"Found {dds_count} DDS files")
+
+                if dds_count == 0:
+                    log.warning("No DDS files found in texture folder!")
+                    self._update_progress("WARNING: No DDS files found - check texture folder path")
 
                 # 2. Load knowledge info (needed for resolution chain)
                 self._update_progress("Loading KnowledgeInfo...")
@@ -495,7 +559,7 @@ class MapDataGeneratorApp:
 
                 # 3. Load mode-specific data
                 if mode == DataMode.MAP:
-                    self._update_progress("Loading verified FactionNodes...")
+                    self._update_progress("Loading FactionNodes...")
                     self._resolver.load_faction_nodes_verified(
                         faction_folder,
                         lambda msg: self._update_progress(msg)
@@ -508,17 +572,18 @@ class MapDataGeneratorApp:
                     )
 
                 elif mode == DataMode.CHARACTER:
-                    self._update_progress("Loading verified Characters...")
+                    self._update_progress("Loading Characters...")
                     self._resolver.load_characters_verified(
                         character_folder,
                         lambda msg: self._update_progress(msg)
                     )
 
                 elif mode == DataMode.ITEM:
-                    self._update_progress("Loading verified Items...")
+                    self._update_progress("Loading Items...")
                     self._resolver.load_items_verified(
                         knowledge_folder,
-                        lambda msg: self._update_progress(msg)
+                        lambda msg: self._update_progress(msg),
+                        require_image=require_image
                     )
 
                 # 4. Load language tables (lazy - only English and Korean)
