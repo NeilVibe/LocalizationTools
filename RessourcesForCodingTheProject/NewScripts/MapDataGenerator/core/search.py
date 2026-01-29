@@ -1,20 +1,29 @@
 """
-Search Module
+Search Module (REWRITTEN)
 
-Provides search functionality for FactionNode data:
+Multi-mode search functionality:
+- MAP mode: Search FactionNodeVerified
+- CHARACTER mode: Search CharacterItem
+- ITEM mode: Search ItemEntry
+
+All search results are GUARANTEED to have images (image-first architecture).
+
+Supports:
 - Contains search
 - Exact match search
 - Fuzzy search (using SequenceMatcher)
-
-Searches across: name (KR), name (translated), description, StrKey
 """
 
 import logging
 from dataclasses import dataclass
 from difflib import SequenceMatcher
-from typing import List, Optional, Dict, Tuple
+from pathlib import Path
+from typing import List, Optional, Dict, Tuple, Union
 
-from .linkage import FactionNode, LinkageResolver
+from .linkage import (
+    LinkageResolver, DataMode,
+    FactionNodeVerified, CharacterItem, ItemEntry
+)
 from .language import LanguageTable, get_translation
 
 try:
@@ -26,40 +35,55 @@ log = logging.getLogger(__name__)
 
 
 # =============================================================================
-# SEARCH RESULT
+# SEARCH RESULT (UNIFIED)
 # =============================================================================
 
 @dataclass
 class SearchResult:
-    """Represents a single search result."""
+    """
+    Unified search result for all modes.
+
+    GUARANTEED: Every SearchResult has ui_texture_name and dds_path
+    (because image-first architecture only collects verified entries).
+    """
     strkey: str
     name_kr: str
     name_translated: str
     desc_kr: str
     desc_translated: str
-    position: Tuple[float, float]  # 2D position (x, z)
-    ui_texture_name: Optional[str] = None
-    match_score: float = 0.0  # For fuzzy matching
-    match_field: str = ""  # Which field matched
+    ui_texture_name: str  # GUARANTEED non-empty
+    dds_path: Path  # GUARANTEED valid path
+
+    # Optional fields (mode-dependent)
+    position: Optional[Tuple[float, float]] = None  # MAP mode only
+    group: str = ""  # GROUP name (CHARACTER) or GROUP_NAME (ITEM)
+
+    # Search metadata
+    match_score: float = 0.0
+    match_field: str = ""
 
     @property
     def position_str(self) -> str:
         """Get position as formatted string."""
-        return f"({self.position[0]:.1f}, {self.position[1]:.1f})"
+        if self.position:
+            return f"({self.position[0]:.1f}, {self.position[1]:.1f})"
+        return ""
 
 
 # =============================================================================
-# SEARCH ENGINE
+# SEARCH ENGINE (MULTI-MODE)
 # =============================================================================
 
 class SearchEngine:
     """
-    Search engine for FactionNode data.
+    Multi-mode search engine.
 
-    Supports:
-    - Contains search: query in text.lower()
-    - Exact match: full string equality
-    - Fuzzy search: SequenceMatcher ratio > threshold
+    Supports three modes:
+    - MAP: Search FactionNodeVerified
+    - CHARACTER: Search CharacterItem
+    - ITEM: Search ItemEntry
+
+    All results are guaranteed to have images (image-first architecture).
     """
 
     def __init__(
@@ -78,6 +102,27 @@ class SearchEngine:
         self._fuzzy_threshold = fuzzy_threshold
         self._lang_table: LanguageTable = {}
         self._search_index: Dict[str, List[str]] = {}  # strkey -> searchable terms
+        self._mode: DataMode = DataMode.MAP
+
+    def set_mode(self, mode: Union[DataMode, str]) -> None:
+        """
+        Set search mode and rebuild index.
+
+        Args:
+            mode: DataMode enum or string ('map', 'character', 'item')
+        """
+        if isinstance(mode, str):
+            mode = DataMode(mode.lower())
+
+        if self._mode != mode:
+            self._mode = mode
+            self._build_search_index()
+            log.info("Search mode changed to: %s", mode.value)
+
+    @property
+    def mode(self) -> DataMode:
+        """Get current search mode."""
+        return self._mode
 
     def set_language_table(self, table: LanguageTable) -> None:
         """
@@ -90,36 +135,113 @@ class SearchEngine:
         self._build_search_index()
 
     def _build_search_index(self) -> None:
-        """Build search index for faster searching."""
+        """Build search index based on current mode."""
         self._search_index.clear()
 
+        if self._mode == DataMode.MAP:
+            self._build_index_map()
+        elif self._mode == DataMode.CHARACTER:
+            self._build_index_character()
+        elif self._mode == DataMode.ITEM:
+            self._build_index_item()
+
+    def _build_index_map(self) -> None:
+        """Build search index for MAP mode (FactionNodes)."""
         for strkey, node in self._resolver.faction_nodes.items():
             terms = []
 
-            # Add Korean name
+            # Korean name
             if node.name_kr:
                 terms.append(normalize_for_search(node.name_kr))
 
-            # Add translated name
+            # Translated name
             name_tr, _ = get_translation(node.name_kr, self._lang_table)
             if name_tr:
                 terms.append(normalize_for_search(name_tr))
 
-            # Add description
+            # Description
             if node.desc_kr:
                 terms.append(normalize_for_search(node.desc_kr))
 
-            # Add translated description
+            # Translated description
             desc_tr, _ = get_translation(node.desc_kr, self._lang_table)
             if desc_tr:
                 terms.append(normalize_for_search(desc_tr))
 
-            # Add strkey
+            # StrKey
             terms.append(strkey.lower())
 
             self._search_index[strkey] = terms
 
-        log.info("Built search index with %d entries", len(self._search_index))
+        log.info("Built MAP search index with %d entries", len(self._search_index))
+
+    def _build_index_character(self) -> None:
+        """Build search index for CHARACTER mode."""
+        for strkey, char in self._resolver.characters.items():
+            terms = []
+
+            # Korean name
+            if char.name_kr:
+                terms.append(normalize_for_search(char.name_kr))
+
+            # Translated name
+            name_tr, _ = get_translation(char.name_kr, self._lang_table)
+            if name_tr:
+                terms.append(normalize_for_search(name_tr))
+
+            # Description
+            if char.desc_kr:
+                terms.append(normalize_for_search(char.desc_kr))
+
+            # Translated description
+            desc_tr, _ = get_translation(char.desc_kr, self._lang_table)
+            if desc_tr:
+                terms.append(normalize_for_search(desc_tr))
+
+            # Group
+            if char.group:
+                terms.append(normalize_for_search(char.group))
+
+            # StrKey
+            terms.append(strkey.lower())
+
+            self._search_index[strkey] = terms
+
+        log.info("Built CHARACTER search index with %d entries", len(self._search_index))
+
+    def _build_index_item(self) -> None:
+        """Build search index for ITEM mode."""
+        for strkey, item in self._resolver.items.items():
+            terms = []
+
+            # Korean name
+            if item.name_kr:
+                terms.append(normalize_for_search(item.name_kr))
+
+            # Translated name
+            name_tr, _ = get_translation(item.name_kr, self._lang_table)
+            if name_tr:
+                terms.append(normalize_for_search(name_tr))
+
+            # Description
+            if item.desc_kr:
+                terms.append(normalize_for_search(item.desc_kr))
+
+            # Translated description
+            desc_tr, _ = get_translation(item.desc_kr, self._lang_table)
+            if desc_tr:
+                terms.append(normalize_for_search(desc_tr))
+
+            # Group name
+            if item.group_name:
+                terms.append(normalize_for_search(item.group_name))
+
+            # StrKey
+            terms.append(strkey.lower())
+
+            self._search_index[strkey] = terms
+
+        log.info("Built ITEM search index with %d entries", len(self._search_index))
 
     def search(
         self,
@@ -129,7 +251,7 @@ class SearchEngine:
         start_index: int = 0
     ) -> List[SearchResult]:
         """
-        Search for nodes matching the query.
+        Search for entries matching the query.
 
         Args:
             query: Search query
@@ -138,7 +260,7 @@ class SearchEngine:
             start_index: Starting index for pagination
 
         Returns:
-            List of SearchResult objects
+            List of SearchResult objects (all guaranteed to have images)
         """
         if not query or query.isspace():
             return []
@@ -147,14 +269,14 @@ class SearchEngine:
         results: List[SearchResult] = []
 
         # Direct StrKey lookup (fast path)
-        if query in self._resolver.faction_nodes:
-            node = self._resolver.faction_nodes[query]
-            result = self._node_to_result(node)
-            result.match_field = "strkey"
-            result.match_score = 1.0
-            return [result]
+        if query in self._search_index:
+            result = self._get_result_by_strkey(query)
+            if result:
+                result.match_field = "strkey"
+                result.match_score = 1.0
+                return [result]
 
-        # Search all nodes
+        # Search all entries
         for strkey, terms in self._search_index.items():
             match_score = 0.0
             match_field = ""
@@ -187,11 +309,11 @@ class SearchEngine:
                     match_field = best_field
 
             if match_score > 0:
-                node = self._resolver.faction_nodes[strkey]
-                result = self._node_to_result(node)
-                result.match_score = match_score
-                result.match_field = match_field
-                results.append(result)
+                result = self._get_result_by_strkey(strkey)
+                if result:
+                    result.match_score = match_score
+                    result.match_field = match_field
+                    results.append(result)
 
         # Sort by match score (descending) then by Korean name
         results.sort(key=lambda r: (-r.match_score, len(r.name_kr)))
@@ -202,12 +324,24 @@ class SearchEngine:
 
         return results[start_index:start_index + limit]
 
-    def _node_to_result(self, node: FactionNode) -> SearchResult:
-        """Convert FactionNode to SearchResult."""
+    def _get_result_by_strkey(self, strkey: str) -> Optional[SearchResult]:
+        """Get SearchResult for a strkey based on current mode."""
+        if self._mode == DataMode.MAP:
+            return self._node_to_result(strkey)
+        elif self._mode == DataMode.CHARACTER:
+            return self._character_to_result(strkey)
+        elif self._mode == DataMode.ITEM:
+            return self._item_to_result(strkey)
+        return None
+
+    def _node_to_result(self, strkey: str) -> Optional[SearchResult]:
+        """Convert FactionNodeVerified to SearchResult."""
+        node = self._resolver.get_node(strkey)
+        if not node:
+            return None
+
         name_tr, _ = get_translation(node.name_kr, self._lang_table, node.name_kr)
         desc_tr, _ = get_translation(node.desc_kr, self._lang_table, "")
-
-        ui_texture = self._resolver.resolve_ui_texture(node.strkey)
 
         return SearchResult(
             strkey=node.strkey,
@@ -215,18 +349,62 @@ class SearchEngine:
             name_translated=name_tr,
             desc_kr=node.desc_kr,
             desc_translated=desc_tr,
+            ui_texture_name=node.ui_texture_name,
+            dds_path=node.dds_path,
             position=node.position_2d,
-            ui_texture_name=ui_texture,
+            group="",
+        )
+
+    def _character_to_result(self, strkey: str) -> Optional[SearchResult]:
+        """Convert CharacterItem to SearchResult."""
+        char = self._resolver.get_character(strkey)
+        if not char:
+            return None
+
+        name_tr, _ = get_translation(char.name_kr, self._lang_table, char.name_kr)
+        desc_tr, _ = get_translation(char.desc_kr, self._lang_table, "")
+
+        return SearchResult(
+            strkey=char.strkey,
+            name_kr=char.name_kr,
+            name_translated=name_tr,
+            desc_kr=char.desc_kr,
+            desc_translated=desc_tr,
+            ui_texture_name=char.ui_texture_name,
+            dds_path=char.dds_path,
+            position=None,
+            group=char.group,
+        )
+
+    def _item_to_result(self, strkey: str) -> Optional[SearchResult]:
+        """Convert ItemEntry to SearchResult."""
+        item = self._resolver.get_item(strkey)
+        if not item:
+            return None
+
+        name_tr, _ = get_translation(item.name_kr, self._lang_table, item.name_kr)
+        desc_tr, _ = get_translation(item.desc_kr, self._lang_table, "")
+
+        return SearchResult(
+            strkey=item.strkey,
+            name_kr=item.name_kr,
+            name_translated=name_tr,
+            desc_kr=item.desc_kr,
+            desc_translated=desc_tr,
+            ui_texture_name=item.ui_texture_name,
+            dds_path=item.dds_path,
+            position=None,
+            group=item.group_name,
         )
 
     def _get_field_name(self, index: int) -> str:
         """Get field name from index."""
-        fields = ["name_kr", "name_tr", "desc_kr", "desc_tr", "strkey"]
+        fields = ["name_kr", "name_tr", "desc_kr", "desc_tr", "group", "strkey"]
         return fields[index] if index < len(fields) else "unknown"
 
-    def get_all_nodes(self, limit: int = 100, start_index: int = 0) -> List[SearchResult]:
+    def get_all_entries(self, limit: int = 100, start_index: int = 0) -> List[SearchResult]:
         """
-        Get all nodes (for initial display or browsing).
+        Get all entries for current mode (for initial display or browsing).
 
         Args:
             limit: Maximum results to return
@@ -236,33 +414,57 @@ class SearchEngine:
             List of SearchResult objects
         """
         results = []
-        nodes = list(self._resolver.faction_nodes.values())
+        strkeys = list(self._search_index.keys())
 
         # Sort by Korean name
-        nodes.sort(key=lambda n: n.name_kr)
+        def get_name(sk):
+            if self._mode == DataMode.MAP:
+                node = self._resolver.get_node(sk)
+                return node.name_kr if node else ""
+            elif self._mode == DataMode.CHARACTER:
+                char = self._resolver.get_character(sk)
+                return char.name_kr if char else ""
+            elif self._mode == DataMode.ITEM:
+                item = self._resolver.get_item(sk)
+                return item.name_kr if item else ""
+            return ""
 
-        for node in nodes[start_index:start_index + limit]:
-            result = self._node_to_result(node)
-            results.append(result)
+        strkeys.sort(key=get_name)
+
+        for strkey in strkeys[start_index:start_index + limit]:
+            result = self._get_result_by_strkey(strkey)
+            if result:
+                results.append(result)
 
         return results
 
-    def get_node_by_strkey(self, strkey: str) -> Optional[SearchResult]:
+    def get_entry_by_strkey(self, strkey: str) -> Optional[SearchResult]:
         """
-        Get a single node by StrKey.
+        Get a single entry by StrKey.
 
         Args:
-            strkey: Node StrKey
+            strkey: Entry StrKey
 
         Returns:
             SearchResult or None
         """
-        node = self._resolver.get_node(strkey)
-        if node:
-            return self._node_to_result(node)
-        return None
+        return self._get_result_by_strkey(strkey)
 
     @property
+    def total_entries(self) -> int:
+        """Get total number of searchable entries for current mode."""
+        return len(self._search_index)
+
+    # Legacy compatibility
+    @property
     def total_nodes(self) -> int:
-        """Get total number of searchable nodes."""
-        return len(self._resolver.faction_nodes)
+        """Legacy: Get total number of searchable entries."""
+        return self.total_entries
+
+    def get_all_nodes(self, limit: int = 100, start_index: int = 0) -> List[SearchResult]:
+        """Legacy: Get all nodes (redirects to get_all_entries)."""
+        return self.get_all_entries(limit, start_index)
+
+    def get_node_by_strkey(self, strkey: str) -> Optional[SearchResult]:
+        """Legacy: Get node by strkey (redirects to get_entry_by_strkey)."""
+        return self.get_entry_by_strkey(strkey)

@@ -16,7 +16,7 @@ from pathlib import Path
 # Application Constants
 # =============================================================================
 
-VERSION = "1.0.0"
+VERSION = "2.0.0"
 APP_NAME = "MapDataGenerator"
 
 
@@ -52,7 +52,27 @@ DEFAULT_FACTION_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\
 DEFAULT_LOC_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc"
 DEFAULT_KNOWLEDGE_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\knowledgeinfo"
 DEFAULT_WAYPOINT_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo\NodeWaypointInfo"
-DEFAULT_TEXTURE_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\Textures"
+DEFAULT_TEXTURE_FOLDER = r"F:\perforce\common\mainline\commonresource\ui\texture\image"
+DEFAULT_CHARACTER_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\characterinfo"
+
+
+# =============================================================================
+# Lazy Language Loading Config
+# =============================================================================
+
+# Languages to load immediately (essential for startup)
+PRELOAD_LANGUAGES = ['eng', 'kor']
+
+# All other languages loaded on-demand when selected
+LAZY_LANGUAGES = ['fre', 'ger', 'spa', 'por', 'ita', 'rus', 'tur', 'pol', 'zho-cn', 'zho-tw', 'jpn']
+
+
+# =============================================================================
+# Data Mode
+# =============================================================================
+
+DATA_MODES = ['map', 'character', 'item']
+DEFAULT_MODE = 'map'
 
 
 # =============================================================================
@@ -77,7 +97,8 @@ FUZZY_THRESHOLD = 0.6
 # =============================================================================
 
 IMAGE_CACHE_SIZE = 50
-THUMBNAIL_SIZE = (128, 128)
+THUMBNAIL_SIZE = (512, 512)  # Large display by default
+MAX_INLINE_IMAGE_SIZE = (800, 800)  # Maximum display size before scaling
 
 
 # =============================================================================
@@ -125,6 +146,15 @@ UI_LANGUAGES = {
         'load_more': 'Load More',
         'error': 'Error',
         'select_folder': 'Select Folder',
+        'mode_map': 'MAP',
+        'mode_character': 'CHARACTER',
+        'mode_item': 'ITEM',
+        'character_folder': 'CharacterInfo Folder',
+        'select_mode': 'Select Mode',
+        'group': 'Group',
+        'verified_entries': 'Verified Entries',
+        'skipped_no_image': 'Skipped (no image)',
+        'loading_language': 'Loading language...',
     },
     '한국어': {
         'file': '파일',
@@ -151,6 +181,15 @@ UI_LANGUAGES = {
         'load_more': '더 보기',
         'error': '오류',
         'select_folder': '폴더 선택',
+        'mode_map': '맵',
+        'mode_character': '캐릭터',
+        'mode_item': '아이템',
+        'character_folder': '캐릭터 정보 폴더',
+        'select_mode': '모드 선택',
+        'group': '그룹',
+        'verified_entries': '확인된 항목',
+        'skipped_no_image': '건너뜀 (이미지 없음)',
+        'loading_language': '언어 불러오는 중...',
     }
 }
 
@@ -174,13 +213,17 @@ class Settings:
     knowledge_folder: str = DEFAULT_KNOWLEDGE_FOLDER
     waypoint_folder: str = DEFAULT_WAYPOINT_FOLDER
     texture_folder: str = DEFAULT_TEXTURE_FOLDER
+    character_folder: str = DEFAULT_CHARACTER_FOLDER
 
     # Search settings
     search_limit: int = DEFAULT_SEARCH_LIMIT
     fuzzy_threshold: float = FUZZY_THRESHOLD
 
+    # Current mode (map, character, item)
+    current_mode: str = DEFAULT_MODE
+
     # Window state
-    window_geometry: str = "1200x800"
+    window_geometry: str = "1400x900"
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert settings to dictionary."""
@@ -200,9 +243,11 @@ class Settings:
             knowledge_folder=data.get('knowledge_folder', DEFAULT_KNOWLEDGE_FOLDER),
             waypoint_folder=data.get('waypoint_folder', DEFAULT_WAYPOINT_FOLDER),
             texture_folder=data.get('texture_folder', DEFAULT_TEXTURE_FOLDER),
+            character_folder=data.get('character_folder', DEFAULT_CHARACTER_FOLDER),
             search_limit=data.get('search_limit', DEFAULT_SEARCH_LIMIT),
             fuzzy_threshold=data.get('fuzzy_threshold', FUZZY_THRESHOLD),
-            window_geometry=data.get('window_geometry', "1200x800"),
+            current_mode=data.get('current_mode', DEFAULT_MODE),
+            window_geometry=data.get('window_geometry', "1400x900"),
         )
 
 

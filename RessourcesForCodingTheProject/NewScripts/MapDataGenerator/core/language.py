@@ -269,30 +269,66 @@ def get_translation_by_stringid(
 
 
 # =============================================================================
-# LANGUAGE TABLE MANAGER
+# LANGUAGE TABLE MANAGER (WITH LAZY LOADING)
 # =============================================================================
 
 class LanguageManager:
     """
     Manages language tables for the application.
 
-    Provides caching and lazy loading of language data.
+    Provides lazy loading - only English and Korean loaded initially.
+    Other languages loaded on-demand when first requested.
     """
+
+    # Languages to preload at startup
+    PRELOAD_LANGUAGES = ['eng', 'kor']
 
     def __init__(self, loc_folder: Optional[Path] = None):
         self._loc_folder: Optional[Path] = loc_folder
         self._tables: AllLanguageTables = {}
-        self._loaded: bool = False
+        self._loaded_languages: set = set()
 
     def set_folder(self, folder: Path) -> None:
         """Set the localization folder and clear cache."""
         self._loc_folder = folder
         self._tables = {}
-        self._loaded = False
+        self._loaded_languages = set()
+
+    def preload_essential(self, progress_callback: Optional[callable] = None) -> bool:
+        """
+        Load only essential languages (English and Korean) for fast startup.
+
+        Args:
+            progress_callback: Optional progress callback
+
+        Returns:
+            True if successful
+        """
+        if self._loc_folder is None:
+            return False
+
+        success = True
+        for lang_code in self.PRELOAD_LANGUAGES:
+            if progress_callback:
+                lang_name = lang_code.upper()
+                if lang_code == 'eng':
+                    lang_name = 'English'
+                elif lang_code == 'kor':
+                    lang_name = 'Korean'
+                progress_callback(f"Loading {lang_name}...")
+
+            tbl = load_single_language(self._loc_folder, lang_code, None)
+            if tbl:
+                self._tables[lang_code.lower()] = tbl
+                self._loaded_languages.add(lang_code.lower())
+            else:
+                success = False
+
+        return success
 
     def load_all(self, progress_callback: Optional[callable] = None) -> bool:
         """
-        Load all language tables.
+        Load all language tables (for backward compatibility).
 
         Args:
             progress_callback: Optional progress callback
@@ -304,8 +340,8 @@ class LanguageManager:
             return False
 
         self._tables = load_language_tables(self._loc_folder, progress_callback)
-        self._loaded = bool(self._tables)
-        return self._loaded
+        self._loaded_languages = set(self._tables.keys())
+        return bool(self._tables)
 
     def load_language(
         self,
@@ -313,7 +349,7 @@ class LanguageManager:
         progress_callback: Optional[callable] = None
     ) -> bool:
         """
-        Load a single language table.
+        Load a single language table (lazy loading).
 
         Args:
             lang_code: Language code
@@ -325,9 +361,14 @@ class LanguageManager:
         if self._loc_folder is None:
             return False
 
+        # Already loaded?
+        if lang_code.lower() in self._loaded_languages:
+            return True
+
         tbl = load_single_language(self._loc_folder, lang_code, progress_callback)
         if tbl:
             self._tables[lang_code.lower()] = tbl
+            self._loaded_languages.add(lang_code.lower())
             return True
         return False
 
@@ -335,13 +376,30 @@ class LanguageManager:
         """
         Get language table for a language code.
 
+        If not loaded yet, will load on-demand (lazy loading).
+
         Args:
             lang_code: Language code
 
         Returns:
-            Language table (empty dict if not loaded)
+            Language table (empty dict if not found)
         """
-        return self._tables.get(lang_code.lower(), {})
+        lang_code_lower = lang_code.lower()
+
+        # Check if already loaded
+        if lang_code_lower in self._loaded_languages:
+            return self._tables.get(lang_code_lower, {})
+
+        # Lazy load
+        if self._loc_folder is not None:
+            log.info("Lazy loading language: %s", lang_code)
+            self.load_language(lang_code)
+
+        return self._tables.get(lang_code_lower, {})
+
+    def is_language_loaded(self, lang_code: str) -> bool:
+        """Check if a specific language is loaded."""
+        return lang_code.lower() in self._loaded_languages
 
     def get_translation(
         self,
@@ -360,16 +418,16 @@ class LanguageManager:
         Returns:
             Translation text
         """
-        tbl = self.get_table(lang_code)
+        tbl = self.get_table(lang_code)  # This will lazy load if needed
         translation, _ = get_translation(korean_text, tbl, default)
         return translation if translation else default
 
     @property
     def is_loaded(self) -> bool:
-        """Check if any language tables are loaded."""
-        return bool(self._tables)
+        """Check if essential language tables are loaded."""
+        return 'eng' in self._loaded_languages or 'kor' in self._loaded_languages
 
     @property
     def available_languages(self) -> List[str]:
         """Get list of loaded language codes."""
-        return list(self._tables.keys())
+        return list(self._loaded_languages)

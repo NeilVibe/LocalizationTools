@@ -1,11 +1,16 @@
 """
-Main Application Module
+Main Application Module (REDESIGNED)
 
-Main window with:
-- Menu bar (File -> Load Data, Settings, Exit)
-- PanedWindow layout (left: search+results, right: image+map)
-- Progress bar during data loading
-- Threading for non-blocking loads
+Three-mode MapDataGenerator:
+- MAP mode: FactionNodes with map canvas
+- CHARACTER mode: Characters with large image display
+- ITEM mode: Items/Knowledge with large image display
+
+Features:
+- Mode selector toolbar
+- Large image display (512×512+)
+- Lazy language loading
+- Image-first architecture (all results have images)
 """
 
 import logging
@@ -18,9 +23,10 @@ from typing import Optional
 try:
     from config import (
         APP_NAME, VERSION, get_settings, save_settings, load_settings,
-        get_ui_text, Settings, LANGUAGES, LANGUAGE_NAMES
+        get_ui_text, Settings, LANGUAGES, LANGUAGE_NAMES,
+        DATA_MODES, DEFAULT_MODE
     )
-    from core.linkage import LinkageResolver
+    from core.linkage import LinkageResolver, DataMode
     from core.language import LanguageManager
     from core.search import SearchEngine, SearchResult
     from gui.search_panel import SearchPanel
@@ -30,9 +36,10 @@ try:
 except ImportError:
     from ..config import (
         APP_NAME, VERSION, get_settings, save_settings, load_settings,
-        get_ui_text, Settings, LANGUAGES, LANGUAGE_NAMES
+        get_ui_text, Settings, LANGUAGES, LANGUAGE_NAMES,
+        DATA_MODES, DEFAULT_MODE
     )
-    from ..core.linkage import LinkageResolver
+    from ..core.linkage import LinkageResolver, DataMode
     from ..core.language import LanguageManager
     from ..core.search import SearchEngine, SearchResult
     from .search_panel import SearchPanel
@@ -49,9 +56,7 @@ log = logging.getLogger(__name__)
 # =============================================================================
 
 def install_korean_font(root: tk.Tk) -> None:
-    """
-    Force Tk and Matplotlib to use a Hangul-capable font.
-    """
+    """Force Tk and Matplotlib to use a Hangul-capable font."""
     import tkinter.font as tkfont
 
     try:
@@ -60,7 +65,6 @@ def install_korean_font(root: tk.Tk) -> None:
     except ImportError:
         has_matplotlib = False
 
-    # Font candidates (order matters)
     font_candidates = [
         "Malgun Gothic",
         "맑은 고딕",
@@ -83,14 +87,12 @@ def install_korean_font(root: tk.Tk) -> None:
 
     log.info("Using '%s' for Korean text.", chosen_font)
 
-    # Apply to Tkinter
     for name in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont", "TkFixedFont"):
         try:
             tkfont.nametofont(name).configure(family=chosen_font)
         except tk.TclError:
             pass
 
-    # Apply to Matplotlib
     if has_matplotlib:
         for f in font_candidates:
             if any(f in fm.name for fm in font_manager.fontManager.ttflist):
@@ -104,15 +106,23 @@ def install_korean_font(root: tk.Tk) -> None:
 # =============================================================================
 
 class MapDataGeneratorApp:
-    """Main MapDataGenerator application."""
+    """
+    Main MapDataGenerator application with three modes.
+
+    Layout:
+    ┌─────────────────────────────────────────────────────────────┐
+    │ [MAP] [CHARACTER] [ITEM]  ← Mode selector toolbar           │
+    ├─────────────────────────────────────────────────────────────┤
+    │  Left (35%)            │    Right (65%)                     │
+    ├────────────────────────┼────────────────────────────────────┤
+    │ Search Panel           │  IMAGE VIEWER (large!)             │
+    │ Result Panel           │  [Map Canvas - MAP mode only]      │
+    ├────────────────────────┴────────────────────────────────────┤
+    │ Status bar                                                  │
+    └─────────────────────────────────────────────────────────────┘
+    """
 
     def __init__(self, root: Optional[tk.Tk] = None):
-        """
-        Initialize application.
-
-        Args:
-            root: Tkinter root window (created if None)
-        """
         self.root = root or tk.Tk()
         self.root.title(f"{APP_NAME} v{VERSION}")
 
@@ -128,13 +138,18 @@ class MapDataGeneratorApp:
         self._lang_manager = LanguageManager()
         self._search_engine: Optional[SearchEngine] = None
 
+        # Current mode
+        self._current_mode = DataMode(self.settings.current_mode)
+
         # State
         self._data_loaded = False
         self._current_results = []
         self._current_search_index = 0
+        self._texture_folder: Optional[Path] = None
 
         # Variables
         self._progress_var = tk.StringVar(value=get_ui_text('ready'))
+        self._mode_var = tk.StringVar(value=self._current_mode.value)
 
         self._create_menu()
         self._create_widgets()
@@ -172,11 +187,18 @@ class MapDataGeneratorApp:
 
     def _create_widgets(self) -> None:
         """Create main window widgets."""
-        # Main paned window (horizontal split)
-        self._main_paned = ttk.PanedWindow(self.root, orient="horizontal")
-        self._main_paned.pack(fill="both", expand=True, padx=5, pady=5)
+        # Mode selector toolbar
+        self._create_mode_toolbar()
 
-        # Left panel (search + results)
+        # Main content area
+        main_frame = ttk.Frame(self.root)
+        main_frame.pack(fill="both", expand=True, padx=5, pady=5)
+
+        # Horizontal paned window
+        self._main_paned = ttk.PanedWindow(main_frame, orient="horizontal")
+        self._main_paned.pack(fill="both", expand=True)
+
+        # Left panel (search + results) - 35%
         left_frame = ttk.Frame(self._main_paned)
         self._main_paned.add(left_frame, weight=1)
 
@@ -197,26 +219,65 @@ class MapDataGeneratorApp:
         self._result_panel.pack(fill="both", expand=True, padx=5, pady=5)
         self._result_panel.set_load_more_callback(self._load_more_results)
 
-        # Right panel (image + map)
+        # Right panel - 65%
         right_frame = ttk.Frame(self._main_paned)
         self._main_paned.add(right_frame, weight=2)
 
-        # Right paned (vertical split: image on top, map on bottom)
-        right_paned = ttk.PanedWindow(right_frame, orient="vertical")
-        right_paned.pack(fill="both", expand=True)
+        # Right panel uses vertical paned window
+        self._right_paned = ttk.PanedWindow(right_frame, orient="vertical")
+        self._right_paned.pack(fill="both", expand=True)
 
-        # Image viewer
-        self._image_viewer = ImageViewer(right_paned)
-        right_paned.add(self._image_viewer, weight=1)
+        # Image viewer (large!) - takes more space in CHARACTER/ITEM modes
+        self._image_viewer = ImageViewer(self._right_paned)
+        self._right_paned.add(self._image_viewer, weight=2)
 
-        # Map canvas
+        # Map canvas (only visible in MAP mode)
+        self._map_frame = ttk.Frame(self._right_paned)
         self._map_canvas = MapCanvas(
-            right_paned,
+            self._map_frame,
             on_node_click=self._on_map_node_click
         )
-        right_paned.add(self._map_canvas, weight=3)
+        self._map_canvas.pack(fill="both", expand=True)
+        self._right_paned.add(self._map_frame, weight=3)
+
+        # Update visibility based on mode
+        self._update_mode_visibility()
 
         # Status bar
+        self._create_status_bar()
+
+        # Initially disable search
+        self._search_panel.enable(False)
+
+    def _create_mode_toolbar(self) -> None:
+        """Create mode selector toolbar."""
+        toolbar = ttk.Frame(self.root)
+        toolbar.pack(fill="x", padx=5, pady=(5, 0))
+
+        # Mode label
+        ttk.Label(toolbar, text=get_ui_text('select_mode') + ":", font=('TkDefaultFont', 9)).pack(side="left", padx=(0, 10))
+
+        # Mode buttons (radio-style)
+        self._mode_buttons = {}
+
+        for mode in DATA_MODES:
+            btn = ttk.Radiobutton(
+                toolbar,
+                text=get_ui_text(f'mode_{mode}'),
+                value=mode,
+                variable=self._mode_var,
+                command=self._on_mode_change,
+                style='Toolbutton'
+            )
+            btn.pack(side="left", padx=2)
+            self._mode_buttons[mode] = btn
+
+        # Stats display (right side)
+        self._stats_label = ttk.Label(toolbar, text="", foreground="gray")
+        self._stats_label.pack(side="right", padx=10)
+
+    def _create_status_bar(self) -> None:
+        """Create status bar at bottom."""
         status_frame = ttk.Frame(self.root)
         status_frame.pack(fill="x", side="bottom")
 
@@ -233,129 +294,183 @@ class MapDataGeneratorApp:
         )
         self._status_label.pack(side="left", padx=5, pady=2, fill="x", expand=True)
 
-        # Initially disable search
-        self._search_panel.enable(False)
+    def _on_mode_change(self) -> None:
+        """Handle mode change."""
+        new_mode = DataMode(self._mode_var.get())
+
+        if new_mode == self._current_mode:
+            return
+
+        self._current_mode = new_mode
+        self.settings.current_mode = new_mode.value
+        save_settings(self.settings)
+
+        log.info("Mode changed to: %s", new_mode.value)
+
+        # Update visibility
+        self._update_mode_visibility()
+
+        # Update result panel headers
+        self._result_panel.set_mode_headers(new_mode.value)
+
+        # Update search engine mode
+        if self._search_engine:
+            self._search_engine.set_mode(new_mode)
+
+            # Re-run search or show all entries
+            query = self._search_panel.get_search_text()
+            match_type = self._search_panel.get_match_type()
+            lang_code = self._search_panel.get_language()
+            self._on_search(query, match_type, lang_code)
+
+        # Update stats
+        self._update_stats()
+
+    def _update_mode_visibility(self) -> None:
+        """Update widget visibility based on current mode."""
+        if self._current_mode == DataMode.MAP:
+            # Show map canvas with more weight
+            try:
+                self._right_paned.paneconfig(self._image_viewer, weight=1)
+                self._right_paned.paneconfig(self._map_frame, weight=3)
+            except tk.TclError:
+                pass
+            self._map_frame.pack(fill="both", expand=True)
+        else:
+            # Hide map, show large image
+            try:
+                self._right_paned.paneconfig(self._image_viewer, weight=4)
+                self._right_paned.paneconfig(self._map_frame, weight=0)
+            except tk.TclError:
+                pass
+            # Don't actually hide the frame, just minimize it
+
+    def _update_stats(self) -> None:
+        """Update stats display."""
+        if not self._search_engine:
+            self._stats_label.config(text="")
+            return
+
+        stats = self._resolver.stats
+        total = self._search_engine.total_entries
+
+        if self._current_mode == DataMode.MAP:
+            verified = stats.get('faction_nodes_verified', 0)
+            skipped = stats.get('faction_nodes_skipped', 0)
+        elif self._current_mode == DataMode.CHARACTER:
+            verified = stats.get('characters_verified', 0)
+            skipped = stats.get('characters_skipped', 0)
+        else:
+            verified = stats.get('items_verified', 0)
+            skipped = stats.get('items_skipped', 0)
+
+        self._stats_label.config(
+            text=f"{get_ui_text('verified_entries')}: {verified} | {get_ui_text('skipped_no_image')}: {skipped}"
+        )
 
     def _load_data(self) -> None:
-        """Open folder selection and load data."""
-        # Show folder selection dialog
+        """Open folder selection dialog and load data."""
         settings = get_settings()
 
         dialog = tk.Toplevel(self.root)
         dialog.title("Load Data - Select Folders")
-        dialog.geometry("500x400")
+        dialog.geometry("600x500")
         dialog.transient(self.root)
         dialog.grab_set()
 
-        # Faction folder
-        faction_var = tk.StringVar(value=settings.faction_folder)
-        ttk.Label(dialog, text="Faction Info Folder:").pack(anchor="w", padx=10, pady=(10, 0))
-        faction_frame = ttk.Frame(dialog)
-        faction_frame.pack(fill="x", padx=10, pady=2)
-        faction_entry = ttk.Entry(faction_frame, textvariable=faction_var, width=50)
-        faction_entry.pack(side="left", fill="x", expand=True)
-        ttk.Button(
-            faction_frame,
-            text="Browse",
-            command=lambda: faction_var.set(
-                filedialog.askdirectory(title="Select Faction Info Folder") or faction_var.get()
-            )
-        ).pack(side="left", padx=5)
+        # Current mode display
+        mode_frame = ttk.LabelFrame(dialog, text=get_ui_text('select_mode'))
+        mode_frame.pack(fill="x", padx=10, pady=5)
 
-        # LOC folder
-        loc_var = tk.StringVar(value=settings.loc_folder)
-        ttk.Label(dialog, text="Language Data Folder:").pack(anchor="w", padx=10, pady=(10, 0))
-        loc_frame = ttk.Frame(dialog)
-        loc_frame.pack(fill="x", padx=10, pady=2)
-        loc_entry = ttk.Entry(loc_frame, textvariable=loc_var, width=50)
-        loc_entry.pack(side="left", fill="x", expand=True)
-        ttk.Button(
-            loc_frame,
-            text="Browse",
-            command=lambda: loc_var.set(
-                filedialog.askdirectory(title="Select Language Data Folder") or loc_var.get()
-            )
-        ).pack(side="left", padx=5)
+        mode_var = tk.StringVar(value=self._current_mode.value)
+        for mode in DATA_MODES:
+            ttk.Radiobutton(
+                mode_frame,
+                text=get_ui_text(f'mode_{mode}'),
+                value=mode,
+                variable=mode_var
+            ).pack(side="left", padx=10, pady=5)
 
-        # Knowledge folder
-        knowledge_var = tk.StringVar(value=settings.knowledge_folder)
-        ttk.Label(dialog, text="Knowledge Info Folder:").pack(anchor="w", padx=10, pady=(10, 0))
-        knowledge_frame = ttk.Frame(dialog)
-        knowledge_frame.pack(fill="x", padx=10, pady=2)
-        knowledge_entry = ttk.Entry(knowledge_frame, textvariable=knowledge_var, width=50)
-        knowledge_entry.pack(side="left", fill="x", expand=True)
-        ttk.Button(
-            knowledge_frame,
-            text="Browse",
-            command=lambda: knowledge_var.set(
-                filedialog.askdirectory(title="Select Knowledge Info Folder") or knowledge_var.get()
-            )
-        ).pack(side="left", padx=5)
+        # Folder selection
+        folders_frame = ttk.LabelFrame(dialog, text="Data Folders")
+        folders_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
-        # Waypoint folder
-        waypoint_var = tk.StringVar(value=settings.waypoint_folder)
-        ttk.Label(dialog, text="Waypoint Info Folder:").pack(anchor="w", padx=10, pady=(10, 0))
-        waypoint_frame = ttk.Frame(dialog)
-        waypoint_frame.pack(fill="x", padx=10, pady=2)
-        waypoint_entry = ttk.Entry(waypoint_frame, textvariable=waypoint_var, width=50)
-        waypoint_entry.pack(side="left", fill="x", expand=True)
-        ttk.Button(
-            waypoint_frame,
-            text="Browse",
-            command=lambda: waypoint_var.set(
-                filedialog.askdirectory(title="Select Waypoint Info Folder") or waypoint_var.get()
-            )
-        ).pack(side="left", padx=5)
+        def create_folder_row(parent, label: str, default: str) -> tk.StringVar:
+            frame = ttk.Frame(parent)
+            frame.pack(fill="x", padx=5, pady=5)
 
-        # Texture folder
-        texture_var = tk.StringVar(value=settings.texture_folder)
-        ttk.Label(dialog, text="Texture Folder:").pack(anchor="w", padx=10, pady=(10, 0))
-        texture_frame = ttk.Frame(dialog)
-        texture_frame.pack(fill="x", padx=10, pady=2)
-        texture_entry = ttk.Entry(texture_frame, textvariable=texture_var, width=50)
-        texture_entry.pack(side="left", fill="x", expand=True)
-        ttk.Button(
-            texture_frame,
-            text="Browse",
-            command=lambda: texture_var.set(
-                filedialog.askdirectory(title="Select Texture Folder") or texture_var.get()
-            )
-        ).pack(side="left", padx=5)
+            ttk.Label(frame, text=label, width=20, anchor="w").pack(side="left")
+
+            var = tk.StringVar(value=default)
+            entry = ttk.Entry(frame, textvariable=var, width=45)
+            entry.pack(side="left", fill="x", expand=True, padx=5)
+
+            ttk.Button(
+                frame,
+                text="Browse",
+                command=lambda: var.set(
+                    filedialog.askdirectory(title=f"Select {label}") or var.get()
+                ),
+                width=8
+            ).pack(side="left")
+
+            return var
+
+        # Common folders (always shown)
+        texture_var = create_folder_row(folders_frame, "Texture Folder:", settings.texture_folder)
+        loc_var = create_folder_row(folders_frame, "Language Data:", settings.loc_folder)
+
+        # Mode-specific folders
+        faction_var = create_folder_row(folders_frame, "Faction Info:", settings.faction_folder)
+        knowledge_var = create_folder_row(folders_frame, "Knowledge Info:", settings.knowledge_folder)
+        waypoint_var = create_folder_row(folders_frame, "Waypoint Info:", settings.waypoint_folder)
+        character_var = create_folder_row(folders_frame, "Character Info:", settings.character_folder)
 
         def on_load():
-            # Save paths to settings
-            settings.faction_folder = faction_var.get()
+            # Save paths
+            settings.texture_folder = texture_var.get()
             settings.loc_folder = loc_var.get()
+            settings.faction_folder = faction_var.get()
             settings.knowledge_folder = knowledge_var.get()
             settings.waypoint_folder = waypoint_var.get()
-            settings.texture_folder = texture_var.get()
-            save_settings(settings)
+            settings.character_folder = character_var.get()
 
+            # Update mode
+            new_mode = DataMode(mode_var.get())
+            self._current_mode = new_mode
+            self._mode_var.set(new_mode.value)
+            settings.current_mode = new_mode.value
+
+            save_settings(settings)
             dialog.destroy()
 
-            # Start loading in background
+            # Start loading
             self._start_data_load(
-                faction_folder=Path(faction_var.get()),
+                texture_folder=Path(texture_var.get()),
                 loc_folder=Path(loc_var.get()),
+                faction_folder=Path(faction_var.get()),
                 knowledge_folder=Path(knowledge_var.get()),
                 waypoint_folder=Path(waypoint_var.get()),
-                texture_folder=Path(texture_var.get())
+                character_folder=Path(character_var.get()),
+                mode=new_mode
             )
 
         # Buttons
         btn_frame = ttk.Frame(dialog)
-        btn_frame.pack(pady=20)
+        btn_frame.pack(pady=10)
 
-        ttk.Button(btn_frame, text="Load", command=on_load, width=15).pack(side="left", padx=10)
+        ttk.Button(btn_frame, text="Load Data", command=on_load, width=15).pack(side="left", padx=10)
         ttk.Button(btn_frame, text="Cancel", command=dialog.destroy, width=15).pack(side="left", padx=10)
 
     def _start_data_load(
         self,
-        faction_folder: Path,
+        texture_folder: Path,
         loc_folder: Path,
+        faction_folder: Path,
         knowledge_folder: Path,
         waypoint_folder: Path,
-        texture_folder: Path
+        character_folder: Path,
+        mode: DataMode
     ) -> None:
         """Start background data loading."""
         self._progress_bar.start()
@@ -363,40 +478,63 @@ class MapDataGeneratorApp:
 
         def task():
             try:
-                # Load faction nodes
-                self._update_progress("Loading FactionNodes...")
-                self._resolver.load_faction_nodes(
-                    faction_folder,
+                # 1. FIRST: Scan DDS files (CRITICAL for image-first)
+                self._update_progress("Scanning texture folder for DDS files...")
+                dds_count = self._resolver.scan_textures(
+                    texture_folder,
                     lambda msg: self._update_progress(msg)
                 )
+                self._update_progress(f"Found {dds_count} DDS files")
 
-                # Load knowledge info
+                # 2. Load knowledge info (needed for resolution chain)
                 self._update_progress("Loading KnowledgeInfo...")
                 self._resolver.load_knowledge_info(
                     knowledge_folder,
                     lambda msg: self._update_progress(msg)
                 )
 
-                # Load routes
-                self._update_progress("Loading routes...")
-                self._resolver.load_routes(
-                    waypoint_folder,
-                    lambda msg: self._update_progress(msg)
-                )
+                # 3. Load mode-specific data
+                if mode == DataMode.MAP:
+                    self._update_progress("Loading verified FactionNodes...")
+                    self._resolver.load_faction_nodes_verified(
+                        faction_folder,
+                        lambda msg: self._update_progress(msg)
+                    )
 
-                # Load language tables
-                self._update_progress("Loading language tables...")
+                    self._update_progress("Loading routes...")
+                    self._resolver.load_routes(
+                        waypoint_folder,
+                        lambda msg: self._update_progress(msg)
+                    )
+
+                elif mode == DataMode.CHARACTER:
+                    self._update_progress("Loading verified Characters...")
+                    self._resolver.load_characters_verified(
+                        character_folder,
+                        lambda msg: self._update_progress(msg)
+                    )
+
+                elif mode == DataMode.ITEM:
+                    self._update_progress("Loading verified Items...")
+                    self._resolver.load_items_verified(
+                        knowledge_folder,
+                        lambda msg: self._update_progress(msg)
+                    )
+
+                # 4. Load language tables (lazy - only English and Korean)
+                self._update_progress("Loading language tables (English, Korean)...")
                 self._lang_manager.set_folder(loc_folder)
-                self._lang_manager.load_all(
+                self._lang_manager.preload_essential(
                     lambda msg: self._update_progress(msg)
                 )
 
-                # Create search engine
+                # 5. Create search engine
                 self._update_progress("Building search index...")
                 self._search_engine = SearchEngine(
                     self._resolver,
                     fuzzy_threshold=self.settings.fuzzy_threshold
                 )
+                self._search_engine.set_mode(mode)
 
                 # Set initial language
                 lang_code = self._search_panel.get_language()
@@ -423,20 +561,27 @@ class MapDataGeneratorApp:
         self._data_loaded = True
         self._texture_folder = texture_folder
 
-        # Update map
-        lang_code = self._search_panel.get_language()
-        lang_table = self._lang_manager.get_table(lang_code)
-        self._map_canvas.set_data(self._resolver, lang_table)
+        # Update mode visibility
+        self._update_mode_visibility()
+
+        # Update map (if MAP mode)
+        if self._current_mode == DataMode.MAP:
+            lang_code = self._search_panel.get_language()
+            lang_table = self._lang_manager.get_table(lang_code)
+            self._map_canvas.set_data(self._resolver, lang_table)
 
         # Enable search
         self._search_panel.enable(True)
         self._search_panel.focus_search()
 
-        # Update status
-        node_count = len(self._resolver.faction_nodes)
-        self._progress_var.set(f"Loaded {node_count} nodes. Ready to search.")
+        # Update stats
+        self._update_stats()
 
-        log.info("Data loaded: %d nodes", node_count)
+        # Update status
+        total = self._search_engine.total_entries if self._search_engine else 0
+        self._progress_var.set(f"Loaded {total} verified entries. Ready to search.")
+
+        log.info("Data loaded: %d entries in %s mode", total, self._current_mode.value)
 
     def _on_load_error(self, error: str) -> None:
         """Handle data load error."""
@@ -452,8 +597,8 @@ class MapDataGeneratorApp:
         self._current_search_index = 0
 
         if not query:
-            # Show all nodes
-            results = self._search_engine.get_all_nodes(
+            # Show all entries
+            results = self._search_engine.get_all_entries(
                 limit=self.settings.search_limit
             )
             has_more = len(results) >= self.settings.search_limit
@@ -471,7 +616,7 @@ class MapDataGeneratorApp:
 
         self._result_panel.set_results(
             results,
-            total_count=self._search_engine.total_nodes if not query else len(results),
+            total_count=self._search_engine.total_entries if not query else len(results),
             has_more=has_more
         )
 
@@ -489,7 +634,7 @@ class MapDataGeneratorApp:
         match_type = self._search_panel.get_match_type()
 
         if not query:
-            results = self._search_engine.get_all_nodes(
+            results = self._search_engine.get_all_entries(
                 limit=self.settings.search_limit,
                 start_index=self._current_search_index
             )
@@ -507,16 +652,32 @@ class MapDataGeneratorApp:
         self._result_panel.append_results(results, has_more)
 
     def _on_language_change(self, lang_code: str) -> None:
-        """Handle language change."""
+        """Handle language change (with lazy loading)."""
         if not self._search_engine:
             return
 
-        # Update language table
+        # Check if language needs to be loaded
+        if not self._lang_manager.is_language_loaded(lang_code):
+            self._progress_var.set(f"{get_ui_text('loading_language')}")
+            self.root.update_idletasks()
+
+            # Load in background
+            def load_and_update():
+                self._lang_manager.load_language(lang_code)
+                self.root.after(0, lambda: self._apply_language_change(lang_code))
+
+            threading.Thread(target=load_and_update, daemon=True).start()
+        else:
+            self._apply_language_change(lang_code)
+
+    def _apply_language_change(self, lang_code: str) -> None:
+        """Apply language change after loading."""
         lang_table = self._lang_manager.get_table(lang_code)
         self._search_engine.set_language_table(lang_table)
 
-        # Update map
-        self._map_canvas.set_data(self._resolver, lang_table)
+        # Update map (if MAP mode)
+        if self._current_mode == DataMode.MAP:
+            self._map_canvas.set_data(self._resolver, lang_table)
 
         # Re-run search if there are results
         if self._current_results:
@@ -528,24 +689,19 @@ class MapDataGeneratorApp:
         self.settings.selected_language = lang_code
         save_settings(self.settings)
 
+        self._progress_var.set(get_ui_text('ready'))
+
     def _on_result_select(self, result: SearchResult) -> None:
         """Handle result selection."""
-        # Update image
-        if result.ui_texture_name:
-            texture_path = self._resolver.get_texture_path(
-                result.strkey,
-                self._texture_folder
-            )
-            self._image_viewer.set_image(texture_path, result.ui_texture_name)
-        else:
-            self._image_viewer.clear()
+        # Update image (GUARANTEED to exist due to image-first architecture)
+        self._image_viewer.set_image(result.dds_path, result.ui_texture_name)
 
-        # Highlight on map
-        self._map_canvas.select_node(result.strkey)
+        # Highlight on map (if MAP mode)
+        if self._current_mode == DataMode.MAP and result.position:
+            self._map_canvas.select_node(result.strkey)
 
     def _on_result_double_click(self, result: SearchResult) -> None:
         """Handle result double-click."""
-        # Same as select for now
         self._on_result_select(result)
 
     def _on_map_node_click(self, strkey: str) -> None:
@@ -553,23 +709,17 @@ class MapDataGeneratorApp:
         # Select in result list
         self._result_panel.select_by_strkey(strkey)
 
-        # Update image if not already selected
-        result = self._search_engine.get_node_by_strkey(strkey)
-        if result:
-            if result.ui_texture_name:
-                texture_path = self._resolver.get_texture_path(
-                    strkey,
-                    self._texture_folder
-                )
-                self._image_viewer.set_image(texture_path, result.ui_texture_name)
-            else:
-                self._image_viewer.clear()
+        # Update image
+        if self._search_engine:
+            result = self._search_engine.get_entry_by_strkey(strkey)
+            if result:
+                self._image_viewer.set_image(result.dds_path, result.ui_texture_name)
 
     def _open_settings(self) -> None:
         """Open settings dialog."""
         dialog = tk.Toplevel(self.root)
         dialog.title(get_ui_text('settings'))
-        dialog.geometry("400x300")
+        dialog.geometry("450x350")
         dialog.transient(self.root)
         dialog.grab_set()
 
@@ -597,10 +747,24 @@ class MapDataGeneratorApp:
         fuzzy_var = tk.DoubleVar(value=self.settings.fuzzy_threshold)
         ttk.Spinbox(fuzzy_frame, from_=0.1, to=1.0, increment=0.1, textvariable=fuzzy_var, width=10).pack(side="left", padx=5)
 
+        # Default mode
+        mode_frame = ttk.LabelFrame(dialog, text="Default Mode")
+        mode_frame.pack(fill="x", padx=10, pady=10)
+
+        mode_var = tk.StringVar(value=self.settings.current_mode)
+        for mode in DATA_MODES:
+            ttk.Radiobutton(
+                mode_frame,
+                text=get_ui_text(f'mode_{mode}'),
+                variable=mode_var,
+                value=mode
+            ).pack(side="left", padx=10, pady=5)
+
         def on_save():
             self.settings.ui_language = lang_var.get()
             self.settings.search_limit = limit_var.get()
             self.settings.fuzzy_threshold = fuzzy_var.get()
+            self.settings.current_mode = mode_var.get()
             save_settings(self.settings)
             dialog.destroy()
             messagebox.showinfo("Settings", "Settings saved. Some changes may require restart.")

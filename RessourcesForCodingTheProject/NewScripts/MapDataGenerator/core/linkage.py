@@ -1,25 +1,25 @@
 """
-Linkage Module
+Linkage Module (REWRITTEN)
 
-Resolves the multi-step linkage chain:
+Image-First Architecture:
+- Only collects entries that have BOTH UITextureName AND existing DDS file
+- Supports 3 modes: MAP, CHARACTER, ITEM
+- DDSIndex scans texture folder first for fast lookups
+
+Resolution Chain for MAP mode:
     FactionNode.StrKey
     → FactionNode.KnowledgeKey
     → KnowledgeInfo.UITextureName
     → (or KnowledgeGroupInfo.UITextureName)
-    → .dds file path
-
-This module handles:
-- FactionNode parsing (location nodes on the map)
-- KnowledgeInfo parsing (for UITextureName resolution)
-- KnowledgeGroupInfo parsing (fallback for UITextureName)
-- Route/waypoint parsing for map visualization
+    → Verified .dds file path
 """
 
 import re
 import logging
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Set
 
 from .xml_parser import parse_xml, iter_xml_files
 
@@ -27,22 +27,188 @@ log = logging.getLogger(__name__)
 
 
 # =============================================================================
-# DATA STRUCTURES
+# DATA MODE ENUM
+# =============================================================================
+
+class DataMode(Enum):
+    """Application data modes."""
+    MAP = "map"
+    CHARACTER = "character"
+    ITEM = "item"
+
+
+# =============================================================================
+# DDS INDEX (Scans texture folder for fast lookup)
+# =============================================================================
+
+class DDSIndex:
+    """
+    Pre-scans texture folder to build index of available DDS files.
+
+    This is the KEY to image-first architecture:
+    - Scans all .dds files once at startup
+    - Provides O(1) lookup by texture name
+    - If DDS not in index, entry is skipped (no image = no entry)
+    """
+
+    def __init__(self, texture_folder: Optional[Path] = None):
+        self._texture_folder: Optional[Path] = texture_folder
+        self._dds_files: Dict[str, Path] = {}  # lowercase name -> full path
+        self._scanned = False
+
+    def scan_folder(self, texture_folder: Optional[Path] = None, progress_callback=None) -> int:
+        """
+        Scan texture folder recursively for all .dds files.
+
+        Args:
+            texture_folder: Path to texture folder (uses stored if None)
+            progress_callback: Optional progress callback
+
+        Returns:
+            Number of DDS files found
+        """
+        if texture_folder:
+            self._texture_folder = texture_folder
+
+        if self._texture_folder is None or not self._texture_folder.exists():
+            log.warning("Texture folder not set or doesn't exist")
+            return 0
+
+        self._dds_files.clear()
+
+        if progress_callback:
+            progress_callback("Scanning texture folder for DDS files...")
+
+        count = 0
+        for dds_path in self._texture_folder.rglob("*.dds"):
+            # Index by lowercase filename (without extension)
+            name_lower = dds_path.stem.lower()
+            self._dds_files[name_lower] = dds_path
+
+            # Also index with extension
+            self._dds_files[dds_path.name.lower()] = dds_path
+
+            count += 1
+
+        self._scanned = True
+        log.info("Scanned %d DDS files from texture folder", count)
+        return count
+
+    def find(self, ui_texture_name: str) -> Optional[Path]:
+        """
+        Find DDS file for UITextureName.
+
+        Args:
+            ui_texture_name: Texture name from XML
+
+        Returns:
+            Path to DDS file or None if not found
+        """
+        if not ui_texture_name:
+            return None
+
+        name = ui_texture_name.lower().strip()
+
+        # Remove any path components (just use filename)
+        if '/' in name or '\\' in name:
+            name = name.replace('\\', '/').split('/')[-1]
+
+        if not name.endswith('.dds'):
+            # Try without extension first
+            if name in self._dds_files:
+                return self._dds_files[name]
+            # Try with extension
+            name_with_ext = name + '.dds'
+            return self._dds_files.get(name_with_ext)
+
+        return self._dds_files.get(name)
+
+    def exists(self, ui_texture_name: str) -> bool:
+        """Check if DDS file exists for texture name."""
+        return self.find(ui_texture_name) is not None
+
+    @property
+    def is_scanned(self) -> bool:
+        return self._scanned
+
+    @property
+    def file_count(self) -> int:
+        # Divide by 2 because we index each file twice (with and without extension)
+        return len(self._dds_files) // 2
+
+
+# =============================================================================
+# IMAGE-VERIFIED DATA STRUCTURES
 # =============================================================================
 
 @dataclass
-class FactionNode:
-    """Represents a FactionNode (map location)."""
+class FactionNodeVerified:
+    """
+    FactionNode with VERIFIED image.
+
+    IMPORTANT: dds_path is REQUIRED - if no DDS exists, node is NOT created.
+    This ensures every search result has a guaranteed image.
+    """
     strkey: str
     name_kr: str
     desc_kr: str
     position: Tuple[float, float, float]  # (x, y, z)
+    ui_texture_name: str  # REQUIRED
+    dds_path: Path  # VERIFIED (REQUIRED)
     knowledge_key: str = ""
     source_file: str = ""
 
     @property
     def position_2d(self) -> Tuple[float, float]:
         """Get 2D position (x, z) for map display."""
+        return (self.position[0], self.position[2])
+
+
+@dataclass
+class CharacterItem:
+    """
+    Character with VERIFIED image.
+
+    Extracted from CharacterInfo XML files.
+    """
+    strkey: str  # CharacterInfo.StrKey
+    name_kr: str  # CharacterName or Knowledge.Name
+    desc_kr: str  # Knowledge.Desc
+    ui_texture_name: str  # REQUIRED
+    dds_path: Path  # VERIFIED (REQUIRED)
+    group: str = ""  # Category (e.g., "Dogs and Cats", "NPC")
+    source_file: str = ""
+
+
+@dataclass
+class ItemEntry:
+    """
+    Item/Knowledge with VERIFIED image.
+
+    Extracted from KnowledgeInfo XML files.
+    """
+    strkey: str  # KnowledgeInfo.StrKey
+    name_kr: str  # Name
+    desc_kr: str  # Desc
+    ui_texture_name: str  # REQUIRED
+    dds_path: Path  # VERIFIED (REQUIRED)
+    group_name: str = ""  # KnowledgeGroupInfo.GroupName
+    source_file: str = ""
+
+
+# Legacy dataclasses (for backward compatibility during transition)
+@dataclass
+class FactionNode:
+    """Legacy FactionNode (without verified image)."""
+    strkey: str
+    name_kr: str
+    desc_kr: str
+    position: Tuple[float, float, float]
+    knowledge_key: str = ""
+    source_file: str = ""
+
+    @property
+    def position_2d(self) -> Tuple[float, float]:
         return (self.position[0], self.position[2])
 
 
@@ -78,87 +244,71 @@ class Route:
 
 
 # =============================================================================
-# LINKAGE RESOLVER
+# LINKAGE RESOLVER (REWRITTEN FOR IMAGE-FIRST)
 # =============================================================================
 
 class LinkageResolver:
     """
-    Resolves linkage between FactionNode and UITextureName.
+    Resolves linkage between data nodes and UITextureName.
 
-    The resolution chain is:
-    1. FactionNode.KnowledgeKey → KnowledgeInfo.StrKey
-    2. KnowledgeInfo.UITextureName (if present)
-    3. OR: KnowledgeInfo.KnowledgeGroupKey → KnowledgeGroupInfo.StrKey
-    4. KnowledgeGroupInfo.UITextureName (fallback)
+    IMAGE-FIRST ARCHITECTURE:
+    - DDSIndex must be scanned FIRST
+    - Only entries with verified images are collected
+    - Every entry in collections has guaranteed image
     """
 
     def __init__(self):
-        self._faction_nodes: Dict[str, FactionNode] = {}
+        # DDS Index (scan first!)
+        self._dds_index: DDSIndex = DDSIndex()
+
+        # Verified collections (all entries have images)
+        self._faction_nodes_verified: Dict[str, FactionNodeVerified] = {}
+        self._characters: Dict[str, CharacterItem] = {}
+        self._items: Dict[str, ItemEntry] = {}
+
+        # Knowledge lookups (for resolution chain)
         self._knowledge_info: Dict[str, KnowledgeInfo] = {}
         self._knowledge_groups: Dict[str, KnowledgeGroupInfo] = {}
+
+        # Routes (for map)
         self._routes: List[Route] = []
         self._adjacency: Dict[str, set] = {}
 
-    def load_faction_nodes(
-        self,
-        folder: Path,
-        progress_callback: Optional[callable] = None
-    ) -> int:
+        # Stats
+        self._stats = {
+            'faction_nodes_verified': 0,
+            'faction_nodes_skipped': 0,
+            'characters_verified': 0,
+            'characters_skipped': 0,
+            'items_verified': 0,
+            'items_skipped': 0,
+        }
+
+    # =========================================================================
+    # DDS INDEX
+    # =========================================================================
+
+    def scan_textures(self, texture_folder: Path, progress_callback=None) -> int:
         """
-        Load FactionNode data from XML files.
+        MUST be called first! Scans texture folder for DDS files.
 
         Args:
-            folder: Path to faction info folder
-            progress_callback: Optional progress callback
+            texture_folder: Path to texture folder
+            progress_callback: Optional callback
 
         Returns:
-            Number of nodes loaded
+            Number of DDS files found
         """
-        count = 0
+        return self._dds_index.scan_folder(texture_folder, progress_callback)
 
-        for path in iter_xml_files(folder):
-            if progress_callback:
-                progress_callback(f"Loading FactionNodes from {path.name}...")
+    @property
+    def dds_index(self) -> DDSIndex:
+        """Get DDS index for direct access."""
+        return self._dds_index
 
-            root = parse_xml(path)
-            if root is None:
-                continue
-
-            for fn in root.iter("FactionNode"):
-                strkey = fn.get("StrKey")
-                if not strkey:
-                    continue
-
-                name_kr = (fn.get("Name") or "").strip()
-                desc_kr = (fn.get("Desc") or "").replace("<br/>", "\n").strip()
-                knowledge_key = (fn.get("KnowledgeKey") or "").strip()
-
-                # Parse WorldPosition
-                pos_str = fn.get("WorldPosition") or ""
-                parts = re.split(r"[,\s]+", pos_str.strip())
-                if len(parts) >= 3:
-                    try:
-                        x, y, z = float(parts[0]), float(parts[1]), float(parts[2])
-                        position = (x, y, z)
-                    except ValueError:
-                        continue
-                else:
-                    continue
-
-                node = FactionNode(
-                    strkey=strkey,
-                    name_kr=name_kr,
-                    desc_kr=desc_kr,
-                    position=position,
-                    knowledge_key=knowledge_key,
-                    source_file=path.name,
-                )
-
-                self._faction_nodes[strkey] = node
-                count += 1
-
-        log.info("Loaded %d FactionNodes", count)
-        return count
+    # =========================================================================
+    # KNOWLEDGE INFO LOADING (Needed for resolution chain)
+    # =========================================================================
 
     def load_knowledge_info(
         self,
@@ -167,6 +317,8 @@ class LinkageResolver:
     ) -> int:
         """
         Load KnowledgeInfo data from XML files.
+
+        This is needed for the resolution chain (FactionNode → KnowledgeInfo → UITextureName).
 
         Args:
             folder: Path to knowledge info folder
@@ -208,7 +360,7 @@ class LinkageResolver:
                 self._knowledge_info[strkey] = info
                 count += 1
 
-            # Also parse KnowledgeGroupInfo elements for UITextureName fallback
+            # Also parse KnowledgeGroupInfo elements
             for kgi in root.iter("KnowledgeGroupInfo"):
                 strkey = kgi.get("StrKey")
                 if not strkey:
@@ -233,6 +385,297 @@ class LinkageResolver:
         log.info("Loaded %d KnowledgeInfo entries, %d KnowledgeGroupInfo entries",
                  count, len(self._knowledge_groups))
         return count
+
+    def _resolve_texture_for_knowledge_key(self, knowledge_key: str) -> Optional[str]:
+        """
+        Resolve UITextureName from KnowledgeKey.
+
+        Resolution chain:
+        1. KnowledgeInfo.UITextureName (if present)
+        2. KnowledgeInfo.KnowledgeGroupKey → KnowledgeGroupInfo.UITextureName
+        """
+        if not knowledge_key:
+            return None
+
+        knowledge = self._knowledge_info.get(knowledge_key)
+        if not knowledge:
+            return None
+
+        # Check for UITextureName on KnowledgeInfo
+        if knowledge.ui_texture_name:
+            return knowledge.ui_texture_name
+
+        # Fallback: check KnowledgeGroupInfo
+        group_key = knowledge.knowledge_group_key
+        if group_key:
+            group = self._knowledge_groups.get(group_key)
+            if group and group.ui_texture_name:
+                return group.ui_texture_name
+
+        return None
+
+    # =========================================================================
+    # MAP MODE: FACTION NODES (IMAGE-VERIFIED)
+    # =========================================================================
+
+    def load_faction_nodes_verified(
+        self,
+        folder: Path,
+        progress_callback: Optional[callable] = None
+    ) -> int:
+        """
+        Load FactionNodes - ONLY those with verified images.
+
+        Args:
+            folder: Path to faction info folder
+            progress_callback: Optional callback
+
+        Returns:
+            Number of verified nodes loaded
+        """
+        if not self._dds_index.is_scanned:
+            log.error("DDS index not scanned! Call scan_textures() first.")
+            return 0
+
+        self._faction_nodes_verified.clear()
+        count = 0
+        skipped = 0
+
+        for path in iter_xml_files(folder):
+            if progress_callback:
+                progress_callback(f"Loading FactionNodes from {path.name}...")
+
+            root = parse_xml(path)
+            if root is None:
+                continue
+
+            for fn in root.iter("FactionNode"):
+                strkey = fn.get("StrKey")
+                if not strkey:
+                    continue
+
+                # Parse position
+                pos_str = fn.get("WorldPosition") or ""
+                parts = re.split(r"[,\s]+", pos_str.strip())
+                if len(parts) < 3:
+                    skipped += 1
+                    continue
+
+                try:
+                    position = (float(parts[0]), float(parts[1]), float(parts[2]))
+                except ValueError:
+                    skipped += 1
+                    continue
+
+                # Get attributes
+                name_kr = (fn.get("Name") or "").strip()
+                desc_kr = (fn.get("Desc") or "").replace("<br/>", "\n").strip()
+                knowledge_key = (fn.get("KnowledgeKey") or "").strip()
+
+                # RESOLVE UITextureName
+                ui_texture = self._resolve_texture_for_knowledge_key(knowledge_key)
+                if not ui_texture:
+                    skipped += 1
+                    continue  # No UITextureName - skip
+
+                # VERIFY DDS exists
+                dds_path = self._dds_index.find(ui_texture)
+                if not dds_path:
+                    skipped += 1
+                    continue  # DDS not found - skip
+
+                # ONLY NOW create the verified node
+                node = FactionNodeVerified(
+                    strkey=strkey,
+                    name_kr=name_kr,
+                    desc_kr=desc_kr,
+                    position=position,
+                    ui_texture_name=ui_texture,
+                    dds_path=dds_path,
+                    knowledge_key=knowledge_key,
+                    source_file=path.name,
+                )
+
+                self._faction_nodes_verified[strkey] = node
+                count += 1
+
+        self._stats['faction_nodes_verified'] = count
+        self._stats['faction_nodes_skipped'] = skipped
+        log.info("Loaded %d verified FactionNodes, skipped %d without images", count, skipped)
+        return count
+
+    # =========================================================================
+    # CHARACTER MODE: CHARACTERS (IMAGE-VERIFIED)
+    # =========================================================================
+
+    def load_characters_verified(
+        self,
+        folder: Path,
+        progress_callback: Optional[callable] = None
+    ) -> int:
+        """
+        Load CharacterInfo - ONLY those with verified images.
+
+        Args:
+            folder: Path to character info folder
+            progress_callback: Optional callback
+
+        Returns:
+            Number of verified characters loaded
+        """
+        if not self._dds_index.is_scanned:
+            log.error("DDS index not scanned! Call scan_textures() first.")
+            return 0
+
+        self._characters.clear()
+        count = 0
+        skipped = 0
+
+        for path in iter_xml_files(folder):
+            if progress_callback:
+                progress_callback(f"Loading Characters from {path.name}...")
+
+            root = parse_xml(path)
+            if root is None:
+                continue
+
+            for char in root.iter("CharacterInfo"):
+                strkey = char.get("StrKey")
+                if not strkey:
+                    continue
+
+                name_kr = (char.get("CharacterName") or "").strip()
+                group = (char.get("CharacterGroup") or "").strip()
+
+                # Try to get UITextureName from nested Knowledge node
+                ui_texture = None
+                desc_kr = ""
+
+                for knowledge in char.iter("Knowledge"):
+                    ui_texture = (knowledge.get("UITextureName") or "").strip()
+                    desc_kr = (knowledge.get("Desc") or "").replace("<br/>", "\n").strip()
+                    # Prefer Knowledge.Name if available
+                    knowledge_name = (knowledge.get("Name") or "").strip()
+                    if knowledge_name:
+                        name_kr = knowledge_name
+                    if ui_texture:
+                        break
+
+                # Fallback to CharacterInfo.UIIconPath
+                if not ui_texture:
+                    ui_texture = (char.get("UIIconPath") or "").strip()
+
+                if not ui_texture:
+                    skipped += 1
+                    continue  # No texture name
+
+                # VERIFY DDS exists
+                dds_path = self._dds_index.find(ui_texture)
+                if not dds_path:
+                    skipped += 1
+                    continue  # DDS not found
+
+                character = CharacterItem(
+                    strkey=strkey,
+                    name_kr=name_kr,
+                    desc_kr=desc_kr,
+                    ui_texture_name=ui_texture,
+                    dds_path=dds_path,
+                    group=group,
+                    source_file=path.name,
+                )
+
+                self._characters[strkey] = character
+                count += 1
+
+        self._stats['characters_verified'] = count
+        self._stats['characters_skipped'] = skipped
+        log.info("Loaded %d verified Characters, skipped %d without images", count, skipped)
+        return count
+
+    # =========================================================================
+    # ITEM MODE: ITEMS (IMAGE-VERIFIED)
+    # =========================================================================
+
+    def load_items_verified(
+        self,
+        folder: Path,
+        progress_callback: Optional[callable] = None
+    ) -> int:
+        """
+        Load KnowledgeInfo items - ONLY those with verified images.
+
+        Args:
+            folder: Path to knowledge info folder
+            progress_callback: Optional callback
+
+        Returns:
+            Number of verified items loaded
+        """
+        if not self._dds_index.is_scanned:
+            log.error("DDS index not scanned! Call scan_textures() first.")
+            return 0
+
+        self._items.clear()
+        count = 0
+        skipped = 0
+
+        for path in iter_xml_files(folder):
+            if progress_callback:
+                progress_callback(f"Loading Items from {path.name}...")
+
+            root = parse_xml(path)
+            if root is None:
+                continue
+
+            # Track current group for items
+            current_group = ""
+
+            for elem in root.iter():
+                if elem.tag == "KnowledgeGroupInfo":
+                    current_group = (elem.get("GroupName") or "").strip()
+
+                elif elem.tag == "KnowledgeInfo":
+                    strkey = elem.get("StrKey")
+                    if not strkey:
+                        continue
+
+                    ui_texture = (elem.get("UITextureName") or "").strip()
+
+                    if not ui_texture:
+                        skipped += 1
+                        continue  # No texture
+
+                    # VERIFY DDS exists
+                    dds_path = self._dds_index.find(ui_texture)
+                    if not dds_path:
+                        skipped += 1
+                        continue  # DDS not found
+
+                    name_kr = (elem.get("Name") or "").strip()
+                    desc_kr = (elem.get("Desc") or "").replace("<br/>", "\n").strip()
+
+                    item = ItemEntry(
+                        strkey=strkey,
+                        name_kr=name_kr,
+                        desc_kr=desc_kr,
+                        ui_texture_name=ui_texture,
+                        dds_path=dds_path,
+                        group_name=current_group,
+                        source_file=path.name,
+                    )
+
+                    self._items[strkey] = item
+                    count += 1
+
+        self._stats['items_verified'] = count
+        self._stats['items_skipped'] = skipped
+        log.info("Loaded %d verified Items, skipped %d without images", count, skipped)
+        return count
+
+    # =========================================================================
+    # ROUTES (FOR MAP)
+    # =========================================================================
 
     def load_routes(
         self,
@@ -303,88 +746,24 @@ class LinkageResolver:
                 self._adjacency[route.from_key].add(route.to_key)
                 self._adjacency[route.to_key].add(route.from_key)
 
-    def resolve_ui_texture(self, strkey: str) -> Optional[str]:
-        """
-        Resolve UITextureName for a FactionNode StrKey.
-
-        Resolution chain:
-        1. FactionNode.KnowledgeKey → KnowledgeInfo.StrKey
-        2. KnowledgeInfo.UITextureName (if present)
-        3. OR: KnowledgeInfo.KnowledgeGroupKey → KnowledgeGroupInfo.StrKey
-        4. KnowledgeGroupInfo.UITextureName (fallback)
-
-        Args:
-            strkey: FactionNode StrKey
-
-        Returns:
-            UITextureName or None if not found
-        """
-        # Get FactionNode
-        node = self._faction_nodes.get(strkey)
-        if not node:
-            return None
-
-        # Get KnowledgeInfo via KnowledgeKey
-        knowledge_key = node.knowledge_key
-        if not knowledge_key:
-            return None
-
-        knowledge = self._knowledge_info.get(knowledge_key)
-        if not knowledge:
-            return None
-
-        # Check for UITextureName on KnowledgeInfo
-        if knowledge.ui_texture_name:
-            return knowledge.ui_texture_name
-
-        # Fallback: check KnowledgeGroupInfo
-        group_key = knowledge.knowledge_group_key
-        if group_key:
-            group = self._knowledge_groups.get(group_key)
-            if group and group.ui_texture_name:
-                return group.ui_texture_name
-
-        return None
-
-    def get_texture_path(self, strkey: str, texture_folder: Path) -> Optional[Path]:
-        """
-        Get full path to texture file for a FactionNode.
-
-        Args:
-            strkey: FactionNode StrKey
-            texture_folder: Base folder for textures
-
-        Returns:
-            Path to .dds file or None if not found
-        """
-        ui_texture = self.resolve_ui_texture(strkey)
-        if not ui_texture:
-            return None
-
-        # UITextureName might be just the name or include path
-        # Try to find the file
-        if not ui_texture.lower().endswith('.dds'):
-            ui_texture += '.dds'
-
-        # Try direct path
-        direct_path = texture_folder / ui_texture
-        if direct_path.exists():
-            return direct_path
-
-        # Try searching in subfolders
-        for dds_path in texture_folder.rglob(ui_texture):
-            return dds_path
-
-        return None
-
-    # =============================================================================
+    # =========================================================================
     # ACCESSORS
-    # =============================================================================
+    # =========================================================================
 
     @property
-    def faction_nodes(self) -> Dict[str, FactionNode]:
-        """Get all FactionNodes."""
-        return self._faction_nodes
+    def faction_nodes(self) -> Dict[str, FactionNodeVerified]:
+        """Get all verified FactionNodes."""
+        return self._faction_nodes_verified
+
+    @property
+    def characters(self) -> Dict[str, CharacterItem]:
+        """Get all verified Characters."""
+        return self._characters
+
+    @property
+    def items(self) -> Dict[str, ItemEntry]:
+        """Get all verified Items."""
+        return self._items
 
     @property
     def knowledge_info(self) -> Dict[str, KnowledgeInfo]:
@@ -406,9 +785,22 @@ class LinkageResolver:
         """Get adjacency map for nodes."""
         return self._adjacency
 
-    def get_node(self, strkey: str) -> Optional[FactionNode]:
-        """Get FactionNode by StrKey."""
-        return self._faction_nodes.get(strkey)
+    @property
+    def stats(self) -> dict:
+        """Get loading statistics."""
+        return self._stats.copy()
+
+    def get_node(self, strkey: str) -> Optional[FactionNodeVerified]:
+        """Get verified FactionNode by StrKey."""
+        return self._faction_nodes_verified.get(strkey)
+
+    def get_character(self, strkey: str) -> Optional[CharacterItem]:
+        """Get verified Character by StrKey."""
+        return self._characters.get(strkey)
+
+    def get_item(self, strkey: str) -> Optional[ItemEntry]:
+        """Get verified Item by StrKey."""
+        return self._items.get(strkey)
 
     def get_connected_nodes(self, strkey: str) -> List[str]:
         """Get list of StrKeys for nodes connected to given node."""
@@ -418,3 +810,104 @@ class LinkageResolver:
         """Get routes that include the given node."""
         return [r for r in self._routes
                 if r.from_key == strkey or r.to_key == strkey]
+
+    # =========================================================================
+    # LEGACY COMPATIBILITY
+    # =========================================================================
+
+    def resolve_ui_texture(self, strkey: str) -> Optional[str]:
+        """
+        Legacy method: Resolve UITextureName for a FactionNode StrKey.
+
+        With image-first architecture, all verified nodes already have ui_texture_name.
+        """
+        node = self._faction_nodes_verified.get(strkey)
+        if node:
+            return node.ui_texture_name
+        return None
+
+    def get_texture_path(self, strkey: str, texture_folder: Path = None) -> Optional[Path]:
+        """
+        Legacy method: Get texture path for a FactionNode.
+
+        With image-first architecture, verified nodes already have dds_path.
+        """
+        node = self._faction_nodes_verified.get(strkey)
+        if node:
+            return node.dds_path
+        return None
+
+    # Legacy loader (backward compatibility)
+    def load_faction_nodes(
+        self,
+        folder: Path,
+        progress_callback: Optional[callable] = None
+    ) -> int:
+        """
+        Legacy method: Load faction nodes.
+
+        Redirects to load_faction_nodes_verified if DDS index is ready.
+        """
+        if self._dds_index.is_scanned:
+            return self.load_faction_nodes_verified(folder, progress_callback)
+
+        # Fallback to old behavior (without image verification)
+        log.warning("Loading faction nodes without image verification (DDS not scanned)")
+        return self._load_faction_nodes_legacy(folder, progress_callback)
+
+    def _load_faction_nodes_legacy(
+        self,
+        folder: Path,
+        progress_callback: Optional[callable] = None
+    ) -> int:
+        """Legacy faction node loading (without image verification)."""
+        count = 0
+
+        for path in iter_xml_files(folder):
+            if progress_callback:
+                progress_callback(f"Loading FactionNodes from {path.name}...")
+
+            root = parse_xml(path)
+            if root is None:
+                continue
+
+            for fn in root.iter("FactionNode"):
+                strkey = fn.get("StrKey")
+                if not strkey:
+                    continue
+
+                pos_str = fn.get("WorldPosition") or ""
+                parts = re.split(r"[,\s]+", pos_str.strip())
+                if len(parts) < 3:
+                    continue
+
+                try:
+                    position = (float(parts[0]), float(parts[1]), float(parts[2]))
+                except ValueError:
+                    continue
+
+                name_kr = (fn.get("Name") or "").strip()
+                desc_kr = (fn.get("Desc") or "").replace("<br/>", "\n").strip()
+                knowledge_key = (fn.get("KnowledgeKey") or "").strip()
+
+                # Resolve texture
+                ui_texture = self._resolve_texture_for_knowledge_key(knowledge_key)
+                dds_path = self._dds_index.find(ui_texture) if ui_texture else None
+
+                # Create node (may not have image)
+                if ui_texture and dds_path:
+                    node = FactionNodeVerified(
+                        strkey=strkey,
+                        name_kr=name_kr,
+                        desc_kr=desc_kr,
+                        position=position,
+                        ui_texture_name=ui_texture,
+                        dds_path=dds_path,
+                        knowledge_key=knowledge_key,
+                        source_file=path.name,
+                    )
+                    self._faction_nodes_verified[strkey] = node
+                    count += 1
+
+        log.info("Loaded %d FactionNodes (legacy mode)", count)
+        return count
