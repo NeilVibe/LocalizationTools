@@ -2,6 +2,11 @@
 MapDataGenerator Configuration Module
 
 Constants, settings, and configuration management for the MapDataGenerator tool.
+
+Supports configurable drive letter via settings.json (like QACompiler):
+{
+    "drive_letter": "D"  // Default is "F"
+}
 """
 
 import os
@@ -18,6 +23,63 @@ from pathlib import Path
 
 VERSION = "2.0.0"
 APP_NAME = "MapDataGenerator"
+
+
+# =============================================================================
+# Base Directory Detection
+# =============================================================================
+
+def get_base_dir() -> Path:
+    """Get the base directory for the application."""
+    if getattr(sys, 'frozen', False):
+        # Running as PyInstaller EXE
+        return Path(sys.executable).parent
+    else:
+        # Running as script
+        return Path(__file__).parent
+
+
+# =============================================================================
+# Drive Letter Configuration (loaded from settings.json)
+# =============================================================================
+
+def _load_drive_letter() -> str:
+    """Load drive letter from settings.json.
+
+    Returns:
+        Drive letter (single character, default "F")
+    """
+    settings_file = get_base_dir() / "settings.json"
+
+    if not settings_file.exists():
+        return "F"
+
+    try:
+        with open(settings_file, 'r', encoding='utf-8') as f:
+            settings = json.load(f)
+
+        drive = settings.get('drive_letter', 'F')
+        if isinstance(drive, str) and len(drive) == 1 and drive.isalpha():
+            return drive.upper()
+        else:
+            print(f"  WARNING: Invalid drive_letter in settings.json: '{drive}'. Using F:")
+            return "F"
+    except Exception as e:
+        print(f"  WARNING: Error reading settings.json: {e}. Using F:")
+        return "F"
+
+
+def _apply_drive_letter(path_str: str, drive_letter: str) -> str:
+    """Replace default F: drive with configured drive letter."""
+    if path_str.startswith("F:") or path_str.startswith("f:"):
+        return f"{drive_letter}:{path_str[2:]}"
+    return path_str
+
+
+# Load drive letter at module import
+_DRIVE_LETTER = _load_drive_letter()
+if _DRIVE_LETTER != 'F':
+    print(f"  MapDataGenerator: Using drive {_DRIVE_LETTER}:")
 
 
 # =============================================================================
@@ -45,15 +107,21 @@ LANGUAGE_NAMES = {code: name for code, name in LANGUAGES}
 
 
 # =============================================================================
-# Default Paths (can be overridden via settings.json)
+# Default Paths (drive letter configurable via settings.json)
 # =============================================================================
 
-DEFAULT_FACTION_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo"
-DEFAULT_LOC_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc"
-DEFAULT_KNOWLEDGE_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\knowledgeinfo"
-DEFAULT_WAYPOINT_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo\NodeWaypointInfo"
-DEFAULT_TEXTURE_FOLDER = r"F:\perforce\common\mainline\commonresource\ui\texture\image"
-DEFAULT_CHARACTER_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\characterinfo"
+DEFAULT_FACTION_FOLDER = _apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo", _DRIVE_LETTER)
+DEFAULT_LOC_FOLDER = _apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc", _DRIVE_LETTER)
+DEFAULT_KNOWLEDGE_FOLDER = _apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\knowledgeinfo", _DRIVE_LETTER)
+DEFAULT_WAYPOINT_FOLDER = _apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo\NodeWaypointInfo", _DRIVE_LETTER)
+DEFAULT_TEXTURE_FOLDER = _apply_drive_letter(
+    r"F:\perforce\common\mainline\commonresource\ui\texture\image", _DRIVE_LETTER)
+DEFAULT_CHARACTER_FOLDER = _apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\characterinfo", _DRIVE_LETTER)
 
 
 # =============================================================================
@@ -254,16 +322,6 @@ class Settings:
 # =============================================================================
 # Utility Functions
 # =============================================================================
-
-def get_base_dir() -> Path:
-    """Get the base directory for the application."""
-    if getattr(sys, 'frozen', False):
-        # Running as PyInstaller EXE
-        return Path(sys.executable).parent
-    else:
-        # Running as script
-        return Path(__file__).parent
-
 
 def get_settings_path() -> Path:
     """Get the path to the settings file."""
