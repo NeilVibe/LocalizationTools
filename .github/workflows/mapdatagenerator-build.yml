@@ -409,7 +409,7 @@ jobs:
         run: |
           $version = "${{ env.BUILD_VERSION }}"
           $distPath = "${{ env.MAPDATAGENERATOR_PATH }}\dist\MapDataGenerator"
-          $outDir = "${{ env.MAPDATAGENERATOR_PATH }}\installer\output"
+          $outDir = "${{ env.MAPDATAGENERATOR_PATH }}\installer_output"
 
           New-Item -ItemType Directory -Path $outDir -Force | Out-Null
           $zipPath = "$outDir\MapDataGenerator_v${version}_Portable.zip"
@@ -423,10 +423,10 @@ jobs:
         run: |
           $version = "${{ env.BUILD_VERSION }}"
           $sourcePath = "${{ env.MAPDATAGENERATOR_PATH }}"
-          $zipPath = "${{ env.MAPDATAGENERATOR_PATH }}\installer\output\MapDataGenerator_v${version}_Source.zip"
+          $zipPath = "${{ env.MAPDATAGENERATOR_PATH }}\installer_output\MapDataGenerator_v${version}_Source.zip"
 
           $tempDir = New-Item -ItemType Directory -Path "$env:TEMP\MapDataGenerator_Source" -Force
-          $excludes = @("dist", "build", "__pycache__", "*.pyc", "output", ".pytest_cache")
+          $excludes = @("dist", "build", "__pycache__", "*.pyc", "installer_output", ".pytest_cache")
 
           Get-ChildItem -Path $sourcePath -Exclude $excludes | Copy-Item -Destination $tempDir -Recurse -Force
           Get-ChildItem -Path $tempDir -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
@@ -441,21 +441,21 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MapDataGenerator-Setup
-          path: ${{ env.MAPDATAGENERATOR_PATH }}/installer/output/*.exe
+          path: ${{ env.MAPDATAGENERATOR_PATH }}/installer_output/*.exe
           retention-days: 30
 
       - name: Upload Portable
         uses: actions/upload-artifact@v4
         with:
           name: MapDataGenerator-Portable
-          path: ${{ env.MAPDATAGENERATOR_PATH }}/installer/output/*_Portable.zip
+          path: ${{ env.MAPDATAGENERATOR_PATH }}/installer_output/*_Portable.zip
           retention-days: 30
 
       - name: Upload Source
         uses: actions/upload-artifact@v4
         with:
           name: MapDataGenerator-Source
-          path: ${{ env.MAPDATAGENERATOR_PATH }}/installer/output/*_Source.zip
+          path: ${{ env.MAPDATAGENERATOR_PATH }}/installer_output/*_Source.zip
           retention-days: 30
 
       - name: Create GitHub Release
@@ -467,7 +467,7 @@ jobs:
           body: |
             # MapDataGenerator v${{ env.BUILD_VERSION }}
 
-            **Crimson Desert Map/Region Data Visualization Tool**
+            **Map/Region Data Visualization Tool**
 
             ## Download
 
@@ -492,8 +492,8 @@ jobs:
             - **Search Modes**: Contains, Exact, and Fuzzy matching
 
           files: |
-            ${{ env.MAPDATAGENERATOR_PATH }}/installer/output/*.exe
-            ${{ env.MAPDATAGENERATOR_PATH }}/installer/output/*_Portable.zip
-            ${{ env.MAPDATAGENERATOR_PATH }}/installer/output/*_Source.zip
+            ${{ env.MAPDATAGENERATOR_PATH }}/installer_output/*.exe
+            ${{ env.MAPDATAGENERATOR_PATH }}/installer_output/*_Portable.zip
+            ${{ env.MAPDATAGENERATOR_PATH }}/installer_output/*_Source.zip
           draft: false
           prerelease: false
