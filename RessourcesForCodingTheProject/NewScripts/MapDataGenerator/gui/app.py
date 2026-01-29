@@ -336,8 +336,7 @@ class MapDataGeneratorApp:
                 waypoint_folder=Path(settings.waypoint_folder),
                 character_folder=Path(settings.character_folder),
                 mode=new_mode,
-                require_image=True
-            )
+                            )
         elif self._search_engine:
             # Data already loaded, just update search engine mode
             self._search_engine.set_mode(new_mode)
@@ -511,8 +510,7 @@ class MapDataGeneratorApp:
                 waypoint_folder=Path(waypoint_var.get()),
                 character_folder=Path(character_var.get()),
                 mode=new_mode,
-                require_image=True
-            )
+                            )
 
         # Buttons
         btn_frame = ttk.Frame(dialog)
@@ -530,7 +528,6 @@ class MapDataGeneratorApp:
         waypoint_folder: Path,
         character_folder: Path,
         mode: DataMode,
-        require_image: bool = True
     ) -> None:
         """Start background data loading."""
         self._progress_bar.start()
