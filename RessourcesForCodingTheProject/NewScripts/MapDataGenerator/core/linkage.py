@@ -123,21 +123,39 @@ class DDSIndex:
         if not ui_texture_name:
             return None
 
+        original_name = ui_texture_name
         name = ui_texture_name.lower().strip()
 
         # Remove path components
         if '/' in name or '\\' in name:
             name = name.replace('\\', '/').split('/')[-1]
 
+        # Remove .dds extension if present for lookup
+        lookup_name = name
+        if lookup_name.endswith('.dds'):
+            lookup_name = lookup_name[:-4]
+
         # Try without extension
+        if lookup_name in self._dds_files:
+            return self._dds_files[lookup_name]
+
+        # Try with .dds extension
         if name in self._dds_files:
             return self._dds_files[name]
 
-        # Try with .dds extension
-        if not name.endswith('.dds'):
-            return self._dds_files.get(name + '.dds')
+        # Try adding .dds
+        name_with_ext = lookup_name + '.dds'
+        if name_with_ext in self._dds_files:
+            return self._dds_files[name_with_ext]
 
-        return self._dds_files.get(name)
+        # Log first few misses for debugging
+        if not hasattr(self, '_miss_count'):
+            self._miss_count = 0
+        if self._miss_count < 10:
+            log.debug("DDS not found: '%s' (tried: %s, %s)", original_name, lookup_name, name_with_ext)
+            self._miss_count += 1
+
+        return None
 
     @property
     def is_scanned(self) -> bool:
