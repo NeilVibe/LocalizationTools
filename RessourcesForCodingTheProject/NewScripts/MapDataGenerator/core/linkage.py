@@ -171,6 +171,9 @@ class LinkageResolver:
         # Unified data collection (all modes use DataEntry)
         self._entries: Dict[str, DataEntry] = {}
 
+        # Track which mode's data is currently loaded
+        self._current_mode: Optional[DataMode] = None
+
         # Stats
         self._stats = {
             'knowledge_loaded': 0,
@@ -178,6 +181,11 @@ class LinkageResolver:
             'entries_with_image': 0,
             'entries_without_image': 0,
         }
+
+    @property
+    def current_mode(self) -> Optional[DataMode]:
+        """Return which mode's data is currently loaded."""
+        return self._current_mode
 
     # =========================================================================
     # DDS INDEX
@@ -275,6 +283,7 @@ class LinkageResolver:
         Does NOT filter by image existence - collects everything.
         """
         self._entries.clear()
+        self._current_mode = DataMode.MAP
         count = 0
         with_image = 0
 
@@ -386,6 +395,9 @@ class LinkageResolver:
         self._stats['entries_total'] = count
         self._stats['entries_with_image'] = with_image
         self._stats['entries_without_image'] = count - with_image
+        # Mode-specific stats for app.py compatibility
+        self._stats['faction_nodes_verified'] = with_image
+        self._stats['faction_nodes_skipped'] = count - with_image
 
         log.info("Loaded %d MAP entries: %d with image, %d without",
                  count, with_image, count - with_image)
@@ -399,6 +411,7 @@ class LinkageResolver:
     ) -> int:
         """Load CHARACTER data from CharacterInfo XML files."""
         self._entries.clear()
+        self._current_mode = DataMode.CHARACTER
         count = 0
         with_image = 0
 
@@ -468,6 +481,9 @@ class LinkageResolver:
         self._stats['entries_total'] = count
         self._stats['entries_with_image'] = with_image
         self._stats['entries_without_image'] = count - with_image
+        # Mode-specific stats for app.py compatibility
+        self._stats['characters_verified'] = with_image
+        self._stats['characters_skipped'] = count - with_image
 
         log.info("Loaded %d CHARACTER entries: %d with image, %d without",
                  count, with_image, count - with_image)
@@ -481,6 +497,7 @@ class LinkageResolver:
     ) -> int:
         """Load ITEM data directly from KnowledgeInfo (already in lookup)."""
         self._entries.clear()
+        self._current_mode = DataMode.ITEM
         count = 0
         with_image = 0
 
@@ -542,6 +559,9 @@ class LinkageResolver:
         self._stats['entries_total'] = count
         self._stats['entries_with_image'] = with_image
         self._stats['entries_without_image'] = count - with_image
+        # Mode-specific stats for app.py compatibility
+        self._stats['items_verified'] = with_image
+        self._stats['items_skipped'] = count - with_image
 
         log.info("Loaded %d ITEM entries: %d with image, %d without",
                  count, with_image, count - with_image)
@@ -570,20 +590,26 @@ class LinkageResolver:
         """Get entry by StrKey."""
         return self._entries.get(strkey)
 
-    # Legacy compatibility
+    # Legacy compatibility (mode-aware - returns empty if wrong mode)
     @property
     def faction_nodes(self) -> Dict[str, DataEntry]:
-        """Legacy: Get entries (for MAP mode compatibility)."""
+        """Legacy: Get MAP entries (only valid if current_mode == MAP)."""
+        if self._current_mode != DataMode.MAP:
+            return {}
         return self._entries
 
     @property
     def characters(self) -> Dict[str, DataEntry]:
-        """Legacy: Get entries (for CHARACTER mode compatibility)."""
+        """Legacy: Get CHARACTER entries (only valid if current_mode == CHARACTER)."""
+        if self._current_mode != DataMode.CHARACTER:
+            return {}
         return self._entries
 
     @property
     def items(self) -> Dict[str, DataEntry]:
-        """Legacy: Get entries (for ITEM mode compatibility)."""
+        """Legacy: Get ITEM entries (only valid if current_mode == ITEM)."""
+        if self._current_mode != DataMode.ITEM:
+            return {}
         return self._entries
 
     def get_node(self, strkey: str) -> Optional[DataEntry]:
