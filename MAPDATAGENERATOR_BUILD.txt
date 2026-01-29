@@ -13,3 +13,4 @@ Build 008: Fix imports after simplification
 Build 009: Fix mode tracking, stats keys, larger image display (768x768)
 Build 010: Fix stats display, improve DDS lookup (case insensitive)
 Build 011: Remove double-processing bug (Knowledge entries counted twice)
+Build 012: Add diagnostic logging for Hexe Sanctuary image lookup issue

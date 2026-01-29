@@ -117,15 +117,20 @@ class DDSIndex:
         self._scanned = True
         log.info("Indexed %d DDS files from %s", count, texture_folder)
 
-        # DEBUG: Check for specific file
-        test_name = "cd_knowledgeimage_node_dem_demenisscastle"
-        if test_name in self._dds_files:
-            log.info("DEBUG: Found DemenissCastle DDS: %s", self._dds_files[test_name])
-        else:
-            log.warning("DEBUG: DemenissCastle DDS NOT in index! Looking for: %s", test_name)
-            # List some keys to see what format they're in
-            sample_keys = list(self._dds_files.keys())[:5]
-            log.warning("DEBUG: Sample indexed keys: %s", sample_keys)
+        # DEBUG: Check for specific files that user reported issues with
+        test_names = [
+            "cd_knowledgeimage_node_hexe_sanctuary",
+            "cd_knowledgeimage_node_dem_demenisscastle",
+        ]
+        for test_name in test_names:
+            if test_name in self._dds_files:
+                log.info("DEBUG: Found '%s' -> %s", test_name, self._dds_files[test_name])
+            else:
+                log.warning("DEBUG: NOT FOUND in index: '%s'", test_name)
+                # Try to find similar keys
+                similar = [k for k in self._dds_files.keys() if "hexe" in k or "sanctuary" in k]
+                if similar:
+                    log.warning("DEBUG: Similar keys found: %s", similar[:5])
 
         return count
 
@@ -136,6 +141,10 @@ class DDSIndex:
 
         original_name = ui_texture_name
         name = ui_texture_name.lower().strip()
+
+        # DEBUG: Log specific lookups
+        if "hexe" in name.lower() or "sanctuary" in name.lower():
+            log.info("DEBUG find(): Looking for '%s' -> normalized: '%s'", original_name, name)
 
         # Remove path components
         if '/' in name or '\\' in name:
@@ -273,6 +282,11 @@ class LinkageResolver:
                 ui_texture = (ki.get("UITextureName") or "").strip()
                 group_key = (ki.get("KnowledgeGroupKey") or "").strip()
 
+                # DEBUG: Log specific entries that user reported issues with
+                if "hexe" in strkey.lower() or "sanctuary" in strkey.lower():
+                    log.info("DEBUG Knowledge: StrKey='%s', UITextureName='%s' (from %s)",
+                             strkey, ui_texture, path.name)
+
                 # CRITICAL DEBUG: Check if we're getting wrong UITextureName from parent
                 if "null" in ui_texture.lower() or not ui_texture:
                     # Check if parent has a different UITextureName
@@ -354,6 +368,11 @@ class LinkageResolver:
             ui_texture = knowledge.ui_texture_name
             dds_path = self._dds_index.find(ui_texture) if ui_texture else None
             has_image = dds_path is not None
+
+            # DEBUG: Log specific entries
+            if "hexe" in strkey.lower() or "sanctuary" in strkey.lower():
+                log.info("DEBUG load_map: StrKey='%s', UITexture='%s', dds_path=%s, has_image=%s",
+                         strkey, ui_texture, dds_path, has_image)
 
             if has_image:
                 with_image += 1
@@ -465,6 +484,41 @@ class LinkageResolver:
 
         log.info("Loaded %d MAP entries: %d with image, %d without",
                  count, with_image, count - with_image)
+
+        # =================================================================
+        # DDS DIAGNOSTIC REPORT - Shows exactly what's happening
+        # =================================================================
+        log.info("=" * 60)
+        log.info("DDS DIAGNOSTIC REPORT")
+        log.info("=" * 60)
+        log.info("DDS Index: %d files indexed from %s",
+                 self._dds_index.file_count, self._dds_index._texture_folder)
+
+        # Sample entries: show 5 WITH image and 5 WITHOUT
+        with_img_samples = []
+        without_img_samples = []
+        for strkey, entry in self._entries.items():
+            if entry.has_image and len(with_img_samples) < 5:
+                with_img_samples.append((strkey, entry.ui_texture_name, entry.dds_path))
+            elif not entry.has_image and len(without_img_samples) < 5:
+                without_img_samples.append((strkey, entry.ui_texture_name))
+            if len(with_img_samples) >= 5 and len(without_img_samples) >= 5:
+                break
+
+        log.info("--- SAMPLE ENTRIES WITH IMAGE (HIT) ---")
+        for strkey, ui_tex, dds_path in with_img_samples:
+            log.info("  HIT: %s -> %s -> %s", strkey, ui_tex, dds_path)
+
+        log.info("--- SAMPLE ENTRIES WITHOUT IMAGE (MISS) ---")
+        for strkey, ui_tex in without_img_samples:
+            if ui_tex:
+                # Has UITextureName but DDS not found - this is a PROBLEM
+                log.warning("  MISS: %s -> UITexture='%s' (DDS NOT FOUND!)", strkey, ui_tex)
+            else:
+                # No UITextureName in XML - expected
+                log.info("  MISS: %s -> (no UITextureName in XML)", strkey)
+
+        log.info("=" * 60)
 
         return count
 
