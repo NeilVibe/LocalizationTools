@@ -413,20 +413,12 @@ class MapDataGeneratorApp:
             return
 
         stats = self._resolver.stats
-        total = self._search_engine.total_entries
-
-        if self._current_mode == DataMode.MAP:
-            verified = stats.get('faction_nodes_verified', 0)
-            skipped = stats.get('faction_nodes_skipped', 0)
-        elif self._current_mode == DataMode.CHARACTER:
-            verified = stats.get('characters_verified', 0)
-            skipped = stats.get('characters_skipped', 0)
-        else:
-            verified = stats.get('items_verified', 0)
-            skipped = stats.get('items_skipped', 0)
+        total = stats.get('entries_total', 0)
+        with_image = stats.get('entries_with_image', 0)
+        dds_count = self._resolver.dds_index.file_count
 
         self._stats_label.config(
-            text=f"{get_ui_text('verified_entries')}: {verified} | {get_ui_text('skipped_no_image')}: {skipped}"
+            text=f"Total: {total} | With Image: {with_image} | DDS Files: {dds_count}"
         )
 
     def _auto_load_data(self) -> None:

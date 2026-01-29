@@ -11,3 +11,4 @@ Build 006: Add configurable drive letter support
 Build 007: MAJOR - Simplified data loading (Knowledge-first, no routes)
 Build 008: Fix imports after simplification
 Build 009: Fix mode tracking, stats keys, larger image display (768x768)
+Build 010: Fix stats display, improve DDS lookup (case insensitive)
