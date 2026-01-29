@@ -3,8 +3,8 @@
 # -*- coding: utf-8 -*-
 
 r"""
-Crimson Desert – Faction / World-Node visualiser  (Tkinter edition)
-────────────────────────────────────────────────────────────────────
+Faction / World-Node visualiser  (Tkinter edition)
+───────────────────────────────────────────────────
  • Hover a town → name(s) + description shown, connected routes light up
  • Short left-click → LQA panel (DONE / TODO / UNCHECK)
  • Drag with the mouse or use the toolbar for pan / zoom
@@ -395,7 +395,7 @@ def colour_for_status(st: str) -> str:
 class App:
     def __init__(self) -> None:
         self.root = tk.Tk()
-        self.root.title("Crimson Desert – World nodes")
+        self.root.title("World Node Visualizer")
 
         # Ensure Korean glyphs are available everywhere
         install_korean_font(self.root)
@@ -427,7 +427,7 @@ class App:
         # ---------------- figure ----------------
         self.fig: Figure = Figure(figsize=(13, 8), dpi=100)
         self.ax = self.fig.add_subplot(111)
-        self.ax.set_title("Crimson Desert – World Nodes  (hover = routes | click = LQA panel)")
+        self.ax.set_title("World Nodes  (hover = routes | click = LQA panel)")
         self.ax.set_xlabel("World X")
         self.ax.set_ylabel("World Z")
 

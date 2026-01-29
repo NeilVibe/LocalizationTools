@@ -1,6 +1,6 @@
 # MapDataGenerator
 
-Crimson Desert Map/Region Data Visualization Tool
+Map/Region Data Visualization Tool for game localization workflows.
 
 ## Features
 
