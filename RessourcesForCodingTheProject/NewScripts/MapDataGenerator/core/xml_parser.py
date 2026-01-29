@@ -44,12 +44,36 @@ def _patch_seg_breaks(txt: str) -> str:
 
 
 def _patch_unterminated_attr(txt: str) -> str:
-    """Close un-terminated attribute values"""
-    return re.sub(
-        r'="[^"\n<>]*?(?:<|&)|="[^"]*?$',
-        lambda m: m.group(0).rstrip("<&") + '"',
+    """Close un-terminated attribute values.
+
+    Handles cases like:
+    - UITextureName="value>  -> UITextureName="value">
+    - UITextureName="value<  -> UITextureName="value"<
+    - UITextureName="value&  -> UITextureName="value"&
+    - UITextureName="value$ (end of line) -> UITextureName="value"
+    """
+    # Pattern 1: Value followed by < or > or & (without closing quote)
+    # The terminator char should NOT be consumed as part of the value
+    def fix_attr(m):
+        val = m.group(1)   # The attribute value (without quotes)
+        term = m.group(2)  # The terminator (< or > or &)
+        return f'="{val}"{term}'  # Close the quote BEFORE the terminator
+
+    txt = re.sub(
+        r'="([^"\n]*?)([<>&])',
+        fix_attr,
         txt,
     )
+
+    # Pattern 2: Value at end of line (without closing quote)
+    txt = re.sub(
+        r'="([^"\n]*?)$',
+        r'="\1"',
+        txt,
+        flags=re.MULTILINE
+    )
+
+    return txt
 
 
 def _escape_inner_angles(raw: str) -> str:
