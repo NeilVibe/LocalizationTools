@@ -70,16 +70,24 @@ class DDSIndex:
         if texture_folder:
             self._texture_folder = texture_folder
 
-        if self._texture_folder is None or not self._texture_folder.exists():
-            log.warning("Texture folder not set or doesn't exist")
+        if self._texture_folder is None:
+            log.error("Texture folder not set!")
+            return 0
+
+        if not self._texture_folder.exists():
+            log.error("Texture folder does not exist: %s", self._texture_folder)
             return 0
 
         self._dds_files.clear()
 
         if progress_callback:
-            progress_callback("Scanning texture folder for DDS files...")
+            progress_callback(f"Scanning {self._texture_folder} for DDS files...")
+
+        log.info("Scanning texture folder: %s", self._texture_folder)
 
         count = 0
+        knowledgeimage_count = 0
+
         for dds_path in self._texture_folder.rglob("*.dds"):
             # Index by lowercase filename (without extension)
             name_lower = dds_path.stem.lower()
@@ -88,10 +96,20 @@ class DDSIndex:
             # Also index with extension
             self._dds_files[dds_path.name.lower()] = dds_path
 
+            # Track knowledgeimage files specifically
+            if "knowledgeimage" in str(dds_path).lower():
+                knowledgeimage_count += 1
+
             count += 1
 
         self._scanned = True
-        log.info("Scanned %d DDS files from texture folder", count)
+        log.info("Scanned %d DDS files (%d in Knowledgeimage folders)", count, knowledgeimage_count)
+
+        # Log sample entries for debugging
+        if count > 0:
+            samples = list(self._dds_files.keys())[:5]
+            log.debug("Sample indexed textures: %s", samples)
+
         return count
 
     def find(self, ui_texture_name: str) -> Optional[Path]:
@@ -327,7 +345,15 @@ class LinkageResolver:
         Returns:
             Number of knowledge entries loaded
         """
+        if not folder.exists():
+            log.error("Knowledge folder does not exist: %s", folder)
+            return 0
+
+        log.info("Loading KnowledgeInfo from: %s", folder)
+
         count = 0
+        with_texture = 0
+        sample_textures = []
 
         for path in iter_xml_files(folder):
             if progress_callback:
@@ -360,6 +386,11 @@ class LinkageResolver:
                 self._knowledge_info[strkey] = info
                 count += 1
 
+                if ui_texture:
+                    with_texture += 1
+                    if len(sample_textures) < 5:
+                        sample_textures.append(f"{strkey}:{ui_texture}")
+
             # Also parse KnowledgeGroupInfo elements
             for kgi in root.iter("KnowledgeGroupInfo"):
                 strkey = kgi.get("StrKey")
@@ -382,8 +413,12 @@ class LinkageResolver:
 
                 self._knowledge_groups[strkey] = group
 
-        log.info("Loaded %d KnowledgeInfo entries, %d KnowledgeGroupInfo entries",
-                 count, len(self._knowledge_groups))
+        log.info("Loaded %d KnowledgeInfo (%d with UITextureName), %d KnowledgeGroupInfo",
+                 count, with_texture, len(self._knowledge_groups))
+
+        if sample_textures:
+            log.debug("Sample KnowledgeInfo with textures: %s", sample_textures)
+
         return count
 
     def _resolve_texture_for_knowledge_key(self, knowledge_key: str) -> Optional[str]:
@@ -415,7 +450,7 @@ class LinkageResolver:
         return None
 
     # =========================================================================
-    # MAP MODE: FACTION NODES (IMAGE-VERIFIED)
+    # MAP MODE: FACTION NODES + KNOWLEDGE INFO (IMAGE-VERIFIED)
     # =========================================================================
 
     def load_faction_nodes_verified(
@@ -472,16 +507,18 @@ class LinkageResolver:
                 desc_kr = (fn.get("Desc") or "").replace("<br/>", "\n").strip()
                 knowledge_key = (fn.get("KnowledgeKey") or "").strip()
 
-                # RESOLVE UITextureName
+                # RESOLVE UITextureName from KnowledgeKey
                 ui_texture = self._resolve_texture_for_knowledge_key(knowledge_key)
                 if not ui_texture:
                     skipped += 1
+                    log.debug("FactionNode %s has no UITextureName via KnowledgeKey %s", strkey, knowledge_key)
                     continue  # No UITextureName - skip
 
                 # VERIFY DDS exists
                 dds_path = self._dds_index.find(ui_texture)
                 if not dds_path:
                     skipped += 1
+                    log.debug("FactionNode %s: DDS not found for %s", strkey, ui_texture)
                     continue  # DDS not found - skip
 
                 # ONLY NOW create the verified node
@@ -502,6 +539,57 @@ class LinkageResolver:
         self._stats['faction_nodes_verified'] = count
         self._stats['faction_nodes_skipped'] = skipped
         log.info("Loaded %d verified FactionNodes, skipped %d without images", count, skipped)
+        return count
+
+    def load_map_data_from_knowledge(
+        self,
+        progress_callback: Optional[callable] = None
+    ) -> int:
+        """
+        Add KnowledgeInfo entries with images to MAP mode as items.
+
+        This allows searching KnowledgeInfo directly in MAP mode.
+        KnowledgeInfo entries are added to _items collection.
+
+        Args:
+            progress_callback: Optional callback
+
+        Returns:
+            Number of knowledge entries with images added
+        """
+        if not self._dds_index.is_scanned:
+            log.warning("DDS index not scanned - skipping knowledge data for MAP")
+            return 0
+
+        count = 0
+        skipped = 0
+
+        for strkey, ki in self._knowledge_info.items():
+            ui_texture = ki.ui_texture_name
+            if not ui_texture:
+                skipped += 1
+                continue
+
+            # Verify DDS exists
+            dds_path = self._dds_index.find(ui_texture)
+            if not dds_path:
+                skipped += 1
+                continue
+
+            # Add as ItemEntry to _items (can be searched in MAP mode)
+            item = ItemEntry(
+                strkey=strkey,
+                name_kr=ki.name_kr,
+                desc_kr=ki.desc_kr,
+                ui_texture_name=ui_texture,
+                dds_path=dds_path,
+                group_name="",  # From KnowledgeInfo
+                source_file=ki.source_file,
+            )
+            self._items[strkey] = item
+            count += 1
+
+        log.info("Added %d KnowledgeInfo entries with images for MAP mode, skipped %d", count, skipped)
         return count
 
     # =========================================================================

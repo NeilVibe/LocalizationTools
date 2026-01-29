@@ -146,7 +146,8 @@ class SearchEngine:
             self._build_index_item()
 
     def _build_index_map(self) -> None:
-        """Build search index for MAP mode (FactionNodes)."""
+        """Build search index for MAP mode (FactionNodes + KnowledgeInfo items)."""
+        # Index FactionNodes (have map positions)
         for strkey, node in self._resolver.faction_nodes.items():
             terms = []
 
@@ -173,7 +174,44 @@ class SearchEngine:
 
             self._search_index[strkey] = terms
 
-        log.info("Built MAP search index with %d entries", len(self._search_index))
+        faction_count = len(self._search_index)
+
+        # ALSO index Items (KnowledgeInfo entries with images)
+        for strkey, item in self._resolver.items.items():
+            if strkey in self._search_index:
+                continue  # Already indexed as FactionNode
+
+            terms = []
+
+            # Korean name
+            if item.name_kr:
+                terms.append(normalize_for_search(item.name_kr))
+
+            # Translated name
+            name_tr, _ = get_translation(item.name_kr, self._lang_table)
+            if name_tr:
+                terms.append(normalize_for_search(name_tr))
+
+            # Description
+            if item.desc_kr:
+                terms.append(normalize_for_search(item.desc_kr))
+
+            # Translated description
+            desc_tr, _ = get_translation(item.desc_kr, self._lang_table)
+            if desc_tr:
+                terms.append(normalize_for_search(desc_tr))
+
+            # Group name
+            if item.group_name:
+                terms.append(normalize_for_search(item.group_name))
+
+            # StrKey
+            terms.append(strkey.lower())
+
+            self._search_index[strkey] = terms
+
+        log.info("Built MAP search index: %d FactionNodes + %d KnowledgeInfo = %d total",
+                 faction_count, len(self._search_index) - faction_count, len(self._search_index))
 
     def _build_index_character(self) -> None:
         """Build search index for CHARACTER mode."""
@@ -335,25 +373,44 @@ class SearchEngine:
         return None
 
     def _node_to_result(self, strkey: str) -> Optional[SearchResult]:
-        """Convert FactionNodeVerified to SearchResult."""
+        """Convert FactionNodeVerified or ItemEntry to SearchResult for MAP mode."""
+        # First try FactionNode
         node = self._resolver.get_node(strkey)
-        if not node:
-            return None
+        if node:
+            name_tr, _ = get_translation(node.name_kr, self._lang_table, node.name_kr)
+            desc_tr, _ = get_translation(node.desc_kr, self._lang_table, "")
 
-        name_tr, _ = get_translation(node.name_kr, self._lang_table, node.name_kr)
-        desc_tr, _ = get_translation(node.desc_kr, self._lang_table, "")
+            return SearchResult(
+                strkey=node.strkey,
+                name_kr=node.name_kr,
+                name_translated=name_tr,
+                desc_kr=node.desc_kr,
+                desc_translated=desc_tr,
+                ui_texture_name=node.ui_texture_name,
+                dds_path=node.dds_path,
+                position=node.position_2d,
+                group="",
+            )
 
-        return SearchResult(
-            strkey=node.strkey,
-            name_kr=node.name_kr,
-            name_translated=name_tr,
-            desc_kr=node.desc_kr,
-            desc_translated=desc_tr,
-            ui_texture_name=node.ui_texture_name,
-            dds_path=node.dds_path,
-            position=node.position_2d,
-            group="",
-        )
+        # Fallback to ItemEntry (KnowledgeInfo)
+        item = self._resolver.get_item(strkey)
+        if item:
+            name_tr, _ = get_translation(item.name_kr, self._lang_table, item.name_kr)
+            desc_tr, _ = get_translation(item.desc_kr, self._lang_table, "")
+
+            return SearchResult(
+                strkey=item.strkey,
+                name_kr=item.name_kr,
+                name_translated=name_tr,
+                desc_kr=item.desc_kr,
+                desc_translated=desc_tr,
+                ui_texture_name=item.ui_texture_name,
+                dds_path=item.dds_path,
+                position=None,  # Items don't have map positions
+                group=item.group_name,
+            )
+
+        return None
 
     def _character_to_result(self, strkey: str) -> Optional[SearchResult]:
         """Convert CharacterItem to SearchResult."""
