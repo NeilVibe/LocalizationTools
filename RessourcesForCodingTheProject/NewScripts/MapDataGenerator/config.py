@@ -291,7 +291,7 @@ class Settings:
     current_mode: str = DEFAULT_MODE
 
     # Window state
-    window_geometry: str = "1400x900"
+    window_geometry: str = "1600x1000"
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert settings to dictionary."""

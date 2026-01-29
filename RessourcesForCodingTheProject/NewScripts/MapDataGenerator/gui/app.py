@@ -230,8 +230,9 @@ class MapDataGeneratorApp:
         self._right_paned = ttk.PanedWindow(right_frame, orient="vertical")
         self._right_paned.pack(fill="both", expand=True)
 
-        # Image viewer (large!) - takes more space in CHARACTER/ITEM modes
+        # Image viewer (large!) - always visible, min height 300px
         self._image_viewer = ImageViewer(self._right_paned)
+        self._image_viewer.config(height=350)  # Ensure minimum visible height
         self._right_paned.add(self._image_viewer, weight=2)
 
         # Map canvas (only visible in MAP mode)
@@ -353,21 +354,21 @@ class MapDataGeneratorApp:
     def _update_mode_visibility(self) -> None:
         """Update widget visibility based on current mode."""
         if self._current_mode == DataMode.MAP:
-            # Show map canvas with more weight
+            # MAP mode: Show BOTH image and map with equal-ish weight
+            # Image viewer should still be visible and usable!
             try:
-                self._right_paned.paneconfig(self._image_viewer, weight=1)
-                self._right_paned.paneconfig(self._map_frame, weight=3)
+                self._right_paned.paneconfig(self._image_viewer, weight=2)
+                self._right_paned.paneconfig(self._map_frame, weight=2)
             except tk.TclError:
                 pass
             self._map_frame.pack(fill="both", expand=True)
         else:
-            # Hide map, show large image
+            # CHARACTER/ITEM mode: Hide map, show large image
             try:
                 self._right_paned.paneconfig(self._image_viewer, weight=4)
                 self._right_paned.paneconfig(self._map_frame, weight=0)
             except tk.TclError:
                 pass
-            # Don't actually hide the frame, just minimize it
 
     def _update_stats(self) -> None:
         """Update stats display."""
