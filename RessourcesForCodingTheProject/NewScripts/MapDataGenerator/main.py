@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-MapDataGenerator - Crimson Desert Map/Region Data Visualization Tool
+MapDataGenerator - Three-Mode Data Visualization Tool
 
-A GUI tool for visualizing Crimson Desert map/region data with:
+A GUI tool with IMAGE-FIRST architecture for visualizing:
+- MAP mode: FactionNodes with map visualization
+- CHARACTER mode: CharacterInfo with large image display
+- ITEM mode: KnowledgeInfo items with large image display
+
+Features:
+- Image-first filtering (only entries with valid DDS files)
+- Lazy language loading (English/Korean first, others on-demand)
+- Large image display (512x512+)
 - Multi-language search (13 languages)
-- DDS image display via UITextureName
-- Multi-step linkage resolution
-- Matplotlib-based map visualization
+- Matplotlib-based map visualization (MAP mode)
 
 Usage:
     python main.py              # Launch GUI
@@ -47,7 +53,7 @@ def parse_args() -> argparse.Namespace:
     from config import VERSION
 
     parser = argparse.ArgumentParser(
-        description="MapDataGenerator - Crimson Desert Map/Region Data Visualization Tool"
+        description="MapDataGenerator - Map/Region Data Visualization Tool"
     )
 
     parser.add_argument(

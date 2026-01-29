@@ -66,8 +66,8 @@ class ResultPanel(ttk.Frame):
         tree_frame = ttk.Frame(self)
         tree_frame.pack(fill="both", expand=True, padx=5, pady=5)
 
-        # Define columns
-        columns = ("name_kr", "name_tr", "desc", "position", "strkey")
+        # Define columns (position/group share a column depending on mode)
+        columns = ("name_kr", "name_tr", "desc", "pos_group", "strkey")
 
         self._tree = ttk.Treeview(
             tree_frame,
@@ -83,8 +83,8 @@ class ResultPanel(ttk.Frame):
                           command=lambda: self._sort_column("name_tr"))
         self._tree.heading("desc", text=get_ui_text('description'),
                           command=lambda: self._sort_column("desc"))
-        self._tree.heading("position", text=get_ui_text('position'),
-                          command=lambda: self._sort_column("position"))
+        self._tree.heading("pos_group", text=get_ui_text('position'),
+                          command=lambda: self._sort_column("pos_group"))
         self._tree.heading("strkey", text=get_ui_text('strkey'),
                           command=lambda: self._sort_column("strkey"))
 
@@ -92,7 +92,7 @@ class ResultPanel(ttk.Frame):
         self._tree.column("name_kr", width=150, minwidth=80)
         self._tree.column("name_tr", width=150, minwidth=80)
         self._tree.column("desc", width=200, minwidth=100)
-        self._tree.column("position", width=100, minwidth=60)
+        self._tree.column("pos_group", width=120, minwidth=60)
         self._tree.column("strkey", width=120, minwidth=80)
 
         # Scrollbars
@@ -154,6 +154,9 @@ class ResultPanel(ttk.Frame):
             if len(desc_short) > 50:
                 desc_short = desc_short[:47] + "..."
 
+            # Use position if available, otherwise group
+            pos_or_group = result.position_str if result.position else result.group
+
             self._tree.insert(
                 "",
                 "end",
@@ -162,7 +165,7 @@ class ResultPanel(ttk.Frame):
                     result.name_kr,
                     result.name_translated,
                     desc_short,
-                    result.position_str,
+                    pos_or_group,
                     result.strkey
                 )
             )
@@ -196,6 +199,9 @@ class ResultPanel(ttk.Frame):
             if len(desc_short) > 50:
                 desc_short = desc_short[:47] + "..."
 
+            # Use position if available, otherwise group
+            pos_or_group = result.position_str if result.position else result.group
+
             self._tree.insert(
                 "",
                 "end",
@@ -204,7 +210,7 @@ class ResultPanel(ttk.Frame):
                     result.name_kr,
                     result.name_translated,
                     desc_short,
-                    result.position_str,
+                    pos_or_group,
                     result.strkey
                 )
             )
@@ -267,7 +273,7 @@ class ResultPanel(ttk.Frame):
             "name_kr": 0,
             "name_tr": 1,
             "desc": 2,
-            "position": 3,
+            "pos_group": 3,
             "strkey": 4
         }
         idx = col_map.get(col, 0)
@@ -302,3 +308,28 @@ class ResultPanel(ttk.Frame):
     def result_count(self) -> int:
         """Get number of displayed results."""
         return len(self._results)
+
+    def set_column_header(self, column: str, text: str) -> None:
+        """
+        Update a column header text.
+
+        Args:
+            column: Column identifier
+            text: New header text
+        """
+        try:
+            self._tree.heading(column, text=text)
+        except tk.TclError:
+            pass
+
+    def set_mode_headers(self, mode: str) -> None:
+        """
+        Update column headers based on current mode.
+
+        Args:
+            mode: 'map', 'character', or 'item'
+        """
+        if mode == 'map':
+            self._tree.heading("pos_group", text=get_ui_text('position'))
+        else:
+            self._tree.heading("pos_group", text=get_ui_text('group'))
