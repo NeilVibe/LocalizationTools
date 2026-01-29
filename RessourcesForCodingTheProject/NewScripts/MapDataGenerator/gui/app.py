@@ -565,6 +565,12 @@ class MapDataGeneratorApp:
                         lambda msg: self._update_progress(msg)
                     )
 
+                    # Also add KnowledgeInfo entries with images to MAP mode
+                    self._update_progress("Adding KnowledgeInfo to MAP data...")
+                    self._resolver.load_map_data_from_knowledge(
+                        lambda msg: self._update_progress(msg)
+                    )
+
                     self._update_progress("Loading routes...")
                     self._resolver.load_routes(
                         waypoint_folder,
