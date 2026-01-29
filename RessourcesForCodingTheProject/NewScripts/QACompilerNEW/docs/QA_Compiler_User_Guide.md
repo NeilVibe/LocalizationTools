@@ -658,6 +658,44 @@ Quest_LQA_ENG.xlsx
 └── Others               (leftover factions)
 ```
 
+### Faction Unlock Commands
+
+Primary faction sheets include **unlock commands** in the Command column of faction header rows.
+
+#### How It Works
+
+| Faction Type | Command Source | Example |
+|--------------|----------------|---------|
+| **Primary Factions** (with OrderByString) | `EndQuestKey` from `<EventData>` elements | `/complete quest Quest_BloodCoronation_WitchDukeAndDream` |
+| **Leftover Factions** (Daily, Request, Situation) | `Condition` attributes from child `<Quest>` elements | `/complete quest Quest_A && Quest_B` |
+
+#### Output Format
+
+The faction header row (depth 0, yellow background) includes the unlock command:
+
+| Scenario | Command Output |
+|----------|---------------|
+| Single unlock quest | `/complete quest Quest_BloodCoronation_WitchDukeAndDream` |
+| Multiple unlock quests | `/complete quest Quest_A && Quest_B && Quest_C` |
+| No unlock quest found | (empty) |
+
+#### XML Source
+
+Primary factions extract `EndQuestKey` from `<EventData>` elements:
+
+```xml
+<Faction StrKey="Faction_BloodCoronation" Name="Blood Coronation">
+  <EventData EndQuestKey="Quest_BloodCoronation_WitchDukeAndDream" />
+  <EventData EndQuestKey="Quest_BloodCoronation_SecondArc" />
+</Faction>
+```
+
+Generates: `/complete quest Quest_BloodCoronation_WitchDukeAndDream && Quest_BloodCoronation_SecondArc`
+
+#### Use Case
+
+Testers can copy-paste the unlock command to quickly unlock faction content for testing.
+
 ### Category Clustering
 
 Some categories merge into others for Master files:
@@ -701,6 +739,10 @@ The Command column in Quest datasheets contains cheat commands in this order:
 3. **Teleport Command**:
    - `/teleport X Y Z` - Teleport to quest location
 
+4. **Faction Unlock Commands** (Primary faction header rows only):
+   - `/complete quest Quest_A && Quest_B` - Unlock faction content
+   - Source: `EndQuestKey` from `<EventData>` elements in factioninfo XML
+
 **Example multi-line Command:**
 ```
 /complete mission Mission_IcemoorCastleRuins_Block_DeerKing_Boss && Mission_BluemontManor_Rupert_Normal_Trust
@@ -711,6 +753,7 @@ The Command column in Quest datasheets contains cheat commands in this order:
 **Note**: Prerequisite commands are auto-generated from:
 - Factioninfo `<Quest Condition="...">` attributes
 - Quest XML `<Branch Condition="..." Execute="...">` elements
+- Factioninfo `<EventData EndQuestKey="...">` elements (for faction unlock commands)
 
 ### Master File Columns
 

@@ -218,6 +218,21 @@ def _build_prereq_command(missions: List[str], quests: List[str]) -> str:
     return "\n".join(parts)
 
 
+def _build_unlock_command(unlock_quests: List[str]) -> str:
+    """
+    Build /complete quest command for faction unlock.
+
+    Args:
+        unlock_quests: List of EndQuestKey values from EventData elements
+
+    Returns:
+        Command string like "/complete quest Quest_A" or "/complete quest Quest_A && Quest_B"
+    """
+    if not unlock_quests:
+        return ""
+    return "/complete quest " + " && ".join(unlock_quests)
+
+
 # =============================================================================
 # STRING KEY TABLE LOADING
 # =============================================================================
@@ -334,7 +349,7 @@ def build_seq_position_map(root_folder: Path) -> Dict[str, Tuple[float, float, f
 
 def parse_faction_info(
     folder: Path
-) -> Tuple[Dict[str, Tuple[str, str]], Dict[str, str], Dict[str, str], Dict[str, str], Dict[str, Tuple[List[str], List[str]]], Dict[str, Tuple[List[str], List[str]]]]:
+) -> Tuple[Dict[str, Tuple[str, str]], Dict[str, str], Dict[str, str], Dict[str, str], Dict[str, Tuple[List[str], List[str]]], Dict[str, Tuple[List[str], List[str]]], Dict[str, List[str]]]:
     """
     Parse faction info files for quest grouping.
 
@@ -345,6 +360,7 @@ def parse_faction_info(
         all_factions: faction_strkey.lower() → faction_name [ALL factions for leftover classification]
         quest_conditions: questKey.lower() → (missions, quests) prereqs per individual quest
         faction_conditions: faction_strkey.lower() → (all_missions, all_quests) ALL prereqs aggregated per faction
+        faction_unlock_quests: faction_strkey.lower() → [EndQuestKey, ...] from EventData elements
     """
     log.info("Scanning faction info folder: %s", folder)
 
@@ -354,10 +370,11 @@ def parse_faction_info(
     node_to_faction: Dict[str, str] = {}
     quest_conditions: Dict[str, Tuple[List[str], List[str]]] = {}  # QuestKey → (missions, quests)
     faction_conditions: Dict[str, Tuple[List[str], List[str]]] = {}  # FactionStrKey → (all_missions, all_quests)
+    faction_unlock_quests: Dict[str, List[str]] = {}  # FactionStrKey → [EndQuestKey, ...]
 
     if not folder.exists():
         log.warning("Faction info folder not found")
-        return faction_map, quest_to_faction, node_to_faction, all_factions, quest_conditions, faction_conditions
+        return faction_map, quest_to_faction, node_to_faction, all_factions, quest_conditions, faction_conditions, faction_unlock_quests
 
     for p in iter_xml_files(folder, "*.xml"):
         rt = parse_xml_file(p)
@@ -381,6 +398,16 @@ def parse_faction_info(
 
             if fac_sk and fac_name and order:
                 faction_map[fac_sk] = (fac_name, order)
+
+            # Extract EventData EndQuestKey for faction unlock commands
+            if fac_sk:
+                unlock_quests: List[str] = []
+                for event_data in fac.iter("EventData"):
+                    end_quest = event_data.get("EndQuestKey")
+                    if end_quest and end_quest not in unlock_quests:
+                        unlock_quests.append(end_quest)
+                if unlock_quests:
+                    faction_unlock_quests[fac_sk] = unlock_quests
 
             if fac_sk:
                 # Collect ALL prereqs for this faction (aggregated)
@@ -417,9 +444,9 @@ def parse_faction_info(
                     if node_sk:
                         node_to_faction[node_sk] = fac_sk
 
-    log.info("Faction infos: %d primary, %d total ; Quests→Faction: %d ; Nodes→Faction: %d ; Quest conditions: %d ; Faction conditions: %d",
-             len(faction_map), len(all_factions), len(quest_to_faction), len(node_to_faction), len(quest_conditions), len(faction_conditions))
-    return faction_map, quest_to_faction, node_to_faction, all_factions, quest_conditions, faction_conditions
+    log.info("Faction infos: %d primary, %d total ; Quests→Faction: %d ; Nodes→Faction: %d ; Quest conditions: %d ; Faction conditions: %d ; Faction unlocks: %d",
+             len(faction_map), len(all_factions), len(quest_to_faction), len(node_to_faction), len(quest_conditions), len(faction_conditions), len(faction_unlock_quests))
+    return faction_map, quest_to_faction, node_to_faction, all_factions, quest_conditions, faction_conditions, faction_unlock_quests
 
 
 def parse_branch_conditions(folder: Path) -> Dict[str, Tuple[List[str], List[str]]]:
@@ -1528,7 +1555,7 @@ def generate_quest_datasheets() -> Dict:
         seq_pos = build_seq_position_map(SEQUENCER_FOLDER)
 
         # 6. Parse faction info and conditions
-        faction_info_map, quest2fac_map, node2fac_map, all_factions_map, quest_conditions, faction_conditions = parse_faction_info(FACTIONINFO_FOLDER)
+        faction_info_map, quest2fac_map, node2fac_map, all_factions_map, quest_conditions, faction_conditions, faction_unlock_quests = parse_faction_info(FACTIONINFO_FOLDER)
 
         # 7. Parse Branch conditions from quest XML
         branch_conditions = parse_branch_conditions(FACTION_QUEST_FOLDER)
@@ -1598,10 +1625,15 @@ def generate_quest_datasheets() -> Dict:
                 sheet_name = ordstr[:31]
                 faction_sheet_ordstr[sheet_name] = ordstr
 
+                # Build unlock command for this faction from EventData EndQuestKey
+                fac_unlock_cmd = ""
+                if fk in faction_unlock_quests:
+                    fac_unlock_cmd = _build_unlock_command(faction_unlock_quests[fk])
+
                 header_row: Row = (
                     0, name, _tr(name, eng_tbl), _tr(name, lang_tbl),
                     "", _sid(name, eng_tbl),
-                    False, True, "", "", "", ""
+                    False, True, fac_unlock_cmd, "", "", ""
                 )
 
                 sheet_data.setdefault(sheet_name, []).append(header_row)

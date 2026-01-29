@@ -124,6 +124,29 @@ python system_localizer.py --cli <input.xlsx> <language_folder>
 - FactionKeyList/FactionNodeKeyList for faction assignment
 - Teleport post-processor from reference Excel file
 - Sheets: Main Quest, Faction tabs (ordered), Daily, Challenge, Minigame
+- **Faction Unlock Commands:** Primary faction headers include `/complete quest` commands
+
+#### Faction Unlock Commands (New Feature)
+
+Primary faction tabs now include unlock commands in the Command column of faction header rows.
+
+**Implementation:**
+- `_build_unlock_command()` helper function (lines 221-233)
+- `parse_faction_info()` extracts `EndQuestKey` from `<EventData>` elements
+- Returns `faction_unlock_quests: Dict[str, List[str]]` as 7th return value
+
+**Two mechanisms for unlock commands:**
+
+| Faction Type | Source | Example |
+|--------------|--------|---------|
+| Primary (with OrderByString) | `<EventData EndQuestKey="...">` | `/complete quest Quest_BloodCoronation_WitchDukeAndDream` |
+| Leftover (Daily, Request, Situation) | `<Quest Condition="...">` attributes | `/complete quest Quest_A && Quest_B` |
+
+**Output Format:**
+- Single quest: `/complete quest Quest_BloodCoronation_WitchDukeAndDream`
+- Multiple quests: `/complete quest Quest_A && Quest_B`
+
+**Where it appears:** Faction header rows (depth 0, yellow fill) in primary faction tabs.
 
 ### Knowledge Generator (`knowledge.py`)
 **Source:** `fullknowledge14.py`

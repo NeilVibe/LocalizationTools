@@ -303,6 +303,67 @@ QAfolder/
 
 > **Note:** System and Contents sheets are NOT auto-generated. System sheets are created via the System Localizer. Contents sheets are prepared manually/externally.
 
+### Quest Datasheet Features
+
+The Quest generator produces the most complex datasheets with multiple tabs and special features.
+
+#### Quest Tab Organization
+
+```
+Quest_LQA_ENG.xlsx
+├── Main Quest           (scenario-based main story)
+├── Faction 1            (primary faction with OrderByString)
+├── Faction 2            (primary faction with OrderByString)
+├── ...
+├── Region Quest         (*_Request StrKey)
+├── Daily                (*_Daily StrKey + Group="daily")
+├── Politics             (*_Situation StrKey)
+├── Challenge Quest
+├── Minigame Quest
+└── Others               (leftover factions without OrderByString)
+```
+
+#### Faction Unlock Commands
+
+Primary faction sheets include **unlock commands** in the Command column to help testers quickly unlock faction content for testing.
+
+**How It Works:**
+
+| Faction Type | Command Source | Example |
+|--------------|----------------|---------|
+| **Primary Factions** (with OrderByString) | `EndQuestKey` from `<EventData>` elements | `/complete quest Quest_BloodCoronation_WitchDukeAndDream` |
+| **Leftover Factions** (Daily, Request, Situation) | `Condition` attributes from child `<Quest>` elements | `/complete quest Quest_A && Quest_B` |
+
+**Output Format:**
+
+The faction header row (depth 0, yellow background) includes the unlock command:
+
+| Scenario | Command Output |
+|----------|---------------|
+| Single unlock quest | `/complete quest Quest_BloodCoronation_WitchDukeAndDream` |
+| Multiple unlock quests | `/complete quest Quest_A && Quest_B && Quest_C` |
+| No unlock quest found | (empty) |
+
+**XML Source Example:**
+
+Primary factions extract `EndQuestKey` from `<EventData>` elements inside `<Faction>`:
+
+```xml
+<Faction StrKey="Faction_BloodCoronation" Name="Blood Coronation">
+  <EventData EndQuestKey="Quest_BloodCoronation_WitchDukeAndDream" />
+  <EventData EndQuestKey="Quest_BloodCoronation_SecondArc" />
+</Faction>
+```
+
+This generates: `/complete quest Quest_BloodCoronation_WitchDukeAndDream && Quest_BloodCoronation_SecondArc`
+
+**Use Case:**
+
+Testers can copy-paste the unlock command directly into the game console to:
+1. Unlock the faction content
+2. Skip prerequisite quests
+3. Access faction-specific quests for testing
+
 ### Script-Type Categories (Sequencer & Dialog)
 
 Sequencer and Dialog are special **Script-type** categories with different column layouts:
