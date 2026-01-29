@@ -499,6 +499,9 @@ class LinkageResolver:
                 if root is None:
                     continue
 
+                # Reset group for each file to avoid leaking across files
+                current_group = ""
+
                 for elem in root.iter():
                     if elem.tag == "KnowledgeGroupInfo":
                         current_group = (elem.get("GroupName") or "").strip()
