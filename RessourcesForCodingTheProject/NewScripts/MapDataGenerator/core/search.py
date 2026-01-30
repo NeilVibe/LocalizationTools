@@ -38,8 +38,8 @@ class SearchResult:
     dds_path: Optional[Path]
     has_image: bool  # True if DDS exists
 
-    # Optional fields
-    position: Optional[Tuple[float, float]] = None  # 2D position
+    # Optional fields - position has all 3 values (X, Y, Z)
+    position: Optional[Tuple[float, float, float]] = None  # Full 3D position
     group: str = ""
 
     # Search metadata
@@ -48,8 +48,16 @@ class SearchResult:
 
     @property
     def position_str(self) -> str:
+        """Full 3D position string (X, Y, Z)."""
         if self.position:
-            return f"({self.position[0]:.1f}, {self.position[1]:.1f})"
+            return f"({self.position[0]:.1f}, {self.position[1]:.1f}, {self.position[2]:.1f})"
+        return ""
+
+    @property
+    def position_2d_str(self) -> str:
+        """2D position string (X, Z) for map display."""
+        if self.position:
+            return f"({self.position[0]:.1f}, {self.position[2]:.1f})"
         return ""
 
 
@@ -214,7 +222,7 @@ class SearchEngine:
             ui_texture_name=entry.ui_texture_name,
             dds_path=entry.dds_path,
             has_image=entry.has_image,
-            position=entry.position_2d,
+            position=entry.position,  # Full 3D position (X, Y, Z)
             group=entry.group,
         )
 
