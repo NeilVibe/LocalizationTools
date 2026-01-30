@@ -8,13 +8,10 @@
 
   import { parseColorTags, hasColorTags } from '$lib/utils/colorParser.js';
 
-  /** @type {string} */
-  export let text = '';
+  // Svelte 5: Use $props() instead of export let
+  let { text = '', className = '' } = $props();
 
-  /** @type {string} */
-  export let className = '';
-
-  // Svelte 5: Use $derived instead of $: for reactive computations
+  // Svelte 5: Use $derived for reactive computations
   let segments = $derived(hasColorTags(text) ? parseColorTags(text) : null);
 </script>
 
