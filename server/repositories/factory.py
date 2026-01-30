@@ -19,6 +19,7 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.utils.dependencies import get_async_db, get_current_active_user_async
+from server import config
 from server.repositories.interfaces.tm_repository import TMRepository
 from server.repositories.interfaces.file_repository import FileRepository
 from server.repositories.interfaces.row_repository import RowRepository
@@ -38,8 +39,18 @@ def _is_offline_mode(request: Request) -> bool:
     """
     Detect if request is in offline mode.
 
-    Offline mode is indicated by Authorization header starting with "OFFLINE_MODE_".
+    Offline mode is indicated by:
+    1. Authorization header starting with "OFFLINE_MODE_"
+    2. OR actual database type is SQLite (no PostgreSQL available)
+
+    The second check ensures that when PostgreSQL is unavailable,
+    SQLite repositories are used even with normal auth tokens.
     """
+    # If database is SQLite, always use SQLite repos
+    if config.ACTIVE_DATABASE_TYPE == "sqlite":
+        return True
+
+    # Otherwise, check auth header for explicit offline mode
     auth_header = request.headers.get("Authorization", "")
     return auth_header.startswith("Bearer OFFLINE_MODE_")
 
