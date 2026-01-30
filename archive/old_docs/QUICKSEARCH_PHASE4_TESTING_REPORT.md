@@ -104,7 +104,7 @@ $ curl http://localhost:8888/api/v2/xlstransfer/health
 **Contents:**
 - 1,185 lines of Korean-French game localization
 - Tab-delimited format (compatible with QuickSearch)
-- Game: BDO (Black Desert Online)
+- Game: BDO (Game Title)
 - Language: FR (French)
 - Contains StringIDs for lookup testing
 

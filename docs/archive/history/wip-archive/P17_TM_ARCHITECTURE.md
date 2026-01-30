@@ -186,7 +186,7 @@ server/data/ldm_tm/{tm_id}/
 {
   "tm_id": 1,
   "name": "BDO Main TM",
-  "description": "Black Desert Online translation memory",
+  "description": "Main game translation memory",
   "owner_id": 1,
   "project_id": null,
 

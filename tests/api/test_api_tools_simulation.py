@@ -93,7 +93,7 @@ class TestKRSimilarUserSession:
     7. (Optional) Extract similar string groups
     """
 
-    # Use valid dictionary type (BDO = Black Desert Online)
+    # Use valid dictionary type
     TEST_DICT_TYPE = "BDO"
 
     @pytest.fixture(scope="class")

@@ -144,7 +144,7 @@ GlossarySniffer/
 
 **Expected glossary** (after filtering):
 - Kliff, Calphade, Heidel, Valencia
-- Duke Elenor, Lands of Gogogugu, Black Desert, Red Battlefield
+- Duke Elenor, Lands of Gogogugu, Shadow Realm, Red Battlefield
 - Mediah, Kamasylvia, Ancient Weapon
 
 **Expected matches**:

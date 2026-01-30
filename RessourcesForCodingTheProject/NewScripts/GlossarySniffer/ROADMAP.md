@@ -94,7 +94,7 @@ Pattern: r'[.?!]\s*$'  # Ends with .?!
 FILTER_PUNCTUATION = True
 Checks: string.punctuation (except spaces/hyphens) + special ellipsis …
 ```
-- ✅ KEEP: "Duke Elenor" (space ok), "Black-Desert" (hyphen ok)
+- ✅ KEEP: "Duke Elenor" (space ok), "Shadow-Realm" (hyphen ok)
 - ❌ SKIP: "Hello, world", "Wait—what", "Well..."
 
 **Rule 5: Non-Empty Only**

@@ -49,7 +49,7 @@ python glossary_sniffer_1124.py
 **Keep**:
 - "클리프" → "Kliff" (4 chars, 5 occurrences) ✅
 - "엘레노어 공작" → "Duke Elenor" (8 chars, 2 occurrences) ✅
-- "검은사막" → "Black Desert" (4 chars, 10 occurrences) ✅
+- "검은사막" → "Shadow Realm" (4 chars, 10 occurrences) ✅
 
 **Remove**:
 - "클리프가 도시에 갔다." (ends with period) ❌
@@ -60,7 +60,7 @@ python glossary_sniffer_1124.py
 **Output** (3 columns):
 | Original Line (Korean) | Glossary Found (Korean) | Translation (English) |
 |------------------------|-------------------------|-----------------------|
-| 클리프가 검은사막에 갔다 | 클리프, 검은사막 | Kliff, Black Desert |
+| 클리프가 검은사막에 갔다 | 클리프, 검은사막 | Kliff, Shadow Realm |
 
 ---
 
