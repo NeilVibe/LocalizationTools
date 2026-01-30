@@ -492,6 +492,13 @@ jobs:
             # Clear Python cache to ensure fresh code is used
             find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
+            # Clean up SQLite database to prevent lock/corruption from previous builds
+            # CI tests should always start fresh
+            if [ -f "server/data/offline.db" ]; then
+              echo "Removing stale SQLite database..."
+              rm -f "server/data/offline.db" "server/data/offline.db-journal" "server/data/offline.db-wal" "server/data/offline.db-shm"
+            fi
+
             # Start server with nohup to survive shell exit (critical for CI steps)
             # DEV_MODE=true skips rate limiting for tests, CI=true signals we're in CI environment
             rm -f /tmp/server.log
