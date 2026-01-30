@@ -988,7 +988,20 @@ class PostgreSQLTMRepository(TMRepository):
         threshold: float = 0.5,
         max_results: int = 5
     ) -> List[Dict[str, Any]]:
-        """pg_trgm similarity search."""
+        """
+        pg_trgm similarity search.
+
+        NOTE: similarity() is PostgreSQL-specific (pg_trgm extension).
+        When server runs with SQLite fallback, returns empty list.
+        """
+        from server import config
+
+        # similarity() requires PostgreSQL pg_trgm extension
+        # Return empty when running on SQLite
+        if config.ACTIVE_DATABASE_TYPE == "sqlite":
+            logger.debug("[TM-REPO] Similarity search not available (SQLite mode)")
+            return []
+
         sql = text("""
             SELECT
                 e.id,
