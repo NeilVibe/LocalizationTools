@@ -11,7 +11,7 @@ Tests for the complete logging flow including:
 import pytest
 from datetime import datetime, timedelta
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from server.database.models import (
@@ -27,6 +27,38 @@ from server.database.models import (
 
 
 pytestmark = pytest.mark.integration
+
+
+def _check_postgresql_available():
+    """Check if PostgreSQL is reachable for integration tests."""
+    import os
+    from sqlalchemy.exc import OperationalError
+
+    pg_user = os.getenv("POSTGRES_USER", "locanext")
+    pg_pass = os.getenv("POSTGRES_PASSWORD", "locanext_password")
+    pg_host = os.getenv("POSTGRES_HOST", "localhost")
+    pg_port = os.getenv("POSTGRES_PORT", "6433")
+    pg_db = os.getenv("POSTGRES_DB", "locanext")
+
+    db_url = f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
+
+    try:
+        engine = create_engine(db_url, echo=False)
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except (OperationalError, Exception):
+        return False
+
+
+# Skip all tests in this module if PostgreSQL is not available
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        not _check_postgresql_available(),
+        reason="PostgreSQL not available for integration tests"
+    )
+]
 
 
 @pytest.fixture(scope="function")
