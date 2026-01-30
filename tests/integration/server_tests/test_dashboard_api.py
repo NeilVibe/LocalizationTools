@@ -22,6 +22,37 @@ from tests.conftest import get_admin_token_with_retry
 BASE_URL = "http://localhost:8888"
 
 
+def _check_postgresql_stats_available():
+    """Check if PostgreSQL-based stats endpoints are functional."""
+    import os
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.exc import OperationalError
+
+    pg_user = os.getenv("POSTGRES_USER", "locanext")
+    pg_pass = os.getenv("POSTGRES_PASSWORD", "locanext_password")
+    pg_host = os.getenv("POSTGRES_HOST", "localhost")
+    pg_port = os.getenv("POSTGRES_PORT", "6433")
+    pg_db = os.getenv("POSTGRES_DB", "locanext")
+
+    db_url = f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
+
+    try:
+        engine = create_engine(db_url, echo=False)
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except (OperationalError, Exception):
+        return False
+
+
+# Check if PostgreSQL is available for stats tests
+_pg_stats_available = _check_postgresql_stats_available()
+requires_postgresql = pytest.mark.skipif(
+    not _pg_stats_available,
+    reason="PostgreSQL not available for stats endpoints"
+)
+
+
 @pytest.fixture(scope="module")
 def admin_token() -> str:
     """
@@ -70,6 +101,7 @@ class TestStatisticsEndpoints:
 
         print(f"✅ Overview: {data['today_operations']} ops, {data['success_rate']}% success")
 
+    @requires_postgresql
     def test_daily_stats(self, auth_headers):
         """Test daily statistics endpoint."""
         response = requests.get(
@@ -93,6 +125,7 @@ class TestStatisticsEndpoints:
 
         print(f"✅ Daily Stats: {len(data['data'])} days of data")
 
+    @requires_postgresql
     def test_weekly_stats(self, auth_headers):
         """Test weekly statistics endpoint."""
         response = requests.get(
@@ -108,6 +141,7 @@ class TestStatisticsEndpoints:
 
         print(f"✅ Weekly Stats: {len(data['data'])} weeks of data")
 
+    @requires_postgresql
     def test_monthly_stats(self, auth_headers):
         """Test monthly statistics endpoint."""
         response = requests.get(
@@ -189,6 +223,7 @@ class TestStatisticsEndpoints:
 
         print(f"✅ Slowest Functions: {len(data['slowest_functions'])} found")
 
+    @requires_postgresql
     def test_error_rate(self, auth_headers):
         """Test error rate endpoint."""
         response = requests.get(
