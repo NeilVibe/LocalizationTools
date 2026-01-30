@@ -1,12 +1,12 @@
 """
 Result Panel Module
 
-Displays search results in a Treeview with columns:
-- Name (KR)
-- Name (Translated)
-- Description
-- Position
-- StrKey
+Displays search results in a Treeview with toggleable columns:
+- Name (KR) - ON by default
+- Name (Translated) - ON by default
+- Description - OFF by default
+- Position (X, Y, Z) - ON by default
+- StrKey - ON by default
 """
 
 import tkinter as tk
@@ -22,7 +22,16 @@ except ImportError:
 
 
 class ResultPanel(ttk.Frame):
-    """Panel displaying search results in a Treeview."""
+    """Panel displaying search results in a Treeview with toggleable columns."""
+
+    # Column definitions: (id, header_key, default_visible, min_width, default_width)
+    COLUMN_DEFS = [
+        ("name_kr", "name_kr", True, 80, 150),
+        ("name_tr", "name_tr", True, 80, 150),
+        ("desc", "description", False, 100, 200),  # OFF by default
+        ("position", "position", True, 80, 140),
+        ("strkey", "strkey", True, 80, 150),
+    ]
 
     def __init__(
         self,
@@ -47,12 +56,18 @@ class ResultPanel(ttk.Frame):
         self._results: List[SearchResult] = []
         self._total_count = 0
         self._has_more = False
+        self._current_mode = "map"
+
+        # Column visibility state
+        self._column_visible = {}
+        for col_id, _, default_visible, _, _ in self.COLUMN_DEFS:
+            self._column_visible[col_id] = tk.BooleanVar(value=default_visible)
 
         self._create_widgets()
 
     def _create_widgets(self) -> None:
         """Create panel widgets."""
-        # Header frame with result count
+        # Header frame with result count and column toggles
         header_frame = ttk.Frame(self)
         header_frame.pack(fill="x", padx=5, pady=2)
 
@@ -62,38 +77,51 @@ class ResultPanel(ttk.Frame):
         )
         self._count_label.pack(side="left")
 
+        # Column toggle frame
+        toggle_frame = ttk.Frame(header_frame)
+        toggle_frame.pack(side="right")
+
+        ttk.Label(toggle_frame, text="Show:").pack(side="left", padx=(0, 5))
+
+        for col_id, header_key, _, _, _ in self.COLUMN_DEFS:
+            cb = ttk.Checkbutton(
+                toggle_frame,
+                text=get_ui_text(header_key),
+                variable=self._column_visible[col_id],
+                command=self._update_column_visibility
+            )
+            cb.pack(side="left", padx=2)
+
         # Treeview with scrollbars
         tree_frame = ttk.Frame(self)
         tree_frame.pack(fill="both", expand=True, padx=5, pady=5)
 
-        # Define columns (position/group share a column depending on mode)
-        columns = ("name_kr", "name_tr", "desc", "pos_group", "strkey")
+        # Define all columns
+        all_columns = tuple(col[0] for col in self.COLUMN_DEFS)
 
         self._tree = ttk.Treeview(
             tree_frame,
-            columns=columns,
+            columns=all_columns,
             show="headings",
             selectmode="browse"
         )
 
         # Configure columns
-        self._tree.heading("name_kr", text=get_ui_text('name_kr'),
-                          command=lambda: self._sort_column("name_kr"))
-        self._tree.heading("name_tr", text=get_ui_text('name_tr'),
-                          command=lambda: self._sort_column("name_tr"))
-        self._tree.heading("desc", text=get_ui_text('description'),
-                          command=lambda: self._sort_column("desc"))
-        self._tree.heading("pos_group", text=get_ui_text('position'),
-                          command=lambda: self._sort_column("pos_group"))
-        self._tree.heading("strkey", text=get_ui_text('strkey'),
-                          command=lambda: self._sort_column("strkey"))
+        for col_id, header_key, default_visible, min_width, default_width in self.COLUMN_DEFS:
+            self._tree.heading(
+                col_id,
+                text=get_ui_text(header_key),
+                command=lambda c=col_id: self._sort_column(c)
+            )
+            self._tree.column(
+                col_id,
+                width=default_width if default_visible else 0,
+                minwidth=min_width if default_visible else 0,
+                stretch=True
+            )
 
-        # Column widths
-        self._tree.column("name_kr", width=150, minwidth=80)
-        self._tree.column("name_tr", width=150, minwidth=80)
-        self._tree.column("desc", width=200, minwidth=100)
-        self._tree.column("pos_group", width=120, minwidth=60)
-        self._tree.column("strkey", width=120, minwidth=80)
+        # Apply initial visibility
+        self._update_column_visibility()
 
         # Scrollbars
         vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self._tree.yview)
@@ -126,6 +154,14 @@ class ResultPanel(ttk.Frame):
 
         self._load_more_callback: Optional[Callable] = None
 
+    def _update_column_visibility(self) -> None:
+        """Update column visibility based on checkboxes."""
+        for col_id, _, _, min_width, default_width in self.COLUMN_DEFS:
+            if self._column_visible[col_id].get():
+                self._tree.column(col_id, width=default_width, minwidth=min_width, stretch=True)
+            else:
+                self._tree.column(col_id, width=0, minwidth=0, stretch=False)
+
     def set_results(
         self,
         results: List[SearchResult],
@@ -150,38 +186,50 @@ class ResultPanel(ttk.Frame):
 
         # Add new items
         for result in results:
-            desc_short = result.desc_translated if result.desc_translated else result.desc_kr
-            if len(desc_short) > 50:
-                desc_short = desc_short[:47] + "..."
-
-            # Use position if available, otherwise group
-            pos_or_group = result.position_str if result.position else result.group
-
-            self._tree.insert(
-                "",
-                "end",
-                iid=result.strkey,
-                values=(
-                    result.name_kr,
-                    result.name_translated,
-                    desc_short,
-                    pos_or_group,
-                    result.strkey
-                )
-            )
+            self._insert_result(result)
 
         # Update count label
-        if self._total_count > len(results):
-            self._count_label.config(
-                text=f"{get_ui_text('results')}: {len(results)} / {self._total_count}"
-            )
-        else:
-            self._count_label.config(
-                text=f"{get_ui_text('results')}: {len(results)}"
-            )
+        self._update_count_label()
 
         # Update load more button
         self._load_more_btn.config(state="normal" if has_more else "disabled")
+
+    def _insert_result(self, result: SearchResult) -> None:
+        """Insert a single result into the tree."""
+        # Description: truncate if too long
+        desc = result.desc_translated if result.desc_translated else result.desc_kr
+        if len(desc) > 80:
+            desc = desc[:77] + "..."
+
+        # Position: full 3D (X, Y, Z) or group for non-map modes
+        if self._current_mode == "map":
+            pos_or_group = result.position_str  # Full X, Y, Z
+        else:
+            pos_or_group = result.group
+
+        self._tree.insert(
+            "",
+            "end",
+            iid=result.strkey,
+            values=(
+                result.name_kr,
+                result.name_translated,
+                desc,
+                pos_or_group,
+                result.strkey
+            )
+        )
+
+    def _update_count_label(self) -> None:
+        """Update the result count label."""
+        if self._total_count > len(self._results):
+            self._count_label.config(
+                text=f"{get_ui_text('results')}: {len(self._results)} / {self._total_count}"
+            )
+        else:
+            self._count_label.config(
+                text=f"{get_ui_text('results')}: {len(self._results)}"
+            )
 
     def append_results(self, results: List[SearchResult], has_more: bool = False) -> None:
         """
@@ -195,36 +243,9 @@ class ResultPanel(ttk.Frame):
         self._has_more = has_more
 
         for result in results:
-            desc_short = result.desc_translated if result.desc_translated else result.desc_kr
-            if len(desc_short) > 50:
-                desc_short = desc_short[:47] + "..."
+            self._insert_result(result)
 
-            # Use position if available, otherwise group
-            pos_or_group = result.position_str if result.position else result.group
-
-            self._tree.insert(
-                "",
-                "end",
-                iid=result.strkey,
-                values=(
-                    result.name_kr,
-                    result.name_translated,
-                    desc_short,
-                    pos_or_group,
-                    result.strkey
-                )
-            )
-
-        # Update count label
-        if self._total_count > len(self._results):
-            self._count_label.config(
-                text=f"{get_ui_text('results')}: {len(self._results)} / {self._total_count}"
-            )
-        else:
-            self._count_label.config(
-                text=f"{get_ui_text('results')}: {len(self._results)}"
-            )
-
+        self._update_count_label()
         self._load_more_btn.config(state="normal" if has_more else "disabled")
 
     def clear(self) -> None:
@@ -269,20 +290,14 @@ class ResultPanel(ttk.Frame):
     def _sort_column(self, col: str) -> None:
         """Sort by column."""
         # Get column index
-        col_map = {
-            "name_kr": 0,
-            "name_tr": 1,
-            "desc": 2,
-            "pos_group": 3,
-            "strkey": 4
-        }
+        col_map = {col[0]: i for i, col in enumerate(self.COLUMN_DEFS)}
         idx = col_map.get(col, 0)
 
         # Get current items
         items = [(self._tree.item(iid)["values"], iid) for iid in self._tree.get_children()]
 
         # Sort
-        items.sort(key=lambda x: str(x[0][idx]).lower())
+        items.sort(key=lambda x: str(x[0][idx]).lower() if x[0][idx] else "")
 
         # Reorder
         for i, (_, iid) in enumerate(items):
@@ -329,7 +344,26 @@ class ResultPanel(ttk.Frame):
         Args:
             mode: 'map', 'character', or 'item'
         """
+        self._current_mode = mode
         if mode == 'map':
-            self._tree.heading("pos_group", text=get_ui_text('position'))
+            self._tree.heading("position", text=get_ui_text('position'))
         else:
-            self._tree.heading("pos_group", text=get_ui_text('group'))
+            self._tree.heading("position", text=get_ui_text('group'))
+
+    def set_column_visible(self, column: str, visible: bool) -> None:
+        """
+        Programmatically set column visibility.
+
+        Args:
+            column: Column identifier
+            visible: Whether column should be visible
+        """
+        if column in self._column_visible:
+            self._column_visible[column].set(visible)
+            self._update_column_visibility()
+
+    def get_column_visible(self, column: str) -> bool:
+        """Get column visibility state."""
+        if column in self._column_visible:
+            return self._column_visible[column].get()
+        return False
