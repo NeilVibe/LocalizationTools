@@ -1,14 +1,17 @@
 # MapDataGenerator
 
-Map/Region Data Visualization Tool for game localization workflows.
+Multi-mode Data Visualization Tool for game localization workflows.
 
 ## Features
 
+- **Four Data Modes** - MAP, CHARACTER, ITEM, AUDIO
 - **Multi-language Search** - Search across 13 languages (ENG, FRE, GER, SPA, POR, ITA, RUS, TUR, POL, ZHO-CN, ZHO-TW, JPN, KOR)
 - **DDS Image Display** - View UITextureName images from game textures
+- **WEM Audio Playback** - Play game audio with KOR/ENG script display
 - **Linkage Resolution** - Automatic StrKey → KnowledgeKey → UITextureName chain resolution
-- **Interactive Map** - Matplotlib-based map with nodes and routes
+- **Interactive Map** - Matplotlib-based map with nodes and routes (MAP mode)
 - **Search Modes** - Contains, Exact, and Fuzzy matching
+- **Mode-Specific Columns** - Grid adapts to show relevant data per mode
 
 ## Requirements
 
@@ -36,18 +39,32 @@ Download the latest release from GitHub:
 
 ## Usage
 
-### 1. Load Data
+### 1. Select Mode
+
+Choose data mode from toolbar:
+- **MAP** - FactionNodes with map canvas
+- **CHARACTER** - Character data with images
+- **ITEM** - Items/Knowledge with images
+- **AUDIO** - WEM audio files with script display
+
+### 2. Load Data
 
 **File → Load Data** or `Ctrl+O`
 
-Select the following folders:
-- **Faction Info Folder** - Contains FactionNode XML files
+**For MAP/CHARACTER/ITEM modes:**
+- **Texture Folder** - Contains DDS texture files
 - **Language Data Folder** - Contains LanguageData_*.xml files
+- **Faction Info Folder** - Contains FactionNode XML files
 - **Knowledge Info Folder** - Contains KnowledgeInfo XML files
 - **Waypoint Info Folder** - Contains NodeWayPointInfo XML files
-- **Texture Folder** - Contains DDS texture files
+- **Character Info Folder** - Contains CharacterInfo XML files
 
-### 2. Search
+**For AUDIO mode:**
+- **Audio Folder (WEM)** - Contains .wem audio files (e.g., `English(US)/`)
+- **Export Folder** - Contains export__ XML files with SoundEventName mappings
+- **Language Data Folder** - Contains LanguageData_*.xml for script text
+
+### 3. Search
 
 Enter a search term and select:
 - **Match Type**: Contains, Exact, or Fuzzy
@@ -60,17 +77,38 @@ Results show:
 - Position
 - StrKey
 
-### 3. View Details
+### 4. View Details
 
 - **Select a result** - Shows image thumbnail and highlights on map
 - **Double-click** - Centers map on selected node
 - **Click thumbnail** - Opens full-size image
 
-### 4. Map Navigation
+### 5. Map Navigation (MAP mode)
 
 - **Hover** - Shows node info and connected routes
 - **Click** - Selects node
 - **Toolbar** - Pan, zoom, save figure
+
+### 6. Audio Playback (AUDIO mode)
+
+- **Select result** - Shows KOR and ENG scripts in Audio Viewer panel
+- **Double-click** - Plays audio automatically
+- **Play button** - Start playback
+- **Stop button** - Stop playback
+- **Cleanup button** - Remove cached WAV files from temp folder
+
+**Audio Data Flow:**
+```
+WEM filename (e.g., 12345678.wem)
+       ↓
+Export XML: SoundEventName → StrOrigin
+       ↓
+Loc XML: StrOrigin → KOR script + ENG script
+       ↓
+vgmstream-cli: WEM → WAV conversion
+       ↓
+winsound: Audio playback
+```
 
 ## Search Examples
 
@@ -120,7 +158,7 @@ Uses the **QACompilerNEW battle-tested pattern** with lxml `recover=True`:
 
 This handles the game's malformed XML reliably without corrupting attribute values.
 
-## Current Stats (Build 014)
+## Current Stats (Build 016)
 
 | Data | Count |
 |------|-------|
@@ -128,11 +166,18 @@ This handles the game's malformed XML reliably without corrupting attribute valu
 | Knowledge entries | ~3,180 (1,634 with images) |
 | MAP entries | ~3,410 (48% with images) |
 | Language entries | ~95,850 per language |
+| Audio entries | Varies by language folder |
 
 **Expected "missing" DDS:**
 - `createicon` - placeholder in source data
 - `ItemIcon_Prefab_*` - in different texture folder
 - `AbyssGate_*` - no UITextureName by design
+
+## Bundled Tools
+
+| Tool | Version | Size | Purpose |
+|------|---------|------|---------|
+| vgmstream-cli.exe | r1980 | 2.4MB | WEM → WAV audio conversion |
 
 ## Linkage Chain
 
@@ -191,19 +236,23 @@ MapDataGenerator/
 ├── README.md                  # This file
 ├── installer/
 │   └── MapDataGenerator.iss   # Inno Setup script
+├── tools/
+│   └── vgmstream-cli.exe      # WEM→WAV converter (bundled)
 ├── gui/
 │   ├── __init__.py
 │   ├── app.py                 # Main window
 │   ├── search_panel.py        # Search interface
-│   ├── result_panel.py        # Results display
+│   ├── result_panel.py        # Results display (with tooltips)
 │   ├── image_viewer.py        # DDS viewer
+│   ├── audio_viewer.py        # Audio player with script display
 │   └── map_canvas.py          # Map visualization
 ├── core/
 │   ├── __init__.py
 │   ├── xml_parser.py          # XML parsing
-│   ├── search.py              # Search engine
+│   ├── search.py              # Search engine (all modes)
 │   ├── language.py            # Multi-language support
-│   ├── linkage.py             # StrKey resolution
+│   ├── linkage.py             # StrKey resolution + AudioIndex
+│   ├── audio_handler.py       # WEM playback
 │   └── dds_handler.py         # DDS loading
 └── utils/
     ├── __init__.py
