@@ -1,0 +1,10 @@
+# Translation Bank Build Trigger
+# ==============================
+# Add a new line here to trigger a CI build
+# Format: Build NNN: Description
+#
+# Example:
+# Build 001: Initial release
+# Build 002: Add feature X
+# Build 003: Fix bug Y
+Build 001: Initial TranslationBank release with 3-level key system

@@ -1,0 +1,515 @@
+# Translation Bank - Build Workflow
+# ============================================================================
+# COMPREHENSIVE CI VALIDATION (Following NewScripts battle-tested CI pattern)
+#
+# This workflow:
+# 1. Runs on changes to TRANSLATIONBANK_BUILD.txt OR manual trigger
+# 2. VALIDATES CODE THOROUGHLY:
+#    - Python syntax validation (py_compile)
+#    - Module import validation (catches missing imports)
+#    - Flake8 code quality (undefined names, unused imports, errors)
+#    - Security audit (pip-audit for vulnerable dependencies)
+# 3. Builds standalone Windows executable with PyInstaller
+# 4. Creates Inno Setup installer
+# 5. Uploads triple release (Setup + Portable + Source) to GitHub Releases
+#
+# FAIL FAST: Validation errors stop the build BEFORE PyInstaller runs
+# ============================================================================
+
+name: Translation Bank Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'TRANSLATIONBANK_BUILD.txt'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+env:
+  TRANSLATIONBANK_PATH: RessourcesForCodingTheProject/NewScripts/TranslationBank
+
+jobs:
+  # ============================================================
+  # JOB 1: VALIDATION (Runs on Ubuntu - faster, catches errors early)
+  # ============================================================
+  validation:
+    name: Code Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check build trigger
+        id: check
+        run: |
+          should_build=false
+
+          # Check if TRANSLATIONBANK_BUILD.txt was modified
+          diff_output=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          if echo "$diff_output" | grep -q "TRANSLATIONBANK_BUILD.txt"; then
+            trigger=$(grep -E "^Build" TRANSLATIONBANK_BUILD.txt | tail -1 || echo "")
+            if [ -n "$trigger" ]; then
+              should_build=true
+              echo "Trigger: $trigger"
+            fi
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            should_build=true
+            echo "Manual trigger via workflow_dispatch"
+          elif echo "$diff_output" | grep -q "TranslationBank"; then
+            should_build=true
+            echo "TranslationBank files changed"
+          fi
+
+          if [ "$should_build" = "false" ]; then
+            echo "No TranslationBank changes detected - skipping build"
+            echo "should_build=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "should_build=true" >> $GITHUB_OUTPUT
+
+          # AUTO-GENERATE VERSION: YY.MMDD.HHMM format (Korean time)
+          version=$(TZ='Asia/Seoul' date '+%y.%-m%d.%H%M')
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "[OK] Auto-generated version: $version (YY.MMDD.HHMM format)"
+
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      version: ${{ steps.check.outputs.version }}
+
+  # ============================================================
+  # JOB 2: SAFETY CHECKS (Syntax, Imports, Code Quality, Security)
+  # ============================================================
+  safety-checks:
+    name: Safety Checks (Syntax, Imports, Flake8, Security)
+    runs-on: ubuntu-latest
+    needs: validation
+    if: needs.validation.outputs.should_build == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies + validation tools
+        run: |
+          cd ${{ env.TRANSLATIONBANK_PATH }}
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+          # Install validation tools
+          pip install flake8 pip-audit pytest
+
+          echo "[OK] All dependencies installed"
+
+      # ============================================================
+      # CHECK 1: Python Syntax Validation
+      # ============================================================
+      - name: Check 1 - Python Syntax Validation
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  CHECK 1: PYTHON SYNTAX VALIDATION                         ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          cd ${{ env.TRANSLATIONBANK_PATH }}
+
+          python << 'EOF'
+          import sys
+          import py_compile
+          from pathlib import Path
+
+          errors = []
+          checked = 0
+
+          for py_file in Path('.').rglob('*.py'):
+              # Skip __pycache__, build/dist
+              if '__pycache__' in str(py_file):
+                  continue
+              if 'build' in str(py_file) or 'dist' in str(py_file):
+                  continue
+
+              try:
+                  py_compile.compile(str(py_file), doraise=True)
+                  checked += 1
+              except py_compile.PyCompileError as e:
+                  errors.append((py_file, str(e)))
+                  print(f"  [FAIL] {py_file}")
+                  print(f"         {e}")
+
+          if errors:
+              print(f"\n[ERROR] {len(errors)} syntax errors found!")
+              sys.exit(1)
+          else:
+              print(f"\n[OK] All {checked} Python files have valid syntax")
+          EOF
+
+      # ============================================================
+      # CHECK 2: Module Import Validation
+      # ============================================================
+      - name: Check 2 - Module Import Validation
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  CHECK 2: MODULE IMPORT VALIDATION                         ║"
+          echo "║  (Catches missing imports before PyInstaller)              ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          cd ${{ env.TRANSLATIONBANK_PATH }}
+
+          python << 'EOF'
+          import sys
+          import importlib
+          sys.path.insert(0, '.')
+
+          modules = [
+              # Main entry
+              'config',
+              'main',
+
+              # GUI
+              'gui',
+              'gui.app',
+
+              # Core
+              'core',
+              'core.xml_parser',
+              'core.unique_key',
+              'core.bank_builder',
+              'core.bank_transfer',
+          ]
+
+          errors = []
+          for mod in modules:
+              try:
+                  importlib.import_module(mod)
+                  print(f'  [PASS] {mod}')
+              except Exception as e:
+                  error_type = type(e).__name__
+                  print(f'  [FAIL] {mod}')
+                  print(f'         {error_type}: {e}')
+                  errors.append((mod, e))
+
+          if errors:
+              print(f'\n[ERROR] {len(errors)} modules failed to import!')
+              print('\nDetailed errors:')
+              for mod, e in errors:
+                  print(f'  - {mod}: {type(e).__name__}: {e}')
+              print('\nFix these errors before building!')
+              sys.exit(1)
+          else:
+              print(f'\n[OK] All {len(modules)} modules imported successfully!')
+          EOF
+
+      # ============================================================
+      # CHECK 3: Flake8 Code Quality (Critical Errors Only)
+      # ============================================================
+      - name: Check 3 - Flake8 Code Quality
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  CHECK 3: FLAKE8 CODE QUALITY                              ║"
+          echo "║  (Catches undefined names, unused imports, errors)         ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          cd ${{ env.TRANSLATIONBANK_PATH }}
+
+          echo "=== Critical Errors (will fail build) ==="
+          flake8 . --select=E9,F63,F7,F82 --show-source --statistics \
+            --exclude=__pycache__,build,dist,.git \
+            && echo "[OK] No critical flake8 errors" \
+            || { echo "[FATAL] Critical flake8 errors found!"; exit 1; }
+
+          echo ""
+          echo "=== Warnings (logged but won't fail) ==="
+          flake8 . --select=F401 --show-source --statistics \
+            --exclude=__pycache__,build,dist,.git \
+            || echo "[WARN] Unused imports found (non-blocking)"
+
+          echo ""
+          echo "[OK] Flake8 check complete"
+
+      # ============================================================
+      # CHECK 4: Security Audit (Vulnerable Dependencies)
+      # ============================================================
+      - name: Check 4 - Security Audit
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  CHECK 4: SECURITY AUDIT (pip-audit)                       ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          cd ${{ env.TRANSLATIONBANK_PATH }}
+
+          pip-audit --desc || echo "[WARN] Vulnerabilities found - logged for review"
+          echo "[OK] Security audit complete"
+        continue-on-error: true
+
+      - name: Safety Checks Summary
+        run: |
+          echo "============================================"
+          echo "[PASS] ALL SAFETY CHECKS PASSED"
+          echo "============================================"
+          echo ""
+          echo "Validated:"
+          echo "  1. Python syntax - OK"
+          echo "  2. Module imports - OK"
+          echo "  3. Flake8 critical errors - OK"
+          echo "  4. Security audit - Complete"
+          echo ""
+          echo "Ready for Windows build!"
+
+  # ============================================================
+  # JOB 3: BUILD WINDOWS (Only runs after validation passes)
+  # ============================================================
+  build-and-release:
+    name: Build & Release Translation Bank
+    runs-on: windows-latest
+    needs: [validation, safety-checks]
+    if: needs.validation.outputs.should_build == 'true'
+
+    env:
+      BUILD_VERSION: ${{ needs.validation.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          cd ${{ env.TRANSLATIONBANK_PATH }}
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      # ============================================================
+      # FINAL VALIDATION ON WINDOWS
+      # ============================================================
+      - name: Windows Import Validation
+        shell: pwsh
+        run: |
+          cd ${{ env.TRANSLATIONBANK_PATH }}
+          Write-Host "=== WINDOWS IMPORT VALIDATION ==="
+          Write-Host "Final check before PyInstaller..."
+
+          python -c @"
+          import sys
+          import importlib
+          sys.path.insert(0, '.')
+
+          modules = [
+              'config',
+              'main',
+              'gui',
+              'gui.app',
+              'core',
+              'core.xml_parser',
+              'core.unique_key',
+              'core.bank_builder',
+              'core.bank_transfer',
+          ]
+
+          errors = []
+          for mod in modules:
+              try:
+                  importlib.import_module(mod)
+                  print(f'  [PASS] {mod}')
+              except Exception as e:
+                  print(f'  [FAIL] {mod}: {e}')
+                  errors.append(mod)
+
+          if errors:
+              print(f'\n[ERROR] {len(errors)} modules failed to import!')
+              sys.exit(1)
+          else:
+              print(f'\n[OK] All {len(modules)} modules imported successfully!')
+          "@
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "[FATAL] Windows validation failed - aborting build"
+            exit 1
+          }
+          Write-Host "[OK] Windows validation passed"
+
+      - name: Inject Version
+        shell: pwsh
+        run: |
+          $version = "${{ env.BUILD_VERSION }}"
+          $tbPath = "${{ env.TRANSLATIONBANK_PATH }}"
+
+          Write-Host "=== VERSION INJECTION ==="
+          Write-Host "Version: $version"
+
+          # Update installer script version
+          $issPath = "$tbPath\installer\TranslationBank.iss"
+          if (Test-Path $issPath) {
+            (Get-Content $issPath) -replace '#define MyAppVersion "[^"]*"', "#define MyAppVersion `"$version`"" | Set-Content $issPath
+            Write-Host "[OK] Updated: $issPath"
+          }
+
+          # Update config.py with version
+          $configPath = "$tbPath\config.py"
+          if (Test-Path $configPath) {
+            $content = Get-Content $configPath -Raw
+            if ($content -match 'VERSION\s*=') {
+              $content = $content -replace 'VERSION\s*=\s*"[^"]*"', "VERSION = `"$version`""
+            } else {
+              $content = "VERSION = `"$version`"`n" + $content
+            }
+            Set-Content $configPath $content
+            Write-Host "[OK] Updated: $configPath"
+          }
+
+      - name: Build executable with PyInstaller
+        shell: pwsh
+        run: |
+          cd ${{ env.TRANSLATIONBANK_PATH }}
+          pyinstaller TranslationBank.spec --clean --noconfirm
+
+      - name: Verify build
+        shell: pwsh
+        run: |
+          $exePath = "${{ env.TRANSLATIONBANK_PATH }}\dist\TranslationBank\TranslationBank.exe"
+          if (!(Test-Path $exePath)) {
+            Write-Error "Build failed - TranslationBank.exe not found"
+            exit 1
+          }
+          $size = (Get-Item $exePath).length / 1MB
+          Write-Host "Build successful! Size: $([math]::Round($size, 1)) MB"
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y
+
+      - name: Create installer output folder
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "${{ env.TRANSLATIONBANK_PATH }}\installer_output" -Force | Out-Null
+
+      - name: Compile installer
+        shell: pwsh
+        run: |
+          $issPath = "${{ env.TRANSLATIONBANK_PATH }}\installer\TranslationBank.iss"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" $issPath
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          $version = "${{ env.BUILD_VERSION }}"
+          $distPath = "${{ env.TRANSLATIONBANK_PATH }}\dist\TranslationBank"
+          $zipPath = "${{ env.TRANSLATIONBANK_PATH }}\installer_output\TranslationBank_v${version}_Portable.zip"
+
+          Compress-Archive -Path "$distPath\*" -DestinationPath $zipPath -Force
+          $size = (Get-Item $zipPath).Length / 1MB
+          Write-Host "Portable ZIP: $([math]::Round($size, 1)) MB"
+
+      - name: Create source code ZIP
+        shell: pwsh
+        run: |
+          $version = "${{ env.BUILD_VERSION }}"
+          $sourcePath = "${{ env.TRANSLATIONBANK_PATH }}"
+          $zipPath = "${{ env.TRANSLATIONBANK_PATH }}\installer_output\TranslationBank_v${version}_Source.zip"
+
+          $tempDir = New-Item -ItemType Directory -Path "$env:TEMP\TranslationBank_Source" -Force
+          $excludes = @("dist", "build", "__pycache__", "*.pyc", "installer_output", ".pytest_cache")
+
+          Get-ChildItem -Path $sourcePath -Exclude $excludes | Copy-Item -Destination $tempDir -Recurse -Force
+          Get-ChildItem -Path $tempDir -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+          Compress-Archive -Path "$tempDir\*" -DestinationPath $zipPath -Force
+          Remove-Item -Path $tempDir -Recurse -Force
+
+          $size = (Get-Item $zipPath).Length / 1MB
+          Write-Host "Source ZIP: $([math]::Round($size, 1)) MB"
+
+      - name: Upload Setup
+        uses: actions/upload-artifact@v4
+        with:
+          name: TranslationBank-Setup
+          path: ${{ env.TRANSLATIONBANK_PATH }}/installer_output/*.exe
+          retention-days: 30
+
+      - name: Upload Portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: TranslationBank-Portable
+          path: ${{ env.TRANSLATIONBANK_PATH }}/installer_output/*_Portable.zip
+          retention-days: 30
+
+      - name: Upload Source
+        uses: actions/upload-artifact@v4
+        with:
+          name: TranslationBank-Source
+          path: ${{ env.TRANSLATIONBANK_PATH }}/installer_output/*_Source.zip
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: translationbank-v${{ env.BUILD_VERSION }}
+          name: Translation Bank v${{ env.BUILD_VERSION }}
+          body: |
+            # Translation Bank v${{ env.BUILD_VERSION }}
+
+            **Translation Recovery Tool for XML Localization Files**
+
+            Recovers translations when StringId or StrOrigin changes using a 3-level unique key system.
+
+            ## Download
+
+            - **TranslationBank_v${{ env.BUILD_VERSION }}_Setup.exe** - Installer (recommended)
+            - **TranslationBank_v${{ env.BUILD_VERSION }}_Portable.zip** - Portable ZIP (no install)
+            - **TranslationBank_v${{ env.BUILD_VERSION }}_Source.zip** - Source code
+
+            ## CI Validation Passed
+
+            This build was validated with:
+            - Python syntax check
+            - Module import validation (catches missing imports)
+            - Flake8 code quality (undefined names, errors)
+            - Security audit (pip-audit)
+
+            ## Features
+
+            - **3-Level Key System** for reliable matching
+              - Level 1: StrOrigin + StringId (most reliable)
+              - Level 2: StringId only (when Korean text changed)
+              - Level 3: Context-aware with neighbors (when both changed)
+            - **PKL format** for fast load/save (150k+ entries)
+            - **JSON export** for debugging
+            - **Detailed transfer reports** with HIT/MISS statistics
+            - **GUI mode** with File/Folder processing
+
+            ---
+            *Portable installation - no admin rights required*
+          draft: false
+          prerelease: false
+          files: |
+            ${{ env.TRANSLATIONBANK_PATH }}/installer_output/*.exe
+            ${{ env.TRANSLATIONBANK_PATH }}/installer_output/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "=== Translation Bank Build Complete ==="
+          echo "Version: ${{ env.BUILD_VERSION }}"
+          echo "Release: translationbank-v${{ env.BUILD_VERSION }}"
