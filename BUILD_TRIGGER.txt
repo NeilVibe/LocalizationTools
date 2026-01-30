@@ -23,3 +23,4 @@ Build
 Build
 Build 504: aiosqlite migration - Sat Jan 31 02:32:06 AM KST 2026
 Build 506: Svelte 5 fix - Sat Jan 31 02:39:05 AM KST 2026
+Build 507: Fix POSTGRES_DATABASE_URL attr - Sat Jan 31 03:15:00 AM KST 2026
