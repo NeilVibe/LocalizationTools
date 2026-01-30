@@ -412,8 +412,18 @@ class PostgreSQLRowRepository(RowRepository):
         Fuzzy search using PostgreSQL pg_trgm similarity.
 
         Uses trigram matching for fuzzy text search with similarity ranking.
+
+        NOTE: similarity() is PostgreSQL-specific (pg_trgm extension).
+        When server runs with SQLite fallback, returns empty results.
         """
         from sqlalchemy import text
+        from server import config
+
+        # similarity() requires PostgreSQL pg_trgm extension
+        # Return empty when running on SQLite
+        if config.ACTIVE_DATABASE_TYPE == "sqlite":
+            logger.debug("[ROW-REPO] Fuzzy search not available (SQLite mode)")
+            return [], 0
 
         offset = (page - 1) * limit
 
@@ -578,8 +588,18 @@ class PostgreSQLRowRepository(RowRepository):
         """
         Search for similar rows using pg_trgm similarity.
         Used for TM-style suggestions from project rows.
+
+        NOTE: similarity() is PostgreSQL-specific (pg_trgm extension).
+        When server runs with SQLite fallback, returns empty list.
         """
         from sqlalchemy import text
+        from server import config
+
+        # similarity() requires PostgreSQL pg_trgm extension
+        # Return empty when running on SQLite
+        if config.ACTIVE_DATABASE_TYPE == "sqlite":
+            logger.debug("[ROW-REPO] Similarity search not available (SQLite mode)")
+            return []
 
         conditions = ["r.target IS NOT NULL", "r.target != ''"]
         sql_params = {
