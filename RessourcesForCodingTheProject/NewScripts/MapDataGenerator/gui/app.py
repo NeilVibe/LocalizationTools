@@ -1,14 +1,16 @@
 """
 Main Application Module (REDESIGNED)
 
-Three-mode MapDataGenerator:
+Four-mode MapDataGenerator:
 - MAP mode: FactionNodes with map canvas
 - CHARACTER mode: Characters with large image display
 - ITEM mode: Items/Knowledge with large image display
+- AUDIO mode: WEM audio files with script line display
 
 Features:
 - Mode selector toolbar
 - Large image display (512×512+)
+- Audio playback with script display
 - Lazy language loading
 - Image-first architecture (all results have images)
 """
@@ -29,9 +31,11 @@ try:
     from core.linkage import LinkageResolver, DataMode
     from core.language import LanguageManager
     from core.search import SearchEngine, SearchResult
+    from core.audio_handler import AudioHandler
     from gui.search_panel import SearchPanel
     from gui.result_panel import ResultPanel
     from gui.image_viewer import ImageViewer
+    from gui.audio_viewer import AudioViewer
     from gui.map_canvas import MapCanvas
 except ImportError:
     from ..config import (
@@ -42,9 +46,11 @@ except ImportError:
     from ..core.linkage import LinkageResolver, DataMode
     from ..core.language import LanguageManager
     from ..core.search import SearchEngine, SearchResult
+    from ..core.audio_handler import AudioHandler
     from .search_panel import SearchPanel
     from .result_panel import ResultPanel
     from .image_viewer import ImageViewer
+    from .audio_viewer import AudioViewer
     from .map_canvas import MapCanvas
 
 
@@ -137,6 +143,7 @@ class MapDataGeneratorApp:
         self._resolver = LinkageResolver()
         self._lang_manager = LanguageManager()
         self._search_engine: Optional[SearchEngine] = None
+        self._audio_handler = AudioHandler()
 
         # Current mode
         self._current_mode = DataMode(self.settings.current_mode)
@@ -222,13 +229,20 @@ class MapDataGeneratorApp:
         self._result_panel.pack(fill="both", expand=True, padx=5, pady=5)
         self._result_panel.set_load_more_callback(self._load_more_results)
 
-        # Right panel - 65% - IMAGE VIEWER ONLY (map is separate window)
-        right_frame = ttk.Frame(self._main_paned)
-        self._main_paned.add(right_frame, weight=2)
+        # Right panel - 65% - IMAGE VIEWER or AUDIO VIEWER
+        self._right_frame = ttk.Frame(self._main_paned)
+        self._main_paned.add(self._right_frame, weight=2)
 
-        # Image viewer - takes full right panel
-        self._image_viewer = ImageViewer(right_frame)
+        # Image viewer - takes full right panel (default)
+        self._image_viewer = ImageViewer(self._right_frame)
         self._image_viewer.pack(fill="both", expand=True)
+
+        # Audio viewer - hidden by default, shown in AUDIO mode
+        self._audio_viewer = AudioViewer(
+            self._right_frame,
+            audio_handler=self._audio_handler
+        )
+        # Don't pack yet - will be shown when AUDIO mode is active
 
         # Map is OFF by default - opens in separate window when toggled
         self._map_window: Optional[tk.Toplevel] = None
@@ -312,24 +326,33 @@ class MapDataGeneratorApp:
         # Update visibility
         self._update_mode_visibility()
 
-        # Update result panel headers
-        self._result_panel.set_mode_headers(new_mode.value)
+        # Update result panel mode (headers + column defaults)
+        self._result_panel.set_mode(new_mode.value)
 
         # Check if data for new mode is loaded using current_mode tracking
         needs_reload = (self._resolver.current_mode != new_mode)
 
-        if needs_reload and self._texture_folder:
-            # Reload data for new mode
+        if needs_reload:
             settings = get_settings()
-            self._start_data_load(
-                texture_folder=self._texture_folder,
-                loc_folder=Path(settings.loc_folder),
-                faction_folder=Path(settings.faction_folder),
-                knowledge_folder=Path(settings.knowledge_folder),
-                waypoint_folder=Path(settings.waypoint_folder),
-                character_folder=Path(settings.character_folder),
-                mode=new_mode,
-            )
+            if new_mode == DataMode.AUDIO:
+                # AUDIO mode needs different data loading
+                self._start_audio_data_load(
+                    audio_folder=Path(settings.audio_folder),
+                    export_folder=Path(settings.export_folder),
+                    loc_folder=Path(settings.loc_folder),
+                    mode=new_mode,
+                )
+            elif self._texture_folder:
+                # Other modes use texture folder
+                self._start_data_load(
+                    texture_folder=self._texture_folder,
+                    loc_folder=Path(settings.loc_folder),
+                    faction_folder=Path(settings.faction_folder),
+                    knowledge_folder=Path(settings.knowledge_folder),
+                    waypoint_folder=Path(settings.waypoint_folder),
+                    character_folder=Path(settings.character_folder),
+                    mode=new_mode,
+                )
         elif self._search_engine:
             # Data already loaded, just update search engine mode
             self._search_engine.set_mode(new_mode)
@@ -357,6 +380,16 @@ class MapDataGeneratorApp:
                 self._map_canvas = None
                 self._map_visible = False
                 self._map_toggle_var.set(False)
+
+        # Swap between ImageViewer and AudioViewer based on mode
+        if self._current_mode == DataMode.AUDIO:
+            # Hide ImageViewer, show AudioViewer
+            self._image_viewer.pack_forget()
+            self._audio_viewer.pack(fill="both", expand=True)
+        else:
+            # Hide AudioViewer, show ImageViewer
+            self._audio_viewer.pack_forget()
+            self._image_viewer.pack(fill="both", expand=True)
 
     def _toggle_map(self) -> None:
         """Toggle map window visibility."""
@@ -414,44 +447,77 @@ class MapDataGeneratorApp:
 
         stats = self._resolver.stats
         total = stats.get('entries_total', 0)
-        with_image = stats.get('entries_with_image', 0)
-        dds_count = self._resolver.dds_index.file_count
 
-        self._stats_label.config(
-            text=f"Total: {total} | With Image: {with_image} | DDS Files: {dds_count}"
-        )
+        if self._current_mode == DataMode.AUDIO:
+            # Audio-specific stats
+            with_script = stats.get('audio_with_script', 0)
+            self._stats_label.config(
+                text=f"Total: {total} | With Script: {with_script}"
+            )
+        else:
+            # Image mode stats
+            with_image = stats.get('entries_with_image', 0)
+            dds_count = self._resolver.dds_index.file_count
+            self._stats_label.config(
+                text=f"Total: {total} | With Image: {with_image} | DDS Files: {dds_count}"
+            )
 
     def _auto_load_data(self) -> None:
         """Auto-load data on startup using saved paths."""
         settings = get_settings()
 
-        # Check if essential paths exist
-        texture_path = Path(settings.texture_folder)
-        knowledge_path = Path(settings.knowledge_folder)
+        if self._current_mode == DataMode.AUDIO:
+            # AUDIO mode: check audio and export folders
+            audio_path = Path(settings.audio_folder)
+            export_path = Path(settings.export_folder)
 
-        if not texture_path.exists():
-            log.warning("Texture folder not found: %s", texture_path)
-            self._progress_var.set("Texture folder not found - use File > Load Data")
-            return
+            if not audio_path.exists():
+                log.warning("Audio folder not found: %s", audio_path)
+                self._progress_var.set("Audio folder not found - use File > Load Data")
+                return
 
-        if not knowledge_path.exists():
-            log.warning("Knowledge folder not found: %s", knowledge_path)
-            self._progress_var.set("Knowledge folder not found - use File > Load Data")
-            return
+            if not export_path.exists():
+                log.warning("Export folder not found: %s", export_path)
+                self._progress_var.set("Export folder not found - use File > Load Data")
+                return
 
-        log.info("Auto-loading data from saved paths...")
-        self._progress_var.set("Auto-loading data...")
+            log.info("Auto-loading audio data from saved paths...")
+            self._progress_var.set("Auto-loading audio data...")
 
-        # Start loading with saved paths
-        self._start_data_load(
-            texture_folder=texture_path,
-            loc_folder=Path(settings.loc_folder),
-            faction_folder=Path(settings.faction_folder),
-            knowledge_folder=knowledge_path,
-            waypoint_folder=Path(settings.waypoint_folder),
-            character_folder=Path(settings.character_folder),
-            mode=self._current_mode,
-        )
+            self._start_audio_data_load(
+                audio_folder=audio_path,
+                export_folder=export_path,
+                loc_folder=Path(settings.loc_folder),
+                mode=self._current_mode,
+            )
+        else:
+            # Other modes: check texture and knowledge folders
+            texture_path = Path(settings.texture_folder)
+            knowledge_path = Path(settings.knowledge_folder)
+
+            if not texture_path.exists():
+                log.warning("Texture folder not found: %s", texture_path)
+                self._progress_var.set("Texture folder not found - use File > Load Data")
+                return
+
+            if not knowledge_path.exists():
+                log.warning("Knowledge folder not found: %s", knowledge_path)
+                self._progress_var.set("Knowledge folder not found - use File > Load Data")
+                return
+
+            log.info("Auto-loading data from saved paths...")
+            self._progress_var.set("Auto-loading data...")
+
+            # Start loading with saved paths
+            self._start_data_load(
+                texture_folder=texture_path,
+                loc_folder=Path(settings.loc_folder),
+                faction_folder=Path(settings.faction_folder),
+                knowledge_folder=knowledge_path,
+                waypoint_folder=Path(settings.waypoint_folder),
+                character_folder=Path(settings.character_folder),
+                mode=self._current_mode,
+            )
 
     def _load_data(self) -> None:
         """Open folder selection dialog and load data."""
@@ -459,7 +525,7 @@ class MapDataGeneratorApp:
 
         dialog = tk.Toplevel(self.root)
         dialog.title("Load Data - Select Folders")
-        dialog.geometry("600x500")
+        dialog.geometry("650x600")  # Larger to fit audio folders
         dialog.transient(self.root)
         dialog.grab_set()
 
@@ -511,6 +577,10 @@ class MapDataGeneratorApp:
         waypoint_var = create_folder_row(folders_frame, "Waypoint Info:", settings.waypoint_folder)
         character_var = create_folder_row(folders_frame, "Character Info:", settings.character_folder)
 
+        # Audio-specific folders
+        audio_var = create_folder_row(folders_frame, "Audio Folder (WEM):", settings.audio_folder)
+        export_var = create_folder_row(folders_frame, "Export Folder:", settings.export_folder)
+
         def on_load():
             # Save paths
             settings.texture_folder = texture_var.get()
@@ -519,6 +589,8 @@ class MapDataGeneratorApp:
             settings.knowledge_folder = knowledge_var.get()
             settings.waypoint_folder = waypoint_var.get()
             settings.character_folder = character_var.get()
+            settings.audio_folder = audio_var.get()
+            settings.export_folder = export_var.get()
 
             # Update mode
             new_mode = DataMode(mode_var.get())
@@ -529,16 +601,24 @@ class MapDataGeneratorApp:
             save_settings(settings)
             dialog.destroy()
 
-            # Start loading
-            self._start_data_load(
-                texture_folder=Path(texture_var.get()),
-                loc_folder=Path(loc_var.get()),
-                faction_folder=Path(faction_var.get()),
-                knowledge_folder=Path(knowledge_var.get()),
-                waypoint_folder=Path(waypoint_var.get()),
-                character_folder=Path(character_var.get()),
-                mode=new_mode,
-                            )
+            # Start loading based on mode
+            if new_mode == DataMode.AUDIO:
+                self._start_audio_data_load(
+                    audio_folder=Path(audio_var.get()),
+                    export_folder=Path(export_var.get()),
+                    loc_folder=Path(loc_var.get()),
+                    mode=new_mode,
+                )
+            else:
+                self._start_data_load(
+                    texture_folder=Path(texture_var.get()),
+                    loc_folder=Path(loc_var.get()),
+                    faction_folder=Path(faction_var.get()),
+                    knowledge_folder=Path(knowledge_var.get()),
+                    waypoint_folder=Path(waypoint_var.get()),
+                    character_folder=Path(character_var.get()),
+                    mode=new_mode,
+                )
 
         # Buttons
         btn_frame = ttk.Frame(dialog)
@@ -636,6 +716,82 @@ class MapDataGeneratorApp:
                 self.root.after(0, lambda msg=error_msg: self._on_load_error(msg))
 
         threading.Thread(target=task, daemon=True).start()
+
+    def _start_audio_data_load(
+        self,
+        audio_folder: Path,
+        export_folder: Path,
+        loc_folder: Path,
+        mode: DataMode,
+    ) -> None:
+        """Start background audio data loading."""
+        self._progress_bar.start()
+        self._search_panel.enable(False)
+
+        def task():
+            try:
+                # Load audio data (WEM files + event mappings + script lines)
+                self._update_progress("Loading AUDIO data...")
+                count = self._resolver.load_audio_data(
+                    audio_folder,
+                    export_folder,
+                    loc_folder,
+                    lambda msg: self._update_progress(msg)
+                )
+                self._update_progress(f"Loaded {count} audio entries")
+
+                # Load language tables for script lines
+                self._update_progress("Loading language tables...")
+                self._lang_manager.set_folder(loc_folder)
+                self._lang_manager.preload_essential(
+                    lambda msg: self._update_progress(msg)
+                )
+
+                # Create search engine
+                self._update_progress("Building search index...")
+                self._search_engine = SearchEngine(
+                    self._resolver,
+                    fuzzy_threshold=self.settings.fuzzy_threshold
+                )
+                self._search_engine.set_mode(mode)
+
+                # Set initial language
+                lang_code = self._search_panel.get_language()
+                lang_table = self._lang_manager.get_table(lang_code)
+                self._search_engine.set_language_table(lang_table)
+
+                # Update UI on main thread
+                self.root.after(0, self._on_audio_data_loaded)
+
+            except Exception as e:
+                log.exception("Error loading audio data")
+                error_msg = str(e)
+                self.root.after(0, lambda msg=error_msg: self._on_load_error(msg))
+
+        threading.Thread(target=task, daemon=True).start()
+
+    def _on_audio_data_loaded(self) -> None:
+        """Handle audio data load completion."""
+        self._progress_bar.stop()
+        self._data_loaded = True
+
+        # Update mode visibility
+        self._update_mode_visibility()
+
+        # Enable search
+        self._search_panel.enable(True)
+        self._search_panel.focus_search()
+
+        # Update stats
+        self._update_stats()
+
+        # Update status
+        total = self._search_engine.total_entries if self._search_engine else 0
+        stats = self._resolver.stats
+        with_script = stats.get('audio_with_script', 0)
+        self._progress_var.set(f"Loaded {total} audio entries ({with_script} with script). Ready to search.")
+
+        log.info("Audio data loaded: %d entries", total)
 
     def _update_progress(self, msg: str) -> None:
         """Update progress message (thread-safe)."""
@@ -780,16 +936,31 @@ class MapDataGeneratorApp:
 
     def _on_result_select(self, result: SearchResult) -> None:
         """Handle result selection."""
-        # Update image (GUARANTEED to exist due to image-first architecture)
-        self._image_viewer.set_image(result.dds_path, result.ui_texture_name)
+        if self._current_mode == DataMode.AUDIO:
+            # AUDIO mode: update audio viewer
+            # In audio mode, dds_path is actually the WEM path
+            # desc_kr = KOR script, desc_translated = ENG script (from knowledge_key)
+            self._audio_viewer.set_audio(
+                wem_path=result.dds_path,
+                event_name=result.strkey,
+                script_kor=result.desc_kr,
+                script_eng=result.desc_translated
+            )
+        else:
+            # Other modes: update image (GUARANTEED to exist due to image-first architecture)
+            self._image_viewer.set_image(result.dds_path, result.ui_texture_name)
 
-        # Highlight on map if visible
-        if self._current_mode == DataMode.MAP and result.position and self._map_canvas:
-            self._map_canvas.select_node(result.strkey)
+            # Highlight on map if visible
+            if self._current_mode == DataMode.MAP and result.position and self._map_canvas:
+                self._map_canvas.select_node(result.strkey)
 
     def _on_result_double_click(self, result: SearchResult) -> None:
         """Handle result double-click."""
         self._on_result_select(result)
+
+        # In AUDIO mode, double-click plays the audio
+        if self._current_mode == DataMode.AUDIO and result.dds_path:
+            self._audio_viewer.play()
 
     def _on_map_node_click(self, strkey: str) -> None:
         """Handle map node click."""

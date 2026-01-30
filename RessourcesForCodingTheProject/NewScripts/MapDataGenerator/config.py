@@ -126,6 +126,16 @@ DEFAULT_TEXTURE_FOLDER = _apply_drive_letter(
 DEFAULT_CHARACTER_FOLDER = _apply_drive_letter(
     r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\characterinfo", _DRIVE_LETTER)
 
+# Audio-related paths
+DEFAULT_AUDIO_FOLDER_EN = _apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\sound\windows\English(US)", _DRIVE_LETTER)
+DEFAULT_AUDIO_FOLDER_KR = _apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\sound\windows\Korean", _DRIVE_LETTER)
+DEFAULT_AUDIO_FOLDER_ZH = _apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\sound\windows\Chinese(PRC)", _DRIVE_LETTER)
+DEFAULT_EXPORT_FOLDER = _apply_drive_letter(
+    r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__", _DRIVE_LETTER)
+
 
 # =============================================================================
 # Lazy Language Loading Config
@@ -142,7 +152,7 @@ LAZY_LANGUAGES = ['fre', 'ger', 'spa', 'por', 'ita', 'rus', 'tur', 'pol', 'zho-c
 # Data Mode
 # =============================================================================
 
-DATA_MODES = ['map', 'character', 'item']
+DATA_MODES = ['map', 'character', 'item', 'audio']
 DEFAULT_MODE = 'map'
 
 
@@ -220,6 +230,14 @@ UI_LANGUAGES = {
         'mode_map': 'MAP',
         'mode_character': 'CHARACTER',
         'mode_item': 'ITEM',
+        'mode_audio': 'AUDIO',
+        'event_name': 'Event Name',
+        'script_line': 'Script Line',
+        'duration': 'Duration',
+        'play': 'Play',
+        'stop': 'Stop',
+        'cleanup': 'Cleanup',
+        'audio_player': 'Audio Player',
         'character_folder': 'CharacterInfo Folder',
         'select_mode': 'Select Mode',
         'group': 'Group',
@@ -255,6 +273,14 @@ UI_LANGUAGES = {
         'mode_map': '맵',
         'mode_character': '캐릭터',
         'mode_item': '아이템',
+        'mode_audio': '오디오',
+        'event_name': '이벤트명',
+        'script_line': '스크립트 라인',
+        'duration': '길이',
+        'play': '재생',
+        'stop': '정지',
+        'cleanup': '정리',
+        'audio_player': '오디오 플레이어',
         'character_folder': '캐릭터 정보 폴더',
         'select_mode': '모드 선택',
         'group': '그룹',
@@ -285,6 +311,8 @@ class Settings:
     waypoint_folder: str = DEFAULT_WAYPOINT_FOLDER
     texture_folder: str = DEFAULT_TEXTURE_FOLDER
     character_folder: str = DEFAULT_CHARACTER_FOLDER
+    audio_folder: str = DEFAULT_AUDIO_FOLDER_EN
+    export_folder: str = DEFAULT_EXPORT_FOLDER
 
     # Search settings
     search_limit: int = DEFAULT_SEARCH_LIMIT
@@ -315,6 +343,8 @@ class Settings:
             waypoint_folder=data.get('waypoint_folder', DEFAULT_WAYPOINT_FOLDER),
             texture_folder=data.get('texture_folder', DEFAULT_TEXTURE_FOLDER),
             character_folder=data.get('character_folder', DEFAULT_CHARACTER_FOLDER),
+            audio_folder=data.get('audio_folder', DEFAULT_AUDIO_FOLDER_EN),
+            export_folder=data.get('export_folder', DEFAULT_EXPORT_FOLDER),
             search_limit=data.get('search_limit', DEFAULT_SEARCH_LIMIT),
             fuzzy_threshold=data.get('fuzzy_threshold', FUZZY_THRESHOLD),
             current_mode=data.get('current_mode', DEFAULT_MODE),
