@@ -97,6 +97,43 @@ User Search Query
 GUI Output: Results + Image + Map
 ```
 
+## XML Parsing Strategy
+
+Uses the **QACompilerNEW battle-tested pattern** with lxml `recover=True`:
+
+1. **Sanitize** - Regex-based pre-processing:
+   - Fix bad entity references (`&` → `&amp;`)
+   - Handle newlines inside `<seg>` tags
+   - Escape `<` and `&` inside attribute values
+   - Tag stack repair for mismatched tags
+
+2. **Wrap** - Add `<ROOT>` element for fragment parsing
+
+3. **Parse with fallback**:
+   ```python
+   # Try strict first
+   ET.XMLParser(huge_tree=True)
+
+   # If fails, use recovery mode
+   ET.XMLParser(recover=True, huge_tree=True)
+   ```
+
+This handles the game's malformed XML reliably without corrupting attribute values.
+
+## Current Stats (Build 014)
+
+| Data | Count |
+|------|-------|
+| DDS files indexed | ~9,300 |
+| Knowledge entries | ~3,180 (1,634 with images) |
+| MAP entries | ~3,410 (48% with images) |
+| Language entries | ~95,850 per language |
+
+**Expected "missing" DDS:**
+- `createicon` - placeholder in source data
+- `ItemIcon_Prefab_*` - in different texture folder
+- `AbyssGate_*` - no UITextureName by design
+
 ## Linkage Chain
 
 ```
