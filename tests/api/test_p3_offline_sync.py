@@ -12,11 +12,47 @@ Run: pytest tests/api/test_p3_offline_sync.py -v
 Requires: Server running at localhost:8888 with test data
 """
 
+import os
 import pytest
 import httpx
 from typing import Optional
 
 BASE_URL = "http://localhost:8888"
+
+
+def _check_postgresql_available():
+    """
+    Check if PostgreSQL is available for tests that require online mode.
+    Subscription tests require PostgreSQL (they return 400 in SQLite mode).
+    """
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.exc import OperationalError
+
+    pg_user = os.getenv("POSTGRES_USER", "locanext")
+    pg_pass = os.getenv("POSTGRES_PASSWORD", "locanext_password")
+    pg_host = os.getenv("POSTGRES_HOST", "localhost")
+    pg_port = os.getenv("POSTGRES_PORT", "6433")
+    pg_db = os.getenv("POSTGRES_DB", "locanext")
+
+    db_url = f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
+
+    try:
+        engine = create_engine(db_url, echo=False)
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except (OperationalError, Exception):
+        return False
+
+
+# Check once at import time
+_postgresql_available = _check_postgresql_available()
+
+# Skip marker for tests that require PostgreSQL (online mode)
+requires_postgresql = pytest.mark.skipif(
+    not _postgresql_available,
+    reason="Test requires PostgreSQL (subscription endpoints return 400 in SQLite mode)"
+)
 
 
 @pytest.fixture
@@ -160,6 +196,7 @@ class TestSubscriptions:
         data = response.json()
         assert data["success"] is True
 
+    @requires_postgresql
     def test_subscribe_project(self, admin_headers, test_project_id):
         """Test subscribing a project for offline sync."""
         # Project sync downloads all files - needs longer timeout
@@ -245,6 +282,7 @@ class TestOfflineFiles:
 class TestContinuousSync:
     """Test continuous sync mechanism."""
 
+    @requires_postgresql
     def test_sync_subscription_requires_subscription(self, admin_headers):
         """Test that sync-subscription fails without subscription."""
         response = httpx.post(
@@ -259,6 +297,7 @@ class TestContinuousSync:
         # Should return 404 (subscription not found) or 500 (file not found)
         assert response.status_code in [404, 500]
 
+    @requires_postgresql
     def test_sync_subscription_with_project(self, admin_headers, test_project_id):
         """Test syncing a project subscription."""
         # First subscribe
