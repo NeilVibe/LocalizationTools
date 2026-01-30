@@ -21,3 +21,4 @@ Build - QACompiler Sequencer/Dialog categories
 Build QA - Fix manager stats triple-counting
 Build: LanguageDataExporter enhancement
 Build 029: LanguageDataExporter workflow simplification
+Build 504: aiosqlite migration
