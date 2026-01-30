@@ -512,6 +512,20 @@ jobs:
             # Wait for server (30 seconds per attempt)
             for i in {1..15}; do
               sleep 2
+
+              # Check if process is still alive
+              if ! ps -p $SERVER_PID > /dev/null 2>&1; then
+                echo "[ERROR] Server process $SERVER_PID died!"
+                echo "Last 50 lines of server log:"
+                tail -50 /tmp/server.log 2>/dev/null || echo "(no log)"
+                echo "---"
+                echo "Checking for core dumps..."
+                ls -la /tmp/core* 2>/dev/null || echo "No core dumps in /tmp"
+                # Try to get exit status from wait (may not work with disown)
+                wait $SERVER_PID 2>/dev/null && echo "Exit code: $?" || echo "Could not get exit code"
+                return 1
+              fi
+
               if [ $((i % 5)) -eq 0 ]; then
                 echo "Waiting for server... ($i/15) - Last log:"
                 tail -1 /tmp/server.log 2>/dev/null || echo "(no log yet)"
