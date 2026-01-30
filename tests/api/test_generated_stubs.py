@@ -17,6 +17,19 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from server.main import app
+from server import config
+
+
+def is_sqlite_mode():
+    """Check if we're running in SQLite mode (no PostgreSQL-specific functions)."""
+    return config.ACTIVE_DATABASE_TYPE == "sqlite"
+
+
+# Skip marker for tests that require PostgreSQL-specific functions
+requires_postgresql = pytest.mark.skipif(
+    is_sqlite_mode(),
+    reason="Test requires PostgreSQL-specific functions (to_char, version())"
+)
 
 
 # ============================================================================
@@ -131,18 +144,21 @@ class TestAdminStatistics:
         # Endpoint existence check: 2xx = success, 422 = validation (needs data), 404 = not found (needs real ID)
         assert response.status_code in [200, 201, 204, 422, 404], f'Unexpected {response.status_code}: {response.text[:200]}'
 
+    @requires_postgresql
     def test_get_get_daily_stats_api_v2_admin_stats_daily_get(self, client, auth_headers):
         """GET /api/v2/admin/stats/daily - Get Daily Stats"""
         response = client.get("/api/v2/admin/stats/daily", headers=auth_headers)
         # Endpoint existence check: 2xx = success, 422 = validation (needs data), 404 = not found (needs real ID)
         assert response.status_code in [200, 201, 204, 422, 404], f'Unexpected {response.status_code}: {response.text[:200]}'
 
+    @requires_postgresql
     def test_get_get_database_stats_api_v2_admin_stats_database_get(self, client, auth_headers):
         """GET /api/v2/admin/stats/database - Get Database Stats"""
         response = client.get("/api/v2/admin/stats/database", headers=auth_headers)
         # Endpoint existence check: 2xx = success, 422 = validation (needs data), 404 = not found (needs real ID)
         assert response.status_code in [200, 201, 204, 422, 404], f'Unexpected {response.status_code}: {response.text[:200]}'
 
+    @requires_postgresql
     def test_get_get_error_rate_api_v2_admin_stats_errors_rate_get(self, client, auth_headers):
         """GET /api/v2/admin/stats/errors/rate - Get Error Rate"""
         response = client.get("/api/v2/admin/stats/errors/rate", headers=auth_headers)
@@ -155,6 +171,7 @@ class TestAdminStatistics:
         # Endpoint existence check: 2xx = success, 422 = validation (needs data), 404 = not found (needs real ID)
         assert response.status_code in [200, 201, 204, 422, 404], f'Unexpected {response.status_code}: {response.text[:200]}'
 
+    @requires_postgresql
     def test_get_get_monthly_stats_api_v2_admin_stats_monthly_get(self, client, auth_headers):
         """GET /api/v2/admin/stats/monthly - Get Monthly Stats"""
         response = client.get("/api/v2/admin/stats/monthly", headers=auth_headers)
@@ -203,6 +220,7 @@ class TestAdminStatistics:
         # Endpoint existence check: 2xx = success, 422 = validation (needs data), 404 = not found (needs real ID)
         assert response.status_code in [200, 201, 204, 422, 404], f'Unexpected {response.status_code}: {response.text[:200]}'
 
+    @requires_postgresql
     def test_get_get_weekly_stats_api_v2_admin_stats_weekly_get(self, client, auth_headers):
         """GET /api/v2/admin/stats/weekly - Get Weekly Stats"""
         response = client.get("/api/v2/admin/stats/weekly", headers=auth_headers)
