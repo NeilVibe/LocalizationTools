@@ -31,3 +31,4 @@ Build 510: Clean SQLite DB between CI builds - Sat Jan 31 04:00:00 AM KST 2026
 Build 511: Debug server death diagnostics - Sat Jan 31 04:15:00 AM KST 2026
 Build 512: Fix SQLite cleanup + 60s timeout - Sat Jan 31 04:30:00 AM KST 2026
 Build 513: Skip PostgreSQL stats tests in SQLite mode - Sat Jan 31 05:00:00 AM KST 2026
+Build 514: Fix PostgreSQL skip markers - Sat Jan 31 03:45:17 AM KST 2026
