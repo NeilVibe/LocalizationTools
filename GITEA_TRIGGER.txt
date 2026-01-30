@@ -22,3 +22,4 @@ Build QA - Fix manager stats triple-counting
 Build: LanguageDataExporter enhancement
 Build 029: LanguageDataExporter workflow simplification
 Build 504: aiosqlite migration
+Build 505: aiosqlite migration retry - Sat Jan 31 02:33:02 AM KST 2026
