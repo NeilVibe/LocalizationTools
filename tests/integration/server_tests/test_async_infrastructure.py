@@ -10,7 +10,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from server.utils.dependencies import initialize_async_database, get_async_db, AsyncSessionWrapper
+from server.utils.dependencies import initialize_async_database, get_async_db
 from server.utils.auth import get_current_user_async, create_access_token, hash_password
 from server.database.models import User, LogEntry
 
@@ -25,8 +25,8 @@ async def test_async_database_initialization():
     db = await async_gen.__anext__()
 
     assert db is not None
-    # Accept both AsyncSession (PostgreSQL) and AsyncSessionWrapper (SQLite fallback)
-    assert isinstance(db, (AsyncSession, AsyncSessionWrapper))
+    # Both PostgreSQL and SQLite now use true AsyncSession (via asyncpg/aiosqlite)
+    assert isinstance(db, AsyncSession)
 
     # Cleanup
     await async_gen.aclose()

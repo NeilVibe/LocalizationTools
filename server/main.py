@@ -63,7 +63,7 @@ def setup_logging():
 setup_logging()
 
 # Validate security configuration on startup
-if not config.validate_security_on_startup(logger):
+if not config.validate_security_on_startup():
     logger.error("Server startup aborted due to security configuration errors!")
     logger.error("Fix the security issues above or set SECURITY_MODE=warn to continue (not recommended for production)")
     sys.exit(1)

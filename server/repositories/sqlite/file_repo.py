@@ -3,6 +3,8 @@ SQLite File Repository.
 
 Implements FileRepository interface using SQLite (offline mode).
 Delegates to existing OfflineDatabase methods.
+
+ASYNC MIGRATION (2026-01-31): Uses aiosqlite for true async operations.
 """
 
 from typing import List, Optional, Dict, Any
@@ -28,11 +30,11 @@ class SQLiteFileRepository(FileRepository):
 
     async def get(self, file_id: int) -> Optional[Dict[str, Any]]:
         # Use existing offline.py method
-        file = self.db.get_local_file(file_id)
+        file = await self.db.get_local_file(file_id)
         if file:
             return self._normalize_file(file)
         # Also try get_file for synced files
-        file = self.db.get_file(file_id)
+        file = await self.db.get_file(file_id)
         return self._normalize_file(file) if file else None
 
     async def get_all(
@@ -43,10 +45,10 @@ class SQLiteFileRepository(FileRepository):
         offset: int = 0
     ) -> List[Dict[str, Any]]:
         if project_id is not None:
-            files = self.db.get_files(project_id, folder_id)
+            files = await self.db.get_files(project_id, folder_id)
         else:
             # Get all local files
-            files = self.db.get_local_files()
+            files = await self.db.get_local_files()
 
         # Apply pagination
         files = files[offset:offset + limit]
@@ -67,7 +69,7 @@ class SQLiteFileRepository(FileRepository):
         # - Negative ID generation
         # - Auto-rename for duplicates
         # - sync_status='local'
-        result = self.db.create_local_file(
+        result = await self.db.create_local_file(
             name=name,
             original_filename=original_filename,
             file_format=format,
@@ -81,23 +83,23 @@ class SQLiteFileRepository(FileRepository):
         file_id = result["id"] if isinstance(result, dict) else result
 
         # Return full file dict
-        file = self.db.get_local_file(file_id)
+        file = await self.db.get_local_file(file_id)
         return self._normalize_file(file)
 
     async def delete(self, file_id: int, permanent: bool = False) -> bool:
         # Uses P9-BIN-001 soft delete pattern
-        return self.db.delete_local_file(file_id, permanent=permanent)
+        return await self.db.delete_local_file(file_id, permanent=permanent)
 
     # =========================================================================
     # File Operations
     # =========================================================================
 
     async def rename(self, file_id: int, new_name: str) -> Dict[str, Any]:
-        success = self.db.rename_local_file(file_id, new_name)
+        success = await self.db.rename_local_file(file_id, new_name)
         if not success:
             raise ValueError(f"Could not rename file {file_id}")
 
-        file = self.db.get_local_file(file_id)
+        file = await self.db.get_local_file(file_id)
         return self._normalize_file(file)
 
     async def move(
@@ -105,11 +107,11 @@ class SQLiteFileRepository(FileRepository):
         file_id: int,
         target_folder_id: Optional[int] = None
     ) -> Dict[str, Any]:
-        success = self.db.move_local_file(file_id, target_folder_id)
+        success = await self.db.move_local_file(file_id, target_folder_id)
         if not success:
             raise ValueError(f"Could not move file {file_id}")
 
-        file = self.db.get_local_file(file_id)
+        file = await self.db.get_local_file(file_id)
         return self._normalize_file(file)
 
     async def move_cross_project(
@@ -154,12 +156,12 @@ class SQLiteFileRepository(FileRepository):
 
     async def update_row_count(self, file_id: int, count: int) -> None:
         # Update row count in SQLite
-        with self.db._get_connection() as conn:
-            conn.execute(
+        async with self.db._get_async_connection() as conn:
+            await conn.execute(
                 "UPDATE offline_files SET row_count = ? WHERE id = ?",
                 (count, file_id)
             )
-            conn.commit()
+            await conn.commit()
 
     # =========================================================================
     # Row Operations (File-scoped)
@@ -172,7 +174,7 @@ class SQLiteFileRepository(FileRepository):
         limit: int = 100,
         status_filter: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        rows = self.db.get_rows_for_file(file_id)
+        rows = await self.db.get_rows_for_file(file_id)
 
         # Apply status filter
         if status_filter:
@@ -189,7 +191,7 @@ class SQLiteFileRepository(FileRepository):
         rows: List[Dict[str, Any]]
     ) -> int:
         # Use existing method
-        self.db.add_rows_to_local_file(file_id, rows)
+        await self.db.add_rows_to_local_file(file_id, rows)
         return len(rows)
 
     async def get_rows_for_export(
@@ -197,7 +199,7 @@ class SQLiteFileRepository(FileRepository):
         file_id: int,
         status_filter: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        rows = self.db.get_rows_for_file(file_id)
+        rows = await self.db.get_rows_for_file(file_id)
 
         # Apply status filter
         if status_filter:
@@ -216,7 +218,7 @@ class SQLiteFileRepository(FileRepository):
         folder_id: Optional[int] = None,
         exclude_id: Optional[int] = None
     ) -> bool:
-        with self.db._get_connection() as conn:
+        async with self.db._get_async_connection() as conn:
             if folder_id is None:
                 query = """
                     SELECT COUNT(*) as cnt FROM offline_files
@@ -234,7 +236,8 @@ class SQLiteFileRepository(FileRepository):
                 query += " AND id != ?"
                 params.append(exclude_id)
 
-            result = conn.execute(query, params).fetchone()
+            cursor = await conn.execute(query, params)
+            result = await cursor.fetchone()
             return result["cnt"] > 0
 
     async def generate_unique_name(
@@ -269,11 +272,12 @@ class SQLiteFileRepository(FileRepository):
         # Get project info
         project_id = file.get("project_id")
         if project_id:
-            with self.db._get_connection() as conn:
-                project = conn.execute(
+            async with self.db._get_async_connection() as conn:
+                cursor = await conn.execute(
                     "SELECT name FROM offline_projects WHERE id = ?",
                     (project_id,)
-                ).fetchone()
+                )
+                project = await cursor.fetchone()
                 if project:
                     file["project_name"] = project["name"]
 
@@ -333,10 +337,11 @@ class SQLiteFileRepository(FileRepository):
         P10-SEARCH: Used by Explorer Search for unified search across entities.
         """
         search_term = f"%{query}%"
-        with self.db._get_connection() as conn:
-            rows = conn.execute(
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_files WHERE name LIKE ? COLLATE NOCASE",
                 (search_term,)
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
 
             return [self._normalize_file(dict(row)) for row in rows]

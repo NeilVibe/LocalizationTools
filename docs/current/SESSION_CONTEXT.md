@@ -1,6 +1,53 @@
 # Session Context
 
-> Last Updated: 2026-01-23 (Session 57)
+> Last Updated: 2026-01-31 (Session 58)
+
+---
+
+## SESSION 58: Project Health Check + Mac Build Prep ✅
+
+### What Was Done
+
+1. **Project Status Review**
+   - Verified Windows build stable (v26.118.1916)
+   - Confirmed 137 issues fixed, 1,400+ tests passing
+   - All 4 tools working (LDM, XLS Transfer, Quick Search, KR Similar)
+
+2. **Tech Debt Audit**
+   - Found 40+ print() statements (MEDIUM - documented, deferred)
+   - Found 4 Svelte 4 deprecated `$:` syntax → **FIXED**
+   - AsyncSessionWrapper fake async (HIGH - documented, deferred)
+
+3. **GitHub vs Gitea Sync**
+   - Gitea was 14 commits behind GitHub
+   - Synced: `git push gitea main` ✅
+   - Discovered: GitHub HAS Mac builds, Gitea Windows-only
+
+4. **CI/CD Clarification**
+   - **GitHub**: Builds Windows + macOS (dual platform)
+   - **Gitea**: Builds Windows only (local runner)
+   - Need to trigger GitHub build for Mac release
+
+### Files Fixed
+
+| File | Change |
+|------|--------|
+| `PresenceBar.svelte` | `$:` → `$derived` (3 instances) |
+| `ColorText.svelte` | `$:` → `$derived` (1 instance) |
+| `ISSUES_TO_FIX.md` | Updated with new tech debt |
+
+### Platform Build Status
+
+| Platform | CI | Last Build | Status |
+|----------|-----|------------|--------|
+| Windows | Gitea | v26.118.1916 | ✅ Ready |
+| Windows | GitHub | Build 499 | ✅ (artifacts expired) |
+| macOS | GitHub | Build 499 | ⚠️ Need new build |
+
+### Next Steps
+
+- [ ] Trigger GitHub build for fresh Mac release
+- [ ] Test Mac build for showcase
 
 ---
 

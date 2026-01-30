@@ -3,6 +3,8 @@ SQLite Row Repository.
 
 Implements RowRepository interface using SQLite (offline mode).
 Delegates to existing OfflineDatabase methods.
+
+ASYNC MIGRATION (2026-01-31): Uses aiosqlite for true async operations.
 """
 
 import json
@@ -61,19 +63,20 @@ class SQLiteRowRepository(RowRepository):
 
     async def get(self, row_id: int) -> Optional[Dict[str, Any]]:
         """Get row by ID."""
-        row = self.db.get_row(row_id)
+        row = await self.db.get_row(row_id)
         return self._normalize_row(row)
 
     async def get_with_file(self, row_id: int) -> Optional[Dict[str, Any]]:
         """Get row with file info."""
-        with self.db._get_connection() as conn:
-            row = conn.execute(
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT r.*, f.name as file_name, f.project_id
                    FROM offline_rows r
                    JOIN offline_files f ON r.file_id = f.id
                    WHERE r.id = ?""",
                 (row_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 return None
@@ -97,14 +100,14 @@ class SQLiteRowRepository(RowRepository):
         import time
         from datetime import datetime
 
-        with self.db._get_connection() as conn:
+        async with self.db._get_async_connection() as conn:
             # Use negative row IDs for local rows
             row_id = -int(time.time() * 1000) % 1000000000
 
             extra_json = json.dumps(extra_data) if extra_data else None
             now = datetime.now().isoformat()
 
-            conn.execute(
+            await conn.execute(
                 """INSERT INTO offline_rows
                    (id, server_id, file_id, server_file_id, row_num, string_id,
                     source, target, memo, status, extra_data, created_at, updated_at,
@@ -125,17 +128,17 @@ class SQLiteRowRepository(RowRepository):
             )
 
             # Update file row count
-            conn.execute(
+            await conn.execute(
                 "UPDATE offline_files SET row_count = row_count + 1 WHERE id = ?",
                 (file_id,)
             )
-            conn.commit()
+            await conn.commit()
 
             logger.info(f"Created row: id={row_id}, file_id={file_id}, row_num={row_num}")
 
-            # Return created row
-            row = self.db.get_row(row_id)
-            return self._normalize_row(row)
+        # Return created row
+        row = await self.db.get_row(row_id)
+        return self._normalize_row(row)
 
     async def update(
         self,
@@ -145,15 +148,16 @@ class SQLiteRowRepository(RowRepository):
         updated_by: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
         """Update a row's target text or status."""
-        with self.db._get_connection() as conn:
+        async with self.db._get_async_connection() as conn:
             # Check if row exists and get file sync status
-            row = conn.execute(
+            cursor = await conn.execute(
                 """SELECT r.*, f.sync_status as file_sync_status
                    FROM offline_rows r
                    JOIN offline_files f ON r.file_id = f.id
                    WHERE r.id = ?""",
                 (row_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 return None
@@ -180,26 +184,27 @@ class SQLiteRowRepository(RowRepository):
 
             params.append(row_id)
 
-            conn.execute(
+            await conn.execute(
                 f"UPDATE offline_rows SET {', '.join(updates)} WHERE id = ?",
                 params
             )
-            conn.commit()
+            await conn.commit()
 
             logger.info(f"Updated row: id={row_id}, target_changed={target is not None}, status_changed={status is not None}")
 
-            # Return updated row
-            updated_row = self.db.get_row(row_id)
-            return self._normalize_row(updated_row)
+        # Return updated row
+        updated_row = await self.db.get_row(row_id)
+        return self._normalize_row(updated_row)
 
     async def delete(self, row_id: int) -> bool:
         """Delete a row."""
-        with self.db._get_connection() as conn:
+        async with self.db._get_async_connection() as conn:
             # Get file_id before deleting
-            row = conn.execute(
+            cursor = await conn.execute(
                 "SELECT file_id FROM offline_rows WHERE id = ?",
                 (row_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 return False
@@ -207,14 +212,14 @@ class SQLiteRowRepository(RowRepository):
             file_id = row["file_id"]
 
             # Delete the row
-            conn.execute("DELETE FROM offline_rows WHERE id = ?", (row_id,))
+            await conn.execute("DELETE FROM offline_rows WHERE id = ?", (row_id,))
 
             # Update file row count
-            conn.execute(
+            await conn.execute(
                 "UPDATE offline_files SET row_count = row_count - 1 WHERE id = ? AND row_count > 0",
                 (file_id,)
             )
-            conn.commit()
+            await conn.commit()
 
             logger.info(f"Deleted row: id={row_id}")
             return True
@@ -230,7 +235,7 @@ class SQLiteRowRepository(RowRepository):
     ) -> int:
         """Bulk create rows for a file."""
         # Use existing method
-        self.db.add_rows_to_local_file(file_id, rows)
+        await self.db.add_rows_to_local_file(file_id, rows)
         logger.info(f"Bulk created {len(rows)} rows for file_id={file_id}")
         return len(rows)
 
@@ -240,7 +245,7 @@ class SQLiteRowRepository(RowRepository):
     ) -> int:
         """Bulk update multiple rows."""
         count = 0
-        with self.db._get_connection() as conn:
+        async with self.db._get_async_connection() as conn:
             for update in updates:
                 row_id = update.get("id")
                 if not row_id:
@@ -262,14 +267,14 @@ class SQLiteRowRepository(RowRepository):
 
                 params.append(row_id)
 
-                result = conn.execute(
+                cursor = await conn.execute(
                     f"UPDATE offline_rows SET {', '.join(update_parts)} WHERE id = ?",
                     params
                 )
-                if result.rowcount > 0:
+                if cursor.rowcount > 0:
                     count += 1
 
-            conn.commit()
+            await conn.commit()
 
         logger.info(f"Bulk updated {count} rows")
         return count
@@ -293,7 +298,7 @@ class SQLiteRowRepository(RowRepository):
         offset = (page - 1) * limit
 
         # Get all rows first
-        all_rows = self.db.get_rows_for_file(file_id)
+        all_rows = await self.db.get_rows_for_file(file_id)
 
         # Apply search filter
         if search:
@@ -363,7 +368,7 @@ class SQLiteRowRepository(RowRepository):
         status_filter: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get all rows for a file (no pagination)."""
-        rows = self.db.get_rows_for_file(file_id)
+        rows = await self.db.get_rows_for_file(file_id)
 
         if status_filter:
             if status_filter == "reviewed":
@@ -377,11 +382,12 @@ class SQLiteRowRepository(RowRepository):
 
     async def count_for_file(self, file_id: int) -> int:
         """Count rows in a file."""
-        with self.db._get_connection() as conn:
-            result = conn.execute(
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT COUNT(*) as cnt FROM offline_rows WHERE file_id = ?",
                 (file_id,)
-            ).fetchone()
+            )
+            result = await cursor.fetchone()
             return result["cnt"] if result else 0
 
     # =========================================================================

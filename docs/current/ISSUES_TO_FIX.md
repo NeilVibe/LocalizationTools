@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-18 (Session 53) | **Build:** 497 | **Open:** 4
+**Last Updated:** 2026-01-31 (Session 59) | **Build:** 499 | **Open:** 4
 
 ---
 
@@ -9,20 +9,49 @@
 | Status | Count |
 |--------|-------|
 | **OPEN** | 4 |
-| **FIXED/CLOSED** | 137 |
+| **FIXED/CLOSED** | 141 |
 
 ---
 
 ## OPEN ISSUES
 
-### TECH-DEBT-001: AsyncSessionWrapper Should Be aiosqlite ⚠️ HIGH
+### TECH-DEBT-001: SQLite Repositories Use Sync I/O ⚠️ LOW
 
-- **Severity:** HIGH (architectural debt)
-- **Component:** `server/utils/dependencies.py:33-143`
+- **Severity:** LOW (single-user offline mode, not critical)
+- **Component:** `server/repositories/sqlite/*.py`, `server/database/offline.py`
 
-**Problem:** SQLite wrapper fakes async - blocks event loop. Should use true `aiosqlite`.
+**Problem:** SQLite repositories use sync `sqlite3` calls inside `async def` methods.
 
-**Impact:** Performance issues under load, GIL blocking.
+**Impact:** Event loop blocked during SQLite queries in offline mode.
+
+**Why LOW:** Offline mode = single user desktop app. No concurrent requests. Works fine.
+
+**Fixed (2026-01-31):**
+- AsyncSessionWrapper REMOVED (~110 lines deleted)
+- `get_async_db()` now uses real aiosqlite for SQLite mode
+- Both PostgreSQL and SQLite use TRUE async via SQLAlchemy layer
+
+**Remaining:** SQLite repositories use `OfflineDatabase` which is sync. Deferred.
+
+---
+
+### TECH-DEBT-002: CLI Tools Use print() Instead of Logger ⚠️ LOW
+
+- **Severity:** LOW (CLI tools, intentional stdout/stderr for user interaction)
+- **Components:** `server/tools/xlstransfer/` (40+ instances)
+
+**Problem:** Legacy CLI tools use `print()` instead of `logger.*()`.
+
+**Locations:**
+- `server/tools/xlstransfer/translate_file.py`
+- `server/tools/xlstransfer/process_operation.py`
+- `server/tools/xlstransfer/load_dictionary.py`
+- `server/tools/xlstransfer/embeddings.py`
+- `server/client_config/client_config.py`
+
+**Why LOW:** These are CLI tools that NEED stdout/stderr for user interaction. Not bugs.
+
+**Fixed (2026-01-31):** Security logging in `config.py` now uses `logger` (3 lines fixed).
 
 ---
 
@@ -52,12 +81,23 @@
 
 | File | Lines | Target |
 |------|-------|--------|
-| `ISSUES_TO_FIX.md` | ~200 | ✅ FIXED |
 | `OFFLINE_ONLINE_MODE.md` | 1660 | < 1000 |
 
 ---
 
-## RECENTLY FIXED (Session 53)
+## RECENTLY FIXED (Session 58)
+
+### TECH-DEBT-003: Svelte 4 Deprecated Syntax ✅ FIXED
+
+- **Fixed:** Session 58
+- **Problem:** Used `$:` reactive statements instead of Svelte 5 `$derived`
+- **Files Fixed:**
+  - `PresenceBar.svelte` - 3 instances → `$derived`
+  - `ColorText.svelte` - 1 instance → `$derived`
+
+---
+
+## Session 53 Fixes
 
 ### BUILD-001: Slim Installer ✅ FIXED
 
@@ -73,14 +113,6 @@
 | UI-113 | Edit mode right-click menu with colors |
 | BUG-044 | File search localStorage key fix |
 | UI-114 | Toast notification positioning |
-
-### BUG-043: Offline Folder Creation ✅ FIXED (Session 50)
-
-- **Fix:** Added `**/*.sql` to extraResources
-
-### PATCH-001/002: Patch Updater ✅ FIXED (Session 48)
-
-- **Fix:** Use Electron `net` module + `original-fs`
 
 ---
 

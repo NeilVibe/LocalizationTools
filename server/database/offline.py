@@ -3,23 +3,33 @@ P3 Offline/Online Mode - SQLite Database Manager
 
 Handles local SQLite database for offline storage.
 Provides methods for downloading, storing, and retrieving offline data.
+
+ASYNC MIGRATION (2026-01-31):
+- Uses aiosqlite for true async database operations
+- Initialization uses sync sqlite3 (runs once at startup)
+- All runtime operations use async aiosqlite
 """
 
 import sqlite3
+import aiosqlite
 import json
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
+from contextlib import asynccontextmanager
 from loguru import logger
 
 
 class OfflineDatabase:
-    """Manager for local SQLite offline storage."""
+    """Manager for local SQLite offline storage with async support."""
 
     def __init__(self, db_path: Optional[str] = None):
         """
         Initialize offline database.
+
+        Note: Uses sync sqlite3 for schema initialization (runs once at startup).
+        All runtime operations use async aiosqlite.
 
         Args:
             db_path: Path to SQLite database file. If None, uses default location.
@@ -31,7 +41,7 @@ class OfflineDatabase:
 
         self.db_path = db_path
         self._ensure_directory()
-        self._init_schema()
+        self._init_schema_sync()  # Sync init at startup
 
     def _get_app_data_dir(self) -> str:
         """Get platform-specific app data directory."""
@@ -54,8 +64,8 @@ class OfflineDatabase:
     OFFLINE_STORAGE_PLATFORM_ID = -1
     OFFLINE_STORAGE_PROJECT_ID = -1
 
-    def _init_schema(self):
-        """Initialize database schema if needed."""
+    def _init_schema_sync(self):
+        """Initialize database schema if needed (SYNC - runs at startup only)."""
         schema_path = Path(__file__).parent / "offline_schema.sql"
 
         if not schema_path.exists():
@@ -65,22 +75,30 @@ class OfflineDatabase:
         with open(schema_path, "r") as f:
             schema_sql = f.read()
 
-        with self._get_connection() as conn:
+        # Use sync connection for startup initialization
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
             conn.executescript(schema_sql)
             conn.commit()
             logger.debug(f"Offline database initialized: {self.db_path}")
+        finally:
+            conn.close()
 
-        # P9-ARCH: Create Offline Storage platform and project
-        self._ensure_offline_storage_project()
+        # P9-ARCH: Create Offline Storage platform and project (sync)
+        self._ensure_offline_storage_project_sync()
 
-    def _ensure_offline_storage_project(self):
+    def _ensure_offline_storage_project_sync(self):
         """
         P9-ARCH: Create the Offline Storage platform and project if they don't exist.
+        SYNC version - used only during initialization.
 
         This makes Offline Storage a real project in the SQLite database,
         so TMs can be assigned to it and all existing logic works naturally.
         """
-        with self._get_connection() as conn:
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
             # Check if Offline Storage platform exists
             platform = conn.execute(
                 "SELECT id FROM offline_platforms WHERE id = ?",
@@ -112,80 +130,105 @@ class OfflineDatabase:
                 logger.info("P9-ARCH: Created Offline Storage project")
 
             conn.commit()
+        finally:
+            conn.close()
 
     def _get_connection(self) -> sqlite3.Connection:
-        """Get database connection with row factory."""
+        """Get SYNC database connection with row factory.
+
+        DEPRECATED: Use _get_async_connection() for async operations.
+        Kept for backward compatibility during migration.
+        """
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
+
+    @asynccontextmanager
+    async def _get_async_connection(self):
+        """Get ASYNC database connection with row factory.
+
+        Usage:
+            async with self._get_async_connection() as conn:
+                async with conn.execute("SELECT * FROM table") as cursor:
+                    rows = await cursor.fetchall()
+        """
+        conn = await aiosqlite.connect(self.db_path)
+        conn.row_factory = aiosqlite.Row
+        try:
+            yield conn
+        finally:
+            await conn.close()
 
     # =========================================================================
     # Sync Metadata
     # =========================================================================
 
-    def get_meta(self, key: str) -> Optional[str]:
+    async def get_meta(self, key: str) -> Optional[str]:
         """Get sync metadata value."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT value FROM sync_meta WHERE key = ?", (key,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return row["value"] if row else None
 
-    def set_meta(self, key: str, value: str):
+    async def set_meta(self, key: str, value: str):
         """Set sync metadata value."""
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """INSERT OR REPLACE INTO sync_meta (key, value, updated_at)
                    VALUES (?, ?, datetime('now'))""",
                 (key, value)
             )
-            conn.commit()
+            await conn.commit()
 
     # =========================================================================
     # P9-ARCH: Offline Storage Project
     # =========================================================================
 
-    def get_offline_storage_project(self) -> Dict:
+    async def get_offline_storage_project(self) -> Dict:
         """
         P9-ARCH: Get the Offline Storage project info.
 
         This is the "virtual" project that holds all local files.
         TMs can be assigned to this project to work with offline files.
         """
-        with self._get_connection() as conn:
-            project = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_projects WHERE id = ?",
                 (self.OFFLINE_STORAGE_PROJECT_ID,)
-            ).fetchone()
+            )
+            project = await cursor.fetchone()
             return dict(project) if project else None
 
-    def get_offline_storage_platform(self) -> Dict:
+    async def get_offline_storage_platform(self) -> Dict:
         """
         P9-ARCH: Get the Offline Storage platform info.
         """
-        with self._get_connection() as conn:
-            platform = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_platforms WHERE id = ?",
                 (self.OFFLINE_STORAGE_PLATFORM_ID,)
-            ).fetchone()
+            )
+            platform = await cursor.fetchone()
             return dict(platform) if platform else None
 
-    def get_last_sync(self) -> Optional[str]:
+    async def get_last_sync(self) -> Optional[str]:
         """Get last sync timestamp."""
-        return self.get_meta("last_sync")
+        return await self.get_meta("last_sync")
 
-    def set_last_sync(self):
+    async def set_last_sync(self):
         """Update last sync timestamp to now."""
-        self.set_meta("last_sync", datetime.utcnow().isoformat())
+        await self.set_meta("last_sync", datetime.utcnow().isoformat())
 
     # =========================================================================
     # Platform Operations
     # =========================================================================
 
-    def save_platform(self, platform: Dict[str, Any]) -> int:
+    async def save_platform(self, platform: Dict[str, Any]) -> int:
         """Save a platform to offline storage."""
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """INSERT OR REPLACE INTO offline_platforms
                    (id, server_id, name, description, owner_id, is_restricted,
                     created_at, updated_at, downloaded_at, sync_status)
@@ -201,25 +244,26 @@ class OfflineDatabase:
                     platform.get("updated_at"),
                 )
             )
-            conn.commit()
+            await conn.commit()
             return platform["id"]
 
-    def get_platforms(self) -> List[Dict]:
+    async def get_platforms(self) -> List[Dict]:
         """Get all offline platforms."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_platforms ORDER BY name"
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
     # =========================================================================
     # Project Operations
     # =========================================================================
 
-    def save_project(self, project: Dict[str, Any]) -> int:
+    async def save_project(self, project: Dict[str, Any]) -> int:
         """Save a project to offline storage."""
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """INSERT OR REPLACE INTO offline_projects
                    (id, server_id, name, description, platform_id, server_platform_id,
                     owner_id, is_restricted, created_at, updated_at, downloaded_at, sync_status)
@@ -237,31 +281,32 @@ class OfflineDatabase:
                     project.get("updated_at"),
                 )
             )
-            conn.commit()
+            await conn.commit()
             return project["id"]
 
-    def get_projects(self, platform_id: Optional[int] = None) -> List[Dict]:
+    async def get_projects(self, platform_id: Optional[int] = None) -> List[Dict]:
         """Get offline projects, optionally filtered by platform."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             if platform_id:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     "SELECT * FROM offline_projects WHERE platform_id = ? ORDER BY name",
                     (platform_id,)
-                ).fetchall()
+                )
             else:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     "SELECT * FROM offline_projects ORDER BY name"
-                ).fetchall()
+                )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
     # =========================================================================
     # Folder Operations
     # =========================================================================
 
-    def save_folder(self, folder: Dict[str, Any]) -> int:
+    async def save_folder(self, folder: Dict[str, Any]) -> int:
         """Save a folder to offline storage."""
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """INSERT OR REPLACE INTO offline_folders
                    (id, server_id, name, project_id, server_project_id,
                     parent_id, server_parent_id, created_at, downloaded_at, sync_status)
@@ -277,27 +322,28 @@ class OfflineDatabase:
                     folder.get("created_at"),
                 )
             )
-            conn.commit()
+            await conn.commit()
             return folder["id"]
 
-    def get_folders(self, project_id: int, parent_id: Optional[int] = None) -> List[Dict]:
+    async def get_folders(self, project_id: int, parent_id: Optional[int] = None) -> List[Dict]:
         """Get folders in a project, optionally filtered by parent."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             if parent_id is None:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     """SELECT * FROM offline_folders
                        WHERE project_id = ? AND parent_id IS NULL ORDER BY name""",
                     (project_id,)
-                ).fetchall()
+                )
             else:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     """SELECT * FROM offline_folders
                        WHERE project_id = ? AND parent_id = ? ORDER BY name""",
                     (project_id, parent_id)
-                ).fetchall()
+                )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    def create_local_folder(self, name: str, parent_id: int = None) -> int:
+    async def create_local_folder(self, name: str, parent_id: int = None) -> int:
         """
         P9: Create a new folder directly in Offline Storage (local-only).
 
@@ -315,16 +361,16 @@ class OfflineDatabase:
         now = datetime.now().isoformat()
         offline_project_id = self.OFFLINE_STORAGE_PROJECT_ID
 
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Check for duplicate names in same parent
             if parent_id is None:
-                cursor = conn.execute(
+                cursor = await conn.execute(
                     """SELECT name FROM offline_folders
                        WHERE project_id = ? AND parent_id IS NULL AND name = ?""",
                     (offline_project_id, name)
                 )
             else:
-                cursor = conn.execute(
+                cursor = await conn.execute(
                     """SELECT name FROM offline_folders
                        WHERE project_id = ? AND parent_id = ? AND name = ?""",
                     (offline_project_id, parent_id, name)
@@ -332,23 +378,23 @@ class OfflineDatabase:
 
             # Auto-rename if duplicate exists
             final_name = name
-            if cursor.fetchone():
+            if await cursor.fetchone():
                 counter = 1
                 while True:
                     final_name = f"{name}_{counter}"
                     if parent_id is None:
-                        cursor = conn.execute(
+                        cursor = await conn.execute(
                             """SELECT name FROM offline_folders
                                WHERE project_id = ? AND parent_id IS NULL AND name = ?""",
                             (offline_project_id, final_name)
                         )
                     else:
-                        cursor = conn.execute(
+                        cursor = await conn.execute(
                             """SELECT name FROM offline_folders
                                WHERE project_id = ? AND parent_id = ? AND name = ?""",
                             (offline_project_id, parent_id, final_name)
                         )
-                    if not cursor.fetchone():
+                    if not await cursor.fetchone():
                         break
                     counter += 1
                 logger.info(f"Auto-renamed duplicate folder: '{name}' → '{final_name}'")
@@ -357,37 +403,38 @@ class OfflineDatabase:
             # Fix: Negate AFTER modulo (Python modulo with positive divisor returns positive)
             folder_id = -(int(time.time() * 1000) % 1000000000)
 
-            conn.execute(
+            await conn.execute(
                 """INSERT INTO offline_folders
                    (id, server_id, name, project_id, server_project_id,
                     parent_id, server_parent_id, created_at, downloaded_at, sync_status)
                    VALUES (?, NULL, ?, ?, NULL, ?, NULL, ?, datetime('now'), 'local')""",
                 (folder_id, final_name, offline_project_id, parent_id, now)
             )
-            conn.commit()
+            await conn.commit()
             logger.info(f"Created local folder: id={folder_id}, name='{final_name}', parent={parent_id}")
             return folder_id, final_name
 
-    def get_local_folders(self, parent_id: int = None) -> List[Dict]:
+    async def get_local_folders(self, parent_id: int = None) -> List[Dict]:
         """Get local folders in Offline Storage."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             if parent_id is None:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     """SELECT * FROM offline_folders
                        WHERE project_id = ? AND parent_id IS NULL AND sync_status = 'local'
                        ORDER BY name""",
                     (self.OFFLINE_STORAGE_PROJECT_ID,)
-                ).fetchall()
+                )
             else:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     """SELECT * FROM offline_folders
                        WHERE project_id = ? AND parent_id = ? AND sync_status = 'local'
                        ORDER BY name""",
                     (self.OFFLINE_STORAGE_PROJECT_ID, parent_id)
-                ).fetchall()
+                )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    def delete_local_folder(self, folder_id: int, permanent: bool = False) -> bool:
+    async def delete_local_folder(self, folder_id: int, permanent: bool = False) -> bool:
         """
         P9-BIN-001: Delete a local folder from Offline Storage.
 
@@ -396,12 +443,13 @@ class OfflineDatabase:
         Also deletes all files and subfolders inside.
         Returns True if deleted, False if folder not found or not local.
         """
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Verify folder is local before deleting
-            folder_row = conn.execute(
+            cursor = await conn.execute(
                 "SELECT * FROM offline_folders WHERE id = ?",
                 (folder_id,)
-            ).fetchone()
+            )
+            folder_row = await cursor.fetchone()
 
             if not folder_row:
                 logger.warning(f"Cannot delete: folder {folder_id} not found")
@@ -413,10 +461,10 @@ class OfflineDatabase:
 
             if not permanent:
                 # P9-BIN-001: Soft delete - serialize folder and contents to trash
-                folder_data = self._serialize_local_folder_for_trash(conn, folder_id)
+                folder_data = await self._serialize_local_folder_for_trash_async(conn, folder_id)
                 expires_at = (datetime.now() + timedelta(days=30)).isoformat()
 
-                conn.execute(
+                await conn.execute(
                     """INSERT INTO offline_trash
                        (item_type, item_id, item_name, item_data, parent_folder_id, expires_at, status)
                        VALUES (?, ?, ?, ?, ?, ?, 'trashed')""",
@@ -426,53 +474,57 @@ class OfflineDatabase:
                 logger.info(f"Moved local folder {folder_id} ('{folder_row['name']}') to trash")
 
             # Delete files in this folder first
-            conn.execute("DELETE FROM offline_rows WHERE file_id IN (SELECT id FROM offline_files WHERE folder_id = ?)", (folder_id,))
-            conn.execute("DELETE FROM offline_files WHERE folder_id = ?", (folder_id,))
+            await conn.execute("DELETE FROM offline_rows WHERE file_id IN (SELECT id FROM offline_files WHERE folder_id = ?)", (folder_id,))
+            await conn.execute("DELETE FROM offline_files WHERE folder_id = ?", (folder_id,))
 
             # Delete subfolders recursively (simplified - deletes all with this parent)
-            conn.execute("DELETE FROM offline_folders WHERE parent_id = ?", (folder_id,))
+            await conn.execute("DELETE FROM offline_folders WHERE parent_id = ?", (folder_id,))
 
             # Delete the folder itself
-            conn.execute("DELETE FROM offline_folders WHERE id = ?", (folder_id,))
-            conn.commit()
+            await conn.execute("DELETE FROM offline_folders WHERE id = ?", (folder_id,))
+            await conn.commit()
 
             action = "permanently deleted" if permanent else "moved to trash"
             logger.info(f"Local folder {folder_id} {action}")
             return True
 
-    def _serialize_local_folder_for_trash(self, conn, folder_id: int) -> dict:
+    async def _serialize_local_folder_for_trash_async(self, conn, folder_id: int) -> dict:
         """P9-BIN-001: Serialize a local folder and all its contents for trash storage."""
-        folder_row = conn.execute(
+        cursor = await conn.execute(
             "SELECT * FROM offline_folders WHERE id = ?",
             (folder_id,)
-        ).fetchone()
+        )
+        folder_row = await cursor.fetchone()
 
         # Get all files in this folder
-        files = conn.execute(
+        cursor = await conn.execute(
             "SELECT * FROM offline_files WHERE folder_id = ?",
             (folder_id,)
-        ).fetchall()
+        )
+        files = await cursor.fetchall()
 
         files_data = []
         for file in files:
-            rows = conn.execute(
+            cursor = await conn.execute(
                 "SELECT * FROM offline_rows WHERE file_id = ? ORDER BY row_num",
                 (file['id'],)
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             files_data.append({
                 "file": dict(file),
                 "rows": [dict(r) for r in rows]
             })
 
         # Get subfolders (recursive)
-        subfolders = conn.execute(
+        cursor = await conn.execute(
             "SELECT * FROM offline_folders WHERE parent_id = ?",
             (folder_id,)
-        ).fetchall()
+        )
+        subfolders = await cursor.fetchall()
 
         subfolders_data = []
         for subfolder in subfolders:
-            subfolders_data.append(self._serialize_local_folder_for_trash(conn, subfolder['id']))
+            subfolders_data.append(await self._serialize_local_folder_for_trash_async(conn, subfolder['id']))
 
         return {
             "folder": dict(folder_row),
@@ -480,19 +532,20 @@ class OfflineDatabase:
             "subfolders": subfolders_data
         }
 
-    def rename_local_folder(self, folder_id: int, new_name: str) -> bool:
+    async def rename_local_folder(self, folder_id: int, new_name: str) -> bool:
         """
         P9: Rename a local folder in Offline Storage.
 
         Only works for local folders (sync_status='local').
         Returns True if renamed, False if folder not found or not local.
         """
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Verify folder is local before renaming
-            row = conn.execute(
+            cursor = await conn.execute(
                 "SELECT sync_status FROM offline_folders WHERE id = ?",
                 (folder_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 logger.warning(f"Cannot rename: folder {folder_id} not found")
@@ -502,11 +555,11 @@ class OfflineDatabase:
                 logger.warning(f"Cannot rename: folder {folder_id} is not local (status={row['sync_status']})")
                 return False
 
-            conn.execute(
+            await conn.execute(
                 "UPDATE offline_folders SET name = ? WHERE id = ?",
                 (new_name, folder_id)
             )
-            conn.commit()
+            await conn.commit()
             logger.info(f"Renamed local folder {folder_id} to '{new_name}'")
             return True
 
@@ -514,12 +567,12 @@ class OfflineDatabase:
     # File Operations
     # =========================================================================
 
-    def save_file(self, file: Dict[str, Any]) -> int:
+    async def save_file(self, file: Dict[str, Any]) -> int:
         """Save a file to offline storage."""
         extra_data = json.dumps(file.get("extra_data")) if file.get("extra_data") else None
 
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """INSERT OR REPLACE INTO offline_files
                    (id, server_id, name, original_filename, format, row_count,
                     source_language, target_language, project_id, server_project_id,
@@ -544,57 +597,60 @@ class OfflineDatabase:
                     file.get("updated_at"),
                 )
             )
-            conn.commit()
+            await conn.commit()
             return file["id"]
 
-    def get_files(self, project_id: int, folder_id: Optional[int] = None) -> List[Dict]:
+    async def get_files(self, project_id: int, folder_id: Optional[int] = None) -> List[Dict]:
         """Get files in a project, optionally filtered by folder."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             if folder_id is None:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     """SELECT * FROM offline_files
                        WHERE project_id = ? AND folder_id IS NULL ORDER BY name""",
                     (project_id,)
-                ).fetchall()
+                )
             else:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     """SELECT * FROM offline_files
                        WHERE project_id = ? AND folder_id = ? ORDER BY name""",
                     (project_id, folder_id)
-                ).fetchall()
+                )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    def get_file(self, file_id: int) -> Optional[Dict]:
+    async def get_file(self, file_id: int) -> Optional[Dict]:
         """Get a single file by ID."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_files WHERE id = ?", (file_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return dict(row) if row else None
 
-    def is_file_downloaded(self, server_file_id: int) -> bool:
+    async def is_file_downloaded(self, server_file_id: int) -> bool:
         """Check if a file is already downloaded."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT id FROM offline_files WHERE server_id = ?",
                 (server_file_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return row is not None
 
     # =========================================================================
     # Row Operations
     # =========================================================================
 
-    def save_rows(self, file_id: int, rows: List[Dict[str, Any]]):
+    async def save_rows(self, file_id: int, rows: List[Dict[str, Any]]):
         """Save multiple rows to offline storage (bulk insert)."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Delete existing rows for this file first
-            conn.execute("DELETE FROM offline_rows WHERE file_id = ?", (file_id,))
+            await conn.execute("DELETE FROM offline_rows WHERE file_id = ?", (file_id,))
 
             # Insert new rows
             for row in rows:
                 extra_data = json.dumps(row.get("extra_data")) if row.get("extra_data") else None
-                conn.execute(
+                await conn.execute(
                     """INSERT INTO offline_rows
                        (id, server_id, file_id, server_file_id, row_num, string_id,
                         source, target, memo, status, extra_data, created_at, updated_at,
@@ -616,16 +672,17 @@ class OfflineDatabase:
                         row.get("updated_at"),
                     )
                 )
-            conn.commit()
+            await conn.commit()
             logger.debug(f"Saved {len(rows)} rows for file {file_id}")
 
-    def get_rows(self, file_id: int) -> List[Dict]:
+    async def get_rows(self, file_id: int) -> List[Dict]:
         """Get all rows for a file."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_rows WHERE file_id = ? ORDER BY row_num",
                 (file_id,)
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             result = []
             for row in rows:
                 d = dict(row)
@@ -634,19 +691,20 @@ class OfflineDatabase:
                 result.append(d)
             return result
 
-    def update_row(self, row_id: int, field: str, value: Any) -> bool:
+    async def update_row(self, row_id: int, field: str, value: Any) -> bool:
         """Update a single row field and track the change."""
         allowed_fields = {"target", "memo", "status"}
         if field not in allowed_fields:
             logger.warning(f"Cannot update field '{field}' - not editable")
             return False
 
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Get current value
-            row = conn.execute(
+            cursor = await conn.execute(
                 f"SELECT {field}, server_id FROM offline_rows WHERE id = ?",
                 (row_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 return False
@@ -654,7 +712,7 @@ class OfflineDatabase:
             old_value = row[field]
 
             # Update the row
-            conn.execute(
+            await conn.execute(
                 f"""UPDATE offline_rows
                     SET {field} = ?, sync_status = 'modified', updated_at = datetime('now')
                     WHERE id = ?""",
@@ -662,27 +720,28 @@ class OfflineDatabase:
             )
 
             # Track the change
-            conn.execute(
+            await conn.execute(
                 """INSERT INTO local_changes
                    (entity_type, entity_id, server_id, change_type, field_name, old_value, new_value)
                    VALUES ('row', ?, ?, 'edit', ?, ?, ?)""",
                 (row_id, row["server_id"], field, str(old_value), str(value))
             )
 
-            conn.commit()
+            await conn.commit()
             return True
 
     # =========================================================================
     # Merge Operations (P3: Last-write-wins sync)
     # =========================================================================
 
-    def get_row_by_server_id(self, server_id: int) -> Optional[Dict]:
+    async def get_row_by_server_id(self, server_id: int) -> Optional[Dict]:
         """Get a local row by its server ID."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_rows WHERE server_id = ?",
                 (server_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             if row:
                 d = dict(row)
                 if d.get("extra_data"):
@@ -690,15 +749,16 @@ class OfflineDatabase:
                 return d
             return None
 
-    def get_modified_rows(self, file_id: int) -> List[Dict]:
+    async def get_modified_rows(self, file_id: int) -> List[Dict]:
         """Get all locally modified rows for a file."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT * FROM offline_rows
                    WHERE file_id = ? AND sync_status = 'modified'
                    ORDER BY row_num""",
                 (file_id,)
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             result = []
             for row in rows:
                 d = dict(row)
@@ -707,15 +767,16 @@ class OfflineDatabase:
                 result.append(d)
             return result
 
-    def get_new_rows(self, file_id: int) -> List[Dict]:
+    async def get_new_rows(self, file_id: int) -> List[Dict]:
         """Get all locally created rows for a file."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT * FROM offline_rows
                    WHERE file_id = ? AND sync_status = 'new'
                    ORDER BY row_num""",
                 (file_id,)
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             result = []
             for row in rows:
                 d = dict(row)
@@ -724,23 +785,23 @@ class OfflineDatabase:
                 result.append(d)
             return result
 
-    def merge_row(self, server_row: Dict, file_id: int) -> str:
+    async def merge_row(self, server_row: Dict, file_id: int) -> str:
         """
         Merge a server row with local data using last-write-wins.
 
         Returns: 'updated', 'skipped', 'inserted'
         """
-        local_row = self.get_row_by_server_id(server_row["id"])
+        local_row = await self.get_row_by_server_id(server_row["id"])
 
         if local_row is None:
             # New row from server - insert it
-            self._insert_row(server_row, file_id)
+            await self._insert_row(server_row, file_id)
             return 'inserted'
 
         # Row exists locally
         if local_row["sync_status"] == 'synced':
             # No local changes - take server version
-            self._update_row_from_server(server_row, local_row["id"])
+            await self._update_row_from_server(server_row, local_row["id"])
             return 'updated'
 
         elif local_row["sync_status"] in ('modified', 'new'):
@@ -750,8 +811,8 @@ class OfflineDatabase:
 
             if server_updated > local_updated:
                 # Server is newer - server wins, discard local changes
-                self._update_row_from_server(server_row, local_row["id"])
-                self._discard_local_changes(local_row["id"])
+                await self._update_row_from_server(server_row, local_row["id"])
+                await self._discard_local_changes(local_row["id"])
                 logger.debug(f"Server wins for row {server_row['id']} (server: {server_updated} > local: {local_updated})")
                 return 'updated'
             else:
@@ -761,7 +822,7 @@ class OfflineDatabase:
 
         return 'skipped'
 
-    def merge_rows_batch(self, server_rows: List[Dict], file_id: int) -> Dict[str, int]:
+    async def merge_rows_batch(self, server_rows: List[Dict], file_id: int) -> Dict[str, int]:
         """
         OPTIMIZED: Merge multiple server rows in a single transaction.
 
@@ -777,12 +838,13 @@ class OfflineDatabase:
         if not server_rows:
             return stats
 
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Step 1: Fetch ALL local rows for this file in ONE query
-            local_rows_raw = conn.execute(
+            cursor = await conn.execute(
                 "SELECT * FROM offline_rows WHERE file_id = ?",
                 (file_id,)
-            ).fetchall()
+            )
+            local_rows_raw = await cursor.fetchall()
 
             # Build lookup dict by server_id
             local_by_server_id = {}
@@ -800,7 +862,7 @@ class OfflineDatabase:
 
                 if local_row is None:
                     # INSERT new row
-                    conn.execute(
+                    await conn.execute(
                         """INSERT INTO offline_rows
                            (id, server_id, file_id, server_file_id, row_num, string_id,
                             source, target, memo, status, extra_data, created_at, updated_at,
@@ -818,7 +880,7 @@ class OfflineDatabase:
 
                 elif local_row["sync_status"] == 'synced':
                     # UPDATE - no local changes, take server version
-                    conn.execute(
+                    await conn.execute(
                         """UPDATE offline_rows SET
                            source = ?, target = ?, memo = ?, status = ?,
                            extra_data = ?, updated_at = ?, sync_status = 'synced',
@@ -839,7 +901,7 @@ class OfflineDatabase:
 
                     if server_updated > local_updated:
                         # Server wins
-                        conn.execute(
+                        await conn.execute(
                             """UPDATE offline_rows SET
                                source = ?, target = ?, memo = ?, status = ?,
                                extra_data = ?, updated_at = ?, sync_status = 'synced',
@@ -852,7 +914,7 @@ class OfflineDatabase:
                             )
                         )
                         # Also clear local changes record
-                        conn.execute(
+                        await conn.execute(
                             "DELETE FROM local_changes WHERE entity_type = 'row' AND entity_id = ?",
                             (local_row["id"],)
                         )
@@ -864,15 +926,15 @@ class OfflineDatabase:
                     stats['skipped'] += 1
 
             # Step 3: Single commit for ALL operations
-            conn.commit()
+            await conn.commit()
 
         return stats
 
-    def _insert_row(self, row: Dict, file_id: int):
+    async def _insert_row(self, row: Dict, file_id: int):
         """Insert a new row from server."""
         extra_data = json.dumps(row.get("extra_data")) if row.get("extra_data") else None
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """INSERT INTO offline_rows
                    (id, server_id, file_id, server_file_id, row_num, string_id,
                     source, target, memo, status, extra_data, created_at, updated_at,
@@ -894,13 +956,13 @@ class OfflineDatabase:
                     row.get("updated_at"),
                 )
             )
-            conn.commit()
+            await conn.commit()
 
-    def _update_row_from_server(self, server_row: Dict, local_id: int):
+    async def _update_row_from_server(self, server_row: Dict, local_id: int):
         """Update local row with server data."""
         extra_data = json.dumps(server_row.get("extra_data")) if server_row.get("extra_data") else None
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """UPDATE offline_rows SET
                    source = ?, target = ?, memo = ?, status = ?,
                    extra_data = ?, updated_at = ?, sync_status = 'synced',
@@ -916,183 +978,190 @@ class OfflineDatabase:
                     local_id,
                 )
             )
-            conn.commit()
+            await conn.commit()
 
-    def _discard_local_changes(self, local_row_id: int):
+    async def _discard_local_changes(self, local_row_id: int):
         """Discard pending local changes for a row (server won)."""
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """UPDATE local_changes
                    SET sync_status = 'discarded'
                    WHERE entity_type = 'row' AND entity_id = ? AND sync_status = 'pending'""",
                 (local_row_id,)
             )
-            conn.commit()
+            await conn.commit()
 
-    def mark_row_synced(self, row_id: int):
+    async def mark_row_synced(self, row_id: int):
         """Mark a row as synced after pushing to server."""
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """UPDATE offline_rows
                    SET sync_status = 'synced'
                    WHERE id = ?""",
                 (row_id,)
             )
-            conn.commit()
+            await conn.commit()
 
-    def delete_row(self, server_id: int):
+    async def delete_row(self, server_id: int):
         """Delete a local row (server deleted it)."""
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 "DELETE FROM offline_rows WHERE server_id = ?",
                 (server_id,)
             )
             # Also discard any pending changes
-            conn.execute(
+            await conn.execute(
                 """UPDATE local_changes
                    SET sync_status = 'discarded'
                    WHERE entity_type = 'row' AND server_id = ? AND sync_status = 'pending'""",
                 (server_id,)
             )
-            conn.commit()
+            await conn.commit()
 
-    def get_local_row_server_ids(self, file_id: int) -> set:
+    async def get_local_row_server_ids(self, file_id: int) -> set:
         """Get set of server IDs for all local rows in a file."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT server_id FROM offline_rows WHERE file_id = ?",
                 (file_id,)
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             return {row["server_id"] for row in rows}
 
     # =========================================================================
     # Change Tracking
     # =========================================================================
 
-    def get_pending_changes(self) -> List[Dict]:
+    async def get_pending_changes(self) -> List[Dict]:
         """Get all pending changes to sync."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT * FROM local_changes
                    WHERE sync_status = 'pending'
                    ORDER BY changed_at"""
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    def get_pending_change_count(self) -> int:
+    async def get_pending_change_count(self) -> int:
         """Get count of pending changes."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT COUNT(*) as count FROM local_changes WHERE sync_status = 'pending'"
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return row["count"]
 
-    def mark_change_synced(self, change_id: int):
+    async def mark_change_synced(self, change_id: int):
         """Mark a change as synced."""
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """UPDATE local_changes
                    SET sync_status = 'synced', synced_at = datetime('now')
                    WHERE id = ?""",
                 (change_id,)
             )
-            conn.commit()
+            await conn.commit()
 
     # =========================================================================
     # Sync Subscriptions
     # =========================================================================
 
-    def add_subscription(self, entity_type: str, entity_id: int, entity_name: str,
+    async def add_subscription(self, entity_type: str, entity_id: int, entity_name: str,
                          auto_subscribed: bool = False) -> int:
         """Add or update a sync subscription."""
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """INSERT OR REPLACE INTO sync_subscriptions
                    (entity_type, entity_id, entity_name, server_id, auto_subscribed, enabled, sync_status)
                    VALUES (?, ?, ?, ?, ?, 1, 'pending')""",
                 (entity_type, entity_id, entity_name, entity_id, 1 if auto_subscribed else 0)
             )
-            conn.commit()
-            row = conn.execute(
+            await conn.commit()
+            cursor = await conn.execute(
                 "SELECT id FROM sync_subscriptions WHERE entity_type = ? AND entity_id = ?",
                 (entity_type, entity_id)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return row["id"] if row else 0
 
-    def remove_subscription(self, entity_type: str, entity_id: int) -> bool:
+    async def remove_subscription(self, entity_type: str, entity_id: int) -> bool:
         """Remove a sync subscription."""
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 "DELETE FROM sync_subscriptions WHERE entity_type = ? AND entity_id = ?",
                 (entity_type, entity_id)
             )
-            conn.commit()
+            await conn.commit()
             return True
 
-    def get_subscriptions(self, entity_type: Optional[str] = None) -> List[Dict]:
+    async def get_subscriptions(self, entity_type: Optional[str] = None) -> List[Dict]:
         """Get all active sync subscriptions."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             if entity_type:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     """SELECT * FROM sync_subscriptions
                        WHERE entity_type = ? AND enabled = 1
                        ORDER BY created_at DESC""",
                     (entity_type,)
-                ).fetchall()
+                )
             else:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     """SELECT * FROM sync_subscriptions
                        WHERE enabled = 1
                        ORDER BY entity_type, created_at DESC"""
-                ).fetchall()
+                )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    def is_subscribed(self, entity_type: str, entity_id: int) -> bool:
+    async def is_subscribed(self, entity_type: str, entity_id: int) -> bool:
         """Check if an entity is subscribed for offline sync."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT id FROM sync_subscriptions
                    WHERE entity_type = ? AND entity_id = ? AND enabled = 1""",
                 (entity_type, entity_id)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return row is not None
 
-    def update_subscription_status(self, entity_type: str, entity_id: int,
+    async def update_subscription_status(self, entity_type: str, entity_id: int,
                                    status: str, error: Optional[str] = None):
         """Update sync status for a subscription."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             if status == 'synced':
-                conn.execute(
+                await conn.execute(
                     """UPDATE sync_subscriptions
                        SET sync_status = ?, last_sync_at = datetime('now'), error_message = NULL
                        WHERE entity_type = ? AND entity_id = ?""",
                     (status, entity_type, entity_id)
                 )
             else:
-                conn.execute(
+                await conn.execute(
                     """UPDATE sync_subscriptions
                        SET sync_status = ?, error_message = ?
                        WHERE entity_type = ? AND entity_id = ?""",
                     (status, error, entity_type, entity_id)
                 )
-            conn.commit()
+            await conn.commit()
 
     # =========================================================================
     # Translation Memory (SYNC-008)
     # =========================================================================
 
-    def save_tm(self, tm: Dict[str, Any]) -> int:
+    async def save_tm(self, tm: Dict[str, Any]) -> int:
         """Save or update a TM. Returns local ID."""
         server_id = tm.get("server_id", tm.get("id"))
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Check if TM already exists
-            existing = conn.execute(
+            cursor = await conn.execute(
                 "SELECT id FROM offline_tms WHERE server_id = ?",
                 (server_id,)
-            ).fetchone()
+            )
+            existing = await cursor.fetchone()
 
             if existing:
-                conn.execute("""
+                await conn.execute("""
                     UPDATE offline_tms SET
                         name = ?, description = ?, source_lang = ?, target_lang = ?,
                         entry_count = ?, status = ?, mode = ?, owner_id = ?,
@@ -1106,10 +1175,10 @@ class OfflineDatabase:
                     tm.get("owner_id"), tm.get("created_at"), tm.get("updated_at"),
                     tm.get("indexed_at"), server_id
                 ))
-                conn.commit()
+                await conn.commit()
                 return existing["id"]
             else:
-                cursor = conn.execute("""
+                cursor = await conn.execute("""
                     INSERT INTO offline_tms (
                         server_id, name, description, source_lang, target_lang,
                         entry_count, status, mode, owner_id, created_at, updated_at, indexed_at
@@ -1121,33 +1190,35 @@ class OfflineDatabase:
                     tm.get("mode", "standard"), tm.get("owner_id"),
                     tm.get("created_at"), tm.get("updated_at"), tm.get("indexed_at")
                 ))
-                conn.commit()
+                await conn.commit()
                 return cursor.lastrowid
 
-    def get_tms(self) -> List[Dict]:
+    async def get_tms(self) -> List[Dict]:
         """Get all downloaded TMs."""
-        with self._get_connection() as conn:
-            rows = conn.execute("SELECT * FROM offline_tms ORDER BY name").fetchall()
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute("SELECT * FROM offline_tms ORDER BY name")
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    def get_tm(self, server_id: int) -> Optional[Dict]:
+    async def get_tm(self, server_id: int) -> Optional[Dict]:
         """Get a specific TM by server ID."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_tms WHERE server_id = ?",
                 (server_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return dict(row) if row else None
 
-    def save_tm_entry(self, entry: Dict[str, Any], local_tm_id: int) -> int:
+    async def save_tm_entry(self, entry: Dict[str, Any], local_tm_id: int) -> int:
         """
         Save a single TM entry. Returns local ID.
 
         P9-ARCH: Works for both synced entries (from server) and local-only entries.
         For local entries, server_id and server_tm_id will be None.
         """
-        with self._get_connection() as conn:
-            cursor = conn.execute("""
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute("""
                 INSERT OR REPLACE INTO offline_tm_entries (
                     server_id, tm_id, server_tm_id, source_text, target_text,
                     source_hash, string_id, created_by, change_date,
@@ -1169,14 +1240,14 @@ class OfflineDatabase:
                 entry.get("confirmed_by"),
                 entry.get("confirmed_at")
             ))
-            conn.commit()
+            await conn.commit()
             return cursor.lastrowid
 
-    def save_tm_entries_bulk(self, entries: List[Dict], local_tm_id: int, server_tm_id: int):
+    async def save_tm_entries_bulk(self, entries: List[Dict], local_tm_id: int, server_tm_id: int):
         """Bulk save TM entries for efficiency."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             for entry in entries:
-                conn.execute("""
+                await conn.execute("""
                     INSERT OR REPLACE INTO offline_tm_entries (
                         server_id, tm_id, server_tm_id, source_text, target_text,
                         source_hash, string_id, created_by, change_date,
@@ -1191,42 +1262,45 @@ class OfflineDatabase:
                     1 if entry.get("is_confirmed") else 0,
                     entry.get("confirmed_by"), entry.get("confirmed_at")
                 ))
-            conn.commit()
+            await conn.commit()
             logger.debug(f"Bulk saved {len(entries)} TM entries for TM {local_tm_id}")
 
-    def get_tm_entries(self, local_tm_id: int) -> List[Dict]:
+    async def get_tm_entries(self, local_tm_id: int) -> List[Dict]:
         """Get all entries for a TM."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_tm_entries WHERE tm_id = ?",
                 (local_tm_id,)
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    def get_tm_entry_count(self, local_tm_id: int) -> int:
+    async def get_tm_entry_count(self, local_tm_id: int) -> int:
         """Get entry count for a TM."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT COUNT(*) as count FROM offline_tm_entries WHERE tm_id = ?",
                 (local_tm_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return row["count"]
 
-    def merge_tm_entry(self, server_entry: Dict, local_tm_id: int) -> str:
+    async def merge_tm_entry(self, server_entry: Dict, local_tm_id: int) -> str:
         """
         Merge a TM entry using last-write-wins.
         Returns: 'updated', 'skipped', 'inserted'
         """
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Check if entry exists locally
-            local_entry = conn.execute(
+            cursor = await conn.execute(
                 "SELECT * FROM offline_tm_entries WHERE server_id = ?",
                 (server_entry.get("id"),)
-            ).fetchone()
+            )
+            local_entry = await cursor.fetchone()
 
             if not local_entry:
                 # New entry - insert
-                self.save_tm_entry({
+                await self.save_tm_entry({
                     "server_id": server_entry.get("id"),
                     "server_tm_id": server_entry.get("tm_id"),
                     "source_text": server_entry.get("source_text"),
@@ -1248,7 +1322,7 @@ class OfflineDatabase:
 
             # If local is synced, always take server
             if local_sync_status == "synced":
-                conn.execute("""
+                await conn.execute("""
                     UPDATE offline_tm_entries SET
                         source_text = ?, target_text = ?, source_hash = ?,
                         updated_at = ?, updated_by = ?, is_confirmed = ?,
@@ -1262,7 +1336,7 @@ class OfflineDatabase:
                     server_entry.get("confirmed_by"), server_entry.get("confirmed_at"),
                     server_entry.get("id")
                 ))
-                conn.commit()
+                await conn.commit()
                 return "updated"
 
             # If local is modified, compare timestamps (last-write-wins)
@@ -1271,7 +1345,7 @@ class OfflineDatabase:
 
             if server_updated > local_updated:
                 # Server is newer - take server, discard local changes
-                conn.execute("""
+                await conn.execute("""
                     UPDATE offline_tm_entries SET
                         source_text = ?, target_text = ?, source_hash = ?,
                         updated_at = ?, updated_by = ?, is_confirmed = ?,
@@ -1285,64 +1359,67 @@ class OfflineDatabase:
                     server_entry.get("confirmed_by"), server_entry.get("confirmed_at"),
                     server_entry.get("id")
                 ))
-                conn.commit()
+                await conn.commit()
                 return "updated"
             else:
                 # Local is newer - keep local, will push later
                 return "skipped"
 
-    def get_modified_tm_entries(self, local_tm_id: int) -> List[Dict]:
+    async def get_modified_tm_entries(self, local_tm_id: int) -> List[Dict]:
         """Get TM entries with pending changes."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT * FROM offline_tm_entries
                    WHERE tm_id = ? AND sync_status = 'modified'""",
                 (local_tm_id,)
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    def mark_tm_entry_synced(self, entry_id: int):
+    async def mark_tm_entry_synced(self, entry_id: int):
         """Mark a TM entry as synced."""
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 "UPDATE offline_tm_entries SET sync_status = 'synced' WHERE id = ?",
                 (entry_id,)
             )
-            conn.commit()
+            await conn.commit()
 
-    def get_local_tm_entry_server_ids(self, local_tm_id: int) -> set:
+    async def get_local_tm_entry_server_ids(self, local_tm_id: int) -> set:
         """Get set of server IDs for all local TM entries in a TM."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT server_id FROM offline_tm_entries WHERE tm_id = ?",
                 (local_tm_id,)
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             return {row["server_id"] for row in rows}
 
-    def delete_tm_entry(self, server_id: int):
+    async def delete_tm_entry(self, server_id: int):
         """Delete a local TM entry (server deleted it)."""
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 "DELETE FROM offline_tm_entries WHERE server_id = ?",
                 (server_id,)
             )
-            conn.commit()
+            await conn.commit()
 
-    def get_new_tm_entries(self, local_tm_id: int) -> List[Dict]:
+    async def get_new_tm_entries(self, local_tm_id: int) -> List[Dict]:
         """Get TM entries created locally (not yet on server)."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT * FROM offline_tm_entries
                    WHERE tm_id = ? AND sync_status = 'new'""",
                 (local_tm_id,)
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
     # =========================================================================
     # TM Assignment (Full Offline Support)
     # =========================================================================
 
-    def assign_local_tm(
+    async def assign_local_tm(
         self,
         tm_id: int,
         platform_id: Optional[int] = None,
@@ -1353,22 +1430,23 @@ class OfflineDatabase:
         Assign a TM to a platform/project/folder in SQLite.
         This enables full offline TM operations.
         """
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             now = datetime.now().isoformat()
 
             # Check if assignment already exists
-            existing = conn.execute(
+            cursor = await conn.execute(
                 """SELECT id FROM offline_tm_assignments
                    WHERE tm_id = ? AND
                          (platform_id = ? OR (platform_id IS NULL AND ? IS NULL)) AND
                          (project_id = ? OR (project_id IS NULL AND ? IS NULL)) AND
                          (folder_id = ? OR (folder_id IS NULL AND ? IS NULL))""",
                 (tm_id, platform_id, platform_id, project_id, project_id, folder_id, folder_id)
-            ).fetchone()
+            )
+            existing = await cursor.fetchone()
 
             if existing:
                 # Update existing assignment
-                conn.execute(
+                await conn.execute(
                     """UPDATE offline_tm_assignments
                        SET is_active = 1, sync_status = 'modified'
                        WHERE id = ?""",
@@ -1377,7 +1455,7 @@ class OfflineDatabase:
                 assignment_id = existing['id']
             else:
                 # Create new assignment
-                cursor = conn.execute(
+                cursor = await conn.execute(
                     """INSERT INTO offline_tm_assignments
                        (server_id, tm_id, server_tm_id, platform_id, project_id, folder_id,
                         is_active, priority, assigned_at, sync_status)
@@ -1386,7 +1464,7 @@ class OfflineDatabase:
                 )
                 assignment_id = cursor.lastrowid
 
-            conn.commit()
+            await conn.commit()
             logger.info(f"Assigned TM {tm_id} locally: platform={platform_id}, project={project_id}, folder={folder_id}")
 
             return {
@@ -1399,83 +1477,85 @@ class OfflineDatabase:
                 'sync_status': 'local'
             }
 
-    def unassign_local_tm(self, tm_id: int) -> bool:
+    async def unassign_local_tm(self, tm_id: int) -> bool:
         """Remove TM assignment (move to unassigned)."""
-        with self._get_connection() as conn:
-            result = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """UPDATE offline_tm_assignments
                    SET platform_id = NULL, project_id = NULL, folder_id = NULL,
                        is_active = 0, sync_status = 'modified'
                    WHERE tm_id = ?""",
                 (tm_id,)
             )
-            conn.commit()
-            if result.rowcount > 0:
+            await conn.commit()
+            if cursor.rowcount > 0:
                 logger.info(f"Unassigned TM {tm_id} locally")
                 return True
             return False
 
-    def get_local_tm_assignment(self, tm_id: int) -> Optional[Dict]:
+    async def get_local_tm_assignment(self, tm_id: int) -> Optional[Dict]:
         """Get the current assignment for a TM."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT * FROM offline_tm_assignments
                    WHERE tm_id = ? AND is_active = 1
                    ORDER BY id DESC LIMIT 1""",
                 (tm_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return dict(row) if row else None
 
-    def get_local_tm_assignments_for_scope(
+    async def get_local_tm_assignments_for_scope(
         self,
         platform_id: Optional[int] = None,
         project_id: Optional[int] = None,
         folder_id: Optional[int] = None
     ) -> List[Dict]:
         """Get all TM assignments for a given scope."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Build query based on scope
             if folder_id:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     """SELECT a.*, t.name as tm_name, t.entry_count
                        FROM offline_tm_assignments a
                        JOIN offline_tms t ON a.tm_id = t.id
                        WHERE a.folder_id = ? AND a.is_active = 1""",
                     (folder_id,)
-                ).fetchall()
+                )
             elif project_id:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     """SELECT a.*, t.name as tm_name, t.entry_count
                        FROM offline_tm_assignments a
                        JOIN offline_tms t ON a.tm_id = t.id
                        WHERE a.project_id = ? AND a.is_active = 1""",
                     (project_id,)
-                ).fetchall()
+                )
             elif platform_id:
-                rows = conn.execute(
+                cursor = await conn.execute(
                     """SELECT a.*, t.name as tm_name, t.entry_count
                        FROM offline_tm_assignments a
                        JOIN offline_tms t ON a.tm_id = t.id
                        WHERE a.platform_id = ? AND a.is_active = 1""",
                     (platform_id,)
-                ).fetchall()
+                )
             else:
                 # Unassigned TMs
-                rows = conn.execute(
+                cursor = await conn.execute(
                     """SELECT a.*, t.name as tm_name, t.entry_count
                        FROM offline_tm_assignments a
                        JOIN offline_tms t ON a.tm_id = t.id
                        WHERE a.platform_id IS NULL AND a.project_id IS NULL
                              AND a.folder_id IS NULL AND a.is_active = 1"""
-                ).fetchall()
+                )
 
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    def create_local_tm(self, name: str, source_lang: str = 'ko', target_lang: str = 'en') -> Dict:
+    async def create_local_tm(self, name: str, source_lang: str = 'ko', target_lang: str = 'en') -> Dict:
         """Create a new TM locally (for offline use)."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             now = datetime.now().isoformat()
-            cursor = conn.execute(
+            cursor = await conn.execute(
                 """INSERT INTO offline_tms
                    (server_id, name, source_lang, target_lang, entry_count,
                     status, mode, created_at, updated_at, sync_status)
@@ -1483,7 +1563,7 @@ class OfflineDatabase:
                 (name, source_lang, target_lang, now, now)
             )
             tm_id = cursor.lastrowid
-            conn.commit()
+            await conn.commit()
             logger.info(f"Created local TM: {name} (id={tm_id})")
 
             return {
@@ -1497,22 +1577,23 @@ class OfflineDatabase:
                 'sync_status': 'local'
             }
 
-    def get_all_local_tms(self) -> List[Dict]:
+    async def get_all_local_tms(self) -> List[Dict]:
         """Get all TMs (both synced and local-only)."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT t.*, a.platform_id, a.project_id, a.folder_id, a.is_active
                    FROM offline_tms t
                    LEFT JOIN offline_tm_assignments a ON t.id = a.tm_id AND a.is_active = 1
                    ORDER BY t.name"""
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
     # =========================================================================
     # Orphaned Files (P3-PHASE5: Offline Storage Fallback)
     # =========================================================================
 
-    def mark_file_orphaned(self, file_id: int, reason: str = None):
+    async def mark_file_orphaned(self, file_id: int, reason: str = None):
         """
         Mark a file as orphaned (server path doesn't exist).
 
@@ -1521,71 +1602,76 @@ class OfflineDatabase:
         - Server path was deleted while user was offline
         - Push failed to find destination
         """
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """UPDATE offline_files
                    SET sync_status = 'orphaned', error_message = ?, updated_at = datetime('now')
                    WHERE id = ?""",
                 (reason, file_id)
             )
-            conn.commit()
+            await conn.commit()
             logger.info(f"Marked file {file_id} as orphaned: {reason}")
 
-    def get_local_files(self) -> List[Dict]:
+    async def get_local_files(self) -> List[Dict]:
         """Get all local files (files in Offline Storage, never synced to server)."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT * FROM offline_files
                    WHERE sync_status = 'local'
                    ORDER BY name"""
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    def get_local_file(self, file_id: int) -> Optional[Dict]:
+    async def get_local_file(self, file_id: int) -> Optional[Dict]:
         """P9: Get a single local file by ID."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_files WHERE id = ?",
                 (file_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return dict(row) if row else None
 
-    def get_rows_for_file(self, file_id: int) -> List[Dict]:
+    async def get_rows_for_file(self, file_id: int) -> List[Dict]:
         """P9: Get all rows for a file from SQLite."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT * FROM offline_rows
                    WHERE file_id = ?
                    ORDER BY row_num""",
                 (file_id,)
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    def get_row(self, row_id: int) -> Optional[Dict]:
+    async def get_row(self, row_id: int) -> Optional[Dict]:
         """P9: Get a single row by ID from SQLite."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_rows WHERE id = ?",
                 (row_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return dict(row) if row else None
 
-    def get_local_file_count(self) -> int:
+    async def get_local_file_count(self) -> int:
         """Get count of local files in Offline Storage."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT COUNT(*) as count FROM offline_files WHERE sync_status = 'local'"
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return row["count"]
 
-    def assign_local_file(self, file_id: int, project_id: int, folder_id: int = None):
+    async def assign_local_file(self, file_id: int, project_id: int, folder_id: int = None):
         """
         Assign a local file to a server project/folder.
         Called when user moves file from Offline Storage to a real folder.
         Changes sync_status from 'local' to 'modified' (ready to sync).
         """
-        with self._get_connection() as conn:
-            conn.execute(
+        async with self._get_async_connection() as conn:
+            await conn.execute(
                 """UPDATE offline_files
                    SET project_id = ?, server_project_id = ?,
                        folder_id = ?, server_folder_id = ?,
@@ -1594,10 +1680,10 @@ class OfflineDatabase:
                    WHERE id = ?""",
                 (project_id, project_id, folder_id, folder_id, file_id)
             )
-            conn.commit()
+            await conn.commit()
             logger.info(f"Assigned local file {file_id} to project {project_id}, folder {folder_id}")
 
-    def create_local_file(
+    async def create_local_file(
         self,
         name: str,
         original_filename: str,
@@ -1633,26 +1719,26 @@ class OfflineDatabase:
         # P9-ARCH: Use the Offline Storage project for local files
         offline_project_id = self.OFFLINE_STORAGE_PROJECT_ID
 
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # P9-FIX: Check for duplicate names within SAME FOLDER (per-folder unique)
             # Uses same pattern as naming.py: test.txt → test_1.txt → test_2.txt
             final_name = name
 
             # Query differs based on whether folder_id is provided
             if folder_id is None:
-                cursor = conn.execute(
+                cursor = await conn.execute(
                     """SELECT name FROM offline_files
                        WHERE project_id = ? AND folder_id IS NULL AND name = ?""",
                     (offline_project_id, name)
                 )
             else:
-                cursor = conn.execute(
+                cursor = await conn.execute(
                     """SELECT name FROM offline_files
                        WHERE project_id = ? AND folder_id = ? AND name = ?""",
                     (offline_project_id, folder_id, name)
                 )
 
-            if cursor.fetchone():
+            if await cursor.fetchone():
                 # Duplicate exists, generate unique name matching naming.py pattern
                 if '.' in name and not name.startswith('.'):
                     base_name, ext = name.rsplit('.', 1)
@@ -1665,18 +1751,18 @@ class OfflineDatabase:
                 while True:
                     final_name = f"{base_name}_{counter}{ext}"
                     if folder_id is None:
-                        cursor = conn.execute(
+                        cursor = await conn.execute(
                             """SELECT name FROM offline_files
                                WHERE project_id = ? AND folder_id IS NULL AND name = ?""",
                             (offline_project_id, final_name)
                         )
                     else:
-                        cursor = conn.execute(
+                        cursor = await conn.execute(
                             """SELECT name FROM offline_files
                                WHERE project_id = ? AND folder_id = ? AND name = ?""",
                             (offline_project_id, folder_id, final_name)
                         )
-                    if not cursor.fetchone():
+                    if not await cursor.fetchone():
                         break
                     counter += 1
                 logger.info(f"Auto-renamed duplicate: '{name}' → '{final_name}'")
@@ -1688,7 +1774,7 @@ class OfflineDatabase:
 
             # P9-ARCH: Use the Offline Storage project ID instead of 0
             # P9-FIX: Support placing files in local folders
-            conn.execute(
+            await conn.execute(
                 """INSERT INTO offline_files
                    (id, server_id, name, original_filename, format, row_count,
                     source_language, target_language, project_id, server_project_id,
@@ -1709,13 +1795,13 @@ class OfflineDatabase:
                     now,
                 )
             )
-            conn.commit()
+            await conn.commit()
             folder_info = f", folder_id={folder_id}" if folder_id else " (at root)"
             logger.info(f"P9-FIX: Created local file '{final_name}' in Offline Storage (id={file_id}{folder_info})")
             # P9-FIX: Return both id and name (name may be auto-renamed)
             return {"id": file_id, "name": final_name, "folder_id": folder_id}
 
-    def add_rows_to_local_file(self, file_id: int, rows: List[Dict]):
+    async def add_rows_to_local_file(self, file_id: int, rows: List[Dict]):
         """
         P9: Add rows to a local file in Offline Storage.
 
@@ -1723,7 +1809,7 @@ class OfflineDatabase:
         """
         import time
 
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             for i, row in enumerate(rows):
                 # Use negative row IDs to avoid conflicts
                 # Fix: Negate AFTER modulo (Python modulo with positive divisor returns positive)
@@ -1732,7 +1818,7 @@ class OfflineDatabase:
                 extra_data = json.dumps(row.get("extra_data")) if row.get("extra_data") else None
                 now = datetime.now().isoformat()
 
-                conn.execute(
+                await conn.execute(
                     """INSERT INTO offline_rows
                        (id, server_id, file_id, server_file_id, row_num, string_id,
                         source, target, memo, status, extra_data, created_at, updated_at,
@@ -1754,29 +1840,30 @@ class OfflineDatabase:
                 )
 
             # Update file row count
-            conn.execute(
+            await conn.execute(
                 "UPDATE offline_files SET row_count = row_count + ? WHERE id = ?",
                 (len(rows), file_id)
             )
-            conn.commit()
+            await conn.commit()
             logger.info(f"Added {len(rows)} rows to local file {file_id}")
 
-    def update_row_in_local_file(self, row_id: int, target: str = None, memo: str = None, status: str = None) -> bool:
+    async def update_row_in_local_file(self, row_id: int, target: str = None, memo: str = None, status: str = None) -> bool:
         """
         P9: Update a row in a local file (Offline Storage).
 
         Unlike update_row() for synced files, this doesn't set sync_status='modified'
         because local files don't have a server counterpart to sync with.
         """
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Verify row exists and belongs to a local file
-            row = conn.execute(
+            cursor = await conn.execute(
                 """SELECT r.id, f.sync_status as file_sync_status
                    FROM offline_rows r
                    JOIN offline_files f ON r.file_id = f.id
                    WHERE r.id = ?""",
                 (row_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 logger.warning(f"Row {row_id} not found")
@@ -1805,15 +1892,15 @@ class OfflineDatabase:
             updates.append("updated_at = datetime('now')")
             params.append(row_id)
 
-            conn.execute(
+            await conn.execute(
                 f"UPDATE offline_rows SET {', '.join(updates)} WHERE id = ?",
                 params
             )
-            conn.commit()
+            await conn.commit()
             logger.info(f"Updated row {row_id} in local file")
             return True
 
-    def delete_local_file(self, file_id: int, permanent: bool = False) -> bool:
+    async def delete_local_file(self, file_id: int, permanent: bool = False) -> bool:
         """
         P9-BIN-001: Delete a local file from Offline Storage.
 
@@ -1821,12 +1908,13 @@ class OfflineDatabase:
         By default, moves to trash (soft delete). Use permanent=True for hard delete.
         Returns True if deleted, False if file not found or not local.
         """
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Verify file is local before deleting
-            file_row = conn.execute(
+            cursor = await conn.execute(
                 "SELECT * FROM offline_files WHERE id = ?",
                 (file_id,)
-            ).fetchone()
+            )
+            file_row = await cursor.fetchone()
 
             if not file_row:
                 logger.warning(f"Cannot delete: file {file_id} not found")
@@ -1838,10 +1926,10 @@ class OfflineDatabase:
 
             if not permanent:
                 # P9-BIN-001: Soft delete - serialize and move to trash
-                file_data = self._serialize_local_file_for_trash(conn, file_id)
+                file_data = await self._serialize_local_file_for_trash_async(conn, file_id)
                 expires_at = (datetime.now() + timedelta(days=30)).isoformat()
 
-                conn.execute(
+                await conn.execute(
                     """INSERT INTO offline_trash
                        (item_type, item_id, item_name, item_data, parent_folder_id, expires_at, status)
                        VALUES (?, ?, ?, ?, ?, ?, 'trashed')""",
@@ -1851,45 +1939,48 @@ class OfflineDatabase:
                 logger.info(f"Moved local file {file_id} ('{file_row['name']}') to trash")
 
             # Delete rows first (cascade)
-            conn.execute("DELETE FROM offline_rows WHERE file_id = ?", (file_id,))
+            await conn.execute("DELETE FROM offline_rows WHERE file_id = ?", (file_id,))
             # Delete file
-            conn.execute("DELETE FROM offline_files WHERE id = ?", (file_id,))
-            conn.commit()
+            await conn.execute("DELETE FROM offline_files WHERE id = ?", (file_id,))
+            await conn.commit()
 
             action = "permanently deleted" if permanent else "moved to trash"
             logger.info(f"Local file {file_id} {action}")
             return True
 
-    def _serialize_local_file_for_trash(self, conn, file_id: int) -> dict:
+    async def _serialize_local_file_for_trash_async(self, conn, file_id: int) -> dict:
         """P9-BIN-001: Serialize a local file and its rows for trash storage."""
-        file_row = conn.execute(
+        cursor = await conn.execute(
             "SELECT * FROM offline_files WHERE id = ?",
             (file_id,)
-        ).fetchone()
+        )
+        file_row = await cursor.fetchone()
 
-        rows = conn.execute(
+        cursor = await conn.execute(
             "SELECT * FROM offline_rows WHERE file_id = ? ORDER BY row_num",
             (file_id,)
-        ).fetchall()
+        )
+        rows = await cursor.fetchall()
 
         return {
             "file": dict(file_row),
             "rows": [dict(r) for r in rows]
         }
 
-    def rename_local_file(self, file_id: int, new_name: str) -> bool:
+    async def rename_local_file(self, file_id: int, new_name: str) -> bool:
         """
         P9: Rename a local file in Offline Storage.
 
         Only works for local files (sync_status='local').
         Returns True if renamed, False if file not found or not local.
         """
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Verify file is local before renaming
-            row = conn.execute(
+            cursor = await conn.execute(
                 "SELECT sync_status FROM offline_files WHERE id = ?",
                 (file_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 logger.warning(f"Cannot rename: file {file_id} not found")
@@ -1900,15 +1991,15 @@ class OfflineDatabase:
                 return False
 
             now = datetime.now().isoformat()
-            conn.execute(
+            await conn.execute(
                 "UPDATE offline_files SET name = ?, updated_at = ? WHERE id = ?",
                 (new_name, now, file_id)
             )
-            conn.commit()
+            await conn.commit()
             logger.info(f"Renamed local file {file_id} to '{new_name}'")
             return True
 
-    def move_local_file(self, file_id: int, target_folder_id: int = None) -> bool:
+    async def move_local_file(self, file_id: int, target_folder_id: int = None) -> bool:
         """
         P9: Move a local file to a different folder within Offline Storage.
 
@@ -1919,12 +2010,13 @@ class OfflineDatabase:
 
         Returns True if moved, False if file not found or not local.
         """
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Verify file is local before moving
-            row = conn.execute(
+            cursor = await conn.execute(
                 "SELECT sync_status, name FROM offline_files WHERE id = ?",
                 (file_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 logger.warning(f"Cannot move: file {file_id} not found")
@@ -1936,10 +2028,11 @@ class OfflineDatabase:
 
             # Verify target folder exists and is local (if specified)
             if target_folder_id is not None:
-                folder_row = conn.execute(
+                cursor = await conn.execute(
                     "SELECT sync_status FROM offline_folders WHERE id = ?",
                     (target_folder_id,)
-                ).fetchone()
+                )
+                folder_row = await cursor.fetchone()
 
                 if not folder_row:
                     logger.warning(f"Cannot move: target folder {target_folder_id} not found")
@@ -1950,16 +2043,16 @@ class OfflineDatabase:
                     return False
 
             now = datetime.now().isoformat()
-            conn.execute(
+            await conn.execute(
                 "UPDATE offline_files SET folder_id = ?, updated_at = ? WHERE id = ?",
                 (target_folder_id, now, file_id)
             )
-            conn.commit()
+            await conn.commit()
             target_desc = f"folder {target_folder_id}" if target_folder_id else "root"
             logger.info(f"Moved local file {file_id} ('{row['name']}') to {target_desc}")
             return True
 
-    def move_local_folder(self, folder_id: int, target_parent_id: int = None) -> bool:
+    async def move_local_folder(self, folder_id: int, target_parent_id: int = None) -> bool:
         """
         P9: Move a local folder to a different parent folder within Offline Storage.
 
@@ -1970,12 +2063,13 @@ class OfflineDatabase:
 
         Returns True if moved, False if folder not found or not local.
         """
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Verify folder is local before moving
-            row = conn.execute(
+            cursor = await conn.execute(
                 "SELECT sync_status, name FROM offline_folders WHERE id = ?",
                 (folder_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 logger.warning(f"Cannot move: folder {folder_id} not found")
@@ -1994,10 +2088,11 @@ class OfflineDatabase:
                 # Check if target is a descendant of this folder
                 check_id = target_parent_id
                 while check_id is not None:
-                    check_row = conn.execute(
+                    cursor = await conn.execute(
                         "SELECT parent_id FROM offline_folders WHERE id = ?",
                         (check_id,)
-                    ).fetchone()
+                    )
+                    check_row = await cursor.fetchone()
                     if not check_row:
                         break
                     if check_row["parent_id"] == folder_id:
@@ -2006,10 +2101,11 @@ class OfflineDatabase:
                     check_id = check_row["parent_id"]
 
                 # Verify target folder exists and is local
-                folder_row = conn.execute(
+                cursor = await conn.execute(
                     "SELECT sync_status FROM offline_folders WHERE id = ?",
                     (target_parent_id,)
-                ).fetchone()
+                )
+                folder_row = await cursor.fetchone()
 
                 if not folder_row:
                     logger.warning(f"Cannot move: target folder {target_parent_id} not found")
@@ -2019,11 +2115,11 @@ class OfflineDatabase:
                     logger.warning(f"Cannot move: target folder {target_parent_id} is not local")
                     return False
 
-            conn.execute(
+            await conn.execute(
                 "UPDATE offline_folders SET parent_id = ? WHERE id = ?",
                 (target_parent_id, folder_id)
             )
-            conn.commit()
+            await conn.commit()
             target_desc = f"folder {target_parent_id}" if target_parent_id else "root"
             logger.info(f"Moved local folder {folder_id} ('{row['name']}') to {target_desc}")
             return True
@@ -2032,38 +2128,39 @@ class OfflineDatabase:
     # Utility
     # =========================================================================
 
-    def get_stats(self) -> Dict[str, int]:
+    async def get_stats(self) -> Dict[str, int]:
         """Get offline storage statistics."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             stats = {}
             for table in ["offline_platforms", "offline_projects", "offline_folders",
                          "offline_files", "offline_rows"]:
-                row = conn.execute(f"SELECT COUNT(*) as count FROM {table}").fetchone()
+                cursor = await conn.execute(f"SELECT COUNT(*) as count FROM {table}")
+                row = await cursor.fetchone()
                 stats[table.replace("offline_", "")] = row["count"]
 
-            stats["pending_changes"] = self.get_pending_change_count()
+            stats["pending_changes"] = await self.get_pending_change_count()
             return stats
 
-    def clear_all(self):
+    async def clear_all(self):
         """Clear all offline data (use with caution!)."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             for table in ["local_changes", "offline_rows", "offline_files",
                          "offline_folders", "offline_projects", "offline_platforms"]:
-                conn.execute(f"DELETE FROM {table}")
-            conn.commit()
+                await conn.execute(f"DELETE FROM {table}")
+            await conn.commit()
             logger.warning("All offline data cleared")
 
-    def search_local_files(self, query: str) -> List[Dict]:
+    async def search_local_files(self, query: str) -> List[Dict]:
         """
         P9: Search ALL files in SQLite by name.
 
         Used by the search endpoint in offline mode.
         Searches all files: local, synced, and modified.
         """
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Case-insensitive LIKE search
             search_term = f"%{query}%"
-            cursor = conn.execute(
+            cursor = await conn.execute(
                 """SELECT id, name, format, row_count, created_at, sync_status
                    FROM offline_files
                    WHERE name LIKE ? COLLATE NOCASE
@@ -2071,7 +2168,7 @@ class OfflineDatabase:
                    LIMIT 50""",
                 (search_term,)
             )
-            rows = cursor.fetchall()
+            rows = await cursor.fetchall()
 
             return [
                 {
@@ -2085,7 +2182,7 @@ class OfflineDatabase:
                 for row in rows
             ]
 
-    def search_all(self, query: str) -> Dict[str, List[Dict]]:
+    async def search_all(self, query: str) -> Dict[str, List[Dict]]:
         """
         P9: Search ALL offline data - platforms, projects, folders, files.
         Returns dict with keys: platforms, projects, folders, files
@@ -2093,48 +2190,52 @@ class OfflineDatabase:
         search_term = f"%{query}%"
         result = {"platforms": [], "projects": [], "folders": [], "files": []}
 
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             # Platforms
-            for row in conn.execute(
+            cursor = await conn.execute(
                 "SELECT id, name FROM offline_platforms WHERE name LIKE ? COLLATE NOCASE LIMIT 20",
                 (search_term,)
-            ).fetchall():
+            )
+            for row in await cursor.fetchall():
                 result["platforms"].append({"id": row["id"], "name": row["name"]})
 
             # Projects with platform name
-            for row in conn.execute(
+            cursor = await conn.execute(
                 """SELECT p.id, p.name, p.platform_id, pl.name as platform_name
                    FROM offline_projects p
                    LEFT JOIN offline_platforms pl ON p.platform_id = pl.id
                    WHERE p.name LIKE ? COLLATE NOCASE LIMIT 20""",
                 (search_term,)
-            ).fetchall():
+            )
+            for row in await cursor.fetchall():
                 result["projects"].append({
                     "id": row["id"], "name": row["name"],
                     "platform_id": row["platform_id"], "platform_name": row["platform_name"]
                 })
 
             # Folders with project name
-            for row in conn.execute(
+            cursor = await conn.execute(
                 """SELECT f.id, f.name, f.project_id, p.name as project_name
                    FROM offline_folders f
                    LEFT JOIN offline_projects p ON f.project_id = p.id
                    WHERE f.name LIKE ? COLLATE NOCASE LIMIT 20""",
                 (search_term,)
-            ).fetchall():
+            )
+            for row in await cursor.fetchall():
                 result["folders"].append({
                     "id": row["id"], "name": row["name"],
                     "project_id": row["project_id"], "project_name": row["project_name"]
                 })
 
             # Files with project name
-            for row in conn.execute(
+            cursor = await conn.execute(
                 """SELECT f.id, f.name, f.sync_status, f.project_id, p.name as project_name
                    FROM offline_files f
                    LEFT JOIN offline_projects p ON f.project_id = p.id
                    WHERE f.name LIKE ? COLLATE NOCASE LIMIT 50""",
                 (search_term,)
-            ).fetchall():
+            )
+            for row in await cursor.fetchall():
                 result["files"].append({
                     "id": row["id"], "name": row["name"],
                     "sync_status": row["sync_status"],
@@ -2147,38 +2248,41 @@ class OfflineDatabase:
     # P9-BIN-001: Local Trash Operations
     # =========================================================================
 
-    def list_local_trash(self) -> List[Dict]:
+    async def list_local_trash(self) -> List[Dict]:
         """P9-BIN-001: List all items in local trash (not expired)."""
-        with self._get_connection() as conn:
-            rows = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT id, item_type, item_id, item_name, parent_folder_id,
                           deleted_at, expires_at, status
                    FROM offline_trash
                    WHERE status = 'trashed'
                    ORDER BY deleted_at DESC"""
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    def get_local_trash_item(self, trash_id: int) -> Optional[Dict]:
+    async def get_local_trash_item(self, trash_id: int) -> Optional[Dict]:
         """P9-BIN-001: Get a specific trash item."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_trash WHERE id = ?",
                 (trash_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return dict(row) if row else None
 
-    def restore_from_local_trash(self, trash_id: int) -> dict:
+    async def restore_from_local_trash(self, trash_id: int) -> dict:
         """
         P9-BIN-001: Restore an item from local trash.
 
         Returns dict with item_type and item_id, or None if not found/failed.
         """
-        with self._get_connection() as conn:
-            trash_row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_trash WHERE id = ? AND status = 'trashed'",
                 (trash_id,)
-            ).fetchone()
+            )
+            trash_row = await cursor.fetchone()
 
             if not trash_row:
                 logger.warning(f"Cannot restore: trash item {trash_id} not found or not trashed")
@@ -2190,19 +2294,19 @@ class OfflineDatabase:
 
             try:
                 if item_type == 'local-file':
-                    self._restore_local_file(conn, item_data)
+                    await self._restore_local_file_async(conn, item_data)
                 elif item_type == 'local-folder':
-                    self._restore_local_folder(conn, item_data)
+                    await self._restore_local_folder_async(conn, item_data)
                 else:
                     logger.error(f"Unknown trash item type: {item_type}")
                     return None
 
                 # Mark as restored
-                conn.execute(
+                await conn.execute(
                     "UPDATE offline_trash SET status = 'restored' WHERE id = ?",
                     (trash_id,)
                 )
-                conn.commit()
+                await conn.commit()
                 logger.info(f"Restored {item_type} '{trash_row['item_name']}' from trash")
                 return {
                     "item_type": item_type,
@@ -2213,13 +2317,13 @@ class OfflineDatabase:
                 logger.error(f"Failed to restore from trash: {e}")
                 return None
 
-    def _restore_local_file(self, conn, item_data: dict):
+    async def _restore_local_file_async(self, conn, item_data: dict):
         """P9-BIN-001: Restore a local file from trash data."""
         file_info = item_data['file']
         rows_info = item_data['rows']
 
         # Re-insert file
-        conn.execute(
+        await conn.execute(
             """INSERT INTO offline_files
                (id, server_id, name, original_filename, format, row_count,
                 source_language, target_language, project_id, server_project_id,
@@ -2237,7 +2341,7 @@ class OfflineDatabase:
 
         # Re-insert rows
         for row in rows_info:
-            conn.execute(
+            await conn.execute(
                 """INSERT INTO offline_rows
                    (id, server_id, file_id, server_file_id, row_num, string_id,
                     source, target, memo, status, extra_data, created_at, updated_at,
@@ -2249,14 +2353,14 @@ class OfflineDatabase:
                  row['updated_at'], row['downloaded_at'], row['sync_status'])
             )
 
-    def _restore_local_folder(self, conn, item_data: dict):
+    async def _restore_local_folder_async(self, conn, item_data: dict):
         """P9-BIN-001: Restore a local folder from trash data (recursive)."""
         folder_info = item_data['folder']
         files_data = item_data.get('files', [])
         subfolders_data = item_data.get('subfolders', [])
 
         # Re-insert folder
-        conn.execute(
+        await conn.execute(
             """INSERT INTO offline_folders
                (id, server_id, name, project_id, server_project_id,
                 parent_id, server_parent_id, created_at, downloaded_at, sync_status)
@@ -2269,50 +2373,51 @@ class OfflineDatabase:
 
         # Restore files in this folder
         for file_data in files_data:
-            self._restore_local_file(conn, file_data)
+            await self._restore_local_file_async(conn, file_data)
 
         # Restore subfolders recursively
         for subfolder_data in subfolders_data:
-            self._restore_local_folder(conn, subfolder_data)
+            await self._restore_local_folder_async(conn, subfolder_data)
 
-    def permanent_delete_from_local_trash(self, trash_id: int) -> bool:
+    async def permanent_delete_from_local_trash(self, trash_id: int) -> bool:
         """P9-BIN-001: Permanently delete an item from local trash."""
-        with self._get_connection() as conn:
-            row = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT item_name FROM offline_trash WHERE id = ?",
                 (trash_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 return False
 
-            conn.execute("DELETE FROM offline_trash WHERE id = ?", (trash_id,))
-            conn.commit()
+            await conn.execute("DELETE FROM offline_trash WHERE id = ?", (trash_id,))
+            await conn.commit()
             logger.info(f"Permanently deleted '{row['item_name']}' from local trash")
             return True
 
-    def empty_local_trash(self) -> int:
+    async def empty_local_trash(self) -> int:
         """P9-BIN-001: Empty all items from local trash. Returns count of deleted items."""
-        with self._get_connection() as conn:
-            result = conn.execute(
+        async with self._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "DELETE FROM offline_trash WHERE status = 'trashed'"
             )
-            count = result.rowcount
-            conn.commit()
+            count = cursor.rowcount
+            await conn.commit()
             logger.info(f"Emptied local trash: {count} items permanently deleted")
             return count
 
-    def purge_expired_local_trash(self) -> int:
+    async def purge_expired_local_trash(self) -> int:
         """P9-BIN-001: Delete expired trash items (past 30 days). Returns count deleted."""
-        with self._get_connection() as conn:
+        async with self._get_async_connection() as conn:
             now = datetime.now().isoformat()
-            result = conn.execute(
+            cursor = await conn.execute(
                 """DELETE FROM offline_trash
                    WHERE status = 'trashed' AND expires_at < ?""",
                 (now,)
             )
-            count = result.rowcount
-            conn.commit()
+            count = cursor.rowcount
+            await conn.commit()
             if count > 0:
                 logger.info(f"Purged {count} expired items from local trash")
             return count
