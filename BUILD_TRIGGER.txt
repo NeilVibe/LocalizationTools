@@ -26,3 +26,4 @@ Build 506: Svelte 5 fix - Sat Jan 31 02:39:05 AM KST 2026
 Build 507: Fix POSTGRES_DATABASE_URL attr - Sat Jan 31 03:15:00 AM KST 2026
 Build 508: Skip PostgreSQL tests when unavailable - Sat Jan 31 03:30:00 AM KST 2026
 Build 509: Skip dashboard tests when PostgreSQL unavailable - Sat Jan 31 03:45:00 AM KST 2026
+Build 510: Clean SQLite DB between CI builds - Sat Jan 31 04:00:00 AM KST 2026
