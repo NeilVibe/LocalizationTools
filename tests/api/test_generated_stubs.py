@@ -20,15 +20,39 @@ from server.main import app
 from server import config
 
 
-def is_sqlite_mode():
-    """Check if we're running in SQLite mode (no PostgreSQL-specific functions)."""
-    return config.ACTIVE_DATABASE_TYPE == "sqlite"
+def _check_postgresql_available():
+    """
+    Check if PostgreSQL is available for tests that use PostgreSQL-specific functions.
+    This checks by trying to connect to the PostgreSQL database.
+    """
+    import os
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.exc import OperationalError
 
+    pg_user = os.getenv("POSTGRES_USER", "locanext")
+    pg_pass = os.getenv("POSTGRES_PASSWORD", "locanext_password")
+    pg_host = os.getenv("POSTGRES_HOST", "localhost")
+    pg_port = os.getenv("POSTGRES_PORT", "6433")
+    pg_db = os.getenv("POSTGRES_DB", "locanext")
+
+    db_url = f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
+
+    try:
+        engine = create_engine(db_url, echo=False)
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except (OperationalError, Exception):
+        return False
+
+
+# Check once at import time
+_postgresql_available = _check_postgresql_available()
 
 # Skip marker for tests that require PostgreSQL-specific functions
 requires_postgresql = pytest.mark.skipif(
-    is_sqlite_mode(),
-    reason="Test requires PostgreSQL-specific functions (to_char, version())"
+    not _postgresql_available,
+    reason="Test requires PostgreSQL (uses PostgreSQL-specific functions like to_char, version())"
 )
 
 
