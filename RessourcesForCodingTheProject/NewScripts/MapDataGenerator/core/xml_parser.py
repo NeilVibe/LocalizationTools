@@ -1,8 +1,8 @@
 """
 XML Parser Module
 
-Battle-hardened XML sanitization and parsing for game data.
-Handles malformed XML, bad entities, unclosed tags, and other common issues.
+Battle-tested XML sanitization and parsing for game data.
+EXACT COPY of QACompilerNEW pattern - proven to work.
 """
 
 import os
@@ -17,213 +17,186 @@ log = logging.getLogger(__name__)
 
 
 # =============================================================================
-# REGEX PATTERNS
+# XML SANITIZATION (EXACT COPY FROM QACompilerNEW - BATTLE-TESTED)
 # =============================================================================
 
-_BAD_ENTITY_RE = re.compile(r"&(?!(?:lt|gt|amp|apos|quot);)")
-_TAG_OPEN_RE = re.compile(r"<([A-Za-z0-9_]+)(\s[^>/]*)?>")
-_TAG_CLOSE_RE = re.compile(r"</\s*([A-Za-z0-9_]+)\s*>")
-_CTRL_CHAR_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+_bad_entity_re = re.compile(r'&(?!lt;|gt;|amp;|apos;|quot;)')
 
 
-# =============================================================================
-# XML SANITIZATION (BATTLE-HARDENED)
-# =============================================================================
-
-def _patch_bad_entities(txt: str) -> str:
-    """Replace unescaped ampersands with &amp;"""
-    return _BAD_ENTITY_RE.sub("&amp;", txt)
+def _fix_bad_entities(txt: str) -> str:
+    """Fix unescaped & characters."""
+    return _bad_entity_re.sub("&amp;", txt)
 
 
-def _patch_seg_breaks(txt: str) -> str:
-    """Replace literal line breaks inside <seg> ... </seg> with escaped <br/>"""
+def _preprocess_newlines(raw: str) -> str:
+    """Handle newlines inside <seg> tags."""
     def repl(m: re.Match) -> str:
         inner = m.group(1).replace("\n", "&lt;br/&gt;").replace("\r\n", "&lt;br/&gt;")
         return f"<seg>{inner}</seg>"
-    return re.sub(r"<seg>(.*?)</seg>", repl, txt, flags=re.DOTALL)
-
-
-def _patch_unterminated_attr(txt: str) -> str:
-    """Close un-terminated attribute values.
-
-    Handles cases like:
-    - UITextureName="value>  -> UITextureName="value">
-    - UITextureName="value<  -> UITextureName="value"<
-    - UITextureName="value&  -> UITextureName="value"&
-    - UITextureName="value$ (end of line) -> UITextureName="value"
-    """
-    # Pattern 1: Value followed by < or > or & (without closing quote)
-    # The terminator char should NOT be consumed as part of the value
-    def fix_attr(m):
-        val = m.group(1)   # The attribute value (without quotes)
-        term = m.group(2)  # The terminator (< or > or &)
-        return f'="{val}"{term}'  # Close the quote BEFORE the terminator
-
-    txt = re.sub(
-        r'="([^"\n]*?)([<>&])',
-        fix_attr,
-        txt,
-    )
-
-    # Pattern 2: Value at end of line (without closing quote)
-    txt = re.sub(
-        r'="([^"\n]*?)$',
-        r'="\1"',
-        txt,
-        flags=re.MULTILINE
-    )
-
-    return txt
-
-
-def _escape_inner_angles(raw: str) -> str:
-    """Escape < and > inside attribute values"""
-    raw = re.sub(
-        r'="([^"]*<[^"]*)"',
-        lambda m: '="' + m.group(1).replace("<", "&lt;") + '"',
-        raw
-    )
-    return raw
-
-
-def _escape_inner_ampersand(raw: str) -> str:
-    """Escape & inside attribute values (not already part of entity)"""
-    raw = re.sub(
-        r'="([^"]*&[^ltgapoqu][^"]*)"',
-        lambda m: '="' + m.group(1).replace("&", "&amp;") + '"',
-        raw
-    )
-    return raw
+    return re.sub(r"<seg>(.*?)</seg>", repl, raw, flags=re.DOTALL)
 
 
 def sanitize_xml(raw: str) -> str:
     """
-    Multi-pass XML sanitization.
+    Battle-tested XML sanitization from QACompilerNEW.
 
     Handles:
-    - Control characters
-    - Bad entity references
-    - Line breaks inside <seg> tags
-    - Unterminated attribute values
-    - Angle brackets inside attribute values
-    - Unmatched opening/closing tags
+    - Bad entity references (& not followed by entity name)
+    - Newlines inside <seg> tags
+    - < and & inside attribute values
+    - Malformed closing tags (</>)
+    - Mismatched tag pairs
 
-    Args:
-        raw: Raw XML string
-
-    Returns:
-        Sanitized XML string
+    Does NOT try to fix unterminated attributes - let lxml recover handle that.
     """
-    # Pass 1: Remove control characters
-    raw = _CTRL_CHAR_RE.sub("", raw)
+    # Step 1: Fix bad entities
+    raw = _fix_bad_entities(raw)
 
-    # Pass 2: Fix bad entities
-    raw = _patch_bad_entities(raw)
+    # Step 2: Handle <seg> newlines
+    raw = _preprocess_newlines(raw)
 
-    # Pass 3: Handle <seg> breaks
-    raw = _patch_seg_breaks(raw)
+    # Step 3: Escape < inside attribute values
+    raw = re.sub(r'="([^"]*<[^"]*)"',
+                 lambda m: '="' + m.group(1).replace("<", "&lt;") + '"', raw)
 
-    # Pass 4: Fix unterminated attributes
-    raw = _patch_unterminated_attr(raw)
+    # Step 4: Escape & inside attribute values (but not valid entities)
+    raw = re.sub(r'="([^"]*&[^ltgapoqu][^"]*)"',
+                 lambda m: '="' + m.group(1).replace("&", "&amp;") + '"', raw)
 
-    # Pass 5: Escape inner angles and ampersands
-    raw = _escape_inner_angles(raw)
-    raw = _escape_inner_ampersand(raw)
-
-    # Pass 6: Tag stack repair for malformed XML
-    tag_stack: List[str] = []
-    fixed_lines: List[str] = []
+    # Step 5: Tag stack repair for malformed XML
+    tag_open = re.compile(r"<([A-Za-z0-9_]+)(\s[^>]*)?>")
+    tag_close = re.compile(r"</([A-Za-z0-9_]+)>")
+    stack: List[str] = []
+    out: List[str] = []
 
     for line in raw.splitlines():
-        s = line.strip()
-        m_open = _TAG_OPEN_RE.match(s)
-        m_close = _TAG_CLOSE_RE.match(s)
-
-        if m_open and not s.endswith("/>"):
-            tag_stack.append(m_open.group(1))
-            fixed_lines.append(line)
+        stripped = line.strip()
+        mo = tag_open.match(stripped)
+        if mo:
+            stack.append(mo.group(1))
+            out.append(line)
             continue
-
-        if s.startswith("</>"):
-            if tag_stack:
-                fixed_lines.append(f"</{tag_stack.pop()}>")
+        mc = tag_close.match(stripped)
+        if mc:
+            if stack and stack[-1] == mc.group(1):
+                stack.pop()
+                out.append(line)
+            else:
+                out.append(stack and f"</{stack.pop()}>" or line)
             continue
-
-        if m_close:
-            want = m_close.group(1)
-            # Close any still-open tags that shouldn't be open
-            while tag_stack and tag_stack[-1] != want:
-                fixed_lines.append(f"</{tag_stack.pop()}>")
-            if tag_stack:
-                tag_stack.pop()
-            fixed_lines.append(line)
+        if stripped.startswith("</>"):
+            out.append(stack and line.replace("</>", f"</{stack.pop()}>") or line)
             continue
+        out.append(line)
 
-        fixed_lines.append(line)
+    while stack:
+        out.append(f"</{stack.pop()}>")
 
-    # Close any remaining open tags
-    while tag_stack:
-        fixed_lines.append(f"</{tag_stack.pop()}>")
-
-    return "\n".join(fixed_lines)
+    return "\n".join(out)
 
 
 # =============================================================================
-# XML PARSING
+# XML PARSING (EXACT COPY FROM QACompilerNEW)
 # =============================================================================
 
 def parse_xml(path: Path) -> Optional[ET._Element]:
     """
-    Parse XML file with dual-mode recovery.
+    Parse XML file with sanitization and recovery.
 
-    First attempts strict parsing, then falls back to sanitized parsing
-    with recovery mode enabled.
-
-    Args:
-        path: Path to XML file
-
-    Returns:
-        Root element or None if parsing fails
+    Strategy (same as QACompilerNEW):
+    1. Read file
+    2. Sanitize with battle-tested regex
+    3. Wrap in <ROOT> element
+    4. Try strict parsing
+    5. If fails, try recovery mode
     """
     try:
-        raw = path.read_text("utf-8", errors="ignore")
+        raw = path.read_text(encoding="utf-8", errors="ignore")
     except Exception:
         log.exception("Failed to read %s", path)
         return None
 
-    for mode, txt in (("strict", raw), ("sanitised", sanitize_xml(raw))):
-        try:
-            return ET.fromstring(
-                f"<ROOT>{txt}</ROOT>",
-                parser=ET.XMLParser(recover=(mode == "sanitised"), huge_tree=True),
-            )
-        except ET.XMLSyntaxError:
-            continue
+    # DEBUG: Log specific entries we're tracking
+    debug_target = "knowledgeinfo_node" in path.name.lower()
+    if debug_target and "DemenissCastle" in raw:
+        for i, line in enumerate(raw.splitlines()):
+            if "Knowledge_Node_Dem_DemenissCastle" in line and "UITextureName" in line:
+                log.info("DEBUG RAW [%s:%d]: %s", path.name, i, line[:500])
+                break
 
-    log.warning("XML parse error → %s", path)
-    return None
+    cleaned = sanitize_xml(raw)
+    wrapped = f"<ROOT>\n{cleaned}\n</ROOT>"
+
+    # DEBUG: Check after sanitization
+    if debug_target and "DemenissCastle" in cleaned:
+        for i, line in enumerate(cleaned.splitlines()):
+            if "Knowledge_Node_Dem_DemenissCastle" in line and "UITextureName" in line:
+                log.info("DEBUG SANITIZED [%s:%d]: %s", path.name, i, line[:500])
+                break
+
+    # Try strict parsing first
+    try:
+        root = ET.fromstring(
+            wrapped.encode("utf-8"),
+            parser=ET.XMLParser(huge_tree=True)
+        )
+
+        # DEBUG: Verify parsed attributes
+        if debug_target:
+            for ki in root.iter("KnowledgeInfo"):
+                strkey = ki.get("StrKey", "")
+                if "DemenissCastle" in strkey:
+                    ui_tex = ki.get("UITextureName", "")
+                    log.info("DEBUG PARSED (strict) [%s]: StrKey=%s, UITextureName='%s'",
+                             path.name, strkey, ui_tex)
+
+        return root
+    except ET.XMLSyntaxError:
+        pass
+
+    # Fallback to recovery mode
+    try:
+        root = ET.fromstring(
+            wrapped.encode("utf-8"),
+            parser=ET.XMLParser(recover=True, huge_tree=True)
+        )
+        log.debug("Parsed %s with recovery mode", path.name)
+
+        # DEBUG: Verify parsed attributes in recovery mode
+        if debug_target:
+            for ki in root.iter("KnowledgeInfo"):
+                strkey = ki.get("StrKey", "")
+                if "DemenissCastle" in strkey:
+                    ui_tex = ki.get("UITextureName", "")
+                    log.info("DEBUG PARSED (recovery) [%s]: StrKey=%s, UITextureName='%s'",
+                             path.name, strkey, ui_tex)
+
+        return root
+    except ET.XMLSyntaxError:
+        log.warning("XML parse error → %s", path)
+        return None
 
 
 def parse_xml_string(xml_string: str) -> Optional[ET._Element]:
-    """
-    Parse XML string with dual-mode recovery.
+    """Parse XML string with sanitization and recovery."""
+    cleaned = sanitize_xml(xml_string)
+    wrapped = f"<ROOT>\n{cleaned}\n</ROOT>"
 
-    Args:
-        xml_string: XML string to parse
+    try:
+        return ET.fromstring(
+            wrapped.encode("utf-8"),
+            parser=ET.XMLParser(huge_tree=True)
+        )
+    except ET.XMLSyntaxError:
+        pass
 
-    Returns:
-        Root element or None if parsing fails
-    """
-    for mode, txt in (("strict", xml_string), ("sanitised", sanitize_xml(xml_string))):
-        try:
-            return ET.fromstring(
-                f"<ROOT>{txt}</ROOT>",
-                parser=ET.XMLParser(recover=(mode == "sanitised"), huge_tree=True),
-            )
-        except ET.XMLSyntaxError:
-            continue
-
-    return None
+    try:
+        return ET.fromstring(
+            wrapped.encode("utf-8"),
+            parser=ET.XMLParser(recover=True, huge_tree=True)
+        )
+    except ET.XMLSyntaxError:
+        return None
 
 
 # =============================================================================

@@ -195,10 +195,10 @@ locaNext/src/routes/
 ## 📋 Supported Platforms
 
 **Games (4):**
-- BDO (Black Desert Online)
-- BDM (Black Desert Mobile)
-- BDC (Black Desert Console)
-- CD (Crimson Desert)
+- BDO (Game Title 1)
+- BDM (Game Title 2)
+- BDC (Game Title 3)
+- CD (Game Title 4)
 
 **Languages (15):**
 - DE (German)

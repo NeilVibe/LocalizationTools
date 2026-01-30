@@ -3,8 +3,8 @@
 # -*- coding: utf-8 -*-
 
 r"""
-Crimson Desert – Faction / World-Node visualiser
-────────────────────────────────────────────────
+Faction / World-Node visualiser
+───────────────────────────────
 • Hover a town to see its name → all connected
   routes are shown automatically.
 • SHORT left-click on a town → open the LQA panel
@@ -433,7 +433,7 @@ def build_figure(
 
     fig.update_layout(
         title=(
-            "Crimson Desert – World Nodes"
+            "World Nodes"
             "<br><span style='font-size:14px;'>hover = show routes &nbsp;&nbsp;|&nbsp;&nbsp;"
             "L-click (no move) = LQA panel &nbsp;&nbsp;|&nbsp;&nbsp;drag = pan</span>"
         ),
