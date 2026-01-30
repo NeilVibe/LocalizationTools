@@ -306,7 +306,7 @@ async def go_online():
         }
 
     # Check PostgreSQL reachability
-    pg_url = config.POSTGRES_URL
+    pg_url = config.POSTGRES_DATABASE_URL
     is_reachable = check_postgresql_reachable(pg_url)
 
     if is_reachable:
