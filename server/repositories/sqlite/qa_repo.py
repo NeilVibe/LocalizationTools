@@ -54,16 +54,17 @@ class SQLiteQAResultRepository(QAResultRepository):
         """Get QA result by ID."""
         logger.debug(f"[QA-SQLITE] get called: result_id={result_id}")
 
-        conn = self.db._get_connection()
-        row = conn.execute(
-            "SELECT * FROM offline_qa_results WHERE id = ?",
-            (result_id,)
-        ).fetchone()
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM offline_qa_results WHERE id = ?",
+                (result_id,)
+            )
+            row = await cursor.fetchone()
 
-        if not row:
-            return None
+            if not row:
+                return None
 
-        return self._result_to_dict(dict(row))
+            return self._result_to_dict(dict(row))
 
     async def get_for_row(
         self,
@@ -73,18 +74,18 @@ class SQLiteQAResultRepository(QAResultRepository):
         """Get QA results for a row."""
         logger.debug(f"[QA-SQLITE] get_for_row called: row_id={row_id}, include_resolved={include_resolved}")
 
-        conn = self.db._get_connection()
+        async with self.db._get_async_connection() as conn:
+            if include_resolved:
+                query = "SELECT * FROM offline_qa_results WHERE row_id = ? ORDER BY created_at"
+                cursor = await conn.execute(query, (row_id,))
+            else:
+                query = "SELECT * FROM offline_qa_results WHERE row_id = ? AND resolved_at IS NULL ORDER BY created_at"
+                cursor = await conn.execute(query, (row_id,))
 
-        if include_resolved:
-            query = "SELECT * FROM offline_qa_results WHERE row_id = ? ORDER BY created_at"
-            rows = conn.execute(query, (row_id,)).fetchall()
-        else:
-            query = "SELECT * FROM offline_qa_results WHERE row_id = ? AND resolved_at IS NULL ORDER BY created_at"
-            rows = conn.execute(query, (row_id,)).fetchall()
-
-        results = [self._result_to_dict(dict(r)) for r in rows]
-        logger.debug(f"[QA-SQLITE] get_for_row result: row_id={row_id}, count={len(results)}")
-        return results
+            rows = await cursor.fetchall()
+            results = [self._result_to_dict(dict(r)) for r in rows]
+            logger.debug(f"[QA-SQLITE] get_for_row result: row_id={row_id}, count={len(results)}")
+            return results
 
     async def get_for_file(
         self,
@@ -95,70 +96,71 @@ class SQLiteQAResultRepository(QAResultRepository):
         """Get QA results for a file with row info."""
         logger.debug(f"[QA-SQLITE] get_for_file called: file_id={file_id}, check_type={check_type}")
 
-        conn = self.db._get_connection()
+        async with self.db._get_async_connection() as conn:
+            query = """
+                SELECT q.*, r.row_num, r.source, r.target
+                FROM offline_qa_results q
+                JOIN offline_rows r ON q.row_id = r.id
+                WHERE q.file_id = ?
+            """
+            params = [file_id]
 
-        query = """
-            SELECT q.*, r.row_num, r.source, r.target
-            FROM offline_qa_results q
-            JOIN offline_rows r ON q.row_id = r.id
-            WHERE q.file_id = ?
-        """
-        params = [file_id]
+            if not include_resolved:
+                query += " AND q.resolved_at IS NULL"
 
-        if not include_resolved:
-            query += " AND q.resolved_at IS NULL"
+            if check_type:
+                query += " AND q.check_type = ?"
+                params.append(check_type)
 
-        if check_type:
-            query += " AND q.check_type = ?"
-            params.append(check_type)
+            query += " ORDER BY r.row_num, q.created_at"
 
-        query += " ORDER BY r.row_num, q.created_at"
+            cursor = await conn.execute(query, params)
+            rows = await cursor.fetchall()
+            results = [self._result_to_dict(dict(r), include_row_info=True) for r in rows]
 
-        rows = conn.execute(query, params).fetchall()
-        results = [self._result_to_dict(dict(r), include_row_info=True) for r in rows]
-
-        logger.debug(f"[QA-SQLITE] get_for_file result: file_id={file_id}, count={len(results)}")
-        return results
+            logger.debug(f"[QA-SQLITE] get_for_file result: file_id={file_id}, count={len(results)}")
+            return results
 
     async def get_summary(self, file_id: int) -> Dict[str, Any]:
         """Get QA summary for a file."""
         logger.debug(f"[QA-SQLITE] get_summary called: file_id={file_id}")
 
-        conn = self.db._get_connection()
+        async with self.db._get_async_connection() as conn:
+            # Count issues by check type
+            cursor = await conn.execute("""
+                SELECT check_type, COUNT(*) as count
+                FROM offline_qa_results
+                WHERE file_id = ? AND resolved_at IS NULL
+                GROUP BY check_type
+            """, (file_id,))
+            rows = await cursor.fetchall()
 
-        # Count issues by check type
-        rows = conn.execute("""
-            SELECT check_type, COUNT(*) as count
-            FROM offline_qa_results
-            WHERE file_id = ? AND resolved_at IS NULL
-            GROUP BY check_type
-        """, (file_id,)).fetchall()
+            counts = {row["check_type"]: row["count"] for row in rows}
 
-        counts = {row["check_type"]: row["count"] for row in rows}
+            # Get last checked time from rows
+            cursor = await conn.execute("""
+                SELECT MAX(r.updated_at) as last_checked
+                FROM offline_rows r
+                WHERE r.file_id = ?
+            """, (file_id,))
+            last_checked_row = await cursor.fetchone()
 
-        # Get last checked time from rows
-        last_checked_row = conn.execute("""
-            SELECT MAX(r.updated_at) as last_checked
-            FROM offline_rows r
-            WHERE r.file_id = ?
-        """, (file_id,)).fetchone()
+            last_checked = last_checked_row["last_checked"] if last_checked_row else None
+            total = sum(counts.values())
 
-        last_checked = last_checked_row["last_checked"] if last_checked_row else None
-        total = sum(counts.values())
+            summary = {
+                "file_id": file_id,
+                "line": counts.get("line", 0),
+                "term": counts.get("term", 0),
+                "pattern": counts.get("pattern", 0),
+                "character": counts.get("character", 0),
+                "grammar": counts.get("grammar", 0),
+                "total": total,
+                "last_checked": last_checked
+            }
 
-        summary = {
-            "file_id": file_id,
-            "line": counts.get("line", 0),
-            "term": counts.get("term", 0),
-            "pattern": counts.get("pattern", 0),
-            "character": counts.get("character", 0),
-            "grammar": counts.get("grammar", 0),
-            "total": total,
-            "last_checked": last_checked
-        }
-
-        logger.debug(f"[QA-SQLITE] get_summary result: file_id={file_id}, total={total}")
-        return summary
+            logger.debug(f"[QA-SQLITE] get_summary result: file_id={file_id}, total={total}")
+            return summary
 
     # =========================================================================
     # Write Operations
@@ -176,32 +178,32 @@ class SQLiteQAResultRepository(QAResultRepository):
         """Create a new QA result."""
         logger.debug(f"[QA-SQLITE] create called: row_id={row_id}, check_type={check_type}")
 
-        conn = self.db._get_connection()
-        created_at = datetime.utcnow().isoformat()
-        details_json = json.dumps(details) if details else None
+        async with self.db._get_async_connection() as conn:
+            created_at = datetime.utcnow().isoformat()
+            details_json = json.dumps(details) if details else None
 
-        cursor = conn.execute("""
-            INSERT INTO offline_qa_results (row_id, file_id, check_type, severity, message, details, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (row_id, file_id, check_type, severity, message, details_json, created_at))
+            cursor = await conn.execute("""
+                INSERT INTO offline_qa_results (row_id, file_id, check_type, severity, message, details, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (row_id, file_id, check_type, severity, message, details_json, created_at))
 
-        result_id = cursor.lastrowid
-        conn.commit()
+            result_id = cursor.lastrowid
+            await conn.commit()
 
-        logger.success(f"[QA-SQLITE] Created: id={result_id}, row_id={row_id}, check_type={check_type}")
+            logger.success(f"[QA-SQLITE] Created: id={result_id}, row_id={row_id}, check_type={check_type}")
 
-        return {
-            "id": result_id,
-            "row_id": row_id,
-            "file_id": file_id,
-            "check_type": check_type,
-            "severity": severity,
-            "message": message,
-            "details": details,
-            "created_at": created_at,
-            "resolved_at": None,
-            "resolved_by": None
-        }
+            return {
+                "id": result_id,
+                "row_id": row_id,
+                "file_id": file_id,
+                "check_type": check_type,
+                "severity": severity,
+                "message": message,
+                "details": details,
+                "created_at": created_at,
+                "resolved_at": None,
+                "resolved_by": None
+            }
 
     async def bulk_create(
         self,
@@ -213,20 +215,20 @@ class SQLiteQAResultRepository(QAResultRepository):
         if not results:
             return 0
 
-        conn = self.db._get_connection()
-        created_at = datetime.utcnow().isoformat()
+        async with self.db._get_async_connection() as conn:
+            created_at = datetime.utcnow().isoformat()
 
-        for r in results:
-            details_json = json.dumps(r.get("details")) if r.get("details") else None
-            conn.execute("""
-                INSERT INTO offline_qa_results (row_id, file_id, check_type, severity, message, details, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (r["row_id"], r["file_id"], r["check_type"], r["severity"], r["message"], details_json, created_at))
+            for r in results:
+                details_json = json.dumps(r.get("details")) if r.get("details") else None
+                await conn.execute("""
+                    INSERT INTO offline_qa_results (row_id, file_id, check_type, severity, message, details, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (r["row_id"], r["file_id"], r["check_type"], r["severity"], r["message"], details_json, created_at))
 
-        conn.commit()
+            await conn.commit()
 
-        logger.success(f"[QA-SQLITE] Bulk created: count={len(results)}")
-        return len(results)
+            logger.success(f"[QA-SQLITE] Bulk created: count={len(results)}")
+            return len(results)
 
     async def resolve(
         self,
@@ -236,87 +238,88 @@ class SQLiteQAResultRepository(QAResultRepository):
         """Mark a QA result as resolved."""
         logger.debug(f"[QA-SQLITE] resolve called: result_id={result_id}, resolved_by={resolved_by}")
 
-        conn = self.db._get_connection()
+        async with self.db._get_async_connection() as conn:
+            # Check if exists
+            cursor = await conn.execute(
+                "SELECT * FROM offline_qa_results WHERE id = ?",
+                (result_id,)
+            )
+            row = await cursor.fetchone()
 
-        # Check if exists
-        row = conn.execute(
-            "SELECT * FROM offline_qa_results WHERE id = ?",
-            (result_id,)
-        ).fetchone()
+            if not row:
+                logger.warning(f"[QA-SQLITE] Resolve target not found: result_id={result_id}")
+                return None
 
-        if not row:
-            logger.warning(f"[QA-SQLITE] Resolve target not found: result_id={result_id}")
-            return None
+            if row["resolved_at"]:
+                logger.debug(f"[QA-SQLITE] Already resolved: result_id={result_id}")
+                return self._result_to_dict(dict(row))
 
-        if row["resolved_at"]:
-            logger.debug(f"[QA-SQLITE] Already resolved: result_id={result_id}")
-            return self._result_to_dict(dict(row))
+            resolved_at = datetime.utcnow().isoformat()
+            await conn.execute("""
+                UPDATE offline_qa_results
+                SET resolved_at = ?, resolved_by = ?
+                WHERE id = ?
+            """, (resolved_at, resolved_by, result_id))
 
-        resolved_at = datetime.utcnow().isoformat()
-        conn.execute("""
-            UPDATE offline_qa_results
-            SET resolved_at = ?, resolved_by = ?
-            WHERE id = ?
-        """, (resolved_at, resolved_by, result_id))
+            await conn.commit()
 
-        conn.commit()
+            # Update row QA count
+            await self.update_row_qa_count(row["row_id"])
 
-        # Update row QA count
-        await self.update_row_qa_count(row["row_id"])
+            logger.success(f"[QA-SQLITE] Resolved: result_id={result_id}")
 
-        logger.success(f"[QA-SQLITE] Resolved: result_id={result_id}")
+            # Return updated result
+            cursor = await conn.execute(
+                "SELECT * FROM offline_qa_results WHERE id = ?",
+                (result_id,)
+            )
+            updated_row = await cursor.fetchone()
 
-        # Return updated result
-        updated_row = conn.execute(
-            "SELECT * FROM offline_qa_results WHERE id = ?",
-            (result_id,)
-        ).fetchone()
-
-        return self._result_to_dict(dict(updated_row))
+            return self._result_to_dict(dict(updated_row))
 
     async def delete_unresolved_for_row(self, row_id: int) -> int:
         """Delete all unresolved QA results for a row."""
         logger.debug(f"[QA-SQLITE] delete_unresolved_for_row called: row_id={row_id}")
 
-        conn = self.db._get_connection()
+        async with self.db._get_async_connection() as conn:
+            # Count first
+            cursor = await conn.execute(
+                "SELECT COUNT(*) as count FROM offline_qa_results WHERE row_id = ? AND resolved_at IS NULL",
+                (row_id,)
+            )
+            count_row = await cursor.fetchone()
+            count = count_row["count"] if count_row else 0
 
-        # Count first
-        count_row = conn.execute(
-            "SELECT COUNT(*) as count FROM offline_qa_results WHERE row_id = ? AND resolved_at IS NULL",
-            (row_id,)
-        ).fetchone()
-        count = count_row["count"] if count_row else 0
+            await conn.execute(
+                "DELETE FROM offline_qa_results WHERE row_id = ? AND resolved_at IS NULL",
+                (row_id,)
+            )
+            await conn.commit()
 
-        conn.execute(
-            "DELETE FROM offline_qa_results WHERE row_id = ? AND resolved_at IS NULL",
-            (row_id,)
-        )
-        conn.commit()
-
-        logger.debug(f"[QA-SQLITE] Deleted unresolved: row_id={row_id}, count={count}")
-        return count
+            logger.debug(f"[QA-SQLITE] Deleted unresolved: row_id={row_id}, count={count}")
+            return count
 
     async def delete_for_file(self, file_id: int) -> int:
         """Delete all QA results for a file."""
         logger.debug(f"[QA-SQLITE] delete_for_file called: file_id={file_id}")
 
-        conn = self.db._get_connection()
+        async with self.db._get_async_connection() as conn:
+            # Count first
+            cursor = await conn.execute(
+                "SELECT COUNT(*) as count FROM offline_qa_results WHERE file_id = ?",
+                (file_id,)
+            )
+            count_row = await cursor.fetchone()
+            count = count_row["count"] if count_row else 0
 
-        # Count first
-        count_row = conn.execute(
-            "SELECT COUNT(*) as count FROM offline_qa_results WHERE file_id = ?",
-            (file_id,)
-        ).fetchone()
-        count = count_row["count"] if count_row else 0
+            await conn.execute(
+                "DELETE FROM offline_qa_results WHERE file_id = ?",
+                (file_id,)
+            )
+            await conn.commit()
 
-        conn.execute(
-            "DELETE FROM offline_qa_results WHERE file_id = ?",
-            (file_id,)
-        )
-        conn.commit()
-
-        logger.success(f"[QA-SQLITE] Deleted for file: file_id={file_id}, count={count}")
-        return count
+            logger.success(f"[QA-SQLITE] Deleted for file: file_id={file_id}, count={count}")
+            return count
 
     # =========================================================================
     # Utility Operations
@@ -324,12 +327,13 @@ class SQLiteQAResultRepository(QAResultRepository):
 
     async def count_unresolved_for_row(self, row_id: int) -> int:
         """Count unresolved QA issues for a row."""
-        conn = self.db._get_connection()
-        row = conn.execute(
-            "SELECT COUNT(*) as count FROM offline_qa_results WHERE row_id = ? AND resolved_at IS NULL",
-            (row_id,)
-        ).fetchone()
-        return row["count"] if row else 0
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT COUNT(*) as count FROM offline_qa_results WHERE row_id = ? AND resolved_at IS NULL",
+                (row_id,)
+            )
+            row = await cursor.fetchone()
+            return row["count"] if row else 0
 
     async def update_row_qa_count(self, row_id: int) -> None:
         """Update the row's qa_flag_count field (if column exists)."""

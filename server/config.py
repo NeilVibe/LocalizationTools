@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from loguru import logger
+
 # Load environment variables from .env file (if exists)
 # override=False ensures system env vars (e.g., CI) take precedence over .env file
 try:
@@ -534,15 +536,12 @@ def check_security_config() -> dict:
     }
 
 
-def validate_security_on_startup(logger=None) -> bool:
+def validate_security_on_startup() -> bool:
     """
     Validate security configuration on server startup.
 
     In 'strict' mode: raises exception if critical security issues found
     In 'warn' mode: logs warnings but continues
-
-    Args:
-        logger: Optional logger instance (uses print if not provided)
 
     Returns:
         True if startup should continue, False if should abort
@@ -550,22 +549,13 @@ def validate_security_on_startup(logger=None) -> bool:
     result = check_security_config()
 
     def log_warning(msg):
-        if logger:
-            logger.warning(f"SECURITY: {msg}")
-        else:
-            print(f"[WARNING] SECURITY: {msg}")
+        logger.warning(f"SECURITY: {msg}")
 
     def log_error(msg):
-        if logger:
-            logger.error(f"SECURITY: {msg}")
-        else:
-            print(f"[ERROR] SECURITY: {msg}")
+        logger.error(f"SECURITY: {msg}")
 
     def log_info(msg):
-        if logger:
-            logger.info(f"SECURITY: {msg}")
-        else:
-            print(f"[INFO] SECURITY: {msg}")
+        logger.info(f"SECURITY: {msg}")
 
     # Log warnings
     for warning in result["warnings"]:

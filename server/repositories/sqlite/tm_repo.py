@@ -25,6 +25,21 @@ class SQLiteTMRepository(TMRepository):
     def __init__(self):
         self.db = get_offline_db()
 
+    def _tm_row_to_dict(self, row) -> Dict[str, Any]:
+        """Convert SQLite TM row to dict format."""
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "source_lang": row.get("source_lang"),
+            "target_lang": row.get("target_lang"),
+            "entry_count": row.get("entry_count", 0),
+            "status": row.get("status", "active"),
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+        }
+
     # =========================================================================
     # Core CRUD
     # =========================================================================
@@ -32,11 +47,11 @@ class SQLiteTMRepository(TMRepository):
     async def get(self, tm_id: int) -> Optional[Dict[str, Any]]:
         """Get TM by ID from SQLite."""
         # Try to get from offline_tms table
-        tms = self.db.get_tms()
+        tms = await self.db.get_tms()
         for tm in tms:
             if tm.get("id") == tm_id:
                 # Add assignment info
-                assignment = self.db.get_local_tm_assignment(tm_id)
+                assignment = await self.db.get_local_tm_assignment(tm_id)
                 if assignment:
                     tm.update({
                         "assignment_id": assignment.get("id"),
@@ -50,7 +65,7 @@ class SQLiteTMRepository(TMRepository):
 
     async def get_all(self) -> List[Dict[str, Any]]:
         """Get all TMs from SQLite."""
-        return self.db.get_all_local_tms()
+        return await self.db.get_all_local_tms()
 
     async def create(
         self,
@@ -60,25 +75,22 @@ class SQLiteTMRepository(TMRepository):
         owner_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """Create new TM in SQLite."""
-        return self.db.create_local_tm(name, source_lang, target_lang)
+        return await self.db.create_local_tm(name, source_lang, target_lang)
 
     async def delete(self, tm_id: int) -> bool:
         """Delete TM from SQLite."""
-        conn = self.db._get_connection()
-        try:
+        async with self.db._get_async_connection() as conn:
             # Delete entries
-            conn.execute("DELETE FROM offline_tm_entries WHERE tm_id = ?", (tm_id,))
+            await conn.execute("DELETE FROM offline_tm_entries WHERE tm_id = ?", (tm_id,))
             # Delete assignments
-            conn.execute("DELETE FROM offline_tm_assignments WHERE tm_id = ?", (tm_id,))
+            await conn.execute("DELETE FROM offline_tm_assignments WHERE tm_id = ?", (tm_id,))
             # Delete TM
-            result = conn.execute("DELETE FROM offline_tms WHERE id = ?", (tm_id,))
-            conn.commit()
-            deleted = result.rowcount > 0
+            cursor = await conn.execute("DELETE FROM offline_tms WHERE id = ?", (tm_id,))
+            await conn.commit()
+            deleted = cursor.rowcount > 0
             if deleted:
                 logger.info(f"Deleted local TM {tm_id}")
             return deleted
-        finally:
-            conn.close()
 
     # =========================================================================
     # Assignment Operations
@@ -89,7 +101,7 @@ class SQLiteTMRepository(TMRepository):
         if target.scope_count() > 1:
             raise ValueError("Only one scope can be set (platform, project, or folder)")
 
-        result = self.db.assign_local_tm(
+        result = await self.db.assign_local_tm(
             tm_id=tm_id,
             platform_id=target.platform_id,
             project_id=target.project_id,
@@ -109,12 +121,12 @@ class SQLiteTMRepository(TMRepository):
 
     async def unassign(self, tm_id: int) -> Dict[str, Any]:
         """Unassign TM in SQLite."""
-        self.db.unassign_local_tm(tm_id)
+        await self.db.unassign_local_tm(tm_id)
         return await self.get(tm_id)
 
     async def activate(self, tm_id: int) -> Dict[str, Any]:
         """Activate TM in SQLite."""
-        assignment = self.db.get_local_tm_assignment(tm_id)
+        assignment = await self.db.get_local_tm_assignment(tm_id)
 
         if not assignment:
             raise ValueError("TM must be assigned before activation")
@@ -124,39 +136,33 @@ class SQLiteTMRepository(TMRepository):
             assignment.get("folder_id") is None):
             raise ValueError("TM must be assigned to a scope before activation")
 
-        conn = self.db._get_connection()
-        try:
-            conn.execute(
+        async with self.db._get_async_connection() as conn:
+            await conn.execute(
                 """UPDATE offline_tm_assignments
                    SET is_active = 1, activated_at = datetime('now')
                    WHERE tm_id = ?""",
                 (tm_id,)
             )
-            conn.commit()
+            await conn.commit()
             logger.info(f"Activated local TM {tm_id}")
-        finally:
-            conn.close()
 
         return await self.get(tm_id)
 
     async def deactivate(self, tm_id: int) -> Dict[str, Any]:
         """Deactivate TM in SQLite."""
-        conn = self.db._get_connection()
-        try:
-            conn.execute(
+        async with self.db._get_async_connection() as conn:
+            await conn.execute(
                 "UPDATE offline_tm_assignments SET is_active = 0 WHERE tm_id = ?",
                 (tm_id,)
             )
-            conn.commit()
+            await conn.commit()
             logger.info(f"Deactivated local TM {tm_id}")
-        finally:
-            conn.close()
 
         return await self.get(tm_id)
 
     async def get_assignment(self, tm_id: int) -> Optional[Dict[str, Any]]:
         """Get TM assignment from SQLite."""
-        return self.db.get_local_tm_assignment(tm_id)
+        return await self.db.get_local_tm_assignment(tm_id)
 
     # =========================================================================
     # Scope Queries
@@ -170,7 +176,7 @@ class SQLiteTMRepository(TMRepository):
         include_inactive: bool = False
     ) -> List[Dict[str, Any]]:
         """Get TMs for scope from SQLite."""
-        return self.db.get_local_tm_assignments_for_scope(
+        return await self.db.get_local_tm_assignments_for_scope(
             platform_id=platform_id,
             project_id=project_id,
             folder_id=folder_id
@@ -179,12 +185,12 @@ class SQLiteTMRepository(TMRepository):
     async def get_active_for_file(self, file_id: int) -> List[Dict[str, Any]]:
         """Get active TMs for file scope chain."""
         # Get file info
-        conn = self.db._get_connection()
-        try:
-            row = conn.execute(
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT folder_id, project_id FROM offline_files WHERE id = ?",
                 (file_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 return []
@@ -192,28 +198,26 @@ class SQLiteTMRepository(TMRepository):
             folder_id = row["folder_id"]
             project_id = row["project_id"]
 
-            # Get all active TMs in scope chain
-            results = []
+        # Get all active TMs in scope chain
+        results = []
 
-            # Folder-level TMs
-            if folder_id:
-                folder_tms = await self.get_for_scope(folder_id=folder_id)
-                for tm in folder_tms:
-                    if tm.get("is_active"):
-                        tm["scope"] = "folder"
-                        results.append(tm)
+        # Folder-level TMs
+        if folder_id:
+            folder_tms = await self.get_for_scope(folder_id=folder_id)
+            for tm in folder_tms:
+                if tm.get("is_active"):
+                    tm["scope"] = "folder"
+                    results.append(tm)
 
-            # Project-level TMs
-            if project_id:
-                project_tms = await self.get_for_scope(project_id=project_id)
-                for tm in project_tms:
-                    if tm.get("is_active"):
-                        tm["scope"] = "project"
-                        results.append(tm)
+        # Project-level TMs
+        if project_id:
+            project_tms = await self.get_for_scope(project_id=project_id)
+            for tm in project_tms:
+                if tm.get("is_active"):
+                    tm["scope"] = "project"
+                    results.append(tm)
 
-            return results
-        finally:
-            conn.close()
+        return results
 
     # =========================================================================
     # TM Linking (Active TMs for Projects)
@@ -226,59 +230,54 @@ class SQLiteTMRepository(TMRepository):
         priority: int = 1
     ) -> Dict[str, Any]:
         """Link a TM to a project for auto-add on confirm."""
-        conn = self._get_connection()
-        try:
+        async with self.db._get_async_connection() as conn:
             # Check if already linked
-            existing = conn.execute(
+            cursor = await conn.execute(
                 """SELECT id FROM offline_tm_assignments
                    WHERE tm_id = ? AND project_id = ? AND is_active = 1""",
                 [tm_id, project_id]
-            ).fetchone()
+            )
+            existing = await cursor.fetchone()
 
             if existing:
                 # Update priority
-                conn.execute(
+                await conn.execute(
                     """UPDATE offline_tm_assignments
                        SET priority = ?, sync_status = 'modified'
                        WHERE tm_id = ? AND project_id = ? AND is_active = 1""",
                     [priority, tm_id, project_id]
                 )
-                conn.commit()
+                await conn.commit()
                 return {"tm_id": tm_id, "project_id": project_id, "priority": priority, "created": False}
 
             # Create new assignment with is_active=1
-            conn.execute(
+            await conn.execute(
                 """INSERT INTO offline_tm_assignments
                    (tm_id, project_id, priority, is_active, sync_status)
                    VALUES (?, ?, ?, 1, 'local')""",
                 [tm_id, project_id, priority]
             )
-            conn.commit()
+            await conn.commit()
 
             logger.info(f"[TM-REPO-SQLITE] Linked TM {tm_id} to project {project_id}")
             return {"tm_id": tm_id, "project_id": project_id, "priority": priority, "created": True}
-        finally:
-            conn.close()
 
     async def unlink_from_project(self, tm_id: int, project_id: int) -> bool:
         """Unlink a TM from a project."""
-        conn = self._get_connection()
-        try:
+        async with self.db._get_async_connection() as conn:
             # Deactivate the assignment
-            result = conn.execute(
+            cursor = await conn.execute(
                 """UPDATE offline_tm_assignments
                    SET is_active = 0, sync_status = 'modified'
                    WHERE tm_id = ? AND project_id = ? AND is_active = 1""",
                 [tm_id, project_id]
             )
-            conn.commit()
+            await conn.commit()
 
-            if result.rowcount > 0:
+            if cursor.rowcount > 0:
                 logger.info(f"[TM-REPO-SQLITE] Unlinked TM {tm_id} from project {project_id}")
                 return True
             return False
-        finally:
-            conn.close()
 
     async def get_linked_for_project(
         self,
@@ -286,8 +285,7 @@ class SQLiteTMRepository(TMRepository):
         user_id: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
         """Get the highest-priority linked TM for a project."""
-        conn = self._get_connection()
-        try:
+        async with self.db._get_async_connection() as conn:
             query = """
                 SELECT t.*
                 FROM offline_tms t
@@ -301,30 +299,29 @@ class SQLiteTMRepository(TMRepository):
 
             query += " ORDER BY a.priority LIMIT 1"
 
-            row = conn.execute(query, params).fetchone()
+            cursor = await conn.execute(query, params)
+            row = await cursor.fetchone()
 
             if not row:
                 return None
 
             return self._tm_row_to_dict(row)
-        finally:
-            conn.close()
 
     async def get_all_linked_for_project(
         self,
         project_id: int
     ) -> List[Dict[str, Any]]:
         """Get all TMs linked to a project, ordered by priority."""
-        conn = self._get_connection()
-        try:
-            rows = conn.execute(
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT t.*, a.priority, a.created_at as linked_at
                    FROM offline_tms t
                    JOIN offline_tm_assignments a ON t.id = a.tm_id
                    WHERE a.project_id = ? AND a.is_active = 1
                    ORDER BY a.priority""",
                 [project_id]
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
 
             return [
                 {
@@ -337,8 +334,6 @@ class SQLiteTMRepository(TMRepository):
                 }
                 for row in rows
             ]
-        finally:
-            conn.close()
 
     # =========================================================================
     # TM Entries
@@ -362,7 +357,7 @@ class SQLiteTMRepository(TMRepository):
             "change_date": datetime.now().isoformat(),
             "is_confirmed": False,
         }
-        entry_id = self.db.save_tm_entry(entry, tm_id)
+        entry_id = await self.db.save_tm_entry(entry, tm_id)
         entry["id"] = entry_id
         entry["tm_id"] = tm_id
         return entry
@@ -381,8 +376,7 @@ class SQLiteTMRepository(TMRepository):
         if not entries:
             return 0
 
-        conn = self.db._get_connection()
-        try:
+        async with self.db._get_async_connection() as conn:
             now = datetime.now().isoformat()
 
             # Prepare data for executemany
@@ -401,7 +395,7 @@ class SQLiteTMRepository(TMRepository):
                 ))
 
             # Bulk insert with executemany (single transaction = fast!)
-            conn.executemany(
+            await conn.executemany(
                 """INSERT INTO offline_tm_entries
                    (tm_id, source_text, target_text, source_hash, string_id, change_date, is_confirmed)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -409,16 +403,14 @@ class SQLiteTMRepository(TMRepository):
             )
 
             # Update entry count on TM
-            conn.execute(
+            await conn.execute(
                 "UPDATE offline_tms SET entry_count = entry_count + ? WHERE id = ?",
                 (len(data), tm_id)
             )
 
-            conn.commit()
+            await conn.commit()
             logger.info(f"Bulk added {len(data)} entries to SQLite TM {tm_id}")
             return len(data)
-        finally:
-            conn.close()
 
     async def get_entries(
         self,
@@ -427,7 +419,7 @@ class SQLiteTMRepository(TMRepository):
         limit: int = 100
     ) -> List[Dict[str, Any]]:
         """Get TM entries from SQLite."""
-        entries = self.db.get_tm_entries(tm_id)
+        entries = await self.db.get_tm_entries(tm_id)
         return entries[offset:offset + limit]
 
     async def search_entries(
@@ -437,7 +429,7 @@ class SQLiteTMRepository(TMRepository):
         limit: int = 10
     ) -> List[Dict[str, Any]]:
         """Search TM entries in SQLite."""
-        entries = self.db.get_tm_entries(tm_id)
+        entries = await self.db.get_tm_entries(tm_id)
 
         results = []
         query_lower = query.lower()
@@ -453,13 +445,13 @@ class SQLiteTMRepository(TMRepository):
 
     async def delete_entry(self, entry_id: int) -> bool:
         """Delete TM entry from SQLite."""
-        conn = self.db._get_connection()
-        try:
+        async with self.db._get_async_connection() as conn:
             # Get tm_id first
-            row = conn.execute(
+            cursor = await conn.execute(
                 "SELECT tm_id FROM offline_tm_entries WHERE id = ?",
                 (entry_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 return False
@@ -467,10 +459,10 @@ class SQLiteTMRepository(TMRepository):
             tm_id = row["tm_id"]
 
             # Delete entry
-            conn.execute("DELETE FROM offline_tm_entries WHERE id = ?", (entry_id,))
+            await conn.execute("DELETE FROM offline_tm_entries WHERE id = ?", (entry_id,))
 
             # Update entry count
-            conn.execute(
+            await conn.execute(
                 """UPDATE offline_tms
                    SET entry_count = CASE
                        WHEN entry_count > 0 THEN entry_count - 1
@@ -479,10 +471,8 @@ class SQLiteTMRepository(TMRepository):
                    WHERE id = ?""",
                 (tm_id,)
             )
-            conn.commit()
+            await conn.commit()
             return True
-        finally:
-            conn.close()
 
     async def update_entry(
         self,
@@ -493,13 +483,13 @@ class SQLiteTMRepository(TMRepository):
         updated_by: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """P11-FIX: Update TM entry in SQLite via Repository Pattern."""
-        conn = self.db._get_connection()
-        try:
+        async with self.db._get_async_connection() as conn:
             # Check if entry exists
-            row = conn.execute(
+            cursor = await conn.execute(
                 "SELECT * FROM offline_tm_entries WHERE id = ?",
                 (entry_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 return None
@@ -531,29 +521,28 @@ class SQLiteTMRepository(TMRepository):
 
             params.append(entry_id)
 
-            conn.execute(
+            await conn.execute(
                 f"UPDATE offline_tm_entries SET {', '.join(updates)} WHERE id = ?",
                 params
             )
 
             # Update TM timestamp
-            conn.execute(
+            await conn.execute(
                 "UPDATE offline_tms SET updated_at = datetime('now') WHERE id = ?",
                 (row["tm_id"],)
             )
 
-            conn.commit()
+            await conn.commit()
 
             # Fetch updated entry
-            updated_row = conn.execute(
+            cursor = await conn.execute(
                 "SELECT * FROM offline_tm_entries WHERE id = ?",
                 (entry_id,)
-            ).fetchone()
+            )
+            updated_row = await cursor.fetchone()
 
             logger.info(f"Updated SQLite TM entry {entry_id} by {updated_by}")
             return dict(updated_row) if updated_row else None
-        finally:
-            conn.close()
 
     async def confirm_entry(
         self,
@@ -562,44 +551,43 @@ class SQLiteTMRepository(TMRepository):
         confirmed_by: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """P11-FIX: Confirm/unconfirm TM entry in SQLite via Repository Pattern."""
-        conn = self.db._get_connection()
-        try:
+        async with self.db._get_async_connection() as conn:
             # Check if entry exists
-            row = conn.execute(
+            cursor = await conn.execute(
                 "SELECT * FROM offline_tm_entries WHERE id = ?",
                 (entry_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if not row:
                 return None
 
             if confirm:
-                conn.execute(
+                await conn.execute(
                     """UPDATE offline_tm_entries
                        SET is_confirmed = 1, confirmed_at = datetime('now'), confirmed_by = ?
                        WHERE id = ?""",
                     (confirmed_by, entry_id)
                 )
             else:
-                conn.execute(
+                await conn.execute(
                     """UPDATE offline_tm_entries
                        SET is_confirmed = 0, confirmed_at = NULL, confirmed_by = NULL
                        WHERE id = ?""",
                     (entry_id,)
                 )
 
-            conn.commit()
+            await conn.commit()
 
             # Fetch updated entry
-            updated_row = conn.execute(
+            cursor = await conn.execute(
                 "SELECT * FROM offline_tm_entries WHERE id = ?",
                 (entry_id,)
-            ).fetchone()
+            )
+            updated_row = await cursor.fetchone()
 
             logger.info(f"{'Confirmed' if confirm else 'Unconfirmed'} SQLite TM entry {entry_id} by {confirmed_by}")
             return dict(updated_row) if updated_row else None
-        finally:
-            conn.close()
 
     async def bulk_confirm_entries(
         self,
@@ -612,38 +600,36 @@ class SQLiteTMRepository(TMRepository):
         if not entry_ids:
             return 0
 
-        conn = self.db._get_connection()
-        try:
+        async with self.db._get_async_connection() as conn:
             placeholders = ",".join("?" * len(entry_ids))
 
             if confirm:
-                conn.execute(
+                await conn.execute(
                     f"""UPDATE offline_tm_entries
                         SET is_confirmed = 1, confirmed_at = datetime('now'), confirmed_by = ?
                         WHERE tm_id = ? AND id IN ({placeholders})""",
                     [confirmed_by, tm_id] + entry_ids
                 )
             else:
-                conn.execute(
+                await conn.execute(
                     f"""UPDATE offline_tm_entries
                         SET is_confirmed = 0, confirmed_at = NULL, confirmed_by = NULL
                         WHERE tm_id = ? AND id IN ({placeholders})""",
                     [tm_id] + entry_ids
                 )
 
-            conn.commit()
+            await conn.commit()
 
             # Get actual updated count
-            result = conn.execute(
+            cursor = await conn.execute(
                 f"SELECT COUNT(*) as cnt FROM offline_tm_entries WHERE tm_id = ? AND id IN ({placeholders})",
                 [tm_id] + entry_ids
-            ).fetchone()
+            )
+            result = await cursor.fetchone()
             updated_count = result["cnt"] if result else 0
 
             logger.info(f"Bulk {'confirmed' if confirm else 'unconfirmed'} {updated_count} entries in SQLite TM {tm_id} by {confirmed_by}")
             return updated_count
-        finally:
-            conn.close()
 
     async def get_glossary_terms(
         self,
@@ -655,10 +641,9 @@ class SQLiteTMRepository(TMRepository):
         if not tm_ids:
             return []
 
-        conn = self._get_connection()
-        try:
+        async with self.db._get_async_connection() as conn:
             placeholders = ",".join("?" * len(tm_ids))
-            rows = conn.execute(
+            cursor = await conn.execute(
                 f"""
                 SELECT source_text, target_text
                 FROM offline_tm_entries
@@ -669,11 +654,10 @@ class SQLiteTMRepository(TMRepository):
                 LIMIT ?
                 """,
                 tm_ids + [max_length, limit]
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
 
             return [(row["source_text"], row["target_text"]) for row in rows]
-        finally:
-            conn.close()
 
     # =========================================================================
     # Tree Structure
@@ -729,11 +713,11 @@ class SQLiteTMRepository(TMRepository):
             return result
 
         # Get platforms from SQLite
-        conn = self.db._get_connection()
-        try:
-            platforms = conn.execute(
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_platforms ORDER BY name"
-            ).fetchall()
+            )
+            platforms = await cursor.fetchall()
 
             tree_platforms = []
             for p in platforms:
@@ -751,17 +735,19 @@ class SQLiteTMRepository(TMRepository):
                 }
 
                 # Get projects for this platform
-                projects = conn.execute(
+                cursor = await conn.execute(
                     "SELECT * FROM offline_projects WHERE platform_id = ?",
                     (p["id"],)
-                ).fetchall()
+                )
+                projects = await cursor.fetchall()
 
                 for proj in projects:
                     # Get all folders for this project
-                    folders = conn.execute(
+                    cursor = await conn.execute(
                         "SELECT * FROM offline_folders WHERE project_id = ?",
                         (proj["id"],)
-                    ).fetchall()
+                    )
+                    folders = await cursor.fetchall()
 
                     # Build folder tree (root folders have parent_id=None)
                     folder_tree = build_folder_tree(
@@ -783,8 +769,6 @@ class SQLiteTMRepository(TMRepository):
                 "unassigned": unassigned,
                 "platforms": tree_platforms
             }
-        finally:
-            conn.close()
 
     # =========================================================================
     # Index Operations (P10-REPO)
@@ -797,15 +781,13 @@ class SQLiteTMRepository(TMRepository):
 
     async def count_entries(self, tm_id: int) -> int:
         """Count entries in a TM."""
-        conn = self.db._get_connection()
-        try:
-            result = conn.execute(
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT COUNT(*) FROM offline_tm_entries WHERE tm_id = ?",
                 (tm_id,)
-            ).fetchone()
+            )
+            result = await cursor.fetchone()
             return result[0] if result else 0
-        finally:
-            conn.close()
 
     # =========================================================================
     # Advanced Search (P10-REPO: PostgreSQL-specific - stubs for SQLite)
@@ -819,13 +801,13 @@ class SQLiteTMRepository(TMRepository):
         """Hash-based exact match search in SQLite."""
         source_hash = hashlib.sha256(source.encode()).hexdigest()
 
-        conn = self.db._get_connection()
-        try:
-            row = conn.execute(
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
                 """SELECT source_text, target_text FROM offline_tm_entries
                    WHERE tm_id = ? AND source_hash = ?""",
                 (tm_id, source_hash)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
 
             if row:
                 return {
@@ -836,8 +818,6 @@ class SQLiteTMRepository(TMRepository):
                     "strategy": "perfect_whole_match"
                 }
             return None
-        finally:
-            conn.close()
 
     async def search_similar(
         self,

@@ -30,116 +30,15 @@ _async_session_maker = None
 _async_engine_loop = None  # Track which event loop the async engine was created in
 
 
-class AsyncSessionWrapper:
-    """
-    Wrapper to make sync Session compatible with async await patterns.
+"""
+NOTE: AsyncSessionWrapper has been removed!
 
-    When SQLite fallback is used, we get a sync Session but async endpoints
-    use `await db.execute()`. This wrapper makes the sync session work with
-    async code by returning awaitables that immediately resolve.
+As of 2026-01-31, we use true async via aiosqlite for SQLite.
+Both PostgreSQL and SQLite now use real async sessions.
 
-    Usage:
-        # In async endpoint
-        result = await db.execute(query)  # Works with both AsyncSession and wrapped Session
-    """
-
-    def __init__(self, sync_session: Session):
-        self._session = sync_session
-
-    def execute(self, *args, **kwargs):
-        """Execute query and return awaitable result."""
-        import asyncio
-        result = self._session.execute(*args, **kwargs)
-        # Return a coroutine that immediately returns the result
-        async def _awaitable():
-            return result
-        return _awaitable()
-
-    def add(self, *args, **kwargs):
-        """Add object to session."""
-        return self._session.add(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        """Delete object from session."""
-        return self._session.delete(*args, **kwargs)
-
-    def refresh(self, *args, **kwargs):
-        """Refresh object from database and return awaitable."""
-        import asyncio
-        result = self._session.refresh(*args, **kwargs)
-        async def _awaitable():
-            return result
-        return _awaitable()
-
-    def flush(self, *args, **kwargs):
-        """Flush and return awaitable."""
-        import asyncio
-        self._session.flush(*args, **kwargs)
-        async def _awaitable():
-            pass
-        return _awaitable()
-
-    def commit(self):
-        """Commit and return awaitable."""
-        import asyncio
-        self._session.commit()
-        async def _awaitable():
-            pass
-        return _awaitable()
-
-    def rollback(self):
-        """Rollback and return awaitable."""
-        import asyncio
-        self._session.rollback()
-        async def _awaitable():
-            pass
-        return _awaitable()
-
-    def close(self):
-        """Close and return awaitable."""
-        import asyncio
-        self._session.close()
-        async def _awaitable():
-            pass
-        return _awaitable()
-
-    def begin(self):
-        """Begin transaction and return async context manager."""
-        sync_ctx = self._session.begin()
-
-        class AsyncBeginContext:
-            def __init__(self, sync_ctx):
-                self._sync_ctx = sync_ctx
-
-            async def __aenter__(self):
-                self._sync_ctx.__enter__()
-                return self
-
-            async def __aexit__(self, exc_type, exc_val, exc_tb):
-                return self._sync_ctx.__exit__(exc_type, exc_val, exc_tb)
-
-        return AsyncBeginContext(sync_ctx)
-
-    def begin_nested(self):
-        """Begin nested transaction and return async context manager."""
-        sync_ctx = self._session.begin_nested()
-
-        class AsyncBeginContext:
-            def __init__(self, sync_ctx):
-                self._sync_ctx = sync_ctx
-
-            async def __aenter__(self):
-                self._sync_ctx.__enter__()
-                return self
-
-            async def __aexit__(self, exc_type, exc_val, exc_tb):
-                return self._sync_ctx.__exit__(exc_type, exc_val, exc_tb)
-
-        return AsyncBeginContext(sync_ctx)
-
-    def __getattr__(self, name):
-        """Forward other attributes to underlying session."""
-        return getattr(self._session, name)
+Before: sync sqlite3 wrapped with fake async coroutines (blocked event loop)
+After: sqlite+aiosqlite:// with real async I/O (event loop stays free)
+"""
 
 
 def initialize_database():
@@ -208,27 +107,11 @@ def initialize_async_database():
     """
     Initialize async database engine and session maker (call once at startup).
 
-    P33 Offline Mode:
-    - SQLite: Skip async initialization (pysqlite is not async)
-    - PostgreSQL: Initialize async engine with asyncpg
-
-    ROBUST: Gracefully degrades to sync-only mode if asyncpg is not installed.
+    Supports both PostgreSQL (asyncpg) and SQLite (aiosqlite) in true async mode.
+    No more fake async wrappers - both databases use real non-blocking I/O.
     """
     import asyncio
     global _async_engine, _async_session_maker, _async_engine_loop
-
-    # Skip async database for SQLite (pysqlite is not async)
-    if config.ACTIVE_DATABASE_TYPE == "sqlite":
-        logger.info("Async database skipped: SQLite mode (using sync database only)")
-        return
-
-    # Check if asyncpg is available (required for async PostgreSQL)
-    try:
-        import asyncpg  # noqa: F401
-    except ImportError:
-        logger.warning("Async database skipped: asyncpg not installed (using sync database only)")
-        logger.warning("To enable async database, install asyncpg: pip install asyncpg")
-        return
 
     # Get current event loop
     try:
@@ -244,19 +127,52 @@ def initialize_async_database():
             _async_session_maker = None
 
     if _async_engine is None:
-        # PostgreSQL async URL (postgresql+asyncpg://)
-        database_url = config.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+        if config.ACTIVE_DATABASE_TYPE == "sqlite":
+            # SQLite with aiosqlite (true async!)
+            try:
+                import aiosqlite  # noqa: F401
+            except ImportError:
+                logger.error("aiosqlite not installed! SQLite async mode requires aiosqlite.")
+                logger.error("Install with: pip install aiosqlite")
+                raise ImportError("aiosqlite required for SQLite async mode")
 
-        # PostgreSQL with connection pooling (uses config values)
-        _async_engine = create_async_engine(
-            database_url,
-            echo=config.DB_ECHO,
-            pool_size=config.DB_POOL_SIZE,       # Connection pool size
-            max_overflow=config.DB_MAX_OVERFLOW, # Max extra connections
-            pool_timeout=config.DB_POOL_TIMEOUT, # Timeout for getting connection
-            pool_recycle=config.DB_POOL_RECYCLE, # Recycle connections after N seconds
-            pool_pre_ping=True                   # Verify connections before using
-        )
+            # Convert sqlite:///path to sqlite+aiosqlite:///path
+            database_url = config.DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///")
+
+            # SQLite with aiosqlite - no connection pooling needed (single-file database)
+            _async_engine = create_async_engine(
+                database_url,
+                echo=config.DB_ECHO,
+                # SQLite-specific: allow connections from any thread
+                connect_args={"check_same_thread": False}
+            )
+
+            logger.info("Async database initialized: SQLite (aiosqlite)")
+
+        else:
+            # PostgreSQL with asyncpg
+            try:
+                import asyncpg  # noqa: F401
+            except ImportError:
+                logger.warning("Async database skipped: asyncpg not installed (using sync database only)")
+                logger.warning("To enable async database, install asyncpg: pip install asyncpg")
+                return
+
+            # PostgreSQL async URL (postgresql+asyncpg://)
+            database_url = config.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+
+            # PostgreSQL with connection pooling (uses config values)
+            _async_engine = create_async_engine(
+                database_url,
+                echo=config.DB_ECHO,
+                pool_size=config.DB_POOL_SIZE,       # Connection pool size
+                max_overflow=config.DB_MAX_OVERFLOW, # Max extra connections
+                pool_timeout=config.DB_POOL_TIMEOUT, # Timeout for getting connection
+                pool_recycle=config.DB_POOL_RECYCLE, # Recycle connections after N seconds
+                pool_pre_ping=True                   # Verify connections before using
+            )
+
+            logger.info("Async database initialized: PostgreSQL (asyncpg)")
 
         _async_session_maker = async_sessionmaker(
             _async_engine,
@@ -266,8 +182,6 @@ def initialize_async_database():
 
         # Track which event loop this engine was created in
         _async_engine_loop = current_loop
-
-        logger.info("Async database initialized: PostgreSQL")
 
 
 def _check_async_engine_loop():
@@ -280,10 +194,6 @@ def _check_async_engine_loop():
     """
     import asyncio
     global _async_engine, _async_session_maker, _async_engine_loop
-
-    # Skip for SQLite mode
-    if config.ACTIVE_DATABASE_TYPE == "sqlite":
-        return
 
     # If no engine exists, nothing to check
     if _async_engine is None:
@@ -311,9 +221,8 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     NOTE: Auto-commits on success, auto-rollbacks on exception.
     For explicit transaction control, use session.begin() in endpoint.
 
-    P33 Offline Mode:
-    - SQLite: Falls back to sync session (wrapped for async compatibility)
-    - PostgreSQL: Uses async session
+    Supports both PostgreSQL (asyncpg) and SQLite (aiosqlite) with real async I/O.
+    No more fake async wrappers - event loop stays free during database operations.
 
     Yields:
         Async database session.
@@ -330,23 +239,12 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     if _async_session_maker is None:
         initialize_async_database()
 
-    # SQLite mode: async_session_maker is None, use sync session wrapped for async
+    # Both PostgreSQL and SQLite use true async sessions now
     if _async_session_maker is None:
-        # Fallback to sync session for SQLite mode
-        # Wrap in AsyncSessionWrapper so `await db.execute()` works
-        if _session_maker is None:
-            initialize_database()
-        sync_session = _session_maker()
-        wrapper = AsyncSessionWrapper(sync_session)
-        try:
-            yield wrapper
-            sync_session.commit()
-        except Exception:
-            sync_session.rollback()
-            raise
-        finally:
-            sync_session.close()
-        return
+        raise RuntimeError(
+            "Async database not initialized. "
+            "Ensure aiosqlite (for SQLite) or asyncpg (for PostgreSQL) is installed."
+        )
 
     async with _async_session_maker() as session:
         try:

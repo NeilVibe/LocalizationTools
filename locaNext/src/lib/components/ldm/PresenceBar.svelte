@@ -13,19 +13,24 @@
     return !invalid.includes(name);
   };
 
-  $: viewerNames = $fileViewers
-    .map(v => v.username || v.user_id || "")
-    .filter(isValidUsername);
+  // Svelte 5: Use $derived instead of $: for reactive computations
+  let viewerNames = $derived(
+    $fileViewers
+      .map(v => v.username || v.user_id || "")
+      .filter(isValidUsername)
+  );
 
   // Get current user's display name with robust fallback
-  $: currentUsername = isValidUsername($user?.username)
-    ? $user.username
-    : ($user?.user_id && isValidUsername($user.user_id) ? $user.user_id : "You");
+  let currentUsername = $derived(
+    isValidUsername($user?.username)
+      ? $user.username
+      : ($user?.user_id && isValidUsername($user.user_id) ? $user.user_id : "You")
+  );
 
   // If no valid viewers from WebSocket, show current user
-  $: viewerList = viewerNames.length > 0
-    ? viewerNames.join(", ")
-    : currentUsername;
+  let viewerList = $derived(
+    viewerNames.length > 0 ? viewerNames.join(", ") : currentUsername
+  );
 </script>
 
 <!-- UI-042: Simplified - just "X viewing" with hover tooltip showing viewer names -->

@@ -3,6 +3,8 @@ SQLite Project Repository.
 
 Implements ProjectRepository interface using SQLite (offline mode).
 Delegates to existing OfflineDatabase methods.
+
+ASYNC MIGRATION (2026-01-31): Uses aiosqlite for true async operations.
 """
 
 import time
@@ -49,11 +51,12 @@ class SQLiteProjectRepository(ProjectRepository):
 
     async def get(self, project_id: int) -> Optional[Dict[str, Any]]:
         """Get project by ID."""
-        with self.db._get_connection() as conn:
-            row = conn.execute(
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_projects WHERE id = ?",
                 (project_id,)
-            ).fetchone()
+            )
+            row = await cursor.fetchone()
             return self._normalize_project(dict(row)) if row else None
 
     async def get_all(
@@ -61,7 +64,7 @@ class SQLiteProjectRepository(ProjectRepository):
         platform_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """Get all projects, optionally filtered by platform."""
-        projects = self.db.get_projects(platform_id)
+        projects = await self.db.get_projects(platform_id)
         return [self._normalize_project(p) for p in projects]
 
     async def create(
@@ -80,8 +83,8 @@ class SQLiteProjectRepository(ProjectRepository):
         project_id = -int(time.time() * 1000) % 1000000000
         now = datetime.now().isoformat()
 
-        with self.db._get_connection() as conn:
-            conn.execute(
+        async with self.db._get_async_connection() as conn:
+            await conn.execute(
                 """INSERT INTO offline_projects
                    (id, server_id, name, description, platform_id, server_platform_id,
                     owner_id, is_restricted, created_at, updated_at, downloaded_at, sync_status)
@@ -98,7 +101,7 @@ class SQLiteProjectRepository(ProjectRepository):
                     now,
                 )
             )
-            conn.commit()
+            await conn.commit()
 
         logger.info(f"Created local project: id={project_id}, name='{unique_name}'")
 
@@ -116,7 +119,7 @@ class SQLiteProjectRepository(ProjectRepository):
         if not project:
             return None
 
-        with self.db._get_connection() as conn:
+        async with self.db._get_async_connection() as conn:
             updates = ["updated_at = datetime('now')"]
             params = []
 
@@ -132,11 +135,11 @@ class SQLiteProjectRepository(ProjectRepository):
 
             params.append(project_id)
 
-            conn.execute(
+            await conn.execute(
                 f"UPDATE offline_projects SET {', '.join(updates)} WHERE id = ?",
                 params
             )
-            conn.commit()
+            await conn.commit()
 
         logger.info(f"Updated project: id={project_id}")
         return await self.get(project_id)
@@ -147,17 +150,17 @@ class SQLiteProjectRepository(ProjectRepository):
         if not project:
             return False
 
-        with self.db._get_connection() as conn:
+        async with self.db._get_async_connection() as conn:
             # Delete all files in project
-            conn.execute("DELETE FROM offline_rows WHERE file_id IN (SELECT id FROM offline_files WHERE project_id = ?)", (project_id,))
-            conn.execute("DELETE FROM offline_files WHERE project_id = ?", (project_id,))
+            await conn.execute("DELETE FROM offline_rows WHERE file_id IN (SELECT id FROM offline_files WHERE project_id = ?)", (project_id,))
+            await conn.execute("DELETE FROM offline_files WHERE project_id = ?", (project_id,))
 
             # Delete all folders in project
-            conn.execute("DELETE FROM offline_folders WHERE project_id = ?", (project_id,))
+            await conn.execute("DELETE FROM offline_folders WHERE project_id = ?", (project_id,))
 
             # Delete the project
-            conn.execute("DELETE FROM offline_projects WHERE id = ?", (project_id,))
-            conn.commit()
+            await conn.execute("DELETE FROM offline_projects WHERE id = ?", (project_id,))
+            await conn.commit()
 
         logger.info(f"Deleted project: id={project_id}")
         return True
@@ -178,12 +181,12 @@ class SQLiteProjectRepository(ProjectRepository):
 
         old_name = project.get("name")
 
-        with self.db._get_connection() as conn:
-            conn.execute(
+        async with self.db._get_async_connection() as conn:
+            await conn.execute(
                 "UPDATE offline_projects SET name = ?, updated_at = datetime('now') WHERE id = ?",
                 (new_name, project_id)
             )
-            conn.commit()
+            await conn.commit()
 
         logger.info(f"Renamed project: id={project_id}, '{old_name}' -> '{new_name}'")
         return await self.get(project_id)
@@ -194,12 +197,12 @@ class SQLiteProjectRepository(ProjectRepository):
         if not project:
             return None
 
-        with self.db._get_connection() as conn:
-            conn.execute(
+        async with self.db._get_async_connection() as conn:
+            await conn.execute(
                 "UPDATE offline_projects SET is_restricted = ?, updated_at = datetime('now') WHERE id = ?",
                 (1 if is_restricted else 0, project_id)
             )
-            conn.commit()
+            await conn.commit()
 
         status = "restricted" if is_restricted else "public"
         logger.info(f"Project {project_id} set to {status}")
@@ -216,7 +219,7 @@ class SQLiteProjectRepository(ProjectRepository):
         exclude_id: Optional[int] = None
     ) -> bool:
         """Check if project name exists in platform."""
-        with self.db._get_connection() as conn:
+        async with self.db._get_async_connection() as conn:
             if platform_id is None:
                 query = """
                     SELECT COUNT(*) as cnt FROM offline_projects
@@ -234,7 +237,8 @@ class SQLiteProjectRepository(ProjectRepository):
                 query += " AND id != ?"
                 params.append(exclude_id)
 
-            result = conn.execute(query, params).fetchone()
+            cursor = await conn.execute(query, params)
+            result = await cursor.fetchone()
             return result["cnt"] > 0
 
     async def generate_unique_name(
@@ -260,19 +264,21 @@ class SQLiteProjectRepository(ProjectRepository):
         if not project:
             return None
 
-        with self.db._get_connection() as conn:
+        async with self.db._get_async_connection() as conn:
             # Get file count
-            file_result = conn.execute(
+            cursor = await conn.execute(
                 "SELECT COUNT(*) as cnt FROM offline_files WHERE project_id = ?",
                 (project_id,)
-            ).fetchone()
+            )
+            file_result = await cursor.fetchone()
             file_count = file_result["cnt"] if file_result else 0
 
             # Get folder count
-            folder_result = conn.execute(
+            cursor = await conn.execute(
                 "SELECT COUNT(*) as cnt FROM offline_folders WHERE project_id = ?",
                 (project_id,)
-            ).fetchone()
+            )
+            folder_result = await cursor.fetchone()
             folder_count = folder_result["cnt"] if folder_result else 0
 
         project["file_count"] = file_count
@@ -282,17 +288,18 @@ class SQLiteProjectRepository(ProjectRepository):
 
     async def count(self, platform_id: Optional[int] = None) -> int:
         """Count projects, optionally filtered by platform."""
-        with self.db._get_connection() as conn:
+        async with self.db._get_async_connection() as conn:
             if platform_id is None:
-                result = conn.execute(
+                cursor = await conn.execute(
                     "SELECT COUNT(*) as cnt FROM offline_projects"
-                ).fetchone()
+                )
             else:
-                result = conn.execute(
+                cursor = await conn.execute(
                     "SELECT COUNT(*) as cnt FROM offline_projects WHERE platform_id = ?",
                     (platform_id,)
-                ).fetchone()
+                )
 
+            result = await cursor.fetchone()
             return result["cnt"] if result else 0
 
     async def search(self, query: str) -> List[Dict[str, Any]]:
@@ -302,11 +309,12 @@ class SQLiteProjectRepository(ProjectRepository):
         P10-SEARCH: Used by Explorer Search for unified search across entities.
         """
         search_term = f"%{query}%"
-        with self.db._get_connection() as conn:
-            rows = conn.execute(
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
                 "SELECT * FROM offline_projects WHERE name LIKE ? COLLATE NOCASE",
                 (search_term,)
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
 
             return [self._normalize_project(dict(row)) for row in rows]
 

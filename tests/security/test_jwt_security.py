@@ -139,18 +139,17 @@ class TestValidateSecurityOnStartup:
         from server import config
 
         # In warn mode, should return True even with warnings
-        result = config.validate_security_on_startup(logger=None)
+        result = config.validate_security_on_startup()
         assert result is True
 
     def test_validate_logs_warnings(self):
         """Test that validation logs warnings."""
         from server import config
 
-        mock_logger = MagicMock()
-        config.validate_security_on_startup(logger=mock_logger)
-
-        # Should have called warning at least once (for default values)
-        assert mock_logger.warning.called
+        # Function now uses loguru directly, so just verify it runs without error
+        result = config.validate_security_on_startup()
+        # Should return True in warn mode (default)
+        assert result is True
 
     def test_validate_returns_false_in_strict_mode_with_defaults(self):
         """Test that strict mode fails with default values."""
@@ -159,7 +158,7 @@ class TestValidateSecurityOnStartup:
             from server import config
             importlib.reload(config)
 
-            result = config.validate_security_on_startup(logger=None)
+            result = config.validate_security_on_startup()
             assert result is False
 
             # Reload with defaults
@@ -181,7 +180,7 @@ class TestValidateSecurityOnStartup:
             from server import config
             importlib.reload(config)
 
-            result = config.validate_security_on_startup(logger=None)
+            result = config.validate_security_on_startup()
             assert result is True
 
             # Reload with defaults

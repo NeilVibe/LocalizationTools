@@ -14,8 +14,8 @@
   /** @type {string} */
   export let className = '';
 
-  // Parse text into segments (only if it has color tags)
-  $: segments = hasColorTags(text) ? parseColorTags(text) : null;
+  // Svelte 5: Use $derived instead of $: for reactive computations
+  let segments = $derived(hasColorTags(text) ? parseColorTags(text) : null);
 </script>
 
 {#if segments}
