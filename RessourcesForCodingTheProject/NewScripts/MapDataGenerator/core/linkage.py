@@ -32,6 +32,7 @@ class DataMode(Enum):
     MAP = "map"
     CHARACTER = "character"
     ITEM = "item"
+    AUDIO = "audio"
 
 
 # =============================================================================
@@ -210,6 +211,9 @@ class LinkageResolver:
 
         # Unified data collection (all modes use DataEntry)
         self._entries: Dict[str, DataEntry] = {}
+
+        # Audio index (for AUDIO mode only)
+        self._audio_index: Optional['AudioIndex'] = None
 
         # Track which mode's data is currently loaded
         self._current_mode: Optional[DataMode] = None
@@ -741,3 +745,358 @@ class LinkageResolver:
     def get_item(self, strkey: str) -> Optional[DataEntry]:
         """Legacy: Get item by strkey."""
         return self._entries.get(strkey)
+
+    # =========================================================================
+    # AUDIO MODE DATA LOADING
+    # =========================================================================
+
+    def load_audio_data(
+        self,
+        audio_folder: Path,
+        export_folder: Path,
+        loc_folder: Path,
+        progress_callback=None
+    ) -> int:
+        """
+        Load AUDIO data - WEM files with linked script lines.
+
+        Args:
+            audio_folder: Folder containing WEM files
+            export_folder: Export folder with SoundEventName -> StrOrigin mappings
+            loc_folder: Localization folder with language XML files
+
+        Returns:
+            Number of audio entries loaded
+        """
+        self._entries.clear()
+        self._current_mode = DataMode.AUDIO
+        count = 0
+
+        if not audio_folder or not audio_folder.exists():
+            log.error("Audio folder not found: %s", audio_folder)
+            return 0
+
+        if progress_callback:
+            progress_callback("Scanning WEM files...")
+
+        # Build audio index
+        audio_index = AudioIndex()
+        wem_count = audio_index.scan_folder(audio_folder, progress_callback)
+        log.info("Found %d WEM files", wem_count)
+
+        if wem_count == 0:
+            return 0
+
+        # Load event name -> StrOrigin mappings from export folder
+        if progress_callback:
+            progress_callback("Loading event mappings...")
+        event_count = audio_index.load_event_mappings(export_folder, progress_callback)
+        log.info("Loaded %d event mappings", event_count)
+
+        # Load StrOrigin -> script line mappings from BOTH KOR and ENG loc files
+        if progress_callback:
+            progress_callback("Loading script lines (KOR + ENG)...")
+        script_count = audio_index.load_script_lines(loc_folder, progress_callback)
+        log.info("Loaded %d script lines", script_count)
+
+        # Store audio_index for SearchEngine access
+        self._audio_index = audio_index
+
+        # Create entries for each audio file
+        if progress_callback:
+            progress_callback("Building audio entries...")
+
+        for event_name, wem_path in audio_index.wem_files.items():
+            # Get script lines for this event
+            script_kr = audio_index.get_script_kor(event_name)
+            script_eng = audio_index.get_script_eng(event_name)
+            str_origin = audio_index.get_str_origin(event_name)
+
+            entry = DataEntry(
+                strkey=event_name,
+                name_kr=event_name,
+                desc_kr=script_kr,
+                ui_texture_name="",  # No image for audio
+                dds_path=wem_path,  # Store WEM path here
+                has_image=False,
+                group=str_origin,
+                knowledge_key=script_eng,  # Store ENG script here for audio mode
+                source_file=wem_path.name,
+                entry_type="Audio",
+            )
+
+            self._entries[event_name] = entry
+            count += 1
+
+        self._stats['entries_total'] = count
+        self._stats['entries_with_image'] = 0
+        self._stats['entries_without_image'] = count
+        self._stats['audio_with_script'] = sum(1 for e in self._entries.values() if e.desc_kr or e.knowledge_key)
+        self._stats['audio_without_script'] = count - self._stats['audio_with_script']
+
+        log.info("Loaded %d AUDIO entries: %d with script, %d without",
+                 count, self._stats['audio_with_script'], self._stats['audio_without_script'])
+
+        return count
+
+
+# =============================================================================
+# AUDIO INDEX (For AUDIO mode)
+# =============================================================================
+
+@dataclass
+class AudioEntry:
+    """Audio entry with event name and linked script."""
+    event_name: str
+    wem_path: Path
+    str_origin: str = ""
+    script_kr: str = ""
+    script_translated: str = ""
+    duration: Optional[float] = None
+
+
+class AudioIndex:
+    """
+    Index of WEM audio files with event name -> script line mappings.
+
+    Data flow:
+    1. WEM files: event_name.wem -> Path
+    2. Export XMLs: SoundEventName -> StrOrigin
+    3. ENG Loc XML: StrOrigin (KOR text) -> Str (ENG text)
+    """
+
+    def __init__(self):
+        self._wem_files: Dict[str, Path] = {}  # event_name (lowercase) -> wem path
+        self._event_to_origin: Dict[str, str] = {}  # event_name -> StrOrigin key
+        self._origin_to_kor: Dict[str, str] = {}  # StrOrigin key -> KOR script
+        self._origin_to_eng: Dict[str, str] = {}  # StrOrigin key -> ENG script
+
+    @property
+    def wem_files(self) -> Dict[str, Path]:
+        """Get WEM file mapping."""
+        return self._wem_files
+
+    def scan_folder(self, audio_folder: Path, progress_callback=None) -> int:
+        """
+        Scan folder for WEM files.
+
+        Args:
+            audio_folder: Folder containing WEM files
+
+        Returns:
+            Number of WEM files found
+        """
+        self._wem_files.clear()
+
+        if not audio_folder or not audio_folder.exists():
+            log.warning("Audio folder not found: %s", audio_folder)
+            return 0
+
+        if progress_callback:
+            progress_callback(f"Scanning {audio_folder}...")
+
+        count = 0
+        for wem_path in audio_folder.rglob("*.wem"):
+            event_name = wem_path.stem.lower()
+            self._wem_files[event_name] = wem_path
+            count += 1
+
+        log.info("Found %d WEM files", count)
+        return count
+
+    def load_event_mappings(self, export_folder: Path, progress_callback=None) -> int:
+        """
+        Load SoundEventName -> StrOrigin mappings from export XMLs.
+
+        Args:
+            export_folder: Folder containing export XML files
+
+        Returns:
+            Number of mappings loaded
+        """
+        self._event_to_origin.clear()
+
+        if not export_folder or not export_folder.exists():
+            log.warning("Export folder not found: %s", export_folder)
+            return 0
+
+        if progress_callback:
+            progress_callback(f"Loading event mappings from {export_folder}...")
+
+        count = 0
+        for xml_path in export_folder.rglob("*.xml"):
+            if progress_callback:
+                progress_callback(f"Parsing {xml_path.name}...")
+
+            root = parse_xml(xml_path)
+            if root is None:
+                continue
+
+            for elem in root.iter():
+                event_name = (elem.get("SoundEventName") or "").strip()
+                str_origin = (elem.get("StrOrigin") or "").strip()
+
+                if event_name and str_origin:
+                    event_lower = event_name.lower()
+                    self._event_to_origin[event_lower] = str_origin
+                    count += 1
+
+        log.info("Loaded %d event -> StrOrigin mappings", count)
+        return count
+
+    def load_script_lines(
+        self,
+        loc_folder: Path,
+        progress_callback=None
+    ) -> int:
+        """
+        Load script lines from BOTH KOR and ENG localization XMLs.
+
+        ENG LOC: StrOrigin (key) -> Str (English text)
+        KOR LOC: StrOrigin (key) -> Str (Korean text)
+
+        Args:
+            loc_folder: Folder containing languagedata_*.xml files
+
+        Returns:
+            Number of script lines loaded
+        """
+        self._origin_to_kor.clear()
+        self._origin_to_eng.clear()
+
+        if not loc_folder or not loc_folder.exists():
+            log.warning("Loc folder not found: %s", loc_folder)
+            return 0
+
+        total_count = 0
+
+        # Load KOR LOC file
+        kor_file = self._find_lang_file(loc_folder, 'kor')
+        if kor_file:
+            if progress_callback:
+                progress_callback(f"Loading KOR script lines from {kor_file.name}...")
+
+            root = parse_xml(kor_file)
+            if root is not None:
+                for elem in root.iter():
+                    str_origin = (elem.get("StrOrigin") or "").strip()
+                    text = (elem.get("Str") or "").strip()
+                    if str_origin and text:
+                        self._origin_to_kor[str_origin] = text
+                        total_count += 1
+
+            log.info("Loaded %d KOR script lines", len(self._origin_to_kor))
+
+        # Load ENG LOC file
+        eng_file = self._find_lang_file(loc_folder, 'eng')
+        if eng_file:
+            if progress_callback:
+                progress_callback(f"Loading ENG script lines from {eng_file.name}...")
+
+            root = parse_xml(eng_file)
+            if root is not None:
+                for elem in root.iter():
+                    str_origin = (elem.get("StrOrigin") or "").strip()
+                    text = (elem.get("Str") or "").strip()
+                    if str_origin and text:
+                        self._origin_to_eng[str_origin] = text
+
+            log.info("Loaded %d ENG script lines", len(self._origin_to_eng))
+
+        return total_count
+
+    def _find_lang_file(self, loc_folder: Path, lang_code: str) -> Optional[Path]:
+        """Find language file for given code."""
+        # Try uppercase
+        lang_file = loc_folder / f"languagedata_{lang_code.upper()}.xml"
+        if lang_file.exists():
+            return lang_file
+
+        # Try lowercase
+        lang_file = loc_folder / f"languagedata_{lang_code.lower()}.xml"
+        if lang_file.exists():
+            return lang_file
+
+        # Try finding by pattern
+        for f in loc_folder.glob("languagedata_*.xml"):
+            if lang_code.lower() in f.name.lower():
+                return f
+
+        log.warning("Language file not found for %s in %s", lang_code, loc_folder)
+        return None
+
+    def find(self, event_name: str) -> Optional[Path]:
+        """
+        Find WEM file path for event name.
+
+        Args:
+            event_name: Event name to look up
+
+        Returns:
+            Path to WEM file or None
+        """
+        return self._wem_files.get(event_name.lower())
+
+    def get_str_origin(self, event_name: str) -> str:
+        """Get StrOrigin key for event name."""
+        return self._event_to_origin.get(event_name.lower(), "")
+
+    def get_script_kor(self, event_name: str) -> str:
+        """
+        Get Korean script line for event name.
+
+        Args:
+            event_name: Event name to look up
+
+        Returns:
+            Korean script text or empty string
+        """
+        str_origin = self._event_to_origin.get(event_name.lower())
+        if not str_origin:
+            return ""
+        return self._origin_to_kor.get(str_origin, "")
+
+    def get_script_eng(self, event_name: str) -> str:
+        """
+        Get English script line for event name.
+
+        Args:
+            event_name: Event name to look up
+
+        Returns:
+            English script text or empty string
+        """
+        str_origin = self._event_to_origin.get(event_name.lower())
+        if not str_origin:
+            return ""
+        return self._origin_to_eng.get(str_origin, "")
+
+    def get_script_line(self, event_name: str) -> str:
+        """
+        Get script line for event name (KOR preferred, ENG fallback).
+
+        Args:
+            event_name: Event name to look up
+
+        Returns:
+            Script line text or empty string
+        """
+        # Try KOR first, then ENG
+        kor = self.get_script_kor(event_name)
+        if kor:
+            return kor
+        return self.get_script_eng(event_name)
+
+    @property
+    def file_count(self) -> int:
+        """Get number of indexed WEM files."""
+        return len(self._wem_files)
+
+    @property
+    def mapped_count(self) -> int:
+        """Get number of events with script line mappings."""
+        count = 0
+        for event_name in self._wem_files:
+            if self.get_script_line(event_name):
+                count += 1
+        return count

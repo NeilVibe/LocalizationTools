@@ -210,8 +210,15 @@ class SearchEngine:
         if not entry:
             return None
 
-        name_tr, _ = get_translation(entry.name_kr, self._lang_table, entry.name_kr)
-        desc_tr, _ = get_translation(entry.desc_kr, self._lang_table, "")
+        # For AUDIO mode: use knowledge_key as ENG script (stored there during load)
+        if entry.entry_type == "Audio":
+            # Audio: name is event_name, desc_kr is KOR script, knowledge_key is ENG script
+            name_tr = entry.name_kr  # Event name doesn't need translation
+            desc_tr = entry.knowledge_key  # ENG script stored in knowledge_key
+        else:
+            # Other modes: use language table for translations
+            name_tr, _ = get_translation(entry.name_kr, self._lang_table, entry.name_kr)
+            desc_tr, _ = get_translation(entry.desc_kr, self._lang_table, "")
 
         return SearchResult(
             strkey=entry.strkey,
