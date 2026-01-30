@@ -16,3 +16,4 @@ Build 011: Remove double-processing bug (Knowledge entries counted twice)
 Build 012: Add diagnostic logging for Hexe Sanctuary image lookup issue
 Build 013: FIX XML SANITIZER - unterminated attributes now properly closed
 Build 014: Use QACompilerNEW XML pattern - remove _patch_unterminated_attr bug
+Build 015
