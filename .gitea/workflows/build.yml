@@ -456,6 +456,13 @@ jobs:
         run: |
           echo "=== Starting server for tests (with retry) ==="
 
+          # Clean up SQLite database ONCE before all attempts (not between retries)
+          # This ensures fresh start but allows retries to benefit from partial progress
+          if [ -f "server/data/offline.db" ]; then
+            echo "Removing stale SQLite database from previous build..."
+            rm -f "server/data/offline.db" "server/data/offline.db-journal" "server/data/offline.db-wal" "server/data/offline.db-shm"
+          fi
+
           start_server() {
             # Robust cleanup: Kill any process on port 8888 AND by PID file
             echo "Cleaning up old server processes..."
@@ -492,13 +499,6 @@ jobs:
             # Clear Python cache to ensure fresh code is used
             find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
-            # Clean up SQLite database to prevent lock/corruption from previous builds
-            # CI tests should always start fresh
-            if [ -f "server/data/offline.db" ]; then
-              echo "Removing stale SQLite database..."
-              rm -f "server/data/offline.db" "server/data/offline.db-journal" "server/data/offline.db-wal" "server/data/offline.db-shm"
-            fi
-
             # Start server with nohup to survive shell exit (critical for CI steps)
             # DEV_MODE=true skips rate limiting for tests, CI=true signals we're in CI environment
             rm -f /tmp/server.log
@@ -509,8 +509,8 @@ jobs:
 
             echo "Server started with PID: $SERVER_PID (nohup + disown)"
 
-            # Wait for server (30 seconds per attempt)
-            for i in {1..15}; do
+            # Wait for server (60 seconds per attempt - SQLite table creation is slow in CI)
+            for i in {1..30}; do
               sleep 2
 
               # Check if process is still alive
@@ -526,8 +526,8 @@ jobs:
                 return 1
               fi
 
-              if [ $((i % 5)) -eq 0 ]; then
-                echo "Waiting for server... ($i/15) - Last log:"
+              if [ $((i % 10)) -eq 0 ]; then
+                echo "Waiting for server... ($i/30) - Last log:"
                 tail -1 /tmp/server.log 2>/dev/null || echo "(no log yet)"
               fi
               if curl -s http://localhost:8888/health | grep -q "healthy"; then
@@ -539,7 +539,7 @@ jobs:
               fi
             done
 
-            echo "[WARNING] Server didn't start in 30s"
+            echo "[WARNING] Server didn't start in 60s"
             return 1
           }
 
