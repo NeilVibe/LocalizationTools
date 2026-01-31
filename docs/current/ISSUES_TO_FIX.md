@@ -97,6 +97,29 @@
 
 ---
 
+### QA-SCHEMA-001: SQLite Missing QA Columns ✅ FIXED
+
+- **Fixed:** Session 60+ (5-agent parallel review)
+- **Component:** SQLite offline_rows schema + QA repositories
+
+**Problem:** SQLite `offline_rows` table missing QA columns that PostgreSQL had.
+
+**Solution:**
+1. Added `updated_by`, `qa_checked_at`, `qa_flag_count` to `offline_schema.sql`
+2. Added `idx_offline_rows_qa_flagged` index
+3. Updated SQLite `qa_repo.py` - `update_row_qa_count()` now works
+4. Fixed PostgreSQL `qa_repo.py` - was ALSO missing `update_row_qa_count()` calls!
+
+**Files Modified:**
+- `server/database/offline_schema.sql` - Added 3 columns + index
+- `server/database/offline.py` - Added migration for existing DBs
+- `server/repositories/sqlite/qa_repo.py` - Real implementation
+- `server/repositories/postgresql/qa_repo.py` - Added missing calls
+
+**Result:** Full parity between PostgreSQL and SQLite for QA operations.
+
+---
+
 ## OPEN ISSUES
 
 *No open issues.*
@@ -105,18 +128,7 @@
 
 ## KNOWN LIMITATIONS
 
-### QA-SCHEMA-001: SQLite Missing QA Columns (LOW PRIORITY)
-
-- **Status:** Known limitation, not blocking
-- **Component:** SQLite offline schema
-
-**Issue:** SQLite `rows` table missing these PostgreSQL columns:
-- `qa_checked_at` (timestamp)
-- `qa_flag_count` (integer)
-
-**Impact:** QA flag operations work, but some metadata tracking incomplete in offline mode.
-
-**Workaround:** None needed - QA core functionality works.
+*No known limitations.*
 
 ---
 
