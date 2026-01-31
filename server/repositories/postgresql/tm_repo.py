@@ -992,16 +992,8 @@ class PostgreSQLTMRepository(TMRepository):
         pg_trgm similarity search.
 
         NOTE: similarity() is PostgreSQL-specific (pg_trgm extension).
-        When server runs with SQLite fallback, returns empty list.
+        ARCH-001: Factory handles mode detection - PostgreSQL repos are PURE.
         """
-        from server import config
-
-        # similarity() requires PostgreSQL pg_trgm extension
-        # Return empty when running on SQLite
-        if config.ACTIVE_DATABASE_TYPE == "sqlite":
-            logger.debug("[TM-REPO] Similarity search not available (SQLite mode)")
-            return []
-
         sql = text("""
             SELECT
                 e.id,

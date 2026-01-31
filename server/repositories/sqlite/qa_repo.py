@@ -3,6 +3,8 @@ SQLite QAResultRepository Implementation.
 
 P10: FULL PARITY - QA results persist in SQLite identically to PostgreSQL.
 No stubs, no ephemeral, no shortcuts.
+
+ARCH-001: Schema-aware - works with both OFFLINE (offline_qa_results) and SERVER (ldm_qa_results) modes.
 """
 
 import json
@@ -11,19 +13,19 @@ from typing import List, Optional, Dict, Any
 from loguru import logger
 
 from server.repositories.interfaces.qa_repository import QAResultRepository
-from server.database.offline import get_offline_db
+from server.repositories.sqlite.base import SQLiteBaseRepository, SchemaMode
 
 
-class SQLiteQAResultRepository(QAResultRepository):
+class SQLiteQAResultRepository(SQLiteBaseRepository, QAResultRepository):
     """
     SQLite implementation of QAResultRepository.
 
     FULL PARITY: Identical behavior to PostgreSQL.
-    Uses offline_qa_results table for persistence.
+    ARCH-001: Schema-aware - uses _table() for dynamic table names.
     """
 
-    def __init__(self):
-        self.db = get_offline_db()
+    def __init__(self, schema_mode: SchemaMode = SchemaMode.OFFLINE):
+        super().__init__(schema_mode)
 
     def _result_to_dict(self, row: dict, include_row_info: bool = False) -> Dict[str, Any]:
         """Convert SQLite row to dict."""
@@ -56,7 +58,7 @@ class SQLiteQAResultRepository(QAResultRepository):
 
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT * FROM offline_qa_results WHERE id = ?",
+                f"SELECT * FROM {self._table('qa_results')} WHERE id = ?",
                 (result_id,)
             )
             row = await cursor.fetchone()
@@ -76,10 +78,10 @@ class SQLiteQAResultRepository(QAResultRepository):
 
         async with self.db._get_async_connection() as conn:
             if include_resolved:
-                query = "SELECT * FROM offline_qa_results WHERE row_id = ? ORDER BY created_at"
+                query = f"SELECT * FROM {self._table('qa_results')} WHERE row_id = ? ORDER BY created_at"
                 cursor = await conn.execute(query, (row_id,))
             else:
-                query = "SELECT * FROM offline_qa_results WHERE row_id = ? AND resolved_at IS NULL ORDER BY created_at"
+                query = f"SELECT * FROM {self._table('qa_results')} WHERE row_id = ? AND resolved_at IS NULL ORDER BY created_at"
                 cursor = await conn.execute(query, (row_id,))
 
             rows = await cursor.fetchall()
@@ -97,10 +99,10 @@ class SQLiteQAResultRepository(QAResultRepository):
         logger.debug(f"[QA-SQLITE] get_for_file called: file_id={file_id}, check_type={check_type}")
 
         async with self.db._get_async_connection() as conn:
-            query = """
+            query = f"""
                 SELECT q.*, r.row_num, r.source, r.target
-                FROM offline_qa_results q
-                JOIN offline_rows r ON q.row_id = r.id
+                FROM {self._table('qa_results')} q
+                JOIN {self._table('rows')} r ON q.row_id = r.id
                 WHERE q.file_id = ?
             """
             params = [file_id]
@@ -127,9 +129,9 @@ class SQLiteQAResultRepository(QAResultRepository):
 
         async with self.db._get_async_connection() as conn:
             # Count issues by check type
-            cursor = await conn.execute("""
+            cursor = await conn.execute(f"""
                 SELECT check_type, COUNT(*) as count
-                FROM offline_qa_results
+                FROM {self._table('qa_results')}
                 WHERE file_id = ? AND resolved_at IS NULL
                 GROUP BY check_type
             """, (file_id,))
@@ -138,9 +140,9 @@ class SQLiteQAResultRepository(QAResultRepository):
             counts = {row["check_type"]: row["count"] for row in rows}
 
             # Get last checked time from rows
-            cursor = await conn.execute("""
+            cursor = await conn.execute(f"""
                 SELECT MAX(r.updated_at) as last_checked
-                FROM offline_rows r
+                FROM {self._table('rows')} r
                 WHERE r.file_id = ?
             """, (file_id,))
             last_checked_row = await cursor.fetchone()
@@ -182,8 +184,8 @@ class SQLiteQAResultRepository(QAResultRepository):
             created_at = datetime.utcnow().isoformat()
             details_json = json.dumps(details) if details else None
 
-            cursor = await conn.execute("""
-                INSERT INTO offline_qa_results (row_id, file_id, check_type, severity, message, details, created_at)
+            cursor = await conn.execute(f"""
+                INSERT INTO {self._table('qa_results')} (row_id, file_id, check_type, severity, message, details, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (row_id, file_id, check_type, severity, message, details_json, created_at))
 
@@ -220,8 +222,8 @@ class SQLiteQAResultRepository(QAResultRepository):
 
             for r in results:
                 details_json = json.dumps(r.get("details")) if r.get("details") else None
-                await conn.execute("""
-                    INSERT INTO offline_qa_results (row_id, file_id, check_type, severity, message, details, created_at)
+                await conn.execute(f"""
+                    INSERT INTO {self._table('qa_results')} (row_id, file_id, check_type, severity, message, details, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (r["row_id"], r["file_id"], r["check_type"], r["severity"], r["message"], details_json, created_at))
 
@@ -241,7 +243,7 @@ class SQLiteQAResultRepository(QAResultRepository):
         async with self.db._get_async_connection() as conn:
             # Check if exists
             cursor = await conn.execute(
-                "SELECT * FROM offline_qa_results WHERE id = ?",
+                f"SELECT * FROM {self._table('qa_results')} WHERE id = ?",
                 (result_id,)
             )
             row = await cursor.fetchone()
@@ -255,8 +257,8 @@ class SQLiteQAResultRepository(QAResultRepository):
                 return self._result_to_dict(dict(row))
 
             resolved_at = datetime.utcnow().isoformat()
-            await conn.execute("""
-                UPDATE offline_qa_results
+            await conn.execute(f"""
+                UPDATE {self._table('qa_results')}
                 SET resolved_at = ?, resolved_by = ?
                 WHERE id = ?
             """, (resolved_at, resolved_by, result_id))
@@ -270,7 +272,7 @@ class SQLiteQAResultRepository(QAResultRepository):
 
             # Return updated result
             cursor = await conn.execute(
-                "SELECT * FROM offline_qa_results WHERE id = ?",
+                f"SELECT * FROM {self._table('qa_results')} WHERE id = ?",
                 (result_id,)
             )
             updated_row = await cursor.fetchone()
@@ -284,14 +286,14 @@ class SQLiteQAResultRepository(QAResultRepository):
         async with self.db._get_async_connection() as conn:
             # Count first
             cursor = await conn.execute(
-                "SELECT COUNT(*) as count FROM offline_qa_results WHERE row_id = ? AND resolved_at IS NULL",
+                f"SELECT COUNT(*) as count FROM {self._table('qa_results')} WHERE row_id = ? AND resolved_at IS NULL",
                 (row_id,)
             )
             count_row = await cursor.fetchone()
             count = count_row["count"] if count_row else 0
 
             await conn.execute(
-                "DELETE FROM offline_qa_results WHERE row_id = ? AND resolved_at IS NULL",
+                f"DELETE FROM {self._table('qa_results')} WHERE row_id = ? AND resolved_at IS NULL",
                 (row_id,)
             )
             await conn.commit()
@@ -306,14 +308,14 @@ class SQLiteQAResultRepository(QAResultRepository):
         async with self.db._get_async_connection() as conn:
             # Count first
             cursor = await conn.execute(
-                "SELECT COUNT(*) as count FROM offline_qa_results WHERE file_id = ?",
+                f"SELECT COUNT(*) as count FROM {self._table('qa_results')} WHERE file_id = ?",
                 (file_id,)
             )
             count_row = await cursor.fetchone()
             count = count_row["count"] if count_row else 0
 
             await conn.execute(
-                "DELETE FROM offline_qa_results WHERE file_id = ?",
+                f"DELETE FROM {self._table('qa_results')} WHERE file_id = ?",
                 (file_id,)
             )
             await conn.commit()
@@ -329,7 +331,7 @@ class SQLiteQAResultRepository(QAResultRepository):
         """Count unresolved QA issues for a row."""
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT COUNT(*) as count FROM offline_qa_results WHERE row_id = ? AND resolved_at IS NULL",
+                f"SELECT COUNT(*) as count FROM {self._table('qa_results')} WHERE row_id = ? AND resolved_at IS NULL",
                 (row_id,)
             )
             row = await cursor.fetchone()

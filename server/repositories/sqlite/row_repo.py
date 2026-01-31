@@ -2,29 +2,30 @@
 SQLite Row Repository.
 
 Implements RowRepository interface using SQLite (offline mode).
-Delegates to existing OfflineDatabase methods.
 
+ARCH-001: Schema-aware - works with both OFFLINE (offline_rows) and SERVER (ldm_rows) modes.
 ASYNC MIGRATION (2026-01-31): Uses aiosqlite for true async operations.
 """
 
+import time
 import json
+from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
 from loguru import logger
 
 from server.repositories.interfaces.row_repository import RowRepository
-from server.database.offline import get_offline_db
+from server.repositories.sqlite.base import SQLiteBaseRepository, SchemaMode
 
 
-class SQLiteRowRepository(RowRepository):
+class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
     """
     SQLite implementation of RowRepository.
 
-    Uses OfflineDatabase for all operations.
-    This is the offline mode adapter.
+    ARCH-001: Schema-aware - uses _table() for dynamic table names.
     """
 
-    def __init__(self):
-        self.db = get_offline_db()
+    def __init__(self, schema_mode: SchemaMode = SchemaMode.OFFLINE):
+        super().__init__(schema_mode)
 
     def _normalize_row(self, row: Optional[Dict]) -> Optional[Dict[str, Any]]:
         """Normalize row dict to match PostgreSQL format."""
@@ -44,9 +45,11 @@ class SQLiteRowRepository(RowRepository):
             "created_at": row.get("created_at"),
             "updated_at": row.get("updated_at"),
             "updated_by": row.get("updated_by"),
-            # SQLite-specific fields
-            "sync_status": row.get("sync_status"),
         }
+
+        # Only include sync_status for OFFLINE mode
+        if self._has_column("sync_status"):
+            result["sync_status"] = row.get("sync_status")
 
         # Parse extra_data if it's a string
         if isinstance(result["extra_data"], str):
@@ -63,16 +66,21 @@ class SQLiteRowRepository(RowRepository):
 
     async def get(self, row_id: int) -> Optional[Dict[str, Any]]:
         """Get row by ID."""
-        row = await self.db.get_row(row_id)
-        return self._normalize_row(row)
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
+                f"SELECT * FROM {self._table('rows')} WHERE id = ?",
+                (row_id,)
+            )
+            row = await cursor.fetchone()
+            return self._normalize_row(dict(row)) if row else None
 
     async def get_with_file(self, row_id: int) -> Optional[Dict[str, Any]]:
         """Get row with file info."""
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                """SELECT r.*, f.name as file_name, f.project_id
-                   FROM offline_rows r
-                   JOIN offline_files f ON r.file_id = f.id
+                f"""SELECT r.*, f.name as file_name, f.project_id
+                   FROM {self._table('rows')} r
+                   JOIN {self._table('files')} f ON r.file_id = f.id
                    WHERE r.id = ?""",
                 (row_id,)
             )
@@ -97,48 +105,39 @@ class SQLiteRowRepository(RowRepository):
         extra_data: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Create a single row."""
-        import time
-        from datetime import datetime
+        row_id = -int(time.time() * 1000) % 1000000000
+        extra_json = json.dumps(extra_data) if extra_data else None
+        now = datetime.now().isoformat()
 
         async with self.db._get_async_connection() as conn:
-            # Use negative row IDs for local rows
-            row_id = -int(time.time() * 1000) % 1000000000
-
-            extra_json = json.dumps(extra_data) if extra_data else None
-            now = datetime.now().isoformat()
-
-            await conn.execute(
-                """INSERT INTO offline_rows
-                   (id, server_id, file_id, server_file_id, row_num, string_id,
-                    source, target, memo, status, extra_data, created_at, updated_at,
-                    downloaded_at, sync_status)
-                   VALUES (?, 0, ?, 0, ?, ?, ?, ?, '', ?, ?, ?, ?, datetime('now'), 'new')""",
-                (
-                    row_id,
-                    file_id,
-                    row_num,
-                    string_id,
-                    source,
-                    target,
-                    status,
-                    extra_json,
-                    now,
-                    now,
+            if self.schema_mode == SchemaMode.OFFLINE:
+                await conn.execute(
+                    f"""INSERT INTO {self._table('rows')}
+                       (id, server_id, file_id, server_file_id, row_num, string_id,
+                        source, target, memo, status, extra_data, created_at, updated_at,
+                        downloaded_at, sync_status)
+                       VALUES (?, 0, ?, 0, ?, ?, ?, ?, '', ?, ?, ?, ?, datetime('now'), 'new')""",
+                    (row_id, file_id, row_num, string_id, source, target, status, extra_json, now, now)
                 )
-            )
+            else:
+                await conn.execute(
+                    f"""INSERT INTO {self._table('rows')}
+                       (id, file_id, row_num, string_id, source, target, memo, status,
+                        extra_data, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?)""",
+                    (row_id, file_id, row_num, string_id, source, target, status, extra_json, now, now)
+                )
 
             # Update file row count
             await conn.execute(
-                "UPDATE offline_files SET row_count = row_count + 1 WHERE id = ?",
+                f"UPDATE {self._table('files')} SET row_count = row_count + 1 WHERE id = ?",
                 (file_id,)
             )
             await conn.commit()
 
             logger.info(f"Created row: id={row_id}, file_id={file_id}, row_num={row_num}")
 
-        # Return created row
-        row = await self.db.get_row(row_id)
-        return self._normalize_row(row)
+        return await self.get(row_id)
 
     async def update(
         self,
@@ -149,12 +148,9 @@ class SQLiteRowRepository(RowRepository):
     ) -> Optional[Dict[str, Any]]:
         """Update a row's target text or status."""
         async with self.db._get_async_connection() as conn:
-            # Check if row exists and get file sync status
+            # Check if row exists
             cursor = await conn.execute(
-                """SELECT r.*, f.sync_status as file_sync_status
-                   FROM offline_rows r
-                   JOIN offline_files f ON r.file_id = f.id
-                   WHERE r.id = ?""",
+                f"SELECT * FROM {self._table('rows')} WHERE id = ?",
                 (row_id,)
             )
             row = await cursor.fetchone()
@@ -178,30 +174,35 @@ class SQLiteRowRepository(RowRepository):
                 updates.append("status = ?")
                 params.append("translated")
 
-            # For synced files, mark as modified; for local files, keep as-is
-            if row["file_sync_status"] != "local":
-                updates.append("sync_status = 'modified'")
+            # For OFFLINE mode with synced files, mark as modified
+            if self.schema_mode == SchemaMode.OFFLINE:
+                # Check file sync status
+                file_cursor = await conn.execute(
+                    f"SELECT sync_status FROM {self._table('files')} WHERE id = ?",
+                    (row["file_id"],)
+                )
+                file_row = await file_cursor.fetchone()
+                if file_row and file_row["sync_status"] != "local":
+                    updates.append("sync_status = 'modified'")
 
             params.append(row_id)
 
             await conn.execute(
-                f"UPDATE offline_rows SET {', '.join(updates)} WHERE id = ?",
+                f"UPDATE {self._table('rows')} SET {', '.join(updates)} WHERE id = ?",
                 params
             )
             await conn.commit()
 
             logger.info(f"Updated row: id={row_id}, target_changed={target is not None}, status_changed={status is not None}")
 
-        # Return updated row
-        updated_row = await self.db.get_row(row_id)
-        return self._normalize_row(updated_row)
+        return await self.get(row_id)
 
     async def delete(self, row_id: int) -> bool:
         """Delete a row."""
         async with self.db._get_async_connection() as conn:
             # Get file_id before deleting
             cursor = await conn.execute(
-                "SELECT file_id FROM offline_rows WHERE id = ?",
+                f"SELECT file_id FROM {self._table('rows')} WHERE id = ?",
                 (row_id,)
             )
             row = await cursor.fetchone()
@@ -212,11 +213,11 @@ class SQLiteRowRepository(RowRepository):
             file_id = row["file_id"]
 
             # Delete the row
-            await conn.execute("DELETE FROM offline_rows WHERE id = ?", (row_id,))
+            await conn.execute(f"DELETE FROM {self._table('rows')} WHERE id = ?", (row_id,))
 
             # Update file row count
             await conn.execute(
-                "UPDATE offline_files SET row_count = row_count - 1 WHERE id = ? AND row_count > 0",
+                f"UPDATE {self._table('files')} SET row_count = row_count - 1 WHERE id = ? AND row_count > 0",
                 (file_id,)
             )
             await conn.commit()
@@ -234,8 +235,64 @@ class SQLiteRowRepository(RowRepository):
         rows: List[Dict[str, Any]]
     ) -> int:
         """Bulk create rows for a file."""
-        # Use existing method
-        await self.db.add_rows_to_local_file(file_id, rows)
+        if not rows:
+            return 0
+
+        now = datetime.now().isoformat()
+        async with self.db._get_async_connection() as conn:
+            for idx, row_data in enumerate(rows):
+                row_id = -int(time.time() * 1000 + idx) % 1000000000
+                extra_json = json.dumps(row_data.get("extra_data")) if row_data.get("extra_data") else None
+
+                if self.schema_mode == SchemaMode.OFFLINE:
+                    await conn.execute(
+                        f"""INSERT INTO {self._table('rows')}
+                           (id, server_id, file_id, server_file_id, row_num, string_id,
+                            source, target, memo, status, extra_data, created_at, updated_at,
+                            downloaded_at, sync_status)
+                           VALUES (?, 0, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
+                        (
+                            row_id,
+                            file_id,
+                            row_data.get("row_num", idx + 1),
+                            row_data.get("string_id"),
+                            row_data.get("source", ""),
+                            row_data.get("target", ""),
+                            row_data.get("memo", ""),
+                            row_data.get("status", "pending"),
+                            extra_json,
+                            now,
+                            now,
+                        )
+                    )
+                else:
+                    await conn.execute(
+                        f"""INSERT INTO {self._table('rows')}
+                           (id, file_id, row_num, string_id, source, target, memo,
+                            status, extra_data, created_at, updated_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            row_id,
+                            file_id,
+                            row_data.get("row_num", idx + 1),
+                            row_data.get("string_id"),
+                            row_data.get("source", ""),
+                            row_data.get("target", ""),
+                            row_data.get("memo", ""),
+                            row_data.get("status", "pending"),
+                            extra_json,
+                            now,
+                            now,
+                        )
+                    )
+
+            # Update file row count
+            await conn.execute(
+                f"UPDATE {self._table('files')} SET row_count = ? WHERE id = ?",
+                (len(rows), file_id)
+            )
+            await conn.commit()
+
         logger.info(f"Bulk created {len(rows)} rows for file_id={file_id}")
         return len(rows)
 
@@ -268,7 +325,7 @@ class SQLiteRowRepository(RowRepository):
                 params.append(row_id)
 
                 cursor = await conn.execute(
-                    f"UPDATE offline_rows SET {', '.join(update_parts)} WHERE id = ?",
+                    f"UPDATE {self._table('rows')} SET {', '.join(update_parts)} WHERE id = ?",
                     params
                 )
                 if cursor.rowcount > 0:
@@ -297,70 +354,63 @@ class SQLiteRowRepository(RowRepository):
         """Get paginated rows for a file with search/filter."""
         offset = (page - 1) * limit
 
-        # Get all rows first
-        all_rows = await self.db.get_rows_for_file(file_id)
+        async with self.db._get_async_connection() as conn:
+            # Build base query
+            base_query = f"FROM {self._table('rows')} WHERE file_id = ?"
+            params = [file_id]
 
-        # Apply search filter
-        if search:
-            fields = [f.strip() for f in search_fields.split(",")]
-            valid_fields = {"string_id", "source", "target"}
-            fields = [f for f in fields if f in valid_fields]
-            if not fields:
-                fields = ["source", "target"]
+            # Apply status filter
+            if status:
+                base_query += " AND status = ?"
+                params.append(status)
 
-            filtered_rows = []
-            search_lower = search.lower()
+            # Apply filter type
+            if filter_type:
+                if filter_type == "confirmed":
+                    base_query += " AND status IN ('approved', 'reviewed')"
+                elif filter_type == "unconfirmed":
+                    base_query += " AND status IN ('pending', 'translated')"
+                elif filter_type == "qa_flagged":
+                    base_query += " AND qa_flag_count > 0"
 
-            for row in all_rows:
-                match = False
+            # Apply search - SQLite LIKE for now (no pg_trgm)
+            if search:
+                fields = [f.strip() for f in search_fields.split(",")]
+                valid_fields = {"string_id", "source", "target"}
+                fields = [f for f in fields if f in valid_fields]
+                if not fields:
+                    fields = ["source", "target"]
+
+                search_conditions = []
                 for field in fields:
-                    value = row.get(field, "") or ""
-                    value_lower = value.lower()
-
                     if search_mode == "exact":
-                        if value_lower == search_lower:
-                            match = True
-                            break
+                        search_conditions.append(f"LOWER({field}) = LOWER(?)")
+                        params.append(search)
                     elif search_mode == "not_contain":
-                        if search_lower not in value_lower:
-                            match = True
-                        else:
-                            match = False
-                            break
+                        search_conditions.append(f"LOWER({field}) NOT LIKE LOWER(?)")
+                        params.append(f"%{search}%")
                     else:  # contain (default)
-                        if search_lower in value_lower:
-                            match = True
-                            break
+                        search_conditions.append(f"LOWER({field}) LIKE LOWER(?)")
+                        params.append(f"%{search}%")
 
-                # For not_contain, all fields must not contain
                 if search_mode == "not_contain":
-                    if match:
-                        filtered_rows.append(row)
-                elif match:
-                    filtered_rows.append(row)
+                    base_query += f" AND ({' AND '.join(search_conditions)})"
+                else:
+                    base_query += f" AND ({' OR '.join(search_conditions)})"
 
-            all_rows = filtered_rows
+            # Get total count
+            count_cursor = await conn.execute(f"SELECT COUNT(*) as cnt {base_query}", params)
+            count_result = await count_cursor.fetchone()
+            total = count_result["cnt"] if count_result else 0
 
-        # Apply status filter
-        if status:
-            all_rows = [r for r in all_rows if r.get("status") == status]
+            # Get paginated rows
+            query = f"SELECT * {base_query} ORDER BY row_num LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
 
-        # Apply filter type
-        if filter_type:
-            if filter_type == "confirmed":
-                all_rows = [r for r in all_rows if r.get("status") in ["approved", "reviewed"]]
-            elif filter_type == "unconfirmed":
-                all_rows = [r for r in all_rows if r.get("status") in ["pending", "translated"]]
-            elif filter_type == "qa_flagged":
-                all_rows = [r for r in all_rows if (r.get("qa_flag_count") or 0) > 0]
+            cursor = await conn.execute(query, params)
+            rows = await cursor.fetchall()
 
-        # Get total count before pagination
-        total = len(all_rows)
-
-        # Apply pagination
-        paginated_rows = all_rows[offset:offset + limit]
-
-        return [self._normalize_row(r) for r in paginated_rows], total
+        return [self._normalize_row(dict(r)) for r in rows], total
 
     async def get_all_for_file(
         self,
@@ -368,23 +418,37 @@ class SQLiteRowRepository(RowRepository):
         status_filter: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get all rows for a file (no pagination)."""
-        rows = await self.db.get_rows_for_file(file_id)
-
-        if status_filter:
-            if status_filter == "reviewed":
-                rows = [r for r in rows if r.get("status") in ["reviewed", "approved"]]
-            elif status_filter == "translated":
-                rows = [r for r in rows if r.get("status") in ["translated", "reviewed", "approved"]]
+        async with self.db._get_async_connection() as conn:
+            if status_filter:
+                if status_filter == "reviewed":
+                    cursor = await conn.execute(
+                        f"SELECT * FROM {self._table('rows')} WHERE file_id = ? AND status IN ('reviewed', 'approved') ORDER BY row_num",
+                        (file_id,)
+                    )
+                elif status_filter == "translated":
+                    cursor = await conn.execute(
+                        f"SELECT * FROM {self._table('rows')} WHERE file_id = ? AND status IN ('translated', 'reviewed', 'approved') ORDER BY row_num",
+                        (file_id,)
+                    )
+                else:
+                    cursor = await conn.execute(
+                        f"SELECT * FROM {self._table('rows')} WHERE file_id = ? AND status = ? ORDER BY row_num",
+                        (file_id, status_filter)
+                    )
             else:
-                rows = [r for r in rows if r.get("status") == status_filter]
+                cursor = await conn.execute(
+                    f"SELECT * FROM {self._table('rows')} WHERE file_id = ? ORDER BY row_num",
+                    (file_id,)
+                )
 
-        return [self._normalize_row(r) for r in rows]
+            rows = await cursor.fetchall()
+            return [self._normalize_row(dict(r)) for r in rows]
 
     async def count_for_file(self, file_id: int) -> int:
         """Count rows in a file."""
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT COUNT(*) as cnt FROM offline_rows WHERE file_id = ?",
+                f"SELECT COUNT(*) as cnt FROM {self._table('rows')} WHERE file_id = ?",
                 (file_id,)
             )
             result = await cursor.fetchone()
