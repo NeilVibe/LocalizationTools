@@ -137,7 +137,7 @@ class SyncService:
                 await self.sync_folder_hierarchy(parent)
 
         # Sync this folder
-        self.sqlite.save_folder(self._folder_to_dict(folder))
+        await self.sqlite.save_folder(self._folder_to_dict(folder))
         logger.debug(f"[SYNC] Synced folder: {folder.name}")
 
     async def sync_file_to_offline(self, file_id: int) -> Dict[str, int]:
@@ -182,11 +182,11 @@ class SyncService:
             )
             platform = platform_result.scalar_one_or_none()
             if platform:
-                self.sqlite.save_platform(self._platform_to_dict(platform))
+                await self.sqlite.save_platform(self._platform_to_dict(platform))
                 logger.debug(f"[SYNC] Synced platform: {platform.name}")
 
             # Save project
-            self.sqlite.save_project(self._project_to_dict(project))
+            await self.sqlite.save_project(self._project_to_dict(project))
             logger.debug(f"[SYNC] Synced project: {project.name}")
 
         # 3. Sync Folder hierarchy (if file is in a folder)
@@ -209,21 +209,21 @@ class SyncService:
         server_rows = rows_result.scalars().all()
 
         # Save/update file metadata
-        self.sqlite.save_file(self._file_to_dict(file))
+        await self.sqlite.save_file(self._file_to_dict(file))
 
         # Convert server rows to dicts for batch processing
         server_row_data = [self._row_to_dict(row) for row in server_rows]
         server_row_ids = {row.id for row in server_rows}
 
         # Use BATCH merge - 100x faster than per-row merge
-        stats = self.sqlite.merge_rows_batch(server_row_data, file.id)
+        stats = await self.sqlite.merge_rows_batch(server_row_data, file.id)
         stats["deleted"] = 0
 
         # Delete local rows that no longer exist on server
-        local_row_ids = self.sqlite.get_local_row_server_ids(file.id)
+        local_row_ids = await self.sqlite.get_local_row_server_ids(file.id)
         deleted_ids = local_row_ids - server_row_ids
         for deleted_id in deleted_ids:
-            self.sqlite.delete_row(deleted_id)
+            await self.sqlite.delete_row(deleted_id)
             stats["deleted"] += 1
 
         # Push local changes to server
@@ -262,8 +262,8 @@ class SyncService:
             )
             platform = platform_result.scalar_one_or_none()
             if platform:
-                self.sqlite.save_platform(self._platform_to_dict(platform))
-            self.sqlite.save_project(self._project_to_dict(project))
+                await self.sqlite.save_platform(self._platform_to_dict(platform))
+            await self.sqlite.save_project(self._project_to_dict(project))
 
         # Sync folder hierarchy
         await self.sync_folder_hierarchy(folder)
@@ -316,10 +316,10 @@ class SyncService:
         )
         platform = platform_result.scalar_one_or_none()
         if platform:
-            self.sqlite.save_platform(self._platform_to_dict(platform))
+            await self.sqlite.save_platform(self._platform_to_dict(platform))
 
         # Sync project
-        self.sqlite.save_project(self._project_to_dict(project))
+        await self.sqlite.save_project(self._project_to_dict(project))
 
         total_stats = {"folders_synced": 0, "files_synced": 0, "total_rows": 0}
 
@@ -374,7 +374,7 @@ class SyncService:
             raise ValueError(f"Platform {platform_id} not found")
 
         # Sync platform
-        self.sqlite.save_platform(self._platform_to_dict(platform))
+        await self.sqlite.save_platform(self._platform_to_dict(platform))
 
         total_stats = {"projects_synced": 0, "folders_synced": 0, "files_synced": 0, "total_rows": 0}
 
@@ -410,7 +410,7 @@ class SyncService:
         pushed_count = 0
 
         # Get modified rows from SQLite
-        modified_rows = self.sqlite.get_modified_rows(file_id)
+        modified_rows = await self.sqlite.get_modified_rows(file_id)
 
         for local_row in modified_rows:
             server_id = local_row.get("server_id")
@@ -432,7 +432,7 @@ class SyncService:
                 pushed_count += 1
 
                 # Mark local row as synced
-                self.sqlite.mark_row_synced(local_row["id"])
+                await self.sqlite.mark_row_synced(local_row["id"])
 
         if pushed_count > 0:
             await self.pg.commit()
@@ -464,7 +464,7 @@ class SyncService:
             raise ValueError(f"TM {tm_id} not found")
 
         # Save TM metadata to SQLite
-        self.sqlite.save_tm({
+        await self.sqlite.save_tm({
             "id": tm.id,
             "name": tm.name,
             "source_language": tm.source_language,
@@ -481,20 +481,21 @@ class SyncService:
         )
         entries = entries_result.scalars().all()
 
-        # Convert entries to dicts
-        entry_data = []
+        # Merge entries using individual merge calls (last-write-wins)
+        stats = {"inserted": 0, "updated": 0, "skipped": 0}
         for entry in entries:
-            entry_data.append({
+            entry_data = {
                 "id": entry.id,
                 "tm_id": entry.tm_id,
-                "source": entry.source,
-                "target": entry.target,
+                "source_text": entry.source_text if hasattr(entry, 'source_text') else entry.source,
+                "target_text": entry.target_text if hasattr(entry, 'target_text') else entry.target,
+                "source_hash": entry.source_hash if hasattr(entry, 'source_hash') else None,
                 "created_at": entry.created_at.isoformat() if entry.created_at else None,
-                "updated_at": entry.updated_at.isoformat() if entry.updated_at else None
-            })
-
-        # Batch merge entries
-        stats = self.sqlite.merge_tm_entries_batch(entry_data, tm_id)
+                "updated_at": entry.updated_at.isoformat() if entry.updated_at else None,
+                "created_by": entry.created_by if hasattr(entry, 'created_by') else None,
+            }
+            result = await self.sqlite.merge_tm_entry(entry_data, tm.id)
+            stats[result] += 1
 
         logger.info(f"[SYNC] sync_tm_to_offline complete: tm={tm.name}, "
                     f"inserted={stats['inserted']}, updated={stats['updated']}, skipped={stats['skipped']}")
@@ -515,7 +516,7 @@ class SyncService:
         logger.info(f"[SYNC] push_tm_changes_to_server: local={local_tm_id}, server={server_tm_id}")
 
         # Get modified entries from SQLite
-        modified_entries = self.sqlite.get_modified_tm_entries(local_tm_id)
+        modified_entries = await self.sqlite.get_modified_tm_entries(local_tm_id)
         pushed_count = 0
 
         for local_entry in modified_entries:
@@ -543,7 +544,7 @@ class SyncService:
                 pushed_count += 1
 
             # Mark local entry as synced
-            self.sqlite.mark_tm_entry_synced(local_entry["id"])
+            await self.sqlite.mark_tm_entry_synced(local_entry["id"])
 
         if pushed_count > 0:
             await self.pg.commit()
@@ -597,12 +598,12 @@ class SyncService:
                     f"dest_project={destination_project_id}, dest_folder={destination_folder_id}")
 
         # Get local file from SQLite
-        local_file = self.sqlite.get_local_file(local_file_id)
+        local_file = await self.sqlite.get_local_file(local_file_id)
         if not local_file:
             raise ValueError(f"File {local_file_id} not found in Offline Storage")
 
         # Get all rows for this file
-        local_rows = self.sqlite.get_rows_for_file(local_file_id)
+        local_rows = await self.sqlite.get_rows_for_file(local_file_id)
         logger.info(f"[SYNC] Read {len(local_rows)} rows from Offline Storage")
 
         # Parse extra_data if it's a JSON string
@@ -677,12 +678,12 @@ class SyncService:
         logger.info(f"[SYNC] sync_tm_to_central: local_tm_id={local_tm_id}")
 
         # Get local TM from SQLite
-        local_tm = self.sqlite.get_tm(local_tm_id)
+        local_tm = await self.sqlite.get_tm(local_tm_id)
         if not local_tm:
             raise ValueError(f"Translation Memory {local_tm_id} not found in local storage")
 
         # Get all entries for this TM
-        local_entries = self.sqlite.get_tm_entries(local_tm_id)
+        local_entries = await self.sqlite.get_tm_entries(local_tm_id)
         logger.info(f"[SYNC] Read {len(local_entries)} entries from local SQLite")
 
         # Create new TM in PostgreSQL
