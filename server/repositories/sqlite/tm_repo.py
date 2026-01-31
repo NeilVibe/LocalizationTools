@@ -5,16 +5,45 @@ Implements TMRepository interface using SQLite (offline.py).
 This is the offline mode adapter.
 
 ARCH-001: Schema-aware - works with both OFFLINE (offline_tms) and SERVER (ldm_translation_memories) modes.
+LIMIT-001: FAISS-based search_similar() for offline TM suggestions.
 """
 
+import asyncio
+import threading
 import time
 import hashlib
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional, Dict, Any
 from loguru import logger
 
 from server.repositories.interfaces.tm_repository import TMRepository, AssignmentTarget
 from server.repositories.sqlite.base import SQLiteBaseRepository, SchemaMode
+
+
+# Module-level cache for TM indexes (LIMIT-001)
+# Thread-safe with lock for concurrent access
+_tm_index_cache: Dict[int, Dict[str, Any]] = {}
+_tm_index_cache_lock = threading.Lock()
+_TM_INDEX_CACHE_MAX_SIZE = 10  # Limit cache to prevent memory bloat
+
+
+def clear_tm_index_cache(tm_id: Optional[int] = None) -> None:
+    """
+    Clear TM index cache. Called when TM entries are modified.
+
+    Args:
+        tm_id: Specific TM to clear, or None to clear all.
+    """
+    global _tm_index_cache
+    with _tm_index_cache_lock:
+        if tm_id is not None:
+            if tm_id in _tm_index_cache:
+                del _tm_index_cache[tm_id]
+                logger.debug(f"[TM-REPO-SQLITE] Cleared cache for TM {tm_id}")
+        else:
+            _tm_index_cache.clear()
+            logger.debug("[TM-REPO-SQLITE] Cleared all TM index cache")
 
 
 class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
@@ -526,6 +555,9 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
             )
             await conn.commit()
 
+        # Invalidate FAISS cache for this TM (entries changed)
+        clear_tm_index_cache(tm_id)
+
         return {
             "id": entry_id,
             "tm_id": tm_id,
@@ -579,6 +611,9 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
             )
             await conn.commit()
 
+            # Invalidate FAISS cache for this TM (entries changed)
+            clear_tm_index_cache(tm_id)
+
             logger.info(f"Bulk added {len(entries)} entries to SQLite TM {tm_id}")
             return len(entries)
 
@@ -596,6 +631,33 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
             )
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
+
+    async def get_all_entries(self, tm_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all TM entries from SQLite for building indexes.
+
+        LIMIT-002: Used by TMLoader for offline pretranslation support.
+        """
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
+                f"""SELECT id, tm_id, source_text, target_text, source_hash,
+                           string_id, is_confirmed
+                   FROM {self._table('tm_entries')} WHERE tm_id = ? ORDER BY id""",
+                (tm_id,)
+            )
+            rows = await cursor.fetchall()
+            return [
+                {
+                    "id": row["id"],
+                    "tm_id": row["tm_id"],
+                    "source_text": row["source_text"],
+                    "target_text": row["target_text"],
+                    "source_hash": row["source_hash"],
+                    "string_id": row.get("string_id"),
+                    "is_confirmed": bool(row.get("is_confirmed", 0)),
+                }
+                for row in rows
+            ]
 
     async def search_entries(
         self,
@@ -649,6 +711,9 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
                 (tm_id,)
             )
             await conn.commit()
+
+            # Invalidate FAISS cache for this TM (entries changed)
+            clear_tm_index_cache(tm_id)
             return True
 
     async def update_entry(
@@ -702,11 +767,15 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
             )
 
             # Update TM timestamp
+            tm_id = row["tm_id"]
             await conn.execute(
                 f"UPDATE {self._table('tms')} SET updated_at = datetime('now') WHERE id = ?",
-                (row["tm_id"],)
+                (tm_id,)
             )
             await conn.commit()
+
+            # Invalidate FAISS cache for this TM (entries changed)
+            clear_tm_index_cache(tm_id)
 
             cursor = await conn.execute(
                 f"SELECT * FROM {self._table('tm_entries')} WHERE id = ?",
@@ -979,8 +1048,81 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
         max_results: int = 5
     ) -> List[Dict[str, Any]]:
         """
-        Similarity search - not available in SQLite (pg_trgm is PostgreSQL-specific).
-        Returns empty list for offline mode.
+        FAISS-based semantic search for SQLite offline mode.
+
+        LIMIT-001: Uses TMSearcher with pre-built FAISS indexes for offline TM suggestions.
+        Thread-safe with LRU-style cache eviction.
         """
-        logger.debug(f"[TM-REPO] Similarity search not available in SQLite (tm_id={tm_id})")
-        return []
+        global _tm_index_cache
+
+        if not source or not source.strip():
+            return []
+
+        try:
+            # Check if indexes exist
+            data_dir = Path(__file__).resolve().parent.parent.parent / "data" / "ldm_tm"
+            tm_path = data_dir / str(tm_id)
+
+            if not tm_path.exists():
+                logger.info(f"[TM-REPO-SQLITE] No FAISS index for TM {tm_id} (index not built)")
+                return []
+
+            # Load indexes (thread-safe cached for performance)
+            with _tm_index_cache_lock:
+                cache_hit = tm_id in _tm_index_cache
+                if cache_hit:
+                    indexes = _tm_index_cache[tm_id]
+
+            if not cache_hit:
+                def _load_indexes():
+                    from server.tools.ldm.indexing.indexer import TMIndexer
+                    # Create indexer for loading only
+                    indexer = TMIndexer.__new__(TMIndexer)
+                    indexer.data_dir = data_dir
+                    indexer._engine = None
+                    return indexer.load_indexes(tm_id)
+
+                indexes = await asyncio.to_thread(_load_indexes)
+
+                # Thread-safe cache update with LRU eviction
+                with _tm_index_cache_lock:
+                    # Evict oldest if cache full
+                    if len(_tm_index_cache) >= _TM_INDEX_CACHE_MAX_SIZE:
+                        oldest_key = next(iter(_tm_index_cache))
+                        del _tm_index_cache[oldest_key]
+                        logger.debug(f"[TM-REPO-SQLITE] Cache evicted TM {oldest_key}")
+
+                    _tm_index_cache[tm_id] = indexes
+                    logger.info(f"[TM-REPO-SQLITE] Cached FAISS indexes for TM {tm_id}")
+
+            # Search using TMSearcher
+            def _search():
+                from server.tools.ldm.indexing.searcher import TMSearcher
+                searcher = TMSearcher(indexes, threshold=threshold)
+                return searcher.search(source, top_k=max_results, threshold=threshold)
+
+            result = await asyncio.to_thread(_search)
+
+            # Transform to PostgreSQL-compatible format
+            suggestions = []
+            for match in result.get("results", []):
+                suggestions.append({
+                    "source": match.get("source_text") or match.get("source_line", ""),
+                    "target": match.get("target_text") or match.get("target_line", ""),
+                    "similarity": round(float(match.get("score", 0)), 3),
+                    "entry_id": match.get("entry_id"),
+                    "tm_id": tm_id,
+                    "file_name": "TM",
+                })
+
+            return suggestions[:max_results]
+
+        except FileNotFoundError:
+            logger.info(f"[TM-REPO-SQLITE] Index files not found for TM {tm_id}")
+            return []
+        except ImportError as e:
+            logger.warning(f"[TM-REPO-SQLITE] FAISS unavailable: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"[TM-REPO-SQLITE] FAISS search failed: {e}")
+            return []

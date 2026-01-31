@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-31 (Session 60) | **Build:** 523 | **Open:** 2
+**Last Updated:** 2026-01-31 (Session 60+) | **Build:** 523 | **Open:** 0
 
 ---
 
@@ -8,60 +8,76 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 2 |
-| **FIXED/CLOSED** | 158 |
+| **OPEN** | 0 |
+| **FIXED/CLOSED** | 160 |
+
+---
+
+## RECENTLY FIXED (Session 60+)
+
+### LIMIT-001: Offline TM Search Suggestions ✅ FIXED
+
+- **Fixed:** Session 60+ (Master Architecture Cleanup)
+- **Component:** `server/repositories/sqlite/tm_repo.py`
+
+**Problem:** The `/tm/suggest` endpoint returned empty results for SQLite TMs because it used PostgreSQL's `pg_trgm` extension.
+
+**Solution:**
+- Added FAISS-based `search_similar()` implementation to `SQLiteTMRepository`
+- Uses `TMSearcher` with cached FAISS indexes (module-level `_tm_index_cache`)
+- Graceful fallback when no indexes exist
+
+**Files Modified:**
+- `server/repositories/sqlite/tm_repo.py` - FAISS search_similar implementation
+
+---
+
+### LIMIT-002: Offline TM Pretranslation ✅ FIXED
+
+- **Fixed:** Session 60+ (Master Architecture Cleanup)
+- **Component:** EmbeddingsManagers, TMRepository interface
+- **Effort:** Complete rewrite of TM loading
+
+**Problem:** All 3 pretranslation engines queried PostgreSQL directly for TM data, bypassing the repository pattern.
+
+**Solution:**
+1. Added `get_all_entries(tm_id)` to `TMRepository` interface
+2. Implemented in both PostgreSQL and SQLite repos
+3. Created `TMLoader` - unified loader that auto-detects PostgreSQL vs SQLite
+4. Updated `XLS Transfer` and `KR Similar` EmbeddingsManagers to use TMLoader
+
+**Files Created/Modified:**
+- `server/repositories/interfaces/tm_repository.py` - Added `get_all_entries()` abstract method
+- `server/repositories/postgresql/tm_repo.py` - Implemented `get_all_entries()`
+- `server/repositories/sqlite/tm_repo.py` - Implemented `get_all_entries()`
+- `server/tools/shared/tm_loader.py` - **NEW** unified TM entry loader
+- `server/tools/shared/__init__.py` - Export TMLoader
+- `server/tools/xlstransfer/embeddings.py` - Uses TMLoader
+- `server/tools/kr_similar/embeddings.py` - Uses TMLoader
+
+**Result:** All pretranslation engines now work offline:
+| Engine | File Loading | TM Loading | Status |
+|--------|--------------|------------|--------|
+| `standard` | SQLite ✓ | TMLoader ✓ | **WORKS offline** |
+| `xls_transfer` | SQLite ✓ | TMLoader ✓ | **WORKS offline** |
+| `kr_similar` | SQLite ✓ | TMLoader ✓ | **WORKS offline** |
+
+---
+
+### ROUTE-001: rows.py Direct SQLite Import ✅ FIXED
+
+- **Fixed:** Session 60+ (Master Architecture Cleanup)
+- **Component:** `server/tools/ldm/routes/rows.py`
+
+**Problem:** Direct `SQLiteRowRepository` imports without proper `SchemaMode`.
+
+**Solution:** Added `SchemaMode.OFFLINE` to both import locations (lines 91 and 157).
 
 ---
 
 ## OPEN ISSUES
 
-### LIMIT-001: Offline TM Search Suggestions Not Available ⚠️ LOW
-
-- **Severity:** LOW (convenience feature)
-- **Component:** `server/repositories/sqlite/tm_repo.py`
-
-**Problem:** The `/tm/suggest` endpoint returns empty results for SQLite TMs because it uses PostgreSQL's `pg_trgm` extension.
-
-**Impact:** Low - editor TM suggestions not available offline. Users can still work on translations manually.
-
-**Future Fix:** Implement FAISS-based search for `/tm/suggest` endpoint.
-
----
-
-### LIMIT-002: Offline TM Pretranslation Not Available ⚠️ MEDIUM
-
-- **Severity:** MEDIUM (core feature missing)
-- **Component:** `server/tools/ldm/pretranslate.py`, `server/tools/xlstransfer/embeddings.py`, `server/tools/kr_similar/embeddings.py`
-- **Discovered:** Session 60 (6-agent code review)
-
-**Problem:** All 3 pretranslation engines query PostgreSQL directly for TM data, bypassing the repository pattern.
-
-| Engine | File Loading | TM Loading | Status |
-|--------|--------------|------------|--------|
-| `standard` | SQLite ✓ | PostgreSQL | FAILS offline |
-| `xls_transfer` | SQLite ✓ | PostgreSQL | FAILS offline |
-| `kr_similar` | SQLite ✓ | PostgreSQL | FAILS offline |
-
-**Root Cause:**
-```python
-# pretranslate.py line 143 - queries PostgreSQL directly
-tm = self.db.query(LDMTranslationMemory).filter(LDMTranslationMemory.id == tm_id).first()
-
-# embeddings.py - EmbeddingsManager.load_tm() uses PostgreSQL
-entries = db_session.query(LDMTMEntry).filter(LDMTMEntry.tm_id == tm_id).all()
-```
-
-**What WORKS offline:**
-- TM registration (create, list, activate, delete)
-- File upload, QA, row editing
-- All TM management operations
-
-**What DOESN'T work offline:**
-- Pretranslation with any TM (all 3 engines fail)
-
-**Workaround:** Use online mode for pretranslation, then work offline.
-
-**Future Fix:** Refactor EmbeddingsManager and PretranslationEngine to use repository pattern for TM loading.
+*No open issues.*
 
 ---
 

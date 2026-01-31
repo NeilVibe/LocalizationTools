@@ -612,6 +612,33 @@ class PostgreSQLTMRepository(TMRepository):
         entries = result.scalars().all()
         return [self._entry_to_dict(e) for e in entries]
 
+    async def get_all_entries(self, tm_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all TM entries for building indexes.
+
+        LIMIT-002: Used by TMLoader for offline pretranslation support.
+        Returns only the documented fields for parity with SQLite implementation.
+        """
+        result = await self.db.execute(
+            select(LDMTMEntry)
+            .where(LDMTMEntry.tm_id == tm_id)
+            .order_by(LDMTMEntry.id)
+        )
+        entries = result.scalars().all()
+        # Return only documented fields for parity with SQLite
+        return [
+            {
+                "id": e.id,
+                "tm_id": e.tm_id,
+                "source_text": e.source_text,
+                "target_text": e.target_text,
+                "source_hash": e.source_hash,
+                "string_id": e.string_id,
+                "is_confirmed": e.is_confirmed,
+            }
+            for e in entries
+        ]
+
     async def search_entries(
         self,
         tm_id: int,

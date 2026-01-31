@@ -313,6 +313,20 @@ class TMRepository(ABC):
         ...
 
     @abstractmethod
+    async def get_all_entries(self, tm_id: int) -> List[Dict[str, Any]]:
+        """
+        Get ALL entries for TM (no pagination).
+
+        LIMIT-002: Used for building FAISS indexes in pretranslation.
+        Returns all entries for the TM without pagination limits.
+
+        Returns:
+            List of entry dicts with: id, tm_id, source_text, target_text,
+            source_hash, string_id, is_confirmed
+        """
+        ...
+
+    @abstractmethod
     async def search_entries(
         self,
         tm_id: int,
