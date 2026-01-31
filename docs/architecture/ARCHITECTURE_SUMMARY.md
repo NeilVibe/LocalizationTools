@@ -1,6 +1,6 @@
 # Architecture Summary - Complete Reference
 
-> Last Updated: 2026-01-11 (DB Abstraction Vision)
+> Last Updated: 2026-02-01 (9 Repository Interfaces + 3-Mode Detection)
 
 ---
 
@@ -173,7 +173,8 @@ When editing a file, active TMs are resolved in order:
                          ▼
 ┌─────────────────────────────────────────────────────────┐
 │              Repository Interface (ABC)                  │
-│  TMRepository, FileRepository, FolderRepository, etc.   │
+│  9 interfaces: TM, File, Folder, Row, Project,          │
+│  Platform, QA, Trash, Capability                        │
 └────────────────────────┬────────────────────────────────┘
                          │
          ┌───────────────┴───────────────┐
@@ -188,6 +189,41 @@ When editing a file, active TMs are resolved in order:
     PostgreSQL DB                   SQLite DB
 ```
 
+### RoutingRowRepository (Hybrid Routing)
+
+The `RoutingRowRepository` handles rows that can live in EITHER database based on ID sign:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  RoutingRowRepository                    │
+│         (Routes based on ID sign)                       │
+└────────────────────────────┬────────────────────────────┘
+                         │
+         ┌───────────────┴───────────────┐
+         │                               │
+    ID < 0 (Negative)              ID > 0 (Positive)
+         │                               │
+         ▼                               ▼
+┌─────────────────────┐       ┌─────────────────────┐
+│   SQLite OFFLINE    │       │   Primary Database  │
+│ (local-only rows)   │       │ (PG or SQLite srv)  │
+└─────────────────────┘       └─────────────────────┘
+```
+
+**Use Case:** Offline-created rows get negative IDs, server rows get positive IDs. The routing repository transparently handles both.
+
+### 3-Mode Detection
+
+The system detects **three distinct modes** at startup:
+
+| Mode | Detection | Primary DB | Offline DB |
+|------|-----------|------------|------------|
+| **Offline** | Token starts with `OFFLINE_MODE_` | SQLite | SQLite |
+| **SQLite Server** | `USE_SQLITE=true` env var | SQLite | SQLite |
+| **PostgreSQL** | Default (server connected) | PostgreSQL | SQLite |
+
+Mode detection happens in `server/repositories/__init__.py` via `get_*_repository()` factories.
+
 ### Folder Structure
 
 ```
@@ -196,11 +232,17 @@ server/
 │   ├── __init__.py                  # Exports + factory
 │   ├── base.py                      # Generic Repository[T]
 │   │
-│   ├── interfaces/                  # Abstract interfaces
+│   ├── interfaces/                  # 9 Abstract interfaces
 │   │   ├── __init__.py
 │   │   ├── tm_repository.py         # TMRepository(ABC)
 │   │   ├── file_repository.py       # FileRepository(ABC)
-│   │   └── folder_repository.py     # FolderRepository(ABC)
+│   │   ├── folder_repository.py     # FolderRepository(ABC)
+│   │   ├── row_repository.py        # RowRepository(ABC)
+│   │   ├── project_repository.py    # ProjectRepository(ABC)
+│   │   ├── platform_repository.py   # PlatformRepository(ABC)
+│   │   ├── qa_repository.py         # QARepository(ABC)
+│   │   ├── trash_repository.py      # TrashRepository(ABC)
+│   │   └── capability_repository.py # CapabilityRepository(ABC)
 │   │
 │   ├── postgresql/                  # PostgreSQL adapters
 │   │   ├── __init__.py
@@ -393,6 +435,8 @@ The goal: Replace fallback patterns with abstraction layer.
 | `server/database/offline_schema.sql` | SQLite schema |
 | `server/tools/ldm/routes/sync.py` | Offline endpoints |
 | `server/tools/ldm/routes/tm_assignment.py` | TM tree + assignment |
+| `server/tools/shared/tm_loader.py` | **TMLoader** - Loads TMs for file editing (cascading scope resolution) |
+| `server/repositories/routing_row_repository.py` | **RoutingRowRepository** - Routes rows by ID sign (negative->SQLite, positive->primary) |
 | `locaNext/src/lib/stores/sync.js` | Sync state management |
 | `locaNext/src/lib/components/pages/FilesPage.svelte` | File explorer |
 | `locaNext/src/lib/components/ldm/TMExplorerTree.svelte` | TM tree UI |
@@ -498,4 +542,4 @@ cd locaNext && npx playwright test tests/offline-*.spec.ts
 
 ---
 
-*Updated 2026-01-11 | DB Abstraction Layer + Full Offline Parity*
+*Updated 2026-02-01 | 9 Repository Interfaces + RoutingRowRepository + 3-Mode Detection*
