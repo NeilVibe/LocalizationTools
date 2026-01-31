@@ -15,7 +15,8 @@ from loguru import logger
 from server.repositories.interfaces.tm_repository import TMRepository, AssignmentTarget
 from server.database.models import (
     LDMTranslationMemory, LDMTMAssignment, LDMTMEntry,
-    LDMPlatform, LDMProject, LDMFile
+    LDMPlatform, LDMProject, LDMFile, LDMFolder,
+    LDMActiveTM, LDMTMIndex
 )
 
 
@@ -415,8 +416,6 @@ class PostgreSQLTMRepository(TMRepository):
         priority: int = 1
     ) -> Dict[str, Any]:
         """Link a TM to a project for auto-add on confirm."""
-        from server.database.models import LDMActiveTM
-
         # Check if already linked
         result = await self.db.execute(
             select(LDMActiveTM).where(
@@ -446,8 +445,6 @@ class PostgreSQLTMRepository(TMRepository):
 
     async def unlink_from_project(self, tm_id: int, project_id: int) -> bool:
         """Unlink a TM from a project."""
-        from server.database.models import LDMActiveTM
-
         result = await self.db.execute(
             select(LDMActiveTM).where(
                 LDMActiveTM.tm_id == tm_id,
@@ -471,8 +468,6 @@ class PostgreSQLTMRepository(TMRepository):
         user_id: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
         """Get the highest-priority linked TM for a project."""
-        from server.database.models import LDMActiveTM
-
         query = (
             select(LDMTranslationMemory)
             .join(LDMActiveTM, LDMActiveTM.tm_id == LDMTranslationMemory.id)
@@ -498,8 +493,6 @@ class PostgreSQLTMRepository(TMRepository):
         project_id: int
     ) -> List[Dict[str, Any]]:
         """Get all TMs linked to a project, ordered by priority."""
-        from server.database.models import LDMActiveTM
-
         result = await self.db.execute(
             select(LDMActiveTM, LDMTranslationMemory)
             .join(LDMTranslationMemory, LDMActiveTM.tm_id == LDMTranslationMemory.id)
@@ -592,7 +585,6 @@ class PostgreSQLTMRepository(TMRepository):
             inserted = bulk_copy_tm_entries(sync_db, tm_id, formatted)
 
             # Update entry count on TM
-            from server.database.models import LDMTranslationMemory
             tm = sync_db.query(LDMTranslationMemory).filter(
                 LDMTranslationMemory.id == tm_id
             ).first()
@@ -825,8 +817,6 @@ class PostgreSQLTMRepository(TMRepository):
 
     async def get_tree(self) -> Dict[str, Any]:
         """Get full TM tree for UI with folder hierarchy."""
-        from server.database.models import LDMFolder
-
         # Ensure Offline Storage exists
         await self._ensure_offline_storage_project()
 
@@ -921,8 +911,6 @@ class PostgreSQLTMRepository(TMRepository):
 
     async def get_indexes(self, tm_id: int) -> List[Dict[str, Any]]:
         """Get index status for a TM."""
-        from server.database.models import LDMTMIndex
-
         result = await self.db.execute(
             select(LDMTMIndex).where(LDMTMIndex.tm_id == tm_id)
         )

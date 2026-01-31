@@ -43,6 +43,20 @@ TABLE_MAP = {
     "trash": ("offline_trash", "ldm_trash"),
 }
 
+# Columns that only exist in OFFLINE mode (for sync tracking)
+# Used by _has_column() to conditionally include columns in queries
+OFFLINE_ONLY_COLUMNS = frozenset({
+    "server_id",
+    "sync_status",
+    "downloaded_at",
+    "server_platform_id",
+    "server_project_id",
+    "server_file_id",
+    "server_folder_id",
+    "server_tm_id",
+    "server_parent_id",
+})
+
 
 class SQLiteBaseRepository:
     """
@@ -139,19 +153,6 @@ class SQLiteBaseRepository:
         Returns:
             True if column exists in current schema mode
         """
-        # Columns that only exist in OFFLINE mode
-        OFFLINE_ONLY_COLUMNS = {
-            "server_id",
-            "sync_status",
-            "downloaded_at",
-            "server_platform_id",
-            "server_project_id",
-            "server_file_id",
-            "server_folder_id",
-            "server_tm_id",
-            "server_parent_id",
-        }
-
         if column_name in OFFLINE_ONLY_COLUMNS:
             return self.schema_mode == SchemaMode.OFFLINE
 
