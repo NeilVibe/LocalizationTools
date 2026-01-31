@@ -103,11 +103,12 @@ class SQLiteFolderRepository(SQLiteBaseRepository, FolderRepository):
                     )
                 )
             else:
+                # SERVER mode: ldm_folders has no updated_at column
                 await conn.execute(
                     f"""INSERT INTO {self._table('folders')}
-                       (id, name, project_id, parent_id, created_at, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?)""",
-                    (folder_id, unique_name, project_id, parent_id, now, now)
+                       (id, name, project_id, parent_id, created_at)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (folder_id, unique_name, project_id, parent_id, now)
                 )
             await conn.commit()
 
