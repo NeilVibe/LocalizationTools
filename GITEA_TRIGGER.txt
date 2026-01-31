@@ -36,3 +36,4 @@ Build 515: Factory fix for SQLite mode - Sat Jan 31 03:55:22 AM KST 2026
 Build 516: PostgreSQL repos handle SQLite gracefully - Sat Jan 31 04:06:29 AM KST 2026
 Build 517: Schema-aware SQLite repos + code quality fixes
 Build 518: Fix folder_repo updated_at column
+Build 519: Complete folder_repo SERVER mode fix
