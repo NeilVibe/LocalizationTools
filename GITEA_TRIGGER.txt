@@ -39,3 +39,4 @@ Build 518: Fix folder_repo updated_at column
 Build 519: Complete folder_repo SERVER mode fix
 Build 520: Fix sync_service folder updated_at access
 Build 521: Fix aiosqlite await statements in sync_service + sync.py
+Build 522: Fix TM model attribute names + all sync tests pass
