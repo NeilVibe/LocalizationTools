@@ -4,6 +4,7 @@ Row endpoints - List rows, update row, project tree.
 P10: FULL ABSTRACT + REPO Pattern
 - All endpoints use Repository Pattern with permissions baked in
 - No direct DB access in routes
+- RoutingRowRepository handles negative IDs transparently
 
 Migrated from api.py lines 660-933
 """
@@ -17,6 +18,7 @@ from loguru import logger
 from server.utils.dependencies import get_current_active_user_async, get_db
 from server.tools.ldm.schemas import PaginatedRows, RowResponse, RowUpdate
 from server.tools.ldm.websocket import broadcast_cell_update
+from server.tools.ldm.routes.tm_entries import _auto_sync_tm_indexes
 from server.repositories import (
     RowRepository, get_row_repository,
     ProjectRepository, get_project_repository,
@@ -84,38 +86,16 @@ async def list_rows(
     - qa_flagged: qa_flag_count > 0
 
     P10: FULL ABSTRACT - Permission check is INSIDE repository.
+    RoutingRowRepository handles negative IDs (local files) transparently.
     """
-    # P9: Local files (negative IDs) skip permission checks - user's own files
-    if file_id < 0:
-        # Use SQLite repository directly for local files
-        from server.repositories.sqlite.row_repo import SQLiteRowRepository
-        local_repo = SQLiteRowRepository()
-        rows, total = await local_repo.get_for_file(
-            file_id=file_id,
-            page=page,
-            limit=limit,
-            search=search,
-            search_mode=search_mode or "contain",
-            search_fields=search_fields or "source,target",
-            status=status,
-            filter_type=filter
-        )
-        total_pages = (total + limit - 1) // limit if limit > 0 else 1
-        return PaginatedRows(
-            rows=rows,
-            total=total,
-            page=page,
-            limit=limit,
-            total_pages=total_pages
-        )
+    # P10: For positive IDs, verify file exists (permission check inside repo)
+    # For negative IDs, RoutingRowRepository handles routing to SQLite OFFLINE
+    if file_id >= 0:
+        file = await file_repo.get(file_id)
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
 
-    # P10: Get file via repository (permissions checked inside - returns None if no access)
-    file = await file_repo.get(file_id)
-
-    if not file:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Use Repository Pattern for all row queries
+    # Use Repository Pattern - RoutingRowRepository handles negative IDs transparently
     rows, total = await repo.get_for_file(
         file_id=file_id,
         page=page,
@@ -150,13 +130,11 @@ async def update_row(
     """Update a row's target text or status (source is READ-ONLY).
 
     P10: FULL ABSTRACT - Permission check is INSIDE repository.
+    RoutingRowRepository handles negative IDs (local rows) transparently.
     """
-    # P9: Local rows (negative IDs) skip permission checks - user's own files
+    # P10: For negative IDs, use simplified update (local data, no history/TM sync)
     if row_id < 0:
-        # Use SQLite repository directly for local rows
-        from server.repositories.sqlite.row_repo import SQLiteRowRepository
-        local_repo = SQLiteRowRepository()
-        updated_row = await local_repo.update(
+        updated_row = await repo.update(
             row_id=row_id,
             target=update.target,
             status=update.status

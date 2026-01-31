@@ -345,14 +345,13 @@ class EmbeddingsManager:
 
     def load_tm(self, tm_id: int, db_session=None) -> bool:
         """
-        Load TM data from PostgreSQL and build indexes.
+        Load TM data and build indexes.
 
-        This is an alternative to load_dictionary() that works with
-        LDM Translation Memories instead of pre-built game dictionaries.
+        LIMIT-002: Uses TMLoader to support both PostgreSQL and SQLite offline mode.
 
         Args:
-            tm_id: Translation Memory ID in PostgreSQL
-            db_session: Optional SQLAlchemy session
+            tm_id: Translation Memory ID
+            db_session: Optional SQLAlchemy session (ignored, kept for API compatibility)
 
         Returns:
             True if loaded successfully
@@ -360,99 +359,83 @@ class EmbeddingsManager:
         logger.info(f"Loading TM {tm_id} for KR Similar...")
 
         try:
-            # Import here to avoid circular imports
-            from server.database.db_utils import get_db_session
-            from server.database.models import LDMTMEntry
+            # Use TMLoader for unified PostgreSQL/SQLite loading
+            from server.tools.shared.tm_loader import TMLoader
 
-            # Get or create session
-            close_session = False
-            if db_session is None:
-                db_session = next(get_db_session())
-                close_session = True
+            entries = TMLoader.load_entries(tm_id)
 
-            try:
-                # Load TM entries
-                entries = db_session.query(LDMTMEntry).filter(
-                    LDMTMEntry.tm_id == tm_id
-                ).all()
+            if not entries:
+                logger.warning(f"No entries found for TM {tm_id}")
+                return False
 
-                if not entries:
-                    logger.warning(f"No entries found for TM {tm_id}")
-                    return False
+            logger.info(f"Loaded {len(entries)} entries from TM {tm_id}")
 
-                logger.info(f"Loaded {len(entries)} entries from TM {tm_id}")
+            self._ensure_model_loaded()
 
-                self._ensure_model_loaded()
+            # Build dictionaries (similar to create_dictionary but from TMLoader)
+            split_pairs = []
+            whole_pairs = []
 
-                # Build dictionaries (similar to create_dictionary but from DB)
-                split_pairs = []
-                whole_pairs = []
+            for entry in entries:
+                # TMLoader returns dicts, not ORM objects
+                source = entry.get("source_text", "")
+                target = entry.get("target_text", "") or ""
 
-                for entry in entries:
-                    source = entry.source_text
-                    target = entry.target_text or ""
+                if not source:
+                    continue
 
-                    if not source:
-                        continue
+                # Split mode: line by line (for texts with multiple lines)
+                source_lines = source.split('\n')
+                target_lines = target.split('\n')
 
-                    # Split mode: line by line (for texts with multiple lines)
-                    source_lines = source.split('\n')
-                    target_lines = target.split('\n')
+                if len(source_lines) == len(target_lines) and len(source_lines) > 1:
+                    # Line counts match - use split mode
+                    for src_line, tgt_line in zip(source_lines, target_lines):
+                        src_line = normalize_text(src_line)
+                        tgt_line = tgt_line.strip()
+                        if src_line:
+                            split_pairs.append((src_line, tgt_line))
+                else:
+                    # Use whole mode
+                    whole_pairs.append((normalize_text(source), target))
 
-                    if len(source_lines) == len(target_lines) and len(source_lines) > 1:
-                        # Line counts match - use split mode
-                        for src_line, tgt_line in zip(source_lines, target_lines):
-                            src_line = normalize_text(src_line)
-                            tgt_line = tgt_line.strip()
-                            if src_line:
-                                split_pairs.append((src_line, tgt_line))
-                    else:
-                        # Use whole mode
-                        whole_pairs.append((normalize_text(source), target))
+            # Deduplicate and build dictionaries
+            self.split_dict = {}
+            for src, tgt in split_pairs:
+                if src not in self.split_dict:
+                    self.split_dict[src] = tgt
 
-                # Deduplicate and build dictionaries
-                self.split_dict = {}
-                for src, tgt in split_pairs:
-                    if src not in self.split_dict:
-                        self.split_dict[src] = tgt
+            self.whole_dict = {}
+            for src, tgt in whole_pairs:
+                if src not in self.whole_dict:
+                    self.whole_dict[src] = tgt
 
-                self.whole_dict = {}
-                for src, tgt in whole_pairs:
-                    if src not in self.whole_dict:
-                        self.whole_dict[src] = tgt
+            logger.info(f"Built {len(self.split_dict)} split, {len(self.whole_dict)} whole pairs")
 
-                logger.info(f"Built {len(self.split_dict)} split, {len(self.whole_dict)} whole pairs")
+            # Generate embeddings and build indexes using FAISSManager
+            if self.split_dict:
+                split_texts = list(self.split_dict.keys())
+                logger.info(f"Encoding {len(split_texts)} split texts...")
+                self.split_embeddings = self.encode_texts(split_texts)
 
-                # Generate embeddings and build indexes using FAISSManager
-                if self.split_dict:
-                    split_texts = list(self.split_dict.keys())
-                    logger.info(f"Encoding {len(split_texts)} split texts...")
-                    self.split_embeddings = self.encode_texts(split_texts)
+                self.split_index = FAISSManager.create_index(self.split_embeddings.shape[1])
+                FAISSManager.add_vectors(self.split_index, self.split_embeddings, normalize=True)
 
-                    self.split_index = FAISSManager.create_index(self.split_embeddings.shape[1])
-                    FAISSManager.add_vectors(self.split_index, self.split_embeddings, normalize=True)
+            if self.whole_dict:
+                whole_texts = list(self.whole_dict.keys())
+                logger.info(f"Encoding {len(whole_texts)} whole texts...")
+                self.whole_embeddings = self.encode_texts(whole_texts)
 
-                if self.whole_dict:
-                    whole_texts = list(self.whole_dict.keys())
-                    logger.info(f"Encoding {len(whole_texts)} whole texts...")
-                    self.whole_embeddings = self.encode_texts(whole_texts)
+                self.whole_index = FAISSManager.create_index(self.whole_embeddings.shape[1])
+                FAISSManager.add_vectors(self.whole_index, self.whole_embeddings, normalize=True)
 
-                    self.whole_index = FAISSManager.create_index(self.whole_embeddings.shape[1])
-                    FAISSManager.add_vectors(self.whole_index, self.whole_embeddings, normalize=True)
+            self.current_dict_type = f"tm_{tm_id}"
 
-                self.current_dict_type = f"tm_{tm_id}"
-
-                logger.success(f"Loaded TM {tm_id} for KR Similar: {len(self.split_dict)} split, {len(self.whole_dict)} whole")
-                return True
-
-            finally:
-                if close_session:
-                    db_session.close()
+            logger.success(f"Loaded TM {tm_id} for KR Similar: {len(self.split_dict)} split, {len(self.whole_dict)} whole")
+            return True
 
         except Exception as e:
-            logger.error(f"Failed to load TM {tm_id}: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.exception(f"Failed to load TM {tm_id}: {e}")
             return False
 
     def load_dictionary(self, dict_type: str) -> bool:

@@ -122,21 +122,30 @@ def get_row_repository(
     """
     Factory function - returns correct Row repository based on mode.
 
-    ARCH-001: 3-Mode Detection
+    ARCH-001: 3-Mode Detection + Negative ID Routing
     - Offline mode (header) → SQLiteRepo(OFFLINE) → offline_rows
-    - SQLite fallback       → SQLiteRepo(SERVER)  → ldm_rows
-    - PostgreSQL available  → PostgreSQLRepo      → ldm_rows
+    - SQLite fallback       → SQLiteRepo(SERVER)  → ldm_rows  
+    - PostgreSQL available  → RoutingRepo wrapping PostgreSQL
+    
+    RoutingRowRepository handles negative IDs (local Electron data) transparently.
+    Routes never need to know about negative ID handling.
     """
     from server.repositories.postgresql.row_repo import PostgreSQLRowRepository
     from server.repositories.sqlite.row_repo import SQLiteRowRepository
     from server.repositories.sqlite.base import SchemaMode
+    from server.repositories.routing.row_repo import RoutingRowRepository
 
     if _is_offline_mode(request):
+        # Full offline mode - all IDs are negative/local
         return SQLiteRowRepository(schema_mode=SchemaMode.OFFLINE)
     elif _is_sqlite_fallback():
-        return SQLiteRowRepository(schema_mode=SchemaMode.SERVER)
+        # Server SQLite fallback - wrap with routing for local IDs
+        primary = SQLiteRowRepository(schema_mode=SchemaMode.SERVER)
+        return RoutingRowRepository(primary)
     else:
-        return PostgreSQLRowRepository(db, current_user)
+        # PostgreSQL primary - wrap with routing for local IDs
+        primary = PostgreSQLRowRepository(db, current_user)
+        return RoutingRowRepository(primary)
 
 
 def get_project_repository(

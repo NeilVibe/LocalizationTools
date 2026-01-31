@@ -665,106 +665,92 @@ class EmbeddingsManager:
 
     def _build_from_db(self, tm_id: int, db_session=None) -> bool:
         """
-        Build indexes directly from PostgreSQL TM entries.
+        Build indexes from TM entries using TMLoader.
+
+        LIMIT-002: Uses TMLoader to support both PostgreSQL and SQLite offline mode.
         """
         try:
-            # Import here to avoid circular imports
-            from server.database.db_utils import get_db_session
-            from server.database.models import LDMTMEntry
+            # Use TMLoader for unified PostgreSQL/SQLite loading
+            from server.tools.shared.tm_loader import TMLoader
 
-            # Get or create session
-            close_session = False
-            if db_session is None:
-                db_session = next(get_db_session())
-                close_session = True
+            entries = TMLoader.load_entries(tm_id)
 
-            try:
-                # Load TM entries
-                entries = db_session.query(LDMTMEntry).filter(
-                    LDMTMEntry.tm_id == tm_id
-                ).all()
+            if not entries:
+                logger.warning(f"No entries found for TM {tm_id}")
+                return False
 
-                if not entries:
-                    logger.warning(f"No entries found for TM {tm_id}")
-                    return False
+            logger.info(f"Loaded {len(entries)} entries from TM {tm_id}")
 
-                logger.info(f"Loaded {len(entries)} entries from TM {tm_id}")
+            self._ensure_model_loaded()
 
-                self._ensure_model_loaded()
+            # Build dictionaries
+            self.whole_sentences = []
+            self.whole_dict = {}
+            self.split_sentences = []
+            self.split_dict = {}
 
-                # Build dictionaries
-                self.whole_sentences = []
-                self.whole_dict = {}
-                self.split_sentences = []
-                self.split_dict = {}
+            for entry in entries:
+                # TMLoader returns dicts, not ORM objects
+                source = entry.get("source_text", "")
+                target = entry.get("target_text", "") or ""
 
-                for entry in entries:
-                    source = entry.source_text
-                    target = entry.target_text or ""
+                if not source:
+                    continue
 
-                    if not source:
-                        continue
+                # Whole mode
+                if source not in self.whole_dict:
+                    self.whole_sentences.append(source)
+                    self.whole_dict[source] = target
 
-                    # Whole mode
-                    if source not in self.whole_dict:
-                        self.whole_sentences.append(source)
-                        self.whole_dict[source] = target
+                # Split mode
+                source_lines = source.split('\n')
+                target_lines = target.split('\n')
 
-                    # Split mode
-                    source_lines = source.split('\n')
-                    target_lines = target.split('\n')
+                for i, src_line in enumerate(source_lines):
+                    src_line = src_line.strip()
+                    if src_line and src_line not in self.split_dict:
+                        tgt_line = target_lines[i].strip() if i < len(target_lines) else ""
+                        self.split_sentences.append(src_line)
+                        self.split_dict[src_line] = tgt_line
 
-                    for i, src_line in enumerate(source_lines):
-                        src_line = src_line.strip()
-                        if src_line and src_line not in self.split_dict:
-                            tgt_line = target_lines[i].strip() if i < len(target_lines) else ""
-                            self.split_sentences.append(src_line)
-                            self.split_dict[src_line] = tgt_line
+            # Generate embeddings
+            logger.info(f"Generating embeddings for {len(self.whole_sentences)} whole, {len(self.split_sentences)} split...")
 
-                # Generate embeddings
-                logger.info(f"Generating embeddings for {len(self.whole_sentences)} whole, {len(self.split_sentences)} split...")
+            if self.whole_sentences:
+                whole_emb = self.model.encode(
+                    self.whole_sentences,
+                    batch_size=64,
+                    show_progress_bar=False
+                )
+                whole_emb = np.array(whole_emb, dtype=np.float32)
 
-                if self.whole_sentences:
-                    whole_emb = self.model.encode(
-                        self.whole_sentences,
-                        batch_size=64,
-                        show_progress_bar=False
-                    )
-                    whole_emb = np.array(whole_emb, dtype=np.float32)
+                dim = whole_emb.shape[1]
+                self.whole_index = FAISSManager.create_index(dim)
+                FAISSManager.add_vectors(self.whole_index, whole_emb, normalize=True)
 
-                    dim = whole_emb.shape[1]
-                    self.whole_index = FAISSManager.create_index(dim)
-                    FAISSManager.add_vectors(self.whole_index, whole_emb, normalize=True)
+            if self.split_sentences:
+                split_emb = self.model.encode(
+                    self.split_sentences,
+                    batch_size=64,
+                    show_progress_bar=False
+                )
+                split_emb = np.array(split_emb, dtype=np.float32)
 
-                if self.split_sentences:
-                    split_emb = self.model.encode(
-                        self.split_sentences,
-                        batch_size=64,
-                        show_progress_bar=False
-                    )
-                    split_emb = np.array(split_emb, dtype=np.float32)
+                dim = split_emb.shape[1]
+                self.split_index = FAISSManager.create_index(dim)
+                FAISSManager.add_vectors(self.split_index, split_emb, normalize=True)
 
-                    dim = split_emb.shape[1]
-                    self.split_index = FAISSManager.create_index(dim)
-                    FAISSManager.add_vectors(self.split_index, split_emb, normalize=True)
+            # Convert to pd.Series
+            self.split_sentences = pd.Series(self.split_sentences, dtype=str)
+            self.whole_sentences = pd.Series(self.whole_sentences, dtype=str)
 
-                # Convert to pd.Series
-                self.split_sentences = pd.Series(self.split_sentences, dtype=str)
-                self.whole_sentences = pd.Series(self.whole_sentences, dtype=str)
+            self.current_tm_id = tm_id
 
-                self.current_tm_id = tm_id
-
-                logger.success(f"Built indexes for TM {tm_id}: {len(self.whole_dict)} whole, {len(self.split_dict)} split")
-                return True
-
-            finally:
-                if close_session:
-                    db_session.close()
+            logger.success(f"Built indexes for TM {tm_id}: {len(self.whole_dict)} whole, {len(self.split_dict)} split")
+            return True
 
         except Exception as e:
-            logger.error(f"Failed to build from DB: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.exception(f"Failed to build from DB: {e}")
             return False
 
     def load_dictionary(self, tm_id: int, db_session=None) -> bool:

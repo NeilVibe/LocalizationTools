@@ -4,6 +4,7 @@ Shared utilities for LocaNext tools.
 This module provides common functionality used across multiple tools:
 - FAISSManager: Centralized FAISS HNSW index management
 - EmbeddingEngine: Unified embedding interface (Model2Vec, Qwen)
+- TMLoader: Unified TM entry loading (LIMIT-002)
 """
 
 from .faiss_manager import FAISSManager
@@ -18,6 +19,7 @@ from .embedding_engine import (
     preload_engine,
     unload_engine,
 )
+from .tm_loader import TMLoader
 
 __all__ = [
     "FAISSManager",
@@ -30,4 +32,5 @@ __all__ = [
     "set_current_engine",
     "preload_engine",
     "unload_engine",
+    "TMLoader",
 ]

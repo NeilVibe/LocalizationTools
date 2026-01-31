@@ -1,6 +1,62 @@
 # Session Context
 
-> Last Updated: 2026-01-31 (Session 60)
+> Last Updated: 2026-01-31 (Session 60+)
+
+---
+
+## SESSION 60+: Master Architecture Cleanup - LIMIT-001/002 Fixed
+
+### What Was Done
+
+1. **LIMIT-001 Fixed**: FAISS-based TM suggestions for offline mode
+2. **LIMIT-002 Fixed**: Offline pretranslation now works (TMLoader)
+3. **Route Cleanup**: Fixed rows.py direct SQLite imports
+4. **Documentation**: Updated ISSUES_TO_FIX.md
+
+### Files Created/Modified
+
+| File | Change |
+|------|--------|
+| `server/repositories/sqlite/tm_repo.py` | FAISS `search_similar()` + `get_all_entries()` |
+| `server/repositories/postgresql/tm_repo.py` | Added `get_all_entries()` |
+| `server/repositories/interfaces/tm_repository.py` | Added `get_all_entries()` abstract |
+| `server/tools/shared/tm_loader.py` | **NEW** - Unified TM loader |
+| `server/tools/shared/__init__.py` | Export TMLoader |
+| `server/tools/xlstransfer/embeddings.py` | Uses TMLoader |
+| `server/tools/kr_similar/embeddings.py` | Uses TMLoader |
+| `server/tools/ldm/routes/rows.py` | Added SchemaMode to imports |
+| `docs/current/ISSUES_TO_FIX.md` | Marked LIMIT-001/002 as FIXED |
+
+### Architecture Improvements
+
+**Before:**
+- `search_similar()` returned empty list for SQLite
+- EmbeddingsManagers queried PostgreSQL directly
+- Pretranslation failed offline
+
+**After:**
+- `search_similar()` uses FAISS with index caching
+- TMLoader detects PostgreSQL vs SQLite automatically
+- Full offline pretranslation support
+
+### Key Implementation Details
+
+**TMLoader Auto-Detection:**
+```python
+# Negative IDs = SQLite offline
+# config.ACTIVE_DATABASE_TYPE == "sqlite" = SQLite server
+# Otherwise = PostgreSQL
+```
+
+**FAISS Index Cache:**
+```python
+# Module-level cache in tm_repo.py
+_tm_index_cache: Dict[int, Dict[str, Any]] = {}
+```
+
+### Open Issues
+
+**0 open issues** - All LIMIT-001, LIMIT-002, and route violations fixed.
 
 ---
 
