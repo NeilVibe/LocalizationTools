@@ -1,6 +1,6 @@
 # Issues To Fix
 
-**Last Updated:** 2026-01-31 (Session 59) | **Build:** 499 | **Open:** 4
+**Last Updated:** 2026-01-31 (Session 59) | **Build:** 516 | **Open:** 5
 
 ---
 
@@ -8,12 +8,35 @@
 
 | Status | Count |
 |--------|-------|
-| **OPEN** | 4 |
+| **OPEN** | 5 |
 | **FIXED/CLOSED** | 141 |
 
 ---
 
 ## OPEN ISSUES
+
+### ARCH-001: Repository Layer Violations (PostgreSQL Repos Check SQLite) 🔴 HIGH
+
+- **Severity:** HIGH (architectural cleanliness)
+- **Component:** `server/repositories/postgresql/row_repo.py`, `server/repositories/postgresql/tm_repo.py`
+- **Full Report:** [ARCHITECTURE_DEBT_REPORT.md](ARCHITECTURE_DEBT_REPORT.md)
+
+**Problem:** 3 places where PostgreSQL repos check `config.ACTIVE_DATABASE_TYPE == "sqlite"` internally, violating layer abstraction.
+
+**Violations:**
+| File | Line | Method |
+|------|------|--------|
+| `postgresql/row_repo.py` | 423 | `_fuzzy_search()` |
+| `postgresql/row_repo.py` | 598 | `suggest_similar()` |
+| `postgresql/tm_repo.py` | 1001 | `search_similar()` |
+
+**Root Cause:** Schema mismatch between SQLite repos (`offline_*` tables) and server SQLite fallback (`ldm_*` tables) forced a workaround in Build 516.
+
+**Fix:** Create `CapabilityAwareWrapper` class to handle graceful degradation at factory level, then remove violations from repos.
+
+**Estimated Fix Time:** 2-3 hours
+
+---
 
 ### TECH-DEBT-001: SQLite Repositories Use Sync I/O ⚠️ LOW
 
