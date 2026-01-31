@@ -232,10 +232,17 @@ class SQLiteFolderRepository(SQLiteBaseRepository, FolderRepository):
         old_name = folder["name"]
 
         async with self.db._get_async_connection() as conn:
-            await conn.execute(
-                f"UPDATE {self._table('folders')} SET name = ?, updated_at = datetime('now') WHERE id = ?",
-                (new_name, folder_id)
-            )
+            if self.schema_mode == SchemaMode.OFFLINE:
+                await conn.execute(
+                    f"UPDATE {self._table('folders')} SET name = ?, updated_at = datetime('now') WHERE id = ?",
+                    (new_name, folder_id)
+                )
+            else:
+                # SERVER mode: ldm_folders has no updated_at column
+                await conn.execute(
+                    f"UPDATE {self._table('folders')} SET name = ? WHERE id = ?",
+                    (new_name, folder_id)
+                )
             await conn.commit()
 
         logger.info(f"Renamed folder: id={folder_id}, '{old_name}' -> '{new_name}'")
@@ -266,10 +273,17 @@ class SQLiteFolderRepository(SQLiteBaseRepository, FolderRepository):
                 raise ValueError("Cannot move folder into its own subfolder")
 
         async with self.db._get_async_connection() as conn:
-            await conn.execute(
-                f"UPDATE {self._table('folders')} SET parent_id = ?, updated_at = datetime('now') WHERE id = ?",
-                (parent_folder_id, folder_id)
-            )
+            if self.schema_mode == SchemaMode.OFFLINE:
+                await conn.execute(
+                    f"UPDATE {self._table('folders')} SET parent_id = ?, updated_at = datetime('now') WHERE id = ?",
+                    (parent_folder_id, folder_id)
+                )
+            else:
+                # SERVER mode: ldm_folders has no updated_at column
+                await conn.execute(
+                    f"UPDATE {self._table('folders')} SET parent_id = ? WHERE id = ?",
+                    (parent_folder_id, folder_id)
+                )
             await conn.commit()
 
         logger.info(f"Moved folder: id={folder_id}, new_parent={parent_folder_id}")
@@ -301,12 +315,21 @@ class SQLiteFolderRepository(SQLiteBaseRepository, FolderRepository):
 
         async with self.db._get_async_connection() as conn:
             # Update the folder
-            await conn.execute(
-                f"""UPDATE {self._table('folders')}
-                   SET name = ?, project_id = ?, parent_id = ?, updated_at = datetime('now')
-                   WHERE id = ?""",
-                (new_name, target_project_id, target_parent_id, folder_id)
-            )
+            if self.schema_mode == SchemaMode.OFFLINE:
+                await conn.execute(
+                    f"""UPDATE {self._table('folders')}
+                       SET name = ?, project_id = ?, parent_id = ?, updated_at = datetime('now')
+                       WHERE id = ?""",
+                    (new_name, target_project_id, target_parent_id, folder_id)
+                )
+            else:
+                # SERVER mode: ldm_folders has no updated_at column
+                await conn.execute(
+                    f"""UPDATE {self._table('folders')}
+                       SET name = ?, project_id = ?, parent_id = ?
+                       WHERE id = ?""",
+                    (new_name, target_project_id, target_parent_id, folder_id)
+                )
             await conn.commit()
 
         # Recursively update all subfolders and files
@@ -392,11 +415,12 @@ class SQLiteFolderRepository(SQLiteBaseRepository, FolderRepository):
                     )
                 )
             else:
+                # SERVER mode: ldm_folders has no updated_at column
                 await conn.execute(
                     f"""INSERT INTO {self._table('folders')}
-                       (id, name, project_id, parent_id, created_at, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?)""",
-                    (new_folder_id, new_name, dest_project_id, target_parent_id, now, now)
+                       (id, name, project_id, parent_id, created_at)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (new_folder_id, new_name, dest_project_id, target_parent_id, now)
                 )
             await conn.commit()
 
@@ -582,11 +606,12 @@ class SQLiteFolderRepository(SQLiteBaseRepository, FolderRepository):
                         )
                     )
                 else:
+                    # SERVER mode: ldm_folders has no updated_at column
                     await conn.execute(
                         f"""INSERT INTO {self._table('folders')}
-                           (id, name, project_id, parent_id, created_at, updated_at)
-                           VALUES (?, ?, ?, ?, ?, ?)""",
-                        (new_subfolder_id, sub_name, dest_project_id, dest_folder_id, now, now)
+                           (id, name, project_id, parent_id, created_at)
+                           VALUES (?, ?, ?, ?, ?)""",
+                        (new_subfolder_id, sub_name, dest_project_id, dest_folder_id, now)
                     )
                 await conn.commit()
 
