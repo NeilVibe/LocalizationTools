@@ -89,7 +89,7 @@ git add -A && git commit -m "Build NNN: <description>" && git push origin main
 | Mode | Trigger | Platform | Description |
 |------|---------|----------|-------------|
 | **QA** | `Build QA` or `Build` | Both | ALL 1000+ tests + light installer (~150MB) |
-| **QA FULL** | `Build QA FULL` | Gitea only | ALL 1000+ tests + offline installer (~2GB) [TODO] |
+| **QA FULL** | `Build QA FULL` | Gitea only | **NOT IMPLEMENTED** - ALL tests + offline installer (~2GB) |
 | **TROUBLESHOOT** | `TROUBLESHOOT` | Both | Smart checkpoint mode |
 
 ### Why QA Only?

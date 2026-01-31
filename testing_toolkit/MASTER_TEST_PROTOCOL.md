@@ -2,7 +2,7 @@
 
 **Complete workflow from code to validated build**
 
-**Updated:** 2025-12-21 | **Build:** 312 (VERIFIED)
+**Updated:** 2025-12-21 | **Build:** 524 (VERIFIED)
 
 ---
 
@@ -63,7 +63,7 @@ Push    Python    Windows   Backend    Gitea     Playground       Node.js
 4. Test in clean environment
 ```
 
-**See [DOC-001: Install vs Update Confusion](../docs/wip/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md) for full details.**
+**See [DOC-001: Install vs Update Confusion](../docs/archive/history/DOC-001_INSTALL_VS_UPDATE_CONFUSION.md) for full details.**
 
 ---
 
@@ -477,7 +477,7 @@ sudo sh -c 'echo ":WSLInterop:M::MZ::/init:PF" > /proc/sys/fs/binfmt_misc/regist
 ls /proc/sys/fs/binfmt_misc/WSLInterop && cmd.exe /c echo "Works!"
 ```
 
-**Full details:** See [docs/wip/WSL_INTEROP.md](../docs/wip/WSL_INTEROP.md)
+**Full details:** See [docs/archive/history/WSL_INTEROP.md](../docs/archive/history/WSL_INTEROP.md)
 
 ### CDP Not Responding
 ```bash
@@ -505,7 +505,7 @@ git add -A && git commit -m "Troubleshoot" && git push origin main && git push g
 | Doc | Purpose |
 |-----|---------|
 | [cdp/README.md](cdp/README.md) | Node.js CDP test guide |
-| [../docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md](../docs/testing/PLAYGROUND_INSTALL_PROTOCOL.md) | Detailed install options |
+| [../docs/archive/testing-old/PLAYGROUND_INSTALL_PROTOCOL.md](../docs/archive/testing-old/PLAYGROUND_INSTALL_PROTOCOL.md) | Detailed install options |
 | [README.md](README.md) | Testing toolkit overview |
 
 ---

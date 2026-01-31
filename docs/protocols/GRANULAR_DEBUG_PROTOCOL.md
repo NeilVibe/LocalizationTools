@@ -316,7 +316,7 @@ When debugging: Log MORE than you think you need. You can always remove logs lat
 ## Related Docs
 
 - `testing_toolkit/DEV_MODE_PROTOCOL.md` - Dev server testing
-- `docs/cicd/TROUBLESHOOTING.md` - CI/CD debugging
+- `docs/reference/cicd/TROUBLESHOOTING.md` - CI/CD debugging
 - Remote logging endpoint: `POST /api/v1/remote-logs/frontend`
 
 ---
@@ -391,8 +391,9 @@ $effect(() => {
 ### Remote Logger Quick Reference
 
 ```javascript
-// Import
-import { logger } from '$lib/utils/remote-logger.js';
+// Import - two loggers available
+import { logger } from '$lib/utils/logger.js';              // Local logging (console)
+import { remoteLogger } from '$lib/utils/remote-logger.js'; // Remote logging (to backend)
 
 // WARNING level = visible in backend logs
 logger.warning('GDP: Debug message', { data });

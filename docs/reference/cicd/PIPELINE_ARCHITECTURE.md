@@ -8,7 +8,7 @@
 
 ### Official Builds: Full Rebuild
 
-For release builds (`Build LIGHT`, `Build FULL`), every build starts fresh:
+For release builds (`Build` or `Build QA`), every build starts fresh:
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -132,8 +132,7 @@ BUILD TRIGGER
 │                                                            │
 │ Files updated:                                             │
 │ ├── version.py:     VERSION = "25.1213.1640"              │
-│ ├── package.json:   "version": "25.1213.1640"             │
-│ ├── *.iss:          #define MyAppVersion "25.1213.1640"   │
+│ └── package.json:   "version": "25.1213.1640"             │
 │                                                            │
 │ Method:                                                    │
 │ - Linux: sed -i "s/VERSION = .*/VERSION = \"$V\"/"        │
@@ -149,8 +148,7 @@ BUILD TRIGGER
 │ CRITICAL files must match (blocks build):                  │
 │ ├── version.py                                             │
 │ ├── server/config.py                                       │
-│ ├── package.json                                           │
-│ └── installer/*.iss                                        │
+│ └── package.json                                           │
 │                                                            │
 │ INFORMATIONAL files (warn only):                           │
 │ ├── README.md                                              │

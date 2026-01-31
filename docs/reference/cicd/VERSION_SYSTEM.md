@@ -99,7 +99,6 @@ VERSION=$(TZ='Asia/Seoul' date '+%y.%m%d.%H%M')
 |------|---------|---------|
 | `version.py` | `VERSION = "X"` | `VERSION = "25.1213.1640"` |
 | `package.json` | `"version": "X"` | `"version": "25.1213.1640"` |
-| `*.iss` | `#define MyAppVersion "X"` | `#define MyAppVersion "25.1213.1640"` |
 
 ---
 
@@ -113,8 +112,6 @@ These are injected by pipeline and MUST match:
 version.py
 server/config.py (imports VERSION)
 locaNext/package.json
-installer/locanext_electron.iss
-installer/locanext_light.iss
 ```
 
 ### Informational Files (Warn Only)
@@ -134,14 +131,18 @@ Roadmap.md
 You no longer need to specify version in the trigger:
 
 ```bash
-# Old way (manual version)
+# Old way (manual version - deprecated)
 echo "Build LIGHT v2512131540" >> GITEA_TRIGGER.txt
 
-# New way (pipeline decides)
-echo "Build LIGHT - your description" >> GITEA_TRIGGER.txt
+# Current way (pipeline auto-generates version)
+echo "Build" >> GITEA_TRIGGER.txt
+# or
+echo "Build QA" >> GITEA_TRIGGER.txt
 ```
 
 The pipeline will generate `25.1213.HHMM` automatically at build time.
+
+**Valid triggers:** `Build`, `Build QA`, `Build QA FULL` (not implemented), `TROUBLESHOOT`
 
 ---
 

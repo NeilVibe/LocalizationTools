@@ -48,6 +48,7 @@ Custom agents in `.claude/agents/`:
 | **windows-debugger** | Windows packaged app debugging |
 | **code-reviewer** | Code review for patterns/bugs |
 | **security-auditor** | Security vulnerability scanning |
+| **quicksearch-specialist** | QuickSearch tool specialist |
 
 ---
 
@@ -78,7 +79,7 @@ docs/
 │   │   ├── CI_CD_HUB.md          # Pipeline overview
 │   │   └── ...
 │   ├── security/                 # Security docs
-│   └── api/                      # API reference
+│   └── api/                      # API reference (empty - placeholder)
 │
 ├── guides/               # USER GUIDES
 │   ├── tools/                    # Tool guides (LDM, XLSTransfer)
@@ -122,6 +123,8 @@ docs/
 | Protocol | Purpose |
 |----------|---------|
 | [GRANULAR_DEBUG_PROTOCOL.md](protocols/GRANULAR_DEBUG_PROTOCOL.md) | GDP - Microscopic logging for bug hunting |
+| [QUICK_DEBUG_REFERENCE.md](protocols/QUICK_DEBUG_REFERENCE.md) | Quick reference for common debug scenarios |
+| [DEBUG_AND_SUBAGENTS.md](protocols/DEBUG_AND_SUBAGENTS.md) | Using subagents for parallel debugging |
 
 **Testing protocols** → See `testing_toolkit/` at project root
 
@@ -171,4 +174,4 @@ See [reference/security/](reference/security/) for security hardening.
 
 ---
 
-*Last updated: 2026-01-27*
+*Last updated: 2026-02-01*

@@ -35,11 +35,26 @@
           └─────────────┘     └─────────────┘
 ```
 
+### 3-Mode Architecture
+
+The system supports three modes with automatic fallback:
+
+| Mode | Database | When Used |
+|------|----------|-----------|
+| **Online** | PostgreSQL | Server reachable, normal token |
+| **SQLite Server** | SQLite | Server running but PostgreSQL unavailable |
+| **Offline** | SQLite | No server, desktop-only mode |
+
 ### Mode Detection
 
 ```python
-# Token present = Online mode, No token = Offline mode
-mode = "online" if request.headers.get("Authorization") else "offline"
+# Mode detection via Authorization header prefix
+auth = request.headers.get("Authorization", "")
+if auth.startswith("Bearer OFFLINE_MODE_"):
+    mode = "offline"  # Offline token = SQLite mode
+else:
+    mode = "online"   # Normal token = PostgreSQL mode
+
 repo = get_repository(mode)  # Returns PostgreSQL or SQLite adapter
 ```
 
@@ -123,7 +138,7 @@ SQLite uses `project_id = -1` for offline-only files.
 |-----------|------|
 | Sync Store | `locaNext/src/lib/stores/sync.js` |
 | Sync Service | `server/services/sync_service.py` |
-| Offline DB | `server/database/offline_db.py` |
+| Offline DB | `server/database/offline.py` |
 | Launcher | `locaNext/src/lib/components/Launcher.svelte` |
 
 ---
