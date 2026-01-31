@@ -70,9 +70,10 @@ class PretranslationEngine:
 
         if not file:
             # P9: Fallback to SQLite for local files
+            import asyncio
             from server.database.offline import get_offline_db
             offline_db = get_offline_db()
-            local_file = offline_db.get_local_file(file_id)
+            local_file = asyncio.run(offline_db.get_local_file(file_id))
             if not local_file:
                 raise ValueError(f"File not found: id={file_id}")
             is_local_file = True
@@ -501,10 +502,11 @@ class PretranslationEngine:
         P9: Get rows from SQLite for local files.
         Returns row-like objects compatible with the pretranslation engines.
         """
+        import asyncio
         from server.database.offline import get_offline_db
 
         offline_db = get_offline_db()
-        rows_data = offline_db.get_rows_for_file(file_id)
+        rows_data = asyncio.run(offline_db.get_rows_for_file(file_id))
 
         if skip_existing:
             rows_data = [r for r in rows_data if not r.get("target")]
@@ -533,7 +535,8 @@ class PretranslationEngine:
                     # P9: Immediately save to SQLite when target is updated
                     if hasattr(self, '_is_local') and self._is_local:
                         try:
-                            self._offline_db.update_row_in_local_file(self.id, target=value)
+                            import asyncio
+                            asyncio.run(self._offline_db.update_row_in_local_file(self.id, target=value))
                         except Exception as e:
                             logger.warning(f"P9: Failed to save target to SQLite: {e}")
 

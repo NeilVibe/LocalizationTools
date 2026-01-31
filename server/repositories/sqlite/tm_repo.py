@@ -32,6 +32,9 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
         """Convert SQLite TM row to dict format."""
         if not row:
             return None
+        # Defensive: convert sqlite3.Row to dict if needed
+        if not isinstance(row, dict):
+            row = dict(row)
         return {
             "id": row["id"],
             "name": row["name"],
@@ -69,6 +72,7 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
             assignment = await cursor.fetchone()
 
             if assignment:
+                assignment = dict(assignment)
                 tm.update({
                     "assignment_id": assignment["id"],
                     "platform_id": assignment.get("platform_id"),
@@ -99,6 +103,7 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
                 assignment = await assign_cursor.fetchone()
 
                 if assignment:
+                    assignment = dict(assignment)
                     tm.update({
                         "assignment_id": assignment["id"],
                         "platform_id": assignment.get("platform_id"),
@@ -240,6 +245,7 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
             if not assignment:
                 raise ValueError("TM must be assigned before activation")
 
+            assignment = dict(assignment)
             if (assignment.get("platform_id") is None and
                 assignment.get("project_id") is None and
                 assignment.get("folder_id") is None):
@@ -471,8 +477,8 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
                     "tm_id": row["id"],
                     "tm_name": row["name"],
                     "priority": row["priority"],
-                    "status": row.get("status", "active"),
-                    "entry_count": row.get("entry_count", 0),
+                    "status": dict(row).get("status", "active"),
+                    "entry_count": dict(row).get("entry_count", 0),
                     "linked_at": row["linked_at"]
                 }
                 for row in rows
