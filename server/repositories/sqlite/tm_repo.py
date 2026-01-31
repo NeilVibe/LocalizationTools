@@ -28,7 +28,7 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
     def __init__(self, schema_mode: SchemaMode = SchemaMode.OFFLINE):
         super().__init__(schema_mode)
 
-    def _tm_row_to_dict(self, row) -> Dict[str, Any]:
+    def _tm_row_to_dict(self, row) -> Optional[Dict[str, Any]]:
         """Convert SQLite TM row to dict format."""
         if not row:
             return None
