@@ -71,13 +71,52 @@
 
 **Problem:** Direct `SQLiteRowRepository` imports without proper `SchemaMode`.
 
-**Solution:** Added `SchemaMode.OFFLINE` to both import locations (lines 91 and 157).
+**Solution:** Created `RoutingRowRepository` pattern - transparent ID-based routing.
+- Negative IDs → SQLite OFFLINE mode
+- Positive IDs → Primary repo (PostgreSQL or SQLite SERVER)
+- Factory now wraps primary repo with RoutingRowRepository
+- Zero direct imports in rows.py
+
+**Files Created/Modified:**
+- `server/repositories/routing/row_repo.py` - **NEW** RoutingRowRepository
+- `server/repositories/routing/__init__.py` - **NEW** exports
+- `server/repositories/factory.py` - Wraps repos with RoutingRowRepository
+
+---
+
+### CODE-REVIEW-001: Thread Safety + Cache Eviction ✅ FIXED
+
+- **Fixed:** Session 60+ (6-agent parallel code review)
+- **Component:** `server/repositories/sqlite/tm_repo.py`
+
+**Findings Fixed:**
+1. Added `threading.Lock` for thread-safe cache access
+2. Added LRU-style eviction with `_TM_INDEX_CACHE_MAX_SIZE = 10`
+3. Added cache invalidation in `add_entry()`, `add_entries_bulk()`, `delete_entry()`, `update_entry()`
+4. Replaced `traceback.print_exc()` → `logger.exception()` in EmbeddingsManagers
 
 ---
 
 ## OPEN ISSUES
 
 *No open issues.*
+
+---
+
+## KNOWN LIMITATIONS
+
+### QA-SCHEMA-001: SQLite Missing QA Columns (LOW PRIORITY)
+
+- **Status:** Known limitation, not blocking
+- **Component:** SQLite offline schema
+
+**Issue:** SQLite `rows` table missing these PostgreSQL columns:
+- `qa_checked_at` (timestamp)
+- `qa_flag_count` (integer)
+
+**Impact:** QA flag operations work, but some metadata tracking incomplete in offline mode.
+
+**Workaround:** None needed - QA core functionality works.
 
 ---
 
