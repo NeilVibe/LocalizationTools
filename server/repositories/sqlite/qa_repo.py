@@ -194,6 +194,9 @@ class SQLiteQAResultRepository(SQLiteBaseRepository, QAResultRepository):
 
             logger.success(f"[QA-SQLITE] Created: id={result_id}, row_id={row_id}, check_type={check_type}")
 
+            # QA-SCHEMA-001: Update row's qa_flag_count
+            await self.update_row_qa_count(row_id)
+
             return {
                 "id": result_id,
                 "row_id": row_id,
@@ -229,7 +232,12 @@ class SQLiteQAResultRepository(SQLiteBaseRepository, QAResultRepository):
 
             await conn.commit()
 
-            logger.success(f"[QA-SQLITE] Bulk created: count={len(results)}")
+            # QA-SCHEMA-001: Update qa_flag_count for all affected rows
+            affected_rows = set(r["row_id"] for r in results)
+            for row_id in affected_rows:
+                await self.update_row_qa_count(row_id)
+
+            logger.success(f"[QA-SQLITE] Bulk created: count={len(results)}, rows_updated={len(affected_rows)}")
             return len(results)
 
     async def resolve(
@@ -298,6 +306,9 @@ class SQLiteQAResultRepository(SQLiteBaseRepository, QAResultRepository):
             )
             await conn.commit()
 
+            # QA-SCHEMA-001: Update row's qa_flag_count (now 0)
+            await self.update_row_qa_count(row_id)
+
             logger.debug(f"[QA-SQLITE] Deleted unresolved: row_id={row_id}, count={count}")
             return count
 
@@ -316,6 +327,12 @@ class SQLiteQAResultRepository(SQLiteBaseRepository, QAResultRepository):
 
             await conn.execute(
                 f"DELETE FROM {self._table('qa_results')} WHERE file_id = ?",
+                (file_id,)
+            )
+
+            # QA-SCHEMA-001: Reset qa_flag_count for all rows in file
+            await conn.execute(
+                f"UPDATE {self._table('rows')} SET qa_flag_count = 0, qa_checked_at = datetime('now') WHERE file_id = ?",
                 (file_id,)
             )
             await conn.commit()
@@ -338,7 +355,18 @@ class SQLiteQAResultRepository(SQLiteBaseRepository, QAResultRepository):
             return row["count"] if row else 0
 
     async def update_row_qa_count(self, row_id: int) -> None:
-        """Update the row's qa_flag_count field (if column exists)."""
-        # SQLite offline_rows may not have qa_flag_count column
-        # This is a no-op for now - QA count is computed on demand
-        pass
+        """Update the row's qa_flag_count field.
+
+        QA-SCHEMA-001: Now that offline_rows has qa_flag_count column,
+        we update it when QA results change.
+        """
+        count = await self.count_unresolved_for_row(row_id)
+
+        async with self.db._get_async_connection() as conn:
+            await conn.execute(
+                f"UPDATE {self._table('rows')} SET qa_flag_count = ?, qa_checked_at = datetime('now') WHERE id = ?",
+                (count, row_id)
+            )
+            await conn.commit()
+
+        logger.debug(f"[QA-SQLITE] Updated row qa_flag_count: row_id={row_id}, count={count}")

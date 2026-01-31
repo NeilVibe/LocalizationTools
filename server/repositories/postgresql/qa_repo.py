@@ -189,6 +189,9 @@ class PostgreSQLQAResultRepository(QAResultRepository):
         self.db.add(qa_result)
         await self.db.flush()
 
+        # QA-SCHEMA-001: Update row's qa_flag_count
+        await self.update_row_qa_count(row_id)
+
         logger.success(f"[QA] Created: id={qa_result.id}, row_id={row_id}, check_type={check_type}")
         return self._result_to_dict(qa_result)
 
@@ -220,7 +223,12 @@ class PostgreSQLQAResultRepository(QAResultRepository):
 
         await self.db.flush()
 
-        logger.success(f"[QA] Bulk created: count={len(qa_results)}")
+        # QA-SCHEMA-001: Update qa_flag_count for all affected rows
+        affected_rows = set(r["row_id"] for r in results)
+        for row_id in affected_rows:
+            await self.update_row_qa_count(row_id)
+
+        logger.success(f"[QA] Bulk created: count={len(qa_results)}, rows_updated={len(affected_rows)}")
         return len(qa_results)
 
     async def resolve(
@@ -271,6 +279,10 @@ class PostgreSQLQAResultRepository(QAResultRepository):
         )
 
         count = result.rowcount
+
+        # QA-SCHEMA-001: Update row's qa_flag_count (now 0)
+        await self.update_row_qa_count(row_id)
+
         logger.debug(f"[QA] Deleted unresolved: row_id={row_id}, count={count}")
         return count
 
@@ -280,6 +292,13 @@ class PostgreSQLQAResultRepository(QAResultRepository):
 
         result = await self.db.execute(
             delete(LDMQAResult).where(LDMQAResult.file_id == file_id)
+        )
+
+        # QA-SCHEMA-001: Reset qa_flag_count for all rows in file
+        await self.db.execute(
+            update(LDMRow)
+            .where(LDMRow.file_id == file_id)
+            .values(qa_flag_count=0, qa_checked_at=datetime.utcnow())
         )
 
         count = result.rowcount
@@ -302,13 +321,13 @@ class PostgreSQLQAResultRepository(QAResultRepository):
         return result.scalar() or 0
 
     async def update_row_qa_count(self, row_id: int) -> None:
-        """Update the row's qa_flag_count field."""
+        """Update the row's qa_flag_count and qa_checked_at fields."""
         count = await self.count_unresolved_for_row(row_id)
 
         await self.db.execute(
             update(LDMRow)
             .where(LDMRow.id == row_id)
-            .values(qa_flag_count=count)
+            .values(qa_flag_count=count, qa_checked_at=datetime.utcnow())
         )
 
         logger.debug(f"[QA] Updated row QA count: row_id={row_id}, count={count}")

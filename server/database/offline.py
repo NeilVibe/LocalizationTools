@@ -82,11 +82,41 @@ class OfflineDatabase:
             conn.executescript(schema_sql)
             conn.commit()
             logger.debug(f"Offline database initialized: {self.db_path}")
+
+            # Run migrations for existing databases
+            self._run_migrations_sync(conn)
         finally:
             conn.close()
 
         # P9-ARCH: Create Offline Storage platform and project (sync)
         self._ensure_offline_storage_project_sync()
+
+    def _run_migrations_sync(self, conn: sqlite3.Connection):
+        """
+        QA-SCHEMA-001: Run schema migrations for existing databases.
+
+        This handles the case where a user has an older database that's missing
+        new columns. ALTER TABLE ADD COLUMN is safe - it won't error if column exists
+        in SQLite (we catch the error).
+        """
+        migrations = [
+            # QA-SCHEMA-001: Add QA columns to offline_rows
+            ("ALTER TABLE offline_rows ADD COLUMN updated_by INTEGER", "updated_by"),
+            ("ALTER TABLE offline_rows ADD COLUMN qa_checked_at TEXT", "qa_checked_at"),
+            ("ALTER TABLE offline_rows ADD COLUMN qa_flag_count INTEGER DEFAULT 0", "qa_flag_count"),
+        ]
+
+        for sql, col_name in migrations:
+            try:
+                conn.execute(sql)
+                logger.info(f"QA-SCHEMA-001: Added column {col_name} to offline_rows")
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" in str(e).lower():
+                    pass  # Column already exists, that's fine
+                else:
+                    logger.warning(f"Migration warning: {e}")
+
+        conn.commit()
 
     def _ensure_offline_storage_project_sync(self):
         """
