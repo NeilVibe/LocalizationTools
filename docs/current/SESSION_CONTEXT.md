@@ -17,14 +17,17 @@
 
 | File | Change |
 |------|--------|
-| `server/repositories/sqlite/tm_repo.py` | FAISS `search_similar()` + `get_all_entries()` |
+| `server/repositories/sqlite/tm_repo.py` | FAISS `search_similar()` + `get_all_entries()` + thread-safe cache |
 | `server/repositories/postgresql/tm_repo.py` | Added `get_all_entries()` |
 | `server/repositories/interfaces/tm_repository.py` | Added `get_all_entries()` abstract |
 | `server/tools/shared/tm_loader.py` | **NEW** - Unified TM loader |
 | `server/tools/shared/__init__.py` | Export TMLoader |
-| `server/tools/xlstransfer/embeddings.py` | Uses TMLoader |
-| `server/tools/kr_similar/embeddings.py` | Uses TMLoader |
-| `server/tools/ldm/routes/rows.py` | Added SchemaMode to imports |
+| `server/tools/xlstransfer/embeddings.py` | Uses TMLoader + logger fix |
+| `server/tools/kr_similar/embeddings.py` | Uses TMLoader + logger fix |
+| `server/repositories/routing/row_repo.py` | **NEW** - RoutingRowRepository |
+| `server/repositories/routing/__init__.py` | **NEW** - exports |
+| `server/repositories/factory.py` | Wraps repos with RoutingRowRepository |
+| `server/tools/ldm/routes/rows.py` | Zero direct imports now |
 | `docs/current/ISSUES_TO_FIX.md` | Marked LIMIT-001/002 as FIXED |
 
 ### Architecture Improvements
@@ -54,9 +57,32 @@
 _tm_index_cache: Dict[int, Dict[str, Any]] = {}
 ```
 
+### 6-Agent Code Review Findings (All Fixed)
+
+| Finding | Fix |
+|---------|-----|
+| Thread-unsafe cache | Added `threading.Lock` |
+| No cache eviction | LRU with `MAX_SIZE = 10` |
+| Stale cache on entry change | Cache invalidation in CRUD methods |
+| `traceback.print_exc()` | → `logger.exception()` |
+| PostgreSQL/SQLite field parity | `get_all_entries()` returns only documented fields |
+| Direct SQLite imports | RoutingRowRepository pattern |
+
+### 5-Agent TM/QA Review Results
+
+| Area | Status | Notes |
+|------|--------|-------|
+| TM Search | ✅ Works | FAISS with caching |
+| TM Pretranslation | ✅ Works | TMLoader handles offline |
+| Offline TM | ✅ Works | All 23 interface methods |
+| RoutingRowRepository | ✅ Clean | Zero direct imports |
+| QA Functions | ⚠️ Works | SQLite missing `qa_checked_at`, `qa_flag_count` |
+
 ### Open Issues
 
 **0 open issues** - All LIMIT-001, LIMIT-002, and route violations fixed.
+
+**Known Limitation:** SQLite QA schema missing 2 columns (non-blocking).
 
 ---
 
@@ -306,6 +332,7 @@ StrOrigin | Str | Correction | Category | StringID
 
 | Session | Achievement |
 |---------|-------------|
+| **60+** | LIMIT-001/002 Fixed + RoutingRowRepository + 6-agent review |
 | **60** | aiosqlite bug fixes (11 bugs) + E2E testing + Debug docs |
 | **59** | aiosqlite migration + SQLite mode fix (Build 516) |
 | **58** | Project health check + Mac build prep |
@@ -344,4 +371,4 @@ python3 -c "import sqlite3; ..."  # Gitea (see CLAUDE.md)
 
 ---
 
-*Session 60 | Build 522 SUCCESS | aiosqlite Bug Fixes Complete*
+*Session 60+ | Build 524 | LIMIT-001/002 Fixed + Architecture Cleanup Complete*
