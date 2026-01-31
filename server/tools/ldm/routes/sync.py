@@ -144,8 +144,8 @@ async def get_offline_status(
 
     try:
         offline_db = get_offline_db()
-        stats = offline_db.get_stats()
-        last_sync = offline_db.get_last_sync()
+        stats = await offline_db.get_stats()
+        last_sync = await offline_db.get_last_sync()
 
         return OfflineStatusResponse(
             mode="offline" if ACTIVE_DATABASE_TYPE == "sqlite" else "online",
@@ -181,10 +181,10 @@ async def list_offline_files(
 
         # Get all projects first (to get all files)
         all_files = []
-        projects = offline_db.get_projects()
+        projects = await offline_db.get_projects()
 
         for project in projects:
-            files = offline_db.get_files(project["id"])
+            files = await offline_db.get_files(project["id"])
             for f in files:
                 all_files.append(OfflineFileInfo(
                     id=f["id"],
@@ -220,7 +220,7 @@ async def list_subscriptions(
     """
     try:
         offline_db = get_offline_db()
-        subs = offline_db.get_subscriptions()
+        subs = await offline_db.get_subscriptions()
 
         # Validate subscriptions - clean up stale ones for deleted files
         valid_subscriptions = []
@@ -231,7 +231,7 @@ async def list_subscriptions(
 
             if s["entity_type"] == "file":
                 # Check if file exists (either in local SQLite or PostgreSQL)
-                file_exists = offline_db.get_local_file(s["entity_id"]) is not None
+                file_exists = await offline_db.get_local_file(s["entity_id"]) is not None
                 if not file_exists:
                     # File was deleted, mark subscription as stale
                     stale_subscription_ids.append((s["entity_type"], s["entity_id"]))
@@ -244,7 +244,7 @@ async def list_subscriptions(
         # Clean up stale subscriptions in the background
         for entity_type, entity_id in stale_subscription_ids:
             try:
-                offline_db.remove_subscription(entity_type, entity_id)
+                await offline_db.remove_subscription(entity_type, entity_id)
                 logger.info(f"Cleaned up stale subscription: {entity_type}={entity_id}")
             except Exception as cleanup_error:
                 logger.warning(f"[SYNC] Failed to clean up stale subscription: {cleanup_error}")
@@ -296,7 +296,7 @@ async def subscribe_for_offline(
         offline_db = get_offline_db()
 
         # Create subscription
-        sub_id = offline_db.add_subscription(
+        sub_id = await offline_db.add_subscription(
             entity_type=request.entity_type,
             entity_id=request.entity_id,
             entity_name=request.entity_name,
@@ -316,7 +316,7 @@ async def subscribe_for_offline(
             await sync_service.sync_tm_to_offline(request.entity_id)
 
         # Mark subscription as synced
-        offline_db.update_subscription_status(
+        await offline_db.update_subscription_status(
             request.entity_type, request.entity_id, "synced"
         )
 
@@ -332,7 +332,7 @@ async def subscribe_for_offline(
         logger.error(f"[SYNC] [SYNC] Subscribe failed: {e}", exc_info=True)
         # Mark as error
         try:
-            offline_db.update_subscription_status(
+            await offline_db.update_subscription_status(
                 request.entity_type, request.entity_id, "error", str(e)
             )
         except:
@@ -353,7 +353,7 @@ async def unsubscribe_from_offline(
     """
     try:
         offline_db = get_offline_db()
-        offline_db.remove_subscription(entity_type, entity_id)
+        await offline_db.remove_subscription(entity_type, entity_id)
 
         return {"success": True, "message": f"Disabled offline sync for {entity_type} {entity_id}"}
     except Exception as e:
@@ -412,13 +412,13 @@ async def get_push_preview(
         offline_db = get_offline_db()
 
         # Get file info
-        file_info = offline_db.get_file(file_id)
+        file_info = await offline_db.get_file(file_id)
         if not file_info:
             raise HTTPException(status_code=404, detail="File not found in offline storage")
 
         # Count changes
-        modified_rows = offline_db.get_modified_rows(file_id)
-        new_rows = offline_db.get_new_rows(file_id)
+        modified_rows = await offline_db.get_modified_rows(file_id)
+        new_rows = await offline_db.get_new_rows(file_id)
 
         return PushChangesPreview(
             file_id=file_id,
@@ -466,7 +466,7 @@ async def push_changes_to_server(
         offline_db = get_offline_db()
 
         # Get file info
-        file_info = offline_db.get_file(request.file_id)
+        file_info = await offline_db.get_file(request.file_id)
         if not file_info:
             raise HTTPException(status_code=404, detail="File not found in offline storage")
 
@@ -474,7 +474,7 @@ async def push_changes_to_server(
         pushed_count = await sync_service.push_file_changes_to_server(request.file_id)
 
         # Update last sync time
-        offline_db.set_last_sync()
+        await offline_db.set_last_sync()
 
         logger.success(f"[SYNC] [SYNC] Pushed {pushed_count} changes for file {request.file_id}")
 
@@ -521,7 +521,7 @@ async def sync_subscription(
         offline_db = get_offline_db()
 
         # Check if subscription exists
-        if not offline_db.is_subscribed(request.entity_type, request.entity_id):
+        if not await offline_db.is_subscribed(request.entity_type, request.entity_id):
             raise HTTPException(status_code=404, detail="Subscription not found")
 
         updated_count = 0
@@ -546,7 +546,7 @@ async def sync_subscription(
             await sync_service.sync_tm_to_offline(request.entity_id)
 
         # Update subscription status
-        offline_db.update_subscription_status(
+        await offline_db.update_subscription_status(
             request.entity_type, request.entity_id, "synced"
         )
 
@@ -610,7 +610,7 @@ async def list_local_files(
         offline_db = get_offline_db()
 
         # Get local folders (at root or in specified parent)
-        local_folders = offline_db.get_local_folders(parent_id)
+        local_folders = await offline_db.get_local_folders(parent_id)
         folders = [
             LocalFolderInfo(
                 id=f["id"],
@@ -622,12 +622,13 @@ async def list_local_files(
         ]
 
         # Get local files (at root or in specified parent)
+        all_local_files = await offline_db.get_local_files()
         if parent_id is None:
             # Root level: get files with no folder
-            local_files = [f for f in offline_db.get_local_files() if f.get("folder_id") is None]
+            local_files = [f for f in all_local_files if f.get("folder_id") is None]
         else:
             # Inside a folder: get files in that folder
-            local_files = [f for f in offline_db.get_local_files() if f.get("folder_id") == parent_id]
+            local_files = [f for f in all_local_files if f.get("folder_id") == parent_id]
 
         files = [
             OrphanedFileInfo(
@@ -658,7 +659,7 @@ async def get_local_file_count(
     """Get count of local files in Offline Storage (for UI indicator)."""
     try:
         offline_db = get_offline_db()
-        count = offline_db.get_local_file_count()
+        count = await offline_db.get_local_file_count()
         return {"count": count}
     except Exception as e:
         logger.error(f"[SYNC] Failed to get local file count: {e}")
@@ -704,7 +705,7 @@ async def delete_offline_storage_file(
 
     try:
         offline_db = get_offline_db()
-        success = offline_db.delete_local_file(file_id)
+        success = await offline_db.delete_local_file(file_id)
 
         if success:
             return DeleteOfflineFileResponse(
@@ -740,7 +741,7 @@ async def rename_offline_storage_file(
 
     try:
         offline_db = get_offline_db()
-        success = offline_db.rename_local_file(file_id, request.new_name)
+        success = await offline_db.rename_local_file(file_id, request.new_name)
 
         if success:
             return RenameOfflineFileResponse(
@@ -777,7 +778,7 @@ async def add_rows_to_offline_file(
         offline_db = get_offline_db()
 
         # Verify file exists and is local (in Offline Storage)
-        file_info = offline_db.get_file(file_id)
+        file_info = await offline_db.get_file(file_id)
         if not file_info:
             raise HTTPException(status_code=404, detail="File not found")
         if file_info.get("sync_status") != "local":
@@ -786,7 +787,7 @@ async def add_rows_to_offline_file(
                 detail="Cannot add rows: file is not in Offline Storage"
             )
 
-        offline_db.add_rows_to_local_file(file_id, rows)
+        await offline_db.add_rows_to_local_file(file_id, rows)
 
         return {
             "success": True,
@@ -846,7 +847,7 @@ async def create_offline_storage_folder(
 
     try:
         offline_db = get_offline_db()
-        folder_id, final_name = offline_db.create_local_folder(request.name, request.parent_id)
+        folder_id, final_name = await offline_db.create_local_folder(request.name, request.parent_id)
 
         return CreateOfflineFolderResponse(
             success=True,
@@ -875,7 +876,7 @@ async def delete_offline_storage_folder(
 
     try:
         offline_db = get_offline_db()
-        success = offline_db.delete_local_folder(folder_id)
+        success = await offline_db.delete_local_folder(folder_id)
 
         if success:
             return DeleteOfflineFolderResponse(
@@ -910,7 +911,7 @@ async def rename_offline_storage_folder(
 
     try:
         offline_db = get_offline_db()
-        success = offline_db.rename_local_folder(folder_id, request.new_name)
+        success = await offline_db.rename_local_folder(folder_id, request.new_name)
 
         if success:
             return RenameOfflineFolderResponse(
@@ -971,7 +972,7 @@ async def move_offline_storage_file(
 
     try:
         offline_db = get_offline_db()
-        success = offline_db.move_local_file(file_id, target_folder_id)
+        success = await offline_db.move_local_file(file_id, target_folder_id)
 
         if success:
             return MoveOfflineFileResponse(
@@ -1012,7 +1013,7 @@ async def move_offline_storage_folder(
 
     try:
         offline_db = get_offline_db()
-        success = offline_db.move_local_folder(folder_id, target_parent_id)
+        success = await offline_db.move_local_folder(folder_id, target_parent_id)
 
         if success:
             return MoveOfflineFolderResponse(
@@ -1075,7 +1076,7 @@ async def list_local_trash(
     """
     try:
         offline_db = get_offline_db()
-        items = offline_db.list_local_trash()
+        items = await offline_db.list_local_trash()
 
         return ListLocalTrashResponse(
             items=[LocalTrashItem(**item) for item in items],
@@ -1101,7 +1102,7 @@ async def restore_from_local_trash(
 
     try:
         offline_db = get_offline_db()
-        result = offline_db.restore_from_local_trash(trash_id)
+        result = await offline_db.restore_from_local_trash(trash_id)
 
         if result:
             return RestoreLocalTrashResponse(
@@ -1137,7 +1138,7 @@ async def permanent_delete_from_local_trash(
 
     try:
         offline_db = get_offline_db()
-        success = offline_db.permanent_delete_from_local_trash(trash_id)
+        success = await offline_db.permanent_delete_from_local_trash(trash_id)
 
         if success:
             return {"success": True, "message": "Item permanently deleted"}
@@ -1168,7 +1169,7 @@ async def empty_local_trash(
 
     try:
         offline_db = get_offline_db()
-        count = offline_db.empty_local_trash()
+        count = await offline_db.empty_local_trash()
 
         return EmptyLocalTrashResponse(
             success=True,
@@ -1226,7 +1227,7 @@ async def download_file_for_offline(
         await sync_service.sync_file_to_offline(file_id)
 
         # Update sync metadata
-        offline_db.set_last_sync()
+        await offline_db.set_last_sync()
 
         logger.success(f"[SYNC] [SYNC] Downloaded for offline: file={file.get('name')}")
 
