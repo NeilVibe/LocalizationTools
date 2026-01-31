@@ -139,6 +139,9 @@ CREATE TABLE IF NOT EXISTS offline_rows (
     extra_data TEXT,                  -- JSON for additional columns
     created_at TEXT,
     updated_at TEXT,
+    updated_by INTEGER,               -- QA-SCHEMA-001: Who last edited (parity with PostgreSQL)
+    qa_checked_at TEXT,               -- QA-SCHEMA-001: Last QA check timestamp
+    qa_flag_count INTEGER DEFAULT 0,  -- QA-SCHEMA-001: Number of unresolved QA issues
     downloaded_at TEXT DEFAULT (datetime('now')),
     sync_status TEXT DEFAULT 'synced',
     FOREIGN KEY (file_id) REFERENCES offline_files(id) ON DELETE CASCADE
@@ -147,6 +150,7 @@ CREATE TABLE IF NOT EXISTS offline_rows (
 CREATE INDEX IF NOT EXISTS idx_offline_rows_server_id ON offline_rows(server_id);
 CREATE INDEX IF NOT EXISTS idx_offline_rows_file ON offline_rows(file_id);
 CREATE INDEX IF NOT EXISTS idx_offline_rows_string_id ON offline_rows(string_id);
+CREATE INDEX IF NOT EXISTS idx_offline_rows_qa_flagged ON offline_rows(file_id, qa_flag_count);  -- QA-SCHEMA-001: QA filter parity
 
 -- -----------------------------------------------------------------------------
 -- Translation Memories (mirrors ldm_translation_memories)
@@ -370,4 +374,20 @@ CREATE TABLE IF NOT EXISTS schema_version (
     applied_at TEXT DEFAULT (datetime('now'))
 );
 
-INSERT OR IGNORE INTO schema_version (version) VALUES (4);  -- P10: Added offline_qa_results
+INSERT OR IGNORE INTO schema_version (version) VALUES (5);  -- QA-SCHEMA-001: Added QA columns to offline_rows
+
+-- =============================================================================
+-- Migration: Version 4 → 5 (QA-SCHEMA-001)
+-- Add missing QA columns to offline_rows for full PostgreSQL parity
+-- =============================================================================
+
+-- Add columns if they don't exist (SQLite 3.35+ ALTER TABLE ADD COLUMN)
+-- These are safe to run multiple times - SQLite will error on duplicate, but we catch it
+-- Pragmatic approach: Just run CREATE TABLE above on fresh installs,
+-- existing databases get migrated here
+
+-- For existing databases, add columns via pragmatic migration
+-- This runs on app startup via offline.py init_offline_db()
+-- ALTER TABLE offline_rows ADD COLUMN updated_by INTEGER;
+-- ALTER TABLE offline_rows ADD COLUMN qa_checked_at TEXT;
+-- ALTER TABLE offline_rows ADD COLUMN qa_flag_count INTEGER DEFAULT 0;
