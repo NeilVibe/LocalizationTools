@@ -4,48 +4,33 @@
 
 ---
 
-## SESSION 59 CONTINUATION: Architecture Debt Discovery
+## SESSION 60 TODO: Schema-Aware SQLite Repos
 
-### What Was Found
-
-Deep investigation with **10 parallel agents** revealed the repository pattern has **3 layer violations** where PostgreSQL repos check SQLite mode internally.
+**Full plan:** [NEXT_SESSION_TODO.md](NEXT_SESSION_TODO.md)
+**Time:** 8-12 hours
+**Issue:** ARCH-001
 
 ### The Problem
 
+3 layer violations where PostgreSQL repos check SQLite mode internally:
 ```
-PostgreSQL repos should NEVER know about SQLite.
-The factory should handle all mode switching.
+postgresql/row_repo.py:423
+postgresql/row_repo.py:598
+postgresql/tm_repo.py:1001
 ```
 
-**3 Violations Found:**
-| File | Line | Method |
-|------|------|--------|
-| `postgresql/row_repo.py` | 423 | `_fuzzy_search()` |
-| `postgresql/row_repo.py` | 598 | `suggest_similar()` |
-| `postgresql/tm_repo.py` | 1001 | `search_similar()` |
+### The Solution
 
-### Root Cause
+Make SQLite repos schema-aware. Factory picks the right mode.
 
-Schema mismatch forced a workaround:
-- SQLite repos use `offline_*` tables (for offline mode)
-- Server creates `ldm_*` tables (standard schema)
-- Can't use SQLite repos for server fallback → added checks inside PostgreSQL repos
+```
+Factory:
+├─ Offline mode  → SQLiteTMRepository(schema_mode="offline")  → offline_* tables
+├─ Server SQLite → SQLiteTMRepository(schema_mode="server")   → ldm_* tables
+└─ PostgreSQL    → PostgreSQLTMRepository(db, user)           → ldm_* tables
+```
 
-### Solution Documented
-
-Full plan in **[ARCHITECTURE_DEBT_REPORT.md](ARCHITECTURE_DEBT_REPORT.md)**:
-1. Create `CapabilityAwareWrapper` class
-2. Update factory to wrap repos in SQLite fallback mode
-3. Remove violations from PostgreSQL repos
-4. Clean layer abstraction preserved
-
-### Next Session Action
-
-**Implement the fix from ARCHITECTURE_DEBT_REPORT.md** (~2-3 hours):
-1. Create `server/repositories/capability_wrapper.py`
-2. Update `server/repositories/factory.py`
-3. Clean `postgresql/row_repo.py` and `postgresql/tm_repo.py`
-4. Test and build
+PostgreSQL repos stay PURE. No SQLite checks inside them.
 
 ---
 
