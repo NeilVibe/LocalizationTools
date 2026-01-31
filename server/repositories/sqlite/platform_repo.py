@@ -3,6 +3,7 @@ SQLite Platform Repository.
 
 Implements PlatformRepository interface using SQLite (offline mode).
 
+ARCH-001: Schema-aware - works with both OFFLINE (offline_platforms) and SERVER (ldm_platforms) modes.
 ASYNC MIGRATION (2026-01-31): Uses aiosqlite for true async operations.
 """
 
@@ -12,26 +13,25 @@ from typing import List, Optional, Dict, Any
 from loguru import logger
 
 from server.repositories.interfaces.platform_repository import PlatformRepository
-from server.database.offline import get_offline_db
+from server.repositories.sqlite.base import SQLiteBaseRepository, SchemaMode
 
 
-class SQLitePlatformRepository(PlatformRepository):
+class SQLitePlatformRepository(SQLiteBaseRepository, PlatformRepository):
     """
     SQLite implementation of PlatformRepository.
 
-    Uses OfflineDatabase for all operations.
-    This is the offline mode adapter.
+    ARCH-001: Schema-aware - uses _table() for dynamic table names.
     """
 
-    def __init__(self):
-        self.db = get_offline_db()
+    def __init__(self, schema_mode: SchemaMode = SchemaMode.OFFLINE):
+        super().__init__(schema_mode)
 
     def _normalize_platform(self, platform: Optional[Dict]) -> Optional[Dict[str, Any]]:
         """Normalize platform dict to match PostgreSQL format."""
         if not platform:
             return None
 
-        return {
+        result = {
             "id": platform.get("id"),
             "name": platform.get("name"),
             "description": platform.get("description"),
@@ -40,9 +40,13 @@ class SQLitePlatformRepository(PlatformRepository):
             "project_count": platform.get("project_count", 0),
             "created_at": platform.get("created_at"),
             "updated_at": platform.get("updated_at"),
-            # SQLite-specific fields
-            "sync_status": platform.get("sync_status"),
         }
+
+        # Only include sync_status for OFFLINE mode
+        if self._has_column("sync_status"):
+            result["sync_status"] = platform.get("sync_status")
+
+        return result
 
     # =========================================================================
     # Core CRUD
@@ -52,7 +56,7 @@ class SQLitePlatformRepository(PlatformRepository):
         """Get platform by ID."""
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT * FROM offline_platforms WHERE id = ?",
+                f"SELECT * FROM {self._table('platforms')} WHERE id = ?",
                 (platform_id,)
             )
             row = await cursor.fetchone()
@@ -62,7 +66,7 @@ class SQLitePlatformRepository(PlatformRepository):
         """Get all platforms."""
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT * FROM offline_platforms ORDER BY name"
+                f"SELECT * FROM {self._table('platforms')} ORDER BY name"
             )
             rows = await cursor.fetchall()
             return [self._normalize_platform(dict(row)) for row in rows]
@@ -79,26 +83,44 @@ class SQLitePlatformRepository(PlatformRepository):
         if await self.check_name_exists(name):
             raise ValueError(f"Platform '{name}' already exists")
 
-        # Use negative IDs for local platforms
+        # Use negative IDs for local platforms in OFFLINE mode
         platform_id = -int(time.time() * 1000) % 1000000000
         now = datetime.now().isoformat()
 
         async with self.db._get_async_connection() as conn:
-            await conn.execute(
-                """INSERT INTO offline_platforms
-                   (id, server_id, name, description, owner_id, is_restricted,
-                    created_at, updated_at, downloaded_at, sync_status)
-                   VALUES (?, 0, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
-                (
-                    platform_id,
-                    name,
-                    description,
-                    owner_id,
-                    1 if is_restricted else 0,
-                    now,
-                    now,
+            if self.schema_mode == SchemaMode.OFFLINE:
+                # OFFLINE mode: include sync-related columns
+                await conn.execute(
+                    f"""INSERT INTO {self._table('platforms')}
+                       (id, server_id, name, description, owner_id, is_restricted,
+                        created_at, updated_at, downloaded_at, sync_status)
+                       VALUES (?, 0, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
+                    (
+                        platform_id,
+                        name,
+                        description,
+                        owner_id,
+                        1 if is_restricted else 0,
+                        now,
+                        now,
+                    )
                 )
-            )
+            else:
+                # SERVER mode: standard columns only
+                await conn.execute(
+                    f"""INSERT INTO {self._table('platforms')}
+                       (id, name, description, owner_id, is_restricted, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        platform_id,
+                        name,
+                        description,
+                        owner_id,
+                        1 if is_restricted else 0,
+                        now,
+                        now,
+                    )
+                )
             await conn.commit()
 
         logger.info(f"Created local platform: id={platform_id}, name='{name}'")
@@ -134,7 +156,7 @@ class SQLitePlatformRepository(PlatformRepository):
             params.append(platform_id)
 
             await conn.execute(
-                f"UPDATE offline_platforms SET {', '.join(updates)} WHERE id = ?",
+                f"UPDATE {self._table('platforms')} SET {', '.join(updates)} WHERE id = ?",
                 params
             )
             await conn.commit()
@@ -151,12 +173,12 @@ class SQLitePlatformRepository(PlatformRepository):
         async with self.db._get_async_connection() as conn:
             # Unassign projects (set platform_id to NULL)
             await conn.execute(
-                "UPDATE offline_projects SET platform_id = NULL WHERE platform_id = ?",
+                f"UPDATE {self._table('projects')} SET platform_id = NULL WHERE platform_id = ?",
                 (platform_id,)
             )
 
             # Delete the platform
-            await conn.execute("DELETE FROM offline_platforms WHERE id = ?", (platform_id,))
+            await conn.execute(f"DELETE FROM {self._table('platforms')} WHERE id = ?", (platform_id,))
             await conn.commit()
 
         logger.info(f"Deleted platform: id={platform_id}")
@@ -174,7 +196,7 @@ class SQLitePlatformRepository(PlatformRepository):
 
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT COUNT(*) as cnt FROM offline_projects WHERE platform_id = ?",
+                f"SELECT COUNT(*) as cnt FROM {self._table('projects')} WHERE platform_id = ?",
                 (platform_id,)
             )
             result = await cursor.fetchone()
@@ -191,7 +213,7 @@ class SQLitePlatformRepository(PlatformRepository):
 
         async with self.db._get_async_connection() as conn:
             await conn.execute(
-                "UPDATE offline_platforms SET is_restricted = ?, updated_at = datetime('now') WHERE id = ?",
+                f"UPDATE {self._table('platforms')} SET is_restricted = ?, updated_at = datetime('now') WHERE id = ?",
                 (1 if is_restricted else 0, platform_id)
             )
             await conn.commit()
@@ -209,7 +231,7 @@ class SQLitePlatformRepository(PlatformRepository):
         async with self.db._get_async_connection() as conn:
             # Check project exists
             cursor = await conn.execute(
-                "SELECT id FROM offline_projects WHERE id = ?",
+                f"SELECT id FROM {self._table('projects')} WHERE id = ?",
                 (project_id,)
             )
             project = await cursor.fetchone()
@@ -220,7 +242,7 @@ class SQLitePlatformRepository(PlatformRepository):
             # Verify platform exists if assigning
             if platform_id is not None:
                 cursor = await conn.execute(
-                    "SELECT id FROM offline_platforms WHERE id = ?",
+                    f"SELECT id FROM {self._table('platforms')} WHERE id = ?",
                     (platform_id,)
                 )
                 platform = await cursor.fetchone()
@@ -228,7 +250,7 @@ class SQLitePlatformRepository(PlatformRepository):
                     return False
 
             await conn.execute(
-                "UPDATE offline_projects SET platform_id = ?, updated_at = datetime('now') WHERE id = ?",
+                f"UPDATE {self._table('projects')} SET platform_id = ?, updated_at = datetime('now') WHERE id = ?",
                 (platform_id, project_id)
             )
             await conn.commit()
@@ -248,7 +270,7 @@ class SQLitePlatformRepository(PlatformRepository):
     ) -> bool:
         """Check if platform name exists globally."""
         async with self.db._get_async_connection() as conn:
-            query = "SELECT COUNT(*) as cnt FROM offline_platforms WHERE LOWER(name) = LOWER(?)"
+            query = f"SELECT COUNT(*) as cnt FROM {self._table('platforms')} WHERE LOWER(name) = LOWER(?)"
             params = [name]
 
             if exclude_id is not None:
@@ -263,7 +285,7 @@ class SQLitePlatformRepository(PlatformRepository):
         """Count all platforms."""
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT COUNT(*) as cnt FROM offline_platforms"
+                f"SELECT COUNT(*) as cnt FROM {self._table('platforms')}"
             )
             result = await cursor.fetchone()
             return result["cnt"] if result else 0
@@ -272,7 +294,7 @@ class SQLitePlatformRepository(PlatformRepository):
         """Get all projects in a platform."""
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT id, name, description FROM offline_projects WHERE platform_id = ? ORDER BY name",
+                f"SELECT id, name, description FROM {self._table('projects')} WHERE platform_id = ? ORDER BY name",
                 (platform_id,)
             )
             rows = await cursor.fetchall()
@@ -295,7 +317,7 @@ class SQLitePlatformRepository(PlatformRepository):
         search_term = f"%{query}%"
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT * FROM offline_platforms WHERE name LIKE ? COLLATE NOCASE",
+                f"SELECT * FROM {self._table('platforms')} WHERE name LIKE ? COLLATE NOCASE",
                 (search_term,)
             )
             rows = await cursor.fetchall()

@@ -3,6 +3,7 @@ SQLite Folder Repository.
 
 Implements FolderRepository interface using SQLite (offline mode).
 
+ARCH-001: Schema-aware - works with both OFFLINE (offline_folders) and SERVER (ldm_folders) modes.
 ASYNC MIGRATION (2026-01-31): Uses aiosqlite for true async operations.
 """
 
@@ -12,35 +13,38 @@ from typing import List, Optional, Dict, Any
 from loguru import logger
 
 from server.repositories.interfaces.folder_repository import FolderRepository
-from server.database.offline import get_offline_db
+from server.repositories.sqlite.base import SQLiteBaseRepository, SchemaMode
 
 
-class SQLiteFolderRepository(FolderRepository):
+class SQLiteFolderRepository(SQLiteBaseRepository, FolderRepository):
     """
     SQLite implementation of FolderRepository.
 
-    Uses OfflineDatabase for all operations.
-    This is the offline mode adapter.
+    ARCH-001: Schema-aware - uses _table() for dynamic table names.
     """
 
-    def __init__(self):
-        self.db = get_offline_db()
+    def __init__(self, schema_mode: SchemaMode = SchemaMode.OFFLINE):
+        super().__init__(schema_mode)
 
     def _normalize_folder(self, folder: Optional[Dict]) -> Optional[Dict[str, Any]]:
         """Normalize folder dict to match PostgreSQL format."""
         if not folder:
             return None
 
-        return {
+        result = {
             "id": folder.get("id"),
             "name": folder.get("name"),
             "project_id": folder.get("project_id"),
             "parent_id": folder.get("parent_id"),
             "created_at": folder.get("created_at"),
             "updated_at": folder.get("updated_at"),
-            # SQLite-specific fields
-            "sync_status": folder.get("sync_status"),
         }
+
+        # Only include sync_status for OFFLINE mode
+        if self._has_column("sync_status"):
+            result["sync_status"] = folder.get("sync_status")
+
+        return result
 
     # =========================================================================
     # Core CRUD
@@ -50,7 +54,7 @@ class SQLiteFolderRepository(FolderRepository):
         """Get folder by ID."""
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT * FROM offline_folders WHERE id = ?",
+                f"SELECT * FROM {self._table('folders')} WHERE id = ?",
                 (folder_id,)
             )
             row = await cursor.fetchone()
@@ -60,7 +64,7 @@ class SQLiteFolderRepository(FolderRepository):
         """Get all folders in a project."""
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT * FROM offline_folders WHERE project_id = ? ORDER BY name",
+                f"SELECT * FROM {self._table('folders')} WHERE project_id = ? ORDER BY name",
                 (project_id,)
             )
             rows = await cursor.fetchall()
@@ -81,22 +85,30 @@ class SQLiteFolderRepository(FolderRepository):
         now = datetime.now().isoformat()
 
         async with self.db._get_async_connection() as conn:
-            await conn.execute(
-                """INSERT INTO offline_folders
-                   (id, server_id, name, project_id, server_project_id, parent_id,
-                    server_parent_id, created_at, updated_at, downloaded_at, sync_status)
-                   VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
-                (
-                    folder_id,
-                    unique_name,
-                    project_id,
-                    project_id,  # server_project_id
-                    parent_id,
-                    parent_id,  # server_parent_id
-                    now,
-                    now,
+            if self.schema_mode == SchemaMode.OFFLINE:
+                await conn.execute(
+                    f"""INSERT INTO {self._table('folders')}
+                       (id, server_id, name, project_id, server_project_id, parent_id,
+                        server_parent_id, created_at, updated_at, downloaded_at, sync_status)
+                       VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
+                    (
+                        folder_id,
+                        unique_name,
+                        project_id,
+                        project_id,
+                        parent_id,
+                        parent_id,
+                        now,
+                        now,
+                    )
                 )
-            )
+            else:
+                await conn.execute(
+                    f"""INSERT INTO {self._table('folders')}
+                       (id, name, project_id, parent_id, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (folder_id, unique_name, project_id, parent_id, now, now)
+                )
             await conn.commit()
 
         logger.info(f"Created local folder: id={folder_id}, name='{unique_name}'")
@@ -114,13 +126,13 @@ class SQLiteFolderRepository(FolderRepository):
         async with self.db._get_async_connection() as conn:
             # Delete files in this folder
             await conn.execute(
-                "DELETE FROM offline_rows WHERE file_id IN (SELECT id FROM offline_files WHERE folder_id = ?)",
+                f"DELETE FROM {self._table('rows')} WHERE file_id IN (SELECT id FROM {self._table('files')} WHERE folder_id = ?)",
                 (folder_id,)
             )
-            await conn.execute("DELETE FROM offline_files WHERE folder_id = ?", (folder_id,))
+            await conn.execute(f"DELETE FROM {self._table('files')} WHERE folder_id = ?", (folder_id,))
 
             # Delete the folder
-            await conn.execute("DELETE FROM offline_folders WHERE id = ?", (folder_id,))
+            await conn.execute(f"DELETE FROM {self._table('folders')} WHERE id = ?", (folder_id,))
             await conn.commit()
 
         logger.info(f"Deleted folder: id={folder_id}")
@@ -131,7 +143,7 @@ class SQLiteFolderRepository(FolderRepository):
         async with self.db._get_async_connection() as conn:
             # Get subfolders
             cursor = await conn.execute(
-                "SELECT id FROM offline_folders WHERE parent_id = ?",
+                f"SELECT id FROM {self._table('folders')} WHERE parent_id = ?",
                 (folder_id,)
             )
             rows = await cursor.fetchall()
@@ -141,13 +153,13 @@ class SQLiteFolderRepository(FolderRepository):
 
                 # Delete files in subfolder
                 await conn.execute(
-                    "DELETE FROM offline_rows WHERE file_id IN (SELECT id FROM offline_files WHERE folder_id = ?)",
+                    f"DELETE FROM {self._table('rows')} WHERE file_id IN (SELECT id FROM {self._table('files')} WHERE folder_id = ?)",
                     (row["id"],)
                 )
-                await conn.execute("DELETE FROM offline_files WHERE folder_id = ?", (row["id"],))
+                await conn.execute(f"DELETE FROM {self._table('files')} WHERE folder_id = ?", (row["id"],))
 
                 # Delete subfolder
-                await conn.execute("DELETE FROM offline_folders WHERE id = ?", (row["id"],))
+                await conn.execute(f"DELETE FROM {self._table('folders')} WHERE id = ?", (row["id"],))
 
             await conn.commit()
 
@@ -164,14 +176,14 @@ class SQLiteFolderRepository(FolderRepository):
         async with self.db._get_async_connection() as conn:
             # Get subfolders
             cursor = await conn.execute(
-                "SELECT id, name, created_at FROM offline_folders WHERE parent_id = ?",
+                f"SELECT id, name, created_at FROM {self._table('folders')} WHERE parent_id = ?",
                 (folder_id,)
             )
             subfolder_rows = await cursor.fetchall()
 
             # Get files
             cursor = await conn.execute(
-                "SELECT id, name, format, row_count, created_at FROM offline_files WHERE folder_id = ?",
+                f"SELECT id, name, format, row_count, created_at FROM {self._table('files')} WHERE folder_id = ?",
                 (folder_id,)
             )
             file_rows = await cursor.fetchall()
@@ -220,7 +232,7 @@ class SQLiteFolderRepository(FolderRepository):
 
         async with self.db._get_async_connection() as conn:
             await conn.execute(
-                "UPDATE offline_folders SET name = ?, updated_at = datetime('now') WHERE id = ?",
+                f"UPDATE {self._table('folders')} SET name = ?, updated_at = datetime('now') WHERE id = ?",
                 (new_name, folder_id)
             )
             await conn.commit()
@@ -254,7 +266,7 @@ class SQLiteFolderRepository(FolderRepository):
 
         async with self.db._get_async_connection() as conn:
             await conn.execute(
-                "UPDATE offline_folders SET parent_id = ?, updated_at = datetime('now') WHERE id = ?",
+                f"UPDATE {self._table('folders')} SET parent_id = ?, updated_at = datetime('now') WHERE id = ?",
                 (parent_folder_id, folder_id)
             )
             await conn.commit()
@@ -289,7 +301,7 @@ class SQLiteFolderRepository(FolderRepository):
         async with self.db._get_async_connection() as conn:
             # Update the folder
             await conn.execute(
-                """UPDATE offline_folders
+                f"""UPDATE {self._table('folders')}
                    SET name = ?, project_id = ?, parent_id = ?, updated_at = datetime('now')
                    WHERE id = ?""",
                 (new_name, target_project_id, target_parent_id, folder_id)
@@ -317,20 +329,20 @@ class SQLiteFolderRepository(FolderRepository):
         async with self.db._get_async_connection() as conn:
             # Update all files in this folder
             await conn.execute(
-                "UPDATE offline_files SET project_id = ? WHERE folder_id = ?",
+                f"UPDATE {self._table('files')} SET project_id = ? WHERE folder_id = ?",
                 (new_project_id, folder_id)
             )
 
             # Get subfolders and recursively update
             cursor = await conn.execute(
-                "SELECT id FROM offline_folders WHERE parent_id = ?",
+                f"SELECT id FROM {self._table('folders')} WHERE parent_id = ?",
                 (folder_id,)
             )
             rows = await cursor.fetchall()
 
             for row in rows:
                 await conn.execute(
-                    "UPDATE offline_folders SET project_id = ? WHERE id = ?",
+                    f"UPDATE {self._table('folders')} SET project_id = ? WHERE id = ?",
                     (new_project_id, row["id"])
                 )
                 await self._update_folder_project_recursive(row["id"], new_project_id)
@@ -361,22 +373,30 @@ class SQLiteFolderRepository(FolderRepository):
         now = datetime.now().isoformat()
 
         async with self.db._get_async_connection() as conn:
-            await conn.execute(
-                """INSERT INTO offline_folders
-                   (id, server_id, name, project_id, server_project_id, parent_id,
-                    server_parent_id, created_at, updated_at, downloaded_at, sync_status)
-                   VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
-                (
-                    new_folder_id,
-                    new_name,
-                    dest_project_id,
-                    dest_project_id,
-                    target_parent_id,
-                    target_parent_id,
-                    now,
-                    now,
+            if self.schema_mode == SchemaMode.OFFLINE:
+                await conn.execute(
+                    f"""INSERT INTO {self._table('folders')}
+                       (id, server_id, name, project_id, server_project_id, parent_id,
+                        server_parent_id, created_at, updated_at, downloaded_at, sync_status)
+                       VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
+                    (
+                        new_folder_id,
+                        new_name,
+                        dest_project_id,
+                        dest_project_id,
+                        target_parent_id,
+                        target_parent_id,
+                        now,
+                        now,
+                    )
                 )
-            )
+            else:
+                await conn.execute(
+                    f"""INSERT INTO {self._table('folders')}
+                       (id, name, project_id, parent_id, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (new_folder_id, new_name, dest_project_id, target_parent_id, now, now)
+                )
             await conn.commit()
 
         # Copy contents recursively
@@ -408,7 +428,7 @@ class SQLiteFolderRepository(FolderRepository):
         async with self.db._get_async_connection() as conn:
             # Copy files
             cursor = await conn.execute(
-                "SELECT * FROM offline_files WHERE folder_id = ?",
+                f"SELECT * FROM {self._table('files')} WHERE folder_id = ?",
                 (source_folder_id,)
             )
             file_rows = await cursor.fetchall()
@@ -422,61 +442,105 @@ class SQLiteFolderRepository(FolderRepository):
                 # Generate new file ID
                 new_file_id = -int(time.time() * 1000 + files_copied) % 1000000000
 
-                await conn.execute(
-                    """INSERT INTO offline_files
-                       (id, server_id, name, original_filename, format, source_language,
-                        target_language, row_count, project_id, server_project_id,
-                        folder_id, server_folder_id, extra_data, created_at, updated_at,
-                        downloaded_at, sync_status)
-                       VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
-                    (
-                        new_file_id,
-                        file_name,
-                        file["original_filename"],
-                        file["format"],
-                        file["source_language"],
-                        file["target_language"],
-                        file["row_count"],
-                        dest_project_id,
-                        dest_project_id,
-                        dest_folder_id,
-                        dest_folder_id,
-                        file["extra_data"],
-                        now,
-                        now,
+                if self.schema_mode == SchemaMode.OFFLINE:
+                    await conn.execute(
+                        f"""INSERT INTO {self._table('files')}
+                           (id, server_id, name, original_filename, format, source_language,
+                            target_language, row_count, project_id, server_project_id,
+                            folder_id, server_folder_id, extra_data, created_at, updated_at,
+                            downloaded_at, sync_status)
+                           VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
+                        (
+                            new_file_id,
+                            file_name,
+                            file["original_filename"],
+                            file["format"],
+                            file["source_language"],
+                            file["target_language"],
+                            file["row_count"],
+                            dest_project_id,
+                            dest_project_id,
+                            dest_folder_id,
+                            dest_folder_id,
+                            file["extra_data"],
+                            now,
+                            now,
+                        )
                     )
-                )
+                else:
+                    await conn.execute(
+                        f"""INSERT INTO {self._table('files')}
+                           (id, name, original_filename, format, source_language,
+                            target_language, row_count, project_id, folder_id, extra_data,
+                            created_at, updated_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            new_file_id,
+                            file_name,
+                            file["original_filename"],
+                            file["format"],
+                            file["source_language"],
+                            file["target_language"],
+                            file["row_count"],
+                            dest_project_id,
+                            dest_folder_id,
+                            file["extra_data"],
+                            now,
+                            now,
+                        )
+                    )
 
                 # Copy rows
                 cursor = await conn.execute(
-                    "SELECT * FROM offline_rows WHERE file_id = ?",
+                    f"SELECT * FROM {self._table('rows')} WHERE file_id = ?",
                     (file["id"],)
                 )
                 row_rows = await cursor.fetchall()
 
                 for row in row_rows:
                     new_row_id = -int(time.time() * 1000) % 1000000000
-                    await conn.execute(
-                        """INSERT INTO offline_rows
-                           (id, server_id, file_id, server_file_id, row_num, string_id,
-                            source, target, memo, status, extra_data, created_at,
-                            updated_at, downloaded_at, sync_status)
-                           VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
-                        (
-                            new_row_id,
-                            new_file_id,
-                            new_file_id,
-                            row["row_num"],
-                            row["string_id"],
-                            row["source"],
-                            row["target"],
-                            row["memo"],
-                            row["status"],
-                            row["extra_data"],
-                            now,
-                            now,
+                    if self.schema_mode == SchemaMode.OFFLINE:
+                        await conn.execute(
+                            f"""INSERT INTO {self._table('rows')}
+                               (id, server_id, file_id, server_file_id, row_num, string_id,
+                                source, target, memo, status, extra_data, created_at,
+                                updated_at, downloaded_at, sync_status)
+                               VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
+                            (
+                                new_row_id,
+                                new_file_id,
+                                new_file_id,
+                                row["row_num"],
+                                row["string_id"],
+                                row["source"],
+                                row["target"],
+                                row["memo"],
+                                row["status"],
+                                row["extra_data"],
+                                now,
+                                now,
+                            )
                         )
-                    )
+                    else:
+                        await conn.execute(
+                            f"""INSERT INTO {self._table('rows')}
+                               (id, file_id, row_num, string_id, source, target, memo,
+                                status, extra_data, created_at, updated_at)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            (
+                                new_row_id,
+                                new_file_id,
+                                row["row_num"],
+                                row["string_id"],
+                                row["source"],
+                                row["target"],
+                                row["memo"],
+                                row["status"],
+                                row["extra_data"],
+                                now,
+                                now,
+                            )
+                        )
 
                 files_copied += 1
 
@@ -484,7 +548,7 @@ class SQLiteFolderRepository(FolderRepository):
 
             # Copy subfolders recursively
             cursor = await conn.execute(
-                "SELECT * FROM offline_folders WHERE parent_id = ?",
+                f"SELECT * FROM {self._table('folders')} WHERE parent_id = ?",
                 (source_folder_id,)
             )
             subfolder_rows = await cursor.fetchall()
@@ -499,22 +563,30 @@ class SQLiteFolderRepository(FolderRepository):
             new_subfolder_id = -int(time.time() * 1000) % 1000000000
 
             async with self.db._get_async_connection() as conn:
-                await conn.execute(
-                    """INSERT INTO offline_folders
-                       (id, server_id, name, project_id, server_project_id, parent_id,
-                        server_parent_id, created_at, updated_at, downloaded_at, sync_status)
-                       VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
-                    (
-                        new_subfolder_id,
-                        sub_name,
-                        dest_project_id,
-                        dest_project_id,
-                        dest_folder_id,
-                        dest_folder_id,
-                        now,
-                        now,
+                if self.schema_mode == SchemaMode.OFFLINE:
+                    await conn.execute(
+                        f"""INSERT INTO {self._table('folders')}
+                           (id, server_id, name, project_id, server_project_id, parent_id,
+                            server_parent_id, created_at, updated_at, downloaded_at, sync_status)
+                           VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'local')""",
+                        (
+                            new_subfolder_id,
+                            sub_name,
+                            dest_project_id,
+                            dest_project_id,
+                            dest_folder_id,
+                            dest_folder_id,
+                            now,
+                            now,
+                        )
                     )
-                )
+                else:
+                    await conn.execute(
+                        f"""INSERT INTO {self._table('folders')}
+                           (id, name, project_id, parent_id, created_at, updated_at)
+                           VALUES (?, ?, ?, ?, ?, ?)""",
+                        (new_subfolder_id, sub_name, dest_project_id, dest_folder_id, now, now)
+                    )
                 await conn.commit()
 
             # Recursively copy contents
@@ -538,12 +610,12 @@ class SQLiteFolderRepository(FolderRepository):
 
                 if folder_id is not None:
                     cursor = await conn.execute(
-                        "SELECT COUNT(*) as cnt FROM offline_files WHERE LOWER(name) = LOWER(?) AND folder_id = ?",
+                        f"SELECT COUNT(*) as cnt FROM {self._table('files')} WHERE LOWER(name) = LOWER(?) AND folder_id = ?",
                         (name, folder_id)
                     )
                 else:
                     cursor = await conn.execute(
-                        "SELECT COUNT(*) as cnt FROM offline_files WHERE LOWER(name) = LOWER(?) AND project_id = ? AND folder_id IS NULL",
+                        f"SELECT COUNT(*) as cnt FROM {self._table('files')} WHERE LOWER(name) = LOWER(?) AND project_id = ? AND folder_id IS NULL",
                         (name, project_id)
                     )
 
@@ -566,14 +638,14 @@ class SQLiteFolderRepository(FolderRepository):
         """Check if folder name exists in parent."""
         async with self.db._get_async_connection() as conn:
             if parent_id is None:
-                query = """
-                    SELECT COUNT(*) as cnt FROM offline_folders
+                query = f"""
+                    SELECT COUNT(*) as cnt FROM {self._table('folders')}
                     WHERE LOWER(name) = LOWER(?) AND project_id = ? AND parent_id IS NULL
                 """
                 params = [name, project_id]
             else:
-                query = """
-                    SELECT COUNT(*) as cnt FROM offline_folders
+                query = f"""
+                    SELECT COUNT(*) as cnt FROM {self._table('folders')}
                     WHERE LOWER(name) = LOWER(?) AND project_id = ? AND parent_id = ?
                 """
                 params = [name, project_id, parent_id]
@@ -608,7 +680,7 @@ class SQLiteFolderRepository(FolderRepository):
         """Get direct subfolders of a folder."""
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT * FROM offline_folders WHERE parent_id = ? ORDER BY name",
+                f"SELECT * FROM {self._table('folders')} WHERE parent_id = ? ORDER BY name",
                 (folder_id,)
             )
             rows = await cursor.fetchall()
@@ -618,7 +690,7 @@ class SQLiteFolderRepository(FolderRepository):
         """Check if folder_id is a descendant of potential_ancestor_id."""
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT parent_id FROM offline_folders WHERE id = ?",
+                f"SELECT parent_id FROM {self._table('folders')} WHERE id = ?",
                 (folder_id,)
             )
             result = await cursor.fetchone()
@@ -629,7 +701,7 @@ class SQLiteFolderRepository(FolderRepository):
                 if current_parent == potential_ancestor_id:
                     return True
                 cursor = await conn.execute(
-                    "SELECT parent_id FROM offline_folders WHERE id = ?",
+                    f"SELECT parent_id FROM {self._table('folders')} WHERE id = ?",
                     (current_parent,)
                 )
                 result = await cursor.fetchone()
@@ -646,7 +718,7 @@ class SQLiteFolderRepository(FolderRepository):
         search_term = f"%{query}%"
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT * FROM offline_folders WHERE name LIKE ? COLLATE NOCASE",
+                f"SELECT * FROM {self._table('folders')} WHERE name LIKE ? COLLATE NOCASE",
                 (search_term,)
             )
             rows = await cursor.fetchall()

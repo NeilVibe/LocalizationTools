@@ -4,6 +4,7 @@ SQLite TrashRepository Implementation.
 P10: FULL PARITY - Trash persists in SQLite identically to PostgreSQL.
 No stubs, no ephemeral, no shortcuts.
 
+ARCH-001: Schema-aware - works with both OFFLINE (offline_trash) and SERVER (ldm_trash) modes.
 ASYNC MIGRATION (2026-01-31): Uses aiosqlite for true async operations.
 """
 
@@ -13,19 +14,19 @@ from typing import List, Optional, Dict, Any
 from loguru import logger
 
 from server.repositories.interfaces.trash_repository import TrashRepository
-from server.database.offline import get_offline_db
+from server.repositories.sqlite.base import SQLiteBaseRepository, SchemaMode
 
 
-class SQLiteTrashRepository(TrashRepository):
+class SQLiteTrashRepository(SQLiteBaseRepository, TrashRepository):
     """
     SQLite implementation of TrashRepository.
 
     FULL PARITY: Identical behavior to PostgreSQL.
-    Uses offline_trash table for persistence.
+    ARCH-001: Schema-aware - uses _table('trash') for dynamic table names.
     """
 
-    def __init__(self):
-        self.db = get_offline_db()
+    def __init__(self, schema_mode: SchemaMode = SchemaMode.OFFLINE):
+        super().__init__(schema_mode)
 
     def _row_to_dict(self, row: dict) -> Dict[str, Any]:
         """Convert SQLite row to dict."""
@@ -57,7 +58,7 @@ class SQLiteTrashRepository(TrashRepository):
 
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT * FROM offline_trash WHERE id = ?",
+                f"SELECT * FROM {self._table('trash')} WHERE id = ?",
                 (trash_id,)
             )
             row = await cursor.fetchone()
@@ -73,7 +74,7 @@ class SQLiteTrashRepository(TrashRepository):
 
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                """SELECT * FROM offline_trash
+                f"""SELECT * FROM {self._table('trash')}
                    WHERE deleted_by = ? AND status = 'trashed'
                    ORDER BY deleted_at DESC""",
                 (user_id,)
@@ -91,7 +92,7 @@ class SQLiteTrashRepository(TrashRepository):
         now = datetime.utcnow().isoformat()
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                """SELECT * FROM offline_trash
+                f"""SELECT * FROM {self._table('trash')}
                    WHERE expires_at < ? AND status = 'trashed'""",
                 (now,)
             )
@@ -124,8 +125,8 @@ class SQLiteTrashRepository(TrashRepository):
         item_data_json = json.dumps(item_data)
 
         async with self.db._get_async_connection() as conn:
-            cursor = await conn.execute("""
-                INSERT INTO offline_trash
+            cursor = await conn.execute(f"""
+                INSERT INTO {self._table('trash')}
                 (item_type, item_id, item_name, item_data, parent_project_id, parent_folder_id,
                  deleted_by, deleted_at, expires_at, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'trashed')
@@ -158,7 +159,7 @@ class SQLiteTrashRepository(TrashRepository):
         async with self.db._get_async_connection() as conn:
             # Get item first
             cursor = await conn.execute(
-                """SELECT * FROM offline_trash
+                f"""SELECT * FROM {self._table('trash')}
                    WHERE id = ? AND deleted_by = ? AND status = 'trashed'""",
                 (trash_id, user_id)
             )
@@ -170,7 +171,7 @@ class SQLiteTrashRepository(TrashRepository):
 
             # Mark as restored
             await conn.execute(
-                "UPDATE offline_trash SET status = 'restored' WHERE id = ?",
+                f"UPDATE {self._table('trash')} SET status = 'restored' WHERE id = ?",
                 (trash_id,)
             )
             await conn.commit()
@@ -188,7 +189,7 @@ class SQLiteTrashRepository(TrashRepository):
         async with self.db._get_async_connection() as conn:
             # Check exists
             cursor = await conn.execute(
-                """SELECT id FROM offline_trash
+                f"""SELECT id FROM {self._table('trash')}
                    WHERE id = ? AND deleted_by = ? AND status = 'trashed'""",
                 (trash_id, user_id)
             )
@@ -198,7 +199,7 @@ class SQLiteTrashRepository(TrashRepository):
                 logger.warning(f"[TRASH-SQLITE] permanent_delete: not found trash_id={trash_id}")
                 return False
 
-            await conn.execute("DELETE FROM offline_trash WHERE id = ?", (trash_id,))
+            await conn.execute(f"DELETE FROM {self._table('trash')} WHERE id = ?", (trash_id,))
             await conn.commit()
 
         logger.success(f"[TRASH-SQLITE] Permanently deleted: id={trash_id}")
@@ -211,7 +212,7 @@ class SQLiteTrashRepository(TrashRepository):
         async with self.db._get_async_connection() as conn:
             # Count first
             cursor = await conn.execute(
-                "SELECT COUNT(*) as count FROM offline_trash WHERE deleted_by = ? AND status = 'trashed'",
+                f"SELECT COUNT(*) as count FROM {self._table('trash')} WHERE deleted_by = ? AND status = 'trashed'",
                 (user_id,)
             )
             count_row = await cursor.fetchone()
@@ -219,7 +220,7 @@ class SQLiteTrashRepository(TrashRepository):
 
             # Delete
             await conn.execute(
-                "DELETE FROM offline_trash WHERE deleted_by = ? AND status = 'trashed'",
+                f"DELETE FROM {self._table('trash')} WHERE deleted_by = ? AND status = 'trashed'",
                 (user_id,)
             )
             await conn.commit()
@@ -235,7 +236,7 @@ class SQLiteTrashRepository(TrashRepository):
         async with self.db._get_async_connection() as conn:
             # Count first
             cursor = await conn.execute(
-                "SELECT COUNT(*) as count FROM offline_trash WHERE expires_at < ? AND status = 'trashed'",
+                f"SELECT COUNT(*) as count FROM {self._table('trash')} WHERE expires_at < ? AND status = 'trashed'",
                 (now,)
             )
             count_row = await cursor.fetchone()
@@ -243,7 +244,7 @@ class SQLiteTrashRepository(TrashRepository):
 
             # Delete
             await conn.execute(
-                "DELETE FROM offline_trash WHERE expires_at < ? AND status = 'trashed'",
+                f"DELETE FROM {self._table('trash')} WHERE expires_at < ? AND status = 'trashed'",
                 (now,)
             )
             await conn.commit()
@@ -259,7 +260,7 @@ class SQLiteTrashRepository(TrashRepository):
         """Count trash items for a user."""
         async with self.db._get_async_connection() as conn:
             cursor = await conn.execute(
-                "SELECT COUNT(*) as count FROM offline_trash WHERE deleted_by = ? AND status = 'trashed'",
+                f"SELECT COUNT(*) as count FROM {self._table('trash')} WHERE deleted_by = ? AND status = 'trashed'",
                 (user_id,)
             )
             row = await cursor.fetchone()
