@@ -15,26 +15,20 @@
 
 ## OPEN ISSUES
 
-### ARCH-001: Repository Layer Violations (PostgreSQL Repos Check SQLite) 🔴 HIGH
+### ARCH-001: Repository Layer Violations 🔴 HIGH
 
 - **Severity:** HIGH (architectural cleanliness)
-- **Component:** `server/repositories/postgresql/row_repo.py`, `server/repositories/postgresql/tm_repo.py`
-- **Full Report:** [ARCHITECTURE_DEBT_REPORT.md](ARCHITECTURE_DEBT_REPORT.md)
+- **Solution:** [NEXT_SESSION_TODO.md](NEXT_SESSION_TODO.md)
+- **Time:** 8-12 hours
 
-**Problem:** 3 places where PostgreSQL repos check `config.ACTIVE_DATABASE_TYPE == "sqlite"` internally, violating layer abstraction.
+**Problem:** 3 places where PostgreSQL repos check SQLite mode internally:
+```
+postgresql/row_repo.py:423
+postgresql/row_repo.py:598
+postgresql/tm_repo.py:1001
+```
 
-**Violations:**
-| File | Line | Method |
-|------|------|--------|
-| `postgresql/row_repo.py` | 423 | `_fuzzy_search()` |
-| `postgresql/row_repo.py` | 598 | `suggest_similar()` |
-| `postgresql/tm_repo.py` | 1001 | `search_similar()` |
-
-**Root Cause:** Schema mismatch between SQLite repos (`offline_*` tables) and server SQLite fallback (`ldm_*` tables) forced a workaround in Build 516.
-
-**Fix:** Create `CapabilityAwareWrapper` class to handle graceful degradation at factory level, then remove violations from repos.
-
-**Estimated Fix Time:** 2-3 hours
+**Fix:** Schema-aware SQLite repos. Make SQLite repos work with EITHER schema (`offline_*` or `ldm_*`). Factory picks the right mode. PostgreSQL repos stay PURE.
 
 ---
 
