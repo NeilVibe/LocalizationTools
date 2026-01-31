@@ -27,13 +27,9 @@ class ServerSQLiteDatabase:
     SQLite database connection for server fallback mode.
 
     Uses the same ldm_* tables as PostgreSQL, not the offline_* tables.
-    This is a singleton - only one instance exists per process.
-
     The schema is initialized by db_setup.py when SQLite mode is detected,
     so this class only needs to provide the connection.
     """
-
-    _instance: Optional['ServerSQLiteDatabase'] = None
 
     def __init__(self, db_path: Optional[str] = None):
         """
@@ -47,26 +43,6 @@ class ServerSQLiteDatabase:
 
         self.db_path = db_path
         logger.debug(f"[SERVER-SQLITE] Using database: {self.db_path}")
-
-    @classmethod
-    def get_instance(cls, db_path: Optional[str] = None) -> 'ServerSQLiteDatabase':
-        """
-        Get singleton instance of ServerSQLiteDatabase.
-
-        Args:
-            db_path: Path to SQLite database file (only used on first call).
-
-        Returns:
-            The singleton ServerSQLiteDatabase instance.
-        """
-        if cls._instance is None:
-            cls._instance = cls(db_path)
-        return cls._instance
-
-    @classmethod
-    def reset_instance(cls):
-        """Reset singleton instance (for testing)."""
-        cls._instance = None
 
     def _get_connection(self) -> sqlite3.Connection:
         """
@@ -100,7 +76,7 @@ class ServerSQLiteDatabase:
             await conn.close()
 
 
-# Module-level singleton accessor
+# Module-level singleton (matches offline.py pattern)
 _server_sqlite_db: Optional[ServerSQLiteDatabase] = None
 
 
@@ -116,7 +92,7 @@ def get_server_sqlite_db() -> ServerSQLiteDatabase:
     """
     global _server_sqlite_db
     if _server_sqlite_db is None:
-        _server_sqlite_db = ServerSQLiteDatabase.get_instance()
+        _server_sqlite_db = ServerSQLiteDatabase()
     return _server_sqlite_db
 
 
@@ -124,4 +100,3 @@ def reset_server_sqlite_db():
     """Reset the server SQLite database singleton (for testing)."""
     global _server_sqlite_db
     _server_sqlite_db = None
-    ServerSQLiteDatabase.reset_instance()
