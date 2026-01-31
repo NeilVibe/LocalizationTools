@@ -277,7 +277,7 @@
             bind:selected={sourceLang}
             labelText="Source Language"
           >
-            {#each languages as lang}
+            {#each languages as lang (lang.value)}
               <SelectItem value={lang.value} text={lang.label} />
             {/each}
           </Select>
@@ -288,7 +288,7 @@
             bind:selected={targetLang}
             labelText="Target Language"
           >
-            {#each languages as lang}
+            {#each languages as lang (lang.value)}
               <SelectItem value={lang.value} text={lang.label} />
             {/each}
           </Select>

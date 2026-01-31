@@ -2277,7 +2277,7 @@
             <div class="settings-section">
               <div class="settings-label">Mode</div>
               <div class="mode-buttons">
-                {#each searchModeOptions as mode}
+                {#each searchModeOptions as mode (mode.id)}
                   <button
                     class="mode-option {searchMode === mode.id ? 'active' : ''}"
                     onclick={() => { searchMode = mode.id; if (searchTerm) handleSearch(); }}
@@ -2292,7 +2292,7 @@
             <div class="settings-section">
               <div class="settings-label">Fields</div>
               <div class="field-toggles">
-                {#each searchFieldOptions as field}
+                {#each searchFieldOptions as field (field.id)}
                   <label class="field-toggle {searchFields.includes(field.id) ? 'active' : ''}">
                     <input
                       type="checkbox"
@@ -2538,7 +2538,7 @@
         <div class="edit-menu-section">
           <div class="edit-menu-header">Apply Color</div>
           <div class="color-picker-colors">
-            {#each sourceColors as color}
+            {#each sourceColors as color (color.name)}
               <button
                 class="color-swatch"
                 style="background-color: {color.css};"

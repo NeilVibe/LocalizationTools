@@ -113,7 +113,7 @@
               <span>Select a row to see TM matches</span>
             </div>
           {:else if tmMatches.length > 0}
-            {#each tmMatches as match, idx}
+            {#each tmMatches as match, idx (match.row_id || match.entry_id || idx)}
               <button
                 class="tm-item"
                 onclick={() => handleApplyTM(match)}
@@ -171,7 +171,7 @@
               <span>Select a row to see QA issues</span>
             </div>
           {:else if qaIssues.length > 0}
-            {#each qaIssues as issue}
+            {#each qaIssues as issue (issue.id)}
               <div class="qa-item" class:error={issue.severity === 'error'} class:warning={issue.severity === 'warning'}>
                 <Tag type={issue.severity === 'error' ? 'red' : 'magenta'} size="sm">
                   {issue.check_type}

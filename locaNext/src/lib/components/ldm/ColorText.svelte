@@ -17,7 +17,7 @@
 
 {#if segments}
   <span class="color-text {className}">
-    {#each segments as segment}
+    {#each segments as segment, i (i)}
       {#if segment.color}
         <span class="colored-segment" style="color: {segment.color}">{segment.text}</span>
       {:else}

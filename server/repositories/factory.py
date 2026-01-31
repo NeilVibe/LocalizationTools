@@ -14,7 +14,7 @@ Routes ONLY use repositories. No direct DB access. Ever.
 Permissions are baked INTO PostgreSQL repositories.
 """
 
-from typing import Optional, Tuple
+from typing import Tuple
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,27 +51,6 @@ def _is_offline_mode(request: Request) -> bool:
     return auth_header.startswith("Bearer OFFLINE_MODE_")
 
 
-async def get_current_user_optional(request: Request) -> Optional[dict]:
-    """
-    Get current user from request state if available, otherwise None.
-
-    This is used by the repository factory to detect offline mode.
-    Unlike get_current_active_user_async, this doesn't raise on missing auth.
-    """
-    # Check if user was set by auth middleware
-    if hasattr(request.state, "user"):
-        return request.state.user
-
-    # Try to get from Authorization header for mode detection
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        token = auth_header[7:]
-        # Just return token info for mode detection
-        return {"token": token}
-
-    return None
-
-
 def get_tm_repository(
     request: Request,
     db: AsyncSession = Depends(get_async_db),
@@ -99,14 +78,6 @@ def get_tm_repository(
         return SQLiteTMRepository()
     else:
         return PostgreSQLTMRepository(db, current_user)
-
-
-def is_offline_mode(current_user: Optional[dict]) -> bool:
-    """Check if current user is in offline mode."""
-    if not current_user:
-        return False
-    token = current_user.get("token", "")
-    return isinstance(token, str) and token.startswith("OFFLINE_MODE_")
 
 
 def get_file_repository(

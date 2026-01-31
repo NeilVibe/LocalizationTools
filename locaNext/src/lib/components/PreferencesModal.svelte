@@ -151,7 +151,7 @@
         selected={currentFontSize}
         on:change={handleFontSizeChange}
       >
-        {#each fontSizes as size}
+        {#each fontSizes as size (size.value)}
           <SelectItem value={size.value} text={size.label} />
         {/each}
       </Select>
@@ -173,7 +173,7 @@
         selected={currentFontFamily}
         on:change={handleFontFamilyChange}
       >
-        {#each fontFamilies as family}
+        {#each fontFamilies as family (family.value)}
           <SelectItem value={family.value} text={family.label} />
         {/each}
       </Select>
@@ -185,7 +185,7 @@
         selected={currentFontColor}
         on:change={handleFontColorChange}
       >
-        {#each fontColors as color}
+        {#each fontColors as color (color.value)}
           <SelectItem value={color.value} text={color.label} />
         {/each}
       </Select>

@@ -497,7 +497,7 @@
             </tr>
           </thead>
           <tbody>
-            {#each tms as tm}
+            {#each tms as tm (tm.id)}
               {@const TMStatusIcon = getStatusIcon(tm.status)}
               {@const isActive = activeTmId === tm.id}
               <tr class:active-row={isActive}>
