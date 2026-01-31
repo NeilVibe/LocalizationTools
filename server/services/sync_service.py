@@ -467,8 +467,8 @@ class SyncService:
         await self.sqlite.save_tm({
             "id": tm.id,
             "name": tm.name,
-            "source_language": tm.source_language,
-            "target_language": tm.target_language,
+            "source_language": tm.source_lang,  # Model uses source_lang
+            "target_language": tm.target_lang,  # Model uses target_lang
             "owner_id": tm.owner_id,
             "entry_count": tm.entry_count,
             "created_at": tm.created_at.isoformat() if tm.created_at else None,
