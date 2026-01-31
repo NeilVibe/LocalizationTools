@@ -382,34 +382,34 @@
   }
 
   // Navigate to breadcrumb
-  function navigateTo(index) {
+  async function navigateTo(index) {
     if (index < 0) {
       // Go to root (platforms + unassigned projects)
-      loadRoot();
+      await loadRoot();
     } else if (index === 0 && currentPath[0]?.type === 'platform') {
       // Go to platform contents
-      loadPlatformContents(currentPath[0].id, currentPath[0].name);
+      await loadPlatformContents(currentPath[0].id, currentPath[0].name);
     } else if (index === 0 && currentPath[0]?.type === 'project') {
       // Go to project root
-      loadProjectContents(currentPath[0].id);
+      await loadProjectContents(currentPath[0].id);
     } else if (index === 0 && currentPath[0]?.type === 'offline-storage') {
       // P9: Go to Offline Storage root
-      loadOfflineStorageContents();
+      await loadOfflineStorageContents();
     } else if (index === 1 && currentPath[0]?.type === 'platform' && currentPath[1]?.type === 'project') {
       // Go to project inside platform - preserve platform context
       const projectId = currentPath[1].id;
       currentPath = [currentPath[0]]; // Keep platform only
-      loadProjectContents(projectId, true); // preservePath = true to append project
+      await loadProjectContents(projectId, true); // preservePath = true to append project
     } else {
       // Go to specific folder
       const target = currentPath[index];
       currentPath = currentPath.slice(0, index);
       if (target.type === 'folder') {
-        loadFolderContents(target.id, target.name);
+        await loadFolderContents(target.id, target.name);
       } else if (target.type === 'local-folder') {
         // P9: Navigate into local folder, update path first
         currentPath = [...currentPath, target];
-        loadOfflineStorageContents(target.id);
+        await loadOfflineStorageContents(target.id);
       }
     }
   }
@@ -966,11 +966,11 @@
     dispatch('fileSelect', { fileId: file.id, file, filesState });
   }
 
-  function handleGoUp() {
+  async function handleGoUp() {
     if (currentPath.length > 1) {
-      navigateTo(currentPath.length - 2);
+      await navigateTo(currentPath.length - 2);
     } else if (currentPath.length === 1) {
-      loadProjects();
+      await loadProjects();
     }
   }
 
@@ -2458,7 +2458,7 @@
       <Home size={16} />
       <span>Home</span>
     </button>
-    {#each currentPath as crumb, i}
+    {#each currentPath as crumb, i (crumb.id ?? `path-${i}`)}
       <ChevronRight size={16} class="breadcrumb-sep" />
       <button class="breadcrumb-item" onclick={() => navigateTo(i)}>
         {#if crumb.type === 'offline-storage' || crumb.name === 'Offline Storage'}
@@ -2767,7 +2767,7 @@
   <p style="margin-bottom: 1rem;">Assign project "{assignPlatformTarget?.name}" to a platform:</p>
   <Select labelText="Platform" bind:selected={assignPlatformValue}>
     <SelectItem value={null} text="(Unassigned)" />
-    {#each platforms as platform}
+    {#each platforms as platform (platform.id)}
       <SelectItem value={platform.id} text={platform.name} />
     {/each}
   </Select>
@@ -2849,7 +2849,7 @@
     <p style="margin-bottom: 1rem;">Upload "{uploadToServerFile?.name}" to central server</p>
     <Select labelText="Destination Project" bind:selected={uploadToServerDestination}>
       <SelectItem value={null} text="Select a project..." />
-      {#each uploadToServerProjects as project}
+      {#each uploadToServerProjects as project (project.id)}
         <SelectItem value={project.id} text={project.name} />
       {/each}
     </Select>
