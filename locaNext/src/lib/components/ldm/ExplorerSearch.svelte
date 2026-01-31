@@ -266,7 +266,7 @@
       </div>
 
       <div class="results-list">
-        {#each results as result, i}
+        {#each results as result, i (`${result.type}-${result.id}`)}
           <button
             class="search-result"
             class:selected={i === selectedIndex}

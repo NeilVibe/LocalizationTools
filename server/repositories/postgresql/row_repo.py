@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, func, or_, and_
+from sqlalchemy import select, func, or_, and_, text
 from loguru import logger
 
 from server.database.models import LDMRow, LDMFile, LDMEditHistory, LDMProject, LDMResourceAccess
@@ -416,7 +416,6 @@ class PostgreSQLRowRepository(RowRepository):
         NOTE: similarity() is PostgreSQL-specific (pg_trgm extension).
         When server runs with SQLite fallback, returns empty results.
         """
-        from sqlalchemy import text
         from server import config
 
         # similarity() requires PostgreSQL pg_trgm extension
@@ -592,7 +591,6 @@ class PostgreSQLRowRepository(RowRepository):
         NOTE: similarity() is PostgreSQL-specific (pg_trgm extension).
         When server runs with SQLite fallback, returns empty list.
         """
-        from sqlalchemy import text
         from server import config
 
         # similarity() requires PostgreSQL pg_trgm extension

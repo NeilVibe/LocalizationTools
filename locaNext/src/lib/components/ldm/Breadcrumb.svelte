@@ -46,7 +46,7 @@
     </li>
 
     <!-- Path items -->
-    {#each path as item, index}
+    {#each path as item, index (item.id || index)}
       <li class="breadcrumb-item">
         <ChevronRight size={16} class="breadcrumb-separator" />
         {#if index === path.length - 1}
