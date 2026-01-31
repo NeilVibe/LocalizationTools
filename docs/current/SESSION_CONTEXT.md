@@ -1,10 +1,78 @@
 # Session Context
 
-> Last Updated: 2026-01-31 (Session 59 continuation)
+> Last Updated: 2026-01-31 (Session 60)
 
 ---
 
-## SESSION 60 TODO: Schema-Aware SQLite Repos
+## SESSION 60: aiosqlite Bug Fixes + E2E Testing + Debug Documentation
+
+### What Was Done
+
+1. **Found and fixed 11 aiosqlite migration bugs** in Offline Storage mode
+2. **Created comprehensive debug documentation** with subagent guide
+3. **Ran full E2E integration test** - all core functionality verified
+4. **Discovered limitation**: Offline TMs can't use `standard` pretranslation
+
+### Bugs Fixed (12 total)
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `files.py:570` | Missing `await` on `remove_subscription()` | Added `await` |
+| `files.py:1466` | Missing `await` on `create_local_file()` | Added `await` |
+| `files.py:1478` | Missing `await` on `add_rows_to_local_file()` | Added `await` |
+| `pretranslate.py:75` | Sync calling async | Used `asyncio.run()` |
+| `pretranslate.py:508` | Sync calling async | Used `asyncio.run()` |
+| `pretranslate.py:537` | Sync calling async | Used `asyncio.run()` |
+| `tm_repo.py:70` | sqlite3.Row without dict() | Added `dict()` |
+| `tm_repo.py:102` | sqlite3.Row without dict() | Added `dict()` |
+| `tm_repo.py:246` | sqlite3.Row without dict() | Added `dict()` |
+| `tm_repo.py:477` | sqlite3.Row without dict() | Added `dict()` |
+| `tm_repo.py:33` | Made helper defensive | Added isinstance check |
+| **`FilesPage.svelte:646`** | **BUG-042: handleEnterFolder not async** | **Made async + await all 6 calls** |
+
+### Issue Verification (6 Parallel Agents)
+
+| Issue | Verdict | Action |
+|-------|---------|--------|
+| ARCH-001 | STALE - already fixed | Closed |
+| LIMIT-001 | Clarified - pretranslation works, only `/tm/suggest` limited | Updated |
+| TECH-DEBT-002 | STALE - intentional CLI design | Closed |
+| IMPROVE-001 | STALE - architecturally sound | Closed |
+| DOCS-001 | STALE - file reduced 91% | Closed |
+| BUG-042 | **REAL + WORSE** - affects ALL navigation | **Fixed** |
+
+### E2E Test Results
+
+| Test | Status |
+|------|--------|
+| Create folder in Offline Storage | ✅ PASS |
+| Upload file to folder | ✅ PASS |
+| Register file as TM | ✅ PASS |
+| TM appears in same folder | ✅ PASS |
+| Activate TM | ✅ PASS |
+| Run QA on file | ✅ PASS |
+| Update row translations | ✅ PASS |
+| Pretranslation with SQLite TM | ⚠️ LIMITATION |
+
+### Documentation Created
+
+| File | Content |
+|------|---------|
+| `docs/protocols/DEBUG_AND_SUBAGENTS.md` | Full subagent guide + parallel debugging |
+| `docs/protocols/QUICK_DEBUG_REFERENCE.md` | Quick log commands + common errors |
+| `docs/protocols/E2E_TEST_RESULTS_SESSION60.md` | Full E2E test log |
+
+### Key Insight
+
+**Always test BOTH code paths:**
+- PostgreSQL path (admin user)
+- SQLite path (OFFLINE_MODE user)
+
+Session 59 fixed PostgreSQL path. Session 60 found SQLite path had 11 bugs!
+
+---
+
+## SESSION 60 TODO (Deferred): Schema-Aware SQLite Repos
 
 **Full plan:** [NEXT_SESSION_TODO.md](NEXT_SESSION_TODO.md)
 **Time:** 8-12 hours
@@ -182,11 +250,11 @@ StrOrigin | Str | Correction | Category | StringID
 
 | Session | Achievement |
 |---------|-------------|
+| **60** | aiosqlite bug fixes (11 bugs) + E2E testing + Debug docs |
 | **59** | aiosqlite migration + SQLite mode fix (Build 516) |
 | **58** | Project health check + Mac build prep |
 | **57** | LanguageDataExporter v2.0 - Correction Workflow |
 | **56** | QACompiler Progress Tracker Manager Stats Fix |
-| **55** | QACompiler runtime config fix + comprehensive CI |
 
 ---
 
@@ -220,4 +288,4 @@ python3 -c "import sqlite3; ..."  # Gitea (see CLAUDE.md)
 
 ---
 
-*Session 59 | Build 516 SUCCESS | aiosqlite Migration Complete*
+*Session 60 | Build 522 SUCCESS | aiosqlite Bug Fixes Complete*

@@ -567,7 +567,7 @@ async def delete_file(
     try:
         from server.database.offline import get_offline_db
         offline_db = get_offline_db()
-        offline_db.remove_subscription("file", file_id)
+        await offline_db.remove_subscription("file", file_id)
         logger.debug(f"Cleaned up sync subscription for file {file_id}")
     except Exception as e:
         logger.debug(f"No subscription to clean up for file {file_id}: {e}")
@@ -1463,7 +1463,7 @@ async def _upload_to_local_storage(
 
         # Create local file in Offline Storage (may auto-rename if duplicate)
         # P9-FIX: Support placing files inside local folders
-        result = offline_db.create_local_file(
+        result = await offline_db.create_local_file(
             name=filename,
             original_filename=filename,
             file_format=file_format,
@@ -1475,7 +1475,7 @@ async def _upload_to_local_storage(
         final_name = result["name"]  # May be different from filename if renamed
 
         # Add parsed rows to the local file
-        offline_db.add_rows_to_local_file(file_id, rows_data)
+        await offline_db.add_rows_to_local_file(file_id, rows_data)
 
         logger.success(f"[FILES] P9: File uploaded to Offline Storage: id={file_id}, name='{final_name}', rows={len(rows_data)}")
 

@@ -643,7 +643,7 @@
     }
   }
 
-  function handleEnterFolder(event) {
+  async function handleEnterFolder(event) {
     const item = event.detail.item;
 
     // GDP: BUG-042 Debug
@@ -653,23 +653,24 @@
       itemName: item.name
     });
 
+    // BUG-042 FIX: All async folder load functions must be awaited
     if (item.type === 'platform') {
-      loadPlatformContents(item.id, item.name);
+      await loadPlatformContents(item.id, item.name);
     } else if (item.type === 'project') {
       // If inside a platform, preserve platform in breadcrumb path
       const insidePlatform = currentPath.length > 0 && currentPath[0].type === 'platform';
-      loadProjectContents(item.id, insidePlatform);
+      await loadProjectContents(item.id, insidePlatform);
     } else if (item.type === 'folder') {
-      loadFolderContents(item.id, item.name);
+      await loadFolderContents(item.id, item.name);
     } else if (item.type === 'local-folder') {
       // P9: Navigate into local folder in Offline Storage
-      loadLocalFolderContents(item.id, item.name);
+      await loadLocalFolderContents(item.id, item.name);
     } else if (item.type === 'recycle-bin') {
       // EXPLORER-008: Enter Recycle Bin
-      loadTrashContents();
+      await loadTrashContents();
     } else if (item.type === 'offline-storage') {
       // P3-PHASE5: Enter Offline Storage
-      loadOfflineStorageContents();
+      await loadOfflineStorageContents();
     }
   }
 
