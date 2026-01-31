@@ -76,13 +76,13 @@ class SyncService:
     @staticmethod
     def _folder_to_dict(folder: LDMFolder) -> Dict[str, Any]:
         """Convert SQLAlchemy Folder model to dict for SQLite storage."""
+        # Note: LDMFolder model has no updated_at column
         return {
             "id": folder.id,
             "name": folder.name,
             "project_id": folder.project_id,
             "parent_id": folder.parent_id,
             "created_at": folder.created_at.isoformat() if folder.created_at else None,
-            "updated_at": folder.updated_at.isoformat() if folder.updated_at else None
         }
 
     @staticmethod
