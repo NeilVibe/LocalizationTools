@@ -24,3 +24,4 @@ Build - Simplified GUI test
 Build - Added vgmstream DLLs for audio
 Build - Fixed vgmstream URL
 Build - Fixed import error + drive selector
+Build - Added executable smoke test to CI
