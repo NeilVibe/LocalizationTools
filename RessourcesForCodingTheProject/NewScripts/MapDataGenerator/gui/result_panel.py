@@ -145,6 +145,7 @@ class ResultPanel(ttk.Frame):
         self._on_select = on_select
         self._on_double_click = on_double_click
         self._results: List[SearchResult] = []
+        self._results_by_strkey: Dict[str, SearchResult] = {}  # O(1) lookup
         self._total_count = 0
         self._has_more = False
         self._current_mode = "map"
@@ -163,6 +164,23 @@ class ResultPanel(ttk.Frame):
         self._detail_collapsed = tk.BooleanVar(value=False)
 
         self._create_widgets()
+
+    def destroy(self) -> None:
+        """Clean up resources before destruction."""
+        if self._tooltip_scheduled:
+            self.after_cancel(self._tooltip_scheduled)
+            self._tooltip_scheduled = None
+        if self._tooltip:
+            self._tooltip.hide()
+        super().destroy()
+
+    def _truncate(self, text: str) -> str:
+        """Truncate text for display (handles None and empty)."""
+        if not text:
+            return ""
+        if len(text) > self.TRUNCATE_THRESHOLD:
+            return text[:self.TRUNCATE_THRESHOLD - 3] + "..."
+        return text
 
     def _create_widgets(self) -> None:
         """Create panel widgets."""
@@ -555,10 +573,12 @@ class ResultPanel(ttk.Frame):
         if strkey in self._full_text_cache:
             full_text = self._full_text_cache[strkey].get(col_id)
             if full_text and len(full_text) > self.TRUNCATE_THRESHOLD:
+                # Capture values explicitly (not by reference)
+                tip_x, tip_y = event.x_root + 10, event.y_root + 10
                 # Schedule tooltip display after short delay
                 self._tooltip_scheduled = self.after(
                     500,  # 500ms delay
-                    lambda: self._show_tooltip(full_text, event.x_root + 10, event.y_root + 10)
+                    lambda x=tip_x, y=tip_y, text=full_text: self._show_tooltip(text, x, y)
                 )
 
     def _show_tooltip(self, text: str, x: int, y: int) -> None:
@@ -589,12 +609,15 @@ class ResultPanel(ttk.Frame):
             has_more: Whether there are more results to load
         """
         self._results = results
+        self._results_by_strkey = {r.strkey: r for r in results}  # O(1) lookup
         self._total_count = total_count if total_count else len(results)
         self._has_more = has_more
 
-        # Clear existing items
-        for item in self._tree.get_children():
-            self._tree.delete(item)
+        # Clear existing items and cache (bulk delete - single Tcl call)
+        children = self._tree.get_children()
+        if children:
+            self._tree.delete(*children)
+        self._full_text_cache.clear()
 
         # Add new items
         for result in results:
@@ -605,6 +628,10 @@ class ResultPanel(ttk.Frame):
 
         # Update load more button
         self._load_more_btn.config(state="normal" if has_more else "disabled")
+
+        # Clear detail panel if no results
+        if not results:
+            self._update_detail_panel(None)
 
     def _insert_result(self, result: SearchResult) -> None:
         """Insert a single result into the tree with ALL column values."""
@@ -626,25 +653,17 @@ class ResultPanel(ttk.Frame):
             self._full_text_cache[result.strkey]['desc'] = result.desc_kr or ""  # KOR script
             self._full_text_cache[result.strkey]['name_tr'] = result.desc_translated or ""  # ENG script
 
-        # Helper to truncate text (handles None and empty)
-        def truncate(text: str) -> str:
-            if not text:
-                return ""
-            if len(text) > self.TRUNCATE_THRESHOLD:
-                return text[:self.TRUNCATE_THRESHOLD - 3] + "..."
-            return text
-
         # Build values tuple for ALL columns (in order of ALL_COLUMN_DEFS)
         cache = self._full_text_cache[result.strkey]
         values = (
-            truncate(cache['name_kr']),
-            truncate(cache['name_tr']),
-            truncate(cache['desc']),
-            truncate(cache['position']),
+            self._truncate(cache['name_kr']),
+            self._truncate(cache['name_tr']),
+            self._truncate(cache['desc']),
+            self._truncate(cache['position']),
             cache['strkey'],
-            truncate(cache['use_macro']),
+            self._truncate(cache['use_macro']),
             cache['age'],
-            truncate(cache['job']),
+            self._truncate(cache['job']),
             cache['string_id'],
         )
 
@@ -675,10 +694,11 @@ class ResultPanel(ttk.Frame):
             has_more: Whether there are more results to load
         """
         self._results.extend(results)
-        self._has_more = has_more
-
+        # Update O(1) lookup dict
         for result in results:
+            self._results_by_strkey[result.strkey] = result
             self._insert_result(result)
+        self._has_more = has_more
 
         self._update_count_label()
         self._load_more_btn.config(state="normal" if has_more else "disabled")
@@ -698,6 +718,7 @@ class ResultPanel(ttk.Frame):
             self._tree.delete(*children)
 
         self._results = []
+        self._results_by_strkey.clear()  # Clear O(1) lookup dict
         self._total_count = 0
         self._has_more = False
         self._full_text_cache.clear()
@@ -721,12 +742,10 @@ class ResultPanel(ttk.Frame):
         selection = self._tree.selection()
         if selection:
             strkey = selection[0]
-            for result in self._results:
-                if result.strkey == strkey:
-                    self._on_select(result)
-                    # Update detail panel
-                    self._update_detail_panel(result)
-                    break
+            result = self._results_by_strkey.get(strkey)  # O(1) lookup
+            if result:
+                self._on_select(result)
+                self._update_detail_panel(result)
         else:
             self._update_detail_panel(None)
 
@@ -735,10 +754,9 @@ class ResultPanel(ttk.Frame):
         selection = self._tree.selection()
         if selection:
             strkey = selection[0]
-            for result in self._results:
-                if result.strkey == strkey:
-                    self._on_double_click(result)
-                    break
+            result = self._results_by_strkey.get(strkey)  # O(1) lookup
+            if result:
+                self._on_double_click(result)
 
     def _sort_column(self, col: str) -> None:
         """Sort by column."""
@@ -766,9 +784,7 @@ class ResultPanel(ttk.Frame):
         selection = self._tree.selection()
         if selection:
             strkey = selection[0]
-            for result in self._results:
-                if result.strkey == strkey:
-                    return result
+            return self._results_by_strkey.get(strkey)  # O(1) lookup
         return None
 
     @property
@@ -814,7 +830,15 @@ class ResultPanel(ttk.Frame):
 
         Args:
             mode: 'map', 'character', 'item', or 'audio'
+
+        Raises:
+            ValueError: If mode is not valid
         """
+        # Validate mode
+        valid_modes = tuple(MODE_DISPLAY_COLUMNS.keys())
+        if mode not in valid_modes:
+            raise ValueError(f"Invalid mode '{mode}'. Must be one of: {valid_modes}")
+
         self._current_mode = mode
         self.set_mode_headers(mode)
         self.clear()  # Clear tree, cache, and selection state
