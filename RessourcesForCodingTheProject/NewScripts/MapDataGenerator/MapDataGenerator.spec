@@ -19,6 +19,7 @@ a = Analysis(
     pathex=[str(spec_dir)],
     binaries=[],
     datas=[
+        ('tools', 'tools'),  # vgmstream audio converter
         # Include any data files if needed
     ],
     hiddenimports=[
