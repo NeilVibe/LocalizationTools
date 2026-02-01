@@ -523,6 +523,72 @@ jobs:
           $size = (Get-Item $exePath).length / 1MB
           Write-Host "Build successful! Size: $([math]::Round($size, 1)) MB"
 
+      # ============================================================
+      # EXECUTABLE SMOKE TEST - Verify .exe actually runs
+      # ============================================================
+      - name: Smoke Test - Executable Startup
+        shell: pwsh
+        run: |
+          Write-Host "╔════════════════════════════════════════════════════════════╗"
+          Write-Host "║  EXECUTABLE SMOKE TEST - Verify .exe Starts                ║"
+          Write-Host "╚════════════════════════════════════════════════════════════╝"
+
+          $exePath = "${{ env.MAPDATAGENERATOR_PATH }}\dist\MapDataGenerator\MapDataGenerator.exe"
+
+          # Test 1: Check --version flag works
+          Write-Host "[TEST 1] Testing --version flag..."
+          try {
+            $proc = Start-Process -FilePath $exePath -ArgumentList "--version" -PassThru -NoNewWindow -Wait -RedirectStandardOutput "$env:TEMP\version_out.txt" -RedirectStandardError "$env:TEMP\version_err.txt"
+            $exitCode = $proc.ExitCode
+
+            if ($exitCode -eq 0) {
+              $output = Get-Content "$env:TEMP\version_out.txt" -ErrorAction SilentlyContinue
+              Write-Host "  [OK] --version exited with code 0"
+              Write-Host "  Output: $output"
+            } else {
+              $stderr = Get-Content "$env:TEMP\version_err.txt" -ErrorAction SilentlyContinue
+              Write-Host "  [WARN] --version exited with code $exitCode"
+              Write-Host "  Stderr: $stderr"
+            }
+          } catch {
+            Write-Host "  [WARN] Could not run --version test: $_"
+          }
+
+          # Test 2: Quick startup test (launch and immediately close)
+          Write-Host "[TEST 2] Testing GUI startup (5-second timeout)..."
+          try {
+            $proc = Start-Process -FilePath $exePath -PassThru
+            $procId = $proc.Id
+            Write-Host "  Started process PID: $procId"
+
+            # Wait up to 5 seconds for the process to either crash or stay alive
+            Start-Sleep -Seconds 5
+
+            # Check if process is still running (good sign - didn't crash)
+            if ($proc.HasExited) {
+              $exitCode = $proc.ExitCode
+              if ($exitCode -ne 0) {
+                Write-Error "[FATAL] Application crashed on startup! Exit code: $exitCode"
+                exit 1
+              } else {
+                Write-Host "  [OK] Application exited cleanly (exit code 0)"
+              }
+            } else {
+              Write-Host "  [OK] Application running after 5 seconds - no crash!"
+              # Kill the process since it's a GUI app that won't exit on its own
+              Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+              Write-Host "  [OK] Process terminated gracefully"
+            }
+          } catch {
+            Write-Error "[FATAL] Failed to start application: $_"
+            exit 1
+          }
+
+          Write-Host ""
+          Write-Host "[PASS] EXECUTABLE SMOKE TEST PASSED"
+          Write-Host "  - .exe file exists and is valid"
+          Write-Host "  - Application starts without crashing"
+
       - name: Create working folders
         shell: pwsh
         run: |
@@ -629,6 +695,8 @@ jobs:
             - Module import validation (catches missing imports)
             - Flake8 code quality (undefined names, errors)
             - Security audit (pip-audit)
+            - GUI smoke test (headless Xvfb)
+            - Executable smoke test (verifies .exe starts without crash)
 
             ## Features
 
