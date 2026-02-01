@@ -16,42 +16,31 @@ Features:
 """
 
 import logging
+import sys
 import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from typing import Optional
 
-try:
-    from config import (
-        APP_NAME, VERSION, get_settings, save_settings, load_settings,
-        get_ui_text, Settings, LANGUAGES, LANGUAGE_NAMES,
-        DATA_MODES, DEFAULT_MODE
-    )
-    from core.linkage import LinkageResolver, DataMode
-    from core.language import LanguageManager
-    from core.search import SearchEngine, SearchResult
-    from core.audio_handler import AudioHandler
-    from gui.search_panel import SearchPanel
-    from gui.result_panel import ResultPanel
-    from gui.image_viewer import ImageViewer
-    from gui.audio_viewer import AudioViewer
-    from gui.map_canvas import MapCanvas
-except ImportError:
-    from ..config import (
-        APP_NAME, VERSION, get_settings, save_settings, load_settings,
-        get_ui_text, Settings, LANGUAGES, LANGUAGE_NAMES,
-        DATA_MODES, DEFAULT_MODE
-    )
-    from ..core.linkage import LinkageResolver, DataMode
-    from ..core.language import LanguageManager
-    from ..core.search import SearchEngine, SearchResult
-    from ..core.audio_handler import AudioHandler
-    from .search_panel import SearchPanel
-    from .result_panel import ResultPanel
-    from .image_viewer import ImageViewer
-    from .audio_viewer import AudioViewer
-    from .map_canvas import MapCanvas
+# Ensure parent directory is in sys.path for PyInstaller compatibility
+# This is the QACompiler pattern - add parent BEFORE imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from config import (
+    APP_NAME, VERSION, get_settings, save_settings, load_settings,
+    get_ui_text, Settings, LANGUAGES, LANGUAGE_NAMES,
+    DATA_MODES, DEFAULT_MODE
+)
+from core.linkage import LinkageResolver, DataMode
+from core.language import LanguageManager
+from core.search import SearchEngine, SearchResult
+from core.audio_handler import AudioHandler
+from gui.search_panel import SearchPanel
+from gui.result_panel import ResultPanel
+from gui.image_viewer import ImageViewer
+from gui.audio_viewer import AudioViewer
+from gui.map_canvas import MapCanvas
 
 
 log = logging.getLogger(__name__)

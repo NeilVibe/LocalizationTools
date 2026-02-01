@@ -8,14 +8,16 @@ Provides the search interface with:
 - Search button
 """
 
+import sys
 import tkinter as tk
 from tkinter import ttk
+from pathlib import Path
 from typing import Callable, Optional
 
-try:
-    from config import LANGUAGES, LANGUAGE_NAMES, get_ui_text, get_settings
-except ImportError:
-    from ..config import LANGUAGES, LANGUAGE_NAMES, get_ui_text, get_settings
+# Ensure parent directory is in sys.path for PyInstaller compatibility
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from config import LANGUAGES, LANGUAGE_NAMES, get_ui_text, get_settings
 
 
 class SearchPanel(ttk.Frame):

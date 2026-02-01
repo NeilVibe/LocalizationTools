@@ -6,18 +6,18 @@ Prioritizes entries with images but shows all results.
 """
 
 import logging
+import sys
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import List, Optional, Dict, Tuple, Union
 
+# Ensure parent directory is in sys.path for PyInstaller compatibility
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from .linkage import LinkageResolver, DataMode, DataEntry
 from .language import LanguageTable, get_translation
-
-try:
-    from utils.filters import normalize_for_search, contains_korean
-except ImportError:
-    from ..utils.filters import normalize_for_search, contains_korean
+from utils.filters import normalize_for_search, contains_korean
 
 log = logging.getLogger(__name__)
 

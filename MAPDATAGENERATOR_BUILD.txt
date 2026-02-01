@@ -29,3 +29,4 @@ Build - Fix ISS preprocessor issue (avoid #13#10 at line start)
 Build - Match QACompiler ISS pattern exactly (all strings inline)
 Build - FIX: Remove unittest from excludes, exclude pyparsing.testing instead
 Build - FIX: Don't exclude pyparsing.testing either (pyparsing needs it!)
+Build - MAJOR FIX: Remove ALL try/except relative imports, use QACompiler pattern

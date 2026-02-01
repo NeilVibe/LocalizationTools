@@ -7,6 +7,7 @@ Large image display with dynamic sizing:
 - Click to open full-size modal
 """
 
+import sys
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
@@ -14,23 +15,15 @@ from typing import Optional, Tuple
 
 from PIL import Image, ImageTk
 
-try:
-    from config import get_ui_text, THUMBNAIL_SIZE, MAX_INLINE_IMAGE_SIZE
-except ImportError:
-    from ..config import get_ui_text, THUMBNAIL_SIZE, MAX_INLINE_IMAGE_SIZE
+# Ensure parent directory is in sys.path for PyInstaller compatibility
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-try:
-    from core.dds_handler import (
-        load_dds_thumbnail,
-        load_dds_full,
-        create_placeholder_image
-    )
-except ImportError:
-    from ..core.dds_handler import (
-        load_dds_thumbnail,
-        load_dds_full,
-        create_placeholder_image
-    )
+from config import get_ui_text, THUMBNAIL_SIZE, MAX_INLINE_IMAGE_SIZE
+from core.dds_handler import (
+    load_dds_thumbnail,
+    load_dds_full,
+    create_placeholder_image
+)
 
 
 class ImageViewer(ttk.Frame):
