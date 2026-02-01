@@ -28,3 +28,4 @@ Build - Added executable smoke test to CI
 Build - Fix ISS preprocessor issue (avoid #13#10 at line start)
 Build - Match QACompiler ISS pattern exactly (all strings inline)
 Build - FIX: Remove unittest from excludes, exclude pyparsing.testing instead
+Build - FIX: Don't exclude pyparsing.testing either (pyparsing needs it!)

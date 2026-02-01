@@ -44,9 +44,10 @@ a = Analysis(
     excludes=[
         'pytest',
         'test',
-        # DO NOT exclude 'unittest' - pyparsing.testing needs it!
-        # Instead, exclude pyparsing.testing which is not needed at runtime
-        'pyparsing.testing',
+        # DO NOT exclude 'unittest' or 'pyparsing.testing'!
+        # pyparsing.__init__ unconditionally imports pyparsing.testing
+        # pyparsing.testing needs unittest
+        # Both are required for matplotlib to work
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
