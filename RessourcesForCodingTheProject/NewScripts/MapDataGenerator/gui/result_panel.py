@@ -14,16 +14,17 @@ Features:
 - Mode-specific column defaults
 """
 
+import sys
 import tkinter as tk
 from tkinter import ttk
+from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-try:
-    from config import get_ui_text
-    from core.search import SearchResult
-except ImportError:
-    from ..config import get_ui_text
-    from ..core.search import SearchResult
+# Ensure parent directory is in sys.path for PyInstaller compatibility
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from config import get_ui_text
+from core.search import SearchResult
 
 
 # =============================================================================

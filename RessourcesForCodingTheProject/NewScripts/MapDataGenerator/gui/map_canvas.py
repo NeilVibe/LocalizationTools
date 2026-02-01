@@ -4,8 +4,10 @@ Map Canvas Module (SIMPLIFIED)
 Shows nodes on a 2D scatter plot - no routes, just positions.
 """
 
+import sys
 import tkinter as tk
 from tkinter import ttk
+from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
 import matplotlib
@@ -14,14 +16,12 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 
-try:
-    from config import get_ui_text
-    from core.linkage import LinkageResolver
-    from core.language import LanguageTable, get_translation
-except ImportError:
-    from ..config import get_ui_text
-    from ..core.linkage import LinkageResolver
-    from ..core.language import LanguageTable, get_translation
+# Ensure parent directory is in sys.path for PyInstaller compatibility
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from config import get_ui_text
+from core.linkage import LinkageResolver
+from core.language import LanguageTable, get_translation
 
 
 class MapCanvas(ttk.Frame):

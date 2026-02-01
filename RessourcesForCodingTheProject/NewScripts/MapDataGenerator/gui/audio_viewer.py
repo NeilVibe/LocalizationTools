@@ -10,17 +10,17 @@ Display panel for audio playback in AUDIO mode:
 """
 
 import logging
+import sys
 import tkinter as tk
 from tkinter import ttk, messagebox
 from pathlib import Path
 from typing import Callable, Optional
 
-try:
-    from config import get_ui_text
-    from core.audio_handler import AudioHandler
-except ImportError:
-    from ..config import get_ui_text
-    from ..core.audio_handler import AudioHandler
+# Ensure parent directory is in sys.path for PyInstaller compatibility
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from config import get_ui_text
+from core.audio_handler import AudioHandler
 
 
 log = logging.getLogger(__name__)

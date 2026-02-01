@@ -6,15 +6,15 @@ Handles loading language tables from LanguageData_*.xml files.
 """
 
 import logging
+import sys
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
-from .xml_parser import parse_xml, iter_xml_files
+# Ensure parent directory is in sys.path for PyInstaller compatibility
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-try:
-    from utils.filters import normalize_placeholders, is_good_translation
-except ImportError:
-    from ..utils.filters import normalize_placeholders, is_good_translation
+from .xml_parser import parse_xml, iter_xml_files
+from utils.filters import normalize_placeholders, is_good_translation
 
 log = logging.getLogger(__name__)
 
