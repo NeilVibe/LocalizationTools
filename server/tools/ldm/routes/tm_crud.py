@@ -9,6 +9,10 @@ P9-ARCH: Uses Repository Pattern for database abstraction.
 - Online mode: PostgreSQLTMRepository
 - Offline mode: SQLiteTMRepository
 
+EMB-001: Auto-build embeddings+index on TM upload
+- After upload, automatically triggers background indexing
+- User uploads TM -> automatically ready for semantic search
+
 Note: Upload and Export operations use TMManager directly (complex file parsing).
 The Repository pattern handles simpler CRUD operations.
 
@@ -17,22 +21,26 @@ Migrated from api.py lines 1195-1365, 1871-1936
 
 import asyncio
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, BackgroundTasks, Request
 from fastapi.responses import Response
 from loguru import logger
 
 from server.utils.dependencies import get_current_active_user_async, get_db
-from server.database.models import LDMTranslationMemory
 from server.tools.ldm.schemas import TMResponse, TMUploadResponse, DeleteResponse
 
 # Repository Pattern imports
 from server.repositories import TMRepository, get_tm_repository
+
+# EMB-001: Auto-indexing service
+from server.tools.ldm.services import trigger_auto_indexing
 
 router = APIRouter(tags=["LDM"])
 
 
 @router.post("/tm/upload", response_model=TMUploadResponse)
 async def upload_tm(
+    request: Request,
+    background_tasks: BackgroundTasks,
     name: str = Form(...),
     source_lang: str = Form("ko"),
     target_lang: str = Form("en"),
@@ -45,6 +53,10 @@ async def upload_tm(
     target_col: Optional[int] = Form(None),      # Column index for target (1=B)
     stringid_col: Optional[int] = Form(None),    # Column index for StringID (2=C)
     has_header: Optional[bool] = Form(True),     # Whether first row is header
+    # EMB-001: Auto-indexing option (default True)
+    auto_index: Optional[bool] = Form(True),     # Whether to auto-build indexes after upload
+    # ARCH-002: Repository pattern for name uniqueness check
+    repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -59,24 +71,21 @@ async def upload_tm(
     - standard: Duplicates merged (most frequent target wins)
     - stringid: All variations kept (same source, different StringIDs)
 
+    EMB-001: Auto-indexing
+    - By default, automatically builds embeddings and FAISS indexes after upload
+    - Set auto_index=false to skip (manual indexing required later)
+
     Performance: ~20,000+ entries/second bulk insert
     """
     filename = file.filename or "unknown"
     ext = filename.lower().split('.')[-1] if '.' in filename else ''
 
-    # UI-077 FIX: Check for duplicate TM name (globally unique - DESIGN-001)
-    sync_db = next(get_db())
-    try:
-        existing_tm = sync_db.query(LDMTranslationMemory).filter(
-            LDMTranslationMemory.name == name
-        ).first()
-        if existing_tm:
-            raise HTTPException(
-                status_code=400,
-                detail=f"A Translation Memory named '{name}' already exists. Please use a different name."
-            )
-    finally:
-        sync_db.close()
+    # UI-077 FIX + ARCH-002: Check for duplicate TM name via repository (factory pattern)
+    if await repo.check_name_exists(name):
+        raise HTTPException(
+            status_code=400,
+            detail=f"A Translation Memory named '{name}' already exists. Please use a different name."
+        )
 
     if ext not in ('txt', 'tsv', 'xml', 'xlsx', 'xls'):
         raise HTTPException(
@@ -84,7 +93,7 @@ async def upload_tm(
             detail=f"Unsupported TM format: {ext}. Use TXT, TSV, XML, or XLSX."
         )
 
-    logger.info(f"[TM] TM upload started: name={name}, file={filename}, user={current_user['user_id']}")
+    logger.info(f"[TM] TM upload started: name={name}, file={filename}, user={current_user['user_id']}, auto_index={auto_index}")
 
     # TASK-001: Add TrackedOperation for progress tracking
     user_id = current_user["user_id"]
@@ -135,6 +144,26 @@ async def upload_tm(
                 sync_db.close()
 
         result = await asyncio.to_thread(_upload_tm)
+        
+        # EMB-001: Trigger auto-indexing in background
+        if auto_index and result.get("tm_id"):
+            tm_id = result["tm_id"]
+            logger.info(f"[EMB-001] Scheduling auto-indexing for TM {tm_id}")
+            
+            # Add to FastAPI background tasks
+            # This runs AFTER the response is sent to the client
+            background_tasks.add_task(
+                trigger_auto_indexing,
+                tm_id=tm_id,
+                user_id=user_id,
+                username=username,
+                silent=True  # No toast for auto-operations
+            )
+            
+            # Update response to indicate indexing is scheduled
+            result["indexing_status"] = "scheduled"
+            logger.info(f"[EMB-001] Auto-indexing scheduled for TM {tm_id}")
+        
         return result
 
     except ValueError as e:

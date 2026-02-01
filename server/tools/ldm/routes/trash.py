@@ -8,20 +8,13 @@ P10: FULL ABSTRACT + REPO Pattern
 P10-REPO: Migrated to Repository Pattern (2026-01-13)
 - move_to_trash uses TrashRepository.create()
 - _restore_* functions use entity repositories
-- serialize_* helper functions (legacy) - use _serialize_*_for_trash_repo in route files instead
 """
 
-from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from loguru import logger
 
 from server.utils.dependencies import get_current_active_user_async
-from server.database.models import (
-    LDMProject, LDMFolder, LDMFile, LDMRow, LDMTrash, LDMPlatform
-)
 from server.repositories import (
     TrashRepository, get_trash_repository,
     FileRepository, get_file_repository,
@@ -227,7 +220,7 @@ async def move_to_trash(
     Move an item to trash instead of deleting it.
     Called by the modified delete endpoints.
 
-    P10-REPO: Uses TrashRepository.create() instead of direct LDMTrash model.
+    P10-REPO: Uses TrashRepository.create() instead of direct model access.
     """
     trash_item = await trash_repo.create(
         item_type=item_type,
@@ -240,125 +233,6 @@ async def move_to_trash(
         retention_days=TRASH_RETENTION_DAYS
     )
     return trash_item
-
-
-async def serialize_file_for_trash(db: AsyncSession, file: LDMFile) -> dict:
-    """Serialize a file and its rows for trash storage."""
-    # Get all rows for this file
-    result = await db.execute(
-        select(LDMRow).where(LDMRow.file_id == file.id)
-    )
-    rows = result.scalars().all()
-
-    return {
-        "name": file.name,
-        "original_filename": file.original_filename,
-        "format": file.format,
-        "source_language": file.source_language,
-        "target_language": file.target_language,
-        "row_count": file.row_count,
-        "extra_data": file.extra_data,
-        "rows": [
-            {
-                "row_num": r.row_num,
-                "string_id": r.string_id,
-                "source": r.source,
-                "target": r.target,
-                "status": r.status,
-                "extra_data": r.extra_data
-            }
-            for r in rows
-        ]
-    }
-
-
-async def serialize_folder_for_trash(db: AsyncSession, folder: LDMFolder) -> dict:
-    """Serialize a folder and all its contents for trash storage."""
-    # Get files in this folder
-    result = await db.execute(
-        select(LDMFile).where(LDMFile.folder_id == folder.id)
-    )
-    files = result.scalars().all()
-
-    # Serialize each file
-    files_data = []
-    for file in files:
-        files_data.append(await serialize_file_for_trash(db, file))
-
-    # Get subfolders
-    result = await db.execute(
-        select(LDMFolder).where(LDMFolder.parent_id == folder.id)
-    )
-    subfolders = result.scalars().all()
-
-    # Recursively serialize subfolders
-    subfolders_data = []
-    for subfolder in subfolders:
-        subfolders_data.append(await serialize_folder_for_trash(db, subfolder))
-
-    return {
-        "name": folder.name,
-        "files": files_data,
-        "subfolders": subfolders_data
-    }
-
-
-async def serialize_project_for_trash(db: AsyncSession, project: LDMProject) -> dict:
-    """Serialize a project and all its contents for trash storage."""
-    # Get root folders (folders with no parent)
-    result = await db.execute(
-        select(LDMFolder).where(
-            LDMFolder.project_id == project.id,
-            LDMFolder.parent_id.is_(None)
-        )
-    )
-    folders = result.scalars().all()
-
-    folders_data = []
-    for folder in folders:
-        folders_data.append(await serialize_folder_for_trash(db, folder))
-
-    # Get root files (files with no folder)
-    result = await db.execute(
-        select(LDMFile).where(
-            LDMFile.project_id == project.id,
-            LDMFile.folder_id.is_(None)
-        )
-    )
-    files = result.scalars().all()
-
-    files_data = []
-    for file in files:
-        files_data.append(await serialize_file_for_trash(db, file))
-
-    return {
-        "name": project.name,
-        "description": project.description,
-        "platform_id": project.platform_id,
-        "is_restricted": project.is_restricted,
-        "folders": folders_data,
-        "files": files_data
-    }
-
-
-async def serialize_platform_for_trash(db: AsyncSession, platform: LDMPlatform) -> dict:
-    """Serialize a platform and all its projects for trash storage."""
-    # Get all projects in this platform
-    result = await db.execute(
-        select(LDMProject).where(LDMProject.platform_id == platform.id)
-    )
-    projects = result.scalars().all()
-
-    projects_data = []
-    for project in projects:
-        projects_data.append(await serialize_project_for_trash(db, project))
-
-    return {
-        "name": platform.name,
-        "description": platform.description,
-        "is_restricted": platform.is_restricted,
-        "projects": projects_data
-    }
 
 
 # ============== Restore Functions (P10-REPO) ==============

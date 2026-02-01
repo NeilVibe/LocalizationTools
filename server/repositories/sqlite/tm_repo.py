@@ -1126,3 +1126,21 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
         except Exception as e:
             logger.error(f"[TM-REPO-SQLITE] FAISS search failed: {e}")
             return []
+
+    # =========================================================================
+    # Name Validation (ARCH-002: Factory pattern compliance)
+    # =========================================================================
+
+    async def check_name_exists(self, name: str) -> bool:
+        """
+        Check if a TM with the given name already exists.
+
+        ARCH-002: Replaces direct database access in routes for factory compliance.
+        """
+        async with self.db._get_async_connection() as conn:
+            cursor = await conn.execute(
+                f"SELECT 1 FROM {self._table('tms')} WHERE name = ? LIMIT 1",
+                (name,)
+            )
+            row = await cursor.fetchone()
+            return row is not None
