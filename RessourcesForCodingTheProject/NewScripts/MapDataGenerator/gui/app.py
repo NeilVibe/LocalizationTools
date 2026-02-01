@@ -331,17 +331,22 @@ class MapDataGeneratorApp:
                     loc_folder=Path(settings.loc_folder),
                     mode=new_mode,
                 )
-            elif self._texture_folder:
-                # Other modes use texture folder
-                self._start_data_load(
-                    texture_folder=self._texture_folder,
-                    loc_folder=Path(settings.loc_folder),
-                    faction_folder=Path(settings.faction_folder),
-                    knowledge_folder=Path(settings.knowledge_folder),
-                    waypoint_folder=Path(settings.waypoint_folder),
-                    character_folder=Path(settings.character_folder),
-                    mode=new_mode,
-                )
+            else:
+                # Other modes use texture folder from settings (or cached value)
+                texture_folder = self._texture_folder or Path(settings.texture_folder)
+                if texture_folder.exists():
+                    self._start_data_load(
+                        texture_folder=texture_folder,
+                        loc_folder=Path(settings.loc_folder),
+                        faction_folder=Path(settings.faction_folder),
+                        knowledge_folder=Path(settings.knowledge_folder),
+                        waypoint_folder=Path(settings.waypoint_folder),
+                        character_folder=Path(settings.character_folder),
+                        mode=new_mode,
+                    )
+                else:
+                    log.warning("Texture folder not found: %s", texture_folder)
+                    self._progress_var.set("Texture folder not found - use File > Load Data")
         elif self._search_engine:
             # Data already loaded, just update search engine mode
             self._search_engine.set_mode(new_mode)
