@@ -470,6 +470,42 @@ jobs:
             Write-Host "[OK] Updated: $configPath"
           }
 
+      - name: Download vgmstream
+        shell: pwsh
+        run: |
+          $mdgPath = "${{ env.MAPDATAGENERATOR_PATH }}"
+          $toolsDir = "$mdgPath\tools"
+          $zipPath = "$mdgPath\vgmstream-win64.zip"
+          $vgmUrl = "https://github.com/vgmstream/vgmstream/releases/download/r2002/vgmstream-win64.zip"
+          
+          Write-Host "=== DOWNLOADING VGMSTREAM ==="
+          
+          # Create tools directory
+          New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
+          Write-Host "[OK] Created: $toolsDir"
+          
+          # Download vgmstream
+          Write-Host "Downloading from: $vgmUrl"
+          Invoke-WebRequest -Uri $vgmUrl -OutFile $zipPath -UseBasicParsing
+          Write-Host "[OK] Downloaded: $zipPath"
+          
+          # Extract to tools folder
+          Expand-Archive -Path $zipPath -DestinationPath $toolsDir -Force
+          Write-Host "[OK] Extracted to: $toolsDir"
+          
+          # Verify vgmstream-cli.exe exists
+          $vgmCli = "$toolsDir\vgmstream-cli.exe"
+          if (Test-Path $vgmCli) {
+            Write-Host "[OK] vgmstream-cli.exe verified"
+          } else {
+            Write-Error "vgmstream-cli.exe not found after extraction!"
+            exit 1
+          }
+          
+          # Clean up zip
+          Remove-Item $zipPath -Force
+          Write-Host "[OK] Cleaned up zip file"
+
       - name: Build executable with PyInstaller
         shell: pwsh
         run: |
