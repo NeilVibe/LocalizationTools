@@ -11,6 +11,7 @@ Also tracks SUCCESS/FAIL for each correction to update the Progress Tracker.
 import html
 import os
 import re
+import stat
 import logging
 from pathlib import Path
 from datetime import datetime
@@ -30,8 +31,9 @@ def normalize_text(txt: Optional[str]) -> str:
     1. Unescape HTML entities (&lt; -> <, &amp; -> &, etc.)
     2. Strip leading/trailing whitespace
     3. Collapse all internal whitespace (spaces, tabs, newlines) to single space
+    4. Remove &desc; markers (legacy description prefix)
 
-    This is the same normalization used in translatexmlstable7.py.
+    This is the same normalization used in translatexmlstable7.py and tmxtransfer11.py.
 
     Args:
         txt: Text to normalize
@@ -45,21 +47,44 @@ def normalize_text(txt: Optional[str]) -> str:
     txt = html.unescape(str(txt))
     # Collapse all whitespace to single space and strip
     txt = re.sub(r'\s+', ' ', txt.strip())
+    # Remove &desc; markers (case-insensitive)
+    if txt.lower().startswith("&desc;"):
+        txt = txt[6:].lstrip()
+    elif txt.lower().startswith("&amp;desc;"):
+        txt = txt[10:].lstrip()
     return txt
+
+
+def normalize_nospace(txt: str) -> str:
+    """
+    Remove ALL whitespace from text for fallback matching.
+
+    Used when exact match fails but text differs only in whitespace placement.
+    Same pattern as translatexmlstable7.py nospace fallback.
+
+    Args:
+        txt: Already normalized text
+
+    Returns:
+        Text with all whitespace removed
+    """
+    return re.sub(r'\s+', '', txt)
 
 
 def _detect_column_indices(ws) -> Dict[str, int]:
     """
-    Detect column indices from header row.
+    Detect column indices from header row (CASE INSENSITIVE).
 
-    Returns dict mapping column name to 1-based index.
+    Returns dict mapping LOWERCASE column name to 1-based index.
+    This ensures headers like "StringID", "STRINGID", "stringid" all work.
     """
     indices = {}
     first_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))
     if first_row and first_row[0]:
         for col, header in enumerate(first_row[0], 1):
             if header:
-                indices[str(header).strip()] = col
+                # Store lowercase key for case-insensitive lookup
+                indices[str(header).strip().lower()] = col
     return indices
 
 
@@ -83,9 +108,10 @@ def parse_corrections_from_excel(excel_path: Path) -> List[Dict]:
 
         col_indices = _detect_column_indices(ws)
 
-        str_origin_col = col_indices.get("StrOrigin")
-        correction_col = col_indices.get("Correction")
-        stringid_col = col_indices.get("StringID")
+        # Use lowercase keys for case-insensitive matching
+        str_origin_col = col_indices.get("strorigin")
+        correction_col = col_indices.get("correction")
+        stringid_col = col_indices.get("stringid")
 
         if not all([str_origin_col, correction_col, stringid_col]):
             logger.warning(
@@ -153,10 +179,16 @@ def merge_corrections_to_locdev(
         return result
 
     # Build lookup: (StringID, normalized_StrOrigin) -> corrected_text
-    correction_lookup = {
-        (c["string_id"], normalize_text(c["str_origin"])): c["corrected"]
-        for c in corrections
-    }
+    correction_lookup = {}
+    correction_lookup_nospace = {}  # Fallback for whitespace variations
+
+    for c in corrections:
+        sid = c["string_id"]
+        origin_norm = normalize_text(c["str_origin"])
+        origin_nospace = normalize_nospace(origin_norm)
+
+        correction_lookup[(sid, origin_norm)] = c["corrected"]
+        correction_lookup_nospace[(sid, origin_nospace)] = c["corrected"]
 
     try:
         # Parse XML with recovery mode
@@ -174,11 +206,20 @@ def merge_corrections_to_locdev(
         for loc in root.iter("LocStr"):
             sid = loc.get("StringId", "").strip()
             orig = normalize_text(loc.get("StrOrigin", ""))
+            orig_nospace = normalize_nospace(orig)
             key = (sid, orig)
+            key_nospace = (sid, orig_nospace)
 
+            # Try exact match first, then nospace fallback
+            new_str = None
             if key in correction_lookup:
-                result["matched"] += 1
                 new_str = correction_lookup[key]
+            elif key_nospace in correction_lookup_nospace:
+                new_str = correction_lookup_nospace[key_nospace]
+                logger.debug(f"Matched via nospace fallback: StringId={sid}")
+
+            if new_str is not None:
+                result["matched"] += 1
                 old_str = loc.get("Str", "")
 
                 if new_str != old_str:
@@ -192,6 +233,15 @@ def merge_corrections_to_locdev(
         result["not_found"] = len(corrections) - result["matched"]
 
         if changed and not dry_run:
+            # Make file writable if read-only (LOC folder files are often read-only)
+            try:
+                current_mode = os.stat(xml_path).st_mode
+                if not current_mode & stat.S_IWRITE:
+                    os.chmod(xml_path, current_mode | stat.S_IWRITE)
+                    logger.debug(f"Made {xml_path.name} writable")
+            except Exception as e:
+                logger.warning(f"Could not make {xml_path.name} writable: {e}")
+
             tree.write(str(xml_path), encoding="utf-8", xml_declaration=False, pretty_print=True)
             logger.info(f"Saved {xml_path.name}: {result['updated']} entries updated")
 
