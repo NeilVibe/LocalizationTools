@@ -42,3 +42,4 @@ Build 521: Fix aiosqlite await statements in sync_service + sync.py
 Build 522: Fix TM model attribute names + all sync tests pass
 Build 523
 Build 524
+Build 525 - UX fixes + Architecture cleanup
