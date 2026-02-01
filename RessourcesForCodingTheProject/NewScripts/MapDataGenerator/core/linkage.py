@@ -76,6 +76,14 @@ class DataEntry:
     source_file: str = ""
     entry_type: str = ""  # Type of entry (for sorting)
 
+    # CHARACTER-specific fields
+    use_macro: str = ""  # Race/Gender (e.g., "Macro_NPC_Human_Male")
+    age: str = ""  # Age (e.g., "Adult", "Child")
+    job: str = ""  # Job (e.g., "Job_Scholar")
+
+    # ITEM-specific fields
+    string_id: str = ""  # StringID from language table
+
     @property
     def position_2d(self) -> Optional[Tuple[float, float]]:
         """Get 2D position (x, z) for map display."""
@@ -562,6 +570,11 @@ class LinkageResolver:
                 name_kr = (char.get("CharacterName") or "").strip()
                 group = (char.get("CharacterGroup") or "").strip()
 
+                # Extract CHARACTER-specific fields
+                use_macro = (char.get("UseMacro") or "").strip()
+                age = (char.get("Age") or "").strip()
+                job = (char.get("Job") or "").strip()
+
                 # Get UITextureName from nested Knowledge or UIIconPath
                 ui_texture = ""
                 desc_kr = ""
@@ -595,6 +608,9 @@ class LinkageResolver:
                     group=group,
                     source_file=path.name,
                     entry_type="Character",
+                    use_macro=use_macro,
+                    age=age,
+                    job=job,
                 )
 
                 self._entries[strkey] = entry
