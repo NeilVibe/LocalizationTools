@@ -27,6 +27,9 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+# Ensure package imports work in PyInstaller frozen executables
+sys.path.insert(0, str(Path(__file__).parent))
+
 
 def setup_logging() -> None:
     """Setup logging configuration."""

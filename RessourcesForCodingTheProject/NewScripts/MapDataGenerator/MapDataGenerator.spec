@@ -31,6 +31,12 @@ a = Analysis(
         'matplotlib',
         'matplotlib.backends.backend_tkagg',
         'matplotlib.figure',
+        # Tkinter submodules (required for GUI)
+        'tkinter',
+        'tkinter.ttk',
+        'tkinter.filedialog',
+        'tkinter.messagebox',
+        'tkinter.scrolledtext',
     ],
     hookspath=[],
     hooksconfig={},
