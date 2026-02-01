@@ -1005,6 +1005,7 @@ jobs:
       # This catches issues that only appear after real installation
       # ============================================================
       - name: Test Install (Silent)
+        id: install-test
         run: |
           Write-Host "=== POST-BUILD TEST: Installing app silently ==="
           Write-Host ""
@@ -1018,17 +1019,48 @@ jobs:
 
           Write-Host "Installing: $($installer.Name)"
 
-          # Install silently to temp location
-          # NSIS silent flags: /S for silent, /D= for directory (must be last)
-          $installDir = "$env:TEMP\LocaNext_Test"
-
           # Run NSIS installer silently
-          Start-Process -FilePath $installer.FullName `
-            -ArgumentList "/S", "/D=$installDir" `
-            -Wait -NoNewWindow
+          Start-Process -FilePath $installer.FullName -ArgumentList "/S" -Wait -NoNewWindow
 
           Write-Host "[OK] Installation completed"
-          Write-Host "  Install location: $installDir"
+
+          # NSIS with oneClick=false ignores /D= flag - need to find where it installed
+          # Search possible locations in order of likelihood
+          $searchPaths = @(
+            "$env:LOCALAPPDATA\Programs\LocaNext",      # Per-user default
+            "$env:ProgramFiles\LocaNext",               # All users (unlikely without admin)
+            "${env:ProgramFiles(x86)}\LocaNext"         # x86 fallback
+          )
+
+          $installDir = $null
+          foreach ($path in $searchPaths) {
+            if (Test-Path "$path\LocaNext.exe") {
+              $installDir = $path
+              Write-Host "[FOUND] Installation at: $path"
+              break
+            }
+          }
+
+          if (!$installDir) {
+            # Fallback: search for LocaNext.exe anywhere in common locations
+            Write-Host "[DEBUG] Searching for LocaNext.exe..."
+            $found = Get-ChildItem -Path "$env:LOCALAPPDATA\Programs", "$env:ProgramFiles", "${env:ProgramFiles(x86)}" `
+              -Filter "LocaNext.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+              $installDir = $found.Directory.FullName
+              Write-Host "[FOUND] Installation at: $installDir"
+            }
+          }
+
+          if (!$installDir) {
+            Write-Error "[ERROR] Could not find LocaNext.exe after installation"
+            exit 1
+          }
+
+          # Export for next step
+          "INSTALL_DIR=$installDir" >> $env:GITHUB_OUTPUT
+          Write-Host "  Contents:"
+          Get-ChildItem $installDir -Name | ForEach-Object { Write-Host "    - $_" }
         shell: pwsh
 
       - name: Verify Installation Files
@@ -1036,13 +1068,15 @@ jobs:
           Write-Host "=== Verifying installed files (electron-builder NSIS structure) ==="
           Write-Host ""
 
-          $installDir = "$env:TEMP\LocaNext_Test"
-          # electron-builder extraResources go to: resources/
+          # Use dynamically found install location
+          $installDir = "${{ steps.install-test.outputs.INSTALL_DIR }}"
           $resourcesDir = "$installDir\resources"
+
+          Write-Host "Checking: $installDir"
 
           # Check main executable
           if (!(Test-Path "$installDir\LocaNext.exe")) {
-            Write-Error "[ERROR] LocaNext.exe not found"
+            Write-Error "[ERROR] LocaNext.exe not found at $installDir"
             exit 1
           }
           Write-Host "[OK] LocaNext.exe exists"
@@ -1082,7 +1116,7 @@ jobs:
       - name: Test Backend Can Start (Installed App)
         run: |
           Write-Host "=== Testing backend with INSTALLED embedded Python ==="
-          $installDir = "$env:TEMP\LocaNext_Test"
+          $installDir = "${{ steps.install-test.outputs.INSTALL_DIR }}"
           $resourcesDir = "$installDir\resources"
           $pythonExe = "$resourcesDir\tools\python\python.exe"
           $env:PYTHONPATH = $resourcesDir
@@ -1101,9 +1135,21 @@ jobs:
       - name: Cleanup Test Installation
         if: always()
         run: |
-          $installDir = "$env:TEMP\LocaNext_Test"
+          # Clean up install location (try dynamic, fallback to default)
+          $installDir = "${{ steps.install-test.outputs.INSTALL_DIR }}"
+          if (!$installDir) { $installDir = "$env:LOCALAPPDATA\Programs\LocaNext" }
           if (Test-Path $installDir) {
-            Remove-Item -Recurse -Force $installDir -ErrorAction SilentlyContinue
+            # Run uninstaller if exists
+            $uninstaller = "$installDir\Uninstall LocaNext.exe"
+            if (Test-Path $uninstaller) {
+              Write-Host "Running uninstaller..."
+              Start-Process -FilePath $uninstaller -ArgumentList "/S" -Wait -NoNewWindow -ErrorAction SilentlyContinue
+              Start-Sleep -Seconds 2
+            }
+            # Force remove if still exists
+            if (Test-Path $installDir) {
+              Remove-Item -Recurse -Force $installDir -ErrorAction SilentlyContinue
+            }
             Write-Host "[OK] Test installation cleaned up"
           }
         shell: pwsh
