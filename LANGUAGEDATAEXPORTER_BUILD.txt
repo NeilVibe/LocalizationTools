@@ -43,3 +43,4 @@ Build 20260201-200518 - chmod writable + case-insensitive headers + nospace fall
 Build 20260201-202249 - fix progress tracker worksheet hiding
 Build 20260201-202707 - add missing hiddenimports
 Build 20260201-204054 - per-category tracking
+Build 20260201-205328 - schema migration fix
