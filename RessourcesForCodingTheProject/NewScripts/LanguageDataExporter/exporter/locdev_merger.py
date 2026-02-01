@@ -98,7 +98,7 @@ def parse_corrections_from_excel(excel_path: Path) -> List[Dict]:
         excel_path: Path to the Excel file
 
     Returns:
-        List of dicts with keys: string_id, str_origin, corrected
+        List of dicts with keys: string_id, str_origin, corrected, category
     """
     corrections = []
 
@@ -112,6 +112,7 @@ def parse_corrections_from_excel(excel_path: Path) -> List[Dict]:
         str_origin_col = col_indices.get("strorigin")
         correction_col = col_indices.get("correction")
         stringid_col = col_indices.get("stringid")
+        category_col = col_indices.get("category")  # May be None if not present
 
         if not all([str_origin_col, correction_col, stringid_col]):
             logger.warning(
@@ -126,6 +127,9 @@ def parse_corrections_from_excel(excel_path: Path) -> List[Dict]:
             str_origin = row[str_origin_col - 1] if str_origin_col <= len(row) else None
             correction = row[correction_col - 1] if correction_col <= len(row) else None
             string_id = row[stringid_col - 1] if stringid_col <= len(row) else None
+            category = None
+            if category_col and category_col <= len(row):
+                category = row[category_col - 1]
 
             # Only process rows with a correction value
             if correction and str(correction).strip() and string_id:
@@ -133,6 +137,7 @@ def parse_corrections_from_excel(excel_path: Path) -> List[Dict]:
                     "string_id": str(string_id).strip(),
                     "str_origin": str(str_origin or "").strip(),
                     "corrected": str(correction).strip(),
+                    "category": str(category).strip() if category else "Uncategorized",
                 })
 
         wb.close()
@@ -165,7 +170,8 @@ def merge_corrections_to_locdev(
             "matched": int,
             "updated": int,
             "not_found": int,
-            "errors": List[str]
+            "errors": List[str],
+            "by_category": Dict[str, Dict]  # Per-category breakdown
         }
     """
     result = {
@@ -173,22 +179,31 @@ def merge_corrections_to_locdev(
         "updated": 0,
         "not_found": 0,
         "errors": [],
+        "by_category": {},  # {category: {matched, updated, not_found}}
     }
 
     if not corrections:
         return result
 
-    # Build lookup: (StringID, normalized_StrOrigin) -> corrected_text
+    # Build lookup: (StringID, normalized_StrOrigin) -> (corrected_text, category)
     correction_lookup = {}
     correction_lookup_nospace = {}  # Fallback for whitespace variations
+    # Track which corrections matched (by index)
+    correction_matched = [False] * len(corrections)
 
-    for c in corrections:
+    for i, c in enumerate(corrections):
         sid = c["string_id"]
         origin_norm = normalize_text(c["str_origin"])
         origin_nospace = normalize_nospace(origin_norm)
+        category = c.get("category", "Uncategorized")
 
-        correction_lookup[(sid, origin_norm)] = c["corrected"]
-        correction_lookup_nospace[(sid, origin_nospace)] = c["corrected"]
+        correction_lookup[(sid, origin_norm)] = (c["corrected"], category, i)
+        correction_lookup_nospace[(sid, origin_nospace)] = (c["corrected"], category, i)
+
+    # Initialize category stats
+    categories_seen = set(c.get("category", "Uncategorized") for c in corrections)
+    for cat in categories_seen:
+        result["by_category"][cat] = {"matched": 0, "updated": 0, "not_found": 0}
 
     try:
         # Parse XML with recovery mode
@@ -211,25 +226,34 @@ def merge_corrections_to_locdev(
             key_nospace = (sid, orig_nospace)
 
             # Try exact match first, then nospace fallback
-            new_str = None
+            match_data = None
             if key in correction_lookup:
-                new_str = correction_lookup[key]
+                match_data = correction_lookup[key]
             elif key_nospace in correction_lookup_nospace:
-                new_str = correction_lookup_nospace[key_nospace]
+                match_data = correction_lookup_nospace[key_nospace]
                 logger.debug(f"Matched via nospace fallback: StringId={sid}")
 
-            if new_str is not None:
+            if match_data is not None:
+                new_str, category, idx = match_data
+                correction_matched[idx] = True
                 result["matched"] += 1
+                result["by_category"][category]["matched"] += 1
                 old_str = loc.get("Str", "")
 
                 if new_str != old_str:
                     if not dry_run:
                         loc.set("Str", new_str)
                     result["updated"] += 1
+                    result["by_category"][category]["updated"] += 1
                     changed = True
                     logger.debug(f"Updated StringId={sid}: '{old_str}' -> '{new_str}'")
 
-        # Count corrections that didn't match any XML entry
+        # Count corrections that didn't match any XML entry (per category)
+        for i, c in enumerate(corrections):
+            if not correction_matched[i]:
+                category = c.get("category", "Uncategorized")
+                result["by_category"][category]["not_found"] += 1
+
         result["not_found"] = len(corrections) - result["matched"]
 
         if changed and not dry_run:
@@ -389,6 +413,14 @@ def merge_all_corrections(
         file_result["corrections"] = corrections_count
         file_result["success"] = success_count
         file_result["fail"] = fail_count
+
+        # Add per-category corrections count
+        category_counts = {}
+        for c in corrections:
+            cat = c.get("category", "Uncategorized")
+            category_counts[cat] = category_counts.get(cat, 0) + 1
+        for cat, stats in file_result.get("by_category", {}).items():
+            stats["corrections"] = category_counts.get(cat, 0)
 
         results["file_results"][lang_code] = file_result
 

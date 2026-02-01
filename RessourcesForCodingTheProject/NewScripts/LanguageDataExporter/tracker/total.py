@@ -102,12 +102,12 @@ def build_total_sheet(
     categories: List[str] = None
 ) -> None:
     """
-    Build the TOTAL sheet with summary table.
+    Build the TOTAL sheet with summary table and per-category breakdown.
 
     Args:
         wb: Workbook to add sheet to
         latest_data: Dict[language, Dict] from get_latest_week_data()
-            Each dict has: Corrections, Success, Fail, MergeDate
+            Each dict has: Corrections, Success, Fail, MergeDate, by_category
         categories: Not used in new schema (kept for API compatibility)
     """
     # Create or get sheet
@@ -122,6 +122,13 @@ def build_total_sheet(
 
     # Get sorted language list
     languages = sorted(latest_data.keys())
+
+    # Collect all categories across all languages
+    all_categories: Set[str] = set()
+    for lang_data in latest_data.values():
+        by_category = lang_data.get("by_category", {})
+        all_categories.update(by_category.keys())
+    sorted_categories = sorted(all_categories)
 
     # ==========================================================================
     # TITLE ROW
@@ -272,6 +279,109 @@ def build_total_sheet(
     cell.border = TOTAL_BORDER
     cell.number_format = '0.0%'
 
+    data_row += 1
+
+    # ==========================================================================
+    # CATEGORY BREAKDOWN SECTION (if categories exist)
+    # ==========================================================================
+    if sorted_categories:
+        # Spacing
+        data_row += 2
+
+        # Category section title
+        ws.merge_cells(f'A{data_row}:E{data_row}')
+        cat_title = ws.cell(row=data_row, column=1, value="BREAKDOWN BY CATEGORY")
+        cat_title.font = TITLE_FONT
+        cat_title.fill = TITLE_FILL
+        cat_title.alignment = TITLE_ALIGNMENT
+        cat_title.border = TITLE_BORDER
+        for col in range(2, 6):
+            ws.cell(row=data_row, column=col).border = TITLE_BORDER
+        ws.row_dimensions[data_row].height = 28
+        data_row += 1
+
+        # Spacing
+        ws.row_dimensions[data_row].height = 8
+        data_row += 1
+
+        # Category header row
+        cat_headers = ["Category", "Corrections", "Success", "Fail", "Success %"]
+        for col, header in enumerate(cat_headers, 1):
+            cell = ws.cell(row=data_row, column=col, value=header)
+            cell.font = HEADER_FONT
+            cell.fill = HEADER_FILL
+            cell.alignment = HEADER_ALIGNMENT
+            cell.border = HEADER_BORDER
+        ws.row_dimensions[data_row].height = 22
+        data_row += 1
+
+        # Aggregate by category across all languages
+        cat_totals = {}
+        for lang_data in latest_data.values():
+            by_category = lang_data.get("by_category", {})
+            for cat, cat_stats in by_category.items():
+                if cat not in cat_totals:
+                    cat_totals[cat] = {"Corrections": 0, "Success": 0, "Fail": 0}
+                cat_totals[cat]["Corrections"] += cat_stats.get("Corrections", 0)
+                cat_totals[cat]["Success"] += cat_stats.get("Success", 0)
+                cat_totals[cat]["Fail"] += cat_stats.get("Fail", 0)
+
+        # Category data rows
+        for idx, cat in enumerate(sorted_categories):
+            cat_data = cat_totals.get(cat, {})
+            corrections = cat_data.get("Corrections", 0)
+            success = cat_data.get("Success", 0)
+            fail = cat_data.get("Fail", 0)
+            success_rate = (success / corrections) if corrections > 0 else 0
+
+            # Alternating row color
+            row_fill = ROW_FILL_ALT if (idx % 2 == 0) else ROW_FILL_WHITE
+
+            # Category name
+            cell = ws.cell(row=data_row, column=1, value=cat)
+            cell.font = Font(bold=True, size=10)
+            cell.fill = row_fill
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+            cell.border = THIN_BORDER
+
+            # Corrections
+            cell = ws.cell(row=data_row, column=2, value=corrections)
+            cell.font = DATA_FONT
+            cell.fill = row_fill
+            cell.alignment = DATA_ALIGNMENT
+            cell.border = THIN_BORDER
+            cell.number_format = '#,##0'
+
+            # Success
+            cell = ws.cell(row=data_row, column=3, value=success)
+            cell.font = DATA_FONT
+            cell.fill = row_fill
+            cell.alignment = DATA_ALIGNMENT
+            cell.border = THIN_BORDER
+            cell.number_format = '#,##0'
+
+            # Fail
+            cell = ws.cell(row=data_row, column=4, value=fail)
+            cell.font = DATA_FONT
+            if fail > 0:
+                cell.fill = PatternFill(start_color=RED_FAIL, end_color=RED_FAIL, fill_type="solid")
+            else:
+                cell.fill = row_fill
+            cell.alignment = DATA_ALIGNMENT
+            cell.border = THIN_BORDER
+            cell.number_format = '#,##0'
+
+            # Success % with color gradient
+            cell = ws.cell(row=data_row, column=5, value=success_rate)
+            cell.font = Font(bold=True, size=10)
+            cell.fill = get_success_rate_fill(success_rate)
+            cell.alignment = DATA_ALIGNMENT
+            cell.border = THIN_BORDER
+            cell.number_format = '0.0%'
+
+            ws.row_dimensions[data_row].height = 20
+            data_row += 1
+
     # ==========================================================================
     # FINAL TOUCHES
     # ==========================================================================
@@ -279,10 +389,8 @@ def build_total_sheet(
     # Freeze header row
     ws.freeze_panes = 'A4'
 
-    # Set row heights
+    # Set row heights for main section
     ws.row_dimensions[1].height = 28  # Title row
     ws.row_dimensions[3].height = 22  # Header row
-    for row in range(4, data_row + 1):
-        ws.row_dimensions[row].height = 20
 
-    logger.info(f"Built TOTAL sheet with {len(languages)} languages")
+    logger.info(f"Built TOTAL sheet with {len(languages)} languages, {len(sorted_categories)} categories")

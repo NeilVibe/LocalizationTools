@@ -66,7 +66,7 @@ class CorrectionTracker:
         if progress_callback:
             progress_callback(10, "Building tracker records...")
 
-        # Build records for _WEEKLY_DATA
+        # Build records for _WEEKLY_DATA (one record per language+category)
         records = []
         now = datetime.now()
         merge_date = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -78,14 +78,32 @@ class CorrectionTracker:
             else:
                 week_start = get_week_start(now)
 
-            records.append({
-                "WeekStart": week_start,
-                "Language": lang,
-                "MergeDate": merge_date,
-                "Corrections": result.get("corrections", 0),
-                "Success": result.get("success", 0),
-                "Fail": result.get("fail", 0),
-            })
+            # Get per-category breakdown
+            by_category = result.get("by_category", {})
+
+            if by_category:
+                # Create one record per category
+                for category, cat_stats in by_category.items():
+                    records.append({
+                        "WeekStart": week_start,
+                        "Language": lang,
+                        "Category": category,
+                        "MergeDate": merge_date,
+                        "Corrections": cat_stats.get("corrections", 0),
+                        "Success": cat_stats.get("matched", 0),
+                        "Fail": cat_stats.get("not_found", 0),
+                    })
+            else:
+                # Fallback: no category breakdown, use "Uncategorized"
+                records.append({
+                    "WeekStart": week_start,
+                    "Language": lang,
+                    "Category": "Uncategorized",
+                    "MergeDate": merge_date,
+                    "Corrections": result.get("corrections", 0),
+                    "Success": result.get("success", 0),
+                    "Fail": result.get("fail", 0),
+                })
 
         if progress_callback:
             progress_callback(50, f"Writing {len(records)} records...")

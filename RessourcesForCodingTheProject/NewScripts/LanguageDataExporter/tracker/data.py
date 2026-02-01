@@ -17,11 +17,12 @@ from openpyxl.styles import Font
 
 logger = logging.getLogger(__name__)
 
-# _WEEKLY_DATA schema (NEW: merge-based tracking)
+# _WEEKLY_DATA schema (NEW: merge-based tracking with per-category breakdown)
 DATA_SHEET_NAME = "_WEEKLY_DATA"
 DATA_HEADERS = [
     "WeekStart",      # Monday date (YYYY-MM-DD) from file mod time
     "Language",       # Language code (ENG, FRE, etc.)
+    "Category",       # Content category (Sequencer, Item, Quest, etc.)
     "MergeDate",      # When merge was performed (YYYY-MM-DD HH:MM:SS)
     "Corrections",    # Count of rows with Correction values
     "Success",        # Successfully merged (matched in LOCDEV)
@@ -93,19 +94,20 @@ class WeeklyDataManager:
 
         return ws
 
-    def _build_key_index(self, ws) -> Dict[Tuple[str, str], int]:
+    def _build_key_index(self, ws) -> Dict[Tuple[str, str, str], int]:
         """
         Build index of existing rows by key.
 
         Returns:
-            Dict mapping (week_start, language) to row number
+            Dict mapping (week_start, language, category) to row number
         """
         index = {}
         for row in range(2, ws.max_row + 1):
             week_start = ws.cell(row=row, column=1).value
             language = ws.cell(row=row, column=2).value
-            if week_start and language:
-                index[(str(week_start), str(language))] = row
+            category = ws.cell(row=row, column=3).value
+            if week_start and language and category:
+                index[(str(week_start), str(language), str(category))] = row
         return index
 
     def write_data(self, records: List[Dict]) -> int:
@@ -116,6 +118,7 @@ class WeeklyDataManager:
             records: List of dicts with keys:
                 - WeekStart: Monday date (YYYY-MM-DD)
                 - Language: Language code
+                - Category: Content category (Sequencer, Item, Quest, etc.)
                 - MergeDate: When merge was performed
                 - Corrections: Count of rows with Correction values
                 - Success: Successfully merged count
@@ -142,11 +145,12 @@ class WeeklyDataManager:
         for record in records:
             week_start = str(record.get("WeekStart", ""))
             language = str(record.get("Language", ""))
+            category = str(record.get("Category", "Uncategorized"))
 
-            if not all([week_start, language]):
+            if not all([week_start, language, category]):
                 continue
 
-            key = (week_start, language)
+            key = (week_start, language, category)
 
             # REPLACE mode: use existing row or new row
             if key in key_index:
@@ -155,14 +159,15 @@ class WeeklyDataManager:
                 row = next_row
                 next_row += 1
 
-            # Write record
+            # Write record (column order matches DATA_HEADERS)
             ws.cell(row=row, column=1, value=week_start)
             ws.cell(row=row, column=2, value=language)
-            ws.cell(row=row, column=3, value=record.get("MergeDate", timestamp))
-            ws.cell(row=row, column=4, value=record.get("Corrections", 0))
-            ws.cell(row=row, column=5, value=record.get("Success", 0))
-            ws.cell(row=row, column=6, value=record.get("Fail", 0))
-            ws.cell(row=row, column=7, value=timestamp)
+            ws.cell(row=row, column=3, value=category)
+            ws.cell(row=row, column=4, value=record.get("MergeDate", timestamp))
+            ws.cell(row=row, column=5, value=record.get("Corrections", 0))
+            ws.cell(row=row, column=6, value=record.get("Success", 0))
+            ws.cell(row=row, column=7, value=record.get("Fail", 0))
+            ws.cell(row=row, column=8, value=timestamp)
 
             written += 1
 
@@ -197,11 +202,12 @@ class WeeklyDataManager:
             record = {
                 "WeekStart": ws.cell(row=row, column=1).value,
                 "Language": ws.cell(row=row, column=2).value,
-                "MergeDate": ws.cell(row=row, column=3).value,
-                "Corrections": ws.cell(row=row, column=4).value or 0,
-                "Success": ws.cell(row=row, column=5).value or 0,
-                "Fail": ws.cell(row=row, column=6).value or 0,
-                "Timestamp": ws.cell(row=row, column=7).value,
+                "Category": ws.cell(row=row, column=3).value or "Uncategorized",
+                "MergeDate": ws.cell(row=row, column=4).value,
+                "Corrections": ws.cell(row=row, column=5).value or 0,
+                "Success": ws.cell(row=row, column=6).value or 0,
+                "Fail": ws.cell(row=row, column=7).value or 0,
+                "Timestamp": ws.cell(row=row, column=8).value,
             }
             if record["WeekStart"] and record["Language"]:
                 records.append(record)
@@ -215,7 +221,7 @@ class WeeklyDataManager:
 
         Returns:
             Dict[language, Dict] with latest week data per language
-            Each dict has: Corrections, Success, Fail, MergeDate
+            Each dict has: Corrections, Success, Fail, MergeDate, by_category
         """
         all_data = self.read_all_data()
         if not all_data:
@@ -227,49 +233,91 @@ class WeeklyDataManager:
             return {}
         latest_week = max(weeks)
 
-        # Filter to latest week
+        # Filter to latest week and aggregate by language
         result = {}
         for record in all_data:
             if record["WeekStart"] != latest_week:
                 continue
 
             lang = record["Language"]
+            category = record["Category"]
 
-            result[lang] = {
+            if lang not in result:
+                result[lang] = {
+                    "Corrections": 0,
+                    "Success": 0,
+                    "Fail": 0,
+                    "MergeDate": record["MergeDate"],
+                    "by_category": {},
+                }
+
+            # Aggregate totals
+            result[lang]["Corrections"] += record["Corrections"]
+            result[lang]["Success"] += record["Success"]
+            result[lang]["Fail"] += record["Fail"]
+
+            # Store per-category breakdown
+            result[lang]["by_category"][category] = {
                 "Corrections": record["Corrections"],
                 "Success": record["Success"],
                 "Fail": record["Fail"],
-                "MergeDate": record["MergeDate"],
             }
 
         return result
 
     def get_weekly_summary(self) -> List[Dict]:
         """
-        Get week-by-week summary per language.
+        Get week-by-week summary per language (aggregated from per-category data).
 
         Returns:
-            List of dicts with: WeekStart, Language, Corrections, Success, Fail, SuccessRate
+            List of dicts with: WeekStart, Language, Corrections, Success, Fail, SuccessRate, by_category
         """
         all_data = self.read_all_data()
         if not all_data:
             return []
 
-        # Build summary list (data is already per-week per-language)
+        # Aggregate by (week, language) since data is per-category
+        aggregated = {}
+        for record in all_data:
+            key = (record["WeekStart"], record["Language"])
+            category = record["Category"]
+
+            if key not in aggregated:
+                aggregated[key] = {
+                    "WeekStart": record["WeekStart"],
+                    "Language": record["Language"],
+                    "Corrections": 0,
+                    "Success": 0,
+                    "Fail": 0,
+                    "by_category": {},
+                }
+
+            aggregated[key]["Corrections"] += record["Corrections"]
+            aggregated[key]["Success"] += record["Success"]
+            aggregated[key]["Fail"] += record["Fail"]
+            aggregated[key]["by_category"][category] = {
+                "Corrections": record["Corrections"],
+                "Success": record["Success"],
+                "Fail": record["Fail"],
+            }
+
+        # Build summary list
         summary = []
-        for record in sorted(all_data, key=lambda r: (r["WeekStart"], r["Language"])):
-            corrections = record["Corrections"]
-            success = record["Success"]
-            fail = record["Fail"]
+        for key in sorted(aggregated.keys()):
+            data = aggregated[key]
+            corrections = data["Corrections"]
+            success = data["Success"]
+            fail = data["Fail"]
             success_rate = (success / corrections * 100) if corrections > 0 else 0
 
             summary.append({
-                "WeekStart": record["WeekStart"],
-                "Language": record["Language"],
+                "WeekStart": data["WeekStart"],
+                "Language": data["Language"],
                 "Corrections": corrections,
                 "Success": success,
                 "Fail": fail,
                 "SuccessRate": round(success_rate, 1),
+                "by_category": data["by_category"],
             })
 
         return summary
