@@ -485,6 +485,8 @@ class ResultPanel(ttk.Frame):
             self.clipboard_append(full_text)
             preview = full_text[:40] + "..." if len(full_text) > 40 else full_text
             self._selection_info_label.config(text=f"Copied: {preview}")
+        else:
+            self._selection_info_label.config(text="(Cell is empty)")
 
         return "break"
 
@@ -603,17 +605,17 @@ class ResultPanel(ttk.Frame):
 
     def _insert_result(self, result: SearchResult) -> None:
         """Insert a single result into the tree with ALL column values."""
-        # Build full text cache for ALL columns
+        # Build full text cache for ALL columns (with None safety)
         self._full_text_cache[result.strkey] = {
-            'name_kr': result.name_kr,
-            'name_tr': result.name_translated,
-            'desc': result.desc_translated if result.desc_translated else result.desc_kr,
-            'position': result.position_str if self._current_mode == "map" else result.group,
-            'strkey': result.strkey,
+            'name_kr': result.name_kr or "",
+            'name_tr': result.name_translated or "",
+            'desc': result.desc_translated or result.desc_kr or "",
+            'position': result.position_str if self._current_mode == "map" else (result.group or ""),
+            'strkey': result.strkey or "",
             'use_macro': self._format_use_macro(result.use_macro),
-            'age': result.age,
+            'age': result.age or "",
             'job': self._format_job(result.job),
-            'string_id': result.string_id,
+            'string_id': result.string_id or "",
         }
 
         # AUDIO mode overrides
@@ -621,8 +623,10 @@ class ResultPanel(ttk.Frame):
             self._full_text_cache[result.strkey]['desc'] = result.desc_kr  # KOR script
             self._full_text_cache[result.strkey]['name_tr'] = result.desc_translated  # ENG script
 
-        # Helper to truncate text
+        # Helper to truncate text (handles None and empty)
         def truncate(text: str) -> str:
+            if not text:
+                return ""
             if len(text) > self.TRUNCATE_THRESHOLD:
                 return text[:self.TRUNCATE_THRESHOLD - 3] + "..."
             return text
@@ -800,12 +804,7 @@ class ResultPanel(ttk.Frame):
         """
         self._current_mode = mode
         self.set_mode_headers(mode)
-
-        # Clear stale data from previous mode
-        self._full_text_cache.clear()
-        self._selected_cell = None
-        self._selection_info_label.config(text="")
-        self.clear()  # Clear tree and results
+        self.clear()  # Clear tree, cache, and selection state
 
     def set_column_visible(self, column: str, visible: bool) -> None:
         """
