@@ -476,7 +476,7 @@ jobs:
           $mdgPath = "${{ env.MAPDATAGENERATOR_PATH }}"
           $toolsDir = "$mdgPath\tools"
           $zipPath = "$mdgPath\vgmstream-win64.zip"
-          $vgmUrl = "https://github.com/vgmstream/vgmstream/releases/download/r2002/vgmstream-win64.zip"
+          $vgmUrl = "https://github.com/vgmstream/vgmstream/releases/download/r2083/vgmstream-win64.zip"
           
           Write-Host "=== DOWNLOADING VGMSTREAM ==="
           
