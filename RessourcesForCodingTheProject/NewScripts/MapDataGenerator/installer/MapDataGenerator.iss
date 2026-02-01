@@ -58,18 +58,23 @@ var
   DriveLetter: String;
 
 procedure InitializeWizard();
+var
+  InfoText: String;
 begin
+  // Build info text (avoid #13#10 at line start - confuses ISPP)
+  InfoText := 'MapDataGenerator needs to know where your game data is located.';
+  InfoText := InfoText + #13#10 + #13#10;
+  InfoText := InfoText + 'Default path: F:\perforce\cd\mainline\resource\GameData';
+  InfoText := InfoText + #13#10 + #13#10;
+  InfoText := InfoText + 'If your Perforce is on a different drive (D:, E:, etc.), enter just the letter.';
+  InfoText := InfoText + #13#10;
+  InfoText := InfoText + 'Leave as F if you are unsure.';
+
   // Create custom page for drive selection (after welcome page)
   DriveSelectionPage := CreateInputQueryPage(wpWelcome,
     'Perforce Drive Selection',
     'Select the drive where your Perforce workspace is located.',
-    'MapDataGenerator needs to know where your game data is located.' + #13#10 +
-    #13#10 +
-    'Default path: F:\perforce\cd\mainline\resource\GameData' +
-    #13#10 + #13#10 +
-    'If your Perforce is on a different drive (D:, E:, etc.), enter just the letter.' +
-    #13#10 +
-    'Leave as F if you are unsure.'
+    InfoText
   );
   DriveSelectionPage.Add('Drive Letter (e.g., F, D, E):', False);
   DriveSelectionPage.Values[0] := 'F';  // Default value

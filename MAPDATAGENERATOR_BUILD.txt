@@ -25,3 +25,4 @@ Build - Added vgmstream DLLs for audio
 Build - Fixed vgmstream URL
 Build - Fixed import error + drive selector
 Build - Added executable smoke test to CI
+Build - Fix ISS preprocessor issue (avoid #13#10 at line start)
