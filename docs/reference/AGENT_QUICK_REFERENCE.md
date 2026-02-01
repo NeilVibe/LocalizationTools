@@ -133,7 +133,7 @@ Is it a bug?
 | LocaNext (main) | general-purpose | vite-debugger, nodejs-debugger |
 | QuickSearch | quicksearch-specialist | code-reviewer |
 | QACompiler | qacompiler-specialist | code-reviewer |
-| MapDataGenerator | general-purpose | security-auditor |
+| MapDataGenerator | mapdatagenerator-specialist | code-reviewer |
 
 ---
 

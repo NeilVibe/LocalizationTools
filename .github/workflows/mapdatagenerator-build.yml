@@ -113,6 +113,10 @@ jobs:
           # Install validation tools
           pip install flake8 pip-audit pytest
 
+          # Install Xvfb for headless GUI testing
+          sudo apt-get update
+          sudo apt-get install -y xvfb python3-tk
+
           echo "[OK] All dependencies installed"
 
       # ============================================================
@@ -181,6 +185,13 @@ jobs:
               'core.search',
               'core.dds_handler',
               'utils.filters',
+              # GUI modules - CRITICAL! These caused runtime crash if not validated
+              'gui.app',
+              'gui.result_panel',
+              'gui.search_panel',
+              'gui.map_canvas',
+              'gui.image_viewer',
+              'gui.audio_viewer',
           ]
 
           errors = []
@@ -239,6 +250,77 @@ jobs:
           echo "[OK] Security audit complete"
         continue-on-error: true
 
+      # ============================================================
+      # CHECK 5: GUI Smoke Test (Headless - catches runtime crashes)
+      # ============================================================
+      - name: Check 5 - GUI Smoke Test (Headless)
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║  CHECK 5: GUI SMOKE TEST (Headless with Xvfb)              ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          cd ${{ env.MAPDATAGENERATOR_PATH }}
+
+          # This test catches runtime errors that static analysis misses:
+          # - ttk.cget("background") crashes (ttk uses styles, not options)
+          # - Widget instantiation failures
+          # - Style/theme initialization errors
+
+          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" python << 'EOF'
+          import sys
+          import tkinter as tk
+          from tkinter import ttk
+
+          print("[TEST] Creating Tk root window...")
+          root = tk.Tk()
+          root.withdraw()  # Hide window
+
+          print("[TEST] Testing ttk.Style system...")
+          style = ttk.Style()
+          bg = style.lookup("TFrame", "background")
+          print(f"  [OK] TFrame background: {bg or '(theme default)'}")
+
+          print("[TEST] Testing ttk widget creation...")
+          frame = ttk.LabelFrame(root, text="Test")
+          label = ttk.Label(frame, text="Test")
+          button = ttk.Button(frame, text="Test")
+          entry = ttk.Entry(frame)
+          print("  [OK] Basic ttk widgets created")
+
+          # Test that tk.Text with style lookup works (the bug pattern)
+          print("[TEST] Testing tk.Text with ttk style background...")
+          bg_color = style.lookup("TLabelframe", "background") or "#f0f0f0"
+          text_widget = tk.Text(frame, background=bg_color, height=1)
+          print(f"  [OK] tk.Text created with background={bg_color}")
+
+          print("[TEST] Importing main app module...")
+          sys.path.insert(0, '.')
+          try:
+              from gui.app import MapDataGeneratorApp
+              print("  [OK] gui.app.MapDataGeneratorApp imported")
+          except Exception as e:
+              print(f"  [FAIL] Import error: {e}")
+              sys.exit(1)
+
+          print("[TEST] Attempting app instantiation...")
+          try:
+              # This is the CRITICAL test - creates all widgets
+              app = MapDataGeneratorApp()
+              print("  [OK] MapDataGeneratorApp instantiated successfully!")
+          except Exception as e:
+              print(f"  [FAIL] Instantiation error: {e}")
+              import traceback
+              traceback.print_exc()
+              sys.exit(1)
+
+          root.destroy()
+          print("\n[PASS] ALL GUI SMOKE TESTS PASSED")
+          EOF
+
+          if [ $? -ne 0 ]; then
+            echo "[FATAL] GUI smoke test failed - this would crash on user's machine!"
+            exit 1
+          fi
+
       - name: Safety Checks Summary
         run: |
           echo "============================================"
@@ -247,9 +329,10 @@ jobs:
           echo ""
           echo "Validated:"
           echo "  1. Python syntax - OK"
-          echo "  2. Module imports - OK"
+          echo "  2. Module imports (including GUI!) - OK"
           echo "  3. Flake8 critical errors - OK"
           echo "  4. Security audit - Complete"
+          echo "  5. GUI smoke test (headless) - PASSED"
           echo ""
           echo "Ready for Windows build!"
 
@@ -310,6 +393,13 @@ jobs:
               'core.search',
               'core.dds_handler',
               'utils.filters',
+              # GUI modules - CRITICAL! These caused runtime crash if not validated
+              'gui.app',
+              'gui.result_panel',
+              'gui.search_panel',
+              'gui.map_canvas',
+              'gui.image_viewer',
+              'gui.audio_viewer',
           ]
 
           errors = []

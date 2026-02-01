@@ -308,6 +308,10 @@ class ResultPanel(ttk.Frame):
         desc_text_frame = ttk.Frame(desc_frame)
         desc_text_frame.pack(side="left", fill="x", expand=True)
 
+        # Get background color from ttk Style (ttk widgets don't support cget("background"))
+        style = ttk.Style()
+        bg_color = style.lookup("TLabelframe", "background") or "#f0f0f0"
+
         self._detail_desc = tk.Text(
             desc_text_frame,
             height=3,
@@ -316,7 +320,7 @@ class ResultPanel(ttk.Frame):
             font=('TkDefaultFont', 9),
             state="disabled",
             relief="flat",
-            background=self._detail_frame.cget("background") if hasattr(self._detail_frame, "cget") else "#f0f0f0"
+            background=bg_color
         )
         self._detail_desc.pack(fill="x")
 
