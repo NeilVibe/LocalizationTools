@@ -139,6 +139,8 @@ class MapDataGeneratorApp:
 
         # State
         self._data_loaded = False
+        self._loading = False  # Loading lock - prevents rapid mode switching
+        self._load_generation = 0  # Generation counter for stale callback detection
         self._current_results = []
         self._current_search_index = 0
         self._texture_folder: Optional[Path] = None
@@ -301,6 +303,12 @@ class MapDataGeneratorApp:
 
     def _on_mode_change(self) -> None:
         """Handle mode change - reload data for new mode if needed."""
+        # Ignore clicks while loading (prevents race conditions)
+        if self._loading:
+            # Reset radio button to current mode since we're ignoring the click
+            self._mode_var.set(self._current_mode.value)
+            return
+
         new_mode = DataMode(self._mode_var.get())
 
         if new_mode == self._current_mode:
@@ -632,6 +640,15 @@ class MapDataGeneratorApp:
         mode: DataMode,
     ) -> None:
         """Start background data loading."""
+        # Set loading lock and disable mode buttons
+        self._loading = True
+        for btn in self._mode_buttons.values():
+            btn.configure(state='disabled')
+
+        # Increment generation to invalidate any pending callbacks
+        self._load_generation += 1
+        current_gen = self._load_generation
+
         self._progress_bar.start()
         self._search_panel.enable(False)
 
@@ -701,13 +718,13 @@ class MapDataGeneratorApp:
                 lang_table = self._lang_manager.get_table(lang_code)
                 self._search_engine.set_language_table(lang_table)
 
-                # Update UI on main thread
-                self.root.after(0, lambda: self._on_data_loaded(texture_folder))
+                # Update UI on main thread (with generation check)
+                self.root.after(0, lambda gen=current_gen: self._on_data_loaded(texture_folder, gen))
 
             except Exception as e:
                 log.exception("Error loading data")
                 error_msg = str(e)
-                self.root.after(0, lambda msg=error_msg: self._on_load_error(msg))
+                self.root.after(0, lambda msg=error_msg, gen=current_gen: self._on_load_error(msg, gen))
 
         threading.Thread(target=task, daemon=True).start()
 
@@ -719,6 +736,15 @@ class MapDataGeneratorApp:
         mode: DataMode,
     ) -> None:
         """Start background audio data loading."""
+        # Set loading lock and disable mode buttons
+        self._loading = True
+        for btn in self._mode_buttons.values():
+            btn.configure(state='disabled')
+
+        # Increment generation to invalidate any pending callbacks
+        self._load_generation += 1
+        current_gen = self._load_generation
+
         self._progress_bar.start()
         self._search_panel.enable(False)
 
@@ -754,20 +780,30 @@ class MapDataGeneratorApp:
                 lang_table = self._lang_manager.get_table(lang_code)
                 self._search_engine.set_language_table(lang_table)
 
-                # Update UI on main thread
-                self.root.after(0, self._on_audio_data_loaded)
+                # Update UI on main thread (with generation check)
+                self.root.after(0, lambda gen=current_gen: self._on_audio_data_loaded(gen))
 
             except Exception as e:
                 log.exception("Error loading audio data")
                 error_msg = str(e)
-                self.root.after(0, lambda msg=error_msg: self._on_load_error(msg))
+                self.root.after(0, lambda msg=error_msg, gen=current_gen: self._on_load_error(msg, gen))
 
         threading.Thread(target=task, daemon=True).start()
 
-    def _on_audio_data_loaded(self) -> None:
+    def _on_audio_data_loaded(self, generation: int) -> None:
         """Handle audio data load completion."""
+        # Ignore stale callbacks from previous loads
+        if generation != self._load_generation:
+            log.debug("Ignoring stale audio callback (gen %d, current %d)", generation, self._load_generation)
+            return
+
         self._progress_bar.stop()
         self._data_loaded = True
+
+        # Clear loading lock and re-enable mode buttons
+        self._loading = False
+        for btn in self._mode_buttons.values():
+            btn.configure(state='normal')
 
         # Update mode visibility
         self._update_mode_visibility()
@@ -791,11 +827,21 @@ class MapDataGeneratorApp:
         """Update progress message (thread-safe)."""
         self.root.after(0, lambda: self._progress_var.set(msg))
 
-    def _on_data_loaded(self, texture_folder: Path) -> None:
+    def _on_data_loaded(self, texture_folder: Path, generation: int) -> None:
         """Handle data load completion."""
+        # Ignore stale callbacks from previous loads
+        if generation != self._load_generation:
+            log.debug("Ignoring stale data callback (gen %d, current %d)", generation, self._load_generation)
+            return
+
         self._progress_bar.stop()
         self._data_loaded = True
         self._texture_folder = texture_folder
+
+        # Clear loading lock and re-enable mode buttons
+        self._loading = False
+        for btn in self._mode_buttons.values():
+            btn.configure(state='normal')
 
         # Update mode visibility
         self._update_mode_visibility()
@@ -820,9 +866,20 @@ class MapDataGeneratorApp:
 
         log.info("Data loaded: %d entries in %s mode", total, self._current_mode.value)
 
-    def _on_load_error(self, error: str) -> None:
+    def _on_load_error(self, error: str, generation: int) -> None:
         """Handle data load error."""
+        # Ignore stale callbacks from previous loads
+        if generation != self._load_generation:
+            log.debug("Ignoring stale error callback (gen %d, current %d)", generation, self._load_generation)
+            return
+
         self._progress_bar.stop()
+
+        # Clear loading lock and re-enable mode buttons
+        self._loading = False
+        for btn in self._mode_buttons.values():
+            btn.configure(state='normal')
+
         self._progress_var.set("Load failed")
         messagebox.showerror("Error", f"Failed to load data:\n{error}")
 
