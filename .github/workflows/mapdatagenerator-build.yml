@@ -554,27 +554,33 @@ jobs:
             Write-Host "  [WARN] Could not run --version test: $_"
           }
 
-          # Test 2: Quick startup test (launch and immediately close)
-          Write-Host "[TEST 2] Testing GUI startup (5-second timeout)..."
+          # Test 2: Full GUI initialization test
+          # Wait 10 seconds to allow:
+          # - Tkinter window creation
+          # - matplotlib font_manager import (triggers pyparsing chain)
+          # - Korean font installation
+          # - All lazy imports to complete
+          Write-Host "[TEST 2] Testing GUI startup (10-second timeout for full init)..."
           try {
             $proc = Start-Process -FilePath $exePath -PassThru
             $procId = $proc.Id
             Write-Host "  Started process PID: $procId"
 
-            # Wait up to 5 seconds for the process to either crash or stay alive
-            Start-Sleep -Seconds 5
+            # Wait 10 seconds for full GUI initialization including matplotlib
+            Start-Sleep -Seconds 10
 
             # Check if process is still running (good sign - didn't crash)
             if ($proc.HasExited) {
               $exitCode = $proc.ExitCode
               if ($exitCode -ne 0) {
-                Write-Error "[FATAL] Application crashed on startup! Exit code: $exitCode"
+                Write-Error "[FATAL] Application crashed during GUI init! Exit code: $exitCode"
+                Write-Host "  This usually means a missing module in PyInstaller bundle"
                 exit 1
               } else {
                 Write-Host "  [OK] Application exited cleanly (exit code 0)"
               }
             } else {
-              Write-Host "  [OK] Application running after 5 seconds - no crash!"
+              Write-Host "  [OK] Application running after 10 seconds - GUI initialized!"
               # Kill the process since it's a GUI app that won't exit on its own
               Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
               Write-Host "  [OK] Process terminated gracefully"

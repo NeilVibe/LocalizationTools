@@ -43,8 +43,10 @@ a = Analysis(
     runtime_hooks=[],
     excludes=[
         'pytest',
-        'unittest',
         'test',
+        # DO NOT exclude 'unittest' - pyparsing.testing needs it!
+        # Instead, exclude pyparsing.testing which is not needed at runtime
+        'pyparsing.testing',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
