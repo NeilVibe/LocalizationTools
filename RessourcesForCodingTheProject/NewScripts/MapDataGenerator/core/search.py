@@ -42,6 +42,14 @@ class SearchResult:
     position: Optional[Tuple[float, float, float]] = None  # Full 3D position
     group: str = ""
 
+    # CHARACTER-specific fields
+    use_macro: str = ""  # Race/Gender
+    age: str = ""  # Age
+    job: str = ""  # Job
+
+    # ITEM-specific fields
+    string_id: str = ""  # StringID
+
     # Search metadata
     match_score: float = 0.0
     match_field: str = ""
@@ -220,6 +228,11 @@ class SearchEngine:
             name_tr, _ = get_translation(entry.name_kr, self._lang_table, entry.name_kr)
             desc_tr, _ = get_translation(entry.desc_kr, self._lang_table, "")
 
+        # For ITEM mode, extract StringID from translation lookup
+        string_id = ""
+        if entry.entry_type == "Item" and entry.name_kr:
+            _, string_id = get_translation(entry.name_kr, self._lang_table, "")
+
         return SearchResult(
             strkey=entry.strkey,
             name_kr=entry.name_kr,
@@ -231,6 +244,10 @@ class SearchEngine:
             has_image=entry.has_image,
             position=entry.position,  # Full 3D position (X, Y, Z)
             group=entry.group,
+            use_macro=entry.use_macro,
+            age=entry.age,
+            job=entry.job,
+            string_id=string_id,
         )
 
     def _get_field_name(self, index: int) -> str:

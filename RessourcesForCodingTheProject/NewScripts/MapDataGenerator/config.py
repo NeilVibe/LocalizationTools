@@ -233,6 +233,8 @@ UI_LANGUAGES = {
         'mode_audio': 'AUDIO',
         'event_name': 'Event Name',
         'script_line': 'Script Line',
+        'script_line_kor': 'Script (KOR)',
+        'script_line_eng': 'Script (ENG)',
         'duration': 'Duration',
         'play': 'Play',
         'stop': 'Stop',
@@ -244,6 +246,15 @@ UI_LANGUAGES = {
         'verified_entries': 'Verified Entries',
         'skipped_no_image': 'Skipped (no image)',
         'loading_language': 'Loading language...',
+        # CHARACTER mode columns
+        'use_macro': 'Race/Gender',
+        'age': 'Age',
+        'job': 'Job',
+        # ITEM mode columns
+        'string_id': 'StringID',
+        # Cell copy feedback
+        'copied': 'Copied',
+        'selected_cell': 'Selected',
     },
     '한국어': {
         'file': '파일',
@@ -276,6 +287,8 @@ UI_LANGUAGES = {
         'mode_audio': '오디오',
         'event_name': '이벤트명',
         'script_line': '스크립트 라인',
+        'script_line_kor': '스크립트 (한국어)',
+        'script_line_eng': '스크립트 (영어)',
         'duration': '길이',
         'play': '재생',
         'stop': '정지',
@@ -287,6 +300,15 @@ UI_LANGUAGES = {
         'verified_entries': '확인된 항목',
         'skipped_no_image': '건너뜀 (이미지 없음)',
         'loading_language': '언어 불러오는 중...',
+        # CHARACTER mode columns
+        'use_macro': '종족/성별',
+        'age': '나이',
+        'job': '직업',
+        # ITEM mode columns
+        'string_id': 'StringID',
+        # Cell copy feedback
+        'copied': '복사됨',
+        'selected_cell': '선택됨',
     }
 }
 

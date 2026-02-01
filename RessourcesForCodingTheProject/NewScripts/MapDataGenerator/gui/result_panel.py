@@ -1,24 +1,24 @@
 """
 Result Panel Module
 
-Displays search results in a Treeview with toggleable columns:
-- Name (KR) - ON by default
-- Name (Translated) - ON by default
-- Description - OFF by default
-- Position (X, Y, Z) - ON by default
-- StrKey - ON by default
+Displays search results in a Treeview with mode-specific columns:
+- MAP: KOR, Translation, Description, Position (X,Y,Z), StrKey
+- CHARACTER: KOR, Translation, UseMacro (race/gender), Age, Job
+- ITEM: KOR, Translation, StrKey, StringID
+- AUDIO: EventName, KOR Script, ENG Script
 
 Features:
+- Mode-specific column layouts using displaycolumns
 - Tooltips for truncated text
+- Cell selection and Ctrl+C copy
 - Detail panel showing full entry information
-- Mode-specific column defaults
 """
 
 import sys
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 # Ensure parent directory is in sys.path for PyInstaller compatibility
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -76,59 +76,50 @@ class ToolTip:
 
 
 # =============================================================================
-# MODE COLUMN DEFAULTS
+# ALL COLUMN DEFINITIONS (SUPERSET)
 # =============================================================================
 
-MODE_COLUMN_DEFAULTS: Dict[str, Dict[str, bool]] = {
-    'map': {
-        'name_kr': True,
-        'name_tr': True,
-        'desc': False,
-        'position': True,
-        'strkey': True,
-    },
-    'character': {
-        'name_kr': True,
-        'name_tr': True,
-        'desc': False,
-        'position': True,  # Shows Group in CHARACTER mode
-        'strkey': True,
-    },
-    'item': {
-        'name_kr': True,
-        'name_tr': True,
-        'desc': False,
-        'position': True,  # Shows Group in ITEM mode
-        'strkey': True,
-    },
-    'audio': {
-        'name_kr': True,   # Event Name
-        'name_tr': False,  # Hide - event name doesn't need translation
-        'desc': True,      # KOR Script
-        'position': True,  # ENG Script (repurposed column)
-        'strkey': False,   # Hide - same as event name
-    },
+# All possible columns: (id, header_key, min_width, default_width)
+ALL_COLUMN_DEFS = [
+    ("name_kr", "name_kr", 80, 150),
+    ("name_tr", "name_tr", 80, 150),
+    ("desc", "description", 100, 200),
+    ("position", "position", 80, 140),
+    ("strkey", "strkey", 80, 150),
+    ("use_macro", "use_macro", 80, 140),
+    ("age", "age", 60, 80),
+    ("job", "job", 80, 120),
+    ("string_id", "string_id", 80, 100),
+]
+
+# Column ID to index mapping
+COLUMN_ID_TO_INDEX = {col[0]: i for i, col in enumerate(ALL_COLUMN_DEFS)}
+
+
+# =============================================================================
+# MODE-SPECIFIC COLUMN CONFIGURATIONS
+# =============================================================================
+
+# Which columns to display per mode (uses displaycolumns)
+MODE_DISPLAY_COLUMNS = {
+    'map': ('name_kr', 'name_tr', 'desc', 'position', 'strkey'),
+    'character': ('name_kr', 'name_tr', 'use_macro', 'age', 'job'),
+    'item': ('name_kr', 'name_tr', 'strkey', 'string_id'),
+    'audio': ('name_kr', 'desc', 'name_tr'),  # EventName, KOR Script, ENG Script
 }
 
-# Column header overrides for AUDIO mode
-AUDIO_COLUMN_HEADERS = {
-    'name_kr': 'event_name',      # "Event Name"
-    'desc': 'script_line',        # "Script Line" (KOR)
-    'position': 'name_tr',        # "Name (Translated)" - repurposed for ENG script
+# Header overrides for specific modes
+MODE_HEADER_OVERRIDES = {
+    'audio': {
+        'name_kr': 'event_name',
+        'desc': 'script_line_kor',
+        'name_tr': 'script_line_eng',
+    },
 }
 
 
 class ResultPanel(ttk.Frame):
-    """Panel displaying search results in a Treeview with toggleable columns."""
-
-    # Column definitions: (id, header_key, default_visible, min_width, default_width)
-    COLUMN_DEFS = [
-        ("name_kr", "name_kr", True, 80, 150),
-        ("name_tr", "name_tr", True, 80, 150),
-        ("desc", "description", False, 100, 200),  # OFF by default
-        ("position", "position", True, 80, 140),
-        ("strkey", "strkey", True, 80, 150),
-    ]
+    """Panel displaying search results in a Treeview with mode-specific columns."""
 
     # Truncation threshold for tooltip display
     TRUNCATE_THRESHOLD = 80
@@ -158,17 +149,15 @@ class ResultPanel(ttk.Frame):
         self._has_more = False
         self._current_mode = "map"
 
-        # Column visibility state
-        self._column_visible = {}
-        for col_id, _, default_visible, _, _ in self.COLUMN_DEFS:
-            self._column_visible[col_id] = tk.BooleanVar(value=default_visible)
-
         # Cache full text for tooltips (strkey -> {column -> full_text})
         self._full_text_cache: Dict[str, Dict[str, str]] = {}
 
         # Tooltip
         self._tooltip: Optional[ToolTip] = None
         self._tooltip_scheduled: Optional[str] = None
+
+        # Cell selection state
+        self._selected_cell: Optional[Tuple[str, str]] = None  # (strkey, col_id)
 
         # Detail panel collapsed state
         self._detail_collapsed = tk.BooleanVar(value=False)
@@ -177,7 +166,7 @@ class ResultPanel(ttk.Frame):
 
     def _create_widgets(self) -> None:
         """Create panel widgets."""
-        # Header frame with result count and column toggles
+        # Header frame with result count and selection info
         header_frame = ttk.Frame(self)
         header_frame.pack(fill="x", padx=5, pady=2)
 
@@ -187,29 +176,20 @@ class ResultPanel(ttk.Frame):
         )
         self._count_label.pack(side="left")
 
-        # Column toggle frame
-        toggle_frame = ttk.Frame(header_frame)
-        toggle_frame.pack(side="right")
-
-        ttk.Label(toggle_frame, text="Show:").pack(side="left", padx=(0, 5))
-
-        self._column_checkboxes = {}
-        for col_id, header_key, _, _, _ in self.COLUMN_DEFS:
-            cb = ttk.Checkbutton(
-                toggle_frame,
-                text=get_ui_text(header_key),
-                variable=self._column_visible[col_id],
-                command=self._update_column_visibility
-            )
-            cb.pack(side="left", padx=2)
-            self._column_checkboxes[col_id] = cb
+        # Selection info label (shows copied cell info)
+        self._selection_info_label = ttk.Label(
+            header_frame,
+            text="",
+            foreground="gray"
+        )
+        self._selection_info_label.pack(side="right", padx=10)
 
         # Treeview with scrollbars
         tree_frame = ttk.Frame(self)
         tree_frame.pack(fill="both", expand=True, padx=5, pady=5)
 
-        # Define all columns
-        all_columns = tuple(col[0] for col in self.COLUMN_DEFS)
+        # Define ALL columns (superset)
+        all_columns = tuple(col[0] for col in ALL_COLUMN_DEFS)
 
         self._tree = ttk.Treeview(
             tree_frame,
@@ -218,8 +198,8 @@ class ResultPanel(ttk.Frame):
             selectmode="browse"
         )
 
-        # Configure columns
-        for col_id, header_key, default_visible, min_width, default_width in self.COLUMN_DEFS:
+        # Configure ALL columns with headers and widths
+        for col_id, header_key, min_width, default_width in ALL_COLUMN_DEFS:
             self._tree.heading(
                 col_id,
                 text=get_ui_text(header_key),
@@ -227,13 +207,13 @@ class ResultPanel(ttk.Frame):
             )
             self._tree.column(
                 col_id,
-                width=default_width if default_visible else 0,
-                minwidth=min_width if default_visible else 0,
+                width=default_width,
+                minwidth=min_width,
                 stretch=True
             )
 
-        # Apply initial visibility
-        self._update_column_visibility()
+        # Apply initial mode columns
+        self._apply_mode_columns('map')
 
         # Scrollbars
         vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self._tree.yview)
@@ -251,6 +231,11 @@ class ResultPanel(ttk.Frame):
         # Bind events
         self._tree.bind("<<TreeviewSelect>>", self._on_tree_select)
         self._tree.bind("<Double-1>", self._on_tree_double_click)
+
+        # Cell selection and copy bindings
+        self._tree.bind("<Button-1>", self._on_cell_click)
+        self._tree.bind("<Control-c>", self._copy_selected_cell)
+        self._tree.bind("<Control-C>", self._copy_selected_cell)  # Caps lock
 
         # Tooltip bindings
         self._tooltip = ToolTip(self._tree)
@@ -374,9 +359,35 @@ class ResultPanel(ttk.Frame):
 
             # StrKey (same as event name for audio)
             self._detail_strkey.config(text=result.strkey)
+        elif self._current_mode == "character":
+            # CHARACTER mode: show name, race/gender, age, job
+            name_text = result.name_kr
+            if result.name_translated and result.name_translated != result.name_kr:
+                name_text = f"{result.name_kr} / {result.name_translated}"
+            self._detail_name.config(text=name_text)
+
+            # Description shows formatted CHARACTER info
+            char_info = []
+            if result.use_macro:
+                char_info.append(f"Race/Gender: {self._format_use_macro(result.use_macro)}")
+            if result.age:
+                char_info.append(f"Age: {result.age}")
+            if result.job:
+                char_info.append(f"Job: {self._format_job(result.job)}")
+
+            self._detail_desc.config(state="normal")
+            self._detail_desc.delete("1.0", "end")
+            self._detail_desc.insert("1.0", "\n".join(char_info) if char_info else "(No character info)")
+            self._detail_desc.config(state="disabled")
+
+            # Position shows Group
+            self._detail_pos_label.config(text="Group:")
+            self._detail_pos.config(text=result.group)
+
+            # StrKey
+            self._detail_strkey.config(text=result.strkey)
         else:
-            # Other modes: standard display
-            # Name (KR + translated)
+            # MAP/ITEM modes: standard display
             name_text = result.name_kr
             if result.name_translated and result.name_translated != result.name_kr:
                 name_text = f"{result.name_kr} / {result.name_translated}"
@@ -399,6 +410,105 @@ class ResultPanel(ttk.Frame):
 
             # StrKey
             self._detail_strkey.config(text=result.strkey)
+
+    # =========================================================================
+    # MODE-SPECIFIC COLUMNS
+    # =========================================================================
+
+    def _apply_mode_columns(self, mode: str) -> None:
+        """
+        Apply mode-specific column layout using displaycolumns.
+
+        Args:
+            mode: 'map', 'character', 'item', or 'audio'
+        """
+        display_cols = MODE_DISPLAY_COLUMNS.get(mode, MODE_DISPLAY_COLUMNS['map'])
+        self._tree.configure(displaycolumns=display_cols)
+
+        # Apply header overrides if any
+        overrides = MODE_HEADER_OVERRIDES.get(mode, {})
+        for col_id, header_key in overrides.items():
+            self._tree.heading(col_id, text=get_ui_text(header_key))
+
+        # Reset non-overridden headers to defaults
+        default_headers = {col[0]: col[1] for col in ALL_COLUMN_DEFS}
+        for col_id in display_cols:
+            if col_id not in overrides:
+                self._tree.heading(col_id, text=get_ui_text(default_headers[col_id]))
+
+    # =========================================================================
+    # CELL SELECTION AND COPY
+    # =========================================================================
+
+    def _on_cell_click(self, event) -> None:
+        """Handle click to select a cell."""
+        region = self._tree.identify_region(event.x, event.y)
+        if region != "cell":
+            self._selected_cell = None
+            self._selection_info_label.config(text="")
+            return
+
+        item = self._tree.identify_row(event.y)
+        column = self._tree.identify_column(event.x)
+        if not item or not column:
+            return
+
+        # Get column ID from display column index
+        # column is like "#1", "#2", etc. - index into displaycolumns
+        col_display_idx = int(column[1:]) - 1
+        display_cols = MODE_DISPLAY_COLUMNS.get(self._current_mode, MODE_DISPLAY_COLUMNS['map'])
+
+        if col_display_idx < 0 or col_display_idx >= len(display_cols):
+            return
+
+        col_id = display_cols[col_display_idx]
+        self._selected_cell = (item, col_id)
+
+        # Update selection info
+        full_text = self._full_text_cache.get(item, {}).get(col_id, "")
+        if full_text:
+            preview = full_text[:30] + "..." if len(full_text) > 30 else full_text
+            self._selection_info_label.config(text=f"[Ctrl+C to copy: {preview}]")
+        else:
+            self._selection_info_label.config(text="")
+
+    def _copy_selected_cell(self, event=None) -> str:
+        """Copy selected cell value to clipboard."""
+        if not self._selected_cell:
+            return "break"
+
+        strkey, col_id = self._selected_cell
+        full_text = self._full_text_cache.get(strkey, {}).get(col_id, "")
+
+        if full_text:
+            self.clipboard_clear()
+            self.clipboard_append(full_text)
+            preview = full_text[:40] + "..." if len(full_text) > 40 else full_text
+            self._selection_info_label.config(text=f"Copied: {preview}")
+
+        return "break"
+
+    # =========================================================================
+    # DATA FORMATTING HELPERS
+    # =========================================================================
+
+    def _format_use_macro(self, use_macro: str) -> str:
+        """Format UseMacro to readable race/gender.
+
+        'Macro_NPC_Human_Male' -> 'Human Male'
+        """
+        if not use_macro:
+            return ""
+        parts = use_macro.replace("Macro_", "").replace("_", " ").split()
+        filtered = [p for p in parts if p.lower() not in ('npc', 'unique')]
+        return " ".join(filtered[:2])
+
+    def _format_job(self, job: str) -> str:
+        """Format Job to readable string.
+
+        'Job_Scholar' -> 'Scholar'
+        """
+        return job.replace("Job_", "").replace("_", " ") if job else ""
 
     # =========================================================================
     # TOOLTIP HANDLING
@@ -426,12 +536,14 @@ class ResultPanel(ttk.Frame):
         if not item or not column:
             return
 
-        # Get column index (column is like "#1", "#2", etc.)
-        col_idx = int(column[1:]) - 1
-        if col_idx < 0 or col_idx >= len(self.COLUMN_DEFS):
+        # Get column ID from display column index
+        col_display_idx = int(column[1:]) - 1
+        display_cols = MODE_DISPLAY_COLUMNS.get(self._current_mode, MODE_DISPLAY_COLUMNS['map'])
+
+        if col_display_idx < 0 or col_display_idx >= len(display_cols):
             return
 
-        col_id = self.COLUMN_DEFS[col_idx][0]
+        col_id = display_cols[col_display_idx]
 
         # Check if this cell has cached full text that was truncated
         strkey = item
@@ -456,14 +568,6 @@ class ResultPanel(ttk.Frame):
             self._tooltip_scheduled = None
         if self._tooltip:
             self._tooltip.hide()
-
-    def _update_column_visibility(self) -> None:
-        """Update column visibility based on checkboxes."""
-        for col_id, _, _, min_width, default_width in self.COLUMN_DEFS:
-            if self._column_visible[col_id].get():
-                self._tree.column(col_id, width=default_width, minwidth=min_width, stretch=True)
-            else:
-                self._tree.column(col_id, width=0, minwidth=0, stretch=False)
 
     def set_results(
         self,
@@ -498,66 +602,50 @@ class ResultPanel(ttk.Frame):
         self._load_more_btn.config(state="normal" if has_more else "disabled")
 
     def _insert_result(self, result: SearchResult) -> None:
-        """Insert a single result into the tree."""
-        # Cache full text for tooltips before truncation
-        # AUDIO mode: desc column shows KOR script, position column shows ENG script
-        if self._current_mode == "audio":
-            desc_full = result.desc_kr if result.desc_kr else ""
-        else:
-            desc_full = result.desc_translated if result.desc_translated else result.desc_kr
-
-        # Store full text cache
+        """Insert a single result into the tree with ALL column values."""
+        # Build full text cache for ALL columns
         self._full_text_cache[result.strkey] = {
             'name_kr': result.name_kr,
             'name_tr': result.name_translated,
-            'desc': desc_full,
+            'desc': result.desc_translated if result.desc_translated else result.desc_kr,
             'position': result.position_str if self._current_mode == "map" else result.group,
-            'strkey': result.strkey
+            'strkey': result.strkey,
+            'use_macro': self._format_use_macro(result.use_macro),
+            'age': result.age,
+            'job': self._format_job(result.job),
+            'string_id': result.string_id,
         }
 
-        # Description: truncate if too long
-        desc_display = desc_full
-        if len(desc_display) > self.TRUNCATE_THRESHOLD:
-            desc_display = desc_display[:self.TRUNCATE_THRESHOLD - 3] + "..."
+        # AUDIO mode overrides
+        if self._current_mode == "audio":
+            self._full_text_cache[result.strkey]['desc'] = result.desc_kr  # KOR script
+            self._full_text_cache[result.strkey]['name_tr'] = result.desc_translated  # ENG script
 
-        # Truncate name if too long
-        name_kr_display = result.name_kr
-        if len(name_kr_display) > self.TRUNCATE_THRESHOLD:
-            name_kr_display = name_kr_display[:self.TRUNCATE_THRESHOLD - 3] + "..."
+        # Helper to truncate text
+        def truncate(text: str) -> str:
+            if len(text) > self.TRUNCATE_THRESHOLD:
+                return text[:self.TRUNCATE_THRESHOLD - 3] + "..."
+            return text
 
-        name_tr_display = result.name_translated
-        if len(name_tr_display) > self.TRUNCATE_THRESHOLD:
-            name_tr_display = name_tr_display[:self.TRUNCATE_THRESHOLD - 3] + "..."
-
-        # Position column: varies by mode
-        # - MAP: Position (X, Y, Z)
-        # - CHARACTER/ITEM: Group
-        # - AUDIO: ENG Script (desc_translated)
-        if self._current_mode == "map":
-            pos_or_group = result.position_str  # Full X, Y, Z
-        elif self._current_mode == "audio":
-            # AUDIO mode: show ENG script in position column
-            eng_script = result.desc_translated if result.desc_translated else ""
-            if len(eng_script) > self.TRUNCATE_THRESHOLD:
-                pos_or_group = eng_script[:self.TRUNCATE_THRESHOLD - 3] + "..."
-            else:
-                pos_or_group = eng_script
-            # Also cache full ENG script for tooltip
-            self._full_text_cache[result.strkey]['position'] = eng_script
-        else:
-            pos_or_group = result.group
+        # Build values tuple for ALL columns (in order of ALL_COLUMN_DEFS)
+        cache = self._full_text_cache[result.strkey]
+        values = (
+            truncate(cache['name_kr']),
+            truncate(cache['name_tr']),
+            truncate(cache['desc']),
+            truncate(cache['position']),
+            cache['strkey'],
+            truncate(cache['use_macro']),
+            cache['age'],
+            truncate(cache['job']),
+            cache['string_id'],
+        )
 
         self._tree.insert(
             "",
             "end",
             iid=result.strkey,
-            values=(
-                name_kr_display,
-                name_tr_display,
-                desc_display,
-                pos_or_group,
-                result.strkey
-            )
+            values=values
         )
 
     def _update_count_label(self) -> None:
@@ -596,6 +684,8 @@ class ResultPanel(ttk.Frame):
         self._total_count = 0
         self._has_more = False
         self._full_text_cache.clear()
+        self._selected_cell = None
+        self._selection_info_label.config(text="")
         self._count_label.config(text=f"{get_ui_text('results')}: 0")
         self._load_more_btn.config(state="disabled")
         self._update_detail_panel(None)
@@ -635,9 +725,8 @@ class ResultPanel(ttk.Frame):
 
     def _sort_column(self, col: str) -> None:
         """Sort by column."""
-        # Get column index
-        col_map = {col[0]: i for i, col in enumerate(self.COLUMN_DEFS)}
-        idx = col_map.get(col, 0)
+        # Get column index in ALL_COLUMN_DEFS
+        idx = COLUMN_ID_TO_INDEX.get(col, 0)
 
         # Get current items
         items = [(self._tree.item(iid)["values"], iid) for iid in self._tree.get_children()]
@@ -691,22 +780,7 @@ class ResultPanel(ttk.Frame):
             mode: 'map', 'character', 'item', or 'audio'
         """
         self._current_mode = mode
-
-        if mode == 'audio':
-            # AUDIO mode: special column headers
-            self._tree.heading("name_kr", text=get_ui_text('event_name'))
-            self._tree.heading("desc", text=get_ui_text('script_line') + " (KOR)")
-            self._tree.heading("position", text=get_ui_text('script_line') + " (ENG)")
-        elif mode == 'map':
-            # MAP mode: default headers
-            self._tree.heading("name_kr", text=get_ui_text('name_kr'))
-            self._tree.heading("desc", text=get_ui_text('description'))
-            self._tree.heading("position", text=get_ui_text('position'))
-        else:
-            # CHARACTER/ITEM mode
-            self._tree.heading("name_kr", text=get_ui_text('name_kr'))
-            self._tree.heading("desc", text=get_ui_text('description'))
-            self._tree.heading("position", text=get_ui_text('group'))
+        self._apply_mode_columns(mode)
 
         # Update detail panel label
         if hasattr(self, '_detail_pos_label'):
@@ -719,7 +793,7 @@ class ResultPanel(ttk.Frame):
 
     def set_mode(self, mode: str) -> None:
         """
-        Set display mode and apply mode-specific column defaults.
+        Set display mode and apply mode-specific column layout.
 
         Args:
             mode: 'map', 'character', 'item', or 'audio'
@@ -729,30 +803,20 @@ class ResultPanel(ttk.Frame):
 
         # Clear stale data from previous mode
         self._full_text_cache.clear()
+        self._selected_cell = None
+        self._selection_info_label.config(text="")
         self.clear()  # Clear tree and results
-
-        # Apply mode-specific column defaults
-        defaults = MODE_COLUMN_DEFAULTS.get(mode, MODE_COLUMN_DEFAULTS['map'])
-        for col_id, visible in defaults.items():
-            if col_id in self._column_visible:
-                self._column_visible[col_id].set(visible)
-
-        self._update_column_visibility()
 
     def set_column_visible(self, column: str, visible: bool) -> None:
         """
         Programmatically set column visibility.
 
-        Args:
-            column: Column identifier
-            visible: Whether column should be visible
+        Note: This method is kept for backward compatibility but
+        column visibility is now controlled by MODE_DISPLAY_COLUMNS.
         """
-        if column in self._column_visible:
-            self._column_visible[column].set(visible)
-            self._update_column_visibility()
+        pass  # No-op - columns are controlled by mode
 
     def get_column_visible(self, column: str) -> bool:
-        """Get column visibility state."""
-        if column in self._column_visible:
-            return self._column_visible[column].get()
-        return False
+        """Get column visibility state based on current mode."""
+        display_cols = MODE_DISPLAY_COLUMNS.get(self._current_mode, MODE_DISPLAY_COLUMNS['map'])
+        return column in display_cols
