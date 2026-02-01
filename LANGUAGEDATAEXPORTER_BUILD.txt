@@ -41,3 +41,4 @@ Build 20260127-211839 - Fix requirements (need both openpyxl and xlsxwriter)
 Build 20260127-213349 - xlsxwriter for reliable cell protection (Correction column only editable)
 Build 20260201-200518 - chmod writable + case-insensitive headers + nospace fallback
 Build 20260201-202249 - fix progress tracker worksheet hiding
+Build 20260201-202707 - add missing hiddenimports
