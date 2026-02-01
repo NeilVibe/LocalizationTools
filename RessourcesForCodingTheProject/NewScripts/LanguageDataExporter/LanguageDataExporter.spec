@@ -44,6 +44,15 @@ a = Analysis(
         'gui',
         'gui.app',
 
+        # LOCDEV merger and progress tracker
+        'exporter.locdev_merger',
+        'exporter.submit_preparer',
+        'tracker',
+        'tracker.data',
+        'tracker.weekly',
+        'tracker.total',
+        'tracker.tracker',
+
         # Excel processing
         'openpyxl',
         'openpyxl.styles',
