@@ -282,6 +282,70 @@ xvfb-run python -c "from gui.app import MapDataGeneratorApp; app = MapDataGenera
 | Map visualization | `gui/map_canvas.py` | - |
 | Config/paths | `config.py` | - |
 
+## CRITICAL: PyInstaller Import Pattern
+
+**This is THE #2 source of bugs!** Relative imports break in PyInstaller frozen executables.
+
+### The Problem Pattern (CAUSES CRASH)
+
+```python
+# ❌ WRONG - try/except with relative import fallbacks
+try:
+    from config import APP_NAME
+except ImportError:
+    from ..config import APP_NAME  # CRASHES in frozen .exe!
+```
+
+**Why it fails:** In PyInstaller, `from ..config` tries to go up one directory level, but the frozen executable has no parent package context.
+
+### The Correct Pattern (QACompiler Style)
+
+```python
+import sys
+from pathlib import Path
+
+# ✅ CORRECT - Add parent to sys.path BEFORE any imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# ✅ CORRECT - Then use ONLY absolute imports
+from config import APP_NAME
+from core.linkage import LinkageResolver
+from gui.search_panel import SearchPanel
+```
+
+### Files That MUST Have sys.path.insert
+
+Every file in `gui/` and `core/` that imports from parent:
+- `gui/app.py` - Has it ✅
+- `gui/search_panel.py` - Has it ✅
+- `gui/result_panel.py` - Has it ✅
+- `gui/image_viewer.py` - Has it ✅
+- `gui/audio_viewer.py` - Has it ✅
+- `gui/map_canvas.py` - Has it ✅
+- `core/language.py` - Has it ✅
+- `core/search.py` - Has it ✅
+
+### __init__.py Files Are Different
+
+Package `__init__.py` files CAN use relative imports (`.`):
+```python
+# ✅ OK in __init__.py
+from .app import MapDataGeneratorApp  # Relative to same package
+from .xml_parser import parse_xml
+```
+
+### Debugging Import Issues
+
+```bash
+# Test imports work before PyInstaller
+python -c "
+import sys
+sys.path.insert(0, '.')
+from gui.app import MapDataGeneratorApp
+print('OK')
+"
+```
+
 ## Recent Fixes
 
 | Issue | Fix | Date |
@@ -289,3 +353,5 @@ xvfb-run python -c "from gui.app import MapDataGeneratorApp; app = MapDataGenera
 | `ttk.cget("background")` crash | Use `ttk.Style().lookup()` | 2026-02-01 |
 | GUI modules not validated in CI | Added gui.* to import list | 2026-02-01 |
 | No headless GUI test | Added CHECK 5 with Xvfb | 2026-02-01 |
+| **Relative import crash in .exe** | **Remove try/except fallbacks, use sys.path.insert + absolute imports** | 2026-02-01 |
+| unittest excluded breaks pyparsing | Don't exclude unittest or pyparsing.testing | 2026-02-01 |
