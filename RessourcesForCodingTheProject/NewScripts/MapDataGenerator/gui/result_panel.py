@@ -160,6 +160,10 @@ class ResultPanel(ttk.Frame):
         # Cell selection state
         self._selected_cell: Optional[Tuple[str, str]] = None  # (strkey, col_id)
 
+        # Column visibility state (user-controlled via checkboxes)
+        self._column_visible: Dict[str, tk.BooleanVar] = {}
+        self._column_checkboxes: Dict[str, ttk.Checkbutton] = {}
+
         # Detail panel collapsed state
         self._detail_collapsed = tk.BooleanVar(value=False)
 
@@ -201,6 +205,16 @@ class ResultPanel(ttk.Frame):
             foreground="gray"
         )
         self._selection_info_label.pack(side="right", padx=10)
+
+        # Column toggle frame with checkboxes
+        toggle_frame = ttk.Frame(header_frame)
+        toggle_frame.pack(side="right", padx=(0, 10))
+
+        ttk.Label(toggle_frame, text="Show:").pack(side="left", padx=(0, 5))
+
+        # Create checkbox for each column in mode's display columns
+        # Initially create for MAP mode, will be updated on mode change
+        self._toggle_frame = toggle_frame  # Store reference for mode changes
 
         # Treeview with scrollbars
         tree_frame = ttk.Frame(self)
@@ -435,13 +449,12 @@ class ResultPanel(ttk.Frame):
 
     def _apply_mode_columns(self, mode: str) -> None:
         """
-        Apply mode-specific column layout using displaycolumns.
+        Apply mode-specific column layout and rebuild toggle checkboxes.
 
         Args:
             mode: 'map', 'character', 'item', or 'audio'
         """
         display_cols = MODE_DISPLAY_COLUMNS.get(mode, MODE_DISPLAY_COLUMNS['map'])
-        self._tree.configure(displaycolumns=display_cols)
 
         # Apply header overrides if any
         overrides = MODE_HEADER_OVERRIDES.get(mode, {})
@@ -454,9 +467,71 @@ class ResultPanel(ttk.Frame):
             if col_id not in overrides:
                 self._tree.heading(col_id, text=get_ui_text(default_headers[col_id]))
 
+        # Rebuild toggle checkboxes for this mode's columns
+        self._rebuild_column_checkboxes(mode)
+
+        # Apply initial visibility
+        self._update_column_visibility()
+
+    def _rebuild_column_checkboxes(self, mode: str) -> None:
+        """Rebuild column toggle checkboxes for the given mode."""
+        # Clear existing checkboxes
+        for cb in self._column_checkboxes.values():
+            cb.destroy()
+        self._column_checkboxes.clear()
+        self._column_visible.clear()
+
+        # Get columns for this mode
+        display_cols = MODE_DISPLAY_COLUMNS.get(mode, MODE_DISPLAY_COLUMNS['map'])
+        overrides = MODE_HEADER_OVERRIDES.get(mode, {})
+        default_headers = {col[0]: col[1] for col in ALL_COLUMN_DEFS}
+
+        # Create checkbox for each column
+        for col_id in display_cols:
+            # Default: all ON except 'desc' which is OFF
+            default_visible = (col_id != 'desc')
+            var = tk.BooleanVar(value=default_visible)
+            self._column_visible[col_id] = var
+
+            # Get header text (use override if available)
+            header_key = overrides.get(col_id, default_headers.get(col_id, col_id))
+            header_text = get_ui_text(header_key)
+
+            cb = ttk.Checkbutton(
+                self._toggle_frame,
+                text=header_text,
+                variable=var,
+                command=self._update_column_visibility
+            )
+            cb.pack(side="left", padx=2)
+            self._column_checkboxes[col_id] = cb
+
+    def _update_column_visibility(self) -> None:
+        """Update which columns are visible based on checkbox states."""
+        visible_cols = tuple(
+            col_id for col_id, var in self._column_visible.items()
+            if var.get()
+        )
+        # If no columns selected, show at least first column
+        if not visible_cols:
+            display_cols = MODE_DISPLAY_COLUMNS.get(self._current_mode, MODE_DISPLAY_COLUMNS['map'])
+            visible_cols = (display_cols[0],)
+        self._tree.configure(displaycolumns=visible_cols)
+
     # =========================================================================
     # CELL SELECTION AND COPY
     # =========================================================================
+
+    def _get_visible_columns(self) -> Tuple[str, ...]:
+        """Get currently visible columns based on checkbox states."""
+        visible = tuple(
+            col_id for col_id, var in self._column_visible.items()
+            if var.get()
+        )
+        if not visible:
+            display_cols = MODE_DISPLAY_COLUMNS.get(self._current_mode, MODE_DISPLAY_COLUMNS['map'])
+            return (display_cols[0],)
+        return visible
 
     def _on_cell_click(self, event) -> None:
         """Handle click to select a cell."""
@@ -472,14 +547,14 @@ class ResultPanel(ttk.Frame):
             return
 
         # Get column ID from display column index
-        # column is like "#1", "#2", etc. - index into displaycolumns
+        # column is like "#1", "#2", etc. - index into visible columns
         col_display_idx = int(column[1:]) - 1
-        display_cols = MODE_DISPLAY_COLUMNS.get(self._current_mode, MODE_DISPLAY_COLUMNS['map'])
+        visible_cols = self._get_visible_columns()
 
-        if col_display_idx < 0 or col_display_idx >= len(display_cols):
+        if col_display_idx < 0 or col_display_idx >= len(visible_cols):
             return
 
-        col_id = display_cols[col_display_idx]
+        col_id = visible_cols[col_display_idx]
         self._selected_cell = (item, col_id)
 
         # Update selection info
@@ -561,12 +636,12 @@ class ResultPanel(ttk.Frame):
 
         # Get column ID from display column index
         col_display_idx = int(column[1:]) - 1
-        display_cols = MODE_DISPLAY_COLUMNS.get(self._current_mode, MODE_DISPLAY_COLUMNS['map'])
+        visible_cols = self._get_visible_columns()
 
-        if col_display_idx < 0 or col_display_idx >= len(display_cols):
+        if col_display_idx < 0 or col_display_idx >= len(visible_cols):
             return
 
-        col_id = display_cols[col_display_idx]
+        col_id = visible_cols[col_display_idx]
 
         # Check if this cell has cached full text that was truncated
         strkey = item
@@ -847,12 +922,16 @@ class ResultPanel(ttk.Frame):
         """
         Programmatically set column visibility.
 
-        Note: This method is kept for backward compatibility but
-        column visibility is now controlled by MODE_DISPLAY_COLUMNS.
+        Args:
+            column: Column identifier
+            visible: Whether column should be visible
         """
-        pass  # No-op - columns are controlled by mode
+        if column in self._column_visible:
+            self._column_visible[column].set(visible)
+            self._update_column_visibility()
 
     def get_column_visible(self, column: str) -> bool:
-        """Get column visibility state based on current mode."""
-        display_cols = MODE_DISPLAY_COLUMNS.get(self._current_mode, MODE_DISPLAY_COLUMNS['map'])
-        return column in display_cols
+        """Get column visibility state."""
+        if column in self._column_visible:
+            return self._column_visible[column].get()
+        return False
