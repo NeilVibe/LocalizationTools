@@ -1,6 +1,6 @@
 # Architecture Summary - Complete Reference
 
-> Last Updated: 2026-02-01 (9 Repository Interfaces + 3-Mode Detection)
+> Last Updated: 2026-02-01 (9 Repository Interfaces + SchemaMode + TMLoader)
 
 ---
 
@@ -212,17 +212,21 @@ The `RoutingRowRepository` handles rows that can live in EITHER database based o
 
 **Use Case:** Offline-created rows get negative IDs, server rows get positive IDs. The routing repository transparently handles both.
 
-### 3-Mode Detection
+### 3-Mode Detection (ARCH-001)
 
-The system detects **three distinct modes** at startup:
+The system detects **three distinct modes** at runtime using SchemaMode:
 
-| Mode | Detection | Primary DB | Offline DB |
-|------|-----------|------------|------------|
-| **Offline** | Token starts with `OFFLINE_MODE_` | SQLite | SQLite |
-| **SQLite Server** | `USE_SQLITE=true` env var | SQLite | SQLite |
-| **PostgreSQL** | Default (server connected) | PostgreSQL | SQLite |
+| Mode | Detection | SchemaMode | Tables Used |
+|------|-----------|------------|-------------|
+| **Offline** | Token starts with `OFFLINE_MODE_` | `OFFLINE` | `offline_*` tables |
+| **SQLite Server** | `ACTIVE_DATABASE_TYPE == "sqlite"` | `SERVER` | `ldm_*` tables |
+| **PostgreSQL** | Default (server connected) | N/A | `ldm_*` tables |
 
-Mode detection happens in `server/repositories/__init__.py` via `get_*_repository()` factories.
+**SchemaMode Enum** (in `server/repositories/sqlite/base.py`):
+- `SchemaMode.OFFLINE` - Uses offline_projects, offline_files, offline_rows, etc.
+- `SchemaMode.SERVER` - Uses ldm_projects, ldm_files, ldm_rows, etc. (same as PostgreSQL)
+
+Mode detection happens in `server/repositories/factory.py` via `get_*_repository()` factories.
 
 ### Folder Structure
 
@@ -283,89 +287,84 @@ class TMRepository(ABC):
     """
     TM operations interface.
     Both PostgreSQL and SQLite implement this EXACTLY.
+    Full interface in server/repositories/interfaces/tm_repository.py
     """
 
-    @abstractmethod
-    async def get(self, tm_id: int) -> Optional[dict]:
-        """Get TM by ID."""
-        ...
+    # === Core CRUD ===
+    async def get(self, tm_id: int) -> Optional[dict]: ...
+    async def get_all(self) -> List[dict]: ...
+    async def create(self, name: str, source_lang: str, target_lang: str) -> dict: ...
+    async def delete(self, tm_id: int) -> bool: ...
 
-    @abstractmethod
-    async def get_all(self) -> List[dict]:
-        """Get all TMs."""
-        ...
+    # === Assignment Operations ===
+    async def assign(self, tm_id: int, target: AssignmentTarget) -> dict: ...
+    async def unassign(self, tm_id: int) -> dict: ...
+    async def activate(self, tm_id: int) -> dict: ...
+    async def deactivate(self, tm_id: int) -> dict: ...
+    async def get_assignment(self, tm_id: int) -> Optional[dict]: ...
 
-    @abstractmethod
-    async def create(self, name: str, source_lang: str, target_lang: str) -> dict:
-        """Create new TM."""
-        ...
+    # === Scope Queries ===
+    async def get_for_scope(self, platform_id=None, project_id=None, folder_id=None) -> List[dict]: ...
+    async def get_active_for_file(self, file_id: int) -> List[dict]: ...
 
-    @abstractmethod
-    async def delete(self, tm_id: int) -> bool:
-        """Delete TM."""
-        ...
+    # === TM Linking (Active TMs for Projects) ===
+    async def link_to_project(self, tm_id: int, project_id: int, priority: int = 1) -> dict: ...
+    async def unlink_from_project(self, tm_id: int, project_id: int) -> bool: ...
+    async def get_linked_for_project(self, project_id: int) -> Optional[dict]: ...
+    async def get_all_linked_for_project(self, project_id: int) -> List[dict]: ...
 
-    @abstractmethod
-    async def assign(self, tm_id: int, target: AssignmentTarget) -> dict:
-        """Assign TM to platform/project/folder."""
-        ...
+    # === TM Entries ===
+    async def add_entry(self, tm_id: int, source: str, target: str) -> dict: ...
+    async def add_entries_bulk(self, tm_id: int, entries: List[dict]) -> int: ...
+    async def get_entries(self, tm_id: int, offset: int = 0, limit: int = 100) -> List[dict]: ...
+    async def get_all_entries(self, tm_id: int) -> List[dict]: ...  # For FAISS indexing
+    async def search_entries(self, tm_id: int, query: str, limit: int = 10) -> List[dict]: ...
+    async def delete_entry(self, entry_id: int) -> bool: ...
+    async def update_entry(self, entry_id: int, source_text=None, target_text=None) -> Optional[dict]: ...
+    async def confirm_entry(self, entry_id: int, confirm: bool = True) -> Optional[dict]: ...
+    async def bulk_confirm_entries(self, tm_id: int, entry_ids: List[int]) -> int: ...
+    async def get_glossary_terms(self, tm_ids: List[int], max_length: int = 20) -> List[tuple]: ...
 
-    @abstractmethod
-    async def unassign(self, tm_id: int) -> dict:
-        """Move TM to unassigned."""
-        ...
+    # === Advanced Search ===
+    async def search_exact(self, tm_id: int, source: str) -> Optional[dict]: ...  # Hash-based O(1)
+    async def search_similar(self, tm_id: int, source: str, threshold: float = 0.5) -> List[dict]: ...  # pg_trgm
 
-    @abstractmethod
-    async def activate(self, tm_id: int) -> dict:
-        """Activate TM (must be assigned first)."""
-        ...
-
-    @abstractmethod
-    async def deactivate(self, tm_id: int) -> dict:
-        """Deactivate TM."""
-        ...
-
-    @abstractmethod
-    async def get_for_scope(
-        self,
-        platform_id: Optional[int] = None,
-        project_id: Optional[int] = None,
-        folder_id: Optional[int] = None
-    ) -> List[dict]:
-        """Get TMs assigned to scope."""
-        ...
-
-    @abstractmethod
-    async def add_entry(self, tm_id: int, source: str, target: str) -> dict:
-        """Add entry to TM."""
-        ...
-
-    @abstractmethod
-    async def search_entries(self, tm_id: int, query: str, limit: int = 10) -> List[dict]:
-        """Search TM entries."""
-        ...
+    # === Index & Utility ===
+    async def get_indexes(self, tm_id: int) -> List[dict]: ...
+    async def count_entries(self, tm_id: int) -> int: ...
+    async def get_tree(self) -> dict: ...  # Full TM tree for UI
 ```
 
 ### Dependency Injection
 
 ```python
-# server/repositories/__init__.py
+# server/repositories/factory.py
 from server.repositories.postgresql.tm_repo import PostgreSQLTMRepository
 from server.repositories.sqlite.tm_repo import SQLiteTMRepository
+from server.repositories.sqlite.base import SchemaMode
+
+def _is_offline_mode(request: Request) -> bool:
+    """Detect offline mode via Authorization header."""
+    auth_header = request.headers.get("Authorization", "")
+    return auth_header.startswith("Bearer OFFLINE_MODE_")
+
+def _is_sqlite_fallback() -> bool:
+    """Detect SQLite fallback mode."""
+    from server import config
+    return config.ACTIVE_DATABASE_TYPE == "sqlite"
 
 def get_tm_repository(
+    request: Request,
     db: AsyncSession = Depends(get_async_db),
-    current_user: dict = Depends(get_current_user_optional)
+    current_user: dict = Depends(get_current_active_user_async)
 ) -> TMRepository:
-    """
-    Factory function - returns correct repository based on mode.
-    Used as FastAPI dependency.
-    """
-    # Check if offline mode
-    if current_user and current_user.get("token", "").startswith("OFFLINE_MODE_"):
-        return SQLiteTMRepository()
+    """Factory function - 3-mode detection."""
+    if _is_offline_mode(request):
+        return SQLiteTMRepository(schema_mode=SchemaMode.OFFLINE)
+    elif _is_sqlite_fallback():
+        return SQLiteTMRepository(schema_mode=SchemaMode.SERVER)
     else:
-        return PostgreSQLTMRepository(db)
+        return PostgreSQLTMRepository(db, current_user)
 ```
 
 ### Route Usage (Clean!)
@@ -435,8 +434,10 @@ The goal: Replace fallback patterns with abstraction layer.
 | `server/database/offline_schema.sql` | SQLite schema |
 | `server/tools/ldm/routes/sync.py` | Offline endpoints |
 | `server/tools/ldm/routes/tm_assignment.py` | TM tree + assignment |
-| `server/tools/shared/tm_loader.py` | **TMLoader** - Loads TMs for file editing (cascading scope resolution) |
-| `server/repositories/routing_row_repository.py` | **RoutingRowRepository** - Routes rows by ID sign (negative->SQLite, positive->primary) |
+| `server/tools/shared/tm_loader.py` | **TMLoader** - Loads TM entries for pretranslation (3-mode aware) |
+| `server/repositories/routing/row_repo.py` | **RoutingRowRepository** - Routes rows by ID sign (negative->SQLite, positive->primary) |
+| `server/repositories/factory.py` | **Repository Factory** - 3-mode detection, dependency injection |
+| `server/repositories/sqlite/base.py` | **SchemaMode** enum (OFFLINE vs SERVER) |
 | `locaNext/src/lib/stores/sync.js` | Sync state management |
 | `locaNext/src/lib/components/pages/FilesPage.svelte` | File explorer |
 | `locaNext/src/lib/components/ldm/TMExplorerTree.svelte` | TM tree UI |
@@ -542,4 +543,4 @@ cd locaNext && npx playwright test tests/offline-*.spec.ts
 
 ---
 
-*Updated 2026-02-01 | 9 Repository Interfaces + RoutingRowRepository + 3-Mode Detection*
+*Updated 2026-02-01 | 9 Repository Interfaces + SchemaMode + TMLoader + RoutingRowRepository*

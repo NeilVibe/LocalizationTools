@@ -14,7 +14,9 @@
     Download,
     View,
     Settings,
-    Upload
+    Upload,
+    Flash,
+    MachineLearning
   } from 'carbon-icons-svelte';
   import { preferences } from '$lib/stores/preferences.js';
   import { logger } from '$lib/utils/logger.js';
@@ -52,6 +54,10 @@
   // Confirm modal
   let confirmModal = $state({ open: false, title: '', message: '', action: null, tm: null });
 
+  // UX-001/UX-002/UX-003: Embedding Engine state
+  let currentEngine = $state('model2vec');
+  let engineLoading = $state(false);
+
   // ========================================
   // Data Loading
   // ========================================
@@ -78,6 +84,49 @@
       tmList = [];
     } finally {
       tmLoading = false;
+    }
+  }
+
+  // UX-001: Load current embedding engine
+  async function loadCurrentEngine() {
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/settings/embedding-engine`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        currentEngine = data.current_engine;
+        logger.info('Current embedding engine', { engine: currentEngine });
+      }
+    } catch (err) {
+      logger.error('Error loading current engine', { error: err.message });
+    }
+  }
+
+  // UX-001: Switch embedding engine
+  async function setEmbeddingEngine(engineId) {
+    engineLoading = true;
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/settings/embedding-engine`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ engine: engineId })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        currentEngine = data.current_engine;
+        logger.success('Embedding engine changed', { engine: currentEngine, name: data.engine_name });
+      } else {
+        const error = await response.json();
+        logger.error('Failed to change engine', { error: error.detail });
+      }
+    } catch (err) {
+      logger.error('Error changing engine', { error: err.message });
+    } finally {
+      engineLoading = false;
     }
   }
 
@@ -240,6 +289,7 @@
 
   onMount(() => {
     loadTMs();
+    loadCurrentEngine();  // UX-001: Load engine on mount
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
   });
@@ -292,6 +342,52 @@
           <h3>Settings</h3>
           <button class="close-settings" onclick={toggleSettings}>×</button>
         </div>
+
+        <!-- UX-001/UX-002/UX-003: Search Engine Toggle (prominent position) -->
+        <div class="setting-item engine-setting">
+          <div class="setting-header">
+            <span class="setting-label">
+              {#if currentEngine === 'model2vec'}
+                <Flash size={16} />
+              {:else}
+                <MachineLearning size={16} />
+              {/if}
+              Search Engine
+            </span>
+          </div>
+          <div class="engine-toggle">
+            <button
+              class="engine-btn"
+              class:active={currentEngine === 'model2vec'}
+              disabled={engineLoading}
+              onclick={() => setEmbeddingEngine('model2vec')}
+              title="79x faster, lightweight. Best for real-time search."
+            >
+              <Flash size={14} />
+              Fast
+            </button>
+            <button
+              class="engine-btn"
+              class:active={currentEngine === 'qwen'}
+              disabled={engineLoading}
+              onclick={() => setEmbeddingEngine('qwen')}
+              title="Deep semantic understanding. Best for batch/quality work."
+            >
+              <MachineLearning size={14} />
+              Deep
+            </button>
+          </div>
+          <p class="setting-hint">
+            {#if currentEngine === 'model2vec'}
+              Fast mode: 79x faster, real-time search
+            {:else}
+              Deep mode: Semantic understanding, better quality
+            {/if}
+          </p>
+        </div>
+
+        <div class="setting-divider"></div>
+
         <div class="setting-item">
           <div class="setting-header">
             <span class="setting-label">Match Threshold</span>
@@ -467,6 +563,62 @@
     margin: 0.5rem 0 0;
     font-size: 0.75rem;
     color: var(--cds-text-02);
+  }
+
+  /* UX-001/UX-002/UX-003: Engine Toggle Styles */
+  .engine-setting .setting-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .setting-divider {
+    height: 1px;
+    background: var(--cds-border-subtle-01);
+    margin: 1rem 0;
+  }
+
+  .engine-toggle {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--cds-border-strong-01);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+
+  .engine-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: none;
+    background: var(--cds-field-01);
+    color: var(--cds-text-02);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .engine-btn:first-child {
+    border-right: 1px solid var(--cds-border-strong-01);
+  }
+
+  .engine-btn:hover:not(:disabled) {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .engine-btn.active {
+    background: var(--cds-interactive-01);
+    color: var(--cds-text-on-color);
+  }
+
+  .engine-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   /* Context Menu */

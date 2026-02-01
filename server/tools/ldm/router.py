@@ -19,6 +19,7 @@ Structure:
 - routes/settings.py     - Embedding engine settings
 - routes/qa.py           - QA checks (P2: Auto-LQA)
 - routes/grammar.py      - Grammar/spelling check (P5: LanguageTool)
+- routes/maintenance.py  - EMB-003: TM stale index check + sync
 """
 
 from fastapi import APIRouter
@@ -50,6 +51,7 @@ from .routes.tm_assignment import router as tm_assignment_router
 from .routes.trash import router as trash_router  # EXPLORER-008: Recycle Bin
 from .routes.search import router as search_router  # EXPLORER-004: Explorer Search
 from .routes.capabilities import router as capabilities_router  # EXPLORER-009: Privileged Operations
+from .routes.maintenance import router as maintenance_router  # EMB-003: TM Maintenance
 
 # =============================================================================
 # Include all routers
@@ -77,6 +79,7 @@ router.include_router(grammar_router)
 router.include_router(trash_router)  # EXPLORER-008: Recycle Bin
 router.include_router(search_router)  # EXPLORER-004: Explorer Search
 router.include_router(capabilities_router)  # EXPLORER-009: Privileged Operations (Admin)
+router.include_router(maintenance_router)  # EMB-003: TM Maintenance (stale check + sync)
 
 # =============================================================================
 # WebSocket endpoint (still needs special handling)

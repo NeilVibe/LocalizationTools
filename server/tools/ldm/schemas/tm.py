@@ -20,12 +20,18 @@ class TMResponse(BaseModel):
 
 
 class TMUploadResponse(BaseModel):
+    """Response from TM upload endpoint.
+    
+    EMB-001: Added indexing_status to indicate auto-indexing state.
+    """
     tm_id: int
     name: str
     entry_count: int
     status: str
     time_seconds: float
     rate_per_second: int
+    # EMB-001: Auto-indexing status
+    indexing_status: Optional[str] = None  # "scheduled", "running", "complete", "error", None (not requested)
 
 
 class TMSearchResult(BaseModel):

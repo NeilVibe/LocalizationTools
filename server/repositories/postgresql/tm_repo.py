@@ -1044,3 +1044,18 @@ class PostgreSQLTMRepository(TMRepository):
             }
             for row in rows
         ]
+
+    # =========================================================================
+    # Name Validation (ARCH-002: Factory pattern compliance)
+    # =========================================================================
+
+    async def check_name_exists(self, name: str) -> bool:
+        """
+        Check if a TM with the given name already exists.
+
+        ARCH-002: Replaces direct database access in routes for factory compliance.
+        """
+        result = await self.db.execute(
+            select(LDMTranslationMemory).where(LDMTranslationMemory.name == name)
+        )
+        return result.scalar_one_or_none() is not None

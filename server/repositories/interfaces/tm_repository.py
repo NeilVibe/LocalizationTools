@@ -523,3 +523,23 @@ class TMRepository(ABC):
             - platforms: List of platforms with nested projects/folders/TMs
         """
         ...
+
+    # =========================================================================
+    # Name Validation (ARCH-002: Factory pattern compliance)
+    # =========================================================================
+
+    @abstractmethod
+    async def check_name_exists(self, name: str) -> bool:
+        """
+        Check if a TM with the given name already exists.
+
+        ARCH-002: This method replaces direct database access in routes,
+        ensuring proper factory pattern usage for offline/online parity.
+
+        Args:
+            name: TM name to check for existence
+
+        Returns:
+            True if a TM with this name exists, False otherwise.
+        """
+        ...

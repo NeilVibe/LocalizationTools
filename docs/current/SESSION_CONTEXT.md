@@ -1,6 +1,142 @@
 # Session Context
 
-> Last Updated: 2026-01-31 (Session 60+)
+> Last Updated: 2026-02-01 (Session 61)
+
+---
+
+## SESSION 61: Folder Schema Mismatch Fix - OFFLINE Mode Fully Working
+
+### What Was Done
+
+1. **Fixed folder_repo.py schema mismatch** - 5 methods using `updated_at` column that doesn't exist in SQLite
+2. **Added QA columns to offline_rows** (previous session carry-over)
+3. **Ran 7+ debug agents** to identify and verify issues
+4. **Created DOC-002** for folder schema issue documentation
+5. **All folder operations now work in OFFLINE mode**
+
+### The Problem
+
+SQLite folder repository was referencing `updated_at` column that doesn't exist in the `offline_folders` table schema. This caused 500 errors on all folder operations in OFFLINE mode.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `server/repositories/sqlite/folder_repo.py` | Removed `updated_at` from 5 methods |
+| `docs/history/DOC-002_FOLDER_SCHEMA_MISMATCH.md` | **NEW** - Issue documentation |
+
+### Methods Fixed in folder_repo.py
+
+| Method | Line | Issue |
+|--------|------|-------|
+| `get_by_id()` | ~70 | SELECT included `updated_at` |
+| `get_by_project()` | ~100 | SELECT included `updated_at` |
+| `create()` | ~130 | INSERT included `updated_at` |
+| `update()` | ~165 | UPDATE SET `updated_at` |
+| `_row_to_folder()` | ~220 | Dict access to `updated_at` |
+
+### Debug Agent Results
+
+| Agent | Task | Finding |
+|-------|------|---------|
+| Agent 1 | Schema verification | `offline_folders` has no `updated_at` |
+| Agent 2 | Method audit | 5 methods with schema mismatch |
+| Agent 3 | Code fix | Removed all `updated_at` references |
+| Agent 4 | Verification | All folder operations working |
+| Agent 5-7 | E2E testing | OFFLINE mode fully functional |
+
+### Verification Status
+
+| Item | Status | Details |
+|------|--------|---------|
+| Folder creation | ✅ Verified | Working in OFFLINE mode |
+| Agent cleanup | ✅ Complete | 15 agents → 8 agents |
+| gdp-debugger | ✅ Consolidated | All debugging in one agent |
+| Documentation | ✅ Created | Parallel agent docs added |
+
+### Architecture Note
+
+**SQLite offline schema is intentionally simpler:**
+- PostgreSQL `ldm_folders`: includes `updated_at` for sync tracking
+- SQLite `offline_folders`: no `updated_at` (local-only, no sync needed)
+
+This is by design - offline storage doesn't need timestamp tracking.
+
+---
+
+## Agent Workflow Patterns Used
+
+This session demonstrated effective multi-agent parallel workflows for debugging, analysis, verification, and documentation tasks.
+
+### Pattern 1: Parallel Debugging (7 Agents)
+
+Used to investigate and fix schema mismatch issues across multiple files simultaneously.
+
+| Agent | Focus | Finding |
+|-------|-------|---------|
+| Agent 1 | Schema verification | `offline_folders` has no `updated_at` column |
+| Agent 2 | Method audit | 5 methods in folder_repo.py reference non-existent column |
+| Agent 3 | Code fix implementation | Removed all `updated_at` references |
+| Agent 4 | Post-fix verification | All folder operations working |
+| Agents 5-7 | E2E testing | OFFLINE mode fully functional end-to-end |
+
+**Key insight:** Parallel debugging catches issues faster than sequential investigation. Each agent can focus on one aspect without context-switching overhead.
+
+### Pattern 2: Analysis Flow (analyze → discuss → conclude → document → fix)
+
+A structured approach for complex issues:
+
+1. **Analyze** - Multiple agents read code and logs in parallel
+2. **Discuss** - Cross-reference findings to identify root cause
+3. **Conclude** - Reach consensus on the fix approach
+4. **Document** - Create DOC-XXX issue documentation
+5. **Fix** - Implement the solution with verification
+
+### Pattern 3: Parallel Verification (9 Agents)
+
+Used in Session 60+ for comprehensive code review after major changes:
+
+| Agent Group | Count | Scope |
+|-------------|-------|-------|
+| Code Review | 6 | Thread safety, cache eviction, stale cache, logging, field parity, direct imports |
+| TM/QA Review | 3 | TM search, pretranslation, QA functions |
+
+**Findings per agent:**
+- Thread-unsafe cache → Added `threading.Lock`
+- No cache eviction → LRU with `MAX_SIZE = 10`
+- Stale cache on entry change → Cache invalidation in CRUD methods
+- `traceback.print_exc()` → `logger.exception()`
+- PostgreSQL/SQLite field parity → `get_all_entries()` returns only documented fields
+- Direct SQLite imports → RoutingRowRepository pattern
+
+### Pattern 4: Documentation (1 Agent Per Doc)
+
+For documentation tasks, assign one agent per file to avoid merge conflicts:
+
+| Doc File | Agent Task |
+|----------|------------|
+| DOC-002_FOLDER_SCHEMA_MISMATCH.md | Document issue + root cause + fix |
+| DEBUG_AND_SUBAGENTS.md | Full subagent guide |
+| QUICK_DEBUG_REFERENCE.md | Quick log commands |
+| E2E_TEST_RESULTS_SESSION60.md | Full E2E test log |
+
+### Agent Workflow Best Practices
+
+1. **Parallel > Sequential** - Always prefer parallel agents when tasks are independent
+2. **Clear scope per agent** - Each agent gets ONE specific focus area
+3. **Consolidate findings** - Main agent synthesizes all results
+4. **Verify fixes** - Dedicate agents specifically to verification (not just fixing)
+5. **Document discoveries** - Capture patterns in docs for future sessions
+
+### When to Use Each Pattern
+
+| Situation | Pattern | Agent Count |
+|-----------|---------|-------------|
+| Bug hunting | Parallel Debugging | 5-10 |
+| Complex issue analysis | Analysis Flow | 3-5 |
+| Post-change review | Parallel Verification | 6-12 |
+| Creating/updating docs | 1 Per Doc | 1 each |
+| Simple fix | Single agent | 1 |
 
 ---
 
@@ -332,12 +468,12 @@ StrOrigin | Str | Correction | Category | StringID
 
 | Session | Achievement |
 |---------|-------------|
+| **61** | Folder schema mismatch fix + OFFLINE mode fully working |
 | **60+** | LIMIT-001/002 Fixed + RoutingRowRepository + 6-agent review |
 | **60** | aiosqlite bug fixes (11 bugs) + E2E testing + Debug docs |
 | **59** | aiosqlite migration + SQLite mode fix (Build 516) |
 | **58** | Project health check + Mac build prep |
 | **57** | LanguageDataExporter v2.0 - Correction Workflow |
-| **56** | QACompiler Progress Tracker Manager Stats Fix |
 
 ---
 
@@ -371,4 +507,4 @@ python3 -c "import sqlite3; ..."  # Gitea (see CLAUDE.md)
 
 ---
 
-*Session 60+ | Build 524 | LIMIT-001/002 Fixed + Architecture Cleanup Complete*
+*Session 61 | Build 524 | Folder Schema Fix + OFFLINE Mode Fully Working*

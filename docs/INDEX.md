@@ -39,13 +39,8 @@ Custom agents in `.claude/agents/`:
 | **ci-specialist** | CI/CD workflows, build triggers, release management |
 | **languagedataexporter-specialist** | LanguageDataExporter project |
 | **qacompiler-specialist** | QACompilerNEW project |
-| **newscripts-specialist** | All NewScripts projects overview |
-| **gdp-debugger** | Granular Debug Protocol for bug hunting |
+| **gdp-debugger** | Granular Debug Protocol for all debugging (frontend, backend, Windows) |
 | **dev-tester** | DEV mode testing at localhost:5173 |
-| **vite-debugger** | Vite/Svelte frontend debugging |
-| **python-debugger** | Python/FastAPI backend debugging |
-| **nodejs-debugger** | Node.js/Electron debugging |
-| **windows-debugger** | Windows packaged app debugging |
 | **code-reviewer** | Code review for patterns/bugs |
 | **security-auditor** | Security vulnerability scanning |
 | **quicksearch-specialist** | QuickSearch tool specialist |
@@ -125,6 +120,10 @@ docs/
 | [GRANULAR_DEBUG_PROTOCOL.md](protocols/GRANULAR_DEBUG_PROTOCOL.md) | GDP - Microscopic logging for bug hunting |
 | [QUICK_DEBUG_REFERENCE.md](protocols/QUICK_DEBUG_REFERENCE.md) | Quick reference for common debug scenarios |
 | [DEBUG_AND_SUBAGENTS.md](protocols/DEBUG_AND_SUBAGENTS.md) | Using subagents for parallel debugging |
+| [PARALLEL_AGENT_PROTOCOL.md](protocols/PARALLEL_AGENT_PROTOCOL.md) | **NEW** - How to use agents in parallel |
+| [AGENT_ORCHESTRATION.md](protocols/AGENT_ORCHESTRATION.md) | **NEW** - Conductor pattern for agent management |
+
+**Agent Quick Reference** → [reference/AGENT_QUICK_REFERENCE.md](reference/AGENT_QUICK_REFERENCE.md)
 
 **Testing protocols** → See `testing_toolkit/` at project root
 
