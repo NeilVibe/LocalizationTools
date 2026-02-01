@@ -481,10 +481,13 @@ class ResultPanel(ttk.Frame):
         full_text = self._full_text_cache.get(strkey, {}).get(col_id, "")
 
         if full_text:
-            self.clipboard_clear()
-            self.clipboard_append(full_text)
-            preview = full_text[:40] + "..." if len(full_text) > 40 else full_text
-            self._selection_info_label.config(text=f"Copied: {preview}")
+            try:
+                self.clipboard_clear()
+                self.clipboard_append(full_text)
+                preview = full_text[:40] + "..." if len(full_text) > 40 else full_text
+                self._selection_info_label.config(text=f"Copied: {preview}")
+            except tk.TclError:
+                self._selection_info_label.config(text="(Clipboard error)")
         else:
             self._selection_info_label.config(text="(Cell is empty)")
 
@@ -618,10 +621,10 @@ class ResultPanel(ttk.Frame):
             'string_id': result.string_id or "",
         }
 
-        # AUDIO mode overrides
+        # AUDIO mode overrides (with None safety)
         if self._current_mode == "audio":
-            self._full_text_cache[result.strkey]['desc'] = result.desc_kr  # KOR script
-            self._full_text_cache[result.strkey]['name_tr'] = result.desc_translated  # ENG script
+            self._full_text_cache[result.strkey]['desc'] = result.desc_kr or ""  # KOR script
+            self._full_text_cache[result.strkey]['name_tr'] = result.desc_translated or ""  # ENG script
 
         # Helper to truncate text (handles None and empty)
         def truncate(text: str) -> str:
@@ -682,8 +685,18 @@ class ResultPanel(ttk.Frame):
 
     def clear(self) -> None:
         """Clear all results."""
-        for item in self._tree.get_children():
-            self._tree.delete(item)
+        # Cancel any pending tooltip
+        if self._tooltip_scheduled:
+            self.after_cancel(self._tooltip_scheduled)
+            self._tooltip_scheduled = None
+        if self._tooltip:
+            self._tooltip.hide()
+
+        # Fast bulk delete (single Tcl call)
+        children = self._tree.get_children()
+        if children:
+            self._tree.delete(*children)
+
         self._results = []
         self._total_count = 0
         self._has_more = False
