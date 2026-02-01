@@ -22,3 +22,4 @@ Build - Enhanced CI with 5 validation checks
 Build - Fixed GUI smoke test
 Build - Simplified GUI test
 Build - Added vgmstream DLLs for audio
+Build - Fixed vgmstream URL
