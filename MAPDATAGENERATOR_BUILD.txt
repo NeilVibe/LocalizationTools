@@ -19,3 +19,4 @@ Build 014: Use QACompilerNEW XML pattern - remove _patch_unterminated_attr bug
 Build 015
 Build 016
 Build - Enhanced CI with 5 validation checks
+Build - Fixed GUI smoke test
