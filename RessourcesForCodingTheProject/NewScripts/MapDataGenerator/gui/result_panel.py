@@ -500,7 +500,11 @@ class ResultPanel(ttk.Frame):
     def _insert_result(self, result: SearchResult) -> None:
         """Insert a single result into the tree."""
         # Cache full text for tooltips before truncation
-        desc_full = result.desc_translated if result.desc_translated else result.desc_kr
+        # AUDIO mode: desc column shows KOR script, position column shows ENG script
+        if self._current_mode == "audio":
+            desc_full = result.desc_kr if result.desc_kr else ""
+        else:
+            desc_full = result.desc_translated if result.desc_translated else result.desc_kr
 
         # Store full text cache
         self._full_text_cache[result.strkey] = {
@@ -722,6 +726,10 @@ class ResultPanel(ttk.Frame):
         """
         self._current_mode = mode
         self.set_mode_headers(mode)
+
+        # Clear stale data from previous mode
+        self._full_text_cache.clear()
+        self.clear()  # Clear tree and results
 
         # Apply mode-specific column defaults
         defaults = MODE_COLUMN_DEFAULTS.get(mode, MODE_COLUMN_DEFAULTS['map'])
