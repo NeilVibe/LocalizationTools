@@ -84,8 +84,12 @@ class WeeklyDataManager:
             cell = ws.cell(row=1, column=col, value=header)
             cell.font = Font(bold=True)
 
-        # Hide the sheet (raw data)
-        ws.sheet_state = 'hidden'
+        # Hide the sheet (raw data) - but only if other visible sheets exist
+        # Excel/openpyxl requires at least one visible sheet in workbook
+        visible_sheets = [s for s in wb.sheetnames if wb[s].sheet_state != 'hidden']
+        if len(visible_sheets) > 1:
+            ws.sheet_state = 'hidden'
+        # Otherwise leave visible - will be hidden after WEEKLY/TOTAL sheets are created
 
         return ws
 

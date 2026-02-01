@@ -122,7 +122,12 @@ class CorrectionTracker:
             build_total_sheet(wb, latest_data)
 
             # Ensure _WEEKLY_DATA exists (for new files)
-            self.data_manager._get_or_create_data_sheet(wb)
+            data_sheet = self.data_manager._get_or_create_data_sheet(wb)
+
+            # Now that WEEKLY and TOTAL exist, hide _WEEKLY_DATA
+            # (it may have been left visible if it was the only sheet when created)
+            if data_sheet.sheet_state != 'hidden':
+                data_sheet.sheet_state = 'hidden'
 
             # Save
             wb.save(self.tracker_path)
