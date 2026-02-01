@@ -42,3 +42,4 @@ Build 20260127-213349 - xlsxwriter for reliable cell protection (Correction colu
 Build 20260201-200518 - chmod writable + case-insensitive headers + nospace fallback
 Build 20260201-202249 - fix progress tracker worksheet hiding
 Build 20260201-202707 - add missing hiddenimports
+Build 20260201-204054 - per-category tracking
