@@ -415,10 +415,13 @@ def load_settings() -> Settings:
             with open(settings_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 _current_settings = Settings.from_dict(data)
+                log.info("Loaded settings from %s", settings_path)
         else:
             _current_settings = Settings()
             save_settings(_current_settings)
-    except Exception:
+            log.info("Created default settings at %s", settings_path)
+    except Exception as e:
+        log.warning("Failed to load settings from %s: %s", settings_path, e)
         _current_settings = Settings()
 
     return _current_settings
@@ -434,8 +437,10 @@ def save_settings(settings: Settings) -> bool:
     try:
         with open(settings_path, 'w', encoding='utf-8') as f:
             json.dump(settings.to_dict(), f, indent=2, ensure_ascii=False)
+        log.info("Saved settings to %s", settings_path)
         return True
-    except Exception:
+    except Exception as e:
+        log.error("Failed to save settings to %s: %s", settings_path, e)
         return False
 
 
