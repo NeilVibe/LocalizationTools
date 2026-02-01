@@ -34,3 +34,4 @@ Build - FIX: AUDIO mode column mapping (desc shows KOR, cache cleared on mode sw
 Build - Add mode-specific columns (CHARACTER: UseMacro/Age/Job, ITEM: StringID) + cell copy (Ctrl+C)
 Build - FIX: None safety in truncate(), cache values, empty cell feedback
 Build - FIX: AUDIO None safety, tooltip cleanup, clipboard error handling, fast delete
+Build - FIX: O(1) lookup, destroy(), lambda capture, mode validation, truncate as method
