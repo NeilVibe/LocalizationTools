@@ -39,3 +39,4 @@ Build 20260127-210429 - Fix: Enable sheet protection BEFORE unlocking cells
 Build 20260127-211617 - Switch to xlsxwriter for working cell protection
 Build 20260127-211839 - Fix requirements (need both openpyxl and xlsxwriter)
 Build 20260127-213349 - xlsxwriter for reliable cell protection (Correction column only editable)
+Build 20260201-200518 - chmod writable + case-insensitive headers + nospace fallback
