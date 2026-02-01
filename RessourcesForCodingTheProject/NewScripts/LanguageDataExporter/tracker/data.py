@@ -72,10 +72,41 @@ class WeeklyDataManager:
             wb.remove(wb.active)
             return wb
 
+    def _migrate_old_schema(self, ws) -> None:
+        """
+        Migrate old schema (without Category) to new schema (with Category).
+
+        Old: WeekStart | Language | MergeDate | Corrections | Success | Fail | Timestamp
+        New: WeekStart | Language | Category | MergeDate | Corrections | Success | Fail | Timestamp
+
+        Inserts Category column at position 3, shifts other columns right.
+        """
+        logger.info("Migrating tracker schema: adding Category column...")
+
+        # Insert new column at position 3
+        ws.insert_cols(3)
+
+        # Set header for new column
+        ws.cell(row=1, column=3, value="Category")
+        ws.cell(row=1, column=3).font = Font(bold=True)
+
+        # Fill existing data rows with "Uncategorized"
+        for row in range(2, ws.max_row + 1):
+            ws.cell(row=row, column=3, value="Uncategorized")
+
+        logger.info(f"Migrated {ws.max_row - 1} rows to new schema with Category column")
+
     def _get_or_create_data_sheet(self, wb: Workbook):
         """Get or create _WEEKLY_DATA sheet with headers."""
         if DATA_SHEET_NAME in wb.sheetnames:
-            return wb[DATA_SHEET_NAME]
+            ws = wb[DATA_SHEET_NAME]
+
+            # Check if migration needed (old schema without Category)
+            header_col3 = ws.cell(row=1, column=3).value
+            if header_col3 != "Category":
+                self._migrate_old_schema(ws)
+
+            return ws
 
         # Create sheet at the end
         ws = wb.create_sheet(DATA_SHEET_NAME)
@@ -179,9 +210,22 @@ class WeeklyDataManager:
         logger.info(f"Wrote {written} records to {DATA_SHEET_NAME}")
         return written
 
+    def _detect_schema_version(self, ws) -> bool:
+        """
+        Detect if the schema has the Category column.
+
+        Returns:
+            True if new schema (with Category), False if old schema
+        """
+        # Check header row for "Category" in column 3
+        header_col3 = ws.cell(row=1, column=3).value
+        return header_col3 == "Category"
+
     def read_all_data(self) -> List[Dict]:
         """
         Read all records from _WEEKLY_DATA.
+
+        Handles both old schema (without Category) and new schema (with Category).
 
         Returns:
             List of dicts with keys matching DATA_HEADERS
@@ -196,19 +240,35 @@ class WeeklyDataManager:
             return []
 
         ws = wb[DATA_SHEET_NAME]
+        has_category = self._detect_schema_version(ws)
         records = []
 
         for row in range(2, ws.max_row + 1):
-            record = {
-                "WeekStart": ws.cell(row=row, column=1).value,
-                "Language": ws.cell(row=row, column=2).value,
-                "Category": ws.cell(row=row, column=3).value or "Uncategorized",
-                "MergeDate": ws.cell(row=row, column=4).value,
-                "Corrections": ws.cell(row=row, column=5).value or 0,
-                "Success": ws.cell(row=row, column=6).value or 0,
-                "Fail": ws.cell(row=row, column=7).value or 0,
-                "Timestamp": ws.cell(row=row, column=8).value,
-            }
+            if has_category:
+                # New schema: 8 columns with Category
+                record = {
+                    "WeekStart": ws.cell(row=row, column=1).value,
+                    "Language": ws.cell(row=row, column=2).value,
+                    "Category": ws.cell(row=row, column=3).value or "Uncategorized",
+                    "MergeDate": ws.cell(row=row, column=4).value,
+                    "Corrections": ws.cell(row=row, column=5).value or 0,
+                    "Success": ws.cell(row=row, column=6).value or 0,
+                    "Fail": ws.cell(row=row, column=7).value or 0,
+                    "Timestamp": ws.cell(row=row, column=8).value,
+                }
+            else:
+                # Old schema: 7 columns without Category
+                record = {
+                    "WeekStart": ws.cell(row=row, column=1).value,
+                    "Language": ws.cell(row=row, column=2).value,
+                    "Category": "Uncategorized",  # Default for old data
+                    "MergeDate": ws.cell(row=row, column=3).value,
+                    "Corrections": ws.cell(row=row, column=4).value or 0,
+                    "Success": ws.cell(row=row, column=5).value or 0,
+                    "Fail": ws.cell(row=row, column=6).value or 0,
+                    "Timestamp": ws.cell(row=row, column=7).value,
+                }
+
             if record["WeekStart"] and record["Language"]:
                 records.append(record)
 
