@@ -32,3 +32,4 @@ Build
 Build
 Build
 Build 525: UX fixes + Architecture cleanup - Sun Feb  1 01:21:46 PM KST 2026
+Build 526: Fix Windows install test - dynamic path detection - Sun Feb  1 02:00:12 PM KST 2026
