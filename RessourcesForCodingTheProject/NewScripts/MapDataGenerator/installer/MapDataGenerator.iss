@@ -58,26 +58,15 @@ var
   DriveLetter: String;
 
 procedure InitializeWizard();
-var
-  InfoText: String;
 begin
-  // Build info text (avoid #13#10 at line start - confuses ISPP)
-  InfoText := 'MapDataGenerator needs to know where your game data is located.';
-  InfoText := InfoText + #13#10 + #13#10;
-  InfoText := InfoText + 'Default path: F:\perforce\cd\mainline\resource\GameData';
-  InfoText := InfoText + #13#10 + #13#10;
-  InfoText := InfoText + 'If your Perforce is on a different drive (D:, E:, etc.), enter just the letter.';
-  InfoText := InfoText + #13#10;
-  InfoText := InfoText + 'Leave as F if you are unsure.';
-
-  // Create custom page for drive selection (after welcome page)
+  // Create drive selection page (after welcome page)
   DriveSelectionPage := CreateInputQueryPage(wpWelcome,
     'Perforce Drive Selection',
     'Select the drive where your Perforce workspace is located.',
-    InfoText
+    'MapDataGenerator needs to know where your game data is located.' + #13#10 + #13#10 + 'Default path: F:\perforce\cd\mainline\resource\GameData' + #13#10 + #13#10 + 'If your Perforce is on a different drive (D:, E:, etc.), enter just the letter.' + #13#10 + 'Leave as F if you are unsure.'
   );
   DriveSelectionPage.Add('Drive Letter (e.g., F, D, E):', False);
-  DriveSelectionPage.Values[0] := 'F';  // Default value
+  DriveSelectionPage.Values[0] := 'F';
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -91,9 +80,7 @@ begin
     DriveInput := Uppercase(Trim(DriveSelectionPage.Values[0]));
 
     // Validate: single letter A-Z
-    if (Length(DriveInput) <> 1) or
-       (DriveInput[1] < 'A') or
-       (DriveInput[1] > 'Z') then
+    if (Length(DriveInput) <> 1) or (DriveInput[1] < 'A') or (DriveInput[1] > 'Z') then
     begin
       MsgBox('Please enter a single drive letter (A-Z).', mbError, MB_OK);
       Result := False;
@@ -105,12 +92,7 @@ begin
     // Check if drive exists (warning only, don't block)
     if not DirExists(DriveLetter + ':\') then
     begin
-      if MsgBox('Drive ' + DriveLetter + ':\ does not appear to exist on this system.' + #13#10 +
-                #13#10 +
-                'This is OK if you will mount the drive later or are installing for another machine.' + #13#10 +
-                #13#10 +
-                'Continue with drive ' + DriveLetter + ':?',
-                mbConfirmation, MB_YESNO) = IDNO then
+      if MsgBox('Drive ' + DriveLetter + ':\ does not appear to exist.' + #13#10 + 'This is OK if you will mount the drive later.' + #13#10 + 'Continue with drive ' + DriveLetter + ':?', mbConfirmation, MB_YESNO) = IDNO then
       begin
         Result := False;
         Exit;
@@ -131,4 +113,9 @@ begin
     SettingsContent := '{"drive_letter": "' + DriveLetter + '", "version": "1.0"}';
     SaveStringToFile(SettingsPath, AnsiString(SettingsContent), False);
   end;
+end;
+
+function GetDriveLetter(Param: String): String;
+begin
+  Result := DriveLetter;
 end;
