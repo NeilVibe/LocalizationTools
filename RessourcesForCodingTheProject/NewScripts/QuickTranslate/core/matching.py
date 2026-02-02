@@ -50,6 +50,51 @@ def find_matches(korean_input: str, strorigin_index: Dict[str, str]) -> List[str
     return matches
 
 
+def find_matches_with_stats(
+    korean_inputs: List[str],
+    strorigin_index: Dict[str, str],
+) -> Tuple[List[List[str]], Dict[str, int]]:
+    """
+    Find matches for multiple inputs with statistics.
+
+    Args:
+        korean_inputs: List of Korean text to search for
+        strorigin_index: Dict mapping StringID to StrOrigin
+
+    Returns:
+        Tuple of (matches_per_input, stats_dict)
+        stats_dict has keys: total, matched, no_match, multi_match, empty_input
+    """
+    matches_per_input = []
+    stats = {
+        "total": len(korean_inputs),
+        "matched": 0,       # Inputs with exactly 1 match
+        "no_match": 0,      # Inputs with 0 matches
+        "multi_match": 0,   # Inputs with 2+ matches
+        "empty_input": 0,   # Empty/whitespace inputs
+        "total_matches": 0, # Sum of all matches found
+    }
+
+    for korean_text in korean_inputs:
+        if not korean_text or not korean_text.strip():
+            stats["empty_input"] += 1
+            matches_per_input.append([])
+            continue
+
+        matches = find_matches(korean_text, strorigin_index)
+        matches_per_input.append(matches)
+        stats["total_matches"] += len(matches)
+
+        if len(matches) == 0:
+            stats["no_match"] += 1
+        elif len(matches) == 1:
+            stats["matched"] += 1
+        else:
+            stats["multi_match"] += 1
+
+    return matches_per_input, stats
+
+
 def find_matches_stringid_only(
     corrections: List[Dict],
     stringid_to_category: Dict[str, str],

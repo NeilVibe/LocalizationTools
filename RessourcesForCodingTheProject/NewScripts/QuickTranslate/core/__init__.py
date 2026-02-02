@@ -14,6 +14,7 @@ from .language_loader import (
 )
 from .matching import (
     find_matches,
+    find_matches_with_stats,
     find_matches_stringid_only,
     find_matches_strict,
     find_matches_special_key,
@@ -30,7 +31,7 @@ from .excel_io import (
     write_folder_translation_excel,
     write_reverse_lookup_excel,
 )
-from .xml_io import parse_corrections_from_xml, parse_folder_xml_files
+from .xml_io import parse_corrections_from_xml, parse_folder_xml_files, parse_tosubmit_xml
 
 __all__ = [
     # xml_parser
@@ -48,6 +49,7 @@ __all__ = [
     "build_reverse_lookup",
     # matching
     "find_matches",
+    "find_matches_with_stats",
     "find_matches_stringid_only",
     "find_matches_strict",
     "find_matches_special_key",
@@ -65,4 +67,5 @@ __all__ = [
     # xml_io
     "parse_corrections_from_xml",
     "parse_folder_xml_files",
+    "parse_tosubmit_xml",
 ]
