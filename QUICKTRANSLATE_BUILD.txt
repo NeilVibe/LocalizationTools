@@ -1,0 +1,1 @@
+Build: XML transfer with StringID-only mode and narration exclusion
