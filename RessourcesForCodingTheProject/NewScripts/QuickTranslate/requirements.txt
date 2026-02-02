@@ -1,0 +1,14 @@
+# QuickTranslate Dependencies
+# Python 3.11+ required
+
+# XML parsing (lxml for robustness, ElementTree fallback)
+lxml>=4.9.0
+
+# Excel output
+openpyxl>=3.1.0
+
+# GUI (tkinter is built-in, but including for clarity)
+# tkinter is included with Python
+
+# Optional: For clipboard support if needed
+# pyperclip>=1.8.0
