@@ -14,6 +14,8 @@ model: haiku
 | **LocaNext** | Gitea Actions | `GITEA_TRIGGER.txt` | `.gitea/workflows/build.yml` |
 | **LanguageDataExporter** | GitHub Actions | `LANGUAGEDATAEXPORTER_BUILD.txt` | `.github/workflows/languagedataexporter-build.yml` |
 | **QACompilerNEW** | GitHub Actions | `QACOMPILER_BUILD.txt` | `.github/workflows/qacompiler-build.yml` |
+| **QuickTranslate** | GitHub Actions | `QUICKTRANSLATE_BUILD.txt` | `.github/workflows/quicktranslate-build.yml` |
+| **QuickSearch** | GitHub Actions | `QUICKSEARCH_BUILD.txt` | `.github/workflows/quicksearch-build.yml` |
 
 ---
 
