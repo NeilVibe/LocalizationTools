@@ -67,14 +67,16 @@ def _load_settings() -> dict:
     return {}
 
 
-def _save_settings(settings: dict):
-    """Save settings to settings.json."""
+def _save_settings(settings: dict) -> bool:
+    """Save settings to settings.json. Returns True on success."""
     settings_path = _get_settings_path()
     try:
         with open(settings_path, 'w', encoding='utf-8') as f:
             json.dump(settings, f, indent=2)
-    except IOError:
-        pass
+        return True
+    except IOError as e:
+        print(f"[CONFIG] Warning: Failed to save settings: {e}")
+        return False
 
 
 # Load settings at module level
