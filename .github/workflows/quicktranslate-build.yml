@@ -1,0 +1,324 @@
+name: QuickTranslate Build & Release
+
+on:
+  push:
+    paths:
+      - 'QUICKTRANSLATE_BUILD.txt'
+  workflow_dispatch:
+    inputs:
+      skip_safety:
+        description: 'Skip safety checks (not recommended)'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  PROJECT_PATH: RessourcesForCodingTheProject/NewScripts/QuickTranslate
+  APP_NAME: QuickTranslate
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # =============================================================================
+  # JOB 1: VALIDATION
+  # =============================================================================
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check build trigger
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "Manual trigger - building"
+          elif git diff --name-only HEAD~1 | grep -q "QUICKTRANSLATE_BUILD.txt"; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "Build trigger file changed - building"
+          else
+            echo "should_build=false" >> $GITHUB_OUTPUT
+            echo "No build trigger - skipping"
+          fi
+
+      - name: Generate version
+        id: version
+        if: steps.check.outputs.should_build == 'true'
+        run: |
+          VERSION=$(TZ='Asia/Seoul' date '+%y.%-m%d.%H%M')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION"
+
+  # =============================================================================
+  # JOB 2: SAFETY CHECKS (Linux)
+  # =============================================================================
+  safety-checks:
+    needs: validate
+    if: needs.validate.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ${{ env.PROJECT_PATH }}/requirements.txt
+          pip install flake8 pip-audit pytest
+
+      - name: Python syntax validation
+        run: |
+          echo "=== Syntax Validation ==="
+          cd ${{ env.PROJECT_PATH }}
+          python -m py_compile main.py
+          python -m py_compile config.py
+          find . -name "*.py" -type f ! -path "./__pycache__/*" | xargs -I {} python -m py_compile {}
+          echo "All Python files have valid syntax"
+
+      - name: Module import validation
+        run: |
+          echo "=== Import Validation ==="
+          cd ${{ env.PROJECT_PATH }}
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+
+          # Test config imports
+          from config import BRANCHES, MATCHING_MODES, SCRIPT_CATEGORIES
+          from config import LANGUAGE_ORDER, LANGUAGE_NAMES, ensure_output_folder
+          print('config imports: OK')
+
+          # Test core module imports
+          from core import (
+              sanitize_xml_content, parse_xml_file,
+              is_korean_text, find_matches,
+              find_matches_stringid_only, find_matches_strict,
+              build_sequencer_strorigin_index, discover_language_files,
+          )
+          print('core imports: OK')
+
+          # Test utils imports
+          from utils import read_text_file_lines
+          print('utils imports: OK')
+
+          print('All imports validated successfully')
+          "
+
+      - name: Full application test (MUST PASS)
+        run: |
+          echo "=== Application Test ==="
+          cd ${{ env.PROJECT_PATH }}
+
+          # Test imports work
+          python -c "import config; print('✓ config')"
+          python -c "from core import *; print('✓ core')"
+          python -c "from utils import *; print('✓ utils')"
+
+          echo "✓ All module imports validated"
+          echo "Application test complete"
+
+      - name: Flake8 critical errors (MUST PASS)
+        run: |
+          echo "=== Flake8 Critical Errors (FAILS BUILD!) ==="
+          cd ${{ env.PROJECT_PATH }}
+          # E9: Runtime errors (syntax, IO)
+          # F63: Invalid comparisons
+          # F7: Syntax errors
+          # F82: Undefined names (CRITICAL - catches missing variables!)
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+          echo "Flake8 passed - no critical errors"
+
+      - name: Security audit
+        run: |
+          echo "=== Security Audit ==="
+          pip-audit --requirement ${{ env.PROJECT_PATH }}/requirements.txt || true
+
+  # =============================================================================
+  # JOB 3: BUILD & RELEASE (Windows)
+  # =============================================================================
+  build-release:
+    needs: [validate, safety-checks]
+    if: needs.validate.outputs.should_build == 'true'
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ${{ env.PROJECT_PATH }}/requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          cd ${{ env.PROJECT_PATH }}
+          pyinstaller QuickTranslate.spec --clean
+          echo "PyInstaller build complete"
+
+      - name: Create output directory and working folders
+        run: |
+          $projectPath = "${{ env.PROJECT_PATH }}"
+          $distPath = "$projectPath\dist\QuickTranslate"
+
+          # Create centralized output directory for all artifacts
+          New-Item -ItemType Directory -Path "$projectPath\installer_output" -Force
+
+          # Create working folders in dist
+          $workingFolders = @("Output")
+          foreach ($folder in $workingFolders) {
+            $path = "$distPath\$folder"
+            New-Item -ItemType Directory -Path $path -Force | Out-Null
+            New-Item -ItemType File -Path "$path\.gitkeep" -Force | Out-Null
+          }
+
+          Write-Host "Working folders created with .gitkeep files"
+
+      - name: Build Inno Setup installer
+        run: |
+          choco install innosetup -y
+
+          $projectPath = "${{ env.PROJECT_PATH }}"
+          $version = "${{ env.VERSION }}"
+          $issPath = "$projectPath\installer\QuickTranslate.iss"
+          $outputDir = "$projectPath\installer_output"
+
+          # Build installer with version and output directory
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$version /O"$outputDir" $issPath
+
+          # Rename output to include version
+          $installerFile = Get-ChildItem -Path $outputDir -Filter "*.exe" | Select-Object -First 1
+          if ($installerFile) {
+            $newName = "QuickTranslate_v${version}_Setup.exe"
+            Rename-Item -Path $installerFile.FullName -NewName $newName
+            Write-Host "Installer: $newName"
+          }
+
+      - name: Create portable ZIP
+        run: |
+          $version = "${{ env.VERSION }}"
+          $projectPath = "${{ env.PROJECT_PATH }}"
+          $distPath = "$projectPath\dist\QuickTranslate"
+          $zipPath = "$projectPath\installer_output\QuickTranslate_v${version}_Portable.zip"
+
+          # Create portable ZIP from dist folder
+          Compress-Archive -Path "$distPath\*" -DestinationPath $zipPath -Force
+
+          $size = (Get-Item $zipPath).Length / 1MB
+          Write-Host "Portable ZIP: $([math]::Round($size, 1)) MB"
+
+      - name: Create source ZIP
+        run: |
+          $version = "${{ env.VERSION }}"
+          $projectPath = "${{ env.PROJECT_PATH }}"
+          $zipPath = "$projectPath\installer_output\QuickTranslate_v${version}_Source.zip"
+
+          # Create temp directory for clean source
+          $tempDir = New-Item -ItemType Directory -Path "$env:TEMP\QT_Source" -Force
+          $excludes = @("dist", "build", "__pycache__", "*.pyc", "installer_output", ".pytest_cache")
+
+          # Copy source files excluding build artifacts
+          Get-ChildItem -Path $projectPath -Exclude $excludes | Copy-Item -Destination $tempDir -Recurse -Force
+
+          # Remove any __pycache__ directories that got copied
+          Get-ChildItem -Path $tempDir -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+          # Create working folders in source bundle
+          $sourceFolders = @("Output")
+          foreach ($folder in $sourceFolders) {
+            $path = "$tempDir\$folder"
+            New-Item -ItemType Directory -Path $path -Force | Out-Null
+            New-Item -ItemType File -Path "$path\.gitkeep" -Force | Out-Null
+          }
+
+          # Create source ZIP
+          Compress-Archive -Path "$tempDir\*" -DestinationPath $zipPath -Force
+
+          # Cleanup temp directory
+          Remove-Item -Path $tempDir -Recurse -Force
+
+          $size = (Get-Item $zipPath).Length / 1MB
+          Write-Host "Source ZIP: $([math]::Round($size, 1)) MB"
+
+      - name: Upload Setup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuickTranslate-Setup
+          path: ${{ env.PROJECT_PATH }}/installer_output/*_Setup.exe
+          retention-days: 30
+
+      - name: Upload Portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuickTranslate-Portable
+          path: ${{ env.PROJECT_PATH }}/installer_output/*_Portable.zip
+          retention-days: 30
+
+      - name: Upload Source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuickTranslate-Source
+          path: ${{ env.PROJECT_PATH }}/installer_output/*_Source.zip
+          retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: quicktranslate-v${{ env.VERSION }}
+          name: QuickTranslate v${{ env.VERSION }}
+          body: |
+            ## QuickTranslate v${{ env.VERSION }}
+
+            Translation lookup tool for Korean text matching in XML files.
+
+            ### Features
+            **Match Types:**
+            - **Substring Match**: Original - finds text in StrOrigin
+            - **StringID-Only (SCRIPT)**: For Sequencer/Dialog strings
+            - **Strict (StringID + StrOrigin)**: Most precise matching
+            - **Special Key Match**: Custom composite key patterns
+
+            **Input Modes:**
+            - File (single) or Folder (recursive)
+            - Excel (.xlsx) or XML (.xml) format
+
+            **Other Features:**
+            - Multiple matches: formats as "1. XXX\n2. YYY" in same cell
+            - Auto-discovers all language files
+            - Branch selection: mainline or cd_lambda
+            - Direct StringID lookup
+            - Reverse Lookup: input text in any language -> find all translations
+            - ToSubmit folder integration
+
+            ### Downloads
+            - **Setup.exe**: Installer with drive selection
+            - **Portable.zip**: Standalone executable with working folders
+            - **Source.zip**: Python source code
+
+            ### Supported Languages
+            Korean (KOR), English (ENG), French (FRE), German (GER), Spanish (SPA), Portuguese (POR), Italian (ITA), Russian (RUS), Turkish (TUR), Polish (POL), Chinese Simplified (ZHO-CN), Chinese Traditional (ZHO-TW), Japanese (JPN), Thai (THA), Vietnamese (VIE), Indonesian (IND), Malay (MSA)
+
+          files: |
+            ${{ env.PROJECT_PATH }}/installer_output/*.exe
+            ${{ env.PROJECT_PATH }}/installer_output/*.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

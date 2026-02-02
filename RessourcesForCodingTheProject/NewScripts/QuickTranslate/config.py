@@ -16,6 +16,46 @@ else:
     SCRIPT_DIR = Path(__file__).parent
 
 # =============================================================================
+# Matching Modes
+# =============================================================================
+
+MATCHING_MODES = {
+    "substring": "Substring Match (original)",
+    "stringid_only": "StringID-Only (SCRIPT strings)",
+    "strict": "StringID + StrOrigin (Strict)",
+    "special_key": "Special Key Match",
+}
+
+# SCRIPT categories - strings where StrOrigin = raw KOR text
+SCRIPT_CATEGORIES = {"Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"}
+
+# Input modes
+INPUT_MODES = ["folder", "file"]
+FORMAT_MODES = ["excel", "xml"]
+
+# =============================================================================
+# ToSubmit Integration
+# =============================================================================
+
+TOSUBMIT_FOLDER = SCRIPT_DIR / "ToSubmit"
+TOSUBMIT_COLUMNS = ["StrOrigin", "Correction", "StringID"]
+
+# =============================================================================
+# Branch Configuration
+# =============================================================================
+
+BRANCHES = {
+    "mainline": {
+        "loc": Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc"),
+        "export": Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__"),
+    },
+    "cd_lambda": {
+        "loc": Path(r"F:\perforce\cd\cd_lambda\resource\GameData\stringtable\loc"),
+        "export": Path(r"F:\perforce\cd\cd_lambda\resource\GameData\stringtable\export__"),
+    },
+}
+
+# =============================================================================
 # Settings Loading
 # =============================================================================
 
