@@ -11,6 +11,13 @@ from typing import Callable, Dict, List, Optional
 from .xml_parser import parse_xml_file
 
 
+def _iter_locstr_case_insensitive(root):
+    """Iterate LocStr elements with case-insensitive tag matching."""
+    locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
+    for tag in locstr_tags:
+        yield from root.iter(tag)
+
+
 def discover_language_files(loc_folder: Path) -> Dict[str, Path]:
     """
     Find all languagedata_*.xml files in the loc folder.
@@ -58,7 +65,7 @@ def build_translation_lookup(
 
         try:
             root = parse_xml_file(xml_path)
-            for elem in root.iter('LocStr'):
+            for elem in _iter_locstr_case_insensitive(root):
                 string_id = (elem.get('StringId') or elem.get('StringID') or
                             elem.get('stringid') or elem.get('STRINGID'))
                 str_value = (elem.get('Str') or elem.get('str') or
@@ -130,7 +137,7 @@ def build_stringid_to_category(
         for xml_file in xml_files:
             try:
                 root = parse_xml_file(xml_file)
-                for elem in root.iter('LocStr'):
+                for elem in _iter_locstr_case_insensitive(root):
                     string_id = (elem.get('StringId') or elem.get('StringID') or
                                 elem.get('stringid') or elem.get('STRINGID'))
                     if string_id:
@@ -184,7 +191,7 @@ def build_stringid_to_subfolder(
                     subfolder = ""  # File directly in category folder
 
                 root = parse_xml_file(xml_file)
-                for elem in root.iter('LocStr'):
+                for elem in _iter_locstr_case_insensitive(root):
                     string_id = (elem.get('StringId') or elem.get('StringID') or
                                 elem.get('stringid') or elem.get('STRINGID'))
                     if string_id:

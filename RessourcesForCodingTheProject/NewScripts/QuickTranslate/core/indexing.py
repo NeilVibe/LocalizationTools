@@ -19,6 +19,13 @@ def _get_attribute_case_insensitive(elem, attr_names: list) -> Optional[str]:
     return None
 
 
+def _iter_locstr_case_insensitive(root):
+    """Iterate LocStr elements with case-insensitive tag matching."""
+    locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
+    for tag in locstr_tags:
+        yield from root.iter(tag)
+
+
 def build_sequencer_strorigin_index(
     sequencer_folder: Path,
     progress_callback: Optional[Callable[[str], None]] = None
@@ -45,7 +52,7 @@ def build_sequencer_strorigin_index(
             progress_callback(f"Indexing Sequencer... {i+1}/{total}")
         try:
             root = parse_xml_file(xml_file)
-            for elem in root.iter('LocStr'):
+            for elem in _iter_locstr_case_insensitive(root):
                 string_id = _get_attribute_case_insensitive(
                     elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
                 )
@@ -89,7 +96,7 @@ def scan_folder_for_strings(
             progress_callback(f"Scanning folder... {i+1}/{total}")
         try:
             root = parse_xml_file(xml_file)
-            for elem in root.iter('LocStr'):
+            for elem in _iter_locstr_case_insensitive(root):
                 string_id = _get_attribute_case_insensitive(
                     elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
                 )
@@ -133,7 +140,7 @@ def scan_folder_for_entries(
             progress_callback(f"Scanning folder... {i+1}/{total}")
         try:
             root = parse_xml_file(xml_file)
-            for elem in root.iter('LocStr'):
+            for elem in _iter_locstr_case_insensitive(root):
                 string_id = _get_attribute_case_insensitive(
                     elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
                 )

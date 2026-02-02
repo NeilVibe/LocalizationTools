@@ -168,16 +168,9 @@ def iter_locstr_elements(root: ET.Element) -> List:
     Returns:
         List of LocStr elements found
     """
-    # Try standard case first
-    elements = list(root.iter('LocStr'))
-    if elements:
-        return elements
-
-    # Try lowercase
-    elements = list(root.iter('locstr'))
-    if elements:
-        return elements
-
-    # Try uppercase
-    elements = list(root.iter('LOCSTR'))
+    # Case-insensitive: collect ALL tag variants
+    locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
+    elements = []
+    for tag in locstr_tags:
+        elements.extend(root.iter(tag))
     return elements
