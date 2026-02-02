@@ -616,10 +616,12 @@ class QuickTranslateApp:
                     self._log(f"  - Matched: {stats['matched']}", 'success')
                     self._log(f"  - Not found: {stats['no_match']}", 'error')
                 else:
-                    # No target - just use StringID matching
+                    # No target - just use StringID matching against translation lookup
+                    # Use any language lookup to check if StringID exists
+                    any_lookup = next(iter(self.translation_lookup.values()), {})
                     for c in corrections:
                         sid = c.get("string_id", "")
-                        if sid and sid in self.strorigin_index:
+                        if sid and sid in any_lookup:
                             matches_per_input.append([sid])
                             stats["matched"] += 1
                         else:
@@ -628,6 +630,7 @@ class QuickTranslateApp:
                     korean_inputs = [c.get("str_origin", "") for c in corrections]
                     stats["total"] = len(corrections)
                     stats["total_matches"] = stats["matched"]
+                    self._log(f"Special Key (no target): {stats['matched']} found, {stats['no_match']} not in translations", 'info')
 
             self.progress_value.set(70)
 

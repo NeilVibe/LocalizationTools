@@ -11,8 +11,10 @@ All matching algorithms for QuickTranslate:
 
 from typing import Dict, List, Optional, Set, Tuple
 
-# SCRIPT categories (from LanguageDataExporter)
-SCRIPT_CATEGORIES = {"Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"}
+import config
+
+# SCRIPT categories - imported from config for single source of truth
+SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
 
 
 def normalize_text(text: str) -> str:
