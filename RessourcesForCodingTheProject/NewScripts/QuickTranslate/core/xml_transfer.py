@@ -101,18 +101,18 @@ def merge_corrections_to_xml(
 
         changed = False
 
-        # Case-insensitive LocStr tag search
-        locstr_tags = ['LocStr', 'locstr', 'LOCSTR']
+        # Case-insensitive LocStr tag search - collect ALL variants
+        locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
         all_elements = []
         for tag in locstr_tags:
             all_elements.extend(root.iter(tag))
-            if all_elements:
-                break
+        # No break - collect all tag case variants
 
         for loc in all_elements:
             # Case-insensitive attribute access
             sid = (loc.get("StringId") or loc.get("StringID") or
-                   loc.get("stringid") or loc.get("STRINGID") or "").strip()
+                   loc.get("stringid") or loc.get("STRINGID") or
+                   loc.get("Stringid") or loc.get("stringId") or "").strip()
             orig_raw = (loc.get("StrOrigin") or loc.get("Strorigin") or
                         loc.get("strorigin") or loc.get("STRORIGIN") or "")
             orig = normalize_text(orig_raw)
@@ -305,17 +305,17 @@ def merge_corrections_stringid_only(
 
         changed = False
 
-        # Case-insensitive LocStr tag search
-        locstr_tags = ['LocStr', 'locstr', 'LOCSTR']
+        # Case-insensitive LocStr tag search - collect ALL variants
+        locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
         all_elements = []
         for tag in locstr_tags:
             all_elements.extend(root.iter(tag))
-            if all_elements:
-                break
+        # No break - collect all tag case variants
 
         for loc in all_elements:
             sid = (loc.get("StringId") or loc.get("StringID") or
-                   loc.get("stringid") or loc.get("STRINGID") or "").strip()
+                   loc.get("stringid") or loc.get("STRINGID") or
+                   loc.get("Stringid") or loc.get("stringId") or "").strip()
 
             # StringID-only matching
             if sid in correction_lookup:
