@@ -7,7 +7,7 @@ Parse corrections from XML files for transfer mode.
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from .xml_parser import parse_xml_file
+from .xml_parser import parse_xml_file, iter_locstr_elements
 
 
 def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
@@ -24,7 +24,7 @@ def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
 
     try:
         root = parse_xml_file(xml_path)
-        for elem in root.iter('LocStr'):
+        for elem in iter_locstr_elements(root):
             string_id = (elem.get('StringId') or elem.get('StringID') or
                         elem.get('stringid') or elem.get('STRINGID') or '').strip()
             str_origin = (elem.get('StrOrigin') or elem.get('Strorigin') or
@@ -109,7 +109,7 @@ def extract_stringids_from_xml(xml_path: Path) -> List[str]:
 
     try:
         root = parse_xml_file(xml_path)
-        for elem in root.iter('LocStr'):
+        for elem in iter_locstr_elements(root):
             string_id = (elem.get('StringId') or elem.get('StringID') or
                         elem.get('stringid') or elem.get('STRINGID') or '').strip()
             if string_id:

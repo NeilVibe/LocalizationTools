@@ -4,7 +4,7 @@ QuickTranslate Core Module.
 Public exports for XML parsing, Korean detection, indexing, matching, and I/O.
 """
 
-from .xml_parser import sanitize_xml_content, parse_xml_file
+from .xml_parser import sanitize_xml_content, parse_xml_file, iter_locstr_elements
 from .korean_detection import KOREAN_REGEX, is_korean_text
 from .indexing import build_sequencer_strorigin_index, scan_folder_for_strings
 from .language_loader import (
@@ -23,6 +23,7 @@ from .matching import (
     normalize_text,
 )
 from .excel_io import (
+    normalize_text,
     read_korean_input,
     read_corrections_from_excel,
     get_ordered_languages,
@@ -37,6 +38,7 @@ __all__ = [
     # xml_parser
     "sanitize_xml_content",
     "parse_xml_file",
+    "iter_locstr_elements",
     # korean_detection
     "KOREAN_REGEX",
     "is_korean_text",
@@ -57,6 +59,7 @@ __all__ = [
     "format_multiple_matches",
     "normalize_text",
     # excel_io
+    "normalize_text",
     "read_korean_input",
     "read_corrections_from_excel",
     "get_ordered_languages",
