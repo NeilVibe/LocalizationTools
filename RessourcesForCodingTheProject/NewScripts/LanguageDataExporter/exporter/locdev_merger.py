@@ -438,6 +438,405 @@ def merge_all_corrections(
     return results
 
 
+# =============================================================================
+# STRINGID-ONLY MATCHING (SCRIPT STRINGS)
+# =============================================================================
+
+# SCRIPT CATEGORIES - strings from Dialog/Sequencer folders
+# These are STORY-type strings that can be matched by StringID alone
+SCRIPT_CATEGORIES = {"Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"}
+
+
+def merge_corrections_stringid_only_script(
+    xml_path: Path,
+    corrections: List[Dict],
+    stringid_to_category: Dict[str, str],
+    dry_run: bool = False,
+) -> Dict:
+    """
+    Merge corrections using StringID-ONLY matching.
+    ONLY applies to SCRIPT TYPE strings (Dialog/Sequencer).
+
+    This is useful when source text changed but StringID is still valid.
+    Non-SCRIPT strings are skipped for safety.
+
+    Args:
+        xml_path: Path to LOCDEV XML file
+        corrections: List of correction dicts with string_id, corrected keys
+        stringid_to_category: Pre-built StringID→Category mapping from EXPORT
+        dry_run: If True, don't write changes
+
+    Returns:
+        Dict with: updated, skipped_non_script, not_found, errors
+    """
+    result = {
+        "matched": 0,
+        "updated": 0,
+        "skipped_non_script": 0,
+        "not_found": 0,
+        "errors": [],
+        "by_category": {},
+    }
+
+    if not corrections:
+        return result
+
+    # Filter corrections to SCRIPT TYPE only
+    script_corrections = []
+
+    for c in corrections:
+        sid = c["string_id"]
+        category = stringid_to_category.get(sid, "Uncategorized")
+
+        if category in SCRIPT_CATEGORIES:
+            script_corrections.append({
+                **c,
+                "category": category,
+            })
+        else:
+            result["skipped_non_script"] += 1
+            logger.debug(f"Skipped non-SCRIPT StringID={sid} (category={category})")
+
+    if not script_corrections:
+        logger.info(f"No SCRIPT corrections to apply to {xml_path.name}")
+        return result
+
+    # Build StringID-only lookup (NOT tuple!)
+    correction_lookup = {}
+    correction_matched = {}
+
+    for c in script_corrections:
+        sid = c["string_id"]
+        correction_lookup[sid] = c["corrected"]
+        correction_matched[sid] = False
+
+        # Initialize category stats
+        category = c.get("category", "Uncategorized")
+        if category not in result["by_category"]:
+            result["by_category"][category] = {"matched": 0, "updated": 0, "not_found": 0}
+
+    try:
+        # Parse XML with recovery mode
+        parser = etree.XMLParser(
+            resolve_entities=False,
+            load_dtd=False,
+            no_network=True,
+            recover=True,
+        )
+        tree = etree.parse(str(xml_path), parser)
+        root = tree.getroot()
+
+        changed = False
+
+        for loc in root.iter("LocStr"):
+            sid = loc.get("StringId", "").strip()
+
+            # StringID-only matching
+            if sid in correction_lookup:
+                new_str = correction_lookup[sid]
+                correction_matched[sid] = True
+
+                # Find category for stats
+                category = stringid_to_category.get(sid, "Uncategorized")
+
+                result["matched"] += 1
+                if category in result["by_category"]:
+                    result["by_category"][category]["matched"] += 1
+
+                old_str = loc.get("Str", "")
+
+                if new_str != old_str:
+                    if not dry_run:
+                        loc.set("Str", new_str)
+                    result["updated"] += 1
+                    if category in result["by_category"]:
+                        result["by_category"][category]["updated"] += 1
+                    changed = True
+                    logger.debug(f"Updated StringId={sid}: '{old_str}' -> '{new_str}'")
+
+        # Count corrections that didn't match any XML entry
+        for sid, matched in correction_matched.items():
+            if not matched:
+                category = stringid_to_category.get(sid, "Uncategorized")
+                result["not_found"] += 1
+                if category in result["by_category"]:
+                    result["by_category"][category]["not_found"] += 1
+
+        if changed and not dry_run:
+            # Make file writable if read-only
+            try:
+                current_mode = os.stat(xml_path).st_mode
+                if not current_mode & stat.S_IWRITE:
+                    os.chmod(xml_path, current_mode | stat.S_IWRITE)
+                    logger.debug(f"Made {xml_path.name} writable")
+            except Exception as e:
+                logger.warning(f"Could not make {xml_path.name} writable: {e}")
+
+            tree.write(str(xml_path), encoding="utf-8", xml_declaration=False, pretty_print=True)
+            logger.info(f"Saved {xml_path.name}: {result['updated']} entries updated (StringID-only)")
+
+    except Exception as e:
+        result["errors"].append(str(e))
+        logger.error(f"Error merging to {xml_path}: {e}")
+
+    return result
+
+
+def merge_all_corrections_stringid_only_script(
+    submit_folder: Path,
+    locdev_folder: Path,
+    export_folder: Path,
+    dry_run: bool = False,
+) -> Dict:
+    """
+    Process all Excel files using StringID-only matching for SCRIPT strings.
+
+    This function:
+    1. Builds StringID→Category index from EXPORT folder
+    2. Parses corrections from Excel files in ToSubmit folder
+    3. Filters to only SCRIPT-type strings (Dialog/Sequencer)
+    4. Applies corrections using StringID-only matching
+
+    Args:
+        submit_folder: Path to ToSubmit folder containing Excel files
+        locdev_folder: Path to LOCDEV folder containing XML files
+        export_folder: Path to EXPORT folder for category detection
+        dry_run: If True, don't write changes
+
+    Returns:
+        Dict with overall results
+    """
+    from .category_mapper import build_stringid_category_index, load_cluster_config
+    from config import CLUSTER_CONFIG
+
+    results = {
+        "files_processed": 0,
+        "total_corrections": 0,
+        "total_script_corrections": 0,
+        "total_skipped_non_script": 0,
+        "total_success": 0,
+        "total_fail": 0,
+        "errors": [],
+        "file_results": {},
+    }
+
+    if not submit_folder.exists():
+        results["errors"].append(f"ToSubmit folder not found: {submit_folder}")
+        return results
+
+    if not locdev_folder.exists():
+        results["errors"].append(f"LOCDEV folder not found: {locdev_folder}")
+        return results
+
+    if not export_folder.exists():
+        results["errors"].append(f"EXPORT folder not found: {export_folder}")
+        return results
+
+    # Build StringID→Category index from EXPORT folder
+    logger.info("Building StringID→Category index from EXPORT folder...")
+    config = load_cluster_config(CLUSTER_CONFIG)
+    stringid_to_category = build_stringid_category_index(
+        export_folder,
+        config,
+        config.get("default_category", "Uncategorized")
+    )
+
+    if not stringid_to_category:
+        results["errors"].append("Failed to build StringID→Category index from EXPORT folder")
+        return results
+
+    logger.info(f"Built index with {len(stringid_to_category)} StringIDs")
+
+    # Find all Excel files
+    excel_files = list(submit_folder.glob("languagedata_*.xlsx"))
+    excel_files.extend(submit_folder.glob("LanguageData_*.xlsx"))
+
+    # Remove duplicates (case-insensitive)
+    seen = set()
+    unique_files = []
+    for f in excel_files:
+        if f.name.lower() not in seen:
+            seen.add(f.name.lower())
+            unique_files.append(f)
+
+    for excel_path in unique_files:
+        # Extract language code from filename
+        name = excel_path.stem
+        if name.lower().startswith("languagedata_"):
+            lang_code = name[13:]
+        else:
+            continue
+
+        # Find corresponding LOCDEV XML file
+        xml_candidates = [
+            locdev_folder / f"languagedata_{lang_code.lower()}.xml",
+            locdev_folder / f"languagedata_{lang_code.upper()}.xml",
+            locdev_folder / f"languagedata_{lang_code}.xml",
+        ]
+
+        xml_path = None
+        for candidate in xml_candidates:
+            if candidate.exists():
+                xml_path = candidate
+                break
+
+        if not xml_path:
+            results["errors"].append(f"No LOCDEV XML found for {excel_path.name}")
+            continue
+
+        # Parse corrections from Excel
+        corrections = parse_corrections_from_excel(excel_path)
+
+        if not corrections:
+            logger.info(f"No corrections found in {excel_path.name}")
+            results["file_results"][lang_code] = {
+                "corrections": 0,
+                "script_corrections": 0,
+                "skipped_non_script": 0,
+                "success": 0,
+                "fail": 0,
+                "errors": ["No corrections found"],
+            }
+            continue
+
+        # Merge corrections using StringID-only matching for SCRIPT strings
+        file_result = merge_corrections_stringid_only_script(
+            xml_path, corrections, stringid_to_category, dry_run
+        )
+
+        # Calculate counts
+        corrections_count = len(corrections)
+        script_count = corrections_count - file_result["skipped_non_script"]
+        success_count = file_result["matched"]
+        fail_count = file_result["not_found"]
+
+        # Add to file result
+        file_result["corrections"] = corrections_count
+        file_result["script_corrections"] = script_count
+        file_result["success"] = success_count
+        file_result["fail"] = fail_count
+
+        results["file_results"][lang_code] = file_result
+
+        results["files_processed"] += 1
+        results["total_corrections"] += corrections_count
+        results["total_script_corrections"] += script_count
+        results["total_skipped_non_script"] += file_result["skipped_non_script"]
+        results["total_success"] += success_count
+        results["total_fail"] += fail_count
+        results["errors"].extend(file_result["errors"])
+
+        logger.info(
+            f"Processed {lang_code}: corrections={corrections_count}, "
+            f"script={script_count}, skipped={file_result['skipped_non_script']}, "
+            f"success={success_count}, fail={fail_count}"
+        )
+
+    return results
+
+
+def print_stringid_only_report(results: Dict) -> None:
+    """
+    Print a formatted terminal report of StringID-only merge results.
+
+    Args:
+        results: The dict returned by merge_all_corrections_stringid_only_script()
+    """
+    # Box drawing characters
+    H = "═"
+    V = "║"
+    TL = "╔"
+    TR = "╗"
+    BL = "╚"
+    BR = "╝"
+    LT = "╠"
+    RT = "╣"
+
+    width = 80
+
+    print()
+    print(TL + H * (width - 2) + TR)
+    title = "STRINGID-ONLY MERGE REPORT (SCRIPT STRINGS)"
+    print(V + title.center(width - 2) + V)
+    print(LT + H * (width - 2) + RT)
+
+    # Column widths
+    lang_w = 10
+    corr_w = 10
+    script_w = 10
+    skip_w = 10
+    succ_w = 10
+    fail_w = 10
+    rate_w = 10
+
+    # Header
+    header = (
+        f"{V} {'LANG':<{lang_w}} {'TOTAL':>{corr_w}} {'SCRIPT':>{script_w}} "
+        f"{'SKIPPED':>{skip_w}} {'SUCCESS':>{succ_w}} {'FAIL':>{fail_w}} {'RATE':>{rate_w}} {V}"
+    )
+    print(header)
+    print(LT + H * (width - 2) + RT)
+
+    # Per-language rows
+    file_results = results.get("file_results", {})
+    for lang_code in sorted(file_results.keys()):
+        file_result = file_results[lang_code]
+        corrections = file_result.get("corrections", 0)
+        script = file_result.get("script_corrections", 0)
+        skipped = file_result.get("skipped_non_script", 0)
+        success = file_result.get("success", 0)
+        fail = file_result.get("fail", 0)
+        rate = (success / script * 100) if script > 0 else 0.0
+
+        # Status indicator
+        if rate >= 95:
+            status = "●"
+        elif rate >= 80:
+            status = "◐"
+        else:
+            status = "○"
+
+        row = (
+            f"{V} {lang_code.upper():<{lang_w}} {corrections:>{corr_w},} {script:>{script_w},} "
+            f"{skipped:>{skip_w},} {success:>{succ_w},} {fail:>{fail_w},} {rate:>{rate_w - 2}.1f}% {status}{V}"
+        )
+        print(row)
+
+    # Separator before totals
+    print(LT + H * (width - 2) + RT)
+
+    # Totals
+    total_corr = results.get("total_corrections", 0)
+    total_script = results.get("total_script_corrections", 0)
+    total_skip = results.get("total_skipped_non_script", 0)
+    total_succ = results.get("total_success", 0)
+    total_fail = results.get("total_fail", 0)
+    total_rate = (total_succ / total_script * 100) if total_script > 0 else 0.0
+
+    total_row = (
+        f"{V} {'TOTAL':<{lang_w}} {total_corr:>{corr_w},} {total_script:>{script_w},} "
+        f"{total_skip:>{skip_w},} {total_succ:>{succ_w},} {total_fail:>{fail_w},} {total_rate:>{rate_w - 2}.1f}%  {V}"
+    )
+    print(total_row)
+    print(BL + H * (width - 2) + BR)
+
+    # Errors section
+    errors = results.get("errors", [])
+    if errors:
+        print()
+        print("ERRORS:")
+        for error in errors[:5]:
+            print(f"  × {error}")
+        if len(errors) > 5:
+            print(f"  ... and {len(errors) - 5} more errors")
+
+    # Legend
+    print()
+    print("Legend: ● ≥95% success  ◐ ≥80% success  ○ <80% success")
+    print("SCRIPT categories: Sequencer, AIDialog, QuestDialog, NarrationDialog")
+    print()
+
+
 def print_merge_report(results: Dict) -> None:
     """
     Print a formatted terminal report of merge results.

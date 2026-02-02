@@ -29,6 +29,11 @@ from .locdev_merger import (
     merge_corrections_to_locdev,
     merge_all_corrections,
     print_merge_report,
+    # StringID-only matching for SCRIPT strings
+    SCRIPT_CATEGORIES,
+    merge_corrections_stringid_only_script,
+    merge_all_corrections_stringid_only_script,
+    print_stringid_only_report,
 )
 from .pattern_analyzer import (
     extract_code_patterns,
@@ -55,6 +60,11 @@ __all__ = [
     "merge_corrections_to_locdev",
     "merge_all_corrections",
     "print_merge_report",
+    # StringID-only matching
+    "SCRIPT_CATEGORIES",
+    "merge_corrections_stringid_only_script",
+    "merge_all_corrections_stringid_only_script",
+    "print_stringid_only_report",
     # Pattern analyzer
     "extract_code_patterns",
     "cluster_patterns",

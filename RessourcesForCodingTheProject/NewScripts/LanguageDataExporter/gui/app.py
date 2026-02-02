@@ -42,6 +42,9 @@ from exporter import (
     print_merge_report,
     analyze_patterns,
     generate_pattern_report,
+    # StringID-only matching
+    merge_all_corrections_stringid_only_script,
+    print_stringid_only_report,
 )
 from exporter.excel_writer import write_summary_excel
 from utils.language_utils import should_include_english_column, LANGUAGE_NAMES as LANG_DISPLAY
@@ -203,6 +206,17 @@ class LanguageDataExporterGUI:
             btn_frame3,
             text="Analyze Code Patterns",
             command=self._analyze_code_patterns,
+            width=28
+        ).pack(side="left", padx=5, ipady=8)
+
+        # Row 4: StringID-Only HIT Transfer (SCRIPT strings only)
+        btn_frame4 = ttk.Frame(section)
+        btn_frame4.pack(fill="x", pady=5)
+
+        ttk.Button(
+            btn_frame4,
+            text="StringID-Only HIT Transfer",
+            command=self._stringid_only_script_transfer,
             width=28
         ).pack(side="left", padx=5, ipady=8)
 
@@ -604,6 +618,128 @@ class LanguageDataExporterGUI:
                 self.root.after(0, lambda: self._set_status("Merge failed"))
 
         threading.Thread(target=merge, daemon=True).start()
+
+    def _stringid_only_script_transfer(self):
+        """Transfer corrections using StringID-only matching for SCRIPT strings."""
+        # Check if ToSubmit folder exists
+        if not TOSUBMIT_FOLDER.exists():
+            ensure_tosubmit_folder()
+            messagebox.showinfo(
+                "ToSubmit Folder Created",
+                f"The ToSubmit folder has been created at:\n{TOSUBMIT_FOLDER}\n\n"
+                "Please copy your corrected Excel files there first, then run this again."
+            )
+            return
+
+        # Check if LOCDEV folder exists
+        if not LOCDEV_FOLDER.exists():
+            messagebox.showerror(
+                "LOCDEV Folder Not Found",
+                f"LOCDEV folder not found:\n{LOCDEV_FOLDER}\n\n"
+                "Please check your settings.json configuration."
+            )
+            return
+
+        # Check if EXPORT folder exists (needed for category detection)
+        if not EXPORT_FOLDER.exists():
+            messagebox.showerror(
+                "EXPORT Folder Not Found",
+                f"EXPORT folder not found:\n{EXPORT_FOLDER}\n\n"
+                "This folder is needed to detect SCRIPT-type strings.\n"
+                "Please check your settings.json configuration."
+            )
+            return
+
+        # Discover files
+        files = discover_submit_files(TOSUBMIT_FOLDER)
+        if not files:
+            messagebox.showwarning(
+                "No Files Found",
+                f"No languagedata_*.xlsx files found in:\n{TOSUBMIT_FOLDER}\n\n"
+                "Please copy your corrected Excel files there first."
+            )
+            return
+
+        # Get file list for confirmation
+        file_list = "\n".join(f"  - {f[1]}" for f in files)
+
+        # Warning dialog explaining the behavior
+        confirm = messagebox.askyesno(
+            "StringID-Only HIT Transfer",
+            "This transfers corrections using StringID-only matching.\n\n"
+            "APPLIES TO: Dialog/Sequencer strings ONLY\n"
+            "  • Sequencer (story cutscenes)\n"
+            "  • AIDialog (NPC dialog)\n"
+            "  • QuestDialog (quest text)\n"
+            "  • NarrationDialog (narration)\n\n"
+            "IGNORES: StrOrigin (source text)\n"
+            "SKIPS: All non-SCRIPT strings (System, UI, etc.)\n\n"
+            f"Files to process:\n{file_list}\n\n"
+            "Use this when source text changed but StringID is still valid.\n\n"
+            "Continue?",
+            icon="warning"
+        )
+
+        if not confirm:
+            return
+
+        self._set_status("Running StringID-only HIT transfer...")
+        self.progress["value"] = 0
+
+        def transfer():
+            try:
+                self.root.after(0, lambda: self._update_progress(10))
+                self.root.after(0, lambda: self._set_status("Building category index..."))
+
+                results = merge_all_corrections_stringid_only_script(
+                    TOSUBMIT_FOLDER, LOCDEV_FOLDER, EXPORT_FOLDER
+                )
+
+                # Print terminal report
+                print_stringid_only_report(results)
+
+                self.root.after(0, lambda: self._update_progress(100))
+
+                # Build result message
+                if results["errors"]:
+                    error_msg = "\n".join(results["errors"][:5])
+                    if len(results["errors"]) > 5:
+                        error_msg += f"\n... and {len(results['errors']) - 5} more"
+                    self.root.after(0, lambda: messagebox.showwarning(
+                        "Completed with Errors",
+                        f"Processed {results['files_processed']} files\n"
+                        f"Total corrections: {results['total_corrections']}\n"
+                        f"SCRIPT corrections: {results['total_script_corrections']}\n"
+                        f"Skipped (non-SCRIPT): {results['total_skipped_non_script']}\n"
+                        f"Success: {results['total_success']}\n"
+                        f"Fail: {results['total_fail']}\n\n"
+                        f"Errors:\n{error_msg}"
+                    ))
+                else:
+                    script_total = results['total_script_corrections']
+                    success_rate = (results['total_success'] / script_total * 100) if script_total > 0 else 0
+                    self.root.after(0, lambda: messagebox.showinfo(
+                        "StringID-Only Transfer Complete",
+                        f"Processed {results['files_processed']} files\n\n"
+                        f"Total corrections: {results['total_corrections']}\n"
+                        f"SCRIPT corrections: {results['total_script_corrections']}\n"
+                        f"Skipped (non-SCRIPT): {results['total_skipped_non_script']}\n\n"
+                        f"Success: {results['total_success']} ({success_rate:.1f}%)\n"
+                        f"Fail: {results['total_fail']}"
+                    ))
+
+                self.root.after(0, lambda: self._set_status(
+                    f"Ready - {results['total_success']} SCRIPT corrections transferred"
+                ))
+
+            except Exception as ex:
+                logger.exception("StringID-only transfer failed")
+                self.root.after(0, lambda err=str(ex): messagebox.showerror(
+                    "Error", f"Transfer failed: {err}"
+                ))
+                self.root.after(0, lambda: self._set_status("Transfer failed"))
+
+        threading.Thread(target=transfer, daemon=True).start()
 
     def _analyze_code_patterns(self):
         """Analyze code patterns in languagedata XML and generate report."""
