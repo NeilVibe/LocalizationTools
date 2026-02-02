@@ -95,8 +95,9 @@ jobs:
           sys.path.insert(0, '.')
 
           # Test config imports
-          from config import BRANCHES, MATCHING_MODES, SCRIPT_CATEGORIES
+          from config import MATCHING_MODES, SCRIPT_CATEGORIES, SPECIAL_KEY_FIELDS
           from config import LANGUAGE_ORDER, LANGUAGE_NAMES, ensure_output_folder
+          from config import LOC_FOLDER, EXPORT_FOLDER, get_settings, reload_settings
           print('config imports: OK')
 
           # Test core module imports
@@ -105,6 +106,7 @@ jobs:
               is_korean_text, find_matches,
               find_matches_stringid_only, find_matches_strict,
               build_sequencer_strorigin_index, discover_language_files,
+              extract_korean_misses, contains_korean,
           )
           print('core imports: OK')
 
@@ -286,26 +288,26 @@ jobs:
           body: |
             ## QuickTranslate v${{ env.VERSION }}
 
-            Translation lookup tool for Korean text matching in XML files.
+            Translation lookup and transfer tool for Korean text matching in XML files.
 
             ### Features
             **Match Types:**
             - **Substring Match**: Original - finds text in StrOrigin
             - **StringID-Only (SCRIPT)**: For Sequencer/Dialog strings
             - **Strict (StringID + StrOrigin)**: Most precise matching
-            - **Special Key Match**: Custom composite key patterns
+            - **Special Key Match**: Match by StringID + Category
 
             **Input Modes:**
             - File (single) or Folder (recursive)
             - Excel (.xlsx) or XML (.xml) format
 
-            **Other Features:**
-            - Multiple matches: formats as "1. XXX\n2. YYY" in same cell
-            - Auto-discovers all language files
-            - Branch selection: mainline or cd_lambda
-            - Direct StringID lookup
-            - Reverse Lookup: input text in any language -> find all translations
-            - ToSubmit folder integration
+            **Core Features:**
+            - **LOOKUP**: Find translations across 17 languages
+            - **TRANSFER**: Apply corrections to XML files
+            - **Extract Korean Misses**: Find Korean strings not in source (filters System/Gimmick, System/MultiChange)
+            - **Reverse Lookup**: Input text in any language -> find all translations
+            - **Direct StringID Lookup**: Quick lookup by StringID
+            - **Settings**: Configurable LOC/EXPORT paths (persisted to settings.json)
 
             ### Downloads
             - **Setup.exe**: Installer with drive selection
