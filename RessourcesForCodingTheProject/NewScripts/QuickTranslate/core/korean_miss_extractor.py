@@ -389,14 +389,43 @@ def extract_korean_misses(
 
     # Print header to terminal
     _print_separator("=")
-    print("KOREAN MISS EXTRACTOR - Terminal Output")
+    print("KOREAN MISS EXTRACTOR - Terminal Debug Output")
     _print_separator("=")
-    print(f"Source (reference): {source_path}")
-    print(f"Target (to check):  {target_path}")
-    print(f"Output:             {output_path}")
-    print(f"Export folder:      {export_folder_path}")
+    print()
+    print("[FILE SELECTION]")
+    print(f"  SOURCE file (reference): {source_path}")
+    print(f"    - Absolute path: {source_path.absolute()}")
+    print(f"    - Exists: {source_path.exists()}")
+    if source_path.exists():
+        source_size = source_path.stat().st_size
+        print(f"    - File size: {source_size:,} bytes ({source_size / 1024:.1f} KB)")
+    print()
+    print(f"  TARGET file (to check): {target_path}")
+    print(f"    - Absolute path: {target_path.absolute()}")
+    print(f"    - Exists: {target_path.exists()}")
+    if target_path.exists():
+        target_size = target_path.stat().st_size
+        print(f"    - File size: {target_size:,} bytes ({target_size / 1024:.1f} KB)")
+    print()
+    print(f"  OUTPUT file: {output_path}")
+    print(f"    - Absolute path: {output_path.absolute()}")
+    print(f"    - Output directory exists: {output_path.parent.exists()}")
+    print()
+    print("[EXPORT FOLDER CONFIGURATION]")
+    print(f"  Export folder: {export_folder_path}")
+    print(f"    - Absolute path: {export_folder_path.absolute() if export_folder_path.exists() else 'N/A'}")
+    print(f"    - Exists: {export_folder_path.exists()}")
+    if export_folder_path.exists():
+        loc_xml_count = len(list(export_folder_path.rglob("*.loc.xml")))
+        print(f"    - Contains {loc_xml_count} .loc.xml files")
+    print()
+    print("[EXCLUSION PATHS CONFIGURATION]")
     if excluded_paths:
-        print(f"Excluded paths:     {', '.join(excluded_paths)}")
+        for i, exc_path in enumerate(excluded_paths, 1):
+            print(f"  [{i}] {exc_path}")
+        print(f"  Note: StringIDs from these paths will be EXCLUDED from final misses")
+    else:
+        print("  (No exclusion paths configured - all misses will be included)")
     _print_separator("-")
 
     # Validate input files exist
@@ -409,17 +438,28 @@ def extract_korean_misses(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Step 1: Build EXPORT index (StringID -> File path)
-    print("\n[STEP 1] Building EXPORT index...")
+    print("\n[STEP 1] Building EXPORT index (StringID -> File path mapping)...")
+    print("  Purpose: Map each StringID to its file path for exclusion filtering")
     if progress_callback:
         progress_callback("Building EXPORT index...")
 
     stringid_to_filepath = build_export_index(export_folder_path, progress_callback)
 
-    if not stringid_to_filepath:
-        print("[WARNING] EXPORT index is empty - path filtering will not work!")
+    print(f"\n[EXPORT INDEX RESULT]")
+    print(f"  Total StringIDs indexed: {len(stringid_to_filepath):,}")
+    if stringid_to_filepath:
+        # Show sample paths
+        sample_paths = list(set(stringid_to_filepath.values()))[:5]
+        print(f"  Sample file paths in index:")
+        for sp in sample_paths:
+            print(f"    - {sp}")
+    else:
+        print("  [WARNING] EXPORT index is empty - path filtering will not work!")
 
     # Step 2: Parse source XML and build lookup
-    print("\n[STEP 2] Parsing SOURCE file...")
+    print("\n[STEP 2] Parsing SOURCE file (building reference lookup)...")
+    print("  Purpose: Build set of (StringID, StrOrigin) tuples from SOURCE")
+    print("  These are the translations we HAVE (reference)")
     if progress_callback:
         progress_callback("Parsing source file...")
 
@@ -428,10 +468,23 @@ def extract_korean_misses(
         raise ValueError(f"Failed to parse source XML: {source_file}")
 
     source_lookup = _build_source_lookup(source_root)
-    print(f"  Built source lookup with {len(source_lookup)} (StringID, StrOrigin) pairs")
+
+    print(f"\n[SOURCE LOOKUP RESULT]")
+    print(f"  Total (StringID, StrOrigin) pairs: {len(source_lookup):,}")
+    print(f"  Matching logic: TUPLE match - both StringID AND StrOrigin must match")
+    print(f"  StrOrigin normalization: lowercase + whitespace collapse + HTML unescape")
+    if source_lookup:
+        # Show sample entries
+        sample_entries = list(source_lookup)[:3]
+        print(f"  Sample lookup entries:")
+        for sid, sorigin in sample_entries:
+            print(f"    - StringID: {sid}")
+            print(f"      StrOrigin (normalized): {sorigin[:60]}{'...' if len(sorigin) > 60 else ''}")
 
     # Step 3: Parse target XML and collect Korean LocStr
     print("\n[STEP 3] Parsing TARGET file and collecting Korean strings...")
+    print("  Purpose: Find all LocStr elements where 'Str' attribute contains Korean")
+    print("  Korean detection: Unicode ranges AC00-D7AF, 1100-11FF, 3130-318F")
     if progress_callback:
         progress_callback("Parsing target file...")
 
@@ -441,10 +494,26 @@ def extract_korean_misses(
 
     korean_elements = _collect_korean_locstr(target_root)
     total_target_korean = len(korean_elements)
-    print(f"  Found {total_target_korean} LocStr elements with Korean text")
+
+    print(f"\n[TARGET KOREAN STRINGS RESULT]")
+    print(f"  Total LocStr elements with Korean: {total_target_korean:,}")
+    if korean_elements:
+        # Count unique StringIDs
+        unique_string_ids = len(set(e["string_id"] for e in korean_elements))
+        print(f"  Unique StringIDs: {unique_string_ids:,}")
+        print(f"  Sample Korean strings from TARGET:")
+        for e in korean_elements[:3]:
+            print(f"    - StringID: {e['string_id']}")
+            print(f"      Str (Korean): {e['str_value'][:50]}{'...' if len(e['str_value']) > 50 else ''}")
 
     # Step 4: Find HITS and MISSES
-    print("\n[STEP 4] Matching against source lookup...")
+    print("\n[STEP 4] Matching TARGET against SOURCE lookup...")
+    print("  Matching algorithm:")
+    print("    1. For each Korean LocStr in TARGET:")
+    print("    2. Create key = (StringID, normalize(StrOrigin))")
+    print("    3. Check if key exists in SOURCE lookup set")
+    print("    4. If YES -> HIT (string exists in source)")
+    print("    5. If NO  -> MISS (string NOT in source)")
     if progress_callback:
         progress_callback("Matching against source...")
 
@@ -466,11 +535,27 @@ def extract_korean_misses(
     hits_count = len(hits)
     misses_before_filter = len(misses)
 
-    print(f"  HITS (found in source):  {hits_count}")
-    print(f"  MISSES (not in source):  {misses_before_filter}")
+    print(f"\n[MATCHING RESULT]")
+    print(f"  Total Korean strings checked: {total_target_korean:,}")
+    print(f"  ─────────────────────────────────────")
+    print(f"  HITS (found in source):     {hits_count:,} ({hits_count/total_target_korean*100:.1f}%)" if total_target_korean > 0 else "  HITS: 0")
+    print(f"  MISSES (NOT in source):     {misses_before_filter:,} ({misses_before_filter/total_target_korean*100:.1f}%)" if total_target_korean > 0 else "  MISSES: 0")
+    print(f"  ─────────────────────────────────────")
+    print(f"  HIT means: (StringID, StrOrigin) tuple EXISTS in SOURCE")
+    print(f"  MISS means: (StringID, StrOrigin) tuple NOT FOUND in SOURCE")
 
     # Step 5: Filter by excluded paths
-    print("\n[STEP 5] Filtering by excluded paths...")
+    print("\n[STEP 5] Filtering MISSES by excluded paths...")
+    print("  Filtering algorithm:")
+    print("    1. For each MISS, get its StringID")
+    print("    2. Look up file path from EXPORT index: StringID -> path")
+    print("    3. Check if path starts with any excluded path prefix")
+    print("    4. If YES -> EXCLUDE (remove from results)")
+    print("    5. If NO  -> KEEP (write to output)")
+    if excluded_paths:
+        print(f"  Excluded path prefixes:")
+        for exc in excluded_paths:
+            print(f"    - {exc}")
     if progress_callback:
         progress_callback("Filtering by excluded paths...")
 
@@ -481,18 +566,43 @@ def extract_korean_misses(
 
     final_misses = len(filtered_misses)
 
-    print(f"  Filtered out (excluded paths): {filtered_out}")
-    print(f"  Final misses to write:         {final_misses}")
+    print(f"\n[FILTERING RESULT]")
+    print(f"  MISSES before filtering: {misses_before_filter:,}")
+    print(f"  Filtered OUT (excluded): {filtered_out:,}")
+    print(f"  FINAL MISSES to write:   {final_misses:,}")
+    if filtered_out > 0:
+        # Count by exclusion path
+        exclusion_counts: Dict[str, int] = {}
+        for item in filtered_out_items:
+            exc_path = item.get("excluded_path", "unknown")
+            exclusion_counts[exc_path] = exclusion_counts.get(exc_path, 0) + 1
+        print(f"  Exclusion breakdown:")
+        for exc_path, count in sorted(exclusion_counts.items()):
+            print(f"    - {exc_path}: {count:,} items")
 
     # Step 6: Print detailed results to terminal
+    print("\n")
     _print_separator("=")
-    print("RESULTS SUMMARY")
+    print("FINAL RESULTS SUMMARY")
     _print_separator("=")
-    print(f"Total Korean strings in Target:     {total_target_korean}")
-    print(f"HITS (matched in Source):           {hits_count}")
-    print(f"MISSES before path filter:          {misses_before_filter}")
-    print(f"Filtered out (excluded paths):      {filtered_out}")
-    print(f"FINAL MISSES (written to output):   {final_misses}")
+    print()
+    print("┌─────────────────────────────────────────────────────────────┐")
+    print(f"│  SOURCE file: {source_path.name:<44} │")
+    print(f"│  TARGET file: {target_path.name:<44} │")
+    print("├─────────────────────────────────────────────────────────────┤")
+    print(f"│  Source lookup entries:          {len(source_lookup):>10,}              │")
+    print(f"│  Korean strings in Target:       {total_target_korean:>10,}              │")
+    print("├─────────────────────────────────────────────────────────────┤")
+    hit_pct = (hits_count/total_target_korean*100) if total_target_korean > 0 else 0
+    miss_pct = (misses_before_filter/total_target_korean*100) if total_target_korean > 0 else 0
+    print(f"│  HITS (in source):               {hits_count:>10,}  ({hit_pct:>5.1f}%)    │")
+    print(f"│  MISSES (not in source):         {misses_before_filter:>10,}  ({miss_pct:>5.1f}%)    │")
+    print("├─────────────────────────────────────────────────────────────┤")
+    print(f"│  Filtered out (excluded paths):  {filtered_out:>10,}              │")
+    print(f"│  ═══════════════════════════════════════════════════       │")
+    print(f"│  FINAL MISSES (written):         {final_misses:>10,}              │")
+    print("└─────────────────────────────────────────────────────────────┘")
+    print()
     _print_separator("-")
 
     # Print sample HITS
@@ -513,15 +623,23 @@ def extract_korean_misses(
 
     # Step 7: Write output XML
     print("\n[STEP 7] Writing output XML...")
+    print(f"  Writing {final_misses:,} LocStr elements to output file")
     if progress_callback:
         progress_callback("Writing output XML...")
 
     _write_output_xml(filtered_misses, output_path)
 
-    print(f"  Output written to: {output_path}")
+    # Get output file size
+    output_size = output_path.stat().st_size if output_path.exists() else 0
 
+    print(f"\n[OUTPUT FILE RESULT]")
+    print(f"  File: {output_path}")
+    print(f"  Size: {output_size:,} bytes ({output_size / 1024:.1f} KB)")
+    print(f"  Elements written: {final_misses:,}")
+
+    print()
     _print_separator("=")
-    print("EXTRACTION COMPLETE")
+    print("EXTRACTION COMPLETE - ALL DEBUG INFO PRINTED TO TERMINAL")
     _print_separator("=")
 
     return {

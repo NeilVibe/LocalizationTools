@@ -1002,16 +1002,8 @@ class QuickTranslateApp:
 
             self._update_status(f"Done! {stats['final_misses']} Korean misses found")
 
-            messagebox.showinfo(
-                "Korean Misses Extracted",
-                f"Extraction complete!\n\n"
-                f"Korean strings in Target: {stats['total_target_korean']}\n"
-                f"Hits (found in Source): {stats['hits']}\n"
-                f"Misses (not in Source): {stats['misses_before_filter']}\n"
-                f"Filtered out: {stats['filtered_out']}\n"
-                f"Final misses written: {stats['final_misses']}\n\n"
-                f"Output: {output_path}"
-            )
+            # No GUI popup - all debug info is in terminal
+            # User requested terminal-only output for debugging
 
         except FileNotFoundError as e:
             messagebox.showerror("Error", f"File not found:\n{e}")
