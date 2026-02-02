@@ -139,3 +139,57 @@ def build_stringid_to_category(
                 continue
 
     return stringid_to_category
+
+
+def build_stringid_to_subfolder(
+    export_folder: Path,
+    progress_callback: Optional[Callable[[str], None]] = None
+) -> Dict[str, str]:
+    """
+    Build StringID -> Subfolder mapping from export folder structure.
+
+    Tracks the immediate subfolder (e.g., "NarrationDialog" for Dialog/NarrationDialog/).
+    Used for exclusion filtering in StringID-Only transfer.
+
+    Args:
+        export_folder: Path to export__ folder
+        progress_callback: Optional callback for progress updates
+
+    Returns:
+        Dict mapping StringID to immediate subfolder name
+    """
+    if not export_folder.exists():
+        return {}
+
+    stringid_to_subfolder = {}
+
+    # Get all top-level subfolders (Dialog, Sequencer, etc.)
+    categories = [d for d in export_folder.iterdir() if d.is_dir()]
+
+    for category_folder in categories:
+        category_name = category_folder.name
+        xml_files = list(category_folder.rglob("*.loc.xml"))
+
+        if progress_callback:
+            progress_callback(f"Indexing subfolders in {category_name}...")
+
+        for xml_file in xml_files:
+            try:
+                # Get relative path from category folder
+                rel_path = xml_file.relative_to(category_folder)
+                # Get immediate subfolder (first part of relative path)
+                if len(rel_path.parts) > 1:
+                    subfolder = rel_path.parts[0]
+                else:
+                    subfolder = ""  # File directly in category folder
+
+                root = parse_xml_file(xml_file)
+                for elem in root.iter('LocStr'):
+                    string_id = (elem.get('StringId') or elem.get('StringID') or
+                                elem.get('stringid') or elem.get('STRINGID'))
+                    if string_id:
+                        stringid_to_subfolder[string_id] = subfolder
+            except Exception:
+                continue
+
+    return stringid_to_subfolder

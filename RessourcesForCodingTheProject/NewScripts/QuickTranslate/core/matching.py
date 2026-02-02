@@ -12,6 +12,7 @@ All matching algorithms for QuickTranslate:
 from typing import Dict, List, Optional, Set, Tuple
 
 import config
+from .text_utils import normalize_for_matching
 
 # SCRIPT categories - imported from config for single source of truth
 SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
@@ -19,11 +20,11 @@ SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
 
 def normalize_text(text: str) -> str:
     """
-    Normalize text for matching.
+    Normalize text for case-insensitive matching.
 
-    Strips whitespace and converts to lowercase.
+    Uses shared normalize_for_matching from text_utils.
     """
-    return text.strip().lower() if text else ""
+    return normalize_for_matching(text)
 
 
 def find_matches(korean_input: str, strorigin_index: Dict[str, str]) -> List[str]:
@@ -104,12 +105,12 @@ def find_matches_stringid_only(
     """
     Filter corrections to SCRIPT-only and match by StringID.
 
-    For SCRIPT strings (Sequencer, AIDialog, QuestDialog, NarrationDialog),
+    For SCRIPT strings from export/Dialog/ and export/Sequencer/ folders,
     StrOrigin is just the raw KOR text, so StringID is sufficient for matching.
 
     Args:
         corrections: List of correction dicts with "string_id" key
-        stringid_to_category: Dict mapping StringID to category name
+        stringid_to_category: Dict mapping StringID to category (folder) name
 
     Returns:
         Tuple of (script_corrections, skipped_count)

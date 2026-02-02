@@ -34,7 +34,8 @@ def _fix_bad_entities(txt: str) -> str:
 def _preprocess_newlines(raw: str) -> str:
     """Handle newlines in seg elements by converting to &lt;br/&gt;."""
     def repl(m: re.Match) -> str:
-        inner = m.group(1).replace("\n", "&lt;br/&gt;").replace("\r\n", "&lt;br/&gt;")
+        # IMPORTANT: Replace \r\n BEFORE \n (otherwise \r\n becomes \r&lt;br/&gt;)
+        inner = m.group(1).replace("\r\n", "&lt;br/&gt;").replace("\n", "&lt;br/&gt;")
         return f"<seg>{inner}</seg>"
     return re.sub(r"<seg>(.*?)</seg>", repl, raw, flags=re.DOTALL)
 

@@ -1,10 +1,10 @@
 # QuickTranslate User Guide
 
-**Version 2.0.0** | February 2026 | LocaNext Project
+**Version 3.0.0** | February 2026 | LocaNext Project
 
 ---
 
-> *"Translate Smarter, Not Harder"*
+> *"Lookup & Transfer - Two Tools in One"*
 
 ---
 
@@ -14,12 +14,14 @@
 2. [Installation](#2-installation)
 3. [Quick Start](#3-quick-start)
 4. [Core Concepts](#4-core-concepts)
-5. [Features Deep Dive](#5-features-deep-dive)
-6. [Workflows](#6-workflows)
-7. [Output Files](#7-output-files)
-8. [Troubleshooting](#8-troubleshooting)
-9. [Reference](#9-reference)
-10. [Appendix](#10-appendix)
+5. [LOOKUP Features](#5-lookup-features)
+6. [TRANSFER Features](#6-transfer-features)
+7. [Match Types](#7-match-types)
+8. [Workflows](#8-workflows)
+9. [Output Files](#9-output-files)
+10. [Troubleshooting](#10-troubleshooting)
+11. [Reference](#11-reference)
+12. [Appendix](#12-appendix)
 
 ---
 
@@ -27,35 +29,59 @@
 
 ## 1.1 What is QuickTranslate?
 
-**QuickTranslate** is a desktop application for finding translations of Korean text by matching against game stringtables. It searches through thousands of localized strings across 17 languages to find existing translations instantly.
+**QuickTranslate** is a dual-purpose desktop application for localization teams:
 
-### Core Function
+| Function | Description |
+|----------|-------------|
+| **LOOKUP** | Find translations of Korean text across 17 languages |
+| **TRANSFER** | Write corrections from Excel/XML to target XML files |
 
-QuickTranslate matches Korean source text (StrOrigin) against the stringtable database and returns all available translations. Instead of manually searching through XML files, you can:
+### Two Buttons, Two Workflows
 
-- Find translations for hundreds of Korean strings in seconds
-- Look up any StringID to see all language versions
-- Reverse-lookup: find a StringID from text in any language
-- Export results to Excel for review and handoff
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      QuickTranslate                         │
+├─────────────────────────────────────────────────────────────┤
+│ [Generate]                    │ [TRANSFER]                  │
+│   ↓                           │    ↓                        │
+│ Read source → Find matches    │ Read source → Match →       │
+│   → Export to Excel           │   → WRITE to target XMLs    │
+│   (READ-ONLY operation)       │   (MODIFIES target files!)  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### LOOKUP (Generate Button)
+- Find translations for Korean text
+- Look up any StringID to see all languages
+- Reverse-lookup: find StringID from text in any language
+- **Output:** Excel file with all translations
+- **Safe:** Read-only, never modifies source files
+
+### TRANSFER (TRANSFER Button)
+- Read corrections from Excel or XML
+- Match corrections to target XML files
+- **Write** corrections to target languagedata_*.xml files
+- **Output:** Modified XML files in LOC folder
+- **Careful:** Modifies target files!
 
 ## 1.2 Who is it for?
 
-| Role | Use Case |
-|------|----------|
-| **Localization Coordinators** | Find existing translations for reuse |
-| **QA Testers** | Verify translation consistency across languages |
-| **Translators** | Look up reference translations |
-| **Developers** | Find StringIDs from in-game text |
+| Role | LOOKUP Use Case | TRANSFER Use Case |
+|------|-----------------|-------------------|
+| **Localization Coordinators** | Find existing translations | Apply batch corrections |
+| **QA Testers** | Verify translation consistency | Fix verified issues |
+| **Translators** | Look up reference translations | Submit corrections |
+| **Developers** | Find StringIDs from text | Update localization files |
 
 ## 1.3 Key Benefits
 
-| Benefit | Description |
-|---------|-------------|
-| **Speed** | Process hundreds of strings in seconds |
-| **Accuracy** | Multiple matching strategies for different needs |
-| **Completeness** | Access all 17 languages at once |
-| **Flexibility** | Excel and XML input/output support |
-| **Offline** | Works entirely on local data |
+| Feature | LOOKUP | TRANSFER |
+|---------|--------|----------|
+| **Speed** | Process hundreds of strings in seconds | Update multiple files at once |
+| **Accuracy** | Multiple matching strategies | Strict and StringID-only modes |
+| **Completeness** | Access all 17 languages | Target all languagedata files |
+| **Flexibility** | Excel and XML input/output | Excel and XML corrections |
+| **Safety** | Read-only operation | Confirmation before write |
 
 ---
 
@@ -74,38 +100,21 @@ QuickTranslate matches Korean source text (StrOrigin) against the stringtable da
 
 ### 2.2.1 Setup Installer (Recommended)
 
-The installer provides the easiest setup experience with automatic configuration.
-
-**Steps:**
-
-1. Download `QuickTranslate_vX.X.X_Setup.exe` from the releases page
+1. Download `QuickTranslate_vX.X.X_Setup.exe` from releases
 2. Run the installer
 3. Select installation drive (C:, D:, F:, etc.)
-4. Choose whether to create a desktop shortcut
-5. Click **Install**
-6. Application launches automatically after installation
-
-> 💡 **PRO TIP**
->
-> Install on the same drive as your Perforce workspace for faster file access.
+4. Click **Install**
+5. Application launches automatically
 
 ### 2.2.2 Portable Version
-
-The portable version requires no installation and can run from any location.
-
-**Steps:**
 
 1. Download `QuickTranslate_vX.X.X_Portable.zip`
 2. Extract to any folder
 3. Run `QuickTranslate.exe`
 
-> ℹ️ **NOTE**
->
-> The portable version is ideal for USB drives or environments with installation restrictions.
-
 ## 2.3 First-Time Configuration
 
-On first launch, QuickTranslate creates `settings.json` with default paths:
+On first launch, QuickTranslate creates `settings.json`:
 
 ```json
 {
@@ -115,7 +124,6 @@ On first launch, QuickTranslate creates `settings.json` with default paths:
 ```
 
 **To change paths:**
-
 1. Close QuickTranslate
 2. Edit `settings.json` in the application folder
 3. Update paths to match your Perforce workspace
@@ -125,145 +133,129 @@ On first launch, QuickTranslate creates `settings.json` with default paths:
 
 # 3. Quick Start
 
-Get up and running in 5 minutes with these quick tutorials.
+## 3.1 Your First LOOKUP (Translation Search)
 
-## 3.1 Your First Translation Lookup
+**Goal:** Find translations for Korean strings
 
-**Goal:** Find translations for a list of Korean strings
+### Step 1: Prepare Input Excel
 
-### Step 1: Prepare Your Input
-
-Create an Excel file with Korean text in Column A:
-
-| A |
-|---|
+| Column A |
+|----------|
 | 안녕하세요 |
 | 감사합니다 |
 | 시작하기 |
 
 Save as `input.xlsx`
 
-### Step 2: Configure QuickTranslate
+### Step 2: Configure
 
 1. Launch QuickTranslate
-2. Set **Format**: `Excel`
-3. Set **Mode**: `File`
-4. Set **Match Type**: `Substring Match`
+2. Set **Format**: Excel
+3. Set **Mode**: File
+4. Set **Match Type**: Substring Match
 
-### Step 3: Select Input File
+### Step 3: Select & Generate
 
-1. Click **Browse** next to Source
-2. Navigate to `input.xlsx`
-3. Click **Open**
-
-### Step 4: Generate Output
-
-1. Verify Branch is correct (mainline/cd_lambda)
+1. Click **Browse** → select `input.xlsx`
 2. Click **Generate**
-3. Wait for processing (progress bar shows status)
 
-### Step 5: View Results
+### Step 4: View Results
 
-Output saved to: `Output/QuickTranslate_YYYYMMDD_HHMMSS.xlsx`
+Output: `Output/QuickTranslate_YYYYMMDD_HHMMSS.xlsx`
 
 | KOR (Input) | ENG | FRE | GER | ... |
 |-------------|-----|-----|-----|-----|
 | 안녕하세요 | Hello | Bonjour | Hallo | ... |
-| 감사합니다 | Thank you | Merci | Danke | ... |
 
-> 🎉 **SUCCESS!**
->
-> You've completed your first translation lookup!
+---
 
-## 3.2 Quick StringID Lookup
+## 3.2 Your First TRANSFER (Apply Corrections)
+
+**Goal:** Apply corrections from Excel to LOC XML files
+
+### Step 1: Prepare Corrections Excel
+
+| StringID | StrOrigin | Correction |
+|----------|-----------|------------|
+| UI_001 | 확인 버튼 | OK Button (fixed) |
+| UI_002 | 취소 버튼 | Cancel Button (fixed) |
+
+Columns can be in any order - QuickTranslate auto-detects them.
+
+### Step 2: Configure
+
+1. Set **Format**: Excel
+2. Set **Mode**: File
+3. Set **Match Type**: StringID + StrOrigin (STRICT)
+
+### Step 3: Select Files
+
+1. **Source**: Browse → select your corrections Excel
+2. **Target**: Browse → select LOC folder (or leave default)
+
+### Step 4: Transfer
+
+1. Click **TRANSFER** (red button)
+2. Confirm the operation in dialog
+3. View results in log
+
+### Step 5: Verify
+
+Check the modified `languagedata_*.xml` files in target folder.
+
+---
+
+## 3.3 Quick StringID Lookup
 
 **Goal:** Find all translations for a specific StringID
 
-1. Enter StringID in the **Quick Actions** section (e.g., `UI_MainMenu_Title`)
+1. Enter StringID in Quick Actions section (e.g., `UI_MainMenu_Title`)
 2. Click **Lookup**
-3. Output: Excel file with all 16 language translations
+3. Output: Excel with all 17 language translations
 
-## 3.3 Reverse Lookup
+---
+
+## 3.4 Reverse Lookup
 
 **Goal:** Find StringID from English (or any language) text
 
-1. Create a text file with one string per line:
+1. Create text file:
    ```
    Start Game
    Options
    Exit
    ```
-2. In **Quick Actions** → **Reverse**, click **Browse**
+2. In Quick Actions → Reverse, click **Browse**
 3. Select your text file
 4. Click **Find All**
-5. Output shows: Input | KOR | ENG | FRE | ...
+5. Output: Excel with StringID and all translations
 
 ---
 
 # 4. Core Concepts
 
-Understanding these concepts will help you use QuickTranslate effectively.
-
 ## 4.1 StringID, StrOrigin, and Translations
 
-### 4.1.1 StringID
-
-A **StringID** is the unique identifier for each localized string.
-
+### StringID
+Unique identifier for each localized string:
 ```
-Examples:
-  UI_MainMenu_Title_001
-  Quest_Chapter1_Dialog_042
-  Item_Weapon_Sword_Name
+UI_MainMenu_Title_001
+Quest_Chapter1_Dialog_042
+Item_Weapon_Sword_Name
 ```
 
-- Links source text to all translations
-- Format varies by category (UI, Quest, Item, etc.)
-- Same StringID = same meaning across all languages
-
-### 4.1.2 StrOrigin
-
-**StrOrigin** is the original Korean source text.
-
+### StrOrigin
+Original Korean source text:
 ```xml
 <LocStr StringId="UI_Button_OK" StrOrigin="확인" Str="OK" />
 ```
 
-- Used for matching in substring and strict modes
-- For SCRIPT strings: StrOrigin = raw Korean dialogue
-- For UI strings: StrOrigin may be formatted/tagged
+### Translations
+Stored in `languagedata_*.xml` files (17 languages).
 
-### 4.1.3 Translations
+## 4.2 SCRIPT Categories
 
-Translations are stored in `languagedata_*.xml` files:
-
-```
-languagedata_eng.xml  → English translations
-languagedata_fre.xml  → French translations
-languagedata_ger.xml  → German translations
-... (17 languages total)
-```
-
-## 4.2 Branches
-
-QuickTranslate supports multiple development branches:
-
-| Branch | Description |
-|--------|-------------|
-| **mainline** | Main development branch (default) |
-| **cd_lambda** | Alternative branch for specific builds |
-
-> ⚠️ **WARNING**
->
-> Selecting a different branch reloads all data. This may take 1-2 minutes on first load.
-
-**Cross-branch comparison:**
-- Set **Source Branch** and **Target Branch** differently
-- Compare mainline vs cd_lambda translations
-
-## 4.3 SCRIPT Categories
-
-**SCRIPT** categories are special: their StrOrigin equals the raw Korean text.
+**SCRIPT** categories have StrOrigin = raw Korean text:
 
 | Category | Content Type |
 |----------|--------------|
@@ -272,14 +264,21 @@ QuickTranslate supports multiple development branches:
 | **QuestDialog** | Quest conversations |
 | **NarrationDialog** | Narrator/voiceover |
 
-> 💡 **PRO TIP**
->
-> For SCRIPT strings, use **StringID-Only** match type. StrOrigin matching isn't needed since StrOrigin = KOR text.
+**Important:** For SCRIPT strings, use **StringID-Only** match mode.
+
+## 4.3 LOOKUP vs TRANSFER
+
+| Aspect | LOOKUP (Generate) | TRANSFER |
+|--------|-------------------|----------|
+| **Purpose** | Find translations | Apply corrections |
+| **Output** | Excel file | Modified XML files |
+| **Operation** | Read-only | Writes to files |
+| **Confirmation** | None needed | Required before write |
+| **Undo** | N/A | Use Perforce revert |
 
 ## 4.4 File Structure
 
-### LOC Folder
-Contains all translations by language:
+### LOC Folder (Target for TRANSFER)
 ```
 loc/
 ├── languagedata_eng.xml
@@ -288,13 +287,10 @@ loc/
 └── ... (17 files)
 ```
 
-### Export Folder
-Contains categorized source files:
+### Export Folder (Source for LOOKUP)
 ```
 export__/
 ├── Sequencer/
-│   ├── Chapter1/*.loc.xml
-│   └── Chapter2/*.loc.xml
 ├── UI/
 ├── Items/
 └── Quest/
@@ -302,63 +298,172 @@ export__/
 
 ---
 
-# 5. Features Deep Dive
+# 5. LOOKUP Features
 
-## 5.1 Format Modes
+## 5.1 Generate Button
 
-### 5.1.1 Excel Format
+The **Generate** button performs read-only translation lookup:
 
-**Best for:** Batch processing, handoff sheets
-
-**Input requirements by match type:**
-
-| Match Type | Column A | Column B | Column C |
-|------------|----------|----------|----------|
-| Substring | Korean text | - | - |
-| StringID-Only | StringID | StrOrigin | Correction |
-| Strict | StringID | StrOrigin | Correction |
-
-**Supported extensions:** `.xlsx`, `.xls`
-
-### 5.1.2 XML Format
-
-**Best for:** Direct processing of game data files
-
-**Input format:**
-```xml
-<LocStr StringId="UI_001" StrOrigin="한국어 텍스트" Str="Translation" />
+```
+Input (Korean text) → Match against stringtables → Output Excel
 ```
 
-**Case-insensitive attributes:** StringId, StringID, stringid all work
+### Input Modes
 
-**Supported extensions:** `.xml`, `.loc.xml`
+| Mode | Description |
+|------|-------------|
+| **File** | Single Excel or XML file |
+| **Folder** | All files in folder (recursive) |
 
-## 5.2 Input Modes
+### Format Modes
 
-### 5.2.1 File Mode (Single File)
+| Format | Extensions | Use Case |
+|--------|------------|----------|
+| **Excel** | .xlsx, .xls | Korean text in Column A |
+| **XML** | .xml, .loc.xml | LocStr elements with StringId |
 
-- Process one file at a time
-- Select specific file via Browse dialog
-- Good for focused tasks
+### Mixed File Support (Folder Mode)
 
-### 5.2.2 Folder Mode (Recursive)
+When using Folder mode, QuickTranslate automatically detects and processes:
+- All `.xlsx` and `.xls` files
+- All `.xml` files
 
-- Process all matching files in folder and subfolders
-- Automatically finds all `.xlsx`/`.xls` or `.xml` files
-- Good for batch processing entire directories
+Files are combined into a single output.
 
-> ℹ️ **NOTE**
->
-> Folder mode shows progress: "Parsing XML files... 1/N"
+## 5.2 StringID Lookup
 
-## 5.3 Match Types
+Direct lookup of any StringID:
 
-### 5.3.1 Substring Match (Original)
+1. Enter StringID in the text field
+2. Click **Lookup**
+3. Get Excel with all 17 translations
+
+**Output columns:** StringID | ENG | FRE | GER | SPA | ...
+
+## 5.3 Reverse Lookup
+
+Find StringID from text in ANY language:
+
+1. Create text file with strings (one per line)
+2. Click **Browse** → select file
+3. Click **Find All**
+
+**Auto-detection:** Identifies which language each input string is in.
+
+**Output columns:** Input | KOR | ENG | FRE | GER | ...
+
+## 5.4 ToSubmit Integration
+
+Enable the checkbox to include files from `ToSubmit/` folder:
+
+- Automatically loads correction files staged for submission
+- Combines with selected source file/folder
+- Useful for batch processing pending corrections
+
+---
+
+# 6. TRANSFER Features
+
+## 6.1 TRANSFER Button
+
+The **TRANSFER** button writes corrections to target XML files:
+
+```
+Corrections (Excel/XML) → Match in target → WRITE to languagedata_*.xml
+```
+
+### Important Notes
+
+1. **Confirmation Required:** Dialog asks for confirmation before writing
+2. **Backup Recommended:** Use Perforce or manual backup before transfer
+3. **Target Default:** LOC folder from settings.json
+
+## 6.2 Source Formats
+
+### Excel Corrections
+
+Required columns (auto-detected, case-insensitive):
+- **StringID** (or StringId, string_id)
+- **StrOrigin** (or Str_Origin, str_origin)
+- **Correction** (or correction)
+
+Example:
+| StringID | StrOrigin | Correction |
+|----------|-----------|------------|
+| UI_001 | 확인 버튼 | OK Button |
+
+### XML Corrections
+
+Standard LocStr format:
+```xml
+<LocStr StringId="UI_001" StrOrigin="확인 버튼" Str="OK Button" />
+```
+
+**Case-insensitive attributes:** StringId, StringID, stringid, STRINGID all work.
+
+## 6.3 Transfer Modes
+
+### File Mode
+- Source: Single Excel or XML file
+- Target: LOC folder or specific languagedata_*.xml
+
+**Language Detection:** Extracts language code from filename:
+- `corrections_ENG.xlsx` → `languagedata_eng.xml`
+- `languagedata_FRE.xml` → `languagedata_fre.xml`
+
+### Folder Mode
+- Source: Folder with multiple Excel/XML files
+- Target: LOC folder
+
+**Batch Processing:** All corrections applied to matching language files.
+
+## 6.4 Match Modes for TRANSFER
+
+### STRICT Mode (Recommended)
+Matches by **both** StringID AND StrOrigin:
+- Most precise - no false positives
+- Requires StrOrigin in corrections
+- Use for: General corrections
+
+### StringID-Only Mode
+Matches by StringID only:
+- For SCRIPT categories (Sequencer, Dialog)
+- StrOrigin not required for matching
+- Use for: Dialogue corrections
+
+## 6.5 Transfer Report
+
+After transfer, the log shows:
+
+```
+═══════════════════════════════════════════
+     TRANSFER REPORT
+═══════════════════════════════════════════
+● languagedata_eng.xml: 45 updated
+● languagedata_fre.xml: 42 updated
+○ languagedata_ger.xml: 0 updated (no matches)
+
+Summary:
+  Matched: 150
+  Updated: 87
+  Not Found: 12
+═══════════════════════════════════════════
+```
+
+**Symbols:**
+- ● = Updates applied
+- ○ = No matches found
+- × = Error during processing
+
+---
+
+# 7. Match Types
+
+## 7.1 Substring Match (Original)
 
 **How it works:**
 ```
 Input: "시작"
-Searches: All StrOrigin values
 Finds: Any string containing "시작"
   - "게임 시작하기" ✓
   - "시작 버튼" ✓
@@ -369,318 +474,245 @@ Finds: Any string containing "시작"
 |------|------|
 | Flexible | May return multiple matches |
 | Finds partial matches | Less precise |
-| Works with fragments | Needs review of results |
 
 **Best for:** Finding strings when you only have partial Korean text
 
-### 5.3.2 StringID-Only (SCRIPT)
+**Button:** Generate (LOOKUP only)
+
+## 7.2 StringID-Only (SCRIPT)
 
 **How it works:**
-```
 1. Reads StringIDs from input
-2. Filters to SCRIPT categories ONLY
-3. Returns translations for matching StringIDs
-```
-
-**Automatic filtering includes:**
-- Sequencer
-- AIDialog
-- QuestDialog
-- NarrationDialog
+2. Filters to SCRIPT categories ONLY (Sequencer, AIDialog, QuestDialog, NarrationDialog)
+3. Returns/applies translations for matching StringIDs
 
 **Status output:** "SCRIPT filter: 150 kept, 23 skipped"
 
-**Best for:** Processing Sequencer/Dialog corrections where StrOrigin = raw Korean
+**Best for:** Processing Sequencer/Dialog corrections
 
-### 5.3.3 StringID + StrOrigin (STRICT)
+**Buttons:** Generate (LOOKUP) and TRANSFER
+
+## 7.3 StringID + StrOrigin (STRICT)
 
 **How it works:**
 ```
 Input: StringID="UI_001", StrOrigin="확인"
-Matches: ONLY if both StringID AND StrOrigin match
+Matches: ONLY if both StringID AND StrOrigin match exactly
 ```
-
-**Requires:**
-- XML input format (has both StringID and StrOrigin)
-- Target folder for comparison
 
 | Pros | Cons |
 |------|------|
-| Most precise | Requires more input data |
-| Handles reused StringIDs | XML format only |
-| No false positives | Needs target folder |
+| Most precise | Requires both fields |
+| No false positives | More input data needed |
+| Handles reused StringIDs | - |
 
 **Best for:** Verifying corrections with 100% certainty
 
-### 5.3.4 Special Key Match
+**Buttons:** Generate (LOOKUP) and TRANSFER
+
+## 7.4 Special Key Match
 
 **How it works:**
 - Custom composite key from multiple fields
-- Currently defaults to StringID matching
-- Future: Configurable key patterns
+- Configure key fields in the UI (comma-separated)
+- Default: `string_id,category`
 
 **Best for:** Advanced matching scenarios
 
-## 5.4 Quick Actions
-
-### 5.4.1 StringID Lookup
-
-**Input:** Single StringID (e.g., `UI_MainMenu_Title`)
-
-**Output:** `StringID_<ID>_YYYYMMDD_HHMMSS.xlsx`
-
-| StringID | ENG | FRE | GER | SPA | ... |
-|----------|-----|-----|-----|-----|-----|
-| UI_MainMenu_Title | Main Menu | Menu Principal | Hauptmenü | Menú Principal | ... |
-
-### 5.4.2 Reverse Lookup
-
-**Input:** Text file with strings in ANY language
-
-```
-Start Game
-Optionen
-Commencer
-```
-
-**Output:** `ReverseLookup_YYYYMMDD_HHMMSS.xlsx`
-
-| Input | KOR | ENG | FRE | GER |
-|-------|-----|-----|-----|-----|
-| Start Game | 게임 시작 | Start Game | Démarrer | Spiel starten |
-| Optionen | 옵션 | Options | Options | Optionen |
-| Commencer | 시작 | Start | Commencer | Starten |
-
-**Detection:** Shows which language each input was detected as
-
-## 5.5 ToSubmit Integration
-
-**Checkbox:** "ToSubmit Folder Integration"
-
-**Location:** `<app_folder>/ToSubmit/`
-
-**Purpose:** Process correction files staged for submission
-
-**Expected structure:** Files with StrOrigin, Correction, StringID columns
+**Buttons:** Generate (LOOKUP) only
 
 ---
 
-# 6. Workflows
+# 8. Workflows
 
-## 6.1 Find Translations for Korean Text
-
-**Scenario:** You have a list of Korean strings and need all language translations
+## 8.1 LOOKUP: Find Translations
 
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Create    │───→│   Run       │───→│   Review    │
-│   Excel     │    │   QuickTrans│    │   Output    │
+│   Create    │───→│   Generate  │───→│   Review    │
+│   Excel     │    │   (LOOKUP)  │    │   Output    │
 └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
-**Steps:**
+1. Create Excel with Korean text in Column A
+2. Set Format: Excel, Mode: File, Match Type: Substring
+3. Browse to file → Click **Generate**
+4. Open output Excel
 
-1. **Create Excel** with Korean text in Column A
-2. **Launch** QuickTranslate
-3. **Set** Format: Excel, Mode: File, Match Type: Substring Match
-4. **Browse** to your Excel file
-5. **Verify** Branch selection
-6. **Click** Generate
-7. **Open** output Excel
+## 8.2 LOOKUP: Process SCRIPT Corrections
 
-## 6.2 Process SCRIPT Corrections
-
-**Scenario:** You have XML corrections for Sequencer dialogue
-
-**Steps:**
-
-1. Set Format: **XML**
-2. Set Mode: **File**
-3. Set Match Type: **StringID-Only (SCRIPT)**
-4. Browse to your `.xml` file
-5. Click **Generate**
+1. Set Format: XML
+2. Set Match Type: StringID-Only (SCRIPT)
+3. Browse to XML file
+4. Click **Generate**
 
 **Output:** Only SCRIPT categories included
 
-**Status:** "SCRIPT filter: X kept, Y skipped"
+## 8.3 LOOKUP: Verify with Strict Matching
 
-## 6.3 Verify Translations with Strict Matching
-
-**Scenario:** Ensure corrections match exact StringID + StrOrigin pair
-
-**Steps:**
-
-1. Set Format: **XML**
-2. Set Mode: **File**
-3. Set Match Type: **StringID + StrOrigin (STRICT)**
-4. Browse to **Source** XML file
-5. Browse to **Target** folder (comparison data)
-6. Click **Generate**
-
-**Output:** Only verified matches included
-
-## 6.4 Batch Process a Folder
-
-**Scenario:** Process all XML files in a directory
-
-**Steps:**
-
-1. Set Format: **XML**
-2. Set Mode: **Folder** (recursive)
-3. Set Match Type: **Substring Match**
-4. Browse to folder containing XML files
+1. Set Format: XML
+2. Set Match Type: StringID + StrOrigin (STRICT)
+3. Browse to Source XML
+4. Browse to Target folder
 5. Click **Generate**
 
-**Progress:** "Scanning folder... 1/N" → "Parsing XML files... 1/M"
+**Output:** Only verified matches
 
-## 6.5 Find StringID from English Text
+## 8.4 TRANSFER: Apply Excel Corrections
 
-**Scenario:** You have English text, need to find the StringID
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  Corrections│───→│  TRANSFER   │───→│   Verify    │
+│   Excel     │    │   Button    │    │   XML Files │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
 
-**Steps:**
+1. Prepare corrections Excel (StringID, StrOrigin, Correction)
+2. Set Format: Excel, Mode: File
+3. Set Match Type: STRICT (recommended)
+4. Source: Browse to corrections file
+5. Target: Browse to LOC folder
+6. Click **TRANSFER** → Confirm
+7. Check log for results
 
-1. Create text file:
-   ```
-   Main Menu
-   Start Game
-   Options
-   ```
-2. In Quick Actions → Reverse, click **Browse**
-3. Select your text file
-4. Click **Find All**
+## 8.5 TRANSFER: Batch Apply from Folder
 
-**Result:** Shows StringID and all translations
+1. Set Mode: Folder
+2. Set Match Type: STRICT or StringID-Only
+3. Source: Browse to folder with corrections
+4. Target: LOC folder
+5. Click **TRANSFER** → Confirm
+6. View transfer report
+
+## 8.6 TRANSFER: SCRIPT Dialogue Corrections
+
+For Sequencer/Dialog corrections:
+
+1. Set Match Type: StringID-Only (SCRIPT)
+2. Source: Corrections file
+3. Target: LOC folder
+4. Click **TRANSFER**
+
+**Note:** Only SCRIPT categories are processed; others skipped.
 
 ---
 
-# 7. Output Files
+# 9. Output Files
 
-All output files are saved to: `<app_folder>/Output/`
+## 9.1 LOOKUP Outputs
 
-## 7.1 Standard Translation Output
+All saved to: `<app_folder>/Output/`
 
+### Translation Output
 **Filename:** `QuickTranslate_YYYYMMDD_HHMMSS.xlsx`
-
-**Columns:**
 
 | Column | Content |
 |--------|---------|
 | A | KOR (Input) |
 | B | ENG |
-| C | FRE |
-| D | GER |
-| E | SPA |
-| ... | (17 languages total) |
+| C-Q | Other languages... |
 
 **Multiple matches:** Formatted as numbered list
 ```
 1. Translation option 1
 2. Translation option 2
-3. Translation option 3
 ```
 
-## 7.2 StringID Lookup Output
-
+### StringID Lookup Output
 **Filename:** `StringID_<ID>_YYYYMMDD_HHMMSS.xlsx`
 
-**Format:** Single row with StringID and all translations
+Single row with StringID and all translations.
 
-## 7.3 Reverse Lookup Output
-
+### Reverse Lookup Output
 **Filename:** `ReverseLookup_YYYYMMDD_HHMMSS.xlsx`
 
+| Input | KOR | ENG | FRE | GER |
+|-------|-----|-----|-----|-----|
+| Start Game | 게임 시작 | Start Game | Démarrer | Spiel starten |
+
 **Special values:**
-- `NOT FOUND` - No matching StringID found
-- `NO TRANSLATION` - Translation empty or contains Korean (untranslated)
+- `NOT FOUND` - No matching StringID
+- `NO TRANSLATION` - Translation empty
 
-## 7.4 Folder Translation Output
+## 9.2 TRANSFER Outputs
 
-**Filename:** `FolderTranslate_<foldername>_YYYYMMDD_HHMMSS.xlsx`
+**Output:** Modified `languagedata_*.xml` files in target folder
 
-**Format:** One sheet per language
-
-**Columns per sheet:**
-| StrOrigin | English | [Language] | StringID |
-|-----------|---------|------------|----------|
+**Log Report:** Shown in application log area with:
+- Files processed
+- Matches found
+- Updates applied
+- Errors encountered
 
 ---
 
-# 8. Troubleshooting
+# 10. Troubleshooting
 
-## 8.1 Common Issues
+## 10.1 LOOKUP Issues
 
 ### "LOC folder not found"
-
 **Cause:** Perforce not synced or path incorrect
-
 **Solution:**
-1. Ensure F: drive is mapped to Perforce
-2. Run `p4 sync` on stringtable folder
-3. Or update `settings.json` with correct path
+1. Run `p4 sync` on stringtable folder
+2. Or update `settings.json` with correct path
 
 ### "Sequencer folder not found"
-
 **Cause:** Export folder not synced
-
 **Solution:**
 ```
 p4 sync //depot/cd/mainline/resource/GameData/stringtable/export__/...
 ```
 
 ### "No input data found"
-
 **Cause:** Empty file or wrong format
-
 **Solution:**
-- **Excel:** Ensure Korean text is in Column A (no header row by default)
-- **XML:** Ensure file has `<LocStr>` elements
+- Excel: Ensure data is in Column A
+- XML: Ensure file has `<LocStr>` elements
 
 ### "StringID not found"
-
 **Cause:** StringID doesn't exist in current branch
-
 **Solution:**
 1. Check spelling (case-sensitive)
-2. Try different branch (mainline vs cd_lambda)
-3. Verify StringID exists in source files
+2. Try different branch
 
-### "Strict mode requires Target folder"
+## 10.2 TRANSFER Issues
 
-**Cause:** Strict matching needs comparison folder
+### "Source not found"
+**Cause:** File path incorrect
+**Solution:** Use Browse button to select file
 
-**Solution:** Browse and select Target folder with XML files to compare against
+### "Target folder not found"
+**Cause:** LOC folder path incorrect
+**Solution:** Update `settings.json` or browse to correct folder
 
-### Progress stuck at "Indexing Sequencer..."
+### "0 matches found"
+**Causes:**
+1. StringID not in target files
+2. StrOrigin doesn't match (STRICT mode)
+3. Category not in SCRIPT set (StringID-Only mode)
 
-**Cause:** Large number of files to scan (first run)
+**Solutions:**
+1. Verify StringIDs exist in target
+2. Check StrOrigin text matches exactly
+3. Use STRICT mode for non-SCRIPT strings
 
-**Solution:** Wait patiently - first run builds index (1-2 minutes). Subsequent runs use cache.
+### "Transfer completed but file unchanged"
+**Cause:** Corrections already applied or no differences
+**Solution:** This is normal if translations are identical
 
-## 8.2 Performance Tips
+## 10.3 Performance Tips
 
 | Scenario | Tip |
 |----------|-----|
-| First run slow | Normal - building index. Subsequent runs faster |
-| Branch change slow | Triggers re-index. Consider staying on one branch |
-| Large files | XML format processes faster than Excel |
-| Memory usage | Close other applications if processing 1000+ strings |
-
-## 8.3 Data Caching
-
-**What's cached:**
-- StrOrigin index
-- Translation lookup
-- Category mapping
-
-**Cache invalidated when:**
-- Branch selection changes
-- Application restarts
+| First run slow | Building index. Subsequent runs faster |
+| Large corrections file | Use Folder mode for batching |
+| Memory usage | Close other apps for 1000+ corrections |
 
 ---
 
-# 9. Reference
+# 11. Reference
 
-## 9.1 Supported Languages
+## 11.1 Supported Languages
 
 | Code | Display | Language |
 |------|---------|----------|
@@ -702,7 +734,7 @@ p4 sync //depot/cd/mainline/resource/GameData/stringtable/export__/...
 | `ind` | IND | Indonesian |
 | `msa` | MSA | Malay |
 
-## 9.2 Supported File Formats
+## 11.2 Supported File Formats
 
 | Format | Extensions | Library |
 |--------|------------|---------|
@@ -710,7 +742,7 @@ p4 sync //depot/cd/mainline/resource/GameData/stringtable/export__/...
 | XML | `.xml`, `.loc.xml` | lxml |
 | Text | `.txt` | built-in |
 
-## 9.3 SCRIPT Categories
+## 11.3 SCRIPT Categories
 
 | Category | Description |
 |----------|-------------|
@@ -719,7 +751,7 @@ p4 sync //depot/cd/mainline/resource/GameData/stringtable/export__/...
 | QuestDialog | Quest conversation text |
 | NarrationDialog | Narrator/voiceover text |
 
-## 9.4 Default Paths
+## 11.4 Default Paths
 
 | Path | Default Value |
 |------|---------------|
@@ -729,7 +761,17 @@ p4 sync //depot/cd/mainline/resource/GameData/stringtable/export__/...
 | ToSubmit Folder | `<app_folder>\ToSubmit` |
 | Settings File | `<app_folder>\settings.json` |
 
-## 9.5 Command Line Options
+## 11.5 Excel Column Detection
+
+QuickTranslate auto-detects these column names (case-insensitive):
+
+| Column Purpose | Accepted Names |
+|----------------|----------------|
+| StringID | StringID, StringId, string_id, STRINGID |
+| StrOrigin | StrOrigin, Str_Origin, str_origin, STRORIGIN |
+| Correction | Correction, correction, Str, str |
+
+## 11.6 Command Line Options
 
 ```bash
 python main.py              # Launch GUI
@@ -738,33 +780,20 @@ python main.py --version    # Show version
 python main.py --help       # Show help
 ```
 
-## 9.6 Keyboard Shortcuts
+## 11.7 Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
 | `Alt+G` | Generate |
+| `Alt+T` | Transfer |
 | `Alt+C` | Clear fields |
 | `Alt+X` | Exit |
-| `Enter` | Activate focused button |
-
-## 9.7 Settings File Format
-
-```json
-{
-  "loc_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\loc",
-  "export_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\export__"
-}
-```
-
-> ⚠️ **WARNING**
->
-> Use double backslashes (`\\`) in JSON paths on Windows.
 
 ---
 
-# 10. Appendix
+# 12. Appendix
 
-## 10.1 Glossary
+## 12.1 Glossary
 
 | Term | Definition |
 |------|------------|
@@ -774,11 +803,10 @@ python main.py --help       # Show help
 | **LocStr** | XML element containing string data |
 | **SCRIPT** | Categories with raw Korean StrOrigin |
 | **LOC folder** | Contains `languagedata_*.xml` files |
-| **Export folder** | Contains categorized `.loc.xml` files |
-| **Substring match** | Find text contained within StrOrigin |
-| **Strict match** | Match requiring both StringID and StrOrigin |
+| **LOOKUP** | Read-only translation search (Generate button) |
+| **TRANSFER** | Write corrections to XML files (TRANSFER button) |
 
-## 10.2 XML Element Structure
+## 12.2 XML Element Structure
 
 ```xml
 <LocStr
@@ -796,7 +824,29 @@ python main.py --help       # Show help
 | Str | Yes | Translation text |
 | Category | No | String category |
 
-## 10.3 Changelog
+## 12.3 Changelog
+
+### Version 3.0.0 (February 2026)
+
+**New Features:**
+- Added TRANSFER functionality - write corrections to XML files
+- Added transfer_file_to_file and transfer_folder_to_folder
+- Added transfer report with detailed statistics
+- Added mixed Excel/XML support in Folder mode
+- Added canonical text normalization (text_utils.py)
+
+**Improvements:**
+- Unified normalization across all modules
+- Case-insensitive XML attribute reading
+- Better column detection in Excel files
+- Resource leak fixes in Excel operations
+- Improved error handling and logging
+
+**Technical:**
+- Created core/text_utils.py as single source of truth
+- Created core/xml_transfer.py for transfer operations
+- Fixed newline order bug in XML parsing
+- Imported SCRIPT_CATEGORIES from config.py
 
 ### Version 2.0.0 (February 2026)
 
@@ -809,18 +859,11 @@ python main.py --help       # Show help
 - Added Reverse Lookup feature
 - Added branch selection (mainline/cd_lambda)
 - Added ToSubmit folder integration
-- Redesigned GUI with spacious 850x750 layout
 
 **Improvements:**
 - Modular codebase (main.py + core/ + gui/ + utils/)
 - Better XML parsing with lxml recovery mode
 - Progress bar and detailed status updates
-- Improved error messages
-
-**Technical:**
-- Migrated from monolith to modular structure
-- Added GitHub Actions CI/CD workflow
-- PyInstaller + Inno Setup for distribution
 
 ### Version 1.0.0 (Initial Release)
 
@@ -831,21 +874,20 @@ python main.py --help       # Show help
 
 ---
 
-## 10.4 Support
+## 12.4 Support
 
 **Issues & Feedback:**
 - GitHub Issues: [LocalizationTools Repository](https://github.com/NeilVibe/LocalizationTools/issues)
 
 **Documentation:**
 - This User Guide: `docs/USER_GUIDE.md`
-- API Reference: See source code docstrings
 
 ---
 
 <div align="center">
 
-**QuickTranslate** | Version 2.0.0 | LocaNext Project
+**QuickTranslate** | Version 3.0.0 | LocaNext Project
 
-*Translate Smarter, Not Harder*
+*Lookup & Transfer - Two Tools in One*
 
 </div>
