@@ -1,0 +1,24 @@
+{
+  "font_family": "Malgun Gothic",
+  "font_size": 10,
+  "ui_language": "English",
+  "selected_language": "eng",
+  "colors": {
+    "node_default": "crimson",
+    "node_selected": "blue",
+    "node_highlighted": "gold",
+    "route_default": "royalblue"
+  },
+  "faction_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\StaticInfo\\factioninfo",
+  "loc_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\loc",
+  "knowledge_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\StaticInfo\\knowledgeinfo",
+  "waypoint_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\StaticInfo\\factioninfo\\NodeWaypointInfo",
+  "texture_folder": "F:\\perforce\\common\\mainline\\commonresource\\ui\\texture\\image",
+  "character_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\StaticInfo\\characterinfo",
+  "audio_folder": "F:\\perforce\\cd\\mainline\\resource\\sound\\windows\\English(US)",
+  "export_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\export__",
+  "search_limit": 100,
+  "fuzzy_threshold": 0.6,
+  "current_mode": "map",
+  "window_geometry": "1600x1000"
+}
