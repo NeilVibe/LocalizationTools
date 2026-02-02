@@ -26,8 +26,14 @@ MATCHING_MODES = {
     "special_key": "Special Key Match",
 }
 
-# SCRIPT categories - strings where StrOrigin = raw KOR text
-SCRIPT_CATEGORIES = {"Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"}
+# SCRIPT categories - folder names where StrOrigin = raw KOR text
+# These map to export__/Dialog/ and export__/Sequencer/ folders
+# Only these categories are transferred in StringID-Only mode
+SCRIPT_CATEGORIES = {"Sequencer", "Dialog"}
+
+# Subfolders to EXCLUDE from StringID-Only transfer
+# These are subfolders within Dialog/ or Sequencer/ that should be skipped
+SCRIPT_EXCLUDE_SUBFOLDERS = {"NarrationDialog"}
 
 # Input modes
 INPUT_MODES = ["folder", "file"]

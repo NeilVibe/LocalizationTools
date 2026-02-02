@@ -5,8 +5,6 @@ Read input Excel files and write output Excel files.
 Uses patterns from LanguageDataExporter for robustness.
 """
 
-import html
-import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -14,36 +12,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, numbers
 
 from .korean_detection import is_korean_text
-
-
-def normalize_text(txt: Optional[str]) -> str:
-    """
-    Normalize text for consistent matching.
-
-    From LanguageDataExporter - handles:
-    1. HTML entity unescaping (&lt; -> <, &amp; -> &)
-    2. Leading/trailing whitespace stripping
-    3. Internal whitespace collapsing to single space
-    4. &desc; marker removal (legacy description prefix)
-
-    Args:
-        txt: Text to normalize
-
-    Returns:
-        Normalized text string
-    """
-    if not txt:
-        return ""
-    # Unescape HTML entities
-    txt = html.unescape(str(txt))
-    # Strip and collapse whitespace
-    txt = re.sub(r'\s+', ' ', txt.strip())
-    # Remove legacy &desc; markers
-    if txt.lower().startswith("&desc;"):
-        txt = txt[6:].lstrip()
-    elif txt.lower().startswith("&amp;desc;"):
-        txt = txt[10:].lstrip()
-    return txt
+from .text_utils import normalize_text
 
 
 def _detect_column_indices(ws) -> Dict[str, int]:
@@ -79,16 +48,16 @@ def read_korean_input(excel_path: Path) -> List[str]:
         List of Korean text strings (trimmed, non-empty)
     """
     wb = load_workbook(excel_path, read_only=True)
-    ws = wb.active
-
-    korean_texts = []
-    for row in ws.iter_rows(min_row=1, max_col=1):
-        cell_value = row[0].value
-        if cell_value:
-            korean_texts.append(str(cell_value).strip())
-
-    wb.close()
-    return korean_texts
+    try:
+        ws = wb.active
+        korean_texts = []
+        for row in ws.iter_rows(min_row=1, max_col=1):
+            cell_value = row[0].value
+            if cell_value:
+                korean_texts.append(str(cell_value).strip())
+        return korean_texts
+    finally:
+        wb.close()
 
 
 def read_corrections_from_excel(
@@ -115,36 +84,37 @@ def read_corrections_from_excel(
         List of correction dicts with keys: string_id, str_origin, corrected
     """
     wb = load_workbook(excel_path, read_only=True)
-    ws = wb.active
+    try:
+        ws = wb.active
+        corrections = []
+        start_row = 2 if has_header else 1
 
-    corrections = []
-    start_row = 2 if has_header else 1
+        # Try to detect columns from header row (case-insensitive)
+        if has_header:
+            col_indices = _detect_column_indices(ws)
+            # Look for common column name variations
+            stringid_col = col_indices.get("stringid", col_indices.get("string_id", stringid_col))
+            strorigin_col = col_indices.get("strorigin", col_indices.get("str_origin", strorigin_col))
+            correction_col = col_indices.get("correction", col_indices.get("corrected", correction_col))
 
-    # Try to detect columns from header row (case-insensitive)
-    if has_header:
-        col_indices = _detect_column_indices(ws)
-        # Look for common column name variations
-        stringid_col = col_indices.get("stringid", col_indices.get("string_id", stringid_col))
-        strorigin_col = col_indices.get("strorigin", col_indices.get("str_origin", strorigin_col))
-        correction_col = col_indices.get("correction", col_indices.get("corrected", correction_col))
+        for row in ws.iter_rows(min_row=start_row):
+            try:
+                string_id = row[stringid_col - 1].value if stringid_col <= len(row) else None
+                str_origin = row[strorigin_col - 1].value if strorigin_col <= len(row) else None
+                corrected = row[correction_col - 1].value if correction_col <= len(row) else None
 
-    for row in ws.iter_rows(min_row=start_row):
-        try:
-            string_id = row[stringid_col - 1].value if stringid_col <= len(row) else None
-            str_origin = row[strorigin_col - 1].value if strorigin_col <= len(row) else None
-            corrected = row[correction_col - 1].value if correction_col <= len(row) else None
+                if string_id and corrected:
+                    corrections.append({
+                        "string_id": normalize_text(string_id),
+                        "str_origin": normalize_text(str_origin) if str_origin else "",
+                        "corrected": normalize_text(corrected),
+                    })
+            except (IndexError, AttributeError):
+                continue
 
-            if string_id and corrected:
-                corrections.append({
-                    "string_id": normalize_text(string_id),
-                    "str_origin": normalize_text(str_origin) if str_origin else "",
-                    "corrected": normalize_text(corrected),
-                })
-        except (IndexError, AttributeError):
-            continue
-
-    wb.close()
-    return corrections
+        return corrections
+    finally:
+        wb.close()
 
 
 def get_ordered_languages(available_langs: List[str], language_order: List[str] = None) -> List[str]:

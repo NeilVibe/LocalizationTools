@@ -39,9 +39,13 @@ from core import (
     parse_corrections_from_xml,
     parse_folder_xml_files,
     parse_tosubmit_xml,
+    # TRANSFER functions
+    transfer_folder_to_folder,
+    transfer_file_to_file,
+    format_transfer_report,
 )
 from core.indexing import scan_folder_for_entries
-from core.language_loader import build_stringid_to_category
+from core.language_loader import build_stringid_to_category, build_stringid_to_subfolder
 from utils import read_text_file_lines
 
 
@@ -76,6 +80,7 @@ class QuickTranslateApp:
         self.strorigin_index: Optional[Dict[str, str]] = None
         self.translation_lookup: Optional[Dict[str, Dict[str, str]]] = None
         self.stringid_to_category: Optional[Dict[str, str]] = None
+        self.stringid_to_subfolder: Optional[Dict[str, str]] = None
         self.available_langs: Optional[List[str]] = None
         self.cached_branch: Optional[str] = None
 
@@ -279,6 +284,11 @@ class QuickTranslateApp:
                                       relief='flat', padx=30, pady=8, cursor='hand2')
         self.generate_btn.pack(side=tk.LEFT, padx=(0, 10))
 
+        self.transfer_btn = tk.Button(button_frame, text="TRANSFER", command=self._transfer,
+                                      font=('Segoe UI', 11, 'bold'), bg='#d9534f', fg='white',
+                                      relief='flat', padx=25, pady=8, cursor='hand2')
+        self.transfer_btn.pack(side=tk.LEFT, padx=(0, 10))
+
         tk.Button(button_frame, text="Clear Log", command=self._clear_log,
                  font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
                  padx=15, pady=6, cursor='hand2').pack(side=tk.LEFT, padx=(0, 10))
@@ -388,6 +398,12 @@ class QuickTranslateApp:
             self.stringid_to_category = build_stringid_to_category(export_folder, self._update_status)
             self._log(f"Indexed {len(self.stringid_to_category)} StringIDs to categories", 'success')
 
+            # Build subfolder mapping for exclusion filtering
+            self._update_status("Building subfolder index...")
+            self._log("Building subfolder index...", 'info')
+            self.stringid_to_subfolder = build_stringid_to_subfolder(export_folder, self._update_status)
+            self._log(f"Indexed {len(self.stringid_to_subfolder)} StringIDs to subfolders", 'success')
+
         # Load language files
         self._log("Discovering language files...", 'info')
         lang_files = discover_language_files(loc_folder)
@@ -416,10 +432,12 @@ class QuickTranslateApp:
     def _disable_buttons(self):
         """Disable all action buttons during processing."""
         self.generate_btn.config(state='disabled')
+        self.transfer_btn.config(state='disabled')
 
     def _enable_buttons(self):
         """Re-enable all action buttons."""
         self.generate_btn.config(state='normal')
+        self.transfer_btn.config(state='normal')
 
     def _generate(self):
         """Main generate action based on current mode."""
@@ -466,26 +484,45 @@ class QuickTranslateApp:
 
             # Read from source file/folder
             if source:
-                if self.format_mode.get() == "excel":
-                    korean_inputs = read_korean_input(source)
-                    self._log(f"Read {len(korean_inputs)} inputs from Excel", 'info')
+                if self.input_mode.get() == "folder":
+                    # FOLDER MODE: Auto-detect and handle mixed Excel + XML
+                    xml_files = list(source.rglob("*.xml"))
+                    excel_files = list(source.rglob("*.xlsx")) + list(source.rglob("*.xls"))
 
-                    # For non-substring modes, build corrections from Excel
-                    if match_type in ("stringid_only", "strict", "special_key"):
-                        excel_corrections = read_corrections_from_excel(source)
-                        corrections.extend(excel_corrections)
-                        self._log(f"Loaded {len(excel_corrections)} corrections from Excel", 'info')
-                        if corrections:
-                            korean_inputs = [c.get("str_origin", "") or c.get("string_id", "") for c in corrections]
-                else:
-                    # XML format
-                    if self.input_mode.get() == "folder":
+                    if xml_files:
                         xml_corrections = parse_folder_xml_files(source, self._update_status)
-                    else:
-                        xml_corrections = parse_corrections_from_xml(source)
-                    corrections.extend(xml_corrections)
+                        corrections.extend(xml_corrections)
+                        self._log(f"Loaded {len(xml_corrections)} corrections from {len(xml_files)} XML files", 'info')
+
+                    if excel_files:
+                        for excel_file in excel_files:
+                            excel_corrections = read_corrections_from_excel(excel_file)
+                            corrections.extend(excel_corrections)
+                        self._log(f"Loaded {sum(1 for _ in excel_files)} Excel files", 'info')
+
                     korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
-                    self._log(f"Loaded {len(xml_corrections)} corrections from XML", 'info')
+                    if not korean_inputs:
+                        korean_inputs = [c.get("string_id", "") for c in corrections if c.get("string_id")]
+                else:
+                    # FILE MODE: Auto-detect by extension
+                    suffix = source.suffix.lower()
+                    if suffix in (".xlsx", ".xls"):
+                        korean_inputs = read_korean_input(source)
+                        self._log(f"Read {len(korean_inputs)} inputs from Excel", 'info')
+
+                        # For non-substring modes, build corrections from Excel
+                        if match_type in ("stringid_only", "strict", "special_key"):
+                            excel_corrections = read_corrections_from_excel(source)
+                            corrections.extend(excel_corrections)
+                            self._log(f"Loaded {len(excel_corrections)} corrections from Excel", 'info')
+                            if corrections:
+                                korean_inputs = [c.get("str_origin", "") or c.get("string_id", "") for c in corrections]
+                    else:
+                        # XML format
+                        xml_corrections = parse_corrections_from_xml(source)
+                        corrections.extend(xml_corrections)
+                        korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
+                        self._log(f"Loaded {len(xml_corrections)} corrections from XML", 'info')
 
             if not korean_inputs and not corrections:
                 messagebox.showwarning("Warning", "No input data found.")
@@ -807,6 +844,179 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"Reverse lookup failed:\n{e}")
             self._log(f"ERROR: {e}", 'error')
             self._update_status(f"Error: {e}")
+
+        finally:
+            self._enable_buttons()
+
+    def _transfer(self):
+        """Transfer corrections from source to target XML files (LOC folder)."""
+        if not self.source_path.get():
+            messagebox.showwarning("Warning", "Please select a Source file/folder with corrections.")
+            return
+
+        if not self.target_path.get():
+            # Default to LOC folder from config
+            self.target_path.set(str(config.LOC_FOLDER))
+
+        source = Path(self.source_path.get())
+        target = Path(self.target_path.get())
+
+        if not source.exists():
+            messagebox.showerror("Error", f"Source not found:\n{source}")
+            return
+
+        if not target.exists():
+            messagebox.showerror("Error", f"Target folder not found:\n{target}")
+            return
+
+        # Confirm with user
+        match_type = self.match_type.get()
+        mode_str = "Folder" if self.input_mode.get() == "folder" else "File"
+        match_str = match_type.upper()
+
+        confirm = messagebox.askyesno(
+            "Confirm Transfer",
+            f"This will WRITE corrections to XML files in:\n{target}\n\n"
+            f"Source Mode: {mode_str}\n"
+            f"Match Mode: {match_str}\n\n"
+            f"Are you sure you want to proceed?"
+        )
+
+        if not confirm:
+            return
+
+        self._disable_buttons()
+        self.progress_value.set(0)
+        self._clear_log()
+
+        self._log("=== QuickTranslate TRANSFER ===", 'header')
+        self._log(f"Match Mode: {match_str}", 'info')
+        self._log(f"Source: {source}", 'info')
+        self._log(f"Target: {target}", 'info')
+
+        try:
+            # Load category data if needed for stringid_only mode
+            stringid_to_category = None
+            stringid_to_subfolder = None
+            if match_type == "stringid_only":
+                if not self._load_data_if_needed(need_sequencer=True):
+                    return
+                stringid_to_category = self.stringid_to_category
+                stringid_to_subfolder = self.stringid_to_subfolder
+
+            self.progress_value.set(20)
+            self._update_status("Transferring corrections...")
+
+            # Perform transfer
+            if self.input_mode.get() == "folder":
+                results = transfer_folder_to_folder(
+                    source,
+                    target,
+                    stringid_to_category=stringid_to_category,
+                    stringid_to_subfolder=stringid_to_subfolder,
+                    match_mode="stringid_only" if match_type == "stringid_only" else "strict",
+                    dry_run=False,
+                    progress_callback=self._update_status,
+                )
+                report_mode = "folder"
+            else:
+                # Single file mode - find matching languagedata_*.xml in target folder
+                target_file = target
+                if target.is_dir():
+                    source_name = source.stem.lower()
+                    lang_code = None
+
+                    # Extract language code from source filename
+                    if source_name.startswith("languagedata_"):
+                        lang_code = source_name[13:]
+                    elif "_" in source_name:
+                        lang_code = source_name.split("_")[-1]
+
+                    if lang_code:
+                        candidates = [
+                            target / f"languagedata_{lang_code}.xml",
+                            target / f"languagedata_{lang_code.upper()}.xml",
+                            target / f"languagedata_{lang_code.lower()}.xml",
+                        ]
+                        for c in candidates:
+                            if c.exists():
+                                target_file = c
+                                break
+
+                    # If no match found, check for single XML
+                    if target_file.is_dir():
+                        xml_files = list(target.glob("*.xml"))
+                        if len(xml_files) == 1:
+                            target_file = xml_files[0]
+                        elif len(xml_files) == 0:
+                            messagebox.showerror("Error", f"No XML files found in target folder:\n{target}")
+                            return
+                        else:
+                            messagebox.showwarning(
+                                "Warning",
+                                f"Multiple XML files in target folder. Please use Folder mode or specify a single file."
+                            )
+                            return
+
+                self._log(f"Target file: {target_file}", 'info')
+
+                results = transfer_file_to_file(
+                    source,
+                    target_file,
+                    stringid_to_category=stringid_to_category,
+                    stringid_to_subfolder=stringid_to_subfolder,
+                    match_mode="stringid_only" if match_type == "stringid_only" else "strict",
+                    dry_run=False,
+                )
+                report_mode = "file"
+
+            self.progress_value.set(80)
+
+            # Generate report
+            report = format_transfer_report(results, mode=report_mode)
+
+            # Log the report
+            for line in report.split("\n"):
+                if "SUCCESS" in line or "UPDATED" in line or "●" in line:
+                    self._log(line, 'success')
+                elif "ERROR" in line or "×" in line or "NOT_FOUND" in line or "○" in line:
+                    self._log(line, 'error')
+                elif "WARN" in line or "◐" in line or "SKIPPED" in line:
+                    self._log(line, 'warning')
+                elif "═" in line or "║" in line or "REPORT" in line:
+                    self._log(line, 'header')
+                else:
+                    self._log(line, 'info')
+
+            self.progress_value.set(100)
+
+            # Summary
+            if report_mode == "folder":
+                updated = results.get("total_updated", 0)
+                matched = results.get("total_matched", 0)
+                not_found = results.get("total_not_found", 0)
+            else:
+                updated = results.get("updated", 0)
+                matched = results.get("matched", 0)
+                not_found = results.get("not_found", 0)
+
+            self._update_status(f"Transfer complete: {updated} updated")
+
+            messagebox.showinfo(
+                "Transfer Complete",
+                f"Transfer completed!\n\n"
+                f"Matched: {matched}\n"
+                f"Updated: {updated}\n"
+                f"Not Found: {not_found}\n\n"
+                f"Target: {target}"
+            )
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Transfer failed:\n{e}")
+            self._log(f"ERROR: {e}", 'error')
+            self._update_status(f"Error: {e}")
+            import traceback
+            traceback.print_exc()
 
         finally:
             self._enable_buttons()
