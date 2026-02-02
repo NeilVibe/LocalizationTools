@@ -3,11 +3,19 @@ Korean MISS String Extractor.
 
 Extract Korean strings from target XML that do NOT exist in source XML.
 Used to identify untranslated or missing localization entries.
+
+REWRITE v2.0 - Correct logic:
+1. Build StringID -> File path index from EXPORT folder
+2. Parse SOURCE file to build (StringID, StrOrigin) lookup
+3. Parse TARGET file to find all Korean LocStr elements
+4. Match against SOURCE lookup
+5. Filter by excluded paths using EXPORT index
+6. PRINT results to terminal (not just GUI log)
 """
 
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 # Try lxml first (more robust), fallback to standard library
 try:
@@ -18,7 +26,7 @@ except ImportError:
     USING_LXML = False
 
 from .xml_parser import sanitize_xml_content, iter_locstr_elements
-from .text_utils import normalize_text
+from .text_utils import normalize_for_matching
 
 
 # Korean character ranges:
@@ -52,18 +60,15 @@ def normalize_strorigin(text: str) -> str:
     """
     Normalize StrOrigin text for comparison.
 
-    Strips leading/trailing whitespace and collapses multiple spaces.
+    Uses the canonical normalize_for_matching() from text_utils.
 
     Args:
         text: StrOrigin text to normalize
 
     Returns:
-        Normalized text string
+        Normalized text string (lowercase, whitespace normalized)
     """
-    if not text:
-        return ""
-    # Strip and collapse whitespace
-    return re.sub(r'\s+', ' ', text.strip())
+    return normalize_for_matching(text)
 
 
 def _parse_xml_to_root(xml_path: Path) -> Optional[ET.Element]:
@@ -107,6 +112,60 @@ def _parse_xml_to_root(xml_path: Path) -> Optional[ET.Element]:
             return None
 
 
+def build_export_index(
+    export_folder: Path,
+    progress_callback: Optional[Callable[[str], None]] = None
+) -> Dict[str, str]:
+    """
+    Build StringID -> File path index from EXPORT folder.
+
+    Scans all .loc.xml files in EXPORT folder and builds an index
+    mapping each StringID to its file path (e.g., "System/Gimmick/file.xml").
+
+    Args:
+        export_folder: Path to export__ folder
+        progress_callback: Optional callback for progress updates
+
+    Returns:
+        Dict mapping StringID to relative file path (e.g., "System/Gimmick/item.loc.xml")
+    """
+    if not export_folder.exists():
+        print(f"[EXPORT INDEX] ERROR: Export folder not found: {export_folder}")
+        return {}
+
+    stringid_to_filepath: Dict[str, str] = {}
+    xml_files = list(export_folder.rglob("*.loc.xml"))
+    total_files = len(xml_files)
+
+    print(f"[EXPORT INDEX] Scanning {total_files} .loc.xml files in: {export_folder}")
+
+    for i, xml_file in enumerate(xml_files):
+        if progress_callback and i % 100 == 0:
+            progress_callback(f"Indexing EXPORT files... {i+1}/{total_files}")
+
+        try:
+            # Get relative path from export folder
+            rel_path = xml_file.relative_to(export_folder)
+            rel_path_str = str(rel_path).replace("\\", "/")
+
+            root = _parse_xml_to_root(xml_file)
+            if root is None:
+                continue
+
+            for elem in iter_locstr_elements(root):
+                string_id = (elem.get('StringId') or elem.get('StringID') or
+                            elem.get('stringid') or elem.get('STRINGID') or '')
+                if string_id:
+                    stringid_to_filepath[string_id] = rel_path_str
+
+        except Exception as e:
+            print(f"[EXPORT INDEX] Warning: Failed to parse {xml_file}: {e}")
+            continue
+
+    print(f"[EXPORT INDEX] Indexed {len(stringid_to_filepath)} StringIDs")
+    return stringid_to_filepath
+
+
 def _build_source_lookup(root: ET.Element) -> Set[Tuple[str, str]]:
     """
     Build lookup set of (StringID, normalized_StrOrigin) from source XML.
@@ -120,8 +179,10 @@ def _build_source_lookup(root: ET.Element) -> Set[Tuple[str, str]]:
     lookup: Set[Tuple[str, str]] = set()
 
     for elem in iter_locstr_elements(root):
-        string_id = elem.get('StringID', '') or elem.get('stringid', '') or ''
-        str_origin = elem.get('StrOrigin', '') or elem.get('strorigin', '') or ''
+        string_id = (elem.get('StringId') or elem.get('StringID') or
+                    elem.get('stringid') or elem.get('STRINGID') or '')
+        str_origin = (elem.get('StrOrigin') or elem.get('strorigin') or
+                     elem.get('STRORIGIN') or '')
 
         if string_id:
             normalized_origin = normalize_strorigin(str_origin)
@@ -130,7 +191,7 @@ def _build_source_lookup(root: ET.Element) -> Set[Tuple[str, str]]:
     return lookup
 
 
-def _collect_korean_locstr(root: ET.Element) -> List[ET.Element]:
+def _collect_korean_locstr(root: ET.Element) -> List[Dict]:
     """
     Collect all LocStr elements where Str attribute contains Korean.
 
@@ -138,71 +199,89 @@ def _collect_korean_locstr(root: ET.Element) -> List[ET.Element]:
         root: Root element of target XML
 
     Returns:
-        List of LocStr elements with Korean text
+        List of dicts with LocStr data (string_id, str_origin, str_value, elem)
     """
-    korean_elements: List[ET.Element] = []
+    korean_elements: List[Dict] = []
 
     for elem in iter_locstr_elements(root):
-        str_value = elem.get('Str', '') or elem.get('str', '') or ''
+        str_value = (elem.get('Str') or elem.get('str') or
+                    elem.get('STR') or '')
 
         if contains_korean(str_value):
-            korean_elements.append(elem)
+            string_id = (elem.get('StringId') or elem.get('StringID') or
+                        elem.get('stringid') or elem.get('STRINGID') or '')
+            str_origin = (elem.get('StrOrigin') or elem.get('strorigin') or
+                         elem.get('STRORIGIN') or '')
+
+            korean_elements.append({
+                "string_id": string_id,
+                "str_origin": str_origin,
+                "str_value": str_value,
+                "elem": elem,
+            })
 
     return korean_elements
 
 
 def _filter_by_excluded_paths(
-    elements: List[ET.Element],
+    elements: List[Dict],
+    stringid_to_filepath: Dict[str, str],
     excluded_paths: Optional[List[str]]
-) -> Tuple[List[ET.Element], int]:
+) -> Tuple[List[Dict], int, List[Dict]]:
     """
-    Filter out elements whose File attribute starts with excluded paths.
+    Filter out elements whose File path (from EXPORT index) starts with excluded paths.
 
     Args:
-        elements: List of LocStr elements
+        elements: List of LocStr dicts
+        stringid_to_filepath: StringID -> file path mapping from EXPORT index
         excluded_paths: List of path prefixes to exclude (e.g., "System/MultiChange")
 
     Returns:
-        Tuple of (filtered elements, count of filtered out)
+        Tuple of (filtered elements, count of filtered out, filtered_out_elements)
     """
     if not excluded_paths:
-        return elements, 0
+        return elements, 0, []
 
-    filtered: List[ET.Element] = []
-    filtered_count = 0
+    filtered: List[Dict] = []
+    filtered_out: List[Dict] = []
 
-    for elem in elements:
-        file_attr = elem.get('File', '') or elem.get('file', '') or ''
+    for item in elements:
+        string_id = item["string_id"]
+        file_path = stringid_to_filepath.get(string_id, "")
         # Normalize path separators and lowercase for case-insensitive matching
-        file_attr_normalized = file_attr.replace('\\', '/').lower()
+        file_path_normalized = file_path.replace('\\', '/').lower()
 
         excluded = False
         for exc_path in excluded_paths:
             exc_path_normalized = exc_path.replace('\\', '/').lower()
-            if file_attr_normalized.startswith(exc_path_normalized):
+            if file_path_normalized.startswith(exc_path_normalized):
                 excluded = True
-                filtered_count += 1
+                item["excluded_path"] = exc_path
+                item["file_path"] = file_path
+                filtered_out.append(item)
                 break
 
         if not excluded:
-            filtered.append(elem)
+            item["file_path"] = file_path
+            filtered.append(item)
 
-    return filtered, filtered_count
+    return filtered, len(filtered_out), filtered_out
 
 
-def _write_output_xml(elements: List[ET.Element], output_path: Path) -> None:
+def _write_output_xml(elements: List[Dict], output_path: Path) -> None:
     """
     Write LocStr elements to output XML file.
 
     Args:
-        elements: List of LocStr elements to write
+        elements: List of LocStr dicts with 'elem' key
         output_path: Path for output file
     """
     # Build XML content
     lines = ['<?xml version="1.0" encoding="utf-8"?>']
     lines.append('<LocStrList>')
 
-    for elem in elements:
+    for item in elements:
+        elem = item["elem"]
         # Reconstruct LocStr element as string
         attribs = []
         for key, value in elem.attrib.items():
@@ -224,29 +303,63 @@ def _write_output_xml(elements: List[ET.Element], output_path: Path) -> None:
     output_path.write_text('\n'.join(lines), encoding='utf-8')
 
 
+def _print_separator(char: str = "=", length: int = 80):
+    """Print a separator line."""
+    print(char * length)
+
+
+def _print_sample_items(items: List[Dict], title: str, max_items: int = 10):
+    """Print sample items with details."""
+    if not items:
+        return
+
+    print(f"\n{title} (showing first {min(len(items), max_items)} of {len(items)}):")
+    print("-" * 60)
+
+    for i, item in enumerate(items[:max_items]):
+        string_id = item.get("string_id", "N/A")
+        str_origin = item.get("str_origin", "")[:50]
+        str_value = item.get("str_value", "")[:50]
+        file_path = item.get("file_path", "N/A")
+
+        print(f"  [{i+1}] StringID: {string_id}")
+        print(f"      File: {file_path}")
+        if str_origin:
+            print(f"      StrOrigin: {str_origin}...")
+        if str_value:
+            print(f"      Str (KOR): {str_value}...")
+        print()
+
+
 def extract_korean_misses(
     source_file: str,
     target_file: str,
     output_file: str,
-    excluded_paths: Optional[List[str]] = None
+    export_folder: Optional[str] = None,
+    excluded_paths: Optional[List[str]] = None,
+    progress_callback: Optional[Callable[[str], None]] = None
 ) -> Dict:
     """
     Extract Korean strings from target that do NOT exist in source.
 
-    Logic:
-    1. Parse target file, collect all LocStr nodes with Korean in Str attribute
-    2. Parse source file, build (StringID, StrOrigin) lookup
-    3. Find HITS: Korean LocStr from target that match source lookup
-    4. Collect MISSES: Korean LocStr that did NOT match
-    5. Filter by excluded paths
-    6. Write remaining MISS nodes to output file
+    CORRECT LOGIC:
+    1. Build StringID -> File path index from EXPORT folder
+    2. Parse SOURCE file to build (StringID, StrOrigin) lookup
+    3. Parse TARGET file to find all Korean LocStr elements
+    4. Match against SOURCE lookup (StringID + normalized StrOrigin)
+    5. Filter by excluded paths using EXPORT index
+    6. PRINT detailed results to terminal
+    7. Write remaining MISS nodes to output file
 
     Args:
-        source_file: Path to source XML file
+        source_file: Path to source XML file (reference/corrections)
         target_file: Path to target XML file (contains Korean strings to check)
         output_file: Path for output XML file (will contain MISS strings)
+        export_folder: Path to EXPORT folder for StringID -> File path mapping
+                       If None, uses config.EXPORT_FOLDER
         excluded_paths: List of path prefixes to exclude from results
             (e.g., ["System/MultiChange", "System/Gimmick"])
+        progress_callback: Optional callback for progress updates
 
     Returns:
         Dict with statistics:
@@ -267,6 +380,25 @@ def extract_korean_misses(
     target_path = Path(target_file)
     output_path = Path(output_file)
 
+    # Get export folder from config if not provided
+    if export_folder is None:
+        import config
+        export_folder_path = config.EXPORT_FOLDER
+    else:
+        export_folder_path = Path(export_folder)
+
+    # Print header to terminal
+    _print_separator("=")
+    print("KOREAN MISS EXTRACTOR - Terminal Output")
+    _print_separator("=")
+    print(f"Source (reference): {source_path}")
+    print(f"Target (to check):  {target_path}")
+    print(f"Output:             {output_path}")
+    print(f"Export folder:      {export_folder_path}")
+    if excluded_paths:
+        print(f"Excluded paths:     {', '.join(excluded_paths)}")
+    _print_separator("-")
+
     # Validate input files exist
     if not source_path.exists():
         raise FileNotFoundError(f"Source file not found: {source_file}")
@@ -276,53 +408,125 @@ def extract_korean_misses(
     # Ensure output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Parse target XML
-    target_root = _parse_xml_to_root(target_path)
-    if target_root is None:
-        raise ValueError(f"Failed to parse target XML: {target_file}")
+    # Step 1: Build EXPORT index (StringID -> File path)
+    print("\n[STEP 1] Building EXPORT index...")
+    if progress_callback:
+        progress_callback("Building EXPORT index...")
 
-    # Parse source XML
+    stringid_to_filepath = build_export_index(export_folder_path, progress_callback)
+
+    if not stringid_to_filepath:
+        print("[WARNING] EXPORT index is empty - path filtering will not work!")
+
+    # Step 2: Parse source XML and build lookup
+    print("\n[STEP 2] Parsing SOURCE file...")
+    if progress_callback:
+        progress_callback("Parsing source file...")
+
     source_root = _parse_xml_to_root(source_path)
     if source_root is None:
         raise ValueError(f"Failed to parse source XML: {source_file}")
 
-    # Build source lookup
     source_lookup = _build_source_lookup(source_root)
+    print(f"  Built source lookup with {len(source_lookup)} (StringID, StrOrigin) pairs")
 
-    # Collect Korean LocStr from target
+    # Step 3: Parse target XML and collect Korean LocStr
+    print("\n[STEP 3] Parsing TARGET file and collecting Korean strings...")
+    if progress_callback:
+        progress_callback("Parsing target file...")
+
+    target_root = _parse_xml_to_root(target_path)
+    if target_root is None:
+        raise ValueError(f"Failed to parse target XML: {target_file}")
+
     korean_elements = _collect_korean_locstr(target_root)
     total_target_korean = len(korean_elements)
+    print(f"  Found {total_target_korean} LocStr elements with Korean text")
 
-    # Find HITS and MISSES
-    hits = 0
-    misses: List[ET.Element] = []
+    # Step 4: Find HITS and MISSES
+    print("\n[STEP 4] Matching against source lookup...")
+    if progress_callback:
+        progress_callback("Matching against source...")
 
-    for elem in korean_elements:
-        string_id = elem.get('StringID', '') or elem.get('stringid', '') or ''
-        str_origin = elem.get('StrOrigin', '') or elem.get('strorigin', '') or ''
+    hits: List[Dict] = []
+    misses: List[Dict] = []
+
+    for item in korean_elements:
+        string_id = item["string_id"]
+        str_origin = item["str_origin"]
 
         normalized_origin = normalize_strorigin(str_origin)
         key = (string_id, normalized_origin)
 
         if key in source_lookup:
-            hits += 1
+            hits.append(item)
         else:
-            misses.append(elem)
+            misses.append(item)
 
+    hits_count = len(hits)
     misses_before_filter = len(misses)
 
-    # Filter by excluded paths
+    print(f"  HITS (found in source):  {hits_count}")
+    print(f"  MISSES (not in source):  {misses_before_filter}")
+
+    # Step 5: Filter by excluded paths
+    print("\n[STEP 5] Filtering by excluded paths...")
+    if progress_callback:
+        progress_callback("Filtering by excluded paths...")
+
     excluded_paths_list = excluded_paths if excluded_paths else []
-    filtered_misses, filtered_out = _filter_by_excluded_paths(misses, excluded_paths_list)
+    filtered_misses, filtered_out, filtered_out_items = _filter_by_excluded_paths(
+        misses, stringid_to_filepath, excluded_paths_list
+    )
 
     final_misses = len(filtered_misses)
 
-    # Write output XML
+    print(f"  Filtered out (excluded paths): {filtered_out}")
+    print(f"  Final misses to write:         {final_misses}")
+
+    # Step 6: Print detailed results to terminal
+    _print_separator("=")
+    print("RESULTS SUMMARY")
+    _print_separator("=")
+    print(f"Total Korean strings in Target:     {total_target_korean}")
+    print(f"HITS (matched in Source):           {hits_count}")
+    print(f"MISSES before path filter:          {misses_before_filter}")
+    print(f"Filtered out (excluded paths):      {filtered_out}")
+    print(f"FINAL MISSES (written to output):   {final_misses}")
+    _print_separator("-")
+
+    # Print sample HITS
+    _print_sample_items(hits, "SAMPLE HITS (matched in source)", 5)
+
+    # Print sample MISSES (final)
+    _print_sample_items(filtered_misses, "SAMPLE FINAL MISSES (not in source)", 10)
+
+    # Print filtered out items
+    if filtered_out_items:
+        print(f"\nFILTERED OUT ITEMS (excluded paths) - first 5 of {len(filtered_out_items)}:")
+        print("-" * 60)
+        for i, item in enumerate(filtered_out_items[:5]):
+            print(f"  [{i+1}] StringID: {item.get('string_id', 'N/A')}")
+            print(f"      Excluded by: {item.get('excluded_path', 'N/A')}")
+            print(f"      Full path: {item.get('file_path', 'N/A')}")
+            print()
+
+    # Step 7: Write output XML
+    print("\n[STEP 7] Writing output XML...")
+    if progress_callback:
+        progress_callback("Writing output XML...")
+
     _write_output_xml(filtered_misses, output_path)
+
+    print(f"  Output written to: {output_path}")
+
+    _print_separator("=")
+    print("EXTRACTION COMPLETE")
+    _print_separator("=")
 
     return {
         "total_target_korean": total_target_korean,
-        "hits": hits,
+        "hits": hits_count,
         "misses_before_filter": misses_before_filter,
         "filtered_out": filtered_out,
         "final_misses": final_misses,

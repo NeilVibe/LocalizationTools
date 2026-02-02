@@ -971,12 +971,22 @@ class QuickTranslateApp:
             self._update_status("Extracting Korean misses...")
             self.progress_value.set(20)
 
-            # Call the extraction function
+            # Get export folder from config for StringID -> File path mapping
+            export_folder = str(config.EXPORT_FOLDER)
+            self._log(f"Export folder: {export_folder}", 'info')
+
+            # Print info to terminal as well (GUI log is small)
+            print(f"\n[GUI] Starting Korean Miss Extraction...")
+            print(f"[GUI] Export folder: {export_folder}")
+
+            # Call the extraction function - it will print detailed results to terminal
             stats = extract_korean_misses(
                 source_file=str(source),
                 target_file=str(target),
                 output_file=output_path,
-                excluded_paths=excluded_paths
+                export_folder=export_folder,
+                excluded_paths=excluded_paths,
+                progress_callback=self._update_status
             )
 
             self.progress_value.set(100)

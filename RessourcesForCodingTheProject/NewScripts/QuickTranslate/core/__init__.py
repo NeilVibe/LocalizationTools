@@ -45,6 +45,7 @@ from .korean_miss_extractor import (
     contains_korean,
     normalize_strorigin,
     extract_korean_misses,
+    build_export_index,
 )
 
 __all__ = [
@@ -99,4 +100,5 @@ __all__ = [
     "contains_korean",
     "normalize_strorigin",
     "extract_korean_misses",
+    "build_export_index",
 ]
