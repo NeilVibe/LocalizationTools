@@ -1,1 +1,2 @@
 Build: XML transfer with StringID-only mode and narration exclusion
+Retry: Added missing spec file
