@@ -5,7 +5,7 @@ Tkinter-based GUI with multi-mode support:
 - Format Selection: Excel / XML
 - Mode Selection: Folder (recursive) / File (single)
 - Match Type Selection: Substring / StringID-only / Strict / Special Key
-- ToSubmit folder integration
+- Settings panel for path configuration
 - Detailed logging and reporting
 """
 
@@ -38,11 +38,12 @@ from core import (
     write_reverse_lookup_excel,
     parse_corrections_from_xml,
     parse_folder_xml_files,
-    parse_tosubmit_xml,
     # TRANSFER functions
     transfer_folder_to_folder,
     transfer_file_to_file,
     format_transfer_report,
+    # Korean miss extractor
+    extract_korean_misses,
 )
 from core.indexing import scan_folder_for_entries
 from core.language_loader import build_stringid_to_category, build_stringid_to_subfolder
@@ -68,11 +69,11 @@ class QuickTranslateApp:
         self.target_path = tk.StringVar()
         self.string_id_input = tk.StringVar()
         self.reverse_file_path = tk.StringVar()
-        self.tosubmit_enabled = tk.BooleanVar(value=False)
-        self.special_key_fields = tk.StringVar(value="string_id,category")
 
-        self.selected_source_branch = tk.StringVar(value="mainline")
-        self.selected_target_branch = tk.StringVar(value="mainline")
+        # Settings variables
+        self.settings_loc_path = tk.StringVar()
+        self.settings_export_path = tk.StringVar()
+
         self.status_text = tk.StringVar(value="Ready")
         self.progress_value = tk.DoubleVar(value=0)
 
@@ -82,9 +83,18 @@ class QuickTranslateApp:
         self.stringid_to_category: Optional[Dict[str, str]] = None
         self.stringid_to_subfolder: Optional[Dict[str, str]] = None
         self.available_langs: Optional[List[str]] = None
-        self.cached_branch: Optional[str] = None
+        self.cached_paths: Optional[tuple] = None  # (loc_path, export_path)
+
+        # Load current settings into variables
+        self._load_settings_to_vars()
 
         self._create_ui()
+
+    def _load_settings_to_vars(self):
+        """Load current config settings into StringVars."""
+        settings = config.get_settings()
+        self.settings_loc_path.set(settings.get("loc_folder", ""))
+        self.settings_export_path.set(settings.get("export_folder", ""))
 
     def _create_ui(self):
         """Create the main UI layout."""
@@ -136,7 +146,7 @@ class QuickTranslateApp:
             ("substring", "Substring Match", "Find Korean text in StrOrigin"),
             ("stringid_only", "StringID-Only (SCRIPT)", "SCRIPT categories only - match by StringID"),
             ("strict", "StringID + StrOrigin (STRICT)", "Requires BOTH to match exactly"),
-            ("special_key", "Special Key Match", "Match by custom field combination"),
+            ("special_key", "Special Key Match", "Match by StringID + Category"),
         ]
 
         for value, label, desc in match_types:
@@ -146,16 +156,6 @@ class QuickTranslateApp:
                           font=('Segoe UI', 10), bg='#f0f0f0', activebackground='#f0f0f0',
                           cursor='hand2', width=28, anchor='w').pack(side=tk.LEFT)
             tk.Label(row, text=desc, font=('Segoe UI', 9), bg='#f0f0f0', fg='#888').pack(side=tk.LEFT)
-
-        # Special Key fields (shown when special_key selected)
-        self.special_key_row = tk.Frame(match_frame, bg='#f0f0f0')
-        self.special_key_row.pack(fill=tk.X, pady=(4, 0))
-        tk.Label(self.special_key_row, text="Key Fields:", font=('Segoe UI', 9), bg='#f0f0f0',
-                width=12, anchor='e').pack(side=tk.LEFT)
-        tk.Entry(self.special_key_row, textvariable=self.special_key_fields,
-                font=('Segoe UI', 9), relief='solid', bd=1, width=40).pack(side=tk.LEFT, padx=(5, 0))
-        tk.Label(self.special_key_row, text="(comma-separated)", font=('Segoe UI', 8),
-                bg='#f0f0f0', fg='#888').pack(side=tk.LEFT, padx=(5, 0))
 
         # === Files Section ===
         files_frame = tk.LabelFrame(main, text="Files", font=('Segoe UI', 10, 'bold'),
@@ -186,33 +186,6 @@ class QuickTranslateApp:
                  font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
                  padx=10, cursor='hand2').pack(side=tk.LEFT)
 
-        # ToSubmit checkbox
-        tosubmit_row = tk.Frame(files_frame, bg='#f0f0f0')
-        tosubmit_row.pack(fill=tk.X, pady=(0, 6))
-        tk.Checkbutton(tosubmit_row, text="ToSubmit Folder Integration",
-                      variable=self.tosubmit_enabled, font=('Segoe UI', 10),
-                      bg='#f0f0f0', activebackground='#f0f0f0', cursor='hand2').pack(side=tk.LEFT)
-        tk.Label(tosubmit_row, text=f"({config.TOSUBMIT_FOLDER})", font=('Segoe UI', 8),
-                bg='#f0f0f0', fg='#888').pack(side=tk.LEFT, padx=(5, 0))
-
-        # Branch selection
-        branch_row = tk.Frame(files_frame, bg='#f0f0f0')
-        branch_row.pack(fill=tk.X)
-        tk.Label(branch_row, text="Branch:", font=('Segoe UI', 10), bg='#f0f0f0',
-                width=8, anchor='w').pack(side=tk.LEFT)
-
-        branch_names = list(config.BRANCHES.keys()) if hasattr(config, 'BRANCHES') else ["mainline", "cd_lambda"]
-
-        source_combo = ttk.Combobox(branch_row, textvariable=self.selected_source_branch,
-                                   values=branch_names, state='readonly', width=15)
-        source_combo.pack(side=tk.LEFT, padx=(0, 15))
-
-        tk.Label(branch_row, text="→", font=('Segoe UI', 12), bg='#f0f0f0').pack(side=tk.LEFT, padx=5)
-
-        target_combo = ttk.Combobox(branch_row, textvariable=self.selected_target_branch,
-                                   values=branch_names, state='readonly', width=15)
-        target_combo.pack(side=tk.LEFT)
-
         # === Quick Actions Section ===
         quick_frame = tk.LabelFrame(main, text="Quick Actions", font=('Segoe UI', 10, 'bold'),
                                     bg='#f0f0f0', fg='#555', padx=15, pady=8)
@@ -232,7 +205,7 @@ class QuickTranslateApp:
 
         # Reverse Lookup
         reverse_row = tk.Frame(quick_frame, bg='#f0f0f0')
-        reverse_row.pack(fill=tk.X)
+        reverse_row.pack(fill=tk.X, pady=(0, 6))
         tk.Label(reverse_row, text="Reverse:", font=('Segoe UI', 10), bg='#f0f0f0',
                 width=10, anchor='w').pack(side=tk.LEFT)
         self.reverse_entry = tk.Entry(reverse_row, textvariable=self.reverse_file_path,
@@ -245,13 +218,64 @@ class QuickTranslateApp:
                  font=('Segoe UI', 9, 'bold'), bg='#d9534f', fg='white',
                  relief='flat', padx=10, cursor='hand2').pack(side=tk.LEFT)
 
+        # Korean Misses - Find Korean strings in Target that don't exist in Source
+        korean_miss_row = tk.Frame(quick_frame, bg='#f0f0f0')
+        korean_miss_row.pack(fill=tk.X)
+        tk.Label(korean_miss_row, text="", font=('Segoe UI', 10), bg='#f0f0f0',
+                width=10, anchor='w').pack(side=tk.LEFT)
+        tk.Label(korean_miss_row, text="Find Korean strings in Target not in Source (uses Source/Target paths above)",
+                font=('Segoe UI', 8), bg='#f0f0f0', fg='#888').pack(side=tk.LEFT, padx=(0, 8))
+        self.korean_miss_btn = tk.Button(korean_miss_row, text="Extract Korean Misses",
+                 command=self._extract_korean_misses,
+                 font=('Segoe UI', 9, 'bold'), bg='#f0ad4e', fg='white',
+                 relief='flat', padx=10, cursor='hand2')
+        self.korean_miss_btn.pack(side=tk.RIGHT)
+
+        # === Settings Section ===
+        settings_frame = tk.LabelFrame(main, text="Settings", font=('Segoe UI', 10, 'bold'),
+                                       bg='#f0f0f0', fg='#555', padx=15, pady=8)
+        settings_frame.pack(fill=tk.X, pady=(0, 8))
+
+        # LOC Path
+        loc_row = tk.Frame(settings_frame, bg='#f0f0f0')
+        loc_row.pack(fill=tk.X, pady=(0, 6))
+        tk.Label(loc_row, text="LOC Path:", font=('Segoe UI', 10), bg='#f0f0f0',
+                width=10, anchor='w').pack(side=tk.LEFT)
+        self.loc_entry = tk.Entry(loc_row, textvariable=self.settings_loc_path,
+                                  font=('Segoe UI', 9), relief='solid', bd=1)
+        self.loc_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4, padx=(0, 8))
+        tk.Button(loc_row, text="Browse", command=self._browse_loc_path,
+                 font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
+                 padx=10, cursor='hand2').pack(side=tk.LEFT)
+
+        # Export Path
+        export_row = tk.Frame(settings_frame, bg='#f0f0f0')
+        export_row.pack(fill=tk.X, pady=(0, 6))
+        tk.Label(export_row, text="Export Path:", font=('Segoe UI', 10), bg='#f0f0f0',
+                width=10, anchor='w').pack(side=tk.LEFT)
+        self.export_entry = tk.Entry(export_row, textvariable=self.settings_export_path,
+                                     font=('Segoe UI', 9), relief='solid', bd=1)
+        self.export_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4, padx=(0, 8))
+        tk.Button(export_row, text="Browse", command=self._browse_export_path,
+                 font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
+                 padx=10, cursor='hand2').pack(side=tk.LEFT)
+
+        # Save Settings button
+        save_row = tk.Frame(settings_frame, bg='#f0f0f0')
+        save_row.pack(fill=tk.X)
+        tk.Button(save_row, text="Save Settings", command=self._save_settings,
+                 font=('Segoe UI', 9, 'bold'), bg='#5bc0de', fg='white',
+                 relief='flat', padx=14, cursor='hand2').pack(side=tk.RIGHT)
+        tk.Label(save_row, text="Paths are saved to settings.json", font=('Segoe UI', 8),
+                bg='#f0f0f0', fg='#888').pack(side=tk.LEFT)
+
         # === Log Section ===
         log_frame = tk.LabelFrame(main, text="Log", font=('Segoe UI', 10, 'bold'),
                                   bg='#f0f0f0', fg='#555', padx=10, pady=8)
         log_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
 
         self.log_area = scrolledtext.ScrolledText(
-            log_frame, height=8, font=('Consolas', 9), relief='solid', bd=1,
+            log_frame, height=6, font=('Consolas', 9), relief='solid', bd=1,
             wrap=tk.WORD, state='disabled'
         )
         self.log_area.pack(fill=tk.BOTH, expand=True)
@@ -344,6 +368,52 @@ class QuickTranslateApp:
         if path:
             self.reverse_file_path.set(path)
 
+    def _browse_loc_path(self):
+        """Browse for LOC folder path."""
+        path = filedialog.askdirectory(title="Select LOC Folder (languagedata_*.xml files)")
+        if path:
+            self.settings_loc_path.set(path)
+
+    def _browse_export_path(self):
+        """Browse for Export folder path."""
+        path = filedialog.askdirectory(title="Select Export Folder (categorized .loc.xml files)")
+        if path:
+            self.settings_export_path.set(path)
+
+    def _save_settings(self):
+        """Save current settings to config file."""
+        loc_path = self.settings_loc_path.get().strip()
+        export_path = self.settings_export_path.get().strip()
+
+        if not loc_path and not export_path:
+            messagebox.showwarning("Warning", "Please enter at least one path to save.")
+            return
+
+        # Validate paths exist
+        if loc_path and not Path(loc_path).exists():
+            if not messagebox.askyesno("Warning", f"LOC path does not exist:\n{loc_path}\n\nSave anyway?"):
+                return
+
+        if export_path and not Path(export_path).exists():
+            if not messagebox.askyesno("Warning", f"Export path does not exist:\n{export_path}\n\nSave anyway?"):
+                return
+
+        # Save settings
+        config.update_settings(
+            loc_folder=loc_path if loc_path else None,
+            export_folder=export_path if export_path else None
+        )
+
+        # Clear cached data since paths changed
+        self.cached_paths = None
+        self.strorigin_index = None
+        self.translation_lookup = None
+        self.stringid_to_category = None
+        self.stringid_to_subfolder = None
+
+        self._log("Settings saved to settings.json", 'success')
+        messagebox.showinfo("Success", "Settings saved successfully!")
+
     def _update_status(self, text: str, progress: float = None):
         """Update status text and optionally progress bar."""
         self.status_text.set(text)
@@ -352,36 +422,27 @@ class QuickTranslateApp:
         self.root.update()
 
     def _load_data_if_needed(self, need_sequencer: bool = True) -> bool:
-        """Load data if not cached or branch changed."""
-        branch = self.selected_source_branch.get()
+        """Load data if not cached or paths changed."""
+        loc_folder = config.LOC_FOLDER
+        export_folder = config.EXPORT_FOLDER
+        current_paths = (str(loc_folder), str(export_folder))
 
-        if self.cached_branch == branch and self.translation_lookup is not None:
+        if self.cached_paths == current_paths and self.translation_lookup is not None:
             if not need_sequencer or self.strorigin_index is not None:
                 return True
 
-        if not hasattr(config, 'BRANCHES'):
-            messagebox.showerror("Error", "BRANCHES not configured in config.py")
-            return False
-
-        paths = config.BRANCHES.get(branch)
-        if not paths:
-            messagebox.showerror("Error", f"Unknown branch: {branch}")
-            return False
-
-        loc_folder = paths["loc"]
-        export_folder = paths["export"]
         sequencer_folder = export_folder / "Sequencer"
 
         if not loc_folder.exists():
-            messagebox.showerror("Error", f"LOC folder not found:\n{loc_folder}")
+            messagebox.showerror("Error", f"LOC folder not found:\n{loc_folder}\n\nPlease configure in Settings.")
             return False
 
         if need_sequencer:
             if not sequencer_folder.exists():
-                messagebox.showerror("Error", f"Sequencer folder not found:\n{sequencer_folder}")
+                messagebox.showerror("Error", f"Sequencer folder not found:\n{sequencer_folder}\n\nPlease check Export path in Settings.")
                 return False
 
-            self._log(f"Loading Sequencer data from {branch}...", 'info')
+            self._log(f"Loading Sequencer data...", 'info')
             self.strorigin_index = build_sequencer_strorigin_index(
                 sequencer_folder, self._update_status
             )
@@ -415,7 +476,7 @@ class QuickTranslateApp:
 
         self.translation_lookup = build_translation_lookup(lang_files, self._update_status)
         self.available_langs = list(lang_files.keys())
-        self.cached_branch = branch
+        self.cached_paths = current_paths
 
         return True
 
@@ -433,20 +494,22 @@ class QuickTranslateApp:
         """Disable all action buttons during processing."""
         self.generate_btn.config(state='disabled')
         self.transfer_btn.config(state='disabled')
+        self.korean_miss_btn.config(state='disabled')
 
     def _enable_buttons(self):
         """Re-enable all action buttons."""
         self.generate_btn.config(state='normal')
         self.transfer_btn.config(state='normal')
+        self.korean_miss_btn.config(state='normal')
 
     def _generate(self):
         """Main generate action based on current mode."""
-        if not self.source_path.get() and not self.tosubmit_enabled.get():
-            messagebox.showwarning("Warning", "Please select a source file/folder or enable ToSubmit integration.")
+        if not self.source_path.get():
+            messagebox.showwarning("Warning", "Please select a source file/folder.")
             return
 
-        source = Path(self.source_path.get()) if self.source_path.get() else None
-        if source and not source.exists():
+        source = Path(self.source_path.get())
+        if not source.exists():
             messagebox.showerror("Error", f"Source not found:\n{source}")
             return
 
@@ -471,58 +534,46 @@ class QuickTranslateApp:
             corrections = []
             korean_inputs = []
 
-            # Handle ToSubmit folder if enabled
-            if self.tosubmit_enabled.get():
-                tosubmit_folder = config.TOSUBMIT_FOLDER
-                if tosubmit_folder.exists():
-                    self._log(f"Loading ToSubmit folder: {tosubmit_folder}", 'info')
-                    tosubmit_corrections = parse_tosubmit_xml(tosubmit_folder)
-                    corrections.extend(tosubmit_corrections)
-                    self._log(f"Loaded {len(tosubmit_corrections)} corrections from ToSubmit", 'success')
-                else:
-                    self._log(f"ToSubmit folder not found: {tosubmit_folder}", 'warning')
-
             # Read from source file/folder
-            if source:
-                if self.input_mode.get() == "folder":
-                    # FOLDER MODE: Auto-detect and handle mixed Excel + XML
-                    xml_files = list(source.rglob("*.xml"))
-                    excel_files = list(source.rglob("*.xlsx")) + list(source.rglob("*.xls"))
+            if self.input_mode.get() == "folder":
+                # FOLDER MODE: Auto-detect and handle mixed Excel + XML
+                xml_files = list(source.rglob("*.xml"))
+                excel_files = list(source.rglob("*.xlsx")) + list(source.rglob("*.xls"))
 
-                    if xml_files:
-                        xml_corrections = parse_folder_xml_files(source, self._update_status)
-                        corrections.extend(xml_corrections)
-                        self._log(f"Loaded {len(xml_corrections)} corrections from {len(xml_files)} XML files", 'info')
+                if xml_files:
+                    xml_corrections = parse_folder_xml_files(source, self._update_status)
+                    corrections.extend(xml_corrections)
+                    self._log(f"Loaded {len(xml_corrections)} corrections from {len(xml_files)} XML files", 'info')
 
-                    if excel_files:
-                        for excel_file in excel_files:
-                            excel_corrections = read_corrections_from_excel(excel_file)
-                            corrections.extend(excel_corrections)
-                        self._log(f"Loaded {sum(1 for _ in excel_files)} Excel files", 'info')
+                if excel_files:
+                    for excel_file in excel_files:
+                        excel_corrections = read_corrections_from_excel(excel_file)
+                        corrections.extend(excel_corrections)
+                    self._log(f"Loaded {sum(1 for _ in excel_files)} Excel files", 'info')
 
-                    korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
-                    if not korean_inputs:
-                        korean_inputs = [c.get("string_id", "") for c in corrections if c.get("string_id")]
+                korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
+                if not korean_inputs:
+                    korean_inputs = [c.get("string_id", "") for c in corrections if c.get("string_id")]
+            else:
+                # FILE MODE: Auto-detect by extension
+                suffix = source.suffix.lower()
+                if suffix in (".xlsx", ".xls"):
+                    korean_inputs = read_korean_input(source)
+                    self._log(f"Read {len(korean_inputs)} inputs from Excel", 'info')
+
+                    # For non-substring modes, build corrections from Excel
+                    if match_type in ("stringid_only", "strict", "special_key"):
+                        excel_corrections = read_corrections_from_excel(source)
+                        corrections.extend(excel_corrections)
+                        self._log(f"Loaded {len(excel_corrections)} corrections from Excel", 'info')
+                        if corrections:
+                            korean_inputs = [c.get("str_origin", "") or c.get("string_id", "") for c in corrections]
                 else:
-                    # FILE MODE: Auto-detect by extension
-                    suffix = source.suffix.lower()
-                    if suffix in (".xlsx", ".xls"):
-                        korean_inputs = read_korean_input(source)
-                        self._log(f"Read {len(korean_inputs)} inputs from Excel", 'info')
-
-                        # For non-substring modes, build corrections from Excel
-                        if match_type in ("stringid_only", "strict", "special_key"):
-                            excel_corrections = read_corrections_from_excel(source)
-                            corrections.extend(excel_corrections)
-                            self._log(f"Loaded {len(excel_corrections)} corrections from Excel", 'info')
-                            if corrections:
-                                korean_inputs = [c.get("str_origin", "") or c.get("string_id", "") for c in corrections]
-                    else:
-                        # XML format
-                        xml_corrections = parse_corrections_from_xml(source)
-                        corrections.extend(xml_corrections)
-                        korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
-                        self._log(f"Loaded {len(xml_corrections)} corrections from XML", 'info')
+                    # XML format
+                    xml_corrections = parse_corrections_from_xml(source)
+                    corrections.extend(xml_corrections)
+                    korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
+                    self._log(f"Loaded {len(xml_corrections)} corrections from XML", 'info')
 
             if not korean_inputs and not corrections:
                 messagebox.showwarning("Warning", "No input data found.")
@@ -550,7 +601,7 @@ class QuickTranslateApp:
             elif match_type == "stringid_only":
                 # StringID-only (SCRIPT): Filter to SCRIPT categories
                 if not self.stringid_to_category:
-                    messagebox.showwarning("Warning", "Category index not loaded. Re-select branch.")
+                    messagebox.showwarning("Warning", "Category index not loaded.")
                     return
 
                 if corrections:
@@ -610,14 +661,13 @@ class QuickTranslateApp:
                     return
 
             elif match_type == "special_key":
-                # Special key mode - use custom field combination
+                # Special key mode - use hardcoded field combination (string_id, category)
                 if not corrections:
                     messagebox.showwarning("Warning", "Special Key mode requires corrections data (XML or structured Excel).")
                     return
 
-                key_fields = [f.strip() for f in self.special_key_fields.get().split(",") if f.strip()]
-                if not key_fields:
-                    key_fields = ["string_id", "category"]
+                # Use hardcoded key fields from config
+                key_fields = config.SPECIAL_KEY_FIELDS
 
                 self._log(f"Using key fields: {key_fields}", 'info')
 
@@ -848,6 +898,131 @@ class QuickTranslateApp:
         finally:
             self._enable_buttons()
 
+    def _extract_korean_misses(self):
+        """Extract Korean strings from Target that don't exist in Source."""
+        # Validate source file (should be XML)
+        source_path = self.source_path.get().strip()
+        if not source_path:
+            messagebox.showwarning("Warning", "Please select a Source XML file (the reference file).")
+            return
+
+        source = Path(source_path)
+        if not source.exists():
+            messagebox.showerror("Error", f"Source file not found:\n{source}")
+            return
+
+        if not source.suffix.lower() == ".xml":
+            messagebox.showwarning("Warning", "Source file must be an XML file (e.g., languagedata_kor.xml)")
+            return
+
+        # Validate target file (should be XML)
+        target_path = self.target_path.get().strip()
+        if not target_path:
+            messagebox.showwarning("Warning", "Please select a Target XML file (the file to check for Korean misses).")
+            return
+
+        target = Path(target_path)
+        if not target.exists():
+            messagebox.showerror("Error", f"Target file not found:\n{target}")
+            return
+
+        # If target is a directory, try to find single XML or ask user
+        if target.is_dir():
+            xml_files = list(target.glob("*.xml"))
+            if len(xml_files) == 1:
+                target = xml_files[0]
+            elif len(xml_files) == 0:
+                messagebox.showerror("Error", f"No XML files found in target folder:\n{target}")
+                return
+            else:
+                messagebox.showwarning(
+                    "Warning",
+                    "Target must be a single XML file, not a folder with multiple XML files.\n"
+                    "Please select a specific XML file."
+                )
+                return
+
+        # Ask user for output file location
+        output_path = filedialog.asksaveasfilename(
+            title="Save Korean Misses Output",
+            defaultextension=".xml",
+            filetypes=[("XML files", "*.xml"), ("All files", "*.*")],
+            initialfile=f"korean_misses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xml"
+        )
+
+        if not output_path:
+            return  # User cancelled
+
+        self._disable_buttons()
+        self.progress_value.set(0)
+        self._clear_log()
+
+        self._log("=== Extract Korean Misses ===", 'header')
+        self._log(f"Source (reference): {source}", 'info')
+        self._log(f"Target (to check): {target}", 'info')
+        self._log(f"Output: {output_path}", 'info')
+
+        # Default excluded paths for system strings
+        # File attr format is "System/Gimmick/file.xml" (no "export" prefix, PascalCase)
+        excluded_paths = ["System/MultiChange", "System/Gimmick"]
+        self._log(f"Excluded paths: {', '.join(excluded_paths)}", 'info')
+
+        try:
+            self._update_status("Extracting Korean misses...")
+            self.progress_value.set(20)
+
+            # Call the extraction function
+            stats = extract_korean_misses(
+                source_file=str(source),
+                target_file=str(target),
+                output_file=output_path,
+                excluded_paths=excluded_paths
+            )
+
+            self.progress_value.set(100)
+
+            # Log results
+            self._log("=== Results ===", 'header')
+            self._log(f"Korean strings in Target: {stats['total_target_korean']}", 'info')
+            self._log(f"Hits (found in Source): {stats['hits']}", 'success')
+            self._log(f"Misses before filter: {stats['misses_before_filter']}", 'warning')
+            self._log(f"Filtered out (excluded paths): {stats['filtered_out']}", 'info')
+            self._log(f"Final misses written: {stats['final_misses']}", 'error' if stats['final_misses'] > 0 else 'success')
+            self._log(f"Output saved: {output_path}", 'success')
+
+            self._update_status(f"Done! {stats['final_misses']} Korean misses found")
+
+            messagebox.showinfo(
+                "Korean Misses Extracted",
+                f"Extraction complete!\n\n"
+                f"Korean strings in Target: {stats['total_target_korean']}\n"
+                f"Hits (found in Source): {stats['hits']}\n"
+                f"Misses (not in Source): {stats['misses_before_filter']}\n"
+                f"Filtered out: {stats['filtered_out']}\n"
+                f"Final misses written: {stats['final_misses']}\n\n"
+                f"Output: {output_path}"
+            )
+
+        except FileNotFoundError as e:
+            messagebox.showerror("Error", f"File not found:\n{e}")
+            self._log(f"ERROR: {e}", 'error')
+            self._update_status(f"Error: File not found")
+
+        except ValueError as e:
+            messagebox.showerror("Error", f"XML parsing error:\n{e}")
+            self._log(f"ERROR: {e}", 'error')
+            self._update_status(f"Error: XML parsing failed")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Extraction failed:\n{e}")
+            self._log(f"ERROR: {e}", 'error')
+            self._update_status(f"Error: {e}")
+            import traceback
+            traceback.print_exc()
+
+        finally:
+            self._enable_buttons()
+
     def _transfer(self):
         """Transfer corrections from source to target XML files (LOC folder)."""
         if not self.source_path.get():
@@ -979,11 +1154,11 @@ class QuickTranslateApp:
             for line in report.split("\n"):
                 if "SUCCESS" in line or "UPDATED" in line or "●" in line:
                     self._log(line, 'success')
-                elif "ERROR" in line or "×" in line or "NOT_FOUND" in line or "○" in line:
+                elif "ERROR" in line or "x" in line or "NOT_FOUND" in line or "○" in line:
                     self._log(line, 'error')
-                elif "WARN" in line or "◐" in line or "SKIPPED" in line:
+                elif "WARN" in line or "half" in line or "SKIPPED" in line:
                     self._log(line, 'warning')
-                elif "═" in line or "║" in line or "REPORT" in line:
+                elif "=" in line or "|" in line or "REPORT" in line:
                     self._log(line, 'header')
                 else:
                     self._log(line, 'info')

@@ -41,6 +41,11 @@ from .xml_transfer import (
     transfer_file_to_file,
     format_transfer_report,
 )
+from .korean_miss_extractor import (
+    contains_korean,
+    normalize_strorigin,
+    extract_korean_misses,
+)
 
 __all__ = [
     # text_utils
@@ -90,4 +95,8 @@ __all__ = [
     "transfer_folder_to_folder",
     "transfer_file_to_file",
     "format_transfer_report",
+    # korean_miss_extractor
+    "contains_korean",
+    "normalize_strorigin",
+    "extract_korean_misses",
 ]
