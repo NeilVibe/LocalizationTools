@@ -2,7 +2,7 @@
 Configuration for QuickTranslate.
 
 Paths and constants for translation lookup.
-Paths can be configured via settings.json (created on first run).
+Paths can be configured via settings.json (created on first run) or through the Settings UI.
 """
 
 from pathlib import Path
@@ -39,38 +39,24 @@ SCRIPT_EXCLUDE_SUBFOLDERS = {"NarrationDialog"}
 INPUT_MODES = ["folder", "file"]
 FORMAT_MODES = ["excel", "xml"]
 
-# =============================================================================
-# ToSubmit Integration
-# =============================================================================
-
-TOSUBMIT_FOLDER = SCRIPT_DIR / "ToSubmit"
-TOSUBMIT_COLUMNS = ["StrOrigin", "Correction", "StringID"]
-
-# =============================================================================
-# Branch Configuration
-# =============================================================================
-
-BRANCHES = {
-    "mainline": {
-        "loc": Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc"),
-        "export": Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__"),
-    },
-    "cd_lambda": {
-        "loc": Path(r"F:\perforce\cd\cd_lambda\resource\GameData\stringtable\loc"),
-        "export": Path(r"F:\perforce\cd\cd_lambda\resource\GameData\stringtable\export__"),
-    },
-}
+# Special Key fields - hardcoded for Special Key Match mode
+SPECIAL_KEY_FIELDS = ["string_id", "category"]
 
 # =============================================================================
 # Settings Loading
 # =============================================================================
+
+def _get_settings_path() -> Path:
+    """Get the path to settings.json."""
+    return SCRIPT_DIR / "settings.json"
+
 
 def _load_settings() -> dict:
     """
     Load runtime settings from settings.json if it exists.
     Falls back to F: drive defaults if file doesn't exist.
     """
-    settings_path = SCRIPT_DIR / "settings.json"
+    settings_path = _get_settings_path()
 
     if settings_path.exists():
         try:
@@ -83,7 +69,7 @@ def _load_settings() -> dict:
 
 def _save_settings(settings: dict):
     """Save settings to settings.json."""
-    settings_path = SCRIPT_DIR / "settings.json"
+    settings_path = _get_settings_path()
     try:
         with open(settings_path, 'w', encoding='utf-8') as f:
             json.dump(settings, f, indent=2)
@@ -95,6 +81,13 @@ def _save_settings(settings: dict):
 _SETTINGS = _load_settings()
 
 # =============================================================================
+# Default Paths (can be overridden in settings.json)
+# =============================================================================
+
+DEFAULT_LOC_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc"
+DEFAULT_EXPORT_FOLDER = r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__"
+
+# =============================================================================
 # Perforce Paths (Source Data)
 # =============================================================================
 
@@ -103,10 +96,10 @@ _loc = _SETTINGS.get("loc_folder")
 _export = _SETTINGS.get("export_folder")
 
 # LOC folder: Contains languagedata_*.xml files
-LOC_FOLDER = Path(_loc) if _loc else Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
+LOC_FOLDER = Path(_loc) if _loc else Path(DEFAULT_LOC_FOLDER)
 
 # EXPORT folder: Contains categorized .loc.xml files
-EXPORT_FOLDER = Path(_export) if _export else Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
+EXPORT_FOLDER = Path(_export) if _export else Path(DEFAULT_EXPORT_FOLDER)
 
 # SEQUENCER folder: Only source for StrOrigin matching
 SEQUENCER_FOLDER = EXPORT_FOLDER / "Sequencer"
@@ -169,6 +162,14 @@ def ensure_output_folder():
     return OUTPUT_FOLDER
 
 
+def get_settings() -> dict:
+    """Get current settings as a dictionary."""
+    return {
+        "loc_folder": str(LOC_FOLDER),
+        "export_folder": str(EXPORT_FOLDER),
+    }
+
+
 def update_settings(loc_folder: str = None, export_folder: str = None):
     """Update and save settings."""
     global LOC_FOLDER, EXPORT_FOLDER, SEQUENCER_FOLDER, _SETTINGS
@@ -182,3 +183,17 @@ def update_settings(loc_folder: str = None, export_folder: str = None):
         SEQUENCER_FOLDER = EXPORT_FOLDER / "Sequencer"
 
     _save_settings(_SETTINGS)
+
+
+def reload_settings():
+    """Reload settings from settings.json file."""
+    global LOC_FOLDER, EXPORT_FOLDER, SEQUENCER_FOLDER, _SETTINGS
+
+    _SETTINGS = _load_settings()
+
+    _loc = _SETTINGS.get("loc_folder")
+    _export = _SETTINGS.get("export_folder")
+
+    LOC_FOLDER = Path(_loc) if _loc else Path(DEFAULT_LOC_FOLDER)
+    EXPORT_FOLDER = Path(_export) if _export else Path(DEFAULT_EXPORT_FOLDER)
+    SEQUENCER_FOLDER = EXPORT_FOLDER / "Sequencer"

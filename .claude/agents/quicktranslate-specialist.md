@@ -1,6 +1,6 @@
 ---
 name: quicktranslate-specialist
-description: QuickTranslate project specialist. Use when working on the QuickTranslate tool - translation lookup, multi-language search, match types (Substring/StringID-only/Strict/Special Key), or XML/Excel I/O functionality.
+description: QuickTranslate project specialist. Use when working on the QuickTranslate tool - translation LOOKUP, multi-language search, TRANSFER corrections to XML, match types (Substring/StringID-only/Strict/Special Key), or Excel/XML I/O functionality.
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: opus
 ---
@@ -9,49 +9,65 @@ model: opus
 
 ## What Is QuickTranslate?
 
-**QuickTranslate v2.0.0** - A translation lookup tool for finding Korean text translations across 17 languages.
+**QuickTranslate v3.0.0** - A dual-purpose localization tool:
+
+1. **LOOKUP** - Find translations of Korean text across 17 languages
+2. **TRANSFER** - Write corrections from Excel/XML to target XML files
 
 **Location:** `RessourcesForCodingTheProject/NewScripts/QuickTranslate/`
 
-**Core Functions:**
-1. **Substring Match** - Find Korean text in StrOrigin
-2. **StringID-Only Match** - For SCRIPT strings (Sequencer/Dialog)
-3. **Strict Match** - Match by StringID + StrOrigin tuple
-4. **StringID Lookup** - Direct lookup of any StringID
-5. **Reverse Lookup** - Find StringID from text in any language
+## Two Core Functions
 
-**Key Feature:** Multiple match types for different localization workflows
+| Function | Button | Description | Operation |
+|----------|--------|-------------|-----------|
+| **LOOKUP** | Generate | Find translations, export to Excel | Read-only |
+| **TRANSFER** | TRANSFER | Apply corrections to XML files | Writes files |
+
+### LOOKUP Features
+- **Substring Match** - Find Korean text in StrOrigin
+- **StringID-Only Match** - For SCRIPT strings (Sequencer/Dialog)
+- **Strict Match** - Match by StringID + StrOrigin tuple
+- **StringID Lookup** - Direct lookup of any StringID
+- **Reverse Lookup** - Find StringID from text in any language
+
+### TRANSFER Features
+- **File-to-File** - Single corrections file → single XML
+- **Folder-to-Folder** - Batch corrections → all languagedata files
+- **STRICT Mode** - Match by StringID AND StrOrigin
+- **StringID-Only Mode** - Match by StringID for SCRIPT categories
 
 ## Project Structure
 
 ```
 QuickTranslate/
 ├── main.py                    # Entry point + CLI args
-├── config.py                  # Configuration (BRANCHES, MATCHING_MODES)
+├── config.py                  # Configuration (BRANCHES, SCRIPT_CATEGORIES)
 ├── requirements.txt           # Python dependencies
 ├── QuickTranslate.spec        # PyInstaller spec file
 │
 ├── core/                      # Core functionality
-│   ├── __init__.py            # Public exports (21 functions)
+│   ├── __init__.py            # Public exports
+│   ├── text_utils.py          # Canonical text normalization (SINGLE SOURCE OF TRUTH)
 │   ├── xml_parser.py          # XML sanitization & parsing
 │   ├── korean_detection.py    # Korean text detection
 │   ├── indexing.py            # StringID/StrOrigin indexing
 │   ├── language_loader.py     # Language file discovery
-│   ├── matching.py            # All 4 matching algorithms
+│   ├── matching.py            # 4 matching algorithms (LOOKUP)
 │   ├── excel_io.py            # Excel read/write
-│   └── xml_io.py              # XML input parsing
+│   ├── xml_io.py              # XML input parsing
+│   └── xml_transfer.py        # TRANSFER engine (writes to XML)
 │
 ├── gui/                       # GUI components
 │   ├── __init__.py
-│   └── app.py                 # 850x750 Tkinter GUI
+│   └── app.py                 # 900x850 Tkinter GUI
 │
 ├── utils/                     # Utilities
 │   ├── __init__.py
 │   └── file_io.py             # File utilities
 │
 ├── docs/                      # Documentation
-│   ├── USER_GUIDE.md          # 851-line user guide
-│   ├── QuickTranslate_UserGuide.pdf  # Generated PDF (8 pages)
+│   ├── USER_GUIDE.md          # Full user guide (v3.0.0)
+│   ├── QuickTranslate_UserGuide.pdf  # Generated PDF
 │   ├── style.css              # PDF styling
 │   └── generate_pdf.py        # PDF generator
 │
@@ -64,105 +80,56 @@ QuickTranslate/
 | Component | Technology |
 |-----------|------------|
 | Language | Python 3.11+ |
-| GUI | Tkinter (850x750) |
+| GUI | Tkinter (900x850) |
 | XML Parsing | lxml (with fallback to ElementTree) |
 | Excel I/O | openpyxl |
 | Build | PyInstaller |
 | Installer | Inno Setup |
 
-## Match Types
-
-| Mode | Function | Use Case |
-|------|----------|----------|
-| **Substring** | `find_matches()` | Find Korean text in StrOrigin |
-| **StringID-Only** | `find_matches_stringid_only()` | SCRIPT strings (Sequencer/Dialog) |
-| **Strict** | `find_matches_strict()` | Match both StringID AND StrOrigin |
-| **Special Key** | `find_matches_special_key()` | Custom composite key patterns |
-
-### How StringID-Only Works
-
-```python
-# core/matching.py
-SCRIPT_CATEGORIES = {"Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"}
-
-def find_matches_stringid_only(corrections, stringid_to_category):
-    """Filter to SCRIPT categories only, match by StringID."""
-    script_corrections = []
-    for c in corrections:
-        category = stringid_to_category.get(c["string_id"], "")
-        if category in SCRIPT_CATEGORIES:
-            script_corrections.append(c)
-    return script_corrections, skipped_count
-```
-
-### How Strict Match Works
-
-```python
-# core/matching.py
-def find_matches_strict(corrections, xml_entries):
-    """Match by (StringID, normalized_StrOrigin) tuple."""
-    matched = []
-    for c in corrections:
-        key = (c["string_id"], normalize_text(c["str_origin"]))
-        if key in xml_entries:
-            matched.append(c)
-    return matched, not_found_count
-```
-
-## Input/Output Modes
-
-### Format Modes
-| Format | Extensions | Read Function |
-|--------|------------|---------------|
-| **Excel** | .xlsx, .xls | `read_korean_input()`, `read_corrections_from_excel()` |
-| **XML** | .xml, .loc.xml | `parse_corrections_from_xml()`, `parse_folder_xml_files()` |
-
-### Input Modes
-| Mode | Description |
-|------|-------------|
-| **File** | Single file processing |
-| **Folder** | Recursive folder scanning |
-
 ## Key Modules
 
-### core/xml_parser.py
+### core/text_utils.py (CANONICAL)
 
-XML sanitization and parsing (battle-tested from LanguageDataExporter):
+Single source of truth for text normalization:
 
 ```python
-from core.xml_parser import sanitize_xml_content, parse_xml_file
+from core.text_utils import normalize_text, normalize_for_matching, normalize_nospace
 
-# Handles: bad entities, control chars, newlines in seg elements
-content = sanitize_xml_content(raw_xml)
-root = parse_xml_file(xml_path)  # Returns lxml Element
+# normalize_text: HTML unescape, whitespace collapse, &desc; removal
+# normalize_for_matching: normalize_text + lowercase
+# normalize_nospace: remove all whitespace
 ```
 
-### core/matching.py
+**CRITICAL:** All other modules import from here. Never duplicate!
+
+### core/xml_transfer.py (TRANSFER ENGINE)
+
+Core transfer functionality:
+
+```python
+from core.xml_transfer import (
+    merge_corrections_to_xml,      # Core merge logic
+    merge_corrections_stringid_only,  # SCRIPT-only merge
+    transfer_folder_to_folder,     # Batch transfer
+    transfer_file_to_file,         # Single file transfer
+    format_transfer_report,        # Generate report
+)
+```
+
+### core/matching.py (LOOKUP)
 
 All matching algorithms:
 
 ```python
 from core.matching import (
-    find_matches,              # Substring search
-    find_matches_stringid_only, # SCRIPT filter
-    find_matches_strict,       # Tuple match
-    find_matches_special_key,  # Custom key
-    normalize_text,            # Text normalization
-    SCRIPT_CATEGORIES,         # {"Sequencer", "AIDialog", ...}
+    find_matches,                  # Substring search
+    find_matches_with_stats,       # Substring with statistics
+    find_matches_stringid_only,    # SCRIPT filter
+    find_matches_strict,           # Tuple match
+    find_matches_special_key,      # Custom key
 )
-```
 
-### core/language_loader.py
-
-Language file discovery and lookup building:
-
-```python
-from core.language_loader import (
-    discover_language_files,    # Find languagedata_*.xml
-    build_translation_lookup,   # {lang: {sid: translation}}
-    build_reverse_lookup,       # {lang: {text: sid}}
-    build_stringid_to_category, # {sid: category}
-)
+# SCRIPT_CATEGORIES imported from config.py
 ```
 
 ### core/excel_io.py
@@ -171,24 +138,23 @@ Excel operations:
 
 ```python
 from core.excel_io import (
-    read_korean_input,           # Column A Korean text
-    read_corrections_from_excel, # StringID/StrOrigin/Correction
-    write_output_excel,          # Multi-language output
-    write_stringid_lookup_excel, # Single StringID lookup
-    write_reverse_lookup_excel,  # Reverse lookup output
+    read_korean_input,             # Column A Korean text
+    read_corrections_from_excel,   # StringID/StrOrigin/Correction
+    write_output_excel,            # Multi-language output
+    write_stringid_lookup_excel,   # Single StringID lookup
+    write_reverse_lookup_excel,    # Reverse lookup output
 )
 ```
 
-### core/indexing.py
+### core/xml_parser.py
 
-Index building:
+XML sanitization and parsing (battle-tested from LanguageDataExporter):
 
 ```python
-from core.indexing import (
-    build_sequencer_strorigin_index,  # {StringID: StrOrigin}
-    scan_folder_for_strings,          # Recursive XML scan
-    scan_folder_for_entries,          # Full entry data
-)
+from core.xml_parser import sanitize_xml_content, parse_xml_file, iter_locstr_elements
+
+# Handles: bad entities, control chars, newlines in seg elements
+# Case-insensitive tag matching for LocStr
 ```
 
 ## Configuration (config.py)
@@ -202,17 +168,8 @@ MATCHING_MODES = {
     "special_key": "Special Key Match",
 }
 
-# SCRIPT categories
+# SCRIPT categories - shared by matching.py and xml_transfer.py
 SCRIPT_CATEGORIES = {"Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"}
-
-# Branches
-BRANCHES = {
-    "mainline": {
-        "loc": Path(r"F:\perforce\cd\mainline\...\loc"),
-        "export": Path(r"F:\perforce\cd\mainline\...\export__"),
-    },
-    "cd_lambda": {...},
-}
 
 # Languages (17 total)
 LANGUAGE_ORDER = ["kor", "eng", "fre", "ger", "spa", "por", "ita", "rus",
@@ -239,8 +196,10 @@ LANGUAGE_ORDER = ["kor", "eng", "fre", "ger", "spa", "por", "ita", "rus",
 ├─────────────────────────────────────────────────────────────┤
 │ Quick Actions: StringID Lookup | Reverse Lookup              │
 ├─────────────────────────────────────────────────────────────┤
+│ Log: [scrollable text area]                                  │
+├─────────────────────────────────────────────────────────────┤
 │ [████████████░░░░░░░░] 60%                                  │
-│ [Generate]  [Clear]  [Exit]                                 │
+│ [Generate]  [TRANSFER]  [Clear Log]  [Clear All]  [Exit]    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -255,8 +214,9 @@ python -m py_compile main.py config.py core/*.py gui/*.py utils/*.py
 
 # Import test
 python -c "from core import *; print('core OK')"
-python -c "from utils import *; print('utils OK')"
-python -c "import config; print(list(config.MATCHING_MODES.keys()))"
+python -c "from core.text_utils import normalize_text, normalize_for_matching; print('text_utils OK')"
+python -c "from core.xml_transfer import transfer_file_to_file, format_transfer_report; print('xml_transfer OK')"
+python -c "import config; print(config.SCRIPT_CATEGORIES)"
 
 # Launch GUI (requires display)
 python main.py
@@ -264,10 +224,12 @@ python main.py
 # Check all exports
 python -c "
 from core import (
-    sanitize_xml_content, parse_xml_file,
-    is_korean_text, find_matches,
-    find_matches_stringid_only, find_matches_strict,
-    build_sequencer_strorigin_index, discover_language_files,
+    # LOOKUP
+    find_matches, find_matches_stringid_only, find_matches_strict,
+    # TRANSFER
+    transfer_file_to_file, transfer_folder_to_folder, format_transfer_report,
+    # Common
+    parse_xml_file, read_corrections_from_excel,
 )
 print('All exports OK')
 "
@@ -302,14 +264,6 @@ git push origin main
 - `QuickTranslate_vX.X.X_Portable.zip` - Portable executable
 - `QuickTranslate_vX.X.X_Source.zip` - Python source
 
-**Version Format:** `YY.MMDD.HHMM` (auto-generated, Korean time)
-
-### Check Build Status
-
-```bash
-gh run list --workflow=quicktranslate-build.yml --limit 5
-```
-
 ## Common Tasks
 
 ### Add New Match Type
@@ -320,43 +274,45 @@ gh run list --workflow=quicktranslate-build.yml --limit 5
 4. Add UI option in `gui/app.py`
 5. Add dispatch logic in `_generate()` method
 
+### Modify TRANSFER Logic
+
+1. Edit `core/xml_transfer.py`
+2. Update `merge_corrections_to_xml()` or `merge_corrections_stringid_only()`
+3. Update `transfer_file_to_file()` or `transfer_folder_to_folder()`
+4. Test with sample corrections
+
+### Fix Text Normalization
+
+1. ONLY edit `core/text_utils.py` (single source of truth)
+2. All other modules import from text_utils
+3. Never duplicate normalization logic
+
 ### Add New Language
 
 1. Add to `LANGUAGE_ORDER` in `config.py`
 2. Add to `LANGUAGE_NAMES` in `config.py`
 3. Test with `discover_language_files()`
 
-### Modify XML Parsing
-
-1. Edit `core/xml_parser.py`
-2. Update `sanitize_xml_content()` for new edge cases
-3. Test with problematic XML files
-
-### Add New Output Format
-
-1. Add write function to `core/excel_io.py`
-2. Export in `core/__init__.py`
-3. Add UI option and call in `gui/app.py`
-
 ## Key Files by Task
 
 | Task | Primary File | Secondary |
 |------|--------------|-----------|
+| Text normalization | `core/text_utils.py` | - |
 | XML parsing | `core/xml_parser.py` | - |
-| Korean detection | `core/korean_detection.py` | - |
-| Index building | `core/indexing.py` | `xml_parser.py` |
-| Language loading | `core/language_loader.py` | `xml_parser.py` |
+| TRANSFER logic | `core/xml_transfer.py` | `text_utils.py` |
 | Matching algorithms | `core/matching.py` | `config.py` |
-| Excel I/O | `core/excel_io.py` | `matching.py` |
+| Excel I/O | `core/excel_io.py` | `text_utils.py` |
 | XML I/O | `core/xml_io.py` | `xml_parser.py` |
 | Main GUI | `gui/app.py` | all core modules |
 | Configuration | `config.py` | - |
-| Entry point | `main.py` | `gui/app.py` |
 
 ## Output Format for Issues
 
 ```
 ## QuickTranslate Issue: [Description]
+
+### Function
+[LOOKUP/TRANSFER/Both]
 
 ### Module
 [core/gui/utils]
@@ -375,10 +331,50 @@ gh run list --workflow=quicktranslate-build.yml --limit 5
 ### Test
 ```bash
 python -c "from core.{module} import {function}; print('OK')"
-# or
-python main.py
 ```
 ```
+
+## Reference Files
+
+| File | Location | Purpose |
+|------|----------|---------|
+| **EXPORT PATH TREE** | `RessourcesForCodingTheProject/NewScripts/LanguageDataExporter/EXPORT PATH TREE.txt` | **COMPLETE** list of all export folder paths. Use this to verify path formats! |
+
+### Export Folder Structure (from EXPORT PATH TREE.txt)
+
+```
+export__/
+├── Dialog/
+│   ├── AIDialog/
+│   ├── NarrationDialog/
+│   ├── QuestDialog/
+│   └── StageCloseDialog/
+├── None/
+│   ├── Board/
+│   ├── EquipType/
+│   └── GameAdvice/
+├── Platform/
+│   └── PlatformService/
+├── Sequencer/
+│   └── Faction/...
+├── System/                    ← GAME_DATA
+│   ├── Gimmick/               ← NON-PRIORITY (filter out)
+│   ├── Item/
+│   ├── ItemGroup/
+│   ├── LookAt/
+│   ├── MultiChange/           ← NON-PRIORITY (filter out)
+│   ├── Quest/
+│   ├── Skill/
+│   └── Ui/
+└── World/
+    ├── Character/
+    ├── Faction/
+    ├── Knowledge/
+    ├── Npc/
+    └── Region/
+```
+
+**NON-PRIORITY folders to filter:** `System/Gimmick`, `System/MultiChange`
 
 ## Documentation
 
