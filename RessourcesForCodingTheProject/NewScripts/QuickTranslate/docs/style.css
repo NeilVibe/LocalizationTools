@@ -1,0 +1,431 @@
+/* QuickTranslate User Guide - PDF Stylesheet */
+/* Use with: pandoc USER_GUIDE.md -o USER_GUIDE.pdf --css=style.css --pdf-engine=weasyprint */
+
+/* ============================================================
+   PAGE SETUP
+   ============================================================ */
+
+@page {
+    size: letter;
+    margin: 1in 1in 0.75in 1in;
+
+    @top-left {
+        content: "QuickTranslate User Guide";
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        font-size: 9pt;
+        color: #6B7280;
+    }
+
+    @top-right {
+        content: string(chapter);
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        font-size: 9pt;
+        color: #2563EB;
+    }
+
+    @bottom-center {
+        content: "— " counter(page) " —";
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        font-size: 9pt;
+        color: #6B7280;
+    }
+}
+
+@page:first {
+    @top-left { content: none; }
+    @top-right { content: none; }
+    @bottom-center { content: none; }
+}
+
+/* ============================================================
+   COLOR VARIABLES (CSS Custom Properties)
+   ============================================================ */
+
+:root {
+    --primary-blue: #2563EB;
+    --primary-dark: #1E40AF;
+    --primary-light: #DBEAFE;
+
+    --success-green: #059669;
+    --success-light: #D1FAE5;
+
+    --warning-amber: #D97706;
+    --warning-light: #FEF3C7;
+
+    --error-red: #DC2626;
+    --error-light: #FEE2E2;
+
+    --info-purple: #7C3AED;
+    --info-light: #EDE9FE;
+
+    --black: #111827;
+    --dark-gray: #374151;
+    --medium-gray: #6B7280;
+    --light-gray: #E5E7EB;
+    --off-white: #F9FAFB;
+    --white: #FFFFFF;
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+
+body {
+    font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: var(--black);
+    background: var(--white);
+}
+
+/* Headings */
+h1 {
+    font-size: 28pt;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin-top: 0;
+    margin-bottom: 24pt;
+    padding-bottom: 12pt;
+    border-bottom: 3px solid var(--primary-blue);
+    string-set: chapter content();
+    page-break-before: always;
+}
+
+h1:first-of-type {
+    page-break-before: avoid;
+}
+
+h2 {
+    font-size: 20pt;
+    font-weight: 600;
+    color: var(--black);
+    margin-top: 32pt;
+    margin-bottom: 16pt;
+    padding-bottom: 8pt;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+h3 {
+    font-size: 14pt;
+    font-weight: 600;
+    color: var(--black);
+    margin-top: 24pt;
+    margin-bottom: 12pt;
+}
+
+h4 {
+    font-size: 12pt;
+    font-weight: 600;
+    color: var(--dark-gray);
+    margin-top: 16pt;
+    margin-bottom: 8pt;
+}
+
+/* Paragraphs */
+p {
+    margin-bottom: 12pt;
+    text-align: justify;
+    hyphens: auto;
+}
+
+/* Links */
+a {
+    color: var(--primary-blue);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* ============================================================
+   LISTS
+   ============================================================ */
+
+ul, ol {
+    margin-bottom: 12pt;
+    padding-left: 24pt;
+}
+
+li {
+    margin-bottom: 6pt;
+}
+
+li > ul, li > ol {
+    margin-top: 6pt;
+    margin-bottom: 0;
+}
+
+/* ============================================================
+   TABLES
+   ============================================================ */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16pt 0;
+    font-size: 10pt;
+}
+
+thead {
+    background: var(--primary-blue);
+    color: var(--white);
+}
+
+th {
+    padding: 10pt 12pt;
+    text-align: left;
+    font-weight: 600;
+}
+
+td {
+    padding: 8pt 12pt;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+tbody tr:nth-child(even) {
+    background: var(--off-white);
+}
+
+tbody tr:hover {
+    background: var(--primary-light);
+}
+
+/* ============================================================
+   CODE
+   ============================================================ */
+
+code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 9pt;
+    background: var(--off-white);
+    border: 1px solid var(--light-gray);
+    border-radius: 4px;
+    padding: 2pt 6pt;
+    color: var(--primary-dark);
+}
+
+pre {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 9pt;
+    background: var(--off-white);
+    border: 1px solid var(--light-gray);
+    border-radius: 8px;
+    padding: 16pt;
+    margin: 16pt 0;
+    overflow-x: auto;
+    line-height: 1.5;
+}
+
+pre code {
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+/* ============================================================
+   BLOCKQUOTES (Callout Boxes)
+   ============================================================ */
+
+blockquote {
+    margin: 16pt 0;
+    padding: 16pt;
+    border-radius: 0 8px 8px 0;
+    page-break-inside: avoid;
+}
+
+/* Pro Tip - Green */
+blockquote:has(> p:first-child:contains("PRO TIP")),
+blockquote:has(> p:first-child:contains("💡")) {
+    background: var(--success-light);
+    border-left: 4px solid var(--success-green);
+}
+
+/* Warning - Amber */
+blockquote:has(> p:first-child:contains("WARNING")),
+blockquote:has(> p:first-child:contains("⚠️")) {
+    background: var(--warning-light);
+    border-left: 4px solid var(--warning-amber);
+}
+
+/* Note - Purple */
+blockquote:has(> p:first-child:contains("NOTE")),
+blockquote:has(> p:first-child:contains("ℹ️")) {
+    background: var(--info-light);
+    border-left: 4px solid var(--info-purple);
+}
+
+/* Success - Green */
+blockquote:has(> p:first-child:contains("SUCCESS")),
+blockquote:has(> p:first-child:contains("🎉")) {
+    background: var(--success-light);
+    border-left: 4px solid var(--success-green);
+}
+
+/* Default blockquote style */
+blockquote {
+    background: var(--off-white);
+    border-left: 4px solid var(--medium-gray);
+}
+
+blockquote p {
+    margin-bottom: 8pt;
+}
+
+blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+blockquote strong:first-child {
+    display: block;
+    margin-bottom: 8pt;
+    font-size: 10pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
+}
+
+/* ============================================================
+   HORIZONTAL RULES
+   ============================================================ */
+
+hr {
+    border: none;
+    border-top: 1px solid var(--light-gray);
+    margin: 24pt 0;
+}
+
+/* ============================================================
+   IMAGES
+   ============================================================ */
+
+img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--light-gray);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin: 16pt 0;
+}
+
+figure {
+    margin: 16pt 0;
+    text-align: center;
+}
+
+figcaption {
+    font-size: 9pt;
+    color: var(--medium-gray);
+    margin-top: 8pt;
+}
+
+/* ============================================================
+   TABLE OF CONTENTS
+   ============================================================ */
+
+#table-of-contents + ul,
+#table-of-contents + ol {
+    list-style: none;
+    padding-left: 0;
+}
+
+#table-of-contents + ul li,
+#table-of-contents + ol li {
+    padding: 4pt 0;
+    border-bottom: 1px dotted var(--light-gray);
+}
+
+#table-of-contents + ul a,
+#table-of-contents + ol a {
+    color: var(--black);
+}
+
+/* ============================================================
+   SPECIAL ELEMENTS
+   ============================================================ */
+
+/* Keyboard shortcuts */
+kbd {
+    font-family: 'Inter', sans-serif;
+    font-size: 9pt;
+    font-weight: 500;
+    background: linear-gradient(180deg, var(--white) 0%, var(--light-gray) 100%);
+    border: 1px solid var(--light-gray);
+    border-radius: 4px;
+    padding: 2pt 6pt;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Definition lists */
+dt {
+    font-weight: 600;
+    color: var(--dark-gray);
+    margin-top: 12pt;
+}
+
+dd {
+    margin-left: 24pt;
+    margin-bottom: 8pt;
+}
+
+/* ============================================================
+   PRINT OPTIMIZATIONS
+   ============================================================ */
+
+h1, h2, h3, h4 {
+    page-break-after: avoid;
+}
+
+table, figure, blockquote {
+    page-break-inside: avoid;
+}
+
+/* ============================================================
+   COVER PAGE (if using div.cover)
+   ============================================================ */
+
+.cover {
+    text-align: center;
+    padding-top: 3in;
+}
+
+.cover h1 {
+    font-size: 36pt;
+    border: none;
+    page-break-before: avoid;
+}
+
+.cover .tagline {
+    font-size: 14pt;
+    font-style: italic;
+    color: var(--medium-gray);
+    margin-top: 16pt;
+}
+
+.cover .version {
+    position: absolute;
+    bottom: 1in;
+    left: 0;
+    right: 0;
+    font-size: 11pt;
+    color: var(--medium-gray);
+}
+
+/* ============================================================
+   UTILITY CLASSES
+   ============================================================ */
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-muted { color: var(--medium-gray); }
+.text-primary { color: var(--primary-blue); }
+.text-success { color: var(--success-green); }
+.text-warning { color: var(--warning-amber); }
+.text-error { color: var(--error-red); }
+
+.mt-0 { margin-top: 0; }
+.mb-0 { margin-bottom: 0; }
+.mt-2 { margin-top: 16pt; }
+.mb-2 { margin-bottom: 16pt; }
+
+.no-break { page-break-inside: avoid; }
+.page-break { page-break-before: always; }
