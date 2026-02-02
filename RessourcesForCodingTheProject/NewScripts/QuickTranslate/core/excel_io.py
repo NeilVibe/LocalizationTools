@@ -117,9 +117,11 @@ def write_output_excel(
     translation_lookup: Dict[str, Dict[str, str]],
     available_langs: List[str],
     language_names: Dict[str, str] = None,
+    stats: Dict[str, int] = None,
+    match_type: str = "substring",
 ):
     """
-    Write output Excel file with translations.
+    Write output Excel file with translations and summary.
 
     Args:
         output_path: Path to output Excel file
@@ -128,6 +130,8 @@ def write_output_excel(
         translation_lookup: Dict mapping lang_code to {StringID: translation}
         available_langs: List of available language codes
         language_names: Optional mapping of lang_code to display name
+        stats: Optional statistics dict for Summary sheet
+        match_type: Match type used (for Summary sheet)
     """
     if language_names is None:
         language_names = {}
@@ -138,8 +142,8 @@ def write_output_excel(
 
     ordered_langs = get_ordered_languages(available_langs)
 
-    # Header row
-    headers = ["KOR (Input)"] + [language_names.get(lang, lang.upper()) for lang in ordered_langs]
+    # Header row - add Status and StringID columns
+    headers = ["KOR (Input)", "Status", "StringID"] + [language_names.get(lang, lang.upper()) for lang in ordered_langs]
     for col, header in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True)
@@ -151,7 +155,31 @@ def write_output_excel(
     for row_idx, (korean_text, string_ids) in enumerate(zip(korean_inputs, matches_per_input), start=2):
         ws.cell(row=row_idx, column=1, value=korean_text)
 
-        for col_idx, lang_code in enumerate(ordered_langs, start=2):
+        # Status column
+        if not string_ids:
+            status = "NOT FOUND"
+            status_cell = ws.cell(row=row_idx, column=2, value=status)
+            status_cell.font = Font(color="FF0000")  # Red
+        elif len(string_ids) == 1:
+            status = "MATCHED"
+            status_cell = ws.cell(row=row_idx, column=2, value=status)
+            status_cell.font = Font(color="008000")  # Green
+        else:
+            status = f"MULTI ({len(string_ids)})"
+            status_cell = ws.cell(row=row_idx, column=2, value=status)
+            status_cell.font = Font(color="FF8C00")  # Orange
+
+        # StringID column
+        if string_ids:
+            if len(string_ids) == 1:
+                ws.cell(row=row_idx, column=3, value=string_ids[0])
+            else:
+                sid_text = "\n".join(f"{i+1}. {sid}" for i, sid in enumerate(string_ids))
+                sid_cell = ws.cell(row=row_idx, column=3, value=sid_text)
+                sid_cell.alignment = Alignment(wrap_text=True, vertical='top')
+
+        # Translation columns
+        for col_idx, lang_code in enumerate(ordered_langs, start=4):
             if not string_ids:
                 ws.cell(row=row_idx, column=col_idx, value="")
                 continue
@@ -168,10 +196,84 @@ def write_output_excel(
                 cell.alignment = Alignment(wrap_text=True, vertical='top')
 
     # Column widths
-    for col_idx, _ in enumerate(headers, start=1):
+    ws.column_dimensions['A'].width = 40  # KOR Input
+    ws.column_dimensions['B'].width = 12  # Status
+    ws.column_dimensions['C'].width = 30  # StringID
+    for col_idx in range(4, len(headers) + 1):
         ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = 40
 
+    # Create Summary sheet
+    _create_summary_sheet(wb, stats, match_type, len(korean_inputs), matches_per_input)
+
     wb.save(output_path)
+
+
+def _create_summary_sheet(
+    wb: Workbook,
+    stats: Dict[str, int],
+    match_type: str,
+    total_inputs: int,
+    matches_per_input: List[List[str]],
+):
+    """Create Summary sheet with statistics."""
+    ws = wb.create_sheet(title="Summary", index=0)
+
+    # Calculate stats if not provided
+    if stats is None:
+        stats = {
+            "total": total_inputs,
+            "matched": sum(1 for m in matches_per_input if len(m) == 1),
+            "no_match": sum(1 for m in matches_per_input if len(m) == 0),
+            "multi_match": sum(1 for m in matches_per_input if len(m) > 1),
+            "total_matches": sum(len(m) for m in matches_per_input),
+        }
+
+    # Title
+    ws.cell(row=1, column=1, value="QuickTranslate Report Summary")
+    ws.cell(row=1, column=1).font = Font(bold=True, size=14)
+    ws.merge_cells('A1:C1')
+
+    # Match type
+    ws.cell(row=3, column=1, value="Match Type:")
+    ws.cell(row=3, column=1).font = Font(bold=True)
+    ws.cell(row=3, column=2, value=match_type.upper())
+
+    # Statistics table
+    stat_rows = [
+        ("Total Inputs", stats.get("total", total_inputs)),
+        ("Matched (1 match)", stats.get("matched", 0)),
+        ("Multiple Matches", stats.get("multi_match", 0)),
+        ("Not Found", stats.get("no_match", 0)),
+        ("Empty/Skipped", stats.get("empty_input", 0) + stats.get("skipped", 0)),
+        ("Total StringIDs Found", stats.get("total_matches", 0)),
+    ]
+
+    ws.cell(row=5, column=1, value="Statistic")
+    ws.cell(row=5, column=2, value="Count")
+    ws.cell(row=5, column=3, value="Percentage")
+    for col in range(1, 4):
+        ws.cell(row=5, column=col).font = Font(bold=True)
+        ws.cell(row=5, column=col).alignment = Alignment(horizontal='center')
+
+    total = stats.get("total", total_inputs) or 1  # Avoid division by zero
+
+    for row_idx, (label, value) in enumerate(stat_rows, start=6):
+        ws.cell(row=row_idx, column=1, value=label)
+        ws.cell(row=row_idx, column=2, value=value)
+        if label not in ("Total Inputs", "Total StringIDs Found"):
+            pct = (value / total * 100) if total > 0 else 0
+            ws.cell(row=row_idx, column=3, value=f"{pct:.1f}%")
+
+    # Color coding
+    ws.cell(row=6, column=2).font = Font(bold=True)  # Total
+    ws.cell(row=7, column=2).font = Font(color="008000")  # Matched - green
+    ws.cell(row=8, column=2).font = Font(color="FF8C00")  # Multi - orange
+    ws.cell(row=9, column=2).font = Font(color="FF0000")  # Not found - red
+
+    # Column widths
+    ws.column_dimensions['A'].width = 25
+    ws.column_dimensions['B'].width = 15
+    ws.column_dimensions['C'].width = 15
 
 
 def write_stringid_lookup_excel(

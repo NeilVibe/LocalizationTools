@@ -4,11 +4,13 @@ QuickTranslate GUI Application.
 Tkinter-based GUI with multi-mode support:
 - Format Selection: Excel / XML
 - Mode Selection: Folder (recursive) / File (single)
-- Match Type Selection: StringID-only / Strict / Special Key
+- Match Type Selection: Substring / StringID-only / Strict / Special Key
+- ToSubmit folder integration
+- Detailed logging and reporting
 """
 
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, scrolledtext
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -21,8 +23,10 @@ from core import (
     build_translation_lookup,
     build_reverse_lookup,
     find_matches,
+    find_matches_with_stats,
     find_matches_stringid_only,
     find_matches_strict,
+    find_matches_special_key,
     find_stringid_from_text,
     format_multiple_matches,
     read_korean_input,
@@ -34,6 +38,7 @@ from core import (
     write_reverse_lookup_excel,
     parse_corrections_from_xml,
     parse_folder_xml_files,
+    parse_tosubmit_xml,
 )
 from core.indexing import scan_folder_for_entries
 from core.language_loader import build_stringid_to_category
@@ -46,7 +51,7 @@ class QuickTranslateApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("QuickTranslate")
-        self.root.geometry("850x750")
+        self.root.geometry("900x850")
         self.root.resizable(False, False)
         self.root.configure(bg='#f0f0f0')
 
@@ -60,6 +65,7 @@ class QuickTranslateApp:
         self.string_id_input = tk.StringVar()
         self.reverse_file_path = tk.StringVar()
         self.tosubmit_enabled = tk.BooleanVar(value=False)
+        self.special_key_fields = tk.StringVar(value="string_id,category")
 
         self.selected_source_branch = tk.StringVar(value="mainline")
         self.selected_target_branch = tk.StringVar(value="mainline")
@@ -78,18 +84,18 @@ class QuickTranslateApp:
     def _create_ui(self):
         """Create the main UI layout."""
         # Main container with padding
-        main = tk.Frame(self.root, bg='#f0f0f0', padx=20, pady=15)
+        main = tk.Frame(self.root, bg='#f0f0f0', padx=20, pady=10)
         main.pack(fill=tk.BOTH, expand=True)
 
         # Title
         title = tk.Label(main, text="QuickTranslate", font=('Segoe UI', 18, 'bold'),
                         bg='#f0f0f0', fg='#333')
-        title.pack(pady=(0, 15))
+        title.pack(pady=(0, 10))
 
         # === Format Selection ===
         format_frame = tk.LabelFrame(main, text="Format", font=('Segoe UI', 10, 'bold'),
-                                     bg='#f0f0f0', fg='#555', padx=15, pady=10)
-        format_frame.pack(fill=tk.X, pady=(0, 10))
+                                     bg='#f0f0f0', fg='#555', padx=15, pady=8)
+        format_frame.pack(fill=tk.X, pady=(0, 8))
 
         format_inner = tk.Frame(format_frame, bg='#f0f0f0')
         format_inner.pack()
@@ -103,8 +109,8 @@ class QuickTranslateApp:
 
         # === Mode Selection ===
         mode_frame = tk.LabelFrame(main, text="Mode", font=('Segoe UI', 10, 'bold'),
-                                   bg='#f0f0f0', fg='#555', padx=15, pady=10)
-        mode_frame.pack(fill=tk.X, pady=(0, 10))
+                                   bg='#f0f0f0', fg='#555', padx=15, pady=8)
+        mode_frame.pack(fill=tk.X, pady=(0, 8))
 
         mode_inner = tk.Frame(mode_frame, bg='#f0f0f0')
         mode_inner.pack()
@@ -118,14 +124,14 @@ class QuickTranslateApp:
 
         # === Match Type Selection ===
         match_frame = tk.LabelFrame(main, text="Match Type", font=('Segoe UI', 10, 'bold'),
-                                    bg='#f0f0f0', fg='#555', padx=15, pady=10)
-        match_frame.pack(fill=tk.X, pady=(0, 10))
+                                    bg='#f0f0f0', fg='#555', padx=15, pady=8)
+        match_frame.pack(fill=tk.X, pady=(0, 8))
 
         match_types = [
-            ("substring", "Substring Match", "Original - finds text in StrOrigin"),
-            ("stringid_only", "StringID-Only (SCRIPT)", "For Sequencer/Dialog - match by StringID only"),
-            ("strict", "StringID + StrOrigin (STRICT)", "Most precise - requires both to match"),
-            ("special_key", "Special Key Match", "Custom composite key matching"),
+            ("substring", "Substring Match", "Find Korean text in StrOrigin"),
+            ("stringid_only", "StringID-Only (SCRIPT)", "SCRIPT categories only - match by StringID"),
+            ("strict", "StringID + StrOrigin (STRICT)", "Requires BOTH to match exactly"),
+            ("special_key", "Special Key Match", "Match by custom field combination"),
         ]
 
         for value, label, desc in match_types:
@@ -133,17 +139,27 @@ class QuickTranslateApp:
             row.pack(fill=tk.X, pady=2)
             tk.Radiobutton(row, text=label, variable=self.match_type, value=value,
                           font=('Segoe UI', 10), bg='#f0f0f0', activebackground='#f0f0f0',
-                          cursor='hand2', width=30, anchor='w').pack(side=tk.LEFT)
+                          cursor='hand2', width=28, anchor='w').pack(side=tk.LEFT)
             tk.Label(row, text=desc, font=('Segoe UI', 9), bg='#f0f0f0', fg='#888').pack(side=tk.LEFT)
+
+        # Special Key fields (shown when special_key selected)
+        self.special_key_row = tk.Frame(match_frame, bg='#f0f0f0')
+        self.special_key_row.pack(fill=tk.X, pady=(4, 0))
+        tk.Label(self.special_key_row, text="Key Fields:", font=('Segoe UI', 9), bg='#f0f0f0',
+                width=12, anchor='e').pack(side=tk.LEFT)
+        tk.Entry(self.special_key_row, textvariable=self.special_key_fields,
+                font=('Segoe UI', 9), relief='solid', bd=1, width=40).pack(side=tk.LEFT, padx=(5, 0))
+        tk.Label(self.special_key_row, text="(comma-separated)", font=('Segoe UI', 8),
+                bg='#f0f0f0', fg='#888').pack(side=tk.LEFT, padx=(5, 0))
 
         # === Files Section ===
         files_frame = tk.LabelFrame(main, text="Files", font=('Segoe UI', 10, 'bold'),
-                                    bg='#f0f0f0', fg='#555', padx=15, pady=10)
-        files_frame.pack(fill=tk.X, pady=(0, 10))
+                                    bg='#f0f0f0', fg='#555', padx=15, pady=8)
+        files_frame.pack(fill=tk.X, pady=(0, 8))
 
         # Source file/folder
         source_row = tk.Frame(files_frame, bg='#f0f0f0')
-        source_row.pack(fill=tk.X, pady=(0, 8))
+        source_row.pack(fill=tk.X, pady=(0, 6))
         tk.Label(source_row, text="Source:", font=('Segoe UI', 10), bg='#f0f0f0',
                 width=8, anchor='w').pack(side=tk.LEFT)
         self.source_entry = tk.Entry(source_row, textvariable=self.source_path,
@@ -153,9 +169,9 @@ class QuickTranslateApp:
                  font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
                  padx=10, cursor='hand2').pack(side=tk.LEFT)
 
-        # Target folder (optional)
+        # Target folder (for strict mode)
         target_row = tk.Frame(files_frame, bg='#f0f0f0')
-        target_row.pack(fill=tk.X, pady=(0, 8))
+        target_row.pack(fill=tk.X, pady=(0, 6))
         tk.Label(target_row, text="Target:", font=('Segoe UI', 10), bg='#f0f0f0',
                 width=8, anchor='w').pack(side=tk.LEFT)
         self.target_entry = tk.Entry(target_row, textvariable=self.target_path,
@@ -167,10 +183,12 @@ class QuickTranslateApp:
 
         # ToSubmit checkbox
         tosubmit_row = tk.Frame(files_frame, bg='#f0f0f0')
-        tosubmit_row.pack(fill=tk.X, pady=(0, 8))
+        tosubmit_row.pack(fill=tk.X, pady=(0, 6))
         tk.Checkbutton(tosubmit_row, text="ToSubmit Folder Integration",
                       variable=self.tosubmit_enabled, font=('Segoe UI', 10),
                       bg='#f0f0f0', activebackground='#f0f0f0', cursor='hand2').pack(side=tk.LEFT)
+        tk.Label(tosubmit_row, text=f"({config.TOSUBMIT_FOLDER})", font=('Segoe UI', 8),
+                bg='#f0f0f0', fg='#888').pack(side=tk.LEFT, padx=(5, 0))
 
         # Branch selection
         branch_row = tk.Frame(files_frame, bg='#f0f0f0')
@@ -192,12 +210,12 @@ class QuickTranslateApp:
 
         # === Quick Actions Section ===
         quick_frame = tk.LabelFrame(main, text="Quick Actions", font=('Segoe UI', 10, 'bold'),
-                                    bg='#f0f0f0', fg='#555', padx=15, pady=10)
-        quick_frame.pack(fill=tk.X, pady=(0, 10))
+                                    bg='#f0f0f0', fg='#555', padx=15, pady=8)
+        quick_frame.pack(fill=tk.X, pady=(0, 8))
 
         # StringID Lookup
         stringid_row = tk.Frame(quick_frame, bg='#f0f0f0')
-        stringid_row.pack(fill=tk.X, pady=(0, 8))
+        stringid_row.pack(fill=tk.X, pady=(0, 6))
         tk.Label(stringid_row, text="StringID:", font=('Segoe UI', 10), bg='#f0f0f0',
                 width=10, anchor='w').pack(side=tk.LEFT)
         self.stringid_entry = tk.Entry(stringid_row, textvariable=self.string_id_input,
@@ -222,13 +240,31 @@ class QuickTranslateApp:
                  font=('Segoe UI', 9, 'bold'), bg='#d9534f', fg='white',
                  relief='flat', padx=10, cursor='hand2').pack(side=tk.LEFT)
 
+        # === Log Section ===
+        log_frame = tk.LabelFrame(main, text="Log", font=('Segoe UI', 10, 'bold'),
+                                  bg='#f0f0f0', fg='#555', padx=10, pady=8)
+        log_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
+
+        self.log_area = scrolledtext.ScrolledText(
+            log_frame, height=8, font=('Consolas', 9), relief='solid', bd=1,
+            wrap=tk.WORD, state='disabled'
+        )
+        self.log_area.pack(fill=tk.BOTH, expand=True)
+
+        # Configure log tags for colors
+        self.log_area.tag_config('info', foreground='#333')
+        self.log_area.tag_config('success', foreground='#008000')
+        self.log_area.tag_config('warning', foreground='#FF8C00')
+        self.log_area.tag_config('error', foreground='#FF0000')
+        self.log_area.tag_config('header', foreground='#4a90d9', font=('Consolas', 9, 'bold'))
+
         # === Progress Section ===
         progress_frame = tk.Frame(main, bg='#f0f0f0')
-        progress_frame.pack(fill=tk.X, pady=(0, 10))
+        progress_frame.pack(fill=tk.X, pady=(0, 8))
 
         self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_value,
                                            maximum=100, mode='determinate')
-        self.progress_bar.pack(fill=tk.X, pady=(0, 5))
+        self.progress_bar.pack(fill=tk.X, pady=(0, 4))
 
         status_label = tk.Label(progress_frame, textvariable=self.status_text,
                                font=('Segoe UI', 9), bg='#f0f0f0', fg='#666', anchor='w')
@@ -236,20 +272,39 @@ class QuickTranslateApp:
 
         # === Action Buttons ===
         button_frame = tk.Frame(main, bg='#f0f0f0')
-        button_frame.pack(fill=tk.X, pady=(10, 0))
+        button_frame.pack(fill=tk.X, pady=(5, 0))
 
         self.generate_btn = tk.Button(button_frame, text="Generate", command=self._generate,
                                       font=('Segoe UI', 11, 'bold'), bg='#4a90d9', fg='white',
                                       relief='flat', padx=30, pady=8, cursor='hand2')
         self.generate_btn.pack(side=tk.LEFT, padx=(0, 10))
 
-        tk.Button(button_frame, text="Clear", command=self._clear_fields,
+        tk.Button(button_frame, text="Clear Log", command=self._clear_log,
                  font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
-                 padx=20, pady=6, cursor='hand2').pack(side=tk.LEFT, padx=(0, 10))
+                 padx=15, pady=6, cursor='hand2').pack(side=tk.LEFT, padx=(0, 10))
+
+        tk.Button(button_frame, text="Clear All", command=self._clear_fields,
+                 font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
+                 padx=15, pady=6, cursor='hand2').pack(side=tk.LEFT, padx=(0, 10))
 
         tk.Button(button_frame, text="Exit", command=self.root.quit,
                  font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
                  padx=20, pady=6, cursor='hand2').pack(side=tk.LEFT)
+
+    def _log(self, message: str, tag: str = 'info'):
+        """Add message to log area."""
+        self.log_area.config(state='normal')
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.log_area.insert(tk.END, f"[{timestamp}] {message}\n", tag)
+        self.log_area.see(tk.END)
+        self.log_area.config(state='disabled')
+        self.root.update()
+
+    def _clear_log(self):
+        """Clear the log area."""
+        self.log_area.config(state='normal')
+        self.log_area.delete(1.0, tk.END)
+        self.log_area.config(state='disabled')
 
     def _browse_source(self):
         """Browse for source file or folder based on mode."""
@@ -316,6 +371,7 @@ class QuickTranslateApp:
                 messagebox.showerror("Error", f"Sequencer folder not found:\n{sequencer_folder}")
                 return False
 
+            self._log(f"Loading Sequencer data from {branch}...", 'info')
             self.strorigin_index = build_sequencer_strorigin_index(
                 sequencer_folder, self._update_status
             )
@@ -324,15 +380,22 @@ class QuickTranslateApp:
                 messagebox.showerror("Error", "No Sequencer data found.")
                 return False
 
+            self._log(f"Loaded {len(self.strorigin_index)} Sequencer entries", 'success')
+
             # Also build category mapping for StringID-only mode
             self._update_status("Building category index...")
+            self._log("Building category index...", 'info')
             self.stringid_to_category = build_stringid_to_category(export_folder, self._update_status)
+            self._log(f"Indexed {len(self.stringid_to_category)} StringIDs to categories", 'success')
 
         # Load language files
+        self._log("Discovering language files...", 'info')
         lang_files = discover_language_files(loc_folder)
         if not lang_files:
             messagebox.showerror("Error", "No language files found.")
             return False
+
+        self._log(f"Found {len(lang_files)} languages: {', '.join(lang_files.keys())}", 'success')
 
         self.translation_lookup = build_translation_lookup(lang_files, self._update_status)
         self.available_langs = list(lang_files.keys())
@@ -348,6 +411,7 @@ class QuickTranslateApp:
         self.reverse_file_path.set("")
         self.progress_value.set(0)
         self.status_text.set("Ready")
+        self._clear_log()
 
     def _disable_buttons(self):
         """Disable all action buttons during processing."""
@@ -359,17 +423,24 @@ class QuickTranslateApp:
 
     def _generate(self):
         """Main generate action based on current mode."""
-        if not self.source_path.get():
-            messagebox.showwarning("Warning", "Please select a source file or folder.")
+        if not self.source_path.get() and not self.tosubmit_enabled.get():
+            messagebox.showwarning("Warning", "Please select a source file/folder or enable ToSubmit integration.")
             return
 
-        source = Path(self.source_path.get())
-        if not source.exists():
+        source = Path(self.source_path.get()) if self.source_path.get() else None
+        if source and not source.exists():
             messagebox.showerror("Error", f"Source not found:\n{source}")
             return
 
         self._disable_buttons()
         self.progress_value.set(0)
+        self._clear_log()
+
+        match_type = self.match_type.get()
+        self._log(f"=== QuickTranslate Generation ===", 'header')
+        self._log(f"Match Type: {match_type.upper()}", 'info')
+        self._log(f"Format: {self.format_mode.get().upper()}", 'info')
+        self._log(f"Mode: {self.input_mode.get().upper()}", 'info')
 
         try:
             # Load data
@@ -379,111 +450,190 @@ class QuickTranslateApp:
             self.progress_value.set(20)
 
             # Read input based on format and mode
-            corrections = []  # Initialize for all modes
+            corrections = []
             korean_inputs = []
 
-            if self.format_mode.get() == "excel":
-                korean_inputs = read_korean_input(source)
-                # For non-substring modes, build corrections from Excel
-                match_type = self.match_type.get()
-                if match_type in ("stringid_only", "strict", "special_key"):
-                    # Read structured data: assume col1=StringID, col2=StrOrigin, col3=Correction
-                    corrections = read_corrections_from_excel(source)
-                    if corrections:
-                        korean_inputs = [c.get("str_origin", "") or c.get("string_id", "") for c in corrections]
-            else:
-                # XML format
-                if self.input_mode.get() == "folder":
-                    corrections = parse_folder_xml_files(source, self._update_status)
+            # Handle ToSubmit folder if enabled
+            if self.tosubmit_enabled.get():
+                tosubmit_folder = config.TOSUBMIT_FOLDER
+                if tosubmit_folder.exists():
+                    self._log(f"Loading ToSubmit folder: {tosubmit_folder}", 'info')
+                    tosubmit_corrections = parse_tosubmit_xml(tosubmit_folder)
+                    corrections.extend(tosubmit_corrections)
+                    self._log(f"Loaded {len(tosubmit_corrections)} corrections from ToSubmit", 'success')
                 else:
-                    corrections = parse_corrections_from_xml(source)
-                korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
+                    self._log(f"ToSubmit folder not found: {tosubmit_folder}", 'warning')
+
+            # Read from source file/folder
+            if source:
+                if self.format_mode.get() == "excel":
+                    korean_inputs = read_korean_input(source)
+                    self._log(f"Read {len(korean_inputs)} inputs from Excel", 'info')
+
+                    # For non-substring modes, build corrections from Excel
+                    if match_type in ("stringid_only", "strict", "special_key"):
+                        excel_corrections = read_corrections_from_excel(source)
+                        corrections.extend(excel_corrections)
+                        self._log(f"Loaded {len(excel_corrections)} corrections from Excel", 'info')
+                        if corrections:
+                            korean_inputs = [c.get("str_origin", "") or c.get("string_id", "") for c in corrections]
+                else:
+                    # XML format
+                    if self.input_mode.get() == "folder":
+                        xml_corrections = parse_folder_xml_files(source, self._update_status)
+                    else:
+                        xml_corrections = parse_corrections_from_xml(source)
+                    corrections.extend(xml_corrections)
+                    korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
+                    self._log(f"Loaded {len(xml_corrections)} corrections from XML", 'info')
 
             if not korean_inputs and not corrections:
                 messagebox.showwarning("Warning", "No input data found.")
+                self._log("No input data found!", 'error')
                 return
 
             self.progress_value.set(40)
 
             # Find matches based on match type
             self._update_status("Finding matches...")
-            match_type = self.match_type.get()
+            self._log(f"Finding matches using {match_type} mode...", 'info')
+
             matches_per_input = []
-            total_matches = 0
+            stats = {"total": len(korean_inputs), "matched": 0, "no_match": 0, "multi_match": 0, "skipped": 0, "total_matches": 0}
 
             if match_type == "substring":
-                # Original mode: substring search in StrOrigin
-                for korean_text in korean_inputs:
-                    matches = find_matches(korean_text, self.strorigin_index)
-                    matches_per_input.append(matches)
-                    total_matches += len(matches)
+                # Use new stats-tracking function
+                matches_per_input, stats = find_matches_with_stats(korean_inputs, self.strorigin_index)
+                self._log(f"Substring search complete:", 'info')
+                self._log(f"  - Total inputs: {stats['total']}", 'info')
+                self._log(f"  - Matched (1): {stats['matched']}", 'success')
+                self._log(f"  - Multi-match: {stats['multi_match']}", 'warning')
+                self._log(f"  - Not found: {stats['no_match']}", 'error')
 
             elif match_type == "stringid_only":
                 # StringID-only (SCRIPT): Filter to SCRIPT categories
                 if not self.stringid_to_category:
                     messagebox.showwarning("Warning", "Category index not loaded. Re-select branch.")
                     return
-                # For Excel: assume column 1 contains StringIDs
-                # For XML: corrections already have string_id
-                if self.format_mode.get() == "xml":
+
+                if corrections:
                     script_corrections, skipped = find_matches_stringid_only(
                         corrections, self.stringid_to_category
                     )
                     korean_inputs = [c.get("str_origin", "") for c in script_corrections]
                     for c in script_corrections:
                         matches_per_input.append([c.get("string_id")])
-                        total_matches += 1
-                    self._update_status(f"SCRIPT filter: {len(script_corrections)} kept, {skipped} skipped")
+                    stats["total"] = len(corrections)
+                    stats["matched"] = len(script_corrections)
+                    stats["skipped"] = skipped
+                    stats["total_matches"] = len(script_corrections)
+                    self._log(f"SCRIPT filter results:", 'info')
+                    self._log(f"  - Total corrections: {stats['total']}", 'info')
+                    self._log(f"  - SCRIPT strings kept: {stats['matched']}", 'success')
+                    self._log(f"  - Non-SCRIPT skipped: {stats['skipped']}", 'warning')
                 else:
-                    # Excel mode with StringID-only: treat input as StringIDs
+                    # Excel mode with StringIDs in column A
                     for text in korean_inputs:
                         sid = text.strip()
                         category = self.stringid_to_category.get(sid, "")
                         if category in config.SCRIPT_CATEGORIES:
                             matches_per_input.append([sid])
-                            total_matches += 1
+                            stats["matched"] += 1
                         else:
                             matches_per_input.append([])
+                            stats["skipped"] += 1
+                    stats["total_matches"] = stats["matched"]
 
             elif match_type == "strict":
                 # Strict mode: Match by StringID + StrOrigin tuple
-                if self.format_mode.get() != "xml":
-                    messagebox.showwarning("Warning", "Strict mode requires XML input with StringID and StrOrigin.")
+                if not corrections:
+                    messagebox.showwarning("Warning", "Strict mode requires XML input or corrections data.")
                     return
-                # Build entries dict from target folder if specified
+
                 target = self.target_path.get()
                 if target:
-                    from core.indexing import scan_folder_for_entries
+                    self._log(f"Scanning target folder: {target}", 'info')
                     xml_entries = scan_folder_for_entries(Path(target), self._update_status)
+                    self._log(f"Found {len(xml_entries)} entries in target", 'info')
+
                     matched, not_found = find_matches_strict(corrections, xml_entries)
                     korean_inputs = [c.get("str_origin", "") for c in matched]
                     for c in matched:
                         matches_per_input.append([c.get("string_id")])
-                        total_matches += 1
-                    self._update_status(f"Strict match: {len(matched)} found, {not_found} not found")
+                    stats["total"] = len(corrections)
+                    stats["matched"] = len(matched)
+                    stats["no_match"] = not_found
+                    stats["total_matches"] = len(matched)
+                    self._log(f"Strict match results:", 'info')
+                    self._log(f"  - Total corrections: {stats['total']}", 'info')
+                    self._log(f"  - Matched (ID+Origin): {stats['matched']}", 'success')
+                    self._log(f"  - Not found: {stats['no_match']}", 'error')
                 else:
                     messagebox.showwarning("Warning", "Strict mode requires a Target folder for matching.")
                     return
 
             elif match_type == "special_key":
-                # Special key mode - not yet fully implemented
-                messagebox.showinfo("Info", "Special Key mode: Using StringID as key for now.")
-                for korean_text in korean_inputs:
-                    matches = find_matches(korean_text, self.strorigin_index)
-                    matches_per_input.append(matches)
-                    total_matches += len(matches)
+                # Special key mode - use custom field combination
+                if not corrections:
+                    messagebox.showwarning("Warning", "Special Key mode requires corrections data (XML or structured Excel).")
+                    return
 
-            else:
-                # Fallback to substring
-                for korean_text in korean_inputs:
-                    matches = find_matches(korean_text, self.strorigin_index)
-                    matches_per_input.append(matches)
-                    total_matches += len(matches)
+                key_fields = [f.strip() for f in self.special_key_fields.get().split(",") if f.strip()]
+                if not key_fields:
+                    key_fields = ["string_id", "category"]
+
+                self._log(f"Using key fields: {key_fields}", 'info')
+
+                # Build target entries with same key pattern
+                target = self.target_path.get()
+                if target:
+                    raw_entries = scan_folder_for_entries(Path(target), self._update_status)
+                    # Convert to special key format
+                    xml_entries = {}
+                    for (sid, origin), entry in raw_entries.items():
+                        key_parts = []
+                        for field in key_fields:
+                            if field == "string_id":
+                                key_parts.append(sid.lower())
+                            elif field == "str_origin":
+                                key_parts.append(origin.lower())
+                            elif field == "category":
+                                key_parts.append(self.stringid_to_category.get(sid, "").lower())
+                            else:
+                                key_parts.append(entry.get(field, "").lower() if entry.get(field) else "")
+                        xml_entries[":".join(key_parts)] = entry
+
+                    matched, not_found = find_matches_special_key(corrections, xml_entries, key_fields)
+                    korean_inputs = [c.get("str_origin", "") for c in matched]
+                    for c in matched:
+                        matches_per_input.append([c.get("string_id")])
+                    stats["total"] = len(corrections)
+                    stats["matched"] = len(matched)
+                    stats["no_match"] = not_found
+                    stats["total_matches"] = len(matched)
+                    self._log(f"Special Key match results:", 'info')
+                    self._log(f"  - Total corrections: {stats['total']}", 'info')
+                    self._log(f"  - Matched: {stats['matched']}", 'success')
+                    self._log(f"  - Not found: {stats['no_match']}", 'error')
+                else:
+                    # No target - just use StringID matching
+                    for c in corrections:
+                        sid = c.get("string_id", "")
+                        if sid and sid in self.strorigin_index:
+                            matches_per_input.append([sid])
+                            stats["matched"] += 1
+                        else:
+                            matches_per_input.append([])
+                            stats["no_match"] += 1
+                    korean_inputs = [c.get("str_origin", "") for c in corrections]
+                    stats["total"] = len(corrections)
+                    stats["total_matches"] = stats["matched"]
 
             self.progress_value.set(70)
 
             # Write output
             self._update_status("Writing output...")
+            self._log("Writing output Excel...", 'info')
             config.ensure_output_folder()
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_path = config.OUTPUT_FOLDER / f"QuickTranslate_{timestamp}.xlsx"
@@ -495,14 +645,25 @@ class QuickTranslateApp:
                 self.translation_lookup,
                 self.available_langs,
                 config.LANGUAGE_NAMES,
+                stats=stats,
+                match_type=match_type,
             )
 
             self.progress_value.set(100)
-            self._update_status(f"Done! {len(korean_inputs)} inputs, {total_matches} matches")
-            messagebox.showinfo("Success", f"Output saved to:\n{output_path}")
+            self._update_status(f"Done! {stats['total']} inputs processed")
+            self._log(f"=== Generation Complete ===", 'header')
+            self._log(f"Output: {output_path}", 'success')
+            self._log(f"Summary: {stats['matched']} matched, {stats.get('no_match', 0)} not found, {stats.get('skipped', 0)} skipped", 'info')
+
+            messagebox.showinfo("Success", f"Output saved to:\n{output_path}\n\n"
+                              f"Total: {stats['total']}\n"
+                              f"Matched: {stats['matched']}\n"
+                              f"Not Found: {stats.get('no_match', 0)}\n"
+                              f"Skipped: {stats.get('skipped', 0)}")
 
         except Exception as e:
             messagebox.showerror("Error", f"Generation failed:\n{e}")
+            self._log(f"ERROR: {e}", 'error')
             self._update_status(f"Error: {e}")
 
         finally:
@@ -517,6 +678,7 @@ class QuickTranslateApp:
             return
 
         self._disable_buttons()
+        self._log(f"Looking up StringID: {string_id}", 'info')
 
         try:
             if not self._load_data_if_needed(need_sequencer=False):
@@ -531,6 +693,7 @@ class QuickTranslateApp:
 
             if not found:
                 messagebox.showwarning("Warning", f"StringID not found: {string_id}")
+                self._log(f"StringID not found: {string_id}", 'error')
                 self._update_status(f"StringID not found: {string_id}")
                 return
 
@@ -549,10 +712,12 @@ class QuickTranslateApp:
             )
 
             self._update_status(f"Done! Lookup for {string_id}")
+            self._log(f"Output saved: {output_path}", 'success')
             messagebox.showinfo("Success", f"Output saved to:\n{output_path}")
 
         except Exception as e:
             messagebox.showerror("Error", f"Lookup failed:\n{e}")
+            self._log(f"ERROR: {e}", 'error')
             self._update_status(f"Error: {e}")
 
         finally:
@@ -570,6 +735,7 @@ class QuickTranslateApp:
             return
 
         self._disable_buttons()
+        self._log(f"Reverse lookup from: {file_path}", 'info')
 
         try:
             if not self._load_data_if_needed(need_sequencer=False):
@@ -582,6 +748,8 @@ class QuickTranslateApp:
             if not input_texts:
                 messagebox.showwarning("Warning", "No text found in input file.")
                 return
+
+            self._log(f"Read {len(input_texts)} texts from file", 'info')
 
             # Build reverse lookup
             self._update_status("Building reverse lookup...")
@@ -601,6 +769,10 @@ class QuickTranslateApp:
                     detected_langs.add(lang)
                 else:
                     not_found.append(text)
+
+            self._log(f"Found: {len(stringid_map)}, Not found: {len(not_found)}", 'info')
+            if detected_langs:
+                self._log(f"Detected languages: {', '.join(sorted(detected_langs))}", 'info')
 
             # Write output
             self._update_status("Writing output...")
@@ -622,6 +794,7 @@ class QuickTranslateApp:
             detected_str = ", ".join(sorted(detected_langs)) if detected_langs else "N/A"
 
             self._update_status(f"Done! {found_count}/{total_count} found")
+            self._log(f"Output saved: {output_path}", 'success')
             messagebox.showinfo("Success",
                 f"Output saved to:\n{output_path}\n\n"
                 f"Found: {found_count}/{total_count}\n"
@@ -629,6 +802,7 @@ class QuickTranslateApp:
 
         except Exception as e:
             messagebox.showerror("Error", f"Reverse lookup failed:\n{e}")
+            self._log(f"ERROR: {e}", 'error')
             self._update_status(f"Error: {e}")
 
         finally:
