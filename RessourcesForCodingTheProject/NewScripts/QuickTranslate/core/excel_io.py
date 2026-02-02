@@ -373,7 +373,8 @@ def write_folder_translation_excel(
 
             # Target language translation
             lang_trans = lang_lookup.get(string_id, "")
-            if not lang_trans or is_korean_text(lang_trans):
+            # Only mark as NO TRANSLATION if empty or if non-KOR column has Korean text
+            if not lang_trans or (lang_code != "kor" and is_korean_text(lang_trans)):
                 lang_trans = "NO TRANSLATION"
             cell = ws.cell(row=row_idx, column=3, value=lang_trans)
             if "\n" in lang_trans:
@@ -437,7 +438,8 @@ def write_reverse_lookup_excel(
         # For each language, get translation
         for col_idx, lang_code in enumerate(ordered_langs, start=2):
             trans = translation_lookup.get(lang_code, {}).get(string_id, "")
-            if not trans or is_korean_text(trans):
+            # Only mark as NO TRANSLATION if empty or if non-KOR column has Korean text
+            if not trans or (lang_code != "kor" and is_korean_text(trans)):
                 trans = "NO TRANSLATION"
             cell = ws.cell(row=row_idx, column=col_idx, value=trans)
             if "\n" in trans:
