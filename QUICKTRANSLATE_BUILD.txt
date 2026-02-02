@@ -1,3 +1,4 @@
 Build: XML transfer with StringID-only mode and narration exclusion
 Retry: Added missing spec file
 Fix: Case-insensitive for all searches
+Build 012 - Korean miss extractor + GUI cleanup
