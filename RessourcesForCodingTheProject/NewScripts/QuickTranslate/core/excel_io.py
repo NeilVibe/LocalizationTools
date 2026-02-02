@@ -2,15 +2,70 @@
 Excel I/O Operations.
 
 Read input Excel files and write output Excel files.
+Uses patterns from LanguageDataExporter for robustness.
 """
 
+import html
+import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Font, Alignment
+from openpyxl.styles import Font, Alignment, numbers
 
 from .korean_detection import is_korean_text
+
+
+def normalize_text(txt: Optional[str]) -> str:
+    """
+    Normalize text for consistent matching.
+
+    From LanguageDataExporter - handles:
+    1. HTML entity unescaping (&lt; -> <, &amp; -> &)
+    2. Leading/trailing whitespace stripping
+    3. Internal whitespace collapsing to single space
+    4. &desc; marker removal (legacy description prefix)
+
+    Args:
+        txt: Text to normalize
+
+    Returns:
+        Normalized text string
+    """
+    if not txt:
+        return ""
+    # Unescape HTML entities
+    txt = html.unescape(str(txt))
+    # Strip and collapse whitespace
+    txt = re.sub(r'\s+', ' ', txt.strip())
+    # Remove legacy &desc; markers
+    if txt.lower().startswith("&desc;"):
+        txt = txt[6:].lstrip()
+    elif txt.lower().startswith("&amp;desc;"):
+        txt = txt[10:].lstrip()
+    return txt
+
+
+def _detect_column_indices(ws) -> Dict[str, int]:
+    """
+    Detect column indices from header row (CASE INSENSITIVE).
+
+    From LanguageDataExporter - allows flexible column ordering.
+
+    Args:
+        ws: Worksheet to scan
+
+    Returns:
+        Dict mapping lowercase header name to column index (1-based)
+    """
+    indices = {}
+    first_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))
+    if first_row and first_row[0]:
+        for col, header in enumerate(first_row[0], 1):
+            if header:
+                # Store lowercase key for case-insensitive lookup
+                indices[str(header).strip().lower()] = col
+    return indices
 
 
 def read_korean_input(excel_path: Path) -> List[str]:
@@ -46,12 +101,15 @@ def read_corrections_from_excel(
     """
     Read corrections from Excel file for transfer mode.
 
+    Uses case-insensitive column detection when has_header=True.
+    Looks for columns: stringid, strorigin, correction (any case).
+
     Args:
         excel_path: Path to input Excel file
-        stringid_col: Column number for StringID (1-based)
-        strorigin_col: Column number for StrOrigin (1-based)
-        correction_col: Column number for corrected text (1-based)
-        has_header: Skip first row if True
+        stringid_col: Column number for StringID (1-based, fallback if no header)
+        strorigin_col: Column number for StrOrigin (1-based, fallback if no header)
+        correction_col: Column number for corrected text (1-based, fallback if no header)
+        has_header: If True, detect columns from header row (case-insensitive)
 
     Returns:
         List of correction dicts with keys: string_id, str_origin, corrected
@@ -62,17 +120,25 @@ def read_corrections_from_excel(
     corrections = []
     start_row = 2 if has_header else 1
 
+    # Try to detect columns from header row (case-insensitive)
+    if has_header:
+        col_indices = _detect_column_indices(ws)
+        # Look for common column name variations
+        stringid_col = col_indices.get("stringid", col_indices.get("string_id", stringid_col))
+        strorigin_col = col_indices.get("strorigin", col_indices.get("str_origin", strorigin_col))
+        correction_col = col_indices.get("correction", col_indices.get("corrected", correction_col))
+
     for row in ws.iter_rows(min_row=start_row):
         try:
-            string_id = row[stringid_col - 1].value
+            string_id = row[stringid_col - 1].value if stringid_col <= len(row) else None
             str_origin = row[strorigin_col - 1].value if strorigin_col <= len(row) else None
             corrected = row[correction_col - 1].value if correction_col <= len(row) else None
 
             if string_id and corrected:
                 corrections.append({
-                    "string_id": str(string_id).strip(),
-                    "str_origin": str(str_origin).strip() if str_origin else "",
-                    "corrected": str(corrected).strip(),
+                    "string_id": normalize_text(string_id),
+                    "str_origin": normalize_text(str_origin) if str_origin else "",
+                    "corrected": normalize_text(corrected),
                 })
         except (IndexError, AttributeError):
             continue
@@ -169,14 +235,16 @@ def write_output_excel(
             status_cell = ws.cell(row=row_idx, column=2, value=status)
             status_cell.font = Font(color="FF8C00")  # Orange
 
-        # StringID column
+        # StringID column - force TEXT format to prevent scientific notation
         if string_ids:
             if len(string_ids) == 1:
-                ws.cell(row=row_idx, column=3, value=string_ids[0])
+                sid_cell = ws.cell(row=row_idx, column=3, value=string_ids[0])
+                sid_cell.number_format = numbers.FORMAT_TEXT  # Prevent scientific notation
             else:
                 sid_text = "\n".join(f"{i+1}. {sid}" for i, sid in enumerate(string_ids))
                 sid_cell = ws.cell(row=row_idx, column=3, value=sid_text)
                 sid_cell.alignment = Alignment(wrap_text=True, vertical='top')
+                sid_cell.number_format = numbers.FORMAT_TEXT
 
         # Translation columns
         for col_idx, lang_code in enumerate(ordered_langs, start=4):

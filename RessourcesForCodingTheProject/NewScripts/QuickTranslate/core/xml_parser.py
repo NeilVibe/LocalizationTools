@@ -2,11 +2,13 @@
 XML Sanitization and Parsing.
 
 Battle-tested XML parsing with sanitization from LanguageDataExporter.
-Handles common XML issues: bad entities, newlines in seg elements, control chars.
+Handles common XML issues: bad entities, newlines in seg elements, control chars,
+malformed tag structures.
 """
 
 import re
 from pathlib import Path
+from typing import List
 
 # Try lxml first (more robust), fallback to standard library
 try:
@@ -18,6 +20,10 @@ except ImportError:
 
 # Regex for unescaped ampersands (not part of valid XML entities)
 _bad_entity_re = re.compile(r'&(?!lt;|gt;|amp;|apos;|quot;)')
+
+# Tag patterns for stack repair
+_tag_open = re.compile(r"<([A-Za-z0-9_]+)(\s[^>]*)?>")
+_tag_close = re.compile(r"</([A-Za-z0-9_]+)>")
 
 
 def _fix_bad_entities(txt: str) -> str:
@@ -33,6 +39,55 @@ def _preprocess_newlines(raw: str) -> str:
     return re.sub(r"<seg>(.*?)</seg>", repl, raw, flags=re.DOTALL)
 
 
+def _repair_tag_stack(raw: str) -> str:
+    """
+    Repair malformed XML tag structure.
+
+    Handles:
+    - Mismatched closing tags
+    - Empty closing tags (</>)
+    - Unclosed tags at end of file
+
+    Ported from LanguageDataExporter's battle-tested implementation.
+    """
+    stack: List[str] = []
+    out: List[str] = []
+
+    for line in raw.splitlines():
+        stripped = line.strip()
+
+        # Check for opening tag
+        mo = _tag_open.match(stripped)
+        if mo:
+            stack.append(mo.group(1))
+            out.append(line)
+            continue
+
+        # Check for closing tag
+        mc = _tag_close.match(stripped)
+        if mc:
+            if stack and stack[-1] == mc.group(1):
+                stack.pop()
+                out.append(line)
+            else:
+                # Mismatched closing tag - try to fix
+                out.append(stack and f"</{stack.pop()}>" or line)
+            continue
+
+        # Check for empty closing tag (</>)
+        if stripped.startswith("</>"):
+            out.append(stack and line.replace("</>", f"</{stack.pop()}>") or line)
+            continue
+
+        out.append(line)
+
+    # Close any unclosed tags at end
+    while stack:
+        out.append(f"</{stack.pop()}>")
+
+    return "\n".join(out)
+
+
 def sanitize_xml_content(raw: str) -> str:
     """
     Sanitize XML content to handle common issues.
@@ -42,6 +97,7 @@ def sanitize_xml_content(raw: str) -> str:
     - Unescaped ampersands
     - Newlines in seg elements
     - Unescaped < and & in attribute values
+    - Malformed tag structures (mismatched, unclosed tags)
     """
     # Remove control characters
     raw = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', raw)
@@ -59,6 +115,9 @@ def sanitize_xml_content(raw: str) -> str:
     # Fix unescaped & in attribute values (not part of entities)
     raw = re.sub(r'="([^"]*&[^ltgapoqu][^"]*)"',
                  lambda m: '="' + m.group(1).replace("&", "&amp;") + '"', raw)
+
+    # Repair malformed tag structure
+    raw = _repair_tag_stack(raw)
 
     return raw
 
@@ -94,3 +153,30 @@ def parse_xml_file(xml_path: Path) -> ET.Element:
             )
     else:
         return ET.fromstring(content)
+
+
+def iter_locstr_elements(root: ET.Element) -> List:
+    """
+    Iterate over LocStr elements with case-insensitive tag matching.
+
+    Tries: 'LocStr', 'locstr', 'LOCSTR' in order.
+
+    Args:
+        root: Root element to search
+
+    Returns:
+        List of LocStr elements found
+    """
+    # Try standard case first
+    elements = list(root.iter('LocStr'))
+    if elements:
+        return elements
+
+    # Try lowercase
+    elements = list(root.iter('locstr'))
+    if elements:
+        return elements
+
+    # Try uppercase
+    elements = list(root.iter('LOCSTR'))
+    return elements
