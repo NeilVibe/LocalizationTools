@@ -197,6 +197,7 @@ CATEGORIES = [
     "Contents",
     "Sequencer",  # → Master_Script.xlsx
     "Dialog",     # → Master_Script.xlsx
+    "Face",       # Facial animation QA (custom processing)
 ]
 
 # Category clustering: Multiple categories can merge into one master file
@@ -250,6 +251,27 @@ SCRIPT_COLS = {
 
 # Categories that use Script-type logic (preprocessing + name-based columns)
 SCRIPT_TYPE_CATEGORIES = {"sequencer", "dialog"}
+
+# =============================================================================
+# FACE CATEGORY (Facial animation QA)
+# =============================================================================
+# Face category is special:
+# - No standard master file (no Master_Face.xlsx template)
+# - STATUS values: NO ISSUE, MISMATCH, MISSING (not ISSUE/NO ISSUE/BLOCKED/KOREAN)
+# - Output: MasterMismatch_{lang}.xlsx, MasterMissing_{lang}.xlsx, MasterConflict_{lang}.xlsx
+# - Separate tracker tab: "Facial" with custom schema
+
+FACE_COLS = {
+    "eventname": "EventName",
+    "text": "Text",
+    "group": "Group",
+    "status": "STATUS",
+}
+
+FACE_STATUS_OPTIONS = ["NO ISSUE", "MISMATCH", "MISSING"]
+
+# Categories that use Face-type logic (custom processing, no master file)
+FACE_TYPE_CATEGORIES = {"face"}
 
 # Item description columns (for stricter Item matching)
 ITEM_DESC_COLS = {

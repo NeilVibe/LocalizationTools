@@ -3,7 +3,7 @@
 Test Script-Type Preprocessing
 ==============================
 
-Tests for preprocess_script_category() and create_filtered_script_template()
+Tests for preprocess_script_category() and build_master_from_universe()
 to ensure they handle edge cases and produce correct output.
 
 Run with: python3 tests/test_script_preprocessing.py
@@ -77,8 +77,9 @@ def test_preprocess_script_category():
         universe = preprocess_script_category(qa_folders, is_english=True)
 
         # Test 1: Returns dict with expected keys
-        if isinstance(universe, dict) and "rows" in universe and "row_count" in universe:
-            result.pass_test("Returns dict with expected keys")
+        expected_keys = {"rows", "row_count", "source_files", "errors", "headers", "num_columns"}
+        if isinstance(universe, dict) and expected_keys.issubset(universe.keys()):
+            result.pass_test("Returns dict with expected keys (including Phase B keys)")
         else:
             result.fail_test("Returns dict with expected keys", f"Got: {type(universe)}, keys: {universe.keys() if isinstance(universe, dict) else 'N/A'}")
 
@@ -136,6 +137,30 @@ def test_preprocess_script_category():
         else:
             result.fail_test("Errors list included in result", "No errors key")
 
+        # Test 8 (Phase B): full_row data is stored
+        if sample_key in rows:
+            full_row = rows[sample_key].get("full_row")
+            if full_row and isinstance(full_row, list) and len(full_row) > 0:
+                result.pass_test("full_row data stored for each row")
+            else:
+                result.fail_test("full_row data stored for each row", f"Got: {type(full_row)}")
+        else:
+            result.fail_test("full_row data stored for each row", "Sample key not found")
+
+        # Test 9 (Phase B): headers collected
+        headers = universe.get("headers", {})
+        if "Sequencer" in headers and len(headers["Sequencer"]) > 0:
+            result.pass_test("Sheet headers collected")
+        else:
+            result.fail_test("Sheet headers collected", f"Got headers keys: {list(headers.keys())}")
+
+        # Test 10 (Phase B): num_columns collected
+        num_cols = universe.get("num_columns", {})
+        if "Sequencer" in num_cols and num_cols["Sequencer"] > 0:
+            result.pass_test("Sheet num_columns collected")
+        else:
+            result.fail_test("Sheet num_columns collected", f"Got: {num_cols}")
+
     except Exception as e:
         print(f"  [ERROR] Exception during test: {e}")
         traceback.print_exc()
@@ -144,13 +169,14 @@ def test_preprocess_script_category():
     return result.summary()
 
 
-def test_create_filtered_script_template():
-    """Test create_filtered_script_template with mock fixture."""
-    print("\n--- Testing create_filtered_script_template ---")
+def test_build_master_from_universe():
+    """Test build_master_from_universe with mock fixture."""
+    print("\n--- Testing build_master_from_universe ---")
     result = TestResult()
 
-    # Import the functions
-    from core.compiler import preprocess_script_category, create_filtered_script_template
+    from core.compiler import preprocess_script_category, build_master_from_universe
+    import tempfile
+    import shutil
 
     fixture_path = Path(__file__).parent / "fixtures" / "mock_script_qa.xlsx"
 
@@ -167,84 +193,100 @@ def test_create_filtered_script_template():
         "images": [],
     }]
 
+    # Create temp master folder
+    temp_dir = Path(tempfile.mkdtemp(prefix="test_master_"))
+
     try:
         # First, run preprocessing
         universe = preprocess_script_category(qa_folders, is_english=True)
 
-        # Test 1: create_filtered_script_template doesn't crash
-        output_path = None
+        # Test 1: build_master_from_universe doesn't crash
         try:
-            output_path = create_filtered_script_template(fixture_path, universe)
-            result.pass_test("create_filtered_script_template completes without error")
+            master_wb, master_path = build_master_from_universe("Sequencer", universe, temp_dir)
+            result.pass_test("build_master_from_universe completes without error")
         except Exception as e:
-            result.fail_test("create_filtered_script_template completes without error", str(e))
+            result.fail_test("build_master_from_universe completes without error", str(e))
             traceback.print_exc()
             return result.summary()
 
-        # Test 2: Output file exists
-        if output_path and output_path.exists():
-            result.pass_test("Output file created")
+        # Test 2: Returns a workbook
+        if master_wb is not None:
+            result.pass_test("Returns a Workbook")
         else:
-            result.fail_test("Output file created", f"Path: {output_path}, exists: {output_path.exists() if output_path else 'N/A'}")
+            result.fail_test("Returns a Workbook", "Got None")
             return result.summary()
 
-        # Test 3: Output file is valid Excel
-        try:
-            wb = load_workbook(output_path)
-            result.pass_test("Output file is valid Excel")
-        except Exception as e:
-            result.fail_test("Output file is valid Excel", str(e))
-            return result.summary()
-
-        # Test 4: Contains expected sheets
-        if "Sequencer" in wb.sheetnames:
+        # Test 3: Contains expected sheets
+        if "Sequencer" in master_wb.sheetnames:
             result.pass_test("Contains Sequencer sheet")
         else:
-            result.fail_test("Contains Sequencer sheet", f"Sheets: {wb.sheetnames}")
+            result.fail_test("Contains Sequencer sheet", f"Sheets: {master_wb.sheetnames}")
 
-        if "Dialog" in wb.sheetnames:
+        if "Dialog" in master_wb.sheetnames:
             result.pass_test("Contains Dialog sheet")
         else:
-            result.fail_test("Contains Dialog sheet", f"Sheets: {wb.sheetnames}")
+            result.fail_test("Contains Dialog sheet", f"Sheets: {master_wb.sheetnames}")
 
-        # Test 5: Sequencer sheet has correct row count (header + data rows)
-        ws_seq = wb["Sequencer"]
-        expected_seq_rows = 6 + 1  # 6 with STATUS + 1 header
-        actual_seq_rows = ws_seq.max_row
-        if actual_seq_rows == expected_seq_rows:
-            result.pass_test(f"Sequencer has {expected_seq_rows} rows (6 data + header)")
-        else:
-            result.fail_test(f"Sequencer has {expected_seq_rows} rows", f"Got {actual_seq_rows}")
+        # Test 4: Sequencer sheet has correct row count (header + data rows)
+        if "Sequencer" in master_wb.sheetnames:
+            ws_seq = master_wb["Sequencer"]
+            expected_seq_rows = 6 + 1  # 6 with STATUS + 1 header
+            actual_seq_rows = ws_seq.max_row
+            if actual_seq_rows == expected_seq_rows:
+                result.pass_test(f"Sequencer has {expected_seq_rows} rows (6 data + header)")
+            else:
+                result.fail_test(f"Sequencer has {expected_seq_rows} rows", f"Got {actual_seq_rows}")
 
-        # Test 6: Dialog sheet has correct row count
-        ws_dialog = wb["Dialog"]
-        expected_dialog_rows = 3 + 1  # 3 with STATUS + 1 header
-        actual_dialog_rows = ws_dialog.max_row
-        if actual_dialog_rows == expected_dialog_rows:
-            result.pass_test(f"Dialog has {expected_dialog_rows} rows (3 data + header)")
-        else:
-            result.fail_test(f"Dialog has {expected_dialog_rows} rows", f"Got {actual_dialog_rows}")
+        # Test 5: Dialog sheet has correct row count
+        if "Dialog" in master_wb.sheetnames:
+            ws_dialog = master_wb["Dialog"]
+            expected_dialog_rows = 3 + 1  # 3 with STATUS + 1 header
+            actual_dialog_rows = ws_dialog.max_row
+            if actual_dialog_rows == expected_dialog_rows:
+                result.pass_test(f"Dialog has {expected_dialog_rows} rows (3 data + header)")
+            else:
+                result.fail_test(f"Dialog has {expected_dialog_rows} rows", f"Got {actual_dialog_rows}")
 
-        # Test 7: Headers are preserved
-        headers = [ws_seq.cell(1, col).value for col in range(1, 6)]
-        expected_headers = ["EventName", "Text", "Translation", "STATUS", "MEMO"]
-        if headers == expected_headers:
-            result.pass_test("Headers preserved correctly")
-        else:
-            result.fail_test("Headers preserved correctly", f"Got: {headers}")
+        # Test 6: STATUS/COMMENT/SCREENSHOT/STRINGID columns are removed from master
+        if "Sequencer" in master_wb.sheetnames:
+            ws_seq = master_wb["Sequencer"]
+            removed_cols = set()
+            for col in range(1, ws_seq.max_column + 1):
+                header = ws_seq.cell(row=1, column=col).value
+                if header and str(header).strip().upper() in ("STATUS", "COMMENT", "SCREENSHOT", "STRINGID"):
+                    removed_cols.add(str(header).strip().upper())
+            if not removed_cols:
+                result.pass_test("STATUS/COMMENT/SCREENSHOT/STRINGID columns removed")
+            else:
+                result.fail_test("STATUS/COMMENT/SCREENSHOT/STRINGID columns removed", f"Still found: {removed_cols}")
+
+        # Test 7: Data values are preserved
+        if "Sequencer" in master_wb.sheetnames:
+            ws_seq = master_wb["Sequencer"]
+            # Find EventName column
+            eventname_col = None
+            for col in range(1, ws_seq.max_column + 1):
+                if ws_seq.cell(row=1, column=col).value == "EventName":
+                    eventname_col = col
+                    break
+            if eventname_col:
+                first_val = ws_seq.cell(row=2, column=eventname_col).value
+                if first_val and str(first_val).startswith("SEQ_"):
+                    result.pass_test("Data values preserved in master")
+                else:
+                    result.fail_test("Data values preserved in master", f"First EventName: {first_val}")
+            else:
+                result.fail_test("Data values preserved in master", "EventName column not found")
 
         # Cleanup
-        wb.close()
-        try:
-            output_path.unlink()
-            print(f"  Cleaned up: {output_path}")
-        except:
-            pass
+        master_wb.close()
 
     except Exception as e:
         print(f"  [ERROR] Exception during test: {e}")
         traceback.print_exc()
         result.fail_test("No exceptions", str(e))
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
     return result.summary()
 
@@ -254,7 +296,7 @@ def test_edge_cases():
     print("\n--- Testing Edge Cases ---")
     result = TestResult()
 
-    from core.compiler import preprocess_script_category, create_filtered_script_template
+    from core.compiler import preprocess_script_category
     import tempfile
     import os
 
@@ -357,74 +399,62 @@ def test_edge_cases():
     return result.summary()
 
 
-def test_color_handling():
-    """Test that style copying handles various color types without crashing."""
-    print("\n--- Testing Color Handling ---")
+def test_build_prefiltered_rows():
+    """Test build_prefiltered_rows helper."""
+    print("\n--- Testing build_prefiltered_rows ---")
     result = TestResult()
 
-    from core.compiler import _safe_get_color_rgb
+    from core.compiler import preprocess_script_category, build_prefiltered_rows
 
-    # Test 1: None color object
-    try:
-        rgb = _safe_get_color_rgb(None)
-        if rgb == "FFFFFF":
-            result.pass_test("None color returns white")
-        else:
-            result.fail_test("None color returns white", f"Got: {rgb}")
-    except Exception as e:
-        result.fail_test("None color returns white", str(e))
+    fixture_path = Path(__file__).parent / "fixtures" / "mock_script_qa.xlsx"
 
-    # Test 2: Create a mock color with integer rgb (indexed color)
-    class MockColorInt:
-        rgb = 0  # Indexed color
+    if not fixture_path.exists():
+        print(f"  [ERROR] Fixture not found: {fixture_path}")
+        return False
 
-    try:
-        rgb = _safe_get_color_rgb(MockColorInt())
-        if rgb == "FFFFFF":
-            result.pass_test("Indexed color (int) returns white")
-        else:
-            result.fail_test("Indexed color (int) returns white", f"Got: {rgb}")
-    except Exception as e:
-        result.fail_test("Indexed color (int) returns white", str(e))
-
-    # Test 3: Valid RGB string
-    class MockColorValid:
-        rgb = "FF5500"
+    qa_folders = [{
+        "xlsx_path": fixture_path,
+        "username": "test_user",
+        "category": "Sequencer",
+        "folder_path": fixture_path.parent,
+        "images": [],
+    }]
 
     try:
-        rgb = _safe_get_color_rgb(MockColorValid())
-        if rgb == "FF5500":
-            result.pass_test("Valid RGB string preserved")
+        universe = preprocess_script_category(qa_folders, is_english=True)
+
+        # Test 1: Returns rows for valid user/file/sheet
+        rows = build_prefiltered_rows(universe, fixture_path, "Sequencer", "test_user")
+        if rows and isinstance(rows, list) and len(rows) > 0:
+            result.pass_test(f"Returns {len(rows)} prefiltered rows for Sequencer")
         else:
-            result.fail_test("Valid RGB string preserved", f"Got: {rgb}")
-    except Exception as e:
-        result.fail_test("Valid RGB string preserved", str(e))
+            result.fail_test("Returns prefiltered rows for Sequencer", f"Got: {rows}")
 
-    # Test 4: RGB with alpha channel (8 chars)
-    class MockColorAlpha:
-        rgb = "FFFF5500"  # Alpha + RGB
-
-    try:
-        rgb = _safe_get_color_rgb(MockColorAlpha())
-        if rgb == "FF5500":
-            result.pass_test("Alpha channel stripped correctly")
+        # Test 2: Returns None for non-existent user
+        rows = build_prefiltered_rows(universe, fixture_path, "Sequencer", "nonexistent_user")
+        if rows is None:
+            result.pass_test("Returns None for non-existent user")
         else:
-            result.fail_test("Alpha channel stripped correctly", f"Got: {rgb}")
-    except Exception as e:
-        result.fail_test("Alpha channel stripped correctly", str(e))
+            result.fail_test("Returns None for non-existent user", f"Got: {rows}")
 
-    # Test 5: Color with no rgb attribute
-    class MockColorNoRgb:
-        pass
-
-    try:
-        rgb = _safe_get_color_rgb(MockColorNoRgb())
-        if rgb == "FFFFFF":
-            result.pass_test("Missing rgb attribute returns white")
+        # Test 3: Returns None for non-existent sheet
+        rows = build_prefiltered_rows(universe, fixture_path, "NonExistentSheet", "test_user")
+        if rows is None:
+            result.pass_test("Returns None for non-existent sheet")
         else:
-            result.fail_test("Missing rgb attribute returns white", f"Got: {rgb}")
+            result.fail_test("Returns None for non-existent sheet", f"Got: {rows}")
+
+        # Test 4: Rows are sorted
+        rows = build_prefiltered_rows(universe, fixture_path, "Sequencer", "test_user")
+        if rows and rows == sorted(rows):
+            result.pass_test("Rows are sorted in ascending order")
+        else:
+            result.fail_test("Rows are sorted in ascending order", f"Got: {rows}")
+
     except Exception as e:
-        result.fail_test("Missing rgb attribute returns white", str(e))
+        print(f"  [ERROR] Exception during test: {e}")
+        traceback.print_exc()
+        result.fail_test("No exceptions", str(e))
 
     return result.summary()
 
@@ -438,9 +468,9 @@ def main():
     all_passed = True
 
     # Run each test suite
-    all_passed &= test_color_handling()
     all_passed &= test_preprocess_script_category()
-    all_passed &= test_create_filtered_script_template()
+    all_passed &= test_build_master_from_universe()
+    all_passed &= test_build_prefiltered_rows()
     all_passed &= test_edge_cases()
 
     print("\n" + "=" * 60)

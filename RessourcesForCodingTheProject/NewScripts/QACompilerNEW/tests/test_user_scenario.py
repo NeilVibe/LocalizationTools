@@ -64,8 +64,12 @@ def test_scenario_1_data_starts_after_row_11():
         wb.save(master_en / "Master_Script.xlsx")
         wb.close()
 
-        from core.compiler import collect_manager_stats_for_tracker
-        result = collect_manager_stats_for_tracker()
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = master_en
+        compiler_module.MASTER_FOLDER_CN = master_cn
+
+        from core.compiler import collect_all_master_data
+        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
 
         print(f"Result: {result}")
 
@@ -84,6 +88,9 @@ def test_scenario_1_data_starts_after_row_11():
     finally:
         config.MASTER_FOLDER_EN = original_en
         config.MASTER_FOLDER_CN = original_cn
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = original_en
+        compiler_module.MASTER_FOLDER_CN = original_cn
         shutil.rmtree(temp_dir)
 
 
@@ -124,8 +131,12 @@ def test_scenario_2_lowercase_status_header():
         wb.save(master_en / "Master_Script.xlsx")
         wb.close()
 
-        from core.compiler import collect_manager_stats_for_tracker
-        result = collect_manager_stats_for_tracker()
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = master_en
+        compiler_module.MASTER_FOLDER_CN = master_cn
+
+        from core.compiler import collect_all_master_data
+        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
 
         print(f"Result: {result}")
 
@@ -142,6 +153,9 @@ def test_scenario_2_lowercase_status_header():
     finally:
         config.MASTER_FOLDER_EN = original_en
         config.MASTER_FOLDER_CN = original_cn
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = original_en
+        compiler_module.MASTER_FOLDER_CN = original_cn
         shutil.rmtree(temp_dir)
 
 
@@ -182,8 +196,12 @@ def test_scenario_3_status_without_underscore():
         wb.save(master_en / "Master_Script.xlsx")
         wb.close()
 
-        from core.compiler import collect_manager_stats_for_tracker
-        result = collect_manager_stats_for_tracker()
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = master_en
+        compiler_module.MASTER_FOLDER_CN = master_cn
+
+        from core.compiler import collect_all_master_data
+        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
 
         print(f"Result: {result}")
 
@@ -196,6 +214,9 @@ def test_scenario_3_status_without_underscore():
     finally:
         config.MASTER_FOLDER_EN = original_en
         config.MASTER_FOLDER_CN = original_cn
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = original_en
+        compiler_module.MASTER_FOLDER_CN = original_cn
         shutil.rmtree(temp_dir)
 
 
@@ -237,8 +258,12 @@ def test_scenario_4_tester_status_prefix():
         wb.save(master_en / "Master_Script.xlsx")
         wb.close()
 
-        from core.compiler import collect_manager_stats_for_tracker
-        result = collect_manager_stats_for_tracker()
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = master_en
+        compiler_module.MASTER_FOLDER_CN = master_cn
+
+        from core.compiler import collect_all_master_data
+        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
 
         print(f"Result: {result}")
 
@@ -254,6 +279,9 @@ def test_scenario_4_tester_status_prefix():
     finally:
         config.MASTER_FOLDER_EN = original_en
         config.MASTER_FOLDER_CN = original_cn
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = original_en
+        compiler_module.MASTER_FOLDER_CN = original_cn
         shutil.rmtree(temp_dir)
 
 
@@ -344,8 +372,12 @@ def test_scenario_5_real_user_structure():
         wb.save(master_en / "Master_Script.xlsx")
         wb.close()
 
-        from core.compiler import collect_manager_stats_for_tracker
-        result = collect_manager_stats_for_tracker()
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = master_en
+        compiler_module.MASTER_FOLDER_CN = master_cn
+
+        from core.compiler import collect_all_master_data
+        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
 
         print(f"\nResult categories: {list(result.keys())}")
 
@@ -381,6 +413,9 @@ def test_scenario_5_real_user_structure():
     finally:
         config.MASTER_FOLDER_EN = original_en
         config.MASTER_FOLDER_CN = original_cn
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = original_en
+        compiler_module.MASTER_FOLDER_CN = original_cn
         shutil.rmtree(temp_dir)
 
 
@@ -431,8 +466,12 @@ def test_scenario_6_all_empty_status():
         wb.save(master_en / "Master_Script.xlsx")
         wb.close()
 
-        from core.compiler import collect_manager_stats_for_tracker
-        result = collect_manager_stats_for_tracker()
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = master_en
+        compiler_module.MASTER_FOLDER_CN = master_cn
+
+        from core.compiler import collect_all_master_data
+        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
 
         print(f"Result: {result}")
 
@@ -453,6 +492,9 @@ def test_scenario_6_all_empty_status():
     finally:
         config.MASTER_FOLDER_EN = original_en
         config.MASTER_FOLDER_CN = original_cn
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = original_en
+        compiler_module.MASTER_FOLDER_CN = original_cn
         shutil.rmtree(temp_dir)
 
 

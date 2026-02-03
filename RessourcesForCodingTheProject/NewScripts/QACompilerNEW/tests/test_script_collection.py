@@ -158,7 +158,6 @@ def run_collection_test():
         create_mock_master_script(master_folder_en)
 
         # Temporarily override config paths
-        from config import MASTER_FOLDER_EN as orig_en, MASTER_FOLDER_CN as orig_cn
         import config
         original_master_en = config.MASTER_FOLDER_EN
         original_master_cn = config.MASTER_FOLDER_CN
@@ -178,11 +177,11 @@ def run_collection_test():
 
         # Run collection
         print("\n" + "=" * 60)
-        print("Running collect_manager_status()...")
+        print("Running collect_all_master_data()...")
         print("=" * 60)
 
-        from core.compiler import collect_manager_status
-        result = collect_manager_status(master_folder_en)
+        from core.compiler import collect_all_master_data
+        (result, _, _, _, _) = collect_all_master_data(tester_mapping={})
 
         # Print results
         print("\n" + "=" * 60)
@@ -209,11 +208,13 @@ def run_collection_test():
         else:
             print("No debug log generated!")
 
-        # Restore config
+    finally:
+        # Restore config and compiler module paths
         config.MASTER_FOLDER_EN = original_master_en
         config.MASTER_FOLDER_CN = original_master_cn
-
-    finally:
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = original_master_en
+        compiler_module.MASTER_FOLDER_CN = original_master_cn
         # Cleanup
         shutil.rmtree(temp_dir)
         print(f"\nCleaned up: {temp_dir}")

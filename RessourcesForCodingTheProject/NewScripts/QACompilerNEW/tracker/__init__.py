@@ -7,6 +7,7 @@ Progress tracker modules for QA Compiler.
 - daily.py: DAILY sheet builder
 - total.py: TOTAL sheet builder with rankings
 - coverage.py: Language data coverage analysis
+- facial.py: Facial sheet builder (Face-specific QA tracking)
 """
 
 from tracker.data import (
@@ -30,6 +31,8 @@ from tracker.coverage import (
     CategoryCoverage,
 )
 
+from tracker.facial import update_facial_data_sheet, build_facial_sheet
+
 __all__ = [
     # Data operations
     "get_or_create_tracker",
@@ -47,4 +50,7 @@ __all__ = [
     "load_voice_recording_sheet",
     "CoverageReport",
     "CategoryCoverage",
+    # Facial tracking
+    "update_facial_data_sheet",
+    "build_facial_sheet",
 ]
