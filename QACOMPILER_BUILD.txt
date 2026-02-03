@@ -53,3 +53,4 @@ Build
 Build 498: Script optimization (read_only mode + column cache)
 Build 499: Face category + Facial tracker + optimizations
 Build 500: Face conflict→MISMATCH + cross-tab dedup
+Build 501: Full terminal progress logging at every step
