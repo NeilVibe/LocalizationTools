@@ -285,35 +285,41 @@ def collect_all_master_data(tester_mapping: Dict = None):
                             if sheet_name not in manager_status[cat]:
                                 manager_status[cat][sheet_name] = {}
 
-                        # === SINGLE HEADER SCAN: detect all column types at once ===
+                        # === HEADER SCAN via iter_rows (streaming, not random access) ===
                         stringid_col = None
-                        comment_cols = {}          # username -> col
-                        status_cols = {}           # username -> col (STATUS_{User} = manager status)
-                        manager_comment_cols = {}  # username -> col
-                        screenshot_cols = {}       # username -> col
-                        tester_status_cols = {}    # username -> col
+                        comment_cols = {}          # username -> 0-based idx
+                        status_cols = {}           # username -> 0-based idx (STATUS_{User} = manager status)
+                        manager_comment_cols = {}  # username -> 0-based idx
+                        screenshot_cols = {}       # username -> 0-based idx
+                        tester_status_cols = {}    # username -> 0-based idx
 
-                        for col in range(1, ws.max_column + 1):
-                            header = ws.cell(row=1, column=col).value
-                            if not header:
+                        # Read header row as tuple (single streaming read, not cell-by-cell)
+                        header_iter = ws.iter_rows(min_row=1, max_row=1, max_col=ws.max_column, values_only=True)
+                        header_tuple = next(header_iter, None)
+                        if not header_tuple:
+                            continue
+
+                        stringid_idx = None  # 0-based index
+                        for col_idx, header_val in enumerate(header_tuple):
+                            if not header_val:
                                 continue
-                            header_str = str(header)
+                            header_str = str(header_val)
                             header_upper = header_str.upper()
 
                             if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
-                                status_cols[header_str[7:]] = col
+                                status_cols[header_str[7:]] = col_idx
                             elif header_upper.startswith("COMMENT_"):
-                                comment_cols[header_str[8:]] = col
+                                comment_cols[header_str[8:]] = col_idx
                             elif header_upper.startswith("MANAGER_COMMENT_"):
-                                manager_comment_cols[header_str[16:]] = col
+                                manager_comment_cols[header_str[16:]] = col_idx
                             elif header_upper.startswith("SCREENSHOT_"):
-                                screenshot_cols[header_str[11:]] = col
+                                screenshot_cols[header_str[11:]] = col_idx
                             elif header_upper.startswith("TESTER_STATUS_"):
-                                tester_status_cols[header_str[14:]] = col
+                                tester_status_cols[header_str[14:]] = col_idx
                             elif header_upper == "STRINGID":
-                                stringid_col = col
-                            elif header_upper == "EVENTNAME" and not stringid_col:
-                                stringid_col = col
+                                stringid_idx = col_idx
+                            elif header_upper == "EVENTNAME" and stringid_idx is None:
+                                stringid_idx = col_idx
 
                         # DEBUG: Script category logging
                         is_script_cat = category.lower() in ("sequencer", "dialog")
@@ -324,7 +330,7 @@ def collect_all_master_data(tester_mapping: Dict = None):
                             _script_debug_log(f"{'='*60}")
                             _script_debug_log(f"  STATUS_ columns: {list(status_cols.items())}")
                             _script_debug_log(f"  COMMENT_ columns: {list(comment_cols.items())}")
-                            _script_debug_log(f"  STRINGID/EventName col: {stringid_col}")
+                            _script_debug_log(f"  STRINGID/EventName idx: {stringid_idx}")
 
                         if not status_cols:
                             if is_script_cat:
@@ -333,46 +339,48 @@ def collect_all_master_data(tester_mapping: Dict = None):
 
                         log(f"  [{sheet_name}] STATUS cols: {list(status_cols.keys())}")
 
-                        # === SINGLE-PASS ROW SCAN: collect all 3 data structures ===
+                        # === SINGLE-PASS ROW SCAN via iter_rows (streaming tuples) ===
+                        # CRITICAL: iter_rows is O(n) streaming vs ws.cell() which is O(n²) in read_only mode
                         script_debug_rows_stored = 0
                         script_debug_rows_skipped = 0
+                        row_count = 0
 
-                        for row in range(2, ws.max_row + 1):
-                            for username, status_col_idx in status_cols.items():
-                                status_value = ws.cell(row=row, column=status_col_idx).value
+                        for row_tuple in ws.iter_rows(min_row=2, max_col=ws.max_column, values_only=True):
+                            row_count += 1
+                            for username, status_idx in status_cols.items():
+                                status_value = row_tuple[status_idx] if status_idx < len(row_tuple) else None
                                 status_str = str(status_value).strip() if status_value else ""
                                 status_upper = status_str.upper()
 
-                                # Get manager comment for this user
-                                mc_col = manager_comment_cols.get(username)
-                                mc_value = ws.cell(row=row, column=mc_col).value if mc_col else None
+                                # Get manager comment for this user (tuple index)
+                                mc_idx = manager_comment_cols.get(username)
+                                mc_value = row_tuple[mc_idx] if mc_idx is not None and mc_idx < len(row_tuple) else None
 
                                 has_status = status_upper in VALID_MANAGER_STATUS
                                 has_manager_comment = mc_value and str(mc_value).strip()
 
                                 # --- DATA 1: fixed_screenshots ---
-                                # If STATUS=FIXED, collect screenshot filename
                                 if status_upper == "FIXED":
-                                    sc_col = screenshot_cols.get(username)
-                                    if sc_col:
-                                        sc_val = ws.cell(row=row, column=sc_col).value
+                                    sc_idx = screenshot_cols.get(username)
+                                    if sc_idx is not None and sc_idx < len(row_tuple):
+                                        sc_val = row_tuple[sc_idx]
                                         if sc_val and str(sc_val).strip():
                                             fixed_screenshots.add(str(sc_val).strip())
 
                                 # --- DATA 2: manager_status ---
                                 if has_status or has_manager_comment:
-                                    # Get STRINGID
+                                    # Get STRINGID (tuple index)
                                     stringid = ""
-                                    if stringid_col:
-                                        sid_val = ws.cell(row=row, column=stringid_col).value
+                                    if stringid_idx is not None and stringid_idx < len(row_tuple):
+                                        sid_val = row_tuple[stringid_idx]
                                         if sid_val:
                                             stringid = str(sid_val).strip()
 
-                                    # Get tester's comment text
+                                    # Get tester's comment text (tuple index)
                                     tester_comment_text = ""
-                                    c_col = comment_cols.get(username)
-                                    if c_col:
-                                        full_comment = ws.cell(row=row, column=c_col).value
+                                    c_idx = comment_cols.get(username)
+                                    if c_idx is not None and c_idx < len(row_tuple):
+                                        full_comment = row_tuple[c_idx]
                                         tester_comment_text = extract_comment_text(full_comment)
 
                                     if tester_comment_text:
@@ -399,9 +407,9 @@ def collect_all_master_data(tester_mapping: Dict = None):
                                         script_debug_rows_skipped += 1
 
                                 # --- DATA 3: manager_stats (tracker counts) ---
-                                # Count all status values for tracker, not just those with comments
-                                c_col_for_stats = comment_cols.get(username)
-                                comment_val = ws.cell(row=row, column=c_col_for_stats).value if c_col_for_stats else None
+                                # Reuse mc_value/comment from above (no duplicate cell read)
+                                c_stats_idx = comment_cols.get(username)
+                                comment_val = row_tuple[c_stats_idx] if c_stats_idx is not None and c_stats_idx < len(row_tuple) else None
                                 comment_str_val = str(comment_val).strip() if comment_val else ""
                                 has_comment = bool(comment_str_val)
 
@@ -427,8 +435,8 @@ def collect_all_master_data(tester_mapping: Dict = None):
 
                         log(f"    Stored {script_debug_rows_stored} manager_status entries, skipped {script_debug_rows_skipped}")
                         sheets_processed += 1
-                        sheet_rows = ws.max_row - 1 if ws.max_row else 0
-                        total_rows_scanned += sheet_rows
+                        total_rows_scanned += row_count
+                        print(f"      {sheet_name}: {row_count} rows, {script_debug_rows_stored} status entries")
 
                     print(f"    Done: {sheets_processed} sheets, {total_rows_scanned} rows scanned")
 
