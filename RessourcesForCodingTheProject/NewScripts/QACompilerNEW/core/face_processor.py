@@ -7,7 +7,7 @@ Unlike standard categories, Face does NOT build a traditional Master file.
 Instead it produces:
 - MasterMismatch_{lang}.xlsx  — EventNames with MISMATCH status (deduped)
 - MasterMissing_{lang}.xlsx   — EventNames with MISSING status (deduped)
-- MasterConflict_{lang}.xlsx  — EventNames that appear in BOTH (also put in MISSING)
+- MasterConflict_{lang}.xlsx  — EventNames that appear in BOTH (also put in MISMATCH)
 
 Each file preserves history: each compilation adds a NEW tab named by date (MMDD)
 from the latest QA file modification time. Old tabs are kept for reference.
@@ -52,7 +52,7 @@ def process_face_category(
     1. Reads all QA files, collects EventName + STATUS + Group
     2. Separates MISMATCH vs MISSING (ignores NO ISSUE)
     3. Deduplicates by EventName
-    4. Detects conflicts (same EventName in both) -> flags in conflict file, puts in MISSING
+    4. Detects conflicts (same EventName in both) -> flags in conflict file, puts in MISMATCH
     5. Outputs 2-3 Excel files in master_folder
     6. Returns daily_entries for Facial tracker
 
@@ -179,15 +179,15 @@ def process_face_category(
     # Detect conflicts: EventNames in BOTH mismatch and missing
     conflict_events = set(mismatch_events.keys()) & set(missing_events.keys())
 
-    # Move conflicts to MISSING (merge groups from mismatch into missing)
+    # Move conflicts to MISMATCH (merge groups from missing into mismatch)
     for evt in conflict_events:
-        missing_events[evt] |= mismatch_events.pop(evt)
+        mismatch_events[evt] |= missing_events.pop(evt)
 
     # Summary
     logger.info("  [FACE SUMMARY]")
     logger.info(f"  MISMATCH events: {len(mismatch_events)}")
     logger.info(f"  MISSING events:  {len(missing_events)}")
-    logger.info(f"  CONFLICT events: {len(conflict_events)} (moved to MISSING)")
+    logger.info(f"  CONFLICT events: {len(conflict_events)} (moved to MISMATCH)")
 
     # Compute date tab name from latest QA file mtime (MMDD format)
     date_tab = datetime.fromtimestamp(latest_mtime).strftime("%m%d") if latest_mtime > 0 else datetime.now().strftime("%m%d")
@@ -203,6 +203,30 @@ def process_face_category(
     daily_entries = _build_face_daily_entries(tester_stats, lang_label)
 
     return daily_entries
+
+
+def _collect_previous_eventnames(wb, date_tab: str) -> set:
+    """
+    Collect all EventNames from existing date tabs in the workbook.
+    Used for cross-tab deduplication: only write NEW EventNames per date.
+
+    Args:
+        wb: Loaded openpyxl Workbook
+        date_tab: Current date tab name (excluded from scan)
+
+    Returns:
+        Set of EventName strings from all previous tabs
+    """
+    previous = set()
+    for sheet_name in wb.sheetnames:
+        if sheet_name == date_tab:
+            continue
+        old_ws = wb[sheet_name]
+        for row in range(2, (old_ws.max_row or 1) + 1):
+            val = old_ws.cell(row=row, column=1).value
+            if val:
+                previous.add(str(val).strip())
+    return previous
 
 
 def _write_face_output(output_path: Path, events: Dict[str, set], label: str, date_tab: str) -> None:
@@ -224,30 +248,37 @@ def _write_face_output(output_path: Path, events: Dict[str, set], label: str, da
         # Remove same-date tab if re-running on same day
         if date_tab in wb.sheetnames:
             del wb[date_tab]
+        # Cross-tab dedup: only write NEW EventNames not in any previous tab
+        previous_eventnames = _collect_previous_eventnames(wb, date_tab)
+        new_events = {e: g for e, g in events.items() if e not in previous_eventnames}
+        skipped = len(events) - len(new_events)
+        if skipped:
+            logger.info(f"  [{label}] Dedup: {skipped} EventNames already in previous tabs, {len(new_events)} new")
         ws = wb.create_sheet(date_tab)
     else:
         wb = Workbook()
         ws = wb.active
         ws.title = date_tab
+        new_events = events  # First tab, no dedup needed
 
     try:
         # Header (using module-level style constants)
-        ws.cell(row=1, column=1, value="EventName")
-        ws.cell(row=1, column=1).fill = _FACE_HEADER_FILL
-        ws.cell(row=1, column=1).font = _FACE_HEADER_FONT
-        ws.cell(row=1, column=1).alignment = _FACE_HEADER_ALIGN
+        header_cell = ws.cell(row=1, column=1, value="EventName")
+        header_cell.fill = _FACE_HEADER_FILL
+        header_cell.font = _FACE_HEADER_FONT
+        header_cell.alignment = _FACE_HEADER_ALIGN
 
-        # Data rows (sorted for consistency)
-        for idx, eventname in enumerate(sorted(events.keys()), 2):
+        # Data rows (sorted, only NEW EventNames)
+        for idx, eventname in enumerate(sorted(new_events.keys()), 2):
             ws.cell(row=idx, column=1, value=eventname)
 
         # Autofit column width
-        max_len = max((len(str(e)) for e in events), default=10)
+        max_len = max((len(str(e)) for e in new_events), default=10)
         ws.column_dimensions['A'].width = max(max_len + 2, 15)
 
         wb.save(output_path)
         tab_count = len(wb.sheetnames)
-        logger.info(f"  Saved: {output_path.name} tab '{date_tab}' ({len(events)} events, {tab_count} total tabs)")
+        logger.info(f"  Saved: {output_path.name} tab '{date_tab}' ({len(new_events)} new events, {tab_count} total tabs)")
     finally:
         wb.close()
 
@@ -269,37 +300,44 @@ def _write_face_conflict(output_path: Path, conflict_events: set, date_tab: str)
         wb = load_workbook(output_path)
         if date_tab in wb.sheetnames:
             del wb[date_tab]
+        # Cross-tab dedup: only write NEW conflict EventNames
+        previous_eventnames = _collect_previous_eventnames(wb, date_tab)
+        new_conflicts = conflict_events - previous_eventnames
+        skipped = len(conflict_events) - len(new_conflicts)
+        if skipped:
+            logger.info(f"  [CONFLICT] Dedup: {skipped} EventNames already in previous tabs, {len(new_conflicts)} new")
         ws = wb.create_sheet(date_tab)
     else:
         wb = Workbook()
         ws = wb.active
         ws.title = date_tab
+        new_conflicts = conflict_events  # First tab, no dedup needed
 
     try:
         # Header (using module-level style constants)
-        ws.cell(row=1, column=1, value="EventName")
-        ws.cell(row=1, column=1).fill = _CONFLICT_HEADER_FILL
-        ws.cell(row=1, column=1).font = _FACE_HEADER_FONT
-        ws.cell(row=1, column=1).alignment = _FACE_HEADER_ALIGN
+        header_a = ws.cell(row=1, column=1, value="EventName")
+        header_a.fill = _CONFLICT_HEADER_FILL
+        header_a.font = _FACE_HEADER_FONT
+        header_a.alignment = _FACE_HEADER_ALIGN
 
-        ws.cell(row=1, column=2, value="Note")
-        ws.cell(row=1, column=2).fill = _CONFLICT_HEADER_FILL
-        ws.cell(row=1, column=2).font = _FACE_HEADER_FONT
-        ws.cell(row=1, column=2).alignment = _FACE_HEADER_ALIGN
+        header_b = ws.cell(row=1, column=2, value="Note")
+        header_b.fill = _CONFLICT_HEADER_FILL
+        header_b.font = _FACE_HEADER_FONT
+        header_b.alignment = _FACE_HEADER_ALIGN
 
-        # Data rows
-        for idx, eventname in enumerate(sorted(conflict_events), 2):
+        # Data rows (only NEW conflicts)
+        for idx, eventname in enumerate(sorted(new_conflicts), 2):
             ws.cell(row=idx, column=1, value=eventname)
-            ws.cell(row=idx, column=2, value="In both MISMATCH and MISSING (placed in MISSING)")
+            ws.cell(row=idx, column=2, value="In both MISMATCH and MISSING (placed in MISMATCH)")
 
         # Autofit
-        max_len = max((len(str(e)) for e in conflict_events), default=10)
+        max_len = max((len(str(e)) for e in new_conflicts), default=10)
         ws.column_dimensions['A'].width = max(max_len + 2, 15)
         ws.column_dimensions['B'].width = 50
 
         wb.save(output_path)
         tab_count = len(wb.sheetnames)
-        logger.info(f"  Saved: {output_path.name} tab '{date_tab}' ({len(conflict_events)} conflicts, {tab_count} total tabs)")
+        logger.info(f"  Saved: {output_path.name} tab '{date_tab}' ({len(new_conflicts)} new conflicts, {tab_count} total tabs)")
     finally:
         wb.close()
 
