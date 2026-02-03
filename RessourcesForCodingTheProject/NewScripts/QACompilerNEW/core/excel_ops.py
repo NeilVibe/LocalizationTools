@@ -153,6 +153,30 @@ def find_column_by_header(ws, header_name: str, case_insensitive: bool = True) -
     return None
 
 
+def build_column_map(ws) -> Dict[str, int]:
+    """
+    Build a dict mapping header names to column indices (1-based).
+
+    Scans row 1 once and returns {HEADER_UPPER: col_index}.
+    First occurrence wins (matches find_column_by_header behavior).
+    Keys are uppercased for case-insensitive matching.
+
+    Args:
+        ws: Worksheet
+
+    Returns:
+        Dict mapping uppercase header name to column index
+    """
+    col_map = {}
+    for col in range(1, ws.max_column + 1):
+        header = ws.cell(row=1, column=col).value
+        if header:
+            key = str(header).strip().upper()
+            if key not in col_map:
+                col_map[key] = col
+    return col_map
+
+
 def find_column_by_prefix(ws, prefix: str) -> Optional[int]:
     """
     Find column index by header prefix.

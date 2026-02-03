@@ -159,7 +159,7 @@ def get_item_desc_column(is_english: bool) -> int:
 # ROW DATA EXTRACTION
 # =============================================================================
 
-def extract_qa_row_data(qa_ws, row: int, category: str, is_english: bool) -> Dict:
+def extract_qa_row_data(qa_ws, row: int, category: str, is_english: bool, column_cache: Dict = None) -> Dict:
     """
     Extract matching key data from a QA worksheet row.
 
@@ -168,11 +168,17 @@ def extract_qa_row_data(qa_ws, row: int, category: str, is_english: bool) -> Dic
         row: Row number (1-based)
         category: Category name
         is_english: Whether file is English
+        column_cache: Optional dict from build_column_map() for O(1) header lookups.
+                      When None (default), falls back to find_column_by_header() per call.
 
     Returns:
         Dict with extracted data for matching
     """
-    stringid_col = find_column_by_header(qa_ws, "STRINGID")
+    # Use cache for O(1) column lookup, or fall back to linear scan
+    if column_cache is not None:
+        stringid_col = column_cache.get("STRINGID")
+    else:
+        stringid_col = find_column_by_header(qa_ws, "STRINGID")
     stringid = sanitize_stringid_for_match(qa_ws.cell(row, stringid_col).value) if stringid_col else ""
 
     category_lower = category.lower()
@@ -203,13 +209,19 @@ def extract_qa_row_data(qa_ws, row: int, category: str, is_english: bool) -> Dic
         # Sequencer/Dialog: use Translation (Text) + EventName
         # EventName is used as STRINGID and for fallback matching
         # Use NAME-based detection for "Text" column (not position!)
-        trans_col = get_translation_column_by_name(qa_ws, category)
+        if column_cache is not None:
+            trans_col = column_cache.get(SCRIPT_COLS.get("translation", "Text").upper())
+        else:
+            trans_col = get_translation_column_by_name(qa_ws, category)
         if not trans_col:
             # Fallback to position if header not found
             trans_col = get_translation_column(category, is_english)
         translation = str(qa_ws.cell(row, trans_col).value or "").strip()
         # For Script-type, EventName is the primary identifier - find it by header
-        eventname_col = find_column_by_header(qa_ws, "EventName")
+        if column_cache is not None:
+            eventname_col = column_cache.get("EVENTNAME")
+        else:
+            eventname_col = find_column_by_header(qa_ws, "EventName")
         eventname = ""
         if eventname_col:
             eventname = str(qa_ws.cell(row, eventname_col).value or "").strip()
