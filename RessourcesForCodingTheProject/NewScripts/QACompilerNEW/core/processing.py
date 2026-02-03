@@ -394,7 +394,8 @@ def process_sheet(
     is_english: bool = True,
     image_mapping: Dict = None,
     xlsx_path: Path = None,
-    manager_status: Dict = None
+    manager_status: Dict = None,
+    prefiltered_rows: List[int] = None
 ) -> Dict:
     """
     Process a single sheet: copy COMMENT and SCREENSHOT from QA to master.
@@ -416,6 +417,8 @@ def process_sheet(
         image_mapping: Dict mapping original_name -> new_name
         xlsx_path: Path to QA xlsx file (for modification time)
         manager_status: Dict for preserving manager status
+        prefiltered_rows: Optional list of row numbers to process (Phase C2 optimization).
+                          If provided, skips the STATUS column scan for Script categories.
 
     Returns:
         Dict with {comments, screenshots, stats, manager_restored, match_stats}
@@ -510,21 +513,25 @@ def process_sheet(
     master_index = build_master_index(master_ws, category, is_english)
 
     # OPTIMIZATION: For Script-type categories, pre-filter to only rows WITH status
-    # This dramatically speeds up processing for large files (Sequencer/Dialog can have 10,000+ rows)
+    # Phase C2: If prefiltered_rows provided from universe, use directly (skip scan)
     rows_to_process = []
-    if is_script and qa_status_col:
-        # SIMPLE APPROACH: If STATUS has ANY value (not empty), include the row
-        # Accept both "NON-ISSUE" (Script-type) and "NO ISSUE" (other categories)
-        status_distribution = {}  # Track what statuses we find
+    if prefiltered_rows is not None:
+        # Phase C2: rows already known from preprocessing - skip STATUS column scan
+        rows_to_process = prefiltered_rows
+        print(f"      [OPTIMIZATION] {len(rows_to_process)} prefiltered rows (from universe)")
+        _script_debug_log(f"  Using prefiltered_rows: {len(rows_to_process)} rows")
+        _script_debug_flush()
+    elif is_script and qa_status_col:
+        # Fallback: scan STATUS column (original behavior)
+        status_distribution = {}
         for qa_row in range(2, qa_ws.max_row + 1):
             status_val = qa_ws.cell(row=qa_row, column=qa_status_col).value
-            if status_val and str(status_val).strip():  # Any non-empty value
+            if status_val and str(status_val).strip():
                 rows_to_process.append(qa_row)
                 status_upper = str(status_val).strip().upper()
                 status_distribution[status_upper] = status_distribution.get(status_upper, 0) + 1
         print(f"      [OPTIMIZATION] {len(rows_to_process)} rows with STATUS (skipping {qa_ws.max_row - 1 - len(rows_to_process)} empty rows)")
 
-        # DEBUG: Log status distribution for Script categories
         _script_debug_log(f"  STATUS column found at col {qa_status_col}")
         _script_debug_log(f"  rows_to_process: {len(rows_to_process)}")
         _script_debug_log(f"  STATUS distribution in QA file:")

@@ -105,7 +105,7 @@ def _script_debug_clear():
 
 from config import (
     CATEGORIES, CATEGORY_TO_MASTER, TRANSLATION_COLS, SCRIPT_TYPE_CATEGORIES,
-    SCRIPT_COLS,
+    SCRIPT_COLS, FACE_TYPE_CATEGORIES,
     MASTER_FOLDER_EN, MASTER_FOLDER_CN,
     IMAGES_FOLDER_EN, IMAGES_FOLDER_CN,
     TRACKER_PATH,
@@ -135,72 +135,7 @@ VALID_TESTER_STATUS = {"ISSUE", "NO ISSUE", "NON-ISSUE", "BLOCKED", "KOREAN"}
 
 
 # =============================================================================
-# FIXED SCREENSHOTS COLLECTION
-# =============================================================================
-
-def collect_fixed_screenshots(master_folder: Path) -> set:
-    """
-    Collect all screenshot filenames where STATUS_{User} = FIXED.
-
-    Used to skip copying these images during rebuild (optimization).
-
-    Args:
-        master_folder: Master folder to scan (EN or CN)
-
-    Returns:
-        Set of screenshot filenames that are FIXED
-    """
-    fixed_screenshots = set()
-
-    for master_file in master_folder.glob("Master_*.xlsx"):
-        try:
-            wb = safe_load_workbook(master_file)
-
-            for sheet_name in wb.sheetnames:
-                if sheet_name == "STATUS":
-                    continue
-
-                ws = wb[sheet_name]
-
-                # Find all SCREENSHOT_{User} and STATUS_{User} columns
-                screenshot_cols = {}  # username -> col
-                status_cols = {}      # username -> col
-
-                for col in range(1, ws.max_column + 1):
-                    header = ws.cell(row=1, column=col).value
-                    if header:
-                        header_str = str(header)
-                        header_upper = header_str.upper()  # Case-insensitive
-                        if header_upper.startswith("SCREENSHOT_"):
-                            username = header_str[11:]  # Skip "SCREENSHOT_" prefix
-                            screenshot_cols[username] = col
-                        elif header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
-                            username = header_str[7:]  # Skip "STATUS_" prefix
-                            status_cols[username] = col
-
-                # Collect screenshots where status is FIXED
-                for row in range(2, ws.max_row + 1):
-                    for username in screenshot_cols:
-                        screenshot_col = screenshot_cols[username]
-                        status_col = status_cols.get(username)
-
-                        screenshot_val = ws.cell(row=row, column=screenshot_col).value
-                        if screenshot_val and status_col:
-                            status_val = ws.cell(row=row, column=status_col).value
-                            if status_val and str(status_val).strip().upper() == "FIXED":
-                                # Add the screenshot filename
-                                fixed_screenshots.add(str(screenshot_val).strip())
-
-            wb.close()
-
-        except Exception as e:
-            print(f"  WARN: Error reading {master_file.name} for fixed screenshots: {e}")
-
-    return fixed_screenshots
-
-
-# =============================================================================
-# MANAGER STATUS COLLECTION
+# COMMENT TEXT EXTRACTION
 # =============================================================================
 
 def extract_comment_text(full_comment) -> str:
@@ -218,509 +153,327 @@ def extract_comment_text(full_comment) -> str:
     return comment_str
 
 
-def collect_manager_status(master_folder: Path) -> Dict:
+# =============================================================================
+# CONSOLIDATED MASTER DATA COLLECTION (Phase A optimization)
+# =============================================================================
+# Replaces 3 separate functions that each opened all master files independently:
+#   - collect_fixed_screenshots()  -> fixed_screenshots set
+#   - collect_manager_status()     -> manager_status dict
+#   - collect_manager_stats_for_tracker() -> manager_stats dict
+# Now: ONE pass per master file with read_only=True for all 3 data structures.
+
+def collect_all_master_data(tester_mapping: Dict = None):
     """
-    Read existing Master files and collect all STATUS_{User} and MANAGER_COMMENT_{User} values.
+    Single-pass collection of ALL master file data for compilation.
 
-    KEYED BY (STRINGID, TESTER_COMMENT_TEXT) - Manager status is paired with tester's comment.
-
-    Dict Structure:
-        {
-            category: {
-                sheet_name: {
-                    (stringid, tester_comment_text): {
-                        username: {
-                            "status": "FIXED",
-                            "manager_comment": "Fixed in build 5"
-                        }
-                    }
-                }
-            }
-        }
-
-    Matching Logic:
-        - Primary key: (stringid, tester_comment_text) - exact match
-        - Fallback key: ("", tester_comment_text) - when STRINGID changes but comment same
+    Opens each master file ONCE with read_only=True, extracting:
+    1. manager_status (EN/CN) - for preserving manager status during rebuild
+    2. fixed_screenshots (EN/CN) - for skipping FIXED images during copy
+    3. manager_stats - for tracker (FIXED/REPORTED/CHECKING/NON-ISSUE counts)
 
     Args:
-        master_folder: Which Master folder to scan (EN or CN)
+        tester_mapping: Dict mapping tester names to language codes (EN/CN).
+                        If None, loaded from file.
 
     Returns:
-        Dict with manager status keyed by (stringid, tester_comment_text)
+        Tuple of (manager_status_en, manager_status_cn,
+                  fixed_screenshots_en, fixed_screenshots_cn,
+                  manager_stats)
     """
-    manager_status = {}
+    if tester_mapping is None:
+        tester_mapping = load_tester_mapping()
 
-    for category in CATEGORIES:
-        target_category = get_target_master_category(category)
-        master_path = master_folder / f"Master_{target_category}.xlsx"
-        if not master_path.exists():
-            continue
-
-        try:
-            wb = safe_load_workbook(master_path)
-            if category not in manager_status:
-                manager_status[category] = {}
-
-            for sheet_name in wb.sheetnames:
-                if sheet_name == "STATUS":
-                    continue
-
-                ws = wb[sheet_name]
-                manager_status[category][sheet_name] = {}
-
-                # Find STRINGID column (or EventName for Script-type categories)
-                stringid_col = find_column_by_header(ws, "STRINGID")
-                if not stringid_col:
-                    # Script-type categories use EventName instead of STRINGID
-                    stringid_col = find_column_by_header(ws, "EventName")
-
-                # Find all COMMENT_{User}, STATUS_{User}, MANAGER_COMMENT_{User} columns
-                comment_cols = {}          # username -> col (TESTER's comment)
-                status_cols = {}           # username -> col (MANAGER's status)
-                manager_comment_cols = {}  # username -> col (MANAGER's comment)
-                all_headers = []  # DEBUG: Track all headers
-
-                for col in range(1, ws.max_column + 1):
-                    header = ws.cell(row=1, column=col).value
-                    if header:
-                        header_str = str(header)
-                        header_upper = header_str.upper()  # Case-insensitive comparison
-                        all_headers.append(header_str)  # DEBUG
-                        if header_upper.startswith("COMMENT_"):
-                            username = header_str[8:]  # Skip "COMMENT_" prefix
-                            comment_cols[username] = col
-                        elif header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
-                            username = header_str[7:]  # Skip "STATUS_" prefix
-                            status_cols[username] = col
-                        elif header_upper.startswith("MANAGER_COMMENT_"):
-                            username = header_str[16:]  # Skip "MANAGER_COMMENT_" prefix
-                            manager_comment_cols[username] = col
-
-                # DEBUG: Log column structure for Script categories
-                is_script_cat = category.lower() in ("sequencer", "dialog")
-                if is_script_cat:
-                    _script_debug_log(f"")
-                    _script_debug_log(f"{'='*60}")
-                    _script_debug_log(f"[COLLECT] {category}/{sheet_name}")
-                    _script_debug_log(f"{'='*60}")
-                    _script_debug_log(f"  All headers ({len(all_headers)} cols):")
-                    # Log headers with column positions
-                    for idx, h in enumerate(all_headers, 1):
-                        _script_debug_log(f"    Col {idx}: {h}")
-                    _script_debug_log(f"")
-                    _script_debug_log(f"  COMMENT_ columns found: {list(comment_cols.items())}")
-                    _script_debug_log(f"  STATUS_ columns found: {list(status_cols.items())}")
-                    _script_debug_log(f"  MANAGER_COMMENT_ columns found: {list(manager_comment_cols.items())}")
-                    _script_debug_log(f"  STRINGID/EventName col: {stringid_col}")
-
-                if not status_cols:
-                    if is_script_cat:
-                        _script_debug_log(f"  [SKIP] No STATUS_ columns found - skipping sheet")
-                    continue
-
-                # Collect manager status, keyed by (stringid, tester_comment_text)
-                # DEBUG: Track Script category stats
-                script_debug_rows_with_status = 0
-                script_debug_rows_stored = 0
-                script_debug_rows_skipped_no_comment = 0
-
-                for row in range(2, ws.max_row + 1):
-                    for username, status_col in status_cols.items():
-                        status_value = ws.cell(row=row, column=status_col).value
-                        manager_comment_col = manager_comment_cols.get(username)
-                        manager_comment_value = None
-                        if manager_comment_col:
-                            manager_comment_value = ws.cell(row=row, column=manager_comment_col).value
-
-                        # Only store if there's a manager status or manager comment
-                        has_status = status_value and str(status_value).strip().upper() in VALID_MANAGER_STATUS
-                        has_manager_comment = manager_comment_value and str(manager_comment_value).strip()
-
-                        if has_status or has_manager_comment:
-                            script_debug_rows_with_status += 1
-
-                            # Get STRINGID for this row (from Master - reliable!)
-                            stringid = ""
-                            if stringid_col:
-                                stringid_val = ws.cell(row=row, column=stringid_col).value
-                                if stringid_val:
-                                    stringid = str(stringid_val).strip()
-
-                            # Get TESTER's comment text (this is what manager reviewed)
-                            tester_comment_text = ""
-                            comment_col = comment_cols.get(username)
-                            if comment_col:
-                                full_comment = ws.cell(row=row, column=comment_col).value
-                                tester_comment_text = extract_comment_text(full_comment)
-
-                            # DEBUG: Log EVERY row with STATUS for Script categories
-                            if is_script_cat:
-                                _script_debug_log(f"")
-                                _script_debug_log(f"  [ROW {row}] User: {username}")
-                                _script_debug_log(f"    STATUS col {status_col}: '{status_value}'")
-                                _script_debug_log(f"    has_status (valid manager status): {has_status}")
-                                _script_debug_log(f"    has_manager_comment: {has_manager_comment}")
-                                _script_debug_log(f"    STRINGID/EventName col {stringid_col}: '{stringid}'")
-                                _script_debug_log(f"    COMMENT col for {username}: {comment_col}")
-                                if comment_col:
-                                    raw_comment = ws.cell(row=row, column=comment_col).value
-                                    _script_debug_log(f"    Raw COMMENT value: '{raw_comment}'")
-                                    _script_debug_log(f"    Extracted tester_comment_text: '{tester_comment_text}'")
-                                else:
-                                    _script_debug_log(f"    [WARN] No COMMENT_ column found for user {username}")
-
-                            # Need tester comment to match (manager status is response to tester comment)
-                            if tester_comment_text:
-                                script_debug_rows_stored += 1
-                                if is_script_cat:
-                                    _script_debug_log(f"    --> STORED (has tester comment)")
-
-                                # Primary key: (stringid, tester_comment_text)
-                                key = (stringid, tester_comment_text)
-                                if key not in manager_status[category][sheet_name]:
-                                    manager_status[category][sheet_name][key] = {}
-                                manager_status[category][sheet_name][key][username] = {
-                                    "status": str(status_value).strip().upper() if has_status else None,
-                                    "manager_comment": str(manager_comment_value).strip() if has_manager_comment else None
-                                }
-
-                                # Fallback key: ("", tester_comment_text) - for when STRINGID changes
-                                fallback_key = ("", tester_comment_text)
-                                if fallback_key not in manager_status[category][sheet_name]:
-                                    manager_status[category][sheet_name][fallback_key] = {}
-                                if username not in manager_status[category][sheet_name][fallback_key]:
-                                    manager_status[category][sheet_name][fallback_key][username] = {
-                                        "status": str(status_value).strip().upper() if has_status else None,
-                                        "manager_comment": str(manager_comment_value).strip() if has_manager_comment else None
-                                    }
-                            else:
-                                script_debug_rows_skipped_no_comment += 1
-                                if is_script_cat:
-                                    _script_debug_log(f"    --> SKIPPED (no tester comment text)")
-
-                # DEBUG: Log collected entries for Script categories
-                if is_script_cat:
-                    entries_count = len(manager_status[category].get(sheet_name, {}))
-                    _script_debug_log(f"")
-                    _script_debug_log(f"  [SUMMARY] {category}/{sheet_name}:")
-                    _script_debug_log(f"    Rows with valid STATUS_: {script_debug_rows_with_status}")
-                    _script_debug_log(f"    Rows STORED (had comment): {script_debug_rows_stored}")
-                    _script_debug_log(f"    Rows SKIPPED (no comment): {script_debug_rows_skipped_no_comment}")
-                    _script_debug_log(f"    Final entries in dict: {entries_count}")
-                    _script_debug_flush()
-
-            wb.close()
-
-        except Exception as e:
-            print(f"  WARN: Error reading {master_path.name} for preprocess: {e}")
-
-    # DEBUG: Summary for Script
-    for cat in ["Sequencer", "Dialog"]:
-        if cat in manager_status:
-            total_keys = sum(len(sheet_data) for sheet_data in manager_status[cat].values())
-            _script_debug_log(f"[COLLECT TOTAL] {cat}: {total_keys} keys")
-    _script_debug_flush()
-
-    return manager_status
-
-
-def collect_manager_stats_for_tracker() -> Dict:
-    """
-    Read all Master files (EN + CN) and count FIXED/REPORTED/CHECKING/NON-ISSUE per user per category.
-
-    ULTRA-GRANULAR LOGGING: Every row, every cell, every decision is logged.
-    """
-    tester_mapping = load_tester_mapping()
+    manager_status_en = {}
+    manager_status_cn = {}
+    fixed_screenshots_en = set()
+    fixed_screenshots_cn = set()
     manager_stats = defaultdict(lambda: defaultdict(
         lambda: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "lang": "EN"}
     ))
 
-    # LOG FILE - ULTRA GRANULAR
+    # LOG FILE for manager stats debug
     log_path = Path(__file__).parent.parent / "MANAGER_STATS_DEBUG.log"
-    L = []  # Log lines
+    L = []
 
     def log(msg, indent=0):
         L.append("  " * indent + msg)
 
     log(f"{'='*80}")
-    log(f"MANAGER STATS COLLECTION - ULTRA GRANULAR DEBUG LOG")
+    log(f"CONSOLIDATED MASTER DATA COLLECTION (Phase A optimization)")
     log(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     log(f"{'='*80}")
     log("")
-
-    # Log configuration
     log(f"[CONFIG] MASTER_FOLDER_EN: {MASTER_FOLDER_EN}")
     log(f"[CONFIG] MASTER_FOLDER_CN: {MASTER_FOLDER_CN}")
-    log(f"[CONFIG] CATEGORIES: {CATEGORIES}")
-    log(f"[CONFIG] CATEGORY_TO_MASTER: {CATEGORY_TO_MASTER}")
-    log(f"[CONFIG] Tester mapping loaded: {len(tester_mapping)} entries")
-    for tester, lang in tester_mapping.items():
-        log(f"  {tester} -> {lang}", 1)
+    log(f"[CONFIG] Tester mapping: {len(tester_mapping)} entries")
     log("")
 
-    # Track global stats
-    global_row_count = 0
-    global_status_found = 0
-    global_status_empty = 0
-    global_comment_found = 0
-    global_pending = 0
-
     for master_folder in [MASTER_FOLDER_EN, MASTER_FOLDER_CN]:
-        processed_masters = set()
-        folder_label = "EN" if "EN" in str(master_folder) else "CN"
+        is_en = "EN" in str(master_folder)
+        folder_label = "EN" if is_en else "CN"
+        manager_status = manager_status_en if is_en else manager_status_cn
+        fixed_screenshots = fixed_screenshots_en if is_en else fixed_screenshots_cn
+        processed_masters = set()  # Avoid re-scanning clustered categories
 
         log(f"{'='*80}")
         log(f"PROCESSING FOLDER: {master_folder} [{folder_label}]")
         log(f"{'='*80}")
-        log(f"Folder exists: {master_folder.exists()}")
-        if master_folder.exists():
-            log(f"Folder contents: {list(master_folder.glob('*.xlsx'))}")
-        log("")
+
+        if not master_folder.exists():
+            log(f"Folder does not exist - skipping")
+            continue
 
         for category in CATEGORIES:
             target_category = get_target_master_category(category)
             master_path = master_folder / f"Master_{target_category}.xlsx"
 
-            log(f"[CATEGORY LOOP] category={category} -> target={target_category}")
-            log(f"  Looking for: {master_path}", 1)
-            log(f"  File exists: {master_path.exists()}", 1)
-            log(f"  Already processed: {master_path in processed_masters}", 1)
-
             if master_path in processed_masters:
-                log(f"  SKIP: Already processed this master file", 1)
+                # Already scanned this master (e.g., Sequencer+Dialog both -> Master_Script)
+                # But still need to register the category in manager_status
+                if master_path.exists() and category not in manager_status:
+                    # Copy sheet data from the target_category that already has it
+                    source_cat = target_category
+                    if source_cat in manager_status:
+                        manager_status[category] = manager_status[source_cat]
                 continue
+
             if not master_path.exists():
-                log(f"  SKIP: File does not exist", 1)
                 continue
 
             processed_masters.add(master_path)
-            log(f"  PROCESSING: {master_path.name}", 1)
 
             try:
-                wb = safe_load_workbook(master_path)
-                log("")
-                log(f"{'~'*60}")
-                log(f"MASTER FILE: {master_path.name} [{folder_label}]")
-                log(f"{'~'*60}")
-                log(f"Workbook loaded successfully")
-                log(f"Sheet names: {wb.sheetnames}")
-                log(f"Total sheets: {len(wb.sheetnames)}")
-                log("")
+                # read_only=True is 3-5x faster per open (Phase A optimization)
+                wb = safe_load_workbook(master_path, read_only=True, data_only=True)
+                try:
+                    log(f"")
+                    log(f"{'~'*60}")
+                    log(f"MASTER FILE: {master_path.name} [{folder_label}]")
+                    log(f"{'~'*60}")
+                    log(f"Sheets: {wb.sheetnames}")
 
-                for sheet_name in wb.sheetnames:
-                    if sheet_name == "STATUS":
-                        log(f"[SHEET SKIP] '{sheet_name}' - STATUS summary sheet, skipping")
-                        continue
+                    # Initialize manager_status for ALL categories that map to this master
+                    categories_for_master = [category]
+                    for cat in CATEGORIES:
+                        if cat != category and get_target_master_category(cat) == target_category:
+                            categories_for_master.append(cat)
 
-                    ws = wb[sheet_name]
-                    log(f"-" * 50)
-                    log(f"[SHEET] '{sheet_name}'")
-                    log(f"  Dimensions: rows={ws.max_row}, cols={ws.max_column}")
-                    log("")
+                    for cat in categories_for_master:
+                        if cat not in manager_status:
+                            manager_status[cat] = {}
 
-                    # Find ALL columns and log them
-                    log(f"  [COLUMN SCAN] Reading all {ws.max_column} columns...")
-                    status_cols = {}
-                    comment_cols = {}
-                    tester_status_cols = {}
-                    manager_comment_cols = {}
-                    stringid_col = None
-                    eventname_col = None
-                    all_headers = []
+                    for sheet_name in wb.sheetnames:
+                        if sheet_name == "STATUS":
+                            continue
 
-                    for col in range(1, ws.max_column + 1):
-                        header = ws.cell(row=1, column=col).value
-                        header_str = str(header) if header else "(EMPTY)"
-                        header_upper = header_str.upper() if header else ""
-                        all_headers.append((col, header_str))
+                        ws = wb[sheet_name]
 
-                        log(f"    Col {col}: '{header_str}'", 2)
+                        # In read_only mode, max_row/max_column can be None for empty sheets
+                        if ws.max_row is None or ws.max_row < 2:
+                            continue
+                        if ws.max_column is None or ws.max_column < 1:
+                            continue
 
-                        if header:
+                        # Initialize sheet in manager_status for all categories
+                        for cat in categories_for_master:
+                            if sheet_name not in manager_status[cat]:
+                                manager_status[cat][sheet_name] = {}
+
+                        # === SINGLE HEADER SCAN: detect all column types at once ===
+                        stringid_col = None
+                        comment_cols = {}          # username -> col
+                        status_cols = {}           # username -> col (STATUS_{User} = manager status)
+                        manager_comment_cols = {}  # username -> col
+                        screenshot_cols = {}       # username -> col
+                        tester_status_cols = {}    # username -> col
+
+                        for col in range(1, ws.max_column + 1):
+                            header = ws.cell(row=1, column=col).value
+                            if not header:
+                                continue
+                            header_str = str(header)
+                            header_upper = header_str.upper()
+
                             if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
-                                username = header_str[7:]
-                                status_cols[username] = col
-                                log(f"      -> STATUS_ column for user '{username}'", 3)
-                            elif header_upper.startswith("TESTER_STATUS_"):
-                                username = header_str[14:]
-                                tester_status_cols[username] = col
-                                log(f"      -> TESTER_STATUS_ column for user '{username}' (ignored for manager stats)", 3)
+                                status_cols[header_str[7:]] = col
                             elif header_upper.startswith("COMMENT_"):
-                                username = header_str[8:]
-                                comment_cols[username] = col
-                                log(f"      -> COMMENT_ column for user '{username}'", 3)
+                                comment_cols[header_str[8:]] = col
                             elif header_upper.startswith("MANAGER_COMMENT_"):
-                                username = header_str[16:]
-                                manager_comment_cols[username] = col
-                                log(f"      -> MANAGER_COMMENT_ column for user '{username}'", 3)
+                                manager_comment_cols[header_str[16:]] = col
+                            elif header_upper.startswith("SCREENSHOT_"):
+                                screenshot_cols[header_str[11:]] = col
+                            elif header_upper.startswith("TESTER_STATUS_"):
+                                tester_status_cols[header_str[14:]] = col
                             elif header_upper == "STRINGID":
                                 stringid_col = col
-                                log(f"      -> STRINGID column", 3)
-                            elif header_upper == "EVENTNAME":
-                                eventname_col = col
-                                log(f"      -> EVENTNAME column", 3)
+                            elif header_upper == "EVENTNAME" and not stringid_col:
+                                stringid_col = col
 
-                    log("")
-                    log(f"  [COLUMN SUMMARY]")
-                    log(f"    STATUS_ columns ({len(status_cols)}): {status_cols}")
-                    log(f"    COMMENT_ columns ({len(comment_cols)}): {comment_cols}")
-                    log(f"    TESTER_STATUS_ columns ({len(tester_status_cols)}): {tester_status_cols}")
-                    log(f"    MANAGER_COMMENT_ columns ({len(manager_comment_cols)}): {manager_comment_cols}")
-                    log(f"    STRINGID column: {stringid_col}")
-                    log(f"    EVENTNAME column: {eventname_col}")
-                    log("")
+                        # DEBUG: Script category logging
+                        is_script_cat = category.lower() in ("sequencer", "dialog")
+                        if is_script_cat:
+                            _script_debug_log(f"")
+                            _script_debug_log(f"{'='*60}")
+                            _script_debug_log(f"[COLLECT] {category}/{sheet_name}")
+                            _script_debug_log(f"{'='*60}")
+                            _script_debug_log(f"  STATUS_ columns: {list(status_cols.items())}")
+                            _script_debug_log(f"  COMMENT_ columns: {list(comment_cols.items())}")
+                            _script_debug_log(f"  STRINGID/EventName col: {stringid_col}")
 
-                    if not status_cols:
-                        log(f"  [SKIP SHEET] No STATUS_ columns found - nothing to count")
-                        continue
+                        if not status_cols:
+                            if is_script_cat:
+                                _script_debug_log(f"  [SKIP] No STATUS_ columns found")
+                            continue
 
-                    # ROW-BY-ROW SCAN
-                    log(f"  [ROW SCAN] Processing {ws.max_row - 1} data rows (2 to {ws.max_row})...")
-                    log("")
+                        log(f"  [{sheet_name}] STATUS cols: {list(status_cols.keys())}")
 
-                    sheet_stats = {u: {"fixed": 0, "reported": 0, "checking": 0, "nonissue": 0, "empty": 0, "unrecognized": []} for u in status_cols.keys()}
-                    sheet_pending = {u: [] for u in status_cols.keys()}
+                        # === SINGLE-PASS ROW SCAN: collect all 3 data structures ===
+                        script_debug_rows_stored = 0
+                        script_debug_rows_skipped = 0
 
-                    for row in range(2, ws.max_row + 1):
-                        global_row_count += 1
+                        for row in range(2, ws.max_row + 1):
+                            for username, status_col_idx in status_cols.items():
+                                status_value = ws.cell(row=row, column=status_col_idx).value
+                                status_str = str(status_value).strip() if status_value else ""
+                                status_upper = status_str.upper()
 
-                        # Get identifying info for this row
-                        stringid_val = ws.cell(row=row, column=stringid_col).value if stringid_col else None
-                        eventname_val = ws.cell(row=row, column=eventname_col).value if eventname_col else None
-                        row_id = stringid_val or eventname_val or f"row{row}"
+                                # Get manager comment for this user
+                                mc_col = manager_comment_cols.get(username)
+                                mc_value = ws.cell(row=row, column=mc_col).value if mc_col else None
 
-                        row_has_any_data = False
-                        row_log_lines = []
+                                has_status = status_upper in VALID_MANAGER_STATUS
+                                has_manager_comment = mc_value and str(mc_value).strip()
 
-                        for username, col in status_cols.items():
-                            status_val = ws.cell(row=row, column=col).value
-                            comment_col = comment_cols.get(username)
-                            comment_val = ws.cell(row=row, column=comment_col).value if comment_col else None
-                            tester_status_col = tester_status_cols.get(username)
-                            tester_status_val = ws.cell(row=row, column=tester_status_col).value if tester_status_col else None
+                                # --- DATA 1: fixed_screenshots ---
+                                # If STATUS=FIXED, collect screenshot filename
+                                if status_upper == "FIXED":
+                                    sc_col = screenshot_cols.get(username)
+                                    if sc_col:
+                                        sc_val = ws.cell(row=row, column=sc_col).value
+                                        if sc_val and str(sc_val).strip():
+                                            fixed_screenshots.add(str(sc_val).strip())
 
-                            # Determine what happened
-                            status_str = str(status_val).strip() if status_val else ""
-                            status_upper = status_str.upper()
-                            comment_str = str(comment_val).strip() if comment_val else ""
-                            tester_status_str = str(tester_status_val).strip() if tester_status_val else ""
+                                # --- DATA 2: manager_status ---
+                                if has_status or has_manager_comment:
+                                    # Get STRINGID
+                                    stringid = ""
+                                    if stringid_col:
+                                        sid_val = ws.cell(row=row, column=stringid_col).value
+                                        if sid_val:
+                                            stringid = str(sid_val).strip()
 
-                            has_comment = bool(comment_str)
-                            has_status = bool(status_str)
+                                    # Get tester's comment text
+                                    tester_comment_text = ""
+                                    c_col = comment_cols.get(username)
+                                    if c_col:
+                                        full_comment = ws.cell(row=row, column=c_col).value
+                                        tester_comment_text = extract_comment_text(full_comment)
 
-                            if has_comment or has_status:
-                                row_has_any_data = True
-                                global_comment_found += 1 if has_comment else 0
+                                    if tester_comment_text:
+                                        script_debug_rows_stored += 1
+                                        status_val_clean = status_upper if has_status else None
+                                        mc_val_clean = str(mc_value).strip() if has_manager_comment else None
+                                        user_entry = {"status": status_val_clean, "manager_comment": mc_val_clean}
 
-                                action = ""
-                                if has_status:
-                                    global_status_found += 1
-                                    if status_upper == "FIXED":
-                                        manager_stats[target_category][username]["fixed"] += 1
-                                        sheet_stats[username]["fixed"] += 1
-                                        action = "COUNTED as FIXED"
-                                    elif status_upper == "REPORTED":
-                                        manager_stats[target_category][username]["reported"] += 1
-                                        sheet_stats[username]["reported"] += 1
-                                        action = "COUNTED as REPORTED"
-                                    elif status_upper == "CHECKING":
-                                        manager_stats[target_category][username]["checking"] += 1
-                                        sheet_stats[username]["checking"] += 1
-                                        action = "COUNTED as CHECKING"
-                                    elif status_upper in ("NON-ISSUE", "NON ISSUE"):
-                                        manager_stats[target_category][username]["nonissue"] += 1
-                                        sheet_stats[username]["nonissue"] += 1
-                                        action = "COUNTED as NON-ISSUE"
+                                        # Primary key + fallback key
+                                        key = (stringid, tester_comment_text)
+                                        fallback_key = ("", tester_comment_text)
+
+                                        for cat in categories_for_master:
+                                            sheet_dict = manager_status[cat][sheet_name]
+                                            if key not in sheet_dict:
+                                                sheet_dict[key] = {}
+                                            sheet_dict[key][username] = user_entry
+
+                                            if fallback_key not in sheet_dict:
+                                                sheet_dict[fallback_key] = {}
+                                            if username not in sheet_dict[fallback_key]:
+                                                sheet_dict[fallback_key][username] = user_entry
                                     else:
-                                        sheet_stats[username]["unrecognized"].append(f"row{row}:'{status_str}'")
-                                        action = f"UNRECOGNIZED STATUS: '{status_str}'"
-                                else:
-                                    global_status_empty += 1
-                                    sheet_stats[username]["empty"] += 1
-                                    if has_comment:
-                                        global_pending += 1
-                                        sheet_pending[username].append(row)
-                                        action = "PENDING (has comment, no manager status)"
-                                    else:
-                                        action = "EMPTY (no comment, no status)"
+                                        script_debug_rows_skipped += 1
 
-                                manager_stats[target_category][username]["lang"] = tester_mapping.get(username, "EN")
+                                # --- DATA 3: manager_stats (tracker counts) ---
+                                # Count all status values for tracker, not just those with comments
+                                c_col_for_stats = comment_cols.get(username)
+                                comment_val = ws.cell(row=row, column=c_col_for_stats).value if c_col_for_stats else None
+                                comment_str_val = str(comment_val).strip() if comment_val else ""
+                                has_comment = bool(comment_str_val)
 
-                                row_log_lines.append(
-                                    f"      [{username}] STATUS='{status_str}' COMMENT='{comment_str[:30]}{'...' if len(comment_str) > 30 else ''}' "
-                                    f"TESTER_STATUS='{tester_status_str}' -> {action}"
-                                )
+                                if has_status or has_comment:
+                                    if has_status:
+                                        if status_upper == "FIXED":
+                                            manager_stats[target_category][username]["fixed"] += 1
+                                        elif status_upper == "REPORTED":
+                                            manager_stats[target_category][username]["reported"] += 1
+                                        elif status_upper == "CHECKING":
+                                            manager_stats[target_category][username]["checking"] += 1
+                                        elif status_upper in ("NON-ISSUE", "NON ISSUE"):
+                                            manager_stats[target_category][username]["nonissue"] += 1
 
-                        # Log row if it had data (limit to first 50 rows with data to avoid massive logs)
-                        if row_has_any_data and sum(sheet_stats[u]["fixed"] + sheet_stats[u]["reported"] + sheet_stats[u]["checking"] + sheet_stats[u]["nonissue"] + len(sheet_pending[u]) for u in status_cols.keys()) <= 100:
-                            log(f"    [ROW {row}] ID={row_id}")
-                            for line in row_log_lines:
-                                log(line)
+                                    manager_stats[target_category][username]["lang"] = tester_mapping.get(username, "EN")
 
-                    # Sheet summary
-                    log("")
-                    log(f"  [SHEET SUMMARY] '{sheet_name}'")
-                    for username in status_cols.keys():
-                        s = sheet_stats[username]
-                        pending_list = sheet_pending[username]
-                        log(f"    {username}:")
-                        log(f"      FIXED={s['fixed']} REPORTED={s['reported']} CHECKING={s['checking']} NON-ISSUE={s['nonissue']}")
-                        log(f"      EMPTY={s['empty']} PENDING={len(pending_list)}")
-                        if s['unrecognized']:
-                            log(f"      UNRECOGNIZED: {s['unrecognized'][:10]}")
-                        if pending_list:
-                            log(f"      PENDING rows (first 20): {pending_list[:20]}")
-                    log("")
+                        # Debug logging for Script categories
+                        if is_script_cat:
+                            for cat in categories_for_master:
+                                entries_count = len(manager_status[cat].get(sheet_name, {}))
+                                _script_debug_log(f"  [SUMMARY] {cat}/{sheet_name}: {entries_count} keys stored, {script_debug_rows_skipped} skipped (no comment)")
+                            _script_debug_flush()
 
-                wb.close()
+                        log(f"    Stored {script_debug_rows_stored} manager_status entries, skipped {script_debug_rows_skipped}")
+
+                finally:
+                    wb.close()
+
             except Exception as e:
-                import traceback
+                import traceback as tb
                 log(f"[ERROR] Failed to process {master_path}: {e}")
-                log(f"[TRACEBACK] {traceback.format_exc()}")
+                log(f"[TRACEBACK] {tb.format_exc()}")
+                print(f"  WARN: Error reading {master_path.name}: {e}")
 
-    # GLOBAL SUMMARY
-    log("")
-    log(f"{'='*80}")
-    log(f"GLOBAL SUMMARY")
-    log(f"{'='*80}")
-    log(f"Total rows scanned: {global_row_count}")
-    log(f"Total STATUS cells with values: {global_status_found}")
-    log(f"Total STATUS cells empty: {global_status_empty}")
-    log(f"Total COMMENT cells found: {global_comment_found}")
-    log(f"Total PENDING (comment but no final status): {global_pending}")
-    log("")
-
-    # Convert nested defaultdicts to regular dicts
-    result = {}
+    # Convert manager_stats defaultdicts to regular dicts
+    manager_stats_result = {}
     for cat, users_dd in manager_stats.items():
-        result[cat] = {}
+        manager_stats_result[cat] = {}
         for user, stats_dd in users_dd.items():
-            result[cat][user] = dict(stats_dd)
+            manager_stats_result[cat][user] = dict(stats_dd)
 
-    # Final result summary
-    log(f"[FINAL RESULT] Categories: {list(result.keys())}")
-    for cat, users in result.items():
+    # Log final summary
+    log("")
+    log(f"{'='*80}")
+    log(f"FINAL SUMMARY")
+    log(f"{'='*80}")
+    log(f"manager_status_en categories: {list(manager_status_en.keys())}")
+    log(f"manager_status_cn categories: {list(manager_status_cn.keys())}")
+    log(f"fixed_screenshots_en: {len(fixed_screenshots_en)}")
+    log(f"fixed_screenshots_cn: {len(fixed_screenshots_cn)}")
+    log(f"manager_stats categories: {list(manager_stats_result.keys())}")
+    for cat, users in manager_stats_result.items():
         log(f"  {cat}:")
         for user, stats in users.items():
             log(f"    {user}: F={stats['fixed']} R={stats['reported']} C={stats['checking']} N={stats['nonissue']} lang={stats['lang']}")
-
-    total_f = sum(s["fixed"] for u in result.values() for s in u.values())
-    total_r = sum(s["reported"] for u in result.values() for s in u.values())
-    total_c = sum(s["checking"] for u in result.values() for s in u.values())
-    total_n = sum(s["nonissue"] for u in result.values() for s in u.values())
-    log("")
-    log(f"[TOTALS] FIXED={total_f} REPORTED={total_r} CHECKING={total_c} NON-ISSUE={total_n}")
     log(f"{'='*80}")
 
     # Write log file
     try:
         with open(log_path, "w", encoding="utf-8") as f:
             f.write("\n".join(L))
-        print(f"[LOG] Manager stats debug ({len(L)} lines): {log_path}")
+        print(f"[LOG] Master data collection ({len(L)} lines): {log_path}")
     except Exception as e:
         print(f"[LOG ERROR] {e}")
 
-    return result
+    # Script debug summary
+    for cat in ["Sequencer", "Dialog"]:
+        if cat in manager_status_en:
+            total_keys = sum(len(sd) for sd in manager_status_en[cat].values())
+            _script_debug_log(f"[COLLECT TOTAL] {cat} EN: {total_keys} keys")
+        if cat in manager_status_cn:
+            total_keys = sum(len(sd) for sd in manager_status_cn[cat].values())
+            _script_debug_log(f"[COLLECT TOTAL] {cat} CN: {total_keys} keys")
+    _script_debug_flush()
+
+    return (manager_status_en, manager_status_cn,
+            fixed_screenshots_en, fixed_screenshots_cn,
+            manager_stats_result)
 
 
 # =============================================================================
@@ -734,9 +487,9 @@ def preprocess_script_category(
     """
     Preprocess Script-type category files to build global universe of rows WITH status.
 
-    This optimization scans ALL QA files and collects only rows that have been checked
-    (have a STATUS value). This dramatically speeds up processing for large files
-    like Sequencer/Dialog which can have thousands of unchecked rows.
+    Phase B enhancement: Also stores full_row data and sheet headers so that
+    build_master_from_universe() can create the master workbook directly in memory
+    without needing create_filtered_script_template().
 
     Args:
         qa_folders: List of folder dicts from discovery (all for this category)
@@ -748,11 +501,15 @@ def preprocess_script_category(
             - "row_count": int - total rows with status
             - "source_files": int - number of files scanned
             - "errors": List of error messages encountered
+            - "headers": {sheet_name: [header1, header2, ...]} - per-sheet headers
+            - "num_columns": {sheet_name: int} - column count per sheet
     """
     import traceback
     # SCRIPT_COLS already imported from config at module level
 
     universe = {}  # (eventname, text) -> row_data
+    headers = {}   # sheet_name -> [header values]
+    num_columns = {}  # sheet_name -> int
     source_files = 0
     errors = []  # Track errors for debugging
 
@@ -760,7 +517,8 @@ def preprocess_script_category(
 
     if not qa_folders:
         print(f"    [WARN] No QA folders provided")
-        return {"rows": {}, "row_count": 0, "source_files": 0, "errors": ["No QA folders provided"]}
+        return {"rows": {}, "row_count": 0, "source_files": 0, "errors": ["No QA folders provided"],
+                "headers": {}, "num_columns": {}}
 
     for qf in qa_folders:
         xlsx_path = qf.get("xlsx_path")
@@ -779,8 +537,7 @@ def preprocess_script_category(
                 print(f"    [WARN] File not found: {xlsx_path}")
                 continue
 
-            # read_only=True is 3-5x faster for large files (Phase 3 optimization)
-            # This function only READS cell values -- never writes.
+            # read_only=True is 3-5x faster for large files
             wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
 
             for sheet_name in wb.sheetnames:
@@ -791,8 +548,9 @@ def preprocess_script_category(
                     ws = wb[sheet_name]
 
                     # Check for empty sheet
-                    # In read_only mode, max_row can be None for empty sheets
                     if ws.max_row is None or ws.max_row < 2:
+                        continue
+                    if ws.max_column is None or ws.max_column < 1:
                         continue
 
                     # Find columns by NAME (not position!)
@@ -805,52 +563,72 @@ def preprocess_script_category(
                         # Not a script sheet - skip silently
                         continue
 
-                    # Scan rows for those with STATUS
-                    # SIMPLE APPROACH: If STATUS has ANY value (not empty), include the row
-                    # Don't be overly strict about what the status value is - if a tester
-                    # touched the row (put anything in STATUS), we want to process it.
-                    for row in range(2, ws.max_row + 1):
+                    total_cols = ws.max_column
+
+                    # Collect sheet structure from first file encountered per sheet
+                    # (Phase B: needed for build_master_from_universe)
+                    if sheet_name not in headers:
+                        header_row = []
+                        for col in range(1, total_cols + 1):
+                            header_row.append(ws.cell(row=1, column=col).value)
+                        headers[sheet_name] = header_row
+                        num_columns[sheet_name] = total_cols
+
+                    # Scan rows using iter_rows for batch reading (Phase C3)
+                    status_idx = status_col - 1
+                    eventname_idx = eventname_col - 1
+                    text_idx = text_col - 1
+
+                    for row_idx, row_tuple in enumerate(
+                        ws.iter_rows(min_row=2, max_col=total_cols, values_only=True),
+                        start=2
+                    ):
                         try:
-                            status_val = ws.cell(row=row, column=status_col).value
+                            # Pad row_tuple if shorter than total_cols (can happen with sparse data)
+                            if len(row_tuple) <= status_idx:
+                                continue
+
+                            status_val = row_tuple[status_idx]
                             if not status_val:
                                 continue
 
-                            # Just check if STATUS has any non-empty value
                             status_str = str(status_val).strip()
                             if not status_str:
                                 continue
 
                             # This row has a status value - add to universe
-                            eventname = str(ws.cell(row=row, column=eventname_col).value or "").strip()
-                            text = str(ws.cell(row=row, column=text_col).value or "").strip()
+                            eventname = str(row_tuple[eventname_idx] or "").strip() if eventname_idx < len(row_tuple) else ""
+                            text = str(row_tuple[text_idx] or "").strip() if text_idx < len(row_tuple) else ""
 
                             if not eventname and not text:
                                 continue
 
                             key = (eventname, text)
 
-                            # Store row data (first occurrence wins, but track all sources)
+                            # Store row data with full_row (Phase B: for direct master building)
+                            # Convert tuple to list for storage
+                            full_row = list(row_tuple)
+
                             if key not in universe:
                                 universe[key] = {
                                     "eventname": eventname,
                                     "text": text,
                                     "sheet": sheet_name,
-                                    "sources": [(username, xlsx_path, sheet_name, row)],
+                                    "sources": [(username, xlsx_path, sheet_name, row_idx)],
+                                    "full_row": full_row,
                                 }
                             else:
                                 # Track additional sources for debugging
-                                universe[key]["sources"].append((username, xlsx_path, sheet_name, row))
+                                universe[key]["sources"].append((username, xlsx_path, sheet_name, row_idx))
 
                         except Exception as row_err:
-                            err_msg = f"Error reading row {row} in {xlsx_path.name}/{sheet_name}: {row_err}"
+                            err_msg = f"Error reading row {row_idx} in {xlsx_path.name}/{sheet_name}: {row_err}"
                             errors.append(err_msg)
-                            # Continue processing other rows
 
                 except Exception as sheet_err:
                     err_msg = f"Error processing sheet '{sheet_name}' in {xlsx_path.name}: {sheet_err}"
                     errors.append(err_msg)
                     print(f"    [WARN] {err_msg}")
-                    # Continue with other sheets
 
             wb.close()
 
@@ -859,7 +637,6 @@ def preprocess_script_category(
             errors.append(err_msg)
             print(f"    [ERROR] {err_msg}")
             traceback.print_exc()
-            # Continue with other files
 
     print(f"  [PREPROCESS] Found {len(universe)} unique rows with STATUS from {source_files} files")
     if errors:
@@ -870,319 +647,146 @@ def preprocess_script_category(
         "row_count": len(universe),
         "source_files": source_files,
         "errors": errors,
+        "headers": headers,
+        "num_columns": num_columns,
     }
 
 
-def _safe_get_color_rgb(color_obj) -> str:
-    """
-    Safely extract RGB color string from an openpyxl color object.
-
-    Handles various color types:
-    - RGB colors (string like "FFFFFF")
-    - Indexed colors (integer)
-    - None values
-    - Theme colors
-
-    Args:
-        color_obj: An openpyxl Color object
-
-    Returns:
-        RGB string (e.g., "FFFFFF") or "FFFFFF" as fallback
-    """
-    if color_obj is None:
-        return "FFFFFF"
-
-    rgb = getattr(color_obj, 'rgb', None)
-
-    # rgb can be None
-    if rgb is None:
-        return "FFFFFF"
-
-    # rgb can be an integer (indexed color) - just use white
-    if isinstance(rgb, int):
-        return "FFFFFF"
-
-    # rgb can be a string - validate it's a valid hex color
-    if isinstance(rgb, str):
-        # Some colors start with "00" for alpha channel
-        if len(rgb) == 8:
-            return rgb[2:]  # Strip alpha channel
-        elif len(rgb) == 6:
-            return rgb
-        else:
-            return "FFFFFF"
-
-    # Unknown type - fallback
-    return "FFFFFF"
-
-
-def create_filtered_script_template(
-    template_path: Path,
+def build_master_from_universe(
+    category: str,
     universe: Dict,
-    output_path: Path = None
-) -> Path:
+    master_folder: Path
+):
     """
-    Create a filtered template workbook containing ONLY rows from the universe.
+    Build master workbook directly from universe data (Phase B optimization).
 
-    This creates a temporary workbook that will be used as the master template,
-    containing only rows that have been checked by at least one tester.
+    Creates the master workbook in memory from preprocessed data, eliminating
+    the create_filtered_script_template() bottleneck which:
+    - Opened template in FULL mode
+    - Scanned ALL 10K rows to build index
+    - Opened source files AGAIN
+    - Wrote temp file to disk
+    - Temp file immediately re-loaded by get_or_create_master()
 
-    IMPORTANT: Preserves FULL row data from source files (all columns), not just
-    the columns used for matching. Uses the most recent file for column structure.
+    This function replaces that entire pipeline with direct in-memory construction.
 
     Args:
-        template_path: Path to a QA file to use as structure template
-        universe: Dict from preprocess_script_category() with "rows" key
-        output_path: Optional output path (default: temp file)
+        category: Category name (e.g., "Sequencer")
+        universe: Dict from preprocess_script_category() with "rows", "headers", etc.
+        master_folder: Target Master folder (EN or CN)
 
     Returns:
-        Path to the filtered template workbook
-
-    Raises:
-        Exception: Re-raises any exception after printing full traceback
+        Tuple of (Workbook, master_path) - same interface as get_or_create_master()
     """
-    import traceback
-    from openpyxl import Workbook
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-    # SCRIPT_COLS already imported from config at module level
-    import tempfile
+    from openpyxl import Workbook as NewWorkbook
 
-    try:
-        # Load template for structure (column headers)
-        print(f"  [FILTERED TEMPLATE] Loading template: {template_path.name}")
-        template_wb = safe_load_workbook(template_path)
-    except Exception as e:
-        print(f"  [ERROR] Failed to load template workbook: {template_path}")
-        print(f"  [ERROR] Exception: {type(e).__name__}: {e}")
-        traceback.print_exc()
-        raise
+    target_category = get_target_master_category(category)
+    master_path = master_folder / f"Master_{target_category}.xlsx"
 
-    try:
-        # Create new filtered workbook
-        filtered_wb = Workbook()
-        # Remove default sheet
-        if "Sheet" in filtered_wb.sheetnames:
-            del filtered_wb["Sheet"]
+    # Delete old master if it exists (rebuild mode)
+    if master_path.exists():
+        print(f"  Deleting old master: {master_path.name} (rebuilding fresh)")
+        master_path.unlink()
 
-        rows_data = universe.get("rows", {})
+    wb = NewWorkbook()
+    # Remove default "Sheet"
+    if "Sheet" in wb.sheetnames:
+        del wb["Sheet"]
 
-        if not rows_data:
-            print(f"  [WARN] Universe is empty - no rows to filter")
+    rows_data = universe.get("rows", {})
+    sheet_headers = universe.get("headers", {})
+    sheet_num_cols = universe.get("num_columns", {})
 
-        # Group rows by sheet name
-        rows_by_sheet = {}
-        for key, data in rows_data.items():
-            sheet = data.get("sheet", "Script")
-            if sheet not in rows_by_sheet:
-                rows_by_sheet[sheet] = []
-            rows_by_sheet[sheet].append(data)
+    # Columns to DELETE from master (same as get_or_create_master):
+    # STATUS, COMMENT, SCREENSHOT, STRINGID
+    # These are tester columns that get replaced by user-specific columns
+    COLS_TO_SKIP = {"STATUS", "COMMENT", "SCREENSHOT", "STRINGID"}
 
-        # Cache of loaded source workbooks (avoid reloading same file multiple times)
-        source_wb_cache = {}
+    # Group rows by sheet name
+    rows_by_sheet = {}
+    for key, data in rows_data.items():
+        sheet = data.get("sheet", "Script")
+        if sheet not in rows_by_sheet:
+            rows_by_sheet[sheet] = []
+        rows_by_sheet[sheet].append(data)
 
-        def get_source_row_data(sources, sheet_name, num_cols):
-            """
-            Fetch full row data from source file.
-            Returns list of cell values for all columns.
-            """
-            if not sources:
-                return None
+    # Build each sheet
+    total_rows_written = 0
+    for sheet_name in sheet_headers:
+        raw_headers = sheet_headers[sheet_name]
+        n_cols = sheet_num_cols.get(sheet_name, len(raw_headers))
 
-            # Use first source (username, xlsx_path, sheet_name, row)
-            username, xlsx_path, src_sheet, src_row = sources[0]
-            xlsx_path = Path(xlsx_path) if not isinstance(xlsx_path, Path) else xlsx_path
+        # Determine which column indices to KEEP (skip STATUS/COMMENT/SCREENSHOT/STRINGID)
+        cols_to_keep = []  # list of (original_0based_idx, header_value)
+        for idx, header_val in enumerate(raw_headers):
+            header_upper = str(header_val).strip().upper() if header_val else ""
+            if header_upper not in COLS_TO_SKIP:
+                cols_to_keep.append((idx, header_val))
 
-            # Load from cache or open new
-            cache_key = str(xlsx_path)
-            if cache_key not in source_wb_cache:
-                try:
-                    source_wb_cache[cache_key] = safe_load_workbook(xlsx_path)
-                except Exception as e:
-                    print(f"    WARN: Could not load source {xlsx_path.name}: {e}")
-                    return None
+        if not cols_to_keep:
+            continue
 
-            wb = source_wb_cache[cache_key]
-            if src_sheet not in wb.sheetnames:
-                return None
+        ws = wb.create_sheet(sheet_name)
 
-            ws = wb[src_sheet]
-            # Get all cell values for this row
-            row_values = []
-            for col in range(1, num_cols + 1):
-                row_values.append(ws.cell(row=src_row, column=col).value)
-            return row_values
+        # Write filtered headers
+        for new_col, (orig_idx, header_val) in enumerate(cols_to_keep, 1):
+            ws.cell(row=1, column=new_col, value=header_val)
 
-        # Process each sheet from template
-        for sheet_name in template_wb.sheetnames:
-            if sheet_name == "STATUS":
-                continue
+        # Write data rows for this sheet
+        sheet_rows = rows_by_sheet.get(sheet_name, [])
+        dst_row = 2
+        for row_data in sheet_rows:
+            full_row = row_data.get("full_row")
+            if full_row:
+                for new_col, (orig_idx, _) in enumerate(cols_to_keep, 1):
+                    if orig_idx < len(full_row):
+                        ws.cell(row=dst_row, column=new_col, value=full_row[orig_idx])
+                dst_row += 1
+                total_rows_written += 1
 
-            try:
-                template_ws = template_wb[sheet_name]
-                num_cols = template_ws.max_column
+    print(f"  [BUILD] Created master with {total_rows_written} rows across {len(rows_by_sheet)} sheets (in-memory)")
 
-                if num_cols == 0 or num_cols is None:
-                    print(f"    [SKIP] Sheet '{sheet_name}' has no columns")
-                    continue
+    # Clear AutoFilter on all sheets (safety measure)
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        if ws.auto_filter.ref:
+            ws.auto_filter.ref = None
 
-                # Create filtered sheet
-                filtered_ws = filtered_wb.create_sheet(sheet_name)
+    return wb, master_path
 
-                # Copy header row (row 1) with all columns and styles
-                # Use try/except for each cell to avoid one bad cell breaking the whole sheet
-                for col in range(1, num_cols + 1):
-                    try:
-                        src_cell = template_ws.cell(row=1, column=col)
-                        dst_cell = filtered_ws.cell(row=1, column=col)
-                        dst_cell.value = src_cell.value
 
-                        # Copy styles - but don't fail if styling fails
-                        if src_cell.has_style:
-                            try:
-                                # Copy font (safe - most properties are simple types)
-                                dst_cell.font = Font(
-                                    bold=src_cell.font.bold if src_cell.font.bold else False,
-                                    color=src_cell.font.color,
-                                    size=src_cell.font.size if src_cell.font.size else 11
-                                )
-                            except Exception as font_err:
-                                pass  # Font copy failed - not critical
+def build_prefiltered_rows(universe: Dict, xlsx_path: Path, sheet_name: str, username: str) -> Optional[List[int]]:
+    """
+    Extract prefiltered row numbers from universe for a specific user/file/sheet.
 
-                            try:
-                                # Copy fill - this is where errors commonly occur
-                                if src_cell.fill and src_cell.fill.patternType and src_cell.fill.patternType != 'none':
-                                    start_rgb = _safe_get_color_rgb(src_cell.fill.start_color)
-                                    end_rgb = _safe_get_color_rgb(src_cell.fill.end_color)
-                                    dst_cell.fill = PatternFill(
-                                        start_color=start_rgb,
-                                        end_color=end_rgb,
-                                        fill_type=src_cell.fill.fill_type if src_cell.fill.fill_type else "solid"
-                                    )
-                            except Exception as fill_err:
-                                pass  # Fill copy failed - not critical
+    Phase C2 optimization: Avoids re-scanning STATUS column in process_sheet()
+    by providing row numbers already known from preprocessing.
 
-                            try:
-                                # Copy alignment
-                                dst_cell.alignment = Alignment(
-                                    horizontal=src_cell.alignment.horizontal,
-                                    vertical=src_cell.alignment.vertical,
-                                    wrap_text=src_cell.alignment.wrap_text if src_cell.alignment.wrap_text else False
-                                )
-                            except Exception as align_err:
-                                pass  # Alignment copy failed - not critical
+    Args:
+        universe: Dict from preprocess_script_category()
+        xlsx_path: Path to the QA file
+        sheet_name: Sheet name to filter for
+        username: Username to filter for
 
-                    except Exception as cell_err:
-                        print(f"    [WARN] Error copying header cell {col} in sheet '{sheet_name}': {cell_err}")
+    Returns:
+        Sorted list of row numbers, or None if not available
+    """
+    rows_data = universe.get("rows", {})
+    if not rows_data:
+        return None
 
-                # Find column positions in template for matching
-                text_col = find_column_by_header(template_ws, SCRIPT_COLS.get("translation", "Text"))
-                eventname_col = find_column_by_header(template_ws, SCRIPT_COLS.get("stringid", "EventName"))
+    row_numbers = []
+    xlsx_str = str(xlsx_path)
 
-                if not text_col or not eventname_col:
-                    print(f"    [SKIP] Sheet '{sheet_name}' missing required columns (Text or EventName)")
-                    continue
+    for key, data in rows_data.items():
+        for src_user, src_path, src_sheet, src_row in data.get("sources", []):
+            if src_user == username and str(src_path) == xlsx_str and src_sheet == sheet_name:
+                row_numbers.append(src_row)
 
-                # Build index of rows in template (by key) for quick lookup
-                template_rows = {}
-                max_row = template_ws.max_row
-                if max_row is None or max_row < 2:
-                    print(f"    [SKIP] Sheet '{sheet_name}' has no data rows")
-                    continue
+    if not row_numbers:
+        return None
 
-                for row in range(2, max_row + 1):
-                    try:
-                        eventname = str(template_ws.cell(row=row, column=eventname_col).value or "").strip()
-                        text = str(template_ws.cell(row=row, column=text_col).value or "").strip()
-                        key = (eventname, text)
-                        if key not in template_rows:
-                            template_rows[key] = row
-                    except Exception as row_err:
-                        print(f"    [WARN] Error reading template row {row} in sheet '{sheet_name}': {row_err}")
-
-                # Copy only rows that are in the universe
-                sheet_rows = rows_by_sheet.get(sheet_name, [])
-                dst_row = 2
-                rows_from_template = 0
-                rows_from_source = 0
-
-                for row_data in sheet_rows:
-                    try:
-                        key = (row_data["eventname"], row_data["text"])
-
-                        # Try to find row in template first (most efficient)
-                        src_row = template_rows.get(key)
-                        if src_row:
-                            # Copy entire row from template (ALL columns)
-                            for col in range(1, num_cols + 1):
-                                src_cell = template_ws.cell(row=src_row, column=col)
-                                dst_cell = filtered_ws.cell(row=dst_row, column=col)
-                                dst_cell.value = src_cell.value
-                            dst_row += 1
-                            rows_from_template += 1
-                        else:
-                            # Row not in template - fetch from source file
-                            source_values = get_source_row_data(row_data.get("sources"), sheet_name, num_cols)
-                            if source_values:
-                                for col, value in enumerate(source_values, 1):
-                                    filtered_ws.cell(row=dst_row, column=col).value = value
-                                rows_from_source += 1
-                            else:
-                                # Fallback: create minimal row with just key columns
-                                filtered_ws.cell(row=dst_row, column=eventname_col).value = row_data["eventname"]
-                                filtered_ws.cell(row=dst_row, column=text_col).value = row_data["text"]
-                            dst_row += 1
-                    except Exception as copy_err:
-                        print(f"    [WARN] Error copying row data for key {row_data.get('eventname', '?')}: {copy_err}")
-                        dst_row += 1  # Still increment to avoid getting stuck
-
-                # Set column widths
-                for col in range(1, num_cols + 1):
-                    try:
-                        col_letter = filtered_ws.cell(row=1, column=col).column_letter
-                        filtered_ws.column_dimensions[col_letter].width = 20
-                    except Exception:
-                        pass  # Column width is not critical
-
-                if rows_from_source > 0:
-                    print(f"    Sheet '{sheet_name}': {rows_from_template} from template, {rows_from_source} from source files")
-
-            except Exception as sheet_err:
-                print(f"    [ERROR] Failed to process sheet '{sheet_name}': {sheet_err}")
-                traceback.print_exc()
-                # Continue with other sheets
-
-        # Close cached source workbooks
-        for wb in source_wb_cache.values():
-            try:
-                wb.close()
-            except:
-                pass
-
-        template_wb.close()
-
-        # Save to temp file or specified path
-        if output_path is None:
-            fd, temp_path = tempfile.mkstemp(suffix=".xlsx", prefix="filtered_script_")
-            output_path = Path(temp_path)
-            import os
-            os.close(fd)
-
-        try:
-            filtered_wb.save(output_path)
-            filtered_wb.close()
-            print(f"  [PREPROCESS] Created filtered template with {len(rows_data)} rows: {output_path.name}")
-        except Exception as save_err:
-            print(f"  [ERROR] Failed to save filtered template: {save_err}")
-            traceback.print_exc()
-            raise
-
-        return output_path
-
-    except Exception as e:
-        print(f"  [ERROR] create_filtered_script_template failed:")
-        print(f"  [ERROR] {type(e).__name__}: {e}")
-        traceback.print_exc()
-        raise
+    return sorted(set(row_numbers))
 
 
 # =============================================================================
@@ -1250,9 +854,9 @@ def process_category(
     template_xlsx = sorted_by_mtime[0]["xlsx_path"]
     template_user = sorted_by_mtime[0]["username"]
 
-    # OPTIMIZATION: For Script-type categories (Sequencer/Dialog), preprocess to filter
-    # out rows without STATUS. This dramatically speeds up processing for large files.
-    filtered_template_path = None
+    # OPTIMIZATION: For Script-type categories (Sequencer/Dialog), build master directly
+    # from preprocessed universe data (Phase B: eliminates temp file + re-read cycle)
+    universe = None  # Set for Script categories, used by Phase C2 prefiltered rows
     if category.lower() in SCRIPT_TYPE_CATEGORIES:
         print(f"  [OPTIMIZATION] Script-type category detected - preprocessing...")
         universe = preprocess_script_category(qa_folders, is_english)
@@ -1261,16 +865,12 @@ def process_category(
             print(f"  [SKIP] No rows with STATUS found in any QA file")
             return daily_entries
 
-        # Create filtered template containing only rows with STATUS
-        filtered_template_path = create_filtered_script_template(
-            template_xlsx, universe
-        )
-        template_xlsx = filtered_template_path
-        print(f"  Template: FILTERED ({universe['row_count']} rows with STATUS)")
+        # Build master directly from universe (Phase B: no temp file needed)
+        master_wb, master_path = build_master_from_universe(category, universe, master_folder)
+        print(f"  Master: Built from universe ({universe['row_count']} rows with STATUS)")
     else:
         print(f"  Template: {template_user} (most recent file)")
-
-    master_wb, master_path = get_or_create_master(category, master_folder, template_xlsx, rebuild=rebuild)
+        master_wb, master_path = get_or_create_master(category, master_folder, template_xlsx, rebuild=rebuild)
 
     if master_wb is None:
         return daily_entries
@@ -1324,7 +924,13 @@ def process_category(
             total_images += len(image_mapping)
 
         # Load QA workbook
-        qa_wb = safe_load_workbook(xlsx_path)
+        # Script-type categories: read_only=True is 3-5x faster (Phase C1 optimization)
+        # Safe because Script categories have NO screenshot hyperlink processing
+        # (ReadOnlyCell lacks .hyperlink attribute, but Script doesn't use it)
+        if is_script_category:
+            qa_wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
+        else:
+            qa_wb = safe_load_workbook(xlsx_path)
 
         # EN Item category: Sort QA workbook sheets A-Z for consistent matching
         if category.lower() == "item" and lang_label == "EN":
@@ -1353,6 +959,11 @@ def process_category(
             # Get manager status for this sheet
             sheet_manager_status = manager_status.get(sheet_name, {})
 
+            # Phase C2: Build prefiltered rows from universe for Script categories
+            prefiltered = None
+            if universe is not None:
+                prefiltered = build_prefiltered_rows(universe, xlsx_path, sheet_name, username)
+
             # Process the sheet (creates user columns internally)
             # Uses content-based matching for robust row matching
             result = process_sheet(
@@ -1360,7 +971,8 @@ def process_category(
                 is_english=is_english,
                 image_mapping=image_mapping,
                 xlsx_path=xlsx_path,
-                manager_status=sheet_manager_status
+                manager_status=sheet_manager_status,
+                prefiltered_rows=prefiltered
             )
 
             # Accumulate stats from result["stats"]
@@ -1463,14 +1075,6 @@ def process_category(
     if total_images > 0:
         print(f"  Images: {total_images} copied to Images/, {total_screenshots} hyperlinks updated")
 
-    # Cleanup: Remove filtered template temp file if it was created
-    if filtered_template_path and filtered_template_path.exists():
-        try:
-            filtered_template_path.unlink()
-            print(f"  [CLEANUP] Removed temp filtered template")
-        except Exception as e:
-            print(f"  [WARN] Could not remove temp file: {e}")
-
     return daily_entries
 
 
@@ -1508,10 +1112,12 @@ def run_compiler():
     # Ensure folders exist
     ensure_master_folders()
 
-    # Preprocess: Collect manager status from existing Master files
-    print("\nCollecting manager status from existing Master files...")
-    manager_status_en = collect_manager_status(MASTER_FOLDER_EN)
-    manager_status_cn = collect_manager_status(MASTER_FOLDER_CN)
+    # Preprocess: Collect ALL master data in single pass (Phase A optimization)
+    # Opens each master file ONCE with read_only=True instead of 3 separate passes
+    print("\nCollecting master data (manager status + fixed screenshots + tracker stats)...")
+    (manager_status_en, manager_status_cn,
+     fixed_screenshots_en, fixed_screenshots_cn,
+     manager_stats) = collect_all_master_data(tester_mapping)
 
     total_en = sum(sum(len(statuses) for statuses in sheets.values()) for sheets in manager_status_en.values())
     total_cn = sum(sum(len(statuses) for statuses in sheets.values()) for sheets in manager_status_cn.values())
@@ -1520,10 +1126,6 @@ def run_compiler():
     else:
         print("  No existing manager status entries found")
 
-    # Collect FIXED screenshots to skip during image copy (optimization)
-    print("\nCollecting FIXED screenshots to skip...")
-    fixed_screenshots_en = collect_fixed_screenshots(MASTER_FOLDER_EN)
-    fixed_screenshots_cn = collect_fixed_screenshots(MASTER_FOLDER_CN)
     total_fixed = len(fixed_screenshots_en) + len(fixed_screenshots_cn)
     if total_fixed > 0:
         print(f"  Found {len(fixed_screenshots_en)} EN + {len(fixed_screenshots_cn)} CN FIXED screenshots to skip")
@@ -1559,6 +1161,15 @@ def run_compiler():
     # Process EN
     for category in CATEGORIES:
         if category in by_category_en:
+            # Face category: custom processing pipeline (no standard master)
+            if category.lower() in FACE_TYPE_CATEGORIES:
+                from core.face_processor import process_face_category
+                entries = process_face_category(
+                    by_category_en[category], MASTER_FOLDER_EN, "EN", tester_mapping
+                )
+                all_daily_entries.extend(entries)
+                continue
+
             target_master = get_target_master_category(category)
             rebuild = target_master not in processed_masters_en
             processed_masters_en.add(target_master)
@@ -1575,6 +1186,15 @@ def run_compiler():
     # Process CN
     for category in CATEGORIES:
         if category in by_category_cn:
+            # Face category: custom processing pipeline (no standard master)
+            if category.lower() in FACE_TYPE_CATEGORIES:
+                from core.face_processor import process_face_category
+                entries = process_face_category(
+                    by_category_cn[category], MASTER_FOLDER_CN, "CN", tester_mapping
+                )
+                all_daily_entries.extend(entries)
+                continue
+
             target_master = get_target_master_category(category)
             rebuild = target_master not in processed_masters_cn
             processed_masters_cn.add(target_master)
@@ -1604,13 +1224,24 @@ def run_compiler():
         from tracker.daily import build_daily_sheet
         from tracker.total import build_total_sheet
 
-        # Collect manager stats for tracker
-        manager_stats = collect_manager_stats_for_tracker()
-
+        # manager_stats already collected by collect_all_master_data() above
         tracker_wb, tracker_path = get_or_create_tracker()
-        update_daily_data_sheet(tracker_wb, all_daily_entries, manager_stats)
+
+        # Separate Face entries (different schema) from standard entries
+        standard_entries = [e for e in all_daily_entries if e.get("category") != "Face"]
+        face_entries = [e for e in all_daily_entries if e.get("category") == "Face"]
+
+        # Update standard tracker tabs
+        if standard_entries:
+            update_daily_data_sheet(tracker_wb, standard_entries, manager_stats)
         build_daily_sheet(tracker_wb)
         build_total_sheet(tracker_wb)
+
+        # Update Facial tracker tab (if Face entries exist)
+        if face_entries:
+            from tracker.facial import update_facial_data_sheet, build_facial_sheet
+            update_facial_data_sheet(tracker_wb, face_entries)
+            build_facial_sheet(tracker_wb)
 
         # Remove deprecated GRAPHS sheet
         if "GRAPHS" in tracker_wb.sheetnames:
@@ -1619,7 +1250,10 @@ def run_compiler():
         tracker_wb.save(tracker_path)
 
         print(f"  Saved: {tracker_path}")
-        print(f"  Sheets: DAILY (with stats), TOTAL (with rankings)")
+        sheets_info = "DAILY (with stats), TOTAL (with rankings)"
+        if face_entries:
+            sheets_info += ", Facial (face animation)"
+        print(f"  Sheets: {sheets_info}")
 
     print("\n" + "=" * 60)
     print("Compilation complete!")

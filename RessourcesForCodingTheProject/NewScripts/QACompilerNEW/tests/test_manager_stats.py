@@ -108,9 +108,14 @@ def test_collect_manager_stats():
         create_mock_master_script(master_en)
         create_mock_master_quest(master_en)
 
-        # Import and run collection
-        from core.compiler import collect_manager_stats_for_tracker
-        result = collect_manager_stats_for_tracker()
+        # Also patch compiler module's imported references
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = master_en
+        compiler_module.MASTER_FOLDER_CN = master_cn
+
+        # Import and run consolidated collection (Phase A: replaces collect_manager_stats_for_tracker)
+        from core.compiler import collect_all_master_data
+        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
 
         print("\n=== COLLECTION RESULTS ===")
         print(f"Categories collected: {list(result.keys())}")
@@ -160,6 +165,9 @@ def test_collect_manager_stats():
         # Restore config
         config.MASTER_FOLDER_EN = original_en
         config.MASTER_FOLDER_CN = original_cn
+        import core.compiler as compiler_module
+        compiler_module.MASTER_FOLDER_EN = original_en
+        compiler_module.MASTER_FOLDER_CN = original_cn
         # Cleanup
         shutil.rmtree(temp_dir)
 
