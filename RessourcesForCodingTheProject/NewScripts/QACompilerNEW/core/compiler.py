@@ -215,11 +215,13 @@ def collect_all_master_data(tester_mapping: Dict = None):
         fixed_screenshots = fixed_screenshots_en if is_en else fixed_screenshots_cn
         processed_masters = set()  # Avoid re-scanning clustered categories
 
+        print(f"  [{folder_label}] Scanning master folder: {master_folder}")
         log(f"{'='*80}")
         log(f"PROCESSING FOLDER: {master_folder} [{folder_label}]")
         log(f"{'='*80}")
 
         if not master_folder.exists():
+            print(f"  [{folder_label}] Folder does not exist - skipping")
             log(f"Folder does not exist - skipping")
             continue
 
@@ -244,7 +246,9 @@ def collect_all_master_data(tester_mapping: Dict = None):
 
             try:
                 # read_only=True is 3-5x faster per open (Phase A optimization)
+                print(f"    Opening: {master_path.name}...", end="", flush=True)
                 wb = safe_load_workbook(master_path, read_only=True, data_only=True)
+                print(f" {len(wb.sheetnames)} sheets")
                 try:
                     log(f"")
                     log(f"{'~'*60}")
@@ -262,6 +266,8 @@ def collect_all_master_data(tester_mapping: Dict = None):
                         if cat not in manager_status:
                             manager_status[cat] = {}
 
+                    sheets_processed = 0
+                    total_rows_scanned = 0
                     for sheet_name in wb.sheetnames:
                         if sheet_name == "STATUS":
                             continue
@@ -420,6 +426,11 @@ def collect_all_master_data(tester_mapping: Dict = None):
                             _script_debug_flush()
 
                         log(f"    Stored {script_debug_rows_stored} manager_status entries, skipped {script_debug_rows_skipped}")
+                        sheets_processed += 1
+                        sheet_rows = ws.max_row - 1 if ws.max_row else 0
+                        total_rows_scanned += sheet_rows
+
+                    print(f"    Done: {sheets_processed} sheets, {total_rows_scanned} rows scanned")
 
                 finally:
                     wb.close()
@@ -428,7 +439,7 @@ def collect_all_master_data(tester_mapping: Dict = None):
                 import traceback as tb
                 log(f"[ERROR] Failed to process {master_path}: {e}")
                 log(f"[TRACEBACK] {tb.format_exc()}")
-                print(f"  WARN: Error reading {master_path.name}: {e}")
+                print(f"\n  WARN: Error reading {master_path.name}: {e}")
 
     # Convert manager_stats defaultdicts to regular dicts
     manager_stats_result = {}
@@ -520,7 +531,7 @@ def preprocess_script_category(
         return {"rows": {}, "row_count": 0, "source_files": 0, "errors": ["No QA folders provided"],
                 "headers": {}, "num_columns": {}}
 
-    for qf in qa_folders:
+    for qf_idx, qf in enumerate(qa_folders, 1):
         xlsx_path = qf.get("xlsx_path")
         username = qf.get("username", "unknown")
 
@@ -538,6 +549,7 @@ def preprocess_script_category(
                 continue
 
             # read_only=True is 3-5x faster for large files
+            print(f"    [{qf_idx}/{len(qa_folders)}] {username}...", end="", flush=True)
             wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
 
             for sheet_name in wb.sheetnames:
@@ -630,12 +642,14 @@ def preprocess_script_category(
                     errors.append(err_msg)
                     print(f"    [WARN] {err_msg}")
 
+            file_rows = sum(1 for _ in universe.values() if any(s[0] == username for s in _.get("sources", [])))
+            print(f" {len(wb.sheetnames)} sheets")
             wb.close()
 
         except Exception as e:
             err_msg = f"Error preprocessing {xlsx_path.name}: {type(e).__name__}: {e}"
             errors.append(err_msg)
-            print(f"    [ERROR] {err_msg}")
+            print(f"\n    [ERROR] {err_msg}")
             traceback.print_exc()
 
     print(f"  [PREPROCESS] Found {len(universe)} unique rows with STATUS from {source_files} files")
@@ -927,10 +941,12 @@ def process_category(
         # Script-type categories: read_only=True is 3-5x faster (Phase C1 optimization)
         # Safe because Script categories have NO screenshot hyperlink processing
         # (ReadOnlyCell lacks .hyperlink attribute, but Script doesn't use it)
+        print(f"    Loading workbook...", end="", flush=True)
         if is_script_category:
             qa_wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
         else:
             qa_wb = safe_load_workbook(xlsx_path)
+        print(f" {len(qa_wb.sheetnames)} sheets")
 
         # EN Item category: Sort QA workbook sheets A-Z for consistent matching
         if category.lower() == "item" and lang_label == "EN":
@@ -966,6 +982,8 @@ def process_category(
 
             # Process the sheet (creates user columns internally)
             # Uses content-based matching for robust row matching
+            qa_rows = qa_ws.max_row - 1 if qa_ws.max_row and qa_ws.max_row > 1 else 0
+            print(f"      {sheet_name}: {qa_rows} rows...", end="", flush=True)
             result = process_sheet(
                 master_ws, qa_ws, username, category,
                 is_english=is_english,
@@ -985,10 +1003,12 @@ def process_category(
             # Log match stats for debugging (content-based matching)
             match_stats = result.get("match_stats", {})
             manager_restored = result.get("manager_restored", 0)
+            matched = match_stats.get("exact", 0) + match_stats.get("fallback", 0)
+            print(f" matched={matched}, issues={stats.get('issue', 0)}")
             if match_stats.get("unmatched", 0) > 0:
-                print(f"      [WARN] {sheet_name}: {match_stats['exact']} exact, {match_stats['fallback']} fallback, {match_stats['unmatched']} UNMATCHED")
+                print(f"        [WARN] {match_stats['exact']} exact, {match_stats['fallback']} fallback, {match_stats['unmatched']} UNMATCHED")
             elif match_stats.get("fallback", 0) > 0:
-                print(f"      {sheet_name}: {match_stats['exact']} exact, {match_stats['fallback']} fallback")
+                print(f"        {match_stats['exact']} exact, {match_stats['fallback']} fallback")
             # Log manager status restoration
             if manager_restored > 0:
                 print(f"      [MANAGER] {sheet_name}: Restored {manager_restored} manager status entries")
@@ -1006,6 +1026,8 @@ def process_category(
             else:
                 trans_col = trans_col_default
 
+            wc_label = "words" if is_english else "chars"
+            wc_before = user_wordcount[username]
             for row in range(2, qa_ws.max_row + 1):
                 if qa_status_col:
                     status_val = qa_ws.cell(row, qa_status_col).value
@@ -1017,6 +1039,9 @@ def process_category(
                     user_wordcount[username] += count_words_english(cell_value)
                 else:
                     user_wordcount[username] += count_chars_chinese(cell_value)
+            wc_added = user_wordcount[username] - wc_before
+            if wc_added > 0:
+                print(f"      {sheet_name}: {wc_added} {wc_label} counted")
 
         qa_wb.close()
 
@@ -1058,13 +1083,17 @@ def process_category(
     # Apply word wrap and autofit FIRST (before hiding)
     # This way all columns get proper widths, even if hidden later
     # Bonus: if user unhides a column in Excel, it already looks good
+    print(f"\n  Formatting: autofit columns and row heights...")
     autofit_rows_with_wordwrap(master_wb)
 
     # THEN hide empty rows/sheets/columns (focus on issues)
+    print(f"  Optimizing: hiding empty rows/sheets/columns...")
     hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(master_wb)
 
     # Save master
+    print(f"  Saving master file...", end="", flush=True)
     master_wb.save(master_path)
+    print(f" done")
     print(f"\n  Saved: {master_path}")
     if hidden_sheets:
         print(f"  Hidden sheets (no comments): {', '.join(hidden_sheets)}")
@@ -1225,29 +1254,38 @@ def run_compiler():
         from tracker.total import build_total_sheet
 
         # manager_stats already collected by collect_all_master_data() above
+        print("  Loading tracker workbook...")
         tracker_wb, tracker_path = get_or_create_tracker()
 
         # Separate Face entries (different schema) from standard entries
         standard_entries = [e for e in all_daily_entries if e.get("category") != "Face"]
         face_entries = [e for e in all_daily_entries if e.get("category") == "Face"]
+        print(f"  Entries: {len(standard_entries)} standard, {len(face_entries)} face")
 
         # Update standard tracker tabs
         if standard_entries:
+            print("  Writing daily data...")
             update_daily_data_sheet(tracker_wb, standard_entries, manager_stats)
+        print("  Building DAILY sheet...")
         build_daily_sheet(tracker_wb)
+        print("  Building TOTAL sheet...")
         build_total_sheet(tracker_wb)
 
         # Update Facial tracker tab (if Face entries exist)
         if face_entries:
             from tracker.facial import update_facial_data_sheet, build_facial_sheet
+            print("  Writing facial data...")
             update_facial_data_sheet(tracker_wb, face_entries)
+            print("  Building Facial sheet...")
             build_facial_sheet(tracker_wb)
 
         # Remove deprecated GRAPHS sheet
         if "GRAPHS" in tracker_wb.sheetnames:
             del tracker_wb["GRAPHS"]
 
+        print("  Saving tracker...", end="", flush=True)
         tracker_wb.save(tracker_path)
+        print(" done")
 
         print(f"  Saved: {tracker_path}")
         sheets_info = "DAILY (with stats), TOTAL (with rankings)"

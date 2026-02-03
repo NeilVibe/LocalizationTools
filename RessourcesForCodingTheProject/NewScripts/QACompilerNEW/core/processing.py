@@ -1008,11 +1008,11 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
         if debug:
             print(f"    [DEBUG] Reset sheet '{sheet_name}' to visible")
 
-    for sheet_name in wb.sheetnames:
-        if sheet_name == "STATUS":
-            continue
-
+    hide_data_sheets = [s for s in wb.sheetnames if s != "STATUS"]
+    for hide_idx, sheet_name in enumerate(hide_data_sheets, 1):
         ws = wb[sheet_name]
+        sheet_rows = ws.max_row or 0
+        print(f"    [{hide_idx}/{len(hide_data_sheets)}] {sheet_name}: {sheet_rows} rows...", end="", flush=True)
 
         # CRITICAL: Clear any AutoFilter from QA files before applying our logic
         if ws.auto_filter.ref:
@@ -1052,6 +1052,7 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
         # (needed for column hiding logic below)
 
         if not comment_cols:
+            print(f" skip (no COMMENT columns)")
             if debug:
                 print(f"    [DEBUG] No COMMENT_ columns found in {sheet_name}")
             continue
@@ -1149,6 +1150,7 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
 
         # If NO comments in entire sheet, hide the sheet tab
         if not rows_with_comments:
+            print(f" hidden (no comments)")
             if debug:
                 print(f"    [DEBUG] Sheet '{sheet_name}' has {len(comment_cols)} COMMENT_ columns but ALL are empty - HIDING SHEET")
             ws.sheet_state = 'hidden'
@@ -1213,6 +1215,7 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
 
         # If NO rows to show after filtering, hide entire sheet
         if not rows_to_show:
+            print(f" hidden (no issues)")
             if debug:
                 print(f"    [DEBUG] Sheet '{sheet_name}' has comments but NONE are visible ISSUE rows - HIDING SHEET")
             ws.sheet_state = 'hidden'
@@ -1221,11 +1224,15 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
 
         # Single visibility pass: set hidden state for each row (Phase 4 optimization)
         # Combines the previous unhide-all + hide-specific into one pass
+        sheet_hidden = 0
         for row in range(2, ws.max_row + 1):
             should_hide = row not in rows_to_show
             ws.row_dimensions[row].hidden = should_hide
             if should_hide:
                 hidden_rows += 1
+                sheet_hidden += 1
+
+        print(f" {len(rows_to_show)} visible, {sheet_hidden} hidden")
 
     return hidden_rows, hidden_sheets, hidden_columns_total
 
@@ -1250,11 +1257,12 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
     SCREENSHOT_WIDTH = 25
     STATUS_WIDTH = 12
 
-    for sheet_name in wb.sheetnames:
-        if sheet_name == "STATUS":
-            continue
-
+    data_sheets = [s for s in wb.sheetnames if s != "STATUS"]
+    for sheet_idx, sheet_name in enumerate(data_sheets, 1):
         ws = wb[sheet_name]
+        sheet_rows = ws.max_row or 0
+        sheet_cols = ws.max_column or 0
+        print(f"    [{sheet_idx}/{len(data_sheets)}] {sheet_name}: {sheet_rows} rows x {sheet_cols} cols...", end="", flush=True)
 
         # === PHASE 1: Auto-fit column widths ===
         # Autofit ALL columns - hiding happens AFTER this, so no need to check hidden state
@@ -1326,3 +1334,5 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
             calculated_height = max_lines * default_row_height
             # Cap at reasonable max (300 points)
             ws.row_dimensions[row].height = min(calculated_height, 300)
+
+        print(f" done")
