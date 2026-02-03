@@ -116,7 +116,7 @@ from core.discovery import discover_qa_folders, group_folders_by_language
 from core.excel_ops import (
     safe_load_workbook, ensure_master_folders,
     get_or_create_master, copy_images_with_unique_names,
-    find_column_by_header, sort_worksheet_az
+    find_column_by_header, sort_worksheet_az, build_column_map
 )
 from core.processing import (
     process_sheet, update_status_sheet,
