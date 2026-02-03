@@ -51,3 +51,4 @@ Build - Log file works for BOTH compilation AND tracker update
 Build - CRITICAL: Fix category mismatch (use target_category not sheet_name)
 Build
 Build 498: Script optimization (read_only mode + column cache)
+Build 499: Face category + Facial tracker + optimizations
