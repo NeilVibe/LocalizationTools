@@ -573,11 +573,14 @@ def preprocess_script_category(
                     if ws.max_column is None or ws.max_column < 1:
                         continue
 
-                    # Find columns by NAME (not position!)
-                    status_col = find_column_by_header(ws, SCRIPT_COLS.get("status", "STATUS"))
-                    text_col = find_column_by_header(ws, SCRIPT_COLS.get("translation", "Text"))
-                    eventname_col = find_column_by_header(ws, SCRIPT_COLS.get("stringid", "EventName"))
-                    memo_col = find_column_by_header(ws, SCRIPT_COLS.get("comment", "MEMO"))
+                    # Find columns by NAME using streaming header scan (not ws.cell!)
+                    # In read_only mode, ws.cell() re-parses XML; build_column_map uses iter_rows
+                    col_map = build_column_map(ws)
+
+                    status_col = col_map.get(SCRIPT_COLS.get("status", "STATUS").upper())
+                    text_col = col_map.get(SCRIPT_COLS.get("translation", "Text").upper())
+                    eventname_col = col_map.get(SCRIPT_COLS.get("stringid", "EventName").upper())
+                    memo_col = col_map.get(SCRIPT_COLS.get("comment", "MEMO").upper())
 
                     if not status_col or not text_col or not eventname_col:
                         # Not a script sheet - skip silently
@@ -587,11 +590,11 @@ def preprocess_script_category(
 
                     # Collect sheet structure from first file encountered per sheet
                     # (Phase B: needed for build_master_from_universe)
+                    # Use iter_rows for streaming header read (not ws.cell!)
                     if sheet_name not in headers:
-                        header_row = []
-                        for col in range(1, total_cols + 1):
-                            header_row.append(ws.cell(row=1, column=col).value)
-                        headers[sheet_name] = header_row
+                        header_iter = ws.iter_rows(min_row=1, max_row=1, max_col=total_cols, values_only=True)
+                        header_tuple = next(header_iter, None)
+                        headers[sheet_name] = list(header_tuple) if header_tuple else []
                         num_columns[sheet_name] = total_cols
 
                     # Scan rows using iter_rows for batch reading (Phase C3)
@@ -946,14 +949,11 @@ def process_category(
             total_images += len(image_mapping)
 
         # Load QA workbook
-        # Script-type categories: read_only=True is 3-5x faster (Phase C1 optimization)
-        # Safe because Script categories have NO screenshot hyperlink processing
-        # (ReadOnlyCell lacks .hyperlink attribute, but Script doesn't use it)
+        # NOTE: All categories use standard mode (not read_only) because process_sheet()
+        # and word-counting use ws.cell() random access which is O(n²) in read_only mode.
+        # The 3-5x faster open from read_only is negligible vs the catastrophic per-row slowdown.
         print(f"    Loading workbook...", end="", flush=True)
-        if is_script_category:
-            qa_wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
-        else:
-            qa_wb = safe_load_workbook(xlsx_path)
+        qa_wb = safe_load_workbook(xlsx_path)
         print(f" {len(qa_wb.sheetnames)} sheets")
 
         # EN Item category: Sort QA workbook sheets A-Z for consistent matching
