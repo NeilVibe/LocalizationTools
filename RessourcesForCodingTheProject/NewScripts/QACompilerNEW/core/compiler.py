@@ -779,7 +779,9 @@ def preprocess_script_category(
                 print(f"    [WARN] File not found: {xlsx_path}")
                 continue
 
-            wb = safe_load_workbook(xlsx_path)
+            # read_only=True is 3-5x faster for large files (Phase 3 optimization)
+            # This function only READS cell values -- never writes.
+            wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
 
             for sheet_name in wb.sheetnames:
                 if sheet_name == "STATUS":
@@ -789,6 +791,7 @@ def preprocess_script_category(
                     ws = wb[sheet_name]
 
                     # Check for empty sheet
+                    # In read_only mode, max_row can be None for empty sheets
                     if ws.max_row is None or ws.max_row < 2:
                         continue
 

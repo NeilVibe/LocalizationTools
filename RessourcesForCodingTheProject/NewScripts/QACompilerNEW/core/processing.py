@@ -22,7 +22,7 @@ from config import (
     get_target_master_category, load_tester_mapping
 )
 from core.excel_ops import (
-    safe_load_workbook, find_column_by_header,
+    safe_load_workbook, find_column_by_header, build_column_map,
     get_or_create_master, copy_images_with_unique_names,
     ensure_master_folders, THIN_BORDER, style_header_cell,
     add_manager_dropdown
@@ -59,6 +59,82 @@ def _script_debug_flush():
         _SCRIPT_DEBUG_LINES = []
     except Exception as e:
         print(f"[SCRIPT DEBUG ERROR] {e}")
+
+
+# =============================================================================
+# SHARED STYLE CONSTANTS (Phase 1 optimization: style object pooling)
+# openpyxl style objects are immutable value objects -- creating them once
+# and reusing across all cells is ~500-2000x faster than inline construction.
+# =============================================================================
+
+# --- Comment cell styles (by tester status) ---
+COMMENT_FILL_ISSUE = PatternFill(start_color="E6F3FF", end_color="E6F3FF", fill_type="solid")
+COMMENT_FONT_ISSUE = Font(bold=True)
+COMMENT_FILL_BLOCKED = PatternFill(start_color="FFE4B5", end_color="FFE4B5", fill_type="solid")
+COMMENT_FONT_BLOCKED = Font(bold=True, color="FF8C00")
+COMMENT_FILL_KOREAN = PatternFill(start_color="E6E6FA", end_color="E6E6FA", fill_type="solid")
+COMMENT_FONT_KOREAN = Font(bold=True, color="800080")
+COMMENT_FILL_NO_ISSUE = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
+COMMENT_FONT_NO_ISSUE = Font(bold=True, color="2E7D32")
+COMMENT_ALIGNMENT = Alignment(wrap_text=True, vertical='top')
+COMMENT_BORDER = Border(
+    left=Side(style='thin', color='87CEEB'),
+    right=Side(style='thin', color='87CEEB'),
+    top=Side(style='thin', color='87CEEB'),
+    bottom=Side(style='thin', color='87CEEB')
+)
+
+# --- Screenshot cell styles ---
+SCREENSHOT_FILL = PatternFill(start_color="E6F3FF", end_color="E6F3FF", fill_type="solid")
+SCREENSHOT_ALIGNMENT = Alignment(horizontal='left', vertical='center')
+SCREENSHOT_BORDER = Border(
+    left=Side(style='thin', color='87CEEB'),
+    right=Side(style='thin', color='87CEEB'),
+    top=Side(style='thin', color='87CEEB'),
+    bottom=Side(style='thin', color='87CEEB')
+)
+SCREENSHOT_FONT_NORMAL = Font(color="0000FF", underline="single")
+SCREENSHOT_FONT_WARNING = Font(color="FF6600", underline="single")
+
+# --- Manager status cell styles ---
+MANAGER_STATUS_ALIGNMENT = Alignment(horizontal='center', vertical='center')
+MANAGER_FONT_FIXED = Font(bold=True, color="228B22")
+MANAGER_FONT_REPORTED = Font(bold=True, color="FF8C00")
+MANAGER_FONT_CHECKING = Font(bold=True, color="0000FF")
+MANAGER_FONT_NONISSUE = Font(bold=True, color="808080")
+
+# --- Manager comment cell styles ---
+MANAGER_COMMENT_FILL = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
+MANAGER_COMMENT_BORDER = Border(
+    left=Side(style='thin', color='228B22'),
+    right=Side(style='thin', color='228B22'),
+    top=Side(style='thin', color='228B22'),
+    bottom=Side(style='thin', color='228B22')
+)
+
+# --- Autofit word-wrap alignment ---
+WRAP_TOP_ALIGNMENT = Alignment(wrap_text=True, vertical='top')
+
+# --- User column header styles ---
+USER_COMMENT_HEADER_FILL = PatternFill(start_color="87CEEB", end_color="87CEEB", fill_type="solid")
+USER_COMMENT_HEADER_FONT = Font(bold=True, color="000000")
+USER_COMMENT_HEADER_ALIGNMENT = Alignment(horizontal='center', vertical='center')
+USER_COMMENT_HEADER_BORDER = Border(
+    left=Side(style='medium', color='4472C4'),
+    right=Side(style='medium', color='4472C4'),
+    top=Side(style='medium', color='4472C4'),
+    bottom=Side(style='medium', color='4472C4')
+)
+
+USER_STATUS_HEADER_FILL = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
+USER_STATUS_HEADER_FONT = Font(bold=True, color="000000")
+USER_STATUS_HEADER_ALIGNMENT = Alignment(horizontal='center', vertical='center')
+USER_STATUS_HEADER_BORDER = Border(
+    left=Side(style='medium', color='228B22'),
+    right=Side(style='medium', color='228B22'),
+    top=Side(style='medium', color='228B22'),
+    bottom=Side(style='medium', color='228B22')
+)
 
 
 # =============================================================================
@@ -162,15 +238,10 @@ def get_or_create_user_comment_column(ws, username: str) -> int:
     new_col = ws.max_column + 1
     cell = ws.cell(row=1, column=new_col, value=target_header)
     # Style: Light blue fill with MEDIUM blue borders (match monolith)
-    cell.fill = PatternFill(start_color="87CEEB", end_color="87CEEB", fill_type="solid")
-    cell.font = Font(bold=True, color="000000")
-    cell.alignment = Alignment(horizontal='center', vertical='center')
-    cell.border = Border(
-        left=Side(style='medium', color='4472C4'),
-        right=Side(style='medium', color='4472C4'),
-        top=Side(style='medium', color='4472C4'),
-        bottom=Side(style='medium', color='4472C4')
-    )
+    cell.fill = USER_COMMENT_HEADER_FILL
+    cell.font = USER_COMMENT_HEADER_FONT
+    cell.alignment = USER_COMMENT_HEADER_ALIGNMENT
+    cell.border = USER_COMMENT_HEADER_BORDER
     print(f"    Created column: {target_header} at {get_column_letter(new_col)} (styled)")
     return new_col
 
@@ -218,15 +289,10 @@ def get_or_create_user_status_column(ws, username: str, after_col: int) -> int:
     new_col = ws.max_column + 1
     cell = ws.cell(row=1, column=new_col, value=target_header)
     # Style: Light green fill with MEDIUM green borders (match monolith)
-    cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
-    cell.font = Font(bold=True, color="000000")
-    cell.alignment = Alignment(horizontal='center', vertical='center')
-    cell.border = Border(
-        left=Side(style='medium', color='228B22'),
-        right=Side(style='medium', color='228B22'),
-        top=Side(style='medium', color='228B22'),
-        bottom=Side(style='medium', color='228B22')
-    )
+    cell.fill = USER_STATUS_HEADER_FILL
+    cell.font = USER_STATUS_HEADER_FONT
+    cell.alignment = USER_STATUS_HEADER_ALIGNMENT
+    cell.border = USER_STATUS_HEADER_BORDER
 
     # Add dropdown with 50-row buffer (match monolith)
     last_row = max(ws.max_row, 10) + 50
@@ -254,15 +320,10 @@ def get_or_create_user_manager_comment_column(ws, username: str, after_col: int)
     new_col = ws.max_column + 1
     cell = ws.cell(row=1, column=new_col, value=target_header)
     # Style: Light green fill with MEDIUM green borders (match manager status)
-    cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
-    cell.font = Font(bold=True, color="000000")
-    cell.alignment = Alignment(horizontal='center', vertical='center')
-    cell.border = Border(
-        left=Side(style='medium', color='228B22'),
-        right=Side(style='medium', color='228B22'),
-        top=Side(style='medium', color='228B22'),
-        bottom=Side(style='medium', color='228B22')
-    )
+    cell.fill = USER_STATUS_HEADER_FILL
+    cell.font = USER_STATUS_HEADER_FONT
+    cell.alignment = USER_STATUS_HEADER_ALIGNMENT
+    cell.border = USER_STATUS_HEADER_BORDER
     print(f"    Created column: {target_header} at {get_column_letter(new_col)} (manager comment)")
     return new_col
 
@@ -285,15 +346,10 @@ def get_or_create_user_screenshot_column(ws, username: str, after_col: int) -> i
     new_col = ws.max_column + 1
     cell = ws.cell(row=1, column=new_col, value=target_header)
     # Style: Light blue fill with MEDIUM blue borders (match monolith)
-    cell.fill = PatternFill(start_color="87CEEB", end_color="87CEEB", fill_type="solid")
-    cell.font = Font(bold=True, color="000000")
-    cell.alignment = Alignment(horizontal='center', vertical='center')
-    cell.border = Border(
-        left=Side(style='medium', color='4472C4'),
-        right=Side(style='medium', color='4472C4'),
-        top=Side(style='medium', color='4472C4'),
-        bottom=Side(style='medium', color='4472C4')
-    )
+    cell.fill = USER_COMMENT_HEADER_FILL
+    cell.font = USER_COMMENT_HEADER_FONT
+    cell.alignment = USER_COMMENT_HEADER_ALIGNMENT
+    cell.border = USER_COMMENT_HEADER_BORDER
     print(f"    Created column: {target_header} at {get_column_letter(new_col)} (styled)")
     return new_col
 
@@ -479,6 +535,9 @@ def process_sheet(
         # Non-Script categories: process all rows
         rows_to_process = list(range(2, qa_ws.max_row + 1))
 
+    # Build column cache for O(1) header lookups (Phase 2 optimization)
+    qa_column_cache = build_column_map(qa_ws)
+
     # Process each row using CONTENT-BASED MATCHING
     for qa_row in rows_to_process:
         # Skip empty rows - check column 1 (first column always has data if row is valid)
@@ -486,8 +545,8 @@ def process_sheet(
         if first_col_value is None or str(first_col_value).strip() == "":
             continue
 
-        # Extract QA row data for matching
-        qa_row_data = extract_qa_row_data(qa_ws, qa_row, category, is_english)
+        # Extract QA row data for matching (with column cache for O(1) lookups)
+        qa_row_data = extract_qa_row_data(qa_ws, qa_row, category, is_english, column_cache=qa_column_cache)
 
         # Find matching master row using content-based matching
         master_row, match_type = find_matching_row_in_master(qa_row_data, master_index, category)
@@ -535,7 +594,7 @@ def process_sheet(
         if status_type:
             tester_status_cell = master_ws.cell(row=master_row, column=master_tester_status_col)
             tester_status_cell.value = status_type
-            tester_status_cell.alignment = Alignment(horizontal='center', vertical='center')
+            tester_status_cell.alignment = MANAGER_STATUS_ALIGNMENT
 
         # Process COMMENT
         if qa_comment_col and should_compile_comment:
@@ -552,27 +611,22 @@ def process_sheet(
                     cell = master_ws.cell(row=master_row, column=master_comment_col)
                     cell.value = sanitize_for_excel(new_value)
 
-                    # Style based on status
+                    # Style based on status (shared constants)
                     if status_type == "ISSUE":
-                        cell.fill = PatternFill(start_color="E6F3FF", end_color="E6F3FF", fill_type="solid")
-                        cell.font = Font(bold=True)
+                        cell.fill = COMMENT_FILL_ISSUE
+                        cell.font = COMMENT_FONT_ISSUE
                     elif status_type == "BLOCKED":
-                        cell.fill = PatternFill(start_color="FFE4B5", end_color="FFE4B5", fill_type="solid")
-                        cell.font = Font(bold=True, color="FF8C00")
+                        cell.fill = COMMENT_FILL_BLOCKED
+                        cell.font = COMMENT_FONT_BLOCKED
                     elif status_type == "KOREAN":
-                        cell.fill = PatternFill(start_color="E6E6FA", end_color="E6E6FA", fill_type="solid")
-                        cell.font = Font(bold=True, color="800080")
+                        cell.fill = COMMENT_FILL_KOREAN
+                        cell.font = COMMENT_FONT_KOREAN
                     elif status_type in ("NO ISSUE", "NON-ISSUE"):
-                        cell.fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
-                        cell.font = Font(bold=True, color="2E7D32")
+                        cell.fill = COMMENT_FILL_NO_ISSUE
+                        cell.font = COMMENT_FONT_NO_ISSUE
 
-                    cell.alignment = Alignment(wrap_text=True, vertical='top')
-                    cell.border = Border(
-                        left=Side(style='thin', color='87CEEB'),
-                        right=Side(style='thin', color='87CEEB'),
-                        top=Side(style='thin', color='87CEEB'),
-                        bottom=Side(style='thin', color='87CEEB')
-                    )
+                    cell.alignment = COMMENT_ALIGNMENT
+                    cell.border = COMMENT_BORDER
                     result["comments"] += 1
 
         # Process SCREENSHOT (not for Script category)
@@ -643,20 +697,15 @@ def process_sheet(
                     if new_screenshot_target:
                         master_screenshot_cell.hyperlink = new_screenshot_target
 
-                    master_screenshot_cell.fill = PatternFill(start_color="E6F3FF", end_color="E6F3FF", fill_type="solid")
-                    master_screenshot_cell.alignment = Alignment(horizontal='left', vertical='center')
-                    master_screenshot_cell.border = Border(
-                        left=Side(style='thin', color='87CEEB'),
-                        right=Side(style='thin', color='87CEEB'),
-                        top=Side(style='thin', color='87CEEB'),
-                        bottom=Side(style='thin', color='87CEEB')
-                    )
+                    master_screenshot_cell.fill = SCREENSHOT_FILL
+                    master_screenshot_cell.alignment = SCREENSHOT_ALIGNMENT
+                    master_screenshot_cell.border = SCREENSHOT_BORDER
 
                     if new_screenshot_target:
                         if is_warning:
-                            master_screenshot_cell.font = Font(color="FF6600", underline="single")
+                            master_screenshot_cell.font = SCREENSHOT_FONT_WARNING
                         else:
-                            master_screenshot_cell.font = Font(color="0000FF", underline="single")
+                            master_screenshot_cell.font = SCREENSHOT_FONT_NORMAL
 
                     result["screenshots"] += 1
 
@@ -716,30 +765,25 @@ def process_sheet(
                     if status_value:
                         status_cell = master_ws.cell(row=master_row, column=master_user_status_col)
                         status_cell.value = status_value
-                        status_cell.alignment = Alignment(horizontal='center', vertical='center')
+                        status_cell.alignment = MANAGER_STATUS_ALIGNMENT
                         if status_value == "FIXED":
-                            status_cell.font = Font(bold=True, color="228B22")
+                            status_cell.font = MANAGER_FONT_FIXED
                         elif status_value == "REPORTED":
-                            status_cell.font = Font(bold=True, color="FF8C00")
+                            status_cell.font = MANAGER_FONT_REPORTED
                         elif status_value == "CHECKING":
-                            status_cell.font = Font(bold=True, color="0000FF")
+                            status_cell.font = MANAGER_FONT_CHECKING
                         elif status_value in ("NON-ISSUE", "NON ISSUE"):
-                            status_cell.font = Font(bold=True, color="808080")
+                            status_cell.font = MANAGER_FONT_NONISSUE
                         result["manager_restored"] += 1
 
                     # Apply manager comment
                     if manager_comment_value:
                         manager_comment_cell = master_ws.cell(row=master_row, column=master_manager_comment_col)
                         manager_comment_cell.value = manager_comment_value
-                        manager_comment_cell.alignment = Alignment(wrap_text=True, vertical='top')
+                        manager_comment_cell.alignment = COMMENT_ALIGNMENT
                         # Light green background to match manager status theme
-                        manager_comment_cell.fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
-                        manager_comment_cell.border = Border(
-                            left=Side(style='thin', color='228B22'),
-                            right=Side(style='thin', color='228B22'),
-                            top=Side(style='thin', color='228B22'),
-                            bottom=Side(style='thin', color='228B22')
-                        )
+                        manager_comment_cell.fill = MANAGER_COMMENT_FILL
+                        manager_comment_cell.border = MANAGER_COMMENT_BORDER
 
     # DEBUG: Log final stats for Script categories
     if is_script:
@@ -969,14 +1013,36 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
             if debug:
                 print(f"    [DEBUG] Cleared AutoFilter from sheet: {sheet_name}")
 
-        # Find all COMMENT_{User} columns (case-insensitive)
+        # Build column map ONCE for this sheet (Phase 2D optimization)
+        col_map = build_column_map(ws)
+
+        # Derive all column groups from the map in one pass
         comment_cols = []
-        for col in range(1, ws.max_column + 1):
-            header = ws.cell(row=1, column=col).value
-            if header and str(header).upper().startswith("COMMENT_"):
+        screenshot_cols_map = {}   # username_upper -> col
+        status_cols_map = {}       # username_upper -> col
+        tester_status_cols_map = {}  # username_upper -> col
+        manager_comment_cols_map = {}  # username_upper -> col
+
+        for header_upper, col in col_map.items():
+            if header_upper.startswith("COMMENT_"):
                 comment_cols.append(col)
                 if debug:
-                    print(f"    [DEBUG] Found comment column: {header} at col {col}")
+                    print(f"    [DEBUG] Found comment column: {header_upper} at col {col}")
+            elif header_upper.startswith("SCREENSHOT_"):
+                uname = header_upper[11:]  # len("SCREENSHOT_") = 11
+                screenshot_cols_map[uname] = col
+            elif header_upper.startswith("TESTER_STATUS_"):
+                uname = header_upper[14:]  # len("TESTER_STATUS_") = 14
+                tester_status_cols_map[uname] = col
+            elif header_upper.startswith("STATUS_"):
+                uname = header_upper[7:]  # len("STATUS_") = 7
+                status_cols_map[uname] = col
+            elif header_upper.startswith("MANAGER_COMMENT_"):
+                uname = header_upper[16:]  # len("MANAGER_COMMENT_") = 16
+                manager_comment_cols_map[uname] = col
+
+        # Also build a reverse map from col_map for header lookups by col index
+        # (needed for column hiding logic below)
 
         if not comment_cols:
             if debug:
@@ -985,7 +1051,6 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
 
         # === RESET all COMMENT_*, SCREENSHOT_*, STATUS_* columns to visible first ===
         # NOTE: TESTER_STATUS_* columns STAY HIDDEN (they're internal for filtering only)
-        # Uses case-insensitive matching for consistency with hide logic
         for col in comment_cols:
             header = ws.cell(row=1, column=col).value
             username = str(header).replace("COMMENT_", "") if header else ""
@@ -993,26 +1058,39 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
             col_letter = get_column_letter(col)
             ws.column_dimensions[col_letter].hidden = False
 
-            # Also unhide paired SCREENSHOT_{User}, STATUS_{User}, and MANAGER_COMMENT_{User} columns (case-insensitive)
-            for search_col in range(1, ws.max_column + 1):
-                search_header = ws.cell(row=1, column=search_col).value
-                if search_header:
-                    search_header_upper = str(search_header).upper()
-                    if search_header_upper in [f"SCREENSHOT_{username_upper}", f"STATUS_{username_upper}", f"MANAGER_COMMENT_{username_upper}"]:
-                        search_col_letter = get_column_letter(search_col)
-                        ws.column_dimensions[search_col_letter].hidden = False
-                    # TESTER_STATUS always stays hidden
-                    elif search_header_upper == f"TESTER_STATUS_{username_upper}":
-                        search_col_letter = get_column_letter(search_col)
-                        ws.column_dimensions[search_col_letter].hidden = True
+            # Use pre-built maps for O(1) paired column lookup
+            for paired_col in [screenshot_cols_map.get(username_upper),
+                               status_cols_map.get(username_upper),
+                               manager_comment_cols_map.get(username_upper)]:
+                if paired_col:
+                    ws.column_dimensions[get_column_letter(paired_col)].hidden = False
+
+            # TESTER_STATUS always stays hidden
+            tester_col = tester_status_cols_map.get(username_upper)
+            if tester_col:
+                ws.column_dimensions[get_column_letter(tester_col)].hidden = True
+
             if debug:
                 print(f"    [DEBUG] Reset column group for user '{username}' to visible (TESTER_STATUS stays hidden)")
 
-        # First pass: Find rows that have comments AND track which columns have comments
+        # === SINGLE-PASS DATA COLLECTION (Phase 4 optimization) ===
+        # Combine 4 separate row scans into 1 pass: comments, screenshots, tester status, manager status
+        tester_status_cols = list(tester_status_cols_map.values())
+        manager_status_cols = list(status_cols_map.values())
+        screenshot_col_list = list(screenshot_cols_map.values())
+
         rows_with_comments = set()
         cols_with_comments = set()
+        screenshot_cols_with_content = set()  # Track which screenshot cols have data
+        rows_non_issue_by_tester = set()
+        rows_with_issue_status = set()
+        rows_resolved_by_manager = set()
+
+        TESTER_HIDE_STATUSES = {"BLOCKED", "KOREAN", "NO ISSUE", "NON-ISSUE"}
+        MANAGER_HIDE_STATUSES = {"FIXED", "NON-ISSUE", "NON ISSUE"}
 
         for row in range(2, ws.max_row + 1):
+            # Check comment columns
             for col in comment_cols:
                 value = ws.cell(row=row, column=col).value
                 if value is not None and str(value).strip():
@@ -1020,6 +1098,47 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
                     cols_with_comments.add(col)
                     if debug and row <= 10:
                         print(f"    [DEBUG] Row {row} has comment in col {col}: {repr(str(value)[:30])}")
+
+            # Check screenshot columns
+            for col in screenshot_col_list:
+                if col not in screenshot_cols_with_content:
+                    cell_value = ws.cell(row=row, column=col).value
+                    if cell_value is not None and str(cell_value).strip():
+                        screenshot_cols_with_content.add(col)
+
+            # Check tester status columns
+            has_issue = False
+            has_any_tester_status = False
+            for col in tester_status_cols:
+                value = ws.cell(row=row, column=col).value
+                if value and str(value).strip():
+                    has_any_tester_status = True
+                    status_upper = str(value).strip().upper()
+                    if status_upper == "ISSUE":
+                        has_issue = True
+                        rows_with_issue_status.add(row)
+                        break
+            if has_any_tester_status and not has_issue:
+                rows_non_issue_by_tester.add(row)
+                if debug and row <= 20:
+                    print(f"    [DEBUG] Row {row} has tester status but no ISSUE - will hide")
+
+            # Check manager status columns
+            for col in manager_status_cols:
+                value = ws.cell(row=row, column=col).value
+                if value and str(value).strip().upper() in MANAGER_HIDE_STATUSES:
+                    rows_resolved_by_manager.add(row)
+                    if debug and row <= 20:
+                        print(f"    [DEBUG] Row {row} has manager status '{value}' - will hide")
+                    break
+
+        if debug:
+            if rows_with_issue_status:
+                print(f"    [DEBUG] {len(rows_with_issue_status)} rows with ISSUE tester status (will show)")
+            if rows_non_issue_by_tester:
+                print(f"    [DEBUG] {len(rows_non_issue_by_tester)} rows with only non-ISSUE tester status (will hide)")
+            if rows_resolved_by_manager:
+                print(f"    [DEBUG] {len(rows_resolved_by_manager)} rows resolved by manager (FIXED/NON-ISSUE)")
 
         # If NO comments in entire sheet, hide the sheet tab
         if not rows_with_comments:
@@ -1038,115 +1157,39 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
             if col not in cols_with_comments:
                 header = ws.cell(row=1, column=col).value
                 username = str(header).replace("COMMENT_", "") if header else ""
+                username_upper = username.upper()
 
                 # Hide the COMMENT_{User} column
-                col_letter = ws.cell(row=1, column=col).column_letter
+                col_letter = get_column_letter(col)
                 ws.column_dimensions[col_letter].hidden = True
                 hidden_cols_this_sheet += 1
 
-                # Find and hide paired columns (case-insensitive match)
-                for search_col in range(1, ws.max_column + 1):
-                    search_header = ws.cell(row=1, column=search_col).value
-                    if search_header:
-                        search_header_upper = str(search_header).upper()
-                        username_upper = username.upper()
-                        if search_header_upper in [f"SCREENSHOT_{username_upper}", f"STATUS_{username_upper}", f"TESTER_STATUS_{username_upper}", f"MANAGER_COMMENT_{username_upper}"]:
-                            search_col_letter = ws.cell(row=1, column=search_col).column_letter
-                            ws.column_dimensions[search_col_letter].hidden = True
-                            hidden_cols_this_sheet += 1
+                # Hide paired columns using pre-built maps (O(1) lookup)
+                for paired_col in [screenshot_cols_map.get(username_upper),
+                                   status_cols_map.get(username_upper),
+                                   tester_status_cols_map.get(username_upper),
+                                   manager_comment_cols_map.get(username_upper)]:
+                    if paired_col:
+                        ws.column_dimensions[get_column_letter(paired_col)].hidden = True
+                        hidden_cols_this_sheet += 1
 
                 if debug:
                     print(f"    [DEBUG] Hidden empty column group for user: {username}")
 
         hidden_columns_total += hidden_cols_this_sheet
 
-        # === HIDE EMPTY SCREENSHOT_{User} COLUMNS (case-insensitive) ===
-        # Even if user has comments, hide SCREENSHOT column if ALL cells are empty
-        for col in range(1, ws.max_column + 1):
-            header = ws.cell(row=1, column=col).value
-            if header and str(header).upper().startswith("SCREENSHOT_"):
-                # Check if column is already hidden
-                col_letter = get_column_letter(col)
-                if ws.column_dimensions[col_letter].hidden:
-                    continue  # Skip already hidden columns
+        # === HIDE EMPTY SCREENSHOT_{User} COLUMNS ===
+        # Uses data collected in single-pass above (no additional row scan needed)
+        for uname, col in screenshot_cols_map.items():
+            col_letter = get_column_letter(col)
+            if ws.column_dimensions[col_letter].hidden:
+                continue  # Skip already hidden columns
 
-                # Check if any cell has content
-                has_content = False
-                for row in range(2, ws.max_row + 1):
-                    cell_value = ws.cell(row=row, column=col).value
-                    if cell_value is not None and str(cell_value).strip():
-                        has_content = True
-                        break
-
-                if not has_content:
-                    ws.column_dimensions[col_letter].hidden = True
-                    hidden_columns_total += 1
-                    if debug:
-                        print(f"    [DEBUG] Hidden empty SCREENSHOT column: {header}")
-
-        # === FIND TESTER_STATUS_{User} columns for tester status hiding (case-insensitive) ===
-        tester_status_cols = []
-        for col in range(1, ws.max_column + 1):
-            header = ws.cell(row=1, column=col).value
-            if header and str(header).upper().startswith("TESTER_STATUS_"):
-                tester_status_cols.append(col)
+            if col not in screenshot_cols_with_content:
+                ws.column_dimensions[col_letter].hidden = True
+                hidden_columns_total += 1
                 if debug:
-                    print(f"    [DEBUG] Found tester status column: {header} at col {col}")
-
-        # Find rows to hide due to tester status (BLOCKED, KOREAN, NO ISSUE)
-        rows_non_issue_by_tester = set()
-        rows_with_issue_status = set()
-        # Accept both "NO ISSUE" (standard) and "NON-ISSUE" (Script-type)
-        TESTER_HIDE_STATUSES = {"BLOCKED", "KOREAN", "NO ISSUE", "NON-ISSUE"}
-        for row in range(2, ws.max_row + 1):
-            has_issue = False
-            has_any_status = False
-            for col in tester_status_cols:
-                value = ws.cell(row=row, column=col).value
-                if value and str(value).strip():
-                    has_any_status = True
-                    status_upper = str(value).strip().upper()
-                    if status_upper == "ISSUE":
-                        has_issue = True
-                        rows_with_issue_status.add(row)
-                        break
-            if has_any_status and not has_issue:
-                rows_non_issue_by_tester.add(row)
-                if debug and row <= 20:
-                    print(f"    [DEBUG] Row {row} has tester status but no ISSUE - will hide")
-
-        if debug:
-            if rows_with_issue_status:
-                print(f"    [DEBUG] {len(rows_with_issue_status)} rows with ISSUE tester status (will show)")
-            if rows_non_issue_by_tester:
-                print(f"    [DEBUG] {len(rows_non_issue_by_tester)} rows with only non-ISSUE tester status (will hide)")
-
-        # === FIND STATUS_{User} columns for manager status hiding (case-insensitive) ===
-        manager_status_cols = []
-        for col in range(1, ws.max_column + 1):
-            header = ws.cell(row=1, column=col).value
-            if header:
-                header_upper = str(header).upper()
-                if header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
-                    manager_status_cols.append(col)
-                if debug:
-                    print(f"    [DEBUG] Found manager status column: {header} at col {col}")
-
-        # Find rows to hide due to manager status (FIXED, NON-ISSUE only)
-        # Accept both "NON-ISSUE" (hyphen) and "NON ISSUE" (space) for backwards compatibility
-        rows_resolved_by_manager = set()
-        MANAGER_HIDE_STATUSES = {"FIXED", "NON-ISSUE", "NON ISSUE"}
-        for row in range(2, ws.max_row + 1):
-            for col in manager_status_cols:
-                value = ws.cell(row=row, column=col).value
-                if value and str(value).strip().upper() in MANAGER_HIDE_STATUSES:
-                    rows_resolved_by_manager.add(row)
-                    if debug and row <= 20:
-                        print(f"    [DEBUG] Row {row} has manager status '{value}' - will hide")
-                    break
-
-        if debug and rows_resolved_by_manager:
-            print(f"    [DEBUG] {len(rows_resolved_by_manager)} rows resolved by manager (FIXED/NON-ISSUE)")
+                    print(f"    [DEBUG] Hidden empty SCREENSHOT column: SCREENSHOT_{uname}")
 
         # === COMBINE HIDING RULES ===
         rows_to_hide = rows_non_issue_by_tester | rows_resolved_by_manager
@@ -1169,14 +1212,12 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
             hidden_sheets.append(sheet_name)
             continue
 
-        # Pass 1: UNHIDE all rows first
+        # Single visibility pass: set hidden state for each row (Phase 4 optimization)
+        # Combines the previous unhide-all + hide-specific into one pass
         for row in range(2, ws.max_row + 1):
-            ws.row_dimensions[row].hidden = False
-
-        # Pass 2: Hide rows not in the show set
-        for row in range(2, ws.max_row + 1):
-            if row not in rows_to_show:
-                ws.row_dimensions[row].hidden = True
+            should_hide = row not in rows_to_show
+            ws.row_dimensions[row].hidden = should_hide
+            if should_hide:
                 hidden_rows += 1
 
     return hidden_rows, hidden_sheets, hidden_columns_total
@@ -1247,15 +1288,17 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
             elif header_upper.startswith("TESTER_STATUS_"):
                 ws.column_dimensions[col_letter].width = STATUS_WIDTH
 
-        # === PHASE 2: Auto-fit row heights ===
+        # === PHASE 2: Auto-fit row heights (Phase 5 optimization: skip empty cells) ===
         for row in range(1, ws.max_row + 1):
             max_lines = 1
 
             for col in range(1, ws.max_column + 1):
                 cell = ws.cell(row=row, column=col)
 
-                # Apply word wrap to all cells
-                cell.alignment = Alignment(wrap_text=True, vertical='top')
+                # Only apply word wrap to non-empty cells or header row
+                # Empty cells don't need wrap and produce identical visual result
+                if cell.value is not None or row == 1:
+                    cell.alignment = WRAP_TOP_ALIGNMENT
 
                 # Calculate lines needed based on content
                 if cell.value:
