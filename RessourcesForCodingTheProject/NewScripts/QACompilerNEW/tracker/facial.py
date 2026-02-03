@@ -20,8 +20,6 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import TRACKER_STYLES
 
-import logging
-logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -573,5 +571,5 @@ def build_facial_sheet(wb: openpyxl.Workbook) -> None:
     # Autofit
     _autofit_columns(ws)
 
-    logger.info(f"  [FACIAL] Built Facial sheet: {len(facial_data['dates'])} dates, "
-                f"{len(facial_data['users'])} users, {len(facial_data['groups'])} groups")
+    print(f"    [FACIAL] Built Facial sheet: {len(facial_data['dates'])} dates, "
+          f"{len(facial_data['users'])} users, {len(facial_data['groups'])} groups")

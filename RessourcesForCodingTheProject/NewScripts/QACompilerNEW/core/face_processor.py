@@ -29,9 +29,6 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from config import FACE_COLS
 from core.excel_ops import safe_load_workbook, build_column_map
 
-import logging
-logger = logging.getLogger(__name__)
-
 # Module-level style constants (created once, reused across all calls)
 _FACE_HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
 _FACE_HEADER_FONT = Font(bold=True, color="FFFFFF")
@@ -65,10 +62,10 @@ def process_face_category(
     Returns:
         List of daily_entry dicts for Facial tracker
     """
-    logger.info("=" * 50)
-    logger.info(f"Processing: Face [{lang_label}] ({len(qa_folders)} folders)")
-    logger.info("=" * 50)
-    logger.info("  [FACE] Custom processing pipeline (no standard master)")
+    print(f"\n{'='*50}")
+    print(f"Processing: Face [{lang_label}] ({len(qa_folders)} folders)")
+    print(f"{'='*50}")
+    print(f"  [FACE] Custom processing pipeline (no standard master)")
 
     # Collectors
     mismatch_events = {}   # {eventname: set_of_groups}
@@ -80,11 +77,11 @@ def process_face_category(
     # Per-tester stats for tracker
     tester_stats = {}  # {username: {total, no_issue, mismatch, missing, groups: {group: {total, no_issue, mismatch, missing}}}}
 
-    for qf in qa_folders:
+    for qf_idx, qf in enumerate(qa_folders, 1):
         username = qf["username"]
         xlsx_path = qf["xlsx_path"]
 
-        logger.info(f"  Processing: {username}")
+        print(f"\n  [{qf_idx}/{len(qa_folders)}] Processing: {username}")
 
         # Track latest file mtime across all QA files
         file_mtime = xlsx_path.stat().st_mtime
@@ -103,7 +100,9 @@ def process_face_category(
             }
 
         try:
+            print(f"    Loading workbook...", end="", flush=True)
             wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
+            print(f" {len(wb.sheetnames)} sheets")
             try:
                 for sheet_name in wb.sheetnames:
                     if sheet_name == "STATUS":
@@ -123,7 +122,7 @@ def process_face_category(
                     status_col = col_map.get(FACE_COLS["status"].upper())
 
                     if not eventname_col or not status_col:
-                        logger.warning(f"    Sheet '{sheet_name}': Missing EventName or STATUS column, skipping")
+                        print(f"    WARN: Sheet '{sheet_name}': Missing EventName or STATUS column, skipping")
                         continue
 
                     # Pre-compute 0-based indices for tuple access
@@ -132,6 +131,9 @@ def process_face_category(
                     group_idx = (group_col - 1) if group_col else None
 
                     sheet_rows = 0
+                    sheet_mismatch = 0
+                    sheet_missing = 0
+                    sheet_noissue = 0
                     for row_tuple in ws.iter_rows(min_row=2, max_col=ws.max_column, values_only=True):
                         eventname_val = row_tuple[eventname_idx]
                         if not eventname_val:
@@ -155,26 +157,31 @@ def process_face_category(
                         if status == "NO ISSUE":
                             tester_stats[username]["no_issue"] += 1
                             tester_stats[username]["groups"][group]["no_issue"] += 1
+                            sheet_noissue += 1
                         elif status == "MISMATCH":
                             tester_stats[username]["mismatch"] += 1
                             tester_stats[username]["groups"][group]["mismatch"] += 1
+                            sheet_mismatch += 1
                             if eventname not in mismatch_events:
                                 mismatch_events[eventname] = set()
                             mismatch_events[eventname].add(group)
                         elif status == "MISSING":
                             tester_stats[username]["missing"] += 1
                             tester_stats[username]["groups"][group]["missing"] += 1
+                            sheet_missing += 1
                             if eventname not in missing_events:
                                 missing_events[eventname] = set()
                             missing_events[eventname].add(group)
                         # Rows without status or with unknown status: counted in total but not in done
 
-                    logger.info(f"    {sheet_name}: {sheet_rows} rows")
+                    print(f"      {sheet_name}: {sheet_rows} rows (NO ISSUE={sheet_noissue}, MISMATCH={sheet_mismatch}, MISSING={sheet_missing})")
             finally:
                 wb.close()
 
         except Exception as e:
-            logger.error(f"Error processing {xlsx_path}: {e}", exc_info=True)
+            import traceback
+            print(f"\n    ERROR processing {xlsx_path}: {e}")
+            traceback.print_exc()
 
     # Detect conflicts: EventNames in BOTH mismatch and missing
     conflict_events = set(mismatch_events.keys()) & set(missing_events.keys())
@@ -184,16 +191,17 @@ def process_face_category(
         mismatch_events[evt] |= missing_events.pop(evt)
 
     # Summary
-    logger.info("  [FACE SUMMARY]")
-    logger.info(f"  MISMATCH events: {len(mismatch_events)}")
-    logger.info(f"  MISSING events:  {len(missing_events)}")
-    logger.info(f"  CONFLICT events: {len(conflict_events)} (moved to MISMATCH)")
+    print(f"\n  [FACE SUMMARY]")
+    print(f"    MISMATCH events: {len(mismatch_events)}")
+    print(f"    MISSING events:  {len(missing_events)}")
+    print(f"    CONFLICT events: {len(conflict_events)} (moved to MISMATCH)")
 
     # Compute date tab name from latest QA file mtime (MMDD format)
     date_tab = datetime.fromtimestamp(latest_mtime).strftime("%m%d") if latest_mtime > 0 else datetime.now().strftime("%m%d")
-    logger.info(f"  Date tab: {date_tab}")
+    print(f"    Date tab: {date_tab}")
 
     # Write output files (load existing to preserve old date tabs)
+    print(f"  Writing output files...")
     _write_face_output(master_folder / f"MasterMismatch_{lang_label}.xlsx", mismatch_events, "MISMATCH", date_tab)
     _write_face_output(master_folder / f"MasterMissing_{lang_label}.xlsx", missing_events, "MISSING", date_tab)
     if conflict_events:
@@ -253,7 +261,7 @@ def _write_face_output(output_path: Path, events: Dict[str, set], label: str, da
         new_events = {e: g for e, g in events.items() if e not in previous_eventnames}
         skipped = len(events) - len(new_events)
         if skipped:
-            logger.info(f"  [{label}] Dedup: {skipped} EventNames already in previous tabs, {len(new_events)} new")
+            print(f"    [{label}] Dedup: {skipped} EventNames already in previous tabs, {len(new_events)} new")
         ws = wb.create_sheet(date_tab)
     else:
         wb = Workbook()
@@ -278,7 +286,7 @@ def _write_face_output(output_path: Path, events: Dict[str, set], label: str, da
 
         wb.save(output_path)
         tab_count = len(wb.sheetnames)
-        logger.info(f"  Saved: {output_path.name} tab '{date_tab}' ({len(new_events)} new events, {tab_count} total tabs)")
+        print(f"    Saved: {output_path.name} tab '{date_tab}' ({len(new_events)} new events, {tab_count} total tabs)")
     finally:
         wb.close()
 
@@ -305,7 +313,7 @@ def _write_face_conflict(output_path: Path, conflict_events: set, date_tab: str)
         new_conflicts = conflict_events - previous_eventnames
         skipped = len(conflict_events) - len(new_conflicts)
         if skipped:
-            logger.info(f"  [CONFLICT] Dedup: {skipped} EventNames already in previous tabs, {len(new_conflicts)} new")
+            print(f"    [CONFLICT] Dedup: {skipped} EventNames already in previous tabs, {len(new_conflicts)} new")
         ws = wb.create_sheet(date_tab)
     else:
         wb = Workbook()
@@ -337,7 +345,7 @@ def _write_face_conflict(output_path: Path, conflict_events: set, date_tab: str)
 
         wb.save(output_path)
         tab_count = len(wb.sheetnames)
-        logger.info(f"  Saved: {output_path.name} tab '{date_tab}' ({len(new_conflicts)} new conflicts, {tab_count} total tabs)")
+        print(f"    Saved: {output_path.name} tab '{date_tab}' ({len(new_conflicts)} new conflicts, {tab_count} total tabs)")
     finally:
         wb.close()
 
@@ -381,7 +389,7 @@ def _build_face_daily_entries(tester_stats: Dict, lang_label: str) -> List[Dict]
             "missing": stats["missing"],
             "groups": groups,
         }
-        logger.info(f"    Face daily_entry: {entry['date']} | {entry['user']} | done={entry['done']}, mismatch={entry['mismatch']}, missing={entry['missing']}")
+        print(f"    Face daily_entry: {entry['date']} | {entry['user']} | done={entry['done']}, mismatch={entry['mismatch']}, missing={entry['missing']}")
         entries.append(entry)
 
     return entries
