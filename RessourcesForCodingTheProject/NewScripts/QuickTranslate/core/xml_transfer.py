@@ -59,6 +59,7 @@ def merge_corrections_to_xml(
         "matched": 0,
         "updated": 0,
         "not_found": 0,
+        "skipped_translated": 0,
         "errors": [],
         "by_category": {},
         "details": [],  # List of {string_id, status, old, new}
@@ -142,7 +143,7 @@ def merge_corrections_to_xml(
 
                 # Skip already-translated entries if only_untranslated mode
                 if only_untranslated and old_str and not is_korean_text(old_str):
-                    result["skipped_translated"] = result.get("skipped_translated", 0) + 1
+                    result["skipped_translated"] += 1
                     result["details"].append({
                         "string_id": sid,
                         "status": "SKIPPED_TRANSLATED",
@@ -239,6 +240,7 @@ def merge_corrections_stringid_only(
         "updated": 0,
         "skipped_non_script": 0,
         "skipped_excluded": 0,
+        "skipped_translated": 0,
         "not_found": 0,
         "errors": [],
         "by_category": {},
@@ -347,7 +349,7 @@ def merge_corrections_stringid_only(
 
                 # Skip already-translated entries if only_untranslated mode
                 if only_untranslated and old_str and not is_korean_text(old_str):
-                    result["skipped_translated"] = result.get("skipped_translated", 0) + 1
+                    result["skipped_translated"] += 1
                     result["details"].append({
                         "string_id": sid,
                         "status": "SKIPPED_TRANSLATED",
@@ -438,6 +440,7 @@ def merge_corrections_fuzzy(
         "matched": 0,
         "updated": 0,
         "not_found": 0,
+        "skipped_translated": 0,
         "errors": [],
         "details": [],
     }
@@ -493,7 +496,7 @@ def merge_corrections_fuzzy(
 
                 # Skip already-translated entries if only_untranslated mode
                 if only_untranslated and old_str and not is_korean_text(old_str):
-                    result["skipped_translated"] = result.get("skipped_translated", 0) + 1
+                    result["skipped_translated"] += 1
                     result["details"].append({
                         "string_id": sid,
                         "status": "SKIPPED_TRANSLATED",
@@ -578,6 +581,7 @@ def merge_corrections_quadruple_fallback(
         "matched": 0,
         "updated": 0,
         "not_found": 0,
+        "skipped_translated": 0,
         "errors": [],
         "details": [],
         "level_counts": {"L1": 0, "L2A": 0, "L2B": 0, "L3": 0},
@@ -636,7 +640,7 @@ def merge_corrections_quadruple_fallback(
 
                 # Skip already-translated entries if only_untranslated mode
                 if only_untranslated and old_str and not is_korean_text(old_str):
-                    result["skipped_translated"] = result.get("skipped_translated", 0) + 1
+                    result["skipped_translated"] += 1
                     result["details"].append({
                         "string_id": sid,
                         "status": f"SKIPPED_TRANSLATED ({level})",
