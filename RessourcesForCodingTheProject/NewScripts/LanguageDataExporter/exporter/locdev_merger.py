@@ -341,46 +341,40 @@ def merge_all_corrections(
         results["errors"].append(f"LOCDEV folder not found: {locdev_folder}")
         return results
 
-    # Find all Excel files
-    excel_files = list(submit_folder.glob("languagedata_*.xlsx"))
-    excel_files.extend(submit_folder.glob("LanguageData_*.xlsx"))
+    # Build dynamic language code mapping from LOCDEV folder
+    locdev_lang_files = {}  # lang_code (lowercase) -> xml_path
+    for xml_file in locdev_folder.glob("languagedata_*.xml"):
+        name = xml_file.stem.lower()
+        if name.startswith("languagedata_"):
+            lang = name[13:]  # After "languagedata_"
+            locdev_lang_files[lang.lower()] = xml_file
 
-    # Remove duplicates (case-insensitive)
-    seen = set()
-    unique_files = []
-    for f in excel_files:
-        if f.name.lower() not in seen:
-            seen.add(f.name.lower())
-            unique_files.append(f)
+    if not locdev_lang_files:
+        results["errors"].append(f"No languagedata_*.xml files found in LOCDEV: {locdev_folder}")
+        return results
 
-    for excel_path in unique_files:
-        # Extract language code from filename
-        name = excel_path.stem  # e.g., "languagedata_FRE" or "LanguageData_GER"
-        if name.lower().startswith("languagedata_"):
-            lang_code = name[13:]  # After "languagedata_"
-        else:
-            continue
+    logger.info(f"Found {len(locdev_lang_files)} language files in LOCDEV: {sorted(locdev_lang_files.keys())}")
 
+    # Find Excel files in ToSubmit folder using suffix-based matching
+    from .submit_preparer import discover_submit_files
+    submit_files = discover_submit_files(submit_folder, locdev_folder)
+
+    if not submit_files:
+        results["errors"].append(f"No matching Excel files found in ToSubmit: {submit_folder}")
+        return results
+
+    for excel_path, lang_code in submit_files:
         # Get file modification time for weekly tracking
         file_mod_time = get_file_mod_time(excel_path)
         if file_mod_time:
             results["file_mod_times"][lang_code] = file_mod_time
 
-        # Find corresponding LOCDEV XML file
-        xml_candidates = [
-            locdev_folder / f"languagedata_{lang_code.lower()}.xml",
-            locdev_folder / f"languagedata_{lang_code.upper()}.xml",
-            locdev_folder / f"languagedata_{lang_code}.xml",
-        ]
-
-        xml_path = None
-        for candidate in xml_candidates:
-            if candidate.exists():
-                xml_path = candidate
-                break
+        # Find corresponding LOCDEV XML file (case-insensitive)
+        lang_lower = lang_code.lower()
+        xml_path = locdev_lang_files.get(lang_lower)
 
         if not xml_path:
-            results["errors"].append(f"No LOCDEV XML found for {excel_path.name}")
+            results["errors"].append(f"No LOCDEV XML found for {excel_path.name} (lang={lang_code})")
             continue
 
         # Parse corrections from Excel
@@ -442,15 +436,19 @@ def merge_all_corrections(
 # STRINGID-ONLY MATCHING (SCRIPT STRINGS)
 # =============================================================================
 
-# SCRIPT CATEGORIES - strings from Dialog/Sequencer folders
+# SCRIPT CATEGORIES - top-level folders where StringID-only matching is safe
 # These are STORY-type strings that can be matched by StringID alone
-SCRIPT_CATEGORIES = {"Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"}
+SCRIPT_CATEGORIES = {"Dialog", "Sequencer"}
+
+# Subfolders explicitly excluded from StringID-only transfer
+SCRIPT_EXCLUDE_SUBFOLDERS = {"NarrationDialog"}
 
 
 def merge_corrections_stringid_only_script(
     xml_path: Path,
     corrections: List[Dict],
-    stringid_to_category: Dict[str, str],
+    stringid_to_toplevel: Dict[str, str],
+    stringid_to_subfolder: Optional[Dict[str, str]] = None,
     dry_run: bool = False,
 ) -> Dict:
     """
@@ -463,16 +461,18 @@ def merge_corrections_stringid_only_script(
     Args:
         xml_path: Path to LOCDEV XML file
         corrections: List of correction dicts with string_id, corrected keys
-        stringid_to_category: Pre-built StringID→Category mapping from EXPORT
+        stringid_to_toplevel: Pre-built StringID→TopLevelFolder mapping from EXPORT
+        stringid_to_subfolder: Pre-built StringID→Subfolder mapping (for exclusions)
         dry_run: If True, don't write changes
 
     Returns:
-        Dict with: updated, skipped_non_script, not_found, errors
+        Dict with: updated, skipped_non_script, skipped_excluded, not_found, errors
     """
     result = {
         "matched": 0,
         "updated": 0,
         "skipped_non_script": 0,
+        "skipped_excluded": 0,
         "not_found": 0,
         "errors": [],
         "by_category": {},
@@ -481,21 +481,30 @@ def merge_corrections_stringid_only_script(
     if not corrections:
         return result
 
-    # Filter corrections to SCRIPT TYPE only
+    # Filter corrections to SCRIPT TYPE only (and not in excluded subfolders)
     script_corrections = []
 
     for c in corrections:
         sid = c["string_id"]
-        category = stringid_to_category.get(sid, "Uncategorized")
+        toplevel = stringid_to_toplevel.get(sid, "Uncategorized")
+        subfolder = stringid_to_subfolder.get(sid, "") if stringid_to_subfolder else ""
 
-        if category in SCRIPT_CATEGORIES:
-            script_corrections.append({
-                **c,
-                "category": category,
-            })
-        else:
+        # Check if in SCRIPT categories (Dialog/Sequencer)
+        if toplevel not in SCRIPT_CATEGORIES:
             result["skipped_non_script"] += 1
-            logger.debug(f"Skipped non-SCRIPT StringID={sid} (category={category})")
+            logger.debug(f"Skipped non-SCRIPT StringID={sid} (toplevel={toplevel})")
+            continue
+
+        # Check if subfolder is in exclusion list
+        if subfolder in SCRIPT_EXCLUDE_SUBFOLDERS:
+            result["skipped_excluded"] += 1
+            logger.debug(f"Skipped excluded subfolder StringID={sid} (subfolder={subfolder})")
+            continue
+
+        script_corrections.append({
+            **c,
+            "category": toplevel,
+        })
 
     if not script_corrections:
         logger.info(f"No SCRIPT corrections to apply to {xml_path.name}")
@@ -592,9 +601,9 @@ def merge_all_corrections_stringid_only_script(
     Process all Excel files using StringID-only matching for SCRIPT strings.
 
     This function:
-    1. Builds StringID→Category index from EXPORT folder
+    1. Builds StringID→TopLevel and StringID→Subfolder indexes from EXPORT folder
     2. Parses corrections from Excel files in ToSubmit folder
-    3. Filters to only SCRIPT-type strings (Dialog/Sequencer)
+    3. Filters to only SCRIPT-type strings (Dialog/Sequencer), excluding NarrationDialog
     4. Applies corrections using StringID-only matching
 
     Args:
@@ -606,14 +615,14 @@ def merge_all_corrections_stringid_only_script(
     Returns:
         Dict with overall results
     """
-    from .category_mapper import build_stringid_category_index, load_cluster_config
-    from config import CLUSTER_CONFIG
+    from .category_mapper import build_stringid_to_toplevel, build_stringid_to_subfolder
 
     results = {
         "files_processed": 0,
         "total_corrections": 0,
         "total_script_corrections": 0,
         "total_skipped_non_script": 0,
+        "total_skipped_excluded": 0,
         "total_success": 0,
         "total_fail": 0,
         "errors": [],
@@ -632,56 +641,49 @@ def merge_all_corrections_stringid_only_script(
         results["errors"].append(f"EXPORT folder not found: {export_folder}")
         return results
 
-    # Build StringID→Category index from EXPORT folder
-    logger.info("Building StringID→Category index from EXPORT folder...")
-    config = load_cluster_config(CLUSTER_CONFIG)
-    stringid_to_category = build_stringid_category_index(
-        export_folder,
-        config,
-        config.get("default_category", "Uncategorized")
-    )
+    # Build StringID→TopLevel and StringID→Subfolder indexes from EXPORT folder
+    logger.info("Building StringID→TopLevel index from EXPORT folder...")
+    stringid_to_toplevel = build_stringid_to_toplevel(export_folder)
 
-    if not stringid_to_category:
-        results["errors"].append("Failed to build StringID→Category index from EXPORT folder")
+    if not stringid_to_toplevel:
+        results["errors"].append("Failed to build StringID→TopLevel index from EXPORT folder")
         return results
 
-    logger.info(f"Built index with {len(stringid_to_category)} StringIDs")
+    logger.info(f"Built top-level index with {len(stringid_to_toplevel)} StringIDs")
 
-    # Find all Excel files
-    excel_files = list(submit_folder.glob("languagedata_*.xlsx"))
-    excel_files.extend(submit_folder.glob("LanguageData_*.xlsx"))
+    logger.info("Building StringID→Subfolder index from EXPORT folder...")
+    stringid_to_subfolder = build_stringid_to_subfolder(export_folder)
+    logger.info(f"Built subfolder index with {len(stringid_to_subfolder)} StringIDs")
 
-    # Remove duplicates (case-insensitive)
-    seen = set()
-    unique_files = []
-    for f in excel_files:
-        if f.name.lower() not in seen:
-            seen.add(f.name.lower())
-            unique_files.append(f)
+    # Build dynamic language code mapping from LOCDEV folder
+    locdev_lang_files = {}  # lang_code (lowercase) -> xml_path
+    for xml_file in locdev_folder.glob("languagedata_*.xml"):
+        name = xml_file.stem.lower()
+        if name.startswith("languagedata_"):
+            lang = name[13:]  # After "languagedata_"
+            locdev_lang_files[lang.lower()] = xml_file
 
-    for excel_path in unique_files:
-        # Extract language code from filename
-        name = excel_path.stem
-        if name.lower().startswith("languagedata_"):
-            lang_code = name[13:]
-        else:
-            continue
+    if not locdev_lang_files:
+        results["errors"].append(f"No languagedata_*.xml files found in LOCDEV: {locdev_folder}")
+        return results
 
-        # Find corresponding LOCDEV XML file
-        xml_candidates = [
-            locdev_folder / f"languagedata_{lang_code.lower()}.xml",
-            locdev_folder / f"languagedata_{lang_code.upper()}.xml",
-            locdev_folder / f"languagedata_{lang_code}.xml",
-        ]
+    logger.info(f"Found {len(locdev_lang_files)} language files in LOCDEV: {sorted(locdev_lang_files.keys())}")
 
-        xml_path = None
-        for candidate in xml_candidates:
-            if candidate.exists():
-                xml_path = candidate
-                break
+    # Find Excel files in ToSubmit folder using suffix-based matching
+    from .submit_preparer import discover_submit_files
+    submit_files = discover_submit_files(submit_folder, locdev_folder)
+
+    if not submit_files:
+        results["errors"].append(f"No matching Excel files found in ToSubmit: {submit_folder}")
+        return results
+
+    for excel_path, lang_code in submit_files:
+        # Find corresponding LOCDEV XML file (case-insensitive)
+        lang_lower = lang_code.lower()
+        xml_path = locdev_lang_files.get(lang_lower)
 
         if not xml_path:
-            results["errors"].append(f"No LOCDEV XML found for {excel_path.name}")
+            results["errors"].append(f"No LOCDEV XML found for {excel_path.name} (lang={lang_code})")
             continue
 
         # Parse corrections from Excel
@@ -701,12 +703,13 @@ def merge_all_corrections_stringid_only_script(
 
         # Merge corrections using StringID-only matching for SCRIPT strings
         file_result = merge_corrections_stringid_only_script(
-            xml_path, corrections, stringid_to_category, dry_run
+            xml_path, corrections, stringid_to_toplevel, stringid_to_subfolder, dry_run
         )
 
         # Calculate counts
         corrections_count = len(corrections)
-        script_count = corrections_count - file_result["skipped_non_script"]
+        skipped_total = file_result["skipped_non_script"] + file_result.get("skipped_excluded", 0)
+        script_count = corrections_count - skipped_total
         success_count = file_result["matched"]
         fail_count = file_result["not_found"]
 
@@ -722,13 +725,15 @@ def merge_all_corrections_stringid_only_script(
         results["total_corrections"] += corrections_count
         results["total_script_corrections"] += script_count
         results["total_skipped_non_script"] += file_result["skipped_non_script"]
+        results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
         results["total_success"] += success_count
         results["total_fail"] += fail_count
         results["errors"].extend(file_result["errors"])
 
         logger.info(
             f"Processed {lang_code}: corrections={corrections_count}, "
-            f"script={script_count}, skipped={file_result['skipped_non_script']}, "
+            f"script={script_count}, skipped_non_script={file_result['skipped_non_script']}, "
+            f"skipped_excluded={file_result.get('skipped_excluded', 0)}, "
             f"success={success_count}, fail={fail_count}"
         )
 

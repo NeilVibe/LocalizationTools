@@ -8,11 +8,12 @@ Tkinter GUI for the LanguageDataExporter tool with:
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from pathlib import Path
 import threading
 import logging
 import sys
+from typing import Dict, List, Tuple
 
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -58,11 +59,91 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 WINDOW_TITLE = "Language Data Exporter v3.0"
-WINDOW_WIDTH = 700
-WINDOW_HEIGHT = 400
+WINDOW_WIDTH = 750
+WINDOW_HEIGHT = 520
 
 # Languages to EXCLUDE (Korean is source, not target)
 EXCLUDED_LANGUAGES = {"kor"}
+
+
+def validate_locdev_folder(folder_path: Path) -> Tuple[bool, str, Dict]:
+    """
+    Validate a LOCDEV folder.
+
+    Checks:
+    - Folder exists
+    - Contains languagedata_*.xml files
+    - Files are valid XML
+    - Reports found languages (NO hardcoded expected list)
+
+    Args:
+        folder_path: Path to check
+
+    Returns:
+        Tuple of (is_valid, message, details_dict)
+    """
+    details = {
+        "exists": False,
+        "found_languages": [],
+        "invalid_files": [],
+        "total_files": 0,
+    }
+
+    if not folder_path.exists():
+        return False, "Folder does not exist", details
+
+    if not folder_path.is_dir():
+        return False, "Path is not a folder", details
+
+    details["exists"] = True
+
+    # Find all languagedata_*.xml files (dynamic discovery)
+    xml_files = list(folder_path.glob("languagedata_*.xml"))
+    xml_files.extend(folder_path.glob("LanguageData_*.xml"))
+
+    # Remove duplicates (case-insensitive)
+    seen = set()
+    unique_files = []
+    for f in xml_files:
+        if f.name.lower() not in seen:
+            seen.add(f.name.lower())
+            unique_files.append(f)
+
+    details["total_files"] = len(unique_files)
+
+    if not unique_files:
+        return False, "No languagedata_*.xml files found", details
+
+    # Extract language codes and validate XML
+    found_langs = set()
+    for xml_file in unique_files:
+        name = xml_file.stem.lower()
+        if name.startswith("languagedata_"):
+            lang_code = name[13:]
+            found_langs.add(lang_code)
+
+            # Quick XML validation (check if it starts with XML declaration or tag)
+            try:
+                with open(xml_file, 'r', encoding='utf-8') as f:
+                    first_line = f.readline(500)
+                    if not (first_line.strip().startswith('<?xml') or
+                            first_line.strip().startswith('<')):
+                        details["invalid_files"].append(xml_file.name)
+            except Exception:
+                details["invalid_files"].append(xml_file.name)
+
+    details["found_languages"] = sorted(found_langs)
+
+    # Build status message
+    if details["invalid_files"]:
+        return False, f"Invalid XML files: {', '.join(details['invalid_files'])}", details
+
+    if len(found_langs) == 0:
+        return False, "No valid language files found", details
+
+    msg = f"✓ {len(found_langs)} languages found"
+
+    return True, msg, details
 
 
 class LanguageDataExporterGUI:
@@ -74,17 +155,24 @@ class LanguageDataExporterGUI:
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.root.resizable(True, True)
 
+        # Custom LOCDEV path (defaults to config value)
+        self.custom_locdev_path = tk.StringVar(value=str(LOCDEV_FOLDER))
+        self.locdev_valid = False
+
         # Build UI
         self._build_ui()
 
         # Show path status
         self._check_paths()
 
+        # Validate default LOCDEV
+        self._validate_locdev()
+
     def _build_ui(self):
         """Build the main UI layout."""
         # Configure root grid
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(2, weight=1)
+        self.root.rowconfigure(3, weight=1)
 
         # Title
         title_label = tk.Label(
@@ -97,7 +185,10 @@ class LanguageDataExporterGUI:
         # === Section 1: Path Info (Read-Only) ===
         self._build_path_info_section()
 
-        # === Section 2: Export Actions ===
+        # === Section 2: LOCDEV Selection ===
+        self._build_locdev_section()
+
+        # === Section 3: Export Actions ===
         self._build_export_section()
 
         # === Section 4: Status ===
@@ -150,10 +241,96 @@ class LanguageDataExporterGUI:
         else:
             self.export_status.config(text="NOT FOUND", foreground="red")
 
+    def _build_locdev_section(self):
+        """Build LOCDEV folder selection section."""
+        section = ttk.LabelFrame(self.root, text="LOCDEV Folder (for Merge Operations)", padding=10)
+        section.grid(row=2, column=0, sticky="ew", padx=15, pady=5)
+        section.columnconfigure(1, weight=1)
+
+        # Path entry
+        ttk.Label(section, text="Path:").grid(row=0, column=0, sticky="w", padx=5)
+
+        self.locdev_entry = ttk.Entry(section, textvariable=self.custom_locdev_path, width=50)
+        self.locdev_entry.grid(row=0, column=1, sticky="ew", padx=5)
+
+        # Browse button
+        ttk.Button(
+            section,
+            text="Browse...",
+            command=self._browse_locdev,
+            width=10
+        ).grid(row=0, column=2, padx=5)
+
+        # Validate button
+        ttk.Button(
+            section,
+            text="Validate",
+            command=self._validate_locdev,
+            width=10
+        ).grid(row=0, column=3, padx=5)
+
+        # Status row
+        status_frame = ttk.Frame(section)
+        status_frame.grid(row=1, column=0, columnspan=4, sticky="w", pady=(5, 0))
+
+        self.locdev_status_icon = ttk.Label(status_frame, text="", font=("Arial", 12))
+        self.locdev_status_icon.pack(side="left", padx=(5, 2))
+
+        self.locdev_status_text = ttk.Label(status_frame, text="Not validated")
+        self.locdev_status_text.pack(side="left", padx=2)
+
+        # Details label (for missing languages info)
+        self.locdev_details = ttk.Label(section, text="", font=("Arial", 8), foreground="gray")
+        self.locdev_details.grid(row=2, column=0, columnspan=4, sticky="w", padx=5)
+
+    def _browse_locdev(self):
+        """Browse for LOCDEV folder."""
+        current_path = self.custom_locdev_path.get()
+        initial_dir = current_path if Path(current_path).exists() else str(Path.home())
+
+        folder = filedialog.askdirectory(
+            title="Select LOCDEV Folder",
+            initialdir=initial_dir
+        )
+
+        if folder:
+            self.custom_locdev_path.set(folder)
+            self._validate_locdev()
+
+    def _validate_locdev(self):
+        """Validate the selected LOCDEV folder."""
+        folder_path = Path(self.custom_locdev_path.get())
+
+        is_valid, message, details = validate_locdev_folder(folder_path)
+
+        self.locdev_valid = is_valid
+
+        if is_valid:
+            self.locdev_status_icon.config(text="✓", foreground="green")
+            self.locdev_status_text.config(text=message, foreground="green")
+
+            # Show found languages (truncate if too many)
+            found = details["found_languages"]
+            if found:
+                lang_str = ", ".join(lang.upper() for lang in found[:8])
+                if len(found) > 8:
+                    lang_str += f"... (+{len(found) - 8} more)"
+                self.locdev_details.config(text=f"Languages: {lang_str}")
+            else:
+                self.locdev_details.config(text="")
+        else:
+            self.locdev_status_icon.config(text="✗", foreground="red")
+            self.locdev_status_text.config(text=message, foreground="red")
+            self.locdev_details.config(text="")
+
+    def _get_locdev_folder(self) -> Path:
+        """Get the current LOCDEV folder path."""
+        return Path(self.custom_locdev_path.get())
+
     def _build_export_section(self):
         """Build export actions section."""
         section = ttk.LabelFrame(self.root, text="Generate & Submit", padding=10)
-        section.grid(row=2, column=0, sticky="ew", padx=15, pady=5)
+        section.grid(row=3, column=0, sticky="ew", padx=15, pady=5)
 
         # Row 1: Generate buttons
         btn_frame1 = ttk.Frame(section)
@@ -223,7 +400,7 @@ class LanguageDataExporterGUI:
     def _build_status_section(self):
         """Build status display section."""
         section = ttk.LabelFrame(self.root, text="Status", padding=10)
-        section.grid(row=3, column=0, sticky="ew", padx=15, pady=10)
+        section.grid(row=4, column=0, sticky="ew", padx=15, pady=10)
         section.columnconfigure(0, weight=1)
 
         # Progress bar
@@ -523,14 +700,19 @@ class LanguageDataExporterGUI:
             )
             return
 
-        # Check if LOCDEV folder exists
-        if not LOCDEV_FOLDER.exists():
-            messagebox.showerror(
-                "LOCDEV Folder Not Found",
-                f"LOCDEV folder not found:\n{LOCDEV_FOLDER}\n\n"
-                "Please check your settings.json configuration."
-            )
-            return
+        # Use custom LOCDEV path
+        locdev_folder = self._get_locdev_folder()
+
+        # Validate LOCDEV folder
+        if not self.locdev_valid:
+            self._validate_locdev()
+            if not self.locdev_valid:
+                messagebox.showerror(
+                    "LOCDEV Folder Invalid",
+                    f"LOCDEV folder is not valid:\n{locdev_folder}\n\n"
+                    "Please select a valid LOCDEV folder with languagedata_*.xml files."
+                )
+                return
 
         # Discover files
         files = discover_submit_files(TOSUBMIT_FOLDER)
@@ -550,7 +732,7 @@ class LanguageDataExporterGUI:
             "Confirm LOCDEV Merge",
             f"This will merge corrections from {len(files)} Excel files:\n\n"
             f"{file_list}\n\n"
-            f"Into LOCDEV XML files at:\n{LOCDEV_FOLDER}\n\n"
+            f"Into LOCDEV XML files at:\n{locdev_folder}\n\n"
             "Matching is STRICT: StringID + StrOrigin must BOTH match.\n\n"
             "Progress tracker will be updated with merge results.\n\n"
             "Continue?"
@@ -567,7 +749,7 @@ class LanguageDataExporterGUI:
                 self.root.after(0, lambda: self._update_progress(10))
                 self.root.after(0, lambda: self._set_status("Merging corrections..."))
 
-                results = merge_all_corrections(TOSUBMIT_FOLDER, LOCDEV_FOLDER)
+                results = merge_all_corrections(TOSUBMIT_FOLDER, locdev_folder)
 
                 # Print terminal report
                 print_merge_report(results)
@@ -631,14 +813,19 @@ class LanguageDataExporterGUI:
             )
             return
 
-        # Check if LOCDEV folder exists
-        if not LOCDEV_FOLDER.exists():
-            messagebox.showerror(
-                "LOCDEV Folder Not Found",
-                f"LOCDEV folder not found:\n{LOCDEV_FOLDER}\n\n"
-                "Please check your settings.json configuration."
-            )
-            return
+        # Use custom LOCDEV path
+        locdev_folder = self._get_locdev_folder()
+
+        # Validate LOCDEV folder
+        if not self.locdev_valid:
+            self._validate_locdev()
+            if not self.locdev_valid:
+                messagebox.showerror(
+                    "LOCDEV Folder Invalid",
+                    f"LOCDEV folder is not valid:\n{locdev_folder}\n\n"
+                    "Please select a valid LOCDEV folder with languagedata_*.xml files."
+                )
+                return
 
         # Check if EXPORT folder exists (needed for category detection)
         if not EXPORT_FOLDER.exists():
@@ -670,10 +857,11 @@ class LanguageDataExporterGUI:
             "APPLIES TO: Dialog/Sequencer strings ONLY\n"
             "  • Sequencer (story cutscenes)\n"
             "  • AIDialog (NPC dialog)\n"
-            "  • QuestDialog (quest text)\n"
-            "  • NarrationDialog (narration)\n\n"
+            "  • QuestDialog (quest text)\n\n"
+            "EXCLUDES: NarrationDialog\n"
             "IGNORES: StrOrigin (source text)\n"
             "SKIPS: All non-SCRIPT strings (System, UI, etc.)\n\n"
+            f"Target LOCDEV:\n{locdev_folder}\n\n"
             f"Files to process:\n{file_list}\n\n"
             "Use this when source text changed but StringID is still valid.\n\n"
             "Continue?",
@@ -692,7 +880,7 @@ class LanguageDataExporterGUI:
                 self.root.after(0, lambda: self._set_status("Building category index..."))
 
                 results = merge_all_corrections_stringid_only_script(
-                    TOSUBMIT_FOLDER, LOCDEV_FOLDER, EXPORT_FOLDER
+                    TOSUBMIT_FOLDER, locdev_folder, EXPORT_FOLDER
                 )
 
                 # Print terminal report

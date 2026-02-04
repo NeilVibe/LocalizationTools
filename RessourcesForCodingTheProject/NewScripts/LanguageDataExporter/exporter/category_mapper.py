@@ -380,6 +380,83 @@ def get_category(
     return category_index.get(string_id, default_category)
 
 
+def build_stringid_to_toplevel(export_folder: Path) -> Dict[str, str]:
+    """
+    Build StringID -> Top-level folder mapping.
+
+    Maps each StringID to its top-level folder (Dialog, Sequencer, UI, etc.).
+    Used for general SCRIPT category filtering.
+
+    Args:
+        export_folder: Path to EXPORT folder
+
+    Returns:
+        {StringID: TopLevelFolder} mapping
+    """
+    if not export_folder.exists():
+        return {}
+
+    stringid_to_toplevel: Dict[str, str] = {}
+
+    # Get all top-level subfolders
+    for toplevel_folder in export_folder.iterdir():
+        if not toplevel_folder.is_dir():
+            continue
+
+        toplevel_name = toplevel_folder.name
+
+        # Scan all XML files in this folder
+        for xml_file in toplevel_folder.rglob("*.loc.xml"):
+            string_ids = parse_export_file(xml_file)
+            for string_id in string_ids:
+                stringid_to_toplevel[string_id] = toplevel_name
+
+    logger.info(f"Built top-level index: {len(stringid_to_toplevel)} StringIDs")
+    return stringid_to_toplevel
+
+
+def build_stringid_to_subfolder(export_folder: Path) -> Dict[str, str]:
+    """
+    Build StringID -> Subfolder mapping.
+
+    Maps each StringID to its immediate subfolder within the top-level folder.
+    Used for exclusion filtering (e.g., exclude NarrationDialog).
+
+    Args:
+        export_folder: Path to EXPORT folder
+
+    Returns:
+        {StringID: Subfolder} mapping
+    """
+    if not export_folder.exists():
+        return {}
+
+    stringid_to_subfolder: Dict[str, str] = {}
+
+    # Get all top-level subfolders
+    for toplevel_folder in export_folder.iterdir():
+        if not toplevel_folder.is_dir():
+            continue
+
+        # Scan all XML files in this folder
+        for xml_file in toplevel_folder.rglob("*.loc.xml"):
+            # Get relative path from top-level folder
+            rel_path = xml_file.relative_to(toplevel_folder)
+
+            # Get immediate subfolder (first part of relative path)
+            if len(rel_path.parts) > 1:
+                subfolder = rel_path.parts[0]
+            else:
+                subfolder = ""  # File directly in top-level folder
+
+            string_ids = parse_export_file(xml_file)
+            for string_id in string_ids:
+                stringid_to_subfolder[string_id] = subfolder
+
+    logger.info(f"Built subfolder index: {len(stringid_to_subfolder)} StringIDs")
+    return stringid_to_subfolder
+
+
 def analyze_categories(export_folder: Path, config: Dict) -> Dict[str, int]:
     """
     Analyze EXPORT folder and return category distribution.

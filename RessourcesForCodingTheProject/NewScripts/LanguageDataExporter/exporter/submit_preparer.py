@@ -35,12 +35,25 @@ THIN_BORDER = Border(
 )
 
 
-def discover_submit_files(submit_folder: Path) -> List[Tuple[Path, str]]:
+def discover_submit_files(
+    submit_folder: Path,
+    locdev_folder: Optional[Path] = None
+) -> List[Tuple[Path, str]]:
     """
-    Find languagedata_*.xlsx files in ToSubmit folder.
+    Find Excel files in ToSubmit folder and match by language suffix.
+
+    Matching is flexible - any .xlsx file ending with a valid language code
+    (ENG, FRE, GER, etc.) will be matched. Examples:
+    - languagedata_ENG.xlsx -> ENG
+    - corrections_FRE.xlsx -> FRE
+    - my_file_GER.xlsx -> GER
+    - ZHO-CN.xlsx -> ZHO-CN
+
+    Valid language codes are discovered dynamically from LOCDEV folder.
 
     Args:
         submit_folder: Path to ToSubmit folder
+        locdev_folder: Path to LOCDEV folder (for dynamic language discovery)
 
     Returns:
         List of (file_path, language_code) tuples
@@ -49,25 +62,83 @@ def discover_submit_files(submit_folder: Path) -> List[Tuple[Path, str]]:
         logger.warning(f"ToSubmit folder not found: {submit_folder}")
         return []
 
-    files = []
-    for xlsx_file in submit_folder.glob("languagedata_*.xlsx"):
-        # Extract language code from filename (e.g., "languagedata_FRE.xlsx" -> "FRE")
-        name = xlsx_file.stem  # "languagedata_FRE"
-        if name.startswith("languagedata_"):
-            lang_code = name.replace("languagedata_", "")
-            files.append((xlsx_file, lang_code))
+    # Dynamically discover valid language codes from LOCDEV folder
+    valid_lang_codes = set()
+    if locdev_folder and locdev_folder.exists():
+        for xml_file in locdev_folder.glob("languagedata_*.xml"):
+            name = xml_file.stem.lower()
+            if name.startswith("languagedata_"):
+                lang = name[13:]  # After "languagedata_"
+                valid_lang_codes.add(lang.upper())
+                valid_lang_codes.add(lang.lower())
 
-    # Also support LanguageData_*.xlsx pattern (case variations)
-    for xlsx_file in submit_folder.glob("LanguageData_*.xlsx"):
-        name = xlsx_file.stem
-        if name.startswith("LanguageData_"):
-            lang_code = name.replace("LanguageData_", "")
-            # Avoid duplicates
-            if not any(f[1].upper() == lang_code.upper() for f in files):
+    # Also add common variations in case LOCDEV is not provided
+    if not valid_lang_codes:
+        # Fallback - common language codes
+        valid_lang_codes = {
+            "eng", "ENG", "fre", "FRE", "ger", "GER", "spa", "SPA",
+            "por", "POR", "ita", "ITA", "rus", "RUS", "tur", "TUR",
+            "pol", "POL", "jpn", "JPN", "kor", "KOR", "tha", "THA",
+            "vie", "VIE", "ind", "IND", "msa", "MSA",
+            "zho-cn", "ZHO-CN", "zho-tw", "ZHO-TW",
+        }
+
+    files = []
+    seen_langs = set()  # Track seen languages to avoid duplicates
+
+    # Find ALL Excel files and match by suffix
+    for xlsx_file in submit_folder.glob("*.xlsx"):
+        name = xlsx_file.stem  # Filename without extension
+
+        # Try to extract language code from the END of filename
+        lang_code = extract_language_suffix(name, valid_lang_codes)
+
+        if lang_code:
+            # Normalize to uppercase for consistency
+            lang_upper = lang_code.upper()
+            if lang_upper not in seen_langs:
                 files.append((xlsx_file, lang_code))
+                seen_langs.add(lang_upper)
+                logger.debug(f"Matched: {xlsx_file.name} -> {lang_code}")
 
     logger.info(f"Discovered {len(files)} files in ToSubmit folder")
-    return sorted(files, key=lambda x: x[1])
+    return sorted(files, key=lambda x: x[1].upper())
+
+
+def extract_language_suffix(filename: str, valid_codes: set) -> Optional[str]:
+    """
+    Extract language code from the end of a filename.
+
+    Examples:
+    - "languagedata_ENG" -> "ENG"
+    - "corrections_FRE" -> "FRE"
+    - "my_file_ZHO-CN" -> "ZHO-CN"
+    - "ENG" -> "ENG"
+
+    Args:
+        filename: Filename without extension
+        valid_codes: Set of valid language codes (case variations)
+
+    Returns:
+        Language code if found, None otherwise
+    """
+    # Check for codes with hyphen first (e.g., ZHO-CN, ZHO-TW)
+    for code in valid_codes:
+        if "-" in code and filename.upper().endswith(code.upper()):
+            return code
+
+    # Try splitting by underscore and checking last part
+    if "_" in filename:
+        parts = filename.split("_")
+        last_part = parts[-1]
+        if last_part.upper() in {c.upper() for c in valid_codes}:
+            return last_part
+
+    # Check if entire filename is a language code
+    if filename.upper() in {c.upper() for c in valid_codes}:
+        return filename
+
+    return None
 
 
 def create_backup(submit_folder: Path, files: List[Path]) -> Optional[Path]:
