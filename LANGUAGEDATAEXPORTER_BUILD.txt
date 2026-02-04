@@ -48,3 +48,4 @@ Build: StringID-Only HIT Transfer for Script strings
 Build: SCRIPT filter rework + LOCDEV folder selector + dynamic file discovery
 Build: Fix missing stringid_to_category dict in SCRIPT merger
 Trigger LanguageDataExporter rebuild after BOM validation fix
+Trigger LanguageDataExporter rebuild for window size fix
