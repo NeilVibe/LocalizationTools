@@ -63,3 +63,4 @@ Build 507: Fix numeric cell format + remove useless grand totals from Facial tra
 Build 508: Fix Facial tracker - TOTAL rows + category aggregation
 Build 509: Remove Total column from TOTAL rows in Facial tracker
 Build 510: Restore Total column in TOTAL rows - users share work
+Build 511: Hide Total column from TOTAL rows (reverts Build 510)
