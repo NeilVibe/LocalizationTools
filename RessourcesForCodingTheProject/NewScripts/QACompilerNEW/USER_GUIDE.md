@@ -252,9 +252,9 @@ QAfolder/
 │              QA Compiler Suite v2.0                        │
 ├────────────────────────────────────────────────────────────┤
 │  📋 1. Generate Datasheets                                 │
-│     ☑ Quest    ☑ Knowledge   ☑ Item                        │
-│     ☑ Region   ☑ System      ☑ Character                   │
-│     ☑ Skill    ☑ Help        ☑ Gimmick    ☑ Contents       │
+│     ☑ Quest    ☑ Knowledge   ☑ Item      ☑ Region           │
+│     ☑ System   ☑ Character   ☑ Skill     ☑ Help            │
+│     ☑ Gimmick  ☑ Contents    ☑ Sequencer ☑ Dialog  ☑ Face  │
 │     [Select All] [Deselect All] [Generate Selected]        │
 ├────────────────────────────────────────────────────────────┤
 │  📁 2. Transfer QA Files                                   │
@@ -300,8 +300,9 @@ QAfolder/
 | **Contents** | Content instructions | 🔧 Manual | Prepared externally |
 | **Sequencer** | Cutscene/event scripts | 🔧 Manual | Script-type (see below) |
 | **Dialog** | NPC dialogue scripts | 🔧 Manual | Script-type (see below) |
+| **Face** | Facial animation QA | 🔧 Manual | Face-type (see below) |
 
-> **Note:** System and Contents sheets are NOT auto-generated. System sheets are created via the System Localizer. Contents sheets are prepared manually/externally.
+> **Note:** System, Contents, Sequencer, Dialog, and Face sheets are NOT auto-generated. System sheets are created via the System Localizer. The others are prepared manually/externally.
 
 ### Quest Datasheet Features
 
@@ -382,6 +383,45 @@ Sequencer and Dialog are special **Script-type** categories with different colum
 - NO SCREENSHOT column
 - Both Sequencer and Dialog merge into `Master_Script.xlsx`
 - Testers commonly use "NON-ISSUE" (with hyphen) - the code accepts both "NON-ISSUE" and "NO ISSUE"
+
+### Face Category (Special Processing)
+
+Face is a special category for **facial animation QA**. Unlike standard categories, Face does NOT build a traditional Master file. Instead it produces separate output files per language:
+
+| Output File | Contents |
+|-------------|----------|
+| `MasterMismatch_EN.xlsx` | EventNames with MISMATCH status (EN) |
+| `MasterMismatch_CN.xlsx` | EventNames with MISMATCH status (CN) |
+| `MasterMissing_EN.xlsx` | EventNames with MISSING status (EN) |
+| `MasterMissing_CN.xlsx` | EventNames with MISSING status (CN) |
+| `MasterConflict_EN.xlsx` | EventNames in BOTH mismatch and missing (EN) |
+| `MasterConflict_CN.xlsx` | EventNames in BOTH mismatch and missing (CN) |
+
+**Face Tester STATUS Options:**
+
+| Status | Meaning |
+|--------|---------|
+| `NO ISSUE` | Animation checked, looks good |
+| `MISMATCH` | Animation doesn't match audio/text |
+| `MISSING` | Animation is missing entirely |
+
+**Key Differences from Standard Categories:**
+
+| Feature | Standard Categories | Face |
+|---------|--------------------|----|
+| **Master Output** | `Master_*.xlsx` (combined per-tester) | `MasterMismatch_*.xlsx` + `MasterMissing_*.xlsx` |
+| **Row Matching** | STRINGID | EventName |
+| **STATUS values** | ISSUE / NO ISSUE / BLOCKED / KOREAN | NO ISSUE / MISMATCH / MISSING |
+| **Per-tester columns** | Yes (COMMENT, STATUS per user) | No (deduped EventName lists) |
+| **Date-tab history** | No | Yes (each run adds MMDD tab) |
+
+**Cross-Tab Deduplication:**
+
+Each compilation adds a new date tab (e.g., "0204" for Feb 4th). EventNames that already exist in previous tabs are automatically skipped — only NEW EventNames are written to the latest tab. This prevents duplicates across runs while preserving history.
+
+**Conflict Resolution:**
+
+If the same EventName appears as both MISMATCH and MISSING across different testers, it is placed in MISMATCH (the more actionable status) and logged in the Conflict file.
 
 ### Tester Sheet Columns (Generated Datasheets)
 
@@ -565,6 +605,7 @@ Some categories are **merged** into combined master files:
 | **Gimmick** | `Master_Item.xlsx` ← *merged* |
 | **Sequencer** | `Master_Script.xlsx` ← *merged* |
 | **Dialog** | `Master_Script.xlsx` ← *merged* |
+| **Face** | `MasterMismatch_*.xlsx` + `MasterMissing_*.xlsx` + `MasterConflict_*.xlsx` ← *special* |
 
 ### Output Structure
 
@@ -578,6 +619,9 @@ Masterfolder_EN/
 ├── Master_Character.xlsx
 ├── Master_Contents.xlsx
 ├── Master_Script.xlsx      ← includes Sequencer + Dialog
+├── MasterMismatch_EN.xlsx  ← Face: mismatched animations
+├── MasterMissing_EN.xlsx   ← Face: missing animations
+├── MasterConflict_EN.xlsx  ← Face: in both mismatch+missing (if any)
 ├── _TRACKER.xlsx           ← Progress tracking
 └── Images/
 ```
@@ -590,7 +634,9 @@ The `_TRACKER.xlsx` contains:
 |-------|-------|
 | **DAILY** | Day-by-day progress per tester |
 | **TOTAL** | Overall statistics and rankings |
-| **_DAILY_DATA** | Raw data (hidden) |
+| **Facial** | Face category progress (separate from standard) |
+| **_DAILY_DATA** | Raw data for standard categories (hidden) |
+| **_FACIAL_DATA** | Raw data for Face category (hidden) |
 
 #### TOTAL Tab Structure
 
@@ -613,6 +659,35 @@ The TOTAL tab displays per-tester statistics in three color-coded sections:
 | **Tester Assessment** | Manual entry | Manager's quality notes |
 
 > **Note:** Configure tester types in `TesterType.txt` (same format as `languageTOtester_list.txt`)
+
+#### Facial Tab Structure
+
+The Facial tab tracks Face category progress separately from standard categories. It has three sections:
+
+| Section | Shows |
+|---------|-------|
+| **FACIAL DAILY TABLE** | Per-user daily Done/Mismatch/Missing counts |
+| **FACIAL TOTAL TABLE** | Per-user cumulative totals with Done% and language |
+| **FACIAL CATEGORY TABLE** | Per-group breakdown — **one table per language** (EN/CN) |
+
+**FACIAL CATEGORY TABLE (per-language):**
+
+Each language gets its own category table showing group-level progress:
+
+```
+FACIAL CATEGORY TABLE (EN)
+| Group       | Total | Done | NoIssue | Mismatch | Missing | Done% |
+| NPC_Human   | 5000  | 4200 | 4000    | 150      | 50      | 84%   |
+| NPC_Monster | 3000  | 2500 | 2400    | 80       | 20      | 83%   |
+| TOTAL       | 8000  | 6700 | 6400    | 230      | 70      | 84%   |
+
+FACIAL CATEGORY TABLE (CN)
+| Group       | Total | Done | NoIssue | Mismatch | Missing | Done% |
+| NPC_Human   | 5000  | 3800 | 3600    | 140      | 60      | 76%   |
+| ...
+```
+
+> **Note:** EN and CN are tracked independently. Each language has its own total, preventing the numbers from being artificially doubled.
 
 ### Automatic Row Hiding
 
@@ -798,6 +873,7 @@ Categories are **clustered** into master files. Some categories share a master f
 │  Contents ─────────────────► Master_Contents.xlsx           │
 │  Sequencer ────┬───────────► Master_Script.xlsx             │
 │  Dialog ───────┘                                            │
+│  Face ───────────────────► MasterMismatch/Missing_*.xlsx    │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -813,6 +889,7 @@ Different category types have different column structures:
 | **System** | System, Skill, Help | CONTENT \| STATUS \| COMMENT \| STRINGID \| SCREENSHOT |
 | **Contents** | Contents | CONTENT \| INSTRUCTIONS \| STATUS \| COMMENT \| SCREENSHOT |
 | **Script** | Sequencer, Dialog | EventName \| Text \| Translation \| STATUS \| MEMO (no SCREENSHOT) |
+| **Face** | Face | EventName \| Group \| STATUS (NO ISSUE / MISMATCH / MISSING) |
 
 #### Detailed Column Reference
 
@@ -883,6 +960,19 @@ Different category types have different column structures:
 | **MEMO** | Tester notes (NOT "COMMENT") | ✅ |
 
 > **Note:** Script categories do NOT have a SCREENSHOT column.
+
+</details>
+
+<details>
+<summary><b>Face Category</b></summary>
+
+| Column | Description | Editable? |
+|--------|-------------|-----------|
+| EventName | Animation event identifier | No |
+| Group | Animation group/scene | No |
+| **STATUS** | Review status (NO ISSUE / MISMATCH / MISSING) | Yes |
+
+> **Note:** Face does NOT produce per-tester columns in a master file. Instead, all testers' findings are deduplicated by EventName into MasterMismatch and MasterMissing output files.
 
 </details>
 
@@ -984,6 +1074,7 @@ Tester folders must follow this format: **`이름_Category`**
 | Contents | Contents | Master_Contents.xlsx |
 | Sequencer | Script | Master_Script.xlsx |
 | Dialog | Script | Master_Script.xlsx |
+| Face | Face | MasterMismatch_*.xlsx + MasterMissing_*.xlsx |
 
 #### Rules
 
