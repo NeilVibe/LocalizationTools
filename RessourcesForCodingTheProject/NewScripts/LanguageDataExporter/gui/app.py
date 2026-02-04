@@ -59,8 +59,8 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 WINDOW_TITLE = "Language Data Exporter v3.0"
-WINDOW_WIDTH = 750
-WINDOW_HEIGHT = 520
+WINDOW_WIDTH = 850
+WINDOW_HEIGHT = 800
 
 # Languages to EXCLUDE (Korean is source, not target)
 EXCLUDED_LANGUAGES = {"kor"}
@@ -162,6 +162,7 @@ class LanguageDataExporterGUI:
         self.root = root
         self.root.title(WINDOW_TITLE)
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
+        self.root.minsize(750, 700)
         self.root.resizable(True, True)
 
         # Custom LOCDEV path (defaults to config value)
