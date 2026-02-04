@@ -122,13 +122,22 @@ def validate_locdev_folder(folder_path: Path) -> Tuple[bool, str, Dict]:
             lang_code = name[13:]
             found_langs.add(lang_code)
 
-            # Quick XML validation (check if it starts with XML declaration or tag)
+            # Quick XML validation (check if file contains XML content)
             try:
-                with open(xml_file, 'r', encoding='utf-8') as f:
-                    first_line = f.readline(500)
-                    if not (first_line.strip().startswith('<?xml') or
-                            first_line.strip().startswith('<')):
-                        details["invalid_files"].append(xml_file.name)
+                with open(xml_file, 'rb') as f:
+                    raw = f.read(1024)
+                if not raw:
+                    details["invalid_files"].append(xml_file.name)
+                    continue
+                # Strip BOM variants (UTF-8, UTF-16 LE/BE)
+                for bom in (b'\xef\xbb\xbf', b'\xff\xfe', b'\xfe\xff'):
+                    if raw.startswith(bom):
+                        raw = raw[len(bom):]
+                        break
+                # Check for XML-like content (skip whitespace)
+                text = raw.lstrip()
+                if not (text.startswith(b'<?xml') or text.startswith(b'<')):
+                    details["invalid_files"].append(xml_file.name)
             except Exception:
                 details["invalid_files"].append(xml_file.name)
 
