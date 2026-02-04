@@ -61,3 +61,4 @@ Build 505: Add Face category to USER_GUIDE.md
 Build 506: Fix Facial tracker - category totals, text format, date dedup
 Build 507: Fix numeric cell format + remove useless grand totals from Facial tracker
 Build 508: Fix Facial tracker - TOTAL rows + category aggregation
+Build 509: Remove Total column from TOTAL rows in Facial tracker
