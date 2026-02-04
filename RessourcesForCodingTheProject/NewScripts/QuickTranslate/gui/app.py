@@ -53,11 +53,11 @@ from core.fuzzy_matching import (
     build_faiss_index,
     search_fuzzy,
     find_matches_fuzzy,
-    find_matches_strict_fuzzy,
     build_index_from_folder,
     get_cached_index_info,
     clear_cache as clear_fuzzy_cache,
 )
+from core.matching import find_matches_strict_fuzzy
 from core.language_loader import build_stringid_to_category, build_stringid_to_subfolder
 from utils import read_text_file_lines
 
@@ -90,6 +90,9 @@ class QuickTranslateApp:
         # Shared match precision: "perfect" (exact) or "fuzzy" (SBERT)
         # Used by both Strict and Quadruple Fallback modes
         self.match_precision = tk.StringVar(value="perfect")
+
+        # Transfer scope: "all" = overwrite always, "untranslated" = only if target has Korean
+        self.transfer_scope = tk.StringVar(value="all")
 
         # Settings variables
         self.settings_loc_path = tk.StringVar()
@@ -406,6 +409,24 @@ class QuickTranslateApp:
                                             font=('Segoe UI', 8), bg='#f0f0f0', fg='#d9534f')
         self.transfer_note_label.pack(side=tk.LEFT, padx=(0, 10))
 
+        # === Transfer Scope Toggle ===
+        self.transfer_scope_frame = tk.Frame(main, bg='#fef3e2', padx=10, pady=4,
+                                             relief='groove', bd=1)
+        # Don't pack yet - shown/hidden by _on_match_type_changed
+
+        scope_label = tk.Label(self.transfer_scope_frame, text="Transfer Scope:",
+                               font=('Segoe UI', 9, 'bold'), bg='#fef3e2', fg='#333')
+        scope_label.pack(side=tk.LEFT, padx=(0, 10))
+
+        tk.Radiobutton(self.transfer_scope_frame, text="Transfer ALL (overwrite always)",
+                        variable=self.transfer_scope, value="all",
+                        font=('Segoe UI', 9), bg='#fef3e2',
+                        activebackground='#fef3e2').pack(side=tk.LEFT, padx=(0, 15))
+        tk.Radiobutton(self.transfer_scope_frame, text="Only untranslated (Korean only)",
+                        variable=self.transfer_scope, value="untranslated",
+                        font=('Segoe UI', 9), bg='#fef3e2',
+                        activebackground='#fef3e2').pack(side=tk.LEFT)
+
         tk.Button(button_frame, text="Clear Log", command=self._clear_log,
                  font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
                  padx=15, pady=6, cursor='hand2').pack(side=tk.LEFT, padx=(0, 10))
@@ -601,19 +622,22 @@ class QuickTranslateApp:
             self.precision_options_frame.pack(fill=tk.X, pady=(4, 0))
             # Show/hide the fuzzy sub-frame based on current precision
             self._on_precision_changed()
-            # Enable TRANSFER button
+            # Enable TRANSFER button + show transfer scope toggle
             self.transfer_btn.config(state='normal')
             self.transfer_note_label.config(text="")
+            self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
         elif match_type == "substring":
             self.precision_options_frame.pack_forget()
             # Disable TRANSFER button for substring (lookup only)
             self.transfer_btn.config(state='disabled')
             self.transfer_note_label.config(text="(Lookup only - TRANSFER not available)")
+            self.transfer_scope_frame.pack_forget()
         else:
             # stringid_only
             self.precision_options_frame.pack_forget()
-            # Enable TRANSFER button
+            # Enable TRANSFER button + show transfer scope toggle
             self.transfer_btn.config(state='normal')
+            self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
             self.transfer_note_label.config(text="")
 
     def _update_fuzzy_model_status(self):
@@ -1470,11 +1494,14 @@ class QuickTranslateApp:
         if match_type in ("strict", "quadruple_fallback"):
             match_str = f"{match_str} ({precision.upper()})"
 
+        scope_str = ("Only untranslated (Korean)" if self.transfer_scope.get() == "untranslated"
+                     else "ALL matches (overwrite)")
         confirm = messagebox.askyesno(
             "Confirm Transfer",
             f"This will WRITE corrections to XML files in:\n{target}\n\n"
             f"Source Mode: {mode_str}\n"
-            f"Match Mode: {match_str}\n\n"
+            f"Match Mode: {match_str}\n"
+            f"Transfer Scope: {scope_str}\n\n"
             f"Are you sure you want to proceed?"
         )
 
@@ -1487,6 +1514,7 @@ class QuickTranslateApp:
 
         self._log("=== QuickTranslate TRANSFER ===", 'header')
         self._log(f"Match Mode: {match_str}", 'info')
+        self._log(f"Transfer Scope: {scope_str}", 'info')
         self._log(f"Source: {source}", 'info')
         self._log(f"Target: {target}", 'info')
 
@@ -1566,6 +1594,7 @@ class QuickTranslateApp:
                 "stringid_to_subfolder": stringid_to_subfolder,
                 "match_mode": transfer_match_mode,
                 "dry_run": False,
+                "only_untranslated": self.transfer_scope.get() == "untranslated",
             }
 
             # Pass threshold for fuzzy modes

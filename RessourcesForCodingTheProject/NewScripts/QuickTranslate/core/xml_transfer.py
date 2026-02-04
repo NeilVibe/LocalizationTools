@@ -26,6 +26,7 @@ from openpyxl import load_workbook
 
 import config
 from .text_utils import normalize_text, normalize_nospace
+from .korean_detection import is_korean_text
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ def merge_corrections_to_xml(
     xml_path: Path,
     corrections: List[Dict],
     dry_run: bool = False,
+    only_untranslated: bool = False,
 ) -> Dict:
     """
     Merge corrections into a target XML file.
@@ -138,6 +140,17 @@ def merge_corrections_to_xml(
                 old_str = (loc.get("Str") or loc.get("str") or
                            loc.get("STR") or "")
 
+                # Skip already-translated entries if only_untranslated mode
+                if only_untranslated and old_str and not is_korean_text(old_str):
+                    result["skipped_translated"] = result.get("skipped_translated", 0) + 1
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": "SKIPPED_TRANSLATED",
+                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "new": "(skipped - already translated)",
+                    })
+                    continue
+
                 if new_str != old_str:
                     if not dry_run:
                         loc.set("Str", new_str)
@@ -202,6 +215,7 @@ def merge_corrections_stringid_only(
     stringid_to_category: Dict[str, str],
     stringid_to_subfolder: Optional[Dict[str, str]] = None,
     dry_run: bool = False,
+    only_untranslated: bool = False,
 ) -> Dict:
     """
     Merge corrections using StringID-ONLY matching.
@@ -331,6 +345,17 @@ def merge_corrections_stringid_only(
                 old_str = (loc.get("Str") or loc.get("str") or
                            loc.get("STR") or "")
 
+                # Skip already-translated entries if only_untranslated mode
+                if only_untranslated and old_str and not is_korean_text(old_str):
+                    result["skipped_translated"] = result.get("skipped_translated", 0) + 1
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": "SKIPPED_TRANSLATED",
+                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "new": "(skipped - already translated)",
+                    })
+                    continue
+
                 if new_str != old_str:
                     if not dry_run:
                         loc.set("Str", new_str)
@@ -393,6 +418,7 @@ def merge_corrections_fuzzy(
     xml_path: Path,
     corrections: List[Dict],
     dry_run: bool = False,
+    only_untranslated: bool = False,
 ) -> Dict:
     """
     Merge corrections using fuzzy-matched StringIDs.
@@ -465,6 +491,17 @@ def merge_corrections_fuzzy(
                 old_str = (loc.get("Str") or loc.get("str") or
                            loc.get("STR") or "")
 
+                # Skip already-translated entries if only_untranslated mode
+                if only_untranslated and old_str and not is_korean_text(old_str):
+                    result["skipped_translated"] = result.get("skipped_translated", 0) + 1
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": "SKIPPED_TRANSLATED",
+                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "new": "(skipped - already translated)",
+                    })
+                    continue
+
                 if new_str != old_str:
                     if not dry_run:
                         loc.set("Str", new_str)
@@ -521,6 +558,7 @@ def merge_corrections_quadruple_fallback(
     xml_path: Path,
     corrections: List[Dict],
     dry_run: bool = False,
+    only_untranslated: bool = False,
 ) -> Dict:
     """
     Merge corrections using quadruple-fallback-matched StringIDs.
@@ -595,6 +633,17 @@ def merge_corrections_quadruple_fallback(
 
                 old_str = (loc.get("Str") or loc.get("str") or
                            loc.get("STR") or "")
+
+                # Skip already-translated entries if only_untranslated mode
+                if only_untranslated and old_str and not is_korean_text(old_str):
+                    result["skipped_translated"] = result.get("skipped_translated", 0) + 1
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": f"SKIPPED_TRANSLATED ({level})",
+                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "new": "(skipped - already translated)",
+                    })
+                    continue
 
                 if new_str != old_str:
                     if not dry_run:
@@ -909,6 +958,7 @@ def transfer_folder_to_folder(
     progress_callback=None,
     threshold: float = None,
     use_fuzzy_precision: bool = False,
+    only_untranslated: bool = False,
 ) -> Dict:
     """
     Transfer corrections from source folder to target folder.
@@ -946,6 +996,7 @@ def transfer_folder_to_folder(
         "total_not_found": 0,
         "total_skipped": 0,
         "total_skipped_excluded": 0,
+        "total_skipped_translated": 0,
         "errors": [],
         "file_results": {},
     }
@@ -1101,7 +1152,8 @@ def transfer_folder_to_folder(
         if match_mode == "stringid_only" and stringid_to_category:
             file_result = merge_corrections_stringid_only(
                 target_xml, corrections, stringid_to_category,
-                stringid_to_subfolder, dry_run
+                stringid_to_subfolder, dry_run,
+                only_untranslated=only_untranslated,
             )
             results["total_skipped"] += file_result.get("skipped_non_script", 0)
             results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
@@ -1118,7 +1170,10 @@ def transfer_folder_to_folder(
                     fuzzy_index=_fuzzy_index,
                 )
                 # After strict_fuzzy prematch, StringID is resolved - use stringid merge
-                file_result = merge_corrections_fuzzy(target_xml, enriched, dry_run)
+                file_result = merge_corrections_fuzzy(
+                    target_xml, enriched, dry_run,
+                    only_untranslated=only_untranslated,
+                )
             else:
                 file_result = {
                     "matched": 0, "updated": 0,
@@ -1155,7 +1210,8 @@ def transfer_folder_to_folder(
                     f"L2B={level_counts['L2B']}, L3={level_counts['L3']})"
                 )
                 file_result = merge_corrections_quadruple_fallback(
-                    target_xml, matched, dry_run
+                    target_xml, matched, dry_run,
+                    only_untranslated=only_untranslated,
                 )
             else:
                 # Index build failed earlier - return empty result
@@ -1167,7 +1223,10 @@ def transfer_folder_to_folder(
                     "level_counts": {"L1": 0, "L2A": 0, "L2B": 0, "L3": 0},
                 }
         else:
-            file_result = merge_corrections_to_xml(target_xml, corrections, dry_run)
+            file_result = merge_corrections_to_xml(
+                target_xml, corrections, dry_run,
+                only_untranslated=only_untranslated,
+            )
 
         # Aggregate results
         results["files_processed"] += 1
@@ -1175,6 +1234,7 @@ def transfer_folder_to_folder(
         results["total_matched"] += file_result["matched"]
         results["total_updated"] += file_result["updated"]
         results["total_not_found"] += file_result["not_found"]
+        results["total_skipped_translated"] += file_result.get("skipped_translated", 0)
         results["errors"].extend(file_result["errors"])
 
         results["file_results"][source_file.name] = {
@@ -1195,6 +1255,7 @@ def transfer_file_to_file(
     dry_run: bool = False,
     threshold: float = None,
     use_fuzzy_precision: bool = False,
+    only_untranslated: bool = False,
 ) -> Dict:
     """
     Transfer corrections from single source file to single target file.
@@ -1239,7 +1300,8 @@ def transfer_file_to_file(
     if match_mode == "stringid_only" and stringid_to_category:
         result = merge_corrections_stringid_only(
             target_file, corrections, stringid_to_category,
-            stringid_to_subfolder, dry_run
+            stringid_to_subfolder, dry_run,
+            only_untranslated=only_untranslated,
         )
     elif match_mode == "strict_fuzzy":
         # Pre-match: exact StringID + fuzzy StrOrigin verification
@@ -1249,7 +1311,10 @@ def transfer_file_to_file(
             threshold=threshold,
         )
         # After strict_fuzzy prematch, StringID is resolved - use fuzzy merge
-        result = merge_corrections_fuzzy(target_file, enriched, dry_run)
+        result = merge_corrections_fuzzy(
+            target_file, enriched, dry_run,
+            only_untranslated=only_untranslated,
+        )
     elif match_mode in ("quadruple_fallback", "quadruple_fallback_fuzzy"):
         # Pre-match: enrich corrections with matched_string_id
         target_folder = target_file.parent
@@ -1291,9 +1356,15 @@ def transfer_file_to_file(
             fuzzy_entries=fuzzy_entries,
             fuzzy_index=fuzzy_index,
         )
-        result = merge_corrections_quadruple_fallback(target_file, enriched, dry_run)
+        result = merge_corrections_quadruple_fallback(
+            target_file, enriched, dry_run,
+            only_untranslated=only_untranslated,
+        )
     else:
-        result = merge_corrections_to_xml(target_file, corrections, dry_run)
+        result = merge_corrections_to_xml(
+            target_file, corrections, dry_run,
+            only_untranslated=only_untranslated,
+        )
 
     result["corrections_count"] = len(corrections)
     return result
@@ -1336,6 +1407,8 @@ def format_transfer_report(results: Dict, mode: str = "folder") -> str:
         lines.append(V + f" Not Found: {results.get('total_not_found', 0)}".ljust(width - 2) + V)
         if results.get('total_skipped', 0) > 0:
             lines.append(V + f" Skipped (non-SCRIPT): {results.get('total_skipped', 0)}".ljust(width - 2) + V)
+        if results.get('total_skipped_translated', 0) > 0:
+            lines.append(V + f" Skipped (already translated): {results.get('total_skipped_translated', 0)}".ljust(width - 2) + V)
 
         # Per-file breakdown
         file_results = results.get("file_results", {})
@@ -1357,6 +1430,8 @@ def format_transfer_report(results: Dict, mode: str = "folder") -> str:
         lines.append(V + f" Not Found: {results.get('not_found', 0)}".ljust(width - 2) + V)
         if results.get('skipped_non_script', 0) > 0:
             lines.append(V + f" Skipped (non-SCRIPT): {results.get('skipped_non_script', 0)}".ljust(width - 2) + V)
+        if results.get('skipped_translated', 0) > 0:
+            lines.append(V + f" Skipped (already translated): {results.get('skipped_translated', 0)}".ljust(width - 2) + V)
 
     # Success rate
     total = results.get('total_corrections', results.get('corrections_count', 0))
