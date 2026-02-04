@@ -1,5 +1,5 @@
 # QuickTranslate - ML Dependencies (Optional)
-# Required ONLY for Fuzzy KR Match and Triple Fallback Fuzzy precision.
+# Required ONLY for fuzzy StrOrigin matching (Strict or Quadruple Fallback).
 # Install with: pip install -r requirements-ml.txt
 #
 # NOT included in the PyInstaller build to keep it light.

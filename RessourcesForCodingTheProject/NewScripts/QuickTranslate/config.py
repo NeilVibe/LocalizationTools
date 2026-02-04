@@ -20,11 +20,10 @@ else:
 # =============================================================================
 
 MATCHING_MODES = {
-    "substring": "Substring Match (original)",
+    "substring": "Substring Match (Lookup only)",
     "stringid_only": "StringID-Only (SCRIPT strings)",
     "strict": "StringID + StrOrigin (Strict)",
-    "triple_fallback": "Triple Fallback (StrOrigin + Context)",
-    "fuzzy": "Fuzzy KR Match (SBERT)",
+    "quadruple_fallback": "Quadruple Fallback (StrOrigin + Context)",
 }
 
 # SCRIPT categories - folder names where StrOrigin = raw KOR text

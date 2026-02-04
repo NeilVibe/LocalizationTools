@@ -2,10 +2,10 @@
 Matching Algorithms.
 
 All matching algorithms for QuickTranslate:
-- Substring match (original)
+- Substring match (original, lookup only)
 - StringID-only (SCRIPT strings)
-- Strict (StringID + StrOrigin)
-- Triple fallback (StrOrigin + filename + adjacency cascade)
+- Strict (StringID + StrOrigin, with optional fuzzy StrOrigin)
+- Quadruple fallback (StrOrigin + filename + adjacency cascade)
 - Special key match (legacy)
 - Reverse lookup (text -> StringID)
 """
@@ -212,7 +212,7 @@ def _compute_adjacency_hash(before: str, after: str) -> str:
     return hashlib.md5(raw.encode("utf-8")).hexdigest()[:8]
 
 
-def find_matches_triple_fallback(
+def find_matches_quadruple_fallback(
     corrections: List[Dict],
     level1_index: Dict[tuple, List[dict]],
     level2a_index: Dict[tuple, List[dict]],
@@ -227,7 +227,7 @@ def find_matches_triple_fallback(
     fuzzy_index=None,
 ) -> Tuple[List[Dict], int, Dict[str, int]]:
     """
-    Match corrections using 4-level fallback cascade.
+    Match corrections using 4-level quadruple fallback cascade.
 
     Tries each level in order for every correction:
     - L1  (HIGH confidence):        StrOrigin + file_relpath + adjacency_hash
@@ -264,7 +264,7 @@ def find_matches_triple_fallback(
         level_counts: {"L1": N, "L2A": N, "L2B": N, "L3": N}
     """
     if use_fuzzy:
-        return _triple_fallback_fuzzy(
+        return _quadruple_fallback_fuzzy(
             corrections, source_has_context,
             fuzzy_model, fuzzy_threshold, fuzzy_texts, fuzzy_entries, fuzzy_index,
         )
@@ -339,7 +339,7 @@ def find_matches_triple_fallback(
     return matched, not_found, level_counts
 
 
-def _triple_fallback_fuzzy(
+def _quadruple_fallback_fuzzy(
     corrections: List[Dict],
     source_has_context: bool,
     model,
@@ -349,7 +349,7 @@ def _triple_fallback_fuzzy(
     index,
 ) -> Tuple[List[Dict], int, Dict[str, int]]:
     """
-    Triple Fallback with SBERT fuzzy StrOrigin matching.
+    Quadruple Fallback with SBERT fuzzy StrOrigin matching.
 
     Instead of exact StrOrigin lookup via index keys, this encodes each
     correction's str_origin with the SBERT model, searches FAISS for the
@@ -392,7 +392,7 @@ def _triple_fallback_fuzzy(
             continue
 
         if ci % 100 == 0:
-            logger.info(f"Fuzzy triple fallback: {ci+1}/{total}")
+            logger.info(f"Fuzzy quadruple fallback: {ci+1}/{total}")
 
         # Encode query and search FAISS
         query_embedding = model.encode([str_origin], convert_to_numpy=True)
@@ -468,6 +468,101 @@ def _triple_fallback_fuzzy(
         level_counts[match_level] += 1
 
     return matched, not_found, level_counts
+
+
+def find_matches_strict_fuzzy(
+    corrections: List[Dict],
+    xml_entries: Dict[Tuple[str, str], dict],
+    fuzzy_model,
+    fuzzy_index,
+    fuzzy_texts: List[str],
+    fuzzy_entries: List[dict],
+    fuzzy_threshold: float = 0.85,
+) -> Tuple[List[Dict], int]:
+    """
+    Strict match with fuzzy StrOrigin verification via SBERT.
+
+    For each correction: exact StringID match first, then fuzzy StrOrigin
+    similarity via SBERT for verification. This handles cases where the
+    StrOrigin text has minor variations (whitespace, punctuation, encoding
+    differences) that prevent exact tuple matching.
+
+    Algorithm:
+    1. Encode correction's str_origin with SBERT model
+    2. Search FAISS index for candidates above threshold
+    3. Among candidates, find one whose string_id matches the correction's string_id
+    4. If string_id matches AND StrOrigin similarity >= threshold -> matched
+
+    Falls back to exact strict match first (cheap), only uses FAISS for
+    corrections that fail exact matching.
+
+    Args:
+        corrections: List of correction dicts with "string_id" and "str_origin" keys
+        xml_entries: Dict keyed by (StringID, normalized_StrOrigin) tuples
+        fuzzy_model: Loaded SentenceTransformer model
+        fuzzy_index: Pre-built FAISS index over target StrOrigin texts
+        fuzzy_texts: Target StrOrigin texts (parallel to fuzzy_entries)
+        fuzzy_entries: Target entry dicts (parallel to fuzzy_texts)
+        fuzzy_threshold: Minimum similarity score for fuzzy StrOrigin matching
+
+    Returns:
+        Tuple of (matched_corrections, not_found_count)
+    """
+    import numpy as np
+    import faiss as faiss_lib
+
+    matched = []
+    not_found = 0
+    k = 10  # Top-K candidates per FAISS query
+    total = len(corrections)
+
+    for ci, c in enumerate(corrections):
+        string_id = c.get("string_id", "")
+        str_origin = c.get("str_origin", "")
+
+        if not string_id:
+            not_found += 1
+            continue
+
+        # Try exact strict match first (cheap)
+        key = (string_id, normalize_text(str_origin))
+        if key in xml_entries:
+            matched.append(c)
+            continue
+
+        # Exact match failed - try fuzzy StrOrigin with StringID verification
+        if not str_origin.strip():
+            not_found += 1
+            continue
+
+        if ci % 100 == 0:
+            logger.info(f"Strict fuzzy matching: {ci+1}/{total}")
+
+        # Encode and search FAISS
+        query_embedding = fuzzy_model.encode([str_origin], convert_to_numpy=True)
+        query_embedding = np.ascontiguousarray(query_embedding, dtype=np.float32)
+        faiss_lib.normalize_L2(query_embedding)
+
+        distances, indices_arr = fuzzy_index.search(query_embedding, k)
+
+        # Among candidates above threshold, find one with matching string_id
+        found = False
+        for score, idx in zip(distances[0], indices_arr[0]):
+            if idx < 0 or idx >= len(fuzzy_entries):
+                continue
+            if score < fuzzy_threshold:
+                continue
+
+            candidate = fuzzy_entries[idx]
+            if candidate.get("string_id", "") == string_id:
+                matched.append(c)
+                found = True
+                break
+
+        if not found:
+            not_found += 1
+
+    return matched, not_found
 
 
 def find_stringid_from_text(
