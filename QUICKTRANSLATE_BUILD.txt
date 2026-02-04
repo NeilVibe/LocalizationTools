@@ -10,3 +10,4 @@ Trigger QuickTranslate build: Fuzzy KR Match + Triple Fallback
 Trigger QuickTranslate build: Quadruple Fallback + shared precision restructure
 Trigger QuickTranslate build: fix strict_fuzzy arg
 Trigger QuickTranslate rebuild after tkinter fix + transfer scope toggle
+Trigger QuickTranslate rebuild with review fix
