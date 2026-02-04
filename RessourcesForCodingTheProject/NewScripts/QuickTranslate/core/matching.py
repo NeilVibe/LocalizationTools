@@ -5,14 +5,19 @@ All matching algorithms for QuickTranslate:
 - Substring match (original)
 - StringID-only (SCRIPT strings)
 - Strict (StringID + StrOrigin)
-- Special key match
+- Triple fallback (StrOrigin + filename + adjacency cascade)
+- Special key match (legacy)
 - Reverse lookup (text -> StringID)
 """
 
+import hashlib
+import logging
 from typing import Dict, List, Optional, Set, Tuple
 
 import config
 from .text_utils import normalize_for_matching
+
+logger = logging.getLogger(__name__)
 
 # SCRIPT categories - imported from config for single source of truth
 SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
@@ -199,6 +204,270 @@ def find_matches_special_key(
             not_found += 1
 
     return matched, not_found
+
+
+def _compute_adjacency_hash(before: str, after: str) -> str:
+    """Compute 8-char hex hash of adjacent StrOrigin values."""
+    raw = f"{before}|{after}"
+    return hashlib.md5(raw.encode("utf-8")).hexdigest()[:8]
+
+
+def find_matches_triple_fallback(
+    corrections: List[Dict],
+    level1_index: Dict[tuple, List[dict]],
+    level2a_index: Dict[tuple, List[dict]],
+    level2b_index: Dict[tuple, List[dict]],
+    level3_index: Dict[str, List[dict]],
+    source_has_context: bool = True,
+    use_fuzzy: bool = False,
+    fuzzy_model=None,
+    fuzzy_threshold: float = 0.85,
+    fuzzy_texts: Optional[List[str]] = None,
+    fuzzy_entries: Optional[List[dict]] = None,
+    fuzzy_index=None,
+) -> Tuple[List[Dict], int, Dict[str, int]]:
+    """
+    Match corrections using 4-level fallback cascade.
+
+    Tries each level in order for every correction:
+    - L1  (HIGH confidence):        StrOrigin + file_relpath + adjacency_hash
+    - L2A (MEDIUM-HIGH confidence): StrOrigin + file_relpath
+    - L2B (MEDIUM confidence):      StrOrigin + adjacency_hash
+    - L3  (LOW confidence):         StrOrigin only
+
+    When source lacks file/adjacency context (e.g. Excel source),
+    goes straight to L3.
+
+    When use_fuzzy=True, StrOrigin comparison uses SBERT similarity instead
+    of exact matching. For each correction's str_origin, FAISS is searched
+    for top-K candidates above threshold, then those candidates are filtered
+    through the level criteria (file_relpath, adjacency_hash).
+
+    Args:
+        corrections: List of correction dicts with str_origin (and optionally
+                     file_relpath, adjacent_before, adjacent_after)
+        level1_index: Dict keyed by (norm_origin, file_relpath, adj_hash)
+        level2a_index: Dict keyed by (norm_origin, file_relpath)
+        level2b_index: Dict keyed by (norm_origin, adj_hash)
+        level3_index: Dict keyed by norm_origin
+        source_has_context: Whether corrections have file/adjacency info
+        use_fuzzy: If True, use SBERT similarity instead of exact matching
+        fuzzy_model: Loaded SentenceTransformer model (required if use_fuzzy)
+        fuzzy_threshold: Minimum similarity score for fuzzy matching
+        fuzzy_texts: Target StrOrigin texts for FAISS (required if use_fuzzy)
+        fuzzy_entries: Target entry dicts for FAISS (required if use_fuzzy)
+        fuzzy_index: Pre-built FAISS index (required if use_fuzzy)
+
+    Returns:
+        Tuple of (matched_corrections, not_found_count, level_counts)
+        Each matched correction gets 'match_level' and 'matched_entry' added.
+        level_counts: {"L1": N, "L2A": N, "L2B": N, "L3": N}
+    """
+    if use_fuzzy:
+        return _triple_fallback_fuzzy(
+            corrections, source_has_context,
+            fuzzy_model, fuzzy_threshold, fuzzy_texts, fuzzy_entries, fuzzy_index,
+        )
+
+    matched = []
+    not_found = 0
+    level_counts = {"L1": 0, "L2A": 0, "L2B": 0, "L3": 0}
+
+    for c in corrections:
+        str_origin = c.get("str_origin", "").strip()
+        if not str_origin:
+            not_found += 1
+            continue
+
+        norm_origin = normalize_for_matching(str_origin)
+        match_entry = None
+        match_level = None
+
+        if source_has_context:
+            file_relpath = c.get("file_relpath", "")
+            adj_before = c.get("adjacent_before", "")
+            adj_after = c.get("adjacent_after", "")
+            adj_hash = None
+
+            if adj_before or adj_after:
+                adj_hash = _compute_adjacency_hash(adj_before, adj_after)
+
+            # Try L1: StrOrigin + file_relpath + adjacency_hash
+            if file_relpath and adj_hash:
+                key1 = (norm_origin, file_relpath, adj_hash)
+                entries = level1_index.get(key1, [])
+                if entries:
+                    match_entry = entries[0]
+                    match_level = "L1"
+
+            # Try L2A: StrOrigin + file_relpath
+            if match_entry is None and file_relpath:
+                key2a = (norm_origin, file_relpath)
+                entries = level2a_index.get(key2a, [])
+                if entries:
+                    match_entry = entries[0]
+                    match_level = "L2A"
+
+            # Try L2B: StrOrigin + adjacency_hash
+            if match_entry is None and adj_hash:
+                key2b = (norm_origin, adj_hash)
+                entries = level2b_index.get(key2b, [])
+                if entries:
+                    match_entry = entries[0]
+                    match_level = "L2B"
+
+        # Try L3: StrOrigin only (always available)
+        if match_entry is None:
+            entries = level3_index.get(norm_origin, [])
+            if entries:
+                match_entry = entries[0]
+                match_level = "L3"
+
+        if match_entry is not None:
+            enriched = {
+                **c,
+                "match_level": match_level,
+                "matched_string_id": match_entry["string_id"],
+                "matched_str_origin": match_entry["str_origin"],
+                "matched_source_file": match_entry.get("source_file", ""),
+            }
+            matched.append(enriched)
+            level_counts[match_level] += 1
+        else:
+            not_found += 1
+
+    return matched, not_found, level_counts
+
+
+def _triple_fallback_fuzzy(
+    corrections: List[Dict],
+    source_has_context: bool,
+    model,
+    threshold: float,
+    texts: List[str],
+    entries: List[dict],
+    index,
+) -> Tuple[List[Dict], int, Dict[str, int]]:
+    """
+    Triple Fallback with SBERT fuzzy StrOrigin matching.
+
+    Instead of exact StrOrigin lookup via index keys, this encodes each
+    correction's str_origin with the SBERT model, searches FAISS for the
+    top-K candidates above threshold, then filters those candidates through
+    the level criteria (file_relpath, adjacency_hash).
+
+    The cascade becomes:
+    1. Get FAISS candidates above threshold for this correction's str_origin
+    2. Among those candidates: any with matching file_relpath AND adj_hash? -> L1
+    3. Among those candidates: any with matching file_relpath? -> L2A
+    4. Among those candidates: any with matching adj_hash? -> L2B
+    5. Among those candidates: take best score match -> L3
+
+    Args:
+        corrections: List of correction dicts
+        source_has_context: Whether corrections have file/adjacency info
+        model: Loaded SentenceTransformer model
+        threshold: Minimum similarity score
+        texts: Target StrOrigin texts (parallel to entries)
+        entries: Target entry dicts (parallel to texts)
+        index: Pre-built FAISS index
+
+    Returns:
+        Tuple of (matched_corrections, not_found_count, level_counts)
+    """
+    import numpy as np
+    import faiss as faiss_lib
+
+    matched = []
+    not_found = 0
+    level_counts = {"L1": 0, "L2A": 0, "L2B": 0, "L3": 0}
+
+    k = 10  # Search top-K candidates per query
+    total = len(corrections)
+
+    for ci, c in enumerate(corrections):
+        str_origin = c.get("str_origin", "").strip()
+        if not str_origin:
+            not_found += 1
+            continue
+
+        if ci % 100 == 0:
+            logger.info(f"Fuzzy triple fallback: {ci+1}/{total}")
+
+        # Encode query and search FAISS
+        query_embedding = model.encode([str_origin], convert_to_numpy=True)
+        query_embedding = np.ascontiguousarray(query_embedding, dtype=np.float32)
+        faiss_lib.normalize_L2(query_embedding)
+
+        distances, indices_arr = index.search(query_embedding, k)
+
+        # Collect candidates above threshold, sorted by score (descending)
+        candidates = []
+        for score, idx in zip(distances[0], indices_arr[0]):
+            if idx < 0 or idx >= len(entries):
+                continue
+            if score >= threshold:
+                candidates.append((entries[idx], float(score)))
+
+        if not candidates:
+            not_found += 1
+            continue
+
+        match_entry = None
+        match_level = None
+
+        if source_has_context:
+            file_relpath = c.get("file_relpath", "")
+            adj_before = c.get("adjacent_before", "")
+            adj_after = c.get("adjacent_after", "")
+            adj_hash = None
+            if adj_before or adj_after:
+                adj_hash = _compute_adjacency_hash(adj_before, adj_after)
+
+            # L1: candidate with matching file_relpath AND adj_hash
+            if file_relpath and adj_hash:
+                for entry, score in candidates:
+                    cand_adj_hash = entry.get("adjacency_hash", "")
+                    cand_relpath = entry.get("file_relpath", "")
+                    if cand_relpath == file_relpath and cand_adj_hash == adj_hash:
+                        match_entry = entry
+                        match_level = "L1"
+                        break
+
+            # L2A: candidate with matching file_relpath
+            if match_entry is None and file_relpath:
+                for entry, score in candidates:
+                    cand_relpath = entry.get("file_relpath", "")
+                    if cand_relpath == file_relpath:
+                        match_entry = entry
+                        match_level = "L2A"
+                        break
+
+            # L2B: candidate with matching adj_hash
+            if match_entry is None and adj_hash:
+                for entry, score in candidates:
+                    cand_adj_hash = entry.get("adjacency_hash", "")
+                    if cand_adj_hash == adj_hash:
+                        match_entry = entry
+                        match_level = "L2B"
+                        break
+
+        # L3: best score candidate (first in list, already sorted)
+        if match_entry is None:
+            match_entry = candidates[0][0]
+            match_level = "L3"
+
+        enriched = {
+            **c,
+            "match_level": match_level,
+            "matched_string_id": match_entry["string_id"],
+            "matched_str_origin": match_entry["str_origin"],
+            "matched_source_file": match_entry.get("source_file", ""),
+        }
+        matched.append(enriched)
+        level_counts[match_level] += 1
+
+    return matched, not_found, level_counts
 
 
 def find_stringid_from_text(

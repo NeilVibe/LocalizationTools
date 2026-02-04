@@ -7,7 +7,7 @@ Public exports for XML parsing, Korean detection, indexing, matching, and I/O.
 from .text_utils import normalize_text, normalize_for_matching, normalize_nospace
 from .xml_parser import sanitize_xml_content, parse_xml_file, iter_locstr_elements
 from .korean_detection import KOREAN_REGEX, is_korean_text
-from .indexing import build_sequencer_strorigin_index, scan_folder_for_strings, scan_folder_for_entries
+from .indexing import build_sequencer_strorigin_index, scan_folder_for_strings, scan_folder_for_entries, scan_folder_for_entries_with_context
 from .language_loader import (
     discover_language_files,
     build_translation_lookup,
@@ -21,6 +21,7 @@ from .matching import (
     find_matches_stringid_only,
     find_matches_strict,
     find_matches_special_key,
+    find_matches_triple_fallback,
     find_stringid_from_text,
     format_multiple_matches,
 )
@@ -37,10 +38,27 @@ from .xml_io import parse_corrections_from_xml, parse_folder_xml_files, parse_to
 from .xml_transfer import (
     merge_corrections_to_xml,
     merge_corrections_stringid_only,
+    merge_corrections_fuzzy,
+    merge_corrections_triple_fallback,
     transfer_folder_to_folder,
     transfer_file_to_file,
     format_transfer_report,
 )
+try:
+    from .fuzzy_matching import (
+        check_model_available,
+        load_model as load_fuzzy_model,
+        build_faiss_index,
+        search_fuzzy,
+        find_matches_fuzzy,
+        build_index_from_folder,
+        get_cached_index_info,
+        clear_cache as clear_fuzzy_cache,
+    )
+except ImportError:
+    # ML dependencies (numpy, faiss, sentence-transformers) not installed
+    # Fuzzy matching unavailable - other modes still work
+    pass
 from .korean_miss_extractor import (
     contains_korean,
     normalize_strorigin,
@@ -64,6 +82,7 @@ __all__ = [
     "build_sequencer_strorigin_index",
     "scan_folder_for_strings",
     "scan_folder_for_entries",
+    "scan_folder_for_entries_with_context",
     # language_loader
     "discover_language_files",
     "build_translation_lookup",
@@ -76,6 +95,7 @@ __all__ = [
     "find_matches_stringid_only",
     "find_matches_strict",
     "find_matches_special_key",
+    "find_matches_triple_fallback",
     "find_stringid_from_text",
     "format_multiple_matches",
     # excel_io
@@ -93,9 +113,20 @@ __all__ = [
     # xml_transfer
     "merge_corrections_to_xml",
     "merge_corrections_stringid_only",
+    "merge_corrections_fuzzy",
+    "merge_corrections_triple_fallback",
     "transfer_folder_to_folder",
     "transfer_file_to_file",
     "format_transfer_report",
+    # fuzzy_matching
+    "check_model_available",
+    "load_fuzzy_model",
+    "build_faiss_index",
+    "search_fuzzy",
+    "find_matches_fuzzy",
+    "build_index_from_folder",
+    "get_cached_index_info",
+    "clear_fuzzy_cache",
     # korean_miss_extractor
     "contains_korean",
     "normalize_strorigin",

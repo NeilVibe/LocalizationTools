@@ -1,0 +1,11 @@
+# QuickTranslate - ML Dependencies (Optional)
+# Required ONLY for Fuzzy KR Match and Triple Fallback Fuzzy precision.
+# Install with: pip install -r requirements-ml.txt
+#
+# NOT included in the PyInstaller build to keep it light.
+# Install these on any machine where you want fuzzy matching.
+
+sentence-transformers>=2.2.0
+faiss-cpu>=1.7.0
+numpy>=1.24.0
+torch>=2.0.0
