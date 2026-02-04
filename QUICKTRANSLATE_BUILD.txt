@@ -5,3 +5,4 @@ Build 012 - Korean miss extractor + GUI cleanup
 Build 013 - Fix CI workflow imports
 Build 014 - Korean miss extractor rewrite with correct logic
 Build 20260203_023939 - Enhanced terminal debug output
+Build: Fix hidden TRANSFER button + folder analysis
