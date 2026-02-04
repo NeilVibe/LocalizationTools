@@ -662,32 +662,38 @@ The TOTAL tab displays per-tester statistics in three color-coded sections:
 
 #### Facial Tab Structure
 
-The Facial tab tracks Face category progress separately from standard categories. It has three sections:
+The Facial tab tracks Face category QA progress. There are 2 QA files (one for EN, one for CN). Each file is shared with multiple testers. Each tester is assigned specific groups to check — testers generally don't overlap. The goal is to collectively cover 100% of the file.
+
+The tab has 5 sections:
 
 | Section | Shows |
 |---------|-------|
-| **FACIAL DAILY TABLE** | Per-user daily Done/Mismatch/Missing counts |
-| **FACIAL TOTAL TABLE** | Per-user cumulative totals with Done% and language |
-| **FACIAL CATEGORY TABLE** | Per-group breakdown — **one table per language** (EN/CN) |
+| **FACIAL DAILY TABLE** | Per-user daily Done/Mismatch/Missing counts (all users) |
+| **EN FACIAL TOTAL TABLE** | EN testers with TOTAL row showing cumulative coverage |
+| **CN FACIAL TOTAL TABLE** | CN testers with TOTAL row showing cumulative coverage |
+| **EN FACIAL CATEGORY TABLE** | EN groups — per-group coverage breakdown |
+| **CN FACIAL CATEGORY TABLE** | CN groups — per-group coverage breakdown |
 
-**FACIAL CATEGORY TABLE (per-language):**
+**How Done% works:**
 
-Each language gets its own category table showing group-level progress:
+- **TOTAL tables (per tester):** Each tester's Done% = their items done / total items. The TOTAL row is a **SUM** of all testers' Done% — it shows collective coverage toward 100%.
+- **CATEGORY tables (per group):** Total = actual group size (not summed across testers). Done% = items done by all testers / group size. Shows how much of that group is covered.
 
 ```
-FACIAL CATEGORY TABLE (EN)
-| Group       | Total | Done | NoIssue | Mismatch | Missing | Done% |
-| NPC_Human   | 5000  | 4200 | 4000    | 150      | 50      | 84%   |
-| NPC_Monster | 3000  | 2500 | 2400    | 80       | 20      | 83%   |
-| TOTAL       | 8000  | 6700 | 6400    | 230      | 70      | 84%   |
+EN FACIAL TOTAL TABLE
+| User    | Total | Done | NoIssue | Mismatch | Missing | Done%  |
+| Alice   | 5000  | 1500 | 1400    | 70       | 30      | 30.0%  |
+| Bob     | 5000  | 2500 | 2400    | 80       | 20      | 50.0%  |
+| Charlie | 5000  | 1000 | 950     | 30       | 20      | 20.0%  |
+| TOTAL   |       | 5000 | 4750    | 180      | 70      | 100.0% |
 
-FACIAL CATEGORY TABLE (CN)
-| Group       | Total | Done | NoIssue | Mismatch | Missing | Done% |
-| NPC_Human   | 5000  | 3800 | 3600    | 140      | 60      | 76%   |
-| ...
+EN FACIAL CATEGORY TABLE
+| Group       | Total | Done | NoIssue | Mismatch | Missing | Done%  |
+| NPC_Human   | 3000  | 3000 | 2850    | 100      | 50      | 100.0% |
+| NPC_Monster | 2000  | 2000 | 1900    | 80       | 20      | 100.0% |
 ```
 
-> **Note:** EN and CN are tracked independently. Each language has its own total, preventing the numbers from being artificially doubled.
+> **Key rules:** Total column = actual group/file size (never summed across testers). Done% is never averaged. EN and CN data are always separate — never mixed.
 
 ### Automatic Row Hiding
 
