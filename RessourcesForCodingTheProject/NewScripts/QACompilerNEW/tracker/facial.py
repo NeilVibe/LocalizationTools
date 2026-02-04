@@ -545,30 +545,6 @@ def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles
 
             current_row += 1
 
-        # TOTAL row for this language (sum all groups)
-        lang_grand = {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0}
-        lang_done_pct_sum = 0.0
-        for g in lang_groups:
-            gt = group_totals[g]
-            lang_grand["total"] += gt["total"]
-            lang_grand["done"] += gt["done"]
-            lang_grand["no_issue"] += gt["no_issue"]
-            lang_grand["mismatch"] += gt["mismatch"]
-            lang_grand["missing"] += gt["missing"]
-            lang_done_pct_sum += (gt["done"] / gt["total"] * 100) if gt["total"] > 0 else 0
-
-        lang_pct = f"{lang_done_pct_sum:.1f}%"
-        total_values = ["TOTAL", "", lang_grand["done"],
-                        lang_grand["no_issue"], lang_grand["mismatch"], lang_grand["missing"], lang_pct]
-
-        for i, val in enumerate(total_values, 1):
-            cell = ws.cell(current_row, i, val)
-            cell.fill = styles["total_fill"]
-            cell.font = styles["bold"]
-            cell.alignment = styles["center"]
-            cell.border = styles["border"]
-        current_row += 1
-
         current_row += 1  # Spacing between language tables
 
     return current_row
