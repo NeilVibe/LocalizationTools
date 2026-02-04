@@ -354,10 +354,17 @@ class QuickTranslateApp:
             self._log(f"{role} folder invalid: {folder_path}", 'error')
             return
 
-        all_files = list(folder.iterdir())
+        try:
+            all_files = list(folder.iterdir())
+        except OSError as e:
+            print(f"\n[{role}] ERROR: Cannot read folder: {e}")
+            self._log(f"{role} folder unreadable: {e}", 'error')
+            return
+
         xml_files = [f for f in all_files if f.suffix.lower() == ".xml" and f.is_file()]
         xlsx_files = [f for f in all_files if f.suffix.lower() in (".xlsx", ".xls") and f.is_file()]
-        other_files = [f for f in all_files if f.is_file() and f not in xml_files and f not in xlsx_files]
+        categorized = set(xml_files) | set(xlsx_files)
+        other_files = [f for f in all_files if f.is_file() and f not in categorized]
         subdirs = [f for f in all_files if f.is_dir()]
 
         # Identify languagedata files and extract language codes
@@ -367,7 +374,10 @@ class QuickTranslateApp:
             name = f.stem.lower()
             if name.startswith("languagedata_"):
                 lang_code = f.stem[13:]  # Preserve original case
-                size_kb = f.stat().st_size / 1024
+                try:
+                    size_kb = f.stat().st_size / 1024
+                except OSError:
+                    size_kb = 0
                 lang_files.append((f.name, lang_code, size_kb))
             else:
                 non_lang_xml.append(f.name)
@@ -410,8 +420,11 @@ class QuickTranslateApp:
         if xlsx_files:
             print(f"\n  EXCEL FILES ({len(xlsx_files)}):")
             for f in xlsx_files:
-                size_kb = f.stat().st_size / 1024
-                print(f"    - {f.name} ({size_kb:.0f} KB)")
+                try:
+                    size_kb = f.stat().st_size / 1024
+                    print(f"    - {f.name} ({size_kb:.0f} KB)")
+                except OSError:
+                    print(f"    - {f.name} (size unknown)")
 
         if subdirs:
             print(f"\n  SUBDIRECTORIES ({len(subdirs)}):")
@@ -421,8 +434,8 @@ class QuickTranslateApp:
         # Validation
         print(f"\n  VALIDATION:")
         is_eligible = len(lang_files) > 0
+        lang_codes = sorted([lc for _, lc, _ in lang_files]) if lang_files else []
         if is_eligible:
-            lang_codes = sorted([lc for _, lc, _ in lang_files])
             print(f"  [OK] Eligible for TRANSFER ({len(lang_files)} language files)")
             print(f"  [OK] Languages: {', '.join(lang_codes)}")
         else:
@@ -438,7 +451,7 @@ class QuickTranslateApp:
         # Also log to GUI
         if is_eligible:
             self._log(f"{role}: {len(lang_files)} languagedata files found - ELIGIBLE", 'success')
-            self._log(f"  Languages: {', '.join(sorted([lc for _, lc, _ in lang_files]))}", 'info')
+            self._log(f"  Languages: {', '.join(lang_codes)}", 'info')
         else:
             self._log(f"{role}: No languagedata files found - NOT ELIGIBLE", 'error')
 
@@ -1176,38 +1189,38 @@ class QuickTranslateApp:
         self._log(f"Source: {source}", 'info')
         self._log(f"Target: {target}", 'info')
 
-        # Pre-transfer cross-match analysis (folder mode)
-        if self.input_mode.get() == "folder" and source.is_dir() and target.is_dir():
-            src_xmls = {f.stem.lower()[13:]: f.name for f in source.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
-            tgt_xmls = {f.stem.lower()[13:]: f.name for f in target.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
-            matched_langs = sorted(set(src_xmls.keys()) & set(tgt_xmls.keys()))
-            src_only = sorted(set(src_xmls.keys()) - set(tgt_xmls.keys()))
-            tgt_only = sorted(set(tgt_xmls.keys()) - set(src_xmls.keys()))
-
-            print(f"\n{'=' * 60}")
-            print(f"  TRANSFER CROSS-MATCH ANALYSIS")
-            print(f"{'=' * 60}")
-            print(f"  Source: {len(src_xmls)} languagedata files")
-            print(f"  Target: {len(tgt_xmls)} languagedata files")
-            print(f"  Matched: {len(matched_langs)} pairs")
-            print(f"{'-' * 60}")
-            if matched_langs:
-                print(f"\n  MATCHED PAIRS ({len(matched_langs)}):")
-                for lang in matched_langs:
-                    print(f"    {src_xmls[lang]:<35} --> {tgt_xmls[lang]}")
-            if src_only:
-                print(f"\n  SOURCE ONLY (no target match - SKIPPED):")
-                for lang in src_only:
-                    print(f"    {src_xmls[lang]:<35} --> [NO MATCH]")
-            if tgt_only:
-                print(f"\n  TARGET ONLY (no source - UNCHANGED):")
-                for lang in tgt_only:
-                    print(f"    {'[NO SOURCE]':<35} --> {tgt_xmls[lang]}")
-            print(f"{'=' * 60}\n")
-
-            self._log(f"Cross-match: {len(matched_langs)} pairs, {len(src_only)} source-only, {len(tgt_only)} target-only", 'info')
-
         try:
+            # Pre-transfer cross-match analysis (folder mode)
+            if self.input_mode.get() == "folder" and source.is_dir() and target.is_dir():
+                src_xmls = {f.stem.lower()[13:]: f.name for f in source.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
+                tgt_xmls = {f.stem.lower()[13:]: f.name for f in target.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
+                matched_langs = sorted(set(src_xmls.keys()) & set(tgt_xmls.keys()))
+                src_only = sorted(set(src_xmls.keys()) - set(tgt_xmls.keys()))
+                tgt_only = sorted(set(tgt_xmls.keys()) - set(src_xmls.keys()))
+
+                print(f"\n{'=' * 60}")
+                print(f"  TRANSFER CROSS-MATCH ANALYSIS")
+                print(f"{'=' * 60}")
+                print(f"  Source: {len(src_xmls)} languagedata files")
+                print(f"  Target: {len(tgt_xmls)} languagedata files")
+                print(f"  Matched: {len(matched_langs)} pairs")
+                print(f"{'-' * 60}")
+                if matched_langs:
+                    print(f"\n  MATCHED PAIRS ({len(matched_langs)}):")
+                    for lang in matched_langs:
+                        print(f"    {src_xmls[lang]:<35} --> {tgt_xmls[lang]}")
+                if src_only:
+                    print(f"\n  SOURCE ONLY (no target match - SKIPPED):")
+                    for lang in src_only:
+                        print(f"    {src_xmls[lang]:<35} --> [NO MATCH]")
+                if tgt_only:
+                    print(f"\n  TARGET ONLY (no source - UNCHANGED):")
+                    for lang in tgt_only:
+                        print(f"    {'[NO SOURCE]':<35} --> {tgt_xmls[lang]}")
+                print(f"{'=' * 60}\n")
+
+                self._log(f"Cross-match: {len(matched_langs)} pairs, {len(src_only)} source-only, {len(tgt_only)} target-only", 'info')
+
             # Load category data if needed for stringid_only mode
             stringid_to_category = None
             stringid_to_subfolder = None

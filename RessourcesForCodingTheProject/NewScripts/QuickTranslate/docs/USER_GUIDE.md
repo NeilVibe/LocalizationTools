@@ -1,6 +1,6 @@
 # QuickTranslate User Guide
 
-**Version 3.0.0** | February 2026 | LocaNext Project
+**Version 3.1.0** | February 2026 | LocaNext Project
 
 ---
 
@@ -455,6 +455,105 @@ Summary:
 - ○ = No matches found
 - × = Error during processing
 
+## 6.6 Folder Analysis
+
+When you browse a **Source** or **Target** folder, QuickTranslate automatically analyzes the folder contents and prints a detailed summary to both the terminal and the GUI log.
+
+### What It Shows
+
+| Information | Description |
+|-------------|-------------|
+| **File count** | Total items, XML files, Excel files, other files, subdirectories |
+| **Languagedata index** | Numbered table of all `languagedata_*.xml` files found |
+| **Language codes** | Detected language code for each file (ENG, FRE, GER, etc.) |
+| **File sizes** | Human-readable size for each file |
+| **Eligibility check** | Whether the folder is eligible for TRANSFER operations |
+
+### Terminal Output Example
+
+```
+============================================================
+  SOURCE FOLDER ANALYSIS
+============================================================
+  Path: D:\locmerge\source
+  Total items: 14 (12 XML, 0 Excel, 2 other, 0 subdirs)
+------------------------------------------------------------
+
+  LANGUAGEDATA FILES (12 found):
+  #    Filename                            Lang     Size
+  ---- ----------------------------------- -------- ----------
+  1    languagedata_ENG.xml                ENG      4.2 MB
+  2    languagedata_FRE.xml                FRE      3.8 MB
+  3    languagedata_GER.xml                GER      3.9 MB
+  ...
+
+  VALIDATION:
+  [OK] Eligible for TRANSFER (12 language files)
+  [OK] Languages: ENG, FRE, GER, ...
+============================================================
+```
+
+### GUI Log Summary
+
+The GUI log area shows a condensed version:
+- Folder path
+- Number of languagedata files found
+- List of detected languages
+- Eligibility status
+
+### Error Handling
+
+If the folder cannot be fully analyzed (e.g., permission errors, unreadable files), the analysis gracefully reports the issue without blocking the operation.
+
+## 6.7 Cross-Match Analysis
+
+Before a **TRANSFER** executes in **Folder mode**, QuickTranslate performs a cross-match analysis. This prints a detailed pairing report to the terminal showing which source correction files will be applied to which target languagedata files.
+
+### What It Shows
+
+| Information | Description |
+|-------------|-------------|
+| **Source count** | Number of languagedata files in the source folder |
+| **Target count** | Number of languagedata files in the target folder |
+| **Matched pairs** | Source-to-target file pairings by language code |
+| **Unmatched files** | Any files that could not be paired |
+
+### Terminal Output Example
+
+```
+============================================================
+  TRANSFER CROSS-MATCH ANALYSIS
+============================================================
+  Source: 12 languagedata files
+  Target: 12 languagedata files
+  Matched: 12 pairs
+------------------------------------------------------------
+
+  MATCHED PAIRS (12):
+    languagedata_eng.xml                --> languagedata_ENG.xml
+    languagedata_fre.xml                --> languagedata_FRE.xml
+    languagedata_ger.xml                --> languagedata_GER.xml
+    languagedata_spa.xml                --> languagedata_SPA.xml
+    languagedata_por.xml                --> languagedata_POR.xml
+    languagedata_ita.xml                --> languagedata_ITA.xml
+    languagedata_rus.xml                --> languagedata_RUS.xml
+    languagedata_tur.xml                --> languagedata_TUR.xml
+    languagedata_pol.xml                --> languagedata_POL.xml
+    languagedata_jpn.xml                --> languagedata_JPN.xml
+    languagedata_zho-cn.xml             --> languagedata_ZHO-CN.xml
+    languagedata_zho-tw.xml             --> languagedata_ZHO-TW.xml
+============================================================
+```
+
+### Why This Matters
+
+The cross-match analysis helps verify that:
+1. All expected language files are present in both source and target
+2. File naming is consistent so pairings are correct
+3. No corrections will be silently skipped due to missing target files
+
+If any source files have no matching target, or vice versa, they are listed under an **UNMATCHED** section so you can investigate before the transfer proceeds.
+
 ---
 
 # 7. Match Types
@@ -826,6 +925,17 @@ python main.py --help       # Show help
 
 ## 12.3 Changelog
 
+### Version 3.1.0 (February 2026)
+
+**New Features:**
+- Folder analysis on browse: detailed terminal output with file indexing, language identification, eligibility check
+- Cross-match analysis before TRANSFER: shows source-to-target file pairing
+- Window now vertically resizable (900x1000, min 900x900)
+
+**Bug Fixes:**
+- Fixed TRANSFER button being invisible due to window too small (900x850)
+- Added error handling for folder analysis (permission errors, unreadable files)
+
 ### Version 3.0.0 (February 2026)
 
 **New Features:**
@@ -886,7 +996,7 @@ python main.py --help       # Show help
 
 <div align="center">
 
-**QuickTranslate** | Version 3.0.0 | LocaNext Project
+**QuickTranslate** | Version 3.1.0 | LocaNext Project
 
 *Lookup & Transfer - Two Tools in One*
 
