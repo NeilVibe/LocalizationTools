@@ -27,6 +27,69 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# FACIAL PROGRESS TRACKER -- HOW IT WORKS
+# =============================================================================
+#
+# CONCEPT
+# -------
+# There are 2 QA files: one for EN, one for CN. Each QA file is shared with
+# multiple testers. Each tester is assigned a LIST OF GROUPS from that file.
+# Testers generally do NOT overlap -- each person covers different groups.
+# The goal is to collectively COVER 100% of the file.
+#
+# We track:
+#   - How each tester is progressing (pace, completion)
+#   - How each group is being completed
+#   - Total completion across all testers
+#   - Counts of: Done, Missing, Mismatch, NoIssue per group/tester
+#
+# DATA FLOW
+# ---------
+# Each tester submits results per group per date. The tracker reads the
+# LATEST entry per (user, group, lang) to avoid double-counting revisions.
+# EN data and CN data are ALWAYS kept separate -- never mixed.
+#
+#
+# KEY CALCULATION RULES
+# ---------------------
+#
+# Total column (group size)
+#   - Total = the ACTUAL size of the group (number of items in the file).
+#   - Every tester receives the SAME file, so every tester has the SAME total.
+#   - NEVER sum totals across testers -- that inflates the number meaninglessly.
+#   - Just show the real group size (take any one tester's value).
+#
+# Done% in TOTAL rows (EN/CN FACIAL TOTAL TABLE)
+#   - Done% = SUM of each tester's individual Done% values.
+#   - NOT an average. NOT done/total*100 from aggregated numbers.
+#   - Example: Tester A = 30%, Tester B = 50%, Tester C = 20%
+#              --> TOTAL Done% = 100% (collectively covered the full file)
+#
+# Done% in CATEGORY group rows (EN/CN FACIAL CATEGORY TABLE)
+#   - Done% = sum(done across testers) / actual_group_size * 100
+#   - Shows how much of that specific group is covered collectively.
+#   - Example: Group has 100 items. 3 testers did 30 + 50 + 20 = 100
+#              --> Done% = 100% covered.
+#
+# What we DO NOT do
+#   - NEVER average Done% values.
+#   - NEVER sum the Total column across testers.
+#   - NEVER mix EN and CN data in the same table.
+#   - NO TOTAL row in category tables (not needed).
+#
+#
+# TABLE STRUCTURE (5 sections on the Facial sheet)
+# ------------------------------------------------
+# 1. FACIAL DAILY TABLE       -- daily progress, all users combined
+# 2. EN FACIAL TOTAL TABLE    -- EN testers only, with TOTAL row (summed Done%)
+# 3. CN FACIAL TOTAL TABLE    -- CN testers only, with TOTAL row (summed Done%)
+# 4. EN FACIAL CATEGORY TABLE -- EN groups broken down, no TOTAL row
+# 5. CN FACIAL CATEGORY TABLE -- CN groups broken down, no TOTAL row
+#
+# =============================================================================
+
+
+# =============================================================================
 # DATE COMPARISON HELPER
 # =============================================================================
 
@@ -398,15 +461,6 @@ def _build_facial_total_section(ws, start_row: int, facial_data: Dict, styles: D
     headers = ["User", "Total", "Done", "NoIssue", "Mismatch", "Missing", "Done%"]
     total_cols = len(headers)
 
-    # Aggregate per user from latest-only rows
-    user_totals = defaultdict(lambda: {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0})
-    for r in latest_rows.values():
-        user_totals[r["user"]]["total"] += r["total_rows"]
-        user_totals[r["user"]]["done"] += r["done"]
-        user_totals[r["user"]]["no_issue"] += r["no_issue"]
-        user_totals[r["user"]]["mismatch"] += r["mismatch"]
-        user_totals[r["user"]]["missing"] += r["missing"]
-
     # Split users by language
     en_users = sorted([u for u in users if langs.get(u, "EN") == "EN"])
     cn_users = sorted([u for u in users if langs.get(u, "EN") == "CN"])
@@ -417,6 +471,17 @@ def _build_facial_total_section(ws, start_row: int, facial_data: Dict, styles: D
     ]:
         if not lang_users:
             continue
+
+        # Aggregate per user from latest-only rows, FILTERED by language
+        # Same pattern as _build_facial_category_section to avoid double counting
+        lang_rows = {k: r for k, r in latest_rows.items() if r["lang"] == lang_label}
+        user_totals = defaultdict(lambda: {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0})
+        for r in lang_rows.values():
+            user_totals[r["user"]]["total"] += r["total_rows"]
+            user_totals[r["user"]]["done"] += r["done"]
+            user_totals[r["user"]]["no_issue"] += r["no_issue"]
+            user_totals[r["user"]]["mismatch"] += r["mismatch"]
+            user_totals[r["user"]]["missing"] += r["missing"]
 
         # Title row
         ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
@@ -510,13 +575,17 @@ def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles
         if not lang_rows:
             continue
 
-        # Per group: aggregate across ALL users (sum latest entry per user)
-        # latest_rows already has the latest row per (user, group, lang),
-        # so summing across users for each group gives the full picture.
+        # Per group: aggregate across ALL users
+        # Total = actual group size (same for every tester, just take one value)
+        # Done/NoIssue/Mismatch/Missing = sum across testers
+        # Done% = sum(done) / sum(total) = average coverage per tester
+        # LOGIC: Same test given to everyone. Total is the fixed group size.
+        # Each tester checks their part. Sum of work items shows collective findings.
         group_totals = defaultdict(lambda: {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0})
+        group_actual_size = {}  # actual group size (from any one tester)
         for r in lang_rows.values():
             g = r["group"]
-            group_totals[g]["total"] += r["total_rows"]
+            group_actual_size[g] = r["total_rows"]  # same for every tester
             group_totals[g]["done"] += r["done"]
             group_totals[g]["no_issue"] += r["no_issue"]
             group_totals[g]["mismatch"] += r["mismatch"]
@@ -544,9 +613,10 @@ def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles
         # Group rows
         for idx, group in enumerate(lang_groups):
             gt = group_totals[group]
-            done_pct = f"{(gt['done'] / gt['total'] * 100):.1f}%" if gt["total"] > 0 else "0%"
+            actual_total = group_actual_size.get(group, 0)
+            done_pct = f"{(gt['done'] / actual_total * 100):.1f}%" if actual_total > 0 else "0%"
 
-            values = [group, gt["total"], gt["done"], gt["no_issue"],
+            values = [group, actual_total, gt["done"], gt["no_issue"],
                       gt["mismatch"], gt["missing"], done_pct]
 
             for i, val in enumerate(values, 1):
