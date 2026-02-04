@@ -898,6 +898,52 @@ def build_category_breakdown_section(
 
         current_row += 1
 
+    # TOTAL row (sum of individual Done% values per category)
+    cell = ws.cell(current_row, 1, "TOTAL")
+    cell.fill = styles["total_fill"]
+    cell.font = styles["bold"]
+    cell.alignment = styles["center"]
+    cell.border = styles["border"]
+
+    col = 2
+    for cat in categories:
+        # Sum individual user Done% values for this category
+        pct_sum = 0.0
+        count_sum = 0
+        for user in sorted(users_list):
+            user_cat_data = pivot.get(user, {}).get(cat, None)
+            if user_cat_data:
+                pct_sum += user_cat_data["pct"]
+                count_sum += user_cat_data["count"]
+
+        # Done% sum
+        cell1 = ws.cell(current_row, col, pct_sum)
+        cell1.number_format = '0.0"%"'
+        cell1.fill = styles["total_fill"]
+        cell1.font = styles["bold"]
+        cell1.alignment = styles["center"]
+        cell1.border = styles["border"]
+
+        # Count sum
+        cell2 = ws.cell(current_row, col + 1, count_sum)
+        cell2.number_format = '#,##0'
+        cell2.fill = styles["total_fill"]
+        cell2.font = styles["bold"]
+        cell2.alignment = styles["center"]
+        cell2.border = styles["border"]
+
+        col += 2
+
+    # Grand total count
+    cell = ws.cell(current_row, col, grand_total_count)
+    cell.number_format = '#,##0'
+    cell.fill = styles["total_fill"]
+    cell.font = styles["bold"]
+    cell.alignment = styles["center"]
+    cell.border = styles["border"]
+
+    current_row += 1
+
     # Set column widths
     ws.column_dimensions['A'].width = 12  # User column
     col_letter_idx = 2
