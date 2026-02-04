@@ -513,11 +513,13 @@ def merge_corrections_stringid_only_script(
     # Build StringID-only lookup (NOT tuple!)
     correction_lookup = {}
     correction_matched = {}
+    stringid_to_category = {}
 
     for c in script_corrections:
         sid = c["string_id"]
         correction_lookup[sid] = c["corrected"]
         correction_matched[sid] = False
+        stringid_to_category[sid] = c.get("category", "Uncategorized")
 
         # Initialize category stats
         category = c.get("category", "Uncategorized")
