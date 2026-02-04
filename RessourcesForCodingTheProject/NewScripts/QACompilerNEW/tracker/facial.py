@@ -377,12 +377,13 @@ def _build_facial_daily_section(ws, start_row: int, facial_data: Dict, styles: D
 
 def _build_facial_total_section(ws, start_row: int, facial_data: Dict, styles: Dict, latest_rows: Dict) -> int:
     """
-    Build FACIAL TOTAL TABLE section.
+    Build FACIAL TOTAL TABLE section — separate tables for EN and CN.
 
-    Layout:
-    | FACIAL TOTAL TABLE                                                       |
-    | User   | Lang | Total | Done | NoIssue | Mismatch | Missing | Done%      |
-    | User1  | EN   | 100   |  60  |   55    |    3     |    2    | 60%        |
+    Layout (repeated for each language):
+    | EN FACIAL TOTAL TABLE                                              |
+    | User   | Total | Done | NoIssue | Mismatch | Missing | Done%      |
+    | User1  | 100   |  60  |   55    |    3     |    2    | 60%        |
+    | TOTAL  |       |  120 |  110    |    5     |    5    | 120.0%     |
 
     Returns:
         Next row after section
@@ -394,7 +395,7 @@ def _build_facial_total_section(ws, start_row: int, facial_data: Dict, styles: D
         return start_row
 
     current_row = start_row
-    headers = ["User", "Lang", "Total", "Done", "NoIssue", "Mismatch", "Missing", "Done%"]
+    headers = ["User", "Total", "Done", "NoIssue", "Mismatch", "Missing", "Done%"]
     total_cols = len(headers)
 
     # Aggregate per user from latest-only rows
@@ -406,65 +407,77 @@ def _build_facial_total_section(ws, start_row: int, facial_data: Dict, styles: D
         user_totals[r["user"]]["mismatch"] += r["mismatch"]
         user_totals[r["user"]]["missing"] += r["missing"]
 
-    # Title row
-    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
-    title_cell = ws.cell(current_row, 1, "FACIAL TOTAL TABLE")
-    title_cell.fill = styles["title_fill"]
-    title_cell.font = styles["white_bold"]
-    title_cell.alignment = styles["center"]
-    current_row += 1
+    # Split users by language
+    en_users = sorted([u for u in users if langs.get(u, "EN") == "EN"])
+    cn_users = sorted([u for u in users if langs.get(u, "EN") == "CN"])
 
-    # Headers
-    for i, header in enumerate(headers, 1):
-        cell = ws.cell(current_row, i, header)
-        cell.fill = styles["header_fill"]
-        cell.font = styles["bold"]
-        cell.alignment = styles["center"]
-        cell.border = styles["border"]
-    current_row += 1
+    for lang_label, lang_users, title_fill in [
+        ("EN", en_users, styles.get("en_title_fill", styles["title_fill"])),
+        ("CN", cn_users, styles.get("cn_title_fill", styles["title_fill"])),
+    ]:
+        if not lang_users:
+            continue
 
-    # User rows
-    for idx, user in enumerate(users):
-        ut = user_totals[user]
-        done_pct = f"{(ut['done'] / ut['total'] * 100):.1f}%" if ut["total"] > 0 else "0%"
-
-        values = [user, langs.get(user, "EN"), ut["total"], ut["done"],
-                  ut["no_issue"], ut["mismatch"], ut["missing"], done_pct]
-
-        for i, val in enumerate(values, 1):
-            cell = ws.cell(current_row, i, val)
-            cell.alignment = styles["center"]
-            cell.border = styles["border"]
-            if idx % 2 == 1:
-                cell.fill = styles["alt_fill"]
-
+        # Title row
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
+        title_cell = ws.cell(current_row, 1, f"{lang_label} FACIAL TOTAL TABLE")
+        title_cell.fill = title_fill
+        title_cell.font = styles["white_bold"]
+        title_cell.alignment = styles["center"]
         current_row += 1
 
-    # TOTAL row (sum across all users)
-    grand = {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0}
-    grand_done_pct_sum = 0.0
-    for user in users:
-        ut = user_totals[user]
-        grand["total"] += ut["total"]
-        grand["done"] += ut["done"]
-        grand["no_issue"] += ut["no_issue"]
-        grand["mismatch"] += ut["mismatch"]
-        grand["missing"] += ut["missing"]
-        grand_done_pct_sum += (ut["done"] / ut["total"] * 100) if ut["total"] > 0 else 0
+        # Headers
+        for i, header in enumerate(headers, 1):
+            cell = ws.cell(current_row, i, header)
+            cell.fill = styles["header_fill"]
+            cell.font = styles["bold"]
+            cell.alignment = styles["center"]
+            cell.border = styles["border"]
+        current_row += 1
 
-    grand_pct = f"{grand_done_pct_sum:.1f}%"
-    total_values = ["TOTAL", "", "", grand["done"],
-                    grand["no_issue"], grand["mismatch"], grand["missing"], grand_pct]
+        # User rows
+        for idx, user in enumerate(lang_users):
+            ut = user_totals[user]
+            done_pct = f"{(ut['done'] / ut['total'] * 100):.1f}%" if ut["total"] > 0 else "0%"
 
-    for i, val in enumerate(total_values, 1):
-        cell = ws.cell(current_row, i, val)
-        cell.fill = styles["total_fill"]
-        cell.font = styles["bold"]
-        cell.alignment = styles["center"]
-        cell.border = styles["border"]
-    current_row += 1
+            values = [user, ut["total"], ut["done"],
+                      ut["no_issue"], ut["mismatch"], ut["missing"], done_pct]
 
-    return current_row + 1  # Spacing
+            for i, val in enumerate(values, 1):
+                cell = ws.cell(current_row, i, val)
+                cell.alignment = styles["center"]
+                cell.border = styles["border"]
+                if idx % 2 == 1:
+                    cell.fill = styles["alt_fill"]
+
+            current_row += 1
+
+        # TOTAL row (sum of individual Done% values)
+        grand = {"done": 0, "no_issue": 0, "mismatch": 0, "missing": 0}
+        grand_done_pct_sum = 0.0
+        for user in lang_users:
+            ut = user_totals[user]
+            grand["done"] += ut["done"]
+            grand["no_issue"] += ut["no_issue"]
+            grand["mismatch"] += ut["mismatch"]
+            grand["missing"] += ut["missing"]
+            grand_done_pct_sum += (ut["done"] / ut["total"] * 100) if ut["total"] > 0 else 0
+
+        grand_pct = f"{grand_done_pct_sum:.1f}%"
+        total_values = ["TOTAL", "", grand["done"],
+                        grand["no_issue"], grand["mismatch"], grand["missing"], grand_pct]
+
+        for i, val in enumerate(total_values, 1):
+            cell = ws.cell(current_row, i, val)
+            cell.fill = styles["total_fill"]
+            cell.font = styles["bold"]
+            cell.alignment = styles["center"]
+            cell.border = styles["border"]
+        current_row += 1
+
+        current_row += 1  # Spacing between EN and CN tables
+
+    return current_row
 
 
 def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles: Dict, latest_rows: Dict) -> int:
