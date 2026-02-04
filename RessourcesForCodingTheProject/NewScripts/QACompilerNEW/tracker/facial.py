@@ -440,6 +440,28 @@ def _build_facial_total_section(ws, start_row: int, facial_data: Dict, styles: D
 
         current_row += 1
 
+    # TOTAL row (sum across all users)
+    grand = {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0}
+    for user in users:
+        ut = user_totals[user]
+        grand["total"] += ut["total"]
+        grand["done"] += ut["done"]
+        grand["no_issue"] += ut["no_issue"]
+        grand["mismatch"] += ut["mismatch"]
+        grand["missing"] += ut["missing"]
+
+    grand_pct = f"{(grand['done'] / grand['total'] * 100):.1f}%" if grand["total"] > 0 else "0%"
+    total_values = ["TOTAL", "", grand["total"], grand["done"],
+                    grand["no_issue"], grand["mismatch"], grand["missing"], grand_pct]
+
+    for i, val in enumerate(total_values, 1):
+        cell = ws.cell(current_row, i, val)
+        cell.fill = styles["total_fill"]
+        cell.font = styles["bold"]
+        cell.alignment = styles["center"]
+        cell.border = styles["border"]
+    current_row += 1
+
     return current_row + 1  # Spacing
 
 
@@ -473,23 +495,17 @@ def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles
         if not lang_rows:
             continue
 
-        # Per group: take latest entry only (don't aggregate across users)
-        # Each group row shows the actual group data, not summed across all users
-        group_best = {}  # group -> row with latest date
+        # Per group: aggregate across ALL users (sum latest entry per user)
+        # latest_rows already has the latest row per (user, group, lang),
+        # so summing across users for each group gives the full picture.
+        group_totals = defaultdict(lambda: {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0})
         for r in lang_rows.values():
             g = r["group"]
-            if g not in group_best or _parse_date_for_comparison(r["date"]) > _parse_date_for_comparison(group_best[g]["date"]):
-                group_best[g] = r
-
-        group_totals = {}
-        for g, r in group_best.items():
-            group_totals[g] = {
-                "total": r["total_rows"],
-                "done": r["done"],
-                "no_issue": r["no_issue"],
-                "mismatch": r["mismatch"],
-                "missing": r["missing"],
-            }
+            group_totals[g]["total"] += r["total_rows"]
+            group_totals[g]["done"] += r["done"]
+            group_totals[g]["no_issue"] += r["no_issue"]
+            group_totals[g]["mismatch"] += r["mismatch"]
+            group_totals[g]["missing"] += r["missing"]
 
         lang_groups = sorted(group_totals.keys())
 
@@ -526,6 +542,28 @@ def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles
                     cell.fill = styles["alt_fill"]
 
             current_row += 1
+
+        # TOTAL row for this language (sum all groups)
+        lang_grand = {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0}
+        for g in lang_groups:
+            gt = group_totals[g]
+            lang_grand["total"] += gt["total"]
+            lang_grand["done"] += gt["done"]
+            lang_grand["no_issue"] += gt["no_issue"]
+            lang_grand["mismatch"] += gt["mismatch"]
+            lang_grand["missing"] += gt["missing"]
+
+        lang_pct = f"{(lang_grand['done'] / lang_grand['total'] * 100):.1f}%" if lang_grand["total"] > 0 else "0%"
+        total_values = ["TOTAL", lang_grand["total"], lang_grand["done"],
+                        lang_grand["no_issue"], lang_grand["mismatch"], lang_grand["missing"], lang_pct]
+
+        for i, val in enumerate(total_values, 1):
+            cell = ws.cell(current_row, i, val)
+            cell.fill = styles["total_fill"]
+            cell.font = styles["bold"]
+            cell.alignment = styles["center"]
+            cell.border = styles["border"]
+        current_row += 1
 
         current_row += 1  # Spacing between language tables
 
