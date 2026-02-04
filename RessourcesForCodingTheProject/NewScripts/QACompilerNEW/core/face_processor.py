@@ -134,7 +134,10 @@ def process_face_category(
                     sheet_mismatch = 0
                     sheet_missing = 0
                     sheet_noissue = 0
+                    min_required_len = max(eventname_idx, status_idx, group_idx if group_idx is not None else 0) + 1
                     for row_tuple in ws.iter_rows(min_row=2, max_col=ws.max_column, values_only=True):
+                        if len(row_tuple) < min_required_len:
+                            continue
                         eventname_val = row_tuple[eventname_idx]
                         if not eventname_val:
                             continue
@@ -250,6 +253,10 @@ def _write_face_output(output_path: Path, events: Dict[str, set], label: str, da
         label: "MISMATCH" or "MISSING" for logging
         date_tab: Tab name in MMDD format (e.g., "0204")
     """
+    if not events:
+        print(f"    [{label}] No events, skipping file creation")
+        return
+
     # Load existing file or create new
     if output_path.exists():
         wb = load_workbook(output_path)
