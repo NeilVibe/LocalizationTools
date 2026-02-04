@@ -389,6 +389,395 @@ def merge_corrections_stringid_only(
     return result
 
 
+def merge_corrections_fuzzy(
+    xml_path: Path,
+    corrections: List[Dict],
+    dry_run: bool = False,
+) -> Dict:
+    """
+    Merge corrections using fuzzy-matched StringIDs.
+
+    Each correction must have 'fuzzy_target_string_id' from fuzzy matching.
+    Uses that StringID to find and update entries in the target XML.
+
+    Args:
+        xml_path: Path to target XML file
+        corrections: List of correction dicts with fuzzy_target_string_id and corrected
+        dry_run: If True, don't write changes
+
+    Returns:
+        Dict with stats: matched, updated, not_found, errors, details
+    """
+    result = {
+        "matched": 0,
+        "updated": 0,
+        "not_found": 0,
+        "errors": [],
+        "details": [],
+    }
+
+    if not corrections:
+        return result
+
+    # Build lookup: fuzzy_target_string_id -> corrected text
+    correction_lookup = {}
+    correction_matched = {}
+
+    for c in corrections:
+        target_sid = c.get("fuzzy_target_string_id", "")
+        if target_sid:
+            correction_lookup[target_sid] = c["corrected"]
+            correction_matched[target_sid] = False
+
+    if not correction_lookup:
+        result["errors"].append("No corrections with fuzzy_target_string_id found")
+        return result
+
+    try:
+        if USING_LXML:
+            parser = etree.XMLParser(
+                resolve_entities=False, load_dtd=False,
+                no_network=True, recover=True,
+            )
+            tree = etree.parse(str(xml_path), parser)
+            root = tree.getroot()
+        else:
+            tree = etree.parse(str(xml_path))
+            root = tree.getroot()
+
+        changed = False
+
+        locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
+        all_elements = []
+        for tag in locstr_tags:
+            all_elements.extend(root.iter(tag))
+
+        for loc in all_elements:
+            sid = (loc.get("StringId") or loc.get("StringID") or
+                   loc.get("stringid") or loc.get("STRINGID") or
+                   loc.get("Stringid") or loc.get("stringId") or "").strip()
+
+            if sid in correction_lookup:
+                new_str = correction_lookup[sid]
+                correction_matched[sid] = True
+                result["matched"] += 1
+
+                old_str = (loc.get("Str") or loc.get("str") or
+                           loc.get("STR") or "")
+
+                if new_str != old_str:
+                    if not dry_run:
+                        loc.set("Str", new_str)
+                    result["updated"] += 1
+                    changed = True
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": "UPDATED",
+                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "new": new_str[:50] + "..." if len(new_str) > 50 else new_str,
+                    })
+                    logger.debug(f"Updated (fuzzy) StringId={sid}: '{old_str}' -> '{new_str}'")
+                else:
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": "UNCHANGED",
+                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "new": "(same)",
+                    })
+
+        # Count unmatched
+        for sid, was_matched in correction_matched.items():
+            if not was_matched:
+                result["not_found"] += 1
+                result["details"].append({
+                    "string_id": sid,
+                    "status": "NOT_FOUND",
+                    "old": "",
+                    "new": correction_lookup[sid][:50] + "..." if len(correction_lookup[sid]) > 50 else correction_lookup[sid],
+                })
+
+        if changed and not dry_run:
+            try:
+                current_mode = os.stat(xml_path).st_mode
+                if not current_mode & stat.S_IWRITE:
+                    os.chmod(xml_path, current_mode | stat.S_IWRITE)
+            except Exception as e:
+                logger.warning(f"Could not make {xml_path.name} writable: {e}")
+
+            if USING_LXML:
+                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False, pretty_print=True)
+            else:
+                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False)
+            logger.info(f"Saved {xml_path.name}: {result['updated']} entries updated (fuzzy)")
+
+    except Exception as e:
+        result["errors"].append(str(e))
+        logger.error(f"Error merging (fuzzy) to {xml_path}: {e}")
+
+    return result
+
+
+def merge_corrections_triple_fallback(
+    xml_path: Path,
+    corrections: List[Dict],
+    dry_run: bool = False,
+) -> Dict:
+    """
+    Merge corrections using triple-fallback-matched StringIDs.
+
+    Each correction must have 'matched_string_id' from triple fallback matching.
+    Uses that StringID to find and update entries in the target XML.
+
+    Args:
+        xml_path: Path to target XML file
+        corrections: List of correction dicts with matched_string_id and corrected
+        dry_run: If True, don't write changes
+
+    Returns:
+        Dict with stats: matched, updated, not_found, errors, details, level_counts
+    """
+    result = {
+        "matched": 0,
+        "updated": 0,
+        "not_found": 0,
+        "errors": [],
+        "details": [],
+        "level_counts": {"L1": 0, "L2A": 0, "L2B": 0, "L3": 0},
+    }
+
+    if not corrections:
+        return result
+
+    # Build lookup: matched_string_id -> (corrected_text, match_level)
+    correction_lookup = {}
+    correction_matched = {}
+
+    for c in corrections:
+        target_sid = c.get("matched_string_id", "")
+        level = c.get("match_level", "L3")
+        if target_sid:
+            correction_lookup[target_sid] = (c["corrected"], level)
+            correction_matched[target_sid] = False
+
+    if not correction_lookup:
+        result["errors"].append("No corrections with matched_string_id found")
+        return result
+
+    try:
+        if USING_LXML:
+            parser = etree.XMLParser(
+                resolve_entities=False, load_dtd=False,
+                no_network=True, recover=True,
+            )
+            tree = etree.parse(str(xml_path), parser)
+            root = tree.getroot()
+        else:
+            tree = etree.parse(str(xml_path))
+            root = tree.getroot()
+
+        changed = False
+
+        locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
+        all_elements = []
+        for tag in locstr_tags:
+            all_elements.extend(root.iter(tag))
+
+        for loc in all_elements:
+            sid = (loc.get("StringId") or loc.get("StringID") or
+                   loc.get("stringid") or loc.get("STRINGID") or
+                   loc.get("Stringid") or loc.get("stringId") or "").strip()
+
+            if sid in correction_lookup:
+                new_str, level = correction_lookup[sid]
+                correction_matched[sid] = True
+                result["matched"] += 1
+                result["level_counts"][level] += 1
+
+                old_str = (loc.get("Str") or loc.get("str") or
+                           loc.get("STR") or "")
+
+                if new_str != old_str:
+                    if not dry_run:
+                        loc.set("Str", new_str)
+                    result["updated"] += 1
+                    changed = True
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": f"UPDATED ({level})",
+                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "new": new_str[:50] + "..." if len(new_str) > 50 else new_str,
+                    })
+                    logger.debug(f"Updated ({level}) StringId={sid}: '{old_str}' -> '{new_str}'")
+                else:
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": f"UNCHANGED ({level})",
+                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "new": "(same)",
+                    })
+
+        # Count unmatched
+        for sid, was_matched in correction_matched.items():
+            if not was_matched:
+                result["not_found"] += 1
+                new_str, level = correction_lookup[sid]
+                result["details"].append({
+                    "string_id": sid,
+                    "status": "NOT_FOUND",
+                    "old": "",
+                    "new": new_str[:50] + "..." if len(new_str) > 50 else new_str,
+                })
+
+        if changed and not dry_run:
+            try:
+                current_mode = os.stat(xml_path).st_mode
+                if not current_mode & stat.S_IWRITE:
+                    os.chmod(xml_path, current_mode | stat.S_IWRITE)
+            except Exception as e:
+                logger.warning(f"Could not make {xml_path.name} writable: {e}")
+
+            if USING_LXML:
+                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False, pretty_print=True)
+            else:
+                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False)
+            logger.info(f"Saved {xml_path.name}: {result['updated']} entries updated (triple fallback)")
+
+    except Exception as e:
+        result["errors"].append(str(e))
+        logger.error(f"Error merging (triple fallback) to {xml_path}: {e}")
+
+    return result
+
+
+def _prematch_fuzzy(
+    corrections: List[Dict],
+    target_folder: Path,
+    progress_callback=None,
+    threshold=None,
+    fuzzy_model=None,
+    fuzzy_index=None,
+    fuzzy_texts: Optional[List[str]] = None,
+    fuzzy_entries: Optional[List[dict]] = None,
+) -> List[Dict]:
+    """
+    Pre-match corrections using fuzzy SBERT matching against target folder.
+
+    Enriches each correction with 'fuzzy_target_string_id' so that
+    merge_corrections_fuzzy can find the right entries in target XML.
+
+    If fuzzy_model/index/texts/entries are provided (from GUI cache), uses them
+    directly instead of loading/building from scratch.
+
+    Args:
+        corrections: Raw corrections from source file
+        target_folder: Folder containing target XML files
+        progress_callback: Optional callback
+        threshold: Similarity threshold (0.0-1.0). Defaults to config.FUZZY_THRESHOLD_DEFAULT.
+        fuzzy_model: Pre-loaded SBERT model (optional, avoids reload)
+        fuzzy_index: Pre-built FAISS index (optional, avoids rebuild)
+        fuzzy_texts: Pre-extracted StrOrigin texts (optional)
+        fuzzy_entries: Pre-extracted entry dicts (optional)
+
+    Returns:
+        List of enriched correction dicts with fuzzy_target_string_id
+    """
+    from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index, find_matches_fuzzy
+
+    if threshold is None:
+        threshold = config.FUZZY_THRESHOLD_DEFAULT
+
+    try:
+        # Use pre-loaded model or load fresh
+        model = fuzzy_model if fuzzy_model is not None else load_model(progress_callback)
+
+        # Use pre-built index or build fresh
+        if fuzzy_index is not None and fuzzy_texts is not None and fuzzy_entries is not None:
+            texts, entries, index = fuzzy_texts, fuzzy_entries, fuzzy_index
+        else:
+            texts, entries = build_index_from_folder(target_folder, progress_callback)
+            if not texts:
+                logger.warning(f"No StrOrigin values in target folder: {target_folder}")
+                return corrections  # Return as-is, merge will find nothing
+            index = build_faiss_index(texts, entries, model, progress_callback)
+
+        matched, unmatched, stats = find_matches_fuzzy(
+            corrections, texts, entries, model, index,
+            threshold=threshold,
+            progress_callback=progress_callback,
+        )
+        logger.info(f"Fuzzy pre-match: {stats['matched']}/{stats['total']} matched (threshold={threshold:.2f})")
+        return matched
+    except Exception as e:
+        logger.error(f"Fuzzy pre-match failed: {e}")
+        return corrections  # Fallback: return as-is
+
+
+def _prematch_triple_fallback(
+    corrections: List[Dict],
+    target_folder: Path,
+    progress_callback=None,
+    use_fuzzy: bool = False,
+    fuzzy_model=None,
+    fuzzy_threshold: float = 0.85,
+    fuzzy_texts: Optional[List[str]] = None,
+    fuzzy_entries: Optional[List[dict]] = None,
+    fuzzy_index=None,
+) -> List[Dict]:
+    """
+    Pre-match corrections using triple fallback matching against target folder.
+
+    Enriches each correction with 'matched_string_id' so that
+    merge_corrections_triple_fallback can find the right entries in target XML.
+
+    Args:
+        corrections: Raw corrections from source file
+        target_folder: Folder containing target XML files
+        progress_callback: Optional callback
+        use_fuzzy: If True, use SBERT similarity instead of exact StrOrigin matching
+        fuzzy_model: Loaded SentenceTransformer model (required if use_fuzzy)
+        fuzzy_threshold: Minimum similarity score for fuzzy matching
+        fuzzy_texts: Target StrOrigin texts for FAISS (required if use_fuzzy)
+        fuzzy_entries: Target entry dicts for FAISS (required if use_fuzzy)
+        fuzzy_index: Pre-built FAISS index (required if use_fuzzy)
+
+    Returns:
+        List of enriched correction dicts with matched_string_id and match_level
+    """
+    from .indexing import scan_folder_for_entries_with_context
+    from .matching import find_matches_triple_fallback
+
+    try:
+        all_entries, l1_idx, l2a_idx, l2b_idx, l3_idx = scan_folder_for_entries_with_context(
+            target_folder, progress_callback
+        )
+        if not all_entries:
+            logger.warning(f"No entries in target folder: {target_folder}")
+            return corrections
+
+        # Determine if source corrections have file context
+        source_has_context = any(c.get("file_relpath") for c in corrections)
+
+        matched, not_found, level_counts = find_matches_triple_fallback(
+            corrections, l1_idx, l2a_idx, l2b_idx, l3_idx, source_has_context,
+            use_fuzzy=use_fuzzy,
+            fuzzy_model=fuzzy_model,
+            fuzzy_threshold=fuzzy_threshold,
+            fuzzy_texts=fuzzy_texts,
+            fuzzy_entries=fuzzy_entries,
+            fuzzy_index=fuzzy_index,
+        )
+        precision_label = "fuzzy" if use_fuzzy else "exact"
+        logger.info(
+            f"Triple fallback pre-match ({precision_label}): {len(matched)}/{len(corrections)} matched "
+            f"(L1={level_counts['L1']}, L2A={level_counts['L2A']}, "
+            f"L2B={level_counts['L2B']}, L3={level_counts['L3']})"
+        )
+        return matched
+    except Exception as e:
+        logger.error(f"Triple fallback pre-match failed: {e}")
+        return corrections  # Fallback: return as-is
+
+
 def transfer_folder_to_folder(
     source_folder: Path,
     target_folder: Path,
@@ -397,20 +786,28 @@ def transfer_folder_to_folder(
     match_mode: str = "strict",
     dry_run: bool = False,
     progress_callback=None,
+    threshold: float = None,
+    use_fuzzy_precision: bool = False,
 ) -> Dict:
     """
     Transfer corrections from source folder to target folder.
 
     Matches files by name pattern: languagedata_*.xml
 
+    For fuzzy and triple_fallback modes, indexes are built ONCE before the
+    per-file loop and reused for every source file (avoids redundant rescans).
+
     Args:
         source_folder: Folder containing correction XML/Excel files
         target_folder: Folder containing target XML files to update
         stringid_to_category: Category mapping (required for stringid_only mode)
         stringid_to_subfolder: Subfolder mapping (for exclusion filtering)
-        match_mode: "strict" or "stringid_only"
+        match_mode: "strict", "stringid_only", "fuzzy", or "triple_fallback"
         dry_run: If True, don't write changes
         progress_callback: Optional callback for progress updates
+        threshold: Similarity threshold for fuzzy modes (defaults to config.FUZZY_THRESHOLD_DEFAULT)
+        use_fuzzy_precision: If True and match_mode is "triple_fallback", use SBERT
+                             fuzzy matching for StrOrigin comparison instead of exact
 
     Returns:
         Dict with overall results
@@ -449,6 +846,82 @@ def transfer_folder_to_folder(
     if total == 0:
         results["errors"].append(f"No XML or Excel files found in {source_folder}")
         return results
+
+    # ─── PRE-BUILD indexes ONCE before the per-file loop ───────────────
+    # For fuzzy and triple_fallback modes, scanning the target folder and
+    # building FAISS/context indexes is expensive.  Do it once, reuse for
+    # every source file.
+
+    _fuzzy_model = None
+    _fuzzy_texts = None
+    _fuzzy_entries = None
+    _fuzzy_index = None
+    _tf_l1 = None
+    _tf_l2a = None
+    _tf_l2b = None
+    _tf_l3 = None
+    _tf_all = None
+
+    effective_threshold = threshold if threshold is not None else config.FUZZY_THRESHOLD_DEFAULT
+
+    if match_mode == "fuzzy":
+        from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
+
+        if progress_callback:
+            progress_callback("Building fuzzy index (once for all files)...")
+        try:
+            _fuzzy_model = load_model(progress_callback)
+            _fuzzy_texts, _fuzzy_entries = build_index_from_folder(
+                target_folder, progress_callback
+            )
+            if _fuzzy_texts:
+                _fuzzy_index = build_faiss_index(
+                    _fuzzy_texts, _fuzzy_entries, _fuzzy_model, progress_callback
+                )
+            else:
+                logger.warning(f"No StrOrigin values in target folder: {target_folder}")
+        except Exception as e:
+            results["errors"].append(f"Failed to build fuzzy index: {e}")
+            logger.error(f"Failed to build fuzzy index: {e}")
+
+    elif match_mode == "triple_fallback":
+        from .indexing import scan_folder_for_entries_with_context
+
+        if progress_callback:
+            progress_callback("Scanning target folder for triple fallback indexes...")
+        try:
+            _tf_all, _tf_l1, _tf_l2a, _tf_l2b, _tf_l3 = (
+                scan_folder_for_entries_with_context(target_folder, progress_callback)
+            )
+            if not _tf_all:
+                logger.warning(f"No entries in target folder: {target_folder}")
+        except Exception as e:
+            results["errors"].append(f"Failed to build triple fallback indexes: {e}")
+            logger.error(f"Failed to build triple fallback indexes: {e}")
+
+        # If triple_fallback + fuzzy precision, also build FAISS index
+        if use_fuzzy_precision:
+            from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
+
+            if progress_callback:
+                progress_callback("Building FAISS index for fuzzy triple fallback...")
+            try:
+                _fuzzy_model = load_model(progress_callback)
+                _fuzzy_texts, _fuzzy_entries = build_index_from_folder(
+                    target_folder, progress_callback
+                )
+                if _fuzzy_texts:
+                    _fuzzy_index = build_faiss_index(
+                        _fuzzy_texts, _fuzzy_entries, _fuzzy_model, progress_callback
+                    )
+            except Exception as e:
+                results["errors"].append(
+                    f"Failed to build fuzzy index for triple fallback: {e}"
+                )
+                logger.error(f"Failed to build fuzzy index for triple fallback: {e}")
+                use_fuzzy_precision = False  # Fall back to exact
+
+    # ─── Per-file loop ─────────────────────────────────────────────────
 
     for i, source_file in enumerate(all_sources):
         if progress_callback:
@@ -499,13 +972,76 @@ def transfer_folder_to_folder(
             results["errors"].append(f"No target XML found for {source_file.name}")
             continue
 
-        # Apply corrections
+        # Apply corrections based on match mode
         if match_mode == "stringid_only" and stringid_to_category:
             file_result = merge_corrections_stringid_only(
-                target_xml, corrections, stringid_to_category, stringid_to_subfolder, dry_run
+                target_xml, corrections, stringid_to_category,
+                stringid_to_subfolder, dry_run
             )
             results["total_skipped"] += file_result.get("skipped_non_script", 0)
             results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
+
+        elif match_mode == "fuzzy":
+            # Use pre-built model/index to match, then merge
+            if _fuzzy_model and _fuzzy_texts and _fuzzy_index:
+                from .fuzzy_matching import find_matches_fuzzy
+                matched, unmatched, stats = find_matches_fuzzy(
+                    corrections, _fuzzy_texts, _fuzzy_entries,
+                    _fuzzy_model, _fuzzy_index,
+                    threshold=effective_threshold,
+                    progress_callback=progress_callback,
+                )
+                logger.info(
+                    f"Fuzzy pre-match for {source_file.name}: "
+                    f"{stats['matched']}/{stats['total']} matched "
+                    f"(threshold={effective_threshold})"
+                )
+                file_result = merge_corrections_fuzzy(target_xml, matched, dry_run)
+            else:
+                # Index build failed earlier - return empty result
+                file_result = {
+                    "matched": 0, "updated": 0,
+                    "not_found": len(corrections),
+                    "errors": ["Fuzzy index not available"],
+                    "details": [],
+                }
+
+        elif match_mode == "triple_fallback":
+            # Use pre-built indexes to match, then merge
+            if _tf_all is not None and _tf_l1 is not None:
+                from .matching import find_matches_triple_fallback
+                source_has_context = any(
+                    c.get("file_relpath") for c in corrections
+                )
+                matched, not_found_count, level_counts = find_matches_triple_fallback(
+                    corrections, _tf_l1, _tf_l2a, _tf_l2b, _tf_l3,
+                    source_has_context,
+                    use_fuzzy=use_fuzzy_precision,
+                    fuzzy_model=_fuzzy_model,
+                    fuzzy_threshold=effective_threshold,
+                    fuzzy_texts=_fuzzy_texts,
+                    fuzzy_entries=_fuzzy_entries,
+                    fuzzy_index=_fuzzy_index,
+                )
+                precision_label = "fuzzy" if use_fuzzy_precision else "exact"
+                logger.info(
+                    f"Triple fallback pre-match ({precision_label}) for "
+                    f"{source_file.name}: {len(matched)}/{len(corrections)} matched "
+                    f"(L1={level_counts['L1']}, L2A={level_counts['L2A']}, "
+                    f"L2B={level_counts['L2B']}, L3={level_counts['L3']})"
+                )
+                file_result = merge_corrections_triple_fallback(
+                    target_xml, matched, dry_run
+                )
+            else:
+                # Index build failed earlier - return empty result
+                file_result = {
+                    "matched": 0, "updated": 0,
+                    "not_found": len(corrections),
+                    "errors": ["Triple fallback indexes not available"],
+                    "details": [],
+                    "level_counts": {"L1": 0, "L2A": 0, "L2B": 0, "L3": 0},
+                }
         else:
             file_result = merge_corrections_to_xml(target_xml, corrections, dry_run)
 
@@ -533,17 +1069,25 @@ def transfer_file_to_file(
     stringid_to_subfolder: Optional[Dict[str, str]] = None,
     match_mode: str = "strict",
     dry_run: bool = False,
+    threshold: float = None,
+    use_fuzzy_precision: bool = False,
 ) -> Dict:
     """
     Transfer corrections from single source file to single target file.
+
+    For file mode there is only one source file, so pre-building and matching
+    happen in sequence (no loop optimization needed).
 
     Args:
         source_file: Excel or XML file with corrections
         target_file: Target XML file to update
         stringid_to_category: Category mapping (required for stringid_only mode)
         stringid_to_subfolder: Subfolder mapping (for exclusion filtering)
-        match_mode: "strict" or "stringid_only"
+        match_mode: "strict", "stringid_only", "fuzzy", or "triple_fallback"
         dry_run: If True, don't write changes
+        threshold: Similarity threshold for fuzzy modes (defaults to config.FUZZY_THRESHOLD_DEFAULT)
+        use_fuzzy_precision: If True and match_mode is "triple_fallback", use SBERT
+                             fuzzy matching for StrOrigin comparison instead of exact
 
     Returns:
         Dict with results
@@ -566,11 +1110,59 @@ def transfer_file_to_file(
             "details": [],
         }
 
-    # Apply corrections
+    # Apply corrections based on match mode
     if match_mode == "stringid_only" and stringid_to_category:
         result = merge_corrections_stringid_only(
-            target_file, corrections, stringid_to_category, stringid_to_subfolder, dry_run
+            target_file, corrections, stringid_to_category,
+            stringid_to_subfolder, dry_run
         )
+    elif match_mode == "fuzzy":
+        # Pre-match: enrich corrections with fuzzy_target_string_id
+        target_folder = target_file.parent
+        enriched = _prematch_fuzzy(
+            corrections, target_folder,
+            threshold=threshold,
+        )
+        result = merge_corrections_fuzzy(target_file, enriched, dry_run)
+    elif match_mode == "triple_fallback":
+        # Pre-match: enrich corrections with matched_string_id
+        target_folder = target_file.parent
+
+        # Build FAISS resources if fuzzy precision requested
+        fuzzy_model = None
+        fuzzy_texts = None
+        fuzzy_entries = None
+        fuzzy_index = None
+
+        if use_fuzzy_precision:
+            from .fuzzy_matching import (
+                load_model, build_index_from_folder, build_faiss_index,
+            )
+            try:
+                fuzzy_model = load_model()
+                fuzzy_texts, fuzzy_entries = build_index_from_folder(target_folder)
+                if fuzzy_texts:
+                    fuzzy_index = build_faiss_index(
+                        fuzzy_texts, fuzzy_entries, fuzzy_model
+                    )
+            except Exception as e:
+                logger.error(f"Failed to build fuzzy index for triple fallback: {e}")
+                use_fuzzy_precision = False  # Fall back to exact
+
+        effective_threshold = (
+            threshold if threshold is not None
+            else config.FUZZY_THRESHOLD_DEFAULT
+        )
+        enriched = _prematch_triple_fallback(
+            corrections, target_folder,
+            use_fuzzy=use_fuzzy_precision,
+            fuzzy_model=fuzzy_model,
+            fuzzy_threshold=effective_threshold,
+            fuzzy_texts=fuzzy_texts,
+            fuzzy_entries=fuzzy_entries,
+            fuzzy_index=fuzzy_index,
+        )
+        result = merge_corrections_triple_fallback(target_file, enriched, dry_run)
     else:
         result = merge_corrections_to_xml(target_file, corrections, dry_run)
 

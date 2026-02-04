@@ -23,7 +23,8 @@ MATCHING_MODES = {
     "substring": "Substring Match (original)",
     "stringid_only": "StringID-Only (SCRIPT strings)",
     "strict": "StringID + StrOrigin (Strict)",
-    "special_key": "Special Key Match",
+    "triple_fallback": "Triple Fallback (StrOrigin + Context)",
+    "fuzzy": "Fuzzy KR Match (SBERT)",
 }
 
 # SCRIPT categories - folder names where StrOrigin = raw KOR text
@@ -39,8 +40,26 @@ SCRIPT_EXCLUDE_SUBFOLDERS = {"NarrationDialog"}
 INPUT_MODES = ["folder", "file"]
 FORMAT_MODES = ["excel", "xml"]
 
-# Special Key fields - hardcoded for Special Key Match mode
+# Special Key fields - hardcoded for Special Key Match mode (legacy, kept for reference)
 SPECIAL_KEY_FIELDS = ["string_id", "category"]
+
+# =============================================================================
+# Fuzzy KR Match Configuration
+# =============================================================================
+
+# Path to KR-SBERT model folder (placed alongside the app)
+KRTRANSFORMER_PATH = SCRIPT_DIR / "KRTransformer"
+
+# Fuzzy matching threshold range and default
+FUZZY_THRESHOLD_MIN = 0.80
+FUZZY_THRESHOLD_MAX = 1.00
+FUZZY_THRESHOLD_DEFAULT = 0.85
+FUZZY_THRESHOLD_STEP = 0.01
+
+# FAISS HNSW parameters (matching LocaNext FAISSManager pattern)
+FAISS_HNSW_M = 32
+FAISS_HNSW_EF_CONSTRUCTION = 400
+FAISS_HNSW_EF_SEARCH = 500
 
 # =============================================================================
 # Settings Loading

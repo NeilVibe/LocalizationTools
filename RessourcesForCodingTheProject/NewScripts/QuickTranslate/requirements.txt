@@ -12,3 +12,8 @@ openpyxl>=3.1.0
 
 # Optional: For clipboard support if needed
 # pyperclip>=1.8.0
+
+# === Fuzzy KR Match (SBERT + FAISS) ===
+# These are OPTIONAL - only needed for Fuzzy KR Match mode.
+# Install separately: pip install -r requirements-ml.txt
+# NOT bundled in the build to keep it light (~30MB vs ~2GB+).
