@@ -1001,7 +1001,7 @@ class QuickTranslateApp:
                     self._log(f"Strict mode with FUZZY precision (threshold: {threshold:.2f})", 'info')
 
                     matched, not_found = find_matches_strict_fuzzy(
-                        corrections, self._fuzzy_model, self._fuzzy_index,
+                        corrections, xml_entries, self._fuzzy_model, self._fuzzy_index,
                         self._fuzzy_texts, self._fuzzy_entries, threshold
                     )
                 else:
