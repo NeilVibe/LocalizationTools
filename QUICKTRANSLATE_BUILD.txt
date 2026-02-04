@@ -8,3 +8,4 @@ Build 20260203_023939 - Enhanced terminal debug output
 Build: Fix hidden TRANSFER button + folder analysis
 Trigger QuickTranslate build: Fuzzy KR Match + Triple Fallback
 Trigger QuickTranslate build: Quadruple Fallback + shared precision restructure
+Trigger QuickTranslate build: fix strict_fuzzy arg
