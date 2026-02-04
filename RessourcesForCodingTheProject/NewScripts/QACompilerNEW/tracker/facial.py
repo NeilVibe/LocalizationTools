@@ -15,12 +15,15 @@ from openpyxl.utils import get_column_letter
 from pathlib import Path
 from typing import Dict, List
 from collections import defaultdict
+import logging
 
 from datetime import datetime, timedelta
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import TRACKER_STYLES
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -48,7 +51,7 @@ def _parse_date_for_comparison(d):
                 return datetime.min
     try:
         return datetime(1899, 12, 30) + timedelta(days=int(d))
-    except:
+    except Exception:
         return datetime.min
 
 
@@ -95,22 +98,29 @@ def update_facial_data_sheet(wb: openpyxl.Workbook, face_entries: List[Dict]) ->
     else:
         ws = wb["_FACIAL_DATA"]
 
-    # Ensure headers
+    # Ensure headers (text format for clean Excel output)
     if ws.cell(1, 1).value != "Date" or ws.max_column < len(FACIAL_DATA_HEADERS):
         for col, header in enumerate(FACIAL_DATA_HEADERS, 1):
-            ws.cell(1, col, header)
+            ws.cell(1, col, header).number_format = '@'
 
     # Build index of existing rows: (date, user, group, lang) -> row_number
+    # Normalize date to string to prevent type mismatch (datetime vs str duplicates)
     existing = {}
     for row in range(2, (ws.max_row or 1) + 1):
+        date_val = ws.cell(row, 1).value
+        if date_val is None:
+            continue
+        if isinstance(date_val, datetime):
+            date_val = date_val.strftime("%Y-%m-%d")
+        else:
+            date_val = str(date_val)
         key = (
-            ws.cell(row, 1).value,  # Date
+            date_val,
             ws.cell(row, 2).value,  # User
             ws.cell(row, 3).value,  # Group
             ws.cell(row, 9).value or "EN",  # Lang
         )
-        if key[0] is not None:
-            existing[key] = row
+        existing[key] = row
 
     next_row = (ws.max_row or 1) + 1
 
@@ -128,15 +138,15 @@ def update_facial_data_sheet(wb: openpyxl.Workbook, face_entries: List[Dict]) ->
                 existing[key] = row
                 next_row += 1
 
-            ws.cell(row, 1, date)
-            ws.cell(row, 2, user)
-            ws.cell(row, 3, "All")
-            ws.cell(row, 4, entry.get("total_rows", 0))
-            ws.cell(row, 5, entry.get("done", 0))
-            ws.cell(row, 6, entry.get("no_issue", 0))
-            ws.cell(row, 7, entry.get("mismatch", 0))
-            ws.cell(row, 8, entry.get("missing", 0))
-            ws.cell(row, 9, lang)
+            ws.cell(row, 1, date).number_format = '@'
+            ws.cell(row, 2, user).number_format = '@'
+            ws.cell(row, 3, "All").number_format = '@'
+            ws.cell(row, 4, entry.get("total_rows", 0)).number_format = '@'
+            ws.cell(row, 5, entry.get("done", 0)).number_format = '@'
+            ws.cell(row, 6, entry.get("no_issue", 0)).number_format = '@'
+            ws.cell(row, 7, entry.get("mismatch", 0)).number_format = '@'
+            ws.cell(row, 8, entry.get("missing", 0)).number_format = '@'
+            ws.cell(row, 9, lang).number_format = '@'
         else:
             # Write one row per group
             for group, gcounts in groups.items():
@@ -146,15 +156,15 @@ def update_facial_data_sheet(wb: openpyxl.Workbook, face_entries: List[Dict]) ->
                     existing[key] = row
                     next_row += 1
 
-                ws.cell(row, 1, date)
-                ws.cell(row, 2, user)
-                ws.cell(row, 3, group)
-                ws.cell(row, 4, gcounts.get("total", 0))
-                ws.cell(row, 5, gcounts.get("done", 0))
-                ws.cell(row, 6, gcounts.get("no_issue", 0))
-                ws.cell(row, 7, gcounts.get("mismatch", 0))
-                ws.cell(row, 8, gcounts.get("missing", 0))
-                ws.cell(row, 9, lang)
+                ws.cell(row, 1, date).number_format = '@'
+                ws.cell(row, 2, user).number_format = '@'
+                ws.cell(row, 3, group).number_format = '@'
+                ws.cell(row, 4, gcounts.get("total", 0)).number_format = '@'
+                ws.cell(row, 5, gcounts.get("done", 0)).number_format = '@'
+                ws.cell(row, 6, gcounts.get("no_issue", 0)).number_format = '@'
+                ws.cell(row, 7, gcounts.get("mismatch", 0)).number_format = '@'
+                ws.cell(row, 8, gcounts.get("missing", 0)).number_format = '@'
+                ws.cell(row, 9, lang).number_format = '@'
 
 
 def read_facial_data(wb: openpyxl.Workbook) -> Dict:
@@ -438,7 +448,7 @@ def _build_facial_total_section(ws, start_row: int, facial_data: Dict, styles: D
 
     # TOTAL row
     total_pct = f"{(grand_total['done'] / grand_total['total'] * 100):.1f}%" if grand_total["total"] > 0 else "0%"
-    total_values = ["TOTAL", "", grand_total["total"], grand_total["done"],
+    total_values = ["TOTAL", "", "", grand_total["done"],
                     grand_total["no_issue"], grand_total["mismatch"], grand_total["missing"], total_pct]
 
     for i, val in enumerate(total_values, 1):
@@ -483,14 +493,23 @@ def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles
         if not lang_rows:
             continue
 
-        # Aggregate per group from latest-only rows for this language
-        group_totals = defaultdict(lambda: {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0})
+        # Per group: take latest entry only (don't aggregate across users)
+        # Each group row shows the actual group data, not summed across all users
+        group_best = {}  # group -> row with latest date
         for r in lang_rows.values():
-            group_totals[r["group"]]["total"] += r["total_rows"]
-            group_totals[r["group"]]["done"] += r["done"]
-            group_totals[r["group"]]["no_issue"] += r["no_issue"]
-            group_totals[r["group"]]["mismatch"] += r["mismatch"]
-            group_totals[r["group"]]["missing"] += r["missing"]
+            g = r["group"]
+            if g not in group_best or _parse_date_for_comparison(r["date"]) > _parse_date_for_comparison(group_best[g]["date"]):
+                group_best[g] = r
+
+        group_totals = {}
+        for g, r in group_best.items():
+            group_totals[g] = {
+                "total": r["total_rows"],
+                "done": r["done"],
+                "no_issue": r["no_issue"],
+                "mismatch": r["mismatch"],
+                "missing": r["missing"],
+            }
 
         lang_groups = sorted(group_totals.keys())
 
@@ -534,7 +553,7 @@ def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles
 
         # TOTAL row
         total_pct = f"{(grand_total['done'] / grand_total['total'] * 100):.1f}%" if grand_total["total"] > 0 else "0%"
-        total_values = ["TOTAL", grand_total["total"], grand_total["done"],
+        total_values = ["TOTAL", "", grand_total["done"],
                         grand_total["no_issue"], grand_total["mismatch"], grand_total["missing"], total_pct]
 
         for i, val in enumerate(total_values, 1):
@@ -583,10 +602,14 @@ def build_facial_sheet(wb: openpyxl.Workbook) -> None:
     2. FACIAL TOTAL TABLE — per-user cumulative with Done%
     3. FACIAL CATEGORY TABLE — per-group breakdown with Done%
     """
-    # Delete and recreate
+    # Delete and recreate (preserve sheet position)
+    facial_idx = None
     if "Facial" in wb.sheetnames:
+        facial_idx = wb.sheetnames.index("Facial")
         del wb["Facial"]
     ws = wb.create_sheet("Facial")
+    if facial_idx is not None:
+        wb.move_sheet(ws, offset=facial_idx - (len(wb.sheetnames) - 1))
 
     # Read _FACIAL_DATA
     facial_data = read_facial_data(wb)
@@ -612,8 +635,13 @@ def build_facial_sheet(wb: openpyxl.Workbook) -> None:
     current_row = _build_facial_total_section(ws, current_row, facial_data, styles, latest_rows)
     current_row = _build_facial_category_section(ws, current_row, facial_data, styles, latest_rows)
 
+    # Set all cells to text format for clean, neat Excel output
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, max_col=ws.max_column):
+        for cell in row:
+            cell.number_format = '@'
+
     # Autofit
     _autofit_columns(ws)
 
-    print(f"    [FACIAL] Built Facial sheet: {len(facial_data['dates'])} dates, "
-          f"{len(facial_data['users'])} users, {len(facial_data['groups'])} groups")
+    logger.info(f"[FACIAL] Built Facial sheet: {len(facial_data['dates'])} dates, "
+                f"{len(facial_data['users'])} users, {len(facial_data['groups'])} groups")

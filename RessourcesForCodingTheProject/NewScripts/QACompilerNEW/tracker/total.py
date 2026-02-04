@@ -45,7 +45,7 @@ def _parse_date_for_comparison(d):
     # Excel date (numeric)
     try:
         return datetime(1899, 12, 30) + timedelta(days=int(d))
-    except:
+    except Exception:
         return datetime.min
 
 
