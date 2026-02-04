@@ -2,7 +2,7 @@
 Sequencer and Folder Indexing.
 
 Build StringID -> StrOrigin mappings from XML files.
-Includes context-aware scanning for Triple Fallback matching.
+Includes context-aware scanning for Quadruple Fallback matching.
 """
 
 import hashlib
@@ -192,7 +192,7 @@ def scan_folder_for_entries_with_context(
     """
     Scan folder for XML files and extract entries with adjacency context.
 
-    Builds four index levels for Triple Fallback matching:
+    Builds four index levels for Quadruple Fallback matching:
     - Level 1 (Triple):   (normalized_origin, file_relpath, adjacency_hash) -> entries
     - Level 2A (Double A): (normalized_origin, file_relpath) -> entries
     - Level 2B (Double B): (normalized_origin, adjacency_hash) -> entries

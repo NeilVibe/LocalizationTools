@@ -4,7 +4,7 @@ QuickTranslate GUI Application.
 Tkinter-based GUI with multi-mode support:
 - Format Selection: Excel / XML
 - Mode Selection: Folder (recursive) / File (single)
-- Match Type Selection: Substring / StringID-only / Strict / Triple Fallback / Fuzzy KR
+- Match Type Selection: Substring / StringID-only / Strict / Quadruple Fallback
 - Settings panel for path configuration
 - Detailed logging and reporting
 """
@@ -27,7 +27,7 @@ from core import (
     find_matches_stringid_only,
     find_matches_strict,
     find_matches_special_key,
-    find_matches_triple_fallback,
+    find_matches_quadruple_fallback,
     find_stringid_from_text,
     format_multiple_matches,
     read_korean_input,
@@ -53,6 +53,7 @@ from core.fuzzy_matching import (
     build_faiss_index,
     search_fuzzy,
     find_matches_fuzzy,
+    find_matches_strict_fuzzy,
     build_index_from_folder,
     get_cached_index_info,
     clear_cache as clear_fuzzy_cache,
@@ -75,7 +76,7 @@ class QuickTranslateApp:
         # Variables
         self.format_mode = tk.StringVar(value="excel")  # excel or xml
         self.input_mode = tk.StringVar(value="file")    # folder or file
-        self.match_type = tk.StringVar(value="substring")  # substring, stringid_only, strict, triple_fallback, fuzzy
+        self.match_type = tk.StringVar(value="substring")  # substring, stringid_only, strict, quadruple_fallback
 
         self.source_path = tk.StringVar()
         self.target_path = tk.StringVar()
@@ -86,8 +87,9 @@ class QuickTranslateApp:
         self.fuzzy_threshold = tk.DoubleVar(value=config.FUZZY_THRESHOLD_DEFAULT)
         self.fuzzy_model_status = tk.StringVar(value="Not loaded")
 
-        # Triple Fallback match precision: "perfect" (exact) or "fuzzy" (SBERT)
-        self.triple_match_precision = tk.StringVar(value="perfect")
+        # Shared match precision: "perfect" (exact) or "fuzzy" (SBERT)
+        # Used by both Strict and Quadruple Fallback modes
+        self.match_precision = tk.StringVar(value="perfect")
 
         # Settings variables
         self.settings_loc_path = tk.StringVar()
@@ -169,11 +171,10 @@ class QuickTranslateApp:
         match_frame.pack(fill=tk.X, pady=(0, 8))
 
         match_types = [
-            ("substring", "Substring Match", "Find Korean text in StrOrigin"),
+            ("substring", "Substring Match (Lookup only)", "Find Korean text in StrOrigin"),
             ("stringid_only", "StringID-Only (SCRIPT)", "SCRIPT categories only - match by StringID"),
             ("strict", "StringID + StrOrigin (STRICT)", "Requires BOTH to match exactly"),
-            ("triple_fallback", "Triple Fallback", "StrOrigin + Filename + Adjacent context cascade"),
-            ("fuzzy", "Fuzzy KR Match (SBERT)", "Korean semantic similarity with threshold"),
+            ("quadruple_fallback", "Quadruple Fallback (StrOrigin + Context)", "StrOrigin + Filename + Adjacent context cascade"),
         ]
 
         for value, label, desc in match_types:
@@ -181,100 +182,68 @@ class QuickTranslateApp:
             row.pack(fill=tk.X, pady=2)
             tk.Radiobutton(row, text=label, variable=self.match_type, value=value,
                           font=('Segoe UI', 10), bg='#f0f0f0', activebackground='#f0f0f0',
-                          cursor='hand2', width=28, anchor='w',
+                          cursor='hand2', width=35, anchor='w',
                           command=self._on_match_type_changed).pack(side=tk.LEFT)
             tk.Label(row, text=desc, font=('Segoe UI', 9), bg='#f0f0f0', fg='#888').pack(side=tk.LEFT)
 
-        # === Fuzzy Options Sub-frame (visible only when fuzzy selected) ===
-        self.fuzzy_options_frame = tk.Frame(match_frame, bg='#e8f0fe', padx=15, pady=8,
-                                            relief='groove', bd=1)
+        # === Precision Options Sub-frame (visible for strict and quadruple_fallback) ===
+        self.precision_options_frame = tk.Frame(match_frame, bg='#e8f4e8', padx=15, pady=8,
+                                              relief='groove', bd=1)
         # Don't pack yet - shown/hidden by _on_match_type_changed
 
-        # Threshold slider row
-        thresh_row = tk.Frame(self.fuzzy_options_frame, bg='#e8f0fe')
-        thresh_row.pack(fill=tk.X, pady=(0, 4))
-        tk.Label(thresh_row, text="Threshold:", font=('Segoe UI', 9), bg='#e8f0fe',
+        # Match Precision radio buttons
+        precision_label_row = tk.Frame(self.precision_options_frame, bg='#e8f4e8')
+        precision_label_row.pack(fill=tk.X, pady=(0, 4))
+        tk.Label(precision_label_row, text="Match Precision:", font=('Segoe UI', 9, 'bold'),
+                bg='#e8f4e8', fg='#333').pack(side=tk.LEFT)
+
+        precision_row = tk.Frame(self.precision_options_frame, bg='#e8f4e8')
+        precision_row.pack(fill=tk.X, pady=(0, 4))
+        tk.Radiobutton(precision_row, text="Perfect Match (exact StrOrigin comparison)",
+                       variable=self.match_precision, value="perfect",
+                       font=('Segoe UI', 9), bg='#e8f4e8', activebackground='#e8f4e8',
+                       cursor='hand2', command=self._on_precision_changed).pack(
+                       side=tk.LEFT, padx=(10, 0))
+
+        precision_row2 = tk.Frame(self.precision_options_frame, bg='#e8f4e8')
+        precision_row2.pack(fill=tk.X, pady=(0, 4))
+        tk.Radiobutton(precision_row2, text="Fuzzy Match (SBERT similarity for StrOrigin)",
+                       variable=self.match_precision, value="fuzzy",
+                       font=('Segoe UI', 9), bg='#e8f4e8', activebackground='#e8f4e8',
+                       cursor='hand2', command=self._on_precision_changed).pack(
+                       side=tk.LEFT, padx=(10, 0))
+
+        # Fuzzy threshold sub-frame (shown only when fuzzy precision selected)
+        self.fuzzy_sub_frame = tk.Frame(self.precision_options_frame, bg='#e8f4e8')
+        # Don't pack yet - shown/hidden by _on_precision_changed
+
+        fuzzy_thresh_row = tk.Frame(self.fuzzy_sub_frame, bg='#e8f4e8')
+        fuzzy_thresh_row.pack(fill=tk.X, pady=(0, 4))
+        tk.Label(fuzzy_thresh_row, text="Threshold:", font=('Segoe UI', 9), bg='#e8f4e8',
                 width=10, anchor='w').pack(side=tk.LEFT)
 
         self.threshold_slider = ttk.Scale(
-            thresh_row, from_=config.FUZZY_THRESHOLD_MIN, to=config.FUZZY_THRESHOLD_MAX,
+            fuzzy_thresh_row, from_=config.FUZZY_THRESHOLD_MIN, to=config.FUZZY_THRESHOLD_MAX,
             variable=self.fuzzy_threshold, orient=tk.HORIZONTAL,
             command=self._on_threshold_changed,
         )
         self.threshold_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
 
-        self.threshold_label = tk.Label(thresh_row, text=f"{config.FUZZY_THRESHOLD_DEFAULT:.2f}",
-                                        font=('Segoe UI', 10, 'bold'), bg='#e8f0fe', fg='#333',
-                                        width=5)
+        self.threshold_label = tk.Label(fuzzy_thresh_row,
+                                        text=f"{config.FUZZY_THRESHOLD_DEFAULT:.2f}",
+                                        font=('Segoe UI', 10, 'bold'), bg='#e8f4e8',
+                                        fg='#333', width=5)
         self.threshold_label.pack(side=tk.LEFT)
 
-        # Model status row
-        status_row = tk.Frame(self.fuzzy_options_frame, bg='#e8f0fe')
-        status_row.pack(fill=tk.X)
-        tk.Label(status_row, text="Model:", font=('Segoe UI', 9), bg='#e8f0fe',
+        # Fuzzy model status
+        fuzzy_status_row = tk.Frame(self.fuzzy_sub_frame, bg='#e8f4e8')
+        fuzzy_status_row.pack(fill=tk.X)
+        tk.Label(fuzzy_status_row, text="Model:", font=('Segoe UI', 9), bg='#e8f4e8',
                 width=10, anchor='w').pack(side=tk.LEFT)
-        self.model_status_label = tk.Label(status_row, textvariable=self.fuzzy_model_status,
-                                           font=('Segoe UI', 9), bg='#e8f0fe', fg='#666')
+        self.model_status_label = tk.Label(fuzzy_status_row,
+                                           textvariable=self.fuzzy_model_status,
+                                           font=('Segoe UI', 9), bg='#e8f4e8', fg='#666')
         self.model_status_label.pack(side=tk.LEFT)
-
-        # === Triple Fallback Options Sub-frame (visible only when triple_fallback selected) ===
-        self.triple_options_frame = tk.Frame(match_frame, bg='#e8f4e8', padx=15, pady=8,
-                                              relief='groove', bd=1)
-        # Don't pack yet - shown/hidden by _on_match_type_changed
-
-        # Match Precision radio buttons
-        precision_label_row = tk.Frame(self.triple_options_frame, bg='#e8f4e8')
-        precision_label_row.pack(fill=tk.X, pady=(0, 4))
-        tk.Label(precision_label_row, text="Match Precision:", font=('Segoe UI', 9, 'bold'),
-                bg='#e8f4e8', fg='#333').pack(side=tk.LEFT)
-
-        precision_row = tk.Frame(self.triple_options_frame, bg='#e8f4e8')
-        precision_row.pack(fill=tk.X, pady=(0, 4))
-        tk.Radiobutton(precision_row, text="Perfect Match (exact StrOrigin comparison)",
-                       variable=self.triple_match_precision, value="perfect",
-                       font=('Segoe UI', 9), bg='#e8f4e8', activebackground='#e8f4e8',
-                       cursor='hand2', command=self._on_triple_precision_changed).pack(
-                       side=tk.LEFT, padx=(10, 0))
-
-        precision_row2 = tk.Frame(self.triple_options_frame, bg='#e8f4e8')
-        precision_row2.pack(fill=tk.X, pady=(0, 4))
-        tk.Radiobutton(precision_row2, text="Fuzzy Match (SBERT similarity for StrOrigin)",
-                       variable=self.triple_match_precision, value="fuzzy",
-                       font=('Segoe UI', 9), bg='#e8f4e8', activebackground='#e8f4e8',
-                       cursor='hand2', command=self._on_triple_precision_changed).pack(
-                       side=tk.LEFT, padx=(10, 0))
-
-        # Triple fuzzy threshold (shown only when fuzzy precision selected)
-        self.triple_fuzzy_sub_frame = tk.Frame(self.triple_options_frame, bg='#e8f4e8')
-        # Don't pack yet - shown/hidden by _on_triple_precision_changed
-
-        triple_thresh_row = tk.Frame(self.triple_fuzzy_sub_frame, bg='#e8f4e8')
-        triple_thresh_row.pack(fill=tk.X, pady=(0, 4))
-        tk.Label(triple_thresh_row, text="Threshold:", font=('Segoe UI', 9), bg='#e8f4e8',
-                width=10, anchor='w').pack(side=tk.LEFT)
-
-        self.triple_threshold_slider = ttk.Scale(
-            triple_thresh_row, from_=config.FUZZY_THRESHOLD_MIN, to=config.FUZZY_THRESHOLD_MAX,
-            variable=self.fuzzy_threshold, orient=tk.HORIZONTAL,
-            command=self._on_threshold_changed,
-        )
-        self.triple_threshold_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
-
-        self.triple_threshold_label = tk.Label(triple_thresh_row,
-                                                text=f"{config.FUZZY_THRESHOLD_DEFAULT:.2f}",
-                                                font=('Segoe UI', 10, 'bold'), bg='#e8f4e8',
-                                                fg='#333', width=5)
-        self.triple_threshold_label.pack(side=tk.LEFT)
-
-        # Triple fuzzy model status
-        triple_status_row = tk.Frame(self.triple_fuzzy_sub_frame, bg='#e8f4e8')
-        triple_status_row.pack(fill=tk.X)
-        tk.Label(triple_status_row, text="Model:", font=('Segoe UI', 9), bg='#e8f4e8',
-                width=10, anchor='w').pack(side=tk.LEFT)
-        self.triple_model_status_label = tk.Label(triple_status_row,
-                                                   textvariable=self.fuzzy_model_status,
-                                                   font=('Segoe UI', 9), bg='#e8f4e8', fg='#666')
-        self.triple_model_status_label.pack(side=tk.LEFT)
 
         # === Files Section ===
         files_frame = tk.LabelFrame(main, text="Files", font=('Segoe UI', 10, 'bold'),
@@ -432,6 +401,11 @@ class QuickTranslateApp:
                                       relief='flat', padx=25, pady=8, cursor='hand2')
         self.transfer_btn.pack(side=tk.LEFT, padx=(0, 10))
 
+        # Substring-only note (shown when TRANSFER is disabled)
+        self.transfer_note_label = tk.Label(button_frame, text="",
+                                            font=('Segoe UI', 8), bg='#f0f0f0', fg='#d9534f')
+        self.transfer_note_label.pack(side=tk.LEFT, padx=(0, 10))
+
         tk.Button(button_frame, text="Clear Log", command=self._clear_log,
                  font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
                  padx=15, pady=6, cursor='hand2').pack(side=tk.LEFT, padx=(0, 10))
@@ -443,6 +417,9 @@ class QuickTranslateApp:
         tk.Button(button_frame, text="Exit", command=self.root.quit,
                  font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
                  padx=20, pady=6, cursor='hand2').pack(side=tk.LEFT)
+
+        # Apply initial match type state (disable TRANSFER for substring)
+        self._on_match_type_changed()
 
     def _log(self, message: str, tag: str = 'info'):
         """Add message to log area."""
@@ -620,19 +597,24 @@ class QuickTranslateApp:
         """Show/hide options sub-frames based on selected match type."""
         match_type = self.match_type.get()
 
-        if match_type == "fuzzy":
-            self.fuzzy_options_frame.pack(fill=tk.X, pady=(4, 0))
-            self.triple_options_frame.pack_forget()
-            # Check model availability
-            self._update_fuzzy_model_status()
-        elif match_type == "triple_fallback":
-            self.triple_options_frame.pack(fill=tk.X, pady=(4, 0))
-            self.fuzzy_options_frame.pack_forget()
+        if match_type in ("strict", "quadruple_fallback"):
+            self.precision_options_frame.pack(fill=tk.X, pady=(4, 0))
             # Show/hide the fuzzy sub-frame based on current precision
-            self._on_triple_precision_changed()
+            self._on_precision_changed()
+            # Enable TRANSFER button
+            self.transfer_btn.config(state='normal')
+            self.transfer_note_label.config(text="")
+        elif match_type == "substring":
+            self.precision_options_frame.pack_forget()
+            # Disable TRANSFER button for substring (lookup only)
+            self.transfer_btn.config(state='disabled')
+            self.transfer_note_label.config(text="(Lookup only - TRANSFER not available)")
         else:
-            self.fuzzy_options_frame.pack_forget()
-            self.triple_options_frame.pack_forget()
+            # stringid_only
+            self.precision_options_frame.pack_forget()
+            # Enable TRANSFER button
+            self.transfer_btn.config(state='normal')
+            self.transfer_note_label.config(text="")
 
     def _update_fuzzy_model_status(self):
         """Update the fuzzy model status display."""
@@ -649,13 +631,13 @@ class QuickTranslateApp:
         else:
             self.fuzzy_model_status.set("Not available - model folder missing")
 
-    def _on_triple_precision_changed(self):
-        """Show/hide fuzzy threshold slider within Triple Fallback options."""
-        if self.triple_match_precision.get() == "fuzzy":
-            self.triple_fuzzy_sub_frame.pack(fill=tk.X, pady=(4, 0))
+    def _on_precision_changed(self):
+        """Show/hide fuzzy threshold slider within precision options."""
+        if self.match_precision.get() == "fuzzy":
+            self.fuzzy_sub_frame.pack(fill=tk.X, pady=(4, 0))
             self._update_fuzzy_model_status()
         else:
-            self.triple_fuzzy_sub_frame.pack_forget()
+            self.fuzzy_sub_frame.pack_forget()
 
     def _on_threshold_changed(self, value):
         """Update threshold display labels when slider moves."""
@@ -663,7 +645,6 @@ class QuickTranslateApp:
         val = round(float(value) / config.FUZZY_THRESHOLD_STEP) * config.FUZZY_THRESHOLD_STEP
         self.fuzzy_threshold.set(val)
         self.threshold_label.config(text=f"{val:.2f}")
-        self.triple_threshold_label.config(text=f"{val:.2f}")
 
     def _ensure_fuzzy_model(self) -> bool:
         """Load fuzzy model if needed. Returns True if model is ready."""
@@ -854,9 +835,13 @@ class QuickTranslateApp:
         self.korean_miss_btn.config(state='disabled')
 
     def _enable_buttons(self):
-        """Re-enable all action buttons."""
+        """Re-enable all action buttons (respects match type for TRANSFER)."""
         self.generate_btn.config(state='normal')
-        self.transfer_btn.config(state='normal')
+        # Respect match type: substring disables TRANSFER
+        if self.match_type.get() == "substring":
+            self.transfer_btn.config(state='disabled')
+        else:
+            self.transfer_btn.config(state='normal')
         self.korean_miss_btn.config(state='normal')
 
     def _generate(self):
@@ -919,7 +904,7 @@ class QuickTranslateApp:
                     self._log(f"Read {len(korean_inputs)} inputs from Excel", 'info')
 
                     # For non-substring modes, build corrections from Excel
-                    if match_type in ("stringid_only", "strict", "triple_fallback", "fuzzy"):
+                    if match_type in ("stringid_only", "strict", "quadruple_fallback"):
                         excel_corrections = read_corrections_from_excel(source)
                         corrections.extend(excel_corrections)
                         self._log(f"Loaded {len(excel_corrections)} corrections from Excel", 'info')
@@ -996,36 +981,56 @@ class QuickTranslateApp:
                     return
 
                 target = self.target_path.get()
-                if target:
-                    self._log(f"Scanning target folder: {target}", 'info')
-                    xml_entries = scan_folder_for_entries(Path(target), self._update_status)
-                    self._log(f"Found {len(xml_entries)} entries in target", 'info')
-
-                    matched, not_found = find_matches_strict(corrections, xml_entries)
-                    korean_inputs = [c.get("str_origin", "") for c in matched]
-                    for c in matched:
-                        matches_per_input.append([c.get("string_id")])
-                    stats["total"] = len(corrections)
-                    stats["matched"] = len(matched)
-                    stats["no_match"] = not_found
-                    stats["total_matches"] = len(matched)
-                    self._log(f"Strict match results:", 'info')
-                    self._log(f"  - Total corrections: {stats['total']}", 'info')
-                    self._log(f"  - Matched (ID+Origin): {stats['matched']}", 'success')
-                    self._log(f"  - Not found: {stats['no_match']}", 'error')
-                else:
+                if not target:
                     messagebox.showwarning("Warning", "Strict mode requires a Target folder for matching.")
                     return
 
-            elif match_type == "triple_fallback":
-                # Triple Fallback: StrOrigin + filename + adjacency cascade
+                precision = self.match_precision.get()
+
+                self._log(f"Scanning target folder: {target}", 'info')
+                xml_entries = scan_folder_for_entries(Path(target), self._update_status)
+                self._log(f"Found {len(xml_entries)} entries in target", 'info')
+
+                if precision == "fuzzy":
+                    # Fuzzy precision: use SBERT similarity for StrOrigin comparison
+                    if not self._ensure_fuzzy_model():
+                        return
+                    if not self._ensure_fuzzy_index(target):
+                        return
+                    threshold = self.fuzzy_threshold.get()
+                    self._log(f"Strict mode with FUZZY precision (threshold: {threshold:.2f})", 'info')
+
+                    matched, not_found = find_matches_strict_fuzzy(
+                        corrections, self._fuzzy_model, self._fuzzy_index,
+                        self._fuzzy_texts, self._fuzzy_entries, threshold
+                    )
+                else:
+                    self._log("Strict mode with PERFECT precision", 'info')
+                    matched, not_found = find_matches_strict(corrections, xml_entries)
+
+                korean_inputs = [c.get("str_origin", "") for c in matched]
+                for c in matched:
+                    matches_per_input.append([c.get("string_id")])
+                stats["total"] = len(corrections)
+                stats["matched"] = len(matched)
+                stats["no_match"] = not_found
+                stats["total_matches"] = len(matched)
+
+                precision_label = "FUZZY" if precision == "fuzzy" else "PERFECT"
+                self._log(f"Strict match results ({precision_label}):", 'info')
+                self._log(f"  - Total corrections: {stats['total']}", 'info')
+                self._log(f"  - Matched (ID+Origin): {stats['matched']}", 'success')
+                self._log(f"  - Not found: {stats['no_match']}", 'error')
+
+            elif match_type == "quadruple_fallback":
+                # Quadruple Fallback: StrOrigin + filename + adjacency cascade
                 if not corrections:
-                    messagebox.showwarning("Warning", "Triple Fallback mode requires corrections data (XML or structured Excel).")
+                    messagebox.showwarning("Warning", "Quadruple Fallback mode requires corrections data (XML or structured Excel).")
                     return
 
                 target = self.target_path.get()
                 if not target:
-                    messagebox.showwarning("Warning", "Triple Fallback mode requires a Target folder.")
+                    messagebox.showwarning("Warning", "Quadruple Fallback mode requires a Target folder.")
                     return
 
                 # Scan TARGET with context to build 4-level indexes
@@ -1075,7 +1080,7 @@ class QuickTranslateApp:
                     self._log("Source lacks file context - using L3 (StrOrigin only) fallback", 'warning')
 
                 # Determine match precision (perfect vs fuzzy)
-                precision = self.triple_match_precision.get()
+                precision = self.match_precision.get()
 
                 if precision == "fuzzy":
                     # Fuzzy precision: use SBERT similarity for StrOrigin comparison
@@ -1084,9 +1089,9 @@ class QuickTranslateApp:
                     if not self._ensure_fuzzy_index(target):
                         return
                     threshold = self.fuzzy_threshold.get()
-                    self._log(f"Triple Fallback with FUZZY precision (threshold: {threshold:.2f})", 'info')
+                    self._log(f"Quadruple Fallback with FUZZY precision (threshold: {threshold:.2f})", 'info')
 
-                    matched_corrections, not_found, level_counts = find_matches_triple_fallback(
+                    matched_corrections, not_found, level_counts = find_matches_quadruple_fallback(
                         corrections, level1_idx, level2a_idx, level2b_idx, level3_idx,
                         source_has_context,
                         use_fuzzy=True,
@@ -1097,9 +1102,9 @@ class QuickTranslateApp:
                         fuzzy_index=self._fuzzy_index,
                     )
                 else:
-                    self._log("Triple Fallback with PERFECT precision", 'info')
+                    self._log("Quadruple Fallback with PERFECT precision", 'info')
 
-                    matched_corrections, not_found, level_counts = find_matches_triple_fallback(
+                    matched_corrections, not_found, level_counts = find_matches_quadruple_fallback(
                         corrections, level1_idx, level2a_idx, level2b_idx, level3_idx,
                         source_has_context,
                     )
@@ -1113,57 +1118,14 @@ class QuickTranslateApp:
                 stats["total_matches"] = len(matched_corrections)
 
                 precision_label = "FUZZY" if precision == "fuzzy" else "PERFECT"
-                self._log(f"Triple Fallback results ({precision_label}):", 'info')
+                self._log(f"Quadruple Fallback results ({precision_label}):", 'info')
                 self._log(f"  - Total corrections: {stats['total']}", 'info')
                 self._log(f"  - Matched total: {stats['matched']}", 'success')
-                self._log(f"    L1  (Triple: Origin+File+Adjacent): {level_counts['L1']}", 'success')
+                self._log(f"    L1  (Quadruple: Origin+File+Adjacent): {level_counts['L1']}", 'success')
                 self._log(f"    L2A (Double: Origin+File):          {level_counts['L2A']}", 'info')
                 self._log(f"    L2B (Double: Origin+Adjacent):      {level_counts['L2B']}", 'info')
                 self._log(f"    L3  (Single: Origin only):          {level_counts['L3']}", 'warning')
                 self._log(f"  - Not found: {stats['no_match']}", 'error')
-
-            elif match_type == "fuzzy":
-                # Fuzzy KR Match using SBERT + FAISS
-                if not corrections:
-                    messagebox.showwarning("Warning", "Fuzzy mode requires corrections data (XML or structured Excel).")
-                    return
-
-                target = self.target_path.get()
-                if not target:
-                    messagebox.showwarning("Warning", "Fuzzy mode requires a Target folder for indexing.")
-                    return
-
-                # Ensure model and index are ready
-                if not self._ensure_fuzzy_model():
-                    return
-                if not self._ensure_fuzzy_index(target):
-                    return
-
-                threshold = self.fuzzy_threshold.get()
-                self._log(f"Fuzzy matching with threshold: {threshold:.2f}", 'info')
-
-                matched_corrections, unmatched, fuzzy_stats = find_matches_fuzzy(
-                    corrections, self._fuzzy_texts, self._fuzzy_entries,
-                    self._fuzzy_model, self._fuzzy_index,
-                    threshold=threshold,
-                    progress_callback=self._update_status,
-                )
-
-                korean_inputs = [c.get("str_origin", "") for c in matched_corrections]
-                for c in matched_corrections:
-                    matches_per_input.append([c.get("fuzzy_target_string_id")])
-                stats["total"] = fuzzy_stats["total"]
-                stats["matched"] = fuzzy_stats["matched"]
-                stats["no_match"] = fuzzy_stats["unmatched"]
-                stats["total_matches"] = fuzzy_stats["matched"]
-
-                self._log(f"Fuzzy match results:", 'info')
-                self._log(f"  - Total corrections: {stats['total']}", 'info')
-                self._log(f"  - Matched (>={threshold:.2f}): {stats['matched']}", 'success')
-                self._log(f"  - Below threshold: {stats['no_match']}", 'error')
-                if fuzzy_stats["matched"] > 0:
-                    self._log(f"  - Avg score: {fuzzy_stats['avg_score']:.3f}", 'info')
-                    self._log(f"  - Score range: {fuzzy_stats['min_score']:.3f} - {fuzzy_stats['max_score']:.3f}", 'info')
 
             self.progress_value.set(70)
 
@@ -1473,6 +1435,12 @@ class QuickTranslateApp:
 
     def _transfer(self):
         """Transfer corrections from source to target XML files (LOC folder)."""
+        # Block transfer for substring mode (lookup only)
+        if self.match_type.get() == "substring":
+            messagebox.showwarning("Warning", "Substring mode is lookup-only. TRANSFER is not available.\n\n"
+                                   "Please select StringID-Only, Strict, or Quadruple Fallback mode.")
+            return
+
         if not self.source_path.get():
             messagebox.showwarning("Warning", "Please select a Source file/folder with corrections.")
             return
@@ -1496,6 +1464,11 @@ class QuickTranslateApp:
         match_type = self.match_type.get()
         mode_str = "Folder" if self.input_mode.get() == "folder" else "File"
         match_str = match_type.upper()
+        precision = self.match_precision.get()
+
+        # Add precision info for modes that support it
+        if match_type in ("strict", "quadruple_fallback"):
+            match_str = f"{match_str} ({precision.upper()})"
 
         confirm = messagebox.askyesno(
             "Confirm Transfer",
@@ -1558,36 +1531,36 @@ class QuickTranslateApp:
                 stringid_to_category = self.stringid_to_category
                 stringid_to_subfolder = self.stringid_to_subfolder
 
-            # For fuzzy transfer, need to pre-match corrections before transfer
-            if match_type == "fuzzy":
+            # For strict with fuzzy precision, need model + index
+            if match_type == "strict" and precision == "fuzzy":
                 if not self._ensure_fuzzy_model():
                     return
                 if not self._ensure_fuzzy_index(str(target)):
                     return
-                self._log(f"Fuzzy TRANSFER: threshold={self.fuzzy_threshold.get():.2f}", 'info')
+                self._log(f"Strict TRANSFER with FUZZY precision (threshold={self.fuzzy_threshold.get():.2f})", 'info')
 
-            # For triple_fallback with fuzzy precision, also need model + index
-            if match_type == "triple_fallback" and self.triple_match_precision.get() == "fuzzy":
+            # For quadruple_fallback with fuzzy precision, also need model + index
+            if match_type == "quadruple_fallback" and precision == "fuzzy":
                 if not self._ensure_fuzzy_model():
                     return
                 if not self._ensure_fuzzy_index(str(target)):
                     return
-                self._log(f"Triple Fallback TRANSFER with FUZZY precision (threshold={self.fuzzy_threshold.get():.2f})", 'info')
+                self._log(f"Quadruple Fallback TRANSFER with FUZZY precision (threshold={self.fuzzy_threshold.get():.2f})", 'info')
 
             self.progress_value.set(20)
             self._update_status("Transferring corrections...")
 
-            # Map match_type to match_mode for transfer functions
-            match_mode_map = {
-                "stringid_only": "stringid_only",
-                "fuzzy": "fuzzy",
-                "triple_fallback": "triple_fallback",
-            }
-            transfer_match_mode = match_mode_map.get(match_type, "strict")
+            # Map match_type + precision to transfer match_mode
+            if match_type == "stringid_only":
+                transfer_match_mode = "stringid_only"
+            elif match_type == "strict":
+                transfer_match_mode = "strict_fuzzy" if precision == "fuzzy" else "strict"
+            elif match_type == "quadruple_fallback":
+                transfer_match_mode = "quadruple_fallback_fuzzy" if precision == "fuzzy" else "quadruple_fallback"
+            else:
+                transfer_match_mode = "strict"
 
             # Build kwargs for transfer functions
-            # Note: transfer functions now pre-build indexes internally (once
-            # before the per-file loop), so we don't pass fuzzy_model/index/etc.
             transfer_kwargs = {
                 "stringid_to_category": stringid_to_category,
                 "stringid_to_subfolder": stringid_to_subfolder,
@@ -1595,10 +1568,11 @@ class QuickTranslateApp:
                 "dry_run": False,
             }
 
-            if match_type == "fuzzy":
+            # Pass threshold for fuzzy modes
+            if precision == "fuzzy" and match_type in ("strict", "quadruple_fallback"):
                 transfer_kwargs["threshold"] = self.fuzzy_threshold.get()
-            elif match_type == "triple_fallback" and self.triple_match_precision.get() == "fuzzy":
-                transfer_kwargs["threshold"] = self.fuzzy_threshold.get()
+
+            if match_type == "quadruple_fallback" and precision == "fuzzy":
                 transfer_kwargs["use_fuzzy_precision"] = True
 
             # Perform transfer
