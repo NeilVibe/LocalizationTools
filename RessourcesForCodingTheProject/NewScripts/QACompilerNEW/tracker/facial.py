@@ -526,7 +526,7 @@ def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles
 
         # Title row
         ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
-        title_cell = ws.cell(current_row, 1, f"FACIAL CATEGORY TABLE ({lang})")
+        title_cell = ws.cell(current_row, 1, f"{lang} FACIAL CATEGORY TABLE")
         title_cell.fill = styles["title_fill"]
         title_cell.font = styles["white_bold"]
         title_cell.alignment = styles["center"]
