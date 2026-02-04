@@ -451,7 +451,7 @@ def _build_facial_total_section(ws, start_row: int, facial_data: Dict, styles: D
         grand["missing"] += ut["missing"]
 
     grand_pct = f"{(grand['done'] / grand['total'] * 100):.1f}%" if grand["total"] > 0 else "0%"
-    total_values = ["TOTAL", "", grand["total"], grand["done"],
+    total_values = ["TOTAL", "", "", grand["done"],
                     grand["no_issue"], grand["mismatch"], grand["missing"], grand_pct]
 
     for i, val in enumerate(total_values, 1):
@@ -554,7 +554,7 @@ def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles
             lang_grand["missing"] += gt["missing"]
 
         lang_pct = f"{(lang_grand['done'] / lang_grand['total'] * 100):.1f}%" if lang_grand["total"] > 0 else "0%"
-        total_values = ["TOTAL", lang_grand["total"], lang_grand["done"],
+        total_values = ["TOTAL", "", lang_grand["done"],
                         lang_grand["no_issue"], lang_grand["mismatch"], lang_grand["missing"], lang_pct]
 
         for i, val in enumerate(total_values, 1):
