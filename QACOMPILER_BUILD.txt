@@ -56,3 +56,4 @@ Build 500: Face conflict→MISMATCH + cross-tab dedup
 Build 501: Full terminal progress logging at every step
 Build 502: CRITICAL perf fix - iter_rows replaces ws.cell() in read_only (1000x faster)
 Build 503: Remove read_only from QA opens + streaming headers in preprocess + fix import
+Build 504: Fix Facial tracker - per-language category tables + date comparison + bounds checks

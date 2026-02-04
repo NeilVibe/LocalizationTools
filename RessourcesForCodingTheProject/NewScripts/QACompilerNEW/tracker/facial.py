@@ -16,10 +16,40 @@ from pathlib import Path
 from typing import Dict, List
 from collections import defaultdict
 
+from datetime import datetime, timedelta
+
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import TRACKER_STYLES
 
+
+# =============================================================================
+# DATE COMPARISON HELPER
+# =============================================================================
+
+def _parse_date_for_comparison(d):
+    """
+    Parse date value for proper comparison (not string comparison!).
+
+    String comparison fails: "2024-02" > "2024-12" = True (WRONG!)
+    This function converts to datetime for proper comparison.
+    """
+    if d is None:
+        return datetime.min
+    if isinstance(d, datetime):
+        return d
+    if isinstance(d, str):
+        try:
+            return datetime.strptime(d[:10], "%Y-%m-%d")
+        except (ValueError, TypeError):
+            try:
+                return datetime.strptime(d[:10], "%d/%m/%Y")
+            except (ValueError, TypeError):
+                return datetime.min
+    try:
+        return datetime(1899, 12, 30) + timedelta(days=int(d))
+    except:
+        return datetime.min
 
 
 # =============================================================================
@@ -70,13 +100,14 @@ def update_facial_data_sheet(wb: openpyxl.Workbook, face_entries: List[Dict]) ->
         for col, header in enumerate(FACIAL_DATA_HEADERS, 1):
             ws.cell(1, col, header)
 
-    # Build index of existing rows: (date, user, group) -> row_number
+    # Build index of existing rows: (date, user, group, lang) -> row_number
     existing = {}
     for row in range(2, (ws.max_row or 1) + 1):
         key = (
             ws.cell(row, 1).value,  # Date
             ws.cell(row, 2).value,  # User
             ws.cell(row, 3).value,  # Group
+            ws.cell(row, 9).value or "EN",  # Lang
         )
         if key[0] is not None:
             existing[key] = row
@@ -91,7 +122,7 @@ def update_facial_data_sheet(wb: openpyxl.Workbook, face_entries: List[Dict]) ->
 
         if not groups:
             # No group breakdown: write single row with "All" as group
-            key = (date, user, "All")
+            key = (date, user, "All", lang)
             row = existing.get(key, next_row)
             if row == next_row:
                 existing[key] = row
@@ -109,7 +140,7 @@ def update_facial_data_sheet(wb: openpyxl.Workbook, face_entries: List[Dict]) ->
         else:
             # Write one row per group
             for group, gcounts in groups.items():
-                key = (date, user, group)
+                key = (date, user, group, lang)
                 row = existing.get(key, next_row)
                 if row == next_row:
                     existing[key] = row
@@ -181,7 +212,7 @@ def read_facial_data(wb: openpyxl.Workbook) -> Dict:
         "raw_rows": raw_rows,
         "users": users,
         "groups": groups,
-        "dates": sorted(dates_set),
+        "dates": sorted(dates_set, key=_parse_date_for_comparison),
         "langs": langs,
     }
 
@@ -423,87 +454,100 @@ def _build_facial_total_section(ws, start_row: int, facial_data: Dict, styles: D
 
 def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles: Dict, latest_rows: Dict) -> int:
     """
-    Build FACIAL CATEGORY TABLE section (by Group).
+    Build FACIAL CATEGORY TABLE sections — one per language.
 
-    Layout:
-    | FACIAL CATEGORY TABLE                                             |
+    Layout (repeated per language):
+    | FACIAL CATEGORY TABLE (EN)                                        |
     | Group       | Total | Done | NoIssue | Mismatch | Missing | Done% |
     | GroupA      |  50   |  40  |   35    |    3     |    2    | 80%   |
     | TOTAL       | 100   |  75  |   65    |    6     |    4    | 75%   |
 
     Returns:
-        Next row after section
+        Next row after all language sections
     """
-    groups = sorted(facial_data["groups"])
+    if not latest_rows:
+        return start_row
 
-    if not groups:
+    # Discover languages present in data
+    langs = sorted(set(r["lang"] for r in latest_rows.values()))
+    if not langs:
         return start_row
 
     current_row = start_row
     headers = ["Group", "Total", "Done", "NoIssue", "Mismatch", "Missing", "Done%"]
     total_cols = len(headers)
 
-    # Aggregate per group from latest-only rows
-    group_totals = defaultdict(lambda: {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0})
-    for r in latest_rows.values():
-        group_totals[r["group"]]["total"] += r["total_rows"]
-        group_totals[r["group"]]["done"] += r["done"]
-        group_totals[r["group"]]["no_issue"] += r["no_issue"]
-        group_totals[r["group"]]["mismatch"] += r["mismatch"]
-        group_totals[r["group"]]["missing"] += r["missing"]
+    for lang in langs:
+        # Filter latest_rows for this language
+        lang_rows = {k: r for k, r in latest_rows.items() if r["lang"] == lang}
+        if not lang_rows:
+            continue
 
-    # Title row
-    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
-    title_cell = ws.cell(current_row, 1, "FACIAL CATEGORY TABLE")
-    title_cell.fill = styles["title_fill"]
-    title_cell.font = styles["white_bold"]
-    title_cell.alignment = styles["center"]
-    current_row += 1
+        # Aggregate per group from latest-only rows for this language
+        group_totals = defaultdict(lambda: {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0})
+        for r in lang_rows.values():
+            group_totals[r["group"]]["total"] += r["total_rows"]
+            group_totals[r["group"]]["done"] += r["done"]
+            group_totals[r["group"]]["no_issue"] += r["no_issue"]
+            group_totals[r["group"]]["mismatch"] += r["mismatch"]
+            group_totals[r["group"]]["missing"] += r["missing"]
 
-    # Headers
-    for i, header in enumerate(headers, 1):
-        cell = ws.cell(current_row, i, header)
-        cell.fill = styles["header_fill"]
-        cell.font = styles["bold"]
-        cell.alignment = styles["center"]
-        cell.border = styles["border"]
-    current_row += 1
+        lang_groups = sorted(group_totals.keys())
 
-    # Group rows
-    grand_total = {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0}
-    for idx, group in enumerate(groups):
-        gt = group_totals[group]
-        done_pct = f"{(gt['done'] / gt['total'] * 100):.1f}%" if gt["total"] > 0 else "0%"
-
-        values = [group, gt["total"], gt["done"], gt["no_issue"],
-                  gt["mismatch"], gt["missing"], done_pct]
-
-        for i, val in enumerate(values, 1):
-            cell = ws.cell(current_row, i, val)
-            cell.alignment = styles["center"]
-            cell.border = styles["border"]
-            if idx % 2 == 1:
-                cell.fill = styles["alt_fill"]
-
-        for key in grand_total:
-            grand_total[key] += gt[key]
-
+        # Title row
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=total_cols)
+        title_cell = ws.cell(current_row, 1, f"FACIAL CATEGORY TABLE ({lang})")
+        title_cell.fill = styles["title_fill"]
+        title_cell.font = styles["white_bold"]
+        title_cell.alignment = styles["center"]
         current_row += 1
 
-    # TOTAL row
-    total_pct = f"{(grand_total['done'] / grand_total['total'] * 100):.1f}%" if grand_total["total"] > 0 else "0%"
-    total_values = ["TOTAL", grand_total["total"], grand_total["done"],
-                    grand_total["no_issue"], grand_total["mismatch"], grand_total["missing"], total_pct]
+        # Headers
+        for i, header in enumerate(headers, 1):
+            cell = ws.cell(current_row, i, header)
+            cell.fill = styles["header_fill"]
+            cell.font = styles["bold"]
+            cell.alignment = styles["center"]
+            cell.border = styles["border"]
+        current_row += 1
 
-    for i, val in enumerate(total_values, 1):
-        cell = ws.cell(current_row, i, val)
-        cell.fill = styles["total_fill"]
-        cell.font = styles["bold"]
-        cell.alignment = styles["center"]
-        cell.border = styles["border"]
-    current_row += 1
+        # Group rows
+        grand_total = {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0}
+        for idx, group in enumerate(lang_groups):
+            gt = group_totals[group]
+            done_pct = f"{(gt['done'] / gt['total'] * 100):.1f}%" if gt["total"] > 0 else "0%"
 
-    return current_row + 1
+            values = [group, gt["total"], gt["done"], gt["no_issue"],
+                      gt["mismatch"], gt["missing"], done_pct]
+
+            for i, val in enumerate(values, 1):
+                cell = ws.cell(current_row, i, val)
+                cell.alignment = styles["center"]
+                cell.border = styles["border"]
+                if idx % 2 == 1:
+                    cell.fill = styles["alt_fill"]
+
+            for key in grand_total:
+                grand_total[key] += gt[key]
+
+            current_row += 1
+
+        # TOTAL row
+        total_pct = f"{(grand_total['done'] / grand_total['total'] * 100):.1f}%" if grand_total["total"] > 0 else "0%"
+        total_values = ["TOTAL", grand_total["total"], grand_total["done"],
+                        grand_total["no_issue"], grand_total["mismatch"], grand_total["missing"], total_pct]
+
+        for i, val in enumerate(total_values, 1):
+            cell = ws.cell(current_row, i, val)
+            cell.fill = styles["total_fill"]
+            cell.font = styles["bold"]
+            cell.alignment = styles["center"]
+            cell.border = styles["border"]
+        current_row += 1
+
+        current_row += 1  # Spacing between language tables
+
+    return current_row
 
 
 # =============================================================================
@@ -553,13 +597,13 @@ def build_facial_sheet(wb: openpyxl.Workbook) -> None:
 
     styles = get_facial_styles()
 
-    # Pre-compute latest rows per (user, group) once for both Total and Category sections
-    # Filters to latest date per (user, group) to avoid double-counting
+    # Pre-compute latest rows per (user, group, lang) once for both Total and Category sections
+    # Filters to latest date per (user, group, lang) to avoid double-counting
     # Same pattern as total.py read_latest_data_for_total()
-    latest_rows = {}  # (user, group) -> row with latest date
+    latest_rows = {}  # (user, group, lang) -> row with latest date
     for r in facial_data["raw_rows"]:
-        key = (r["user"], r["group"])
-        if key not in latest_rows or r["date"] > latest_rows[key]["date"]:
+        key = (r["user"], r["group"], r["lang"])
+        if key not in latest_rows or _parse_date_for_comparison(r["date"]) > _parse_date_for_comparison(latest_rows[key]["date"]):
             latest_rows[key] = r
 
     # Build 3 sections
