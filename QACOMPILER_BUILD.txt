@@ -59,3 +59,4 @@ Build 503: Remove read_only from QA opens + streaming headers in preprocess + fi
 Build 504: Fix Facial tracker - per-language category tables + date comparison + bounds checks
 Build 505: Add Face category to USER_GUIDE.md
 Build 506: Fix Facial tracker - category totals, text format, date dedup
+Build 507: Fix numeric cell format + remove useless grand totals from Facial tracker

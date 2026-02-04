@@ -141,11 +141,11 @@ def update_facial_data_sheet(wb: openpyxl.Workbook, face_entries: List[Dict]) ->
             ws.cell(row, 1, date).number_format = '@'
             ws.cell(row, 2, user).number_format = '@'
             ws.cell(row, 3, "All").number_format = '@'
-            ws.cell(row, 4, entry.get("total_rows", 0)).number_format = '@'
-            ws.cell(row, 5, entry.get("done", 0)).number_format = '@'
-            ws.cell(row, 6, entry.get("no_issue", 0)).number_format = '@'
-            ws.cell(row, 7, entry.get("mismatch", 0)).number_format = '@'
-            ws.cell(row, 8, entry.get("missing", 0)).number_format = '@'
+            ws.cell(row, 4, entry.get("total_rows", 0))
+            ws.cell(row, 5, entry.get("done", 0))
+            ws.cell(row, 6, entry.get("no_issue", 0))
+            ws.cell(row, 7, entry.get("mismatch", 0))
+            ws.cell(row, 8, entry.get("missing", 0))
             ws.cell(row, 9, lang).number_format = '@'
         else:
             # Write one row per group
@@ -159,11 +159,11 @@ def update_facial_data_sheet(wb: openpyxl.Workbook, face_entries: List[Dict]) ->
                 ws.cell(row, 1, date).number_format = '@'
                 ws.cell(row, 2, user).number_format = '@'
                 ws.cell(row, 3, group).number_format = '@'
-                ws.cell(row, 4, gcounts.get("total", 0)).number_format = '@'
-                ws.cell(row, 5, gcounts.get("done", 0)).number_format = '@'
-                ws.cell(row, 6, gcounts.get("no_issue", 0)).number_format = '@'
-                ws.cell(row, 7, gcounts.get("mismatch", 0)).number_format = '@'
-                ws.cell(row, 8, gcounts.get("missing", 0)).number_format = '@'
+                ws.cell(row, 4, gcounts.get("total", 0))
+                ws.cell(row, 5, gcounts.get("done", 0))
+                ws.cell(row, 6, gcounts.get("no_issue", 0))
+                ws.cell(row, 7, gcounts.get("mismatch", 0))
+                ws.cell(row, 8, gcounts.get("missing", 0))
                 ws.cell(row, 9, lang).number_format = '@'
 
 
@@ -194,11 +194,11 @@ def read_facial_data(wb: openpyxl.Workbook) -> Dict:
         date = ws.cell(row, 1).value
         user = ws.cell(row, 2).value
         group = ws.cell(row, 3).value or "Unknown"
-        total_rows = ws.cell(row, 4).value or 0
-        done = ws.cell(row, 5).value or 0
-        no_issue = ws.cell(row, 6).value or 0
-        mismatch = ws.cell(row, 7).value or 0
-        missing = ws.cell(row, 8).value or 0
+        total_rows = int(ws.cell(row, 4).value or 0)
+        done = int(ws.cell(row, 5).value or 0)
+        no_issue = int(ws.cell(row, 6).value or 0)
+        mismatch = int(ws.cell(row, 7).value or 0)
+        missing = int(ws.cell(row, 8).value or 0)
         lang = ws.cell(row, 9).value or "EN"
 
         if date and user:
@@ -383,7 +383,6 @@ def _build_facial_total_section(ws, start_row: int, facial_data: Dict, styles: D
     | FACIAL TOTAL TABLE                                                       |
     | User   | Lang | Total | Done | NoIssue | Mismatch | Missing | Done%      |
     | User1  | EN   | 100   |  60  |   55    |    3     |    2    | 60%        |
-    | TOTAL  |      | 200   | 115  |  102    |    8     |    5    | 57.5%      |
 
     Returns:
         Next row after section
@@ -425,7 +424,6 @@ def _build_facial_total_section(ws, start_row: int, facial_data: Dict, styles: D
     current_row += 1
 
     # User rows
-    grand_total = {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0}
     for idx, user in enumerate(users):
         ut = user_totals[user]
         done_pct = f"{(ut['done'] / ut['total'] * 100):.1f}%" if ut["total"] > 0 else "0%"
@@ -440,24 +438,7 @@ def _build_facial_total_section(ws, start_row: int, facial_data: Dict, styles: D
             if idx % 2 == 1:
                 cell.fill = styles["alt_fill"]
 
-        # Accumulate grand totals
-        for key in grand_total:
-            grand_total[key] += ut[key]
-
         current_row += 1
-
-    # TOTAL row
-    total_pct = f"{(grand_total['done'] / grand_total['total'] * 100):.1f}%" if grand_total["total"] > 0 else "0%"
-    total_values = ["TOTAL", "", "", grand_total["done"],
-                    grand_total["no_issue"], grand_total["mismatch"], grand_total["missing"], total_pct]
-
-    for i, val in enumerate(total_values, 1):
-        cell = ws.cell(current_row, i, val)
-        cell.fill = styles["total_fill"]
-        cell.font = styles["bold"]
-        cell.alignment = styles["center"]
-        cell.border = styles["border"]
-    current_row += 1
 
     return current_row + 1  # Spacing
 
@@ -470,7 +451,6 @@ def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles
     | FACIAL CATEGORY TABLE (EN)                                        |
     | Group       | Total | Done | NoIssue | Mismatch | Missing | Done% |
     | GroupA      |  50   |  40  |   35    |    3     |    2    | 80%   |
-    | TOTAL       | 100   |  75  |   65    |    6     |    4    | 75%   |
 
     Returns:
         Next row after all language sections
@@ -531,7 +511,6 @@ def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles
         current_row += 1
 
         # Group rows
-        grand_total = {"total": 0, "done": 0, "no_issue": 0, "mismatch": 0, "missing": 0}
         for idx, group in enumerate(lang_groups):
             gt = group_totals[group]
             done_pct = f"{(gt['done'] / gt['total'] * 100):.1f}%" if gt["total"] > 0 else "0%"
@@ -546,23 +525,7 @@ def _build_facial_category_section(ws, start_row: int, facial_data: Dict, styles
                 if idx % 2 == 1:
                     cell.fill = styles["alt_fill"]
 
-            for key in grand_total:
-                grand_total[key] += gt[key]
-
             current_row += 1
-
-        # TOTAL row
-        total_pct = f"{(grand_total['done'] / grand_total['total'] * 100):.1f}%" if grand_total["total"] > 0 else "0%"
-        total_values = ["TOTAL", "", grand_total["done"],
-                        grand_total["no_issue"], grand_total["mismatch"], grand_total["missing"], total_pct]
-
-        for i, val in enumerate(total_values, 1):
-            cell = ws.cell(current_row, i, val)
-            cell.fill = styles["total_fill"]
-            cell.font = styles["bold"]
-            cell.alignment = styles["center"]
-            cell.border = styles["border"]
-        current_row += 1
 
         current_row += 1  # Spacing between language tables
 
@@ -634,11 +597,6 @@ def build_facial_sheet(wb: openpyxl.Workbook) -> None:
     current_row = _build_facial_daily_section(ws, current_row, facial_data, styles)
     current_row = _build_facial_total_section(ws, current_row, facial_data, styles, latest_rows)
     current_row = _build_facial_category_section(ws, current_row, facial_data, styles, latest_rows)
-
-    # Set all cells to text format for clean, neat Excel output
-    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, max_col=ws.max_column):
-        for cell in row:
-            cell.number_format = '@'
 
     # Autofit
     _autofit_columns(ws)
