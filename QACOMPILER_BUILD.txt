@@ -67,3 +67,4 @@ Build 511: Hide Total column from TOTAL rows (reverts Build 510)
 Trigger QA Compiler rebuild for Build 512: DONE% sum fix
 Trigger QA Compiler rebuild for Build 513: Remove category TOTAL rows
 Trigger QA Compiler rebuild for Build 514: Split EN/CN total tables
+Trigger QA Compiler rebuild for Build 515: Dead code cleanup
