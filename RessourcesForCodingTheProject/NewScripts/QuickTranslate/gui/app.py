@@ -56,8 +56,9 @@ class QuickTranslateApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("QuickTranslate")
-        self.root.geometry("900x850")
-        self.root.resizable(False, False)
+        self.root.geometry("900x1000")
+        self.root.resizable(False, True)
+        self.root.minsize(900, 900)
         self.root.configure(bg='#f0f0f0')
 
         # Variables
@@ -340,6 +341,107 @@ class QuickTranslateApp:
         self.log_area.delete(1.0, tk.END)
         self.log_area.config(state='disabled')
 
+    def _analyze_folder(self, folder_path: str, role: str) -> None:
+        """Analyze a folder and print detailed info to terminal and log.
+
+        Args:
+            folder_path: Path to the folder to analyze
+            role: "SOURCE" or "TARGET" for display purposes
+        """
+        folder = Path(folder_path)
+        if not folder.exists() or not folder.is_dir():
+            print(f"\n[{role}] ERROR: Path does not exist or is not a directory: {folder_path}")
+            self._log(f"{role} folder invalid: {folder_path}", 'error')
+            return
+
+        all_files = list(folder.iterdir())
+        xml_files = [f for f in all_files if f.suffix.lower() == ".xml" and f.is_file()]
+        xlsx_files = [f for f in all_files if f.suffix.lower() in (".xlsx", ".xls") and f.is_file()]
+        other_files = [f for f in all_files if f.is_file() and f not in xml_files and f not in xlsx_files]
+        subdirs = [f for f in all_files if f.is_dir()]
+
+        # Identify languagedata files and extract language codes
+        lang_files = []
+        non_lang_xml = []
+        for f in xml_files:
+            name = f.stem.lower()
+            if name.startswith("languagedata_"):
+                lang_code = f.stem[13:]  # Preserve original case
+                size_kb = f.stat().st_size / 1024
+                lang_files.append((f.name, lang_code, size_kb))
+            else:
+                non_lang_xml.append(f.name)
+
+        # Terminal output
+        separator = "=" * 60
+        print(f"\n{separator}")
+        print(f"  {role} FOLDER ANALYSIS")
+        print(f"{separator}")
+        print(f"  Path: {folder_path}")
+        print(f"  Total items: {len(all_files)} ({len(xml_files)} XML, {len(xlsx_files)} Excel, {len(other_files)} other, {len(subdirs)} subdirs)")
+        print(f"{'-' * 60}")
+
+        if lang_files:
+            print(f"\n  LANGUAGEDATA FILES ({len(lang_files)} found):")
+            print(f"  {'#':<4} {'Filename':<35} {'Lang':<8} {'Size':<10}")
+            print(f"  {'-'*4} {'-'*35} {'-'*8} {'-'*10}")
+            total_size = 0
+            for idx, (fname, lang, size) in enumerate(sorted(lang_files, key=lambda x: x[1]), 1):
+                total_size += size
+                if size >= 1024:
+                    size_str = f"{size/1024:.1f} MB"
+                else:
+                    size_str = f"{size:.0f} KB"
+                print(f"  {idx:<4} {fname:<35} {lang:<8} {size_str:<10}")
+            if total_size >= 1024:
+                total_str = f"{total_size/1024:.1f} MB"
+            else:
+                total_str = f"{total_size:.0f} KB"
+            print(f"  {'-'*4} {'-'*35} {'-'*8} {'-'*10}")
+            print(f"  {'':4} {'TOTAL':<35} {'':<8} {total_str:<10}")
+        else:
+            print(f"\n  WARNING: No languagedata_*.xml files found!")
+
+        if non_lang_xml:
+            print(f"\n  OTHER XML FILES ({len(non_lang_xml)}):")
+            for f in non_lang_xml:
+                print(f"    - {f}")
+
+        if xlsx_files:
+            print(f"\n  EXCEL FILES ({len(xlsx_files)}):")
+            for f in xlsx_files:
+                size_kb = f.stat().st_size / 1024
+                print(f"    - {f.name} ({size_kb:.0f} KB)")
+
+        if subdirs:
+            print(f"\n  SUBDIRECTORIES ({len(subdirs)}):")
+            for d in subdirs:
+                print(f"    - {d.name}/")
+
+        # Validation
+        print(f"\n  VALIDATION:")
+        is_eligible = len(lang_files) > 0
+        if is_eligible:
+            lang_codes = sorted([lc for _, lc, _ in lang_files])
+            print(f"  [OK] Eligible for TRANSFER ({len(lang_files)} language files)")
+            print(f"  [OK] Languages: {', '.join(lang_codes)}")
+        else:
+            print(f"  [!!] NOT eligible for TRANSFER - no languagedata_*.xml files")
+
+        if non_lang_xml:
+            print(f"  [!!] {len(non_lang_xml)} non-languagedata XML files will be IGNORED")
+        if subdirs:
+            print(f"  [!!] {len(subdirs)} subdirectories will be IGNORED (flat scan only)")
+
+        print(f"{separator}\n")
+
+        # Also log to GUI
+        if is_eligible:
+            self._log(f"{role}: {len(lang_files)} languagedata files found - ELIGIBLE", 'success')
+            self._log(f"  Languages: {', '.join(sorted([lc for _, lc, _ in lang_files]))}", 'info')
+        else:
+            self._log(f"{role}: No languagedata files found - NOT ELIGIBLE", 'error')
+
     def _browse_source(self):
         """Browse for source file or folder based on mode."""
         if self.input_mode.get() == "folder":
@@ -352,12 +454,15 @@ class QuickTranslateApp:
             path = filedialog.askopenfilename(title="Select Source File", filetypes=filetypes)
         if path:
             self.source_path.set(path)
+            if self.input_mode.get() == "folder":
+                self._analyze_folder(path, "SOURCE")
 
     def _browse_target(self):
         """Browse for target folder."""
         path = filedialog.askdirectory(title="Select Target Folder")
         if path:
             self.target_path.set(path)
+            self._analyze_folder(path, "TARGET")
 
     def _browse_reverse_file(self):
         """Browse for reverse lookup text file."""
@@ -1070,6 +1175,37 @@ class QuickTranslateApp:
         self._log(f"Match Mode: {match_str}", 'info')
         self._log(f"Source: {source}", 'info')
         self._log(f"Target: {target}", 'info')
+
+        # Pre-transfer cross-match analysis (folder mode)
+        if self.input_mode.get() == "folder" and source.is_dir() and target.is_dir():
+            src_xmls = {f.stem.lower()[13:]: f.name for f in source.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
+            tgt_xmls = {f.stem.lower()[13:]: f.name for f in target.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
+            matched_langs = sorted(set(src_xmls.keys()) & set(tgt_xmls.keys()))
+            src_only = sorted(set(src_xmls.keys()) - set(tgt_xmls.keys()))
+            tgt_only = sorted(set(tgt_xmls.keys()) - set(src_xmls.keys()))
+
+            print(f"\n{'=' * 60}")
+            print(f"  TRANSFER CROSS-MATCH ANALYSIS")
+            print(f"{'=' * 60}")
+            print(f"  Source: {len(src_xmls)} languagedata files")
+            print(f"  Target: {len(tgt_xmls)} languagedata files")
+            print(f"  Matched: {len(matched_langs)} pairs")
+            print(f"{'-' * 60}")
+            if matched_langs:
+                print(f"\n  MATCHED PAIRS ({len(matched_langs)}):")
+                for lang in matched_langs:
+                    print(f"    {src_xmls[lang]:<35} --> {tgt_xmls[lang]}")
+            if src_only:
+                print(f"\n  SOURCE ONLY (no target match - SKIPPED):")
+                for lang in src_only:
+                    print(f"    {src_xmls[lang]:<35} --> [NO MATCH]")
+            if tgt_only:
+                print(f"\n  TARGET ONLY (no source - UNCHANGED):")
+                for lang in tgt_only:
+                    print(f"    {'[NO SOURCE]':<35} --> {tgt_xmls[lang]}")
+            print(f"{'=' * 60}\n")
+
+            self._log(f"Cross-match: {len(matched_langs)} pairs, {len(src_only)} source-only, {len(tgt_only)} target-only", 'info')
 
         try:
             # Load category data if needed for stringid_only mode
