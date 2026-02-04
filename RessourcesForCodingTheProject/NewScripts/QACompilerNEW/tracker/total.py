@@ -826,9 +826,6 @@ def build_category_breakdown_section(
     current_row += 1
 
     # Data rows
-    category_totals = {cat: {"done": 0, "total_rows": 0, "count": 0} for cat in categories}
-    grand_total_count = 0
-
     for idx, user in enumerate(sorted(users_list)):
         user_total_count = 0
 
@@ -847,14 +844,6 @@ def build_category_breakdown_section(
                 pct = user_cat_data["pct"]
                 count = user_cat_data["count"]
                 user_total_count += count
-
-                # Aggregate for category totals
-                for (u, c), data in latest_data.items():
-                    if u == user and c == cat:
-                        category_totals[cat]["done"] += data["done"]
-                        category_totals[cat]["total_rows"] += data["total_rows"]
-                        category_totals[cat]["count"] += data.get("word_count", 0)
-                        break
 
                 # Done%
                 cell1 = ws.cell(current_row, col, pct)
@@ -888,7 +877,6 @@ def build_category_breakdown_section(
             col += 2
 
         # Total count for this user
-        grand_total_count += user_total_count
         cell = ws.cell(current_row, col, user_total_count)
         cell.number_format = '#,##0'
         cell.alignment = styles["center"]
