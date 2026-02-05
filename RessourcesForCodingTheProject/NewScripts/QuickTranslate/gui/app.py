@@ -1755,16 +1755,18 @@ class QuickTranslateApp:
                 updated = results.get("total_updated", 0)
                 matched = results.get("total_matched", 0)
                 not_found = results.get("total_not_found", 0)
+                strorigin_mismatch = results.get("total_strorigin_mismatch", 0)
                 skipped_translated = results.get("total_skipped_translated", 0)
             else:
                 updated = results.get("updated", 0)
                 matched = results.get("matched", 0)
                 not_found = results.get("not_found", 0)
+                strorigin_mismatch = results.get("strorigin_mismatch", 0)
                 skipped_translated = results.get("skipped_translated", 0)
 
             # === FAILURE REPORT GENERATION ===
             # Generate detailed failure reports if there are any failures
-            total_failures = not_found + skipped_translated
+            total_failures = not_found + strorigin_mismatch + skipped_translated
             failure_reports_msg = ""
 
             if total_failures > 0:
