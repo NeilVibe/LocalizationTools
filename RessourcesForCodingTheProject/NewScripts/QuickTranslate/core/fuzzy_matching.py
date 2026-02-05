@@ -352,10 +352,37 @@ def build_index_from_folder(
     else:
         from .indexing import scan_folder_for_entries_with_context
 
-        if progress_callback:
-            progress_callback(f"Scanning {folder.name} for entries...")
+        # Only scan ONE language file - StrOrigin is the same across all languages
+        # This reduces scan from 2.2M entries (13 files) to ~170K (1 file)
+        found_languagedata = [False]  # Use list to allow mutation in closure
 
-        all_entries_list, _, _, _, _ = scan_folder_for_entries_with_context(folder, progress_callback)
+        def single_language_filter(f):
+            name_lower = f.name.lower()
+            # Non-languagedata XML files (export folder structure) - always include
+            if not name_lower.startswith('languagedata_'):
+                return True
+            # For languagedata files, only take ONE (prefer KOR)
+            if 'languagedata_kor' in name_lower:
+                found_languagedata[0] = True
+                return True
+            # If we already have a languagedata file, skip the rest
+            if found_languagedata[0]:
+                return False
+            # Take the first languagedata file if no KOR yet
+            if name_lower.endswith('.xml'):
+                found_languagedata[0] = True
+                return True
+            return False
+
+        if progress_callback:
+            filter_info = f" (StringID filter: {len(stringid_filter)})" if stringid_filter else ""
+            progress_callback(f"Scanning {folder.name} (single language file){filter_info}...")
+
+        # CRITICAL: Pass stringid_filter to scan so entries are skipped DURING parsing
+        all_entries_list, _, _, _, _ = scan_folder_for_entries_with_context(
+            folder, progress_callback, file_filter=single_language_filter,
+            stringid_filter=stringid_filter  # FILTER DURING SCAN, NOT AFTER!
+        )
 
     texts = []
     entries = []

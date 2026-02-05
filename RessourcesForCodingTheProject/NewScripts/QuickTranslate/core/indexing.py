@@ -197,6 +197,7 @@ def scan_folder_for_entries_with_context(
     folder: Path,
     progress_callback: Optional[Callable[[str], None]] = None,
     file_filter: Optional[Callable[[Path], bool]] = None,
+    stringid_filter: Optional[set] = None,
 ) -> Tuple[List[dict], Dict[tuple, List[dict]], Dict[tuple, List[dict]], Dict[tuple, List[dict]], Dict[str, List[dict]]]:
     """
     Scan folder for XML files and extract entries with adjacency context.
@@ -215,6 +216,8 @@ def scan_folder_for_entries_with_context(
         file_filter: Optional callable that returns True for files to include.
                      If None, scans all XML files. Use to filter by language, e.g.:
                      file_filter=lambda f: 'languagedata_fre' in f.name.lower()
+        stringid_filter: Optional set of StringIDs to include. If provided, ONLY
+                        entries with these StringIDs are kept. CRITICAL for performance.
 
     Returns:
         Tuple of (all_entries, level1_index, level2a_index, level2b_index, level3_index)
@@ -253,6 +256,11 @@ def scan_folder_for_entries_with_context(
                 ) or ''
 
                 if string_id:
+                    # CRITICAL: Filter DURING scan, not after!
+                    # This prevents loading 2.2M entries when we only need 1K
+                    if stringid_filter is not None and string_id not in stringid_filter:
+                        continue  # Skip entries not in our filter
+
                     # Compute relative path from folder root
                     try:
                         file_relpath = str(xml_file.relative_to(folder))
