@@ -17,6 +17,9 @@ import config
 
 logger = logging.getLogger(__name__)
 
+# Module-level cache for valid language codes (avoids repeated LOC folder globbing)
+_cached_valid_codes: Optional[Set[str]] = None
+
 
 @dataclass
 class SourceScanResult:
@@ -86,6 +89,17 @@ def extract_language_suffix(name: str, valid_codes: Set[str]) -> Optional[str]:
     return None
 
 
+def clear_language_code_cache() -> None:
+    """
+    Clear the cached language codes.
+
+    Call this if the LOC folder contents change during runtime.
+    """
+    global _cached_valid_codes
+    _cached_valid_codes = None
+    logger.debug("Language code cache cleared")
+
+
 def _get_valid_language_codes() -> Set[str]:
     """
     Get set of valid language codes.
@@ -94,7 +108,15 @@ def _get_valid_language_codes() -> Set[str]:
     plus hardcoded fallback from config.LANGUAGE_NAMES.
 
     This ensures regional variants like SPA-ES, SPA-MX, POR-BR are detected.
+
+    Results are cached after first call. Use clear_language_code_cache() to reset.
     """
+    global _cached_valid_codes
+
+    # Return cached result if available
+    if _cached_valid_codes is not None:
+        return _cached_valid_codes
+
     codes = set()
 
     # 1. AUTO-DISCOVER from LOC folder (primary source)
@@ -114,6 +136,9 @@ def _get_valid_language_codes() -> Set[str]:
         codes.add(abbrev.upper())
 
     logger.debug(f"Valid language codes ({len(codes)}): {sorted(codes)}")
+
+    # Cache the result
+    _cached_valid_codes = codes
     return codes
 
 

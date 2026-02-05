@@ -117,7 +117,8 @@ def scan_folder_for_strings(
 
 def scan_folder_for_entries(
     folder: Path,
-    progress_callback: Optional[Callable[[str], None]] = None
+    progress_callback: Optional[Callable[[str], None]] = None,
+    file_filter: Optional[Callable[[Path], bool]] = None,
 ) -> Dict[tuple, dict]:
     """
     Scan folder for XML files and extract full entry data.
@@ -127,6 +128,8 @@ def scan_folder_for_entries(
     Args:
         folder: Path to folder to scan
         progress_callback: Optional callback for progress updates
+        file_filter: Optional callable that returns True for files to include.
+                     If None, scans all XML files.
 
     Returns:
         Dict mapping (StringID, StrOrigin) tuple to entry dict
@@ -136,6 +139,11 @@ def scan_folder_for_entries(
 
     entries = {}
     xml_files = list(folder.rglob("*.xml"))
+
+    # Apply file filter if provided
+    if file_filter is not None:
+        xml_files = [f for f in xml_files if file_filter(f)]
+
     total = len(xml_files)
 
     for i, xml_file in enumerate(xml_files):
@@ -187,7 +195,8 @@ def _compute_adjacency_hash(before: str, after: str) -> str:
 
 def scan_folder_for_entries_with_context(
     folder: Path,
-    progress_callback: Optional[Callable[[str], None]] = None
+    progress_callback: Optional[Callable[[str], None]] = None,
+    file_filter: Optional[Callable[[Path], bool]] = None,
 ) -> Tuple[List[dict], Dict[tuple, List[dict]], Dict[tuple, List[dict]], Dict[tuple, List[dict]], Dict[str, List[dict]]]:
     """
     Scan folder for XML files and extract entries with adjacency context.
@@ -203,6 +212,9 @@ def scan_folder_for_entries_with_context(
     Args:
         folder: Path to folder to scan
         progress_callback: Optional callback for progress updates
+        file_filter: Optional callable that returns True for files to include.
+                     If None, scans all XML files. Use to filter by language, e.g.:
+                     file_filter=lambda f: 'languagedata_fre' in f.name.lower()
 
     Returns:
         Tuple of (all_entries, level1_index, level2a_index, level2b_index, level3_index)
@@ -212,6 +224,10 @@ def scan_folder_for_entries_with_context(
 
     all_entries = []
     xml_files = list(folder.rglob("*.xml"))
+
+    # Apply file filter if provided (e.g., only scan specific language files)
+    if file_filter is not None:
+        xml_files = [f for f in xml_files if file_filter(f)]
     total = len(xml_files)
 
     # First pass: collect raw entries per file, preserving order

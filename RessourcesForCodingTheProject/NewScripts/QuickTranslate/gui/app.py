@@ -786,6 +786,49 @@ class QuickTranslateApp:
             self._log(f"Model load error: {e}", 'error')
             return False
 
+    def _ensure_fuzzy_entries(self, target_path: str) -> bool:
+        """Load target entries for fuzzy matching (no FAISS index needed).
+
+        Used by find_matches_strict_fuzzy which builds per-StringID mini-indexes.
+        Much faster than _ensure_fuzzy_index since it skips full FAISS build.
+        """
+        # Already loaded for this target?
+        if (self._fuzzy_entries is not None
+                and self._fuzzy_index_path == target_path):
+            return True
+
+        if not target_path:
+            messagebox.showwarning("Warning", "Fuzzy mode requires a Target folder.")
+            return False
+
+        target = Path(target_path)
+        if not target.exists():
+            messagebox.showerror("Error", f"Target folder not found:\n{target}")
+            return False
+
+        try:
+            self._log(f"Loading target entries for fuzzy matching: {target}", 'info')
+            texts, entries = build_index_from_folder(target, self._update_status)
+
+            if not texts:
+                messagebox.showerror("Error", f"No StrOrigin values found in target folder:\n{target}")
+                return False
+
+            # Store entries but skip expensive FAISS index build
+            self._fuzzy_index_path = target_path
+            self._fuzzy_texts = texts
+            self._fuzzy_entries = entries
+            # Leave _fuzzy_index as None - not needed for strict_fuzzy
+
+            self.fuzzy_model_status.set(f"Ready ({len(entries):,} entries)")
+            self._log(f"Target entries loaded: {len(entries):,} entries", 'success')
+            return True
+
+        except Exception as e:
+            messagebox.showerror("Load Error", f"Failed to load target entries:\n{e}")
+            self._log(f"Load error: {e}", 'error')
+            return False
+
     def _ensure_fuzzy_index(self, target_path: str) -> bool:
         """Build FAISS index for target folder if needed. Returns True if index is ready."""
         if (self._fuzzy_index is not None
@@ -1112,7 +1155,8 @@ class QuickTranslateApp:
                     # Fuzzy precision: use SBERT similarity for StrOrigin comparison
                     if not self._ensure_fuzzy_model():
                         return
-                    if not self._ensure_fuzzy_index(target):
+                    # Use lighter _ensure_fuzzy_entries (no full FAISS index needed)
+                    if not self._ensure_fuzzy_entries(target):
                         return
                     threshold = self.fuzzy_threshold.get()
                     only_untranslated = self.transfer_scope.get() == "untranslated"
