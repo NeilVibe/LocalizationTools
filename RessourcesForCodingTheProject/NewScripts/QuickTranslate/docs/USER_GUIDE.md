@@ -1,6 +1,6 @@
 # QuickTranslate User Guide
 
-**Version 3.1.0** | February 2026 | LocaNext Project
+**Version 3.2.0** | February 2026 | LocaNext Project
 
 ---
 
@@ -412,10 +412,30 @@ Standard LocStr format:
 - `languagedata_FRE.xml` → `languagedata_fre.xml`
 
 ### Folder Mode
-- Source: Folder with multiple Excel/XML files
-- Target: LOC folder
+- Source: Folder with multiple Excel/XML files organized by language
+- Target: LOC folder (locdev__ or loc)
 
-**Batch Processing:** All corrections applied to matching language files.
+**Smart Auto-Recursive Detection:** QuickTranslate automatically detects language from folder structure:
+
+```
+TOSUBMIT/                           ← Source folder
+├── 프랑스어_FRE/                    ← Language detected from suffix: FRE
+│   ├── file1.loc.xml               ← All files → languagedata_FRE.xml
+│   └── file2.loc.xml
+├── 독일어_GER/                      ← Language detected from suffix: GER
+│   └── correction.loc.xml          ← All files → languagedata_GER.xml
+├── 포르투갈어_por-BR/               ← Language detected from suffix: POR-BR
+│   └── update.loc.xml              ← All files → languagedata_POR-BR.xml
+└── hotfix_SPA-ES.xml               ← Direct file with suffix → languagedata_SPA-ES.xml
+```
+
+**Language Detection Rules:**
+1. **Folder suffix:** `FolderName_LANG/` → all files inside assigned to LANG
+2. **File suffix:** `filename_LANG.xml` → single file assigned to LANG
+3. **Hyphenated codes:** Supports `ZHO-CN`, `ZHO-TW`, `SPA-ES`, `SPA-MX`, `POR-BR`
+4. **Case-insensitive:** `_fre`, `_FRE`, `_Fre` all work
+
+**Batch Processing:** All corrections automatically routed to matching language files.
 
 ## 6.4 Match Modes for TRANSFER
 
@@ -553,6 +573,102 @@ The cross-match analysis helps verify that:
 3. No corrections will be silently skipped due to missing target files
 
 If any source files have no matching target, or vice versa, they are listed under an **UNMATCHED** section so you can investigate before the transfer proceeds.
+
+## 6.8 Full Transfer Tree
+
+When you click **TRANSFER** with folder mode, QuickTranslate displays a complete transfer tree showing every file that will be processed.
+
+### What It Shows
+
+| Information | Description |
+|-------------|-------------|
+| **Languages detected** | Number of unique languages found from folder/file suffixes |
+| **Languages ready** | Languages with matching target files |
+| **Languages skipped** | Languages without matching target files |
+| **Per-language breakdown** | Every source file grouped by language |
+| **File sizes** | Size of each source file |
+| **Target mapping** | Which `languagedata_*.xml` each file will merge into |
+
+### Terminal Output Example
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  FULL TRANSFER TREE                                                          ║
+║  Source: C:\Users\...\TOSUBMIT                                               ║
+║  Target: F:\perforce\...\locdev__                                            ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  Languages: 12 detected, 12 ready, 0 skipped                                 ║
+║  Files: 224 total, 224 will transfer, 0 skipped                              ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  [OK] FRE: 22 files → languagedata_FRE.xml                                   ║
+║      SOURCE FILE                              SIZE       STATUS              ║
+║      ──────────────────────────────────────── ────────── ──────────          ║
+║      프랑스어_FRE/ (22 files)                                                 ║
+║        ├─ itemequip_weapon.staticinfo.loc.xml   35 KB      → OK              ║
+║        ├─ itemequip_armor.staticinfo.loc.xml    20 KB      → OK              ║
+║        ├─ KnowledgeInfo_Skill.staticinfo.loc.xml 12 KB    → OK               ║
+║                                                                              ║
+║  [OK] GER: 16 files → languagedata_GER.xml                                   ║
+║      SOURCE FILE                              SIZE       STATUS              ║
+║      ──────────────────────────────────────── ────────── ──────────          ║
+║      독일어_GER/ (16 files)                                                   ║
+║        ├─ characterinfo_Animal.staticinfo.loc.xml  71 KB  → OK               ║
+║        ...                                                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Legend: [OK] = Ready to transfer  [!!] = No target (skipped)  [--] = Empty
+```
+
+### Status Icons
+
+| Icon | Meaning |
+|------|---------|
+| `[OK]` | Language has matching target file, ready to transfer |
+| `[!!]` | No matching target file found, files will be SKIPPED |
+| `[--]` | Language folder is empty |
+| `→ OK` | Individual file will be transferred |
+| `→ SKIP` | Individual file will be skipped (no target) |
+
+### Why This Matters
+
+The full transfer tree lets you verify:
+1. **All languages detected:** Confirms folder naming is correct
+2. **All files included:** No files silently missed
+3. **Target mapping correct:** Each file goes to the right `languagedata_*.xml`
+4. **Skip warnings visible:** Know before transferring if any files will be skipped
+
+## 6.9 Language Auto-Discovery
+
+QuickTranslate automatically discovers available languages from your LOC folder.
+
+### How It Works
+
+1. Scans LOC folder for `languagedata_*.xml` files
+2. Extracts language codes: `languagedata_SPA-ES.xml` → `SPA-ES`
+3. Builds list of valid language codes for detection
+4. Includes regional variants: `SPA-ES`, `SPA-MX`, `POR-BR`, etc.
+
+### Supported Languages (Auto-Discovered)
+
+| Code | Language |
+|------|----------|
+| ENG | English |
+| FRE | French |
+| GER | German |
+| ITA | Italian |
+| JPN | Japanese |
+| KOR | Korean |
+| POL | Polish |
+| POR-BR | Portuguese (Brazil) |
+| RUS | Russian |
+| SPA-ES | Spanish (Europe) |
+| SPA-MX | Spanish (Latin America) |
+| TUR | Turkish |
+| ZHO-CN | Chinese Simplified |
+| ZHO-TW | Chinese Traditional |
+
+**Note:** Additional languages are automatically detected if present in your LOC folder.
 
 ---
 
