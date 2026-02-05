@@ -43,8 +43,6 @@ from core import (
     transfer_folder_to_folder,
     transfer_file_to_file,
     format_transfer_report,
-    # Korean miss extractor
-    extract_korean_misses,
     # Source scanner (auto-recursive language detection)
     scan_source_for_languages,
     validate_source_structure,
@@ -343,19 +341,6 @@ class QuickTranslateApp:
                  font=('Segoe UI', 9, 'bold'), bg='#d9534f', fg='white',
                  relief='flat', padx=10, cursor='hand2').pack(side=tk.LEFT)
 
-        # Korean Misses - Find Korean strings in Target that don't exist in Source
-        korean_miss_row = tk.Frame(quick_frame, bg='#f0f0f0')
-        korean_miss_row.pack(fill=tk.X)
-        tk.Label(korean_miss_row, text="", font=('Segoe UI', 10), bg='#f0f0f0',
-                width=10, anchor='w').pack(side=tk.LEFT)
-        tk.Label(korean_miss_row, text="Find Korean strings in Target not in Source (uses Source/Target paths above)",
-                font=('Segoe UI', 8), bg='#f0f0f0', fg='#888').pack(side=tk.LEFT, padx=(0, 8))
-        self.korean_miss_btn = tk.Button(korean_miss_row, text="Extract Korean Misses",
-                 command=self._extract_korean_misses,
-                 font=('Segoe UI', 9, 'bold'), bg='#f0ad4e', fg='white',
-                 relief='flat', padx=10, cursor='hand2')
-        self.korean_miss_btn.pack(side=tk.RIGHT)
-
         # Missing Translations - Find Korean in Target MISSING from Source (by StrOrigin+StringId key)
         missing_trans_row = tk.Frame(quick_frame, bg='#f0f0f0')
         missing_trans_row.pack(fill=tk.X, pady=(6, 0))
@@ -609,23 +594,47 @@ class QuickTranslateApp:
                 self._log(f"Smart scan: {scan_result.total_files} files in {scan_result.language_count} languages", 'success')
                 self._log(f"  Languages: {', '.join(scan_result.get_languages())}", 'info')
 
-        # Validation
+        # Validation - show WORKING FOR / NOT WORKING FOR
         print(f"\n  VALIDATION:")
         is_eligible = len(lang_files) > 0
         lang_codes = sorted([lc for _, lc, _ in lang_files]) if lang_files else []
+
+        # Check for smart scan results (non-standard naming)
+        has_smart_scan = role == "SOURCE" and scan_result and scan_result.lang_files
+        if has_smart_scan and not is_eligible:
+            is_eligible = True
+
+        # Determine what features work with this structure
+        working_for = []
+        not_working_for = []
+
         if is_eligible:
-            print(f"  [OK] Eligible for TRANSFER ({len(lang_files)} language files)")
-            print(f"  [OK] Languages: {', '.join(lang_codes)}")
+            working_for.append(f"TRANSFER ({len(lang_files) if lang_files else scan_result.language_count} language files)")
+            working_for.append("Find Missing Translations")
+            working_for.append("Reverse Lookup")
+            if lang_codes:
+                working_for.append(f"Languages: {', '.join(lang_codes)}")
         else:
-            # For SOURCE folders, check if smart scan found languages even without languagedata_* pattern
-            # Reuse scan_result from above (already scanned, no duplicate call)
-            if role == "SOURCE" and scan_result and scan_result.lang_files:
-                print(f"  [OK] Smart scan found {scan_result.language_count} languages (non-standard naming)")
-                is_eligible = True
-            elif role == "SOURCE":
-                print(f"  [!!] NOT eligible for TRANSFER - no language-tagged items found")
-            else:
-                print(f"  [!!] NOT eligible for TRANSFER - no languagedata_*.xml files")
+            not_working_for.append("TRANSFER - no languagedata_*.xml files found")
+            not_working_for.append("Find Missing Translations - needs LOC folder structure")
+
+        # StringID Lookup depends on LOC folder in Settings
+        loc_folder_set = bool(config.LOC_FOLDER and config.LOC_FOLDER.exists())
+        if loc_folder_set:
+            working_for.append("StringID Lookup (LOC folder configured)")
+        else:
+            not_working_for.append("StringID Lookup - set LOC folder in Settings first")
+
+        # Print results
+        if working_for:
+            print(f"  WORKING FOR:")
+            for item in working_for:
+                print(f"    ✓ {item}")
+
+        if not_working_for:
+            print(f"  NOT WORKING FOR:")
+            for item in not_working_for:
+                print(f"    ✗ {item}")
 
         if non_lang_xml:
             print(f"  [!!] {len(non_lang_xml)} non-languagedata XML files will be IGNORED")
@@ -634,12 +643,13 @@ class QuickTranslateApp:
 
         print(f"{separator}\n")
 
-        # Also log to GUI (if not already logged by smart scan)
-        if is_eligible and role != "SOURCE":
-            self._log(f"{role}: {len(lang_files)} languagedata files found - ELIGIBLE", 'success')
-            self._log(f"  Languages: {', '.join(lang_codes)}", 'info')
-        elif not is_eligible:
-            self._log(f"{role}: No languagedata files found - NOT ELIGIBLE", 'error')
+        # Also log to GUI
+        if is_eligible:
+            self._log(f"{role}: ELIGIBLE for TRANSFER + Find Missing Translations", 'success')
+            if lang_codes:
+                self._log(f"  Languages: {', '.join(lang_codes)}", 'info')
+        else:
+            self._log(f"{role}: Limited features available (no languagedata files)", 'warning')
 
     def _browse_source(self):
         """Browse for source file or folder based on mode."""
@@ -926,7 +936,6 @@ class QuickTranslateApp:
         """Disable all action buttons during processing."""
         self.generate_btn.config(state='disabled')
         self.transfer_btn.config(state='disabled')
-        self.korean_miss_btn.config(state='disabled')
         self.missing_trans_btn.config(state='disabled')
 
     def _enable_buttons(self):
@@ -937,7 +946,6 @@ class QuickTranslateApp:
             self.transfer_btn.config(state='disabled')
         else:
             self.transfer_btn.config(state='normal')
-        self.korean_miss_btn.config(state='normal')
         self.missing_trans_btn.config(state='normal')
 
     def _generate(self):
@@ -1398,133 +1406,6 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"Reverse lookup failed:\n{e}")
             self._log(f"ERROR: {e}", 'error')
             self._update_status(f"Error: {e}")
-
-        finally:
-            self._enable_buttons()
-
-    def _extract_korean_misses(self):
-        """Extract Korean strings from Target that don't exist in Source."""
-        # Validate source file (should be XML)
-        source_path = self.source_path.get().strip()
-        if not source_path:
-            messagebox.showwarning("Warning", "Please select a Source XML file (the reference file).")
-            return
-
-        source = Path(source_path)
-        if not source.exists():
-            messagebox.showerror("Error", f"Source file not found:\n{source}")
-            return
-
-        if not source.suffix.lower() == ".xml":
-            messagebox.showwarning("Warning", "Source file must be an XML file (e.g., languagedata_kor.xml)")
-            return
-
-        # Validate target file (should be XML)
-        target_path = self.target_path.get().strip()
-        if not target_path:
-            messagebox.showwarning("Warning", "Please select a Target XML file (the file to check for Korean misses).")
-            return
-
-        target = Path(target_path)
-        if not target.exists():
-            messagebox.showerror("Error", f"Target file not found:\n{target}")
-            return
-
-        # If target is a directory, try to find single XML or ask user
-        if target.is_dir():
-            xml_files = list(target.glob("*.xml"))
-            if len(xml_files) == 1:
-                target = xml_files[0]
-            elif len(xml_files) == 0:
-                messagebox.showerror("Error", f"No XML files found in target folder:\n{target}")
-                return
-            else:
-                messagebox.showwarning(
-                    "Warning",
-                    "Target must be a single XML file, not a folder with multiple XML files.\n"
-                    "Please select a specific XML file."
-                )
-                return
-
-        # Ask user for output file location
-        output_path = filedialog.asksaveasfilename(
-            title="Save Korean Misses Output",
-            defaultextension=".xml",
-            filetypes=[("XML files", "*.xml"), ("All files", "*.*")],
-            initialfile=f"korean_misses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xml"
-        )
-
-        if not output_path:
-            return  # User cancelled
-
-        self._disable_buttons()
-        self.progress_value.set(0)
-        self._clear_log()
-
-        self._log("=== Extract Korean Misses ===", 'header')
-        self._log(f"Source (reference): {source}", 'info')
-        self._log(f"Target (to check): {target}", 'info')
-        self._log(f"Output: {output_path}", 'info')
-
-        # Default excluded paths for system strings
-        # File attr format is "System/Gimmick/file.xml" (no "export" prefix, PascalCase)
-        excluded_paths = ["System/MultiChange", "System/Gimmick"]
-        self._log(f"Excluded paths: {', '.join(excluded_paths)}", 'info')
-
-        try:
-            self._update_status("Extracting Korean misses...")
-            self.progress_value.set(20)
-
-            # Get export folder from config for StringID -> File path mapping
-            export_folder = str(config.EXPORT_FOLDER)
-            self._log(f"Export folder: {export_folder}", 'info')
-
-            # Print info to terminal as well (GUI log is small)
-            print(f"\n[GUI] Starting Korean Miss Extraction...")
-            print(f"[GUI] Export folder: {export_folder}")
-
-            # Call the extraction function - it will print detailed results to terminal
-            stats = extract_korean_misses(
-                source_file=str(source),
-                target_file=str(target),
-                output_file=output_path,
-                export_folder=export_folder,
-                excluded_paths=excluded_paths,
-                progress_callback=self._update_status
-            )
-
-            self.progress_value.set(100)
-
-            # Log results
-            self._log("=== Results ===", 'header')
-            self._log(f"Korean strings in Target: {stats['total_target_korean']}", 'info')
-            self._log(f"Hits (found in Source): {stats['hits']}", 'success')
-            self._log(f"Misses before filter: {stats['misses_before_filter']}", 'warning')
-            self._log(f"Filtered out (excluded paths): {stats['filtered_out']}", 'info')
-            self._log(f"Final misses written: {stats['final_misses']}", 'error' if stats['final_misses'] > 0 else 'success')
-            self._log(f"Output saved: {output_path}", 'success')
-
-            self._update_status(f"Done! {stats['final_misses']} Korean misses found")
-
-            # No GUI popup - all debug info is in terminal
-            # User requested terminal-only output for debugging
-
-        except FileNotFoundError as e:
-            messagebox.showerror("Error", f"File not found:\n{e}")
-            self._log(f"ERROR: {e}", 'error')
-            self._update_status(f"Error: File not found")
-
-        except ValueError as e:
-            messagebox.showerror("Error", f"XML parsing error:\n{e}")
-            self._log(f"ERROR: {e}", 'error')
-            self._update_status(f"Error: XML parsing failed")
-
-        except Exception as e:
-            messagebox.showerror("Error", f"Extraction failed:\n{e}")
-            self._log(f"ERROR: {e}", 'error')
-            self._update_status(f"Error: {e}")
-            import traceback
-            traceback.print_exc()
 
         finally:
             self._enable_buttons()

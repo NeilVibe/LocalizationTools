@@ -60,12 +60,6 @@ except ImportError:
     # ML dependencies (numpy, faiss, sentence-transformers) not installed
     # Fuzzy matching unavailable - other modes still work
     pass
-from .korean_miss_extractor import (
-    contains_korean,
-    normalize_strorigin,
-    extract_korean_misses,
-    build_export_index,
-)
 from .source_scanner import (
     SourceScanResult,
     scan_source_for_languages,
@@ -164,11 +158,6 @@ __all__ = [
     "build_index_from_folder",
     "get_cached_index_info",
     "clear_fuzzy_cache",
-    # korean_miss_extractor
-    "contains_korean",
-    "normalize_strorigin",
-    "extract_korean_misses",
-    "build_export_index",
     # source_scanner
     "SourceScanResult",
     "scan_source_for_languages",
