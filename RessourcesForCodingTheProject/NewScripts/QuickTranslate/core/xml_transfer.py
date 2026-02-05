@@ -156,11 +156,14 @@ def merge_corrections_to_xml(
                 # Skip already-translated entries if only_untranslated mode
                 if only_untranslated and old_str and not is_korean_text(old_str):
                     result["skipped_translated"] += 1
+                    # Preserve original correction data for failure reports
+                    orig_correction = corrections[idx]
                     result["details"].append({
                         "string_id": sid,
                         "status": "SKIPPED_TRANSLATED",
-                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
-                        "new": "(skipped - already translated)",
+                        "old": orig_correction.get("str_origin", ""),
+                        "new": orig_correction.get("corrected", ""),
+                        "raw_attribs": orig_correction.get("raw_attribs", {}),
                     })
                     continue
 
@@ -372,11 +375,14 @@ def merge_corrections_stringid_only(
                 # Skip already-translated entries if only_untranslated mode
                 if only_untranslated and old_str and not is_korean_text(old_str):
                     result["skipped_translated"] += 1
+                    # Preserve original correction data for failure reports
+                    orig_correction = correction_lookup[sid]
                     result["details"].append({
                         "string_id": sid,
                         "status": "SKIPPED_TRANSLATED",
-                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
-                        "new": "(skipped - already translated)",
+                        "old": orig_correction.get("str_origin", ""),
+                        "new": orig_correction.get("corrected", ""),
+                        "raw_attribs": orig_correction.get("raw_attribs", {}),
                     })
                     continue
 
@@ -522,11 +528,13 @@ def merge_corrections_fuzzy(
                 # Skip already-translated entries if only_untranslated mode
                 if only_untranslated and old_str and not is_korean_text(old_str):
                     result["skipped_translated"] += 1
+                    # Preserve original correction data for failure reports
                     result["details"].append({
                         "string_id": sid,
                         "status": "SKIPPED_TRANSLATED",
-                        "old": old_str,
-                        "new": "(skipped - already translated)",
+                        "old": c.get("str_origin", ""),
+                        "new": c.get("corrected", ""),
+                        "raw_attribs": c.get("raw_attribs", {}),
                     })
                     continue
 
@@ -669,11 +677,13 @@ def merge_corrections_quadruple_fallback(
                 # Skip already-translated entries if only_untranslated mode
                 if only_untranslated and old_str and not is_korean_text(old_str):
                     result["skipped_translated"] += 1
+                    # Preserve original correction data for failure reports
                     result["details"].append({
                         "string_id": sid,
                         "status": f"SKIPPED_TRANSLATED ({level})",
-                        "old": old_str,
-                        "new": "(skipped - already translated)",
+                        "old": c.get("str_origin", ""),
+                        "new": c.get("corrected", ""),
+                        "raw_attribs": c.get("raw_attribs", {}),
                     })
                     continue
 
