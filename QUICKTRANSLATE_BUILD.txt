@@ -19,3 +19,4 @@ Build: FIX transfer not finding files in language-tagged subfolders (critical bu
 Build: FIX language code lost between scanner and transfer (file_to_lang mapping)
 Build: Per-file transfer logging with source file name
 Build: Automatic Failure Reports (XML + Excel) on transfer failures
+Build: StringID column in Excel report now TEXT format
