@@ -16,9 +16,10 @@ from typing import Optional
 # =============================================================================
 
 # Languages that use WORD counting (space-separated)
+# Official suffixes from LOC folder: ENG, FRE, GER, ITA, JPN, KOR, POL, POR-BR, RUS, SPA-ES, SPA-MX, TUR, ZHO-CN, ZHO-TW
 WORD_COUNT_LANGUAGES = {
-    "eng", "fre", "ger", "spa", "por", "ita", "rus", "tur", "pol",
-    "kor", "tha", "vie", "ind", "msa"
+    "eng", "fre", "ger", "ita", "kor", "pol", "rus", "tur",
+    "spa-es", "spa-mx", "por-br"
 }
 
 # Languages that use CHARACTER counting (no whitespace delimiters)
@@ -27,10 +28,10 @@ CHAR_COUNT_LANGUAGES = {
 }
 
 # Languages that get an English column in Excel output
-# (European/SEA languages that benefit from English reference)
+# (European languages that benefit from English reference)
 ENGLISH_COLUMN_LANGUAGES = {
-    "fre", "ger", "spa", "por", "ita", "rus", "tur", "pol",
-    "kor", "tha", "vie", "ind", "msa"
+    "fre", "ger", "ita", "kor", "pol", "rus", "tur",
+    "spa-es", "spa-mx", "por-br"
 }
 
 # Languages that do NOT get an English column
@@ -39,25 +40,22 @@ NO_ENGLISH_COLUMN_LANGUAGES = {
     "eng", "jpn", "zho-cn", "zho-tw"
 }
 
-# Display names for language codes
+# Display names for language codes (matches LOC folder filenames exactly)
 LANGUAGE_NAMES = {
     "eng": "ENG",
     "fre": "FRE",
     "ger": "GER",
-    "spa": "SPA",
-    "por": "POR",
     "ita": "ITA",
-    "rus": "RUS",
-    "tur": "TUR",
-    "pol": "POL",
-    "zho-cn": "ZHO-CN",
-    "zho-tw": "ZHO-TW",
     "jpn": "JPN",
     "kor": "KOR",
-    "tha": "THA",
-    "vie": "VIE",
-    "ind": "IND",
-    "msa": "MSA",
+    "pol": "POL",
+    "por-br": "POR-BR",
+    "rus": "RUS",
+    "spa-es": "SPA-ES",
+    "spa-mx": "SPA-MX",
+    "tur": "TUR",
+    "zho-cn": "ZHO-CN",
+    "zho-tw": "ZHO-TW",
 }
 
 # =============================================================================
