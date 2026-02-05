@@ -322,6 +322,7 @@ def clear_cache():
 def build_index_from_folder(
     folder: Path,
     progress_callback: Optional[Callable[[str], None]] = None,
+    preloaded_entries: Optional[List[dict]] = None,
 ) -> Tuple[List[str], List[dict]]:
     """
     Scan a folder for XML entries and prepare texts + entries lists for indexing.
@@ -332,17 +333,22 @@ def build_index_from_folder(
     Args:
         folder: Path to folder containing XML files
         progress_callback: Optional callback for status updates
+        preloaded_entries: Optional pre-scanned entries to use instead of rescanning.
+                          If provided, skips the folder scan and uses these directly.
 
     Returns:
         Tuple of (texts, entries) where texts are StrOrigin values
         and entries are full entry dicts
     """
-    from .indexing import scan_folder_for_entries_with_context
+    if preloaded_entries is not None:
+        all_entries_list = preloaded_entries
+    else:
+        from .indexing import scan_folder_for_entries_with_context
 
-    if progress_callback:
-        progress_callback(f"Scanning {folder.name} for entries...")
+        if progress_callback:
+            progress_callback(f"Scanning {folder.name} for entries...")
 
-    all_entries_list, _, _, _, _ = scan_folder_for_entries_with_context(folder, progress_callback)
+        all_entries_list, _, _, _, _ = scan_folder_for_entries_with_context(folder, progress_callback)
 
     texts = []
     entries = []

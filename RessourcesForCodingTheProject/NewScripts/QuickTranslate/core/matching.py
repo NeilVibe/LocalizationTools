@@ -352,8 +352,11 @@ def _quadruple_fallback_fuzzy(
     """
     Quadruple Fallback with SBERT fuzzy StrOrigin matching.
 
-    Instead of exact StrOrigin lookup via index keys, this encodes each
-    correction's str_origin with the SBERT model, searches FAISS for the
+    OPTIMIZED: Batch encodes ALL queries upfront in a single model.encode() call,
+    then batch searches FAISS for ALL queries at once.
+
+    Instead of exact StrOrigin lookup via index keys, this encodes all
+    correction str_origins with the SBERT model, searches FAISS for the
     top-K candidates above threshold, then filters those candidates through
     the level criteria (file_relpath, adjacency_hash).
 
@@ -386,25 +389,44 @@ def _quadruple_fallback_fuzzy(
     k = 10  # Search top-K candidates per query
     total = len(corrections)
 
+    # Phase 1: Collect all valid str_origin texts and their indices
+    logger.info(f"Fuzzy quadruple fallback: collecting {total} queries...")
+    valid_indices = []  # Indices into corrections list
+    valid_texts = []    # Corresponding str_origin texts
+
     for ci, c in enumerate(corrections):
         str_origin = c.get("str_origin", "").strip()
-        if not str_origin:
+        if str_origin:
+            valid_indices.append(ci)
+            valid_texts.append(str_origin)
+        else:
             not_found += 1
-            continue
 
-        if ci % 100 == 0:
-            logger.info(f"Fuzzy quadruple fallback: {ci+1}/{total}")
+    if not valid_texts:
+        logger.info("No valid queries to process")
+        return matched, not_found, level_counts
 
-        # Encode query and search FAISS
-        query_embedding = model.encode([str_origin], convert_to_numpy=True)
-        query_embedding = np.ascontiguousarray(query_embedding, dtype=np.float32)
-        faiss_lib.normalize_L2(query_embedding)
+    # Phase 2: Batch encode ALL queries in one call
+    logger.info(f"Fuzzy quadruple fallback: batch encoding {len(valid_texts)} queries...")
+    all_embeddings = model.encode(valid_texts, convert_to_numpy=True, show_progress_bar=False)
+    all_embeddings = np.ascontiguousarray(all_embeddings, dtype=np.float32)
+    faiss_lib.normalize_L2(all_embeddings)
 
-        distances, indices_arr = index.search(query_embedding, k)
+    # Phase 3: Batch search FAISS for ALL queries at once
+    logger.info(f"Fuzzy quadruple fallback: batch FAISS search for {len(valid_texts)} queries...")
+    all_distances, all_indices = index.search(all_embeddings, k)
 
-        # Collect candidates above threshold, sorted by score (descending)
+    # Phase 4: Process results for each query
+    logger.info(f"Fuzzy quadruple fallback: processing {len(valid_texts)} results...")
+    for qi, ci in enumerate(valid_indices):
+        c = corrections[ci]
+
+        if qi % 500 == 0 and qi > 0:
+            logger.info(f"Fuzzy quadruple fallback: processed {qi}/{len(valid_texts)}")
+
+        # Collect candidates above threshold from pre-computed FAISS results
         candidates = []
-        for score, idx in zip(distances[0], indices_arr[0]):
+        for score, idx in zip(all_distances[qi], all_indices[qi]):
             if idx < 0 or idx >= len(entries):
                 continue
             if score >= threshold:
@@ -468,6 +490,7 @@ def _quadruple_fallback_fuzzy(
         matched.append(enriched)
         level_counts[match_level] += 1
 
+    logger.info(f"Fuzzy quadruple fallback complete: {len(matched)} matched, {not_found} not found")
     return matched, not_found, level_counts
 
 
@@ -614,37 +637,36 @@ def find_matches_strict_fuzzy(
         # Batch encode all queries for this StringID
         query_texts = [c.get("str_origin", "").strip() for c in corr_group]
 
-        # Standard FAISS workflow on the StringID pool (like KRSIMILAR):
-        # 1. Encode pool texts
-        # 2. Normalize with faiss.normalize_L2
-        # 3. Build FAISS index from pool
-        # 4. Encode queries, normalize
-        # 5. Search the pool index
-
-        # Encode pool
+        # Encode pool and queries, normalize for cosine similarity
         pool_embeddings = fuzzy_model.encode(pool_texts, show_progress_bar=False, convert_to_numpy=True)
         pool_embeddings = np.ascontiguousarray(pool_embeddings, dtype=np.float32)
         faiss_lib.normalize_L2(pool_embeddings)
 
-        # Build FAISS index for this StringID's pool
-        dim = pool_embeddings.shape[1]
-        pool_index = faiss_lib.IndexFlatIP(dim)
-        pool_index.add(pool_embeddings)
-
-        # Encode queries
         query_embeddings = fuzzy_model.encode(query_texts, show_progress_bar=False, convert_to_numpy=True)
         query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
         faiss_lib.normalize_L2(query_embeddings)
 
-        # Search pool index for each query
+        # OPTIMIZATION: Use numpy for small pools, FAISS for large pools
+        # Already normalized, so dot product = cosine similarity
+        FAISS_THRESHOLD = 100
+
+        if len(pool) < FAISS_THRESHOLD:
+            # Direct numpy: scores matrix is (num_queries x pool_size)
+            scores = query_embeddings @ pool_embeddings.T
+            best_scores = scores.max(axis=1)  # Best score per query
+        else:
+            # FAISS batched search for large pools
+            dim = pool_embeddings.shape[1]
+            pool_index = faiss_lib.IndexFlatIP(dim)
+            pool_index.add(pool_embeddings)
+            distances, _ = pool_index.search(query_embeddings, 1)  # ALL queries at once
+            best_scores = distances[:, 0]  # Flatten to 1D
+
+        # Process results
         group_matched = 0
         group_not_found = 0
         for qi, c in enumerate(corr_group):
-            query_emb = query_embeddings[qi:qi+1]
-            distances, indices_arr = pool_index.search(query_emb, 1)  # Get best match
-
-            best_score = distances[0][0]
-            if best_score >= fuzzy_threshold:
+            if best_scores[qi] >= fuzzy_threshold:
                 matched.append(c)
                 group_matched += 1
             else:

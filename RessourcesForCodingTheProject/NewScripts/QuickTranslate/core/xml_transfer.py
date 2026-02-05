@@ -931,10 +931,16 @@ def _prematch_strict_fuzzy(
                     sid_to_origins[sid] = []
                 sid_to_origins[sid].append((text, entry))
 
+        import numpy as np
+
         matched = []
         unmatched_count = 0
 
-        for c in corrections:
+        # Group corrections by StringID for batch processing
+        sid_to_corrections = {}  # {StringID: [(index, correction, src_origin), ...]}
+        no_origin_matches = []   # Corrections without StrOrigin (direct match)
+
+        for idx, c in enumerate(corrections):
             src_sid = c.get("string_id", "")
             src_origin = c.get("str_origin", "")
 
@@ -947,39 +953,49 @@ def _prematch_strict_fuzzy(
                 unmatched_count += 1
                 continue
 
-            # Step 2: Fuzzy StrOrigin verification among entries with same StringID
-            candidates = sid_to_origins[src_sid]
-
             if not src_origin:
                 # No StrOrigin to verify - just use first candidate
                 enriched = {**c, "fuzzy_target_string_id": src_sid}
-                matched.append(enriched)
+                no_origin_matches.append(enriched)
                 continue
 
-            # Encode source origin
-            import numpy as np
-            src_embedding = model.encode([src_origin], normalize_embeddings=True)
+            # Group by StringID for batch processing
+            if src_sid not in sid_to_corrections:
+                sid_to_corrections[src_sid] = []
+            sid_to_corrections[src_sid].append((idx, c, src_origin))
 
-            best_score = -1.0
-            best_entry = None
+        # Add all no-origin matches directly
+        matched.extend(no_origin_matches)
 
-            for cand_text, cand_entry in candidates:
-                cand_embedding = model.encode([cand_text], normalize_embeddings=True)
-                # Cosine similarity (already normalized)
-                score = float(np.dot(src_embedding[0], cand_embedding[0]))
-                if score > best_score:
-                    best_score = score
-                    best_entry = cand_entry
+        # Process each StringID group with batch encoding
+        for src_sid, correction_group in sid_to_corrections.items():
+            candidates = sid_to_origins[src_sid]
 
-            if best_score >= threshold and best_entry is not None:
-                enriched = {
-                    **c,
-                    "fuzzy_target_string_id": src_sid,
-                    "fuzzy_score": best_score,
-                }
-                matched.append(enriched)
-            else:
-                unmatched_count += 1
+            # Batch encode all candidate texts for this StringID
+            cand_texts = [cand_text for cand_text, cand_entry in candidates]
+            cand_embeddings = model.encode(cand_texts, normalize_embeddings=True)
+
+            # Batch encode all query texts for this StringID group
+            query_texts = [src_origin for idx, c, src_origin in correction_group]
+            query_embeddings = model.encode(query_texts, normalize_embeddings=True)
+
+            # Compute similarity matrix: (num_queries x num_candidates)
+            scores = query_embeddings @ cand_embeddings.T
+
+            # Find best match for each correction in the group
+            for i, (idx, c, src_origin) in enumerate(correction_group):
+                best_cand_idx = int(np.argmax(scores[i]))
+                best_score = float(scores[i, best_cand_idx])
+
+                if best_score >= threshold:
+                    enriched = {
+                        **c,
+                        "fuzzy_target_string_id": src_sid,
+                        "fuzzy_score": best_score,
+                    }
+                    matched.append(enriched)
+                else:
+                    unmatched_count += 1
 
         logger.info(
             f"Strict+fuzzy pre-match: {len(matched)}/{len(corrections)} matched "
