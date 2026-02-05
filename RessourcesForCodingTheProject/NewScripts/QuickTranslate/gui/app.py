@@ -58,6 +58,9 @@ from core import (
     extract_failed_from_transfer_results,
     generate_failure_report_excel,
     check_xlsxwriter_available,
+    # Missing translation finder
+    find_missing_translations_per_language,
+    format_report_summary,
 )
 from core.indexing import scan_folder_for_entries, scan_folder_for_entries_with_context
 from core.fuzzy_matching import (
@@ -352,6 +355,19 @@ class QuickTranslateApp:
                  font=('Segoe UI', 9, 'bold'), bg='#f0ad4e', fg='white',
                  relief='flat', padx=10, cursor='hand2')
         self.korean_miss_btn.pack(side=tk.RIGHT)
+
+        # Missing Translations - Find Korean in Target MISSING from Source (by StrOrigin+StringId key)
+        missing_trans_row = tk.Frame(quick_frame, bg='#f0f0f0')
+        missing_trans_row.pack(fill=tk.X, pady=(6, 0))
+        tk.Label(missing_trans_row, text="", font=('Segoe UI', 10), bg='#f0f0f0',
+                width=10, anchor='w').pack(side=tk.LEFT)
+        tk.Label(missing_trans_row, text="Korean in Target MISSING from Source by (StrOrigin, StringId) - per-language XML + Excel report",
+                font=('Segoe UI', 8), bg='#f0f0f0', fg='#888').pack(side=tk.LEFT, padx=(0, 8))
+        self.missing_trans_btn = tk.Button(missing_trans_row, text="Find Missing Translations",
+                 command=self._find_missing_translations,
+                 font=('Segoe UI', 9, 'bold'), bg='#9b59b6', fg='white',
+                 relief='flat', padx=10, cursor='hand2')
+        self.missing_trans_btn.pack(side=tk.RIGHT)
 
         # === Settings Section ===
         settings_frame = tk.LabelFrame(main, text="Settings", font=('Segoe UI', 10, 'bold'),
@@ -1503,6 +1519,153 @@ class QuickTranslateApp:
 
         except Exception as e:
             messagebox.showerror("Error", f"Extraction failed:\n{e}")
+            self._log(f"ERROR: {e}", 'error')
+            self._update_status(f"Error: {e}")
+            import traceback
+            traceback.print_exc()
+
+        finally:
+            self._enable_buttons()
+
+    def _find_missing_translations(self):
+        """
+        Find Korean strings in Target that are MISSING from Source by (StrOrigin, StringId) key.
+        Generates per-language XML files + Excel summary report.
+        """
+        # Validate source (file or folder)
+        source_path = self.source_path.get().strip()
+        if not source_path:
+            messagebox.showwarning("Warning", "Please select a Source file or folder (the reference data).")
+            return
+
+        source = Path(source_path)
+        if not source.exists():
+            messagebox.showerror("Error", f"Source not found:\n{source}")
+            return
+
+        # Validate target (folder with languagedata_*.xml files)
+        target_path = self.target_path.get().strip()
+        if not target_path:
+            # Default to LOC folder from config
+            target_path = str(config.LOC_FOLDER)
+            self.target_path.set(target_path)
+
+        target = Path(target_path)
+        if not target.exists():
+            messagebox.showerror("Error", f"Target not found:\n{target}")
+            return
+
+        if not target.is_dir():
+            messagebox.showwarning("Warning",
+                "Target must be a folder containing languagedata_*.xml files.\n\n"
+                "Example: LOC folder with languagedata_FRE.xml, languagedata_GER.xml, etc.")
+            return
+
+        # Check for languagedata files
+        lang_files = list(target.glob("languagedata_*.xml"))
+        if not lang_files:
+            messagebox.showwarning("Warning",
+                f"No languagedata_*.xml files found in:\n{target}\n\n"
+                "Please select a folder with languagedata_FRE.xml, languagedata_GER.xml, etc.")
+            return
+
+        # Ask user for output directory
+        output_dir = filedialog.askdirectory(
+            title="Select Output Directory for Missing Translation Reports",
+            initialdir=str(Path(__file__).parent.parent / "MissingTranslationReports")
+        )
+
+        if not output_dir:
+            return  # User cancelled
+
+        self._disable_buttons()
+        self.progress_value.set(0)
+        self._clear_log()
+
+        self._log("=== Find Missing Translations ===", 'header')
+        self._log(f"Source: {source}", 'info')
+        self._log(f"Target: {target} ({len(lang_files)} language files)", 'info')
+        self._log(f"Output: {output_dir}", 'info')
+        self._log("", 'info')
+        self._log("Logic: Find Korean in Target MISSING from Source by (StrOrigin, StringId) key", 'info')
+
+        # Optional: export filtering
+        export_folder = None
+        filter_prefixes = None
+        if config.EXPORT_FOLDER.exists():
+            export_folder = str(config.EXPORT_FOLDER)
+            filter_prefixes = ["System/MultiChange", "System/Gimmick"]
+            self._log(f"Export filter enabled: {filter_prefixes}", 'info')
+
+        try:
+            def progress_cb(msg, pct):
+                self._update_status(msg)
+                self.progress_value.set(pct)
+                self.root.update()
+
+            self._update_status("Finding missing translations...")
+
+            # Call the per-language finder
+            report = find_missing_translations_per_language(
+                source_path=str(source),
+                target_path=str(target),
+                output_dir=output_dir,
+                export_folder=export_folder,
+                filter_prefixes=filter_prefixes,
+                progress_cb=progress_cb
+            )
+
+            self.progress_value.set(100)
+
+            # Log summary
+            self._log("", 'info')
+            self._log("=== RESULTS ===", 'header')
+            self._log(f"Source keys (StrOrigin, StringId): {report.total_source_keys:,}", 'info')
+            self._log(f"Target Korean entries: {report.total_target_korean:,}", 'info')
+            self._log(f"HITS (found in source): {report.total_hits:,}", 'success')
+            self._log(f"MISSES (need translation): {report.total_misses:,}",
+                     'error' if report.total_misses > 0 else 'success')
+            self._log(f"Total Korean characters: {report.total_korean_chars:,}", 'info')
+            self._log(f"Total Korean words: {report.total_korean_words:,}", 'info')
+
+            self._log("", 'info')
+            self._log("=== PER-LANGUAGE BREAKDOWN ===", 'header')
+            for lang in sorted(report.by_language.keys()):
+                lr = report.by_language[lang]
+                self._log(f"  {lang}: {lr.misses:,} missing ({lr.total_korean_chars:,} chars, {lr.total_korean_words:,} words)", 'info')
+
+            self._log("", 'info')
+            self._log("=== OUTPUT FILES ===", 'header')
+            self._log(f"Directory: {output_dir}", 'success')
+            for lang in sorted(report.by_language.keys()):
+                lr = report.by_language[lang]
+                if lr.misses > 0:
+                    self._log(f"  MISSING_{lang}_*.xml ({lr.misses} entries)", 'info')
+            self._log(f"  MISSING_REPORT_*.xlsx (summary)", 'success')
+
+            self._update_status(f"Done! {report.total_misses:,} total missing translations")
+
+            # Print detailed report to terminal
+            print(format_report_summary(report))
+
+            # Show completion message
+            messagebox.showinfo(
+                "Missing Translations Report",
+                f"Report generated successfully!\n\n"
+                f"Languages scanned: {len(report.by_language)}\n"
+                f"Total missing: {report.total_misses:,}\n"
+                f"Korean chars: {report.total_korean_chars:,}\n"
+                f"Korean words: {report.total_korean_words:,}\n\n"
+                f"Output directory:\n{output_dir}"
+            )
+
+        except FileNotFoundError as e:
+            messagebox.showerror("Error", f"File not found:\n{e}")
+            self._log(f"ERROR: {e}", 'error')
+            self._update_status(f"Error: File not found")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed:\n{e}")
             self._log(f"ERROR: {e}", 'error')
             self._update_status(f"Error: {e}")
             import traceback

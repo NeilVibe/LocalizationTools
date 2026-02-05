@@ -93,6 +93,14 @@ from .failure_report import (
     check_xlsxwriter_available,
     FAILURE_REASONS,
 )
+from .missing_translation_finder import (
+    find_missing_translations,
+    find_missing_translations_per_language,
+    format_report_summary,
+    MissingTranslationReport,
+    LanguageMissingReport,
+    MissingEntry,
+)
 
 __all__ = [
     # text_utils
@@ -186,4 +194,11 @@ __all__ = [
     "aggregate_transfer_results",
     "check_xlsxwriter_available",
     "FAILURE_REASONS",
+    # missing_translation_finder
+    "find_missing_translations",
+    "find_missing_translations_per_language",
+    "format_report_summary",
+    "MissingTranslationReport",
+    "LanguageMissingReport",
+    "MissingEntry",
 ]
