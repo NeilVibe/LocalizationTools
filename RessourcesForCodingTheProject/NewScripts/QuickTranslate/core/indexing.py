@@ -155,8 +155,8 @@ def scan_folder_for_entries(
                 ) or ''
 
                 if string_id:
-                    # Normalize StrOrigin for matching
-                    normalized = str_origin.strip().lower()
+                    # Normalize StrOrigin for matching (same as xml_transfer.py)
+                    normalized = normalize_for_matching(str_origin)
                     key = (string_id, normalized)
                     entries[key] = {
                         "string_id": string_id,
