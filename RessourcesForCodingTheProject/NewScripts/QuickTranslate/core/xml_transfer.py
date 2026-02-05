@@ -786,7 +786,13 @@ def _prematch_fuzzy(
         if fuzzy_index is not None and fuzzy_texts is not None and fuzzy_entries is not None:
             texts, entries, index = fuzzy_texts, fuzzy_entries, fuzzy_index
         else:
-            texts, entries = build_index_from_folder(target_folder, progress_callback)
+            # CRITICAL: Extract StringIDs from corrections to filter the scan!
+            correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
+            logger.info(f"_prematch_fuzzy: Filtering to {len(correction_stringids):,} StringIDs")
+            texts, entries = build_index_from_folder(
+                target_folder, progress_callback,
+                stringid_filter=correction_stringids  # FILTER!
+            )
             if not texts:
                 logger.warning(f"No StrOrigin values in target folder: {target_folder}")
                 return corrections  # Return as-is, merge will find nothing
@@ -839,8 +845,13 @@ def _prematch_quadruple_fallback(
     from .matching import find_matches_quadruple_fallback
 
     try:
+        # CRITICAL: Extract StringIDs from corrections to filter the scan!
+        correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
+        logger.info(f"_prematch_quadruple_fallback: Filtering to {len(correction_stringids):,} StringIDs")
+
         all_entries, l1_idx, l2a_idx, l2b_idx, l3_idx = scan_folder_for_entries_with_context(
-            target_folder, progress_callback
+            target_folder, progress_callback,
+            stringid_filter=correction_stringids  # FILTER!
         )
         if not all_entries:
             logger.warning(f"No entries in target folder: {target_folder}")
@@ -916,7 +927,14 @@ def _prematch_strict_fuzzy(
         if fuzzy_texts is not None and fuzzy_entries is not None:
             texts, entries = fuzzy_texts, fuzzy_entries
         else:
-            texts, entries = build_index_from_folder(target_folder, progress_callback)
+            # CRITICAL: Extract StringIDs from corrections to filter the scan!
+            # This avoids loading 2.2M entries when we only need ~1K
+            correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
+            logger.info(f"Auto-filtering to {len(correction_stringids):,} StringIDs from corrections")
+            texts, entries = build_index_from_folder(
+                target_folder, progress_callback,
+                stringid_filter=correction_stringids
+            )
 
         if not texts:
             logger.warning(f"No StrOrigin values in target folder: {target_folder}")
@@ -1018,6 +1036,11 @@ def transfer_folder_to_folder(
     threshold: float = None,
     use_fuzzy_precision: bool = False,
     only_untranslated: bool = False,
+    # Pre-built fuzzy data (CRITICAL: avoid rebuilding full index!)
+    fuzzy_model=None,
+    fuzzy_index=None,
+    fuzzy_texts: Optional[List[str]] = None,
+    fuzzy_entries: Optional[List[dict]] = None,
 ) -> Dict:
     """
     Transfer corrections from source folder to target folder.
@@ -1100,11 +1123,16 @@ def transfer_folder_to_folder(
     # For quadruple_fallback and strict_fuzzy modes, scanning the target
     # folder and building FAISS/context indexes is expensive.  Do it once,
     # reuse for every source file.
+    #
+    # CRITICAL: If pre-built fuzzy data is passed (from GUI with filters),
+    # USE IT instead of rebuilding from scratch!
 
-    _fuzzy_model = None
-    _fuzzy_texts = None
-    _fuzzy_entries = None
-    _fuzzy_index = None
+    # Use pre-built fuzzy data if provided, otherwise initialize to None
+    _fuzzy_model = fuzzy_model
+    _fuzzy_texts = fuzzy_texts
+    _fuzzy_entries = fuzzy_entries
+    _fuzzy_index = fuzzy_index
+
     _tf_l1 = None
     _tf_l2a = None
     _tf_l2b = None
@@ -1112,6 +1140,12 @@ def transfer_folder_to_folder(
     _tf_all = None
 
     effective_threshold = threshold if threshold is not None else config.FUZZY_THRESHOLD_DEFAULT
+
+    # Log whether we're using pre-built data
+    if _fuzzy_entries is not None:
+        logger.info(f"Using pre-built fuzzy data: {len(_fuzzy_entries):,} entries (filtered)")
+    else:
+        logger.info("No pre-built fuzzy data - will build from scratch if needed")
 
     if match_mode in ("quadruple_fallback", "quadruple_fallback_fuzzy"):
         from .indexing import scan_folder_for_entries_with_context
@@ -1129,11 +1163,42 @@ def transfer_folder_to_folder(
             logger.error(f"Failed to build quadruple fallback indexes: {e}")
 
         # If quadruple_fallback_fuzzy or use_fuzzy_precision, also build FAISS index
+        # BUT skip if pre-built data was provided!
         if match_mode == "quadruple_fallback_fuzzy" or use_fuzzy_precision:
+            if _fuzzy_entries is not None and _fuzzy_model is not None:
+                logger.info("Using pre-built fuzzy index for quadruple fallback (skipping rebuild)")
+            else:
+                from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
+
+                if progress_callback:
+                    progress_callback("Building FAISS index for fuzzy quadruple fallback...")
+                try:
+                    _fuzzy_model = load_model(progress_callback)
+                    _fuzzy_texts, _fuzzy_entries = build_index_from_folder(
+                        target_folder, progress_callback
+                    )
+                    if _fuzzy_texts:
+                        _fuzzy_index = build_faiss_index(
+                            _fuzzy_texts, _fuzzy_entries, _fuzzy_model, progress_callback
+                        )
+                except Exception as e:
+                    results["errors"].append(
+                        f"Failed to build fuzzy index for quadruple fallback: {e}"
+                    )
+                    logger.error(f"Failed to build fuzzy index for quadruple fallback: {e}")
+                    use_fuzzy_precision = False  # Fall back to exact
+                    if match_mode == "quadruple_fallback_fuzzy":
+                        match_mode = "quadruple_fallback"  # Downgrade
+
+    elif match_mode == "strict_fuzzy":
+        # Use pre-built data if available, otherwise build from scratch
+        if _fuzzy_entries is not None and _fuzzy_model is not None:
+            logger.info("Using pre-built fuzzy index for strict+fuzzy (skipping rebuild)")
+        else:
             from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
 
             if progress_callback:
-                progress_callback("Building FAISS index for fuzzy quadruple fallback...")
+                progress_callback("Building fuzzy index for strict+fuzzy (once for all files)...")
             try:
                 _fuzzy_model = load_model(progress_callback)
                 _fuzzy_texts, _fuzzy_entries = build_index_from_folder(
@@ -1143,34 +1208,11 @@ def transfer_folder_to_folder(
                     _fuzzy_index = build_faiss_index(
                         _fuzzy_texts, _fuzzy_entries, _fuzzy_model, progress_callback
                     )
+                else:
+                    logger.warning(f"No StrOrigin values in target folder: {target_folder}")
             except Exception as e:
-                results["errors"].append(
-                    f"Failed to build fuzzy index for quadruple fallback: {e}"
-                )
-                logger.error(f"Failed to build fuzzy index for quadruple fallback: {e}")
-                use_fuzzy_precision = False  # Fall back to exact
-                if match_mode == "quadruple_fallback_fuzzy":
-                    match_mode = "quadruple_fallback"  # Downgrade
-
-    elif match_mode == "strict_fuzzy":
-        from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
-
-        if progress_callback:
-            progress_callback("Building fuzzy index for strict+fuzzy (once for all files)...")
-        try:
-            _fuzzy_model = load_model(progress_callback)
-            _fuzzy_texts, _fuzzy_entries = build_index_from_folder(
-                target_folder, progress_callback
-            )
-            if _fuzzy_texts:
-                _fuzzy_index = build_faiss_index(
-                    _fuzzy_texts, _fuzzy_entries, _fuzzy_model, progress_callback
-                )
-            else:
-                logger.warning(f"No StrOrigin values in target folder: {target_folder}")
-        except Exception as e:
-            results["errors"].append(f"Failed to build fuzzy index for strict+fuzzy: {e}")
-            logger.error(f"Failed to build fuzzy index for strict+fuzzy: {e}")
+                results["errors"].append(f"Failed to build fuzzy index for strict+fuzzy: {e}")
+                logger.error(f"Failed to build fuzzy index for strict+fuzzy: {e}")
 
     # ─── Per-file loop ─────────────────────────────────────────────────
 
@@ -1426,8 +1468,15 @@ def transfer_file_to_file(
                 load_model, build_index_from_folder, build_faiss_index,
             )
             try:
+                # CRITICAL: Extract StringIDs from corrections to filter the scan!
+                correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
+                logger.info(f"File-to-file: Filtering to {len(correction_stringids):,} StringIDs")
+
                 fuzzy_model = load_model()
-                fuzzy_texts, fuzzy_entries = build_index_from_folder(target_folder)
+                fuzzy_texts, fuzzy_entries = build_index_from_folder(
+                    target_folder,
+                    stringid_filter=correction_stringids  # FILTER!
+                )
                 if fuzzy_texts:
                     fuzzy_index = build_faiss_index(
                         fuzzy_texts, fuzzy_entries, fuzzy_model
