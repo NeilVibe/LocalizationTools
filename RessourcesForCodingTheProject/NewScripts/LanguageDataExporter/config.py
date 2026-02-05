@@ -123,24 +123,22 @@ except ImportError:
     # Fallback if utils not available
     ASIAN_LANGUAGES = {"zho-cn", "zho-tw", "jpn"}
 
+    # Official suffixes from LOC folder: ENG, FRE, GER, ITA, JPN, KOR, POL, POR-BR, RUS, SPA-ES, SPA-MX, TUR, ZHO-CN, ZHO-TW
     LANGUAGE_NAMES = {
         "eng": "ENG",
         "fre": "FRE",
         "ger": "GER",
-        "spa": "SPA",
-        "por": "POR",
         "ita": "ITA",
-        "rus": "RUS",
-        "tur": "TUR",
-        "pol": "POL",
-        "zho-cn": "ZHO-CN",
-        "zho-tw": "ZHO-TW",
         "jpn": "JPN",
         "kor": "KOR",
-        "tha": "THA",
-        "vie": "VIE",
-        "ind": "IND",
-        "msa": "MSA",
+        "pol": "POL",
+        "por-br": "POR-BR",
+        "rus": "RUS",
+        "spa-es": "SPA-ES",
+        "spa-mx": "SPA-MX",
+        "tur": "TUR",
+        "zho-cn": "ZHO-CN",
+        "zho-tw": "ZHO-TW",
     }
 
 # =============================================================================
