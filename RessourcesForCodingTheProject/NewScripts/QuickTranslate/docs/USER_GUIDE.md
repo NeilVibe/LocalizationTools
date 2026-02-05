@@ -1,6 +1,6 @@
 # QuickTranslate User Guide
 
-**Version 3.3.0** | February 2026 | LocaNext Project
+**Version 3.4.0** | February 2026 | LocaNext Project
 
 ---
 
@@ -638,7 +638,52 @@ The full transfer tree lets you verify:
 3. **Target mapping correct:** Each file goes to the right `languagedata_*.xml`
 4. **Skip warnings visible:** Know before transferring if any files will be skipped
 
-## 6.9 Language Auto-Discovery
+## 6.10 Transfer Scope Option (NEW in v3.4.0)
+
+Choose which entries to transfer based on their current translation state.
+
+### Location in GUI
+
+In the **Match Type** section, two radio buttons control transfer scope:
+
+```
+Transfer Scope:  ( ) ALL    ( ) Untranslated only
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| **ALL** | Transfer all corrections regardless of existing translation |
+| **Untranslated only** | Skip entries where target `Str` is not Korean (already translated) |
+
+### How "Untranslated only" Works
+
+1. QuickTranslate reads the target XML file
+2. For each correction, checks if target `Str` contains Korean characters
+3. If `Str` is Korean (untranslated): Apply the correction
+4. If `Str` is NOT Korean (already translated): Skip and log as "Skipped: already translated"
+
+### When to Use Each Option
+
+| Scenario | Recommended Option |
+|----------|-------------------|
+| Fresh batch of corrections | ALL |
+| Re-running corrections after partial success | Untranslated only |
+| Overwriting existing translations intentionally | ALL |
+| Filling in gaps only | Untranslated only |
+
+### Example Log Output
+
+```
+Skipped: already translated (target has non-Korean text)
+  StringID: UI_Button_001
+  Target Str: "OK Button" (not Korean)
+```
+
+---
+
+## 6.11 Language Auto-Discovery
 
 QuickTranslate automatically discovers available languages from your LOC folder.
 
@@ -865,10 +910,30 @@ When transfer has failures (not found, skipped), detailed reports are automatica
 
 **Saved to:** Source folder (same location as your corrections)
 
-#### XML Failure Report
+#### Per-Language Failure XML Files (NEW in v3.4.0)
+**Filename:** `FAILED_<LANG>_YYYYMMDD_HHMMSS.xml` (e.g., `FAILED_FRE_20260205_120000.xml`)
+
+Separate XML files are generated **per language** with clean LocStr format:
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <LocStr StringId="UI_001" StrOrigin="확인" Str="OK" Category="UI"/>
+  <LocStr StringId="UI_002" StrOrigin="취소" Str="Annuler" Category="UI"/>
+</root>
+```
+
+**Key features:**
+- **Exact attribute preservation:** All original attributes (StringId, StrOrigin, Str, Category, etc.) are preserved exactly as-is
+- **No metadata:** Clean format without FailReason, SourceFile, or timestamp attributes on LocStr elements
+- **Per-language separation:** Each language gets its own file (FAILED_FRE, FAILED_GER, FAILED_SPA, etc.)
+- **Direct re-import:** Files can be used directly as correction input for the next transfer attempt
+
+**Use case:** Re-import failed entries directly back into the correction workflow without manual cleanup
+
+#### Combined Failure Report (Legacy)
 **Filename:** `FAILED_TO_MERGE_YYYYMMDD_HHMMSS.xml`
 
-Groups all failed LocStr entries by source file:
+Groups all failed LocStr entries by source file with metadata:
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <FailedMerges timestamp="2026-02-05T14:30:00" total="45">
@@ -880,7 +945,7 @@ Groups all failed LocStr entries by source file:
 </FailedMerges>
 ```
 
-**Use case:** Re-import failed entries for review or manual fixing
+**Use case:** Detailed analysis of failures with reason tracking
 
 #### Excel Failure Report
 **Filename:** `FailureReport_YYYYMMDD_HHMMSS.xlsx`
@@ -953,6 +1018,28 @@ p4 sync //depot/cd/mainline/resource/GameData/stringtable/export__/...
 1. Verify StringIDs exist in target
 2. Check StrOrigin text matches exactly
 3. Use STRICT mode for non-SCRIPT strings
+
+### "STRORIGIN_MISMATCH" (NEW in v3.4.0)
+**Cause:** StringID exists in target XML but StrOrigin text doesn't match (STRICT mode only)
+
+**Message:** `StrOrigin mismatch (StringID exists but source text differs)`
+
+**Why this happens:**
+- The Korean source text (StrOrigin) was updated in the game data
+- Your correction file has an older version of the StrOrigin
+- StringID is correct, but the exact tuple match fails
+
+**Solutions:**
+1. Update your correction file with the current StrOrigin from target
+2. Use **StringID-Only mode** if StrOrigin matching is not required
+3. Check if the StrOrigin has special characters or whitespace differences
+
+**Example:**
+```
+Correction: StringID="UI_001", StrOrigin="확인 버튼"
+Target:     StringID="UI_001", StrOrigin="확인버튼"     <- space removed
+Result:     STRORIGIN_MISMATCH (StringID found, StrOrigin differs)
+```
 
 ### "Transfer completed but file unchanged"
 **Cause:** Corrections already applied or no differences
@@ -1084,6 +1171,20 @@ python main.py --help       # Show help
 
 ## 12.3 Changelog
 
+### Version 3.4.0 (February 2026)
+
+**New Features:**
+- Per-language failure XML files: When transfer fails, separate `FAILED_<LANG>_YYYYMMDD_HHMMSS.xml` files are generated per language with clean LocStr format (no metadata, exact attribute preservation)
+- STRORIGIN_MISMATCH diagnostic: STRICT mode now shows specific "StrOrigin mismatch" error instead of generic "StringID not found" when StringID exists but StrOrigin differs
+- Transfer Scope option: Choose between "ALL" (transfer everything) and "Untranslated only" (skip entries with non-Korean target text)
+
+**Bug Fixes:**
+- Fixed StringID matching bug: Added `.strip()` normalization to prevent whitespace-related match failures
+
+**Technical:**
+- Failure XML files use `<root><LocStr .../></root>` format for direct re-import
+- STRORIGIN_MISMATCH tracked separately in failure reports for better diagnostics
+
 ### Version 3.1.0 (February 2026)
 
 **New Features:**
@@ -1155,7 +1256,7 @@ python main.py --help       # Show help
 
 <div align="center">
 
-**QuickTranslate** | Version 3.1.0 | LocaNext Project
+**QuickTranslate** | Version 3.4.0 | LocaNext Project
 
 *Lookup & Transfer - Two Tools in One*
 
