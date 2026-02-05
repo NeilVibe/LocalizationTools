@@ -22,3 +22,4 @@ Build: Automatic Failure Reports (XML + Excel) on transfer failures
 Build: StringID column in Excel report now TEXT format
 Build: Fix CRITICAL StringID matching bug - add .strip() everywhere
 Build: STRORIGIN_MISMATCH diagnostic + StrOrigin normalization fix
+Build: Exact LocStr preservation in failure reports
