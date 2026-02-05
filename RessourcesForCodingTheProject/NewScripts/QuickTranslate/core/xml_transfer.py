@@ -1018,15 +1018,20 @@ def transfer_folder_to_folder(
     # This matches what validation/tree display uses
     scan_result = scan_source_for_languages(source_folder)
 
-    # Collect ALL files from all detected languages
+    # Build file->language mapping (preserves language info from folder names)
+    file_to_lang = {}  # {Path: lang_code}
     all_sources = []
     for lang, files in scan_result.lang_files.items():
-        all_sources.extend(files)
+        for f in files:
+            file_to_lang[f] = lang
+            all_sources.append(f)
 
     # Also add any unrecognized files (direct XML/Excel in source folder)
     for item in scan_result.unrecognized:
         if item.is_file() and item.suffix.lower() in (".xml", ".xlsx", ".xls"):
             all_sources.append(item)
+            # For unrecognized, try to extract from filename
+            file_to_lang[item] = None
 
     total = len(all_sources)
 
@@ -1129,13 +1134,19 @@ def transfer_folder_to_folder(
             logger.info(f"No corrections found in {source_file.name}")
             continue
 
-        # Extract language code from filename
-        name = source_file.stem.lower()
-        lang_code = None
-        if name.startswith("languagedata_"):
-            lang_code = name[13:]
-        elif "_" in name:
-            lang_code = name.split("_")[-1]
+        # Get language code from scanner mapping (folder-based detection)
+        # Falls back to filename extraction for unrecognized files
+        lang_code = file_to_lang.get(source_file)
+        if not lang_code:
+            # Fallback: try to extract from filename
+            name = source_file.stem.lower()
+            if name.startswith("languagedata_"):
+                lang_code = name[13:]
+            elif "_" in name:
+                # Only use if it looks like a language code (2-6 chars, possibly hyphenated)
+                last_part = name.split("_")[-1]
+                if 2 <= len(last_part) <= 6 or "-" in last_part:
+                    lang_code = last_part
 
         # Find target XML
         target_xml = None
