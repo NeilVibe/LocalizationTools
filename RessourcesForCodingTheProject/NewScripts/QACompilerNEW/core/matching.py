@@ -22,7 +22,7 @@ from datetime import datetime
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import TRANSLATION_COLS, ITEM_DESC_COLS, SCRIPT_COLS, SCRIPT_TYPE_CATEGORIES
-from core.excel_ops import find_column_by_header
+from core.excel_ops import find_column_by_header, preload_worksheet_data
 
 
 # =============================================================================
@@ -364,6 +364,7 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
     Build O(1) lookup index for master worksheet.
 
     This enables efficient content-based matching during compilation.
+    OPTIMIZED: Uses preloaded tuples instead of ws.cell() row by row.
 
     Args:
         master_ws: Master worksheet
@@ -383,11 +384,16 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
     - Script: primary=(translation, eventname), fallback=eventname
     """
     category_lower = category.lower()
-    stringid_col = find_column_by_header(master_ws, "STRINGID")
+
+    # FAST PRELOAD: Load all data as tuples
+    col_idx, data_rows = preload_worksheet_data(master_ws)
+
+    # Get column indices from preloaded header map
+    stringid_idx = col_idx.get("STRINGID")
 
     # GRANULAR DEBUG: Log index building start
-    _match_log(f"BUILD INDEX: category={category}, is_english={is_english}, max_row={master_ws.max_row}")
-    _match_log(f"  STRINGID column found: {stringid_col}")
+    _match_log(f"BUILD INDEX: category={category}, is_english={is_english}, rows={len(data_rows)}")
+    _match_log(f"  STRINGID column index: {stringid_idx}")
 
     index = {
         "primary": {},
@@ -395,76 +401,83 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
         "consumed": set(),
     }
 
+    def get_val(row_tuple, header: str, fallback_col: int = None) -> str:
+        """Get value from tuple by header name or fallback column."""
+        idx = col_idx.get(header.upper())
+        if idx is not None and idx < len(row_tuple):
+            val = row_tuple[idx]
+            return str(val).strip() if val else ""
+        if fallback_col is not None and fallback_col - 1 < len(row_tuple):
+            val = row_tuple[fallback_col - 1]
+            return str(val).strip() if val else ""
+        return ""
+
     if category_lower == "contents":
-        # Contents: index by INSTRUCTIONS (col 2)
-        for row in range(2, master_ws.max_row + 1):
-            instructions = str(master_ws.cell(row, 2).value or "").strip()
+        # Contents: index by INSTRUCTIONS (col 2 = index 1)
+        for row_idx, row_tuple in enumerate(data_rows, start=2):  # row_idx is 1-based Excel row
+            instructions = get_val(row_tuple, "INSTRUCTIONS", 2)
             if instructions and instructions not in index["primary"]:
-                index["primary"][instructions] = row
+                index["primary"][instructions] = row_idx
 
     elif category_lower == "item":
         # Item: index by (ItemName, ItemDesc, STRINGID) and (ItemName, ItemDesc)
         name_col = get_translation_column(category, is_english)
         desc_col = get_item_desc_column(is_english)
 
-        for row in range(2, master_ws.max_row + 1):
-            stringid = sanitize_stringid_for_match(master_ws.cell(row, stringid_col).value) if stringid_col else ""
-            item_name = str(master_ws.cell(row, name_col).value or "").strip()
-            item_desc = str(master_ws.cell(row, desc_col).value or "").strip()
+        for row_idx, row_tuple in enumerate(data_rows, start=2):
+            stringid = sanitize_stringid_for_match(get_val(row_tuple, "STRINGID")) if stringid_idx is not None else ""
+            item_name = get_val(row_tuple, "ITEMNAME(ENG)", name_col) or get_val(row_tuple, "ITEMNAME", name_col)
+            item_desc = get_val(row_tuple, "ITEMDESC(ENG)", desc_col) or get_val(row_tuple, "ITEMDESC", desc_col)
 
             if item_name:
                 # Primary: name + desc + stringid
                 if stringid:
                     key = (item_name, item_desc, stringid)
                     if key not in index["primary"]:
-                        index["primary"][key] = row
+                        index["primary"][key] = row_idx
 
                 # Fallback: name + desc only
                 fallback_key = (item_name, item_desc)
-                index["fallback"][fallback_key].append(row)
+                index["fallback"][fallback_key].append(row_idx)
 
     elif category_lower in SCRIPT_TYPE_CATEGORIES:
         # Sequencer/Dialog: index by (Translation, EventName) with EventName-only fallback
-        # DIFFERENT from standard: Fallback is EventName ONLY, not Translation only
-        # Use NAME-based detection ONLY (no position fallback!)
-        trans_col = get_translation_column_by_name(master_ws, category)
-        eventname_col = find_column_by_header(master_ws, "EventName")
+        # Get indices for script columns
+        trans_idx = col_idx.get("TEXT") or col_idx.get("TRANSLATION")
+        eventname_idx = col_idx.get("EVENTNAME")
 
-        for row in range(2, master_ws.max_row + 1):
-            # For Script: EventName is primary, STRINGID is fallback
-            eventname = ""
-            if eventname_col:
-                eventname = str(master_ws.cell(row, eventname_col).value or "").strip()
-            stringid = eventname if eventname else (sanitize_stringid_for_match(master_ws.cell(row, stringid_col).value) if stringid_col else "")
-            translation = str(master_ws.cell(row, trans_col).value or "").strip() if trans_col else ""
+        for row_idx, row_tuple in enumerate(data_rows, start=2):
+            eventname = get_val(row_tuple, "EVENTNAME") if eventname_idx is not None else ""
+            stringid = eventname if eventname else (sanitize_stringid_for_match(get_val(row_tuple, "STRINGID")) if stringid_idx is not None else "")
+            translation = get_val(row_tuple, "TEXT") or get_val(row_tuple, "TRANSLATION")
 
             # Primary: translation + eventname (both must match)
             if translation and eventname:
                 key = (translation, eventname)
                 if key not in index["primary"]:
-                    index["primary"][key] = row
+                    index["primary"][key] = row_idx
 
             # Fallback: EventName ONLY (NOT translation only!)
             if eventname:
-                index["fallback"][eventname].append(row)
+                index["fallback"][eventname].append(row_idx)
 
     else:
         # Standard: index by (STRINGID, Translation) and Translation only
         trans_col = get_translation_column(category, is_english)
 
-        for row in range(2, master_ws.max_row + 1):
-            stringid = sanitize_stringid_for_match(master_ws.cell(row, stringid_col).value) if stringid_col else ""
-            translation = str(master_ws.cell(row, trans_col).value or "").strip()
+        for row_idx, row_tuple in enumerate(data_rows, start=2):
+            stringid = sanitize_stringid_for_match(get_val(row_tuple, "STRINGID")) if stringid_idx is not None else ""
+            translation = get_val(row_tuple, "TRANSLATION", trans_col)
 
             if translation:
                 # Primary: stringid + trans
                 if stringid:
                     key = (stringid, translation)
                     if key not in index["primary"]:
-                        index["primary"][key] = row
+                        index["primary"][key] = row_idx
 
                 # Fallback: trans only
-                index["fallback"][translation].append(row)
+                index["fallback"][translation].append(row_idx)
 
     # GRANULAR DEBUG: Log index summary
     _match_log(f"  INDEX BUILT: primary_keys={len(index['primary'])}, fallback_keys={len(index['fallback'])}")

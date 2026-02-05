@@ -1123,64 +1123,80 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
             if debug:
                 print(f"    [DEBUG] Reset column group for user '{username}' to visible (TESTER_STATUS stays hidden)")
 
-        # === SINGLE-PASS DATA COLLECTION (Phase 4 optimization) ===
-        # Combine 4 separate row scans into 1 pass: comments, screenshots, tester status, manager status
+        # === FAST PRELOAD: Load all data as tuples (no ws.cell() calls!) ===
+        # This is critical for 100k+ row sheets
+        all_rows = list(ws.iter_rows(values_only=True))
+        if not all_rows:
+            print(f" empty")
+            continue
+
+        # Convert 1-based column numbers to 0-based tuple indices
+        # Column maps use 1-based Excel column numbers
+        comment_col_indices = [col - 1 for col in comment_cols]  # 0-based
         tester_status_cols = list(tester_status_cols_map.values())
+        tester_status_indices = [col - 1 for col in tester_status_cols]
         manager_status_cols = list(status_cols_map.values())
+        manager_status_indices = [col - 1 for col in manager_status_cols]
         screenshot_col_list = list(screenshot_cols_map.values())
+        screenshot_col_indices = [col - 1 for col in screenshot_col_list]
 
         rows_with_comments = set()
-        cols_with_comments = set()
-        screenshot_cols_with_content = set()  # Track which screenshot cols have data
+        cols_with_comments = set()  # Store 1-based column numbers
+        screenshot_cols_with_content = set()  # Store 1-based column numbers
         rows_non_issue_by_tester = set()
         rows_with_issue_status = set()
         rows_resolved_by_manager = set()
 
-        TESTER_HIDE_STATUSES = {"BLOCKED", "KOREAN", "NO ISSUE", "NON-ISSUE", "NON ISSUE"}
         MANAGER_HIDE_STATUSES = {"FIXED", "NON-ISSUE", "NON ISSUE"}
 
-        for row in range(2, ws.max_row + 1):
-            # Check comment columns
-            for col in comment_cols:
-                value = ws.cell(row=row, column=col).value
-                if value is not None and str(value).strip():
-                    rows_with_comments.add(row)
-                    cols_with_comments.add(col)
-                    if debug and row <= 10:
-                        print(f"    [DEBUG] Row {row} has comment in col {col}: {repr(str(value)[:30])}")
+        # === SINGLE-PASS DATA COLLECTION using preloaded tuples ===
+        # Skip header row (index 0), start from data rows
+        for row_idx, row_tuple in enumerate(all_rows[1:], start=2):  # row_idx is 1-based Excel row
+            # Check comment columns (FAST: direct tuple access)
+            for i, col_idx in enumerate(comment_col_indices):
+                if col_idx < len(row_tuple):
+                    value = row_tuple[col_idx]
+                    if value is not None and str(value).strip():
+                        rows_with_comments.add(row_idx)
+                        cols_with_comments.add(comment_cols[i])  # Store 1-based column
+                        if debug and row_idx <= 10:
+                            print(f"    [DEBUG] Row {row_idx} has comment in col {comment_cols[i]}: {repr(str(value)[:30])}")
 
-            # Check screenshot columns
-            for col in screenshot_col_list:
-                if col not in screenshot_cols_with_content:
-                    cell_value = ws.cell(row=row, column=col).value
-                    if cell_value is not None and str(cell_value).strip():
-                        screenshot_cols_with_content.add(col)
+            # Check screenshot columns (FAST: direct tuple access)
+            for i, col_idx in enumerate(screenshot_col_indices):
+                if screenshot_col_list[i] not in screenshot_cols_with_content:
+                    if col_idx < len(row_tuple):
+                        cell_value = row_tuple[col_idx]
+                        if cell_value is not None and str(cell_value).strip():
+                            screenshot_cols_with_content.add(screenshot_col_list[i])  # Store 1-based
 
-            # Check tester status columns
+            # Check tester status columns (FAST: direct tuple access)
             has_issue = False
             has_any_tester_status = False
-            for col in tester_status_cols:
-                value = ws.cell(row=row, column=col).value
-                if value and str(value).strip():
-                    has_any_tester_status = True
-                    status_upper = str(value).strip().upper()
-                    if status_upper == "ISSUE":
-                        has_issue = True
-                        rows_with_issue_status.add(row)
-                        break
+            for col_idx in tester_status_indices:
+                if col_idx < len(row_tuple):
+                    value = row_tuple[col_idx]
+                    if value and str(value).strip():
+                        has_any_tester_status = True
+                        status_upper = str(value).strip().upper()
+                        if status_upper == "ISSUE":
+                            has_issue = True
+                            rows_with_issue_status.add(row_idx)
+                            break
             if has_any_tester_status and not has_issue:
-                rows_non_issue_by_tester.add(row)
-                if debug and row <= 20:
-                    print(f"    [DEBUG] Row {row} has tester status but no ISSUE - will hide")
+                rows_non_issue_by_tester.add(row_idx)
+                if debug and row_idx <= 20:
+                    print(f"    [DEBUG] Row {row_idx} has tester status but no ISSUE - will hide")
 
-            # Check manager status columns
-            for col in manager_status_cols:
-                value = ws.cell(row=row, column=col).value
-                if value and str(value).strip().upper() in MANAGER_HIDE_STATUSES:
-                    rows_resolved_by_manager.add(row)
-                    if debug and row <= 20:
-                        print(f"    [DEBUG] Row {row} has manager status '{value}' - will hide")
-                    break
+            # Check manager status columns (FAST: direct tuple access)
+            for col_idx in manager_status_indices:
+                if col_idx < len(row_tuple):
+                    value = row_tuple[col_idx]
+                    if value and str(value).strip().upper() in MANAGER_HIDE_STATUSES:
+                        rows_resolved_by_manager.add(row_idx)
+                        if debug and row_idx <= 20:
+                            print(f"    [DEBUG] Row {row_idx} has manager status '{value}' - will hide")
+                        break
 
         if debug:
             if rows_with_issue_status:
@@ -1288,6 +1304,8 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
     - Fixed widths for other user columns (SCREENSHOT, STATUS, TESTER_STATUS)
     - Auto-height for all rows based on content
 
+    OPTIMIZED: Uses iter_rows(values_only=True) for fast data access instead of ws.cell()
+
     Args:
         wb: Workbook
         default_row_height: Default height for single-line rows
@@ -1306,75 +1324,102 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
         sheet_cols = ws.max_column or 0
         print(f"    [{sheet_idx}/{len(data_sheets)}] {sheet_name}: {sheet_rows} rows x {sheet_cols} cols...", end="", flush=True)
 
+        # === FAST PRELOAD: Load all data as tuples for O(1) access ===
+        all_rows = list(ws.iter_rows(values_only=True))
+        if not all_rows:
+            print(f" empty")
+            continue
+
+        header_row = all_rows[0]
+        num_cols = len(header_row) if header_row else 0
+
+        # Build header map for column identification
+        header_map = {}  # 0-based index -> header string
+        comment_col_indices = []  # 0-based indices of COMMENT_* columns
+        for idx, header in enumerate(header_row):
+            if header:
+                header_str = str(header)
+                header_upper = header_str.upper()
+                header_map[idx] = (header_str, header_upper)
+                if header_upper.startswith("COMMENT_"):
+                    comment_col_indices.append(idx)
+
         # === PHASE 1: Auto-fit column widths ===
-        # Autofit ALL columns - hiding happens AFTER this, so no need to check hidden state
-        # Bonus: if user unhides a column in Excel later, it already has proper width
-        for col in range(1, ws.max_column + 1):
-            header = ws.cell(row=1, column=col).value
-            if not header:
-                continue
+        # FAST: Calculate max content length from preloaded data
+        col_max_lengths = {}  # 0-based index -> max content length
 
-            header_str = str(header)
-            header_upper = header_str.upper()  # Case-insensitive comparison
-            col_letter = get_column_letter(col)
+        # Initialize with header lengths for COMMENT columns
+        for idx in comment_col_indices:
+            header_str, _ = header_map[idx]
+            col_max_lengths[idx] = len(header_str)
 
-            # COMMENT_{User} columns: auto-width based on content
-            if header_upper.startswith("COMMENT_"):
-                max_content_len = len(header_str)  # Start with header length
-                for row in range(2, ws.max_row + 1):
-                    cell_value = ws.cell(row=row, column=col).value
+        # Scan all data rows for COMMENT columns only (skip header)
+        for row_tuple in all_rows[1:]:
+            for idx in comment_col_indices:
+                if idx < len(row_tuple):
+                    cell_value = row_tuple[idx]
                     if cell_value:
-                        # Get longest line in cell (for multi-line content)
                         lines = str(cell_value).split('\n')
                         longest_line = max(len(line) for line in lines) if lines else 0
-                        max_content_len = max(max_content_len, longest_line)
+                        if longest_line > col_max_lengths.get(idx, 0):
+                            col_max_lengths[idx] = longest_line
 
-                # Apply width with min/max bounds
-                width = min(max(max_content_len * 1.1 + 2, COMMENT_MIN_WIDTH), COMMENT_MAX_WIDTH)
+        # Apply column widths
+        for idx, (header_str, header_upper) in header_map.items():
+            col_letter = get_column_letter(idx + 1)  # Convert to 1-based
+
+            if header_upper.startswith("COMMENT_"):
+                max_len = col_max_lengths.get(idx, len(header_str))
+                width = min(max(max_len * 1.1 + 2, COMMENT_MIN_WIDTH), COMMENT_MAX_WIDTH)
                 ws.column_dimensions[col_letter].width = width
-
-            # SCREENSHOT_{User} columns: fixed width
             elif header_upper.startswith("SCREENSHOT_"):
                 ws.column_dimensions[col_letter].width = SCREENSHOT_WIDTH
-
-            # STATUS_{User} columns: fixed width
             elif header_upper.startswith("STATUS_") and not header_upper.startswith("TESTER_STATUS_"):
                 ws.column_dimensions[col_letter].width = STATUS_WIDTH
-
-            # TESTER_STATUS_{User} columns: fixed width (hidden anyway)
             elif header_upper.startswith("TESTER_STATUS_"):
                 ws.column_dimensions[col_letter].width = STATUS_WIDTH
 
-        # === PHASE 2: Auto-fit row heights (Phase 5 optimization: skip empty cells) ===
-        for row in range(1, ws.max_row + 1):
+        # Pre-compute column widths for height calculation
+        col_widths = []
+        for idx in range(num_cols):
+            col_letter = get_column_letter(idx + 1)
+            col_widths.append(ws.column_dimensions[col_letter].width or chars_per_line)
+
+        # === PHASE 2: Auto-fit row heights ===
+        # FAST: Calculate heights from preloaded data, then apply alignment in batches
+
+        # Calculate row heights from data
+        row_heights = []  # List of (row_num, height)
+        for row_idx, row_tuple in enumerate(all_rows):
+            row_num = row_idx + 1  # 1-based Excel row number
             max_lines = 1
 
-            for col in range(1, ws.max_column + 1):
-                cell = ws.cell(row=row, column=col)
-
-                # Only apply word wrap to non-empty cells or header row
-                # Empty cells don't need wrap and produce identical visual result
-                if cell.value is not None or row == 1:
-                    cell.alignment = WRAP_TOP_ALIGNMENT
-
-                # Calculate lines needed based on content
-                if cell.value:
-                    content = str(cell.value)
+            for col_idx, cell_value in enumerate(row_tuple):
+                if cell_value:
+                    content = str(cell_value)
                     explicit_lines = content.count('\n') + 1
 
-                    # Get column width for wrap calculation
-                    col_letter = get_column_letter(col)
-                    col_width = ws.column_dimensions[col_letter].width or chars_per_line
-                    effective_chars_per_line = max(int(col_width * 0.9), 10)
+                    col_width = col_widths[col_idx] if col_idx < len(col_widths) else chars_per_line
+                    effective_chars = max(int(col_width * 0.9), 10)
 
                     longest_line = max(len(line) for line in content.split('\n')) if content else 0
-                    wrapped_lines = max(1, (longest_line // effective_chars_per_line) + 1)
+                    wrapped_lines = max(1, (longest_line // effective_chars) + 1)
                     total_lines = explicit_lines + wrapped_lines - 1
                     max_lines = max(max_lines, total_lines)
 
-            # Set row height based on content (15 points per line is standard)
-            calculated_height = max_lines * default_row_height
-            # Cap at reasonable max (300 points)
-            ws.row_dimensions[row].height = min(calculated_height, 300)
+            calculated_height = min(max_lines * default_row_height, 300)
+            row_heights.append((row_num, calculated_height))
+
+        # Apply row heights and word wrap alignment
+        # NOTE: We must still use ws.cell() for WRITING alignment, but now we batch it
+        for row_num, height in row_heights:
+            ws.row_dimensions[row_num].height = height
+
+        # Apply word wrap alignment to header row and cells with content only
+        # Use iter_rows for efficient cell access
+        for row in ws.iter_rows(min_row=1, max_row=ws.max_row, max_col=num_cols):
+            for cell in row:
+                if cell.value is not None or cell.row == 1:
+                    cell.alignment = WRAP_TOP_ALIGNMENT
 
         print(f" done")
