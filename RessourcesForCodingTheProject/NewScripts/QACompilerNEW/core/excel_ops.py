@@ -25,7 +25,7 @@ from config import (
     MASTER_FOLDER_EN, MASTER_FOLDER_CN,
     IMAGES_FOLDER_EN, IMAGES_FOLDER_CN,
     CATEGORY_TO_MASTER, STATUS_OPTIONS, MANAGER_STATUS_OPTIONS,
-    TRACKER_STYLES, get_target_master_category
+    TRACKER_STYLES, get_target_master_category, SCRIPT_TYPE_CATEGORIES
 )
 
 
@@ -196,6 +196,492 @@ def find_column_by_prefix(ws, prefix: str) -> Optional[int]:
 
 
 # =============================================================================
+# TESTER DATA PRESERVATION (for master rebuild)
+# =============================================================================
+
+def extract_tester_data_from_master(
+    master_path: Path,
+    category: str,
+    is_english: bool
+) -> Dict[str, Dict[tuple, Dict[str, Dict]]]:
+    """
+    Extract all tester column data from existing master before rebuild.
+
+    This enables preserving tester work (comments, status, screenshots) when
+    rebuilding the master from a new template. Data is keyed by content so it
+    can be restored to matching rows in the new master.
+
+    Args:
+        master_path: Path to existing master file
+        category: Category name (Quest, Item, Script, etc.)
+        is_english: Whether this is EN (True) or CN (False) master
+
+    Returns:
+        Dict with structure:
+        {sheet_name: {content_key: {username: {
+            "comment": value,
+            "tester_status": value,
+            "manager_status": value,
+            "manager_comment": value,
+            "screenshot": value,
+            "screenshot_hyperlink": target
+        }}}}
+    """
+    if not master_path.exists():
+        return {}
+
+    extracted = {}
+    category_lower = category.lower()
+    is_script = category_lower in SCRIPT_TYPE_CATEGORIES
+
+    try:
+        # Use read_only=True for performance (3-5x faster)
+        wb = safe_load_workbook(master_path, read_only=True, data_only=True)
+
+        for sheet_name in wb.sheetnames:
+            if sheet_name == "STATUS":
+                continue
+
+            ws = wb[sheet_name]
+
+            # Check for empty sheet
+            if ws.max_row is None or ws.max_row < 2:
+                continue
+            if ws.max_column is None or ws.max_column < 1:
+                continue
+
+            # Build column map from headers using streaming (iter_rows)
+            header_iter = ws.iter_rows(min_row=1, max_row=1, max_col=ws.max_column, values_only=True)
+            header_tuple = next(header_iter, None)
+            if not header_tuple:
+                continue
+
+            # Find all user columns and content columns
+            col_map = {}  # header_upper -> 0-based index
+            for idx, header_val in enumerate(header_tuple):
+                if header_val:
+                    col_map[str(header_val).strip().upper()] = idx
+
+            # Identify user columns by pattern
+            user_columns = {}  # username -> {comment_idx, tester_status_idx, status_idx, manager_comment_idx, screenshot_idx}
+            for header_upper, idx in col_map.items():
+                if header_upper.startswith("COMMENT_"):
+                    username = header_upper[8:]
+                    if username not in user_columns:
+                        user_columns[username] = {}
+                    user_columns[username]["comment_idx"] = idx
+                elif header_upper.startswith("TESTER_STATUS_"):
+                    username = header_upper[14:]
+                    if username not in user_columns:
+                        user_columns[username] = {}
+                    user_columns[username]["tester_status_idx"] = idx
+                elif header_upper.startswith("STATUS_"):
+                    username = header_upper[7:]
+                    if username not in user_columns:
+                        user_columns[username] = {}
+                    user_columns[username]["status_idx"] = idx
+                elif header_upper.startswith("MANAGER_COMMENT_"):
+                    username = header_upper[16:]
+                    if username not in user_columns:
+                        user_columns[username] = {}
+                    user_columns[username]["manager_comment_idx"] = idx
+                elif header_upper.startswith("SCREENSHOT_"):
+                    username = header_upper[11:]
+                    if username not in user_columns:
+                        user_columns[username] = {}
+                    user_columns[username]["screenshot_idx"] = idx
+
+            if not user_columns:
+                continue
+
+            # Find content columns for building keys
+            # Standard: STRINGID + Translation column
+            # Item: ItemName + ItemDesc + STRINGID
+            # Script: EventName + Text
+            # Contents: INSTRUCTIONS
+
+            stringid_idx = col_map.get("STRINGID")
+            eventname_idx = col_map.get("EVENTNAME")
+            text_idx = col_map.get("TEXT") or col_map.get("TRANSLATION")
+            instructions_idx = col_map.get("INSTRUCTIONS")
+
+            # For Item category
+            itemname_eng_idx = col_map.get("ITEMNAME(ENG)")
+            itemname_loc_idx = col_map.get("ITEMNAME(LOC)")
+            itemdesc_eng_idx = col_map.get("ITEMDESC(ENG)")
+            itemdesc_loc_idx = col_map.get("ITEMDESC(LOC)")
+
+            # For standard categories (Quest, Knowledge, etc.)
+            # Translation column positions from config
+            from config import TRANSLATION_COLS, ITEM_DESC_COLS
+            trans_col_config = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3})
+            trans_col_idx = (trans_col_config["eng"] if is_english else trans_col_config["other"]) - 1  # 0-based
+
+            sheet_data = {}
+
+            # Stream through all data rows
+            for row_tuple in ws.iter_rows(min_row=2, max_col=ws.max_column, values_only=True):
+                # Build content key based on category
+                content_key = None
+
+                if category_lower == "contents":
+                    # Contents: INSTRUCTIONS column
+                    if instructions_idx is not None and instructions_idx < len(row_tuple):
+                        instructions = str(row_tuple[instructions_idx] or "").strip()
+                        if instructions:
+                            content_key = (instructions,)
+
+                elif category_lower == "item":
+                    # Item: (ItemName, ItemDesc, STRINGID)
+                    name_idx = itemname_eng_idx if is_english else itemname_loc_idx
+                    desc_idx = itemdesc_eng_idx if is_english else itemdesc_loc_idx
+                    if name_idx is not None and name_idx < len(row_tuple):
+                        item_name = str(row_tuple[name_idx] or "").strip()
+                        item_desc = ""
+                        if desc_idx is not None and desc_idx < len(row_tuple):
+                            item_desc = str(row_tuple[desc_idx] or "").strip()
+                        stringid = ""
+                        if stringid_idx is not None and stringid_idx < len(row_tuple):
+                            stringid = str(row_tuple[stringid_idx] or "").strip()
+                        if item_name:
+                            content_key = (item_name, item_desc, stringid)
+
+                elif is_script:
+                    # Script: (Text, EventName) - matches index order in matching.py
+                    eventname = ""
+                    if eventname_idx is not None and eventname_idx < len(row_tuple):
+                        eventname = str(row_tuple[eventname_idx] or "").strip()
+                    text = ""
+                    if text_idx is not None and text_idx < len(row_tuple):
+                        text = str(row_tuple[text_idx] or "").strip()
+                    if eventname or text:
+                        content_key = (text, eventname)  # Order: (text, eventname) to match build_master_index()
+
+                else:
+                    # Standard: (STRINGID, Translation)
+                    stringid = ""
+                    if stringid_idx is not None and stringid_idx < len(row_tuple):
+                        stringid = str(row_tuple[stringid_idx] or "").strip()
+                    translation = ""
+                    if trans_col_idx < len(row_tuple):
+                        translation = str(row_tuple[trans_col_idx] or "").strip()
+                    if translation:
+                        content_key = (stringid, translation)
+
+                if content_key is None:
+                    continue
+
+                # Extract tester data for each user
+                for username, cols in user_columns.items():
+                    user_data = {}
+                    has_data = False
+
+                    # Comment
+                    c_idx = cols.get("comment_idx")
+                    if c_idx is not None and c_idx < len(row_tuple):
+                        val = row_tuple[c_idx]
+                        if val is not None and str(val).strip():
+                            user_data["comment"] = val
+                            has_data = True
+
+                    # Tester status
+                    ts_idx = cols.get("tester_status_idx")
+                    if ts_idx is not None and ts_idx < len(row_tuple):
+                        val = row_tuple[ts_idx]
+                        if val is not None and str(val).strip():
+                            user_data["tester_status"] = val
+                            has_data = True
+
+                    # Manager status (STATUS_{user})
+                    ms_idx = cols.get("status_idx")
+                    if ms_idx is not None and ms_idx < len(row_tuple):
+                        val = row_tuple[ms_idx]
+                        if val is not None and str(val).strip():
+                            user_data["manager_status"] = val
+                            has_data = True
+
+                    # Manager comment
+                    mc_idx = cols.get("manager_comment_idx")
+                    if mc_idx is not None and mc_idx < len(row_tuple):
+                        val = row_tuple[mc_idx]
+                        if val is not None and str(val).strip():
+                            user_data["manager_comment"] = val
+                            has_data = True
+
+                    # Screenshot (not for Script)
+                    # Note: In read_only mode, hyperlinks are not available
+                    # We store the value; hyperlink will be reconstructed
+                    if not is_script:
+                        sc_idx = cols.get("screenshot_idx")
+                        if sc_idx is not None and sc_idx < len(row_tuple):
+                            val = row_tuple[sc_idx]
+                            if val is not None and str(val).strip():
+                                user_data["screenshot"] = val
+                                # Hyperlink target follows standard pattern
+                                user_data["screenshot_hyperlink"] = f"Images/{val}"
+                                has_data = True
+
+                    if has_data:
+                        if content_key not in sheet_data:
+                            sheet_data[content_key] = {}
+                        sheet_data[content_key][username] = user_data
+
+            if sheet_data:
+                extracted[sheet_name] = sheet_data
+
+        wb.close()
+
+    except Exception as e:
+        print(f"    WARNING: Failed to extract tester data from {master_path.name}: {e}")
+        return {}
+
+    # Summary
+    total_entries = sum(
+        sum(len(users) for users in sheet.values())
+        for sheet in extracted.values()
+    )
+    if total_entries > 0:
+        print(f"    Extracted {total_entries} tester data entries from {len(extracted)} sheets")
+
+    return extracted
+
+
+def restore_tester_data_to_master(
+    master_wb: Workbook,
+    tester_data: Dict[str, Dict[tuple, Dict[str, Dict]]],
+    category: str,
+    is_english: bool
+) -> Dict:
+    """
+    Restore tester data to newly created master using content-based matching.
+
+    Args:
+        master_wb: New master workbook (already created from template)
+        tester_data: Data from extract_tester_data_from_master()
+        category: Category name
+        is_english: Whether this is EN or CN master
+
+    Returns:
+        Dict with {"restored": count, "orphaned": count, "sheets_processed": count}
+    """
+    if not tester_data:
+        return {"restored": 0, "orphaned": 0, "sheets_processed": 0}
+
+    # Import matching functions
+    from core.matching import build_master_index, sanitize_stringid_for_match
+
+    # Import processing functions for column creation
+    from core.processing import (
+        find_or_create_user_columns,
+        COMMENT_FILL_ISSUE, COMMENT_FONT_ISSUE,
+        COMMENT_FILL_BLOCKED, COMMENT_FONT_BLOCKED,
+        COMMENT_FILL_KOREAN, COMMENT_FONT_KOREAN,
+        COMMENT_FILL_NO_ISSUE, COMMENT_FONT_NO_ISSUE,
+        COMMENT_ALIGNMENT, COMMENT_BORDER,
+        SCREENSHOT_FILL, SCREENSHOT_ALIGNMENT, SCREENSHOT_BORDER,
+        SCREENSHOT_FONT_NORMAL,
+        MANAGER_STATUS_ALIGNMENT,
+        MANAGER_FONT_FIXED, MANAGER_FONT_REPORTED,
+        MANAGER_FONT_CHECKING, MANAGER_FONT_NONISSUE,
+        MANAGER_COMMENT_FILL, MANAGER_COMMENT_BORDER,
+        sanitize_for_excel
+    )
+
+    category_lower = category.lower()
+    is_script = category_lower in SCRIPT_TYPE_CATEGORIES
+
+    stats = {"restored": 0, "orphaned": 0, "sheets_processed": 0}
+
+    for sheet_name, sheet_data in tester_data.items():
+        if sheet_name not in master_wb.sheetnames:
+            # Sheet no longer exists in new master - all data orphaned
+            orphaned_count = sum(len(users) for users in sheet_data.values())
+            stats["orphaned"] += orphaned_count
+            print(f"      {sheet_name}: REMOVED (orphaned {orphaned_count} entries)")
+            continue
+
+        master_ws = master_wb[sheet_name]
+        stats["sheets_processed"] += 1
+
+        # Build master index for content-based matching
+        master_index = build_master_index(master_ws, category, is_english)
+
+        # Collect all usernames from extracted data
+        all_users = set()
+        for users in sheet_data.values():
+            all_users.update(users.keys())
+
+        # Create user columns for ALL users (including absent testers)
+        user_cols = {}  # username -> (comment_col, tester_status_col, status_col, manager_comment_col, screenshot_col)
+        for username in all_users:
+            user_cols[username] = find_or_create_user_columns(master_ws, username)
+
+        sheet_restored = 0
+        sheet_orphaned = 0
+
+        # Restore data for each content key
+        for content_key, user_data_dict in sheet_data.items():
+            # Find matching row in new master
+            master_row = None
+
+            if category_lower == "contents":
+                # Contents: key is (instructions,)
+                instructions = content_key[0] if content_key else ""
+                if instructions and instructions in master_index["primary"]:
+                    master_row = master_index["primary"][instructions]
+
+            elif category_lower == "item":
+                # Item: key is (item_name, item_desc, stringid)
+                if len(content_key) >= 2:
+                    item_name, item_desc = content_key[0], content_key[1]
+                    stringid = content_key[2] if len(content_key) > 2 else ""
+
+                    # Try primary: (name, desc, stringid)
+                    if stringid:
+                        primary_key = (item_name, item_desc, stringid)
+                        if primary_key in master_index["primary"]:
+                            master_row = master_index["primary"][primary_key]
+
+                    # Fallback: (name, desc)
+                    if master_row is None:
+                        fallback_key = (item_name, item_desc)
+                        if fallback_key in master_index["fallback"]:
+                            for row in master_index["fallback"][fallback_key]:
+                                if row not in master_index["consumed"]:
+                                    master_row = row
+                                    break
+
+            elif is_script:
+                # Script: key is (text, eventname) - matches extraction and index order
+                if len(content_key) >= 2:
+                    text, eventname = content_key[0], content_key[1]
+
+                    # Try primary: (text, eventname)
+                    if text and eventname:
+                        primary_key = (text, eventname)
+                        if primary_key in master_index["primary"]:
+                            master_row = master_index["primary"][primary_key]
+
+                    # Fallback: eventname only
+                    if master_row is None and eventname:
+                        if eventname in master_index["fallback"]:
+                            for row in master_index["fallback"][eventname]:
+                                if row not in master_index["consumed"]:
+                                    master_row = row
+                                    break
+
+            else:
+                # Standard: key is (stringid, translation)
+                if len(content_key) >= 2:
+                    stringid, translation = content_key[0], content_key[1]
+
+                    # Try primary: (stringid, translation)
+                    if stringid and translation:
+                        primary_key = (stringid, translation)
+                        if primary_key in master_index["primary"]:
+                            master_row = master_index["primary"][primary_key]
+
+                    # Fallback: translation only
+                    if master_row is None and translation:
+                        if translation in master_index["fallback"]:
+                            for row in master_index["fallback"][translation]:
+                                if row not in master_index["consumed"]:
+                                    master_row = row
+                                    break
+
+            if master_row is None:
+                # No matching row - data orphaned (row removed in new template)
+                sheet_orphaned += len(user_data_dict)
+                continue
+
+            # Mark row as consumed to prevent duplicate matching
+            master_index["consumed"].add(master_row)
+
+            # Restore data for each user
+            for username, user_data in user_data_dict.items():
+                cols = user_cols.get(username)
+                if not cols:
+                    continue
+
+                comment_col, tester_status_col, status_col, manager_comment_col, screenshot_col = cols
+
+                # Restore comment
+                if "comment" in user_data:
+                    cell = master_ws.cell(row=master_row, column=comment_col)
+                    cell.value = sanitize_for_excel(user_data["comment"])
+
+                    # Apply styling based on tester status
+                    tester_status = user_data.get("tester_status", "")
+                    status_upper = str(tester_status).strip().upper() if tester_status else ""
+                    if status_upper == "ISSUE":
+                        cell.fill = COMMENT_FILL_ISSUE
+                        cell.font = COMMENT_FONT_ISSUE
+                    elif status_upper == "BLOCKED":
+                        cell.fill = COMMENT_FILL_BLOCKED
+                        cell.font = COMMENT_FONT_BLOCKED
+                    elif status_upper == "KOREAN":
+                        cell.fill = COMMENT_FILL_KOREAN
+                        cell.font = COMMENT_FONT_KOREAN
+                    elif status_upper in ("NO ISSUE", "NON-ISSUE", "NON ISSUE"):
+                        cell.fill = COMMENT_FILL_NO_ISSUE
+                        cell.font = COMMENT_FONT_NO_ISSUE
+                    cell.alignment = COMMENT_ALIGNMENT
+                    cell.border = COMMENT_BORDER
+                    sheet_restored += 1
+
+                # Restore tester status
+                if "tester_status" in user_data:
+                    cell = master_ws.cell(row=master_row, column=tester_status_col)
+                    cell.value = user_data["tester_status"]
+                    cell.alignment = MANAGER_STATUS_ALIGNMENT
+
+                # Restore manager status
+                if "manager_status" in user_data:
+                    cell = master_ws.cell(row=master_row, column=status_col)
+                    status_value = user_data["manager_status"]
+                    cell.value = status_value
+                    cell.alignment = MANAGER_STATUS_ALIGNMENT
+
+                    # Apply font color
+                    status_upper = str(status_value).strip().upper()
+                    if status_upper == "FIXED":
+                        cell.font = MANAGER_FONT_FIXED
+                    elif status_upper == "REPORTED":
+                        cell.font = MANAGER_FONT_REPORTED
+                    elif status_upper == "CHECKING":
+                        cell.font = MANAGER_FONT_CHECKING
+                    elif status_upper in ("NON-ISSUE", "NON ISSUE"):
+                        cell.font = MANAGER_FONT_NONISSUE
+
+                # Restore manager comment
+                if "manager_comment" in user_data:
+                    cell = master_ws.cell(row=master_row, column=manager_comment_col)
+                    cell.value = user_data["manager_comment"]
+                    cell.alignment = COMMENT_ALIGNMENT
+                    cell.fill = MANAGER_COMMENT_FILL
+                    cell.border = MANAGER_COMMENT_BORDER
+
+                # Restore screenshot (not for Script)
+                if not is_script and screenshot_col and "screenshot" in user_data:
+                    cell = master_ws.cell(row=master_row, column=screenshot_col)
+                    cell.value = sanitize_for_excel(user_data["screenshot"])
+                    if "screenshot_hyperlink" in user_data:
+                        cell.hyperlink = user_data["screenshot_hyperlink"]
+                    cell.fill = SCREENSHOT_FILL
+                    cell.alignment = SCREENSHOT_ALIGNMENT
+                    cell.border = SCREENSHOT_BORDER
+                    cell.font = SCREENSHOT_FONT_NORMAL
+
+        stats["restored"] += sheet_restored
+        stats["orphaned"] += sheet_orphaned
+
+        if sheet_restored > 0 or sheet_orphaned > 0:
+            print(f"      {sheet_name}: restored {sheet_restored}, orphaned {sheet_orphaned}")
+
+    return stats
+
+
+# =============================================================================
 # MASTER FILE OPERATIONS
 # =============================================================================
 
@@ -203,16 +689,22 @@ def get_or_create_master(
     category: str,
     master_folder: Path,
     template_file: Path = None,
-    rebuild: bool = True
+    rebuild: bool = True,
+    is_english: bool = True
 ) -> Tuple[Optional[Workbook], Path]:
     """
     Get or create master workbook for a category.
+
+    When rebuilding, preserves ALL tester data (comments, status, screenshots)
+    from the old master by extracting it before deletion and restoring it to
+    matching rows in the new master. This prevents data loss when templates change.
 
     Args:
         category: Category name (Quest, Knowledge, etc.)
         master_folder: Target Master folder (EN or CN)
         template_file: Path to first QA file to use as template
         rebuild: If True, delete old and create fresh. If False, append to existing.
+        is_english: If True, EN master (affects column detection for matching)
 
     Returns:
         Tuple of (Workbook, master_path)
@@ -277,8 +769,13 @@ def get_or_create_master(
 
         return wb, master_path
 
-    # Rebuild mode: delete old master and create fresh
+    # Rebuild mode: extract tester data BEFORE deletion, then create fresh
+    extracted_data = {}
     if rebuild and master_path.exists():
+        # Extract tester data BEFORE deletion
+        print(f"  Extracting tester data from: {master_path.name}")
+        extracted_data = extract_tester_data_from_master(master_path, category, is_english)
+
         print(f"  Deleting old master: {master_path.name} (rebuilding fresh)")
         master_path.unlink()
 
@@ -306,6 +803,13 @@ def get_or_create_master(
                 print(f"    Deleted column {col} from {sheet_name}")
 
         print(f"    Master cleaned: tester columns removed")
+
+        # Restore tester data to new master (if any was extracted)
+        if extracted_data:
+            print(f"  Restoring tester data to new master...")
+            restore_stats = restore_tester_data_to_master(wb, extracted_data, category, is_english)
+            print(f"    Restored: {restore_stats['restored']} cells, Orphaned: {restore_stats['orphaned']} rows")
+
         return wb, master_path
     else:
         print(f"  ERROR: No template file for {category}")
