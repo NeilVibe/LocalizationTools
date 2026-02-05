@@ -836,7 +836,7 @@ def process_category(
     accumulated_users: set = None,
     accumulated_stats: Dict = None,
     deferred_save: bool = False
-) -> Tuple[List[Dict], set, Dict, Optional['Workbook'], Optional[Path]]:
+) -> Tuple[List[Dict], set, Dict, Optional[object], Optional[Path]]:
     """
     Process all QA folders for one category.
 
