@@ -131,49 +131,55 @@ SEQUENCER_FOLDER = EXPORT_FOLDER / "Sequencer"
 OUTPUT_FOLDER = SCRIPT_DIR / "Output"
 
 # =============================================================================
-# Language Configuration
+# Language Configuration (Auto-discovered from LOC folder)
 # =============================================================================
 
-# Preferred output order for languages
-LANGUAGE_ORDER = [
-    "kor",      # Korean (source)
-    "eng",      # English
-    "fre",      # French
-    "ger",      # German
-    "spa",      # Spanish
-    "por",      # Portuguese
-    "ita",      # Italian
-    "rus",      # Russian
-    "tur",      # Turkish
-    "pol",      # Polish
-    "zho-cn",   # Chinese Simplified
-    "zho-tw",   # Chinese Traditional
-    "jpn",      # Japanese
-    "tha",      # Thai
-    "vie",      # Vietnamese
-    "ind",      # Indonesian
-    "msa",      # Malay
-]
+def _discover_languages_from_loc() -> tuple:
+    """
+    Auto-discover available languages from LOC folder.
 
-LANGUAGE_NAMES = {
-    "eng": "ENG",
-    "fre": "FRE",
-    "ger": "GER",
-    "spa": "SPA",
-    "por": "POR",
-    "ita": "ITA",
-    "rus": "RUS",
-    "tur": "TUR",
-    "pol": "POL",
-    "zho-cn": "ZHO-CN",
-    "zho-tw": "ZHO-TW",
-    "jpn": "JPN",
-    "kor": "KOR",
-    "tha": "THA",
-    "vie": "VIE",
-    "ind": "IND",
-    "msa": "MSA",
-}
+    Scans for languagedata_*.xml files and extracts language codes.
+    Returns (order_list, names_dict).
+    """
+    import re
+
+    # Preferred order (languages found will be sorted in this order)
+    # Languages not in this list go to the end alphabetically
+    PREFERRED_ORDER = [
+        "kor", "eng", "fre", "ger", "spa", "spa-es", "spa-mx",
+        "por", "por-br", "ita", "rus", "tur", "pol",
+        "zho-cn", "zho-tw", "jpn", "tha", "vie", "ind", "msa"
+    ]
+
+    discovered = {}  # {code_lower: code_upper}
+
+    # Scan LOC folder if it exists
+    if LOC_FOLDER.exists():
+        for xml_file in LOC_FOLDER.glob("languagedata_*.xml"):
+            match = re.match(r'languagedata_(.+)\.xml', xml_file.name, re.IGNORECASE)
+            if match:
+                code = match.group(1)
+                discovered[code.lower()] = code.upper()
+
+    # Build order: preferred first, then remaining alphabetically
+    order = []
+    for code in PREFERRED_ORDER:
+        if code in discovered:
+            order.append(code)
+    for code in sorted(discovered.keys()):
+        if code not in order:
+            order.append(code)
+
+    # Fallback if LOC folder not available
+    if not order:
+        order = ["kor", "eng", "fre", "ger", "spa", "por", "ita", "rus",
+                 "tur", "pol", "zho-cn", "zho-tw", "jpn", "tha", "vie", "ind", "msa"]
+        discovered = {c: c.upper() for c in order}
+
+    return order, discovered
+
+# Auto-discover languages at module load time
+LANGUAGE_ORDER, LANGUAGE_NAMES = _discover_languages_from_loc()
 
 
 def ensure_output_folder():
