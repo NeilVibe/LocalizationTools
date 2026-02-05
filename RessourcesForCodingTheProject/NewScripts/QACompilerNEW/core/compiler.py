@@ -110,7 +110,8 @@ from config import (
     IMAGES_FOLDER_EN, IMAGES_FOLDER_CN,
     TRACKER_PATH,
     load_tester_mapping, ensure_folders_exist,
-    get_target_master_category
+    get_target_master_category,
+    WORKER_GROUPS, MAX_PARALLEL_WORKERS
 )
 from core.discovery import discover_qa_folders, group_folders_by_language
 from core.excel_ops import (
@@ -1325,24 +1326,36 @@ def run_compiler():
     # STEP 2: Process Master Files (Heavy Processing)
     # ==========================================================================
     print("\n" + "=" * 60)
-    print("STEP 2: Building Master Files (EN + CN in PARALLEL)")
+    print("STEP 2: Building Master Files (WORKER GROUP PARALLELISM)")
     print("=" * 60)
 
-    # Helper function to process all categories for one language
-    def process_language(lang_label, by_category, master_folder, images_folder,
-                         manager_status, fixed_screenshots, tester_mapping_ref):
-        """Process all categories for one language. Returns (entries, master_status_data)."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import threading
+
+    # Thread-safe result collection
+    results_lock = threading.Lock()
+
+    def process_worker_group(group_name, categories, lang_label, by_category,
+                             master_folder, images_folder, manager_status,
+                             fixed_screenshots, tester_mapping_ref):
+        """
+        Process a worker group (categories sharing same master file).
+        Categories within the group are processed SEQUENTIALLY (shared master).
+        Returns (group_name, lang, daily_entries, master_status_data).
+        """
         from core.face_processor import process_face_category
 
         daily_entries = []
         processed_masters = set()
         master_status_data = {}
 
-        for category in CATEGORIES:
-            if category not in by_category:
-                continue
+        # Filter to categories that exist in this language
+        active_categories = [c for c in categories if c in by_category]
+        if not active_categories:
+            return (group_name, lang_label, [], {})
 
-            # Face category: custom processing pipeline (no standard master)
+        for category in active_categories:
+            # Face category: custom processing pipeline
             if category.lower() in FACE_TYPE_CATEGORIES:
                 entries = process_face_category(
                     by_category[category], master_folder, lang_label, tester_mapping_ref
@@ -1374,147 +1387,142 @@ def run_compiler():
                 fixed_screenshots=fixed_screenshots,
                 accumulated_users=acc_users,
                 accumulated_stats=acc_stats,
-                deferred_save=True  # DEFERRED SAVE: Don't autofit/save yet
+                deferred_save=True
             )
             daily_entries.extend(entries)
-            # Store updated accumulated data + workbook
             master_status_data[target_master]["users"] = acc_users
             master_status_data[target_master]["stats"] = acc_stats
             if master_wb is not None:
                 master_status_data[target_master]["workbook"] = master_wb
                 master_status_data[target_master]["path"] = master_path
 
-        return daily_entries, master_status_data
+        return (group_name, lang_label, daily_entries, master_status_data)
 
     # ==========================================================================
-    # PARALLEL PROCESSING: EN and CN simultaneously (~2x speedup)
+    # PARALLEL PROCESSING: Worker groups across EN + CN (up to MAX_PARALLEL_WORKERS)
     # ==========================================================================
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    print(f"\n[PARALLEL] Processing EN and CN simultaneously...")
-    print(f"  Thread count: 2 (one per language)")
+    print(f"\n[PARALLEL] Worker group parallelism enabled")
+    print(f"  Max workers: {MAX_PARALLEL_WORKERS}")
+    print(f"  Worker groups: {len(WORKER_GROUPS)} per language")
 
     all_daily_entries = []
     master_status_data_en = {}
     master_status_data_cn = {}
 
-    # Use ThreadPoolExecutor to run EN and CN in parallel
-    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="lang") as executor:
-        futures = {}
+    # Submit all worker groups for both languages
+    with ThreadPoolExecutor(max_workers=MAX_PARALLEL_WORKERS, thread_name_prefix="wg") as executor:
+        futures = []
 
-        # Submit EN processing
-        if by_category_en:
-            futures["EN"] = executor.submit(
-                process_language,
-                "EN", by_category_en, MASTER_FOLDER_EN, IMAGES_FOLDER_EN,
-                manager_status_en, fixed_screenshots_en, tester_mapping
-            )
+        # Submit EN worker groups
+        for group_name, categories in WORKER_GROUPS.items():
+            if any(c in by_category_en for c in categories):
+                future = executor.submit(
+                    process_worker_group,
+                    group_name, categories, "EN", by_category_en,
+                    MASTER_FOLDER_EN, IMAGES_FOLDER_EN,
+                    manager_status_en, fixed_screenshots_en, tester_mapping
+                )
+                futures.append(future)
 
-        # Submit CN processing
-        if by_category_cn:
-            futures["CN"] = executor.submit(
-                process_language,
-                "CN", by_category_cn, MASTER_FOLDER_CN, IMAGES_FOLDER_CN,
-                manager_status_cn, fixed_screenshots_cn, tester_mapping
-            )
+        # Submit CN worker groups
+        for group_name, categories in WORKER_GROUPS.items():
+            if any(c in by_category_cn for c in categories):
+                future = executor.submit(
+                    process_worker_group,
+                    group_name, categories, "CN", by_category_cn,
+                    MASTER_FOLDER_CN, IMAGES_FOLDER_CN,
+                    manager_status_cn, fixed_screenshots_cn, tester_mapping
+                )
+                futures.append(future)
+
+        print(f"  Submitted {len(futures)} worker tasks")
 
         # Collect results as they complete
-        for future in as_completed(futures.values()):
-            # Find which language this is
-            lang = [k for k, v in futures.items() if v == future][0]
+        completed = 0
+        for future in as_completed(futures):
             try:
-                entries, master_data = future.result()
-                all_daily_entries.extend(entries)
-                if lang == "EN":
-                    master_status_data_en = master_data
-                else:
-                    master_status_data_cn = master_data
-                print(f"  [{lang}] Completed: {len(entries)} daily entries")
+                group_name, lang, entries, master_data = future.result()
+                completed += 1
+
+                with results_lock:
+                    all_daily_entries.extend(entries)
+                    if lang == "EN":
+                        master_status_data_en.update(master_data)
+                    else:
+                        master_status_data_cn.update(master_data)
+
+                if entries:
+                    print(f"  [{lang}/{group_name}] Completed: {len(entries)} entries ({completed}/{len(futures)})")
             except Exception as e:
-                print(f"  [{lang}] ERROR: {e}")
+                print(f"  [ERROR] Worker failed: {e}")
                 raise
 
+    print(f"\n  All {len(futures)} workers completed")
+
     # ==========================================================================
-    # FINAL PASS: STATUS sheet + autofit + hide + save (ONCE per master)
+    # FINAL PASS: STATUS sheet + autofit + hide + save (PARALLEL)
     # ==========================================================================
     # This is the DEFERRED SAVE optimization: instead of autofit+save after each
     # category, we do it once per master after ALL categories are processed.
-    # Saves: 2-3 saves per master -> 1 save per master
+    # Now also parallelized for additional speedup.
     print("\n" + "=" * 60)
-    print("FINAL PASS: STATUS sheets + autofit + save (ONCE per master)")
+    print("FINAL PASS: STATUS + autofit + save (PARALLEL)")
     print("=" * 60)
 
-    for target_master, data in master_status_data_en.items():
+    def finalize_master(target_master, data, lang_label):
+        """Finalize and save a single master file. Thread-safe."""
         users = data["users"]
         stats = data["stats"]
         wb = data["workbook"]
         path = data["path"]
 
         if wb is None or path is None:
-            continue
-
-        print(f"\n  [EN] Master_{target_master}: {len(users)} users")
+            return None
 
         # 1. Update STATUS sheet
         if users:
-            print(f"    Updating STATUS sheet...")
             update_status_sheet(wb, users, dict(stats))
 
-        # 2. Autofit (ONCE per master)
-        print(f"    Autofit columns and row heights...")
+        # 2. Autofit
         autofit_rows_with_wordwrap(wb)
 
         # 3. Hide empty rows/sheets/columns
-        print(f"    Hiding empty rows/sheets/columns...")
         hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(wb)
 
-        # 4. Save (ONCE per master)
-        print(f"    Saving...", end="", flush=True)
+        # 4. Save
         wb.save(path)
-        print(f" done")
 
-        if hidden_sheets:
-            print(f"    Hidden sheets: {', '.join(hidden_sheets)}")
-        if hidden_columns > 0:
-            print(f"    Hidden: {hidden_columns} empty user columns")
-        if hidden_rows > 0:
-            print(f"    Hidden: {hidden_rows} rows")
+        return {
+            "lang": lang_label,
+            "master": target_master,
+            "users": len(users),
+            "hidden_rows": hidden_rows,
+            "hidden_sheets": hidden_sheets,
+            "hidden_columns": hidden_columns,
+        }
 
-    for target_master, data in master_status_data_cn.items():
-        users = data["users"]
-        stats = data["stats"]
-        wb = data["workbook"]
-        path = data["path"]
+    # Parallel finalize + save
+    finalize_futures = []
+    with ThreadPoolExecutor(max_workers=MAX_PARALLEL_WORKERS, thread_name_prefix="save") as executor:
+        for target_master, data in master_status_data_en.items():
+            future = executor.submit(finalize_master, target_master, data, "EN")
+            finalize_futures.append(future)
 
-        if wb is None or path is None:
-            continue
+        for target_master, data in master_status_data_cn.items():
+            future = executor.submit(finalize_master, target_master, data, "CN")
+            finalize_futures.append(future)
 
-        print(f"\n  [CN] Master_{target_master}: {len(users)} users")
+        print(f"  Finalizing {len(finalize_futures)} master files in parallel...")
 
-        # 1. Update STATUS sheet
-        if users:
-            print(f"    Updating STATUS sheet...")
-            update_status_sheet(wb, users, dict(stats))
-
-        # 2. Autofit (ONCE per master)
-        print(f"    Autofit columns and row heights...")
-        autofit_rows_with_wordwrap(wb)
-
-        # 3. Hide empty rows/sheets/columns
-        print(f"    Hiding empty rows/sheets/columns...")
-        hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(wb)
-
-        # 4. Save (ONCE per master)
-        print(f"    Saving...", end="", flush=True)
-        wb.save(path)
-        print(f" done")
-
-        if hidden_sheets:
-            print(f"    Hidden sheets: {', '.join(hidden_sheets)}")
-        if hidden_columns > 0:
-            print(f"    Hidden: {hidden_columns} empty user columns")
-        if hidden_rows > 0:
-            print(f"    Hidden: {hidden_rows} rows")
+        for future in as_completed(finalize_futures):
+            result = future.result()
+            if result:
+                lang = result["lang"]
+                master = result["master"]
+                users = result["users"]
+                hidden_rows = result["hidden_rows"]
+                hidden_cols = result["hidden_columns"]
+                print(f"  [{lang}] Master_{master}: {users} users, {hidden_rows} rows hidden, saved")
 
     # Show skipped categories
     for category in CATEGORIES:
