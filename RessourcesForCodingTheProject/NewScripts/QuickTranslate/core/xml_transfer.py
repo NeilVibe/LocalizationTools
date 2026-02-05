@@ -112,6 +112,16 @@ def merge_corrections_to_xml(
             all_elements.extend(root.iter(tag))
         # No break - collect all tag case variants
 
+        # Build set of all StringIDs in target for diagnostic purposes
+        # (to distinguish "StringID not found" vs "StrOrigin mismatch")
+        target_stringids = set()
+        for loc in all_elements:
+            tsid = (loc.get("StringId") or loc.get("StringID") or
+                    loc.get("stringid") or loc.get("STRINGID") or
+                    loc.get("Stringid") or loc.get("stringId") or "").strip()
+            if tsid:
+                target_stringids.add(tsid)
+
         for loc in all_elements:
             # Case-insensitive attribute access
             sid = (loc.get("StringId") or loc.get("StringID") or
@@ -175,13 +185,22 @@ def merge_corrections_to_xml(
                     })
 
         # Count corrections that didn't match - store FULL data for failure reports
+        # Distinguish between "StringID not found" vs "StrOrigin mismatch"
         for i, c in enumerate(corrections):
             if not correction_matched[i]:
                 category = c.get("category", "Uncategorized")
                 result["by_category"][category]["not_found"] += 1
+
+                # Check if StringID exists but StrOrigin differs
+                sid = c["string_id"]
+                if sid in target_stringids:
+                    status = "STRORIGIN_MISMATCH"
+                else:
+                    status = "NOT_FOUND"
+
                 result["details"].append({
-                    "string_id": c["string_id"],
-                    "status": "NOT_FOUND",
+                    "string_id": sid,
+                    "status": status,
                     "old": c.get("str_origin", ""),  # FULL StrOrigin for failure report
                     "new": c["corrected"],  # FULL text for failure report
                 })
