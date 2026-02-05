@@ -233,10 +233,11 @@ def generate_failed_merge_xml_per_language(
     timestamp: Optional[datetime] = None,
 ) -> Dict[str, Path]:
     """
-    Generate separate FAILED_TO_MERGE XML files for each language.
+    Generate separate XML files for each language with failed LocStr elements.
 
-    Creates one XML file per language code found in the failed entries.
-    Each file contains complete LocStr elements with all attributes.
+    Creates CLEAN XML files - just <root> with <LocStr> elements inside.
+    EXACT same format as source files: StringId, StrOrigin, Str only.
+    No extra attributes, no transformation.
 
     Args:
         failed_entries: List of failed entry dicts with 'language' key
@@ -245,7 +246,6 @@ def generate_failed_merge_xml_per_language(
 
     Returns:
         Dict mapping language code to output file path
-        e.g., {"FRE": Path("FAILED_TO_MERGE_FRE_20260205.xml"), ...}
     """
     if timestamp is None:
         timestamp = datetime.now()
@@ -261,38 +261,25 @@ def generate_failed_merge_xml_per_language(
     output_files = {}
 
     for lang, entries in sorted(by_language.items()):
-        output_path = output_folder / f"FAILED_TO_MERGE_{lang}_{timestamp_str}.xml"
+        output_path = output_folder / f"FAILED_{lang}_{timestamp_str}.xml"
 
         if USING_LXML:
-            root = etree.Element(
-                "FailedMerges",
-                timestamp=timestamp.strftime("%Y-%m-%dT%H:%M:%S"),
-                language=lang,
-                total=str(len(entries)),
-            )
+            # Clean root element
+            root = etree.Element("root")
 
             for entry in entries:
-                # Create complete LocStr element with ALL attributes
-                attribs = {
-                    "StringId": str(entry.get("string_id", "")),
-                    "StrOrigin": str(entry.get("str_origin", "")),
-                    "Str": str(entry.get("str", "")),
-                }
-
-                # Add FailReason as attribute
-                attribs["FailReason"] = str(entry.get("fail_reason", "Unknown reason"))
-
-                # Add source file info
-                if entry.get("source_file"):
-                    attribs["SourceFile"] = str(entry["source_file"])
-
-                # Add optional attributes if present
-                if entry.get("category"):
-                    attribs["Category"] = str(entry["category"])
-                if entry.get("subfolder"):
-                    attribs["Subfolder"] = str(entry["subfolder"])
-
-                etree.SubElement(root, "LocStr", **attribs)
+                # Use raw_attribs if available (EXACT original), else fallback
+                raw = entry.get("raw_attribs", {})
+                if raw:
+                    # EXACT original LocStr - all attributes preserved
+                    etree.SubElement(root, "LocStr", **{k: str(v) for k, v in raw.items()})
+                else:
+                    # Fallback to basic attributes
+                    etree.SubElement(root, "LocStr",
+                        StringId=str(entry.get("string_id", "")),
+                        StrOrigin=str(entry.get("str_origin", "")),
+                        Str=str(entry.get("str", "")),
+                    )
 
             tree = etree.ElementTree(root)
             tree.write(
@@ -303,24 +290,20 @@ def generate_failed_merge_xml_per_language(
             )
 
         else:
-            root = etree.Element("FailedMerges")
-            root.set("timestamp", timestamp.strftime("%Y-%m-%dT%H:%M:%S"))
-            root.set("language", lang)
-            root.set("total", str(len(entries)))
+            # Standard library fallback
+            root = etree.Element("root")
 
             for entry in entries:
                 loc_elem = etree.SubElement(root, "LocStr")
-                loc_elem.set("StringId", str(entry.get("string_id", "")))
-                loc_elem.set("StrOrigin", str(entry.get("str_origin", "")))
-                loc_elem.set("Str", str(entry.get("str", "")))
-                loc_elem.set("FailReason", str(entry.get("fail_reason", "Unknown reason")))
-
-                if entry.get("source_file"):
-                    loc_elem.set("SourceFile", str(entry["source_file"]))
-                if entry.get("category"):
-                    loc_elem.set("Category", str(entry["category"]))
-                if entry.get("subfolder"):
-                    loc_elem.set("Subfolder", str(entry["subfolder"]))
+                raw = entry.get("raw_attribs", {})
+                if raw:
+                    # EXACT original LocStr - all attributes preserved
+                    for k, v in raw.items():
+                        loc_elem.set(k, str(v))
+                else:
+                    loc_elem.set("StringId", str(entry.get("string_id", "")))
+                    loc_elem.set("StrOrigin", str(entry.get("str_origin", "")))
+                    loc_elem.set("Str", str(entry.get("str", "")))
 
             tree = etree.ElementTree(root)
             with open(output_path, "wb") as f:
@@ -328,7 +311,7 @@ def generate_failed_merge_xml_per_language(
                 tree.write(f, encoding="utf-8", xml_declaration=False)
 
         output_files[lang] = output_path
-        logger.info(f"Generated {lang} failure report: {output_path.name} ({len(entries)} entries)")
+        logger.info(f"Generated {lang} failed strings: {output_path.name} ({len(entries)} entries)")
 
     return output_files
 
@@ -364,11 +347,12 @@ def extract_failed_from_transfer_results(
 
             failed_entries.append({
                 "string_id": detail.get("string_id", ""),
-                "str_origin": detail.get("old", ""),  # FULL StrOrigin from transfer details
-                "str": detail.get("new", ""),  # Corrected text (translation)
+                "str_origin": detail.get("old", ""),
+                "str": detail.get("new", ""),
                 "fail_reason": fail_reason,
                 "source_file": source_file_name,
                 "language": language,
+                "raw_attribs": detail.get("raw_attribs", {}),  # EXACT original attributes
             })
 
     return failed_entries
@@ -409,6 +393,7 @@ def extract_failed_from_folder_results(
                     "fail_reason": fail_reason,
                     "source_file": source_file,
                     "language": language,
+                    "raw_attribs": detail.get("raw_attribs", {}),  # EXACT original attributes
                 })
 
     return all_failed
