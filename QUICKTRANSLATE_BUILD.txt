@@ -36,3 +36,4 @@ Build 20260206-010318
 Build 20260206-011830: StringID filter DURING scan
 Build 20260206-013500: ALL fuzzy paths filter by StringID
 Build 20260206-014500: VERIFIED - FAISS only indexes filtered entries
+Build 20260206-015500: ALL paths filter - no full languagedata load possible
