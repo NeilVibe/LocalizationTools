@@ -117,7 +117,8 @@ from core.discovery import discover_qa_folders, group_folders_by_language
 from core.excel_ops import (
     safe_load_workbook, ensure_master_folders,
     get_or_create_master, copy_images_with_unique_names,
-    find_column_by_header, sort_worksheet_az, build_column_map
+    find_column_by_header, sort_worksheet_az, build_column_map,
+    preload_worksheet_data
 )
 from core.processing import (
     process_sheet, update_status_sheet,
@@ -1071,30 +1072,54 @@ def process_category(
 
             # Count words (EN) or characters (CN) from translation column
             # ONLY count rows where STATUS is filled (DONE rows)
-            qa_status_col = find_column_by_header(qa_ws, "STATUS")
+            # FAST: Use preloaded data for word counting (10-50x faster than ws.cell())
+            wc_col_idx, wc_data_rows = preload_worksheet_data(qa_ws)
+
+            # Get column indices from preloaded header map
+            wc_status_idx = wc_col_idx.get("STATUS")
 
             # Script-type: find "Text" or "Translation" by NAME (no position fallback!)
             # Other categories: use position-based from config
             if is_script_category:
-                trans_col = find_column_by_header(qa_ws, "Text")
-                if not trans_col:
-                    trans_col = find_column_by_header(qa_ws, "Translation")
-                if not trans_col:
+                wc_trans_idx = wc_col_idx.get("TEXT")
+                if wc_trans_idx is None:
+                    wc_trans_idx = wc_col_idx.get("TRANSLATION")
+                if wc_trans_idx is None:
                     # Skip word counting for this sheet - no Text/Translation column found
                     print(f"      {sheet_name}: SKIPPED word counting (no Text/Translation column)")
                     continue  # BUG FIX: This continue was missing, causing TypeError with None trans_col
             else:
-                trans_col = trans_col_default
+                # For non-Script categories, get index from trans_col_default (1-based column)
+                # Convert 1-based column to 0-based index by finding the header
+                trans_header = None
+                if trans_col_default:
+                    trans_header = qa_ws.cell(row=1, column=trans_col_default).value
+                    if trans_header:
+                        wc_trans_idx = wc_col_idx.get(str(trans_header).strip().upper())
+                    else:
+                        wc_trans_idx = None
+                else:
+                    wc_trans_idx = None
+
+                if wc_trans_idx is None:
+                    # Fallback: try common translation column names
+                    wc_trans_idx = wc_col_idx.get("TRANSLATION") or wc_col_idx.get("TEXT")
+                    if wc_trans_idx is None:
+                        print(f"      {sheet_name}: SKIPPED word counting (no translation column)")
+                        continue
 
             wc_label = "words" if is_english else "chars"
             wc_before = user_wordcount[username]
-            for row in range(2, qa_ws.max_row + 1):
-                if qa_status_col:
-                    status_val = qa_ws.cell(row, qa_status_col).value
+
+            # FAST: Iterate through preloaded tuples (no ws.cell() calls!)
+            for row_tuple in wc_data_rows:
+                if wc_status_idx is not None:
+                    status_val = row_tuple[wc_status_idx] if wc_status_idx < len(row_tuple) else None
                     # Accept all variants: "NO ISSUE", "NON-ISSUE", "NON ISSUE"
                     if not status_val or str(status_val).strip().upper() not in ["ISSUE", "NO ISSUE", "NON-ISSUE", "NON ISSUE", "BLOCKED", "KOREAN"]:
                         continue  # Skip rows not marked as done
-                cell_value = qa_ws.cell(row, trans_col).value
+
+                cell_value = row_tuple[wc_trans_idx] if wc_trans_idx < len(row_tuple) else None
                 if is_english:
                     user_wordcount[username] += count_words_english(cell_value)
                 else:

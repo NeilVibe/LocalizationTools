@@ -25,11 +25,12 @@ from core.excel_ops import (
     safe_load_workbook, find_column_by_header, build_column_map,
     get_or_create_master, copy_images_with_unique_names,
     ensure_master_folders, THIN_BORDER, style_header_cell,
-    add_manager_dropdown
+    add_manager_dropdown, preload_worksheet_data, get_tuple_value
 )
 from core.discovery import discover_qa_folders, group_folders_by_language
 from core.matching import (
     build_master_index, find_matching_row_in_master, extract_qa_row_data,
+    extract_qa_row_data_fast,
     build_master_index_cached, clone_with_fresh_consumed, clear_master_index_cache
 )
 
@@ -559,15 +560,34 @@ def process_sheet(
     # Build column cache for O(1) header lookups (Phase 2 optimization)
     qa_column_cache = build_column_map(qa_ws)
 
+    # ==========================================================================
+    # FAST PRELOAD: Load ALL QA data into memory as tuples (10-50x faster)
+    # ==========================================================================
+    # This eliminates millions of slow ws.cell() calls
+    qa_col_idx, qa_data_rows = preload_worksheet_data(qa_ws)
+
+    # Map 1-based column numbers to 0-based tuple indices for fast access
+    qa_status_idx = qa_col_idx.get("STATUS")
+    qa_comment_idx = qa_col_idx.get("MEMO") or qa_col_idx.get("COMMENT")
+    qa_stringid_idx = qa_col_idx.get("STRINGID")
+    qa_screenshot_idx = qa_col_idx.get("SCREENSHOT")
+
     # Process each row using CONTENT-BASED MATCHING
     for qa_row in rows_to_process:
+        # Convert 1-based row number to 0-based tuple index
+        tuple_idx = qa_row - 2  # Row 2 = index 0
+        if tuple_idx < 0 or tuple_idx >= len(qa_data_rows):
+            continue
+
+        row_tuple = qa_data_rows[tuple_idx]
+
         # Skip empty rows - check column 1 (first column always has data if row is valid)
-        first_col_value = qa_ws.cell(row=qa_row, column=1).value
+        first_col_value = row_tuple[0] if row_tuple else None
         if first_col_value is None or str(first_col_value).strip() == "":
             continue
 
-        # Extract QA row data for matching (with column cache for O(1) lookups)
-        qa_row_data = extract_qa_row_data(qa_ws, qa_row, category, is_english, column_cache=qa_column_cache)
+        # Extract QA row data for matching using FAST tuple access
+        qa_row_data = extract_qa_row_data_fast(row_tuple, qa_row, qa_col_idx, category, is_english)
 
         # Find matching master row using content-based matching
         master_row, match_type = find_matching_row_in_master(qa_row_data, master_index, category)
@@ -586,16 +606,17 @@ def process_sheet(
         else:
             result["match_stats"]["fallback"] += 1
 
-        # Read COMMENT value ONCE (used for both compilation and manager status lookup)
+        # Read COMMENT value from preloaded tuple (FAST)
         qa_comment_value = None
-        if qa_comment_col:
-            qa_comment_value = qa_ws.cell(row=qa_row, column=qa_comment_col).value
+        if qa_comment_idx is not None and qa_comment_idx < len(row_tuple):
+            qa_comment_value = row_tuple[qa_comment_idx]
 
-        # Get QA STATUS
+        # Get QA STATUS from preloaded tuple (FAST)
         should_compile_comment = False
         status_type = None
-        if qa_status_col:
-            qa_status = qa_ws.cell(row=qa_row, column=qa_status_col).value
+        qa_status = None
+        if qa_status_idx is not None and qa_status_idx < len(row_tuple):
+            qa_status = row_tuple[qa_status_idx]
             if qa_status:
                 status_upper = str(qa_status).strip().upper()
                 if status_upper == "ISSUE":
@@ -625,9 +646,10 @@ def process_sheet(
         # Process COMMENT
         if qa_comment_value and should_compile_comment:
             if str(qa_comment_value).strip():
+                # FAST: Get STRINGID from preloaded tuple (not ws.cell())
                 string_id = None
-                if qa_stringid_col:
-                    string_id = qa_ws.cell(row=qa_row, column=qa_stringid_col).value
+                if qa_stringid_idx is not None and qa_stringid_idx < len(row_tuple):
+                    string_id = row_tuple[qa_stringid_idx]
 
                 existing = master_ws.cell(row=master_row, column=master_comment_col).value
                 new_value = format_comment(qa_comment_value, string_id, existing, file_mod_time)
@@ -656,8 +678,12 @@ def process_sheet(
 
         # Process SCREENSHOT (not for Script category)
         if qa_screenshot_col and master_screenshot_col:
+            # FAST: Get screenshot VALUE from preloaded tuple
+            screenshot_value = None
+            if qa_screenshot_idx is not None and qa_screenshot_idx < len(row_tuple):
+                screenshot_value = row_tuple[qa_screenshot_idx]
+            # NOTE: Hyperlink must still use ws.cell() (not in values_only=True)
             qa_screenshot_cell = qa_ws.cell(row=qa_row, column=qa_screenshot_col)
-            screenshot_value = qa_screenshot_cell.value
             screenshot_hyperlink = qa_screenshot_cell.hyperlink
 
             if screenshot_value and str(screenshot_value).strip():
