@@ -15,3 +15,4 @@ Build 20260205_120700: Smart Auto-Recursive Source Scanner + Full Transfer Tree 
 Build: Auto-discover language codes from LOC folder (SPA-ES, POR-BR detection)
 Build: Auto-discover LANGUAGE_ORDER and LANGUAGE_NAMES from LOC
 Build: Correct fallback language list (14 production languages)
+Build: FIX transfer not finding files in language-tagged subfolders (critical bug)
