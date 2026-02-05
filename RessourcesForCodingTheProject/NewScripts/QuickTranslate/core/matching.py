@@ -12,10 +12,11 @@ All matching algorithms for QuickTranslate:
 
 import hashlib
 import logging
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 import config
 from .text_utils import normalize_for_matching
+from .korean_detection import is_korean_text
 
 logger = logging.getLogger(__name__)
 
@@ -470,6 +471,14 @@ def _quadruple_fallback_fuzzy(
     return matched, not_found, level_counts
 
 
+def _is_entry_untranslated(entry: dict) -> bool:
+    """Check if entry needs translation (str_value is empty or Korean)."""
+    str_value = entry.get("str_value", "")
+    if not str_value or not str_value.strip():
+        return True
+    return is_korean_text(str_value)
+
+
 def find_matches_strict_fuzzy(
     corrections: List[Dict],
     xml_entries: Dict[Tuple[str, str], dict],
@@ -478,6 +487,8 @@ def find_matches_strict_fuzzy(
     fuzzy_texts: List[str],
     fuzzy_entries: List[dict],
     fuzzy_threshold: float = 0.85,
+    only_untranslated: bool = False,
+    progress_callback: Optional[Callable[[str], None]] = None,
 ) -> Tuple[List[Dict], int]:
     """
     Strict match with fuzzy StrOrigin verification via SBERT.
@@ -506,6 +517,8 @@ def find_matches_strict_fuzzy(
         fuzzy_texts: Unused (kept for backward compatibility)
         fuzzy_entries: Target entry dicts to build StringID pool index
         fuzzy_threshold: Minimum similarity score (default 0.85)
+        only_untranslated: If True, filter pool to entries that need translation
+        progress_callback: Optional callback for detailed progress logging
 
     Returns:
         Tuple of (matched_corrections, not_found_count)
@@ -519,12 +532,22 @@ def find_matches_strict_fuzzy(
 
     # Build StringID -> entries index for fast pool lookup
     stringid_to_entries: Dict[str, List[dict]] = defaultdict(list)
+    filtered_count = 0
     for entry in fuzzy_entries:
         sid = entry.get("string_id", "")
         if sid:
+            if only_untranslated and not _is_entry_untranslated(entry):
+                filtered_count += 1
+                continue  # Skip already-translated
             stringid_to_entries[sid].append(entry)
 
     logger.info(f"Built StringID pool index: {len(stringid_to_entries)} unique StringIDs")
+
+    # Phase 1: Pool index built
+    if progress_callback:
+        progress_callback(f"[Phase 1/4] Pool index: {len(stringid_to_entries):,} StringIDs from {len(fuzzy_entries):,} entries")
+        if only_untranslated:
+            progress_callback(f"  - Filtered out {filtered_count:,} already-translated entries")
 
     # Separate corrections: exact matches vs need fuzzy, grouped by StringID
     need_fuzzy_by_stringid: Dict[str, List[Dict]] = defaultdict(list)
@@ -553,16 +576,37 @@ def find_matches_strict_fuzzy(
     logger.info(f"Exact matches: {len(matched)}, need fuzzy: {total_need_fuzzy} "
                 f"across {len(need_fuzzy_by_stringid)} unique StringIDs")
 
+    # Phase 2: Exact matches complete
+    if progress_callback:
+        progress_callback(f"[Phase 2/4] Exact matches: {len(matched)}, need fuzzy: {total_need_fuzzy}")
+
     if not need_fuzzy_by_stringid:
+        # Phase 4: Complete (no fuzzy needed)
+        if progress_callback:
+            progress_callback(f"[Phase 4/4] COMPLETE: {len(matched)} matched, {not_found} not found")
+            if len(corrections) > 0:
+                progress_callback(f"  - Match rate: {len(matched)/len(corrections)*100:.1f}%")
         return matched, not_found
 
     # Process each StringID group: encode pool ONCE, then batch match all queries
     processed = 0
+    group_count = 0
+    total_groups = len(need_fuzzy_by_stringid)
+
+    if progress_callback:
+        progress_callback(f"[Phase 3/4] Fuzzy matching {total_groups} StringID groups...")
+
     for string_id, corr_group in need_fuzzy_by_stringid.items():
         pool = stringid_to_entries[string_id]
+        group_count += 1
 
         if processed % 100 == 0 and processed > 0:
             logger.info(f"Fuzzy matching: {processed}/{total_need_fuzzy} processed")
+
+        # Log every 10 rows OR first 5 groups for visibility
+        if progress_callback and (processed % 10 == 0 or group_count <= 5):
+            truncated_id = string_id[:25] + "..." if len(string_id) > 25 else string_id
+            progress_callback(f"[{group_count}/{total_groups}] {truncated_id}: pool={len(pool)}, queries={len(corr_group)}")
 
         # Encode pool once for this StringID
         pool_texts = [e.get("str_origin", "") for e in pool]
@@ -593,6 +637,8 @@ def find_matches_strict_fuzzy(
         faiss_lib.normalize_L2(query_embeddings)
 
         # Search pool index for each query
+        group_matched = 0
+        group_not_found = 0
         for qi, c in enumerate(corr_group):
             query_emb = query_embeddings[qi:qi+1]
             distances, indices_arr = pool_index.search(query_emb, 1)  # Get best match
@@ -600,11 +646,24 @@ def find_matches_strict_fuzzy(
             best_score = distances[0][0]
             if best_score >= fuzzy_threshold:
                 matched.append(c)
+                group_matched += 1
             else:
                 not_found += 1
+                group_not_found += 1
             processed += 1
 
+        # Log group results
+        if progress_callback and (processed % 10 == 0 or group_count <= 5):
+            progress_callback(f"  -> matched={group_matched}, not_found={group_not_found}")
+
     logger.info(f"Fuzzy matching complete: {len(matched)} matched, {not_found} not found")
+
+    # Phase 4: Final summary
+    if progress_callback:
+        progress_callback(f"[Phase 4/4] COMPLETE: {len(matched)} matched, {not_found} not found")
+        if len(corrections) > 0:
+            progress_callback(f"  - Match rate: {len(matched)/len(corrections)*100:.1f}%")
+
     return matched, not_found
 
 

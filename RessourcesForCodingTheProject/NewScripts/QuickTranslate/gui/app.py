@@ -479,6 +479,11 @@ class QuickTranslateApp:
         self.log_area.delete(1.0, tk.END)
         self.log_area.config(state='disabled')
 
+    def _progress_log_callback(self, message: str):
+        """Progress callback that logs to GUI log area."""
+        self._log(message, 'info')
+        self.root.update()  # Keep GUI responsive
+
     def _analyze_folder(self, folder_path: str, role: str) -> None:
         """Analyze a folder and print detailed info to terminal and log.
 
@@ -1110,11 +1115,14 @@ class QuickTranslateApp:
                     if not self._ensure_fuzzy_index(target):
                         return
                     threshold = self.fuzzy_threshold.get()
+                    only_untranslated = self.transfer_scope.get() == "untranslated"
                     self._log(f"Strict mode with FUZZY precision (threshold: {threshold:.2f})", 'info')
 
                     matched, not_found = find_matches_strict_fuzzy(
                         corrections, xml_entries, self._fuzzy_model, self._fuzzy_index,
-                        self._fuzzy_texts, self._fuzzy_entries, threshold
+                        self._fuzzy_texts, self._fuzzy_entries, threshold,
+                        only_untranslated=only_untranslated,
+                        progress_callback=self._progress_log_callback
                     )
                 else:
                     self._log("Strict mode with PERFECT precision", 'info')
