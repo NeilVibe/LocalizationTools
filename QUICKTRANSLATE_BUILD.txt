@@ -17,3 +17,4 @@ Build: Auto-discover LANGUAGE_ORDER and LANGUAGE_NAMES from LOC
 Build: Correct fallback language list (14 production languages)
 Build: FIX transfer not finding files in language-tagged subfolders (critical bug)
 Build: FIX language code lost between scanner and transfer (file_to_lang mapping)
+Build: Per-file transfer logging with source file name
