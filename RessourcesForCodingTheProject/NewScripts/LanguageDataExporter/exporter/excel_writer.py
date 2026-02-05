@@ -122,7 +122,7 @@ def write_language_excel(
     vrs_orderer: Optional["VRSOrderer"] = None,
     stringid_to_soundevent: Optional[Dict[str, str]] = None,
     excluded_categories: Optional[set] = None,
-    protect_sheet: bool = True,
+    protect_sheet: bool = False,  # Disabled to allow Ctrl+H (Find & Replace)
 ) -> bool:
     """
     Write Excel file for one language using xlsxwriter.
@@ -141,7 +141,7 @@ def write_language_excel(
         vrs_orderer: VRSOrderer for story ordering (optional)
         stringid_to_soundevent: {StringID: SoundEventName} mapping (optional)
         excluded_categories: Set of category names to exclude (optional)
-        protect_sheet: If True, only Correction column is editable (default: True)
+        protect_sheet: If True, only Correction column is editable (default: False for Ctrl+H support)
 
     Returns:
         True if successful, False otherwise
