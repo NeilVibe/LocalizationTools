@@ -537,17 +537,24 @@ def process_sheet(
         _script_debug_log(f"  Using prefiltered_rows: {len(rows_to_process)} rows")
         _script_debug_flush()
     elif is_script and qa_status_col:
-        # Fallback: scan STATUS column (original behavior)
-        status_distribution = {}
-        for qa_row in range(2, qa_ws.max_row + 1):
-            status_val = qa_ws.cell(row=qa_row, column=qa_status_col).value
-            if status_val and str(status_val).strip():
-                rows_to_process.append(qa_row)
-                status_upper = str(status_val).strip().upper()
-                status_distribution[status_upper] = status_distribution.get(status_upper, 0) + 1
-        print(f"      [OPTIMIZATION] {len(rows_to_process)} rows with STATUS (skipping {qa_ws.max_row - 1 - len(rows_to_process)} empty rows)")
+        # Fallback: scan STATUS column using PRELOADED data (no ws.cell() calls!)
+        # FAST: Preload once, scan tuples
+        _temp_col_idx, _temp_data_rows = preload_worksheet_data(qa_ws)
+        _temp_status_idx = _temp_col_idx.get("STATUS")
 
-        _script_debug_log(f"  STATUS column found at col {qa_status_col}")
+        status_distribution = {}
+        if _temp_status_idx is not None:
+            for row_idx, row_tuple in enumerate(_temp_data_rows, start=2):
+                if _temp_status_idx < len(row_tuple):
+                    status_val = row_tuple[_temp_status_idx]
+                    if status_val and str(status_val).strip():
+                        rows_to_process.append(row_idx)
+                        status_upper = str(status_val).strip().upper()
+                        status_distribution[status_upper] = status_distribution.get(status_upper, 0) + 1
+
+        print(f"      [OPTIMIZATION] {len(rows_to_process)} rows with STATUS (skipping {len(_temp_data_rows) - len(rows_to_process)} empty rows)")
+
+        _script_debug_log(f"  STATUS column index: {_temp_status_idx}")
         _script_debug_log(f"  rows_to_process: {len(rows_to_process)}")
         _script_debug_log(f"  STATUS distribution in QA file:")
         for status, count in sorted(status_distribution.items()):
@@ -1386,40 +1393,55 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
             col_widths.append(ws.column_dimensions[col_letter].width or chars_per_line)
 
         # === PHASE 2: Auto-fit row heights ===
-        # FAST: Calculate heights from preloaded data, then apply alignment in batches
+        # FAST: Calculate heights from COMMENT columns only (they have multi-line text)
+        # Other columns (STRINGID, Translation) are typically single-line
+        # This reduces O(rows × columns) to O(rows × comment_cols)
 
-        # Calculate row heights from data
+        # Calculate row heights from COMMENT columns only
         row_heights = []  # List of (row_num, height)
         for row_idx, row_tuple in enumerate(all_rows):
             row_num = row_idx + 1  # 1-based Excel row number
             max_lines = 1
 
-            for col_idx, cell_value in enumerate(row_tuple):
-                if cell_value:
-                    content = str(cell_value)
-                    explicit_lines = content.count('\n') + 1
+            # Only check COMMENT columns for multi-line content
+            for col_idx in comment_col_indices:
+                if col_idx < len(row_tuple):
+                    cell_value = row_tuple[col_idx]
+                    if cell_value:
+                        content = str(cell_value)
+                        explicit_lines = content.count('\n') + 1
 
-                    col_width = col_widths[col_idx] if col_idx < len(col_widths) else chars_per_line
-                    effective_chars = max(int(col_width * 0.9), 10)
+                        col_width = col_widths[col_idx] if col_idx < len(col_widths) else chars_per_line
+                        effective_chars = max(int(col_width * 0.9), 10)
 
-                    longest_line = max(len(line) for line in content.split('\n')) if content else 0
-                    wrapped_lines = max(1, (longest_line // effective_chars) + 1)
-                    total_lines = explicit_lines + wrapped_lines - 1
-                    max_lines = max(max_lines, total_lines)
+                        longest_line = max(len(line) for line in content.split('\n')) if content else 0
+                        wrapped_lines = max(1, (longest_line // effective_chars) + 1)
+                        total_lines = explicit_lines + wrapped_lines - 1
+                        max_lines = max(max_lines, total_lines)
 
             calculated_height = min(max_lines * default_row_height, 300)
             row_heights.append((row_num, calculated_height))
 
-        # Apply row heights and word wrap alignment
-        # NOTE: We must still use ws.cell() for WRITING alignment, but now we batch it
+        # Apply row heights
         for row_num, height in row_heights:
             ws.row_dimensions[row_num].height = height
 
-        # Apply word wrap alignment to header row and cells with content only
-        # Use iter_rows for efficient cell access
-        for row in ws.iter_rows(min_row=1, max_row=ws.max_row, max_col=num_cols):
-            for cell in row:
-                if cell.value is not None or cell.row == 1:
-                    cell.alignment = WRAP_TOP_ALIGNMENT
+        # Apply word wrap alignment ONLY to COMMENT columns (not all columns!)
+        # This reduces O(rows × columns) to O(rows × comment_cols)
+        # For 100k rows × 50 cols → 100k rows × ~5 comment cols = 10x faster
+
+        # Header row: apply to all columns (just 1 row)
+        for cell in ws[1]:
+            cell.alignment = WRAP_TOP_ALIGNMENT
+
+        # Data rows: ONLY apply to COMMENT columns (they have multi-line text)
+        # Other columns (STRINGID, Translation, etc.) don't need word wrap
+        if comment_col_indices:
+            for row_num in range(2, len(all_rows) + 1):
+                for col_idx in comment_col_indices:
+                    col_num = col_idx + 1  # Convert 0-based to 1-based
+                    cell = ws.cell(row=row_num, column=col_num)
+                    if cell.value is not None:
+                        cell.alignment = WRAP_TOP_ALIGNMENT
 
         print(f" done")
