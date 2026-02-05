@@ -577,10 +577,13 @@ def preprocess_script_category(
                     # In read_only mode, ws.cell() re-parses XML; build_column_map uses iter_rows
                     col_map = build_column_map(ws)
 
-                    status_col = col_map.get(SCRIPT_COLS.get("status", "STATUS").upper())
-                    text_col = col_map.get(SCRIPT_COLS.get("translation", "Text").upper())
-                    eventname_col = col_map.get(SCRIPT_COLS.get("stringid", "EventName").upper())
-                    memo_col = col_map.get(SCRIPT_COLS.get("comment", "MEMO").upper())
+                    status_col = col_map.get("STATUS")
+                    # Translation: try "Text" first, then "Translation"
+                    text_col = col_map.get("TEXT") or col_map.get("TRANSLATION")
+                    # Unique ID: try "EventName" first, then "STRINGID"
+                    eventname_col = col_map.get("EVENTNAME") or col_map.get("STRINGID")
+                    # Comment: try "MEMO" first, then "COMMENT"
+                    memo_col = col_map.get("MEMO") or col_map.get("COMMENT")
 
                     if not status_col or not text_col or not eventname_col:
                         # Not a script sheet - skip silently
@@ -1027,12 +1030,13 @@ def process_category(
             # ONLY count rows where STATUS is filled (DONE rows)
             qa_status_col = find_column_by_header(qa_ws, "STATUS")
 
-            # Script-type: find "Text" column by NAME (more robust)
+            # Script-type: find "Text" or "Translation" by NAME (no position fallback!)
             # Other categories: use position-based from config
             if is_script_category:
-                trans_col = find_column_by_header(qa_ws, SCRIPT_COLS.get("translation", "Text"))
+                trans_col = find_column_by_header(qa_ws, "Text")
                 if not trans_col:
-                    trans_col = trans_col_default  # Fallback to position
+                    trans_col = find_column_by_header(qa_ws, "Translation")
+                # No position fallback for Script - if not found, skip word counting
             else:
                 trans_col = trans_col_default
 
