@@ -201,8 +201,9 @@ def merge_corrections_to_xml(
                 result["details"].append({
                     "string_id": sid,
                     "status": status,
-                    "old": c.get("str_origin", ""),  # FULL StrOrigin for failure report
-                    "new": c["corrected"],  # FULL text for failure report
+                    "old": c.get("str_origin", ""),
+                    "new": c["corrected"],
+                    "raw_attribs": c.get("raw_attribs", {}),  # ALL original attributes
                 })
 
         result["not_found"] = len(corrections) - result["matched"]
@@ -411,8 +412,9 @@ def merge_corrections_stringid_only(
                 result["details"].append({
                     "string_id": sid,
                     "status": "NOT_FOUND",
-                    "old": c.get("str_origin", ""),  # FULL StrOrigin
-                    "new": c["corrected"],  # FULL text
+                    "old": c.get("str_origin", ""),
+                    "new": c["corrected"],
+                    "raw_attribs": c.get("raw_attribs", {}),  # ALL original attributes
                 })
 
         if changed and not dry_run:
@@ -555,8 +557,9 @@ def merge_corrections_fuzzy(
                 result["details"].append({
                     "string_id": sid,
                     "status": "NOT_FOUND",
-                    "old": c.get("str_origin", ""),  # FULL StrOrigin
-                    "new": c["corrected"],  # FULL text
+                    "old": c.get("str_origin", ""),
+                    "new": c["corrected"],
+                    "raw_attribs": c.get("raw_attribs", {}),  # ALL original attributes
                 })
 
         if changed and not dry_run:
@@ -701,8 +704,9 @@ def merge_corrections_quadruple_fallback(
                 result["details"].append({
                     "string_id": sid,
                     "status": "NOT_FOUND",
-                    "old": c.get("str_origin", ""),  # FULL StrOrigin
-                    "new": c["corrected"],  # FULL text
+                    "old": c.get("str_origin", ""),
+                    "new": c["corrected"],
+                    "raw_attribs": c.get("raw_attribs", {}),  # ALL original attributes
                 })
 
         if changed and not dry_run:

@@ -18,7 +18,7 @@ def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
         xml_path: Path to XML file
 
     Returns:
-        List of correction dicts with keys: string_id, str_origin, corrected
+        List of correction dicts with keys: string_id, str_origin, corrected, raw_attribs
     """
     corrections = []
 
@@ -33,10 +33,14 @@ def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
                         elem.get('STR') or '').strip()
 
             if string_id and str_value:
+                # Store ALL original attributes for exact preservation in failure reports
+                raw_attribs = dict(elem.attrib)
+
                 corrections.append({
                     "string_id": string_id,
                     "str_origin": str_origin,
                     "corrected": str_value,
+                    "raw_attribs": raw_attribs,  # ALL original attributes
                 })
     except Exception:
         pass
