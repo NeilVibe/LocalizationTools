@@ -586,6 +586,11 @@ def process_sheet(
         else:
             result["match_stats"]["fallback"] += 1
 
+        # Read COMMENT value ONCE (used for both compilation and manager status lookup)
+        qa_comment_value = None
+        if qa_comment_col:
+            qa_comment_value = qa_ws.cell(row=qa_row, column=qa_comment_col).value
+
         # Get QA STATUS
         should_compile_comment = False
         status_type = None
@@ -618,15 +623,14 @@ def process_sheet(
             tester_status_cell.alignment = MANAGER_STATUS_ALIGNMENT
 
         # Process COMMENT
-        if qa_comment_col and should_compile_comment:
-            qa_comment = qa_ws.cell(row=qa_row, column=qa_comment_col).value
-            if qa_comment and str(qa_comment).strip():
+        if qa_comment_value and should_compile_comment:
+            if str(qa_comment_value).strip():
                 string_id = None
                 if qa_stringid_col:
                     string_id = qa_ws.cell(row=qa_row, column=qa_stringid_col).value
 
                 existing = master_ws.cell(row=master_row, column=master_comment_col).value
-                new_value = format_comment(qa_comment, string_id, existing, file_mod_time)
+                new_value = format_comment(qa_comment_value, string_id, existing, file_mod_time)
 
                 if new_value != existing:
                     cell = master_ws.cell(row=master_row, column=master_comment_col)
@@ -734,12 +738,10 @@ def process_sheet(
         # Key = (stringid, tester_comment_text) - Manager status is paired with tester's comment
         # STRINGID from MASTER row (reliable), comment from QA file (what tester wrote)
 
-        # Get tester's comment from QA file for lookup
+        # Get tester's comment from QA file for lookup (reuse already-read value)
         tester_comment_for_lookup = ""
-        if qa_comment_col:
-            qa_comment_raw = qa_ws.cell(row=qa_row, column=qa_comment_col).value
-            if qa_comment_raw and str(qa_comment_raw).strip():
-                tester_comment_for_lookup = extract_comment_text(qa_comment_raw)
+        if qa_comment_value and str(qa_comment_value).strip():
+            tester_comment_for_lookup = extract_comment_text(qa_comment_value)
 
         # DEBUG: Log lookup attempts for Script
         if is_script and qa_row <= 5:  # First 5 rows only
