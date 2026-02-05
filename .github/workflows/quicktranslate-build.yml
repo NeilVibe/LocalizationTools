@@ -106,7 +106,7 @@ jobs:
               is_korean_text, find_matches,
               find_matches_stringid_only, find_matches_strict,
               build_sequencer_strorigin_index, discover_language_files,
-              extract_korean_misses, contains_korean,
+              find_missing_translations_per_language,
           )
           print('core imports: OK')
 
@@ -304,7 +304,7 @@ jobs:
             **Core Features:**
             - **LOOKUP**: Find translations across 17 languages
             - **TRANSFER**: Apply corrections to XML files
-            - **Extract Korean Misses**: Find Korean strings not in source (filters System/Gimmick, System/MultiChange)
+            - **Find Missing Translations**: Per-language XML + Excel report with Korean word counts
             - **Reverse Lookup**: Input text in any language -> find all translations
             - **Direct StringID Lookup**: Quick lookup by StringID
             - **Settings**: Configurable LOC/EXPORT paths (persisted to settings.json)
