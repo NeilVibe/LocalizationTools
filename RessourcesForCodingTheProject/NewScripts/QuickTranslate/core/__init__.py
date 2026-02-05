@@ -80,6 +80,18 @@ from .source_scanner import (
     generate_transfer_plan,
     format_transfer_plan,
 )
+from .failure_report import (
+    generate_failed_merge_xml,
+    extract_failed_from_transfer_results,
+    extract_failed_from_folder_results,
+    format_failure_summary,
+    # Excel failure reports
+    generate_failure_report_excel,
+    generate_failure_report_from_transfer,
+    aggregate_transfer_results,
+    check_xlsxwriter_available,
+    FAILURE_REASONS,
+)
 
 __all__ = [
     # text_utils
@@ -161,4 +173,15 @@ __all__ = [
     "FileMapping",
     "generate_transfer_plan",
     "format_transfer_plan",
+    # failure_report (XML)
+    "generate_failed_merge_xml",
+    "extract_failed_from_transfer_results",
+    "extract_failed_from_folder_results",
+    "format_failure_summary",
+    # failure_report (Excel)
+    "generate_failure_report_excel",
+    "generate_failure_report_from_transfer",
+    "aggregate_transfer_results",
+    "check_xlsxwriter_available",
+    "FAILURE_REASONS",
 ]
