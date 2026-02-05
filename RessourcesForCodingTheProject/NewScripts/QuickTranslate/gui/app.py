@@ -843,11 +843,24 @@ class QuickTranslateApp:
             self._log(f"Load error: {e}", 'error')
             return False
 
-    def _ensure_fuzzy_index(self, target_path: str) -> bool:
-        """Build FAISS index for target folder if needed. Returns True if index is ready."""
+    def _ensure_fuzzy_index(
+        self,
+        target_path: str,
+        stringid_filter: set = None,
+        only_untranslated: bool = False,
+    ) -> bool:
+        """Build FAISS index for target folder if needed. Returns True if index is ready.
+
+        Args:
+            target_path: Path to target folder
+            stringid_filter: Optional set of StringIDs to include. CRITICAL for performance!
+            only_untranslated: If True, only include entries where Str has Korean.
+        """
+        # Only reuse cache if no filter specified (filter changes what we need)
         if (self._fuzzy_index is not None
                 and self._fuzzy_index_path == target_path
-                and self._fuzzy_texts):
+                and self._fuzzy_texts
+                and stringid_filter is None):
             return True
 
         if not target_path:
@@ -860,8 +873,13 @@ class QuickTranslateApp:
             return False
 
         try:
-            self._log(f"Building FAISS index for: {target}", 'info')
-            texts, entries = build_index_from_folder(target, self._update_status)
+            filter_info = f" (filtering to {len(stringid_filter):,} StringIDs)" if stringid_filter else " (FULL - no filter!)"
+            self._log(f"Building FAISS index for: {target}{filter_info}", 'info')
+            texts, entries = build_index_from_folder(
+                target, self._update_status,
+                stringid_filter=stringid_filter,
+                only_untranslated=only_untranslated,
+            )
 
             if not texts:
                 messagebox.showerror("Error", f"No StrOrigin values found in target folder:\n{target}")
@@ -884,6 +902,38 @@ class QuickTranslateApp:
             messagebox.showerror("Index Build Error", f"Failed to build FAISS index:\n{e}")
             self._log(f"Index build error: {e}", 'error')
             return False
+
+    def _extract_stringids_from_source(self, source: Path) -> set:
+        """Extract unique StringIDs from source file/folder.
+
+        Used to filter FAISS index build - only include entries matching source StringIDs.
+        """
+        from .indexing import (
+            _get_attribute_case_insensitive,
+            _iter_locstr_case_insensitive,
+        )
+        from ..core.xml_parser import parse_xml_file
+
+        stringids = set()
+
+        if source.is_file():
+            xml_files = [source] if source.suffix.lower() == '.xml' else []
+        else:
+            xml_files = list(source.rglob("*.xml"))
+
+        for xml_file in xml_files:
+            try:
+                root = parse_xml_file(xml_file)
+                for elem in _iter_locstr_case_insensitive(root):
+                    sid = (_get_attribute_case_insensitive(
+                        elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
+                    ) or '').strip()
+                    if sid:
+                        stringids.add(sid)
+            except Exception:
+                continue
+
+        return stringids
 
     def _save_settings(self):
         """Save current settings to config file."""
@@ -1275,7 +1325,13 @@ class QuickTranslateApp:
                     # Fuzzy precision: use SBERT similarity for StrOrigin comparison
                     if not self._ensure_fuzzy_model():
                         return
-                    if not self._ensure_fuzzy_index(target):
+
+                    # Extract StringIDs from corrections FIRST - filter the index build!
+                    correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
+                    self._log(f"Corrections have {len(correction_stringids):,} unique StringIDs for filtering", 'info')
+
+                    only_untranslated = self.transfer_scope.get() == "untranslated"
+                    if not self._ensure_fuzzy_index(target, stringid_filter=correction_stringids, only_untranslated=only_untranslated):
                         return
                     threshold = self.fuzzy_threshold.get()
                     self._log(f"Quadruple Fallback with FUZZY precision (threshold: {threshold:.2f})", 'info')
@@ -1759,11 +1815,20 @@ class QuickTranslateApp:
                 stringid_to_category = self.stringid_to_category
                 stringid_to_subfolder = self.stringid_to_subfolder
 
+            # For fuzzy precision modes, extract StringIDs from source FIRST to filter index
+            source_stringids = None
+            if precision == "fuzzy" and match_type in ("strict", "quadruple_fallback"):
+                self._log("Extracting StringIDs from source for filtered index build...", 'info')
+                source_stringids = self._extract_stringids_from_source(source)
+                self._log(f"Source has {len(source_stringids):,} unique StringIDs", 'info')
+
+            only_untranslated = self.transfer_scope.get() == "untranslated"
+
             # For strict with fuzzy precision, need model + index
             if match_type == "strict" and precision == "fuzzy":
                 if not self._ensure_fuzzy_model():
                     return
-                if not self._ensure_fuzzy_index(str(target)):
+                if not self._ensure_fuzzy_index(str(target), stringid_filter=source_stringids, only_untranslated=only_untranslated):
                     return
                 self._log(f"Strict TRANSFER with FUZZY precision (threshold={self.fuzzy_threshold.get():.2f})", 'info')
 
@@ -1771,7 +1836,7 @@ class QuickTranslateApp:
             if match_type == "quadruple_fallback" and precision == "fuzzy":
                 if not self._ensure_fuzzy_model():
                     return
-                if not self._ensure_fuzzy_index(str(target)):
+                if not self._ensure_fuzzy_index(str(target), stringid_filter=source_stringids, only_untranslated=only_untranslated):
                     return
                 self._log(f"Quadruple Fallback TRANSFER with FUZZY precision (threshold={self.fuzzy_threshold.get():.2f})", 'info')
 
@@ -1797,9 +1862,15 @@ class QuickTranslateApp:
                 "only_untranslated": self.transfer_scope.get() == "untranslated",
             }
 
-            # Pass threshold for fuzzy modes
+            # Pass threshold AND pre-built fuzzy data for fuzzy modes
+            # CRITICAL: Without this, transfer functions rebuild full index from scratch!
             if precision == "fuzzy" and match_type in ("strict", "quadruple_fallback"):
                 transfer_kwargs["threshold"] = self.fuzzy_threshold.get()
+                transfer_kwargs["fuzzy_model"] = self._fuzzy_model
+                transfer_kwargs["fuzzy_index"] = self._fuzzy_index
+                transfer_kwargs["fuzzy_texts"] = self._fuzzy_texts
+                transfer_kwargs["fuzzy_entries"] = self._fuzzy_entries
+                self._log(f"Passing pre-built fuzzy data: {len(self._fuzzy_entries):,} entries", 'info')
 
             if match_type == "quadruple_fallback" and precision == "fuzzy":
                 transfer_kwargs["use_fuzzy_precision"] = True
