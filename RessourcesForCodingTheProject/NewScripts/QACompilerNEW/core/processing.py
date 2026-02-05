@@ -29,7 +29,8 @@ from core.excel_ops import (
 )
 from core.discovery import discover_qa_folders, group_folders_by_language
 from core.matching import (
-    build_master_index, find_matching_row_in_master, extract_qa_row_data
+    build_master_index, find_matching_row_in_master, extract_qa_row_data,
+    build_master_index_cached, clone_with_fresh_consumed, clear_master_index_cache
 )
 
 
@@ -395,7 +396,8 @@ def process_sheet(
     image_mapping: Dict = None,
     xlsx_path: Path = None,
     manager_status: Dict = None,
-    prefiltered_rows: List[int] = None
+    prefiltered_rows: List[int] = None,
+    master_index: Dict = None
 ) -> Dict:
     """
     Process a single sheet: copy COMMENT and SCREENSHOT from QA to master.
@@ -419,6 +421,9 @@ def process_sheet(
         manager_status: Dict for preserving manager status
         prefiltered_rows: Optional list of row numbers to process (Phase C2 optimization).
                           If provided, skips the STATUS column scan for Script categories.
+        master_index: Optional pre-built master index (performance optimization).
+                      If provided, uses this index instead of building a new one.
+                      Should have fresh 'consumed' set for each user.
 
     Returns:
         Dict with {comments, screenshots, stats, manager_restored, match_stats}
@@ -517,7 +522,9 @@ def process_sheet(
     }
 
     # Build master index for O(1) content-based matching
-    master_index = build_master_index(master_ws, category, is_english)
+    # Use pre-built index if provided (performance optimization: avoids rebuilding per user)
+    if master_index is None:
+        master_index = build_master_index(master_ws, category, is_english)
 
     # OPTIMIZATION: For Script-type categories, pre-filter to only rows WITH status
     # Phase C2: If prefiltered_rows provided from universe, use directly (skip scan)

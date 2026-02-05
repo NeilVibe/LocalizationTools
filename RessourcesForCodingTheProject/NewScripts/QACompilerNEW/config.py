@@ -212,6 +212,28 @@ CATEGORY_TO_MASTER = {
 }
 
 # =============================================================================
+# WORKER GROUPS FOR PARALLEL PROCESSING
+# =============================================================================
+# Categories are grouped for parallel execution. Categories in the same group
+# share a master file and MUST be processed sequentially. Different groups
+# CAN run in parallel since they write to different master files.
+#
+# Performance: With 6 workers, independent groups run concurrently.
+# Expected speedup: ~2-3x on typical datasets.
+
+WORKER_GROUPS = {
+    "quest":      ["Quest"],
+    "knowledge":  ["Knowledge"],
+    "region":     ["Region"],
+    "character":  ["Character"],
+    "contents":   ["Contents"],
+    "face":       ["Face"],
+    "item":       ["Item", "Gimmick"],       # Must serialize (shared Master_Item.xlsx)
+    "system":     ["Skill", "Help"],         # Must serialize (shared Master_System.xlsx)
+    "script":     ["Sequencer", "Dialog"],   # Must serialize (shared Master_Script.xlsx)
+}
+
+# =============================================================================
 # COLUMN POSITIONS BY CATEGORY
 # =============================================================================
 

@@ -123,6 +123,9 @@ from core.processing import (
     hide_empty_comment_rows, autofit_rows_with_wordwrap,
     count_words_english, count_chars_chinese
 )
+from core.matching import (
+    build_master_index, clone_with_fresh_consumed, clear_master_index_cache
+)
 
 
 # Valid manager status values
@@ -831,8 +834,9 @@ def process_category(
     rebuild: bool = True,
     fixed_screenshots: set = None,
     accumulated_users: set = None,
-    accumulated_stats: Dict = None
-) -> Tuple[List[Dict], set, Dict]:
+    accumulated_stats: Dict = None,
+    deferred_save: bool = False
+) -> Tuple[List[Dict], set, Dict, Optional['Workbook'], Optional[Path]]:
     """
     Process all QA folders for one category.
 
@@ -847,12 +851,15 @@ def process_category(
         fixed_screenshots: Set of screenshot filenames to skip (FIXED optimization)
         accumulated_users: Set of users accumulated across categories sharing same master
         accumulated_stats: Dict of user stats accumulated across categories sharing same master
+        deferred_save: If True, skip autofit/save and return workbook for caller to finalize
 
     Returns:
-        Tuple of (daily_entries, accumulated_users, accumulated_stats)
+        Tuple of (daily_entries, accumulated_users, accumulated_stats, master_wb, master_path)
         - daily_entries: List of daily_entry dicts for tracker
         - accumulated_users: Updated set of all users for this master
         - accumulated_stats: Updated dict of user stats for this master
+        - master_wb: The master workbook (None if deferred_save=False, i.e., already saved)
+        - master_path: Path to master file
     """
     if manager_status is None:
         manager_status = {}
@@ -911,7 +918,7 @@ def process_category(
     )
 
     if master_wb is None:
-        return daily_entries
+        return daily_entries, accumulated_users, dict(accumulated_stats) if accumulated_stats else {}, None, None
 
     # EN Item category: Sort master sheets A-Z by ItemName(ENG) for consistent matching
     if category.lower() == "item" and lang_label == "EN":
@@ -940,6 +947,21 @@ def process_category(
     is_script_category = category.lower() in SCRIPT_TYPE_CATEGORIES
     trans_col_key = "eng" if is_english else "other"
     trans_col_default = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3}).get(trans_col_key, 2)
+
+    # ==========================================================================
+    # PERFORMANCE OPTIMIZATION: Build master indexes ONCE per sheet
+    # ==========================================================================
+    # Instead of rebuilding the index for each user (O(users × rows)),
+    # build once and clone with fresh consumed set (O(rows) + O(users))
+    # This gives 10x speedup for 10 users on same master sheet.
+    master_indexes = {}  # sheet_name -> master_index
+    for sheet_name in master_wb.sheetnames:
+        if sheet_name == "STATUS":
+            continue
+        master_ws = master_wb[sheet_name]
+        if master_ws.max_row and master_ws.max_row > 1:
+            master_indexes[sheet_name] = build_master_index(master_ws, category, is_english)
+    print(f"  Pre-built {len(master_indexes)} master indexes for O(1) matching")
 
     # Process each QA folder
     for qf in qa_folders:
@@ -1007,12 +1029,20 @@ def process_category(
             # Uses content-based matching for robust row matching
             qa_rows = qa_ws.max_row - 1 if qa_ws.max_row and qa_ws.max_row > 1 else 0
             print(f"      {sheet_name}: {qa_rows} rows...", end="", flush=True)
+
+            # OPTIMIZATION: Use pre-built index with fresh consumed set for each user
+            # This avoids rebuilding the index for each user (10x speedup for 10 users)
+            user_index = None
+            if sheet_name in master_indexes:
+                user_index = clone_with_fresh_consumed(master_indexes[sheet_name])
+
             result = process_sheet(
                 master_ws, qa_ws, username, category,
                 is_english=is_english,
                 image_mapping=image_mapping,
                 xlsx_path=xlsx_path,
-                manager_status=sheet_manager_status
+                manager_status=sheet_manager_status,
+                master_index=user_index
             )
 
             # Accumulate stats from result["stats"]
@@ -1048,7 +1078,10 @@ def process_category(
                 trans_col = find_column_by_header(qa_ws, "Text")
                 if not trans_col:
                     trans_col = find_column_by_header(qa_ws, "Translation")
-                # No position fallback for Script - if not found, skip word counting
+                if not trans_col:
+                    # Skip word counting for this sheet - no Text/Translation column found
+                    print(f"      {sheet_name}: SKIPPED word counting (no Text/Translation column)")
+                    continue  # BUG FIX: This continue was missing, causing TypeError with None trans_col
             else:
                 trans_col = trans_col_default
 
@@ -1111,31 +1144,39 @@ def process_category(
     # clustered categories (e.g., Sequencer + Dialog -> Master_Script) from
     # overwriting each other's users in the STATUS sheet.
 
-    # Apply word wrap and autofit FIRST (before hiding)
-    # This way all columns get proper widths, even if hidden later
-    # Bonus: if user unhides a column in Excel, it already looks good
-    print(f"\n  Formatting: autofit columns and row heights...")
-    autofit_rows_with_wordwrap(master_wb)
+    if deferred_save:
+        # DEFERRED SAVE: Return workbook for caller to finalize (autofit + save)
+        # This enables running autofit ONCE per master after ALL categories processed
+        print(f"\n  [DEFERRED] Skipping autofit/save - will be done in final pass")
+        if total_images > 0:
+            print(f"  Images: {total_images} copied to Images/, {total_screenshots} hyperlinks updated")
+        return daily_entries, all_users, dict(user_stats), master_wb, master_path
+    else:
+        # IMMEDIATE SAVE: Apply word wrap and autofit FIRST (before hiding)
+        # This way all columns get proper widths, even if hidden later
+        # Bonus: if user unhides a column in Excel, it already looks good
+        print(f"\n  Formatting: autofit columns and row heights...")
+        autofit_rows_with_wordwrap(master_wb)
 
-    # THEN hide empty rows/sheets/columns (focus on issues)
-    print(f"  Optimizing: hiding empty rows/sheets/columns...")
-    hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(master_wb)
+        # THEN hide empty rows/sheets/columns (focus on issues)
+        print(f"  Optimizing: hiding empty rows/sheets/columns...")
+        hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(master_wb)
 
-    # Save master
-    print(f"  Saving master file...", end="", flush=True)
-    master_wb.save(master_path)
-    print(f" done")
-    print(f"\n  Saved: {master_path}")
-    if hidden_sheets:
-        print(f"  Hidden sheets (no comments): {', '.join(hidden_sheets)}")
-    if hidden_columns > 0:
-        print(f"  Hidden: {hidden_columns} empty user columns (unhide in Excel if needed)")
-    if hidden_rows > 0:
-        print(f"  Hidden: {hidden_rows} rows with no comments (unhide in Excel if needed)")
-    if total_images > 0:
-        print(f"  Images: {total_images} copied to Images/, {total_screenshots} hyperlinks updated")
+        # Save master
+        print(f"  Saving master file...", end="", flush=True)
+        master_wb.save(master_path)
+        print(f" done")
+        print(f"\n  Saved: {master_path}")
+        if hidden_sheets:
+            print(f"  Hidden sheets (no comments): {', '.join(hidden_sheets)}")
+        if hidden_columns > 0:
+            print(f"  Hidden: {hidden_columns} empty user columns (unhide in Excel if needed)")
+        if hidden_rows > 0:
+            print(f"  Hidden: {hidden_rows} rows with no comments (unhide in Excel if needed)")
+        if total_images > 0:
+            print(f"  Images: {total_images} copied to Images/, {total_screenshots} hyperlinks updated")
 
-    return daily_entries, all_users, dict(user_stats)
+        return daily_entries, all_users, dict(user_stats), None, master_path
 
 
 # =============================================================================
@@ -1153,6 +1194,9 @@ def run_compiler():
     _script_debug_clear()
     _script_debug_log("=== STARTING FULL COMPILATION ===")
     _script_debug_flush()
+
+    # Clear master index cache for fresh run
+    clear_master_index_cache()
 
     print("=" * 60)
     print("QA Excel Compiler (EN/CN Separation + Manager Status)")
@@ -1292,7 +1336,8 @@ def run_compiler():
     processed_masters_cn = set()
 
     # Track accumulated users and stats per master file for STATUS sheet
-    # Key: target_master name (e.g., "Script"), Value: (users_set, stats_dict)
+    # Key: target_master name (e.g., "Script"), Value: (users_set, stats_dict, workbook, path)
+    # DEFERRED SAVE: Store workbooks for final pass (autofit + STATUS + save)
     master_status_data_en = {}
     master_status_data_cn = {}
 
@@ -1314,24 +1359,33 @@ def run_compiler():
 
             # Get or initialize accumulated data for this master
             if target_master not in master_status_data_en:
-                master_status_data_en[target_master] = (
-                    set(),
-                    defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0})
-                )
-            acc_users, acc_stats = master_status_data_en[target_master]
+                master_status_data_en[target_master] = {
+                    "users": set(),
+                    "stats": defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0}),
+                    "workbook": None,
+                    "path": None,
+                }
+            data = master_status_data_en[target_master]
+            acc_users = data["users"]
+            acc_stats = data["stats"]
 
             category_manager_status = manager_status_en.get(category, {})
-            entries, acc_users, acc_stats = process_category(
+            entries, acc_users, acc_stats, master_wb, master_path = process_category(
                 category, by_category_en[category],
                 MASTER_FOLDER_EN, IMAGES_FOLDER_EN, "EN",
                 category_manager_status, rebuild=rebuild,
                 fixed_screenshots=fixed_screenshots_en,
                 accumulated_users=acc_users,
-                accumulated_stats=acc_stats
+                accumulated_stats=acc_stats,
+                deferred_save=True  # DEFERRED SAVE: Don't autofit/save yet
             )
             all_daily_entries.extend(entries)
-            # Store updated accumulated data
-            master_status_data_en[target_master] = (acc_users, acc_stats)
+            # Store updated accumulated data + workbook
+            master_status_data_en[target_master]["users"] = acc_users
+            master_status_data_en[target_master]["stats"] = acc_stats
+            if master_wb is not None:
+                master_status_data_en[target_master]["workbook"] = master_wb
+                master_status_data_en[target_master]["path"] = master_path
 
     # Process CN
     for category in CATEGORIES:
@@ -1351,49 +1405,115 @@ def run_compiler():
 
             # Get or initialize accumulated data for this master
             if target_master not in master_status_data_cn:
-                master_status_data_cn[target_master] = (
-                    set(),
-                    defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0})
-                )
-            acc_users, acc_stats = master_status_data_cn[target_master]
+                master_status_data_cn[target_master] = {
+                    "users": set(),
+                    "stats": defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0}),
+                    "workbook": None,
+                    "path": None,
+                }
+            data = master_status_data_cn[target_master]
+            acc_users = data["users"]
+            acc_stats = data["stats"]
 
             category_manager_status = manager_status_cn.get(category, {})
-            entries, acc_users, acc_stats = process_category(
+            entries, acc_users, acc_stats, master_wb, master_path = process_category(
                 category, by_category_cn[category],
                 MASTER_FOLDER_CN, IMAGES_FOLDER_CN, "CN",
                 category_manager_status, rebuild=rebuild,
                 fixed_screenshots=fixed_screenshots_cn,
                 accumulated_users=acc_users,
-                accumulated_stats=acc_stats
+                accumulated_stats=acc_stats,
+                deferred_save=True  # DEFERRED SAVE: Don't autofit/save yet
             )
             all_daily_entries.extend(entries)
-            # Store updated accumulated data
-            master_status_data_cn[target_master] = (acc_users, acc_stats)
+            # Store updated accumulated data + workbook
+            master_status_data_cn[target_master]["users"] = acc_users
+            master_status_data_cn[target_master]["stats"] = acc_stats
+            if master_wb is not None:
+                master_status_data_cn[target_master]["workbook"] = master_wb
+                master_status_data_cn[target_master]["path"] = master_path
 
-    # === UPDATE STATUS SHEETS (once per master, after all categories processed) ===
+    # ==========================================================================
+    # FINAL PASS: STATUS sheet + autofit + hide + save (ONCE per master)
+    # ==========================================================================
+    # This is the DEFERRED SAVE optimization: instead of autofit+save after each
+    # category, we do it once per master after ALL categories are processed.
+    # Saves: 2-3 saves per master -> 1 save per master
     print("\n" + "=" * 60)
-    print("Updating STATUS sheets (merged across clustered categories)...")
+    print("FINAL PASS: STATUS sheets + autofit + save (ONCE per master)")
     print("=" * 60)
 
-    for target_master, (users, stats) in master_status_data_en.items():
-        if users:
-            master_path = MASTER_FOLDER_EN / f"Master_{target_master}.xlsx"
-            if master_path.exists():
-                print(f"  [EN] Master_{target_master}: {len(users)} users")
-                wb = safe_load_workbook(master_path)
-                update_status_sheet(wb, users, dict(stats))
-                wb.save(master_path)
-                wb.close()
+    for target_master, data in master_status_data_en.items():
+        users = data["users"]
+        stats = data["stats"]
+        wb = data["workbook"]
+        path = data["path"]
 
-    for target_master, (users, stats) in master_status_data_cn.items():
+        if wb is None or path is None:
+            continue
+
+        print(f"\n  [EN] Master_{target_master}: {len(users)} users")
+
+        # 1. Update STATUS sheet
         if users:
-            master_path = MASTER_FOLDER_CN / f"Master_{target_master}.xlsx"
-            if master_path.exists():
-                print(f"  [CN] Master_{target_master}: {len(users)} users")
-                wb = safe_load_workbook(master_path)
-                update_status_sheet(wb, users, dict(stats))
-                wb.save(master_path)
-                wb.close()
+            print(f"    Updating STATUS sheet...")
+            update_status_sheet(wb, users, dict(stats))
+
+        # 2. Autofit (ONCE per master)
+        print(f"    Autofit columns and row heights...")
+        autofit_rows_with_wordwrap(wb)
+
+        # 3. Hide empty rows/sheets/columns
+        print(f"    Hiding empty rows/sheets/columns...")
+        hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(wb)
+
+        # 4. Save (ONCE per master)
+        print(f"    Saving...", end="", flush=True)
+        wb.save(path)
+        print(f" done")
+
+        if hidden_sheets:
+            print(f"    Hidden sheets: {', '.join(hidden_sheets)}")
+        if hidden_columns > 0:
+            print(f"    Hidden: {hidden_columns} empty user columns")
+        if hidden_rows > 0:
+            print(f"    Hidden: {hidden_rows} rows")
+
+    for target_master, data in master_status_data_cn.items():
+        users = data["users"]
+        stats = data["stats"]
+        wb = data["workbook"]
+        path = data["path"]
+
+        if wb is None or path is None:
+            continue
+
+        print(f"\n  [CN] Master_{target_master}: {len(users)} users")
+
+        # 1. Update STATUS sheet
+        if users:
+            print(f"    Updating STATUS sheet...")
+            update_status_sheet(wb, users, dict(stats))
+
+        # 2. Autofit (ONCE per master)
+        print(f"    Autofit columns and row heights...")
+        autofit_rows_with_wordwrap(wb)
+
+        # 3. Hide empty rows/sheets/columns
+        print(f"    Hiding empty rows/sheets/columns...")
+        hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(wb)
+
+        # 4. Save (ONCE per master)
+        print(f"    Saving...", end="", flush=True)
+        wb.save(path)
+        print(f" done")
+
+        if hidden_sheets:
+            print(f"    Hidden sheets: {', '.join(hidden_sheets)}")
+        if hidden_columns > 0:
+            print(f"    Hidden: {hidden_columns} empty user columns")
+        if hidden_rows > 0:
+            print(f"    Hidden: {hidden_rows} rows")
 
     # Show skipped categories
     for category in CATEGORIES:
