@@ -1147,14 +1147,44 @@ def transfer_folder_to_folder(
     else:
         logger.info("No pre-built fuzzy data - will build from scratch if needed")
 
+    # ─── CRITICAL: Extract ALL StringIDs from ALL source files FIRST ───
+    # This filter is used when no pre-built fuzzy data is provided.
+    # Without this, the fallback paths would load FULL languagedata (2.2M entries)!
+    all_source_stringids = None
+    if _fuzzy_entries is None and match_mode in ("quadruple_fallback", "quadruple_fallback_fuzzy", "strict_fuzzy"):
+        from .xml_io import parse_corrections_from_xml
+        from .excel_io import read_corrections_from_excel
+
+        if progress_callback:
+            progress_callback("Extracting StringIDs from all source files for filtering...")
+
+        all_source_stringids = set()
+        for src_file in all_sources:
+            try:
+                if src_file.suffix.lower() == ".xml":
+                    corrs = parse_corrections_from_xml(src_file)
+                else:
+                    corrs = read_corrections_from_excel(src_file)
+                for c in corrs:
+                    sid = c.get("string_id", "")
+                    if sid:
+                        all_source_stringids.add(sid)
+            except Exception:
+                continue
+        logger.info(f"Extracted {len(all_source_stringids):,} unique StringIDs from {len(all_sources)} source files")
+
     if match_mode in ("quadruple_fallback", "quadruple_fallback_fuzzy"):
         from .indexing import scan_folder_for_entries_with_context
 
         if progress_callback:
             progress_callback("Scanning target folder for quadruple fallback indexes...")
         try:
+            # Use filter if we extracted StringIDs (no pre-built data case)
             _tf_all, _tf_l1, _tf_l2a, _tf_l2b, _tf_l3 = (
-                scan_folder_for_entries_with_context(target_folder, progress_callback)
+                scan_folder_for_entries_with_context(
+                    target_folder, progress_callback,
+                    stringid_filter=all_source_stringids  # FILTER!
+                )
             )
             if not _tf_all:
                 logger.warning(f"No entries in target folder: {target_folder}")
@@ -1175,7 +1205,8 @@ def transfer_folder_to_folder(
                 try:
                     _fuzzy_model = load_model(progress_callback)
                     _fuzzy_texts, _fuzzy_entries = build_index_from_folder(
-                        target_folder, progress_callback
+                        target_folder, progress_callback,
+                        stringid_filter=all_source_stringids  # FILTER!
                     )
                     if _fuzzy_texts:
                         _fuzzy_index = build_faiss_index(
@@ -1202,7 +1233,8 @@ def transfer_folder_to_folder(
             try:
                 _fuzzy_model = load_model(progress_callback)
                 _fuzzy_texts, _fuzzy_entries = build_index_from_folder(
-                    target_folder, progress_callback
+                    target_folder, progress_callback,
+                    stringid_filter=all_source_stringids  # FILTER!
                 )
                 if _fuzzy_texts:
                     _fuzzy_index = build_faiss_index(
