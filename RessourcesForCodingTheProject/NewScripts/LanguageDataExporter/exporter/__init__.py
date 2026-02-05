@@ -29,6 +29,7 @@ from .locdev_merger import (
     merge_corrections_to_locdev,
     merge_all_corrections,
     print_merge_report,
+    export_merge_report_to_excel,
     # StringID-only matching for SCRIPT strings
     SCRIPT_CATEGORIES,
     merge_corrections_stringid_only_script,
@@ -60,6 +61,7 @@ __all__ = [
     "merge_corrections_to_locdev",
     "merge_all_corrections",
     "print_merge_report",
+    "export_merge_report_to_excel",
     # StringID-only matching
     "SCRIPT_CATEGORIES",
     "merge_corrections_stringid_only_script",
