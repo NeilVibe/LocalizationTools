@@ -81,3 +81,4 @@ Build 525: Preserve tester data during master rebuild + KeyError fix for cluster
 Build 526: eventname_to_stringid with file dialog + bundled in installer
 Build 527: MasterSubmitScript FIRST + COMMENT_{username} fix
 Trigger Build Fri Feb  6 12:11:30 AM KST 2026
+Build 528: Fix flake8 errors (F821, F824)
