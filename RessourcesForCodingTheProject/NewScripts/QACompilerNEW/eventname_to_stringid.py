@@ -84,12 +84,12 @@ def robust_parse_xml(path: Path):
         return None
 
 
-def build_eventname_to_stringid_mapping(export_folder: Path) -> dict:
+def build_eventname_mapping(export_folder: Path) -> dict:
     """
     Scan ALL XML files in export folder.
-    Look for SoundEventName and StringId ATTRIBUTES on any element.
+    Look for SoundEventName, StringId, and StrOrigin ATTRIBUTES on any element.
 
-    Returns: {eventname_lowercase: stringid}
+    Returns: {eventname_lowercase: {"stringid": X, "strorigin": Y}}
     """
     mapping = {}
 
@@ -115,11 +115,13 @@ def build_eventname_to_stringid_mapping(export_folder: Path) -> dict:
                   node.get("EventName") or node.get("eventname") or "").strip()
             sid = (node.get("StringId") or node.get("StringID") or
                    node.get("stringid") or "").strip()
+            strorigin = (node.get("StrOrigin") or node.get("Strorigin") or
+                         node.get("strorigin") or "").strip()
 
             if se and sid:
-                mapping[se.lower()] = sid
+                mapping[se.lower()] = {"stringid": sid, "strorigin": strorigin}
 
-    print(f"Found {len(mapping)} EventName -> StringID mappings")
+    print(f"Found {len(mapping)} EventName -> StringID/StrOrigin mappings")
     return mapping
 
 
@@ -157,8 +159,9 @@ def convert_eventnames(input_path: Path, mapping: dict) -> Path:
     # Headers
     out_ws.cell(1, 1, "EventName")
     out_ws.cell(1, 2, "StringID")
-    out_ws.cell(1, 3, "Status")
-    for col in range(1, 4):
+    out_ws.cell(1, 3, "StrOrigin (Korean)")
+    out_ws.cell(1, 4, "Status")
+    for col in range(1, 5):
         c = out_ws.cell(1, col)
         c.fill = HEADER_FILL
         c.font = HEADER_FONT
@@ -186,31 +189,37 @@ def convert_eventnames(input_path: Path, mapping: dict) -> Path:
         out_ws.cell(out_row, 1).border = THIN_BORDER
 
         # Lookup (case-insensitive)
-        stringid = mapping.get(eventname.lower())
+        data = mapping.get(eventname.lower())
 
-        if stringid:
+        if data:
+            stringid = data.get("stringid", "")
+            strorigin = data.get("strorigin", "")
             out_ws.cell(out_row, 2, stringid)
-            out_ws.cell(out_row, 3, "FOUND")
-            for col in range(1, 4):
+            out_ws.cell(out_row, 3, strorigin)
+            out_ws.cell(out_row, 4, "FOUND")
+            for col in range(1, 5):
                 out_ws.cell(out_row, col).fill = FOUND_FILL
             out_ws.cell(out_row, 2).font = FOUND_FONT
-            out_ws.cell(out_row, 3).font = FOUND_FONT
+            out_ws.cell(out_row, 4).font = FOUND_FONT
             found += 1
         else:
             out_ws.cell(out_row, 2, "NOT FOUND")
-            out_ws.cell(out_row, 3, "MISSING")
-            for col in range(1, 4):
+            out_ws.cell(out_row, 3, "")
+            out_ws.cell(out_row, 4, "MISSING")
+            for col in range(1, 5):
                 out_ws.cell(out_row, col).fill = UNFOUND_FILL
                 out_ws.cell(out_row, col).font = UNFOUND_FONT
             not_found += 1
 
         out_ws.cell(out_row, 2).border = THIN_BORDER
         out_ws.cell(out_row, 3).border = THIN_BORDER
+        out_ws.cell(out_row, 4).border = THIN_BORDER
 
     # Column widths
     out_ws.column_dimensions['A'].width = 50
-    out_ws.column_dimensions['B'].width = 20
-    out_ws.column_dimensions['C'].width = 12
+    out_ws.column_dimensions['B'].width = 25
+    out_ws.column_dimensions['C'].width = 50
+    out_ws.column_dimensions['D'].width = 12
 
     # Save
     from datetime import datetime
@@ -239,8 +248,8 @@ def main():
         return
 
     # Build mapping
-    print("\nBuilding EventName -> StringID mapping...")
-    mapping = build_eventname_to_stringid_mapping(export_folder)
+    print("\nBuilding EventName -> StringID/StrOrigin mapping...")
+    mapping = build_eventname_mapping(export_folder)
 
     if not mapping:
         messagebox.showerror("Error", "No mappings found in export folder!")
