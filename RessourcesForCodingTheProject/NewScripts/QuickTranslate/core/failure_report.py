@@ -639,6 +639,28 @@ def _create_excel_formats(workbook) -> Dict:
         "text_wrap": True,
     })
 
+    # Text cell (even row) - forces TEXT format for StringID columns
+    formats["text_even"] = workbook.add_format({
+        "font_size": 10,
+        "align": "left",
+        "valign": "vcenter",
+        "border": 1,
+        "border_color": "#DDDDDD",
+        "bg_color": "#FFFFFF",
+        "num_format": "@",  # TEXT format
+    })
+
+    # Text cell (odd row) - forces TEXT format for StringID columns
+    formats["text_odd"] = workbook.add_format({
+        "font_size": 10,
+        "align": "left",
+        "valign": "vcenter",
+        "border": 1,
+        "border_color": "#DDDDDD",
+        "bg_color": "#F8F9FA",
+        "num_format": "@",  # TEXT format
+    })
+
     # Number cell (even row)
     formats["number_even"] = workbook.add_format({
         "font_size": 10,
@@ -1042,9 +1064,10 @@ def _write_detailed_sheet(workbook, data: Dict, formats: Dict):
     for i, failure in enumerate(failures_to_write):
         # Alternate row colors
         fmt_cell = formats["cell_even"] if i % 2 == 0 else formats["cell_odd"]
+        fmt_text = formats["text_even"] if i % 2 == 0 else formats["text_odd"]
 
         sheet.write(row, 0, failure.get("source_file", ""), fmt_cell)
-        sheet.write(row, 1, failure.get("string_id", ""), fmt_cell)
+        sheet.write_string(row, 1, str(failure.get("string_id", "")), fmt_text)  # TEXT format
         sheet.write(row, 2, failure.get("str_origin", ""), fmt_cell)
         sheet.write(row, 3, failure.get("correction", ""), fmt_cell)
         sheet.write(row, 4, failure.get("reason", ""), fmt_cell)
