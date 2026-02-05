@@ -234,8 +234,8 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool, sheet_name: str = 
 
             if status_upper == "ISSUE":
                 stats["issue"] += 1
-            elif status_upper in ("NO ISSUE", "NON-ISSUE"):
-                # Accept both "NO ISSUE" (standard) and "NON-ISSUE" (Script-type)
+            elif status_upper in ("NO ISSUE", "NON-ISSUE", "NON ISSUE"):
+                # Accept all variants: "NO ISSUE", "NON-ISSUE", "NON ISSUE"
                 stats["no_issue"] += 1
             elif status_upper == "BLOCKED":
                 stats["blocked"] += 1
@@ -254,8 +254,8 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool, sheet_name: str = 
             _tracker_log(f"    *** NO STATUS VALUES FOUND! ***", "WARN")
 
             # Count words/chars for DONE rows
-            # Accept both "NO ISSUE" (standard) and "NON-ISSUE" (Script-type)
-            if status_upper in ["ISSUE", "NO ISSUE", "NON-ISSUE", "BLOCKED", "KOREAN"]:
+            # Accept all variants: "NO ISSUE", "NON-ISSUE", "NON ISSUE"
+            if status_upper in ["ISSUE", "NO ISSUE", "NON-ISSUE", "NON ISSUE", "BLOCKED", "KOREAN"]:
                 cell_value = qa_ws.cell(row, trans_col).value
                 if is_english:
                     stats["word_count"] += count_words_english(cell_value)
