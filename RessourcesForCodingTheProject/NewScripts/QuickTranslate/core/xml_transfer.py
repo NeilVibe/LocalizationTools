@@ -27,6 +27,7 @@ from openpyxl import load_workbook
 import config
 from .text_utils import normalize_text, normalize_nospace
 from .korean_detection import is_korean_text
+from .source_scanner import scan_source_for_languages
 
 logger = logging.getLogger(__name__)
 
@@ -1013,17 +1014,27 @@ def transfer_folder_to_folder(
         results["errors"].append(f"Target folder not found: {target_folder}")
         return results
 
-    # Find source files
-    xml_files = list(source_folder.glob("*.xml"))
-    excel_files = list(source_folder.glob("*.xlsx"))
-    excel_files.extend(source_folder.glob("*.xls"))
+    # Find source files using smart scanner (recursive, language-aware)
+    # This matches what validation/tree display uses
+    scan_result = scan_source_for_languages(source_folder)
 
-    all_sources = xml_files + excel_files
+    # Collect ALL files from all detected languages
+    all_sources = []
+    for lang, files in scan_result.lang_files.items():
+        all_sources.extend(files)
+
+    # Also add any unrecognized files (direct XML/Excel in source folder)
+    for item in scan_result.unrecognized:
+        if item.is_file() and item.suffix.lower() in (".xml", ".xlsx", ".xls"):
+            all_sources.append(item)
+
     total = len(all_sources)
 
     if total == 0:
         results["errors"].append(f"No XML or Excel files found in {source_folder}")
         return results
+
+    logger.info(f"Smart scanner found {total} files across {scan_result.language_count} languages")
 
     # ─── PRE-BUILD indexes ONCE before the per-file loop ───────────────
     # For quadruple_fallback and strict_fuzzy modes, scanning the target
