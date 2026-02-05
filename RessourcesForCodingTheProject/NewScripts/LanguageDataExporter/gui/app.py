@@ -41,6 +41,7 @@ from exporter import (
     prepare_all_for_submit,
     merge_all_corrections,
     print_merge_report,
+    export_merge_report_to_excel,
     analyze_patterns,
     generate_pattern_report,
     # StringID-only matching
@@ -764,6 +765,11 @@ class LanguageDataExporterGUI:
                 # Print terminal report
                 print_merge_report(results)
 
+                # Export merge report to Excel (with Not Found Details tab)
+                report_path = OUTPUT_FOLDER / "MergeReport.xlsx"
+                export_merge_report_to_excel(results, report_path)
+                logger.info(f"Merge report exported: {report_path}")
+
                 self.root.after(0, lambda: self._update_progress(70))
                 self.root.after(0, lambda: self._set_status("Updating progress tracker..."))
 
@@ -895,6 +901,11 @@ class LanguageDataExporterGUI:
 
                 # Print terminal report
                 print_stringid_only_report(results)
+
+                # Export merge report to Excel (with Not Found Details tab)
+                report_path = OUTPUT_FOLDER / "StringIDOnlyMergeReport.xlsx"
+                export_merge_report_to_excel(results, report_path)
+                logger.info(f"StringID-only merge report exported: {report_path}")
 
                 self.root.after(0, lambda: self._update_progress(100))
 
