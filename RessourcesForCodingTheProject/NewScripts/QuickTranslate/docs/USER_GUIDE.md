@@ -1,6 +1,6 @@
 # QuickTranslate User Guide
 
-**Version 3.4.0** | February 2026 | LocaNext Project
+**Version 3.5.0** | February 2026 | LocaNext Project
 
 ---
 
@@ -229,6 +229,79 @@ Check the modified `languagedata_*.xml` files in target folder.
 3. Select your text file
 4. Click **Find All**
 5. Output: Excel with StringID and all translations
+
+---
+
+## 3.5 Find Missing Translations (NEW in v3.5.0)
+
+**Goal:** Find Korean strings in TARGET that are MISSING from SOURCE by (StrOrigin, StringId) key
+
+This feature helps localization teams identify which strings still need translation across all target language files.
+
+### Step 1: Prepare Source & Target
+
+- **Source:** Your reference/corrections folder or file (contains keys you expect to find)
+- **Target:** LOC folder with `languagedata_*.xml` files (the target language files to check)
+
+### Step 2: Configure
+
+1. **Source:** Browse to your corrections folder or file
+2. **Target:** Browse to LOC folder (or leave default)
+
+### Step 3: Find Missing
+
+1. Click **Find Missing Translations** (purple button in Quick Actions)
+2. Select output directory when prompted
+3. Wait for analysis to complete
+
+### Step 4: Review Output
+
+The feature generates:
+
+| Output | Description |
+|--------|-------------|
+| **Per-language XML** | `MISSING_FRE_*.xml`, `MISSING_GER_*.xml`, etc. - one per language |
+| **Excel Report** | `MISSING_REPORT_*.xlsx` - comprehensive summary |
+
+### Excel Report Contents
+
+| Sheet | Content |
+|-------|---------|
+| **Summary** | Per-language breakdown with missing counts, Korean chars, Korean words |
+| **Info** | Full statistics (total source keys, total misses, etc.) |
+| **Per-Language** | Detail sheets with first 1000 entries per language |
+
+### Example Output
+
+```
+═══════════════════════════════════════════════════════════
+MISSING TRANSLATION REPORT
+═══════════════════════════════════════════════════════════
+Source keys (StrOrigin, StringId):  150,000
+Target Korean entries:               8,500
+Total HITS (found in source):        7,200
+Total MISSES (need translation):     1,300
+Total Korean characters:            45,000
+Total Korean words/sequences:       12,500
+
+PER-LANGUAGE BREAKDOWN
+═══════════════════════════════════════════════════════════
+Language   Missing   KR Chars   KR Words   Hits
+FRE            120      4,500      1,200    600
+GER            115      4,300      1,150    605
+SPA            130      4,800      1,280    590
+...
+═══════════════════════════════════════════════════════════
+```
+
+### Use Cases
+
+| Scenario | How This Helps |
+|----------|----------------|
+| **Pre-translation planning** | Know exactly how many strings and words need translation |
+| **Progress tracking** | Compare reports over time to see translation progress |
+| **Gap analysis** | Identify which languages have the most missing translations |
+| **Re-import failed entries** | Per-language XML files can be directly re-imported as corrections |
 
 ---
 
@@ -1171,6 +1244,20 @@ python main.py --help       # Show help
 
 ## 12.3 Changelog
 
+### Version 3.5.0 (February 2026)
+
+**New Features:**
+- **Find Missing Translations** button in Quick Actions: Identify Korean strings in TARGET that are MISSING from SOURCE by (StrOrigin, StringId) key
+  - Generates per-language XML concat files (`MISSING_FRE_*.xml`, `MISSING_GER_*.xml`, etc.)
+  - Generates Excel summary report with per-language breakdown, Korean character counts, and word counts
+  - Detail sheets in Excel with first 1000 entries per language
+  - Optional export path filtering (System/Gimmick, System/MultiChange)
+- Word count statistics: Reports now include Korean character counts and word/sequence counts for translation effort estimation
+
+**Technical:**
+- New `core/missing_translation_finder.py` module
+- MissingTranslationReport, LanguageMissingReport, and MissingEntry dataclasses for structured reporting
+
 ### Version 3.4.0 (February 2026)
 
 **New Features:**
@@ -1256,7 +1343,7 @@ python main.py --help       # Show help
 
 <div align="center">
 
-**QuickTranslate** | Version 3.4.0 | LocaNext Project
+**QuickTranslate** | Version 3.5.0 | LocaNext Project
 
 *Lookup & Transfer - Two Tools in One*
 
