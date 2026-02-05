@@ -146,9 +146,8 @@ def _discover_languages_from_loc() -> tuple:
     # Preferred order (languages found will be sorted in this order)
     # Languages not in this list go to the end alphabetically
     PREFERRED_ORDER = [
-        "kor", "eng", "fre", "ger", "spa", "spa-es", "spa-mx",
-        "por", "por-br", "ita", "rus", "tur", "pol",
-        "zho-cn", "zho-tw", "jpn", "tha", "vie", "ind", "msa"
+        "eng", "fre", "ger", "ita", "jpn", "kor", "pol", "por-br",
+        "rus", "spa-es", "spa-mx", "tur", "zho-cn", "zho-tw"
     ]
 
     discovered = {}  # {code_lower: code_upper}
@@ -170,10 +169,10 @@ def _discover_languages_from_loc() -> tuple:
         if code not in order:
             order.append(code)
 
-    # Fallback if LOC folder not available
+    # Fallback if LOC folder not available (exact production language list)
     if not order:
-        order = ["kor", "eng", "fre", "ger", "spa", "por", "ita", "rus",
-                 "tur", "pol", "zho-cn", "zho-tw", "jpn", "tha", "vie", "ind", "msa"]
+        order = ["eng", "fre", "ger", "ita", "jpn", "kor", "pol", "por-br",
+                 "rus", "spa-es", "spa-mx", "tur", "zho-cn", "zho-tw"]
         discovered = {c: c.upper() for c in order}
 
     return order, discovered
