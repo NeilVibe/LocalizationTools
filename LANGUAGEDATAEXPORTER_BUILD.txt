@@ -51,3 +51,4 @@ Trigger LanguageDataExporter rebuild after BOM validation fix
 Trigger LanguageDataExporter rebuild for window size fix
 Build 025 - Add Text State and MEMO1/2/3 columns
 Build 20260206-001622
+Build 20260206-021719: Fix language suffixes
