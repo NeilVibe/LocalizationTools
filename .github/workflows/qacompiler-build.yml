@@ -215,7 +215,6 @@ jobs:
               # Standalone tools
               'system_localizer',
               'drive_replacer',
-              'eventname_to_stringid',
           ]
 
           errors = []
@@ -396,7 +395,6 @@ jobs:
               'core.discovery',
               'tracker.coverage',
               'system_localizer',
-              'eventname_to_stringid',
           ]
 
           errors = []
@@ -460,25 +458,13 @@ jobs:
       - name: Verify build
         shell: pwsh
         run: |
-          # Verify main QACompiler executable
           $exePath = "${{ env.QACOMPILER_PATH }}\dist\QACompiler\QACompiler.exe"
           if (!(Test-Path $exePath)) {
             Write-Error "Build failed - QACompiler.exe not found"
             exit 1
           }
           $size = (Get-Item $exePath).length / 1MB
-          Write-Host "QACompiler.exe: $([math]::Round($size, 1)) MB"
-
-          # Verify eventname_to_stringid executable
-          $exePath2 = "${{ env.QACOMPILER_PATH }}\dist\eventname_to_stringid\eventname_to_stringid.exe"
-          if (!(Test-Path $exePath2)) {
-            Write-Error "Build failed - eventname_to_stringid.exe not found"
-            exit 1
-          }
-          $size2 = (Get-Item $exePath2).length / 1MB
-          Write-Host "eventname_to_stringid.exe: $([math]::Round($size2, 1)) MB"
-
-          Write-Host "Both builds successful!"
+          Write-Host "Build successful! Size: $([math]::Round($size, 1)) MB"
 
       - name: Create working folders
         shell: pwsh

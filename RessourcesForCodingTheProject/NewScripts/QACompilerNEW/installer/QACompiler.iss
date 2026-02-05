@@ -77,10 +77,6 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "..\dist\QACompiler\QACompiler.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\QACompiler\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; eventname_to_stringid tool (bundled)
-Source: "..\dist\eventname_to_stringid\eventname_to_stringid.exe"; DestDir: "{app}\Tools"; Flags: ignoreversion
-Source: "..\dist\eventname_to_stringid\_internal\*"; DestDir: "{app}\Tools\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs
-
 ; Working folders (empty but necessary)
 Source: "..\dist\QACompiler\QAfolder\*"; DestDir: "{app}\QAfolder"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "..\dist\QACompiler\QAfolderOLD\*"; DestDir: "{app}\QAfolderOLD"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
@@ -105,7 +101,6 @@ Source: "..\README.md"; DestDir: "{app}"; Components: docs; Flags: ignoreversion
 
 [Dirs]
 ; Create empty folders if they don't exist
-Name: "{app}\Tools"
 Name: "{app}\QAfolder"
 Name: "{app}\QAfolderOLD"
 Name: "{app}\QAfolderNEW"
@@ -122,13 +117,11 @@ Name: "{app}\TrackerUpdateFolder\Masterfolder_CN"
 [Icons]
 ; Start Menu
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autoprograms}\{#MyAppName}\EventName to StringID"; Filename: "{app}\Tools\eventname_to_stringid.exe"
 Name: "{autoprograms}\{#MyAppName}\User Guide"; Filename: "{app}\USER_GUIDE.pdf"
 Name: "{autoprograms}\{#MyAppName}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 
 ; Desktop (checked by default for easy access)
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-Name: "{autodesktop}\EventName to StringID"; Filename: "{app}\Tools\eventname_to_stringid.exe"; Tasks: desktopicon
 
 [Run]
 ; Launch after install
@@ -200,14 +193,9 @@ var
 begin
   if CurStep = ssPostInstall then
   begin
-    // Write settings.json with selected drive letter (main app)
+    // Write settings.json with selected drive letter
     SettingsPath := ExpandConstant('{app}\settings.json');
     SettingsContent := '{"drive_letter": "' + DriveLetter + '", "version": "1.0"}';
-    SaveStringToFile(SettingsPath, AnsiString(SettingsContent), False);
-
-    // Write settings.json for eventname_to_stringid tool
-    SettingsPath := ExpandConstant('{app}\Tools\settings.json');
-    SettingsContent := '{"drive_letter": "' + DriveLetter + '", "version": "1.0", "description": "EventName to StringID Converter settings"}';
     SaveStringToFile(SettingsPath, AnsiString(SettingsContent), False);
   end;
 end;
