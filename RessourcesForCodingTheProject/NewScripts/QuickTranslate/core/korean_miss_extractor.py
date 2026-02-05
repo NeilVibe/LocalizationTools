@@ -154,7 +154,7 @@ def build_export_index(
 
             for elem in iter_locstr_elements(root):
                 string_id = (elem.get('StringId') or elem.get('StringID') or
-                            elem.get('stringid') or elem.get('STRINGID') or '')
+                            elem.get('stringid') or elem.get('STRINGID') or '').strip()
                 if string_id:
                     stringid_to_filepath[string_id] = rel_path_str
 
@@ -180,7 +180,7 @@ def _build_source_lookup(root: ET.Element) -> Set[Tuple[str, str]]:
 
     for elem in iter_locstr_elements(root):
         string_id = (elem.get('StringId') or elem.get('StringID') or
-                    elem.get('stringid') or elem.get('STRINGID') or '')
+                    elem.get('stringid') or elem.get('STRINGID') or '').strip()
         str_origin = (elem.get('StrOrigin') or elem.get('strorigin') or
                      elem.get('STRORIGIN') or '')
 
@@ -209,7 +209,7 @@ def _collect_korean_locstr(root: ET.Element) -> List[Dict]:
 
         if contains_korean(str_value):
             string_id = (elem.get('StringId') or elem.get('StringID') or
-                        elem.get('stringid') or elem.get('STRINGID') or '')
+                        elem.get('stringid') or elem.get('STRINGID') or '').strip()
             str_origin = (elem.get('StrOrigin') or elem.get('strorigin') or
                          elem.get('STRORIGIN') or '')
 

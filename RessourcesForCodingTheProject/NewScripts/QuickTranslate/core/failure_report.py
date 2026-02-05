@@ -227,6 +227,112 @@ def generate_failed_merge_xml(
     return output_path
 
 
+def generate_failed_merge_xml_per_language(
+    failed_entries: List[Dict],
+    output_folder: Path,
+    timestamp: Optional[datetime] = None,
+) -> Dict[str, Path]:
+    """
+    Generate separate FAILED_TO_MERGE XML files for each language.
+
+    Creates one XML file per language code found in the failed entries.
+    Each file contains complete LocStr elements with all attributes.
+
+    Args:
+        failed_entries: List of failed entry dicts with 'language' key
+        output_folder: Folder where XML files will be written
+        timestamp: Optional timestamp (defaults to now)
+
+    Returns:
+        Dict mapping language code to output file path
+        e.g., {"FRE": Path("FAILED_TO_MERGE_FRE_20260205.xml"), ...}
+    """
+    if timestamp is None:
+        timestamp = datetime.now()
+
+    timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
+
+    # Group entries by language
+    by_language = defaultdict(list)
+    for entry in failed_entries:
+        lang = entry.get("language", "UNK").upper()
+        by_language[lang].append(entry)
+
+    output_files = {}
+
+    for lang, entries in sorted(by_language.items()):
+        output_path = output_folder / f"FAILED_TO_MERGE_{lang}_{timestamp_str}.xml"
+
+        if USING_LXML:
+            root = etree.Element(
+                "FailedMerges",
+                timestamp=timestamp.strftime("%Y-%m-%dT%H:%M:%S"),
+                language=lang,
+                total=str(len(entries)),
+            )
+
+            for entry in entries:
+                # Create complete LocStr element with ALL attributes
+                attribs = {
+                    "StringId": str(entry.get("string_id", "")),
+                    "StrOrigin": str(entry.get("str_origin", "")),
+                    "Str": str(entry.get("str", "")),
+                }
+
+                # Add FailReason as attribute
+                attribs["FailReason"] = str(entry.get("fail_reason", "Unknown reason"))
+
+                # Add source file info
+                if entry.get("source_file"):
+                    attribs["SourceFile"] = str(entry["source_file"])
+
+                # Add optional attributes if present
+                if entry.get("category"):
+                    attribs["Category"] = str(entry["category"])
+                if entry.get("subfolder"):
+                    attribs["Subfolder"] = str(entry["subfolder"])
+
+                etree.SubElement(root, "LocStr", **attribs)
+
+            tree = etree.ElementTree(root)
+            tree.write(
+                str(output_path),
+                encoding="utf-8",
+                xml_declaration=True,
+                pretty_print=True,
+            )
+
+        else:
+            root = etree.Element("FailedMerges")
+            root.set("timestamp", timestamp.strftime("%Y-%m-%dT%H:%M:%S"))
+            root.set("language", lang)
+            root.set("total", str(len(entries)))
+
+            for entry in entries:
+                loc_elem = etree.SubElement(root, "LocStr")
+                loc_elem.set("StringId", str(entry.get("string_id", "")))
+                loc_elem.set("StrOrigin", str(entry.get("str_origin", "")))
+                loc_elem.set("Str", str(entry.get("str", "")))
+                loc_elem.set("FailReason", str(entry.get("fail_reason", "Unknown reason")))
+
+                if entry.get("source_file"):
+                    loc_elem.set("SourceFile", str(entry["source_file"]))
+                if entry.get("category"):
+                    loc_elem.set("Category", str(entry["category"]))
+                if entry.get("subfolder"):
+                    loc_elem.set("Subfolder", str(entry["subfolder"]))
+
+            tree = etree.ElementTree(root)
+            with open(output_path, "wb") as f:
+                f.write(b'<?xml version="1.0" encoding="utf-8"?>\n')
+                tree.write(f, encoding="utf-8", xml_declaration=False)
+
+        output_files[lang] = output_path
+        logger.info(f"Generated {lang} failure report: {output_path.name} ({len(entries)} entries)")
+
+    return output_files
+
+
 def extract_failed_from_transfer_results(
     results: Dict,
     source_file_name: str = "unknown.xml",

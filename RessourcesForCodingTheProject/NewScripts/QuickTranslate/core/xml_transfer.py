@@ -174,7 +174,7 @@ def merge_corrections_to_xml(
                         "new": "(same)",
                     })
 
-        # Count corrections that didn't match
+        # Count corrections that didn't match - store FULL data for failure reports
         for i, c in enumerate(corrections):
             if not correction_matched[i]:
                 category = c.get("category", "Uncategorized")
@@ -182,8 +182,8 @@ def merge_corrections_to_xml(
                 result["details"].append({
                     "string_id": c["string_id"],
                     "status": "NOT_FOUND",
-                    "old": "",
-                    "new": c["corrected"][:50] + "..." if len(c["corrected"]) > 50 else c["corrected"],
+                    "old": c.get("str_origin", ""),  # FULL StrOrigin for failure report
+                    "new": c["corrected"],  # FULL text for failure report
                 })
 
         result["not_found"] = len(corrections) - result["matched"]
@@ -292,13 +292,13 @@ def merge_corrections_stringid_only(
         logger.info(f"No SCRIPT corrections to apply to {xml_path.name}")
         return result
 
-    # Build StringID-only lookup
+    # Build StringID-only lookup - store full correction for failure reports
     correction_lookup = {}
     correction_matched = {}
 
     for c in script_corrections:
         sid = c["string_id"]
-        correction_lookup[sid] = c["corrected"]
+        correction_lookup[sid] = c  # Store FULL correction dict
         correction_matched[sid] = False
 
         # Initialize category stats
@@ -336,7 +336,7 @@ def merge_corrections_stringid_only(
 
             # StringID-only matching
             if sid in correction_lookup:
-                new_str = correction_lookup[sid]
+                new_str = correction_lookup[sid]["corrected"]
                 correction_matched[sid] = True
 
                 category = stringid_to_category.get(sid, "Uncategorized")
@@ -381,18 +381,19 @@ def merge_corrections_stringid_only(
                         "new": "(same)",
                     })
 
-        # Count unmatched corrections
+        # Count unmatched corrections - store FULL data for failure reports
         for sid, matched in correction_matched.items():
             if not matched:
                 category = stringid_to_category.get(sid, "Uncategorized")
                 result["not_found"] += 1
                 if category in result["by_category"]:
                     result["by_category"][category]["not_found"] += 1
+                c = correction_lookup[sid]
                 result["details"].append({
                     "string_id": sid,
                     "status": "NOT_FOUND",
-                    "old": "",
-                    "new": correction_lookup[sid][:50] + "..." if len(correction_lookup[sid]) > 50 else correction_lookup[sid],
+                    "old": c.get("str_origin", ""),  # FULL StrOrigin
+                    "new": c["corrected"],  # FULL text
                 })
 
         if changed and not dry_run:
@@ -449,14 +450,14 @@ def merge_corrections_fuzzy(
     if not corrections:
         return result
 
-    # Build lookup: fuzzy_target_string_id -> corrected text
+    # Build lookup: fuzzy_target_string_id -> full correction dict
     correction_lookup = {}
     correction_matched = {}
 
     for c in corrections:
         target_sid = c.get("fuzzy_target_string_id", "")
         if target_sid:
-            correction_lookup[target_sid] = c["corrected"]
+            correction_lookup[target_sid] = c  # Store FULL correction dict
             correction_matched[target_sid] = False
 
     if not correction_lookup:
@@ -488,7 +489,8 @@ def merge_corrections_fuzzy(
                    loc.get("Stringid") or loc.get("stringId") or "").strip()
 
             if sid in correction_lookup:
-                new_str = correction_lookup[sid]
+                c = correction_lookup[sid]
+                new_str = c["corrected"]
                 correction_matched[sid] = True
                 result["matched"] += 1
 
@@ -501,7 +503,7 @@ def merge_corrections_fuzzy(
                     result["details"].append({
                         "string_id": sid,
                         "status": "SKIPPED_TRANSLATED",
-                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "old": old_str,
                         "new": "(skipped - already translated)",
                     })
                     continue
@@ -514,27 +516,28 @@ def merge_corrections_fuzzy(
                     result["details"].append({
                         "string_id": sid,
                         "status": "UPDATED",
-                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
-                        "new": new_str[:50] + "..." if len(new_str) > 50 else new_str,
+                        "old": old_str,
+                        "new": new_str,
                     })
                     logger.debug(f"Updated (fuzzy) StringId={sid}: '{old_str}' -> '{new_str}'")
                 else:
                     result["details"].append({
                         "string_id": sid,
                         "status": "UNCHANGED",
-                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "old": old_str,
                         "new": "(same)",
                     })
 
-        # Count unmatched
+        # Count unmatched - store FULL data for failure reports
         for sid, was_matched in correction_matched.items():
             if not was_matched:
                 result["not_found"] += 1
+                c = correction_lookup[sid]
                 result["details"].append({
                     "string_id": sid,
                     "status": "NOT_FOUND",
-                    "old": "",
-                    "new": correction_lookup[sid][:50] + "..." if len(correction_lookup[sid]) > 50 else correction_lookup[sid],
+                    "old": c.get("str_origin", ""),  # FULL StrOrigin
+                    "new": c["corrected"],  # FULL text
                 })
 
         if changed and not dry_run:
@@ -591,7 +594,7 @@ def merge_corrections_quadruple_fallback(
     if not corrections:
         return result
 
-    # Build lookup: matched_string_id -> (corrected_text, match_level)
+    # Build lookup: matched_string_id -> (full_correction_dict, match_level)
     correction_lookup = {}
     correction_matched = {}
 
@@ -599,7 +602,7 @@ def merge_corrections_quadruple_fallback(
         target_sid = c.get("matched_string_id", "")
         level = c.get("match_level", "L3")
         if target_sid:
-            correction_lookup[target_sid] = (c["corrected"], level)
+            correction_lookup[target_sid] = (c, level)  # Store FULL correction dict
             correction_matched[target_sid] = False
 
     if not correction_lookup:
@@ -631,7 +634,8 @@ def merge_corrections_quadruple_fallback(
                    loc.get("Stringid") or loc.get("stringId") or "").strip()
 
             if sid in correction_lookup:
-                new_str, level = correction_lookup[sid]
+                c, level = correction_lookup[sid]
+                new_str = c["corrected"]
                 correction_matched[sid] = True
                 result["matched"] += 1
                 result["level_counts"][level] += 1
@@ -645,7 +649,7 @@ def merge_corrections_quadruple_fallback(
                     result["details"].append({
                         "string_id": sid,
                         "status": f"SKIPPED_TRANSLATED ({level})",
-                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "old": old_str,
                         "new": "(skipped - already translated)",
                     })
                     continue
@@ -658,28 +662,28 @@ def merge_corrections_quadruple_fallback(
                     result["details"].append({
                         "string_id": sid,
                         "status": f"UPDATED ({level})",
-                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
-                        "new": new_str[:50] + "..." if len(new_str) > 50 else new_str,
+                        "old": old_str,
+                        "new": new_str,
                     })
                     logger.debug(f"Updated ({level}) StringId={sid}: '{old_str}' -> '{new_str}'")
                 else:
                     result["details"].append({
                         "string_id": sid,
                         "status": f"UNCHANGED ({level})",
-                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "old": old_str,
                         "new": "(same)",
                     })
 
-        # Count unmatched
+        # Count unmatched - store FULL data for failure reports
         for sid, was_matched in correction_matched.items():
             if not was_matched:
                 result["not_found"] += 1
-                new_str, level = correction_lookup[sid]
+                c, level = correction_lookup[sid]
                 result["details"].append({
                     "string_id": sid,
                     "status": "NOT_FOUND",
-                    "old": "",
-                    "new": new_str[:50] + "..." if len(new_str) > 50 else new_str,
+                    "old": c.get("str_origin", ""),  # FULL StrOrigin
+                    "new": c["corrected"],  # FULL text
                 })
 
         if changed and not dry_run:

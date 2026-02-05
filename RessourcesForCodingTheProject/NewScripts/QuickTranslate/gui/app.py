@@ -53,7 +53,7 @@ from core import (
     generate_transfer_plan,
     format_transfer_plan,
     # Failure reports (XML + Excel)
-    generate_failed_merge_xml,
+    generate_failed_merge_xml_per_language,
     extract_failed_from_folder_results,
     extract_failed_from_transfer_results,
     generate_failure_report_excel,
@@ -1785,15 +1785,19 @@ class QuickTranslateApp:
                         language="UNK"
                     )
 
-                # Generate XML failure report (FAILED_TO_MERGE.xml)
+                # Generate XML failure reports PER LANGUAGE
                 if failed_entries:
-                    xml_report_path = report_folder / f"FAILED_TO_MERGE_{timestamp}.xml"
                     try:
-                        generate_failed_merge_xml(failed_entries, xml_report_path)
-                        self._log(f"XML failure report: {xml_report_path.name}", 'success')
-                        failure_reports_msg += f"\n\nXML Report: {xml_report_path.name}"
+                        xml_files = generate_failed_merge_xml_per_language(
+                            failed_entries, report_folder
+                        )
+                        if xml_files:
+                            self._log(f"XML failure reports: {len(xml_files)} language files", 'success')
+                            for lang, path in xml_files.items():
+                                self._log(f"  {lang}: {path.name}", 'info')
+                            failure_reports_msg += f"\n\nXML Reports: {len(xml_files)} language files"
                     except Exception as e:
-                        self._log(f"Failed to generate XML report: {e}", 'error')
+                        self._log(f"Failed to generate XML reports: {e}", 'error')
 
                 # Generate Excel failure report (if xlsxwriter available)
                 if check_xlsxwriter_available():

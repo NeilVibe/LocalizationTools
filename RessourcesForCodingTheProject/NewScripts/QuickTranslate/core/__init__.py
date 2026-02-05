@@ -82,6 +82,7 @@ from .source_scanner import (
 )
 from .failure_report import (
     generate_failed_merge_xml,
+    generate_failed_merge_xml_per_language,
     extract_failed_from_transfer_results,
     extract_failed_from_folder_results,
     format_failure_summary,
@@ -175,6 +176,7 @@ __all__ = [
     "format_transfer_plan",
     # failure_report (XML)
     "generate_failed_merge_xml",
+    "generate_failed_merge_xml_per_language",
     "extract_failed_from_transfer_results",
     "extract_failed_from_folder_results",
     "format_failure_summary",
