@@ -12,7 +12,7 @@ Handles:
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from collections import defaultdict
 from datetime import datetime
 
@@ -131,7 +131,7 @@ VALID_MANAGER_STATUS = {"FIXED", "REPORTED", "CHECKING", "NON-ISSUE", "NON ISSUE
 # Valid tester status values (rows with these are "done")
 # NOTE: Script-type categories (Sequencer/Dialog) use "NON-ISSUE" (with hyphen)
 # while other categories use "NO ISSUE" (with space). Accept both.
-VALID_TESTER_STATUS = {"ISSUE", "NO ISSUE", "NON-ISSUE", "BLOCKED", "KOREAN"}
+VALID_TESTER_STATUS = {"ISSUE", "NO ISSUE", "NON-ISSUE", "NON ISSUE", "BLOCKED", "KOREAN"}
 
 
 # =============================================================================
@@ -826,8 +826,10 @@ def process_category(
     lang_label: str,
     manager_status: Dict = None,
     rebuild: bool = True,
-    fixed_screenshots: set = None
-) -> List[Dict]:
+    fixed_screenshots: set = None,
+    accumulated_users: set = None,
+    accumulated_stats: Dict = None
+) -> Tuple[List[Dict], set, Dict]:
     """
     Process all QA folders for one category.
 
@@ -840,14 +842,23 @@ def process_category(
         manager_status: Pre-collected manager status to restore
         rebuild: If True, rebuild master. If False, append (for clustering)
         fixed_screenshots: Set of screenshot filenames to skip (FIXED optimization)
+        accumulated_users: Set of users accumulated across categories sharing same master
+        accumulated_stats: Dict of user stats accumulated across categories sharing same master
 
     Returns:
-        List of daily_entry dicts for tracker
+        Tuple of (daily_entries, accumulated_users, accumulated_stats)
+        - daily_entries: List of daily_entry dicts for tracker
+        - accumulated_users: Updated set of all users for this master
+        - accumulated_stats: Updated dict of user stats for this master
     """
     if manager_status is None:
         manager_status = {}
     if fixed_screenshots is None:
         fixed_screenshots = set()
+    if accumulated_users is None:
+        accumulated_users = set()
+    if accumulated_stats is None:
+        accumulated_stats = defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0})
 
     target_master = get_target_master_category(category)
     cluster_info = f" -> Master_{target_master}" if target_master != category else ""
@@ -908,9 +919,9 @@ def process_category(
             else:
                 print(f"    WARNING: ItemName(ENG) column not found in {sheet_name}, skipping sort")
 
-    # Track stats
-    all_users = set()
-    user_stats = defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0})
+    # Track stats - use accumulated data if provided (for clustered categories)
+    all_users = accumulated_users
+    user_stats = accumulated_stats
     user_wordcount = defaultdict(int)  # username -> word count (EN) or char count (CN)
     user_file_dates = {}  # username -> file modification date
     total_images = 0
@@ -1030,8 +1041,8 @@ def process_category(
             for row in range(2, qa_ws.max_row + 1):
                 if qa_status_col:
                     status_val = qa_ws.cell(row, qa_status_col).value
-                    # Accept both "NO ISSUE" (standard) and "NON-ISSUE" (Script-type)
-                    if not status_val or str(status_val).strip().upper() not in ["ISSUE", "NO ISSUE", "NON-ISSUE", "BLOCKED", "KOREAN"]:
+                    # Accept all variants: "NO ISSUE", "NON-ISSUE", "NON ISSUE"
+                    if not status_val or str(status_val).strip().upper() not in ["ISSUE", "NO ISSUE", "NON-ISSUE", "NON ISSUE", "BLOCKED", "KOREAN"]:
                         continue  # Skip rows not marked as done
                 cell_value = qa_ws.cell(row, trans_col).value
                 if is_english:
@@ -1076,8 +1087,10 @@ def process_category(
             _script_debug_log(f"  word_count: {user_wordcount[username]}")
             _script_debug_flush()
 
-    # Update STATUS sheet with user stats
-    update_status_sheet(master_wb, all_users, dict(user_stats))
+    # NOTE: STATUS sheet update is DEFERRED - caller will call update_status_sheet()
+    # after all categories sharing this master have been processed. This prevents
+    # clustered categories (e.g., Sequencer + Dialog -> Master_Script) from
+    # overwriting each other's users in the STATUS sheet.
 
     # Apply word wrap and autofit FIRST (before hiding)
     # This way all columns get proper widths, even if hidden later
@@ -1103,7 +1116,7 @@ def process_category(
     if total_images > 0:
         print(f"  Images: {total_images} copied to Images/, {total_screenshots} hyperlinks updated")
 
-    return daily_entries
+    return daily_entries, all_users, dict(user_stats)
 
 
 # =============================================================================
@@ -1186,6 +1199,11 @@ def run_compiler():
     processed_masters_en = set()
     processed_masters_cn = set()
 
+    # Track accumulated users and stats per master file for STATUS sheet
+    # Key: target_master name (e.g., "Script"), Value: (users_set, stats_dict)
+    master_status_data_en = {}
+    master_status_data_cn = {}
+
     # Process EN
     for category in CATEGORIES:
         if category in by_category_en:
@@ -1202,14 +1220,26 @@ def run_compiler():
             rebuild = target_master not in processed_masters_en
             processed_masters_en.add(target_master)
 
+            # Get or initialize accumulated data for this master
+            if target_master not in master_status_data_en:
+                master_status_data_en[target_master] = (
+                    set(),
+                    defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0})
+                )
+            acc_users, acc_stats = master_status_data_en[target_master]
+
             category_manager_status = manager_status_en.get(category, {})
-            entries = process_category(
+            entries, acc_users, acc_stats = process_category(
                 category, by_category_en[category],
                 MASTER_FOLDER_EN, IMAGES_FOLDER_EN, "EN",
                 category_manager_status, rebuild=rebuild,
-                fixed_screenshots=fixed_screenshots_en
+                fixed_screenshots=fixed_screenshots_en,
+                accumulated_users=acc_users,
+                accumulated_stats=acc_stats
             )
             all_daily_entries.extend(entries)
+            # Store updated accumulated data
+            master_status_data_en[target_master] = (acc_users, acc_stats)
 
     # Process CN
     for category in CATEGORIES:
@@ -1227,14 +1257,51 @@ def run_compiler():
             rebuild = target_master not in processed_masters_cn
             processed_masters_cn.add(target_master)
 
+            # Get or initialize accumulated data for this master
+            if target_master not in master_status_data_cn:
+                master_status_data_cn[target_master] = (
+                    set(),
+                    defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0})
+                )
+            acc_users, acc_stats = master_status_data_cn[target_master]
+
             category_manager_status = manager_status_cn.get(category, {})
-            entries = process_category(
+            entries, acc_users, acc_stats = process_category(
                 category, by_category_cn[category],
                 MASTER_FOLDER_CN, IMAGES_FOLDER_CN, "CN",
                 category_manager_status, rebuild=rebuild,
-                fixed_screenshots=fixed_screenshots_cn
+                fixed_screenshots=fixed_screenshots_cn,
+                accumulated_users=acc_users,
+                accumulated_stats=acc_stats
             )
             all_daily_entries.extend(entries)
+            # Store updated accumulated data
+            master_status_data_cn[target_master] = (acc_users, acc_stats)
+
+    # === UPDATE STATUS SHEETS (once per master, after all categories processed) ===
+    print("\n" + "=" * 60)
+    print("Updating STATUS sheets (merged across clustered categories)...")
+    print("=" * 60)
+
+    for target_master, (users, stats) in master_status_data_en.items():
+        if users:
+            master_path = MASTER_FOLDER_EN / f"Master_{target_master}.xlsx"
+            if master_path.exists():
+                print(f"  [EN] Master_{target_master}: {len(users)} users")
+                wb = safe_load_workbook(master_path)
+                update_status_sheet(wb, users, dict(stats))
+                wb.save(master_path)
+                wb.close()
+
+    for target_master, (users, stats) in master_status_data_cn.items():
+        if users:
+            master_path = MASTER_FOLDER_CN / f"Master_{target_master}.xlsx"
+            if master_path.exists():
+                print(f"  [CN] Master_{target_master}: {len(users)} users")
+                wb = safe_load_workbook(master_path)
+                update_status_sheet(wb, users, dict(stats))
+                wb.save(master_path)
+                wb.close()
 
     # === Generate MasterSubmitScript (Script category ISSUE rows) ===
     # Combines Sequencer + Dialog ISSUE rows into a single submit file per language

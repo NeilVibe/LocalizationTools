@@ -583,8 +583,8 @@ def process_sheet(
                     result["stats"]["issue"] += 1
                     should_compile_comment = True
                     status_type = "ISSUE"
-                elif status_upper in ("NO ISSUE", "NON-ISSUE"):
-                    # Accept both "NO ISSUE" (standard) and "NON-ISSUE" (Script-type)
+                elif status_upper in ("NO ISSUE", "NON-ISSUE", "NON ISSUE"):
+                    # Accept all variants: "NO ISSUE", "NON-ISSUE", "NON ISSUE"
                     result["stats"]["no_issue"] += 1
                     should_compile_comment = True
                     status_type = "NO ISSUE"  # Normalize to "NO ISSUE" for consistency
@@ -628,7 +628,7 @@ def process_sheet(
                     elif status_type == "KOREAN":
                         cell.fill = COMMENT_FILL_KOREAN
                         cell.font = COMMENT_FONT_KOREAN
-                    elif status_type in ("NO ISSUE", "NON-ISSUE"):
+                    elif status_type in ("NO ISSUE", "NON-ISSUE", "NON ISSUE"):
                         cell.fill = COMMENT_FILL_NO_ISSUE
                         cell.font = COMMENT_FONT_NO_ISSUE
 
@@ -1094,7 +1094,7 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
         rows_with_issue_status = set()
         rows_resolved_by_manager = set()
 
-        TESTER_HIDE_STATUSES = {"BLOCKED", "KOREAN", "NO ISSUE", "NON-ISSUE"}
+        TESTER_HIDE_STATUSES = {"BLOCKED", "KOREAN", "NO ISSUE", "NON-ISSUE", "NON ISSUE"}
         MANAGER_HIDE_STATUSES = {"FIXED", "NON-ISSUE", "NON ISSUE"}
 
         for row in range(2, ws.max_row + 1):
