@@ -50,3 +50,4 @@ Build: Fix missing stringid_to_category dict in SCRIPT merger
 Trigger LanguageDataExporter rebuild after BOM validation fix
 Trigger LanguageDataExporter rebuild for window size fix
 Build 025 - Add Text State and MEMO1/2/3 columns
+Build 20260206-001622
