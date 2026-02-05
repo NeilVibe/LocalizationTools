@@ -221,6 +221,10 @@ CATEGORY_TO_MASTER = {
 # Performance: With 6 workers, independent groups run concurrently.
 # Expected speedup: ~2-3x on typical datasets.
 
+# Maximum parallel workers for compilation (tune based on CPU preference)
+# 6 = balanced (40-60% CPU), 8 = moderate (50-70%), 12 = aggressive (70-90%)
+MAX_PARALLEL_WORKERS = 8
+
 WORKER_GROUPS = {
     "quest":      ["Quest"],
     "knowledge":  ["Knowledge"],
