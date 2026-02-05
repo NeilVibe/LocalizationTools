@@ -879,23 +879,18 @@ def process_category(
     template_xlsx = sorted_by_mtime[0]["xlsx_path"]
     template_user = sorted_by_mtime[0]["username"]
 
-    # OPTIMIZATION: For Script-type categories (Sequencer/Dialog), build master directly
-    # from preprocessed universe data (Phase B: eliminates temp file + re-read cycle)
-    universe = None  # Set for Script categories, used by Phase C2 prefiltered rows
-    if category.lower() in SCRIPT_TYPE_CATEGORIES:
-        print(f"  [OPTIMIZATION] Script-type category detected - preprocessing...")
-        universe = preprocess_script_category(qa_folders, is_english)
-
-        if universe["row_count"] == 0:
-            print(f"  [SKIP] No rows with STATUS found in any QA file")
-            return daily_entries
-
-        # Build master directly from universe (Phase B: no temp file needed)
-        master_wb, master_path = build_master_from_universe(category, universe, master_folder)
-        print(f"  Master: Built from universe ({universe['row_count']} rows with STATUS)")
-    else:
-        print(f"  Template: {template_user} (most recent file)")
-        master_wb, master_path = get_or_create_master(category, master_folder, template_xlsx, rebuild=rebuild)
+    # Use unified template-based master creation for ALL categories
+    # This preserves ALL template rows (including REPORTED issues that may not have
+    # STATUS in current QA files). The old Script-specific "universe" method that
+    # rebuilt from scratch was causing data loss when testers cleared STATUS.
+    #
+    # NOTE: Script-type categories (Sequencer/Dialog) previously used a separate
+    # preprocess_script_category() + build_master_from_universe() pipeline that
+    # only kept rows WITH STATUS. This optimization caused REPORTED rows to be lost
+    # when testers removed STATUS from their QA files. Now all categories use the
+    # unified method which preserves data integrity while still being fast.
+    print(f"  Template: {template_user} (most recent file)")
+    master_wb, master_path = get_or_create_master(category, master_folder, template_xlsx, rebuild=rebuild)
 
     if master_wb is None:
         return daily_entries
@@ -983,12 +978,9 @@ def process_category(
             # Get manager status for this sheet
             sheet_manager_status = manager_status.get(sheet_name, {})
 
-            # Phase C2: Build prefiltered rows from universe for Script categories
-            prefiltered = None
-            if universe is not None:
-                prefiltered = build_prefiltered_rows(universe, xlsx_path, sheet_name, username)
-
             # Process the sheet (creates user columns internally)
+            # NOTE: prefiltered_rows optimization removed - all categories now scan
+            # all rows for STATUS, which is slightly slower but preserves data integrity
             # Uses content-based matching for robust row matching
             qa_rows = qa_ws.max_row - 1 if qa_ws.max_row and qa_ws.max_row > 1 else 0
             print(f"      {sheet_name}: {qa_rows} rows...", end="", flush=True)
@@ -997,8 +989,7 @@ def process_category(
                 is_english=is_english,
                 image_mapping=image_mapping,
                 xlsx_path=xlsx_path,
-                manager_status=sheet_manager_status,
-                prefiltered_rows=prefiltered
+                manager_status=sheet_manager_status
             )
 
             # Accumulate stats from result["stats"]

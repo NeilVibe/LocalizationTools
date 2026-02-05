@@ -71,3 +71,4 @@ Trigger QA Compiler rebuild for Build 515: Dead code cleanup
 Trigger QA Compiler rebuild for Build 516: Title naming consistency
 Trigger QA Compiler rebuild for Build 517: Fix double counting + group size
 Trigger QA Compiler rebuild for Build 518: USER_GUIDE update
+Trigger QA Compiler rebuild for Build 519: Fix Script data loss - unified method
