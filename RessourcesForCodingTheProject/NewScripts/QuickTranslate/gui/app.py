@@ -927,6 +927,7 @@ class QuickTranslateApp:
         self.generate_btn.config(state='disabled')
         self.transfer_btn.config(state='disabled')
         self.korean_miss_btn.config(state='disabled')
+        self.missing_trans_btn.config(state='disabled')
 
     def _enable_buttons(self):
         """Re-enable all action buttons (respects match type for TRANSFER)."""
@@ -937,6 +938,7 @@ class QuickTranslateApp:
         else:
             self.transfer_btn.config(state='normal')
         self.korean_miss_btn.config(state='normal')
+        self.missing_trans_btn.config(state='normal')
 
     def _generate(self):
         """Main generate action based on current mode."""

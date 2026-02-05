@@ -85,10 +85,9 @@ class LanguageMissingReport:
     language: str
     target_file: str
     entries: List[MissingEntry] = field(default_factory=list)
-    total_strings: int = 0
-    korean_strings: int = 0
-    hits: int = 0
-    misses: int = 0
+    korean_strings: int = 0  # Total Korean strings found in target
+    hits: int = 0  # Found in source
+    misses: int = 0  # Missing from source (need translation)
     total_korean_chars: int = 0
     total_korean_words: int = 0
 
@@ -472,7 +471,7 @@ def write_summary_report_excel(
         ws_info.write(i, 0, field)
         ws_info.write(i, 1, str(value) if not isinstance(value, int) else value, num_fmt if isinstance(value, int) else None)
 
-    # === PER-LANGUAGE DETAIL SHEETS (first 100 entries per language) ===
+    # === PER-LANGUAGE DETAIL SHEETS (first 1000 entries per language) ===
     for lang in sorted_langs:
         lang_report = report.by_language[lang]
         if not lang_report.entries:
