@@ -147,40 +147,79 @@ class QuickTranslateApp:
         main = tk.Frame(self.root, bg='#f0f0f0', padx=20, pady=10)
         main.pack(fill=tk.BOTH, expand=True)
 
-        # Title
-        title = tk.Label(main, text="QuickTranslate", font=('Segoe UI', 18, 'bold'),
+        # === TOP BAR: Title + Action Buttons ===
+        top_bar = tk.Frame(main, bg='#f0f0f0')
+        top_bar.pack(fill=tk.X, pady=(0, 10))
+
+        # Title on the left
+        title = tk.Label(top_bar, text="QuickTranslate", font=('Segoe UI', 18, 'bold'),
                         bg='#f0f0f0', fg='#333')
-        title.pack(pady=(0, 10))
+        title.pack(side=tk.LEFT)
 
-        # === Format Selection ===
-        format_frame = tk.LabelFrame(main, text="Format", font=('Segoe UI', 10, 'bold'),
-                                     bg='#f0f0f0', fg='#555', padx=15, pady=8)
-        format_frame.pack(fill=tk.X, pady=(0, 8))
+        # Action buttons on the right (immediately visible!)
+        btn_container = tk.Frame(top_bar, bg='#f0f0f0')
+        btn_container.pack(side=tk.RIGHT)
 
-        format_inner = tk.Frame(format_frame, bg='#f0f0f0')
-        format_inner.pack()
+        tk.Button(btn_container, text="Exit", command=self.root.quit,
+                 font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
+                 padx=15, pady=4, cursor='hand2').pack(side=tk.RIGHT, padx=(5, 0))
 
-        tk.Radiobutton(format_inner, text="Excel (.xlsx)", variable=self.format_mode,
+        tk.Button(btn_container, text="Clear All", command=self._clear_fields,
+                 font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
+                 padx=12, pady=4, cursor='hand2').pack(side=tk.RIGHT, padx=(5, 0))
+
+        tk.Button(btn_container, text="Clear Log", command=self._clear_log,
+                 font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
+                 padx=12, pady=4, cursor='hand2').pack(side=tk.RIGHT, padx=(5, 0))
+
+        self.transfer_btn = tk.Button(btn_container, text="TRANSFER", command=self._transfer,
+                                      font=('Segoe UI', 11, 'bold'), bg='#d9534f', fg='white',
+                                      relief='flat', padx=20, pady=4, cursor='hand2')
+        self.transfer_btn.pack(side=tk.RIGHT, padx=(5, 0))
+
+        self.generate_btn = tk.Button(btn_container, text="Generate", command=self._generate,
+                                      font=('Segoe UI', 11, 'bold'), bg='#4a90d9', fg='white',
+                                      relief='flat', padx=20, pady=4, cursor='hand2')
+        self.generate_btn.pack(side=tk.RIGHT, padx=(5, 0))
+
+        # === COMPACT FORMAT + MODE ROW ===
+        format_mode_frame = tk.Frame(main, bg='#f0f0f0')
+        format_mode_frame.pack(fill=tk.X, pady=(0, 8))
+
+        # Format section (left side)
+        format_section = tk.Frame(format_mode_frame, bg='#f0f0f0')
+        format_section.pack(side=tk.LEFT)
+
+        tk.Label(format_section, text="Format:", font=('Segoe UI', 10, 'bold'),
+                bg='#f0f0f0', fg='#555').pack(side=tk.LEFT, padx=(0, 8))
+        tk.Radiobutton(format_section, text="Excel", variable=self.format_mode,
                       value="excel", font=('Segoe UI', 10), bg='#f0f0f0',
-                      activebackground='#f0f0f0', cursor='hand2', padx=20).pack(side=tk.LEFT)
-        tk.Radiobutton(format_inner, text="XML (.xml)", variable=self.format_mode,
+                      activebackground='#f0f0f0', cursor='hand2').pack(side=tk.LEFT, padx=(0, 4))
+        tk.Radiobutton(format_section, text="XML", variable=self.format_mode,
                       value="xml", font=('Segoe UI', 10), bg='#f0f0f0',
-                      activebackground='#f0f0f0', cursor='hand2', padx=20).pack(side=tk.LEFT)
+                      activebackground='#f0f0f0', cursor='hand2').pack(side=tk.LEFT)
 
-        # === Mode Selection ===
-        mode_frame = tk.LabelFrame(main, text="Mode", font=('Segoe UI', 10, 'bold'),
-                                   bg='#f0f0f0', fg='#555', padx=15, pady=8)
-        mode_frame.pack(fill=tk.X, pady=(0, 8))
+        # Separator
+        tk.Label(format_mode_frame, text="|", font=('Segoe UI', 10),
+                bg='#f0f0f0', fg='#ccc').pack(side=tk.LEFT, padx=15)
 
-        mode_inner = tk.Frame(mode_frame, bg='#f0f0f0')
-        mode_inner.pack()
+        # Mode section (right of format)
+        mode_section = tk.Frame(format_mode_frame, bg='#f0f0f0')
+        mode_section.pack(side=tk.LEFT)
 
-        tk.Radiobutton(mode_inner, text="File (single)", variable=self.input_mode,
+        tk.Label(mode_section, text="Mode:", font=('Segoe UI', 10, 'bold'),
+                bg='#f0f0f0', fg='#555').pack(side=tk.LEFT, padx=(0, 8))
+        tk.Radiobutton(mode_section, text="File", variable=self.input_mode,
                       value="file", font=('Segoe UI', 10), bg='#f0f0f0',
-                      activebackground='#f0f0f0', cursor='hand2', padx=20).pack(side=tk.LEFT)
-        tk.Radiobutton(mode_inner, text="Folder (recursive)", variable=self.input_mode,
+                      activebackground='#f0f0f0', cursor='hand2').pack(side=tk.LEFT, padx=(0, 4))
+        tk.Radiobutton(mode_section, text="Folder", variable=self.input_mode,
                       value="folder", font=('Segoe UI', 10), bg='#f0f0f0',
-                      activebackground='#f0f0f0', cursor='hand2', padx=20).pack(side=tk.LEFT)
+                      activebackground='#f0f0f0', cursor='hand2').pack(side=tk.LEFT)
+
+        # Transfer note label (shown when TRANSFER disabled)
+        self.transfer_note_label = tk.Label(format_mode_frame, text="",
+                                            font=('Segoe UI', 8), bg='#f0f0f0', fg='#d9534f')
+        self.transfer_note_label.pack(side=tk.RIGHT)
 
         # === Match Type Selection ===
         match_frame = tk.LabelFrame(main, text="Match Type", font=('Segoe UI', 10, 'bold'),
@@ -421,37 +460,6 @@ class QuickTranslateApp:
         status_label = tk.Label(progress_frame, textvariable=self.status_text,
                                font=('Segoe UI', 9), bg='#f0f0f0', fg='#666', anchor='w')
         status_label.pack(fill=tk.X)
-
-        # === Action Buttons ===
-        button_frame = tk.Frame(main, bg='#f0f0f0')
-        button_frame.pack(fill=tk.X, pady=(5, 0))
-
-        self.generate_btn = tk.Button(button_frame, text="Generate", command=self._generate,
-                                      font=('Segoe UI', 11, 'bold'), bg='#4a90d9', fg='white',
-                                      relief='flat', padx=30, pady=8, cursor='hand2')
-        self.generate_btn.pack(side=tk.LEFT, padx=(0, 10))
-
-        self.transfer_btn = tk.Button(button_frame, text="TRANSFER", command=self._transfer,
-                                      font=('Segoe UI', 11, 'bold'), bg='#d9534f', fg='white',
-                                      relief='flat', padx=25, pady=8, cursor='hand2')
-        self.transfer_btn.pack(side=tk.LEFT, padx=(0, 10))
-
-        # Substring-only note (shown when TRANSFER is disabled)
-        self.transfer_note_label = tk.Label(button_frame, text="",
-                                            font=('Segoe UI', 8), bg='#f0f0f0', fg='#d9534f')
-        self.transfer_note_label.pack(side=tk.LEFT, padx=(0, 10))
-
-        tk.Button(button_frame, text="Clear Log", command=self._clear_log,
-                 font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
-                 padx=15, pady=6, cursor='hand2').pack(side=tk.LEFT, padx=(0, 10))
-
-        tk.Button(button_frame, text="Clear All", command=self._clear_fields,
-                 font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
-                 padx=15, pady=6, cursor='hand2').pack(side=tk.LEFT, padx=(0, 10))
-
-        tk.Button(button_frame, text="Exit", command=self.root.quit,
-                 font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
-                 padx=20, pady=6, cursor='hand2').pack(side=tk.LEFT)
 
         # Apply initial match type state (disable TRANSFER for substring)
         self._on_match_type_changed()
