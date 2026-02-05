@@ -426,7 +426,7 @@ def build_master_index_cached(
     Returns:
         Dict with primary/fallback/consumed - always has fresh consumed set
     """
-    global _master_index_cache
+    # Note: No global needed - we only read/modify dict contents, not reassign variable
 
     if cache_key and cache_key in _master_index_cache:
         # Cache hit - return clone with fresh consumed set
