@@ -45,6 +45,13 @@ from core import (
     format_transfer_report,
     # Korean miss extractor
     extract_korean_misses,
+    # Source scanner (auto-recursive language detection)
+    scan_source_for_languages,
+    validate_source_structure,
+    format_scan_result,
+    # Transfer plan (full tree table)
+    generate_transfer_plan,
+    format_transfer_plan,
 )
 from core.indexing import scan_folder_for_entries, scan_folder_for_entries_with_context
 from core.fuzzy_matching import (
@@ -68,9 +75,9 @@ class QuickTranslateApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("QuickTranslate")
-        self.root.geometry("900x1000")
-        self.root.resizable(False, True)
-        self.root.minsize(900, 900)
+        self.root.geometry("950x1050")
+        self.root.resizable(True, True)
+        self.root.minsize(850, 800)
         self.root.configure(bg='#f0f0f0')
 
         # Variables
@@ -248,6 +255,24 @@ class QuickTranslateApp:
                                            font=('Segoe UI', 9), bg='#e8f4e8', fg='#666')
         self.model_status_label.pack(side=tk.LEFT)
 
+        # === Transfer Scope Toggle (inside Match Type section) ===
+        self.transfer_scope_frame = tk.Frame(match_frame, bg='#fef3e2', padx=10, pady=4,
+                                             relief='groove', bd=1)
+        # Don't pack yet - shown/hidden by _on_match_type_changed
+
+        scope_label = tk.Label(self.transfer_scope_frame, text="Transfer Scope:",
+                               font=('Segoe UI', 9, 'bold'), bg='#fef3e2', fg='#333')
+        scope_label.pack(side=tk.LEFT, padx=(0, 10))
+
+        tk.Radiobutton(self.transfer_scope_frame, text="Transfer ALL (overwrite always)",
+                        variable=self.transfer_scope, value="all",
+                        font=('Segoe UI', 9), bg='#fef3e2',
+                        activebackground='#fef3e2').pack(side=tk.LEFT, padx=(0, 15))
+        tk.Radiobutton(self.transfer_scope_frame, text="Only untranslated (Korean only)",
+                        variable=self.transfer_scope, value="untranslated",
+                        font=('Segoe UI', 9), bg='#fef3e2',
+                        activebackground='#fef3e2').pack(side=tk.LEFT)
+
         # === Files Section ===
         files_frame = tk.LabelFrame(main, text="Files", font=('Segoe UI', 10, 'bold'),
                                     bg='#f0f0f0', fg='#555', padx=15, pady=8)
@@ -409,24 +434,6 @@ class QuickTranslateApp:
                                             font=('Segoe UI', 8), bg='#f0f0f0', fg='#d9534f')
         self.transfer_note_label.pack(side=tk.LEFT, padx=(0, 10))
 
-        # === Transfer Scope Toggle ===
-        self.transfer_scope_frame = tk.Frame(main, bg='#fef3e2', padx=10, pady=4,
-                                             relief='groove', bd=1)
-        # Don't pack yet - shown/hidden by _on_match_type_changed
-
-        scope_label = tk.Label(self.transfer_scope_frame, text="Transfer Scope:",
-                               font=('Segoe UI', 9, 'bold'), bg='#fef3e2', fg='#333')
-        scope_label.pack(side=tk.LEFT, padx=(0, 10))
-
-        tk.Radiobutton(self.transfer_scope_frame, text="Transfer ALL (overwrite always)",
-                        variable=self.transfer_scope, value="all",
-                        font=('Segoe UI', 9), bg='#fef3e2',
-                        activebackground='#fef3e2').pack(side=tk.LEFT, padx=(0, 15))
-        tk.Radiobutton(self.transfer_scope_frame, text="Only untranslated (Korean only)",
-                        variable=self.transfer_scope, value="untranslated",
-                        font=('Segoe UI', 9), bg='#fef3e2',
-                        activebackground='#fef3e2').pack(side=tk.LEFT)
-
         tk.Button(button_frame, text="Clear Log", command=self._clear_log,
                  font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
                  padx=15, pady=6, cursor='hand2').pack(side=tk.LEFT, padx=(0, 10))
@@ -459,6 +466,9 @@ class QuickTranslateApp:
 
     def _analyze_folder(self, folder_path: str, role: str) -> None:
         """Analyze a folder and print detailed info to terminal and log.
+
+        Uses Smart Auto-Recursive Source Scanner for SOURCE folders to detect
+        language codes from folder/file suffixes (e.g., Corrections_FRE/, patch_GER.xml).
 
         Args:
             folder_path: Path to the folder to analyze
@@ -547,6 +557,34 @@ class QuickTranslateApp:
             for d in subdirs:
                 print(f"    - {d.name}/")
 
+        # === Smart Auto-Recursive Source Scanner (for SOURCE folders) ===
+        if role == "SOURCE":
+            scan_result = scan_source_for_languages(folder)
+            if scan_result.lang_files:
+                print(f"\n  SMART LANGUAGE DETECTION (Auto-Recursive):")
+                print(f"  {'Language':<10} {'Files':<8} {'Source'}")
+                print(f"  {'-'*10} {'-'*8} {'-'*30}")
+                for lang in scan_result.get_languages():
+                    files = scan_result.lang_files[lang]
+                    if len(files) <= 2:
+                        sources = ", ".join(f.name for f in files)
+                    else:
+                        sources = f"{files[0].name}, ... ({len(files)} total)"
+                    print(f"  {lang:<10} {len(files):<8} {sources}")
+                print(f"\n  Total: {scan_result.total_files} files in {scan_result.language_count} languages (auto-detected)")
+
+                if scan_result.unrecognized:
+                    print(f"\n  UNRECOGNIZED ITEMS ({len(scan_result.unrecognized)}):")
+                    for item in scan_result.unrecognized[:5]:
+                        item_type = "folder" if item.is_dir() else "file"
+                        print(f"    - {item.name} ({item_type})")
+                    if len(scan_result.unrecognized) > 5:
+                        print(f"    ... and {len(scan_result.unrecognized) - 5} more")
+
+                # Log to GUI
+                self._log(f"Smart scan: {scan_result.total_files} files in {scan_result.language_count} languages", 'success')
+                self._log(f"  Languages: {', '.join(scan_result.get_languages())}", 'info')
+
         # Validation
         print(f"\n  VALIDATION:")
         is_eligible = len(lang_files) > 0
@@ -555,20 +593,29 @@ class QuickTranslateApp:
             print(f"  [OK] Eligible for TRANSFER ({len(lang_files)} language files)")
             print(f"  [OK] Languages: {', '.join(lang_codes)}")
         else:
-            print(f"  [!!] NOT eligible for TRANSFER - no languagedata_*.xml files")
+            # For SOURCE folders, check if smart scan found languages even without languagedata_* pattern
+            if role == "SOURCE":
+                scan_result = scan_source_for_languages(folder)
+                if scan_result.lang_files:
+                    print(f"  [OK] Smart scan found {scan_result.language_count} languages (non-standard naming)")
+                    is_eligible = True
+                else:
+                    print(f"  [!!] NOT eligible for TRANSFER - no language-tagged items found")
+            else:
+                print(f"  [!!] NOT eligible for TRANSFER - no languagedata_*.xml files")
 
         if non_lang_xml:
             print(f"  [!!] {len(non_lang_xml)} non-languagedata XML files will be IGNORED")
-        if subdirs:
+        if subdirs and role == "TARGET":
             print(f"  [!!] {len(subdirs)} subdirectories will be IGNORED (flat scan only)")
 
         print(f"{separator}\n")
 
-        # Also log to GUI
-        if is_eligible:
+        # Also log to GUI (if not already logged by smart scan)
+        if is_eligible and role != "SOURCE":
             self._log(f"{role}: {len(lang_files)} languagedata files found - ELIGIBLE", 'success')
             self._log(f"  Languages: {', '.join(lang_codes)}", 'info')
-        else:
+        elif not is_eligible:
             self._log(f"{role}: No languagedata files found - NOT ELIGIBLE", 'error')
 
     def _browse_source(self):
@@ -1484,7 +1531,7 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"Target folder not found:\n{target}")
             return
 
-        # Confirm with user
+        # === GENERATE FULL TRANSFER PLAN BEFORE CONFIRMATION ===
         match_type = self.match_type.get()
         mode_str = "Folder" if self.input_mode.get() == "folder" else "File"
         match_str = match_type.upper()
@@ -1496,9 +1543,37 @@ class QuickTranslateApp:
 
         scope_str = ("Only untranslated (Korean)" if self.transfer_scope.get() == "untranslated"
                      else "ALL matches (overwrite)")
+
+        # Generate complete transfer plan with full tree table
+        transfer_plan = generate_transfer_plan(source, target)
+
+        # Print FULL TREE TABLE to terminal (always show complete mapping)
+        tree_table = format_transfer_plan(transfer_plan, show_all_files=True)
+        print(tree_table)
+
+        # Build confirmation message with summary from transfer plan
+        plan_summary = (
+            f"Languages: {len(transfer_plan.languages_ready)} ready"
+            + (f", {len(transfer_plan.languages_skipped)} skipped" if transfer_plan.languages_skipped else "")
+            + f"\nFiles: {transfer_plan.total_ready} will transfer"
+            + (f", {transfer_plan.total_skipped} skipped (no target)" if transfer_plan.total_skipped else "")
+        )
+
+        if transfer_plan.languages_ready:
+            plan_summary += f"\n\nReady: {', '.join(transfer_plan.languages_ready)}"
+        if transfer_plan.languages_skipped:
+            plan_summary += f"\nSkipped: {', '.join(transfer_plan.languages_skipped)}"
+
+        # Show warnings if any
+        if transfer_plan.warnings:
+            plan_summary += f"\n\nWarnings:\n" + "\n".join(f"  - {w}" for w in transfer_plan.warnings[:3])
+
         confirm = messagebox.askyesno(
-            "Confirm Transfer",
-            f"This will WRITE corrections to XML files in:\n{target}\n\n"
+            "Confirm Transfer - Review Tree in Terminal",
+            f"FULL TREE TABLE printed to terminal - review before confirming!\n\n"
+            f"Target: {target}\n\n"
+            f"=== TRANSFER PLAN SUMMARY ===\n"
+            f"{plan_summary}\n\n"
             f"Source Mode: {mode_str}\n"
             f"Match Mode: {match_str}\n"
             f"Transfer Scope: {scope_str}\n\n"
@@ -1518,36 +1593,23 @@ class QuickTranslateApp:
         self._log(f"Source: {source}", 'info')
         self._log(f"Target: {target}", 'info')
 
+        # Log transfer plan summary
+        self._log(f"Transfer Plan: {transfer_plan.total_ready} files ready, {transfer_plan.total_skipped} skipped", 'info')
+        for lang in transfer_plan.languages_ready:
+            plan = transfer_plan.language_plans[lang]
+            self._log(f"  {lang}: {plan.file_count} files → {plan.target_file.name if plan.target_file else 'N/A'}", 'success')
+        for lang in transfer_plan.languages_skipped:
+            plan = transfer_plan.language_plans[lang]
+            self._log(f"  {lang}: {plan.file_count} files → SKIPPED (no target)", 'warning')
+
         try:
-            # Pre-transfer cross-match analysis (folder mode)
+            # Cross-match summary (folder mode) - main analysis already in transfer plan
             if self.input_mode.get() == "folder" and source.is_dir() and target.is_dir():
                 src_xmls = {f.stem.lower()[13:]: f.name for f in source.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
                 tgt_xmls = {f.stem.lower()[13:]: f.name for f in target.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
                 matched_langs = sorted(set(src_xmls.keys()) & set(tgt_xmls.keys()))
                 src_only = sorted(set(src_xmls.keys()) - set(tgt_xmls.keys()))
                 tgt_only = sorted(set(tgt_xmls.keys()) - set(src_xmls.keys()))
-
-                print(f"\n{'=' * 60}")
-                print(f"  TRANSFER CROSS-MATCH ANALYSIS")
-                print(f"{'=' * 60}")
-                print(f"  Source: {len(src_xmls)} languagedata files")
-                print(f"  Target: {len(tgt_xmls)} languagedata files")
-                print(f"  Matched: {len(matched_langs)} pairs")
-                print(f"{'-' * 60}")
-                if matched_langs:
-                    print(f"\n  MATCHED PAIRS ({len(matched_langs)}):")
-                    for lang in matched_langs:
-                        print(f"    {src_xmls[lang]:<35} --> {tgt_xmls[lang]}")
-                if src_only:
-                    print(f"\n  SOURCE ONLY (no target match - SKIPPED):")
-                    for lang in src_only:
-                        print(f"    {src_xmls[lang]:<35} --> [NO MATCH]")
-                if tgt_only:
-                    print(f"\n  TARGET ONLY (no source - UNCHANGED):")
-                    for lang in tgt_only:
-                        print(f"    {'[NO SOURCE]':<35} --> {tgt_xmls[lang]}")
-                print(f"{'=' * 60}\n")
-
                 self._log(f"Cross-match: {len(matched_langs)} pairs, {len(src_only)} source-only, {len(tgt_only)} target-only", 'info')
 
             # Load category data if needed for stringid_only mode

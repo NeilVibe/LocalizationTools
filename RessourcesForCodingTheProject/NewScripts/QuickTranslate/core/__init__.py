@@ -66,6 +66,20 @@ from .korean_miss_extractor import (
     extract_korean_misses,
     build_export_index,
 )
+from .source_scanner import (
+    SourceScanResult,
+    scan_source_for_languages,
+    extract_language_suffix,
+    validate_source_structure,
+    format_scan_result,
+    ValidationResult,
+    # Transfer Plan (full tree table)
+    TransferPlan,
+    LanguageTransferPlan,
+    FileMapping,
+    generate_transfer_plan,
+    format_transfer_plan,
+)
 
 __all__ = [
     # text_utils
@@ -134,4 +148,17 @@ __all__ = [
     "normalize_strorigin",
     "extract_korean_misses",
     "build_export_index",
+    # source_scanner
+    "SourceScanResult",
+    "scan_source_for_languages",
+    "extract_language_suffix",
+    "validate_source_structure",
+    "format_scan_result",
+    "ValidationResult",
+    # transfer_plan (full tree table)
+    "TransferPlan",
+    "LanguageTransferPlan",
+    "FileMapping",
+    "generate_transfer_plan",
+    "format_transfer_plan",
 ]
