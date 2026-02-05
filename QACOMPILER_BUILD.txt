@@ -78,3 +78,4 @@ Build 522: MEMO/COMMENT filter fix
 Build 523: STATUS parsing + STATUS sheet fix
 Build 524: Script column header priority fix
 Build 525: Preserve tester data during master rebuild + KeyError fix for clustered categories
+Build 526: eventname_to_stringid with file dialog + bundled in installer
