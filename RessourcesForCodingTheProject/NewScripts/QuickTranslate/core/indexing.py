@@ -56,9 +56,9 @@ def build_sequencer_strorigin_index(
         try:
             root = parse_xml_file(xml_file)
             for elem in _iter_locstr_case_insensitive(root):
-                string_id = _get_attribute_case_insensitive(
+                string_id = (_get_attribute_case_insensitive(
                     elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
-                )
+                ) or '').strip()
                 str_origin = _get_attribute_case_insensitive(
                     elem, ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN']
                 ) or ''
@@ -100,9 +100,9 @@ def scan_folder_for_strings(
         try:
             root = parse_xml_file(xml_file)
             for elem in _iter_locstr_case_insensitive(root):
-                string_id = _get_attribute_case_insensitive(
+                string_id = (_get_attribute_case_insensitive(
                     elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
-                )
+                ) or '').strip()
                 str_origin = _get_attribute_case_insensitive(
                     elem, ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN']
                 ) or ''
@@ -144,9 +144,9 @@ def scan_folder_for_entries(
         try:
             root = parse_xml_file(xml_file)
             for elem in _iter_locstr_case_insensitive(root):
-                string_id = _get_attribute_case_insensitive(
+                string_id = (_get_attribute_case_insensitive(
                     elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
-                )
+                ) or '').strip()
                 str_origin = _get_attribute_case_insensitive(
                     elem, ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN']
                 ) or ''
@@ -226,9 +226,9 @@ def scan_folder_for_entries_with_context(
             entries_in_file = []
 
             for elem in _iter_locstr_case_insensitive(root):
-                string_id = _get_attribute_case_insensitive(
+                string_id = (_get_attribute_case_insensitive(
                     elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
-                )
+                ) or '').strip()
                 str_origin = _get_attribute_case_insensitive(
                     elem, ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN']
                 ) or ''

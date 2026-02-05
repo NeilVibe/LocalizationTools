@@ -67,7 +67,7 @@ def build_translation_lookup(
             root = parse_xml_file(xml_path)
             for elem in _iter_locstr_case_insensitive(root):
                 string_id = (elem.get('StringId') or elem.get('StringID') or
-                            elem.get('stringid') or elem.get('STRINGID'))
+                            elem.get('stringid') or elem.get('STRINGID') or '').strip()
                 str_value = (elem.get('Str') or elem.get('str') or
                             elem.get('STR') or '')
 
@@ -139,7 +139,7 @@ def build_stringid_to_category(
                 root = parse_xml_file(xml_file)
                 for elem in _iter_locstr_case_insensitive(root):
                     string_id = (elem.get('StringId') or elem.get('StringID') or
-                                elem.get('stringid') or elem.get('STRINGID'))
+                                elem.get('stringid') or elem.get('STRINGID') or '').strip()
                     if string_id:
                         stringid_to_category[string_id] = category_name
             except Exception:
@@ -193,7 +193,7 @@ def build_stringid_to_subfolder(
                 root = parse_xml_file(xml_file)
                 for elem in _iter_locstr_case_insensitive(root):
                     string_id = (elem.get('StringId') or elem.get('StringID') or
-                                elem.get('stringid') or elem.get('STRINGID'))
+                                elem.get('stringid') or elem.get('STRINGID') or '').strip()
                     if string_id:
                         stringid_to_subfolder[string_id] = subfolder
             except Exception:
