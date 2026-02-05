@@ -52,6 +52,12 @@ from core import (
     # Transfer plan (full tree table)
     generate_transfer_plan,
     format_transfer_plan,
+    # Failure reports (XML + Excel)
+    generate_failed_merge_xml,
+    extract_failed_from_folder_results,
+    extract_failed_from_transfer_results,
+    generate_failure_report_excel,
+    check_xlsxwriter_available,
 )
 from core.indexing import scan_folder_for_entries, scan_folder_for_entries_with_context
 from core.fuzzy_matching import (
@@ -1742,18 +1748,77 @@ class QuickTranslateApp:
                 else:
                     self._log(line, 'info')
 
-            self.progress_value.set(100)
+            self.progress_value.set(90)
 
             # Summary
             if report_mode == "folder":
                 updated = results.get("total_updated", 0)
                 matched = results.get("total_matched", 0)
                 not_found = results.get("total_not_found", 0)
+                skipped_translated = results.get("total_skipped_translated", 0)
             else:
                 updated = results.get("updated", 0)
                 matched = results.get("matched", 0)
                 not_found = results.get("not_found", 0)
+                skipped_translated = results.get("skipped_translated", 0)
 
+            # === FAILURE REPORT GENERATION ===
+            # Generate detailed failure reports if there are any failures
+            total_failures = not_found + skipped_translated
+            failure_reports_msg = ""
+
+            if total_failures > 0:
+                self._log("", 'info')
+                self._log("=== Generating Failure Reports ===", 'header')
+
+                # Use source folder as report output location
+                report_folder = source if source.is_dir() else source.parent
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+                # Extract failed entries for XML report
+                if report_mode == "folder":
+                    failed_entries = extract_failed_from_folder_results(results)
+                else:
+                    failed_entries = extract_failed_from_transfer_results(
+                        results,
+                        source_file_name=source.name,
+                        language="UNK"
+                    )
+
+                # Generate XML failure report (FAILED_TO_MERGE.xml)
+                if failed_entries:
+                    xml_report_path = report_folder / f"FAILED_TO_MERGE_{timestamp}.xml"
+                    try:
+                        generate_failed_merge_xml(failed_entries, xml_report_path)
+                        self._log(f"XML failure report: {xml_report_path.name}", 'success')
+                        failure_reports_msg += f"\n\nXML Report: {xml_report_path.name}"
+                    except Exception as e:
+                        self._log(f"Failed to generate XML report: {e}", 'error')
+
+                # Generate Excel failure report (if xlsxwriter available)
+                if check_xlsxwriter_available():
+                    excel_report_path = report_folder / f"FailureReport_{timestamp}.xlsx"
+                    try:
+                        success, msg = generate_failure_report_excel(
+                            results,
+                            excel_report_path,
+                            mode=report_mode,
+                            source_name=str(source.name),
+                            target_name=str(target.name if target.is_file() else target.name)
+                        )
+                        if success:
+                            self._log(f"Excel failure report: {excel_report_path.name}", 'success')
+                            failure_reports_msg += f"\nExcel Report: {excel_report_path.name}"
+                        else:
+                            self._log(f"Excel report failed: {msg}", 'error')
+                    except Exception as e:
+                        self._log(f"Failed to generate Excel report: {e}", 'error')
+                else:
+                    self._log("Excel report skipped (xlsxwriter not installed)", 'warning')
+
+                self._log(f"Reports saved to: {report_folder}", 'info')
+
+            self.progress_value.set(100)
             self._update_status(f"Transfer complete: {updated} updated")
 
             messagebox.showinfo(
@@ -1761,8 +1826,10 @@ class QuickTranslateApp:
                 f"Transfer completed!\n\n"
                 f"Matched: {matched}\n"
                 f"Updated: {updated}\n"
-                f"Not Found: {not_found}\n\n"
-                f"Target: {target}"
+                f"Not Found: {not_found}\n"
+                + (f"Skipped (translated): {skipped_translated}\n" if skipped_translated > 0 else "")
+                + f"\nTarget: {target}"
+                + failure_reports_msg
             )
 
         except Exception as e:

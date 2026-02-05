@@ -18,3 +18,4 @@ Build: Correct fallback language list (14 production languages)
 Build: FIX transfer not finding files in language-tagged subfolders (critical bug)
 Build: FIX language code lost between scanner and transfer (file_to_lang mapping)
 Build: Per-file transfer logging with source file name
+Build: Automatic Failure Reports (XML + Excel) on transfer failures

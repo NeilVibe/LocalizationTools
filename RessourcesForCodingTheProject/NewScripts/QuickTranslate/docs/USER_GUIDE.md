@@ -1,6 +1,6 @@
 # QuickTranslate User Guide
 
-**Version 3.2.0** | February 2026 | LocaNext Project
+**Version 3.3.0** | February 2026 | LocaNext Project
 
 ---
 
@@ -858,6 +858,49 @@ Single row with StringID and all translations.
 - Matches found
 - Updates applied
 - Errors encountered
+
+### 9.2.1 Failure Reports (Automatic)
+
+When transfer has failures (not found, skipped), detailed reports are automatically generated:
+
+**Saved to:** Source folder (same location as your corrections)
+
+#### XML Failure Report
+**Filename:** `FAILED_TO_MERGE_YYYYMMDD_HHMMSS.xml`
+
+Groups all failed LocStr entries by source file:
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<FailedMerges timestamp="2026-02-05T14:30:00" total="45">
+  <SourceFile name="corrections_fre.xml" language="FRE" failed="12">
+    <LocStr StringId="UI_001" StrOrigin="확인" Str="OK"
+            FailReason="StringID not found in target"/>
+    ...
+  </SourceFile>
+</FailedMerges>
+```
+
+**Use case:** Re-import failed entries for review or manual fixing
+
+#### Excel Failure Report
+**Filename:** `FailureReport_YYYYMMDD_HHMMSS.xlsx`
+
+4-sheet workbook with comprehensive analysis:
+
+| Sheet | Content |
+|-------|---------|
+| **Summary** | Total counts, success/failure rates, breakdown |
+| **Failure by Reason** | Grouped by failure category with counts |
+| **Failure by File** | Per-file statistics and success rates |
+| **Detailed Failures** | Every failed entry with StringID, StrOrigin, reason |
+
+**Failure reasons tracked:**
+- `StringID not found in target` - ID doesn't exist in target XML
+- `Skipped: non-SCRIPT category` - StringID-Only mode filters non-Dialog/Sequencer
+- `Skipped: already translated` - "Untranslated only" mode skips non-Korean entries
+- `Skipped: excluded subfolder` - In exclusion list (narration etc.)
+
+**Use case:** Analyze why corrections failed, prioritize fixes
 
 ---
 
