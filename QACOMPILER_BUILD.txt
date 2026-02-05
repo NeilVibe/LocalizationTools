@@ -74,3 +74,4 @@ Trigger QA Compiler rebuild for Build 518: USER_GUIDE update
 Trigger QA Compiler rebuild for Build 519: Fix Script data loss - unified method
 Build 520: Add MasterSubmitScript generator with conflict detection
 Build 521: Update User Guide v2.1.0
+Build 522: MEMO/COMMENT filter fix
