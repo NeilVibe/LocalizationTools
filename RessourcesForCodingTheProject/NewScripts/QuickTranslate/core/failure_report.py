@@ -358,14 +358,14 @@ def extract_failed_from_transfer_results(
     for detail in details:
         status = detail.get("status", "")
 
-        # Only include failed/not found entries
-        if "NOT_FOUND" in status or "SKIPPED" in status:
+        # Only include failed/not found entries (including MISMATCH)
+        if "NOT_FOUND" in status or "MISMATCH" in status or "SKIPPED" in status:
             fail_reason = _status_to_reason(status)
 
             failed_entries.append({
                 "string_id": detail.get("string_id", ""),
-                "str_origin": "",  # Not always available in details
-                "str": detail.get("new", ""),
+                "str_origin": detail.get("old", ""),  # FULL StrOrigin from transfer details
+                "str": detail.get("new", ""),  # Corrected text (translation)
                 "fail_reason": fail_reason,
                 "source_file": source_file_name,
                 "language": language,
@@ -399,13 +399,13 @@ def extract_failed_from_folder_results(
         for detail in details:
             status = detail.get("status", "")
 
-            if "NOT_FOUND" in status or "SKIPPED" in status:
+            if "NOT_FOUND" in status or "MISMATCH" in status or "SKIPPED" in status:
                 fail_reason = _status_to_reason(status)
 
                 all_failed.append({
                     "string_id": detail.get("string_id", ""),
-                    "str_origin": detail.get("old", ""),
-                    "str": detail.get("new", ""),
+                    "str_origin": detail.get("old", ""),  # FULL StrOrigin
+                    "str": detail.get("new", ""),  # Corrected text (translation)
                     "fail_reason": fail_reason,
                     "source_file": source_file,
                     "language": language,
@@ -417,6 +417,10 @@ def extract_failed_from_folder_results(
 def _status_to_reason(status: str) -> str:
     """Convert a status code to a human-readable failure reason."""
     status_upper = status.upper()
+
+    # Check MISMATCH first (before NOT_FOUND since it's more specific)
+    if "STRORIGIN_MISMATCH" in status_upper or "MISMATCH" in status_upper:
+        return "StrOrigin mismatch (StringID exists but source text differs)"
 
     if "NOT_FOUND" in status_upper:
         if "L1" in status_upper:
