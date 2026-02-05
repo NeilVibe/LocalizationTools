@@ -1779,10 +1779,20 @@ class QuickTranslateApp:
                 if report_mode == "folder":
                     failed_entries = extract_failed_from_folder_results(results)
                 else:
+                    # Detect language from target file (languagedata_FRE.xml -> FRE)
+                    # target_file is always defined in FILE mode
+                    detected_lang = "UNK"
+                    try:
+                        target_stem = target_file.stem.lower()
+                        if target_stem.startswith("languagedata_"):
+                            detected_lang = target_stem[13:].upper()
+                    except Exception:
+                        pass
+
                     failed_entries = extract_failed_from_transfer_results(
                         results,
                         source_file_name=source.name,
-                        language="UNK"
+                        language=detected_lang
                     )
 
                 # Generate XML failure reports PER LANGUAGE

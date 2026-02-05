@@ -60,6 +60,7 @@ def merge_corrections_to_xml(
         "matched": 0,
         "updated": 0,
         "not_found": 0,
+        "strorigin_mismatch": 0,  # StringID exists but StrOrigin differs
         "skipped_translated": 0,
         "errors": [],
         "by_category": {},
@@ -195,8 +196,10 @@ def merge_corrections_to_xml(
                 sid = c["string_id"]
                 if sid in target_stringids:
                     status = "STRORIGIN_MISMATCH"
+                    result["strorigin_mismatch"] += 1
                 else:
                     status = "NOT_FOUND"
+                    result["not_found"] += 1
 
                 result["details"].append({
                     "string_id": sid,
@@ -205,8 +208,6 @@ def merge_corrections_to_xml(
                     "new": c["corrected"],
                     "raw_attribs": c.get("raw_attribs", {}),  # ALL original attributes
                 })
-
-        result["not_found"] = len(corrections) - result["matched"]
 
         if changed and not dry_run:
             # Make file writable if read-only
@@ -1026,6 +1027,7 @@ def transfer_folder_to_folder(
         "total_matched": 0,
         "total_updated": 0,
         "total_not_found": 0,
+        "total_strorigin_mismatch": 0,  # StringID exists but StrOrigin differs
         "total_skipped": 0,
         "total_skipped_excluded": 0,
         "total_skipped_translated": 0,
@@ -1286,7 +1288,8 @@ def transfer_folder_to_folder(
         results["total_corrections"] += len(corrections)
         results["total_matched"] += file_result["matched"]
         results["total_updated"] += file_result["updated"]
-        results["total_not_found"] += file_result["not_found"]
+        results["total_not_found"] += file_result.get("not_found", 0)
+        results["total_strorigin_mismatch"] += file_result.get("strorigin_mismatch", 0)
         results["total_skipped_translated"] += file_result.get("skipped_translated", 0)
         results["errors"].extend(file_result["errors"])
 
