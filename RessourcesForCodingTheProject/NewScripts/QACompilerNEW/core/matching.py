@@ -376,6 +376,85 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
     return index
 
 
+def clone_with_fresh_consumed(master_index: Dict) -> Dict:
+    """
+    Clone a master index with a fresh consumed set.
+
+    This enables reusing the same primary/fallback indexes across multiple users
+    while giving each user a fresh consumed set to track their own matched rows.
+
+    Performance optimization: Avoids rebuilding the index for each user when
+    processing the same master sheet. For 10 users on same master:
+    - Before: build_master_index() called 10x = O(10 × rows)
+    - After: build once, clone 10x = O(rows) + O(10)
+
+    Args:
+        master_index: Dict from build_master_index() with primary/fallback/consumed
+
+    Returns:
+        New dict with same primary/fallback (shared references) but fresh consumed set
+    """
+    return {
+        "primary": master_index["primary"],     # Shared reference (immutable during matching)
+        "fallback": master_index["fallback"],   # Shared reference (immutable during matching)
+        "consumed": set(),                       # Fresh set for this user
+    }
+
+
+# Cache for master indexes to avoid rebuilding
+_master_index_cache = {}  # Key: (master_path, sheet_name, category, is_english) -> index
+
+
+def build_master_index_cached(
+    master_ws,
+    category: str,
+    is_english: bool,
+    cache_key: tuple = None
+) -> Dict:
+    """
+    Cached version of build_master_index.
+
+    If cache_key is provided and found in cache, returns a clone with fresh consumed set.
+    Otherwise builds the index and caches it.
+
+    Args:
+        master_ws: Master worksheet
+        category: Category name
+        is_english: Whether file is English
+        cache_key: Optional tuple for cache lookup (e.g., (master_path, sheet_name, category, is_english))
+
+    Returns:
+        Dict with primary/fallback/consumed - always has fresh consumed set
+    """
+    global _master_index_cache
+
+    if cache_key and cache_key in _master_index_cache:
+        # Cache hit - return clone with fresh consumed set
+        _match_log(f"INDEX CACHE HIT: {cache_key}")
+        return clone_with_fresh_consumed(_master_index_cache[cache_key])
+
+    # Cache miss - build the index
+    index = build_master_index(master_ws, category, is_english)
+
+    if cache_key:
+        # Store in cache (with empty consumed set as template)
+        _master_index_cache[cache_key] = {
+            "primary": index["primary"],
+            "fallback": index["fallback"],
+            "consumed": set(),  # Template has empty consumed
+        }
+        _match_log(f"INDEX CACHE STORE: {cache_key}")
+
+    return index
+
+
+def clear_master_index_cache():
+    """Clear the master index cache. Call at start of each compilation run."""
+    global _master_index_cache
+    _master_index_cache = {}
+    _match_log("INDEX CACHE CLEARED")
+
+
 def find_matching_row_in_master(
     qa_row_data: Dict,
     master_index: Dict,
