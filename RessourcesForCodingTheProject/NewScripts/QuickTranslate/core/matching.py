@@ -482,25 +482,24 @@ def find_matches_strict_fuzzy(
     """
     Strict match with fuzzy StrOrigin verification via SBERT.
 
-    For each correction: exact StringID match first, then fuzzy StrOrigin
-    similarity via SBERT for verification. This handles cases where the
-    StrOrigin text has minor variations (whitespace, punctuation, encoding
-    differences) that prevent exact tuple matching.
+    OPTIMIZED: StringID pool pre-filtering + batched encoding.
 
-    Algorithm:
-    1. Encode correction's str_origin with SBERT model
-    2. Search FAISS index for candidates above threshold
-    3. Among candidates, find one whose string_id matches the correction's string_id
-    4. If string_id matches AND StrOrigin similarity >= threshold -> matched
+    Instead of searching the entire FAISS index (slow), we:
+    1. Group corrections by StringID
+    2. For each unique StringID, get the pool of target entries with that StringID
+    3. Batch encode all corrections for that StringID + encode pool once
+    4. Compute cosine similarity matrix directly (no FAISS needed for small pools)
 
-    Falls back to exact strict match first (cheap), only uses FAISS for
-    corrections that fail exact matching.
+    This is DRAMATICALLY faster because:
+    - Pool is typically tiny (1-10 entries with same StringID)
+    - Each pool is encoded only ONCE, not per-query
+    - Direct matrix multiplication instead of FAISS overhead
 
     Args:
         corrections: List of correction dicts with "string_id" and "str_origin" keys
         xml_entries: Dict keyed by (StringID, normalized_StrOrigin) tuples
         fuzzy_model: Loaded SentenceTransformer model
-        fuzzy_index: Pre-built FAISS index over target StrOrigin texts
+        fuzzy_index: Pre-built FAISS index (fallback for very large pools)
         fuzzy_texts: Target StrOrigin texts (parallel to fuzzy_entries)
         fuzzy_entries: Target entry dicts (parallel to fuzzy_texts)
         fuzzy_threshold: Minimum similarity score for fuzzy StrOrigin matching
@@ -510,13 +509,24 @@ def find_matches_strict_fuzzy(
     """
     import numpy as np
     import faiss as faiss_lib
+    from collections import defaultdict
 
     matched = []
     not_found = 0
-    k = 10  # Top-K candidates per FAISS query
-    total = len(corrections)
 
-    for ci, c in enumerate(corrections):
+    # Build StringID -> entries index for fast pool lookup
+    stringid_to_entries: Dict[str, List[dict]] = defaultdict(list)
+    for entry in fuzzy_entries:
+        sid = entry.get("string_id", "")
+        if sid:
+            stringid_to_entries[sid].append(entry)
+
+    logger.info(f"Built StringID pool index: {len(stringid_to_entries)} unique StringIDs")
+
+    # Separate corrections: exact matches vs need fuzzy, grouped by StringID
+    need_fuzzy_by_stringid: Dict[str, List[Dict]] = defaultdict(list)
+
+    for c in corrections:
         string_id = c.get("string_id", "")
         str_origin = c.get("str_origin", "")
 
@@ -530,38 +540,81 @@ def find_matches_strict_fuzzy(
             matched.append(c)
             continue
 
-        # Exact match failed - try fuzzy StrOrigin with StringID verification
-        if not str_origin.strip():
-            not_found += 1
-            continue
-
-        if ci % 100 == 0:
-            logger.info(f"Strict fuzzy matching: {ci+1}/{total}")
-
-        # Encode and search FAISS
-        query_embedding = fuzzy_model.encode([str_origin], convert_to_numpy=True)
-        query_embedding = np.ascontiguousarray(query_embedding, dtype=np.float32)
-        faiss_lib.normalize_L2(query_embedding)
-
-        distances, indices_arr = fuzzy_index.search(query_embedding, k)
-
-        # Among candidates above threshold, find one with matching string_id
-        found = False
-        for score, idx in zip(distances[0], indices_arr[0]):
-            if idx < 0 or idx >= len(fuzzy_entries):
-                continue
-            if score < fuzzy_threshold:
-                continue
-
-            candidate = fuzzy_entries[idx]
-            if candidate.get("string_id", "") == string_id:
-                matched.append(c)
-                found = True
-                break
-
-        if not found:
+        # Need fuzzy matching - group by StringID for batched processing
+        if str_origin.strip() and string_id in stringid_to_entries:
+            need_fuzzy_by_stringid[string_id].append(c)
+        else:
             not_found += 1
 
+    total_need_fuzzy = sum(len(v) for v in need_fuzzy_by_stringid.values())
+    logger.info(f"Exact matches: {len(matched)}, need fuzzy: {total_need_fuzzy} "
+                f"across {len(need_fuzzy_by_stringid)} unique StringIDs")
+
+    if not need_fuzzy_by_stringid:
+        return matched, not_found
+
+    # Process each StringID group: encode pool ONCE, then batch match all queries
+    processed = 0
+    for string_id, corr_group in need_fuzzy_by_stringid.items():
+        pool = stringid_to_entries[string_id]
+
+        if processed % 100 == 0 and processed > 0:
+            logger.info(f"Fuzzy matching: {processed}/{total_need_fuzzy} processed")
+
+        # Encode pool once for this StringID
+        pool_texts = [e.get("str_origin", "") for e in pool]
+
+        # Batch encode all queries for this StringID
+        query_texts = [c.get("str_origin", "").strip() for c in corr_group]
+
+        if len(pool) <= 500:
+            # Small/medium pool: direct cosine similarity (no FAISS)
+            pool_embeddings = fuzzy_model.encode(pool_texts, show_progress_bar=False, convert_to_numpy=True)
+            pool_embeddings = np.ascontiguousarray(pool_embeddings, dtype=np.float32)
+            faiss_lib.normalize_L2(pool_embeddings)
+
+            query_embeddings = fuzzy_model.encode(query_texts, show_progress_bar=False, convert_to_numpy=True)
+            query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
+            faiss_lib.normalize_L2(query_embeddings)
+
+            # Similarity matrix: (num_queries x num_pool)
+            similarity_matrix = np.dot(query_embeddings, pool_embeddings.T)
+
+            for qi, c in enumerate(corr_group):
+                best_score = similarity_matrix[qi].max()
+                if best_score >= fuzzy_threshold:
+                    matched.append(c)
+                else:
+                    not_found += 1
+                processed += 1
+        else:
+            # Very large pool: use FAISS index search and filter
+            query_embeddings = fuzzy_model.encode(query_texts, show_progress_bar=False, convert_to_numpy=True)
+            query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
+            faiss_lib.normalize_L2(query_embeddings)
+
+            for qi, c in enumerate(corr_group):
+                query_emb = query_embeddings[qi:qi+1]
+                distances, indices_arr = fuzzy_index.search(query_emb, 50)
+
+                found = False
+                for score, idx in zip(distances[0], indices_arr[0]):
+                    if idx < 0 or idx >= len(fuzzy_entries):
+                        continue
+                    if score < fuzzy_threshold:
+                        continue
+
+                    candidate = fuzzy_entries[idx]
+                    if candidate.get("string_id", "") == string_id:
+                        matched.append(c)
+                        found = True
+                        break
+
+                if not found:
+                    not_found += 1
+                processed += 1
+
+    logger.info(f"Fuzzy matching complete: {len(matched)} matched, {not_found} not found")
     return matched, not_found
 
 

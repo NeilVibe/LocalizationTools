@@ -380,7 +380,7 @@ def write_summary_report_excel(
     output_path: Path
 ) -> bool:
     """
-    Write summary report to Excel file.
+    Write summary report to Excel file with professional table formatting.
 
     Args:
         report: MissingTranslationReport object
@@ -398,80 +398,172 @@ def write_summary_report_excel(
 
     wb = xlsxwriter.Workbook(str(output_path))
 
-    # Formats
+    # === FORMATS ===
+    # Header format - dark blue with white text, thick border
     header_fmt = wb.add_format({
-        'bold': True, 'bg_color': '#4472C4', 'font_color': 'white',
-        'border': 1, 'align': 'center', 'valign': 'vcenter'
+        'bold': True,
+        'bg_color': '#2F5496',
+        'font_color': 'white',
+        'font_size': 11,
+        'border': 2,
+        'align': 'center',
+        'valign': 'vcenter',
     })
+
+    # Total row format - gold background
     total_fmt = wb.add_format({
-        'bold': True, 'bg_color': '#FFC000', 'border': 1,
-        'align': 'right', 'num_format': '#,##0'
+        'bold': True,
+        'bg_color': '#FFC000',
+        'border': 2,
+        'align': 'right',
+        'valign': 'vcenter',
+        'num_format': '#,##0',
     })
-    num_fmt = wb.add_format({'num_format': '#,##0', 'align': 'right'})
-    text_fmt = wb.add_format({'text_wrap': True, 'valign': 'top'})
+    total_text_fmt = wb.add_format({
+        'bold': True,
+        'bg_color': '#FFC000',
+        'border': 2,
+        'align': 'left',
+        'valign': 'vcenter',
+    })
+
+    # Alternating row formats for data
+    row_light = wb.add_format({
+        'bg_color': '#FFFFFF',
+        'border': 1,
+        'align': 'left',
+        'valign': 'vcenter',
+    })
+    row_light_num = wb.add_format({
+        'bg_color': '#FFFFFF',
+        'border': 1,
+        'align': 'right',
+        'valign': 'vcenter',
+        'num_format': '#,##0',
+    })
+    row_dark = wb.add_format({
+        'bg_color': '#D6DCE5',
+        'border': 1,
+        'align': 'left',
+        'valign': 'vcenter',
+    })
+    row_dark_num = wb.add_format({
+        'bg_color': '#D6DCE5',
+        'border': 1,
+        'align': 'right',
+        'valign': 'vcenter',
+        'num_format': '#,##0',
+    })
+
+    # Text wrap formats for long content
+    text_wrap_light = wb.add_format({
+        'bg_color': '#FFFFFF',
+        'border': 1,
+        'text_wrap': True,
+        'valign': 'top',
+    })
+    text_wrap_dark = wb.add_format({
+        'bg_color': '#D6DCE5',
+        'border': 1,
+        'text_wrap': True,
+        'valign': 'top',
+    })
+
+    # Info sheet formats
+    info_header = wb.add_format({
+        'bold': True,
+        'bg_color': '#2F5496',
+        'font_color': 'white',
+        'border': 2,
+        'align': 'center',
+        'valign': 'vcenter',
+    })
+    info_label = wb.add_format({
+        'bold': True,
+        'bg_color': '#D6DCE5',
+        'border': 1,
+        'align': 'left',
+        'valign': 'vcenter',
+    })
+    info_value = wb.add_format({
+        'border': 1,
+        'align': 'left',
+        'valign': 'vcenter',
+    })
+    info_value_num = wb.add_format({
+        'border': 1,
+        'align': 'right',
+        'valign': 'vcenter',
+        'num_format': '#,##0',
+    })
+
+    sorted_langs = sorted(report.by_language.keys())
 
     # === SUMMARY SHEET ===
     ws = wb.add_worksheet("Summary")
-    ws.set_column('A:A', 18)
-    ws.set_column('B:B', 15)
-    ws.set_column('C:C', 15)
-    ws.set_column('D:D', 15)
-    ws.set_column('E:E', 15)
-    ws.set_column('F:F', 45)
+    ws.set_column('A:A', 12)   # Language
+    ws.set_column('B:B', 18)   # Missing Strings
+    ws.set_column('C:C', 18)   # Korean Words
+    ws.set_column('D:D', 40)   # Target File
 
     # Headers
-    headers = ["Language", "Missing Strings", "Korean Chars", "Korean Words", "Hits", "Target File"]
+    headers = ["Language", "Missing Strings", "Korean Words", "Target File"]
     for col, h in enumerate(headers):
         ws.write(0, col, h, header_fmt)
 
-    # Data rows
+    # Data rows with alternating colors
     row = 1
-    sorted_langs = sorted(report.by_language.keys())
     for lang in sorted_langs:
         lang_report = report.by_language[lang]
-        ws.write(row, 0, lang)
+        is_dark = (row % 2 == 0)
+        txt_fmt = row_dark if is_dark else row_light
+        num_fmt = row_dark_num if is_dark else row_light_num
+
+        ws.write(row, 0, lang, txt_fmt)
         ws.write(row, 1, lang_report.misses, num_fmt)
-        ws.write(row, 2, lang_report.total_korean_chars, num_fmt)
-        ws.write(row, 3, lang_report.total_korean_words, num_fmt)
-        ws.write(row, 4, lang_report.hits, num_fmt)
-        ws.write(row, 5, Path(lang_report.target_file).name, text_fmt)
+        ws.write(row, 2, lang_report.total_korean_words, num_fmt)
+        ws.write(row, 3, Path(lang_report.target_file).name, txt_fmt)
         row += 1
 
     # Totals row
-    ws.write(row, 0, "TOTAL", total_fmt)
+    ws.write(row, 0, "TOTAL", total_text_fmt)
     ws.write(row, 1, report.total_misses, total_fmt)
-    ws.write(row, 2, report.total_korean_chars, total_fmt)
-    ws.write(row, 3, report.total_korean_words, total_fmt)
-    ws.write(row, 4, report.total_hits, total_fmt)
-    ws.write(row, 5, "", total_fmt)
+    ws.write(row, 2, report.total_korean_words, total_fmt)
+    ws.write(row, 3, "", total_text_fmt)
+
+    # Freeze header row
+    ws.freeze_panes(1, 0)
 
     # === INFO SHEET ===
     ws_info = wb.add_worksheet("Info")
     ws_info.set_column('A:A', 25)
     ws_info.set_column('B:B', 80)
 
-    info_header = wb.add_format({'bold': True, 'bg_color': '#5B9BD5', 'font_color': 'white'})
     ws_info.write(0, 0, "Field", info_header)
     ws_info.write(0, 1, "Value", info_header)
 
     info_data = [
-        ("Report Generated", report.timestamp),
-        ("Source Path", report.source_path),
-        ("Target Path", report.target_path),
-        ("Mode", report.mode),
-        ("Languages Found", len(report.by_language)),
-        ("Total Source Keys", report.total_source_keys),
-        ("Total Target Korean", report.total_target_korean),
-        ("Total Hits", report.total_hits),
-        ("Total Misses", report.total_misses),
-        ("Total Korean Chars", report.total_korean_chars),
-        ("Total Korean Words", report.total_korean_words),
+        ("Report Generated", report.timestamp, False),
+        ("Source Path", report.source_path, False),
+        ("Target Path", report.target_path, False),
+        ("Mode", report.mode, False),
+        ("Languages Found", len(report.by_language), True),
+        ("Total Source Keys", report.total_source_keys, True),
+        ("Total Target Korean", report.total_target_korean, True),
+        ("Total Hits", report.total_hits, True),
+        ("Total Misses", report.total_misses, True),
+        ("Total Korean Words", report.total_korean_words, True),
     ]
-    for i, (field, value) in enumerate(info_data, 1):
-        ws_info.write(i, 0, field)
-        ws_info.write(i, 1, str(value) if not isinstance(value, int) else value, num_fmt if isinstance(value, int) else None)
+    for i, (field, value, is_num) in enumerate(info_data, 1):
+        ws_info.write(i, 0, field, info_label)
+        if is_num:
+            ws_info.write(i, 1, value, info_value_num)
+        else:
+            ws_info.write(i, 1, str(value), info_value)
 
-    # === PER-LANGUAGE DETAIL SHEETS (first 1000 entries per language) ===
+    ws_info.freeze_panes(1, 0)
+
+    # === PER-LANGUAGE DETAIL SHEETS ===
     for lang in sorted_langs:
         lang_report = report.by_language[lang]
         if not lang_report.entries:
@@ -480,27 +572,33 @@ def write_summary_report_excel(
         # Excel sheet names limited to 31 chars
         sheet_name = f"{lang[:28]}"
         ws_lang = wb.add_worksheet(sheet_name)
-        ws_lang.set_column('A:A', 20)  # StringId
-        ws_lang.set_column('B:B', 50)  # StrOrigin
-        ws_lang.set_column('C:C', 50)  # Korean Text
-        ws_lang.set_column('D:D', 12)  # Korean Chars
-        ws_lang.set_column('E:E', 12)  # Korean Words
+        ws_lang.set_column('A:A', 22)  # StringId
+        ws_lang.set_column('B:B', 55)  # StrOrigin
+        ws_lang.set_column('C:C', 55)  # Korean Text
+        ws_lang.set_column('D:D', 14)  # Korean Words
 
         # Headers
-        detail_headers = ["StringId", "StrOrigin", "Korean Text (Str)", "Korean Chars", "Korean Words"]
+        detail_headers = ["StringId", "StrOrigin", "Korean Text (Str)", "Korean Words"]
         for col, h in enumerate(detail_headers):
             ws_lang.write(0, col, h, header_fmt)
 
-        # Data (limit to 1000 for Excel performance)
+        # Data rows with alternating colors (limit to 1000 for Excel performance)
         for i, entry in enumerate(lang_report.entries[:1000], 1):
-            ws_lang.write(i, 0, entry.string_id)
-            ws_lang.write(i, 1, entry.str_origin[:200], text_fmt)
-            ws_lang.write(i, 2, entry.str_value[:200], text_fmt)
-            ws_lang.write(i, 3, entry.korean_chars, num_fmt)
-            ws_lang.write(i, 4, entry.korean_words, num_fmt)
+            is_dark = (i % 2 == 0)
+            txt_fmt = row_dark if is_dark else row_light
+            num_fmt = row_dark_num if is_dark else row_light_num
+            wrap_fmt = text_wrap_dark if is_dark else text_wrap_light
+
+            ws_lang.write(i, 0, entry.string_id, txt_fmt)
+            ws_lang.write(i, 1, entry.str_origin[:200], wrap_fmt)
+            ws_lang.write(i, 2, entry.str_value[:200], wrap_fmt)
+            ws_lang.write(i, 3, entry.korean_words, num_fmt)
 
         if len(lang_report.entries) > 1000:
             ws_lang.write(1001, 0, f"... and {len(lang_report.entries) - 1000} more entries (see XML file)")
+
+        # Freeze header row
+        ws_lang.freeze_panes(1, 0)
 
     wb.close()
     return True
@@ -649,34 +747,33 @@ def format_report_summary(report: MissingTranslationReport) -> str:
         Formatted string
     """
     lines = []
-    lines.append("=" * 70)
+    lines.append("=" * 60)
     lines.append("MISSING TRANSLATION REPORT")
-    lines.append("=" * 70)
+    lines.append("=" * 60)
     lines.append(f"Generated: {report.timestamp}")
     lines.append(f"Source: {report.source_path}")
     lines.append(f"Target: {report.target_path}")
     lines.append("")
     lines.append("SUMMARY")
-    lines.append("-" * 70)
+    lines.append("-" * 60)
     lines.append(f"  Source keys (StrOrigin, StringId):  {report.total_source_keys:,}")
     lines.append(f"  Target Korean entries:              {report.total_target_korean:,}")
     lines.append(f"  Total HITS (found in source):       {report.total_hits:,}")
     lines.append(f"  Total MISSES (need translation):    {report.total_misses:,}")
-    lines.append(f"  Total Korean characters:            {report.total_korean_chars:,}")
-    lines.append(f"  Total Korean words/sequences:       {report.total_korean_words:,}")
+    lines.append(f"  Total Korean words:                 {report.total_korean_words:,}")
     lines.append("")
     lines.append("PER-LANGUAGE BREAKDOWN")
-    lines.append("-" * 70)
-    lines.append(f"{'Language':<10} {'Missing':>10} {'KR Chars':>12} {'KR Words':>12} {'Hits':>10}")
-    lines.append("-" * 70)
+    lines.append("-" * 60)
+    lines.append(f"{'Language':<10} {'Missing':>12} {'KR Words':>14} {'Hits':>12}")
+    lines.append("-" * 60)
 
     for lang in sorted(report.by_language.keys()):
         lr = report.by_language[lang]
-        lines.append(f"{lang:<10} {lr.misses:>10,} {lr.total_korean_chars:>12,} {lr.total_korean_words:>12,} {lr.hits:>10,}")
+        lines.append(f"{lang:<10} {lr.misses:>12,} {lr.total_korean_words:>14,} {lr.hits:>12,}")
 
-    lines.append("-" * 70)
-    lines.append(f"{'TOTAL':<10} {report.total_misses:>10,} {report.total_korean_chars:>12,} {report.total_korean_words:>12,} {report.total_hits:>10,}")
-    lines.append("=" * 70)
+    lines.append("-" * 60)
+    lines.append(f"{'TOTAL':<10} {report.total_misses:>12,} {report.total_korean_words:>14,} {report.total_hits:>12,}")
+    lines.append("=" * 60)
 
     return "\n".join(lines)
 
