@@ -121,8 +121,8 @@ def get_translation_column_by_name(ws, category: str) -> int:
     """
     Get translation column index by searching for column header name.
 
-    For Script-type categories (Sequencer/Dialog), finds the "Text" column.
-    For other categories, falls back to position-based detection.
+    For Script-type categories (Sequencer/Dialog), finds "Text" or "Translation" column.
+    NO position-based fallback for Script categories.
 
     Args:
         ws: Worksheet to search
@@ -134,9 +134,13 @@ def get_translation_column_by_name(ws, category: str) -> int:
     category_lower = category.lower()
 
     if category_lower in SCRIPT_TYPE_CATEGORIES:
-        # Script-type: find "Text" column by name
-        text_col = find_column_by_header(ws, SCRIPT_COLS.get("translation", "Text"))
-        return text_col
+        # Script-type: try "Text" first, then "Translation" (case-insensitive)
+        text_col = find_column_by_header(ws, "Text")
+        if text_col:
+            return text_col
+        # Fallback to "Translation"
+        trans_col = find_column_by_header(ws, "Translation")
+        return trans_col
 
     # Other categories: not implemented (use position-based)
     return None
@@ -206,18 +210,18 @@ def extract_qa_row_data(qa_ws, row: int, category: str, is_english: bool, column
         }
 
     elif category_lower in SCRIPT_TYPE_CATEGORIES:
-        # Sequencer/Dialog: use Translation (Text) + EventName
-        # EventName is used as STRINGID and for fallback matching
-        # Use NAME-based detection for "Text" column (not position!)
+        # Sequencer/Dialog: use Translation (Text or Translation) + EventName
+        # EventName is PRIMARY identifier - try EventName first, then STRINGID
+        # Use NAME-based detection ONLY (no position fallback!)
+
+        # Translation column: try "Text" first, then "Translation"
         if column_cache is not None:
-            trans_col = column_cache.get(SCRIPT_COLS.get("translation", "Text").upper())
+            trans_col = column_cache.get("TEXT") or column_cache.get("TRANSLATION")
         else:
             trans_col = get_translation_column_by_name(qa_ws, category)
-        if not trans_col:
-            # Fallback to position if header not found
-            trans_col = get_translation_column(category, is_english)
-        translation = str(qa_ws.cell(row, trans_col).value or "").strip()
-        # For Script-type, EventName is the primary identifier - find it by header
+        translation = str(qa_ws.cell(row, trans_col).value or "").strip() if trans_col else ""
+
+        # EventName column: primary identifier for Script
         if column_cache is not None:
             eventname_col = column_cache.get("EVENTNAME")
         else:
@@ -225,9 +229,12 @@ def extract_qa_row_data(qa_ws, row: int, category: str, is_english: bool, column
         eventname = ""
         if eventname_col:
             eventname = str(qa_ws.cell(row, eventname_col).value or "").strip()
-        # Use EventName as stringid if no STRINGID column exists
-        if not stringid and eventname:
+
+        # For Script: EventName is primary, STRINGID is fallback
+        if eventname:
             stringid = eventname
+        # stringid already set from STRINGID column lookup above (fallback)
+
         return {
             "translation": translation,
             "eventname": eventname,
@@ -317,22 +324,17 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
     elif category_lower in SCRIPT_TYPE_CATEGORIES:
         # Sequencer/Dialog: index by (Translation, EventName) with EventName-only fallback
         # DIFFERENT from standard: Fallback is EventName ONLY, not Translation only
-        # Use NAME-based detection for "Text" column (not position!)
+        # Use NAME-based detection ONLY (no position fallback!)
         trans_col = get_translation_column_by_name(master_ws, category)
-        if not trans_col:
-            # Fallback to position if header not found
-            trans_col = get_translation_column(category, is_english)
         eventname_col = find_column_by_header(master_ws, "EventName")
 
         for row in range(2, master_ws.max_row + 1):
-            stringid = sanitize_stringid_for_match(master_ws.cell(row, stringid_col).value) if stringid_col else ""
-            translation = str(master_ws.cell(row, trans_col).value or "").strip()
+            # For Script: EventName is primary, STRINGID is fallback
             eventname = ""
             if eventname_col:
                 eventname = str(master_ws.cell(row, eventname_col).value or "").strip()
-            # Use EventName as stringid if not found
-            if not stringid and eventname:
-                stringid = eventname
+            stringid = eventname if eventname else (sanitize_stringid_for_match(master_ws.cell(row, stringid_col).value) if stringid_col else "")
+            translation = str(master_ws.cell(row, trans_col).value or "").strip() if trans_col else ""
 
             # Primary: translation + eventname (both must match)
             if translation and eventname:

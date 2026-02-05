@@ -242,10 +242,10 @@ TRANSLATION_COLS = {
 # - Preprocessing optimization: Only rows with STATUS are processed
 
 SCRIPT_COLS = {
-    "translation": "Text",       # Column NAME for text content (found by header search)
-    "stringid": "EventName",     # Column NAME for unique ID (EventName = STRINGID)
+    "translation": "Text",       # Primary: "Text", Fallback: "Translation" (no position fallback!)
+    "stringid": "EventName",     # Primary: "EventName", Fallback: "STRINGID"
     "status": "STATUS",          # Column NAME for tester status
-    "comment": "MEMO",           # Column NAME for comments (MEMO maps to COMMENT)
+    "comment": "MEMO",           # Primary: "MEMO", Fallback: "COMMENT"
     # NO SCREENSHOT for Script-type
 }
 

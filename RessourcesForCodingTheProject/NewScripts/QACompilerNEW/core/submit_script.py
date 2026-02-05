@@ -100,10 +100,11 @@ def collect_issue_rows(
                 # Build column map for header lookup
                 col_map = build_column_map(ws)
 
-                # Find required columns by name (using SCRIPT_COLS config)
-                status_col = col_map.get(SCRIPT_COLS.get("status", "STATUS").upper())
-                eventname_col = col_map.get(SCRIPT_COLS.get("stringid", "EventName").upper())
-                # Try MEMO first, fallback to COMMENT (check both for content)
+                # Find required columns by name
+                status_col = col_map.get("STATUS")
+                # Unique ID: try EventName first, then STRINGID
+                eventname_col = col_map.get("EVENTNAME") or col_map.get("STRINGID")
+                # Comment: try MEMO first, then COMMENT
                 memo_col = col_map.get("MEMO")
                 comment_col = col_map.get("COMMENT")
 
