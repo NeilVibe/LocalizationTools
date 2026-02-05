@@ -558,6 +558,8 @@ class QuickTranslateApp:
                 print(f"    - {d.name}/")
 
         # === Smart Auto-Recursive Source Scanner (for SOURCE folders) ===
+        # Scan once and reuse result (avoid duplicate scanning)
+        scan_result = None
         if role == "SOURCE":
             scan_result = scan_source_for_languages(folder)
             if scan_result.lang_files:
@@ -594,13 +596,12 @@ class QuickTranslateApp:
             print(f"  [OK] Languages: {', '.join(lang_codes)}")
         else:
             # For SOURCE folders, check if smart scan found languages even without languagedata_* pattern
-            if role == "SOURCE":
-                scan_result = scan_source_for_languages(folder)
-                if scan_result.lang_files:
-                    print(f"  [OK] Smart scan found {scan_result.language_count} languages (non-standard naming)")
-                    is_eligible = True
-                else:
-                    print(f"  [!!] NOT eligible for TRANSFER - no language-tagged items found")
+            # Reuse scan_result from above (already scanned, no duplicate call)
+            if role == "SOURCE" and scan_result and scan_result.lang_files:
+                print(f"  [OK] Smart scan found {scan_result.language_count} languages (non-standard naming)")
+                is_eligible = True
+            elif role == "SOURCE":
+                print(f"  [!!] NOT eligible for TRANSFER - no language-tagged items found")
             else:
                 print(f"  [!!] NOT eligible for TRANSFER - no languagedata_*.xml files")
 
