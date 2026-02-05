@@ -1325,113 +1325,114 @@ def run_compiler():
     # STEP 2: Process Master Files (Heavy Processing)
     # ==========================================================================
     print("\n" + "=" * 60)
-    print("STEP 2: Building Master Files")
+    print("STEP 2: Building Master Files (EN + CN in PARALLEL)")
     print("=" * 60)
 
-    # Process categories
+    # Helper function to process all categories for one language
+    def process_language(lang_label, by_category, master_folder, images_folder,
+                         manager_status, fixed_screenshots, tester_mapping_ref):
+        """Process all categories for one language. Returns (entries, master_status_data)."""
+        from core.face_processor import process_face_category
+
+        daily_entries = []
+        processed_masters = set()
+        master_status_data = {}
+
+        for category in CATEGORIES:
+            if category not in by_category:
+                continue
+
+            # Face category: custom processing pipeline (no standard master)
+            if category.lower() in FACE_TYPE_CATEGORIES:
+                entries = process_face_category(
+                    by_category[category], master_folder, lang_label, tester_mapping_ref
+                )
+                daily_entries.extend(entries)
+                continue
+
+            target_master = get_target_master_category(category)
+            rebuild = target_master not in processed_masters
+            processed_masters.add(target_master)
+
+            # Get or initialize accumulated data for this master
+            if target_master not in master_status_data:
+                master_status_data[target_master] = {
+                    "users": set(),
+                    "stats": defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0}),
+                    "workbook": None,
+                    "path": None,
+                }
+            data = master_status_data[target_master]
+            acc_users = data["users"]
+            acc_stats = data["stats"]
+
+            category_manager_status = manager_status.get(category, {})
+            entries, acc_users, acc_stats, master_wb, master_path = process_category(
+                category, by_category[category],
+                master_folder, images_folder, lang_label,
+                category_manager_status, rebuild=rebuild,
+                fixed_screenshots=fixed_screenshots,
+                accumulated_users=acc_users,
+                accumulated_stats=acc_stats,
+                deferred_save=True  # DEFERRED SAVE: Don't autofit/save yet
+            )
+            daily_entries.extend(entries)
+            # Store updated accumulated data + workbook
+            master_status_data[target_master]["users"] = acc_users
+            master_status_data[target_master]["stats"] = acc_stats
+            if master_wb is not None:
+                master_status_data[target_master]["workbook"] = master_wb
+                master_status_data[target_master]["path"] = master_path
+
+        return daily_entries, master_status_data
+
+    # ==========================================================================
+    # PARALLEL PROCESSING: EN and CN simultaneously (~2x speedup)
+    # ==========================================================================
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    print(f"\n[PARALLEL] Processing EN and CN simultaneously...")
+    print(f"  Thread count: 2 (one per language)")
+
     all_daily_entries = []
-
-    # Track processed masters for clustering
-    processed_masters_en = set()
-    processed_masters_cn = set()
-
-    # Track accumulated users and stats per master file for STATUS sheet
-    # Key: target_master name (e.g., "Script"), Value: (users_set, stats_dict, workbook, path)
-    # DEFERRED SAVE: Store workbooks for final pass (autofit + STATUS + save)
     master_status_data_en = {}
     master_status_data_cn = {}
 
-    # Process EN
-    for category in CATEGORIES:
-        if category in by_category_en:
-            # Face category: custom processing pipeline (no standard master)
-            if category.lower() in FACE_TYPE_CATEGORIES:
-                from core.face_processor import process_face_category
-                entries = process_face_category(
-                    by_category_en[category], MASTER_FOLDER_EN, "EN", tester_mapping
-                )
-                all_daily_entries.extend(entries)
-                continue
+    # Use ThreadPoolExecutor to run EN and CN in parallel
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="lang") as executor:
+        futures = {}
 
-            target_master = get_target_master_category(category)
-            rebuild = target_master not in processed_masters_en
-            processed_masters_en.add(target_master)
-
-            # Get or initialize accumulated data for this master
-            if target_master not in master_status_data_en:
-                master_status_data_en[target_master] = {
-                    "users": set(),
-                    "stats": defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0}),
-                    "workbook": None,
-                    "path": None,
-                }
-            data = master_status_data_en[target_master]
-            acc_users = data["users"]
-            acc_stats = data["stats"]
-
-            category_manager_status = manager_status_en.get(category, {})
-            entries, acc_users, acc_stats, master_wb, master_path = process_category(
-                category, by_category_en[category],
-                MASTER_FOLDER_EN, IMAGES_FOLDER_EN, "EN",
-                category_manager_status, rebuild=rebuild,
-                fixed_screenshots=fixed_screenshots_en,
-                accumulated_users=acc_users,
-                accumulated_stats=acc_stats,
-                deferred_save=True  # DEFERRED SAVE: Don't autofit/save yet
+        # Submit EN processing
+        if by_category_en:
+            futures["EN"] = executor.submit(
+                process_language,
+                "EN", by_category_en, MASTER_FOLDER_EN, IMAGES_FOLDER_EN,
+                manager_status_en, fixed_screenshots_en, tester_mapping
             )
-            all_daily_entries.extend(entries)
-            # Store updated accumulated data + workbook
-            master_status_data_en[target_master]["users"] = acc_users
-            master_status_data_en[target_master]["stats"] = acc_stats
-            if master_wb is not None:
-                master_status_data_en[target_master]["workbook"] = master_wb
-                master_status_data_en[target_master]["path"] = master_path
 
-    # Process CN
-    for category in CATEGORIES:
-        if category in by_category_cn:
-            # Face category: custom processing pipeline (no standard master)
-            if category.lower() in FACE_TYPE_CATEGORIES:
-                from core.face_processor import process_face_category
-                entries = process_face_category(
-                    by_category_cn[category], MASTER_FOLDER_CN, "CN", tester_mapping
-                )
-                all_daily_entries.extend(entries)
-                continue
-
-            target_master = get_target_master_category(category)
-            rebuild = target_master not in processed_masters_cn
-            processed_masters_cn.add(target_master)
-
-            # Get or initialize accumulated data for this master
-            if target_master not in master_status_data_cn:
-                master_status_data_cn[target_master] = {
-                    "users": set(),
-                    "stats": defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0}),
-                    "workbook": None,
-                    "path": None,
-                }
-            data = master_status_data_cn[target_master]
-            acc_users = data["users"]
-            acc_stats = data["stats"]
-
-            category_manager_status = manager_status_cn.get(category, {})
-            entries, acc_users, acc_stats, master_wb, master_path = process_category(
-                category, by_category_cn[category],
-                MASTER_FOLDER_CN, IMAGES_FOLDER_CN, "CN",
-                category_manager_status, rebuild=rebuild,
-                fixed_screenshots=fixed_screenshots_cn,
-                accumulated_users=acc_users,
-                accumulated_stats=acc_stats,
-                deferred_save=True  # DEFERRED SAVE: Don't autofit/save yet
+        # Submit CN processing
+        if by_category_cn:
+            futures["CN"] = executor.submit(
+                process_language,
+                "CN", by_category_cn, MASTER_FOLDER_CN, IMAGES_FOLDER_CN,
+                manager_status_cn, fixed_screenshots_cn, tester_mapping
             )
-            all_daily_entries.extend(entries)
-            # Store updated accumulated data + workbook
-            master_status_data_cn[target_master]["users"] = acc_users
-            master_status_data_cn[target_master]["stats"] = acc_stats
-            if master_wb is not None:
-                master_status_data_cn[target_master]["workbook"] = master_wb
-                master_status_data_cn[target_master]["path"] = master_path
+
+        # Collect results as they complete
+        for future in as_completed(futures.values()):
+            # Find which language this is
+            lang = [k for k, v in futures.items() if v == future][0]
+            try:
+                entries, master_data = future.result()
+                all_daily_entries.extend(entries)
+                if lang == "EN":
+                    master_status_data_en = master_data
+                else:
+                    master_status_data_cn = master_data
+                print(f"  [{lang}] Completed: {len(entries)} daily entries")
+            except Exception as e:
+                print(f"  [{lang}] ERROR: {e}")
+                raise
 
     # ==========================================================================
     # FINAL PASS: STATUS sheet + autofit + hide + save (ONCE per master)
