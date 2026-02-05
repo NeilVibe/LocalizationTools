@@ -25,3 +25,4 @@ Build: STRORIGIN_MISMATCH diagnostic + StrOrigin normalization fix
 Build: Exact LocStr preservation in failure reports
 Build: STRORIGIN_MISMATCH tracking + per-language failure XML fix
 Build: Unified failure reports for all transfer modes
+Build: Find Missing Translations - per-language XML + Excel report with word counts
