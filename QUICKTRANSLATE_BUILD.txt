@@ -13,3 +13,4 @@ Trigger QuickTranslate rebuild after tkinter fix + transfer scope toggle
 Trigger QuickTranslate rebuild with review fix
 Build 20260205_120700: Smart Auto-Recursive Source Scanner + Full Transfer Tree + Minor fixes
 Build: Auto-discover language codes from LOC folder (SPA-ES, POR-BR detection)
+Build: Auto-discover LANGUAGE_ORDER and LANGUAGE_NAMES from LOC
