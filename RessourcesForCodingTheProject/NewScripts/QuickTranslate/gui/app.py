@@ -908,11 +908,11 @@ class QuickTranslateApp:
 
         Used to filter FAISS index build - only include entries matching source StringIDs.
         """
-        from .indexing import (
+        from core.indexing import (
             _get_attribute_case_insensitive,
             _iter_locstr_case_insensitive,
         )
-        from ..core.xml_parser import parse_xml_file
+        from core.xml_parser import parse_xml_file
 
         stringids = set()
 
