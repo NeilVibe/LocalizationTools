@@ -257,9 +257,10 @@ def get_or_create_master(
                     for row_num, row_dim in source_ws.row_dimensions.items():
                         target_ws.row_dimensions[row_num].height = row_dim.height
 
-                    # Clean the new sheet
+                    # Clean the new sheet (delete tester columns)
+                    # MEMO is Script category's equivalent of COMMENT
                     cols_to_delete = []
-                    for h in ["STATUS", "COMMENT", "SCREENSHOT", "STRINGID"]:
+                    for h in ["STATUS", "COMMENT", "MEMO", "SCREENSHOT", "STRINGID"]:
                         col = find_column_by_header(target_ws, h)
                         if col:
                             cols_to_delete.append(col)
@@ -285,7 +286,7 @@ def get_or_create_master(
         print(f"  Creating new master from: {template_file.name}")
         wb = safe_load_workbook(template_file)
 
-        # Delete STATUS, COMMENT, SCREENSHOT, STRINGID columns
+        # Delete tester columns (MEMO is Script category's equivalent of COMMENT)
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
 
@@ -294,7 +295,7 @@ def get_or_create_master(
                 ws.auto_filter.ref = None
 
             cols_to_delete = []
-            for h in ["STATUS", "COMMENT", "SCREENSHOT", "STRINGID"]:
+            for h in ["STATUS", "COMMENT", "MEMO", "SCREENSHOT", "STRINGID"]:
                 col = find_column_by_header(ws, h)
                 if col:
                     cols_to_delete.append(col)
@@ -304,7 +305,7 @@ def get_or_create_master(
                 ws.delete_cols(col)
                 print(f"    Deleted column {col} from {sheet_name}")
 
-        print(f"    Master cleaned: STATUS/COMMENT/SCREENSHOT/STRINGID removed")
+        print(f"    Master cleaned: tester columns removed")
         return wb, master_path
     else:
         print(f"  ERROR: No template file for {category}")
