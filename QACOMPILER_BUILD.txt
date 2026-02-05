@@ -76,3 +76,4 @@ Build 520: Add MasterSubmitScript generator with conflict detection
 Build 521: Update User Guide v2.1.0
 Build 522: MEMO/COMMENT filter fix
 Build 523: STATUS parsing + STATUS sheet fix
+Build 524: Script column header priority fix
