@@ -195,6 +195,67 @@ def find_column_by_prefix(ws, prefix: str) -> Optional[int]:
     return None
 
 
+def preload_worksheet_data(ws) -> Tuple[Dict[str, int], List[tuple]]:
+    """
+    FAST: Pre-load entire worksheet into memory as tuples.
+
+    Uses iter_rows(values_only=True) which is 10-50x faster than ws.cell().
+    Call ONCE per worksheet, then access data by tuple index.
+
+    Args:
+        ws: Worksheet to preload
+
+    Returns:
+        Tuple of (col_index_map, row_tuples) where:
+        - col_index_map: {HEADER_UPPER: 0-based index into tuple}
+        - row_tuples: List of tuples, index 0 = row 2 (first data row)
+
+    Usage:
+        col_idx, rows = preload_worksheet_data(ws)
+        for row_tuple in rows:
+            status = row_tuple[col_idx.get('STATUS')] if 'STATUS' in col_idx else None
+            comment = row_tuple[col_idx.get('COMMENT')] if 'COMMENT' in col_idx else None
+    """
+    # Read ALL data in one call (10-50x faster than cell-by-cell)
+    all_rows = list(ws.iter_rows(values_only=True))
+
+    if not all_rows:
+        return {}, []
+
+    # Build column index from header row (row 0 = Excel row 1)
+    header_row = all_rows[0]
+    col_idx = {}
+    for i, header in enumerate(header_row):
+        if header:
+            key = str(header).strip().upper()
+            if key not in col_idx:  # First occurrence wins
+                col_idx[key] = i
+
+    # Data rows (skip header)
+    data_rows = all_rows[1:] if len(all_rows) > 1 else []
+
+    return col_idx, data_rows
+
+
+def get_tuple_value(row_tuple: tuple, col_idx: Dict[str, int], header: str, default=None):
+    """
+    Safely get value from preloaded tuple by header name.
+
+    Args:
+        row_tuple: Preloaded row tuple
+        col_idx: Column index map from preload_worksheet_data()
+        header: Header name (case-insensitive)
+        default: Default value if not found
+
+    Returns:
+        Value from tuple or default
+    """
+    idx = col_idx.get(header.upper())
+    if idx is not None and idx < len(row_tuple):
+        return row_tuple[idx]
+    return default
+
+
 # =============================================================================
 # TESTER DATA PRESERVATION (for master rebuild)
 # =============================================================================
