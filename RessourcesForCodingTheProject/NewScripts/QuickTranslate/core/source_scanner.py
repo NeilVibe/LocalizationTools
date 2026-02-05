@@ -87,17 +87,33 @@ def extract_language_suffix(name: str, valid_codes: Set[str]) -> Optional[str]:
 
 
 def _get_valid_language_codes() -> Set[str]:
-    """Get set of valid language codes from config."""
+    """
+    Get set of valid language codes.
+
+    Auto-discovers codes from LOC folder (languagedata_*.xml files)
+    plus hardcoded fallback from config.LANGUAGE_NAMES.
+
+    This ensures regional variants like SPA-ES, SPA-MX, POR-BR are detected.
+    """
     codes = set()
 
-    # Add all keys from LANGUAGE_NAMES (uppercase)
+    # 1. AUTO-DISCOVER from LOC folder (primary source)
+    loc_folder = config.LOC_FOLDER
+    if loc_folder.exists():
+        for f in loc_folder.glob("languagedata_*.xml"):
+            # Extract code from filename: languagedata_SPA-ES.xml -> SPA-ES
+            lang_code = f.stem[13:].upper()  # After "languagedata_"
+            if lang_code:
+                codes.add(lang_code)
+                logger.debug(f"Auto-discovered language code: {lang_code}")
+
+    # 2. FALLBACK: Add hardcoded codes from config (in case LOC folder not available)
     for code in config.LANGUAGE_NAMES.keys():
         codes.add(code.upper())
-
-    # Also add values (they're already uppercase abbreviations)
     for abbrev in config.LANGUAGE_NAMES.values():
         codes.add(abbrev.upper())
 
+    logger.debug(f"Valid language codes ({len(codes)}): {sorted(codes)}")
     return codes
 
 
