@@ -17,6 +17,17 @@ import xlsxwriter
 if TYPE_CHECKING:
     from utils.vrs_ordering import VRSOrderer
 
+# Import Korean detection for Text State column
+try:
+    from utils.language_utils import contains_korean
+except ImportError:
+    import re
+    _KOREAN_REGEX = re.compile(r'[\uac00-\ud7a3]')
+    def contains_korean(text):
+        if not text or not isinstance(text, str):
+            return False
+        return bool(_KOREAN_REGEX.search(text))
+
 logger = logging.getLogger(__name__)
 
 # Import STORY_CATEGORIES from config
@@ -31,6 +42,10 @@ DEFAULT_WIDTHS = {
     "ENG": 45,
     "Str": 45,
     "Correction": 45,
+    "Text State": 12,
+    "MEMO1": 30,
+    "MEMO2": 30,
+    "MEMO3": 30,
     "Category": 20,
     "StringID": 15,
 }
@@ -132,13 +147,18 @@ def write_language_excel(
         True if successful, False otherwise
 
     Column structure:
-    - European: StrOrigin | ENG | Str | Correction | Category | StringID
-    - Asian:    StrOrigin | Str | Correction | Category | StringID
+    - European: StrOrigin | ENG | Str | Correction | Text State | MEMO1 | MEMO2 | MEMO3 | Category | StringID
+    - Asian:    StrOrigin | Str | Correction | Text State | MEMO1 | MEMO2 | MEMO3 | Category | StringID
+
+    Text State column:
+    - Auto-filled based on Korean detection in Str column
+    - "KOREAN" = contains Korean characters (untranslated)
+    - "TRANSLATED" = no Korean characters
 
     Sheet Protection:
-    - When protect_sheet=True, only the Correction column is EDITABLE
-    - All other columns are locked/read-only
-    - QA testers can only modify the Correction column
+    - When protect_sheet=True, only Correction and MEMO1/2/3 columns are EDITABLE
+    - All other columns are locked/read-only (including Text State)
+    - QA testers can modify Correction and add notes in MEMO columns
     """
     try:
         # Filter out excluded categories BEFORE processing
@@ -160,13 +180,17 @@ def write_language_excel(
         worksheet = workbook.add_worksheet(lang_code.upper())
 
         # Define headers based on language type
+        # New columns: Text State (auto-filled), MEMO1/2/3 (editable)
         if include_english:
-            headers = ["StrOrigin", "ENG", "Str", "Correction", "Category", "StringID"]
+            headers = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "MEMO1", "MEMO2", "MEMO3", "Category", "StringID"]
         else:
-            headers = ["StrOrigin", "Str", "Correction", "Category", "StringID"]
+            headers = ["StrOrigin", "Str", "Correction", "Text State", "MEMO1", "MEMO2", "MEMO3", "Category", "StringID"]
 
         # Find Correction column index (0-based for xlsxwriter)
         correction_col_idx = headers.index("Correction") if "Correction" in headers else None
+
+        # Find MEMO column indices (these are also editable)
+        memo_col_indices = [headers.index(col) for col in ["MEMO1", "MEMO2", "MEMO3"] if col in headers]
 
         # Create formats
         header_format = workbook.add_format({
@@ -235,23 +259,28 @@ def write_language_excel(
             # Get English translation if needed
             english = eng_lookup.get(string_id, '') if include_english else None
 
-            # Build row data (Correction column empty, to be filled during LQA)
+            # Determine Text State based on Korean content in Str column
+            # KOREAN = contains Korean characters (untranslated)
+            # TRANSLATED = no Korean characters
+            text_state = "KOREAN" if contains_korean(str_value) else "TRANSLATED"
+
+            # Build row data (Correction + MEMO columns empty, to be filled during LQA)
             if include_english:
-                row_data = [str_origin, english, str_value, "", category, string_id]
+                row_data = [str_origin, english, str_value, "", text_state, "", "", "", category, string_id]
             else:
-                row_data = [str_origin, str_value, "", category, string_id]
+                row_data = [str_origin, str_value, "", text_state, "", "", "", category, string_id]
 
             # Write cells with appropriate format
             for col_idx, value in enumerate(row_data):
                 # Determine format based on column
-                if col_idx == correction_col_idx:
-                    # Correction column - UNLOCKED (editable)
+                if col_idx == correction_col_idx or col_idx in memo_col_indices:
+                    # Correction and MEMO columns - UNLOCKED (editable)
                     fmt = cell_format_unlocked
                 elif headers[col_idx] == "StringID":
                     # StringID - use string format to prevent scientific notation
                     fmt = string_format_locked
                 else:
-                    # All other columns - LOCKED
+                    # All other columns - LOCKED (including Text State)
                     fmt = cell_format_locked
 
                 worksheet.write(row_num, col_idx, value, fmt)
@@ -282,7 +311,7 @@ def write_language_excel(
                 'pivot_tables': False,
                 'select_unlocked_cells': True,
             })
-            logger.info(f"Sheet protection enabled - only Correction column (col {correction_col_idx}) is editable")
+            logger.info(f"Sheet protection enabled - editable columns: Correction (col {correction_col_idx}), MEMO1/2/3 (cols {memo_col_indices})")
 
         workbook.close()
 

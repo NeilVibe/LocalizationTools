@@ -86,7 +86,8 @@ Which one should I use as the main reference? Or would you like me to check a di
 | Task Type | Recommended Reference |
 |-----------|----------------------|
 | XML parsing | `translatexmlstable2.py`, `xmlatt13.py` |
-| Excel processing | `XLSTransfer0225.py`, `xlscompare5.py` |
+| Excel WRITING | Use **xlsxwriter** (see LanguageDataExporter `excel_writer.py`) |
+| Excel READING | `XLSTransfer0225.py`, `xlscompare5.py` (openpyxl) |
 | TMX handling | `tmxconvert33.py` |
 | Text processing | `extractchinese.py`, `quickregex3.py` |
 | Korean text | `KRSIMILAR0124.py`, `stackKR.py` |
@@ -196,7 +197,8 @@ Write("RessourcesForCodingTheProject/NewScripts/{folder_name}/ROADMAP.md")
 
 ## Dependencies
 ```
-pip install openpyxl
+pip install xlsxwriter  # For Excel writing (preferred!)
+pip install openpyxl    # Only if reading Excel files
 [other dependencies]
 ```
 
@@ -484,22 +486,42 @@ for row in ws.iter_rows(min_row=2, values_only=True):
     col1, col2 = row[0], row[1]
 ```
 
-#### 4. Excel Writing Pattern (openpyxl)
+#### 4. Excel Writing Pattern (xlsxwriter - PREFERRED!)
+```python
+import xlsxwriter
+
+# xlsxwriter is MORE RELIABLE than openpyxl for writing!
+wb = xlsxwriter.Workbook(output_file)
+ws = wb.add_worksheet("Output")
+
+# Headers
+headers = ["Korean", "English"]
+for col, header in enumerate(headers):
+    ws.write(0, col, header)
+
+# Data
+for row_num, item in enumerate(data, start=1):
+    ws.write(row_num, 0, item['korean'])
+    ws.write(row_num, 1, item['english'])
+
+# Sheet protection (optional - only Correction column editable)
+# cell_format_unlocked = wb.add_format({'locked': False})
+# ws.protect('')  # Activate protection
+
+wb.close()
+```
+
+#### 4b. Excel Reading Pattern (openpyxl - only for READING)
 ```python
 import openpyxl
 
-wb = openpyxl.Workbook()
+# Only use openpyxl when you need to READ existing Excel files
+# xlsxwriter is write-only!
+wb = openpyxl.load_workbook(input_file)
 ws = wb.active
-ws.title = "Output"
 
-# Headers
-ws.append(["Korean", "English"])
-
-# Data
-for item in data:
-    ws.append([item['korean'], item['english']])
-
-wb.save(output_file)
+for row in ws.iter_rows(min_row=2, values_only=True):
+    col1, col2 = row[0], row[1]
 ```
 
 #### 5. Error Handling Pattern
@@ -524,8 +546,9 @@ except Exception as e:
 **For**: XML parsing, attribute handling, validation
 
 ### Excel Processing
-**Use**: `XLSTransfer0225.py`, `xlscompare5.py`, `xlsconcat.py`
-**For**: Excel reading/writing, comparison, concatenation
+**Writing**: Use **xlsxwriter** (pip install xlsxwriter) - reliable, powerful!
+**Reading**: `XLSTransfer0225.py`, `xlscompare5.py` (openpyxl)
+**Pattern**: See LanguageDataExporter `exporter/excel_writer.py` for sheet protection
 
 ### TMX Processing
 **Use**: `tmxconvert33.py`

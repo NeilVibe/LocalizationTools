@@ -279,6 +279,31 @@ CHAR_COUNT_LANGUAGES = {"jpn", "zho-cn", "zho-tw"}
 
 ---
 
+## Excel Column Structure
+
+### Current Columns (Build 015+)
+
+| Column | Editable? | Purpose |
+|--------|-----------|---------|
+| StrOrigin | LOCKED | Source Korean text |
+| ENG | LOCKED | English reference (EU languages only) |
+| Str | LOCKED | Current translation |
+| Correction | EDITABLE | LQA correction field |
+| Text State | LOCKED | Auto-filled: "KOREAN" or "TRANSLATED" |
+| MEMO1 | EDITABLE | QA notes field 1 |
+| MEMO2 | EDITABLE | QA notes field 2 |
+| MEMO3 | EDITABLE | QA notes field 3 |
+| Category | LOCKED | Category classification |
+| StringID | LOCKED | Unique identifier |
+
+### Text State Logic
+- **KOREAN** = `Str` column contains Korean characters (untranslated)
+- **TRANSLATED** = No Korean characters in `Str` column
+
+Uses `contains_korean()` from `utils/language_utils.py` for detection.
+
+---
+
 ## CI/CD Pipeline
 
 ### IMPORTANT: GitHub Actions (NOT Gitea!)
@@ -404,8 +429,36 @@ print(f"Loaded {orderer.total_events} events")
 ## Dependencies
 
 ```
-openpyxl>=3.1.0    # Excel file generation
+xlsxwriter>=3.1.0  # Excel file generation (PREFERRED - reliable, powerful!)
 lxml>=4.9.0        # Fast XML parsing (optional)
 ```
 
 Standard library: tkinter, xml.etree.ElementTree, json, logging, pathlib, re, dataclasses
+
+---
+
+## Excel Library Paradigm (IMPORTANT!)
+
+**Use xlsxwriter, NOT openpyxl for writing Excel files:**
+
+| | xlsxwriter | openpyxl |
+|--|------------|----------|
+| Writing | Excellent - just works | Buggy, unreliable |
+| Install | `pip install` and done | Dependency issues |
+| Sheet protection | Works perfectly | Hit or miss |
+| Reading files | Cannot (write-only) | Can read |
+
+**Sheet Protection Pattern (excel_writer.py):**
+```python
+# Lock all cells by default, unlock specific columns
+cell_format_locked = wb.add_format({'locked': True})
+cell_format_unlocked = wb.add_format({'locked': False})
+
+# Apply unlocked format to editable cells (e.g., Correction column)
+ws.write(row, correction_col, value, cell_format_unlocked)
+
+# Activate protection (makes locked property effective)
+ws.protect('')
+```
+
+**Only use openpyxl if you need to READ existing Excel files.**
