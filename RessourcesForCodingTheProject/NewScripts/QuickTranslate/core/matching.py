@@ -482,27 +482,30 @@ def find_matches_strict_fuzzy(
     """
     Strict match with fuzzy StrOrigin verification via SBERT.
 
-    OPTIMIZED: StringID pool pre-filtering + batched encoding.
+    OPTIMIZED: StringID pool pre-filtering + FAISS on pool only.
 
-    Instead of searching the entire FAISS index (slow), we:
-    1. Group corrections by StringID
-    2. For each unique StringID, get the pool of target entries with that StringID
-    3. Batch encode all corrections for that StringID + encode pool once
-    4. Compute cosine similarity matrix directly (no FAISS needed for small pools)
+    Standard FAISS workflow (like KRSIMILAR), but on a SMALLER pool:
+    1. Try exact match first (StringID + normalized_StrOrigin tuple)
+    2. Group remaining corrections by StringID
+    3. For each unique StringID:
+       a. Get pool of target entries with that StringID (typically 1-10 entries)
+       b. Encode pool texts, normalize, build temporary FAISS index
+       c. Encode queries, normalize
+       d. Search pool FAISS index for best match
 
     This is DRAMATICALLY faster because:
-    - Pool is typically tiny (1-10 entries with same StringID)
-    - Each pool is encoded only ONCE, not per-query
-    - Direct matrix multiplication instead of FAISS overhead
+    - StringID pre-filtering reduces pool from 100,000+ to typically 1-10 entries
+    - FAISS search on tiny pool is instant
+    - Each pool encoded once, not per-query
 
     Args:
         corrections: List of correction dicts with "string_id" and "str_origin" keys
         xml_entries: Dict keyed by (StringID, normalized_StrOrigin) tuples
         fuzzy_model: Loaded SentenceTransformer model
-        fuzzy_index: Pre-built FAISS index (fallback for very large pools)
-        fuzzy_texts: Target StrOrigin texts (parallel to fuzzy_entries)
-        fuzzy_entries: Target entry dicts (parallel to fuzzy_texts)
-        fuzzy_threshold: Minimum similarity score for fuzzy StrOrigin matching
+        fuzzy_index: Unused (kept for backward compatibility)
+        fuzzy_texts: Unused (kept for backward compatibility)
+        fuzzy_entries: Target entry dicts to build StringID pool index
+        fuzzy_threshold: Minimum similarity score (default 0.85)
 
     Returns:
         Tuple of (matched_corrections, not_found_count)
@@ -567,52 +570,39 @@ def find_matches_strict_fuzzy(
         # Batch encode all queries for this StringID
         query_texts = [c.get("str_origin", "").strip() for c in corr_group]
 
-        if len(pool) <= 500:
-            # Small/medium pool: direct cosine similarity (no FAISS)
-            pool_embeddings = fuzzy_model.encode(pool_texts, show_progress_bar=False, convert_to_numpy=True)
-            pool_embeddings = np.ascontiguousarray(pool_embeddings, dtype=np.float32)
-            faiss_lib.normalize_L2(pool_embeddings)
+        # Standard FAISS workflow on the StringID pool (like KRSIMILAR):
+        # 1. Encode pool texts
+        # 2. Normalize with faiss.normalize_L2
+        # 3. Build FAISS index from pool
+        # 4. Encode queries, normalize
+        # 5. Search the pool index
 
-            query_embeddings = fuzzy_model.encode(query_texts, show_progress_bar=False, convert_to_numpy=True)
-            query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
-            faiss_lib.normalize_L2(query_embeddings)
+        # Encode pool
+        pool_embeddings = fuzzy_model.encode(pool_texts, show_progress_bar=False, convert_to_numpy=True)
+        pool_embeddings = np.ascontiguousarray(pool_embeddings, dtype=np.float32)
+        faiss_lib.normalize_L2(pool_embeddings)
 
-            # Similarity matrix: (num_queries x num_pool)
-            similarity_matrix = np.dot(query_embeddings, pool_embeddings.T)
+        # Build FAISS index for this StringID's pool
+        dim = pool_embeddings.shape[1]
+        pool_index = faiss_lib.IndexFlatIP(dim)
+        pool_index.add(pool_embeddings)
 
-            for qi, c in enumerate(corr_group):
-                best_score = similarity_matrix[qi].max()
-                if best_score >= fuzzy_threshold:
-                    matched.append(c)
-                else:
-                    not_found += 1
-                processed += 1
-        else:
-            # Very large pool: use FAISS index search and filter
-            query_embeddings = fuzzy_model.encode(query_texts, show_progress_bar=False, convert_to_numpy=True)
-            query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
-            faiss_lib.normalize_L2(query_embeddings)
+        # Encode queries
+        query_embeddings = fuzzy_model.encode(query_texts, show_progress_bar=False, convert_to_numpy=True)
+        query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
+        faiss_lib.normalize_L2(query_embeddings)
 
-            for qi, c in enumerate(corr_group):
-                query_emb = query_embeddings[qi:qi+1]
-                distances, indices_arr = fuzzy_index.search(query_emb, 50)
+        # Search pool index for each query
+        for qi, c in enumerate(corr_group):
+            query_emb = query_embeddings[qi:qi+1]
+            distances, indices_arr = pool_index.search(query_emb, 1)  # Get best match
 
-                found = False
-                for score, idx in zip(distances[0], indices_arr[0]):
-                    if idx < 0 or idx >= len(fuzzy_entries):
-                        continue
-                    if score < fuzzy_threshold:
-                        continue
-
-                    candidate = fuzzy_entries[idx]
-                    if candidate.get("string_id", "") == string_id:
-                        matched.append(c)
-                        found = True
-                        break
-
-                if not found:
-                    not_found += 1
-                processed += 1
+            best_score = distances[0][0]
+            if best_score >= fuzzy_threshold:
+                matched.append(c)
+            else:
+                not_found += 1
+            processed += 1
 
     logger.info(f"Fuzzy matching complete: {len(matched)} matched, {not_found} not found")
     return matched, not_found
