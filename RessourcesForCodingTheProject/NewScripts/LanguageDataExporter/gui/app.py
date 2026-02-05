@@ -725,8 +725,8 @@ class LanguageDataExporterGUI:
                 )
                 return
 
-        # Discover files
-        files = discover_submit_files(TOSUBMIT_FOLDER)
+        # Discover files (pass locdev_folder for accurate language matching)
+        files = discover_submit_files(TOSUBMIT_FOLDER, locdev_folder)
         if not files:
             messagebox.showwarning(
                 "No Files Found",
@@ -853,8 +853,8 @@ class LanguageDataExporterGUI:
             )
             return
 
-        # Discover files
-        files = discover_submit_files(TOSUBMIT_FOLDER)
+        # Discover files (pass locdev_folder for accurate language matching)
+        files = discover_submit_files(TOSUBMIT_FOLDER, locdev_folder)
         if not files:
             messagebox.showwarning(
                 "No Files Found",

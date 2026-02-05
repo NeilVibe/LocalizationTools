@@ -256,9 +256,10 @@ def merge_corrections_to_locdev(
                 category = c.get("category", "Uncategorized")
                 result["by_category"][category]["not_found"] += 1
                 # Store detail for not_found report
+                origin = c.get("str_origin") or ""
                 result["not_found_details"].append({
                     "string_id": c["string_id"],
-                    "str_origin": c["str_origin"][:80] if c.get("str_origin") else "",  # Truncate for display
+                    "str_origin": origin[:80],  # Truncate for display
                     "category": category,
                 })
 
@@ -859,7 +860,7 @@ def print_stringid_only_report(results: Dict) -> None:
     # Legend
     print()
     print("Legend: ● ≥95% success  ◐ ≥80% success  ○ <80% success")
-    print("SCRIPT categories: Sequencer, AIDialog, QuestDialog, NarrationDialog")
+    print("SCRIPT folders: Dialog, Sequencer (excludes: NarrationDialog subfolder)")
     print()
 
 
