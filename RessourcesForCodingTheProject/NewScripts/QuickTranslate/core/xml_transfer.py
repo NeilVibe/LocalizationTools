@@ -1269,6 +1269,17 @@ def transfer_folder_to_folder(
             **file_result,
         }
 
+        # Log per-file transfer result with source file name
+        updated = file_result["updated"]
+        matched = file_result["matched"]
+        not_found = file_result["not_found"]
+        if updated > 0:
+            logger.info(f"[{source_file.name}] → {target_xml.name}: {updated} updated, {matched} matched, {not_found} not found")
+        elif matched > 0:
+            logger.info(f"[{source_file.name}] → {target_xml.name}: {matched} matched (0 updated - already current)")
+        else:
+            logger.info(f"[{source_file.name}] → {target_xml.name}: {not_found} not found (no matches)")
+
     return results
 
 
