@@ -365,6 +365,8 @@ def extract_failed_from_folder_results(
     Extract all failed entries from transfer_folder_to_folder results.
 
     Iterates through per-file results and aggregates all failures.
+    Language is extracted from TARGET filename (languagedata_XXX.xml pattern),
+    which is always correct and reliable.
 
     Args:
         results: Results dict from transfer_folder_to_folder
@@ -376,8 +378,10 @@ def extract_failed_from_folder_results(
 
     file_results = results.get("file_results", {})
     for source_file, fresult in file_results.items():
-        # Try to extract language from filename
-        language = _extract_language_from_filename(source_file)
+        # Extract language from TARGET filename (always languagedata_XXX.xml format)
+        # This is more reliable than extracting from source filename which can vary
+        target_file = fresult.get("target", "")
+        language = _extract_language_from_filename(target_file) if target_file else "UNK"
 
         details = fresult.get("details", [])
         for detail in details:
@@ -436,17 +440,22 @@ def _status_to_reason(status: str) -> str:
 
 
 def _extract_language_from_filename(filename: str) -> str:
-    """Extract language code from filename like 'languagedata_fre.xml'."""
+    """Extract language code from filename like 'languagedata_fre.xml' or 'languagedata_zho-cn.xml'."""
     name = Path(filename).stem.lower()
 
-    # Pattern: languagedata_XXX or XXX_languagedata
+    # Pattern: languagedata_XXX or languagedata_XXX-YY (with hyphen for variants like zho-cn)
     if name.startswith("languagedata_"):
-        return name[13:].upper()
+        lang = name[13:].upper()
+        # Allow hyphenated codes like ZHO-CN, ZHO-TW
+        if lang and (2 <= len(lang.replace("-", "")) <= 6):
+            return lang
     elif "_" in name:
         # Try last part after underscore
         parts = name.split("_")
         last = parts[-1]
-        if 2 <= len(last) <= 6:
+        # Allow 2-6 chars base length, plus optional hyphen+variant
+        base_len = len(last.replace("-", ""))
+        if 2 <= base_len <= 6:
             return last.upper()
 
     return "UNK"
@@ -520,13 +529,14 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
         total_matched = results.get("total_matched", 0)
         total_updated = results.get("total_updated", 0)
         total_not_found = results.get("total_not_found", 0)
+        total_strorigin_mismatch = results.get("total_strorigin_mismatch", 0)
         total_skipped = results.get("total_skipped", 0)
         total_skipped_translated = results.get("total_skipped_translated", 0)
         total_skipped_excluded = results.get("total_skipped_excluded", 0)
         files_processed = results.get("files_processed", 0)
 
         total_success = total_updated
-        total_failures = (total_not_found + total_skipped +
+        total_failures = (total_not_found + total_strorigin_mismatch + total_skipped +
                          total_skipped_translated + total_skipped_excluded)
 
         aggregated["summary"] = {
@@ -539,6 +549,7 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
             "matched": total_matched,
             "updated": total_updated,
             "not_found": total_not_found,
+            "strorigin_mismatch": total_strorigin_mismatch,
             "skipped_non_script": total_skipped,
             "skipped_translated": total_skipped_translated,
             "skipped_excluded": total_skipped_excluded,
@@ -977,6 +988,7 @@ def _write_summary_sheet(
     # Breakdown items
     breakdown_items = [
         ("StringID Not Found", summary.get("not_found", 0)),
+        ("StrOrigin Mismatch", summary.get("strorigin_mismatch", 0)),
         ("Skipped (Non-SCRIPT)", summary.get("skipped_non_script", 0)),
         ("Skipped (Already Translated)", summary.get("skipped_translated", 0)),
         ("Skipped (Excluded Subfolder)", summary.get("skipped_excluded", 0)),
