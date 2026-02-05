@@ -53,3 +53,4 @@ Build 025 - Add Text State and MEMO1/2/3 columns
 Build 20260206-001622
 Build 20260206-021719: Fix language suffixes
 Build 20260206-022349: Add not_found details report
+Build 20260206-022837: Fix merge issues from review
