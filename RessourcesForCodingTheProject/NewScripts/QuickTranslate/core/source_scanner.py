@@ -72,12 +72,13 @@ def extract_language_suffix(name: str, valid_codes: Set[str]) -> Optional[str]:
 
     # Check last part(s) for language code
     # First try hyphenated codes (ZHO-CN, ZHO-TW) - join last two parts with hyphen
-    if len(parts) >= 3:
+    # Works for both: corrections_ZHO_CN (3 parts) AND ZHO_CN (2 parts)
+    if len(parts) >= 2:
         hyphenated = f"{parts[-2]}-{parts[-1]}".upper()
         if hyphenated in valid_codes:
             return hyphenated
 
-    # Then try single last part
+    # Then try single last part (for non-hyphenated codes like FRE, GER)
     suffix = parts[-1].upper()
     if suffix in valid_codes:
         return suffix
@@ -508,7 +509,7 @@ def format_transfer_plan(plan: TransferPlan, show_all_files: bool = True) -> str
     lines = []
     H = "═"
     h = "─"
-    V = "│"
+    V = "║"  # Double vertical to match other box characters
     TL, TR, BL, BR = "╔", "╗", "╚", "╝"
     LT, RT = "╠", "╣"
 
