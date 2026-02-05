@@ -104,9 +104,17 @@ def collect_issue_rows(
                 status_col = col_map.get("STATUS")
                 # Unique ID: try EventName first, then STRINGID
                 eventname_col = col_map.get("EVENTNAME") or col_map.get("STRINGID")
-                # Comment: try MEMO first, then COMMENT
+
+                # Comment: try MEMO first, then COMMENT, then COMMENT_{username}
                 memo_col = col_map.get("MEMO")
                 comment_col = col_map.get("COMMENT")
+
+                # If no plain MEMO or COMMENT, look for COMMENT_{username} columns
+                comment_user_cols = []
+                if not memo_col and not comment_col:
+                    for key, col in col_map.items():
+                        if key.startswith("COMMENT_") and not key.startswith("MANAGER_COMMENT_"):
+                            comment_user_cols.append(col)
 
                 if not status_col or not eventname_col:
                     continue
@@ -116,6 +124,7 @@ def collect_issue_rows(
                 eventname_idx = eventname_col - 1
                 memo_idx = (memo_col - 1) if memo_col else None
                 comment_idx = (comment_col - 1) if comment_col else None
+                comment_user_idxs = [(c - 1) for c in comment_user_cols]
 
                 # Scan rows for ISSUE status
                 for row_tuple in ws.iter_rows(min_row=2, max_col=ws.max_column, values_only=True):
@@ -140,12 +149,19 @@ def collect_issue_rows(
                     if not eventname:
                         continue
 
-                    # Get MEMO or COMMENT (tester's fix) - try MEMO first, fallback to COMMENT
+                    # Get MEMO or COMMENT (tester's fix) - try MEMO first, then COMMENT, then COMMENT_{user}
                     memo = ""
                     if memo_idx is not None and memo_idx < len(row_tuple) and row_tuple[memo_idx]:
                         memo = str(row_tuple[memo_idx]).strip()
                     if not memo and comment_idx is not None and comment_idx < len(row_tuple) and row_tuple[comment_idx]:
                         memo = str(row_tuple[comment_idx]).strip()
+                    # Fallback: check any COMMENT_{username} columns
+                    if not memo and comment_user_idxs:
+                        for cidx in comment_user_idxs:
+                            if cidx < len(row_tuple) and row_tuple[cidx]:
+                                memo = str(row_tuple[cidx]).strip()
+                                if memo:
+                                    break
 
                     # Skip rows without a fix (STATUS=ISSUE but no correction provided)
                     if not memo:
