@@ -904,7 +904,11 @@ def process_category(
     # when testers removed STATUS from their QA files. Now all categories use the
     # unified method which preserves data integrity while still being fast.
     print(f"  Template: {template_user} (most recent file)")
-    master_wb, master_path = get_or_create_master(category, master_folder, template_xlsx, rebuild=rebuild)
+    master_wb, master_path = get_or_create_master(
+        category, master_folder, template_xlsx,
+        rebuild=rebuild,
+        is_english=is_english
+    )
 
     if master_wb is None:
         return daily_entries
@@ -942,6 +946,11 @@ def process_category(
         username = qf["username"]
         xlsx_path = qf["xlsx_path"]
         all_users.add(username)
+
+        # Ensure user exists in user_stats (may be a regular dict from previous category)
+        # This handles the case where accumulated_stats was converted from defaultdict to dict
+        if username not in user_stats:
+            user_stats[username] = {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0}
 
         # Get file modification date for tracker
         file_mod_time = __import__('datetime').datetime.fromtimestamp(xlsx_path.stat().st_mtime)
@@ -1007,6 +1016,9 @@ def process_category(
             )
 
             # Accumulate stats from result["stats"]
+            # Defensive check: ensure user exists in user_stats (fixes KeyError for clustered categories)
+            if username not in user_stats:
+                user_stats[username] = {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0}
             stats = result.get("stats", {})
             for key in ["issue", "no_issue", "blocked", "korean"]:
                 user_stats[username][key] += stats.get(key, 0)
@@ -1061,6 +1073,9 @@ def process_category(
 
     # Create daily entry for tracker
     for username in all_users:
+        # Defensive check: ensure user exists (fixes potential KeyError for accumulated users)
+        if username not in user_stats:
+            user_stats[username] = {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0}
         stats = user_stats[username]
         file_mod_date = user_file_dates.get(username, __import__('datetime').datetime.now().strftime("%Y-%m-%d"))
         entry = {
