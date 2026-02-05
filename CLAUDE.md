@@ -20,6 +20,7 @@
 | **CI/CD debug?** | [docs/reference/cicd/TROUBLESHOOTING.md](docs/reference/cicd/TROUBLESHOOTING.md) |
 | **Enterprise?** | [docs/reference/enterprise/HUB.md](docs/reference/enterprise/HUB.md) |
 | **DB Management?** | `./scripts/db_manager.sh help` |
+| **Dev Paradigms?** | [PARADIGMS.md](PARADIGMS.md) ← Libraries, patterns, lessons |
 
 ---
 
