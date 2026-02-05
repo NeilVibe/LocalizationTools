@@ -323,6 +323,8 @@ def build_index_from_folder(
     folder: Path,
     progress_callback: Optional[Callable[[str], None]] = None,
     preloaded_entries: Optional[List[dict]] = None,
+    stringid_filter: Optional[set] = None,
+    only_untranslated: bool = False,
 ) -> Tuple[List[str], List[dict]]:
     """
     Scan a folder for XML entries and prepare texts + entries lists for indexing.
@@ -335,11 +337,16 @@ def build_index_from_folder(
         progress_callback: Optional callback for status updates
         preloaded_entries: Optional pre-scanned entries to use instead of rescanning.
                           If provided, skips the folder scan and uses these directly.
+        stringid_filter: Optional set of StringIDs to include. If provided, only entries
+                        with StringIDs in this set are included. DRAMATICALLY reduces size.
+        only_untranslated: If True, only include entries where Str contains Korean.
 
     Returns:
         Tuple of (texts, entries) where texts are StrOrigin values
         and entries are full entry dicts
     """
+    from .korean_detection import is_korean_text
+
     if preloaded_entries is not None:
         all_entries_list = preloaded_entries
     else:
@@ -352,12 +359,34 @@ def build_index_from_folder(
 
     texts = []
     entries = []
+    skipped_stringid = 0
+    skipped_translated = 0
 
     for entry in all_entries_list:
         str_origin = entry.get("str_origin", "").strip()
-        if str_origin:
-            texts.append(str_origin)
-            entries.append(entry)
+        if not str_origin:
+            continue
 
+        # Filter 1: Only include entries with matching StringIDs
+        if stringid_filter is not None:
+            sid = entry.get("string_id", "")
+            if sid not in stringid_filter:
+                skipped_stringid += 1
+                continue
+
+        # Filter 2: Only include untranslated entries (Str has Korean)
+        if only_untranslated:
+            str_value = entry.get("str_value", "")
+            if str_value and str_value.strip() and not is_korean_text(str_value):
+                skipped_translated += 1
+                continue
+
+        texts.append(str_origin)
+        entries.append(entry)
+
+    if stringid_filter is not None:
+        logger.info(f"Filtered by StringID: {len(texts)} kept, {skipped_stringid} skipped")
+    if only_untranslated:
+        logger.info(f"Filtered translated: {skipped_translated} skipped")
     logger.info(f"Extracted {len(texts)} StrOrigin texts from {folder}")
     return texts, entries

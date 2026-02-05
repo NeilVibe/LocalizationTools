@@ -786,17 +786,23 @@ class QuickTranslateApp:
             self._log(f"Model load error: {e}", 'error')
             return False
 
-    def _ensure_fuzzy_entries(self, target_path: str) -> bool:
+    def _ensure_fuzzy_entries(
+        self,
+        target_path: str,
+        stringid_filter: set = None,
+        only_untranslated: bool = False,
+    ) -> bool:
         """Load target entries for fuzzy matching (no FAISS index needed).
 
         Used by find_matches_strict_fuzzy which builds per-StringID mini-indexes.
         Much faster than _ensure_fuzzy_index since it skips full FAISS build.
-        """
-        # Already loaded for this target?
-        if (self._fuzzy_entries is not None
-                and self._fuzzy_index_path == target_path):
-            return True
 
+        Args:
+            target_path: Path to target folder
+            stringid_filter: Set of StringIDs to include. CRITICAL for performance!
+                            Only entries with these StringIDs are loaded.
+            only_untranslated: If True, only load entries where Str has Korean.
+        """
         if not target_path:
             messagebox.showwarning("Warning", "Fuzzy mode requires a Target folder.")
             return False
@@ -807,11 +813,19 @@ class QuickTranslateApp:
             return False
 
         try:
-            self._log(f"Loading target entries for fuzzy matching: {target}", 'info')
-            texts, entries = build_index_from_folder(target, self._update_status)
+            filter_desc = ""
+            if stringid_filter:
+                filter_desc = f" (filtering to {len(stringid_filter):,} StringIDs)"
+            self._log(f"Loading target entries{filter_desc}: {target}", 'info')
+
+            texts, entries = build_index_from_folder(
+                target, self._update_status,
+                stringid_filter=stringid_filter,
+                only_untranslated=only_untranslated,
+            )
 
             if not texts:
-                messagebox.showerror("Error", f"No StrOrigin values found in target folder:\n{target}")
+                messagebox.showerror("Error", f"No matching entries found in target folder:\n{target}")
                 return False
 
             # Store entries but skip expensive FAISS index build
@@ -1155,11 +1169,22 @@ class QuickTranslateApp:
                     # Fuzzy precision: use SBERT similarity for StrOrigin comparison
                     if not self._ensure_fuzzy_model():
                         return
-                    # Use lighter _ensure_fuzzy_entries (no full FAISS index needed)
-                    if not self._ensure_fuzzy_entries(target):
-                        return
-                    threshold = self.fuzzy_threshold.get()
+
+                    # Extract StringIDs from corrections FIRST - this is the filter!
+                    correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
+                    self._log(f"Corrections have {len(correction_stringids):,} unique StringIDs", 'info')
+
                     only_untranslated = self.transfer_scope.get() == "untranslated"
+
+                    # Load ONLY entries matching our correction StringIDs
+                    if not self._ensure_fuzzy_entries(
+                        target,
+                        stringid_filter=correction_stringids,
+                        only_untranslated=only_untranslated,
+                    ):
+                        return
+
+                    threshold = self.fuzzy_threshold.get()
                     self._log(f"Strict mode with FUZZY precision (threshold: {threshold:.2f})", 'info')
 
                     matched, not_found = find_matches_strict_fuzzy(
