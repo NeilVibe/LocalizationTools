@@ -14,6 +14,7 @@
    - [6.2 Transfer QA Files](#62-transfer-qa-files)
    - [6.3 Build Master Files](#63-build-master-files)
    - [6.4 Coverage Analysis](#64-coverage-analysis)
+   - [6.5 MasterSubmitScript (Script Categories)](#65-mastersubmitscript-script-categories)
 7. [GUI Usage](#7-gui-usage)
 8. [CLI Usage](#8-cli-usage)
 9. [Tester Mapping](#9-tester-mapping)
@@ -44,6 +45,18 @@ The **QA Compiler Suite v2.0** is a unified tool for managing Language Quality A
 | Progress Tracker | Automatic daily/total statistics with rankings |
 | Category Clustering | Skill and Help merge into System; Gimmick merges into Item |
 | Image Handling | Automatic image copying with hyperlink preservation |
+| MasterSubmitScript | Clean 3-column output (KOREAN, FIXED TRANSLATION, STRINGID) for Script categories |
+| Auto StringID Mapping | EventName automatically mapped to StringID via EXPORT folder lookup |
+
+### Architecture
+
+The compiler uses a **unified 3-phase construction pattern**:
+
+1. **Discover** - Find all valid QA folders and categorize by language/category
+2. **Preprocess** - Build indexes and mappings (e.g., EventName-to-StringID from EXPORT)
+3. **Build** - Generate output files using preprocessed data
+
+This pattern ensures consistent behavior across all features and enables efficient processing of large datasets.
 
 ---
 
@@ -446,6 +459,67 @@ Per-user columns added:
 - Excel file: `Coverage_Report_YYYYMMDD_HHMMSS.xlsx`
   - Sheet 1: Coverage Report (per category)
   - Sheet 2: Word Count by Category
+
+---
+
+### 6.5 MasterSubmitScript (Script Categories)
+
+**Purpose**: Generate submission-ready Excel files for Script category (Sequencer + Dialog) ISSUE rows, with automatic StringID and Korean text lookup.
+
+#### What It Does
+
+The MasterSubmitScript feature processes Sequencer and Dialog QA files and produces clean 3-column Excel files ready for submission to the development team.
+
+**Output columns:**
+1. **KOREAN** - Original Korean text (automatically populated from EXPORT data)
+2. **FIXED TRANSLATION** - Tester's correction (from MEMO/COMMENT column)
+3. **STRINGID** - Unique identifier (automatically mapped from EventName)
+
+#### How It Works
+
+The system uses a **3-phase approach**:
+
+1. **Discover** - Find all Sequencer and Dialog QA folders with ISSUE rows
+2. **Preprocess** - Build EventName-to-StringID mapping from EXPORT folder
+3. **Build** - Generate clean output files with mapped data
+
+#### EventName to StringID Mapping
+
+The system automatically looks up StringID and Korean text using the EventName from QA files:
+
+| QA File | EXPORT Folder | Result |
+|---------|---------------|--------|
+| EventName: `Seq_Tutorial_Start` | Dialog/*.loc.xml, Sequencer/*.loc.xml | StringID + StrOrigin |
+
+**Mapping source:** `EXPORT_FOLDER/Dialog/` and `EXPORT_FOLDER/Sequencer/` subfolders
+
+**Matching:** Case-insensitive (e.g., `seq_tutorial_start` matches `Seq_Tutorial_Start`)
+
+#### Output Files
+
+| File | Location | Contents |
+|------|----------|----------|
+| `MasterSubmitScript_EN.xlsx` | Masterfolder_EN/ | English tester corrections |
+| `MasterSubmitScript_CN.xlsx` | Masterfolder_CN/ | Chinese tester corrections |
+
+If multiple testers corrected the same EventName differently, a **conflict file** is also generated:
+- `MasterSubmitScript_EN_Conflicts.xlsx`
+- `MasterSubmitScript_CN_Conflicts.xlsx`
+
+#### Conflict Detection
+
+When two or more testers provide different corrections for the same EventName, the system:
+1. Uses the **last correction** (most recent) in the main output file
+2. Generates a conflict report showing all corrections for review
+
+**Conflict file columns:** EVENTNAME | STRINGID | KOREAN | USER | CORRECTION
+
+#### Key Implementation Files
+
+| File | Purpose |
+|------|---------|
+| `core/export_index.py` | Builds EventName -> StringID/StrOrigin mapping |
+| `core/submit_script.py` | Collects ISSUE rows and generates output files |
 
 ---
 
@@ -952,6 +1026,7 @@ When updates are made, you don't need to re-download the entire zip. Just replac
 | Gimmick datasheets | `generators/gimmick.py` |
 | Transfer logic | `core/transfer.py` |
 | Build/Compile logic | `core/compiler.py` |
+| MasterSubmitScript | `core/submit_script.py`, `core/export_index.py` |
 | Progress Tracker | `tracker/total.py`, `tracker/daily.py`, `tracker/data.py` |
 | Configuration | `config.py` |
 | GUI | `gui/app.py` |
@@ -1009,8 +1084,8 @@ Currently none - use buttons or CLI for faster operation.
 
 | Field | Value |
 |-------|-------|
-| Version | 2.0.0 |
-| Last Updated | 2025-01-15 |
+| Version | 2.1.0 |
+| Last Updated | 2026-02-05 |
 | Author | QA Compiler Team |
 
 ---
