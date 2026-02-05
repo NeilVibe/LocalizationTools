@@ -1211,6 +1211,79 @@ def run_compiler():
     # Group by category AND language
     by_category_en, by_category_cn = group_folders_by_language(qa_folders, tester_mapping)
 
+    # ==========================================================================
+    # EARLY OUTPUT: Generate MasterSubmitScript FIRST (quick - just ISSUE rows)
+    # ==========================================================================
+    # This runs BEFORE heavy Master file processing so output is available early
+    print("\n" + "=" * 60)
+    print("STEP 1: Generating MasterSubmitScript (Quick Output)")
+    print("=" * 60)
+
+    from core.export_index import get_soundevent_mapping
+    from core.submit_script import collect_issue_rows, generate_master_submit_script, generate_conflict_file
+
+    export_mapping = get_soundevent_mapping()
+    print(f"  EXPORT mapping: {len(export_mapping)} EventName entries loaded")
+
+    # EN: Combine Sequencer + Dialog folders
+    en_script_folders = []
+    for cat in ["Sequencer", "Dialog"]:
+        if cat in by_category_en:
+            en_script_folders.extend(by_category_en[cat])
+
+    if en_script_folders:
+        print(f"\n[EN] Collecting from {len(en_script_folders)} Script files...")
+        en_issues, en_conflicts = collect_issue_rows(en_script_folders, export_mapping)
+        if en_issues:
+            generate_master_submit_script(
+                en_issues,
+                MASTER_FOLDER_EN / "MasterSubmitScript_EN.xlsx",
+                "EN"
+            )
+        else:
+            print("    No ISSUE rows found for EN")
+        if en_conflicts:
+            generate_conflict_file(
+                en_conflicts,
+                MASTER_FOLDER_EN / "MasterSubmitScript_Conflicts_EN.xlsx",
+                "EN"
+            )
+    else:
+        print("\n[EN] No Script category files to process")
+
+    # CN: Same pattern
+    cn_script_folders = []
+    for cat in ["Sequencer", "Dialog"]:
+        if cat in by_category_cn:
+            cn_script_folders.extend(by_category_cn[cat])
+
+    if cn_script_folders:
+        print(f"\n[CN] Collecting from {len(cn_script_folders)} Script files...")
+        cn_issues, cn_conflicts = collect_issue_rows(cn_script_folders, export_mapping)
+        if cn_issues:
+            generate_master_submit_script(
+                cn_issues,
+                MASTER_FOLDER_CN / "MasterSubmitScript_CN.xlsx",
+                "CN"
+            )
+        else:
+            print("    No ISSUE rows found for CN")
+        if cn_conflicts:
+            generate_conflict_file(
+                cn_conflicts,
+                MASTER_FOLDER_CN / "MasterSubmitScript_Conflicts_CN.xlsx",
+                "CN"
+            )
+    else:
+        print("\n[CN] No Script category files to process")
+
+    # ==========================================================================
+    # STEP 2: Process Master Files (Heavy Processing)
+    # ==========================================================================
+    print("\n" + "=" * 60)
+    print("STEP 2: Building Master Files")
+    print("=" * 60)
+
     # Process categories
     all_daily_entries = []
 
@@ -1321,69 +1394,6 @@ def run_compiler():
                 update_status_sheet(wb, users, dict(stats))
                 wb.save(master_path)
                 wb.close()
-
-    # === Generate MasterSubmitScript (Script category ISSUE rows) ===
-    # Combines Sequencer + Dialog ISSUE rows into a single submit file per language
-    print("\n" + "=" * 60)
-    print("Generating MasterSubmitScript files...")
-    print("=" * 60)
-
-    from core.export_index import get_soundevent_mapping
-    from core.submit_script import collect_issue_rows, generate_master_submit_script, generate_conflict_file
-
-    export_mapping = get_soundevent_mapping()
-
-    # EN: Combine Sequencer + Dialog folders
-    en_script_folders = []
-    for cat in ["Sequencer", "Dialog"]:
-        if cat in by_category_en:
-            en_script_folders.extend(by_category_en[cat])
-
-    if en_script_folders:
-        print(f"\n[EN] Collecting from {len(en_script_folders)} Script files...")
-        en_issues, en_conflicts = collect_issue_rows(en_script_folders, export_mapping)
-        if en_issues:
-            generate_master_submit_script(
-                en_issues,
-                MASTER_FOLDER_EN / "MasterSubmitScript_EN.xlsx",
-                "EN"
-            )
-        else:
-            print("    No ISSUE rows found for EN")
-        if en_conflicts:
-            generate_conflict_file(
-                en_conflicts,
-                MASTER_FOLDER_EN / "MasterSubmitScript_Conflicts_EN.xlsx",
-                "EN"
-            )
-    else:
-        print("\n[EN] No Script category files to process")
-
-    # CN: Same pattern
-    cn_script_folders = []
-    for cat in ["Sequencer", "Dialog"]:
-        if cat in by_category_cn:
-            cn_script_folders.extend(by_category_cn[cat])
-
-    if cn_script_folders:
-        print(f"\n[CN] Collecting from {len(cn_script_folders)} Script files...")
-        cn_issues, cn_conflicts = collect_issue_rows(cn_script_folders, export_mapping)
-        if cn_issues:
-            generate_master_submit_script(
-                cn_issues,
-                MASTER_FOLDER_CN / "MasterSubmitScript_CN.xlsx",
-                "CN"
-            )
-        else:
-            print("    No ISSUE rows found for CN")
-        if cn_conflicts:
-            generate_conflict_file(
-                cn_conflicts,
-                MASTER_FOLDER_CN / "MasterSubmitScript_Conflicts_CN.xlsx",
-                "CN"
-            )
-    else:
-        print("\n[CN] No Script category files to process")
 
     # Show skipped categories
     for category in CATEGORIES:
