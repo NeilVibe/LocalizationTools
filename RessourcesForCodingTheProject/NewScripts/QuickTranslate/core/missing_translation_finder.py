@@ -48,6 +48,24 @@ def safe_get_attr(elem: ET.Element, name: str) -> str:
     return v.strip() if v is not None else ""
 
 
+def _get_attr_case_insensitive(elem: ET.Element, names: List[str]) -> str:
+    """Get attribute value with case-insensitive name lookup."""
+    for name in names:
+        v = elem.get(name)
+        if v is not None:
+            return v.strip()
+    return ""
+
+
+def _iter_locstr_elements(root) -> list:
+    """Iterate LocStr elements with case-insensitive tag matching."""
+    locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
+    elements = []
+    for tag in locstr_tags:
+        elements.extend(root.iter(tag))
+    return elements
+
+
 def count_korean_words(text: str) -> int:
     """
     Count Korean words in text.
@@ -159,9 +177,9 @@ def iter_locstr_from_file(xml_path: Path):
     if root is None:
         return
 
-    for loc in root.findall(".//LocStr"):
-        so = safe_get_attr(loc, "StrOrigin")
-        sid = safe_get_attr(loc, "StringId")
+    for loc in _iter_locstr_elements(root):
+        so = _get_attr_case_insensitive(loc, ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN'])
+        sid = _get_attr_case_insensitive(loc, ['StringId', 'StringID', 'stringid', 'STRINGID'])
         key = (so, sid)
         yield key, loc
 
@@ -252,7 +270,7 @@ def collect_target_korean_per_language(
         for key, loc in iter_locstr_from_file(xml_file):
             if key in entries:
                 continue
-            str_val = safe_get_attr(loc, "Str")
+            str_val = _get_attr_case_insensitive(loc, ['Str', 'str', 'STR'])
             if has_korean(str_val):
                 entries[key] = MissingEntry(
                     string_id=key[1],
@@ -307,8 +325,8 @@ def build_export_stringid_index(
         except ValueError:
             continue
 
-        for loc in root.findall(".//LocStr"):
-            sid = safe_get_attr(loc, "StringId")
+        for loc in _iter_locstr_elements(root):
+            sid = _get_attr_case_insensitive(loc, ['StringId', 'StringID', 'stringid', 'STRINGID'])
             if sid and sid not in idx:
                 idx[sid] = rel_norm
 
@@ -846,7 +864,7 @@ def find_missing_translations(
         for key, loc in iter_locstr_from_file(target):
             if key in all_korean:
                 continue
-            str_val = safe_get_attr(loc, "Str")
+            str_val = _get_attr_case_insensitive(loc, ['Str', 'str', 'STR'])
             if has_korean(str_val):
                 all_korean[key] = MissingEntry(
                     string_id=key[1],
