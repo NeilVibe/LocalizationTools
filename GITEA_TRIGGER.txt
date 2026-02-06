@@ -46,3 +46,4 @@ Build 525 - UX fixes + Architecture cleanup
 Trigger build
 Trigger QA Compiler Build 525
 Trigger QuickTranslate Build
+Trigger QuickTranslate Build
