@@ -9,7 +9,7 @@ Logic:
 2. Compare those TARGET-Korean keys against SOURCE keys:
    - If key exists in SOURCE => HIT => discard
    - If key does NOT exist in SOURCE => MISS => keep
-3. Optional post-filter: exclude StringIDs from specific export paths
+3. Optional pre-filter: exclude StringIDs from specific export paths (before comparison)
 4. Output: Per-language XML files + Summary Report (Excel)
 """
 
