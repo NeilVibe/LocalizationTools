@@ -291,6 +291,56 @@ def collect_target_korean_per_language(
     return result
 
 
+def count_total_locstr_per_language(target_folder: Path) -> Dict[str, int]:
+    """
+    Count ALL LocStr elements per language file (not just Korean).
+
+    Args:
+        target_folder: Path to target folder (LOC folder with languagedata_*.xml files)
+
+    Returns:
+        Dict mapping language code to total LocStr count: {lang_code: total_count}
+    """
+    result = {}
+    lang_files = list(target_folder.glob("languagedata_*.xml"))
+
+    for xml_file in lang_files:
+        lang = _detect_language_from_filename(xml_file.name)
+        root = _parse_xml_file(xml_file)
+        if root is None:
+            continue
+        count = len(_iter_locstr_elements(root))
+        result[lang] = count
+
+    return result
+
+
+def _get_export_depth2(rel_path: str) -> str:
+    """
+    Extract EXPORT depth-2 category from relative path.
+
+    Examples:
+        'Dialog/AIDialog/file.loc.xml' -> 'Dialog/AIDialog'
+        'Sequencer/file.loc.xml' -> 'Sequencer'
+        'System/Item/file.loc.xml' -> 'System/Item'
+
+    Args:
+        rel_path: Relative path under EXPORT root
+
+    Returns:
+        Depth-2 path string
+    """
+    parts = rel_path.replace("\\", "/").split("/")
+    # Take first 2 directory parts (exclude filename)
+    dir_parts = [p for p in parts[:-1] if p]  # Exclude the filename
+    if len(dir_parts) >= 2:
+        return f"{dir_parts[0]}/{dir_parts[1]}"
+    elif len(dir_parts) == 1:
+        return dir_parts[0]
+    else:
+        return "None"
+
+
 def build_export_stringid_index(
     export_root: Path,
     progress_cb: Optional[Callable[[str, int], None]] = None
@@ -994,6 +1044,34 @@ class MissingEntryWithCategory:
     elem: Optional[ET.Element] = None  # Original LocStr element for XML reconstruction
 
 
+@dataclass
+class LanguageSummary:
+    """Summary metrics for a single language."""
+    language: str
+    total_strings: int = 0       # All LocStr entries
+    korean_strings: int = 0      # Entries with Korean Str
+    translated_strings: int = 0  # total - korean
+    missing_strings: int = 0     # MISS from analysis
+    hit_strings: int = 0         # HIT from analysis
+    total_kr_words: int = 0      # Korean words in all Korean entries
+    missing_kr_words: int = 0    # Korean words in MISS entries
+    hit_kr_words: int = 0        # total_kr_words - missing_kr_words
+    coverage_pct: float = 0.0    # translated / total * 100
+
+
+@dataclass
+class CategoryBreakdown:
+    """Metrics for one EXPORT depth-2 category within a language."""
+    depth2_path: str
+    total_strings: int = 0
+    korean_strings: int = 0
+    missing_strings: int = 0
+    hit_strings: int = 0
+    total_kr_words: int = 0
+    missing_kr_words: int = 0
+    hit_kr_words: int = 0
+
+
 def _collect_source_strorigins(source_folder: Path) -> Set[str]:
     """Collect set of normalized StrOrigin texts from source folder."""
     origins = set()
@@ -1178,6 +1256,448 @@ def _write_close_folders(
     return close_folders
 
 
+def _build_category_breakdowns(
+    per_lang_korean: Dict[str, Dict],
+    missing_per_lang: Dict[str, List[MissingEntryWithCategory]],
+    export_path_index: Dict[str, str],
+) -> Dict[str, Dict[str, CategoryBreakdown]]:
+    """
+    Build per-language, per-depth2 category breakdown.
+
+    Args:
+        per_lang_korean: {lang: {(str_origin, string_id): MissingEntry}}
+        missing_per_lang: {lang: [MissingEntryWithCategory, ...]}
+        export_path_index: {StringID: relative_path}
+
+    Returns:
+        {lang: {depth2_path: CategoryBreakdown}}
+    """
+    result: Dict[str, Dict[str, CategoryBreakdown]] = {}
+
+    for lang, korean_entries in per_lang_korean.items():
+        breakdowns: Dict[str, CategoryBreakdown] = {}
+
+        # Count Korean entries per depth2 category
+        for key, entry in korean_entries.items():
+            rel_path = export_path_index.get(entry.string_id, "")
+            depth2 = _get_export_depth2(rel_path) if rel_path else "None"
+
+            if depth2 not in breakdowns:
+                breakdowns[depth2] = CategoryBreakdown(depth2_path=depth2)
+
+            bd = breakdowns[depth2]
+            bd.korean_strings += 1
+            bd.total_kr_words += entry.korean_words
+
+        # Count missing entries per depth2 category
+        for entry in missing_per_lang.get(lang, []):
+            rel_path = export_path_index.get(entry.string_id, "")
+            depth2 = _get_export_depth2(rel_path) if rel_path else "None"
+
+            if depth2 not in breakdowns:
+                breakdowns[depth2] = CategoryBreakdown(depth2_path=depth2)
+
+            bd = breakdowns[depth2]
+            bd.missing_strings += 1
+            bd.missing_kr_words += count_korean_words(entry.translation)
+
+        # Compute hit = korean - missing for each category
+        for bd in breakdowns.values():
+            bd.hit_strings = bd.korean_strings - bd.missing_strings
+            bd.hit_kr_words = bd.total_kr_words - bd.missing_kr_words
+
+        result[lang] = breakdowns
+
+    return result
+
+
+def _depth2_sort_key(depth2_path: str) -> tuple:
+    """
+    Sort key for depth-2 category ordering.
+    STORY categories first (Dialog/*, Sequencer), then alphabetically.
+    """
+    top_level = depth2_path.split("/")[0] if "/" in depth2_path else depth2_path
+    leaf = depth2_path.split("/")[-1] if "/" in depth2_path else depth2_path
+
+    # Use existing category sort order on the leaf name
+    try:
+        return (0, CATEGORY_SORT_ORDER.index(leaf))
+    except ValueError:
+        # Check top-level for known categories
+        try:
+            return (0, CATEGORY_SORT_ORDER.index(top_level))
+        except ValueError:
+            # "None" goes last
+            if depth2_path == "None":
+                return (2, depth2_path)
+            return (1, depth2_path)
+
+
+def _write_master_summary_excel(
+    summaries: Dict[str, LanguageSummary],
+    breakdowns: Dict[str, Dict[str, CategoryBreakdown]],
+    output_path: Path,
+    match_mode: str,
+    threshold: float,
+) -> bool:
+    """
+    Write Master Summary Excel with Global Summary and Detailed Summary tabs.
+
+    Args:
+        summaries: {lang: LanguageSummary}
+        breakdowns: {lang: {depth2_path: CategoryBreakdown}}
+        output_path: Path for output Excel file
+        match_mode: Match mode used
+        threshold: Fuzzy threshold used
+
+    Returns:
+        True if successful
+    """
+    try:
+        import xlsxwriter
+    except ImportError:
+        logger.error("xlsxwriter not available - cannot write master summary")
+        return False
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    wb = xlsxwriter.Workbook(str(output_path))
+
+    # === FORMATS ===
+    header_fmt = wb.add_format({
+        'bold': True,
+        'bg_color': '#2F5496',
+        'font_color': 'white',
+        'font_size': 11,
+        'border': 2,
+        'align': 'center',
+        'valign': 'vcenter',
+    })
+
+    # Number format with comma separators
+    num_fmt = wb.add_format({
+        'border': 1,
+        'align': 'right',
+        'valign': 'vcenter',
+        'num_format': '#,##0',
+    })
+
+    text_fmt = wb.add_format({
+        'border': 1,
+        'align': 'left',
+        'valign': 'vcenter',
+    })
+
+    # Coverage conditional formats
+    coverage_green = wb.add_format({
+        'border': 1,
+        'align': 'right',
+        'valign': 'vcenter',
+        'num_format': '0.0%',
+        'bg_color': '#C6EFCE',
+        'font_color': '#006100',
+    })
+    coverage_yellow = wb.add_format({
+        'border': 1,
+        'align': 'right',
+        'valign': 'vcenter',
+        'num_format': '0.0%',
+        'bg_color': '#FFEB9C',
+        'font_color': '#9C6500',
+    })
+    coverage_red = wb.add_format({
+        'border': 1,
+        'align': 'right',
+        'valign': 'vcenter',
+        'num_format': '0.0%',
+        'bg_color': '#FFC7CE',
+        'font_color': '#9C0006',
+    })
+
+    # Total row format
+    total_fmt = wb.add_format({
+        'bold': True,
+        'bg_color': '#FFC000',
+        'border': 2,
+        'align': 'right',
+        'valign': 'vcenter',
+        'num_format': '#,##0',
+    })
+    total_text_fmt = wb.add_format({
+        'bold': True,
+        'bg_color': '#FFC000',
+        'border': 2,
+        'align': 'left',
+        'valign': 'vcenter',
+    })
+    total_pct_fmt = wb.add_format({
+        'bold': True,
+        'bg_color': '#FFC000',
+        'border': 2,
+        'align': 'right',
+        'valign': 'vcenter',
+        'num_format': '0.0%',
+    })
+
+    # Language header row in Detailed tab
+    lang_header_fmt = wb.add_format({
+        'bold': True,
+        'bg_color': '#A6A6A6',
+        'font_color': 'white',
+        'font_size': 11,
+        'border': 2,
+        'align': 'left',
+        'valign': 'vcenter',
+    })
+
+    # Subtotal row in Detailed tab
+    subtotal_fmt = wb.add_format({
+        'bold': True,
+        'bg_color': '#D9E2F3',
+        'border': 1,
+        'align': 'right',
+        'valign': 'vcenter',
+        'num_format': '#,##0',
+    })
+    subtotal_text_fmt = wb.add_format({
+        'bold': True,
+        'bg_color': '#D9E2F3',
+        'border': 1,
+        'align': 'left',
+        'valign': 'vcenter',
+    })
+
+    # Base format for category-colored cells
+    base_cat_props = {
+        'border': 1,
+        'valign': 'vcenter',
+        'align': 'left',
+    }
+
+    # ================================================================
+    # TAB 1: Global Summary
+    # ================================================================
+    ws1 = wb.add_worksheet("Global Summary")
+    ws1.set_column('A:A', 12)   # Language
+    ws1.set_column('B:B', 15)   # Total Strings
+    ws1.set_column('C:C', 16)   # Korean Strings
+    ws1.set_column('D:D', 18)   # Translated Strings
+    ws1.set_column('E:E', 16)   # Missing Strings
+    ws1.set_column('F:F', 13)   # Hit Strings
+    ws1.set_column('G:G', 16)   # Total KR Words
+    ws1.set_column('H:H', 18)   # Missing KR Words
+    ws1.set_column('I:I', 14)   # Hit KR Words
+    ws1.set_column('J:J', 13)   # Coverage %
+
+    headers_tab1 = [
+        "Language", "Total Strings", "Korean Strings", "Translated Strings",
+        "Missing Strings", "Hit Strings", "Total KR Words",
+        "Missing KR Words", "Hit KR Words", "Coverage %",
+    ]
+    for col, h in enumerate(headers_tab1):
+        ws1.write(0, col, h, header_fmt)
+
+    # Data rows
+    row = 1
+    sum_total = sum_korean = sum_translated = 0
+    sum_missing = sum_hits = 0
+    sum_kr_words = sum_miss_kr = sum_hit_kr = 0
+
+    for lang in sorted(summaries.keys()):
+        s = summaries[lang]
+        ws1.write(row, 0, s.language, text_fmt)
+        ws1.write(row, 1, s.total_strings, num_fmt)
+        ws1.write(row, 2, s.korean_strings, num_fmt)
+        ws1.write(row, 3, s.translated_strings, num_fmt)
+        ws1.write(row, 4, s.missing_strings, num_fmt)
+        ws1.write(row, 5, s.hit_strings, num_fmt)
+        ws1.write(row, 6, s.total_kr_words, num_fmt)
+        ws1.write(row, 7, s.missing_kr_words, num_fmt)
+        ws1.write(row, 8, s.hit_kr_words, num_fmt)
+
+        # Coverage % with conditional color
+        pct_value = s.coverage_pct / 100.0  # Excel expects 0.0-1.0 for percentage
+        if s.coverage_pct > 80:
+            ws1.write(row, 9, pct_value, coverage_green)
+        elif s.coverage_pct >= 50:
+            ws1.write(row, 9, pct_value, coverage_yellow)
+        else:
+            ws1.write(row, 9, pct_value, coverage_red)
+
+        sum_total += s.total_strings
+        sum_korean += s.korean_strings
+        sum_translated += s.translated_strings
+        sum_missing += s.missing_strings
+        sum_hits += s.hit_strings
+        sum_kr_words += s.total_kr_words
+        sum_miss_kr += s.missing_kr_words
+        sum_hit_kr += s.hit_kr_words
+        row += 1
+
+    # TOTALS row
+    ws1.write(row, 0, "TOTAL", total_text_fmt)
+    ws1.write(row, 1, sum_total, total_fmt)
+    ws1.write(row, 2, sum_korean, total_fmt)
+    ws1.write(row, 3, sum_translated, total_fmt)
+    ws1.write(row, 4, sum_missing, total_fmt)
+    ws1.write(row, 5, sum_hits, total_fmt)
+    ws1.write(row, 6, sum_kr_words, total_fmt)
+    ws1.write(row, 7, sum_miss_kr, total_fmt)
+    ws1.write(row, 8, sum_hit_kr, total_fmt)
+    avg_coverage = (sum_translated / sum_total) if sum_total > 0 else 0.0
+    ws1.write(row, 9, avg_coverage, total_pct_fmt)
+
+    ws1.autofilter(0, 0, row - 1, len(headers_tab1) - 1)
+    ws1.freeze_panes(1, 0)
+
+    # ================================================================
+    # TAB 2: Detailed Summary
+    # ================================================================
+    ws2 = wb.add_worksheet("Detailed Summary")
+    ws2.set_column('A:A', 28)   # Category
+    ws2.set_column('B:B', 16)   # Korean Strings
+    ws2.set_column('C:C', 16)   # Missing Strings
+    ws2.set_column('D:D', 13)   # Hit Strings
+    ws2.set_column('E:E', 16)   # Total KR Words
+    ws2.set_column('F:F', 18)   # Missing KR Words
+    ws2.set_column('G:G', 14)   # Hit KR Words
+
+    headers_tab2 = [
+        "Category", "Korean Strings", "Missing Strings", "Hit Strings",
+        "Total KR Words", "Missing KR Words", "Hit KR Words",
+    ]
+    for col, h in enumerate(headers_tab2):
+        ws2.write(0, col, h, header_fmt)
+
+    # Build category-colored formats for depth2 paths
+    cat_fmt_cache = {}
+
+    def _get_cat_format(depth2_path: str):
+        """Get or create format for a depth2 category path."""
+        if depth2_path in cat_fmt_cache:
+            return cat_fmt_cache[depth2_path]
+
+        # Extract leaf name for color lookup
+        leaf = depth2_path.split("/")[-1] if "/" in depth2_path else depth2_path
+        color = CATEGORY_COLORS.get(leaf, "#D9D9D9")
+
+        fmt = wb.add_format({**base_cat_props, 'bg_color': color})
+        cat_fmt_cache[depth2_path] = fmt
+        return fmt
+
+    row = 1
+    for lang in sorted(breakdowns.keys()):
+        lang_bds = breakdowns[lang]
+        if not lang_bds:
+            continue
+
+        lang_summary = summaries.get(lang)
+        lang_label = lang
+        if lang_summary:
+            lang_label = f"{lang} ({lang_summary.korean_strings:,} Korean / {lang_summary.total_strings:,} total)"
+
+        # Language header row
+        ws2.merge_range(row, 0, row, len(headers_tab2) - 1, lang_label, lang_header_fmt)
+        row += 1
+
+        # Sort categories
+        sorted_cats = sorted(lang_bds.keys(), key=_depth2_sort_key)
+
+        sub_korean = sub_missing = sub_hit = 0
+        sub_kr_words = sub_miss_kr = sub_hit_kr = 0
+
+        for depth2 in sorted_cats:
+            bd = lang_bds[depth2]
+            cat_fmt = _get_cat_format(depth2)
+
+            ws2.write(row, 0, depth2, cat_fmt)
+            ws2.write(row, 1, bd.korean_strings, num_fmt)
+            ws2.write(row, 2, bd.missing_strings, num_fmt)
+            ws2.write(row, 3, bd.hit_strings, num_fmt)
+            ws2.write(row, 4, bd.total_kr_words, num_fmt)
+            ws2.write(row, 5, bd.missing_kr_words, num_fmt)
+            ws2.write(row, 6, bd.hit_kr_words, num_fmt)
+
+            sub_korean += bd.korean_strings
+            sub_missing += bd.missing_strings
+            sub_hit += bd.hit_strings
+            sub_kr_words += bd.total_kr_words
+            sub_miss_kr += bd.missing_kr_words
+            sub_hit_kr += bd.hit_kr_words
+            row += 1
+
+        # Subtotal row for this language
+        ws2.write(row, 0, f"Subtotal {lang}", subtotal_text_fmt)
+        ws2.write(row, 1, sub_korean, subtotal_fmt)
+        ws2.write(row, 2, sub_missing, subtotal_fmt)
+        ws2.write(row, 3, sub_hit, subtotal_fmt)
+        ws2.write(row, 4, sub_kr_words, subtotal_fmt)
+        ws2.write(row, 5, sub_miss_kr, subtotal_fmt)
+        ws2.write(row, 6, sub_hit_kr, subtotal_fmt)
+        row += 1
+
+        # Blank row between languages
+        row += 1
+
+    last_data_row = max(row - 2, 0)
+    ws2.autofilter(0, 0, last_data_row, len(headers_tab2) - 1)
+    ws2.freeze_panes(1, 0)
+
+    # ================================================================
+    # TAB 3: Info
+    # ================================================================
+    ws3 = wb.add_worksheet("Info")
+    ws3.set_column('A:A', 22)
+    ws3.set_column('B:B', 50)
+
+    info_header_fmt = wb.add_format({
+        'bold': True,
+        'bg_color': '#2F5496',
+        'font_color': 'white',
+        'border': 2,
+        'align': 'center',
+        'valign': 'vcenter',
+    })
+    info_label_fmt = wb.add_format({
+        'bold': True,
+        'bg_color': '#D6DCE5',
+        'border': 1,
+        'align': 'left',
+        'valign': 'vcenter',
+    })
+    info_value_fmt = wb.add_format({
+        'border': 1,
+        'align': 'left',
+        'valign': 'vcenter',
+    })
+
+    ws3.write(0, 0, "Field", info_header_fmt)
+    ws3.write(0, 1, "Value", info_header_fmt)
+
+    mode_labels = {
+        "stringid_kr_strict": "StringID + KR (Strict)",
+        "stringid_kr_fuzzy": "StringID + KR (Fuzzy)",
+        "kr_strict": "KR only (Strict)",
+        "kr_fuzzy": "KR only (Fuzzy)",
+    }
+
+    info_data = [
+        ("Report Type", "Master Summary"),
+        ("Match Mode", mode_labels.get(match_mode, match_mode)),
+        ("Threshold", f"{threshold:.2f}"),
+        ("Languages", str(len(summaries))),
+        ("Generated", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+    ]
+    for i, (field, value) in enumerate(info_data, 1):
+        ws3.write(i, 0, field, info_label_fmt)
+        ws3.write(i, 1, value, info_value_fmt)
+
+    ws3.freeze_panes(1, 0)
+
+    wb.close()
+    logger.info(f"Master Summary Excel written: {output_path.name}")
+    return True
+
+
 def find_missing_with_options(
     source_path: str,
     target_path: str,
@@ -1275,9 +1795,14 @@ def find_missing_with_options(
     for lang, entries in sorted(per_lang_korean.items()):
         logger.info(f"  {lang}: {len(entries):,} Korean entries")
 
+    # Step 3b: Count total LocStr per language (for coverage calculation)
+    if progress_cb:
+        progress_cb("Counting total strings per language...", 52)
+    total_locstr_per_lang = count_total_locstr_per_language(target)
+    logger.info(f"[Step 3b] Total LocStr per language: {', '.join(f'{k}={v:,}' for k, v in sorted(total_locstr_per_lang.items()))}")
+
     # Step 4: For fuzzy modes, prepare embeddings
     source_embeddings = None
-    source_texts_list = None
     source_group_embeddings = None  # For stringid_kr_fuzzy
 
     if is_fuzzy:
@@ -1290,7 +1815,6 @@ def find_missing_with_options(
                 progress_cb("Encoding SOURCE texts with KR-SBERT...", 40)
 
             all_source_texts = list(source_origins)
-            source_texts_list = all_source_texts
             logger.info(f"[Step 4] kr_fuzzy: encoding {len(all_source_texts):,} unique SOURCE texts")
 
             # Batch encode
@@ -1544,6 +2068,46 @@ def find_missing_with_options(
     else:
         logger.info("[Step 6] No Close folders needed (no export paths or no misses)")
 
+    # Step 7: Write Master Summary Report
+    logger.info("[Step 7] Building Master Summary Report...")
+    if progress_cb:
+        progress_cb("Writing Master Summary Report...", 96)
+
+    # Build LanguageSummary for each language
+    summaries = {}
+    for lang in sorted(per_lang_korean.keys()):
+        lr = results["languages"][lang]
+        total = total_locstr_per_lang.get(lang, 0)
+        korean = lr["korean_entries"]
+        translated = total - korean
+
+        total_kr_words = sum(e.korean_words for e in per_lang_korean[lang].values())
+        missing_kr_words = sum(
+            count_korean_words(e.translation) for e in missing_per_lang.get(lang, [])
+        )
+
+        summary = LanguageSummary(
+            language=lang,
+            total_strings=total,
+            korean_strings=korean,
+            translated_strings=translated,
+            missing_strings=lr["misses"],
+            hit_strings=lr["hits"],
+            total_kr_words=total_kr_words,
+            missing_kr_words=missing_kr_words,
+        )
+        summary.hit_kr_words = summary.total_kr_words - summary.missing_kr_words
+        summary.coverage_pct = (translated / total * 100) if total > 0 else 0.0
+        summaries[lang] = summary
+
+    # Build per-category breakdowns
+    breakdowns = _build_category_breakdowns(per_lang_korean, missing_per_lang, export_path_index)
+
+    # Write Excel
+    master_path = out_dir / f"MASTER_SUMMARY_{timestamp}.xlsx"
+    _write_master_summary_excel(summaries, breakdowns, master_path, match_mode, threshold)
+    results["master_summary"] = str(master_path)
+
     # Final summary
     logger.info("=" * 60)
     logger.info("FIND MISSING TRANSLATIONS - COMPLETE")
@@ -1553,6 +2117,7 @@ def find_missing_with_options(
     logger.info(f"  Languages processed:   {len(results['languages'])}")
     logger.info(f"  Excel files:           {len(results['output_files'])}")
     logger.info(f"  Close folders:         {len(results.get('close_folders', {}))}")
+    logger.info(f"  Master summary:        {master_path.name}")
     logger.info("=" * 60)
 
     if progress_cb:
