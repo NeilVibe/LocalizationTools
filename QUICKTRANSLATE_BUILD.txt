@@ -42,3 +42,4 @@ Trigger QuickTranslate Build
 Build 20260206-115051
 Trigger QuickTranslate Build - Close folders feature
 Build: Detailed terminal+GUI logging for Find Missing Translations
+Build: Add Master Summary Report to Find Missing Translations
