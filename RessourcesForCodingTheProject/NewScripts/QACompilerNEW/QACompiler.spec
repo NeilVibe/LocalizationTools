@@ -20,6 +20,7 @@ a = Analysis(
     ],
     hiddenimports=[
         'openpyxl',
+        'xlsxwriter',
         'lxml',
         'lxml.etree',
         'tkinter',
