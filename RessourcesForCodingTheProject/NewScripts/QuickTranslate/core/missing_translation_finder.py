@@ -1314,23 +1314,30 @@ def _build_category_breakdowns(
 def _depth2_sort_key(depth2_path: str) -> tuple:
     """
     Sort key for depth-2 category ordering.
-    STORY categories first (Dialog/*, Sequencer), then alphabetically.
-    """
-    top_level = depth2_path.split("/")[0] if "/" in depth2_path else depth2_path
-    leaf = depth2_path.split("/")[-1] if "/" in depth2_path else depth2_path
+    Groups by parent folder, children alphabetical within each parent.
+    "None" always last.
 
-    # Use existing category sort order on the leaf name
-    try:
-        return (0, CATEGORY_SORT_ORDER.index(leaf))
-    except ValueError:
-        # Check top-level for known categories
-        try:
-            return (0, CATEGORY_SORT_ORDER.index(top_level))
-        except ValueError:
-            # "None" goes last
-            if depth2_path == "None":
-                return (2, depth2_path)
-            return (1, depth2_path)
+    Result order:
+        Dialog/AIDialog
+        Dialog/NarrationDialog
+        Dialog/QuestDialog
+        Dialog/StageCloseDialog
+        Sequencer
+        System/Character
+        System/Faction
+        ...
+        World
+        None
+    """
+    if depth2_path == "None":
+        return (2, "", "")
+
+    parts = depth2_path.split("/")
+    parent = parts[0]
+    child = parts[1] if len(parts) > 1 else ""
+
+    # Parent folder sort: alphabetical (Dialog < Platform < Sequencer < System < World)
+    return (0, parent, child)
 
 
 def _write_master_summary_excel(
