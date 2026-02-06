@@ -90,3 +90,4 @@ Build 533: Autofit optimization (O(rows×cols) → O(rows×users))
 Trigger QACompiler Build
 Trigger QACompiler Build
 Build 20260206-115051
+Trigger QACompiler Build - Add xlsxwriter dependency
