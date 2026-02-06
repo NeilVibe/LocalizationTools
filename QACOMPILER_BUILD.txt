@@ -92,3 +92,4 @@ Trigger QACompiler Build
 Build 20260206-115051
 Trigger QACompiler Build - Add xlsxwriter dependency
 Build - Fix EventName to StringID mapping
+Build: StringID fallback lookup
