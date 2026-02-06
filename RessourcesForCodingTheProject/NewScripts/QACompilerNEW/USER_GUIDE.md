@@ -553,6 +553,7 @@ When you click **[Build Master Files]**, the compiler runs a multi-step pipeline
 ```
 STEP 1: MasterSubmitScript (Quick - ISSUE rows only)
   └─ Generates submission-ready files for Script categories (Sequencer/Dialog)
+  └─ Supports BOTH EventName AND StringID lookup (see below)
   └─ Runs FIRST because it's fast and output is available immediately
 
 STEP 2: Master Files (Heavy Processing - Parallel)
@@ -616,6 +617,65 @@ The report shows:
 - **Row Stats** — total rows, statuses found, word counts (only non-zero metrics shown)
 - **Master Files Saved** — number of master Excel files written
 - **Output Paths** — where to find the results
+
+### MasterSubmitScript: EventName & StringID Dual Lookup
+
+The MasterSubmitScript generator (STEP 1 of Build) creates submission-ready files for Script categories (Sequencer + Dialog). It collects all rows marked `STATUS=ISSUE` and maps them to their StringID and Korean text from the EXPORT data.
+
+#### Smart Identifier Resolution
+
+The system accepts **both EventName and StringID** in the EventName column. This handles cases where managers may enter either identifier:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  IDENTIFIER RESOLUTION (Automatic)                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Value in EventName column                                  │
+│         │                                                   │
+│         ▼                                                   │
+│  ┌─────────────────────┐                                    │
+│  │ Try as EventName    │──── Found? ──── YES ──→ Use it     │
+│  │ (EXPORT lookup)     │                                    │
+│  └─────────┬───────────┘                                    │
+│            NO                                               │
+│            ▼                                                │
+│  ┌─────────────────────┐                                    │
+│  │ Try as StringID     │──── Found? ──── YES ──→ Use it     │
+│  │ (reverse lookup)    │                                    │
+│  └─────────┬───────────┘                                    │
+│            NO                                               │
+│            ▼                                                │
+│     ⚠️ WARNING logged                                       │
+│     (row still included with empty StringID/Korean)         │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### How It Works
+
+| Scenario | Example Value | What Happens |
+|----------|---------------|--------------|
+| Manager enters **EventName** | `Play_VO_NPC_Greeting_001` | Matched via EXPORT → gets StringID + Korean |
+| Manager enters **StringID** directly | `SND_SE_456789` | Not found as EventName → matched via reverse StringID lookup → gets Korean |
+| Manager enters **invalid value** | `asdfgh` | Not found in either → WARNING logged, empty StringID/Korean |
+
+#### Output: MasterSubmitScript_EN.xlsx / CN.xlsx
+
+| Column | Source | Description |
+|--------|--------|-------------|
+| **KOREAN** | EXPORT (StrOrigin) | Korean source text for the matched entry |
+| **FIXED TRANSLATION** | QA file (MEMO/COMMENT) | Tester's correction |
+| **STRINGID** | EXPORT (StringId) | Resolved StringID (from either EventName or direct match) |
+
+> **Note:** The build log shows how many entries were matched by each method:
+> ```
+> Found 42 unique ISSUE rows from 8 files
+>     INFO: 5 entries matched by direct StringID (not EventName)
+>     WARNING: 2 EventNames not found in EXPORT mapping
+> ```
+
+---
 
 ### How Master Build Works (Technical)
 

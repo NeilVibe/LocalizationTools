@@ -309,9 +309,10 @@
         <li><a href="#folder-structure">2. Folder Structure</a></li>
         <li><a href="#daily-workflow">3. Daily Workflow</a></li>
         <li><a href="#weekly-workflow">4. Weekly Workflow (Friday Refresh)</a></li>
-        <li><a href="#folder-naming">5. Folder Naming Convention</a></li>
-        <li><a href="#progress-tracker">6. Progress Tracker</a></li>
-        <li><a href="#troubleshooting">7. Troubleshooting</a></li>
+        <li><a href="#mastersubmitscript">5. MasterSubmitScript: Smart Identifier Resolution</a></li>
+        <li><a href="#folder-naming">6. Folder Naming Convention</a></li>
+        <li><a href="#progress-tracker">7. Progress Tracker</a></li>
+        <li><a href="#troubleshooting">8. Troubleshooting</a></li>
     </ul>
 </div>
 
@@ -551,6 +552,109 @@
     <p>Transfer the updated files back to External PC and upload to SharePoint.</p>
 </div>
 
+<!-- MASTERSUBMITSCRIPT FEATURE -->
+<div class="page-break"></div>
+<h2 id="mastersubmitscript">MasterSubmitScript: Smart Identifier Resolution</h2>
+
+<p>When building Master files, <strong>STEP 1</strong> generates <code>MasterSubmitScript_EN.xlsx</code> and <code>MasterSubmitScript_CN.xlsx</code> for Script categories (Sequencer + Dialog). These files contain all rows marked <code>STATUS=ISSUE</code> with their Korean source text and StringID.</p>
+
+<h3>EventName & StringID Dual Lookup</h3>
+
+<div class="success-box">
+    <strong>Smart Resolution:</strong> The system accepts <strong>both EventName and StringID</strong> in the EventName column.<br><br>
+    This means managers can enter either identifier and it will resolve correctly!
+</div>
+
+<div style="background: #f8f9fa; border-radius: 10px; padding: 20px; margin: 20px 0;">
+    <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
+
+        <div style="background: white; border: 2px solid #4472C4; border-radius: 8px; padding: 12px 20px; text-align: center; width: 60%;">
+            <strong>Value in EventName column</strong>
+        </div>
+
+        <span style="font-size: 20px; color: #4472C4;">&#9660;</span>
+
+        <div style="background: linear-gradient(135deg, #DEEBF7, #BDD7EE); border: 2px solid #4472C4; border-radius: 8px; padding: 12px 20px; text-align: center; width: 70%;">
+            <strong style="color: #2E5A9C;">Step 1:</strong> Try as <strong>EventName</strong> (EXPORT lookup)<br>
+            <span style="color: #548235;">Found? &rarr; Use it!</span>
+        </div>
+
+        <span style="font-size: 16px; color: #C00000;">&#9660; Not found</span>
+
+        <div style="background: linear-gradient(135deg, #FFF2CC, #FFE4B5); border: 2px solid #FF8C00; border-radius: 8px; padding: 12px 20px; text-align: center; width: 70%;">
+            <strong style="color: #CC7000;">Step 2:</strong> Try as <strong>StringID</strong> (reverse lookup)<br>
+            <span style="color: #548235;">Found? &rarr; Use it!</span>
+        </div>
+
+        <span style="font-size: 16px; color: #C00000;">&#9660; Not found</span>
+
+        <div style="background: linear-gradient(135deg, #FFCCCC, #FFE0E0); border: 2px solid #C00000; border-radius: 8px; padding: 12px 20px; text-align: center; width: 70%;">
+            <strong style="color: #C00000;">Warning logged</strong><br>
+            <span style="font-size: 0.9em;">Row included with empty StringID/Korean</span>
+        </div>
+
+    </div>
+</div>
+
+<h3>Resolution Examples</h3>
+
+<table>
+    <tr>
+        <th>Scenario</th>
+        <th>Value Entered</th>
+        <th>Result</th>
+    </tr>
+    <tr>
+        <td style="background: #E2EFDA;"><strong>EventName</strong></td>
+        <td><code>Play_VO_NPC_Greeting_001</code></td>
+        <td style="color: #548235;">&#10004; Matched via EXPORT &rarr; gets StringID + Korean</td>
+    </tr>
+    <tr>
+        <td style="background: #FFF2CC;"><strong>StringID directly</strong></td>
+        <td><code>SND_SE_456789</code></td>
+        <td style="color: #548235;">&#10004; Matched via reverse lookup &rarr; gets Korean</td>
+    </tr>
+    <tr>
+        <td style="background: #FFCCCC;"><strong>Invalid value</strong></td>
+        <td><code>asdfgh</code></td>
+        <td style="color: #C00000;">&#10008; Not found &rarr; WARNING logged</td>
+    </tr>
+</table>
+
+<h3>Output Columns</h3>
+
+<table>
+    <tr>
+        <th>Column</th>
+        <th>Source</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td><strong>KOREAN</strong></td>
+        <td>EXPORT (StrOrigin)</td>
+        <td>Korean source text for the matched entry</td>
+    </tr>
+    <tr>
+        <td><strong>FIXED TRANSLATION</strong></td>
+        <td>QA file (MEMO/COMMENT)</td>
+        <td>Tester's correction</td>
+    </tr>
+    <tr>
+        <td><strong>STRINGID</strong></td>
+        <td>EXPORT (StringId)</td>
+        <td>Resolved StringID (from either EventName or direct match)</td>
+    </tr>
+</table>
+
+<div class="info-box">
+    <strong>Build Log Output:</strong><br><br>
+    <code style="background: #1e1e1e; color: #d4d4d4; display: block; padding: 10px; border-radius: 4px;">
+        Found 42 unique ISSUE rows from 8 files<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;INFO: 5 entries matched by direct StringID (not EventName)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;WARNING: 2 EventNames not found in EXPORT mapping
+    </code>
+</div>
+
 <!-- WEEKLY WORKFLOW -->
 <div class="page-break"></div>
 <h2 id="weekly-workflow">4. Weekly Workflow (Friday Refresh)</h2>
@@ -677,7 +781,7 @@
 
 <!-- FOLDER NAMING -->
 <div class="page-break"></div>
-<h2 id="folder-naming">5. Folder Naming Convention</h2>
+<h2 id="folder-naming">6. Folder Naming Convention</h2>
 
 <h3>Required Format</h3>
 
@@ -736,7 +840,7 @@
 
 <!-- PROGRESS TRACKER -->
 <div class="page-break"></div>
-<h2 id="progress-tracker">6. Progress Tracker</h2>
+<h2 id="progress-tracker">7. Progress Tracker</h2>
 
 <p>The <code>_TRACKER.xlsx</code> file tracks all tester progress and manager stats.</p>
 
@@ -820,7 +924,7 @@
 
 <!-- TROUBLESHOOTING -->
 <div class="page-break"></div>
-<h2 id="troubleshooting">7. Troubleshooting</h2>
+<h2 id="troubleshooting">8. Troubleshooting</h2>
 
 <h4>❌ "Datasheets are stale" error</h4>
 <div class="info-box">
