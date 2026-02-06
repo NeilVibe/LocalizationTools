@@ -39,3 +39,4 @@ Build 20260206-014500: VERIFIED - FAISS only indexes filtered entries
 Build 20260206-015500: ALL paths filter - no full languagedata load possible
 Build 20260206-021000: All verified - imports, syntax, filtering
 Trigger QuickTranslate Build
+Build 20260206-115051
