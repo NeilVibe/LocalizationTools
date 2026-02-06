@@ -233,8 +233,9 @@ def _collect_previous_eventnames(wb, date_tab: str) -> set:
         if sheet_name == date_tab:
             continue
         old_ws = wb[sheet_name]
-        for row in range(2, (old_ws.max_row or 1) + 1):
-            val = old_ws.cell(row=row, column=1).value
+        # Use iter_rows instead of ws.cell() loop for better performance
+        for row_tuple in old_ws.iter_rows(min_row=2, max_col=1, values_only=True):
+            val = row_tuple[0]
             if val:
                 previous.add(str(val).strip())
     return previous

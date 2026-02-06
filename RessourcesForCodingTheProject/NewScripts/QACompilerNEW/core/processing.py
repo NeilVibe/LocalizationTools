@@ -464,11 +464,12 @@ def process_sheet(
     # BUT: Dialog files may have COMMENT instead of MEMO - check both!
     if is_script:
         # DEBUG: Log ALL QA headers to see what columns are available
+        # Use iter_rows for read_only compatibility (ws.cell is slow in read_only mode)
         qa_headers = []
-        for col in range(1, min(qa_ws.max_column + 1, 20)):  # First 20 columns
-            header = qa_ws.cell(row=1, column=col).value
-            if header:
-                qa_headers.append(f"Col{col}:{header}")
+        for row_tuple in qa_ws.iter_rows(min_row=1, max_row=1, values_only=True):
+            for col_idx, header in enumerate(row_tuple[:20], 1):
+                if header:
+                    qa_headers.append(f"Col{col_idx}:{header}")
         _script_debug_log(f"  QA file headers: {qa_headers}")
 
         qa_comment_col = find_column_by_header(qa_ws, "MEMO")
@@ -527,6 +528,12 @@ def process_sheet(
     if master_index is None:
         master_index = build_master_index(master_ws, category, is_english)
 
+    # ==========================================================================
+    # FAST PRELOAD: Load ALL QA data into memory as tuples ONCE (10-50x faster)
+    # ==========================================================================
+    # Single preload serves: STATUS scanning, row processing, AND word counting
+    qa_col_idx, qa_data_rows = preload_worksheet_data(qa_ws)
+
     # OPTIMIZATION: For Script-type categories, pre-filter to only rows WITH status
     # Phase C2: If prefiltered_rows provided from universe, use directly (skip scan)
     rows_to_process = []
@@ -537,14 +544,12 @@ def process_sheet(
         _script_debug_log(f"  Using prefiltered_rows: {len(rows_to_process)} rows")
         _script_debug_flush()
     elif is_script and qa_status_col:
-        # Fallback: scan STATUS column using PRELOADED data (no ws.cell() calls!)
-        # FAST: Preload once, scan tuples
-        _temp_col_idx, _temp_data_rows = preload_worksheet_data(qa_ws)
-        _temp_status_idx = _temp_col_idx.get("STATUS")
+        # Scan STATUS column using the ALREADY-PRELOADED data (no extra load!)
+        _temp_status_idx = qa_col_idx.get("STATUS")
 
         status_distribution = {}
         if _temp_status_idx is not None:
-            for row_idx, row_tuple in enumerate(_temp_data_rows, start=2):
+            for row_idx, row_tuple in enumerate(qa_data_rows, start=2):
                 if _temp_status_idx < len(row_tuple):
                     status_val = row_tuple[_temp_status_idx]
                     if status_val and str(status_val).strip():
@@ -552,7 +557,7 @@ def process_sheet(
                         status_upper = str(status_val).strip().upper()
                         status_distribution[status_upper] = status_distribution.get(status_upper, 0) + 1
 
-        print(f"      [OPTIMIZATION] {len(rows_to_process)} rows with STATUS (skipping {len(_temp_data_rows) - len(rows_to_process)} empty rows)")
+        print(f"      [OPTIMIZATION] {len(rows_to_process)} rows with STATUS (skipping {len(qa_data_rows) - len(rows_to_process)} empty rows)")
 
         _script_debug_log(f"  STATUS column index: {_temp_status_idx}")
         _script_debug_log(f"  rows_to_process: {len(rows_to_process)}")
@@ -563,15 +568,6 @@ def process_sheet(
     else:
         # Non-Script categories: process all rows
         rows_to_process = list(range(2, qa_ws.max_row + 1))
-
-    # Build column cache for O(1) header lookups (Phase 2 optimization)
-    qa_column_cache = build_column_map(qa_ws)
-
-    # ==========================================================================
-    # FAST PRELOAD: Load ALL QA data into memory as tuples (10-50x faster)
-    # ==========================================================================
-    # This eliminates millions of slow ws.cell() calls
-    qa_col_idx, qa_data_rows = preload_worksheet_data(qa_ws)
 
     # Map 1-based column numbers to 0-based tuple indices for fast access
     qa_status_idx = qa_col_idx.get("STATUS")
@@ -658,11 +654,11 @@ def process_sheet(
                 if qa_stringid_idx is not None and qa_stringid_idx < len(row_tuple):
                     string_id = row_tuple[qa_stringid_idx]
 
-                existing = master_ws.cell(row=master_row, column=master_comment_col).value
+                cell = master_ws.cell(row=master_row, column=master_comment_col)
+                existing = cell.value
                 new_value = format_comment(qa_comment_value, string_id, existing, file_mod_time)
 
                 if new_value != existing:
-                    cell = master_ws.cell(row=master_row, column=master_comment_col)
                     cell.value = sanitize_for_excel(new_value)
 
                     # Style based on status (shared constants)
@@ -858,6 +854,9 @@ def process_sheet(
         _script_debug_log(f"  manager_restored: {result['manager_restored']}")
         _script_debug_flush()
 
+    # Include preloaded data so caller can reuse for word counting (avoids 3rd preload)
+    result["_preloaded"] = (qa_col_idx, qa_data_rows)
+
     return result
 
 
@@ -1018,7 +1017,7 @@ def count_chars_chinese(text) -> int:
 # ROW/SHEET/COLUMN HIDING
 # =============================================================================
 
-def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> tuple:
+def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False, preloaded_sheets: dict = None) -> tuple:
     """
     Post-process: Hide rows/sheets/columns based on tester and manager status.
 
@@ -1130,9 +1129,12 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False) -> t
             if debug:
                 print(f"    [DEBUG] Reset column group for user '{username}' to visible (TESTER_STATUS stays hidden)")
 
-        # === FAST PRELOAD: Load all data as tuples (no ws.cell() calls!) ===
-        # This is critical for 100k+ row sheets
-        all_rows = list(ws.iter_rows(values_only=True))
+        # === FAST PRELOAD: Reuse cached data from autofit if available ===
+        # Avoids redundant full-sheet reload (saves one iter_rows pass per sheet)
+        if preloaded_sheets and sheet_name in preloaded_sheets:
+            all_rows = preloaded_sheets[sheet_name]
+        else:
+            all_rows = list(ws.iter_rows(values_only=True))
         if not all_rows:
             print(f" empty")
             continue
@@ -1317,12 +1319,19 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
         wb: Workbook
         default_row_height: Default height for single-line rows
         chars_per_line: Estimated characters per line (for height calculation)
+
+    Returns:
+        Dict of {sheet_name: all_rows_tuples} — preloaded data cache for reuse by
+        hide_empty_comment_rows() to avoid redundant full-sheet loads.
     """
     # Column width settings
     COMMENT_MIN_WIDTH = 40
     COMMENT_MAX_WIDTH = 80
     SCREENSHOT_WIDTH = 25
     STATUS_WIDTH = 12
+
+    # Cache preloaded data for reuse by hide_empty_comment_rows
+    sheet_data_cache = {}
 
     data_sheets = [s for s in wb.sheetnames if s != "STATUS"]
     for sheet_idx, sheet_name in enumerate(data_sheets, 1):
@@ -1333,6 +1342,7 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
 
         # === FAST PRELOAD: Load all data as tuples for O(1) access ===
         all_rows = list(ws.iter_rows(values_only=True))
+        sheet_data_cache[sheet_name] = all_rows  # Cache for hide_empty_comment_rows
         if not all_rows:
             print(f" empty")
             continue
@@ -1429,3 +1439,5 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
                 ws.row_dimensions[row_idx].height = min(max_lines * default_row_height, 300)
 
         print(f" done")
+
+    return sheet_data_cache
