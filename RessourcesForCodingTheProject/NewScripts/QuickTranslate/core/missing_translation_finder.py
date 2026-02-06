@@ -941,6 +941,437 @@ def find_missing_translations(
     }
 
 
+# =============================================================================
+# Category colors and sort order (matches LanguageDataExporter)
+# =============================================================================
+
+CATEGORY_COLORS = {
+    "Sequencer": "#FFE599",
+    "AIDialog": "#C6EFCE",
+    "QuestDialog": "#C6EFCE",
+    "NarrationDialog": "#C6EFCE",
+    "Item": "#D9D2E9",
+    "Quest": "#D9D2E9",
+    "Character": "#F8CBAD",
+    "Gimmick": "#D9D2E9",
+    "Skill": "#D9D2E9",
+    "Knowledge": "#D9D2E9",
+    "Faction": "#D9D2E9",
+    "UI": "#A9D08E",
+    "Region": "#F8CBAD",
+    "System_Misc": "#D9D9D9",
+    "Uncategorized": "#DDD9C4",
+}
+
+# STORY first, then GAME_DATA alphabetically, Uncategorized last
+CATEGORY_SORT_ORDER = [
+    "Sequencer", "AIDialog", "QuestDialog", "NarrationDialog",
+    "Character", "Faction", "Gimmick", "Item", "Knowledge",
+    "Quest", "Region", "Skill", "System_Misc", "UI",
+    "Uncategorized",
+]
+
+
+def _category_sort_key(category: str) -> tuple:
+    """Sort key for category ordering."""
+    try:
+        return (0, CATEGORY_SORT_ORDER.index(category))
+    except ValueError:
+        return (1, category)
+
+
+@dataclass
+class MissingEntryWithCategory:
+    """A missing translation entry with category info."""
+    string_id: str
+    str_origin: str
+    translation: str  # The Str value from target (Korean text)
+    category: str
+    source_file: str
+
+
+def _collect_source_strorigins(source_folder: Path) -> Set[str]:
+    """Collect set of normalized StrOrigin texts from source folder."""
+    origins = set()
+    for root_dir, _, files in os.walk(source_folder):
+        for fn in files:
+            if not fn.lower().endswith(".xml"):
+                continue
+            fp = Path(root_dir) / fn
+            for key, _loc in iter_locstr_from_file(fp):
+                so = key[0].strip()
+                if so:
+                    origins.add(so)
+    return origins
+
+
+def _collect_source_strorigins_from_file(source_file: Path) -> Set[str]:
+    """Collect set of StrOrigin texts from single source file."""
+    origins = set()
+    for key, _loc in iter_locstr_from_file(source_file):
+        so = key[0].strip()
+        if so:
+            origins.add(so)
+    return origins
+
+
+def _write_missing_excel_with_categories(
+    entries: List[MissingEntryWithCategory],
+    output_path: Path,
+    language: str,
+) -> bool:
+    """
+    Write per-language Excel file with StrOrigin, Translation, StringID, Category columns.
+
+    Rows sorted by category. Category column color-coded.
+    """
+    try:
+        import xlsxwriter
+    except ImportError:
+        return False
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    wb = xlsxwriter.Workbook(str(output_path))
+
+    # Header format
+    header_fmt = wb.add_format({
+        'bold': True,
+        'bg_color': '#2F5496',
+        'font_color': 'white',
+        'font_size': 11,
+        'border': 2,
+        'align': 'center',
+        'valign': 'vcenter',
+    })
+
+    # Base row format
+    base_fmt = {
+        'border': 1,
+        'valign': 'vcenter',
+        'text_wrap': True,
+    }
+
+    # Build category-specific formats
+    cat_formats = {}
+    for cat, color in CATEGORY_COLORS.items():
+        cat_formats[cat] = wb.add_format({**base_fmt, 'bg_color': color})
+
+    default_cat_fmt = wb.add_format({**base_fmt, 'bg_color': '#DDD9C4'})
+    text_fmt = wb.add_format({**base_fmt})
+
+    ws = wb.add_worksheet("Missing Translations")
+    ws.set_column('A:A', 55)  # StrOrigin
+    ws.set_column('B:B', 55)  # Translation
+    ws.set_column('C:C', 22)  # StringID
+    ws.set_column('D:D', 18)  # Category
+
+    # Headers
+    for col, h in enumerate(["StrOrigin", "Translation", "StringID", "Category"]):
+        ws.write(0, col, h, header_fmt)
+
+    # Sort entries by category
+    entries.sort(key=lambda e: _category_sort_key(e.category))
+
+    # Write rows
+    for i, entry in enumerate(entries, 1):
+        ws.write(i, 0, entry.str_origin[:500], text_fmt)
+        ws.write(i, 1, entry.translation[:500], text_fmt)
+        ws.write(i, 2, entry.string_id, text_fmt)
+        cat_fmt = cat_formats.get(entry.category, default_cat_fmt)
+        ws.write(i, 3, entry.category, cat_fmt)
+
+    # Auto-filter and freeze
+    if entries:
+        ws.autofilter(0, 0, len(entries), 3)
+    ws.freeze_panes(1, 0)
+
+    wb.close()
+    return True
+
+
+def find_missing_with_options(
+    source_path: str,
+    target_path: str,
+    output_dir: str,
+    match_mode: str = "stringid_kr_strict",
+    threshold: float = 0.85,
+    export_folder: Optional[str] = None,
+    progress_cb: Optional[Callable[[str, int], None]] = None,
+    model=None,
+) -> Dict:
+    """
+    Find missing translations with configurable match modes.
+
+    Generates per-language Excel files with StrOrigin, Translation, StringID, Category.
+
+    Args:
+        source_path: Path to source file or folder
+        target_path: Path to target folder (LOC folder with languagedata_*.xml)
+        output_dir: Directory for output files
+        match_mode: One of stringid_kr_strict, stringid_kr_fuzzy, kr_strict, kr_fuzzy
+        threshold: Fuzzy similarity threshold (only for fuzzy modes)
+        export_folder: Path to EXPORT folder for category mapping
+        progress_cb: Optional callback(message, percent)
+        model: Pre-loaded KR-SBERT model (required for fuzzy modes)
+
+    Returns:
+        Dict with statistics per language and output paths
+    """
+    source = Path(source_path)
+    target = Path(target_path)
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Step 1: Build category index from EXPORT folder
+    if progress_cb:
+        progress_cb("Building category index...", 5)
+
+    category_index: Dict[str, str] = {}
+    if export_folder:
+        export_path = Path(export_folder)
+        if export_path.exists():
+            from .category_mapper import build_stringid_category_index
+            category_index = build_stringid_category_index(export_path)
+
+    if progress_cb:
+        progress_cb(f"Category index: {len(category_index)} StringIDs mapped", 15)
+
+    # Step 2: Collect SOURCE keys based on match_mode
+    if progress_cb:
+        progress_cb("Collecting SOURCE keys...", 18)
+
+    use_stringid = match_mode.startswith("stringid_kr")
+    is_fuzzy = match_mode.endswith("_fuzzy")
+
+    if use_stringid:
+        # (StrOrigin, StringId) composite keys
+        if source.is_file():
+            source_keys = collect_source_keys_from_file(source)
+        else:
+            source_keys = collect_source_keys_from_folder(source)
+    else:
+        # KR-only: just StrOrigin texts
+        if source.is_file():
+            source_origins = _collect_source_strorigins_from_file(source)
+        else:
+            source_origins = _collect_source_strorigins(source)
+
+    # Step 3: Collect TARGET Korean entries per language
+    if progress_cb:
+        progress_cb("Scanning TARGET for Korean strings...", 22)
+
+    per_lang_korean = collect_target_korean_per_language(target, progress_cb)
+
+    # Step 4: For fuzzy modes, prepare embeddings
+    source_embeddings = None
+    source_texts_list = None
+    source_group_embeddings = None  # For stringid_kr_fuzzy
+
+    if is_fuzzy:
+        import numpy as np
+
+        if not use_stringid:
+            # kr_fuzzy: encode ALL unique source StrOrigin texts
+            if progress_cb:
+                progress_cb("Encoding SOURCE texts with KR-SBERT...", 40)
+
+            all_source_texts = list(source_origins)
+            source_texts_list = all_source_texts
+
+            # Batch encode
+            batch_size = 100
+            all_vecs = []
+            for i in range(0, len(all_source_texts), batch_size):
+                batch = all_source_texts[i:i + batch_size]
+                vecs = model.encode(batch, show_progress_bar=False)
+                all_vecs.append(vecs)
+                if progress_cb:
+                    done = min(i + batch_size, len(all_source_texts))
+                    pct = 40 + int(10 * done / max(len(all_source_texts), 1))
+                    progress_cb(f"Encoding SOURCE ({done}/{len(all_source_texts)})...", pct)
+
+            if all_vecs:
+                source_embeddings = np.vstack(all_vecs).astype(np.float32)
+                # L2 normalize for cosine similarity
+                norms = np.linalg.norm(source_embeddings, axis=1, keepdims=True)
+                norms[norms == 0] = 1
+                source_embeddings = source_embeddings / norms
+
+        elif use_stringid:
+            # stringid_kr_fuzzy: group source by StringID
+            if progress_cb:
+                progress_cb("Grouping SOURCE by StringID for fuzzy...", 40)
+
+            # Build StringID -> list of StrOrigin texts
+            source_by_sid: Dict[str, List[str]] = {}
+            for (so, sid) in source_keys:
+                if so.strip():
+                    source_by_sid.setdefault(sid, []).append(so)
+
+            # Pre-encode all unique texts grouped by StringID
+            source_group_embeddings = {}
+            total_sids = len(source_by_sid)
+            for idx, (sid, texts) in enumerate(source_by_sid.items()):
+                vecs = model.encode(texts, show_progress_bar=False)
+                vecs = vecs.astype(np.float32)
+                norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+                norms[norms == 0] = 1
+                vecs = vecs / norms
+                source_group_embeddings[sid] = vecs
+                if progress_cb and (idx + 1) % 500 == 0:
+                    pct = 40 + int(10 * (idx + 1) / max(total_sids, 1))
+                    progress_cb(f"Encoding groups ({idx + 1}/{total_sids})...", pct)
+
+    # Step 5: Find misses per language
+    results = {
+        "match_mode": match_mode,
+        "threshold": threshold,
+        "languages": {},
+        "output_files": [],
+        "total_misses": 0,
+        "total_hits": 0,
+        "total_korean": 0,
+    }
+
+    total_langs = len(per_lang_korean)
+    for lang_idx, (lang, korean_entries) in enumerate(sorted(per_lang_korean.items()), 1):
+        if progress_cb:
+            pct = 55 + int(35 * lang_idx / max(total_langs, 1))
+            progress_cb(f"Processing {lang}...", pct)
+
+        missing_entries: List[MissingEntryWithCategory] = []
+        hits = 0
+
+        if not is_fuzzy:
+            # === STRICT modes ===
+            for key, entry in korean_entries.items():
+                if use_stringid:
+                    # stringid_kr_strict: exact (StrOrigin, StringID) match
+                    if key in source_keys:
+                        hits += 1
+                        continue
+                else:
+                    # kr_strict: exact StrOrigin text match
+                    if entry.str_origin.strip() in source_origins:
+                        hits += 1
+                        continue
+
+                # MISS
+                cat = category_index.get(entry.string_id, "Uncategorized")
+                missing_entries.append(MissingEntryWithCategory(
+                    string_id=entry.string_id,
+                    str_origin=entry.str_origin,
+                    translation=entry.str_value,
+                    category=cat,
+                    source_file=entry.source_file,
+                ))
+
+        else:
+            # === FUZZY modes ===
+            import numpy as np
+
+            if use_stringid and source_group_embeddings is not None:
+                # stringid_kr_fuzzy: compare within StringID groups
+                for key, entry in korean_entries.items():
+                    sid = entry.string_id
+                    so = entry.str_origin.strip()
+
+                    if sid not in source_group_embeddings:
+                        # StringID not in source at all -> automatic MISS
+                        cat = category_index.get(sid, "Uncategorized")
+                        missing_entries.append(MissingEntryWithCategory(
+                            string_id=sid,
+                            str_origin=entry.str_origin,
+                            translation=entry.str_value,
+                            category=cat,
+                            source_file=entry.source_file,
+                        ))
+                        continue
+
+                    # Encode target text and compare against source group
+                    target_vec = model.encode([so], show_progress_bar=False).astype(np.float32)
+                    norm = np.linalg.norm(target_vec)
+                    if norm > 0:
+                        target_vec = target_vec / norm
+
+                    group_vecs = source_group_embeddings[sid]
+                    sims = (target_vec @ group_vecs.T).flatten()
+                    max_sim = float(sims.max()) if len(sims) > 0 else 0.0
+
+                    if max_sim >= threshold:
+                        hits += 1
+                    else:
+                        cat = category_index.get(sid, "Uncategorized")
+                        missing_entries.append(MissingEntryWithCategory(
+                            string_id=sid,
+                            str_origin=entry.str_origin,
+                            translation=entry.str_value,
+                            category=cat,
+                            source_file=entry.source_file,
+                        ))
+
+            elif not use_stringid and source_embeddings is not None:
+                # kr_fuzzy: batch similarity against all source texts
+                target_texts = []
+                target_entries_list = []
+                for key, entry in korean_entries.items():
+                    target_texts.append(entry.str_origin.strip())
+                    target_entries_list.append(entry)
+
+                batch_size = 100
+                for i in range(0, len(target_texts), batch_size):
+                    batch_texts = target_texts[i:i + batch_size]
+                    batch_entries = target_entries_list[i:i + batch_size]
+
+                    target_vecs = model.encode(batch_texts, show_progress_bar=False).astype(np.float32)
+                    norms = np.linalg.norm(target_vecs, axis=1, keepdims=True)
+                    norms[norms == 0] = 1
+                    target_vecs = target_vecs / norms
+
+                    # (batch, source_count) similarities
+                    sims = target_vecs @ source_embeddings.T
+                    max_sims = sims.max(axis=1)
+
+                    for j, (sim, entry) in enumerate(zip(max_sims, batch_entries)):
+                        if float(sim) >= threshold:
+                            hits += 1
+                        else:
+                            cat = category_index.get(entry.string_id, "Uncategorized")
+                            missing_entries.append(MissingEntryWithCategory(
+                                string_id=entry.string_id,
+                                str_origin=entry.str_origin,
+                                translation=entry.str_value,
+                                category=cat,
+                                source_file=entry.source_file,
+                            ))
+
+        # Write per-language Excel
+        lang_result = {
+            "korean_entries": len(korean_entries),
+            "hits": hits,
+            "misses": len(missing_entries),
+        }
+
+        if missing_entries:
+            excel_path = out_dir / f"MISSING_{lang}_{timestamp}.xlsx"
+            _write_missing_excel_with_categories(missing_entries, excel_path, lang)
+            lang_result["output_file"] = str(excel_path)
+            results["output_files"].append(str(excel_path))
+
+        results["languages"][lang] = lang_result
+        results["total_misses"] += len(missing_entries)
+        results["total_hits"] += hits
+        results["total_korean"] += len(korean_entries)
+
+    if progress_cb:
+        progress_cb("Done.", 100)
+
+    return results
+
+
 def generate_output_filename(source_path: str, target_path: str, output_dir: Optional[str] = None) -> str:
     """
     Generate automatic output filename.
