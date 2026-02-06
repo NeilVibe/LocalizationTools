@@ -991,11 +991,11 @@ def _prematch_strict_fuzzy(
 
             # Batch encode all candidate texts for this StringID
             cand_texts = [cand_text for cand_text, cand_entry in candidates]
-            cand_embeddings = model.encode(cand_texts, normalize_embeddings=True)
+            cand_embeddings = model.encode(cand_texts, normalize_embeddings=True, show_progress_bar=False)
 
             # Batch encode all query texts for this StringID group
             query_texts = [src_origin for idx, c, src_origin in correction_group]
-            query_embeddings = model.encode(query_texts, normalize_embeddings=True)
+            query_embeddings = model.encode(query_texts, normalize_embeddings=True, show_progress_bar=False)
 
             # Compute similarity matrix: (num_queries x num_candidates)
             scores = query_embeddings @ cand_embeddings.T

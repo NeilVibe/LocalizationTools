@@ -215,7 +215,7 @@ def search_fuzzy(
         return []
 
     # Encode query
-    query_embedding = model.encode([query_text.strip()], convert_to_numpy=True)
+    query_embedding = model.encode([query_text.strip()], convert_to_numpy=True, show_progress_bar=False)
     query_embedding = np.ascontiguousarray(query_embedding, dtype=np.float32)
     faiss.normalize_L2(query_embedding)
 
