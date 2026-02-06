@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 # SCRIPT categories - imported from config for single source of truth
 SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
+SCRIPT_EXCLUDE_SUBFOLDERS = config.SCRIPT_EXCLUDE_SUBFOLDERS
 
 
 def normalize_text(text: str) -> str:
@@ -107,6 +108,7 @@ def find_matches_with_stats(
 def find_matches_stringid_only(
     corrections: List[Dict],
     stringid_to_category: Dict[str, str],
+    stringid_to_subfolder: Optional[Dict[str, str]] = None,
 ) -> Tuple[List[Dict], int]:
     """
     Filter corrections to SCRIPT-only and match by StringID.
@@ -114,9 +116,12 @@ def find_matches_stringid_only(
     For SCRIPT strings from export/Dialog/ and export/Sequencer/ folders,
     StrOrigin is just the raw KOR text, so StringID is sufficient for matching.
 
+    Also excludes StringIDs in SCRIPT_EXCLUDE_SUBFOLDERS (e.g. NarrationDialog).
+
     Args:
         corrections: List of correction dicts with "string_id" key
         stringid_to_category: Dict mapping StringID to category (folder) name
+        stringid_to_subfolder: Optional dict mapping StringID to subfolder name
 
     Returns:
         Tuple of (script_corrections, skipped_count)
@@ -124,11 +129,20 @@ def find_matches_stringid_only(
     script_corrections = []
     skipped = 0
 
+    # Pre-compute lowercase exclusion set for case-insensitive matching
+    exclude_lower = {s.lower() for s in SCRIPT_EXCLUDE_SUBFOLDERS}
+
     for c in corrections:
         string_id = c.get("string_id", "")
         category = stringid_to_category.get(string_id, "Uncategorized")
 
         if category in SCRIPT_CATEGORIES:
+            # Check if subfolder is in exclusion list (case-insensitive)
+            if stringid_to_subfolder:
+                subfolder = stringid_to_subfolder.get(string_id, "")
+                if subfolder.lower() in exclude_lower:
+                    skipped += 1
+                    continue
             script_corrections.append(c)
         else:
             skipped += 1

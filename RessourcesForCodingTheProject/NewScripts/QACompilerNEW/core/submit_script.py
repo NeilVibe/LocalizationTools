@@ -91,14 +91,10 @@ def collect_issue_rows(
 
                 ws = wb[sheet_name]
 
-                # Check for empty sheet
-                if ws.max_row is None or ws.max_row < 2:
-                    continue
-                if ws.max_column is None or ws.max_column < 1:
-                    continue
-
-                # Build column map for header lookup
+                # Build column map (uses iter_rows internally, safe for read_only)
                 col_map = build_column_map(ws)
+                if not col_map:
+                    continue
 
                 # Find required columns by name
                 status_col = col_map.get("STATUS")
@@ -127,7 +123,7 @@ def collect_issue_rows(
                 comment_user_idxs = [(c - 1) for c in comment_user_cols]
 
                 # Scan rows for ISSUE status
-                for row_tuple in ws.iter_rows(min_row=2, max_col=ws.max_column, values_only=True):
+                for row_tuple in ws.iter_rows(min_row=2, values_only=True):
                     # Skip empty or too-short rows
                     if not row_tuple or len(row_tuple) <= status_idx:
                         continue
@@ -184,7 +180,9 @@ def collect_issue_rows(
                             missing_eventnames += 1
 
         except Exception as e:
+            import traceback
             print(f"    WARNING: Error reading {xlsx_path.name}: {e}")
+            traceback.print_exc()
         finally:
             if wb:
                 wb.close()

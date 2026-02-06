@@ -1172,7 +1172,8 @@ class QuickTranslateApp:
 
                 if corrections:
                     script_corrections, skipped = find_matches_stringid_only(
-                        corrections, self.stringid_to_category
+                        corrections, self.stringid_to_category,
+                        self.stringid_to_subfolder,
                     )
                     korean_inputs = [c.get("str_origin", "") for c in script_corrections]
                     for c in script_corrections:
@@ -1187,10 +1188,17 @@ class QuickTranslateApp:
                     self._log(f"  - Non-SCRIPT skipped: {stats['skipped']}", 'warning')
                 else:
                     # Excel mode with StringIDs in column A
+                    exclude_lower = {s.lower() for s in config.SCRIPT_EXCLUDE_SUBFOLDERS}
                     for text in korean_inputs:
                         sid = text.strip()
                         category = self.stringid_to_category.get(sid, "")
                         if category in config.SCRIPT_CATEGORIES:
+                            # Check subfolder exclusion (case-insensitive)
+                            subfolder = self.stringid_to_subfolder.get(sid, "") if self.stringid_to_subfolder else ""
+                            if subfolder.lower() in exclude_lower:
+                                matches_per_input.append([])
+                                stats["skipped"] += 1
+                                continue
                             matches_per_input.append([sid])
                             stats["matched"] += 1
                         else:

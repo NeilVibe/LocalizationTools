@@ -33,24 +33,14 @@ def _load_settings() -> dict:
     """
     settings_path = SCRIPT_DIR / "settings.json"
 
-    print(f"[DEBUG CONFIG] SCRIPT_DIR = {SCRIPT_DIR}")
-    print(f"[DEBUG CONFIG] Looking for settings at: {settings_path}")
-    print(f"[DEBUG CONFIG] settings.json exists? {settings_path.exists()}")
-
     if settings_path.exists():
         try:
             with open(settings_path, 'r', encoding='utf-8') as f:
                 settings = json.load(f)
-            print(f"[DEBUG CONFIG] Loaded settings.json successfully!")
-            print(f"[DEBUG CONFIG] Settings content: {json.dumps(settings, indent=2)}")
             logger.info(f"Loaded settings from {settings_path}")
             return settings
         except (json.JSONDecodeError, IOError) as e:
-            print(f"[DEBUG CONFIG] ERROR loading settings.json: {e}")
             logger.warning(f"Failed to load settings.json: {e}")
-    else:
-        print(f"[DEBUG CONFIG] settings.json NOT FOUND - using defaults")
-
     return {}
 
 # Load settings at module level
@@ -65,10 +55,6 @@ _loc = _SETTINGS.get("loc_folder")
 _export = _SETTINGS.get("export_folder")
 _vrs = _SETTINGS.get("vrs_folder")
 
-print(f"[DEBUG CONFIG] _loc from settings = {_loc}")
-print(f"[DEBUG CONFIG] _export from settings = {_export}")
-print(f"[DEBUG CONFIG] _vrs from settings = {_vrs}")
-
 # LOC folder: Contains languagedata_*.xml files
 LOC_FOLDER = Path(_loc) if _loc else Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
 
@@ -82,14 +68,6 @@ VOICE_RECORDING_FOLDER = Path(_vrs) if _vrs else Path(r"F:\perforce\cd\mainline\
 # LOCDEV folder: Contains dev languagedata XML files for merging corrections back
 _locdev = _SETTINGS.get("locdev_folder")
 LOCDEV_FOLDER = Path(_locdev) if _locdev else Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\locdev__")
-
-print(f"[DEBUG CONFIG] === FINAL PATHS ===")
-print(f"[DEBUG CONFIG] LOC_FOLDER = {LOC_FOLDER}")
-print(f"[DEBUG CONFIG] LOC_FOLDER exists? {LOC_FOLDER.exists()}")
-print(f"[DEBUG CONFIG] EXPORT_FOLDER = {EXPORT_FOLDER}")
-print(f"[DEBUG CONFIG] EXPORT_FOLDER exists? {EXPORT_FOLDER.exists()}")
-print(f"[DEBUG CONFIG] VOICE_RECORDING_FOLDER = {VOICE_RECORDING_FOLDER}")
-print(f"[DEBUG CONFIG] VOICE_RECORDING_FOLDER exists? {VOICE_RECORDING_FOLDER.exists()}")
 
 # =============================================================================
 # Output Configuration

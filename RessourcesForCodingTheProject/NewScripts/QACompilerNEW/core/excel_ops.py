@@ -162,20 +162,25 @@ def build_column_map(ws) -> Dict[str, int]:
     First occurrence wins (matches find_column_by_header behavior).
     Keys are uppercased for case-insensitive matching.
 
+    Uses iter_rows(values_only=True) which is safe for both normal
+    and read_only worksheets (ws.cell() is unreliable in read_only mode).
+
     Args:
-        ws: Worksheet
+        ws: Worksheet (normal or read_only)
 
     Returns:
         Dict mapping uppercase header name to column index
     """
     col_map = {}
-    max_col = ws.max_column or 0
-    for col in range(1, max_col + 1):
-        header = ws.cell(row=1, column=col).value
-        if header:
-            key = str(header).strip().upper()
+    header_iter = ws.iter_rows(min_row=1, max_row=1, values_only=True)
+    header_tuple = next(header_iter, None)
+    if not header_tuple:
+        return col_map
+    for idx, header_val in enumerate(header_tuple):
+        if header_val:
+            key = str(header_val).strip().upper()
             if key not in col_map:
-                col_map[key] = col
+                col_map[key] = idx + 1  # 1-based
     return col_map
 
 

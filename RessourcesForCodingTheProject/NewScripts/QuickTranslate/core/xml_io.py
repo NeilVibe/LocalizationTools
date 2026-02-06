@@ -4,10 +4,13 @@ XML Input Parsing.
 Parse corrections from XML files for transfer mode.
 """
 
+import logging
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 from .xml_parser import parse_xml_file, iter_locstr_elements
+
+logger = logging.getLogger(__name__)
 
 
 def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
@@ -42,8 +45,8 @@ def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
                     "corrected": str_value,
                     "raw_attribs": raw_attribs,  # ALL original attributes
                 })
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to parse XML file {xml_path}: {e}")
 
     return corrections
 
@@ -118,7 +121,7 @@ def extract_stringids_from_xml(xml_path: Path) -> List[str]:
                         elem.get('stringid') or elem.get('STRINGID') or '').strip()
             if string_id:
                 string_ids.append(string_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to parse XML file {xml_path}: {e}")
 
     return string_ids

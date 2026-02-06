@@ -15,12 +15,36 @@ import stat
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from lxml import etree
 
 from openpyxl import load_workbook
 
 logger = logging.getLogger(__name__)
+
+
+def _get_attr(element, names, default=""):
+    """Try multiple case variants of an attribute name.
+
+    Args:
+        element: lxml element to read attribute from
+        names: List of attribute name variants to try
+        default: Default value if no variant found
+
+    Returns:
+        Attribute value or default
+    """
+    for name in names:
+        val = element.get(name)
+        if val is not None:
+            return val
+    return default
+
+
+# Attribute name variants for case-insensitive matching
+_STRINGID_VARIANTS = ["StringId", "StringID", "stringid", "STRINGID", "Stringid", "stringId"]
+_STRORIGIN_VARIANTS = ["StrOrigin", "Strorigin", "strorigin", "STRORIGIN"]
+_STR_VARIANTS = ["Str", "str", "STR"]
 
 
 def normalize_text(txt: Optional[str]) -> str:
@@ -48,10 +72,10 @@ def normalize_text(txt: Optional[str]) -> str:
     # Collapse all whitespace to single space and strip
     txt = re.sub(r'\s+', ' ', txt.strip())
     # Remove &desc; markers (case-insensitive)
+    # Note: html.unescape() above already converts &amp;desc; to &desc;
+    # so only the &desc; check is needed here.
     if txt.lower().startswith("&desc;"):
         txt = txt[6:].lstrip()
-    elif txt.lower().startswith("&amp;desc;"):
-        txt = txt[10:].lstrip()
     return txt
 
 
@@ -178,6 +202,7 @@ def merge_corrections_to_locdev(
         "matched": 0,
         "updated": 0,
         "not_found": 0,
+        "skipped_empty": 0,
         "errors": [],
         "by_category": {},  # {category: {matched, updated, not_found}}
         "not_found_details": [],  # List of {string_id, str_origin, category} for failed matches
@@ -198,7 +223,10 @@ def merge_corrections_to_locdev(
         origin_nospace = normalize_nospace(origin_norm)
         category = c.get("category", "Uncategorized")
 
-        correction_lookup[(sid, origin_norm)] = (c["corrected"], category, i)
+        key = (sid, origin_norm)
+        if key in correction_lookup:
+            logger.warning(f"Duplicate correction for ({sid}, origin) - last entry wins")
+        correction_lookup[key] = (c["corrected"], category, i)
         correction_lookup_nospace[(sid, origin_nospace)] = (c["corrected"], category, i)
 
     # Initialize category stats
@@ -220,8 +248,8 @@ def merge_corrections_to_locdev(
         changed = False
 
         for loc in root.iter("LocStr"):
-            sid = loc.get("StringId", "").strip()
-            orig = normalize_text(loc.get("StrOrigin", ""))
+            sid = _get_attr(loc, _STRINGID_VARIANTS).strip()
+            orig = normalize_text(_get_attr(loc, _STRORIGIN_VARIANTS))
             orig_nospace = normalize_nospace(orig)
             key = (sid, orig)
             key_nospace = (sid, orig_nospace)
@@ -236,10 +264,17 @@ def merge_corrections_to_locdev(
 
             if match_data is not None:
                 new_str, category, idx = match_data
+
+                # Skip empty corrections to prevent deleting translations
+                if not new_str.strip():
+                    result["skipped_empty"] += 1
+                    logger.warning(f"Skipped empty correction for StringId={sid}")
+                    continue
+
                 correction_matched[idx] = True
                 result["matched"] += 1
                 result["by_category"][category]["matched"] += 1
-                old_str = loc.get("Str", "")
+                old_str = _get_attr(loc, _STR_VARIANTS)
 
                 if new_str != old_str:
                     if not dry_run:
@@ -451,6 +486,7 @@ SCRIPT_CATEGORIES = {"Dialog", "Sequencer"}
 
 # Subfolders explicitly excluded from StringID-only transfer
 SCRIPT_EXCLUDE_SUBFOLDERS = {"NarrationDialog"}
+SCRIPT_EXCLUDE_SUBFOLDERS_LOWER = {s.lower() for s in SCRIPT_EXCLUDE_SUBFOLDERS}
 
 
 def merge_corrections_stringid_only_script(
@@ -505,8 +541,8 @@ def merge_corrections_stringid_only_script(
             logger.debug(f"Skipped non-SCRIPT StringID={sid} (toplevel={toplevel})")
             continue
 
-        # Check if subfolder is in exclusion list
-        if subfolder in SCRIPT_EXCLUDE_SUBFOLDERS:
+        # Check if subfolder is in exclusion list (case-insensitive)
+        if subfolder.lower() in SCRIPT_EXCLUDE_SUBFOLDERS_LOWER:
             result["skipped_excluded"] += 1
             logger.debug(f"Skipped excluded subfolder StringID={sid} (subfolder={subfolder})")
             continue
@@ -552,7 +588,7 @@ def merge_corrections_stringid_only_script(
         changed = False
 
         for loc in root.iter("LocStr"):
-            sid = loc.get("StringId", "").strip()
+            sid = _get_attr(loc, _STRINGID_VARIANTS).strip()
 
             # StringID-only matching
             if sid in correction_lookup:
@@ -566,7 +602,7 @@ def merge_corrections_stringid_only_script(
                 if category in result["by_category"]:
                     result["by_category"][category]["matched"] += 1
 
-                old_str = loc.get("Str", "")
+                old_str = _get_attr(loc, _STR_VARIANTS)
 
                 if new_str != old_str:
                     if not dry_run:
@@ -880,9 +916,6 @@ def print_merge_report(results: Dict) -> None:
     BR = "╝"  # Bottom-right
     LT = "╠"  # Left-T
     RT = "╣"  # Right-T
-    TT = "╦"  # Top-T
-    BT = "╩"  # Bottom-T
-    X = "╬"   # Cross
 
     width = 72
 
@@ -968,39 +1001,36 @@ def export_merge_report_to_excel(results: Dict, output_path: Path) -> bool:
     Returns:
         True if successful, False otherwise
     """
-    from openpyxl import Workbook
-    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    import xlsxwriter
 
     try:
-        wb = Workbook()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        wb = xlsxwriter.Workbook(str(output_path))
 
-        # Remove default sheet
-        default_sheet = wb.active
-        wb.remove(default_sheet)
-
-        # Styling
-        header_font = Font(bold=True, size=11, color="FFFFFF")
-        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-        header_align = Alignment(horizontal="center", vertical="center")
-        fail_fill = PatternFill(start_color="FFE0E0", end_color="FFE0E0", fill_type="solid")
-        thin_border = Border(
-            left=Side(style='thin'), right=Side(style='thin'),
-            top=Side(style='thin'), bottom=Side(style='thin')
-        )
+        # Formats
+        header_fmt = wb.add_format({
+            'bold': True,
+            'font_size': 11,
+            'font_color': '#FFFFFF',
+            'bg_color': '#4472C4',
+            'align': 'center',
+            'valign': 'vcenter',
+            'border': 1,
+        })
+        cell_fmt = wb.add_format({'border': 1})
+        fail_fmt = wb.add_format({'border': 1, 'bg_color': '#FFE0E0'})
+        bold_fmt = wb.add_format({'bold': True, 'border': 1})
+        msg_fmt = wb.add_format({'border': 1, 'align': 'left'})
 
         # === Summary Tab ===
-        ws_summary = wb.create_sheet("Summary")
+        ws_summary = wb.add_worksheet("Summary")
 
         summary_headers = ["Language", "Corrections", "Success", "Fail", "Rate %"]
-        for col, header in enumerate(summary_headers, 1):
-            cell = ws_summary.cell(row=1, column=col, value=header)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = header_align
-            cell.border = thin_border
+        for col, header in enumerate(summary_headers):
+            ws_summary.write(0, col, header, header_fmt)
 
         file_results = results.get("file_results", {})
-        row = 2
+        row = 1
         for lang_code in sorted(file_results.keys()):
             fr = file_results[lang_code]
             corrections = fr.get("corrections", 0)
@@ -1008,14 +1038,11 @@ def export_merge_report_to_excel(results: Dict, output_path: Path) -> bool:
             fail = fr.get("fail", 0)
             rate = (success / corrections * 100) if corrections > 0 else 0.0
 
-            ws_summary.cell(row=row, column=1, value=lang_code.upper()).border = thin_border
-            ws_summary.cell(row=row, column=2, value=corrections).border = thin_border
-            ws_summary.cell(row=row, column=3, value=success).border = thin_border
-            fail_cell = ws_summary.cell(row=row, column=4, value=fail)
-            fail_cell.border = thin_border
-            if fail > 0:
-                fail_cell.fill = fail_fill
-            ws_summary.cell(row=row, column=5, value=f"{rate:.1f}%").border = thin_border
+            ws_summary.write(row, 0, lang_code.upper(), cell_fmt)
+            ws_summary.write(row, 1, corrections, cell_fmt)
+            ws_summary.write(row, 2, success, cell_fmt)
+            ws_summary.write(row, 3, fail, fail_fmt if fail > 0 else cell_fmt)
+            ws_summary.write(row, 4, f"{rate:.1f}%", cell_fmt)
             row += 1
 
         # Totals row
@@ -1024,62 +1051,60 @@ def export_merge_report_to_excel(results: Dict, output_path: Path) -> bool:
         total_fail = results.get("total_fail", 0)
         total_rate = (total_succ / total_corr * 100) if total_corr > 0 else 0.0
 
-        ws_summary.cell(row=row, column=1, value="TOTAL").font = Font(bold=True)
-        ws_summary.cell(row=row, column=2, value=total_corr).font = Font(bold=True)
-        ws_summary.cell(row=row, column=3, value=total_succ).font = Font(bold=True)
-        ws_summary.cell(row=row, column=4, value=total_fail).font = Font(bold=True)
-        ws_summary.cell(row=row, column=5, value=f"{total_rate:.1f}%").font = Font(bold=True)
-        for col in range(1, 6):
-            ws_summary.cell(row=row, column=col).border = thin_border
+        ws_summary.write(row, 0, "TOTAL", bold_fmt)
+        ws_summary.write(row, 1, total_corr, bold_fmt)
+        ws_summary.write(row, 2, total_succ, bold_fmt)
+        ws_summary.write(row, 3, total_fail, bold_fmt)
+        ws_summary.write(row, 4, f"{total_rate:.1f}%", bold_fmt)
 
         # Column widths
-        ws_summary.column_dimensions['A'].width = 15
-        ws_summary.column_dimensions['B'].width = 14
-        ws_summary.column_dimensions['C'].width = 12
-        ws_summary.column_dimensions['D'].width = 10
-        ws_summary.column_dimensions['E'].width = 10
+        ws_summary.set_column(0, 0, 15)   # Language
+        ws_summary.set_column(1, 1, 14)   # Corrections
+        ws_summary.set_column(2, 2, 12)   # Success
+        ws_summary.set_column(3, 3, 10)   # Fail
+        ws_summary.set_column(4, 4, 10)   # Rate %
+
+        # Freeze header row
+        ws_summary.freeze_panes(1, 0)
 
         # === Not Found Details Tab ===
-        ws_details = wb.create_sheet("Not Found Details")
+        ws_details = wb.add_worksheet("Not Found Details")
 
         detail_headers = ["Language", "StringID", "Category", "StrOrigin (truncated)"]
-        for col, header in enumerate(detail_headers, 1):
-            cell = ws_details.cell(row=1, column=col, value=header)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = header_align
-            cell.border = thin_border
+        for col, header in enumerate(detail_headers):
+            ws_details.write(0, col, header, header_fmt)
 
-        row = 2
+        row = 1
         for lang_code in sorted(file_results.keys()):
             fr = file_results[lang_code]
             not_found_details = fr.get("not_found_details", [])
 
             for detail in not_found_details:
-                ws_details.cell(row=row, column=1, value=lang_code.upper()).border = thin_border
-                ws_details.cell(row=row, column=2, value=detail.get("string_id", "")).border = thin_border
-                ws_details.cell(row=row, column=3, value=detail.get("category", "")).border = thin_border
-                ws_details.cell(row=row, column=4, value=detail.get("str_origin", "")).border = thin_border
+                ws_details.write(row, 0, lang_code.upper(), cell_fmt)
+                ws_details.write(row, 1, detail.get("string_id", ""), cell_fmt)
+                ws_details.write(row, 2, detail.get("category", ""), cell_fmt)
+                ws_details.write(row, 3, detail.get("str_origin", ""), cell_fmt)
                 row += 1
 
         # If no not_found details, add a message
-        if row == 2:
-            ws_details.cell(row=2, column=1, value="No failed matches - all corrections applied successfully!")
-            ws_details.merge_cells('A2:D2')
+        if row == 1:
+            ws_details.merge_range(
+                1, 0, 1, 3,
+                "No failed matches - all corrections applied successfully!",
+                msg_fmt,
+            )
 
         # Column widths
-        ws_details.column_dimensions['A'].width = 12
-        ws_details.column_dimensions['B'].width = 25
-        ws_details.column_dimensions['C'].width = 18
-        ws_details.column_dimensions['D'].width = 60
+        ws_details.set_column(0, 0, 12)   # Language
+        ws_details.set_column(1, 1, 25)   # StringID
+        ws_details.set_column(2, 2, 18)   # Category
+        ws_details.set_column(3, 3, 60)   # StrOrigin (truncated)
 
-        # Freeze headers
-        ws_summary.freeze_panes = 'A2'
-        ws_details.freeze_panes = 'A2'
+        # Freeze header row
+        ws_details.freeze_panes(1, 0)
 
         # Save
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        wb.save(output_path)
+        wb.close()
         logger.info(f"Merge report exported to: {output_path}")
         return True
 
