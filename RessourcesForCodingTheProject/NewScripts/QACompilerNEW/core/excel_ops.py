@@ -140,7 +140,8 @@ def find_column_by_header(ws, header_name: str, case_insensitive: bool = True) -
     Returns:
         Column index (1-based) or None if not found
     """
-    for col in range(1, ws.max_column + 1):
+    max_col = ws.max_column or 0
+    for col in range(1, max_col + 1):
         header = ws.cell(row=1, column=col).value
         if header:
             header_str = str(header).strip()
@@ -168,7 +169,8 @@ def build_column_map(ws) -> Dict[str, int]:
         Dict mapping uppercase header name to column index
     """
     col_map = {}
-    for col in range(1, ws.max_column + 1):
+    max_col = ws.max_column or 0
+    for col in range(1, max_col + 1):
         header = ws.cell(row=1, column=col).value
         if header:
             key = str(header).strip().upper()
@@ -188,7 +190,8 @@ def find_column_by_prefix(ws, prefix: str) -> Optional[int]:
     Returns:
         Column index (1-based) or None if not found
     """
-    for col in range(1, ws.max_column + 1):
+    max_col = ws.max_column or 0
+    for col in range(1, max_col + 1):
         header = ws.cell(row=1, column=col).value
         if header and str(header).upper().startswith(prefix.upper()):
             return col

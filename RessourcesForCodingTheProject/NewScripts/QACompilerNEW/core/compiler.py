@@ -11,6 +11,7 @@ Handles:
 - Progress tracker updates
 """
 
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from collections import defaultdict
@@ -991,11 +992,14 @@ def process_category(
             total_images += len(image_mapping)
 
         # Load QA workbook
-        # NOTE: All categories use standard mode (not read_only) because process_sheet()
-        # and word-counting use ws.cell() random access which is O(n²) in read_only mode.
-        # The 3-5x faster open from read_only is negligible vs the catastrophic per-row slowdown.
+        # Script categories (Sequencer/Dialog) have NO screenshots, so ws.cell() is never
+        # called on QA workbook in the hot loop → safe to use read_only for 3-5x faster load.
+        # Non-Script categories need standard mode for screenshot hyperlink reads (ws.cell).
         print(f"    Loading workbook...", end="", flush=True)
-        qa_wb = safe_load_workbook(xlsx_path)
+        if category.lower() in SCRIPT_TYPE_CATEGORIES:
+            qa_wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
+        else:
+            qa_wb = safe_load_workbook(xlsx_path)
         print(f" {len(qa_wb.sheetnames)} sheets")
 
         # EN Item category: Sort QA workbook sheets A-Z for consistent matching
@@ -1072,8 +1076,8 @@ def process_category(
 
             # Count words (EN) or characters (CN) from translation column
             # ONLY count rows where STATUS is filled (DONE rows)
-            # FAST: Use preloaded data for word counting (10-50x faster than ws.cell())
-            wc_col_idx, wc_data_rows = preload_worksheet_data(qa_ws)
+            # FAST: Reuse preloaded data from process_sheet (avoids redundant 3rd preload)
+            wc_col_idx, wc_data_rows = result["_preloaded"]
 
             # Get column indices from preloaded header map
             wc_status_idx = wc_col_idx.get("STATUS")
@@ -1182,11 +1186,11 @@ def process_category(
         # This way all columns get proper widths, even if hidden later
         # Bonus: if user unhides a column in Excel, it already looks good
         print(f"\n  Formatting: autofit columns and row heights...")
-        autofit_rows_with_wordwrap(master_wb)
+        sheet_data_cache = autofit_rows_with_wordwrap(master_wb)
 
-        # THEN hide empty rows/sheets/columns (focus on issues)
+        # THEN hide empty rows/sheets/columns (reuses preloaded data)
         print(f"  Optimizing: hiding empty rows/sheets/columns...")
-        hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(master_wb)
+        hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(master_wb, preloaded_sheets=sheet_data_cache)
 
         # Save master
         print(f"  Saving master file...", end="", flush=True)
@@ -1216,6 +1220,9 @@ def run_compiler():
     Discovers QA folders, routes by language, processes categories,
     and updates the progress tracker.
     """
+    # Start timing for final report
+    compilation_start_time = time.time()
+
     # Clear Script debug log for fresh run
     _script_debug_clear()
     _script_debug_log("=== STARTING FULL COMPILATION ===")
@@ -1508,11 +1515,11 @@ def run_compiler():
         if users:
             update_status_sheet(wb, users, dict(stats))
 
-        # 2. Autofit
-        autofit_rows_with_wordwrap(wb)
+        # 2. Autofit (returns preloaded sheet data for reuse)
+        sheet_data_cache = autofit_rows_with_wordwrap(wb)
 
-        # 3. Hide empty rows/sheets/columns
-        hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(wb)
+        # 3. Hide empty rows/sheets/columns (reuses preloaded data — avoids redundant load)
+        hidden_rows, hidden_sheets, hidden_columns = hide_empty_comment_rows(wb, preloaded_sheets=sheet_data_cache)
 
         # 4. Save
         wb.save(path)
@@ -1605,10 +1612,119 @@ def run_compiler():
             sheets_info += ", Facial (face animation)"
         print(f"  Sheets: {sheets_info}")
 
-    print("\n" + "=" * 60)
-    print("Compilation complete!")
-    print(f"Output EN: {MASTER_FOLDER_EN}")
-    print(f"Output CN: {MASTER_FOLDER_CN}")
+    # =========================================================================
+    # FINAL REPORT TABLE
+    # =========================================================================
+    elapsed = time.time() - compilation_start_time
+    minutes = int(elapsed // 60)
+    seconds = elapsed % 60
+
+    # Helper for consistent 70-char box lines (| + 68 inner + |)
+    W = 68
+    sep = "+" + "-" * W + "+"
+
+    print("\n")
+    print(sep)
+    print("|" + " FINAL COMPILATION REPORT".center(W) + "|")
+    print(sep)
+
+    # Timing
+    if minutes > 0:
+        time_str = f"{minutes}m {seconds:.1f}s"
+    else:
+        time_str = f"{seconds:.1f}s"
+    print(f"|  {'Total Time:':<20}{time_str:<{W - 22}}|")
+    print(sep)
+
+    # Aggregate stats from all_daily_entries
     if all_daily_entries:
-        print(f"Tracker: {TRACKER_PATH}")
-    print("=" * 60)
+        testers_en = set()
+        testers_cn = set()
+        categories_seen = set()
+        total_rows = 0
+        total_done = 0
+        total_issues = 0
+        total_no_issue = 0
+        total_blocked = 0
+        total_korean = 0
+        total_word_count = 0
+        total_mismatch = 0
+        total_missing = 0
+
+        for entry in all_daily_entries:
+            lang = entry.get("lang", "?")
+            user = entry.get("user", "?")
+            cat = entry.get("category", "?")
+            categories_seen.add(cat)
+
+            if lang == "EN":
+                testers_en.add(user)
+            else:
+                testers_cn.add(user)
+
+            total_rows += entry.get("total_rows", 0)
+            total_done += entry.get("done", 0)
+            total_issues += entry.get("issues", 0)
+            total_no_issue += entry.get("no_issue", 0)
+            total_blocked += entry.get("blocked", 0)
+            total_korean += entry.get("korean", 0)
+            total_word_count += entry.get("word_count", 0)
+
+            # Face entries have mismatch/missing instead of issues
+            if cat == "Face":
+                total_mismatch += entry.get("mismatch", 0)
+                total_missing += entry.get("missing", 0)
+
+        # Testers — inner: 2 + 20 + 8 + 5 + 8 + 5 + 8 + (W-56) = W
+        tester_hdr = f"  {'Testers':<20}{'EN':>8}     {'CN':>8}     {'Total':>8}"
+        print(f"|{tester_hdr:<{W}}|")
+        tester_val = f"  {'':20}{len(testers_en):>8}     {len(testers_cn):>8}     {len(testers_en | testers_cn):>8}"
+        print(f"|{tester_val:<{W}}|")
+        print(sep)
+
+        # Categories
+        cat_str = ', '.join(sorted(categories_seen))[:W - 16]
+        print(f"|  {'Categories:':<14}{cat_str:<{W - 16}}|")
+        print(sep)
+
+        # Row stats — inner: 2 + 35 + 15 + (W-52) = W
+        def _metric_line(label, value):
+            return f"|  {label:<35}{value:>15,}{' ' * (W - 52)}|"
+
+        print(f"|  {'METRIC':<35}{'COUNT':>15}{' ' * (W - 52)}|")
+        print(f"|  {'-' * (W - 4)}  |")
+        print(_metric_line("Total Rows Processed", total_rows))
+        print(_metric_line("Done (has status)", total_done))
+        print(_metric_line("NO ISSUE", total_no_issue))
+        if total_issues > 0:
+            print(_metric_line("ISSUE", total_issues))
+        if total_blocked > 0:
+            print(_metric_line("BLOCKED", total_blocked))
+        if total_korean > 0:
+            print(_metric_line("KOREAN", total_korean))
+        if total_mismatch > 0:
+            print(_metric_line("MISMATCH (Face)", total_mismatch))
+        if total_missing > 0:
+            print(_metric_line("MISSING (Face)", total_missing))
+        if total_word_count > 0:
+            print(_metric_line("Word Count", total_word_count))
+        print(sep)
+
+    # Master files generated
+    try:
+        finalize_count = len(finalize_futures)
+    except NameError:
+        finalize_count = 0
+    if finalize_count > 0:
+        print(f"|  {'Master Files Saved:':<20}{finalize_count:<{W - 22}}|")
+        print(sep)
+
+    # Output paths (truncate if too long)
+    en_path = str(MASTER_FOLDER_EN)[:W - 16]
+    cn_path = str(MASTER_FOLDER_CN)[:W - 16]
+    print(f"|  {'Output EN:':<14}{en_path:<{W - 16}}|")
+    print(f"|  {'Output CN:':<14}{cn_path:<{W - 16}}|")
+    if all_daily_entries:
+        tr_path = str(TRACKER_PATH)[:W - 16]
+        print(f"|  {'Tracker:':<14}{tr_path:<{W - 16}}|")
+    print(sep)
