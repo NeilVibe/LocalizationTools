@@ -1813,16 +1813,28 @@ class QuickTranslateApp:
             self._log("", 'info')
             self._log("=== OUTPUT FILES ===", 'header')
             self._log(f"Directory: {output_dir}", 'success')
+
+            self._log("", 'info')
+            self._log("Excel reports:", 'info')
             for fp in results['output_files']:
                 self._log(f"  {Path(fp).name}", 'info')
 
+            close_folders = results.get('close_folders', {})
+            if close_folders:
+                self._log("", 'info')
+                self._log("Close folders (EXPORT structure):", 'info')
+                for lang in sorted(close_folders.keys()):
+                    self._log(f"  Close_{lang}/", 'success')
+
             self._update_status(f"Done! {results['total_misses']:,} total missing translations")
 
+            close_count = len(close_folders)
             self._task_queue.put(('messagebox', 'showinfo', 'Missing Translations Report',
                 f"Report generated successfully!\n\n"
                 f"Mode: {mode_labels.get(match_mode, match_mode)}\n"
                 f"Languages scanned: {len(results['languages'])}\n"
-                f"Total missing: {results['total_misses']:,}\n\n"
+                f"Total missing: {results['total_misses']:,}\n"
+                f"Close folders: {close_count}\n\n"
                 f"Output directory:\n{output_dir}"))
 
         self._run_in_thread(work)

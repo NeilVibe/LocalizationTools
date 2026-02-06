@@ -988,6 +988,7 @@ class MissingEntryWithCategory:
     translation: str  # The Str value from target (Korean text)
     category: str
     source_file: str
+    elem: Optional[ET.Element] = None  # Original LocStr element for XML reconstruction
 
 
 def _collect_source_strorigins(source_folder: Path) -> Set[str]:
@@ -1090,6 +1091,90 @@ def _write_missing_excel_with_categories(
     return True
 
 
+def _write_locstr_xml(entries: List[MissingEntryWithCategory], out_path: Path) -> None:
+    """
+    Write MissingEntryWithCategory list to an XML file preserving LocStr attributes.
+
+    Args:
+        entries: List of entries with elem field
+        out_path: Output XML file path
+    """
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    lines = ['<?xml version="1.0" encoding="utf-8"?>']
+    lines.append('<root>')
+
+    for entry in entries:
+        if entry.elem is None:
+            continue
+        attribs = []
+        for key, value in entry.elem.attrib.items():
+            escaped_value = (value
+                .replace('&', '&amp;')
+                .replace('<', '&lt;')
+                .replace('>', '&gt;')
+                .replace('"', '&quot;')
+            )
+            attribs.append(f'{key}="{escaped_value}"')
+        attrib_str = ' '.join(attribs)
+        lines.append(f'  <LocStr {attrib_str} />')
+
+    lines.append('</root>')
+    out_path.write_text('\n'.join(lines), encoding='utf-8')
+
+
+def _write_close_folders(
+    missing_per_lang: Dict[str, List[MissingEntryWithCategory]],
+    export_path_index: Dict[str, str],
+    out_dir: Path,
+) -> Dict[str, str]:
+    """
+    Write Close_{LANG} folders mirroring the EXPORT folder structure.
+
+    For each language, groups missing entries by their EXPORT file path
+    (looked up via StringID) and writes XML files preserving folder hierarchy.
+
+    Args:
+        missing_per_lang: {lang_code: [MissingEntryWithCategory, ...]}
+        export_path_index: {StringID: "relative/path/to/file.loc.xml"}
+        out_dir: Root output directory
+
+    Returns:
+        {lang_code: close_folder_path} mapping
+    """
+    close_folders = {}
+
+    for lang, entries in missing_per_lang.items():
+        if not entries:
+            continue
+
+        close_dir = out_dir / f"Close_{lang}"
+        close_dir.mkdir(parents=True, exist_ok=True)
+        close_folders[lang] = str(close_dir)
+
+        # Group entries by their EXPORT file path
+        by_export_path: Dict[str, List[MissingEntryWithCategory]] = {}
+        unmapped_entries: List[MissingEntryWithCategory] = []
+
+        for entry in entries:
+            rel_path = export_path_index.get(entry.string_id)
+            if rel_path:
+                by_export_path.setdefault(rel_path, []).append(entry)
+            else:
+                unmapped_entries.append(entry)
+
+        # Write XML files following EXPORT structure
+        for rel_path, path_entries in by_export_path.items():
+            xml_out = close_dir / rel_path
+            _write_locstr_xml(path_entries, xml_out)
+
+        # Write unmapped entries (StringID not found in EXPORT) to _unmapped.xml
+        if unmapped_entries:
+            _write_locstr_xml(unmapped_entries, close_dir / "_unmapped.xml")
+
+    return close_folders
+
+
 def find_missing_with_options(
     source_path: str,
     target_path: str,
@@ -1125,19 +1210,21 @@ def find_missing_with_options(
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    # Step 1: Build category index from EXPORT folder
+    # Step 1: Build category index AND export path index from EXPORT folder
     if progress_cb:
-        progress_cb("Building category index...", 5)
+        progress_cb("Building EXPORT indexes...", 5)
 
     category_index: Dict[str, str] = {}
+    export_path_index: Dict[str, str] = {}
     if export_folder:
         export_path = Path(export_folder)
         if export_path.exists():
             from .category_mapper import build_stringid_category_index
             category_index = build_stringid_category_index(export_path)
+            export_path_index = build_export_stringid_index(export_path)
 
     if progress_cb:
-        progress_cb(f"Category index: {len(category_index)} StringIDs mapped", 15)
+        progress_cb(f"EXPORT indexes: {len(category_index)} categories, {len(export_path_index)} paths", 15)
 
     # Step 2: Collect SOURCE keys based on match_mode
     if progress_cb:
@@ -1231,10 +1318,14 @@ def find_missing_with_options(
         "threshold": threshold,
         "languages": {},
         "output_files": [],
+        "close_folders": {},
         "total_misses": 0,
         "total_hits": 0,
         "total_korean": 0,
     }
+
+    # Collect all missing entries per language for Close folder output
+    missing_per_lang: Dict[str, List[MissingEntryWithCategory]] = {}
 
     total_langs = len(per_lang_korean)
     for lang_idx, (lang, korean_entries) in enumerate(sorted(per_lang_korean.items()), 1):
@@ -1267,6 +1358,7 @@ def find_missing_with_options(
                     translation=entry.str_value,
                     category=cat,
                     source_file=entry.source_file,
+                    elem=entry.elem,
                 ))
 
         else:
@@ -1288,6 +1380,7 @@ def find_missing_with_options(
                             translation=entry.str_value,
                             category=cat,
                             source_file=entry.source_file,
+                            elem=entry.elem,
                         ))
                         continue
 
@@ -1311,6 +1404,7 @@ def find_missing_with_options(
                             translation=entry.str_value,
                             category=cat,
                             source_file=entry.source_file,
+                            elem=entry.elem,
                         ))
 
             elif not use_stringid and source_embeddings is not None:
@@ -1346,6 +1440,7 @@ def find_missing_with_options(
                                 translation=entry.str_value,
                                 category=cat,
                                 source_file=entry.source_file,
+                                elem=entry.elem,
                             ))
 
         # Write per-language Excel
@@ -1360,11 +1455,20 @@ def find_missing_with_options(
             _write_missing_excel_with_categories(missing_entries, excel_path, lang)
             lang_result["output_file"] = str(excel_path)
             results["output_files"].append(str(excel_path))
+            missing_per_lang[lang] = missing_entries
 
         results["languages"][lang] = lang_result
         results["total_misses"] += len(missing_entries)
         results["total_hits"] += hits
         results["total_korean"] += len(korean_entries)
+
+    # Step 6: Write Close_{LANG} folders mirroring EXPORT structure
+    if export_path_index and missing_per_lang:
+        if progress_cb:
+            progress_cb("Writing Close folders with EXPORT structure...", 93)
+
+        close_folders = _write_close_folders(missing_per_lang, export_path_index, out_dir)
+        results["close_folders"] = close_folders
 
     if progress_cb:
         progress_cb("Done.", 100)
