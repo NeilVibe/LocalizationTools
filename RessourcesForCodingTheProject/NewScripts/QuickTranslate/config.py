@@ -223,3 +223,53 @@ def reload_settings():
     LOC_FOLDER = Path(_loc) if _loc else Path(DEFAULT_LOC_FOLDER)
     EXPORT_FOLDER = Path(_export) if _export else Path(DEFAULT_EXPORT_FOLDER)
     SEQUENCER_FOLDER = EXPORT_FOLDER / "Sequencer"
+
+
+# =============================================================================
+# Exclude Rules (for Missing Translations filtering)
+# =============================================================================
+
+def _get_exclude_rules_path() -> Path:
+    """Get the path to exclude_rules.json."""
+    return SCRIPT_DIR / "exclude_rules.json"
+
+
+def load_exclude_rules() -> list:
+    """
+    Load exclude rules from exclude_rules.json.
+
+    Returns:
+        List of relative paths (folders/files) to exclude from Missing Translation results.
+    """
+    rules_path = _get_exclude_rules_path()
+    if rules_path.exists():
+        try:
+            with open(rules_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            paths = data.get("excluded_paths", [])
+            if isinstance(paths, list):
+                return [p for p in paths if isinstance(p, str)]
+        except (json.JSONDecodeError, IOError, AttributeError, TypeError) as e:
+            logger.warning(f"Failed to load exclude rules from {rules_path}: {e}")
+    return []
+
+
+def save_exclude_rules(excluded_paths: list) -> bool:
+    """
+    Save exclude rules to exclude_rules.json.
+
+    Args:
+        excluded_paths: List of relative paths to exclude.
+
+    Returns:
+        True on success, False on failure.
+    """
+    rules_path = _get_exclude_rules_path()
+    try:
+        with open(rules_path, 'w', encoding='utf-8') as f:
+            json.dump({"excluded_paths": excluded_paths}, f, indent=2, ensure_ascii=False)
+        logger.info(f"Exclude rules saved: {len(excluded_paths)} paths to {rules_path}")
+        return True
+    except IOError as e:
+        logger.warning(f"Failed to save exclude rules: {e}")
+        return False

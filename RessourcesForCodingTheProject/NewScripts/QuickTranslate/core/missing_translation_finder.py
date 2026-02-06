@@ -389,7 +389,8 @@ def build_export_stringid_index(
 def is_filtered_by_export_location(
     string_id: str,
     export_index: Dict[str, str],
-    filter_prefixes: Tuple[str, ...]
+    filter_prefixes: Tuple[str, ...],
+    filter_files=None
 ) -> bool:
     """
     Check if StringId is located under filtered paths in export.
@@ -397,19 +398,32 @@ def is_filtered_by_export_location(
     Args:
         string_id: The StringId to check
         export_index: StringId -> file path mapping
-        filter_prefixes: Tuple of path prefixes to filter (lowercased, normalized)
+        filter_prefixes: Tuple of folder path prefixes to filter (lowercased, ending with "/")
+        filter_files: Optional collection of exact file paths to filter (lowercased, normalized)
 
     Returns:
         True if StringId should be filtered out
     """
-    if not string_id or not filter_prefixes:
+    if not string_id or (not filter_prefixes and not filter_files):
         return False
     rel = export_index.get(string_id)
     if not rel:
         return False
-    rel_dir = os.path.dirname(rel)
-    rel_dir_norm = rel_dir.replace("\\", "/").lower()
-    return any(rel_dir_norm.startswith(pref) for pref in filter_prefixes)
+    rel_norm = rel.replace("\\", "/").lower()
+    # Check exact file match
+    if filter_files and rel_norm in filter_files:
+        return True
+    # Check folder prefix match
+    if filter_prefixes:
+        rel_dir = os.path.dirname(rel_norm)
+        # Append "/" to both sides for unambiguous matching
+        # This prevents "system" from matching "system_misc"
+        rel_dir_slash = rel_dir + "/" if rel_dir else ""
+        for pref in filter_prefixes:
+            pref_slash = pref if pref.endswith("/") else pref + "/"
+            if rel_dir_slash.startswith(pref_slash):
+                return True
+    return False
 
 
 def write_output_xml(entries: List[MissingEntry], out_path: Path) -> None:
@@ -1346,6 +1360,8 @@ def _write_master_summary_excel(
     output_path: Path,
     match_mode: str,
     threshold: float,
+    exclude_paths: Optional[List[str]] = None,
+    total_excluded: int = 0,
 ) -> bool:
     """
     Write Master Summary Excel with Global Summary and Detailed Summary tabs.
@@ -1356,6 +1372,8 @@ def _write_master_summary_excel(
         output_path: Path for output Excel file
         match_mode: Match mode used
         threshold: Fuzzy threshold used
+        exclude_paths: Optional list of excluded paths for documentation
+        total_excluded: Total entries excluded across all languages
 
     Returns:
         True if successful
@@ -1692,6 +1710,8 @@ def _write_master_summary_excel(
         ("Match Mode", mode_labels.get(match_mode, match_mode)),
         ("Threshold", f"{threshold:.2f}"),
         ("Languages", str(len(summaries))),
+        ("Excluded Paths", str(len(exclude_paths)) if exclude_paths else "0"),
+        ("Total Excluded Entries", f"{total_excluded:,}" if total_excluded else "0"),
         ("Generated", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
     ]
     for i, (field, value) in enumerate(info_data, 1):
@@ -1699,6 +1719,59 @@ def _write_master_summary_excel(
         ws3.write(i, 1, value, info_value_fmt)
 
     ws3.freeze_panes(1, 0)
+
+    # ================================================================
+    # TAB 4: Excluded Paths (only if exclusions exist)
+    # ================================================================
+    if exclude_paths:
+        ws4 = wb.add_worksheet("Excluded Paths")
+        ws4.set_column('A:A', 50)   # Path
+        ws4.set_column('B:B', 12)   # Type
+
+        excl_header_fmt = wb.add_format({
+            'bold': True,
+            'bg_color': '#E67E22',
+            'font_color': 'white',
+            'font_size': 11,
+            'border': 2,
+            'align': 'center',
+            'valign': 'vcenter',
+        })
+        excl_text_fmt = wb.add_format({
+            'border': 1,
+            'align': 'left',
+            'valign': 'vcenter',
+        })
+        excl_type_fmt = wb.add_format({
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+        })
+        excl_summary_fmt = wb.add_format({
+            'bold': True,
+            'bg_color': '#FDE9D9',
+            'border': 1,
+            'align': 'left',
+            'valign': 'vcenter',
+        })
+
+        ws4.write(0, 0, "Export Path", excl_header_fmt)
+        ws4.write(0, 1, "Type", excl_header_fmt)
+
+        for i, ep in enumerate(sorted(exclude_paths, key=str.lower), 1):
+            is_folder = not ep.lower().endswith(".xml")
+            ws4.write(i, 0, ep, excl_text_fmt)
+            ws4.write(i, 1, "Folder" if is_folder else "File", excl_type_fmt)
+
+        # Summary row
+        summary_row = len(exclude_paths) + 2
+        folders = sum(1 for p in exclude_paths if not p.lower().endswith(".xml"))
+        files = sum(1 for p in exclude_paths if p.lower().endswith(".xml"))
+        ws4.merge_range(summary_row, 0, summary_row, 1,
+                        f"Total: {len(exclude_paths)} paths ({folders} folders, {files} files) - "
+                        f"{total_excluded:,} entries excluded", excl_summary_fmt)
+
+        ws4.freeze_panes(1, 0)
 
     wb.close()
     logger.info(f"Master Summary Excel written: {output_path.name}")
@@ -1714,6 +1787,7 @@ def find_missing_with_options(
     export_folder: Optional[str] = None,
     progress_cb: Optional[Callable[[str, int], None]] = None,
     model=None,
+    exclude_paths: Optional[List[str]] = None,
 ) -> Dict:
     """
     Find missing translations with configurable match modes.
@@ -1729,6 +1803,7 @@ def find_missing_with_options(
         export_folder: Path to EXPORT folder for category mapping
         progress_cb: Optional callback(message, percent)
         model: Pre-loaded KR-SBERT model (required for fuzzy modes)
+        exclude_paths: Optional list of relative paths (folders/files) to exclude
 
     Returns:
         Dict with statistics per language and output paths
@@ -1748,6 +1823,7 @@ def find_missing_with_options(
     logger.info(f"  Target:     {target}")
     logger.info(f"  Output:     {out_dir}")
     logger.info(f"  EXPORT:     {export_folder or 'None'}")
+    logger.info(f"  Exclude:    {len(exclude_paths) if exclude_paths else 0} paths")
     logger.info("=" * 60)
 
     # Step 1: Build category index AND export path index from EXPORT folder
@@ -1764,6 +1840,24 @@ def find_missing_with_options(
             export_path_index = build_export_stringid_index(export_path)
 
     logger.info(f"[Step 1] EXPORT indexes built: {len(category_index):,} categories, {len(export_path_index):,} paths")
+
+    # Pre-compute exclude filter sets (once, before per-language loop)
+    _exclude_folder_prefixes: Tuple[str, ...] = ()
+    _exclude_file_set: frozenset = frozenset()
+    if exclude_paths and export_path_index:
+        # Ensure folder prefixes end with "/" for unambiguous matching
+        _folders = []
+        for ep in exclude_paths:
+            if not ep.lower().endswith(".xml"):
+                normalized = ep.replace("\\", "/").lower()
+                if not normalized.endswith("/"):
+                    normalized += "/"
+                _folders.append(normalized)
+        _files = [ep.replace("\\", "/").lower() for ep in exclude_paths if ep.lower().endswith(".xml")]
+        _exclude_folder_prefixes = tuple(_folders)
+        _exclude_file_set = frozenset(_files)
+        logger.info(f"[Step 1b] Exclude filters: {len(_folders)} folder prefixes, {len(_files)} file paths")
+
     if progress_cb:
         progress_cb(f"EXPORT indexes: {len(category_index)} categories, {len(export_path_index)} paths", 15)
 
@@ -1894,6 +1988,7 @@ def find_missing_with_options(
         "total_misses": 0,
         "total_hits": 0,
         "total_korean": 0,
+        "total_excluded": 0,
     }
 
     # Collect all missing entries per language for Close folder output
@@ -1905,7 +2000,24 @@ def find_missing_with_options(
             pct = 55 + int(35 * lang_idx / max(total_langs, 1))
             progress_cb(f"Processing {lang}...", pct)
 
-        logger.info(f"  [{lang_idx}/{total_langs}] Processing {lang}: {len(korean_entries):,} Korean entries")
+        # Pre-filter excluded entries BEFORE comparison/embedding (saves compute)
+        original_korean_count = len(korean_entries)
+        lang_excluded = 0
+        if (_exclude_folder_prefixes or _exclude_file_set) and korean_entries:
+            filtered = {
+                k: e for k, e in korean_entries.items()
+                if not is_filtered_by_export_location(
+                    e.string_id, export_path_index,
+                    _exclude_folder_prefixes, _exclude_file_set)
+            }
+            lang_excluded = original_korean_count - len(filtered)
+            korean_entries = filtered
+            per_lang_korean[lang] = filtered  # Update for downstream (summary, breakdowns)
+
+        if lang_excluded:
+            logger.info(f"  [{lang_idx}/{total_langs}] Processing {lang}: {len(korean_entries):,} Korean entries ({lang_excluded:,} pre-excluded)")
+        else:
+            logger.info(f"  [{lang_idx}/{total_langs}] Processing {lang}: {len(korean_entries):,} Korean entries")
 
         missing_entries: List[MissingEntryWithCategory] = []
         hits = 0
@@ -2042,9 +2154,10 @@ def find_missing_with_options(
 
         # Write per-language Excel
         lang_result = {
-            "korean_entries": len(korean_entries),
+            "korean_entries": original_korean_count,  # Original count (before exclusion)
             "hits": hits,
             "misses": len(missing_entries),
+            "excluded": lang_excluded,
         }
 
         if missing_entries:
@@ -2060,7 +2173,8 @@ def find_missing_with_options(
         results["languages"][lang] = lang_result
         results["total_misses"] += len(missing_entries)
         results["total_hits"] += hits
-        results["total_korean"] += len(korean_entries)
+        results["total_korean"] += original_korean_count  # Original count (before exclusion)
+        results["total_excluded"] += lang_excluded
 
     # Step 6: Write Close_{LANG} folders mirroring EXPORT structure
     if export_path_index and missing_per_lang:
@@ -2112,7 +2226,8 @@ def find_missing_with_options(
 
     # Write Excel
     master_path = out_dir / f"MASTER_SUMMARY_{timestamp}.xlsx"
-    _write_master_summary_excel(summaries, breakdowns, master_path, match_mode, threshold)
+    _write_master_summary_excel(summaries, breakdowns, master_path, match_mode, threshold,
+                                exclude_paths=exclude_paths, total_excluded=results["total_excluded"])
     results["master_summary"] = str(master_path)
 
     # Final summary
@@ -2121,6 +2236,8 @@ def find_missing_with_options(
     logger.info(f"  Total Korean entries: {results['total_korean']:,}")
     logger.info(f"  Total HITS (matched):  {results['total_hits']:,}")
     logger.info(f"  Total MISSES:          {results['total_misses']:,}")
+    if results['total_excluded'] > 0:
+        logger.info(f"  Total EXCLUDED:        {results['total_excluded']:,}")
     logger.info(f"  Languages processed:   {len(results['languages'])}")
     logger.info(f"  Excel files:           {len(results['output_files'])}")
     logger.info(f"  Close folders:         {len(results.get('close_folders', {}))}")
