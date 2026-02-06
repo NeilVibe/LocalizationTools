@@ -9,6 +9,7 @@ Model folder 'KRTransformer/' must be placed alongside the app.
 """
 
 import logging
+import threading
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
@@ -22,6 +23,7 @@ _cached_index = None
 _cached_index_path = None  # Track which folder the index was built for
 _cached_texts = None  # StrOrigin texts corresponding to index vectors
 _cached_entries = None  # Full entry dicts corresponding to index vectors
+_cache_lock = threading.Lock()
 
 
 def check_model_available() -> Tuple[bool, str]:
@@ -78,8 +80,9 @@ def load_model(progress_callback: Optional[Callable[[str], None]] = None):
     """
     global _cached_model
 
-    if _cached_model is not None:
-        return _cached_model
+    with _cache_lock:
+        if _cached_model is not None:
+            return _cached_model
 
     available, message = check_model_available()
     if not available:
@@ -99,10 +102,13 @@ def load_model(progress_callback: Optional[Callable[[str], None]] = None):
         progress_callback("Loading KR-SBERT model...")
 
     logger.info(f"Loading KR-SBERT model from: {model_path}")
-    _cached_model = SentenceTransformer(str(model_path))
+    model = SentenceTransformer(str(model_path))
     logger.info("KR-SBERT model loaded successfully")
 
-    return _cached_model
+    with _cache_lock:
+        _cached_model = model
+
+    return model
 
 
 def build_faiss_index(
@@ -177,9 +183,10 @@ def build_faiss_index(
 
     logger.info(f"FAISS index built: {index.ntotal} vectors, {dim}d")
 
-    _cached_index = index
-    _cached_texts = texts
-    _cached_entries = entries
+    with _cache_lock:
+        _cached_index = index
+        _cached_texts = texts
+        _cached_entries = entries
 
     return index
 
@@ -329,11 +336,12 @@ def get_cached_index_info() -> Optional[Dict]:
 def clear_cache():
     """Clear all cached model and index data."""
     global _cached_model, _cached_index, _cached_index_path, _cached_texts, _cached_entries
-    _cached_model = None
-    _cached_index = None
-    _cached_index_path = None
-    _cached_texts = None
-    _cached_entries = None
+    with _cache_lock:
+        _cached_model = None
+        _cached_index = None
+        _cached_index_path = None
+        _cached_texts = None
+        _cached_entries = None
     logger.info("Fuzzy matching cache cleared")
 
 

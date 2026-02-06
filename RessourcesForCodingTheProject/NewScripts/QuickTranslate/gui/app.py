@@ -14,6 +14,8 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional
+import threading
+import queue
 
 import config
 from core import (
@@ -129,6 +131,11 @@ class QuickTranslateApp:
         self._fuzzy_index_path = None  # Track which target folder was indexed
         self._fuzzy_texts = None
         self._fuzzy_entries = None
+
+        # Threading infrastructure
+        self._task_queue = queue.Queue()
+        self._cancel_event = threading.Event()
+        self._worker_thread = None
 
         # Load current settings into variables
         self._load_settings_to_vars()
@@ -361,9 +368,10 @@ class QuickTranslateApp:
         self.stringid_entry = tk.Entry(stringid_row, textvariable=self.string_id_input,
                                        font=('Segoe UI', 9), relief='solid', bd=1)
         self.stringid_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4, padx=(0, 8))
-        tk.Button(stringid_row, text="Lookup", command=self._lookup_stringid,
+        self.lookup_btn = tk.Button(stringid_row, text="Lookup", command=self._lookup_stringid,
                  font=('Segoe UI', 9, 'bold'), bg='#5cb85c', fg='white',
-                 relief='flat', padx=14, cursor='hand2').pack(side=tk.LEFT)
+                 relief='flat', padx=14, cursor='hand2')
+        self.lookup_btn.pack(side=tk.LEFT)
 
         # Reverse Lookup
         reverse_row = tk.Frame(quick_frame, bg='#f0f0f0')
@@ -376,9 +384,10 @@ class QuickTranslateApp:
         tk.Button(reverse_row, text="Browse", command=self._browse_reverse_file,
                  font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
                  padx=10, cursor='hand2').pack(side=tk.LEFT, padx=(0, 8))
-        tk.Button(reverse_row, text="Find All", command=self._reverse_lookup,
+        self.reverse_btn = tk.Button(reverse_row, text="Find All", command=self._reverse_lookup,
                  font=('Segoe UI', 9, 'bold'), bg='#d9534f', fg='white',
-                 relief='flat', padx=10, cursor='hand2').pack(side=tk.LEFT)
+                 relief='flat', padx=10, cursor='hand2')
+        self.reverse_btn.pack(side=tk.LEFT)
 
         # Missing Translations - Find Korean in Target MISSING from Source (by StrOrigin+StringId key)
         missing_trans_row = tk.Frame(quick_frame, bg='#f0f0f0')
@@ -457,21 +466,41 @@ class QuickTranslateApp:
                                            maximum=100, mode='determinate')
         self.progress_bar.pack(fill=tk.X, pady=(0, 4))
 
-        status_label = tk.Label(progress_frame, textvariable=self.status_text,
+        status_cancel_row = tk.Frame(progress_frame, bg='#f0f0f0')
+        status_cancel_row.pack(fill=tk.X)
+
+        status_label = tk.Label(status_cancel_row, textvariable=self.status_text,
                                font=('Segoe UI', 9), bg='#f0f0f0', fg='#666', anchor='w')
-        status_label.pack(fill=tk.X)
+        status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        self.cancel_btn = tk.Button(status_cancel_row, text="Cancel", command=self._request_cancel,
+                                    font=('Segoe UI', 9, 'bold'), bg='#d9534f', fg='white',
+                                    relief='flat', padx=14, pady=2, cursor='hand2')
+        # Hidden by default — shown during operations
 
         # Apply initial match type state (disable TRANSFER for substring)
         self._on_match_type_changed()
 
     def _log(self, message: str, tag: str = 'info'):
-        """Add message to log area."""
-        self.log_area.config(state='normal')
+        """Add message to log area (thread-safe).
+
+        If called from the main thread with no active worker, inserts directly.
+        Otherwise queues for main-thread processing via _poll_queue.
+        """
         timestamp = datetime.now().strftime("%H:%M:%S")
+        if threading.current_thread() is threading.main_thread() and (
+            self._worker_thread is None or not self._worker_thread.is_alive()
+        ):
+            self._log_on_main(timestamp, message, tag)
+        else:
+            self._task_queue.put(('log', timestamp, message, tag))
+
+    def _log_on_main(self, timestamp: str, message: str, tag: str):
+        """Insert log message into widget (must run on main thread)."""
+        self.log_area.config(state='normal')
         self.log_area.insert(tk.END, f"[{timestamp}] {message}\n", tag)
         self.log_area.see(tk.END)
         self.log_area.config(state='disabled')
-        self.root.update()
 
     def _clear_log(self):
         """Clear the log area."""
@@ -482,7 +511,6 @@ class QuickTranslateApp:
     def _progress_log_callback(self, message: str):
         """Progress callback that logs to GUI log area."""
         self._log(message, 'info')
-        self.root.update()  # Keep GUI responsive
 
     def _analyze_folder(self, folder_path: str, role: str) -> None:
         """Analyze a folder and print detailed info to terminal and log.
@@ -764,25 +792,27 @@ class QuickTranslateApp:
         self.threshold_label.config(text=f"{val:.2f}")
 
     def _ensure_fuzzy_model(self) -> bool:
-        """Load fuzzy model if needed. Returns True if model is ready."""
+        """Load fuzzy model if needed. Returns True if model is ready.
+
+        Thread-safe: uses queue for UI updates instead of direct widget access.
+        """
         if self._fuzzy_model is not None:
             return True
 
         available, msg = check_model_available()
         if not available:
-            messagebox.showerror("KR-SBERT Model Not Found", msg)
+            self._task_queue.put(('messagebox', 'showerror', 'KR-SBERT Model Not Found', msg))
             return False
 
         try:
-            self.fuzzy_model_status.set("Loading...")
-            self.root.update()
+            self._task_queue.put(('fuzzy_status', 'Loading...'))
             self._fuzzy_model = load_model(self._update_status)
-            self.fuzzy_model_status.set("Model loaded")
+            self._task_queue.put(('fuzzy_status', 'Model loaded'))
             self._log("KR-SBERT model loaded successfully", 'success')
             return True
         except Exception as e:
-            self.fuzzy_model_status.set("Load failed")
-            messagebox.showerror("Model Load Error", f"Failed to load KR-SBERT model:\n{e}")
+            self._task_queue.put(('fuzzy_status', 'Load failed'))
+            self._task_queue.put(('messagebox', 'showerror', 'Model Load Error', f'Failed to load KR-SBERT model:\n{e}'))
             self._log(f"Model load error: {e}", 'error')
             return False
 
@@ -804,12 +834,12 @@ class QuickTranslateApp:
             only_untranslated: If True, only load entries where Str has Korean.
         """
         if not target_path:
-            messagebox.showwarning("Warning", "Fuzzy mode requires a Target folder.")
+            self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Fuzzy mode requires a Target folder.'))
             return False
 
         target = Path(target_path)
         if not target.exists():
-            messagebox.showerror("Error", f"Target folder not found:\n{target}")
+            self._task_queue.put(('messagebox', 'showerror', 'Error', f'Target folder not found:\n{target}'))
             return False
 
         try:
@@ -825,7 +855,7 @@ class QuickTranslateApp:
             )
 
             if not texts:
-                messagebox.showerror("Error", f"No matching entries found in target folder:\n{target}")
+                self._task_queue.put(('messagebox', 'showerror', 'Error', f'No matching entries found in target folder:\n{target}'))
                 return False
 
             # Store entries but skip expensive FAISS index build
@@ -834,12 +864,12 @@ class QuickTranslateApp:
             self._fuzzy_entries = entries
             # Leave _fuzzy_index as None - not needed for strict_fuzzy
 
-            self.fuzzy_model_status.set(f"Ready ({len(entries):,} entries)")
+            self._task_queue.put(('fuzzy_status', f"Ready ({len(entries):,} entries)"))
             self._log(f"Target entries loaded: {len(entries):,} entries", 'success')
             return True
 
         except Exception as e:
-            messagebox.showerror("Load Error", f"Failed to load target entries:\n{e}")
+            self._task_queue.put(('messagebox', 'showerror', 'Load Error', f'Failed to load target entries:\n{e}'))
             self._log(f"Load error: {e}", 'error')
             return False
 
@@ -864,12 +894,12 @@ class QuickTranslateApp:
             return True
 
         if not target_path:
-            messagebox.showwarning("Warning", "Fuzzy mode requires a Target folder for indexing.")
+            self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Fuzzy mode requires a Target folder for indexing.'))
             return False
 
         target = Path(target_path)
         if not target.exists():
-            messagebox.showerror("Error", f"Target folder not found:\n{target}")
+            self._task_queue.put(('messagebox', 'showerror', 'Error', f'Target folder not found:\n{target}'))
             return False
 
         try:
@@ -882,7 +912,7 @@ class QuickTranslateApp:
             )
 
             if not texts:
-                messagebox.showerror("Error", f"No StrOrigin values found in target folder:\n{target}")
+                self._task_queue.put(('messagebox', 'showerror', 'Error', f'No StrOrigin values found in target folder:\n{target}'))
                 return False
 
             self._fuzzy_index = build_faiss_index(
@@ -894,12 +924,12 @@ class QuickTranslateApp:
 
             info = get_cached_index_info()
             vec_count = info['ntotal'] if info else len(texts)
-            self.fuzzy_model_status.set(f"Ready ({vec_count} vectors)")
+            self._task_queue.put(('fuzzy_status', f"Ready ({vec_count} vectors)"))
             self._log(f"FAISS index built: {vec_count} vectors", 'success')
             return True
 
         except Exception as e:
-            messagebox.showerror("Index Build Error", f"Failed to build FAISS index:\n{e}")
+            self._task_queue.put(('messagebox', 'showerror', 'Index Build Error', f'Failed to build FAISS index:\n{e}'))
             self._log(f"Index build error: {e}", 'error')
             return False
 
@@ -977,11 +1007,109 @@ class QuickTranslateApp:
         messagebox.showinfo("Success", "Settings saved successfully!")
 
     def _update_status(self, text: str, progress: float = None):
-        """Update status text and optionally progress bar."""
+        """Update status text and optionally progress bar (thread-safe via queue).
+
+        Also checks cancel event — raises InterruptedError if cancelled.
+        """
+        if self._cancel_event.is_set():
+            raise InterruptedError("Operation cancelled by user")
+        self._task_queue.put(('status', text, progress))
+
+    def _update_status_on_main(self, text: str, progress: float = None):
+        """Apply status update on main thread."""
         self.status_text.set(text)
         if progress is not None:
             self.progress_value.set(progress)
-        self.root.update()
+
+    def _poll_queue(self):
+        """Drain the task queue on the main thread. Scheduled via root.after."""
+        try:
+            while True:
+                msg = self._task_queue.get_nowait()
+                kind = msg[0]
+
+                if kind == 'log':
+                    _, ts, text, tag = msg
+                    self._log_on_main(ts, text, tag)
+                elif kind == 'status':
+                    _, text, progress = msg
+                    self._update_status_on_main(text, progress)
+                elif kind == 'progress':
+                    _, value = msg
+                    self.progress_value.set(value)
+                elif kind == 'fuzzy_status':
+                    _, text = msg
+                    self.fuzzy_model_status.set(text)
+                elif kind == 'messagebox':
+                    _, func_name, title, message = msg
+                    func = getattr(messagebox, func_name)
+                    func(title, message)
+                elif kind == 'done':
+                    self._enable_buttons()
+                    return  # Stop polling
+        except queue.Empty:
+            pass
+
+        # Continue polling if worker thread is alive
+        if self._worker_thread is not None and self._worker_thread.is_alive():
+            self.root.after(50, self._poll_queue)
+        elif self._worker_thread is not None:
+            # Thread ended but no 'done' message yet — drain remaining
+            try:
+                while True:
+                    msg = self._task_queue.get_nowait()
+                    kind = msg[0]
+                    if kind == 'log':
+                        _, ts, text, tag = msg
+                        self._log_on_main(ts, text, tag)
+                    elif kind == 'status':
+                        _, text, progress = msg
+                        self._update_status_on_main(text, progress)
+                    elif kind == 'progress':
+                        _, value = msg
+                        self.progress_value.set(value)
+                    elif kind == 'fuzzy_status':
+                        _, text = msg
+                        self.fuzzy_model_status.set(text)
+                    elif kind == 'messagebox':
+                        _, func_name, title, message = msg
+                        func = getattr(messagebox, func_name)
+                        func(title, message)
+                    elif kind == 'done':
+                        break
+            except queue.Empty:
+                pass
+            self._enable_buttons()
+
+    def _request_cancel(self):
+        """Handle cancel button click."""
+        self._cancel_event.set()
+        self._log("Cancelling operation...", 'warning')
+
+    def _run_in_thread(self, work_fn):
+        """Run work_fn in a daemon thread with error handling.
+
+        The work function should use self._log and self._update_status
+        (both thread-safe). On completion, sends ('done',) to queue.
+        """
+        def _wrapper():
+            try:
+                work_fn()
+            except InterruptedError:
+                self._log("Operation cancelled.", 'warning')
+                self._task_queue.put(('status', 'Cancelled', None))
+            except Exception as e:
+                self._task_queue.put(('messagebox', 'showerror', 'Error', f'Operation failed:\n{e}'))
+                self._log(f"ERROR: {e}", 'error')
+                self._task_queue.put(('status', f'Error: {e}', None))
+                import traceback
+                traceback.print_exc()
+            finally:
+                self._task_queue.put(('done',))
+
+        self._worker_thread = threading.Thread(target=_wrapper, daemon=True)
+        self._worker_thread.start()
+        self.root.after(50, self._poll_queue)
 
     def _load_data_if_needed(self, need_sequencer: bool = True) -> bool:
         """Load data if not cached or paths changed."""
@@ -996,12 +1124,12 @@ class QuickTranslateApp:
         sequencer_folder = export_folder / "Sequencer"
 
         if not loc_folder.exists():
-            messagebox.showerror("Error", f"LOC folder not found:\n{loc_folder}\n\nPlease configure in Settings.")
+            self._task_queue.put(('messagebox', 'showerror', 'Error', f'LOC folder not found:\n{loc_folder}\n\nPlease configure in Settings.'))
             return False
 
         if need_sequencer:
             if not sequencer_folder.exists():
-                messagebox.showerror("Error", f"Sequencer folder not found:\n{sequencer_folder}\n\nPlease check Export path in Settings.")
+                self._task_queue.put(('messagebox', 'showerror', 'Error', f'Sequencer folder not found:\n{sequencer_folder}\n\nPlease check Export path in Settings.'))
                 return False
 
             self._log(f"Loading Sequencer data...", 'info')
@@ -1010,7 +1138,7 @@ class QuickTranslateApp:
             )
 
             if not self.strorigin_index:
-                messagebox.showerror("Error", "No Sequencer data found.")
+                self._task_queue.put(('messagebox', 'showerror', 'Error', 'No Sequencer data found.'))
                 return False
 
             self._log(f"Loaded {len(self.strorigin_index)} Sequencer entries", 'success')
@@ -1031,7 +1159,7 @@ class QuickTranslateApp:
         self._log("Discovering language files...", 'info')
         lang_files = discover_language_files(loc_folder)
         if not lang_files:
-            messagebox.showerror("Error", "No language files found.")
+            self._task_queue.put(('messagebox', 'showerror', 'Error', 'No language files found.'))
             return False
 
         self._log(f"Found {len(lang_files)} languages: {', '.join(lang_files.keys())}", 'success')
@@ -1054,9 +1182,13 @@ class QuickTranslateApp:
 
     def _disable_buttons(self):
         """Disable all action buttons during processing."""
+        self._cancel_event.clear()
         self.generate_btn.config(state='disabled')
         self.transfer_btn.config(state='disabled')
         self.missing_trans_btn.config(state='disabled')
+        self.lookup_btn.config(state='disabled')
+        self.reverse_btn.config(state='disabled')
+        self.cancel_btn.pack(side=tk.RIGHT, padx=(8, 0))
 
     def _enable_buttons(self):
         """Re-enable all action buttons (respects match type for TRANSFER)."""
@@ -1067,6 +1199,10 @@ class QuickTranslateApp:
         else:
             self.transfer_btn.config(state='normal')
         self.missing_trans_btn.config(state='normal')
+        self.lookup_btn.config(state='normal')
+        self.reverse_btn.config(state='normal')
+        self.cancel_btn.pack_forget()
+        self._worker_thread = None
 
     def _generate(self):
         """Main generate action based on current mode."""
@@ -1079,29 +1215,38 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"Source not found:\n{source}")
             return
 
+        # Capture StringVar values on main thread before entering worker
+        match_type = self.match_type.get()
+        format_mode = self.format_mode.get()
+        input_mode = self.input_mode.get()
+        target_path = self.target_path.get()
+        precision = self.match_precision.get()
+        transfer_scope = self.transfer_scope.get()
+        fuzzy_threshold = self.fuzzy_threshold.get()
+        source_path_str = self.source_path.get()
+
         self._disable_buttons()
         self.progress_value.set(0)
         self._clear_log()
 
-        match_type = self.match_type.get()
         self._log(f"=== QuickTranslate Generation ===", 'header')
         self._log(f"Match Type: {match_type.upper()}", 'info')
-        self._log(f"Format: {self.format_mode.get().upper()}", 'info')
-        self._log(f"Mode: {self.input_mode.get().upper()}", 'info')
+        self._log(f"Format: {format_mode.upper()}", 'info')
+        self._log(f"Mode: {input_mode.upper()}", 'info')
 
-        try:
+        def work():
             # Load data
             if not self._load_data_if_needed(need_sequencer=True):
                 return
 
-            self.progress_value.set(20)
+            self._task_queue.put(('progress', 20))
 
             # Read input based on format and mode
             corrections = []
             korean_inputs = []
 
             # Read from source file/folder
-            if self.input_mode.get() == "folder":
+            if input_mode == "folder":
                 # FOLDER MODE: Auto-detect and handle mixed Excel + XML
                 xml_files = list(source.rglob("*.xml"))
                 excel_files = list(source.rglob("*.xlsx")) + list(source.rglob("*.xls"))
@@ -1142,11 +1287,11 @@ class QuickTranslateApp:
                     self._log(f"Loaded {len(xml_corrections)} corrections from XML", 'info')
 
             if not korean_inputs and not corrections:
-                messagebox.showwarning("Warning", "No input data found.")
+                self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'No input data found.'))
                 self._log("No input data found!", 'error')
                 return
 
-            self.progress_value.set(40)
+            self._task_queue.put(('progress', 40))
 
             # Find matches based on match type
             self._update_status("Finding matches...")
@@ -1167,7 +1312,7 @@ class QuickTranslateApp:
             elif match_type == "stringid_only":
                 # StringID-only (SCRIPT): Filter to SCRIPT categories
                 if not self.stringid_to_category:
-                    messagebox.showwarning("Warning", "Category index not loaded.")
+                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Category index not loaded.'))
                     return
 
                 if corrections:
@@ -1209,18 +1354,15 @@ class QuickTranslateApp:
             elif match_type == "strict":
                 # Strict mode: Match by StringID + StrOrigin tuple
                 if not corrections:
-                    messagebox.showwarning("Warning", "Strict mode requires XML input or corrections data.")
+                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Strict mode requires XML input or corrections data.'))
                     return
 
-                target = self.target_path.get()
-                if not target:
-                    messagebox.showwarning("Warning", "Strict mode requires a Target folder for matching.")
+                if not target_path:
+                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Strict mode requires a Target folder for matching.'))
                     return
 
-                precision = self.match_precision.get()
-
-                self._log(f"Scanning target folder: {target}", 'info')
-                xml_entries = scan_folder_for_entries(Path(target), self._update_status)
+                self._log(f"Scanning target folder: {target_path}", 'info')
+                xml_entries = scan_folder_for_entries(Path(target_path), self._update_status)
                 self._log(f"Found {len(xml_entries)} entries in target", 'info')
 
                 if precision == "fuzzy":
@@ -1232,22 +1374,21 @@ class QuickTranslateApp:
                     correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
                     self._log(f"Corrections have {len(correction_stringids):,} unique StringIDs", 'info')
 
-                    only_untranslated = self.transfer_scope.get() == "untranslated"
+                    only_untranslated = transfer_scope == "untranslated"
 
                     # Load ONLY entries matching our correction StringIDs
                     if not self._ensure_fuzzy_entries(
-                        target,
+                        target_path,
                         stringid_filter=correction_stringids,
                         only_untranslated=only_untranslated,
                     ):
                         return
 
-                    threshold = self.fuzzy_threshold.get()
-                    self._log(f"Strict mode with FUZZY precision (threshold: {threshold:.2f})", 'info')
+                    self._log(f"Strict mode with FUZZY precision (threshold: {fuzzy_threshold:.2f})", 'info')
 
                     matched, not_found = find_matches_strict_fuzzy(
                         corrections, xml_entries, self._fuzzy_model, self._fuzzy_index,
-                        self._fuzzy_texts, self._fuzzy_entries, threshold,
+                        self._fuzzy_texts, self._fuzzy_entries, fuzzy_threshold,
                         only_untranslated=only_untranslated,
                         progress_callback=self._progress_log_callback
                     )
@@ -1272,41 +1413,36 @@ class QuickTranslateApp:
             elif match_type == "quadruple_fallback":
                 # Quadruple Fallback: StrOrigin + filename + adjacency cascade
                 if not corrections:
-                    messagebox.showwarning("Warning", "Quadruple Fallback mode requires corrections data (XML or structured Excel).")
+                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Quadruple Fallback mode requires corrections data (XML or structured Excel).'))
                     return
 
-                target = self.target_path.get()
-                if not target:
-                    messagebox.showwarning("Warning", "Quadruple Fallback mode requires a Target folder.")
+                if not target_path:
+                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Quadruple Fallback mode requires a Target folder.'))
                     return
 
                 # Scan TARGET with context to build 4-level indexes
-                self._log(f"Scanning target with context: {target}", 'info')
+                self._log(f"Scanning target with context: {target_path}", 'info')
                 all_entries, level1_idx, level2a_idx, level2b_idx, level3_idx = scan_folder_for_entries_with_context(
-                    Path(target), self._update_status
+                    Path(target_path), self._update_status
                 )
                 self._log(f"Found {len(all_entries)} entries with context in target", 'info')
 
                 # Enrich SOURCE corrections with file/adjacency context if XML source
                 source_has_context = any(c.get("file_relpath") for c in corrections)
-                if not source_has_context and self.format_mode.get() == "xml":
-                    # Source is XML but corrections lack context - scan source folder/file
-                    # to enrich corrections with file_relpath, adjacent_before/after, adjacency_hash
-                    source_path = Path(self.source_path.get())
-                    scan_source = source_path if source_path.is_dir() else source_path.parent
+                if not source_has_context and format_mode == "xml":
+                    source_path_obj = Path(source_path_str)
+                    scan_source = source_path_obj if source_path_obj.is_dir() else source_path_obj.parent
                     self._log(f"Enriching source corrections with context from: {scan_source}", 'info')
                     src_entries, _, _, _, _ = scan_folder_for_entries_with_context(
                         scan_source, self._update_status
                     )
                     if src_entries:
-                        # Build lookup from source entries: norm_origin -> entry with context
                         from core.text_utils import normalize_for_matching
                         src_lookup = {}
                         for se in src_entries:
                             norm_o = normalize_for_matching(se.get("str_origin", ""))
                             if norm_o not in src_lookup:
                                 src_lookup[norm_o] = se
-                        # Enrich each correction with context from source scan
                         enriched_count = 0
                         for c in corrections:
                             c_origin = c.get("str_origin", "").strip()
@@ -1326,30 +1462,24 @@ class QuickTranslateApp:
                 if not source_has_context:
                     self._log("Source lacks file context - using L3 (StrOrigin only) fallback", 'warning')
 
-                # Determine match precision (perfect vs fuzzy)
-                precision = self.match_precision.get()
-
                 if precision == "fuzzy":
-                    # Fuzzy precision: use SBERT similarity for StrOrigin comparison
                     if not self._ensure_fuzzy_model():
                         return
 
-                    # Extract StringIDs from corrections FIRST - filter the index build!
                     correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
                     self._log(f"Corrections have {len(correction_stringids):,} unique StringIDs for filtering", 'info')
 
-                    only_untranslated = self.transfer_scope.get() == "untranslated"
-                    if not self._ensure_fuzzy_index(target, stringid_filter=correction_stringids, only_untranslated=only_untranslated):
+                    only_untranslated = transfer_scope == "untranslated"
+                    if not self._ensure_fuzzy_index(target_path, stringid_filter=correction_stringids, only_untranslated=only_untranslated):
                         return
-                    threshold = self.fuzzy_threshold.get()
-                    self._log(f"Quadruple Fallback with FUZZY precision (threshold: {threshold:.2f})", 'info')
+                    self._log(f"Quadruple Fallback with FUZZY precision (threshold: {fuzzy_threshold:.2f})", 'info')
 
                     matched_corrections, not_found, level_counts = find_matches_quadruple_fallback(
                         corrections, level1_idx, level2a_idx, level2b_idx, level3_idx,
                         source_has_context,
                         use_fuzzy=True,
                         fuzzy_model=self._fuzzy_model,
-                        fuzzy_threshold=threshold,
+                        fuzzy_threshold=fuzzy_threshold,
                         fuzzy_texts=self._fuzzy_texts,
                         fuzzy_entries=self._fuzzy_entries,
                         fuzzy_index=self._fuzzy_index,
@@ -1380,7 +1510,7 @@ class QuickTranslateApp:
                 self._log(f"    L3  (Single: Origin only):          {level_counts['L3']}", 'warning')
                 self._log(f"  - Not found: {stats['no_match']}", 'error')
 
-            self.progress_value.set(70)
+            self._task_queue.put(('progress', 70))
 
             # Write output
             self._update_status("Writing output...")
@@ -1400,25 +1530,20 @@ class QuickTranslateApp:
                 match_type=match_type,
             )
 
-            self.progress_value.set(100)
+            self._task_queue.put(('progress', 100))
             self._update_status(f"Done! {stats['total']} inputs processed")
             self._log(f"=== Generation Complete ===", 'header')
             self._log(f"Output: {output_path}", 'success')
             self._log(f"Summary: {stats['matched']} matched, {stats.get('no_match', 0)} not found, {stats.get('skipped', 0)} skipped", 'info')
 
-            messagebox.showinfo("Success", f"Output saved to:\n{output_path}\n\n"
-                              f"Total: {stats['total']}\n"
-                              f"Matched: {stats['matched']}\n"
-                              f"Not Found: {stats.get('no_match', 0)}\n"
-                              f"Skipped: {stats.get('skipped', 0)}")
+            self._task_queue.put(('messagebox', 'showinfo', 'Success',
+                f"Output saved to:\n{output_path}\n\n"
+                f"Total: {stats['total']}\n"
+                f"Matched: {stats['matched']}\n"
+                f"Not Found: {stats.get('no_match', 0)}\n"
+                f"Skipped: {stats.get('skipped', 0)}"))
 
-        except Exception as e:
-            messagebox.showerror("Error", f"Generation failed:\n{e}")
-            self._log(f"ERROR: {e}", 'error')
-            self._update_status(f"Error: {e}")
-
-        finally:
-            self._enable_buttons()
+        self._run_in_thread(work)
 
     def _lookup_stringid(self):
         """Look up a single StringID."""
@@ -1431,7 +1556,7 @@ class QuickTranslateApp:
         self._disable_buttons()
         self._log(f"Looking up StringID: {string_id}", 'info')
 
-        try:
+        def work():
             if not self._load_data_if_needed(need_sequencer=False):
                 return
 
@@ -1443,7 +1568,7 @@ class QuickTranslateApp:
                     break
 
             if not found:
-                messagebox.showwarning("Warning", f"StringID not found: {string_id}")
+                self._task_queue.put(('messagebox', 'showwarning', 'Warning', f'StringID not found: {string_id}'))
                 self._log(f"StringID not found: {string_id}", 'error')
                 self._update_status(f"StringID not found: {string_id}")
                 return
@@ -1464,15 +1589,9 @@ class QuickTranslateApp:
 
             self._update_status(f"Done! Lookup for {string_id}")
             self._log(f"Output saved: {output_path}", 'success')
-            messagebox.showinfo("Success", f"Output saved to:\n{output_path}")
+            self._task_queue.put(('messagebox', 'showinfo', 'Success', f'Output saved to:\n{output_path}'))
 
-        except Exception as e:
-            messagebox.showerror("Error", f"Lookup failed:\n{e}")
-            self._log(f"ERROR: {e}", 'error')
-            self._update_status(f"Error: {e}")
-
-        finally:
-            self._enable_buttons()
+        self._run_in_thread(work)
 
     def _reverse_lookup(self):
         """Perform reverse lookup from any language to all languages."""
@@ -1488,7 +1607,7 @@ class QuickTranslateApp:
         self._disable_buttons()
         self._log(f"Reverse lookup from: {file_path}", 'info')
 
-        try:
+        def work():
             if not self._load_data_if_needed(need_sequencer=False):
                 return
 
@@ -1497,7 +1616,7 @@ class QuickTranslateApp:
             input_texts = read_text_file_lines(file_path)
 
             if not input_texts:
-                messagebox.showwarning("Warning", "No text found in input file.")
+                self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'No text found in input file.'))
                 return
 
             self._log(f"Read {len(input_texts)} texts from file", 'info')
@@ -1509,7 +1628,7 @@ class QuickTranslateApp:
             # Find StringID for each input text
             self._update_status("Finding StringIDs...")
             stringid_map = {}
-            not_found = []
+            not_found_list = []
             detected_langs = set()
 
             for text in input_texts:
@@ -1519,9 +1638,9 @@ class QuickTranslateApp:
                     stringid_map[text] = string_id
                     detected_langs.add(lang)
                 else:
-                    not_found.append(text)
+                    not_found_list.append(text)
 
-            self._log(f"Found: {len(stringid_map)}, Not found: {len(not_found)}", 'info')
+            self._log(f"Found: {len(stringid_map)}, Not found: {len(not_found_list)}", 'info')
             if detected_langs:
                 self._log(f"Detected languages: {', '.join(sorted(detected_langs))}", 'info')
 
@@ -1546,25 +1665,19 @@ class QuickTranslateApp:
 
             self._update_status(f"Done! {found_count}/{total_count} found")
             self._log(f"Output saved: {output_path}", 'success')
-            messagebox.showinfo("Success",
+            self._task_queue.put(('messagebox', 'showinfo', 'Success',
                 f"Output saved to:\n{output_path}\n\n"
                 f"Found: {found_count}/{total_count}\n"
-                f"Detected languages: {detected_str}")
+                f"Detected languages: {detected_str}"))
 
-        except Exception as e:
-            messagebox.showerror("Error", f"Reverse lookup failed:\n{e}")
-            self._log(f"ERROR: {e}", 'error')
-            self._update_status(f"Error: {e}")
-
-        finally:
-            self._enable_buttons()
+        self._run_in_thread(work)
 
     def _find_missing_translations(self):
         """
         Find Korean strings in Target that are MISSING from Source by (StrOrigin, StringId) key.
         Generates per-language XML files + Excel summary report.
         """
-        # Validate source (file or folder)
+        # Validate source (file or folder) — all on main thread
         source_path = self.source_path.get().strip()
         if not source_path:
             messagebox.showwarning("Warning", "Please select a Source file or folder (the reference data).")
@@ -1576,13 +1689,12 @@ class QuickTranslateApp:
             return
 
         # Validate target (folder with languagedata_*.xml files)
-        target_path = self.target_path.get().strip()
-        if not target_path:
-            # Default to LOC folder from config
-            target_path = str(config.LOC_FOLDER)
-            self.target_path.set(target_path)
+        target_path_str = self.target_path.get().strip()
+        if not target_path_str:
+            target_path_str = str(config.LOC_FOLDER)
+            self.target_path.set(target_path_str)
 
-        target = Path(target_path)
+        target = Path(target_path_str)
         if not target.exists():
             messagebox.showerror("Error", f"Target not found:\n{target}")
             return
@@ -1593,7 +1705,6 @@ class QuickTranslateApp:
                 "Example: LOC folder with languagedata_FRE.xml, languagedata_GER.xml, etc.")
             return
 
-        # Check for languagedata files
         lang_files = list(target.glob("languagedata_*.xml"))
         if not lang_files:
             messagebox.showwarning("Warning",
@@ -1601,7 +1712,7 @@ class QuickTranslateApp:
                 "Please select a folder with languagedata_FRE.xml, languagedata_GER.xml, etc.")
             return
 
-        # Ask user for output directory
+        # Ask user for output directory (must be on main thread — file dialog)
         output_dir = filedialog.askdirectory(
             title="Select Output Directory for Missing Translation Reports",
             initialdir=str(Path(__file__).parent.parent / "MissingTranslationReports")
@@ -1629,15 +1740,12 @@ class QuickTranslateApp:
             filter_prefixes = ["System/MultiChange", "System/Gimmick"]
             self._log(f"Export filter enabled: {filter_prefixes}", 'info')
 
-        try:
+        def work():
             def progress_cb(msg, pct):
-                self._update_status(msg)
-                self.progress_value.set(pct)
-                self.root.update()
+                self._update_status(msg, progress=pct)
 
             self._update_status("Finding missing translations...")
 
-            # Call the per-language finder
             report = find_missing_translations_per_language(
                 source_path=str(source),
                 target_path=str(target),
@@ -1647,7 +1755,7 @@ class QuickTranslateApp:
                 progress_cb=progress_cb
             )
 
-            self.progress_value.set(100)
+            self._task_queue.put(('progress', 100))
 
             # Log summary
             self._log("", 'info')
@@ -1677,34 +1785,17 @@ class QuickTranslateApp:
 
             self._update_status(f"Done! {report.total_misses:,} total missing translations")
 
-            # Print detailed report to terminal
             print(format_report_summary(report))
 
-            # Show completion message
-            messagebox.showinfo(
-                "Missing Translations Report",
+            self._task_queue.put(('messagebox', 'showinfo', 'Missing Translations Report',
                 f"Report generated successfully!\n\n"
                 f"Languages scanned: {len(report.by_language)}\n"
                 f"Total missing: {report.total_misses:,}\n"
                 f"Korean chars: {report.total_korean_chars:,}\n"
                 f"Korean words: {report.total_korean_words:,}\n\n"
-                f"Output directory:\n{output_dir}"
-            )
+                f"Output directory:\n{output_dir}"))
 
-        except FileNotFoundError as e:
-            messagebox.showerror("Error", f"File not found:\n{e}")
-            self._log(f"ERROR: {e}", 'error')
-            self._update_status(f"Error: File not found")
-
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed:\n{e}")
-            self._log(f"ERROR: {e}", 'error')
-            self._update_status(f"Error: {e}")
-            import traceback
-            traceback.print_exc()
-
-        finally:
-            self._enable_buttons()
+        self._run_in_thread(work)
 
     def _transfer(self):
         """Transfer corrections from source to target XML files (LOC folder)."""
@@ -1733,17 +1824,22 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"Target folder not found:\n{target}")
             return
 
-        # === GENERATE FULL TRANSFER PLAN BEFORE CONFIRMATION ===
+        # Capture StringVar values on main thread
         match_type = self.match_type.get()
-        mode_str = "Folder" if self.input_mode.get() == "folder" else "File"
-        match_str = match_type.upper()
+        input_mode = self.input_mode.get()
         precision = self.match_precision.get()
+        transfer_scope = self.transfer_scope.get()
+        fuzzy_threshold = self.fuzzy_threshold.get()
+
+        # === GENERATE FULL TRANSFER PLAN BEFORE CONFIRMATION ===
+        mode_str = "Folder" if input_mode == "folder" else "File"
+        match_str = match_type.upper()
 
         # Add precision info for modes that support it
         if match_type in ("strict", "quadruple_fallback"):
             match_str = f"{match_str} ({precision.upper()})"
 
-        scope_str = ("Only untranslated (Korean)" if self.transfer_scope.get() == "untranslated"
+        scope_str = ("Only untranslated (Korean)" if transfer_scope == "untranslated"
                      else "ALL matches (overwrite)")
 
         # Generate complete transfer plan with full tree table
@@ -1804,9 +1900,9 @@ class QuickTranslateApp:
             plan = transfer_plan.language_plans[lang]
             self._log(f"  {lang}: {plan.file_count} files → SKIPPED (no target)", 'warning')
 
-        try:
+        def work():
             # Cross-match summary (folder mode) - main analysis already in transfer plan
-            if self.input_mode.get() == "folder" and source.is_dir() and target.is_dir():
+            if input_mode == "folder" and source.is_dir() and target.is_dir():
                 src_xmls = {f.stem.lower()[13:]: f.name for f in source.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
                 tgt_xmls = {f.stem.lower()[13:]: f.name for f in target.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
                 matched_langs = sorted(set(src_xmls.keys()) & set(tgt_xmls.keys()))
@@ -1830,7 +1926,7 @@ class QuickTranslateApp:
                 source_stringids = self._extract_stringids_from_source(source)
                 self._log(f"Source has {len(source_stringids):,} unique StringIDs", 'info')
 
-            only_untranslated = self.transfer_scope.get() == "untranslated"
+            only_untranslated = transfer_scope == "untranslated"
 
             # For strict with fuzzy precision, need model + index
             if match_type == "strict" and precision == "fuzzy":
@@ -1838,7 +1934,7 @@ class QuickTranslateApp:
                     return
                 if not self._ensure_fuzzy_index(str(target), stringid_filter=source_stringids, only_untranslated=only_untranslated):
                     return
-                self._log(f"Strict TRANSFER with FUZZY precision (threshold={self.fuzzy_threshold.get():.2f})", 'info')
+                self._log(f"Strict TRANSFER with FUZZY precision (threshold={fuzzy_threshold:.2f})", 'info')
 
             # For quadruple_fallback with fuzzy precision, also need model + index
             if match_type == "quadruple_fallback" and precision == "fuzzy":
@@ -1846,9 +1942,9 @@ class QuickTranslateApp:
                     return
                 if not self._ensure_fuzzy_index(str(target), stringid_filter=source_stringids, only_untranslated=only_untranslated):
                     return
-                self._log(f"Quadruple Fallback TRANSFER with FUZZY precision (threshold={self.fuzzy_threshold.get():.2f})", 'info')
+                self._log(f"Quadruple Fallback TRANSFER with FUZZY precision (threshold={fuzzy_threshold:.2f})", 'info')
 
-            self.progress_value.set(20)
+            self._task_queue.put(('progress', 20))
             self._update_status("Transferring corrections...")
 
             # Map match_type + precision to transfer match_mode
@@ -1867,13 +1963,13 @@ class QuickTranslateApp:
                 "stringid_to_subfolder": stringid_to_subfolder,
                 "match_mode": transfer_match_mode,
                 "dry_run": False,
-                "only_untranslated": self.transfer_scope.get() == "untranslated",
+                "only_untranslated": only_untranslated,
             }
 
             # Pass threshold AND pre-built fuzzy data for fuzzy modes
             # CRITICAL: Without this, transfer functions rebuild full index from scratch!
             if precision == "fuzzy" and match_type in ("strict", "quadruple_fallback"):
-                transfer_kwargs["threshold"] = self.fuzzy_threshold.get()
+                transfer_kwargs["threshold"] = fuzzy_threshold
                 transfer_kwargs["fuzzy_model"] = self._fuzzy_model
                 transfer_kwargs["fuzzy_index"] = self._fuzzy_index
                 transfer_kwargs["fuzzy_texts"] = self._fuzzy_texts
@@ -1884,7 +1980,7 @@ class QuickTranslateApp:
                 transfer_kwargs["use_fuzzy_precision"] = True
 
             # Perform transfer
-            if self.input_mode.get() == "folder":
+            if input_mode == "folder":
                 results = transfer_folder_to_folder(
                     source,
                     target,
@@ -1922,13 +2018,11 @@ class QuickTranslateApp:
                         if len(xml_files) == 1:
                             target_file = xml_files[0]
                         elif len(xml_files) == 0:
-                            messagebox.showerror("Error", f"No XML files found in target folder:\n{target}")
+                            self._task_queue.put(('messagebox', 'showerror', 'Error', f'No XML files found in target folder:\n{target}'))
                             return
                         else:
-                            messagebox.showwarning(
-                                "Warning",
-                                f"Multiple XML files in target folder. Please use Folder mode or specify a single file."
-                            )
+                            self._task_queue.put(('messagebox', 'showwarning', 'Warning',
+                                'Multiple XML files in target folder. Please use Folder mode or specify a single file.'))
                             return
 
                 self._log(f"Target file: {target_file}", 'info')
@@ -1940,7 +2034,7 @@ class QuickTranslateApp:
                 )
                 report_mode = "file"
 
-            self.progress_value.set(80)
+            self._task_queue.put(('progress', 80))
 
             # Generate report
             report = format_transfer_report(results, mode=report_mode)
@@ -1958,7 +2052,7 @@ class QuickTranslateApp:
                 else:
                     self._log(line, 'info')
 
-            self.progress_value.set(90)
+            self._task_queue.put(('progress', 90))
 
             # Summary
             if report_mode == "folder":
@@ -1975,7 +2069,6 @@ class QuickTranslateApp:
                 skipped_translated = results.get("skipped_translated", 0)
 
             # === FAILURE REPORT GENERATION ===
-            # Generate detailed failure reports if there are any failures
             total_failures = not_found + strorigin_mismatch + skipped_translated
             failure_reports_msg = ""
 
@@ -1983,16 +2076,12 @@ class QuickTranslateApp:
                 self._log("", 'info')
                 self._log("=== Generating Failure Reports ===", 'header')
 
-                # Use source folder as report output location
                 report_folder = source if source.is_dir() else source.parent
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-                # Extract failed entries for XML report
                 if report_mode == "folder":
                     failed_entries = extract_failed_from_folder_results(results)
                 else:
-                    # Detect language from target file (languagedata_FRE.xml -> FRE)
-                    # target_file is always defined in FILE mode
                     detected_lang = "UNK"
                     try:
                         target_stem = target_file.stem.lower()
@@ -2007,7 +2096,6 @@ class QuickTranslateApp:
                         language=detected_lang
                     )
 
-                # Generate XML failure reports PER LANGUAGE
                 if failed_entries:
                     try:
                         xml_files = generate_failed_merge_xml_per_language(
@@ -2021,7 +2109,6 @@ class QuickTranslateApp:
                     except Exception as e:
                         self._log(f"Failed to generate XML reports: {e}", 'error')
 
-                # Generate Excel failure report (if xlsxwriter available)
                 if check_xlsxwriter_available():
                     excel_report_path = report_folder / f"FailureReport_{timestamp}.xlsx"
                     try:
@@ -2044,29 +2131,19 @@ class QuickTranslateApp:
 
                 self._log(f"Reports saved to: {report_folder}", 'info')
 
-            self.progress_value.set(100)
+            self._task_queue.put(('progress', 100))
             self._update_status(f"Transfer complete: {updated} updated")
 
-            messagebox.showinfo(
-                "Transfer Complete",
+            self._task_queue.put(('messagebox', 'showinfo', 'Transfer Complete',
                 f"Transfer completed!\n\n"
                 f"Matched: {matched}\n"
                 f"Updated: {updated}\n"
                 f"Not Found: {not_found}\n"
                 + (f"Skipped (translated): {skipped_translated}\n" if skipped_translated > 0 else "")
                 + f"\nTarget: {target}"
-                + failure_reports_msg
-            )
+                + failure_reports_msg))
 
-        except Exception as e:
-            messagebox.showerror("Error", f"Transfer failed:\n{e}")
-            self._log(f"ERROR: {e}", 'error')
-            self._update_status(f"Error: {e}")
-            import traceback
-            traceback.print_exc()
-
-        finally:
-            self._enable_buttons()
+        self._run_in_thread(work)
 
 
 def run_app():
