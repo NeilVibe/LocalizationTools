@@ -48,3 +48,4 @@ Trigger QA Compiler Build 525
 Trigger QuickTranslate Build
 Trigger QuickTranslate Build
 Trigger QuickTranslate Build
+Trigger QuickTranslate Build
