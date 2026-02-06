@@ -64,6 +64,7 @@ from core import (
 )
 from core.missing_translation_finder import find_missing_with_options
 from gui.missing_params_dialog import MissingParamsDialog
+from gui.exclude_dialog import ExcludeDialog
 from core.indexing import scan_folder_for_entries, scan_folder_for_entries_with_context
 from core.fuzzy_matching import (
     check_model_available,
@@ -133,6 +134,9 @@ class QuickTranslateApp:
         self._fuzzy_index_path = None  # Track which target folder was indexed
         self._fuzzy_texts = None
         self._fuzzy_entries = None
+
+        # Exclude rules for Missing Translations
+        self._exclude_paths: List[str] = config.load_exclude_rules()
 
         # Threading infrastructure
         self._task_queue = queue.Queue()
@@ -403,6 +407,18 @@ class QuickTranslateApp:
                  font=('Segoe UI', 9, 'bold'), bg='#9b59b6', fg='white',
                  relief='flat', padx=10, cursor='hand2')
         self.missing_trans_btn.pack(side=tk.RIGHT)
+
+        self._exclude_count_label = tk.Label(missing_trans_row, text="",
+                 font=('Segoe UI', 8, 'bold'), bg='#f0f0f0', fg='#e67e22')
+        self._exclude_count_label.pack(side=tk.RIGHT, padx=(0, 6))
+
+        self.exclude_btn = tk.Button(missing_trans_row, text="Exclude...",
+                 command=self._open_exclude_dialog,
+                 font=('Segoe UI', 9, 'bold'), bg='#e67e22', fg='white',
+                 relief='flat', padx=10, cursor='hand2')
+        self.exclude_btn.pack(side=tk.RIGHT, padx=(0, 4))
+
+        self._update_exclude_count_label()
 
         # === Settings Section ===
         settings_frame = tk.LabelFrame(main, text="Settings", font=('Segoe UI', 10, 'bold'),
@@ -1188,6 +1204,7 @@ class QuickTranslateApp:
         self.generate_btn.config(state='disabled')
         self.transfer_btn.config(state='disabled')
         self.missing_trans_btn.config(state='disabled')
+        self.exclude_btn.config(state='disabled')
         self.lookup_btn.config(state='disabled')
         self.reverse_btn.config(state='disabled')
         self.cancel_btn.pack(side=tk.RIGHT, padx=(8, 0))
@@ -1201,6 +1218,7 @@ class QuickTranslateApp:
         else:
             self.transfer_btn.config(state='normal')
         self.missing_trans_btn.config(state='normal')
+        self.exclude_btn.config(state='normal')
         self.lookup_btn.config(state='normal')
         self.reverse_btn.config(state='normal')
         self.cancel_btn.pack_forget()
@@ -1674,6 +1692,31 @@ class QuickTranslateApp:
 
         self._run_in_thread(work)
 
+    def _open_exclude_dialog(self):
+        """Open the EXPORT tree browser to configure exclusion rules."""
+        export_path = config.EXPORT_FOLDER
+        if not export_path.exists():
+            messagebox.showwarning(
+                "Warning",
+                f"EXPORT folder not found:\n{export_path}\n\n"
+                "Please configure the EXPORT path in Settings first."
+            )
+            return
+
+        dialog = ExcludeDialog(self.root, export_path, self._exclude_paths)
+        if dialog.result is not None:
+            self._exclude_paths = dialog.result
+            config.save_exclude_rules(self._exclude_paths)
+            self._update_exclude_count_label()
+
+    def _update_exclude_count_label(self):
+        """Update the exclude count label next to the Exclude button."""
+        count = len(self._exclude_paths)
+        if count > 0:
+            self._exclude_count_label.configure(text=f"({count} excluded)")
+        else:
+            self._exclude_count_label.configure(text="")
+
     def _find_missing_translations(self):
         """
         Find Korean strings in Target that are MISSING from Source.
@@ -1758,6 +1801,11 @@ class QuickTranslateApp:
         self._log(f"Match Mode: {mode_labels.get(match_mode, match_mode)}", 'info')
         if match_mode.endswith("_fuzzy"):
             self._log(f"Fuzzy Threshold: {threshold:.2f}", 'info')
+        if self._exclude_paths:
+            self._log(f"Exclude rules: {len(self._exclude_paths)} paths", 'warning')
+            for ep in self._exclude_paths:
+                etype = "Folder" if not ep.lower().endswith(".xml") else "File"
+                self._log(f"  [{etype}] {ep}", 'info')
         self._log("", 'info')
 
         export_folder = None
@@ -1789,6 +1837,7 @@ class QuickTranslateApp:
                 export_folder=export_folder,
                 progress_cb=progress_cb,
                 model=fuzzy_model,
+                exclude_paths=self._exclude_paths if self._exclude_paths else None,
             )
 
             self._task_queue.put(('progress', 100))
@@ -1801,6 +1850,8 @@ class QuickTranslateApp:
             self._log(f"HITS (matched in source): {results['total_hits']:,}", 'success')
             self._log(f"MISSES (need translation): {results['total_misses']:,}",
                      'error' if results['total_misses'] > 0 else 'success')
+            if results.get('total_excluded', 0) > 0:
+                self._log(f"EXCLUDED (by rules): {results['total_excluded']:,}", 'warning')
 
             self._log("", 'info')
             self._log("=== PER-LANGUAGE BREAKDOWN ===", 'header')
@@ -1837,11 +1888,15 @@ class QuickTranslateApp:
             master_note = ""
             if results.get('master_summary'):
                 master_note = f"\nMaster Summary: {Path(results['master_summary']).name}\n"
+            excluded_note = ""
+            if results.get('total_excluded', 0) > 0:
+                excluded_note = f"Excluded by rules: {results['total_excluded']:,}\n"
             self._task_queue.put(('messagebox', 'showinfo', 'Missing Translations Report',
                 f"Report generated successfully!\n\n"
                 f"Mode: {mode_labels.get(match_mode, match_mode)}\n"
                 f"Languages scanned: {len(results['languages'])}\n"
                 f"Total missing: {results['total_misses']:,}\n"
+                f"{excluded_note}"
                 f"Close folders: {close_count}\n"
                 f"{master_note}\n"
                 f"Output directory:\n{output_dir}"))
