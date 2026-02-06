@@ -546,11 +546,82 @@ Each generated datasheet has the **correct StringID** for each row, even when th
 
 **Purpose:** Compile all QA files into master documents with progress tracking.
 
+### Build Pipeline Overview
+
+When you click **[Build Master Files]**, the compiler runs a multi-step pipeline:
+
+```
+STEP 1: MasterSubmitScript (Quick - ISSUE rows only)
+  └─ Generates submission-ready files for Script categories (Sequencer/Dialog)
+  └─ Runs FIRST because it's fast and output is available immediately
+
+STEP 2: Master Files (Heavy Processing - Parallel)
+  └─ Worker groups process categories in parallel (up to 8 workers)
+  └─ Categories sharing a master file are serialized within their group
+  └─ Example: Sequencer + Dialog → Master_Script.xlsx (same group)
+  └─ Example: Quest + Knowledge → different groups (parallel)
+
+FINAL PASS: STATUS + Autofit + Save (Parallel)
+  └─ Updates STATUS sheet per master with user statistics
+  └─ Autofits row heights for wrapped comment text
+  └─ Hides empty comment rows, empty columns, resolved rows
+  └─ Saves all master files in parallel
+
+TRACKER: Progress Tracker Update
+  └─ Updates DAILY sheet (per-day tester stats)
+  └─ Updates TOTAL sheet (cumulative rankings)
+  └─ Updates Facial sheet (Face category progress)
+
+REPORT: Final Compilation Report
+  └─ Prints summary table in terminal (see below)
+```
+
+### Final Report Table
+
+At the end of every build, a summary table is printed in the terminal:
+
+```
++--------------------------------------------------------------------+
+|                      FINAL COMPILATION REPORT                      |
++--------------------------------------------------------------------+
+|  Total Time:         2m 35.4s                                      |
++--------------------------------------------------------------------+
+|  Testers                   EN           CN        Total            |
+|                             5            3            8            |
++--------------------------------------------------------------------+
+|  Categories:   Dialog, Face, Quest, Sequencer                      |
++--------------------------------------------------------------------+
+|  METRIC                                       COUNT                |
+|  ----------------------------------------------------------------  |
+|  Total Rows Processed                        87,654                |
+|  Done (has status)                           54,321                |
+|  NO ISSUE                                    43,210                |
+|  ISSUE                                        8,765                |
+|  MISMATCH (Face)                                345                |
+|  MISSING (Face)                                 200                |
+|  Word Count                               2,345,678                |
++--------------------------------------------------------------------+
+|  Master Files Saved: 8                                             |
++--------------------------------------------------------------------+
+|  Output EN:    Masterfolder_EN                                     |
+|  Output CN:    Masterfolder_CN                                     |
+|  Tracker:      LQA_Tester_ProgressTracker.xlsx                     |
++--------------------------------------------------------------------+
+```
+
+The report shows:
+- **Total Time** — elapsed time from start to finish
+- **Testers** — count per language (EN/CN) and total unique testers
+- **Categories** — which categories were processed
+- **Row Stats** — total rows, statuses found, word counts (only non-zero metrics shown)
+- **Master Files Saved** — number of master Excel files written
+- **Output Paths** — where to find the results
+
 ### How Master Build Works (Technical)
 
 The master build process uses **content-based matching** to preserve all tester work:
 
-#### Step 1: Template Selection (Most Recent File)
+#### Template Selection (Most Recent File)
 
 ```
 Multiple QA files for same category:
@@ -564,7 +635,7 @@ This ensures the master has the freshest column layout.
 
 > **Multiple XLSX in Same Folder:** When a tester folder contains multiple xlsx files, the **most recently modified** file is used. This is useful when testers save multiple versions - only the latest matters.
 
-#### Step 2: Content-Based Row Matching (2-Step Cascade)
+#### Content-Based Row Matching (2-Step Cascade)
 
 Each tester's data is matched to master rows using a 2-step cascade:
 
@@ -572,11 +643,12 @@ Each tester's data is matched to master rows using a 2-step cascade:
 |----------|------------------------|-------------------|
 | **Standard** (Quest, Knowledge, etc.) | STRINGID + Translation | Translation only |
 | **Item** | ItemName + ItemDesc + STRINGID | ItemName + ItemDesc |
+| **Script** (Sequencer, Dialog) | Translation + EventName | EventName only |
 | **Contents** | INSTRUCTIONS column | (unique, no fallback) |
 
 This prevents data loss even when row order changes between builds.
 
-#### Step 3: Data Preservation
+#### Data Preservation
 
 For each matched row, these columns are preserved:
 
@@ -587,6 +659,24 @@ For each matched row, these columns are preserved:
 | SCREENSHOT_{User} | |
 
 > **Key Benefit:** Manager work (status + comments) survives master rebuilds because matching is content-based, not row-index-based.
+
+#### Worker Group Parallelism
+
+Categories are organized into worker groups that can run in parallel:
+
+| Worker Group | Categories | Master Output |
+|-------------|------------|---------------|
+| quest | Quest | Master_Quest.xlsx |
+| knowledge | Knowledge | Master_Knowledge.xlsx |
+| item | Item, Gimmick | Master_Item.xlsx |
+| region | Region | Master_Region.xlsx |
+| system | Skill, Help | Master_System.xlsx |
+| character | Character | Master_Character.xlsx |
+| contents | Contents | Master_Contents.xlsx |
+| script | Sequencer, Dialog | Master_Script.xlsx |
+| face | Face | MasterMismatch/Missing_*.xlsx |
+
+Categories within the same group are processed sequentially (they share a master file). Groups themselves run in parallel (up to 8 workers).
 
 ### Category Merging
 

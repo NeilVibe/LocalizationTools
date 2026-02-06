@@ -1682,8 +1682,10 @@ def run_compiler():
         print(f"|{tester_val:<{W}}|")
         print(sep)
 
-        # Categories
-        cat_str = ', '.join(sorted(categories_seen))[:W - 16]
+        # Categories (truncate with ... if too long)
+        cat_full = ', '.join(sorted(categories_seen))
+        max_cat = W - 16
+        cat_str = cat_full if len(cat_full) <= max_cat else cat_full[:max_cat - 3] + "..."
         print(f"|  {'Categories:':<14}{cat_str:<{W - 16}}|")
         print(sep)
 
