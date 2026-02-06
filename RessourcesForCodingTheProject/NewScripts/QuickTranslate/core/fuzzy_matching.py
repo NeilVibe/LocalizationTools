@@ -3,7 +3,7 @@ Fuzzy Korean Matching using KR-SBERT + FAISS.
 
 Semantic similarity matching for Korean text using:
 - Model: snunlp/KR-SBERT-V40K-klueNLI-augSTS (768-dim, 447MB)
-- Index: FAISS HNSW with inner product (cosine similarity after normalization)
+- Index: FAISS IndexFlatIP with inner product (cosine similarity after normalization)
 
 Model folder 'KRTransformer/' must be placed alongside the app.
 """
@@ -110,15 +110,22 @@ def build_faiss_index(
     entries: List[dict],
     model,
     progress_callback: Optional[Callable[[str], None]] = None,
+    batch_size: int = 100,
 ):
     """
-    Build a FAISS HNSW index from a list of texts.
+    Build a FAISS IndexFlatIP index from a list of texts.
+
+    Uses the same proven pattern as TFM FULL, XLSTransfer, and KR Similar monoliths:
+    - Batch encoding (batch_size=100) to avoid memory spikes
+    - IndexFlatIP for instant index building and 100% accurate search
+    - L2 normalization for cosine similarity via inner product
 
     Args:
         texts: List of StrOrigin strings to encode
         entries: List of entry dicts corresponding to each text
         model: Loaded SentenceTransformer model
         progress_callback: Optional callback for status updates
+        batch_size: Number of texts to encode per batch (default: 100)
 
     Returns:
         FAISS index with normalized vectors added
@@ -137,24 +144,35 @@ def build_faiss_index(
     if not texts:
         raise ValueError("No texts provided to build index")
 
-    if progress_callback:
-        progress_callback(f"Encoding {len(texts)} texts with KR-SBERT...")
+    total = len(texts)
+    logger.info(f"Encoding {total} texts in batches of {batch_size}...")
 
-    logger.info(f"Encoding {len(texts)} texts...")
-    embeddings = model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
-    embeddings = np.ascontiguousarray(embeddings, dtype=np.float32)
+    # Batch encoding - same pattern as TFM FULL monolith (batch_size=100)
+    all_embeddings = []
+    for i in range(0, total, batch_size):
+        batch = texts[i:i + batch_size]
+        batch_embeddings = model.encode(batch, convert_to_numpy=True, show_progress_bar=False)
+        all_embeddings.extend(batch_embeddings)
+
+        done = min(i + batch_size, total)
+        if progress_callback:
+            progress_callback(f"Encoding {done}/{total} texts...")
+        if done % 500 == 0 or done == total:
+            logger.info(f"Embedding progress: {done}/{total}")
+
+    embeddings = np.array(all_embeddings, dtype=np.float32)
+    embeddings = np.ascontiguousarray(embeddings)
 
     if progress_callback:
-        progress_callback(f"Building FAISS index ({len(texts)} vectors, {embeddings.shape[1]}d)...")
+        progress_callback(f"Building FAISS index ({total} vectors, {embeddings.shape[1]}d)...")
 
     # Normalize for cosine similarity via inner product
     faiss.normalize_L2(embeddings)
 
-    # Build HNSW index
+    # IndexFlatIP - same as TFM FULL, XLSTransfer, KR Similar monoliths
+    # Instant build, 100% accurate, perfect for <200K vectors
     dim = embeddings.shape[1]
-    index = faiss.IndexHNSWFlat(dim, config.FAISS_HNSW_M, faiss.METRIC_INNER_PRODUCT)
-    index.hnsw.efConstruction = config.FAISS_HNSW_EF_CONSTRUCTION
-    index.hnsw.efSearch = config.FAISS_HNSW_EF_SEARCH
+    index = faiss.IndexFlatIP(dim)
     index.add(embeddings)
 
     logger.info(f"FAISS index built: {index.ntotal} vectors, {dim}d")
