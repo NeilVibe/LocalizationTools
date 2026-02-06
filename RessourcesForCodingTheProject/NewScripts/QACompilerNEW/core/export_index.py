@@ -5,11 +5,18 @@ Build and cache SoundEventName -> (StringId, StrOrigin) mapping from EXPORT fold
 
 Used by MasterSubmitScript generator to map EventName from QA files
 to StringId and Korean text from EXPORT files.
+
+Uses the same robust XML parsing as eventname_to_stringid.py:
+- Strips BOM/DTD/encoding issues before parsing
+- Uses recover=True parser for malformed XML
+- Scans ALL elements (not just LocStr)
+- Scans ALL .xml files recursively
 """
 
+import re
 from pathlib import Path
 from typing import Dict, Optional
-from lxml import etree as ET
+from lxml import etree
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -20,10 +27,29 @@ from config import EXPORT_FOLDER
 _SOUNDEVENT_MAPPING: Optional[Dict[str, Dict[str, str]]] = None
 
 
+def _robust_parse_xml(path: Path):
+    """Parse XML ignoring BOM/DTD/encoding issues (same as eventname_to_stringid.py)."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+            content = fh.read()
+
+        content = re.sub(r'^<\?xml[^>]*\?>\s*', '', content, flags=re.MULTILINE)
+        content = re.sub(r'<!DOCTYPE[^>]*>\s*', '', content, flags=re.MULTILINE)
+
+        parser = etree.XMLParser(resolve_entities=False, load_dtd=False,
+                                  no_network=True, recover=True)
+        root = etree.fromstring(content.encode("utf-8"), parser=parser)
+        return root
+    except Exception:
+        return None
+
+
 def build_soundevent_mapping(export_folder: Path) -> Dict[str, Dict[str, str]]:
     """
-    Scan Dialog/ + Sequencer/ subfolders for .loc.xml files.
-    Extract LocStr elements with SoundEventName, StringId, StrOrigin.
+    Scan ALL XML files in EXPORT folder recursively.
+    Look for SoundEventName, StringId, and StrOrigin ATTRIBUTES on any element.
+
+    Same logic as eventname_to_stringid.py standalone script.
 
     Args:
         export_folder: Path to EXPORT folder
@@ -37,63 +63,38 @@ def build_soundevent_mapping(export_folder: Path) -> Dict[str, Dict[str, str]]:
         print(f"  WARNING: EXPORT folder not found: {export_folder}")
         return mapping
 
-    # Scan Dialog/ and Sequencer/ subfolders
-    subfolders = ["Dialog", "Sequencer"]
+    xml_files = list(export_folder.rglob("*.xml"))
     files_scanned = 0
     entries_found = 0
 
-    for subfolder_name in subfolders:
-        # Case-insensitive folder matching
-        subfolder = None
-        for item in export_folder.iterdir():
-            if item.is_dir() and item.name.lower() == subfolder_name.lower():
-                subfolder = item
-                break
+    print(f"  Scanning {len(xml_files)} XML files in EXPORT folder...")
 
-        if not subfolder:
+    for idx, xml_path in enumerate(xml_files, 1):
+        if idx % 500 == 0:
+            print(f"    Processed {idx}/{len(xml_files)} files...")
+
+        if not xml_path.is_file():
             continue
 
-        # Scan all .loc.xml files recursively
-        for xml_path in subfolder.rglob("*.loc.xml"):
-            if not xml_path.is_file():
-                continue
+        files_scanned += 1
+        root = _robust_parse_xml(xml_path)
+        if root is None:
+            continue
 
-            files_scanned += 1
-            try:
-                tree = ET.parse(str(xml_path))
-                root = tree.getroot()
+        # Iterate ALL elements, get ATTRIBUTES (same as standalone script)
+        for node in root.iter():
+            se = (node.get("SoundEventName") or node.get("soundeventname") or
+                  node.get("EventName") or node.get("eventname") or "").strip()
+            sid = (node.get("StringId") or node.get("StringID") or
+                   node.get("stringid") or "").strip()
+            strorigin = (node.get("StrOrigin") or node.get("Strorigin") or
+                         node.get("strorigin") or "").strip()
 
-                # Find all LocStr elements
-                for elem in root.iter("LocStr"):
-                    # Case-insensitive attribute access
-                    string_id = (
-                        elem.get("StringId") or elem.get("StringID") or
-                        elem.get("stringid") or elem.get("STRINGID")
-                    )
-                    sound_event = (
-                        elem.get("SoundEventName") or elem.get("Soundeventname") or
-                        elem.get("soundeventname") or elem.get("SOUNDEVENTNAME") or
-                        elem.get("EventName") or elem.get("eventname") or elem.get("EVENTNAME")
-                    )
-                    str_origin = (
-                        elem.get("StrOrigin") or elem.get("Strorigin") or
-                        elem.get("strorigin") or elem.get("STRORIGIN")
-                    )
+            if se and sid:
+                mapping[se.lower()] = {"stringid": sid, "strorigin": strorigin}
+                entries_found += 1
 
-                    if sound_event and string_id:
-                        key = sound_event.strip().lower()
-                        mapping[key] = {
-                            "stringid": string_id.strip(),
-                            "strorigin": str_origin.strip() if str_origin else ""
-                        }
-                        entries_found += 1
-
-            except ET.XMLSyntaxError:
-                continue
-            except Exception:
-                continue
-
-    print(f"  EXPORT index: scanned {files_scanned} files, found {entries_found} SoundEventName entries")
+    print(f"  EXPORT index: scanned {files_scanned} files, found {entries_found} entries, {len(mapping)} unique EventNames")
     return mapping
 
 
