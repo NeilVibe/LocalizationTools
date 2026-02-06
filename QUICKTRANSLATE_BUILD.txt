@@ -41,3 +41,4 @@ Build 20260206-021000: All verified - imports, syntax, filtering
 Trigger QuickTranslate Build
 Build 20260206-115051
 Trigger QuickTranslate Build - Close folders feature
+Build: Detailed terminal+GUI logging for Find Missing Translations
