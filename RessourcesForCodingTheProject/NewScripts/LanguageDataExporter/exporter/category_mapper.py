@@ -280,23 +280,9 @@ def build_stringid_category_index(
     Returns:
         {StringID: Category} mapping
     """
-    print(f"[DEBUG CATEGORY_MAPPER] build_stringid_category_index called")
-    print(f"[DEBUG CATEGORY_MAPPER] EXPORT folder: {export_folder}")
-    print(f"[DEBUG CATEGORY_MAPPER] EXPORT folder exists? {export_folder.exists()}")
-
     if not export_folder.exists():
-        print(f"[DEBUG CATEGORY_MAPPER] ERROR: EXPORT folder does NOT exist!")
         logger.error(f"EXPORT folder not found: {export_folder}")
         return {}
-
-    # List contents of EXPORT folder
-    try:
-        contents = list(export_folder.iterdir())
-        print(f"[DEBUG CATEGORY_MAPPER] EXPORT folder has {len(contents)} items")
-        folders = [f for f in contents if f.is_dir()]
-        print(f"[DEBUG CATEGORY_MAPPER] Subfolders: {[f.name for f in folders]}")
-    except Exception as e:
-        print(f"[DEBUG CATEGORY_MAPPER] Error listing EXPORT folder: {e}")
 
     # Create mapper (handle both old and new config formats)
     if isinstance(clusters, dict) and "enabled" in clusters:
@@ -322,7 +308,6 @@ def build_stringid_category_index(
     }
 
     # Walk EXPORT folder recursively
-    print(f"[DEBUG CATEGORY_MAPPER] Scanning for *.loc.xml files...")
     for xml_file in export_folder.rglob("*.loc.xml"):
         stats["files_processed"] += 1
 
@@ -345,15 +330,6 @@ def build_stringid_category_index(
                 stats["stringids_found"] += 1
 
     # Log summary
-    print(f"[DEBUG CATEGORY_MAPPER] === SCAN RESULTS ===")
-    print(f"[DEBUG CATEGORY_MAPPER] Files processed: {stats['files_processed']}")
-    print(f"[DEBUG CATEGORY_MAPPER] StringIDs found: {stats['stringids_found']}")
-    print(f"[DEBUG CATEGORY_MAPPER] Categories used: {sorted(stats['categories_used'])}")
-
-    if stats['files_processed'] == 0:
-        print(f"[DEBUG CATEGORY_MAPPER] WARNING: No .loc.xml files found!")
-        print(f"[DEBUG CATEGORY_MAPPER] Check if EXPORT folder path is correct")
-
     logger.info(f"Processed {stats['files_processed']} EXPORT files")
     logger.info(f"Found {stats['stringids_found']} unique StringIDs")
     logger.info(f"Categories: {sorted(stats['categories_used'])}")

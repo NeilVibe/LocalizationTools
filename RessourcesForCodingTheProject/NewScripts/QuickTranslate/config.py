@@ -5,9 +5,12 @@ Paths and constants for translation lookup.
 Paths can be configured via settings.json (created on first run) or through the Settings UI.
 """
 
+import json
+import logging
 from pathlib import Path
 import sys
-import json
+
+logger = logging.getLogger(__name__)
 
 # Detect if running as PyInstaller bundle
 if getattr(sys, 'frozen', False):
@@ -78,8 +81,8 @@ def _load_settings() -> dict:
         try:
             with open(settings_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except (json.JSONDecodeError, IOError):
-            pass
+        except (json.JSONDecodeError, IOError) as e:
+            logger.warning(f"Failed to load settings from {settings_path}: {e}")
     return {}
 
 
@@ -91,7 +94,7 @@ def _save_settings(settings: dict) -> bool:
             json.dump(settings, f, indent=2)
         return True
     except IOError as e:
-        print(f"[CONFIG] Warning: Failed to save settings: {e}")
+        logger.warning(f"Failed to save settings: {e}")
         return False
 
 

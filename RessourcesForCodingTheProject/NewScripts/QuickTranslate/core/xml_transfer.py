@@ -5,14 +5,11 @@ Ported from LanguageDataExporter's locdev_merger.py.
 Writes corrections back to XML files using STRICT or StringID-only matching.
 """
 
-import html
 import os
-import re
 import stat
 import logging
 from pathlib import Path
-from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 # Try lxml first (more robust), fallback to standard library
 try:
@@ -21,8 +18,6 @@ try:
 except ImportError:
     from xml.etree import ElementTree as etree
     USING_LXML = False
-
-from openpyxl import load_workbook
 
 import config
 from .text_utils import normalize_text, normalize_nospace
@@ -295,8 +290,8 @@ def merge_corrections_stringid_only(
             logger.debug(f"Skipped non-SCRIPT StringID={sid} (category={category})")
             continue
 
-        # Check if subfolder is in exclusion list
-        if subfolder in SCRIPT_EXCLUDE_SUBFOLDERS:
+        # Check if subfolder is in exclusion list (case-insensitive)
+        if subfolder.lower() in {s.lower() for s in SCRIPT_EXCLUDE_SUBFOLDERS}:
             result["skipped_excluded"] += 1
             result["details"].append({
                 "string_id": sid,
@@ -1067,7 +1062,6 @@ def transfer_folder_to_folder(
     Returns:
         Dict with overall results
     """
-    from .xml_io import parse_folder_xml_files
     from .excel_io import read_corrections_from_excel
 
     results = {

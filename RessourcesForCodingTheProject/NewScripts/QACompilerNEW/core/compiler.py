@@ -579,8 +579,7 @@ def preprocess_script_category(
                     if ws.max_column is None or ws.max_column < 1:
                         continue
 
-                    # Find columns by NAME using streaming header scan (not ws.cell!)
-                    # In read_only mode, ws.cell() re-parses XML; build_column_map uses iter_rows
+                    # build_column_map uses iter_rows internally (safe for read_only mode)
                     col_map = build_column_map(ws)
 
                     status_col = col_map.get("STATUS")

@@ -25,7 +25,6 @@ except ImportError:
     USING_LXML = False
 
 logger = logging.getLogger(__name__)
-print(f"[DEBUG XML_PARSER] Using {'lxml' if USING_LXML else 'xml.etree.ElementTree'} for XML parsing")
 
 
 # =============================================================================
@@ -123,17 +122,13 @@ def parse_language_file(xml_path: Path) -> List[Dict]:
             {"str_origin": "철검", "str": "Iron Sword", "string_id": "2001"},
         ]
     """
-    print(f"[DEBUG XML_PARSER] parse_language_file: {xml_path}")
-
     if not xml_path.exists():
-        print(f"[DEBUG XML_PARSER] ERROR: File not found!")
         logger.error(f"Language file not found: {xml_path}")
         return []
 
     try:
         # Read and sanitize content
         content = xml_path.read_text(encoding='utf-8')
-        print(f"[DEBUG XML_PARSER] Read {len(content)} bytes")
         content = sanitize_xml_content(content)
 
         # Parse XML (with lxml recovery mode if available)
@@ -163,13 +158,6 @@ def parse_language_file(xml_path: Path) -> List[Dict]:
         if not loc_str_elements:
             loc_str_elements = list(root.iter('LOCSTR'))
 
-        print(f"[DEBUG XML_PARSER] Found {len(loc_str_elements)} LocStr elements")
-
-        # If still none, list what tags ARE in the file
-        if not loc_str_elements:
-            all_tags = set(elem.tag for elem in root.iter())
-            print(f"[DEBUG XML_PARSER] Tags in file: {list(all_tags)[:20]}")
-
         for loc_str in loc_str_elements:
             # Try all case variations for attributes
             string_id = (loc_str.get('StringId') or loc_str.get('StringID') or
@@ -186,15 +174,10 @@ def parse_language_file(xml_path: Path) -> List[Dict]:
                     'string_id': string_id,
                 })
 
-        print(f"[DEBUG XML_PARSER] Parsed {len(entries)} LocStr entries from {xml_path.name}")
-        if entries and len(entries) > 0:
-            print(f"[DEBUG XML_PARSER] First entry: StringId={entries[0]['string_id']}")
-
         logger.info(f"Parsed {len(entries)} entries from {xml_path.name}")
         return entries
 
     except Exception as e:
-        print(f"[DEBUG XML_PARSER] ERROR parsing: {type(e).__name__}: {e}")
         logger.error(f"Error parsing {xml_path}: {e}")
         return []
 
@@ -210,25 +193,9 @@ def discover_language_files(loc_folder: Path) -> Dict[str, Path]:
         Dictionary mapping language code to file path:
         {"eng": Path(...), "fre": Path(...), "zho-cn": Path(...)}
     """
-    print(f"[DEBUG XML_PARSER] discover_language_files called")
-    print(f"[DEBUG XML_PARSER] LOC folder path: {loc_folder}")
-    print(f"[DEBUG XML_PARSER] LOC folder exists? {loc_folder.exists()}")
-
     if not loc_folder.exists():
-        print(f"[DEBUG XML_PARSER] ERROR: LOC folder does NOT exist!")
         logger.error(f"LOC folder not found: {loc_folder}")
         return {}
-
-    # List what's in the folder
-    try:
-        contents = list(loc_folder.iterdir())
-        print(f"[DEBUG XML_PARSER] LOC folder has {len(contents)} items")
-        xml_files = [f for f in contents if f.suffix.lower() == '.xml']
-        print(f"[DEBUG XML_PARSER] Found {len(xml_files)} .xml files")
-        if xml_files[:5]:
-            print(f"[DEBUG XML_PARSER] First 5 XML files: {[f.name for f in xml_files[:5]]}")
-    except Exception as e:
-        print(f"[DEBUG XML_PARSER] Error listing LOC folder: {e}")
 
     lang_files = {}
 
@@ -242,12 +209,6 @@ def discover_language_files(loc_folder: Path) -> Dict[str, Path]:
             lang_code = match.group(1).lower()
             lang_files[lang_code] = xml_file
             logger.debug(f"Found language file: {lang_code} -> {xml_file}")
-
-    print(f"[DEBUG XML_PARSER] Discovered {len(lang_files)} language files")
-    if lang_files:
-        print(f"[DEBUG XML_PARSER] Languages found: {list(lang_files.keys())}")
-    else:
-        print(f"[DEBUG XML_PARSER] WARNING: No language files found!")
 
     logger.info(f"Discovered {len(lang_files)} language files in {loc_folder}")
     return lang_files
@@ -389,27 +350,16 @@ def _find_folder_case_insensitive(parent: Path, name: str) -> Optional[Path]:
     Returns:
         Path to folder if found, None otherwise
     """
-    print(f"[DEBUG XML_PARSER] _find_folder_case_insensitive: looking for '{name}' in '{parent}'")
-
     if not parent.exists():
-        print(f"[DEBUG XML_PARSER] Parent folder does not exist!")
         return None
 
     name_lower = name.lower()
     try:
-        folders = [item for item in parent.iterdir() if item.is_dir()]
-        print(f"[DEBUG XML_PARSER] Found {len(folders)} subfolders in {parent.name}")
-        if folders[:10]:
-            print(f"[DEBUG XML_PARSER] First 10 subfolders: {[f.name for f in folders[:10]]}")
-
-        for item in folders:
-            if item.name.lower() == name_lower:
-                print(f"[DEBUG XML_PARSER] FOUND match: {item}")
+        for item in parent.iterdir():
+            if item.is_dir() and item.name.lower() == name_lower:
                 return item
-
-        print(f"[DEBUG XML_PARSER] No case-insensitive match found for '{name}'")
-    except PermissionError as e:
-        print(f"[DEBUG XML_PARSER] Permission error: {e}")
+    except PermissionError:
+        pass
 
     return None
 
@@ -427,12 +377,7 @@ def build_stringid_soundevent_map(export_folder: Path) -> Dict[str, str]:
     Returns:
         {StringID: SoundEventName} mapping
     """
-    print(f"[DEBUG XML_PARSER] build_stringid_soundevent_map called")
-    print(f"[DEBUG XML_PARSER] EXPORT folder: {export_folder}")
-    print(f"[DEBUG XML_PARSER] EXPORT folder exists? {export_folder.exists()}")
-
     if not export_folder.exists():
-        print(f"[DEBUG XML_PARSER] ERROR: EXPORT folder does NOT exist!")
         logger.error(f"EXPORT folder not found: {export_folder}")
         return {}
 
@@ -444,25 +389,18 @@ def build_stringid_soundevent_map(export_folder: Path) -> Dict[str, str]:
 
     for folder_name in story_folder_names:
         # Find folder case-insensitively
-        print(f"[DEBUG XML_PARSER] Looking for STORY folder: {folder_name}")
         folder_path = _find_folder_case_insensitive(export_folder, folder_name)
         if folder_path is None:
-            print(f"[DEBUG XML_PARSER] STORY folder NOT FOUND: {folder_name}")
             logger.debug(f"STORY folder not found: {folder_name}")
             continue
 
-        print(f"[DEBUG XML_PARSER] Scanning STORY folder: {folder_path}")
-        xml_count = 0
         for xml_file in folder_path.rglob("*.loc.xml"):
-            xml_count += 1
             entries = parse_export_with_soundevent(xml_file)
             for entry in entries:
                 sid = entry['string_id']
                 snd = entry['sound_event']
                 if sid not in stringid_to_soundevent:
                     stringid_to_soundevent[sid] = snd
-        print(f"[DEBUG XML_PARSER] Scanned {xml_count} .loc.xml files in {folder_name}")
 
-    print(f"[DEBUG XML_PARSER] Total SoundEvent mappings: {len(stringid_to_soundevent)}")
     logger.info(f"Built {len(stringid_to_soundevent)} StringID → SoundEventName mappings")
     return stringid_to_soundevent
