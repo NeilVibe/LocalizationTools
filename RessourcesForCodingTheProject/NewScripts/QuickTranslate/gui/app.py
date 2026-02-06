@@ -1776,6 +1776,7 @@ class QuickTranslateApp:
 
             def progress_cb(msg, pct):
                 self._update_status(msg, progress=pct)
+                self._log(msg, 'info')
 
             self._update_status("Finding missing translations...")
 

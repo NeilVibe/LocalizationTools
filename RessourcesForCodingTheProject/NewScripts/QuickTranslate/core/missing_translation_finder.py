@@ -13,12 +13,15 @@ Logic:
 4. Output: Per-language XML files + Summary Report (Excel)
 """
 
+import logging
 import os
 import re
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple
 from datetime import datetime
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 
 # Try lxml first (more robust), fallback to standard library
 try:
@@ -1210,6 +1213,16 @@ def find_missing_with_options(
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+    logger.info("=" * 60)
+    logger.info("FIND MISSING TRANSLATIONS - START")
+    logger.info(f"  Match mode: {match_mode}")
+    logger.info(f"  Threshold:  {threshold:.2f}")
+    logger.info(f"  Source:     {source}")
+    logger.info(f"  Target:     {target}")
+    logger.info(f"  Output:     {out_dir}")
+    logger.info(f"  EXPORT:     {export_folder or 'None'}")
+    logger.info("=" * 60)
+
     # Step 1: Build category index AND export path index from EXPORT folder
     if progress_cb:
         progress_cb("Building EXPORT indexes...", 5)
@@ -1223,6 +1236,7 @@ def find_missing_with_options(
             category_index = build_stringid_category_index(export_path)
             export_path_index = build_export_stringid_index(export_path)
 
+    logger.info(f"[Step 1] EXPORT indexes built: {len(category_index):,} categories, {len(export_path_index):,} paths")
     if progress_cb:
         progress_cb(f"EXPORT indexes: {len(category_index)} categories, {len(export_path_index)} paths", 15)
 
@@ -1232,6 +1246,7 @@ def find_missing_with_options(
 
     use_stringid = match_mode.startswith("stringid_kr")
     is_fuzzy = match_mode.endswith("_fuzzy")
+    logger.info(f"[Step 2] Collecting SOURCE keys (use_stringid={use_stringid}, is_fuzzy={is_fuzzy})")
 
     if use_stringid:
         # (StrOrigin, StringId) composite keys
@@ -1239,18 +1254,26 @@ def find_missing_with_options(
             source_keys = collect_source_keys_from_file(source)
         else:
             source_keys = collect_source_keys_from_folder(source)
+        logger.info(f"[Step 2] SOURCE composite keys collected: {len(source_keys):,}")
     else:
         # KR-only: just StrOrigin texts
         if source.is_file():
             source_origins = _collect_source_strorigins_from_file(source)
         else:
             source_origins = _collect_source_strorigins(source)
+        logger.info(f"[Step 2] SOURCE StrOrigin texts collected: {len(source_origins):,}")
 
     # Step 3: Collect TARGET Korean entries per language
+    logger.info("[Step 3] Scanning TARGET for Korean (untranslated) entries...")
     if progress_cb:
         progress_cb("Scanning TARGET for Korean strings...", 22)
 
     per_lang_korean = collect_target_korean_per_language(target, progress_cb)
+
+    total_korean_all = sum(len(entries) for entries in per_lang_korean.values())
+    logger.info(f"[Step 3] TARGET scan complete: {len(per_lang_korean)} languages, {total_korean_all:,} total Korean entries")
+    for lang, entries in sorted(per_lang_korean.items()):
+        logger.info(f"  {lang}: {len(entries):,} Korean entries")
 
     # Step 4: For fuzzy modes, prepare embeddings
     source_embeddings = None
@@ -1259,6 +1282,7 @@ def find_missing_with_options(
 
     if is_fuzzy:
         import numpy as np
+        logger.info("[Step 4] Preparing fuzzy embeddings with KR-SBERT...")
 
         if not use_stringid:
             # kr_fuzzy: encode ALL unique source StrOrigin texts
@@ -1267,6 +1291,7 @@ def find_missing_with_options(
 
             all_source_texts = list(source_origins)
             source_texts_list = all_source_texts
+            logger.info(f"[Step 4] kr_fuzzy: encoding {len(all_source_texts):,} unique SOURCE texts")
 
             # Batch encode
             batch_size = 100
@@ -1275,8 +1300,10 @@ def find_missing_with_options(
                 batch = all_source_texts[i:i + batch_size]
                 vecs = model.encode(batch, show_progress_bar=False)
                 all_vecs.append(vecs)
+                done = min(i + batch_size, len(all_source_texts))
+                if done % 500 == 0 or done == len(all_source_texts):
+                    logger.info(f"  Encoding SOURCE: {done:,}/{len(all_source_texts):,}")
                 if progress_cb:
-                    done = min(i + batch_size, len(all_source_texts))
                     pct = 40 + int(10 * done / max(len(all_source_texts), 1))
                     progress_cb(f"Encoding SOURCE ({done}/{len(all_source_texts)})...", pct)
 
@@ -1286,6 +1313,9 @@ def find_missing_with_options(
                 norms = np.linalg.norm(source_embeddings, axis=1, keepdims=True)
                 norms[norms == 0] = 1
                 source_embeddings = source_embeddings / norms
+                logger.info(f"[Step 4] SOURCE embeddings ready: shape={source_embeddings.shape}")
+            else:
+                logger.warning("[Step 4] No SOURCE texts to encode - all entries will be MISS")
 
         elif use_stringid:
             # stringid_kr_fuzzy: group source by StringID
@@ -1298,9 +1328,12 @@ def find_missing_with_options(
                 if so.strip():
                     source_by_sid.setdefault(sid, []).append(so)
 
+            logger.info(f"[Step 4] stringid_kr_fuzzy: {len(source_by_sid):,} unique StringID groups from {len(source_keys):,} keys")
+
             # Pre-encode all unique texts grouped by StringID
             source_group_embeddings = {}
             total_sids = len(source_by_sid)
+            total_texts_encoded = 0
             for idx, (sid, texts) in enumerate(source_by_sid.items()):
                 vecs = model.encode(texts, show_progress_bar=False)
                 vecs = vecs.astype(np.float32)
@@ -1308,11 +1341,19 @@ def find_missing_with_options(
                 norms[norms == 0] = 1
                 vecs = vecs / norms
                 source_group_embeddings[sid] = vecs
+                total_texts_encoded += len(texts)
+                if (idx + 1) % 500 == 0 or (idx + 1) == total_sids:
+                    logger.info(f"  Encoding groups: {idx + 1:,}/{total_sids:,} ({total_texts_encoded:,} texts)")
                 if progress_cb and (idx + 1) % 500 == 0:
                     pct = 40 + int(10 * (idx + 1) / max(total_sids, 1))
                     progress_cb(f"Encoding groups ({idx + 1}/{total_sids})...", pct)
 
+            logger.info(f"[Step 4] Encoding complete: {len(source_group_embeddings):,} groups, {total_texts_encoded:,} total texts encoded")
+    else:
+        logger.info("[Step 4] Strict mode - no embeddings needed")
+
     # Step 5: Find misses per language
+    logger.info("[Step 5] Finding MISSES per language...")
     results = {
         "match_mode": match_mode,
         "threshold": threshold,
@@ -1333,8 +1374,12 @@ def find_missing_with_options(
             pct = 55 + int(35 * lang_idx / max(total_langs, 1))
             progress_cb(f"Processing {lang}...", pct)
 
+        logger.info(f"  [{lang_idx}/{total_langs}] Processing {lang}: {len(korean_entries):,} Korean entries")
+
         missing_entries: List[MissingEntryWithCategory] = []
         hits = 0
+        sid_not_in_source = 0  # For fuzzy: StringID not found at all
+        fuzzy_below_threshold = 0  # For fuzzy: below similarity threshold
 
         if not is_fuzzy:
             # === STRICT modes ===
@@ -1361,18 +1406,22 @@ def find_missing_with_options(
                     elem=entry.elem,
                 ))
 
+            logger.info(f"    STRICT: {hits:,} HIT, {len(missing_entries):,} MISS")
+
         else:
             # === FUZZY modes ===
             import numpy as np
 
             if use_stringid and source_group_embeddings is not None:
                 # stringid_kr_fuzzy: compare within StringID groups
-                for key, entry in korean_entries.items():
+                total_entries = len(korean_entries)
+                for entry_idx, (key, entry) in enumerate(korean_entries.items(), 1):
                     sid = entry.string_id
                     so = entry.str_origin.strip()
 
                     if sid not in source_group_embeddings:
                         # StringID not in source at all -> automatic MISS
+                        sid_not_in_source += 1
                         cat = category_index.get(sid, "Uncategorized")
                         missing_entries.append(MissingEntryWithCategory(
                             string_id=sid,
@@ -1397,6 +1446,7 @@ def find_missing_with_options(
                     if max_sim >= threshold:
                         hits += 1
                     else:
+                        fuzzy_below_threshold += 1
                         cat = category_index.get(sid, "Uncategorized")
                         missing_entries.append(MissingEntryWithCategory(
                             string_id=sid,
@@ -1407,6 +1457,13 @@ def find_missing_with_options(
                             elem=entry.elem,
                         ))
 
+                    if entry_idx % 200 == 0 or entry_idx == total_entries:
+                        logger.info(f"    Fuzzy matching: {entry_idx:,}/{total_entries:,} "
+                                    f"(HIT={hits:,} SID_MISS={sid_not_in_source:,} BELOW_THRESH={fuzzy_below_threshold:,})")
+
+                logger.info(f"    STRINGID_KR_FUZZY: {hits:,} HIT, {sid_not_in_source:,} StringID not in source, "
+                            f"{fuzzy_below_threshold:,} below threshold ({threshold:.2f})")
+
             elif not use_stringid and source_embeddings is not None:
                 # kr_fuzzy: batch similarity against all source texts
                 target_texts = []
@@ -1414,6 +1471,8 @@ def find_missing_with_options(
                 for key, entry in korean_entries.items():
                     target_texts.append(entry.str_origin.strip())
                     target_entries_list.append(entry)
+
+                logger.info(f"    KR_FUZZY: encoding {len(target_texts):,} target texts, comparing against {source_embeddings.shape[0]:,} source texts")
 
                 batch_size = 100
                 for i in range(0, len(target_texts), batch_size):
@@ -1429,7 +1488,7 @@ def find_missing_with_options(
                     sims = target_vecs @ source_embeddings.T
                     max_sims = sims.max(axis=1)
 
-                    for j, (sim, entry) in enumerate(zip(max_sims, batch_entries)):
+                    for sim, entry in zip(max_sims, batch_entries):
                         if float(sim) >= threshold:
                             hits += 1
                         else:
@@ -1442,6 +1501,13 @@ def find_missing_with_options(
                                 source_file=entry.source_file,
                                 elem=entry.elem,
                             ))
+
+                    done = min(i + batch_size, len(target_texts))
+                    if done % 500 == 0 or done == len(target_texts):
+                        logger.info(f"    Encoding+comparing: {done:,}/{len(target_texts):,} "
+                                    f"(HIT={hits:,} MISS={len(missing_entries):,})")
+
+                logger.info(f"    KR_FUZZY: {hits:,} HIT, {len(missing_entries):,} MISS (threshold={threshold:.2f})")
 
         # Write per-language Excel
         lang_result = {
@@ -1456,6 +1522,9 @@ def find_missing_with_options(
             lang_result["output_file"] = str(excel_path)
             results["output_files"].append(str(excel_path))
             missing_per_lang[lang] = missing_entries
+            logger.info(f"    Excel written: {excel_path.name} ({len(missing_entries):,} rows)")
+        else:
+            logger.info(f"    No missing entries for {lang} - no Excel generated")
 
         results["languages"][lang] = lang_result
         results["total_misses"] += len(missing_entries)
@@ -1464,11 +1533,27 @@ def find_missing_with_options(
 
     # Step 6: Write Close_{LANG} folders mirroring EXPORT structure
     if export_path_index and missing_per_lang:
+        logger.info(f"[Step 6] Writing Close folders for {len(missing_per_lang)} languages...")
         if progress_cb:
             progress_cb("Writing Close folders with EXPORT structure...", 93)
 
         close_folders = _write_close_folders(missing_per_lang, export_path_index, out_dir)
         results["close_folders"] = close_folders
+        for lang, folder_path in close_folders.items():
+            logger.info(f"  Close_{lang}/ written")
+    else:
+        logger.info("[Step 6] No Close folders needed (no export paths or no misses)")
+
+    # Final summary
+    logger.info("=" * 60)
+    logger.info("FIND MISSING TRANSLATIONS - COMPLETE")
+    logger.info(f"  Total Korean entries: {results['total_korean']:,}")
+    logger.info(f"  Total HITS (matched):  {results['total_hits']:,}")
+    logger.info(f"  Total MISSES:          {results['total_misses']:,}")
+    logger.info(f"  Languages processed:   {len(results['languages'])}")
+    logger.info(f"  Excel files:           {len(results['output_files'])}")
+    logger.info(f"  Close folders:         {len(results.get('close_folders', {}))}")
+    logger.info("=" * 60)
 
     if progress_cb:
         progress_cb("Done.", 100)
