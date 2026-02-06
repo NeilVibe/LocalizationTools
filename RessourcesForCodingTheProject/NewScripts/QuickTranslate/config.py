@@ -55,10 +55,8 @@ FUZZY_THRESHOLD_MAX = 1.00
 FUZZY_THRESHOLD_DEFAULT = 0.85
 FUZZY_THRESHOLD_STEP = 0.01
 
-# FAISS HNSW parameters (matching LocaNext FAISSManager pattern)
-FAISS_HNSW_M = 32
-FAISS_HNSW_EF_CONSTRUCTION = 400
-FAISS_HNSW_EF_SEARCH = 500
+# FAISS: Uses IndexFlatIP (same as TFM FULL, XLSTransfer, KR Similar monoliths)
+# No special configuration needed - IndexFlatIP is simple and reliable
 
 # =============================================================================
 # Settings Loading

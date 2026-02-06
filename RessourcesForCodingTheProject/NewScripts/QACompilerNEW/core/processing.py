@@ -1392,56 +1392,40 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
             col_letter = get_column_letter(idx + 1)
             col_widths.append(ws.column_dimensions[col_letter].width or chars_per_line)
 
-        # === PHASE 2: Auto-fit row heights ===
-        # FAST: Calculate heights from COMMENT columns only (they have multi-line text)
-        # Other columns (STRINGID, Translation) are typically single-line
-        # This reduces O(rows × columns) to O(rows × comment_cols)
+        # === PHASE 2: Auto-fit row heights + Apply alignment (COMBINED SINGLE PASS) ===
+        # Merges height calculation + alignment application into one loop.
+        # Eliminates a separate ws.cell() pass and skips ws.cell() for empty cells.
 
-        # Calculate row heights from COMMENT columns only
-        row_heights = []  # List of (row_num, height)
-        for row_idx, row_tuple in enumerate(all_rows):
-            row_num = row_idx + 1  # 1-based Excel row number
-            max_lines = 1
-
-            # Only check COMMENT columns for multi-line content
-            for col_idx in comment_col_indices:
-                if col_idx < len(row_tuple):
-                    cell_value = row_tuple[col_idx]
-                    if cell_value:
-                        content = str(cell_value)
-                        explicit_lines = content.count('\n') + 1
-
-                        col_width = col_widths[col_idx] if col_idx < len(col_widths) else chars_per_line
-                        effective_chars = max(int(col_width * 0.9), 10)
-
-                        longest_line = max(len(line) for line in content.split('\n')) if content else 0
-                        wrapped_lines = max(1, (longest_line // effective_chars) + 1)
-                        total_lines = explicit_lines + wrapped_lines - 1
-                        max_lines = max(max_lines, total_lines)
-
-            calculated_height = min(max_lines * default_row_height, 300)
-            row_heights.append((row_num, calculated_height))
-
-        # Apply row heights
-        for row_num, height in row_heights:
-            ws.row_dimensions[row_num].height = height
-
-        # Apply word wrap alignment ONLY to COMMENT columns (not all columns!)
-        # This reduces O(rows × columns) to O(rows × comment_cols)
-        # For 100k rows × 50 cols → 100k rows × ~5 comment cols = 10x faster
-
-        # Header row: apply to all columns (just 1 row)
+        # Header row: apply wrap to all columns (just 1 row, cheap)
         for cell in ws[1]:
             cell.alignment = WRAP_TOP_ALIGNMENT
+        # Set header row height
+        ws.row_dimensions[1].height = default_row_height
 
-        # Data rows: ONLY apply to COMMENT columns (they have multi-line text)
-        # Other columns (STRINGID, Translation, etc.) don't need word wrap
+        # Data rows: calculate height AND apply alignment in one pass
         if comment_col_indices:
-            for row_num in range(2, len(all_rows) + 1):
+            for row_idx, row_tuple in enumerate(all_rows[1:], start=2):
+                max_lines = 1
+
                 for col_idx in comment_col_indices:
-                    col_num = col_idx + 1  # Convert 0-based to 1-based
-                    cell = ws.cell(row=row_num, column=col_num)
-                    if cell.value is not None:
-                        cell.alignment = WRAP_TOP_ALIGNMENT
+                    if col_idx < len(row_tuple):
+                        cell_value = row_tuple[col_idx]
+                        if cell_value:
+                            content = str(cell_value)
+                            explicit_lines = content.count('\n') + 1
+
+                            col_width = col_widths[col_idx] if col_idx < len(col_widths) else chars_per_line
+                            effective_chars = max(int(col_width * 0.9), 10)
+
+                            longest_line = max(len(line) for line in content.split('\n')) if content else 0
+                            wrapped_lines = max(1, (longest_line // effective_chars) + 1)
+                            total_lines = explicit_lines + wrapped_lines - 1
+                            max_lines = max(max_lines, total_lines)
+
+                            # Apply alignment inline — only for non-empty cells, avoids
+                            # ws.cell() call entirely for empty comment cells
+                            ws.cell(row=row_idx, column=col_idx + 1).alignment = WRAP_TOP_ALIGNMENT
+
+                ws.row_dimensions[row_idx].height = min(max_lines * default_row_height, 300)
 
         print(f" done")
