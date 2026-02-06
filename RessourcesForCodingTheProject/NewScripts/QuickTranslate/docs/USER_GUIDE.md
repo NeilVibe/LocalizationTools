@@ -1,6 +1,6 @@
 # QuickTranslate User Guide
 
-**Version 3.5.0** | February 2026 | LocaNext Project
+**Version 3.6.0** | February 2026 | LocaNext Project
 
 ---
 
@@ -843,7 +843,48 @@ Matches: ONLY if both StringID AND StrOrigin match exactly
 
 **Buttons:** Generate (LOOKUP) and TRANSFER
 
-## 7.4 Special Key Match
+## 7.4 Quadruple Fallback (Fuzzy KR Match)
+
+**How it works:**
+
+Uses KR-SBERT semantic similarity + FAISS to find matches when exact matching fails. Requires the `KRTransformer/` model folder alongside the app.
+
+```
+For each correction:
+  L1 (HIGH):        StrOrigin + file_relpath + adjacency_hash  → exact context match
+  L2A (MEDIUM-HIGH): StrOrigin + file_relpath                  → same file match
+  L2B (MEDIUM):      StrOrigin + adjacency_hash                → same context match
+  L3 (LOW):          StrOrigin only                            → text-only match
+
+  If no exact match at any level → FAISS semantic similarity search
+```
+
+**FAISS Technical Details:**
+- **Model:** `snunlp/KR-SBERT-V40K-klueNLI-augSTS` (768-dim, local `KRTransformer/` folder)
+- **Index:** `faiss.IndexFlatIP` (inner product after L2 normalization = cosine similarity)
+- **Encoding:** Batch processing, 100 texts per batch
+- **Search:** One query at a time (same as TFM FULL, XLSTransfer, KR Similar monoliths)
+- **Threshold:** Configurable 0.80 - 1.00 (default 0.85)
+
+**Process flow:**
+1. Load KR-SBERT model (cached after first load)
+2. Scan target folder for XML entries
+3. Encode all StrOrigin texts in batches of 100
+4. Build FAISS IndexFlatIP index (instant)
+5. For each correction, search index for best match
+6. Apply 4-level cascade with context disambiguation
+
+| Pros | Cons |
+|------|------|
+| Handles text variations | Requires KRTransformer model (~447MB) |
+| Context-aware disambiguation | Slower than exact matching |
+| Configurable threshold | First run builds index |
+
+**Best for:** Corrections where StrOrigin text may have minor differences from target
+
+**Buttons:** TRANSFER (with Quadruple Fallback match type selected)
+
+## 7.5 Special Key Match
 
 **How it works:**
 - Custom composite key from multiple fields
@@ -1118,13 +1159,35 @@ Result:     STRORIGIN_MISMATCH (StringID found, StrOrigin differs)
 **Cause:** Corrections already applied or no differences
 **Solution:** This is normal if translations are identical
 
-## 10.3 Performance Tips
+## 10.3 Fuzzy Matching Issues
+
+### "KRTransformer model not found"
+**Cause:** The KR-SBERT model folder is missing
+**Solution:** Place the `KRTransformer/` folder alongside the app. Copy from `models/kr-sbert.deprecated/`
+
+### "sentence-transformers is not installed"
+**Cause:** ML dependencies not installed
+**Solution:** `pip install -r requirements-ml.txt`
+
+### Fuzzy matching is slow
+**Expected performance:** ~10K texts should encode in a few seconds. If it takes minutes:
+1. Check you're using IndexFlatIP (not HNSW) - see `docs/FAISS_IMPLEMENTATION.md`
+2. Ensure batch encoding is working (batch_size=100, not all-at-once)
+3. First load of KR-SBERT model takes 5-10 seconds (cached after)
+
+### "Batches: 100% 1/1" spam in terminal
+**Cause:** `show_progress_bar=False` missing on a `model.encode()` call
+**Solution:** Every `model.encode()` call must have `show_progress_bar=False`
+
+## 10.4 Performance Tips
 
 | Scenario | Tip |
 |----------|-----|
-| First run slow | Building index. Subsequent runs faster |
+| First run slow | Building index + loading model. Subsequent runs faster (cached) |
 | Large corrections file | Use Folder mode for batching |
 | Memory usage | Close other apps for 1000+ corrections |
+| Fuzzy matching slow | Ensure IndexFlatIP is used (see FAISS_IMPLEMENTATION.md) |
+| Model loading | First load ~5-10s, then instant (cached in memory) |
 
 ---
 
@@ -1223,6 +1286,10 @@ python main.py --help       # Show help
 | **LOC folder** | Contains `languagedata_*.xml` files |
 | **LOOKUP** | Read-only translation search (Generate button) |
 | **TRANSFER** | Write corrections to XML files (TRANSFER button) |
+| **FAISS** | Facebook AI Similarity Search - vector index for fuzzy matching |
+| **IndexFlatIP** | FAISS index type using inner product (cosine similarity) |
+| **KR-SBERT** | Korean Sentence-BERT model for semantic text encoding |
+| **Quadruple Fallback** | 4-level cascade matching: context → file → adjacency → text |
 
 ## 12.2 XML Element Structure
 
@@ -1243,6 +1310,23 @@ python main.py --help       # Show help
 | Category | No | String category |
 
 ## 12.3 Changelog
+
+### Version 3.6.0 (February 2026)
+
+**Critical Fix:**
+- **FAISS: Replaced IndexHNSWFlat with IndexFlatIP** - HNSW was causing slow index builds (minutes) and Python crashes for 10K+ texts. IndexFlatIP builds instantly and matches the battle-tested pattern from TFM FULL, XLSTransfer, and KR Similar monoliths
+- **Batch encoding:** `model.encode()` now processes 100 texts per batch instead of all texts at once, preventing memory spikes
+- **Terminal cleanup:** Added `show_progress_bar=False` to all 7 `model.encode()` calls, eliminating tqdm "Batches: 100% 1/1" spam
+
+**Documentation:**
+- New `docs/FAISS_IMPLEMENTATION.md` - Complete FAISS technical reference with monolith comparison
+- Updated User Guide with Quadruple Fallback (Fuzzy KR Match) section and FAISS troubleshooting
+
+**Technical Details:**
+- `core/fuzzy_matching.py`: IndexFlatIP + batch_size=100 + show_progress_bar=False
+- `core/xml_transfer.py`: show_progress_bar=False on 2 encode calls
+- `config.py`: Removed HNSW params (FAISS_HNSW_M, EF_CONSTRUCTION, EF_SEARCH)
+- See `docs/FAISS_IMPLEMENTATION.md` for full technical documentation
 
 ### Version 3.5.0 (February 2026)
 
@@ -1343,7 +1427,7 @@ python main.py --help       # Show help
 
 <div align="center">
 
-**QuickTranslate** | Version 3.5.0 | LocaNext Project
+**QuickTranslate** | Version 3.6.0 | LocaNext Project
 
 *Lookup & Transfer - Two Tools in One*
 
