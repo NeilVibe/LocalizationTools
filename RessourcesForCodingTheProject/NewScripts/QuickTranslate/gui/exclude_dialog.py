@@ -10,16 +10,19 @@ import logging
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+# Max search results to display (avoids flooding the Treeview)
+_MAX_SEARCH_RESULTS = 500
 
 
 class ExcludeDialog(tk.Toplevel):
     """
     EXPORT tree browser for selecting folders/files to exclude.
 
-    Left panel:  Lazy-loaded EXPORT tree (ttk.Treeview)
+    Left panel:  Lazy-loaded EXPORT tree (ttk.Treeview) with substring search
     Right panel: Currently excluded paths (ttk.Treeview)
 
     Result: self.result is a List[str] of relative paths, or None if cancelled.
@@ -36,12 +39,21 @@ class ExcludeDialog(tk.Toplevel):
         self._exclusions: List[str] = list(current_exclusions)
         self.result: Optional[List[str]] = None
 
+        # Search state
+        self._search_var = tk.StringVar()
+        self._search_after_id = None
+        self._search_active = False
+        self._all_entries: Optional[List[Tuple[str, str, bool]]] = None  # lazy cache
+
         self._build_ui()
 
         # Populate trees
         self._populate_export_root()
         self._rebuild_excluded_tree()
         self._update_status()
+
+        # Wire search
+        self._search_var.trace_add("write", self._on_search_changed)
 
         # Center on parent
         self.update_idletasks()
@@ -57,7 +69,7 @@ class ExcludeDialog(tk.Toplevel):
         self.minsize(700, 450)
 
         self.protocol("WM_DELETE_WINDOW", self._on_cancel)
-        self.bind("<Escape>", lambda e: self._on_cancel())
+        self.bind("<Escape>", self._on_escape)
         self.bind("<Return>", lambda e: self._on_save())
         self.wait_window(self)
 
@@ -84,8 +96,24 @@ class ExcludeDialog(tk.Toplevel):
         left_frame = ttk.LabelFrame(mid, text="EXPORT Tree", padding=4)
         left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
 
-        self._export_tree = ttk.Treeview(left_frame, show="tree", selectmode="extended")
-        left_scroll = ttk.Scrollbar(left_frame, orient=tk.VERTICAL, command=self._export_tree.yview)
+        # Search bar (above tree)
+        search_frame = ttk.Frame(left_frame)
+        search_frame.pack(fill=tk.X, pady=(0, 4))
+
+        ttk.Label(search_frame, text="\U0001F50D", font=("Segoe UI", 9)).pack(side=tk.LEFT, padx=(0, 4))
+        self._search_entry = ttk.Entry(search_frame, textvariable=self._search_var, font=("Segoe UI", 9))
+        self._search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self._clear_btn = ttk.Button(search_frame, text="\u2715", width=3, command=self._clear_search)
+        # Hidden initially (shown when search text is entered)
+
+        self._search_info = ttk.Label(search_frame, text="", font=("Segoe UI", 8))
+
+        # Tree + scrollbar in sub-frame
+        tree_frame = ttk.Frame(left_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+
+        self._export_tree = ttk.Treeview(tree_frame, show="tree", selectmode="extended")
+        left_scroll = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self._export_tree.yview)
         self._export_tree.configure(yscrollcommand=left_scroll.set)
         self._export_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         left_scroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -130,6 +158,108 @@ class ExcludeDialog(tk.Toplevel):
         ttk.Button(bottom, text="Cancel", command=self._on_cancel, width=10).pack(side=tk.LEFT)
 
     # =========================================================================
+    # Search
+    # =========================================================================
+
+    def _on_search_changed(self, *_args):
+        """Debounced handler for search text changes."""
+        if self._search_after_id is not None:
+            self.after_cancel(self._search_after_id)
+
+        # Toggle clear button visibility
+        if self._search_var.get():
+            self._clear_btn.pack(side=tk.LEFT, padx=(2, 0))
+        else:
+            self._clear_btn.pack_forget()
+            self._search_info.pack_forget()
+
+        self._search_after_id = self.after(250, self._execute_search)
+
+    def _execute_search(self):
+        """Run the substring search and display results."""
+        self._search_after_id = None
+        query = self._search_var.get().strip().lower()
+
+        if not query:
+            self._restore_tree_view()
+            return
+
+        # Build cache on first search
+        if self._all_entries is None:
+            self._all_entries = self._walk_export_tree()
+
+        # Substring match on full relative path
+        matches = [(rel, name, is_dir) for rel, name, is_dir in self._all_entries
+                   if query in rel.lower()]
+
+        # Clear tree and show flat results
+        self._export_tree.delete(*self._export_tree.get_children())
+        self._search_active = True
+
+        shown = 0
+        for rel, name, is_dir in matches:
+            if shown >= _MAX_SEARCH_RESULTS:
+                break
+            icon = "\U0001F4C1" if is_dir else "\U0001F4C4"
+            self._export_tree.insert("", tk.END, text=f"{icon} {rel}", values=(rel,))
+            shown += 1
+
+        # Show result count
+        total = len(matches)
+        if total > _MAX_SEARCH_RESULTS:
+            info = f"{_MAX_SEARCH_RESULTS}/{total}"
+        else:
+            info = str(total)
+        self._search_info.configure(text=info)
+        self._search_info.pack(side=tk.LEFT, padx=(4, 0))
+
+    def _walk_export_tree(self) -> List[Tuple[str, str, bool]]:
+        """Walk entire EXPORT tree recursively. Returns (rel_path, name, is_dir) tuples."""
+        results = []
+        try:
+            for item in sorted(self._export_folder.rglob("*"), key=lambda p: str(p).lower()):
+                try:
+                    is_dir = item.is_dir()
+                    if is_dir:
+                        rel = self._rel_path(item)
+                        results.append((rel, item.name, True))
+                    elif item.is_file() and item.suffix.lower() == ".xml":
+                        rel = self._rel_path(item)
+                        results.append((rel, item.name, False))
+                except OSError:
+                    continue
+        except OSError:
+            logger.warning("Failed to walk EXPORT tree for search")
+        return results
+
+    def _restore_tree_view(self):
+        """Switch back from search results to normal lazy tree."""
+        if not self._search_active:
+            return
+        self._search_active = False
+        self._search_info.pack_forget()
+        self._export_tree.delete(*self._export_tree.get_children())
+        self._populate_export_root()
+
+    def _clear_search(self):
+        """Clear the search field and restore tree immediately."""
+        if self._search_after_id is not None:
+            self.after_cancel(self._search_after_id)
+            self._search_after_id = None
+        self._search_var.set("")
+        self._clear_btn.pack_forget()
+        self._search_info.pack_forget()
+        self._restore_tree_view()
+        self._search_entry.focus_set()
+
+    def _on_escape(self, _event):
+        """Escape clears search first, then closes dialog."""
+        if self._search_var.get():
+            self._clear_search()
+        else:
+            self._on_cancel()
+
+    # =========================================================================
     # EXPORT Tree (Lazy Loading)
     # =========================================================================
 
@@ -166,6 +296,8 @@ class ExcludeDialog(tk.Toplevel):
 
     def _on_export_expand(self, event):
         """Lazy-load children when a folder is expanded."""
+        if self._search_active:
+            return
         iid = self._export_tree.focus()
         children = self._export_tree.get_children(iid)
 
@@ -355,9 +487,13 @@ class ExcludeDialog(tk.Toplevel):
     # =========================================================================
 
     def _on_save(self):
+        if self._search_after_id is not None:
+            self.after_cancel(self._search_after_id)
         self.result = list(self._exclusions)
         self.destroy()
 
     def _on_cancel(self):
+        if self._search_after_id is not None:
+            self.after_cancel(self._search_after_id)
         self.result = None
         self.destroy()
