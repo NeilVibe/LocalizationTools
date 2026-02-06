@@ -62,6 +62,8 @@ from core import (
     find_missing_translations_per_language,
     format_report_summary,
 )
+from core.missing_translation_finder import find_missing_with_options
+from gui.missing_params_dialog import MissingParamsDialog
 from core.indexing import scan_folder_for_entries, scan_folder_for_entries_with_context
 from core.fuzzy_matching import (
     check_model_available,
@@ -1674,8 +1676,8 @@ class QuickTranslateApp:
 
     def _find_missing_translations(self):
         """
-        Find Korean strings in Target that are MISSING from Source by (StrOrigin, StringId) key.
-        Generates per-language XML files + Excel summary report.
+        Find Korean strings in Target that are MISSING from Source.
+        Opens parameter dialog first, then runs with selected options.
         """
         # Validate source (file or folder) — all on main thread
         source_path = self.source_path.get().strip()
@@ -1712,6 +1714,12 @@ class QuickTranslateApp:
                 "Please select a folder with languagedata_FRE.xml, languagedata_GER.xml, etc.")
             return
 
+        # Open parameter dialog
+        dialog = MissingParamsDialog(self.root)
+        params = dialog.result
+        if params is None:
+            return  # User cancelled
+
         # Ask user for output directory (must be on main thread — file dialog)
         output_dir = filedialog.askdirectory(
             title="Select Output Directory for Missing Translation Reports",
@@ -1721,38 +1729,65 @@ class QuickTranslateApp:
         if not output_dir:
             return  # User cancelled
 
+        self._run_missing_translations(
+            source=source,
+            target=target,
+            lang_files=lang_files,
+            output_dir=output_dir,
+            match_mode=params["match_mode"],
+            threshold=params["threshold"],
+        )
+
+    def _run_missing_translations(self, source, target, lang_files, output_dir, match_mode, threshold):
+        """Run Find Missing Translations with the given parameters."""
         self._disable_buttons()
         self.progress_value.set(0)
         self._clear_log()
+
+        mode_labels = {
+            "stringid_kr_strict": "StringID + KR (Strict)",
+            "stringid_kr_fuzzy": "StringID + KR (Fuzzy)",
+            "kr_strict": "KR only (Strict)",
+            "kr_fuzzy": "KR only (Fuzzy)",
+        }
 
         self._log("=== Find Missing Translations ===", 'header')
         self._log(f"Source: {source}", 'info')
         self._log(f"Target: {target} ({len(lang_files)} language files)", 'info')
         self._log(f"Output: {output_dir}", 'info')
+        self._log(f"Match Mode: {mode_labels.get(match_mode, match_mode)}", 'info')
+        if match_mode.endswith("_fuzzy"):
+            self._log(f"Fuzzy Threshold: {threshold:.2f}", 'info')
         self._log("", 'info')
-        self._log("Logic: Find Korean in Target MISSING from Source by (StrOrigin, StringId) key", 'info')
 
-        # Optional: export filtering
         export_folder = None
-        filter_prefixes = None
         if config.EXPORT_FOLDER.exists():
             export_folder = str(config.EXPORT_FOLDER)
-            filter_prefixes = ["System/MultiChange", "System/Gimmick"]
-            self._log(f"Export filter enabled: {filter_prefixes}", 'info')
+            self._log(f"Category mapping from: {config.EXPORT_FOLDER}", 'info')
 
         def work():
+            # For fuzzy modes, load model first
+            fuzzy_model = None
+            if match_mode.endswith("_fuzzy"):
+                self._log("Loading KR-SBERT model for fuzzy matching...", 'info')
+                if not self._ensure_fuzzy_model():
+                    return
+                fuzzy_model = self._fuzzy_model
+
             def progress_cb(msg, pct):
                 self._update_status(msg, progress=pct)
 
             self._update_status("Finding missing translations...")
 
-            report = find_missing_translations_per_language(
+            results = find_missing_with_options(
                 source_path=str(source),
                 target_path=str(target),
                 output_dir=output_dir,
+                match_mode=match_mode,
+                threshold=threshold,
                 export_folder=export_folder,
-                filter_prefixes=filter_prefixes,
-                progress_cb=progress_cb
+                progress_cb=progress_cb,
+                model=fuzzy_model,
             )
 
             self._task_queue.put(('progress', 100))
@@ -1760,39 +1795,34 @@ class QuickTranslateApp:
             # Log summary
             self._log("", 'info')
             self._log("=== RESULTS ===", 'header')
-            self._log(f"Source keys (StrOrigin, StringId): {report.total_source_keys:,}", 'info')
-            self._log(f"Target Korean entries: {report.total_target_korean:,}", 'info')
-            self._log(f"HITS (found in source): {report.total_hits:,}", 'success')
-            self._log(f"MISSES (need translation): {report.total_misses:,}",
-                     'error' if report.total_misses > 0 else 'success')
-            self._log(f"Total Korean characters: {report.total_korean_chars:,}", 'info')
-            self._log(f"Total Korean words: {report.total_korean_words:,}", 'info')
+            self._log(f"Match mode: {mode_labels.get(match_mode, match_mode)}", 'info')
+            self._log(f"Total Korean entries: {results['total_korean']:,}", 'info')
+            self._log(f"HITS (matched in source): {results['total_hits']:,}", 'success')
+            self._log(f"MISSES (need translation): {results['total_misses']:,}",
+                     'error' if results['total_misses'] > 0 else 'success')
 
             self._log("", 'info')
             self._log("=== PER-LANGUAGE BREAKDOWN ===", 'header')
-            for lang in sorted(report.by_language.keys()):
-                lr = report.by_language[lang]
-                self._log(f"  {lang}: {lr.misses:,} missing ({lr.total_korean_chars:,} chars, {lr.total_korean_words:,} words)", 'info')
+            for lang in sorted(results['languages'].keys()):
+                lr = results['languages'][lang]
+                self._log(
+                    f"  {lang}: {lr['misses']:,} missing / {lr['korean_entries']:,} Korean entries",
+                    'info'
+                )
 
             self._log("", 'info')
             self._log("=== OUTPUT FILES ===", 'header')
             self._log(f"Directory: {output_dir}", 'success')
-            for lang in sorted(report.by_language.keys()):
-                lr = report.by_language[lang]
-                if lr.misses > 0:
-                    self._log(f"  MISSING_{lang}_*.xml ({lr.misses} entries)", 'info')
-            self._log(f"  MISSING_REPORT_*.xlsx (summary)", 'success')
+            for fp in results['output_files']:
+                self._log(f"  {Path(fp).name}", 'info')
 
-            self._update_status(f"Done! {report.total_misses:,} total missing translations")
-
-            print(format_report_summary(report))
+            self._update_status(f"Done! {results['total_misses']:,} total missing translations")
 
             self._task_queue.put(('messagebox', 'showinfo', 'Missing Translations Report',
                 f"Report generated successfully!\n\n"
-                f"Languages scanned: {len(report.by_language)}\n"
-                f"Total missing: {report.total_misses:,}\n"
-                f"Korean chars: {report.total_korean_chars:,}\n"
-                f"Korean words: {report.total_korean_words:,}\n\n"
+                f"Mode: {mode_labels.get(match_mode, match_mode)}\n"
+                f"Languages scanned: {len(results['languages'])}\n"
+                f"Total missing: {results['total_misses']:,}\n\n"
                 f"Output directory:\n{output_dir}"))
 
         self._run_in_thread(work)

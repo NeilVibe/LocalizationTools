@@ -90,10 +90,15 @@ from .failure_report import (
 from .missing_translation_finder import (
     find_missing_translations,
     find_missing_translations_per_language,
+    find_missing_with_options,
     format_report_summary,
     MissingTranslationReport,
     LanguageMissingReport,
     MissingEntry,
+)
+from .category_mapper import (
+    categorize_file,
+    build_stringid_category_index,
 )
 
 __all__ = [
@@ -186,8 +191,12 @@ __all__ = [
     # missing_translation_finder
     "find_missing_translations",
     "find_missing_translations_per_language",
+    "find_missing_with_options",
     "format_report_summary",
     "MissingTranslationReport",
     "LanguageMissingReport",
     "MissingEntry",
+    # category_mapper
+    "categorize_file",
+    "build_stringid_category_index",
 ]
