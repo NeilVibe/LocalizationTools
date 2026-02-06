@@ -45,3 +45,4 @@ Build: Detailed terminal+GUI logging for Find Missing Translations
 Build: Add Master Summary Report to Find Missing Translations
 Build: Fix Detailed Summary category ordering
 Trigger: Exclude GUI
+Trigger: Search in Exclude GUI
