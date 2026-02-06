@@ -1827,15 +1827,23 @@ class QuickTranslateApp:
                 for lang in sorted(close_folders.keys()):
                     self._log(f"  Close_{lang}/", 'success')
 
+            if results.get('master_summary'):
+                self._log("", 'info')
+                self._log(f"Master Summary: {Path(results['master_summary']).name}", 'success')
+
             self._update_status(f"Done! {results['total_misses']:,} total missing translations")
 
             close_count = len(close_folders)
+            master_note = ""
+            if results.get('master_summary'):
+                master_note = f"\nMaster Summary: {Path(results['master_summary']).name}\n"
             self._task_queue.put(('messagebox', 'showinfo', 'Missing Translations Report',
                 f"Report generated successfully!\n\n"
                 f"Mode: {mode_labels.get(match_mode, match_mode)}\n"
                 f"Languages scanned: {len(results['languages'])}\n"
                 f"Total missing: {results['total_misses']:,}\n"
-                f"Close folders: {close_count}\n\n"
+                f"Close folders: {close_count}\n"
+                f"{master_note}\n"
                 f"Output directory:\n{output_dir}"))
 
         self._run_in_thread(work)
