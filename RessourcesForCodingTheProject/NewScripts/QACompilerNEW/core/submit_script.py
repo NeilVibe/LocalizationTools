@@ -68,7 +68,16 @@ def collect_issue_rows(
     eventname_export: Dict[str, Dict[str, str]] = {}
 
     missing_eventnames = 0
+    matched_by_stringid = 0
     files_processed = 0
+
+    # Build reverse mapping: {stringid_lowercase: {"stringid": X, "strorigin": Y}}
+    # Allows fallback when manager puts StringID directly instead of EventName
+    stringid_reverse: Dict[str, Dict[str, str]] = {}
+    for data in export_mapping.values():
+        sid = data.get("stringid", "")
+        if sid:
+            stringid_reverse[sid.lower()] = data
 
     print(f"  Collecting ISSUE rows from {len(qa_folders)} QA files...")
 
@@ -173,6 +182,12 @@ def collect_issue_rows(
                     # Look up and cache EXPORT data
                     if eventname_key not in eventname_export:
                         export_data = export_mapping.get(eventname_key)
+                        if not export_data:
+                            # Fallback: check if value is already a StringID directly
+                            # (manager may put StringID instead of EventName)
+                            export_data = stringid_reverse.get(eventname_key)
+                            if export_data:
+                                matched_by_stringid += 1
                         if export_data:
                             eventname_export[eventname_key] = export_data
                         else:
@@ -224,6 +239,8 @@ def collect_issue_rows(
     print(f"  Found {len(issue_rows)} unique ISSUE rows from {files_processed} files")
     if conflict_rows:
         print(f"  CONFLICTS: {len(conflict_rows)} EventNames have multiple different corrections")
+    if matched_by_stringid > 0:
+        print(f"    INFO: {matched_by_stringid} entries matched by direct StringID (not EventName)")
     if missing_eventnames > 0:
         print(f"    WARNING: {missing_eventnames} EventNames not found in EXPORT mapping")
 
