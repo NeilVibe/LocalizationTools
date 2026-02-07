@@ -239,6 +239,82 @@ def search_fuzzy(
     return results
 
 
+def find_matches_fuzzy(
+    corrections: List[Dict],
+    target_texts: List[str],
+    target_entries: List[dict],
+    model,
+    index,
+    threshold: float = 0.85,
+    progress_callback: Optional[Callable[[str], None]] = None,
+) -> Tuple[List[Dict], List[Dict], Dict]:
+    """
+    Match corrections against target entries using FAISS fuzzy search.
+
+    For each correction, encodes its StrOrigin and searches the FAISS index
+    for the best semantic match. Returns enriched corrections with
+    fuzzy_target_string_id for use with merge_corrections_fuzzy.
+
+    Args:
+        corrections: List of correction dicts with string_id, str_origin, corrected
+        target_texts: StrOrigin texts in the FAISS index
+        target_entries: Entry dicts corresponding to index vectors
+        model: Loaded SentenceTransformer model
+        index: Built FAISS index
+        threshold: Minimum similarity score (0.0 - 1.0)
+        progress_callback: Optional callback for status updates
+
+    Returns:
+        Tuple of (matched, unmatched, stats) where matched corrections are
+        enriched with fuzzy_target_string_id and fuzzy_score
+    """
+    matched = []
+    unmatched = []
+    scores = []
+    total = len(corrections)
+
+    for i, c in enumerate(corrections):
+        if progress_callback and i % 50 == 0:
+            progress_callback(f"Fuzzy matching... {i+1}/{total}")
+
+        query = c.get("str_origin", "").strip()
+        if not query:
+            unmatched.append(c)
+            continue
+
+        results = search_fuzzy(query, model, index, target_texts, target_entries, threshold, k=1)
+        if results:
+            best_entry, score = results[0]
+            enriched = {
+                **c,
+                "fuzzy_target_string_id": best_entry["string_id"],
+                "fuzzy_target_str_origin": best_entry["str_origin"],
+                "fuzzy_score": score,
+            }
+            matched.append(enriched)
+            scores.append(score)
+        else:
+            unmatched.append(c)
+
+    stats = {
+        "total": total,
+        "matched": len(matched),
+        "unmatched": len(unmatched),
+        "avg_score": sum(scores) / len(scores) if scores else 0.0,
+        "min_score": min(scores) if scores else 0.0,
+        "max_score": max(scores) if scores else 0.0,
+        "threshold": threshold,
+    }
+
+    logger.info(
+        f"FAISS fuzzy match: {len(matched)}/{total} matched "
+        f"(avg={stats['avg_score']:.3f}, min={stats['min_score']:.3f}, "
+        f"threshold={threshold:.2f})"
+    )
+
+    return matched, unmatched, stats
+
+
 def get_cached_index_info() -> Optional[Dict]:
     """
     Get info about the currently cached FAISS index.

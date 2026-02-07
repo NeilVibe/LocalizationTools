@@ -851,166 +851,49 @@ def _prematch_quadruple_fallback(
         return corrections  # Fallback: return as-is
 
 
-def _prematch_strict_fuzzy(
+def _prematch_fuzzy(
     corrections: List[Dict],
-    target_folder: Path,
+    fuzzy_model,
+    fuzzy_index,
+    fuzzy_texts: List[str],
+    fuzzy_entries: List[dict],
+    threshold: float = None,
     progress_callback=None,
-    threshold=None,
-    fuzzy_model=None,
-    fuzzy_texts: Optional[List[str]] = None,
-    fuzzy_entries: Optional[List[dict]] = None,
 ) -> List[Dict]:
     """
-    Pre-match corrections using strict+fuzzy matching against target folder.
+    Pre-match corrections using FAISS fuzzy search.
 
-    For each correction: exact StringID match + fuzzy StrOrigin verification via SBERT.
-    This allows matching when StringID is exact but StrOrigin has minor text differences
-    (typos, whitespace, encoding variations).
-
-    Flow:
-    1. Build hash tables from target entries (sid_to_origins, strict_lookup)
-    2. For each correction: try strict normalized match first (O(1))
-    3. Only corrections that fail strict match get SBERT-encoded (per StringID group)
-    4. No FAISS index needed — direct matrix multiply per group
+    This is the ORIGINAL fuzzy pre-match logic restored:
+    - Each correction's StrOrigin is encoded by SBERT
+    - Searched against the full FAISS index for best semantic match
+    - Returns enriched corrections with fuzzy_target_string_id
 
     Args:
-        corrections: Raw corrections from source file
-        target_folder: Folder containing target XML files
+        corrections: Unconsumed corrections from Step 1 (perfect match)
+        fuzzy_model: Loaded SentenceTransformer model
+        fuzzy_index: Built FAISS index
+        fuzzy_texts: StrOrigin texts in the FAISS index
+        fuzzy_entries: Entry dicts corresponding to index vectors
+        threshold: Similarity threshold (0.0-1.0)
         progress_callback: Optional callback
-        threshold: Similarity threshold (0.0-1.0). Defaults to config.FUZZY_THRESHOLD_DEFAULT.
-        fuzzy_model: Pre-loaded SBERT model (optional, avoids reload)
-        fuzzy_texts: Pre-extracted StrOrigin texts (optional)
-        fuzzy_entries: Pre-extracted entry dicts (optional)
 
     Returns:
         List of enriched correction dicts with fuzzy_target_string_id
     """
-    from .fuzzy_matching import load_model, build_index_from_folder
+    from .fuzzy_matching import find_matches_fuzzy
 
     if threshold is None:
         threshold = config.FUZZY_THRESHOLD_DEFAULT
 
     try:
-        # Use pre-loaded model or load fresh
-        model = fuzzy_model if fuzzy_model is not None else load_model(progress_callback)
-
-        # Use pre-built index data or build fresh
-        if fuzzy_texts is not None and fuzzy_entries is not None:
-            texts, entries = fuzzy_texts, fuzzy_entries
-        else:
-            # CRITICAL: Extract StringIDs from corrections to filter the scan!
-            # This avoids loading 2.2M entries when we only need ~1K
-            correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
-            logger.info(f"Auto-filtering to {len(correction_stringids):,} StringIDs from corrections")
-            texts, entries = build_index_from_folder(
-                target_folder, progress_callback,
-                stringid_filter=correction_stringids
-            )
-
-        if not texts:
-            logger.warning(f"No StrOrigin values in target folder: {target_folder}")
-            return corrections  # Return as-is, merge will find nothing
-
-        # Build StringID -> list of (StrOrigin, entry) index from target entries
-        sid_to_origins = {}
-        for text, entry in zip(texts, entries):
-            sid = entry.get("string_id", "")
-            if sid:
-                if sid not in sid_to_origins:
-                    sid_to_origins[sid] = []
-                sid_to_origins[sid].append((text, entry))
-
-        # Build strict lookup for O(1) exact StrOrigin matching
-        strict_lookup = set()
-        for text, entry in zip(texts, entries):
-            sid = entry.get("string_id", "")
-            if sid:
-                strict_lookup.add((sid, normalize_text(text)))
-
-        import numpy as np
-
-        matched = []
-        strict_matches = []
-        unmatched_count = 0
-
-        # Group corrections by StringID for batch processing
-        sid_to_corrections = {}  # {StringID: [(index, correction, src_origin), ...]}
-        no_origin_matches = []   # Corrections without StrOrigin (direct match)
-
-        for idx, c in enumerate(corrections):
-            src_sid = c.get("string_id", "")
-            src_origin = c.get("str_origin", "")
-
-            if not src_sid:
-                unmatched_count += 1
-                continue
-
-            # Step 1: Exact StringID match
-            if src_sid not in sid_to_origins:
-                unmatched_count += 1
-                continue
-
-            if not src_origin:
-                # No StrOrigin to verify - just use first candidate
-                enriched = {**c, "fuzzy_target_string_id": src_sid}
-                no_origin_matches.append(enriched)
-                continue
-
-            # Try strict normalized StrOrigin match (O(1), avoids SBERT encoding)
-            strict_key = (src_sid, normalize_text(src_origin))
-            if strict_key in strict_lookup:
-                enriched = {**c, "fuzzy_target_string_id": src_sid, "fuzzy_score": 1.0}
-                strict_matches.append(enriched)
-                continue
-
-            # Group by StringID for batch processing
-            if src_sid not in sid_to_corrections:
-                sid_to_corrections[src_sid] = []
-            sid_to_corrections[src_sid].append((idx, c, src_origin))
-
-        # Add all no-origin matches directly
-        matched.extend(no_origin_matches)
-        matched.extend(strict_matches)
-
-        # Process each StringID group with batch encoding
-        for src_sid, correction_group in sid_to_corrections.items():
-            candidates = sid_to_origins[src_sid]
-
-            # Batch encode all candidate texts for this StringID
-            cand_texts = [cand_text for cand_text, cand_entry in candidates]
-            cand_embeddings = model.encode(cand_texts, normalize_embeddings=True, show_progress_bar=False)
-
-            # Batch encode all query texts for this StringID group
-            query_texts = [src_origin for idx, c, src_origin in correction_group]
-            query_embeddings = model.encode(query_texts, normalize_embeddings=True, show_progress_bar=False)
-
-            # Compute similarity matrix: (num_queries x num_candidates)
-            scores = query_embeddings @ cand_embeddings.T
-
-            # Find best match for each correction in the group
-            for i, (idx, c, src_origin) in enumerate(correction_group):
-                best_cand_idx = int(np.argmax(scores[i]))
-                best_score = float(scores[i, best_cand_idx])
-
-                if best_score >= threshold:
-                    enriched = {
-                        **c,
-                        "fuzzy_target_string_id": src_sid,
-                        "fuzzy_score": best_score,
-                    }
-                    matched.append(enriched)
-                else:
-                    unmatched_count += 1
-
-        logger.info(
-            f"Strict+fuzzy pre-match: {len(matched)}/{len(corrections)} matched "
-            f"(strict={len(strict_matches)}, fuzzy={len(matched) - len(strict_matches) - len(no_origin_matches)}, "
-            f"no_origin={len(no_origin_matches)}, threshold={threshold:.2f}, unmatched={unmatched_count})"
+        matched, unmatched, stats = find_matches_fuzzy(
+            corrections, fuzzy_texts, fuzzy_entries,
+            fuzzy_model, fuzzy_index, threshold, progress_callback,
         )
         return matched
     except Exception as e:
-        logger.error(f"Strict+fuzzy pre-match failed: {e}")
-        return corrections  # Fallback: return as-is
+        logger.error(f"FAISS fuzzy pre-match failed: {e}")
+        return []
 
 
 def transfer_folder_to_folder(
@@ -1210,26 +1093,30 @@ def transfer_folder_to_folder(
                         match_mode = "quadruple_fallback"  # Downgrade
 
     elif match_mode == "strict_fuzzy":
-        # strict_fuzzy only needs model + texts/entries (no FAISS index)
-        # _prematch_strict_fuzzy() does its own per-StringID-group encoding
-        if _fuzzy_entries is not None and _fuzzy_model is not None:
-            logger.info("Using pre-built fuzzy data for strict+fuzzy")
+        # strict_fuzzy: Step 1 = perfect match, Step 2 = FAISS fuzzy on unconsumed
+        # Needs model + FAISS index for Step 2
+        if _fuzzy_entries is not None and _fuzzy_model is not None and _fuzzy_index is not None:
+            logger.info("Using pre-built FAISS index for strict+fuzzy")
         else:
-            from .fuzzy_matching import load_model, build_index_from_folder
+            from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
 
             if progress_callback:
-                progress_callback("Loading model and scanning target for strict+fuzzy...")
+                progress_callback("Loading model and building FAISS index for strict+fuzzy...")
             try:
                 _fuzzy_model = load_model(progress_callback)
                 _fuzzy_texts, _fuzzy_entries = build_index_from_folder(
                     target_folder, progress_callback,
                     stringid_filter=all_source_stringids
                 )
-                if not _fuzzy_texts:
+                if _fuzzy_texts:
+                    _fuzzy_index = build_faiss_index(
+                        _fuzzy_texts, _fuzzy_entries, _fuzzy_model, progress_callback
+                    )
+                else:
                     logger.warning(f"No StrOrigin values in target folder: {target_folder}")
             except Exception as e:
-                results["errors"].append(f"Failed to load fuzzy data for strict+fuzzy: {e}")
-                logger.error(f"Failed to load fuzzy data for strict+fuzzy: {e}")
+                results["errors"].append(f"Failed to build FAISS index for strict+fuzzy: {e}")
+                logger.error(f"Failed to build FAISS index for strict+fuzzy: {e}")
 
     # ─── Per-file loop ─────────────────────────────────────────────────
 
@@ -1299,27 +1186,57 @@ def transfer_folder_to_folder(
             results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
 
         elif match_mode == "strict_fuzzy":
-            # Strict+fuzzy: exact StringID + fuzzy StrOrigin verification
-            if _fuzzy_model and _fuzzy_texts:
-                enriched = _prematch_strict_fuzzy(
-                    corrections, target_folder,
-                    threshold=effective_threshold,
-                    fuzzy_model=_fuzzy_model,
-                    fuzzy_texts=_fuzzy_texts,
-                    fuzzy_entries=_fuzzy_entries,
-                )
-                # After strict_fuzzy prematch, StringID is resolved - use stringid merge
-                file_result = merge_corrections_fuzzy(
-                    target_xml, enriched, dry_run,
-                    only_untranslated=only_untranslated,
-                )
-            else:
-                file_result = {
-                    "matched": 0, "updated": 0,
-                    "not_found": len(corrections),
-                    "errors": ["Fuzzy index not available for strict+fuzzy"],
-                    "details": [],
-                }
+            # ═══ TWO-STEP PROCESS ═══
+            # Step 1: Perfect match (exact StringID + exact StrOrigin)
+            file_result = merge_corrections_to_xml(
+                target_xml, corrections, dry_run,
+                only_untranslated=only_untranslated,
+            )
+            step1_matched = file_result["matched"]
+            logger.info(f"Step 1 (perfect): {step1_matched}/{len(corrections)} matched")
+
+            # Step 2: FAISS fuzzy on UNCONSUMED corrections only
+            if _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
+                # Collect unconsumed corrections (NOT_FOUND + STRORIGIN_MISMATCH)
+                unconsumed = []
+                for detail in file_result["details"]:
+                    if detail["status"] in ("STRORIGIN_MISMATCH", "NOT_FOUND"):
+                        unconsumed.append({
+                            "string_id": detail["string_id"],
+                            "str_origin": detail.get("old", ""),
+                            "corrected": detail.get("new", ""),
+                            "raw_attribs": detail.get("raw_attribs", {}),
+                        })
+
+                if unconsumed:
+                    from .fuzzy_matching import find_matches_fuzzy
+                    logger.info(f"Step 2: FAISS fuzzy on {len(unconsumed)} unconsumed corrections")
+
+                    fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
+                        unconsumed, _fuzzy_texts, _fuzzy_entries,
+                        _fuzzy_model, _fuzzy_index, effective_threshold,
+                    )
+
+                    if fuzzy_matched:
+                        fuzzy_result = merge_corrections_fuzzy(
+                            target_xml, fuzzy_matched, dry_run,
+                            only_untranslated=only_untranslated,
+                        )
+                        # Combine results
+                        file_result["matched"] += fuzzy_result["matched"]
+                        file_result["updated"] += fuzzy_result["updated"]
+                        file_result["not_found"] = max(0, file_result.get("not_found", 0) - fuzzy_result["matched"])
+                        if "strorigin_mismatch" in file_result:
+                            file_result["strorigin_mismatch"] = max(0, file_result["strorigin_mismatch"] - fuzzy_result["matched"])
+                        file_result["details"].extend(fuzzy_result["details"])
+                        logger.info(
+                            f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
+                            f"({fuzzy_result['updated']} updated, avg_score={fuzzy_stats['avg_score']:.3f})"
+                        )
+                    else:
+                        logger.info(f"Step 2: No fuzzy matches found for {len(unconsumed)} unconsumed")
+                else:
+                    logger.info("Step 2: All corrections matched in Step 1 (perfect match)")
 
         elif match_mode in ("quadruple_fallback", "quadruple_fallback_fuzzy"):
             # Use pre-built indexes to match, then merge
@@ -1463,20 +1380,74 @@ def transfer_file_to_file(
             only_untranslated=only_untranslated,
         )
     elif match_mode == "strict_fuzzy":
-        # Pre-match: exact StringID + fuzzy StrOrigin verification
-        target_folder = target_file.parent
-        enriched = _prematch_strict_fuzzy(
-            corrections, target_folder,
-            threshold=threshold,
-            fuzzy_model=fuzzy_model,
-            fuzzy_texts=fuzzy_texts,
-            fuzzy_entries=fuzzy_entries,
-        )
-        # After strict_fuzzy prematch, StringID is resolved - use fuzzy merge
-        result = merge_corrections_fuzzy(
-            target_file, enriched, dry_run,
+        # ═══ TWO-STEP PROCESS ═══
+        # Step 1: Perfect match (exact StringID + exact StrOrigin)
+        result = merge_corrections_to_xml(
+            target_file, corrections, dry_run,
             only_untranslated=only_untranslated,
         )
+        step1_matched = result["matched"]
+        logger.info(f"Step 1 (perfect): {step1_matched}/{len(corrections)} matched")
+
+        # Step 2: FAISS fuzzy on UNCONSUMED corrections only
+        target_folder = target_file.parent
+
+        # Build FAISS index if not pre-built
+        _fm = fuzzy_model
+        _fi = fuzzy_index
+        _ft = fuzzy_texts
+        _fe = fuzzy_entries
+        if _fm is None or _fi is None:
+            from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
+            try:
+                correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
+                logger.info(f"File-to-file strict_fuzzy: building FAISS for {len(correction_stringids):,} StringIDs")
+                _fm = _fm or load_model()
+                _ft, _fe = build_index_from_folder(
+                    target_folder, stringid_filter=correction_stringids
+                )
+                if _ft:
+                    _fi = build_faiss_index(_ft, _fe, _fm)
+            except Exception as e:
+                logger.error(f"Failed to build FAISS index: {e}")
+                _fi = None
+
+        if _fm and _fi and _ft and _fe:
+            # Collect unconsumed corrections
+            unconsumed = []
+            for detail in result["details"]:
+                if detail["status"] in ("STRORIGIN_MISMATCH", "NOT_FOUND"):
+                    unconsumed.append({
+                        "string_id": detail["string_id"],
+                        "str_origin": detail.get("old", ""),
+                        "corrected": detail.get("new", ""),
+                        "raw_attribs": detail.get("raw_attribs", {}),
+                    })
+
+            if unconsumed:
+                from .fuzzy_matching import find_matches_fuzzy
+                effective_threshold = threshold if threshold is not None else config.FUZZY_THRESHOLD_DEFAULT
+                logger.info(f"Step 2: FAISS fuzzy on {len(unconsumed)} unconsumed corrections")
+
+                fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
+                    unconsumed, _ft, _fe, _fm, _fi, effective_threshold,
+                )
+
+                if fuzzy_matched:
+                    fuzzy_result = merge_corrections_fuzzy(
+                        target_file, fuzzy_matched, dry_run,
+                        only_untranslated=only_untranslated,
+                    )
+                    result["matched"] += fuzzy_result["matched"]
+                    result["updated"] += fuzzy_result["updated"]
+                    result["not_found"] = max(0, result.get("not_found", 0) - fuzzy_result["matched"])
+                    if "strorigin_mismatch" in result:
+                        result["strorigin_mismatch"] = max(0, result["strorigin_mismatch"] - fuzzy_result["matched"])
+                    result["details"].extend(fuzzy_result["details"])
+                    logger.info(
+                        f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
+                        f"({fuzzy_result['updated']} updated)"
+                    )
     elif match_mode in ("quadruple_fallback", "quadruple_fallback_fuzzy"):
         # Pre-match: enrich corrections with matched_string_id
         target_folder = target_file.parent
