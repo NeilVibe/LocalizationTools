@@ -20,9 +20,9 @@
 10. [Word Count Reports](#-word-count-reports)
 11. [Output Files](#-output-files)
 12. [LQA Correction Workflow](#-lqa-correction-workflow)
-13. [LOCDEV Merge (NEW!)](#-locdev-merge-new)
-14. [ENG/ZHO-CN Exclusions (NEW!)](#-engzho-cn-exclusions-new)
-15. [Code Pattern Analyzer (NEW!)](#-code-pattern-analyzer-new)
+13. [LOCDEV Merge](#-locdev-merge)
+14. [ENG/ZHO-CN Exclusions](#-engzho-cn-exclusions)
+15. [Code Pattern Analyzer (Removed)](#-code-pattern-analyzer-removed)
 16. [Progress Tracker](#-progress-tracker)
 17. [Configuration](#-configuration)
 18. [Troubleshooting](#-troubleshooting)
@@ -168,10 +168,9 @@ LanguageDataExporter/
 ║   │                                                                         │ ║
 ║   │  ┌─────────────────────────────────────────────────────────────────┐   │ ║
 ║   │  │ LanguageData_{LANG}.xlsx                                        │   │ ║
-║   │  │ ┌──────────┬──────┬──────┬────────────┬──────────┬──────────┐  │   │ ║
-║   │  │ │StrOrigin │ ENG  │ Str  │ Correction │ Category │ StringID │  │   │ ║
-║   │  │ │(Korean)  │(ref) │(trans)│  (empty)   │ (color)  │  (TEXT)  │  │   │ ║
-║   │  │ └──────────┴──────┴──────┴────────────┴──────────┴──────────┘  │   │ ║
+║   │  │ Columns (EU): StrOrigin | ENG | Str | Correction | Text State │   │ ║
+║   │  │   | STATUS | COMMENT | MEMO1 | MEMO2 | Category | StringID   │   │ ║
+║   │  │ (11 columns for EU, 10 for Asian - no ENG column)            │   │ ║
 ║   │  └─────────────────────────────────────────────────────────────────┘   │ ║
 ║   │                                                                         │ ║
 ║   │  + WordCountReport.xlsx (LQA scheduling metrics)                       │ ║
@@ -211,8 +210,8 @@ LanguageDataExporter/
 | **Word Count Report** | LQA scheduling metrics | `WordCountReport.xlsx` |
 | **Correction Column** | Empty column for LQA corrections | In each Excel file |
 | **Prepare For Submit** | Extract corrections to clean 3-column file | Archive files |
-| **Merge to LOCDEV** | Push corrections back to source XML + track progress | Updated LOCDEV XMLs + Tracker |
-| **Code Pattern Analyzer** | Extract & cluster `{code}` patterns | `CodePatternReport.xlsx` |
+| **Merge to LOCDEV (ALL)** | Push corrections back to source XML (StringID + StrOrigin match) | Updated LOCDEV XMLs + Tracker |
+| **Merge to LOCDEV (SCRIPT)** | Push SCRIPT corrections (StringID-only match) | Updated LOCDEV XMLs |
 | **Progress Tracker** | Track merge results (Success/Fail) weekly | `Correction_ProgressTracker.xlsx` |
 | **VRS Ordering** | Chronological story order | Sorted STORY rows |
 | **Two-Tier Clustering** | STORY + GAME_DATA categories | Color-coded cells |
@@ -223,11 +222,11 @@ LanguageDataExporter/
 
 | Feature | Description |
 |---------|-------------|
-| **Merge to LOCDEV** | Push corrections back to LOCDEV XML files using strict (StringID + StrOrigin) matching |
-| **ENG/ZHO-CN Exclusion** | Dialog/Sequencer categories automatically excluded from voiced languages |
-| **Code Pattern Analyzer** | Extract `{code}` patterns, cluster by similarity, show top categories |
-| **StringID as TEXT** | Prevents Excel from showing `1.23E+12` for large numeric IDs |
-| **Sheet Protection** | All columns LOCKED except Correction - QA can only edit what they need |
+| **STATUS Column** | New dropdown column (ISSUE / NO ISSUE) for QA tracking |
+| **COMMENT Column** | Free-text QA notes column |
+| **Merge Buttons** | Renamed for clarity: ALL (StringID + KR) and SCRIPT (StringID-only) |
+| **USER GUIDE** | In-app scrollable guide window |
+| **LOC Info** | Shows source folder info before generating Excel files |
 
 ---
 
@@ -248,7 +247,7 @@ python main.py --gui    # Explicit GUI mode
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  LanguageDataExporter v3.0                                 [─][□][×]│
+│  LanguageDataExporter v3.0                                     │
 ├─────────────────────────────────────────────────────────────────┤
 │  CONFIGURED PATHS                                               │
 │  ┌───────────────────────────────────────────────────────────┐  │
@@ -261,7 +260,8 @@ python main.py --gui    # Explicit GUI mode
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │ [Generate Word Count Report]  [Generate Language Excels]  │  │
 │  │ [Prepare For Submit]          [Open ToSubmit Folder]      │  │
-│  │ [Merge to LOCDEV]             [Analyze Code Patterns]     │  │
+│  │ [Merge to LOCDEV (ALL)]       [Merge to LOCDEV (SCRIPT)]  │  │
+│  │ [USER GUIDE]                                              │  │
 │  └───────────────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
 │  ████████████████████████░░░░░░░░░░░░░░░░░░░░░░░  45%          │
@@ -277,8 +277,9 @@ python main.py --gui    # Explicit GUI mode
 | **Generate Language Excels** | Creates files with Correction column | `LanguageData_*.xlsx` |
 | **Prepare For Submit** | Extract corrections to 3-column archive | Clean archive files |
 | **Open ToSubmit Folder** | Opens ToSubmit folder in explorer | - |
-| **Merge to LOCDEV** | Push corrections to LOCDEV + update tracker | Updated XML files + Tracker |
-| **Analyze Code Patterns** | Extract & cluster `{code}` patterns | `CodePatternReport.xlsx` |
+| **Merge to LOCDEV (ALL)** | Push corrections to LOCDEV (strict: StringID + StrOrigin) | Updated XML + Tracker |
+| **Merge to LOCDEV (SCRIPT)** | Push SCRIPT corrections (StringID-only match) | Updated XML |
+| **USER GUIDE** | Opens scrollable guide window | - |
 
 ---
 
@@ -575,7 +576,7 @@ python main.py --cli -v
 
 **Filename:** `LanguageData_{LANG}.xlsx`
 
-#### Columns (EU Languages - 6 columns)
+#### Columns (EU Languages - 11 columns)
 
 | Column | Header | Description |
 |--------|--------|-------------|
@@ -583,20 +584,30 @@ python main.py --cli -v
 | B | **ENG** | English reference |
 | C | **Str** | Translated text |
 | D | **Correction** | Empty - for LQA corrections |
-| E | **Category** | Color-coded category |
-| F | **StringID** | Unique identifier (TEXT format) |
+| E | **Text State** | Auto-filled: KOREAN / TRANSLATED |
+| F | **STATUS** | Dropdown: ISSUE / NO ISSUE |
+| G | **COMMENT** | Free-text QA notes |
+| H | **MEMO1** | General-purpose memo |
+| I | **MEMO2** | General-purpose memo |
+| J | **Category** | Color-coded category |
+| K | **StringID** | Unique identifier (TEXT format) |
 
-#### Columns (Asian Languages - 5 columns)
+#### Columns (Asian Languages - 10 columns)
 
 | Column | Header | Description |
 |--------|--------|-------------|
 | A | **StrOrigin** | Korean source text |
 | B | **Str** | Translated text |
 | C | **Correction** | Empty - for LQA corrections |
-| D | **Category** | Color-coded category |
-| E | **StringID** | Unique identifier (TEXT format) |
+| D | **Text State** | Auto-filled: KOREAN / TRANSLATED |
+| E | **STATUS** | Dropdown: ISSUE / NO ISSUE |
+| F | **COMMENT** | Free-text QA notes |
+| G | **MEMO1** | General-purpose memo |
+| H | **MEMO2** | General-purpose memo |
+| I | **Category** | Color-coded category |
+| J | **StringID** | Unique identifier (TEXT format) |
 
-### StringID as TEXT (NEW!)
+### StringID as TEXT
 
 StringID column is now formatted as TEXT to prevent Excel from displaying large numbers as scientific notation:
 
@@ -604,40 +615,19 @@ StringID column is now formatted as TEXT to prevent Excel from displaying large 
 |---------------------|------------------|
 | `1.23457E+12` | `1234567890123` |
 
-### Sheet Protection (NEW!)
+### Sheet Protection
 
-Generated Excel files have **sheet protection enabled** - only the Correction column is editable:
+Sheet protection is **disabled by default** (`protect_sheet=False`) to allow Ctrl+H (Find & Replace) across all columns.
 
-```
-╔═══════════════════════════════════════════════════════════════════════════════╗
-║                         SHEET PROTECTION                                       ║
-╠═══════════════════════════════════════════════════════════════════════════════╣
-║                                                                               ║
-║   ┌──────────┬──────┬──────┬────────────┬──────────┬──────────┐              ║
-║   │StrOrigin │ ENG  │ Str  │ Correction │ Category │ StringID │              ║
-║   ├──────────┼──────┼──────┼────────────┼──────────┼──────────┤              ║
-║   │  LOCKED  │LOCKED│LOCKED│  EDITABLE  │  LOCKED  │  LOCKED  │              ║
-║   │    🔒    │  🔒  │  🔒  │     ✏️      │    🔒    │    🔒    │              ║
-║   └──────────┴──────┴──────┴────────────┴──────────┴──────────┘              ║
-║                                                                               ║
-║   QA testers can ONLY modify the Correction column.                          ║
-║   All other columns are read-only to prevent accidental changes.             ║
-║                                                                               ║
-║   What's ALLOWED:                                                            ║
-║   ✓ Edit Correction column                                                   ║
-║   ✓ Select any cell                                                          ║
-║   ✓ Use filters and sorting                                                  ║
-║   ✓ Copy data                                                                ║
-║                                                                               ║
-║   What's BLOCKED:                                                            ║
-║   ✗ Edit StrOrigin, ENG, Str, Category, StringID                            ║
-║   ✗ Insert/delete rows or columns                                            ║
-║   ✗ Modify structure                                                         ║
-║                                                                               ║
-╚═══════════════════════════════════════════════════════════════════════════════╝
-```
+When enabled (`protect_sheet=True`), the following columns are editable:
+- **Correction** - LQA correction field
+- **STATUS** - Issue tracking dropdown
+- **COMMENT** - Free-text QA notes
+- **MEMO1 / MEMO2** - General-purpose memo fields
 
-**No password required** - the protection prevents accidental edits, not malicious ones. QA testers don't need to enter anything to edit the Correction column.
+All other columns (StrOrigin, ENG, Str, Text State, Category, StringID) are locked.
+
+**No password required** - the protection prevents accidental edits, not malicious ones.
 
 ---
 
@@ -654,7 +644,7 @@ Generated Excel files have **sheet protection enabled** - only the Correction co
 ║  ════════════════                                                            ║
 ║    Click "Generate Language Excels"                                          ║
 ║    Output: GeneratedExcel/LanguageData_*.xlsx                                ║
-║    Columns: StrOrigin | ENG | Str | Correction | Category | StringID        ║
+║    Columns: StrOrigin | ENG | Str | Correction | Text State | STATUS | COMMENT | MEMO1 | MEMO2 | Category | StringID ║
 ║                                                                               ║
 ║                                    ↓                                          ║
 ║                                                                               ║
@@ -700,7 +690,7 @@ Generated Excel files have **sheet protection enabled** - only the Correction co
 
 ---
 
-## LOCDEV Merge (NEW!)
+## LOCDEV Merge
 
 ### What It Does
 
@@ -762,7 +752,7 @@ This ensures `"Hello   World"` matches `"Hello World"`.
 
 ---
 
-## ENG/ZHO-CN Exclusions (NEW!)
+## ENG/ZHO-CN Exclusions
 
 ### What It Does
 
@@ -800,86 +790,9 @@ LanguageData_ZHO-CN.xlsx → ~50,000 rows (GAME_DATA only)
 
 ---
 
-## Code Pattern Analyzer (NEW!)
+## Code Pattern Analyzer (Removed)
 
-### What It Does
-
-Scans languagedata XML files, extracts all `{code}` patterns (like `{ItemName}`, `{CharacterLevel}`), clusters them by similarity (80% threshold), and generates a report showing which categories each pattern appears in most.
-
-### Use Case
-
-- **Identify code patterns** used across the game
-- **Find similar patterns** that might need consistent translation handling
-- **Discover category distribution** to understand where patterns are used
-
-### How It Works
-
-```
-╔═══════════════════════════════════════════════════════════════════════════════╗
-║                      CODE PATTERN ANALYZER FLOW                                ║
-╠═══════════════════════════════════════════════════════════════════════════════╣
-║                                                                               ║
-║   1. SCAN LOC XMLs                                                           ║
-║      └── Parse languagedata_eng.xml (or first available)                     ║
-║      └── Extract all {code} patterns from StrOrigin + Str                    ║
-║      └── Build: {pattern: [(StringID, category), ...]}                       ║
-║                                                                               ║
-║   2. CLUSTER PATTERNS                                                        ║
-║      └── Use difflib.SequenceMatcher with 80% similarity threshold           ║
-║      └── Group similar patterns (e.g., {ItemName}, {itemname}, {Item_Name})  ║
-║                                                                               ║
-║   3. CALCULATE TOP 3 CATEGORIES                                              ║
-║      └── For each cluster, count occurrences per category                    ║
-║      └── Return TOP 3 categories with percentages                            ║
-║                                                                               ║
-║   4. OUTPUT EXCEL REPORT                                                     ║
-║      └── CodePatternReport.xlsx with 3 sheets                                ║
-║                                                                               ║
-╚═══════════════════════════════════════════════════════════════════════════════╝
-```
-
-### Output Report: CodePatternReport.xlsx
-
-#### Sheet 1: Cluster Summary
-
-| # | Representative Pattern | Variants | Total Uses | Top 1 Category | Top 2 Category | Top 3 Category |
-|---|------------------------|----------|------------|----------------|----------------|----------------|
-| 1 | `{ItemName}` | 3 | 15,234 | Item (72.3%) | Quest (15.1%) | UI (8.2%) |
-| 2 | `{CharacterName}` | 5 | 8,456 | Character (85%) | Quest (10%) | Dialog (5%) |
-| 3 | `{SkillLevel:0}` | 2 | 3,200 | Skill (90%) | UI (8%) | System (2%) |
-
-- **Dark blue headers** with white text
-- **Alternating row colors** for readability
-- **Category cells color-coded** by category type
-- **Bold percentages** when category dominates (>50%)
-
-#### Sheet 2: Cluster Details
-
-| Cluster | Pattern | Category | Count |
-|---------|---------|----------|-------|
-| 1 | `{ItemName}` | Item | 10,500 |
-| 1 | `{itemname}` | Item | 3,200 |
-| 1 | `{Item_Name}` | Quest | 1,534 |
-
-- Per-pattern breakdown with category-colored cells
-- Thick border lines between cluster groups
-
-#### Sheet 3: Statistics
-
-- Total unique patterns found
-- Total clusters created
-- Similarity threshold used
-- Top 10 clusters mini-table
-
-### Similarity Clustering
-
-Patterns are clustered using **difflib.SequenceMatcher** with an **80% similarity threshold**:
-
-| Pattern A | Pattern B | Similarity | Same Cluster? |
-|-----------|-----------|------------|---------------|
-| `{ItemName}` | `{itemname}` | 80% | Yes |
-| `{ItemName}` | `{Item_Name}` | 82% | Yes |
-| `{ItemName}` | `{CharacterName}` | 64% | No |
+The Code Pattern Analyzer feature has been removed from the GUI in v3.3. The underlying `pattern_analyzer.py` module remains available for CLI use if needed.
 
 ---
 
@@ -996,7 +909,7 @@ LanguageDataExporter/
 │   ├── excel_writer.py        # Excel output
 │   ├── submit_preparer.py     # LQA submission preparation
 │   ├── locdev_merger.py       # LOCDEV merge
-│   └── pattern_analyzer.py    # Code pattern analysis (NEW!)
+│   └── pattern_analyzer.py    # Code pattern analysis (CLI only)
 ├── tracker/                   # Progress tracking module
 ├── reports/                   # Word count reports
 ├── gui/
@@ -1008,5 +921,5 @@ LanguageDataExporter/
 
 ---
 
-*Last updated: January 2026*
-*Version: 3.2.0 - Simplified workflow: Merge to LOCDEV now does merge + tracking, Prepare For Submit just extracts 3 columns*
+*Last updated: February 2026*
+*Version: 3.3.0 - Column restructure (STATUS/COMMENT/MEMO1/MEMO2), USER GUIDE button, Code Pattern Analyzer removed from GUI*

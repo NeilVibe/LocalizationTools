@@ -72,10 +72,37 @@ def normalize_text(txt: Optional[str]) -> str:
     # Collapse all whitespace to single space and strip
     txt = re.sub(r'\s+', ' ', txt.strip())
     # Remove &desc; markers (case-insensitive)
-    # Note: html.unescape() above already converts &amp;desc; to &desc;
-    # so only the &desc; check is needed here.
-    if txt.lower().startswith("&desc;"):
+    # html.unescape() converts &amp;desc; to &desc;, but handle both forms
+    # for robustness (matching QuickTranslate's normalize_text)
+    if txt.lower().startswith("&amp;desc;"):
+        txt = txt[10:].lstrip()
+    elif txt.lower().startswith("&desc;"):
         txt = txt[6:].lstrip()
+    return txt
+
+
+def _convert_linebreaks_for_xml(txt: str) -> str:
+    """
+    Convert Excel linebreaks to XML linebreak format.
+
+    Excel uses \\n (Alt+Enter) for line breaks in cells.
+    The project's XML format uses <br/> (which lxml escapes to &lt;br/&gt;
+    in attributes automatically).
+
+    Same pattern as monolith tmxconvert40.py replace_newlines_text().
+
+    Args:
+        txt: Correction text from Excel
+
+    Returns:
+        Text with linebreaks converted to <br/> for XML storage
+    """
+    if not txt:
+        return txt
+    # Replace literal newlines (Alt+Enter in Excel)
+    txt = txt.replace('\n', '<br/>')
+    # Replace escaped newlines (\\n literal string, rare but handle for robustness)
+    txt = txt.replace('\\n', '<br/>')
     return txt
 
 
@@ -202,10 +229,11 @@ def merge_corrections_to_locdev(
         "matched": 0,
         "updated": 0,
         "not_found": 0,
+        "strorigin_mismatch": 0,  # StringID exists but StrOrigin differs
         "skipped_empty": 0,
         "errors": [],
         "by_category": {},  # {category: {matched, updated, not_found}}
-        "not_found_details": [],  # List of {string_id, str_origin, category} for failed matches
+        "not_found_details": [],  # List of {string_id, str_origin, category, status} for failed matches
     }
 
     if not corrections:
@@ -225,7 +253,7 @@ def merge_corrections_to_locdev(
 
         key = (sid, origin_norm)
         if key in correction_lookup:
-            logger.warning(f"Duplicate correction for ({sid}, origin) - last entry wins")
+            logger.warning(f"Duplicate correction for ({sid}, {origin_norm[:40]}...) - last entry wins")
         correction_lookup[key] = (c["corrected"], category, i)
         correction_lookup_nospace[(sid, origin_nospace)] = (c["corrected"], category, i)
 
@@ -246,6 +274,13 @@ def merge_corrections_to_locdev(
         root = tree.getroot()
 
         changed = False
+
+        # Build set of all StringIDs in target XML for mismatch diagnostics
+        target_stringids = set()
+        for loc in root.iter("LocStr"):
+            tsid = _get_attr(loc, _STRINGID_VARIANTS).strip()
+            if tsid:
+                target_stringids.add(tsid)
 
         for loc in root.iter("LocStr"):
             sid = _get_attr(loc, _STRINGID_VARIANTS).strip()
@@ -271,6 +306,9 @@ def merge_corrections_to_locdev(
                     logger.warning(f"Skipped empty correction for StringId={sid}")
                     continue
 
+                # Convert Excel linebreaks (\n from Alt+Enter) to XML format (<br/>)
+                new_str = _convert_linebreaks_for_xml(new_str)
+
                 correction_matched[idx] = True
                 result["matched"] += 1
                 result["by_category"][category]["matched"] += 1
@@ -285,17 +323,26 @@ def merge_corrections_to_locdev(
                     logger.debug(f"Updated StringId={sid}: '{old_str}' -> '{new_str}'")
 
         # Count corrections that didn't match any XML entry (per category)
-        # Also store details of which StringIDs failed
+        # Distinguish: StringID NOT FOUND vs StrOrigin MISMATCH
         for i, c in enumerate(corrections):
             if not correction_matched[i]:
                 category = c.get("category", "Uncategorized")
                 result["by_category"][category]["not_found"] += 1
-                # Store detail for not_found report
                 origin = c.get("str_origin") or ""
+                sid = c["string_id"]
+
+                # Diagnose: does StringID exist but StrOrigin differs?
+                if sid in target_stringids:
+                    status = "STRORIGIN_MISMATCH"
+                    result["strorigin_mismatch"] += 1
+                else:
+                    status = "NOT_FOUND"
+
                 result["not_found_details"].append({
-                    "string_id": c["string_id"],
+                    "string_id": sid,
                     "str_origin": origin[:80],  # Truncate for display
                     "category": category,
+                    "status": status,
                 })
 
         result["not_found"] = len(corrections) - result["matched"]
@@ -594,6 +641,9 @@ def merge_corrections_stringid_only_script(
             if sid in correction_lookup:
                 new_str = correction_lookup[sid]
                 correction_matched[sid] = True
+
+                # Convert Excel linebreaks (\n from Alt+Enter) to XML format (<br/>)
+                new_str = _convert_linebreaks_for_xml(new_str)
 
                 # Find category for stats
                 category = stringid_to_category.get(sid, "Uncategorized")
@@ -970,6 +1020,14 @@ def print_merge_report(results: Dict) -> None:
     print(total_row)
     print(BL + H * (width - 2) + BR)
 
+    # StrOrigin mismatch summary
+    total_mismatch = sum(
+        fr.get("strorigin_mismatch", 0)
+        for fr in file_results.values()
+    )
+    if total_mismatch > 0:
+        print(f"  StrOrigin Mismatches: {total_mismatch} (StringID found but StrOrigin text differs)")
+
     # Errors section (if any)
     errors = results.get("errors", [])
     if errors:
@@ -1070,7 +1128,7 @@ def export_merge_report_to_excel(results: Dict, output_path: Path) -> bool:
         # === Not Found Details Tab ===
         ws_details = wb.add_worksheet("Not Found Details")
 
-        detail_headers = ["Language", "StringID", "Category", "StrOrigin (truncated)"]
+        detail_headers = ["Language", "StringID", "Category", "StrOrigin (truncated)", "Status"]
         for col, header in enumerate(detail_headers):
             ws_details.write(0, col, header, header_fmt)
 
@@ -1084,12 +1142,13 @@ def export_merge_report_to_excel(results: Dict, output_path: Path) -> bool:
                 ws_details.write(row, 1, detail.get("string_id", ""), cell_fmt)
                 ws_details.write(row, 2, detail.get("category", ""), cell_fmt)
                 ws_details.write(row, 3, detail.get("str_origin", ""), cell_fmt)
+                ws_details.write(row, 4, detail.get("status", ""), cell_fmt)
                 row += 1
 
         # If no not_found details, add a message
         if row == 1:
             ws_details.merge_range(
-                1, 0, 1, 3,
+                1, 0, 1, 4,
                 "No failed matches - all corrections applied successfully!",
                 msg_fmt,
             )
@@ -1099,6 +1158,7 @@ def export_merge_report_to_excel(results: Dict, output_path: Path) -> bool:
         ws_details.set_column(1, 1, 25)   # StringID
         ws_details.set_column(2, 2, 18)   # Category
         ws_details.set_column(3, 3, 60)   # StrOrigin (truncated)
+        ws_details.set_column(4, 4, 22)   # Status
 
         # Freeze header row
         ws_details.freeze_panes(1, 0)

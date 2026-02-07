@@ -194,9 +194,10 @@ EXPORT_FILE_EXTENSION = ".loc.xml"
 
 # Column headers for Excel output (new order with Correction column, StringID at end)
 # Text State: auto-filled (KOREAN/TRANSLATED based on Korean detection)
-# MEMO1/2/3: editable memo columns for QA notes
-COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "MEMO1", "MEMO2", "MEMO3", "Category", "StringID"]
-COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "MEMO1", "MEMO2", "MEMO3", "Category", "StringID"]
+# STATUS: dropdown validation (ISSUE / NO ISSUE)
+# COMMENT: free-text QA notes, MEMO1/2: general-purpose memo fields
+COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "StringID"]
+COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "StringID"]
 
 # Column widths (approximate)
 COLUMN_WIDTHS = {
@@ -205,9 +206,10 @@ COLUMN_WIDTHS = {
     "Str": 40,
     "Correction": 40,
     "Text State": 12,
+    "STATUS": 14,
+    "COMMENT": 30,
     "MEMO1": 30,
     "MEMO2": 30,
-    "MEMO3": 30,
     "Category": 20,
     "StringID": 15,
 }

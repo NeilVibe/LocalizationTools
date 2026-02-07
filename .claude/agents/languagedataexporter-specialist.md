@@ -145,7 +145,10 @@ LanguageDataExporter/
 │   ├── __init__.py               # Package exports
 │   ├── xml_parser.py             # XML parsing + SoundEventName extraction
 │   ├── category_mapper.py        # Two-tier clustering algorithm
-│   └── excel_writer.py           # Excel output with VRS ordering
+│   ├── excel_writer.py           # Excel output with VRS ordering
+│   ├── submit_preparer.py        # LQA submission preparation
+│   ├── locdev_merger.py          # LOCDEV merge (corrections → XML)
+│   └── pattern_analyzer.py       # Code pattern analysis
 │
 ├── reports/                       # Word count reporting
 │   ├── __init__.py               # Package exports
@@ -169,6 +172,13 @@ LanguageDataExporter/
 │   ├── sequencer_clusterer.py    # Sequencer category assignment
 │   └── gamedata_clusterer.py     # Game data keyword matching
 │
+├── tracker/                       # Progress tracking
+│   ├── __init__.py               # Package exports
+│   ├── tracker.py                # CorrectionTracker orchestrator
+│   ├── data.py                   # WeeklyDataManager (_WEEKLY_DATA sheet)
+│   ├── weekly.py                 # WEEKLY sheet builder
+│   └── total.py                  # TOTAL sheet builder
+│
 ├── installer/                     # Inno Setup installer
 │   └── LanguageDataExporter.iss  # Installer script with drive selection
 │
@@ -179,12 +189,14 @@ LanguageDataExporter/
 
 ## GUI v3.0 (Simplified)
 
-**Changes in Build 014:**
-- **Removed** language selection (always ALL languages except KOR)
-- **Removed** folder path editing (fixed from settings.json)
-- Shows paths as **read-only** with OK/NOT FOUND status
-- Two main buttons: "Generate Word Count Report" + "Generate Language Excels"
+**Button Layout:**
+- Row 1: [Generate Word Count Report] [Generate Language Excels]
+- Row 2: [Prepare For Submit] [Open ToSubmit Folder]
+- Row 3: [Merge to LOCDEV (ALL - StringID, KR HIT)] [Merge to LOCDEV (SCRIPT - StringID HIT)]
+- Row 4: [USER GUIDE]
 
+**Removed:** "Analyze Code Patterns" button (removed in v3.3)
+**Added:** USER GUIDE button (scrollable in-app guide), LOC info messagebox before generation
 **Excluded Language:** KOR (Korean is source, not target)
 
 ---
@@ -281,7 +293,7 @@ CHAR_COUNT_LANGUAGES = {"jpn", "zho-cn", "zho-tw"}
 
 ## Excel Column Structure
 
-### Current Columns (Build 015+)
+### Current Columns (Build 025+)
 
 | Column | Editable? | Purpose |
 |--------|-----------|---------|
@@ -290,11 +302,14 @@ CHAR_COUNT_LANGUAGES = {"jpn", "zho-cn", "zho-tw"}
 | Str | LOCKED | Current translation |
 | Correction | EDITABLE | LQA correction field |
 | Text State | LOCKED | Auto-filled: "KOREAN" or "TRANSLATED" |
-| MEMO1 | EDITABLE | QA notes field 1 |
-| MEMO2 | EDITABLE | QA notes field 2 |
-| MEMO3 | EDITABLE | QA notes field 3 |
+| STATUS | EDITABLE | Dropdown: ISSUE / NO ISSUE |
+| COMMENT | EDITABLE | Free-text QA notes |
+| MEMO1 | EDITABLE | General-purpose memo field 1 |
+| MEMO2 | EDITABLE | General-purpose memo field 2 |
 | Category | LOCKED | Category classification |
 | StringID | LOCKED | Unique identifier |
+
+EU = 11 columns, Asian = 10 columns (no ENG).
 
 ### Text State Logic
 - **KOREAN** = `Str` column contains Korean characters (untranslated)
@@ -396,6 +411,9 @@ git push origin main
 | Korean detection | `utils/language_utils.py` |
 | GUI | `gui/app.py` |
 | Configuration | `config.py` |
+| Submit preparation | `exporter/submit_preparer.py` |
+| LOCDEV merge | `exporter/locdev_merger.py` |
+| Progress tracking | `tracker/tracker.py` (+ data.py, weekly.py, total.py) |
 | **EXPORT structure** | `EXPORT PATH TREE.txt` |
 
 ---
@@ -430,6 +448,7 @@ print(f"Loaded {orderer.total_events} events")
 
 ```
 xlsxwriter>=3.1.0  # Excel file generation (PREFERRED - reliable, powerful!)
+openpyxl>=3.1.0    # Excel file READING (VRS ordering, tracker, submit_preparer)
 lxml>=4.9.0        # Fast XML parsing (optional)
 ```
 

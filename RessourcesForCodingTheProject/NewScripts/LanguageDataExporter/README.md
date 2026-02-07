@@ -10,6 +10,10 @@ Language XML to Categorized Excel Converter with VRS-based story ordering.
 - **GUI and CLI modes**: tkinter interface or command-line
 - **Color-coded Excel output**: Category colors matching wordcount6.py style
 - **Conditional English column**: Included for EU languages, excluded for ENG/CJK
+- **Submit preparation**: Extract corrections to clean 3-column archive files
+- **LOCDEV Merge**: Push corrections back to source XML with strict matching
+- **StringID-Only Transfer**: Script-category corrections via StringID-only matching
+- **Progress Tracker**: Track merge results weekly
 
 ## Categories
 
@@ -105,16 +109,27 @@ Created by installer or `drive_replacer.py`:
 ### Language Excel Files
 `GeneratedExcel/LanguageData_{LANG}.xlsx`
 
-| Column | Description | Protected |
-|--------|-------------|-----------|
+#### EU Languages (11 columns)
+
+| Column | Description | Editable |
+|--------|-------------|----------|
 | StrOrigin | Korean source text | Locked |
+| ENG | English reference (EU only) | Locked |
 | Str | Translated text | Locked |
 | Correction | Empty - for LQA corrections | **Editable** |
-| StringID | Unique identifier | Locked |
-| English | English reference (EU languages only) | Locked |
+| Text State | Auto-filled KOREAN/TRANSLATED | Locked |
+| STATUS | Dropdown: ISSUE / NO ISSUE | **Editable** |
+| COMMENT | Free-text QA notes | **Editable** |
+| MEMO1 | General-purpose memo | **Editable** |
+| MEMO2 | General-purpose memo | **Editable** |
 | Category | Assigned category | Locked |
+| StringID | Unique identifier (TEXT format) | Locked |
 
-**Sheet Protection:** Only the Correction column is editable. All other columns are locked to prevent accidental changes by QA testers.
+#### Asian Languages (10 columns)
+
+Same as EU languages but without the ENG column.
+
+**Sheet Protection:** Disabled by default (`protect_sheet=False`) to allow Ctrl+H (Find & Replace). When enabled, Correction, STATUS, COMMENT, MEMO1, and MEMO2 columns are editable.
 
 ### Word Count Report
 `GeneratedExcel/WordCountReport.xlsx`
@@ -147,7 +162,12 @@ LanguageDataExporter/
 ├── exporter/                  # Core export logic
 │   ├── xml_parser.py          # XML parsing + SoundEventName extraction
 │   ├── category_mapper.py     # Two-tier clustering
-│   └── excel_writer.py        # Excel output with VRS ordering
+│   ├── excel_writer.py        # Excel output with VRS ordering
+│   ├── submit_preparer.py     # LQA submission preparation
+│   ├── locdev_merger.py       # LOCDEV merge (corrections → XML)
+│   └── pattern_analyzer.py    # Code pattern analysis
+├── tracker/                   # Progress tracking
+│   └── correction_tracker.py  # Weekly/Total merge tracking
 ├── reports/                   # Word count reports
 │   ├── word_counter.py        # Word/char counting
 │   ├── report_generator.py    # Report data structures
@@ -208,4 +228,4 @@ pyinstaller LanguageDataExporter.spec --clean
 | **xlsxwriter** | Writing all Excel output (language files, reports) |
 | **openpyxl** | Reading VoiceRecordingSheet for VRS ordering |
 
-**Why xlsxwriter?** Provides reliable sheet protection where only the Correction column is editable. All other columns (StrOrigin, Str, Category, StringID) are locked to prevent accidental edits by QA testers.
+**Why xlsxwriter?** Provides reliable Excel generation with data validation, cell formatting, and optional sheet protection.
