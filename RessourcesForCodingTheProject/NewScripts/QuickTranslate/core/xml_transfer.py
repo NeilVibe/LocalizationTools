@@ -813,7 +813,6 @@ def _prematch_strict_fuzzy(
     progress_callback=None,
     threshold=None,
     fuzzy_model=None,
-    fuzzy_index=None,
     fuzzy_texts: Optional[List[str]] = None,
     fuzzy_entries: Optional[List[dict]] = None,
 ) -> List[Dict]:
@@ -824,8 +823,11 @@ def _prematch_strict_fuzzy(
     This allows matching when StringID is exact but StrOrigin has minor text differences
     (typos, whitespace, encoding variations).
 
-    Enriches each correction with 'fuzzy_target_string_id' so that
-    merge_corrections_fuzzy can find the right entries in target XML.
+    Flow:
+    1. Build hash tables from target entries (sid_to_origins, strict_lookup)
+    2. For each correction: try strict normalized match first (O(1))
+    3. Only corrections that fail strict match get SBERT-encoded (per StringID group)
+    4. No FAISS index needed — direct matrix multiply per group
 
     Args:
         corrections: Raw corrections from source file
@@ -833,14 +835,13 @@ def _prematch_strict_fuzzy(
         progress_callback: Optional callback
         threshold: Similarity threshold (0.0-1.0). Defaults to config.FUZZY_THRESHOLD_DEFAULT.
         fuzzy_model: Pre-loaded SBERT model (optional, avoids reload)
-        fuzzy_index: Pre-built FAISS index (optional, avoids rebuild)
         fuzzy_texts: Pre-extracted StrOrigin texts (optional)
         fuzzy_entries: Pre-extracted entry dicts (optional)
 
     Returns:
         List of enriched correction dicts with fuzzy_target_string_id
     """
-    from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
+    from .fuzzy_matching import load_model, build_index_from_folder
 
     if threshold is None:
         threshold = config.FUZZY_THRESHOLD_DEFAULT
@@ -1164,29 +1165,26 @@ def transfer_folder_to_folder(
                         match_mode = "quadruple_fallback"  # Downgrade
 
     elif match_mode == "strict_fuzzy":
-        # Use pre-built data if available, otherwise build from scratch
+        # strict_fuzzy only needs model + texts/entries (no FAISS index)
+        # _prematch_strict_fuzzy() does its own per-StringID-group encoding
         if _fuzzy_entries is not None and _fuzzy_model is not None:
-            logger.info("Using pre-built fuzzy index for strict+fuzzy (skipping rebuild)")
+            logger.info("Using pre-built fuzzy data for strict+fuzzy")
         else:
-            from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
+            from .fuzzy_matching import load_model, build_index_from_folder
 
             if progress_callback:
-                progress_callback("Building fuzzy index for strict+fuzzy (once for all files)...")
+                progress_callback("Loading model and scanning target for strict+fuzzy...")
             try:
                 _fuzzy_model = load_model(progress_callback)
                 _fuzzy_texts, _fuzzy_entries = build_index_from_folder(
                     target_folder, progress_callback,
-                    stringid_filter=all_source_stringids  # FILTER!
+                    stringid_filter=all_source_stringids
                 )
-                if _fuzzy_texts:
-                    _fuzzy_index = build_faiss_index(
-                        _fuzzy_texts, _fuzzy_entries, _fuzzy_model, progress_callback
-                    )
-                else:
+                if not _fuzzy_texts:
                     logger.warning(f"No StrOrigin values in target folder: {target_folder}")
             except Exception as e:
-                results["errors"].append(f"Failed to build fuzzy index for strict+fuzzy: {e}")
-                logger.error(f"Failed to build fuzzy index for strict+fuzzy: {e}")
+                results["errors"].append(f"Failed to load fuzzy data for strict+fuzzy: {e}")
+                logger.error(f"Failed to load fuzzy data for strict+fuzzy: {e}")
 
     # ─── Per-file loop ─────────────────────────────────────────────────
 
@@ -1264,7 +1262,6 @@ def transfer_folder_to_folder(
                     fuzzy_model=_fuzzy_model,
                     fuzzy_texts=_fuzzy_texts,
                     fuzzy_entries=_fuzzy_entries,
-                    fuzzy_index=_fuzzy_index,
                 )
                 # After strict_fuzzy prematch, StringID is resolved - use stringid merge
                 file_result = merge_corrections_fuzzy(

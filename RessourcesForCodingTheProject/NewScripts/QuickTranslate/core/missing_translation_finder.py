@@ -1966,25 +1966,52 @@ def find_missing_with_options(
                 if so.strip():
                     source_keys_normalized.add((normalize_text(so), sid))
 
-            # Pre-encode all unique texts grouped by StringID
+            # Dry-run: scan ALL languages to find which StringIDs actually need fuzzy
+            # (strict matches and SID-not-in-source are resolved without SBERT)
+            sids_needing_fuzzy = set()
+            for lang, korean_entries in per_lang_korean.items():
+                # Apply same exclude filter as Step 5
+                if _exclude_folder_prefixes or _exclude_file_set:
+                    korean_entries = {
+                        k: e for k, e in korean_entries.items()
+                        if not is_filtered_by_export_location(
+                            e.string_id, export_path_index,
+                            _exclude_folder_prefixes, _exclude_file_set)
+                    }
+                for key, entry in korean_entries.items():
+                    sid = entry.string_id
+                    so = entry.str_origin.strip()
+                    if key in source_keys:
+                        continue  # Would be strict HIT
+                    if (normalize_text(so), sid) in source_keys_normalized:
+                        continue  # Would be normalized HIT
+                    if sid not in source_by_sid:
+                        continue  # Would be auto-MISS (no source group)
+                    sids_needing_fuzzy.add(sid)
+
+            logger.info(f"[Step 4] Dry-run: {len(sids_needing_fuzzy):,}/{len(source_by_sid):,} "
+                        f"StringIDs need fuzzy encoding ({100*len(sids_needing_fuzzy)/max(len(source_by_sid),1):.1f}%)")
+
+            # Encode ONLY the groups that actually need fuzzy matching
             source_group_embeddings = {}
-            total_sids = len(source_by_sid)
             total_texts_encoded = 0
-            for idx, (sid, texts) in enumerate(source_by_sid.items()):
+            total_to_encode = len(sids_needing_fuzzy)
+            for idx, sid in enumerate(sids_needing_fuzzy):
+                texts = source_by_sid[sid]
                 vecs = model.encode(texts, show_progress_bar=False)
                 vecs = vecs.astype(np.float32)
                 norms = np.linalg.norm(vecs, axis=1, keepdims=True)
                 norms[norms == 0] = 1
-                vecs = vecs / norms
-                source_group_embeddings[sid] = vecs
+                source_group_embeddings[sid] = vecs / norms
                 total_texts_encoded += len(texts)
-                if (idx + 1) % 500 == 0 or (idx + 1) == total_sids:
-                    logger.info(f"  Encoding groups: {idx + 1:,}/{total_sids:,} ({total_texts_encoded:,} texts)")
+                if (idx + 1) % 500 == 0 or (idx + 1) == total_to_encode:
+                    logger.info(f"  Encoding groups: {idx + 1:,}/{total_to_encode:,} ({total_texts_encoded:,} texts)")
                 if progress_cb and (idx + 1) % 500 == 0:
-                    pct = 40 + int(10 * (idx + 1) / max(total_sids, 1))
-                    progress_cb(f"Encoding groups ({idx + 1}/{total_sids})...", pct)
+                    pct = 40 + int(10 * (idx + 1) / max(total_to_encode, 1))
+                    progress_cb(f"Encoding groups ({idx + 1}/{total_to_encode})...", pct)
 
-            logger.info(f"[Step 4] Encoding complete: {len(source_group_embeddings):,} groups, {total_texts_encoded:,} total texts encoded")
+            logger.info(f"[Step 4] Encoding complete: {len(source_group_embeddings):,} groups, "
+                        f"{total_texts_encoded:,} texts encoded (saved {len(source_by_sid) - len(sids_needing_fuzzy):,} groups)")
     else:
         logger.info("[Step 4] Strict mode - no embeddings needed")
 
