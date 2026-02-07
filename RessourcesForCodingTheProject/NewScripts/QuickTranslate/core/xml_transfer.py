@@ -36,7 +36,12 @@ def _convert_linebreaks_for_xml(txt: str) -> str:
     Convert Excel linebreaks to XML linebreak format.
 
     Excel uses \\n (Alt+Enter) for line breaks in cells.
-    The project's XML format uses <br/> for linebreaks.
+    The project's XML format uses <br/> for linebreaks
+    (which lxml escapes to &lt;br/&gt; in attributes automatically).
+
+    Also handles the case where Excel already contains &lt;br/&gt;
+    (from XML copy-paste) — unescapes first to prevent double-escaping
+    (&lt;br/&gt; → &amp;lt;br/&amp;gt;).
 
     Ported from LanguageDataExporter's locdev_merger.py.
 
@@ -44,10 +49,13 @@ def _convert_linebreaks_for_xml(txt: str) -> str:
         txt: Text that may contain Excel linebreaks
 
     Returns:
-        Text with linebreaks converted to <br/> for XML storage
+        Text with linebreaks normalized to <br/> for XML storage
     """
     if not txt:
         return txt
+    # Unescape HTML-escaped linebreak tags (prevents double-escaping by lxml)
+    txt = txt.replace('&lt;br/&gt;', '<br/>')
+    txt = txt.replace('&lt;br /&gt;', '<br/>')
     # Replace actual newlines (from Excel Alt+Enter)
     txt = txt.replace('\n', '<br/>')
     # Replace escaped newlines (\\n literal string, rare but handle for robustness)
