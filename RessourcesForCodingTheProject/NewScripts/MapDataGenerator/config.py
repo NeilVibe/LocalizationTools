@@ -3,9 +3,10 @@ MapDataGenerator Configuration Module
 
 Constants, settings, and configuration management for the MapDataGenerator tool.
 
-Supports configurable drive letter via settings.json (like QACompiler):
+Supports configurable drive letter and branch via settings.json:
 {
-    "drive_letter": "D"  // Default is "F"
+    "drive_letter": "D",  // Default is "F"
+    "branch": "cd_beta"   // Default is "mainline"
 }
 """
 
@@ -86,15 +87,60 @@ if _DRIVE_LETTER != 'F':
 
 
 # =============================================================================
-# Available Languages (13 total)
+# Branch Configuration (loaded from settings.json)
+# =============================================================================
+
+KNOWN_BRANCHES = ["mainline", "cd_beta", "cd_alpha", "cd_lambda"]
+
+
+def _load_branch() -> str:
+    """Load branch name from settings.json.
+
+    Returns:
+        Branch name (default "mainline")
+    """
+    settings_file = get_base_dir() / "settings.json"
+
+    if not settings_file.exists():
+        return "mainline"
+
+    try:
+        with open(settings_file, 'r', encoding='utf-8') as f:
+            settings = json.load(f)
+
+        branch = settings.get('branch', 'mainline')
+        if isinstance(branch, str) and branch.strip():
+            return branch.strip()
+        else:
+            log.warning("Invalid branch in settings.json: '%s'. Using mainline", branch)
+            return "mainline"
+    except Exception as e:
+        log.warning("Error reading settings.json for branch: %s. Using mainline", e)
+        return "mainline"
+
+
+def _apply_branch(path_str: str, branch: str) -> str:
+    """Replace 'mainline' with the configured branch name in a path string."""
+    return path_str.replace("mainline", branch)
+
+
+# Load branch at module import
+_BRANCH = _load_branch()
+if _BRANCH != 'mainline':
+    log.info("MapDataGenerator: Using branch %s", _BRANCH)
+
+
+# =============================================================================
+# Available Languages (14 total)
 # =============================================================================
 
 LANGUAGES = [
     ('eng', 'English'),
     ('fre', 'French'),
     ('ger', 'German'),
-    ('spa', 'Spanish'),
-    ('por', 'Portuguese'),
+    ('spa-es', 'Spanish (Spain)'),
+    ('spa-mx', 'Spanish (Mexico)'),
+    ('por-br', 'Portuguese (Brazil)'),
     ('ita', 'Italian'),
     ('rus', 'Russian'),
     ('tur', 'Turkish'),
@@ -110,31 +156,57 @@ LANGUAGE_NAMES = {code: name for code, name in LANGUAGES}
 
 
 # =============================================================================
-# Default Paths (drive letter configurable via settings.json)
+# Default Path Templates (F: drive, mainline branch)
 # =============================================================================
 
-DEFAULT_FACTION_FOLDER = _apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo", _DRIVE_LETTER)
-DEFAULT_LOC_FOLDER = _apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc", _DRIVE_LETTER)
-DEFAULT_KNOWLEDGE_FOLDER = _apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\knowledgeinfo", _DRIVE_LETTER)
-DEFAULT_WAYPOINT_FOLDER = _apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo\NodeWaypointInfo", _DRIVE_LETTER)
-DEFAULT_TEXTURE_FOLDER = _apply_drive_letter(
-    r"F:\perforce\common\mainline\commonresource\ui\texture\image", _DRIVE_LETTER)
-DEFAULT_CHARACTER_FOLDER = _apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\characterinfo", _DRIVE_LETTER)
+_PATH_TEMPLATES = {
+    'faction_folder':    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo",
+    'loc_folder':        r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc",
+    'knowledge_folder':  r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\knowledgeinfo",
+    'waypoint_folder':   r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo\NodeWaypointInfo",
+    'texture_folder':    r"F:\perforce\common\mainline\commonresource\ui\texture\image",
+    'character_folder':  r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\characterinfo",
+    'audio_folder':      r"F:\perforce\cd\mainline\resource\sound\windows\English(US)",
+    'audio_folder_kr':   r"F:\perforce\cd\mainline\resource\sound\windows\Korean",
+    'audio_folder_zh':   r"F:\perforce\cd\mainline\resource\sound\windows\Chinese(PRC)",
+    'export_folder':     r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__",
+}
 
-# Audio-related paths
-DEFAULT_AUDIO_FOLDER_EN = _apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\sound\windows\English(US)", _DRIVE_LETTER)
-DEFAULT_AUDIO_FOLDER_KR = _apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\sound\windows\Korean", _DRIVE_LETTER)
-DEFAULT_AUDIO_FOLDER_ZH = _apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\sound\windows\Chinese(PRC)", _DRIVE_LETTER)
-DEFAULT_EXPORT_FOLDER = _apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__", _DRIVE_LETTER)
+
+def generate_default_paths(drive: str, branch: str) -> dict:
+    """Rebuild all default paths from templates with the given drive and branch.
+
+    Args:
+        drive: Drive letter (single character, e.g. "F")
+        branch: Branch name (e.g. "mainline", "cd_beta")
+
+    Returns:
+        Dict with keys matching _PATH_TEMPLATES, values are resolved path strings.
+    """
+    result = {}
+    for key, template in _PATH_TEMPLATES.items():
+        path = _apply_drive_letter(template, drive)
+        path = _apply_branch(path, branch)
+        result[key] = path
+    return result
+
+
+# =============================================================================
+# Default Paths (drive + branch configurable via settings.json)
+# =============================================================================
+
+_default_paths = generate_default_paths(_DRIVE_LETTER, _BRANCH)
+
+DEFAULT_FACTION_FOLDER = _default_paths['faction_folder']
+DEFAULT_LOC_FOLDER = _default_paths['loc_folder']
+DEFAULT_KNOWLEDGE_FOLDER = _default_paths['knowledge_folder']
+DEFAULT_WAYPOINT_FOLDER = _default_paths['waypoint_folder']
+DEFAULT_TEXTURE_FOLDER = _default_paths['texture_folder']
+DEFAULT_CHARACTER_FOLDER = _default_paths['character_folder']
+DEFAULT_AUDIO_FOLDER_EN = _default_paths['audio_folder']
+DEFAULT_AUDIO_FOLDER_KR = _default_paths['audio_folder_kr']
+DEFAULT_AUDIO_FOLDER_ZH = _default_paths['audio_folder_zh']
+DEFAULT_EXPORT_FOLDER = _default_paths['export_folder']
 
 
 # =============================================================================
@@ -145,7 +217,7 @@ DEFAULT_EXPORT_FOLDER = _apply_drive_letter(
 PRELOAD_LANGUAGES = ['eng', 'kor']
 
 # All other languages loaded on-demand when selected
-LAZY_LANGUAGES = ['fre', 'ger', 'spa', 'por', 'ita', 'rus', 'tur', 'pol', 'zho-cn', 'zho-tw', 'jpn']
+LAZY_LANGUAGES = ['fre', 'ger', 'spa-es', 'spa-mx', 'por-br', 'ita', 'rus', 'tur', 'pol', 'zho-cn', 'zho-tw', 'jpn']
 
 
 # =============================================================================
@@ -326,6 +398,9 @@ class Settings:
     selected_language: str = 'eng'  # Translation language
     colors: Dict[str, str] = field(default_factory=lambda: DEFAULT_COLORS.copy())
 
+    # Branch
+    branch: str = 'mainline'
+
     # Paths (can be overridden)
     faction_folder: str = DEFAULT_FACTION_FOLDER
     loc_folder: str = DEFAULT_LOC_FOLDER
@@ -359,6 +434,7 @@ class Settings:
             ui_language=data.get('ui_language', 'English'),
             selected_language=data.get('selected_language', 'eng'),
             colors=data.get('colors', DEFAULT_COLORS.copy()),
+            branch=data.get('branch', 'mainline'),
             faction_folder=data.get('faction_folder', DEFAULT_FACTION_FOLDER),
             loc_folder=data.get('loc_folder', DEFAULT_LOC_FOLDER),
             knowledge_folder=data.get('knowledge_folder', DEFAULT_KNOWLEDGE_FOLDER),
