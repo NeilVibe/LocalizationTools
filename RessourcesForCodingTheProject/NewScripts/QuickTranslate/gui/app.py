@@ -2057,11 +2057,11 @@ class QuickTranslateApp:
 
             only_untranslated = transfer_scope == "untranslated"
 
-            # For strict with fuzzy precision, need model + entries only (no FAISS index)
+            # For strict with fuzzy precision, need model + FAISS index (two-step: perfect then FAISS fuzzy)
             if match_type == "strict" and precision == "fuzzy":
                 if not self._ensure_fuzzy_model():
                     return
-                if not self._ensure_fuzzy_entries(str(target), stringid_filter=source_stringids, only_untranslated=only_untranslated):
+                if not self._ensure_fuzzy_index(str(target), stringid_filter=source_stringids, only_untranslated=only_untranslated):
                     return
                 self._log(f"Strict TRANSFER with FUZZY precision (threshold={fuzzy_threshold:.2f})", 'info')
 
@@ -2103,10 +2103,9 @@ class QuickTranslateApp:
                 transfer_kwargs["fuzzy_texts"] = self._fuzzy_texts
                 transfer_kwargs["fuzzy_entries"] = self._fuzzy_entries
                 transfer_kwargs["source_stringids"] = source_stringids
-                # FAISS index only needed for quadruple_fallback_fuzzy (not strict_fuzzy)
-                if match_type == "quadruple_fallback":
-                    transfer_kwargs["fuzzy_index"] = self._fuzzy_index
-                self._log(f"Passing pre-built fuzzy data: {len(self._fuzzy_entries):,} entries", 'info')
+                # FAISS index needed for BOTH strict_fuzzy and quadruple_fallback_fuzzy
+                transfer_kwargs["fuzzy_index"] = self._fuzzy_index
+                self._log(f"Passing pre-built fuzzy data: {len(self._fuzzy_entries):,} entries, FAISS index ready", 'info')
 
             if match_type == "quadruple_fallback" and precision == "fuzzy":
                 transfer_kwargs["use_fuzzy_precision"] = True
