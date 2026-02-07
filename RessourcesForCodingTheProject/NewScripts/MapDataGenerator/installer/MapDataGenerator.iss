@@ -1,6 +1,6 @@
 ; MapDataGenerator Inno Setup Script
 ; Creates Windows installer for MapDataGenerator
-; Includes drive selection for Perforce workspace
+; Includes drive and branch selection for Perforce workspace
 
 #define MyAppName "MapDataGenerator"
 #define MyAppVersion "1.0.0"
@@ -56,22 +56,26 @@ Type: filesandordirs; Name: "{app}\cache"
 var
   DriveSelectionPage: TInputQueryWizardPage;
   DriveLetter: String;
+  BranchName: String;
 
 procedure InitializeWizard();
 begin
-  // Create drive selection page (after welcome page)
+  // Create drive + branch selection page (after welcome page)
   DriveSelectionPage := CreateInputQueryPage(wpWelcome,
-    'Perforce Drive Selection',
-    'Select the drive where your Perforce workspace is located.',
-    'MapDataGenerator needs to know where your game data is located.' + #13#10 + #13#10 + 'Default path: F:\perforce\cd\mainline\resource\GameData' + #13#10 + #13#10 + 'If your Perforce is on a different drive (D:, E:, etc.), enter just the letter.' + #13#10 + 'Leave as F if you are unsure.'
+    'Perforce Drive & Branch Selection',
+    'Select the drive and branch for your Perforce workspace.',
+    'MapDataGenerator needs to know where your game data is located.' + #13#10 + #13#10 + 'Default path: F:\perforce\cd\mainline\resource\GameData' + #13#10 + #13#10 + 'If your Perforce is on a different drive (D:, E:, etc.), enter just the letter.' + #13#10 + 'Leave as F if you are unsure.' + #13#10 + #13#10 + 'Branch: mainline, cd_beta, cd_alpha, cd_lambda, or custom.'
   );
   DriveSelectionPage.Add('Drive Letter (e.g., F, D, E):', False);
   DriveSelectionPage.Values[0] := 'F';
+  DriveSelectionPage.Add('Branch Name (e.g., mainline, cd_beta):', False);
+  DriveSelectionPage.Values[1] := 'mainline';
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
 var
   DriveInput: String;
+  BranchInput: String;
 begin
   Result := True;
 
@@ -79,7 +83,7 @@ begin
   begin
     DriveInput := Uppercase(Trim(DriveSelectionPage.Values[0]));
 
-    // Validate: single letter A-Z
+    // Validate drive: single letter A-Z
     if (Length(DriveInput) <> 1) or (DriveInput[1] < 'A') or (DriveInput[1] > 'Z') then
     begin
       MsgBox('Please enter a single drive letter (A-Z).', mbError, MB_OK);
@@ -98,6 +102,12 @@ begin
         Exit;
       end;
     end;
+
+    // Validate branch: non-empty string
+    BranchInput := Trim(DriveSelectionPage.Values[1]);
+    if BranchInput = '' then
+      BranchInput := 'mainline';
+    BranchName := BranchInput;
   end;
 end;
 
@@ -110,7 +120,7 @@ begin
   begin
     // Write settings.json with selected drive letter
     SettingsPath := ExpandConstant('{app}\settings.json');
-    SettingsContent := '{"drive_letter": "' + DriveLetter + '", "version": "1.0"}';
+    SettingsContent := '{"drive_letter": "' + DriveLetter + '", "branch": "' + BranchName + '", "version": "1.0"}';
     SaveStringToFile(SettingsPath, AnsiString(SettingsContent), False);
   end;
 end;

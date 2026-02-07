@@ -30,7 +30,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
     APP_NAME, VERSION, get_settings, save_settings, load_settings,
     get_ui_text, Settings, LANGUAGES, LANGUAGE_NAMES,
-    DATA_MODES, DEFAULT_MODE
+    DATA_MODES, DEFAULT_MODE, KNOWN_BRANCHES, generate_default_paths,
+    _DRIVE_LETTER,
 )
 from core.linkage import LinkageResolver, DataMode
 from core.language import LanguageManager
@@ -544,6 +545,20 @@ class MapDataGeneratorApp:
                 variable=mode_var
             ).pack(side="left", padx=10, pady=5)
 
+        # Branch selection
+        branch_frame = ttk.LabelFrame(dialog, text="Branch")
+        branch_frame.pack(fill="x", padx=10, pady=5)
+
+        branch_inner = ttk.Frame(branch_frame)
+        branch_inner.pack(fill="x", padx=5, pady=5)
+        ttk.Label(branch_inner, text="Branch:", width=20, anchor="w").pack(side="left")
+        branch_var = tk.StringVar(value=settings.branch)
+        branch_combo = ttk.Combobox(
+            branch_inner, textvariable=branch_var,
+            values=KNOWN_BRANCHES, width=30
+        )
+        branch_combo.pack(side="left", padx=5)
+
         # Folder selection
         folders_frame = ttk.LabelFrame(dialog, text="Data Folders")
         folders_frame.pack(fill="both", expand=True, padx=10, pady=5)
@@ -583,7 +598,33 @@ class MapDataGeneratorApp:
         audio_var = create_folder_row(folders_frame, "Audio Folder (WEM):", settings.audio_folder)
         export_var = create_folder_row(folders_frame, "Export Folder:", settings.export_folder)
 
+        # Map folder vars by key for branch-change updates
+        _folder_vars = {
+            'texture_folder': texture_var,
+            'loc_folder': loc_var,
+            'faction_folder': faction_var,
+            'knowledge_folder': knowledge_var,
+            'waypoint_folder': waypoint_var,
+            'character_folder': character_var,
+            'audio_folder': audio_var,
+            'export_folder': export_var,
+        }
+
+        def _on_branch_change(_event=None):
+            """Regenerate all folder paths when branch changes."""
+            new_paths = generate_default_paths(_DRIVE_LETTER, branch_var.get().strip())
+            for key, var in _folder_vars.items():
+                if key in new_paths:
+                    var.set(new_paths[key])
+
+        branch_combo.bind("<<ComboboxSelected>>", _on_branch_change)
+        branch_combo.bind("<Return>", _on_branch_change)
+
         def on_load():
+            # Save branch and regenerate paths to catch typed-but-not-confirmed changes
+            settings.branch = branch_var.get().strip() or 'mainline'
+            _on_branch_change()
+
             # Save paths
             settings.texture_folder = texture_var.get()
             settings.loc_folder = loc_var.get()

@@ -1,7 +1,7 @@
 """
 Language Module
 
-Multi-language LOC (localization) support for 13 languages.
+Multi-language LOC (localization) support for 14 languages.
 Handles loading language tables from LanguageData_*.xml files.
 """
 
@@ -48,7 +48,7 @@ def load_language_tables(
     translations, we preserve all of them for later disambiguation.
 
     File pattern: LanguageData_[CODE].xml
-    Languages: eng, fre, ger, spa, por, ita, rus, tur, pol, zho-cn, zho-tw, jpn
+    Languages: eng, fre, ger, spa-es, spa-mx, por-br, ita, rus, tur, pol, zho-cn, zho-tw, jpn
 
     Args:
         folder: Path to language data folder
