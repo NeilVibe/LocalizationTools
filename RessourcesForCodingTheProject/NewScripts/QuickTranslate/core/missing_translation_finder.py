@@ -34,6 +34,7 @@ except ImportError:
 from xml.etree import ElementTree as ET
 
 from .xml_parser import sanitize_xml_content
+from .text_utils import normalize_text
 
 
 # Korean character ranges (Hangul syllables + Jamo)
@@ -1955,6 +1956,11 @@ def find_missing_with_options(
 
             logger.info(f"[Step 4] stringid_kr_fuzzy: {len(source_by_sid):,} unique StringID groups from {len(source_keys):,} keys")
 
+            # Build normalized lookup for strict pre-matching (O(1) hash set)
+            source_keys_normalized = set()
+            for (so, sid) in source_keys:
+                source_keys_normalized.add((normalize_text(so), sid))
+
             # Pre-encode all unique texts grouped by StringID
             source_group_embeddings = {}
             total_sids = len(source_by_sid)
@@ -2056,14 +2062,28 @@ def find_missing_with_options(
             import numpy as np
 
             if use_stringid and source_group_embeddings is not None:
-                # stringid_kr_fuzzy: compare within StringID groups
-                total_entries = len(korean_entries)
-                for entry_idx, (key, entry) in enumerate(korean_entries.items(), 1):
+                # stringid_kr_fuzzy: two-phase (strict pre-match + fuzzy remainder)
+                strict_hits = 0
+                fuzzy_hits = 0
+                need_fuzzy_entries = []  # Entries that need SBERT encoding
+
+                # Phase A: Strict pre-match (O(1) hash lookup, no SBERT)
+                for key, entry in korean_entries.items():
                     sid = entry.string_id
                     so = entry.str_origin.strip()
 
+                    # Raw exact match
+                    if key in source_keys:
+                        strict_hits += 1
+                        continue
+
+                    # Normalized match (handles whitespace/encoding diffs)
+                    if (normalize_text(so), sid) in source_keys_normalized:
+                        strict_hits += 1
+                        continue
+
+                    # StringID not in source at all -> automatic MISS
                     if sid not in source_group_embeddings:
-                        # StringID not in source at all -> automatic MISS
                         sid_not_in_source += 1
                         cat = category_index.get(sid, "Uncategorized")
                         missing_entries.append(MissingEntryWithCategory(
@@ -2076,7 +2096,18 @@ def find_missing_with_options(
                         ))
                         continue
 
-                    # Encode target text and compare against source group
+                    # Needs fuzzy matching
+                    need_fuzzy_entries.append((key, entry))
+
+                logger.info(f"    Phase A strict: {strict_hits:,} HIT, {sid_not_in_source:,} SID_MISS, "
+                            f"{len(need_fuzzy_entries):,} need fuzzy")
+
+                # Phase B: Fuzzy on remainder only (SBERT encoding)
+                total_fuzzy = len(need_fuzzy_entries)
+                for entry_idx, (key, entry) in enumerate(need_fuzzy_entries, 1):
+                    sid = entry.string_id
+                    so = entry.str_origin.strip()
+
                     target_vec = model.encode([so], show_progress_bar=False).astype(np.float32)
                     norm = np.linalg.norm(target_vec)
                     if norm > 0:
@@ -2087,7 +2118,7 @@ def find_missing_with_options(
                     max_sim = float(sims.max()) if len(sims) > 0 else 0.0
 
                     if max_sim >= threshold:
-                        hits += 1
+                        fuzzy_hits += 1
                     else:
                         fuzzy_below_threshold += 1
                         cat = category_index.get(sid, "Uncategorized")
@@ -2100,11 +2131,13 @@ def find_missing_with_options(
                             elem=entry.elem,
                         ))
 
-                    if entry_idx % 200 == 0 or entry_idx == total_entries:
-                        logger.info(f"    Fuzzy matching: {entry_idx:,}/{total_entries:,} "
-                                    f"(HIT={hits:,} SID_MISS={sid_not_in_source:,} BELOW_THRESH={fuzzy_below_threshold:,})")
+                    if entry_idx % 200 == 0 or entry_idx == total_fuzzy:
+                        logger.info(f"    Phase B fuzzy: {entry_idx:,}/{total_fuzzy:,} "
+                                    f"(FUZZY_HIT={fuzzy_hits:,} BELOW_THRESH={fuzzy_below_threshold:,})")
 
-                logger.info(f"    STRINGID_KR_FUZZY: {hits:,} HIT, {sid_not_in_source:,} StringID not in source, "
+                hits = strict_hits + fuzzy_hits
+                logger.info(f"    STRINGID_KR_FUZZY: {hits:,} HIT (strict={strict_hits:,}, fuzzy={fuzzy_hits:,}), "
+                            f"{sid_not_in_source:,} StringID not in source, "
                             f"{fuzzy_below_threshold:,} below threshold ({threshold:.2f})")
 
             elif not use_stringid and source_embeddings is not None:

@@ -944,9 +944,17 @@ def _prematch_strict_fuzzy(
                     sid_to_origins[sid] = []
                 sid_to_origins[sid].append((text, entry))
 
+        # Build strict lookup for O(1) exact StrOrigin matching
+        strict_lookup = set()
+        for text, entry in zip(texts, entries):
+            sid = entry.get("string_id", "")
+            if sid:
+                strict_lookup.add((sid, normalize_text(text)))
+
         import numpy as np
 
         matched = []
+        strict_matches = []
         unmatched_count = 0
 
         # Group corrections by StringID for batch processing
@@ -972,6 +980,13 @@ def _prematch_strict_fuzzy(
                 no_origin_matches.append(enriched)
                 continue
 
+            # Try strict normalized StrOrigin match (O(1), avoids SBERT encoding)
+            strict_key = (src_sid, normalize_text(src_origin))
+            if strict_key in strict_lookup:
+                enriched = {**c, "fuzzy_target_string_id": src_sid, "fuzzy_score": 1.0}
+                strict_matches.append(enriched)
+                continue
+
             # Group by StringID for batch processing
             if src_sid not in sid_to_corrections:
                 sid_to_corrections[src_sid] = []
@@ -979,6 +994,7 @@ def _prematch_strict_fuzzy(
 
         # Add all no-origin matches directly
         matched.extend(no_origin_matches)
+        matched.extend(strict_matches)
 
         # Process each StringID group with batch encoding
         for src_sid, correction_group in sid_to_corrections.items():
@@ -1012,7 +1028,8 @@ def _prematch_strict_fuzzy(
 
         logger.info(
             f"Strict+fuzzy pre-match: {len(matched)}/{len(corrections)} matched "
-            f"(threshold={threshold:.2f}, unmatched={unmatched_count})"
+            f"(strict={len(strict_matches)}, fuzzy={len(matched) - len(strict_matches) - len(no_origin_matches)}, "
+            f"no_origin={len(no_origin_matches)}, threshold={threshold:.2f}, unmatched={unmatched_count})"
         )
         return matched
     except Exception as e:
