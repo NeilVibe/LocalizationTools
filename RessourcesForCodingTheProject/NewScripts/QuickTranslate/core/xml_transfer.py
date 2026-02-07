@@ -1118,15 +1118,21 @@ def transfer_folder_to_folder(
                 results["errors"].append(f"Failed to build FAISS index for strict+fuzzy: {e}")
                 logger.error(f"Failed to build FAISS index for strict+fuzzy: {e}")
 
-    # ─── Per-file loop ─────────────────────────────────────────────────
+    # ─── Phase 1: Parse ALL source files and group by target XML ─────
+    # Instead of one pass per source file, concatenate ALL corrections
+    # for the same target language into ONE dataset for a SINGLE pass.
+
+    from .xml_io import parse_corrections_from_xml
+
+    # {target_xml_path: {"corrections": [...], "source_files": [...]}}
+    target_groups = {}
 
     for i, source_file in enumerate(all_sources):
         if progress_callback:
-            progress_callback(f"Processing {source_file.name}... ({i+1}/{total})")
+            progress_callback(f"Parsing {source_file.name}... ({i+1}/{total})")
 
         # Parse corrections from source
         if source_file.suffix.lower() == ".xml":
-            from .xml_io import parse_corrections_from_xml
             corrections = parse_corrections_from_xml(source_file)
         else:
             corrections = read_corrections_from_excel(source_file)
@@ -1136,15 +1142,12 @@ def transfer_folder_to_folder(
             continue
 
         # Get language code from scanner mapping (folder-based detection)
-        # Falls back to filename extraction for unrecognized files
         lang_code = file_to_lang.get(source_file)
         if not lang_code:
-            # Fallback: try to extract from filename
             name = source_file.stem.lower()
             if name.startswith("languagedata_"):
                 lang_code = name[13:]
             elif "_" in name:
-                # Only use if it looks like a language code (2-6 chars, possibly hyphenated)
                 last_part = name.split("_")[-1]
                 if 2 <= len(last_part) <= 6 or "-" in last_part:
                     lang_code = last_part
@@ -1163,7 +1166,6 @@ def transfer_folder_to_folder(
                     break
 
         if not target_xml:
-            # Try to find any matching XML
             target_xmls = list(target_folder.glob("*.xml"))
             if len(target_xmls) == 1:
                 target_xml = target_xmls[0]
@@ -1175,7 +1177,34 @@ def transfer_folder_to_folder(
             results["errors"].append(f"No target XML found for {source_file.name}")
             continue
 
-        # Apply corrections based on match mode
+        # Group corrections by target XML
+        target_key = str(target_xml)
+        if target_key not in target_groups:
+            target_groups[target_key] = {
+                "target_xml": target_xml,
+                "corrections": [],
+                "source_files": [],
+            }
+        target_groups[target_key]["corrections"].extend(corrections)
+        target_groups[target_key]["source_files"].append(source_file.name)
+        logger.info(f"Parsed {source_file.name}: {len(corrections)} corrections → {target_xml.name}")
+
+    logger.info(f"Grouped {sum(len(g['corrections']) for g in target_groups.values()):,} corrections "
+                f"across {len(target_groups)} target files")
+
+    # ─── Phase 2: ONE pass per target XML with ALL corrections ────────
+
+    for ti, (target_key, group) in enumerate(target_groups.items()):
+        target_xml = group["target_xml"]
+        corrections = group["corrections"]
+        source_names = group["source_files"]
+
+        if progress_callback:
+            progress_callback(f"Transferring to {target_xml.name}... ({ti+1}/{len(target_groups)})")
+
+        logger.info(f"═══ {target_xml.name}: {len(corrections):,} corrections from {len(source_names)} files ═══")
+
+        # Apply corrections based on match mode — ONE pass with ALL corrections
         if match_mode == "stringid_only" and stringid_to_category:
             file_result = merge_corrections_stringid_only(
                 target_xml, corrections, stringid_to_category,
@@ -1186,7 +1215,7 @@ def transfer_folder_to_folder(
             results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
 
         elif match_mode == "strict_fuzzy":
-            # ═══ TWO-STEP PROCESS ═══
+            # ═══ TWO-STEP PROCESS (single pass with ALL corrections) ═══
             # Step 1: Perfect match (exact StringID + exact StrOrigin)
             file_result = merge_corrections_to_xml(
                 target_xml, corrections, dry_run,
@@ -1197,7 +1226,6 @@ def transfer_folder_to_folder(
 
             # Step 2: FAISS fuzzy on UNCONSUMED corrections only
             if _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
-                # Collect unconsumed corrections (NOT_FOUND + STRORIGIN_MISMATCH)
                 unconsumed = []
                 for detail in file_result["details"]:
                     if detail["status"] in ("STRORIGIN_MISMATCH", "NOT_FOUND"):
@@ -1222,7 +1250,6 @@ def transfer_folder_to_folder(
                             target_xml, fuzzy_matched, dry_run,
                             only_untranslated=only_untranslated,
                         )
-                        # Combine results
                         file_result["matched"] += fuzzy_result["matched"]
                         file_result["updated"] += fuzzy_result["updated"]
                         file_result["not_found"] = max(0, file_result.get("not_found", 0) - fuzzy_result["matched"])
@@ -1239,7 +1266,6 @@ def transfer_folder_to_folder(
                     logger.info("Step 2: All corrections matched in Step 1 (perfect match)")
 
         elif match_mode in ("quadruple_fallback", "quadruple_fallback_fuzzy"):
-            # Use pre-built indexes to match, then merge
             _use_fuzzy = (
                 match_mode == "quadruple_fallback_fuzzy" or use_fuzzy_precision
             )
@@ -1260,8 +1286,8 @@ def transfer_folder_to_folder(
                 )
                 precision_label = "fuzzy" if _use_fuzzy else "exact"
                 logger.info(
-                    f"Quadruple fallback pre-match ({precision_label}) for "
-                    f"{source_file.name}: {len(matched)}/{len(corrections)} matched "
+                    f"Quadruple fallback pre-match ({precision_label}): "
+                    f"{len(matched)}/{len(corrections)} matched "
                     f"(L1={level_counts['L1']}, L2A={level_counts['L2A']}, "
                     f"L2B={level_counts['L2B']}, L3={level_counts['L3']})"
                 )
@@ -1270,7 +1296,6 @@ def transfer_folder_to_folder(
                     only_untranslated=only_untranslated,
                 )
             else:
-                # Index build failed earlier - return empty result
                 file_result = {
                     "matched": 0, "updated": 0,
                     "not_found": len(corrections),
@@ -1285,7 +1310,7 @@ def transfer_folder_to_folder(
             )
 
         # Aggregate results
-        results["files_processed"] += 1
+        results["files_processed"] += len(source_names)
         results["total_corrections"] += len(corrections)
         results["total_matched"] += file_result["matched"]
         results["total_updated"] += file_result["updated"]
@@ -1294,22 +1319,24 @@ def transfer_folder_to_folder(
         results["total_skipped_translated"] += file_result.get("skipped_translated", 0)
         results["errors"].extend(file_result["errors"])
 
-        results["file_results"][source_file.name] = {
+        # Store result keyed by target name (since sources are concatenated)
+        source_label = ", ".join(source_names)
+        results["file_results"][target_xml.name] = {
             "target": target_xml.name,
+            "source_files": source_names,
             "corrections": len(corrections),
             **file_result,
         }
 
-        # Log per-file transfer result with source file name
+        # Log per-target result
         updated = file_result["updated"]
-        matched = file_result["matched"]
-        not_found = file_result["not_found"]
-        if updated > 0:
-            logger.info(f"[{source_file.name}] → {target_xml.name}: {updated} updated, {matched} matched, {not_found} not found")
-        elif matched > 0:
-            logger.info(f"[{source_file.name}] → {target_xml.name}: {matched} matched (0 updated - already current)")
-        else:
-            logger.info(f"[{source_file.name}] → {target_xml.name}: {not_found} not found (no matches)")
+        matched_count = file_result["matched"]
+        not_found = file_result.get("not_found", 0)
+        logger.info(
+            f"[{source_label}] → {target_xml.name}: "
+            f"{matched_count} matched, {updated} updated, {not_found} not found "
+            f"({len(corrections):,} corrections from {len(source_names)} files)"
+        )
 
     return results
 
@@ -1549,12 +1576,15 @@ def format_transfer_report(results: Dict, mode: str = "folder") -> str:
         file_results = results.get("file_results", {})
         if file_results:
             lines.append(LT + H * (width - 2) + RT)
-            lines.append(V + " PER-FILE BREAKDOWN:".ljust(width - 2) + V)
+            lines.append(V + " PER-LANGUAGE BREAKDOWN:".ljust(width - 2) + V)
             for fname, fresult in file_results.items():
                 target = fresult.get("target", "?")
                 matched = fresult.get("matched", 0)
                 updated = fresult.get("updated", 0)
-                lines.append(V + f"   {fname} -> {target}".ljust(width - 2) + V)
+                corrections = fresult.get("corrections", 0)
+                source_files = fresult.get("source_files", [])
+                src_label = f"{len(source_files)} files" if len(source_files) > 1 else (source_files[0] if source_files else "?")
+                lines.append(V + f"   {src_label} -> {target} ({corrections:,} corrections)".ljust(width - 2) + V)
                 lines.append(V + f"     Matched: {matched}, Updated: {updated}".ljust(width - 2) + V)
 
     else:

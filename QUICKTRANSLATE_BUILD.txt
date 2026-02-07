@@ -52,3 +52,4 @@ Build: Fix double-escaping of linebreaks (amp;lt;br)
 Build: StringID TEXT format in all Excel reports
 Build: CRITICAL FIX - Excel source fuzzy matching was broken (empty filter)
 Build: REWRITE fuzzy transfer - Step1 perfect + Step2 FAISS fuzzy (restored find_matches_fuzzy)
+Build: Concatenate all source files per language into ONE transfer pass
