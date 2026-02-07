@@ -107,7 +107,7 @@ def read_corrections_from_excel(
                     corrections.append({
                         "string_id": str(string_id).strip(),  # StringID: just strip, no normalize (ID not display text)
                         "str_origin": normalize_text(str_origin) if str_origin else "",
-                        "corrected": normalize_text(corrected),
+                        "corrected": str(corrected).strip(),  # Preserve linebreaks! Don't normalize output text
                     })
             except (IndexError, AttributeError):
                 continue
