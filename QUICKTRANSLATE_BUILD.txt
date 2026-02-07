@@ -50,3 +50,4 @@ Build: strict pre-match optimization
 Build: Fix Excel linebreak handling in TRANSFER
 Build: Fix double-escaping of linebreaks (amp;lt;br)
 Build: StringID TEXT format in all Excel reports
+Build: CRITICAL FIX - Excel source fuzzy matching was broken (empty filter)
