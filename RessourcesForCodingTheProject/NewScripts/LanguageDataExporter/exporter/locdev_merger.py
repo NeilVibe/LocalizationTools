@@ -89,16 +89,23 @@ def _convert_linebreaks_for_xml(txt: str) -> str:
     The project's XML format uses <br/> (which lxml escapes to &lt;br/&gt;
     in attributes automatically).
 
+    Also handles the case where Excel already contains &lt;br/&gt;
+    (from XML copy-paste) — unescapes first to prevent double-escaping
+    (&lt;br/&gt; → &amp;lt;br/&amp;gt;).
+
     Same pattern as monolith tmxconvert40.py replace_newlines_text().
 
     Args:
         txt: Correction text from Excel
 
     Returns:
-        Text with linebreaks converted to <br/> for XML storage
+        Text with linebreaks normalized to <br/> for XML storage
     """
     if not txt:
         return txt
+    # Unescape HTML-escaped linebreak tags (prevents double-escaping by lxml)
+    txt = txt.replace('&lt;br/&gt;', '<br/>')
+    txt = txt.replace('&lt;br /&gt;', '<br/>')
     # Replace literal newlines (Alt+Enter in Excel)
     txt = txt.replace('\n', '<br/>')
     # Replace escaped newlines (\\n literal string, rare but handle for robustness)
