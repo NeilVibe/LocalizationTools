@@ -30,11 +30,13 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Import STORY_CATEGORIES from config
+# Import from config (single source of truth for column structure + categories)
 try:
-    from config import STORY_CATEGORIES
+    from config import STORY_CATEGORIES, COLUMN_HEADERS_EU, COLUMN_HEADERS_ASIAN
 except ImportError:
     STORY_CATEGORIES = ["Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"]
+    COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "StringID"]
+    COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "StringID"]
 
 # Column widths
 DEFAULT_WIDTHS = {
@@ -43,9 +45,10 @@ DEFAULT_WIDTHS = {
     "Str": 45,
     "Correction": 45,
     "Text State": 12,
+    "STATUS": 14,
+    "COMMENT": 30,
     "MEMO1": 30,
     "MEMO2": 30,
-    "MEMO3": 30,
     "Category": 20,
     "StringID": 15,
 }
@@ -147,8 +150,8 @@ def write_language_excel(
         True if successful, False otherwise
 
     Column structure:
-    - European: StrOrigin | ENG | Str | Correction | Text State | MEMO1 | MEMO2 | MEMO3 | Category | StringID
-    - Asian:    StrOrigin | Str | Correction | Text State | MEMO1 | MEMO2 | MEMO3 | Category | StringID
+    - European: StrOrigin | ENG | Str | Correction | Text State | STATUS | COMMENT | MEMO1 | MEMO2 | Category | StringID
+    - Asian:    StrOrigin | Str | Correction | Text State | STATUS | COMMENT | MEMO1 | MEMO2 | Category | StringID
 
     Text State column:
     - Auto-filled based on Korean detection in Str column
@@ -156,7 +159,7 @@ def write_language_excel(
     - "TRANSLATED" = no Korean characters
 
     Sheet Protection:
-    - When protect_sheet=True, only Correction and MEMO1/2/3 columns are EDITABLE
+    - When protect_sheet=True, only Correction, STATUS, COMMENT, and MEMO1/2 columns are EDITABLE
     - All other columns are locked/read-only (including Text State)
     - QA testers can modify Correction and add notes in MEMO columns
     """
@@ -179,18 +182,17 @@ def write_language_excel(
         workbook = xlsxwriter.Workbook(str(output_path))
         worksheet = workbook.add_worksheet(lang_code.upper())
 
-        # Define headers based on language type
-        # New columns: Text State (auto-filled), MEMO1/2/3 (editable)
+        # Define headers based on language type (imported from config.py)
         if include_english:
-            headers = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "MEMO1", "MEMO2", "MEMO3", "Category", "StringID"]
+            headers = list(COLUMN_HEADERS_EU)
         else:
-            headers = ["StrOrigin", "Str", "Correction", "Text State", "MEMO1", "MEMO2", "MEMO3", "Category", "StringID"]
+            headers = list(COLUMN_HEADERS_ASIAN)
 
         # Find Correction column index (0-based for xlsxwriter)
         correction_col_idx = headers.index("Correction") if "Correction" in headers else None
 
-        # Find MEMO column indices (these are also editable)
-        memo_col_indices = [headers.index(col) for col in ["MEMO1", "MEMO2", "MEMO3"] if col in headers]
+        # Find editable column indices (STATUS, COMMENT, MEMO1, MEMO2)
+        memo_col_indices = [headers.index(col) for col in ["STATUS", "COMMENT", "MEMO1", "MEMO2"] if col in headers]
 
         # Create formats
         header_format = workbook.add_format({
@@ -264,11 +266,11 @@ def write_language_excel(
             # TRANSLATED = no Korean characters
             text_state = "KOREAN" if contains_korean(str_value) else "TRANSLATED"
 
-            # Build row data (Correction + MEMO columns empty, to be filled during LQA)
+            # Build row data (Correction, STATUS, COMMENT, MEMO columns empty, to be filled during LQA)
             if include_english:
-                row_data = [str_origin, english, str_value, "", text_state, "", "", "", category, string_id]
+                row_data = [str_origin, english, str_value, "", text_state, "", "", "", "", category, string_id]
             else:
-                row_data = [str_origin, str_value, "", text_state, "", "", "", category, string_id]
+                row_data = [str_origin, str_value, "", text_state, "", "", "", "", category, string_id]
 
             # Write cells with appropriate format
             for col_idx, value in enumerate(row_data):
@@ -294,6 +296,21 @@ def write_language_excel(
         if row_num > 1:
             worksheet.autofilter(0, 0, row_num - 1, len(headers) - 1)
 
+        # Add STATUS dropdown validation (ISSUE / NO ISSUE)
+        if "STATUS" in headers and row_num > 1:
+            status_col_idx = headers.index("STATUS")
+            worksheet.data_validation(
+                1, status_col_idx, row_num - 1, status_col_idx,
+                {
+                    'validate': 'list',
+                    'source': ['ISSUE', 'NO ISSUE'],
+                    'input_title': 'Status',
+                    'input_message': 'Select ISSUE or NO ISSUE',
+                    'error_title': 'Invalid',
+                    'error_message': 'Please select from the dropdown list.',
+                }
+            )
+
         # Protect sheet - only cells with locked=False can be edited
         if protect_sheet:
             worksheet.protect('', {
@@ -311,7 +328,7 @@ def write_language_excel(
                 'pivot_tables': False,
                 'select_unlocked_cells': True,
             })
-            logger.info(f"Sheet protection enabled - editable columns: Correction (col {correction_col_idx}), MEMO1/2/3 (cols {memo_col_indices})")
+            logger.info(f"Sheet protection enabled - editable columns: Correction (col {correction_col_idx}), STATUS/COMMENT/MEMO1/MEMO2 (cols {memo_col_indices})")
 
         workbook.close()
 

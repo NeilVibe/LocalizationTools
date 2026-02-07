@@ -13,7 +13,7 @@ from pathlib import Path
 import threading
 import logging
 import sys
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -42,13 +42,10 @@ from exporter import (
     merge_all_corrections,
     print_merge_report,
     export_merge_report_to_excel,
-    analyze_patterns,
-    generate_pattern_report,
     # StringID-only matching
     merge_all_corrections_stringid_only_script,
     print_stringid_only_report,
 )
-from exporter.excel_writer import write_summary_excel
 from utils.language_utils import should_include_english_column, LANGUAGE_NAMES as LANG_DISPLAY
 from reports import ReportGenerator, ExcelReportWriter
 from tracker import CorrectionTracker
@@ -379,32 +376,32 @@ class LanguageDataExporterGUI:
             width=28
         ).pack(side="left", padx=5, ipady=8)
 
-        # Row 3: LOCDEV merge and Pattern Analysis buttons
+        # Row 3: LOCDEV merge buttons
         btn_frame3 = ttk.Frame(section)
         btn_frame3.pack(fill="x", pady=5)
 
         ttk.Button(
             btn_frame3,
-            text="Merge to LOCDEV",
+            text="Merge to LOCDEV (ALL - StringID, KR HIT)",
             command=self._merge_to_locdev,
-            width=28
+            width=40
         ).pack(side="left", padx=5, ipady=8)
 
         ttk.Button(
             btn_frame3,
-            text="Analyze Code Patterns",
-            command=self._analyze_code_patterns,
-            width=28
+            text="Merge to LOCDEV (SCRIPT - StringID HIT)",
+            command=self._stringid_only_script_transfer,
+            width=40
         ).pack(side="left", padx=5, ipady=8)
 
-        # Row 4: StringID-Only HIT Transfer (SCRIPT strings only)
+        # Row 4: USER GUIDE
         btn_frame4 = ttk.Frame(section)
         btn_frame4.pack(fill="x", pady=5)
 
         ttk.Button(
             btn_frame4,
-            text="StringID-Only HIT Transfer",
-            command=self._stringid_only_script_transfer,
+            text="USER GUIDE",
+            command=self._show_user_guide,
             width=28
         ).pack(side="left", padx=5, ipady=8)
 
@@ -515,6 +512,16 @@ class LanguageDataExporterGUI:
         if not languages:
             messagebox.showerror("Error", "No language files found")
             return
+
+        # Show LOC folder info before starting
+        messagebox.showinfo(
+            "LOC Source",
+            f"Generating Excel files from:\n\n"
+            f"LOC: {LOC_FOLDER}\n"
+            f"EXPORT: {EXPORT_FOLDER}\n\n"
+            f"Languages: {len(languages)}\n"
+            f"Output: {OUTPUT_FOLDER}"
+        )
 
         self._set_status(f"Generating {len(languages)} language Excel files...")
         self.progress["value"] = 0
@@ -950,69 +957,133 @@ class LanguageDataExporterGUI:
 
         threading.Thread(target=transfer, daemon=True).start()
 
-    def _analyze_code_patterns(self):
-        """Analyze code patterns in languagedata XML and generate report."""
-        if not LOC_FOLDER.exists():
-            messagebox.showerror("Error", f"LOC folder not found:\n{LOC_FOLDER}")
-            return
-        if not EXPORT_FOLDER.exists():
-            messagebox.showerror("Error", f"EXPORT folder not found:\n{EXPORT_FOLDER}")
-            return
+    def _show_user_guide(self):
+        """Show USER GUIDE in a scrollable dialog window."""
+        guide_window = tk.Toplevel(self.root)
+        guide_window.title("USER GUIDE - LanguageDataExporter")
+        guide_window.geometry("700x600")
+        guide_window.minsize(600, 400)
 
-        self._set_status("Analyzing code patterns...")
-        self.progress["value"] = 0
+        # Scrollable text widget
+        text_frame = ttk.Frame(guide_window)
+        text_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        def analyze():
-            try:
-                # Ensure output folder exists
-                OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
+        scrollbar = ttk.Scrollbar(text_frame)
+        scrollbar.pack(side="right", fill="y")
 
-                self.root.after(0, lambda: self._update_progress(10))
-                self.root.after(0, lambda: self._set_status("Loading category index..."))
+        text_widget = tk.Text(
+            text_frame,
+            wrap="word",
+            font=("Consolas", 10),
+            yscrollcommand=scrollbar.set,
+            padx=10,
+            pady=10,
+        )
+        text_widget.pack(fill="both", expand=True)
+        scrollbar.config(command=text_widget.yview)
 
-                # Load category index
-                config = load_cluster_config(CLUSTER_CONFIG)
-                category_index = build_stringid_category_index(
-                    EXPORT_FOLDER,
-                    config,
-                    config.get("default_category", "Uncategorized")
-                )
+        guide_text = (
+            "═══════════════════════════════════════════════════════\n"
+            "  LANGUAGEDATAEXPORTER - USER GUIDE\n"
+            "═══════════════════════════════════════════════════════\n\n"
+            "── SOURCE FOLDERS ──\n\n"
+            "LOC folder: Contains languagedata_*.xml files (all\n"
+            "  game text, one file per language).\n"
+            "EXPORT folder: Contains .loc.xml files organized by\n"
+            "  category (Dialog/, Sequencer/, System/, World/).\n"
+            "  Used to determine which category each StringID\n"
+            "  belongs to.\n"
+            "LOCDEV folder: Development XML files where corrections\n"
+            "  are merged back into.\n"
+            "All paths are configured in settings.json.\n\n"
+            "── GENERATE WORD COUNT REPORT ──\n\n"
+            "Creates a WordCountReport.xlsx with two sheets:\n"
+            "  - General Summary: one row per language with totals\n"
+            "  - Detailed Summary: per-category breakdown\n"
+            "Counts words (EU) or characters (CJK) for LQA\n"
+            "scheduling. Also shows untranslated string counts.\n\n"
+            "── GENERATE LANGUAGE EXCELS ──\n\n"
+            "Creates one Excel file per language from the LOC\n"
+            "folder. Each file contains all strings organized by\n"
+            "category with columns for QA review.\n\n"
+            "Source: LOC folder (configured in settings.json)\n"
+            "Output: GeneratedExcel/LanguageData_{LANG}.xlsx\n\n"
+            "EU columns (11):\n"
+            "  StrOrigin | ENG | Str | Correction | Text State\n"
+            "  | STATUS | COMMENT | MEMO1 | MEMO2 | Category\n"
+            "  | StringID\n\n"
+            "Asian columns (10):\n"
+            "  StrOrigin | Str | Correction | Text State\n"
+            "  | STATUS | COMMENT | MEMO1 | MEMO2 | Category\n"
+            "  | StringID\n\n"
+            "Column details:\n"
+            "  - Correction: empty, fill with corrected text\n"
+            "  - Text State: auto-filled KOREAN (has Korean\n"
+            "    characters = untranslated) or TRANSLATED\n"
+            "  - STATUS: dropdown (ISSUE / NO ISSUE)\n"
+            "  - COMMENT: free-text QA notes\n"
+            "  - MEMO1, MEMO2: general-purpose memo fields\n\n"
+            "Note: ENG and ZHO-CN exclude Dialog/Sequencer\n"
+            "categories (voiced content handled separately).\n"
+            "KOR is excluded (source language, not a target).\n\n"
+            "── PREPARE FOR SUBMIT ──\n\n"
+            "Extracts only rows that have Correction values from\n"
+            "Excel files in ToSubmit/ folder. Creates clean\n"
+            "3-column archive files (StrOrigin | Correction |\n"
+            "StringID). A backup is created automatically.\n\n"
+            "── OPEN TOSUBMIT FOLDER ──\n\n"
+            "Opens the ToSubmit/ folder in your file explorer.\n"
+            "Copy your corrected Excel files here before running\n"
+            "Merge or Prepare For Submit.\n\n"
+            "── MERGE TO LOCDEV (ALL - StringID, KR HIT) ──\n\n"
+            "Pushes corrections back to LOCDEV XML files.\n\n"
+            "Step-by-step:\n"
+            "  1. Copy corrected Excel files to ToSubmit/ folder\n"
+            "  2. Set LOCDEV folder path in the GUI\n"
+            "  3. Click the merge button\n"
+            "  4. Tool reads Correction column from each Excel\n"
+            "  5. STRICT match: StringID + StrOrigin must BOTH\n"
+            "     match in the LOCDEV XML\n"
+            "  6. Updates Str attribute in LOCDEV XML\n"
+            "  7. Progress tracker is updated with results\n\n"
+            "Required Excel columns for merge:\n"
+            "  - StrOrigin (Korean source text)\n"
+            "  - Correction (the corrected translation)\n"
+            "  - StringID (unique identifier)\n"
+            "  - Category (optional, used for tracking)\n\n"
+            "── MERGE TO LOCDEV (SCRIPT - StringID HIT) ──\n\n"
+            "Same as above but uses StringID-ONLY matching.\n"
+            "Applies ONLY to Dialog/Sequencer (SCRIPT) strings.\n"
+            "Ignores StrOrigin - useful when source text changed\n"
+            "but StringID is still valid.\n\n"
+            "Step-by-step:\n"
+            "  1. Same setup as normal merge\n"
+            "  2. Click the SCRIPT merge button\n"
+            "  3. Tool filters for SCRIPT categories only:\n"
+            "     Sequencer, AIDialog, QuestDialog\n"
+            "     (NarrationDialog excluded)\n"
+            "  4. Matches by StringID only (ignores StrOrigin)\n"
+            "  5. Non-SCRIPT strings are skipped\n\n"
+            "── COMPLETE WORKFLOW ──\n\n"
+            "  1. Generate Language Excels (creates files)\n"
+            "  2. Copy files to ToSubmit/ folder\n"
+            "  3. QA reviews Str, fills Correction column,\n"
+            "     sets STATUS, adds COMMENT if needed\n"
+            "  4. Merge to LOCDEV (push corrections to XML)\n"
+            "  5. (Optional) Prepare For Submit (3-col archive)\n\n"
+            "═══════════════════════════════════════════════════════\n"
+        )
 
-                self.root.after(0, lambda: self._update_progress(30))
-                self.root.after(0, lambda: self._set_status("Scanning patterns..."))
+        text_widget.insert("1.0", guide_text)
+        text_widget.config(state="disabled")
 
-                # Analyze patterns
-                result = analyze_patterns(
-                    LOC_FOLDER,
-                    category_index,
-                    threshold=0.8,
-                    default_category=config.get("default_category", "Uncategorized")
-                )
-
-                self.root.after(0, lambda: self._update_progress(80))
-                self.root.after(0, lambda: self._set_status("Generating report..."))
-
-                # Generate report
-                output_path = OUTPUT_FOLDER / "CodePatternReport.xlsx"
-                generate_pattern_report(result, output_path)
-
-                self.root.after(0, lambda: self._update_progress(100))
-                self.root.after(0, lambda: messagebox.showinfo(
-                    "Analysis Complete",
-                    f"Found {result['total_patterns']} unique patterns\n"
-                    f"Grouped into {result['total_clusters']} clusters\n\n"
-                    f"Report: {output_path.name}"
-                ))
-                self.root.after(0, lambda: self._set_status("Ready"))
-
-            except Exception as ex:
-                logger.exception("Pattern analysis failed")
-                self.root.after(0, lambda err=str(ex): messagebox.showerror(
-                    "Error", f"Pattern analysis failed: {err}"
-                ))
-                self.root.after(0, lambda: self._set_status("Analysis failed"))
-
-        threading.Thread(target=analyze, daemon=True).start()
+        # Close button
+        ttk.Button(
+            guide_window,
+            text="Close",
+            command=guide_window.destroy,
+            width=15
+        ).pack(pady=(0, 10))
 
 
 def launch_gui():

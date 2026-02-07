@@ -4,7 +4,7 @@ Exporter package for Language XML to Categorized Excel Converter.
 Modules:
 - xml_parser: Parse languagedata_*.xml files
 - category_mapper: Build StringID → Category from EXPORT folder (two-tier clustering)
-- excel_writer: Generate Excel files with openpyxl
+- excel_writer: Generate Excel files with xlsxwriter
 - submit_preparer: Prepare files for LQA submission
 - locdev_merger: Merge corrections back to LOCDEV XML files
 """
