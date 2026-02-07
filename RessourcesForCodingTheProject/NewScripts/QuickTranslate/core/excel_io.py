@@ -342,8 +342,9 @@ def write_stringid_lookup_excel(
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal='center')
 
-    # Data row
-    ws.cell(row=2, column=1, value=string_id)
+    # Data row - force TEXT format for StringID (prevent scientific notation)
+    sid_cell = ws.cell(row=2, column=1, value=string_id)
+    sid_cell.number_format = numbers.FORMAT_TEXT
 
     for col_idx, lang_code in enumerate(ordered_langs, start=2):
         trans = translation_lookup.get(lang_code, {}).get(string_id, "")
@@ -418,8 +419,9 @@ def write_folder_translation_excel(
             if "\n" in lang_trans:
                 cell.alignment = Alignment(wrap_text=True, vertical='top')
 
-            # StringID
-            ws.cell(row=row_idx, column=4, value=string_id)
+            # StringID - force TEXT format (prevent scientific notation)
+            sid_cell = ws.cell(row=row_idx, column=4, value=string_id)
+            sid_cell.number_format = numbers.FORMAT_TEXT
 
             row_idx += 1
 
