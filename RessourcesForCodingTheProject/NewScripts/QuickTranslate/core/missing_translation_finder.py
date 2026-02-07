@@ -675,7 +675,7 @@ def write_summary_report_excel(
             num_fmt = row_dark_num if is_dark else row_light_num
             wrap_fmt = text_wrap_dark if is_dark else text_wrap_light
 
-            ws_lang.write(i, 0, entry.string_id, txt_fmt)
+            ws_lang.write_string(i, 0, str(entry.string_id), txt_fmt)
             ws_lang.write(i, 1, entry.str_origin[:200], wrap_fmt)
             ws_lang.write(i, 2, entry.str_value[:200], wrap_fmt)
             ws_lang.write(i, 3, entry.korean_words, num_fmt)
@@ -1174,7 +1174,7 @@ def _write_missing_excel_with_categories(
     for i, entry in enumerate(entries, 1):
         ws.write(i, 0, entry.str_origin[:500], text_fmt)
         ws.write(i, 1, entry.translation[:500], text_fmt)
-        ws.write(i, 2, entry.string_id, text_fmt)
+        ws.write_string(i, 2, str(entry.string_id), text_fmt)
         cat_fmt = cat_formats.get(entry.category, default_cat_fmt)
         ws.write(i, 3, entry.category, cat_fmt)
 
