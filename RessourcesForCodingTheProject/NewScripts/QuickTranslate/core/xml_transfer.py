@@ -31,6 +31,30 @@ SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
 SCRIPT_EXCLUDE_SUBFOLDERS = config.SCRIPT_EXCLUDE_SUBFOLDERS
 
 
+def _convert_linebreaks_for_xml(txt: str) -> str:
+    """
+    Convert Excel linebreaks to XML linebreak format.
+
+    Excel uses \\n (Alt+Enter) for line breaks in cells.
+    The project's XML format uses <br/> for linebreaks.
+
+    Ported from LanguageDataExporter's locdev_merger.py.
+
+    Args:
+        txt: Text that may contain Excel linebreaks
+
+    Returns:
+        Text with linebreaks converted to <br/> for XML storage
+    """
+    if not txt:
+        return txt
+    # Replace actual newlines (from Excel Alt+Enter)
+    txt = txt.replace('\n', '<br/>')
+    # Replace escaped newlines (\\n literal string, rare but handle for robustness)
+    txt = txt.replace('\\n', '<br/>')
+    return txt
+
+
 def merge_corrections_to_xml(
     xml_path: Path,
     corrections: List[Dict],
@@ -161,6 +185,9 @@ def merge_corrections_to_xml(
                         "raw_attribs": orig_correction.get("raw_attribs", {}),
                     })
                     continue
+
+                # Convert Excel linebreaks to XML format before comparison/write
+                new_str = _convert_linebreaks_for_xml(new_str)
 
                 if new_str != old_str:
                     if not dry_run:
@@ -381,6 +408,9 @@ def merge_corrections_stringid_only(
                     })
                     continue
 
+                # Convert Excel linebreaks to XML format before comparison/write
+                new_str = _convert_linebreaks_for_xml(new_str)
+
                 if new_str != old_str:
                     if not dry_run:
                         loc.set("Str", new_str)
@@ -533,6 +563,9 @@ def merge_corrections_fuzzy(
                     })
                     continue
 
+                # Convert Excel linebreaks to XML format before comparison/write
+                new_str = _convert_linebreaks_for_xml(new_str)
+
                 if new_str != old_str:
                     if not dry_run:
                         loc.set("Str", new_str)
@@ -681,6 +714,9 @@ def merge_corrections_quadruple_fallback(
                         "raw_attribs": c.get("raw_attribs", {}),
                     })
                     continue
+
+                # Convert Excel linebreaks to XML format before comparison/write
+                new_str = _convert_linebreaks_for_xml(new_str)
 
                 if new_str != old_str:
                     if not dry_run:
