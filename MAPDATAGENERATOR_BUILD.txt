@@ -38,3 +38,4 @@ Build - FIX: O(1) lookup, destroy(), lambda capture, mode validation, truncate a
 Build - RESTORE: Column toggle checkboxes (Show: [x] KOR [x] Translation [ ] Description...)
 Build - FIX: Settings persistence (log errors), mode switching (AUDIO→MAP works now)
 Build - Thread safety: Loading lock + generation counter (no rapid switching corruption)
+Build: Language codes + branch selector
