@@ -954,20 +954,33 @@ class QuickTranslateApp:
         """Extract unique StringIDs from source file/folder.
 
         Used to filter FAISS index build - only include entries matching source StringIDs.
+        Handles both XML and Excel source files.
         """
         from core.indexing import (
             _get_attribute_case_insensitive,
             _iter_locstr_case_insensitive,
         )
         from core.xml_parser import parse_xml_file
+        from core.excel_io import read_corrections_from_excel
 
         stringids = set()
 
         if source.is_file():
-            xml_files = [source] if source.suffix.lower() == '.xml' else []
+            # Handle single file - XML or Excel
+            if source.suffix.lower() == '.xml':
+                xml_files = [source]
+                excel_files = []
+            elif source.suffix.lower() in ('.xlsx', '.xls'):
+                xml_files = []
+                excel_files = [source]
+            else:
+                return stringids
         else:
+            # Handle folder - find all XML and Excel files
             xml_files = list(source.rglob("*.xml"))
+            excel_files = list(source.rglob("*.xlsx")) + list(source.rglob("*.xls"))
 
+        # Extract from XML files
         for xml_file in xml_files:
             try:
                 root = parse_xml_file(xml_file)
@@ -975,6 +988,17 @@ class QuickTranslateApp:
                     sid = (_get_attribute_case_insensitive(
                         elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
                     ) or '').strip()
+                    if sid:
+                        stringids.add(sid)
+            except Exception:
+                continue
+
+        # Extract from Excel files
+        for excel_file in excel_files:
+            try:
+                corrections = read_corrections_from_excel(excel_file)
+                for c in corrections:
+                    sid = c.get("string_id", "")
                     if sid:
                         stringids.add(sid)
             except Exception:
