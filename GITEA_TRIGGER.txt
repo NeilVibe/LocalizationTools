@@ -50,3 +50,4 @@ Trigger QuickTranslate Build
 Trigger QuickTranslate Build
 Trigger QuickTranslate Build
 Trigger QACompiler Build
+Trigger LanguageDataExporter Build
