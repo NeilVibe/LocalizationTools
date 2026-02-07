@@ -985,6 +985,7 @@ def transfer_folder_to_folder(
     fuzzy_index=None,
     fuzzy_texts: Optional[List[str]] = None,
     fuzzy_entries: Optional[List[dict]] = None,
+    source_stringids: Optional[set] = None,
 ) -> Dict:
     """
     Transfer corrections from source folder to target folder.
@@ -1091,10 +1092,10 @@ def transfer_folder_to_folder(
         logger.info("No pre-built fuzzy data - will build from scratch if needed")
 
     # ─── CRITICAL: Extract ALL StringIDs from ALL source files FIRST ───
-    # This filter is used when no pre-built fuzzy data is provided.
-    # Without this, the fallback paths would load FULL languagedata (2.2M entries)!
-    all_source_stringids = None
-    if _fuzzy_entries is None and match_mode in ("quadruple_fallback", "quadruple_fallback_fuzzy", "strict_fuzzy"):
+    # This filter ensures we don't load FULL languagedata (2.2M entries)!
+    # Use pre-passed source_stringids if available, otherwise extract from source files.
+    all_source_stringids = source_stringids  # May be None or pre-computed set from GUI
+    if all_source_stringids is None and match_mode in ("quadruple_fallback", "quadruple_fallback_fuzzy", "strict_fuzzy"):
         from .xml_io import parse_corrections_from_xml
         from .excel_io import read_corrections_from_excel
 
@@ -1362,6 +1363,10 @@ def transfer_file_to_file(
     threshold: float = None,
     use_fuzzy_precision: bool = False,
     only_untranslated: bool = False,
+    fuzzy_model=None,
+    fuzzy_index=None,
+    fuzzy_texts: Optional[List[str]] = None,
+    fuzzy_entries: Optional[List[dict]] = None,
 ) -> Dict:
     """
     Transfer corrections from single source file to single target file.
@@ -1380,6 +1385,10 @@ def transfer_file_to_file(
         threshold: Similarity threshold for fuzzy modes (defaults to config.FUZZY_THRESHOLD_DEFAULT)
         use_fuzzy_precision: If True and match_mode is "quadruple_fallback", use SBERT
                              fuzzy matching for StrOrigin comparison instead of exact
+        fuzzy_model: Pre-loaded SBERT model (optional, avoids reload)
+        fuzzy_index: Pre-built FAISS index (optional, for quadruple_fallback_fuzzy)
+        fuzzy_texts: Pre-extracted StrOrigin texts (optional)
+        fuzzy_entries: Pre-extracted entry dicts (optional)
 
     Returns:
         Dict with results
@@ -1415,6 +1424,9 @@ def transfer_file_to_file(
         enriched = _prematch_strict_fuzzy(
             corrections, target_folder,
             threshold=threshold,
+            fuzzy_model=fuzzy_model,
+            fuzzy_texts=fuzzy_texts,
+            fuzzy_entries=fuzzy_entries,
         )
         # After strict_fuzzy prematch, StringID is resolved - use fuzzy merge
         result = merge_corrections_fuzzy(
@@ -1425,28 +1437,23 @@ def transfer_file_to_file(
         # Pre-match: enrich corrections with matched_string_id
         target_folder = target_file.parent
 
-        # Build FAISS resources if fuzzy precision requested
-        fuzzy_model = None
-        fuzzy_texts = None
-        fuzzy_entries = None
-        fuzzy_index = None
         _use_fuzzy = (
             match_mode == "quadruple_fallback_fuzzy" or use_fuzzy_precision
         )
 
-        if _use_fuzzy:
+        # Use pre-built data if available, otherwise build from scratch
+        if _use_fuzzy and fuzzy_entries is None:
             from .fuzzy_matching import (
                 load_model, build_index_from_folder, build_faiss_index,
             )
             try:
-                # CRITICAL: Extract StringIDs from corrections to filter the scan!
                 correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
                 logger.info(f"File-to-file: Filtering to {len(correction_stringids):,} StringIDs")
 
                 fuzzy_model = load_model()
                 fuzzy_texts, fuzzy_entries = build_index_from_folder(
                     target_folder,
-                    stringid_filter=correction_stringids  # FILTER!
+                    stringid_filter=correction_stringids
                 )
                 if fuzzy_texts:
                     fuzzy_index = build_faiss_index(
@@ -1454,7 +1461,7 @@ def transfer_file_to_file(
                     )
             except Exception as e:
                 logger.error(f"Failed to build fuzzy index for quadruple fallback: {e}")
-                _use_fuzzy = False  # Fall back to exact
+                _use_fuzzy = False
 
         effective_threshold = (
             threshold if threshold is not None
