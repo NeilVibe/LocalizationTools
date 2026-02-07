@@ -1917,6 +1917,10 @@ def find_missing_with_options(
                 progress_cb("Encoding SOURCE texts with KR-SBERT...", 40)
 
             all_source_texts = list(source_origins)
+
+            # Build normalized lookup for strict pre-matching (O(1) hash set)
+            source_origins_normalized = {normalize_text(so) for so in source_origins if so.strip()}
+
             logger.info(f"[Step 4] kr_fuzzy: encoding {len(all_source_texts):,} unique SOURCE texts")
 
             # Batch encode
@@ -1959,7 +1963,8 @@ def find_missing_with_options(
             # Build normalized lookup for strict pre-matching (O(1) hash set)
             source_keys_normalized = set()
             for (so, sid) in source_keys:
-                source_keys_normalized.add((normalize_text(so), sid))
+                if so.strip():
+                    source_keys_normalized.add((normalize_text(so), sid))
 
             # Pre-encode all unique texts grouped by StringID
             source_group_embeddings = {}
@@ -2141,19 +2146,41 @@ def find_missing_with_options(
                             f"{fuzzy_below_threshold:,} below threshold ({threshold:.2f})")
 
             elif not use_stringid and source_embeddings is not None:
-                # kr_fuzzy: batch similarity against all source texts
-                target_texts = []
-                target_entries_list = []
-                for key, entry in korean_entries.items():
-                    target_texts.append(entry.str_origin.strip())
-                    target_entries_list.append(entry)
+                # kr_fuzzy: two-phase (strict pre-match + fuzzy remainder)
+                strict_hits = 0
+                fuzzy_hits = 0
 
-                logger.info(f"    KR_FUZZY: encoding {len(target_texts):,} target texts, comparing against {source_embeddings.shape[0]:,} source texts")
+                # Phase A: Strict pre-match (O(1) hash lookup, no SBERT)
+                need_fuzzy_texts = []
+                need_fuzzy_entries = []
+                for key, entry in korean_entries.items():
+                    so = entry.str_origin.strip()
+
+                    # Raw exact match (same check as kr_strict)
+                    if so in source_origins:
+                        strict_hits += 1
+                        continue
+
+                    # Normalized match (handles whitespace/encoding diffs)
+                    if so and normalize_text(so) in source_origins_normalized:
+                        strict_hits += 1
+                        continue
+
+                    # Needs fuzzy matching
+                    need_fuzzy_texts.append(so)
+                    need_fuzzy_entries.append(entry)
+
+                logger.info(f"    Phase A strict: {strict_hits:,} HIT, "
+                            f"{len(need_fuzzy_texts):,} need fuzzy")
+
+                # Phase B: Fuzzy on remainder only (SBERT encoding)
+                logger.info(f"    KR_FUZZY Phase B: encoding {len(need_fuzzy_texts):,} target texts, "
+                            f"comparing against {source_embeddings.shape[0]:,} source texts")
 
                 batch_size = 100
-                for i in range(0, len(target_texts), batch_size):
-                    batch_texts = target_texts[i:i + batch_size]
-                    batch_entries = target_entries_list[i:i + batch_size]
+                for i in range(0, len(need_fuzzy_texts), batch_size):
+                    batch_texts = need_fuzzy_texts[i:i + batch_size]
+                    batch_entries = need_fuzzy_entries[i:i + batch_size]
 
                     target_vecs = model.encode(batch_texts, show_progress_bar=False).astype(np.float32)
                     norms = np.linalg.norm(target_vecs, axis=1, keepdims=True)
@@ -2166,7 +2193,7 @@ def find_missing_with_options(
 
                     for sim, entry in zip(max_sims, batch_entries):
                         if float(sim) >= threshold:
-                            hits += 1
+                            fuzzy_hits += 1
                         else:
                             cat = category_index.get(entry.string_id, "Uncategorized")
                             missing_entries.append(MissingEntryWithCategory(
@@ -2178,12 +2205,14 @@ def find_missing_with_options(
                                 elem=entry.elem,
                             ))
 
-                    done = min(i + batch_size, len(target_texts))
-                    if done % 500 == 0 or done == len(target_texts):
-                        logger.info(f"    Encoding+comparing: {done:,}/{len(target_texts):,} "
-                                    f"(HIT={hits:,} MISS={len(missing_entries):,})")
+                    done = min(i + batch_size, len(need_fuzzy_texts))
+                    if done % 500 == 0 or done == len(need_fuzzy_texts):
+                        logger.info(f"    Phase B fuzzy: {done:,}/{len(need_fuzzy_texts):,} "
+                                    f"(FUZZY_HIT={fuzzy_hits:,} MISS={len(missing_entries):,})")
 
-                logger.info(f"    KR_FUZZY: {hits:,} HIT, {len(missing_entries):,} MISS (threshold={threshold:.2f})")
+                hits = strict_hits + fuzzy_hits
+                logger.info(f"    KR_FUZZY: {hits:,} HIT (strict={strict_hits:,}, fuzzy={fuzzy_hits:,}), "
+                            f"{len(missing_entries):,} MISS (threshold={threshold:.2f})")
 
         # Write per-language Excel
         lang_result = {
