@@ -2078,6 +2078,7 @@ class QuickTranslateApp:
                 transfer_kwargs["fuzzy_model"] = self._fuzzy_model
                 transfer_kwargs["fuzzy_texts"] = self._fuzzy_texts
                 transfer_kwargs["fuzzy_entries"] = self._fuzzy_entries
+                transfer_kwargs["source_stringids"] = source_stringids
                 # FAISS index only needed for quadruple_fallback_fuzzy (not strict_fuzzy)
                 if match_type == "quadruple_fallback":
                     transfer_kwargs["fuzzy_index"] = self._fuzzy_index
