@@ -48,3 +48,4 @@ Trigger: Exclude GUI
 Trigger: Search in Exclude GUI
 Build: strict pre-match optimization
 Build: Fix Excel linebreak handling in TRANSFER
+Build: Fix double-escaping of linebreaks (amp;lt;br)
