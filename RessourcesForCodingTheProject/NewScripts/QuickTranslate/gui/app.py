@@ -71,7 +71,6 @@ from core.fuzzy_matching import (
     load_model,
     build_faiss_index,
     search_fuzzy,
-    find_matches_fuzzy,
     build_index_from_folder,
     get_cached_index_info,
     clear_cache as clear_fuzzy_cache,

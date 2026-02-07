@@ -282,6 +282,8 @@ def find_matches_quadruple_fallback(
         return _quadruple_fallback_fuzzy(
             corrections, source_has_context,
             fuzzy_model, fuzzy_threshold, fuzzy_texts, fuzzy_entries, fuzzy_index,
+            level1_index=level1_index, level2a_index=level2a_index,
+            level2b_index=level2b_index, level3_index=level3_index,
         )
 
     matched = []
@@ -362,19 +364,27 @@ def _quadruple_fallback_fuzzy(
     texts: List[str],
     entries: List[dict],
     index,
+    level1_index: Optional[Dict[tuple, List[dict]]] = None,
+    level2a_index: Optional[Dict[tuple, List[dict]]] = None,
+    level2b_index: Optional[Dict[tuple, List[dict]]] = None,
+    level3_index: Optional[Dict[str, List[dict]]] = None,
 ) -> Tuple[List[Dict], int, Dict[str, int]]:
     """
     Quadruple Fallback with SBERT fuzzy StrOrigin matching.
 
-    OPTIMIZED: Batch encodes ALL queries upfront in a single model.encode() call,
-    then batch searches FAISS for ALL queries at once.
+    OPTIMIZED: Strict pre-match phase tries exact L1/L2A/L2B/L3 cascade
+    before falling back to SBERT encoding. Only corrections that fail all
+    exact levels are batch-encoded through SBERT+FAISS.
 
-    Instead of exact StrOrigin lookup via index keys, this encodes all
-    correction str_origins with the SBERT model, searches FAISS for the
-    top-K candidates above threshold, then filters those candidates through
-    the level criteria (file_relpath, adjacency_hash).
+    Phase 1 (Strict Pre-Match):
+    For each correction, try exact index lookups using the same cascade as
+    the non-fuzzy path. Corrections that match skip SBERT entirely.
 
-    The cascade becomes:
+    Phase 2 (Fuzzy Fallback):
+    Remaining corrections are batch-encoded and searched via FAISS, then
+    filtered through the level criteria (file_relpath, adjacency_hash).
+
+    The fuzzy cascade becomes:
     1. Get FAISS candidates above threshold for this correction's str_origin
     2. Among those candidates: any with matching file_relpath AND adj_hash? -> L1
     3. Among those candidates: any with matching file_relpath? -> L2A
@@ -386,9 +396,13 @@ def _quadruple_fallback_fuzzy(
         source_has_context: Whether corrections have file/adjacency info
         model: Loaded SentenceTransformer model
         threshold: Minimum similarity score
-        texts: Target StrOrigin texts (parallel to entries)
-        entries: Target entry dicts (parallel to texts)
+        texts: Target StrOrigin texts for FAISS (parallel to entries)
+        entries: Target entry dicts for FAISS (parallel to texts)
         index: Pre-built FAISS index
+        level1_index: Optional dict keyed by (norm_origin, file_relpath, adj_hash)
+        level2a_index: Optional dict keyed by (norm_origin, file_relpath)
+        level2b_index: Optional dict keyed by (norm_origin, adj_hash)
+        level3_index: Optional dict keyed by norm_origin
 
     Returns:
         Tuple of (matched_corrections, not_found_count, level_counts)
@@ -403,44 +417,122 @@ def _quadruple_fallback_fuzzy(
     k = 10  # Search top-K candidates per query
     total = len(corrections)
 
-    # Phase 1: Collect all valid str_origin texts and their indices
-    logger.info(f"Fuzzy quadruple fallback: collecting {total} queries...")
-    valid_indices = []  # Indices into corrections list
-    valid_texts = []    # Corresponding str_origin texts
+    # -----------------------------------------------------------
+    # Phase 1: Strict pre-match  (skip SBERT for exact matches)
+    # -----------------------------------------------------------
+    # Separate corrections into those with valid str_origin vs empty.
+    # Among valid ones, try exact index lookups first.
+    strict_matched_count = 0
+    need_fuzzy_corrections = []  # (original_index, correction) pairs
+
+    has_indexes = level3_index is not None
+
+    logger.info(f"Fuzzy quadruple fallback: {total} corrections, "
+                f"strict pre-match {'enabled' if has_indexes else 'disabled'}")
 
     for ci, c in enumerate(corrections):
         str_origin = c.get("str_origin", "").strip()
-        if str_origin:
-            valid_indices.append(ci)
-            valid_texts.append(str_origin)
-        else:
+        if not str_origin:
             not_found += 1
+            continue
 
-    if not valid_texts:
-        logger.info("No valid queries to process")
+        # Try strict pre-match when indexes are available
+        if has_indexes:
+            norm_origin = normalize_for_matching(str_origin)
+            match_entry = None
+            match_level = None
+
+            if source_has_context:
+                file_relpath = c.get("file_relpath", "")
+                adj_before = c.get("adjacent_before", "")
+                adj_after = c.get("adjacent_after", "")
+                adj_hash = None
+                if adj_before or adj_after:
+                    adj_hash = _compute_adjacency_hash(adj_before, adj_after)
+
+                # Try L1: StrOrigin + file_relpath + adjacency_hash
+                if level1_index is not None and file_relpath and adj_hash:
+                    key1 = (norm_origin, file_relpath, adj_hash)
+                    l1_entries = level1_index.get(key1, [])
+                    if l1_entries:
+                        match_entry = l1_entries[0]
+                        match_level = "L1"
+
+                # Try L2A: StrOrigin + file_relpath
+                if match_entry is None and level2a_index is not None and file_relpath:
+                    key2a = (norm_origin, file_relpath)
+                    l2a_entries = level2a_index.get(key2a, [])
+                    if l2a_entries:
+                        match_entry = l2a_entries[0]
+                        match_level = "L2A"
+
+                # Try L2B: StrOrigin + adjacency_hash
+                if match_entry is None and level2b_index is not None and adj_hash:
+                    key2b = (norm_origin, adj_hash)
+                    l2b_entries = level2b_index.get(key2b, [])
+                    if l2b_entries:
+                        match_entry = l2b_entries[0]
+                        match_level = "L2B"
+
+            # Try L3: StrOrigin only
+            if match_entry is None:
+                l3_entries = level3_index.get(norm_origin, [])
+                if l3_entries:
+                    match_entry = l3_entries[0]
+                    match_level = "L3"
+
+            if match_entry is not None:
+                enriched = {
+                    **c,
+                    "match_level": match_level,
+                    "matched_string_id": match_entry["string_id"],
+                    "matched_str_origin": match_entry["str_origin"],
+                    "matched_source_file": match_entry.get("source_file", ""),
+                }
+                matched.append(enriched)
+                level_counts[match_level] += 1
+                strict_matched_count += 1
+                continue
+
+        # No strict match found (or indexes not available) -> needs fuzzy
+        need_fuzzy_corrections.append((ci, c))
+
+    fuzzy_count = len(need_fuzzy_corrections)
+    logger.info(f"Fuzzy quadruple fallback: {strict_matched_count} strict-matched, "
+                f"{fuzzy_count} need fuzzy, {not_found} empty of {total} total")
+
+    if not need_fuzzy_corrections:
+        logger.info(f"Fuzzy quadruple fallback complete: all {strict_matched_count} "
+                    f"resolved by strict pre-match")
         return matched, not_found, level_counts
 
-    # Phase 2: Batch encode ALL queries in one call
-    logger.info(f"Fuzzy quadruple fallback: batch encoding {len(valid_texts)} queries...")
-    all_embeddings = model.encode(valid_texts, convert_to_numpy=True, show_progress_bar=False)
+    # -----------------------------------------------------------
+    # Phase 2: Batch encode remaining corrections through SBERT
+    # -----------------------------------------------------------
+    fuzzy_texts_to_encode = [c.get("str_origin", "").strip()
+                             for _, c in need_fuzzy_corrections]
+
+    logger.info(f"Fuzzy quadruple fallback: batch encoding {fuzzy_count} queries...")
+    all_embeddings = model.encode(fuzzy_texts_to_encode, convert_to_numpy=True,
+                                  show_progress_bar=False)
     all_embeddings = np.ascontiguousarray(all_embeddings, dtype=np.float32)
     faiss_lib.normalize_L2(all_embeddings)
 
-    # Phase 3: Batch search FAISS for ALL queries at once
-    logger.info(f"Fuzzy quadruple fallback: batch FAISS search for {len(valid_texts)} queries...")
-    all_distances, all_indices = index.search(all_embeddings, k)
+    # Phase 3: Batch search FAISS for remaining queries
+    logger.info(f"Fuzzy quadruple fallback: batch FAISS search for {fuzzy_count} queries...")
+    all_distances, all_faiss_indices = index.search(all_embeddings, k)
 
-    # Phase 4: Process results for each query
-    logger.info(f"Fuzzy quadruple fallback: processing {len(valid_texts)} results...")
-    for qi, ci in enumerate(valid_indices):
-        c = corrections[ci]
+    # Phase 4: Process FAISS results for each remaining query
+    logger.info(f"Fuzzy quadruple fallback: processing {fuzzy_count} fuzzy results...")
+    fuzzy_matched_count = 0
 
+    for qi, (ci, c) in enumerate(need_fuzzy_corrections):
         if qi % 500 == 0 and qi > 0:
-            logger.info(f"Fuzzy quadruple fallback: processed {qi}/{len(valid_texts)}")
+            logger.info(f"Fuzzy quadruple fallback: processed {qi}/{fuzzy_count}")
 
         # Collect candidates above threshold from pre-computed FAISS results
         candidates = []
-        for score, idx in zip(all_distances[qi], all_indices[qi]):
+        for score, idx in zip(all_distances[qi], all_faiss_indices[qi]):
             if idx < 0 or idx >= len(entries):
                 continue
             if score >= threshold:
@@ -503,8 +595,11 @@ def _quadruple_fallback_fuzzy(
         }
         matched.append(enriched)
         level_counts[match_level] += 1
+        fuzzy_matched_count += 1
 
-    logger.info(f"Fuzzy quadruple fallback complete: {len(matched)} matched, {not_found} not found")
+    logger.info(f"Fuzzy quadruple fallback complete: "
+                f"{strict_matched_count} strict + {fuzzy_matched_count} fuzzy "
+                f"= {len(matched)} matched, {not_found} not found")
     return matched, not_found, level_counts
 
 
