@@ -56,3 +56,4 @@ Build 20260206-022349: Add not_found details report
 Build 20260206-022837: Fix merge issues from review
 Build 20260206-115051
 Trigger LanguageDataExporter Build
+Build: Fix double-escaping of linebreaks (amp;lt;br)
