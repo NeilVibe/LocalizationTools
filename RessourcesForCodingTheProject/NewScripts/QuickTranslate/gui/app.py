@@ -1,10 +1,9 @@
 """
 QuickTranslate GUI Application.
 
-Tkinter-based GUI with multi-mode support:
-- Format Selection: Excel / XML
-- Mode Selection: Folder (recursive) / File (single)
+Tkinter-based GUI with folder-only source mode (auto-detects XML + Excel):
 - Match Type Selection: Substring / StringID-only / Strict / Quadruple Fallback
+- Enhanced source validation (dry-run parse with per-file reporting)
 - Settings panel for path configuration
 - Detailed logging and reporting
 """
@@ -35,7 +34,6 @@ from core import (
     find_matches_quadruple_fallback,
     find_stringid_from_text,
     format_multiple_matches,
-    read_korean_input,
     read_corrections_from_excel,
     get_ordered_languages,
     write_output_excel,
@@ -46,7 +44,6 @@ from core import (
     parse_folder_xml_files,
     # TRANSFER functions
     transfer_folder_to_folder,
-    transfer_file_to_file,
     format_transfer_report,
     # Source scanner (auto-recursive language detection)
     scan_source_for_languages,
@@ -58,7 +55,6 @@ from core import (
     # Failure reports (XML + Excel)
     generate_failed_merge_xml_per_language,
     extract_failed_from_folder_results,
-    extract_failed_from_transfer_results,
     generate_failure_report_excel,
     check_xlsxwriter_available,
     # Missing translation finder
@@ -95,8 +91,6 @@ class QuickTranslateApp:
         self.root.configure(bg='#f0f0f0')
 
         # Variables
-        self.format_mode = tk.StringVar(value="excel")  # excel or xml
-        self.input_mode = tk.StringVar(value="file")    # folder or file
         self.match_type = tk.StringVar(value="substring")  # substring, stringid_only, strict, quadruple_fallback
 
         self.source_path = tk.StringVar()
@@ -148,6 +142,11 @@ class QuickTranslateApp:
         # Load current settings into variables
         self._load_settings_to_vars()
 
+        # Ensure default Source folder exists and pre-populate if empty
+        config.ensure_source_folder()
+        if not self.source_path.get():
+            self.source_path.set(str(config.SOURCE_FOLDER))
+
         self._create_ui()
 
     def _load_settings_to_vars(self):
@@ -197,42 +196,10 @@ class QuickTranslateApp:
                                       relief='flat', padx=20, pady=4, cursor='hand2')
         self.generate_btn.pack(side=tk.RIGHT, padx=(5, 0))
 
-        # === COMPACT FORMAT + MODE ROW ===
-        format_mode_frame = tk.Frame(main, bg='#f0f0f0')
-        format_mode_frame.pack(fill=tk.X, pady=(0, 8))
-
-        # Format section (left side)
-        format_section = tk.Frame(format_mode_frame, bg='#f0f0f0')
-        format_section.pack(side=tk.LEFT)
-
-        tk.Label(format_section, text="Format:", font=('Segoe UI', 10, 'bold'),
-                bg='#f0f0f0', fg='#555').pack(side=tk.LEFT, padx=(0, 8))
-        tk.Radiobutton(format_section, text="Excel", variable=self.format_mode,
-                      value="excel", font=('Segoe UI', 10), bg='#f0f0f0',
-                      activebackground='#f0f0f0', cursor='hand2').pack(side=tk.LEFT, padx=(0, 4))
-        tk.Radiobutton(format_section, text="XML", variable=self.format_mode,
-                      value="xml", font=('Segoe UI', 10), bg='#f0f0f0',
-                      activebackground='#f0f0f0', cursor='hand2').pack(side=tk.LEFT)
-
-        # Separator
-        tk.Label(format_mode_frame, text="|", font=('Segoe UI', 10),
-                bg='#f0f0f0', fg='#ccc').pack(side=tk.LEFT, padx=15)
-
-        # Mode section (right of format)
-        mode_section = tk.Frame(format_mode_frame, bg='#f0f0f0')
-        mode_section.pack(side=tk.LEFT)
-
-        tk.Label(mode_section, text="Mode:", font=('Segoe UI', 10, 'bold'),
-                bg='#f0f0f0', fg='#555').pack(side=tk.LEFT, padx=(0, 8))
-        tk.Radiobutton(mode_section, text="File", variable=self.input_mode,
-                      value="file", font=('Segoe UI', 10), bg='#f0f0f0',
-                      activebackground='#f0f0f0', cursor='hand2').pack(side=tk.LEFT, padx=(0, 4))
-        tk.Radiobutton(mode_section, text="Folder", variable=self.input_mode,
-                      value="folder", font=('Segoe UI', 10), bg='#f0f0f0',
-                      activebackground='#f0f0f0', cursor='hand2').pack(side=tk.LEFT)
-
-        # Transfer note label (shown when TRANSFER disabled)
-        self.transfer_note_label = tk.Label(format_mode_frame, text="",
+        # Transfer note (shown when TRANSFER disabled for substring mode)
+        transfer_note_frame = tk.Frame(main, bg='#f0f0f0')
+        transfer_note_frame.pack(fill=tk.X, pady=(0, 8))
+        self.transfer_note_label = tk.Label(transfer_note_frame, text="",
                                             font=('Segoe UI', 8), bg='#f0f0f0', fg='#d9534f')
         self.transfer_note_label.pack(side=tk.RIGHT)
 
@@ -339,7 +306,7 @@ class QuickTranslateApp:
                                     bg='#f0f0f0', fg='#555', padx=15, pady=8)
         files_frame.pack(fill=tk.X, pady=(0, 8))
 
-        # Source file/folder
+        # Source folder
         source_row = tk.Frame(files_frame, bg='#f0f0f0')
         source_row.pack(fill=tk.X, pady=(0, 6))
         tk.Label(source_row, text="Source:", font=('Segoe UI', 10), bg='#f0f0f0',
@@ -533,7 +500,7 @@ class QuickTranslateApp:
         self._log(message, 'info')
 
     def _analyze_folder(self, folder_path: str, role: str) -> None:
-        """Analyze a folder and print detailed info to terminal and log.
+        """Analyze a folder and log detailed info to terminal and GUI.
 
         Uses Smart Auto-Recursive Source Scanner for SOURCE folders to detect
         language codes from folder/file suffixes (e.g., Corrections_FRE/, patch_GER.xml).
@@ -544,14 +511,14 @@ class QuickTranslateApp:
         """
         folder = Path(folder_path)
         if not folder.exists() or not folder.is_dir():
-            print(f"\n[{role}] ERROR: Path does not exist or is not a directory: {folder_path}")
+            logger.error("[%s] Path does not exist or is not a directory: %s", role, folder_path)
             self._log(f"{role} folder invalid: {folder_path}", 'error')
             return
 
         try:
             all_files = list(folder.iterdir())
         except OSError as e:
-            print(f"\n[{role}] ERROR: Cannot read folder: {e}")
+            logger.error("[%s] Cannot read folder: %s", role, e)
             self._log(f"{role} folder unreadable: {e}", 'error')
             return
 
@@ -578,17 +545,18 @@ class QuickTranslateApp:
 
         # Terminal output
         separator = "=" * 60
-        print(f"\n{separator}")
-        print(f"  {role} FOLDER ANALYSIS")
-        print(f"{separator}")
-        print(f"  Path: {folder_path}")
-        print(f"  Total items: {len(all_files)} ({len(xml_files)} XML, {len(xlsx_files)} Excel, {len(other_files)} other, {len(subdirs)} subdirs)")
-        print(f"{'-' * 60}")
+        logger.info("\n%s", separator)
+        logger.info("  %s FOLDER ANALYSIS", role)
+        logger.info("%s", separator)
+        logger.info("  Path: %s", folder_path)
+        logger.info("  Total items: %d (%d XML, %d Excel, %d other, %d subdirs)",
+                     len(all_files), len(xml_files), len(xlsx_files), len(other_files), len(subdirs))
+        logger.info("%s", "-" * 60)
 
         if lang_files:
-            print(f"\n  LANGUAGEDATA FILES ({len(lang_files)} found):")
-            print(f"  {'#':<4} {'Filename':<35} {'Lang':<8} {'Size':<10}")
-            print(f"  {'-'*4} {'-'*35} {'-'*8} {'-'*10}")
+            logger.info("\n  LANGUAGEDATA FILES (%d found):", len(lang_files))
+            logger.info("  %-4s %-35s %-8s %-10s", "#", "Filename", "Lang", "Size")
+            logger.info("  %s %s %s %s", "-"*4, "-"*35, "-"*8, "-"*10)
             total_size = 0
             for idx, (fname, lang, size) in enumerate(sorted(lang_files, key=lambda x: x[1]), 1):
                 total_size += size
@@ -596,34 +564,34 @@ class QuickTranslateApp:
                     size_str = f"{size/1024:.1f} MB"
                 else:
                     size_str = f"{size:.0f} KB"
-                print(f"  {idx:<4} {fname:<35} {lang:<8} {size_str:<10}")
+                logger.info("  %-4d %-35s %-8s %-10s", idx, fname, lang, size_str)
             if total_size >= 1024:
                 total_str = f"{total_size/1024:.1f} MB"
             else:
                 total_str = f"{total_size:.0f} KB"
-            print(f"  {'-'*4} {'-'*35} {'-'*8} {'-'*10}")
-            print(f"  {'':4} {'TOTAL':<35} {'':<8} {total_str:<10}")
+            logger.info("  %s %s %s %s", "-"*4, "-"*35, "-"*8, "-"*10)
+            logger.info("  %-4s %-35s %-8s %-10s", "", "TOTAL", "", total_str)
         else:
-            print(f"\n  WARNING: No languagedata_*.xml files found!")
+            logger.warning("  No languagedata_*.xml files found!")
 
         if non_lang_xml:
-            print(f"\n  OTHER XML FILES ({len(non_lang_xml)}):")
+            logger.info("\n  OTHER XML FILES (%d):", len(non_lang_xml))
             for f in non_lang_xml:
-                print(f"    - {f}")
+                logger.info("    - %s", f)
 
         if xlsx_files:
-            print(f"\n  EXCEL FILES ({len(xlsx_files)}):")
+            logger.info("\n  EXCEL FILES (%d):", len(xlsx_files))
             for f in xlsx_files:
                 try:
                     size_kb = f.stat().st_size / 1024
-                    print(f"    - {f.name} ({size_kb:.0f} KB)")
+                    logger.info("    - %s (%.0f KB)", f.name, size_kb)
                 except OSError:
-                    print(f"    - {f.name} (size unknown)")
+                    logger.info("    - %s (size unknown)", f.name)
 
         if subdirs:
-            print(f"\n  SUBDIRECTORIES ({len(subdirs)}):")
+            logger.info("\n  SUBDIRECTORIES (%d):", len(subdirs))
             for d in subdirs:
-                print(f"    - {d.name}/")
+                logger.info("    - %s/", d.name)
 
         # === Smart Auto-Recursive Source Scanner (for SOURCE folders) ===
         # Scan once and reuse result (avoid duplicate scanning)
@@ -631,32 +599,33 @@ class QuickTranslateApp:
         if role == "SOURCE":
             scan_result = scan_source_for_languages(folder)
             if scan_result.lang_files:
-                print(f"\n  SMART LANGUAGE DETECTION (Auto-Recursive):")
-                print(f"  {'Language':<10} {'Files':<8} {'Source'}")
-                print(f"  {'-'*10} {'-'*8} {'-'*30}")
+                logger.info("\n  SMART LANGUAGE DETECTION (Auto-Recursive):")
+                logger.info("  %-10s %-8s %s", "Language", "Files", "Source")
+                logger.info("  %s %s %s", "-"*10, "-"*8, "-"*30)
                 for lang in scan_result.get_languages():
                     files = scan_result.lang_files[lang]
                     if len(files) <= 2:
                         sources = ", ".join(f.name for f in files)
                     else:
                         sources = f"{files[0].name}, ... ({len(files)} total)"
-                    print(f"  {lang:<10} {len(files):<8} {sources}")
-                print(f"\n  Total: {scan_result.total_files} files in {scan_result.language_count} languages (auto-detected)")
+                    logger.info("  %-10s %-8d %s", lang, len(files), sources)
+                logger.info("\n  Total: %d files in %d languages (auto-detected)",
+                            scan_result.total_files, scan_result.language_count)
 
                 if scan_result.unrecognized:
-                    print(f"\n  UNRECOGNIZED ITEMS ({len(scan_result.unrecognized)}):")
+                    logger.info("\n  UNRECOGNIZED ITEMS (%d):", len(scan_result.unrecognized))
                     for item in scan_result.unrecognized[:5]:
                         item_type = "folder" if item.is_dir() else "file"
-                        print(f"    - {item.name} ({item_type})")
+                        logger.info("    - %s (%s)", item.name, item_type)
                     if len(scan_result.unrecognized) > 5:
-                        print(f"    ... and {len(scan_result.unrecognized) - 5} more")
+                        logger.info("    ... and %d more", len(scan_result.unrecognized) - 5)
 
                 # Log to GUI
                 self._log(f"Smart scan: {scan_result.total_files} files in {scan_result.language_count} languages", 'success')
                 self._log(f"  Languages: {', '.join(scan_result.get_languages())}", 'info')
 
         # Validation - show WORKING FOR / NOT WORKING FOR
-        print(f"\n  VALIDATION:")
+        logger.info("\n  VALIDATION:")
         is_eligible = len(lang_files) > 0
         lang_codes = sorted([lc for _, lc, _ in lang_files]) if lang_files else []
 
@@ -686,25 +655,24 @@ class QuickTranslateApp:
         else:
             not_working_for.append("StringID Lookup - set LOC folder in Settings first")
 
-        # Print results
         if working_for:
-            print(f"  WORKING FOR:")
+            logger.info("  WORKING FOR:")
             for item in working_for:
-                print(f"    ✓ {item}")
+                logger.info("    + %s", item)
 
         if not_working_for:
-            print(f"  NOT WORKING FOR:")
+            logger.info("  NOT WORKING FOR:")
             for item in not_working_for:
-                print(f"    ✗ {item}")
+                logger.info("    x %s", item)
 
         if non_lang_xml:
-            print(f"  [!!] {len(non_lang_xml)} non-languagedata XML files will be IGNORED")
+            logger.info("  [!!] %d non-languagedata XML files will be IGNORED", len(non_lang_xml))
         if subdirs and role == "TARGET":
-            print(f"  [!!] {len(subdirs)} subdirectories will be IGNORED (flat scan only)")
+            logger.info("  [!!] %d subdirectories will be IGNORED (flat scan only)", len(subdirs))
 
-        print(f"{separator}\n")
+        logger.info("%s\n", separator)
 
-        # Also log to GUI
+        # Log to GUI
         if is_eligible:
             self._log(f"{role}: ELIGIBLE for TRANSFER + Find Missing Translations", 'success')
             if lang_codes:
@@ -712,20 +680,131 @@ class QuickTranslateApp:
         else:
             self._log(f"{role}: Limited features available (no languagedata files)", 'warning')
 
-    def _browse_source(self):
-        """Browse for source file or folder based on mode."""
-        if self.input_mode.get() == "folder":
-            path = filedialog.askdirectory(title="Select Source Folder")
+        # Run enhanced source validation (dry-run parse)
+        if role == "SOURCE" and scan_result:
+            self._validate_source_files(folder, scan_result)
+
+    def _validate_source_files(self, folder: Path, scan_result) -> None:
+        """Dry-run parse every source file and report results.
+
+        Attempts to parse each XML and Excel file found by the source scanner,
+        reporting per-file success/failure and per-language entry counts.
+
+        Args:
+            folder: Source folder path
+            scan_result: Result from scan_source_for_languages()
+        """
+        # Collect all files to validate
+        files_to_check = []
+        for lang, file_list in scan_result.lang_files.items():
+            for f in file_list:
+                files_to_check.append((f, lang))
+
+        # Also check unrecognized files that might be parseable
+        for item in scan_result.unrecognized:
+            if item.is_file() and item.suffix.lower() in (".xml", ".xlsx", ".xls"):
+                files_to_check.append((item, "???"))
+
+        if not files_to_check:
+            logger.info("  No source files to validate.")
+            return
+
+        # Parse each file and collect results
+        results = []  # (filename, file_type, lang, entry_count, status, error_msg)
+        for filepath, lang in files_to_check:
+            suffix = filepath.suffix.lower()
+            file_type = "XML" if suffix == ".xml" else "Excel"
+            try:
+                if suffix == ".xml":
+                    entries = parse_corrections_from_xml(filepath)
+                elif suffix in (".xlsx", ".xls"):
+                    entries = read_corrections_from_excel(filepath)
+                else:
+                    results.append((filepath.name, file_type, lang, 0, "SKIPPED", "Unsupported format"))
+                    continue
+
+                count = len(entries) if entries else 0
+                if count > 0:
+                    results.append((filepath.name, file_type, lang, count, "OK", ""))
+                else:
+                    results.append((filepath.name, file_type, lang, 0, "EMPTY", "No entries parsed"))
+            except Exception as e:
+                results.append((filepath.name, file_type, lang, 0, "FAILED", str(e)))
+
+        # Build terminal report
+        separator = "-" * 60
+        logger.info("\n%s", separator)
+        logger.info("  SOURCE FILE VALIDATION (Dry-Run Parse)")
+        logger.info("%s", separator)
+        logger.info("  %-4s %-30s %-6s %-8s %-8s %s", "#", "Filename", "Type", "Lang", "Entries", "Status")
+        logger.info("  %s %s %s %s %s %s", "-"*4, "-"*30, "-"*6, "-"*8, "-"*8, "-"*10)
+
+        for idx, (fname, ftype, lang, count, status, err) in enumerate(results, 1):
+            count_str = f"{count:,}" if count > 0 else "0"
+            status_str = status if not err or status == "OK" else f"{status} ({err[:40]})"
+            logger.info("  %-4d %-30s %-6s %-8s %8s  %s", idx, fname[:30], ftype, lang, count_str, status_str)
+
+        # Compute summary stats
+        xml_good = sum(1 for r in results if r[1] == "XML" and r[4] == "OK")
+        excel_good = sum(1 for r in results if r[1] == "Excel" and r[4] == "OK")
+        xml_fail = sum(1 for r in results if r[1] == "XML" and r[4] in ("FAILED", "EMPTY"))
+        excel_fail = sum(1 for r in results if r[1] == "Excel" and r[4] in ("FAILED", "EMPTY"))
+        total_entries = sum(r[3] for r in results)
+        errors = [(r[0], r[5]) for r in results if r[4] == "FAILED"]
+
+        # Per-language breakdown
+        lang_entries = {}
+        for _, _, lang, count, status, _ in results:
+            if status == "OK" and count > 0:
+                lang_entries[lang] = lang_entries.get(lang, 0) + count
+
+        logger.info("%s", separator)
+        summary_parts = []
+        if xml_good:
+            summary_parts.append(f"{xml_good} XML good")
+        if excel_good:
+            summary_parts.append(f"{excel_good} Excel good")
+        if xml_fail:
+            summary_parts.append(f"{xml_fail} XML failed")
+        if excel_fail:
+            summary_parts.append(f"{excel_fail} Excel failed")
+        logger.info("  SUMMARY: %s", ", ".join(summary_parts) if summary_parts else "No files")
+        logger.info("  Total entries parsed: %s", f"{total_entries:,}")
+
+        if lang_entries:
+            lang_str = "  ".join(f"{lang}: {count:,}" for lang, count in sorted(lang_entries.items()))
+            logger.info("  Per-language: %s", lang_str)
+
+        if errors:
+            logger.warning("  PARSE ERRORS (%d):", len(errors))
+            for fname, err_msg in errors:
+                logger.warning("    %s: %s", fname, err_msg)
+
+        logger.info("%s", separator)
+
+        # Log summary to GUI
+        if errors:
+            gui_summary = ", ".join(summary_parts) if summary_parts else "No files"
+            self._log(f"Source validation: {gui_summary}", 'warning')
+            for fname, err_msg in errors:
+                self._log(f"  PARSE ERROR: {fname}: {err_msg}", 'error')
         else:
-            if self.format_mode.get() == "excel":
-                filetypes = [("Excel files", "*.xlsx *.xls"), ("All files", "*.*")]
-            else:
-                filetypes = [("XML files", "*.xml"), ("All files", "*.*")]
-            path = filedialog.askopenfilename(title="Select Source File", filetypes=filetypes)
+            self._log(f"Source validation: {', '.join(summary_parts)}, {total_entries:,} entries total", 'success')
+
+        if lang_entries:
+            lang_str = ", ".join(f"{lang}:{count:,}" for lang, count in sorted(lang_entries.items()))
+            self._log(f"  Per-language: {lang_str}", 'info')
+
+    def _browse_source(self):
+        """Browse for source folder."""
+        initial_dir = self.source_path.get() or str(config.SOURCE_FOLDER)
+        path = filedialog.askdirectory(
+            title="Select Source Folder",
+            initialdir=initial_dir if Path(initial_dir).is_dir() else None,
+        )
         if path:
             self.source_path.set(path)
-            if self.input_mode.get() == "folder":
-                self._analyze_folder(path, "SOURCE")
+            self._analyze_folder(path, "SOURCE")
 
     def _browse_target(self):
         """Browse for target folder."""
@@ -954,7 +1033,7 @@ class QuickTranslateApp:
             return False
 
     def _extract_stringids_from_source(self, source: Path) -> set:
-        """Extract unique StringIDs from source file/folder.
+        """Extract unique StringIDs from source folder.
 
         Used to filter FAISS index build - only include entries matching source StringIDs.
         Handles both XML and Excel source files.
@@ -1216,7 +1295,7 @@ class QuickTranslateApp:
 
     def _clear_fields(self):
         """Clear all input fields."""
-        self.source_path.set("")
+        self.source_path.set(str(config.SOURCE_FOLDER))
         self.target_path.set("")
         self.string_id_input.set("")
         self.reverse_file_path.set("")
@@ -1253,7 +1332,7 @@ class QuickTranslateApp:
     def _generate(self):
         """Main generate action based on current mode."""
         if not self.source_path.get():
-            messagebox.showwarning("Warning", "Please select a source file/folder.")
+            messagebox.showwarning("Warning", "Please select a source folder.")
             return
 
         source = Path(self.source_path.get())
@@ -1263,8 +1342,6 @@ class QuickTranslateApp:
 
         # Capture StringVar values on main thread before entering worker
         match_type = self.match_type.get()
-        format_mode = self.format_mode.get()
-        input_mode = self.input_mode.get()
         target_path = self.target_path.get()
         precision = self.match_precision.get()
         transfer_scope = self.transfer_scope.get()
@@ -1277,8 +1354,6 @@ class QuickTranslateApp:
 
         self._log(f"=== QuickTranslate Generation ===", 'header')
         self._log(f"Match Type: {match_type.upper()}", 'info')
-        self._log(f"Format: {format_mode.upper()}", 'info')
-        self._log(f"Mode: {input_mode.upper()}", 'info')
 
         def work():
             # Load data
@@ -1287,50 +1362,27 @@ class QuickTranslateApp:
 
             self._task_queue.put(('progress', 20))
 
-            # Read input based on format and mode
+            # Read input - always folder mode, auto-detect XML + Excel
             corrections = []
             korean_inputs = []
 
-            # Read from source file/folder
-            if input_mode == "folder":
-                # FOLDER MODE: Auto-detect and handle mixed Excel + XML
-                xml_files = list(source.rglob("*.xml"))
-                excel_files = list(source.rglob("*.xlsx")) + list(source.rglob("*.xls"))
+            xml_files = list(source.rglob("*.xml"))
+            excel_files = list(source.rglob("*.xlsx")) + list(source.rglob("*.xls"))
 
-                if xml_files:
-                    xml_corrections = parse_folder_xml_files(source, self._update_status)
-                    corrections.extend(xml_corrections)
-                    self._log(f"Loaded {len(xml_corrections)} corrections from {len(xml_files)} XML files", 'info')
+            if xml_files:
+                xml_corrections = parse_folder_xml_files(source, self._update_status)
+                corrections.extend(xml_corrections)
+                self._log(f"Loaded {len(xml_corrections)} corrections from {len(xml_files)} XML files", 'info')
 
-                if excel_files:
-                    for excel_file in excel_files:
-                        excel_corrections = read_corrections_from_excel(excel_file)
-                        corrections.extend(excel_corrections)
-                    self._log(f"Loaded {sum(1 for _ in excel_files)} Excel files", 'info')
+            if excel_files:
+                for excel_file in excel_files:
+                    excel_corrections = read_corrections_from_excel(excel_file)
+                    corrections.extend(excel_corrections)
+                self._log(f"Loaded {len(excel_files)} Excel files", 'info')
 
-                korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
-                if not korean_inputs:
-                    korean_inputs = [c.get("string_id", "") for c in corrections if c.get("string_id")]
-            else:
-                # FILE MODE: Auto-detect by extension
-                suffix = source.suffix.lower()
-                if suffix in (".xlsx", ".xls"):
-                    korean_inputs = read_korean_input(source)
-                    self._log(f"Read {len(korean_inputs)} inputs from Excel", 'info')
-
-                    # For non-substring modes, build corrections from Excel
-                    if match_type in ("stringid_only", "strict", "quadruple_fallback"):
-                        excel_corrections = read_corrections_from_excel(source)
-                        corrections.extend(excel_corrections)
-                        self._log(f"Loaded {len(excel_corrections)} corrections from Excel", 'info')
-                        if corrections:
-                            korean_inputs = [c.get("str_origin", "") or c.get("string_id", "") for c in corrections]
-                else:
-                    # XML format
-                    xml_corrections = parse_corrections_from_xml(source)
-                    corrections.extend(xml_corrections)
-                    korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
-                    self._log(f"Loaded {len(xml_corrections)} corrections from XML", 'info')
+            korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
+            if not korean_inputs:
+                korean_inputs = [c.get("string_id", "") for c in corrections if c.get("string_id")]
 
             if not korean_inputs and not corrections:
                 self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'No input data found.'))
@@ -1475,7 +1527,7 @@ class QuickTranslateApp:
 
                 # Enrich SOURCE corrections with file/adjacency context if XML source
                 source_has_context = any(c.get("file_relpath") for c in corrections)
-                if not source_has_context and format_mode == "xml":
+                if not source_has_context:
                     source_path_obj = Path(source_path_str)
                     scan_source = source_path_obj if source_path_obj.is_dir() else source_path_obj.parent
                     self._log(f"Enriching source corrections with context from: {scan_source}", 'info')
@@ -1748,10 +1800,10 @@ class QuickTranslateApp:
         Find Korean strings in Target that are MISSING from Source.
         Opens parameter dialog first, then runs with selected options.
         """
-        # Validate source (file or folder) — all on main thread
+        # Validate source folder — all on main thread
         source_path = self.source_path.get().strip()
         if not source_path:
-            messagebox.showwarning("Warning", "Please select a Source file or folder (the reference data).")
+            messagebox.showwarning("Warning", "Please select a Source folder (the reference data).")
             return
 
         source = Path(source_path)
@@ -1938,7 +1990,7 @@ class QuickTranslateApp:
             return
 
         if not self.source_path.get():
-            messagebox.showwarning("Warning", "Please select a Source file/folder with corrections.")
+            messagebox.showwarning("Warning", "Please select a Source folder with corrections.")
             return
 
         if not self.target_path.get():
@@ -1958,13 +2010,11 @@ class QuickTranslateApp:
 
         # Capture StringVar values on main thread
         match_type = self.match_type.get()
-        input_mode = self.input_mode.get()
         precision = self.match_precision.get()
         transfer_scope = self.transfer_scope.get()
         fuzzy_threshold = self.fuzzy_threshold.get()
 
         # === GENERATE FULL TRANSFER PLAN BEFORE CONFIRMATION ===
-        mode_str = "Folder" if input_mode == "folder" else "File"
         match_str = match_type.upper()
 
         # Add precision info for modes that support it
@@ -2004,7 +2054,6 @@ class QuickTranslateApp:
             f"Target: {target}\n\n"
             f"=== TRANSFER PLAN SUMMARY ===\n"
             f"{plan_summary}\n\n"
-            f"Source Mode: {mode_str}\n"
             f"Match Mode: {match_str}\n"
             f"Transfer Scope: {scope_str}\n\n"
             f"Are you sure you want to proceed?"
@@ -2033,8 +2082,8 @@ class QuickTranslateApp:
             self._log(f"  {lang}: {plan.file_count} files → SKIPPED (no target)", 'warning')
 
         def work():
-            # Cross-match summary (folder mode) - main analysis already in transfer plan
-            if input_mode == "folder" and source.is_dir() and target.is_dir():
+            # Cross-match summary - main analysis already in transfer plan
+            if source.is_dir() and target.is_dir():
                 src_xmls = {f.stem.lower()[13:]: f.name for f in source.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
                 tgt_xmls = {f.stem.lower()[13:]: f.name for f in target.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
                 matched_langs = sorted(set(src_xmls.keys()) & set(tgt_xmls.keys()))
@@ -2113,65 +2162,17 @@ class QuickTranslateApp:
             if match_type == "quadruple_fallback" and precision == "fuzzy":
                 transfer_kwargs["use_fuzzy_precision"] = True
 
-            # Perform transfer
-            if input_mode == "folder":
-                results = transfer_folder_to_folder(
-                    source,
-                    target,
-                    progress_callback=self._update_status,
-                    **transfer_kwargs,
-                )
-                report_mode = "folder"
-            else:
-                # Single file mode - find matching languagedata_*.xml in target folder
-                target_file = target
-                if target.is_dir():
-                    source_name = source.stem.lower()
-                    lang_code = None
-
-                    # Extract language code from source filename
-                    if source_name.startswith("languagedata_"):
-                        lang_code = source_name[13:]
-                    elif "_" in source_name:
-                        lang_code = source_name.split("_")[-1]
-
-                    if lang_code:
-                        candidates = [
-                            target / f"languagedata_{lang_code}.xml",
-                            target / f"languagedata_{lang_code.upper()}.xml",
-                            target / f"languagedata_{lang_code.lower()}.xml",
-                        ]
-                        for c in candidates:
-                            if c.exists():
-                                target_file = c
-                                break
-
-                    # If no match found, check for single XML
-                    if target_file.is_dir():
-                        xml_files = list(target.glob("*.xml"))
-                        if len(xml_files) == 1:
-                            target_file = xml_files[0]
-                        elif len(xml_files) == 0:
-                            self._task_queue.put(('messagebox', 'showerror', 'Error', f'No XML files found in target folder:\n{target}'))
-                            return
-                        else:
-                            self._task_queue.put(('messagebox', 'showwarning', 'Warning',
-                                'Multiple XML files in target folder. Please use Folder mode or specify a single file.'))
-                            return
-
-                self._log(f"Target file: {target_file}", 'info')
-
-                results = transfer_file_to_file(
-                    source,
-                    target_file,
-                    **transfer_kwargs,
-                )
-                report_mode = "file"
-
+            # Perform transfer (always folder mode)
+            results = transfer_folder_to_folder(
+                source,
+                target,
+                progress_callback=self._update_status,
+                **transfer_kwargs,
+            )
             self._task_queue.put(('progress', 80))
 
             # Generate report
-            report = format_transfer_report(results, mode=report_mode)
+            report = format_transfer_report(results, mode="folder")
 
             # Log the report
             for line in report.split("\n"):
@@ -2189,26 +2190,15 @@ class QuickTranslateApp:
             self._task_queue.put(('progress', 90))
 
             # Summary
-            if report_mode == "folder":
-                updated = results.get("total_updated", 0)
-                matched = results.get("total_matched", 0)
-                not_found = results.get("total_not_found", 0)
-                strorigin_mismatch = results.get("total_strorigin_mismatch", 0)
-                skipped_translated = results.get("total_skipped_translated", 0)
-            else:
-                updated = results.get("updated", 0)
-                matched = results.get("matched", 0)
-                not_found = results.get("not_found", 0)
-                strorigin_mismatch = results.get("strorigin_mismatch", 0)
-                skipped_translated = results.get("skipped_translated", 0)
+            updated = results.get("total_updated", 0)
+            matched = results.get("total_matched", 0)
+            not_found = results.get("total_not_found", 0)
+            strorigin_mismatch = results.get("total_strorigin_mismatch", 0)
+            skipped_translated = results.get("total_skipped_translated", 0)
 
             # === FAILURE REPORT GENERATION ===
-            if report_mode == "folder":
-                skipped = results.get("total_skipped", 0)
-                skipped_excluded = results.get("total_skipped_excluded", 0)
-            else:
-                skipped = results.get("skipped_non_script", 0)
-                skipped_excluded = results.get("skipped_excluded", 0)
+            skipped = results.get("total_skipped", 0)
+            skipped_excluded = results.get("total_skipped_excluded", 0)
             total_failures = not_found + strorigin_mismatch + skipped_translated + skipped + skipped_excluded
             failure_reports_msg = ""
 
@@ -2219,22 +2209,7 @@ class QuickTranslateApp:
                 report_folder = source if source.is_dir() else source.parent
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-                if report_mode == "folder":
-                    failed_entries = extract_failed_from_folder_results(results)
-                else:
-                    detected_lang = "UNK"
-                    try:
-                        target_stem = target_file.stem.lower()
-                        if target_stem.startswith("languagedata_"):
-                            detected_lang = target_stem[13:].upper()
-                    except Exception:
-                        pass
-
-                    failed_entries = extract_failed_from_transfer_results(
-                        results,
-                        source_file_name=source.name,
-                        language=detected_lang
-                    )
+                failed_entries = extract_failed_from_folder_results(results)
 
                 if failed_entries:
                     try:
@@ -2255,9 +2230,9 @@ class QuickTranslateApp:
                         success, msg = generate_failure_report_excel(
                             results,
                             excel_report_path,
-                            mode=report_mode,
+                            mode="folder",
                             source_name=str(source.name),
-                            target_name=str(target.name if target.is_file() else target.name)
+                            target_name=str(target.name)
                         )
                         if success:
                             self._log(f"Excel failure report: {excel_report_path.name}", 'success')

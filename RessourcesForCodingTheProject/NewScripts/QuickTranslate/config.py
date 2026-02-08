@@ -38,10 +38,6 @@ SCRIPT_CATEGORIES = {"Sequencer", "Dialog"}
 # These are subfolders within Dialog/ or Sequencer/ that should be skipped
 SCRIPT_EXCLUDE_SUBFOLDERS = {"NarrationDialog"}
 
-# Input modes
-INPUT_MODES = ["folder", "file"]
-FORMAT_MODES = ["excel", "xml"]
-
 # Special Key fields - hardcoded for Special Key Match mode (legacy, kept for reference)
 SPECIAL_KEY_FIELDS = ["string_id", "category"]
 
@@ -130,6 +126,7 @@ SEQUENCER_FOLDER = EXPORT_FOLDER / "Sequencer"
 # =============================================================================
 
 OUTPUT_FOLDER = SCRIPT_DIR / "Output"
+SOURCE_FOLDER = SCRIPT_DIR / "Source"
 
 # =============================================================================
 # Language Configuration (Auto-discovered from LOC folder)
@@ -186,6 +183,12 @@ def ensure_output_folder():
     """Create output folder if it doesn't exist."""
     OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
     return OUTPUT_FOLDER
+
+
+def ensure_source_folder():
+    """Create default Source folder if it doesn't exist."""
+    SOURCE_FOLDER.mkdir(parents=True, exist_ok=True)
+    return SOURCE_FOLDER
 
 
 def get_settings() -> dict:
