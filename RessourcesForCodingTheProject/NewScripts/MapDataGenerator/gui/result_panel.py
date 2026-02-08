@@ -167,6 +167,9 @@ class ResultPanel(ttk.Frame):
         # Detail panel collapsed state
         self._detail_collapsed = tk.BooleanVar(value=False)
 
+        # Sort direction tracking per column
+        self._sort_reverse: Dict[str, bool] = {}
+
         self._create_widgets()
 
     def destroy(self) -> None:
@@ -467,6 +470,12 @@ class ResultPanel(ttk.Frame):
             if col_id not in overrides:
                 self._tree.heading(col_id, text=get_ui_text(default_headers[col_id]))
 
+        # Reset column widths to defaults (prevents inflated widths from previous mode)
+        col_defaults = {col[0]: (col[2], col[3]) for col in ALL_COLUMN_DEFS}
+        for col_id in display_cols:
+            min_w, default_w = col_defaults[col_id]
+            self._tree.column(col_id, width=default_w, minwidth=min_w)
+
         # Rebuild toggle checkboxes for this mode's columns
         self._rebuild_column_checkboxes(mode)
 
@@ -488,8 +497,9 @@ class ResultPanel(ttk.Frame):
 
         # Create checkbox for each column
         for col_id in display_cols:
-            # Default: all ON except 'desc' which is OFF
-            default_visible = (col_id != 'desc')
+            # Default: all ON except 'desc' which is OFF in non-audio modes
+            # In audio mode, desc IS the KOR Script column - must be visible
+            default_visible = True if mode == 'audio' else (col_id != 'desc')
             var = tk.BooleanVar(value=default_visible)
             self._column_visible[col_id] = var
 
@@ -798,6 +808,7 @@ class ResultPanel(ttk.Frame):
         self._has_more = False
         self._full_text_cache.clear()
         self._selected_cell = None
+        self._sort_reverse.clear()  # Reset sort direction on mode switch
         self._selection_info_label.config(text="")
         self._count_label.config(text=f"{get_ui_text('results')}: 0")
         self._load_more_btn.config(state="disabled")
@@ -834,19 +845,25 @@ class ResultPanel(ttk.Frame):
                 self._on_double_click(result)
 
     def _sort_column(self, col: str) -> None:
-        """Sort by column."""
+        """Sort by column (toggles ascending/descending on repeated clicks)."""
         # Get column index in ALL_COLUMN_DEFS
         idx = COLUMN_ID_TO_INDEX.get(col, 0)
+
+        # Toggle sort direction
+        reverse = self._sort_reverse.get(col, False)
 
         # Get current items
         items = [(self._tree.item(iid)["values"], iid) for iid in self._tree.get_children()]
 
         # Sort
-        items.sort(key=lambda x: str(x[0][idx]).lower() if x[0][idx] else "")
+        items.sort(key=lambda x: str(x[0][idx]).lower() if x[0][idx] else "", reverse=reverse)
 
         # Reorder
         for i, (_, iid) in enumerate(items):
             self._tree.move(iid, "", i)
+
+        # Flip direction for next click
+        self._sort_reverse[col] = not reverse
 
     def select_by_strkey(self, strkey: str) -> None:
         """Select a result by StrKey."""
