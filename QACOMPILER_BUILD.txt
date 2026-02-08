@@ -102,3 +102,4 @@ Build - 3-tier merge styling (source QA cells + ref_styles + THIN_BORDER fallbac
 Build - Unified data model + duplicate replication + empty column hiding
 Build - Branch selection feature
 Build - Fix duplicate row transfer: list-based indexes + shared consumed set
+Build - Fix manager data restoration: sanitize stringid + merge duplicates + Contents all_primary
