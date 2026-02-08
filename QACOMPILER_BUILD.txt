@@ -93,3 +93,4 @@ Build 20260206-115051
 Trigger QACompiler Build - Add xlsxwriter dependency
 Build - Fix EventName to StringID mapping
 Build: StringID fallback lookup
+Build - Fix critical data loss (3 fixes: STRINGID preservation, merge missing rows, manager status gate)
