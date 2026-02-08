@@ -247,18 +247,19 @@ def test_build_master_from_universe():
             else:
                 result.fail_test(f"Dialog has {expected_dialog_rows} rows", f"Got {actual_dialog_rows}")
 
-        # Test 6: STATUS/COMMENT/SCREENSHOT/STRINGID columns are removed from master
+        # Test 6: STATUS/COMMENT/SCREENSHOT columns are removed from master
+        # NOTE: STRINGID is intentionally PRESERVED for matching (not a tester column)
         if "Sequencer" in master_wb.sheetnames:
             ws_seq = master_wb["Sequencer"]
             removed_cols = set()
             for col in range(1, ws_seq.max_column + 1):
                 header = ws_seq.cell(row=1, column=col).value
-                if header and str(header).strip().upper() in ("STATUS", "COMMENT", "SCREENSHOT", "STRINGID"):
+                if header and str(header).strip().upper() in ("STATUS", "COMMENT", "SCREENSHOT"):
                     removed_cols.add(str(header).strip().upper())
             if not removed_cols:
-                result.pass_test("STATUS/COMMENT/SCREENSHOT/STRINGID columns removed")
+                result.pass_test("STATUS/COMMENT/SCREENSHOT columns removed (STRINGID preserved)")
             else:
-                result.fail_test("STATUS/COMMENT/SCREENSHOT/STRINGID columns removed", f"Still found: {removed_cols}")
+                result.fail_test("STATUS/COMMENT/SCREENSHOT columns removed", f"Still found: {removed_cols}")
 
         # Test 7: Data values are preserved
         if "Sequencer" in master_wb.sheetnames:

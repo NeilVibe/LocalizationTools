@@ -776,7 +776,7 @@ def process_sheet(
         if is_script and qa_row <= 5:  # First 5 rows only
             _script_debug_log(f"  Row {qa_row}: tester_comment='{tester_comment_for_lookup[:30] if tester_comment_for_lookup else 'EMPTY'}...'")
 
-        if manager_status and tester_comment_for_lookup:
+        if manager_status:
             # Get STRINGID from MASTER row (not QA file - QA file might have empty STRINGID!)
             master_stringid = ""
             if master_stringid_col:

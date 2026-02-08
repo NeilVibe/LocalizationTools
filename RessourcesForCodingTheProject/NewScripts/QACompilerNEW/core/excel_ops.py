@@ -25,7 +25,8 @@ from config import (
     MASTER_FOLDER_EN, MASTER_FOLDER_CN,
     IMAGES_FOLDER_EN, IMAGES_FOLDER_CN,
     CATEGORY_TO_MASTER, STATUS_OPTIONS, MANAGER_STATUS_OPTIONS,
-    TRACKER_STYLES, get_target_master_category, SCRIPT_TYPE_CATEGORIES
+    TRACKER_STYLES, get_target_master_category, SCRIPT_TYPE_CATEGORIES,
+    TRANSLATION_COLS
 )
 
 
@@ -821,7 +822,7 @@ def get_or_create_master(
                     # Clean the new sheet (delete tester columns)
                     # MEMO is Script category's equivalent of COMMENT
                     cols_to_delete = []
-                    for h in ["STATUS", "COMMENT", "MEMO", "SCREENSHOT", "STRINGID"]:
+                    for h in ["STATUS", "COMMENT", "MEMO", "SCREENSHOT"]:
                         col = find_column_by_header(target_ws, h)
                         if col:
                             cols_to_delete.append(col)
@@ -861,7 +862,7 @@ def get_or_create_master(
                 ws.auto_filter.ref = None
 
             cols_to_delete = []
-            for h in ["STATUS", "COMMENT", "MEMO", "SCREENSHOT", "STRINGID"]:
+            for h in ["STATUS", "COMMENT", "MEMO", "SCREENSHOT"]:
                 col = find_column_by_header(ws, h)
                 if col:
                     cols_to_delete.append(col)
@@ -883,6 +884,138 @@ def get_or_create_master(
     else:
         print(f"  ERROR: No template file for {category}")
         return None, master_path
+
+
+def _content_key_from_tuple(row_tuple, col_idx, category, is_english, is_script):
+    """Extract a content key from a row tuple for deduplication matching.
+
+    Returns a tuple key or None if the row has no identifiable content.
+    Uses 0-based col_idx (from preload_worksheet_data).
+    """
+    def get_val(header):
+        idx = col_idx.get(header)
+        if idx is not None and idx < len(row_tuple):
+            v = row_tuple[idx]
+            return str(v).strip() if v else ""
+        return ""
+
+    stringid = get_val("STRINGID")
+
+    if is_script:
+        trans = get_val("TEXT") or get_val("TRANSLATION")
+        eventname = get_val("EVENTNAME")
+        if trans or eventname:
+            return (trans, eventname)
+    else:
+        # Try header-based first
+        trans = get_val("TRANSLATION")
+        if not trans:
+            # Position-based fallback (convert 1-based config to 0-based tuple index)
+            trans_key = "eng" if is_english else "other"
+            pos = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3}).get(trans_key, 2)
+            idx = pos - 1
+            if idx < len(row_tuple):
+                v = row_tuple[idx]
+                trans = str(v).strip() if v else ""
+
+        if stringid or trans:
+            return (stringid, trans)
+
+    return None
+
+
+def merge_missing_rows_into_master(master_wb, qa_folders, template_xlsx_path, category, is_english):
+    """
+    Ensure master contains the UNION of all QA file rows.
+
+    After building master from the most recent template, rows unique to
+    other QA files are missing. This scans non-template QA files and
+    appends missing rows (data columns only) to the master.
+
+    Returns total count of rows added across all sheets.
+    """
+    TESTER_HEADERS = {"STATUS", "COMMENT", "MEMO", "SCREENSHOT"}
+    is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
+    total_added = 0
+
+    for qf in qa_folders:
+        xlsx_path = qf["xlsx_path"]
+        if xlsx_path == template_xlsx_path:
+            continue
+
+        try:
+            qa_wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
+        except Exception as e:
+            print(f"    WARNING: Could not open {xlsx_path.name}: {e}")
+            continue
+
+        for sheet_name in qa_wb.sheetnames:
+            if sheet_name == "STATUS":
+                continue
+
+            qa_ws = qa_wb[sheet_name]
+            if not qa_ws.max_row or qa_ws.max_row < 2:
+                continue
+
+            # If sheet doesn't exist in master, create it with data headers only
+            if sheet_name not in master_wb.sheetnames:
+                new_ws = master_wb.create_sheet(sheet_name)
+                qa_header_tuple = next(qa_ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+                if qa_header_tuple:
+                    master_col = 1
+                    for val in qa_header_tuple:
+                        header_upper = str(val).strip().upper() if val else ""
+                        if header_upper and header_upper not in TESTER_HEADERS:
+                            new_ws.cell(row=1, column=master_col).value = val
+                            master_col += 1
+
+            master_ws = master_wb[sheet_name]
+
+            # Build set of existing master content keys (0-based indices)
+            master_col_idx, master_data = preload_worksheet_data(master_ws)
+            master_keys = set()
+            for row_tuple in master_data:
+                key = _content_key_from_tuple(row_tuple, master_col_idx, category, is_english, is_script)
+                if key:
+                    master_keys.add(key)
+
+            # Preload QA data (0-based indices)
+            qa_col_idx, qa_data = preload_worksheet_data(qa_ws)
+
+            # Build master header -> 1-based column mapping for writing
+            master_header_to_col = {}
+            for col in range(1, master_ws.max_column + 1):
+                val = master_ws.cell(row=1, column=col).value
+                if val:
+                    master_header_to_col[str(val).strip().upper()] = col
+
+            sheet_added = 0
+            for row_tuple in qa_data:
+                if not row_tuple or all(v is None for v in row_tuple):
+                    continue
+
+                key = _content_key_from_tuple(row_tuple, qa_col_idx, category, is_english, is_script)
+                if key and key not in master_keys:
+                    # Append row: copy only data columns from QA to master
+                    new_row = master_ws.max_row + 1
+                    for header, master_col in master_header_to_col.items():
+                        if header in TESTER_HEADERS:
+                            continue  # Skip tester columns
+                        qa_idx = qa_col_idx.get(header)
+                        if qa_idx is not None and qa_idx < len(row_tuple):
+                            val = row_tuple[qa_idx]
+                            if val is not None:
+                                master_ws.cell(row=new_row, column=master_col).value = val
+
+                    master_keys.add(key)
+                    sheet_added += 1
+
+            if sheet_added > 0:
+                total_added += sheet_added
+
+        qa_wb.close()
+
+    return total_added
 
 
 # =============================================================================
