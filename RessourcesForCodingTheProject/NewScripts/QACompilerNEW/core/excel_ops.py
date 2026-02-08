@@ -1049,19 +1049,20 @@ def merge_missing_rows_into_master(master_wb, qa_folders, template_xlsx_path, ca
                 if val:
                     master_header_to_col[str(val).strip().upper()] = col
 
-            # Capture reference styles from first data row for consistent formatting
+            # Capture reference styles from first data row for consistent formatting.
+            # Always capture (no has_style gate) to handle openpyxl style quirks
+            # after delete_cols operations.
             ref_styles = {}
             if master_ws.max_row >= 2:
                 for col in range(1, master_ws.max_column + 1):
                     ref_cell = master_ws.cell(row=2, column=col)
-                    if ref_cell.has_style:
-                        ref_styles[col] = {
-                            "font": copy(ref_cell.font),
-                            "border": copy(ref_cell.border),
-                            "fill": copy(ref_cell.fill),
-                            "number_format": ref_cell.number_format,
-                            "alignment": copy(ref_cell.alignment),
-                        }
+                    ref_styles[col] = {
+                        "font": copy(ref_cell.font),
+                        "border": copy(ref_cell.border),
+                        "fill": copy(ref_cell.fill),
+                        "number_format": ref_cell.number_format,
+                        "alignment": copy(ref_cell.alignment),
+                    }
 
             sheet_added = 0
             for row_tuple in qa_data:
@@ -1070,24 +1071,28 @@ def merge_missing_rows_into_master(master_wb, qa_folders, template_xlsx_path, ca
 
                 key = _content_key_from_tuple(row_tuple, qa_col_idx, category, is_english, is_script)
                 if key and key not in master_keys:
-                    # Append row: copy only data columns from QA to master
+                    # Append row: copy data columns from QA to master with styling
                     new_row = master_ws.max_row + 1
+
+                    # First pass: write values for columns that have data
                     for header, master_col in master_header_to_col.items():
                         if header in TESTER_HEADERS:
-                            continue  # Skip tester columns
+                            continue
                         qa_idx = qa_col_idx.get(header)
                         if qa_idx is not None and qa_idx < len(row_tuple):
                             val = row_tuple[qa_idx]
                             if val is not None:
-                                new_cell = master_ws.cell(row=new_row, column=master_col)
-                                new_cell.value = val
-                                if master_col in ref_styles:
-                                    style = ref_styles[master_col]
-                                    new_cell.font = style["font"]
-                                    new_cell.border = style["border"]
-                                    new_cell.fill = style["fill"]
-                                    new_cell.number_format = style["number_format"]
-                                    new_cell.alignment = style["alignment"]
+                                master_ws.cell(row=new_row, column=master_col).value = val
+
+                    # Second pass: apply reference styles to ALL data columns
+                    # (including empty ones) so the entire row looks consistent
+                    for master_col, style in ref_styles.items():
+                        new_cell = master_ws.cell(row=new_row, column=master_col)
+                        new_cell.font = style["font"]
+                        new_cell.border = style["border"]
+                        new_cell.fill = style["fill"]
+                        new_cell.number_format = style["number_format"]
+                        new_cell.alignment = style["alignment"]
 
                     master_keys.add(key)
                     sheet_added += 1
