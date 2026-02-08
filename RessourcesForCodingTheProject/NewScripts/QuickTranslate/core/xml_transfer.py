@@ -206,15 +206,15 @@ def merge_corrections_to_xml(
                     result["details"].append({
                         "string_id": sid,
                         "status": "UPDATED",
-                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
-                        "new": new_str[:50] + "..." if len(new_str) > 50 else new_str,
+                        "old": old_str,
+                        "new": new_str,
                     })
                     logger.debug(f"Updated StringId={sid}: '{old_str}' -> '{new_str}'")
                 else:
                     result["details"].append({
                         "string_id": sid,
                         "status": "UNCHANGED",
-                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "old": old_str,
                         "new": "(same)",
                     })
 
@@ -320,7 +320,7 @@ def merge_corrections_stringid_only(
                 "string_id": sid,
                 "status": "SKIPPED_NON_SCRIPT",
                 "old": f"Category: {category}",
-                "new": c["corrected"][:50] + "..." if len(c["corrected"]) > 50 else c["corrected"],
+                "new": c["corrected"],
             })
             logger.debug(f"Skipped non-SCRIPT StringID={sid} (category={category})")
             continue
@@ -332,7 +332,7 @@ def merge_corrections_stringid_only(
                 "string_id": sid,
                 "status": "SKIPPED_EXCLUDED",
                 "old": f"Subfolder: {subfolder}",
-                "new": c["corrected"][:50] + "..." if len(c["corrected"]) > 50 else c["corrected"],
+                "new": c["corrected"],
             })
             logger.debug(f"Skipped excluded subfolder StringID={sid} (subfolder={subfolder})")
             continue
@@ -429,15 +429,15 @@ def merge_corrections_stringid_only(
                     result["details"].append({
                         "string_id": sid,
                         "status": "UPDATED",
-                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
-                        "new": new_str[:50] + "..." if len(new_str) > 50 else new_str,
+                        "old": old_str,
+                        "new": new_str,
                     })
                     logger.debug(f"Updated StringId={sid}: '{old_str}' -> '{new_str}'")
                 else:
                     result["details"].append({
                         "string_id": sid,
                         "status": "UNCHANGED",
-                        "old": old_str[:50] + "..." if len(old_str) > 50 else old_str,
+                        "old": old_str,
                         "new": "(same)",
                     })
 
@@ -564,7 +564,7 @@ def merge_corrections_fuzzy(
                     # Preserve original correction data for failure reports
                     result["details"].append({
                         "string_id": sid,
-                        "status": "SKIPPED_TRANSLATED",
+                        "status": "SKIPPED_TRANSLATED (fuzzy)",
                         "old": c.get("str_origin", ""),
                         "new": c.get("corrected", ""),
                         "raw_attribs": c.get("raw_attribs", {}),
@@ -581,7 +581,7 @@ def merge_corrections_fuzzy(
                     changed = True
                     result["details"].append({
                         "string_id": sid,
-                        "status": "UPDATED",
+                        "status": "UPDATED (fuzzy)",
                         "old": old_str,
                         "new": new_str,
                     })
@@ -589,7 +589,7 @@ def merge_corrections_fuzzy(
                 else:
                     result["details"].append({
                         "string_id": sid,
-                        "status": "UNCHANGED",
+                        "status": "UNCHANGED (fuzzy)",
                         "old": old_str,
                         "new": "(same)",
                     })
@@ -1234,6 +1234,7 @@ def transfer_folder_to_folder(
                             "str_origin": detail.get("old", ""),
                             "corrected": detail.get("new", ""),
                             "raw_attribs": detail.get("raw_attribs", {}),
+                            "_original_status": detail["status"],
                         })
 
                 if unconsumed:
@@ -1252,9 +1253,27 @@ def transfer_folder_to_folder(
                         )
                         file_result["matched"] += fuzzy_result["matched"]
                         file_result["updated"] += fuzzy_result["updated"]
-                        file_result["not_found"] = max(0, file_result.get("not_found", 0) - fuzzy_result["matched"])
+
+                        # Bug 2 fix: Count by original status, not blanket subtract
+                        fuzzy_from_not_found = sum(
+                            1 for m in fuzzy_matched
+                            if m.get("_original_status") == "NOT_FOUND"
+                        )
+                        fuzzy_from_mismatch = sum(
+                            1 for m in fuzzy_matched
+                            if m.get("_original_status") == "STRORIGIN_MISMATCH"
+                        )
+                        file_result["not_found"] = max(0, file_result.get("not_found", 0) - fuzzy_from_not_found)
                         if "strorigin_mismatch" in file_result:
-                            file_result["strorigin_mismatch"] = max(0, file_result["strorigin_mismatch"] - fuzzy_result["matched"])
+                            file_result["strorigin_mismatch"] = max(0, file_result["strorigin_mismatch"] - fuzzy_from_mismatch)
+
+                        # Bug 1 fix: Remove stale Step1 failures resolved by fuzzy
+                        resolved_sids = {m["string_id"] for m in fuzzy_matched}
+                        file_result["details"] = [
+                            d for d in file_result["details"]
+                            if not (d["status"] in ("NOT_FOUND", "STRORIGIN_MISMATCH") and d["string_id"] in resolved_sids)
+                        ]
+
                         file_result["details"].extend(fuzzy_result["details"])
                         logger.info(
                             f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
@@ -1449,6 +1468,7 @@ def transfer_file_to_file(
                         "str_origin": detail.get("old", ""),
                         "corrected": detail.get("new", ""),
                         "raw_attribs": detail.get("raw_attribs", {}),
+                        "_original_status": detail["status"],
                     })
 
             if unconsumed:
@@ -1467,9 +1487,27 @@ def transfer_file_to_file(
                     )
                     result["matched"] += fuzzy_result["matched"]
                     result["updated"] += fuzzy_result["updated"]
-                    result["not_found"] = max(0, result.get("not_found", 0) - fuzzy_result["matched"])
+
+                    # Bug 2 fix: Count by original status, not blanket subtract
+                    fuzzy_from_not_found = sum(
+                        1 for m in fuzzy_matched
+                        if m.get("_original_status") == "NOT_FOUND"
+                    )
+                    fuzzy_from_mismatch = sum(
+                        1 for m in fuzzy_matched
+                        if m.get("_original_status") == "STRORIGIN_MISMATCH"
+                    )
+                    result["not_found"] = max(0, result.get("not_found", 0) - fuzzy_from_not_found)
                     if "strorigin_mismatch" in result:
-                        result["strorigin_mismatch"] = max(0, result["strorigin_mismatch"] - fuzzy_result["matched"])
+                        result["strorigin_mismatch"] = max(0, result["strorigin_mismatch"] - fuzzy_from_mismatch)
+
+                    # Bug 1 fix: Remove stale Step1 failures resolved by fuzzy
+                    resolved_sids = {m["string_id"] for m in fuzzy_matched}
+                    result["details"] = [
+                        d for d in result["details"]
+                        if not (d["status"] in ("NOT_FOUND", "STRORIGIN_MISMATCH") and d["string_id"] in resolved_sids)
+                    ]
+
                     result["details"].extend(fuzzy_result["details"])
                     logger.info(
                         f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "

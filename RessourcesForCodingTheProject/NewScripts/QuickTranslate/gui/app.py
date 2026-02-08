@@ -9,6 +9,7 @@ Tkinter-based GUI with multi-mode support:
 - Detailed logging and reporting
 """
 
+import logging
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 from pathlib import Path
@@ -18,6 +19,8 @@ import threading
 import queue
 
 import config
+
+logger = logging.getLogger(__name__)
 from core import (
     build_sequencer_strorigin_index,
     scan_folder_for_strings,
@@ -1976,7 +1979,7 @@ class QuickTranslateApp:
 
         # Print FULL TREE TABLE to terminal (always show complete mapping)
         tree_table = format_transfer_plan(transfer_plan, show_all_files=True)
-        print(tree_table)
+        logger.info(tree_table)
 
         # Build confirmation message with summary from transfer plan
         plan_summary = (
@@ -2200,7 +2203,13 @@ class QuickTranslateApp:
                 skipped_translated = results.get("skipped_translated", 0)
 
             # === FAILURE REPORT GENERATION ===
-            total_failures = not_found + strorigin_mismatch + skipped_translated
+            if report_mode == "folder":
+                skipped = results.get("total_skipped", 0)
+                skipped_excluded = results.get("total_skipped_excluded", 0)
+            else:
+                skipped = results.get("skipped_non_script", 0)
+                skipped_excluded = results.get("skipped_excluded", 0)
+            total_failures = not_found + strorigin_mismatch + skipped_translated + skipped + skipped_excluded
             failure_reports_msg = ""
 
             if total_failures > 0:
