@@ -125,6 +125,7 @@ class MapDataGeneratorApp:
         # Load settings
         self.settings = load_settings()
         self.root.geometry(self.settings.window_geometry)
+        self.root.minsize(900, 600)
 
         # Install Korean font
         install_korean_font(self.root)
@@ -243,6 +244,11 @@ class MapDataGeneratorApp:
 
         # Status bar
         self._create_status_bar()
+
+        # Sync result panel and viewer with saved mode (ResultPanel defaults to 'map')
+        if self._current_mode.value != 'map':
+            self._result_panel.set_mode(self._current_mode.value)
+        self._update_mode_visibility()
 
         # Initially disable search
         self._search_panel.enable(False)
@@ -390,8 +396,12 @@ class MapDataGeneratorApp:
             self._image_viewer.pack_forget()
             self._audio_viewer.pack(fill="both", expand=True)
         else:
-            # Hide AudioViewer, show ImageViewer
+            # Stop audio playback and clear audio viewer when leaving AUDIO mode
+            self._audio_handler.stop()
+            self._audio_viewer.clear()
             self._audio_viewer.pack_forget()
+            # Clear stale image from previous mode, show ImageViewer
+            self._image_viewer.clear()
             self._image_viewer.pack(fill="both", expand=True)
 
     def _toggle_map(self) -> None:
@@ -693,6 +703,9 @@ class MapDataGeneratorApp:
         self._progress_bar.start()
         self._search_panel.enable(False)
 
+        # Capture UI state before thread (tkinter is not thread-safe)
+        lang_code = self._search_panel.get_language()
+
         def task():
             try:
                 # 1. FIRST: Scan DDS files for texture lookup
@@ -754,8 +767,7 @@ class MapDataGeneratorApp:
                 )
                 self._search_engine.set_mode(mode)
 
-                # Set initial language
-                lang_code = self._search_panel.get_language()
+                # Set initial language (using pre-captured lang_code)
                 lang_table = self._lang_manager.get_table(lang_code)
                 self._search_engine.set_language_table(lang_table)
 
@@ -789,6 +801,9 @@ class MapDataGeneratorApp:
         self._progress_bar.start()
         self._search_panel.enable(False)
 
+        # Capture UI state before thread (tkinter is not thread-safe)
+        lang_code = self._search_panel.get_language()
+
         def task():
             try:
                 # Load audio data (WEM files + event mappings + script lines)
@@ -816,8 +831,7 @@ class MapDataGeneratorApp:
                 )
                 self._search_engine.set_mode(mode)
 
-                # Set initial language
-                lang_code = self._search_panel.get_language()
+                # Set initial language (using pre-captured lang_code)
                 lang_table = self._lang_manager.get_table(lang_code)
                 self._search_engine.set_language_table(lang_table)
 
@@ -849,12 +863,21 @@ class MapDataGeneratorApp:
         # Update mode visibility
         self._update_mode_visibility()
 
+        # Sync result panel columns with audio mode
+        self._result_panel.set_mode(self._current_mode.value)
+
         # Enable search
         self._search_panel.enable(True)
         self._search_panel.focus_search()
 
         # Update stats
         self._update_stats()
+
+        # Auto-search to populate grid (show all entries)
+        query = self._search_panel.get_search_text()
+        match_type = self._search_panel.get_match_type()
+        lang_code = self._search_panel.get_language()
+        self._on_search(query, match_type, lang_code)
 
         # Update status
         total = self._search_engine.total_entries if self._search_engine else 0
@@ -894,12 +917,21 @@ class MapDataGeneratorApp:
             lang_table = self._lang_manager.get_table(lang_code)
             self._map_canvas.set_data(self._resolver, lang_table)
 
+        # Sync result panel columns with current mode
+        self._result_panel.set_mode(self._current_mode.value)
+
         # Enable search
         self._search_panel.enable(True)
         self._search_panel.focus_search()
 
         # Update stats
         self._update_stats()
+
+        # Auto-search to populate grid (show all entries)
+        query = self._search_panel.get_search_text()
+        match_type = self._search_panel.get_match_type()
+        lang_code = self._search_panel.get_language()
+        self._on_search(query, match_type, lang_code)
 
         # Update status
         total = self._search_engine.total_entries if self._search_engine else 0
@@ -1127,6 +1159,9 @@ class MapDataGeneratorApp:
 
     def _on_close(self) -> None:
         """Handle window close."""
+        # Stop audio playback if active
+        self._audio_handler.stop()
+
         # Save window geometry
         self.settings.window_geometry = self.root.geometry()
         save_settings(self.settings)

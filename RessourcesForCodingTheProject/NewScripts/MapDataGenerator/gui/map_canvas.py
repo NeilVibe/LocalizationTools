@@ -105,6 +105,19 @@ class MapCanvas(ttk.Frame):
         self._ax.clear()
         self._ax.set_facecolor('#1a1a1a')
 
+        # Recreate annotation after ax.clear() (clear removes all artists)
+        self._annot = self._ax.annotate(
+            "", xy=(0, 0), xytext=(10, 10),
+            textcoords="offset points",
+            bbox=dict(boxstyle="round", fc="white", alpha=0.9),
+            arrowprops=dict(arrowstyle="->"),
+            fontsize=9,
+            visible=False
+        )
+
+        # Reset selection scatter reference (also removed by clear)
+        self._selected_scatter = None
+
         if not self._node_positions:
             self._ax.text(0.5, 0.5, "No nodes with positions",
                          transform=self._ax.transAxes,
