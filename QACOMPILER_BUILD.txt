@@ -98,3 +98,4 @@ Build - Preserve clustered category sheets during master rebuild + deferred save
 Build - Apply reference styles to merged rows in master file
 Build - Robust merged row styling (remove has_style gate + full-row style pass)
 Build - Debug style logging
+Build - 3-tier merge styling (source QA cells + ref_styles + THIN_BORDER fallback)
