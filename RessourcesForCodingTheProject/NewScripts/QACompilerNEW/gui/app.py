@@ -18,8 +18,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
     CATEGORIES, ensure_folders_exist,
     TRACKER_UPDATE_FOLDER, TRACKER_UPDATE_QA,
-    TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN
+    TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN,
+    KNOWN_BRANCHES, update_branch,
 )
+import config
 
 
 # =============================================================================
@@ -63,6 +65,32 @@ class QACompilerSuiteGUI:
             font=("Arial", 18, "bold")
         )
         title_label.pack(pady=15)
+
+        # === Branch Selection ===
+        branch_frame = ttk.Frame(self.root)
+        branch_frame.pack(fill="x", padx=15, pady=(0, 5))
+
+        ttk.Label(branch_frame, text="Branch:", font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
+
+        self.branch_var = tk.StringVar(value=config._BRANCH)
+        branch_combo = ttk.Combobox(
+            branch_frame, textvariable=self.branch_var,
+            values=KNOWN_BRANCHES, width=25
+        )
+        branch_combo.pack(side="left", padx=5)
+
+        self.branch_status_label = ttk.Label(branch_frame, text="", font=("Arial", 9))
+        self.branch_status_label.pack(side="left", padx=10)
+
+        def _on_branch_change(_event=None):
+            new_branch = self.branch_var.get().strip()
+            if new_branch:
+                config.update_branch(new_branch)
+                self.branch_status_label.config(text=f"Branch set to: {new_branch}")
+                self._set_status(f"Branch changed to: {new_branch}")
+
+        branch_combo.bind("<<ComboboxSelected>>", _on_branch_change)
+        branch_combo.bind("<Return>", _on_branch_change)
 
         # === Section 1: Generate Datasheets ===
         section1_frame = ttk.LabelFrame(self.root, text="1. Generate Datasheets", padding=10)
