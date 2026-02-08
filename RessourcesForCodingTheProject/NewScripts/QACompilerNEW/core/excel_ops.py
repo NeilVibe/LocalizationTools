@@ -9,6 +9,7 @@ import re
 import shutil
 import zipfile
 import tempfile
+from collections import defaultdict
 from copy import copy
 from datetime import datetime as _datetime
 from pathlib import Path
