@@ -117,7 +117,8 @@ from config import (
 from core.discovery import discover_qa_folders, group_folders_by_language
 from core.excel_ops import (
     safe_load_workbook, ensure_master_folders,
-    get_or_create_master, copy_images_with_unique_names,
+    get_or_create_master, merge_missing_rows_into_master,
+    copy_images_with_unique_names,
     find_column_by_header, sort_worksheet_az, build_column_map,
     preload_worksheet_data
 )
@@ -348,7 +349,6 @@ def collect_all_master_data(tester_mapping: Dict = None):
                         # === SINGLE-PASS ROW SCAN via iter_rows (streaming tuples) ===
                         # CRITICAL: iter_rows is O(n) streaming vs ws.cell() which is O(n²) in read_only mode
                         script_debug_rows_stored = 0
-                        script_debug_rows_skipped = 0
                         row_count = 0
 
                         for row_tuple in ws.iter_rows(min_row=2, max_col=ws.max_column, values_only=True):
@@ -389,28 +389,26 @@ def collect_all_master_data(tester_mapping: Dict = None):
                                         full_comment = row_tuple[c_idx]
                                         tester_comment_text = extract_comment_text(full_comment)
 
-                                    if tester_comment_text:
-                                        script_debug_rows_stored += 1
-                                        status_val_clean = status_upper if has_status else None
-                                        mc_val_clean = str(mc_value).strip() if has_manager_comment else None
-                                        user_entry = {"status": status_val_clean, "manager_comment": mc_val_clean}
+                                    script_debug_rows_stored += 1
+                                    status_val_clean = status_upper if has_status else None
+                                    mc_val_clean = str(mc_value).strip() if has_manager_comment else None
+                                    user_entry = {"status": status_val_clean, "manager_comment": mc_val_clean}
 
-                                        # Primary key + fallback key
-                                        key = (stringid, tester_comment_text)
-                                        fallback_key = ("", tester_comment_text)
+                                    # Primary key + fallback key
+                                    # Use tester_comment_text if available, empty string otherwise
+                                    key = (stringid, tester_comment_text)
+                                    fallback_key = ("", tester_comment_text)
 
-                                        for cat in categories_for_master:
-                                            sheet_dict = manager_status[cat][sheet_name]
-                                            if key not in sheet_dict:
-                                                sheet_dict[key] = {}
-                                            sheet_dict[key][username] = user_entry
+                                    for cat in categories_for_master:
+                                        sheet_dict = manager_status[cat][sheet_name]
+                                        if key not in sheet_dict:
+                                            sheet_dict[key] = {}
+                                        sheet_dict[key][username] = user_entry
 
-                                            if fallback_key not in sheet_dict:
-                                                sheet_dict[fallback_key] = {}
-                                            if username not in sheet_dict[fallback_key]:
-                                                sheet_dict[fallback_key][username] = user_entry
-                                    else:
-                                        script_debug_rows_skipped += 1
+                                        if fallback_key not in sheet_dict:
+                                            sheet_dict[fallback_key] = {}
+                                        if username not in sheet_dict[fallback_key]:
+                                            sheet_dict[fallback_key][username] = user_entry
 
                                 # --- DATA 3: manager_stats (tracker counts) ---
                                 # Reuse mc_value/comment from above (no duplicate cell read)
@@ -436,10 +434,10 @@ def collect_all_master_data(tester_mapping: Dict = None):
                         if is_script_cat:
                             for cat in categories_for_master:
                                 entries_count = len(manager_status[cat].get(sheet_name, {}))
-                                _script_debug_log(f"  [SUMMARY] {cat}/{sheet_name}: {entries_count} keys stored, {script_debug_rows_skipped} skipped (no comment)")
+                                _script_debug_log(f"  [SUMMARY] {cat}/{sheet_name}: {entries_count} keys stored")
                             _script_debug_flush()
 
-                        log(f"    Stored {script_debug_rows_stored} manager_status entries, skipped {script_debug_rows_skipped}")
+                        log(f"    Stored {script_debug_rows_stored} manager_status entries")
                         sheets_processed += 1
                         total_rows_scanned += row_count
                         print(f"      {sheet_name}: {row_count} rows, {script_debug_rows_stored} status entries")
@@ -731,9 +729,9 @@ def build_master_from_universe(
     sheet_num_cols = universe.get("num_columns", {})
 
     # Columns to DELETE from master (same as get_or_create_master):
-    # STATUS, COMMENT, SCREENSHOT, STRINGID
-    # These are tester columns that get replaced by user-specific columns
-    COLS_TO_SKIP = {"STATUS", "COMMENT", "SCREENSHOT", "STRINGID"}
+    # STATUS, COMMENT, SCREENSHOT are tester columns replaced by user-specific columns
+    # NOTE: STRINGID is a DATA column used for matching -- it must be PRESERVED
+    COLS_TO_SKIP = {"STATUS", "COMMENT", "SCREENSHOT"}
 
     # Group rows by sheet name
     rows_by_sheet = {}
@@ -921,6 +919,15 @@ def process_category(
 
     if master_wb is None:
         return daily_entries, accumulated_users, dict(accumulated_stats) if accumulated_stats else {}, None, None
+
+    # Merge missing rows from non-template QA files into the master.
+    # The master was built from ONE template (most recent file), so rows that only
+    # exist in other QA files would be lost. This ensures the master has the UNION
+    # of all QA file rows, so every tester's work can be matched.
+    if len(qa_folders) > 1:
+        added = merge_missing_rows_into_master(master_wb, qa_folders, template_xlsx, category, is_english)
+        if added > 0:
+            print(f"  Merged {added} missing rows from non-template QA files into master")
 
     # EN Item category: Sort master sheets A-Z by ItemName(ENG) for consistent matching
     if category.lower() == "item" and lang_label == "EN":
