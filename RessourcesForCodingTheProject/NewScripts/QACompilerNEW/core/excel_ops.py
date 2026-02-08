@@ -937,10 +937,10 @@ def replicate_duplicate_row_data(master_wb, category: str, is_english: bool) -> 
                         cell.value = best_value
                         # Copy formatting from source cell
                         src = ws.cell(best_row, col)
-                        cell.font = src.font.copy() if src.font else None
-                        cell.fill = src.fill.copy() if src.fill else None
-                        cell.alignment = src.alignment.copy() if src.alignment else None
-                        cell.border = src.border.copy() if src.border else None
+                        cell.font = copy(src.font)
+                        cell.fill = copy(src.fill)
+                        cell.alignment = copy(src.alignment)
+                        cell.border = copy(src.border)
                         # Copy hyperlink if present
                         if src.hyperlink:
                             cell.hyperlink = src.hyperlink.target
