@@ -387,6 +387,9 @@ def extract_tester_data_from_master(
             # Script: EventName + Text
             # Contents: INSTRUCTIONS
 
+            # Import sanitization to match build_master_index() key format
+            from core.matching import sanitize_stringid_for_match
+
             stringid_idx = col_map.get("STRINGID")
             eventname_idx = col_map.get("EVENTNAME")
             text_idx = col_map.get("TEXT") or col_map.get("TRANSLATION")
@@ -427,9 +430,7 @@ def extract_tester_data_from_master(
                         item_desc = ""
                         if desc_idx is not None and desc_idx < len(row_tuple):
                             item_desc = str(row_tuple[desc_idx] or "").strip()
-                        stringid = ""
-                        if stringid_idx is not None and stringid_idx < len(row_tuple):
-                            stringid = str(row_tuple[stringid_idx] or "").strip()
+                        stringid = sanitize_stringid_for_match(row_tuple[stringid_idx]) if stringid_idx is not None and stringid_idx < len(row_tuple) else ""
                         if item_name:
                             content_key = (item_name, item_desc, stringid)
 
@@ -446,9 +447,7 @@ def extract_tester_data_from_master(
 
                 else:
                     # Standard: (STRINGID, Translation)
-                    stringid = ""
-                    if stringid_idx is not None and stringid_idx < len(row_tuple):
-                        stringid = str(row_tuple[stringid_idx] or "").strip()
+                    stringid = sanitize_stringid_for_match(row_tuple[stringid_idx]) if stringid_idx is not None and stringid_idx < len(row_tuple) else ""
                     translation = ""
                     if trans_col_idx < len(row_tuple):
                         translation = str(row_tuple[trans_col_idx] or "").strip()
@@ -512,12 +511,29 @@ def extract_tester_data_from_master(
                         if content_key not in sheet_data:
                             sheet_data[content_key] = {}
                         if username in sheet_data[content_key]:
-                            # Duplicate row — keep the most recently updated
+                            # Duplicate row — merge: prefer entry with MORE data (especially manager fields)
                             existing = sheet_data[content_key][username]
-                            existing_ts = _parse_updated_timestamp(existing.get("comment"))
-                            new_ts = _parse_updated_timestamp(user_data.get("comment"))
-                            if new_ts > existing_ts:
+                            existing_has_manager = "manager_status" in existing or "manager_comment" in existing
+                            new_has_manager = "manager_status" in user_data or "manager_comment" in user_data
+
+                            if new_has_manager and not existing_has_manager:
+                                # New row has manager data that existing lacks — replace
                                 sheet_data[content_key][username] = user_data
+                            elif not new_has_manager and existing_has_manager:
+                                # Existing has manager data — keep it, but merge any new fields
+                                for k, v in user_data.items():
+                                    if k not in existing:
+                                        existing[k] = v
+                            else:
+                                # Both have (or lack) manager data — keep most recently updated
+                                existing_ts = _parse_updated_timestamp(existing.get("comment"))
+                                new_ts = _parse_updated_timestamp(user_data.get("comment"))
+                                if new_ts > existing_ts:
+                                    # Merge manager data from existing into new before replacing
+                                    for k in ("manager_status", "manager_comment"):
+                                        if k in existing and k not in user_data:
+                                            user_data[k] = existing[k]
+                                    sheet_data[content_key][username] = user_data
                         else:
                             sheet_data[content_key][username] = user_data
 
@@ -628,7 +644,9 @@ def restore_tester_data_to_master(
 
             if category_lower == "contents":
                 instructions = content_key[0] if content_key else ""
-                if instructions and instructions in master_index["primary"]:
+                if instructions and instructions in master_index.get("all_primary", {}):
+                    matching_rows = list(master_index["all_primary"][instructions])
+                elif instructions and instructions in master_index["primary"]:
                     matching_rows.append(master_index["primary"][instructions])
 
             elif category_lower == "item":

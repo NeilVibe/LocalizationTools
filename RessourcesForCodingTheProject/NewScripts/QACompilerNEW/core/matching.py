@@ -417,8 +417,10 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
         # Contents: index by INSTRUCTIONS (col 2 = index 1)
         for row_idx, row_tuple in enumerate(data_rows, start=2):  # row_idx is 1-based Excel row
             instructions = get_val(row_tuple, "INSTRUCTIONS", 2)
-            if instructions and instructions not in index["primary"]:
-                index["primary"][instructions] = row_idx
+            if instructions:
+                if instructions not in index["primary"]:
+                    index["primary"][instructions] = row_idx
+                index["all_primary"][instructions].append(row_idx)
 
     elif category_lower == "item":
         # Item: index by (ItemName, ItemDesc, STRINGID) and (ItemName, ItemDesc)
