@@ -814,6 +814,144 @@ def restore_tester_data_to_master(
 
 
 # =============================================================================
+# DUPLICATE ROW POST-PROCESSING
+# =============================================================================
+
+def replicate_duplicate_row_data(master_wb, category: str, is_english: bool) -> int:
+    """
+    Post-process: for every group of duplicate rows (same STRINGID + Translation),
+    find the row with the MOST data per user column and replicate it to ALL duplicates.
+
+    This is a brute-force safety net that runs after all matching/restoration.
+    Scans every sheet, groups rows by content key, and fills gaps.
+
+    Returns total number of cells filled.
+    """
+    from core.matching import sanitize_stringid_for_match, get_translation_column
+    from config import TRANSLATION_COLS, ITEM_DESC_COLS, SCRIPT_TYPE_CATEGORIES
+
+    category_lower = category.lower()
+    is_script = category_lower in SCRIPT_TYPE_CATEGORIES
+    total_filled = 0
+
+    for sheet_name in master_wb.sheetnames:
+        if sheet_name == "STATUS":
+            continue
+
+        ws = master_wb[sheet_name]
+        if ws.max_row is None or ws.max_row < 3:
+            continue
+
+        # Build header map (1-based column index)
+        headers = {}
+        for col in range(1, (ws.max_column or 0) + 1):
+            val = ws.cell(1, col).value
+            if val:
+                headers[col] = str(val).strip().upper()
+
+        # Find content key columns
+        stringid_col = None
+        trans_col = None
+        eventname_col = None
+        instructions_col = None
+        itemname_col = None
+        itemdesc_col = None
+
+        for col, header in headers.items():
+            if header == "STRINGID":
+                stringid_col = col
+            elif header == "TRANSLATION" or header == "TEXT":
+                trans_col = col
+            elif header == "EVENTNAME":
+                eventname_col = col
+            elif header == "INSTRUCTIONS":
+                instructions_col = col
+            elif header in ("ITEMNAME(ENG)", "ITEMNAME(LOC)", "ITEMNAME"):
+                if itemname_col is None:
+                    itemname_col = col
+            elif header in ("ITEMDESC(ENG)", "ITEMDESC(LOC)", "ITEMDESC"):
+                if itemdesc_col is None:
+                    itemdesc_col = col
+
+        # Find user data columns (COMMENT_, STATUS_, MANAGER_COMMENT_, SCREENSHOT_, TESTER_STATUS_)
+        user_cols = []
+        for col, header in headers.items():
+            if any(header.startswith(prefix) for prefix in
+                   ("COMMENT_", "STATUS_", "MANAGER_COMMENT_", "SCREENSHOT_", "TESTER_STATUS_")):
+                user_cols.append(col)
+
+        if not user_cols:
+            continue
+
+        # Group rows by content key
+        row_groups = defaultdict(list)  # content_key -> [row_num, ...]
+
+        for row in range(2, ws.max_row + 1):
+            if category_lower == "contents":
+                if instructions_col:
+                    key_val = str(ws.cell(row, instructions_col).value or "").strip()
+                    if key_val:
+                        row_groups[key_val].append(row)
+            elif category_lower == "item":
+                name = str(ws.cell(row, itemname_col).value or "").strip() if itemname_col else ""
+                desc = str(ws.cell(row, itemdesc_col).value or "").strip() if itemdesc_col else ""
+                sid = sanitize_stringid_for_match(ws.cell(row, stringid_col).value) if stringid_col else ""
+                if name:
+                    row_groups[(name, desc, sid)].append(row)
+            elif is_script:
+                text = str(ws.cell(row, trans_col).value or "").strip() if trans_col else ""
+                ename = str(ws.cell(row, eventname_col).value or "").strip() if eventname_col else ""
+                if text or ename:
+                    row_groups[(text, ename)].append(row)
+            else:
+                sid = sanitize_stringid_for_match(ws.cell(row, stringid_col).value) if stringid_col else ""
+                trans = str(ws.cell(row, trans_col).value or "").strip() if trans_col else ""
+                if trans:
+                    row_groups[(sid, trans)].append(row)
+
+        # For each group with duplicates, replicate data
+        for key, rows in row_groups.items():
+            if len(rows) < 2:
+                continue
+
+            # For each user column, find the best value across all rows in the group
+            for col in user_cols:
+                # Collect all values for this column across the group
+                best_value = None
+                best_row = None
+                for row in rows:
+                    val = ws.cell(row, col).value
+                    if val is not None and str(val).strip():
+                        best_value = val
+                        best_row = row
+                        break  # Take the first non-empty value
+
+                if best_value is None:
+                    continue
+
+                # Copy to all rows that are empty for this column
+                for row in rows:
+                    cell = ws.cell(row, col)
+                    if cell.value is None or not str(cell.value).strip():
+                        cell.value = best_value
+                        # Copy formatting from source cell
+                        src = ws.cell(best_row, col)
+                        cell.font = src.font.copy() if src.font else None
+                        cell.fill = src.fill.copy() if src.fill else None
+                        cell.alignment = src.alignment.copy() if src.alignment else None
+                        cell.border = src.border.copy() if src.border else None
+                        # Copy hyperlink if present
+                        if src.hyperlink:
+                            cell.hyperlink = src.hyperlink.target
+                        total_filled += 1
+
+    if total_filled > 0:
+        print(f"    Duplicate post-process: replicated {total_filled} cells across duplicate rows")
+
+    return total_filled
+
+
+# =============================================================================
 # MASTER FILE OPERATIONS
 # =============================================================================
 
