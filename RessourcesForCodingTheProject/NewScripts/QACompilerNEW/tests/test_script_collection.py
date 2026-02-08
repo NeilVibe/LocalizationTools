@@ -181,22 +181,20 @@ def run_collection_test():
         print("=" * 60)
 
         from core.compiler import collect_all_master_data
-        (result, _, _, _, _) = collect_all_master_data(tester_mapping={})
+        (fixed_screenshots_en, fixed_screenshots_cn, manager_stats) = collect_all_master_data(tester_mapping={})
 
         # Print results
         print("\n" + "=" * 60)
         print("RESULTS")
         print("=" * 60)
 
-        for category, sheets in result.items():
+        print(f"\nFixed screenshots EN: {fixed_screenshots_en}")
+        print(f"Fixed screenshots CN: {fixed_screenshots_cn}")
+        print(f"Manager stats categories: {list(manager_stats.keys())}")
+        for category, users in manager_stats.items():
             print(f"\nCategory: {category}")
-            for sheet_name, keys in sheets.items():
-                print(f"  Sheet: {sheet_name}")
-                print(f"  Keys collected: {len(keys)}")
-                for key, users in keys.items():
-                    print(f"    Key: {key}")
-                    for user, info in users.items():
-                        print(f"      {user}: status={info['status']}, comment={info['manager_comment']}")
+            for user, stats in users.items():
+                print(f"  {user}: {stats}")
 
         # Check debug log
         print("\n" + "=" * 60)

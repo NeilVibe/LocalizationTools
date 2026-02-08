@@ -115,7 +115,7 @@ def test_collect_manager_stats():
 
         # Import and run consolidated collection (Phase A: replaces collect_manager_stats_for_tracker)
         from core.compiler import collect_all_master_data
-        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
+        (_, _, result) = collect_all_master_data(tester_mapping={})
 
         print("\n=== COLLECTION RESULTS ===")
         print(f"Categories collected: {list(result.keys())}")

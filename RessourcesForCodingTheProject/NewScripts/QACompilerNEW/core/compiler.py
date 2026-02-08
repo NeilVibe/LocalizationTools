@@ -117,7 +117,7 @@ from config import (
 from core.discovery import discover_qa_folders, group_folders_by_language
 from core.excel_ops import (
     safe_load_workbook, ensure_master_folders,
-    get_or_create_master, merge_missing_rows_into_master,
+    get_or_create_master,
     copy_images_with_unique_names,
     find_column_by_header, sort_worksheet_az, build_column_map,
     preload_worksheet_data
@@ -163,35 +163,33 @@ def extract_comment_text(full_comment) -> str:
 # =============================================================================
 # CONSOLIDATED MASTER DATA COLLECTION (Phase A optimization)
 # =============================================================================
-# Replaces 3 separate functions that each opened all master files independently:
+# Replaces separate functions that each opened all master files independently:
 #   - collect_fixed_screenshots()  -> fixed_screenshots set
-#   - collect_manager_status()     -> manager_status dict
 #   - collect_manager_stats_for_tracker() -> manager_stats dict
-# Now: ONE pass per master file with read_only=True for all 3 data structures.
+# Now: ONE pass per master file with read_only=True for both data structures.
+# Manager status preservation is handled by System 1 (excel_ops.py) during rebuild.
 
 def collect_all_master_data(tester_mapping: Dict = None):
     """
-    Single-pass collection of ALL master file data for compilation.
+    Single-pass collection of master file data for compilation.
 
     Opens each master file ONCE with read_only=True, extracting:
-    1. manager_status (EN/CN) - for preserving manager status during rebuild
-    2. fixed_screenshots (EN/CN) - for skipping FIXED images during copy
-    3. manager_stats - for tracker (FIXED/REPORTED/CHECKING/NON-ISSUE counts)
+    1. fixed_screenshots (EN/CN) - for skipping FIXED images during copy
+    2. manager_stats - for tracker (FIXED/REPORTED/CHECKING/NON-ISSUE counts)
+
+    Manager status preservation is handled by System 1 (extract_tester_data_from_master
+    + restore_tester_data_to_master in excel_ops.py) during get_or_create_master().
 
     Args:
         tester_mapping: Dict mapping tester names to language codes (EN/CN).
                         If None, loaded from file.
 
     Returns:
-        Tuple of (manager_status_en, manager_status_cn,
-                  fixed_screenshots_en, fixed_screenshots_cn,
-                  manager_stats)
+        Tuple of (fixed_screenshots_en, fixed_screenshots_cn, manager_stats)
     """
     if tester_mapping is None:
         tester_mapping = load_tester_mapping()
 
-    manager_status_en = {}
-    manager_status_cn = {}
     fixed_screenshots_en = set()
     fixed_screenshots_cn = set()
     manager_stats = defaultdict(lambda: defaultdict(
@@ -218,7 +216,6 @@ def collect_all_master_data(tester_mapping: Dict = None):
     for master_folder in [MASTER_FOLDER_EN, MASTER_FOLDER_CN]:
         is_en = "EN" in str(master_folder)
         folder_label = "EN" if is_en else "CN"
-        manager_status = manager_status_en if is_en else manager_status_cn
         fixed_screenshots = fixed_screenshots_en if is_en else fixed_screenshots_cn
         processed_masters = set()  # Avoid re-scanning clustered categories
 
@@ -237,13 +234,6 @@ def collect_all_master_data(tester_mapping: Dict = None):
             master_path = master_folder / f"Master_{target_category}.xlsx"
 
             if master_path in processed_masters:
-                # Already scanned this master (e.g., Sequencer+Dialog both -> Master_Script)
-                # But still need to register the category in manager_status
-                if master_path.exists() and category not in manager_status:
-                    # Copy sheet data from the target_category that already has it
-                    source_cat = target_category
-                    if source_cat in manager_status:
-                        manager_status[category] = manager_status[source_cat]
                 continue
 
             if not master_path.exists():
@@ -263,16 +253,6 @@ def collect_all_master_data(tester_mapping: Dict = None):
                     log(f"{'~'*60}")
                     log(f"Sheets: {wb.sheetnames}")
 
-                    # Initialize manager_status for ALL categories that map to this master
-                    categories_for_master = [category]
-                    for cat in CATEGORIES:
-                        if cat != category and get_target_master_category(cat) == target_category:
-                            categories_for_master.append(cat)
-
-                    for cat in categories_for_master:
-                        if cat not in manager_status:
-                            manager_status[cat] = {}
-
                     sheets_processed = 0
                     total_rows_scanned = 0
                     for sheet_name in wb.sheetnames:
@@ -287,18 +267,11 @@ def collect_all_master_data(tester_mapping: Dict = None):
                         if ws.max_column is None or ws.max_column < 1:
                             continue
 
-                        # Initialize sheet in manager_status for all categories
-                        for cat in categories_for_master:
-                            if sheet_name not in manager_status[cat]:
-                                manager_status[cat][sheet_name] = {}
-
                         # === HEADER SCAN via iter_rows (streaming, not random access) ===
                         stringid_col = None
                         comment_cols = {}          # username -> 0-based idx
                         status_cols = {}           # username -> 0-based idx (STATUS_{User} = manager status)
-                        manager_comment_cols = {}  # username -> 0-based idx
                         screenshot_cols = {}       # username -> 0-based idx
-                        tester_status_cols = {}    # username -> 0-based idx
 
                         # Read header row as tuple (single streaming read, not cell-by-cell)
                         header_iter = ws.iter_rows(min_row=1, max_row=1, max_col=ws.max_column, values_only=True)
@@ -317,12 +290,8 @@ def collect_all_master_data(tester_mapping: Dict = None):
                                 status_cols[header_str[7:]] = col_idx
                             elif header_upper.startswith("COMMENT_"):
                                 comment_cols[header_str[8:]] = col_idx
-                            elif header_upper.startswith("MANAGER_COMMENT_"):
-                                manager_comment_cols[header_str[16:]] = col_idx
                             elif header_upper.startswith("SCREENSHOT_"):
                                 screenshot_cols[header_str[11:]] = col_idx
-                            elif header_upper.startswith("TESTER_STATUS_"):
-                                tester_status_cols[header_str[14:]] = col_idx
                             elif header_upper == "STRINGID":
                                 stringid_idx = col_idx
                             elif header_upper == "EVENTNAME" and stringid_idx is None:
@@ -348,7 +317,7 @@ def collect_all_master_data(tester_mapping: Dict = None):
 
                         # === SINGLE-PASS ROW SCAN via iter_rows (streaming tuples) ===
                         # CRITICAL: iter_rows is O(n) streaming vs ws.cell() which is O(n²) in read_only mode
-                        script_debug_rows_stored = 0
+                        status_entries_count = 0
                         row_count = 0
 
                         for row_tuple in ws.iter_rows(min_row=2, max_col=ws.max_column, values_only=True):
@@ -358,12 +327,7 @@ def collect_all_master_data(tester_mapping: Dict = None):
                                 status_str = str(status_value).strip() if status_value else ""
                                 status_upper = status_str.upper()
 
-                                # Get manager comment for this user (tuple index)
-                                mc_idx = manager_comment_cols.get(username)
-                                mc_value = row_tuple[mc_idx] if mc_idx is not None and mc_idx < len(row_tuple) else None
-
                                 has_status = status_upper in VALID_MANAGER_STATUS
-                                has_manager_comment = mc_value and str(mc_value).strip()
 
                                 # --- DATA 1: fixed_screenshots ---
                                 if status_upper == "FIXED":
@@ -373,45 +337,7 @@ def collect_all_master_data(tester_mapping: Dict = None):
                                         if sc_val and str(sc_val).strip():
                                             fixed_screenshots.add(str(sc_val).strip())
 
-                                # --- DATA 2: manager_status ---
-                                if has_status or has_manager_comment:
-                                    # Get STRINGID (tuple index)
-                                    stringid = ""
-                                    if stringid_idx is not None and stringid_idx < len(row_tuple):
-                                        sid_val = row_tuple[stringid_idx]
-                                        if sid_val:
-                                            stringid = str(sid_val).strip()
-
-                                    # Get tester's comment text (tuple index)
-                                    tester_comment_text = ""
-                                    c_idx = comment_cols.get(username)
-                                    if c_idx is not None and c_idx < len(row_tuple):
-                                        full_comment = row_tuple[c_idx]
-                                        tester_comment_text = extract_comment_text(full_comment)
-
-                                    script_debug_rows_stored += 1
-                                    status_val_clean = status_upper if has_status else None
-                                    mc_val_clean = str(mc_value).strip() if has_manager_comment else None
-                                    user_entry = {"status": status_val_clean, "manager_comment": mc_val_clean}
-
-                                    # Primary key + fallback key
-                                    # Use tester_comment_text if available, empty string otherwise
-                                    key = (stringid, tester_comment_text)
-                                    fallback_key = ("", tester_comment_text)
-
-                                    for cat in categories_for_master:
-                                        sheet_dict = manager_status[cat][sheet_name]
-                                        if key not in sheet_dict:
-                                            sheet_dict[key] = {}
-                                        sheet_dict[key][username] = user_entry
-
-                                        if fallback_key not in sheet_dict:
-                                            sheet_dict[fallback_key] = {}
-                                        if username not in sheet_dict[fallback_key]:
-                                            sheet_dict[fallback_key][username] = user_entry
-
-                                # --- DATA 3: manager_stats (tracker counts) ---
-                                # Reuse mc_value/comment from above (no duplicate cell read)
+                                # --- DATA 2: manager_stats (tracker counts) ---
                                 c_stats_idx = comment_cols.get(username)
                                 comment_val = row_tuple[c_stats_idx] if c_stats_idx is not None and c_stats_idx < len(row_tuple) else None
                                 comment_str_val = str(comment_val).strip() if comment_val else ""
@@ -419,6 +345,7 @@ def collect_all_master_data(tester_mapping: Dict = None):
 
                                 if has_status or has_comment:
                                     if has_status:
+                                        status_entries_count += 1
                                         if status_upper == "FIXED":
                                             manager_stats[target_category][username]["fixed"] += 1
                                         elif status_upper == "REPORTED":
@@ -430,17 +357,10 @@ def collect_all_master_data(tester_mapping: Dict = None):
 
                                     manager_stats[target_category][username]["lang"] = tester_mapping.get(username, "EN")
 
-                        # Debug logging for Script categories
-                        if is_script_cat:
-                            for cat in categories_for_master:
-                                entries_count = len(manager_status[cat].get(sheet_name, {}))
-                                _script_debug_log(f"  [SUMMARY] {cat}/{sheet_name}: {entries_count} keys stored")
-                            _script_debug_flush()
-
-                        log(f"    Stored {script_debug_rows_stored} manager_status entries")
+                        log(f"    {status_entries_count} status entries")
                         sheets_processed += 1
                         total_rows_scanned += row_count
-                        print(f"      {sheet_name}: {row_count} rows, {script_debug_rows_stored} status entries")
+                        print(f"      {sheet_name}: {row_count} rows, {status_entries_count} status entries")
 
                     print(f"    Done: {sheets_processed} sheets, {total_rows_scanned} rows scanned")
 
@@ -465,8 +385,6 @@ def collect_all_master_data(tester_mapping: Dict = None):
     log(f"{'='*80}")
     log(f"FINAL SUMMARY")
     log(f"{'='*80}")
-    log(f"manager_status_en categories: {list(manager_status_en.keys())}")
-    log(f"manager_status_cn categories: {list(manager_status_cn.keys())}")
     log(f"fixed_screenshots_en: {len(fixed_screenshots_en)}")
     log(f"fixed_screenshots_cn: {len(fixed_screenshots_cn)}")
     log(f"manager_stats categories: {list(manager_stats_result.keys())}")
@@ -484,18 +402,7 @@ def collect_all_master_data(tester_mapping: Dict = None):
     except Exception as e:
         print(f"[LOG ERROR] {e}")
 
-    # Script debug summary
-    for cat in ["Sequencer", "Dialog"]:
-        if cat in manager_status_en:
-            total_keys = sum(len(sd) for sd in manager_status_en[cat].values())
-            _script_debug_log(f"[COLLECT TOTAL] {cat} EN: {total_keys} keys")
-        if cat in manager_status_cn:
-            total_keys = sum(len(sd) for sd in manager_status_cn[cat].values())
-            _script_debug_log(f"[COLLECT TOTAL] {cat} CN: {total_keys} keys")
-    _script_debug_flush()
-
-    return (manager_status_en, manager_status_cn,
-            fixed_screenshots_en, fixed_screenshots_cn,
+    return (fixed_screenshots_en, fixed_screenshots_cn,
             manager_stats_result)
 
 
@@ -830,7 +737,6 @@ def process_category(
     master_folder: Path,
     images_folder: Path,
     lang_label: str,
-    manager_status: Dict = None,
     rebuild: bool = True,
     fixed_screenshots: set = None,
     accumulated_users: set = None,
@@ -846,7 +752,6 @@ def process_category(
         master_folder: Target Master folder (EN or CN)
         images_folder: Target Images folder
         lang_label: "EN" or "CN"
-        manager_status: Pre-collected manager status to restore
         rebuild: If True, rebuild master. If False, append (for clustering)
         fixed_screenshots: Set of screenshot filenames to skip (FIXED optimization)
         accumulated_users: Set of users accumulated across categories sharing same master
@@ -861,8 +766,6 @@ def process_category(
         - master_wb: The master workbook (None if deferred_save=False, i.e., already saved)
         - master_path: Path to master file
     """
-    if manager_status is None:
-        manager_status = {}
     if fixed_screenshots is None:
         fixed_screenshots = set()
     if accumulated_users is None:
@@ -919,15 +822,6 @@ def process_category(
 
     if master_wb is None:
         return daily_entries, accumulated_users, dict(accumulated_stats) if accumulated_stats else {}, None, None
-
-    # Merge missing rows from non-template QA files into the master.
-    # The master was built from ONE template (most recent file), so rows that only
-    # exist in other QA files would be lost. This ensures the master has the UNION
-    # of all QA file rows, so every tester's work can be matched.
-    if len(qa_folders) > 1:
-        added = merge_missing_rows_into_master(master_wb, qa_folders, template_xlsx, category, is_english)
-        if added > 0:
-            print(f"  Merged {added} missing rows from non-template QA files into master")
 
     # EN Item category: Sort master sheets A-Z by ItemName(ENG) for consistent matching
     if category.lower() == "item" and lang_label == "EN":
@@ -1032,9 +926,6 @@ def process_category(
 
             master_ws = master_wb[sheet_name]
 
-            # Get manager status for this sheet
-            sheet_manager_status = manager_status.get(sheet_name, {})
-
             # Process the sheet (creates user columns internally)
             # NOTE: prefiltered_rows optimization removed - all categories now scan
             # all rows for STATUS, which is slightly slower but preserves data integrity
@@ -1053,7 +944,6 @@ def process_category(
                 is_english=is_english,
                 image_mapping=image_mapping,
                 xlsx_path=xlsx_path,
-                manager_status=sheet_manager_status,
                 master_index=user_index
             )
 
@@ -1255,19 +1145,12 @@ def run_compiler():
     # Ensure folders exist
     ensure_master_folders()
 
-    # Preprocess: Collect ALL master data in single pass (Phase A optimization)
-    # Opens each master file ONCE with read_only=True instead of 3 separate passes
-    print("\nCollecting master data (manager status + fixed screenshots + tracker stats)...")
-    (manager_status_en, manager_status_cn,
-     fixed_screenshots_en, fixed_screenshots_cn,
+    # Preprocess: Collect master data in single pass (Phase A optimization)
+    # Opens each master file ONCE with read_only=True
+    # Manager status preservation is handled by System 1 in excel_ops.py during rebuild
+    print("\nCollecting master data (fixed screenshots + tracker stats)...")
+    (fixed_screenshots_en, fixed_screenshots_cn,
      manager_stats) = collect_all_master_data(tester_mapping)
-
-    total_en = sum(sum(len(statuses) for statuses in sheets.values()) for sheets in manager_status_en.values())
-    total_cn = sum(sum(len(statuses) for statuses in sheets.values()) for sheets in manager_status_cn.values())
-    if total_en > 0 or total_cn > 0:
-        print(f"  Found {total_en} EN + {total_cn} CN manager status entries to preserve")
-    else:
-        print("  No existing manager status entries found")
 
     total_fixed = len(fixed_screenshots_en) + len(fixed_screenshots_cn)
     if total_fixed > 0:
@@ -1374,7 +1257,7 @@ def run_compiler():
     results_lock = threading.Lock()
 
     def process_worker_group(group_name, categories, lang_label, by_category,
-                             master_folder, images_folder, manager_status,
+                             master_folder, images_folder,
                              fixed_screenshots, tester_mapping_ref):
         """
         Process a worker group (categories sharing same master file).
@@ -1426,11 +1309,10 @@ def run_compiler():
             acc_users = data["users"]
             acc_stats = data["stats"]
 
-            category_manager_status = manager_status.get(category, {})
             entries, acc_users, acc_stats, master_wb, master_path = process_category(
                 category, by_category[category],
                 master_folder, images_folder, lang_label,
-                category_manager_status, rebuild=rebuild,
+                rebuild=rebuild,
                 fixed_screenshots=fixed_screenshots,
                 accumulated_users=acc_users,
                 accumulated_stats=acc_stats,
@@ -1467,7 +1349,7 @@ def run_compiler():
                     process_worker_group,
                     group_name, categories, "EN", by_category_en,
                     MASTER_FOLDER_EN, IMAGES_FOLDER_EN,
-                    manager_status_en, fixed_screenshots_en, tester_mapping
+                    fixed_screenshots_en, tester_mapping
                 )
                 futures.append(future)
 
@@ -1478,7 +1360,7 @@ def run_compiler():
                     process_worker_group,
                     group_name, categories, "CN", by_category_cn,
                     MASTER_FOLDER_CN, IMAGES_FOLDER_CN,
-                    manager_status_cn, fixed_screenshots_cn, tester_mapping
+                    fixed_screenshots_cn, tester_mapping
                 )
                 futures.append(future)
 
