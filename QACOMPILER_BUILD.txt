@@ -104,3 +104,4 @@ Build - Branch selection feature
 Build - Fix duplicate row transfer: list-based indexes + shared consumed set
 Build - Fix manager data restoration: sanitize stringid + merge duplicates + Contents all_primary
 Build - Add duplicate row post-processing: brute-force replicate all data across duplicates
+Build - Fix missing defaultdict import in excel_ops.py
