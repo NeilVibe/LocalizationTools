@@ -10,6 +10,7 @@ import shutil
 import zipfile
 import tempfile
 from copy import copy
+from datetime import datetime as _datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple
 
@@ -269,6 +270,22 @@ def get_tuple_value(row_tuple: tuple, col_idx: Dict[str, int], header: str, defa
 # TESTER DATA PRESERVATION (for master rebuild)
 # =============================================================================
 
+def _parse_updated_timestamp(comment_value):
+    """Extract (updated: YYMMDD HHMM) timestamp from comment metadata.
+
+    Returns datetime for comparison, or datetime.min if not found.
+    """
+    if not comment_value:
+        return _datetime.min
+    match = re.search(r'\(updated:\s*(\d{6}\s+\d{4})\)', str(comment_value))
+    if match:
+        try:
+            return _datetime.strptime(match.group(1), "%y%m%d %H%M")
+        except ValueError:
+            pass
+    return _datetime.min
+
+
 def extract_tester_data_from_master(
     master_path: Path,
     category: str,
@@ -494,7 +511,15 @@ def extract_tester_data_from_master(
                     if has_data:
                         if content_key not in sheet_data:
                             sheet_data[content_key] = {}
-                        sheet_data[content_key][username] = user_data
+                        if username in sheet_data[content_key]:
+                            # Duplicate row — keep the most recently updated
+                            existing = sheet_data[content_key][username]
+                            existing_ts = _parse_updated_timestamp(existing.get("comment"))
+                            new_ts = _parse_updated_timestamp(user_data.get("comment"))
+                            if new_ts > existing_ts:
+                                sheet_data[content_key][username] = user_data
+                        else:
+                            sheet_data[content_key][username] = user_data
 
             if sheet_data:
                 extracted[sheet_name] = sheet_data
@@ -589,158 +614,177 @@ def restore_tester_data_to_master(
         sheet_restored = 0
         sheet_orphaned = 0
 
-        # Restore data for each content key
-        for content_key, user_data_dict in sheet_data.items():
-            # Find matching row in new master
-            master_row = None
+        # === TWO-PASS RESTORE ===
+        # Pass 1: Primary matches (exact key) → consume all true duplicates
+        # Pass 2: Fallback matches (partial key) → first unconsumed only
+        # This ensures primary matches always win over fallback.
+
+        # Build primary match results: content_key -> [matching_rows]
+        primary_matched = {}   # content_key -> list of rows
+        fallback_keys = []     # content_keys that need fallback
+
+        for content_key in sheet_data:
+            matching_rows = []
 
             if category_lower == "contents":
-                # Contents: key is (instructions,)
                 instructions = content_key[0] if content_key else ""
                 if instructions and instructions in master_index["primary"]:
-                    master_row = master_index["primary"][instructions]
+                    matching_rows.append(master_index["primary"][instructions])
 
             elif category_lower == "item":
-                # Item: key is (item_name, item_desc, stringid)
                 if len(content_key) >= 2:
-                    item_name, item_desc = content_key[0], content_key[1]
                     stringid = content_key[2] if len(content_key) > 2 else ""
-
-                    # Try primary: (name, desc, stringid)
                     if stringid:
-                        primary_key = (item_name, item_desc, stringid)
-                        if primary_key in master_index["primary"]:
-                            master_row = master_index["primary"][primary_key]
-
-                    # Fallback: (name, desc)
-                    if master_row is None:
-                        fallback_key = (item_name, item_desc)
-                        if fallback_key in master_index["fallback"]:
-                            for row in master_index["fallback"][fallback_key]:
-                                if row not in master_index["consumed"]:
-                                    master_row = row
-                                    break
+                        pk = (content_key[0], content_key[1], stringid)
+                        if pk in master_index.get("all_primary", {}):
+                            matching_rows = list(master_index["all_primary"][pk])
 
             elif is_script:
-                # Script: key is (text, eventname) - matches extraction and index order
                 if len(content_key) >= 2:
                     text, eventname = content_key[0], content_key[1]
-
-                    # Try primary: (text, eventname)
                     if text and eventname:
-                        primary_key = (text, eventname)
-                        if primary_key in master_index["primary"]:
-                            master_row = master_index["primary"][primary_key]
-
-                    # Fallback: eventname only
-                    if master_row is None and eventname:
-                        if eventname in master_index["fallback"]:
-                            for row in master_index["fallback"][eventname]:
-                                if row not in master_index["consumed"]:
-                                    master_row = row
-                                    break
+                        pk = (text, eventname)
+                        if pk in master_index.get("all_primary", {}):
+                            matching_rows = list(master_index["all_primary"][pk])
 
             else:
-                # Standard: key is (stringid, translation)
                 if len(content_key) >= 2:
                     stringid, translation = content_key[0], content_key[1]
-
-                    # Try primary: (stringid, translation)
                     if stringid and translation:
-                        primary_key = (stringid, translation)
-                        if primary_key in master_index["primary"]:
-                            master_row = master_index["primary"][primary_key]
+                        pk = (stringid, translation)
+                        if pk in master_index.get("all_primary", {}):
+                            matching_rows = list(master_index["all_primary"][pk])
 
-                    # Fallback: translation only
-                    if master_row is None and translation:
-                        if translation in master_index["fallback"]:
-                            for row in master_index["fallback"][translation]:
-                                if row not in master_index["consumed"]:
-                                    master_row = row
-                                    break
+            if matching_rows:
+                primary_matched[content_key] = matching_rows
+                for mr in matching_rows:
+                    master_index["consumed"].add(mr)
+            else:
+                fallback_keys.append(content_key)
 
-            if master_row is None:
-                # No matching row - data orphaned (row removed in new template)
-                sheet_orphaned += len(user_data_dict)
-                continue
+        # Pass 2: Fallback for unmatched keys (stringid changed, etc.)
+        fallback_matched = {}
+        for content_key in fallback_keys:
+            matching_rows = []
 
-            # Mark row as consumed to prevent duplicate matching
-            master_index["consumed"].add(master_row)
+            if category_lower == "contents":
+                pass  # Contents has no fallback
 
-            # Restore data for each user
-            for username, user_data in user_data_dict.items():
-                cols = user_cols.get(username)
-                if not cols:
-                    continue
+            elif category_lower == "item":
+                if len(content_key) >= 2:
+                    fallback_key = (content_key[0], content_key[1])
+                    if fallback_key in master_index["fallback"]:
+                        for row in master_index["fallback"][fallback_key]:
+                            if row not in master_index["consumed"]:
+                                matching_rows.append(row)
+                                break
 
-                comment_col, tester_status_col, status_col, manager_comment_col, screenshot_col = cols
+            elif is_script:
+                if len(content_key) >= 2:
+                    eventname = content_key[1]
+                    if eventname and eventname in master_index["fallback"]:
+                        for row in master_index["fallback"][eventname]:
+                            if row not in master_index["consumed"]:
+                                matching_rows.append(row)
+                                break
 
-                # Restore comment
-                if "comment" in user_data:
-                    cell = master_ws.cell(row=master_row, column=comment_col)
-                    cell.value = sanitize_for_excel(user_data["comment"])
+            else:
+                if len(content_key) >= 2:
+                    translation = content_key[1]
+                    if translation and translation in master_index["fallback"]:
+                        for row in master_index["fallback"][translation]:
+                            if row not in master_index["consumed"]:
+                                matching_rows.append(row)
+                                break
 
-                    # Apply styling based on tester status
-                    tester_status = user_data.get("tester_status", "")
-                    status_upper = str(tester_status).strip().upper() if tester_status else ""
-                    if status_upper == "ISSUE":
-                        cell.fill = COMMENT_FILL_ISSUE
-                        cell.font = COMMENT_FONT_ISSUE
-                    elif status_upper == "BLOCKED":
-                        cell.fill = COMMENT_FILL_BLOCKED
-                        cell.font = COMMENT_FONT_BLOCKED
-                    elif status_upper == "KOREAN":
-                        cell.fill = COMMENT_FILL_KOREAN
-                        cell.font = COMMENT_FONT_KOREAN
-                    elif status_upper in ("NO ISSUE", "NON-ISSUE", "NON ISSUE"):
-                        cell.fill = COMMENT_FILL_NO_ISSUE
-                        cell.font = COMMENT_FONT_NO_ISSUE
-                    cell.alignment = COMMENT_ALIGNMENT
-                    cell.border = COMMENT_BORDER
-                    sheet_restored += 1
+            if matching_rows:
+                fallback_matched[content_key] = matching_rows
+                for mr in matching_rows:
+                    master_index["consumed"].add(mr)
 
-                # Restore tester status
-                if "tester_status" in user_data:
-                    cell = master_ws.cell(row=master_row, column=tester_status_col)
-                    cell.value = user_data["tester_status"]
-                    cell.alignment = MANAGER_STATUS_ALIGNMENT
+        # Combine results and restore
+        all_matched = {**primary_matched, **fallback_matched}
+        unmatched = set(sheet_data.keys()) - set(all_matched.keys())
+        sheet_orphaned += sum(len(sheet_data[k]) for k in unmatched)
 
-                # Restore manager status
-                if "manager_status" in user_data:
-                    cell = master_ws.cell(row=master_row, column=status_col)
-                    status_value = user_data["manager_status"]
-                    cell.value = status_value
-                    cell.alignment = MANAGER_STATUS_ALIGNMENT
+        for content_key, matching_rows in all_matched.items():
+            user_data_dict = sheet_data[content_key]
+            sheet_restored += len(user_data_dict)  # Count per user-entry (consistent with orphaned)
 
-                    # Apply font color
-                    status_upper = str(status_value).strip().upper()
-                    if status_upper == "FIXED":
-                        cell.font = MANAGER_FONT_FIXED
-                    elif status_upper == "REPORTED":
-                        cell.font = MANAGER_FONT_REPORTED
-                    elif status_upper == "CHECKING":
-                        cell.font = MANAGER_FONT_CHECKING
-                    elif status_upper in ("NON-ISSUE", "NON ISSUE"):
-                        cell.font = MANAGER_FONT_NONISSUE
+            # Restore data to ALL matching rows (replicate across true duplicates)
+            for master_row in matching_rows:
+                for username, user_data in user_data_dict.items():
+                    cols = user_cols.get(username)
+                    if not cols:
+                        continue
 
-                # Restore manager comment
-                if "manager_comment" in user_data:
-                    cell = master_ws.cell(row=master_row, column=manager_comment_col)
-                    cell.value = user_data["manager_comment"]
-                    cell.alignment = COMMENT_ALIGNMENT
-                    cell.fill = MANAGER_COMMENT_FILL
-                    cell.border = MANAGER_COMMENT_BORDER
+                    comment_col, tester_status_col, status_col, manager_comment_col, screenshot_col = cols
 
-                # Restore screenshot (not for Script)
-                if not is_script and screenshot_col and "screenshot" in user_data:
-                    cell = master_ws.cell(row=master_row, column=screenshot_col)
-                    cell.value = sanitize_for_excel(user_data["screenshot"])
-                    if "screenshot_hyperlink" in user_data:
-                        cell.hyperlink = user_data["screenshot_hyperlink"]
-                    cell.fill = SCREENSHOT_FILL
-                    cell.alignment = SCREENSHOT_ALIGNMENT
-                    cell.border = SCREENSHOT_BORDER
-                    cell.font = SCREENSHOT_FONT_NORMAL
+                    # Restore comment
+                    if "comment" in user_data:
+                        cell = master_ws.cell(row=master_row, column=comment_col)
+                        cell.value = sanitize_for_excel(user_data["comment"])
+
+                        # Apply styling based on tester status
+                        tester_status = user_data.get("tester_status", "")
+                        status_upper = str(tester_status).strip().upper() if tester_status else ""
+                        if status_upper == "ISSUE":
+                            cell.fill = COMMENT_FILL_ISSUE
+                            cell.font = COMMENT_FONT_ISSUE
+                        elif status_upper == "BLOCKED":
+                            cell.fill = COMMENT_FILL_BLOCKED
+                            cell.font = COMMENT_FONT_BLOCKED
+                        elif status_upper == "KOREAN":
+                            cell.fill = COMMENT_FILL_KOREAN
+                            cell.font = COMMENT_FONT_KOREAN
+                        elif status_upper in ("NO ISSUE", "NON-ISSUE", "NON ISSUE"):
+                            cell.fill = COMMENT_FILL_NO_ISSUE
+                            cell.font = COMMENT_FONT_NO_ISSUE
+                        cell.alignment = COMMENT_ALIGNMENT
+                        cell.border = COMMENT_BORDER
+
+                    # Restore tester status
+                    if "tester_status" in user_data:
+                        cell = master_ws.cell(row=master_row, column=tester_status_col)
+                        cell.value = user_data["tester_status"]
+                        cell.alignment = MANAGER_STATUS_ALIGNMENT
+
+                    # Restore manager status
+                    if "manager_status" in user_data:
+                        cell = master_ws.cell(row=master_row, column=status_col)
+                        status_value = user_data["manager_status"]
+                        cell.value = status_value
+                        cell.alignment = MANAGER_STATUS_ALIGNMENT
+
+                        # Apply font color
+                        status_upper = str(status_value).strip().upper()
+                        if status_upper == "FIXED":
+                            cell.font = MANAGER_FONT_FIXED
+                        elif status_upper == "REPORTED":
+                            cell.font = MANAGER_FONT_REPORTED
+                        elif status_upper == "CHECKING":
+                            cell.font = MANAGER_FONT_CHECKING
+                        elif status_upper in ("NON-ISSUE", "NON ISSUE"):
+                            cell.font = MANAGER_FONT_NONISSUE
+
+                    # Restore manager comment
+                    if "manager_comment" in user_data:
+                        cell = master_ws.cell(row=master_row, column=manager_comment_col)
+                        cell.value = user_data["manager_comment"]
+                        cell.alignment = COMMENT_ALIGNMENT
+                        cell.fill = MANAGER_COMMENT_FILL
+                        cell.border = MANAGER_COMMENT_BORDER
+
+                    # Restore screenshot (not for Script)
+                    if not is_script and screenshot_col and "screenshot" in user_data:
+                        cell = master_ws.cell(row=master_row, column=screenshot_col)
+                        cell.value = sanitize_for_excel(user_data["screenshot"])
+                        if "screenshot_hyperlink" in user_data:
+                            cell.hyperlink = user_data["screenshot_hyperlink"]
+                        cell.fill = SCREENSHOT_FILL
+                        cell.alignment = SCREENSHOT_ALIGNMENT
+                        cell.border = SCREENSHOT_BORDER
+                        cell.font = SCREENSHOT_FONT_NORMAL
 
         stats["restored"] += sheet_restored
         stats["orphaned"] += sheet_orphaned
