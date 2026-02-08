@@ -5,3 +5,4 @@ Build
 Build 499: Face category + Facial tracker + optimizations
 Build: Unified data model - remove System 2 + row union merge, add ADD/OVERWRITE
 Build: Duplicate row replication - two-pass restore with all_primary index
+Build: Hide empty STATUS/MANAGER_COMMENT columns individually
