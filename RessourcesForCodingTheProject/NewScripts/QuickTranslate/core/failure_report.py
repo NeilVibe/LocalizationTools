@@ -535,6 +535,7 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
         total_skipped_excluded = results.get("total_skipped_excluded", 0)
         files_processed = results.get("files_processed", 0)
 
+        total_unchanged = max(0, total_matched - total_updated - total_skipped_translated)
         total_success = total_updated
         total_failures = (total_not_found + total_strorigin_mismatch + total_skipped +
                          total_skipped_translated + total_skipped_excluded)
@@ -544,6 +545,7 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
             "total_corrections": total_corrections,
             "total_success": total_success,
             "total_failures": total_failures,
+            "unchanged": total_unchanged,
             "success_rate": (total_success / total_corrections * 100) if total_corrections > 0 else 0,
             "failure_rate": (total_failures / total_corrections * 100) if total_corrections > 0 else 0,
             "matched": total_matched,
@@ -565,7 +567,7 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
             not_found = file_result.get("not_found", 0)
 
             # Count failures for this file
-            failed = corrections - updated
+            failed = corrections - matched
             success_rate = (updated / corrections * 100) if corrections > 0 else 0
 
             # Extract language from filename
@@ -614,12 +616,14 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
         matched = results.get("matched", 0)
         updated = results.get("updated", 0)
         not_found = results.get("not_found", 0)
+        strorigin_mismatch = results.get("strorigin_mismatch", 0)
         skipped_non_script = results.get("skipped_non_script", 0)
         skipped_translated = results.get("skipped_translated", 0)
         skipped_excluded = results.get("skipped_excluded", 0)
 
+        unchanged = max(0, matched - updated - skipped_translated)
         total_success = updated
-        total_failures = (not_found + skipped_non_script +
+        total_failures = (not_found + strorigin_mismatch + skipped_non_script +
                         skipped_translated + skipped_excluded)
 
         aggregated["summary"] = {
@@ -627,11 +631,13 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
             "total_corrections": corrections_count,
             "total_success": total_success,
             "total_failures": total_failures,
+            "unchanged": unchanged,
             "success_rate": (total_success / corrections_count * 100) if corrections_count > 0 else 0,
             "failure_rate": (total_failures / corrections_count * 100) if corrections_count > 0 else 0,
             "matched": matched,
             "updated": updated,
             "not_found": not_found,
+            "strorigin_mismatch": strorigin_mismatch,
             "skipped_non_script": skipped_non_script,
             "skipped_translated": skipped_translated,
             "skipped_excluded": skipped_excluded,
@@ -975,6 +981,15 @@ def _write_summary_sheet(
     sheet.write(row, 2, summary["success_rate"] / 100, formats["success_percent"])
     row += 1
 
+    # Unchanged row
+    unchanged = summary.get("unchanged", 0)
+    if unchanged > 0:
+        unchanged_rate = unchanged / summary["total_corrections"] if summary["total_corrections"] > 0 else 0
+        sheet.write(row, 0, "UNCHANGED (Already Correct)", formats["label"])
+        sheet.write(row, 1, unchanged, formats["number_even"])
+        sheet.write(row, 2, unchanged_rate, formats["percent_even"])
+        row += 1
+
     # Failure row
     sheet.write(row, 0, "FAILURE (Total)", formats["label"])
     sheet.write(row, 1, summary["total_failures"], formats["failure_number"])
@@ -1164,9 +1179,8 @@ def _write_detailed_sheet(workbook, data: Dict, formats: Dict):
     row += 1
     header_row = row - 1
 
-    # Data rows (limit to 10000 to avoid performance issues)
-    max_rows = 10000
-    failures_to_write = data["detailed_failures"][:max_rows]
+    # Data rows (no cap - write ALL failures)
+    failures_to_write = data["detailed_failures"]
 
     for i, failure in enumerate(failures_to_write):
         # Alternate row colors
@@ -1180,11 +1194,6 @@ def _write_detailed_sheet(workbook, data: Dict, formats: Dict):
         sheet.write(row, 4, failure.get("reason", ""), fmt_cell)
         sheet.write(row, 5, failure.get("target_file", ""), fmt_cell)
         row += 1
-
-    # Add note if truncated
-    if total_failures > max_rows:
-        row += 1
-        sheet.write(row, 0, f"Note: Showing first {max_rows} of {total_failures} failures", formats["timestamp"])
 
     # Add autofilter
     if failures_to_write:
