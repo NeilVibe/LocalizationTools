@@ -69,7 +69,7 @@ def test_scenario_1_data_starts_after_row_11():
         compiler_module.MASTER_FOLDER_CN = master_cn
 
         from core.compiler import collect_all_master_data
-        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
+        (_, _, result) = collect_all_master_data(tester_mapping={})
 
         print(f"Result: {result}")
 
@@ -136,7 +136,7 @@ def test_scenario_2_lowercase_status_header():
         compiler_module.MASTER_FOLDER_CN = master_cn
 
         from core.compiler import collect_all_master_data
-        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
+        (_, _, result) = collect_all_master_data(tester_mapping={})
 
         print(f"Result: {result}")
 
@@ -201,7 +201,7 @@ def test_scenario_3_status_without_underscore():
         compiler_module.MASTER_FOLDER_CN = master_cn
 
         from core.compiler import collect_all_master_data
-        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
+        (_, _, result) = collect_all_master_data(tester_mapping={})
 
         print(f"Result: {result}")
 
@@ -263,7 +263,7 @@ def test_scenario_4_tester_status_prefix():
         compiler_module.MASTER_FOLDER_CN = master_cn
 
         from core.compiler import collect_all_master_data
-        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
+        (_, _, result) = collect_all_master_data(tester_mapping={})
 
         print(f"Result: {result}")
 
@@ -377,7 +377,7 @@ def test_scenario_5_real_user_structure():
         compiler_module.MASTER_FOLDER_CN = master_cn
 
         from core.compiler import collect_all_master_data
-        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
+        (_, _, result) = collect_all_master_data(tester_mapping={})
 
         print(f"\nResult categories: {list(result.keys())}")
 
@@ -471,7 +471,7 @@ def test_scenario_6_all_empty_status():
         compiler_module.MASTER_FOLDER_CN = master_cn
 
         from core.compiler import collect_all_master_data
-        (_, _, _, _, result) = collect_all_master_data(tester_mapping={})
+        (_, _, result) = collect_all_master_data(tester_mapping={})
 
         print(f"Result: {result}")
 

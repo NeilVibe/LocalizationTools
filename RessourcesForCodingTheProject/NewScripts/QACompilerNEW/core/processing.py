@@ -396,7 +396,6 @@ def process_sheet(
     is_english: bool = True,
     image_mapping: Dict = None,
     xlsx_path: Path = None,
-    manager_status: Dict = None,
     prefiltered_rows: List[int] = None,
     master_index: Dict = None
 ) -> Dict:
@@ -405,6 +404,10 @@ def process_sheet(
 
     Uses CONTENT-BASED MATCHING to find correct master row for each QA row.
     This enables processing QA files with mixed old/new structure.
+
+    Manager status preservation is handled by System 1 (extract_tester_data_from_master
+    + restore_tester_data_to_master in excel_ops.py) during get_or_create_master().
+    ADD/OVERWRITE: If tester changes their comment, stale manager response is cleared.
 
     Matching Strategy:
     - Standard (Quest, Knowledge, etc.): STRINGID + Translation, fallback to Translation only
@@ -419,7 +422,6 @@ def process_sheet(
         is_english: Whether file is English (affects column selection)
         image_mapping: Dict mapping original_name -> new_name
         xlsx_path: Path to QA xlsx file (for modification time)
-        manager_status: Dict for preserving manager status
         prefiltered_rows: Optional list of row numbers to process (Phase C2 optimization).
                           If provided, skips the STATUS column scan for Script categories.
         master_index: Optional pre-built master index (performance optimization).
@@ -431,8 +433,6 @@ def process_sheet(
     """
     if image_mapping is None:
         image_mapping = {}
-    if manager_status is None:
-        manager_status = {}
 
     # Get file modification time
     file_mod_time = None
@@ -442,18 +442,13 @@ def process_sheet(
     # Detect if Script category (uses MEMO instead of COMMENT, no SCREENSHOT)
     is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
 
-    # DEBUG: Log manager_status for Script categories
-    # NOTE: manager_status here is already sheet-level: {(stringid, comment): {username: info}}
+    # DEBUG: Log for Script categories
     if is_script:
         file_name = xlsx_path.name if xlsx_path else "unknown"
         _script_debug_log(f"")
         _script_debug_log(f"{'='*60}")
         _script_debug_log(f"[PROCESS_SHEET] {category}/{file_name}/{username}")
         _script_debug_log(f"{'='*60}")
-        _script_debug_log(f"  manager_status keys (sheet-level): {len(manager_status)}")
-        if manager_status:
-            sample_keys = list(manager_status.keys())[:3]
-            _script_debug_log(f"  Sample keys: {sample_keys}")
         _script_debug_log(f"  qa_ws.max_row: {qa_ws.max_row}")
         _script_debug_log(f"  master_ws.max_row: {master_ws.max_row}")
         _script_debug_flush()
@@ -505,15 +500,6 @@ def process_sheet(
         master_screenshot_col = get_or_create_user_screenshot_column(master_ws, username, master_manager_comment_col)
     else:
         master_screenshot_col = None  # Script has no screenshot column
-
-    # Find STRINGID column in master (for manager status lookup)
-    # For Script: try EventName first, then STRINGID
-    if is_script:
-        master_stringid_col = find_column_by_header(master_ws, "EventName")
-        if not master_stringid_col:
-            master_stringid_col = find_column_by_header(master_ws, "STRINGID")
-    else:
-        master_stringid_col = find_column_by_header(master_ws, "STRINGID")
 
     result = {
         "comments": 0,
@@ -646,6 +632,20 @@ def process_sheet(
             tester_status_cell.value = status_type
             tester_status_cell.alignment = MANAGER_STATUS_ALIGNMENT
 
+        # ADD/OVERWRITE: If tester changed their comment, clear stale manager response.
+        # System 1 (restore_tester_data_to_master) already placed preserved data on this row.
+        # If the fresh QA comment differs from what was preserved, the old manager response
+        # is stale (it was for the old comment) and must be cleared.
+        if qa_comment_value and should_compile_comment:
+            existing_master_comment = master_ws.cell(row=master_row, column=master_comment_col).value
+            if existing_master_comment:
+                existing_text = extract_comment_text(str(existing_master_comment))
+                fresh_text = str(qa_comment_value).strip()
+                if existing_text and fresh_text and existing_text != fresh_text:
+                    # Tester changed comment - clear manager response (it was for the old comment)
+                    master_ws.cell(row=master_row, column=master_user_status_col).value = None
+                    master_ws.cell(row=master_row, column=master_manager_comment_col).value = None
+
         # Process COMMENT
         if qa_comment_value and should_compile_comment:
             if str(qa_comment_value).strip():
@@ -762,80 +762,6 @@ def process_sheet(
                             master_screenshot_cell.font = SCREENSHOT_FONT_NORMAL
 
                     result["screenshots"] += 1
-
-        # Apply manager STATUS and MANAGER_COMMENT
-        # Key = (stringid, tester_comment_text) - Manager status is paired with tester's comment
-        # STRINGID from MASTER row (reliable), comment from QA file (what tester wrote)
-
-        # Get tester's comment from QA file for lookup (reuse already-read value)
-        tester_comment_for_lookup = ""
-        if qa_comment_value and str(qa_comment_value).strip():
-            tester_comment_for_lookup = extract_comment_text(qa_comment_value)
-
-        # DEBUG: Log lookup attempts for Script
-        if is_script and qa_row <= 5:  # First 5 rows only
-            _script_debug_log(f"  Row {qa_row}: tester_comment='{tester_comment_for_lookup[:30] if tester_comment_for_lookup else 'EMPTY'}...'")
-
-        if manager_status:
-            # Get STRINGID from MASTER row (not QA file - QA file might have empty STRINGID!)
-            master_stringid = ""
-            if master_stringid_col:
-                stringid_val = master_ws.cell(row=master_row, column=master_stringid_col).value
-                if stringid_val:
-                    master_stringid = str(stringid_val).strip()
-
-            # Primary key: (stringid, tester_comment_text)
-            manager_key = (master_stringid, tester_comment_for_lookup)
-
-            # DEBUG: Log lookup for Script
-            if is_script and qa_row <= 5:
-                found = manager_key in manager_status
-                key_str = str(manager_key)[:80]
-                _script_debug_log(f"  Row {qa_row}: key={key_str}, found={found}")
-                _script_debug_flush()
-
-            # Fallback: ("", tester_comment_text) if exact match fails (STRINGID changed)
-            if manager_key not in manager_status:
-                fallback_key = ("", tester_comment_for_lookup)
-                if fallback_key in manager_status:
-                    manager_key = fallback_key
-
-            if manager_key in manager_status:
-                user_data = manager_status[manager_key]
-                if username in user_data:
-                    manager_info = user_data[username]
-                    # Handle both old format (string) and new format (dict)
-                    if isinstance(manager_info, dict):
-                        status_value = manager_info.get("status")
-                        manager_comment_value = manager_info.get("manager_comment")
-                    else:
-                        # Backwards compatibility: old format was just the status string
-                        status_value = manager_info
-                        manager_comment_value = None
-
-                    # Apply status
-                    if status_value:
-                        status_cell = master_ws.cell(row=master_row, column=master_user_status_col)
-                        status_cell.value = status_value
-                        status_cell.alignment = MANAGER_STATUS_ALIGNMENT
-                        if status_value == "FIXED":
-                            status_cell.font = MANAGER_FONT_FIXED
-                        elif status_value == "REPORTED":
-                            status_cell.font = MANAGER_FONT_REPORTED
-                        elif status_value == "CHECKING":
-                            status_cell.font = MANAGER_FONT_CHECKING
-                        elif status_value in ("NON-ISSUE", "NON ISSUE"):
-                            status_cell.font = MANAGER_FONT_NONISSUE
-                        result["manager_restored"] += 1
-
-                    # Apply manager comment
-                    if manager_comment_value:
-                        manager_comment_cell = master_ws.cell(row=master_row, column=master_manager_comment_col)
-                        manager_comment_cell.value = manager_comment_value
-                        manager_comment_cell.alignment = COMMENT_ALIGNMENT
-                        # Light green background to match manager status theme
-                        manager_comment_cell.fill = MANAGER_COMMENT_FILL
-                        manager_comment_cell.border = MANAGER_COMMENT_BORDER
 
     # DEBUG: Log final stats for Script categories
     if is_script:
