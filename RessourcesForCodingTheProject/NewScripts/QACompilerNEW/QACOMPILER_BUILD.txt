@@ -3,3 +3,4 @@ Build - Script-type optimization (Sequencer/Dialog)
 Build - Script preprocessing robustness fix
 Build
 Build 499: Face category + Facial tracker + optimizations
+Build: Unified data model - remove System 2 + row union merge, add ADD/OVERWRITE
