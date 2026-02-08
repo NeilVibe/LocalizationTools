@@ -1063,6 +1063,15 @@ def merge_missing_rows_into_master(master_wb, qa_folders, template_xlsx_path, ca
                         "number_format": ref_cell.number_format,
                         "alignment": copy(ref_cell.alignment),
                     }
+                # Debug: log what we captured
+                styled_cols = sum(1 for c in ref_styles.values() if c["font"].bold or (c["fill"].fgColor and c["fill"].fgColor.rgb != '00000000'))
+                print(f"    [STYLE-DEBUG] {sheet_name}: captured {len(ref_styles)} ref_styles, {styled_cols} with real styling (bold/fill)")
+                if ref_styles:
+                    sample = ref_styles[1]
+                    fill_rgb = sample["fill"].fgColor.rgb if sample["fill"].fgColor else "None"
+                    print(f"    [STYLE-DEBUG]   Col 1 sample: bold={sample['font'].bold}, fill={fill_rgb}, border={sample['border'].left.style if sample['border'].left else None}")
+            else:
+                print(f"    [STYLE-DEBUG] {sheet_name}: max_row={master_ws.max_row}, NO ref_styles captured (no row 2)")
 
             sheet_added = 0
             for row_tuple in qa_data:
