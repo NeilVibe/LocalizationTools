@@ -1,6 +1,6 @@
 # QuickTranslate User Guide
 
-**Version 3.6.0** | February 2026 | LocaNext Project
+**Version 3.8.0** | February 2026 | LocaNext Project
 
 ---
 
@@ -16,12 +16,13 @@
 4. [Core Concepts](#4-core-concepts)
 5. [LOOKUP Features](#5-lookup-features)
 6. [TRANSFER Features](#6-transfer-features)
-7. [Match Types](#7-match-types)
-8. [Workflows](#8-workflows)
-9. [Output Files](#9-output-files)
-10. [Troubleshooting](#10-troubleshooting)
-11. [Reference](#11-reference)
-12. [Appendix](#12-appendix)
+7. [Find Missing Translations](#7-find-missing-translations)
+8. [Match Types](#8-match-types)
+9. [Workflows](#9-workflows)
+10. [Output Files](#10-output-files)
+11. [Troubleshooting](#11-troubleshooting)
+12. [Reference](#12-reference)
+13. [Appendix](#13-appendix)
 
 ---
 
@@ -150,13 +151,12 @@ Save as `input.xlsx`
 ### Step 2: Configure
 
 1. Launch QuickTranslate
-2. Set **Format**: Excel
-3. Set **Mode**: File
-4. Set **Match Type**: Substring Match
+2. Place `input.xlsx` in the `Source/` folder (or browse to any folder)
+3. Set **Match Type**: Substring Match
 
 ### Step 3: Select & Generate
 
-1. Click **Browse** → select `input.xlsx`
+1. Source path is pre-populated with `Source/` folder (or click **Browse** to choose another folder)
 2. Click **Generate**
 
 ### Step 4: View Results
@@ -184,13 +184,12 @@ Columns can be in any order - QuickTranslate auto-detects them.
 
 ### Step 2: Configure
 
-1. Set **Format**: Excel
-2. Set **Mode**: File
-3. Set **Match Type**: StringID + StrOrigin (STRICT)
+1. Place corrections Excel in the `Source/` folder (or browse to any folder)
+2. Set **Match Type**: StringID + StrOrigin (STRICT)
 
 ### Step 3: Select Files
 
-1. **Source**: Browse → select your corrections Excel
+1. **Source**: Pre-populated with `Source/` folder (or click Browse to choose another folder)
 2. **Target**: Browse → select LOC folder (or leave default)
 
 ### Step 4: Transfer
@@ -232,76 +231,63 @@ Check the modified `languagedata_*.xml` files in target folder.
 
 ---
 
-## 3.5 Find Missing Translations (NEW in v3.5.0)
+## 3.5 Find Missing Translations (Enhanced in v3.7.0)
 
-**Goal:** Find Korean strings in TARGET that are MISSING from SOURCE by (StrOrigin, StringId) key
+**Goal:** Find Korean strings in TARGET that are MISSING from SOURCE — with 4 match modes, fuzzy matching, and category clustering.
 
-This feature helps localization teams identify which strings still need translation across all target language files.
+### Quick Start Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. Set Source (corrections) and Target (LOC folder)            │
+│  2. Click "Find Missing Translations" (purple button)           │
+│  3. Popup appears → Choose match mode + threshold               │
+│  4. Select output directory                                     │
+│  5. View results: Excel reports + Close folders per language     │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ### Step 1: Prepare Source & Target
 
-- **Source:** Your reference/corrections folder or file (contains keys you expect to find)
-- **Target:** LOC folder with `languagedata_*.xml` files (the target language files to check)
+- **Source:** Reference/corrections folder (contains keys you expect)
+- **Target:** LOC folder with `languagedata_*.xml` files
 
-### Step 2: Configure
-
-1. **Source:** Browse to your corrections folder or file
-2. **Target:** Browse to LOC folder (or leave default)
-
-### Step 3: Find Missing
+### Step 2: Click Find Missing
 
 1. Click **Find Missing Translations** (purple button in Quick Actions)
-2. Select output directory when prompted
-3. Wait for analysis to complete
+2. A **parameter popup** appears:
+
+```
+┌─────────────────────────────────────────────┐
+│  Find Missing Translations - Parameters     │
+├─────────────────────────────────────────────┤
+│  Match Type:                                │
+│    ● StringID + KR (Strict)                 │
+│    ○ StringID + KR (Fuzzy)                  │
+│    ○ KR only (Strict)                       │
+│    ○ KR only (Fuzzy)                        │
+│                                             │
+│  Fuzzy Threshold: [====|====] 0.85          │
+│  (only enabled when Fuzzy is selected)      │
+│                                             │
+│  [  Run  ]            [  Cancel  ]          │
+└─────────────────────────────────────────────┘
+```
+
+### Step 3: Select Output & Run
+
+1. Choose output directory when prompted
+2. Watch detailed progress in terminal and GUI log area
+3. Progress tracks: filtering, encoding, matching per language
 
 ### Step 4: Review Output
 
-The feature generates:
-
 | Output | Description |
 |--------|-------------|
-| **Per-language XML** | `MISSING_FRE_*.xml`, `MISSING_GER_*.xml`, etc. - one per language |
-| **Excel Report** | `MISSING_REPORT_*.xlsx` - comprehensive summary |
+| **Per-language Excel** | `MISSING_{LANG}_{timestamp}.xlsx` — one per language with category clustering |
+| **Close folders** | `Close_{LANG}/` — EXPORT-mirrored XML structure for direct re-import |
 
-### Excel Report Contents
-
-| Sheet | Content |
-|-------|---------|
-| **Summary** | Per-language breakdown with missing counts, Korean chars, Korean words |
-| **Info** | Full statistics (total source keys, total misses, etc.) |
-| **Per-Language** | Detail sheets with first 1000 entries per language |
-
-### Example Output
-
-```
-═══════════════════════════════════════════════════════════
-MISSING TRANSLATION REPORT
-═══════════════════════════════════════════════════════════
-Source keys (StrOrigin, StringId):  150,000
-Target Korean entries:               8,500
-Total HITS (found in source):        7,200
-Total MISSES (need translation):     1,300
-Total Korean characters:            45,000
-Total Korean words/sequences:       12,500
-
-PER-LANGUAGE BREAKDOWN
-═══════════════════════════════════════════════════════════
-Language   Missing   KR Chars   KR Words   Hits
-FRE            120      4,500      1,200    600
-GER            115      4,300      1,150    605
-SPA            130      4,800      1,280    590
-...
-═══════════════════════════════════════════════════════════
-```
-
-### Use Cases
-
-| Scenario | How This Helps |
-|----------|----------------|
-| **Pre-translation planning** | Know exactly how many strings and words need translation |
-| **Progress tracking** | Compare reports over time to see translation progress |
-| **Gap analysis** | Identify which languages have the most missing translations |
-| **Re-import failed entries** | Per-language XML files can be directly re-imported as corrections |
+> See [Section 7: Find Missing Translations](#7-find-missing-translations) for full details on all 4 match modes, flowcharts, category clustering, and output format.
 
 ---
 
@@ -381,27 +367,18 @@ The **Generate** button performs read-only translation lookup:
 Input (Korean text) → Match against stringtables → Output Excel
 ```
 
-### Input Modes
+### Source Folder (Auto-Detect)
 
-| Mode | Description |
-|------|-------------|
-| **File** | Single Excel or XML file |
-| **Folder** | All files in folder (recursive) |
+QuickTranslate always operates in **folder mode** and automatically detects file types:
 
-### Format Modes
+| Extensions | Detection |
+|------------|-----------|
+| `.xlsx`, `.xls` | Excel corrections (auto-detected) |
+| `.xml`, `.loc.xml` | XML corrections (auto-detected) |
 
-| Format | Extensions | Use Case |
-|--------|------------|----------|
-| **Excel** | .xlsx, .xls | Korean text in Column A |
-| **XML** | .xml, .loc.xml | LocStr elements with StringId |
+**Mixed file support:** Place both Excel AND XML files in the same source folder — QuickTranslate processes them all and combines into a single output.
 
-### Mixed File Support (Folder Mode)
-
-When using Folder mode, QuickTranslate automatically detects and processes:
-- All `.xlsx` and `.xls` files
-- All `.xml` files
-
-Files are combined into a single output.
+**Default Source folder:** A `Source/` folder is created alongside the app for convenient file drop. The source path is pre-populated on startup. Browse to any other folder at any time.
 
 ## 5.2 StringID Lookup
 
@@ -430,7 +407,7 @@ Find StringID from text in ANY language:
 Enable the checkbox to include files from `ToSubmit/` folder:
 
 - Automatically loads correction files staged for submission
-- Combines with selected source file/folder
+- Combines with selected source folder
 - Useful for batch processing pending corrections
 
 ---
@@ -474,19 +451,12 @@ Standard LocStr format:
 
 **Case-insensitive attributes:** StringId, StringID, stringid, STRINGID all work.
 
-## 6.3 Transfer Modes
+## 6.3 Source Folder (Auto-Detect)
 
-### File Mode
-- Source: Single Excel or XML file
-- Target: LOC folder or specific languagedata_*.xml
+QuickTranslate always uses **folder mode** — place your corrections (Excel, XML, or both) in a source folder and point to the target LOC folder.
 
-**Language Detection:** Extracts language code from filename:
-- `corrections_ENG.xlsx` → `languagedata_eng.xml`
-- `languagedata_FRE.xml` → `languagedata_fre.xml`
-
-### Folder Mode
-- Source: Folder with multiple Excel/XML files organized by language
-- Target: LOC folder (locdev__ or loc)
+- **Source**: Folder with Excel/XML correction files (organized by language)
+- **Target**: LOC folder (locdev__ or loc)
 
 **Smart Auto-Recursive Detection:** QuickTranslate automatically detects language from folder structure:
 
@@ -598,9 +568,49 @@ The GUI log area shows a condensed version:
 
 If the folder cannot be fully analyzed (e.g., permission errors, unreadable files), the analysis gracefully reports the issue without blocking the operation.
 
-## 6.7 Cross-Match Analysis
+## 6.7 Source File Validation (NEW in v3.8.0)
 
-Before a **TRANSFER** executes in **Folder mode**, QuickTranslate performs a cross-match analysis. This prints a detailed pairing report to the terminal showing which source correction files will be applied to which target languagedata files.
+When you browse a **Source** folder, QuickTranslate automatically dry-run parses every file and reports per-file results. This tells you if your files will parse correctly BEFORE you run any transfer.
+
+### What It Shows
+
+| Information | Description |
+|-------------|-------------|
+| **Per-file status** | OK, EMPTY, or FAILED with error message |
+| **File type** | XML or Excel (auto-detected) |
+| **Language** | Detected language code per file |
+| **Entry count** | Number of entries successfully parsed |
+| **Per-language totals** | Aggregate entry counts per language |
+
+### Terminal Output Example
+
+```
+------------------------------------------------------------
+  SOURCE FILE VALIDATION (Dry-Run Parse)
+------------------------------------------------------------
+  #    Filename                       Type   Lang     Entries  Status
+  ---- ------------------------------ ------ -------- -------- ----------
+  1    corrections_fre.xml            XML    FRE         1,234  OK
+  2    patch_ger.xlsx                 Excel  GER           456  OK
+  3    bad_file.xlsx                  Excel  ENG             0  FAILED (no valid columns)
+------------------------------------------------------------
+  SUMMARY: 1 XML good, 1 Excel good, 1 Excel failed
+  Total entries parsed: 1,690
+  Per-language: FRE: 1,234  GER: 456
+  PARSE ERRORS (1):
+    bad_file.xlsx: No StringID/StrOrigin columns found
+------------------------------------------------------------
+```
+
+### GUI Log Summary
+
+- **All good:** Green message: `"Source validation: 1 XML good, 1 Excel good, 1,690 entries total"`
+- **With errors:** Yellow summary + red per-error details
+- **Per-language:** Info line: `"Per-language: FRE:1234, GER:456"`
+
+## 6.8 Cross-Match Analysis
+
+Before a **TRANSFER** executes, QuickTranslate performs a cross-match analysis. This prints a detailed pairing report to the terminal showing which source correction files will be applied to which target languagedata files.
 
 ### What It Shows
 
@@ -647,9 +657,9 @@ The cross-match analysis helps verify that:
 
 If any source files have no matching target, or vice versa, they are listed under an **UNMATCHED** section so you can investigate before the transfer proceeds.
 
-## 6.8 Full Transfer Tree
+## 6.9 Full Transfer Tree
 
-When you click **TRANSFER** with folder mode, QuickTranslate displays a complete transfer tree showing every file that will be processed.
+When you click **TRANSFER**, QuickTranslate displays a complete transfer tree showing every file that will be processed.
 
 ### What It Shows
 
@@ -711,7 +721,7 @@ The full transfer tree lets you verify:
 3. **Target mapping correct:** Each file goes to the right `languagedata_*.xml`
 4. **Skip warnings visible:** Know before transferring if any files will be skipped
 
-## 6.10 Transfer Scope Option (NEW in v3.4.0)
+## 6.10 Transfer Scope Option
 
 Choose which entries to transfer based on their current translation state.
 
@@ -790,9 +800,460 @@ QuickTranslate automatically discovers available languages from your LOC folder.
 
 ---
 
-# 7. Match Types
+# 7. Find Missing Translations
 
-## 7.1 Substring Match (Original)
+> **NOTE**
+>
+> This is a major feature added in v3.5.0 and significantly enhanced in v3.7.0 with 4 match modes, KR-SBERT fuzzy matching, category clustering, and Close folder output.
+
+## 7.1 Overview
+
+**Find Missing Translations** identifies Korean (untranslated) strings in TARGET language files that are **not present** in your SOURCE reference. It answers the question: *"Which strings still need translation?"*
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│                FIND MISSING TRANSLATIONS                       │
+├───────────────────────────────────────────────────────────────┤
+│                                                               │
+│  SOURCE (reference)          TARGET (language files)          │
+│  ┌───────────────┐           ┌───────────────┐               │
+│  │ Corrections   │           │ languagedata_  │               │
+│  │ folder/file   │           │ ENG/FRE/GER/.. │               │
+│  │               │           │                │               │
+│  │ StringIDs +   │  compare  │ Korean entries │               │
+│  │ StrOrigin     │◄─────────►│ (untranslated) │               │
+│  │ texts         │           │                │               │
+│  └───────────────┘           └───────────────┘               │
+│         │                           │                         │
+│         └──── MATCH? ───────────────┘                         │
+│               │            │                                  │
+│             HIT          MISS                                 │
+│         (found in      (MISSING -                             │
+│          source)       needs translation)                     │
+│                            │                                  │
+│                    ┌───────┴────────┐                         │
+│                    │ Excel Report   │                         │
+│                    │ Close Folders  │                         │
+│                    └────────────────┘                         │
+└───────────────────────────────────────────────────────────────┘
+```
+
+## 7.2 Match Mode Selection
+
+When you click **Find Missing Translations**, a popup lets you choose from 4 match modes:
+
+| Mode | Key Used | Matching | Speed | Best For |
+|------|----------|----------|-------|----------|
+| **StringID + KR (Strict)** | (StrOrigin, StringID) | Exact | Instant | Default, most precise |
+| **StringID + KR (Fuzzy)** | StringID groups | KR-SBERT cosine | Fast | Text rewording with same IDs |
+| **KR only (Strict)** | StrOrigin text | Exact | Instant | Ignore StringID differences |
+| **KR only (Fuzzy)** | All StrOrigin texts | KR-SBERT cosine | Slow | Most permissive, catches all |
+
+### Mode Decision Guide
+
+```
+Do your corrections have the SAME StringIDs as the target?
+  │
+  ├─ YES → "StringID + KR" modes
+  │    │
+  │    ├─ Is the Korean text EXACTLY the same?
+  │    │   ├─ YES → StringID + KR (Strict)    ← Recommended default
+  │    │   └─ NO  → StringID + KR (Fuzzy)     ← Handles rewording
+  │    │
+  │
+  └─ NO / UNSURE → "KR only" modes
+       │
+       ├─ Is the Korean text EXACTLY the same?
+       │   ├─ YES → KR only (Strict)
+       │   └─ NO  → KR only (Fuzzy)           ← Most permissive
+```
+
+## 7.3 How Each Mode Works
+
+### Mode 1: StringID + KR (Strict)
+
+> **PRO TIP**
+>
+> This is the **recommended default**. Fastest and most precise.
+
+**Matching rule:** Both StrOrigin AND StringID must match exactly.
+
+```
+SOURCE key: (StrOrigin="확인 버튼", StringID="UI_001")
+TARGET key: (StrOrigin="확인 버튼", StringID="UI_001")
+Result: HIT ✓  (both match exactly)
+
+SOURCE key: (StrOrigin="확인 버튼", StringID="UI_001")
+TARGET key: (StrOrigin="확인 버튼", StringID="UI_002")
+Result: MISS ✗  (StringID differs)
+
+SOURCE key: (StrOrigin="확인", StringID="UI_001")
+TARGET key: (StrOrigin="확인 버튼", StringID="UI_001")
+Result: MISS ✗  (StrOrigin text differs)
+```
+
+**Data flow:**
+
+```
+Step 1: Collect SOURCE composite keys → Set[(StrOrigin, StringID)]
+Step 2: Filter TARGET to Korean-only entries (untranslated)
+Step 3: For each Korean entry:
+          if (entry.str_origin, entry.string_id) IN source_keys:
+            → HIT (found, skip)
+          else:
+            → MISS (report as missing)
+Step 4: Generate Excel + Close folders for MISS entries
+
+ENCODING COST: Zero (pure set lookup, O(1) per entry)
+```
+
+### Mode 2: StringID + KR (Fuzzy)
+
+> **NOTE**
+>
+> Requires KR-SBERT model (`KRTransformer/` folder). Uses **pre-filtering by StringID** to minimize encoding cost.
+
+**Matching rule:** StringID must exist in source. If yes, compare StrOrigin texts using KR-SBERT cosine similarity.
+
+```
+TARGET entry: StringID="UI_001", StrOrigin="확인 버튼을 누르세요"
+
+Step 1: Is "UI_001" in SOURCE?
+  NO  → INSTANT MISS (zero encoding!)
+  YES → Continue to fuzzy comparison
+
+Step 2: Encode TARGET text with KR-SBERT
+Step 3: Compare against all SOURCE texts with StringID="UI_001":
+  SOURCE group for UI_001:
+    "확인 버튼"        → similarity 0.92  ← above threshold
+    "버튼을 확인"      → similarity 0.88  ← above threshold
+
+Step 4: max_similarity = 0.92 ≥ threshold (0.85) → HIT ✓
+```
+
+**Pre-filtering flowchart:**
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  STRINGID + KR (FUZZY) - Smart Filtering Pipeline        │
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│  SOURCE: 150,000 composite keys                          │
+│    ↓                                                     │
+│  Group by StringID:                                      │
+│    "UI_001" → ["확인 버튼", "버튼을 확인"]               │
+│    "UI_002" → ["취소"]                                   │
+│    ... (50K unique StringIDs, 1-5 texts each)            │
+│    ↓                                                     │
+│  Pre-encode ONLY grouped texts with KR-SBERT             │
+│  Store: source_group_embeddings[StringID] = vectors      │
+│                                                          │
+│  TARGET: 23,000 Korean entries                           │
+│    ↓                                                     │
+│  For each entry:                                         │
+│    StringID in source?                                   │
+│      NO  → ★ INSTANT MISS (no encoding!) ★              │
+│      YES → Encode 1 text, compare vs group               │
+│            sim ≥ 0.85? → HIT                             │
+│            sim < 0.85? → MISS (below threshold)          │
+│                                                          │
+│  Result: 2,456 INSTANT MISS + 1,500 BELOW THRESHOLD     │
+│          = 3,956 total missing                           │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Mode 3: KR only (Strict)
+
+**Matching rule:** Only StrOrigin text must match. StringID is ignored entirely.
+
+```
+SOURCE texts: {"확인 버튼", "취소 버튼", "시작하기", ...}
+
+TARGET entry: StrOrigin="확인 버튼", StringID="UI_999"
+  "확인 버튼" IN source_texts? → YES → HIT ✓
+  (StringID "UI_999" is completely ignored)
+
+TARGET entry: StrOrigin="확인버튼", StringID="UI_001"
+  "확인버튼" IN source_texts? → NO → MISS ✗
+  (Space difference makes it a miss in strict mode)
+```
+
+> **NOTE**
+>
+> KR only (Strict) is **more permissive** than StringID + KR (Strict) because it ignores StringID differences. Same text with different StringIDs will match.
+
+**Encoding cost:** Zero (pure set lookup).
+
+### Mode 4: KR only (Fuzzy)
+
+> **WARNING**
+>
+> This is the **slowest mode**. Encodes ALL source texts and ALL target texts with KR-SBERT. Use only when you need maximum permissiveness.
+
+**Matching rule:** Find the most similar source text using cosine similarity. No StringID filtering.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  KR ONLY (FUZZY) - Full Brute Force Pipeline             │
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│  SOURCE: 120,000 unique StrOrigin texts                  │
+│    ↓                                                     │
+│  Encode ALL with KR-SBERT (batch 100)                    │
+│  → source_embeddings: shape (120K, 768)                  │
+│  → L2 normalize                                          │
+│  TIME: ~5-10 minutes                                     │
+│                                                          │
+│  TARGET: 23,000 Korean entries                           │
+│    ↓                                                     │
+│  Process in batches of 100:                              │
+│    Encode batch → (100, 768)                             │
+│    L2 normalize                                          │
+│    Matrix multiply: (100, 768) × (768, 120K)             │
+│    = (100, 120K) similarity scores                       │
+│    max_sim per row ≥ 0.85? → HIT / MISS                 │
+│  TIME: ~2-5 minutes                                      │
+│                                                          │
+│  NO pre-filtering possible (no StringID constraint)      │
+└──────────────────────────────────────────────────────────┘
+```
+
+## 7.4 Performance Comparison
+
+| Mode | Source Encode | Target Encode | Shortcuts? | Time |
+|------|-------------|---------------|------------|------|
+| **StringID+KR Strict** | None | None | Set lookup O(1) | **< 1 sec** |
+| **KR Strict** | None | None | Set lookup O(1) | **< 1 sec** |
+| **StringID+KR Fuzzy** | Per StringID group | Per entry (if SID found) | INSTANT MISS if SID not in source | **2-10 min** |
+| **KR Fuzzy** | ALL source texts | ALL target texts (batched) | None possible | **10-20 min** |
+
+> **PRO TIP**
+>
+> Start with **StringID + KR (Strict)** — it's instant and catches the most common cases. Only switch to fuzzy modes if you suspect text rewording.
+
+## 7.5 The Filtering Pipeline
+
+All modes share a common **pre-filtering** step that dramatically reduces the work:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  UNIVERSAL PRE-FILTER (all modes)                       │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  Step 1: Scan TARGET languagedata_*.xml files           │
+│                                                         │
+│  Step 2: For each LocStr entry:                         │
+│    Does Str contain Korean characters (Hangul)?         │
+│      NO  → ★ SKIP (already translated) ★               │
+│      YES → Keep for matching                            │
+│                                                         │
+│  EXAMPLE:                                               │
+│  <LocStr StringId="UI_001" StrOrigin="확인" Str="OK"/>  │
+│    → Str="OK" has no Korean → SKIP (already translated) │
+│                                                         │
+│  <LocStr StringId="UI_002" StrOrigin="취소" Str="취소"/> │
+│    → Str="취소" has Korean → KEEP (untranslated!)        │
+│                                                         │
+│  Result: Only UNTRANSLATED entries are processed        │
+│          Typically 5K-50K per language (from 200K+)     │
+└─────────────────────────────────────────────────────────┘
+```
+
+This means **no encoding is ever done on already-translated entries**. The universe is shrunk dramatically before any matching begins.
+
+## 7.6 Category Clustering
+
+Every missing entry is automatically categorized using the **EXPORT folder structure** — the same system used by LanguageDataExporter.
+
+### Category Hierarchy
+
+```
+┌─────────────────────────────────────────────────┐
+│  TIER 1: STORY (Dialog + Sequencer)             │
+│  ┌─────────────────────────────────────────┐    │
+│  │  Sequencer      → Cutscene dialogue     │    │
+│  │  AIDialog       → NPC AI dialogue       │    │
+│  │  QuestDialog    → Quest conversations   │    │
+│  │  NarrationDialog→ Narrator/voiceover    │    │
+│  └─────────────────────────────────────────┘    │
+│                                                 │
+│  TIER 2: GAME_DATA (Keyword clustering)         │
+│  ┌─────────────────────────────────────────┐    │
+│  │  Character  │  Faction  │  Gimmick      │    │
+│  │  Item       │  Knowledge│  Quest        │    │
+│  │  Region     │  Skill    │  UI           │    │
+│  │  System_Misc│           │               │    │
+│  └─────────────────────────────────────────┘    │
+│                                                 │
+│  FALLBACK: Uncategorized                        │
+└─────────────────────────────────────────────────┘
+```
+
+### How Categories Are Determined
+
+The EXPORT folder is scanned at startup. Each `.loc.xml` file is categorized by:
+
+1. **Top-level folder:** `Dialog/` → STORY, `Sequencer/` → Sequencer
+2. **Priority keywords in filename:** `item`, `quest`, `skill`, `character`, etc.
+3. **Standard folder patterns:** `UI/`, `Knowledge/`, `Faction/`, etc.
+4. **Fallback:** `System_Misc`
+
+Each StringID is mapped to exactly one category. This mapping is used in Excel reports.
+
+### Category Colors in Excel
+
+| Category | Color | Hex |
+|----------|-------|-----|
+| Sequencer | Light Yellow | `#FFE599` |
+| AIDialog | Light Green | `#C6EFCE` |
+| QuestDialog | Light Green | `#C6EFCE` |
+| NarrationDialog | Light Green | `#C6EFCE` |
+| Item | Light Purple | `#D9D2E9` |
+| Quest | Light Purple | `#D9D2E9` |
+| Character | Light Orange | `#F8CBAD` |
+| Gimmick | Light Purple | `#D9D2E9` |
+| Skill | Light Purple | `#D9D2E9` |
+| Knowledge | Light Purple | `#D9D2E9` |
+| Faction | Light Purple | `#D9D2E9` |
+| UI | Medium Green | `#A9D08E` |
+| Region | Light Orange | `#F8CBAD` |
+| System_Misc | Light Gray | `#D9D9D9` |
+| Uncategorized | Beige | `#DDD9C4` |
+
+## 7.7 Output Files
+
+### Per-Language Excel Reports
+
+**Filename:** `MISSING_{LANG}_{timestamp}.xlsx`
+
+Each language gets its own Excel file with category-clustered missing entries:
+
+| Column | Content | Example |
+|--------|---------|---------|
+| **StrOrigin** | Original Korean source text | 확인 버튼을 누르세요 |
+| **Translation** | Current target text (Korean = untranslated) | 확인 버튼을 누르세요 |
+| **StringID** | Unique string identifier | UI_Button_Confirm_001 |
+| **Category** | EXPORT-based category | UI |
+
+**Sort order:** STORY categories first (Sequencer, AIDialog, QuestDialog, NarrationDialog), then GAME_DATA alphabetically, then Uncategorized last.
+
+**Formatting:** Auto-filter enabled, column widths auto-adjusted, category cells color-coded.
+
+### Close Folders (EXPORT-Mirrored Structure)
+
+**Folder:** `Close_{LANG}/` (one per language with missing entries)
+
+Close folders mirror the EXPORT folder structure, making it easy to re-import missing entries:
+
+```
+Output/
+├── MISSING_FRE_20260206_120000.xlsx
+├── MISSING_GER_20260206_120000.xlsx
+├── Close_FRE/
+│   ├── Dialog/
+│   │   ├── AIDialog/
+│   │   │   └── npc_greetings.loc.xml
+│   │   └── QuestDialog/
+│   │       └── quest_chapter1.loc.xml
+│   ├── UI/
+│   │   └── menu_strings.loc.xml
+│   └── Item/
+│       └── weapon_names.loc.xml
+├── Close_GER/
+│   ├── Dialog/
+│   │   └── ...
+│   └── ...
+```
+
+> **PRO TIP**
+>
+> Close folders can be **directly used as correction input** for the next TRANSFER operation. The EXPORT-mirrored structure ensures files go to the right categories.
+
+## 7.8 Progress Tracking
+
+The Find Missing Translations feature provides detailed progress tracking in both the **terminal** and **GUI log area**:
+
+```
+============================================================
+FIND MISSING TRANSLATIONS - START
+  Match mode: stringid_kr_fuzzy
+  Threshold:  0.85
+  Source:     D:\corrections\source
+  Target:     F:\perforce\...\loc
+  Output:     D:\output\missing_reports
+  EXPORT:     F:\perforce\...\export__
+============================================================
+[Step 1] EXPORT indexes built: 45,293 categories, 45,293 paths
+[Step 2] Collecting SOURCE keys (use_stringid=True, is_fuzzy=True)
+[Step 2] SOURCE composite keys collected: 147,293
+[Step 3] Scanning TARGET for Korean (untranslated) entries...
+[Step 3] TARGET scan complete: 14 languages, 312,456 total Korean entries
+  ENG: 23,456 Korean entries
+  FRE: 22,890 Korean entries
+  GER: 23,100 Korean entries
+  ...
+[Step 4] Preparing fuzzy embeddings with KR-SBERT...
+[Step 4] stringid_kr_fuzzy: 48,293 unique StringID groups from 147,293 keys
+  Encoding groups: 500/48,293 (1,234 texts)
+  Encoding groups: 1,000/48,293 (2,567 texts)
+  ...
+[Step 4] Encoding complete: 48,293 groups, 152,000 total texts encoded
+[Step 5] Finding MISSES per language...
+  [1/14] Processing ENG: 23,456 Korean entries
+    Fuzzy matching: 200/23,456 (HIT=180, SID_MISS=12, BELOW_THRESH=8)
+    Fuzzy matching: 400/23,456 (HIT=365, SID_MISS=22, BELOW_THRESH=13)
+    ...
+    STRINGID_KR_FUZZY: 21,000 HIT, 1,456 StringID not in source, 1,000 below threshold
+    Excel written: MISSING_ENG_20260206_120000.xlsx (2,456 rows)
+  [2/14] Processing FRE: 22,890 Korean entries
+    ...
+[Step 6] Writing Close folders for 14 languages...
+  Close_ENG/ written
+  Close_FRE/ written
+  ...
+============================================================
+FIND MISSING TRANSLATIONS - COMPLETE
+  Total Korean entries: 312,456
+  Total HITS (matched):  280,500
+  Total MISSES:          31,956
+  Languages processed:   14
+  Excel files:           14
+  Close folders:         14
+============================================================
+```
+
+## 7.9 Use Cases
+
+| Scenario | Recommended Mode | Why |
+|----------|-----------------|-----|
+| **Pre-translation planning** | StringID+KR Strict | Fast, precise count of untranslated strings |
+| **Progress tracking** | StringID+KR Strict | Compare reports over time |
+| **Gap analysis** | KR Strict | Find missing text regardless of StringID changes |
+| **After text rewording** | StringID+KR Fuzzy | Catches similar but not identical Korean text |
+| **Maximum coverage** | KR Fuzzy | Finds everything, even across different StringIDs |
+| **Re-import corrections** | Any mode | Use Close folders as TRANSFER source |
+
+## 7.10 Fuzzy Threshold Guide
+
+The threshold (0.00 - 1.00) controls how similar two Korean texts must be for a fuzzy match:
+
+| Threshold | Sensitivity | Example Match |
+|-----------|-------------|---------------|
+| **1.00** | Exact only | "확인 버튼" ↔ "확인 버튼" only |
+| **0.95** | Very strict | Minor whitespace/punctuation differences |
+| **0.85** | Recommended | "확인 버튼을 누르세요" ↔ "확인 버튼 누르기" |
+| **0.75** | Permissive | "무기를 장착하세요" ↔ "장비를 착용하세요" |
+| **0.60** | Very loose | May produce false positives |
+
+> **PRO TIP**
+>
+> Start with the default threshold of **0.85**. If too many false misses, lower to 0.80. If too many false hits, raise to 0.90.
+
+---
+
+# 8. Match Types
+
+## 8.1 Substring Match (Original)
 
 **How it works:**
 ```
@@ -812,7 +1273,7 @@ Finds: Any string containing "시작"
 
 **Button:** Generate (LOOKUP only)
 
-## 7.2 StringID-Only (SCRIPT)
+## 8.2 StringID-Only (SCRIPT)
 
 **How it works:**
 1. Reads StringIDs from input
@@ -825,7 +1286,7 @@ Finds: Any string containing "시작"
 
 **Buttons:** Generate (LOOKUP) and TRANSFER
 
-## 7.3 StringID + StrOrigin (STRICT)
+## 8.3 StringID + StrOrigin (STRICT)
 
 **How it works:**
 ```
@@ -843,7 +1304,7 @@ Matches: ONLY if both StringID AND StrOrigin match exactly
 
 **Buttons:** Generate (LOOKUP) and TRANSFER
 
-## 7.4 Quadruple Fallback (Fuzzy KR Match)
+## 8.4 Quadruple Fallback (Fuzzy KR Match)
 
 **How it works:**
 
@@ -884,7 +1345,7 @@ For each correction:
 
 **Buttons:** TRANSFER (with Quadruple Fallback match type selected)
 
-## 7.5 Special Key Match
+## 8.5 Special Key Match
 
 **How it works:**
 - Custom composite key from multiple fields
@@ -897,9 +1358,9 @@ For each correction:
 
 ---
 
-# 8. Workflows
+# 9. Workflows
 
-## 8.1 LOOKUP: Find Translations
+## 9.1 LOOKUP: Find Translations
 
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
@@ -908,62 +1369,59 @@ For each correction:
 └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
-1. Create Excel with Korean text in Column A
-2. Set Format: Excel, Mode: File, Match Type: Substring
-3. Browse to file → Click **Generate**
+1. Place Excel with Korean text in Column A into `Source/` folder
+2. Set Match Type: Substring
+3. Click **Generate**
 4. Open output Excel
 
-## 8.2 LOOKUP: Process SCRIPT Corrections
+## 9.2 LOOKUP: Process SCRIPT Corrections
 
-1. Set Format: XML
+1. Place XML corrections in `Source/` folder (or browse to folder)
 2. Set Match Type: StringID-Only (SCRIPT)
-3. Browse to XML file
-4. Click **Generate**
+3. Click **Generate**
 
 **Output:** Only SCRIPT categories included
 
-## 8.3 LOOKUP: Verify with Strict Matching
+## 9.3 LOOKUP: Verify with Strict Matching
 
-1. Set Format: XML
-2. Set Match Type: StringID + StrOrigin (STRICT)
-3. Browse to Source XML
-4. Browse to Target folder
-5. Click **Generate**
+1. Set Match Type: StringID + StrOrigin (STRICT)
+2. Source: Place corrections in `Source/` folder (or browse)
+3. Target: Browse to Target folder
+4. Click **Generate**
 
 **Output:** Only verified matches
 
-## 8.4 TRANSFER: Apply Excel Corrections
+## 9.4 TRANSFER: Apply Corrections
 
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
 │  Corrections│───→│  TRANSFER   │───→│   Verify    │
-│   Excel     │    │   Button    │    │   XML Files │
+│  (folder)   │    │   Button    │    │   XML Files │
 └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
-1. Prepare corrections Excel (StringID, StrOrigin, Correction)
-2. Set Format: Excel, Mode: File
-3. Set Match Type: STRICT (recommended)
-4. Source: Browse to corrections file
-5. Target: Browse to LOC folder
-6. Click **TRANSFER** → Confirm
-7. Check log for results
+1. Place corrections (Excel/XML or both) in `Source/` folder
+2. Set Match Type: STRICT (recommended)
+3. Source: Pre-populated with `Source/` (or browse to another folder)
+4. Target: Browse to LOC folder (or leave default)
+5. Click **TRANSFER** → Review transfer plan in terminal → Confirm
+6. Check log for results
 
-## 8.5 TRANSFER: Batch Apply from Folder
+## 9.5 TRANSFER: Batch Apply from Language Folders
 
-1. Set Mode: Folder
+1. Organize corrections by language subfolder (e.g., `FRE/`, `GER/`)
 2. Set Match Type: STRICT or StringID-Only
-3. Source: Browse to folder with corrections
+3. Source: Browse to parent folder with language subfolders
 4. Target: LOC folder
 5. Click **TRANSFER** → Confirm
 6. View transfer report
 
-## 8.6 TRANSFER: SCRIPT Dialogue Corrections
+## 9.6 TRANSFER: SCRIPT Dialogue Corrections
 
 For Sequencer/Dialog corrections:
 
 1. Set Match Type: StringID-Only (SCRIPT)
-2. Source: Corrections file
+2. Source: Place corrections in `Source/` folder (or browse)
 3. Target: LOC folder
 4. Click **TRANSFER**
 
@@ -971,9 +1429,9 @@ For Sequencer/Dialog corrections:
 
 ---
 
-# 9. Output Files
+# 10. Output Files
 
-## 9.1 LOOKUP Outputs
+## 10.1 LOOKUP Outputs
 
 All saved to: `<app_folder>/Output/`
 
@@ -1008,7 +1466,7 @@ Single row with StringID and all translations.
 - `NOT FOUND` - No matching StringID
 - `NO TRANSLATION` - Translation empty
 
-## 9.2 TRANSFER Outputs
+## 10.2 TRANSFER Outputs
 
 **Output:** Modified `languagedata_*.xml` files in target folder
 
@@ -1018,7 +1476,7 @@ Single row with StringID and all translations.
 - Updates applied
 - Errors encountered
 
-### 9.2.1 Failure Reports (Automatic)
+### 10.2.1 Failure Reports (Automatic)
 
 When transfer has failures (not found, skipped), detailed reports are automatically generated:
 
@@ -1083,9 +1541,9 @@ Groups all failed LocStr entries by source file with metadata:
 
 ---
 
-# 10. Troubleshooting
+# 11. Troubleshooting
 
-## 10.1 LOOKUP Issues
+## 11.1 LOOKUP Issues
 
 ### "LOC folder not found"
 **Cause:** Perforce not synced or path incorrect
@@ -1112,7 +1570,7 @@ p4 sync //depot/cd/mainline/resource/GameData/stringtable/export__/...
 1. Check spelling (case-sensitive)
 2. Try different branch
 
-## 10.2 TRANSFER Issues
+## 11.2 TRANSFER Issues
 
 ### "Source not found"
 **Cause:** File path incorrect
@@ -1159,7 +1617,7 @@ Result:     STRORIGIN_MISMATCH (StringID found, StrOrigin differs)
 **Cause:** Corrections already applied or no differences
 **Solution:** This is normal if translations are identical
 
-## 10.3 Fuzzy Matching Issues
+## 11.3 Fuzzy Matching Issues
 
 ### "KRTransformer model not found"
 **Cause:** The KR-SBERT model folder is missing
@@ -1179,21 +1637,21 @@ Result:     STRORIGIN_MISMATCH (StringID found, StrOrigin differs)
 **Cause:** `show_progress_bar=False` missing on a `model.encode()` call
 **Solution:** Every `model.encode()` call must have `show_progress_bar=False`
 
-## 10.4 Performance Tips
+## 11.4 Performance Tips
 
 | Scenario | Tip |
 |----------|-----|
 | First run slow | Building index + loading model. Subsequent runs faster (cached) |
-| Large corrections file | Use Folder mode for batching |
+| Large corrections file | Split into language subfolders for clarity |
 | Memory usage | Close other apps for 1000+ corrections |
 | Fuzzy matching slow | Ensure IndexFlatIP is used (see FAISS_IMPLEMENTATION.md) |
 | Model loading | First load ~5-10s, then instant (cached in memory) |
 
 ---
 
-# 11. Reference
+# 12. Reference
 
-## 11.1 Supported Languages
+## 12.1 Supported Languages
 
 | Code | Display | Language |
 |------|---------|----------|
@@ -1215,7 +1673,7 @@ Result:     STRORIGIN_MISMATCH (StringID found, StrOrigin differs)
 | `ind` | IND | Indonesian |
 | `msa` | MSA | Malay |
 
-## 11.2 Supported File Formats
+## 12.2 Supported File Formats
 
 | Format | Extensions | Library |
 |--------|------------|---------|
@@ -1223,7 +1681,7 @@ Result:     STRORIGIN_MISMATCH (StringID found, StrOrigin differs)
 | XML | `.xml`, `.loc.xml` | lxml |
 | Text | `.txt` | built-in |
 
-## 11.3 SCRIPT Categories
+## 12.3 SCRIPT Categories
 
 | Category | Description |
 |----------|-------------|
@@ -1232,7 +1690,7 @@ Result:     STRORIGIN_MISMATCH (StringID found, StrOrigin differs)
 | QuestDialog | Quest conversation text |
 | NarrationDialog | Narrator/voiceover text |
 
-## 11.4 Default Paths
+## 12.4 Default Paths
 
 | Path | Default Value |
 |------|---------------|
@@ -1242,7 +1700,7 @@ Result:     STRORIGIN_MISMATCH (StringID found, StrOrigin differs)
 | ToSubmit Folder | `<app_folder>\ToSubmit` |
 | Settings File | `<app_folder>\settings.json` |
 
-## 11.5 Excel Column Detection
+## 12.5 Excel Column Detection
 
 QuickTranslate auto-detects these column names (case-insensitive):
 
@@ -1252,7 +1710,7 @@ QuickTranslate auto-detects these column names (case-insensitive):
 | StrOrigin | StrOrigin, Str_Origin, str_origin, STRORIGIN |
 | Correction | Correction, correction, Str, str |
 
-## 11.6 Command Line Options
+## 12.6 Command Line Options
 
 ```bash
 python main.py              # Launch GUI
@@ -1261,7 +1719,7 @@ python main.py --version    # Show version
 python main.py --help       # Show help
 ```
 
-## 11.7 Keyboard Shortcuts
+## 12.7 Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
@@ -1272,9 +1730,9 @@ python main.py --help       # Show help
 
 ---
 
-# 12. Appendix
+# 13. Appendix
 
-## 12.1 Glossary
+## 13.1 Glossary
 
 | Term | Definition |
 |------|------------|
@@ -1290,8 +1748,15 @@ python main.py --help       # Show help
 | **IndexFlatIP** | FAISS index type using inner product (cosine similarity) |
 | **KR-SBERT** | Korean Sentence-BERT model for semantic text encoding |
 | **Quadruple Fallback** | 4-level cascade matching: context → file → adjacency → text |
+| **Find Missing** | Feature to identify untranslated Korean strings across languages |
+| **Match Mode** | Algorithm for comparing source vs target (Strict or Fuzzy, with/without StringID) |
+| **Category Clustering** | Two-tier EXPORT-based classification (STORY + GAME_DATA) |
+| **Close Folder** | Output directory mirroring EXPORT structure for easy re-import |
+| **Cosine Similarity** | Measure of text similarity (0.0 = unrelated, 1.0 = identical) |
+| **Fuzzy Threshold** | Minimum cosine similarity for a fuzzy match (default 0.85) |
+| **Korean Filter** | Pre-filter that only processes entries with Korean Str (untranslated) |
 
-## 12.2 XML Element Structure
+## 13.2 XML Element Structure
 
 ```xml
 <LocStr
@@ -1309,7 +1774,48 @@ python main.py --help       # Show help
 | Str | Yes | Translation text |
 | Category | No | String category |
 
-## 12.3 Changelog
+## 13.3 Changelog
+
+### Version 3.8.0 (February 2026)
+
+**GUI Simplification + Enhanced Source Validation**
+
+- **Removed Format selector** (Excel/XML): The engine auto-detects file types from folder contents. Place Excel, XML, or both in the source folder.
+- **Removed Mode selector** (File/Folder): Always operates in folder mode. Folder mode handles everything file mode could do, with auto-recursive scanning.
+- **Default Source/ folder**: A `Source/` folder is created alongside the app on first launch. Source path is pre-populated for convenient file drop. Browse to any other folder at any time.
+- **Enhanced Source Validation**: When browsing a source folder, QuickTranslate now dry-run parses every file and reports per-file/per-language results:
+  - File type (XML/Excel), language, entry count, status (OK/EMPTY/FAILED)
+  - Formatted validation table in terminal
+  - Summary in GUI log (green for all good, yellow/red for errors)
+  - Parse errors reported with specific error messages
+- **print() replaced with logger**: All terminal output in folder analysis now uses proper Python logging instead of print() calls.
+- **Dead code cleanup**: Removed file-mode transfer code paths, unused imports, and unreachable branches.
+
+**Technical:**
+- `config.py`: Added `SOURCE_FOLDER`, `ensure_source_folder()`, removed `INPUT_MODES`/`FORMAT_MODES`
+- `gui/app.py`: Removed `format_mode`/`input_mode` variables, simplified `_browse_source()`, `_generate()`, `_transfer()` to folder-only, added `_validate_source_files()` method
+
+### Version 3.7.0 (February 2026)
+
+**Major Feature: Find Missing Translations Enhancement**
+
+- **4 Match Modes:** StringID+KR Strict, StringID+KR Fuzzy, KR Strict, KR Fuzzy
+- **Parameter Popup:** GUI dialog to select match mode and fuzzy threshold before running
+- **Category Clustering:** EXPORT-based two-tier categorization (STORY + GAME_DATA) — same system as LanguageDataExporter
+- **Per-Language Excel Reports:** `MISSING_{LANG}_{timestamp}.xlsx` with StrOrigin, Translation, StringID, Category columns, color-coded by category
+- **Close Folders:** `Close_{LANG}/` output mirroring EXPORT directory structure for direct re-import as corrections
+- **Fuzzy Matching:** KR-SBERT semantic similarity with configurable threshold (0.00-1.00)
+- **Smart Pre-Filtering:** StringID+KR Fuzzy groups by StringID first, only encodes matching groups (INSTANT MISS for unknown StringIDs)
+- **Detailed Progress Tracking:** 46 logger calls with [Step N] prefixes, batch progress (500/12000, 1000/12000...), per-language HIT/MISS/SID_MISS/BELOW_THRESH counters
+- **GUI Log Bridge:** All progress messages appear in both terminal AND GUI log area
+
+**Technical:**
+- New `core/category_mapper.py` — ported from LanguageDataExporter's TwoTierCategoryMapper
+- New `gui/missing_params_dialog.py` — Tkinter Toplevel popup for parameter selection
+- Enhanced `core/missing_translation_finder.py` — `find_missing_with_options()` function with 4 modes
+- Enhanced `gui/app.py` — progress_cb bridges to both `_update_status()` and `_log()`
+- Uses xlsxwriter for Excel output (not openpyxl)
+- Pure numpy for fuzzy matching (no FAISS dependency)
 
 ### Version 3.6.0 (February 2026)
 
@@ -1415,7 +1921,7 @@ python main.py --help       # Show help
 
 ---
 
-## 12.4 Support
+## 13.4 Support
 
 **Issues & Feedback:**
 - GitHub Issues: [LocalizationTools Repository](https://github.com/NeilVibe/LocalizationTools/issues)
@@ -1427,7 +1933,7 @@ python main.py --help       # Show help
 
 <div align="center">
 
-**QuickTranslate** | Version 3.6.0 | LocaNext Project
+**QuickTranslate** | Version 3.8.0 | LocaNext Project
 
 *Lookup & Transfer - Two Tools in One*
 
