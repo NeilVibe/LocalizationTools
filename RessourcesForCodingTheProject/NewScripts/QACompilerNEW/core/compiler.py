@@ -120,7 +120,8 @@ from core.excel_ops import (
     get_or_create_master,
     copy_images_with_unique_names,
     find_column_by_header, sort_worksheet_az, build_column_map,
-    preload_worksheet_data
+    preload_worksheet_data,
+    replicate_duplicate_row_data
 )
 from core.processing import (
     process_sheet, update_status_sheet,
@@ -1078,6 +1079,9 @@ def process_category(
             print(f"  Images: {total_images} copied to Images/, {total_screenshots} hyperlinks updated")
         return daily_entries, all_users, dict(user_stats), master_wb, master_path
     else:
+        # Post-process: replicate data across duplicate rows
+        replicate_duplicate_row_data(master_wb, category, is_english)
+
         # IMMEDIATE SAVE: Apply word wrap and autofit FIRST (before hiding)
         # This way all columns get proper widths, even if hidden later
         # Bonus: if user unhides a column in Excel, it already looks good
@@ -1304,6 +1308,8 @@ def run_compiler():
                     "stats": defaultdict(lambda: {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0}),
                     "workbook": None,
                     "path": None,
+                    "category": category,
+                    "is_english": lang_label == "EN",
                 }
             data = master_status_data[target_master]
             acc_users = data["users"]
@@ -1404,9 +1410,14 @@ def run_compiler():
         stats = data["stats"]
         wb = data["workbook"]
         path = data["path"]
+        cat = data.get("category", "Quest")
+        is_eng = data.get("is_english", True)
 
         if wb is None or path is None:
             return None
+
+        # 0. Post-process: replicate data across duplicate rows
+        replicate_duplicate_row_data(wb, cat, is_eng)
 
         # 1. Update STATUS sheet
         if users:
