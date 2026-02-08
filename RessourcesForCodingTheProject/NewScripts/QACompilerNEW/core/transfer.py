@@ -324,17 +324,17 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
         name_col = TRANSLATION_COLS["Item"]["eng"] if is_english else TRANSLATION_COLS["Item"]["other"]
         desc_col = ITEM_DESC_COLS["eng"] if is_english else ITEM_DESC_COLS["other"]
 
-    # Index by (STRINGID + Translation) - exact match
-    stringid_trans_index = {}
+    # Index by (STRINGID + Translation) - exact match (list for duplicates)
+    stringid_trans_index = defaultdict(list)
     # Index by Translation only - fallback (list because dupes possible)
     trans_index = defaultdict(list)
     # For Item: index by (ItemName + ItemDesc + STRINGID) and (ItemName + ItemDesc)
-    item_full_index = {}
+    item_full_index = defaultdict(list)
     item_name_desc_index = defaultdict(list)
-    # For Contents: index by INSTRUCTIONS (col 2)
-    contents_index = {}
+    # For Contents: index by INSTRUCTIONS (col 2) (list for duplicates)
+    contents_index = defaultdict(list)
     # For Script: index by (Translation + EventName) and EventName only (fallback)
-    script_full_index = {}
+    script_full_index = defaultdict(list)
     script_eventname_index = defaultdict(list)
 
     for sheet_name in new_wb.sheetnames:
@@ -348,8 +348,7 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
                 # Contents: index by INSTRUCTIONS (col 2)
                 instructions = str(ws.cell(row, 2).value or "").strip()
                 if instructions:
-                    if instructions not in contents_index:
-                        contents_index[instructions] = {"sheet": sheet_name, "row": row, "consumed": False}
+                    contents_index[instructions].append({"sheet": sheet_name, "row": row})
             elif is_item:
                 item_name = str(ws.cell(row, name_col).value or "").strip()
                 item_desc = str(ws.cell(row, desc_col).value or "").strip()
@@ -358,12 +357,11 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
                     # Full index: name + desc + stringid
                     if stringid:
                         key = (item_name, item_desc, stringid)
-                        if key not in item_full_index:
-                            item_full_index[key] = {"sheet": sheet_name, "row": row, "consumed": False}
+                        item_full_index[key].append({"sheet": sheet_name, "row": row})
 
                     # Fallback: name + desc only
                     key2 = (item_name, item_desc)
-                    item_name_desc_index[key2].append({"sheet": sheet_name, "row": row, "consumed": False})
+                    item_name_desc_index[key2].append({"sheet": sheet_name, "row": row})
             elif is_script:
                 # Script: index by (Translation + EventName) with EventName-only fallback
                 trans = str(ws.cell(row, trans_col).value or "").strip()
@@ -378,12 +376,11 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
                 # Full index: translation + eventname
                 if trans and eventname:
                     key = (trans, eventname)
-                    if key not in script_full_index:
-                        script_full_index[key] = {"sheet": sheet_name, "row": row, "consumed": False}
+                    script_full_index[key].append({"sheet": sheet_name, "row": row})
 
                 # Fallback: EventName ONLY (NOT translation only!)
                 if eventname:
-                    script_eventname_index[eventname].append({"sheet": sheet_name, "row": row, "consumed": False})
+                    script_eventname_index[eventname].append({"sheet": sheet_name, "row": row})
             else:
                 trans = str(ws.cell(row, trans_col).value or "").strip()
 
@@ -391,11 +388,10 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
                     # Full index: stringid + trans
                     if stringid:
                         key = (stringid, trans)
-                        if key not in stringid_trans_index:
-                            stringid_trans_index[key] = {"sheet": sheet_name, "row": row, "consumed": False}
+                        stringid_trans_index[key].append({"sheet": sheet_name, "row": row})
 
                     # Fallback: trans only
-                    trans_index[trans].append({"sheet": sheet_name, "row": row, "consumed": False})
+                    trans_index[trans].append({"sheet": sheet_name, "row": row})
 
     return {
         "stringid_trans": stringid_trans_index,
@@ -550,6 +546,9 @@ def transfer_folder_data(
     matches = []  # [(old_row_data, new_sheet, new_row, match_type), ...]
     unmatched_rows = []
 
+    # Shared consumed set: (sheet_name, row) pairs — prevents double-matching across passes
+    consumed_rows = set()
+
     # PASS 1: Exact match (STRINGID + Translation, ItemName+ItemDesc+STRINGID, INSTRUCTIONS, or Translation+EventName)
     for old_row in old_rows:
         matched = False
@@ -558,40 +557,48 @@ def transfer_folder_data(
             # Contents: match by INSTRUCTIONS (single-pass, no fallback needed)
             instructions = old_row.get("instructions", "")
             if instructions and instructions in new_index["contents"]:
-                entry = new_index["contents"][instructions]
-                if not entry["consumed"]:
-                    entry["consumed"] = True
-                    matches.append((old_row, entry["sheet"], entry["row"], "instructions"))
-                    stats["instructions_match"] += 1
-                    matched = True
+                for entry in new_index["contents"][instructions]:
+                    row_key = (entry["sheet"], entry["row"])
+                    if row_key not in consumed_rows:
+                        consumed_rows.add(row_key)
+                        matches.append((old_row, entry["sheet"], entry["row"], "instructions"))
+                        stats["instructions_match"] += 1
+                        matched = True
+                        break
         elif is_item:
             key = (old_row["item_name"], old_row["item_desc"], old_row["stringid"])
             if old_row["stringid"] and key in new_index["item_full"]:
-                entry = new_index["item_full"][key]
-                if not entry["consumed"]:
-                    entry["consumed"] = True
-                    matches.append((old_row, entry["sheet"], entry["row"], "name+desc+stringid"))
-                    stats["name_desc_stringid_match"] += 1
-                    matched = True
+                for entry in new_index["item_full"][key]:
+                    row_key = (entry["sheet"], entry["row"])
+                    if row_key not in consumed_rows:
+                        consumed_rows.add(row_key)
+                        matches.append((old_row, entry["sheet"], entry["row"], "name+desc+stringid"))
+                        stats["name_desc_stringid_match"] += 1
+                        matched = True
+                        break
         elif is_script:
             # Script: match by Translation + EventName
             key = (old_row.get("translation", ""), old_row.get("eventname", ""))
             if key[0] and key[1] and key in new_index["script_full"]:
-                entry = new_index["script_full"][key]
-                if not entry["consumed"]:
-                    entry["consumed"] = True
-                    matches.append((old_row, entry["sheet"], entry["row"], "script_full"))
-                    stats["script_full_match"] += 1
-                    matched = True
+                for entry in new_index["script_full"][key]:
+                    row_key = (entry["sheet"], entry["row"])
+                    if row_key not in consumed_rows:
+                        consumed_rows.add(row_key)
+                        matches.append((old_row, entry["sheet"], entry["row"], "script_full"))
+                        stats["script_full_match"] += 1
+                        matched = True
+                        break
         else:
             key = (old_row["stringid"], old_row["translation"])
             if old_row["stringid"] and old_row["translation"] and key in new_index["stringid_trans"]:
-                entry = new_index["stringid_trans"][key]
-                if not entry["consumed"]:
-                    entry["consumed"] = True
-                    matches.append((old_row, entry["sheet"], entry["row"], "stringid+trans"))
-                    stats["stringid_match"] += 1
-                    matched = True
+                for entry in new_index["stringid_trans"][key]:
+                    row_key = (entry["sheet"], entry["row"])
+                    if row_key not in consumed_rows:
+                        consumed_rows.add(row_key)
+                        matches.append((old_row, entry["sheet"], entry["row"], "stringid+trans"))
+                        stats["stringid_match"] += 1
+                        matched = True
+                        break
 
         if not matched:
             unmatched_rows.append(old_row)
@@ -610,8 +617,9 @@ def transfer_folder_data(
             key = (old_row["item_name"], old_row["item_desc"])
             if key in new_index["item_name_desc"]:
                 for entry in new_index["item_name_desc"][key]:
-                    if not entry["consumed"]:
-                        entry["consumed"] = True
+                    row_key = (entry["sheet"], entry["row"])
+                    if row_key not in consumed_rows:
+                        consumed_rows.add(row_key)
                         matches.append((old_row, entry["sheet"], entry["row"], "name+desc"))
                         stats["name_desc_match"] += 1
                         matched = True
@@ -621,8 +629,9 @@ def transfer_folder_data(
             eventname = old_row.get("eventname", "")
             if eventname and eventname in new_index["script_eventname"]:
                 for entry in new_index["script_eventname"][eventname]:
-                    if not entry["consumed"]:
-                        entry["consumed"] = True
+                    row_key = (entry["sheet"], entry["row"])
+                    if row_key not in consumed_rows:
+                        consumed_rows.add(row_key)
                         matches.append((old_row, entry["sheet"], entry["row"], "script_eventname"))
                         stats["script_eventname_match"] += 1
                         matched = True
@@ -631,8 +640,9 @@ def transfer_folder_data(
             trans = old_row["translation"]
             if trans and trans in new_index["trans_only"]:
                 for entry in new_index["trans_only"][trans]:
-                    if not entry["consumed"]:
-                        entry["consumed"] = True
+                    row_key = (entry["sheet"], entry["row"])
+                    if row_key not in consumed_rows:
+                        consumed_rows.add(row_key)
                         matches.append((old_row, entry["sheet"], entry["row"], "trans_only"))
                         stats["trans_only"] += 1
                         matched = True
