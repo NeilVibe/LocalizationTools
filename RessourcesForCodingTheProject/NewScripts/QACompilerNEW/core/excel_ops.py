@@ -841,10 +841,46 @@ def get_or_create_master(
 
     # Rebuild mode: extract tester data BEFORE deletion, then create fresh
     extracted_data = {}
+    preserved_sheets = {}  # Sheets from other categories to preserve through rebuild
     if rebuild and master_path.exists():
         # Extract tester data BEFORE deletion
         print(f"  Extracting tester data from: {master_path.name}")
         extracted_data = extract_tester_data_from_master(master_path, category, is_english)
+
+        # Preserve sheets that belong to OTHER categories in the same worker group.
+        # E.g., when Item rebuilds Master_Item.xlsx, Gimmick sheets must survive.
+        # When Sequencer rebuilds Master_Script.xlsx, Dialog sheets must survive.
+        if template_file:
+            template_wb = safe_load_workbook(template_file, read_only=True)
+            template_sheet_names = set(template_wb.sheetnames)
+            template_wb.close()
+
+            old_wb = safe_load_workbook(master_path)
+            for sn in old_wb.sheetnames:
+                if sn in template_sheet_names or sn == "STATUS":
+                    continue
+                # This sheet belongs to another category - preserve it verbatim
+                old_ws = old_wb[sn]
+                sheet_info = {"cells": [], "col_widths": {}, "row_heights": {}}
+                for row in old_ws.iter_rows():
+                    for cell in row:
+                        ci = {"row": cell.row, "col": cell.column, "value": cell.value}
+                        if cell.has_style:
+                            ci["font"] = copy(cell.font)
+                            ci["border"] = copy(cell.border)
+                            ci["fill"] = copy(cell.fill)
+                            ci["number_format"] = cell.number_format
+                            ci["alignment"] = copy(cell.alignment)
+                        sheet_info["cells"].append(ci)
+                for col_letter, col_dim in old_ws.column_dimensions.items():
+                    sheet_info["col_widths"][col_letter] = col_dim.width
+                for row_num, row_dim in old_ws.row_dimensions.items():
+                    sheet_info["row_heights"][row_num] = row_dim.height
+                preserved_sheets[sn] = sheet_info
+            old_wb.close()
+
+            if preserved_sheets:
+                print(f"    Preserving {len(preserved_sheets)} sheets from other categories: {', '.join(preserved_sheets.keys())}")
 
         print(f"  Deleting old master: {master_path.name} (rebuilding fresh)")
         master_path.unlink()
@@ -875,10 +911,34 @@ def get_or_create_master(
         print(f"    Master cleaned: tester columns removed")
 
         # Restore tester data to new master (if any was extracted)
+        # NOTE: This runs BEFORE preserved sheets are added, so restore only
+        # targets template sheets. Entries from other categories are harmlessly
+        # orphaned since those sheets aren't in the workbook yet.
         if extracted_data:
             print(f"  Restoring tester data to new master...")
             restore_stats = restore_tester_data_to_master(wb, extracted_data, category, is_english)
             print(f"    Restored: {restore_stats['restored']} cells, Orphaned: {restore_stats['orphaned']} rows")
+
+        # Restore preserved sheets from other categories (verbatim, with all data)
+        # These sheets already contain their complete data including any tester columns
+        # from previous compilations, so no cleaning or restoration needed.
+        if preserved_sheets:
+            for sn, sheet_info in preserved_sheets.items():
+                if sn not in wb.sheetnames:
+                    new_ws = wb.create_sheet(sn)
+                    for ci in sheet_info["cells"]:
+                        new_cell = new_ws.cell(row=ci["row"], column=ci["col"], value=ci["value"])
+                        if "font" in ci:
+                            new_cell.font = ci["font"]
+                            new_cell.border = ci["border"]
+                            new_cell.fill = ci["fill"]
+                            new_cell.number_format = ci["number_format"]
+                            new_cell.alignment = ci["alignment"]
+                    for col_letter, width in sheet_info["col_widths"].items():
+                        new_ws.column_dimensions[col_letter].width = width
+                    for row_num, height in sheet_info["row_heights"].items():
+                        new_ws.row_dimensions[row_num].height = height
+            print(f"    Restored {len(preserved_sheets)} preserved sheets: {', '.join(preserved_sheets.keys())}")
 
         return wb, master_path
     else:
