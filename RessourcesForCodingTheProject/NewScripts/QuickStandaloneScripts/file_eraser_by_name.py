@@ -10,6 +10,7 @@ a stem in Source gets moved to an auto-created "Erased_Files" backup folder.
 Usage: python file_eraser_by_name.py
 """
 
+import sys
 import shutil
 import datetime as _dt
 from pathlib import Path
@@ -255,9 +256,13 @@ class FileEraserGUI:
             self._set_status("Cancelled")
             return
 
-        # 3) Create Erased_Files backup folder inside target
+        # 3) Create Erased_Files backup folder next to the script/exe
+        if getattr(sys, 'frozen', False):
+            script_dir = Path(sys.executable).parent
+        else:
+            script_dir = Path(__file__).parent
         timestamp = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-        erased_dir = target_dir / f"Erased_Files_{timestamp}"
+        erased_dir = script_dir / f"Erased_Files_{timestamp}"
         erased_dir.mkdir(parents=True, exist_ok=True)
         self._log(f"Backup folder: {erased_dir}")
         self._log("")
