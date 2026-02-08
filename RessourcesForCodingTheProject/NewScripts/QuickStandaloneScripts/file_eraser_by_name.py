@@ -209,14 +209,14 @@ class FileEraserGUI:
         self._set_status("Processing...")
         self._set_progress(0, 1)
 
-        # 1) Collect source stems (case-insensitive)
+        # 1) Collect source stems (case-insensitive, infinite depth)
         source_stems = set()
-        for f in source_dir.iterdir():
+        for f in source_dir.rglob("*"):
             if f.is_file():
                 source_stems.add(f.stem.lower())
 
         self._log(f"Source folder: {source_dir}")
-        self._log(f"Source files found: {len(source_stems)}")
+        self._log(f"Source files found: {len(source_stems)} (recursive)")
         self._log("")
 
         if not source_stems:
@@ -224,10 +224,10 @@ class FileEraserGUI:
             self._set_status("Done (nothing)")
             return
 
-        # 2) Scan target for matches
-        target_files = [f for f in target_dir.iterdir() if f.is_file()]
+        # 2) Scan target for matches (infinite depth)
+        target_files = [f for f in target_dir.rglob("*") if f.is_file()]
         self._log(f"Target folder: {target_dir}")
-        self._log(f"Target files found: {len(target_files)}")
+        self._log(f"Target files found: {len(target_files)} (recursive)")
         self._log("")
 
         matches = []
