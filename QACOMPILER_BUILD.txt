@@ -96,3 +96,4 @@ Build: StringID fallback lookup
 Build - Fix critical data loss (3 fixes: STRINGID preservation, merge missing rows, manager status gate)
 Build - Preserve clustered category sheets during master rebuild + deferred save fix
 Build - Apply reference styles to merged rows in master file
+Build - Robust merged row styling (remove has_style gate + full-row style pass)
