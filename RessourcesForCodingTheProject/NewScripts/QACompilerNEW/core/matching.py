@@ -397,6 +397,7 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
 
     index = {
         "primary": {},
+        "all_primary": defaultdict(list),  # primary_key -> [all rows] (for duplicate replication)
         "fallback": defaultdict(list),
         "consumed": set(),
     }
@@ -435,6 +436,7 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
                     key = (item_name, item_desc, stringid)
                     if key not in index["primary"]:
                         index["primary"][key] = row_idx
+                    index["all_primary"][key].append(row_idx)
 
                 # Fallback: name + desc only
                 fallback_key = (item_name, item_desc)
@@ -456,6 +458,7 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
                 key = (translation, eventname)
                 if key not in index["primary"]:
                     index["primary"][key] = row_idx
+                index["all_primary"][key].append(row_idx)
 
             # Fallback: EventName ONLY (NOT translation only!)
             if eventname:
@@ -475,6 +478,7 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
                     key = (stringid, translation)
                     if key not in index["primary"]:
                         index["primary"][key] = row_idx
+                    index["all_primary"][key].append(row_idx)
 
                 # Fallback: trans only
                 index["fallback"][translation].append(row_idx)
@@ -510,9 +514,10 @@ def clone_with_fresh_consumed(master_index: Dict) -> Dict:
         New dict with same primary/fallback (shared references) but fresh consumed set
     """
     return {
-        "primary": master_index["primary"],     # Shared reference (immutable during matching)
-        "fallback": master_index["fallback"],   # Shared reference (immutable during matching)
-        "consumed": set(),                       # Fresh set for this user
+        "primary": master_index["primary"],         # Shared reference (immutable during matching)
+        "all_primary": master_index["all_primary"], # Shared reference (immutable during matching)
+        "fallback": master_index["fallback"],       # Shared reference (immutable during matching)
+        "consumed": set(),                           # Fresh set for this user
     }
 
 
@@ -555,6 +560,7 @@ def build_master_index_cached(
         # Store in cache (with empty consumed set as template)
         _master_index_cache[cache_key] = {
             "primary": index["primary"],
+            "all_primary": index["all_primary"],
             "fallback": index["fallback"],
             "consumed": set(),  # Template has empty consumed
         }
