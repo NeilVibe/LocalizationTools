@@ -990,7 +990,9 @@ def merge_missing_rows_into_master(master_wb, qa_folders, template_xlsx_path, ca
 
     After building master from the most recent template, rows unique to
     other QA files are missing. This scans non-template QA files and
-    appends missing rows (data columns only) to the master.
+    appends missing rows (data columns only, with styles) to the master.
+
+    Style priority per cell: source QA cell > master row 2 ref_styles > THIN_BORDER default.
 
     Returns total count of rows added across all sheets.
     """
@@ -998,118 +1000,141 @@ def merge_missing_rows_into_master(master_wb, qa_folders, template_xlsx_path, ca
     is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
     total_added = 0
 
+    # Minimum styling fallback (matches generator output)
+    default_border = THIN_BORDER
+    default_alignment = Alignment(vertical="center", wrap_text=True)
+
     for qf in qa_folders:
         xlsx_path = qf["xlsx_path"]
         if xlsx_path == template_xlsx_path:
             continue
 
         try:
-            qa_wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
+            # Open WITHOUT read_only to access cell styles for merged rows
+            qa_wb = safe_load_workbook(xlsx_path, data_only=True)
         except Exception as e:
             print(f"    WARNING: Could not open {xlsx_path.name}: {e}")
             continue
 
-        for sheet_name in qa_wb.sheetnames:
-            if sheet_name == "STATUS":
-                continue
-
-            qa_ws = qa_wb[sheet_name]
-            if not qa_ws.max_row or qa_ws.max_row < 2:
-                continue
-
-            # If sheet doesn't exist in master, create it with data headers only
-            if sheet_name not in master_wb.sheetnames:
-                new_ws = master_wb.create_sheet(sheet_name)
-                qa_header_tuple = next(qa_ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
-                if qa_header_tuple:
-                    master_col = 1
-                    for val in qa_header_tuple:
-                        header_upper = str(val).strip().upper() if val else ""
-                        if header_upper and header_upper not in TESTER_HEADERS:
-                            new_ws.cell(row=1, column=master_col).value = val
-                            master_col += 1
-
-            master_ws = master_wb[sheet_name]
-
-            # Build set of existing master content keys (0-based indices)
-            master_col_idx, master_data = preload_worksheet_data(master_ws)
-            master_keys = set()
-            for row_tuple in master_data:
-                key = _content_key_from_tuple(row_tuple, master_col_idx, category, is_english, is_script)
-                if key:
-                    master_keys.add(key)
-
-            # Preload QA data (0-based indices)
-            qa_col_idx, qa_data = preload_worksheet_data(qa_ws)
-
-            # Build master header -> 1-based column mapping for writing
-            master_header_to_col = {}
-            for col in range(1, master_ws.max_column + 1):
-                val = master_ws.cell(row=1, column=col).value
-                if val:
-                    master_header_to_col[str(val).strip().upper()] = col
-
-            # Capture reference styles from first data row for consistent formatting.
-            # Always capture (no has_style gate) to handle openpyxl style quirks
-            # after delete_cols operations.
-            ref_styles = {}
-            if master_ws.max_row >= 2:
-                for col in range(1, master_ws.max_column + 1):
-                    ref_cell = master_ws.cell(row=2, column=col)
-                    ref_styles[col] = {
-                        "font": copy(ref_cell.font),
-                        "border": copy(ref_cell.border),
-                        "fill": copy(ref_cell.fill),
-                        "number_format": ref_cell.number_format,
-                        "alignment": copy(ref_cell.alignment),
-                    }
-                # Debug: log what we captured
-                styled_cols = sum(1 for c in ref_styles.values() if c["font"].bold or (c["fill"].fgColor and c["fill"].fgColor.rgb != '00000000'))
-                print(f"    [STYLE-DEBUG] {sheet_name}: captured {len(ref_styles)} ref_styles, {styled_cols} with real styling (bold/fill)")
-                if ref_styles:
-                    sample = ref_styles[1]
-                    fill_rgb = sample["fill"].fgColor.rgb if sample["fill"].fgColor else "None"
-                    print(f"    [STYLE-DEBUG]   Col 1 sample: bold={sample['font'].bold}, fill={fill_rgb}, border={sample['border'].left.style if sample['border'].left else None}")
-            else:
-                print(f"    [STYLE-DEBUG] {sheet_name}: max_row={master_ws.max_row}, NO ref_styles captured (no row 2)")
-
-            sheet_added = 0
-            for row_tuple in qa_data:
-                if not row_tuple or all(v is None for v in row_tuple):
+        try:
+            for sheet_name in qa_wb.sheetnames:
+                if sheet_name == "STATUS":
                     continue
 
-                key = _content_key_from_tuple(row_tuple, qa_col_idx, category, is_english, is_script)
-                if key and key not in master_keys:
-                    # Append row: copy data columns from QA to master with styling
-                    new_row = master_ws.max_row + 1
+                qa_ws = qa_wb[sheet_name]
+                if not qa_ws.max_row or qa_ws.max_row < 2:
+                    continue
 
-                    # First pass: write values for columns that have data
-                    for header, master_col in master_header_to_col.items():
-                        if header in TESTER_HEADERS:
-                            continue
-                        qa_idx = qa_col_idx.get(header)
-                        if qa_idx is not None and qa_idx < len(row_tuple):
-                            val = row_tuple[qa_idx]
-                            if val is not None:
-                                master_ws.cell(row=new_row, column=master_col).value = val
+                # If sheet doesn't exist in master, create it with data headers only
+                if sheet_name not in master_wb.sheetnames:
+                    new_ws = master_wb.create_sheet(sheet_name)
+                    qa_header_tuple = next(qa_ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+                    if qa_header_tuple:
+                        master_col = 1
+                        for val in qa_header_tuple:
+                            header_upper = str(val).strip().upper() if val else ""
+                            if header_upper and header_upper not in TESTER_HEADERS:
+                                new_ws.cell(row=1, column=master_col).value = val
+                                master_col += 1
 
-                    # Second pass: apply reference styles to ALL data columns
-                    # (including empty ones) so the entire row looks consistent
-                    for master_col, style in ref_styles.items():
-                        new_cell = master_ws.cell(row=new_row, column=master_col)
-                        new_cell.font = style["font"]
-                        new_cell.border = style["border"]
-                        new_cell.fill = style["fill"]
-                        new_cell.number_format = style["number_format"]
-                        new_cell.alignment = style["alignment"]
+                master_ws = master_wb[sheet_name]
 
-                    master_keys.add(key)
-                    sheet_added += 1
+                # Build set of existing master content keys (0-based indices)
+                master_col_idx, master_data = preload_worksheet_data(master_ws)
+                master_keys = set()
+                for row_tuple in master_data:
+                    key = _content_key_from_tuple(row_tuple, master_col_idx, category, is_english, is_script)
+                    if key:
+                        master_keys.add(key)
 
-            if sheet_added > 0:
-                total_added += sheet_added
+                # Preload QA data as tuples for fast key matching
+                # (qa_col_idx = 0-based for tuple access, qa_header_to_col = 1-based for cell access)
+                qa_col_idx, qa_data = preload_worksheet_data(qa_ws)
 
-        qa_wb.close()
+                # Build header -> 1-based column mappings
+                master_header_to_col = {}
+                for col in range(1, master_ws.max_column + 1):
+                    val = master_ws.cell(row=1, column=col).value
+                    if val:
+                        master_header_to_col[str(val).strip().upper()] = col
+
+                qa_header_to_col = {}
+                for col in range(1, qa_ws.max_column + 1):
+                    val = qa_ws.cell(row=1, column=col).value
+                    if val:
+                        qa_header_to_col[str(val).strip().upper()] = col
+
+                # Capture reference styles from master row 2 as secondary fallback
+                ref_styles = {}
+                if master_ws.max_row >= 2:
+                    for col in range(1, master_ws.max_column + 1):
+                        ref_cell = master_ws.cell(row=2, column=col)
+                        ref_styles[col] = {
+                            "font": copy(ref_cell.font),
+                            "border": copy(ref_cell.border),
+                            "fill": copy(ref_cell.fill),
+                            "number_format": ref_cell.number_format,
+                            "alignment": copy(ref_cell.alignment),
+                        }
+
+                sheet_added = 0
+                next_row = master_ws.max_row + 1
+                master_max_col = master_ws.max_column
+                for tuple_idx, row_tuple in enumerate(qa_data):
+                    if not row_tuple or all(v is None for v in row_tuple):
+                        continue
+
+                    key = _content_key_from_tuple(row_tuple, qa_col_idx, category, is_english, is_script)
+                    if key and key not in master_keys:
+                        new_row = next_row
+                        next_row += 1
+                        qa_excel_row = tuple_idx + 2  # 0-based tuple index + skip header
+
+                        # Write values + styles from source QA cells
+                        styled_cols = set()
+                        for header, master_col in master_header_to_col.items():
+                            if header in TESTER_HEADERS:
+                                continue
+                            qa_col = qa_header_to_col.get(header)
+                            if qa_col is not None:
+                                source_cell = qa_ws.cell(row=qa_excel_row, column=qa_col)
+                                new_cell = master_ws.cell(row=new_row, column=master_col)
+                                new_cell.value = source_cell.value
+                                # Copy styles directly from source QA cell
+                                if source_cell.has_style:
+                                    new_cell.font = copy(source_cell.font)
+                                    new_cell.border = copy(source_cell.border)
+                                    new_cell.fill = copy(source_cell.fill)
+                                    new_cell.number_format = source_cell.number_format
+                                    new_cell.alignment = copy(source_cell.alignment)
+                                    styled_cols.add(master_col)
+
+                        # Fallback styling for columns not styled from source
+                        for col in range(1, master_max_col + 1):
+                            if col in styled_cols:
+                                continue
+                            new_cell = master_ws.cell(row=new_row, column=col)
+                            # Try ref_styles from master row 2
+                            if col in ref_styles:
+                                rs = ref_styles[col]
+                                new_cell.font = copy(rs["font"])
+                                new_cell.border = copy(rs["border"])
+                                new_cell.fill = copy(rs["fill"])
+                                new_cell.number_format = rs["number_format"]
+                                new_cell.alignment = copy(rs["alignment"])
+                            # Guarantee minimum: thin border + wrap alignment
+                            if not new_cell.border.left or new_cell.border.left.style is None:
+                                new_cell.border = default_border
+                            if not new_cell.alignment.wrap_text:
+                                new_cell.alignment = default_alignment
+
+                        master_keys.add(key)
+                        sheet_added += 1
+
+                if sheet_added > 0:
+                    total_added += sheet_added
+        finally:
+            qa_wb.close()
 
     return total_added
 
