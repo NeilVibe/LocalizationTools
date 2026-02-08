@@ -1405,6 +1405,15 @@ def run_compiler():
             rebuild = target_master not in processed_masters
             processed_masters.add(target_master)
 
+            # When a second category shares the same master (e.g., Gimmick after Item),
+            # save the in-memory workbook to disk so get_or_create_master can find it.
+            # With deferred_save=True, the first category's workbook is only in memory.
+            if not rebuild:
+                prev_data = master_status_data.get(target_master)
+                if prev_data and prev_data["workbook"] is not None and prev_data["path"] is not None:
+                    prev_data["workbook"].save(prev_data["path"])
+                    print(f"  Saved intermediate master for {target_master} before appending {category}")
+
             # Get or initialize accumulated data for this master
             if target_master not in master_status_data:
                 master_status_data[target_master] = {
