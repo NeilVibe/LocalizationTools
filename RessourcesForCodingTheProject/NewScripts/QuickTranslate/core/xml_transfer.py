@@ -515,6 +515,9 @@ def merge_corrections_strorigin_only(
         for i, c in enumerate(corrections):
             if not correction_matched[i]:
                 origin_norm = normalize_for_matching(c.get("str_origin", ""))
+                # Skip empty StrOrigin (already logged as skipped_empty above)
+                if not origin_norm:
+                    continue
                 if origin_norm in matched_origins:
                     # StrOrigin WAS matched — this is a source duplicate, not a failure
                     result["duplicates_in_source"] += 1
