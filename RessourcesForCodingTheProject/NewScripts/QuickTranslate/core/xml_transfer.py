@@ -20,7 +20,7 @@ except ImportError:
     USING_LXML = False
 
 import config
-from .text_utils import normalize_text, normalize_nospace
+from .text_utils import normalize_text, normalize_nospace, normalize_for_matching
 from .korean_detection import is_korean_text
 from .source_scanner import scan_source_for_languages
 
@@ -261,6 +261,172 @@ def merge_corrections_to_xml(
     except Exception as e:
         result["errors"].append(str(e))
         logger.error(f"Error merging to {xml_path}: {e}")
+
+    return result
+
+
+def merge_corrections_strorigin_only(
+    xml_path: Path,
+    corrections: List[Dict],
+    dry_run: bool = False,
+    only_untranslated: bool = False,
+) -> Dict:
+    """
+    Merge corrections into a target XML using StrOrigin-only matching.
+
+    Ultra-fast: single XML parse, pure dict lookup by normalized StrOrigin.
+    Applies each correction to ALL target entries with matching StrOrigin
+    (fan-out to duplicates).
+
+    Args:
+        xml_path: Path to target XML file
+        corrections: List of correction dicts with str_origin, corrected
+        dry_run: If True, don't write changes
+        only_untranslated: If True, skip entries that already have non-Korean Str
+
+    Returns:
+        Dict with stats: matched, updated, not_found, errors, details
+    """
+    result = {
+        "matched": 0,
+        "updated": 0,
+        "not_found": 0,
+        "skipped_translated": 0,
+        "errors": [],
+        "details": [],
+    }
+
+    if not corrections:
+        return result
+
+    # Build lookup: normalized_StrOrigin -> (corrected_text, index)
+    # Multiple corrections with the same StrOrigin: last one wins (with warning)
+    correction_lookup = {}
+    correction_lookup_nospace = {}
+    correction_matched = [False] * len(corrections)
+
+    for i, c in enumerate(corrections):
+        origin_norm = normalize_for_matching(c.get("str_origin", ""))
+        origin_nospace = normalize_nospace(origin_norm)
+
+        if origin_norm in correction_lookup:
+            old_c_idx = correction_lookup[origin_norm][1]
+            old_corrected = corrections[old_c_idx].get("corrected", "")
+            if old_corrected != c.get("corrected", ""):
+                logger.warning(
+                    f"Duplicate StrOrigin '{origin_norm[:50]}': overwriting "
+                    f"'{old_corrected[:40]}' with '{c.get('corrected', '')[:40]}'"
+                )
+
+        correction_lookup[origin_norm] = (c["corrected"], i)
+        correction_lookup_nospace[origin_nospace] = (c["corrected"], i)
+
+    try:
+        if USING_LXML:
+            parser = etree.XMLParser(
+                resolve_entities=False, load_dtd=False,
+                no_network=True, recover=True,
+            )
+            tree = etree.parse(str(xml_path), parser)
+            root = tree.getroot()
+        else:
+            tree = etree.parse(str(xml_path))
+            root = tree.getroot()
+
+        changed = False
+
+        locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
+        all_elements = []
+        for tag in locstr_tags:
+            all_elements.extend(root.iter(tag))
+
+        for loc in all_elements:
+            sid = (loc.get("StringId") or loc.get("StringID") or
+                   loc.get("stringid") or loc.get("STRINGID") or
+                   loc.get("Stringid") or loc.get("stringId") or "").strip()
+            orig_raw = (loc.get("StrOrigin") or loc.get("Strorigin") or
+                        loc.get("strorigin") or loc.get("STRORIGIN") or "")
+            orig = normalize_for_matching(orig_raw)
+            orig_nospace = normalize_nospace(orig)
+
+            # Try exact match first, then nospace fallback
+            match_data = None
+            if orig in correction_lookup:
+                match_data = correction_lookup[orig]
+            elif orig_nospace in correction_lookup_nospace:
+                match_data = correction_lookup_nospace[orig_nospace]
+
+            if match_data is not None:
+                new_str, idx = match_data
+                correction_matched[idx] = True
+                result["matched"] += 1
+
+                old_str = (loc.get("Str") or loc.get("str") or
+                           loc.get("STR") or "")
+
+                if only_untranslated and old_str and not is_korean_text(old_str):
+                    result["skipped_translated"] += 1
+                    orig_correction = corrections[idx]
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": "SKIPPED_TRANSLATED",
+                        "old": orig_correction.get("str_origin", ""),
+                        "new": orig_correction.get("corrected", ""),
+                        "raw_attribs": orig_correction.get("raw_attribs", {}),
+                    })
+                    continue
+
+                new_str = _convert_linebreaks_for_xml(new_str)
+
+                if new_str != old_str:
+                    if not dry_run:
+                        loc.set("Str", new_str)
+                    result["updated"] += 1
+                    changed = True
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": "UPDATED",
+                        "old": old_str,
+                        "new": new_str,
+                    })
+                    logger.debug(f"Updated (StrOrigin) StringId={sid}: '{old_str}' -> '{new_str}'")
+                else:
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": "UNCHANGED",
+                        "old": old_str,
+                        "new": "(same)",
+                    })
+
+        # Count corrections that didn't match
+        for i, c in enumerate(corrections):
+            if not correction_matched[i]:
+                result["not_found"] += 1
+                result["details"].append({
+                    "string_id": c.get("string_id", ""),
+                    "status": "NOT_FOUND",
+                    "old": c.get("str_origin", ""),
+                    "new": c["corrected"],
+                    "raw_attribs": c.get("raw_attribs", {}),
+                })
+
+        if changed and not dry_run:
+            try:
+                current_mode = os.stat(xml_path).st_mode
+                if not current_mode & stat.S_IWRITE:
+                    os.chmod(xml_path, current_mode | stat.S_IWRITE)
+            except Exception as e:
+                logger.warning(f"Could not make {xml_path.name} writable: {e}")
+
+            if USING_LXML:
+                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False, pretty_print=True)
+            else:
+                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False)
+            logger.info(f"Saved {xml_path.name}: {result['updated']} entries updated (StrOrigin-only)")
+
+    except Exception as e:
+        result["errors"].append(str(e))
+        logger.error(f"Error merging (StrOrigin-only) to {xml_path}: {e}")
 
     return result
 
@@ -1329,6 +1495,11 @@ def transfer_folder_to_folder(
                     "details": [],
                     "level_counts": {"L1": 0, "L2A": 0, "L2B": 0, "L3": 0},
                 }
+        elif match_mode == "strorigin_only":
+            file_result = merge_corrections_strorigin_only(
+                target_xml, corrections, dry_run,
+                only_untranslated=only_untranslated,
+            )
         else:
             file_result = merge_corrections_to_xml(
                 target_xml, corrections, dry_run,
@@ -1565,6 +1736,11 @@ def transfer_file_to_file(
         )
         result = merge_corrections_quadruple_fallback(
             target_file, enriched, dry_run,
+            only_untranslated=only_untranslated,
+        )
+    elif match_mode == "strorigin_only":
+        result = merge_corrections_strorigin_only(
+            target_file, corrections, dry_run,
             only_untranslated=only_untranslated,
         )
     else:
