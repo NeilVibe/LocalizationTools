@@ -212,7 +212,7 @@ class QuickTranslateApp:
             ("substring", "Substring Match (Lookup only)", "Find Korean text in StrOrigin"),
             ("stringid_only", "StringID-Only (SCRIPT)", "SCRIPT categories only - match by StringID"),
             ("strict", "StringID + StrOrigin (STRICT)", "Requires BOTH to match exactly"),
-            ("strorigin_only", "StrOrigin Only (FAST)", "Match by StrOrigin text only - fills ALL duplicates"),
+            ("strorigin_only", "StrOrigin Only", "Match by StrOrigin text only - fills ALL duplicates"),
         ]
 
         for value, label, desc in match_types:
