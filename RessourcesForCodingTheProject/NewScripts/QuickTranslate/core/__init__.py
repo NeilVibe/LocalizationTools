@@ -39,6 +39,7 @@ from .xml_transfer import (
     merge_corrections_to_xml,
     merge_corrections_stringid_only,
     merge_corrections_fuzzy,
+    cleanup_empty_strorigin,
     transfer_folder_to_folder,
     transfer_file_to_file,
     format_transfer_report,
