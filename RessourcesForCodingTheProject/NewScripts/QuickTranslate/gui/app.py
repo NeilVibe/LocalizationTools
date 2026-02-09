@@ -212,6 +212,7 @@ class QuickTranslateApp:
             ("substring", "Substring Match (Lookup only)", "Find Korean text in StrOrigin"),
             ("stringid_only", "StringID-Only (SCRIPT)", "SCRIPT categories only - match by StringID"),
             ("strict", "StringID + StrOrigin (STRICT)", "Requires BOTH to match exactly"),
+            ("strorigin_only", "StrOrigin Only (FAST)", "Match by StrOrigin text only - fills ALL duplicates"),
             ("quadruple_fallback", "Quadruple Fallback (StrOrigin + Context)", "StrOrigin + Filename + Adjacent context cascade"),
         ]
 
@@ -852,6 +853,12 @@ class QuickTranslateApp:
             self.transfer_btn.config(state='disabled')
             self.transfer_note_label.config(text="(Lookup only - TRANSFER not available)")
             self.transfer_scope_frame.pack_forget()
+        elif match_type == "strorigin_only":
+            self.precision_options_frame.pack_forget()
+            # Enable TRANSFER button + show transfer scope toggle
+            self.transfer_btn.config(state='normal')
+            self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
+            self.transfer_note_label.config(text="")
         else:
             # stringid_only
             self.precision_options_frame.pack_forget()
@@ -2131,6 +2138,8 @@ class QuickTranslateApp:
             # Map match_type + precision to transfer match_mode
             if match_type == "stringid_only":
                 transfer_match_mode = "stringid_only"
+            elif match_type == "strorigin_only":
+                transfer_match_mode = "strorigin_only"
             elif match_type == "strict":
                 transfer_match_mode = "strict_fuzzy" if precision == "fuzzy" else "strict"
             elif match_type == "quadruple_fallback":
