@@ -540,6 +540,21 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
         total_failures = (total_not_found + total_strorigin_mismatch + total_skipped +
                          total_skipped_translated + total_skipped_excluded)
 
+        # Count Korean words from StrOrigin in details (success vs failure)
+        kr_words_success = 0
+        kr_words_failed = 0
+        kr_words_total = 0
+
+        for _sname, file_result in results.get("file_results", {}).items():
+            for detail in file_result.get("details", []):
+                str_origin = detail.get("old", "") or ""
+                word_count = len(str_origin.split()) if str_origin.strip() else 0
+                kr_words_total += word_count
+                if _is_failure(detail):
+                    kr_words_failed += word_count
+                else:
+                    kr_words_success += word_count
+
         aggregated["summary"] = {
             "files_processed": files_processed,
             "total_corrections": total_corrections,
@@ -556,6 +571,9 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
             "skipped_translated": total_skipped_translated,
             "skipped_excluded": total_skipped_excluded,
             "errors": results.get("errors", []),
+            "kr_words_total": kr_words_total,
+            "kr_words_success": kr_words_success,
+            "kr_words_failed": kr_words_failed,
         }
 
         # Process per-file results
@@ -626,6 +644,19 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
         total_failures = (not_found + strorigin_mismatch + skipped_non_script +
                         skipped_translated + skipped_excluded)
 
+        # Count Korean words from StrOrigin in details
+        kr_words_success = 0
+        kr_words_failed = 0
+        kr_words_total = 0
+        for detail in results.get("details", []):
+            str_origin = detail.get("old", "") or ""
+            word_count = len(str_origin.split()) if str_origin.strip() else 0
+            kr_words_total += word_count
+            if _is_failure(detail):
+                kr_words_failed += word_count
+            else:
+                kr_words_success += word_count
+
         aggregated["summary"] = {
             "files_processed": 1,
             "total_corrections": corrections_count,
@@ -642,6 +673,9 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
             "skipped_translated": skipped_translated,
             "skipped_excluded": skipped_excluded,
             "errors": results.get("errors", []),
+            "kr_words_total": kr_words_total,
+            "kr_words_success": kr_words_success,
+            "kr_words_failed": kr_words_failed,
         }
 
         # Single file entry
@@ -908,6 +942,50 @@ def _create_excel_formats(workbook) -> Dict:
         "align": "left",
     })
 
+    # Indented label (sub-item in hierarchy)
+    formats["indent_label"] = workbook.add_format({
+        "font_size": 10,
+        "align": "left",
+        "valign": "vcenter",
+        "indent": 2,
+        "border": 1,
+        "border_color": "#DDDDDD",
+        "bg_color": "#F5F5F5",
+    })
+
+    # Bold total row
+    formats["total_label"] = workbook.add_format({
+        "bold": True,
+        "font_size": 11,
+        "align": "left",
+        "valign": "vcenter",
+        "border": 2,
+        "border_color": "#2E4057",
+        "bg_color": "#E8EEF4",
+    })
+
+    formats["total_number"] = workbook.add_format({
+        "bold": True,
+        "font_size": 11,
+        "align": "center",
+        "valign": "vcenter",
+        "border": 2,
+        "border_color": "#2E4057",
+        "bg_color": "#E8EEF4",
+        "num_format": "#,##0",
+    })
+
+    formats["total_percent"] = workbook.add_format({
+        "bold": True,
+        "font_size": 11,
+        "align": "center",
+        "valign": "vcenter",
+        "border": 2,
+        "border_color": "#2E4057",
+        "bg_color": "#E8EEF4",
+        "num_format": "0.0%",
+    })
+
     return formats
 
 
@@ -918,98 +996,81 @@ def _write_summary_sheet(
     source_name: str,
     target_name: str
 ):
-    """Write the Summary sheet."""
+    """Write the Summary sheet — ONE unified table with full hierarchy."""
     sheet = workbook.add_worksheet("Summary")
     summary = data["summary"]
 
+    total = summary["total_corrections"] or 1  # avoid /0
+    total_failures = summary["total_failures"] or 1
+
     # Set column widths
-    sheet.set_column("A:A", 25)
+    sheet.set_column("A:A", 48)
     sheet.set_column("B:B", 20)
-    sheet.set_column("C:C", 15)
-    sheet.set_column("D:D", 15)
+    sheet.set_column("C:C", 18)
 
     row = 0
 
     # Title
-    sheet.merge_range(row, 0, row, 3, "TRANSFER FAILURE REPORT", formats["title"])
+    sheet.merge_range(row, 0, row, 2, "TRANSFER REPORT", formats["title"])
     row += 1
 
     # Timestamp
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sheet.write(row, 0, f"Generated: {timestamp}", formats["timestamp"])
-    row += 2
-
-    # Source/Target info
+    row += 1
     if source_name:
-        sheet.write(row, 0, "Source:", formats["label"])
-        sheet.write(row, 1, source_name, formats["value"])
+        sheet.write(row, 0, f"Source: {source_name}    Target: {target_name or 'LOC'}", formats["timestamp"])
         row += 1
-    if target_name:
-        sheet.write(row, 0, "Target:", formats["label"])
-        sheet.write(row, 1, target_name, formats["value"])
-        row += 1
-
-    row += 1
-
-    # Summary section header
-    sheet.merge_range(row, 0, row, 3, "OVERVIEW", formats["section_header"])
-    row += 1
-
-    # Files processed
-    sheet.write(row, 0, "Files Processed", formats["label"])
-    sheet.write(row, 1, summary["files_processed"], formats["number_even"])
-    row += 1
-
-    # Total corrections
-    sheet.write(row, 0, "Total Corrections", formats["label"])
-    sheet.write(row, 1, summary["total_corrections"], formats["number_odd"])
+    sheet.write(row, 0, f"Source Files Processed: {summary['files_processed']}", formats["timestamp"])
     row += 2
 
-    # Success/Failure counts section
-    sheet.merge_range(row, 0, row, 3, "RESULTS", formats["section_header"])
+    # ===================================================================
+    # TABLE 1: LOCSTR STRING BREAKDOWN (one unified table)
+    # ===================================================================
+    sheet.merge_range(row, 0, row, 2, "LOCSTR STRING BREAKDOWN", formats["section_header"])
     row += 1
 
-    # Headers
+    # Table headers
     sheet.write(row, 0, "", formats["header"])
-    sheet.write(row, 1, "Count", formats["header"])
-    sheet.write(row, 2, "Percentage", formats["header"])
+    sheet.write(row, 1, "LocStr Strings", formats["header"])
+    sheet.write(row, 2, "% of Total", formats["header"])
     row += 1
 
-    # Success row
-    sheet.write(row, 0, "SUCCESS (Updated)", formats["label"])
+    # TOTAL row (bold, top of table)
+    sheet.write(row, 0, "TOTAL LOCSTR STRINGS IN SOURCE", formats["total_label"])
+    sheet.write(row, 1, summary["total_corrections"], formats["total_number"])
+    sheet.write(row, 2, 1.0, formats["total_percent"])
+    row += 1
+
+    # Success
+    sheet.write(row, 0, "Strings Updated Successfully", formats["indent_label"])
     sheet.write(row, 1, summary["total_success"], formats["success_number"])
     sheet.write(row, 2, summary["success_rate"] / 100, formats["success_percent"])
     row += 1
 
-    # Unchanged row
+    # Unchanged
     unchanged = summary.get("unchanged", 0)
     if unchanged > 0:
         unchanged_rate = unchanged / summary["total_corrections"] if summary["total_corrections"] > 0 else 0
-        sheet.write(row, 0, "UNCHANGED (Already Correct)", formats["label"])
+        sheet.write(row, 0, "Strings Unchanged (already correct)", formats["indent_label"])
         sheet.write(row, 1, unchanged, formats["number_even"])
         sheet.write(row, 2, unchanged_rate, formats["percent_even"])
         row += 1
 
-    # Failure row
-    sheet.write(row, 0, "FAILURE (Total)", formats["label"])
+    # Failed (subtotal)
+    sheet.write(row, 0, "Strings Failed (total)", formats["indent_label"])
     sheet.write(row, 1, summary["total_failures"], formats["failure_number"])
     sheet.write(row, 2, summary["failure_rate"] / 100, formats["failure_percent"])
-    row += 2
-
-    # Breakdown section
-    sheet.merge_range(row, 0, row, 3, "FAILURE BREAKDOWN", formats["section_header"])
     row += 1
 
-    # Breakdown items
+    # Failed breakdown — each reason indented further, showing % of total AND % of failed
     breakdown_items = [
-        ("StringID Not Found", summary.get("not_found", 0)),
-        ("StrOrigin Mismatch", summary.get("strorigin_mismatch", 0)),
-        ("Skipped (Non-SCRIPT)", summary.get("skipped_non_script", 0)),
-        ("Skipped (Already Translated)", summary.get("skipped_translated", 0)),
-        ("Skipped (Excluded Subfolder)", summary.get("skipped_excluded", 0)),
+        ("StringID Not Found in Target", summary.get("not_found", 0)),
+        ("StrOrigin Mismatch (ID exists, text differs)", summary.get("strorigin_mismatch", 0)),
+        ("Skipped: Not a SCRIPT category", summary.get("skipped_non_script", 0)),
+        ("Skipped: Already Translated (non-Korean)", summary.get("skipped_translated", 0)),
+        ("Skipped: Excluded Subfolder", summary.get("skipped_excluded", 0)),
     ]
-
-    total_failures = summary["total_failures"] or 1  # Avoid division by zero
 
     for i, (label, count) in enumerate(breakdown_items):
         if count > 0:
@@ -1017,22 +1078,56 @@ def _write_summary_sheet(
             fmt_num = formats["number_even"] if i % 2 == 0 else formats["number_odd"]
             fmt_pct = formats["percent_even"] if i % 2 == 0 else formats["percent_odd"]
 
-            sheet.write(row, 0, label, fmt_cell)
+            sheet.write(row, 0, f"      {label}", fmt_cell)
             sheet.write(row, 1, count, fmt_num)
-            sheet.write(row, 2, count / total_failures, fmt_pct)
+            sheet.write(row, 2, count / total, fmt_pct)
             row += 1
 
-    row += 1
+    row += 2
 
-    # Errors section (if any)
-    errors = summary.get("errors", [])
-    if errors:
-        sheet.merge_range(row, 0, row, 3, "ERRORS", formats["section_header"])
+    # ===================================================================
+    # TABLE 2: KOREAN WORD COUNT BREAKDOWN (same unified style)
+    # ===================================================================
+    kr_words_total = summary.get("kr_words_total", 0)
+    if kr_words_total > 0:
+        kr_words_success = summary.get("kr_words_success", 0)
+        kr_words_failed = summary.get("kr_words_failed", 0)
+
+        sheet.merge_range(row, 0, row, 2, "KOREAN WORD COUNT (from StrOrigin)", formats["section_header"])
         row += 1
 
-        for i, error in enumerate(errors[:10]):  # Max 10 errors
+        sheet.write(row, 0, "", formats["header"])
+        sheet.write(row, 1, "Korean Words", formats["header"])
+        sheet.write(row, 2, "% of Total", formats["header"])
+        row += 1
+
+        # Total words row
+        sheet.write(row, 0, "TOTAL KOREAN WORDS", formats["total_label"])
+        sheet.write(row, 1, kr_words_total, formats["total_number"])
+        sheet.write(row, 2, 1.0, formats["total_percent"])
+        row += 1
+
+        sheet.write(row, 0, "Words in Succeeded Strings", formats["indent_label"])
+        sheet.write(row, 1, kr_words_success, formats["success_number"])
+        sheet.write(row, 2, kr_words_success / kr_words_total, formats["success_percent"])
+        row += 1
+
+        sheet.write(row, 0, "Words in Failed Strings", formats["indent_label"])
+        sheet.write(row, 1, kr_words_failed, formats["failure_number"])
+        sheet.write(row, 2, kr_words_failed / kr_words_total, formats["failure_percent"])
+        row += 2
+
+    # ===================================================================
+    # ERRORS (if any)
+    # ===================================================================
+    errors = summary.get("errors", [])
+    if errors:
+        sheet.merge_range(row, 0, row, 2, "ERRORS", formats["section_header"])
+        row += 1
+
+        for i, error in enumerate(errors[:10]):
             fmt = formats["cell_even"] if i % 2 == 0 else formats["cell_odd"]
-            sheet.merge_range(row, 0, row, 3, error, fmt)
+            sheet.merge_range(row, 0, row, 2, error, fmt)
             row += 1
 
         if len(errors) > 10:
@@ -1040,28 +1135,53 @@ def _write_summary_sheet(
 
 
 def _write_reason_sheet(workbook, data: Dict, formats: Dict):
-    """Write the Failure by Reason sheet."""
+    """Write the Failure by Reason sheet — full context table."""
     sheet = workbook.add_worksheet("Failure by Reason")
 
+    summary = data["summary"]
+    total_strings = summary.get("total_corrections", 0) or 1
+    total_failed = sum(v["count"] for v in data["by_reason"].values()) or 1
+    total_success = summary.get("total_success", 0)
+
     # Set column widths
-    sheet.set_column("A:A", 35)
-    sheet.set_column("B:B", 12)
-    sheet.set_column("C:C", 15)
+    sheet.set_column("A:A", 48)
+    sheet.set_column("B:B", 20)
+    sheet.set_column("C:C", 18)
+    sheet.set_column("D:D", 18)
 
     row = 0
 
     # Title
-    sheet.merge_range(row, 0, row, 2, "FAILURES BY REASON", formats["title"])
+    sheet.merge_range(row, 0, row, 3, "LOCSTR STRINGS BY REASON", formats["title"])
     row += 2
 
     # Headers
-    sheet.write(row, 0, "Failure Reason", formats["header"])
-    sheet.write(row, 1, "Count", formats["header"])
-    sheet.write(row, 2, "Percentage", formats["header"])
+    sheet.write(row, 0, "", formats["header"])
+    sheet.write(row, 1, "LocStr Strings", formats["header"])
+    sheet.write(row, 2, "% of Total", formats["header"])
+    sheet.write(row, 3, "% of Failed", formats["header"])
     row += 1
 
-    # Calculate total failures for percentages
-    total = sum(v["count"] for v in data["by_reason"].values()) or 1
+    # TOTAL row
+    sheet.write(row, 0, "TOTAL LOCSTR STRINGS", formats["total_label"])
+    sheet.write(row, 1, total_strings, formats["total_number"])
+    sheet.write(row, 2, 1.0, formats["total_percent"])
+    sheet.write(row, 3, "", formats["total_label"])
+    row += 1
+
+    # Success row
+    sheet.write(row, 0, "Strings Succeeded", formats["indent_label"])
+    sheet.write(row, 1, total_success, formats["success_number"])
+    sheet.write(row, 2, total_success / total_strings, formats["success_percent"])
+    sheet.write(row, 3, "", formats["cell_even"])
+    row += 1
+
+    # Failed subtotal
+    sheet.write(row, 0, "Strings Failed (breakdown below)", formats["indent_label"])
+    sheet.write(row, 1, total_failed, formats["failure_number"])
+    sheet.write(row, 2, total_failed / total_strings, formats["failure_percent"])
+    sheet.write(row, 3, 1.0, formats["failure_percent"])
+    row += 1
 
     # Sort by count (descending)
     sorted_reasons = sorted(
@@ -1076,46 +1196,42 @@ def _write_reason_sheet(workbook, data: Dict, formats: Dict):
             continue
 
         reason_label = FAILURE_REASONS.get(reason_key, reason_key)
-        percentage = count / total
 
-        # Alternate row colors
         fmt_cell = formats["cell_even"] if i % 2 == 0 else formats["cell_odd"]
         fmt_num = formats["number_even"] if i % 2 == 0 else formats["number_odd"]
         fmt_pct = formats["percent_even"] if i % 2 == 0 else formats["percent_odd"]
 
-        sheet.write(row, 0, reason_label, fmt_cell)
+        sheet.write(row, 0, f"      {reason_label}", fmt_cell)
         sheet.write(row, 1, count, fmt_num)
-        sheet.write(row, 2, percentage, fmt_pct)
+        sheet.write(row, 2, count / total_strings, fmt_pct)
+        sheet.write(row, 3, count / total_failed, fmt_pct)
         row += 1
-
-    # Total row
-    if sorted_reasons:
-        row += 1
-        sheet.write(row, 0, "TOTAL", formats["label"])
-        sheet.write(row, 1, total, formats["failure_number"])
-        sheet.write(row, 2, 1.0, formats["failure_percent"])
 
 
 def _write_file_sheet(workbook, data: Dict, formats: Dict):
     """Write the Failure by File sheet."""
-    sheet = workbook.add_worksheet("Failure by File")
+    sheet = workbook.add_worksheet("Results by File")
 
     # Set column widths
     sheet.set_column("A:A", 30)  # Source File
     sheet.set_column("B:B", 12)  # Language
     sheet.set_column("C:C", 30)  # Target
-    sheet.set_column("D:D", 12)  # Attempted
-    sheet.set_column("E:E", 10)  # Failed
-    sheet.set_column("F:F", 15)  # Success Rate
+    sheet.set_column("D:D", 22)  # Total LocStr Strings
+    sheet.set_column("E:E", 22)  # Strings Succeeded
+    sheet.set_column("F:F", 22)  # Strings Failed
+    sheet.set_column("G:G", 15)  # Success Rate
 
     row = 0
 
     # Title
-    sheet.merge_range(row, 0, row, 5, "FAILURES BY FILE", formats["title"])
+    sheet.merge_range(row, 0, row, 6, "RESULTS BY SOURCE FILE", formats["title"])
     row += 2
 
     # Headers
-    headers = ["Source File", "Language", "Target", "Attempted", "Failed", "Success Rate"]
+    headers = [
+        "Source File", "Language", "Target File",
+        "Total LocStr Strings", "Strings Succeeded", "Strings Failed", "Success Rate"
+    ]
     for col, header in enumerate(headers):
         sheet.write(row, col, header, formats["header"])
     row += 1
@@ -1127,26 +1243,31 @@ def _write_file_sheet(workbook, data: Dict, formats: Dict):
         fmt_cell = formats["cell_even"] if i % 2 == 0 else formats["cell_odd"]
         fmt_num = formats["number_even"] if i % 2 == 0 else formats["number_odd"]
 
+        attempted = file_data["attempted"]
+        failed = file_data["failed"]
+        succeeded = max(0, attempted - failed)
+
         sheet.write(row, 0, file_data["source_file"], fmt_cell)
         sheet.write(row, 1, file_data["language"], fmt_cell)
         sheet.write(row, 2, file_data["target_file"], fmt_cell)
-        sheet.write(row, 3, file_data["attempted"], fmt_num)
-        sheet.write(row, 4, file_data["failed"], fmt_num)
+        sheet.write(row, 3, attempted, fmt_num)
+        sheet.write(row, 4, succeeded, formats["success_number"] if succeeded > 0 else fmt_num)
+        sheet.write(row, 5, failed, formats["failure_number"] if failed > 0 else fmt_num)
 
         # Color-code success rate
         success_rate = file_data["success_rate"]
         if success_rate >= 95:
-            sheet.write(row, 5, success_rate / 100, formats["success_percent"])
+            sheet.write(row, 6, success_rate / 100, formats["success_percent"])
         elif success_rate >= 80:
-            sheet.write(row, 5, success_rate / 100, formats["percent_even"] if i % 2 == 0 else formats["percent_odd"])
+            sheet.write(row, 6, success_rate / 100, formats["percent_even"] if i % 2 == 0 else formats["percent_odd"])
         else:
-            sheet.write(row, 5, success_rate / 100, formats["failure_percent"])
+            sheet.write(row, 6, success_rate / 100, formats["failure_percent"])
 
         row += 1
 
     # Add autofilter
     if data["by_file"]:
-        sheet.autofilter(header_row, 0, row - 1, 5)
+        sheet.autofilter(header_row, 0, row - 1, 6)
 
 
 def _write_detailed_sheet(workbook, data: Dict, formats: Dict):

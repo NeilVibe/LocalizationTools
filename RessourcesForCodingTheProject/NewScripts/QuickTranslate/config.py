@@ -127,6 +127,7 @@ SEQUENCER_FOLDER = EXPORT_FOLDER / "Sequencer"
 
 OUTPUT_FOLDER = SCRIPT_DIR / "Output"
 SOURCE_FOLDER = SCRIPT_DIR / "Source"
+FAILED_REPORTS_FOLDER = SCRIPT_DIR / "Failed Reports"
 
 # =============================================================================
 # Language Configuration (Auto-discovered from LOC folder)
@@ -183,6 +184,26 @@ def ensure_output_folder():
     """Create output folder if it doesn't exist."""
     OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
     return OUTPUT_FOLDER
+
+
+def get_failed_report_dir(source_name: str) -> Path:
+    """
+    Build and create the dated failure report directory.
+
+    Structure: Failed Reports/YYMMDD/source_folder_name/
+    Example:   Failed Reports/260209/locdev/
+
+    Args:
+        source_name: Name of the source folder (e.g. "locdev", "Corrections_FRE")
+
+    Returns:
+        Path to the created directory.
+    """
+    from datetime import datetime
+    date_str = datetime.now().strftime("%y%m%d")
+    report_dir = FAILED_REPORTS_FOLDER / date_str / source_name
+    report_dir.mkdir(parents=True, exist_ok=True)
+    return report_dir
 
 
 def ensure_source_folder():
