@@ -2041,7 +2041,7 @@ class QuickTranslateApp:
         match_str = match_type.upper()
 
         # Add precision info for modes that support it
-        if match_type in ("strict", "quadruple_fallback"):
+        if match_type in ("strict", "strorigin_only"):
             match_str = f"{match_str} ({precision.upper()})"
 
         scope_str = ("Only untranslated (Korean)" if transfer_scope == "untranslated"
