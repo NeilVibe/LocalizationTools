@@ -31,6 +31,68 @@ SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
 SCRIPT_EXCLUDE_SUBFOLDERS = config.SCRIPT_EXCLUDE_SUBFOLDERS
 
 
+def cleanup_empty_strorigin(xml_path: Path, dry_run: bool = False) -> int:
+    """
+    Post-process: clear Str on any element where StrOrigin is empty.
+
+    Golden rule: if StrOrigin is empty, Str MUST be empty too.
+
+    Args:
+        xml_path: Path to XML file to clean up
+        dry_run: If True, count but don't write
+
+    Returns:
+        Number of entries cleaned (Str cleared)
+    """
+    try:
+        if USING_LXML:
+            parser = etree.XMLParser(
+                resolve_entities=False, load_dtd=False,
+                no_network=True, recover=True,
+            )
+            tree = etree.parse(str(xml_path), parser)
+            root = tree.getroot()
+        else:
+            tree = etree.parse(str(xml_path))
+            root = tree.getroot()
+
+        cleaned = 0
+        locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
+        all_elements = []
+        for tag in locstr_tags:
+            all_elements.extend(root.iter(tag))
+
+        for loc in all_elements:
+            origin = (loc.get("StrOrigin") or loc.get("Strorigin") or
+                      loc.get("strorigin") or loc.get("STRORIGIN") or "").strip()
+            str_val = (loc.get("Str") or loc.get("str") or
+                       loc.get("STR") or "").strip()
+
+            if not origin and str_val:
+                if not dry_run:
+                    loc.set("Str", "")
+                cleaned += 1
+
+        if cleaned > 0 and not dry_run:
+            try:
+                current_mode = os.stat(xml_path).st_mode
+                if not current_mode & stat.S_IWRITE:
+                    os.chmod(xml_path, current_mode | stat.S_IWRITE)
+            except Exception:
+                pass
+
+            if USING_LXML:
+                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False, pretty_print=True)
+            else:
+                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False)
+            logger.info(f"Cleaned {cleaned} entries with empty StrOrigin in {xml_path.name}")
+
+        return cleaned
+    except Exception as e:
+        logger.error(f"Error cleaning empty StrOrigin in {xml_path}: {e}")
+        return 0
+
+
 def _convert_linebreaks_for_xml(txt: str) -> str:
     """
     Convert Excel linebreaks to XML linebreak format.
@@ -158,6 +220,11 @@ def merge_corrections_to_xml(
             orig_raw = (loc.get("StrOrigin") or loc.get("Strorigin") or
                         loc.get("strorigin") or loc.get("STRORIGIN") or "")
             orig = normalize_text(orig_raw)
+
+            # Golden rule: empty StrOrigin = never write Str
+            if not orig.strip():
+                continue
+
             orig_nospace = normalize_nospace(orig)
             key = (sid, orig)
             key_nospace = (sid, orig_nospace)
@@ -377,6 +444,11 @@ def merge_corrections_strorigin_only(
             orig_raw = (loc.get("StrOrigin") or loc.get("Strorigin") or
                         loc.get("strorigin") or loc.get("STRORIGIN") or "")
             orig = normalize_for_matching(orig_raw)
+
+            # Golden rule: empty StrOrigin = never write Str
+            if not orig.strip():
+                continue
+
             orig_nospace = normalize_nospace(orig)
 
             # Try exact match first, then nospace fallback
@@ -619,6 +691,12 @@ def merge_corrections_stringid_only(
                    loc.get("stringid") or loc.get("STRINGID") or
                    loc.get("Stringid") or loc.get("stringId") or "").strip()
 
+            # Golden rule: empty StrOrigin = never write Str
+            target_origin = (loc.get("StrOrigin") or loc.get("Strorigin") or
+                             loc.get("strorigin") or loc.get("STRORIGIN") or "").strip()
+            if not target_origin:
+                continue
+
             # StringID-only matching
             if sid in correction_lookup:
                 new_str = correction_lookup[sid]["corrected"]
@@ -776,6 +854,12 @@ def merge_corrections_fuzzy(
             all_elements.extend(root.iter(tag))
 
         for loc in all_elements:
+            # Golden rule: empty StrOrigin = never write Str
+            target_origin = (loc.get("StrOrigin") or loc.get("Strorigin") or
+                             loc.get("strorigin") or loc.get("STRORIGIN") or "").strip()
+            if not target_origin:
+                continue
+
             sid = (loc.get("StringId") or loc.get("StringID") or
                    loc.get("stringid") or loc.get("STRINGID") or
                    loc.get("Stringid") or loc.get("stringId") or "").strip()
@@ -1305,6 +1389,12 @@ def transfer_folder_to_folder(
                 only_untranslated=only_untranslated,
             )
 
+        # Post-process: enforce empty StrOrigin = empty Str
+        if not dry_run:
+            cleaned = cleanup_empty_strorigin(target_xml)
+            if cleaned > 0:
+                logger.info(f"Post-process: cleared Str on {cleaned} entries with empty StrOrigin in {target_xml.name}")
+
         # Aggregate results
         results["files_processed"] += len(source_names)
         results["total_corrections"] += len(corrections)
@@ -1574,6 +1664,12 @@ def transfer_file_to_file(
             target_file, corrections, dry_run,
             only_untranslated=only_untranslated,
         )
+
+    # Post-process: enforce empty StrOrigin = empty Str
+    if not dry_run:
+        cleaned = cleanup_empty_strorigin(target_file)
+        if cleaned > 0:
+            logger.info(f"Post-process: cleared Str on {cleaned} entries with empty StrOrigin in {target_file.name}")
 
     result["corrections_count"] = len(corrections)
     return result
