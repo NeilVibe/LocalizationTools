@@ -294,6 +294,7 @@ class QuickTranslateApp:
 
         tk.Radiobutton(self.transfer_scope_frame, text="Transfer ALL (overwrite always)",
                         variable=self.transfer_scope, value="all",
+                        command=self._on_transfer_scope_changed,
                         font=('Segoe UI', 9), bg='#fef3e2',
                         activebackground='#fef3e2').pack(side=tk.LEFT, padx=(0, 15))
         tk.Radiobutton(self.transfer_scope_frame, text="Only untranslated (Korean only)",
@@ -846,6 +847,9 @@ class QuickTranslateApp:
             self.transfer_btn.config(state='normal')
             self.transfer_note_label.config(text="")
             self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
+            # SAFETY: StrOrigin Only defaults to untranslated-only (no StringID verification)
+            if match_type == "strorigin_only":
+                self.transfer_scope.set("untranslated")
         elif match_type == "substring":
             self.precision_options_frame.pack_forget()
             # Disable TRANSFER button for substring (lookup only)
@@ -859,6 +863,25 @@ class QuickTranslateApp:
             self.transfer_btn.config(state='normal')
             self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
             self.transfer_note_label.config(text="")
+
+    def _on_transfer_scope_changed(self):
+        """Warn user when switching to 'ALL' on StrOrigin Only (no StringID safety)."""
+        match_type = self.match_type.get()
+        scope = self.transfer_scope.get()
+
+        if scope == "all" and match_type == "strorigin_only":
+            confirm = messagebox.askokcancel(
+                "Warning: Overwrite Risk",
+                "StrOrigin Only matches by source text ONLY — there is no StringID "
+                "verification.\n\n"
+                "Switching to 'Transfer ALL' may OVERWRITE previously correct "
+                "translations with wrong values if different entries share the "
+                "same source text.\n\n"
+                "Are you sure you want to allow overwriting?",
+                icon='warning',
+            )
+            if not confirm:
+                self.transfer_scope.set("untranslated")
 
     def _update_fuzzy_model_status(self):
         """Update the fuzzy model status display."""
