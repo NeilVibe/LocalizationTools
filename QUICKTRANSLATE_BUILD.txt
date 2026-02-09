@@ -67,3 +67,4 @@ Build: Clearer StrOrigin dedup summary message
 Build - Fix transfer engine bugs + rewrite failure reports
 Build - CRITICAL: filter Korean entries from source corrections
 Build - Remove quadruple fallback mode
+Build - Enforce empty StrOrigin = empty Str golden rule
