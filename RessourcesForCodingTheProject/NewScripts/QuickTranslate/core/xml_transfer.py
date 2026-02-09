@@ -269,12 +269,15 @@ def merge_corrections_strorigin_only(
     xml_path: Path,
     corrections: List[Dict],
     dry_run: bool = False,
-    only_untranslated: bool = False,
+    only_untranslated: bool = True,
 ) -> Dict:
     """
     Merge corrections into a target XML using StrOrigin-only matching.
 
-    Ultra-fast: single XML parse, pure dict lookup by normalized StrOrigin.
+    SAFETY: only_untranslated defaults to True. Without StringID verification,
+    overwriting existing translations is too dangerous. Only fills untranslated entries.
+
+    Single XML parse, pure dict lookup by normalized StrOrigin.
     Applies each correction to ALL target entries with matching StrOrigin
     (fan-out to duplicates).
 
@@ -1496,15 +1499,17 @@ def transfer_folder_to_folder(
                     "level_counts": {"L1": 0, "L2A": 0, "L2B": 0, "L3": 0},
                 }
         elif match_mode == "strorigin_only":
+            # SAFETY: Always untranslated-only — no StringID = no overwrite safety
             file_result = merge_corrections_strorigin_only(
                 target_xml, corrections, dry_run,
-                only_untranslated=only_untranslated,
+                only_untranslated=True,
             )
         elif match_mode == "strorigin_only_fuzzy":
             # ═══ TWO-STEP: Exact StrOrigin first, then SBERT fuzzy on leftovers ═══
+            # SAFETY: Always untranslated-only — no StringID = no overwrite safety
             file_result = merge_corrections_strorigin_only(
                 target_xml, corrections, dry_run,
-                only_untranslated=only_untranslated,
+                only_untranslated=True,
             )
             step1_matched = file_result["matched"]
             logger.info(f"Step 1 (StrOrigin exact): {step1_matched}/{len(corrections)} matched")
@@ -1798,15 +1803,17 @@ def transfer_file_to_file(
             only_untranslated=only_untranslated,
         )
     elif match_mode == "strorigin_only":
+        # SAFETY: Always untranslated-only — no StringID = no overwrite safety
         result = merge_corrections_strorigin_only(
             target_file, corrections, dry_run,
-            only_untranslated=only_untranslated,
+            only_untranslated=True,
         )
     elif match_mode == "strorigin_only_fuzzy":
         # ═══ TWO-STEP: Exact StrOrigin first, then SBERT fuzzy on leftovers ═══
+        # SAFETY: Always untranslated-only — no StringID = no overwrite safety
         result = merge_corrections_strorigin_only(
             target_file, corrections, dry_run,
-            only_untranslated=only_untranslated,
+            only_untranslated=True,
         )
         step1_matched = result["matched"]
         logger.info(f"Step 1 (StrOrigin exact): {step1_matched}/{len(corrections)} matched")
