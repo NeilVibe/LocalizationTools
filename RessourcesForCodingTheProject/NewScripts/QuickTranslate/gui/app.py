@@ -2,7 +2,7 @@
 QuickTranslate GUI Application.
 
 Tkinter-based GUI with folder-only source mode (auto-detects XML + Excel):
-- Match Type Selection: Substring / StringID-only / Strict / Quadruple Fallback
+- Match Type Selection: Substring / StringID-only / Strict / StrOrigin Only
 - Enhanced source validation (dry-run parse with per-file reporting)
 - Settings panel for path configuration
 - Detailed logging and reporting
@@ -31,7 +31,6 @@ from core import (
     find_matches_stringid_only,
     find_matches_strict,
     find_matches_special_key,
-    find_matches_quadruple_fallback,
     find_stringid_from_text,
     format_multiple_matches,
     read_corrections_from_excel,
@@ -64,7 +63,7 @@ from core import (
 from core.missing_translation_finder import find_missing_with_options
 from gui.missing_params_dialog import MissingParamsDialog
 from gui.exclude_dialog import ExcludeDialog
-from core.indexing import scan_folder_for_entries, scan_folder_for_entries_with_context
+from core.indexing import scan_folder_for_entries
 from core.fuzzy_matching import (
     check_model_available,
     load_model,
@@ -1531,106 +1530,6 @@ class QuickTranslateApp:
                 self._log(f"  - Matched (ID+Origin): {stats['matched']}", 'success')
                 self._log(f"  - Not found: {stats['no_match']}", 'error')
 
-            elif match_type == "quadruple_fallback":
-                # Quadruple Fallback: StrOrigin + filename + adjacency cascade
-                if not corrections:
-                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Quadruple Fallback mode requires corrections data (XML or structured Excel).'))
-                    return
-
-                if not target_path:
-                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Quadruple Fallback mode requires a Target folder.'))
-                    return
-
-                # Scan TARGET with context to build 4-level indexes
-                self._log(f"Scanning target with context: {target_path}", 'info')
-                all_entries, level1_idx, level2a_idx, level2b_idx, level3_idx = scan_folder_for_entries_with_context(
-                    Path(target_path), self._update_status
-                )
-                self._log(f"Found {len(all_entries)} entries with context in target", 'info')
-
-                # Enrich SOURCE corrections with file/adjacency context if XML source
-                source_has_context = any(c.get("file_relpath") for c in corrections)
-                if not source_has_context:
-                    source_path_obj = Path(source_path_str)
-                    scan_source = source_path_obj if source_path_obj.is_dir() else source_path_obj.parent
-                    self._log(f"Enriching source corrections with context from: {scan_source}", 'info')
-                    src_entries, _, _, _, _ = scan_folder_for_entries_with_context(
-                        scan_source, self._update_status
-                    )
-                    if src_entries:
-                        from core.text_utils import normalize_for_matching
-                        src_lookup = {}
-                        for se in src_entries:
-                            norm_o = normalize_for_matching(se.get("str_origin", ""))
-                            if norm_o not in src_lookup:
-                                src_lookup[norm_o] = se
-                        enriched_count = 0
-                        for c in corrections:
-                            c_origin = c.get("str_origin", "").strip()
-                            if not c_origin:
-                                continue
-                            norm_c = normalize_for_matching(c_origin)
-                            src_entry = src_lookup.get(norm_c)
-                            if src_entry:
-                                c["file_relpath"] = src_entry.get("file_relpath", "")
-                                c["adjacent_before"] = src_entry.get("adjacent_before", "")
-                                c["adjacent_after"] = src_entry.get("adjacent_after", "")
-                                c["adjacency_hash"] = src_entry.get("adjacency_hash", "")
-                                enriched_count += 1
-                        source_has_context = enriched_count > 0
-                        self._log(f"Enriched {enriched_count}/{len(corrections)} corrections with source context", 'info')
-
-                if not source_has_context:
-                    self._log("Source lacks file context - using L3 (StrOrigin only) fallback", 'warning')
-
-                if precision == "fuzzy":
-                    if not self._ensure_fuzzy_model():
-                        return
-
-                    correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
-                    self._log(f"Corrections have {len(correction_stringids):,} unique StringIDs for filtering", 'info')
-
-                    only_untranslated = transfer_scope == "untranslated"
-                    if not self._ensure_fuzzy_index(target_path, stringid_filter=correction_stringids, only_untranslated=only_untranslated):
-                        return
-                    self._log(f"Quadruple Fallback with FUZZY precision (threshold: {fuzzy_threshold:.2f})", 'info')
-
-                    matched_corrections, not_found, level_counts = find_matches_quadruple_fallback(
-                        corrections, level1_idx, level2a_idx, level2b_idx, level3_idx,
-                        source_has_context,
-                        use_fuzzy=True,
-                        fuzzy_model=self._fuzzy_model,
-                        fuzzy_threshold=fuzzy_threshold,
-                        fuzzy_texts=self._fuzzy_texts,
-                        fuzzy_entries=self._fuzzy_entries,
-                        fuzzy_index=self._fuzzy_index,
-                    )
-                else:
-                    self._log("Quadruple Fallback with PERFECT precision", 'info')
-
-                    matched_corrections, not_found, level_counts = find_matches_quadruple_fallback(
-                        corrections, level1_idx, level2a_idx, level2b_idx, level3_idx,
-                        source_has_context,
-                    )
-
-                korean_inputs = [c.get("str_origin", "") for c in matched_corrections]
-                for c in matched_corrections:
-                    matches_per_input.append([c.get("matched_string_id")])
-                stats["total"] = len(corrections)
-                stats["matched"] = len(matched_corrections)
-                stats["no_match"] = not_found
-                stats["total_matches"] = len(matched_corrections)
-
-                precision_label = "FUZZY" if precision == "fuzzy" else "PERFECT"
-                self._log(f"Quadruple Fallback results ({precision_label}):", 'info')
-                self._log(f"  - Total corrections: {stats['total']}", 'info')
-                self._log(f"  - Matched total: {stats['matched']}", 'success')
-                self._log(f"    L1  (Quadruple: Origin+File+Adjacent): {level_counts['L1']}", 'success')
-                self._log(f"    L2A (Double: Origin+File):          {level_counts['L2A']}", 'info')
-                self._log(f"    L2B (Double: Origin+Adjacent):      {level_counts['L2B']}", 'info')
-                self._log(f"    L3  (Single: Origin only):          {level_counts['L3']}", 'warning')
-                self._log(f"  - Not found: {stats['no_match']}", 'error')
-
             self._task_queue.put(('progress', 70))
 
             # Write output
@@ -2172,9 +2071,6 @@ class QuickTranslateApp:
                 transfer_kwargs["source_stringids"] = source_stringids
                 transfer_kwargs["fuzzy_index"] = self._fuzzy_index
                 self._log(f"Passing pre-built fuzzy data: {len(self._fuzzy_entries):,} entries, FAISS index ready", 'info')
-
-            if match_type == "quadruple_fallback" and precision == "fuzzy":
-                transfer_kwargs["use_fuzzy_precision"] = True
 
             # Perform transfer (always folder mode)
             results = transfer_folder_to_folder(
