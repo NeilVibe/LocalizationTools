@@ -102,7 +102,7 @@ class QuickTranslateApp:
         self.fuzzy_model_status = tk.StringVar(value="Not loaded")
 
         # Shared match precision: "perfect" (exact) or "fuzzy" (SBERT)
-        # Used by both Strict and Quadruple Fallback modes
+        # Used by Strict and StrOrigin Only modes
         self.match_precision = tk.StringVar(value="perfect")
 
         # Transfer scope: "all" = overwrite always, "untranslated" = only if target has Korean
@@ -1908,7 +1908,7 @@ class QuickTranslateApp:
         # Block transfer for substring mode (lookup only)
         if self.match_type.get() == "substring":
             messagebox.showwarning("Warning", "Substring mode is lookup-only. TRANSFER is not available.\n\n"
-                                   "Please select StringID-Only, Strict, or Quadruple Fallback mode.")
+                                   "Please select StringID-Only, Strict, or StrOrigin Only mode.")
             return
 
         if not self.source_path.get():
