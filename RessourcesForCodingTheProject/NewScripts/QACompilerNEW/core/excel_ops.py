@@ -820,19 +820,18 @@ def restore_tester_data_to_master(
 
 def replicate_duplicate_row_data(master_wb, category: str, is_english: bool) -> int:
     """
-    Post-process: for every group of duplicate rows (same STRINGID + Translation),
+    Post-process: for every group of duplicate rows (same content key),
     find the row with the MOST data per user column and replicate it to ALL duplicates.
 
-    This is a brute-force safety net that runs after all matching/restoration.
-    Scans every sheet, groups rows by content key, and fills gaps.
+    Uses build_master_index (via all_primary) to find duplicate groups, which
+    correctly handles all category-specific column detection with position-based
+    fallbacks. This ensures duplicates are found regardless of header naming
+    (e.g. "English (ENG)" vs "Translation" vs "Text").
 
     Returns total number of cells filled.
     """
-    from core.matching import sanitize_stringid_for_match, get_translation_column
-    from config import TRANSLATION_COLS, ITEM_DESC_COLS, SCRIPT_TYPE_CATEGORIES
+    from core.matching import build_master_index
 
-    category_lower = category.lower()
-    is_script = category_lower in SCRIPT_TYPE_CATEGORIES
     total_filled = 0
 
     for sheet_name in master_wb.sheetnames:
@@ -843,36 +842,12 @@ def replicate_duplicate_row_data(master_wb, category: str, is_english: bool) -> 
         if ws.max_row is None or ws.max_row < 3:
             continue
 
-        # Build header map (1-based column index)
+        # Build header map (1-based column index) for user column detection
         headers = {}
         for col in range(1, (ws.max_column or 0) + 1):
             val = ws.cell(1, col).value
             if val:
                 headers[col] = str(val).strip().upper()
-
-        # Find content key columns
-        stringid_col = None
-        trans_col = None
-        eventname_col = None
-        instructions_col = None
-        itemname_col = None
-        itemdesc_col = None
-
-        for col, header in headers.items():
-            if header == "STRINGID":
-                stringid_col = col
-            elif header == "TRANSLATION" or header == "TEXT":
-                trans_col = col
-            elif header == "EVENTNAME":
-                eventname_col = col
-            elif header == "INSTRUCTIONS":
-                instructions_col = col
-            elif header in ("ITEMNAME(ENG)", "ITEMNAME(LOC)", "ITEMNAME"):
-                if itemname_col is None:
-                    itemname_col = col
-            elif header in ("ITEMDESC(ENG)", "ITEMDESC(LOC)", "ITEMDESC"):
-                if itemdesc_col is None:
-                    itemdesc_col = col
 
         # Find user data columns (COMMENT_, STATUS_, MANAGER_COMMENT_, SCREENSHOT_, TESTER_STATUS_)
         user_cols = []
@@ -884,40 +859,19 @@ def replicate_duplicate_row_data(master_wb, category: str, is_english: bool) -> 
         if not user_cols:
             continue
 
-        # Group rows by content key
-        row_groups = defaultdict(list)  # content_key -> [row_num, ...]
-
-        for row in range(2, ws.max_row + 1):
-            if category_lower == "contents":
-                if instructions_col:
-                    key_val = str(ws.cell(row, instructions_col).value or "").strip()
-                    if key_val:
-                        row_groups[key_val].append(row)
-            elif category_lower == "item":
-                name = str(ws.cell(row, itemname_col).value or "").strip() if itemname_col else ""
-                desc = str(ws.cell(row, itemdesc_col).value or "").strip() if itemdesc_col else ""
-                sid = sanitize_stringid_for_match(ws.cell(row, stringid_col).value) if stringid_col else ""
-                if name:
-                    row_groups[(name, desc, sid)].append(row)
-            elif is_script:
-                text = str(ws.cell(row, trans_col).value or "").strip() if trans_col else ""
-                ename = str(ws.cell(row, eventname_col).value or "").strip() if eventname_col else ""
-                if text or ename:
-                    row_groups[(text, ename)].append(row)
-            else:
-                sid = sanitize_stringid_for_match(ws.cell(row, stringid_col).value) if stringid_col else ""
-                trans = str(ws.cell(row, trans_col).value or "").strip() if trans_col else ""
-                if trans:
-                    row_groups[(sid, trans)].append(row)
+        # Use build_master_index to find duplicate groups via all_primary.
+        # This reuses the same proven column detection (with position-based fallbacks)
+        # that the matching system uses, so it works for ALL categories.
+        index = build_master_index(ws, category, is_english)
+        all_primary = index.get("all_primary", {})
 
         # For each group with duplicates, replicate data
-        for key, rows in row_groups.items():
+        for key, rows in all_primary.items():
             if len(rows) < 2:
                 continue
 
             # For each user column, find the best value across all rows in the group
             for col in user_cols:
-                # Collect all values for this column across the group
                 best_value = None
                 best_row = None
                 for row in rows:

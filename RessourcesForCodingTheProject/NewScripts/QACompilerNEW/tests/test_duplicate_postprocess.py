@@ -602,3 +602,107 @@ class TestEdgeCases:
 
         assert _cell_val(wb, "Sheet1", 3, "COMMENT_alice") == "CN comment"
         assert filled == 1
+
+
+# =============================================================================
+# TEST: Real-world header names (the actual bug fix)
+# =============================================================================
+
+def _make_region_wb(rows):
+    """Create a workbook with REAL Region master headers.
+
+    Real Region masters have "English (ENG)" NOT "TRANSLATION",
+    and "Original (KR)" NOT "Original". STRINGID is column 3 after
+    STATUS/COMMENT/SCREENSHOT are stripped by get_or_create_master.
+
+    Headers match the actual master file structure:
+        Original (KR) | English (ENG) | STRINGID | COMMENT_alice | STATUS_alice
+        | MANAGER_COMMENT_alice | SCREENSHOT_alice | TESTER_STATUS_alice
+    """
+    headers = [
+        "Original (KR)", "English (ENG)", "STRINGID",
+        "COMMENT_alice", "STATUS_alice",
+        "MANAGER_COMMENT_alice", "SCREENSHOT_alice",
+        "TESTER_STATUS_alice",
+    ]
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exploration"
+
+    for col_idx, h in enumerate(headers, start=1):
+        ws.cell(row=1, column=col_idx, value=h)
+
+    for row_idx, row_data in enumerate(rows, start=2):
+        for col_idx, h in enumerate(headers, start=1):
+            val = row_data.get(h)
+            if val is not None:
+                ws.cell(row=row_idx, column=col_idx, value=val)
+
+    return wb
+
+
+class TestRealWorldRegionHeaders:
+    """Region master uses 'English (ENG)' header, NOT 'TRANSLATION'.
+    This was the root cause bug: the old code looked for 'TRANSLATION'
+    header by name and silently found nothing, so no duplicates were
+    ever detected for Region (and Quest, Knowledge, Character)."""
+
+    def test_region_duplicates_with_english_eng_header(self):
+        """3 duplicate rows in Region master. Row 1 has all user data.
+        Rows 2-3 empty. After post-process: all 3 match."""
+        rows = [
+            {"Original (KR)": "한글 텍스트", "English (ENG)": "Some region text",
+             "STRINGID": "R001",
+             "COMMENT_alice": "Region looks good", "STATUS_alice": "FIXED",
+             "MANAGER_COMMENT_alice": "Confirmed"},
+            {"Original (KR)": "한글 텍스트", "English (ENG)": "Some region text",
+             "STRINGID": "R001"},
+            {"Original (KR)": "한글 텍스트", "English (ENG)": "Some region text",
+             "STRINGID": "R001"},
+        ]
+        wb = _make_region_wb(rows)
+
+        filled = replicate_duplicate_row_data(wb, "Region", is_english=True)
+
+        ws = wb["Exploration"]
+        for excel_row in [3, 4]:
+            assert _cell_val(wb, "Exploration", excel_row, "COMMENT_alice") == "Region looks good"
+            assert _cell_val(wb, "Exploration", excel_row, "STATUS_alice") == "FIXED"
+            assert _cell_val(wb, "Exploration", excel_row, "MANAGER_COMMENT_alice") == "Confirmed"
+
+        # 3 columns * 2 empty rows = 6
+        assert filled == 6
+
+    def test_region_different_stringid_not_grouped(self):
+        """Rows with same translation but DIFFERENT StringID should NOT group."""
+        rows = [
+            {"Original (KR)": "한글", "English (ENG)": "Same translation",
+             "STRINGID": "R001", "COMMENT_alice": "Comment A"},
+            {"Original (KR)": "한글", "English (ENG)": "Same translation",
+             "STRINGID": "R002"},
+        ]
+        wb = _make_region_wb(rows)
+
+        filled = replicate_duplicate_row_data(wb, "Region", is_english=True)
+
+        # Different STRINGID -> not grouped -> no replication
+        assert _cell_val(wb, "Exploration", 3, "COMMENT_alice") is None
+        assert filled == 0
+
+    def test_quest_with_english_eng_header(self):
+        """Quest uses same 'English (ENG)' header pattern as Region."""
+        rows = [
+            {"Original (KR)": "퀘스트", "English (ENG)": "Quest text",
+             "STRINGID": "Q001",
+             "COMMENT_alice": "Quest OK", "STATUS_alice": "NO ISSUE"},
+            {"Original (KR)": "퀘스트", "English (ENG)": "Quest text",
+             "STRINGID": "Q001"},
+        ]
+        wb = _make_region_wb(rows)
+
+        filled = replicate_duplicate_row_data(wb, "Quest", is_english=True)
+
+        assert _cell_val(wb, "Exploration", 3, "COMMENT_alice") == "Quest OK"
+        assert _cell_val(wb, "Exploration", 3, "STATUS_alice") == "NO ISSUE"
+        assert filled == 2
