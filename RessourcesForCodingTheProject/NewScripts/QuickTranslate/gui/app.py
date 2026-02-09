@@ -91,7 +91,7 @@ class QuickTranslateApp:
         self.root.configure(bg='#f0f0f0')
 
         # Variables
-        self.match_type = tk.StringVar(value="substring")  # substring, stringid_only, strict, quadruple_fallback
+        self.match_type = tk.StringVar(value="substring")  # substring, stringid_only, strict, strorigin_only
 
         self.source_path = tk.StringVar()
         self.target_path = tk.StringVar()
@@ -224,7 +224,7 @@ class QuickTranslateApp:
                           command=self._on_match_type_changed).pack(side=tk.LEFT)
             tk.Label(row, text=desc, font=('Segoe UI', 9), bg='#f0f0f0', fg='#888').pack(side=tk.LEFT)
 
-        # === Precision Options Sub-frame (visible for strict and quadruple_fallback) ===
+        # === Precision Options Sub-frame (visible for strict and strorigin_only) ===
         self.precision_options_frame = tk.Frame(match_frame, bg='#e8f4e8', padx=15, pady=8,
                                               relief='groove', bd=1)
         # Don't pack yet - shown/hidden by _on_match_type_changed

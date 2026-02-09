@@ -1876,7 +1876,7 @@ def transfer_file_to_file(
                     result["details"].extend(fuzzy_result["details"])
                     logger.info(
                         f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
-                        f"({fuzzy_result['updated']} updated)"
+                        f"({fuzzy_result['updated']} updated, avg_score={fuzzy_stats['avg_score']:.3f})"
                     )
     else:
         result = merge_corrections_to_xml(
