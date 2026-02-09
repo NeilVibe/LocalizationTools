@@ -59,3 +59,4 @@ Build - Add StrOrigin Only fast match mode
 Build - StrOrigin Only fuzzy 2-pass + remove quad fallback from GUI
 Build - Review fixes: stale comments + avg_score log
 Build: CRITICAL FIX - StrOrigin Only never overwrites existing translations (only_untranslated=True)
+Build: StrOrigin Only defaults to untranslated-only + overwrite warning popup
