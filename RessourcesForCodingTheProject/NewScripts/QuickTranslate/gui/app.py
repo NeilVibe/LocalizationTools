@@ -2220,8 +2220,11 @@ class QuickTranslateApp:
                 self._log("", 'info')
                 self._log("=== Generating Failure Reports ===", 'header')
 
-                report_folder = source if source.is_dir() else source.parent
+                source_name = source.name if source.is_dir() else source.stem
+                report_folder = config.get_failed_report_dir(source_name)
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+                self._log(f"Report folder: {report_folder}", 'info')
 
                 failed_entries = extract_failed_from_folder_results(results)
 

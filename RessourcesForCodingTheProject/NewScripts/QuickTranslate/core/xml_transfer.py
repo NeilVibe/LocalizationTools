@@ -297,7 +297,7 @@ def merge_corrections_strorigin_only(
         "skipped_translated": 0,
         "unique_corrections": 0,
         "unique_matched": 0,
-        "conflicting_corrections": 0,
+        "duplicate_sources": 0,
         "errors": [],
         "details": [],
     }
@@ -312,8 +312,19 @@ def merge_corrections_strorigin_only(
     correction_matched = [False] * len(corrections)
     conflicting = 0
 
+    skipped_empty = 0
     for i, c in enumerate(corrections):
         origin_norm = normalize_for_matching(c.get("str_origin", ""))
+
+        # Guard: skip corrections with empty StrOrigin (would false-match any empty target)
+        if not origin_norm:
+            skipped_empty += 1
+            logger.warning(
+                f"Skipping correction #{i} with empty StrOrigin "
+                f"(StringID={c.get('string_id', '?')})"
+            )
+            continue
+
         origin_nospace = normalize_nospace(origin_norm)
 
         if origin_norm in correction_lookup:
@@ -328,6 +339,9 @@ def merge_corrections_strorigin_only(
 
         correction_lookup[origin_norm] = (c["corrected"], i)
         correction_lookup_nospace[origin_nospace] = (c["corrected"], i)
+
+    if skipped_empty:
+        logger.warning(f"Skipped {skipped_empty} corrections with empty StrOrigin")
 
     result["unique_corrections"] = len(correction_lookup)
     result["duplicate_sources"] = conflicting
@@ -413,21 +427,35 @@ def merge_corrections_strorigin_only(
                         "new": "(same)",
                     })
 
-        # Count corrections that didn't match + unique matched
+        # Build set of StrOrigins that actually matched in target
         matched_origins = set()
+        for i, matched in enumerate(correction_matched):
+            if matched:
+                matched_origins.add(
+                    normalize_for_matching(corrections[i].get("str_origin", ""))
+                )
+
+        # Count NOT_FOUND vs DUPLICATE (source entries whose StrOrigin was
+        # already handled by another correction with the same StrOrigin)
+        result["unique_matched"] = len(matched_origins)
+        result["duplicates_in_source"] = 0
+
         for i, c in enumerate(corrections):
             if not correction_matched[i]:
-                result["not_found"] += 1
-                result["details"].append({
-                    "string_id": c.get("string_id", ""),
-                    "status": "NOT_FOUND",
-                    "old": c.get("str_origin", ""),
-                    "new": c["corrected"],
-                    "raw_attribs": c.get("raw_attribs", {}),
-                })
-            else:
-                matched_origins.add(normalize_for_matching(c.get("str_origin", "")))
-        result["unique_matched"] = len(matched_origins)
+                origin_norm = normalize_for_matching(c.get("str_origin", ""))
+                if origin_norm in matched_origins:
+                    # StrOrigin WAS matched — this is a source duplicate, not a failure
+                    result["duplicates_in_source"] += 1
+                else:
+                    # StrOrigin truly not found in target
+                    result["not_found"] += 1
+                    result["details"].append({
+                        "string_id": c.get("string_id", ""),
+                        "status": "NOT_FOUND",
+                        "old": c.get("str_origin", ""),
+                        "new": c["corrected"],
+                        "raw_attribs": c.get("raw_attribs", {}),
+                    })
 
         if changed and not dry_run:
             try:
@@ -534,9 +562,20 @@ def merge_corrections_stringid_only(
     # Build StringID-only lookup - store full correction for failure reports
     correction_lookup = {}
     correction_matched = {}
+    duplicate_stringids = 0
 
     for c in script_corrections:
         sid = c["string_id"]
+
+        if sid in correction_lookup:
+            old_corrected = correction_lookup[sid].get("corrected", "")
+            if old_corrected != c.get("corrected", ""):
+                duplicate_stringids += 1
+                logger.debug(
+                    f"Duplicate StringID '{sid}': overwriting "
+                    f"'{old_corrected[:40]}' with '{c.get('corrected', '')[:40]}'"
+                )
+
         correction_lookup[sid] = c  # Store FULL correction dict
         correction_matched[sid] = False
 
@@ -544,6 +583,13 @@ def merge_corrections_stringid_only(
         category = c.get("category", "Uncategorized")
         if category not in result["by_category"]:
             result["by_category"][category] = {"matched": 0, "updated": 0, "not_found": 0}
+
+    result["duplicate_sources"] = duplicate_stringids
+    if duplicate_stringids > 0:
+        logger.info(
+            f"{len(script_corrections)} SCRIPT corrections -> {len(correction_lookup)} unique StringIDs "
+            f"({duplicate_stringids} had conflicting translations, using latest)"
+        )
 
     try:
         if USING_LXML:
