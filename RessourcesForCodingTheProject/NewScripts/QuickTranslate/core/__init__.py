@@ -22,7 +22,6 @@ from .matching import (
     find_matches_strict,
     find_matches_strict_fuzzy,
     find_matches_special_key,
-    find_matches_quadruple_fallback,
     find_stringid_from_text,
     format_multiple_matches,
 )
@@ -40,7 +39,6 @@ from .xml_transfer import (
     merge_corrections_to_xml,
     merge_corrections_stringid_only,
     merge_corrections_fuzzy,
-    merge_corrections_quadruple_fallback,
     transfer_folder_to_folder,
     transfer_file_to_file,
     format_transfer_report,
@@ -131,7 +129,6 @@ __all__ = [
     "find_matches_strict",
     "find_matches_strict_fuzzy",
     "find_matches_special_key",
-    "find_matches_quadruple_fallback",
     "find_stringid_from_text",
     "format_multiple_matches",
     # excel_io
@@ -150,7 +147,6 @@ __all__ = [
     "merge_corrections_to_xml",
     "merge_corrections_stringid_only",
     "merge_corrections_fuzzy",
-    "merge_corrections_quadruple_fallback",
     "transfer_folder_to_folder",
     "transfer_file_to_file",
     "format_transfer_report",
