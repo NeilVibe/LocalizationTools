@@ -55,3 +55,4 @@ Build: REWRITE fuzzy transfer - Step1 perfect + Step2 FAISS fuzzy (restored find
 Build: Concatenate all source files per language into ONE transfer pass
 Build: Fix bugs + remove all data caps (no truncation, no row limits, correct counters)
 Build - Fan out quadruple fallback to all duplicate strOrigin targets
+Build - Add StrOrigin Only fast match mode
