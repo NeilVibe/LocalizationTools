@@ -1268,16 +1268,16 @@ def transfer_folder_to_folder(
                     if match_mode == "quadruple_fallback_fuzzy":
                         match_mode = "quadruple_fallback"  # Downgrade
 
-    elif match_mode == "strict_fuzzy":
-        # strict_fuzzy: Step 1 = perfect match, Step 2 = FAISS fuzzy on unconsumed
+    elif match_mode in ("strict_fuzzy", "strorigin_only_fuzzy"):
+        # 2-pass fuzzy: Step 1 = exact match, Step 2 = FAISS fuzzy on unconsumed
         # Needs model + FAISS index for Step 2
         if _fuzzy_entries is not None and _fuzzy_model is not None and _fuzzy_index is not None:
-            logger.info("Using pre-built FAISS index for strict+fuzzy")
+            logger.info(f"Using pre-built FAISS index for {match_mode}")
         else:
             from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
 
             if progress_callback:
-                progress_callback("Loading model and building FAISS index for strict+fuzzy...")
+                progress_callback(f"Loading model and building FAISS index for {match_mode}...")
             try:
                 _fuzzy_model = load_model(progress_callback)
                 _fuzzy_texts, _fuzzy_entries = build_index_from_folder(
@@ -1291,8 +1291,8 @@ def transfer_folder_to_folder(
                 else:
                     logger.warning(f"No StrOrigin values in target folder: {target_folder}")
             except Exception as e:
-                results["errors"].append(f"Failed to build FAISS index for strict+fuzzy: {e}")
-                logger.error(f"Failed to build FAISS index for strict+fuzzy: {e}")
+                results["errors"].append(f"Failed to build FAISS index for {match_mode}: {e}")
+                logger.error(f"Failed to build FAISS index for {match_mode}: {e}")
 
     # ─── Phase 1: Parse ALL source files and group by target XML ─────
     # Instead of one pass per source file, concatenate ALL corrections
