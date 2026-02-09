@@ -104,10 +104,14 @@ def read_corrections_from_excel(
                 corrected = row[correction_col - 1].value if correction_col <= len(row) else None
 
                 if string_id and corrected:
+                    corrected_str = str(corrected).strip()
+                    # Skip entries where the "correction" is still Korean (untranslated)
+                    if is_korean_text(corrected_str):
+                        continue
                     corrections.append({
                         "string_id": str(string_id).strip(),  # StringID: just strip, no normalize (ID not display text)
                         "str_origin": normalize_text(str_origin) if str_origin else "",
-                        "corrected": str(corrected).strip(),  # Preserve linebreaks! Don't normalize output text
+                        "corrected": corrected_str,  # Preserve linebreaks! Don't normalize output text
                     })
             except (IndexError, AttributeError):
                 continue
