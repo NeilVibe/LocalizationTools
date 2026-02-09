@@ -1195,7 +1195,7 @@ def transfer_folder_to_folder(
     # This filter ensures we don't load FULL languagedata (2.2M entries)!
     # Use pre-passed source_stringids if available, otherwise extract from source files.
     all_source_stringids = source_stringids  # May be None or pre-computed set from GUI
-    if all_source_stringids is None and match_mode in ("quadruple_fallback", "quadruple_fallback_fuzzy", "strict_fuzzy"):
+    if all_source_stringids is None and match_mode in ("quadruple_fallback", "quadruple_fallback_fuzzy", "strict_fuzzy", "strorigin_only_fuzzy"):
         from .xml_io import parse_corrections_from_xml
         from .excel_io import read_corrections_from_excel
 
@@ -1500,6 +1500,65 @@ def transfer_folder_to_folder(
                 target_xml, corrections, dry_run,
                 only_untranslated=only_untranslated,
             )
+        elif match_mode == "strorigin_only_fuzzy":
+            # ═══ TWO-STEP: Exact StrOrigin first, then SBERT fuzzy on leftovers ═══
+            file_result = merge_corrections_strorigin_only(
+                target_xml, corrections, dry_run,
+                only_untranslated=only_untranslated,
+            )
+            step1_matched = file_result["matched"]
+            logger.info(f"Step 1 (StrOrigin exact): {step1_matched}/{len(corrections)} matched")
+
+            if _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
+                unconsumed = []
+                for detail in file_result["details"]:
+                    if detail["status"] == "NOT_FOUND":
+                        unconsumed.append({
+                            "string_id": detail.get("string_id", ""),
+                            "str_origin": detail.get("old", ""),
+                            "corrected": detail.get("new", ""),
+                            "raw_attribs": detail.get("raw_attribs", {}),
+                            "_original_status": detail["status"],
+                        })
+
+                if unconsumed:
+                    from .fuzzy_matching import find_matches_fuzzy
+                    logger.info(f"Step 2: FAISS fuzzy on {len(unconsumed)} unconsumed corrections")
+
+                    fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
+                        unconsumed, _fuzzy_texts, _fuzzy_entries,
+                        _fuzzy_model, _fuzzy_index, effective_threshold,
+                    )
+
+                    if fuzzy_matched:
+                        fuzzy_result = merge_corrections_fuzzy(
+                            target_xml, fuzzy_matched, dry_run,
+                            only_untranslated=only_untranslated,
+                        )
+                        file_result["matched"] += fuzzy_result["matched"]
+                        file_result["updated"] += fuzzy_result["updated"]
+
+                        fuzzy_from_not_found = sum(
+                            1 for m in fuzzy_matched
+                            if m.get("_original_status") == "NOT_FOUND"
+                        )
+                        file_result["not_found"] = max(0, file_result.get("not_found", 0) - fuzzy_from_not_found)
+
+                        resolved_sids = {m.get("string_id", "") for m in fuzzy_matched}
+                        file_result["details"] = [
+                            d for d in file_result["details"]
+                            if not (d["status"] == "NOT_FOUND" and d.get("string_id", "") in resolved_sids)
+                        ]
+
+                        file_result["details"].extend(fuzzy_result["details"])
+                        logger.info(
+                            f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
+                            f"({fuzzy_result['updated']} updated, avg_score={fuzzy_stats['avg_score']:.3f})"
+                        )
+                    else:
+                        logger.info(f"Step 2: No fuzzy matches found for {len(unconsumed)} unconsumed")
+                else:
+                    logger.info("Step 2: All corrections matched in Step 1 (StrOrigin exact)")
         else:
             file_result = merge_corrections_to_xml(
                 target_xml, corrections, dry_run,
@@ -1743,6 +1802,82 @@ def transfer_file_to_file(
             target_file, corrections, dry_run,
             only_untranslated=only_untranslated,
         )
+    elif match_mode == "strorigin_only_fuzzy":
+        # ═══ TWO-STEP: Exact StrOrigin first, then SBERT fuzzy on leftovers ═══
+        result = merge_corrections_strorigin_only(
+            target_file, corrections, dry_run,
+            only_untranslated=only_untranslated,
+        )
+        step1_matched = result["matched"]
+        logger.info(f"Step 1 (StrOrigin exact): {step1_matched}/{len(corrections)} matched")
+
+        # Build FAISS index if not pre-built
+        target_folder = target_file.parent
+        _fm = fuzzy_model
+        _fi = fuzzy_index
+        _ft = fuzzy_texts
+        _fe = fuzzy_entries
+        if _fm is None or _fi is None:
+            from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
+            try:
+                correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
+                logger.info(f"File-to-file strorigin_only_fuzzy: building FAISS for {len(correction_stringids):,} StringIDs")
+                _fm = _fm or load_model()
+                _ft, _fe = build_index_from_folder(
+                    target_folder, stringid_filter=correction_stringids
+                )
+                if _ft:
+                    _fi = build_faiss_index(_ft, _fe, _fm)
+            except Exception as e:
+                logger.error(f"Failed to build FAISS index: {e}")
+                _fi = None
+
+        if _fm and _fi and _ft and _fe:
+            unconsumed = []
+            for detail in result["details"]:
+                if detail["status"] == "NOT_FOUND":
+                    unconsumed.append({
+                        "string_id": detail.get("string_id", ""),
+                        "str_origin": detail.get("old", ""),
+                        "corrected": detail.get("new", ""),
+                        "raw_attribs": detail.get("raw_attribs", {}),
+                        "_original_status": detail["status"],
+                    })
+
+            if unconsumed:
+                from .fuzzy_matching import find_matches_fuzzy
+                effective_threshold = threshold if threshold is not None else config.FUZZY_THRESHOLD_DEFAULT
+                logger.info(f"Step 2: FAISS fuzzy on {len(unconsumed)} unconsumed corrections")
+
+                fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
+                    unconsumed, _ft, _fe, _fm, _fi, effective_threshold,
+                )
+
+                if fuzzy_matched:
+                    fuzzy_result = merge_corrections_fuzzy(
+                        target_file, fuzzy_matched, dry_run,
+                        only_untranslated=only_untranslated,
+                    )
+                    result["matched"] += fuzzy_result["matched"]
+                    result["updated"] += fuzzy_result["updated"]
+
+                    fuzzy_from_not_found = sum(
+                        1 for m in fuzzy_matched
+                        if m.get("_original_status") == "NOT_FOUND"
+                    )
+                    result["not_found"] = max(0, result.get("not_found", 0) - fuzzy_from_not_found)
+
+                    resolved_sids = {m.get("string_id", "") for m in fuzzy_matched}
+                    result["details"] = [
+                        d for d in result["details"]
+                        if not (d["status"] == "NOT_FOUND" and d.get("string_id", "") in resolved_sids)
+                    ]
+
+                    result["details"].extend(fuzzy_result["details"])
+                    logger.info(
+                        f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
+                        f"({fuzzy_result['updated']} updated)"
+                    )
     else:
         result = merge_corrections_to_xml(
             target_file, corrections, dry_run,
