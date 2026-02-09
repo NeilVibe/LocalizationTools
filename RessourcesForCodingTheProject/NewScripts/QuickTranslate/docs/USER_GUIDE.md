@@ -764,9 +764,49 @@ Skipped: already translated (target has non-Korean text)
   Target Str: "OK Button" (not Korean)
 ```
 
+## 6.11 Empty StrOrigin Golden Rule
+
+QuickTranslate enforces a data integrity rule automatically during TRANSFER:
+
+> **Golden Rule:** If StrOrigin is empty, Str must be empty.
+
+An entry with no Korean source text should never receive a translation. QuickTranslate enforces this through 3 layers:
+
+| Layer | When | What It Does |
+|-------|------|-------------- |
+| **Source guard** | Reading corrections | Skips any correction where StrOrigin is empty (nothing to match against) |
+| **Target guard** | During matching | Skips target entries with empty StrOrigin (no source text = no translation needed) |
+| **Post-process cleanup** | After writing | Clears Str to empty for any target entry where StrOrigin is empty |
+
+This is fully automatic -- no user action is needed. The log reports any entries cleaned up by the post-process layer.
+
+## 6.12 Korean Source Filter
+
+QuickTranslate automatically filters out source corrections where the `Str` (translation) value is still Korean text.
+
+**Why:** If the correction's `Str` contains Korean characters, it means the entry was never actually translated. Writing untranslated Korean text into a target language file would pollute the localization data.
+
+**How it works:**
+
+1. When reading corrections from Excel or XML source files, each entry's `Str` is checked
+2. If `Str` contains Korean (Hangul) characters, the entry is filtered out
+3. Filtered entries are logged: `"Skipped: Str is still Korean (untranslated)"`
+
+**Applied to:** Both XML and Excel source files, for all TRANSFER operations.
+
+```
+Source correction: StringID="UI_001", StrOrigin="확인", Str="확인"
+Result: FILTERED (Str is still Korean — not a real translation)
+
+Source correction: StringID="UI_001", StrOrigin="확인", Str="OK"
+Result: KEPT (Str is a real translation)
+```
+
+This filter is automatic and requires no user configuration.
+
 ---
 
-## 6.11 Language Auto-Discovery
+## 6.13 Language Auto-Discovery
 
 QuickTranslate automatically discovers available languages from your LOC folder.
 
@@ -1253,6 +1293,15 @@ The threshold (0.00 - 1.00) controls how similar two Korean texts must be for a 
 
 # 8. Match Types
 
+QuickTranslate provides 4 match types for LOOKUP and TRANSFER operations:
+
+| # | Match Type | Key Fields | Use Case |
+|---|-----------|------------|----------|
+| 1 | **Substring Match** | Korean text (partial) | Find strings containing partial text (LOOKUP only) |
+| 2 | **StringID-Only (SCRIPT)** | StringID | SCRIPT category corrections (Sequencer/Dialog) |
+| 3 | **StringID + StrOrigin (STRICT)** | StringID + StrOrigin | Most precise, recommended for general corrections |
+| 4 | **StrOrigin Only** | StrOrigin text | Fan-out to all duplicate Korean entries |
+
 ## 8.1 Substring Match (Original)
 
 **How it works:**
@@ -1304,46 +1353,59 @@ Matches: ONLY if both StringID AND StrOrigin match exactly
 
 **Buttons:** Generate (LOOKUP) and TRANSFER
 
-## 8.4 Quadruple Fallback (Fuzzy KR Match)
+## 8.4 StrOrigin Only
 
 **How it works:**
 
-Uses KR-SBERT semantic similarity + FAISS to find matches when exact matching fails. Requires the `KRTransformer/` model folder alongside the app.
+Matches corrections to target entries by **StrOrigin text only** -- StringID is completely ignored. This enables "fan-out" behavior: one correction fills ALL target entries that share the same Korean source text, regardless of their StringID.
 
 ```
-For each correction:
-  L1 (HIGH):        StrOrigin + file_relpath + adjacency_hash  → exact context match
-  L2A (MEDIUM-HIGH): StrOrigin + file_relpath                  → same file match
-  L2B (MEDIUM):      StrOrigin + adjacency_hash                → same context match
-  L3 (LOW):          StrOrigin only                            → text-only match
-
-  If no exact match at any level → FAISS semantic similarity search
+Input: StrOrigin="확인 버튼", Correction="OK Button"
+Finds: ALL entries in target XML with StrOrigin="확인 버튼"
+  - StringID="UI_001", StrOrigin="확인 버튼" → MATCH (updated)
+  - StringID="UI_099", StrOrigin="확인 버튼" → MATCH (updated)
+  - StringID="Popup_003", StrOrigin="확인 버튼" → MATCH (updated)
+  - StringID="UI_002", StrOrigin="취소 버튼" → NO MATCH (different text)
 ```
 
-**FAISS Technical Details:**
-- **Model:** `snunlp/KR-SBERT-V40K-klueNLI-augSTS` (768-dim, local `KRTransformer/` folder)
-- **Index:** `faiss.IndexFlatIP` (inner product after L2 normalization = cosine similarity)
-- **Encoding:** Batch processing, 100 texts per batch
-- **Search:** One query at a time (same as TFM FULL, XLSTransfer, KR Similar monoliths)
-- **Threshold:** Configurable 0.80 - 1.00 (default 0.85)
+**Use case:** Fill ALL duplicate entries that share the same Korean source text. One correction propagates to every entry with matching StrOrigin across the entire target file.
 
-**Process flow:**
-1. Load KR-SBERT model (cached after first load)
-2. Scan target folder for XML entries
-3. Encode all StrOrigin texts in batches of 100
-4. Build FAISS IndexFlatIP index (instant)
-5. For each correction, search index for best match
-6. Apply 4-level cascade with context disambiguation
+**Precision modes:**
+
+| Precision | Matching | Description |
+|-----------|----------|-------------|
+| **Perfect** | Exact text match | StrOrigin must match character-for-character (after normalization) |
+| **Fuzzy** | KR-SBERT semantic | Uses cosine similarity with configurable threshold (default 0.85) |
+
+**Safety defaults:**
+- Transfer scope defaults to **"Only untranslated"** -- will not overwrite entries that already have a non-Korean translation
+- This is safer for bulk operations since StrOrigin-only matching can affect many entries at once
+
+> **WARNING**
+>
+> StrOrigin Only mode has **no StringID verification**. It is riskier than Strict mode because a single correction can update many unrelated entries that happen to share the same Korean text. Always review the transfer report carefully.
+
+**Fan-out behavior:**
+
+```
+One correction:
+  StrOrigin="시작하기", Correction="Start"
+
+Matches ALL of these in target:
+  StringID="UI_MainMenu_Start"     StrOrigin="시작하기" → Updated
+  StringID="Tutorial_Begin_001"    StrOrigin="시작하기" → Updated
+  StringID="Quest_Start_Label"     StrOrigin="시작하기" → Updated
+```
 
 | Pros | Cons |
 |------|------|
-| Handles text variations | Requires KRTransformer model (~447MB) |
-| Context-aware disambiguation | Slower than exact matching |
-| Configurable threshold | First run builds index |
+| Fills all duplicates at once | No StringID safety net |
+| Fast bulk updates | May update unintended entries |
+| Works across different StringIDs | Riskier than Strict mode |
 
-**Best for:** Corrections where StrOrigin text may have minor differences from target
+**Best for:** Bulk-filling duplicate Korean entries across the entire target file
 
-**Buttons:** TRANSFER (with Quadruple Fallback match type selected)
+**Buttons:** TRANSFER
 
 ## 8.5 Special Key Match
 
@@ -1480,7 +1542,7 @@ Single row with StringID and all translations.
 
 When transfer has failures (not found, skipped), detailed reports are automatically generated:
 
-**Saved to:** Source folder (same location as your corrections)
+**Saved to:** `Failed Reports/YYMMDD/source_name/` directory (organized by date and source folder name)
 
 #### Per-Language Failure XML Files (NEW in v3.4.0)
 **Filename:** `FAILED_<LANG>_YYYYMMDD_HHMMSS.xml` (e.g., `FAILED_FRE_20260205_120000.xml`)
@@ -1526,9 +1588,9 @@ Groups all failed LocStr entries by source file with metadata:
 
 | Sheet | Content |
 |-------|---------|
-| **Summary** | Total counts, success/failure rates, breakdown |
-| **Failure by Reason** | Grouped by failure category with counts |
-| **Failure by File** | Per-file statistics and success rates |
+| **Summary** | Unified hierarchical table (TOTAL -> Success -> Failed -> breakdown by reason) + Korean word count table |
+| **Reason** | Full context for each failure reason with % of Total AND % of Failed |
+| **Results by File** | Per-file statistics with Succeeded column and success rates |
 | **Detailed Failures** | Every failed entry with StringID, StrOrigin, reason |
 
 **Failure reasons tracked:**
@@ -1747,7 +1809,8 @@ python main.py --help       # Show help
 | **FAISS** | Facebook AI Similarity Search - vector index for fuzzy matching |
 | **IndexFlatIP** | FAISS index type using inner product (cosine similarity) |
 | **KR-SBERT** | Korean Sentence-BERT model for semantic text encoding |
-| **Quadruple Fallback** | 4-level cascade matching: context → file → adjacency → text |
+| **StrOrigin Only** | Match type that matches by StrOrigin text only, ignoring StringID (fan-out to all duplicates) |
+| **Golden Rule (Empty StrOrigin)** | Data integrity rule: if StrOrigin is empty, Str must be empty. Enforced automatically by 3 layers |
 | **Find Missing** | Feature to identify untranslated Korean strings across languages |
 | **Match Mode** | Algorithm for comparing source vs target (Strict or Fuzzy, with/without StringID) |
 | **Category Clustering** | Two-tier EXPORT-based classification (STORY + GAME_DATA) |
@@ -1826,7 +1889,7 @@ python main.py --help       # Show help
 
 **Documentation:**
 - New `docs/FAISS_IMPLEMENTATION.md` - Complete FAISS technical reference with monolith comparison
-- Updated User Guide with Quadruple Fallback (Fuzzy KR Match) section and FAISS troubleshooting
+- Updated User Guide with fuzzy matching section and FAISS troubleshooting
 
 **Technical Details:**
 - `core/fuzzy_matching.py`: IndexFlatIP + batch_size=100 + show_progress_bar=False

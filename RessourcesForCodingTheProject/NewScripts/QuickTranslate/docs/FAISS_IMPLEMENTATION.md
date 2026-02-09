@@ -163,7 +163,7 @@ No monolith uses ThreadPoolExecutor for encoding or search. All use `threading.T
 | File | FAISS Usage |
 |------|------------|
 | `core/fuzzy_matching.py` | Index building (IndexFlatIP), single-query search |
-| `core/matching.py` | Batch search (IndexFlatIP at line 660), quadruple fallback |
+| `core/matching.py` | Strict fuzzy mode: StringID pool pre-filtering + temporary FAISS index on pool |
 | `core/xml_transfer.py` | Calls fuzzy_matching functions |
 | `config.py` | Threshold config only (no FAISS params needed for IndexFlatIP) |
 
