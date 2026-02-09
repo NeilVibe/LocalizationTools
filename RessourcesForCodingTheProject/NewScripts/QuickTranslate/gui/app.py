@@ -213,7 +213,6 @@ class QuickTranslateApp:
             ("stringid_only", "StringID-Only (SCRIPT)", "SCRIPT categories only - match by StringID"),
             ("strict", "StringID + StrOrigin (STRICT)", "Requires BOTH to match exactly"),
             ("strorigin_only", "StrOrigin Only (FAST)", "Match by StrOrigin text only - fills ALL duplicates"),
-            ("quadruple_fallback", "Quadruple Fallback (StrOrigin + Context)", "StrOrigin + Filename + Adjacent context cascade"),
         ]
 
         for value, label, desc in match_types:
@@ -839,7 +838,7 @@ class QuickTranslateApp:
         """Show/hide options sub-frames based on selected match type."""
         match_type = self.match_type.get()
 
-        if match_type in ("strict", "quadruple_fallback"):
+        if match_type in ("strict", "strorigin_only"):
             self.precision_options_frame.pack(fill=tk.X, pady=(4, 0))
             # Show/hide the fuzzy sub-frame based on current precision
             self._on_precision_changed()
@@ -853,12 +852,6 @@ class QuickTranslateApp:
             self.transfer_btn.config(state='disabled')
             self.transfer_note_label.config(text="(Lookup only - TRANSFER not available)")
             self.transfer_scope_frame.pack_forget()
-        elif match_type == "strorigin_only":
-            self.precision_options_frame.pack_forget()
-            # Enable TRANSFER button + show transfer scope toggle
-            self.transfer_btn.config(state='normal')
-            self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
-            self.transfer_note_label.config(text="")
         else:
             # stringid_only
             self.precision_options_frame.pack_forget()
@@ -2109,28 +2102,20 @@ class QuickTranslateApp:
 
             # For fuzzy precision modes, extract StringIDs from source FIRST to filter index
             source_stringids = None
-            if precision == "fuzzy" and match_type in ("strict", "quadruple_fallback"):
+            if precision == "fuzzy" and match_type in ("strict", "strorigin_only"):
                 self._log("Extracting StringIDs from source for filtered index build...", 'info')
                 source_stringids = self._extract_stringids_from_source(source)
                 self._log(f"Source has {len(source_stringids):,} unique StringIDs", 'info')
 
             only_untranslated = transfer_scope == "untranslated"
 
-            # For strict with fuzzy precision, need model + FAISS index (two-step: perfect then FAISS fuzzy)
-            if match_type == "strict" and precision == "fuzzy":
+            # For strict/strorigin_only with fuzzy precision, need model + FAISS index
+            if precision == "fuzzy" and match_type in ("strict", "strorigin_only"):
                 if not self._ensure_fuzzy_model():
                     return
                 if not self._ensure_fuzzy_index(str(target), stringid_filter=source_stringids, only_untranslated=only_untranslated):
                     return
-                self._log(f"Strict TRANSFER with FUZZY precision (threshold={fuzzy_threshold:.2f})", 'info')
-
-            # For quadruple_fallback with fuzzy precision, also need model + index
-            if match_type == "quadruple_fallback" and precision == "fuzzy":
-                if not self._ensure_fuzzy_model():
-                    return
-                if not self._ensure_fuzzy_index(str(target), stringid_filter=source_stringids, only_untranslated=only_untranslated):
-                    return
-                self._log(f"Quadruple Fallback TRANSFER with FUZZY precision (threshold={fuzzy_threshold:.2f})", 'info')
+                self._log(f"{match_type} TRANSFER with FUZZY precision (threshold={fuzzy_threshold:.2f})", 'info')
 
             self._task_queue.put(('progress', 20))
             self._update_status("Transferring corrections...")
@@ -2139,11 +2124,9 @@ class QuickTranslateApp:
             if match_type == "stringid_only":
                 transfer_match_mode = "stringid_only"
             elif match_type == "strorigin_only":
-                transfer_match_mode = "strorigin_only"
+                transfer_match_mode = "strorigin_only_fuzzy" if precision == "fuzzy" else "strorigin_only"
             elif match_type == "strict":
                 transfer_match_mode = "strict_fuzzy" if precision == "fuzzy" else "strict"
-            elif match_type == "quadruple_fallback":
-                transfer_match_mode = "quadruple_fallback_fuzzy" if precision == "fuzzy" else "quadruple_fallback"
             else:
                 transfer_match_mode = "strict"
 
@@ -2158,13 +2141,12 @@ class QuickTranslateApp:
 
             # Pass threshold AND pre-built fuzzy data for fuzzy modes
             # CRITICAL: Without this, transfer functions rebuild from scratch!
-            if precision == "fuzzy" and match_type in ("strict", "quadruple_fallback"):
+            if precision == "fuzzy" and match_type in ("strict", "strorigin_only"):
                 transfer_kwargs["threshold"] = fuzzy_threshold
                 transfer_kwargs["fuzzy_model"] = self._fuzzy_model
                 transfer_kwargs["fuzzy_texts"] = self._fuzzy_texts
                 transfer_kwargs["fuzzy_entries"] = self._fuzzy_entries
                 transfer_kwargs["source_stringids"] = source_stringids
-                # FAISS index needed for BOTH strict_fuzzy and quadruple_fallback_fuzzy
                 transfer_kwargs["fuzzy_index"] = self._fuzzy_index
                 self._log(f"Passing pre-built fuzzy data: {len(self._fuzzy_entries):,} entries, FAISS index ready", 'info')
 
