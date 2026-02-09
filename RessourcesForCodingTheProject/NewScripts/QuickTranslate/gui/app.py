@@ -572,34 +572,20 @@ class QuickTranslateApp:
             logger.info("  %s %s %s %s", "-"*4, "-"*35, "-"*8, "-"*10)
             logger.info("  %-4s %-35s %-8s %-10s", "", "TOTAL", "", total_str)
         else:
-            logger.warning("  No languagedata_*.xml files found!")
-
-        if non_lang_xml:
-            logger.info("\n  OTHER XML FILES (%d):", len(non_lang_xml))
-            for f in non_lang_xml:
-                logger.info("    - %s", f)
-
-        if xlsx_files:
-            logger.info("\n  EXCEL FILES (%d):", len(xlsx_files))
-            for f in xlsx_files:
-                try:
-                    size_kb = f.stat().st_size / 1024
-                    logger.info("    - %s (%.0f KB)", f.name, size_kb)
-                except OSError:
-                    logger.info("    - %s (size unknown)", f.name)
-
-        if subdirs:
-            logger.info("\n  SUBDIRECTORIES (%d):", len(subdirs))
-            for d in subdirs:
-                logger.info("    - %s/", d.name)
+            # Only warn if this is TARGET or if smart scan also finds nothing
+            # (for SOURCE, the smart scanner handles non-languagedata files)
+            if role == "TARGET":
+                logger.warning("  No languagedata_*.xml files found!")
 
         # === Smart Auto-Recursive Source Scanner (for SOURCE folders) ===
         # Scan once and reuse result (avoid duplicate scanning)
         scan_result = None
+        has_smart_scan = False
         if role == "SOURCE":
             scan_result = scan_source_for_languages(folder)
-            if scan_result.lang_files:
-                logger.info("\n  SMART LANGUAGE DETECTION (Auto-Recursive):")
+            has_smart_scan = bool(scan_result.lang_files)
+            if has_smart_scan:
+                logger.info("\n  LANGUAGE DETECTION (Auto-Recursive Scanner):")
                 logger.info("  %-10s %-8s %s", "Language", "Files", "Source")
                 logger.info("  %s %s %s", "-"*10, "-"*8, "-"*30)
                 for lang in scan_result.get_languages():
@@ -619,33 +605,79 @@ class QuickTranslateApp:
                         logger.info("    - %s (%s)", item.name, item_type)
                     if len(scan_result.unrecognized) > 5:
                         logger.info("    ... and %d more", len(scan_result.unrecognized) - 5)
+            elif not lang_files:
+                # Neither languagedata files NOR smart scan found anything
+                logger.warning("  No language files detected (no languagedata_*.xml, no language-suffixed files/folders)")
 
-                # Log to GUI
-                self._log(f"Smart scan: {scan_result.total_files} files in {scan_result.language_count} languages", 'success')
-                self._log(f"  Languages: {', '.join(scan_result.get_languages())}", 'info')
+        if non_lang_xml:
+            if has_smart_scan:
+                # Split into files actually detected by scanner vs unrecognized
+                scanner_detected_names = set()
+                for file_list in scan_result.lang_files.values():
+                    for fp in file_list:
+                        scanner_detected_names.add(fp.name)
+                detected = [f for f in non_lang_xml if f in scanner_detected_names]
+                undetected = [f for f in non_lang_xml if f not in scanner_detected_names]
+                if detected:
+                    logger.info("\n  DETECTED XML FILES (%d) — included via smart scanner:", len(detected))
+                    for f in detected:
+                        logger.info("    - %s", f)
+                if undetected:
+                    logger.info("\n  OTHER XML FILES (%d) — no language suffix detected:", len(undetected))
+                    for f in undetected:
+                        logger.info("    - %s", f)
+            else:
+                logger.info("\n  OTHER XML FILES (%d):", len(non_lang_xml))
+                for f in non_lang_xml:
+                    logger.info("    - %s", f)
+
+        if xlsx_files:
+            logger.info("\n  EXCEL FILES (%d):", len(xlsx_files))
+            for f in xlsx_files:
+                try:
+                    size_kb = f.stat().st_size / 1024
+                    logger.info("    - %s (%.0f KB)", f.name, size_kb)
+                except OSError:
+                    logger.info("    - %s (size unknown)", f.name)
+
+        if subdirs:
+            logger.info("\n  SUBDIRECTORIES (%d):", len(subdirs))
+            for d in subdirs:
+                logger.info("    - %s/", d.name)
 
         # Validation - show WORKING FOR / NOT WORKING FOR
         logger.info("\n  VALIDATION:")
         is_eligible = len(lang_files) > 0
         lang_codes = sorted([lc for _, lc, _ in lang_files]) if lang_files else []
 
-        # Check for smart scan results (non-standard naming)
-        has_smart_scan = role == "SOURCE" and scan_result and scan_result.lang_files
+        # Smart scan makes SOURCE eligible even without languagedata_ files
         if has_smart_scan and not is_eligible:
             is_eligible = True
+
+        # Build combined language list from both sources
+        if has_smart_scan:
+            all_langs = sorted(set(lang_codes) | set(scan_result.get_languages()))
+        else:
+            all_langs = lang_codes
 
         # Determine what features work with this structure
         working_for = []
         not_working_for = []
 
         if is_eligible:
-            working_for.append(f"TRANSFER ({len(lang_files) if lang_files else scan_result.language_count} language files)")
+            if has_smart_scan:
+                file_count = scan_result.total_files  # superset: includes languagedata + suffix-detected
+            elif lang_files:
+                file_count = len(lang_files)
+            else:
+                file_count = 0
+            working_for.append(f"TRANSFER ({file_count} language files)")
             working_for.append("Find Missing Translations")
             working_for.append("Reverse Lookup")
-            if lang_codes:
-                working_for.append(f"Languages: {', '.join(lang_codes)}")
+            if all_langs:
+                working_for.append(f"Languages: {', '.join(all_langs)}")
         else:
-            not_working_for.append("TRANSFER - no languagedata_*.xml files found")
+            not_working_for.append("TRANSFER - no parseable language files found")
             not_working_for.append("Find Missing Translations - needs LOC folder structure")
 
         # StringID Lookup depends on LOC folder in Settings
@@ -665,7 +697,7 @@ class QuickTranslateApp:
             for item in not_working_for:
                 logger.info("    x %s", item)
 
-        if non_lang_xml:
+        if non_lang_xml and role == "TARGET":
             logger.info("  [!!] %d non-languagedata XML files will be IGNORED", len(non_lang_xml))
         if subdirs and role == "TARGET":
             logger.info("  [!!] %d subdirectories will be IGNORED (flat scan only)", len(subdirs))
@@ -675,10 +707,12 @@ class QuickTranslateApp:
         # Log to GUI
         if is_eligible:
             self._log(f"{role}: ELIGIBLE for TRANSFER + Find Missing Translations", 'success')
-            if lang_codes:
-                self._log(f"  Languages: {', '.join(lang_codes)}", 'info')
+            if has_smart_scan:
+                self._log(f"  Smart scan: {scan_result.total_files} files in {scan_result.language_count} languages", 'info')
+            if all_langs:
+                self._log(f"  Languages: {', '.join(all_langs)}", 'info')
         else:
-            self._log(f"{role}: Limited features available (no languagedata files)", 'warning')
+            self._log(f"{role}: Limited features available (no parseable language files)", 'warning')
 
         # Run enhanced source validation (dry-run parse)
         if role == "SOURCE" and scan_result:
