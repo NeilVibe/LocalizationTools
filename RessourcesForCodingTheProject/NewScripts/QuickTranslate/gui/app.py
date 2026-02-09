@@ -237,7 +237,7 @@ class QuickTranslateApp:
 
         precision_row = tk.Frame(self.precision_options_frame, bg='#e8f4e8')
         precision_row.pack(fill=tk.X, pady=(0, 4))
-        tk.Radiobutton(precision_row, text="Perfect Match (exact StrOrigin comparison)",
+        tk.Radiobutton(precision_row, text="Perfect Match (exact text comparison)",
                        variable=self.match_precision, value="perfect",
                        font=('Segoe UI', 9), bg='#e8f4e8', activebackground='#e8f4e8',
                        cursor='hand2', command=self._on_precision_changed).pack(
@@ -245,7 +245,7 @@ class QuickTranslateApp:
 
         precision_row2 = tk.Frame(self.precision_options_frame, bg='#e8f4e8')
         precision_row2.pack(fill=tk.X, pady=(0, 4))
-        tk.Radiobutton(precision_row2, text="Fuzzy Match (SBERT similarity for StrOrigin)",
+        tk.Radiobutton(precision_row2, text="Fuzzy Match (SBERT semantic similarity)",
                        variable=self.match_precision, value="fuzzy",
                        font=('Segoe UI', 9), bg='#e8f4e8', activebackground='#e8f4e8',
                        cursor='hand2', command=self._on_precision_changed).pack(
