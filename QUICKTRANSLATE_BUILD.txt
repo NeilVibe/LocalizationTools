@@ -70,3 +70,4 @@ Build - Remove quadruple fallback mode
 Build - Enforce empty StrOrigin = empty Str golden rule
 Build - Fix empty StrOrigin double-count + stale refs
 Build - Documentation update + strorigin_only in MATCHING_MODES
+Build - Fix source folder validation messaging
