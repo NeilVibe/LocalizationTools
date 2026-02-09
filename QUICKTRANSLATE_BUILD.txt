@@ -63,3 +63,4 @@ Build: StrOrigin Only defaults to untranslated-only + overwrite warning popup
 Build: Review fixes - precision label + fuzzy fallback builder
 Build: Clean per-language transfer report + demote duplicate warning
 Build: Fix precision labels - generic for shared panel
+Build: Clearer StrOrigin dedup summary message
