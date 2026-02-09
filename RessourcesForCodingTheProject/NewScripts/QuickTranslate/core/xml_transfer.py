@@ -330,9 +330,12 @@ def merge_corrections_strorigin_only(
         correction_lookup_nospace[origin_nospace] = (c["corrected"], i)
 
     result["unique_corrections"] = len(correction_lookup)
-    result["conflicting_corrections"] = conflicting
+    result["duplicate_sources"] = conflicting
     if conflicting > 0:
-        logger.info(f"{conflicting} StrOrigin values had conflicting corrections (last one used)")
+        logger.info(
+            f"{len(corrections)} source rows -> {len(correction_lookup)} unique StrOrigin values "
+            f"({conflicting} had multiple translations, using latest)"
+        )
 
     try:
         if USING_LXML:
