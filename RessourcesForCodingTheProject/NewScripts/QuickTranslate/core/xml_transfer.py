@@ -669,6 +669,13 @@ def merge_corrections_quadruple_fallback(
         target_sid = c.get("matched_string_id", "")
         level = c.get("match_level", "L3")
         if target_sid:
+            if target_sid in correction_lookup:
+                old_c, old_level = correction_lookup[target_sid]
+                if old_c.get("corrected") != c.get("corrected"):
+                    logger.warning(
+                        f"Duplicate target StringID {target_sid}: overwriting "
+                        f"'{old_c.get('corrected', '')[:40]}' with '{c.get('corrected', '')[:40]}'"
+                    )
             correction_lookup[target_sid] = (c, level)  # Store FULL correction dict
             correction_matched[target_sid] = False
 

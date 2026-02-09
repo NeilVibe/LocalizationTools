@@ -297,7 +297,7 @@ def find_matches_quadruple_fallback(
             continue
 
         norm_origin = normalize_for_matching(str_origin)
-        match_entry = None
+        match_entries = None
         match_level = None
 
         if source_has_context:
@@ -314,41 +314,43 @@ def find_matches_quadruple_fallback(
                 key1 = (norm_origin, file_relpath, adj_hash)
                 entries = level1_index.get(key1, [])
                 if entries:
-                    match_entry = entries[0]
+                    match_entries = entries
                     match_level = "L1"
 
             # Try L2A: StrOrigin + file_relpath
-            if match_entry is None and file_relpath:
+            if match_entries is None and file_relpath:
                 key2a = (norm_origin, file_relpath)
                 entries = level2a_index.get(key2a, [])
                 if entries:
-                    match_entry = entries[0]
+                    match_entries = entries
                     match_level = "L2A"
 
             # Try L2B: StrOrigin + adjacency_hash
-            if match_entry is None and adj_hash:
+            if match_entries is None and adj_hash:
                 key2b = (norm_origin, adj_hash)
                 entries = level2b_index.get(key2b, [])
                 if entries:
-                    match_entry = entries[0]
+                    match_entries = entries
                     match_level = "L2B"
 
         # Try L3: StrOrigin only (always available)
-        if match_entry is None:
+        if match_entries is None:
             entries = level3_index.get(norm_origin, [])
             if entries:
-                match_entry = entries[0]
+                match_entries = entries
                 match_level = "L3"
 
-        if match_entry is not None:
-            enriched = {
-                **c,
-                "match_level": match_level,
-                "matched_string_id": match_entry["string_id"],
-                "matched_str_origin": match_entry["str_origin"],
-                "matched_source_file": match_entry.get("source_file", ""),
-            }
-            matched.append(enriched)
+        # Fan out: one correction → ALL matching target entries
+        if match_entries is not None:
+            for match_entry in match_entries:
+                enriched = {
+                    **c,
+                    "match_level": match_level,
+                    "matched_string_id": match_entry["string_id"],
+                    "matched_str_origin": match_entry["str_origin"],
+                    "matched_source_file": match_entry.get("source_file", ""),
+                }
+                matched.append(enriched)
             level_counts[match_level] += 1
         else:
             not_found += 1
@@ -439,7 +441,7 @@ def _quadruple_fallback_fuzzy(
         # Try strict pre-match when indexes are available
         if has_indexes:
             norm_origin = normalize_for_matching(str_origin)
-            match_entry = None
+            match_entries = None
             match_level = None
 
             if source_has_context:
@@ -455,41 +457,43 @@ def _quadruple_fallback_fuzzy(
                     key1 = (norm_origin, file_relpath, adj_hash)
                     l1_entries = level1_index.get(key1, [])
                     if l1_entries:
-                        match_entry = l1_entries[0]
+                        match_entries = l1_entries
                         match_level = "L1"
 
                 # Try L2A: StrOrigin + file_relpath
-                if match_entry is None and level2a_index is not None and file_relpath:
+                if match_entries is None and level2a_index is not None and file_relpath:
                     key2a = (norm_origin, file_relpath)
                     l2a_entries = level2a_index.get(key2a, [])
                     if l2a_entries:
-                        match_entry = l2a_entries[0]
+                        match_entries = l2a_entries
                         match_level = "L2A"
 
                 # Try L2B: StrOrigin + adjacency_hash
-                if match_entry is None and level2b_index is not None and adj_hash:
+                if match_entries is None and level2b_index is not None and adj_hash:
                     key2b = (norm_origin, adj_hash)
                     l2b_entries = level2b_index.get(key2b, [])
                     if l2b_entries:
-                        match_entry = l2b_entries[0]
+                        match_entries = l2b_entries
                         match_level = "L2B"
 
             # Try L3: StrOrigin only
-            if match_entry is None:
+            if match_entries is None:
                 l3_entries = level3_index.get(norm_origin, [])
                 if l3_entries:
-                    match_entry = l3_entries[0]
+                    match_entries = l3_entries
                     match_level = "L3"
 
-            if match_entry is not None:
-                enriched = {
-                    **c,
-                    "match_level": match_level,
-                    "matched_string_id": match_entry["string_id"],
-                    "matched_str_origin": match_entry["str_origin"],
-                    "matched_source_file": match_entry.get("source_file", ""),
-                }
-                matched.append(enriched)
+            # Fan out: one correction → ALL matching target entries
+            if match_entries is not None:
+                for match_entry in match_entries:
+                    enriched = {
+                        **c,
+                        "match_level": match_level,
+                        "matched_string_id": match_entry["string_id"],
+                        "matched_str_origin": match_entry["str_origin"],
+                        "matched_source_file": match_entry.get("source_file", ""),
+                    }
+                    matched.append(enriched)
                 level_counts[match_level] += 1
                 strict_matched_count += 1
                 continue
