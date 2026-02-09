@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 from .xml_parser import parse_xml_file, iter_locstr_elements
+from .korean_detection import is_korean_text
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,12 @@ def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
                         elem.get('STR') or '').strip()
 
             if string_id and str_value:
+                # Skip entries where Str is still Korean (untranslated).
+                # These are NOT corrections — including them would overwrite
+                # real translations in the lookup (last-wins) with Korean text.
+                if is_korean_text(str_value):
+                    continue
+
                 # Store ALL original attributes for exact preservation in failure reports
                 raw_attribs = dict(elem.attrib)
 
