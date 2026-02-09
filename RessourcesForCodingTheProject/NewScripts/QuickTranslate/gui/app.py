@@ -2186,7 +2186,7 @@ class QuickTranslateApp:
             self._task_queue.put(('progress', 80))
 
             # Generate report
-            report = format_transfer_report(results, mode="folder")
+            report = format_transfer_report(results, mode="folder", match_mode=transfer_match_mode)
 
             # Log the report
             for line in report.split("\n"):

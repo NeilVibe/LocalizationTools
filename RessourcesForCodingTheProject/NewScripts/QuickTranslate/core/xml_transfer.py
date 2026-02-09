@@ -295,6 +295,9 @@ def merge_corrections_strorigin_only(
         "updated": 0,
         "not_found": 0,
         "skipped_translated": 0,
+        "unique_corrections": 0,
+        "unique_matched": 0,
+        "conflicting_corrections": 0,
         "errors": [],
         "details": [],
     }
@@ -303,10 +306,11 @@ def merge_corrections_strorigin_only(
         return result
 
     # Build lookup: normalized_StrOrigin -> (corrected_text, index)
-    # Multiple corrections with the same StrOrigin: last one wins (with warning)
+    # Multiple corrections with the same StrOrigin: last one wins
     correction_lookup = {}
     correction_lookup_nospace = {}
     correction_matched = [False] * len(corrections)
+    conflicting = 0
 
     for i, c in enumerate(corrections):
         origin_norm = normalize_for_matching(c.get("str_origin", ""))
@@ -316,13 +320,19 @@ def merge_corrections_strorigin_only(
             old_c_idx = correction_lookup[origin_norm][1]
             old_corrected = corrections[old_c_idx].get("corrected", "")
             if old_corrected != c.get("corrected", ""):
-                logger.warning(
+                conflicting += 1
+                logger.debug(
                     f"Duplicate StrOrigin '{origin_norm[:50]}': overwriting "
                     f"'{old_corrected[:40]}' with '{c.get('corrected', '')[:40]}'"
                 )
 
         correction_lookup[origin_norm] = (c["corrected"], i)
         correction_lookup_nospace[origin_nospace] = (c["corrected"], i)
+
+    result["unique_corrections"] = len(correction_lookup)
+    result["conflicting_corrections"] = conflicting
+    if conflicting > 0:
+        logger.info(f"{conflicting} StrOrigin values had conflicting corrections (last one used)")
 
     try:
         if USING_LXML:
@@ -392,7 +402,6 @@ def merge_corrections_strorigin_only(
                         "old": old_str,
                         "new": new_str,
                     })
-                    logger.debug(f"Updated (StrOrigin) StringId={sid}: '{old_str}' -> '{new_str}'")
                 else:
                     result["details"].append({
                         "string_id": sid,
@@ -401,7 +410,8 @@ def merge_corrections_strorigin_only(
                         "new": "(same)",
                     })
 
-        # Count corrections that didn't match
+        # Count corrections that didn't match + unique matched
+        matched_origins = set()
         for i, c in enumerate(corrections):
             if not correction_matched[i]:
                 result["not_found"] += 1
@@ -412,6 +422,9 @@ def merge_corrections_strorigin_only(
                     "new": c["corrected"],
                     "raw_attribs": c.get("raw_attribs", {}),
                 })
+            else:
+                matched_origins.add(normalize_for_matching(c.get("str_origin", "")))
+        result["unique_matched"] = len(matched_origins)
 
         if changed and not dry_run:
             try:
@@ -1591,12 +1604,11 @@ def transfer_folder_to_folder(
 
         # Log per-target result
         updated = file_result["updated"]
-        matched_count = file_result["matched"]
         not_found = file_result.get("not_found", 0)
+        skipped_tr = file_result.get("skipped_translated", 0)
         logger.info(
-            f"[{source_label}] → {target_xml.name}: "
-            f"{matched_count} matched, {updated} updated, {not_found} not found "
-            f"({len(corrections):,} corrections from {len(source_names)} files)"
+            f"[{source_label}] -> {target_xml.name}: "
+            f"{updated} updated, {skipped_tr} skipped, {not_found} not found"
         )
 
     return results
@@ -1895,13 +1907,14 @@ def transfer_file_to_file(
     return result
 
 
-def format_transfer_report(results: Dict, mode: str = "folder") -> str:
+def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str = "") -> str:
     """
     Format transfer results as a human-readable report.
 
     Args:
         results: Results from transfer_folder_to_folder or transfer_file_to_file
         mode: "folder" or "file"
+        match_mode: The match mode used (e.g. "strorigin_only", "strict")
 
     Returns:
         Formatted report string
@@ -1917,38 +1930,55 @@ def format_transfer_report(results: Dict, mode: str = "folder") -> str:
     RT = "╣"
 
     width = 72
+    is_strorigin = match_mode.startswith("strorigin_only")
 
     lines.append("")
     lines.append(TL + H * (width - 2) + TR)
     title = "QUICKTRANSLATE TRANSFER REPORT"
     lines.append(V + title.center(width - 2) + V)
+    if match_mode:
+        mode_label = match_mode.upper().replace("_", " ")
+        lines.append(V + f" Mode: {mode_label}".ljust(width - 2) + V)
     lines.append(LT + H * (width - 2) + RT)
 
     if mode == "folder":
-        lines.append(V + f" Files Processed: {results.get('files_processed', 0)}".ljust(width - 2) + V)
-        lines.append(V + f" Total Corrections: {results.get('total_corrections', 0)}".ljust(width - 2) + V)
-        lines.append(V + f" Matched: {results.get('total_matched', 0)}".ljust(width - 2) + V)
-        lines.append(V + f" Updated: {results.get('total_updated', 0)}".ljust(width - 2) + V)
-        lines.append(V + f" Not Found: {results.get('total_not_found', 0)}".ljust(width - 2) + V)
-        if results.get('total_skipped', 0) > 0:
-            lines.append(V + f" Skipped (non-SCRIPT): {results.get('total_skipped', 0)}".ljust(width - 2) + V)
-        if results.get('total_skipped_translated', 0) > 0:
-            lines.append(V + f" Skipped (already translated): {results.get('total_skipped_translated', 0)}".ljust(width - 2) + V)
+        total_corrections = results.get('total_corrections', 0)
+        total_updated = results.get('total_updated', 0)
+        total_not_found = results.get('total_not_found', 0)
+        total_skipped_translated = results.get('total_skipped_translated', 0)
 
-        # Per-file breakdown
+        lines.append(V + f" Languages Processed: {len(results.get('file_results', {}))}".ljust(width - 2) + V)
+        lines.append(V + f" Total Corrections: {total_corrections:,}".ljust(width - 2) + V)
+        lines.append(V + f" Total Updated: {total_updated:,}".ljust(width - 2) + V)
+        lines.append(V + f" Not Found: {total_not_found:,}".ljust(width - 2) + V)
+        if total_skipped_translated > 0:
+            lines.append(V + f" Skipped (already translated): {total_skipped_translated:,}".ljust(width - 2) + V)
+        if results.get('total_skipped', 0) > 0:
+            lines.append(V + f" Skipped (non-SCRIPT): {results.get('total_skipped', 0):,}".ljust(width - 2) + V)
+
+        # Per-language breakdown
         file_results = results.get("file_results", {})
         if file_results:
             lines.append(LT + H * (width - 2) + RT)
-            lines.append(V + " PER-LANGUAGE BREAKDOWN:".ljust(width - 2) + V)
+            lines.append(V + " PER-LANGUAGE RESULTS:".ljust(width - 2) + V)
+            lines.append(V + "".ljust(width - 2) + V)
             for fname, fresult in file_results.items():
                 target = fresult.get("target", "?")
-                matched = fresult.get("matched", 0)
                 updated = fresult.get("updated", 0)
-                corrections = fresult.get("corrections", 0)
-                source_files = fresult.get("source_files", [])
-                src_label = f"{len(source_files)} files" if len(source_files) > 1 else (source_files[0] if source_files else "?")
-                lines.append(V + f"   {src_label} -> {target} ({corrections:,} corrections)".ljust(width - 2) + V)
-                lines.append(V + f"     Matched: {matched}, Updated: {updated}".ljust(width - 2) + V)
+                skipped = fresult.get("skipped_translated", 0)
+                not_found = fresult.get("not_found", 0)
+                matched = fresult.get("matched", 0)
+
+                # Extract language name from filename (e.g. languagedata_eng.xml -> ENG)
+                lang = target.replace("languagedata_", "").replace(".xml", "").replace(".loc", "").upper()
+
+                parts = [f"{updated} updated"]
+                if skipped > 0:
+                    parts.append(f"{skipped} skipped")
+                if not_found > 0:
+                    parts.append(f"{not_found} not found")
+                detail = " | ".join(parts)
+                lines.append(V + f"   {lang}: {detail}".ljust(width - 2) + V)
 
     else:
         # Single file mode
@@ -1962,12 +1992,13 @@ def format_transfer_report(results: Dict, mode: str = "folder") -> str:
             lines.append(V + f" Skipped (already translated): {results.get('skipped_translated', 0)}".ljust(width - 2) + V)
 
     # Success rate
+    total_updated = results.get('total_updated', results.get('updated', 0))
     total = results.get('total_corrections', results.get('corrections_count', 0))
     matched = results.get('total_matched', results.get('matched', 0))
     rate = (matched / total * 100) if total > 0 else 0.0
 
     lines.append(LT + H * (width - 2) + RT)
-    rate_str = f" SUCCESS RATE: {rate:.1f}%"
+    rate_str = f" COVERAGE: {rate:.1f}%"
     if rate >= 95:
         rate_str += " ●"
     elif rate >= 80:
@@ -1983,12 +2014,12 @@ def format_transfer_report(results: Dict, mode: str = "folder") -> str:
         lines.append("")
         lines.append("ERRORS:")
         for error in errors[:5]:
-            lines.append(f"  × {error}")
+            lines.append(f"  x {error}")
         if len(errors) > 5:
             lines.append(f"  ... and {len(errors) - 5} more errors")
 
     lines.append("")
-    lines.append("Legend: ● ≥95% success  ◐ ≥80% success  ○ <80% success")
+    lines.append("Legend: ● >=95% coverage  ◐ >=80% coverage  ○ <80% coverage")
     lines.append("")
 
     return "\n".join(lines)
