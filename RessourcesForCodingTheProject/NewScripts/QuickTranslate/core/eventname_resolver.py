@@ -130,6 +130,65 @@ def get_eventname_mapping(
     return _cached_mapping
 
 
+def generate_stringid_from_dialogvoice(eventname: str, dialogvoice: str) -> str:
+    """
+    Step 1: Generate StringID from EventName + DialogVoice (tmxtransfer11 algorithm).
+
+    Algorithm:
+    - If dialogvoice is non-empty and found inside eventname: remove it, strip leading '_'
+    - If dialogvoice is empty but eventname exists: use eventname, strip leading '_'
+    - Otherwise: return empty (fail)
+
+    Args:
+        eventname: The audio event identifier (e.g. "john_conversation_greeting_001")
+        dialogvoice: The dialog voice prefix (e.g. "john_conversation")
+
+    Returns:
+        Generated StringID or empty string on failure
+    """
+    event = eventname.lower().strip()
+    dialog = dialogvoice.lower().strip() if dialogvoice else ""
+
+    if dialog and event and dialog in event:
+        # Remove DialogVoice prefix from EventName
+        diff = event.replace(dialog, "", 1)
+        if diff.startswith("_"):
+            diff = diff[1:]
+        return diff
+    elif not dialog and event:
+        # No DialogVoice — use EventName as-is, strip leading underscore
+        return event[1:] if event.startswith("_") else event
+    else:
+        return ""
+
+
+def extract_stringid_from_dialog_keyword(eventname: str) -> str:
+    """
+    Step 2: Extract StringID via aidialog/questdialog keyword (findeventname8 algorithm).
+
+    Algorithm:
+    - Search for "aidialog" in eventname (case-insensitive)
+    - If not found, search for "questdialog"
+    - If found: return substring from keyword to end (lowercase)
+    - If neither found: return empty (fail)
+
+    Args:
+        eventname: The audio event identifier
+
+    Returns:
+        Extracted StringID or empty string on failure
+    """
+    lower = eventname.lower().strip()
+
+    idx = lower.find("aidialog")
+    if idx == -1:
+        idx = lower.find("questdialog")
+
+    if idx != -1:
+        return lower[idx:]
+    return ""
+
+
 def resolve_eventnames_in_corrections(
     corrections: List[Dict],
     mapping: Dict[str, Dict[str, str]],
@@ -153,6 +212,7 @@ def resolve_eventnames_in_corrections(
     """
     resolved = []
     missing = []
+    step_counts = {"dialogvoice": 0, "keyword": 0, "export": 0}
 
     for c in corrections:
         eventname = c.get("_source_eventname")
@@ -162,26 +222,55 @@ def resolve_eventnames_in_corrections(
             resolved.append(c)
             continue
 
-        data = mapping.get(eventname.lower())
+        # Step 1: DialogVoice generation (tmxtransfer11 algorithm)
+        # Only attempt when the Excel had a DialogVoice column (_source_dialogvoice key present)
+        has_dialogvoice_col = "_source_dialogvoice" in c
+        dialogvoice = c.get("_source_dialogvoice", "")
+        generated = generate_stringid_from_dialogvoice(eventname, dialogvoice) if has_dialogvoice_col else ""
+        if generated:
+            new_c = dict(c)
+            new_c["string_id"] = generated
+            new_c.pop("_source_eventname", None)
+            new_c.pop("_source_dialogvoice", None)
+            resolved.append(new_c)
+            step_counts["dialogvoice"] += 1
+            logger.debug(f"Step 1 (DialogVoice): '{eventname}' -> '{generated}'")
+            continue
 
+        # Step 2: aidialog/questdialog keyword extraction (findeventname8 algorithm)
+        extracted = extract_stringid_from_dialog_keyword(eventname)
+        if extracted:
+            new_c = dict(c)
+            new_c["string_id"] = extracted
+            new_c.pop("_source_eventname", None)
+            new_c.pop("_source_dialogvoice", None)
+            resolved.append(new_c)
+            step_counts["keyword"] += 1
+            logger.debug(f"Step 2 (Keyword): '{eventname}' -> '{extracted}'")
+            continue
+
+        # Step 3: Export folder lookup (existing logic)
+        data = mapping.get(eventname.lower())
         if data:
-            # Resolved — set string_id from mapping
             new_c = dict(c)
             new_c["string_id"] = data["stringid"]
-            # Fill str_origin from mapping if correction doesn't have one
             if not new_c.get("str_origin") and data.get("strorigin"):
                 new_c["str_origin"] = data["strorigin"]
-            # Remove internal key
             new_c.pop("_source_eventname", None)
+            new_c.pop("_source_dialogvoice", None)
             resolved.append(new_c)
-            logger.debug(f"Resolved EventName '{eventname}' -> StringID '{data['stringid']}'")
+            step_counts["export"] += 1
+            logger.debug(f"Step 3 (Export): '{eventname}' -> '{data['stringid']}'")
         else:
             missing.append(c)
-            logger.debug(f"Unresolved EventName: '{eventname}'")
+            logger.debug(f"Unresolved EventName (all 3 steps failed): '{eventname}'")
 
     logger.info(
         f"EventName resolution: {len(resolved)} resolved, {len(missing)} missing "
-        f"(out of {len(corrections)} total corrections)"
+        f"(out of {len(corrections)} total corrections) — "
+        f"Step1-DialogVoice: {step_counts['dialogvoice']}, "
+        f"Step2-Keyword: {step_counts['keyword']}, "
+        f"Step3-Export: {step_counts['export']}"
     )
     return resolved, missing
 
