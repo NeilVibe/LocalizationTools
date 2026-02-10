@@ -234,7 +234,7 @@ jobs:
 
           # Create temp directory for clean source
           $tempDir = New-Item -ItemType Directory -Path "$env:TEMP\QT_Source" -Force
-          $excludes = @("dist", "build", "__pycache__", "*.pyc", "installer_output", ".pytest_cache")
+          $excludes = @("dist", "build", "__pycache__", "*.pyc", "installer_output", ".pytest_cache", "archive")
 
           # Copy source files excluding build artifacts
           Get-ChildItem -Path $projectPath -Exclude $excludes | Copy-Item -Destination $tempDir -Recurse -Force
