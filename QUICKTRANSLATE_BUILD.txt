@@ -88,3 +88,4 @@ Build - fix DialogVoice-as-StringID column fallback bug
 Build - Column validation + match type gating (no fallbacks)
 Build - fix tuple unpack in column detection
 Build - horizontal layout redesign
+Build - pane ratio + label fix
