@@ -771,27 +771,24 @@ class QuickTranslateApp:
         else:
             self._log(f"{role}: Limited features available (no parseable language files)", 'warning')
 
-        # Run enhanced source validation (dry-run parse)
+        # Run enhanced source validation (dry-run parse) in background thread
         if role == "SOURCE" and scan_result:
-            self._validate_source_files(folder, scan_result)
+            self._validate_source_files_async(folder, scan_result)
 
-    def _validate_source_files(self, folder: Path, scan_result) -> None:
-        """Dry-run parse every source file and report results.
+    def _validate_source_files_async(self, folder: Path, scan_result) -> None:
+        """Launch source file validation in a background thread.
 
-        Attempts to parse each XML and Excel file found by the source scanner,
-        reporting per-file success/failure and per-language entry counts.
-
-        Args:
-            folder: Source folder path
-            scan_result: Result from scan_source_for_languages()
+        Uses lightweight XML parsing (just count LocStr elements, no full
+        correction extraction) to avoid blocking the GUI on large files.
         """
+        from core.xml_parser import parse_xml_file, iter_locstr_elements
+
         # Collect all files to validate
         files_to_check = []
         for lang, file_list in scan_result.lang_files.items():
             for f in file_list:
                 files_to_check.append((f, lang))
 
-        # Also check unrecognized files that might be parseable
         for item in scan_result.unrecognized:
             if item.is_file() and item.suffix.lower() in (".xml", ".xlsx", ".xls"):
                 files_to_check.append((item, "???"))
@@ -800,91 +797,104 @@ class QuickTranslateApp:
             logger.info("  No source files to validate.")
             return
 
-        # Parse each file and collect results
-        results = []  # (filename, file_type, lang, entry_count, status, error_msg)
-        for filepath, lang in files_to_check:
-            suffix = filepath.suffix.lower()
-            file_type = "XML" if suffix == ".xml" else "Excel"
-            try:
-                if suffix == ".xml":
-                    entries = parse_corrections_from_xml(filepath)
-                elif suffix in (".xlsx", ".xls"):
-                    entries = read_corrections_from_excel(filepath)
-                else:
-                    results.append((filepath.name, file_type, lang, 0, "SKIPPED", "Unsupported format"))
-                    continue
+        self._task_queue.put(('status', 'Validating source files...', 0))
 
-                count = len(entries) if entries else 0
-                if count > 0:
-                    results.append((filepath.name, file_type, lang, count, "OK", ""))
-                else:
-                    results.append((filepath.name, file_type, lang, 0, "EMPTY", "No entries parsed"))
-            except Exception as e:
-                results.append((filepath.name, file_type, lang, 0, "FAILED", str(e)))
+        def work():
+            results = []
+            total = len(files_to_check)
 
-        # Build terminal report
-        separator = "-" * 60
-        logger.info("\n%s", separator)
-        logger.info("  SOURCE FILE VALIDATION (Dry-Run Parse)")
-        logger.info("%s", separator)
-        logger.info("  %-4s %-30s %-6s %-8s %-8s %s", "#", "Filename", "Type", "Lang", "Entries", "Status")
-        logger.info("  %s %s %s %s %s %s", "-"*4, "-"*30, "-"*6, "-"*8, "-"*8, "-"*10)
+            for i, (filepath, lang) in enumerate(files_to_check):
+                suffix = filepath.suffix.lower()
+                file_type = "XML" if suffix == ".xml" else "Excel"
 
-        for idx, (fname, ftype, lang, count, status, err) in enumerate(results, 1):
-            count_str = f"{count:,}" if count > 0 else "0"
-            status_str = status if not err or status == "OK" else f"{status} ({err[:40]})"
-            logger.info("  %-4d %-30s %-6s %-8s %8s  %s", idx, fname[:30], ftype, lang, count_str, status_str)
+                progress_pct = ((i + 1) / total) * 100
+                self._task_queue.put(('status', f'Validating... ({i + 1}/{total}) {filepath.name}', progress_pct))
 
-        # Compute summary stats
-        xml_good = sum(1 for r in results if r[1] == "XML" and r[4] == "OK")
-        excel_good = sum(1 for r in results if r[1] == "Excel" and r[4] == "OK")
-        xml_fail = sum(1 for r in results if r[1] == "XML" and r[4] in ("FAILED", "EMPTY"))
-        excel_fail = sum(1 for r in results if r[1] == "Excel" and r[4] in ("FAILED", "EMPTY"))
-        total_entries = sum(r[3] for r in results)
-        errors = [(r[0], r[5]) for r in results if r[4] == "FAILED"]
+                try:
+                    if suffix == ".xml":
+                        # Lightweight: just parse + count LocStr elements
+                        root = parse_xml_file(filepath)
+                        count = sum(1 for _ in iter_locstr_elements(root))
+                    elif suffix in (".xlsx", ".xls"):
+                        entries = read_corrections_from_excel(filepath)
+                        count = len(entries) if entries else 0
+                    else:
+                        results.append((filepath.name, file_type, lang, 0, "SKIPPED", "Unsupported format"))
+                        continue
 
-        # Per-language breakdown
-        lang_entries = {}
-        for _, _, lang, count, status, _ in results:
-            if status == "OK" and count > 0:
-                lang_entries[lang] = lang_entries.get(lang, 0) + count
+                    if count > 0:
+                        results.append((filepath.name, file_type, lang, count, "OK", ""))
+                    else:
+                        results.append((filepath.name, file_type, lang, 0, "EMPTY", "No entries parsed"))
+                except Exception as e:
+                    results.append((filepath.name, file_type, lang, 0, "FAILED", str(e)))
 
-        logger.info("%s", separator)
-        summary_parts = []
-        if xml_good:
-            summary_parts.append(f"{xml_good} XML good")
-        if excel_good:
-            summary_parts.append(f"{excel_good} Excel good")
-        if xml_fail:
-            summary_parts.append(f"{xml_fail} XML failed")
-        if excel_fail:
-            summary_parts.append(f"{excel_fail} Excel failed")
-        logger.info("  SUMMARY: %s", ", ".join(summary_parts) if summary_parts else "No files")
-        logger.info("  Total entries parsed: %s", f"{total_entries:,}")
+            # Build terminal report
+            separator = "-" * 60
+            logger.info("\n%s", separator)
+            logger.info("  SOURCE FILE VALIDATION (Dry-Run Parse)")
+            logger.info("%s", separator)
+            logger.info("  %-4s %-30s %-6s %-8s %-8s %s", "#", "Filename", "Type", "Lang", "Entries", "Status")
+            logger.info("  %s %s %s %s %s %s", "-"*4, "-"*30, "-"*6, "-"*8, "-"*8, "-"*10)
 
-        if lang_entries:
-            lang_str = "  ".join(f"{lang}: {count:,}" for lang, count in sorted(lang_entries.items()))
-            logger.info("  Per-language: %s", lang_str)
+            for idx, (fname, ftype, lang, count, status, err) in enumerate(results, 1):
+                count_str = f"{count:,}" if count > 0 else "0"
+                status_str = status if not err or status == "OK" else f"{status} ({err[:40]})"
+                logger.info("  %-4d %-30s %-6s %-8s %8s  %s", idx, fname[:30], ftype, lang, count_str, status_str)
 
-        if errors:
-            logger.warning("  PARSE ERRORS (%d):", len(errors))
-            for fname, err_msg in errors:
-                logger.warning("    %s: %s", fname, err_msg)
+            # Compute summary stats
+            xml_good = sum(1 for r in results if r[1] == "XML" and r[4] == "OK")
+            excel_good = sum(1 for r in results if r[1] == "Excel" and r[4] == "OK")
+            xml_fail = sum(1 for r in results if r[1] == "XML" and r[4] in ("FAILED", "EMPTY"))
+            excel_fail = sum(1 for r in results if r[1] == "Excel" and r[4] in ("FAILED", "EMPTY"))
+            total_entries = sum(r[3] for r in results)
+            errors = [(r[0], r[5]) for r in results if r[4] == "FAILED"]
 
-        logger.info("%s", separator)
+            lang_entries = {}
+            for _, _, lang, count, status, _ in results:
+                if status == "OK" and count > 0:
+                    lang_entries[lang] = lang_entries.get(lang, 0) + count
 
-        # Log summary to GUI
-        if errors:
-            gui_summary = ", ".join(summary_parts) if summary_parts else "No files"
-            self._log(f"Source validation: {gui_summary}", 'warning')
-            for fname, err_msg in errors:
-                self._log(f"  PARSE ERROR: {fname}: {err_msg}", 'error')
-        else:
-            self._log(f"Source validation: {', '.join(summary_parts)}, {total_entries:,} entries total", 'success')
+            logger.info("%s", separator)
+            summary_parts = []
+            if xml_good:
+                summary_parts.append(f"{xml_good} XML good")
+            if excel_good:
+                summary_parts.append(f"{excel_good} Excel good")
+            if xml_fail:
+                summary_parts.append(f"{xml_fail} XML failed")
+            if excel_fail:
+                summary_parts.append(f"{excel_fail} Excel failed")
+            logger.info("  SUMMARY: %s", ", ".join(summary_parts) if summary_parts else "No files")
+            logger.info("  Total entries parsed: %s", f"{total_entries:,}")
 
-        if lang_entries:
-            lang_str = ", ".join(f"{lang}:{count:,}" for lang, count in sorted(lang_entries.items()))
-            self._log(f"  Per-language: {lang_str}", 'info')
+            if lang_entries:
+                lang_str = "  ".join(f"{lang}: {count:,}" for lang, count in sorted(lang_entries.items()))
+                logger.info("  Per-language: %s", lang_str)
+
+            if errors:
+                logger.warning("  PARSE ERRORS (%d):", len(errors))
+                for fname, err_msg in errors:
+                    logger.warning("    %s: %s", fname, err_msg)
+
+            logger.info("%s", separator)
+
+            # Log summary to GUI
+            if errors:
+                gui_summary = ", ".join(summary_parts) if summary_parts else "No files"
+                self._log(f"Source validation: {gui_summary}", 'warning')
+                for fname, err_msg in errors:
+                    self._log(f"  PARSE ERROR: {fname}: {err_msg}", 'error')
+            else:
+                self._log(f"Source validation: {', '.join(summary_parts)}, {total_entries:,} entries total", 'success')
+
+            if lang_entries:
+                lang_str = ", ".join(f"{lang}:{count:,}" for lang, count in sorted(lang_entries.items()))
+                self._log(f"  Per-language: {lang_str}", 'info')
+
+            self._task_queue.put(('status', 'Ready', 0))
+
+        self._run_in_thread(work)
 
     def _browse_source(self):
         """Browse for source folder."""
