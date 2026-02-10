@@ -90,3 +90,4 @@ Build - fix tuple unpack in column detection
 Build - horizontal layout redesign
 Build - pane ratio + label fix
 Build - log pane 20% default
+Build - fuzzy threshold min 0.70
