@@ -80,3 +80,4 @@ Build - CI fix: exclude reference scripts from syntax check
 Build - Fix source validation GUI freeze
 Build - EventName to StringID resolution
 Build - 3-step EventName waterfall resolution
+Build - dialogvoice_col init fix
