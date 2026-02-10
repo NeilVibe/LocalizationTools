@@ -2508,6 +2508,20 @@ class QuickTranslateApp:
 
                 self._log(f"Reports saved to: {report_folder}", 'info')
 
+            # EventName resolution stats (if any EventNames were in source)
+            eventname_msg = ""
+            missing_en_count = results.get("missing_eventnames_count", 0)
+            missing_en_report = results.get("missing_eventname_report", "")
+            if missing_en_count > 0 or missing_en_report:
+                self._log("", 'info')
+                self._log("=== EventName Resolution ===", 'header')
+                if missing_en_count > 0:
+                    self._log(f"Unresolved EventNames: {missing_en_count}", 'warning')
+                if missing_en_report:
+                    self._log(f"Missing EventName report: {missing_en_report}", 'info')
+                    eventname_msg = f"\n\nMissing EventNames: {missing_en_count}"
+                    eventname_msg += f"\nReport: {Path(missing_en_report).name}"
+
             self._task_queue.put(('progress', 100))
             self._update_status(f"Transfer complete: {updated} updated")
 
@@ -2518,7 +2532,8 @@ class QuickTranslateApp:
                 f"Not Found: {not_found}\n"
                 + (f"Skipped (translated): {skipped_translated}\n" if skipped_translated > 0 else "")
                 + f"\nTarget: {target}"
-                + failure_reports_msg))
+                + failure_reports_msg
+                + eventname_msg))
 
         self._run_in_thread(work)
 

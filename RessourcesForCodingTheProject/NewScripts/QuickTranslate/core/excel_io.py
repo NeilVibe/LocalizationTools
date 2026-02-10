@@ -90,29 +90,51 @@ def read_corrections_from_excel(
         start_row = 2 if has_header else 1
 
         # Try to detect columns from header row (case-insensitive)
+        eventname_col = None
         if has_header:
             col_indices = _detect_column_indices(ws)
             # Look for common column name variations
             stringid_col = col_indices.get("stringid", col_indices.get("string_id", stringid_col))
             strorigin_col = col_indices.get("strorigin", col_indices.get("str_origin", strorigin_col))
             correction_col = col_indices.get("correction", col_indices.get("corrected", correction_col))
+            # EventName column detection (audio event identifiers)
+            eventname_col = col_indices.get("eventname", col_indices.get("event_name",
+                            col_indices.get("soundeventname", None)))
 
         for row in ws.iter_rows(min_row=start_row):
             try:
                 string_id = row[stringid_col - 1].value if stringid_col <= len(row) else None
                 str_origin = row[strorigin_col - 1].value if strorigin_col <= len(row) else None
                 corrected = row[correction_col - 1].value if correction_col <= len(row) else None
+                eventname = None
+                if eventname_col is not None:
+                    eventname = row[eventname_col - 1].value if eventname_col <= len(row) else None
 
-                if string_id and corrected:
-                    corrected_str = str(corrected).strip()
-                    # Skip entries where the "correction" is still Korean (untranslated)
-                    if is_korean_text(corrected_str):
-                        continue
-                    corrections.append({
-                        "string_id": str(string_id).strip(),  # StringID: just strip, no normalize (ID not display text)
-                        "str_origin": normalize_text(str_origin) if str_origin else "",
-                        "corrected": corrected_str,  # Preserve linebreaks! Don't normalize output text
-                    })
+                # Accept row if EITHER string_id or eventname is present
+                # Use 'is not None' to handle numeric 0 as a valid StringID
+                has_id = string_id is not None and str(string_id).strip()
+                has_eventname = eventname is not None and str(eventname).strip()
+
+                if not (has_id or has_eventname) or not corrected:
+                    continue
+
+                corrected_str = str(corrected).strip()
+                # Skip entries where the "correction" is still Korean (untranslated)
+                if is_korean_text(corrected_str):
+                    continue
+
+                entry = {
+                    "string_id": str(string_id).strip() if has_id else "",
+                    "str_origin": normalize_text(str_origin) if str_origin else "",
+                    "corrected": corrected_str,  # Preserve linebreaks! Don't normalize output text
+                }
+
+                # Per-row priority: StringID takes precedence over EventName
+                # EventName is fallback when StringID is empty for that row
+                if not has_id and has_eventname:
+                    entry["_source_eventname"] = str(eventname).strip()
+
+                corrections.append(entry)
             except (IndexError, AttributeError):
                 continue
 

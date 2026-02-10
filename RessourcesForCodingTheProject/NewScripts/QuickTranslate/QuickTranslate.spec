@@ -43,6 +43,7 @@ a = Analysis(
         'core.xml_transfer',
         'core.text_utils',
         'core.quality_checker',
+        'core.eventname_resolver',
         'xlsxwriter',
     ],
     hookspath=[],
