@@ -139,19 +139,23 @@ def generate_stringid_from_dialogvoice(eventname: str, dialogvoice: str) -> str:
     - If dialogvoice is empty but eventname exists: use eventname, strip leading '_'
     - Otherwise: return empty (fail)
 
+    Case-insensitive matching but preserves original case from EventName in the result,
+    so the generated StringID matches XML StringId attributes.
+
     Args:
-        eventname: The audio event identifier (e.g. "john_conversation_greeting_001")
-        dialogvoice: The dialog voice prefix (e.g. "john_conversation")
+        eventname: The audio event identifier (e.g. "John_Conversation_Greeting_001")
+        dialogvoice: The dialog voice prefix (e.g. "John_Conversation")
 
     Returns:
         Generated StringID or empty string on failure
     """
-    event = eventname.lower().strip()
-    dialog = dialogvoice.lower().strip() if dialogvoice else ""
+    event = eventname.strip()
+    dialog = dialogvoice.strip() if dialogvoice else ""
 
-    if dialog and event and dialog in event:
-        # Remove DialogVoice prefix from EventName
-        diff = event.replace(dialog, "", 1)
+    if dialog and event and dialog.lower() in event.lower():
+        # Find position case-insensitively, then slice original-case string
+        idx = event.lower().find(dialog.lower())
+        diff = event[:idx] + event[idx + len(dialog):]
         if diff.startswith("_"):
             diff = diff[1:]
         return diff
@@ -169,7 +173,7 @@ def extract_stringid_from_dialog_keyword(eventname: str) -> str:
     Algorithm:
     - Search for "aidialog" in eventname (case-insensitive)
     - If not found, search for "questdialog"
-    - If found: return substring from keyword to end (lowercase)
+    - If found: return substring from keyword to end (original case preserved)
     - If neither found: return empty (fail)
 
     Args:
@@ -178,14 +182,15 @@ def extract_stringid_from_dialog_keyword(eventname: str) -> str:
     Returns:
         Extracted StringID or empty string on failure
     """
-    lower = eventname.lower().strip()
+    event = eventname.strip()
+    lower = event.lower()
 
     idx = lower.find("aidialog")
     if idx == -1:
         idx = lower.find("questdialog")
 
     if idx != -1:
-        return lower[idx:]
+        return event[idx:]
     return ""
 
 
