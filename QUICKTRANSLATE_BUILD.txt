@@ -82,3 +82,4 @@ Build - EventName to StringID resolution
 Build - 3-step EventName waterfall resolution
 Build - dialogvoice_col init fix
 Build - cleanup archive + Source ZIP exclusion
+Build - fix case-sensitive StringID matching
