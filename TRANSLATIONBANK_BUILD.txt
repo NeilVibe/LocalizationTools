@@ -8,3 +8,4 @@
 # Build 002: Add feature X
 # Build 003: Fix bug Y
 Build 001: Initial TranslationBank release with 3-level key system
+Build - Full rebuild all projects
