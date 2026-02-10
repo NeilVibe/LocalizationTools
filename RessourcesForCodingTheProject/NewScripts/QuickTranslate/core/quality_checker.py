@@ -100,7 +100,10 @@ _CJK_LANGUAGES = {"JPN", "ZHO-CN", "ZHO-TW", "KOR"}
 # ============================================================================
 
 def _is_latin(code: int) -> bool:
-    return (0x0041 <= code <= 0x024F) or (0x1E00 <= code <= 0x1EFF)
+    return ((0x0041 <= code <= 0x024F)
+            or (0x1E00 <= code <= 0x1EFF)
+            or (0xFF21 <= code <= 0xFF3A)   # Fullwidth A-Z
+            or (0xFF41 <= code <= 0xFF5A))  # Fullwidth a-z
 
 def _is_cyrillic(code: int) -> bool:
     return ((0x0400 <= code <= 0x052F)
@@ -120,7 +123,11 @@ def _is_katakana(code: int) -> bool:
     return (0x30A0 <= code <= 0x30FF) or (0x31F0 <= code <= 0x31FF)
 
 def _is_hangul(code: int) -> bool:
-    return 0xAC00 <= code <= 0xD7AF
+    return ((0xAC00 <= code <= 0xD7AF)     # Precomposed syllables
+            or (0x1100 <= code <= 0x11FF)   # Hangul Jamo
+            or (0x3130 <= code <= 0x318F)   # Compatibility Jamo
+            or (0xA960 <= code <= 0xA97F)   # Jamo Extended-A
+            or (0xD7B0 <= code <= 0xD7FF))  # Jamo Extended-B
 
 def _is_allowed_char(code: int, group: str) -> bool:
     """Check if a Unicode code point is allowed for the given script group."""
@@ -329,9 +336,9 @@ def check_hallucination_in_file(
                         details=f"{unit.title()} ratio {str_len}/{origin_len} = {ratio:.1f}x (threshold: {threshold}x)",
                     ))
 
-            # 3. Forward slash artifacts
-            str_no_codes = _CODE_PATTERN.sub('', str_text)
-            origin_no_codes = _CODE_PATTERN.sub('', strorigin_text) if strorigin_text else ""
+            # 3. Forward slash artifacts (strip {code} and markup like <br/>)
+            str_no_codes = _strip_codes_and_markup(str_text)
+            origin_no_codes = _strip_codes_and_markup(strorigin_text) if strorigin_text else ""
             if '/' in str_no_codes and '/' not in origin_no_codes:
                 issues.append(HallucinationIssue(
                     string_id=string_id,
@@ -426,13 +433,8 @@ def _find_json_path() -> Path:
     if json_path.exists():
         return json_path
 
-    # Fallback: try relative to this file
-    alt = Path(__file__).parent.parent / "ai_hallucination_phrases.json"
-    if alt.exists():
-        return alt
-
     raise FileNotFoundError(
-        f"ai_hallucination_phrases.json not found at {json_path} or {alt}"
+        f"ai_hallucination_phrases.json not found at {json_path}"
     )
 
 
