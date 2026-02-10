@@ -100,6 +100,12 @@ from .category_mapper import (
     categorize_file,
     build_stringid_category_index,
 )
+from .checker import (
+    run_korean_check,
+    run_pattern_check,
+    should_skip_locstr,
+    iter_source_xml_files,
+)
 
 __all__ = [
     # text_utils
@@ -199,4 +205,9 @@ __all__ = [
     # category_mapper
     "categorize_file",
     "build_stringid_category_index",
+    # checker
+    "run_korean_check",
+    "run_pattern_check",
+    "should_skip_locstr",
+    "iter_source_xml_files",
 ]
