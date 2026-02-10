@@ -21,9 +21,7 @@ def parse_xml_file(file_path: str):
 
     # escape stray amps
     txt = re.sub(r'&(?!lt;|gt;|amp;|apos;|quot;)', '&amp;', txt)
-    wrapped = "<ROOT>
-" + txt + "
-</ROOT>"
+    wrapped = "<ROOT>\n" + txt + "\n</ROOT>"
 
     rec_parser = etree.XMLParser(recover=True)
     try:
@@ -239,8 +237,7 @@ def find_character_discrepancies():
                     s_str = preprocess_text(loc_str.get("Str", ""))
                     for sym in symbols:
                         if s_orig.count(sym) != s_str.count(sym):
-                            discrepancy_lines.append(f"{loc_str.get('StringId')}\t{loc_str.get('StrOrigin')}\t{loc_str.get('Str')}
-")
+                            discrepancy_lines.append(f"{loc_str.get('StringId')}\t{loc_str.get('StrOrigin')}\t{loc_str.get('Str')}\n")
                             break
             
             if not discrepancy_lines:
