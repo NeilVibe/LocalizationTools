@@ -106,6 +106,9 @@ from .checker import (
     should_skip_locstr,
     iter_source_xml_files,
 )
+from .quality_checker import (
+    run_quality_check,
+)
 
 __all__ = [
     # text_utils
@@ -210,4 +213,6 @@ __all__ = [
     "run_pattern_check",
     "should_skip_locstr",
     "iter_source_xml_files",
+    # quality_checker
+    "run_quality_check",
 ]

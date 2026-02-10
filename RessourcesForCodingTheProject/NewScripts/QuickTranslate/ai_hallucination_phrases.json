@@ -1,0 +1,97 @@
+{
+  "en": [
+    "openai", "anthropic", "chatgpt", "gpt-4", "gpt-3", "claude", "gemini",
+    "as an ai", "as a language model", "as a large language model",
+    "i'm an ai", "i am an ai", "i'm a language model", "i am a language model",
+    "i'm sorry, but i cannot", "sorry, i can't", "i don't have the ability to",
+    "beyond my capabilities", "i cannot fulfill", "i cannot assist",
+    "against my guidelines", "my training data",
+    "i was trained", "my knowledge cutoff",
+    "translat", "here is the translation", "here's the translation",
+    "translated text", "translation of"
+  ],
+  "fr": [
+    "en tant qu'ia", "en tant que modèle", "en tant que modèle de langage",
+    "je suis une ia", "je suis un modèle",
+    "mes directives", "contre mes directives",
+    "données d'entraînement", "mes données d'apprentissage",
+    "tradu", "voici la traduction", "texte traduit"
+  ],
+  "de": [
+    "als ki", "als sprachmodell", "als ein sprachmodell",
+    "ich bin eine ki", "ich bin ein sprachmodell",
+    "meine richtlinien", "gegen meine richtlinien",
+    "trainingsdaten", "meine trainingsdaten",
+    "übersetz", "hier ist die übersetzung", "übersetzter text"
+  ],
+  "it": [
+    "come ia", "come modello linguistico", "come modello di linguaggio",
+    "sono un'ia", "sono un modello linguistico",
+    "le mie linee guida", "contro le mie linee guida",
+    "dati di addestramento", "i miei dati di addestramento",
+    "tradu", "ecco la traduzione", "testo tradotto"
+  ],
+  "es": [
+    "como ia", "como modelo de lenguaje", "como un modelo de lenguaje",
+    "soy una ia", "soy un modelo de lenguaje",
+    "mis directrices", "contra mis directrices",
+    "datos de entrenamiento", "mis datos de entrenamiento",
+    "tradu", "aquí está la traducción", "texto traducido"
+  ],
+  "pt": [
+    "como ia", "como modelo de linguagem", "como um modelo de linguagem",
+    "sou uma ia", "sou um modelo de linguagem",
+    "minhas diretrizes", "contra minhas diretrizes",
+    "dados de treinamento", "meus dados de treinamento",
+    "tradu", "aqui está a tradução", "texto traduzido"
+  ],
+  "ru": [
+    "как ии", "как языковая модель", "как большая языковая модель",
+    "я ии", "я языковая модель",
+    "мои инструкции", "против моих инструкций",
+    "данные обучения", "мои данные обучения",
+    "перевод", "вот перевод", "переведённый текст"
+  ],
+  "pl": [
+    "jako ai", "jako model językowy", "jako duży model językowy",
+    "jestem ai", "jestem modelem językowym",
+    "moje wytyczne", "wbrew moim wytycznym",
+    "dane treningowe", "moje dane treningowe",
+    "tłumacz", "oto tłumaczenie", "przetłumaczony tekst"
+  ],
+  "tr": [
+    "bir yapay zeka olarak", "bir dil modeli olarak",
+    "ben bir yapay zekayım", "ben bir dil modeliyim",
+    "yönergelerime", "yönergelerime aykırı",
+    "eğitim verilerim", "benim eğitim verilerim",
+    "çevir", "işte çeviri", "çevrilmiş metin"
+  ],
+  "ja": [
+    "aiとして", "言語モデルとして", "大規模言語モデルとして",
+    "私はaiです", "私は言語モデルです",
+    "ガイドラインに反", "私のガイドライン",
+    "訓練データ", "私の訓練データ",
+    "翻訳", "こちらが翻訳です", "翻訳されたテキスト"
+  ],
+  "zh-cn": [
+    "作为ai", "作为语言模型", "作为大型语言模型",
+    "我是ai", "我是语言模型",
+    "我的准则", "违反我的准则",
+    "训练数据", "我的训练数据",
+    "翻译", "这是翻译", "翻译后的文本"
+  ],
+  "zh-tw": [
+    "作為ai", "作為語言模型", "作為大型語言模型",
+    "我是ai", "我是語言模型",
+    "我的準則", "違反我的準則",
+    "訓練資料", "我的訓練資料",
+    "翻譯", "這是翻譯", "翻譯後的文本"
+  ],
+  "ko": [
+    "ai로서", "언어 모델로서", "대규모 언어 모델로서",
+    "저는 ai입니다", "저는 언어 모델입니다",
+    "제 지침", "지침에 어긋나",
+    "훈련 데이터", "제 훈련 데이터",
+    "번역", "번역은 다음과 같습니다", "번역된 텍스트"
+  ]
+}

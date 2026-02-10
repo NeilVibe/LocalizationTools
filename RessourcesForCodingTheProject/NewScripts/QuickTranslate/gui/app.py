@@ -66,6 +66,7 @@ from core import (
 )
 from core.missing_translation_finder import find_missing_with_options
 from core.checker import run_korean_check, run_pattern_check
+from core.quality_checker import run_quality_check
 from gui.missing_params_dialog import MissingParamsDialog
 from gui.exclude_dialog import ExcludeDialog
 from core.indexing import scan_folder_for_entries
@@ -415,6 +416,12 @@ class QuickTranslateApp:
             relief='flat', padx=14, cursor='hand2')
         self.check_patterns_btn.pack(side=tk.LEFT, padx=(0, 8))
 
+        self.check_quality_btn = tk.Button(
+            checks_btn_row, text="Check Quality", command=self._check_quality,
+            font=('Segoe UI', 9, 'bold'), bg='#e67e22', fg='white',
+            relief='flat', padx=14, cursor='hand2')
+        self.check_quality_btn.pack(side=tk.LEFT, padx=(0, 8))
+
         self.check_all_btn = tk.Button(
             checks_btn_row, text="Check ALL", command=self._check_all,
             font=('Segoe UI', 9, 'bold'), bg='#c0392b', fg='white',
@@ -721,7 +728,7 @@ class QuickTranslateApp:
             working_for.append("Find Missing Translations")
             working_for.append("Reverse Lookup")
             if role == "SOURCE":
-                working_for.append("Pre-Submission Checks (Korean + Pattern)")
+                working_for.append("Pre-Submission Checks (Korean + Pattern + Quality)")
             if all_langs:
                 working_for.append(f"Languages: {', '.join(all_langs)}")
         else:
@@ -1430,7 +1437,9 @@ class QuickTranslateApp:
         self.reverse_btn.config(state='disabled')
         self.check_korean_btn.config(state='disabled')
         self.check_patterns_btn.config(state='disabled')
+        self.check_quality_btn.config(state='disabled')
         self.check_all_btn.config(state='disabled')
+        self.open_results_btn.config(state='disabled')
         self.cancel_btn.pack(side=tk.RIGHT, padx=(8, 0))
 
     def _enable_buttons(self):
@@ -1447,6 +1456,7 @@ class QuickTranslateApp:
         self.reverse_btn.config(state='normal')
         self.check_korean_btn.config(state='normal')
         self.check_patterns_btn.config(state='normal')
+        self.check_quality_btn.config(state='normal')
         self.check_all_btn.config(state='normal')
         self.cancel_btn.pack_forget()
         self._worker_thread = None
@@ -2102,8 +2112,51 @@ class QuickTranslateApp:
 
         self._run_in_thread(work)
 
+    def _check_quality(self):
+        """Run quality check (wrong script + AI hallucination) on Source folder."""
+        source = self._get_source_for_checks()
+        if not source:
+            return
+
+        self._disable_buttons()
+        output_folder = config.CHECK_RESULTS_FOLDER
+
+        def work():
+            self._log("=== Quality Check (Script + AI Hallucination) ===", 'header')
+            self._task_queue.put(('checks_status', "Checking quality..."))
+
+            def progress_cb(msg):
+                self._log(msg)
+                self._task_queue.put(('checks_status', msg))
+
+            summary = run_quality_check(source, output_folder, progress_callback=progress_cb)
+
+            if not summary:
+                self._log("No XML files found in Source folder.", 'warning')
+                self._task_queue.put(('checks_status', "No files found"))
+                return
+
+            script_total = sum(v[0] for v in summary.values())
+            halluc_total = sum(v[1] for v in summary.values())
+            grand_total = script_total + halluc_total
+
+            if grand_total == 0:
+                self._log("Quality check: All clean across all languages", 'success')
+                self._task_queue.put(('checks_status', "Done: All clean"))
+            else:
+                langs_with_issues = {k: v for k, v in summary.items() if v[0] > 0 or v[1] > 0}
+                parts = [f"{lang}: {v[0]}S+{v[1]}H" for lang, v in sorted(langs_with_issues.items())]
+                self._log(f"Quality check: {grand_total} issues ({script_total} script, {halluc_total} hallucination) in {len(langs_with_issues)} languages", 'warning')
+                self._log(f"  {', '.join(parts)}", 'info')
+                self._log(f"Results written to: {output_folder / 'QualityReport'}", 'info')
+                self._task_queue.put(('checks_status', f"Done: {grand_total} issues ({script_total}S + {halluc_total}H)"))
+
+            self._task_queue.put(('enable_results_btn',))
+
+        self._run_in_thread(work)
+
     def _check_all(self):
-        """Run both Korean and Pattern checks sequentially."""
+        """Run all pre-submission checks sequentially: Korean, Pattern, Quality."""
         source = self._get_source_for_checks()
         if not source:
             return
@@ -2138,18 +2191,36 @@ class QuickTranslateApp:
                 self._log(self._format_check_summary(pattern_summary, "Pattern Check"),
                           'success' if sum(pattern_summary.values()) == 0 else 'warning')
 
+            # Quality check
+            self._task_queue.put(('checks_status', "Checking quality..."))
+
+            def quality_cb(msg):
+                self._log(msg)
+                self._task_queue.put(('checks_status', msg))
+
+            quality_summary = run_quality_check(source, output_folder, progress_callback=quality_cb)
+            if quality_summary:
+                script_total = sum(v[0] for v in quality_summary.values())
+                halluc_total = sum(v[1] for v in quality_summary.values())
+                quality_total = script_total + halluc_total
+                self._log(
+                    f"Quality Check: {quality_total} issues ({script_total} script, {halluc_total} hallucination)",
+                    'success' if quality_total == 0 else 'warning')
+            else:
+                quality_total = 0
+
             # Final summary
             korean_total = sum(korean_summary.values()) if korean_summary else 0
             pattern_total = sum(pattern_summary.values()) if pattern_summary else 0
-            grand_total = korean_total + pattern_total
+            grand_total = korean_total + pattern_total + quality_total
 
             if grand_total == 0:
                 self._log("All checks passed!", 'success')
                 self._task_queue.put(('checks_status', "Done: All checks passed"))
             else:
-                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {pattern_total} pattern)", 'warning')
+                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {pattern_total} pattern, {quality_total} quality)", 'warning')
                 self._log(f"Results written to: {output_folder}", 'info')
-                self._task_queue.put(('checks_status', f"Done: {grand_total} issues ({korean_total}K + {pattern_total}P)"))
+                self._task_queue.put(('checks_status', f"Done: {grand_total} issues ({korean_total}K + {pattern_total}P + {quality_total}Q)"))
 
             self._task_queue.put(('enable_results_btn',))
 
