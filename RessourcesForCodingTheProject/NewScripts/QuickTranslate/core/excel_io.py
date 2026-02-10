@@ -91,6 +91,7 @@ def read_corrections_from_excel(
 
         # Try to detect columns from header row (case-insensitive)
         eventname_col = None
+        dialogvoice_col = None
         if has_header:
             col_indices = _detect_column_indices(ws)
             # Look for common column name variations
