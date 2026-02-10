@@ -91,9 +91,13 @@ class QuickTranslateApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("QuickTranslate")
-        self.root.geometry("950x1050")
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+        win_w = max(1400, int(screen_w * 0.8))
+        win_h = max(900, int(screen_h * 0.8))
+        self.root.geometry(f"{win_w}x{win_h}")
         self.root.resizable(True, True)
-        self.root.minsize(850, 800)
+        self.root.minsize(1200, 700)
         self.root.configure(bg='#f0f0f0')
 
         # Variables
@@ -213,15 +217,47 @@ class QuickTranslateApp:
                                       relief='flat', padx=20, pady=4, cursor='hand2')
         self.generate_btn.pack(side=tk.RIGHT, padx=(5, 0))
 
-        # Transfer note (shown when TRANSFER disabled for substring mode)
-        transfer_note_frame = tk.Frame(main, bg='#f0f0f0')
-        transfer_note_frame.pack(fill=tk.X, pady=(0, 8))
-        self.transfer_note_label = tk.Label(transfer_note_frame, text="",
+        # Transfer note (inline in top bar)
+        self.transfer_note_label = tk.Label(top_bar, text="",
                                             font=('Segoe UI', 8), bg='#f0f0f0', fg='#d9534f')
-        self.transfer_note_label.pack(side=tk.RIGHT)
+        self.transfer_note_label.pack(side=tk.LEFT, padx=(15, 0))
+
+        # === Horizontal Split: Controls (left) | Log (right) ===
+        ttk.Separator(main, orient='horizontal').pack(fill=tk.X, pady=(0, 8))
+
+        self._paned = tk.PanedWindow(main, orient=tk.HORIZONTAL, sashwidth=6,
+                                     bg='#cccccc', sashrelief='raised')
+        self._paned.pack(fill=tk.BOTH, expand=True)
+
+        # --- Left pane: scrollable controls ---
+        left_outer = tk.Frame(self._paned, bg='#f0f0f0')
+        self._left_canvas = tk.Canvas(left_outer, bg='#f0f0f0', highlightthickness=0)
+        left_scrollbar = ttk.Scrollbar(left_outer, orient='vertical',
+                                       command=self._left_canvas.yview)
+        self._left_inner = tk.Frame(self._left_canvas, bg='#f0f0f0', padx=10)
+
+        canvas_window = self._left_canvas.create_window((0, 0), window=self._left_inner,
+                                                         anchor='nw')
+        self._left_inner.bind('<Configure>', lambda e: self._left_canvas.configure(
+            scrollregion=self._left_canvas.bbox('all')))
+        self._left_canvas.bind('<Configure>', lambda e: self._left_canvas.itemconfigure(
+            canvas_window, width=e.width))
+
+        left_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self._left_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self._left_canvas.configure(yscrollcommand=left_scrollbar.set)
+
+        # --- Right pane: log + progress ---
+        self._right_pane = tk.Frame(self._paned, bg='#f0f0f0', padx=10)
+
+        self._paned.add(left_outer, minsize=400)
+        self._paned.add(self._right_pane, minsize=350)
+
+        # Set initial sash position after layout
+        self.root.after_idle(self._set_initial_sash)
 
         # === Match Type Selection ===
-        match_frame = tk.LabelFrame(main, text="Match Type", font=('Segoe UI', 10, 'bold'),
+        match_frame = tk.LabelFrame(self._left_inner, text="Match Type", font=('Segoe UI', 10, 'bold'),
                                     bg='#f0f0f0', fg='#555', padx=15, pady=8)
         match_frame.pack(fill=tk.X, pady=(0, 8))
 
@@ -323,7 +359,7 @@ class QuickTranslateApp:
                         activebackground='#fef3e2').pack(side=tk.LEFT)
 
         # === Files Section ===
-        files_frame = tk.LabelFrame(main, text="Files", font=('Segoe UI', 10, 'bold'),
+        files_frame = tk.LabelFrame(self._left_inner, text="Files", font=('Segoe UI', 10, 'bold'),
                                     bg='#f0f0f0', fg='#555', padx=15, pady=8)
         files_frame.pack(fill=tk.X, pady=(0, 8))
 
@@ -352,7 +388,7 @@ class QuickTranslateApp:
                  padx=10, cursor='hand2').pack(side=tk.LEFT)
 
         # === Quick Actions Section ===
-        quick_frame = tk.LabelFrame(main, text="Quick Actions", font=('Segoe UI', 10, 'bold'),
+        quick_frame = tk.LabelFrame(self._left_inner, text="Quick Actions", font=('Segoe UI', 10, 'bold'),
                                     bg='#f0f0f0', fg='#555', padx=15, pady=8)
         quick_frame.pack(fill=tk.X, pady=(0, 8))
 
@@ -411,7 +447,7 @@ class QuickTranslateApp:
         self._update_exclude_count_label()
 
         # === Pre-Submission Checks Section ===
-        checks_frame = tk.LabelFrame(main, text="Pre-Submission Checks",
+        checks_frame = tk.LabelFrame(self._left_inner, text="Pre-Submission Checks",
                                       font=('Segoe UI', 10, 'bold'),
                                       bg='#f0f0f0', fg='#555', padx=15, pady=8)
         checks_frame.pack(fill=tk.X, pady=(0, 8))
@@ -458,7 +494,7 @@ class QuickTranslateApp:
                  anchor='w').pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # === Settings Section ===
-        settings_frame = tk.LabelFrame(main, text="Settings", font=('Segoe UI', 10, 'bold'),
+        settings_frame = tk.LabelFrame(self._left_inner, text="Settings", font=('Segoe UI', 10, 'bold'),
                                        bg='#f0f0f0', fg='#555', padx=15, pady=8)
         settings_frame.pack(fill=tk.X, pady=(0, 8))
 
@@ -495,13 +531,13 @@ class QuickTranslateApp:
         tk.Label(save_row, text="Paths are saved to settings.json", font=('Segoe UI', 8),
                 bg='#f0f0f0', fg='#888').pack(side=tk.LEFT)
 
-        # === Log Section ===
-        log_frame = tk.LabelFrame(main, text="Log", font=('Segoe UI', 10, 'bold'),
+        # === Log Section (right pane) ===
+        log_frame = tk.LabelFrame(self._right_pane, text="Log", font=('Segoe UI', 10, 'bold'),
                                   bg='#f0f0f0', fg='#555', padx=10, pady=8)
         log_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
 
         self.log_area = scrolledtext.ScrolledText(
-            log_frame, height=6, font=('Consolas', 9), relief='solid', bd=1,
+            log_frame, font=('Consolas', 9), relief='solid', bd=1,
             wrap=tk.WORD, state='disabled'
         )
         self.log_area.pack(fill=tk.BOTH, expand=True)
@@ -513,8 +549,8 @@ class QuickTranslateApp:
         self.log_area.tag_config('error', foreground='#FF0000')
         self.log_area.tag_config('header', foreground='#4a90d9', font=('Consolas', 9, 'bold'))
 
-        # === Progress Section ===
-        progress_frame = tk.Frame(main, bg='#f0f0f0')
+        # === Progress Section (right pane) ===
+        progress_frame = tk.Frame(self._right_pane, bg='#f0f0f0')
         progress_frame.pack(fill=tk.X, pady=(0, 8))
 
         self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_value,
@@ -535,6 +571,33 @@ class QuickTranslateApp:
 
         # Apply initial match type state (disable TRANSFER for substring)
         self._on_match_type_changed()
+
+        # Bind mousewheel scrolling for left pane
+        self._bind_mousewheel_recursive(self._left_canvas)
+        self._bind_mousewheel_recursive(self._left_inner)
+
+    def _set_initial_sash(self):
+        """Set PanedWindow sash to ~45% left / 55% right split."""
+        total_width = self._paned.winfo_width()
+        if total_width > 1:
+            self._paned.sash_place(0, int(total_width * 0.45), 0)
+
+    def _on_mousewheel(self, event):
+        """Handle mousewheel scrolling on left pane."""
+        if event.delta:  # Windows
+            self._left_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        elif event.num == 4:  # Linux scroll up
+            self._left_canvas.yview_scroll(-1, "units")
+        elif event.num == 5:  # Linux scroll down
+            self._left_canvas.yview_scroll(1, "units")
+
+    def _bind_mousewheel_recursive(self, widget):
+        """Bind mousewheel scrolling to widget and all descendants."""
+        widget.bind('<MouseWheel>', self._on_mousewheel)
+        widget.bind('<Button-4>', self._on_mousewheel)
+        widget.bind('<Button-5>', self._on_mousewheel)
+        for child in widget.winfo_children():
+            self._bind_mousewheel_recursive(child)
 
     def _log(self, message: str, tag: str = 'info'):
         """Add message to log area (thread-safe).
@@ -1019,6 +1082,9 @@ class QuickTranslateApp:
             # SAFETY: StrOrigin Only defaults to untranslated-only (no StringID verification)
             if match_type == "strorigin_only":
                 self.transfer_scope.set("untranslated")
+            # Rebind mousewheel on newly shown frames
+            self._bind_mousewheel_recursive(self.precision_options_frame)
+            self._bind_mousewheel_recursive(self.transfer_scope_frame)
         elif match_type == "substring":
             self.precision_options_frame.pack_forget()
             # Disable TRANSFER button for substring (lookup only)
@@ -1032,6 +1098,8 @@ class QuickTranslateApp:
             self.transfer_btn.config(state='normal')
             self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
             self.transfer_note_label.config(text="")
+            # Rebind mousewheel on newly shown frame
+            self._bind_mousewheel_recursive(self.transfer_scope_frame)
 
     def _update_match_type_availability(self):
         """Enable/disable match type radio buttons based on detected source columns.
@@ -1130,6 +1198,7 @@ class QuickTranslateApp:
         if self.match_precision.get() == "fuzzy":
             self.fuzzy_sub_frame.pack(fill=tk.X, pady=(4, 0))
             self._update_fuzzy_model_status()
+            self._bind_mousewheel_recursive(self.fuzzy_sub_frame)
         else:
             self.fuzzy_sub_frame.pack_forget()
 
