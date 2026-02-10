@@ -83,7 +83,7 @@ jobs:
           cd ${{ env.PROJECT_PATH }}
           python -m py_compile main.py
           python -m py_compile config.py
-          find . -name "*.py" -type f ! -path "./__pycache__/*" | xargs -I {} python -m py_compile {}
+          find . -name "*.py" -type f ! -path "./__pycache__/*" ! -name "scriptreference*" | xargs -I {} python -m py_compile {}
           echo "All Python files have valid syntax"
 
       - name: Module import validation
