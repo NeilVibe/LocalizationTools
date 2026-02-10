@@ -577,10 +577,10 @@ class QuickTranslateApp:
         self._bind_mousewheel_recursive(self._left_inner)
 
     def _set_initial_sash(self):
-        """Set PanedWindow sash to ~65% left / 35% right split."""
+        """Set PanedWindow sash to ~80% left / 20% right split."""
         total_width = self._paned.winfo_width()
         if total_width > 1:
-            self._paned.sash_place(0, int(total_width * 0.65), 0)
+            self._paned.sash_place(0, int(total_width * 0.80), 0)
 
     def _on_mousewheel(self, event):
         """Handle mousewheel scrolling on left pane."""
