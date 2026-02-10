@@ -85,3 +85,4 @@ Build - cleanup archive + Source ZIP exclusion
 Build - fix case-sensitive StringID matching
 Build - case-insensitive StringID matching everywhere
 Build - fix DialogVoice-as-StringID column fallback bug
+Build - Column validation + match type gating (no fallbacks)
