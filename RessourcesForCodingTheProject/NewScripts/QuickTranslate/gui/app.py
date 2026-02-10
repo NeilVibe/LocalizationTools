@@ -251,10 +251,10 @@ class QuickTranslateApp:
         self._right_pane = tk.Frame(self._paned, bg='#f0f0f0', padx=10)
 
         self._paned.add(left_outer, minsize=400)
-        self._paned.add(self._right_pane, minsize=350)
+        self._paned.add(self._right_pane, minsize=200)
 
         # Set initial sash position after layout
-        self.root.after_idle(self._set_initial_sash)
+        self.root.after(200, self._set_initial_sash)
 
         # === Match Type Selection ===
         match_frame = tk.LabelFrame(self._left_inner, text="Match Type", font=('Segoe UI', 10, 'bold'),
