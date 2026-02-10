@@ -720,11 +720,15 @@ class QuickTranslateApp:
             working_for.append(f"TRANSFER ({file_count} language files)")
             working_for.append("Find Missing Translations")
             working_for.append("Reverse Lookup")
+            if role == "SOURCE":
+                working_for.append("Pre-Submission Checks (Korean + Pattern)")
             if all_langs:
                 working_for.append(f"Languages: {', '.join(all_langs)}")
         else:
             not_working_for.append("TRANSFER - no parseable language files found")
             not_working_for.append("Find Missing Translations - needs LOC folder structure")
+            if role == "SOURCE":
+                not_working_for.append("Pre-Submission Checks - no language files found")
 
         # StringID Lookup depends on LOC folder in Settings
         loc_folder_set = bool(config.LOC_FOLDER and config.LOC_FOLDER.exists())

@@ -73,3 +73,4 @@ Build - Documentation update + strorigin_only in MATCHING_MODES
 Build - Fix source folder validation messaging
 Build - Add pre-submission checks (Korean + Pattern)
 Build - Fix checkpatternerror.py syntax
+Build - Add pre-submission checks to WORKING FOR validation
