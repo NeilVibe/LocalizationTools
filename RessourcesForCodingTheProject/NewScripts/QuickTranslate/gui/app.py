@@ -426,7 +426,7 @@ class QuickTranslateApp:
         missing_trans_row.pack(fill=tk.X, pady=(6, 0))
         tk.Label(missing_trans_row, text="", font=('Segoe UI', 10), bg='#f0f0f0',
                 width=10, anchor='w').pack(side=tk.LEFT)
-        tk.Label(missing_trans_row, text="Korean in Target MISSING from Source by (StrOrigin, StringId) - per-language XML + Excel report",
+        tk.Label(missing_trans_row, text="Find Korean missing from Source",
                 font=('Segoe UI', 8), bg='#f0f0f0', fg='#888').pack(side=tk.LEFT, padx=(0, 8))
         self.missing_trans_btn = tk.Button(missing_trans_row, text="Find Missing Translations",
                  command=self._find_missing_translations,
@@ -577,10 +577,10 @@ class QuickTranslateApp:
         self._bind_mousewheel_recursive(self._left_inner)
 
     def _set_initial_sash(self):
-        """Set PanedWindow sash to ~45% left / 55% right split."""
+        """Set PanedWindow sash to ~65% left / 35% right split."""
         total_width = self._paned.winfo_width()
         if total_width > 1:
-            self._paned.sash_place(0, int(total_width * 0.45), 0)
+            self._paned.sash_place(0, int(total_width * 0.65), 0)
 
     def _on_mousewheel(self, event):
         """Handle mousewheel scrolling on left pane."""
