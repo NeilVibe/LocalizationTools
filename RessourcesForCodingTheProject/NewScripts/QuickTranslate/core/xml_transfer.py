@@ -1133,7 +1133,11 @@ def transfer_folder_to_folder(
                     sid = c.get("string_id", "")
                     if sid:
                         all_source_stringids.add(sid)
-            except Exception:
+            except ValueError as e:
+                logger.warning(f"Skipped {src_file.name} during StringID extraction: {e}")
+                continue
+            except Exception as e:
+                logger.warning(f"Skipped {src_file.name} during StringID extraction: {e}")
                 continue
         logger.info(f"Extracted {len(all_source_stringids):,} unique StringIDs from {len(all_sources)} source files")
 
@@ -1177,10 +1181,15 @@ def transfer_folder_to_folder(
             progress_callback(f"Parsing {source_file.name}... ({i+1}/{total})")
 
         # Parse corrections from source
-        if source_file.suffix.lower() == ".xml":
-            corrections = parse_corrections_from_xml(source_file)
-        else:
-            corrections = read_corrections_from_excel(source_file)
+        try:
+            if source_file.suffix.lower() == ".xml":
+                corrections = parse_corrections_from_xml(source_file)
+            else:
+                corrections = read_corrections_from_excel(source_file)
+        except ValueError as e:
+            logger.error(f"SKIPPED {source_file.name}: {e}")
+            results["errors"].append(f"SKIPPED {source_file.name}: {e}")
+            continue
 
         if not corrections:
             logger.info(f"No corrections found in {source_file.name}")
@@ -1537,10 +1546,19 @@ def transfer_file_to_file(
     from .excel_io import read_corrections_from_excel
 
     # Parse corrections from source
-    if source_file.suffix.lower() == ".xml":
-        corrections = parse_corrections_from_xml(source_file)
-    else:
-        corrections = read_corrections_from_excel(source_file)
+    try:
+        if source_file.suffix.lower() == ".xml":
+            corrections = parse_corrections_from_xml(source_file)
+        else:
+            corrections = read_corrections_from_excel(source_file)
+    except ValueError as e:
+        return {
+            "matched": 0,
+            "updated": 0,
+            "not_found": 0,
+            "errors": [f"Column error: {e}"],
+            "details": [],
+        }
 
     if not corrections:
         return {
