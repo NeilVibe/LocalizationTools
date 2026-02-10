@@ -47,27 +47,90 @@ def _load_settings() -> dict:
 _SETTINGS = _load_settings()
 
 # =============================================================================
+# Branch & Drive Configuration
+# =============================================================================
+
+KNOWN_BRANCHES = ["mainline", "cd_beta", "cd_alpha", "cd_lambda"]
+
+_DRIVE_LETTER = _SETTINGS.get('drive_letter', 'F')
+_BRANCH = _SETTINGS.get('branch', 'mainline')
+
+
+def _apply_drive_letter(path_str: str, drive_letter: str) -> str:
+    """Replace F: drive prefix with configured drive letter."""
+    if path_str.startswith("F:") or path_str.startswith("f:"):
+        return f"{drive_letter.upper()}:{path_str[2:]}"
+    return path_str
+
+
+def _apply_branch(path_str: str, branch: str) -> str:
+    """Replace 'mainline' in path with configured branch."""
+    return path_str.replace("mainline", branch)
+
+
+def _build_path(template: str) -> Path:
+    """Build a Path from template, applying drive letter and branch."""
+    return Path(_apply_branch(_apply_drive_letter(template, _DRIVE_LETTER), _BRANCH))
+
+
+def _save_settings(settings_dict: dict):
+    """Save only essential keys to settings.json.
+
+    Computed paths (loc_folder, export_folder, vrs_folder) are rebuilt
+    dynamically from drive_letter + branch at runtime, so persisting
+    them is redundant and confusing.  Only the keys that the installer
+    or user explicitly sets are written back.
+    """
+    _ESSENTIAL_KEYS = {"drive_letter", "branch", "description"}
+    trimmed = {k: v for k, v in settings_dict.items() if k in _ESSENTIAL_KEYS}
+
+    settings_file = SCRIPT_DIR / "settings.json"
+    try:
+        with open(settings_file, 'w', encoding='utf-8') as f:
+            json.dump(trimmed, f, indent=2)
+        logger.info(f"Saved settings to {settings_file}")
+    except Exception as e:
+        logger.error(f"Failed to save settings.json: {e}")
+
+
+def update_branch(new_branch: str):
+    """Update all paths to use new branch. Called from GUI."""
+    global _BRANCH, LOC_FOLDER, EXPORT_FOLDER, VOICE_RECORDING_FOLDER, LOCDEV_FOLDER
+
+    _BRANCH = new_branch
+
+    LOC_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
+    EXPORT_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
+    VOICE_RECORDING_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
+    LOCDEV_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\locdev__")
+
+    _SETTINGS['branch'] = new_branch
+    _save_settings(_SETTINGS)
+
+    logger.info(f"Branch updated to: {new_branch}")
+
+
+def get_branch() -> str:
+    """Get the current branch name."""
+    return _BRANCH
+
+
+# =============================================================================
 # Perforce Paths (Source Data)
 # =============================================================================
 
-# Get paths from settings.json if available, otherwise use F: drive defaults
-_loc = _SETTINGS.get("loc_folder")
-_export = _SETTINGS.get("export_folder")
-_vrs = _SETTINGS.get("vrs_folder")
-
 # LOC folder: Contains languagedata_*.xml files
-LOC_FOLDER = Path(_loc) if _loc else Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
+LOC_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
 
 # EXPORT folder: Contains categorized .loc.xml files
-EXPORT_FOLDER = Path(_export) if _export else Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
+EXPORT_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
 
 # VoiceRecordingSheet folder: Contains Excel files with EventName ordering
 # Used to order STORY strings (Sequencer, Dialog) in chronological story order
-VOICE_RECORDING_FOLDER = Path(_vrs) if _vrs else Path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
+VOICE_RECORDING_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
 
 # LOCDEV folder: Contains dev languagedata XML files for merging corrections back
-_locdev = _SETTINGS.get("locdev_folder")
-LOCDEV_FOLDER = Path(_locdev) if _locdev else Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\locdev__")
+LOCDEV_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\locdev__")
 
 # =============================================================================
 # Output Configuration

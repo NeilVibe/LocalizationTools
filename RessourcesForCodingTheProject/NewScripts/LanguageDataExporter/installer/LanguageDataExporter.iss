@@ -133,6 +133,7 @@ begin
 
     Content := '{' + #13#10 +
                '  "drive_letter": "' + Drive + '",' + #13#10 +
+               '  "branch": "mainline",' + #13#10 +
                '  "loc_folder": "' + Drive + ':\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\loc",' + #13#10 +
                '  "export_folder": "' + Drive + ':\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\export__",' + #13#10 +
                '  "vrs_folder": "' + Drive + ':\\perforce\\cd\\mainline\\resource\\editordata\\VoiceRecordingSheet__",' + #13#10 +

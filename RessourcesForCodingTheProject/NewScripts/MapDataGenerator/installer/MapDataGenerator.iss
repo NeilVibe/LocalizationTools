@@ -12,16 +12,22 @@ AppId={{B7E3F8D2-5A6C-4E9B-8D1F-3C7A2E4B6F9D}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\{#MyAppName}
+DefaultDirName={userdesktop}\MapDataGenerator
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=..\installer_output
 OutputBaseFilename=MapDataGenerator_Setup_{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
-WizardStyle=modern
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+PrivilegesRequiredOverridesAllowed=commandline
+DisableWelcomePage=no
+DisableDirPage=no
+DisableReadyPage=no
+DisableFinishedPage=no
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
+MinVersion=6.1sp1
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
