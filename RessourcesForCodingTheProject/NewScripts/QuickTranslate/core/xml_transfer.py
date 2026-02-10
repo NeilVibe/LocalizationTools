@@ -165,13 +165,13 @@ def merge_corrections_to_xml(
     correction_matched = [False] * len(corrections)
 
     for i, c in enumerate(corrections):
-        sid = c["string_id"]
+        sid_lower = c["string_id"].lower()
         origin_norm = normalize_text(c.get("str_origin", ""))
         origin_nospace = normalize_nospace(origin_norm)
         category = c.get("category", "Uncategorized")
 
-        correction_lookup[(sid, origin_norm)] = (c["corrected"], category, i)
-        correction_lookup_nospace[(sid, origin_nospace)] = (c["corrected"], category, i)
+        correction_lookup[(sid_lower, origin_norm)] = (c["corrected"], category, i)
+        correction_lookup_nospace[(sid_lower, origin_nospace)] = (c["corrected"], category, i)
 
     # Initialize category stats
     categories_seen = set(c.get("category", "Uncategorized") for c in corrections)
@@ -210,7 +210,7 @@ def merge_corrections_to_xml(
                     loc.get("stringid") or loc.get("STRINGID") or
                     loc.get("Stringid") or loc.get("stringId") or "").strip()
             if tsid:
-                target_stringids.add(tsid)
+                target_stringids.add(tsid.lower())
 
         for loc in all_elements:
             # Case-insensitive attribute access
@@ -226,8 +226,9 @@ def merge_corrections_to_xml(
                 continue
 
             orig_nospace = normalize_nospace(orig)
-            key = (sid, orig)
-            key_nospace = (sid, orig_nospace)
+            sid_lower = sid.lower()
+            key = (sid_lower, orig)
+            key_nospace = (sid_lower, orig_nospace)
 
             # Try exact match first, then nospace fallback
             match_data = None
@@ -294,7 +295,7 @@ def merge_corrections_to_xml(
 
                 # Check if StringID exists but StrOrigin differs
                 sid = c["string_id"]
-                if sid in target_stringids:
+                if sid.lower() in target_stringids:
                     status = "STRORIGIN_MISMATCH"
                     result["strorigin_mismatch"] += 1
                 else:
@@ -593,13 +594,19 @@ def merge_corrections_stringid_only(
     if not corrections:
         return result
 
+    # Build case-insensitive lookup versions of category/subfolder mappings
+    # so StringIDs from any source (Excel, EventName resolver, XML) always match
+    ci_category = {k.lower(): v for k, v in stringid_to_category.items()}
+    ci_subfolder = {k.lower(): v for k, v in stringid_to_subfolder.items()} if stringid_to_subfolder else {}
+
     # Filter corrections to SCRIPT TYPE only (and not in excluded subfolders)
     script_corrections = []
 
     for c in corrections:
         sid = c["string_id"]
-        category = stringid_to_category.get(sid, "Uncategorized")
-        subfolder = stringid_to_subfolder.get(sid, "") if stringid_to_subfolder else ""
+        sid_lower = sid.lower()
+        category = ci_category.get(sid_lower, "Uncategorized")
+        subfolder = ci_subfolder.get(sid_lower, "")
 
         # Check if in SCRIPT categories (Dialog/Sequencer)
         if category not in SCRIPT_CATEGORIES:
@@ -640,19 +647,19 @@ def merge_corrections_stringid_only(
     duplicate_stringids = 0
 
     for c in script_corrections:
-        sid = c["string_id"]
+        sid_lower = c["string_id"].lower()
 
-        if sid in correction_lookup:
-            old_corrected = correction_lookup[sid].get("corrected", "")
+        if sid_lower in correction_lookup:
+            old_corrected = correction_lookup[sid_lower].get("corrected", "")
             if old_corrected != c.get("corrected", ""):
                 duplicate_stringids += 1
                 logger.debug(
-                    f"Duplicate StringID '{sid}': overwriting "
+                    f"Duplicate StringID '{c['string_id']}': overwriting "
                     f"'{old_corrected[:40]}' with '{c.get('corrected', '')[:40]}'"
                 )
 
-        correction_lookup[sid] = c  # Store FULL correction dict
-        correction_matched[sid] = False
+        correction_lookup[sid_lower] = c  # Store FULL correction dict (lowercase key)
+        correction_matched[sid_lower] = False
 
         # Initialize category stats
         category = c.get("category", "Uncategorized")
@@ -700,12 +707,13 @@ def merge_corrections_stringid_only(
             if not target_origin:
                 continue
 
-            # StringID-only matching
-            if sid in correction_lookup:
-                new_str = correction_lookup[sid]["corrected"]
-                correction_matched[sid] = True
+            # StringID-only matching (case-insensitive)
+            sid_lower = sid.lower()
+            if sid_lower in correction_lookup:
+                new_str = correction_lookup[sid_lower]["corrected"]
+                correction_matched[sid_lower] = True
 
-                category = stringid_to_category.get(sid, "Uncategorized")
+                category = ci_category.get(sid_lower, "Uncategorized")
 
                 result["matched"] += 1
                 if category in result["by_category"]:
@@ -718,7 +726,7 @@ def merge_corrections_stringid_only(
                 if only_untranslated and old_str and not is_korean_text(old_str):
                     result["skipped_translated"] += 1
                     # Preserve original correction data for failure reports
-                    orig_correction = correction_lookup[sid]
+                    orig_correction = correction_lookup[sid_lower]
                     result["details"].append({
                         "string_id": sid,
                         "status": "SKIPPED_TRANSLATED",
@@ -754,13 +762,13 @@ def merge_corrections_stringid_only(
                     })
 
         # Count unmatched corrections - store FULL data for failure reports
-        for sid, matched in correction_matched.items():
+        for sid_key, matched in correction_matched.items():
             if not matched:
-                category = stringid_to_category.get(sid, "Uncategorized")
+                category = ci_category.get(sid_key, "Uncategorized")
                 result["not_found"] += 1
                 if category in result["by_category"]:
                     result["by_category"][category]["not_found"] += 1
-                c = correction_lookup[sid]
+                c = correction_lookup[sid_key]
                 result["details"].append({
                     "string_id": sid,
                     "status": "NOT_FOUND",
@@ -830,8 +838,8 @@ def merge_corrections_fuzzy(
     for c in corrections:
         target_sid = c.get("fuzzy_target_string_id", "")
         if target_sid:
-            correction_lookup[target_sid] = c  # Store FULL correction dict
-            correction_matched[target_sid] = False
+            correction_lookup[target_sid.lower()] = c  # Store FULL correction dict (lowercase key)
+            correction_matched[target_sid.lower()] = False
 
     if not correction_lookup:
         result["errors"].append("No corrections with fuzzy_target_string_id found")
@@ -867,10 +875,11 @@ def merge_corrections_fuzzy(
                    loc.get("stringid") or loc.get("STRINGID") or
                    loc.get("Stringid") or loc.get("stringId") or "").strip()
 
-            if sid in correction_lookup:
-                c = correction_lookup[sid]
+            sid_lower = sid.lower()
+            if sid_lower in correction_lookup:
+                c = correction_lookup[sid_lower]
                 new_str = c["corrected"]
-                correction_matched[sid] = True
+                correction_matched[sid_lower] = True
                 result["matched"] += 1
 
                 old_str = (loc.get("Str") or loc.get("str") or
