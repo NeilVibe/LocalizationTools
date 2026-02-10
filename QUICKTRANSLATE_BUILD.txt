@@ -84,3 +84,4 @@ Build - dialogvoice_col init fix
 Build - cleanup archive + Source ZIP exclusion
 Build - fix case-sensitive StringID matching
 Build - case-insensitive StringID matching everywhere
+Build - fix DialogVoice-as-StringID column fallback bug
