@@ -94,3 +94,4 @@ Build - fuzzy threshold min 0.70
 Build - fix log pane sizing
 Build - log pane 35%
 Build - complete user guide
+Build - surface file errors in GUI log
