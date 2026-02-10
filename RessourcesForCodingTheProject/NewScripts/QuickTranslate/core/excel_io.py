@@ -100,6 +100,8 @@ def read_corrections_from_excel(
             # EventName column detection (audio event identifiers)
             eventname_col = col_indices.get("eventname", col_indices.get("event_name",
                             col_indices.get("soundeventname", None)))
+            # DialogVoice column detection (for StringID generation from EventName)
+            dialogvoice_col = col_indices.get("dialogvoice", col_indices.get("dialog_voice", None))
 
         for row in ws.iter_rows(min_row=start_row):
             try:
@@ -109,6 +111,9 @@ def read_corrections_from_excel(
                 eventname = None
                 if eventname_col is not None:
                     eventname = row[eventname_col - 1].value if eventname_col <= len(row) else None
+                dialogvoice = None
+                if dialogvoice_col is not None:
+                    dialogvoice = row[dialogvoice_col - 1].value if dialogvoice_col <= len(row) else None
 
                 # Accept row if EITHER string_id or eventname is present
                 # Use 'is not None' to handle numeric 0 as a valid StringID
@@ -133,6 +138,9 @@ def read_corrections_from_excel(
                 # EventName is fallback when StringID is empty for that row
                 if not has_id and has_eventname:
                     entry["_source_eventname"] = str(eventname).strip()
+                    # Attach DialogVoice for waterfall Step 1 resolution
+                    if dialogvoice is not None:
+                        entry["_source_dialogvoice"] = str(dialogvoice).strip()
 
                 corrections.append(entry)
             except (IndexError, AttributeError):
