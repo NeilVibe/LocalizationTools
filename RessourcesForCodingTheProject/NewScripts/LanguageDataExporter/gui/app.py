@@ -18,18 +18,17 @@ from typing import Dict, Tuple
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import config
 from config import (
-    LOC_FOLDER,
-    EXPORT_FOLDER,
     OUTPUT_FOLDER,
     CLUSTER_CONFIG,
     TOSUBMIT_FOLDER,
     TRACKER_PATH,
     TRACKER_CATEGORIES,
-    LOCDEV_FOLDER,
     DIALOG_SEQUENCER_EXCLUSION,
     LANGUAGES_WITH_DIALOG_EXCLUSION,
     ensure_tosubmit_folder,
+    KNOWN_BRANCHES,
 )
 from exporter import (
     parse_language_file,
@@ -164,7 +163,7 @@ class LanguageDataExporterGUI:
         self.root.resizable(True, True)
 
         # Custom LOCDEV path (defaults to config value)
-        self.custom_locdev_path = tk.StringVar(value=str(LOCDEV_FOLDER))
+        self.custom_locdev_path = tk.StringVar(value=str(config.LOCDEV_FOLDER))
         self.locdev_valid = False
 
         # Build UI
@@ -180,7 +179,7 @@ class LanguageDataExporterGUI:
         """Build the main UI layout."""
         # Configure root grid
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(3, weight=1)
+        self.root.rowconfigure(4, weight=1)
 
         # Title
         title_label = tk.Label(
@@ -189,6 +188,9 @@ class LanguageDataExporterGUI:
             font=("Arial", 18, "bold")
         )
         title_label.grid(row=0, column=0, pady=15)
+
+        # === Branch Selector ===
+        self._build_branch_selector()
 
         # === Section 1: Path Info (Read-Only) ===
         self._build_path_info_section()
@@ -202,23 +204,58 @@ class LanguageDataExporterGUI:
         # === Section 4: Status ===
         self._build_status_section()
 
+    def _build_branch_selector(self):
+        """Build branch selector (QACompiler style)."""
+        frame = ttk.Frame(self.root)
+        frame.grid(row=1, column=0, sticky="ew", padx=15, pady=(0, 5))
+
+        ttk.Label(frame, text="Branch:", font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
+
+        self.branch_var = tk.StringVar(value=config.get_branch())
+        combo = ttk.Combobox(frame, textvariable=self.branch_var,
+                             values=KNOWN_BRANCHES, width=25)
+        combo.pack(side="left", padx=5)
+        combo.bind("<<ComboboxSelected>>", self._on_branch_change)
+        combo.bind("<Return>", self._on_branch_change)
+
+        self.branch_status = ttk.Label(frame, text="", font=("Arial", 9))
+        self.branch_status.pack(side="left", padx=10)
+
+    def _on_branch_change(self, event=None):
+        """Handle branch selection change."""
+        new_branch = self.branch_var.get().strip()
+        if not new_branch:
+            return
+        config.update_branch(new_branch)
+        self.branch_status.config(text=f"Branch set to: {new_branch}", foreground="green")
+        # Update path display labels and LOCDEV path
+        self._update_path_labels()
+        self.custom_locdev_path.set(str(config.LOCDEV_FOLDER))
+        self._validate_locdev()
+
+    def _update_path_labels(self):
+        """Refresh path labels after branch change."""
+        self.loc_path_label.config(text=str(config.LOC_FOLDER))
+        self.export_path_label.config(text=str(config.EXPORT_FOLDER))
+        self._check_paths()
+
     def _build_path_info_section(self):
         """Build path information section (read-only display)."""
         section = ttk.LabelFrame(self.root, text="Configured Paths (from settings.json)", padding=10)
-        section.grid(row=1, column=0, sticky="ew", padx=15, pady=5)
+        section.grid(row=2, column=0, sticky="ew", padx=15, pady=5)
         section.columnconfigure(1, weight=1)
 
         # LOC Folder
         ttk.Label(section, text="LOC Folder:").grid(row=0, column=0, sticky="w", padx=5)
-        loc_label = ttk.Label(section, text=str(LOC_FOLDER), foreground="blue")
-        loc_label.grid(row=0, column=1, sticky="w", padx=5)
+        self.loc_path_label = ttk.Label(section, text=str(config.LOC_FOLDER), foreground="blue")
+        self.loc_path_label.grid(row=0, column=1, sticky="w", padx=5)
         self.loc_status = ttk.Label(section, text="")
         self.loc_status.grid(row=0, column=2, sticky="w", padx=5)
 
         # EXPORT Folder
         ttk.Label(section, text="EXPORT Folder:").grid(row=1, column=0, sticky="w", padx=5, pady=5)
-        export_label = ttk.Label(section, text=str(EXPORT_FOLDER), foreground="blue")
-        export_label.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+        self.export_path_label = ttk.Label(section, text=str(config.EXPORT_FOLDER), foreground="blue")
+        self.export_path_label.grid(row=1, column=1, sticky="w", padx=5, pady=5)
         self.export_status = ttk.Label(section, text="")
         self.export_status.grid(row=1, column=2, sticky="w", padx=5, pady=5)
 
@@ -239,12 +276,12 @@ class LanguageDataExporterGUI:
 
     def _check_paths(self):
         """Check if configured paths exist."""
-        if LOC_FOLDER.exists():
+        if config.LOC_FOLDER.exists():
             self.loc_status.config(text="OK", foreground="green")
         else:
             self.loc_status.config(text="NOT FOUND", foreground="red")
 
-        if EXPORT_FOLDER.exists():
+        if config.EXPORT_FOLDER.exists():
             self.export_status.config(text="OK", foreground="green")
         else:
             self.export_status.config(text="NOT FOUND", foreground="red")
@@ -252,7 +289,7 @@ class LanguageDataExporterGUI:
     def _build_locdev_section(self):
         """Build LOCDEV folder selection section."""
         section = ttk.LabelFrame(self.root, text="LOCDEV Folder (for Merge Operations)", padding=10)
-        section.grid(row=2, column=0, sticky="ew", padx=15, pady=5)
+        section.grid(row=3, column=0, sticky="ew", padx=15, pady=5)
         section.columnconfigure(1, weight=1)
 
         # Path entry
@@ -338,7 +375,7 @@ class LanguageDataExporterGUI:
     def _build_export_section(self):
         """Build export actions section."""
         section = ttk.LabelFrame(self.root, text="Generate & Submit", padding=10)
-        section.grid(row=3, column=0, sticky="ew", padx=15, pady=5)
+        section.grid(row=4, column=0, sticky="ew", padx=15, pady=5)
 
         # Row 1: Generate buttons
         btn_frame1 = ttk.Frame(section)
@@ -408,7 +445,7 @@ class LanguageDataExporterGUI:
     def _build_status_section(self):
         """Build status display section."""
         section = ttk.LabelFrame(self.root, text="Status", padding=10)
-        section.grid(row=4, column=0, sticky="ew", padx=15, pady=10)
+        section.grid(row=5, column=0, sticky="ew", padx=15, pady=10)
         section.columnconfigure(0, weight=1)
 
         # Progress bar
@@ -425,19 +462,22 @@ class LanguageDataExporterGUI:
 
     def _get_target_languages(self):
         """Get all languages except excluded ones (KOR)."""
-        if not LOC_FOLDER.exists():
+        if not config.LOC_FOLDER.exists():
             return []
 
-        all_langs = discover_language_files(LOC_FOLDER)
+        all_langs = discover_language_files(config.LOC_FOLDER)
         return [lang for lang in all_langs.keys() if lang.lower() not in EXCLUDED_LANGUAGES]
 
     def _generate_report(self):
         """Generate comprehensive word count report."""
-        if not LOC_FOLDER.exists():
-            messagebox.showerror("Error", f"LOC folder not found:\n{LOC_FOLDER}")
+        loc_folder = config.LOC_FOLDER
+        export_folder = config.EXPORT_FOLDER
+
+        if not loc_folder.exists():
+            messagebox.showerror("Error", f"LOC folder not found:\n{loc_folder}")
             return
-        if not EXPORT_FOLDER.exists():
-            messagebox.showerror("Error", f"EXPORT folder not found:\n{EXPORT_FOLDER}")
+        if not export_folder.exists():
+            messagebox.showerror("Error", f"EXPORT folder not found:\n{export_folder}")
             return
 
         languages = self._get_target_languages()
@@ -453,16 +493,16 @@ class LanguageDataExporterGUI:
                 # Ensure output folder exists
                 OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
 
-                # Load config and build category index
-                config = load_cluster_config(CLUSTER_CONFIG)
+                # Load cluster config and build category index
+                cluster_cfg = load_cluster_config(CLUSTER_CONFIG)
                 category_index = build_stringid_category_index(
-                    EXPORT_FOLDER,
-                    config,
-                    config.get("default_category", "Uncategorized")
+                    export_folder,
+                    cluster_cfg,
+                    cluster_cfg.get("default_category", "Uncategorized")
                 )
 
                 # Discover language files
-                all_lang_files = discover_language_files(LOC_FOLDER)
+                all_lang_files = discover_language_files(loc_folder)
                 lang_files = {k: v for k, v in all_lang_files.items() if k.lower() not in EXCLUDED_LANGUAGES}
 
                 # Parse all languages
@@ -479,7 +519,7 @@ class LanguageDataExporterGUI:
                 # Generate word count report
                 generator = ReportGenerator(
                     category_index,
-                    config.get("default_category", "Uncategorized")
+                    cluster_cfg.get("default_category", "Uncategorized")
                 )
 
                 report = generator.generate_full_report(language_data, LANG_DISPLAY)
@@ -501,11 +541,14 @@ class LanguageDataExporterGUI:
 
     def _generate_language_excels(self):
         """Generate individual Excel files for each language."""
-        if not LOC_FOLDER.exists():
-            messagebox.showerror("Error", f"LOC folder not found:\n{LOC_FOLDER}")
+        loc_folder = config.LOC_FOLDER
+        export_folder = config.EXPORT_FOLDER
+
+        if not loc_folder.exists():
+            messagebox.showerror("Error", f"LOC folder not found:\n{loc_folder}")
             return
-        if not EXPORT_FOLDER.exists():
-            messagebox.showerror("Error", f"EXPORT folder not found:\n{EXPORT_FOLDER}")
+        if not export_folder.exists():
+            messagebox.showerror("Error", f"EXPORT folder not found:\n{export_folder}")
             return
 
         languages = self._get_target_languages()
@@ -517,8 +560,8 @@ class LanguageDataExporterGUI:
         messagebox.showinfo(
             "LOC Source",
             f"Generating Excel files from:\n\n"
-            f"LOC: {LOC_FOLDER}\n"
-            f"EXPORT: {EXPORT_FOLDER}\n\n"
+            f"LOC: {loc_folder}\n"
+            f"EXPORT: {export_folder}\n\n"
             f"Languages: {len(languages)}\n"
             f"Output: {OUTPUT_FOLDER}"
         )
@@ -531,16 +574,16 @@ class LanguageDataExporterGUI:
                 # Ensure output folder exists
                 OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
 
-                # Load config and build category index
-                config = load_cluster_config(CLUSTER_CONFIG)
+                # Load cluster config and build category index
+                cluster_cfg = load_cluster_config(CLUSTER_CONFIG)
                 category_index = build_stringid_category_index(
-                    EXPORT_FOLDER,
-                    config,
-                    config.get("default_category", "Uncategorized")
+                    export_folder,
+                    cluster_cfg,
+                    cluster_cfg.get("default_category", "Uncategorized")
                 )
 
                 # Discover language files
-                all_lang_files = discover_language_files(LOC_FOLDER)
+                all_lang_files = discover_language_files(loc_folder)
                 lang_files = {k: v for k, v in all_lang_files.items() if k.lower() not in EXCLUDED_LANGUAGES}
 
                 # Parse English for cross-reference
@@ -573,7 +616,7 @@ class LanguageDataExporterGUI:
                         category_index=category_index,
                         output_path=output_file,
                         include_english=include_english,
-                        default_category=config.get("default_category", "Uncategorized"),
+                        default_category=cluster_cfg.get("default_category", "Uncategorized"),
                         excluded_categories=excluded_categories,
                     )
 
@@ -851,10 +894,11 @@ class LanguageDataExporterGUI:
                 return
 
         # Check if EXPORT folder exists (needed for category detection)
-        if not EXPORT_FOLDER.exists():
+        export_folder = config.EXPORT_FOLDER
+        if not export_folder.exists():
             messagebox.showerror(
                 "EXPORT Folder Not Found",
-                f"EXPORT folder not found:\n{EXPORT_FOLDER}\n\n"
+                f"EXPORT folder not found:\n{export_folder}\n\n"
                 "This folder is needed to detect SCRIPT-type strings.\n"
                 "Please check your settings.json configuration."
             )
@@ -903,7 +947,7 @@ class LanguageDataExporterGUI:
                 self.root.after(0, lambda: self._set_status("Building category index..."))
 
                 results = merge_all_corrections_stringid_only_script(
-                    TOSUBMIT_FOLDER, locdev_folder, EXPORT_FOLDER
+                    TOSUBMIT_FOLDER, locdev_folder, export_folder
                 )
 
                 # Print terminal report

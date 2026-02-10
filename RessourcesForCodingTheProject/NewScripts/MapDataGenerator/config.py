@@ -527,6 +527,49 @@ def get_settings() -> Settings:
     return _current_settings
 
 
+def update_branch(new_branch: str):
+    """Update branch and recalculate all default paths. Called from GUI.
+
+    Args:
+        new_branch: Branch name (e.g., 'mainline', 'cd_beta').
+    """
+    global _BRANCH
+    global DEFAULT_FACTION_FOLDER, DEFAULT_LOC_FOLDER, DEFAULT_KNOWLEDGE_FOLDER
+    global DEFAULT_WAYPOINT_FOLDER, DEFAULT_TEXTURE_FOLDER, DEFAULT_CHARACTER_FOLDER
+    global DEFAULT_AUDIO_FOLDER_EN, DEFAULT_AUDIO_FOLDER_KR, DEFAULT_AUDIO_FOLDER_ZH
+    global DEFAULT_EXPORT_FOLDER
+
+    _BRANCH = new_branch
+
+    # Recalculate all default paths
+    new_paths = generate_default_paths(_DRIVE_LETTER, _BRANCH)
+    DEFAULT_FACTION_FOLDER = new_paths['faction_folder']
+    DEFAULT_LOC_FOLDER = new_paths['loc_folder']
+    DEFAULT_KNOWLEDGE_FOLDER = new_paths['knowledge_folder']
+    DEFAULT_WAYPOINT_FOLDER = new_paths['waypoint_folder']
+    DEFAULT_TEXTURE_FOLDER = new_paths['texture_folder']
+    DEFAULT_CHARACTER_FOLDER = new_paths['character_folder']
+    DEFAULT_AUDIO_FOLDER_EN = new_paths['audio_folder']
+    DEFAULT_AUDIO_FOLDER_KR = new_paths['audio_folder_kr']
+    DEFAULT_AUDIO_FOLDER_ZH = new_paths['audio_folder_zh']
+    DEFAULT_EXPORT_FOLDER = new_paths['export_folder']
+
+    # Update current settings
+    settings = get_settings()
+    settings.branch = new_branch
+    settings.faction_folder = DEFAULT_FACTION_FOLDER
+    settings.loc_folder = DEFAULT_LOC_FOLDER
+    settings.knowledge_folder = DEFAULT_KNOWLEDGE_FOLDER
+    settings.waypoint_folder = DEFAULT_WAYPOINT_FOLDER
+    settings.texture_folder = DEFAULT_TEXTURE_FOLDER
+    settings.character_folder = DEFAULT_CHARACTER_FOLDER
+    settings.audio_folder = DEFAULT_AUDIO_FOLDER_EN
+    settings.export_folder = DEFAULT_EXPORT_FOLDER
+    save_settings(settings)
+
+    log.info("Branch updated to: %s", new_branch)
+
+
 def get_ui_text(key: str, language: Optional[str] = None) -> str:
     """Get UI text in the specified or current language."""
     if language is None:

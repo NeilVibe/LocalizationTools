@@ -19,7 +19,7 @@ import logging
 import sys
 import threading
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, messagebox
 from pathlib import Path
 from typing import Optional
 
@@ -30,9 +30,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
     APP_NAME, VERSION, get_settings, save_settings, load_settings,
     get_ui_text, Settings, LANGUAGES, LANGUAGE_NAMES,
-    DATA_MODES, DEFAULT_MODE, KNOWN_BRANCHES, generate_default_paths,
-    _DRIVE_LETTER,
+    DATA_MODES, DEFAULT_MODE, KNOWN_BRANCHES, update_branch,
 )
+import config
 from core.linkage import LinkageResolver, DataMode
 from core.language import LanguageManager
 from core.search import SearchEngine, SearchResult
@@ -190,6 +190,9 @@ class MapDataGeneratorApp:
 
     def _create_widgets(self) -> None:
         """Create main window widgets."""
+        # Branch selector at top
+        self._create_branch_selector()
+
         # Mode selector toolbar
         self._create_mode_toolbar()
 
@@ -252,6 +255,39 @@ class MapDataGeneratorApp:
 
         # Initially disable search
         self._search_panel.enable(False)
+
+    def _create_branch_selector(self) -> None:
+        """Create branch selector (QACompiler style)."""
+        branch_frame = ttk.Frame(self.root)
+        branch_frame.pack(fill="x", padx=15, pady=(5, 0))
+
+        ttk.Label(branch_frame, text="Branch:", font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
+
+        self._branch_var = tk.StringVar(value=self.settings.branch)
+        branch_combo = ttk.Combobox(
+            branch_frame, textvariable=self._branch_var,
+            values=KNOWN_BRANCHES, width=25
+        )
+        branch_combo.pack(side="left", padx=5)
+        branch_combo.bind("<<ComboboxSelected>>", self._on_branch_change)
+        branch_combo.bind("<Return>", self._on_branch_change)
+
+        self._branch_status = ttk.Label(branch_frame, text="", font=("Arial", 9))
+        self._branch_status.pack(side="left", padx=10)
+
+    def _on_branch_change(self, _event=None) -> None:
+        """Handle branch selection change."""
+        new_branch = self._branch_var.get().strip()
+        if not new_branch:
+            return
+
+        update_branch(new_branch)
+        self._branch_status.config(text=f"Branch set to: {new_branch}")
+        self._progress_var.set(f"Branch changed to: {new_branch}")
+
+        # Reload data if data was previously loaded
+        if self._data_loaded:
+            self._auto_load_data()
 
     def _create_mode_toolbar(self) -> None:
         """Create mode selector toolbar."""
@@ -533,18 +569,18 @@ class MapDataGeneratorApp:
             )
 
     def _load_data(self) -> None:
-        """Open folder selection dialog and load data."""
+        """Open simplified load data dialog — branch is set via top bar."""
         settings = get_settings()
 
         dialog = tk.Toplevel(self.root)
-        dialog.title("Load Data - Select Folders")
-        dialog.geometry("650x600")  # Larger to fit audio folders
+        dialog.title("Load Data")
+        dialog.geometry("450x280")
         dialog.transient(self.root)
         dialog.grab_set()
 
-        # Current mode display
+        # Mode selection
         mode_frame = ttk.LabelFrame(dialog, text=get_ui_text('select_mode'))
-        mode_frame.pack(fill="x", padx=10, pady=5)
+        mode_frame.pack(fill="x", padx=10, pady=10)
 
         mode_var = tk.StringVar(value=self._current_mode.value)
         for mode in DATA_MODES:
@@ -555,121 +591,59 @@ class MapDataGeneratorApp:
                 variable=mode_var
             ).pack(side="left", padx=10, pady=5)
 
-        # Branch selection
-        branch_frame = ttk.LabelFrame(dialog, text="Branch")
-        branch_frame.pack(fill="x", padx=10, pady=5)
+        # Info section
+        info_frame = ttk.LabelFrame(dialog, text="Info")
+        info_frame.pack(fill="x", padx=10, pady=5)
 
-        branch_inner = ttk.Frame(branch_frame)
-        branch_inner.pack(fill="x", padx=5, pady=5)
-        ttk.Label(branch_inner, text="Branch:", width=20, anchor="w").pack(side="left")
-        branch_var = tk.StringVar(value=settings.branch)
-        branch_combo = ttk.Combobox(
-            branch_inner, textvariable=branch_var,
-            values=KNOWN_BRANCHES, width=30
-        )
-        branch_combo.pack(side="left", padx=5)
+        ttk.Label(
+            info_frame,
+            text=f"Branch: {settings.branch}  |  Drive: {config._DRIVE_LETTER}:",
+            font=("Arial", 10)
+        ).pack(anchor="w", padx=10, pady=(5, 2))
 
-        # Folder selection
-        folders_frame = ttk.LabelFrame(dialog, text="Data Folders")
-        folders_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        ttk.Label(
+            info_frame,
+            text="Paths are derived from Branch + Drive settings.",
+            font=("Arial", 9, "italic"),
+            foreground="gray"
+        ).pack(anchor="w", padx=10, pady=(0, 2))
 
-        def create_folder_row(parent, label: str, default: str) -> tk.StringVar:
-            frame = ttk.Frame(parent)
-            frame.pack(fill="x", padx=5, pady=5)
-
-            ttk.Label(frame, text=label, width=20, anchor="w").pack(side="left")
-
-            var = tk.StringVar(value=default)
-            entry = ttk.Entry(frame, textvariable=var, width=45)
-            entry.pack(side="left", fill="x", expand=True, padx=5)
-
-            ttk.Button(
-                frame,
-                text="Browse",
-                command=lambda: var.set(
-                    filedialog.askdirectory(title=f"Select {label}") or var.get()
-                ),
-                width=8
-            ).pack(side="left")
-
-            return var
-
-        # Common folders (always shown)
-        texture_var = create_folder_row(folders_frame, "Texture Folder:", settings.texture_folder)
-        loc_var = create_folder_row(folders_frame, "Language Data:", settings.loc_folder)
-
-        # Mode-specific folders
-        faction_var = create_folder_row(folders_frame, "Faction Info:", settings.faction_folder)
-        knowledge_var = create_folder_row(folders_frame, "Knowledge Info:", settings.knowledge_folder)
-        waypoint_var = create_folder_row(folders_frame, "Waypoint Info:", settings.waypoint_folder)
-        character_var = create_folder_row(folders_frame, "Character Info:", settings.character_folder)
-
-        # Audio-specific folders
-        audio_var = create_folder_row(folders_frame, "Audio Folder (WEM):", settings.audio_folder)
-        export_var = create_folder_row(folders_frame, "Export Folder:", settings.export_folder)
-
-        # Map folder vars by key for branch-change updates
-        _folder_vars = {
-            'texture_folder': texture_var,
-            'loc_folder': loc_var,
-            'faction_folder': faction_var,
-            'knowledge_folder': knowledge_var,
-            'waypoint_folder': waypoint_var,
-            'character_folder': character_var,
-            'audio_folder': audio_var,
-            'export_folder': export_var,
-        }
-
-        def _on_branch_change(_event=None):
-            """Regenerate all folder paths when branch changes."""
-            new_paths = generate_default_paths(_DRIVE_LETTER, branch_var.get().strip())
-            for key, var in _folder_vars.items():
-                if key in new_paths:
-                    var.set(new_paths[key])
-
-        branch_combo.bind("<<ComboboxSelected>>", _on_branch_change)
-        branch_combo.bind("<Return>", _on_branch_change)
+        ttk.Label(
+            info_frame,
+            text="Use the Branch selector in the top bar to change branch.",
+            font=("Arial", 9, "italic"),
+            foreground="gray"
+        ).pack(anchor="w", padx=10, pady=(0, 5))
 
         def on_load():
-            # Save branch and regenerate paths to catch typed-but-not-confirmed changes
-            settings.branch = branch_var.get().strip() or 'mainline'
-            _on_branch_change()
-
-            # Save paths
-            settings.texture_folder = texture_var.get()
-            settings.loc_folder = loc_var.get()
-            settings.faction_folder = faction_var.get()
-            settings.knowledge_folder = knowledge_var.get()
-            settings.waypoint_folder = waypoint_var.get()
-            settings.character_folder = character_var.get()
-            settings.audio_folder = audio_var.get()
-            settings.export_folder = export_var.get()
-
             # Update mode
             new_mode = DataMode(mode_var.get())
             self._current_mode = new_mode
             self._mode_var.set(new_mode.value)
             settings.current_mode = new_mode.value
-
             save_settings(settings)
             dialog.destroy()
 
-            # Start loading based on mode
+            # Update mode visibility
+            self._update_mode_visibility()
+            self._result_panel.set_mode(new_mode.value)
+
+            # Start loading based on mode with current settings
             if new_mode == DataMode.AUDIO:
                 self._start_audio_data_load(
-                    audio_folder=Path(audio_var.get()),
-                    export_folder=Path(export_var.get()),
-                    loc_folder=Path(loc_var.get()),
+                    audio_folder=Path(settings.audio_folder),
+                    export_folder=Path(settings.export_folder),
+                    loc_folder=Path(settings.loc_folder),
                     mode=new_mode,
                 )
             else:
                 self._start_data_load(
-                    texture_folder=Path(texture_var.get()),
-                    loc_folder=Path(loc_var.get()),
-                    faction_folder=Path(faction_var.get()),
-                    knowledge_folder=Path(knowledge_var.get()),
-                    waypoint_folder=Path(waypoint_var.get()),
-                    character_folder=Path(character_var.get()),
+                    texture_folder=Path(settings.texture_folder),
+                    loc_folder=Path(settings.loc_folder),
+                    faction_folder=Path(settings.faction_folder),
+                    knowledge_folder=Path(settings.knowledge_folder),
+                    waypoint_folder=Path(settings.waypoint_folder),
+                    character_folder=Path(settings.character_folder),
                     mode=new_mode,
                 )
 
