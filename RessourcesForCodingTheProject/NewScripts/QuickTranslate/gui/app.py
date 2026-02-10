@@ -929,7 +929,7 @@ class QuickTranslateApp:
 
             # Detect columns from each Excel file (union of all)
             excel_files_to_scan = [
-                filepath for filepath, _, _ in files_to_check
+                filepath for filepath, _ in files_to_check
                 if filepath.suffix.lower() in (".xlsx", ".xls")
             ]
             for ef in excel_files_to_scan:
