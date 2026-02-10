@@ -92,3 +92,4 @@ Build - pane ratio + label fix
 Build - log pane 20% default
 Build - fuzzy threshold min 0.70
 Build - fix log pane sizing
+Build - log pane 35%
