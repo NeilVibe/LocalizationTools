@@ -76,3 +76,4 @@ Build - Fix checkpatternerror.py syntax
 Build - Add pre-submission checks to WORKING FOR validation
 Build - Quality Checker: wrong script + AI hallucination detection
 Build - Review fixes + standalone language detection
+Build - CI fix: exclude reference scripts from syntax check
