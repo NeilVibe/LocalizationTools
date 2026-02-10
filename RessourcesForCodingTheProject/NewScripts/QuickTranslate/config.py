@@ -127,7 +127,7 @@ SEQUENCER_FOLDER = EXPORT_FOLDER / "Sequencer"
 
 OUTPUT_FOLDER = SCRIPT_DIR / "Output"
 SOURCE_FOLDER = SCRIPT_DIR / "Source"
-CHECK_RESULTS_FOLDER = SOURCE_FOLDER / "CheckResults"
+CHECK_RESULTS_FOLDER = SCRIPT_DIR / "Presubmission Checks"
 FAILED_REPORTS_FOLDER = SCRIPT_DIR / "Failed Reports"
 
 # =============================================================================

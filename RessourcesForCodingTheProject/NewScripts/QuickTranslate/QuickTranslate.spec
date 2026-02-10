@@ -14,6 +14,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('config.py', '.'),
+        ('ai_hallucination_phrases.json', '.'),
         ('core', 'core'),
         ('gui', 'gui'),
         ('utils', 'utils'),
@@ -41,6 +42,8 @@ a = Analysis(
         'core.fuzzy_matching',
         'core.xml_transfer',
         'core.text_utils',
+        'core.quality_checker',
+        'xlsxwriter',
     ],
     hookspath=[],
     hooksconfig={},

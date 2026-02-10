@@ -3,6 +3,8 @@ Pre-Submission Quality Checks.
 
 Korean detection and pattern code mismatch checking for languagedata XML files.
 Scans Source folder, groups by language, writes per-language result XMLs.
+
+Output format: pure LocStr elements in <root>, same format as source XML.
 """
 
 import logging
@@ -11,7 +13,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set
 
 from .xml_parser import parse_xml_file, iter_locstr_elements
-from .korean_detection import is_korean_text, KOREAN_REGEX
+from .korean_detection import is_korean_text
 from .source_scanner import scan_source_for_languages
 
 logger = logging.getLogger(__name__)
@@ -68,7 +70,25 @@ def normalize_pattern_set(raw_set: Set[str]) -> Set[str]:
     return {normalize_staticinfo_pattern(p) for p in raw_set}
 
 
-def check_korean_in_file(xml_path: Path) -> List[dict]:
+def _escape_attr_value(value: str) -> str:
+    """Escape attribute value for XML output."""
+    return (value
+            .replace('&', '&amp;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+            .replace('"', '&quot;'))
+
+
+def _elem_to_locstr_line(elem) -> str:
+    """Reconstruct a LocStr element as an XML string from its attributes."""
+    attribs = []
+    for key, value in elem.attrib.items():
+        attribs.append(f'{key}="{_escape_attr_value(value)}"')
+    attrib_str = ' '.join(attribs)
+    return f'  <LocStr {attrib_str} />'
+
+
+def check_korean_in_file(xml_path: Path) -> list:
     """
     Scan one XML file for Korean characters in Str values.
 
@@ -76,7 +96,7 @@ def check_korean_in_file(xml_path: Path) -> List[dict]:
         xml_path: Path to XML file
 
     Returns:
-        List of findings: [{"string_id": ..., "str_text": ..., "korean_chars": ...}, ...]
+        List of matching LocStr elements (lxml elements with original attributes).
     """
     findings = []
     try:
@@ -90,20 +110,14 @@ def check_korean_in_file(xml_path: Path) -> List[dict]:
                 continue
 
             if is_korean_text(str_text):
-                string_id = _get_attr(elem, _STRINGID_ATTRS).strip()
-                korean_chars = "".join(KOREAN_REGEX.findall(str_text))
-                findings.append({
-                    "string_id": string_id,
-                    "str_text": str_text,
-                    "korean_chars": korean_chars,
-                })
+                findings.append(elem)
     except Exception as e:
         logger.warning(f"Failed to parse {xml_path.name}: {e}")
 
     return findings
 
 
-def check_patterns_in_file(xml_path: Path) -> List[dict]:
+def check_patterns_in_file(xml_path: Path) -> list:
     """
     Scan one XML file for pattern code mismatches between StrOrigin and Str.
 
@@ -113,9 +127,7 @@ def check_patterns_in_file(xml_path: Path) -> List[dict]:
         xml_path: Path to XML file
 
     Returns:
-        List of errors: [{"string_id": ..., "strorigin_text": ..., "str_text": ...,
-                          "strorigin_patterns": [...], "str_patterns": [...],
-                          "missing": [...], "extra": [...]}, ...]
+        List of matching LocStr elements (lxml elements with original attributes).
     """
     errors = []
     try:
@@ -134,18 +146,7 @@ def check_patterns_in_file(xml_path: Path) -> List[dict]:
             str_patterns = normalize_pattern_set(extract_code_patterns(str_text))
 
             if origin_patterns != str_patterns:
-                string_id = _get_attr(elem, _STRINGID_ATTRS).strip()
-                missing = sorted(origin_patterns - str_patterns)
-                extra = sorted(str_patterns - origin_patterns)
-                errors.append({
-                    "string_id": string_id,
-                    "strorigin_text": strorigin_text,
-                    "str_text": str_text,
-                    "strorigin_patterns": sorted(origin_patterns),
-                    "str_patterns": sorted(str_patterns),
-                    "missing": missing,
-                    "extra": extra,
-                })
+                errors.append(elem)
     except Exception as e:
         logger.warning(f"Failed to parse {xml_path.name}: {e}")
 
@@ -178,67 +179,23 @@ def iter_source_xml_files(source_folder: Path) -> Dict[str, List[Path]]:
     return xml_by_lang
 
 
-def _write_korean_results_xml(
-    output_path: Path,
-    language: str,
-    file_count: int,
-    all_findings: List[dict],
-):
-    """Write Korean findings to XML file."""
-    lines = [
-        '<?xml version="1.0" encoding="utf-8"?>',
-        f'<KoreanFindings language="{language}" file_count="{file_count}" finding_count="{len(all_findings)}">',
-    ]
-    for f in all_findings:
-        sid = _xml_escape(f["string_id"])
-        fname = _xml_escape(f["file_name"])
-        str_text = _xml_escape(f["str_text"])
-        lines.append(f'  <Finding file="{fname}" string_id="{sid}">')
-        lines.append(f'    <Str>{str_text}</Str>')
-        lines.append('  </Finding>')
-    lines.append('</KoreanFindings>')
+def _write_results_xml(output_path: Path, elements: list):
+    """
+    Write LocStr elements to XML file in pure source format.
+
+    Output: <root> with LocStr elements preserving original attributes.
+    Same format as missing_translation_finder and checkpatternerror.py.
+    """
+    lines = ['<?xml version="1.0" encoding="utf-8"?>']
+    lines.append('<root>')
+
+    for elem in elements:
+        lines.append(_elem_to_locstr_line(elem))
+
+    lines.append('</root>')
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text("\n".join(lines), encoding="utf-8")
-
-
-def _write_pattern_results_xml(
-    output_path: Path,
-    language: str,
-    file_count: int,
-    all_errors: List[dict],
-):
-    """Write pattern error findings to XML file."""
-    lines = [
-        '<?xml version="1.0" encoding="utf-8"?>',
-        f'<PatternErrors language="{language}" file_count="{file_count}" error_count="{len(all_errors)}">',
-    ]
-    for e in all_errors:
-        sid = _xml_escape(e["string_id"])
-        fname = _xml_escape(e["file_name"])
-        strorigin = _xml_escape(e["strorigin_text"])
-        str_text = _xml_escape(e["str_text"])
-        missing = _xml_escape(", ".join(e["missing"]))
-        extra = _xml_escape(", ".join(e["extra"]))
-        lines.append(f'  <Error file="{fname}" string_id="{sid}">')
-        lines.append(f'    <StrOrigin>{strorigin}</StrOrigin>')
-        lines.append(f'    <Str>{str_text}</Str>')
-        lines.append(f'    <Missing>{missing}</Missing>')
-        lines.append(f'    <Extra>{extra}</Extra>')
-        lines.append('  </Error>')
-    lines.append('</PatternErrors>')
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text("\n".join(lines), encoding="utf-8")
-
-
-def _xml_escape(text: str) -> str:
-    """Escape text for safe XML embedding."""
-    return (text
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;"))
+    output_path.write_text('\n'.join(lines), encoding='utf-8')
 
 
 def run_korean_check(
@@ -279,16 +236,13 @@ def run_korean_check(
 
         all_findings = []
         for xml_path in xml_files:
-            findings = check_korean_in_file(xml_path)
-            for f in findings:
-                f["file_name"] = xml_path.name
-            all_findings.extend(findings)
+            all_findings.extend(check_korean_in_file(xml_path))
 
         summary[lang] = len(all_findings)
 
         if all_findings:
             out_path = korean_dir / f"korean_findings_{lang}.xml"
-            _write_korean_results_xml(out_path, lang, len(xml_files), all_findings)
+            _write_results_xml(out_path, all_findings)
             logger.info(f"Korean check {lang}: {len(all_findings)} findings in {len(xml_files)} files -> {out_path.name}")
         else:
             logger.info(f"Korean check {lang}: clean ({len(xml_files)} files)")
@@ -334,16 +288,13 @@ def run_pattern_check(
 
         all_errors = []
         for xml_path in xml_files:
-            errors = check_patterns_in_file(xml_path)
-            for e in errors:
-                e["file_name"] = xml_path.name
-            all_errors.extend(errors)
+            all_errors.extend(check_patterns_in_file(xml_path))
 
         summary[lang] = len(all_errors)
 
         if all_errors:
             out_path = pattern_dir / f"pattern_errors_{lang}.xml"
-            _write_pattern_results_xml(out_path, lang, len(xml_files), all_errors)
+            _write_results_xml(out_path, all_errors)
             logger.info(f"Pattern check {lang}: {len(all_errors)} errors in {len(xml_files)} files -> {out_path.name}")
         else:
             logger.info(f"Pattern check {lang}: clean ({len(xml_files)} files)")
