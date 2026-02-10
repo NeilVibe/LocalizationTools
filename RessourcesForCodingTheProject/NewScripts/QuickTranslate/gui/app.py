@@ -925,10 +925,10 @@ class QuickTranslateApp:
             # Compute summary stats
             xml_good = sum(1 for r in results if r[1] == "XML" and r[4] == "OK")
             excel_good = sum(1 for r in results if r[1] == "Excel" and r[4] == "OK")
-            xml_fail = sum(1 for r in results if r[1] == "XML" and r[4] in ("FAILED", "EMPTY"))
-            excel_fail = sum(1 for r in results if r[1] == "Excel" and r[4] in ("FAILED", "EMPTY"))
+            xml_fail = sum(1 for r in results if r[1] == "XML" and r[4] in ("FAILED", "EMPTY", "COLUMN ERROR"))
+            excel_fail = sum(1 for r in results if r[1] == "Excel" and r[4] in ("FAILED", "EMPTY", "COLUMN ERROR"))
             total_entries = sum(r[3] for r in results)
-            errors = [(r[0], r[5]) for r in results if r[4] == "FAILED"]
+            errors = [(r[0], r[4], r[5]) for r in results if r[4] in ("FAILED", "COLUMN ERROR", "EMPTY", "SKIPPED")]
 
             lang_entries = {}
             for _, _, lang, count, status, _ in results:
@@ -953,18 +953,19 @@ class QuickTranslateApp:
                 logger.info("  Per-language: %s", lang_str)
 
             if errors:
-                logger.warning("  PARSE ERRORS (%d):", len(errors))
-                for fname, err_msg in errors:
-                    logger.warning("    %s: %s", fname, err_msg)
+                logger.warning("  PROBLEMS (%d):", len(errors))
+                for fname, status, err_msg in errors:
+                    logger.warning("    %s: %s%s", fname, status, f" ({err_msg})" if err_msg else "")
 
             logger.info("%s", separator)
 
             # Log summary to GUI
             if errors:
                 gui_summary = ", ".join(summary_parts) if summary_parts else "No files"
-                self._log(f"Source validation: {gui_summary}", 'warning')
-                for fname, err_msg in errors:
-                    self._log(f"  PARSE ERROR: {fname}: {err_msg}", 'error')
+                self._log(f"Source validation: {gui_summary}, {total_entries:,} entries total", 'warning')
+                for fname, status, err_msg in errors:
+                    detail = f": {err_msg}" if err_msg else ""
+                    self._log(f"  {fname} — {status}{detail}", 'error')
             else:
                 self._log(f"Source validation: {', '.join(summary_parts)}, {total_entries:,} entries total", 'success')
 
