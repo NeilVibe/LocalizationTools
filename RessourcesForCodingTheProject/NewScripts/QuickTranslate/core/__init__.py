@@ -109,6 +109,13 @@ from .checker import (
 from .quality_checker import (
     run_quality_check,
 )
+from .eventname_resolver import (
+    build_eventname_mapping,
+    get_eventname_mapping,
+    resolve_eventnames_in_corrections,
+    generate_missing_eventname_report,
+    clear_cache as clear_eventname_cache,
+)
 
 __all__ = [
     # text_utils
@@ -215,4 +222,10 @@ __all__ = [
     "iter_source_xml_files",
     # quality_checker
     "run_quality_check",
+    # eventname_resolver
+    "build_eventname_mapping",
+    "get_eventname_mapping",
+    "resolve_eventnames_in_corrections",
+    "generate_missing_eventname_report",
+    "clear_eventname_cache",
 ]

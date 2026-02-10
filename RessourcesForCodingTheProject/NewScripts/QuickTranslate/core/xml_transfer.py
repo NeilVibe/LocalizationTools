@@ -1228,6 +1228,48 @@ def transfer_folder_to_folder(
     logger.info(f"Grouped {sum(len(g['corrections']) for g in target_groups.values()):,} corrections "
                 f"across {len(target_groups)} target files")
 
+    # ─── EventName Resolution (between parse and merge) ───────────────
+    # If any correction has _source_eventname, resolve via export__ mapping
+    all_have_eventnames = any(
+        c.get("_source_eventname")
+        for g in target_groups.values()
+        for c in g["corrections"]
+    )
+    all_missing_eventnames = []
+
+    if all_have_eventnames:
+        from .eventname_resolver import get_eventname_mapping, resolve_eventnames_in_corrections
+
+        if progress_callback:
+            progress_callback("Resolving EventNames to StringIDs...")
+
+        en_mapping = get_eventname_mapping(config.EXPORT_FOLDER, progress_callback=progress_callback)
+
+        if en_mapping:
+            for target_key, group in target_groups.items():
+                # Tag corrections with source file info for the missing report
+                for c in group["corrections"]:
+                    if c.get("_source_eventname") and not c.get("_source_file"):
+                        c["_source_file"] = ", ".join(group["source_files"])
+
+                resolved, missing = resolve_eventnames_in_corrections(
+                    group["corrections"], en_mapping
+                )
+                group["corrections"] = resolved
+                all_missing_eventnames.extend(missing)
+
+            total_en = sum(
+                1 for g in target_groups.values()
+                for c in g["corrections"]
+            ) + len(all_missing_eventnames)
+            logger.info(
+                f"EventName resolution complete: "
+                f"{total_en - len(all_missing_eventnames)} resolved, "
+                f"{len(all_missing_eventnames)} missing"
+            )
+        else:
+            logger.warning("EventName mapping is empty — export folder may not contain SoundEventName attributes")
+
     # ─── Phase 2: ONE pass per target XML with ALL corrections ────────
 
     for ti, (target_key, group) in enumerate(target_groups.items()):
@@ -1426,6 +1468,22 @@ def transfer_folder_to_folder(
             f"{updated} updated, {skipped_tr} skipped, {not_found} not found"
         )
 
+    # ─── Missing EventName report (after all transfers complete) ──────
+    if all_missing_eventnames:
+        from .eventname_resolver import generate_missing_eventname_report
+        from datetime import datetime
+
+        results["missing_eventnames_count"] = len(all_missing_eventnames)
+        report_dir = config.get_failed_report_dir(
+            source_folder.name if source_folder.is_dir() else source_folder.stem
+        )
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_path = report_dir / f"MissingEventNames_{timestamp}.xlsx"
+
+        if generate_missing_eventname_report(all_missing_eventnames, report_path):
+            results["missing_eventname_report"] = str(report_path)
+            logger.info(f"Missing EventName report: {report_path}")
+
     return results
 
 
@@ -1483,6 +1541,24 @@ def transfer_file_to_file(
             "errors": ["No corrections found in source file"],
             "details": [],
         }
+
+    # ─── EventName Resolution ─────────────────────────────────────────
+    missing_eventnames = []
+    has_eventnames = any(c.get("_source_eventname") for c in corrections)
+
+    if has_eventnames:
+        from .eventname_resolver import get_eventname_mapping, resolve_eventnames_in_corrections
+
+        en_mapping = get_eventname_mapping(config.EXPORT_FOLDER)
+        if en_mapping:
+            for c in corrections:
+                if c.get("_source_eventname") and not c.get("_source_file"):
+                    c["_source_file"] = source_file.name
+            corrections, missing_eventnames = resolve_eventnames_in_corrections(
+                corrections, en_mapping
+            )
+        else:
+            logger.warning("EventName mapping is empty — cannot resolve EventNames")
 
     # Apply corrections based on match mode
     if match_mode == "stringid_only" and stringid_to_category:
@@ -1675,6 +1751,21 @@ def transfer_file_to_file(
             logger.info(f"Post-process: cleared Str on {cleaned} entries with empty StrOrigin in {target_file.name}")
 
     result["corrections_count"] = len(corrections)
+
+    # ─── Missing EventName report ─────────────────────────────────────
+    if missing_eventnames:
+        from .eventname_resolver import generate_missing_eventname_report
+        from datetime import datetime
+
+        result["missing_eventnames_count"] = len(missing_eventnames)
+        report_dir = config.get_failed_report_dir(source_file.stem)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_path = report_dir / f"MissingEventNames_{timestamp}.xlsx"
+
+        if generate_missing_eventname_report(missing_eventnames, report_path):
+            result["missing_eventname_report"] = str(report_path)
+            logger.info(f"Missing EventName report: {report_path}")
+
     return result
 
 
