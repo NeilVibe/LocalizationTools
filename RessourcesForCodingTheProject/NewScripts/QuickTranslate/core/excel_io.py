@@ -95,9 +95,11 @@ def read_corrections_from_excel(
         if has_header:
             col_indices = _detect_column_indices(ws)
             # Look for common column name variations
-            stringid_col = col_indices.get("stringid", col_indices.get("string_id", stringid_col))
-            strorigin_col = col_indices.get("strorigin", col_indices.get("str_origin", strorigin_col))
-            correction_col = col_indices.get("correction", col_indices.get("corrected", correction_col))
+            # Use None fallback (not positional default) so undetected columns don't
+            # accidentally read from the wrong column
+            stringid_col = col_indices.get("stringid", col_indices.get("string_id", None))
+            strorigin_col = col_indices.get("strorigin", col_indices.get("str_origin", None))
+            correction_col = col_indices.get("correction", col_indices.get("corrected", None))
             # EventName column detection (audio event identifiers)
             eventname_col = col_indices.get("eventname", col_indices.get("event_name",
                             col_indices.get("soundeventname", None)))
@@ -106,9 +108,9 @@ def read_corrections_from_excel(
 
         for row in ws.iter_rows(min_row=start_row):
             try:
-                string_id = row[stringid_col - 1].value if stringid_col <= len(row) else None
-                str_origin = row[strorigin_col - 1].value if strorigin_col <= len(row) else None
-                corrected = row[correction_col - 1].value if correction_col <= len(row) else None
+                string_id = row[stringid_col - 1].value if stringid_col is not None and stringid_col <= len(row) else None
+                str_origin = row[strorigin_col - 1].value if strorigin_col is not None and strorigin_col <= len(row) else None
+                corrected = row[correction_col - 1].value if correction_col is not None and correction_col <= len(row) else None
                 eventname = None
                 if eventname_col is not None:
                     eventname = row[eventname_col - 1].value if eventname_col <= len(row) else None
