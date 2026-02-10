@@ -17,6 +17,10 @@ from typing import Dict, List, Optional
 import threading
 import queue
 
+import os
+import subprocess
+import sys
+
 import config
 
 logger = logging.getLogger(__name__)
@@ -61,6 +65,7 @@ from core import (
     format_report_summary,
 )
 from core.missing_translation_finder import find_missing_with_options
+from core.checker import run_korean_check, run_pattern_check
 from gui.missing_params_dialog import MissingParamsDialog
 from gui.exclude_dialog import ExcludeDialog
 from core.indexing import scan_folder_for_entries
@@ -388,6 +393,47 @@ class QuickTranslateApp:
         self.exclude_btn.pack(side=tk.RIGHT, padx=(0, 4))
 
         self._update_exclude_count_label()
+
+        # === Pre-Submission Checks Section ===
+        checks_frame = tk.LabelFrame(main, text="Pre-Submission Checks",
+                                      font=('Segoe UI', 10, 'bold'),
+                                      bg='#f0f0f0', fg='#555', padx=15, pady=8)
+        checks_frame.pack(fill=tk.X, pady=(0, 8))
+
+        checks_btn_row = tk.Frame(checks_frame, bg='#f0f0f0')
+        checks_btn_row.pack(fill=tk.X, pady=(0, 4))
+
+        self.check_korean_btn = tk.Button(
+            checks_btn_row, text="Check Korean", command=self._check_korean,
+            font=('Segoe UI', 9, 'bold'), bg='#e67e22', fg='white',
+            relief='flat', padx=14, cursor='hand2')
+        self.check_korean_btn.pack(side=tk.LEFT, padx=(0, 8))
+
+        self.check_patterns_btn = tk.Button(
+            checks_btn_row, text="Check Patterns", command=self._check_patterns,
+            font=('Segoe UI', 9, 'bold'), bg='#e67e22', fg='white',
+            relief='flat', padx=14, cursor='hand2')
+        self.check_patterns_btn.pack(side=tk.LEFT, padx=(0, 8))
+
+        self.check_all_btn = tk.Button(
+            checks_btn_row, text="Check ALL", command=self._check_all,
+            font=('Segoe UI', 9, 'bold'), bg='#c0392b', fg='white',
+            relief='flat', padx=14, cursor='hand2')
+        self.check_all_btn.pack(side=tk.LEFT, padx=(0, 8))
+
+        self.open_results_btn = tk.Button(
+            checks_btn_row, text="Open Results Folder",
+            command=self._open_check_results_folder,
+            font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
+            padx=10, cursor='hand2', state='disabled')
+        self.open_results_btn.pack(side=tk.RIGHT)
+
+        checks_status_row = tk.Frame(checks_frame, bg='#f0f0f0')
+        checks_status_row.pack(fill=tk.X)
+        self.checks_status_text = tk.StringVar(value="Ready")
+        tk.Label(checks_status_row, textvariable=self.checks_status_text,
+                 font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
+                 anchor='w').pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # === Settings Section ===
         settings_frame = tk.LabelFrame(main, text="Settings", font=('Segoe UI', 10, 'bold'),
@@ -1223,6 +1269,11 @@ class QuickTranslateApp:
                     _, func_name, title, message = msg
                     func = getattr(messagebox, func_name)
                     func(title, message)
+                elif kind == 'checks_status':
+                    _, text = msg
+                    self.checks_status_text.set(text)
+                elif kind == 'enable_results_btn':
+                    self.open_results_btn.config(state='normal')
                 elif kind == 'done':
                     self._enable_buttons()
                     return  # Stop polling
@@ -1254,6 +1305,11 @@ class QuickTranslateApp:
                         _, func_name, title, message = msg
                         func = getattr(messagebox, func_name)
                         func(title, message)
+                    elif kind == 'checks_status':
+                        _, text = msg
+                        self.checks_status_text.set(text)
+                    elif kind == 'enable_results_btn':
+                        self.open_results_btn.config(state='normal')
                     elif kind == 'done':
                         break
             except queue.Empty:
@@ -1368,6 +1424,9 @@ class QuickTranslateApp:
         self.exclude_btn.config(state='disabled')
         self.lookup_btn.config(state='disabled')
         self.reverse_btn.config(state='disabled')
+        self.check_korean_btn.config(state='disabled')
+        self.check_patterns_btn.config(state='disabled')
+        self.check_all_btn.config(state='disabled')
         self.cancel_btn.pack(side=tk.RIGHT, padx=(8, 0))
 
     def _enable_buttons(self):
@@ -1382,6 +1441,9 @@ class QuickTranslateApp:
         self.exclude_btn.config(state='normal')
         self.lookup_btn.config(state='normal')
         self.reverse_btn.config(state='normal')
+        self.check_korean_btn.config(state='normal')
+        self.check_patterns_btn.config(state='normal')
+        self.check_all_btn.config(state='normal')
         self.cancel_btn.pack_forget()
         self._worker_thread = None
 
@@ -1936,6 +1998,174 @@ class QuickTranslateApp:
                 f"Output directory:\n{output_dir}"))
 
         self._run_in_thread(work)
+
+    # === Pre-Submission Check Handlers ===
+
+    def _get_source_for_checks(self) -> Optional[Path]:
+        """Validate and return source folder for checks."""
+        source_str = self.source_path.get()
+        if not source_str:
+            messagebox.showwarning("Warning", "Please select a Source folder.")
+            return None
+        source = Path(source_str)
+        if not source.exists():
+            messagebox.showerror("Error", f"Source folder not found:\n{source}")
+            return None
+        return source
+
+    def _format_check_summary(self, summary: Dict[str, int], check_name: str) -> str:
+        """Format check summary for log output."""
+        total = sum(summary.values())
+        langs_with_issues = {k: v for k, v in summary.items() if v > 0}
+        if not langs_with_issues:
+            return f"{check_name}: All clean across {len(summary)} languages"
+        parts = [f"{lang}: {count}" for lang, count in sorted(langs_with_issues.items())]
+        return f"{check_name}: {total} issues in {len(langs_with_issues)} languages ({', '.join(parts)})"
+
+    def _check_korean(self):
+        """Run Korean character check on Source folder."""
+        source = self._get_source_for_checks()
+        if not source:
+            return
+
+        self._disable_buttons()
+        output_folder = config.CHECK_RESULTS_FOLDER
+
+        def work():
+            self._log("=== Korean Character Check ===", 'header')
+            self._task_queue.put(('checks_status', "Checking Korean..."))
+
+            def progress_cb(msg):
+                self._log(msg)
+                self._task_queue.put(('checks_status', msg))
+
+            summary = run_korean_check(source, output_folder, progress_callback=progress_cb)
+
+            if not summary:
+                self._log("No XML files found in Source folder.", 'warning')
+                self._task_queue.put(('checks_status', "No files found"))
+                return
+
+            total = sum(summary.values())
+            result_msg = self._format_check_summary(summary, "Korean Check")
+            self._log(result_msg, 'success' if total == 0 else 'warning')
+
+            if total > 0:
+                self._log(f"Results written to: {output_folder / 'Korean'}", 'info')
+                self._task_queue.put(('checks_status', f"Done: {total} Korean findings"))
+            else:
+                self._task_queue.put(('checks_status', "Done: All clean"))
+
+            self._task_queue.put(('enable_results_btn',))
+
+        self._run_in_thread(work)
+
+    def _check_patterns(self):
+        """Run pattern mismatch check on Source folder."""
+        source = self._get_source_for_checks()
+        if not source:
+            return
+
+        self._disable_buttons()
+        output_folder = config.CHECK_RESULTS_FOLDER
+
+        def work():
+            self._log("=== Pattern Code Mismatch Check ===", 'header')
+            self._task_queue.put(('checks_status', "Checking patterns..."))
+
+            def progress_cb(msg):
+                self._log(msg)
+                self._task_queue.put(('checks_status', msg))
+
+            summary = run_pattern_check(source, output_folder, progress_callback=progress_cb)
+
+            if not summary:
+                self._log("No XML files found in Source folder.", 'warning')
+                self._task_queue.put(('checks_status', "No files found"))
+                return
+
+            total = sum(summary.values())
+            result_msg = self._format_check_summary(summary, "Pattern Check")
+            self._log(result_msg, 'success' if total == 0 else 'warning')
+
+            if total > 0:
+                self._log(f"Results written to: {output_folder / 'PatternErrors'}", 'info')
+                self._task_queue.put(('checks_status', f"Done: {total} pattern errors"))
+            else:
+                self._task_queue.put(('checks_status', "Done: All clean"))
+
+            self._task_queue.put(('enable_results_btn',))
+
+        self._run_in_thread(work)
+
+    def _check_all(self):
+        """Run both Korean and Pattern checks sequentially."""
+        source = self._get_source_for_checks()
+        if not source:
+            return
+
+        self._disable_buttons()
+        output_folder = config.CHECK_RESULTS_FOLDER
+
+        def work():
+            self._log("=== Pre-Submission Check ALL ===", 'header')
+
+            # Korean check
+            self._task_queue.put(('checks_status', "Checking Korean..."))
+
+            def korean_cb(msg):
+                self._log(msg)
+                self._task_queue.put(('checks_status', msg))
+
+            korean_summary = run_korean_check(source, output_folder, progress_callback=korean_cb)
+            if korean_summary:
+                self._log(self._format_check_summary(korean_summary, "Korean Check"),
+                          'success' if sum(korean_summary.values()) == 0 else 'warning')
+
+            # Pattern check
+            self._task_queue.put(('checks_status', "Checking patterns..."))
+
+            def pattern_cb(msg):
+                self._log(msg)
+                self._task_queue.put(('checks_status', msg))
+
+            pattern_summary = run_pattern_check(source, output_folder, progress_callback=pattern_cb)
+            if pattern_summary:
+                self._log(self._format_check_summary(pattern_summary, "Pattern Check"),
+                          'success' if sum(pattern_summary.values()) == 0 else 'warning')
+
+            # Final summary
+            korean_total = sum(korean_summary.values()) if korean_summary else 0
+            pattern_total = sum(pattern_summary.values()) if pattern_summary else 0
+            grand_total = korean_total + pattern_total
+
+            if grand_total == 0:
+                self._log("All checks passed!", 'success')
+                self._task_queue.put(('checks_status', "Done: All checks passed"))
+            else:
+                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {pattern_total} pattern)", 'warning')
+                self._log(f"Results written to: {output_folder}", 'info')
+                self._task_queue.put(('checks_status', f"Done: {grand_total} issues ({korean_total}K + {pattern_total}P)"))
+
+            self._task_queue.put(('enable_results_btn',))
+
+        self._run_in_thread(work)
+
+    def _open_check_results_folder(self):
+        """Open the CheckResults folder in the system file explorer."""
+        folder = config.CHECK_RESULTS_FOLDER
+        if not folder.exists():
+            messagebox.showinfo("Info", "No check results yet. Run a check first.")
+            return
+        try:
+            if sys.platform == "win32":
+                os.startfile(str(folder))
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(folder)])
+            else:
+                subprocess.Popen(["xdg-open", str(folder)])
+        except Exception as e:
+            self._log(f"Could not open folder: {e}", 'error')
 
     def _transfer(self):
         """Transfer corrections from source to target XML files (LOC folder)."""
