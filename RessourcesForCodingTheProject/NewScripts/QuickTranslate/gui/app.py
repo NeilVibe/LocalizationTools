@@ -37,6 +37,7 @@ from core import (
     find_matches_special_key,
     find_stringid_from_text,
     format_multiple_matches,
+    detect_excel_columns,
     read_corrections_from_excel,
     get_ordered_languages,
     write_output_excel,
@@ -110,6 +111,17 @@ class QuickTranslateApp:
         # Shared match precision: "perfect" (exact) or "fuzzy" (SBERT)
         # Used by Strict and StrOrigin Only modes
         self.match_precision = tk.StringVar(value="perfect")
+
+        # Source column availability (set by _validate_source_files_async)
+        self._source_columns = {
+            "has_stringid": False,
+            "has_strorigin": False,
+            "has_correction": False,
+            "has_eventname": False,
+            "has_dialogvoice": False,
+            "has_xml": False,  # XML source files always provide all fields
+        }
+        self._match_type_radios = {}  # value -> Radiobutton widget
 
         # Transfer scope: "all" = overwrite always, "untranslated" = only if target has Korean
         self.transfer_scope = tk.StringVar(value="all")
@@ -223,11 +235,14 @@ class QuickTranslateApp:
         for value, label, desc in match_types:
             row = tk.Frame(match_frame, bg='#f0f0f0')
             row.pack(fill=tk.X, pady=2)
-            tk.Radiobutton(row, text=label, variable=self.match_type, value=value,
+            rb = tk.Radiobutton(row, text=label, variable=self.match_type, value=value,
                           font=('Segoe UI', 10), bg='#f0f0f0', activebackground='#f0f0f0',
                           cursor='hand2', width=35, anchor='w',
-                          command=self._on_match_type_changed).pack(side=tk.LEFT)
-            tk.Label(row, text=desc, font=('Segoe UI', 9), bg='#f0f0f0', fg='#888').pack(side=tk.LEFT)
+                          command=self._on_match_type_changed)
+            rb.pack(side=tk.LEFT)
+            desc_lbl = tk.Label(row, text=desc, font=('Segoe UI', 9), bg='#f0f0f0', fg='#888')
+            desc_lbl.pack(side=tk.LEFT)
+            self._match_type_radios[value] = (rb, desc_lbl)
 
         # === Precision Options Sub-frame (visible for strict and strorigin_only) ===
         self.precision_options_frame = tk.Frame(match_frame, bg='#e8f4e8', padx=15, pady=8,
@@ -826,6 +841,8 @@ class QuickTranslateApp:
                         results.append((filepath.name, file_type, lang, count, "OK", ""))
                     else:
                         results.append((filepath.name, file_type, lang, 0, "EMPTY", "No entries parsed"))
+                except ValueError as e:
+                    results.append((filepath.name, file_type, lang, 0, "COLUMN ERROR", str(e)))
                 except Exception as e:
                     results.append((filepath.name, file_type, lang, 0, "FAILED", str(e)))
 
@@ -891,6 +908,58 @@ class QuickTranslateApp:
             if lang_entries:
                 lang_str = ", ".join(f"{lang}:{count:,}" for lang, count in sorted(lang_entries.items()))
                 self._log(f"  Per-language: {lang_str}", 'info')
+
+            # ── Column detection: scan Excel headers to determine available match types ──
+            combined_columns = {
+                "has_stringid": False,
+                "has_strorigin": False,
+                "has_correction": False,
+                "has_eventname": False,
+                "has_dialogvoice": False,
+                "has_xml": False,
+            }
+
+            # XML source files always provide StringID + StrOrigin + Correction (Str)
+            has_any_xml = any(r[1] == "XML" and r[4] == "OK" for r in results)
+            if has_any_xml:
+                combined_columns["has_xml"] = True
+                combined_columns["has_stringid"] = True
+                combined_columns["has_strorigin"] = True
+                combined_columns["has_correction"] = True
+
+            # Detect columns from each Excel file (union of all)
+            excel_files_to_scan = [
+                filepath for filepath, _, _ in files_to_check
+                if filepath.suffix.lower() in (".xlsx", ".xls")
+            ]
+            for ef in excel_files_to_scan:
+                try:
+                    cols = detect_excel_columns(ef)
+                    for key in cols:
+                        if cols[key]:
+                            combined_columns[key] = True
+                except Exception:
+                    continue
+
+            # Store and update match types on main thread
+            self._source_columns = combined_columns
+            self._task_queue.put(('update_match_types',))
+
+            # Log column detection
+            col_info = []
+            if combined_columns["has_stringid"]:
+                col_info.append("StringID")
+            if combined_columns["has_eventname"]:
+                col_info.append("EventName")
+            if combined_columns["has_dialogvoice"]:
+                col_info.append("DialogVoice")
+            if combined_columns["has_strorigin"]:
+                col_info.append("StrOrigin")
+            if combined_columns["has_correction"]:
+                col_info.append("Correction")
+            if combined_columns["has_xml"]:
+                col_info.append("XML")
+            logger.info("  Source columns detected: %s", ", ".join(col_info) if col_info else "NONE")
 
             self._task_queue.put(('status', 'Ready', 0))
 
@@ -963,6 +1032,64 @@ class QuickTranslateApp:
             self.transfer_btn.config(state='normal')
             self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
             self.transfer_note_label.config(text="")
+
+    def _update_match_type_availability(self):
+        """Enable/disable match type radio buttons based on detected source columns.
+
+        Rules:
+        - substring: Always available (uses LOC folder data, not source columns)
+        - stringid_only: Needs (StringID OR EventName) AND Correction
+        - strict: Needs (StringID OR EventName) AND StrOrigin AND Correction
+        - strorigin_only: Needs StrOrigin AND Correction
+
+        XML source files always have all fields (StringID, StrOrigin, Correction).
+        """
+        cols = self._source_columns
+        has_id = cols["has_stringid"] or cols["has_eventname"] or cols["has_xml"]
+        has_strorigin = cols["has_strorigin"] or cols["has_xml"]
+        has_correction = cols["has_correction"] or cols["has_xml"]
+
+        # Determine which match types are valid
+        valid = {
+            "substring": True,  # Always available — uses LOC data
+            "stringid_only": has_id and has_correction,
+            "strict": has_id and has_strorigin and has_correction,
+            "strorigin_only": has_strorigin and has_correction,
+        }
+
+        reasons = {
+            "stringid_only": "Needs StringID/EventName + Correction columns",
+            "strict": "Needs StringID/EventName + StrOrigin + Correction columns",
+            "strorigin_only": "Needs StrOrigin + Correction columns",
+        }
+
+        for value, (rb, desc_lbl) in self._match_type_radios.items():
+            if valid.get(value, True):
+                rb.config(state='normal', fg='black')
+                # Restore original description
+                orig_descs = {
+                    "substring": "Find Korean text in StrOrigin",
+                    "stringid_only": "SCRIPT categories only - match by StringID",
+                    "strict": "Requires BOTH to match exactly",
+                    "strorigin_only": "Match by StrOrigin text only - fills ALL duplicates",
+                }
+                desc_lbl.config(text=orig_descs.get(value, ""), fg='#888')
+            else:
+                rb.config(state='disabled', fg='#999')
+                desc_lbl.config(text=reasons.get(value, "Missing columns"), fg='#cc0000')
+
+        # If current selection is now disabled, fall back to substring
+        current = self.match_type.get()
+        if not valid.get(current, True):
+            self.match_type.set("substring")
+            self._on_match_type_changed()
+
+        # Log to GUI
+        available_modes = [k for k, v in valid.items() if v and k != "substring"]
+        if available_modes:
+            self._log(f"Available match types: Substring + {', '.join(m.replace('_', ' ').title() for m in available_modes)}", 'info')
+        else:
+            self._log("Only Substring (Lookup) available — source lacks transfer columns", 'warning')
 
     def _on_transfer_scope_changed(self):
         """Warn user when switching to 'ALL' on StrOrigin Only (no StringID safety)."""
@@ -1295,6 +1422,8 @@ class QuickTranslateApp:
                     self.checks_status_text.set(text)
                 elif kind == 'enable_results_btn':
                     self.open_results_btn.config(state='normal')
+                elif kind == 'update_match_types':
+                    self._update_match_type_availability()
                 elif kind == 'done':
                     self._enable_buttons()
                     return  # Stop polling
@@ -1331,6 +1460,8 @@ class QuickTranslateApp:
                         self.checks_status_text.set(text)
                     elif kind == 'enable_results_btn':
                         self.open_results_btn.config(state='normal')
+                    elif kind == 'update_match_types':
+                        self._update_match_type_availability()
                     elif kind == 'done':
                         break
             except queue.Empty:
@@ -1482,6 +1613,26 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"Source not found:\n{source}")
             return
 
+        # Column validation — prevent launching incompatible match types
+        cols = self._source_columns
+        mt = self.match_type.get()
+        has_id = cols["has_stringid"] or cols["has_eventname"] or cols["has_xml"]
+        has_strorigin = cols["has_strorigin"] or cols["has_xml"]
+        has_correction = cols["has_correction"] or cols["has_xml"]
+
+        if mt == "stringid_only" and not (has_id and has_correction):
+            messagebox.showerror("Error", "StringID-Only mode requires StringID (or EventName) + Correction columns.\n\n"
+                                 "Your source files don't have these columns.")
+            return
+        if mt == "strict" and not (has_id and has_strorigin and has_correction):
+            messagebox.showerror("Error", "Strict mode requires StringID (or EventName) + StrOrigin + Correction columns.\n\n"
+                                 "Your source files don't have all required columns.")
+            return
+        if mt == "strorigin_only" and not (has_strorigin and has_correction):
+            messagebox.showerror("Error", "StrOrigin Only mode requires StrOrigin + Correction columns.\n\n"
+                                 "Your source files don't have these columns.")
+            return
+
         # Capture StringVar values on main thread before entering worker
         match_type = self.match_type.get()
         target_path = self.target_path.get()
@@ -1518,8 +1669,12 @@ class QuickTranslateApp:
 
             if excel_files:
                 for excel_file in excel_files:
-                    excel_corrections = read_corrections_from_excel(excel_file)
-                    corrections.extend(excel_corrections)
+                    try:
+                        excel_corrections = read_corrections_from_excel(excel_file)
+                        corrections.extend(excel_corrections)
+                    except ValueError as e:
+                        self._log(f"SKIPPED {excel_file.name}: {e}", 'error')
+                        continue
                 self._log(f"Loaded {len(excel_files)} Excel files", 'info')
 
             korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
@@ -2258,6 +2413,26 @@ class QuickTranslateApp:
         if self.match_type.get() == "substring":
             messagebox.showwarning("Warning", "Substring mode is lookup-only. TRANSFER is not available.\n\n"
                                    "Please select StringID-Only, Strict, or StrOrigin Only mode.")
+            return
+
+        # Column validation — prevent launching incompatible match types
+        cols = self._source_columns
+        mt = self.match_type.get()
+        has_id = cols["has_stringid"] or cols["has_eventname"] or cols["has_xml"]
+        has_strorigin = cols["has_strorigin"] or cols["has_xml"]
+        has_correction = cols["has_correction"] or cols["has_xml"]
+
+        if mt == "stringid_only" and not (has_id and has_correction):
+            messagebox.showerror("Error", "StringID-Only mode requires StringID (or EventName) + Correction columns.\n\n"
+                                 "Your source files don't have these columns.")
+            return
+        if mt == "strict" and not (has_id and has_strorigin and has_correction):
+            messagebox.showerror("Error", "Strict mode requires StringID (or EventName) + StrOrigin + Correction columns.\n\n"
+                                 "Your source files don't have all required columns.")
+            return
+        if mt == "strorigin_only" and not (has_strorigin and has_correction):
+            messagebox.showerror("Error", "StrOrigin Only mode requires StrOrigin + Correction columns.\n\n"
+                                 "Your source files don't have these columns.")
             return
 
         if not self.source_path.get():

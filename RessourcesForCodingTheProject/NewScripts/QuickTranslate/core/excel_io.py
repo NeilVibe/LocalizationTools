@@ -5,8 +5,11 @@ Read input Excel files and write output Excel files.
 Uses patterns from LanguageDataExporter for robustness.
 """
 
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, numbers
@@ -37,6 +40,52 @@ def _detect_column_indices(ws) -> Dict[str, int]:
     return indices
 
 
+def detect_excel_columns(excel_path: Path) -> Dict[str, bool]:
+    """
+    Lightweight header-only scan: detect which columns exist in an Excel file.
+
+    Opens the file, reads ONLY the first row, checks for known column names.
+    Does NOT read any data rows.
+
+    Returns:
+        Dict with keys: has_stringid, has_strorigin, has_correction,
+                        has_eventname, has_dialogvoice
+    """
+    result = {
+        "has_stringid": False,
+        "has_strorigin": False,
+        "has_correction": False,
+        "has_eventname": False,
+        "has_dialogvoice": False,
+    }
+
+    wb = load_workbook(excel_path, read_only=True)
+    try:
+        ws = wb.active
+        col_indices = _detect_column_indices(ws)
+
+        result["has_stringid"] = (
+            "stringid" in col_indices or "string_id" in col_indices
+        )
+        result["has_strorigin"] = (
+            "strorigin" in col_indices or "str_origin" in col_indices
+        )
+        result["has_correction"] = (
+            "correction" in col_indices or "corrected" in col_indices
+        )
+        result["has_eventname"] = (
+            "eventname" in col_indices or "event_name" in col_indices
+            or "soundeventname" in col_indices
+        )
+        result["has_dialogvoice"] = (
+            "dialogvoice" in col_indices or "dialog_voice" in col_indices
+        )
+
+        return result
+    finally:
+        wb.close()
+
+
 def read_korean_input(excel_path: Path) -> List[str]:
     """
     Read Korean text from Column 1 of input Excel file.
@@ -62,26 +111,28 @@ def read_korean_input(excel_path: Path) -> List[str]:
 
 def read_corrections_from_excel(
     excel_path: Path,
-    stringid_col: int = 1,
-    strorigin_col: int = 2,
-    correction_col: int = 3,
     has_header: bool = True,
 ) -> List[Dict]:
     """
     Read corrections from Excel file for transfer mode.
 
-    Uses case-insensitive column detection when has_header=True.
-    Looks for columns: stringid, strorigin, correction (any case).
+    Uses case-insensitive column detection from headers. NO positional fallbacks.
+    Validates that required columns exist before processing any rows.
+
+    Supported column combinations:
+    - StringID + Correction (+ optional StrOrigin): direct StringID mode
+    - EventName + Correction (+ optional DialogVoice, StrOrigin): waterfall resolution
+    - Both StringID and EventName: per-row priority (StringID wins when present)
 
     Args:
         excel_path: Path to input Excel file
-        stringid_col: Column number for StringID (1-based, fallback if no header)
-        strorigin_col: Column number for StrOrigin (1-based, fallback if no header)
-        correction_col: Column number for corrected text (1-based, fallback if no header)
         has_header: If True, detect columns from header row (case-insensitive)
 
     Returns:
         List of correction dicts with keys: string_id, str_origin, corrected
+
+    Raises:
+        ValueError: If required columns are not found in headers
     """
     wb = load_workbook(excel_path, read_only=True)
     try:
@@ -89,22 +140,48 @@ def read_corrections_from_excel(
         corrections = []
         start_row = 2 if has_header else 1
 
-        # Try to detect columns from header row (case-insensitive)
+        # Detect ALL columns from header row (case-insensitive) — NO positional fallbacks
+        stringid_col = None
+        strorigin_col = None
+        correction_col = None
         eventname_col = None
         dialogvoice_col = None
+
         if has_header:
             col_indices = _detect_column_indices(ws)
-            # Look for common column name variations
-            # Use None fallback (not positional default) so undetected columns don't
-            # accidentally read from the wrong column
+
             stringid_col = col_indices.get("stringid", col_indices.get("string_id", None))
             strorigin_col = col_indices.get("strorigin", col_indices.get("str_origin", None))
             correction_col = col_indices.get("correction", col_indices.get("corrected", None))
-            # EventName column detection (audio event identifiers)
             eventname_col = col_indices.get("eventname", col_indices.get("event_name",
                             col_indices.get("soundeventname", None)))
-            # DialogVoice column detection (for StringID generation from EventName)
             dialogvoice_col = col_indices.get("dialogvoice", col_indices.get("dialog_voice", None))
+
+            # ── Column validation: fail fast with clear errors ──
+            if correction_col is None:
+                raise ValueError(
+                    f"Missing required 'Correction' column in {excel_path.name}. "
+                    f"Found headers: {list(col_indices.keys())}"
+                )
+
+            if stringid_col is None and eventname_col is None:
+                raise ValueError(
+                    f"Missing both 'StringID' and 'EventName' columns in {excel_path.name}. "
+                    f"Need at least one. Found headers: {list(col_indices.keys())}"
+                )
+
+            # Log what mode we're operating in
+            if stringid_col and eventname_col:
+                logger.info(f"Columns detected: StringID + EventName (per-row priority)")
+            elif stringid_col:
+                logger.info(f"Columns detected: StringID mode (direct)")
+            elif eventname_col and dialogvoice_col:
+                logger.info(f"Columns detected: EventName + DialogVoice (waterfall Steps 1+2+3)")
+            elif eventname_col:
+                logger.info(
+                    f"Columns detected: EventName only (no DialogVoice). "
+                    f"Waterfall Steps 2+3 available (keyword extraction + export lookup)"
+                )
 
         for row in ws.iter_rows(min_row=start_row):
             try:

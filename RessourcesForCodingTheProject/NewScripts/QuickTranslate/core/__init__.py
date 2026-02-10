@@ -26,6 +26,7 @@ from .matching import (
     format_multiple_matches,
 )
 from .excel_io import (
+    detect_excel_columns,
     read_korean_input,
     read_corrections_from_excel,
     get_ordered_languages,
@@ -150,6 +151,7 @@ __all__ = [
     "find_stringid_from_text",
     "format_multiple_matches",
     # excel_io
+    "detect_excel_columns",
     "read_korean_input",
     "read_corrections_from_excel",
     "get_ordered_languages",
