@@ -2,9 +2,12 @@
 Source Scanner - Auto-recursive language detection from folder/file structure.
 
 Automatically detects language codes from source folder structure:
+- Standalone code: FRE/ -> all files inside mapped to FRE
 - Folders with suffix: Corrections_FRE/ -> all files inside mapped to FRE
+- Standalone file: GER.xml -> mapped to GER
 - Files with suffix: hotfix_SPA.xml -> mapped to SPA
 
+No substring matching: LaLaFRElala does NOT match.
 This eliminates manual language selection for batch operations.
 """
 
@@ -47,12 +50,17 @@ class SourceScanResult:
 
 def extract_language_suffix(name: str, valid_codes: Set[str]) -> Optional[str]:
     """
-    Extract language code suffix from a folder or file name.
+    Extract language code from a folder or file name.
 
     Patterns supported:
-    - name_ZHO-CN -> ZHO-CN (hyphenated codes first)
-    - name_FRE -> FRE
+    - FRE -> FRE (standalone code, entire name matches)
+    - ZHO-CN -> ZHO-CN (standalone hyphenated code)
+    - name_ZHO-CN -> ZHO-CN (underscore-prefixed, hyphenated)
+    - name_FRE -> FRE (underscore-prefixed, single code)
     - languagedata_ger.xml -> GER (from stem, case-insensitive)
+
+    NOT matched (no substring detection):
+    - LaLaFRElala -> None (code embedded in string, no boundary)
 
     Args:
         name: Folder name or file stem (without extension)
@@ -70,10 +78,15 @@ def extract_language_suffix(name: str, valid_codes: Set[str]) -> Optional[str]:
 
     # Split by underscore
     parts = name.split("_")
-    if len(parts) < 2:
+
+    # Standalone code: entire name is a valid code (e.g. "FRE", "ZHO-CN")
+    if len(parts) == 1:
+        upper = name.upper()
+        if upper in valid_codes:
+            return upper
         return None
 
-    # Check last part(s) for language code
+    # Underscore-separated: check last part(s) for language code
     # First try hyphenated codes (ZHO-CN, ZHO-TW) - join last two parts with hyphen
     # Works for both: corrections_ZHO_CN (3 parts) AND ZHO_CN (2 parts)
     if len(parts) >= 2:
@@ -147,9 +160,9 @@ def scan_source_for_languages(source_path: Path) -> SourceScanResult:
     Scan source folder for language-tagged files/folders.
 
     Detection rules:
-    1. Folder with language suffix (e.g., Corrections_FRE/):
+    1. Folder named as language code (e.g., FRE/) or with suffix (e.g., Corrections_FRE/):
        - ALL files inside (recursive) are assigned to that language
-    2. File with language suffix (e.g., patch_GER.xml):
+    2. File named as language code (e.g., GER.xml) or with suffix (e.g., patch_GER.xml):
        - Single file assigned to that language
     3. languagedata_XXX.xml pattern:
        - Standard language data file pattern
