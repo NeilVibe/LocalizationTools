@@ -40,3 +40,4 @@ Build - FIX: Settings persistence (log errors), mode switching (AUDIO→MAP work
 Build - Thread safety: Loading lock + generation counter (no rapid switching corruption)
 Build: Language codes + branch selector
 Build: GUI reset fixes
+Build - Full rebuild all projects

@@ -107,3 +107,4 @@ Build - Add duplicate row post-processing: brute-force replicate all data across
 Build - Fix missing defaultdict import in excel_ops.py
 Build - Add 19 tests for duplicate post-processing + fix deprecation warnings
 Build - Fix duplicate post-process: use build_master_index for column detection
+Build - Full rebuild all projects

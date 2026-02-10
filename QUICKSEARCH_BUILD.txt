@@ -7,3 +7,4 @@ Build 003 - Exclude legacy file from CI checks
 Build 004 - Fix config.py F824 flake8 error
 Build 005 - Add Pillow for splash image resizing
 Build 006: CI docs update + test workflow
+Build - Full rebuild all projects
