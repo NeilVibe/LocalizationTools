@@ -101,3 +101,4 @@ Build - FAISS fuzzy search progress tracking (terminal + GUI)
 Build - fix FAISS progress logging interval (time-based)
 Build - bundle ML deps (sentence-transformers, torch, faiss) for fuzzy matching
 Build - fix torch DLL WinError 1114 with runtime hook
+Build - all review fixes: faiss_cpu name, loud errors, torch DLL hook, pip safety
