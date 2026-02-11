@@ -99,3 +99,4 @@ Build - postprocess pipeline, fix bundling gaps, add xlsxwriter
 Build - per-language progress summaries in GUI console
 Build - FAISS fuzzy search progress tracking (terminal + GUI)
 Build - fix FAISS progress logging interval (time-based)
+Build - bundle ML deps (sentence-transformers, torch, faiss) for fuzzy matching
