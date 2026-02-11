@@ -2,23 +2,41 @@
 # PyInstaller spec file for QuickTranslate
 
 import os
+from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 block_cipher = None
 
 # Get the directory containing this spec file
 spec_dir = os.path.dirname(os.path.abspath(SPEC))
 
+# =============================================================================
+# Collect ML dependencies (sentence-transformers, torch, faiss, etc.)
+# =============================================================================
+ml_datas = []
+ml_binaries = []
+ml_hiddenimports = []
+
+for pkg in ['sentence_transformers', 'transformers', 'torch', 'faiss', 'numpy',
+            'tokenizers', 'huggingface_hub', 'safetensors']:
+    try:
+        d, b, h = collect_all(pkg)
+        ml_datas += d
+        ml_binaries += b
+        ml_hiddenimports += h
+    except Exception:
+        pass  # Package not installed - skip
+
 a = Analysis(
     ['main.py'],
     pathex=[spec_dir],
-    binaries=[],
+    binaries=ml_binaries,
     datas=[
         ('config.py', '.'),
         ('ai_hallucination_phrases.json', '.'),
         ('core', 'core'),
         ('gui', 'gui'),
         ('utils', 'utils'),
-    ],
+    ] + ml_datas,
     hiddenimports=[
         # Third-party
         'lxml',
@@ -58,23 +76,23 @@ a = Analysis(
         # utils/ - ALL modules
         'utils',
         'utils.file_io',
-    ],
+    ] + ml_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # ML dependencies are NOT bundled - keep build light
-        # Users install separately: pip install -r requirements-ml.txt
-        'torch',
-        'sentence_transformers',
-        'faiss',
-        'transformers',
-        'huggingface_hub',
-        'tokenizers',
-        'safetensors',
+        # Exclude CUDA/GPU backends - we only need CPU inference
+        'torch.cuda',
+        'torch.distributed',
+        'torch.testing',
+        # Exclude heavy unused ML packages
         'scipy',
         'scikit-learn',
         'sklearn',
+        'matplotlib',
+        'pandas',
+        'PIL',
+        'cv2',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
