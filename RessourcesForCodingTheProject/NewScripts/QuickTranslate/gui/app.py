@@ -2671,6 +2671,7 @@ class QuickTranslateApp:
                 source,
                 target,
                 progress_callback=self._update_status,
+                log_callback=self._log,
                 **transfer_kwargs,
             )
             self._task_queue.put(('progress', 80))
