@@ -138,7 +138,7 @@ jobs:
           # F63: Invalid comparisons
           # F7: Syntax errors
           # F82: Undefined names (CRITICAL - catches missing variables!)
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           echo "Flake8 passed - no critical errors"
 
       - name: Security audit
@@ -206,6 +206,67 @@ jobs:
           cd ${{ env.PROJECT_PATH }}
           pyinstaller QuickTranslate.spec --clean
           echo "PyInstaller build complete"
+
+      - name: Verify build output (MUST PASS)
+        run: |
+          $distPath = "${{ env.PROJECT_PATH }}\dist\QuickTranslate"
+
+          # 1. Verify QuickTranslate.exe exists
+          if (-Not (Test-Path "$distPath\QuickTranslate.exe")) {
+            Write-Error "FATAL: QuickTranslate.exe not found in dist!"
+            exit 1
+          }
+          Write-Host "QuickTranslate.exe: OK"
+
+          # 2. Verify FLAT layout (no _internal/ subdirectory)
+          if (Test-Path "$distPath\_internal") {
+            Write-Error "FATAL: _internal/ directory found! contents_directory='.' did not work!"
+            exit 1
+          }
+          Write-Host "Flat layout (no _internal/): OK"
+
+          # 3. Check for critical DLLs in dist root
+          $criticalDlls = @("vcruntime140.dll")
+          foreach ($dll in $criticalDlls) {
+            $found = Get-ChildItem -Path $distPath -Recurse -Filter $dll -ErrorAction SilentlyContinue
+            if ($found) {
+              Write-Host "${dll}: Found at $($found.FullName)"
+            } else {
+              Write-Host "WARNING: ${dll} not found in dist (may rely on system install)"
+            }
+          }
+
+          # 4. Check torch DLLs exist somewhere in dist
+          $torchDlls = @("c10.dll", "torch_cpu.dll")
+          foreach ($dll in $torchDlls) {
+            $found = Get-ChildItem -Path $distPath -Recurse -Filter $dll -ErrorAction SilentlyContinue
+            if ($found) {
+              Write-Host "${dll}: Found at $($found.FullName)"
+            } else {
+              Write-Error "FATAL: ${dll} not found anywhere in dist!"
+              exit 1
+            }
+          }
+
+          # 5. Check sentence_transformers package exists
+          $stPath = Get-ChildItem -Path $distPath -Recurse -Directory -Filter "sentence_transformers" -ErrorAction SilentlyContinue
+          if ($stPath) {
+            Write-Host "sentence_transformers: Found at $($stPath.FullName)"
+          } else {
+            Write-Error "FATAL: sentence_transformers package not found in dist!"
+            exit 1
+          }
+
+          # 6. Check faiss module exists
+          $faissPath = Get-ChildItem -Path $distPath -Recurse -Filter "swigfaiss*" -ErrorAction SilentlyContinue
+          if ($faissPath) {
+            Write-Host "faiss (swigfaiss): Found"
+          } else {
+            Write-Host "WARNING: faiss swigfaiss not found (may be embedded differently)"
+          }
+
+          Write-Host ""
+          Write-Host "POST-BUILD VERIFICATION PASSED"
 
       - name: Create output directory and working folders
         run: |

@@ -91,11 +91,13 @@ def load_model(progress_callback: Optional[Callable[[str], None]] = None):
 
     try:
         from sentence_transformers import SentenceTransformer
-    except ImportError:
+    except ImportError as e:
         raise ImportError(
-            "sentence-transformers is not installed.\n\n"
-            "Install with: pip install sentence-transformers faiss-cpu"
-        )
+            f"Failed to load sentence-transformers.\n\n"
+            f"Error: {e}\n\n"
+            f"This may indicate a missing DLL dependency (e.g. c10.dll).\n"
+            f"Check QuickTranslate_crash.log for details."
+        ) from e
 
     model_path = config.KRTRANSFORMER_PATH
 
@@ -142,11 +144,11 @@ def build_faiss_index(
     try:
         import numpy as np
         import faiss
-    except ImportError:
+    except ImportError as e:
         raise ImportError(
-            "faiss-cpu or numpy is not installed.\n\n"
-            "Install with: pip install -r requirements-ml.txt"
-        )
+            f"Failed to load faiss/numpy: {e}\n\n"
+            f"Check QuickTranslate_crash.log for details."
+        ) from e
 
     if not texts:
         raise ValueError("No texts provided to build index")
