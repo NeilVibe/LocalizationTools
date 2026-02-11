@@ -223,7 +223,7 @@ def get_settings() -> dict:
 
 def update_settings(loc_folder: str = None, export_folder: str = None):
     """Update and save settings."""
-    global LOC_FOLDER, EXPORT_FOLDER, SEQUENCER_FOLDER, _SETTINGS
+    global LOC_FOLDER, EXPORT_FOLDER, SEQUENCER_FOLDER
 
     if loc_folder:
         _SETTINGS["loc_folder"] = loc_folder

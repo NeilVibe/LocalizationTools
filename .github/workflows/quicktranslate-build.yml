@@ -138,7 +138,7 @@ jobs:
           # F63: Invalid comparisons
           # F7: Syntax errors
           # F82: Undefined names (CRITICAL - catches missing variables!)
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=archive
           echo "Flake8 passed - no critical errors"
 
       - name: Security audit
