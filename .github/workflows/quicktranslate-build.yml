@@ -335,17 +335,26 @@ jobs:
           }
 
           # Verify SMOKE_TEST_PASSED appears in output
+          # Note: In frozen mode, main.py redirects sys.stderr to crash log file,
+          # so smoke test output goes there instead of the PowerShell stderr redirect.
+          # Check BOTH files to be safe.
+          $allOutput = ""
           if (Test-Path $stderrFile) {
-            $output = Get-Content $stderrFile -Raw
-            if ($output -match "SMOKE_TEST_PASSED") {
-              Write-Host ""
-              Write-Host "SMOKE TEST PASSED - All imports verified in actual exe!"
-            } else {
-              Write-Error "FATAL: Smoke test did not output SMOKE_TEST_PASSED!"
-              exit 1
-            }
+            $allOutput += Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue
+          }
+          if (Test-Path $crashLog) {
+            $allOutput += Get-Content $crashLog -Raw -ErrorAction SilentlyContinue
+          }
+
+          if ($allOutput -match "SMOKE_TEST_PASSED") {
+            Write-Host ""
+            Write-Host "SMOKE TEST PASSED - All 58 imports verified in actual exe!"
           } else {
-            Write-Error "FATAL: No smoke test output file!"
+            Write-Error "FATAL: SMOKE_TEST_PASSED not found in stderr or crash log!"
+            Write-Host "stderr file contents:"
+            if (Test-Path $stderrFile) { Get-Content $stderrFile }
+            Write-Host "crash log contents:"
+            if (Test-Path $crashLog) { Get-Content $crashLog }
             exit 1
           }
 
