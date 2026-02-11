@@ -41,12 +41,6 @@ else:
     BASE_DIR = Path(__file__).parent
     sys.path.insert(0, str(BASE_DIR))
 
-# Handle PyInstaller splash screen
-try:
-    import pyi_splash  # noqa: F401
-    pyi_splash.close()
-except ImportError:
-    pass
 
 # Setup logging
 def setup_logging(verbose: bool = False):

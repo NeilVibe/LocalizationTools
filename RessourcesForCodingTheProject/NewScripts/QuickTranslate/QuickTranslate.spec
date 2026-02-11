@@ -189,9 +189,6 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name='QuickTranslate',
-    contents_directory='.',  # CRITICAL: No _internal/ subdir. Flat layout like --onefile.
-                             # Without this, PyInstaller 6.x creates _internal/ which breaks
-                             # torch DLL loading (c10.dll can't find vcruntime140.dll across dirs).
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
