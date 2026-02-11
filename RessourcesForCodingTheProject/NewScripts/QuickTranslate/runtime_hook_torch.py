@@ -16,6 +16,13 @@ C) Pre-load VC++ runtime DLLs into process memory via ctypes
 import os
 import sys
 
+# PyInstaller console=False sets sys.stdout/stderr to None.
+# Guard before any print/logging happens in this hook.
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, 'w', encoding='utf-8')
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, 'w', encoding='utf-8')
+
 # FORCE CPU-ONLY: Disable all GPU/CUDA before anything imports torch.
 # This runs before main.py, so torch will never attempt GPU.
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
