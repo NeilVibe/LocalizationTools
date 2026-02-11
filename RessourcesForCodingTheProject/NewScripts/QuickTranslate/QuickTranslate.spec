@@ -2,7 +2,7 @@
 # PyInstaller spec file for QuickTranslate
 
 import os
-from PyInstaller.utils.hooks import collect_all, collect_submodules
+from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
 
@@ -11,20 +11,38 @@ spec_dir = os.path.dirname(os.path.abspath(SPEC))
 
 # =============================================================================
 # Collect ML dependencies (sentence-transformers, torch, faiss, etc.)
+# CRITICAL: Package names must match pip distribution names, not import names.
+#   - faiss-cpu installs as distribution "faiss_cpu" (NOT "faiss")
+#   - sentence-transformers installs as "sentence_transformers"
 # =============================================================================
 ml_datas = []
 ml_binaries = []
 ml_hiddenimports = []
 
-for pkg in ['sentence_transformers', 'transformers', 'torch', 'faiss', 'numpy',
-            'tokenizers', 'huggingface_hub', 'safetensors']:
+ML_PACKAGES = [
+    'sentence_transformers',
+    'transformers',
+    'torch',
+    'faiss_cpu',       # NOT 'faiss' -- pip package is faiss-cpu
+    'numpy',
+    'tokenizers',
+    'huggingface_hub',
+    'safetensors',
+]
+
+for pkg in ML_PACKAGES:
     try:
         d, b, h = collect_all(pkg)
         ml_datas += d
         ml_binaries += b
         ml_hiddenimports += h
-    except Exception:
-        pass  # Package not installed - skip
+        print(f"  collect_all('{pkg}'): {len(d)} datas, {len(b)} binaries, {len(h)} hiddenimports")
+    except Exception as e:
+        # FAIL LOUD -- these packages are required for fuzzy matching
+        raise RuntimeError(
+            f"collect_all('{pkg}') FAILED: {e}\n"
+            f"Make sure '{pkg}' is installed: pip install {pkg.replace('_', '-')}"
+        )
 
 a = Analysis(
     ['main.py'],
@@ -48,6 +66,9 @@ a = Analysis(
         'tkinter.ttk',
         'tkinter.filedialog',
         'tkinter.messagebox',
+        # FAISS -- import name differs from distribution name
+        'faiss',
+        'faiss.swigfaiss',
         # core/ - ALL modules
         'core',
         'core.category_mapper',
@@ -81,10 +102,6 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[os.path.join(spec_dir, 'runtime_hook_torch.py')],
     excludes=[
-        # Exclude CUDA/GPU backends - we only need CPU inference
-        'torch.cuda',
-        'torch.distributed',
-        'torch.testing',
         # Exclude heavy unused ML packages
         'scipy',
         'scikit-learn',
@@ -93,6 +110,9 @@ a = Analysis(
         'pandas',
         'PIL',
         'cv2',
+        # Exclude torch subpackages we don't need (saves space)
+        'torch.distributed',
+        'torch.testing',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -127,6 +147,6 @@ coll = COLLECT(
     a.datas,
     strip=False,
     upx=True,
-    upx_exclude=[],
+    upx_exclude=['torch*', 'libtorch*', '*.pyd', '*.dll'],
     name='QuickTranslate',
 )
