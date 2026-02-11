@@ -40,6 +40,10 @@ METADATA_PACKAGES = [
     'tqdm',
     'regex',
     'requests',
+    'urllib3',
+    'certifi',
+    'charset-normalizer',
+    'idna',
     'packaging',
     'filelock',
     'tokenizers',
@@ -66,7 +70,11 @@ COLLECT_ALL_PACKAGES = [
     'sentence_transformers',
     'transformers',
     'huggingface_hub',
-    'requests',  # Pure Python, needed by transformers/huggingface_hub for model downloads
+    'requests',       # Pure Python, needed by transformers/huggingface_hub for model downloads
+    'urllib3',        # requests dependency
+    'certifi',        # requests dependency (SSL certificates)
+    'charset_normalizer',  # requests dependency (encoding detection)
+    'idna',           # requests dependency (internationalized domain names)
 ]
 
 for pkg in COLLECT_ALL_PACKAGES:
@@ -103,6 +111,25 @@ a = Analysis(
         'tqdm.auto',
         'regex',
         'requests',
+        'requests.adapters',
+        'requests.api',
+        'requests.auth',
+        'requests.cookies',
+        'requests.exceptions',
+        'requests.models',
+        'requests.sessions',
+        'requests.structures',
+        'requests.utils',
+        'urllib3',
+        'urllib3.util',
+        'urllib3.util.retry',
+        'urllib3.util.ssl_',
+        'urllib3.connectionpool',
+        'urllib3.poolmanager',
+        'urllib3.response',
+        'certifi',
+        'charset_normalizer',
+        'idna',
         'packaging',
         'packaging.version',
         'filelock',
