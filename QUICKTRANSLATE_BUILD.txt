@@ -107,3 +107,4 @@ Build - 3-layer DLL defense: save handles + pre-load VC++ runtime into memory
 Build - REWRITE: flat DLL placement via hidden-import (no more collect_all torch)
 Build - flat layout fix (contents_directory='.'), post-build DLL verification
 Build - fix flake8 (exclude archive, unused global)
+Build - clean _internal/ layout, runtime hook handles DLLs
