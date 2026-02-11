@@ -79,7 +79,7 @@ a = Analysis(
     ] + ml_hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=[os.path.join(spec_dir, 'runtime_hook_torch.py')],
     excludes=[
         # Exclude CUDA/GPU backends - we only need CPU inference
         'torch.cuda',
