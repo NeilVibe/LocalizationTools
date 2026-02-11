@@ -123,6 +123,20 @@ source_text
   translation_B
 ```
 
+## XML Newline Convention (CRITICAL!)
+
+**Newlines in XML language data = `<br/>` tags. NOT `&#10;`, NOT `\n`.**
+
+```xml
+<!-- CORRECT -->
+KR="첫 번째 줄<br/>두 번째 줄"
+
+<!-- WRONG -->
+KR="첫 번째 줄&#10;두 번째 줄"
+```
+
+All QuickSearch modules (xml_parser, line_check, term_check) MUST preserve `<br/>` tags. Never strip or convert them.
+
 ## Key Modules
 
 ### core/xml_parser.py

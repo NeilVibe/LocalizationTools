@@ -41,10 +41,14 @@ from .xml_transfer import (
     merge_corrections_strorigin_only,
     merge_corrections_stringid_only,
     merge_corrections_fuzzy,
-    cleanup_empty_strorigin,
     transfer_folder_to_folder,
     transfer_file_to_file,
     format_transfer_report,
+)
+from .postprocess import (
+    cleanup_empty_strorigin,
+    cleanup_wrong_newlines,
+    run_all_postprocess,
 )
 try:
     from .fuzzy_matching import (
@@ -168,10 +172,13 @@ __all__ = [
     "merge_corrections_strorigin_only",
     "merge_corrections_stringid_only",
     "merge_corrections_fuzzy",
-    "cleanup_empty_strorigin",
     "transfer_folder_to_folder",
     "transfer_file_to_file",
     "format_transfer_report",
+    # postprocess
+    "cleanup_empty_strorigin",
+    "cleanup_wrong_newlines",
+    "run_all_postprocess",
     # fuzzy_matching
     "check_model_available",
     "load_fuzzy_model",

@@ -23,74 +23,13 @@ import config
 from .text_utils import normalize_text, normalize_nospace, normalize_for_matching
 from .korean_detection import is_korean_text
 from .source_scanner import scan_source_for_languages
+from .postprocess import run_all_postprocess
 
 logger = logging.getLogger(__name__)
 
 # Import from config (single source of truth)
 SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
 SCRIPT_EXCLUDE_SUBFOLDERS = config.SCRIPT_EXCLUDE_SUBFOLDERS
-
-
-def cleanup_empty_strorigin(xml_path: Path, dry_run: bool = False) -> int:
-    """
-    Post-process: clear Str on any element where StrOrigin is empty.
-
-    Golden rule: if StrOrigin is empty, Str MUST be empty too.
-
-    Args:
-        xml_path: Path to XML file to clean up
-        dry_run: If True, count but don't write
-
-    Returns:
-        Number of entries cleaned (Str cleared)
-    """
-    try:
-        if USING_LXML:
-            parser = etree.XMLParser(
-                resolve_entities=False, load_dtd=False,
-                no_network=True, recover=True,
-            )
-            tree = etree.parse(str(xml_path), parser)
-            root = tree.getroot()
-        else:
-            tree = etree.parse(str(xml_path))
-            root = tree.getroot()
-
-        cleaned = 0
-        locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
-        all_elements = []
-        for tag in locstr_tags:
-            all_elements.extend(root.iter(tag))
-
-        for loc in all_elements:
-            origin = (loc.get("StrOrigin") or loc.get("Strorigin") or
-                      loc.get("strorigin") or loc.get("STRORIGIN") or "").strip()
-            str_val = (loc.get("Str") or loc.get("str") or
-                       loc.get("STR") or "").strip()
-
-            if not origin and str_val:
-                if not dry_run:
-                    loc.set("Str", "")
-                cleaned += 1
-
-        if cleaned > 0 and not dry_run:
-            try:
-                current_mode = os.stat(xml_path).st_mode
-                if not current_mode & stat.S_IWRITE:
-                    os.chmod(xml_path, current_mode | stat.S_IWRITE)
-            except Exception:
-                pass
-
-            if USING_LXML:
-                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False, pretty_print=True)
-            else:
-                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False)
-            logger.info(f"Cleaned {cleaned} entries with empty StrOrigin in {xml_path.name}")
-
-        return cleaned
-    except Exception as e:
-        logger.error(f"Error cleaning empty StrOrigin in {xml_path}: {e}")
-        return 0
 
 
 def _convert_linebreaks_for_xml(txt: str) -> str:
@@ -1452,11 +1391,9 @@ def transfer_folder_to_folder(
                 only_untranslated=only_untranslated,
             )
 
-        # Post-process: enforce empty StrOrigin = empty Str
+        # Post-process: run all cleanup steps (newlines, empty StrOrigin, etc.)
         if not dry_run:
-            cleaned = cleanup_empty_strorigin(target_xml)
-            if cleaned > 0:
-                logger.info(f"Post-process: cleared Str on {cleaned} entries with empty StrOrigin in {target_xml.name}")
+            run_all_postprocess(target_xml)
 
         # Aggregate results
         results["files_processed"] += len(source_names)
@@ -1771,11 +1708,9 @@ def transfer_file_to_file(
             only_untranslated=only_untranslated,
         )
 
-    # Post-process: enforce empty StrOrigin = empty Str
+    # Post-process: run all cleanup steps (newlines, empty StrOrigin, etc.)
     if not dry_run:
-        cleaned = cleanup_empty_strorigin(target_file)
-        if cleaned > 0:
-            logger.info(f"Post-process: cleared Str on {cleaned} entries with empty StrOrigin in {target_file.name}")
+        run_all_postprocess(target_file)
 
     result["corrections_count"] = len(corrections)
 

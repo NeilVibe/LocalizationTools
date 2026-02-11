@@ -237,6 +237,20 @@ All language tables stacked vertically with nice titles:
 
 ---
 
+## XML Newline Convention (CRITICAL!)
+
+**Newlines in XML language data = `<br/>` tags. NOT `&#10;`, NOT `\n`.**
+
+```xml
+<!-- CORRECT -->
+KR="첫 번째 줄<br/>두 번째 줄"
+
+<!-- WRONG -->
+KR="첫 번째 줄&#10;두 번째 줄"
+```
+
+All LanguageDataExporter modules (xml_parser, excel_writer, locdev_merger) MUST preserve `<br/>` tags when reading XML and writing Excel/XML. Never strip or convert them.
+
 ## XML Parsing (CRITICAL)
 
 ### Parser Selection

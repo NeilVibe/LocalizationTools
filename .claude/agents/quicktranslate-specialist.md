@@ -86,6 +86,20 @@ QuickTranslate/
 | Build | PyInstaller |
 | Installer | Inno Setup |
 
+## XML Newline Convention (CRITICAL!)
+
+**Newlines in XML language data = `<br/>` tags. NOT `&#10;`, NOT `\n`.**
+
+```xml
+<!-- CORRECT -->
+KR="첫 번째 줄<br/>두 번째 줄"
+
+<!-- WRONG -->
+KR="첫 번째 줄&#10;두 번째 줄"
+```
+
+All QuickTranslate modules (text_utils, xml_transfer, matching, excel_io) MUST preserve `<br/>` tags when reading, processing, and writing XML. Never strip or convert them.
+
 ## Key Modules
 
 ### core/text_utils.py (CANONICAL)

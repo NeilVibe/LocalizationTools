@@ -90,6 +90,24 @@ let visible = $derived(items.filter(i => !deletingIds.has(i.id)));
 
 ---
 
+## XML Language Data: Newline = `<br/>` (CRITICAL!)
+
+**Newlines in XML language data are represented as `<br/>` tags. This is the ONLY correct format.**
+
+```xml
+<!-- ✅ CORRECT — This is how our entire system works -->
+KR="첫 번째 줄<br/>두 번째 줄"
+EN="First line<br/>Second line"
+
+<!-- ❌ WRONG — Will break the entire pipeline -->
+KR="첫 번째 줄&#10;두 번째 줄"
+KR="첫 번째 줄\n두 번째 줄"
+```
+
+**ALL tools** (QuickTranslate, QuickSearch, QACompiler, LanguageDataExporter, LDM, etc.) MUST preserve `<br/>` tags when reading, processing, and writing XML language data. Getting this wrong breaks the entire enterprise architecture.
+
+---
+
 ## Architecture
 
 ```

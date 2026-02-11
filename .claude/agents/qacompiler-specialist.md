@@ -78,6 +78,20 @@ QACompilerNEW/
 | XML | lxml |
 | Build | PyInstaller |
 
+## XML Newline Convention (CRITICAL!)
+
+**Newlines in XML language data = `<br/>` tags. NOT `&#10;`, NOT `\n`.**
+
+```xml
+<!-- CORRECT -->
+KR="첫 번째 줄<br/>두 번째 줄"
+
+<!-- WRONG -->
+KR="첫 번째 줄&#10;두 번째 줄"
+```
+
+All QACompiler modules (generators, base.py, xml parsing) MUST preserve `<br/>` tags when reading XML and writing to Excel. Never strip or convert them.
+
 ## Workflow Pipeline
 
 ```

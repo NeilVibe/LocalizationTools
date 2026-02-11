@@ -120,6 +120,20 @@ text_widget = tk.Text(ttk_frame, background=bg_color)
 | `style.lookup(stylename, "background")` | N/A | ✅ Works |
 | `style.configure(stylename, background="red")` | N/A | ✅ Works |
 
+## XML Newline Convention (CRITICAL!)
+
+**Newlines in XML language data = `<br/>` tags. NOT `&#10;`, NOT `\n`.**
+
+```xml
+<!-- CORRECT -->
+KR="첫 번째 줄<br/>두 번째 줄"
+
+<!-- WRONG -->
+KR="첫 번째 줄&#10;두 번째 줄"
+```
+
+All MapDataGenerator modules (xml_parser, search, language) MUST preserve `<br/>` tags. When displaying in GUI, split on `<br/>` for visual line breaks but never alter the underlying data.
+
 ## Search Modes
 
 | Mode | Data Source | Columns |

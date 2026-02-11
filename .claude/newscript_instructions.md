@@ -473,6 +473,10 @@ root = tree.getroot()
 for text_elem in root.findall('.//Text'):
     korean = text_elem.find('Korean').text
     english = text_elem.find('English').text
+
+# ⚠️ CRITICAL: Newlines in XML language data = <br/> tags
+# NEVER convert to \n or &#10; — preserve <br/> exactly as-is!
+# Example: KR="첫 번째 줄<br/>두 번째 줄"
 ```
 
 #### 3. Excel Reading Pattern (openpyxl)
