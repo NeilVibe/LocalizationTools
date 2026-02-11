@@ -109,3 +109,4 @@ Build - flat layout fix (contents_directory='.'), post-build DLL verification
 Build - fix flake8 (exclude archive, unused global)
 Build - clean _internal/ layout, runtime hook handles DLLs
 Build - fix ALL deps, 50-test smoke test, force CPU
+Build - remove ALL torch excludes, fix requests bundling
