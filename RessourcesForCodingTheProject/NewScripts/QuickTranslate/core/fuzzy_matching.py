@@ -283,7 +283,7 @@ def find_matches_fuzzy(
         log_callback(f"    Fuzzy searching {total} items...", 'info')
 
     t_start = time.perf_counter()
-    log_interval = max(25, total // 8)
+    last_log_time = t_start
 
     for i, c in enumerate(corrections):
         if progress_callback and i % 50 == 0:
@@ -309,8 +309,9 @@ def find_matches_fuzzy(
             unmatched.append(c)
 
         done = i + 1
-        if done % log_interval == 0 or done == total:
-            elapsed = time.perf_counter() - t_start
+        now = time.perf_counter()
+        if now - last_log_time >= 10 or done == total:
+            elapsed = now - t_start
             avg = sum(scores) / len(scores) if scores else 0.0
             rate = done / elapsed if elapsed > 0 else 0
             logger.info(
@@ -318,6 +319,7 @@ def find_matches_fuzzy(
                 f"{len(matched)} matches (avg: {avg:.3f}), "
                 f"{rate:.0f} items/sec"
             )
+            last_log_time = now
 
     elapsed_total = time.perf_counter() - t_start
 
