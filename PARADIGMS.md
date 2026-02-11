@@ -52,8 +52,32 @@ wb.close()
 
 ---
 
+## XML Language Data: Newline = `<br/>` (CRITICAL!)
+
+**Newlines in XML language data are `<br/>` tags. This is the ONLY correct format.**
+
+```xml
+<!-- ✅ CORRECT — The entire system depends on this -->
+KR="첫 번째 줄<br/>두 번째 줄"
+EN="First line<br/>Second line"
+
+<!-- ❌ WRONG — Breaks the entire pipeline -->
+KR="첫 번째 줄&#10;두 번째 줄"
+KR="첫 번째 줄\n두 번째 줄"
+```
+
+**Applies to ALL tools:** QuickTranslate, QuickSearch, QACompiler, LanguageDataExporter, MapDataGenerator, LDM, XLSTransfer — every tool that reads or writes XML language data MUST preserve `<br/>` tags.
+
+**When writing code that handles XML language data:**
+- NEVER convert `<br/>` to `\n` or `&#10;`
+- NEVER strip `<br/>` tags during normalization
+- When displaying multi-line text in GUI, split on `<br/>` for display
+- When writing back to XML, ensure `<br/>` tags are preserved exactly
+
+---
+
 ## More paradigms to be added...
 
 ---
 
-*Last updated: 2026-02-05*
+*Last updated: 2026-02-11*

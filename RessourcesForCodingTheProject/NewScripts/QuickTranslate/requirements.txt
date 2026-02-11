@@ -6,6 +6,7 @@ lxml>=4.9.0
 
 # Excel output
 openpyxl>=3.1.0
+xlsxwriter>=3.1.0
 
 # GUI (tkinter is built-in, but including for clarity)
 # tkinter is included with Python
