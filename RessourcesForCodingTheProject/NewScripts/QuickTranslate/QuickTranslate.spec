@@ -1,36 +1,74 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller spec file for QuickTranslate
+#
+# PATTERN: Use hidden-import + copy-metadata for packages with native DLLs.
+#   collect_all ONLY for pure-Python packages that need data files (JSON, vocab).
+#
+# WHY: collect_all('torch') preserves torch/lib/c10.dll in a subdirectory,
+# but vcruntime140.dll is in _internal/. Windows can't find it across dirs.
+# hidden-import lets PyInstaller's binary analysis place DLLs flat.
+# This approach is based on the user's working PyInstaller command for
+# XLSTransfer/KRSimilar monoliths (--hidden-import + --copy-metadata).
 
 import os
-from PyInstaller.utils.hooks import collect_all
-
-block_cipher = None
+from PyInstaller.utils.hooks import collect_all, copy_metadata
 
 # Get the directory containing this spec file
 spec_dir = os.path.dirname(os.path.abspath(SPEC))
 
 # =============================================================================
-# Collect ML dependencies (sentence-transformers, torch, faiss, etc.)
-# CRITICAL: Package names must match pip distribution names, not import names.
-#   - faiss-cpu installs as distribution "faiss_cpu" (NOT "faiss")
-#   - sentence-transformers installs as "sentence_transformers"
+# ML dependency collection - TWO strategies:
+#
+# Strategy 1: hidden-import + copy-metadata (for packages with DLLs)
+#   → PyInstaller traces imports, binary analysis collects DLLs FLAT
+#   → Used for: torch, numpy, faiss
+#
+# Strategy 2: collect_all (for pure-Python packages with data files)
+#   → Collects ALL package files including configs, vocabs, etc.
+#   → Used for: sentence_transformers, transformers, huggingface_hub, etc.
 # =============================================================================
+
 ml_datas = []
 ml_binaries = []
 ml_hiddenimports = []
 
-ML_PACKAGES = [
-    'sentence_transformers',
-    'transformers',
+# --- Strategy 1: hidden-import + copy-metadata (packages with native DLLs) ---
+# Let PyInstaller's binary analysis trace DLL deps and place them flat.
+METADATA_PACKAGES = [
     'torch',
-    'faiss_cpu',       # NOT 'faiss' -- pip package is faiss-cpu
     'numpy',
+    'tqdm',
+    'regex',
+    'requests',
+    'packaging',
+    'filelock',
     'tokenizers',
-    'huggingface_hub',
+    'faiss-cpu',
+    'sentence-transformers',
+    'transformers',
+    'huggingface-hub',
     'safetensors',
 ]
 
-for pkg in ML_PACKAGES:
+for pkg in METADATA_PACKAGES:
+    try:
+        ml_datas += copy_metadata(pkg)
+        print(f"  copy_metadata('{pkg}'): OK")
+    except Exception as e:
+        # Some packages may not have metadata - not fatal
+        print(f"  copy_metadata('{pkg}'): skipped ({e})")
+
+# --- Strategy 2: collect_all for pure-Python packages with data files ---
+# These packages need their JSON configs, vocab files, etc. at runtime.
+# ONLY pure-Python packages here -- NO native extensions (Rust/.pyd).
+# tokenizers and safetensors have Rust binaries, so they stay in Strategy 1.
+COLLECT_ALL_PACKAGES = [
+    'sentence_transformers',
+    'transformers',
+    'huggingface_hub',
+]
+
+for pkg in COLLECT_ALL_PACKAGES:
     try:
         d, b, h = collect_all(pkg)
         ml_datas += d
@@ -38,7 +76,6 @@ for pkg in ML_PACKAGES:
         ml_hiddenimports += h
         print(f"  collect_all('{pkg}'): {len(d)} datas, {len(b)} binaries, {len(h)} hiddenimports")
     except Exception as e:
-        # FAIL LOUD -- these packages are required for fuzzy matching
         raise RuntimeError(
             f"collect_all('{pkg}') FAILED: {e}\n"
             f"Make sure '{pkg}' is installed: pip install {pkg.replace('_', '-')}"
@@ -56,6 +93,26 @@ a = Analysis(
         ('utils', 'utils'),
     ] + ml_datas,
     hiddenimports=[
+        # === Hidden imports for packages with native DLLs (flat placement) ===
+        'torch',
+        'safetensors',
+        'safetensors.torch',
+        'numpy',
+        'tqdm',
+        'tqdm.auto',
+        'regex',
+        'requests',
+        'packaging',
+        'packaging.version',
+        'filelock',
+        'tokenizers',
+        'typing_extensions',
+        'yaml',
+        # FAISS -- import name differs from distribution name
+        'faiss',
+        'faiss.swigfaiss',
+        'faiss.swigfaiss_avx2',
+        'faiss.loader',
         # Third-party
         'lxml',
         'lxml.etree',
@@ -66,9 +123,6 @@ a = Analysis(
         'tkinter.ttk',
         'tkinter.filedialog',
         'tkinter.messagebox',
-        # FAISS -- import name differs from distribution name
-        'faiss',
-        'faiss.swigfaiss',
         # core/ - ALL modules
         'core',
         'core.category_mapper',
@@ -110,17 +164,23 @@ a = Analysis(
         'pandas',
         'PIL',
         'cv2',
-        # Exclude torch subpackages we don't need (saves space)
+        # Exclude torch subpackages we don't need (CPU-only app, saves ~100MB+)
         'torch.distributed',
         'torch.testing',
+        'torch.cuda',
+        'torch.backends.cudnn',
+        'torch.onnx',
+        'torch.utils.tensorboard',
+        'torch._dynamo',
+        'torch.compiler',
+        'torch.fx',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure, a.zipped_data)
 
 exe = EXE(
     pyz,
@@ -131,7 +191,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,     # Avoid antivirus false positives + DLL corruption risk
     console=False,  # No console window for GUI app
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -146,7 +206,6 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
-    upx_exclude=['torch*', 'libtorch*', '*.pyd', '*.dll'],
+    upx=False,  # Never compress DLLs - causes WinError and AV false positives
     name='QuickTranslate',
 )

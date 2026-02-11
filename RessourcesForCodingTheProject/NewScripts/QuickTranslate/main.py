@@ -21,6 +21,7 @@ Usage:
 import argparse
 import logging
 import sys
+import traceback
 from pathlib import Path
 
 # PyInstaller compatibility - ensure we can find our modules
@@ -28,6 +29,13 @@ if getattr(sys, 'frozen', False):
     # Running as compiled executable
     BASE_DIR = Path(sys.executable).parent
     sys.path.insert(0, str(BASE_DIR))
+
+    # Crash logging: write errors to file since console=False hides them
+    _crash_log = BASE_DIR / "QuickTranslate_crash.log"
+    try:
+        sys.stderr = open(str(_crash_log), 'a', encoding='utf-8')
+    except Exception:
+        pass
 else:
     # Running as script
     BASE_DIR = Path(__file__).parent
@@ -103,15 +111,31 @@ For GUI usage:
         logger.info("GUI initialized successfully")
         root.mainloop()
 
-    except ImportError as e:
-        logger.error(f"Import error: {e}")
-        print(f"ERROR: Missing dependency: {e}")
-        print(f"  Module: {e.name}" if hasattr(e, 'name') else "")
-        print("Please run: pip install -r requirements.txt")
-        sys.exit(1)
     except Exception as e:
-        logger.exception(f"Unexpected error: {e}")
-        print(f"ERROR: {e}")
+        error_msg = f"{type(e).__name__}: {e}"
+        tb = traceback.format_exc()
+        logger.exception(f"Fatal error: {e}")
+
+        # Write to crash log
+        try:
+            with open(str(BASE_DIR / "QuickTranslate_crash.log"), 'a', encoding='utf-8') as f:
+                f.write(f"\n{'='*60}\n{error_msg}\n{tb}\n")
+        except Exception:
+            pass
+
+        # Show error dialog (visible even with console=False)
+        try:
+            import tkinter as _tk
+            from tkinter import messagebox as _mb
+            _root = _tk.Tk()
+            _root.withdraw()
+            _mb.showerror(
+                "QuickTranslate Error",
+                f"Fatal error:\n\n{error_msg}\n\n"
+                f"Details written to QuickTranslate_crash.log"
+            )
+        except Exception:
+            pass
         sys.exit(1)
 
 

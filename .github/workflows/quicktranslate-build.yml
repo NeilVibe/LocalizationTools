@@ -168,25 +168,34 @@ jobs:
           python -m pip install --upgrade pip
           pip install --no-cache-dir -r ${{ env.PROJECT_PATH }}/requirements.txt
 
-          # Install CPU-only torch first, then ML deps with --extra-index-url
-          # so sentence-transformers does NOT re-download CUDA torch from PyPI
+          # Step 1: Install CPU-only torch FIRST (from PyTorch's CPU wheel index)
           pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-          pip install --no-cache-dir sentence-transformers faiss-cpu numpy --extra-index-url https://download.pytorch.org/whl/cpu
 
-          pip install --no-cache-dir "pyinstaller>=6.0,<7.0"
+          # Step 2: Install ML deps. torch is already satisfied so pip won't re-download.
+          # NO --extra-index-url (that lets pip find CUDA torch on PyPI and override!)
+          pip install --no-cache-dir sentence-transformers faiss-cpu numpy
 
-      - name: Verify ML dependencies
+          # Step 3: Build tools
+          pip install --no-cache-dir "pyinstaller>=6.0,<7.0" pyinstaller-hooks-contrib
+
+      - name: Verify ML dependencies (MUST PASS)
         run: |
           python -c "
           import torch
-          print(f'torch {torch.__version__}, CUDA: {torch.cuda.is_available()}')
+          v = torch.__version__
+          print(f'torch {v}')
+          # CPU-only torch has +cpu in version string
+          assert '+cpu' in v, f'FATAL: Expected CPU-only torch (+cpu), got {v}. CUDA torch will bloat the build!'
+
           import sentence_transformers
           print(f'sentence-transformers {sentence_transformers.__version__}')
           import faiss
           print(f'faiss OK')
           import numpy
           print(f'numpy {numpy.__version__}')
-          print('All ML dependencies verified')
+          import tqdm, regex, packaging, filelock, tokenizers
+          print('All transitive deps OK')
+          print('ALL ML DEPENDENCIES VERIFIED - CPU-only torch confirmed')
           "
 
       - name: Check disk space before build
