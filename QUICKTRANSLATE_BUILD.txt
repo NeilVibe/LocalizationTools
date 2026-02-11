@@ -98,3 +98,4 @@ Build - surface file errors in GUI log
 Build - postprocess pipeline, fix bundling gaps, add xlsxwriter
 Build - per-language progress summaries in GUI console
 Build - FAISS fuzzy search progress tracking (terminal + GUI)
+Build - fix FAISS progress logging interval (time-based)
