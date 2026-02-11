@@ -103,3 +103,4 @@ Build - bundle ML deps (sentence-transformers, torch, faiss) for fuzzy matching
 Build - fix torch DLL WinError 1114 with runtime hook
 Build - all review fixes: faiss_cpu name, loud errors, torch DLL hook, pip safety
 Build - fix c10.dll: add _MEIPASS root to DLL search for VC++ runtime
+Build - 3-layer DLL defense: save handles + pre-load VC++ runtime into memory
