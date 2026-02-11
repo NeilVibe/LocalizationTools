@@ -173,7 +173,8 @@ jobs:
 
           # Step 2: Install ML deps. torch is already satisfied so pip won't re-download.
           # NO --extra-index-url (that lets pip find CUDA torch on PyPI and override!)
-          pip install --no-cache-dir sentence-transformers faiss-cpu numpy
+          # scipy + scikit-learn are REQUIRED by sentence-transformers (top-level imports)
+          pip install --no-cache-dir sentence-transformers faiss-cpu numpy scipy scikit-learn
 
           # Step 3: Build tools
           pip install --no-cache-dir "pyinstaller>=6.0,<7.0" pyinstaller-hooks-contrib
@@ -241,7 +242,8 @@ jobs:
           if ($vcrt) {
             Write-Host "vcruntime140.dll: $($vcrt.FullName)"
           } else {
-            Write-Host "WARNING: vcruntime140.dll not in _internal/ (may rely on system)"
+            Write-Error "FATAL: vcruntime140.dll not in _internal/! App will crash on fresh machines!"
+            exit 1
           }
 
           # 5. Check torch DLLs exist inside _internal/
@@ -276,6 +278,71 @@ jobs:
           Write-Host ""
           Write-Host "POST-BUILD VERIFICATION PASSED"
           Write-Host "Layout: QuickTranslate.exe + _internal/ (clean, professional)"
+
+      - name: Smoke test - run actual exe (MUST PASS)
+        run: |
+          $distPath = "${{ env.PROJECT_PATH }}\dist\QuickTranslate"
+          $exePath = "$distPath\QuickTranslate.exe"
+
+          Write-Host "Running QuickTranslate.exe --smoke-test..."
+          Write-Host "This tests ALL imports inside the ACTUAL built executable."
+          Write-Host ""
+
+          # Run the ACTUAL built exe with --smoke-test flag.
+          # This runs INSIDE the PyInstaller bundle, using ONLY packaged modules.
+          # No system Python, no pip packages - just what PyInstaller bundled.
+          # Stderr is redirected to a file (console=False means no stdout).
+          $stderrFile = "$distPath\smoke_test_output.txt"
+          $proc = Start-Process -FilePath $exePath -ArgumentList "--smoke-test" -Wait -PassThru -NoNewWindow -RedirectStandardError $stderrFile 2>$null
+
+          # Display output
+          if (Test-Path $stderrFile) {
+            Get-Content $stderrFile
+          }
+
+          # Check crash log too
+          $crashLog = "$distPath\QuickTranslate_crash.log"
+          if (Test-Path $crashLog) {
+            Write-Host ""
+            Write-Host "=== CRASH LOG ==="
+            Get-Content $crashLog
+          }
+
+          # Verify exit code
+          if ($proc.ExitCode -ne 0) {
+            Write-Error "FATAL: Smoke test FAILED! Exit code: $($proc.ExitCode)"
+            exit 1
+          }
+
+          # Verify SMOKE_TEST_PASSED appears in output
+          if (Test-Path $stderrFile) {
+            $output = Get-Content $stderrFile -Raw
+            if ($output -match "SMOKE_TEST_PASSED") {
+              Write-Host ""
+              Write-Host "SMOKE TEST PASSED - All imports verified in actual exe!"
+            } else {
+              Write-Error "FATAL: Smoke test did not output SMOKE_TEST_PASSED!"
+              exit 1
+            }
+          } else {
+            Write-Error "FATAL: No smoke test output file!"
+            exit 1
+          }
+
+      - name: Build size validation (MUST PASS)
+        run: |
+          $distPath = "${{ env.PROJECT_PATH }}\dist\QuickTranslate"
+          $distSize = (Get-ChildItem -Path $distPath -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+          $distSizeRounded = [math]::Round($distSize, 1)
+          Write-Host "Total dist size: $distSizeRounded MB"
+
+          # CPU-only torch build should be 400-1200 MB
+          # If CUDA torch got bundled, it would be 2000+ MB
+          if ($distSize -gt 1500) {
+            Write-Error "FATAL: Dist is $distSizeRounded MB - CUDA torch may have been bundled!"
+            exit 1
+          }
+          Write-Host "Build size OK (under 1500 MB limit)"
 
       - name: Create output directory and working folders
         run: |

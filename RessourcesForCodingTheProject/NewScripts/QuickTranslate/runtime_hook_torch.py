@@ -16,6 +16,12 @@ C) Pre-load VC++ runtime DLLs into process memory via ctypes
 import os
 import sys
 
+# FORCE CPU-ONLY: Disable all GPU/CUDA before anything imports torch.
+# This runs before main.py, so torch will never attempt GPU.
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['NO_CUDA'] = '1'
+os.environ['FORCE_CPU'] = '1'
+
 # Global list to prevent garbage collection of DLL directory handles.
 _dll_dir_handles = []
 

@@ -2,7 +2,11 @@
 ; Clean installer - paths configured via in-app Settings GUI
 
 #define MyAppName "QuickTranslate"
-#define MyAppVersion "1.0.0"
+#ifndef AppVersion
+  #define MyAppVersion "1.0.0"
+#else
+  #define MyAppVersion AppVersion
+#endif
 #define MyAppPublisher "Neil"
 #define MyAppExeName "QuickTranslate.exe"
 #define MyAppDescription "Translation Lookup Tool"
