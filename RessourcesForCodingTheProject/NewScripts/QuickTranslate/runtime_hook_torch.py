@@ -1,36 +1,39 @@
 """PyInstaller runtime hook: fix torch DLL loading on Windows.
 
-WinError 1114 occurs because:
+WinError 1114 occurs on FRESH machines (no VC++ Redistributable) because:
 1. torch DLLs (c10.dll, torch_cpu.dll) live in _internal/torch/lib/
 2. VC++ runtime DLLs (vcruntime140.dll, msvcp140.dll) live in _internal/
-3. Python 3.8+ uses secure DLL search where PATH is IGNORED for DLL deps
-4. Only os.add_dll_directory() works for implicit DLL dependency resolution
+3. Python 3.8+ secure DLL search ignores PATH for DLL dependencies
+4. Only os.add_dll_directory() works, BUT handles can be garbage collected
 
-This hook adds ALL relevant directories to the DLL search path BEFORE
-torch is imported, so c10.dll can find its VC++ runtime dependencies.
+Fix: THREE layers of defense:
+A) add_dll_directory with handles saved (prevents GC from removing dirs)
+B) PATH modification (fallback for older Windows / ctypes loads)
+C) Pre-load VC++ runtime DLLs into process memory via ctypes
+   (once loaded, any DLL can find them regardless of search path)
 """
 
 import os
 import sys
 
-if getattr(sys, 'frozen', False) and sys.platform == 'win32':
-    base = sys._MEIPASS  # = _internal/ directory
+# Global list to prevent garbage collection of DLL directory handles.
+_dll_dir_handles = []
 
-    # Directories to add to DLL search path:
-    # - base (_internal/) = VC++ runtime, ucrtbase, api-ms-win-* DLLs
-    # - torch/lib = c10.dll, torch_cpu.dll, torch_python.dll
-    # - torch/bin = protoc.exe and other binaries
-    # - torch/ = torch root
-    # - *.libs/ = vendored DLLs from faiss-cpu, numpy, etc.
+if getattr(sys, 'frozen', False) and sys.platform == 'win32':
+    import ctypes
+
+    base = sys._MEIPASS  # = _internal/ directory
+    torch_lib = os.path.join(base, 'torch', 'lib')
+
+    # === Layer A: Register DLL search directories (save handles!) ===
     dll_dirs = [
         base,  # CRITICAL: VC++ runtime lives here
-        os.path.join(base, 'torch', 'lib'),
+        torch_lib,
         os.path.join(base, 'torch', 'bin'),
         os.path.join(base, 'torch'),
     ]
 
-    # Also add any *.libs directories (faiss_cpu.libs, numpy.libs, etc.)
-    # These contain vendored DLLs like libopenblas, vcomp140, etc.
+    # Add *.libs directories (faiss_cpu.libs, numpy.libs, etc.)
     try:
         for entry in os.listdir(base):
             if entry.endswith('.libs'):
@@ -38,19 +41,45 @@ if getattr(sys, 'frozen', False) and sys.platform == 'win32':
     except OSError:
         pass
 
-    found_any = False
     for dll_dir in dll_dirs:
         if os.path.isdir(dll_dir):
-            found_any = True
+            # Layer B: PATH modification
             os.environ['PATH'] = dll_dir + os.pathsep + os.environ.get('PATH', '')
+            # Layer A: add_dll_directory with handle saved
             if hasattr(os, 'add_dll_directory'):
                 try:
-                    os.add_dll_directory(dll_dir)
+                    handle = os.add_dll_directory(dll_dir)
+                    _dll_dir_handles.append(handle)  # PREVENT GC!
                 except OSError:
-                    pass  # Windows version too old for add_dll_directory
+                    pass
 
-    if not found_any:
-        import warnings
-        warnings.warn(
-            f"runtime_hook_torch: No DLL directories found in _MEIPASS={base}"
-        )
+    # === Layer C: Pre-load critical DLLs into process memory ===
+    # Once a DLL is loaded, ANY other DLL that depends on it will find it
+    # in memory, regardless of directory search paths.
+    for dll_name in ['vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll',
+                     'libiomp5md.dll']:
+        dll_path = os.path.join(base, dll_name)
+        if os.path.exists(dll_path):
+            try:
+                ctypes.WinDLL(dll_path)
+            except OSError:
+                pass
+
+    # Pre-load torch core DLLs in dependency order
+    for dll_name in ['c10.dll', 'torch_cpu.dll', 'torch_python.dll']:
+        dll_path = os.path.join(torch_lib, dll_name)
+        if os.path.exists(dll_path):
+            try:
+                ctypes.WinDLL(dll_path)
+            except OSError:
+                pass
+
+    # Pre-load faiss DLLs from faiss_cpu.libs
+    faiss_libs = os.path.join(base, 'faiss_cpu.libs')
+    if os.path.isdir(faiss_libs):
+        for f in os.listdir(faiss_libs):
+            if f.endswith('.dll'):
+                try:
+                    ctypes.WinDLL(os.path.join(faiss_libs, f))
+                except OSError:
+                    pass
