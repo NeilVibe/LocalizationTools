@@ -218,55 +218,64 @@ jobs:
           }
           Write-Host "QuickTranslate.exe: OK"
 
-          # 2. Verify FLAT layout (no _internal/ subdirectory)
-          if (Test-Path "$distPath\_internal") {
-            Write-Error "FATAL: _internal/ directory found! contents_directory='.' did not work!"
+          # 2. Verify clean layout (_internal/ contains all dependencies)
+          if (-Not (Test-Path "$distPath\_internal")) {
+            Write-Error "FATAL: _internal/ directory not found! PyInstaller layout is wrong."
             exit 1
           }
-          Write-Host "Flat layout (no _internal/): OK"
+          Write-Host "_internal/ directory: OK"
 
-          # 3. Check for critical DLLs in dist root
-          $criticalDlls = @("vcruntime140.dll")
-          foreach ($dll in $criticalDlls) {
-            $found = Get-ChildItem -Path $distPath -Recurse -Filter $dll -ErrorAction SilentlyContinue
-            if ($found) {
-              Write-Host "${dll}: Found at $($found.FullName)"
-            } else {
-              Write-Host "WARNING: ${dll} not found in dist (may rely on system install)"
-            }
+          # 3. Verify root is CLEAN (only exe + _internal + working folders)
+          $rootFiles = Get-ChildItem -Path $distPath -File | Where-Object { $_.Name -ne "QuickTranslate.exe" }
+          $dllsInRoot = $rootFiles | Where-Object { $_.Extension -eq ".dll" }
+          if ($dllsInRoot.Count -gt 0) {
+            Write-Error "FATAL: DLLs found in root folder! Layout is not clean."
+            $dllsInRoot | ForEach-Object { Write-Host "  Unwanted: $($_.Name)" }
+            exit 1
+          }
+          Write-Host "Clean root (no DLLs alongside exe): OK"
+
+          # 4. Check critical DLLs inside _internal/
+          $internalPath = "$distPath\_internal"
+          $vcrt = Get-ChildItem -Path $internalPath -Recurse -Filter "vcruntime140.dll" -ErrorAction SilentlyContinue
+          if ($vcrt) {
+            Write-Host "vcruntime140.dll: $($vcrt.FullName)"
+          } else {
+            Write-Host "WARNING: vcruntime140.dll not in _internal/ (may rely on system)"
           }
 
-          # 4. Check torch DLLs exist somewhere in dist
+          # 5. Check torch DLLs exist inside _internal/
           $torchDlls = @("c10.dll", "torch_cpu.dll")
           foreach ($dll in $torchDlls) {
-            $found = Get-ChildItem -Path $distPath -Recurse -Filter $dll -ErrorAction SilentlyContinue
+            $found = Get-ChildItem -Path $internalPath -Recurse -Filter $dll -ErrorAction SilentlyContinue
             if ($found) {
-              Write-Host "${dll}: Found at $($found.FullName)"
+              Write-Host "${dll}: $($found.FullName)"
             } else {
-              Write-Error "FATAL: ${dll} not found anywhere in dist!"
+              Write-Error "FATAL: ${dll} not found in _internal/!"
               exit 1
             }
           }
 
-          # 5. Check sentence_transformers package exists
-          $stPath = Get-ChildItem -Path $distPath -Recurse -Directory -Filter "sentence_transformers" -ErrorAction SilentlyContinue
+          # 6. Check sentence_transformers package exists
+          $stPath = Get-ChildItem -Path $internalPath -Recurse -Directory -Filter "sentence_transformers" -ErrorAction SilentlyContinue
           if ($stPath) {
-            Write-Host "sentence_transformers: Found at $($stPath.FullName)"
+            Write-Host "sentence_transformers: $($stPath.FullName)"
           } else {
-            Write-Error "FATAL: sentence_transformers package not found in dist!"
+            Write-Error "FATAL: sentence_transformers not found in _internal/!"
             exit 1
           }
 
-          # 6. Check faiss module exists
-          $faissPath = Get-ChildItem -Path $distPath -Recurse -Filter "swigfaiss*" -ErrorAction SilentlyContinue
-          if ($faissPath) {
-            Write-Host "faiss (swigfaiss): Found"
+          # 7. Check runtime hook is bundled
+          $hookFile = Get-ChildItem -Path $internalPath -Recurse -Filter "runtime_hook_torch*" -ErrorAction SilentlyContinue
+          if ($hookFile) {
+            Write-Host "runtime_hook_torch: $($hookFile.FullName)"
           } else {
-            Write-Host "WARNING: faiss swigfaiss not found (may be embedded differently)"
+            Write-Host "WARNING: runtime_hook_torch not found as file (may be compiled into exe)"
           }
 
           Write-Host ""
           Write-Host "POST-BUILD VERIFICATION PASSED"
+          Write-Host "Layout: QuickTranslate.exe + _internal/ (clean, professional)"
 
       - name: Create output directory and working folders
         run: |
