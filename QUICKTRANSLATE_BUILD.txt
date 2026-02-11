@@ -105,3 +105,4 @@ Build - all review fixes: faiss_cpu name, loud errors, torch DLL hook, pip safet
 Build - fix c10.dll: add _MEIPASS root to DLL search for VC++ runtime
 Build - 3-layer DLL defense: save handles + pre-load VC++ runtime into memory
 Build - REWRITE: flat DLL placement via hidden-import (no more collect_all torch)
+Build - flat layout fix (contents_directory='.'), post-build DLL verification
