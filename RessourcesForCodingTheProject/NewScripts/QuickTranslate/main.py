@@ -20,9 +20,18 @@ Usage:
 
 import argparse
 import logging
+import os
 import sys
 import traceback
 from pathlib import Path
+
+# PyInstaller console=False sets sys.stdout/stderr to None.
+# Libraries (tqdm, logging, etc.) call .isatty() on these streams and crash.
+# Fix: ensure they're always valid file objects BEFORE any other imports.
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, 'w', encoding='utf-8')
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, 'w', encoding='utf-8')
 
 # PyInstaller compatibility - ensure we can find our modules
 if getattr(sys, 'frozen', False):
@@ -35,7 +44,7 @@ if getattr(sys, 'frozen', False):
     try:
         sys.stderr = open(str(_crash_log), 'a', encoding='utf-8')
     except Exception:
-        pass
+        pass  # stderr already set to devnull above, won't be None
 else:
     # Running as script
     BASE_DIR = Path(__file__).parent
