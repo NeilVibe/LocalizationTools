@@ -425,7 +425,8 @@ def _write_quality_excel(output_path: Path, report: QualityReport):
 def _find_json_path() -> Path:
     """Find ai_hallucination_phrases.json, works both dev and PyInstaller."""
     if getattr(sys, 'frozen', False):
-        base = Path(sys.executable).parent
+        # Data files bundled via spec datas=[] go to _internal/ (sys._MEIPASS)
+        base = Path(sys._MEIPASS)
     else:
         base = Path(__file__).parent.parent  # core/ -> QuickTranslate/
 

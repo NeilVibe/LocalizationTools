@@ -105,7 +105,7 @@ def load_model(progress_callback: Optional[Callable[[str], None]] = None):
         progress_callback("Loading KR-SBERT model...")
 
     logger.info(f"Loading KR-SBERT model from: {model_path}")
-    model = SentenceTransformer(str(model_path))
+    model = SentenceTransformer(str(model_path), device='cpu')
     logger.info("KR-SBERT model loaded successfully")
 
     with _cache_lock:

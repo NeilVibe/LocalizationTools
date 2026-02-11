@@ -157,24 +157,20 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[os.path.join(spec_dir, 'runtime_hook_torch.py')],
     excludes=[
-        # Exclude heavy unused ML packages
-        'scipy',
-        'scikit-learn',
-        'sklearn',
+        # ONLY exclude packages that are 100% NOT imported by torch/sentence_transformers/transformers.
+        # XLSTransfer works because it excludes NOTHING. We only exclude truly unused packages.
+        # scipy, scikit-learn: REQUIRED by sentence_transformers (top-level imports)
+        # torch.distributed: REQUIRED by sentence_transformers (util/distributed.py)
+        # torch.cuda: REQUIRED by torch at startup (even CPU-only needs the stub)
+        # torch._dynamo: REQUIRED by transformers (PreTrainedModel decorator)
+        # torch.fx: REQUIRED by transformers (attention mask isinstance check)
         'matplotlib',
         'pandas',
         'PIL',
         'cv2',
-        # Exclude torch subpackages we don't need (CPU-only app, saves ~100MB+)
-        'torch.distributed',
         'torch.testing',
-        'torch.cuda',
-        'torch.backends.cudnn',
         'torch.onnx',
         'torch.utils.tensorboard',
-        'torch._dynamo',
-        'torch.compiler',
-        'torch.fx',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
