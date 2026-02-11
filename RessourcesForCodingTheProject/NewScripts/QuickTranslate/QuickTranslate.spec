@@ -66,6 +66,7 @@ COLLECT_ALL_PACKAGES = [
     'sentence_transformers',
     'transformers',
     'huggingface_hub',
+    'requests',  # Pure Python, needed by transformers/huggingface_hub for model downloads
 ]
 
 for pkg in COLLECT_ALL_PACKAGES:
@@ -157,20 +158,13 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[os.path.join(spec_dir, 'runtime_hook_torch.py')],
     excludes=[
-        # ONLY exclude packages that are 100% NOT imported by torch/sentence_transformers/transformers.
-        # XLSTransfer works because it excludes NOTHING. We only exclude truly unused packages.
-        # scipy, scikit-learn: REQUIRED by sentence_transformers (top-level imports)
-        # torch.distributed: REQUIRED by sentence_transformers (util/distributed.py)
-        # torch.cuda: REQUIRED by torch at startup (even CPU-only needs the stub)
-        # torch._dynamo: REQUIRED by transformers (PreTrainedModel decorator)
-        # torch.fx: REQUIRED by transformers (attention mask isinstance check)
+        # ONLY exclude packages verified 100% NOT imported by torch/sentence_transformers/transformers.
+        # XLSTransfer works because it excludes NOTHING. We only exclude non-ML packages.
+        # DO NOT exclude ANY torch.* submodule - they have internal cross-dependencies.
         'matplotlib',
         'pandas',
         'PIL',
         'cv2',
-        'torch.testing',
-        'torch.onnx',
-        'torch.utils.tensorboard',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
