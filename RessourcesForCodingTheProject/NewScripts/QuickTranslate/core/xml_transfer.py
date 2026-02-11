@@ -947,6 +947,7 @@ def transfer_folder_to_folder(
     match_mode: str = "strict",
     dry_run: bool = False,
     progress_callback=None,
+    log_callback=None,
     threshold: float = None,
     only_untranslated: bool = False,
     # Pre-built fuzzy data (CRITICAL: avoid rebuilding full index!)
@@ -1239,6 +1240,11 @@ def transfer_folder_to_folder(
 
         logger.info(f"═══ {target_xml.name}: {len(corrections):,} corrections from {len(source_names)} files ═══")
 
+        # GUI per-language header
+        if log_callback:
+            lang_code = target_xml.stem.replace("languagedata_", "").upper()
+            log_callback(f"── {lang_code} ({ti+1}/{len(target_groups)}) · {len(corrections):,} corrections ──", 'header')
+
         # Apply corrections based on match mode — ONE pass with ALL corrections
         if match_mode == "stringid_only" and stringid_to_category:
             file_result = merge_corrections_stringid_only(
@@ -1258,6 +1264,9 @@ def transfer_folder_to_folder(
             )
             step1_matched = file_result["matched"]
             logger.info(f"Step 1 (perfect): {step1_matched}/{len(corrections)} matched")
+            if log_callback:
+                pct = (step1_matched / len(corrections) * 100) if corrections else 0
+                log_callback(f"  Pass 1 (Perfect): {step1_matched}/{len(corrections)} ({pct:.1f}%)", 'info')
 
             # Step 2: FAISS fuzzy on UNCONSUMED corrections only
             if _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
@@ -1314,10 +1323,19 @@ def transfer_folder_to_folder(
                             f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
                             f"({fuzzy_result['updated']} updated, avg_score={fuzzy_stats['avg_score']:.3f})"
                         )
+                        if log_callback:
+                            log_callback(
+                                f"  Pass 2 (Fuzzy): {fuzzy_result['matched']} recovered (avg: {fuzzy_stats['avg_score']:.2f})",
+                                'info',
+                            )
                     else:
                         logger.info(f"Step 2: No fuzzy matches found for {len(unconsumed)} unconsumed")
+                        if log_callback:
+                            log_callback(f"  Pass 2 (Fuzzy): 0 recovered from {len(unconsumed)} attempts", 'warning')
                 else:
                     logger.info("Step 2: All corrections matched in Step 1 (perfect match)")
+                    if log_callback:
+                        log_callback("  Pass 2 (Fuzzy): All matched in Pass 1!", 'success')
 
         elif match_mode == "strorigin_only":
             # SAFETY: Default untranslated-only (GUI warns if user picks "ALL")
@@ -1334,6 +1352,9 @@ def transfer_folder_to_folder(
             )
             step1_matched = file_result["matched"]
             logger.info(f"Step 1 (StrOrigin exact): {step1_matched}/{len(corrections)} matched")
+            if log_callback:
+                pct = (step1_matched / len(corrections) * 100) if corrections else 0
+                log_callback(f"  Pass 1 (StrOrigin): {step1_matched}/{len(corrections)} ({pct:.1f}%)", 'info')
 
             if _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
                 unconsumed = []
@@ -1381,10 +1402,19 @@ def transfer_folder_to_folder(
                             f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
                             f"({fuzzy_result['updated']} updated, avg_score={fuzzy_stats['avg_score']:.3f})"
                         )
+                        if log_callback:
+                            log_callback(
+                                f"  Pass 2 (Fuzzy): {fuzzy_result['matched']} recovered (avg: {fuzzy_stats['avg_score']:.2f})",
+                                'info',
+                            )
                     else:
                         logger.info(f"Step 2: No fuzzy matches found for {len(unconsumed)} unconsumed")
+                        if log_callback:
+                            log_callback(f"  Pass 2 (Fuzzy): 0 recovered from {len(unconsumed)} attempts", 'warning')
                 else:
                     logger.info("Step 2: All corrections matched in Step 1 (StrOrigin exact)")
+                    if log_callback:
+                        log_callback("  Pass 2 (Fuzzy): All matched in Pass 1!", 'success')
         else:
             file_result = merge_corrections_to_xml(
                 target_xml, corrections, dry_run,
@@ -1422,6 +1452,9 @@ def transfer_folder_to_folder(
             f"[{source_label}] -> {target_xml.name}: "
             f"{updated} updated, {skipped_tr} skipped, {not_found} not found"
         )
+        if log_callback:
+            tag = 'success' if not_found == 0 else 'warning'
+            log_callback(f"  Result: {updated} updated · {skipped_tr} skipped · {not_found} not found", tag)
 
     # ─── Missing EventName report (after all transfers complete) ──────
     if all_missing_eventnames:
