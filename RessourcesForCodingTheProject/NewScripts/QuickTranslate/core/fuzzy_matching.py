@@ -10,6 +10,7 @@ Model folder 'KRTransformer/' must be placed alongside the app.
 
 import logging
 import threading
+import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
@@ -247,6 +248,7 @@ def find_matches_fuzzy(
     index,
     threshold: float = 0.85,
     progress_callback: Optional[Callable[[str], None]] = None,
+    log_callback=None,
 ) -> Tuple[List[Dict], List[Dict], Dict]:
     """
     Match corrections against target entries using FAISS fuzzy search.
@@ -263,6 +265,7 @@ def find_matches_fuzzy(
         index: Built FAISS index
         threshold: Minimum similarity score (0.0 - 1.0)
         progress_callback: Optional callback for status updates
+        log_callback: Optional callback for GUI console messages
 
     Returns:
         Tuple of (matched, unmatched, stats) where matched corrections are
@@ -272,6 +275,15 @@ def find_matches_fuzzy(
     unmatched = []
     scores = []
     total = len(corrections)
+
+    logger.info(f"FAISS fuzzy search: {total} corrections, threshold={threshold:.2f}, "
+                f"index has {index.ntotal} vectors")
+
+    if log_callback:
+        log_callback(f"    Fuzzy searching {total} items...", 'info')
+
+    t_start = time.perf_counter()
+    log_interval = max(25, total // 8)
 
     for i, c in enumerate(corrections):
         if progress_callback and i % 50 == 0:
@@ -296,6 +308,19 @@ def find_matches_fuzzy(
         else:
             unmatched.append(c)
 
+        done = i + 1
+        if done % log_interval == 0 or done == total:
+            elapsed = time.perf_counter() - t_start
+            avg = sum(scores) / len(scores) if scores else 0.0
+            rate = done / elapsed if elapsed > 0 else 0
+            logger.info(
+                f"FAISS search: {done}/{total} processed, "
+                f"{len(matched)} matches (avg: {avg:.3f}), "
+                f"{rate:.0f} items/sec"
+            )
+
+    elapsed_total = time.perf_counter() - t_start
+
     stats = {
         "total": total,
         "matched": len(matched),
@@ -304,10 +329,11 @@ def find_matches_fuzzy(
         "min_score": min(scores) if scores else 0.0,
         "max_score": max(scores) if scores else 0.0,
         "threshold": threshold,
+        "elapsed_sec": round(elapsed_total, 2),
     }
 
     logger.info(
-        f"FAISS fuzzy match: {len(matched)}/{total} matched "
+        f"FAISS fuzzy COMPLETE: {len(matched)}/{total} matched in {elapsed_total:.1f}s "
         f"(avg={stats['avg_score']:.3f}, min={stats['min_score']:.3f}, "
         f"threshold={threshold:.2f})"
     )

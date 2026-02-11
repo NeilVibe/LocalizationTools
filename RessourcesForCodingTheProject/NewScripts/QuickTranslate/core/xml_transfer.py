@@ -1288,6 +1288,8 @@ def transfer_folder_to_folder(
                     fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
                         unconsumed, _fuzzy_texts, _fuzzy_entries,
                         _fuzzy_model, _fuzzy_index, effective_threshold,
+                        progress_callback=progress_callback,
+                        log_callback=log_callback,
                     )
 
                     if fuzzy_matched:
@@ -1375,6 +1377,8 @@ def transfer_folder_to_folder(
                     fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
                         unconsumed, _fuzzy_texts, _fuzzy_entries,
                         _fuzzy_model, _fuzzy_index, effective_threshold,
+                        progress_callback=progress_callback,
+                        log_callback=log_callback,
                     )
 
                     if fuzzy_matched:
