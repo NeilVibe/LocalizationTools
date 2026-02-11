@@ -174,7 +174,9 @@ jobs:
           # Step 2: Install ML deps. torch is already satisfied so pip won't re-download.
           # NO --extra-index-url (that lets pip find CUDA torch on PyPI and override!)
           # scipy + scikit-learn are REQUIRED by sentence-transformers (top-level imports)
+          # requests + deps are REQUIRED by transformers/huggingface_hub (model downloads)
           pip install --no-cache-dir sentence-transformers faiss-cpu numpy scipy scikit-learn
+          pip install --no-cache-dir requests urllib3 certifi charset-normalizer idna
 
           # Step 3: Build tools
           pip install --no-cache-dir "pyinstaller>=6.0,<7.0" pyinstaller-hooks-contrib
@@ -196,6 +198,24 @@ jobs:
           print(f'numpy {numpy.__version__}')
           import tqdm, regex, packaging, filelock, tokenizers
           print('All transitive deps OK')
+
+          # requests + its full dependency tree (MUST be present for transformers/huggingface_hub)
+          import requests
+          print(f'requests {requests.__version__}')
+          import urllib3
+          print(f'urllib3 {urllib3.__version__}')
+          import certifi
+          print(f'certifi {certifi.__version__}')
+          import charset_normalizer
+          print(f'charset_normalizer {charset_normalizer.__version__}')
+          import idna
+          print(f'idna {idna.__version__}')
+
+          import scipy
+          print(f'scipy {scipy.__version__}')
+          import sklearn
+          print(f'scikit-learn OK')
+
           print('ALL ML DEPENDENCIES VERIFIED - CPU-only torch confirmed')
           "
 
