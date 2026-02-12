@@ -129,6 +129,37 @@ OUTPUT_FOLDER = SCRIPT_DIR / "Output"
 SOURCE_FOLDER = SCRIPT_DIR / "Source"
 CHECK_RESULTS_FOLDER = SCRIPT_DIR / "Presubmission Checks"
 FAILED_REPORTS_FOLDER = SCRIPT_DIR / "Failed Reports"
+PRESUBMISSION_SETTINGS_FILE = SCRIPT_DIR / "presubmission_settings.json"
+
+# =============================================================================
+# Pre-Submission Check Settings (persisted to presubmission_settings.json)
+# =============================================================================
+
+_PRESUBMISSION_DEFAULTS = {
+    "skip_staticinfo_knowledge": True,
+}
+
+
+def load_presubmission_settings() -> dict:
+    """Load pre-submission check settings from JSON. Returns defaults if file missing."""
+    settings = dict(_PRESUBMISSION_DEFAULTS)
+    try:
+        if PRESUBMISSION_SETTINGS_FILE.exists():
+            with open(PRESUBMISSION_SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                saved = json.load(f)
+            settings.update(saved)
+    except Exception as e:
+        logger.warning(f"Failed to load presubmission settings: {e}")
+    return settings
+
+
+def save_presubmission_settings(settings: dict):
+    """Save pre-submission check settings to JSON."""
+    try:
+        with open(PRESUBMISSION_SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        logger.warning(f"Failed to save presubmission settings: {e}")
 
 # =============================================================================
 # Language Configuration (Auto-discovered from LOC folder)
