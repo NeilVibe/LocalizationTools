@@ -113,3 +113,4 @@ Build - remove ALL torch excludes, fix requests bundling
 Build - bundle requests + urllib3 + certifi + charset_normalizer + idna
 Build - fix CI smoke test detection (check crash log, not just stderr)
 Build - fix NoneType isatty crash (console=False sets stderr=None)
+Build - fix Korean checker (scan ALL entries) + staticinfo toggle for Pattern/Quality
