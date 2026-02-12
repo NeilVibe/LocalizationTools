@@ -486,6 +486,21 @@ class QuickTranslateApp:
             padx=10, cursor='hand2', state='disabled')
         self.open_results_btn.pack(side=tk.RIGHT)
 
+        # Pre-submission settings (persisted)
+        presub_settings = config.load_presubmission_settings()
+        checks_options_row = tk.Frame(checks_frame, bg='#f0f0f0')
+        checks_options_row.pack(fill=tk.X, pady=(4, 2))
+
+        self._skip_staticinfo_var = tk.BooleanVar(value=presub_settings.get("skip_staticinfo_knowledge", True))
+        self._skip_staticinfo_cb = tk.Checkbutton(
+            checks_options_row,
+            text="Skip staticinfo:knowledge entries (Pattern/Quality checks)",
+            variable=self._skip_staticinfo_var,
+            command=self._on_presub_setting_changed,
+            font=('Segoe UI', 8), bg='#f0f0f0', fg='#555',
+            activebackground='#f0f0f0', cursor='hand2')
+        self._skip_staticinfo_cb.pack(side=tk.LEFT)
+
         checks_status_row = tk.Frame(checks_frame, bg='#f0f0f0')
         checks_status_row.pack(fill=tk.X)
         self.checks_status_text = tk.StringVar(value="Ready")
@@ -1651,6 +1666,7 @@ class QuickTranslateApp:
         self.check_quality_btn.config(state='disabled')
         self.check_all_btn.config(state='disabled')
         self.open_results_btn.config(state='disabled')
+        self._skip_staticinfo_cb.config(state='disabled')
         self.cancel_btn.pack(side=tk.RIGHT, padx=(8, 0))
 
     def _enable_buttons(self):
@@ -1669,6 +1685,7 @@ class QuickTranslateApp:
         self.check_patterns_btn.config(state='normal')
         self.check_quality_btn.config(state='normal')
         self.check_all_btn.config(state='normal')
+        self._skip_staticinfo_cb.config(state='normal')
         self.cancel_btn.pack_forget()
         self._worker_thread = None
 
@@ -2271,6 +2288,15 @@ class QuickTranslateApp:
         parts = [f"{lang}: {count}" for lang, count in sorted(langs_with_issues.items())]
         return f"{check_name}: {total} issues in {len(langs_with_issues)} languages ({', '.join(parts)})"
 
+    def _on_presub_setting_changed(self):
+        """Save pre-submission settings when checkbox is toggled."""
+        settings = {
+            "skip_staticinfo_knowledge": self._skip_staticinfo_var.get(),
+        }
+        config.save_presubmission_settings(settings)
+        state = "ON" if settings["skip_staticinfo_knowledge"] else "OFF"
+        self._log(f"staticinfo:knowledge skip: {state} (saved)", 'info')
+
     def _check_korean(self):
         """Run Korean character check on Source folder."""
         source = self._get_source_for_checks()
@@ -2317,16 +2343,19 @@ class QuickTranslateApp:
 
         self._disable_buttons()
         output_folder = config.CHECK_RESULTS_FOLDER
+        skip_si = self._skip_staticinfo_var.get()
 
         def work():
             self._log("=== Pattern Code Mismatch Check ===", 'header')
+            if not skip_si:
+                self._log("(staticinfo:knowledge skip: OFF — checking ALL entries)", 'info')
             self._task_queue.put(('checks_status', "Checking patterns..."))
 
             def progress_cb(msg):
                 self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
-            summary = run_pattern_check(source, output_folder, progress_callback=progress_cb)
+            summary = run_pattern_check(source, output_folder, progress_callback=progress_cb, skip_staticinfo_knowledge=skip_si)
 
             if not summary:
                 self._log("No XML files found in Source folder.", 'warning')
@@ -2355,16 +2384,19 @@ class QuickTranslateApp:
 
         self._disable_buttons()
         output_folder = config.CHECK_RESULTS_FOLDER
+        skip_si = self._skip_staticinfo_var.get()
 
         def work():
             self._log("=== Quality Check (Script + AI Hallucination) ===", 'header')
+            if not skip_si:
+                self._log("(staticinfo:knowledge skip: OFF — checking ALL entries)", 'info')
             self._task_queue.put(('checks_status', "Checking quality..."))
 
             def progress_cb(msg):
                 self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
-            summary = run_quality_check(source, output_folder, progress_callback=progress_cb)
+            summary = run_quality_check(source, output_folder, progress_callback=progress_cb, skip_staticinfo_knowledge=skip_si)
 
             if not summary:
                 self._log("No XML files found in Source folder.", 'warning')
@@ -2398,11 +2430,14 @@ class QuickTranslateApp:
 
         self._disable_buttons()
         output_folder = config.CHECK_RESULTS_FOLDER
+        skip_si = self._skip_staticinfo_var.get()
 
         def work():
             self._log("=== Pre-Submission Check ALL ===", 'header')
+            if not skip_si:
+                self._log("(staticinfo:knowledge skip: OFF — checking ALL entries)", 'info')
 
-            # Korean check
+            # Korean check (never skips — checks EVERYTHING)
             self._task_queue.put(('checks_status', "Checking Korean..."))
 
             def korean_cb(msg):
@@ -2421,7 +2456,7 @@ class QuickTranslateApp:
                 self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
-            pattern_summary = run_pattern_check(source, output_folder, progress_callback=pattern_cb)
+            pattern_summary = run_pattern_check(source, output_folder, progress_callback=pattern_cb, skip_staticinfo_knowledge=skip_si)
             if pattern_summary:
                 self._log(self._format_check_summary(pattern_summary, "Pattern Check"),
                           'success' if sum(pattern_summary.values()) == 0 else 'warning')
@@ -2433,7 +2468,7 @@ class QuickTranslateApp:
                 self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
-            quality_summary = run_quality_check(source, output_folder, progress_callback=quality_cb)
+            quality_summary = run_quality_check(source, output_folder, progress_callback=quality_cb, skip_staticinfo_knowledge=skip_si)
             if quality_summary:
                 script_total = sum(v[0] for v in quality_summary.values())
                 halluc_total = sum(v[1] for v in quality_summary.values())

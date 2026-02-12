@@ -33,14 +33,19 @@ def _get_attr(elem, attr_names: list) -> str:
     return ""
 
 
-def should_skip_locstr(elem) -> bool:
+def should_skip_locstr(elem, skip_staticinfo_knowledge: bool = True) -> bool:
     """
     Return True if LocStr should be skipped (staticinfo:knowledge filter).
 
-    Any LocStr where Str OR StrOrigin contains 'staticinfo:knowledge'
-    (case insensitive) is ignored because pattern codes in those entries
-    are not important.
+    When skip_staticinfo_knowledge is True (default), any LocStr where Str OR
+    StrOrigin contains 'staticinfo:knowledge' (case insensitive) is skipped
+    because pattern codes in those entries cause false positives.
+
+    This filter is for Pattern Check and Quality Check ONLY.
+    Korean Check never calls this function.
     """
+    if not skip_staticinfo_knowledge:
+        return False
     str_text = _get_attr(elem, _STR_ATTRS)
     strorigin_text = _get_attr(elem, _STRORIGIN_ATTRS)
     return ("staticinfo:knowledge" in str_text.lower()
@@ -102,9 +107,6 @@ def check_korean_in_file(xml_path: Path) -> list:
     try:
         root = parse_xml_file(xml_path)
         for elem in iter_locstr_elements(root):
-            if should_skip_locstr(elem):
-                continue
-
             str_text = _get_attr(elem, _STR_ATTRS).strip()
             if not str_text:
                 continue
@@ -117,7 +119,7 @@ def check_korean_in_file(xml_path: Path) -> list:
     return findings
 
 
-def check_patterns_in_file(xml_path: Path) -> list:
+def check_patterns_in_file(xml_path: Path, skip_staticinfo_knowledge: bool = True) -> list:
     """
     Scan one XML file for pattern code mismatches between StrOrigin and Str.
 
@@ -125,6 +127,7 @@ def check_patterns_in_file(xml_path: Path) -> list:
 
     Args:
         xml_path: Path to XML file
+        skip_staticinfo_knowledge: If True, skip entries containing 'staticinfo:knowledge'
 
     Returns:
         List of matching LocStr elements (lxml elements with original attributes).
@@ -133,7 +136,7 @@ def check_patterns_in_file(xml_path: Path) -> list:
     try:
         root = parse_xml_file(xml_path)
         for elem in iter_locstr_elements(root):
-            if should_skip_locstr(elem):
+            if should_skip_locstr(elem, skip_staticinfo_knowledge):
                 continue
 
             strorigin_text = _get_attr(elem, _STRORIGIN_ATTRS).strip()
@@ -254,6 +257,7 @@ def run_pattern_check(
     source_folder: Path,
     output_folder: Path,
     progress_callback: Optional[Callable[[str], None]] = None,
+    skip_staticinfo_knowledge: bool = True,
 ) -> Dict[str, int]:
     """
     Run pattern mismatch check on all languages in Source folder.
@@ -265,6 +269,7 @@ def run_pattern_check(
         source_folder: Path to Source folder with language subfolders
         output_folder: Path to CheckResults folder
         progress_callback: Optional callback for progress updates
+        skip_staticinfo_knowledge: If True, skip entries containing 'staticinfo:knowledge'
 
     Returns:
         Summary dict: {"FRE": 12, "GER": 3, ...} (error counts per language)
@@ -288,7 +293,7 @@ def run_pattern_check(
 
         all_errors = []
         for xml_path in xml_files:
-            all_errors.extend(check_patterns_in_file(xml_path))
+            all_errors.extend(check_patterns_in_file(xml_path, skip_staticinfo_knowledge))
 
         summary[lang] = len(all_errors)
 

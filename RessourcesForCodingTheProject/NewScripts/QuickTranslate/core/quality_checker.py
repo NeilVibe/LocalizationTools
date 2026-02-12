@@ -191,7 +191,7 @@ def _strip_codes_and_markup(text: str) -> str:
 # Wrong Script Detection
 # ============================================================================
 
-def check_wrong_script_in_file(xml_path: Path, script_group: str) -> List[ScriptIssue]:
+def check_wrong_script_in_file(xml_path: Path, script_group: str, skip_staticinfo_knowledge: bool = True) -> List[ScriptIssue]:
     """
     Scan one XML file for characters from the wrong Unicode script.
 
@@ -201,7 +201,7 @@ def check_wrong_script_in_file(xml_path: Path, script_group: str) -> List[Script
     try:
         root = parse_xml_file(xml_path)
         for elem in iter_locstr_elements(root):
-            if should_skip_locstr(elem):
+            if should_skip_locstr(elem, skip_staticinfo_knowledge):
                 continue
 
             str_text = _get_attr(elem, _STR_ATTRS).strip()
@@ -265,6 +265,7 @@ def check_hallucination_in_file(
     xml_path: Path,
     lang_code: str,
     phrase_bank: dict,
+    skip_staticinfo_knowledge: bool = True,
 ) -> List[HallucinationIssue]:
     """
     Scan one XML file for AI hallucination indicators.
@@ -286,7 +287,7 @@ def check_hallucination_in_file(
     try:
         root = parse_xml_file(xml_path)
         for elem in iter_locstr_elements(root):
-            if should_skip_locstr(elem):
+            if should_skip_locstr(elem, skip_staticinfo_knowledge):
                 continue
 
             str_text = _get_attr(elem, _STR_ATTRS).strip()
@@ -444,6 +445,7 @@ def run_quality_check(
     output_folder: Path,
     json_path: Optional[Path] = None,
     progress_callback: Optional[Callable[[str], None]] = None,
+    skip_staticinfo_knowledge: bool = True,
 ) -> Dict[str, Tuple[int, int]]:
     """
     Run quality check (wrong script + AI hallucination) on all languages.
@@ -489,12 +491,12 @@ def run_quality_check(
             # Wrong script check (skip KOR and unknown groups)
             if script_group:
                 report.script_issues.extend(
-                    check_wrong_script_in_file(xml_path, script_group)
+                    check_wrong_script_in_file(xml_path, script_group, skip_staticinfo_knowledge)
                 )
 
             # AI hallucination check (all languages)
             report.hallucination_issues.extend(
-                check_hallucination_in_file(xml_path, lang, phrase_bank)
+                check_hallucination_in_file(xml_path, lang, phrase_bank, skip_staticinfo_knowledge)
             )
 
         script_count = len(report.script_issues)
