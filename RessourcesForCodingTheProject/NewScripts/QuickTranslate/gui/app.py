@@ -2288,6 +2288,39 @@ class QuickTranslateApp:
         parts = [f"{lang}: {count}" for lang, count in sorted(langs_with_issues.items())]
         return f"{check_name}: {total} issues in {len(langs_with_issues)} languages ({', '.join(parts)})"
 
+    def _format_pattern_summary(self, summary: Dict[str, tuple]) -> str:
+        """Format pattern+newline check summary for log output.
+
+        summary values are (pattern_count, newline_count) tuples.
+        Shows categorized breakdown so users know what was wrong.
+        """
+        pattern_total = sum(v[0] for v in summary.values())
+        newline_total = sum(v[1] for v in summary.values())
+        total = pattern_total + newline_total
+
+        if total == 0:
+            return f"Pattern Check: All clean across {len(summary)} languages"
+
+        lines = []
+        # Header line
+        n_langs = len([k for k, v in summary.items() if v[0] + v[1] > 0])
+        lines.append(f"Pattern Check: {total} issues in {n_langs} languages")
+
+        # Pattern mismatches breakdown
+        if pattern_total > 0:
+            p_langs = {k: v[0] for k, v in summary.items() if v[0] > 0}
+            p_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(p_langs.items())]
+            lines.append(f"  Pattern mismatches: {pattern_total} ({', '.join(p_parts)})")
+
+        # Wrong newlines breakdown
+        if newline_total > 0:
+            n_langs = {k: v[1] for k, v in summary.items() if v[1] > 0}
+            n_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(n_langs.items())]
+            lines.append(f"  Wrong newlines: {newline_total} ({', '.join(n_parts)})")
+            lines.append("  (Only <br/> is correct — not \\n, &#10;, <BR/>, etc.)")
+
+        return '\n'.join(lines)
+
     def _on_presub_setting_changed(self):
         """Save pre-submission settings when checkbox is toggled."""
         settings = {
@@ -2336,7 +2369,7 @@ class QuickTranslateApp:
         self._run_in_thread(work)
 
     def _check_patterns(self):
-        """Run pattern mismatch check on Source folder."""
+        """Run pattern mismatch + newline check on Source folder."""
         source = self._get_source_for_checks()
         if not source:
             return
@@ -2346,7 +2379,7 @@ class QuickTranslateApp:
         skip_si = self._skip_staticinfo_var.get()
 
         def work():
-            self._log("=== Pattern Code Mismatch Check ===", 'header')
+            self._log("=== Pattern & Newline Check ===", 'header')
             if not skip_si:
                 self._log("(staticinfo:knowledge skip: OFF — checking ALL entries)", 'info')
             self._task_queue.put(('checks_status', "Checking patterns..."))
@@ -2362,13 +2395,16 @@ class QuickTranslateApp:
                 self._task_queue.put(('checks_status', "No files found"))
                 return
 
-            total = sum(summary.values())
-            result_msg = self._format_check_summary(summary, "Pattern Check")
+            result_msg = self._format_pattern_summary(summary)
+            pattern_total = sum(v[0] for v in summary.values())
+            newline_total = sum(v[1] for v in summary.values())
+            total = pattern_total + newline_total
+
             self._log(result_msg, 'success' if total == 0 else 'warning')
 
             if total > 0:
                 self._log(f"Results written to: {output_folder / 'PatternErrors'}", 'info')
-                self._task_queue.put(('checks_status', f"Done: {total} pattern errors"))
+                self._task_queue.put(('checks_status', f"Done: {total} issues ({pattern_total}P + {newline_total}N)"))
             else:
                 self._task_queue.put(('checks_status', "Done: All clean"))
 
@@ -2449,7 +2485,7 @@ class QuickTranslateApp:
                 self._log(self._format_check_summary(korean_summary, "Korean Check"),
                           'success' if sum(korean_summary.values()) == 0 else 'warning')
 
-            # Pattern check
+            # Pattern + newline check
             self._task_queue.put(('checks_status', "Checking patterns..."))
 
             def pattern_cb(msg):
@@ -2458,8 +2494,10 @@ class QuickTranslateApp:
 
             pattern_summary = run_pattern_check(source, output_folder, progress_callback=pattern_cb, skip_staticinfo_knowledge=skip_si)
             if pattern_summary:
-                self._log(self._format_check_summary(pattern_summary, "Pattern Check"),
-                          'success' if sum(pattern_summary.values()) == 0 else 'warning')
+                p_total = sum(v[0] for v in pattern_summary.values())
+                n_total = sum(v[1] for v in pattern_summary.values())
+                self._log(self._format_pattern_summary(pattern_summary),
+                          'success' if (p_total + n_total) == 0 else 'warning')
 
             # Quality check
             self._task_queue.put(('checks_status', "Checking quality..."))
@@ -2481,7 +2519,7 @@ class QuickTranslateApp:
 
             # Final summary
             korean_total = sum(korean_summary.values()) if korean_summary else 0
-            pattern_total = sum(pattern_summary.values()) if pattern_summary else 0
+            pattern_total = (sum(v[0] for v in pattern_summary.values()) + sum(v[1] for v in pattern_summary.values())) if pattern_summary else 0
             grand_total = korean_total + pattern_total + quality_total
 
             if grand_total == 0:
