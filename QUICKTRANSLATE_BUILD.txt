@@ -115,3 +115,4 @@ Build - fix CI smoke test detection (check crash log, not just stderr)
 Build - fix NoneType isatty crash (console=False sets stderr=None)
 Build - fix Korean checker (scan ALL entries) + staticinfo toggle for Pattern/Quality
 Build - newline validation in pattern check + categorized summary
+Build - TRANSFER summary: show Already Correct + Origin Mismatch so numbers add up

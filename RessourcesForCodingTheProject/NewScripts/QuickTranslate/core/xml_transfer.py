@@ -1449,16 +1449,26 @@ def transfer_folder_to_folder(
         }
 
         # Log per-target result
-        updated = file_result["updated"]
-        not_found = file_result.get("not_found", 0)
-        skipped_tr = file_result.get("skipped_translated", 0)
+        f_updated = file_result["updated"]
+        f_matched = file_result.get("matched", 0)
+        f_not_found = file_result.get("not_found", 0)
+        f_skipped_tr = file_result.get("skipped_translated", 0)
+        f_strorigin_mm = file_result.get("strorigin_mismatch", 0)
+        f_unchanged = max(0, f_matched - f_updated - f_skipped_tr)
         logger.info(
             f"[{source_label}] -> {target_xml.name}: "
-            f"{updated} updated, {skipped_tr} skipped, {not_found} not found"
+            f"{f_updated} updated, {f_unchanged} already correct, {f_skipped_tr} skipped, {f_not_found} not found"
         )
         if log_callback:
-            tag = 'success' if not_found == 0 else 'warning'
-            log_callback(f"  Result: {updated} updated · {skipped_tr} skipped · {not_found} not found", tag)
+            tag = 'success' if f_not_found == 0 and f_strorigin_mm == 0 else 'warning'
+            parts = [f"{f_updated} updated", f"{f_unchanged} already correct"]
+            if f_skipped_tr > 0:
+                parts.append(f"{f_skipped_tr} skipped")
+            if f_not_found > 0:
+                parts.append(f"{f_not_found} not found")
+            if f_strorigin_mm > 0:
+                parts.append(f"{f_strorigin_mm} origin mismatch")
+            log_callback(f"  Result: {' · '.join(parts)}", tag)
 
     # ─── Missing EventName report (after all transfers complete) ──────
     if all_missing_eventnames:
@@ -1804,53 +1814,78 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
 
     if mode == "folder":
         total_corrections = results.get('total_corrections', 0)
+        total_matched = results.get('total_matched', 0)
         total_updated = results.get('total_updated', 0)
         total_not_found = results.get('total_not_found', 0)
+        total_strorigin_mismatch = results.get('total_strorigin_mismatch', 0)
         total_skipped_translated = results.get('total_skipped_translated', 0)
+        total_unchanged = max(0, total_matched - total_updated - total_skipped_translated)
 
         lines.append(V + f" Languages Processed: {len(results.get('file_results', {}))}".ljust(width - 2) + V)
+        lines.append(V + "".ljust(width - 2) + V)
         lines.append(V + f" Total Corrections: {total_corrections:,}".ljust(width - 2) + V)
-        lines.append(V + f" Total Updated: {total_updated:,}".ljust(width - 2) + V)
-        lines.append(V + f" Not Found: {total_not_found:,}".ljust(width - 2) + V)
+        lines.append(V + f"   Updated:          {total_updated:,}  (value changed in target)".ljust(width - 2) + V)
+        lines.append(V + f"   Already Correct:  {total_unchanged:,}  (target already had correct value)".ljust(width - 2) + V)
+        if total_not_found > 0 or total_strorigin_mismatch > 0:
+            lines.append(V + f"   Not Found:        {total_not_found:,}  (StringID missing from target)".ljust(width - 2) + V)
+        if total_strorigin_mismatch > 0:
+            lines.append(V + f"   Origin Mismatch:  {total_strorigin_mismatch:,}  (StringID exists, StrOrigin differs)".ljust(width - 2) + V)
         if total_skipped_translated > 0:
-            lines.append(V + f" Skipped (already translated): {total_skipped_translated:,}".ljust(width - 2) + V)
+            lines.append(V + f"   Skipped:          {total_skipped_translated:,}  (already translated)".ljust(width - 2) + V)
         if results.get('total_skipped', 0) > 0:
-            lines.append(V + f" Skipped (non-SCRIPT): {results.get('total_skipped', 0):,}".ljust(width - 2) + V)
+            lines.append(V + f"   Skipped:          {results.get('total_skipped', 0):,}  (non-SCRIPT)".ljust(width - 2) + V)
 
         # Per-language breakdown
         file_results = results.get("file_results", {})
         if file_results:
             lines.append(LT + H * (width - 2) + RT)
-            lines.append(V + " PER-LANGUAGE RESULTS:".ljust(width - 2) + V)
+            lines.append(V + " PER-LANGUAGE BREAKDOWN:".ljust(width - 2) + V)
             lines.append(V + "".ljust(width - 2) + V)
             for fname, fresult in file_results.items():
                 target = fresult.get("target", "?")
-                updated = fresult.get("updated", 0)
-                skipped = fresult.get("skipped_translated", 0)
-                not_found = fresult.get("not_found", 0)
-                matched = fresult.get("matched", 0)
+                f_updated = fresult.get("updated", 0)
+                f_matched = fresult.get("matched", 0)
+                f_skipped = fresult.get("skipped_translated", 0)
+                f_not_found = fresult.get("not_found", 0)
+                f_strorigin_mismatch = fresult.get("strorigin_mismatch", 0)
+                f_unchanged = max(0, f_matched - f_updated - f_skipped)
 
                 # Extract language name from filename (e.g. languagedata_eng.xml -> ENG)
                 lang = target.replace("languagedata_", "").replace(".xml", "").replace(".loc", "").upper()
 
-                parts = [f"{updated} updated"]
-                if skipped > 0:
-                    parts.append(f"{skipped} skipped")
-                if not_found > 0:
-                    parts.append(f"{not_found} not found")
+                parts = [f"{f_updated} updated"]
+                if f_unchanged > 0:
+                    parts.append(f"{f_unchanged} already correct")
+                if f_skipped > 0:
+                    parts.append(f"{f_skipped} skipped")
+                if f_not_found > 0:
+                    parts.append(f"{f_not_found} not found")
+                if f_strorigin_mismatch > 0:
+                    parts.append(f"{f_strorigin_mismatch} origin mismatch")
                 detail = " | ".join(parts)
                 lines.append(V + f"   {lang}: {detail}".ljust(width - 2) + V)
 
     else:
         # Single file mode
-        lines.append(V + f" Corrections: {results.get('corrections_count', 0)}".ljust(width - 2) + V)
-        lines.append(V + f" Matched: {results.get('matched', 0)}".ljust(width - 2) + V)
-        lines.append(V + f" Updated: {results.get('updated', 0)}".ljust(width - 2) + V)
-        lines.append(V + f" Not Found: {results.get('not_found', 0)}".ljust(width - 2) + V)
+        s_corrections = results.get('corrections_count', 0)
+        s_matched = results.get('matched', 0)
+        s_updated = results.get('updated', 0)
+        s_not_found = results.get('not_found', 0)
+        s_strorigin_mismatch = results.get('strorigin_mismatch', 0)
+        s_skipped_translated = results.get('skipped_translated', 0)
+        s_unchanged = max(0, s_matched - s_updated - s_skipped_translated)
+
+        lines.append(V + f" Corrections: {s_corrections:,}".ljust(width - 2) + V)
+        lines.append(V + f"   Updated:          {s_updated:,}  (value changed in target)".ljust(width - 2) + V)
+        lines.append(V + f"   Already Correct:  {s_unchanged:,}  (target already had correct value)".ljust(width - 2) + V)
+        if s_not_found > 0 or s_strorigin_mismatch > 0:
+            lines.append(V + f"   Not Found:        {s_not_found:,}  (StringID missing from target)".ljust(width - 2) + V)
+        if s_strorigin_mismatch > 0:
+            lines.append(V + f"   Origin Mismatch:  {s_strorigin_mismatch:,}  (StringID exists, StrOrigin differs)".ljust(width - 2) + V)
         if results.get('skipped_non_script', 0) > 0:
-            lines.append(V + f" Skipped (non-SCRIPT): {results.get('skipped_non_script', 0)}".ljust(width - 2) + V)
-        if results.get('skipped_translated', 0) > 0:
-            lines.append(V + f" Skipped (already translated): {results.get('skipped_translated', 0)}".ljust(width - 2) + V)
+            lines.append(V + f"   Skipped:          {results.get('skipped_non_script', 0):,}  (non-SCRIPT)".ljust(width - 2) + V)
+        if s_skipped_translated > 0:
+            lines.append(V + f"   Skipped:          {s_skipped_translated:,}  (already translated)".ljust(width - 2) + V)
 
     # Success rate
     total_updated = results.get('total_updated', results.get('updated', 0))

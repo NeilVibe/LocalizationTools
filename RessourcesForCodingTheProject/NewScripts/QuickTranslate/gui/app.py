@@ -2842,15 +2842,26 @@ class QuickTranslateApp:
                     eventname_msg += f"\nReport: {Path(missing_en_report).name}"
 
             self._task_queue.put(('progress', 100))
-            self._update_status(f"Transfer complete: {updated} updated")
+            unchanged = max(0, matched - updated - skipped_translated)
+            self._update_status(f"Transfer complete: {updated:,} updated, {unchanged:,} already correct")
+
+            # Build clear summary where all numbers add up
+            summary_lines = [
+                f"Transfer completed!\n",
+                f"Total Corrections: {results.get('total_corrections', 0):,}\n",
+                f"  Updated:          {updated:,}  (value changed)",
+                f"  Already Correct:  {unchanged:,}  (target already had correct value)",
+            ]
+            if not_found > 0:
+                summary_lines.append(f"  Not Found:        {not_found:,}  (StringID missing)")
+            if strorigin_mismatch > 0:
+                summary_lines.append(f"  Origin Mismatch:  {strorigin_mismatch:,}  (StrOrigin differs)")
+            if skipped_translated > 0:
+                summary_lines.append(f"  Skipped:          {skipped_translated:,}  (already translated)")
+            summary_lines.append(f"\nTarget: {target}")
 
             self._task_queue.put(('messagebox', 'showinfo', 'Transfer Complete',
-                f"Transfer completed!\n\n"
-                f"Matched: {matched}\n"
-                f"Updated: {updated}\n"
-                f"Not Found: {not_found}\n"
-                + (f"Skipped (translated): {skipped_translated}\n" if skipped_translated > 0 else "")
-                + f"\nTarget: {target}"
+                "\n".join(summary_lines)
                 + failure_reports_msg
                 + eventname_msg))
 
