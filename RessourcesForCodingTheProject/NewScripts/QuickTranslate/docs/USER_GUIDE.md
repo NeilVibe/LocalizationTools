@@ -624,7 +624,9 @@ One XML file per language, containing every `<LocStr>` element that still has Ko
 
 ### 🔍 Check Patterns
 
-Validates that `{code}` placeholders in the translation match the placeholders in the original Korean text. Catches missing, extra, or renamed placeholders that would cause runtime errors or display bugs.
+Two validations in one check:
+
+**1. Pattern Code Mismatches** — Validates that `{code}` placeholders in the translation match the placeholders in the original Korean text. Catches missing, extra, or renamed placeholders that would cause runtime errors or display bugs.
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
@@ -650,9 +652,37 @@ Validates that `{code}` placeholders in the translation match the placeholders i
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
+Pattern matching is **normalized**: `{Staticinfo:Knowledge#123}` and `{Staticinfo:Knowledge#456}` are treated as the same pattern (`{Staticinfo:Knowledge#}`), so variable numeric suffixes do not trigger false positives.
+
+**2. Wrong Newlines** — Validates that all newlines use the correct `<br/>` format. Any other newline representation is flagged.
+
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│  ✅ CORRECT — Only <br/> used for newlines                            │
+│                                                                       │
+│  Str="First line<br/>Second line"                                     │
+├───────────────────────────────────────────────────────────────────────┤
+│  ❌ WRONG — These are all flagged:                                    │
+│                                                                       │
+│  Str="First line\nSecond line"        ← literal \n text               │
+│  Str="First line&#10;Second line"     ← XML entity newline            │
+│  Str="First line<BR/>Second line"     ← wrong case                    │
+│  Str="First line<br >Second line"     ← wrong format                  │
+│  Str="First line                                                      │
+│  Second line"                         ← actual newline character      │
+└───────────────────────────────────────────────────────────────────────┘
+```
+
 **Output:** `Presubmission Checks/PatternErrors/pattern_errors_eng.xml`
 
-Pattern matching is **normalized**: `{Staticinfo:Knowledge#123}` and `{Staticinfo:Knowledge#456}` are treated as the same pattern (`{Staticinfo:Knowledge#}`), so variable numeric suffixes do not trigger false positives.
+Both pattern mismatches and wrong newlines are written to the same output file. The log area shows a categorized summary so you know exactly what was found:
+
+```
+Pattern Check: 8 issues in 2 languages
+  Pattern mismatches: 5 (ENG: 3, FRE: 2)
+  Wrong newlines: 3 (ENG: 1, FRE: 2)
+  (Only <br/> is correct — not \n, &#10;, <BR/>, etc.)
+```
 
 ---
 

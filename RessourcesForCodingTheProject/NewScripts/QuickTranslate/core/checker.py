@@ -10,7 +10,7 @@ Output format: pure LocStr elements in <root>, same format as source XML.
 import logging
 import re
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from .xml_parser import parse_xml_file, iter_locstr_elements
 from .korean_detection import is_korean_text
@@ -41,8 +41,10 @@ def should_skip_locstr(elem, skip_staticinfo_knowledge: bool = True) -> bool:
     StrOrigin contains 'staticinfo:knowledge' (case insensitive) is skipped
     because pattern codes in those entries cause false positives.
 
-    This filter is for Pattern Check and Quality Check ONLY.
-    Korean Check never calls this function.
+    This filter is for Pattern Check ONLY.
+    Korean Check never calls this function (Korean = always scan everything).
+    Quality Check currently uses this too, but may be removed in the future
+    so that only Pattern Check has the toggle.
     """
     if not skip_staticinfo_knowledge:
         return False
@@ -73,6 +75,41 @@ def normalize_staticinfo_pattern(code: str) -> str:
 def normalize_pattern_set(raw_set: Set[str]) -> Set[str]:
     """Normalize all patterns in a set."""
     return {normalize_staticinfo_pattern(p) for p in raw_set}
+
+
+# Regex to find any <br...> tag variant (we then check if it's exactly <br/>)
+_BR_TAG_RE = re.compile(r'<br\s*/?\s*>', re.IGNORECASE)
+
+
+def _has_wrong_newlines(text: str) -> bool:
+    """
+    Check if text contains wrong newline representations.
+
+    The only correct newline format in XML language data is <br/>.
+    Flags: actual newline chars, literal \\n text, wrong <br> variants,
+    Unicode line/paragraph separators.
+    """
+    if not text:
+        return False
+
+    # Actual newline / carriage return characters (from &#10; / &#13; in XML)
+    if '\n' in text or '\r' in text:
+        return True
+
+    # Literal \n or \r as text (backslash + letter — someone typed it)
+    if '\\n' in text or '\\r' in text:
+        return True
+
+    # Unicode line separator / paragraph separator
+    if '\u2028' in text or '\u2029' in text:
+        return True
+
+    # Wrong <br> variants (not exactly <br/>)
+    for m in _BR_TAG_RE.finditer(text):
+        if m.group() != '<br/>':
+            return True
+
+    return False
 
 
 def _escape_attr_value(value: str) -> str:
@@ -119,20 +156,25 @@ def check_korean_in_file(xml_path: Path) -> list:
     return findings
 
 
-def check_patterns_in_file(xml_path: Path, skip_staticinfo_knowledge: bool = True) -> list:
+def check_patterns_in_file(
+    xml_path: Path,
+    skip_staticinfo_knowledge: bool = True,
+) -> Tuple[list, list]:
     """
-    Scan one XML file for pattern code mismatches between StrOrigin and Str.
+    Scan one XML file for pattern code mismatches AND wrong newlines.
 
-    Compares normalized {code} pattern sets. If they differ, it's an error.
+    Compares normalized {code} pattern sets. If they differ, it's a pattern error.
+    Also checks for wrong newline representations (only <br/> is correct).
 
     Args:
         xml_path: Path to XML file
         skip_staticinfo_knowledge: If True, skip entries containing 'staticinfo:knowledge'
 
     Returns:
-        List of matching LocStr elements (lxml elements with original attributes).
+        Tuple of (pattern_errors, newline_errors) — two lists of LocStr elements.
     """
-    errors = []
+    pattern_errors = []
+    newline_errors = []
     try:
         root = parse_xml_file(xml_path)
         for elem in iter_locstr_elements(root):
@@ -145,15 +187,20 @@ def check_patterns_in_file(xml_path: Path, skip_staticinfo_knowledge: bool = Tru
             if not strorigin_text or not str_text:
                 continue
 
+            # Pattern mismatch check
             origin_patterns = normalize_pattern_set(extract_code_patterns(strorigin_text))
             str_patterns = normalize_pattern_set(extract_code_patterns(str_text))
 
             if origin_patterns != str_patterns:
-                errors.append(elem)
+                pattern_errors.append(elem)
+
+            # Wrong newline check
+            if _has_wrong_newlines(str_text) or _has_wrong_newlines(strorigin_text):
+                newline_errors.append(elem)
     except Exception as e:
         logger.warning(f"Failed to parse {xml_path.name}: {e}")
 
-    return errors
+    return pattern_errors, newline_errors
 
 
 def iter_source_xml_files(source_folder: Path) -> Dict[str, List[Path]]:
@@ -258,11 +305,12 @@ def run_pattern_check(
     output_folder: Path,
     progress_callback: Optional[Callable[[str], None]] = None,
     skip_staticinfo_knowledge: bool = True,
-) -> Dict[str, int]:
+) -> Dict[str, Tuple[int, int]]:
     """
-    Run pattern mismatch check on all languages in Source folder.
+    Run pattern mismatch + newline check on all languages in Source folder.
 
     Compares {code} patterns between StrOrigin and Str for each LocStr.
+    Also detects wrong newline representations (only <br/> is correct).
     Writes per-language result XMLs to output_folder/PatternErrors/.
 
     Args:
@@ -272,7 +320,7 @@ def run_pattern_check(
         skip_staticinfo_knowledge: If True, skip entries containing 'staticinfo:knowledge'
 
     Returns:
-        Summary dict: {"FRE": 12, "GER": 3, ...} (error counts per language)
+        Summary dict: {"FRE": (pattern_count, newline_count), ...}
     """
     xml_by_lang = iter_source_xml_files(source_folder)
     if not xml_by_lang:
@@ -291,16 +339,29 @@ def run_pattern_check(
         if progress_callback:
             progress_callback(f"Checking patterns... ({i + 1}/{len(languages)} languages: {lang})")
 
-        all_errors = []
+        all_pattern_errors = []
+        all_newline_errors = []
         for xml_path in xml_files:
-            all_errors.extend(check_patterns_in_file(xml_path, skip_staticinfo_knowledge))
+            p_errors, n_errors = check_patterns_in_file(xml_path, skip_staticinfo_knowledge)
+            all_pattern_errors.extend(p_errors)
+            all_newline_errors.extend(n_errors)
 
-        summary[lang] = len(all_errors)
+        summary[lang] = (len(all_pattern_errors), len(all_newline_errors))
 
-        if all_errors:
+        # Combine both error lists for XML output (deduplicate by element identity)
+        seen = set()
+        combined = []
+        for elem in all_pattern_errors + all_newline_errors:
+            eid = id(elem)
+            if eid not in seen:
+                seen.add(eid)
+                combined.append(elem)
+
+        if combined:
             out_path = pattern_dir / f"pattern_errors_{lang}.xml"
-            _write_results_xml(out_path, all_errors)
-            logger.info(f"Pattern check {lang}: {len(all_errors)} errors in {len(xml_files)} files -> {out_path.name}")
+            _write_results_xml(out_path, combined)
+            p_count, n_count = len(all_pattern_errors), len(all_newline_errors)
+            logger.info(f"Pattern check {lang}: {p_count} pattern + {n_count} newline errors in {len(xml_files)} files -> {out_path.name}")
         else:
             logger.info(f"Pattern check {lang}: clean ({len(xml_files)} files)")
 
