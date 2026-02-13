@@ -84,6 +84,7 @@ from .failure_report import (
     generate_failed_merge_xml_per_language,
     extract_failed_from_transfer_results,
     extract_failed_from_folder_results,
+    extract_mismatch_target_entries,
     format_failure_summary,
     # Excel failure reports
     generate_failure_report_excel,
@@ -206,6 +207,7 @@ __all__ = [
     "generate_failed_merge_xml_per_language",
     "extract_failed_from_transfer_results",
     "extract_failed_from_folder_results",
+    "extract_mismatch_target_entries",
     "format_failure_summary",
     # failure_report (Excel)
     "generate_failure_report_excel",
