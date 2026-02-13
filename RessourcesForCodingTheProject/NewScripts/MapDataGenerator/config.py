@@ -327,6 +327,9 @@ UI_LANGUAGES = {
         # Cell copy feedback
         'copied': 'Copied',
         'selected_cell': 'Selected',
+        # Export category tree
+        'export_categories': 'Export Categories',
+        'all_audio': 'All Audio',
     },
     '한국어': {
         'file': '파일',
@@ -381,6 +384,9 @@ UI_LANGUAGES = {
         # Cell copy feedback
         'copied': '복사됨',
         'selected_cell': '선택됨',
+        # Export category tree
+        'export_categories': '내보내기 카테고리',
+        'all_audio': '전체 오디오',
     }
 }
 
