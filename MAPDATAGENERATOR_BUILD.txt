@@ -41,3 +41,4 @@ Build - Thread safety: Loading lock + generation counter (no rapid switching cor
 Build: Language codes + branch selector
 Build: GUI reset fixes
 Build - Full rebuild all projects
+Build - Add export path category tree for AUDIO mode
