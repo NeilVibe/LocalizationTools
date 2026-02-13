@@ -42,6 +42,7 @@ from gui.result_panel import ResultPanel
 from gui.image_viewer import ImageViewer
 from gui.audio_viewer import AudioViewer
 from gui.map_canvas import MapCanvas
+from gui.export_tree import ExportTreePanel
 
 
 log = logging.getLogger(__name__)
@@ -146,6 +147,7 @@ class MapDataGeneratorApp:
         self._current_results = []
         self._current_search_index = 0
         self._texture_folder: Optional[Path] = None
+        self._active_category_path: Optional[str] = None  # None = no category filter
 
         # Variables
         self._progress_var = tk.StringVar(value=get_ui_text('ready'))
@@ -210,6 +212,15 @@ class MapDataGeneratorApp:
         # Left panel (search + results) - 35%
         left_frame = ttk.Frame(self._main_paned)
         self._main_paned.add(left_frame, weight=1)
+
+        # Export tree panel (AUDIO mode only - created but not packed)
+        self._export_tree = ExportTreePanel(
+            left_frame,
+            on_category_select=self._on_category_select,
+            label_text=get_ui_text('export_categories'),
+            all_audio_text=get_ui_text('all_audio'),
+        )
+        # Don't pack yet - shown only in AUDIO mode
 
         # Search panel
         self._search_panel = SearchPanel(
@@ -432,6 +443,15 @@ class MapDataGeneratorApp:
                 self._map_canvas = None
                 self._map_visible = False
                 self._map_toggle_var.set(False)
+
+        # Export tree: show in AUDIO mode, hide otherwise
+        if self._current_mode == DataMode.AUDIO:
+            # Pack tree BEFORE search panel — fill="both" lets it share vertical space
+            self._export_tree.pack(fill="both", padx=5, pady=(5, 0), before=self._search_panel)
+        else:
+            self._export_tree.pack_forget()
+            self._export_tree.clear()
+            self._active_category_path = None
 
         # Swap between ImageViewer and AudioViewer based on mode
         if self._current_mode == DataMode.AUDIO:
@@ -847,6 +867,15 @@ class MapDataGeneratorApp:
         # Sync result panel columns with audio mode
         self._result_panel.set_mode(self._current_mode.value)
 
+        # Populate export tree from cached category data
+        tree_data = self._resolver.audio_category_tree
+        total = self._search_engine.total_entries if self._search_engine else 0
+        if tree_data:
+            self._export_tree.set_tree_data(tree_data, total)
+            self._active_category_path = ""  # Start with "All"
+        else:
+            self._export_tree.clear()
+
         # Enable search
         self._search_panel.enable(True)
         self._search_panel.focus_search()
@@ -854,14 +883,13 @@ class MapDataGeneratorApp:
         # Update stats
         self._update_stats()
 
-        # Auto-search to populate grid (show all entries)
+        # Auto-search to populate grid (show all entries via category)
         query = self._search_panel.get_search_text()
         match_type = self._search_panel.get_match_type()
         lang_code = self._search_panel.get_language()
         self._on_search(query, match_type, lang_code)
 
         # Update status
-        total = self._search_engine.total_entries if self._search_engine else 0
         stats = self._resolver.stats
         with_script = stats.get('audio_with_script', 0)
         self._progress_var.set(f"Loaded {total} audio entries ({with_script} with script). Ready to search.")
@@ -937,6 +965,32 @@ class MapDataGeneratorApp:
         self._progress_var.set("Load failed")
         messagebox.showerror("Error", f"Failed to load data:\n{error}")
 
+    def _on_category_select(self, path: str) -> None:
+        """Handle export tree category selection."""
+        if not self._search_engine:
+            return
+
+        self._active_category_path = path
+        self._current_search_index = 0
+
+        # If there's a search query active, ignore category (search takes priority)
+        query = self._search_panel.get_search_text()
+        if query:
+            return
+
+        # Fetch entries for this category
+        results = self._search_engine.get_entries_by_export_path(
+            path, limit=self.settings.search_limit
+        )
+        total = self._search_engine.count_entries_by_export_path(path)
+        has_more = len(results) < total
+
+        self._current_results = results
+        self._current_search_index = len(results)
+
+        self._result_panel.set_results(results, total_count=total, has_more=has_more)
+        self._progress_var.set(f"Category: {path or 'All'} ({total} entries)")
+
     def _on_search(self, query: str, match_type: str, language: str) -> None:
         """Handle search request."""
         if not self._search_engine:
@@ -945,6 +999,12 @@ class MapDataGeneratorApp:
         self._current_search_index = 0
 
         if not query:
+            # No query: if AUDIO mode with active category, use category filter
+            if (self._current_mode == DataMode.AUDIO
+                    and self._active_category_path is not None):
+                self._on_category_select(self._active_category_path)
+                return
+
             # Show all entries
             results = self._search_engine.get_all_entries(
                 limit=self.settings.search_limit
@@ -981,7 +1041,14 @@ class MapDataGeneratorApp:
         query = self._search_panel.get_search_text()
         match_type = self._search_panel.get_match_type()
 
-        if not query:
+        if not query and self._current_mode == DataMode.AUDIO and self._active_category_path is not None:
+            # Category pagination
+            results = self._search_engine.get_entries_by_export_path(
+                self._active_category_path,
+                limit=self.settings.search_limit,
+                start_index=self._current_search_index,
+            )
+        elif not query:
             results = self._search_engine.get_all_entries(
                 limit=self.settings.search_limit,
                 start_index=self._current_search_index

@@ -84,6 +84,10 @@ class DataEntry:
     # ITEM-specific fields
     string_id: str = ""  # StringID from language table
 
+    # AUDIO-specific fields (export path category tree)
+    export_path: str = ""  # Relative dir from export root (e.g., "Dialog/QuestDialog")
+    xml_order: int = 0  # Element position within source XML (0, 1, 2...)
+
     @property
     def position_2d(self) -> Optional[Tuple[float, float]]:
         """Get 2D position (x, z) for map display."""
@@ -222,6 +226,7 @@ class LinkageResolver:
 
         # Audio index (for AUDIO mode only)
         self._audio_index: Optional['AudioIndex'] = None
+        self._audio_category_tree: Optional[Dict] = None
 
         # Track which mode's data is currently loaded
         self._current_mode: Optional[DataMode] = None
@@ -724,6 +729,11 @@ class LinkageResolver:
     def stats(self) -> dict:
         return self._stats.copy()
 
+    @property
+    def audio_category_tree(self) -> Optional[Dict]:
+        """Get cached audio category tree (built during load_audio_data)."""
+        return self._audio_category_tree
+
     def get_entry(self, strkey: str) -> Optional[DataEntry]:
         """Get entry by StrKey."""
         return self._entries.get(strkey)
@@ -839,10 +849,15 @@ class LinkageResolver:
                 knowledge_key=script_eng,  # Store ENG script here for audio mode
                 source_file=wem_path.name,
                 entry_type="Audio",
+                export_path=audio_index.get_export_path(event_name),
+                xml_order=audio_index.get_xml_order(event_name),
             )
 
             self._entries[event_name] = entry
             count += 1
+
+        # Cache category tree for GUI
+        self._audio_category_tree = audio_index.build_category_tree()
 
         self._stats['entries_total'] = count
         self._stats['entries_with_image'] = 0
@@ -886,6 +901,11 @@ class AudioIndex:
         self._event_to_origin: Dict[str, str] = {}  # event_name -> StrOrigin key
         self._origin_to_kor: Dict[str, str] = {}  # StrOrigin key -> KOR script
         self._origin_to_eng: Dict[str, str] = {}  # StrOrigin key -> ENG script
+
+        # Export path category tree tracking
+        self._event_to_export_path: Dict[str, str] = {}  # event_name -> relative dir
+        self._event_to_xml_order: Dict[str, int] = {}  # event_name -> order in file
+        self._category_counts: Dict[str, int] = {}  # rel_dir -> count
 
     @property
     def wem_files(self) -> Dict[str, Path]:
@@ -931,6 +951,9 @@ class AudioIndex:
             Number of mappings loaded
         """
         self._event_to_origin.clear()
+        self._event_to_export_path.clear()
+        self._event_to_xml_order.clear()
+        self._category_counts.clear()
 
         if not export_folder or not export_folder.exists():
             log.warning("Export folder not found: %s", export_folder)
@@ -948,6 +971,13 @@ class AudioIndex:
             if root is None:
                 continue
 
+            # Compute relative dir from export root once per file
+            # Normalize backslashes to forward slashes for cross-platform consistency
+            rel_dir = str(xml_path.relative_to(export_folder).parent).replace("\\", "/")
+            if rel_dir == ".":
+                rel_dir = ""
+
+            element_order = 0
             for elem in root.iter():
                 event_name = (elem.get("SoundEventName") or "").strip()
                 str_origin = (elem.get("StrOrigin") or "").strip()
@@ -955,9 +985,17 @@ class AudioIndex:
                 if event_name and str_origin:
                     event_lower = event_name.lower()
                     self._event_to_origin[event_lower] = str_origin
+
+                    # Track export path and XML element order
+                    self._event_to_export_path[event_lower] = rel_dir
+                    self._event_to_xml_order[event_lower] = element_order
+                    element_order += 1
+
+                    # Accumulate category counts
+                    self._category_counts[rel_dir] = self._category_counts.get(rel_dir, 0) + 1
                     count += 1
 
-        log.info("Loaded %d event -> StrOrigin mappings", count)
+        log.info("Loaded %d event -> StrOrigin mappings (%d categories)", count, len(self._category_counts))
         return count
 
     def load_script_lines(
@@ -1102,6 +1140,45 @@ class AudioIndex:
         if kor:
             return kor
         return self.get_script_eng(event_name)
+
+    def get_export_path(self, event_name: str) -> str:
+        """Get export path category for event name."""
+        return self._event_to_export_path.get(event_name.lower(), "")
+
+    def get_xml_order(self, event_name: str) -> int:
+        """Get XML element order for event name."""
+        return self._event_to_xml_order.get(event_name.lower(), 0)
+
+    @property
+    def category_counts(self) -> Dict[str, int]:
+        """Get category path -> entry count mapping."""
+        return self._category_counts
+
+    def build_category_tree(self) -> Dict:
+        """Build hierarchical tree from flat category paths.
+
+        Returns:
+            Nested dict: {"_count": N, "children": {"name": {...}, ...}}
+        """
+        tree: Dict = {"_count": 0, "children": {}}
+
+        for rel_dir, count in sorted(self._category_counts.items()):
+            tree["_count"] += count
+
+            if not rel_dir:
+                # Root-level entries
+                node = tree.setdefault("children", {}).setdefault("(root)", {"_count": 0, "children": {}})
+                node["_count"] += count
+                continue
+
+            parts = rel_dir.replace("\\", "/").split("/")
+            current = tree
+            for part in parts:
+                child = current["children"].setdefault(part, {"_count": 0, "children": {}})
+                child["_count"] += count
+                current = child
+
+        return tree
 
     @property
     def file_count(self) -> int:

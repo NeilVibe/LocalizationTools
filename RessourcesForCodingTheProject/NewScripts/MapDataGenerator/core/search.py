@@ -50,6 +50,10 @@ class SearchResult:
     # ITEM-specific fields
     string_id: str = ""  # StringID
 
+    # AUDIO-specific fields
+    export_path: str = ""  # Export path category
+    xml_order: int = 0  # Element order in source XML
+
     # Search metadata
     match_score: float = 0.0
     match_field: str = ""
@@ -248,6 +252,8 @@ class SearchEngine:
             age=entry.age,
             job=entry.job,
             string_id=string_id,
+            export_path=entry.export_path,
+            xml_order=entry.xml_order,
         )
 
     def _get_field_name(self, index: int) -> str:
@@ -273,6 +279,61 @@ class SearchEngine:
                 results.append(result)
 
         return results
+
+    def get_entries_by_export_path(
+        self,
+        path_prefix: str,
+        limit: int = 500,
+        start_index: int = 0
+    ) -> List[SearchResult]:
+        """Filter entries by export path prefix, sorted by (export_path, xml_order).
+
+        Args:
+            path_prefix: Export path prefix to filter by (empty string = all)
+            limit: Max results to return
+            start_index: Pagination offset
+
+        Returns:
+            List of SearchResult matching the path prefix
+        """
+        matching = []
+        for strkey, entry in self._resolver.entries.items():
+            if entry.entry_type != "Audio":
+                continue
+            if path_prefix and not (
+                entry.export_path == path_prefix
+                or entry.export_path.startswith(path_prefix + "/")
+            ):
+                continue
+            matching.append(entry)
+
+        # Sort by export_path then xml_order (preserves original XML element order)
+        matching.sort(key=lambda e: (e.export_path, e.xml_order))
+
+        # Paginate
+        page = matching[start_index:start_index + limit]
+
+        results = []
+        for entry in page:
+            result = self._entry_to_result(entry.strkey)
+            if result:
+                results.append(result)
+
+        return results
+
+    def count_entries_by_export_path(self, path_prefix: str) -> int:
+        """Count entries matching export path prefix."""
+        count = 0
+        for entry in self._resolver.entries.values():
+            if entry.entry_type != "Audio":
+                continue
+            if path_prefix and not (
+                entry.export_path == path_prefix
+                or entry.export_path.startswith(path_prefix + "/")
+            ):
+                continue
+            count += 1
+        return count
 
     def get_entry_by_strkey(self, strkey: str) -> Optional[SearchResult]:
         """Get single entry by StrKey."""
