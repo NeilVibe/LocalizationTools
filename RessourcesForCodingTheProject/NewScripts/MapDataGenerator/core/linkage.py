@@ -963,6 +963,7 @@ class AudioIndex:
             progress_callback(f"Loading event mappings from {export_folder}...")
 
         count = 0
+        element_order = 0  # Global counter across all files — preserves ordering
         for xml_path in export_folder.rglob("*.xml"):
             if progress_callback:
                 progress_callback(f"Parsing {xml_path.name}...")
@@ -977,7 +978,6 @@ class AudioIndex:
             if rel_dir == ".":
                 rel_dir = ""
 
-            element_order = 0
             for elem in root.iter():
                 event_name = (elem.get("SoundEventName") or "").strip()
                 str_origin = (elem.get("StrOrigin") or "").strip()
