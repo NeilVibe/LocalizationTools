@@ -22,7 +22,7 @@ except ImportError:
 import config
 from .text_utils import normalize_text, normalize_nospace, normalize_for_matching
 from .korean_detection import is_korean_text
-from .source_scanner import scan_source_for_languages
+from .source_scanner import scan_source_for_languages, scan_target_for_languages, TargetScanResult
 from .postprocess import run_all_postprocess
 
 logger = logging.getLogger(__name__)
@@ -966,6 +966,8 @@ def transfer_folder_to_folder(
     fuzzy_texts: Optional[List[str]] = None,
     fuzzy_entries: Optional[List[dict]] = None,
     source_stringids: Optional[set] = None,
+    # Pre-scanned target (flexible target support)
+    target_scan: Optional[TargetScanResult] = None,
 ) -> Dict:
     """
     Transfer corrections from source folder to target folder.
@@ -1117,14 +1119,24 @@ def transfer_folder_to_folder(
                 results["errors"].append(f"Failed to build FAISS index for {match_mode}: {e}")
                 logger.error(f"Failed to build FAISS index for {match_mode}: {e}")
 
-    # ─── Phase 1: Parse ALL source files and group by target XML ─────
-    # Instead of one pass per source file, concatenate ALL corrections
-    # for the same target language into ONE dataset for a SINGLE pass.
+    # ─── Scan target folder for flexible language detection ──────────
+    if target_scan is None:
+        target_scan = scan_target_for_languages(target_folder)
+
+    # Build target language → files lookup (case-insensitive)
+    target_files_by_lang: Dict[str, List[Path]] = {}
+    for lang_code, files in target_scan.lang_files.items():
+        target_files_by_lang[lang_code.upper()] = files
+        target_files_by_lang[lang_code.lower()] = files
+
+    # ─── Phase 1: Parse ALL source files and group by LANGUAGE ────────
+    # Group corrections by language code. Each language may have MULTIPLE
+    # target files (XML and/or Excel) that ALL receive the corrections.
 
     from .xml_io import parse_corrections_from_xml
 
-    # {target_xml_path: {"corrections": [...], "source_files": [...]}}
-    target_groups = {}
+    # {lang_code_upper: {"corrections": [...], "source_files": [...], "target_files": [...]}}
+    lang_groups = {}
 
     for i, source_file in enumerate(all_sources):
         if progress_callback:
@@ -1156,45 +1168,59 @@ def transfer_folder_to_folder(
                 if 2 <= len(last_part) <= 6 or "-" in last_part:
                     lang_code = last_part
 
-        # Find target XML
-        target_xml = None
-        if lang_code:
-            candidates = [
-                target_folder / f"languagedata_{lang_code}.xml",
-                target_folder / f"languagedata_{lang_code.upper()}.xml",
-                target_folder / f"languagedata_{lang_code.lower()}.xml",
-            ]
-            for c in candidates:
-                if c.exists():
-                    target_xml = c
-                    break
-
-        if not target_xml:
-            target_xmls = list(target_folder.glob("*.xml"))
-            if len(target_xmls) == 1:
-                target_xml = target_xmls[0]
-            elif lang_code:
-                results["errors"].append(f"No target XML found for {source_file.name}")
-                continue
-
-        if not target_xml:
-            results["errors"].append(f"No target XML found for {source_file.name}")
+        if not lang_code:
+            results["errors"].append(f"No language detected for {source_file.name}")
             continue
 
-        # Group corrections by target XML
-        target_key = str(target_xml)
-        if target_key not in target_groups:
-            target_groups[target_key] = {
-                "target_xml": target_xml,
+        # Find target files for this language (flexible scanner)
+        lang_upper = lang_code.upper()
+        target_files = target_files_by_lang.get(lang_upper, [])
+
+        if not target_files:
+            # Backward compat: try hardcoded languagedata pattern as last resort
+            for candidate in [
+                target_folder / f"languagedata_{lang_code}.xml",
+                target_folder / f"languagedata_{lang_upper}.xml",
+                target_folder / f"languagedata_{lang_code.lower()}.xml",
+            ]:
+                if candidate.exists():
+                    target_files = [candidate]
+                    break
+
+        if not target_files:
+            results["errors"].append(f"No target files found for {source_file.name} (lang={lang_upper})")
+            continue
+
+        # Group corrections by language
+        if lang_upper not in lang_groups:
+            lang_groups[lang_upper] = {
                 "corrections": [],
                 "source_files": [],
+                "target_files": target_files,
             }
-        target_groups[target_key]["corrections"].extend(corrections)
-        target_groups[target_key]["source_files"].append(source_file.name)
-        logger.info(f"Parsed {source_file.name}: {len(corrections)} corrections → {target_xml.name}")
+        lang_groups[lang_upper]["corrections"].extend(corrections)
+        lang_groups[lang_upper]["source_files"].append(source_file.name)
+        target_names = ", ".join(f.name for f in target_files)
+        logger.info(f"Parsed {source_file.name}: {len(corrections)} corrections → {target_names}")
 
-    logger.info(f"Grouped {sum(len(g['corrections']) for g in target_groups.values()):,} corrections "
-                f"across {len(target_groups)} target files")
+    logger.info(f"Grouped {sum(len(g['corrections']) for g in lang_groups.values()):,} corrections "
+                f"across {len(lang_groups)} languages")
+
+    # Convert lang_groups to target_groups format for the Phase 2 loop.
+    # Each target file gets its own entry so the merge loop can process them independently.
+    target_groups = {}
+    for lang_upper, group in lang_groups.items():
+        for target_file in group["target_files"]:
+            target_key = str(target_file)
+            if target_key not in target_groups:
+                target_groups[target_key] = {
+                    "target_file": target_file,
+                    "corrections": group["corrections"],
+                    "source_files": group["source_files"],
+                    "language": lang_upper,
+                }
+
+    logger.info(f"Expanded to {len(target_groups)} target files for merge")
 
     # ─── EventName Resolution (between parse and merge) ───────────────
     # If any correction has _source_eventname, resolve via export__ mapping
@@ -1238,206 +1264,220 @@ def transfer_folder_to_folder(
         else:
             logger.warning("EventName mapping is empty — export folder may not contain SoundEventName attributes")
 
-    # ─── Phase 2: ONE pass per target XML with ALL corrections ────────
+    # ─── Phase 2: ONE pass per target file with ALL corrections ─────
+    # Now handles both XML and Excel targets via dispatch
+
+    from .excel_io import merge_corrections_to_excel
 
     for ti, (target_key, group) in enumerate(target_groups.items()):
-        target_xml = group["target_xml"]
+        target_file = group["target_file"]
         corrections = group["corrections"]
         source_names = group["source_files"]
+        is_excel = target_file.suffix.lower() in (".xlsx", ".xls")
 
         if progress_callback:
-            progress_callback(f"Transferring to {target_xml.name}... ({ti+1}/{len(target_groups)})")
+            progress_callback(f"Transferring to {target_file.name}... ({ti+1}/{len(target_groups)})")
 
-        logger.info(f"═══ {target_xml.name}: {len(corrections):,} corrections from {len(source_names)} files ═══")
+        logger.info(f"═══ {target_file.name}: {len(corrections):,} corrections from {len(source_names)} files ═══")
 
         # GUI per-language header
         if log_callback:
-            lang_code = target_xml.stem.replace("languagedata_", "").upper()
-            log_callback(f"── {lang_code} ({ti+1}/{len(target_groups)}) · {len(corrections):,} corrections ──", 'header')
+            lang_code = group.get("language", target_file.stem.replace("languagedata_", "").upper())
+            log_callback(f"── {lang_code} ({ti+1}/{len(target_groups)}) · {len(corrections):,} corrections → {target_file.name} ──", 'header')
 
-        # Apply corrections based on match mode — ONE pass with ALL corrections
-        if match_mode == "stringid_only" and stringid_to_category:
-            file_result = merge_corrections_stringid_only(
-                target_xml, corrections, stringid_to_category,
-                stringid_to_subfolder, dry_run,
+        # ─── Dispatch based on target file type ───────────────────────
+        if is_excel:
+            # Excel target: use merge_corrections_to_excel()
+            # Map transfer match_mode to base mode (fuzzy N/A for Excel targets)
+            excel_mode = match_mode.replace("_fuzzy", "")  # strict_fuzzy -> strict
+            if excel_mode != match_mode:
+                logger.warning("Fuzzy mode not supported for Excel target %s, using '%s'", target_file.name, excel_mode)
+            file_result = merge_corrections_to_excel(
+                target_file, corrections,
+                match_mode=excel_mode,
+                dry_run=dry_run,
                 only_untranslated=only_untranslated,
+                stringid_to_category=stringid_to_category,
+                stringid_to_subfolder=stringid_to_subfolder,
             )
             results["total_skipped"] += file_result.get("skipped_non_script", 0)
             results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
-
-        elif match_mode == "strict_fuzzy":
-            # ═══ TWO-STEP PROCESS (single pass with ALL corrections) ═══
-            # Step 1: Perfect match (exact StringID + exact StrOrigin)
-            file_result = merge_corrections_to_xml(
-                target_xml, corrections, dry_run,
-                only_untranslated=only_untranslated,
-            )
-            step1_matched = file_result["matched"]
-            logger.info(f"Step 1 (perfect): {step1_matched}/{len(corrections)} matched")
-            if log_callback:
-                pct = (step1_matched / len(corrections) * 100) if corrections else 0
-                log_callback(f"  Pass 1 (Perfect): {step1_matched}/{len(corrections)} ({pct:.1f}%)", 'info')
-
-            # Step 2: FAISS fuzzy on UNCONSUMED corrections only
-            if _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
-                unconsumed = []
-                for detail in file_result["details"]:
-                    if detail["status"] in ("STRORIGIN_MISMATCH", "NOT_FOUND"):
-                        unconsumed.append({
-                            "string_id": detail["string_id"],
-                            "str_origin": detail.get("old", ""),
-                            "corrected": detail.get("new", ""),
-                            "raw_attribs": detail.get("raw_attribs", {}),
-                            "_original_status": detail["status"],
-                        })
-
-                if unconsumed:
-                    from .fuzzy_matching import find_matches_fuzzy
-                    logger.info(f"Step 2: FAISS fuzzy on {len(unconsumed)} unconsumed corrections")
-
-                    fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
-                        unconsumed, _fuzzy_texts, _fuzzy_entries,
-                        _fuzzy_model, _fuzzy_index, effective_threshold,
-                        progress_callback=progress_callback,
-                        log_callback=log_callback,
-                    )
-
-                    if fuzzy_matched:
-                        fuzzy_result = merge_corrections_fuzzy(
-                            target_xml, fuzzy_matched, dry_run,
-                            only_untranslated=only_untranslated,
-                        )
-                        file_result["matched"] += fuzzy_result["matched"]
-                        file_result["updated"] += fuzzy_result["updated"]
-
-                        # Bug 2 fix: Count by original status, not blanket subtract
-                        fuzzy_from_not_found = sum(
-                            1 for m in fuzzy_matched
-                            if m.get("_original_status") == "NOT_FOUND"
-                        )
-                        fuzzy_from_mismatch = sum(
-                            1 for m in fuzzy_matched
-                            if m.get("_original_status") == "STRORIGIN_MISMATCH"
-                        )
-                        file_result["not_found"] = max(0, file_result.get("not_found", 0) - fuzzy_from_not_found)
-                        if "strorigin_mismatch" in file_result:
-                            file_result["strorigin_mismatch"] = max(0, file_result["strorigin_mismatch"] - fuzzy_from_mismatch)
-
-                        # Bug 1 fix: Remove stale Step1 failures resolved by fuzzy
-                        resolved_sids = {m["string_id"] for m in fuzzy_matched}
-                        file_result["details"] = [
-                            d for d in file_result["details"]
-                            if not (d["status"] in ("NOT_FOUND", "STRORIGIN_MISMATCH") and d["string_id"] in resolved_sids)
-                        ]
-
-                        file_result["details"].extend(fuzzy_result["details"])
-                        logger.info(
-                            f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
-                            f"({fuzzy_result['updated']} updated, avg_score={fuzzy_stats['avg_score']:.3f})"
-                        )
-                        if log_callback:
-                            log_callback(
-                                f"  Pass 2 (Fuzzy): {fuzzy_result['matched']} recovered (avg: {fuzzy_stats['avg_score']:.2f})",
-                                'info',
-                            )
-                    else:
-                        logger.info(f"Step 2: No fuzzy matches found for {len(unconsumed)} unconsumed")
-                        if log_callback:
-                            log_callback(f"  Pass 2 (Fuzzy): 0 recovered from {len(unconsumed)} attempts", 'warning')
-                else:
-                    logger.info("Step 2: All corrections matched in Step 1 (perfect match)")
-                    if log_callback:
-                        log_callback("  Pass 2 (Fuzzy): All matched in Pass 1!", 'success')
-
-        elif match_mode == "strorigin_only":
-            # SAFETY: Default untranslated-only (GUI warns if user picks "ALL")
-            file_result = merge_corrections_strorigin_only(
-                target_xml, corrections, dry_run,
-                only_untranslated=only_untranslated,
-            )
-        elif match_mode == "strorigin_only_fuzzy":
-            # ═══ TWO-STEP: Exact StrOrigin first, then SBERT fuzzy on leftovers ═══
-            # SAFETY: Default untranslated-only (GUI warns if user picks "ALL")
-            file_result = merge_corrections_strorigin_only(
-                target_xml, corrections, dry_run,
-                only_untranslated=only_untranslated,
-            )
-            step1_matched = file_result["matched"]
-            logger.info(f"Step 1 (StrOrigin exact): {step1_matched}/{len(corrections)} matched")
-            if log_callback:
-                pct = (step1_matched / len(corrections) * 100) if corrections else 0
-                log_callback(f"  Pass 1 (StrOrigin): {step1_matched}/{len(corrections)} ({pct:.1f}%)", 'info')
-
-            if _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
-                unconsumed = []
-                for detail in file_result["details"]:
-                    if detail["status"] == "NOT_FOUND":
-                        unconsumed.append({
-                            "string_id": detail.get("string_id", ""),
-                            "str_origin": detail.get("old", ""),
-                            "corrected": detail.get("new", ""),
-                            "raw_attribs": detail.get("raw_attribs", {}),
-                            "_original_status": detail["status"],
-                        })
-
-                if unconsumed:
-                    from .fuzzy_matching import find_matches_fuzzy
-                    logger.info(f"Step 2: FAISS fuzzy on {len(unconsumed)} unconsumed corrections")
-
-                    fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
-                        unconsumed, _fuzzy_texts, _fuzzy_entries,
-                        _fuzzy_model, _fuzzy_index, effective_threshold,
-                        progress_callback=progress_callback,
-                        log_callback=log_callback,
-                    )
-
-                    if fuzzy_matched:
-                        fuzzy_result = merge_corrections_fuzzy(
-                            target_xml, fuzzy_matched, dry_run,
-                            only_untranslated=only_untranslated,
-                        )
-                        file_result["matched"] += fuzzy_result["matched"]
-                        file_result["updated"] += fuzzy_result["updated"]
-
-                        fuzzy_from_not_found = sum(
-                            1 for m in fuzzy_matched
-                            if m.get("_original_status") == "NOT_FOUND"
-                        )
-                        file_result["not_found"] = max(0, file_result.get("not_found", 0) - fuzzy_from_not_found)
-
-                        resolved_sids = {m.get("string_id", "") for m in fuzzy_matched}
-                        file_result["details"] = [
-                            d for d in file_result["details"]
-                            if not (d["status"] == "NOT_FOUND" and d.get("string_id", "") in resolved_sids)
-                        ]
-
-                        file_result["details"].extend(fuzzy_result["details"])
-                        logger.info(
-                            f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
-                            f"({fuzzy_result['updated']} updated, avg_score={fuzzy_stats['avg_score']:.3f})"
-                        )
-                        if log_callback:
-                            log_callback(
-                                f"  Pass 2 (Fuzzy): {fuzzy_result['matched']} recovered (avg: {fuzzy_stats['avg_score']:.2f})",
-                                'info',
-                            )
-                    else:
-                        logger.info(f"Step 2: No fuzzy matches found for {len(unconsumed)} unconsumed")
-                        if log_callback:
-                            log_callback(f"  Pass 2 (Fuzzy): 0 recovered from {len(unconsumed)} attempts", 'warning')
-                else:
-                    logger.info("Step 2: All corrections matched in Step 1 (StrOrigin exact)")
-                    if log_callback:
-                        log_callback("  Pass 2 (Fuzzy): All matched in Pass 1!", 'success')
         else:
-            file_result = merge_corrections_to_xml(
-                target_xml, corrections, dry_run,
-                only_untranslated=only_untranslated,
-            )
+            # XML target: existing merge logic (unchanged)
+            if match_mode == "stringid_only" and stringid_to_category:
+                file_result = merge_corrections_stringid_only(
+                    target_file, corrections, stringid_to_category,
+                    stringid_to_subfolder, dry_run,
+                    only_untranslated=only_untranslated,
+                )
+                results["total_skipped"] += file_result.get("skipped_non_script", 0)
+                results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
 
-        # Post-process: run all cleanup steps (newlines, empty StrOrigin, etc.)
-        if not dry_run:
-            run_all_postprocess(target_xml)
+            elif match_mode == "strict_fuzzy":
+                file_result = merge_corrections_to_xml(
+                    target_file, corrections, dry_run,
+                    only_untranslated=only_untranslated,
+                )
+                step1_matched = file_result["matched"]
+                logger.info(f"Step 1 (perfect): {step1_matched}/{len(corrections)} matched")
+                if log_callback:
+                    pct = (step1_matched / len(corrections) * 100) if corrections else 0
+                    log_callback(f"  Pass 1 (Perfect): {step1_matched}/{len(corrections)} ({pct:.1f}%)", 'info')
+
+                if _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
+                    unconsumed = []
+                    for detail in file_result["details"]:
+                        if detail["status"] in ("STRORIGIN_MISMATCH", "NOT_FOUND"):
+                            unconsumed.append({
+                                "string_id": detail["string_id"],
+                                "str_origin": detail.get("old", ""),
+                                "corrected": detail.get("new", ""),
+                                "raw_attribs": detail.get("raw_attribs", {}),
+                                "_original_status": detail["status"],
+                            })
+
+                    if unconsumed:
+                        from .fuzzy_matching import find_matches_fuzzy
+                        logger.info(f"Step 2: FAISS fuzzy on {len(unconsumed)} unconsumed corrections")
+
+                        fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
+                            unconsumed, _fuzzy_texts, _fuzzy_entries,
+                            _fuzzy_model, _fuzzy_index, effective_threshold,
+                            progress_callback=progress_callback,
+                            log_callback=log_callback,
+                        )
+
+                        if fuzzy_matched:
+                            fuzzy_result = merge_corrections_fuzzy(
+                                target_file, fuzzy_matched, dry_run,
+                                only_untranslated=only_untranslated,
+                            )
+                            file_result["matched"] += fuzzy_result["matched"]
+                            file_result["updated"] += fuzzy_result["updated"]
+
+                            fuzzy_from_not_found = sum(
+                                1 for m in fuzzy_matched
+                                if m.get("_original_status") == "NOT_FOUND"
+                            )
+                            fuzzy_from_mismatch = sum(
+                                1 for m in fuzzy_matched
+                                if m.get("_original_status") == "STRORIGIN_MISMATCH"
+                            )
+                            file_result["not_found"] = max(0, file_result.get("not_found", 0) - fuzzy_from_not_found)
+                            if "strorigin_mismatch" in file_result:
+                                file_result["strorigin_mismatch"] = max(0, file_result["strorigin_mismatch"] - fuzzy_from_mismatch)
+
+                            resolved_sids = {m["string_id"] for m in fuzzy_matched}
+                            file_result["details"] = [
+                                d for d in file_result["details"]
+                                if not (d["status"] in ("NOT_FOUND", "STRORIGIN_MISMATCH") and d["string_id"] in resolved_sids)
+                            ]
+
+                            file_result["details"].extend(fuzzy_result["details"])
+                            logger.info(
+                                f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
+                                f"({fuzzy_result['updated']} updated, avg_score={fuzzy_stats['avg_score']:.3f})"
+                            )
+                            if log_callback:
+                                log_callback(
+                                    f"  Pass 2 (Fuzzy): {fuzzy_result['matched']} recovered (avg: {fuzzy_stats['avg_score']:.2f})",
+                                    'info',
+                                )
+                        else:
+                            logger.info(f"Step 2: No fuzzy matches found for {len(unconsumed)} unconsumed")
+                            if log_callback:
+                                log_callback(f"  Pass 2 (Fuzzy): 0 recovered from {len(unconsumed)} attempts", 'warning')
+                    else:
+                        logger.info("Step 2: All corrections matched in Step 1 (perfect match)")
+                        if log_callback:
+                            log_callback("  Pass 2 (Fuzzy): All matched in Pass 1!", 'success')
+
+            elif match_mode == "strorigin_only":
+                file_result = merge_corrections_strorigin_only(
+                    target_file, corrections, dry_run,
+                    only_untranslated=only_untranslated,
+                )
+            elif match_mode == "strorigin_only_fuzzy":
+                file_result = merge_corrections_strorigin_only(
+                    target_file, corrections, dry_run,
+                    only_untranslated=only_untranslated,
+                )
+                step1_matched = file_result["matched"]
+                logger.info(f"Step 1 (StrOrigin exact): {step1_matched}/{len(corrections)} matched")
+                if log_callback:
+                    pct = (step1_matched / len(corrections) * 100) if corrections else 0
+                    log_callback(f"  Pass 1 (StrOrigin): {step1_matched}/{len(corrections)} ({pct:.1f}%)", 'info')
+
+                if _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
+                    unconsumed = []
+                    for detail in file_result["details"]:
+                        if detail["status"] == "NOT_FOUND":
+                            unconsumed.append({
+                                "string_id": detail.get("string_id", ""),
+                                "str_origin": detail.get("old", ""),
+                                "corrected": detail.get("new", ""),
+                                "raw_attribs": detail.get("raw_attribs", {}),
+                                "_original_status": detail["status"],
+                            })
+
+                    if unconsumed:
+                        from .fuzzy_matching import find_matches_fuzzy
+                        logger.info(f"Step 2: FAISS fuzzy on {len(unconsumed)} unconsumed corrections")
+
+                        fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
+                            unconsumed, _fuzzy_texts, _fuzzy_entries,
+                            _fuzzy_model, _fuzzy_index, effective_threshold,
+                            progress_callback=progress_callback,
+                            log_callback=log_callback,
+                        )
+
+                        if fuzzy_matched:
+                            fuzzy_result = merge_corrections_fuzzy(
+                                target_file, fuzzy_matched, dry_run,
+                                only_untranslated=only_untranslated,
+                            )
+                            file_result["matched"] += fuzzy_result["matched"]
+                            file_result["updated"] += fuzzy_result["updated"]
+
+                            fuzzy_from_not_found = sum(
+                                1 for m in fuzzy_matched
+                                if m.get("_original_status") == "NOT_FOUND"
+                            )
+                            file_result["not_found"] = max(0, file_result.get("not_found", 0) - fuzzy_from_not_found)
+
+                            resolved_sids = {m.get("string_id", "") for m in fuzzy_matched}
+                            file_result["details"] = [
+                                d for d in file_result["details"]
+                                if not (d["status"] == "NOT_FOUND" and d.get("string_id", "") in resolved_sids)
+                            ]
+
+                            file_result["details"].extend(fuzzy_result["details"])
+                            logger.info(
+                                f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
+                                f"({fuzzy_result['updated']} updated, avg_score={fuzzy_stats['avg_score']:.3f})"
+                            )
+                            if log_callback:
+                                log_callback(
+                                    f"  Pass 2 (Fuzzy): {fuzzy_result['matched']} recovered (avg: {fuzzy_stats['avg_score']:.2f})",
+                                    'info',
+                                )
+                        else:
+                            logger.info(f"Step 2: No fuzzy matches found for {len(unconsumed)} unconsumed")
+                            if log_callback:
+                                log_callback(f"  Pass 2 (Fuzzy): 0 recovered from {len(unconsumed)} attempts", 'warning')
+                    else:
+                        logger.info("Step 2: All corrections matched in Step 1 (StrOrigin exact)")
+                        if log_callback:
+                            log_callback("  Pass 2 (Fuzzy): All matched in Pass 1!", 'success')
+            else:
+                file_result = merge_corrections_to_xml(
+                    target_file, corrections, dry_run,
+                    only_untranslated=only_untranslated,
+                )
+
+            # Post-process XML targets only (newlines, empty StrOrigin cleanup)
+            if not dry_run:
+                run_all_postprocess(target_file)
 
         # Aggregate results
         results["files_processed"] += len(source_names)
@@ -1449,10 +1489,10 @@ def transfer_folder_to_folder(
         results["total_skipped_translated"] += file_result.get("skipped_translated", 0)
         results["errors"].extend(file_result["errors"])
 
-        # Store result keyed by target name (since sources are concatenated)
+        # Store result keyed by target name
         source_label = ", ".join(source_names)
-        results["file_results"][target_xml.name] = {
-            "target": target_xml.name,
+        results["file_results"][target_file.name] = {
+            "target": target_file.name,
             "source_files": source_names,
             "corrections": len(corrections),
             **file_result,
@@ -1466,7 +1506,7 @@ def transfer_folder_to_folder(
         f_strorigin_mm = file_result.get("strorigin_mismatch", 0)
         f_unchanged = max(0, f_matched - f_updated - f_skipped_tr)
         logger.info(
-            f"[{source_label}] -> {target_xml.name}: "
+            f"[{source_label}] -> {target_file.name}: "
             f"{f_updated} updated, {f_unchanged} already correct, {f_skipped_tr} skipped, {f_not_found} not found"
         )
         if log_callback:
@@ -1537,7 +1577,9 @@ def transfer_file_to_file(
         Dict with results
     """
     from .xml_io import parse_corrections_from_xml
-    from .excel_io import read_corrections_from_excel
+    from .excel_io import read_corrections_from_excel, merge_corrections_to_excel
+
+    is_excel_target = target_file.suffix.lower() in (".xlsx", ".xls")
 
     # Parse corrections from source
     try:
@@ -1581,6 +1623,35 @@ def transfer_file_to_file(
         else:
             logger.warning("EventName mapping is empty — cannot resolve EventNames")
 
+    # ─── Dispatch: Excel target uses merge_corrections_to_excel ───────
+    if is_excel_target:
+        excel_mode = match_mode.replace("_fuzzy", "")  # fuzzy N/A for Excel
+        if excel_mode != match_mode:
+            logger.warning("Fuzzy mode not supported for Excel target %s, using '%s'", target_file.name, excel_mode)
+        result = merge_corrections_to_excel(
+            target_file, corrections,
+            match_mode=excel_mode,
+            dry_run=dry_run,
+            only_untranslated=only_untranslated,
+            stringid_to_category=stringid_to_category,
+            stringid_to_subfolder=stringid_to_subfolder,
+        )
+        result["corrections_count"] = len(corrections)
+
+        # Missing EventName report
+        if missing_eventnames:
+            from .eventname_resolver import generate_missing_eventname_report
+            from datetime import datetime
+            result["missing_eventnames_count"] = len(missing_eventnames)
+            report_dir = config.get_failed_report_dir(source_file.stem)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            report_path = report_dir / f"MissingEventNames_{timestamp}.xlsx"
+            if generate_missing_eventname_report(missing_eventnames, report_path):
+                result["missing_eventname_report"] = str(report_path)
+
+        return result
+
+    # ─── XML target: existing merge logic ─────────────────────────────
     # Apply corrections based on match mode
     if match_mode == "stringid_only" and stringid_to_category:
         result = merge_corrections_stringid_only(

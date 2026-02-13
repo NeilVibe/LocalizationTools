@@ -16,7 +16,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+# Try lxml first (more robust), fallback to standard library
+try:
+    from lxml import etree
+    _LXML_AVAILABLE = True
+except ImportError:
+    from xml.etree import ElementTree as etree
+    _LXML_AVAILABLE = False
+
 import config
+from .xml_parser import iter_locstr_elements
 
 logger = logging.getLogger(__name__)
 
@@ -254,6 +263,215 @@ def scan_source_for_languages(source_path: Path) -> SourceScanResult:
 
 
 @dataclass
+class TargetScanResult:
+    """Result of scanning a target folder for language-tagged items."""
+
+    lang_files: Dict[str, List[Path]] = field(default_factory=dict)  # {lang_code: [files]}
+    unrecognized: List[Path] = field(default_factory=list)  # Items without lang suffix
+    warnings: List[str] = field(default_factory=list)
+    xml_count: int = 0
+    excel_count: int = 0
+    validated_files: Dict[str, List[Path]] = field(default_factory=dict)  # {lang_code: [valid files]}
+    skipped_files: List[str] = field(default_factory=list)  # Human-readable skip reasons
+
+    @property
+    def total_files(self) -> int:
+        return sum(len(files) for files in self.lang_files.values())
+
+    @property
+    def language_count(self) -> int:
+        return len(self.lang_files)
+
+    def get_languages(self) -> List[str]:
+        return sorted(self.lang_files.keys())
+
+
+def scan_target_for_languages(target_path: Path) -> TargetScanResult:
+    """
+    Scan target folder for language-tagged files/folders.
+
+    Uses the same detection logic as scan_source_for_languages:
+    - Folder named as language code (FRE/) or with suffix (LOC_FRE/)
+    - File with language suffix (languagedata_FRE.xml, custom_GER.xlsx)
+    - Recursive scanning inside language-tagged folders
+
+    Accepts both .xml and .xlsx/.xls files as valid targets.
+
+    Args:
+        target_path: Path to target folder to scan
+
+    Returns:
+        TargetScanResult with detected languages and files
+    """
+    result = TargetScanResult()
+    valid_codes = _get_valid_language_codes()
+
+    if not target_path.exists():
+        result.warnings.append(f"Target path does not exist: {target_path}")
+        return result
+
+    if not target_path.is_dir():
+        result.warnings.append(f"Target path is not a directory: {target_path}")
+        return result
+
+    xml_count = 0
+    excel_count = 0
+
+    try:
+        children = list(target_path.iterdir())
+    except OSError as e:
+        result.warnings.append(f"Cannot read folder: {e}")
+        return result
+
+    for child in children:
+        if child.is_dir():
+            lang = extract_language_suffix(child.name, valid_codes)
+            if lang:
+                lang_files = []
+                for f in child.rglob("*"):
+                    if f.is_file() and f.suffix.lower() in (".xml", ".xlsx", ".xls"):
+                        lang_files.append(f)
+                        if f.suffix.lower() == ".xml":
+                            xml_count += 1
+                        else:
+                            excel_count += 1
+
+                if lang_files:
+                    if lang not in result.lang_files:
+                        result.lang_files[lang] = []
+                    result.lang_files[lang].extend(lang_files)
+                    logger.debug(f"Target folder {child.name}: {len(lang_files)} files -> {lang}")
+                else:
+                    result.warnings.append(f"Folder {child.name} has suffix {lang} but no target files")
+            else:
+                result.unrecognized.append(child)
+
+        elif child.is_file() and child.suffix.lower() in (".xml", ".xlsx", ".xls"):
+            lang = extract_language_suffix(child.stem, valid_codes)
+
+            # Also handle standard languagedata_XXX.xml pattern
+            if not lang and child.stem.lower().startswith("languagedata_"):
+                suffix_part = child.stem[13:]
+                for code in valid_codes:
+                    if code.lower() == suffix_part.lower():
+                        lang = code
+                        break
+
+            if lang:
+                if lang not in result.lang_files:
+                    result.lang_files[lang] = []
+                result.lang_files[lang].append(child)
+                if child.suffix.lower() == ".xml":
+                    xml_count += 1
+                else:
+                    excel_count += 1
+                logger.debug(f"Target file {child.name}: -> {lang}")
+            else:
+                result.unrecognized.append(child)
+
+    result.xml_count = xml_count
+    result.excel_count = excel_count
+
+    return result
+
+
+def validate_target_files(scan_result: TargetScanResult) -> TargetScanResult:
+    """
+    Validate each detected target file for parseability.
+
+    - XML files: check for LocStr elements with StringId + StrOrigin + Str attributes
+    - Excel files: check for StringID + StrOrigin headers (Str column optional, auto-created)
+
+    Files that fail validation are removed from lang_files and added to warnings.
+    Files that pass are also added to validated_files.
+
+    Args:
+        scan_result: Result from scan_target_for_languages
+
+    Returns:
+        The same TargetScanResult with validated_files populated and invalid files removed
+    """
+    from .excel_io import _detect_column_indices
+
+    for lang, files in list(scan_result.lang_files.items()):
+        valid_files = []
+        for f in files:
+            if f.suffix.lower() == ".xml":
+                # Validate XML: check for LocStr elements
+                try:
+                    if _LXML_AVAILABLE:
+                        parser = etree.XMLParser(
+                            resolve_entities=False, load_dtd=False,
+                            no_network=True, recover=True,
+                        )
+                        tree = etree.parse(str(f), parser)
+                    else:
+                        tree = etree.parse(str(f))
+                    root = tree.getroot()
+
+                    # Count LocStr elements (case-insensitive) via canonical helper
+                    locstr_elements = iter_locstr_elements(root)
+                    locstr_count = len(locstr_elements)
+
+                    if locstr_count > 0:
+                        valid_files.append(f)
+                        logger.debug(f"Target {f.name}: {locstr_count} LocStr entries")
+                    else:
+                        scan_result.warnings.append(f"{f.name}: No LocStr elements found - SKIPPED")
+                        scan_result.skipped_files.append(f"{f.name}: No LocStr elements")
+                except Exception as e:
+                    scan_result.warnings.append(f"{f.name}: XML parse error ({e}) - SKIPPED")
+                    scan_result.skipped_files.append(f"{f.name}: Parse error")
+
+            elif f.suffix.lower() in (".xlsx", ".xls"):
+                # Validate Excel: check for StringID + StrOrigin headers
+                try:
+                    from openpyxl import load_workbook
+                    wb = load_workbook(f, read_only=True)
+                    try:
+                        ws = wb.active
+                        col_indices = _detect_column_indices(ws)
+
+                        has_stringid = "stringid" in col_indices or "string_id" in col_indices
+                        has_strorigin = "strorigin" in col_indices or "str_origin" in col_indices
+                        has_str = "str" in col_indices
+
+                        if has_stringid and has_strorigin:
+                            valid_files.append(f)
+                            if not has_str:
+                                scan_result.warnings.append(
+                                    f"{f.name}: No 'Str' column - will auto-create after StrOrigin"
+                                )
+                            logger.debug(f"Target {f.name}: Excel validated (StringID+StrOrigin)")
+                        else:
+                            missing = []
+                            if not has_stringid:
+                                missing.append("StringID")
+                            if not has_strorigin:
+                                missing.append("StrOrigin")
+                            scan_result.warnings.append(
+                                f"{f.name}: Missing {', '.join(missing)} column(s) - SKIPPED"
+                            )
+                            scan_result.skipped_files.append(f"{f.name}: Missing {', '.join(missing)}")
+                    finally:
+                        wb.close()
+                except Exception as e:
+                    scan_result.warnings.append(f"{f.name}: Excel read error ({e}) - SKIPPED")
+                    scan_result.skipped_files.append(f"{f.name}: Read error")
+
+        if valid_files:
+            scan_result.validated_files[lang] = valid_files
+        scan_result.lang_files[lang] = valid_files  # Replace with only valid files
+
+    # Remove languages with no valid files
+    empty_langs = [lang for lang, files in scan_result.lang_files.items() if not files]
+    for lang in empty_langs:
+        del scan_result.lang_files[lang]
+
+    return scan_result
+
+
+@dataclass
 class ValidationResult:
     """Result of validating source scan against target folder."""
 
@@ -267,15 +485,18 @@ class ValidationResult:
 def validate_source_structure(
     scan_result: SourceScanResult,
     target_folder: Path,
+    target_scan: Optional['TargetScanResult'] = None,
 ) -> ValidationResult:
     """
     Validate scanned source against target folder.
 
     Checks which source languages have matching targets.
+    Uses flexible target scanning (not just languagedata_*.xml).
 
     Args:
         scan_result: Result from scan_source_for_languages
-        target_folder: Target folder with languagedata_*.xml files
+        target_folder: Target folder with language files
+        target_scan: Optional pre-computed target scan (avoids re-scanning)
 
     Returns:
         ValidationResult with match analysis
@@ -287,14 +508,11 @@ def validate_source_structure(
         validation.warnings.append(f"Target folder does not exist: {target_folder}")
         return validation
 
-    # Find target language files
-    target_langs = set()
-    for f in target_folder.glob("*.xml"):
-        if f.stem.lower().startswith("languagedata_"):
-            lang_part = f.stem[13:]
-            # Normalize to uppercase for comparison
-            target_langs.add(lang_part.upper())
+    # Use flexible target scanner instead of hardcoded languagedata_*.xml
+    if target_scan is None:
+        target_scan = scan_target_for_languages(target_folder)
 
+    target_langs = set(target_scan.lang_files.keys())
     source_langs = set(scan_result.lang_files.keys())
 
     # Compare
@@ -404,11 +622,12 @@ class FileMapping:
 
 @dataclass
 class LanguageTransferPlan:
-    """Transfer plan for a single language."""
+    """Transfer plan for a single language (updated: supports multiple target files)."""
     language: str
     source_files: List[Path]
-    target_file: Optional[Path]
-    status: str  # "READY", "NO_TARGET", "EMPTY"
+    target_file: Optional[Path]  # Primary target (backward compat)
+    target_files: List[Path] = field(default_factory=list)  # ALL target files
+    status: str = "READY"  # "READY", "NO_TARGET", "EMPTY"
     file_count: int = 0
     total_size_kb: float = 0.0
 
@@ -449,16 +668,19 @@ def generate_transfer_plan(
     source_path: Path,
     target_folder: Path,
     scan_result: Optional[SourceScanResult] = None,
+    target_scan: Optional[TargetScanResult] = None,
 ) -> TransferPlan:
     """
     Generate a complete transfer plan showing every source file → target mapping.
 
     This is the FULL TREE TABLE that shows exactly what will be transferred where.
+    Uses flexible target scanning to support any XML/Excel target files.
 
     Args:
         source_path: Source folder or file
-        target_folder: Target folder containing languagedata_*.xml files
-        scan_result: Optional pre-computed scan result (will scan if not provided)
+        target_folder: Target folder containing language files (XML and/or Excel)
+        scan_result: Optional pre-computed source scan result (will scan if not provided)
+        target_scan: Optional pre-computed target scan result (will scan if not provided)
 
     Returns:
         TransferPlan with complete file mappings
@@ -472,27 +694,26 @@ def generate_transfer_plan(
     plan.unrecognized = scan_result.unrecognized.copy()
     plan.warnings = scan_result.warnings.copy()
 
-    # Build target language → file lookup
-    target_files: Dict[str, Path] = {}
-    if target_folder.exists():
-        for f in target_folder.glob("*.xml"):
-            if f.stem.lower().startswith("languagedata_"):
-                lang_code = f.stem[13:].upper()
-                target_files[lang_code] = f
-                # Also store lowercase version for case-insensitive matching
-                target_files[lang_code.lower()] = f
+    # Use flexible target scanner instead of hardcoded languagedata_*.xml
+    if target_scan is None:
+        target_scan = scan_target_for_languages(target_folder)
 
-    # Process each detected language
+    # Build target language → files lookup (case-insensitive)
+    target_files_by_lang: Dict[str, List[Path]] = {}
+    for lang_code, files in target_scan.lang_files.items():
+        target_files_by_lang[lang_code.upper()] = files
+
+    # Process each detected source language
     for lang, source_files in scan_result.lang_files.items():
-        # Find matching target file (case-insensitive)
-        target_file = target_files.get(lang) or target_files.get(lang.lower())
+        # Find matching target files (case-insensitive)
+        target_lang_files = target_files_by_lang.get(lang.upper(), [])
 
         # Determine status
         if not source_files:
             status = "EMPTY"
-        elif target_file is None:
+        elif not target_lang_files:
             status = "NO_TARGET"
-            plan.warnings.append(f"No target languagedata_{lang}.xml found - {len(source_files)} files will be SKIPPED")
+            plan.warnings.append(f"No target files found for {lang} - {len(source_files)} source files will be SKIPPED")
         else:
             status = "READY"
 
@@ -504,26 +725,27 @@ def generate_transfer_plan(
             except OSError:
                 pass
 
-        # Create language plan
+        # Create language plan (with all target files)
         lang_plan = LanguageTransferPlan(
             language=lang,
             source_files=source_files,
-            target_file=target_file,
+            target_file=target_lang_files[0] if target_lang_files else None,
+            target_files=target_lang_files,
             status=status,
             file_count=len(source_files),
             total_size_kb=total_size,
         )
         plan.language_plans[lang] = lang_plan
 
-        # Create individual file mappings
+        # Create individual file mappings (primary target for backward compat)
+        primary_target = target_lang_files[0] if target_lang_files else None
         for src_file in source_files:
-            # Determine source origin (folder or direct file)
             rel_to_source = src_file.relative_to(source_path) if source_path.is_dir() else src_file.name
             parts = str(rel_to_source).split("/") if "/" in str(rel_to_source) else str(rel_to_source).split("\\")
 
             if len(parts) > 1:
                 source_type = "folder_child"
-                source_origin = parts[0]  # Parent folder name
+                source_origin = parts[0]
             else:
                 source_type = "direct_file"
                 source_origin = src_file.name
@@ -535,9 +757,9 @@ def generate_transfer_plan(
 
             mapping = FileMapping(
                 source_file=src_file,
-                target_file=target_file,
+                target_file=primary_target,
                 language=lang,
-                status="OK" if target_file else "NO_TARGET",
+                status="OK" if target_lang_files else "NO_TARGET",
                 source_type=source_type,
                 source_origin=source_origin,
                 file_size_kb=file_size,
@@ -588,13 +810,26 @@ def format_transfer_plan(plan: TransferPlan, show_all_files: bool = True) -> str
 
         # Language header
         status_icon = "[OK]" if lang_plan.status == "READY" else "[!!]" if lang_plan.status == "NO_TARGET" else "[--]"
-        target_name = lang_plan.target_file.name if lang_plan.target_file else "(NO TARGET)"
+
+        # Show all target files (or NO TARGET)
+        target_files = lang_plan.target_files if lang_plan.target_files else []
+        if len(target_files) == 1:
+            target_desc = target_files[0].name
+        elif len(target_files) > 1:
+            target_desc = f"{len(target_files)} target files"
+        else:
+            target_desc = "(NO TARGET)"
 
         lines.append(V + "".ljust(width - 2) + V)
-        lines.append(V + f"  {status_icon} {lang}: {lang_plan.file_count} files → {target_name}".ljust(width - 2) + V)
+        lines.append(V + f"  {status_icon} {lang}: {lang_plan.file_count} source files → {target_desc}".ljust(width - 2) + V)
+
+        # Show individual target files when multiple
+        if len(target_files) > 1:
+            for tf in target_files:
+                lines.append(V + f"      → {tf.name}".ljust(width - 2) + V)
 
         if lang_plan.status == "NO_TARGET":
-            lines.append(V + f"      ⚠ SKIPPED - no languagedata_{lang}.xml in target folder".ljust(width - 2) + V)
+            lines.append(V + f"      SKIPPED - no target files found for {lang}".ljust(width - 2) + V)
 
         if show_all_files and lang_plan.source_files:
             # Get mappings for this language

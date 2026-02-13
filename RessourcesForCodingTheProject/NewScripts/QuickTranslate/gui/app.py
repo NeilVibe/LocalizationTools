@@ -53,6 +53,10 @@ from core import (
     scan_source_for_languages,
     validate_source_structure,
     format_scan_result,
+    # Target scanner (flexible target detection)
+    scan_target_for_languages,
+    validate_target_files,
+    TargetScanResult,
     # Transfer plan (full tree table)
     generate_transfer_plan,
     format_transfer_plan,
@@ -720,47 +724,53 @@ class QuickTranslateApp:
             logger.info("  %-4s %-35s %-8s %-10s", "", "TOTAL", "", total_str)
         else:
             # Only warn if this is TARGET or if smart scan also finds nothing
-            # (for SOURCE, the smart scanner handles non-languagedata files)
             if role == "TARGET":
-                logger.warning("  No languagedata_*.xml files found!")
+                logger.info("  No languagedata_*.xml files found (checking smart scanner...)")
 
-        # === Smart Auto-Recursive Source Scanner (for SOURCE folders) ===
+        # === Smart Auto-Recursive Scanner (for BOTH SOURCE and TARGET) ===
         # Scan once and reuse result (avoid duplicate scanning)
         scan_result = None
+        target_scan_result = None
         has_smart_scan = False
         if role == "SOURCE":
             scan_result = scan_source_for_languages(folder)
             has_smart_scan = bool(scan_result.lang_files)
+        elif role == "TARGET":
+            target_scan_result = scan_target_for_languages(folder)
+            has_smart_scan = bool(target_scan_result.lang_files)
             if has_smart_scan:
-                logger.info("\n  LANGUAGE DETECTION (Auto-Recursive Scanner):")
-                logger.info("  %-10s %-8s %s", "Language", "Files", "Source")
-                logger.info("  %s %s %s", "-"*10, "-"*8, "-"*30)
-                for lang in scan_result.get_languages():
-                    files = scan_result.lang_files[lang]
+                logger.info("\n  TARGET LANGUAGE DETECTION (Flexible Scanner):")
+                logger.info("  %-10s %-8s %-6s %-6s %s", "Language", "Files", "XML", "Excel", "Source")
+                logger.info("  %s %s %s %s %s", "-"*10, "-"*8, "-"*6, "-"*6, "-"*30)
+                for lang in target_scan_result.get_languages():
+                    files = target_scan_result.lang_files[lang]
+                    xml_c = sum(1 for f in files if f.suffix.lower() == ".xml")
+                    xls_c = sum(1 for f in files if f.suffix.lower() in (".xlsx", ".xls"))
                     if len(files) <= 2:
                         sources = ", ".join(f.name for f in files)
                     else:
                         sources = f"{files[0].name}, ... ({len(files)} total)"
-                    logger.info("  %-10s %-8d %s", lang, len(files), sources)
-                logger.info("\n  Total: %d files in %d languages (auto-detected)",
-                            scan_result.total_files, scan_result.language_count)
+                    logger.info("  %-10s %-8d %-6d %-6d %s", lang, len(files), xml_c, xls_c, sources)
+                logger.info("\n  Total: %d files in %d languages (%d XML, %d Excel)",
+                            target_scan_result.total_files, target_scan_result.language_count,
+                            target_scan_result.xml_count, target_scan_result.excel_count)
 
-                if scan_result.unrecognized:
-                    logger.info("\n  UNRECOGNIZED ITEMS (%d):", len(scan_result.unrecognized))
-                    for item in scan_result.unrecognized[:5]:
+                if target_scan_result.unrecognized:
+                    logger.info("\n  UNRECOGNIZED ITEMS (%d):", len(target_scan_result.unrecognized))
+                    for item in target_scan_result.unrecognized[:5]:
                         item_type = "folder" if item.is_dir() else "file"
                         logger.info("    - %s (%s)", item.name, item_type)
-                    if len(scan_result.unrecognized) > 5:
-                        logger.info("    ... and %d more", len(scan_result.unrecognized) - 5)
+                    if len(target_scan_result.unrecognized) > 5:
+                        logger.info("    ... and %d more", len(target_scan_result.unrecognized) - 5)
             elif not lang_files:
-                # Neither languagedata files NOR smart scan found anything
                 logger.warning("  No language files detected (no languagedata_*.xml, no language-suffixed files/folders)")
 
         if non_lang_xml:
             if has_smart_scan:
                 # Split into files actually detected by scanner vs unrecognized
+                active_scan = scan_result if role == "SOURCE" else target_scan_result
                 scanner_detected_names = set()
-                for file_list in scan_result.lang_files.values():
+                for file_list in active_scan.lang_files.values():
                     for fp in file_list:
                         scanner_detected_names.add(fp.name)
                 detected = [f for f in non_lang_xml if f in scanner_detected_names]
@@ -797,13 +807,18 @@ class QuickTranslateApp:
         is_eligible = len(lang_files) > 0
         lang_codes = sorted([lc for _, lc, _ in lang_files]) if lang_files else []
 
-        # Smart scan makes SOURCE eligible even without languagedata_ files
+        # Smart scan makes folders eligible even without languagedata_ files
         if has_smart_scan and not is_eligible:
             is_eligible = True
 
         # Build combined language list from both sources
         if has_smart_scan:
-            all_langs = sorted(set(lang_codes) | set(scan_result.get_languages()))
+            if role == "SOURCE" and scan_result:
+                all_langs = sorted(set(lang_codes) | set(scan_result.get_languages()))
+            elif role == "TARGET" and target_scan_result:
+                all_langs = sorted(set(lang_codes) | set(target_scan_result.get_languages()))
+            else:
+                all_langs = lang_codes
         else:
             all_langs = lang_codes
 
@@ -813,7 +828,12 @@ class QuickTranslateApp:
 
         if is_eligible:
             if has_smart_scan:
-                file_count = scan_result.total_files  # superset: includes languagedata + suffix-detected
+                if role == "SOURCE" and scan_result:
+                    file_count = scan_result.total_files
+                elif role == "TARGET" and target_scan_result:
+                    file_count = target_scan_result.total_files
+                else:
+                    file_count = len(lang_files)
             elif lang_files:
                 file_count = len(lang_files)
             else:
@@ -848,9 +868,9 @@ class QuickTranslateApp:
             for item in not_working_for:
                 logger.info("    x %s", item)
 
-        if non_lang_xml and role == "TARGET":
+        if non_lang_xml and role == "TARGET" and not has_smart_scan:
             logger.info("  [!!] %d non-languagedata XML files will be IGNORED", len(non_lang_xml))
-        if subdirs and role == "TARGET":
+        if subdirs and role == "TARGET" and not has_smart_scan:
             logger.info("  [!!] %d subdirectories will be IGNORED (flat scan only)", len(subdirs))
 
         logger.info("%s\n", separator)
@@ -858,8 +878,13 @@ class QuickTranslateApp:
         # Log to GUI
         if is_eligible:
             self._log(f"{role}: ELIGIBLE for TRANSFER + Find Missing Translations", 'success')
-            if has_smart_scan:
+            if has_smart_scan and scan_result:
                 self._log(f"  Smart scan: {scan_result.total_files} files in {scan_result.language_count} languages", 'info')
+            elif has_smart_scan and target_scan_result:
+                xml_info = f"{target_scan_result.xml_count} XML" if target_scan_result.xml_count else ""
+                xls_info = f"{target_scan_result.excel_count} Excel" if target_scan_result.excel_count else ""
+                type_info = " + ".join(filter(None, [xml_info, xls_info]))
+                self._log(f"  Flexible target: {target_scan_result.total_files} files in {target_scan_result.language_count} languages ({type_info})", 'info')
             if all_langs:
                 self._log(f"  Languages: {', '.join(all_langs)}", 'info')
         else:
@@ -2109,15 +2134,24 @@ class QuickTranslateApp:
 
         if not target.is_dir():
             messagebox.showwarning("Warning",
-                "Target must be a folder containing languagedata_*.xml files.\n\n"
-                "Example: LOC folder with languagedata_FRE.xml, languagedata_GER.xml, etc.")
+                "Target must be a folder containing language files.\n\n"
+                "Example: LOC folder with languagedata_FRE.xml, custom_GER.xml, etc.")
             return
 
-        lang_files = list(target.glob("languagedata_*.xml"))
+        # Use flexible target scanner (supports any XML with LocStr elements)
+        _target_scan = scan_target_for_languages(target)
+        lang_files = []
+        for lang_code, files in _target_scan.lang_files.items():
+            # Missing translations only works with XML targets for now
+            for f in files:
+                if f.suffix.lower() == ".xml":
+                    lang_files.append(f)
+
         if not lang_files:
             messagebox.showwarning("Warning",
-                f"No languagedata_*.xml files found in:\n{target}\n\n"
-                "Please select a folder with languagedata_FRE.xml, languagedata_GER.xml, etc.")
+                f"No parseable language XML files found in:\n{target}\n\n"
+                "Files need LocStr elements with StringId + StrOrigin + Str attributes.\n"
+                "Example: languagedata_FRE.xml, custom_GER.xml, etc.")
             return
 
         # Open parameter dialog
@@ -2614,8 +2648,11 @@ class QuickTranslateApp:
         scope_str = ("Only untranslated (Korean)" if transfer_scope == "untranslated"
                      else "ALL matches (overwrite)")
 
+        # Scan target with flexible scanner (supports any XML/Excel with lang suffix)
+        _transfer_target_scan = scan_target_for_languages(target)
+
         # Generate complete transfer plan with full tree table
-        transfer_plan = generate_transfer_plan(source, target)
+        transfer_plan = generate_transfer_plan(source, target, target_scan=_transfer_target_scan)
 
         # Print FULL TREE TABLE to terminal (always show complete mapping)
         tree_table = format_transfer_plan(transfer_plan, show_all_files=True)
@@ -2666,20 +2703,28 @@ class QuickTranslateApp:
         self._log(f"Transfer Plan: {transfer_plan.total_ready} files ready, {transfer_plan.total_skipped} skipped", 'info')
         for lang in transfer_plan.languages_ready:
             plan = transfer_plan.language_plans[lang]
-            self._log(f"  {lang}: {plan.file_count} files → {plan.target_file.name if plan.target_file else 'N/A'}", 'success')
+            if len(plan.target_files) == 1:
+                target_desc = plan.target_files[0].name
+            elif len(plan.target_files) > 1:
+                target_desc = f"{len(plan.target_files)} target files"
+            else:
+                target_desc = plan.target_file.name if plan.target_file else "N/A"
+            self._log(f"  {lang}: {plan.file_count} source files → {target_desc}", 'success')
         for lang in transfer_plan.languages_skipped:
             plan = transfer_plan.language_plans[lang]
             self._log(f"  {lang}: {plan.file_count} files → SKIPPED (no target)", 'warning')
 
         def work():
-            # Cross-match summary - main analysis already in transfer plan
+            # Cross-match summary using flexible target scan
             if source.is_dir() and target.is_dir():
-                src_xmls = {f.stem.lower()[13:]: f.name for f in source.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
-                tgt_xmls = {f.stem.lower()[13:]: f.name for f in target.glob("*.xml") if f.stem.lower().startswith("languagedata_")}
-                matched_langs = sorted(set(src_xmls.keys()) & set(tgt_xmls.keys()))
-                src_only = sorted(set(src_xmls.keys()) - set(tgt_xmls.keys()))
-                tgt_only = sorted(set(tgt_xmls.keys()) - set(src_xmls.keys()))
-                self._log(f"Cross-match: {len(matched_langs)} pairs, {len(src_only)} source-only, {len(tgt_only)} target-only", 'info')
+                src_scan = scan_source_for_languages(source)
+                src_langs = set(src_scan.lang_files.keys())
+                tgt_langs = set(_transfer_target_scan.lang_files.keys())
+                matched_langs = sorted(src_langs & tgt_langs)
+                src_only = sorted(src_langs - tgt_langs)
+                tgt_only = sorted(tgt_langs - src_langs)
+                tgt_files_total = _transfer_target_scan.total_files
+                self._log(f"Cross-match: {len(matched_langs)} lang pairs, {len(src_only)} source-only, {len(tgt_only)} target-only ({tgt_files_total} target files)", 'info')
 
             # Load category data if needed for stringid_only mode
             stringid_to_category = None
@@ -2740,7 +2785,8 @@ class QuickTranslateApp:
                 transfer_kwargs["fuzzy_index"] = self._fuzzy_index
                 self._log(f"Passing pre-built fuzzy data: {len(self._fuzzy_entries):,} entries, FAISS index ready", 'info')
 
-            # Perform transfer (always folder mode)
+            # Perform transfer (always folder mode) — pass pre-scanned target
+            transfer_kwargs["target_scan"] = _transfer_target_scan
             results = transfer_folder_to_folder(
                 source,
                 target,
