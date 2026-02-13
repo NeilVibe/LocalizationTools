@@ -117,6 +117,15 @@ MODE_HEADER_OVERRIDES = {
     },
 }
 
+# Column width overrides per mode: {mode: {col_id: (min_width, default_width)}}
+MODE_COLUMN_WIDTHS = {
+    'audio': {
+        'name_kr': (80, 120),    # EventName — narrower, it's a technical ID
+        'desc': (120, 300),      # KOR Script — wider, this is the main content
+        'name_tr': (120, 300),   # ENG Script — wider, reference content
+    },
+}
+
 
 class ResultPanel(ttk.Frame):
     """Panel displaying search results in a Treeview with mode-specific columns."""
@@ -470,10 +479,14 @@ class ResultPanel(ttk.Frame):
             if col_id not in overrides:
                 self._tree.heading(col_id, text=get_ui_text(default_headers[col_id]))
 
-        # Reset column widths to defaults (prevents inflated widths from previous mode)
+        # Reset column widths (use mode-specific overrides if available)
         col_defaults = {col[0]: (col[2], col[3]) for col in ALL_COLUMN_DEFS}
+        mode_widths = MODE_COLUMN_WIDTHS.get(mode, {})
         for col_id in display_cols:
-            min_w, default_w = col_defaults[col_id]
+            if col_id in mode_widths:
+                min_w, default_w = mode_widths[col_id]
+            else:
+                min_w, default_w = col_defaults[col_id]
             self._tree.column(col_id, width=default_w, minwidth=min_w)
 
         # Rebuild toggle checkboxes for this mode's columns
@@ -870,6 +883,35 @@ class ResultPanel(ttk.Frame):
         if self._tree.exists(strkey):
             self._tree.selection_set(strkey)
             self._tree.see(strkey)
+
+    def select_adjacent(self, direction: int = 1) -> None:
+        """
+        Select the next (+1) or previous (-1) row relative to current selection.
+        Wraps around at edges. Triggers the on_select callback.
+        """
+        children = self._tree.get_children()
+        if not children:
+            return
+
+        selection = self._tree.selection()
+        if not selection:
+            # Nothing selected — select first or last
+            target = children[0] if direction > 0 else children[-1]
+        else:
+            current = selection[0]
+            try:
+                idx = list(children).index(current)
+                new_idx = (idx + direction) % len(children)
+                target = children[new_idx]
+            except ValueError:
+                target = children[0]
+
+        self._tree.selection_set(target)
+        self._tree.see(target)
+        # Manually trigger the select callback (programmatic selection doesn't fire <<TreeviewSelect>>)
+        result = self._results_by_strkey.get(target)
+        if result and self._on_select:
+            self._on_select(result)
 
     def get_selected(self) -> Optional[SearchResult]:
         """Get currently selected result."""
