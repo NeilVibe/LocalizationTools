@@ -10,5 +10,8 @@ Pillow>=10.0.0
 # Map visualization
 matplotlib>=3.7.0
 
+# VoiceRecordingSheet reading (VRS ordering)
+openpyxl>=3.1.0
+
 # PyInstaller for packaging (dev only)
 # pyinstaller>=6.0.0

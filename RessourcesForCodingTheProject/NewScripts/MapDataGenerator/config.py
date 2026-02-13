@@ -170,6 +170,7 @@ _PATH_TEMPLATES = {
     'audio_folder_kr':   r"F:\perforce\cd\mainline\resource\sound\windows\Korean",
     'audio_folder_zh':   r"F:\perforce\cd\mainline\resource\sound\windows\Chinese(PRC)",
     'export_folder':     r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__",
+    'vrs_folder':        r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__",
 }
 
 
@@ -207,6 +208,7 @@ DEFAULT_AUDIO_FOLDER_EN = _default_paths['audio_folder']
 DEFAULT_AUDIO_FOLDER_KR = _default_paths['audio_folder_kr']
 DEFAULT_AUDIO_FOLDER_ZH = _default_paths['audio_folder_zh']
 DEFAULT_EXPORT_FOLDER = _default_paths['export_folder']
+DEFAULT_VRS_FOLDER = _default_paths['vrs_folder']
 
 
 # =============================================================================
@@ -416,6 +418,7 @@ class Settings:
     character_folder: str = DEFAULT_CHARACTER_FOLDER
     audio_folder: str = DEFAULT_AUDIO_FOLDER_EN
     export_folder: str = DEFAULT_EXPORT_FOLDER
+    vrs_folder: str = DEFAULT_VRS_FOLDER
 
     # Search settings
     search_limit: int = DEFAULT_SEARCH_LIMIT
@@ -449,6 +452,7 @@ class Settings:
             character_folder=data.get('character_folder', DEFAULT_CHARACTER_FOLDER),
             audio_folder=data.get('audio_folder', DEFAULT_AUDIO_FOLDER_EN),
             export_folder=data.get('export_folder', DEFAULT_EXPORT_FOLDER),
+            vrs_folder=data.get('vrs_folder', DEFAULT_VRS_FOLDER),
             search_limit=data.get('search_limit', DEFAULT_SEARCH_LIMIT),
             fuzzy_threshold=data.get('fuzzy_threshold', FUZZY_THRESHOLD),
             current_mode=data.get('current_mode', DEFAULT_MODE),
@@ -543,7 +547,7 @@ def update_branch(new_branch: str):
     global DEFAULT_FACTION_FOLDER, DEFAULT_LOC_FOLDER, DEFAULT_KNOWLEDGE_FOLDER
     global DEFAULT_WAYPOINT_FOLDER, DEFAULT_TEXTURE_FOLDER, DEFAULT_CHARACTER_FOLDER
     global DEFAULT_AUDIO_FOLDER_EN, DEFAULT_AUDIO_FOLDER_KR, DEFAULT_AUDIO_FOLDER_ZH
-    global DEFAULT_EXPORT_FOLDER
+    global DEFAULT_EXPORT_FOLDER, DEFAULT_VRS_FOLDER
 
     _BRANCH = new_branch
 
@@ -559,6 +563,7 @@ def update_branch(new_branch: str):
     DEFAULT_AUDIO_FOLDER_KR = new_paths['audio_folder_kr']
     DEFAULT_AUDIO_FOLDER_ZH = new_paths['audio_folder_zh']
     DEFAULT_EXPORT_FOLDER = new_paths['export_folder']
+    DEFAULT_VRS_FOLDER = new_paths['vrs_folder']
 
     # Update current settings
     settings = get_settings()
@@ -571,6 +576,7 @@ def update_branch(new_branch: str):
     settings.character_folder = DEFAULT_CHARACTER_FOLDER
     settings.audio_folder = DEFAULT_AUDIO_FOLDER_EN
     settings.export_folder = DEFAULT_EXPORT_FOLDER
+    settings.vrs_folder = DEFAULT_VRS_FOLDER
     save_settings(settings)
 
     log.info("Branch updated to: %s", new_branch)
