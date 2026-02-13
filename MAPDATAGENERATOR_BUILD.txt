@@ -42,3 +42,4 @@ Build: Language codes + branch selector
 Build: GUI reset fixes
 Build - Full rebuild all projects
 Build - Add export path category tree for AUDIO mode
+Build - VRS chronological ordering for AUDIO mode
