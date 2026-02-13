@@ -10,6 +10,7 @@ Uses xlsxwriter for reliable Excel generation (NOT openpyxl).
 
 import logging
 from datetime import datetime
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 from collections import defaultdict
@@ -30,6 +31,59 @@ except ImportError:
     XLSXWRITER_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Word-level diff (ported from VRSManager strorigin_analysis.py)
+# =============================================================================
+
+def extract_differences(text1: str, text2: str, max_length: int = 120) -> str:
+    """
+    Extract WORD-LEVEL differences between two texts using difflib.
+
+    Shows exactly what changed in WinMerge style with automatic chunking:
+    - [old words→new words] for replacements (consecutive words grouped)
+    - [-deleted words] for deletions
+    - [+added words] for additions
+
+    Args:
+        text1: Previous text (old StrOrigin from correction source)
+        text2: Current text (new StrOrigin from target XML)
+        max_length: Maximum length for diff output (truncate if longer)
+
+    Returns:
+        Diff string showing changes, or empty string if no changes
+    """
+    if not text1 or not text2:
+        return ""
+
+    words1 = text1.split()
+    words2 = text2.split()
+
+    matcher = SequenceMatcher(None, words1, words2)
+    changes = []
+
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == 'replace':
+            old_words = ' '.join(words1[i1:i2])
+            new_words = ' '.join(words2[j1:j2])
+            changes.append(f"[{old_words}\u2192{new_words}]")
+        elif tag == 'delete':
+            deleted_words = ' '.join(words1[i1:i2])
+            changes.append(f"[-{deleted_words}]")
+        elif tag == 'insert':
+            added_words = ' '.join(words2[j1:j2])
+            changes.append(f"[+{added_words}]")
+
+    if not changes:
+        return ""
+
+    diff_str = ' '.join(changes)
+
+    if len(diff_str) > max_length:
+        diff_str = diff_str[:max_length - 3] + "..."
+
+    return diff_str
 
 
 # =============================================================================
@@ -403,6 +457,47 @@ def extract_failed_from_folder_results(
     return all_failed
 
 
+def extract_mismatch_target_entries(results: Dict) -> List[Dict]:
+    """
+    Extract raw target LocStr entries for STRORIGIN_MISMATCH failures.
+
+    When a TRANSFER fails because the StrOrigin changed in the target,
+    this extracts the TARGET's current LocStr (with all its attributes)
+    so the user gets a ready-made XML of "new strings that need review."
+
+    Args:
+        results: Results dict from transfer_folder_to_folder
+
+    Returns:
+        List of entry dicts with 'raw_attribs' from the TARGET XML,
+        grouped-ready for generate_failed_merge_xml_per_language.
+    """
+    entries = []
+
+    file_results = results.get("file_results", {})
+    for _source_file, fresult in file_results.items():
+        target_file = fresult.get("target", "")
+        language = _extract_language_from_filename(target_file) if target_file else "UNK"
+
+        for detail in fresult.get("details", []):
+            if detail.get("status") != "STRORIGIN_MISMATCH":
+                continue
+
+            target_attribs = detail.get("target_raw_attribs", {})
+            if not target_attribs:
+                continue
+
+            entries.append({
+                "string_id": detail.get("string_id", ""),
+                "str_origin": target_attribs.get("StrOrigin", target_attribs.get("Strorigin", "")),
+                "str": target_attribs.get("Str", target_attribs.get("str", "")),
+                "language": language,
+                "raw_attribs": target_attribs,  # FULL target LocStr as-is
+            })
+
+    return entries
+
+
 def _status_to_reason(status: str) -> str:
     """Convert a status code to a human-readable failure reason."""
     status_upper = status.upper()
@@ -619,6 +714,7 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
                         })
 
                     # Add to detailed failures
+                    lang = _extract_language_from_filename(target_name)
                     aggregated["detailed_failures"].append({
                         "source_file": source_name,
                         "string_id": detail.get("string_id", ""),
@@ -626,6 +722,8 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
                         "correction": detail.get("new", ""),
                         "reason": FAILURE_REASONS.get(reason, reason),
                         "target_file": target_name,
+                        "target_strorigin": detail.get("target_strorigin", ""),
+                        "language": lang,
                     })
 
     else:
@@ -707,6 +805,8 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
                     "correction": detail.get("new", ""),
                     "reason": FAILURE_REASONS.get(reason, reason),
                     "target_file": "Target file",
+                    "target_strorigin": detail.get("target_strorigin", ""),
+                    "language": "ALL",
                 })
 
     return aggregated
@@ -1271,57 +1371,74 @@ def _write_file_sheet(workbook, data: Dict, formats: Dict):
 
 
 def _write_detailed_sheet(workbook, data: Dict, formats: Dict):
-    """Write the Detailed Failures sheet."""
-    sheet = workbook.add_worksheet("Detailed Failures")
+    """Write per-language Detailed Failures sheets (Details_FRE, Details_ENG, etc.)."""
+    all_failures = data["detailed_failures"]
+    if not all_failures:
+        return
 
-    # Set column widths
-    sheet.set_column("A:A", 25)  # Source File
-    sheet.set_column("B:B", 25)  # StringID
-    sheet.set_column("C:C", 40)  # StrOrigin
-    sheet.set_column("D:D", 40)  # Correction
-    sheet.set_column("E:E", 30)  # Reason
-    sheet.set_column("F:F", 25)  # Target
+    # Group failures by language
+    by_language = defaultdict(list)
+    for failure in all_failures:
+        lang = failure.get("language", "ALL")
+        by_language[lang].append(failure)
 
-    row = 0
+    # Create one sheet per language, sorted alphabetically
+    for lang in sorted(by_language.keys()):
+        failures = by_language[lang]
 
-    # Title
-    sheet.merge_range(row, 0, row, 5, "DETAILED FAILURES", formats["title"])
-    row += 1
+        # Sheet name: "Details_FRE", "Details_ENG", etc. (max 31 chars for Excel)
+        sheet_name = f"Details_{lang}"[:31]
+        sheet = workbook.add_worksheet(sheet_name)
 
-    # Count info
-    total_failures = len(data["detailed_failures"])
-    sheet.write(row, 0, f"Total failures: {total_failures}", formats["timestamp"])
-    row += 2
+        # Set column widths
+        sheet.set_column("A:A", 25)  # StringID
+        sheet.set_column("B:B", 40)  # StrOrigin
+        sheet.set_column("C:C", 40)  # Correction
+        sheet.set_column("D:D", 30)  # Reason
+        sheet.set_column("E:E", 40)  # New StrOrigin
+        sheet.set_column("F:F", 45)  # StrOrigin Diff
 
-    # Headers
-    headers = ["Source File", "StringID", "StrOrigin", "Correction", "Reason", "Target"]
-    for col, header in enumerate(headers):
-        sheet.write(row, col, header, formats["header"])
-    row += 1
-    header_row = row - 1
+        row = 0
 
-    # Data rows (no cap - write ALL failures)
-    failures_to_write = data["detailed_failures"]
-
-    for i, failure in enumerate(failures_to_write):
-        # Alternate row colors
-        fmt_cell = formats["cell_even"] if i % 2 == 0 else formats["cell_odd"]
-        fmt_text = formats["text_even"] if i % 2 == 0 else formats["text_odd"]
-
-        sheet.write(row, 0, failure.get("source_file", ""), fmt_cell)
-        sheet.write_string(row, 1, str(failure.get("string_id", "")), fmt_text)  # TEXT format
-        sheet.write(row, 2, failure.get("str_origin", ""), fmt_cell)
-        sheet.write(row, 3, failure.get("correction", ""), fmt_cell)
-        sheet.write(row, 4, failure.get("reason", ""), fmt_cell)
-        sheet.write(row, 5, failure.get("target_file", ""), fmt_cell)
+        # Title
+        sheet.merge_range(row, 0, row, 5, f"DETAILED FAILURES — {lang}", formats["title"])
         row += 1
 
-    # Add autofilter
-    if failures_to_write:
-        sheet.autofilter(header_row, 0, row - 1, 5)
+        # Count info
+        sheet.write(row, 0, f"Failures: {len(failures)}", formats["timestamp"])
+        row += 2
 
-    # Freeze header row
-    sheet.freeze_panes(header_row + 1, 0)
+        # Headers (no Source File / Target — redundant per-language)
+        headers = ["StringID", "StrOrigin", "Correction", "Reason",
+                   "New StrOrigin", "StrOrigin Diff"]
+        for col, header in enumerate(headers):
+            sheet.write(row, col, header, formats["header"])
+        row += 1
+        header_row = row - 1
+
+        for i, failure in enumerate(failures):
+            fmt_cell = formats["cell_even"] if i % 2 == 0 else formats["cell_odd"]
+            fmt_text = formats["text_even"] if i % 2 == 0 else formats["text_odd"]
+
+            sheet.write_string(row, 0, str(failure.get("string_id", "")), fmt_text)
+            sheet.write(row, 1, failure.get("str_origin", ""), fmt_cell)
+            sheet.write(row, 2, failure.get("correction", ""), fmt_cell)
+            sheet.write(row, 3, failure.get("reason", ""), fmt_cell)
+
+            target_strorigin = failure.get("target_strorigin", "")
+            sheet.write(row, 4, target_strorigin, fmt_cell)
+            if target_strorigin:
+                diff = extract_differences(failure.get("str_origin", ""), target_strorigin)
+                sheet.write(row, 5, diff, fmt_cell)
+            else:
+                sheet.write(row, 5, "", fmt_cell)
+
+            row += 1
+
+        # Autofilter + freeze
+        if failures:
+            sheet.autofilter(header_row, 0, row - 1, 5)
+        sheet.freeze_panes(header_row + 1, 0)
 
 
 def generate_failure_report_excel(

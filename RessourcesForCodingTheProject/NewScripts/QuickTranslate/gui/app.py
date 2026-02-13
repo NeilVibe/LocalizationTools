@@ -59,6 +59,7 @@ from core import (
     # Failure reports (XML + Excel)
     generate_failed_merge_xml_per_language,
     extract_failed_from_folder_results,
+    extract_mismatch_target_entries,
     generate_failure_report_excel,
     check_xlsxwriter_available,
     # Missing translation finder
@@ -2804,6 +2805,24 @@ class QuickTranslateApp:
                             failure_reports_msg += f"\n\nXML Reports: {len(xml_files)} language files"
                     except Exception as e:
                         self._log(f"Failed to generate XML reports: {e}", 'error')
+
+                # Generate "New Strings" XML for STRORIGIN_MISMATCH entries
+                # These are the target's current LocStr elements where StrOrigin changed
+                mismatch_entries = extract_mismatch_target_entries(results)
+                if mismatch_entries:
+                    try:
+                        mismatch_folder = report_folder / "NewStrOrigin"
+                        mismatch_folder.mkdir(parents=True, exist_ok=True)
+                        mismatch_xml_files = generate_failed_merge_xml_per_language(
+                            mismatch_entries, mismatch_folder
+                        )
+                        if mismatch_xml_files:
+                            self._log(f"New StrOrigin XML: {len(mismatch_xml_files)} files ({len(mismatch_entries)} strings)", 'success')
+                            for lang, path in mismatch_xml_files.items():
+                                self._log(f"  {lang}: {path.name}", 'info')
+                            failure_reports_msg += f"\nNew StrOrigin: {len(mismatch_entries)} strings in {len(mismatch_xml_files)} files"
+                    except Exception as e:
+                        self._log(f"Failed to generate New StrOrigin XML: {e}", 'error')
 
                 if check_xlsxwriter_available():
                     excel_report_path = report_folder / f"FailureReport_{timestamp}.xlsx"

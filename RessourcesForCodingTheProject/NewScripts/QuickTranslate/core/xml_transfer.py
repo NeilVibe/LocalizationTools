@@ -144,12 +144,18 @@ def merge_corrections_to_xml(
         # Build set of all StringIDs in target for diagnostic purposes
         # (to distinguish "StringID not found" vs "StrOrigin mismatch")
         target_stringids = set()
+        target_strorigin_map = {}  # sid.lower() → raw StrOrigin text
+        target_raw_attribs_map = {}  # sid.lower() → dict of ALL attributes
         for loc in all_elements:
             tsid = (loc.get("StringId") or loc.get("StringID") or
                     loc.get("stringid") or loc.get("STRINGID") or
                     loc.get("Stringid") or loc.get("stringId") or "").strip()
             if tsid:
                 target_stringids.add(tsid.lower())
+                tso = (loc.get("StrOrigin") or loc.get("Strorigin") or
+                       loc.get("strorigin") or loc.get("STRORIGIN") or "")
+                target_strorigin_map[tsid.lower()] = tso
+                target_raw_attribs_map[tsid.lower()] = dict(loc.attrib)
 
         for loc in all_elements:
             # Case-insensitive attribute access
@@ -241,13 +247,17 @@ def merge_corrections_to_xml(
                     status = "NOT_FOUND"
                     result["not_found"] += 1
 
-                result["details"].append({
+                detail_entry = {
                     "string_id": sid,
                     "status": status,
                     "old": c.get("str_origin", ""),
                     "new": c["corrected"],
-                    "raw_attribs": c.get("raw_attribs", {}),  # ALL original attributes
-                })
+                    "target_strorigin": target_strorigin_map.get(sid.lower(), "") if status == "STRORIGIN_MISMATCH" else "",
+                    "raw_attribs": c.get("raw_attribs", {}),  # ALL original attributes from source
+                }
+                if status == "STRORIGIN_MISMATCH":
+                    detail_entry["target_raw_attribs"] = target_raw_attribs_map.get(sid.lower(), {})
+                result["details"].append(detail_entry)
 
         if changed and not dry_run:
             # Make file writable if read-only
@@ -709,7 +719,7 @@ def merge_corrections_stringid_only(
                     result["by_category"][category]["not_found"] += 1
                 c = correction_lookup[sid_key]
                 result["details"].append({
-                    "string_id": sid,
+                    "string_id": c["string_id"],
                     "status": "NOT_FOUND",
                     "old": c.get("str_origin", ""),
                     "new": c["corrected"],
