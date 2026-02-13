@@ -34,6 +34,8 @@ from .excel_io import (
     write_stringid_lookup_excel,
     write_folder_translation_excel,
     write_reverse_lookup_excel,
+    # Excel target merge (for TRANSFER mode)
+    merge_corrections_to_excel,
 )
 from .xml_io import parse_corrections_from_xml, parse_folder_xml_files, parse_tosubmit_xml
 from .xml_transfer import (
@@ -72,6 +74,10 @@ from .source_scanner import (
     validate_source_structure,
     format_scan_result,
     ValidationResult,
+    # Target scanner (flexible target detection)
+    TargetScanResult,
+    scan_target_for_languages,
+    validate_target_files,
     # Transfer Plan (full tree table)
     TransferPlan,
     LanguageTransferPlan,
@@ -164,6 +170,7 @@ __all__ = [
     "write_stringid_lookup_excel",
     "write_folder_translation_excel",
     "write_reverse_lookup_excel",
+    "merge_corrections_to_excel",
     # xml_io
     "parse_corrections_from_xml",
     "parse_folder_xml_files",
@@ -196,6 +203,10 @@ __all__ = [
     "validate_source_structure",
     "format_scan_result",
     "ValidationResult",
+    # target_scanner
+    "TargetScanResult",
+    "scan_target_for_languages",
+    "validate_target_files",
     # transfer_plan (full tree table)
     "TransferPlan",
     "LanguageTransferPlan",
