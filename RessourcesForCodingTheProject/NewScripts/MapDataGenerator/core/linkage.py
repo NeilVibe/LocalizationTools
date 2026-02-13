@@ -781,6 +781,7 @@ class LinkageResolver:
         audio_folder: Path,
         export_folder: Path,
         loc_folder: Path,
+        vrs_folder: Optional[Path] = None,
         progress_callback=None
     ) -> int:
         """
@@ -790,6 +791,7 @@ class LinkageResolver:
             audio_folder: Folder containing WEM files
             export_folder: Export folder with SoundEventName -> StrOrigin mappings
             loc_folder: Localization folder with language XML files
+            vrs_folder: VoiceRecordingSheet folder for chronological ordering
 
         Returns:
             Number of audio entries loaded
@@ -818,6 +820,13 @@ class LinkageResolver:
             progress_callback("Loading event mappings...")
         event_count = audio_index.load_event_mappings(export_folder, progress_callback)
         log.info("Loaded %d event mappings", event_count)
+
+        # Apply VRS ordering (reorders xml_order based on VoiceRecordingSheet)
+        if vrs_folder and vrs_folder.exists():
+            if progress_callback:
+                progress_callback("Applying VRS chronological order...")
+            vrs_count = audio_index.load_vrs_order(vrs_folder, progress_callback)
+            log.info("VRS reordered %d events", vrs_count)
 
         # Load StrOrigin -> script line mappings from BOTH KOR and ENG loc files
         if progress_callback:
@@ -997,6 +1006,99 @@ class AudioIndex:
 
         log.info("Loaded %d event -> StrOrigin mappings (%d categories)", count, len(self._category_counts))
         return count
+
+    def load_vrs_order(self, vrs_folder: Path, progress_callback=None) -> int:
+        """
+        Load VoiceRecordingSheet EventName ordering and apply to xml_order.
+
+        Finds the "EventName" column by header name (flexible, not hardcoded index).
+        Events found in VRS get their row position as xml_order.
+        Events NOT in VRS keep their original xml_order offset to sort after VRS entries.
+
+        Args:
+            vrs_folder: Folder containing VoiceRecordingSheet Excel files
+
+        Returns:
+            Number of events reordered by VRS
+        """
+        if not vrs_folder or not vrs_folder.exists():
+            log.warning("VRS folder not found: %s", vrs_folder)
+            return 0
+
+        # Find most recent Excel file
+        xlsx_files = sorted(vrs_folder.glob("*.xlsx"), key=lambda f: f.stat().st_mtime, reverse=True)
+        if not xlsx_files:
+            log.warning("No Excel files found in VRS folder: %s", vrs_folder)
+            return 0
+
+        vrs_file = xlsx_files[0]
+        log.info("Loading VRS order from: %s", vrs_file.name)
+
+        if progress_callback:
+            progress_callback(f"Loading VRS order from {vrs_file.name}...")
+
+        try:
+            from openpyxl import load_workbook
+        except ImportError:
+            log.warning("openpyxl not installed — VRS ordering disabled")
+            return 0
+
+        try:
+            wb = load_workbook(vrs_file, data_only=True, read_only=True)
+            ws = wb.active
+
+            # Find EventName column by header (row 1)
+            event_col_idx = None
+            header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+            if header_row:
+                for idx, cell_value in enumerate(header_row):
+                    if cell_value and str(cell_value).strip().lower() == "eventname":
+                        event_col_idx = idx
+                        break
+
+            if event_col_idx is None:
+                log.warning("'EventName' column not found in VRS header: %s", header_row)
+                wb.close()
+                return 0
+
+            log.info("Found 'EventName' at column index %d", event_col_idx)
+
+            # Build event_name -> VRS row position
+            vrs_order: Dict[str, int] = {}
+            position = 0
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if len(row) > event_col_idx:
+                    event_name = row[event_col_idx]
+                    if event_name:
+                        event_lower = str(event_name).strip().lower()
+                        if event_lower and event_lower not in vrs_order:
+                            vrs_order[event_lower] = position
+                            position += 1
+
+            wb.close()
+            log.info("Loaded %d EventNames from VRS", len(vrs_order))
+
+            # Apply VRS order: matched events get VRS position,
+            # unmatched events get offset to sort after all VRS entries
+            vrs_max = len(vrs_order)
+            reordered = 0
+            for event_name, current_order in list(self._event_to_xml_order.items()):
+                vrs_pos = vrs_order.get(event_name)
+                if vrs_pos is not None:
+                    self._event_to_xml_order[event_name] = vrs_pos
+                    reordered += 1
+                else:
+                    # Offset unmatched events beyond all VRS entries
+                    self._event_to_xml_order[event_name] = vrs_max + current_order
+
+            log.info("VRS reordered %d / %d events (%d unmatched appended after)",
+                     reordered, len(self._event_to_xml_order),
+                     len(self._event_to_xml_order) - reordered)
+            return reordered
+
+        except Exception as e:
+            log.error("Error loading VRS: %s", e)
+            return 0
 
     def load_script_lines(
         self,

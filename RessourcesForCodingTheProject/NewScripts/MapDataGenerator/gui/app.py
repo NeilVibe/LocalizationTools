@@ -399,6 +399,7 @@ class MapDataGeneratorApp:
                     export_folder=Path(settings.export_folder),
                     loc_folder=Path(settings.loc_folder),
                     mode=new_mode,
+                    vrs_folder=Path(settings.vrs_folder),
                 )
             else:
                 # Other modes use texture folder from settings (or cached value)
@@ -565,6 +566,7 @@ class MapDataGeneratorApp:
                 export_folder=export_path,
                 loc_folder=Path(settings.loc_folder),
                 mode=self._current_mode,
+                vrs_folder=Path(settings.vrs_folder),
             )
         else:
             # Other modes: check texture and knowledge folders
@@ -662,6 +664,7 @@ class MapDataGeneratorApp:
                     export_folder=Path(settings.export_folder),
                     loc_folder=Path(settings.loc_folder),
                     mode=new_mode,
+                    vrs_folder=Path(settings.vrs_folder),
                 )
             else:
                 self._start_data_load(
@@ -788,6 +791,7 @@ class MapDataGeneratorApp:
         export_folder: Path,
         loc_folder: Path,
         mode: DataMode,
+        vrs_folder: Optional[Path] = None,
     ) -> None:
         """Start background audio data loading."""
         # Set loading lock and disable mode buttons
@@ -813,7 +817,8 @@ class MapDataGeneratorApp:
                     audio_folder,
                     export_folder,
                     loc_folder,
-                    lambda msg: self._update_progress(msg)
+                    vrs_folder=vrs_folder,
+                    progress_callback=lambda msg: self._update_progress(msg),
                 )
                 self._update_progress(f"Loaded {count} audio entries")
 
