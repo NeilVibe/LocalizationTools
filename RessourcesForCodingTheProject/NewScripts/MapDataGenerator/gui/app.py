@@ -187,6 +187,9 @@ class MapDataGeneratorApp:
 
         # Keyboard bindings
         self.root.bind("<Control-o>", lambda e: self._load_data())
+        self.root.bind("<space>", self._on_space_key)
+        self.root.bind("<Left>", self._on_arrow_key)
+        self.root.bind("<Right>", self._on_arrow_key)
 
     def _create_widgets(self) -> None:
         """Create main window widgets."""
@@ -237,6 +240,10 @@ class MapDataGeneratorApp:
         self._audio_viewer = AudioViewer(
             self._right_frame,
             audio_handler=self._audio_handler
+        )
+        self._audio_viewer.set_navigation_callbacks(
+            on_prev=self._audio_prev,
+            on_next=self._audio_next,
         )
         # Don't pack yet - will be shown when AUDIO mode is active
 
@@ -1053,10 +1060,8 @@ class MapDataGeneratorApp:
                 self._map_canvas.select_node(result.strkey)
 
     def _on_result_double_click(self, result: SearchResult) -> None:
-        """Handle result double-click."""
-        self._on_result_select(result)
-
-        # In AUDIO mode, double-click plays the audio
+        """Handle result double-click. Select already fired via <<TreeviewSelect>>."""
+        # In AUDIO mode, double-click plays the audio (select already happened)
         if self._current_mode == DataMode.AUDIO and result.dds_path:
             self._audio_viewer.play()
 
@@ -1132,14 +1137,46 @@ class MapDataGeneratorApp:
         ttk.Button(btn_frame, text="Cancel", command=dialog.destroy).pack(side="left", padx=10)
 
     def _on_close(self) -> None:
-        """Handle window close."""
-        # Stop audio playback if active
-        self._audio_handler.stop()
+        """Handle window close — clean shutdown with temp file cleanup."""
+        self._audio_handler.shutdown()
 
         # Save window geometry
         self.settings.window_geometry = self.root.geometry()
         save_settings(self.settings)
         self.root.destroy()
+
+    # =========================================================================
+    # KEYBOARD SHORTCUTS
+    # =========================================================================
+
+    def _on_space_key(self, event) -> None:
+        """Space bar toggles play/stop in AUDIO mode (unless typing in search)."""
+        # Don't intercept if user is typing in an Entry or Text widget
+        focus = self.root.focus_get()
+        if isinstance(focus, (tk.Entry, tk.Text, ttk.Entry)):
+            return
+        if self._current_mode == DataMode.AUDIO:
+            self._audio_viewer.toggle_playback()
+            return "break"  # Prevent default space behavior
+
+    def _on_arrow_key(self, event) -> None:
+        """Left/Right arrows navigate prev/next in AUDIO mode."""
+        focus = self.root.focus_get()
+        if isinstance(focus, (tk.Entry, tk.Text, ttk.Entry)):
+            return
+        if self._current_mode == DataMode.AUDIO:
+            if event.keysym == "Left":
+                self._audio_prev()
+            elif event.keysym == "Right":
+                self._audio_next()
+
+    def _audio_prev(self) -> None:
+        """Navigate to previous audio entry in the result grid."""
+        self._result_panel.select_adjacent(-1)
+
+    def _audio_next(self) -> None:
+        """Navigate to next audio entry in the result grid."""
+        self._result_panel.select_adjacent(1)
 
     def run(self) -> None:
         """Run the application."""

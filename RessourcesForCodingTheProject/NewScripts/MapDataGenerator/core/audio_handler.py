@@ -5,12 +5,15 @@ Handles WEM audio file playback:
 - Converts WEM to WAV using vgmstream-cli
 - Plays WAV audio using platform-appropriate method
 - Manages temporary files and playback state
+- Thread-safe with generation counters to prevent stale callbacks
 """
 
+import hashlib
 import logging
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -18,6 +21,12 @@ from pathlib import Path
 from typing import Callable, Optional
 
 log = logging.getLogger(__name__)
+
+# Suppress console window popup on Windows for subprocess calls
+# Use kwargs dict because creationflags parameter only exists on Windows
+_SUBPROCESS_KWARGS = (
+    {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+)
 
 # Try to import platform-specific audio libraries
 try:
@@ -37,27 +46,27 @@ class AudioHandler:
     Handles WEM audio file conversion and playback.
 
     Uses vgmstream-cli for WEM to WAV conversion.
-    Uses winsound (Windows) for playback.
+    Uses winsound (Windows) for synchronous playback in a background thread.
+    Thread-safe with generation counters to prevent stale state clobbering.
     """
 
     def __init__(self, vgmstream_path: Optional[Path] = None):
-        """
-        Initialize audio handler.
-
-        Args:
-            vgmstream_path: Path to vgmstream-cli.exe. If not provided,
-                           looks in tools/ folder next to this module.
-        """
         self._vgmstream_path = vgmstream_path
-        self._temp_dir = Path(tempfile.gettempdir()) / "mapdatagenerator_audio"
-        self._temp_dir.mkdir(exist_ok=True)
-
         self._current_wav: Optional[Path] = None
         self._is_playing = False
         self._play_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
-        self._duration_cache: dict = {}  # Cache durations
+        self._play_generation = 0  # Prevents stale thread callbacks
+        self._duration_cache: dict = {}
+
+        # Create temp directory safely
+        try:
+            self._temp_dir = Path(tempfile.gettempdir()) / "mapdatagenerator_audio"
+            self._temp_dir.mkdir(exist_ok=True)
+        except OSError as e:
+            log.error("Cannot create temp directory: %s", e)
+            self._temp_dir = Path(tempfile.gettempdir())
 
         # Try to find vgmstream-cli if not specified
         if not self._vgmstream_path:
@@ -66,11 +75,13 @@ class AudioHandler:
         if self._vgmstream_path and self._vgmstream_path.exists():
             log.info("vgmstream-cli found: %s", self._vgmstream_path)
         else:
-            log.warning("vgmstream-cli not found. Audio playback will not work.")
+            log.warning(
+                "vgmstream-cli not found. Place vgmstream-cli.exe in the tools/ "
+                "folder to enable audio playback."
+            )
 
     def _find_vgmstream(self) -> Optional[Path]:
         """Find vgmstream-cli executable."""
-        # Look in tools/ folder relative to this module
         module_dir = Path(__file__).parent.parent
         candidates = [
             module_dir / "tools" / "vgmstream-cli.exe",
@@ -83,7 +94,6 @@ class AudioHandler:
             if candidate.exists():
                 return candidate
 
-        # Try system PATH
         import shutil
         system_path = shutil.which("vgmstream-cli") or shutil.which("vgmstream-cli.exe")
         if system_path:
@@ -108,13 +118,8 @@ class AudioHandler:
     def convert_wem_to_wav(self, wem_path: Path, force: bool = False) -> Optional[Path]:
         """
         Convert WEM file to temporary WAV file.
-
-        Args:
-            wem_path: Path to WEM file
-            force: Force reconversion even if WAV exists
-
-        Returns:
-            Path to temporary WAV file, or None on failure
+        Uses path-hashed filenames to avoid collisions between different
+        source directories with same-named files.
         """
         if not self._vgmstream_path or not self._vgmstream_path.exists():
             log.error("vgmstream-cli not available")
@@ -124,16 +129,19 @@ class AudioHandler:
             log.error("WEM file not found: %s", wem_path)
             return None
 
-        # Create output path in temp directory
-        wav_name = wem_path.stem + ".wav"
+        # Hash the full path to avoid filename collisions across directories
+        path_hash = hashlib.md5(str(wem_path).encode()).hexdigest()[:8]
+        wav_name = f"{wem_path.stem}_{path_hash}.wav"
         wav_path = self._temp_dir / wav_name
 
         # Check if already converted (cache hit)
         if not force and wav_path.exists():
-            # Verify the cached file is newer than source
-            if wav_path.stat().st_mtime >= wem_path.stat().st_mtime:
-                log.debug("Using cached WAV: %s", wav_path)
-                return wav_path
+            try:
+                if wav_path.stat().st_mtime >= wem_path.stat().st_mtime:
+                    log.debug("Using cached WAV: %s", wav_path)
+                    return wav_path
+            except OSError:
+                pass  # File disappeared between check and stat
 
         # Convert using vgmstream-cli
         try:
@@ -149,7 +157,8 @@ class AudioHandler:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=60,
+                **_SUBPROCESS_KWARGS,
             )
 
             if result.returncode != 0:
@@ -164,7 +173,7 @@ class AudioHandler:
                 return None
 
         except subprocess.TimeoutExpired:
-            log.error("vgmstream-cli timed out")
+            log.error("vgmstream-cli timed out (file may be too large)")
             return None
         except Exception as e:
             log.exception("Conversion failed: %s", e)
@@ -176,49 +185,50 @@ class AudioHandler:
         on_complete: Optional[Callable[[], None]] = None
     ) -> bool:
         """
-        Play WEM audio file.
-
-        Args:
-            wem_path: Path to WEM file
-            on_complete: Optional callback when playback finishes
-
-        Returns:
-            True if playback started, False on failure
+        Play WEM audio file in a background thread.
+        Conversion and playback both happen off the main thread.
+        Uses synchronous winsound in the thread for accurate completion detection.
         """
         if not HAS_WINSOUND:
             log.error("winsound not available")
             return False
 
-        # Stop any current playback
+        # Stop any current playback and wait for thread to finish
         self.stop()
 
-        # Convert WEM to WAV
-        wav_path = self.convert_wem_to_wav(wem_path)
-        if not wav_path:
-            return False
+        with self._lock:
+            self._play_generation += 1
+            gen = self._play_generation
+            self._is_playing = True
+            self._stop_event.clear()
 
-        self._current_wav = wav_path
-        self._is_playing = True
-        self._stop_event.clear()
-
-        # Play in background thread to avoid blocking
         def play_thread():
-            stopped_early = False
             try:
-                winsound.PlaySound(
-                    str(wav_path),
-                    winsound.SND_FILENAME | winsound.SND_ASYNC
-                )
-                # Wait for duration OR stop signal
-                duration = self.get_duration(wem_path)
-                stopped_early = self._stop_event.wait(timeout=duration if duration else 5.0)
+                # Convert WEM to WAV (off main thread!)
+                wav_path = self.convert_wem_to_wav(wem_path)
+                if not wav_path:
+                    return
+
+                # Check if we were stopped during conversion
+                if self._stop_event.is_set():
+                    return
+
+                self._current_wav = wav_path
+
+                # Synchronous playback - blocks until audio finishes
+                # This gives us accurate completion without duration guessing
+                winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
 
             except Exception as e:
-                log.exception("Playback error: %s", e)
+                if not self._stop_event.is_set():
+                    log.exception("Playback error: %s", e)
             finally:
-                self._is_playing = False
-                # Only call on_complete if not stopped early
-                if on_complete and not stopped_early:
+                with self._lock:
+                    # Only update state if this is still the current generation
+                    if gen == self._play_generation:
+                        self._is_playing = False
+                        self._current_wav = None
+                if on_complete and not self._stop_event.is_set() and gen == self._play_generation:
                     on_complete()
 
         self._play_thread = threading.Thread(target=play_thread, daemon=True)
@@ -227,38 +237,8 @@ class AudioHandler:
         log.info("Playing: %s", wem_path.name)
         return True
 
-    def play_sync(self, wem_path: Path) -> bool:
-        """
-        Play WEM audio file synchronously (blocking).
-
-        Args:
-            wem_path: Path to WEM file
-
-        Returns:
-            True if playback completed, False on failure
-        """
-        if not HAS_WINSOUND:
-            log.error("winsound not available")
-            return False
-
-        # Convert WEM to WAV
-        wav_path = self.convert_wem_to_wav(wem_path)
-        if not wav_path:
-            return False
-
-        try:
-            self._is_playing = True
-            winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
-            return True
-        except Exception as e:
-            log.exception("Playback error: %s", e)
-            return False
-        finally:
-            self._is_playing = False
-
     def stop(self) -> None:
-        """Stop current audio playback."""
-        # Signal the play thread to exit early
+        """Stop current audio playback and wait for thread cleanup."""
         self._stop_event.set()
 
         if HAS_WINSOUND and self._is_playing:
@@ -267,24 +247,27 @@ class AudioHandler:
             except Exception as e:
                 log.debug("Stop error: %s", e)
 
-        self._is_playing = False
-        self._current_wav = None
+        # Wait for play thread to finish to prevent stale callbacks
+        if self._play_thread and self._play_thread.is_alive():
+            self._play_thread.join(timeout=2.0)
+
+        with self._lock:
+            self._is_playing = False
+            self._current_wav = None
 
     def get_duration(self, wem_path: Path) -> Optional[float]:
         """
-        Get audio duration in seconds.
-
-        Args:
-            wem_path: Path to WEM file
-
-        Returns:
-            Duration in seconds, or None if unknown
+        Get audio duration in seconds. Results are cached by file path.
+        Thread-safe — can be called from any thread.
         """
         if not self._vgmstream_path or not self._vgmstream_path.exists():
             return None
 
+        cache_key = str(wem_path)
+        if cache_key in self._duration_cache:
+            return self._duration_cache[cache_key]
+
         try:
-            # Use vgmstream-cli -m (metadata) to get duration
             cmd = [
                 str(self._vgmstream_path),
                 "-m",
@@ -295,14 +278,13 @@ class AudioHandler:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
+                **_SUBPROCESS_KWARGS,
             )
 
             if result.returncode != 0:
                 return None
 
-            # Parse output for duration
-            # Format varies, look for "stream total samples" and "sample rate"
             output = result.stdout
             samples = None
             sample_rate = None
@@ -310,7 +292,6 @@ class AudioHandler:
             for line in output.split('\n'):
                 line_lower = line.lower()
                 if 'sample rate' in line_lower:
-                    # Extract number
                     match = re.search(r'(\d+)', line)
                     if match:
                         sample_rate = int(match.group(1))
@@ -320,7 +301,9 @@ class AudioHandler:
                         samples = int(match.group(1))
 
             if samples and sample_rate:
-                return samples / sample_rate
+                duration = samples / sample_rate
+                self._duration_cache[cache_key] = duration
+                return duration
 
             return None
 
@@ -329,12 +312,8 @@ class AudioHandler:
             return None
 
     def cleanup_temp_files(self) -> int:
-        """
-        Clean up temporary WAV files.
-
-        Returns:
-            Number of files deleted
-        """
+        """Clean up temporary WAV files."""
+        self.stop()  # Stop playback before cleanup
         count = 0
         try:
             for wav_file in self._temp_dir.glob("*.wav"):
@@ -345,10 +324,13 @@ class AudioHandler:
                     pass
         except Exception as e:
             log.debug("Cleanup error: %s", e)
-
         return count
+
+    def shutdown(self) -> None:
+        """Clean shutdown — stop playback and clean temp files."""
+        self.stop()
+        self.cleanup_temp_files()
 
     def __del__(self):
         """Cleanup on destruction."""
         self.stop()
-        # Don't auto-cleanup temp files - might still be playing
