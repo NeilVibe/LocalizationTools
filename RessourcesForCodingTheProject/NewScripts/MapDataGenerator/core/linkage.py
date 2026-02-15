@@ -121,10 +121,12 @@ class DDSIndex:
             progress_callback(f"Scanning {texture_folder}...")
 
         count = 0
-        for dds_path in texture_folder.rglob("*.dds"):
+        for dds_path in sorted(texture_folder.rglob("*.dds")):
             name_lower = dds_path.stem.lower()
-            self._dds_files[name_lower] = dds_path
-            self._dds_files[dds_path.name.lower()] = dds_path
+            if name_lower not in self._dds_files:
+                self._dds_files[name_lower] = dds_path
+            if dds_path.name.lower() not in self._dds_files:
+                self._dds_files[dds_path.name.lower()] = dds_path
             count += 1
 
         self._scanned = True
@@ -884,17 +886,6 @@ class LinkageResolver:
 # AUDIO INDEX (For AUDIO mode)
 # =============================================================================
 
-@dataclass
-class AudioEntry:
-    """Audio entry with event name and linked script."""
-    event_name: str
-    wem_path: Path
-    str_origin: str = ""
-    script_kr: str = ""
-    script_translated: str = ""
-    duration: Optional[float] = None
-
-
 class AudioIndex:
     """
     Index of WEM audio files with event name -> script line mappings.
@@ -941,10 +932,18 @@ class AudioIndex:
             progress_callback(f"Scanning {audio_folder}...")
 
         count = 0
-        for wem_path in audio_folder.rglob("*.wem"):
+        dupes = 0
+        for wem_path in sorted(audio_folder.rglob("*.wem")):
             event_name = wem_path.stem.lower()
+            if event_name in self._wem_files:
+                dupes += 1
+                log.debug("Duplicate WEM '%s': keeping '%s', skipping '%s'",
+                          event_name, self._wem_files[event_name].name, wem_path.name)
+                continue
             self._wem_files[event_name] = wem_path
             count += 1
+        if dupes:
+            log.warning("Skipped %d duplicate WEM filenames (first-seen-wins)", dupes)
 
         log.info("Found %d WEM files", count)
         return count
@@ -972,8 +971,9 @@ class AudioIndex:
             progress_callback(f"Loading event mappings from {export_folder}...")
 
         count = 0
+        dupes = 0
         element_order = 0  # Global counter across all files — preserves ordering
-        for xml_path in export_folder.rglob("*.xml"):
+        for xml_path in sorted(export_folder.rglob("*.xml")):
             if progress_callback:
                 progress_callback(f"Parsing {xml_path.name}...")
 
@@ -993,6 +993,17 @@ class AudioIndex:
 
                 if event_name and str_origin:
                     event_lower = event_name.lower()
+
+                    # First-seen-wins: skip duplicates to prevent non-deterministic mapping
+                    if event_lower in self._event_to_origin:
+                        if self._event_to_origin[event_lower] != str_origin:
+                            dupes += 1
+                            log.debug("Duplicate event '%s': keeping StrOrigin '%s' (from %s), "
+                                      "skipping '%s' (from %s)",
+                                      event_name, self._event_to_origin[event_lower],
+                                      self._event_to_export_path[event_lower], str_origin, rel_dir)
+                        continue
+
                     self._event_to_origin[event_lower] = str_origin
 
                     # Track export path and XML element order
@@ -1004,6 +1015,8 @@ class AudioIndex:
                     self._category_counts[rel_dir] = self._category_counts.get(rel_dir, 0) + 1
                     count += 1
 
+        if dupes:
+            log.warning("Skipped %d duplicate events with conflicting StrOrigin (first-seen-wins)", dupes)
         log.info("Loaded %d event -> StrOrigin mappings (%d categories)", count, len(self._category_counts))
         return count
 
@@ -1045,6 +1058,11 @@ class AudioIndex:
 
         try:
             wb = load_workbook(vrs_file, data_only=True, read_only=True)
+        except Exception as e:
+            log.error("Error opening VRS file: %s", e)
+            return 0
+
+        try:
             ws = wb.active
 
             # Find EventName column by header (row 1)
@@ -1058,7 +1076,6 @@ class AudioIndex:
 
             if event_col_idx is None:
                 log.warning("'EventName' column not found in VRS header: %s", header_row)
-                wb.close()
                 return 0
 
             log.info("Found 'EventName' at column index %d", event_col_idx)
@@ -1075,7 +1092,6 @@ class AudioIndex:
                             vrs_order[event_lower] = position
                             position += 1
 
-            wb.close()
             log.info("Loaded %d EventNames from VRS", len(vrs_order))
 
             # Apply VRS order: matched events get VRS position,
@@ -1091,14 +1107,20 @@ class AudioIndex:
                     # Offset unmatched events beyond all VRS entries
                     self._event_to_xml_order[event_name] = vrs_max + current_order
 
+            vrs_unmatched = len(vrs_order) - reordered
+            if vrs_unmatched:
+                log.info("VRS had %d event names not found in export XMLs (ignored)", vrs_unmatched)
+
             log.info("VRS reordered %d / %d events (%d unmatched appended after)",
                      reordered, len(self._event_to_xml_order),
                      len(self._event_to_xml_order) - reordered)
             return reordered
 
         except Exception as e:
-            log.error("Error loading VRS: %s", e)
+            log.error("Error processing VRS: %s", e)
             return 0
+        finally:
+            wb.close()
 
     def load_script_lines(
         self,
@@ -1124,8 +1146,6 @@ class AudioIndex:
             log.warning("Loc folder not found: %s", loc_folder)
             return 0
 
-        total_count = 0
-
         # Load KOR LOC file
         kor_file = self._find_lang_file(loc_folder, 'kor')
         if kor_file:
@@ -1138,8 +1158,8 @@ class AudioIndex:
                     str_origin = (elem.get("StrOrigin") or "").strip()
                     text = (elem.get("Str") or "").strip()
                     if str_origin and text:
-                        self._origin_to_kor[str_origin] = text
-                        total_count += 1
+                        if str_origin not in self._origin_to_kor:
+                            self._origin_to_kor[str_origin] = text
 
             log.info("Loaded %d KOR script lines", len(self._origin_to_kor))
 
@@ -1155,11 +1175,12 @@ class AudioIndex:
                     str_origin = (elem.get("StrOrigin") or "").strip()
                     text = (elem.get("Str") or "").strip()
                     if str_origin and text:
-                        self._origin_to_eng[str_origin] = text
+                        if str_origin not in self._origin_to_eng:
+                            self._origin_to_eng[str_origin] = text
 
             log.info("Loaded %d ENG script lines", len(self._origin_to_eng))
 
-        return total_count
+        return len(self._origin_to_kor) + len(self._origin_to_eng)
 
     def _find_lang_file(self, loc_folder: Path, lang_code: str) -> Optional[Path]:
         """Find language file for given code."""
@@ -1173,9 +1194,11 @@ class AudioIndex:
         if lang_file.exists():
             return lang_file
 
-        # Try finding by pattern
-        for f in loc_folder.glob("languagedata_*.xml"):
-            if lang_code.lower() in f.name.lower():
+        # Try finding by exact suffix match (sorted for determinism)
+        for f in sorted(loc_folder.glob("languagedata_*.xml")):
+            # Match lang code as the complete suffix: languagedata_KOR.xml, not languagedata_KORSOMETHING.xml
+            stem_suffix = f.stem.split("_", 1)[1] if "_" in f.stem else ""
+            if stem_suffix.lower() == lang_code.lower():
                 return f
 
         log.warning("Language file not found for %s in %s", lang_code, loc_folder)

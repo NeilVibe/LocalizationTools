@@ -223,13 +223,17 @@ def iter_xml_files(
         return
 
     if recursive:
+        # Collect and sort for deterministic iteration order
+        results = []
         for dp, _, files in os.walk(root):
             for fn in files:
                 low = fn.lower()
                 if any(low.endswith(suf) for suf in suffixes):
-                    yield Path(dp) / fn
+                    results.append(Path(dp) / fn)
+        results.sort()
+        yield from results
     else:
-        for fn in root.iterdir():
+        for fn in sorted(root.iterdir(), key=lambda p: p.name):
             if fn.is_file():
                 low = fn.name.lower()
                 if any(low.endswith(suf) for suf in suffixes):
