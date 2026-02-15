@@ -307,8 +307,8 @@ class SearchEngine:
                 continue
             matching.append(entry)
 
-        # Sort by export_path then xml_order (preserves original XML element order)
-        matching.sort(key=lambda e: (e.export_path, e.xml_order))
+        # Sort by export_path then xml_order, with strkey tiebreaker for full determinism
+        matching.sort(key=lambda e: (e.export_path, e.xml_order, e.strkey))
 
         # Paginate
         page = matching[start_index:start_index + limit]
