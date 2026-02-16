@@ -830,7 +830,7 @@ class LinkageResolver:
             vrs_count = audio_index.load_vrs_order(vrs_folder, progress_callback)
             log.info("VRS reordered %d events", vrs_count)
 
-        # Load StrOrigin/StringId -> script line mappings from BOTH KOR and ENG loc files
+        # Load StringId -> script line mappings from BOTH KOR and ENG loc files
         if progress_callback:
             progress_callback("Loading script lines (KOR + ENG)...")
         script_count = audio_index.load_script_lines(loc_folder, progress_callback)
@@ -892,25 +892,24 @@ class AudioIndex:
 
     Data flow:
     1. WEM files: event_name.wem -> Path
-    2. Export XMLs: SoundEventName/EventName -> StringId + StrOrigin
-    3. LOC XMLs: StringId -> Str, StrOrigin -> Str
-    4. Lookup: event -> StrOrigin -> text (primary), event -> StringId -> text (fallback)
+    2. Export XMLs: EventName -> StringId (same element)
+    3. LOC XMLs: StringId -> StrOrigin + Str (same element)
+    4. Lookup: event -> StringId -> StrOrigin/Str (one chain, no fallback)
     """
 
     def __init__(self):
         self._wem_files: Dict[str, Path] = {}  # event_name (lowercase) -> wem path
-        self._event_to_origin: Dict[str, str] = {}  # event_name -> StrOrigin key
-        self._event_to_stringid: Dict[str, str] = {}  # event_name -> StringId
-        self._origin_to_kor: Dict[str, str] = {}  # StrOrigin key -> KOR script
-        self._origin_to_eng: Dict[str, str] = {}  # StrOrigin key -> ENG script
-        self._stringid_to_kor: Dict[str, str] = {}  # StringId -> KOR script (from loc)
-        self._stringid_to_eng: Dict[str, str] = {}  # StringId -> ENG script (from loc)
-        self._stringid_to_strorigin: Dict[str, str] = {}  # StringId -> StrOrigin (from loc, for reverse lookup)
 
-        # Export path category tree tracking
+        # THE CHAIN: event -> StringId -> StrOrigin/Str
+        self._event_to_stringid: Dict[str, str] = {}     # event_name -> StringId (from export XML)
+        self._stringid_to_strorigin: Dict[str, str] = {} # StringId -> StrOrigin (from loc XML)
+        self._stringid_to_kor: Dict[str, str] = {}       # StringId -> KOR Str (from loc XML)
+        self._stringid_to_eng: Dict[str, str] = {}       # StringId -> ENG Str (from loc XML)
+
+        # Metadata
         self._event_to_export_path: Dict[str, str] = {}  # event_name -> relative dir
-        self._event_to_xml_order: Dict[str, int] = {}  # event_name -> order in file
-        self._category_counts: Dict[str, int] = {}  # rel_dir -> count
+        self._event_to_xml_order: Dict[str, int] = {}    # event_name -> order in file
+        self._category_counts: Dict[str, int] = {}       # rel_dir -> count
 
     @property
     def wem_files(self) -> Dict[str, Path]:
@@ -955,11 +954,10 @@ class AudioIndex:
 
     def load_event_mappings(self, export_folder: Path, progress_callback=None) -> int:
         """
-        Load EventName -> StringId + StrOrigin mappings from export XMLs.
+        Load EventName -> StringId mappings from export XMLs.
 
         Case-insensitive attribute extraction: accepts SoundEventName, EventName,
-        soundeventname, eventname, etc. An entry is accepted if it has an event name
-        plus at least one of StringId or StrOrigin.
+        soundeventname, eventname, etc. An entry requires EventName + StringId.
 
         Args:
             export_folder: Folder containing export XML files
@@ -967,7 +965,6 @@ class AudioIndex:
         Returns:
             Number of mappings loaded
         """
-        self._event_to_origin.clear()
         self._event_to_stringid.clear()
         self._event_to_export_path.clear()
         self._event_to_xml_order.clear()
@@ -1002,38 +999,24 @@ class AudioIndex:
                 attrs = {k.lower(): v for k, v in elem.attrib.items()}
                 event_name = (attrs.get("soundeventname") or attrs.get("eventname") or "").strip()
                 string_id = (attrs.get("stringid") or "").strip()
-                str_origin = (attrs.get("strorigin") or "").strip()
 
-                if not event_name:
-                    continue
-                # Accept if we have StringId OR StrOrigin (not both required)
-                if not string_id and not str_origin:
+                if not event_name or not string_id:
                     continue
 
                 event_lower = event_name.lower()
 
-                # First-seen-wins with enrichment: if already seen, merge missing data
-                # but never overwrite existing values (prevents non-deterministic mapping)
-                if event_lower in self._event_to_origin or event_lower in self._event_to_stringid:
-                    if str_origin and event_lower in self._event_to_origin:
-                        if self._event_to_origin[event_lower] != str_origin:
-                            dupes += 1
-                            log.debug("Duplicate event '%s': keeping StrOrigin '%s' (from %s), "
-                                      "skipping '%s' (from %s)",
-                                      event_name, self._event_to_origin[event_lower],
-                                      self._event_to_export_path.get(event_lower, "?"),
-                                      str_origin, rel_dir)
-                    # Enrich: fill in missing data from this occurrence
-                    if str_origin and event_lower not in self._event_to_origin:
-                        self._event_to_origin[event_lower] = str_origin
-                    if string_id and event_lower not in self._event_to_stringid:
-                        self._event_to_stringid[event_lower] = string_id
+                # First-seen-wins dedup
+                if event_lower in self._event_to_stringid:
+                    if self._event_to_stringid[event_lower] != string_id:
+                        dupes += 1
+                        log.debug("Duplicate event '%s': keeping StringId '%s' (from %s), "
+                                  "skipping '%s' (from %s)",
+                                  event_name, self._event_to_stringid[event_lower],
+                                  self._event_to_export_path.get(event_lower, "?"),
+                                  string_id, rel_dir)
                     continue
 
-                if str_origin:
-                    self._event_to_origin[event_lower] = str_origin
-                if string_id:
-                    self._event_to_stringid[event_lower] = string_id
+                self._event_to_stringid[event_lower] = string_id
 
                 # Track export path and XML element order
                 self._event_to_export_path[event_lower] = rel_dir
@@ -1045,16 +1028,10 @@ class AudioIndex:
                 count += 1
 
         if dupes:
-            log.warning("Skipped %d duplicate events with conflicting StrOrigin (first-seen-wins)", dupes)
+            log.warning("Skipped %d duplicate events with conflicting StringId (first-seen-wins)", dupes)
 
-        # Diagnostic: coverage breakdown
-        has_both = sum(1 for e in self._event_to_origin if e in self._event_to_stringid)
-        has_origin_only = len(self._event_to_origin) - has_both
-        has_stringid_only = len(self._event_to_stringid) - has_both
-        log.info("Loaded %d event mappings (%d categories): "
-                 "%d with both StringId+StrOrigin, %d StrOrigin-only, %d StringId-only",
-                 count, len(self._category_counts),
-                 has_both, has_origin_only, has_stringid_only)
+        log.info("Loaded %d event -> StringId mappings (%d categories)",
+                 count, len(self._category_counts))
         return count
 
     def load_vrs_order(self, vrs_folder: Path, progress_callback=None) -> int:
@@ -1167,10 +1144,9 @@ class AudioIndex:
         """
         Load script lines from BOTH KOR and ENG localization XMLs.
 
-        Indexes by both StrOrigin and StringId for complete coverage:
-        - StrOrigin -> Str (primary lookup path)
-        - StringId -> Str (fallback for entries without StrOrigin in export)
-        - StringId -> StrOrigin (reverse mapping for get_str_origin fallback)
+        Indexes by StringId only — one chain, no fallback:
+        - StringId -> Str (KOR and ENG)
+        - StringId -> StrOrigin
 
         Args:
             loc_folder: Folder containing languagedata_*.xml files
@@ -1178,8 +1154,6 @@ class AudioIndex:
         Returns:
             Number of script lines loaded
         """
-        self._origin_to_kor.clear()
-        self._origin_to_eng.clear()
         self._stringid_to_kor.clear()
         self._stringid_to_eng.clear()
         self._stringid_to_strorigin.clear()
@@ -1198,24 +1172,18 @@ class AudioIndex:
             if root is not None:
                 for elem in root.iter():
                     attrs = {k.lower(): v for k, v in elem.attrib.items()}
+                    string_id = (attrs.get("stringid") or "").strip()
                     str_origin = (attrs.get("strorigin") or "").strip()
                     text = (attrs.get("str") or "").strip()
-                    string_id = (attrs.get("stringid") or "").strip()
 
-                    if str_origin and text:
-                        if str_origin not in self._origin_to_kor:
-                            self._origin_to_kor[str_origin] = text
-                    # Also index by StringId for fallback lookup
                     if string_id and text:
                         if string_id not in self._stringid_to_kor:
                             self._stringid_to_kor[string_id] = text
-                    # Build StringId -> StrOrigin reverse mapping (from KOR file only, avoid dupes)
                     if string_id and str_origin:
                         if string_id not in self._stringid_to_strorigin:
                             self._stringid_to_strorigin[string_id] = str_origin
 
-            log.info("Loaded %d KOR script lines (StrOrigin), %d StringId mappings",
-                     len(self._origin_to_kor), len(self._stringid_to_kor))
+            log.info("Loaded %d KOR script lines by StringId", len(self._stringid_to_kor))
 
         # Load ENG LOC file
         eng_file = self._find_lang_file(loc_folder, 'eng')
@@ -1227,14 +1195,10 @@ class AudioIndex:
             if root is not None:
                 for elem in root.iter():
                     attrs = {k.lower(): v for k, v in elem.attrib.items()}
+                    string_id = (attrs.get("stringid") or "").strip()
                     str_origin = (attrs.get("strorigin") or "").strip()
                     text = (attrs.get("str") or "").strip()
-                    string_id = (attrs.get("stringid") or "").strip()
 
-                    if str_origin and text:
-                        if str_origin not in self._origin_to_eng:
-                            self._origin_to_eng[str_origin] = text
-                    # Also index by StringId for fallback lookup
                     if string_id and text:
                         if string_id not in self._stringid_to_eng:
                             self._stringid_to_eng[string_id] = text
@@ -1243,11 +1207,10 @@ class AudioIndex:
                         if string_id not in self._stringid_to_strorigin:
                             self._stringid_to_strorigin[string_id] = str_origin
 
-            log.info("Loaded %d ENG script lines (StrOrigin), %d StringId mappings",
-                     len(self._origin_to_eng), len(self._stringid_to_eng))
+            log.info("Loaded %d ENG script lines by StringId", len(self._stringid_to_eng))
 
-        log.info("StringId -> StrOrigin reverse mappings: %d", len(self._stringid_to_strorigin))
-        return len(self._origin_to_kor) + len(self._origin_to_eng)
+        log.info("StringId -> StrOrigin mappings: %d", len(self._stringid_to_strorigin))
+        return len(self._stringid_to_kor) + len(self._stringid_to_eng)
 
     def _find_lang_file(self, loc_folder: Path, lang_code: str) -> Optional[Path]:
         """Find language file for given code."""
@@ -1284,93 +1247,29 @@ class AudioIndex:
         return self._wem_files.get(event_name.lower())
 
     def get_str_origin(self, event_name: str) -> str:
-        """Get StrOrigin key for event name.
-
-        Tries direct event -> StrOrigin first, then falls back to
-        event -> StringId -> StrOrigin (via loc file reverse mapping).
-        """
-        event_lower = event_name.lower()
-        # Path 1: direct StrOrigin from export
-        str_origin = self._event_to_origin.get(event_lower)
-        if str_origin:
-            return str_origin
-        # Path 2: event -> StringId -> StrOrigin (from loc file)
-        string_id = self._event_to_stringid.get(event_lower)
-        if string_id:
-            return self._stringid_to_strorigin.get(string_id, "")
-        return ""
+        """event -> StringId -> StrOrigin"""
+        string_id = self._event_to_stringid.get(event_name.lower())
+        if not string_id:
+            return ""
+        return self._stringid_to_strorigin.get(string_id, "")
 
     def get_script_kor(self, event_name: str) -> str:
-        """
-        Get Korean script line for event name.
-
-        Tries event -> StrOrigin -> KOR text first, then falls back to
-        event -> StringId -> KOR text.
-
-        Args:
-            event_name: Event name to look up
-
-        Returns:
-            Korean script text or empty string
-        """
-        event_lower = event_name.lower()
-        # Path 1: event -> StrOrigin -> KOR text
-        str_origin = self._event_to_origin.get(event_lower)
-        if str_origin:
-            text = self._origin_to_kor.get(str_origin)
-            if text:
-                return text
-        # Path 2 (fallback): event -> StringId -> KOR text
-        string_id = self._event_to_stringid.get(event_lower)
-        if string_id:
-            text = self._stringid_to_kor.get(string_id)
-            if text:
-                return text
-        return ""
+        """event -> StringId -> KOR text"""
+        string_id = self._event_to_stringid.get(event_name.lower())
+        if not string_id:
+            return ""
+        return self._stringid_to_kor.get(string_id, "")
 
     def get_script_eng(self, event_name: str) -> str:
-        """
-        Get English script line for event name.
-
-        Tries event -> StrOrigin -> ENG text first, then falls back to
-        event -> StringId -> ENG text.
-
-        Args:
-            event_name: Event name to look up
-
-        Returns:
-            English script text or empty string
-        """
-        event_lower = event_name.lower()
-        # Path 1: event -> StrOrigin -> ENG text
-        str_origin = self._event_to_origin.get(event_lower)
-        if str_origin:
-            text = self._origin_to_eng.get(str_origin)
-            if text:
-                return text
-        # Path 2 (fallback): event -> StringId -> ENG text
-        string_id = self._event_to_stringid.get(event_lower)
-        if string_id:
-            text = self._stringid_to_eng.get(string_id)
-            if text:
-                return text
-        return ""
+        """event -> StringId -> ENG text"""
+        string_id = self._event_to_stringid.get(event_name.lower())
+        if not string_id:
+            return ""
+        return self._stringid_to_eng.get(string_id, "")
 
     def get_script_line(self, event_name: str) -> str:
-        """
-        Get script line for event name (KOR preferred, ENG fallback).
-
-        Args:
-            event_name: Event name to look up
-
-        Returns:
-            Script line text or empty string
-        """
-        # Try KOR first, then ENG
-        kor = self.get_script_kor(event_name)
-        if kor:
-            return kor
-        return self.get_script_eng(event_name)
+        """KOR preferred, ENG if KOR empty."""
+        return self.get_script_kor(event_name) or self.get_script_eng(event_name)
 
     def get_export_path(self, event_name: str) -> str:
         """Get export path category for event name."""
