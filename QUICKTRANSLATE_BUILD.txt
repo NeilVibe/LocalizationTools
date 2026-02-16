@@ -118,3 +118,4 @@ Build - newline validation in pattern check + categorized summary
 Build - TRANSFER summary: show Already Correct + Origin Mismatch so numbers add up
 Build - StrOrigin mismatch reporting + per-language detail tabs
 Build - Flexible TARGET: any XML/Excel, multi-file, recursive scanning
+Build - StrOrigin Only safeguard: skip Dialog/Sequencer complement
