@@ -119,3 +119,4 @@ Build - TRANSFER summary: show Already Correct + Origin Mismatch so numbers add 
 Build - StrOrigin mismatch reporting + per-language detail tabs
 Build - Flexible TARGET: any XML/Excel, multi-file, recursive scanning
 Build - StrOrigin Only safeguard: skip Dialog/Sequencer complement
+Build - no translation postprocess cleanup
