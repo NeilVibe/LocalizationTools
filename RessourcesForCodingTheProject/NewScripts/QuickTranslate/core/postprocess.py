@@ -5,8 +5,9 @@ Runs cleanup passes on XML files AFTER transfer operations.
 Each cleanup function is independent and can be added/removed easily.
 
 Current cleanup steps (run in order):
-  1. cleanup_wrong_newlines  - Normalize ALL newlines to <br/>
-  2. cleanup_empty_strorigin - Clear Str when StrOrigin is empty
+  1. cleanup_wrong_newlines    - Normalize ALL newlines to <br/>
+  2. cleanup_empty_strorigin   - Clear Str when StrOrigin is empty
+  3. cleanup_no_translation    - Replace "no translation" Str with StrOrigin
 
 Usage:
     from core.postprocess import run_all_postprocess
@@ -232,6 +233,51 @@ def cleanup_empty_strorigin_on_tree(root) -> int:
     return cleaned
 
 
+# ─── Cleanup Step 3: "No translation" replacement ─────────────────────────────
+
+# Regex to collapse whitespace for normalization
+_WHITESPACE_RE = re.compile(r'\s+')
+
+
+def cleanup_no_translation_on_tree(root) -> int:
+    """
+    Replace Str with StrOrigin when Str is exactly "no translation".
+
+    Matching is case-insensitive with whitespace normalization (trim + collapse).
+    So "  NO   TRANSLATION  " matches, but "some no translation text" does NOT.
+
+    Args:
+        root: Parsed XML root element
+
+    Returns:
+        Number of entries fixed (Str replaced with StrOrigin)
+    """
+    fixed = 0
+    for loc in _iter_locstr(root):
+        str_attr, str_val = _get_attr(loc, _STR_ATTRS)
+        if str_val is None:
+            continue
+
+        # Normalize: trim + collapse internal whitespace + lowercase
+        normalized = _WHITESPACE_RE.sub(' ', str_val.strip()).lower()
+        if normalized != 'no translation':
+            continue
+
+        # Get StrOrigin to copy
+        _, origin = _get_attr(loc, _STRORIGIN_ATTRS)
+        origin = (origin or "").strip()
+
+        if origin:
+            loc.set(str_attr, origin)
+            fixed += 1
+        else:
+            # StrOrigin is also empty — clear Str (golden rule)
+            loc.set(str_attr, "")
+            fixed += 1
+
+    return fixed
+
+
 # ─── Public API: Standalone functions (backward-compatible) ──────────────────
 
 
@@ -289,6 +335,36 @@ def cleanup_empty_strorigin(xml_path: Path, dry_run: bool = False) -> int:
         return 0
 
 
+def cleanup_no_translation(xml_path: Path, dry_run: bool = False) -> int:
+    """
+    Post-process: replace Str with StrOrigin when Str is exactly "no translation".
+
+    Case-insensitive with whitespace normalization.
+
+    Args:
+        xml_path: Path to XML file
+        dry_run: If True, count but don't write
+
+    Returns:
+        Number of entries fixed
+    """
+    try:
+        tree, root = _parse_xml(xml_path)
+        fixed = cleanup_no_translation_on_tree(root)
+
+        if fixed > 0 and not dry_run:
+            _write_xml(tree, xml_path)
+            logger.info(
+                f"Replaced {fixed} 'no translation' entries with StrOrigin "
+                f"in {xml_path.name}"
+            )
+
+        return fixed
+    except Exception as e:
+        logger.error(f"Error cleaning 'no translation' in {xml_path}: {e}")
+        return 0
+
+
 # ─── Unified Runner ─────────────────────────────────────────────────────────
 
 
@@ -299,8 +375,9 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
     Single parse, all cleanups, single write. Efficient and atomic.
 
     Current steps (in order):
-      1. cleanup_wrong_newlines  - Normalize ALL newlines to <br/>
-      2. cleanup_empty_strorigin - Clear Str when StrOrigin is empty
+      1. cleanup_wrong_newlines    - Normalize ALL newlines to <br/>
+      2. cleanup_empty_strorigin   - Clear Str when StrOrigin is empty
+      3. cleanup_no_translation    - Replace "no translation" Str with StrOrigin
 
     Args:
         xml_path: Path to XML file
@@ -313,6 +390,7 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
     result = {
         "newlines_fixed": 0,
         "empty_strorigin_cleaned": 0,
+        "no_translation_replaced": 0,
         "total_fixes": 0,
     }
 
@@ -325,7 +403,14 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
         # Step 2: Empty StrOrigin enforcement
         result["empty_strorigin_cleaned"] = cleanup_empty_strorigin_on_tree(root)
 
-        result["total_fixes"] = result["newlines_fixed"] + result["empty_strorigin_cleaned"]
+        # Step 3: Replace "no translation" with StrOrigin
+        result["no_translation_replaced"] = cleanup_no_translation_on_tree(root)
+
+        result["total_fixes"] = (
+            result["newlines_fixed"]
+            + result["empty_strorigin_cleaned"]
+            + result["no_translation_replaced"]
+        )
 
         # Write once if anything changed
         if result["total_fixes"] > 0 and not dry_run:
@@ -340,6 +425,11 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
                 logger.info(
                     f"Post-process: cleared Str on {result['empty_strorigin_cleaned']} "
                     f"entries with empty StrOrigin in {xml_path.name}"
+                )
+            if result["no_translation_replaced"] > 0:
+                logger.info(
+                    f"Post-process: replaced {result['no_translation_replaced']} "
+                    f"'no translation' entries with StrOrigin in {xml_path.name}"
                 )
 
         return result
