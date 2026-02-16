@@ -45,3 +45,4 @@ Build - Add export path category tree for AUDIO mode
 Build - VRS chronological ordering for AUDIO mode
 Build - Fix determinism: first-seen-wins, sorted iteration, mapping integrity
 Build - Complete StringId indexing for AUDIO mode
+Build - Rewrite AudioIndex: one chain, zero fallbacks
