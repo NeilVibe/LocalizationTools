@@ -26,7 +26,7 @@ MATCHING_MODES = {
     "substring": "Substring Match (Lookup only)",
     "stringid_only": "StringID-Only (SCRIPT strings)",
     "strict": "StringID + StrOrigin (Strict)",
-    "strorigin_only": "StrOrigin Only (fills duplicates)",
+    "strorigin_only": "StrOrigin Only (non-script, fills duplicates)",
 }
 
 # SCRIPT categories - folder names where StrOrigin = raw KOR text
@@ -35,8 +35,8 @@ MATCHING_MODES = {
 SCRIPT_CATEGORIES = {"Sequencer", "Dialog"}
 
 # Subfolders to EXCLUDE from StringID-Only transfer
-# These are subfolders within Dialog/ or Sequencer/ that should be skipped
-SCRIPT_EXCLUDE_SUBFOLDERS = {"NarrationDialog"}
+# Empty: ALL Dialog/Sequencer subfolders are now included (clean complement with StrOrigin Only)
+SCRIPT_EXCLUDE_SUBFOLDERS = set()
 
 # Special Key fields - hardcoded for Special Key Match mode (legacy, kept for reference)
 SPECIAL_KEY_FIELDS = ["string_id", "category"]

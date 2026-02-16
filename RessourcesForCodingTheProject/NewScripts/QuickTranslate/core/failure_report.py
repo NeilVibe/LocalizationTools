@@ -95,6 +95,7 @@ FAILURE_REASONS = {
     "STRORIGIN_MISMATCH": "StrOrigin mismatch",
     "SKIPPED_TRANSLATED": "Already translated (skipped)",
     "SKIPPED_NON_SCRIPT": "Not a SCRIPT category (skipped)",
+    "SKIPPED_SCRIPT": "SCRIPT category — use StringID-Only (skipped)",
     "SKIPPED_EXCLUDED": "Excluded subfolder (skipped)",
     "PARSE_ERROR": "Failed to parse correction",
     "WRITE_ERROR": "Failed to write to target file",
@@ -122,6 +123,8 @@ def _classify_failure_reason(detail: Dict) -> str:
         return "SKIPPED_TRANSLATED"
     elif "SKIPPED_NON_SCRIPT" in status:
         return "SKIPPED_NON_SCRIPT"
+    elif "SKIPPED_SCRIPT" in status:
+        return "SKIPPED_SCRIPT"
     elif "SKIPPED_EXCLUDED" in status:
         return "SKIPPED_EXCLUDED"
     elif "ERROR" in status:
@@ -521,6 +524,9 @@ def _status_to_reason(status: str) -> str:
     elif "SKIPPED_NON_SCRIPT" in status_upper:
         return "Skipped: non-SCRIPT category (only Dialog/Sequencer allowed)"
 
+    elif "SKIPPED_SCRIPT" in status_upper:
+        return "Skipped: SCRIPT category (Dialog/Sequencer) — use StringID-Only mode"
+
     elif "SKIPPED_EXCLUDED" in status_upper:
         return "Skipped: excluded subfolder"
 
@@ -734,13 +740,14 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
         not_found = results.get("not_found", 0)
         strorigin_mismatch = results.get("strorigin_mismatch", 0)
         skipped_non_script = results.get("skipped_non_script", 0)
+        skipped_script = results.get("skipped_script", 0)
         skipped_translated = results.get("skipped_translated", 0)
         skipped_excluded = results.get("skipped_excluded", 0)
 
         unchanged = max(0, matched - updated - skipped_translated)
         total_success = updated
         total_failures = (not_found + strorigin_mismatch + skipped_non_script +
-                        skipped_translated + skipped_excluded)
+                        skipped_script + skipped_translated + skipped_excluded)
 
         # Count Korean words from StrOrigin in details
         kr_words_success = 0
@@ -768,6 +775,7 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
             "not_found": not_found,
             "strorigin_mismatch": strorigin_mismatch,
             "skipped_non_script": skipped_non_script,
+            "skipped_script": skipped_script,
             "skipped_translated": skipped_translated,
             "skipped_excluded": skipped_excluded,
             "errors": results.get("errors", []),
@@ -1168,6 +1176,7 @@ def _write_summary_sheet(
         ("StringID Not Found in Target", summary.get("not_found", 0)),
         ("StrOrigin Mismatch (ID exists, text differs)", summary.get("strorigin_mismatch", 0)),
         ("Skipped: Not a SCRIPT category", summary.get("skipped_non_script", 0)),
+        ("Skipped: SCRIPT category (use StringID-Only)", summary.get("skipped_script", 0)),
         ("Skipped: Already Translated (non-Korean)", summary.get("skipped_translated", 0)),
         ("Skipped: Excluded Subfolder", summary.get("skipped_excluded", 0)),
     ]
