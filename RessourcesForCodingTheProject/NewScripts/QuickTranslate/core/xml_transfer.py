@@ -287,12 +287,18 @@ def merge_corrections_strorigin_only(
     corrections: List[Dict],
     dry_run: bool = False,
     only_untranslated: bool = True,
+    stringid_to_category: Optional[Dict[str, str]] = None,
 ) -> Dict:
     """
     Merge corrections into a target XML using StrOrigin-only matching.
 
     SAFETY: only_untranslated defaults to True. Without StringID verification,
     overwriting existing translations is too dangerous. Only fills untranslated entries.
+
+    SAFETY: When stringid_to_category is provided, corrections whose StringID
+    belongs to a SCRIPT category (Dialog/Sequencer) are skipped. Those strings
+    should be handled by StringID-Only mode instead — StrOrigin matching is too
+    ambiguous for script text where many entries share identical source text.
 
     Single XML parse, pure dict lookup by normalized StrOrigin.
     Applies each correction to ALL target entries with matching StrOrigin
@@ -303,6 +309,8 @@ def merge_corrections_strorigin_only(
         corrections: List of correction dicts with str_origin, corrected
         dry_run: If True, don't write changes
         only_untranslated: If True, skip entries that already have non-Korean Str
+        stringid_to_category: Optional StringID->Category mapping. When provided,
+            corrections with SCRIPT categories are skipped (complement of StringID-Only).
 
     Returns:
         Dict with stats: matched, updated, not_found, errors, details
@@ -312,12 +320,43 @@ def merge_corrections_strorigin_only(
         "updated": 0,
         "not_found": 0,
         "skipped_translated": 0,
+        "skipped_script": 0,
         "unique_corrections": 0,
         "unique_matched": 0,
         "duplicate_sources": 0,
         "errors": [],
         "details": [],
     }
+
+    if not corrections:
+        return result
+
+    # SAFETY: Filter out SCRIPT category corrections (Dialog/Sequencer).
+    # These should be handled by StringID-Only mode — StrOrigin matching
+    # is too ambiguous for script text with many duplicate source strings.
+    if stringid_to_category:
+        ci_category = {k.lower(): v for k, v in stringid_to_category.items()}
+        filtered = []
+        for c in corrections:
+            sid = c.get("string_id", "").lower()
+            category = ci_category.get(sid, "")
+            if category in SCRIPT_CATEGORIES:
+                result["skipped_script"] += 1
+                result["details"].append({
+                    "string_id": c.get("string_id", ""),
+                    "status": "SKIPPED_SCRIPT",
+                    "old": f"Category: {category}",
+                    "new": c.get("corrected", ""),
+                })
+                logger.debug(f"Skipped SCRIPT StringID={c.get('string_id', '')} (category={category})")
+                continue
+            filtered.append(c)
+        if result["skipped_script"] > 0:
+            logger.info(
+                f"StrOrigin Only safeguard: skipped {result['skipped_script']} "
+                f"SCRIPT corrections (Dialog/Sequencer) — use StringID-Only for those"
+            )
+        corrections = filtered
 
     if not corrections:
         return result
@@ -1396,12 +1435,16 @@ def transfer_folder_to_folder(
                 file_result = merge_corrections_strorigin_only(
                     target_file, corrections, dry_run,
                     only_untranslated=only_untranslated,
+                    stringid_to_category=stringid_to_category,
                 )
+                results["total_skipped"] += file_result.get("skipped_script", 0)
             elif match_mode == "strorigin_only_fuzzy":
                 file_result = merge_corrections_strorigin_only(
                     target_file, corrections, dry_run,
                     only_untranslated=only_untranslated,
+                    stringid_to_category=stringid_to_category,
                 )
+                results["total_skipped"] += file_result.get("skipped_script", 0)
                 step1_matched = file_result["matched"]
                 logger.info(f"Step 1 (StrOrigin exact): {step1_matched}/{len(corrections)} matched")
                 if log_callback:
@@ -1752,6 +1795,7 @@ def transfer_file_to_file(
         result = merge_corrections_strorigin_only(
             target_file, corrections, dry_run,
             only_untranslated=only_untranslated,
+            stringid_to_category=stringid_to_category,
         )
     elif match_mode == "strorigin_only_fuzzy":
         # ═══ TWO-STEP: Exact StrOrigin first, then SBERT fuzzy on leftovers ═══
@@ -1759,6 +1803,7 @@ def transfer_file_to_file(
         result = merge_corrections_strorigin_only(
             target_file, corrections, dry_run,
             only_untranslated=only_untranslated,
+            stringid_to_category=stringid_to_category,
         )
         step1_matched = result["matched"]
         logger.info(f"Step 1 (StrOrigin exact): {step1_matched}/{len(corrections)} matched")
@@ -1914,7 +1959,8 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         if total_skipped_translated > 0:
             lines.append(V + f"   Skipped:          {total_skipped_translated:,}  (already translated)".ljust(width - 2) + V)
         if results.get('total_skipped', 0) > 0:
-            lines.append(V + f"   Skipped:          {results.get('total_skipped', 0):,}  (non-SCRIPT)".ljust(width - 2) + V)
+            skip_label = "SCRIPT — use StringID-Only" if "strorigin" in match_mode else "non-SCRIPT"
+            lines.append(V + f"   Skipped:          {results.get('total_skipped', 0):,}  ({skip_label})".ljust(width - 2) + V)
 
         # Per-language breakdown
         file_results = results.get("file_results", {})

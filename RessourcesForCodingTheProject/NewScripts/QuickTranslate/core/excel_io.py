@@ -756,6 +756,7 @@ def merge_corrections_to_excel(
             result = _merge_excel_strorigin_only(
                 ws, str_col, target_entries, corrections,
                 only_untranslated, result,
+                stringid_to_category=stringid_to_category,
             )
         elif match_mode == "stringid_only":
             result = _merge_excel_stringid_only(
@@ -866,9 +867,31 @@ def _merge_excel_strorigin_only(
     ws, str_col: int, target_entries: List[Dict],
     corrections: List[Dict], only_untranslated: bool,
     result: Dict,
+    stringid_to_category: Optional[Dict[str, str]] = None,
 ) -> Dict:
-    """StrOrigin-only matching."""
+    """StrOrigin-only matching. Skips SCRIPT (Dialog/Sequencer) corrections when category data available."""
     from .text_utils import normalize_for_matching
+    import config as _cfg
+
+    # SAFETY: Filter out SCRIPT category corrections (Dialog/Sequencer)
+    if stringid_to_category:
+        ci_category = {k.lower(): v for k, v in stringid_to_category.items()}
+        filtered = []
+        for c in corrections:
+            sid = c.get("string_id", "").lower()
+            category = ci_category.get(sid, "")
+            if category in _cfg.SCRIPT_CATEGORIES:
+                result.setdefault("skipped_script", 0)
+                result["skipped_script"] += 1
+                result["details"].append({
+                    "string_id": c.get("string_id", ""),
+                    "status": "SKIPPED_SCRIPT",
+                    "old": f"Category: {category}",
+                    "new": c.get("corrected", ""),
+                })
+                continue
+            filtered.append(c)
+        corrections = filtered
 
     target_by_origin = {}
     target_by_origin_nospace = {}

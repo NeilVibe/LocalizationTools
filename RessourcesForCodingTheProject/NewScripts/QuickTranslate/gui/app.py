@@ -24,6 +24,45 @@ import sys
 import config
 
 logger = logging.getLogger(__name__)
+
+
+class _GUILogHandler(logging.Handler):
+    """Bridges Python logging → GUI log panel.
+
+    Every logger.info/warning/error call from ANY module automatically
+    appears in both the terminal (StreamHandler) AND the GUI ScrolledText.
+    Thread-safe: uses the app's task queue for cross-thread delivery.
+    """
+
+    _LEVEL_TO_TAG = {
+        logging.DEBUG: 'info',
+        logging.INFO: 'info',
+        logging.WARNING: 'warning',
+        logging.ERROR: 'error',
+        logging.CRITICAL: 'error',
+    }
+
+    def __init__(self, app: 'QuickTranslateApp'):
+        super().__init__()
+        self._app = app
+
+    def emit(self, record: logging.LogRecord):
+        try:
+            # Skip if app window is destroyed
+            if not self._app.root.winfo_exists():
+                return
+            msg = self.format(record)
+            tag = self._LEVEL_TO_TAG.get(record.levelno, 'info')
+            # Multi-line messages (e.g. tree tables): log each line
+            for line in msg.split('\n'):
+                if line.strip():
+                    self._app._log(line, tag)
+        except (tk.TclError, RuntimeError):
+            pass  # App shutting down
+        except Exception:
+            self.handleError(record)
+
+
 from core import (
     build_sequencer_strorigin_index,
     scan_folder_for_strings,
@@ -164,6 +203,7 @@ class QuickTranslateApp:
         self._task_queue = queue.Queue()
         self._cancel_event = threading.Event()
         self._worker_thread = None
+        self._validation_thread = None  # Separate thread for source validation
 
         # Load current settings into variables
         self._load_settings_to_vars()
@@ -174,6 +214,23 @@ class QuickTranslateApp:
             self.source_path.set(str(config.SOURCE_FOLDER))
 
         self._create_ui()
+
+        # Bridge Python logging → GUI log panel.
+        # Every logger.info/warning/error from ANY module now shows in GUI.
+        self._gui_log_handler = _GUILogHandler(self)
+        self._gui_log_handler.setFormatter(
+            logging.Formatter('%(name)s - %(message)s')
+        )
+        logging.getLogger().addHandler(self._gui_log_handler)
+
+        # Clean up logging handler on window close to prevent leaks
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _on_close(self):
+        """Clean up resources on window close."""
+        logging.getLogger().removeHandler(self._gui_log_handler)
+        self._cancel_event.set()
+        self.root.destroy()
 
     def _load_settings_to_vars(self):
         """Load current config settings into StringVars."""
@@ -270,7 +327,7 @@ class QuickTranslateApp:
             ("substring", "Substring Match (Lookup only)", "Find Korean text in StrOrigin"),
             ("stringid_only", "StringID-Only (SCRIPT)", "SCRIPT categories only - match by StringID"),
             ("strict", "StringID + StrOrigin (STRICT)", "Requires BOTH to match exactly"),
-            ("strorigin_only", "StrOrigin Only", "Match by StrOrigin text only - fills ALL duplicates"),
+            ("strorigin_only", "StrOrigin Only", "Match by StrOrigin text only - skips Dialog/Sequencer"),
         ]
 
         for value, label, desc in match_types:
@@ -633,12 +690,22 @@ class QuickTranslateApp:
         else:
             self._task_queue.put(('log', timestamp, message, tag))
 
+    _MAX_LOG_LINES = 5000
+
     def _log_on_main(self, timestamp: str, message: str, tag: str):
         """Insert log message into widget (must run on main thread)."""
-        self.log_area.config(state='normal')
-        self.log_area.insert(tk.END, f"[{timestamp}] {message}\n", tag)
-        self.log_area.see(tk.END)
-        self.log_area.config(state='disabled')
+        try:
+            self.log_area.config(state='normal')
+            self.log_area.insert(tk.END, f"[{timestamp}] {message}\n", tag)
+            # Auto-truncate: keep last _MAX_LOG_LINES lines to prevent memory growth
+            line_count = int(self.log_area.index('end-1c').split('.')[0])
+            if line_count > self._MAX_LOG_LINES:
+                excess = line_count - self._MAX_LOG_LINES
+                self.log_area.delete('1.0', f'{excess}.0')
+            self.log_area.see(tk.END)
+            self.log_area.config(state='disabled')
+        except tk.TclError:
+            pass  # Widget destroyed during shutdown
 
     def _clear_log(self):
         """Clear the log area."""
@@ -918,11 +985,16 @@ class QuickTranslateApp:
 
         self._task_queue.put(('status', 'Validating source files...', 0))
 
-        def work():
+        def validation_work():
             results = []
             total = len(files_to_check)
 
             for i, (filepath, lang) in enumerate(files_to_check):
+                # Abort if a real worker started (user clicked Generate, etc.)
+                if self._worker_thread is not None and self._worker_thread.is_alive():
+                    self._log("Validation interrupted (operation started)", 'info')
+                    return
+
                 suffix = filepath.suffix.lower()
                 file_type = "XML" if suffix == ".xml" else "Excel"
 
@@ -1068,7 +1140,38 @@ class QuickTranslateApp:
 
             self._task_queue.put(('status', 'Ready', 0))
 
-        self._run_in_thread(work)
+        # Use a SEPARATE validation thread — NOT _run_in_thread.
+        # This prevents overlapping worker issues: validation does NOT send
+        # ('done',) and does NOT interfere with _worker_thread tracking.
+        self._validation_thread = threading.Thread(
+            target=validation_work, daemon=True
+        )
+        self._validation_thread.start()
+        self._start_validation_poll()
+
+    def _start_validation_poll(self):
+        """Poll queue for validation thread messages only.
+
+        Unlike _poll_queue, this does NOT handle ('done',) and stops
+        automatically when the validation thread finishes. Uses the
+        shared _dispatch_queue_msg for consistent message handling.
+        """
+        try:
+            while True:
+                msg = self._task_queue.get_nowait()
+                if self._dispatch_queue_msg(msg):
+                    # A real worker sent ('done',) — shouldn't happen during
+                    # validation-only, but handle gracefully
+                    self._enable_buttons()
+                    return
+        except queue.Empty:
+            pass
+
+        # Keep polling while validation thread is alive AND no worker took over
+        if (self._validation_thread is not None
+                and self._validation_thread.is_alive()
+                and (self._worker_thread is None or not self._worker_thread.is_alive())):
+            self.root.after(50, self._start_validation_poll)
 
     def _browse_source(self):
         """Browse for source folder."""
@@ -1181,7 +1284,7 @@ class QuickTranslateApp:
                     "substring": "Find Korean text in StrOrigin",
                     "stringid_only": "SCRIPT categories only - match by StringID",
                     "strict": "Requires BOTH to match exactly",
-                    "strorigin_only": "Match by StrOrigin text only - fills ALL duplicates",
+                    "strorigin_only": "Match by StrOrigin text only - skips Dialog/Sequencer",
                 }
                 desc_lbl.config(text=orig_descs.get(value, ""), fg='#888')
             else:
@@ -1505,37 +1608,45 @@ class QuickTranslateApp:
         if progress is not None:
             self.progress_value.set(progress)
 
+    def _dispatch_queue_msg(self, msg) -> bool:
+        """Process a single queue message. Returns True if ('done',) received."""
+        try:
+            kind = msg[0]
+            if kind == 'log':
+                _, ts, text, tag = msg
+                self._log_on_main(ts, text, tag)
+            elif kind == 'status':
+                _, text, progress = msg
+                self._update_status_on_main(text, progress)
+            elif kind == 'progress':
+                _, value = msg
+                self.progress_value.set(value)
+            elif kind == 'fuzzy_status':
+                _, text = msg
+                self.fuzzy_model_status.set(text)
+            elif kind == 'messagebox':
+                _, func_name, title, message = msg
+                func = getattr(messagebox, func_name)
+                func(title, message)
+            elif kind == 'checks_status':
+                _, text = msg
+                self.checks_status_text.set(text)
+            elif kind == 'enable_results_btn':
+                self.open_results_btn.config(state='normal')
+            elif kind == 'update_match_types':
+                self._update_match_type_availability()
+            elif kind == 'done':
+                return True
+        except tk.TclError:
+            pass  # Widget destroyed during shutdown
+        return False
+
     def _poll_queue(self):
         """Drain the task queue on the main thread. Scheduled via root.after."""
         try:
             while True:
                 msg = self._task_queue.get_nowait()
-                kind = msg[0]
-
-                if kind == 'log':
-                    _, ts, text, tag = msg
-                    self._log_on_main(ts, text, tag)
-                elif kind == 'status':
-                    _, text, progress = msg
-                    self._update_status_on_main(text, progress)
-                elif kind == 'progress':
-                    _, value = msg
-                    self.progress_value.set(value)
-                elif kind == 'fuzzy_status':
-                    _, text = msg
-                    self.fuzzy_model_status.set(text)
-                elif kind == 'messagebox':
-                    _, func_name, title, message = msg
-                    func = getattr(messagebox, func_name)
-                    func(title, message)
-                elif kind == 'checks_status':
-                    _, text = msg
-                    self.checks_status_text.set(text)
-                elif kind == 'enable_results_btn':
-                    self.open_results_btn.config(state='normal')
-                elif kind == 'update_match_types':
-                    self._update_match_type_availability()
-                elif kind == 'done':
+                if self._dispatch_queue_msg(msg):
                     self._enable_buttons()
                     return  # Stop polling
         except queue.Empty:
@@ -1549,31 +1660,7 @@ class QuickTranslateApp:
             try:
                 while True:
                     msg = self._task_queue.get_nowait()
-                    kind = msg[0]
-                    if kind == 'log':
-                        _, ts, text, tag = msg
-                        self._log_on_main(ts, text, tag)
-                    elif kind == 'status':
-                        _, text, progress = msg
-                        self._update_status_on_main(text, progress)
-                    elif kind == 'progress':
-                        _, value = msg
-                        self.progress_value.set(value)
-                    elif kind == 'fuzzy_status':
-                        _, text = msg
-                        self.fuzzy_model_status.set(text)
-                    elif kind == 'messagebox':
-                        _, func_name, title, message = msg
-                        func = getattr(messagebox, func_name)
-                        func(title, message)
-                    elif kind == 'checks_status':
-                        _, text = msg
-                        self.checks_status_text.set(text)
-                    elif kind == 'enable_results_btn':
-                        self.open_results_btn.config(state='normal')
-                    elif kind == 'update_match_types':
-                        self._update_match_type_availability()
-                    elif kind == 'done':
+                    if self._dispatch_queue_msg(msg):
                         break
             except queue.Empty:
                 pass
@@ -1589,7 +1676,11 @@ class QuickTranslateApp:
 
         The work function should use self._log and self._update_status
         (both thread-safe). On completion, sends ('done',) to queue.
+        Drains any leftover validation messages before starting.
         """
+        # Drain leftover validation queue messages to keep logs clean
+        self._drain_stale_queue()
+
         def _wrapper():
             try:
                 work_fn()
@@ -1608,6 +1699,15 @@ class QuickTranslateApp:
         self._worker_thread = threading.Thread(target=_wrapper, daemon=True)
         self._worker_thread.start()
         self.root.after(50, self._poll_queue)
+
+    def _drain_stale_queue(self):
+        """Process any leftover queue messages (e.g. from finished validation)."""
+        try:
+            while True:
+                msg = self._task_queue.get_nowait()
+                self._dispatch_queue_msg(msg)
+        except queue.Empty:
+            pass
 
     def _load_data_if_needed(self, need_sequencer: bool = True) -> bool:
         """Load data if not cached or paths changed."""
@@ -2676,8 +2776,8 @@ class QuickTranslateApp:
             plan_summary += f"\n\nWarnings:\n" + "\n".join(f"  - {w}" for w in transfer_plan.warnings[:3])
 
         confirm = messagebox.askyesno(
-            "Confirm Transfer - Review Tree in Terminal",
-            f"FULL TREE TABLE printed to terminal - review before confirming!\n\n"
+            "Confirm Transfer",
+            f"Full tree table printed to Log panel and terminal.\n\n"
             f"Target: {target}\n\n"
             f"=== TRANSFER PLAN SUMMARY ===\n"
             f"{plan_summary}\n\n"
@@ -2726,10 +2826,12 @@ class QuickTranslateApp:
                 tgt_files_total = _transfer_target_scan.total_files
                 self._log(f"Cross-match: {len(matched_langs)} lang pairs, {len(src_only)} source-only, {len(tgt_only)} target-only ({tgt_files_total} target files)", 'info')
 
-            # Load category data if needed for stringid_only mode
+            # Load category data if needed for stringid_only or strorigin_only mode
+            # StringID-Only: only processes Dialog/Sequencer (SCRIPT) strings
+            # StrOrigin Only: skips Dialog/Sequencer strings (complement safeguard)
             stringid_to_category = None
             stringid_to_subfolder = None
-            if match_type == "stringid_only":
+            if match_type in ("stringid_only", "strorigin_only"):
                 if not self._load_data_if_needed(need_sequencer=True):
                     return
                 stringid_to_category = self.stringid_to_category
