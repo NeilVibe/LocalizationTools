@@ -406,7 +406,8 @@ class Settings:
     selected_language: str = 'eng'  # Translation language
     colors: Dict[str, str] = field(default_factory=lambda: DEFAULT_COLORS.copy())
 
-    # Branch
+    # Perforce configuration
+    drive_letter: str = 'F'
     branch: str = 'mainline'
 
     # Paths (can be overridden)
@@ -443,6 +444,7 @@ class Settings:
             ui_language=data.get('ui_language', 'English'),
             selected_language=data.get('selected_language', 'eng'),
             colors=data.get('colors', DEFAULT_COLORS.copy()),
+            drive_letter=data.get('drive_letter', 'F'),
             branch=data.get('branch', 'mainline'),
             faction_folder=data.get('faction_folder', DEFAULT_FACTION_FOLDER),
             loc_folder=data.get('loc_folder', DEFAULT_LOC_FOLDER),
@@ -465,8 +467,8 @@ class Settings:
 # =============================================================================
 
 def get_settings_path() -> Path:
-    """Get the path to the settings file."""
-    return get_base_dir() / 'mdg_settings.json'
+    """Get the path to the unified settings file."""
+    return get_base_dir() / 'settings.json'
 
 
 def get_log_dir() -> Path:
@@ -490,9 +492,55 @@ def get_cache_dir() -> Path:
 _current_settings: Optional[Settings] = None
 
 
+def _migrate_settings() -> None:
+    """One-time migration: consolidate mdg_settings.json + settings.json into settings.json.
+
+    Scenarios:
+    - Both exist: merge (drive_letter from settings.json, UI prefs from mdg_settings.json)
+    - Only mdg_settings.json: rename to settings.json
+    - Only settings.json (old installer format): keep, load_settings adds defaults
+    - Neither: load_settings creates defaults
+    """
+    base = get_base_dir()
+    old_path = base / 'mdg_settings.json'
+    new_path = base / 'settings.json'
+
+    if old_path.exists() and new_path.exists():
+        # Both exist — merge: drive/branch from settings.json, UI prefs from mdg_settings.json
+        try:
+            with open(new_path, 'r', encoding='utf-8') as f:
+                installer_data = json.load(f)
+            with open(old_path, 'r', encoding='utf-8') as f:
+                app_data = json.load(f)
+
+            # app_data (mdg_settings) has UI prefs; installer_data has drive/branch
+            merged = dict(app_data)
+            merged['drive_letter'] = installer_data.get('drive_letter', app_data.get('drive_letter', 'F'))
+            if 'branch' not in merged:
+                merged['branch'] = installer_data.get('branch', 'mainline')
+
+            with open(new_path, 'w', encoding='utf-8') as f:
+                json.dump(merged, f, indent=2, ensure_ascii=False)
+
+            old_path.rename(base / 'mdg_settings.json.bak')
+            log.info("Migrated: merged mdg_settings.json + settings.json → settings.json")
+        except Exception as e:
+            log.warning("Migration merge failed: %s", e)
+
+    elif old_path.exists() and not new_path.exists():
+        # Only mdg_settings.json — rename to settings.json
+        try:
+            old_path.rename(new_path)
+            log.info("Migrated: renamed mdg_settings.json → settings.json")
+        except Exception as e:
+            log.warning("Migration rename failed: %s", e)
+
+
 def load_settings() -> Settings:
     """Load settings from file or create defaults."""
     global _current_settings
+
+    _migrate_settings()
 
     settings_path = get_settings_path()
 
@@ -509,6 +557,13 @@ def load_settings() -> Settings:
     except Exception as e:
         log.warning("Failed to load settings from %s: %s", settings_path, e)
         _current_settings = Settings()
+
+    # Sync module globals with loaded settings (migration may have changed values)
+    if _current_settings.drive_letter != _DRIVE_LETTER or _current_settings.branch != _BRANCH:
+        if _current_settings.drive_letter != _DRIVE_LETTER:
+            update_drive_letter(_current_settings.drive_letter)
+        if _current_settings.branch != _BRANCH:
+            update_branch(_current_settings.branch)
 
     return _current_settings
 
@@ -580,6 +635,56 @@ def update_branch(new_branch: str):
     save_settings(settings)
 
     log.info("Branch updated to: %s", new_branch)
+
+
+def update_drive_letter(new_drive: str):
+    """Update drive letter and recalculate all default paths. Called from GUI.
+
+    Args:
+        new_drive: Drive letter (single character A-Z).
+    """
+    global _DRIVE_LETTER
+    global DEFAULT_FACTION_FOLDER, DEFAULT_LOC_FOLDER, DEFAULT_KNOWLEDGE_FOLDER
+    global DEFAULT_WAYPOINT_FOLDER, DEFAULT_TEXTURE_FOLDER, DEFAULT_CHARACTER_FOLDER
+    global DEFAULT_AUDIO_FOLDER_EN, DEFAULT_AUDIO_FOLDER_KR, DEFAULT_AUDIO_FOLDER_ZH
+    global DEFAULT_EXPORT_FOLDER, DEFAULT_VRS_FOLDER
+
+    new_drive = new_drive.upper().strip()
+    if len(new_drive) != 1 or not new_drive.isalpha():
+        log.warning("Invalid drive letter: '%s'. Ignoring.", new_drive)
+        return
+
+    _DRIVE_LETTER = new_drive
+
+    # Recalculate all default paths
+    new_paths = generate_default_paths(_DRIVE_LETTER, _BRANCH)
+    DEFAULT_FACTION_FOLDER = new_paths['faction_folder']
+    DEFAULT_LOC_FOLDER = new_paths['loc_folder']
+    DEFAULT_KNOWLEDGE_FOLDER = new_paths['knowledge_folder']
+    DEFAULT_WAYPOINT_FOLDER = new_paths['waypoint_folder']
+    DEFAULT_TEXTURE_FOLDER = new_paths['texture_folder']
+    DEFAULT_CHARACTER_FOLDER = new_paths['character_folder']
+    DEFAULT_AUDIO_FOLDER_EN = new_paths['audio_folder']
+    DEFAULT_AUDIO_FOLDER_KR = new_paths['audio_folder_kr']
+    DEFAULT_AUDIO_FOLDER_ZH = new_paths['audio_folder_zh']
+    DEFAULT_EXPORT_FOLDER = new_paths['export_folder']
+    DEFAULT_VRS_FOLDER = new_paths['vrs_folder']
+
+    # Update current settings
+    settings = get_settings()
+    settings.drive_letter = new_drive
+    settings.faction_folder = DEFAULT_FACTION_FOLDER
+    settings.loc_folder = DEFAULT_LOC_FOLDER
+    settings.knowledge_folder = DEFAULT_KNOWLEDGE_FOLDER
+    settings.waypoint_folder = DEFAULT_WAYPOINT_FOLDER
+    settings.texture_folder = DEFAULT_TEXTURE_FOLDER
+    settings.character_folder = DEFAULT_CHARACTER_FOLDER
+    settings.audio_folder = DEFAULT_AUDIO_FOLDER_EN
+    settings.export_folder = DEFAULT_EXPORT_FOLDER
+    settings.vrs_folder = DEFAULT_VRS_FOLDER
+    save_settings(settings)
+
+    log.info("Drive letter updated to: %s", new_drive)
 
 
 def get_ui_text(key: str, language: Optional[str] = None) -> str:

@@ -31,6 +31,7 @@ from config import (
     APP_NAME, VERSION, get_settings, save_settings, load_settings,
     get_ui_text, Settings, LANGUAGES, LANGUAGE_NAMES,
     DATA_MODES, DEFAULT_MODE, KNOWN_BRANCHES, update_branch,
+    update_drive_letter,
 )
 import config
 from core.linkage import LinkageResolver, DataMode
@@ -172,12 +173,6 @@ class MapDataGeneratorApp:
         menubar.add_cascade(label=get_ui_text('file'), menu=file_menu)
 
         file_menu.add_command(
-            label=get_ui_text('load_data'),
-            command=self._load_data,
-            accelerator="Ctrl+O"
-        )
-        file_menu.add_separator()
-        file_menu.add_command(
             label=get_ui_text('settings'),
             command=self._open_settings
         )
@@ -188,16 +183,12 @@ class MapDataGeneratorApp:
         )
 
         # Keyboard bindings
-        self.root.bind("<Control-o>", lambda e: self._load_data())
         self.root.bind("<space>", self._on_space_key)
         self.root.bind("<Left>", self._on_arrow_key)
         self.root.bind("<Right>", self._on_arrow_key)
 
     def _create_widgets(self) -> None:
         """Create main window widgets."""
-        # Branch selector at top
-        self._create_branch_selector()
-
         # Mode selector toolbar
         self._create_mode_toolbar()
 
@@ -273,39 +264,6 @@ class MapDataGeneratorApp:
 
         # Initially disable search
         self._search_panel.enable(False)
-
-    def _create_branch_selector(self) -> None:
-        """Create branch selector (QACompiler style)."""
-        branch_frame = ttk.Frame(self.root)
-        branch_frame.pack(fill="x", padx=15, pady=(5, 0))
-
-        ttk.Label(branch_frame, text="Branch:", font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
-
-        self._branch_var = tk.StringVar(value=self.settings.branch)
-        branch_combo = ttk.Combobox(
-            branch_frame, textvariable=self._branch_var,
-            values=KNOWN_BRANCHES, width=25
-        )
-        branch_combo.pack(side="left", padx=5)
-        branch_combo.bind("<<ComboboxSelected>>", self._on_branch_change)
-        branch_combo.bind("<Return>", self._on_branch_change)
-
-        self._branch_status = ttk.Label(branch_frame, text="", font=("Arial", 9))
-        self._branch_status.pack(side="left", padx=10)
-
-    def _on_branch_change(self, _event=None) -> None:
-        """Handle branch selection change."""
-        new_branch = self._branch_var.get().strip()
-        if not new_branch:
-            return
-
-        update_branch(new_branch)
-        self._branch_status.config(text=f"Branch set to: {new_branch}")
-        self._progress_var.set(f"Branch changed to: {new_branch}")
-
-        # Reload data if data was previously loaded
-        if self._data_loaded:
-            self._auto_load_data()
 
     def _create_mode_toolbar(self) -> None:
         """Create mode selector toolbar."""
@@ -416,7 +374,7 @@ class MapDataGeneratorApp:
                     )
                 else:
                     log.warning("Texture folder not found: %s", texture_folder)
-                    self._progress_var.set("Texture folder not found - use File > Load Data")
+                    self._progress_var.set("Texture folder not found - check File > Settings")
         elif self._search_engine:
             # Data already loaded, just update search engine mode
             self._search_engine.set_mode(new_mode)
@@ -550,12 +508,12 @@ class MapDataGeneratorApp:
 
             if not audio_path.exists():
                 log.warning("Audio folder not found: %s", audio_path)
-                self._progress_var.set("Audio folder not found - use File > Load Data")
+                self._progress_var.set("Audio folder not found - check File > Settings")
                 return
 
             if not export_path.exists():
                 log.warning("Export folder not found: %s", export_path)
-                self._progress_var.set("Export folder not found - use File > Load Data")
+                self._progress_var.set("Export folder not found - check File > Settings")
                 return
 
             log.info("Auto-loading audio data from saved paths...")
@@ -575,12 +533,12 @@ class MapDataGeneratorApp:
 
             if not texture_path.exists():
                 log.warning("Texture folder not found: %s", texture_path)
-                self._progress_var.set("Texture folder not found - use File > Load Data")
+                self._progress_var.set("Texture folder not found - check File > Settings")
                 return
 
             if not knowledge_path.exists():
                 log.warning("Knowledge folder not found: %s", knowledge_path)
-                self._progress_var.set("Knowledge folder not found - use File > Load Data")
+                self._progress_var.set("Knowledge folder not found - check File > Settings")
                 return
 
             log.info("Auto-loading data from saved paths...")
@@ -596,93 +554,6 @@ class MapDataGeneratorApp:
                 character_folder=Path(settings.character_folder),
                 mode=self._current_mode,
             )
-
-    def _load_data(self) -> None:
-        """Open simplified load data dialog — branch is set via top bar."""
-        settings = get_settings()
-
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Load Data")
-        dialog.geometry("450x280")
-        dialog.transient(self.root)
-        dialog.grab_set()
-
-        # Mode selection
-        mode_frame = ttk.LabelFrame(dialog, text=get_ui_text('select_mode'))
-        mode_frame.pack(fill="x", padx=10, pady=10)
-
-        mode_var = tk.StringVar(value=self._current_mode.value)
-        for mode in DATA_MODES:
-            ttk.Radiobutton(
-                mode_frame,
-                text=get_ui_text(f'mode_{mode}'),
-                value=mode,
-                variable=mode_var
-            ).pack(side="left", padx=10, pady=5)
-
-        # Info section
-        info_frame = ttk.LabelFrame(dialog, text="Info")
-        info_frame.pack(fill="x", padx=10, pady=5)
-
-        ttk.Label(
-            info_frame,
-            text=f"Branch: {settings.branch}  |  Drive: {config._DRIVE_LETTER}:",
-            font=("Arial", 10)
-        ).pack(anchor="w", padx=10, pady=(5, 2))
-
-        ttk.Label(
-            info_frame,
-            text="Paths are derived from Branch + Drive settings.",
-            font=("Arial", 9, "italic"),
-            foreground="gray"
-        ).pack(anchor="w", padx=10, pady=(0, 2))
-
-        ttk.Label(
-            info_frame,
-            text="Use the Branch selector in the top bar to change branch.",
-            font=("Arial", 9, "italic"),
-            foreground="gray"
-        ).pack(anchor="w", padx=10, pady=(0, 5))
-
-        def on_load():
-            # Update mode
-            new_mode = DataMode(mode_var.get())
-            self._current_mode = new_mode
-            self._mode_var.set(new_mode.value)
-            settings.current_mode = new_mode.value
-            save_settings(settings)
-            dialog.destroy()
-
-            # Update mode visibility
-            self._update_mode_visibility()
-            self._result_panel.set_mode(new_mode.value)
-
-            # Start loading based on mode with current settings
-            if new_mode == DataMode.AUDIO:
-                self._start_audio_data_load(
-                    audio_folder=Path(settings.audio_folder),
-                    export_folder=Path(settings.export_folder),
-                    loc_folder=Path(settings.loc_folder),
-                    mode=new_mode,
-                    vrs_folder=Path(settings.vrs_folder),
-                )
-            else:
-                self._start_data_load(
-                    texture_folder=Path(settings.texture_folder),
-                    loc_folder=Path(settings.loc_folder),
-                    faction_folder=Path(settings.faction_folder),
-                    knowledge_folder=Path(settings.knowledge_folder),
-                    waypoint_folder=Path(settings.waypoint_folder),
-                    character_folder=Path(settings.character_folder),
-                    mode=new_mode,
-                )
-
-        # Buttons
-        btn_frame = ttk.Frame(dialog)
-        btn_frame.pack(pady=10)
-
-        ttk.Button(btn_frame, text="Load Data", command=on_load, width=15).pack(side="left", padx=10)
-        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy, width=15).pack(side="left", padx=10)
 
     def _start_data_load(
         self,
@@ -1149,64 +1020,134 @@ class MapDataGeneratorApp:
                 self._image_viewer.set_image(result.dds_path, result.ui_texture_name)
 
     def _open_settings(self) -> None:
-        """Open settings dialog."""
+        """Open unified settings dialog — drive, branch, language, search, mode."""
         dialog = tk.Toplevel(self.root)
         dialog.title(get_ui_text('settings'))
-        dialog.geometry("450x350")
+        dialog.geometry("500x500")
         dialog.transient(self.root)
         dialog.grab_set()
+        dialog.resizable(False, False)
 
-        # UI Language
+        # --- Perforce Configuration ---
+        p4_frame = ttk.LabelFrame(dialog, text="Perforce Configuration")
+        p4_frame.pack(fill="x", padx=10, pady=(10, 5))
+
+        # Drive letter
+        drive_row = ttk.Frame(p4_frame)
+        drive_row.pack(fill="x", padx=10, pady=(5, 2))
+        ttk.Label(drive_row, text="Drive Letter:").pack(side="left")
+        drive_var = tk.StringVar(value=config._DRIVE_LETTER)
+        drive_combo = ttk.Combobox(
+            drive_row, textvariable=drive_var,
+            values=[chr(c) for c in range(ord('A'), ord('Z') + 1)],
+            width=5, state="readonly"
+        )
+        drive_combo.pack(side="left", padx=10)
+
+        # Branch
+        branch_row = ttk.Frame(p4_frame)
+        branch_row.pack(fill="x", padx=10, pady=2)
+        ttk.Label(branch_row, text="Branch:").pack(side="left")
+        branch_var = tk.StringVar(value=self.settings.branch)
+        branch_combo = ttk.Combobox(
+            branch_row, textvariable=branch_var,
+            values=KNOWN_BRANCHES, width=25
+        )
+        branch_combo.pack(side="left", padx=10)
+
+        # Live path preview
+        preview_var = tk.StringVar()
+
+        def update_preview(*_args):
+            d = drive_var.get()
+            b = branch_var.get().strip() or "mainline"
+            preview_var.set(f"{d}:\\perforce\\cd\\{b}\\resource\\GameData\\...")
+
+        drive_var.trace_add("write", update_preview)
+        branch_var.trace_add("write", update_preview)
+        update_preview()
+
+        preview_row = ttk.Frame(p4_frame)
+        preview_row.pack(fill="x", padx=10, pady=(2, 5))
+        ttk.Label(preview_row, text="Preview:").pack(side="left")
+        ttk.Label(preview_row, textvariable=preview_var, foreground="gray",
+                  font=("Consolas", 9)).pack(side="left", padx=10)
+
+        # --- UI Language ---
         lang_frame = ttk.LabelFrame(dialog, text="UI Language")
-        lang_frame.pack(fill="x", padx=10, pady=10)
+        lang_frame.pack(fill="x", padx=10, pady=5)
 
         lang_var = tk.StringVar(value=self.settings.ui_language)
-        for lang in ["English", "한국어"]:
-            ttk.Radiobutton(lang_frame, text=lang, variable=lang_var, value=lang).pack(anchor="w", padx=5)
+        lang_inner = ttk.Frame(lang_frame)
+        lang_inner.pack(fill="x", padx=10, pady=5)
+        for lang in ["English", "\ud55c\uad6d\uc5b4"]:
+            ttk.Radiobutton(lang_inner, text=lang, variable=lang_var, value=lang).pack(side="left", padx=10)
 
-        # Search settings
+        # --- Search Settings ---
         search_frame = ttk.LabelFrame(dialog, text="Search Settings")
-        search_frame.pack(fill="x", padx=10, pady=10)
+        search_frame.pack(fill="x", padx=10, pady=5)
 
-        limit_frame = ttk.Frame(search_frame)
-        limit_frame.pack(fill="x", padx=5, pady=5)
-        ttk.Label(limit_frame, text="Results per page:").pack(side="left")
+        limit_row = ttk.Frame(search_frame)
+        limit_row.pack(fill="x", padx=10, pady=(5, 2))
+        ttk.Label(limit_row, text="Results per page:").pack(side="left")
         limit_var = tk.IntVar(value=self.settings.search_limit)
-        ttk.Spinbox(limit_frame, from_=10, to=500, textvariable=limit_var, width=10).pack(side="left", padx=5)
+        ttk.Spinbox(limit_row, from_=10, to=500, textvariable=limit_var, width=10).pack(side="left", padx=10)
 
-        fuzzy_frame = ttk.Frame(search_frame)
-        fuzzy_frame.pack(fill="x", padx=5, pady=5)
-        ttk.Label(fuzzy_frame, text="Fuzzy threshold:").pack(side="left")
+        fuzzy_row = ttk.Frame(search_frame)
+        fuzzy_row.pack(fill="x", padx=10, pady=(2, 5))
+        ttk.Label(fuzzy_row, text="Fuzzy threshold:").pack(side="left")
         fuzzy_var = tk.DoubleVar(value=self.settings.fuzzy_threshold)
-        ttk.Spinbox(fuzzy_frame, from_=0.1, to=1.0, increment=0.1, textvariable=fuzzy_var, width=10).pack(side="left", padx=5)
+        ttk.Spinbox(fuzzy_row, from_=0.1, to=1.0, increment=0.1, textvariable=fuzzy_var, width=10).pack(side="left", padx=10)
 
-        # Default mode
+        # --- Default Mode ---
         mode_frame = ttk.LabelFrame(dialog, text="Default Mode")
-        mode_frame.pack(fill="x", padx=10, pady=10)
+        mode_frame.pack(fill="x", padx=10, pady=5)
 
         mode_var = tk.StringVar(value=self.settings.current_mode)
+        mode_inner = ttk.Frame(mode_frame)
+        mode_inner.pack(fill="x", padx=10, pady=5)
         for mode in DATA_MODES:
             ttk.Radiobutton(
-                mode_frame,
+                mode_inner,
                 text=get_ui_text(f'mode_{mode}'),
                 variable=mode_var,
                 value=mode
-            ).pack(side="left", padx=10, pady=5)
+            ).pack(side="left", padx=10)
 
+        # --- Save / Cancel ---
         def on_save():
+            new_drive = drive_var.get().strip().upper()
+            new_branch = branch_var.get().strip()
+            if not new_branch:
+                new_branch = "mainline"
+
+            drive_changed = (new_drive != config._DRIVE_LETTER)
+            branch_changed = (new_branch != config._BRANCH)
+
+            # Apply drive/branch changes (recalculates all paths)
+            if drive_changed:
+                update_drive_letter(new_drive)
+            if branch_changed:
+                update_branch(new_branch)
+
+            # Apply other settings
             self.settings.ui_language = lang_var.get()
             self.settings.search_limit = limit_var.get()
             self.settings.fuzzy_threshold = fuzzy_var.get()
             self.settings.current_mode = mode_var.get()
             save_settings(self.settings)
-            dialog.destroy()
-            messagebox.showinfo("Settings", "Settings saved. Some changes may require restart.")
 
-        # Buttons
+            dialog.destroy()
+
+            # Auto-reload data if drive or branch changed
+            if drive_changed or branch_changed:
+                self._progress_var.set(f"Reloading data ({new_drive}:/{new_branch})...")
+                self._auto_load_data()
+
         btn_frame = ttk.Frame(dialog)
-        btn_frame.pack(pady=20)
-        ttk.Button(btn_frame, text="Save", command=on_save).pack(side="left", padx=10)
-        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy).pack(side="left", padx=10)
+        btn_frame.pack(pady=15)
+        ttk.Button(btn_frame, text="Save", command=on_save, width=12).pack(side="left", padx=10)
+        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy, width=12).pack(side="left", padx=10)
 
     def _on_close(self) -> None:
         """Handle window close — clean shutdown with temp file cleanup."""
