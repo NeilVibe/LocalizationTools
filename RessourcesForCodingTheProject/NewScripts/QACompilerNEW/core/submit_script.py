@@ -14,7 +14,7 @@ Rows where EXPORT lookup failed are highlighted orange.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 from dataclasses import dataclass
 
 import sys
