@@ -19,7 +19,6 @@ from dataclasses import dataclass
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import SCRIPT_COLS
 from core.excel_ops import safe_load_workbook, build_column_map
 
 
@@ -437,7 +436,7 @@ def generate_conflict_file(
         # Set column widths
         worksheet.set_column(0, 0, 35)  # EVENTNAME
         worksheet.set_column(1, 1, 40)  # STRINGID
-        worksheet.set_column(2, 2, 50)  # KOREAN
+        worksheet.set_column(2, 2, 50)  # StrOrigin
         worksheet.set_column(3, 3, 15)  # USER
         worksheet.set_column(4, 4, 50)  # CORRECTION
 
