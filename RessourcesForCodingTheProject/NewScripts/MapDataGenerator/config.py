@@ -10,7 +10,6 @@ Supports configurable drive letter and branch via settings.json:
 }
 """
 
-import os
 import sys
 import json
 import logging
@@ -44,33 +43,45 @@ def get_base_dir() -> Path:
 
 
 # =============================================================================
-# Drive Letter Configuration (loaded from settings.json)
+# Drive + Branch Configuration (loaded once from settings.json at import)
 # =============================================================================
 
-def _load_drive_letter() -> str:
-    """Load drive letter from settings.json.
+KNOWN_BRANCHES = ["mainline", "cd_beta", "cd_alpha", "cd_lambda"]
+
+
+def _load_initial_config() -> tuple:
+    """Load drive letter and branch from settings.json in a single read.
 
     Returns:
-        Drive letter (single character, default "F")
+        (drive_letter, branch) tuple with validated defaults.
     """
-    settings_file = get_base_dir() / "settings.json"
+    drive = "F"
+    branch = "mainline"
 
+    settings_file = get_base_dir() / "settings.json"
     if not settings_file.exists():
-        return "F"
+        return drive, branch
 
     try:
         with open(settings_file, 'r', encoding='utf-8') as f:
-            settings = json.load(f)
+            data = json.load(f)
 
-        drive = settings.get('drive_letter', 'F')
-        if isinstance(drive, str) and len(drive) == 1 and drive.isalpha():
-            return drive.upper()
+        raw_drive = data.get('drive_letter', 'F')
+        if isinstance(raw_drive, str) and len(raw_drive) == 1 and raw_drive.isalpha():
+            drive = raw_drive.upper()
         else:
-            log.warning("Invalid drive_letter in settings.json: '%s'. Using F:", drive)
-            return "F"
+            log.warning("Invalid drive_letter in settings.json: '%s'. Falling back to F", raw_drive)
+
+        raw_branch = data.get('branch', 'mainline')
+        if isinstance(raw_branch, str) and raw_branch.strip():
+            branch = raw_branch.strip()
+        else:
+            log.warning("Invalid branch in settings.json: '%s'. Falling back to mainline", raw_branch)
+
     except Exception as e:
-        log.warning("Error reading settings.json: %s. Using F:", e)
-        return "F"
+        log.warning("Error reading settings.json: %s. Using defaults (F/mainline)", e)
+
+    return drive, branch
 
 
 def _apply_drive_letter(path_str: str, drive_letter: str) -> str:
@@ -80,52 +91,15 @@ def _apply_drive_letter(path_str: str, drive_letter: str) -> str:
     return path_str
 
 
-# Load drive letter at module import
-_DRIVE_LETTER = _load_drive_letter()
-if _DRIVE_LETTER != 'F':
-    log.info("MapDataGenerator: Using drive %s:", _DRIVE_LETTER)
-
-
-# =============================================================================
-# Branch Configuration (loaded from settings.json)
-# =============================================================================
-
-KNOWN_BRANCHES = ["mainline", "cd_beta", "cd_alpha", "cd_lambda"]
-
-
-def _load_branch() -> str:
-    """Load branch name from settings.json.
-
-    Returns:
-        Branch name (default "mainline")
-    """
-    settings_file = get_base_dir() / "settings.json"
-
-    if not settings_file.exists():
-        return "mainline"
-
-    try:
-        with open(settings_file, 'r', encoding='utf-8') as f:
-            settings = json.load(f)
-
-        branch = settings.get('branch', 'mainline')
-        if isinstance(branch, str) and branch.strip():
-            return branch.strip()
-        else:
-            log.warning("Invalid branch in settings.json: '%s'. Using mainline", branch)
-            return "mainline"
-    except Exception as e:
-        log.warning("Error reading settings.json for branch: %s. Using mainline", e)
-        return "mainline"
-
-
 def _apply_branch(path_str: str, branch: str) -> str:
     """Replace 'mainline' with the configured branch name in a path string."""
     return path_str.replace("mainline", branch)
 
 
-# Load branch at module import
-_BRANCH = _load_branch()
+# Load both at module import (single file read)
+_DRIVE_LETTER, _BRANCH = _load_initial_config()
+if _DRIVE_LETTER != 'F':
+    log.info("MapDataGenerator: Using drive %s:", _DRIVE_LETTER)
 if _BRANCH != 'mainline':
     log.info("MapDataGenerator: Using branch %s", _BRANCH)
 
@@ -278,7 +252,6 @@ DEFAULT_COLORS = {
 UI_LANGUAGES = {
     'English': {
         'file': 'File',
-        'load_data': 'Load Data',
         'settings': 'Settings',
         'exit': 'Exit',
         'search': 'Search',
@@ -335,7 +308,6 @@ UI_LANGUAGES = {
     },
     '한국어': {
         'file': '파일',
-        'load_data': '데이터 불러오기',
         'settings': '설정',
         'exit': '종료',
         'search': '검색',
@@ -525,7 +497,11 @@ def _migrate_settings() -> None:
             old_path.rename(base / 'mdg_settings.json.bak')
             log.info("Migrated: merged mdg_settings.json + settings.json → settings.json")
         except Exception as e:
-            log.warning("Migration merge failed: %s", e)
+            log.warning("Migration merge failed: %s. Renaming corrupt file.", e)
+            try:
+                old_path.rename(base / 'mdg_settings.json.bak.corrupt')
+            except Exception:
+                pass
 
     elif old_path.exists() and not new_path.exists():
         # Only mdg_settings.json — rename to settings.json
@@ -592,21 +568,13 @@ def get_settings() -> Settings:
     return _current_settings
 
 
-def update_branch(new_branch: str):
-    """Update branch and recalculate all default paths. Called from GUI.
-
-    Args:
-        new_branch: Branch name (e.g., 'mainline', 'cd_beta').
-    """
-    global _BRANCH
+def _recalculate_all_paths():
+    """Recalculate all DEFAULT_* path globals from current _DRIVE_LETTER and _BRANCH."""
     global DEFAULT_FACTION_FOLDER, DEFAULT_LOC_FOLDER, DEFAULT_KNOWLEDGE_FOLDER
     global DEFAULT_WAYPOINT_FOLDER, DEFAULT_TEXTURE_FOLDER, DEFAULT_CHARACTER_FOLDER
     global DEFAULT_AUDIO_FOLDER_EN, DEFAULT_AUDIO_FOLDER_KR, DEFAULT_AUDIO_FOLDER_ZH
     global DEFAULT_EXPORT_FOLDER, DEFAULT_VRS_FOLDER
 
-    _BRANCH = new_branch
-
-    # Recalculate all default paths
     new_paths = generate_default_paths(_DRIVE_LETTER, _BRANCH)
     DEFAULT_FACTION_FOLDER = new_paths['faction_folder']
     DEFAULT_LOC_FOLDER = new_paths['loc_folder']
@@ -620,9 +588,9 @@ def update_branch(new_branch: str):
     DEFAULT_EXPORT_FOLDER = new_paths['export_folder']
     DEFAULT_VRS_FOLDER = new_paths['vrs_folder']
 
-    # Update current settings
-    settings = get_settings()
-    settings.branch = new_branch
+
+def _sync_settings_paths(settings: 'Settings'):
+    """Copy current DEFAULT_* path globals into a Settings object."""
     settings.faction_folder = DEFAULT_FACTION_FOLDER
     settings.loc_folder = DEFAULT_LOC_FOLDER
     settings.knowledge_folder = DEFAULT_KNOWLEDGE_FOLDER
@@ -632,22 +600,25 @@ def update_branch(new_branch: str):
     settings.audio_folder = DEFAULT_AUDIO_FOLDER_EN
     settings.export_folder = DEFAULT_EXPORT_FOLDER
     settings.vrs_folder = DEFAULT_VRS_FOLDER
+
+
+def update_branch(new_branch: str):
+    """Update branch and recalculate all default paths. Called from GUI."""
+    global _BRANCH
+    _BRANCH = new_branch
+    _recalculate_all_paths()
+
+    settings = get_settings()
+    settings.branch = new_branch
+    _sync_settings_paths(settings)
     save_settings(settings)
 
     log.info("Branch updated to: %s", new_branch)
 
 
 def update_drive_letter(new_drive: str):
-    """Update drive letter and recalculate all default paths. Called from GUI.
-
-    Args:
-        new_drive: Drive letter (single character A-Z).
-    """
+    """Update drive letter and recalculate all default paths. Called from GUI."""
     global _DRIVE_LETTER
-    global DEFAULT_FACTION_FOLDER, DEFAULT_LOC_FOLDER, DEFAULT_KNOWLEDGE_FOLDER
-    global DEFAULT_WAYPOINT_FOLDER, DEFAULT_TEXTURE_FOLDER, DEFAULT_CHARACTER_FOLDER
-    global DEFAULT_AUDIO_FOLDER_EN, DEFAULT_AUDIO_FOLDER_KR, DEFAULT_AUDIO_FOLDER_ZH
-    global DEFAULT_EXPORT_FOLDER, DEFAULT_VRS_FOLDER
 
     new_drive = new_drive.upper().strip()
     if len(new_drive) != 1 or not new_drive.isalpha():
@@ -655,33 +626,11 @@ def update_drive_letter(new_drive: str):
         return
 
     _DRIVE_LETTER = new_drive
+    _recalculate_all_paths()
 
-    # Recalculate all default paths
-    new_paths = generate_default_paths(_DRIVE_LETTER, _BRANCH)
-    DEFAULT_FACTION_FOLDER = new_paths['faction_folder']
-    DEFAULT_LOC_FOLDER = new_paths['loc_folder']
-    DEFAULT_KNOWLEDGE_FOLDER = new_paths['knowledge_folder']
-    DEFAULT_WAYPOINT_FOLDER = new_paths['waypoint_folder']
-    DEFAULT_TEXTURE_FOLDER = new_paths['texture_folder']
-    DEFAULT_CHARACTER_FOLDER = new_paths['character_folder']
-    DEFAULT_AUDIO_FOLDER_EN = new_paths['audio_folder']
-    DEFAULT_AUDIO_FOLDER_KR = new_paths['audio_folder_kr']
-    DEFAULT_AUDIO_FOLDER_ZH = new_paths['audio_folder_zh']
-    DEFAULT_EXPORT_FOLDER = new_paths['export_folder']
-    DEFAULT_VRS_FOLDER = new_paths['vrs_folder']
-
-    # Update current settings
     settings = get_settings()
     settings.drive_letter = new_drive
-    settings.faction_folder = DEFAULT_FACTION_FOLDER
-    settings.loc_folder = DEFAULT_LOC_FOLDER
-    settings.knowledge_folder = DEFAULT_KNOWLEDGE_FOLDER
-    settings.waypoint_folder = DEFAULT_WAYPOINT_FOLDER
-    settings.texture_folder = DEFAULT_TEXTURE_FOLDER
-    settings.character_folder = DEFAULT_CHARACTER_FOLDER
-    settings.audio_folder = DEFAULT_AUDIO_FOLDER_EN
-    settings.export_folder = DEFAULT_EXPORT_FOLDER
-    settings.vrs_folder = DEFAULT_VRS_FOLDER
+    _sync_settings_paths(settings)
     save_settings(settings)
 
     log.info("Drive letter updated to: %s", new_drive)

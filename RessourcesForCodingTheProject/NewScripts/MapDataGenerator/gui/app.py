@@ -105,15 +105,15 @@ def install_korean_font(root: tk.Tk) -> None:
 
 class MapDataGeneratorApp:
     """
-    Main MapDataGenerator application with three modes.
+    Main MapDataGenerator application with four modes.
 
     Layout:
     ┌─────────────────────────────────────────────────────────────┐
-    │ [MAP] [CHARACTER] [ITEM]  ← Mode selector toolbar           │
+    │ [MAP] [CHARACTER] [ITEM] [AUDIO]  ← Mode selector toolbar   │
     ├─────────────────────────────────────────────────────────────┤
     │  Left (35%)            │    Right (65%)                     │
     ├────────────────────────┼────────────────────────────────────┤
-    │ Search Panel           │  IMAGE VIEWER (large!)             │
+    │ Search Panel           │  IMAGE / AUDIO VIEWER              │
     │ Result Panel           │  [Map Canvas - MAP mode only]      │
     ├────────────────────────┴────────────────────────────────────┤
     │ Status bar                                                  │
@@ -499,6 +499,10 @@ class MapDataGeneratorApp:
 
     def _auto_load_data(self) -> None:
         """Auto-load data on startup using saved paths."""
+        if self._loading:
+            log.debug("Skipping auto-load: already loading")
+            return
+
         settings = get_settings()
 
         if self._current_mode == DataMode.AUDIO:
@@ -1091,13 +1095,15 @@ class MapDataGeneratorApp:
         limit_row.pack(fill="x", padx=10, pady=(5, 2))
         ttk.Label(limit_row, text="Results per page:").pack(side="left")
         limit_var = tk.IntVar(value=self.settings.search_limit)
-        ttk.Spinbox(limit_row, from_=10, to=500, textvariable=limit_var, width=10).pack(side="left", padx=10)
+        ttk.Spinbox(limit_row, from_=10, to=500, textvariable=limit_var, width=10,
+                    state="readonly").pack(side="left", padx=10)
 
         fuzzy_row = ttk.Frame(search_frame)
         fuzzy_row.pack(fill="x", padx=10, pady=(2, 5))
         ttk.Label(fuzzy_row, text="Fuzzy threshold:").pack(side="left")
         fuzzy_var = tk.DoubleVar(value=self.settings.fuzzy_threshold)
-        ttk.Spinbox(fuzzy_row, from_=0.1, to=1.0, increment=0.1, textvariable=fuzzy_var, width=10).pack(side="left", padx=10)
+        ttk.Spinbox(fuzzy_row, from_=0.1, to=1.0, increment=0.1, textvariable=fuzzy_var, width=10,
+                    state="readonly").pack(side="left", padx=10)
 
         # --- Default Mode ---
         mode_frame = ttk.LabelFrame(dialog, text="Default Mode")
