@@ -47,3 +47,4 @@ Build - Fix determinism: first-seen-wins, sorted iteration, mapping integrity
 Build - Complete StringId indexing for AUDIO mode
 Build - Rewrite AudioIndex: one chain, zero fallbacks
 Build - unified settings dialog, remove installer drive selector
+Build - polish: deduped paths, hardened migration, spinbox fix
