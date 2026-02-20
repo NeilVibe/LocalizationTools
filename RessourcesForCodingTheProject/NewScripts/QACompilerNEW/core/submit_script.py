@@ -5,9 +5,12 @@ Generate MasterSubmitScript_EN.xlsx and MasterSubmitScript_CN.xlsx
 containing Script category (Sequencer + Dialog) ISSUE rows.
 
 Output columns:
-- KOREAN (StrOrigin from EXPORT)
-- FIXED TRANSLATION (MEMO/COMMENT from QA - tester's correction)
-- STRINGID (mapped from EventName via EXPORT)
+- StrOrigin (Korean text from EXPORT)
+- Correction (MEMO/COMMENT from QA - tester's correction)
+- StringID (mapped from EventName via EXPORT; falls back to EventName if not found)
+- EventName (original EventName from QA file)
+
+Rows where EXPORT lookup failed are highlighted orange.
 """
 
 from pathlib import Path
@@ -255,7 +258,8 @@ def generate_master_submit_script(
     """
     Generate Excel file using xlsxwriter.
 
-    Columns: KOREAN | FIXED TRANSLATION | STRINGID
+    Columns: StrOrigin | Correction | StringID | EventName
+    Rows where EXPORT lookup failed are highlighted orange.
 
     Args:
         issue_rows: List of IssueRow objects to write
@@ -284,7 +288,7 @@ def generate_master_submit_script(
         worksheet = workbook.add_worksheet("SubmitScript")
 
         # Define headers
-        headers = ["KOREAN", "FIXED TRANSLATION", "STRINGID"]
+        headers = ["StrOrigin", "Correction", "StringID", "EventName"]
 
         # Create formats
         header_format = workbook.add_format({
@@ -303,7 +307,7 @@ def generate_master_submit_script(
             'border': 1,
         })
 
-        # String format for StringID (prevent scientific notation)
+        # String format for StringID/EventName (prevent scientific notation)
         stringid_format = workbook.add_format({
             'align': 'left',
             'valign': 'top',
@@ -311,23 +315,59 @@ def generate_master_submit_script(
             'num_format': '@',  # Text format
         })
 
+        # Orange formats for rows where EXPORT lookup failed
+        orange_cell_format = workbook.add_format({
+            'align': 'left',
+            'valign': 'top',
+            'text_wrap': True,
+            'border': 1,
+            'bg_color': '#FFC000',  # Orange
+        })
+
+        orange_stringid_format = workbook.add_format({
+            'align': 'left',
+            'valign': 'top',
+            'border': 1,
+            'num_format': '@',
+            'bg_color': '#FFC000',  # Orange
+        })
+
         # Set column widths
-        worksheet.set_column(0, 0, 50)  # KOREAN
-        worksheet.set_column(1, 1, 50)  # FIXED TRANSLATION
-        worksheet.set_column(2, 2, 45)  # STRINGID
+        worksheet.set_column(0, 0, 50)  # StrOrigin
+        worksheet.set_column(1, 1, 50)  # Correction
+        worksheet.set_column(2, 2, 45)  # StringID
+        worksheet.set_column(3, 3, 35)  # EventName
 
         # Write header row
         for col_idx, header in enumerate(headers):
             worksheet.write(0, col_idx, header, header_format)
 
         # Write data rows
+        missing_count = 0
         for row_idx, issue_row in enumerate(issue_rows, start=1):
-            worksheet.write(row_idx, 0, issue_row.korean, cell_format)
-            worksheet.write(row_idx, 1, issue_row.fixed_translation, cell_format)
-            worksheet.write(row_idx, 2, issue_row.stringid, stringid_format)
+            # Check if EXPORT lookup failed (no StringID found)
+            export_found = bool(issue_row.stringid)
+            # StringID fallback: use EventName if EXPORT lookup failed
+            stringid_value = issue_row.stringid if export_found else issue_row.eventname
+
+            if export_found:
+                # Normal row — white background
+                worksheet.write(row_idx, 0, issue_row.korean, cell_format)
+                worksheet.write(row_idx, 1, issue_row.fixed_translation, cell_format)
+                worksheet.write(row_idx, 2, stringid_value, stringid_format)
+                worksheet.write(row_idx, 3, issue_row.eventname, stringid_format)
+            else:
+                # Missing row — orange background
+                missing_count += 1
+                worksheet.write(row_idx, 0, issue_row.korean, orange_cell_format)
+                worksheet.write(row_idx, 1, issue_row.fixed_translation, orange_cell_format)
+                worksheet.write(row_idx, 2, stringid_value, orange_stringid_format)
+                worksheet.write(row_idx, 3, issue_row.eventname, orange_stringid_format)
 
         workbook.close()
         print(f"    Generated {output_path.name} with {len(issue_rows)} rows")
+        if missing_count:
+            print(f"    WARNING: {missing_count} rows highlighted orange (EventName not found in EXPORT)")
         return True
 
     except Exception as e:
@@ -343,7 +383,7 @@ def generate_conflict_file(
     """
     Generate Excel file showing conflicts (same EventName, different corrections).
 
-    Columns: EVENTNAME | STRINGID | KOREAN | USER | CORRECTION
+    Columns: EVENTNAME | STRINGID | StrOrigin | USER | CORRECTION
 
     Args:
         conflict_rows: List of ConflictRow objects
@@ -369,7 +409,7 @@ def generate_conflict_file(
         workbook = xlsxwriter.Workbook(str(output_path))
         worksheet = workbook.add_worksheet("Conflicts")
 
-        headers = ["EVENTNAME", "STRINGID", "KOREAN", "USER", "CORRECTION"]
+        headers = ["EVENTNAME", "STRINGID", "StrOrigin", "USER", "CORRECTION"]
 
         header_format = workbook.add_format({
             'bold': True,
