@@ -159,11 +159,11 @@ QUESTGROUPINFO_FILE = Path(_apply_branch(_apply_drive_letter(
     _DRIVE_LETTER
 ), _BRANCH))
 SCENARIO_FOLDER = Path(_apply_branch(_apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\scenario",
+    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\main",
     _DRIVE_LETTER
 ), _BRANCH))
 FACTION_QUEST_FOLDER = Path(_apply_branch(_apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\quest\faction",
+    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\faction",
     _DRIVE_LETTER
 ), _BRANCH))
 CHALLENGE_FOLDER = Path(_apply_branch(_apply_drive_letter(
@@ -527,9 +527,9 @@ def update_branch(new_branch: str):
     QUESTGROUPINFO_FILE = Path(_apply_branch(_apply_drive_letter(
         r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\questgroupinfo.staticinfo.xml", _DRIVE_LETTER), _BRANCH))
     SCENARIO_FOLDER = Path(_apply_branch(_apply_drive_letter(
-        r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\scenario", _DRIVE_LETTER), _BRANCH))
+        r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\main", _DRIVE_LETTER), _BRANCH))
     FACTION_QUEST_FOLDER = Path(_apply_branch(_apply_drive_letter(
-        r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\quest\faction", _DRIVE_LETTER), _BRANCH))
+        r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\faction", _DRIVE_LETTER), _BRANCH))
     CHALLENGE_FOLDER = Path(_apply_branch(_apply_drive_letter(
         r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\Challenge", _DRIVE_LETTER), _BRANCH))
     MINIGAME_FILE = Path(_apply_branch(_apply_drive_letter(
