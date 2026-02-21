@@ -30,7 +30,7 @@ import config
 
 WINDOW_TITLE = "QA Compiler Suite v2.0"
 WINDOW_WIDTH = 1000
-WINDOW_HEIGHT = 1000
+WINDOW_HEIGHT = 1100
 BUTTON_WIDTH = 50
 
 
@@ -46,6 +46,14 @@ class QACompilerSuiteGUI:
         self.root.title(WINDOW_TITLE)
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.root.resizable(False, False)
+
+        # Center window on screen
+        self.root.update_idletasks()
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+        x = (screen_w - WINDOW_WIDTH) // 2
+        y = (screen_h - WINDOW_HEIGHT) // 2
+        self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}+{x}+{y}")
 
         # Category checkboxes state
         self.category_vars = {}
@@ -245,7 +253,7 @@ class QACompilerSuiteGUI:
         tracker_btn.pack(pady=5, ipady=8)
 
         # === Status Bar ===
-        self.status_var = tk.StringVar(value="Ready")
+        self.status_var = tk.StringVar(value="")
         status_frame = ttk.Frame(self.root)
         status_frame.pack(fill="x", side="bottom", padx=15, pady=10)
 

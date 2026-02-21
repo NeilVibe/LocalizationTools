@@ -79,7 +79,7 @@ def _tracker_log_clear():
     try:
         with open(_TRACKER_LOG_FILE, "w", encoding="utf-8") as f:
             f.write(f"=== TRACKER UPDATE DEBUG LOG === {datetime.now().isoformat()}\n\n")
-    except:
+    except Exception:
         pass
 
 
@@ -242,6 +242,14 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool, sheet_name: str = 
             elif status_upper == "KOREAN":
                 stats["korean"] += 1
 
+            # Count words/chars for all DONE rows (any valid status)
+            if status_upper in ("ISSUE", "NO ISSUE", "NON-ISSUE", "NON ISSUE", "BLOCKED", "KOREAN"):
+                cell_value = qa_ws.cell(row, trans_col).value
+                if is_english:
+                    stats["word_count"] += count_words_english(cell_value)
+                else:
+                    stats["word_count"] += count_chars_chinese(cell_value)
+
     # SCRIPT GRANULAR DEBUG: Show all rows with STATUS
     if is_script:
         if rows_with_status:
@@ -252,15 +260,6 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool, sheet_name: str = 
                 _tracker_log(f"      ... and {len(rows_with_status) - 30} more")
         else:
             _tracker_log(f"    *** NO STATUS VALUES FOUND! ***", "WARN")
-
-            # Count words/chars for DONE rows
-            # Accept all variants: "NO ISSUE", "NON-ISSUE", "NON ISSUE"
-            if status_upper in ["ISSUE", "NO ISSUE", "NON-ISSUE", "NON ISSUE", "BLOCKED", "KOREAN"]:
-                cell_value = qa_ws.cell(row, trans_col).value
-                if is_english:
-                    stats["word_count"] += count_words_english(cell_value)
-                else:
-                    stats["word_count"] += count_chars_chinese(cell_value)
 
     _tracker_log(f"    SHEET '{sheet_name}': total={stats['total']} issue={stats['issue']} no_issue={stats['no_issue']} blocked={stats['blocked']} korean={stats['korean']} words={stats['word_count']}")
     return stats
@@ -303,18 +302,19 @@ def count_qa_folder_stats(folder: Dict, tester_mapping: Dict) -> Dict:
         "word_count": 0,
     }
 
-    for sheet_name in wb.sheetnames:
-        if sheet_name == "STATUS":
-            _tracker_log(f"    SKIP: STATUS sheet")
-            continue
+    try:
+        for sheet_name in wb.sheetnames:
+            if sheet_name == "STATUS":
+                _tracker_log(f"    SKIP: STATUS sheet")
+                continue
 
-        ws = wb[sheet_name]
-        sheet_stats = count_sheet_stats(ws, category, is_english, sheet_name)
+            ws = wb[sheet_name]
+            sheet_stats = count_sheet_stats(ws, category, is_english, sheet_name)
 
-        for key in total_stats:
-            total_stats[key] += sheet_stats[key]
-
-    wb.close()
+            for key in total_stats:
+                total_stats[key] += sheet_stats[key]
+    finally:
+        wb.close()
 
     # Build tracker entry
     done = total_stats["issue"] + total_stats["no_issue"] + total_stats["blocked"] + total_stats["korean"]

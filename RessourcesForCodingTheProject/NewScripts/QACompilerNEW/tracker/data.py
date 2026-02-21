@@ -232,7 +232,7 @@ def update_daily_data_sheet(
     try:
         with open(log_path, "a", encoding="utf-8") as f:
             f.write("\n".join(log_lines) + "\n")
-    except:
+    except Exception:
         pass
 
     # Manager stats row handling
