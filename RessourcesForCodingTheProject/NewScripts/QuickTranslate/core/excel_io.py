@@ -222,6 +222,13 @@ def read_corrections_from_excel(
                     if dialogvoice is not None:
                         entry["_source_dialogvoice"] = str(dialogvoice).strip()
 
+                # Always stash original EventName/DialogVoice as recovery metadata
+                # Used by EventName recovery pass if StringID fails to match
+                if has_eventname:
+                    entry["_original_eventname"] = str(eventname).strip()
+                if dialogvoice is not None:
+                    entry["_original_dialogvoice"] = str(dialogvoice).strip()
+
                 corrections.append(entry)
             except (IndexError, AttributeError):
                 continue

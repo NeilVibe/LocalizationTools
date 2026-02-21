@@ -254,6 +254,8 @@ def merge_corrections_to_xml(
                     "new": c["corrected"],
                     "target_strorigin": target_strorigin_map.get(sid.lower(), "") if status == "STRORIGIN_MISMATCH" else "",
                     "raw_attribs": c.get("raw_attribs", {}),  # ALL original attributes from source
+                    "_original_eventname": c.get("_original_eventname", ""),
+                    "_original_dialogvoice": c.get("_original_dialogvoice", ""),
                 }
                 if status == "STRORIGIN_MISMATCH":
                     detail_entry["target_raw_attribs"] = target_raw_attribs_map.get(sid.lower(), {})
@@ -519,6 +521,8 @@ def merge_corrections_strorigin_only(
                         "old": c.get("str_origin", ""),
                         "new": c["corrected"],
                         "raw_attribs": c.get("raw_attribs", {}),
+                        "_original_eventname": c.get("_original_eventname", ""),
+                        "_original_dialogvoice": c.get("_original_dialogvoice", ""),
                     })
 
         if changed and not dry_run:
@@ -763,6 +767,8 @@ def merge_corrections_stringid_only(
                     "old": c.get("str_origin", ""),
                     "new": c["corrected"],
                     "raw_attribs": c.get("raw_attribs", {}),  # ALL original attributes
+                    "_original_eventname": c.get("_original_eventname", ""),
+                    "_original_dialogvoice": c.get("_original_dialogvoice", ""),
                 })
 
         if changed and not dry_run:
@@ -920,6 +926,8 @@ def merge_corrections_fuzzy(
                     "old": c.get("str_origin", ""),
                     "new": c["corrected"],
                     "raw_attribs": c.get("raw_attribs", {}),  # ALL original attributes
+                    "_original_eventname": c.get("_original_eventname", ""),
+                    "_original_dialogvoice": c.get("_original_dialogvoice", ""),
                 })
 
         if changed and not dry_run:
@@ -986,6 +994,174 @@ def _prematch_fuzzy(
     except Exception as e:
         logger.error(f"FAISS fuzzy pre-match failed: {e}")
         return []
+
+
+def _recover_not_found_via_eventname(
+    file_result: Dict,
+    target_file: Path,
+    export_mapping: Optional[Dict],
+    dry_run: bool = False,
+    only_untranslated: bool = True,
+    log_callback=None,
+) -> Dict:
+    """
+    Recovery pass: re-resolve NOT_FOUND corrections via EventName waterfall.
+
+    When an Excel correction sheet has bogus StringIDs (actually EventNames),
+    they fail to match in the target XML and end up as NOT_FOUND. This function
+    takes those NOT_FOUND entries, runs them through the 3-step EventName
+    waterfall (DialogVoice strip → keyword extract → export lookup), and
+    re-merges any that resolve to a valid StringID.
+
+    Args:
+        file_result: Result dict from a merge function (has "details", "not_found", etc.)
+        target_file: Path to the target XML file for re-merge
+        export_mapping: EventName→StringID mapping from get_eventname_mapping()
+        dry_run: If True, don't write changes
+        only_untranslated: If True, only fill untranslated entries
+        log_callback: Optional GUI log callback
+
+    Returns:
+        Updated file_result dict with recovery stats
+    """
+    from .eventname_resolver import (
+        generate_stringid_from_dialogvoice,
+        extract_stringid_from_dialog_keyword,
+    )
+
+    if not export_mapping:
+        export_mapping = {}
+
+    # Extract NOT_FOUND entries that have recovery metadata
+    candidates = []
+    for detail in file_result.get("details", []):
+        if detail.get("status") != "NOT_FOUND":
+            continue
+        orig_en = detail.get("_original_eventname", "")
+        orig_dv = detail.get("_original_dialogvoice", "")
+        failed_sid = detail.get("string_id", "")
+        if not (orig_en or orig_dv or failed_sid):
+            continue
+        candidates.append(detail)
+
+    if not candidates:
+        return file_result
+
+    # Run waterfall on each candidate to find a new StringID
+    recovered_corrections = []
+    step_counts = {"dialogvoice": 0, "keyword": 0, "export": 0}
+
+    for detail in candidates:
+        orig_en = detail.get("_original_eventname", "")
+        orig_dv = detail.get("_original_dialogvoice", "")
+        failed_sid = detail.get("string_id", "")
+        new_sid = ""
+
+        # Determine the eventname to use for the waterfall
+        eventname = orig_en if orig_en else failed_sid
+
+        if not eventname:
+            continue
+
+        # Step 1: DialogVoice strip (only if we have an original eventname)
+        if orig_en:
+            generated = generate_stringid_from_dialogvoice(eventname, orig_dv)
+            if generated and generated.lower() != failed_sid.lower():
+                new_sid = generated
+                step_counts["dialogvoice"] += 1
+
+        # Step 2: keyword extraction
+        if not new_sid:
+            extracted = extract_stringid_from_dialog_keyword(eventname)
+            if extracted and extracted.lower() != failed_sid.lower():
+                new_sid = extracted
+                step_counts["keyword"] += 1
+
+        # Step 3: export lookup
+        if not new_sid:
+            data = export_mapping.get(eventname.lower())
+            if data:
+                lookup_sid = data["stringid"]
+                if lookup_sid.lower() != failed_sid.lower():
+                    new_sid = lookup_sid
+                    step_counts["export"] += 1
+
+        if new_sid:
+            recovered_corrections.append({
+                "string_id": new_sid,
+                "str_origin": detail.get("old", ""),
+                "corrected": detail.get("new", ""),
+                "_recovery_from": failed_sid,
+            })
+
+    if not recovered_corrections:
+        logger.debug("EventName recovery: no candidates resolved")
+        return file_result
+
+    # Re-merge recovered corrections using strict merge
+    logger.info(
+        f"EventName recovery: {len(recovered_corrections)} candidates to re-merge "
+        f"(Step1: {step_counts['dialogvoice']}, Step2: {step_counts['keyword']}, "
+        f"Step3: {step_counts['export']})"
+    )
+
+    recovery_result = merge_corrections_to_xml(
+        target_file, recovered_corrections, dry_run,
+        only_untranslated=only_untranslated,
+    )
+
+    recovery_matched = recovery_result["matched"]
+    if recovery_matched == 0:
+        logger.info("EventName recovery: resolved StringIDs but none matched in target XML")
+        return file_result
+
+    # Remove stale NOT_FOUND detail entries for recovered items
+    # Only remove entries whose failed SID was successfully re-merged
+    recovered_detail_sids = set()
+    for rc in recovered_corrections:
+        rc_sid = rc["string_id"]
+        for rd in recovery_result["details"]:
+            if rd.get("string_id", "").lower() == rc_sid.lower() and rd["status"] in ("UPDATED", "UNCHANGED"):
+                recovered_detail_sids.add(rc["_recovery_from"].lower())
+
+    file_result["details"] = [
+        d for d in file_result["details"]
+        if not (d["status"] == "NOT_FOUND" and d.get("string_id", "").lower() in recovered_detail_sids)
+    ]
+
+    # Update counters — decrement not_found by actual removals, not total matched
+    actually_recovered = len(recovered_detail_sids)
+    file_result["matched"] = file_result.get("matched", 0) + actually_recovered
+    file_result["updated"] = file_result.get("updated", 0) + recovery_result.get("updated", 0)
+    file_result["not_found"] = max(0, file_result.get("not_found", 0) - actually_recovered)
+
+    # Add recovery detail entries
+    for rd in recovery_result["details"]:
+        if rd["status"] in ("UPDATED", "UNCHANGED"):
+            rd["status"] = f"RECOVERED_{rd['status']}"
+        file_result["details"].append(rd)
+
+    # Store recovery stats
+    file_result["eventname_recovery"] = {
+        "candidates": len(candidates),
+        "resolved": len(recovered_corrections),
+        "matched": actually_recovered,
+        "updated": recovery_result.get("updated", 0),
+        "steps": step_counts,
+    }
+
+    logger.info(
+        f"EventName recovery: {actually_recovered}/{len(candidates)} recovered "
+        f"({recovery_result.get('updated', 0)} updated)"
+    )
+    if log_callback:
+        log_callback(
+            f"  EventName recovery: {actually_recovered} recovered "
+            f"(DV:{step_counts['dialogvoice']} KW:{step_counts['keyword']} EX:{step_counts['export']})",
+            'info',
+        )
+
+    return file_result
 
 
 def transfer_folder_to_folder(
@@ -1308,6 +1484,15 @@ def transfer_folder_to_folder(
 
     from .excel_io import merge_corrections_to_excel
 
+    # Lazy export mapping loader for EventName recovery (only built if needed)
+    _recovery_mapping = None
+    def _get_recovery_mapping():
+        nonlocal _recovery_mapping
+        if _recovery_mapping is None:
+            from .eventname_resolver import get_eventname_mapping
+            _recovery_mapping = get_eventname_mapping(config.EXPORT_FOLDER)
+        return _recovery_mapping
+
     for ti, (target_key, group) in enumerate(target_groups.items()):
         target_file = group["target_file"]
         corrections = group["corrections"]
@@ -1352,6 +1537,14 @@ def transfer_folder_to_folder(
                 results["total_skipped"] += file_result.get("skipped_non_script", 0)
                 results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
 
+                # EventName recovery pass for NOT_FOUND corrections
+                if file_result.get("not_found", 0) > 0:
+                    file_result = _recover_not_found_via_eventname(
+                        file_result, target_file, _get_recovery_mapping(),
+                        dry_run=dry_run, only_untranslated=only_untranslated,
+                        log_callback=log_callback,
+                    )
+
             elif match_mode == "strict_fuzzy":
                 file_result = merge_corrections_to_xml(
                     target_file, corrections, dry_run,
@@ -1362,6 +1555,14 @@ def transfer_folder_to_folder(
                 if log_callback:
                     pct = (step1_matched / len(corrections) * 100) if corrections else 0
                     log_callback(f"  Pass 1 (Perfect): {step1_matched}/{len(corrections)} ({pct:.1f}%)", 'info')
+
+                # EventName recovery pass (before fuzzy, reduces fuzzy workload)
+                if file_result.get("not_found", 0) > 0:
+                    file_result = _recover_not_found_via_eventname(
+                        file_result, target_file, _get_recovery_mapping(),
+                        dry_run=dry_run, only_untranslated=only_untranslated,
+                        log_callback=log_callback,
+                    )
 
                 if _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
                     unconsumed = []
@@ -1518,6 +1719,14 @@ def transfer_folder_to_folder(
                     only_untranslated=only_untranslated,
                 )
 
+                # EventName recovery pass for NOT_FOUND corrections
+                if file_result.get("not_found", 0) > 0:
+                    file_result = _recover_not_found_via_eventname(
+                        file_result, target_file, _get_recovery_mapping(),
+                        dry_run=dry_run, only_untranslated=only_untranslated,
+                        log_callback=log_callback,
+                    )
+
             # Post-process XML targets only (newlines, empty StrOrigin cleanup)
             if not dry_run:
                 run_all_postprocess(target_file)
@@ -1531,6 +1740,12 @@ def transfer_folder_to_folder(
         results["total_strorigin_mismatch"] += file_result.get("strorigin_mismatch", 0)
         results["total_skipped_translated"] += file_result.get("skipped_translated", 0)
         results["errors"].extend(file_result["errors"])
+
+        # Aggregate EventName recovery stats
+        recovery = file_result.get("eventname_recovery", {})
+        if recovery:
+            results.setdefault("total_eventname_recovered", 0)
+            results["total_eventname_recovered"] += recovery.get("matched", 0)
 
         # Store result keyed by target name
         source_label = ", ".join(source_names)
@@ -1695,6 +1910,15 @@ def transfer_file_to_file(
         return result
 
     # ─── XML target: existing merge logic ─────────────────────────────
+    # Lazy export mapping loader for EventName recovery (only built if needed)
+    _recovery_mapping = None
+    def _get_recovery_mapping():
+        nonlocal _recovery_mapping
+        if _recovery_mapping is None:
+            from .eventname_resolver import get_eventname_mapping
+            _recovery_mapping = get_eventname_mapping(config.EXPORT_FOLDER)
+        return _recovery_mapping
+
     # Apply corrections based on match mode
     if match_mode == "stringid_only" and stringid_to_category:
         result = merge_corrections_stringid_only(
@@ -1702,6 +1926,14 @@ def transfer_file_to_file(
             stringid_to_subfolder, dry_run,
             only_untranslated=only_untranslated,
         )
+
+        # EventName recovery pass for NOT_FOUND corrections
+        if result.get("not_found", 0) > 0:
+            result = _recover_not_found_via_eventname(
+                result, target_file, _get_recovery_mapping(),
+                dry_run=dry_run, only_untranslated=only_untranslated,
+            )
+
     elif match_mode == "strict_fuzzy":
         # ═══ TWO-STEP PROCESS ═══
         # Step 1: Perfect match (exact StringID + exact StrOrigin)
@@ -1711,6 +1943,13 @@ def transfer_file_to_file(
         )
         step1_matched = result["matched"]
         logger.info(f"Step 1 (perfect): {step1_matched}/{len(corrections)} matched")
+
+        # EventName recovery pass (before fuzzy, reduces fuzzy workload)
+        if result.get("not_found", 0) > 0:
+            result = _recover_not_found_via_eventname(
+                result, target_file, _get_recovery_mapping(),
+                dry_run=dry_run, only_untranslated=only_untranslated,
+            )
 
         # Step 2: FAISS fuzzy on UNCONSUMED corrections only
         target_folder = target_file.parent
@@ -1881,6 +2120,13 @@ def transfer_file_to_file(
             only_untranslated=only_untranslated,
         )
 
+        # EventName recovery pass for NOT_FOUND corrections
+        if result.get("not_found", 0) > 0:
+            result = _recover_not_found_via_eventname(
+                result, target_file, _get_recovery_mapping(),
+                dry_run=dry_run, only_untranslated=only_untranslated,
+            )
+
     # Post-process: run all cleanup steps (newlines, empty StrOrigin, etc.)
     if not dry_run:
         run_all_postprocess(target_file)
@@ -1961,6 +2207,8 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         if results.get('total_skipped', 0) > 0:
             skip_label = "SCRIPT — use StringID-Only" if "strorigin" in match_mode else "non-SCRIPT"
             lines.append(V + f"   Skipped:          {results.get('total_skipped', 0):,}  ({skip_label})".ljust(width - 2) + V)
+        if results.get('total_eventname_recovered', 0) > 0:
+            lines.append(V + f"   EN Recovery:      {results['total_eventname_recovered']:,}  (EventName→StringID resolved)".ljust(width - 2) + V)
 
         # Per-language breakdown
         file_results = results.get("file_results", {})
@@ -2013,6 +2261,9 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
             lines.append(V + f"   Skipped:          {results.get('skipped_non_script', 0):,}  (non-SCRIPT)".ljust(width - 2) + V)
         if s_skipped_translated > 0:
             lines.append(V + f"   Skipped:          {s_skipped_translated:,}  (already translated)".ljust(width - 2) + V)
+        recovery = results.get('eventname_recovery', {})
+        if recovery.get('matched', 0) > 0:
+            lines.append(V + f"   EN Recovery:      {recovery['matched']:,}  (EventName→StringID resolved)".ljust(width - 2) + V)
 
     # Success rate
     total_updated = results.get('total_updated', results.get('updated', 0))
