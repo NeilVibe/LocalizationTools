@@ -100,6 +100,8 @@ a = Analysis(
         ('core', 'core'),
         ('gui', 'gui'),
         ('utils', 'utils'),
+        # User Guide — bundled with the app so users always have it
+        ('docs/USER_GUIDE.md', '.'),
     ] + ml_datas,
     hiddenimports=[
         # === Hidden imports for packages with native DLLs (flat placement) ===

@@ -20,7 +20,8 @@ a = Analysis(
     binaries=[],
     datas=[
         ('tools', 'tools'),  # vgmstream audio converter
-        # Include any data files if needed
+        # User Guide — bundled with the app so users always have it
+        ('docs/USER_GUIDE.md', '.'),
     ],
     hiddenimports=[
         'PIL',

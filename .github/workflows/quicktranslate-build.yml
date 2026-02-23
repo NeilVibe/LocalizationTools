@@ -391,6 +391,19 @@ jobs:
 
           Write-Host "Working folders created with .gitkeep files"
 
+      - name: Bundle User Guide
+        run: |
+          $distPath = "${{ env.PROJECT_PATH }}\dist\QuickTranslate"
+          $guideSrc = "${{ env.PROJECT_PATH }}\docs\USER_GUIDE.md"
+
+          # Copy user guide markdown to dist root (Inno Setup picks it up)
+          if (Test-Path $guideSrc) {
+            Copy-Item $guideSrc "$distPath\QuickTranslate_UserGuide.md"
+            Write-Host "User guide bundled: QuickTranslate_UserGuide.md"
+          } else {
+            Write-Host "WARNING: USER_GUIDE.md not found at $guideSrc"
+          }
+
       - name: Build Inno Setup installer
         run: |
           choco install innosetup -y

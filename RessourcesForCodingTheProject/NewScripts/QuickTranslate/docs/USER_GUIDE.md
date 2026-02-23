@@ -33,7 +33,9 @@ QuickTranslate is a desktop tool for localization teams working with XML languag
 
 ## Quick Start: Your First TRANSFER in 5 Minutes
 
-> New to QuickTranslate? Follow these 5 steps. Corrections written to XML in minutes.
+> **First time?** Install QuickTranslate first — see [Section 5: Installation](#5-installation) for setup instructions. Once installed, come back here.
+
+> Follow these 5 steps. Corrections written to XML in minutes.
 
 ### How TRANSFER Works
 
@@ -125,7 +127,11 @@ QuickTranslate auto-detects the target language from **folder names** or **file 
 
 ### Step 3 — Open QuickTranslate
 
-Set the **Source** path to your corrections folder (the parent folder, e.g., `MyCorrections/`).
+On first launch, configure your paths in the Settings section:
+- **LOC folder** — points to your `stringtable/loc` folder containing `languagedata_*.xml` files
+- **EXPORT folder** — points to your `stringtable/export__` folder containing categorized `.loc.xml` files
+
+Then set the **Source** path to your corrections folder (the parent folder, e.g., `MyCorrections/`).
 
 ### Step 4 — Select Match Type
 
@@ -152,6 +158,7 @@ Review the transfer plan in the log area, then click **Yes** to confirm.
 │  SKIPPED_TRANSLATED    │  Already translated (Only untranslated mode) │
 │  SKIPPED_NON_SCRIPT    │  Not in Dialog/Sequencer (StringID-Only)     │
 │  MISSING EVENTNAME     │  EventName could not be resolved to StringID │
+│  RECOVERED_UPDATED     │  Recovery pass resolved a failed entry       │
 └────────────────────────┴──────────────────────────────────────────────┘
 ```
 
@@ -285,16 +292,16 @@ This lets you mix: some rows with direct StringIDs, others with EventNames.
 
 **Step 1 — DialogVoice Generation** (requires DialogVoice column)
 
-Strips the DialogVoice prefix from EventName. The remaining suffix becomes the StringID.
+Searches for the DialogVoice text inside the EventName (case-insensitive substring match). The portion of EventName after the DialogVoice becomes the StringID.
 
 ```
-  EventName:   "John_Conversation_Greeting_001"
+  EventName:   "Play_John_Conversation_Greeting_001"
   DialogVoice: "John_Conversation"
-                ^^^^^^^^^^^^^^^^^ strip this
-  Result:      "Greeting_001"  ← this is the StringID
+               found at position 5 ↑
+  Result:      "Greeting_001"  ← everything after DialogVoice becomes StringID
 ```
 
-Case-insensitive matching. Preserves original case from EventName in the result.
+Case-insensitive matching. The DialogVoice can appear anywhere in the EventName (not just as a prefix). Preserves original case from EventName in the result.
 
 **Step 2 — Keyword Extraction** (no DialogVoice needed)
 
@@ -308,7 +315,7 @@ Searches EventName for `aidialog` or `questdialog` keywords (case-insensitive). 
 
 **Step 3 — Export Folder Lookup** (scans `.loc.xml` files)
 
-Scans all XML files in the EXPORT folder for elements with a `SoundEventName` attribute matching the EventName. Returns the `StringId` attribute from that same element.
+Scans all XML files in the EXPORT folder for elements with a `SoundEventName` or `EventName` attribute matching the EventName. Returns the `StringId` attribute from that same element.
 
 ```
   EventName:   "SE_Ambient_Forest_Bird_001"
@@ -339,37 +346,26 @@ Three match types support TRANSFER. (Substring is LOOKUP-only — too imprecise 
 
 Requires **both** StringID and StrOrigin to match before writing. This is the highest-precision mode.
 
-**The 4-Step Matching Cascade:**
+**The 2-Step Matching Cascade:**
 
-Before declaring a correction as NOT_FOUND or STRORIGIN_MISMATCH, QuickTranslate tries four progressively looser comparisons:
+Before declaring a correction as NOT_FOUND or STRORIGIN_MISMATCH, QuickTranslate tries two progressively looser comparisons:
 
 ```
-  Step 1: Exact
+  Step 1: Normalized Match
   +------------------------------------------+
   | Case-insensitive StringID                 |
-  | + normalized StrOrigin                    |
-  | (HTML unescape, whitespace collapse,      |
-  |  &desc; removal)                          |
+  | + normalized StrOrigin:                   |
+  |   - HTML entity unescaping (&lt; → <)     |
+  |   - Whitespace collapse (trim + squash)   |
+  |   - &desc; marker removal                 |
   +------------------------------------------+
            | no match
            v
-  Step 2: Lowercase
+  Step 2: No-Space Fallback
   +------------------------------------------+
-  | Both sides fully lowercased               |
-  +------------------------------------------+
-           | no match
-           v
-  Step 3: Normalized
-  +------------------------------------------+
-  | HTML unescape + whitespace collapse       |
-  | + &desc; removal on both sides            |
-  +------------------------------------------+
-           | no match
-           v
-  Step 4: No-Space Fallback
-  +------------------------------------------+
-  | Remove ALL whitespace from both sides     |
-  | and compare                               |
+  | Same normalization as Step 1, then        |
+  | remove ALL remaining whitespace from      |
+  | both sides and compare                    |
   +------------------------------------------+
            | no match
            v
@@ -378,7 +374,9 @@ Before declaring a correction as NOT_FOUND or STRORIGIN_MISMATCH, QuickTranslate
   (StringID not found at all = NOT_FOUND)
 ```
 
-**Fuzzy Precision** (optional): After the 4-step cascade fails, enables KR-SBERT semantic similarity search. Uses FAISS IndexFlatIP to find the closest StrOrigin match.
+> Note: StringID comparison is always case-insensitive. StrOrigin comparison uses the normalized form (not lowercased) — the original character case of Korean text is preserved during matching.
+
+**Fuzzy Precision** (optional): After the 2-step cascade fails, enables KR-SBERT semantic similarity search. Uses a vector index to find the closest StrOrigin match.
 
 | Threshold | Use Case |
 |-----------|----------|
@@ -387,26 +385,25 @@ Before declaring a correction as NOT_FOUND or STRORIGIN_MISMATCH, QuickTranslate
 | 0.80 | Significant Korean text changes |
 | 0.70 | Maximum coverage (risk of false positives) |
 
-When fuzzy is enabled, the transfer runs in **two passes**: Pass 1 (exact 4-step cascade), then Pass 2 (FAISS fuzzy on unconsumed corrections only). The log shows both passes with match counts.
+When fuzzy is enabled, the transfer runs in **two passes**: Pass 1 (2-step cascade), then Pass 2 (fuzzy vector search on unconsumed corrections only). The log shows both passes with match counts.
 
 > **When to use Strict:** Non-SCRIPT categories (System/, World/, Platform/, None/). Any time precision matters more than speed.
 
 #### StringID-Only — For SCRIPT Categories
 
-Matches by **StringID alone**. Ignores StrOrigin completely. **Restricted to SCRIPT categories only** — the Dialog/ and Sequencer/ folders in the EXPORT structure.
+Matches by **StringID alone**. Ignores StrOrigin completely. **Restricted to SCRIPT categories only** — the Dialog/ and Sequencer/ top-level folders in the EXPORT structure.
 
 ```
   SCRIPT categories (StringID-Only processes these):
   +--------------------------------------------+
-  | export__/Dialog/AIDialog/                   |
-  | export__/Dialog/QuestDialog/                |
+  | export__/Dialog/                            |
+  |   ├── AIDialog/                             |
+  |   ├── QuestDialog/                          |
+  |   ├── NarrationDialog/                      |
+  |   └── StageCloseDialog/                     |
   | export__/Sequencer/                         |
   +--------------------------------------------+
-
-  EXCLUDED (skipped, status SKIPPED_EXCLUDED):
-  +--------------------------------------------+
-  | export__/Dialog/NarrationDialog/            |
-  +--------------------------------------------+
+  ALL Dialog subfolders are included.
 
   NON-SCRIPT (skipped, status SKIPPED_NON_SCRIPT):
   +--------------------------------------------+
@@ -415,7 +412,7 @@ Matches by **StringID alone**. Ignores StrOrigin completely. **Restricted to SCR
   +--------------------------------------------+
 ```
 
-Non-SCRIPT StringIDs are silently skipped with status `SKIPPED_NON_SCRIPT`. NarrationDialog subfolder StringIDs get `SKIPPED_EXCLUDED`.
+Non-SCRIPT StringIDs are silently skipped with status `SKIPPED_NON_SCRIPT`.
 
 > **When to use StringID-Only:** Voice dubbing corrections for dialogue/cutscene text. StrOrigin for dialogue lines is often very long and may have changed since extraction — StringID is more stable.
 
@@ -509,16 +506,17 @@ Valid language codes are **auto-discovered** from the LOC folder (scans for `lan
 
 ---
 
-### 2.6 The Golden Rule
+### 2.6 Post-Processing Pipeline
 
-> **If StrOrigin is empty, Str must be empty.**
+After every TRANSFER, a 3-step post-processing pipeline runs automatically on each modified XML file:
 
-After every TRANSFER, a post-processing pipeline runs automatically on each modified XML file:
+1. **Normalize newlines** — Converts all wrong newline representations (`&#10;`, `\n`, `<BR>`, `<br >`, `&#xA;`, literal `\n` text, etc.) to `<br/>`, the only correct format
+2. **Empty StrOrigin enforcement** ("The Golden Rule") — If `StrOrigin` is empty, `Str` must be empty. Clears `Str` on any `<LocStr>` element where `StrOrigin` is empty or whitespace-only. Prevents orphan translations on deleted or placeholder strings.
+3. **"No translation" replacement** — If `Str` is exactly "no translation" (case-insensitive, whitespace-normalized), replaces it with the `StrOrigin` value. This cleans up placeholder text left by previous processes.
 
-1. **Normalize newlines** — Converts all wrong newline representations (`&#10;`, `\n`, `<BR>`, `<br >`, etc.) to `<br/>`, the only correct format
-2. **Empty StrOrigin enforcement** — Clears `Str` on any `<LocStr>` element where `StrOrigin` is empty or whitespace-only
+You never need to run this manually — it executes after every TRANSFER automatically.
 
-This prevents orphan translations on deleted or placeholder strings. You never need to run this manually — it executes after every TRANSFER automatically.
+> **Excel linebreak handling:** When corrections come from Excel, Alt+Enter line breaks (which Excel stores as `\n`) are automatically converted to `<br/>` before writing to XML. If you paste text containing `<br/>` tags into Excel, they are preserved correctly. No manual linebreak formatting is needed.
 
 ---
 
@@ -558,14 +556,54 @@ When corrections fail to match, QuickTranslate generates reports in the `Failed 
 | `STRORIGIN_MISMATCH` | !! | StringID exists but the Korean text differs from your StrOrigin — source XML may have been updated |
 | `SKIPPED_TRANSLATED` | — | Entry already has a non-Korean translation ("Only untranslated" scope) |
 | `SKIPPED_NON_SCRIPT` | — | StringID is not in Dialog/ or Sequencer/ categories (StringID-Only mode) |
-| `SKIPPED_EXCLUDED` | — | StringID is in an excluded subfolder (NarrationDialog, or user-configured exclusion) |
 | `MISSING EVENTNAME` | !! | All 3 waterfall steps failed to resolve EventName to StringID |
+| `RECOVERED_UPDATED` | ✅ | EventName recovery pass resolved a NOT_FOUND entry and applied the correction |
+| `RECOVERED_UNCHANGED` | — | EventName recovery pass resolved a NOT_FOUND entry but value was already identical |
 
 > 💡 **Most common failure:** `STRORIGIN_MISMATCH` — means the Korean source text was updated in Perforce after you extracted it. Re-run LOOKUP to get the current StrOrigin, or enable Fuzzy precision to match despite the rewording.
 
 ---
 
-### 2.8 Korean Correction Filter
+### 2.8 EventName Recovery Pass
+
+When corrections fail as `NOT_FOUND`, QuickTranslate automatically runs a **recovery pass** before generating the failure report. This catches a common scenario: the Excel file's "StringID" column actually contains EventNames, not real StringIDs.
+
+```
+  Normal TRANSFER:
+  StringID="Play_QuestDialog_npc01_greeting"  →  NOT_FOUND (not a real StringID)
+
+  Recovery Pass (automatic):
+  "Play_QuestDialog_npc01_greeting"  →  3-step EventName waterfall  →  "QuestDialog_npc01_greeting"
+  Re-merge with real StringID        →  RECOVERED_UPDATED
+```
+
+**How it works:**
+
+1. After the initial TRANSFER, collect all `NOT_FOUND` entries
+2. Run each through the 3-step EventName waterfall (DialogVoice → keyword → export lookup)
+3. If a new StringID is found, re-merge the correction using the resolved StringID
+4. Successfully recovered entries get status `RECOVERED_UPDATED` or `RECOVERED_UNCHANGED`
+
+**Status codes from recovery:**
+
+| Status | Meaning |
+|--------|---------|
+| `RECOVERED_UPDATED` | Recovery resolved the StringID and the correction was applied |
+| `RECOVERED_UNCHANGED` | Recovery resolved the StringID but the value was already identical |
+
+The recovery pass runs automatically — no user action required. The log area shows recovery statistics when entries are recovered.
+
+---
+
+### 2.9 Excel Source Notes
+
+**Only the first (active) sheet is read** from input Excel files. If your workbook has multiple sheets, only the first sheet is processed — other sheets are silently ignored. Place your corrections on the first sheet.
+
+**Duplicate StrOrigin handling** (StrOrigin Only mode): If multiple rows have the same normalized StrOrigin but different Correction values, the **last row wins**. Ensure each unique StrOrigin appears only once, or place the preferred correction in the last row.
+
+---
+
+### 2.10 Korean Correction Filter
 
 TRANSFER **silently skips** rows where the Correction column:
 
@@ -618,7 +656,7 @@ Finds entries in **non-KOR** files where `Str` still contains Korean characters 
 
 One XML file per language, containing every `<LocStr>` element that still has Korean in its `Str` attribute. Only non-KOR languages are scanned (Korean in `languagedata_kor.xml` is expected).
 
-> Entries containing `staticinfo:knowledge` in Str or StrOrigin are automatically excluded — pattern codes in those entries are not relevant.
+> **Note:** Check Korean scans ALL entries with zero exclusions — every `<LocStr>` element in every non-KOR file is checked. The `staticinfo:knowledge` skip toggle only applies to Check Patterns and Check Quality (see below).
 
 ---
 
@@ -839,13 +877,15 @@ Edit these paths to match your Perforce workspace. Use double backslashes (`\\`)
 ```
 QuickTranslate/
 ├── QuickTranslate.exe
-├── settings.json              ← LOC + EXPORT paths (auto-created on first run)
-├── exclude_rules.json         ← Find Missing exclusions (auto-created)
-├── KRTransformer/             ← KR-SBERT model (for fuzzy matching)
-├── Source/                    ← Default source folder (pre-populated in GUI)
-├── Output/                    ← LOOKUP results (Excel files)
-├── Presubmission Checks/      ← Quality check results
-└── Failed Reports/             ← TRANSFER failure reports
+├── QuickTranslate_UserGuide.pdf   ← This guide (bundled with installer)
+├── settings.json                  ← LOC + EXPORT paths (auto-created on first run)
+├── exclude_rules.json             ← Find Missing exclusions (auto-created)
+├── presubmission_settings.json    ← Check Patterns/Quality skip toggle (auto-created)
+├── KRTransformer/                 ← KR-SBERT model (for fuzzy matching)
+├── Source/                        ← Default source folder (pre-populated in GUI)
+├── Output/                        ← LOOKUP results (Excel files)
+├── Presubmission Checks/          ← Quality check results
+└── Failed Reports/                 ← TRANSFER failure reports
 ```
 
 ---
@@ -873,6 +913,20 @@ Managed via the **Exclude...** dialog in the GUI. Stores a list of relative path
   ]
 }
 ```
+
+### presubmission_settings.json
+
+Auto-created next to the executable. Persists the "Skip staticinfo:knowledge entries" checkbox state for Pre-Submission Checks.
+
+```json
+{
+  "skip_staticinfo_knowledge": true
+}
+```
+
+| Key | Default | Effect |
+|-----|---------|--------|
+| `skip_staticinfo_knowledge` | `true` | When true, Check Patterns and Check Quality skip entries containing `staticinfo:knowledge` in Str or StrOrigin (reduces false positives). Check Korean is NOT affected — it always scans everything. |
 
 ### Supported Languages
 
@@ -952,12 +1006,21 @@ Threshold range: 0.70 — 1.00 (step 0.01). Available in Strict and StrOrigin On
 | `STRORIGIN_MISMATCH` | StringID exists but StrOrigin text differs from expected |
 | `SKIPPED_TRANSLATED` | Already translated (in "Only untranslated" scope) |
 | `SKIPPED_NON_SCRIPT` | Not in Dialog/Sequencer categories (StringID-Only mode) |
-| `SKIPPED_EXCLUDED` | In an excluded subfolder (NarrationDialog or user-excluded) |
 | `MISSING EVENTNAME` | EventName could not be resolved to a StringID |
+| `RECOVERED_UPDATED` | EventName recovery pass resolved a NOT_FOUND entry and applied the correction |
+| `RECOVERED_UNCHANGED` | EventName recovery pass resolved a NOT_FOUND entry but value was already identical |
 
 ---
 
 ## 8. Troubleshooting
+
+### Launch Issues
+
+**App does not launch / crashes on startup** — Check for `QuickTranslate_crash.log` in the installation folder. Common causes: missing DLLs, antivirus blocking the executable, or corrupted installation. Try reinstalling or using the portable version.
+
+**Fuzzy matching options are greyed out** — The `KRTransformer/` folder is missing next to the executable. This folder contains the KR-SBERT model required for fuzzy matching. Re-download from the release or reinstall.
+
+### TRANSFER Issues
 
 **Match type is greyed out** — Source files are missing required columns for that match type. Check column headers against the table in Section 2.1.
 
@@ -973,18 +1036,60 @@ Threshold range: 0.70 — 1.00 (step 0.01). Available in Strict and StrOrigin On
 - For Strict: has Korean source text changed since your Excel was created? Try Fuzzy precision.
 - For StringID-Only: are the strings in Dialog/ or Sequencer/ categories? Non-SCRIPT strings are skipped.
 
+**TRANSFER completed but no files changed** — All rows may have been `UNCHANGED` (already had the same value) or Korean-filtered (Correction column still Korean). Check the transfer report in `Failed Reports/` for details.
+
+**STRORIGIN_MISMATCH on everything** — The Korean source text in Perforce was updated after your Excel was created. Sync Perforce to latest, run a new LOOKUP to get current StrOrigin values, or enable Fuzzy precision to match despite the rewording.
+
+**Permission denied writing to XML** — The target XML files may be read-only (Perforce checkout required). QuickTranslate attempts to make files writable automatically, but P4 checkout may be needed first.
+
 **EventName not resolved** — The 3-step resolution waterfall could not find a match. Check that the EventName exists in EXPORT `.loc.xml` files. Verify the DialogVoice column if present. Alternatively, use StringID directly.
 
-**settings.json issues** — Use double backslashes (`\\`). No trailing backslash. Must be valid JSON (check commas and brackets). Delete `settings.json` and restart to reset to F: drive defaults.
+**Excel file not detected** — Ensure the file has a `.xlsx` or `.xls` extension. Password-protected or corrupted Excel files cannot be read. If the file is open in Excel, close it first (Excel locks the file).
 
-**Fuzzy matching slow** — First load of the KR-SBERT model takes ~30 seconds. Subsequent lookups are fast. Lower thresholds (0.70) search more broadly and take longer. If the `KRTransformer/` folder is missing, fuzzy options are disabled.
+**Wrong language detected** — QuickTranslate detects language from folder names or file name suffixes. Use language-named folders (`ENG/`, `FRE/`) or add the language code to the filename (`corrections_eng.xlsx`).
 
-**Find Missing shows too many results** — Use the **Exclude...** dialog to filter out non-priority folders (e.g., System/Gimmick, System/MultiChange). Exclusions are saved to `exclude_rules.json` and remembered between sessions.
+### LOOKUP Issues
 
-**ToSubmit checkbox** — When checked, automatically includes correction files from the `ToSubmit/` subfolder alongside your selected source folder. Useful for staging pending corrections that should be included in the current TRANSFER run.
+**Output folder is empty after Generate** — Check the log area for errors. Common causes: LOC/EXPORT paths are wrong, source folder has no recognizable files, or all input rows failed to match.
+
+### Pre-Submission Issues
 
 **Pre-submission check finds nothing** — Ensure the Source path points to a folder containing `languagedata_*.xml` files (not Excel). These checks operate on XML files, not correction spreadsheets.
 
-**Output folder is empty after Generate** — Check the log area for errors. Common causes: LOC/EXPORT paths are wrong, source folder has no recognizable files, or all input rows failed to match.
+### Settings Issues
+
+**settings.json issues** — Use double backslashes (`\\`). No trailing backslash. Must be valid JSON (check commas and brackets). Delete `settings.json` and restart to reset to F: drive defaults.
+
+**Fuzzy matching slow** — First load of the KR-SBERT model takes ~30 seconds. Subsequent lookups are fast. Lower thresholds (0.70) search more broadly and take longer.
+
+**Find Missing shows too many results** — Use the **Exclude...** dialog to filter out non-priority folders (e.g., System/Gimmick, System/MultiChange). Exclusions are saved to `exclude_rules.json` and remembered between sessions.
+
+### Other
+
+**ToSubmit checkbox** — When checked, automatically includes correction files from the `ToSubmit/` subfolder alongside your selected source folder. Useful for staging pending corrections that should be included in the current TRANSFER run.
+
+**Can I undo a TRANSFER?** — TRANSFER writes directly to XML files. The only way to undo is to revert in Perforce (`p4 revert`). Always P4 sync before transferring, and submit only after verifying the results with Pre-Submission Checks.
+
+---
+
+## 9. Glossary
+
+| Term | Definition |
+|------|-----------|
+| **StringID** | A unique identifier for a text entry in the XML files (e.g., `quest_001`, `npc_greeting_42`). Every translatable string has one. |
+| **StrOrigin** | The original Korean source text stored in the XML. This is the "source truth" for what needs to be translated. |
+| **Str** | The translated text for a specific language, stored as an attribute in the XML `<LocStr>` element. |
+| **Correction** | Your translated text in the Excel file. This is what TRANSFER writes into the `Str` attribute. |
+| **LOC folder** | The folder containing `languagedata_*.xml` files — one per language (e.g., `languagedata_eng.xml`). Path configured in settings. |
+| **EXPORT folder** | The folder containing categorized `.loc.xml` files organized by type (Dialog, System, World, etc.). Used for StringID-to-category mapping. |
+| **SCRIPT categories** | `Dialog/` and `Sequencer/` folders in the EXPORT structure. These contain dialogue and cutscene text where StrOrigin is the raw Korean script. |
+| **languagedata_*.xml** | Production XML files containing all translatable strings for one language. The `*` is the language code (e.g., `eng`, `fre`). |
+| **`.loc.xml`** | Export XML files in the EXPORT folder. Contain StringID-to-category mapping and EventName attributes. |
+| **EventName** | A sound event identifier from the audio pipeline (e.g., `Play_QuestDialog_npc01_greeting`). QuickTranslate resolves these to StringIDs. |
+| **DialogVoice** | A voice actor prefix used in audio pipelines (e.g., `npc01`). Helps resolve EventName to StringID via the waterfall. |
+| **Perforce (P4)** | Version control system used for game files. QuickTranslate reads from and writes to your Perforce workspace. |
+| **KR-SBERT** | Korean Sentence-BERT model used for fuzzy semantic matching. Stored in the `KRTransformer/` folder. |
+| **Fan-out** | In StrOrigin Only mode, one correction row fills ALL entries sharing the same Korean source text across the XML. |
+| **`<br/>`** | The only correct newline format in XML language data. All other formats are automatically normalized to this. |
 
 *Last updated: February 2026*

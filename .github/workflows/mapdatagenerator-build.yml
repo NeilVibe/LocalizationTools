@@ -613,6 +613,20 @@ jobs:
 
           Write-Host "Working folders created"
 
+      - name: Bundle User Guide
+        shell: pwsh
+        run: |
+          $distPath = "${{ env.MAPDATAGENERATOR_PATH }}\dist\MapDataGenerator"
+          $guideSrc = "${{ env.MAPDATAGENERATOR_PATH }}\docs\USER_GUIDE.md"
+
+          # Copy user guide markdown to dist root (Inno Setup picks it up)
+          if (Test-Path $guideSrc) {
+            Copy-Item $guideSrc "$distPath\MapDataGenerator_UserGuide.md"
+            Write-Host "User guide bundled: MapDataGenerator_UserGuide.md"
+          } else {
+            Write-Host "WARNING: USER_GUIDE.md not found at $guideSrc"
+          }
+
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup -y
