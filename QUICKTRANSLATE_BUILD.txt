@@ -121,3 +121,4 @@ Build - Flexible TARGET: any XML/Excel, multi-file, recursive scanning
 Build - StrOrigin Only safeguard: skip Dialog/Sequencer complement
 Build - no translation postprocess cleanup
 Build - EventName recovery pass for NOT_FOUND corrections
+Build - SCRIPT filter perf fix, long string extractor, WIP updates
