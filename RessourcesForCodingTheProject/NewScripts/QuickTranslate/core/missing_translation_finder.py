@@ -181,7 +181,7 @@ def iter_locstr_from_file(xml_path: Path):
 
     for loc in _iter_locstr_elements(root):
         so = _get_attr_case_insensitive(loc, ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN'])
-        sid = _get_attr_case_insensitive(loc, ['StringId', 'StringID', 'stringid', 'STRINGID'])
+        sid = _get_attr_case_insensitive(loc, ['StringId', 'StringID', 'stringid', 'STRINGID', 'Stringid', 'stringId'])
         key = (so, sid)
         yield key, loc
 
@@ -378,7 +378,7 @@ def build_export_stringid_index(
             continue
 
         for loc in _iter_locstr_elements(root):
-            sid = _get_attr_case_insensitive(loc, ['StringId', 'StringID', 'stringid', 'STRINGID'])
+            sid = _get_attr_case_insensitive(loc, ['StringId', 'StringID', 'stringid', 'STRINGID', 'Stringid', 'stringId'])
             if sid and sid not in idx:
                 idx[sid] = rel_norm
 

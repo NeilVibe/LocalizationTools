@@ -93,6 +93,7 @@ def extract_differences(text1: str, text2: str, max_length: int = 120) -> str:
 FAILURE_REASONS = {
     "NOT_FOUND": "StringID not found in target",
     "STRORIGIN_MISMATCH": "StrOrigin mismatch",
+    "SKIPPED_EMPTY_STRORIGIN": "StringID exists but StrOrigin empty in target (skipped)",
     "SKIPPED_TRANSLATED": "Already translated (skipped)",
     "SKIPPED_NON_SCRIPT": "Not a SCRIPT category (skipped)",
     "SKIPPED_SCRIPT": "SCRIPT category — use StringID-Only (skipped)",
@@ -115,7 +116,9 @@ def _classify_failure_reason(detail: Dict) -> str:
     """
     status = detail.get("status", "").upper()
 
-    if "NOT_FOUND" in status:
+    if "SKIPPED_EMPTY_STRORIGIN" in status:
+        return "SKIPPED_EMPTY_STRORIGIN"
+    elif "NOT_FOUND" in status:
         return "NOT_FOUND"
     elif "MISMATCH" in status:
         return "STRORIGIN_MISMATCH"
@@ -520,6 +523,9 @@ def _status_to_reason(status: str) -> str:
             return "StringID not found in target (L3 StringID-only failed)"
         else:
             return "StringID not found in target"
+
+    elif "SKIPPED_EMPTY_STRORIGIN" in status_upper:
+        return "Skipped: StringID exists but StrOrigin empty in target"
 
     elif "SKIPPED_NON_SCRIPT" in status_upper:
         return "Skipped: non-SCRIPT category (only Dialog/Sequencer allowed)"

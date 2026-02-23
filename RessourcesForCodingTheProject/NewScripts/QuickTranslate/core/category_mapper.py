@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List
 
-from .xml_parser import parse_xml_file, iter_locstr_elements
+from .xml_parser import parse_xml_file, iter_locstr_elements, get_attr, STRINGID_ATTRS
 
 logger = logging.getLogger(__name__)
 
@@ -153,8 +153,7 @@ def build_stringid_category_index(export_folder: Path) -> Dict[str, str]:
             continue
 
         for elem in iter_locstr_elements(root):
-            string_id = (elem.get('StringId') or elem.get('StringID') or
-                         elem.get('stringid') or elem.get('STRINGID'))
+            string_id = get_attr(elem, STRINGID_ATTRS) or None
             if string_id and string_id not in stringid_to_category:
                 stringid_to_category[string_id] = category
 

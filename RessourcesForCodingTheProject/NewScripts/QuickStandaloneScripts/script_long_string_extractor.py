@@ -296,8 +296,8 @@ def extract_from_excel(
     ws = wb.active
     results = []
 
-    # Try to extract language from filename (e.g. corrections_ENG.xlsx)
-    lang_match = re.search(r'[_-]([a-zA-Z]{2,6})\.xlsx$', xlsx_path.name, re.IGNORECASE)
+    # Try to extract language from filename (e.g. corrections_ENG.xlsx, corrections_ZHO-CN.xlsx)
+    lang_match = re.search(r'[_-]([a-zA-Z]{2,6}(?:-[a-zA-Z]{2,6})?)\.xlsx$', xlsx_path.name, re.IGNORECASE)
     language = lang_match.group(1).upper() if lang_match else "EXCEL"
 
     # Detect headers
@@ -315,10 +315,15 @@ def extract_from_excel(
         wb.close()
         raise ValueError(f"No StringID column found in {xlsx_path.name}")
 
+    if 'str' not in headers:
+        wb.close()
+        raise ValueError(f"No Str column found in {xlsx_path.name}. Cannot extract long strings without Str values.")
+
     for row in ws.iter_rows(min_row=2, values_only=True):
-        sid = str(row[headers['stringid']] or "").strip() if 'stringid' in headers else ""
-        so = str(row[headers['strorigin']] or "").strip() if 'strorigin' in headers else ""
-        sv = str(row[headers['str']] or "").strip() if 'str' in headers else ""
+        max_col = len(row)
+        sid = str(row[headers['stringid']] or "").strip() if headers.get('stringid', max_col) < max_col else ""
+        so = str(row[headers['strorigin']] or "").strip() if headers.get('strorigin', max_col) < max_col else ""
+        sv = str(row[headers['str']] or "").strip() if headers.get('str', max_col) < max_col else ""
 
         if not sid or not sv:
             continue
@@ -569,7 +574,11 @@ class ScriptLongStringExtractorGUI:
             messagebox.showerror("Error", f"Source folder not found:\n{source_folder}")
             return
 
-        min_length = self.min_length_var.get()
+        try:
+            min_length = self.min_length_var.get()
+        except tk.TclError:
+            messagebox.showerror("Error", "Invalid minimum length value. Please enter a number.")
+            return
         if min_length < 1:
             messagebox.showerror("Error", "Minimum length must be >= 1")
             return

@@ -9,24 +9,8 @@ import hashlib
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
-from .xml_parser import parse_xml_file
+from .xml_parser import parse_xml_file, iter_locstr_elements, get_attr, STRINGID_ATTRS, STRORIGIN_ATTRS
 from .text_utils import normalize_for_matching
-
-
-def _get_attribute_case_insensitive(elem, attr_names: list) -> Optional[str]:
-    """Get attribute value trying multiple case variations."""
-    for name in attr_names:
-        val = elem.get(name)
-        if val is not None:
-            return val
-    return None
-
-
-def _iter_locstr_case_insensitive(root):
-    """Iterate LocStr elements with case-insensitive tag matching."""
-    locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
-    for tag in locstr_tags:
-        yield from root.iter(tag)
 
 
 def build_sequencer_strorigin_index(
@@ -55,13 +39,9 @@ def build_sequencer_strorigin_index(
             progress_callback(f"Indexing Sequencer... {i+1}/{total}")
         try:
             root = parse_xml_file(xml_file)
-            for elem in _iter_locstr_case_insensitive(root):
-                string_id = (_get_attribute_case_insensitive(
-                    elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
-                ) or '').strip()
-                str_origin = _get_attribute_case_insensitive(
-                    elem, ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN']
-                ) or ''
+            for elem in iter_locstr_elements(root):
+                string_id = get_attr(elem, STRINGID_ATTRS).strip()
+                str_origin = get_attr(elem, STRORIGIN_ATTRS)
 
                 if string_id and str_origin:
                     index[string_id] = str_origin
@@ -99,13 +79,9 @@ def scan_folder_for_strings(
             progress_callback(f"Scanning folder... {i+1}/{total}")
         try:
             root = parse_xml_file(xml_file)
-            for elem in _iter_locstr_case_insensitive(root):
-                string_id = (_get_attribute_case_insensitive(
-                    elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
-                ) or '').strip()
-                str_origin = _get_attribute_case_insensitive(
-                    elem, ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN']
-                ) or ''
+            for elem in iter_locstr_elements(root):
+                string_id = get_attr(elem, STRINGID_ATTRS).strip()
+                str_origin = get_attr(elem, STRORIGIN_ATTRS)
 
                 if string_id and str_origin:
                     string_map[string_id] = str_origin
@@ -151,16 +127,10 @@ def scan_folder_for_entries(
             progress_callback(f"Scanning folder... {i+1}/{total}")
         try:
             root = parse_xml_file(xml_file)
-            for elem in _iter_locstr_case_insensitive(root):
-                string_id = (_get_attribute_case_insensitive(
-                    elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
-                ) or '').strip()
-                str_origin = _get_attribute_case_insensitive(
-                    elem, ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN']
-                ) or ''
-                str_value = _get_attribute_case_insensitive(
-                    elem, ['Str', 'str', 'STR']
-                ) or ''
+            for elem in iter_locstr_elements(root):
+                string_id = get_attr(elem, STRINGID_ATTRS).strip()
+                str_origin = get_attr(elem, STRORIGIN_ATTRS)
+                str_value = get_attr(elem, ['Str', 'str', 'STR'])
 
                 if string_id:
                     # Normalize StrOrigin for matching (same as xml_transfer.py)
@@ -244,16 +214,10 @@ def scan_folder_for_entries_with_context(
             root = parse_xml_file(xml_file)
             entries_in_file = []
 
-            for elem in _iter_locstr_case_insensitive(root):
-                string_id = (_get_attribute_case_insensitive(
-                    elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
-                ) or '').strip()
-                str_origin = _get_attribute_case_insensitive(
-                    elem, ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN']
-                ) or ''
-                str_value = _get_attribute_case_insensitive(
-                    elem, ['Str', 'str', 'STR']
-                ) or ''
+            for elem in iter_locstr_elements(root):
+                string_id = get_attr(elem, STRINGID_ATTRS).strip()
+                str_origin = get_attr(elem, STRORIGIN_ATTRS)
+                str_value = get_attr(elem, ['Str', 'str', 'STR'])
 
                 if string_id:
                     # CRITICAL: Filter DURING scan, not after!

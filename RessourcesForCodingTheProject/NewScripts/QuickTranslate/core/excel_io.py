@@ -1026,7 +1026,7 @@ def _merge_excel_stringid_only(
         if not _en_resolver_loaded:
             _en_resolver_loaded = True
             try:
-                from core.eventname_resolver import get_eventname_mapping, extract_stringid_from_dialog_keyword
+                from .eventname_resolver import get_eventname_mapping, extract_stringid_from_dialog_keyword
                 _en_mapping = get_eventname_mapping(_cfg.EXPORT_FOLDER)
                 _en_extract_fn = extract_stringid_from_dialog_keyword
             except Exception:
@@ -1042,10 +1042,10 @@ def _merge_excel_stringid_only(
         return None
 
     # Build list-based lookup: one StringID can map to MULTIPLE target rows
+    # Note: do NOT filter out empty str_origin — StringID-only mode matches by ID alone,
+    # and the target may legitimately have no StrOrigin column (3D.C3 fix).
     target_by_sid = defaultdict(list)
     for entry in target_entries:
-        if not entry["str_origin"].strip():
-            continue
         target_by_sid[entry["string_id"].lower()].append(entry)
 
     for c in corrections:

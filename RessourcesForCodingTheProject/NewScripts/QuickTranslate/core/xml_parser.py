@@ -25,6 +25,11 @@ _bad_entity_re = re.compile(r'&(?!lt;|gt;|amp;|apos;|quot;|#)')
 _tag_open = re.compile(r"<([A-Za-z0-9_]+)(\s[^>]*)?>")
 _tag_close = re.compile(r"</([A-Za-z0-9_]+)>")
 
+# ── Centralized attribute name variants (import these instead of hardcoding) ──
+STRINGID_ATTRS = ['StringId', 'StringID', 'stringid', 'STRINGID', 'Stringid', 'stringId']
+STRORIGIN_ATTRS = ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN']
+LOCSTR_TAGS = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
+
 
 def _fix_bad_entities(txt: str) -> str:
     """Fix unescaped ampersands by converting them to &amp;."""
@@ -113,10 +118,6 @@ def sanitize_xml_content(raw: str) -> str:
     raw = re.sub(r'="([^"]*<[^"]*)"',
                  lambda m: '="' + m.group(1).replace("<", "&lt;") + '"', raw)
 
-    # Fix unescaped & in attribute values (not part of entities)
-    raw = re.sub(r'="([^"]*&[^ltgapoqu][^"]*)"',
-                 lambda m: '="' + m.group(1).replace("&", "&amp;") + '"', raw)
-
     # Repair malformed tag structure
     raw = _repair_tag_stack(raw)
 
@@ -156,6 +157,15 @@ def parse_xml_file(xml_path: Path) -> ET.Element:
         return ET.fromstring(content)
 
 
+def get_attr(elem, attr_names: list) -> str:
+    """Get attribute value trying multiple case variations. Returns '' if not found."""
+    for name in attr_names:
+        val = elem.get(name)
+        if val is not None:
+            return val
+    return ''
+
+
 def iter_locstr_elements(root: ET.Element) -> List:
     """
     Iterate over LocStr elements with case-insensitive tag matching.
@@ -168,9 +178,7 @@ def iter_locstr_elements(root: ET.Element) -> List:
     Returns:
         List of LocStr elements found
     """
-    # Case-insensitive: collect ALL tag variants
-    locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
     elements = []
-    for tag in locstr_tags:
+    for tag in LOCSTR_TAGS:
         elements.extend(root.iter(tag))
     return elements

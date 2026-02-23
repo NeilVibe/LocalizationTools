@@ -580,6 +580,7 @@ def merge_corrections_stringid_only(
         "skipped_non_script": 0,
         "skipped_excluded": 0,
         "skipped_translated": 0,
+        "skipped_empty_strorigin": 0,
         "not_found": 0,
         "errors": [],
         "by_category": {},
@@ -845,12 +846,12 @@ def merge_corrections_stringid_only(
                 if sid_key in target_stringids_all:
                     # StringID exists in target but was skipped (empty StrOrigin)
                     status = "SKIPPED_EMPTY_STRORIGIN"
-                    result["skipped_empty_strorigin"] = result.get("skipped_empty_strorigin", 0) + 1
+                    result["skipped_empty_strorigin"] += 1
                 else:
                     status = "NOT_FOUND"
                     result["not_found"] += 1
 
-                if category in result["by_category"]:
+                if status == "NOT_FOUND" and category in result["by_category"]:
                     result["by_category"][category]["not_found"] += 1
 
                 result["details"].append({
@@ -1323,6 +1324,7 @@ def transfer_folder_to_folder(
         "total_skipped": 0,
         "total_skipped_excluded": 0,
         "total_skipped_translated": 0,
+        "total_skipped_empty_strorigin": 0,
         "errors": [],
         "file_results": {},
     }
@@ -1865,6 +1867,7 @@ def transfer_folder_to_folder(
         results["total_not_found"] += file_result.get("not_found", 0)
         results["total_strorigin_mismatch"] += file_result.get("strorigin_mismatch", 0)
         results["total_skipped_translated"] += file_result.get("skipped_translated", 0)
+        results["total_skipped_empty_strorigin"] += file_result.get("skipped_empty_strorigin", 0)
         results["errors"].extend(file_result["errors"])
 
         # Aggregate EventName recovery stats
@@ -2347,6 +2350,8 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
             lines.append(V + f"   Origin Mismatch:  {total_strorigin_mismatch:,}  (StringID exists, StrOrigin differs)".ljust(width - 2) + V)
         if total_skipped_translated > 0:
             lines.append(V + f"   Skipped:          {total_skipped_translated:,}  (already translated)".ljust(width - 2) + V)
+        if results.get('total_skipped_empty_strorigin', 0) > 0:
+            lines.append(V + f"   Empty StrOrigin:  {results['total_skipped_empty_strorigin']:,}  (StringID exists, StrOrigin empty in target)".ljust(width - 2) + V)
         if results.get('total_skipped', 0) > 0:
             skip_label = "SCRIPT — use StringID-Only" if "strorigin" in match_mode else "non-SCRIPT"
             lines.append(V + f"   Skipped:          {results.get('total_skipped', 0):,}  ({skip_label})".ljust(width - 2) + V)

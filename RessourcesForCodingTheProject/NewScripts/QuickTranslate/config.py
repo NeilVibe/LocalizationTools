@@ -271,7 +271,7 @@ def update_settings(loc_folder: str = None, export_folder: str = None):
 
 def reload_settings():
     """Reload settings from settings.json file."""
-    global LOC_FOLDER, EXPORT_FOLDER, SEQUENCER_FOLDER, _SETTINGS
+    global LOC_FOLDER, EXPORT_FOLDER, SEQUENCER_FOLDER, LANGUAGE_ORDER, LANGUAGE_NAMES, _SETTINGS
 
     _SETTINGS = _load_settings()
 
@@ -281,6 +281,8 @@ def reload_settings():
     LOC_FOLDER = Path(_loc) if _loc else Path(DEFAULT_LOC_FOLDER)
     EXPORT_FOLDER = Path(_export) if _export else Path(DEFAULT_EXPORT_FOLDER)
     SEQUENCER_FOLDER = EXPORT_FOLDER / "Sequencer"
+    # Re-discover languages from LOC folder (matches update_settings behavior)
+    LANGUAGE_ORDER, LANGUAGE_NAMES = _discover_languages_from_loc()
 
 
 # =============================================================================

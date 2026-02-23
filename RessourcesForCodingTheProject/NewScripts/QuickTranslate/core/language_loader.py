@@ -8,14 +8,7 @@ import re
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from .xml_parser import parse_xml_file
-
-
-def _iter_locstr_case_insensitive(root):
-    """Iterate LocStr elements with case-insensitive tag matching."""
-    locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
-    for tag in locstr_tags:
-        yield from root.iter(tag)
+from .xml_parser import parse_xml_file, iter_locstr_elements, get_attr, STRINGID_ATTRS
 
 
 def discover_language_files(loc_folder: Path) -> Dict[str, Path]:
@@ -65,11 +58,9 @@ def build_translation_lookup(
 
         try:
             root = parse_xml_file(xml_path)
-            for elem in _iter_locstr_case_insensitive(root):
-                string_id = (elem.get('StringId') or elem.get('StringID') or
-                            elem.get('stringid') or elem.get('STRINGID') or '').strip()
-                str_value = (elem.get('Str') or elem.get('str') or
-                            elem.get('STR') or '')
+            for elem in iter_locstr_elements(root):
+                string_id = get_attr(elem, STRINGID_ATTRS).strip()
+                str_value = get_attr(elem, ['Str', 'str', 'STR'])
 
                 if string_id:
                     lookup[lang_code][string_id] = str_value
@@ -137,9 +128,8 @@ def build_stringid_to_category(
         for xml_file in xml_files:
             try:
                 root = parse_xml_file(xml_file)
-                for elem in _iter_locstr_case_insensitive(root):
-                    string_id = (elem.get('StringId') or elem.get('StringID') or
-                                elem.get('stringid') or elem.get('STRINGID') or '').strip()
+                for elem in iter_locstr_elements(root):
+                    string_id = get_attr(elem, STRINGID_ATTRS).strip()
                     if string_id:
                         stringid_to_category[string_id] = category_name
             except Exception:
@@ -191,9 +181,8 @@ def build_stringid_to_subfolder(
                     subfolder = ""  # File directly in category folder
 
                 root = parse_xml_file(xml_file)
-                for elem in _iter_locstr_case_insensitive(root):
-                    string_id = (elem.get('StringId') or elem.get('StringID') or
-                                elem.get('stringid') or elem.get('STRINGID') or '').strip()
+                for elem in iter_locstr_elements(root):
+                    string_id = get_attr(elem, STRINGID_ATTRS).strip()
                     if string_id:
                         stringid_to_subfolder[string_id] = subfolder
             except Exception:

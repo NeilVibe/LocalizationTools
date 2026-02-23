@@ -1502,11 +1502,7 @@ class QuickTranslateApp:
         Used to filter FAISS index build - only include entries matching source StringIDs.
         Handles both XML and Excel source files.
         """
-        from core.indexing import (
-            _get_attribute_case_insensitive,
-            _iter_locstr_case_insensitive,
-        )
-        from core.xml_parser import parse_xml_file
+        from core.xml_parser import parse_xml_file, iter_locstr_elements, get_attr, STRINGID_ATTRS
         from core.excel_io import read_corrections_from_excel
 
         stringids = set()
@@ -1530,10 +1526,8 @@ class QuickTranslateApp:
         for xml_file in xml_files:
             try:
                 root = parse_xml_file(xml_file)
-                for elem in _iter_locstr_case_insensitive(root):
-                    sid = (_get_attribute_case_insensitive(
-                        elem, ['StringId', 'StringID', 'stringid', 'STRINGID']
-                    ) or '').strip()
+                for elem in iter_locstr_elements(root):
+                    sid = get_attr(elem, STRINGID_ATTRS).strip()
                     if sid:
                         stringids.add(sid)
             except Exception:
@@ -1589,6 +1583,10 @@ class QuickTranslateApp:
         self._fuzzy_texts = None
         self._fuzzy_entries = None
         clear_fuzzy_cache()
+
+        # Clear language code cache (valid codes depend on LOC folder)
+        from core.source_scanner import clear_language_code_cache
+        clear_language_code_cache()
 
         self._log("Settings saved to settings.json", 'success')
         messagebox.showinfo("Success", "Settings saved successfully!")
@@ -1817,24 +1815,16 @@ class QuickTranslateApp:
     def _quick_detect_columns(self, source_folder: Path):
         """Quick synchronous column detection for when path was pasted, not browsed."""
         try:
-            from core.excel_io import _detect_column_indices
-            from openpyxl import load_workbook
+            from core.excel_io import detect_excel_columns
             cols = self._source_columns.copy()
             for xlsx in source_folder.rglob("*.xlsx"):
                 if xlsx.name.startswith("~$"):
                     continue
-                wb = load_workbook(str(xlsx), read_only=True)
-                ws = wb.active
-                ci = _detect_column_indices(ws)
-                wb.close()
-                if ci.get("stringid") or ci.get("string_id"):
-                    cols["has_stringid"] = True
-                if ci.get("strorigin") or ci.get("str_origin"):
-                    cols["has_strorigin"] = True
-                if ci.get("correction") or ci.get("corrected"):
-                    cols["has_correction"] = True
-                if ci.get("eventname") or ci.get("event_name") or ci.get("soundeventname"):
-                    cols["has_eventname"] = True
+                detected = detect_excel_columns(xlsx)
+                cols["has_stringid"] = detected["has_stringid"]
+                cols["has_strorigin"] = detected["has_strorigin"]
+                cols["has_correction"] = detected["has_correction"]
+                cols["has_eventname"] = detected["has_eventname"]
                 break  # Only check first Excel file
             for xml in source_folder.rglob("*.xml"):
                 cols["has_xml"] = True
@@ -1842,6 +1832,28 @@ class QuickTranslateApp:
             self._source_columns = cols
         except Exception:
             pass  # Keep existing column state
+
+    def _validate_columns_for_mode(self, cols: dict) -> bool:
+        """Validate that source columns are compatible with the selected match type.
+        Returns True if valid, False if not (shows error dialog)."""
+        mt = self.match_type.get()
+        has_id = cols["has_stringid"] or cols["has_eventname"] or cols["has_xml"]
+        has_strorigin = cols["has_strorigin"] or cols["has_xml"]
+        has_correction = cols["has_correction"] or cols["has_xml"]
+
+        if mt == "stringid_only" and not (has_id and has_correction):
+            messagebox.showerror("Error", "StringID-Only mode requires StringID (or EventName) + Correction columns.\n\n"
+                                 "Your source files don't have these columns.")
+            return False
+        if mt == "strict" and not (has_id and has_strorigin and has_correction):
+            messagebox.showerror("Error", "Strict mode requires StringID (or EventName) + StrOrigin + Correction columns.\n\n"
+                                 "Your source files don't have all required columns.")
+            return False
+        if mt == "strorigin_only" and not (has_strorigin and has_correction):
+            messagebox.showerror("Error", "StrOrigin Only mode requires StrOrigin + Correction columns.\n\n"
+                                 "Your source files don't have these columns.")
+            return False
+        return True
 
     def _generate(self):
         """Main generate action based on current mode."""
@@ -1860,23 +1872,7 @@ class QuickTranslateApp:
             self._quick_detect_columns(source)
             cols = self._source_columns
 
-        # Column validation — prevent launching incompatible match types
-        mt = self.match_type.get()
-        has_id = cols["has_stringid"] or cols["has_eventname"] or cols["has_xml"]
-        has_strorigin = cols["has_strorigin"] or cols["has_xml"]
-        has_correction = cols["has_correction"] or cols["has_xml"]
-
-        if mt == "stringid_only" and not (has_id and has_correction):
-            messagebox.showerror("Error", "StringID-Only mode requires StringID (or EventName) + Correction columns.\n\n"
-                                 "Your source files don't have these columns.")
-            return
-        if mt == "strict" and not (has_id and has_strorigin and has_correction):
-            messagebox.showerror("Error", "Strict mode requires StringID (or EventName) + StrOrigin + Correction columns.\n\n"
-                                 "Your source files don't have all required columns.")
-            return
-        if mt == "strorigin_only" and not (has_strorigin and has_correction):
-            messagebox.showerror("Error", "StrOrigin Only mode requires StrOrigin + Correction columns.\n\n"
-                                 "Your source files don't have these columns.")
+        if not self._validate_columns_for_mode(cols):
             return
 
         # Capture StringVar values on main thread before entering worker
@@ -2763,23 +2759,7 @@ class QuickTranslateApp:
             self._quick_detect_columns(source)
             cols = self._source_columns
 
-        # Column validation — prevent launching incompatible match types
-        mt = self.match_type.get()
-        has_id = cols["has_stringid"] or cols["has_eventname"] or cols["has_xml"]
-        has_strorigin = cols["has_strorigin"] or cols["has_xml"]
-        has_correction = cols["has_correction"] or cols["has_xml"]
-
-        if mt == "stringid_only" and not (has_id and has_correction):
-            messagebox.showerror("Error", "StringID-Only mode requires StringID (or EventName) + Correction columns.\n\n"
-                                 "Your source files don't have these columns.")
-            return
-        if mt == "strict" and not (has_id and has_strorigin and has_correction):
-            messagebox.showerror("Error", "Strict mode requires StringID (or EventName) + StrOrigin + Correction columns.\n\n"
-                                 "Your source files don't have all required columns.")
-            return
-        if mt == "strorigin_only" and not (has_strorigin and has_correction):
-            messagebox.showerror("Error", "StrOrigin Only mode requires StrOrigin + Correction columns.\n\n"
-                                 "Your source files don't have these columns.")
+        if not self._validate_columns_for_mode(cols):
             return
 
         if not self.target_path.get():
