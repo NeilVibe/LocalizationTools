@@ -70,6 +70,9 @@ ENTRY_WIDTH = 55
 
 SCRIPT_CATEGORIES = {"Sequencer", "Dialog"}
 
+# Subfolders to EXCLUDE from extraction (case-insensitive)
+EXCLUDE_SUBFOLDERS = {"narrationdialog"}
+
 # Detect if running as PyInstaller bundle
 if getattr(sys, 'frozen', False):
     SCRIPT_DIR = Path(sys.executable).parent
@@ -106,17 +109,28 @@ def get_attr(elem, attr_variants):
 
 
 def visible_char_count(text: str) -> int:
-    """Count visible characters: strip <br/> tags, HTML entities, PAColor tags."""
+    """Count visible characters: strip markup tags, HTML entities, code blocks."""
     if not text:
         return 0
     t = text
     # Remove <br/> newline tags
     t = re.sub(r'<br\s*/?>', '', t, flags=re.IGNORECASE)
-    # Remove PAColor tags like <PAColor=...> and </PAColor>
-    t = re.sub(r'</?PAColor[^>]*>', '', t, flags=re.IGNORECASE)
+    # Remove Scale tags
+    t = re.sub(r'<Scale[^>]*>|</Scale>', '', t)
+    # Remove color tags
+    t = re.sub(r'<color[^>]*>|</color>', '', t)
+    # Remove PAColor and PAOldColor tags
+    t = re.sub(r'<PAColor[^>]*>|<PAOldColor>', '', t)
+    # Remove Style tags
+    t = re.sub(r'<Style:[^>]*>', '', t)
+    # Remove literal \n
+    t = re.sub(r'\\n', '', t)
+    # Remove content in curly braces (code blocks)
+    t = re.sub(r'\{[^}]*\}', '', t)
     # Unescape HTML entities
     t = html.unescape(t)
-    # Strip leading/trailing whitespace
+    # Collapse whitespace and strip
+    t = re.sub(r'\s+', ' ', t)
     t = t.strip()
     return len(t)
 
@@ -133,11 +147,17 @@ def extract_language_from_filename(filename: str) -> str:
 # CATEGORY MAPPING (from export folder)
 # =============================================================================
 
-def build_stringid_to_category(export_folder: Path, progress_fn=None) -> Dict[str, str]:
-    """Build StringID -> Category mapping from export folder structure."""
-    mapping = {}
+def build_stringid_to_category(export_folder: Path, progress_fn=None) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """
+    Build StringID -> Category and StringID -> Subfolder mappings from export folder.
+
+    Returns:
+        (category_map, subfolder_map) where both are {stringid: name}
+    """
+    category_map = {}
+    subfolder_map = {}
     if not export_folder.exists():
-        return mapping
+        return category_map, subfolder_map
 
     categories = [d for d in export_folder.iterdir() if d.is_dir()]
 
@@ -149,16 +169,23 @@ def build_stringid_to_category(export_folder: Path, progress_fn=None) -> Dict[st
             progress_fn(f"Indexing {cat_name} ({len(xml_files)} files)...")
 
         for xml_file in xml_files:
+            # Determine subfolder relative to category folder
+            rel = xml_file.relative_to(cat_folder)
+            subfolder = rel.parts[0] if len(rel.parts) > 1 else ""
+
             try:
                 root = _parse_xml_root(xml_file)
                 for elem in _iter_locstr(root):
                     _, sid = get_attr(elem, STRINGID_ATTRS)
                     if sid and sid.strip():
-                        mapping[sid.strip()] = cat_name
-            except Exception:
+                        sid_clean = sid.strip()
+                        category_map[sid_clean] = cat_name
+                        subfolder_map[sid_clean] = subfolder
+            except Exception as e:
+                logger.warning("Failed to parse %s: %s", xml_file, e)
                 continue
 
-    return mapping
+    return category_map, subfolder_map
 
 
 # =============================================================================
@@ -193,10 +220,13 @@ def _iter_locstr(root):
 def extract_from_xml(
     xml_path: Path,
     ci_category: Dict[str, str],
+    ci_subfolder: Dict[str, str],
     min_length: int,
 ) -> List[Dict]:
     """
     Extract LocStr entries from XML that are SCRIPT type + above length threshold.
+
+    Excludes entries in EXCLUDE_SUBFOLDERS (e.g. NarrationDialog).
 
     Returns list of dicts: {string_id, str_origin, str_value, category, char_count, raw_attribs, language}
     """
@@ -216,9 +246,16 @@ def extract_from_xml(
         if not sid or not sv:
             continue
 
+        sid_lower = sid.lower()
+
         # Check SCRIPT category
-        category = ci_category.get(sid.lower(), "Uncategorized")
+        category = ci_category.get(sid_lower, "Uncategorized")
         if category not in SCRIPT_CATEGORIES:
+            continue
+
+        # Check excluded subfolders (e.g. NarrationDialog)
+        subfolder = ci_subfolder.get(sid_lower, "")
+        if subfolder.lower() in EXCLUDE_SUBFOLDERS:
             continue
 
         # Check character length
@@ -242,11 +279,13 @@ def extract_from_xml(
 def extract_from_excel(
     xlsx_path: Path,
     ci_category: Dict[str, str],
+    ci_subfolder: Dict[str, str],
     min_length: int,
 ) -> List[Dict]:
     """
     Extract entries from Excel that are SCRIPT type + above length threshold.
 
+    Excludes entries in EXCLUDE_SUBFOLDERS (e.g. NarrationDialog).
     Expects columns: StringID, StrOrigin, Str
     Language determined from filename if possible, otherwise "EXCEL".
     """
@@ -284,8 +323,15 @@ def extract_from_excel(
         if not sid or not sv:
             continue
 
-        category = ci_category.get(sid.lower(), "Uncategorized")
+        sid_lower = sid.lower()
+
+        category = ci_category.get(sid_lower, "Uncategorized")
         if category not in SCRIPT_CATEGORIES:
+            continue
+
+        # Check excluded subfolders (e.g. NarrationDialog)
+        subfolder = ci_subfolder.get(sid_lower, "")
+        if subfolder.lower() in EXCLUDE_SUBFOLDERS:
             continue
 
         char_count = visible_char_count(sv)
@@ -552,12 +598,14 @@ class ScriptLongStringExtractorGUI:
         self._log(f"\nExport folder: {export_folder}", "info")
         self._log("Building StringID -> Category mapping...", "info")
 
-        category_map = build_stringid_to_category(export_folder, progress_fn=self._log)
+        category_map, subfolder_map = build_stringid_to_category(export_folder, progress_fn=self._log)
         ci_category = {k.lower(): v for k, v in category_map.items()}
+        ci_subfolder = {k.lower(): v for k, v in subfolder_map.items()}
 
         script_count = sum(1 for v in category_map.values() if v in SCRIPT_CATEGORIES)
         self._log(f"  Total StringIDs indexed: {len(category_map)}", "info")
         self._log(f"  SCRIPT StringIDs (Dialog/Sequencer): {script_count}", "info")
+        self._log(f"  Excluded subfolders: {', '.join(sorted(EXCLUDE_SUBFOLDERS)) or 'none'}", "info")
 
         # Step 2: Find source files
         self._log(f"\nSource folder: {source_folder}", "info")
@@ -584,7 +632,7 @@ class ScriptLongStringExtractorGUI:
 
         for xml_file in xml_files:
             try:
-                entries = extract_from_xml(xml_file, ci_category, min_length)
+                entries = extract_from_xml(xml_file, ci_category, ci_subfolder, min_length)
                 if entries:
                     lang = extract_language_from_filename(xml_file.name) or "UNKNOWN"
                     self._log(f"  {xml_file.name} [{lang}]: {len(entries)} entries", "success")
@@ -594,7 +642,7 @@ class ScriptLongStringExtractorGUI:
 
         for xlsx_file in xlsx_files:
             try:
-                entries = extract_from_excel(xlsx_file, ci_category, min_length)
+                entries = extract_from_excel(xlsx_file, ci_category, ci_subfolder, min_length)
                 if entries:
                     self._log(f"  {xlsx_file.name}: {len(entries)} entries", "success")
                 all_entries.extend(entries)
