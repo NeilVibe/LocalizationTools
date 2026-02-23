@@ -62,12 +62,10 @@ def _get_attr_case_insensitive(elem: ET.Element, names: List[str]) -> str:
 
 
 def _iter_locstr_elements(root) -> list:
-    """Iterate LocStr elements with case-insensitive tag matching."""
-    locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
-    elements = []
-    for tag in locstr_tags:
-        elements.extend(root.iter(tag))
-    return elements
+    """Iterate LocStr elements with case-insensitive tag matching.
+    Delegates to xml_parser.iter_locstr_elements for consistency."""
+    from .xml_parser import iter_locstr_elements
+    return iter_locstr_elements(root)
 
 
 def count_korean_words(text: str) -> int:

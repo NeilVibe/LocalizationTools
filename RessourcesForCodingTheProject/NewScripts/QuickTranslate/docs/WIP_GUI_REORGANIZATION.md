@@ -342,21 +342,21 @@ Secondary tools that don't need to clutter the main workflow:
 | 3B.1 | **STRICT XML merge dict overwrites duplicate corrections** | `xml_transfer.py` — `correction_lookup` used plain dict. Multiple corrections with same (StringID, StrOrigin) lost all but last. Inflated NOT_FOUND count. **Fix:** `defaultdict(list)`, mark ALL as matched. | **DONE** ✅ `31ce29b2` |
 | 3B.2 | **`_merge_excel_strict` target lookup overwrites duplicates** | `excel_io.py` — `target_lookup` used plain dict. Duplicate target rows with same (StringID, StrOrigin) lost all but last. **Fix:** `defaultdict(list)`, iterate all matching entries. | **DONE** ✅ `31ce29b2` |
 | 3B.3 | **StrOrigin Only Excel merge: corrections dict overwrites duplicates** | `excel_io.py` — `correction_lookup` had no conflict detection (XML version had it). **Fix:** Added conflict detection + warning logging. | **DONE** ✅ `31ce29b2` |
-| 3B.4 | **Diagnostic maps overwrite on duplicate StringIDs** | `excel_io.py` line 747 + `xml_transfer.py` line 146. `target_strorigin_map[sid.lower()] = so` — when multiple rows share a StringID, mismatch diagnostics show the wrong StrOrigin. Misleading error messages. **Fix:** Store list or keep first occurrence. | TODO |
+| 3B.4 | **Diagnostic maps overwrite on duplicate StringIDs** | `excel_io.py` + `xml_transfer.py`. `target_strorigin_map[sid.lower()] = so` overwrites on duplicates. **Fix:** Keep first occurrence with `if sid.lower() not in target_strorigin_map`. | **DONE** ✅ |
 
 #### 3C. SHOULD FIX — Correctness & Robustness
 
 | # | Task | Details | Risk |
 |---|------|---------|------|
-| 3C.1 | **Inconsistent attribute case variants between xml_io.py and xml_transfer.py** | `xml_io.py` checks 4 StringId variants (`StringId`, `StringID`, `stringid`, `STRINGID`). `xml_transfer.py` checks 6 (adds `Stringid`, `stringId`). Corrections from XML with unusual casing silently dropped by xml_io.py. **Fix:** Unify to 6 variants in both files. | MEDIUM — silent data loss |
-| 3C.2 | **`_fix_bad_entities` double-escapes numeric entities** | `xml_parser.py` line 117. Regex `[^ltgapoqu]` doesn't exclude `#` so `&#123;` → `&amp;#123;`. **Fix:** Add `#` to exclusion set or use proper negative lookahead. | MEDIUM |
-| 3C.3 | **Hallucination phrase "tradu" causes massive false positives** | `ai_hallucination_phrases.json` + `quality_checker.py` line 304. `"tradu"` matches "tradition", "traduit", etc. via substring. English phrases are already done correctly (full phrases). **Fix:** Use full phrases for all languages (e.g., `"voici la traduction"`) or word-boundary matching. | MEDIUM — report pollution |
-| 3C.4 | **Exit button bypasses `_on_close` cleanup** | `app.py` line 260. Uses `self.root.quit` instead of `self._on_close`. Handler leak + worker threads not signaled to stop. **Fix:** Change to `command=self._on_close`. | LOW |
-| 3C.5 | **Duplicate `iter_locstr_elements` implementations** | `xml_parser.py` and `language_loader.py` both implement LocStr iteration with different variant lists. Bug fix to one won't propagate to other. **Fix:** Consolidate to single function in xml_parser.py. | LOW — maintenance risk |
-| 3C.6 | **`or` chain treats empty string `""` as missing** | `xml_transfer.py` at ~15 locations. `loc.get("Str") or loc.get("str")` — if `Str=""` exists, falls through to lowercase variant. Safe in practice but architecturally incorrect. **Fix:** Use `is not None` checks instead of `or`. | LOW |
-| 3C.7 | **Column detection only triggers via Browse button** | `app.py` lines 164-171. Manual path entry/paste bypasses `_validate_source_files_async`. `_source_columns` stays all-False → non-substring modes blocked with misleading error. **Fix:** Add `trace_add` on source entry or validate on Generate/Transfer click. | LOW |
-| 3C.8 | **`LANGUAGE_ORDER` never refreshed after settings change** | `config.py` line 212 vs 255-267. `_discover_languages_from_loc()` runs once at import. After changing LOC path via Settings, language list is stale → wrong Excel output columns. **Fix:** Re-run discovery in `update_settings()`. | LOW |
-| 3C.9 | **`traceback.print_exc()` should use logger** | `app.py` line 1695. Bypasses project logging convention. **Fix:** Replace with `logger.exception()`. | LOW |
+| 3C.1 | **Inconsistent attribute case variants between xml_io.py and xml_transfer.py** | `xml_io.py` had 4 StringId variants, `xml_transfer.py` had 6. **Fix:** Unified to 6 variants in xml_io.py. | **DONE** ✅ |
+| 3C.2 | **`_fix_bad_entities` double-escapes numeric entities** | Regex didn't exclude `#` so `&#123;` → `&amp;#123;`. **Fix:** Added `#` to exclusion in regex. | **DONE** ✅ |
+| 3C.3 | **Hallucination phrase "tradu" causes massive false positives** | Substring `"tradu"` matched "tradition", "traduit" etc. **Fix:** Replaced with full phrases per language (`"voici la traduction"`, `"traduzione di"`, etc.). | **DONE** ✅ |
+| 3C.4 | **Exit button bypasses `_on_close` cleanup** | Used `self.root.quit` instead of `self._on_close`. **Fix:** Changed to `command=self._on_close`. | **DONE** ✅ |
+| 3C.5 | **Duplicate `iter_locstr_elements` implementations** | `missing_translation_finder.py` had its own copy. **Fix:** Delegated to `xml_parser.iter_locstr_elements`. | **DONE** ✅ |
+| 3C.6 | **`or` chain treats empty string `""` as missing** | `loc.get("Str") or loc.get("str")` — if `Str=""` exists, falls through. Safe in practice (same element never has mixed cases). | DEFERRED — no real-world impact |
+| 3C.7 | **Column detection only triggers via Browse button** | Manual path paste bypassed column detection. **Fix:** Added `_quick_detect_columns()` called at start of `_generate()` and `_transfer()` if columns undetected. | **DONE** ✅ |
+| 3C.8 | **`LANGUAGE_ORDER` never refreshed after settings change** | `_discover_languages_from_loc()` ran once at import. **Fix:** Re-run in `update_settings()` when LOC folder changes. | **DONE** ✅ |
+| 3C.9 | **`traceback.print_exc()` should use logger** | Bypassed logging convention. **Fix:** Replaced with `logger.exception()`. | **DONE** ✅ |
 
 ### Phase 4: String Erase Integration
 

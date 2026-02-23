@@ -15,35 +15,35 @@
     "je suis une ia", "je suis un modèle",
     "mes directives", "contre mes directives",
     "données d'entraînement", "mes données d'apprentissage",
-    "tradu", "voici la traduction", "texte traduit"
+    "voici la traduction", "texte traduit", "traduction de"
   ],
   "de": [
     "als ki", "als sprachmodell", "als ein sprachmodell",
     "ich bin eine ki", "ich bin ein sprachmodell",
     "meine richtlinien", "gegen meine richtlinien",
     "trainingsdaten", "meine trainingsdaten",
-    "übersetz", "hier ist die übersetzung", "übersetzter text"
+    "hier ist die übersetzung", "übersetzter text", "übersetzung von"
   ],
   "it": [
     "come ia", "come modello linguistico", "come modello di linguaggio",
     "sono un'ia", "sono un modello linguistico",
     "le mie linee guida", "contro le mie linee guida",
     "dati di addestramento", "i miei dati di addestramento",
-    "tradu", "ecco la traduzione", "testo tradotto"
+    "ecco la traduzione", "testo tradotto", "traduzione di"
   ],
   "es": [
     "como ia", "como modelo de lenguaje", "como un modelo de lenguaje",
     "soy una ia", "soy un modelo de lenguaje",
     "mis directrices", "contra mis directrices",
     "datos de entrenamiento", "mis datos de entrenamiento",
-    "tradu", "aquí está la traducción", "texto traducido"
+    "aquí está la traducción", "texto traducido", "traducción de"
   ],
   "pt": [
     "como ia", "como modelo de linguagem", "como um modelo de linguagem",
     "sou uma ia", "sou um modelo de linguagem",
     "minhas diretrizes", "contra minhas diretrizes",
     "dados de treinamento", "meus dados de treinamento",
-    "tradu", "aqui está a tradução", "texto traduzido"
+    "aqui está a tradução", "texto traduzido", "tradução de"
   ],
   "ru": [
     "как ии", "как языковая модель", "как большая языковая модель",

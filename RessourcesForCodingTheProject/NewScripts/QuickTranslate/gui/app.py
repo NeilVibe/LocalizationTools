@@ -257,7 +257,7 @@ class QuickTranslateApp:
         btn_container = tk.Frame(top_bar, bg='#f0f0f0')
         btn_container.pack(side=tk.RIGHT)
 
-        tk.Button(btn_container, text="Exit", command=self.root.quit,
+        tk.Button(btn_container, text="Exit", command=self._on_close,
                  font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
                  padx=15, pady=4, cursor='hand2').pack(side=tk.RIGHT, padx=(5, 0))
 
@@ -1691,8 +1691,7 @@ class QuickTranslateApp:
                 self._task_queue.put(('messagebox', 'showerror', 'Error', f'Operation failed:\n{e}'))
                 self._log(f"ERROR: {e}", 'error')
                 self._task_queue.put(('status', f'Error: {e}', None))
-                import traceback
-                traceback.print_exc()
+                logger.exception("Worker thread error")
             finally:
                 self._task_queue.put(('done',))
 
@@ -1815,6 +1814,35 @@ class QuickTranslateApp:
         self.cancel_btn.pack_forget()
         self._worker_thread = None
 
+    def _quick_detect_columns(self, source_folder: Path):
+        """Quick synchronous column detection for when path was pasted, not browsed."""
+        try:
+            from core.excel_io import _detect_column_indices
+            from openpyxl import load_workbook
+            cols = self._source_columns.copy()
+            for xlsx in source_folder.rglob("*.xlsx"):
+                if xlsx.name.startswith("~$"):
+                    continue
+                wb = load_workbook(str(xlsx), read_only=True)
+                ws = wb.active
+                ci = _detect_column_indices(ws)
+                wb.close()
+                if ci.get("stringid") or ci.get("string_id"):
+                    cols["has_stringid"] = True
+                if ci.get("strorigin") or ci.get("str_origin"):
+                    cols["has_strorigin"] = True
+                if ci.get("correction") or ci.get("corrected"):
+                    cols["has_correction"] = True
+                if ci.get("eventname") or ci.get("event_name") or ci.get("soundeventname"):
+                    cols["has_eventname"] = True
+                break  # Only check first Excel file
+            for xml in source_folder.rglob("*.xml"):
+                cols["has_xml"] = True
+                break
+            self._source_columns = cols
+        except Exception:
+            pass  # Keep existing column state
+
     def _generate(self):
         """Main generate action based on current mode."""
         if not self.source_path.get():
@@ -1826,8 +1854,13 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"Source not found:\n{source}")
             return
 
-        # Column validation — prevent launching incompatible match types
+        # If columns haven't been detected (path pasted, not browsed), detect now
         cols = self._source_columns
+        if not any(cols.values()) and source.is_dir():
+            self._quick_detect_columns(source)
+            cols = self._source_columns
+
+        # Column validation — prevent launching incompatible match types
         mt = self.match_type.get()
         has_id = cols["has_stringid"] or cols["has_eventname"] or cols["has_xml"]
         has_strorigin = cols["has_strorigin"] or cols["has_xml"]
@@ -2722,8 +2755,15 @@ class QuickTranslateApp:
                                    "Please select StringID-Only, Strict, or StrOrigin Only mode.")
             return
 
-        # Column validation — prevent launching incompatible match types
+        source = Path(self.source_path.get())
+
+        # If columns haven't been detected (path pasted, not browsed), detect now
         cols = self._source_columns
+        if not any(cols.values()) and source.is_dir():
+            self._quick_detect_columns(source)
+            cols = self._source_columns
+
+        # Column validation — prevent launching incompatible match types
         mt = self.match_type.get()
         has_id = cols["has_stringid"] or cols["has_eventname"] or cols["has_xml"]
         has_strorigin = cols["has_strorigin"] or cols["has_xml"]
@@ -2742,15 +2782,10 @@ class QuickTranslateApp:
                                  "Your source files don't have these columns.")
             return
 
-        if not self.source_path.get():
-            messagebox.showwarning("Warning", "Please select a Source folder with corrections.")
-            return
-
         if not self.target_path.get():
             # Default to LOC folder from config
             self.target_path.set(str(config.LOC_FOLDER))
 
-        source = Path(self.source_path.get())
         target = Path(self.target_path.get())
 
         if not source.exists():

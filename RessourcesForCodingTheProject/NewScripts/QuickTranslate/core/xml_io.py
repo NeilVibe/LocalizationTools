@@ -30,7 +30,8 @@ def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
         root = parse_xml_file(xml_path)
         for elem in iter_locstr_elements(root):
             string_id = (elem.get('StringId') or elem.get('StringID') or
-                        elem.get('stringid') or elem.get('STRINGID') or '').strip()
+                        elem.get('stringid') or elem.get('STRINGID') or
+                        elem.get('Stringid') or elem.get('stringId') or '').strip()
             str_origin = (elem.get('StrOrigin') or elem.get('Strorigin') or
                          elem.get('strorigin') or elem.get('STRORIGIN') or '').strip()
             str_value = (elem.get('Str') or elem.get('str') or
@@ -125,7 +126,8 @@ def extract_stringids_from_xml(xml_path: Path) -> List[str]:
         root = parse_xml_file(xml_path)
         for elem in iter_locstr_elements(root):
             string_id = (elem.get('StringId') or elem.get('StringID') or
-                        elem.get('stringid') or elem.get('STRINGID') or '').strip()
+                        elem.get('stringid') or elem.get('STRINGID') or
+                        elem.get('Stringid') or elem.get('stringId') or '').strip()
             if string_id:
                 string_ids.append(string_id)
     except Exception as e:

@@ -155,8 +155,9 @@ def merge_corrections_to_xml(
                 target_stringids.add(tsid.lower())
                 tso = (loc.get("StrOrigin") or loc.get("Strorigin") or
                        loc.get("strorigin") or loc.get("STRORIGIN") or "")
-                target_strorigin_map[tsid.lower()] = tso
-                target_raw_attribs_map[tsid.lower()] = dict(loc.attrib)
+                if tsid.lower() not in target_strorigin_map:
+                    target_strorigin_map[tsid.lower()] = tso
+                    target_raw_attribs_map[tsid.lower()] = dict(loc.attrib)
 
         for loc in all_elements:
             # Case-insensitive attribute access

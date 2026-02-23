@@ -254,11 +254,13 @@ def get_settings() -> dict:
 
 def update_settings(loc_folder: str = None, export_folder: str = None):
     """Update and save settings."""
-    global LOC_FOLDER, EXPORT_FOLDER, SEQUENCER_FOLDER
+    global LOC_FOLDER, EXPORT_FOLDER, SEQUENCER_FOLDER, LANGUAGE_ORDER, LANGUAGE_NAMES
 
     if loc_folder:
         _SETTINGS["loc_folder"] = loc_folder
         LOC_FOLDER = Path(loc_folder)
+        # Re-discover languages from new LOC folder
+        LANGUAGE_ORDER, LANGUAGE_NAMES = _discover_languages_from_loc()
     if export_folder:
         _SETTINGS["export_folder"] = export_folder
         EXPORT_FOLDER = Path(export_folder)

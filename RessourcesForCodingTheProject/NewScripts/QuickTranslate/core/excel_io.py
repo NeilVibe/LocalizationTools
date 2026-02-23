@@ -761,7 +761,8 @@ def merge_corrections_to_excel(
                 continue
 
             target_stringids.add(sid.lower())
-            target_strorigin_map[sid.lower()] = so
+            if sid.lower() not in target_strorigin_map:
+                target_strorigin_map[sid.lower()] = so
             target_entries.append({
                 "string_id": sid,
                 "str_origin": so,

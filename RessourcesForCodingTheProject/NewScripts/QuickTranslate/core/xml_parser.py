@@ -19,7 +19,7 @@ except ImportError:
     USING_LXML = False
 
 # Regex for unescaped ampersands (not part of valid XML entities)
-_bad_entity_re = re.compile(r'&(?!lt;|gt;|amp;|apos;|quot;)')
+_bad_entity_re = re.compile(r'&(?!lt;|gt;|amp;|apos;|quot;|#)')
 
 # Tag patterns for stack repair
 _tag_open = re.compile(r"<([A-Za-z0-9_]+)(\s[^>]*)?>")
