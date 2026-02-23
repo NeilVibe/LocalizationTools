@@ -989,6 +989,30 @@ def _merge_excel_stringid_only(
     ci_category = {k.lower(): v for k, v in stringid_to_category.items()} if stringid_to_category else {}
     ci_subfolder = {k.lower(): v for k, v in stringid_to_subfolder.items()} if stringid_to_subfolder else {}
 
+    # Lazy EventName resolver — only loaded if needed
+    _en_resolver_loaded = False
+    _en_mapping = None
+
+    def _try_resolve_as_eventname(eventname_str):
+        nonlocal _en_resolver_loaded, _en_mapping
+        if not _en_resolver_loaded:
+            _en_resolver_loaded = True
+            try:
+                from core.eventname_resolver import get_eventname_mapping
+                _en_mapping = get_eventname_mapping(_cfg.EXPORT_FOLDER)
+            except Exception:
+                _en_mapping = None
+        if not _en_mapping:
+            return None
+        from core.eventname_resolver import extract_stringid_from_dialog_keyword
+        extracted = extract_stringid_from_dialog_keyword(eventname_str)
+        if extracted and extracted.lower() != eventname_str.lower():
+            return extracted
+        data = _en_mapping.get(eventname_str.lower())
+        if data:
+            return data["stringid"]
+        return None
+
     # Build list-based lookup: one StringID can map to MULTIPLE target rows
     target_by_sid = defaultdict(list)
     for entry in target_entries:
@@ -1003,12 +1027,33 @@ def _merge_excel_stringid_only(
         subfolder = ci_subfolder.get(sid_lower, "")
 
         if category not in SCRIPT_CATEGORIES:
-            result["skipped_non_script"] += 1
-            result["details"].append({
-                "string_id": sid, "status": "SKIPPED_NON_SCRIPT",
-                "old": f"Category: {category}", "new": c["corrected"],
-            })
-            continue
+            # Multi-pass: try resolving as EventName before skipping
+            resolved_sid = _try_resolve_as_eventname(sid)
+            if resolved_sid:
+                resolved_lower = resolved_sid.lower()
+                resolved_category = ci_category.get(resolved_lower, "Uncategorized")
+                if resolved_category in SCRIPT_CATEGORIES:
+                    logger.info(f"EventName '{sid}' resolved to SCRIPT StringID '{resolved_sid}' (category={resolved_category})")
+                    sid = resolved_sid
+                    sid_lower = resolved_lower
+                    category = resolved_category
+                    subfolder = ci_subfolder.get(resolved_lower, "")
+                    c = dict(c)
+                    c["string_id"] = resolved_sid
+                else:
+                    result["skipped_non_script"] += 1
+                    result["details"].append({
+                        "string_id": sid, "status": "SKIPPED_NON_SCRIPT",
+                        "old": f"Category: {resolved_category} (resolved from EventName)", "new": c["corrected"],
+                    })
+                    continue
+            else:
+                result["skipped_non_script"] += 1
+                result["details"].append({
+                    "string_id": sid, "status": "SKIPPED_NON_SCRIPT",
+                    "old": f"Category: {category}", "new": c["corrected"],
+                })
+                continue
 
         if subfolder.lower() in {s.lower() for s in SCRIPT_EXCLUDE_SUBFOLDERS}:
             result["skipped_excluded"] += 1

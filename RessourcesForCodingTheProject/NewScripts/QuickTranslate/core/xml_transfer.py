@@ -594,7 +594,46 @@ def merge_corrections_stringid_only(
     ci_subfolder = {k.lower(): v for k, v in stringid_to_subfolder.items()} if stringid_to_subfolder else {}
 
     # Filter corrections to SCRIPT TYPE only (and not in excluded subfolders)
+    # Multi-pass: if StringID not in category index, try EventName resolution first
     script_corrections = []
+
+    # Lazy EventName resolver — only loaded if needed
+    _en_resolver_loaded = False
+    _en_mapping = None
+
+    def _try_resolve_as_eventname(eventname_str):
+        """Try to resolve a value as EventName → StringID via 3-step waterfall."""
+        nonlocal _en_resolver_loaded, _en_mapping
+        if not _en_resolver_loaded:
+            _en_resolver_loaded = True
+            try:
+                from .eventname_resolver import (
+                    get_eventname_mapping,
+                    extract_stringid_from_dialog_keyword,
+                    generate_stringid_from_dialogvoice,
+                )
+                _en_mapping = get_eventname_mapping(config.EXPORT_FOLDER)
+            except Exception:
+                _en_mapping = None
+        if not _en_mapping:
+            return None
+
+        from .eventname_resolver import (
+            extract_stringid_from_dialog_keyword,
+            generate_stringid_from_dialogvoice,
+        )
+
+        # Step 1: keyword extraction
+        extracted = extract_stringid_from_dialog_keyword(eventname_str)
+        if extracted and extracted.lower() != eventname_str.lower():
+            return extracted
+
+        # Step 2: export lookup
+        data = _en_mapping.get(eventname_str.lower())
+        if data:
+            return data["stringid"]
+
+        return None
 
     for c in corrections:
         sid = c["string_id"]
@@ -604,15 +643,44 @@ def merge_corrections_stringid_only(
 
         # Check if in SCRIPT categories (Dialog/Sequencer)
         if category not in SCRIPT_CATEGORIES:
-            result["skipped_non_script"] += 1
-            result["details"].append({
-                "string_id": sid,
-                "status": "SKIPPED_NON_SCRIPT",
-                "old": f"Category: {category}",
-                "new": c["corrected"],
-            })
-            logger.debug(f"Skipped non-SCRIPT StringID={sid} (category={category})")
-            continue
+            # Multi-pass: before skipping, try resolving as EventName
+            # The StringID might actually be an EventName that resolves to a SCRIPT StringID
+            resolved_sid = _try_resolve_as_eventname(sid)
+            if resolved_sid:
+                resolved_lower = resolved_sid.lower()
+                resolved_category = ci_category.get(resolved_lower, "Uncategorized")
+                if resolved_category in SCRIPT_CATEGORIES:
+                    # EventName resolved to a SCRIPT StringID — use it
+                    logger.info(f"EventName '{sid}' resolved to SCRIPT StringID '{resolved_sid}' (category={resolved_category})")
+                    sid = resolved_sid
+                    sid_lower = resolved_lower
+                    category = resolved_category
+                    subfolder = ci_subfolder.get(resolved_lower, "")
+                    # Update the correction's string_id for downstream matching
+                    c = dict(c)
+                    c["string_id"] = resolved_sid
+                else:
+                    # Resolved but still not SCRIPT
+                    result["skipped_non_script"] += 1
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": "SKIPPED_NON_SCRIPT",
+                        "old": f"Category: {resolved_category} (resolved from EventName)",
+                        "new": c["corrected"],
+                    })
+                    logger.debug(f"Skipped non-SCRIPT EventName={sid} -> StringID={resolved_sid} (category={resolved_category})")
+                    continue
+            else:
+                # Not resolvable as EventName either
+                result["skipped_non_script"] += 1
+                result["details"].append({
+                    "string_id": sid,
+                    "status": "SKIPPED_NON_SCRIPT",
+                    "old": f"Category: {category}",
+                    "new": c["corrected"],
+                })
+                logger.debug(f"Skipped non-SCRIPT StringID={sid} (category={category})")
+                continue
 
         # Check if subfolder is in exclusion list (case-insensitive)
         if subfolder.lower() in {s.lower() for s in SCRIPT_EXCLUDE_SUBFOLDERS}:
