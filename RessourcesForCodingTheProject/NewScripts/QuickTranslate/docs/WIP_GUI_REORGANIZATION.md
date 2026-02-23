@@ -1,7 +1,8 @@
 # WIP: QuickTranslate GUI Reorganization
 
-> **Status:** PLANNING
+> **Status:** PRE-REWORK (all bug fixes done, review findings documented)
 > **Created:** 2026-02-23
+> **Last updated:** 2026-02-23
 > **Priority:** HIGH
 > **Scope:** GUI restructuring, new features, UX improvements
 
@@ -319,44 +320,85 @@ Secondary tools that don't need to clutter the main workflow:
 | 2.3 | Clean up Transfer button logic | Transfer button no longer needs "disabled for substring" logic since substring is gone from Main. | LOW |
 | 2.4 | Update `_on_match_type_change()` | Remove substring-specific branches. Simplify enable/disable logic. | LOW |
 
-### Phase 3: Bug Fixes (CRITICAL — From Code Review 2026-02-23)
+### Phase 3: Bug Fixes (From Code Reviews 2026-02-23)
 
-> **8 review agents audited the entire codebase.** Bugs below are categorized by urgency.
+> All 3A/3B/3C bugs fixed and committed. Phase 3D documents new findings from the 6-agent post-fix review.
 
-#### 3A. URGENT — Fix Before Next Build
+#### 3A. URGENT — ALL DONE ✅
 
-| # | Task | Details | Status |
-|---|------|---------|--------|
-| 3A.1 | **Column shift after `_insert_str_column` corrupts reads** | `excel_io.py`. When target Excel has no "Str" column, `_insert_str_column()` shifts columns right but `stringid_col` and `strorigin_col` are NOT updated. **Fix:** After insert, increment any `*_col` variable `>= str_col`. | **DONE** ✅ |
-| 3A.2 | **`_generate()` silently fails for StrOrigin Only** | `app.py`. The `work()` function has `if/elif/elif` for substring, stringid_only, strict — but **no branch for strorigin_only**. Falls through silently. **Fix:** Added `elif match_type == "strorigin_only":` branch. | **DONE** ✅ |
-| 3A.3 | **Remove StrOrigin requirement for StringID-Only mode** | `excel_io.py`. Rejects Excel targets missing StrOrigin column even in StringID-only mode. **Fix:** StrOrigin only required for strict/strorigin_only, optional for stringid_only. | **DONE** ✅ |
-| 3A.4 | **Recovery pass uses STRICT merge for StringID-only NOT_FOUND** | `xml_transfer.py`. EventName recovery called STRICT merge which requires StrOrigin match. **Fix:** Added `original_merge_mode` param, uses `merge_corrections_stringid_only` when original was stringid_only. | **DONE** ✅ |
-| 3A.5 | **Auto-detect EventNames in StringID column** | When no EventName column, StringIDs not in category index are auto-tagged as `_source_eventname` for pre-merge resolution. **Fix:** `_no_eventname_col` flag in excel_io + auto-detect in transfer pipeline before EventName resolution. | **DONE** ✅ |
-| 3A.6 | **SCRIPT filter skips EventNames as "Uncategorized"** | Multi-pass: before skipping as non-SCRIPT, try resolving as EventName via keyword extraction + export lookup. | **DONE** ✅ `5da55030` |
-| 3A.7 | **StringID-only NOT_FOUND report is misleading when target StrOrigin is empty** | Golden Rule skips LocStr with empty StrOrigin but reports as "NOT_FOUND". **Fix:** Built `target_stringids_all` set from ALL LocStr, reports `SKIPPED_EMPTY_STRORIGIN` instead of `NOT_FOUND` when StringID exists but StrOrigin is empty. | **DONE** ✅ |
+| # | Task | Status |
+|---|------|--------|
+| 3A.1 | Column shift after `_insert_str_column` corrupts reads | **DONE** ✅ `d0ba2ffc` |
+| 3A.2 | `_generate()` silently fails for StrOrigin Only | **DONE** ✅ `d0ba2ffc` |
+| 3A.3 | Remove StrOrigin requirement for StringID-Only mode | **DONE** ✅ `d0ba2ffc` |
+| 3A.4 | Recovery pass uses STRICT merge for StringID-only NOT_FOUND | **DONE** ✅ `d0ba2ffc` |
+| 3A.5 | Auto-detect EventNames in StringID column | **DONE** ✅ `d0ba2ffc` |
+| 3A.6 | SCRIPT filter skips EventNames as "Uncategorized" | **DONE** ✅ `5da55030` |
+| 3A.7 | StringID-only NOT_FOUND report misleading when target StrOrigin empty | **DONE** ✅ `d0ba2ffc` |
 
-#### 3B. IMPORTANT — Fix Soon (Same Class of Bug as StringID Duplicate)
+#### 3B. IMPORTANT — ALL DONE ✅
 
-| # | Task | Details | Status |
-|---|------|---------|--------|
-| 3B.1 | **STRICT XML merge dict overwrites duplicate corrections** | `xml_transfer.py` — `correction_lookup` used plain dict. Multiple corrections with same (StringID, StrOrigin) lost all but last. Inflated NOT_FOUND count. **Fix:** `defaultdict(list)`, mark ALL as matched. | **DONE** ✅ `31ce29b2` |
-| 3B.2 | **`_merge_excel_strict` target lookup overwrites duplicates** | `excel_io.py` — `target_lookup` used plain dict. Duplicate target rows with same (StringID, StrOrigin) lost all but last. **Fix:** `defaultdict(list)`, iterate all matching entries. | **DONE** ✅ `31ce29b2` |
-| 3B.3 | **StrOrigin Only Excel merge: corrections dict overwrites duplicates** | `excel_io.py` — `correction_lookup` had no conflict detection (XML version had it). **Fix:** Added conflict detection + warning logging. | **DONE** ✅ `31ce29b2` |
-| 3B.4 | **Diagnostic maps overwrite on duplicate StringIDs** | `excel_io.py` + `xml_transfer.py`. `target_strorigin_map[sid.lower()] = so` overwrites on duplicates. **Fix:** Keep first occurrence with `if sid.lower() not in target_strorigin_map`. | **DONE** ✅ |
+| # | Task | Status |
+|---|------|--------|
+| 3B.1 | STRICT XML merge dict overwrites duplicate corrections | **DONE** ✅ `31ce29b2` |
+| 3B.2 | `_merge_excel_strict` target lookup overwrites duplicates | **DONE** ✅ `31ce29b2` |
+| 3B.3 | StrOrigin Only Excel merge: corrections dict overwrites duplicates | **DONE** ✅ `31ce29b2` |
+| 3B.4 | Diagnostic maps overwrite on duplicate StringIDs | **DONE** ✅ `9bd940f5` |
 
-#### 3C. SHOULD FIX — Correctness & Robustness
+#### 3C. SHOULD FIX — ALL DONE ✅ (except 3C.6 deferred)
 
-| # | Task | Details | Risk |
-|---|------|---------|------|
-| 3C.1 | **Inconsistent attribute case variants between xml_io.py and xml_transfer.py** | `xml_io.py` had 4 StringId variants, `xml_transfer.py` had 6. **Fix:** Unified to 6 variants in xml_io.py. | **DONE** ✅ |
-| 3C.2 | **`_fix_bad_entities` double-escapes numeric entities** | Regex didn't exclude `#` so `&#123;` → `&amp;#123;`. **Fix:** Added `#` to exclusion in regex. | **DONE** ✅ |
-| 3C.3 | **Hallucination phrase "tradu" causes massive false positives** | Substring `"tradu"` matched "tradition", "traduit" etc. **Fix:** Replaced with full phrases per language (`"voici la traduction"`, `"traduzione di"`, etc.). | **DONE** ✅ |
-| 3C.4 | **Exit button bypasses `_on_close` cleanup** | Used `self.root.quit` instead of `self._on_close`. **Fix:** Changed to `command=self._on_close`. | **DONE** ✅ |
-| 3C.5 | **Duplicate `iter_locstr_elements` implementations** | `missing_translation_finder.py` had its own copy. **Fix:** Delegated to `xml_parser.iter_locstr_elements`. | **DONE** ✅ |
-| 3C.6 | **`or` chain treats empty string `""` as missing** | `loc.get("Str") or loc.get("str")` — if `Str=""` exists, falls through. Safe in practice (same element never has mixed cases). | DEFERRED — no real-world impact |
-| 3C.7 | **Column detection only triggers via Browse button** | Manual path paste bypassed column detection. **Fix:** Added `_quick_detect_columns()` called at start of `_generate()` and `_transfer()` if columns undetected. | **DONE** ✅ |
-| 3C.8 | **`LANGUAGE_ORDER` never refreshed after settings change** | `_discover_languages_from_loc()` ran once at import. **Fix:** Re-run in `update_settings()` when LOC folder changes. | **DONE** ✅ |
-| 3C.9 | **`traceback.print_exc()` should use logger** | Bypassed logging convention. **Fix:** Replaced with `logger.exception()`. | **DONE** ✅ |
+| # | Task | Status |
+|---|------|--------|
+| 3C.1 | Inconsistent attribute case variants (xml_io.py 4→6) | **DONE** ✅ `9bd940f5` |
+| 3C.2 | `_fix_bad_entities` double-escapes numeric entities | **DONE** ✅ `9bd940f5` |
+| 3C.3 | Hallucination phrase "tradu" false positives | **DONE** ✅ `9bd940f5` |
+| 3C.4 | Exit button bypasses `_on_close` cleanup | **DONE** ✅ `9bd940f5` |
+| 3C.5 | Duplicate `iter_locstr_elements` implementations | **DONE** ✅ `9bd940f5` |
+| 3C.6 | `or` chain treats empty string `""` as missing | DEFERRED — no real-world impact |
+| 3C.7 | Column detection only triggers via Browse button | **DONE** ✅ `9bd940f5` |
+| 3C.8 | `LANGUAGE_ORDER` never refreshed after settings change | **DONE** ✅ `9bd940f5` |
+| 3C.9 | `traceback.print_exc()` should use logger | **DONE** ✅ `9bd940f5` |
+
+#### 3D. POST-FIX REVIEW FINDINGS (6-Agent Review, 2026-02-23)
+
+> **None of these break core transfer logic.** All transfer modes (StringID-only, Strict, StrOrigin-only, Fuzzy) work correctly. These are polish/robustness items to fix before or during the GUI rework.
+
+##### 3D-CRITICAL (report/robustness issues, NOT transfer-breaking)
+
+| # | File | Issue | Impact |
+|---|------|-------|--------|
+| 3D.C1 | `xml_transfer.py:854` | `by_category["not_found"]` incremented for BOTH NOT_FOUND and SKIPPED_EMPTY_STRORIGIN — inflates per-category not_found count | Report cosmetics only. Top-level counter is correct. Fix: guard `by_category` increment with `if status == "NOT_FOUND"`. |
+| 3D.C2 | `xml_transfer.py:577` | `skipped_empty_strorigin` counter not initialized in result dict, never aggregated in `transfer_folder_to_folder()`, never displayed in `format_transfer_report()`, classified as "OTHER" in `failure_report.py` | Report cosmetics. New status is invisible to user. Fix: init counter, add aggregation, add report line, add to failure_report classifier. |
+| 3D.C3 | `excel_io.py:1037` | `_merge_excel_stringid_only` filters out rows with empty `str_origin` — drops ALL rows when target has no StrOrigin column (allowed by 3A.3 fix) | Edge case: Excel-to-Excel StringID-only when target lacks StrOrigin col. XML transfer unaffected. Fix: remove `if not entry["str_origin"].strip(): continue` filter in `_merge_excel_stringid_only`. |
+| 3D.C4 | `xml_parser.py:117` | Line 117 attribute-value ampersand regex `&[^ltgapoqu]` corrupts `&#nnn;` entities inside attribute values. Also clobbers ALL `&` in matched attribute via global `.replace("&", "&amp;")`. Line 107's `_fix_bad_entities` already handles this correctly. | Rare XML edge case. Fix: remove lines 116-118 entirely (redundant with line 107). |
+| 3D.C5 | `missing_translation_finder.py`, `indexing.py`, `language_loader.py`, `category_mapper.py` | Still use 4 StringId variants (missing `Stringid`, `stringId`). Only `xml_io.py` and `checker.py` have full 6 variants. | Only matters if XML uses unusual casing. Fix: centralize constants in `xml_parser.py` and import everywhere. |
+| 3D.C6 | `config.py:272` | `reload_settings()` does NOT re-discover languages — missing `LANGUAGE_ORDER, LANGUAGE_NAMES` from globals declaration, no call to `_discover_languages_from_loc()` | Dead code path (never called currently). Fix: add globals + re-discovery to match `update_settings()`. |
+
+##### 3D-WARNING (quality/robustness, low priority)
+
+| # | File | Issue | Impact |
+|---|------|-------|--------|
+| 3D.W1 | `excel_io.py:1019` | Uses `from core.eventname_resolver` (absolute import) instead of `from .eventname_resolver` (relative). Works only when run from project root. | Import style. Fix: change to relative import. |
+| 3D.W2 | `app.py:1826` | `_quick_detect_columns` doesn't close workbook on exception — potential file handle leak on Windows | Fix: wrap in try/finally for `wb.close()`. |
+| 3D.W3 | `app.py:1820` | Imports private `_detect_column_indices` from `core.excel_io` — fragile, breaks if renamed | Fix: use public `detect_excel_columns()` API instead. |
+| 3D.W4 | `app.py:1857+2760` | Duplicated 24-line column validation block in `_generate()` and `_transfer()` | Fix: extract to `_validate_columns_for_mode()` helper. |
+| 3D.W5 | `source_scanner.py` | `_cached_valid_codes` never cleared when LOC folder changes — `clear_language_code_cache()` exists but is never called | Fix: call `clear_language_code_cache()` in `_save_settings()` in app.py. |
+| 3D.W6 | `language_loader.py`, `indexing.py` | Have their own `_iter_locstr_case_insensitive` copies instead of using `xml_parser.iter_locstr_elements` | Fix: delegate to `xml_parser` like `missing_translation_finder.py` does. |
+| 3D.W7 | `missing_translation_finder.py:131-164` | Has its own `_parse_xml_file` that duplicates `xml_parser.parse_xml_file` (with minor differences: returns None, latin-1 fallback) | Low priority. Could consolidate but has intentional differences. |
+| 3D.W8 | `xml_transfer.py` (5+ locations) | Duplicated LocStr tag search + attribute access patterns — same `locstr_tags` list and `loc.get("StringId") or loc.get("StringID") or ...` chain repeated in many functions | Fix during GUI rework: centralize in `xml_parser.py` helpers. |
+| 3D.W9 | `xml_transfer.py` | Recovery pass re-parses and rewrites target XML a second time (first pass already wrote it) | Performance note. Not a bug. Acceptable for correctness. |
+
+##### 3D-STANDALONE (Script Long String Extractor fixes)
+
+| # | Issue | Status |
+|---|-------|--------|
+| 3D.S1 | `visible_char_count` missing PAOldColor, Scale, color, Style, \n, {code} tags | **DONE** ✅ `83d5133d` |
+| 3D.S2 | NarrationDialog subfolder not excluded | **DONE** ✅ `83d5133d` |
+| 3D.S3 | Excel language regex fails for hyphenated codes (ZHO-CN) | TODO |
+| 3D.S4 | Excel row index not bounds-checked (IndexError on sparse sheets) | TODO |
+| 3D.S5 | `build_stringid_to_category` silently swallows all exceptions | **DONE** ✅ `83d5133d` (added logger.warning) |
+| 3D.S6 | `IntVar.get()` TclError not caught when spinbox has invalid input | TODO |
+| 3D.S7 | Missing Str column check — returns 0 results with no explanation | TODO |
 
 ### Phase 4: String Erase Integration
 
@@ -460,21 +502,37 @@ String Erase can optionally reuse the Source/Target paths from the Main tab's Fi
 
 ## 8. Success Criteria
 
-### Bug Fixes (Phase 3)
-- [ ] Column shift after `_insert_str_column` fixed — all target columns read correctly
-- [ ] `_generate()` handles StrOrigin Only match type
-- [ ] StringID-Only mode works without StrOrigin column in target Excel
-- [ ] EventName recovery uses correct merge mode (not always STRICT)
-- [ ] Auto-populate `_source_eventname` when no EventName column
-- [x] ~~SCRIPT filter resolves EventNames before skipping as non-SCRIPT~~ ✅ `5da55030`
-- [x] ~~StringID-Only Excel transfer updates ALL matching rows~~ ✅ `8a1f19bd`
-- [x] ~~STRICT merge handles duplicate corrections (no silent overwrite)~~ ✅ `31ce29b2`
-- [x] ~~`_merge_excel_strict` handles duplicate target rows~~ ✅ `31ce29b2`
-- [x] ~~StrOrigin Only Excel merge logs conflicting corrections~~ ✅ `31ce29b2`
-- [ ] Attribute case variants unified across xml_io.py and xml_transfer.py
-- [ ] Hallucination phrases use full phrases / word boundaries (no "tradu" false positives)
+### Bug Fixes (Phase 3A/3B/3C) — ALL DONE ✅
 
-### GUI Reorganization (Phases 1-2, 4-6)
+- [x] Column shift after `_insert_str_column` fixed ✅ `d0ba2ffc`
+- [x] `_generate()` handles StrOrigin Only match type ✅ `d0ba2ffc`
+- [x] StringID-Only mode works without StrOrigin column ✅ `d0ba2ffc`
+- [x] EventName recovery uses correct merge mode ✅ `d0ba2ffc`
+- [x] Auto-detect EventNames when no EventName column ✅ `d0ba2ffc`
+- [x] SKIPPED_EMPTY_STRORIGIN instead of misleading NOT_FOUND ✅ `d0ba2ffc`
+- [x] SCRIPT filter resolves EventNames before skipping ✅ `5da55030`
+- [x] StringID-Only Excel transfer updates ALL matching rows ✅ `8a1f19bd`
+- [x] STRICT merge handles duplicate corrections ✅ `31ce29b2`
+- [x] `_merge_excel_strict` handles duplicate target rows ✅ `31ce29b2`
+- [x] StrOrigin Only Excel merge logs conflicting corrections ✅ `31ce29b2`
+- [x] Diagnostic maps keep first occurrence ✅ `9bd940f5`
+- [x] Attribute case variants unified in xml_io.py ✅ `9bd940f5`
+- [x] Hallucination phrases use full phrases (no "tradu") ✅ `9bd940f5`
+- [x] Exit button calls `_on_close` cleanup ✅ `9bd940f5`
+- [x] Column detection works for pasted paths ✅ `9bd940f5`
+- [x] `LANGUAGE_ORDER` refreshed on settings change ✅ `9bd940f5`
+- [x] `traceback.print_exc()` replaced with `logger.exception()` ✅ `9bd940f5`
+- [x] Numeric entity regex fixed ✅ `9bd940f5`
+- [x] Duplicate `iter_locstr_elements` consolidated ✅ `9bd940f5`
+
+### Post-Fix Review (Phase 3D) — TODO before or during GUI rework
+
+- [ ] 3D.C1-C6: 6 critical-level polish items (report cosmetics, consistency)
+- [ ] 3D.W1-W9: 9 warning-level quality items (imports, duplication, caching)
+- [ ] 3D.S3-S7: 4 standalone extractor minor fixes
+
+### GUI Reorganization (Phases 1-2, 4-6) — NOT STARTED
+
 - [ ] Main tab contains only: Match Type (3 options), Files, Pre-Submission Checks, Settings
 - [ ] Helper Functions tab contains: Quick Actions (with Substring Search), String Erase
 - [ ] Substring Match removed from main Match Type radios
@@ -493,36 +551,40 @@ String Erase can optionally reuse the Source/Target paths from the Main tab's Fi
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Column shift bug corrupts transfers silently | **CRITICAL** | Fix FIRST before any other work (Phase 3A.1) |
-| StrOrigin Only generate produces empty output | **CRITICAL** | Fix immediately (Phase 3A.2) |
-| Dict-overwrite bugs in other merge modes | HIGH | Same fix pattern as StringID-only (defaultdict) |
+| ~~Column shift bug corrupts transfers silently~~ | ~~CRITICAL~~ | ✅ FIXED `d0ba2ffc` |
+| ~~StrOrigin Only generate produces empty output~~ | ~~CRITICAL~~ | ✅ FIXED `d0ba2ffc` |
+| ~~Dict-overwrite bugs in other merge modes~~ | ~~HIGH~~ | ✅ FIXED `31ce29b2` |
 | Widget reparenting breaks layout | HIGH | Phase 1 is purely structural — test before adding features |
 | Substring Search decoupled from radio state causes bugs | MEDIUM | Keep internal `match_type` parameter, just change how it's triggered |
 | String Erase logic diverges from standalone script | LOW | Port directly, keep standalone as reference |
 | Users confused by layout change | MEDIUM | Help button, clear tab labels, update user guide |
 | Window too small for Notebook tabs | LOW | Test minimum size, ensure graceful scroll |
+| 3D.C3 Excel StringID-only drops all rows when target has no StrOrigin | MEDIUM | Fix before GUI rework. Only affects Excel-to-Excel, not XML transfer. |
 
 ---
 
-## 10. Implementation Order (Recommended)
+## 10. Implementation Order (Updated 2026-02-23)
 
 ```
-URGENT (do first):
-  Phase 3A → Fix 4 critical/high bugs (column shift, strorigin_only generate,
-             strorigin requirement, recovery merge mode)
+COMPLETED ✅:
+  Phase 3A → All 7 urgent bugs fixed (d0ba2ffc)
+  Phase 3B → All 4 dict-overwrite bugs fixed (31ce29b2, 9bd940f5)
+  Phase 3C → All 9 robustness fixes done (9bd940f5), 3C.6 deferred
 
-THEN:
-  Phase 3B → Fix dict-overwrite bugs in strict/excel merge (same pattern)
-  Phase 3C → Fix remaining correctness issues
+NEXT — Fix before or during GUI rework:
+  Phase 3D → 6 critical polish items (3D.C1-C6) + 9 warnings (3D.W1-W9)
+             None break transfer. All are report/quality/consistency fixes.
+             Can be done as part of Phase 1 refactoring.
 
-THEN (GUI work):
-  Phase 1  → Tab infrastructure
-  Phase 2  → Substring match relocation
+THEN (GUI rework):
+  Phase 1  → Tab infrastructure (Notebook widget, reparent widgets)
+  Phase 2  → Substring match relocation (Main → Helper Functions)
   Phase 4  → String Erase integration
+  Phase 4B → Long String Extraction integration + Transfer length filter
   Phase 5  → Help button
   Phase 6  → Polish & testing
 ```
 
 ---
 
-*Last updated: 2026-02-23 (code review findings added)*
+*Last updated: 2026-02-23 (all Phase 3 fixes done, 6-agent review findings documented as Phase 3D)*
