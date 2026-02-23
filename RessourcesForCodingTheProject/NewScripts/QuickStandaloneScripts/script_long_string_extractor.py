@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 # coding: utf-8
 """
-Script Long String Extractor v1.0
+Script Long String Extractor v2.0
 ==================================
 Standalone GUI tool that extracts LocStr entries from XML/Excel files
 that are SCRIPT TYPE (Dialog/Sequencer) AND above a character length threshold.
 
 Inputs:
-  - Export Folder: export__ folder to build StringID → Category mapping
+  - Export Folder: export__ folder to build StringID -> Category mapping
   - Source Folder: Folder with languagedata_*.xml or .xlsx files to extract from
   - Min Length: Minimum character count threshold for Str content
 
-Output:
-  - Excel report with extracted entries (StringID, StrOrigin, Str, Category, CharCount)
+Output (per language, in script directory):
+  - Excel: StringID, StrOrigin, Str, CharCount
+  - XML: Raw LocStr elements under <root>
 
 Usage: python script_long_string_extractor.py
 """
@@ -62,12 +63,20 @@ logger.setLevel(logging.DEBUG)
 # CONFIGURATION
 # =============================================================================
 
-WINDOW_TITLE = "Script Long String Extractor v1.0"
+WINDOW_TITLE = "Script Long String Extractor v2.0"
 WINDOW_WIDTH = 820
 WINDOW_HEIGHT = 720
 ENTRY_WIDTH = 55
 
 SCRIPT_CATEGORIES = {"Sequencer", "Dialog"}
+
+# Detect if running as PyInstaller bundle
+if getattr(sys, 'frozen', False):
+    SCRIPT_DIR = Path(sys.executable).parent
+else:
+    SCRIPT_DIR = Path(__file__).parent
+
+OUTPUT_DIR = SCRIPT_DIR / "Extraction_Output"
 
 # LocStr tag and attribute variants
 LOCSTR_TAGS = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
@@ -112,12 +121,20 @@ def visible_char_count(text: str) -> int:
     return len(t)
 
 
+def extract_language_from_filename(filename: str) -> str:
+    """Extract language code from languagedata_*.xml filename."""
+    m = re.match(r'languagedata_(.+)\.xml', filename, re.IGNORECASE)
+    if m:
+        return m.group(1).upper()
+    return ""
+
+
 # =============================================================================
 # CATEGORY MAPPING (from export folder)
 # =============================================================================
 
 def build_stringid_to_category(export_folder: Path, progress_fn=None) -> Dict[str, str]:
-    """Build StringID → Category mapping from export folder structure."""
+    """Build StringID -> Category mapping from export folder structure."""
     mapping = {}
     if not export_folder.exists():
         return mapping
@@ -181,9 +198,10 @@ def extract_from_xml(
     """
     Extract LocStr entries from XML that are SCRIPT type + above length threshold.
 
-    Returns list of dicts: {string_id, str_origin, str_value, category, char_count, source_file}
+    Returns list of dicts: {string_id, str_origin, str_value, category, char_count, raw_attribs, language}
     """
     results = []
+    language = extract_language_from_filename(xml_path.name)
     root = _parse_xml_root(xml_path)
 
     for elem in _iter_locstr(root):
@@ -214,7 +232,8 @@ def extract_from_xml(
             "str_value": sv,
             "category": category,
             "char_count": char_count,
-            "source_file": xml_path.name,
+            "raw_attribs": dict(elem.attrib),
+            "language": language,
         })
 
     return results
@@ -229,6 +248,7 @@ def extract_from_excel(
     Extract entries from Excel that are SCRIPT type + above length threshold.
 
     Expects columns: StringID, StrOrigin, Str
+    Language determined from filename if possible, otherwise "EXCEL".
     """
     if not HAS_OPENPYXL:
         raise ImportError("openpyxl required for Excel: pip install openpyxl")
@@ -236,6 +256,10 @@ def extract_from_excel(
     wb = openpyxl.load_workbook(str(xlsx_path), read_only=True, data_only=True)
     ws = wb.active
     results = []
+
+    # Try to extract language from filename (e.g. corrections_ENG.xlsx)
+    lang_match = re.search(r'[_-]([a-zA-Z]{2,6})\.xlsx$', xlsx_path.name, re.IGNORECASE)
+    language = lang_match.group(1).upper() if lang_match else "EXCEL"
 
     # Detect headers
     headers = {}
@@ -274,7 +298,8 @@ def extract_from_excel(
             "str_value": sv,
             "category": category,
             "char_count": char_count,
-            "source_file": xlsx_path.name,
+            "raw_attribs": {"StringID": sid, "StrOrigin": so, "Str": sv},
+            "language": language,
         })
 
     wb.close()
@@ -285,8 +310,8 @@ def extract_from_excel(
 # REPORT GENERATION
 # =============================================================================
 
-def write_report(entries: List[Dict], output_path: Path) -> bool:
-    """Write extraction results to Excel using xlsxwriter."""
+def write_excel_report(entries: List[Dict], output_path: Path) -> bool:
+    """Write extraction results to Excel (StringID, StrOrigin, Str, CharCount)."""
     if not HAS_XLSXWRITER:
         logger.warning("xlsxwriter not available")
         return False
@@ -306,9 +331,8 @@ def write_report(entries: List[Dict], output_path: Path) -> bool:
     })
     cell_fmt = wb.add_format({'border': 1, 'text_wrap': True, 'valign': 'top'})
     num_fmt = wb.add_format({'border': 1, 'align': 'center', 'valign': 'top'})
-    cat_fmt = wb.add_format({'border': 1, 'align': 'center', 'valign': 'top', 'bold': True})
 
-    headers = ["StringID", "StrOrigin", "Str", "Category", "CharCount", "SourceFile"]
+    headers = ["StringID", "StrOrigin", "Str", "CharCount"]
     for col, h in enumerate(headers):
         ws.write(0, col, h, header_fmt)
 
@@ -319,22 +343,49 @@ def write_report(entries: List[Dict], output_path: Path) -> bool:
         ws.write(row, 0, e["string_id"], cell_fmt)
         ws.write(row, 1, e["str_origin"], cell_fmt)
         ws.write(row, 2, e["str_value"], cell_fmt)
-        ws.write(row, 3, e["category"], cat_fmt)
-        ws.write(row, 4, e["char_count"], num_fmt)
-        ws.write(row, 5, e["source_file"], cell_fmt)
+        ws.write(row, 3, e["char_count"], num_fmt)
 
     # Column widths
     ws.set_column(0, 0, 35)   # StringID
     ws.set_column(1, 1, 45)   # StrOrigin
     ws.set_column(2, 2, 60)   # Str
-    ws.set_column(3, 3, 14)   # Category
-    ws.set_column(4, 4, 12)   # CharCount
-    ws.set_column(5, 5, 30)   # SourceFile
+    ws.set_column(3, 3, 12)   # CharCount
 
     ws.autofilter(0, 0, len(entries_sorted), len(headers) - 1)
     ws.freeze_panes(1, 0)
 
     wb.close()
+    return True
+
+
+def write_xml_report(entries: List[Dict], output_path: Path) -> bool:
+    """Write raw LocStr elements under <root> to XML file."""
+    if not entries:
+        return False
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    lines = ['<?xml version="1.0" encoding="utf-8"?>', '<root>']
+
+    for e in sorted(entries, key=lambda x: x["char_count"], reverse=True):
+        attribs = e.get("raw_attribs", {})
+        if not attribs:
+            # Fallback: build from entry data
+            attribs = {"StringID": e["string_id"], "StrOrigin": e["str_origin"], "Str": e["str_value"]}
+
+        # Build attribute string preserving original attribute names/values
+        attr_parts = []
+        for k, v in attribs.items():
+            # Escape XML special chars in attribute values
+            escaped = str(v).replace('&', '&amp;').replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
+            attr_parts.append(f'{k}="{escaped}"')
+
+        lines.append(f'  <LocStr {" ".join(attr_parts)} />')
+
+    lines.append('</root>')
+    lines.append('')  # trailing newline
+
+    output_path.write_text('\n'.join(lines), encoding='utf-8')
     return True
 
 
@@ -402,6 +453,12 @@ class ScriptLongStringExtractorGUI:
         self.length_spin.pack(side=tk.LEFT, padx=(5, 10))
         ttk.Label(len_row, text="(only entries with Str >= this many visible chars)", font=("Segoe UI", 8)).pack(side=tk.LEFT)
 
+        # Output info
+        out_frame = ttk.LabelFrame(main, text="Output", padding=5)
+        out_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(out_frame, text=f"Output directory: {OUTPUT_DIR}", font=("Segoe UI", 8)).pack(anchor=tk.W)
+        ttk.Label(out_frame, text="Per language: one Excel (.xlsx) + one XML (.xml)", font=("Segoe UI", 8)).pack(anchor=tk.W)
+
         # Action buttons
         btn_frame = ttk.Frame(main)
         btn_frame.pack(pady=10)
@@ -418,7 +475,7 @@ class ScriptLongStringExtractorGUI:
         log_frame = ttk.LabelFrame(main, text="Log", padding=5)
         log_frame.pack(fill=tk.BOTH, expand=True, pady=5)
 
-        self.log = scrolledtext.ScrolledText(log_frame, height=18, font=("Consolas", 9), wrap=tk.WORD)
+        self.log = scrolledtext.ScrolledText(log_frame, height=15, font=("Consolas", 9), wrap=tk.WORD)
         self.log.pack(fill=tk.BOTH, expand=True)
 
         self.log.tag_config("info", foreground="black")
@@ -488,12 +545,12 @@ class ScriptLongStringExtractorGUI:
 
     def _execute_extract(self, export_folder: Path, source_folder: Path, min_length: int):
         self._log("=" * 60, "header")
-        self._log("  SCRIPT LONG STRING EXTRACTOR", "header")
+        self._log("  SCRIPT LONG STRING EXTRACTOR v2.0", "header")
         self._log("=" * 60, "header")
 
         # Step 1: Build category mapping
         self._log(f"\nExport folder: {export_folder}", "info")
-        self._log("Building StringID → Category mapping...", "info")
+        self._log("Building StringID -> Category mapping...", "info")
 
         category_map = build_stringid_to_category(export_folder, progress_fn=self._log)
         ci_category = {k.lower(): v for k, v in category_map.items()}
@@ -529,7 +586,8 @@ class ScriptLongStringExtractorGUI:
             try:
                 entries = extract_from_xml(xml_file, ci_category, min_length)
                 if entries:
-                    self._log(f"  {xml_file.name}: {len(entries)} entries", "success")
+                    lang = extract_language_from_filename(xml_file.name) or "UNKNOWN"
+                    self._log(f"  {xml_file.name} [{lang}]: {len(entries)} entries", "success")
                 all_entries.extend(entries)
             except Exception as e:
                 self._log(f"  {xml_file.name}: ERROR - {e}", "error")
@@ -547,11 +605,23 @@ class ScriptLongStringExtractorGUI:
         self._log(f"\n{'=' * 60}", "header")
         self._log("  SUMMARY", "header")
         self._log(f"{'=' * 60}", "header")
-        self._log(f"  SCRIPT entries found: {len(all_entries)}", "success" if all_entries else "info")
+        self._log(f"  Total SCRIPT entries found: {len(all_entries)}", "success" if all_entries else "info")
 
         if not all_entries:
             self._log("\nNo entries matched the criteria.", "warning")
             return
+
+        # Group by language
+        by_language: Dict[str, List[Dict]] = {}
+        for e in all_entries:
+            lang = e.get("language", "UNKNOWN") or "UNKNOWN"
+            by_language.setdefault(lang, []).append(e)
+
+        self._log(f"  Languages: {len(by_language)}", "info")
+        for lang in sorted(by_language.keys()):
+            entries_for_lang = by_language[lang]
+            lengths = [e["char_count"] for e in entries_for_lang]
+            self._log(f"    {lang}: {len(entries_for_lang)} entries (chars: {min(lengths)}-{max(lengths)})", "info")
 
         # Category breakdown
         cat_counts = {}
@@ -560,21 +630,39 @@ class ScriptLongStringExtractorGUI:
         for cat, cnt in sorted(cat_counts.items()):
             self._log(f"    {cat}: {cnt}", "info")
 
-        # Length stats
-        lengths = [e["char_count"] for e in all_entries]
-        self._log(f"  Char count range: {min(lengths)} - {max(lengths)}", "info")
+        # Step 5: Write per-language reports
+        self._log(f"\n{'─' * 60}", "info")
+        self._log("WRITING OUTPUT...", "header")
+        self._log(f"{'─' * 60}", "info")
 
-        # Step 5: Write report
         timestamp = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_dir = source_folder / "Extraction_Reports"
-        report_path = report_dir / f"script_long_strings_{min_length}chars_{timestamp}.xlsx"
+        output_dir = OUTPUT_DIR / f"extraction_{min_length}chars_{timestamp}"
 
-        success = write_report(all_entries, report_path)
-        if success:
-            self._log(f"\n  Report saved: {report_path}", "success")
-            self._log(f"  Entries: {len(all_entries)} (sorted by char count descending)", "info")
-        else:
-            self._log("\n  Failed to write report.", "error")
+        total_xlsx = 0
+        total_xml = 0
+
+        for lang in sorted(by_language.keys()):
+            entries_for_lang = by_language[lang]
+
+            # Excel output
+            xlsx_path = output_dir / f"{lang}_script_long_strings.xlsx"
+            if write_excel_report(entries_for_lang, xlsx_path):
+                total_xlsx += 1
+                self._log(f"  {xlsx_path.name}: {len(entries_for_lang)} entries", "success")
+
+            # XML output (raw LocStr under <root>)
+            xml_path = output_dir / f"{lang}_script_long_strings.xml"
+            if write_xml_report(entries_for_lang, xml_path):
+                total_xml += 1
+                self._log(f"  {xml_path.name}: {len(entries_for_lang)} entries", "success")
+
+        self._log(f"\n{'=' * 60}", "header")
+        self._log("  DONE", "header")
+        self._log(f"{'=' * 60}", "header")
+        self._log(f"  Output: {output_dir}", "success")
+        self._log(f"  Excel files: {total_xlsx}", "info")
+        self._log(f"  XML files:   {total_xml}", "info")
+        self._log(f"  Total entries: {len(all_entries)} across {len(by_language)} language(s)", "info")
 
 
 # =============================================================================
