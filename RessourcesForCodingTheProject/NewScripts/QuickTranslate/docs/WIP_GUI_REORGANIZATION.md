@@ -293,22 +293,23 @@ Secondary tools that don't need to clutter the main workflow:
 
 #### 3A. URGENT — Fix Before Next Build
 
-| # | Task | Details | Risk |
-|---|------|---------|------|
-| 3A.1 | **Column shift after `_insert_str_column` corrupts reads** | `excel_io.py` lines 722-754. When target Excel has no "Str" column, `_insert_str_column()` shifts columns right but `stringid_col` and `strorigin_col` are NOT updated. If `stringid_col > strorigin_col`, reads the wrong column → ALL corrections silently fail (0 updated, 0 not found). **Fix:** After `_insert_str_column()`, increment any `*_col` variable `>= str_col`. | **CRITICAL** |
-| 3A.2 | **`_generate()` silently fails for StrOrigin Only** | `app.py` lines 1911-2019. The `work()` function has `if/elif/elif` for substring, stringid_only, strict — but **no branch for strorigin_only**. Falls through silently → empty output with misleading "Success" dialog. **Fix:** Add `elif match_type == "strorigin_only":` branch. | **CRITICAL** |
-| 3A.3 | **Remove StrOrigin requirement for StringID-Only mode** | `excel_io.py` line 712-720. Rejects Excel targets missing StrOrigin column even in StringID-only mode. The GUI allows it (line 1268) but the merge function rejects it. **Fix:** Skip StrOrigin check when `match_mode="stringid_only"`. | HIGH |
-| 3A.4 | **Recovery pass uses STRICT merge for StringID-only NOT_FOUND** | `xml_transfer.py` lines 1089-1108. EventName recovery builds corrections with potentially empty `str_origin` then calls STRICT merge which requires StrOrigin match. Recovery silently does nothing. **Fix:** Use `merge_corrections_stringid_only` when original merge was StringID-only. | HIGH |
-| 3A.5 | **Auto-detect EventNames in StringID column** | `excel_io.py` lines 198-224. When Excel has only a StringID column (no EventName column) but the StringID column contains a mix of real StringIDs and EventNames, the system puts everything into `string_id` only. `_source_eventname` is never set → pre-merge EventName resolution (the PRIMARY pipeline at `xml_transfer.py` lines 1440-1468) is completely skipped. Only the post-merge recovery fallback runs, and even then Step 1 (DialogVoice strip) is skipped because `_original_eventname` is empty. **Current workaround:** User must duplicate the StringID column and name the copy "EventName" so both paths are available. **Fix:** In `read_corrections_from_excel`, when there is NO EventName column, auto-populate `_source_eventname` from `string_id` as a fallback. This way the full EventName resolution pipeline runs even without a dedicated EventName column. Real StringIDs will simply fail EventName lookup and proceed normally via StringID matching. | HIGH |
+| # | Task | Details | Status |
+|---|------|---------|--------|
+| 3A.1 | **Column shift after `_insert_str_column` corrupts reads** | `excel_io.py` lines 722-754. When target Excel has no "Str" column, `_insert_str_column()` shifts columns right but `stringid_col` and `strorigin_col` are NOT updated. If `stringid_col > strorigin_col`, reads the wrong column → ALL corrections silently fail. **Fix:** After `_insert_str_column()`, increment any `*_col` variable `>= str_col`. | TODO |
+| 3A.2 | **`_generate()` silently fails for StrOrigin Only** | `app.py` lines 1911-2019. The `work()` function has `if/elif/elif` for substring, stringid_only, strict — but **no branch for strorigin_only**. Falls through silently → empty output with misleading "Success" dialog. **Fix:** Add `elif match_type == "strorigin_only":` branch. | TODO |
+| 3A.3 | **Remove StrOrigin requirement for StringID-Only mode** | `excel_io.py` line 712-720. Rejects Excel targets missing StrOrigin column even in StringID-only mode. **Fix:** Skip StrOrigin check when `match_mode="stringid_only"`. | TODO |
+| 3A.4 | **Recovery pass uses STRICT merge for StringID-only NOT_FOUND** | `xml_transfer.py` lines 1089-1108. EventName recovery calls STRICT merge which requires StrOrigin match. Recovery silently does nothing. **Fix:** Use `merge_corrections_stringid_only` when original merge was StringID-only. | TODO |
+| 3A.5 | **Auto-detect EventNames in StringID column** | When Excel has no EventName column but StringID column contains mixed StringIDs and EventNames, `_source_eventname` is never set → pre-merge EventName resolution is skipped. **Workaround:** Duplicate StringID column as EventName. **Fix:** Auto-populate `_source_eventname` from `string_id` when no EventName column. | TODO |
+| 3A.6 | **SCRIPT filter skips EventNames as "Uncategorized"** | `xml_transfer.py` + `excel_io.py` StringID-only SCRIPT filter. EventNames in `string_id` field are not in `stringid_to_category` index → default to "Uncategorized" → SKIPPED_NON_SCRIPT. Recovery pass only handles NOT_FOUND, not SKIPPED_NON_SCRIPT, so these are permanently lost. **Fix:** Multi-pass — before skipping as non-SCRIPT, try resolving as EventName via keyword extraction + export lookup. If resolved StringID is SCRIPT, let it through. | **DONE** ✅ `5da55030` |
 
 #### 3B. IMPORTANT — Fix Soon (Same Class of Bug as StringID Duplicate)
 
-| # | Task | Details | Risk |
-|---|------|---------|------|
-| 3B.1 | **STRICT XML merge dict overwrites duplicate corrections** | `xml_transfer.py` lines 101-113. `correction_lookup[(sid_lower, origin_norm)] = correction` — if multiple corrections share same (StringID, StrOrigin), only last survives. No conflict logging (unlike strorigin_only mode). Inflated NOT_FOUND count. **Fix:** Add `defaultdict(list)` or at minimum conflict detection. | HIGH |
-| 3B.2 | **`_merge_excel_strict` target lookup overwrites duplicates** | `excel_io.py` lines 808-817. `target_lookup[(sid_lower, norm_origin)] = entry` — duplicate target rows with same (StringID, StrOrigin) lose all but last. Same class as the StringID-only bug we fixed. **Fix:** Use `defaultdict(list)`. | HIGH |
-| 3B.3 | **StrOrigin Only Excel merge: corrections dict overwrites duplicates** | `excel_io.py` lines 913-918. `correction_lookup[origin_norm] = c` — if multiple corrections share same normalized StrOrigin but different corrected text, only last survives. No conflict detection or logging (XML version has it). **Fix:** Add conflict detection + logging matching XML version, or use `defaultdict(list)`. | HIGH |
-| 3B.4 | **Diagnostic maps overwrite on duplicate StringIDs** | `excel_io.py` line 747 + `xml_transfer.py` line 146. `target_strorigin_map[sid.lower()] = so` — when multiple rows share a StringID, mismatch diagnostics show the wrong StrOrigin. Misleading error messages. **Fix:** Store list or keep first occurrence. | MEDIUM |
+| # | Task | Details | Status |
+|---|------|---------|--------|
+| 3B.1 | **STRICT XML merge dict overwrites duplicate corrections** | `xml_transfer.py` — `correction_lookup` used plain dict. Multiple corrections with same (StringID, StrOrigin) lost all but last. Inflated NOT_FOUND count. **Fix:** `defaultdict(list)`, mark ALL as matched. | **DONE** ✅ `31ce29b2` |
+| 3B.2 | **`_merge_excel_strict` target lookup overwrites duplicates** | `excel_io.py` — `target_lookup` used plain dict. Duplicate target rows with same (StringID, StrOrigin) lost all but last. **Fix:** `defaultdict(list)`, iterate all matching entries. | **DONE** ✅ `31ce29b2` |
+| 3B.3 | **StrOrigin Only Excel merge: corrections dict overwrites duplicates** | `excel_io.py` — `correction_lookup` had no conflict detection (XML version had it). **Fix:** Added conflict detection + warning logging. | **DONE** ✅ `31ce29b2` |
+| 3B.4 | **Diagnostic maps overwrite on duplicate StringIDs** | `excel_io.py` line 747 + `xml_transfer.py` line 146. `target_strorigin_map[sid.lower()] = so` — when multiple rows share a StringID, mismatch diagnostics show the wrong StrOrigin. Misleading error messages. **Fix:** Store list or keep first occurrence. | TODO |
 
 #### 3C. SHOULD FIX — Correctness & Robustness
 
@@ -422,9 +423,12 @@ String Erase can optionally reuse the Source/Target paths from the Main tab's Fi
 - [ ] `_generate()` handles StrOrigin Only match type
 - [ ] StringID-Only mode works without StrOrigin column in target Excel
 - [ ] EventName recovery uses correct merge mode (not always STRICT)
-- [ ] Mixed StringID/EventName column works without needing a separate EventName column
-- [ ] STRICT merge handles duplicate corrections (no silent overwrite)
-- [ ] `_merge_excel_strict` handles duplicate target rows
+- [ ] Auto-populate `_source_eventname` when no EventName column
+- [x] ~~SCRIPT filter resolves EventNames before skipping as non-SCRIPT~~ ✅ `5da55030`
+- [x] ~~StringID-Only Excel transfer updates ALL matching rows~~ ✅ `8a1f19bd`
+- [x] ~~STRICT merge handles duplicate corrections (no silent overwrite)~~ ✅ `31ce29b2`
+- [x] ~~`_merge_excel_strict` handles duplicate target rows~~ ✅ `31ce29b2`
+- [x] ~~StrOrigin Only Excel merge logs conflicting corrections~~ ✅ `31ce29b2`
 - [ ] Attribute case variants unified across xml_io.py and xml_transfer.py
 - [ ] Hallucination phrases use full phrases / word boundaries (no "tradu" false positives)
 
