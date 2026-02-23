@@ -976,11 +976,13 @@ def _merge_excel_stringid_only(
     ci_category = {k.lower(): v for k, v in stringid_to_category.items()} if stringid_to_category else {}
     ci_subfolder = {k.lower(): v for k, v in stringid_to_subfolder.items()} if stringid_to_subfolder else {}
 
-    target_by_sid = {}
+    # Build list-based lookup: one StringID can map to MULTIPLE target rows
+    from collections import defaultdict
+    target_by_sid = defaultdict(list)
     for entry in target_entries:
         if not entry["str_origin"].strip():
             continue
-        target_by_sid[entry["string_id"].lower()] = entry
+        target_by_sid[entry["string_id"].lower()].append(entry)
 
     for c in corrections:
         sid = c["string_id"]
@@ -1004,34 +1006,35 @@ def _merge_excel_stringid_only(
             })
             continue
 
-        target_entry = target_by_sid.get(sid_lower)
-        if target_entry is not None:
-            result["matched"] += 1
-            old_str = target_entry["str_value"]
+        matching_entries = target_by_sid.get(sid_lower, [])
+        if matching_entries:
+            for target_entry in matching_entries:
+                result["matched"] += 1
+                old_str = target_entry["str_value"]
 
-            if only_untranslated and old_str and not is_korean_text(old_str):
-                result["skipped_translated"] += 1
-                result["details"].append({
-                    "string_id": sid, "status": "SKIPPED_TRANSLATED",
-                    "old": c.get("str_origin", ""), "new": c.get("corrected", ""),
-                })
-                continue
+                if only_untranslated and old_str and not is_korean_text(old_str):
+                    result["skipped_translated"] += 1
+                    result["details"].append({
+                        "string_id": sid, "status": "SKIPPED_TRANSLATED",
+                        "old": c.get("str_origin", ""), "new": c.get("corrected", ""),
+                    })
+                    continue
 
-            new_str = _convert_linebreaks_for_excel(c["corrected"])
-            if new_str != old_str:
-                ws.cell(row=target_entry["row"], column=str_col, value=new_str)
-                if "\n" in new_str:
-                    ws.cell(row=target_entry["row"], column=str_col).alignment = Alignment(wrap_text=True, vertical='top')
-                result["updated"] += 1
-                result["details"].append({
-                    "string_id": sid, "status": "UPDATED",
-                    "old": old_str, "new": new_str,
-                })
-            else:
-                result["details"].append({
-                    "string_id": sid, "status": "UNCHANGED",
-                    "old": old_str, "new": "(same)",
-                })
+                new_str = _convert_linebreaks_for_excel(c["corrected"])
+                if new_str != old_str:
+                    ws.cell(row=target_entry["row"], column=str_col, value=new_str)
+                    if "\n" in new_str:
+                        ws.cell(row=target_entry["row"], column=str_col).alignment = Alignment(wrap_text=True, vertical='top')
+                    result["updated"] += 1
+                    result["details"].append({
+                        "string_id": sid, "status": "UPDATED",
+                        "old": old_str, "new": new_str,
+                    })
+                else:
+                    result["details"].append({
+                        "string_id": sid, "status": "UNCHANGED",
+                        "old": old_str, "new": "(same)",
+                    })
         else:
             result["not_found"] += 1
             result["details"].append({

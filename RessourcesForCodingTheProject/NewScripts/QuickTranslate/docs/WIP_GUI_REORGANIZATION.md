@@ -287,33 +287,41 @@ Secondary tools that don't need to clutter the main workflow:
 | 2.3 | Clean up Transfer button logic | Transfer button no longer needs "disabled for substring" logic since substring is gone from Main. | LOW |
 | 2.4 | Update `_on_match_type_change()` | Remove substring-specific branches. Simplify enable/disable logic. | LOW |
 
-### Phase 3: String Erase Integration
+### Phase 3: Bug Fixes (Transfer Logic)
 
 | # | Task | Details | Risk |
 |---|------|---------|------|
-| 3.1 | Create `core/string_eraser.py` | Port logic from `QuickStandaloneScripts/string_eraser_xml.py`. Adapt to use QuickTranslate's existing normalize functions and XML utilities. | LOW - logic already proven |
-| 3.2 | Add String Erase section to Helper Functions tab | Source/Target file pickers, recursive checkbox, Erase button. | LOW |
-| 3.3 | Wire to worker thread | Use existing `_run_in_thread()` pattern for async execution. Show progress in shared log/progress bar. | LOW |
-| 3.4 | Add erase report output | Summary of erased entries written to log + optional export file. | LOW |
+| 3.1 | Remove StrOrigin requirement for StringID-Only target Excel | `merge_corrections_to_excel()` at line 712 requires both StringID AND StrOrigin columns even in StringID-only mode. The validation should skip the StrOrigin check when `match_mode="stringid_only"`. Also remove the empty-StrOrigin skip at line 981 for this mode. | LOW - small validation fix |
+| 3.2 | Remove StrOrigin requirement for StringID-Only target XML | Check if `merge_corrections_to_xml()` has the same unnecessary StrOrigin requirement for StringID-only mode and fix if so. | LOW |
+| 3.3 | Test StringID-Only transfer with StrOrigin-less Excel | Verify transfer works with an Excel that only has StringID + Str columns. | LOW |
 
-### Phase 4: Help Button & Guide Popup
-
-| # | Task | Details | Risk |
-|---|------|---------|------|
-| 4.1 | Add [?] button to Quick Actions header | Small button next to "Quick Actions" LabelFrame label. | LOW |
-| 4.2 | Create help popup `Toplevel` window | Non-modal window with styled help text for each Quick Action. | LOW |
-| 4.3 | Load help content from USER_GUIDE.md or hardcoded | Decide: parse markdown at runtime or maintain separate help strings. Hardcoded is simpler and more reliable. | LOW |
-
-### Phase 5: Polish & Testing
+### Phase 4: String Erase Integration
 
 | # | Task | Details | Risk |
 |---|------|---------|------|
-| 5.1 | Keyboard navigation | Tab switching via Ctrl+1/Ctrl+2. Focus management within tabs. | LOW |
-| 5.2 | Remember last active tab | Persist in settings.json which tab was active. Restore on startup. | LOW |
-| 5.3 | Window resize behavior | Ensure notebook tabs resize properly with window. Test minimum window size. | MEDIUM |
-| 5.4 | Full regression test | Test every feature end-to-end in both tabs. | HIGH priority |
-| 5.5 | Update USER_GUIDE.md | Document new tab layout, String Erase feature, help button. | LOW |
-| 5.6 | Build and verify installer | Ensure PyInstaller bundles correctly, Inno Setup works. | MEDIUM |
+| 4.1 | Create `core/string_eraser.py` | Port logic from `QuickStandaloneScripts/string_eraser_xml.py`. Adapt to use QuickTranslate's existing normalize functions and XML utilities. | LOW - logic already proven |
+| 4.2 | Add String Erase section to Helper Functions tab | Source/Target file pickers, recursive checkbox, Erase button. | LOW |
+| 4.3 | Wire to worker thread | Use existing `_run_in_thread()` pattern for async execution. Show progress in shared log/progress bar. | LOW |
+| 4.4 | Add erase report output | Summary of erased entries written to log + optional export file. | LOW |
+
+### Phase 5: Help Button & Guide Popup
+
+| # | Task | Details | Risk |
+|---|------|---------|------|
+| 5.1 | Add [?] button to Quick Actions header | Small button next to "Quick Actions" LabelFrame label. | LOW |
+| 5.2 | Create help popup `Toplevel` window | Non-modal window with styled help text for each Quick Action. | LOW |
+| 5.3 | Load help content from USER_GUIDE.md or hardcoded | Decide: parse markdown at runtime or maintain separate help strings. Hardcoded is simpler and more reliable. | LOW |
+
+### Phase 6: Polish & Testing
+
+| # | Task | Details | Risk |
+|---|------|---------|------|
+| 6.1 | Keyboard navigation | Tab switching via Ctrl+1/Ctrl+2. Focus management within tabs. | LOW |
+| 6.2 | Remember last active tab | Persist in settings.json which tab was active. Restore on startup. | LOW |
+| 6.3 | Window resize behavior | Ensure notebook tabs resize properly with window. Test minimum window size. | MEDIUM |
+| 6.4 | Full regression test | Test every feature end-to-end in both tabs. | HIGH priority |
+| 6.5 | Update USER_GUIDE.md | Document new tab layout, String Erase feature, help button. | LOW |
+| 6.6 | Build and verify installer | Ensure PyInstaller bundles correctly, Inno Setup works. | MEDIUM |
 
 ---
 
