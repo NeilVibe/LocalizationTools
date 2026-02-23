@@ -759,6 +759,16 @@ def merge_corrections_stringid_only(
             all_elements.extend(root.iter(tag))
         # No break - collect all tag case variants
 
+        # First pass: collect ALL target StringIDs (even those with empty StrOrigin)
+        # so we can distinguish "truly missing" from "exists but empty StrOrigin"
+        target_stringids_all = set()
+        for loc in all_elements:
+            sid = (loc.get("StringId") or loc.get("StringID") or
+                   loc.get("stringid") or loc.get("STRINGID") or
+                   loc.get("Stringid") or loc.get("stringId") or "").strip()
+            if sid:
+                target_stringids_all.add(sid.lower())
+
         for loc in all_elements:
             sid = (loc.get("StringId") or loc.get("StringID") or
                    loc.get("stringid") or loc.get("STRINGID") or
@@ -825,19 +835,29 @@ def merge_corrections_stringid_only(
                     })
 
         # Count unmatched corrections - store FULL data for failure reports
+        # Distinguish "truly missing" from "exists but StrOrigin is empty"
         for sid_key, matched in correction_matched.items():
             if not matched:
                 category = ci_category.get(sid_key, "Uncategorized")
-                result["not_found"] += 1
+                c = correction_lookup[sid_key]
+
+                if sid_key in target_stringids_all:
+                    # StringID exists in target but was skipped (empty StrOrigin)
+                    status = "SKIPPED_EMPTY_STRORIGIN"
+                    result["skipped_empty_strorigin"] = result.get("skipped_empty_strorigin", 0) + 1
+                else:
+                    status = "NOT_FOUND"
+                    result["not_found"] += 1
+
                 if category in result["by_category"]:
                     result["by_category"][category]["not_found"] += 1
-                c = correction_lookup[sid_key]
+
                 result["details"].append({
                     "string_id": c["string_id"],
-                    "status": "NOT_FOUND",
+                    "status": status,
                     "old": c.get("str_origin", ""),
                     "new": c["corrected"],
-                    "raw_attribs": c.get("raw_attribs", {}),  # ALL original attributes
+                    "raw_attribs": c.get("raw_attribs", {}),
                     "_original_eventname": c.get("_original_eventname", ""),
                     "_original_dialogvoice": c.get("_original_dialogvoice", ""),
                 })
@@ -1074,6 +1094,9 @@ def _recover_not_found_via_eventname(
     dry_run: bool = False,
     only_untranslated: bool = True,
     log_callback=None,
+    original_merge_mode: str = "strict",
+    stringid_to_category: Optional[Dict] = None,
+    stringid_to_subfolder: Optional[Dict] = None,
 ) -> Dict:
     """
     Recovery pass: re-resolve NOT_FOUND corrections via EventName waterfall.
@@ -1091,6 +1114,9 @@ def _recover_not_found_via_eventname(
         dry_run: If True, don't write changes
         only_untranslated: If True, only fill untranslated entries
         log_callback: Optional GUI log callback
+        original_merge_mode: "strict" or "stringid_only" — determines which merge function to use for re-merge
+        stringid_to_category: Category mapping (required when original_merge_mode="stringid_only")
+        stringid_to_subfolder: Subfolder mapping (optional, for stringid_only exclusions)
 
     Returns:
         Updated file_result dict with recovery stats
@@ -1169,17 +1195,24 @@ def _recover_not_found_via_eventname(
         logger.debug("EventName recovery: no candidates resolved")
         return file_result
 
-    # Re-merge recovered corrections using strict merge
+    # Re-merge recovered corrections using the same merge mode as the original
     logger.info(
         f"EventName recovery: {len(recovered_corrections)} candidates to re-merge "
-        f"(Step1: {step_counts['dialogvoice']}, Step2: {step_counts['keyword']}, "
-        f"Step3: {step_counts['export']})"
+        f"(mode={original_merge_mode}, Step1: {step_counts['dialogvoice']}, "
+        f"Step2: {step_counts['keyword']}, Step3: {step_counts['export']})"
     )
 
-    recovery_result = merge_corrections_to_xml(
-        target_file, recovered_corrections, dry_run,
-        only_untranslated=only_untranslated,
-    )
+    if original_merge_mode == "stringid_only" and stringid_to_category:
+        recovery_result = merge_corrections_stringid_only(
+            target_file, recovered_corrections, stringid_to_category,
+            stringid_to_subfolder or {}, dry_run,
+            only_untranslated=only_untranslated,
+        )
+    else:
+        recovery_result = merge_corrections_to_xml(
+            target_file, recovered_corrections, dry_run,
+            only_untranslated=only_untranslated,
+        )
 
     recovery_matched = recovery_result["matched"]
     if recovery_matched == 0:
@@ -1508,6 +1541,24 @@ def transfer_folder_to_folder(
 
     logger.info(f"Expanded to {len(target_groups)} target files for merge")
 
+    # ─── Auto-detect EventNames in StringID column (3A.5) ──────────────
+    # When no EventName column exists, StringID column may contain mixed
+    # StringIDs and EventNames. For entries NOT in category index, stash
+    # string_id as _source_eventname so the waterfall resolution can try.
+    if stringid_to_category:
+        ci_cat = {k.lower(): v for k, v in stringid_to_category.items()}
+        auto_detected = 0
+        for g in target_groups.values():
+            for c in g["corrections"]:
+                if c.get("_no_eventname_col") and not c.get("_source_eventname"):
+                    sid = c.get("string_id", "")
+                    if sid and sid.lower() not in ci_cat:
+                        c["_source_eventname"] = sid
+                        c["_original_eventname"] = sid
+                        auto_detected += 1
+        if auto_detected:
+            logger.info(f"Auto-detected {auto_detected} potential EventNames in StringID column")
+
     # ─── EventName Resolution (between parse and merge) ───────────────
     # If any correction has _source_eventname, resolve via export__ mapping
     all_have_eventnames = any(
@@ -1614,6 +1665,9 @@ def transfer_folder_to_folder(
                         file_result, target_file, _get_recovery_mapping(),
                         dry_run=dry_run, only_untranslated=only_untranslated,
                         log_callback=log_callback,
+                        original_merge_mode="stringid_only",
+                        stringid_to_category=stringid_to_category,
+                        stringid_to_subfolder=stringid_to_subfolder,
                     )
 
             elif match_mode == "strict_fuzzy":
@@ -1934,6 +1988,20 @@ def transfer_file_to_file(
             "details": [],
         }
 
+    # ─── Auto-detect EventNames in StringID column (3A.5) ──────────────
+    if stringid_to_category:
+        ci_cat = {k.lower(): v for k, v in stringid_to_category.items()}
+        auto_detected = 0
+        for c in corrections:
+            if c.get("_no_eventname_col") and not c.get("_source_eventname"):
+                sid = c.get("string_id", "")
+                if sid and sid.lower() not in ci_cat:
+                    c["_source_eventname"] = sid
+                    c["_original_eventname"] = sid
+                    auto_detected += 1
+        if auto_detected:
+            logger.info(f"Auto-detected {auto_detected} potential EventNames in StringID column")
+
     # ─── EventName Resolution ─────────────────────────────────────────
     missing_eventnames = []
     has_eventnames = any(c.get("_source_eventname") for c in corrections)
@@ -2003,6 +2071,9 @@ def transfer_file_to_file(
             result = _recover_not_found_via_eventname(
                 result, target_file, _get_recovery_mapping(),
                 dry_run=dry_run, only_untranslated=only_untranslated,
+                original_merge_mode="stringid_only",
+                stringid_to_category=stringid_to_category,
+                stringid_to_subfolder=stringid_to_subfolder,
             )
 
     elif match_mode == "strict_fuzzy":

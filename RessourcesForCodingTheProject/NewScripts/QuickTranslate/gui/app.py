@@ -1959,6 +1959,35 @@ class QuickTranslateApp:
                             stats["skipped"] += 1
                     stats["total_matches"] = stats["matched"]
 
+            elif match_type == "strorigin_only":
+                # StrOrigin Only mode: Match by StrOrigin text (no StringID needed)
+                if not corrections:
+                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'StrOrigin Only mode requires corrections data.'))
+                    return
+
+                matched = []
+                not_found = 0
+                for c in corrections:
+                    so = c.get("str_origin", "").strip()
+                    if so:
+                        matched.append(c)
+                    else:
+                        not_found += 1
+
+                korean_inputs = [c.get("str_origin", "") for c in matched]
+                for c in matched:
+                    sid = c.get("string_id", c.get("str_origin", ""))
+                    matches_per_input.append([sid])
+                stats["total"] = len(corrections)
+                stats["matched"] = len(matched)
+                stats["no_match"] = not_found
+                stats["total_matches"] = len(matched)
+
+                self._log(f"StrOrigin Only match results:", 'info')
+                self._log(f"  - Total corrections: {stats['total']}", 'info')
+                self._log(f"  - With StrOrigin: {stats['matched']}", 'success')
+                self._log(f"  - Empty StrOrigin: {stats['no_match']}", 'error' if not_found else 'info')
+
             elif match_type == "strict":
                 # Strict mode: Match by StringID + StrOrigin tuple
                 if not corrections:

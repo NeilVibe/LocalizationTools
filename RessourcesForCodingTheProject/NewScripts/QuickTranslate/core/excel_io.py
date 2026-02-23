@@ -223,6 +223,11 @@ def read_corrections_from_excel(
                     if dialogvoice is not None:
                         entry["_source_dialogvoice"] = str(dialogvoice).strip()
 
+                # Flag when no EventName column exists — transfer pipeline uses
+                # this to auto-detect EventNames mixed into StringID column
+                if not eventname_col and has_id:
+                    entry["_no_eventname_col"] = True
+
                 # Always stash original EventName/DialogVoice as recovery metadata
                 # Used by EventName recovery pass if StringID fails to match
                 if has_eventname:
@@ -710,22 +715,32 @@ def merge_corrections_to_excel(
         strorigin_col = col_indices.get("strorigin", col_indices.get("str_origin"))
         str_col = col_indices.get("str")
 
-        if not stringid_col or not strorigin_col:
-            missing = []
-            if not stringid_col:
-                missing.append("StringID")
-            if not strorigin_col:
-                missing.append("StrOrigin")
-            result["errors"].append(f"Missing required columns in {excel_path.name}: {', '.join(missing)}")
+        if not stringid_col:
+            result["errors"].append(f"Missing required column in {excel_path.name}: StringID")
+            wb.close()
+            return result
+
+        # StrOrigin required for strict and strorigin_only, optional for stringid_only
+        if not strorigin_col and match_mode != "stringid_only":
+            result["errors"].append(f"Missing required column in {excel_path.name}: StrOrigin")
             wb.close()
             return result
 
         # Auto-create Str column if missing
         if not str_col:
-            if not dry_run:
-                str_col = _insert_str_column(ws, strorigin_col)
+            if strorigin_col:
+                insert_after = strorigin_col
             else:
-                str_col = strorigin_col + 1
+                insert_after = stringid_col
+            if not dry_run:
+                str_col = _insert_str_column(ws, insert_after)
+                # Fix column references shifted by the insert
+                if stringid_col >= str_col:
+                    stringid_col += 1
+                if strorigin_col and strorigin_col >= str_col:
+                    strorigin_col += 1
+            else:
+                str_col = insert_after + 1
                 logger.info("Dry run: would insert Str column")
 
         # Read all target entries
@@ -735,7 +750,7 @@ def merge_corrections_to_excel(
 
         for row_idx in range(2, ws.max_row + 1):
             sid_val = ws.cell(row=row_idx, column=stringid_col).value
-            so_val = ws.cell(row=row_idx, column=strorigin_col).value
+            so_val = ws.cell(row=row_idx, column=strorigin_col).value if strorigin_col else None
             str_val = ws.cell(row=row_idx, column=str_col).value if str_col else None
 
             sid = str(sid_val).strip() if sid_val is not None else ""
