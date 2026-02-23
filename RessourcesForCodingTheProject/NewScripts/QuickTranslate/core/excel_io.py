@@ -992,20 +992,22 @@ def _merge_excel_stringid_only(
     # Lazy EventName resolver — only loaded if needed
     _en_resolver_loaded = False
     _en_mapping = None
+    _en_extract_fn = None
+    _eventname_resolved_count = 0
 
     def _try_resolve_as_eventname(eventname_str):
-        nonlocal _en_resolver_loaded, _en_mapping
+        nonlocal _en_resolver_loaded, _en_mapping, _en_extract_fn
         if not _en_resolver_loaded:
             _en_resolver_loaded = True
             try:
-                from core.eventname_resolver import get_eventname_mapping
+                from core.eventname_resolver import get_eventname_mapping, extract_stringid_from_dialog_keyword
                 _en_mapping = get_eventname_mapping(_cfg.EXPORT_FOLDER)
+                _en_extract_fn = extract_stringid_from_dialog_keyword
             except Exception:
                 _en_mapping = None
         if not _en_mapping:
             return None
-        from core.eventname_resolver import extract_stringid_from_dialog_keyword
-        extracted = extract_stringid_from_dialog_keyword(eventname_str)
+        extracted = _en_extract_fn(eventname_str)
         if extracted and extracted.lower() != eventname_str.lower():
             return extracted
         data = _en_mapping.get(eventname_str.lower())
@@ -1033,7 +1035,8 @@ def _merge_excel_stringid_only(
                 resolved_lower = resolved_sid.lower()
                 resolved_category = ci_category.get(resolved_lower, "Uncategorized")
                 if resolved_category in SCRIPT_CATEGORIES:
-                    logger.info(f"EventName '{sid}' resolved to SCRIPT StringID '{resolved_sid}' (category={resolved_category})")
+                    _eventname_resolved_count += 1
+                    logger.debug(f"EventName '{sid}' resolved to SCRIPT StringID '{resolved_sid}' (category={resolved_category})")
                     sid = resolved_sid
                     sid_lower = resolved_lower
                     category = resolved_category
@@ -1098,5 +1101,8 @@ def _merge_excel_stringid_only(
                 "string_id": sid, "status": "NOT_FOUND",
                 "old": c.get("str_origin", ""), "new": c["corrected"],
             })
+
+    if _eventname_resolved_count:
+        logger.info(f"EventName resolution: {_eventname_resolved_count} EventNames resolved to SCRIPT StringIDs")
 
     return result

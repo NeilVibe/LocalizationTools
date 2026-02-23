@@ -596,35 +596,32 @@ def merge_corrections_stringid_only(
     # Filter corrections to SCRIPT TYPE only (and not in excluded subfolders)
     # Multi-pass: if StringID not in category index, try EventName resolution first
     script_corrections = []
+    _eventname_resolved_count = 0
 
     # Lazy EventName resolver — only loaded if needed
     _en_resolver_loaded = False
     _en_mapping = None
+    _en_extract_fn = None
 
     def _try_resolve_as_eventname(eventname_str):
         """Try to resolve a value as EventName → StringID via 3-step waterfall."""
-        nonlocal _en_resolver_loaded, _en_mapping
+        nonlocal _en_resolver_loaded, _en_mapping, _en_extract_fn
         if not _en_resolver_loaded:
             _en_resolver_loaded = True
             try:
                 from .eventname_resolver import (
                     get_eventname_mapping,
                     extract_stringid_from_dialog_keyword,
-                    generate_stringid_from_dialogvoice,
                 )
                 _en_mapping = get_eventname_mapping(config.EXPORT_FOLDER)
+                _en_extract_fn = extract_stringid_from_dialog_keyword
             except Exception:
                 _en_mapping = None
         if not _en_mapping:
             return None
 
-        from .eventname_resolver import (
-            extract_stringid_from_dialog_keyword,
-            generate_stringid_from_dialogvoice,
-        )
-
         # Step 1: keyword extraction
-        extracted = extract_stringid_from_dialog_keyword(eventname_str)
+        extracted = _en_extract_fn(eventname_str)
         if extracted and extracted.lower() != eventname_str.lower():
             return extracted
 
@@ -651,7 +648,8 @@ def merge_corrections_stringid_only(
                 resolved_category = ci_category.get(resolved_lower, "Uncategorized")
                 if resolved_category in SCRIPT_CATEGORIES:
                     # EventName resolved to a SCRIPT StringID — use it
-                    logger.info(f"EventName '{sid}' resolved to SCRIPT StringID '{resolved_sid}' (category={resolved_category})")
+                    _eventname_resolved_count += 1
+                    logger.debug(f"EventName '{sid}' resolved to SCRIPT StringID '{resolved_sid}' (category={resolved_category})")
                     sid = resolved_sid
                     sid_lower = resolved_lower
                     category = resolved_category
@@ -698,6 +696,9 @@ def merge_corrections_stringid_only(
             **c,
             "category": category,
         })
+
+    if _eventname_resolved_count:
+        logger.info(f"EventName resolution: {_eventname_resolved_count} EventNames resolved to SCRIPT StringIDs")
 
     if not script_corrections:
         logger.info(f"No SCRIPT corrections to apply to {xml_path.name}")
