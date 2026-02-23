@@ -6,6 +6,7 @@ Uses patterns from LanguageDataExporter for robustness.
 """
 
 import logging
+from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -805,53 +806,54 @@ def _merge_excel_strict(
     result: Dict,
 ) -> Dict:
     """Strict matching: StringID + normalized StrOrigin."""
-    target_lookup = {}
-    target_lookup_nospace = {}
+    target_lookup = defaultdict(list)
+    target_lookup_nospace = defaultdict(list)
     for entry in target_entries:
         if not entry["str_origin"].strip():
             continue
         sid_lower = entry["string_id"].lower()
         norm_origin = normalize_text(entry["str_origin"])
         nospace_origin = normalize_nospace(norm_origin)
-        target_lookup[(sid_lower, norm_origin)] = entry
-        target_lookup_nospace[(sid_lower, nospace_origin)] = entry
+        target_lookup[(sid_lower, norm_origin)].append(entry)
+        target_lookup_nospace[(sid_lower, nospace_origin)].append(entry)
 
     for c in corrections:
         sid_lower = c["string_id"].lower()
         origin_norm = normalize_text(c.get("str_origin", ""))
         origin_nospace = normalize_nospace(origin_norm)
 
-        target_entry = target_lookup.get((sid_lower, origin_norm))
-        if target_entry is None:
-            target_entry = target_lookup_nospace.get((sid_lower, origin_nospace))
+        matching_entries = target_lookup.get((sid_lower, origin_norm), [])
+        if not matching_entries:
+            matching_entries = target_lookup_nospace.get((sid_lower, origin_nospace), [])
 
-        if target_entry is not None:
-            result["matched"] += 1
-            old_str = target_entry["str_value"]
+        if matching_entries:
+            for target_entry in matching_entries:
+                result["matched"] += 1
+                old_str = target_entry["str_value"]
 
-            if only_untranslated and old_str and not is_korean_text(old_str):
-                result["skipped_translated"] += 1
-                result["details"].append({
-                    "string_id": c["string_id"], "status": "SKIPPED_TRANSLATED",
-                    "old": c.get("str_origin", ""), "new": c.get("corrected", ""),
-                })
-                continue
+                if only_untranslated and old_str and not is_korean_text(old_str):
+                    result["skipped_translated"] += 1
+                    result["details"].append({
+                        "string_id": c["string_id"], "status": "SKIPPED_TRANSLATED",
+                        "old": c.get("str_origin", ""), "new": c.get("corrected", ""),
+                    })
+                    continue
 
-            new_str = _convert_linebreaks_for_excel(c["corrected"])
-            if new_str != old_str:
-                ws.cell(row=target_entry["row"], column=str_col, value=new_str)
-                if "\n" in new_str:
-                    ws.cell(row=target_entry["row"], column=str_col).alignment = Alignment(wrap_text=True, vertical='top')
-                result["updated"] += 1
-                result["details"].append({
-                    "string_id": c["string_id"], "status": "UPDATED",
-                    "old": old_str, "new": new_str,
-                })
-            else:
-                result["details"].append({
-                    "string_id": c["string_id"], "status": "UNCHANGED",
-                    "old": old_str, "new": "(same)",
-                })
+                new_str = _convert_linebreaks_for_excel(c["corrected"])
+                if new_str != old_str:
+                    ws.cell(row=target_entry["row"], column=str_col, value=new_str)
+                    if "\n" in new_str:
+                        ws.cell(row=target_entry["row"], column=str_col).alignment = Alignment(wrap_text=True, vertical='top')
+                    result["updated"] += 1
+                    result["details"].append({
+                        "string_id": c["string_id"], "status": "UPDATED",
+                        "old": old_str, "new": new_str,
+                    })
+                else:
+                    result["details"].append({
+                        "string_id": c["string_id"], "status": "UNCHANGED",
+                        "old": old_str, "new": "(same)",
+                    })
         else:
             if sid_lower in target_stringids:
                 result["strorigin_mismatch"] += 1
@@ -911,11 +913,22 @@ def _merge_excel_strorigin_only(
         target_by_origin_nospace.setdefault(nospace, []).append(entry)
 
     correction_lookup = {}
+    conflicting = 0
     for c in corrections:
         origin_norm = normalize_for_matching(c.get("str_origin", ""))
         if not origin_norm:
             continue
+        if origin_norm in correction_lookup:
+            old_corrected = correction_lookup[origin_norm].get("corrected", "")
+            if old_corrected != c.get("corrected", ""):
+                conflicting += 1
+                logger.debug(
+                    f"StrOrigin-only Excel: conflicting correction for StrOrigin "
+                    f"'{c.get('str_origin', '')}' — overwriting with last"
+                )
         correction_lookup[origin_norm] = c
+    if conflicting:
+        logger.warning(f"StrOrigin-only Excel: {conflicting} conflicting corrections (last wins)")
 
     for origin_norm, c in correction_lookup.items():
         origin_nospace = normalize_nospace(origin_norm)
@@ -977,7 +990,6 @@ def _merge_excel_stringid_only(
     ci_subfolder = {k.lower(): v for k, v in stringid_to_subfolder.items()} if stringid_to_subfolder else {}
 
     # Build list-based lookup: one StringID can map to MULTIPLE target rows
-    from collections import defaultdict
     target_by_sid = defaultdict(list)
     for entry in target_entries:
         if not entry["str_origin"].strip():

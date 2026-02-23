@@ -8,6 +8,7 @@ Writes corrections back to XML files using STRICT or StringID-only matching.
 import os
 import stat
 import logging
+from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -98,9 +99,9 @@ def merge_corrections_to_xml(
     if not corrections:
         return result
 
-    # Build lookup: (StringID, normalized_StrOrigin) -> (corrected_text, category, index)
-    correction_lookup = {}
-    correction_lookup_nospace = {}  # Fallback for whitespace variations
+    # Build lookup: (StringID, normalized_StrOrigin) -> list of (corrected_text, category, index)
+    correction_lookup = defaultdict(list)
+    correction_lookup_nospace = defaultdict(list)  # Fallback for whitespace variations
     correction_matched = [False] * len(corrections)
 
     for i, c in enumerate(corrections):
@@ -109,8 +110,8 @@ def merge_corrections_to_xml(
         origin_nospace = normalize_nospace(origin_norm)
         category = c.get("category", "Uncategorized")
 
-        correction_lookup[(sid_lower, origin_norm)] = (c["corrected"], category, i)
-        correction_lookup_nospace[(sid_lower, origin_nospace)] = (c["corrected"], category, i)
+        correction_lookup[(sid_lower, origin_norm)].append((c["corrected"], category, i))
+        correction_lookup_nospace[(sid_lower, origin_nospace)].append((c["corrected"], category, i))
 
     # Initialize category stats
     categories_seen = set(c.get("category", "Uncategorized") for c in corrections)
@@ -176,16 +177,17 @@ def merge_corrections_to_xml(
             key_nospace = (sid_lower, orig_nospace)
 
             # Try exact match first, then nospace fallback
-            match_data = None
-            if key in correction_lookup:
-                match_data = correction_lookup[key]
-            elif key_nospace in correction_lookup_nospace:
-                match_data = correction_lookup_nospace[key_nospace]
-                logger.debug(f"Matched via nospace fallback: StringId={sid}")
+            match_entries = correction_lookup.get(key, [])
+            if not match_entries:
+                match_entries = correction_lookup_nospace.get(key_nospace, [])
+                if match_entries:
+                    logger.debug(f"Matched via nospace fallback: StringId={sid}")
 
-            if match_data is not None:
-                new_str, category, idx = match_data
-                correction_matched[idx] = True
+            if match_entries:
+                # Use last correction (last wins) but mark ALL as matched
+                new_str, category, idx = match_entries[-1]
+                for _, _, matched_idx in match_entries:
+                    correction_matched[matched_idx] = True
                 result["matched"] += 1
                 result["by_category"][category]["matched"] += 1
 
