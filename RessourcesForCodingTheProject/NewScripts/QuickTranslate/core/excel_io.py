@@ -171,17 +171,27 @@ def read_corrections_from_excel(
                     f"Need at least one. Found headers: {list(col_indices.keys())}"
                 )
 
-            # Log what mode we're operating in
+            # Log which columns were found and how corrections will be matched
             if stringid_col and eventname_col:
-                logger.info(f"Columns detected: StringID + EventName (per-row priority)")
+                logger.info(
+                    "Excel columns found: StringID + EventName. "
+                    "Each row will use StringID when available, EventName as fallback."
+                )
             elif stringid_col:
-                logger.info(f"Columns detected: StringID mode (direct)")
+                logger.info(
+                    "Excel columns found: StringID. "
+                    "Each correction will be matched directly to its XML entry by StringID."
+                )
             elif eventname_col and dialogvoice_col:
-                logger.info(f"Columns detected: EventName + DialogVoice (waterfall Steps 1+2+3)")
+                logger.info(
+                    "Excel columns found: EventName + DialogVoice (no StringID). "
+                    "Will resolve EventName → StringID automatically using DialogVoice stripping, "
+                    "keyword extraction, and export file lookup."
+                )
             elif eventname_col:
                 logger.info(
-                    f"Columns detected: EventName only (no DialogVoice). "
-                    f"Waterfall Steps 2+3 available (keyword extraction + export lookup)"
+                    "Excel columns found: EventName only (no StringID, no DialogVoice). "
+                    "Will resolve EventName → StringID using keyword extraction and export file lookup."
                 )
 
         for row in ws.iter_rows(min_row=start_row):
