@@ -307,7 +307,8 @@ Secondary tools that don't need to clutter the main workflow:
 |---|------|---------|------|
 | 3B.1 | **STRICT XML merge dict overwrites duplicate corrections** | `xml_transfer.py` lines 101-113. `correction_lookup[(sid_lower, origin_norm)] = correction` — if multiple corrections share same (StringID, StrOrigin), only last survives. No conflict logging (unlike strorigin_only mode). Inflated NOT_FOUND count. **Fix:** Add `defaultdict(list)` or at minimum conflict detection. | HIGH |
 | 3B.2 | **`_merge_excel_strict` target lookup overwrites duplicates** | `excel_io.py` lines 808-817. `target_lookup[(sid_lower, norm_origin)] = entry` — duplicate target rows with same (StringID, StrOrigin) lose all but last. Same class as the StringID-only bug we fixed. **Fix:** Use `defaultdict(list)`. | HIGH |
-| 3B.3 | **Diagnostic maps overwrite on duplicate StringIDs** | `excel_io.py` line 747 + `xml_transfer.py` line 146. `target_strorigin_map[sid.lower()] = so` — when multiple rows share a StringID, mismatch diagnostics show the wrong StrOrigin. Misleading error messages. **Fix:** Store list or keep first occurrence. | MEDIUM |
+| 3B.3 | **StrOrigin Only Excel merge: corrections dict overwrites duplicates** | `excel_io.py` lines 913-918. `correction_lookup[origin_norm] = c` — if multiple corrections share same normalized StrOrigin but different corrected text, only last survives. No conflict detection or logging (XML version has it). **Fix:** Add conflict detection + logging matching XML version, or use `defaultdict(list)`. | HIGH |
+| 3B.4 | **Diagnostic maps overwrite on duplicate StringIDs** | `excel_io.py` line 747 + `xml_transfer.py` line 146. `target_strorigin_map[sid.lower()] = so` — when multiple rows share a StringID, mismatch diagnostics show the wrong StrOrigin. Misleading error messages. **Fix:** Store list or keep first occurrence. | MEDIUM |
 
 #### 3C. SHOULD FIX — Correctness & Robustness
 
