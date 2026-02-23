@@ -548,19 +548,14 @@ When corrections fail to match, QuickTranslate generates reports in the `Failed 
 
 #### All Status Codes
 
-| Status | Icon | Meaning |
-|--------|------|---------|
-| `UPDATED` | ✅ | Correction applied successfully — `Str` was written |
-| `UNCHANGED` | — | StringID matched but `Str` already had the exact same value |
-| `NOT_FOUND` | !! | StringID does not exist anywhere in the target XML |
-| `STRORIGIN_MISMATCH` | !! | StringID exists but the Korean text differs from your StrOrigin — source XML may have been updated |
-| `SKIPPED_TRANSLATED` | — | Entry already has a non-Korean translation ("Only untranslated" scope) |
-| `SKIPPED_NON_SCRIPT` | — | StringID is not in Dialog/ or Sequencer/ categories (StringID-Only mode) |
-| `MISSING EVENTNAME` | !! | All 3 waterfall steps failed to resolve EventName to StringID |
-| `RECOVERED_UPDATED` | ✅ | EventName recovery pass resolved a NOT_FOUND entry and applied the correction |
-| `RECOVERED_UNCHANGED` | — | EventName recovery pass resolved a NOT_FOUND entry but value was already identical |
+> See [Section 7: Quick Reference Card](#7-quick-reference-card) for the full status code table.
 
-> 💡 **Most common failure:** `STRORIGIN_MISMATCH` — means the Korean source text was updated in Perforce after you extracted it. Re-run LOOKUP to get the current StrOrigin, or enable Fuzzy precision to match despite the rewording.
+Key statuses to watch for in failure reports:
+
+- `NOT_FOUND` — StringID does not exist in target XML. Check for typos.
+- `STRORIGIN_MISMATCH` — StringID exists but the Korean text differs. Source XML may have been updated in Perforce since you extracted it. Re-run LOOKUP to get the current StrOrigin, or enable Fuzzy precision to match despite the rewording.
+- `MISSING EVENTNAME` — All 3 waterfall steps failed. Check EXPORT `.loc.xml` files.
+- `RECOVERED_UPDATED` — Recovery pass resolved a NOT_FOUND entry automatically (see Section 2.8).
 
 ---
 
@@ -810,6 +805,21 @@ Scans all Excel and XML files in the Source folder, matches Korean text against 
 | `MULTI (N)` | N entries share the same StrOrigin |
 | `NOT FOUND` | No match in any EXPORT file |
 
+**Example output Excel:**
+
+```
+┌──────────────────────────┬──────────┬──────────────┬───────────────────┬──────────────────┐
+│  KOR (Input)             │  Status  │  StringID    │  ENG              │  FRE             │
+├──────────────────────────┼──────────┼──────────────┼───────────────────┼──────────────────┤
+│  퀘스트를 완료하세요      │  MATCHED │  quest_001   │  Complete the     │  Complétez la    │
+│                          │          │              │  quest            │  quête           │
+│  아이템                   │  MULTI(3)│  item_001    │  Item             │  Objet           │
+│                          │          │  item_002    │  Item             │  Objet           │
+│                          │          │  ui_item     │  Item             │  Objet           │
+│  존재하지않는텍스트        │ NOT FOUND│              │                   │                  │
+└──────────────────────────┴──────────┴──────────────┴───────────────────┴──────────────────┘
+```
+
 **Substring match type:** For quick "what does this Korean mean?" lookups. No column headers needed — just paste Korean text into Column A. This match type is LOOKUP-only; TRANSFER is not available.
 
 ### 4.2 StringID Lookup
@@ -819,6 +829,20 @@ Type or paste a single StringID into the text field, click **Lookup**. Returns a
 - Output: `Output/StringID_<ID>_YYYYMMDD_HHMMSS.xlsx`
 - No source file needed — works from the text field directly
 
+**Example:** Type `quest_001` → output Excel shows:
+
+```
+┌──────────────┬───────────────────────┬───────────────────┬──────────────────┐
+│  Language     │  StrOrigin            │  Str              │  Category        │
+├──────────────┼───────────────────────┼───────────────────┼──────────────────┤
+│  KOR         │  퀘스트를 완료하세요    │  퀘스트를 완료하세요│  System/Quest    │
+│  ENG         │  퀘스트를 완료하세요    │  Complete the quest│  System/Quest    │
+│  FRE         │  퀘스트를 완료하세요    │  Complétez la quête│  System/Quest    │
+│  GER         │  퀘스트를 완료하세요    │  Schließe die Quest│  System/Quest    │
+│  ...         │  ...                  │  ...              │  ...             │
+└──────────────┴───────────────────────┴───────────────────┴──────────────────┘
+```
+
 ### 4.3 Reverse Lookup
 
 Browse to a `.txt` file containing one string per line in any language. QuickTranslate auto-detects the language and finds the matching StringIDs.
@@ -826,6 +850,26 @@ Browse to a `.txt` file containing one string per line in any language. QuickTra
 - Output: `Output/ReverseLookup_YYYYMMDD_HHMMSS.xlsx`
 - `NOT FOUND` = no match for that string
 - `NO TRANSLATION` = StringID exists but `Str` attribute is empty for that language
+
+**Example input** (`lookup_strings.txt`):
+
+```
+Complete the quest
+Hello, adventurer!
+Some nonexistent text
+```
+
+**Example output:**
+
+```
+┌──────────────────────┬──────────────┬──────────┬──────────────────────────┐
+│  Input               │  StringID    │  Status  │  KOR (StrOrigin)         │
+├──────────────────────┼──────────────┼──────────┼──────────────────────────┤
+│  Complete the quest  │  quest_001   │  MATCHED │  퀘스트를 완료하세요      │
+│  Hello, adventurer!  │  npc_greet   │  MATCHED │  안녕하세요, 모험가!      │
+│  Some nonexistent    │              │ NOT FOUND│                          │
+└──────────────────────┴──────────────┴──────────┴──────────────────────────┘
+```
 
 ### 4.4 Find Missing Translations
 
@@ -1072,7 +1116,83 @@ Threshold range: 0.70 — 1.00 (step 0.01). Available in Strict and StrOrigin On
 
 ---
 
-## 9. Glossary
+## 9. End-to-End Workflow Example
+
+> This walkthrough shows the full cycle from receiving Korean text to submitting translated XML files.
+
+### Scenario: Your PM sends you 50 Korean strings to translate into English
+
+**Step 1 — Get the context** (LOOKUP)
+
+You receive a list of Korean strings but need StringIDs and context before translating.
+
+1. Paste the Korean strings into an Excel file (one per row in Column A)
+2. Set Source to this Excel file's folder, select **Substring** match type
+3. Click **Generate** → output Excel has StringID, StrOrigin, and all 17 language columns
+4. Use the ENG column to see if existing translations exist (some may already be done)
+
+**Step 2 — Translate** (in your Excel editor)
+
+1. Open the Generate output Excel
+2. Copy the StringID and StrOrigin columns into a new corrections file
+3. Add a **Correction** column with your English translations
+4. Save as `corrections.xlsx` in a folder called `ENG/`
+
+```
+MyCorrections/
+└── ENG/
+    └── corrections.xlsx    ← StringID | StrOrigin | Correction
+```
+
+**Step 3 — Apply translations** (TRANSFER)
+
+1. Set Source to `MyCorrections/`
+2. Select **Strict** match type (safest — verifies StringID + StrOrigin)
+3. Click **TRANSFER** → review the transfer plan → confirm
+4. Check the log: `UPDATED: 48, UNCHANGED: 2, NOT_FOUND: 0` — all good
+
+**Step 4 — Quality check** (Pre-Submission)
+
+1. Set Source to your LOC folder (where the `languagedata_eng.xml` lives)
+2. Click **Check ALL** → runs Korean check + pattern check + quality check
+3. Fix any issues flagged (missing placeholders, wrong script characters)
+
+**Step 5 — Submit to Perforce**
+
+All changes are in `languagedata_eng.xml`. Review in P4V, submit.
+
+---
+
+## 10. FAQ
+
+**Can I use QuickTranslate with non-Korean source text?**
+TRANSFER works with any source language — it matches by StringID and/or StrOrigin text regardless of language. However, the Korean correction filter silently skips rows where the Correction column contains Korean text (to prevent overwriting translations with untranslated text). LOOKUP's Generate function specifically searches Korean text against StrOrigin.
+
+**Can I undo a TRANSFER?**
+TRANSFER writes directly to XML files. The only way to undo is to revert in Perforce (`p4 revert`). Always sync before transferring and verify with Pre-Submission Checks before submitting.
+
+**What if Excel is still open when I run TRANSFER?**
+Excel locks `.xlsx` files while they are open. QuickTranslate may fail to read the source file. Close Excel first, or save a copy with a different name.
+
+**Can I process multiple languages at once?**
+Yes. Place correction files in language-named subfolders (`ENG/`, `FRE/`, `GER/`). TRANSFER processes all languages in a single run. Each language's corrections are matched to its corresponding `languagedata_*.xml` target.
+
+**What happens if my StringID has changed since extraction?**
+The correction will be `NOT_FOUND`. Options: (1) re-run LOOKUP to get the current StringID, (2) use StrOrigin Only mode to match by Korean text instead, or (3) enable Fuzzy precision to catch near-matches.
+
+**Can I use the same Excel for LOOKUP and TRANSFER?**
+The Generate output Excel has StringID and StrOrigin pre-filled. Add a Correction column with your translations and it becomes a valid TRANSFER source file. This is the recommended workflow.
+
+**Why are some corrections UNCHANGED?**
+The target XML already had the exact same value you tried to write. This is normal — it means someone already applied that translation, or you ran the same TRANSFER twice.
+
+**What is the difference between LOC and EXPORT folders?**
+- **LOC folder** = production `languagedata_*.xml` files (one per language). This is where translations live.
+- **EXPORT folder** = categorized `.loc.xml` files organized by type (Dialog/, System/, World/). Used for StringID-to-category mapping and EventName resolution. Read-only.
+
+---
+
+## 11. Glossary
 
 | Term | Definition |
 |------|-----------|

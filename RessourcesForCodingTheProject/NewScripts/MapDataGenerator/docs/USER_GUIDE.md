@@ -510,7 +510,7 @@ The search bar offers three matching strategies:
 |------|----------------|----------|
 | **Contains** | Query appears anywhere in any field | General browsing: "castle", "orc" |
 | **Exact** | Query matches a field value exactly | Finding by exact StrKey: "FN_Town_001" |
-| **Fuzzy** | Finds approximate matches (ratio > 0.6) | Misspelled names: "Calphoen" finds "Calpheon" |
+| **Fuzzy** | Finds approximate matches (ratio >= 0.6) | Misspelled names: "Calphoen" finds "Calpheon" |
 
 **What gets searched:**
 
