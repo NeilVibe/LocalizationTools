@@ -122,3 +122,4 @@ Build - StrOrigin Only safeguard: skip Dialog/Sequencer complement
 Build - no translation postprocess cleanup
 Build - EventName recovery pass for NOT_FOUND corrections
 Build - SCRIPT filter perf fix, long string extractor, WIP updates
+Build - Phase 3D all fixes done (d5fd896a)
