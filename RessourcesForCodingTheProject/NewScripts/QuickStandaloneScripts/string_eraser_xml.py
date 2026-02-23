@@ -3,7 +3,7 @@
 """
 String Eraser XML v1.0
 =======================
-Standalone GUI tool that erases (clears Str attribute) in Target XML files
+Standalone GUI tool that removes LocStr nodes from Target XML files
 for entries that match Source by StringID + StrOrigin.
 
 Based on TFM LITE's string_eraser logic, adapted for XML languagedata files.
@@ -14,7 +14,7 @@ Target: Folder containing languagedata_*.xml files
 For each <LocStr> in Target where:
   - StringID matches a Source row (case-insensitive)
   - StrOrigin matches a Source row (normalized)
-→ Clear the Str attribute (set to empty string)
+→ Remove the entire <LocStr> node from the XML tree
 
 Usage: python string_eraser_xml.py
 """
@@ -258,7 +258,7 @@ def erase_matching_strings(
     nospace_keys: Set[Tuple[str, str]],
 ) -> Tuple[int, int, List[Dict]]:
     """
-    Erase Str attribute on LocStr elements matching the source keys.
+    Remove entire LocStr nodes matching the source keys from the XML tree.
 
     Match logic (same as QuickTranslate's 2-step cascade):
       Step 1: (sid.lower(), normalize_text(StrOrigin)) exact match
@@ -277,6 +277,9 @@ def erase_matching_strings(
     already_empty = 0
     details = []
     changed = False
+
+    # Collect elements to remove (can't modify tree during iteration)
+    to_remove = []
 
     for loc in iter_locstr(root):
         _, sid = get_attr(loc, STRINGID_ATTRS)
@@ -299,24 +302,31 @@ def erase_matching_strings(
         if not matched:
             continue
 
-        # Found a match — erase Str
+        # Found a match
         str_attr, str_val = get_attr(loc, STR_ATTRS)
 
         if str_attr is None:
-            # No Str attribute at all
             already_empty += 1
             details.append({"stringid": sid, "status": "NO_STR_ATTR", "old": ""})
             continue
 
         if not str_val or not str_val.strip():
-            # Already empty
             already_empty += 1
             details.append({"stringid": sid, "status": "ALREADY_EMPTY", "old": ""})
             continue
 
-        # Erase: set Str to empty string
-        old_val = str_val
-        loc.set(str_attr, "")
+        to_remove.append((loc, sid, str_val))
+
+    # Remove matched LocStr nodes from the tree
+    for loc, sid, old_val in to_remove:
+        parent = loc.getparent() if USING_LXML else None
+        if parent is not None:
+            parent.remove(loc)
+        else:
+            # stdlib fallback: can't easily get parent, clear Str instead
+            str_attr, _ = get_attr(loc, STR_ATTRS)
+            if str_attr:
+                loc.set(str_attr, "")
         erased += 1
         changed = True
         details.append({"stringid": sid, "status": "ERASED", "old": old_val})
@@ -354,7 +364,7 @@ class StringEraserGUI:
         ttk.Label(main, text="String Eraser XML", font=("Segoe UI", 14, "bold")).pack(pady=(0, 5))
         ttk.Label(
             main,
-            text="Erase Str values in Target XML where StringID + StrOrigin match Source",
+            text="Remove LocStr nodes from Target XML where StringID + StrOrigin match Source",
             font=("Segoe UI", 9),
         ).pack(pady=(0, 10))
 
@@ -449,7 +459,7 @@ class StringEraserGUI:
         # Confirm
         result = messagebox.askyesno(
             "Confirm Erase",
-            "This will CLEAR the Str attribute in Target XML files\n"
+            "This will REMOVE entire LocStr nodes from Target XML files\n"
             "for all entries matching Source StringID + StrOrigin.\n\n"
             "This operation modifies files directly.\n"
             "Make sure your Target files are backed up or in Perforce.\n\n"
