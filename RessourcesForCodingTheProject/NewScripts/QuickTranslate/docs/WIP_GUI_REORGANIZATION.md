@@ -216,7 +216,39 @@ Secondary tools that don't need to clutter the main workflow:
 
 **Implementation:** Create `core/string_eraser.py` that adapts logic from `string_eraser_xml.py`, wired to GUI via existing worker thread pattern.
 
-### 4.2 Help Button [?] → User Guide Popup
+### 4.2 Long String Extraction (Integrated from Standalone Script)
+
+**What:** Extract SCRIPT-type (Dialog/Sequencer) LocStr entries above a configurable character length threshold. Outputs Excel report.
+
+**Why:** Already built as standalone script (`QuickStandaloneScripts/script_long_string_extractor.py`). Integrating into QuickTranslate's Helper Functions tab gives users direct access alongside other tools.
+
+**How it works:**
+1. Uses export folder (already configured in Settings) to build StringID → Category mapping
+2. Scans source XML/Excel files for LocStr entries
+3. Filters: only SCRIPT categories (Dialog/Sequencer) + visible char count >= threshold
+4. Outputs sorted Excel report (longest strings first)
+
+**Reuses from QuickTranslate:**
+- Export folder path (already in config/settings)
+- `build_stringid_to_category()` from `language_loader.py`
+- XML parsing, Excel reading infrastructure
+- Log panel, threading, progress bar
+
+### 4.3 Transfer Length Threshold Filter
+
+**What:** Optional minimum character length filter on TRANSFER operations. When enabled, only corrections whose target `Str` value has >= N visible characters get applied.
+
+**Why:** Allows users to selectively transfer only long strings (e.g. dialog lines) while skipping short UI labels. Useful when corrections were generated in bulk but only long narrative text needs updating.
+
+**How it works:**
+1. New optional spinbox in Transfer settings area (default: OFF / 0 = no filter)
+2. When set to e.g. 50, the merge functions (`merge_corrections_to_xml`, `_merge_excel_*`) skip entries where the **existing** target `Str` value has fewer visible chars than the threshold
+3. Skipped entries reported as `SKIPPED_SHORT` in the result details
+4. Works alongside existing SCRIPT filter — both filters apply independently
+
+**Implementation:** Add `min_char_length` parameter to merge functions. Check `visible_char_count(existing_str)` before applying correction. GUI adds optional spinbox to transfer settings.
+
+### 4.4 Help Button [?] → User Guide Popup
 
 **What:** A small `[?]` button next to the "Quick Actions" label that opens a popup window with contextual help.
 
@@ -301,6 +333,7 @@ Secondary tools that don't need to clutter the main workflow:
 | 3A.4 | **Recovery pass uses STRICT merge for StringID-only NOT_FOUND** | `xml_transfer.py` lines 1089-1108. EventName recovery calls STRICT merge which requires StrOrigin match. Recovery silently does nothing. **Fix:** Use `merge_corrections_stringid_only` when original merge was StringID-only. | TODO |
 | 3A.5 | **Auto-detect EventNames in StringID column** | When Excel has no EventName column but StringID column contains mixed StringIDs and EventNames, `_source_eventname` is never set → pre-merge EventName resolution is skipped. **Workaround:** Duplicate StringID column as EventName. **Fix:** Auto-populate `_source_eventname` from `string_id` when no EventName column. | TODO |
 | 3A.6 | **SCRIPT filter skips EventNames as "Uncategorized"** | `xml_transfer.py` + `excel_io.py` StringID-only SCRIPT filter. EventNames in `string_id` field are not in `stringid_to_category` index → default to "Uncategorized" → SKIPPED_NON_SCRIPT. Recovery pass only handles NOT_FOUND, not SKIPPED_NON_SCRIPT, so these are permanently lost. **Fix:** Multi-pass — before skipping as non-SCRIPT, try resolving as EventName via keyword extraction + export lookup. If resolved StringID is SCRIPT, let it through. | **DONE** ✅ `5da55030` |
+| 3A.7 | **StringID-only NOT_FOUND report is misleading when target StrOrigin is empty** | `xml_transfer.py` line 770-771. Golden Rule skips LocStr nodes with empty StrOrigin (correct behavior — never write to entries with no origin). BUT: StringID never gets marked as "seen" → reported as `NOT_FOUND` in failure Excel. User sees "StringID was not found in target" when the StringID IS there, just its StrOrigin is empty. STRICT mode (line 245) correctly distinguishes `STRORIGIN_MISMATCH` from `NOT_FOUND` using a `target_stringids` set. StringID-only mode has no such tracking. **Fix:** Build `target_stringids` set from ALL LocStr elements (including empty StrOrigin), then report as `SKIPPED_EMPTY_STRORIGIN` instead of `NOT_FOUND` when StringID exists but was skipped by Golden Rule. | TODO |
 
 #### 3B. IMPORTANT — Fix Soon (Same Class of Bug as StringID Duplicate)
 
@@ -333,6 +366,15 @@ Secondary tools that don't need to clutter the main workflow:
 | 4.2 | Add String Erase section to Helper Functions tab | Source/Target file pickers, recursive checkbox, Erase button. | LOW |
 | 4.3 | Wire to worker thread | Use existing `_run_in_thread()` pattern for async execution. Show progress in shared log/progress bar. | LOW |
 | 4.4 | Add erase report output | Summary of erased entries written to log + optional export file. | LOW |
+
+### Phase 4B: Long String Extraction & Transfer Length Filter
+
+| # | Task | Details | Risk |
+|---|------|---------|------|
+| 4B.1 | Add Long String Extraction to Helper Functions tab | Spinbox for min length, uses existing export folder from settings, Extract button. Standalone version: `QuickStandaloneScripts/script_long_string_extractor.py` | LOW - logic proven in standalone |
+| 4B.2 | Create `core/long_string_extractor.py` | Port extraction logic, reuse `build_stringid_to_category` from `language_loader.py` and `visible_char_count` helper. | LOW |
+| 4B.3 | Add Transfer length threshold filter | Optional `min_char_length` spinbox in Transfer settings. Merge functions skip entries where existing target Str < threshold. New status: `SKIPPED_SHORT`. | LOW-MEDIUM |
+| 4B.4 | Add `visible_char_count()` to shared helpers | Strip `<br/>`, PAColor tags, HTML entities, then count. Used by both extraction and transfer filter. | LOW |
 
 ### Phase 5: Help Button & Guide Popup
 
