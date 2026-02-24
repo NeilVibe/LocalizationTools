@@ -179,50 +179,78 @@ def scan_all_staticinfo(
 # FUZZY MATCHING
 # =============================================================================
 
+def _extract_trigrams(name: str) -> Set[str]:
+    """Extract character trigrams from a name for fuzzy pre-filtering."""
+    if len(name) < 3:
+        return {name}
+    return {name[i:i+3] for i in range(len(name) - 2)}
+
+
+@dataclass
+class FuzzyIndex:
+    """Pre-built index for fast fuzzy candidate lookup.
+
+    Three layers of filtering (cheapest first):
+    1. Length bounds: impossible to reach threshold if lengths too different
+    2. Trigram overlap: cheap set intersection, high correlation with SequenceMatcher
+    3. SequenceMatcher cascade: real_quick_ratio → quick_ratio → ratio
+    """
+    length_buckets: Dict[int, List[str]] = field(default_factory=dict)
+    trigram_index: Dict[str, Set[str]] = field(default_factory=dict)  # {trigram: {names...}}
+    name_trigrams: Dict[str, Set[str]] = field(default_factory=dict)  # {name: {trigrams...}}
+
+
 def _build_fuzzy_index(
     all_name_index: Dict[str, List[Tuple[str, str, str, str]]],
-) -> Tuple[List[Tuple[str, int]], Dict[int, List[str]]]:
-    """Pre-build length-bucketed index for fast fuzzy candidate filtering.
+) -> FuzzyIndex:
+    """Pre-build multi-layer index for fast fuzzy matching.
 
-    SequenceMatcher ratio can't exceed 2*min(len_a, len_b)/(len_a+len_b).
-    For threshold T, we only need candidates where:
-        len_b >= len_a * T / (2 - T)  AND  len_b <= len_a * (2 - T) / T
+    Layer 1 - Length buckets:
+        SequenceMatcher ratio can't exceed 2*min(a,b)/(a+b).
+        For T=0.80: candidate length must be within [0.667x, 1.5x] of anchor.
 
-    For T=0.80: len_b must be within [0.667 * len_a, 1.5 * len_a]
-    This eliminates most candidates without computing SequenceMatcher.
-
-    Returns:
-        (sorted_names, length_buckets)
-        - sorted_names: [(name, len)] sorted by length
-        - length_buckets: {length: [names...]} for quick range lookup
+    Layer 2 - Trigram index:
+        Names sharing >= 30% of trigrams with anchor are likely matches.
+        Names sharing < 30% almost never reach 80% SequenceMatcher ratio.
+        This eliminates ~95% of length-valid candidates.
     """
-    length_buckets: Dict[int, List[str]] = defaultdict(list)
+    idx = FuzzyIndex()
+
+    # Length buckets
+    idx.length_buckets = defaultdict(list)
     for name in all_name_index:
-        length_buckets[len(name)].append(name)
-    sorted_names = [(name, len(name)) for name in all_name_index]
-    sorted_names.sort(key=lambda x: x[1])
-    return sorted_names, length_buckets
+        idx.length_buckets[len(name)].append(name)
+
+    # Trigram index (inverted: trigram → set of names that contain it)
+    idx.trigram_index = defaultdict(set)
+    for name in all_name_index:
+        trigrams = _extract_trigrams(name)
+        idx.name_trigrams[name] = trigrams
+        for tri in trigrams:
+            idx.trigram_index[tri].add(name)
+
+    return idx
 
 
 def find_fuzzy_matches(
     anchor_name: str,
     all_name_index: Dict[str, List[Tuple[str, str, str, str]]],
     exclude_strkeys: Set[str],
-    length_buckets: Dict[int, List[str]],
+    fuzzy_index: FuzzyIndex,
     threshold: float = 0.80,
     max_matches: int = 5,
 ) -> List[Tuple[str, str, str, str, float, str]]:
-    """Find fuzzy matches using length-bucketed pre-filtering.
+    """Find fuzzy matches using 3-layer pre-filtering.
 
-    Optimization: SequenceMatcher ratio has an upper bound based on string
-    lengths. We skip candidates whose length makes it impossible to reach
-    the threshold, eliminating ~70-90% of comparisons.
+    Layer 1: Length bounds (O(1) per candidate — skip impossible lengths)
+    Layer 2: Trigram overlap (O(T) set intersection — skip dissimilar names)
+    Layer 3: SequenceMatcher cascade (real_quick → quick → full ratio)
 
     Args:
         anchor_name: The name to match against
         all_name_index: {name: [(strkey, desc, source_file, tag), ...]}
         exclude_strkeys: StrKeys to skip (already matched in Pass 1/2)
-        length_buckets: Pre-built {length: [names...]} from _build_fuzzy_index()
+        fuzzy_index: Pre-built FuzzyIndex from _build_fuzzy_index()
         threshold: Minimum similarity ratio (0.0 - 1.0)
         max_matches: Maximum fuzzy matches to return
 
@@ -233,27 +261,42 @@ def find_fuzzy_matches(
         return []
 
     anchor_len = len(anchor_name)
-    # Length bounds: for ratio >= T, candidate length must be in this range
-    # ratio = 2*matches/(len_a+len_b) => max possible ratio = 2*min(a,b)/(a+b)
+
+    # Layer 1: Length bounds
     min_len = max(1, int(anchor_len * threshold / (2.0 - threshold)))
     max_len = int(anchor_len * (2.0 - threshold) / threshold) + 1
 
-    # Collect candidate names from valid length buckets only
-    candidates: List[str] = []
+    length_valid: Set[str] = set()
     for blen in range(min_len, max_len + 1):
-        if blen in length_buckets:
-            candidates.extend(length_buckets[blen])
+        if blen in fuzzy_index.length_buckets:
+            length_valid.update(fuzzy_index.length_buckets[blen])
 
+    if not length_valid:
+        return []
+
+    # Layer 2: Trigram overlap — only check names sharing enough trigrams
+    anchor_trigrams = _extract_trigrams(anchor_name)
+    if not anchor_trigrams:
+        return []
+
+    # Collect candidates that share at least 1 trigram (fast via inverted index)
+    trigram_candidates: Dict[str, int] = defaultdict(int)
+    for tri in anchor_trigrams:
+        for name in fuzzy_index.trigram_index.get(tri, set()):
+            if name in length_valid:
+                trigram_candidates[name] += 1
+
+    # Filter: need >= 30% trigram overlap to have a chance at 80% ratio
+    min_shared = max(1, int(len(anchor_trigrams) * 0.30))
+    candidates = [name for name, count in trigram_candidates.items()
+                  if count >= min_shared and name != anchor_name]
+
+    # Layer 3: SequenceMatcher cascade
     matches: List[Tuple[str, str, str, str, float, str]] = []
-
-    # Use set_seq2 optimization: reuse SequenceMatcher for anchor
     sm = difflib.SequenceMatcher(None, anchor_name, "")
 
     for name in candidates:
-        if name == anchor_name:
-            continue  # Exact match handled separately
         sm.set_seq2(name)
-        # Quick upper bound check before full ratio computation
         if sm.real_quick_ratio() < threshold:
             continue
         if sm.quick_ratio() < threshold:
@@ -264,7 +307,6 @@ def find_fuzzy_matches(
                 if strkey not in exclude_strkeys:
                     matches.append((strkey, name, desc, source_file, ratio, tag))
 
-    # Sort by score descending, limit
     matches.sort(key=lambda x: -x[4])
     return matches[:max_matches]
 
@@ -310,10 +352,11 @@ def build_clusters(
             all_name_index[ir.name].append((ir.strkey, ir.desc, ir.source_file, "Item"))
     log.info("  Combined name index: %d unique names (for fuzzy matching)", len(all_name_index))
 
-    # Pre-build length-bucketed index for fast fuzzy candidate filtering
-    log.info("  Building length-bucketed fuzzy index...")
-    _, length_buckets = _build_fuzzy_index(all_name_index)
-    log.info("  Length buckets: %d distinct lengths", len(length_buckets))
+    # Pre-build multi-layer fuzzy index (length buckets + trigram inverted index)
+    log.info("  Building fuzzy index (length buckets + trigram index)...")
+    fuzzy_index = _build_fuzzy_index(all_name_index)
+    log.info("  Length buckets: %d distinct lengths | Trigrams: %d unique",
+             len(fuzzy_index.length_buckets), len(fuzzy_index.trigram_index))
 
     clusters: List[ItemCluster] = []
     pass1_count = pass2_count = pass3_count = 0
@@ -370,11 +413,11 @@ def build_clusters(
                     break  # Take first non-duplicate match
 
         # Pass 3: Fuzzy matching across ALL names
-        fuzzy_hits = find_fuzzy_matches(item.name, all_name_index, exclude_strkeys, length_buckets)
+        fuzzy_hits = find_fuzzy_matches(item.name, all_name_index, exclude_strkeys, fuzzy_index)
         for strkey, name, desc, source_file, score, src_tag in fuzzy_hits:
-            pct = int(score * 100)
+            score_pct = int(score * 100)
             tag = "KnowledgeMatch-Fuzzy" if src_tag == "Knowledge" else "ItemMatch-Fuzzy"
-            dtype = f"{tag}({pct}%)"
+            dtype = f"{tag}({score_pct}%)"
 
             if name:
                 cluster.rows.append(ClusterRow(dtype, name, source_file, score))
@@ -385,7 +428,8 @@ def build_clusters(
             exclude_strkeys.add(strkey)
             pass3_count += 1
 
-        clusters.append(cluster)
+        if cluster.rows:
+            clusters.append(cluster)
 
     log.info("Clusters built: %d total | Pass1(KnowledgeKey): %d | Pass2(ExactName): %d | Pass3(Fuzzy): %d",
              len(clusters), pass1_count, pass2_count, pass3_count)
@@ -397,67 +441,19 @@ def build_clusters(
 # =============================================================================
 
 def order_clusters_by_similarity(clusters: List[ItemCluster]) -> List[ItemCluster]:
-    """Greedy nearest-neighbor ordering by anchor name similarity.
+    """Order clusters so related items appear adjacent.
 
-    Start with first cluster, always pick the most similar unvisited
-    anchor name next. Creates a gradient where related items appear adjacent.
+    Uses alphabetical sort on item_name — Korean names with shared prefixes
+    naturally cluster together (에세리온 단검, 에세리온 도끼, 에세리온 장검).
+    O(N log N) instead of O(N^2) greedy nearest-neighbor.
     """
     if len(clusters) <= 1:
         return clusters
 
-    total = len(clusters)
-    log.info("Ordering %d clusters by name similarity (O(N^2) comparisons)...", total)
-    if total > 5000:
-        log.warning("  Large cluster count — this may take a while")
-
-    ordered: List[ItemCluster] = []
-    remaining_set: Set[int] = set(range(len(clusters)))
-    remaining_list: List[int] = list(range(len(clusters)))
+    log.info("Ordering %d clusters alphabetically by item name...", len(clusters))
     t0 = time.time()
-    last_pct = -1
 
-    # Start with first cluster
-    current_idx = remaining_list[0]
-    remaining_set.discard(current_idx)
-    ordered.append(clusters[current_idx])
-
-    while remaining_set:
-        # Progress every 10%
-        done = total - len(remaining_set)
-        pct = (done * 100) // total
-        if pct // 10 > last_pct // 10:
-            last_pct = pct
-            elapsed = time.time() - t0
-            rate = done / elapsed if elapsed > 0 else 0
-            eta = len(remaining_set) / rate if rate > 0 else 0
-            log.info("  Ordering: %d%% (%d/%d) | %.0fs elapsed, ~%.0fs remaining",
-                     pct, done, total, elapsed, eta)
-
-        current_name = clusters[current_idx].item_name or ""
-        best_idx = -1
-        best_score = -1.0
-
-        if not current_name:
-            # No name to compare — just pick any remaining
-            best_idx = next(iter(remaining_set))
-        else:
-            sm = difflib.SequenceMatcher(None, current_name, "")
-            for idx in remaining_set:
-                candidate_name = clusters[idx].item_name or ""
-                if not candidate_name:
-                    score = 0.0
-                else:
-                    sm.set_seq2(candidate_name)
-                    score = sm.quick_ratio()
-                    if score > best_score:
-                        score = sm.ratio()
-                if score > best_score:
-                    best_score = score
-                    best_idx = idx
-
-        remaining_set.discard(best_idx)
-        ordered.append(clusters[best_idx])
-        current_idx = best_idx
+    ordered = sorted(clusters, key=lambda c: c.item_name or "")
 
     elapsed = time.time() - t0
     log.info("Cluster ordering complete in %.1fs", elapsed)
