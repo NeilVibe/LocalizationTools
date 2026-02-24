@@ -116,3 +116,4 @@ Build - KnowledgeKey fix + ItemKnowledgeCluster generator
 Build - Progress tracking + fuzzy optimization
 Build - Trigram fuzzy index + review fixes
 Build - global dedup + order-based StringID disambiguation
+Build - consumer fixes + RewardKnowledgeKey + NewCharacter/NewRegion generators
