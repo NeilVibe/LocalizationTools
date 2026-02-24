@@ -1570,3 +1570,52 @@ def generate_failure_report_from_transfer(
         return True, message, output_path
     else:
         return False, message, None
+
+
+def generate_duplicate_strorigin_excel(
+    duplicate_entries: List[Dict],
+    output_folder: Path,
+) -> Optional[Path]:
+    """Generate minimal Excel for skipped duplicate StrOrigin corrections.
+
+    Columns: StrOrigin / Correction / StringID
+    User deletes unwanted rows and re-submits via normal Excel transfer.
+
+    Args:
+        duplicate_entries: List of detail dicts with status SKIPPED_DUPLICATE_STRORIGIN
+        output_folder: Directory to write the report into
+
+    Returns:
+        Path to generated Excel file, or None if nothing to write
+    """
+    if not XLSXWRITER_AVAILABLE or not duplicate_entries:
+        return None
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = output_folder / f"KROnly_DuplicateStrings_{timestamp}.xlsx"
+    output_folder.mkdir(parents=True, exist_ok=True)
+
+    try:
+        workbook = xlsxwriter.Workbook(str(output_path))
+        ws = workbook.add_worksheet("Duplicates")
+
+        header_fmt = workbook.add_format({'bold': True, 'bg_color': '#D9E1F2', 'border': 1})
+        ws.write(0, 0, "StrOrigin", header_fmt)
+        ws.write(0, 1, "Correction", header_fmt)
+        ws.write(0, 2, "StringID", header_fmt)
+
+        for row_idx, entry in enumerate(duplicate_entries, 1):
+            ws.write(row_idx, 0, entry.get("old", ""))
+            ws.write(row_idx, 1, entry.get("new", ""))
+            ws.write_string(row_idx, 2, str(entry.get("string_id", "")))
+
+        ws.set_column(0, 0, 60)   # StrOrigin
+        ws.set_column(1, 1, 60)   # Correction
+        ws.set_column(2, 2, 30)   # StringID
+
+        workbook.close()
+        logger.info(f"Duplicate StrOrigin report: {output_path.name} ({len(duplicate_entries)} entries)")
+        return output_path
+    except Exception as e:
+        logger.error(f"Failed to generate duplicate StrOrigin report: {e}")
+        return None

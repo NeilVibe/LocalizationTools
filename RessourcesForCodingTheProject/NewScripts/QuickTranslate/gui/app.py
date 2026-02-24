@@ -174,6 +174,9 @@ class QuickTranslateApp:
         # Transfer scope: "all" = overwrite always, "untranslated" = only if target has Korean
         self.transfer_scope = tk.StringVar(value="all")
 
+        # Unique-only filtering for StrOrigin-Only mode (skip duplicate StrOrigin)
+        self.unique_only_strorigin = tk.IntVar(value=0)
+
         # Settings variables
         self.settings_loc_path = tk.StringVar()
         self.settings_export_path = tk.StringVar()
@@ -419,6 +422,23 @@ class QuickTranslateApp:
                         variable=self.transfer_scope, value="untranslated",
                         font=('Segoe UI', 9), bg='#fef3e2',
                         activebackground='#fef3e2').pack(side=tk.LEFT)
+
+        # === Unique-Only StrOrigin sub-frame (visible only for strorigin_only) ===
+        self.unique_only_frame = tk.Frame(match_frame, bg='#e8f0fe', padx=10, pady=4,
+                                           relief='groove', bd=1)
+        # Don't pack yet - shown/hidden by _on_match_type_changed
+
+        unique_row = tk.Frame(self.unique_only_frame, bg='#e8f0fe')
+        unique_row.pack(fill=tk.X)
+        tk.Checkbutton(unique_row, text="Unique strings only (skip duplicates)",
+                       variable=self.unique_only_strorigin,
+                       font=('Segoe UI', 9, 'bold'), bg='#e8f0fe',
+                       activebackground='#e8f0fe', cursor='hand2').pack(side=tk.LEFT)
+
+        tk.Label(self.unique_only_frame,
+            text="Safe mode: only merges StrOrigin that appears once. Duplicates exported to Excel.",
+            font=('Segoe UI', 8), bg='#e8f0fe', fg='#666', wraplength=350, justify='left'
+        ).pack(fill=tk.X, pady=(2, 0))
 
         # === Files Section ===
         files_frame = tk.LabelFrame(self._left_inner, text="Files", font=('Segoe UI', 10, 'bold'),
@@ -1227,6 +1247,11 @@ class QuickTranslateApp:
             # SAFETY: StrOrigin Only defaults to untranslated-only (no StringID verification)
             if match_type == "strorigin_only":
                 self.transfer_scope.set("untranslated")
+                # Show unique-only checkbox (StrOrigin Only specific)
+                self.unique_only_frame.pack(fill=tk.X, pady=(4, 0))
+                self._bind_mousewheel_recursive(self.unique_only_frame)
+            else:
+                self.unique_only_frame.pack_forget()
             # Rebind mousewheel on newly shown frames
             self._bind_mousewheel_recursive(self.precision_options_frame)
             self._bind_mousewheel_recursive(self.transfer_scope_frame)
@@ -1236,6 +1261,7 @@ class QuickTranslateApp:
             self.transfer_btn.config(state='disabled')
             self.transfer_note_label.config(text="(Lookup only - TRANSFER not available)")
             self.transfer_scope_frame.pack_forget()
+            self.unique_only_frame.pack_forget()
         else:
             # stringid_only
             self.precision_options_frame.pack_forget()
@@ -1243,6 +1269,7 @@ class QuickTranslateApp:
             self.transfer_btn.config(state='normal')
             self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
             self.transfer_note_label.config(text="")
+            self.unique_only_frame.pack_forget()
             # Rebind mousewheel on newly shown frame
             self._bind_mousewheel_recursive(self.transfer_scope_frame)
 
@@ -2781,6 +2808,7 @@ class QuickTranslateApp:
         precision = self.match_precision.get()
         transfer_scope = self.transfer_scope.get()
         fuzzy_threshold = self.fuzzy_threshold.get()
+        unique_only = bool(self.unique_only_strorigin.get()) if match_type == "strorigin_only" else False
 
         # === GENERATE FULL TRANSFER PLAN BEFORE CONFIRMATION ===
         match_str = match_type.upper()
@@ -2791,6 +2819,8 @@ class QuickTranslateApp:
 
         scope_str = ("Only untranslated (Korean)" if transfer_scope == "untranslated"
                      else "ALL matches (overwrite)")
+        if unique_only:
+            scope_str += " [UNIQUE ONLY]"
 
         # Scan target with flexible scanner (supports any XML/Excel with lang suffix)
         _transfer_target_scan = scan_target_for_languages(target)
@@ -2840,6 +2870,8 @@ class QuickTranslateApp:
         self._log("=== QuickTranslate TRANSFER ===", 'header')
         self._log(f"Match Mode: {match_str}", 'info')
         self._log(f"Transfer Scope: {scope_str}", 'info')
+        if unique_only:
+            self._log("Mode: UNIQUE ONLY (duplicate StrOrigin skipped, exported to Excel)", 'warning')
         self._log(f"Source: {source}", 'info')
         self._log(f"Target: {target}", 'info')
 
@@ -2919,6 +2951,8 @@ class QuickTranslateApp:
                 "dry_run": False,
                 "only_untranslated": only_untranslated,
             }
+            if unique_only:
+                transfer_kwargs["unique_only"] = True
 
             # Pass threshold AND pre-built fuzzy data for fuzzy modes
             # CRITICAL: Without this, transfer functions rebuild from scratch!
@@ -3037,6 +3071,27 @@ class QuickTranslateApp:
                     self._log("Excel report skipped (xlsxwriter not installed)", 'warning')
 
                 self._log(f"Reports saved to: {report_folder}", 'info')
+
+            # === DUPLICATE STRORIGIN REPORT (Unique-Only mode) ===
+            if unique_only:
+                dup_entries = []
+                for file_key, file_result in results.get("file_results", {}).items():
+                    for detail in file_result.get("details", []):
+                        if detail.get("status") == "SKIPPED_DUPLICATE_STRORIGIN":
+                            dup_entries.append(detail)
+
+                if dup_entries:
+                    from core.failure_report import generate_duplicate_strorigin_excel
+                    source_name = source.name if source.is_dir() else source.stem
+                    dup_report_folder = config.get_failed_report_dir(source_name)
+                    dup_path = generate_duplicate_strorigin_excel(dup_entries, dup_report_folder)
+                    if dup_path:
+                        self._log("", 'info')
+                        self._log("=== Duplicate StrOrigin Report ===", 'header')
+                        self._log(f"Duplicate StrOrigin report: {dup_path.name} ({len(dup_entries)} entries)", 'warning')
+                        self._log(f"  Location: {dup_path}", 'info')
+                        self._log("  Delete unwanted rows, keep desired corrections, re-submit via TRANSFER", 'info')
+                        failure_reports_msg += f"\nDuplicate strings: {dup_path.name} ({len(dup_entries)} entries)"
 
             # EventName resolution stats (if any EventNames were in source)
             eventname_msg = ""

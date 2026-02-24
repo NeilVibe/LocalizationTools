@@ -8,7 +8,7 @@ Writes corrections back to XML files using STRICT or StringID-only matching.
 import os
 import stat
 import logging
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -293,6 +293,7 @@ def merge_corrections_strorigin_only(
     dry_run: bool = False,
     only_untranslated: bool = True,
     stringid_to_category: Optional[Dict[str, str]] = None,
+    unique_only: bool = False,
 ) -> Dict:
     """
     Merge corrections into a target XML using StrOrigin-only matching.
@@ -326,6 +327,7 @@ def merge_corrections_strorigin_only(
         "not_found": 0,
         "skipped_translated": 0,
         "skipped_script": 0,
+        "skipped_duplicate_strorigin": 0,
         "unique_corrections": 0,
         "unique_matched": 0,
         "duplicate_sources": 0,
@@ -362,6 +364,40 @@ def merge_corrections_strorigin_only(
                 f"SCRIPT corrections (Dialog/Sequencer) — use StringID-Only for those"
             )
         corrections = filtered
+
+    if not corrections:
+        return result
+
+    # UNIQUE-ONLY FILTERING: skip corrections whose StrOrigin appears more than once
+    if unique_only:
+        origin_counts = Counter()
+        for c in corrections:
+            norm = normalize_for_matching(c.get("str_origin", ""))
+            if norm:
+                origin_counts[norm] += 1
+
+        unique_corrections = []
+        for c in corrections:
+            norm = normalize_for_matching(c.get("str_origin", ""))
+            if norm and origin_counts[norm] > 1:
+                result["details"].append({
+                    "string_id": c.get("string_id", ""),
+                    "status": "SKIPPED_DUPLICATE_STRORIGIN",
+                    "old": c.get("str_origin", ""),
+                    "new": c.get("corrected", ""),
+                })
+                continue
+            unique_corrections.append(c)
+
+        skipped_dup = len(corrections) - len(unique_corrections)
+        if skipped_dup > 0:
+            unique_origins = sum(1 for cnt in origin_counts.values() if cnt > 1)
+            logger.info(
+                f"Unique-only filter: skipped {skipped_dup} corrections "
+                f"({unique_origins} duplicate StrOrigin groups) — exported to report"
+            )
+        result["skipped_duplicate_strorigin"] = skipped_dup
+        corrections = unique_corrections
 
     if not corrections:
         return result
@@ -1289,6 +1325,8 @@ def transfer_folder_to_folder(
     source_stringids: Optional[set] = None,
     # Pre-scanned target (flexible target support)
     target_scan: Optional[TargetScanResult] = None,
+    # Unique-only filtering for strorigin_only modes
+    unique_only: bool = False,
 ) -> Dict:
     """
     Transfer corrections from source folder to target folder.
@@ -1325,6 +1363,7 @@ def transfer_folder_to_folder(
         "total_skipped_excluded": 0,
         "total_skipped_translated": 0,
         "total_skipped_empty_strorigin": 0,
+        "total_skipped_duplicate_strorigin": 0,
         "errors": [],
         "file_results": {},
     }
@@ -1765,6 +1804,7 @@ def transfer_folder_to_folder(
                     target_file, corrections, dry_run,
                     only_untranslated=only_untranslated,
                     stringid_to_category=stringid_to_category,
+                    unique_only=unique_only,
                 )
                 results["total_skipped"] += file_result.get("skipped_script", 0)
             elif match_mode == "strorigin_only_fuzzy":
@@ -1772,6 +1812,7 @@ def transfer_folder_to_folder(
                     target_file, corrections, dry_run,
                     only_untranslated=only_untranslated,
                     stringid_to_category=stringid_to_category,
+                    unique_only=unique_only,
                 )
                 results["total_skipped"] += file_result.get("skipped_script", 0)
                 step1_matched = file_result["matched"]
@@ -1868,6 +1909,7 @@ def transfer_folder_to_folder(
         results["total_strorigin_mismatch"] += file_result.get("strorigin_mismatch", 0)
         results["total_skipped_translated"] += file_result.get("skipped_translated", 0)
         results["total_skipped_empty_strorigin"] += file_result.get("skipped_empty_strorigin", 0)
+        results["total_skipped_duplicate_strorigin"] += file_result.get("skipped_duplicate_strorigin", 0)
         results["errors"].extend(file_result["errors"])
 
         # Aggregate EventName recovery stats
