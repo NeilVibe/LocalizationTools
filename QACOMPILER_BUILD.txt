@@ -115,3 +115,4 @@ Build - NewItem pipeline integration
 Build - KnowledgeKey fix + ItemKnowledgeCluster generator
 Build - Progress tracking + fuzzy optimization
 Build - Trigram fuzzy index + review fixes
+Build - global dedup + order-based StringID disambiguation
