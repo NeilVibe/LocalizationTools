@@ -42,12 +42,48 @@ logger = logging.getLogger("XMLDiffExtractor")
 logger.setLevel(logging.DEBUG)
 
 # =============================================================================
+# XML SANITIZATION
+# =============================================================================
+
+import re as _re
+
+# Fix unescaped < inside attribute values (e.g., <br/> in Desc attributes)
+_attr_unescaped_lt = _re.compile(r'="([^"]*<[^"]*)"')
+# Fix bare & that aren't valid XML entities
+_bad_amp = _re.compile(r'&(?!(?:amp|lt|gt|apos|quot|#\d+|#x[0-9a-fA-F]+);)')
+# Fix malformed self-closing tags like </>
+_bad_selfclose = _re.compile(r'</>')
+
+
+def sanitize_xml(raw: str) -> str:
+    """
+    Fix common XML issues in game data files before parsing:
+    - Unescaped <br/>, <PAColor>, etc. inside attribute values
+    - Bare & characters that aren't valid entities
+    - Malformed </> closing tags
+    """
+    # Remove malformed </> tags
+    raw = _bad_selfclose.sub('', raw)
+
+    # Escape < inside attribute values (handles <br/>, <PAColor>, etc.)
+    raw = _attr_unescaped_lt.sub(
+        lambda m: '="' + m.group(1).replace("<", "&lt;") + '"', raw
+    )
+
+    # Fix bare & (must come after < escaping to avoid double-escaping &lt;)
+    raw = _bad_amp.sub('&amp;', raw)
+
+    return raw
+
+
+# =============================================================================
 # XML PARSING
 # =============================================================================
 
 def parse_locstr_elements(xml_path: Path) -> Tuple[Dict[str, dict], int]:
     """
     Parse an XML file and return a dict of StringId -> {attr: value}.
+    Handles malformed game XML (unescaped <br/>, bad entities, etc.).
 
     Returns:
         (locstr_map, total_count)
@@ -56,15 +92,30 @@ def parse_locstr_elements(xml_path: Path) -> Tuple[Dict[str, dict], int]:
     total = 0
 
     try:
+        raw = xml_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        try:
+            raw = xml_path.read_text(encoding="utf-8-sig")
+        except Exception as e:
+            logger.error("Failed to read %s: %s", xml_path, e)
+            return locstr_map, 0
+
+    # Sanitize before parsing (fix <br/> in attributes, bad entities, etc.)
+    raw = sanitize_xml(raw)
+
+    root = None
+    try:
         if USING_LXML:
             parser = etree.XMLParser(recover=True, encoding="utf-8")
-            tree = etree.parse(str(xml_path), parser)
-            root = tree.getroot()
+            root = etree.fromstring(raw.encode("utf-8"), parser)
         else:
-            tree = etree.parse(str(xml_path))
-            root = tree.getroot()
+            root = etree.fromstring(raw)
     except Exception as e:
         logger.error("Failed to parse %s: %s", xml_path, e)
+        return locstr_map, 0
+
+    if root is None:
+        logger.error("Empty or invalid XML: %s", xml_path)
         return locstr_map, 0
 
     for elem in root.iter("LocStr"):
