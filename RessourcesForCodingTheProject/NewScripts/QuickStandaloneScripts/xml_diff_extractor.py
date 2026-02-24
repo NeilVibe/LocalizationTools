@@ -246,9 +246,13 @@ def write_reverted_xml(
             removed += 1
             continue
 
-        # REVERT: this StringId was edited between BEFORE→AFTER, restore BEFORE version
+        # REVERT: this StringId was edited between BEFORE→AFTER
+        # Only restore the Str attribute (translation), keep everything else from CURRENT
         if string_id in edit_reverts:
-            attrs = edit_reverts[string_id]
+            before_attrs = edit_reverts[string_id]
+            attrs = dict(attrs)  # copy so we don't mutate current_map
+            if "Str" in before_attrs:
+                attrs["Str"] = before_attrs["Str"]
             reverted += 1
 
         lines.append(f'  {_build_locstr_line(attrs)}')
@@ -339,7 +343,7 @@ class XMLDiffApp:
 
         ttk.Label(
             tab,
-            text="ADDs (new in AFTER) are REMOVED.  EDITs are RESTORED to BEFORE version.",
+            text="ADDs (new in AFTER) are REMOVED.  EDITs: Str value RESTORED to BEFORE version.",
             font=("Segoe UI", 8),
         ).pack(pady=(0, 8))
 
