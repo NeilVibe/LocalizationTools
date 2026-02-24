@@ -92,6 +92,11 @@ DATASHEET_LOCATIONS = {
         "eng_pattern": "NewItem_LQA_ENG*.xlsx",
         "cn_pattern": "NewItem_LQA_ZHO-CN*.xlsx",
     },
+    "ItemKnowledgeCluster": {
+        "folder": "ItemKnowledgeCluster",
+        "eng_pattern": "ItemKnowledgeCluster_LQA_ENG*.xlsx",
+        "cn_pattern": "ItemKnowledgeCluster_LQA_ZHO-CN*.xlsx",
+    },
 }
 
 

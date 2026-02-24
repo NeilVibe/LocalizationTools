@@ -97,11 +97,25 @@ class NewItemEntry:
     group_key: str             # Parent group StrKey
     source_file: str           # Item XML filename (EXPORT matching)
     knowledge_source_file: str # Knowledge XML filename (EXPORT matching)
+    knowledge2_name_kor: str = ""       # Pass 2: identical name match
+    knowledge2_desc_kor: str = ""       # Pass 2: identical name match
+    knowledge2_source_file: str = ""    # Pass 2: source file for EXPORT
 
 
 # =============================================================================
 # HELPER FUNCTIONS (copied from item.py for independence)
 # =============================================================================
+
+def _find_knowledge_key(item_element) -> str:
+    """Search ItemInfo element and its children for KnowledgeKey."""
+    direct = item_element.get("KnowledgeKey") or ""
+    if direct:
+        return direct
+    for child in item_element:
+        kk = child.get("KnowledgeKey") or ""
+        if kk:
+            return kk
+    return ""
 
 def get_depth_color(depth: int) -> str:
     """Get color name for a given depth level."""
@@ -170,18 +184,26 @@ def get_display_name(
 # KNOWLEDGE DATA LOADER
 # =============================================================================
 
-def load_knowledge_data(folder: Path) -> Dict[str, Tuple[str, str, str]]:
+def load_knowledge_data(
+    folder: Path,
+) -> Tuple[Dict[str, Tuple[str, str, str]], Dict[str, List[Tuple[str, str, str]]]]:
     """Load KnowledgeKey -> (Name, Desc, source_file) from knowledge files.
 
     Enhanced version of item.py's load_knowledge_descriptions that also
     returns the Name field and tracks source_file for EXPORT matching.
+
+    Returns:
+        (knowledge_map, knowledge_name_index) where:
+        - knowledge_map: {StrKey: (Name, Desc, source_file)}
+        - knowledge_name_index: {Name: [(StrKey, Desc, source_file), ...]}
     """
     log.info("Loading knowledge data...")
     knowledge_map: Dict[str, Tuple[str, str, str]] = {}
+    knowledge_name_index: Dict[str, List[Tuple[str, str, str]]] = defaultdict(list)
 
     if not folder.exists():
         log.warning("Knowledge folder does not exist: %s", folder)
-        return knowledge_map
+        return knowledge_map, knowledge_name_index
 
     file_count = 0
     for path in iter_xml_files(folder):
@@ -197,10 +219,13 @@ def load_knowledge_data(folder: Path) -> Dict[str, Tuple[str, str, str]]:
 
             if strkey and strkey not in knowledge_map:
                 knowledge_map[strkey] = (name, desc, path.name)
+                # Build name index for Pass 2 (only first occurrence per StrKey)
+                if name:
+                    knowledge_name_index[name].append((strkey, desc, path.name))
 
-    log.info("Knowledge data loaded: %d entries from %d files",
-             len(knowledge_map), file_count)
-    return knowledge_map
+    log.info("Knowledge data loaded: %d entries from %d files, %d unique names",
+             len(knowledge_map), file_count, len(knowledge_name_index))
+    return knowledge_map, knowledge_name_index
 
 
 # =============================================================================
@@ -265,8 +290,12 @@ def parse_master_groups(path: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
 def scan_items_with_knowledge(
     folder: Path,
     knowledge_map: Dict[str, Tuple[str, str, str]],
+    knowledge_name_index: Dict[str, List[Tuple[str, str, str]]],
 ) -> Tuple[Dict[str, List[str]], Dict[str, str], Dict[str, NewItemEntry]]:
     """Scan item folder and build entries with knowledge data resolved.
+
+    Pass 1: KnowledgeKey -> knowledge_map (direct key lookup)
+    Pass 2: ItemName -> knowledge_name_index (identical name match)
 
     Returns:
         group_items: {group_key: [item_strkey, ...]} -- for clustering
@@ -277,6 +306,7 @@ def scan_items_with_knowledge(
     group_items: Dict[str, List[str]] = {}
     scanned_group_names: Dict[str, str] = {}
     items: Dict[str, NewItemEntry] = {}
+    pass2_hits = 0
 
     for path in iter_xml_files(folder):
         root = parse_xml_file(path)
@@ -301,20 +331,37 @@ def scan_items_with_knowledge(
 
                 item_name = item.get("ItemName") or ""
                 item_desc = item.get("ItemDesc") or ""
-                knowledge_key = item.get("KnowledgeKey") or ""
+                knowledge_key = _find_knowledge_key(item)
 
-                # Resolve knowledge data
+                # Pass 1: Resolve knowledge data via KnowledgeKey
                 knowledge_name = ""
                 knowledge_desc = ""
                 knowledge_source_file = ""
+                pass1_strkey = ""
                 if knowledge_key and knowledge_key in knowledge_map:
                     knowledge_name, knowledge_desc, knowledge_source_file = knowledge_map[knowledge_key]
+                    pass1_strkey = knowledge_key
+
+                # Pass 2: Identical name match (ItemName == KnowledgeInfo.Name)
+                knowledge2_name = ""
+                knowledge2_desc = ""
+                knowledge2_source_file = ""
+                if item_name and item_name in knowledge_name_index:
+                    for kn_strkey, kn_desc, kn_src in knowledge_name_index[item_name]:
+                        if kn_strkey != pass1_strkey:
+                            knowledge2_name = item_name
+                            knowledge2_desc = kn_desc
+                            knowledge2_source_file = kn_src
+                            pass2_hits += 1
+                            break
 
                 # Collect Korean strings for coverage tracking
                 _collect_korean_string(item_name)
                 _collect_korean_string(item_desc)
                 _collect_korean_string(knowledge_name)
                 _collect_korean_string(knowledge_desc)
+                _collect_korean_string(knowledge2_name)
+                _collect_korean_string(knowledge2_desc)
 
                 bucket.append(ik)
                 items[ik] = NewItemEntry(
@@ -327,10 +374,14 @@ def scan_items_with_knowledge(
                     group_key=g_key,
                     source_file=source_file,
                     knowledge_source_file=knowledge_source_file,
+                    knowledge2_name_kor=knowledge2_name,
+                    knowledge2_desc_kor=knowledge2_desc,
+                    knowledge2_source_file=knowledge2_source_file,
                 )
 
     total_items = sum(len(v) for v in group_items.values())
-    log.info("Items scanned: %d items in %d groups", total_items, len(group_items))
+    log.info("Items scanned: %d items in %d groups (Pass 2 hits: %d)",
+             total_items, len(group_items), pass2_hits)
     return group_items, scanned_group_names, items
 
 
@@ -591,8 +642,10 @@ def write_newitem_excel(
     Per-item row generation (strict order):
     1. ItemData -- item_name_kor (always output)
     2. ItemData -- item_desc_kor (always output)
-    3. KnowledgeData -- knowledge_name_kor (skip if empty)
-    4. KnowledgeData -- knowledge_desc_kor (skip if empty)
+    3. KnowledgeData -- knowledge_name_kor (skip if empty)  [Pass 1: KnowledgeKey]
+    4. KnowledgeData -- knowledge_desc_kor (skip if empty)  [Pass 1: KnowledgeKey]
+    5. KnowledgeData2 -- knowledge2_name_kor (skip if empty) [Pass 2: identical name]
+    6. KnowledgeData2 -- knowledge2_desc_kor (skip if empty) [Pass 2: identical name]
     """
     wb = Workbook()
     wb.remove(wb.active)
@@ -675,6 +728,14 @@ def write_newitem_excel(
                 # 4. KnowledgeData -- Desc (skip if empty)
                 if entry.knowledge_desc_kor:
                     _write_row("KnowledgeData", entry.knowledge_desc_kor, entry.knowledge_source_file)
+
+                # 5. KnowledgeData2 -- Name (Pass 2: identical name match, skip if empty)
+                if entry.knowledge2_name_kor:
+                    _write_row("KnowledgeData2", entry.knowledge2_name_kor, entry.knowledge2_source_file)
+
+                # 6. KnowledgeData2 -- Desc (Pass 2: identical name match, skip if empty)
+                if entry.knowledge2_desc_kor:
+                    _write_row("KnowledgeData2", entry.knowledge2_desc_kor, entry.knowledge2_source_file)
 
         # Sheet cosmetics
         if excel_row > 2:
@@ -767,8 +828,8 @@ def generate_newitem_datasheets() -> Dict:
             log.warning("No language tables found!")
             return result
 
-        # 2. Load knowledge data
-        knowledge_map = load_knowledge_data(knowledge_folder)
+        # 2. Load knowledge data (map + name index for Pass 2)
+        knowledge_map, knowledge_name_index = load_knowledge_data(knowledge_folder)
 
         # 3. Parse master groups
         itemgroupinfo_file = item_folder / "itemgroupinfo.staticinfo.xml"
@@ -778,8 +839,10 @@ def generate_newitem_datasheets() -> Dict:
             master_names, parent_of = {}, {}
             log.warning("ItemGroupInfo master file not found")
 
-        # 4. Scan items with knowledge
-        group_items, scanned_names, items = scan_items_with_knowledge(item_folder, knowledge_map)
+        # 4. Scan items with knowledge (Pass 1: KnowledgeKey, Pass 2: identical name)
+        group_items, scanned_names, items = scan_items_with_knowledge(
+            item_folder, knowledge_map, knowledge_name_index
+        )
 
         all_names = {**scanned_names, **master_names}
         all_names[OTHERS_KEY] = "Others"

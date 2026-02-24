@@ -1,229 +1,150 @@
-# WIP: NEW Item Datasheet
+# WIP: NEW Item Datasheet + ItemKnowledgeCluster
 
-> Rebuild of the current Item datasheet with a row-per-text structure and 4-step pass.
-
----
-
-## Overview
-
-The NEW Item Datasheet replaces the current item datasheet's approach where ItemName and ItemDesc share the same row. Instead, each text entry gets its **own row**, and we extract data from **two sources** per item:
-
-1. **ItemData** (from ItemInfo node directly)
-2. **KnowledgeData** (from KnowledgeInfo node linked via KnowledgeKey attribute)
+> Two outputs: (1) Updated NewItem LQA datasheet, (2) NEW ItemKnowledgeCluster mega-datasheet.
 
 ---
 
-## The 4-Step Pass
+## CRITICAL BUG FIX: KnowledgeKey Is in CHILDREN
 
-For each ItemInfo element found in the resource folder:
+**Found during testing (2026-02-24):** KnowledgeKey is NOT a direct attribute on ItemInfo. It's in **child elements** of the ItemInfo node.
+
+```xml
+<!-- WRONG assumption (current code) -->
+<ItemInfo StrKey="item_001" ItemName="검" ItemDesc="설명" KnowledgeKey="Knowledge_001">
+
+<!-- ACTUAL structure — KnowledgeKey is in a CHILD element -->
+<ItemInfo StrKey="item_001" ItemName="검" ItemDesc="설명">
+    <SomeChild KnowledgeKey="Knowledge_001" />
+    <!-- could be any child element, need to search ALL children -->
+</ItemInfo>
+```
+
+**Current code (line 304):** `knowledge_key = item.get("KnowledgeKey") or ""` — only checks ItemInfo attributes.
+**Fix needed:** Search ALL child elements of ItemInfo for a `KnowledgeKey` attribute.
+
+---
+
+## Deliverable 1: Updated NewItem Datasheet (existing)
+
+### What changes
+
+The existing NewItem datasheet gets two updates:
+
+#### A. Fix KnowledgeKey child-node scanning
+
+Search all children of ItemInfo for `KnowledgeKey` attribute instead of just the ItemInfo element itself.
+
+#### B. Add Pass 2: Identical Name Match (rows 5-6)
+
+After the existing 4-step pass, add a new pass:
 
 | Step | Row Type | Source | What We Extract |
 |------|----------|--------|----------------|
-| **1** | ItemData | `ItemInfo.ItemName` | The item's display name (Korean) |
-| **2** | ItemData | `ItemInfo.ItemDesc` | The item's description text (Korean) |
-| **3** | KnowledgeData | `KnowledgeInfo.Name` (via KnowledgeKey) | The knowledge entry's name (Korean) |
-| **4** | KnowledgeData | `KnowledgeInfo.Desc` (via KnowledgeKey) | The knowledge entry's description (Korean) |
+| **1** | ItemData | `ItemInfo.ItemName` | Item name (Korean) |
+| **2** | ItemData | `ItemInfo.ItemDesc` | Item description (Korean) |
+| **3** | KnowledgeData | `KnowledgeInfo.Name` (via KnowledgeKey from children) | Knowledge name (Korean) |
+| **4** | KnowledgeData | `KnowledgeInfo.Desc` (via KnowledgeKey from children) | Knowledge desc (Korean) |
+| **5** | KnowledgeData2 | `KnowledgeInfo.Name` (identical name match) | Matching knowledge name (Korean) |
+| **6** | KnowledgeData2 | `KnowledgeInfo.Desc` (identical name match) | Matching knowledge desc (Korean) |
 
-### Row Blocks Per Item
+**Pass 2 logic:**
+- Take `ItemInfo.ItemName` (Korean)
+- Search ALL KnowledgeInfo entries for one whose `Name` attribute is **identical** to the ItemName
+- If found AND it's NOT the same entry already used in Pass 1 (KnowledgeKey), output as KnowledgeData2
+- Output Name (row 5) and Desc (row 6), skip empty as usual
 
-Each item produces a **variable-size block** depending on available data:
+### Updated Row Blocks Per Item
 
-- **Block of 2**: No KnowledgeKey, or knowledge Name+Desc both empty → steps 1-2 only
-- **Block of 3**: KnowledgeKey exists but only one of Name/Desc is non-empty → steps 1-2 + one knowledge row
-- **Block of 4**: KnowledgeKey exists with both Name and Desc non-empty → all 4 steps
+- **Block of 2**: No knowledge at all → steps 1-2 only
+- **Block of 3-4**: KnowledgeKey found → steps 1-2 + knowledge rows 3/4
+- **Block of 5-6**: Identical name match found → + KnowledgeData2 rows 5/6
+- **Block of 4-6**: Could have only Pass 2 match (no KnowledgeKey but identical name exists)
 
-**Rule: Skip empty rows.** If a knowledge text (Name or Desc) is empty, that row is not output.
+### Updated Data Structure
 
----
-
-## How KnowledgeKey Linking Works
-
-```
-ItemInfo XML element:
-  ├── StrKey="item_sword_001"
-  ├── ItemName="용사의 검"              ← Step 1 source
-  ├── ItemDesc="전설의 용사가 사용한 검"  ← Step 2 source
-  └── KnowledgeKey="Knowledge_Sword_001" ← Link attribute
-
-KnowledgeInfo XML element (in knowledge folder):
-  ├── StrKey="Knowledge_Sword_001"       ← Matches KnowledgeKey above
-  ├── Name="용사의 검 정보"              ← Step 3 source
-  └── Desc="이 검은 고대 전설의..."       ← Step 4 source
-```
-
-**Current code** (`item.py:390-415`) only loads `StrKey → Desc` mapping.
-**New code** needs `StrKey → (Name, Desc, source_file)` mapping to support all 4 steps.
-
----
-
-## Output Structure
-
-**Exactly 2 folders:**
-
-```
-NewItemData_Map_All/
-├── ExecuteFiles/                ← text files with /create item commands
-│   ├── FolderName1/
-│   │   ├── SubgroupName1.txt
-│   │   └── SubgroupName2.txt
-│   ├── FolderName2/
-│   │   └── SubgroupName.txt
-│   └── Others/
-│       └── Others_1.txt
-├── NewItem_LQA_ENG.xlsx         ← one Excel per language
-├── NewItem_LQA_ZHO-CN.xlsx
-├── NewItem_LQA_FRE.xlsx
-└── ...
-```
-
----
-
-## Excel Structure (Minimal/Light)
-
-**One Excel file per language.** No Full/Sorted split — just ONE file.
-
-### Columns (left to right):
-
-| Col | Header | Description |
-|-----|--------|-------------|
-| A | **DataType** | `"ItemData"` or `"KnowledgeData"` — differentiates the source |
-| B | **Filename** | The text file name (from ExecuteFiles) for in-game LQA |
-| C | **SourceText (KR)** | Korean source text (ItemName, ItemDesc, KnowledgeName, or KnowledgeDesc) |
-| D | **Translation** | Target language translation |
-| E | **STATUS** | Dropdown: ISSUE / NO ISSUE / BLOCKED / KOREAN |
-| F | **COMMENT** | Tester notes |
-| G | **SCREENSHOT** | Screenshot reference |
-| H | **STRINGID** | StringID resolved via EXPORT index (same technique as other datasheets) |
-
-### Row Layout Example (for one item WITH KnowledgeKey):
-
-| DataType | Filename | SourceText (KR) | Translation | STATUS | COMMENT | SCREENSHOT | STRINGID |
-|----------|----------|-----------------|-------------|--------|---------|------------|----------|
-| ItemData | Weapon/Sword.txt | 용사의 검 | Hero's Sword | | | | 10001 |
-| ItemData | Weapon/Sword.txt | 전설의 용사가 사용한 검 | A sword used by... | | | | 10002 |
-| KnowledgeData | Weapon/Sword.txt | 용사의 검 정보 | Hero's Sword Info | | | | 20001 |
-| KnowledgeData | Weapon/Sword.txt | 이 검은 고대 전설의... | This sword is from... | | | | 20002 |
-
-### Row Layout Example (for one item WITHOUT KnowledgeKey):
-
-| DataType | Filename | SourceText (KR) | Translation | STATUS | COMMENT | SCREENSHOT | STRINGID |
-|----------|----------|-----------------|-------------|--------|---------|------------|----------|
-| ItemData | Consumable/Potion.txt | 회복 물약 | Recovery Potion | | | | 10050 |
-| ItemData | Consumable/Potion.txt | HP를 50 회복 | Restores 50 HP | | | | 10051 |
-
----
-
-## StringID Resolution
-
-Same battle-tested technique as all other generators (via `base.py`):
-
-1. Track `source_file` (the XML filename containing the ItemInfo)
-2. Normalize to EXPORT key: `source_file.lower().replace(".xml", "").replace(".loc", "")`
-3. Look up StringIDs in EXPORT index for that file
-4. Match Korean text in language table → find candidate whose StringID is in the EXPORT set
-5. Return correct (translation, stringid) pair
-
-**For ItemData rows:** source_file = the item XML file (e.g. `iteminfo_weapon.staticinfo.xml`)
-**For KnowledgeData rows:** source_file = the knowledge XML file (e.g. `knowledgeinfo_combat.staticinfo.xml`)
-
-Different source files → different EXPORT keys → correct StringID for each row type.
-
----
-
-## Text Files (Debug Commands)
-
-Same approach as current item.py:
-- Output to `NewItemData_Map_All/ExecuteFiles/`
-- `/create item {ItemKey}` commands per text file
-- Grouped by folder/subgroup
-- Max 300 commands per file (split into multiple files if needed)
-- Prefixed with `/reset inventory` and `/expandinventory 2 300`
-
----
-
-## Modular Architecture (CRITICAL — No Reinventing)
-
-### Reuse from `generators/base.py` (battle-tested, zero changes):
-
-| Function | Purpose |
-|----------|---------|
-| `parse_xml_file()` | XML parsing with sanitization, entity fixing, recovery |
-| `iter_xml_files()` | Recursive XML file iteration |
-| `load_language_tables()` | All language table loading with duplicate resolution |
-| `resolve_translation()` | EXPORT-aware StringID resolution |
-| `get_export_index()` | EXPORT index building (cached) |
-| `get_first_translation()` | Fallback translation lookup |
-| `normalize_placeholders()` | Placeholder stripping |
-| `is_good_translation()` | Translation quality check |
-| `autofit_worksheet()` | Column auto-sizing |
-| `THIN_BORDER` | Border styling constant |
-
-### Reuse patterns from `generators/item.py` (logic, not the file):
-
-| Pattern | Purpose |
-|---------|---------|
-| `parse_master_groups()` | ItemGroupInfo hierarchy for text file organization |
-| Depth-based clustering | Folder organization for ExecuteFiles |
-| Monster item extraction | Separate folder for monster items |
-| Text file generation | `/create item` command files |
-| Korean collection | Coverage tracking |
-
-### New code (only what's actually different):
-
-| Function | Purpose |
-|----------|---------|
-| `load_knowledge_data(folder)` | Extended: `StrKey → (Name, Desc, source_file)` |
-| `scan_items_with_knowledge(folder, knowledge_map)` | Captures all 4 text sources per item |
-| `write_newitem_excel(items, ...)` | New minimal 8-column row-per-text writer |
-| `generate_newitem_datasheets()` | Main entry point |
-
----
-
-## Implementation Plan
-
-### Step 1: Create `generators/newitem.py`
-
-**Data structure:**
 ```python
 @dataclass
 class NewItemEntry:
-    item_strkey: str           # ItemInfo StrKey
-    item_name_kor: str         # ItemInfo.ItemName (Korean)
-    item_desc_kor: str         # ItemInfo.ItemDesc (Korean)
-    knowledge_key: str         # ItemInfo.KnowledgeKey (may be empty)
-    knowledge_name_kor: str    # KnowledgeInfo.Name (Korean, empty if no key)
-    knowledge_desc_kor: str    # KnowledgeInfo.Desc (Korean, empty if no key)
-    group_key: str             # Parent ItemGroupInfo StrKey
-    source_file: str           # Item XML filename (for EXPORT matching)
-    knowledge_source_file: str # Knowledge XML filename (for EXPORT matching)
+    item_strkey: str
+    item_name_kor: str
+    item_desc_kor: str
+    knowledge_key: str              # From children scan
+    knowledge_name_kor: str         # Pass 1: via KnowledgeKey
+    knowledge_desc_kor: str         # Pass 1: via KnowledgeKey
+    knowledge2_name_kor: str        # Pass 2: identical name match
+    knowledge2_desc_kor: str        # Pass 2: identical name match
+    group_key: str
+    source_file: str
+    knowledge_source_file: str      # Pass 1 knowledge source
+    knowledge2_source_file: str     # Pass 2 knowledge source
 ```
 
-**Functions:**
-1. `load_knowledge_data(folder)` → `Dict[str, Tuple[str, str, str]]` mapping `StrKey → (Name, Desc, source_file)`
-2. `scan_items_with_knowledge(folder, knowledge_map)` → `List[NewItemEntry]`
-3. `build_text_files(items, output_folder)` → text file map for Filename column
-4. `write_newitem_excel(items, lang_tables, lang_code, text_file_map, output_path)` → Excel
-5. `generate_newitem_datasheets()` → main entry point
+---
 
-### Step 2: Register in `generators/__init__.py`
+## Deliverable 2: ItemKnowledgeCluster (NEW mega-datasheet)
 
-Add lazy import for `newitem` module, map `"NewItem"` → `generate_newitem_datasheets`.
+### Goal
 
-### Step 3: Add to `config.py`
+Cluster ALL item-related data from the entire StaticInfo folder into a single mega-sheet. Maximum data extraction — every possible connection between items and knowledge.
 
-Add `"NewItem"` to `CATEGORIES` list. No `CATEGORY_TO_MASTER` entry (no master file integration yet).
+### Simplified Columns (no Filename)
 
-### Step 4: GUI auto-detects
+| Col | Header | Description |
+|-----|--------|-------------|
+| A | **DataType** | Identifies the match type and source |
+| B | **SourceText (KR)** | Korean source text |
+| C | **Translation ({CODE})** | Target language translation |
+| D | **STATUS** | Dropdown |
+| E | **COMMENT** | Tester notes |
+| F | **SCREENSHOT** | Screenshot ref |
+| G | **STRINGID** | EXPORT-resolved StringID |
 
-GUI reads `CATEGORIES` dynamically → new checkbox appears automatically.
+### Multi-Pass Data Collection
 
-### Step 5: Test
+#### Pass 1: Direct KnowledgeKey (from children)
+- Same as NewItem: scan ItemInfo children for KnowledgeKey → resolve in KnowledgeInfo
+- DataType: `"ItemData"` for item name/desc, `"KnowledgeData"` for knowledge name/desc
 
-- Verify 2/3/4 row blocks based on available data
-- Verify StringID resolution for both ItemData and KnowledgeData rows
-- Verify text files generated correctly
-- Verify per-language Excel output
-- Verify GUI checkbox works
+#### Pass 2: Exact Name Match
+- For each ItemInfo.ItemName, find KnowledgeInfo entries with identical `Name`
+- Also search entire StaticInfo (not just knowledgeinfo folder)
+- DataType: `"KnowledgeMatch-Exact"`
+
+#### Pass 3: Fuzzy Match (difflib, threshold >= 80%)
+- For each ItemInfo.ItemName, run `difflib.SequenceMatcher` against all names in StaticInfo
+- Both iteminfo AND knowledgeinfo matches
+- Threshold: 80% similarity (configurable)
+- DataType: `"KnowledgeMatch-Fuzzy"` or `"ItemMatch-Fuzzy"` (depending on source)
+
+### Single Mega-Sheet Output
+
+**NO per-folder sheets.** Everything goes into ONE sheet per language.
+
+### Clustering & Ordering Strategy
+
+Each item is a "cluster anchor" (starting point). Around each anchor, stack:
+1. The item's own data (ItemData)
+2. KnowledgeKey matches (KnowledgeData)
+3. Exact name matches (KnowledgeMatch-Exact)
+4. Fuzzy matches (sorted by similarity score, highest first)
+
+**Inter-cluster ordering:** Order clusters by similarity to each other:
+- Compare anchor ItemNames pairwise using difflib
+- Sort so similar items are adjacent (gradient from most-similar-groups down)
+- This creates a natural flow where related items appear near each other
+
+### Output Structure
+
+```
+GeneratedDatasheets/
+├── NewItemData_Map_All/          ← Deliverable 1 (existing, updated)
+│   ├── ExecuteFiles/
+│   └── NewItem_LQA_*.xlsx
+└── ItemKnowledgeCluster/         ← Deliverable 2 (NEW)
+    ├── ItemKnowledgeCluster_LQA_ENG.xlsx
+    ├── ItemKnowledgeCluster_LQA_ZHO-CN.xlsx
+    └── ...
+```
 
 ---
 
@@ -231,26 +152,30 @@ GUI reads `CATEGORIES` dynamically → new checkbox appears automatically.
 
 | # | Decision | Answer | Date |
 |---|----------|--------|------|
-| 1 | Skip empty knowledge rows? | YES — skip if Name/Desc is empty | 2026-02-24 |
-| 2 | Row ordering per item block? | Strict: ItemName → ItemDesc → KnowledgeName → KnowledgeDesc | 2026-02-24 |
-| 3 | Output folder? | Separate: `NewItemData_Map_All/` (not shared with old) | 2026-02-24 |
-| 4 | Text file approach? | Same as current item.py, in own ExecuteFiles subfolder | 2026-02-24 |
-| 5 | Coverage tracking? | Together — KnowledgeData + ItemData in same Korean set | 2026-02-24 |
-| 6 | Empty ItemDesc row? | YES — still output (tester sees it's empty) | 2026-02-24 |
-| 7 | File structure? | New file `generators/newitem.py`, old `item.py` untouched | 2026-02-24 |
+| 1 | Skip empty knowledge rows? | YES | 2026-02-24 |
+| 2 | Row ordering per item block? | Strict: Name → Desc → Knowledge → Knowledge2 → Fuzzy | 2026-02-24 |
+| 3 | Output folder? | Separate folders for each deliverable | 2026-02-24 |
+| 4 | KnowledgeKey location? | CHILDREN of ItemInfo, not direct attribute | 2026-02-24 |
+| 5 | Identical name match scope? | knowledgeinfo folder (Deliverable 1), full StaticInfo (Deliverable 2) | 2026-02-24 |
+| 6 | Fuzzy match threshold? | 80% (difflib.SequenceMatcher) | 2026-02-24 |
+| 7 | Fuzzy match scope? | Both iteminfo AND knowledgeinfo in StaticInfo | 2026-02-24 |
+| 8 | ItemKnowledgeCluster sheet structure? | Single mega-sheet (no folder splitting) | 2026-02-24 |
+| 9 | Inter-cluster ordering? | Similarity-based (pairwise difflib on anchor names) | 2026-02-24 |
 
 ---
 
 ## Status
 
-- [x] Codebase exploration (6 agents)
-- [x] Plan written
-- [x] All decisions finalized
-- [ ] Plan approved → enter Plan Mode
-- [ ] Implementation
+- [x] Codebase exploration
+- [x] Initial implementation (4-step pass)
+- [x] Pipeline integration (populate, coverage, CLI)
+- [x] First real-world test → found KnowledgeKey children bug
+- [x] **Fix KnowledgeKey child-node scanning** (`_find_knowledge_key()` helper)
+- [x] **Add Pass 2 identical name match (KnowledgeData2)** (name index in `load_knowledge_data()`)
+- [x] **Create ItemKnowledgeCluster generator** (`generators/itemknowledgecluster.py`)
+- [x] **Register in pipeline** (config, dispatch, CLI, populate, coverage)
 - [ ] Testing
-- [ ] GUI integration verified
-- [ ] Production validation
+- [ ] Build & deploy
 
 ---
 

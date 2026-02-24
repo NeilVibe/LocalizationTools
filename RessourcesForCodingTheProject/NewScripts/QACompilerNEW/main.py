@@ -111,6 +111,7 @@ def cli_list_categories():
             "Help": "GameAdvice/Help system entries",
             "Gimmick": "Interactive gimmick objects",
             "NewItem": "Row-per-text item datasheet (4-step pass)",
+            "ItemKnowledgeCluster": "Mega item-knowledge cluster (3-pass matching)",
         }.get(cat, "")
         print(f"  {i}. {cat:12} - {desc}")
 

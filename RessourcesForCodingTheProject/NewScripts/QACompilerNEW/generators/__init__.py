@@ -83,6 +83,11 @@ def generate_datasheets(categories: List[str]) -> Dict:
                 result = generate_newitem_datasheets()
                 korean_strings = get_collected_korean_strings()
                 results["korean_strings"]["NewItem"] = korean_strings
+            elif category == "itemknowledgecluster":
+                from generators.itemknowledgecluster import generate_itemknowledgecluster_datasheets, get_collected_korean_strings
+                result = generate_itemknowledgecluster_datasheets()
+                korean_strings = get_collected_korean_strings()
+                results["korean_strings"]["ItemKnowledgeCluster"] = korean_strings
             elif category == "quest":
                 from generators.quest import generate_quest_datasheets, get_collected_korean_strings
                 result = generate_quest_datasheets()

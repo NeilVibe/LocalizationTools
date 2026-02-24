@@ -37,6 +37,7 @@ from generators.base import (
     get_export_index,
     get_first_translation,
 )
+from generators.newitem import _find_knowledge_key
 
 log = get_logger("ItemGenerator")
 
@@ -502,7 +503,7 @@ def scan_resource_folder(
                 ik = item.get("StrKey") or ""
                 name = item.get("ItemName") or ""
 
-                knowledge_key = item.get("KnowledgeKey") or ""
+                knowledge_key = _find_knowledge_key(item)
                 item_desc_attr = item.get("ItemDesc") or ""
 
                 if knowledge_key:

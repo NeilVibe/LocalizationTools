@@ -43,6 +43,7 @@ OUTPUT_FOLDERS = {
     "Gimmick":    SCRIPT_DIR / "Gimmick_LQA_Output",
     "Help":       SCRIPT_DIR / "GameAdvice_LQA_All",
     "NewItem":    SCRIPT_DIR / "NewItemData_Map_All",
+    "ItemKnowledgeCluster": SCRIPT_DIR / "ItemKnowledgeCluster",
 }
 
 # ENG file patterns per category
@@ -56,6 +57,7 @@ ENG_FILE_PATTERNS = {
     "Gimmick":    "Gimmick_LQA_ENG.xlsx",
     "Help":       "LQA_GameAdvice_ENG.xlsx",
     "NewItem":    "NewItem_LQA_ENG.xlsx",
+    "ItemKnowledgeCluster": "ItemKnowledgeCluster_LQA_ENG.xlsx",
 }
 
 # Korean column index (1-based) per category - column A = 1
@@ -70,6 +72,7 @@ KOREAN_COLUMN = {
     "Gimmick":    (6, 9, 11),   # GimmickName(KOR)=6, ItemName(KOR)=9, ItemDesc(KOR)=11
     "Help":       1,            # Original (KR)
     "NewItem":    3,            # SourceText (KR) = col C
+    "ItemKnowledgeCluster": 2,  # SourceText (KR) = col B
 }
 
 # English/Translation column index (1-based) per category
@@ -83,6 +86,7 @@ TRANSLATION_COLUMN = {
     "Gimmick":    (7, 10, 12),  # GimmickName(ENG)=7, ItemName(ENG)=10, ItemDesc(ENG)=12
     "Help":       2,            # English (ENG)
     "NewItem":    4,            # Translation ({CODE}) = col D
+    "ItemKnowledgeCluster": 3,  # Translation ({CODE}) = col C
 }
 
 # Language data folder - imported from config.py (uses settings.json drive letter)
