@@ -35,6 +35,8 @@ from generators.base import (
     THIN_BORDER,
     resolve_translation,
     get_export_index,
+    get_ordered_export_index,
+    StringIdConsumer,
 )
 
 log = get_logger("GimmickGenerator")
@@ -263,11 +265,12 @@ def translate(
     source_file: str = "",
     export_index: Optional[Dict[str, Set[str]]] = None,
     fallback_to_kor: bool = True,
+    consumer: Optional[StringIdConsumer] = None,
 ) -> str:
     """Translate Korean text using language table with EXPORT-aware duplicate resolution."""
     if not kor_text:
         return ""
-    result, _ = resolve_translation(kor_text, lang_tbl, source_file, export_index)
+    result, _ = resolve_translation(kor_text, lang_tbl, source_file, export_index, consumer=consumer)
     if result and is_good_translation(result):
         return result
     return kor_text if fallback_to_kor else ""
@@ -278,11 +281,12 @@ def get_string_id(
     kor_text: str,
     source_file: str = "",
     export_index: Optional[Dict[str, Set[str]]] = None,
+    consumer: Optional[StringIdConsumer] = None,
 ) -> str:
     """Get StringID for Korean text from language table with EXPORT-aware duplicate resolution."""
     if not kor_text:
         return ""
-    _, stringid = resolve_translation(kor_text, lang_tbl, source_file, export_index)
+    _, stringid = resolve_translation(kor_text, lang_tbl, source_file, export_index, consumer=consumer)
     return stringid
 
 
@@ -342,6 +346,10 @@ def write_dropitem_sheet(
     # Get EXPORT index for context-aware duplicate resolution
     export_index = get_export_index()
 
+    # Order-based StringID consumer (fresh per language write pass)
+    ordered_idx = get_ordered_export_index()
+    consumer = StringIdConsumer(ordered_idx)
+
     # Build hierarchical rows
     rows_data: List[Tuple[List, int, str]] = []
     last_group = None
@@ -352,15 +360,15 @@ def write_dropitem_sheet(
         tbl = lang_tbl if lang_code != "eng" else eng_tbl
 
         if entry.group_name_kor and entry.group_name_kor != last_group:
-            group_loc = translate(tbl, entry.group_name_kor, src, export_index)
+            group_loc = translate(tbl, entry.group_name_kor, src, export_index, consumer=consumer)
             row = [0, "Group", entry.group_name_kor, group_loc, "", "", "", "", "", "", "", "", "", "", ""]
             rows_data.append((row, 0, "Group"))
             last_group = entry.group_name_kor
             last_gimmick = None
 
         if entry.gimmick_strkey != last_gimmick:
-            gim_loc = translate(tbl, entry.gimmick_name_kor, src, export_index)
-            row = [1, "Gimmick", entry.group_name_kor, translate(tbl, entry.group_name_kor, src, export_index),
+            gim_loc = translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=consumer)
+            row = [1, "Gimmick", entry.group_name_kor, translate(tbl, entry.group_name_kor, src, export_index, consumer=consumer),
                    entry.gimmick_strkey, entry.gimmick_name_kor, gim_loc, "", "", "", "", "", "", "", ""]
             rows_data.append((row, 1, "Gimmick"))
             last_gimmick = entry.gimmick_strkey
@@ -369,13 +377,13 @@ def write_dropitem_sheet(
             itm = items.get(item_key)
             item_kor = itm.item_name if itm else ""
             item_desc_kor = itm.item_desc if itm else ""
-            item_loc = translate(tbl, item_kor, src, export_index)
-            desc_loc = translate(tbl, item_desc_kor, src, export_index)
+            item_loc = translate(tbl, item_kor, src, export_index, consumer=consumer)
+            desc_loc = translate(tbl, item_desc_kor, src, export_index, consumer=consumer)
             cmd = f"/create item {item_key}"
-            sid = get_string_id(lang_tbl, item_kor, src, export_index) or get_string_id(eng_tbl, item_kor, src, export_index)
+            sid = get_string_id(lang_tbl, item_kor, src, export_index, consumer=consumer) or get_string_id(eng_tbl, item_kor, src, export_index, consumer=consumer)
 
-            row = [2, "Item", entry.group_name_kor, translate(tbl, entry.group_name_kor, src, export_index),
-                   entry.gimmick_strkey, entry.gimmick_name_kor, translate(tbl, entry.gimmick_name_kor, src, export_index),
+            row = [2, "Item", entry.group_name_kor, translate(tbl, entry.group_name_kor, src, export_index, consumer=consumer),
+                   entry.gimmick_strkey, entry.gimmick_name_kor, translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=consumer),
                    item_key, item_kor, item_loc, item_desc_kor, desc_loc, cmd, sid, ""]
             rows_data.append((row, 2, "Item"))
 
@@ -503,6 +511,10 @@ def write_flat_sheet(
     # Get EXPORT index for context-aware duplicate resolution
     export_index = get_export_index()
 
+    # Order-based StringID consumer (fresh per language write pass)
+    ordered_idx = get_ordered_export_index()
+    consumer = StringIdConsumer(ordered_idx)
+
     # Build flat rows
     rows_data: List[List] = []
 
@@ -510,18 +522,18 @@ def write_flat_sheet(
         src = entry.source_file  # Track source file for EXPORT matching
         tbl = lang_tbl if lang_code != "eng" else eng_tbl
 
-        group_loc = translate(tbl, entry.group_name_kor, src, export_index)
-        gim_loc = translate(tbl, entry.gimmick_name_kor, src, export_index)
+        group_loc = translate(tbl, entry.group_name_kor, src, export_index, consumer=consumer)
+        gim_loc = translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=consumer)
 
         for item_key in entry.drop_item_keys:
             itm = items.get(item_key)
             item_kor = itm.item_name if itm else ""
             item_desc_kor = itm.item_desc if itm else ""
 
-            item_loc = translate(tbl, item_kor, src, export_index)
-            desc_loc = translate(tbl, item_desc_kor, src, export_index)
+            item_loc = translate(tbl, item_kor, src, export_index, consumer=consumer)
+            desc_loc = translate(tbl, item_desc_kor, src, export_index, consumer=consumer)
             cmd = f"/create item {item_key}"
-            sid = get_string_id(lang_tbl, item_kor, src, export_index) or get_string_id(eng_tbl, item_kor, src, export_index)
+            sid = get_string_id(lang_tbl, item_kor, src, export_index, consumer=consumer) or get_string_id(eng_tbl, item_kor, src, export_index, consumer=consumer)
 
             row = [
                 entry.group_name_kor, group_loc,

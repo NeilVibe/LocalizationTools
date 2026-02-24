@@ -35,6 +35,8 @@ from generators.base import (
     THIN_BORDER,
     resolve_translation,
     get_export_index,
+    get_ordered_export_index,
+    StringIdConsumer,
     get_first_translation,
     add_status_dropdown,
 )
@@ -662,6 +664,10 @@ def write_newitem_excel(
         "STRINGID",
     ]
 
+    # Order-based StringID consumer (fresh per language write pass)
+    ordered_idx = get_ordered_export_index()
+    consumer = StringIdConsumer(ordered_idx)
+
     for folder_display, flist in sorted(folder_files.items()):
         if not flist:
             continue
@@ -701,7 +707,7 @@ def write_newitem_excel(
                 def _write_row(data_type: str, kor_text: str, src_file: str) -> None:
                     """Write a single data row."""
                     nonlocal excel_row
-                    trans, sid = resolve_translation(kor_text, lang_tbl, src_file, export_index)
+                    trans, sid = resolve_translation(kor_text, lang_tbl, src_file, export_index, consumer=consumer)
                     vals = [data_type, fn, kor_text, trans, "", "", "", sid]
                     for ci, val in enumerate(vals, 1):
                         cell = ws.cell(excel_row, ci, val)

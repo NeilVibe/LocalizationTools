@@ -32,6 +32,8 @@ from generators.base import (
     THIN_BORDER,
     resolve_translation,
     get_export_index,
+    get_ordered_export_index,
+    StringIdConsumer,
     add_status_dropdown,
 )
 from generators.newitem import _find_knowledge_key
@@ -359,7 +361,7 @@ def build_clusters(
              len(fuzzy_index.length_buckets), len(fuzzy_index.trigram_index))
 
     clusters: List[ItemCluster] = []
-    pass1_count = pass2_count = pass3_count = 0
+    pass1_count = pass2_count = pass3_count = dedup_removed = 0
     last_pct = -1
     t0 = time.time()
 
@@ -428,11 +430,24 @@ def build_clusters(
             exclude_strkeys.add(strkey)
             pass3_count += 1
 
+        # Deduplicate rows where kor_text is identical within the same cluster.
+        # Insertion order = priority: ItemData > KnowledgeData > KnowledgeMatch-Exact > Fuzzy
+        if cluster.rows:
+            seen_texts: Set[str] = set()
+            deduped: List[ClusterRow] = []
+            for row in cluster.rows:
+                if row.kor_text not in seen_texts:
+                    seen_texts.add(row.kor_text)
+                    deduped.append(row)
+                else:
+                    dedup_removed += 1
+            cluster.rows = deduped
+
         if cluster.rows:
             clusters.append(cluster)
 
-    log.info("Clusters built: %d total | Pass1(KnowledgeKey): %d | Pass2(ExactName): %d | Pass3(Fuzzy): %d",
-             len(clusters), pass1_count, pass2_count, pass3_count)
+    log.info("Clusters built: %d total | P1(KnowledgeKey): %d | P2(ExactName): %d | P3(Fuzzy): %d | Deduped: %d rows removed",
+             len(clusters), pass1_count, pass2_count, pass3_count, dedup_removed)
     return clusters
 
 
@@ -509,6 +524,16 @@ def write_cluster_excel(
     total_clusters = len(clusters)
     last_pct = -1
 
+    # Order-based StringID consumer (fresh per language write pass)
+    ordered_idx = get_ordered_export_index()
+    consumer = StringIdConsumer(ordered_idx)
+
+    # Global dedup: track (kor_text, stringid) across all clusters
+    # ItemData rows are ALWAYS kept (cluster anchors). Knowledge-side rows
+    # (KnowledgeData, KnowledgeMatch-*, ItemMatch-Fuzzy) are deduplicated.
+    global_seen: Set[Tuple[str, str]] = set()
+    global_dedup_count = 0
+
     for cl_idx, cluster in enumerate(clusters):
         if not cluster.rows:
             continue
@@ -524,7 +549,19 @@ def write_cluster_excel(
         current_fill = _fill_b if current_fill == _fill_a else _fill_a
 
         for crow in cluster.rows:
-            trans, sid = resolve_translation(crow.kor_text, lang_tbl, crow.source_file, export_index)
+            trans, sid = resolve_translation(
+                crow.kor_text, lang_tbl, crow.source_file, export_index,
+                consumer=consumer,
+            )
+
+            # Global dedup: skip non-ItemData rows already seen in another cluster
+            is_anchor = crow.data_type == "ItemData"
+            dedup_key = (crow.kor_text, sid)
+            if not is_anchor and dedup_key in global_seen:
+                global_dedup_count += 1
+                continue
+            global_seen.add(dedup_key)
+
             vals = [crow.data_type, crow.kor_text, trans, "", "", "", sid]
             for ci, val in enumerate(vals, 1):
                 cell = ws.cell(excel_row, ci, val)
@@ -537,6 +574,11 @@ def write_cluster_excel(
             # STRINGID as text format (prevent scientific notation)
             ws.cell(excel_row, 7).number_format = '@'
             excel_row += 1
+
+    if global_dedup_count:
+        log.info("Global dedup: %d knowledge rows removed across clusters", global_dedup_count)
+    if consumer.warnings:
+        log.warning("StringID overruns: %d (data had more duplicates than export)", consumer.warnings)
 
     # Sheet cosmetics
     if excel_row > 2:

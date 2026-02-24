@@ -32,6 +32,8 @@ from generators.base import (
     get_first_translation,
     resolve_translation,
     get_export_index,
+    get_ordered_export_index,
+    StringIdConsumer,
 )
 
 log = get_logger("HelpGenerator")
@@ -237,6 +239,10 @@ def write_workbook(
     """
     from openpyxl.worksheet.datavalidation import DataValidation
 
+    # Order-based StringID consumer (fresh per language write pass)
+    ordered_idx = get_ordered_export_index()
+    consumer = StringIdConsumer(ordered_idx)
+
     wb = Workbook()
     ws = wb.active
     ws.title = "GameAdvice"
@@ -296,13 +302,13 @@ def write_workbook(
     # Write data rows
     for row_idx, (depth, text, needs_trans, source_file) in enumerate(rows, start=2):
         if source_file and export_index:
-            eng_tr, sid = resolve_translation(text, eng_tbl, source_file, export_index)
+            eng_tr, sid = resolve_translation(text, eng_tbl, source_file, export_index, consumer=consumer)
         else:
             eng_tr, sid = get_first_translation(eng_tbl, text)
         loc_tr = ""
         if lang_tbl:
             if source_file and export_index:
-                loc_tr, loc_sid = resolve_translation(text, lang_tbl, source_file, export_index)
+                loc_tr, loc_sid = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
             else:
                 loc_tr, loc_sid = get_first_translation(lang_tbl, text)
             if loc_sid:

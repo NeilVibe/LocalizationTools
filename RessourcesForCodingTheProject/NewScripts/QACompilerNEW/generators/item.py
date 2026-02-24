@@ -35,6 +35,8 @@ from generators.base import (
     THIN_BORDER,
     resolve_translation,
     get_export_index,
+    get_ordered_export_index,
+    StringIdConsumer,
     get_first_translation,
 )
 from generators.newitem import _find_knowledge_key
@@ -583,10 +585,14 @@ def build_rows_for_language(
     # Get EXPORT index for context-aware duplicate resolution
     export_index = get_export_index()
 
+    # Order-based StringID consumer (fresh per language write pass)
+    ordered_idx = get_ordered_export_index()
+    consumer = StringIdConsumer(ordered_idx)
+
     def t(tbl: Dict[str, List[Tuple[str, str]]], text: str, src_file: str = "") -> str:
         if not text:
             return ""
-        trans, _ = resolve_translation(text, tbl, src_file, export_index)
+        trans, _ = resolve_translation(text, tbl, src_file, export_index, consumer=consumer)
         return trans
 
     rows: List[PrimaryRow] = []
@@ -612,7 +618,7 @@ def build_rows_for_language(
             deng = t(eng_tbl, idesc, src_file)
             dloc = t(lang_tbl, idesc, src_file)
             num = id_table.get(ik.lower(), "<MISSING>")
-            _, sid = resolve_translation(iname, lang_tbl, src_file, export_index)
+            _, sid = resolve_translation(iname, lang_tbl, src_file, export_index, consumer=consumer)
             rows.append((depth+1, gk, kor, eng, loc,
                          ik, num, iname, ieng, iloc, idesc, deng, dloc, sid, False))
 
@@ -827,8 +833,12 @@ def write_secondary_excel(
     # Get EXPORT index for context-aware duplicate resolution
     export_index = get_export_index()
 
+    # Order-based StringID consumer (fresh per language write pass)
+    ordered_idx = get_ordered_export_index()
+    consumer = StringIdConsumer(ordered_idx)
+
     def t(tbl: Dict[str, List[Tuple[str, str]]], text: str, src_file: str = "") -> str:
-        trans, _ = resolve_translation(text or "", tbl, src_file, export_index)
+        trans, _ = resolve_translation(text or "", tbl, src_file, export_index, consumer=consumer)
         return trans
 
     width_map = {
@@ -899,7 +909,7 @@ def write_secondary_excel(
                     "ItemKey": ik,
                     "STATUS": "",
                     "COMMENT": "",
-                    "STRINGID": resolve_translation(itm.item_name, lang_tbl, src, export_index)[1],
+                    "STRINGID": resolve_translation(itm.item_name, lang_tbl, src, export_index, consumer=consumer)[1],
                     "SCREENSHOT": "",
                 }
                 if lang_code != "eng":

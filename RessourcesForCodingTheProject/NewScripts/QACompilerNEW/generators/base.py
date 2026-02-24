@@ -17,6 +17,7 @@ import os
 import re
 import logging
 from pathlib import Path
+from collections import defaultdict
 from typing import Dict, List, Tuple, Optional, Iterator, Set
 from dataclasses import dataclass
 
@@ -91,77 +92,162 @@ def is_good_translation(text: str) -> bool:
 # =============================================================================
 
 _EXPORT_INDEX: Optional[Dict[str, Set[str]]] = None  # Module-level cache
+_ORDERED_EXPORT_INDEX: Optional[Dict[str, Dict[str, List[str]]]] = None
+
+log = get_logger("base")
 
 
-def build_export_stringid_index(export_folder: Path) -> Dict[str, Set[str]]:
+def build_export_indexes(
+    export_folder: Path,
+) -> Tuple[Dict[str, Set[str]], Dict[str, Dict[str, List[str]]]]:
     """
-    Scan EXPORT folder and build: normalized_filename → {stringid_1, stringid_2, ...}
+    Build both flat and ordered export indexes in a single parse pass.
 
-    This allows us to determine which StringIDs belong to which source data file.
-    For example, skillinfo_pc.staticinfo.loc.xml contains StringIDs from skillinfo_pc.staticinfo.xml.
+    The flat index maps: normalized_filename → {stringid_1, stringid_2, ...}
+    The ordered index maps: normalized_filename → {normalized_kor_text → [sid1, sid2, ...]}
+
+    The ordered list preserves XML document order, so the Nth occurrence of a
+    Korean text in a file maps to the Nth StringID in the list.
 
     Args:
         export_folder: Path to EXPORT folder containing .loc.xml files
 
     Returns:
-        Dict mapping normalized filename (without .loc.xml) to set of StringIDs
-        Example: {"skillinfo_pc.staticinfo": {"1001", "1002", "1003"}}
+        (flat_index, ordered_index)
     """
-    index: Dict[str, Set[str]] = {}
+    flat: Dict[str, Set[str]] = {}
+    ordered: Dict[str, Dict[str, List[str]]] = {}
 
     if not export_folder.exists():
-        return index
+        return flat, ordered
 
-    # Scan all .loc.xml files recursively
     for path in export_folder.rglob("*.loc.xml"):
         if not path.is_file():
             continue
 
-        # Normalize filename: remove .loc.xml to get base name
-        # "skillinfo_pc.staticinfo.loc.xml" → "skillinfo_pc.staticinfo"
         filename_key = path.name.lower().replace(".loc.xml", "")
 
         try:
-            # Parse the file to extract StringIDs
             tree = ET.parse(str(path))
             root = tree.getroot()
 
-            stringids: Set[str] = set()
-            for loc_str in root.iter("LocStr"):
-                sid = loc_str.get("StringId")
-                if sid:
-                    stringids.add(sid)
+            sids: Set[str] = set()
+            kor_map: Dict[str, List[str]] = {}
 
-            if stringids:
-                # Merge if multiple files have same base name (different folders)
-                if filename_key in index:
-                    index[filename_key].update(stringids)
+            for loc_str in root.iter("LocStr"):
+                sid = loc_str.get("StringId") or ""
+                origin = loc_str.get("StrOrigin") or ""
+                if sid:
+                    sids.add(sid)
+                if origin and sid:
+                    norm = normalize_placeholders(origin)
+                    if norm:
+                        kor_map.setdefault(norm, []).append(sid)
+
+            if sids:
+                if filename_key in flat:
+                    flat[filename_key].update(sids)
                 else:
-                    index[filename_key] = stringids
+                    flat[filename_key] = sids
+
+            if kor_map:
+                if filename_key in ordered:
+                    # Merge: append new SIDs to existing lists
+                    existing = ordered[filename_key]
+                    for norm_text, sid_list in kor_map.items():
+                        existing.setdefault(norm_text, []).extend(sid_list)
+                else:
+                    ordered[filename_key] = kor_map
 
         except ET.XMLSyntaxError:
-            # Skip malformed files
             continue
         except Exception:
-            # Skip files that can't be read
             continue
 
-    return index
+    return flat, ordered
+
+
+def _ensure_export_indexes() -> None:
+    """Lazy-build both export indexes on first access."""
+    global _EXPORT_INDEX, _ORDERED_EXPORT_INDEX
+    if _EXPORT_INDEX is None or _ORDERED_EXPORT_INDEX is None:
+        log.info("Building EXPORT StringID indexes (flat + ordered)...")
+        _EXPORT_INDEX, _ORDERED_EXPORT_INDEX = build_export_indexes(EXPORT_FOLDER)
+        log.info("Indexed %d EXPORT files (flat), %d files (ordered)",
+                 len(_EXPORT_INDEX), len(_ORDERED_EXPORT_INDEX))
 
 
 def get_export_index() -> Dict[str, Set[str]]:
     """
-    Lazy-load and cache EXPORT index.
+    Lazy-load and cache flat EXPORT index.
 
     Returns:
         Dict mapping normalized filename to set of StringIDs
     """
-    global _EXPORT_INDEX
-    if _EXPORT_INDEX is None:
-        print("  Building EXPORT StringID index...")
-        _EXPORT_INDEX = build_export_stringid_index(EXPORT_FOLDER)
-        print(f"  Indexed {len(_EXPORT_INDEX)} EXPORT files")
-    return _EXPORT_INDEX
+    _ensure_export_indexes()
+    return _EXPORT_INDEX  # type: ignore[return-value]
+
+
+def get_ordered_export_index() -> Dict[str, Dict[str, List[str]]]:
+    """
+    Lazy-load and cache ordered EXPORT index.
+
+    Returns:
+        Dict mapping normalized filename → {normalized_kor → [sid1, sid2, ...]}
+        Lists preserve XML document order.
+    """
+    _ensure_export_indexes()
+    return _ORDERED_EXPORT_INDEX  # type: ignore[return-value]
+
+
+# =============================================================================
+# STRINGID CONSUMER (order-based disambiguation)
+# =============================================================================
+
+class StringIdConsumer:
+    """Consume StringIDs from ordered export index in document order.
+
+    For each (export_file, kor_text) pair, maintains a pointer that advances
+    each time a StringID is consumed. Nth call for the same text in the same
+    file returns the Nth StringID from the ordered list.
+
+    Usage:
+        consumer = StringIdConsumer(get_ordered_export_index())
+        # ... for each row in document order:
+        sid = consumer.consume(normalized_kor, export_key)
+    """
+
+    def __init__(self, ordered_index: Dict[str, Dict[str, List[str]]]):
+        self._index = ordered_index
+        self._consumed: Dict[Tuple[str, str], int] = defaultdict(int)
+        self.warnings: int = 0
+
+    def consume(self, normalized_kor: str, export_key: str) -> Optional[str]:
+        """Get next StringID for this text in this file.
+
+        Returns None if no ordered data available for this text/file combination.
+        """
+        file_map = self._index.get(export_key)
+        if not file_map:
+            return None
+        sid_list = file_map.get(normalized_kor)
+        if not sid_list:
+            return None
+
+        key = (export_key, normalized_kor)
+        idx = self._consumed[key]
+        self._consumed[key] += 1
+
+        if idx < len(sid_list):
+            return sid_list[idx]
+        else:
+            # More occurrences in data than export — warn, return last available
+            self.warnings += 1
+            log.warning(
+                "StringID overrun: '%s...' in %s — occurrence %d but only %d available",
+                normalized_kor[:30], export_key, idx + 1, len(sid_list),
+            )
+            return sid_list[-1]
 
 
 def get_export_key(data_filename: str) -> str:
@@ -181,7 +267,8 @@ def resolve_translation(
     korean_text: str,
     lang_table: Dict[str, List[Tuple[str, str]]],
     data_filename: str = "",
-    export_index: Optional[Dict[str, Set[str]]] = None
+    export_index: Optional[Dict[str, Set[str]]] = None,
+    consumer: Optional[StringIdConsumer] = None,
 ) -> Tuple[str, str]:
     """
     Resolve correct translation using EXPORT mapping for duplicate disambiguation.
@@ -194,8 +281,9 @@ def resolve_translation(
     1. Normalize Korean text
     2. Get all (translation, stringid) pairs for this text
     3. If only one → use it
-    4. If multiple → find StringID that exists in matching EXPORT file
-    5. Fallback → first good translation (no Korean)
+    4. If consumer provided → try order-based consumption (Nth occurrence → Nth StringID)
+    5. If multiple → find StringID that exists in matching EXPORT file
+    6. Fallback → first good translation (no Korean)
 
     Args:
         korean_text: The Korean source text to translate
@@ -203,6 +291,9 @@ def resolve_translation(
                     {normalized_korean: [(translation, stringid), ...]}
         data_filename: Source data file name (e.g., "skillinfo_pc.staticinfo.xml")
         export_index: Optional pre-loaded EXPORT index (uses global cache if None)
+        consumer: Optional StringIdConsumer for order-based disambiguation.
+                  When provided, the Nth call for the same text in the same file
+                  returns the Nth StringID from document order.
 
     Returns:
         Tuple of (translation, stringid). Returns ("", "") if not found.
@@ -219,11 +310,22 @@ def resolve_translation(
     if not candidates:
         return ("", "")
 
-    # If only one candidate, return it
+    # If only one candidate, still consume from consumer to keep pointer in sync
     if len(candidates) == 1:
+        if consumer and data_filename:
+            consumer.consume(normalized, get_export_key(data_filename))
         return candidates[0]
 
-    # Multiple candidates - try to disambiguate using EXPORT
+    # Multiple candidates — try order-based consumption first (most precise)
+    if consumer and data_filename:
+        export_key = get_export_key(data_filename)
+        target_sid = consumer.consume(normalized, export_key)
+        if target_sid:
+            for translation, stringid in candidates:
+                if stringid == target_sid:
+                    return (translation, stringid)
+
+    # Fall back to file-set matching using EXPORT index
     if data_filename:
         if export_index is None:
             export_index = get_export_index()
@@ -235,8 +337,6 @@ def resolve_translation(
             # Find candidate whose StringID is in this EXPORT file
             for translation, stringid in candidates:
                 if stringid in export_stringids:
-                    print(f"    [DUPLICATE] Korean '{korean_text[:30]}...' has {len(candidates)} translations")
-                    print(f"    [RESOLVED] Using StringID {stringid} (matched {data_filename})")
                     return (translation, stringid)
 
     # Fallback: prefer good translation (no Korean)
@@ -554,7 +654,8 @@ def emit_rows_to_worksheet(
     lang_code: str,
     include_translation_col: bool = True,
     data_filename: str = "",
-    export_index: Optional[Dict[str, Set[str]]] = None
+    export_index: Optional[Dict[str, Set[str]]] = None,
+    consumer: Optional[StringIdConsumer] = None,
 ) -> None:
     """
     Write rows to a worksheet with translations.
@@ -567,6 +668,7 @@ def emit_rows_to_worksheet(
         include_translation_col: Whether to include Translation column (False for ENG)
         data_filename: Source data file for context-aware duplicate resolution
         export_index: Optional pre-loaded EXPORT index (uses global cache if None)
+        consumer: Optional StringIdConsumer for order-based StringID disambiguation
     """
     # Headers
     if include_translation_col:
@@ -584,7 +686,8 @@ def emit_rows_to_worksheet(
         # Use context-aware resolution if data_filename is provided
         if data_filename:
             translation, stringid = resolve_translation(
-                item.text, lang_table, data_filename, export_index
+                item.text, lang_table, data_filename, export_index,
+                consumer=consumer,
             )
         else:
             # Fallback to simple first-translation lookup

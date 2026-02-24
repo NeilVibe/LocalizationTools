@@ -38,6 +38,8 @@ from generators.base import (
     THIN_BORDER,
     resolve_translation,
     get_export_index,
+    get_ordered_export_index,
+    StringIdConsumer,
 )
 
 log = get_logger("CharacterGenerator")
@@ -209,6 +211,13 @@ def write_workbook(
 
     is_eng = lang_code.lower() == "eng"
 
+    # Get EXPORT index for context-aware duplicate resolution
+    export_index = get_export_index()
+
+    # Order-based StringID consumer (fresh per language write pass)
+    ordered_idx = get_ordered_export_index()
+    consumer = StringIdConsumer(ordered_idx)
+
     for group_key in sorted(groups.keys()):
         characters = groups[group_key]
         if not characters:
@@ -242,9 +251,6 @@ def write_workbook(
             c.border = THIN_BORDER
         sheet.row_dimensions[1].height = 25
 
-        # Get EXPORT index for context-aware duplicate resolution
-        export_index = get_export_index()
-
         # Write data rows
         r_idx = 2
 
@@ -252,10 +258,10 @@ def write_workbook(
             fill = _row_fill_even if r_idx % 2 == 0 else _row_fill_odd
 
             # Use source_file for EXPORT-aware duplicate resolution
-            trans_eng, sid_eng = resolve_translation(char.name, eng_tbl, char.source_file, export_index)
+            trans_eng, sid_eng = resolve_translation(char.name, eng_tbl, char.source_file, export_index, consumer=consumer)
             trans_other, sid_other = ("", "")
             if not is_eng and lang_tbl is not None:
-                trans_other, sid_other = resolve_translation(char.name, lang_tbl, char.source_file, export_index)
+                trans_other, sid_other = resolve_translation(char.name, lang_tbl, char.source_file, export_index, consumer=consumer)
 
             command = f"/create character {char.strkey}"
 

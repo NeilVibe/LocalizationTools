@@ -38,6 +38,8 @@ from generators.base import (
     resolve_translation,
     get_first_translation,
     get_export_index,
+    get_ordered_export_index,
+    StringIdConsumer,
 )
 
 log = get_logger("SkillGenerator")
@@ -365,6 +367,10 @@ def write_workbook(
     # Get EXPORT index for context-aware resolution
     export_index = get_export_index()
 
+    # Order-based StringID consumer (fresh per language write pass)
+    ordered_idx = get_ordered_export_index()
+    consumer = StringIdConsumer(ordered_idx)
+
     # Header row
     headers: List = []
     h1 = ws.cell(1, 1, "Original (KR)")
@@ -417,10 +423,10 @@ def write_workbook(
     # Write data rows
     for row_idx, (depth, text, source_file) in enumerate(rows, start=2):
         # Use context-aware resolution for duplicate handling
-        eng_tr, sid = resolve_translation(text, eng_tbl, source_file, export_index)
+        eng_tr, sid = resolve_translation(text, eng_tbl, source_file, export_index, consumer=consumer)
         loc_tr = ""
         if lang_tbl:
-            loc_tr, loc_sid = resolve_translation(text, lang_tbl, source_file, export_index)
+            loc_tr, loc_sid = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
             if loc_sid:
                 sid = loc_sid
 

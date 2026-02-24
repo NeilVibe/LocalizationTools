@@ -36,6 +36,8 @@ from generators.base import (
     get_first_translation,
     resolve_translation,
     get_export_index,
+    get_ordered_export_index,
+    StringIdConsumer,
 )
 
 log = get_logger("KnowledgeGenerator")
@@ -418,6 +420,10 @@ def write_workbook(
 
     is_eng = lang_code.lower() == "eng"
 
+    # Order-based StringID consumer (fresh per language write pass)
+    ordered_idx = get_ordered_export_index()
+    consumer = StringIdConsumer(ordered_idx)
+
     for root_group in mega_roots:
         rows = emit_group_rows(root_group, 0)
         if not rows:
@@ -476,14 +482,14 @@ def write_workbook(
             eng_tr, sid_eng = ("", "")
             if needs_tr:
                 if source_file and export_index:
-                    eng_tr, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index)
+                    eng_tr, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=consumer)
                 else:
                     eng_tr, sid_eng = get_first_translation(eng_tbl, text)
 
             other_tr, sid_other = ("", "")
             if needs_tr and not is_eng and lang_tbl is not None:
                 if source_file and export_index:
-                    other_tr, sid_other = resolve_translation(text, lang_tbl, source_file, export_index)
+                    other_tr, sid_other = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
                 else:
                     other_tr, sid_other = get_first_translation(lang_tbl, text)
 
