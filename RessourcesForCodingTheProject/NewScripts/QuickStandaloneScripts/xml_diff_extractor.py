@@ -216,52 +216,99 @@ def write_diff_xml(
     return count
 
 
-def write_reverted_xml(
-    current_map: Dict[str, dict],
+def revert_current_inplace(
+    current_path: Path,
     added_sids: set,
     edit_reverts: Dict[str, dict],
-    output_path: Path,
-) -> Tuple[int, int, int]:
+) -> Tuple[int, int]:
     """
-    Write the full CURRENT XML with reverted changes.
-
-    - added_sids: StringIds to REMOVE (they were added between BEFORE/AFTER)
-    - edit_reverts: StringId -> BEFORE attrs (restore to pre-change version)
+    Modify CURRENT XML file in-place:
+    - REMOVE LocStr elements whose StringId was added between BEFORE/AFTER
+    - REVERT Str attribute to BEFORE value for edited StringIds
+    - Preserves exact file structure, formatting, root element, etc.
 
     Returns:
-        (total_written, removed_count, reverted_count)
+        (removed_count, reverted_count)
     """
-    lines = [
-        '<?xml version="1.0" encoding="utf-8"?>',
-        '<LanguageData>',
-    ]
+    import os
+    import stat
 
-    total = 0
+    # Read raw file
+    raw = _read_xml_raw(current_path)
+    if raw is None:
+        raise RuntimeError(f"Cannot read {current_path}")
+
+    sanitized = sanitize_xml(raw)
+
+    # Parse into tree (NOT just root — we need tree.write() later)
+    if USING_LXML:
+        parser = etree.XMLParser(recover=True, encoding="utf-8")
+        tree = etree.ElementTree(etree.fromstring(sanitized.encode("utf-8"), parser))
+    else:
+        tree = etree.ElementTree(etree.fromstring(sanitized))
+
+    root = tree.getroot()
+    if root is None:
+        raise RuntimeError(f"Failed to parse {current_path}")
+
     removed = 0
     reverted = 0
+    to_remove = []
 
-    for string_id, attrs in current_map.items():
-        # REMOVE: this StringId was added between BEFORE→AFTER, undo = delete
+    for elem in root.iter("LocStr"):
+        string_id = elem.get("StringId") or elem.get("StringID") or ""
+        if not string_id:
+            continue
+
+        # REMOVE: this StringId was added between BEFORE→AFTER
         if string_id in added_sids:
+            to_remove.append(elem)
             removed += 1
             continue
 
-        # REVERT: this StringId was edited between BEFORE→AFTER
-        # Only restore the Str attribute (translation), keep everything else from CURRENT
+        # REVERT: only overwrite Str with BEFORE value
         if string_id in edit_reverts:
             before_attrs = edit_reverts[string_id]
-            attrs = dict(attrs)  # copy so we don't mutate current_map
             if "Str" in before_attrs:
-                attrs["Str"] = before_attrs["Str"]
+                elem.set("Str", before_attrs["Str"])
             reverted += 1
 
-        lines.append(f'  {_build_locstr_line(attrs)}')
-        total += 1
+    # Remove ADD elements from tree
+    for elem in to_remove:
+        parent = root
+        # Find parent of this element to remove it
+        if USING_LXML:
+            parent = elem.getparent()
+            if parent is not None:
+                parent.remove(elem)
+        else:
+            # stdlib: need to find parent by iterating
+            _remove_element_stdlib(root, elem)
 
-    lines.append('</LanguageData>')
-    lines.append('')
-    output_path.write_text('\n'.join(lines), encoding='utf-8')
-    return total, removed, reverted
+    # Make file writable if read-only
+    try:
+        current_mode = os.stat(current_path).st_mode
+        if not current_mode & stat.S_IWRITE:
+            os.chmod(current_path, current_mode | stat.S_IWRITE)
+    except Exception:
+        pass
+
+    # Write back — no xml_declaration to preserve original structure
+    if USING_LXML:
+        tree.write(str(current_path), encoding="utf-8", xml_declaration=False, pretty_print=True)
+    else:
+        tree.write(str(current_path), encoding="utf-8", xml_declaration=False)
+
+    return removed, reverted
+
+
+def _remove_element_stdlib(root, target):
+    """Remove an element from the tree (stdlib ElementTree has no getparent)."""
+    for parent in root.iter():
+        for child in list(parent):
+            if child is target:
+                parent.remove(child)
+                return
 
 
 # =============================================================================
@@ -520,25 +567,24 @@ class XMLDiffApp:
             _log("Nothing to revert! CURRENT has none of the BEFORE->AFTER changes.")
             return
 
-        # Step 3: Apply reverts
-        _log("[4/4] Applying reverts to CURRENT...")
+        # Step 3: Apply reverts IN-PLACE
+        _log("[4/4] Reverting CURRENT in-place...")
 
-        timestamp = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_path = current_path.parent / f"REVERTED_{current_path.stem}_{timestamp}.xml"
+        try:
+            removed, reverted = revert_current_inplace(
+                current_path, added_sids, edit_reverts,
+            )
+        except Exception as exc:
+            _log(f"  ERROR: {exc}")
+            messagebox.showerror("Error", f"Failed to revert:\n{exc}")
+            return
 
-        total_written, removed, reverted = write_reverted_xml(
-            current_map, added_sids, edit_reverts, output_path,
-        )
-
-        _log(f"  Total LocStr written: {total_written}")
         _log(f"  Removed (undid ADDs): {removed}")
-        _log(f"  Reverted (undid EDITs): {reverted}")
-        _log(f"  Unchanged: {total_written - reverted}")
+        _log(f"  Reverted Str (undid EDITs): {reverted}")
         _log("")
-        _log(f"Output: {output_path.name}")
-        _log(f"Saved to: {output_path}")
+        _log(f"CURRENT file updated: {current_path.name}")
         _log("")
-        _log("Done! Your CURRENT file is untouched. Review the REVERTED_ output.")
+        _log("Done! CURRENT file has been modified in-place.")
 
     def run(self):
         self.root.mainloop()
