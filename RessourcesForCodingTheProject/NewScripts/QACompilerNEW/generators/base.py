@@ -53,6 +53,7 @@ def get_logger(name: str) -> logging.Logger:
 # =============================================================================
 
 _placeholder_suffix_re = re.compile(r'\{([^#}]+)#[^}]+\}')
+_br_tag_re = re.compile(r'<br\s*/?>', flags=re.IGNORECASE)
 _whitespace_re = re.compile(r'\s+', flags=re.UNICODE)
 
 
@@ -60,12 +61,14 @@ def normalize_placeholders(text: str) -> str:
     """
     Normalize text for matching:
     1) Remove '#...' suffix inside {...} placeholders
-    2) Collapse all whitespace to single space
-    3) Trim leading/trailing spaces
+    2) Normalize <br/> tags to space (data files may use \\n, language data uses <br/>)
+    3) Collapse all whitespace to single space
+    4) Trim leading/trailing spaces
     """
     if not text:
         return ""
     text = _placeholder_suffix_re.sub(r'{\1}', text)
+    text = _br_tag_re.sub(' ', text)
     text = _whitespace_re.sub(' ', text).strip()
     return text
 
