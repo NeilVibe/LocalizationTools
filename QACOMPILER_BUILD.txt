@@ -122,3 +122,4 @@ Build - br tag normalization for text matching
 Build - br tag normalization for text matching
 Build - NewRegion review fixes + XML Diff Extractor
 Build - consumer fixes + RewardKnowledgeKey + NewCharacter/NewRegion generators
+Build - unified StringID + COMMAND column + help crash fix
