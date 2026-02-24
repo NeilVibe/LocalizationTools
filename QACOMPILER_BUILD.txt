@@ -111,3 +111,4 @@ Build - Full rebuild all projects
 Build - MasterSubmitScript: 4 columns, orange missing EXPORT
 Build - Update scenario and faction quest folder paths
 Build - Fix word count bug, GUI height 1100 + centering, robustness improvements
+Build - NewItem pipeline integration
