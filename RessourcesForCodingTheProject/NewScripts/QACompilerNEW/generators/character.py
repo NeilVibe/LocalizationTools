@@ -20,7 +20,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -160,10 +160,12 @@ def build_character_groups(folder: Path) -> Dict[str, List[CharacterItem]]:
         Dict mapping group_key (e.g., 'npc', 'monster') to list of CharacterItems
     """
     groups: Dict[str, List[CharacterItem]] = defaultdict(list)
+    seen_strkeys: Set[str] = set()
 
     log.info("Scanning for characterinfo files...")
 
     file_count = 0
+    duplicates = 0
     for path in sorted(iter_characterinfo_files(folder)):
         file_count += 1
         group_key = get_group_key(path.name)
@@ -171,10 +173,16 @@ def build_character_groups(folder: Path) -> Dict[str, List[CharacterItem]]:
         characters = extract_characters_from_file(path)
 
         for char in characters:
+            if char.strkey in seen_strkeys:
+                duplicates += 1
+                continue
+            seen_strkeys.add(char.strkey)
             groups[group_key].append(char)
 
         log.debug("  %s → %s: %d characters", path.name, group_key.upper(), len(characters))
 
+    if duplicates:
+        log.info("  Skipped %d duplicate StrKeys", duplicates)
     log.info("Scanned %d files, found %d groups", file_count, len(groups))
     for key, items in sorted(groups.items()):
         log.info("  • %s: %d characters", key.upper(), len(items))
@@ -214,9 +222,11 @@ def write_workbook(
     # Get EXPORT index for context-aware duplicate resolution
     export_index = get_export_index()
 
-    # Order-based StringID consumer (fresh per language write pass)
+    # Order-based StringID consumers (fresh per language write pass)
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
+    # ENG needs its own consumer for StringID column (consumer=None means no disambiguation)
+    eng_consumer = StringIdConsumer(ordered_idx) if is_eng else None
 
     for group_key in sorted(groups.keys()):
         characters = groups[group_key]
@@ -258,7 +268,8 @@ def write_workbook(
             fill = _row_fill_even if r_idx % 2 == 0 else _row_fill_odd
 
             # Use source_file for EXPORT-aware duplicate resolution
-            trans_eng, sid_eng = resolve_translation(char.name, eng_tbl, char.source_file, export_index, consumer=None)
+            # eng_consumer for ENG workbook StringID, consumer=None for display-only eng translation
+            trans_eng, sid_eng = resolve_translation(char.name, eng_tbl, char.source_file, export_index, consumer=eng_consumer)
             trans_other, sid_other = ("", "")
             if not is_eng and lang_tbl is not None:
                 trans_other, sid_other = resolve_translation(char.name, lang_tbl, char.source_file, export_index, consumer=consumer)

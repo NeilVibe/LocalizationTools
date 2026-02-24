@@ -646,8 +646,15 @@ def write_sheet_content(
     lang_code: str,
     export_index: Optional[Dict[str, Set[str]]] = None,
     consumer: Optional[StringIdConsumer] = None,
+    eng_consumer: Optional[StringIdConsumer] = None,
 ) -> None:
-    """Write rows to a sheet with proper formatting."""
+    """Write rows to a sheet with proper formatting.
+
+    Args:
+        consumer: StringID consumer for target language (non-ENG workbooks).
+        eng_consumer: StringID consumer for ENG workbook StringID column.
+                      For non-ENG workbooks, eng is display-only so pass None.
+    """
 
     # Headers
     headers = []
@@ -674,8 +681,10 @@ def write_sheet_content(
     for (depth, text, style_type, is_desc, source_file) in rows:
         fill, font, row_height = get_style(style_type)
 
+        # For ENG workbook: eng_consumer disambiguates StringIDs
+        # For non-ENG: consumer=None (display-only), StringID comes from lang_tbl
         if source_file and export_index:
-            trans_eng, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=None)
+            trans_eng, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
         else:
             trans_eng, sid_eng = get_first_translation(eng_tbl, text)
         trans_other = sid_other = ""
@@ -778,9 +787,11 @@ def write_workbook(
     is_eng = lang_code.lower() == "eng"
     used_titles: Set[str] = set()
 
-    # Order-based StringID consumer (fresh per language write pass)
+    # Order-based StringID consumers (fresh per language write pass)
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
+    # ENG workbook needs its own consumer for StringID column
+    eng_consumer = StringIdConsumer(ordered_idx) if is_eng else None
 
     def get_unique_title(base: str) -> str:
         title = base
@@ -801,7 +812,7 @@ def write_workbook(
         title = get_unique_title(title)
 
         sheet = wb.create_sheet(title=title)
-        write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer)
+        write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer, eng_consumer)
 
         log.info("    Sheet '%s': %d rows", title, len(rows))
 
@@ -813,7 +824,7 @@ def write_workbook(
             title = get_unique_title(title)
 
             sheet = wb.create_sheet(title=title)
-            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer)
+            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer, eng_consumer)
 
             log.info("    Sheet '%s': %d rows", title, len(rows))
 
@@ -822,7 +833,7 @@ def write_workbook(
         rows = emit_shop_rows(shop_groups)
         if rows:
             sheet = wb.create_sheet(title="Shop")
-            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer)
+            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer, eng_consumer)
             log.info("    Sheet 'Shop': %d rows", len(rows))
 
     # Save
