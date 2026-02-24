@@ -11,6 +11,7 @@ Columns: DataType | SourceText (KR) | Translation | STATUS | COMMENT | SCREENSHO
 """
 
 import difflib
+import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -123,13 +124,26 @@ def scan_all_staticinfo(
         log.warning("Folder does not exist: %s", folder)
         return items, knowledges
 
+    # Count files first for progress
+    all_paths = list(iter_xml_files(folder))
+    total_files = len(all_paths)
+    log.info("  Found %d XML files to scan", total_files)
+
     file_count = 0
-    for path in iter_xml_files(folder):
+    last_pct = -1
+    for path in all_paths:
         root = parse_xml_file(path)
         if root is None:
             continue
         file_count += 1
         src = path.name
+
+        # Progress every 10%
+        pct = (file_count * 100) // total_files if total_files else 100
+        if pct // 10 > last_pct // 10:
+            last_pct = pct
+            log.info("  Scanning: %d%% (%d/%d files, %d items, %d knowledges)",
+                     pct, file_count, total_files, len(items), len(knowledges))
 
         for el in root.iter("ItemInfo"):
             sk = el.get("StrKey") or ""
@@ -156,7 +170,7 @@ def scan_all_staticinfo(
                 source_file=src,
             ))
 
-    log.info("Scanned %d files: %d items, %d knowledges",
+    log.info("Scan complete: %d files, %d items, %d knowledges",
              file_count, len(items), len(knowledges))
     return items, knowledges
 
@@ -165,20 +179,50 @@ def scan_all_staticinfo(
 # FUZZY MATCHING
 # =============================================================================
 
+def _build_fuzzy_index(
+    all_name_index: Dict[str, List[Tuple[str, str, str, str]]],
+) -> Tuple[List[Tuple[str, int]], Dict[int, List[str]]]:
+    """Pre-build length-bucketed index for fast fuzzy candidate filtering.
+
+    SequenceMatcher ratio can't exceed 2*min(len_a, len_b)/(len_a+len_b).
+    For threshold T, we only need candidates where:
+        len_b >= len_a * T / (2 - T)  AND  len_b <= len_a * (2 - T) / T
+
+    For T=0.80: len_b must be within [0.667 * len_a, 1.5 * len_a]
+    This eliminates most candidates without computing SequenceMatcher.
+
+    Returns:
+        (sorted_names, length_buckets)
+        - sorted_names: [(name, len)] sorted by length
+        - length_buckets: {length: [names...]} for quick range lookup
+    """
+    length_buckets: Dict[int, List[str]] = defaultdict(list)
+    for name in all_name_index:
+        length_buckets[len(name)].append(name)
+    sorted_names = [(name, len(name)) for name in all_name_index]
+    sorted_names.sort(key=lambda x: x[1])
+    return sorted_names, length_buckets
+
+
 def find_fuzzy_matches(
     anchor_name: str,
     all_name_index: Dict[str, List[Tuple[str, str, str, str]]],
     exclude_strkeys: Set[str],
+    length_buckets: Dict[int, List[str]],
     threshold: float = 0.80,
     max_matches: int = 5,
-) -> List[Tuple[str, str, str, str, float]]:
-    """Find fuzzy matches for anchor_name against all names in the index.
+) -> List[Tuple[str, str, str, str, float, str]]:
+    """Find fuzzy matches using length-bucketed pre-filtering.
+
+    Optimization: SequenceMatcher ratio has an upper bound based on string
+    lengths. We skip candidates whose length makes it impossible to reach
+    the threshold, eliminating ~70-90% of comparisons.
 
     Args:
         anchor_name: The name to match against
         all_name_index: {name: [(strkey, desc, source_file, tag), ...]}
-                        tag = "Knowledge" or "Item"
         exclude_strkeys: StrKeys to skip (already matched in Pass 1/2)
+        length_buckets: Pre-built {length: [names...]} from _build_fuzzy_index()
         threshold: Minimum similarity ratio (0.0 - 1.0)
         max_matches: Maximum fuzzy matches to return
 
@@ -188,14 +232,35 @@ def find_fuzzy_matches(
     if not anchor_name:
         return []
 
+    anchor_len = len(anchor_name)
+    # Length bounds: for ratio >= T, candidate length must be in this range
+    # ratio = 2*matches/(len_a+len_b) => max possible ratio = 2*min(a,b)/(a+b)
+    min_len = max(1, int(anchor_len * threshold / (2.0 - threshold)))
+    max_len = int(anchor_len * (2.0 - threshold) / threshold) + 1
+
+    # Collect candidate names from valid length buckets only
+    candidates: List[str] = []
+    for blen in range(min_len, max_len + 1):
+        if blen in length_buckets:
+            candidates.extend(length_buckets[blen])
+
     matches: List[Tuple[str, str, str, str, float, str]] = []
 
-    for name, records in all_name_index.items():
+    # Use set_seq2 optimization: reuse SequenceMatcher for anchor
+    sm = difflib.SequenceMatcher(None, anchor_name, "")
+
+    for name in candidates:
         if name == anchor_name:
             continue  # Exact match handled separately
-        ratio = difflib.SequenceMatcher(None, anchor_name, name).ratio()
+        sm.set_seq2(name)
+        # Quick upper bound check before full ratio computation
+        if sm.real_quick_ratio() < threshold:
+            continue
+        if sm.quick_ratio() < threshold:
+            continue
+        ratio = sm.ratio()
         if ratio >= threshold:
-            for strkey, desc, source_file, tag in records:
+            for strkey, desc, source_file, tag in all_name_index[name]:
                 if strkey not in exclude_strkeys:
                     matches.append((strkey, name, desc, source_file, ratio, tag))
 
@@ -218,9 +283,12 @@ def build_clusters(
     Pass 2: Exact name match (ItemName == KnowledgeInfo.Name)
     Pass 3: Fuzzy difflib matching against ALL names (Knowledge + Item)
     """
-    log.info("Building clusters...")
+    total_items = len(items)
+    total_knowledges = len(knowledges)
+    log.info("Building clusters for %d items against %d knowledges...", total_items, total_knowledges)
 
     # Build knowledge maps
+    log.info("  Building knowledge lookup maps...")
     knowledge_by_key: Dict[str, KnowledgeRecord] = {}
     knowledge_by_name: Dict[str, List[KnowledgeRecord]] = defaultdict(list)
     for kr in knowledges:
@@ -228,6 +296,8 @@ def build_clusters(
             knowledge_by_key[kr.strkey] = kr
         if kr.name:
             knowledge_by_name[kr.name].append(kr)
+    log.info("  Knowledge by key: %d | Knowledge by name: %d unique names",
+             len(knowledge_by_key), len(knowledge_by_name))
 
     # Build combined name index for fuzzy matching
     # {name: [(strkey, desc, source_file, tag), ...]}
@@ -238,11 +308,30 @@ def build_clusters(
     for ir in items:
         if ir.name:
             all_name_index[ir.name].append((ir.strkey, ir.desc, ir.source_file, "Item"))
+    log.info("  Combined name index: %d unique names (for fuzzy matching)", len(all_name_index))
+
+    # Pre-build length-bucketed index for fast fuzzy candidate filtering
+    log.info("  Building length-bucketed fuzzy index...")
+    _, length_buckets = _build_fuzzy_index(all_name_index)
+    log.info("  Length buckets: %d distinct lengths", len(length_buckets))
 
     clusters: List[ItemCluster] = []
     pass1_count = pass2_count = pass3_count = 0
+    last_pct = -1
+    t0 = time.time()
 
-    for item in items:
+    for item_idx, item in enumerate(items):
+        # Progress every 5%
+        pct = ((item_idx + 1) * 100) // total_items if total_items else 100
+        if pct // 5 > last_pct // 5:
+            last_pct = pct
+            elapsed = time.time() - t0
+            rate = (item_idx + 1) / elapsed if elapsed > 0 else 0
+            remaining = (total_items - item_idx - 1) / rate if rate > 0 else 0
+            log.info("  Clustering: %d%% (%d/%d) | P1:%d P2:%d P3:%d | %.0fs elapsed, ~%.0fs remaining",
+                     pct, item_idx + 1, total_items, pass1_count, pass2_count, pass3_count,
+                     elapsed, remaining)
+
         cluster = ItemCluster(item_strkey=item.strkey, item_name=item.name)
         exclude_strkeys: Set[str] = {item.strkey}
 
@@ -281,7 +370,7 @@ def build_clusters(
                     break  # Take first non-duplicate match
 
         # Pass 3: Fuzzy matching across ALL names
-        fuzzy_hits = find_fuzzy_matches(item.name, all_name_index, exclude_strkeys)
+        fuzzy_hits = find_fuzzy_matches(item.name, all_name_index, exclude_strkeys, length_buckets)
         for strkey, name, desc, source_file, score, src_tag in fuzzy_hits:
             pct = int(score * 100)
             tag = "KnowledgeMatch-Fuzzy" if src_tag == "Knowledge" else "ItemMatch-Fuzzy"
@@ -316,35 +405,62 @@ def order_clusters_by_similarity(clusters: List[ItemCluster]) -> List[ItemCluste
     if len(clusters) <= 1:
         return clusters
 
-    log.info("Ordering %d clusters by name similarity...", len(clusters))
+    total = len(clusters)
+    log.info("Ordering %d clusters by name similarity (O(N^2) comparisons)...", total)
+    if total > 5000:
+        log.warning("  Large cluster count — this may take a while")
 
     ordered: List[ItemCluster] = []
-    remaining = list(range(len(clusters)))
+    remaining_set: Set[int] = set(range(len(clusters)))
+    remaining_list: List[int] = list(range(len(clusters)))
+    t0 = time.time()
+    last_pct = -1
 
     # Start with first cluster
-    current_idx = remaining.pop(0)
+    current_idx = remaining_list[0]
+    remaining_set.discard(current_idx)
     ordered.append(clusters[current_idx])
 
-    while remaining:
+    while remaining_set:
+        # Progress every 10%
+        done = total - len(remaining_set)
+        pct = (done * 100) // total
+        if pct // 10 > last_pct // 10:
+            last_pct = pct
+            elapsed = time.time() - t0
+            rate = done / elapsed if elapsed > 0 else 0
+            eta = len(remaining_set) / rate if rate > 0 else 0
+            log.info("  Ordering: %d%% (%d/%d) | %.0fs elapsed, ~%.0fs remaining",
+                     pct, done, total, elapsed, eta)
+
         current_name = clusters[current_idx].item_name or ""
         best_idx = -1
         best_score = -1.0
 
-        for idx in remaining:
-            candidate_name = clusters[idx].item_name or ""
-            if not current_name or not candidate_name:
-                score = 0.0
-            else:
-                score = difflib.SequenceMatcher(None, current_name, candidate_name).ratio()
-            if score > best_score:
-                best_score = score
-                best_idx = idx
+        if not current_name:
+            # No name to compare — just pick any remaining
+            best_idx = next(iter(remaining_set))
+        else:
+            sm = difflib.SequenceMatcher(None, current_name, "")
+            for idx in remaining_set:
+                candidate_name = clusters[idx].item_name or ""
+                if not candidate_name:
+                    score = 0.0
+                else:
+                    sm.set_seq2(candidate_name)
+                    score = sm.quick_ratio()
+                    if score > best_score:
+                        score = sm.ratio()
+                if score > best_score:
+                    best_score = score
+                    best_idx = idx
 
-        remaining.remove(best_idx)
+        remaining_set.discard(best_idx)
         ordered.append(clusters[best_idx])
         current_idx = best_idx
 
-    log.info("Cluster ordering complete")
+    elapsed = time.time() - t0
+    log.info("Cluster ordering complete in %.1fs", elapsed)
     return ordered
 
 
@@ -394,10 +510,19 @@ def write_cluster_excel(
 
     excel_row = 2
     current_fill = _fill_a
+    total_clusters = len(clusters)
+    last_pct = -1
 
-    for cluster in clusters:
+    for cl_idx, cluster in enumerate(clusters):
         if not cluster.rows:
             continue
+
+        # Progress every 10%
+        pct = ((cl_idx + 1) * 100) // total_clusters if total_clusters else 100
+        if pct // 10 > last_pct // 10:
+            last_pct = pct
+            log.info("  Writing Excel: %d%% (%d/%d clusters, %d rows so far)",
+                     pct, cl_idx + 1, total_clusters, excel_row - 2)
 
         # Alternate fill per cluster for visual grouping
         current_fill = _fill_b if current_fill == _fill_a else _fill_a
@@ -478,7 +603,10 @@ def generate_itemknowledgecluster_datasheets() -> Dict:
         return result
 
     try:
+        gen_start = time.time()
+
         # 1. Load language tables
+        log.info("[1/6] Loading language tables...")
         lang_tables = load_language_tables(LANGUAGE_FOLDER)
         if not lang_tables:
             result["errors"].append("No language tables found!")
@@ -486,20 +614,27 @@ def generate_itemknowledgecluster_datasheets() -> Dict:
             return result
 
         # 2. Scan all StaticInfo (items from iteminfo, knowledge from knowledgeinfo)
+        log.info("[2/6] Scanning StaticInfo XML files...")
+        t0 = time.time()
         items_raw, knowledges_raw = scan_all_staticinfo(item_folder)
 
         # Also scan knowledgeinfo folder separately
         knowledge_folder = RESOURCE_FOLDER / "knowledgeinfo"
         if knowledge_folder.exists():
+            log.info("  Also scanning knowledgeinfo folder...")
             _, extra_knowledges = scan_all_staticinfo(knowledge_folder)
             # Merge, avoiding duplicates
             seen_keys = {k.strkey for k in knowledges_raw}
+            added = 0
             for kr in extra_knowledges:
                 if kr.strkey not in seen_keys:
                     knowledges_raw.append(kr)
                     seen_keys.add(kr.strkey)
-            log.info("After merging knowledgeinfo folder: %d knowledge records total",
-                     len(knowledges_raw))
+                    added += 1
+            log.info("  Merged knowledgeinfo: +%d new records = %d total knowledge",
+                     added, len(knowledges_raw))
+        log.info("  Scan complete in %.1fs: %d items, %d knowledges",
+                 time.time() - t0, len(items_raw), len(knowledges_raw))
 
         if not items_raw:
             result["errors"].append("No item data found!")
@@ -507,16 +642,23 @@ def generate_itemknowledgecluster_datasheets() -> Dict:
             return result
 
         # 3. Build clusters (3-pass matching)
+        log.info("[3/6] Building clusters (3-pass matching)...")
+        t0 = time.time()
         clusters = build_clusters(items_raw, knowledges_raw)
+        log.info("  Clustering complete in %.1fs", time.time() - t0)
 
         # 4. Order clusters by name similarity
+        log.info("[4/6] Ordering clusters by name similarity...")
+        t0 = time.time()
         clusters = order_clusters_by_similarity(clusters)
+        log.info("  Ordering complete in %.1fs", time.time() - t0)
 
         # 5. Get EXPORT index
+        log.info("[5/6] Loading EXPORT index...")
         export_index = get_export_index()
 
         # 6. Generate Excel per language
-        log.info("Processing languages...")
+        log.info("[6/6] Writing Excel files...")
         total = len(lang_tables)
 
         for idx, (code, tbl) in enumerate(lang_tables.items(), 1):
@@ -525,8 +667,9 @@ def generate_itemknowledgecluster_datasheets() -> Dict:
             write_cluster_excel(clusters, tbl, code, export_index, excel_path)
             result["files_created"] += 1
 
+        total_elapsed = time.time() - gen_start
         log.info("=" * 70)
-        log.info("Done! Output folder: %s", output_folder)
+        log.info("Done! Total time: %.1fs | Output: %s", total_elapsed, output_folder)
         log.info("=" * 70)
 
     except Exception as e:
