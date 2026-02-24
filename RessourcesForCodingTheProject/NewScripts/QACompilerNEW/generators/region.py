@@ -12,7 +12,7 @@ Structure:
 
 Key features:
 - FactionNode.Name comes from KnowledgeInfo lookup (KnowledgeKey → StrKey match)
-- FactionNode.Desc used directly as description
+- FactionNode.Desc from KnowledgeInfo lookup (KnowledgeKey → Desc fallback)
 - Standalone 세력 없음 (Empty Faction) factions → separate sheet
 - Shop data parsing (separate sheet)
 """
@@ -86,7 +86,7 @@ class FactionNodeData:
     strkey: str
     name: str              # Display name (from KnowledgeInfo.Name lookup)
     original_name: str     # Original Name attribute (fallback)
-    description: str       # From FactionNode.Desc
+    description: str       # From KnowledgeInfo.Desc (via KnowledgeKey)
     knowledge_key: str
     node_type: str         # Main, Sub, etc.
     source_file: str = ""
@@ -197,15 +197,16 @@ def get_style(style_type: str) -> Tuple[PatternFill, Font, Optional[float]]:
 # KNOWLEDGE NAME LOOKUP
 # =============================================================================
 
-def build_knowledge_name_lookup(folder: Path) -> Dict[str, str]:
+def build_knowledge_name_lookup(folder: Path) -> Dict[str, Tuple[str, str]]:
     """
-    Build lookup: KnowledgeInfo.StrKey → KnowledgeInfo.Name
+    Build lookup: KnowledgeInfo.StrKey → (Name, Desc)
 
-    Used to get correct display names for FactionNodes via their KnowledgeKey.
+    Used to get correct display names AND descriptions for FactionNodes
+    via their KnowledgeKey linkage.
     """
-    log.info("Building Knowledge Name lookup...")
+    log.info("Building Knowledge Name+Desc lookup...")
 
-    name_lookup: Dict[str, str] = {}
+    name_lookup: Dict[str, Tuple[str, str]] = {}
     duplicates = 0
 
     for path in sorted(iter_xml_files(folder)):
@@ -224,7 +225,8 @@ def build_knowledge_name_lookup(folder: Path) -> Dict[str, str]:
                 duplicates += 1
                 continue
 
-            name_lookup[strkey] = name
+            desc = ki.get("Desc") or ""
+            name_lookup[strkey] = (name, desc)
 
     log.info("  → %d entries (%d duplicates ignored)", len(name_lookup), duplicates)
     return name_lookup
@@ -236,7 +238,7 @@ def build_knowledge_name_lookup(folder: Path) -> Dict[str, str]:
 
 def parse_faction_node_recursive(
     elem,
-    knowledge_lookup: Dict[str, str],
+    knowledge_lookup: Dict[str, Tuple[str, str]],
     global_seen: Set[str],
     depth: int = 0,
     source_file: str = ""
@@ -248,9 +250,13 @@ def parse_faction_node_recursive(
     description = elem.get("Desc") or ""
     node_type = elem.get("Type") or ""
 
-    # Resolve display name via KnowledgeInfo lookup
+    # Resolve display name + description via KnowledgeInfo lookup
     if knowledge_key and knowledge_key in knowledge_lookup:
-        display_name = knowledge_lookup[knowledge_key]
+        ki_name, ki_desc = knowledge_lookup[knowledge_key]
+        display_name = ki_name
+        # Pull description from KnowledgeInfo if FactionNode has none
+        if not description and ki_desc:
+            description = ki_desc
     else:
         display_name = original_name
 
@@ -291,7 +297,7 @@ def parse_faction_node_recursive(
 
 def parse_faction_element(
     elem,
-    knowledge_lookup: Dict[str, str],
+    knowledge_lookup: Dict[str, Tuple[str, str]],
     global_seen: Set[str],
     source_file: str = ""
 ) -> Optional[FactionData]:
@@ -325,7 +331,7 @@ def parse_faction_element(
 
 def parse_faction_group_element(
     elem,
-    knowledge_lookup: Dict[str, str],
+    knowledge_lookup: Dict[str, Tuple[str, str]],
     global_seen: Set[str],
     source_file: str = ""
 ) -> Optional[FactionGroupData]:
@@ -359,7 +365,7 @@ def parse_faction_group_element(
 
 def parse_all_faction_groups(
     folder: Path,
-    knowledge_lookup: Dict[str, str],
+    knowledge_lookup: Dict[str, Tuple[str, str]],
     global_seen: Set[str]
 ) -> List[FactionGroupData]:
     """Parse all FactionGroup elements from all XML files."""
@@ -401,7 +407,7 @@ def count_nodes_recursive(nodes: List[FactionNodeData]) -> int:
 
 def parse_standalone_factions(
     folder: Path,
-    knowledge_lookup: Dict[str, str],
+    knowledge_lookup: Dict[str, Tuple[str, str]],
     global_seen: Set[str],
 ) -> List[FactionData]:
     """Parse Faction elements that are NOT inside any FactionGroup."""

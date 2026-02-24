@@ -1,30 +1,22 @@
 """
 NEW Region Datasheet Generator
 ================================
-Row-per-text region datasheet with up to 6 rows per entity:
-  EntityName -> EntityDesc -> KnowledgeName -> KnowledgeDesc -> Knowledge2Name -> Knowledge2Desc
+Exact copy of Region generator with ONE addition: DisplayName from RegionInfo.
 
-Each text gets its OWN row (unlike region.py which uses depth-based indentation).
+Per FactionNode, outputs up to 3 rows:
+  1. KnowledgeInfo.Name  (at depth)     — same as Region
+  2. RegionInfo.DisplayName (at depth)   — NEW: only if different from Knowledge Name
+  3. KnowledgeInfo.Desc  (at depth + 1)  — same as Region
 
-Key features:
-- FactionGroup -> Faction -> FactionNode hierarchy preserved via DataType labels
-- Knowledge data rows (Pass 1: KnowledgeKey, Pass 2: name match from KnowledgeInfo)
-- One sheet per FactionGroup (tab = GroupName)
-- Standalone Factions sheet (not inside any FactionGroup)
-- Shop data sheet (ShopGroup -> Stage)
-- Alternating fills per entity for visual grouping
-- 8-column layout matching NewItem format
+All hierarchy, indentation, colors, and shop data are IDENTICAL to Region.
+
+Linkage:
+  FactionNode.KnowledgeKey → KnowledgeInfo.(Name, Desc)
+  FactionNode.KnowledgeKey → RegionInfo.KnowledgeKey → RegionInfo.DisplayName
 """
 
-import re
-from collections import OrderedDict
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
-
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
-from openpyxl.utils import get_column_letter
 
 from config import RESOURCE_FOLDER, LANGUAGE_FOLDER, DATASHEET_OUTPUT
 from generators.base import (
@@ -33,15 +25,32 @@ from generators.base import (
     iter_xml_files,
     load_language_tables,
     normalize_placeholders,
-    autofit_worksheet,
-    THIN_BORDER,
-    resolve_translation,
     get_export_index,
     get_ordered_export_index,
     StringIdConsumer,
-    add_status_dropdown,
 )
-from generators.newitem import _find_knowledge_key, load_knowledge_data
+
+# Import everything we reuse from Region
+from generators.region import (
+    # Data classes
+    FactionNodeData,
+    FactionData,
+    FactionGroupData,
+    ShopGroup,
+    # Parsing
+    build_knowledge_name_lookup,
+    parse_all_faction_groups,
+    parse_standalone_factions,
+    parse_shop_file,
+    # Row helpers
+    RowItem,
+    emit_shop_rows,
+    # Excel helpers
+    get_translated_tab_name,
+    write_sheet_content,
+    # Constants
+    EMPTY_FACTION_NAME,
+)
 
 log = get_logger("NewRegionGenerator")
 
@@ -53,18 +62,15 @@ _collected_korean_strings: set = set()
 
 
 def reset_korean_collection() -> None:
-    """Reset the Korean string collection before a new run."""
     global _collected_korean_strings
     _collected_korean_strings = set()
 
 
 def get_collected_korean_strings() -> set:
-    """Return a copy of collected Korean strings."""
     return _collected_korean_strings.copy()
 
 
 def _collect_korean_string(text: str) -> None:
-    """Add a Korean string to the collection (normalized)."""
     if text:
         normalized = normalize_placeholders(text)
         if normalized:
@@ -72,757 +78,198 @@ def _collect_korean_string(text: str) -> None:
 
 
 # =============================================================================
-# DATA STRUCTURE
+# DISPLAYNAME LOOKUP (RegionInfo.KnowledgeKey → DisplayName)
 # =============================================================================
 
-@dataclass
-class RegionEntity:
-    """A single region entity (group, faction, or node)."""
-    strkey: str
-    name_kor: str
-    desc_kor: str               # FactionNode.Desc (empty for groups/factions)
-    entity_type: str            # "FactionGroup", "Faction", "FactionNode"
-    node_type: str              # FactionNode.Type (Main, Sub, etc.) -- empty for group/faction
-    depth: int                  # Hierarchy depth
-    knowledge_key: str
-    knowledge_name_kor: str     # Pass 1
-    knowledge_desc_kor: str     # Pass 1
-    knowledge2_name_kor: str    # Pass 2
-    knowledge2_desc_kor: str    # Pass 2
-    source_file: str
-    knowledge_source_file: str = ""
-    knowledge2_source_file: str = ""
-    group_name: str = ""        # For sheet organization
-
-
-@dataclass
-class ShopStageEntity:
-    """A single shop stage entity."""
-    strkey: str
-    name_kor: str
-    desc_kor: str
-    knowledge_key: str
-    knowledge_name_kor: str
-    knowledge_desc_kor: str
-    knowledge2_name_kor: str
-    knowledge2_desc_kor: str
-    source_file: str
-    knowledge_source_file: str = ""
-    knowledge2_source_file: str = ""
-    parent_group_name: str = ""
-
-
-@dataclass
-class ShopGroupEntity:
-    """A shop group containing stages."""
-    name: str
-    group: str
-    source_file: str
-    stages: List[ShopStageEntity] = field(default_factory=list)
-
-
-# =============================================================================
-# STYLING
-# =============================================================================
-
-_header_font = Font(bold=True, color="FFFFFF")
-_header_fill = PatternFill("solid", fgColor="4F81BD")
-_bold_font = Font(bold=True)
-_fill_a = PatternFill("solid", fgColor="E2EFDA")  # Light green
-_fill_b = PatternFill("solid", fgColor="FCE4D6")  # Light orange
-
-
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
-
-def _sanitize_sheet_title(name: str) -> str:
-    """Sanitize name for use as Excel sheet title (max 31 chars, no special)."""
-    if not name:
-        return "Unknown"
-    clean = re.sub(r"[\\/*?:\[\]]", "_", name)
-    clean = clean.strip()
-    if len(clean) > 31:
-        clean = clean[:31]
-    return clean if clean else "Unknown"
-
-
-def _resolve_knowledge(
-    elem,
-    knowledge_map: Dict[str, Tuple[str, str, str]],
-    knowledge_name_index: Dict[str, List[Tuple[str, str, str]]],
-    entity_name: str,
-) -> Tuple[str, str, str, str, str, str, str]:
-    """Resolve knowledge data for an element via Pass 1 and Pass 2.
-
-    Pass 1: KnowledgeKey/RewardKnowledgeKey direct lookup in knowledge_map
-    Pass 2: EntityName == KnowledgeInfo.Name in knowledge_name_index (skip if same strkey as Pass 1)
-
-    Returns:
-        (knowledge_key, kn_name, kn_desc, kn_src, kn2_name, kn2_desc, kn2_src)
+def build_displayname_lookup(folder: Path) -> Dict[str, str]:
     """
-    knowledge_key = _find_knowledge_key(elem)
+    Build lookup: RegionInfo.KnowledgeKey → RegionInfo.DisplayName
 
-    # Pass 1: Direct key lookup
-    kn_name = ""
-    kn_desc = ""
-    kn_src = ""
-    pass1_strkey = ""
-    if knowledge_key and knowledge_key in knowledge_map:
-        kn_name, kn_desc, kn_src = knowledge_map[knowledge_key]
-        pass1_strkey = knowledge_key
-
-    # Pass 2: Identical name match (EntityName == KnowledgeInfo.Name)
-    kn2_name = ""
-    kn2_desc = ""
-    kn2_src = ""
-    if entity_name and entity_name in knowledge_name_index:
-        for kn_strkey, k_desc, k_src in knowledge_name_index[entity_name]:
-            if kn_strkey != pass1_strkey:
-                kn2_name = entity_name
-                kn2_desc = k_desc
-                kn2_src = k_src
-                break
-
-    return knowledge_key, kn_name, kn_desc, kn_src, kn2_name, kn2_desc, kn2_src
-
-
-# =============================================================================
-# FACTION PARSING
-# =============================================================================
-
-def _parse_faction_node_recursive(
-    elem,
-    knowledge_map: Dict[str, Tuple[str, str, str]],
-    knowledge_name_index: Dict[str, List[Tuple[str, str, str]]],
-    global_seen: Set[str],
-    depth: int,
-    source_file: str,
-    group_name: str,
-    entities: List[RegionEntity],
-) -> None:
-    """Parse a FactionNode element and all its nested children into entities list."""
-    strkey = elem.get("StrKey") or ""
-    name = elem.get("Name") or ""
-    desc = elem.get("Desc") or ""
-    node_type = elem.get("Type") or ""
-
-    if not name:
-        # Still recurse children even if this node has no name
-        for child in elem:
-            if child.tag == "FactionNode":
-                _parse_faction_node_recursive(
-                    child, knowledge_map, knowledge_name_index,
-                    global_seen, depth + 1, source_file, group_name, entities,
-                )
-        return
-
-    # Duplicate check
-    if strkey:
-        if strkey in global_seen:
-            return
-        global_seen.add(strkey)
-
-    # Resolve knowledge
-    kn_key, kn_name, kn_desc, kn_src, kn2_name, kn2_desc, kn2_src = _resolve_knowledge(
-        elem, knowledge_map, knowledge_name_index, name,
-    )
-
-    # Collect Korean strings
-    _collect_korean_string(name)
-    _collect_korean_string(desc)
-    _collect_korean_string(kn_name)
-    _collect_korean_string(kn_desc)
-    _collect_korean_string(kn2_name)
-    _collect_korean_string(kn2_desc)
-
-    entities.append(RegionEntity(
-        strkey=strkey,
-        name_kor=name,
-        desc_kor=desc,
-        entity_type="FactionNode",
-        node_type=node_type,
-        depth=depth,
-        knowledge_key=kn_key,
-        knowledge_name_kor=kn_name,
-        knowledge_desc_kor=kn_desc,
-        knowledge2_name_kor=kn2_name,
-        knowledge2_desc_kor=kn2_desc,
-        source_file=source_file,
-        knowledge_source_file=kn_src,
-        knowledge2_source_file=kn2_src,
-        group_name=group_name,
-    ))
-
-    # Parse nested FactionNode children
-    for child in elem:
-        if child.tag == "FactionNode":
-            _parse_faction_node_recursive(
-                child, knowledge_map, knowledge_name_index,
-                global_seen, depth + 1, source_file, group_name, entities,
-            )
-
-
-def _parse_faction(
-    elem,
-    knowledge_map: Dict[str, Tuple[str, str, str]],
-    knowledge_name_index: Dict[str, List[Tuple[str, str, str]]],
-    global_seen: Set[str],
-    depth: int,
-    source_file: str,
-    group_name: str,
-    entities: List[RegionEntity],
-) -> None:
-    """Parse a Faction element and all its FactionNode children."""
-    strkey = elem.get("StrKey") or ""
-    name = elem.get("Name") or ""
-
-    if not name:
-        return
-
-    # Duplicate check (no strkey check for Factions without StrKey)
-    if strkey:
-        if strkey in global_seen:
-            return
-        global_seen.add(strkey)
-
-    # Resolve knowledge
-    kn_key, kn_name, kn_desc, kn_src, kn2_name, kn2_desc, kn2_src = _resolve_knowledge(
-        elem, knowledge_map, knowledge_name_index, name,
-    )
-
-    # Collect Korean strings
-    _collect_korean_string(name)
-    _collect_korean_string(kn_name)
-    _collect_korean_string(kn_desc)
-    _collect_korean_string(kn2_name)
-    _collect_korean_string(kn2_desc)
-
-    entities.append(RegionEntity(
-        strkey=strkey,
-        name_kor=name,
-        desc_kor="",  # Factions have no Desc
-        entity_type="Faction",
-        node_type="",
-        depth=depth,
-        knowledge_key=kn_key,
-        knowledge_name_kor=kn_name,
-        knowledge_desc_kor=kn_desc,
-        knowledge2_name_kor=kn2_name,
-        knowledge2_desc_kor=kn2_desc,
-        source_file=source_file,
-        knowledge_source_file=kn_src,
-        knowledge2_source_file=kn2_src,
-        group_name=group_name,
-    ))
-
-    # Parse FactionNode children
-    for child in elem:
-        if child.tag == "FactionNode":
-            _parse_faction_node_recursive(
-                child, knowledge_map, knowledge_name_index,
-                global_seen, depth + 1, source_file, group_name, entities,
-            )
-
-
-def parse_all_faction_data(
-    folder: Path,
-    knowledge_map: Dict[str, Tuple[str, str, str]],
-    knowledge_name_index: Dict[str, List[Tuple[str, str, str]]],
-    global_seen: Set[str],
-) -> Tuple[Dict[str, List[RegionEntity]], List[RegionEntity]]:
-    """Parse all faction data from XML files.
-
-    Returns:
-        (group_entities, standalone_entities) where:
-        - group_entities: {GroupName: [RegionEntity, ...]} for each FactionGroup
-        - standalone_entities: [RegionEntity, ...] for Factions not in any FactionGroup
+    Scans all XML files for RegionInfo elements (recursive hierarchy).
+    Used to add DisplayName rows in NewRegion output.
     """
-    log.info("Parsing FactionGroup -> Faction -> FactionNode hierarchy...")
+    log.info("Building RegionInfo DisplayName lookup...")
 
-    group_entities: Dict[str, List[RegionEntity]] = OrderedDict()
-    standalone_entities: List[RegionEntity] = []
-
-    total_groups = 0
-    total_factions = 0
-    total_nodes = 0
+    lookup: Dict[str, str] = {}
+    count = 0
 
     for path in sorted(iter_xml_files(folder)):
         root_el = parse_xml_file(path)
         if root_el is None:
             continue
-        source_file = path.name
 
-        # Track which Faction StrKeys are inside FactionGroups (for standalone detection)
-        factions_in_groups: Set[str] = set()
+        for ri in root_el.iter("RegionInfo"):
+            kk = ri.get("KnowledgeKey") or ""
+            display_name = ri.get("DisplayName") or ""
 
-        # Parse FactionGroups
-        for fg_elem in root_el.iter("FactionGroup"):
-            fg_strkey = fg_elem.get("StrKey") or ""
-            fg_group_name = fg_elem.get("GroupName") or ""
-
-            if not fg_group_name:
+            if not kk or not display_name:
                 continue
 
-            # Duplicate check for FactionGroup itself
-            if fg_strkey:
-                if fg_strkey in global_seen:
-                    continue
-                global_seen.add(fg_strkey)
+            # First occurrence wins (same as knowledge lookup)
+            if kk not in lookup:
+                lookup[kk] = display_name
+                count += 1
 
-            # Resolve knowledge for the FactionGroup
-            kn_key, kn_name, kn_desc, kn_src, kn2_name, kn2_desc, kn2_src = _resolve_knowledge(
-                fg_elem, knowledge_map, knowledge_name_index, fg_group_name,
-            )
-
-            # Collect Korean strings
-            _collect_korean_string(fg_group_name)
-            _collect_korean_string(kn_name)
-            _collect_korean_string(kn_desc)
-            _collect_korean_string(kn2_name)
-            _collect_korean_string(kn2_desc)
-
-            entities: List[RegionEntity] = []
-
-            # Add FactionGroup entity itself
-            entities.append(RegionEntity(
-                strkey=fg_strkey,
-                name_kor=fg_group_name,
-                desc_kor="",
-                entity_type="FactionGroup",
-                node_type="",
-                depth=0,
-                knowledge_key=kn_key,
-                knowledge_name_kor=kn_name,
-                knowledge_desc_kor=kn_desc,
-                knowledge2_name_kor=kn2_name,
-                knowledge2_desc_kor=kn2_desc,
-                source_file=source_file,
-                knowledge_source_file=kn_src,
-                knowledge2_source_file=kn2_src,
-                group_name=fg_group_name,
-            ))
-            total_groups += 1
-
-            # Track ALL Factions under this FactionGroup (recursive)
-            # so standalone detection skips them correctly
-            for nested_faction in fg_elem.iter("Faction"):
-                nested_sk = nested_faction.get("StrKey") or ""
-                if nested_sk:
-                    factions_in_groups.add(nested_sk)
-
-            # Parse direct child Factions (they recurse into FactionNodes internally)
-            for faction_elem in fg_elem:
-                if faction_elem.tag == "Faction":
-                    _parse_faction(
-                        faction_elem, knowledge_map, knowledge_name_index,
-                        global_seen, 1, source_file, fg_group_name, entities,
-                    )
-
-            if entities:
-                # Merge into existing group if same GroupName already parsed from another file
-                if fg_group_name in group_entities:
-                    group_entities[fg_group_name].extend(entities)
-                else:
-                    group_entities[fg_group_name] = entities
-
-        # Parse standalone Factions (direct children of root, not in any FactionGroup)
-        for child in root_el:
-            if child.tag == "Faction":
-                child_sk = child.get("StrKey") or ""
-                if child_sk and child_sk in factions_in_groups:
-                    continue
-                standalone: List[RegionEntity] = []
-                _parse_faction(
-                    child, knowledge_map, knowledge_name_index,
-                    global_seen, 0, source_file, "Standalone", standalone,
-                )
-                standalone_entities.extend(standalone)
-
-    # Count totals
-    for entities in group_entities.values():
-        for e in entities:
-            if e.entity_type == "Faction":
-                total_factions += 1
-            elif e.entity_type == "FactionNode":
-                total_nodes += 1
-    for e in standalone_entities:
-        if e.entity_type == "Faction":
-            total_factions += 1
-        elif e.entity_type == "FactionNode":
-            total_nodes += 1
-
-    log.info("  -> %d FactionGroups, %d Factions, %d FactionNodes, %d standalone entities",
-             total_groups, total_factions, total_nodes, len(standalone_entities))
-
-    return group_entities, standalone_entities
+    log.info("  → %d entries", count)
+    return lookup
 
 
 # =============================================================================
-# SHOP PARSING
+# ROW GENERATION (Region rows + DisplayName)
 # =============================================================================
 
-def parse_shop_data(
-    shop_path: Path,
-    knowledge_map: Dict[str, Tuple[str, str, str]],
-    knowledge_name_index: Dict[str, List[Tuple[str, str, str]]],
-    global_seen: Set[str],
-) -> List[ShopGroupEntity]:
-    """Parse shop file for shop stage data with knowledge linking."""
-    if not shop_path.exists():
-        log.warning("Shop file not found: %s", shop_path)
-        return []
+def emit_faction_node_rows(
+    node: FactionNodeData,
+    depth: int,
+    displayname_lookup: Dict[str, str],
+) -> List[RowItem]:
+    """Generate rows for a FactionNode and its children. Adds DisplayName row."""
+    rows: List[RowItem] = []
 
-    log.info("Parsing shop file: %s", shop_path)
+    # 1. Name (from KnowledgeInfo.Name — same as Region)
+    style = f"FactionNode_{node.node_type}" if node.node_type else "FactionNode"
+    rows.append((depth, node.name, style, False, node.source_file))
 
-    root_el = parse_xml_file(shop_path)
-    if root_el is None:
-        log.error("Failed to parse shop file")
-        return []
+    # 2. DisplayName (from RegionInfo — NEW)
+    displayname = displayname_lookup.get(node.knowledge_key, "")
+    if displayname and displayname != node.name:
+        rows.append((depth, displayname, style, False, node.source_file))
+        _collect_korean_string(displayname)
 
-    source_file = shop_path.name
-    merged_groups: OrderedDict[str, ShopGroupEntity] = OrderedDict()
+    # 3. Description (from KnowledgeInfo.Desc — same as Region)
+    if node.description:
+        rows.append((depth + 1, node.description, "Description", True, node.source_file))
 
-    for child in root_el:
-        if not isinstance(child.tag, str):
-            continue
+    # Children
+    for child in node.children:
+        rows.extend(emit_faction_node_rows(child, depth + 1, displayname_lookup))
 
-        group_name = child.get("Name") or ""
-        group_val = child.get("Group") or ""
+    return rows
 
-        if not group_name:
-            continue
 
-        new_stages: List[ShopStageEntity] = []
-        for stage_el in child.iter("Stage"):
-            strkey = stage_el.get("StrKey") or ""
-            stage_name = stage_el.get("Name") or ""
-            desc = stage_el.get("Desc") or ""
+def emit_faction_rows(
+    faction: FactionData,
+    depth: int,
+    displayname_lookup: Dict[str, str],
+) -> List[RowItem]:
+    """Generate rows for a Faction and all its FactionNodes."""
+    rows: List[RowItem] = []
 
-            if not stage_name:
-                continue
+    rows.append((depth, faction.name, "Faction", False, faction.source_file))
 
-            if strkey:
-                if strkey in global_seen:
-                    continue
-                global_seen.add(strkey)
+    for node in faction.nodes:
+        rows.extend(emit_faction_node_rows(node, depth + 1, displayname_lookup))
 
-            # Resolve knowledge for stage
-            kn_key, kn_name, kn_desc, kn_src, kn2_name, kn2_desc, kn2_src = _resolve_knowledge(
-                stage_el, knowledge_map, knowledge_name_index, stage_name,
-            )
+    return rows
 
-            # Collect Korean strings
-            _collect_korean_string(stage_name)
-            _collect_korean_string(desc)
-            _collect_korean_string(kn_name)
-            _collect_korean_string(kn_desc)
-            _collect_korean_string(kn2_name)
-            _collect_korean_string(kn2_desc)
 
-            new_stages.append(ShopStageEntity(
-                strkey=strkey,
-                name_kor=stage_name,
-                desc_kor=desc,
-                knowledge_key=kn_key,
-                knowledge_name_kor=kn_name,
-                knowledge_desc_kor=kn_desc,
-                knowledge2_name_kor=kn2_name,
-                knowledge2_desc_kor=kn2_desc,
-                source_file=source_file,
-                knowledge_source_file=kn_src,
-                knowledge2_source_file=kn2_src,
-                parent_group_name=group_name,
-            ))
+def emit_faction_group_rows(
+    fg: FactionGroupData,
+    displayname_lookup: Dict[str, str],
+) -> List[RowItem]:
+    """Generate all rows for a FactionGroup."""
+    rows: List[RowItem] = []
 
-        if not new_stages:
-            continue
+    for faction in fg.factions:
+        rows.extend(emit_faction_rows(faction, 0, displayname_lookup))
 
-        if group_name in merged_groups:
-            merged_groups[group_name].stages.extend(new_stages)
-        else:
-            merged_groups[group_name] = ShopGroupEntity(
-                name=group_name,
-                group=group_val,
-                source_file=source_file,
-                stages=new_stages,
-            )
+    return rows
 
-    shop_groups = list(merged_groups.values())
-    total_stages = sum(len(g.stages) for g in shop_groups)
-    log.info("  -> %d shop groups, %d stages", len(shop_groups), total_stages)
 
-    # Collect shop group names too
-    for sg in shop_groups:
-        _collect_korean_string(sg.name)
+def emit_standalone_faction_rows(
+    standalone_factions: List[FactionData],
+    displayname_lookup: Dict[str, str],
+) -> List[RowItem]:
+    """Generate rows for standalone Factions."""
+    rows: List[RowItem] = []
 
-    return shop_groups
+    for faction in standalone_factions:
+        rows.append((0, faction.name, "Faction", False, faction.source_file))
+        for node in faction.nodes:
+            rows.extend(emit_faction_node_rows(node, 1, displayname_lookup))
+
+    return rows
 
 
 # =============================================================================
-# EXCEL WRITER (row-per-text format)
+# EXCEL WRITER
 # =============================================================================
 
-def _write_entity_rows(
-    ws,
-    entity_type_label: str,
-    name_kor: str,
-    desc_kor: str,
-    knowledge_name_kor: str,
-    knowledge_desc_kor: str,
-    knowledge2_name_kor: str,
-    knowledge2_desc_kor: str,
-    source_file: str,
-    knowledge_source_file: str,
-    knowledge2_source_file: str,
-    lang_tbl: Dict[str, List[Tuple[str, str]]],
-    export_index: Dict[str, Set[str]],
-    consumer: Optional[StringIdConsumer],
-    current_fill: PatternFill,
-    excel_row: int,
-) -> int:
-    """Write up to 6 rows for a single entity. Returns next excel_row."""
-
-    def _write_row(data_type: str, kor_text: str, src_file: str, row: int) -> int:
-        """Write a single data row and return next row number."""
-        trans, sid = resolve_translation(kor_text, lang_tbl, src_file, export_index, consumer=consumer)
-        vals = [data_type, src_file, kor_text, trans, "", "", "", sid]
-        for ci, val in enumerate(vals, 1):
-            cell = ws.cell(row, ci, val)
-            cell.fill = current_fill
-            cell.border = THIN_BORDER
-            if ci == 5:  # STATUS
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-            else:
-                cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-        # STRINGID as text format (prevent scientific notation)
-        ws.cell(row, 8).number_format = '@'
-        return row + 1
-
-    # 1. Entity Name (always output)
-    excel_row = _write_row(entity_type_label, name_kor, source_file, excel_row)
-
-    # 2. Entity Desc (FactionNode only, skip if empty)
-    if desc_kor:
-        excel_row = _write_row(entity_type_label, desc_kor, source_file, excel_row)
-
-    # 3. KnowledgeData -- Name (Pass 1, skip if empty)
-    if knowledge_name_kor:
-        excel_row = _write_row("KnowledgeData", knowledge_name_kor, knowledge_source_file, excel_row)
-
-    # 4. KnowledgeData -- Desc (Pass 1, skip if empty)
-    if knowledge_desc_kor:
-        excel_row = _write_row("KnowledgeData", knowledge_desc_kor, knowledge_source_file, excel_row)
-
-    # 5. KnowledgeData2 -- Name (Pass 2, skip if empty)
-    if knowledge2_name_kor:
-        excel_row = _write_row("KnowledgeData2", knowledge2_name_kor, knowledge2_source_file, excel_row)
-
-    # 6. KnowledgeData2 -- Desc (Pass 2, skip if empty)
-    if knowledge2_desc_kor:
-        excel_row = _write_row("KnowledgeData2", knowledge2_desc_kor, knowledge2_source_file, excel_row)
-
-    return excel_row
-
-
-def write_newregion_excel(
-    group_entities: Dict[str, List[RegionEntity]],
-    standalone_entities: List[RegionEntity],
-    shop_groups: List[ShopGroupEntity],
-    lang_tbl: Dict[str, List[Tuple[str, str]]],
+def write_workbook(
+    faction_groups: List[FactionGroupData],
+    standalone_factions: List[FactionData],
+    shop_groups: List[ShopGroup],
+    eng_tbl: Dict[str, List[Tuple[str, str]]],
+    lang_tbl: Optional[Dict[str, List[Tuple[str, str]]]],
     lang_code: str,
-    export_index: Dict[str, Set[str]],
-    output_path: Path,
-) -> None:
-    """Write NewRegion Excel with one row per text field.
+    out_path: Path,
+    export_index: Optional[Dict[str, Set[str]]] = None,
+    displayname_lookup: Optional[Dict[str, str]] = None,
+) -> bool:
+    """Generate Excel workbook for a language. Returns True if saved."""
+    from openpyxl import Workbook
 
-    8 columns: DataType | Filename | SourceText (KR) | Translation | STATUS | COMMENT | SCREENSHOT | STRINGID
-    """
     wb = Workbook()
     wb.remove(wb.active)
-    code = lang_code.upper()
 
-    headers = [
-        "DataType",
-        "Filename",
-        "SourceText (KR)",
-        f"Translation ({code})",
-        "STATUS",
-        "COMMENT",
-        "SCREENSHOT",
-        "STRINGID",
-    ]
+    is_eng = lang_code.lower() == "eng"
+    used_titles: Set[str] = set()
+    dn_lookup = displayname_lookup or {}
 
     # Order-based StringID consumer (fresh per language write pass)
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
 
-    used_titles: Set[str] = set()
+    def get_unique_title(base: str) -> str:
+        title = base
+        counter = 1
+        while title in used_titles:
+            title = f"{base[:28]}_{counter}"
+            counter += 1
+        used_titles.add(title)
+        return title
 
-    def _get_unique_title(base: str) -> str:
-        """Get unique sheet title, handling duplicates."""
-        title = _sanitize_sheet_title(base)
-        if title not in used_titles:
-            used_titles.add(title)
-            return title
-        cnt = 1
-        while True:
-            candidate = f"{title[:28]}_{cnt}"
-            if candidate not in used_titles:
-                used_titles.add(candidate)
-                return candidate
-            cnt += 1
-
-    def _write_header(ws) -> None:
-        """Write header row to worksheet."""
-        for col_idx, txt in enumerate(headers, 1):
-            cell = ws.cell(1, col_idx, txt)
-            cell.font = _header_font
-            cell.fill = _header_fill
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.border = THIN_BORDER
-
-    def _finalize_sheet(ws, excel_row: int) -> None:
-        """Apply cosmetics: auto-filter, freeze panes, status dropdown, autofit."""
-        if excel_row > 2:
-            ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{excel_row - 1}"
-        ws.freeze_panes = "A2"
-        add_status_dropdown(ws, col=5)
-        autofit_worksheet(ws)
-
-    # --- FactionGroup sheets ---
-    for group_name, entities in group_entities.items():
-        if not entities:
+    # FactionGroup sheets
+    for fg in faction_groups:
+        rows = emit_faction_group_rows(fg, dn_lookup)
+        if not rows:
             continue
 
-        title = _get_unique_title(group_name)
-        ws = wb.create_sheet(title)
-        _write_header(ws)
+        title = get_translated_tab_name(fg.group_name, eng_tbl, lang_tbl, lang_code, "Group")
+        title = get_unique_title(title)
 
-        excel_row = 2
-        current_fill = _fill_a
-        last_strkey = None
+        sheet = wb.create_sheet(title=title)
+        write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer)
 
-        for entity in entities:
-            # Alternate fill per entity for visual grouping
-            entity_id = entity.strkey or entity.name_kor
-            if last_strkey is not None and entity_id != last_strkey:
-                current_fill = _fill_b if current_fill == _fill_a else _fill_a
-            last_strkey = entity_id
+        log.info("    Sheet '%s': %d rows", title, len(rows))
 
-            # Determine DataType label based on entity_type
-            if entity.entity_type == "FactionGroup":
-                label = "FactionGroupData"
-            elif entity.entity_type == "Faction":
-                label = "FactionData"
-            else:
-                label = "FactionNodeData"
+    # Standalone Faction sheet
+    if standalone_factions:
+        rows = emit_standalone_faction_rows(standalone_factions, dn_lookup)
+        if rows:
+            title = get_translated_tab_name(EMPTY_FACTION_NAME, eng_tbl, lang_tbl, lang_code, "No Faction")
+            title = get_unique_title(title)
 
-            excel_row = _write_entity_rows(
-                ws, label,
-                entity.name_kor, entity.desc_kor,
-                entity.knowledge_name_kor, entity.knowledge_desc_kor,
-                entity.knowledge2_name_kor, entity.knowledge2_desc_kor,
-                entity.source_file, entity.knowledge_source_file, entity.knowledge2_source_file,
-                lang_tbl, export_index, consumer, current_fill, excel_row,
-            )
+            sheet = wb.create_sheet(title=title)
+            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer)
 
-        _finalize_sheet(ws, excel_row)
-        log.info("  Sheet '%s': %d rows", title, excel_row - 2)
+            log.info("    Sheet '%s': %d rows", title, len(rows))
 
-    # --- Standalone Factions sheet ---
-    if standalone_entities:
-        title = _get_unique_title("Standalone")
-        ws = wb.create_sheet(title)
-        _write_header(ws)
-
-        excel_row = 2
-        current_fill = _fill_a
-        last_strkey = None
-
-        for entity in standalone_entities:
-            entity_id = entity.strkey or entity.name_kor
-            if last_strkey is not None and entity_id != last_strkey:
-                current_fill = _fill_b if current_fill == _fill_a else _fill_a
-            last_strkey = entity_id
-
-            if entity.entity_type == "Faction":
-                label = "FactionData"
-            else:
-                label = "FactionNodeData"
-
-            excel_row = _write_entity_rows(
-                ws, label,
-                entity.name_kor, entity.desc_kor,
-                entity.knowledge_name_kor, entity.knowledge_desc_kor,
-                entity.knowledge2_name_kor, entity.knowledge2_desc_kor,
-                entity.source_file, entity.knowledge_source_file, entity.knowledge2_source_file,
-                lang_tbl, export_index, consumer, current_fill, excel_row,
-            )
-
-        _finalize_sheet(ws, excel_row)
-        log.info("  Sheet '%s': %d rows", title, excel_row - 2)
-
-    # --- Shop sheet ---
+    # Shop sheet (same as Region — no DisplayName needed for shop)
     if shop_groups:
-        title = _get_unique_title("Shop")
-        ws = wb.create_sheet(title)
-        _write_header(ws)
+        rows = emit_shop_rows(shop_groups)
+        if rows:
+            sheet = wb.create_sheet(title="Shop")
+            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer)
+            log.info("    Sheet 'Shop': %d rows", len(rows))
 
-        excel_row = 2
-        current_fill = _fill_a
-        last_entity_id = None
-
-        for shop_group in shop_groups:
-            # Write ShopGroup name row
-            group_id = f"shopgroup_{shop_group.name}"
-            if last_entity_id is not None and group_id != last_entity_id:
-                current_fill = _fill_b if current_fill == _fill_a else _fill_a
-            last_entity_id = group_id
-
-            # ShopGroup name row (single row, no knowledge)
-            trans, sid = resolve_translation(
-                shop_group.name, lang_tbl, shop_group.source_file, export_index, consumer=consumer,
-            )
-            vals = ["ShopGroupData", shop_group.source_file, shop_group.name, trans, "", "", "", sid]
-            for ci, val in enumerate(vals, 1):
-                cell = ws.cell(excel_row, ci, val)
-                cell.fill = current_fill
-                cell.border = THIN_BORDER
-                if ci == 5:
-                    cell.alignment = Alignment(horizontal="center", vertical="center")
-                else:
-                    cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-            ws.cell(excel_row, 8).number_format = '@'
-            excel_row += 1
-
-            # Write stages
-            for stage in shop_group.stages:
-                stage_id = stage.strkey or stage.name_kor
-                if last_entity_id is not None and stage_id != last_entity_id:
-                    current_fill = _fill_b if current_fill == _fill_a else _fill_a
-                last_entity_id = stage_id
-
-                excel_row = _write_entity_rows(
-                    ws, "ShopStageData",
-                    stage.name_kor, stage.desc_kor,
-                    stage.knowledge_name_kor, stage.knowledge_desc_kor,
-                    stage.knowledge2_name_kor, stage.knowledge2_desc_kor,
-                    stage.source_file, stage.knowledge_source_file, stage.knowledge2_source_file,
-                    lang_tbl, export_index, consumer, current_fill, excel_row,
-                )
-
-        _finalize_sheet(ws, excel_row)
-        log.info("  Sheet 'Shop': %d rows", excel_row - 2)
-
-    # Save workbook
+    # Save
     if wb.worksheets:
-        wb.save(output_path)
-        log.info("NewRegion Excel saved: %s (%d sheets)", output_path.name, len(wb.worksheets))
+        wb.save(out_path)
+        log.info("  → Saved: %s (%d sheets)", out_path.name, len(wb.worksheets))
         return True
-    else:
-        log.warning("No sheets generated for %s", output_path.name)
-        return False
+
+    return False
 
 
 # =============================================================================
@@ -832,42 +279,24 @@ def write_newregion_excel(
 def generate_newregion_datasheets() -> Dict:
     """
     Generate NewRegion datasheets for all languages.
-
-    Pipeline:
-    1. Load language tables
-    2. Load knowledge data (Name + Desc + source_file for Pass 1 + Pass 2)
-    3. Parse FactionGroup -> Faction -> FactionNode hierarchy
-    4. Parse standalone Factions (not in any FactionGroup)
-    5. Parse Shop data
-    6. Get EXPORT index (for StringID disambiguation)
-    7. For each language: write row-per-text Excel
-
-    Returns:
-        Dict with results: {
-            "category": "NewRegion",
-            "files_created": N,
-            "errors": [...]
-        }
+    Same as Region but with DisplayName rows from RegionInfo.
     """
-    result: Dict = {
+    result = {
         "category": "NewRegion",
         "files_created": 0,
         "errors": [],
     }
 
-    # Reset Korean string collection
     reset_korean_collection()
 
     log.info("=" * 70)
-    log.info("NEW Region Datasheet Generator")
+    log.info("NewRegion Datasheet Generator")
     log.info("=" * 70)
 
-    # Ensure output folder exists
     DATASHEET_OUTPUT.mkdir(parents=True, exist_ok=True)
     output_folder = DATASHEET_OUTPUT / "NewRegionData_Map_All"
     output_folder.mkdir(exist_ok=True)
 
-    # Check paths
     if not RESOURCE_FOLDER.exists():
         result["errors"].append(f"Resource folder not found: {RESOURCE_FOLDER}")
         log.error("Resource folder not found: %s", RESOURCE_FOLDER)
@@ -879,10 +308,25 @@ def generate_newregion_datasheets() -> Dict:
         return result
 
     try:
-        # Global duplicate tracking
         global_seen: Set[str] = set()
 
-        # 1. Load language tables
+        # 1. Knowledge lookup (Name + Desc)
+        knowledge_lookup = build_knowledge_name_lookup(RESOURCE_FOLDER)
+
+        # 2. DisplayName lookup (RegionInfo.KnowledgeKey → DisplayName) — NEW
+        displayname_lookup = build_displayname_lookup(RESOURCE_FOLDER)
+
+        # 3. Parse FactionGroup hierarchy (reuses Region's parsing)
+        faction_groups = parse_all_faction_groups(RESOURCE_FOLDER, knowledge_lookup, global_seen)
+
+        # 4. Parse Standalone Factions
+        standalone_factions = parse_standalone_factions(RESOURCE_FOLDER, knowledge_lookup, global_seen)
+
+        # 5. Parse Shop data
+        shop_file = RESOURCE_FOLDER.parent / "staticinfo_quest" / "funcnpc" / "shop_world.staticinfo.xml"
+        shop_groups = parse_shop_file(shop_file, global_seen)
+
+        # 6. Load language tables
         lang_tables = load_language_tables(LANGUAGE_FOLDER)
 
         if not lang_tables:
@@ -890,41 +334,27 @@ def generate_newregion_datasheets() -> Dict:
             log.warning("No language tables found!")
             return result
 
-        # 2. Load knowledge data (map + name index for Pass 2)
-        knowledge_folder = RESOURCE_FOLDER / "knowledgeinfo"
-        knowledge_map, knowledge_name_index = load_knowledge_data(knowledge_folder)
-
-        # 3+4. Parse all faction data (groups + standalone)
-        group_entities, standalone_entities = parse_all_faction_data(
-            RESOURCE_FOLDER, knowledge_map, knowledge_name_index, global_seen,
-        )
-
-        # 5. Parse Shop data
-        shop_file = RESOURCE_FOLDER.parent / "staticinfo_quest" / "funcnpc" / "shop_world.staticinfo.xml"
-        shop_groups = parse_shop_data(shop_file, knowledge_map, knowledge_name_index, global_seen)
-
-        # Check if we have any data at all
-        total_entities = sum(len(e) for e in group_entities.values()) + len(standalone_entities)
-        total_shop_stages = sum(len(g.stages) for g in shop_groups)
-        if total_entities == 0 and total_shop_stages == 0:
-            result["errors"].append("No region/faction/shop data found!")
-            log.warning("No region/faction/shop data found!")
-            return result
-
-        # 6. Get EXPORT index
+        eng_tbl = lang_tables.get("eng", {})
         export_index = get_export_index()
 
-        # 7. Generate Excel per language
+        # 7. Generate workbooks
         log.info("Generating Excel workbooks...")
         total = len(lang_tables)
 
         for idx, (code, tbl) in enumerate(lang_tables.items(), 1):
-            log.info("(%d/%d) Language %s", idx, total, code.upper())
-            excel_path = output_folder / f"NewRegion_LQA_{code.upper()}.xlsx"
-            saved = write_newregion_excel(
-                group_entities, standalone_entities, shop_groups,
-                tbl, code, export_index, excel_path,
-            )
+            log.info("(%d/%d) Generating: %s", idx, total, code.upper())
+            out_path = output_folder / f"NewRegion_LQA_{code.upper()}.xlsx"
+
+            if code.lower() == "eng":
+                saved = write_workbook(
+                    faction_groups, standalone_factions, shop_groups,
+                    eng_tbl, None, code, out_path, export_index, displayname_lookup,
+                )
+            else:
+                saved = write_workbook(
+                    faction_groups, standalone_factions, shop_groups,
+                    eng_tbl, tbl, code, out_path, export_index, displayname_lookup,
+                )
             if saved:
                 result["files_created"] += 1
 
@@ -941,5 +371,4 @@ def generate_newregion_datasheets() -> Dict:
 
 # Allow standalone execution for testing
 if __name__ == "__main__":
-    result = generate_newregion_datasheets()
-    print(f"\nResult: {result}")
+    generate_newregion_datasheets()
