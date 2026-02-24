@@ -97,6 +97,16 @@ DATASHEET_LOCATIONS = {
         "eng_pattern": "ItemKnowledgeCluster_LQA_ENG*.xlsx",
         "cn_pattern": "ItemKnowledgeCluster_LQA_ZHO-CN*.xlsx",
     },
+    "NewCharacter": {
+        "folder": "NewCharacterData_Map_All",
+        "eng_pattern": "NewCharacter_LQA_ENG*.xlsx",
+        "cn_pattern": "NewCharacter_LQA_ZHO-CN*.xlsx",
+    },
+    "NewRegion": {
+        "folder": "NewRegionData_Map_All",
+        "eng_pattern": "NewRegion_LQA_ENG*.xlsx",
+        "cn_pattern": "NewRegion_LQA_ZHO-CN*.xlsx",
+    },
 }
 
 

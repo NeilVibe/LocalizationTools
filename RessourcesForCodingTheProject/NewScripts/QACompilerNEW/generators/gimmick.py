@@ -290,6 +290,25 @@ def get_string_id(
     return stringid
 
 
+def translate_with_sid(
+    lang_tbl: Dict[str, List[Tuple[str, str]]],
+    kor_text: str,
+    source_file: str = "",
+    export_index: Optional[Dict[str, Set[str]]] = None,
+    consumer: Optional[StringIdConsumer] = None,
+) -> Tuple[str, str]:
+    """Translate Korean text and return (translation, stringid) in one call.
+
+    Avoids double-consumption from separate translate() + get_string_id() calls.
+    """
+    if not kor_text:
+        return "", ""
+    trans, sid = resolve_translation(kor_text, lang_tbl, source_file, export_index, consumer=consumer)
+    if trans and is_good_translation(trans):
+        return trans, sid
+    return kor_text, sid
+
+
 # =============================================================================
 # EXCEL WRITER
 # =============================================================================
@@ -368,7 +387,9 @@ def write_dropitem_sheet(
 
         if entry.gimmick_strkey != last_gimmick:
             gim_loc = translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=consumer)
-            row = [1, "Gimmick", entry.group_name_kor, translate(tbl, entry.group_name_kor, src, export_index, consumer=consumer),
+            # Cache group_loc from the Group row above (already consumed); use consumer=None for display-only repeat
+            cached_group_loc = translate(tbl, entry.group_name_kor, src, export_index, consumer=None)
+            row = [1, "Gimmick", entry.group_name_kor, cached_group_loc,
                    entry.gimmick_strkey, entry.gimmick_name_kor, gim_loc, "", "", "", "", "", "", "", ""]
             rows_data.append((row, 1, "Gimmick"))
             last_gimmick = entry.gimmick_strkey
@@ -377,13 +398,15 @@ def write_dropitem_sheet(
             itm = items.get(item_key)
             item_kor = itm.item_name if itm else ""
             item_desc_kor = itm.item_desc if itm else ""
-            item_loc = translate(tbl, item_kor, src, export_index, consumer=consumer)
+            item_loc, sid = translate_with_sid(tbl, item_kor, src, export_index, consumer=consumer)
             desc_loc = translate(tbl, item_desc_kor, src, export_index, consumer=consumer)
             cmd = f"/create item {item_key}"
-            sid = get_string_id(lang_tbl, item_kor, src, export_index, consumer=consumer) or get_string_id(eng_tbl, item_kor, src, export_index, consumer=consumer)
+            if not sid:
+                sid = get_string_id(eng_tbl, item_kor, src, export_index, consumer=None)
 
-            row = [2, "Item", entry.group_name_kor, translate(tbl, entry.group_name_kor, src, export_index, consumer=consumer),
-                   entry.gimmick_strkey, entry.gimmick_name_kor, translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=consumer),
+            # Use consumer=None for repeated group/gimmick translations (already consumed above)
+            row = [2, "Item", entry.group_name_kor, translate(tbl, entry.group_name_kor, src, export_index, consumer=None),
+                   entry.gimmick_strkey, entry.gimmick_name_kor, translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=None),
                    item_key, item_kor, item_loc, item_desc_kor, desc_loc, cmd, sid, ""]
             rows_data.append((row, 2, "Item"))
 
@@ -518,22 +541,34 @@ def write_flat_sheet(
     # Build flat rows
     rows_data: List[List] = []
 
+    # Cache group/gimmick translations to avoid repeated consumer advancement
+    _group_cache: Dict[str, str] = {}
+    _gimmick_cache: Dict[str, str] = {}
+
     for entry in entries:
         src = entry.source_file  # Track source file for EXPORT matching
         tbl = lang_tbl if lang_code != "eng" else eng_tbl
 
-        group_loc = translate(tbl, entry.group_name_kor, src, export_index, consumer=consumer)
-        gim_loc = translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=consumer)
+        # Consume only on first encounter; reuse cached translation for repeats
+        if entry.group_name_kor not in _group_cache:
+            _group_cache[entry.group_name_kor] = translate(tbl, entry.group_name_kor, src, export_index, consumer=consumer)
+        group_loc = _group_cache[entry.group_name_kor]
+
+        gim_cache_key = (entry.gimmick_strkey, entry.gimmick_name_kor)
+        if gim_cache_key not in _gimmick_cache:
+            _gimmick_cache[gim_cache_key] = translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=consumer)
+        gim_loc = _gimmick_cache[gim_cache_key]
 
         for item_key in entry.drop_item_keys:
             itm = items.get(item_key)
             item_kor = itm.item_name if itm else ""
             item_desc_kor = itm.item_desc if itm else ""
 
-            item_loc = translate(tbl, item_kor, src, export_index, consumer=consumer)
+            item_loc, sid = translate_with_sid(tbl, item_kor, src, export_index, consumer=consumer)
             desc_loc = translate(tbl, item_desc_kor, src, export_index, consumer=consumer)
             cmd = f"/create item {item_key}"
-            sid = get_string_id(lang_tbl, item_kor, src, export_index, consumer=consumer) or get_string_id(eng_tbl, item_kor, src, export_index, consumer=consumer)
+            if not sid:
+                sid = get_string_id(eng_tbl, item_kor, src, export_index, consumer=None)
 
             row = [
                 entry.group_name_kor, group_loc,

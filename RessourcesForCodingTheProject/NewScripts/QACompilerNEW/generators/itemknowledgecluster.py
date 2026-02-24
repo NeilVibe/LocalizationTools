@@ -532,6 +532,7 @@ def write_cluster_excel(
     # ItemData rows are ALWAYS kept (cluster anchors). Knowledge-side rows
     # (KnowledgeData, KnowledgeMatch-*, ItemMatch-Fuzzy) are deduplicated.
     global_seen: Set[Tuple[str, str]] = set()
+    global_seen_texts: Set[str] = set()
     global_dedup_count = 0
 
     for cl_idx, cluster in enumerate(clusters):
@@ -549,17 +550,24 @@ def write_cluster_excel(
         current_fill = _fill_b if current_fill == _fill_a else _fill_a
 
         for crow in cluster.rows:
+            is_anchor = crow.data_type == "ItemData"
+
+            # Pre-dedup: skip non-anchor rows whose text we've already seen
+            # (same text in same export file -> same SID, so text-only check suffices)
+            if not is_anchor and crow.kor_text in global_seen_texts:
+                global_dedup_count += 1
+                continue
+
+            # NOW consume (only for rows that pass dedup)
             trans, sid = resolve_translation(
                 crow.kor_text, lang_tbl, crow.source_file, export_index,
                 consumer=consumer,
             )
 
-            # Global dedup: skip non-ItemData rows already seen in another cluster
-            is_anchor = crow.data_type == "ItemData"
+            global_seen_texts.add(crow.kor_text)
+
+            # Full dedup key for global tracking (text + sid)
             dedup_key = (crow.kor_text, sid)
-            if not is_anchor and dedup_key in global_seen:
-                global_dedup_count += 1
-                continue
             global_seen.add(dedup_key)
 
             vals = [crow.data_type, crow.kor_text, trans, "", "", "", sid]

@@ -423,7 +423,7 @@ def write_workbook(
     # Write data rows
     for row_idx, (depth, text, source_file) in enumerate(rows, start=2):
         # Use context-aware resolution for duplicate handling
-        eng_tr, sid = resolve_translation(text, eng_tbl, source_file, export_index, consumer=consumer)
+        eng_tr, sid = resolve_translation(text, eng_tbl, source_file, export_index, consumer=None)
         loc_tr = ""
         if lang_tbl:
             loc_tr, loc_sid = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)

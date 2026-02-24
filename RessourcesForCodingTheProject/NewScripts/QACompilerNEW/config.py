@@ -217,6 +217,8 @@ CATEGORIES = [
     "Help",
     "Gimmick",
     "Contents",
+    "NewCharacter",  # Row-per-text character datasheet with knowledge passes
+    "NewRegion",     # Row-per-text region datasheet with knowledge passes
     "Sequencer",  # → Master_Script.xlsx
     "Dialog",     # → Master_Script.xlsx
     "Face",       # Facial animation QA (custom processing)
@@ -257,6 +259,8 @@ WORKER_GROUPS = {
     "item":       ["Item", "Gimmick"],       # Must serialize (shared Master_Item.xlsx)
     "newitem":    ["NewItem"],               # Row-per-text format (separate Master_NewItem.xlsx)
     "itemknowledgecluster": ["ItemKnowledgeCluster"],  # Mega cluster (own master)
+    "newcharacter": ["NewCharacter"],         # Row-per-text format (separate Master_NewCharacter.xlsx)
+    "newregion":    ["NewRegion"],             # Row-per-text format (separate Master_NewRegion.xlsx)
     "system":     ["Skill", "Help"],         # Must serialize (shared Master_System.xlsx)
     "script":     ["Sequencer", "Dialog"],   # Must serialize (shared Master_Script.xlsx)
 }
@@ -274,6 +278,8 @@ TRANSLATION_COLS = {
     "Item": {"eng": 5, "other": 7},  # ItemName column
     "NewItem": {"eng": 4, "other": 4},  # Translation column (row-per-text format)
     "ItemKnowledgeCluster": {"eng": 3, "other": 3},  # Translation column (mega-sheet format)
+    "NewCharacter": {"eng": 4, "other": 4},  # Translation column (row-per-text format)
+    "NewRegion": {"eng": 4, "other": 4},     # Translation column (row-per-text format)
     "System": {"eng": 1, "other": 1},  # CONTENT column (single column for all languages)
     "Skill": {"eng": 2, "other": 3},
     "Help": {"eng": 2, "other": 3},

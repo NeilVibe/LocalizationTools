@@ -258,7 +258,7 @@ def write_workbook(
             fill = _row_fill_even if r_idx % 2 == 0 else _row_fill_odd
 
             # Use source_file for EXPORT-aware duplicate resolution
-            trans_eng, sid_eng = resolve_translation(char.name, eng_tbl, char.source_file, export_index, consumer=consumer)
+            trans_eng, sid_eng = resolve_translation(char.name, eng_tbl, char.source_file, export_index, consumer=None)
             trans_other, sid_other = ("", "")
             if not is_eng and lang_tbl is not None:
                 trans_other, sid_other = resolve_translation(char.name, lang_tbl, char.source_file, export_index, consumer=consumer)

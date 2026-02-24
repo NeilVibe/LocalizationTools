@@ -109,14 +109,16 @@ class NewItemEntry:
 # =============================================================================
 
 def _find_knowledge_key(item_element) -> str:
-    """Search ItemInfo element and its children for KnowledgeKey."""
-    direct = item_element.get("KnowledgeKey") or ""
-    if direct:
-        return direct
+    """Search element and children for KnowledgeKey or RewardKnowledgeKey."""
+    for attr in ("KnowledgeKey", "RewardKnowledgeKey"):
+        direct = item_element.get(attr) or ""
+        if direct:
+            return direct
     for child in item_element:
-        kk = child.get("KnowledgeKey") or ""
-        if kk:
-            return kk
+        for attr in ("KnowledgeKey", "RewardKnowledgeKey"):
+            kk = child.get(attr) or ""
+            if kk:
+                return kk
     return ""
 
 def get_depth_color(depth: int) -> str:

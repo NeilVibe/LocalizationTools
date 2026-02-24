@@ -244,7 +244,7 @@ def parse_faction_node_recursive(
     """Parse a FactionNode element and all its nested FactionNode children."""
     strkey = elem.get("StrKey") or ""
     original_name = elem.get("Name") or ""
-    knowledge_key = elem.get("KnowledgeKey") or ""
+    knowledge_key = elem.get("KnowledgeKey") or elem.get("RewardKnowledgeKey") or ""
     description = elem.get("Desc") or ""
     node_type = elem.get("Type") or ""
 
@@ -298,7 +298,7 @@ def parse_faction_element(
     """Parse a Faction element and all its FactionNode children."""
     strkey = elem.get("StrKey") or ""
     name = elem.get("Name") or ""
-    knowledge_key = elem.get("KnowledgeKey") or ""
+    knowledge_key = elem.get("KnowledgeKey") or elem.get("RewardKnowledgeKey") or ""
 
     if not name:
         return None
@@ -332,7 +332,7 @@ def parse_faction_group_element(
     """Parse a FactionGroup element and all its Faction children."""
     strkey = elem.get("StrKey") or ""
     group_name = elem.get("GroupName") or ""
-    knowledge_key = elem.get("KnowledgeKey") or ""
+    knowledge_key = elem.get("KnowledgeKey") or elem.get("RewardKnowledgeKey") or ""
 
     if not group_name:
         return None
@@ -669,7 +669,7 @@ def write_sheet_content(
         fill, font, row_height = get_style(style_type)
 
         if source_file and export_index:
-            trans_eng, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=consumer)
+            trans_eng, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=None)
         else:
             trans_eng, sid_eng = get_first_translation(eng_tbl, text)
         trans_other = sid_other = ""

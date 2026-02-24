@@ -324,6 +324,10 @@ def resolve_translation(
             for translation, stringid in candidates:
                 if stringid == target_sid:
                     return (translation, stringid)
+            log.debug(
+                "Consumer SID '%s' not in lang_table candidates for '%s...' (%s)",
+                target_sid, normalized[:30], export_key,
+            )
 
     # Fall back to file-set matching using EXPORT index
     if data_filename:

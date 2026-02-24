@@ -302,7 +302,7 @@ def write_workbook(
     # Write data rows
     for row_idx, (depth, text, needs_trans, source_file) in enumerate(rows, start=2):
         if source_file and export_index:
-            eng_tr, sid = resolve_translation(text, eng_tbl, source_file, export_index, consumer=consumer)
+            eng_tr, sid = resolve_translation(text, eng_tbl, source_file, export_index, consumer=None)
         else:
             eng_tr, sid = get_first_translation(eng_tbl, text)
         loc_tr = ""

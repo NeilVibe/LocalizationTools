@@ -589,11 +589,17 @@ def build_rows_for_language(
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
 
-    def t(tbl: Dict[str, List[Tuple[str, str]]], text: str, src_file: str = "") -> str:
+    def t_eng(text: str, src_file: str = "") -> Tuple[str, str]:
+        """Translate with eng_tbl (consumer=None, display only)."""
         if not text:
-            return ""
-        trans, _ = resolve_translation(text, tbl, src_file, export_index, consumer=consumer)
-        return trans
+            return "", ""
+        return resolve_translation(text, eng_tbl, src_file, export_index, consumer=None)
+
+    def t_lang(text: str, src_file: str = "") -> Tuple[str, str]:
+        """Translate with lang_tbl (consumer=consumer, order-based SID)."""
+        if not text:
+            return "", ""
+        return resolve_translation(text, lang_tbl, src_file, export_index, consumer=consumer)
 
     rows: List[PrimaryRow] = []
     children_of = build_children_map(parent_of)
@@ -607,18 +613,18 @@ def build_rows_for_language(
         seen.add(gk)
         depth = calc_depth(gk, parent_of)
         kor = group_names.get(gk, "")
-        eng = t(eng_tbl, kor)
-        loc = t(lang_tbl, kor)
+        eng, _ = t_eng(kor)
+        loc, _ = t_lang(kor)
         rows.append((depth, gk, kor, eng, loc,
                      "", "", "", "", "", "", "", "", "", True))
 
         for ik, iname, idesc, src_file in sorted(group_items.get(gk, []), key=lambda x: x[0]):
-            ieng = t(eng_tbl, iname, src_file)
-            iloc = t(lang_tbl, iname, src_file)
-            deng = t(eng_tbl, idesc, src_file)
-            dloc = t(lang_tbl, idesc, src_file)
+            ieng, _ = t_eng(iname, src_file)
+            iloc, iloc_sid = t_lang(iname, src_file)
+            deng, _ = t_eng(idesc, src_file)
+            dloc, _ = t_lang(idesc, src_file)
             num = id_table.get(ik.lower(), "<MISSING>")
-            _, sid = resolve_translation(iname, lang_tbl, src_file, export_index, consumer=consumer)
+            sid = iloc_sid
             rows.append((depth+1, gk, kor, eng, loc,
                          ik, num, iname, ieng, iloc, idesc, deng, dloc, sid, False))
 
@@ -837,9 +843,17 @@ def write_secondary_excel(
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
 
-    def t(tbl: Dict[str, List[Tuple[str, str]]], text: str, src_file: str = "") -> str:
-        trans, _ = resolve_translation(text or "", tbl, src_file, export_index, consumer=consumer)
-        return trans
+    def t_eng(text: str, src_file: str = "") -> Tuple[str, str]:
+        """Translate with eng_tbl (consumer=None, display only)."""
+        if not text:
+            return "", ""
+        return resolve_translation(text, eng_tbl, src_file, export_index, consumer=None)
+
+    def t_lang(text: str, src_file: str = "") -> Tuple[str, str]:
+        """Translate with lang_tbl (consumer=consumer, order-based SID)."""
+        if not text:
+            return "", ""
+        return resolve_translation(text, lang_tbl, src_file, export_index, consumer=consumer)
 
     width_map = {
         "Filename": 33,
@@ -899,22 +913,26 @@ def write_secondary_excel(
                     continue
                 sub_disp = get_display_name(itm.group_key, group_names, eng_tbl)
                 src = itm.source_file  # Use source_file for EXPORT-aware resolution
+                iname_eng, _ = t_eng(itm.item_name, src)
+                idesc_eng, _ = t_eng(itm.item_desc, src)
+                iname_loc, iname_sid = t_lang(itm.item_name, src)
+                idesc_loc, _ = t_lang(itm.item_desc, src)
                 data_map = {
                     "Filename": fn,
                     "SubGroup": sub_disp,
                     "ItemName(KOR)": itm.item_name,
                     "ItemDesc(KOR)": itm.item_desc,
-                    "ItemName(ENG)": t(eng_tbl, itm.item_name, src),
-                    "ItemDesc(ENG)": t(eng_tbl, itm.item_desc, src),
+                    "ItemName(ENG)": iname_eng,
+                    "ItemDesc(ENG)": idesc_eng,
                     "ItemKey": ik,
                     "STATUS": "",
                     "COMMENT": "",
-                    "STRINGID": resolve_translation(itm.item_name, lang_tbl, src, export_index, consumer=consumer)[1],
+                    "STRINGID": iname_sid,
                     "SCREENSHOT": "",
                 }
                 if lang_code != "eng":
-                    data_map[f"ItemName({code})"] = t(lang_tbl, itm.item_name, src)
-                    data_map[f"ItemDesc({code})"] = t(lang_tbl, itm.item_desc, src)
+                    data_map[f"ItemName({code})"] = iname_loc
+                    data_map[f"ItemDesc({code})"] = idesc_loc
 
                 row_vals = [data_map.get(h, "") for h in headers]
                 rows_accum.append((sub_disp, ik, row_vals))

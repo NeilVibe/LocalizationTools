@@ -482,7 +482,7 @@ def write_workbook(
             eng_tr, sid_eng = ("", "")
             if needs_tr:
                 if source_file and export_index:
-                    eng_tr, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=consumer)
+                    eng_tr, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=None)
                 else:
                     eng_tr, sid_eng = get_first_translation(eng_tbl, text)
 
