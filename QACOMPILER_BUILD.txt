@@ -119,3 +119,4 @@ Build - global dedup + order-based StringID disambiguation
 Build - consumer fixes + RewardKnowledgeKey + NewCharacter/NewRegion generators
 Build - NewRegion review fixes + XML Diff Extractor
 Build - br tag normalization for text matching
+Build - br tag normalization for text matching
