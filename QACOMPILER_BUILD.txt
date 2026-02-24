@@ -113,3 +113,4 @@ Build - Update scenario and faction quest folder paths
 Build - Fix word count bug, GUI height 1100 + centering, robustness improvements
 Build - NewItem pipeline integration
 Build - KnowledgeKey fix + ItemKnowledgeCluster generator
+Build - Progress tracking + fuzzy optimization
