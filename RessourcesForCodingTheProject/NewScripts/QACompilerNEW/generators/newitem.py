@@ -670,6 +670,34 @@ def write_newitem_excel(
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
 
+    # ------------------------------------------------------------------
+    # PRE-RESOLVE: consume StringIDs in DOCUMENT ORDER (before sorting).
+    # items dict preserves insertion order (= XML scan order).  The
+    # sorted write loop below would break the consumer's pointer, so we
+    # resolve here first and store results keyed by (item_strkey, field).
+    # ------------------------------------------------------------------
+    pre: Dict[Tuple[str, str], Tuple[str, str]] = {}  # (ik, field) -> (trans, sid)
+    for ik, entry in items.items():  # insertion order = document order
+        pre[(ik, "item_name")] = resolve_translation(
+            entry.item_name_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
+        pre[(ik, "item_desc")] = resolve_translation(
+            entry.item_desc_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
+        if entry.knowledge_name_kor:
+            pre[(ik, "knowledge_name")] = resolve_translation(
+                entry.knowledge_name_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)
+        if entry.knowledge_desc_kor:
+            pre[(ik, "knowledge_desc")] = resolve_translation(
+                entry.knowledge_desc_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)
+        if entry.knowledge2_name_kor:
+            pre[(ik, "knowledge2_name")] = resolve_translation(
+                entry.knowledge2_name_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
+        if entry.knowledge2_desc_kor:
+            pre[(ik, "knowledge2_desc")] = resolve_translation(
+                entry.knowledge2_desc_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
+
+    if consumer.warnings:
+        log.warning("StringID overruns during pre-resolve: %d", consumer.warnings)
+
     for folder_display, flist in sorted(folder_files.items()):
         if not flist:
             continue
@@ -706,10 +734,9 @@ def write_newitem_excel(
                     current_fill = _fill_b if current_fill == _fill_a else _fill_a
                 last_ik = ik
 
-                def _write_row(data_type: str, kor_text: str, src_file: str) -> None:
-                    """Write a single data row."""
+                def _write_row(data_type: str, kor_text: str, trans: str, sid: str) -> None:
+                    """Write a single data row using pre-resolved translation."""
                     nonlocal excel_row
-                    trans, sid = resolve_translation(kor_text, lang_tbl, src_file, export_index, consumer=consumer)
                     vals = [data_type, fn, kor_text, trans, "", "", "", sid]
                     for ci, val in enumerate(vals, 1):
                         cell = ws.cell(excel_row, ci, val)
@@ -724,26 +751,32 @@ def write_newitem_excel(
                     excel_row += 1
 
                 # 1. ItemData -- ItemName (always output)
-                _write_row("ItemData", entry.item_name_kor, entry.source_file)
+                t, s = pre[(ik, "item_name")]
+                _write_row("ItemData", entry.item_name_kor, t, s)
 
                 # 2. ItemData -- ItemDesc (always output)
-                _write_row("ItemData", entry.item_desc_kor, entry.source_file)
+                t, s = pre[(ik, "item_desc")]
+                _write_row("ItemData", entry.item_desc_kor, t, s)
 
                 # 3. KnowledgeData -- Name (skip if empty)
                 if entry.knowledge_name_kor:
-                    _write_row("KnowledgeData", entry.knowledge_name_kor, entry.knowledge_source_file)
+                    t, s = pre[(ik, "knowledge_name")]
+                    _write_row("KnowledgeData", entry.knowledge_name_kor, t, s)
 
                 # 4. KnowledgeData -- Desc (skip if empty)
                 if entry.knowledge_desc_kor:
-                    _write_row("KnowledgeData", entry.knowledge_desc_kor, entry.knowledge_source_file)
+                    t, s = pre[(ik, "knowledge_desc")]
+                    _write_row("KnowledgeData", entry.knowledge_desc_kor, t, s)
 
                 # 5. KnowledgeData2 -- Name (Pass 2: identical name match, skip if empty)
                 if entry.knowledge2_name_kor:
-                    _write_row("KnowledgeData2", entry.knowledge2_name_kor, entry.knowledge2_source_file)
+                    t, s = pre[(ik, "knowledge2_name")]
+                    _write_row("KnowledgeData2", entry.knowledge2_name_kor, t, s)
 
                 # 6. KnowledgeData2 -- Desc (Pass 2: identical name match, skip if empty)
                 if entry.knowledge2_desc_kor:
-                    _write_row("KnowledgeData2", entry.knowledge2_desc_kor, entry.knowledge2_source_file)
+                    t, s = pre[(ik, "knowledge2_desc")]
+                    _write_row("KnowledgeData2", entry.knowledge2_desc_kor, t, s)
 
         # Sheet cosmetics
         if excel_row > 2:

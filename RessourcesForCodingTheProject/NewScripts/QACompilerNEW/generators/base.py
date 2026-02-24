@@ -313,10 +313,8 @@ def resolve_translation(
     if not candidates:
         return ("", "")
 
-    # If only one candidate, still consume from consumer to keep pointer in sync
+    # If only one candidate, no disambiguation needed — just return it
     if len(candidates) == 1:
-        if consumer and data_filename:
-            consumer.consume(normalized, get_export_key(data_filename))
         return candidates[0]
 
     # Multiple candidates — try order-based consumption first (most precise)

@@ -270,6 +270,33 @@ def write_newcharacter_excel(
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
 
+    # ------------------------------------------------------------------
+    # PRE-RESOLVE: consume StringIDs in DOCUMENT ORDER (before sorting).
+    # The consumer's Nth call for a Korean text must match the Nth
+    # occurrence in the XML data file.  Sorting entries by strkey would
+    # break that order, so we resolve here first, then store results.
+    # ------------------------------------------------------------------
+    pre: Dict[Tuple[str, str], Tuple[str, str]] = {}  # (strkey, field) -> (trans, sid)
+    for gk in sorted(groups.keys()):
+        for entry in groups[gk]:  # list order = document order
+            pre[(entry.strkey, "char_name")] = resolve_translation(
+                entry.char_name_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
+            if entry.knowledge_name_kor:
+                pre[(entry.strkey, "knowledge_name")] = resolve_translation(
+                    entry.knowledge_name_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)
+            if entry.knowledge_desc_kor:
+                pre[(entry.strkey, "knowledge_desc")] = resolve_translation(
+                    entry.knowledge_desc_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)
+            if entry.knowledge2_name_kor:
+                pre[(entry.strkey, "knowledge2_name")] = resolve_translation(
+                    entry.knowledge2_name_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
+            if entry.knowledge2_desc_kor:
+                pre[(entry.strkey, "knowledge2_desc")] = resolve_translation(
+                    entry.knowledge2_desc_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
+
+    if consumer.warnings:
+        log.warning("StringID overruns during pre-resolve: %d", consumer.warnings)
+
     for group_key in sorted(groups.keys()):
         entries = groups[group_key]
         if not entries:
@@ -295,7 +322,7 @@ def write_newcharacter_excel(
         current_fill = _fill_a
         last_strkey = None
 
-        # Sort characters by strkey within each group
+        # Sort characters by strkey within each group (display order only)
         sorted_entries = sorted(entries, key=lambda e: e.strkey)
 
         for entry in sorted_entries:
@@ -310,12 +337,9 @@ def write_newcharacter_excel(
             # COMMAND for CharacterData rows: /create character {strkey}
             command = f"/create character {entry.strkey}"
 
-            def _write_row(data_type: str, kor_text: str, src_file: str, cmd: str = "") -> None:
-                """Write a single data row."""
+            def _write_row(data_type: str, kor_text: str, trans: str, sid: str, cmd: str = "") -> None:
+                """Write a single data row using pre-resolved translation."""
                 nonlocal excel_row
-                trans, sid = resolve_translation(
-                    kor_text, lang_tbl, src_file, export_index, consumer=consumer
-                )
                 vals = [data_type, filename, kor_text, trans, cmd, "", "", "", sid]
                 for ci, val in enumerate(vals, 1):
                     cell = ws.cell(excel_row, ci, val)
@@ -330,23 +354,28 @@ def write_newcharacter_excel(
                 excel_row += 1
 
             # 1. CharacterData -- CharacterName (always output, with COMMAND)
-            _write_row("CharacterData", entry.char_name_kor, entry.source_file, command)
+            t, s = pre[(entry.strkey, "char_name")]
+            _write_row("CharacterData", entry.char_name_kor, t, s, command)
 
             # 2. KnowledgeData -- Name (Pass 1: KnowledgeKey, skip if empty)
             if entry.knowledge_name_kor:
-                _write_row("KnowledgeData", entry.knowledge_name_kor, entry.knowledge_source_file)
+                t, s = pre[(entry.strkey, "knowledge_name")]
+                _write_row("KnowledgeData", entry.knowledge_name_kor, t, s)
 
             # 3. KnowledgeData -- Desc (Pass 1: KnowledgeKey, skip if empty)
             if entry.knowledge_desc_kor:
-                _write_row("KnowledgeData", entry.knowledge_desc_kor, entry.knowledge_source_file)
+                t, s = pre[(entry.strkey, "knowledge_desc")]
+                _write_row("KnowledgeData", entry.knowledge_desc_kor, t, s)
 
             # 4. KnowledgeData2 -- Name (Pass 2: identical name match, skip if empty)
             if entry.knowledge2_name_kor:
-                _write_row("KnowledgeData2", entry.knowledge2_name_kor, entry.knowledge2_source_file)
+                t, s = pre[(entry.strkey, "knowledge2_name")]
+                _write_row("KnowledgeData2", entry.knowledge2_name_kor, t, s)
 
             # 5. KnowledgeData2 -- Desc (Pass 2: identical name match, skip if empty)
             if entry.knowledge2_desc_kor:
-                _write_row("KnowledgeData2", entry.knowledge2_desc_kor, entry.knowledge2_source_file)
+                t, s = pre[(entry.strkey, "knowledge2_desc")]
+                _write_row("KnowledgeData2", entry.knowledge2_desc_kor, t, s)
 
         # Sheet cosmetics
         if excel_row > 2:

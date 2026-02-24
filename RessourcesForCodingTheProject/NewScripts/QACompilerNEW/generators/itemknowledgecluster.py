@@ -75,6 +75,8 @@ class ClusterRow:
     kor_text: str
     source_file: str
     fuzzy_score: float = 0.0
+    pre_trans: str = ""  # Pre-resolved translation (set before writing)
+    pre_sid: str = ""    # Pre-resolved StringID (set before writing)
 
 
 @dataclass
@@ -487,12 +489,13 @@ _fill_b = PatternFill("solid", fgColor="FCE4D6")  # Light orange
 
 def write_cluster_excel(
     clusters: List[ItemCluster],
-    lang_tbl: Dict[str, List[Tuple[str, str]]],
     lang_code: str,
-    export_index: Dict[str, Set[str]],
     output_path: Path,
 ) -> None:
     """Write ItemKnowledgeCluster Excel with one mega-sheet.
+
+    Uses pre-resolved translations stored in ClusterRow.pre_trans / pre_sid
+    (populated by the generator before calling this function).
 
     7 columns: DataType | SourceText (KR) | Translation | STATUS | COMMENT | SCREENSHOT | STRINGID
     """
@@ -524,10 +527,6 @@ def write_cluster_excel(
     total_clusters = len(clusters)
     last_pct = -1
 
-    # Order-based StringID consumer (fresh per language write pass)
-    ordered_idx = get_ordered_export_index()
-    consumer = StringIdConsumer(ordered_idx)
-
     # Global dedup: track (kor_text, stringid) across all clusters
     # ItemData rows are ALWAYS kept (cluster anchors). Knowledge-side rows
     # (KnowledgeData, KnowledgeMatch-*, ItemMatch-Fuzzy) are deduplicated.
@@ -553,16 +552,13 @@ def write_cluster_excel(
             is_anchor = crow.data_type == "ItemData"
 
             # Pre-dedup: skip non-anchor rows whose text we've already seen
-            # (same text in same export file -> same SID, so text-only check suffices)
             if not is_anchor and crow.kor_text in global_seen_texts:
                 global_dedup_count += 1
                 continue
 
-            # NOW consume (only for rows that pass dedup)
-            trans, sid = resolve_translation(
-                crow.kor_text, lang_tbl, crow.source_file, export_index,
-                consumer=consumer,
-            )
+            # Use pre-resolved translation + SID (resolved in document order
+            # BEFORE cluster sorting — see generate function)
+            trans, sid = crow.pre_trans, crow.pre_sid
 
             global_seen_texts.add(crow.kor_text)
 
@@ -585,8 +581,6 @@ def write_cluster_excel(
 
     if global_dedup_count:
         log.info("Global dedup: %d knowledge rows removed across clusters", global_dedup_count)
-    if consumer.warnings:
-        log.warning("StringID overruns: %d (data had more duplicates than export)", consumer.warnings)
 
     # Sheet cosmetics
     if excel_row > 2:
@@ -693,9 +687,10 @@ def generate_itemknowledgecluster_datasheets() -> Dict:
         clusters = build_clusters(items_raw, knowledges_raw)
         log.info("  Clustering complete in %.1fs", time.time() - t0)
 
-        # 4. Order clusters by name similarity
+        # 4. Save document-order clusters, then sort for display
         log.info("[4/6] Ordering clusters by name similarity...")
         t0 = time.time()
+        unsorted_clusters = list(clusters)  # preserve build/document order
         clusters = order_clusters_by_similarity(clusters)
         log.info("  Ordering complete in %.1fs", time.time() - t0)
 
@@ -709,8 +704,22 @@ def generate_itemknowledgecluster_datasheets() -> Dict:
 
         for idx, (code, tbl) in enumerate(lang_tables.items(), 1):
             log.info("(%d/%d) Language %s", idx, total, code.upper())
+
+            # PRE-RESOLVE: consume StringIDs in document order (unsorted)
+            # before writing in sorted cluster order.
+            ordered_idx = get_ordered_export_index()
+            consumer = StringIdConsumer(ordered_idx)
+            for cluster in unsorted_clusters:
+                for crow in cluster.rows:
+                    crow.pre_trans, crow.pre_sid = resolve_translation(
+                        crow.kor_text, tbl, crow.source_file, export_index,
+                        consumer=consumer,
+                    )
+            if consumer.warnings:
+                log.warning("StringID overruns during pre-resolve: %d", consumer.warnings)
+
             excel_path = output_folder / f"ItemKnowledgeCluster_LQA_{code.upper()}.xlsx"
-            write_cluster_excel(clusters, tbl, code, export_index, excel_path)
+            write_cluster_excel(clusters, code, excel_path)
             result["files_created"] += 1
 
         total_elapsed = time.time() - gen_start

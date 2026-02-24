@@ -595,11 +595,30 @@ def build_rows_for_language(
             return "", ""
         return resolve_translation(text, eng_tbl, src_file, export_index, consumer=None)
 
-    def t_lang(text: str, src_file: str = "") -> Tuple[str, str]:
-        """Translate with lang_tbl (consumer=consumer, order-based SID)."""
+    def t_lang_group(text: str) -> Tuple[str, str]:
+        """Translate group name with lang_tbl (no consumer — no src_file)."""
         if not text:
             return "", ""
-        return resolve_translation(text, lang_tbl, src_file, export_index, consumer=consumer)
+        return resolve_translation(text, lang_tbl, "", export_index, consumer=None)
+
+    # ------------------------------------------------------------------
+    # PRE-RESOLVE: consume StringIDs in DOCUMENT ORDER (before sorting).
+    # group_items lists preserve XML scan order.  recurse() sorts items
+    # by ik within each group, which would break the consumer pointer.
+    # ------------------------------------------------------------------
+    pre_name: Dict[Tuple[str, str], Tuple[str, str]] = {}  # (gk, ik) -> (trans, sid)
+    pre_desc: Dict[Tuple[str, str], Tuple[str, str]] = {}
+    for gk, item_list in group_items.items():
+        for ik, iname, idesc, src_file in item_list:  # document order
+            key = (gk, ik)
+            if key not in pre_name:  # guard against rare duplicates
+                pre_name[key] = resolve_translation(
+                    iname, lang_tbl, src_file, export_index, consumer=consumer)
+                pre_desc[key] = resolve_translation(
+                    idesc, lang_tbl, src_file, export_index, consumer=consumer)
+
+    if consumer.warnings:
+        log.warning("StringID overruns during pre-resolve: %d", consumer.warnings)
 
     rows: List[PrimaryRow] = []
     children_of = build_children_map(parent_of)
@@ -614,15 +633,15 @@ def build_rows_for_language(
         depth = calc_depth(gk, parent_of)
         kor = group_names.get(gk, "")
         eng, _ = t_eng(kor)
-        loc, _ = t_lang(kor)
+        loc, _ = t_lang_group(kor)
         rows.append((depth, gk, kor, eng, loc,
                      "", "", "", "", "", "", "", "", "", True))
 
         for ik, iname, idesc, src_file in sorted(group_items.get(gk, []), key=lambda x: x[0]):
             ieng, _ = t_eng(iname, src_file)
-            iloc, iloc_sid = t_lang(iname, src_file)
+            iloc, iloc_sid = pre_name[(gk, ik)]
             deng, _ = t_eng(idesc, src_file)
-            dloc, _ = t_lang(idesc, src_file)
+            dloc, _ = pre_desc[(gk, ik)]
             num = id_table.get(ik.lower(), "<MISSING>")
             sid = iloc_sid
             rows.append((depth+1, gk, kor, eng, loc,
@@ -849,11 +868,21 @@ def write_secondary_excel(
             return "", ""
         return resolve_translation(text, eng_tbl, src_file, export_index, consumer=None)
 
-    def t_lang(text: str, src_file: str = "") -> Tuple[str, str]:
-        """Translate with lang_tbl (consumer=consumer, order-based SID)."""
-        if not text:
-            return "", ""
-        return resolve_translation(text, lang_tbl, src_file, export_index, consumer=consumer)
+    # ------------------------------------------------------------------
+    # PRE-RESOLVE: consume StringIDs in DOCUMENT ORDER (before sorting).
+    # items dict preserves insertion order (= XML scan order).  The write
+    # loop below sorts by ik, which would break the consumer pointer.
+    # ------------------------------------------------------------------
+    pre_name: Dict[str, Tuple[str, str]] = {}  # ik -> (trans, sid)
+    pre_desc: Dict[str, Tuple[str, str]] = {}
+    for ik, itm in items.items():  # insertion order = document order
+        pre_name[ik] = resolve_translation(
+            itm.item_name, lang_tbl, itm.source_file, export_index, consumer=consumer)
+        pre_desc[ik] = resolve_translation(
+            itm.item_desc, lang_tbl, itm.source_file, export_index, consumer=consumer)
+
+    if consumer.warnings:
+        log.warning("StringID overruns during pre-resolve (secondary): %d", consumer.warnings)
 
     width_map = {
         "Filename": 33,
@@ -915,8 +944,8 @@ def write_secondary_excel(
                 src = itm.source_file  # Use source_file for EXPORT-aware resolution
                 iname_eng, _ = t_eng(itm.item_name, src)
                 idesc_eng, _ = t_eng(itm.item_desc, src)
-                iname_loc, iname_sid = t_lang(itm.item_name, src)
-                idesc_loc, _ = t_lang(itm.item_desc, src)
+                iname_loc, iname_sid = pre_name[ik]
+                idesc_loc, _ = pre_desc[ik]
                 data_map = {
                     "Filename": fn,
                     "SubGroup": sub_disp,
