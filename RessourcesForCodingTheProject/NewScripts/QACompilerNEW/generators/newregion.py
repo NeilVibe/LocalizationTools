@@ -404,12 +404,16 @@ def parse_all_faction_data(
             ))
             total_groups += 1
 
-            # Parse child Factions
+            # Track ALL Factions under this FactionGroup (recursive)
+            # so standalone detection skips them correctly
+            for nested_faction in fg_elem.iter("Faction"):
+                nested_sk = nested_faction.get("StrKey") or ""
+                if nested_sk:
+                    factions_in_groups.add(nested_sk)
+
+            # Parse direct child Factions (they recurse into FactionNodes internally)
             for faction_elem in fg_elem:
                 if faction_elem.tag == "Faction":
-                    faction_sk = faction_elem.get("StrKey") or ""
-                    if faction_sk:
-                        factions_in_groups.add(faction_sk)
                     _parse_faction(
                         faction_elem, knowledge_map, knowledge_name_index,
                         global_seen, 1, source_file, fg_group_name, entities,
@@ -815,8 +819,10 @@ def write_newregion_excel(
     if wb.worksheets:
         wb.save(output_path)
         log.info("NewRegion Excel saved: %s (%d sheets)", output_path.name, len(wb.worksheets))
+        return True
     else:
         log.warning("No sheets generated for %s", output_path.name)
+        return False
 
 
 # =============================================================================
@@ -915,11 +921,12 @@ def generate_newregion_datasheets() -> Dict:
         for idx, (code, tbl) in enumerate(lang_tables.items(), 1):
             log.info("(%d/%d) Language %s", idx, total, code.upper())
             excel_path = output_folder / f"NewRegion_LQA_{code.upper()}.xlsx"
-            write_newregion_excel(
+            saved = write_newregion_excel(
                 group_entities, standalone_entities, shop_groups,
                 tbl, code, export_index, excel_path,
             )
-            result["files_created"] += 1
+            if saved:
+                result["files_created"] += 1
 
         log.info("=" * 70)
         log.info("Done! Output folder: %s", output_folder)
