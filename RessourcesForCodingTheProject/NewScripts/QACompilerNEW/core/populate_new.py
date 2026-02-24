@@ -87,6 +87,11 @@ DATASHEET_LOCATIONS = {
         "eng_pattern": "Contents_LQA*.xlsx",  # Same file for both (no localization)
         "cn_pattern": "Contents_LQA*.xlsx",   # Same file for both (no localization)
     },
+    "NewItem": {
+        "folder": "NewItemData_Map_All",
+        "eng_pattern": "NewItem_LQA_ENG*.xlsx",
+        "cn_pattern": "NewItem_LQA_ZHO-CN*.xlsx",
+    },
 }
 
 

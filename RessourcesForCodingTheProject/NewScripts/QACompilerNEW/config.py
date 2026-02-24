@@ -208,6 +208,7 @@ CATEGORIES = [
     "Quest",
     "Knowledge",
     "Item",
+    "NewItem",     # Row-per-text item datasheet (4-step pass)
     "Region",
     "System",
     "Character",
@@ -253,6 +254,7 @@ WORKER_GROUPS = {
     "contents":   ["Contents"],
     "face":       ["Face"],
     "item":       ["Item", "Gimmick"],       # Must serialize (shared Master_Item.xlsx)
+    "newitem":    ["NewItem"],               # Row-per-text format (separate Master_NewItem.xlsx)
     "system":     ["Skill", "Help"],         # Must serialize (shared Master_System.xlsx)
     "script":     ["Sequencer", "Dialog"],   # Must serialize (shared Master_Script.xlsx)
 }
@@ -268,6 +270,7 @@ TRANSLATION_COLS = {
     "Character": {"eng": 2, "other": 3},
     "Region": {"eng": 2, "other": 3},
     "Item": {"eng": 5, "other": 7},  # ItemName column
+    "NewItem": {"eng": 4, "other": 4},  # Translation column (row-per-text format)
     "System": {"eng": 1, "other": 1},  # CONTENT column (single column for all languages)
     "Skill": {"eng": 2, "other": 3},
     "Help": {"eng": 2, "other": 3},

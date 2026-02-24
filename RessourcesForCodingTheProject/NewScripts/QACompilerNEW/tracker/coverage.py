@@ -42,6 +42,7 @@ OUTPUT_FOLDERS = {
     "Region":     SCRIPT_DIR / "Region_LQA_v3",
     "Gimmick":    SCRIPT_DIR / "Gimmick_LQA_Output",
     "Help":       SCRIPT_DIR / "GameAdvice_LQA_All",
+    "NewItem":    SCRIPT_DIR / "NewItemData_Map_All",
 }
 
 # ENG file patterns per category
@@ -54,6 +55,7 @@ ENG_FILE_PATTERNS = {
     "Region":     "Region_LQA_ENG.xlsx",
     "Gimmick":    "Gimmick_LQA_ENG.xlsx",
     "Help":       "LQA_GameAdvice_ENG.xlsx",
+    "NewItem":    "NewItem_LQA_ENG.xlsx",
 }
 
 # Korean column index (1-based) per category - column A = 1
@@ -67,6 +69,7 @@ KOREAN_COLUMN = {
     "Region":     1,            # Original (KR)
     "Gimmick":    (6, 9, 11),   # GimmickName(KOR)=6, ItemName(KOR)=9, ItemDesc(KOR)=11
     "Help":       1,            # Original (KR)
+    "NewItem":    3,            # SourceText (KR) = col C
 }
 
 # English/Translation column index (1-based) per category
@@ -79,6 +82,7 @@ TRANSLATION_COLUMN = {
     "Region":     2,            # English (ENG)
     "Gimmick":    (7, 10, 12),  # GimmickName(ENG)=7, ItemName(ENG)=10, ItemDesc(ENG)=12
     "Help":       2,            # English (ENG)
+    "NewItem":    4,            # Translation ({CODE}) = col D
 }
 
 # Language data folder - imported from config.py (uses settings.json drive letter)
@@ -421,6 +425,7 @@ def load_korean_strings_from_datasheets(output_folder: Path) -> Dict[str, Set[st
         ("Region", "Region_LQA_v3", "Region_LQA_ENG.xlsx"),
         ("Gimmick", "Gimmick_LQA_Output", "Gimmick_LQA_ENG.xlsx"),
         ("Help", "GameAdvice_LQA_All", "LQA_GameAdvice_ENG.xlsx"),
+        ("NewItem", "NewItemData_Map_All", "NewItem_LQA_ENG.xlsx"),
     ]
 
     for category, folder_path, file_pattern in CATEGORY_CONFIG:
@@ -607,6 +612,7 @@ def collect_category_wordcounts(output_folder: Path) -> Dict[str, CategoryWordCo
         ("Region", "Region_LQA_v3", "Region_LQA_ENG.xlsx"),
         ("Gimmick", "Gimmick_LQA_Output", "Gimmick_LQA_ENG.xlsx"),
         ("Help", "GameAdvice_LQA_All", "LQA_GameAdvice_ENG.xlsx"),
+        ("NewItem", "NewItemData_Map_All", "NewItem_LQA_ENG.xlsx"),
     ]
 
     for category, folder_path, file_pattern in CATEGORY_CONFIG:

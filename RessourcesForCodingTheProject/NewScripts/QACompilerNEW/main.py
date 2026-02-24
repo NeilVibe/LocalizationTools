@@ -110,6 +110,7 @@ def cli_list_categories():
             "Skill": "Player skills with knowledge linking",
             "Help": "GameAdvice/Help system entries",
             "Gimmick": "Interactive gimmick objects",
+            "NewItem": "Row-per-text item datasheet (4-step pass)",
         }.get(cat, "")
         print(f"  {i}. {cat:12} - {desc}")
 
