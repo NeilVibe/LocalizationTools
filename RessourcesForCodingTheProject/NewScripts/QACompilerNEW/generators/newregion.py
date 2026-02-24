@@ -50,6 +50,9 @@ from generators.region import (
     write_sheet_content,
     # Constants
     EMPTY_FACTION_NAME,
+    # Korean collection (shared parsers write to region's set)
+    get_collected_korean_strings as get_region_korean_strings,
+    reset_korean_collection as reset_region_korean_collection,
 )
 
 log = get_logger("NewRegionGenerator")
@@ -219,6 +222,7 @@ def write_workbook(
     # Order-based StringID consumer (fresh per language write pass)
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
+    eng_consumer = StringIdConsumer(ordered_idx) if is_eng else None
 
     def get_unique_title(base: str) -> str:
         title = base
@@ -239,7 +243,7 @@ def write_workbook(
         title = get_unique_title(title)
 
         sheet = wb.create_sheet(title=title)
-        write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer)
+        write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer, eng_consumer)
 
         log.info("    Sheet '%s': %d rows", title, len(rows))
 
@@ -251,7 +255,7 @@ def write_workbook(
             title = get_unique_title(title)
 
             sheet = wb.create_sheet(title=title)
-            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer)
+            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer, eng_consumer)
 
             log.info("    Sheet '%s': %d rows", title, len(rows))
 
@@ -260,7 +264,7 @@ def write_workbook(
         rows = emit_shop_rows(shop_groups)
         if rows:
             sheet = wb.create_sheet(title="Shop")
-            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer)
+            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer, eng_consumer)
             log.info("    Sheet 'Shop': %d rows", len(rows))
 
     # Save
@@ -288,6 +292,7 @@ def generate_newregion_datasheets() -> Dict:
     }
 
     reset_korean_collection()
+    reset_region_korean_collection()  # Shared parsers write to region's set
 
     log.info("=" * 70)
     log.info("NewRegion Datasheet Generator")
@@ -357,6 +362,9 @@ def generate_newregion_datasheets() -> Dict:
                 )
             if saved:
                 result["files_created"] += 1
+
+        # Merge Korean strings from region's shared parsers into our collection
+        _collected_korean_strings.update(get_region_korean_strings())
 
         log.info("=" * 70)
         log.info("Done! Output folder: %s", output_folder)

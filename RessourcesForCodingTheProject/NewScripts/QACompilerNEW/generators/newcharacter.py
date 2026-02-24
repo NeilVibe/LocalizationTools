@@ -138,7 +138,9 @@ def scan_characters_with_knowledge(
     """
     log.info("Scanning characters with knowledge: %s", folder)
     groups: Dict[str, List[NewCharacterEntry]] = defaultdict(list)
+    seen_strkeys: Set[str] = set()
     total_chars = 0
+    duplicates = 0
     pass2_hits = 0
 
     for path in sorted(iter_characterinfo_files(folder)):
@@ -155,6 +157,12 @@ def scan_characters_with_knowledge(
 
             if not strkey or not char_name:
                 continue
+
+            # Dedup by StrKey across all files
+            if strkey in seen_strkeys:
+                duplicates += 1
+                continue
+            seen_strkeys.add(strkey)
 
             knowledge_key = _find_knowledge_key(el)
 
@@ -204,6 +212,8 @@ def scan_characters_with_knowledge(
 
         log.debug("  %s -> %s: scanned", path.name, group_key.upper())
 
+    if duplicates:
+        log.info("  Skipped %d duplicate StrKeys", duplicates)
     log.info("Characters scanned: %d in %d groups (Pass 2 hits: %d)",
              total_chars, len(groups), pass2_hits)
     for key, entries in sorted(groups.items()):
@@ -231,7 +241,7 @@ def write_newcharacter_excel(
 ) -> None:
     """Write NewCharacter Excel with one row per text field.
 
-    8 columns: DataType | Filename | SourceText (KR) | Translation | STATUS | COMMENT | SCREENSHOT | STRINGID
+    9 columns: DataType | Filename | SourceText (KR) | Translation | COMMAND | STATUS | COMMENT | SCREENSHOT | STRINGID
 
     Per-character row generation (strict order):
     1. CharacterData -- char_name_kor (always output)
@@ -249,6 +259,7 @@ def write_newcharacter_excel(
         "Filename",
         "SourceText (KR)",
         f"Translation ({code})",
+        "COMMAND",
         "STATUS",
         "COMMENT",
         "SCREENSHOT",
@@ -296,27 +307,30 @@ def write_newcharacter_excel(
             # Filename column: source XML filename
             filename = entry.source_file
 
-            def _write_row(data_type: str, kor_text: str, src_file: str) -> None:
+            # COMMAND for CharacterData rows: /create character {strkey}
+            command = f"/create character {entry.strkey}"
+
+            def _write_row(data_type: str, kor_text: str, src_file: str, cmd: str = "") -> None:
                 """Write a single data row."""
                 nonlocal excel_row
                 trans, sid = resolve_translation(
                     kor_text, lang_tbl, src_file, export_index, consumer=consumer
                 )
-                vals = [data_type, filename, kor_text, trans, "", "", "", sid]
+                vals = [data_type, filename, kor_text, trans, cmd, "", "", "", sid]
                 for ci, val in enumerate(vals, 1):
                     cell = ws.cell(excel_row, ci, val)
                     cell.fill = current_fill
                     cell.border = THIN_BORDER
-                    if ci == 5:  # STATUS
+                    if ci == 6:  # STATUS
                         cell.alignment = Alignment(horizontal="center", vertical="center")
                     else:
                         cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
                 # STRINGID as text format (prevent scientific notation)
-                ws.cell(excel_row, 8).number_format = '@'
+                ws.cell(excel_row, 9).number_format = '@'
                 excel_row += 1
 
-            # 1. CharacterData -- CharacterName (always output)
-            _write_row("CharacterData", entry.char_name_kor, entry.source_file)
+            # 1. CharacterData -- CharacterName (always output, with COMMAND)
+            _write_row("CharacterData", entry.char_name_kor, entry.source_file, command)
 
             # 2. KnowledgeData -- Name (Pass 1: KnowledgeKey, skip if empty)
             if entry.knowledge_name_kor:
@@ -339,8 +353,8 @@ def write_newcharacter_excel(
             ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{excel_row - 1}"
         ws.freeze_panes = "A2"
 
-        # Add STATUS drop-down (column 5)
-        add_status_dropdown(ws, col=5)
+        # Add STATUS drop-down (column 6)
+        add_status_dropdown(ws, col=6)
 
         # Auto-fit column widths
         autofit_worksheet(ws)

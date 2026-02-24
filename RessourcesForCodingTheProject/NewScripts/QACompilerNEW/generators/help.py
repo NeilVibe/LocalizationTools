@@ -239,15 +239,16 @@ def write_workbook(
     """
     from openpyxl.worksheet.datavalidation import DataValidation
 
+    is_eng = lang_code.lower() == "eng"
+
     # Order-based StringID consumer (fresh per language write pass)
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
+    eng_consumer = StringIdConsumer(ordered_idx) if is_eng else None
 
     wb = Workbook()
     ws = wb.active
     ws.title = "GameAdvice"
-
-    is_eng = lang_code.lower() == "eng"
 
     # Header row
     headers: List = []
@@ -302,17 +303,16 @@ def write_workbook(
     # Write data rows
     for row_idx, (depth, text, needs_trans, source_file) in enumerate(rows, start=2):
         if source_file and export_index:
-            eng_tr, sid = resolve_translation(text, eng_tbl, source_file, export_index, consumer=None)
+            eng_tr, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
         else:
-            eng_tr, sid = get_first_translation(eng_tbl, text)
-        loc_tr = ""
+            eng_tr, sid_eng = get_first_translation(eng_tbl, text)
+        loc_tr, sid_other = "", ""
         if lang_tbl:
             if source_file and export_index:
-                loc_tr, loc_sid = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
+                loc_tr, sid_other = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
             else:
-                loc_tr, loc_sid = get_first_translation(lang_tbl, text)
-            if loc_sid:
-                sid = loc_sid
+                loc_tr, sid_other = get_first_translation(lang_tbl, text)
+        sid = sid_other if not is_eng else sid_eng
 
         fill, font, row_height = _get_style_for_depth(depth)
         indent = depth

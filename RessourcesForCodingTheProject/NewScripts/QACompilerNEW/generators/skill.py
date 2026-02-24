@@ -370,6 +370,7 @@ def write_workbook(
     # Order-based StringID consumer (fresh per language write pass)
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
+    eng_consumer = StringIdConsumer(ordered_idx) if is_eng else None
 
     # Header row
     headers: List = []
@@ -423,12 +424,11 @@ def write_workbook(
     # Write data rows
     for row_idx, (depth, text, source_file) in enumerate(rows, start=2):
         # Use context-aware resolution for duplicate handling
-        eng_tr, sid = resolve_translation(text, eng_tbl, source_file, export_index, consumer=None)
-        loc_tr = ""
+        eng_tr, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
+        loc_tr, sid_other = "", ""
         if lang_tbl:
-            loc_tr, loc_sid = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
-            if loc_sid:
-                sid = loc_sid
+            loc_tr, sid_other = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
+        sid = sid_other if not is_eng else sid_eng
 
         fill, font, row_height = _get_style_for_depth(depth)
         indent = depth

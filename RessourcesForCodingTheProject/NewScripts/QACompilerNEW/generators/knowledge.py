@@ -423,6 +423,7 @@ def write_workbook(
     # Order-based StringID consumer (fresh per language write pass)
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
+    eng_consumer = StringIdConsumer(ordered_idx) if is_eng else None
 
     for root_group in mega_roots:
         rows = emit_group_rows(root_group, 0)
@@ -477,12 +478,10 @@ def write_workbook(
                 else:
                     font = _normal_font
 
-            norm_text = normalize_placeholders(text)
-
             eng_tr, sid_eng = ("", "")
             if needs_tr:
                 if source_file and export_index:
-                    eng_tr, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=None)
+                    eng_tr, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
                 else:
                     eng_tr, sid_eng = get_first_translation(eng_tbl, text)
 
@@ -492,8 +491,6 @@ def write_workbook(
                     other_tr, sid_other = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
                 else:
                     other_tr, sid_other = get_first_translation(lang_tbl, text)
-
-            sid = sid_eng if is_eng else sid_other
 
             # Write core columns
             c_orig = ws.cell(r_idx, 1, text)

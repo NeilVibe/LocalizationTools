@@ -78,7 +78,7 @@ KOREAN_COLUMN = {
     "NewItem":    3,            # SourceText (KR) = col C
     "ItemKnowledgeCluster": 2,  # SourceText (KR) = col B
     "NewCharacter": 3,          # SourceText (KR) = col C
-    "NewRegion":    3,          # SourceText (KR) = col C
+    "NewRegion":    1,          # Original (KR) = col A (same as Region)
 }
 
 # English/Translation column index (1-based) per category
@@ -94,7 +94,7 @@ TRANSLATION_COLUMN = {
     "NewItem":    4,            # Translation ({CODE}) = col D
     "ItemKnowledgeCluster": 3,  # Translation ({CODE}) = col C
     "NewCharacter": 4,          # Translation ({CODE}) = col D
-    "NewRegion":    4,          # Translation ({CODE}) = col D
+    "NewRegion":    2,          # English (ENG) = col B (same as Region)
 }
 
 # Language data folder - imported from config.py (uses settings.json drive letter)

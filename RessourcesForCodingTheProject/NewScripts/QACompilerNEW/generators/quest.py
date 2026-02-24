@@ -153,6 +153,20 @@ def _sid(
     return stringid
 
 
+def _tr_sid(
+    text: str,
+    tbl: Dict[str, List[Tuple[str, str]]],
+    source_file: str = "",
+    export_index: Optional[Dict] = None,
+    consumer: Optional[StringIdConsumer] = None,
+) -> Tuple[str, str]:
+    """Get translation AND StringID from single resolve call (avoids double consumption)."""
+    if source_file and export_index:
+        return resolve_translation(text, tbl, source_file, export_index, consumer=consumer)
+    else:
+        return get_first_translation(tbl, text)
+
+
 def _parse_vec3(s: str) -> Optional[Tuple[float, float, float]]:
     """Parse a vector3 string into a tuple of floats."""
     parts = [p for p in s.replace(",", " ").split() if p]
@@ -864,13 +878,14 @@ def build_rows_main(
         if grp != current_group:
             current_group = grp
             kr_group = group_meta.get(grp.lower(), grp)
+            loc_grp, sid_grp = _tr_sid(kr_group, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 0,
                 kr_group,
                 _tr(kr_group, eng_tbl, source_file, export_index, None),
-                _tr(kr_group, lang_tbl, source_file, export_index, consumer),
+                loc_grp,
                 "",
-                _sid(kr_group, eng_tbl, source_file, export_index, None),
+                sid_grp,
                 False, True,
                 "", "", "", ""
             ))
@@ -879,13 +894,14 @@ def build_rows_main(
         kor = q.get("Name") or ""
         _collect_korean_string(kor)
         skn = id_tbl.get(qk.lower(), "")
+        loc_tr, sid = _tr_sid(kor, lang_tbl, source_file, export_index, consumer)
         rows.append((
             1,
             kor,
             _tr(kor, eng_tbl, source_file, export_index, None),
-            _tr(kor, lang_tbl, source_file, export_index, consumer),
+            loc_tr,
             skn,
-            _sid(kor, eng_tbl, source_file, export_index, None),
+            sid,
             bool(q.get("StageIcon")), True,
             "", "", "", ""
         ))
@@ -896,13 +912,14 @@ def build_rows_main(
             _collect_korean_string(mk)
             msk = m.get("StrKey") or ""
             cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
+            loc_mk, sid_mk = _tr_sid(mk, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 2,
                 mk,
                 _tr(mk, eng_tbl, source_file, export_index, None),
-                _tr(mk, lang_tbl, source_file, export_index, consumer),
+                loc_mk,
                 id_tbl.get(msk.lower(), msk),
-                _sid(mk, eng_tbl, source_file, export_index, None),
+                sid_mk,
                 False, True,
                 cmd, "", "", ""
             ))
@@ -913,13 +930,14 @@ def build_rows_main(
                 _collect_korean_string(sk)
                 ssk = s.get("StrKey") or ""
                 cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
+                loc_sk, sid_sk = _tr_sid(sk, lang_tbl, source_file, export_index, consumer)
                 rows.append((
                     3,
                     sk,
                     _tr(sk, eng_tbl, source_file, export_index, None),
-                    _tr(sk, lang_tbl, source_file, export_index, consumer),
+                    loc_sk,
                     id_tbl.get(ssk.lower(), ssk),
-                    _sid(sk, eng_tbl, source_file, export_index, None),
+                    sid_sk,
                     False, True,
                     cmd2, "", "", ""
                 ))
@@ -1027,11 +1045,12 @@ def build_rows_faction(
                     else:
                         prereq_cmd = branch_prereq
 
+            loc_tr, sid = _tr_sid(kor, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 0,
-                kor, _tr(kor, eng_tbl, source_file, export_index, None), _tr(kor, lang_tbl, source_file, export_index, consumer),
+                kor, _tr(kor, eng_tbl, source_file, export_index, None), loc_tr,
                 id_tbl.get(quest_tag, ""),
-                _sid(kor, eng_tbl, source_file, export_index, None),
+                sid,
                 bool(q.get("StageIcon")), True,
                 prereq_cmd, "", "", ""
             ))
@@ -1041,11 +1060,12 @@ def build_rows_faction(
                 _collect_korean_string(mk)
                 msk = m.get("StrKey") or ""
                 cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
+                loc_mk, sid_mk = _tr_sid(mk, lang_tbl, source_file, export_index, consumer)
                 rows.append((
                     1,
-                    mk, _tr(mk, eng_tbl, source_file, export_index, None), _tr(mk, lang_tbl, source_file, export_index, consumer),
+                    mk, _tr(mk, eng_tbl, source_file, export_index, None), loc_mk,
                     id_tbl.get(msk.lower(), msk),
-                    _sid(mk, eng_tbl, source_file, export_index, None),
+                    sid_mk,
                     False, True, cmd, "", "", ""
                 ))
 
@@ -1054,11 +1074,12 @@ def build_rows_faction(
                     _collect_korean_string(sk)
                     ssk = s.get("StrKey") or ""
                     cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
+                    loc_sk, sid_sk = _tr_sid(sk, lang_tbl, source_file, export_index, consumer)
                     rows.append((
                         2,
-                        sk, _tr(sk, eng_tbl, source_file, export_index, None), _tr(sk, lang_tbl, source_file, export_index, consumer),
+                        sk, _tr(sk, eng_tbl, source_file, export_index, None), loc_sk,
                         id_tbl.get(ssk.lower(), ssk),
-                        _sid(sk, eng_tbl, source_file, export_index, None),
+                        sid_sk,
                         False, True, cmd2, "", "", ""
                     ))
 
@@ -1103,11 +1124,12 @@ def build_rows_daily(
 
             kor = q.get("Name") or ""
             _collect_korean_string(kor)
+            loc_tr, sid = _tr_sid(kor, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 0,
-                kor, _tr(kor, eng_tbl, source_file, export_index, None), _tr(kor, lang_tbl, source_file, export_index, consumer),
+                kor, _tr(kor, eng_tbl, source_file, export_index, None), loc_tr,
                 id_tbl.get(q.tag.lower(), ""),
-                _sid(kor, eng_tbl, source_file, export_index, None),
+                sid,
                 bool(q.get("StageIcon")), True,
                 "", "", "", ""
             ))
@@ -1117,11 +1139,12 @@ def build_rows_daily(
                 _collect_korean_string(mk)
                 msk = m.get("StrKey") or ""
                 cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
+                loc_mk, sid_mk = _tr_sid(mk, lang_tbl, source_file, export_index, consumer)
                 rows.append((
                     1,
-                    mk, _tr(mk, eng_tbl, source_file, export_index, None), _tr(mk, lang_tbl, source_file, export_index, consumer),
+                    mk, _tr(mk, eng_tbl, source_file, export_index, None), loc_mk,
                     id_tbl.get(msk.lower(), msk),
-                    _sid(mk, eng_tbl, source_file, export_index, None),
+                    sid_mk,
                     False, True, cmd, "", "", ""
                 ))
 
@@ -1130,11 +1153,12 @@ def build_rows_daily(
                     _collect_korean_string(sk)
                     ssk = s.get("StrKey") or ""
                     cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
+                    loc_sk, sid_sk = _tr_sid(sk, lang_tbl, source_file, export_index, consumer)
                     rows.append((
                         2,
-                        sk, _tr(sk, eng_tbl, source_file, export_index, None), _tr(sk, lang_tbl, source_file, export_index, consumer),
+                        sk, _tr(sk, eng_tbl, source_file, export_index, None), loc_sk,
                         id_tbl.get(ssk.lower(), ssk),
-                        _sid(sk, eng_tbl, source_file, export_index, None),
+                        sid_sk,
                         False, True, cmd2, "", "", ""
                     ))
 
@@ -1192,10 +1216,11 @@ def build_rows_challenge(
             group_name = group_meta.get(group_code, group_code)
 
             # Group header row (depth 4 for visual distinction)
+            loc_grp, sid_grp = _tr_sid(group_name, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 4,
-                group_name, _tr(group_name, eng_tbl, source_file, export_index, None), _tr(group_name, lang_tbl, source_file, export_index, consumer),
-                "", _sid(group_name, eng_tbl, source_file, export_index, None),
+                group_name, _tr(group_name, eng_tbl, source_file, export_index, None), loc_grp,
+                "", sid_grp,
                 False, True,
                 "", "", "", ""
             ))
@@ -1205,11 +1230,12 @@ def build_rows_challenge(
             use_tp = group_name in _CHT_TP
             cmd = build_command(q, id_tbl, stage2seq, name_map, seq_pos) if use_tp else _extract_item_command(q)
 
+            loc_tr, sid = _tr_sid(kor, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 0,
-                kor, _tr(kor, eng_tbl, source_file, export_index, None), _tr(kor, lang_tbl, source_file, export_index, consumer),
+                kor, _tr(kor, eng_tbl, source_file, export_index, None), loc_tr,
                 id_tbl.get(q.tag.lower(), ""),
-                _sid(kor, eng_tbl, source_file, export_index, None),
+                sid,
                 False, True, cmd, "", "", ""
             ))
 
@@ -1218,11 +1244,12 @@ def build_rows_challenge(
                 _collect_korean_string(mk)
                 msk = m.get("StrKey") or ""
                 cmd2 = build_command(m, id_tbl, stage2seq, name_map, seq_pos) if use_tp else _extract_item_command(m)
+                loc_mk, sid_mk = _tr_sid(mk, lang_tbl, source_file, export_index, consumer)
                 rows.append((
                     1,
-                    mk, _tr(mk, eng_tbl, source_file, export_index, None), _tr(mk, lang_tbl, source_file, export_index, consumer),
+                    mk, _tr(mk, eng_tbl, source_file, export_index, None), loc_mk,
                     id_tbl.get(msk.lower(), msk),
-                    _sid(mk, eng_tbl, source_file, export_index, None),
+                    sid_mk,
                     False, True, cmd2, "", "", ""
                 ))
 
@@ -1231,11 +1258,12 @@ def build_rows_challenge(
                     _collect_korean_string(sk)
                     ssk = s.get("StrKey") or ""
                     cmd3 = build_command(s, id_tbl, stage2seq, name_map, seq_pos) if use_tp else _extract_item_command(s)
+                    loc_sk, sid_sk = _tr_sid(sk, lang_tbl, source_file, export_index, consumer)
                     rows.append((
                         2,
-                        sk, _tr(sk, eng_tbl, source_file, export_index, None), _tr(sk, lang_tbl, source_file, export_index, consumer),
+                        sk, _tr(sk, eng_tbl, source_file, export_index, None), loc_sk,
                         id_tbl.get(ssk.lower(), ssk),
-                        _sid(sk, eng_tbl, source_file, export_index, None),
+                        sid_sk,
                         False, True, cmd3, "", "", ""
                     ))
 
@@ -1281,11 +1309,12 @@ def build_rows_minigame(
 
         # Type 1: Mission-based minigames (Challenge_Minigame)
         if "_mission" in tag.lower() and el.get("StartMission"):
+            loc_name, sid_name = _tr_sid(name, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 0,
-                name, _tr(name, eng_tbl, source_file, export_index, None), _tr(name, lang_tbl, source_file, export_index, consumer),
+                name, _tr(name, eng_tbl, source_file, export_index, None), loc_name,
                 id_tbl.get(tag.lower(), ""),
-                _sid(name, eng_tbl, source_file, export_index, None),
+                sid_name,
                 bool(el.get("StageIcon")), True,
                 "", "", "", ""
             ))
@@ -1295,11 +1324,12 @@ def build_rows_minigame(
                 _collect_korean_string(mk)
                 msk = m.get("StrKey") or ""
                 cmd = build_command(m, id_tbl, stage2seq, name_map, seq_pos)
+                loc_mk, sid_mk = _tr_sid(mk, lang_tbl, source_file, export_index, consumer)
                 rows.append((
                     1,
-                    mk, _tr(mk, eng_tbl, source_file, export_index, None), _tr(mk, lang_tbl, source_file, export_index, consumer),
+                    mk, _tr(mk, eng_tbl, source_file, export_index, None), loc_mk,
                     id_tbl.get(msk.lower(), msk),
-                    _sid(mk, eng_tbl, source_file, export_index, None),
+                    sid_mk,
                     False, True, cmd, "", "", ""
                 ))
 
@@ -1308,21 +1338,23 @@ def build_rows_minigame(
                     _collect_korean_string(sk)
                     ssk = s.get("StrKey") or ""
                     cmd2 = build_command(s, id_tbl, stage2seq, name_map, seq_pos)
+                    loc_sk, sid_sk = _tr_sid(sk, lang_tbl, source_file, export_index, consumer)
                     rows.append((
                         2,
-                        sk, _tr(sk, eng_tbl, source_file, export_index, None), _tr(sk, lang_tbl, source_file, export_index, consumer),
+                        sk, _tr(sk, eng_tbl, source_file, export_index, None), loc_sk,
                         id_tbl.get(ssk.lower(), ssk),
-                        _sid(sk, eng_tbl, source_file, export_index, None),
+                        sid_sk,
                         False, True, cmd2, "", "", ""
                     ))
 
         # Type 2: Stage-based minigames (MiniGame)
         elif group == "minigame" or el.find("Stage") is not None:
+            loc_name, sid_name = _tr_sid(name, lang_tbl, source_file, export_index, consumer)
             rows.append((
                 0,
-                name, _tr(name, eng_tbl, source_file, export_index, None), _tr(name, lang_tbl, source_file, export_index, consumer),
+                name, _tr(name, eng_tbl, source_file, export_index, None), loc_name,
                 id_tbl.get(tag.lower(), ""),
-                _sid(name, eng_tbl, source_file, export_index, None),
+                sid_name,
                 bool(el.get("StageIcon")), True,
                 "", "", "", ""
             ))
@@ -1351,11 +1383,12 @@ def build_rows_minigame(
                             if pos:
                                 cmd = "/teleport " + " ".join(f"{c:g}" for c in pos)
 
+                loc_stg, sid_stg = _tr_sid(stage_name, lang_tbl, source_file, export_index, consumer)
                 rows.append((
                     1,
-                    stage_name, _tr(stage_name, eng_tbl, source_file, export_index, None), _tr(stage_name, lang_tbl, source_file, export_index, consumer),
+                    stage_name, _tr(stage_name, eng_tbl, source_file, export_index, None), loc_stg,
                     id_tbl.get(stage_sk.lower(), stage_sk),
-                    _sid(stage_name, eng_tbl, source_file, export_index, None),
+                    sid_stg,
                     bool(stage.get("StageIcon")), True,
                     cmd, "", "", ""
                 ))
@@ -1643,9 +1676,10 @@ def generate_quest_datasheets() -> Dict:
                 if fk in faction_unlock_quests:
                     fac_unlock_cmd = _build_unlock_command(faction_unlock_quests[fk])
 
+                loc_name, sid_name = _tr_sid(name, lang_tbl, "", export_index, consumer)
                 header_row: Row = (
-                    0, name, _tr(name, eng_tbl, "", export_index, None), _tr(name, lang_tbl, "", export_index, consumer),
-                    "", _sid(name, eng_tbl, "", export_index, None),
+                    0, name, _tr(name, eng_tbl, "", export_index, None), loc_name,
+                    "", sid_name,
                     False, True, fac_unlock_cmd, "", "", ""
                 )
 
@@ -1672,9 +1706,10 @@ def generate_quest_datasheets() -> Dict:
                         fac_cmd = _build_prereq_command(fac_missions, fac_quests)
 
                     # Create header row for this faction group
+                    loc_fac, sid_fac = _tr_sid(fac_name, lang_tbl, "", export_index, consumer)
                     header_row: Row = (
-                        0, fac_name, _tr(fac_name, eng_tbl, "", export_index, None), _tr(fac_name, lang_tbl, "", export_index, consumer),
-                        "", _sid(fac_name, eng_tbl, "", export_index, None),
+                        0, fac_name, _tr(fac_name, eng_tbl, "", export_index, None), loc_fac,
+                        "", sid_fac,
                         False, True, fac_cmd, "", "", ""
                     )
 
