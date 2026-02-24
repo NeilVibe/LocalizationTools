@@ -114,6 +114,10 @@ python system_localizer.py --cli <input.xlsx> <language_folder>
 | 10 | Contents | (manual) | Manual content review sheets, no localization |
 | 11 | Sequencer | `script.py` | Script data → Master_Script.xlsx (EventName matching) |
 | 12 | Dialog | `script.py` | Dialog data → Master_Script.xlsx (EventName matching) |
+| 13 | NewItem | `newitem.py` | New item pipeline (separate from Item) |
+| 14 | NewCharacter | `newcharacter.py` | New character data (row-per-text layout) |
+| 15 | NewRegion | `newregion.py` | New region data (region.py + DisplayName) |
+| 16 | ItemKnowledgeCluster | `itemknowledgecluster.py` | Item + Knowledge cross-reference mega-sheets |
 
 ## Generator Details
 
@@ -191,6 +195,33 @@ Primary faction tabs now include unlock commands in the Command column of factio
 - GimmickAttributeGroup → GimmickInfo → DropItem
 - ItemInfo index for item names/descriptions
 - Hierarchical sheet output
+
+### NewItem Generator (`newitem.py`)
+- Separate pipeline from Item (own master file: `Master_NewItem.xlsx`)
+- Standard matching: StringID col 8, Translation col 4
+- QA folder naming: `Username_NewItem` (case-sensitive)
+- Checks both `KnowledgeKey` and `RewardKnowledgeKey` for descriptions
+- Shared `_find_knowledge_key()` used by Item, NewCharacter, NewRegion, ItemKnowledgeCluster
+
+### NewCharacter Generator (`newcharacter.py`)
+- Row-per-text layout: 5 rows per character (name + knowledge × 2 passes)
+- 8 columns output
+- QA folder naming: `Username_NewCharacter`
+- Master file: `Master_NewCharacter.xlsx`
+- Checks both `KnowledgeKey` and `RewardKnowledgeKey`
+
+### NewRegion Generator (`newregion.py`)
+- Rewritten based on `region.py` — imports parsing/styling/writing (no code duplication)
+- Adds `build_displayname_lookup()`: RegionInfo.KnowledgeKey → DisplayName
+- Per FactionNode: Name + DisplayName (if different from Name) + Desc (3 rows max)
+- Desc comes from linked KnowledgeInfo via KnowledgeKey (not from FactionNode)
+- QA folder naming: `Username_NewRegion`
+- Master file: `Master_NewRegion.xlsx`
+
+### ItemKnowledgeCluster Generator (`itemknowledgecluster.py`)
+- Mega-sheet generator: clusters items with their knowledge entries
+- Cross-reference review for item-knowledge relationships
+- Checks both `KnowledgeKey` and `RewardKnowledgeKey`
 
 ### Contents Category (Manual)
 **No generator** - Manual content review sheets.

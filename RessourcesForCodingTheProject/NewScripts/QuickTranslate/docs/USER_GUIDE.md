@@ -594,7 +594,42 @@ The recovery pass runs automatically — no user action required. The log area s
 
 **Only the first (active) sheet is read** from input Excel files. If your workbook has multiple sheets, only the first sheet is processed — other sheets are silently ignored. Place your corrections on the first sheet.
 
-**Duplicate StrOrigin handling** (StrOrigin Only mode): If multiple rows have the same normalized StrOrigin but different Correction values, the **last row wins**. Ensure each unique StrOrigin appears only once, or place the preferred correction in the last row.
+**Duplicate StrOrigin handling** (StrOrigin Only mode): If multiple rows have the same normalized StrOrigin but different Correction values, the **last row wins** by default. To avoid this risk, enable the **"Unique strings only"** checkbox (see §2.11 below).
+
+---
+
+### 2.11 Unique Strings Only (StrOrigin Only Safety)
+
+When using **StrOrigin Only** mode, a checkbox appears: **"Unique strings only (skip duplicates)"**.
+
+**What it does:** Only merges corrections whose StrOrigin text appears **exactly once** in your source. If the same Korean text appears on multiple rows (with different corrections), ALL of those rows are skipped — none get merged.
+
+```
+  Your Excel (3 unique, 2 duplicates):
+  +-------------------------------+
+  | StrOrigin     | Correction    |
+  | 확인           | Confirm       |   ← unique, MERGED
+  | 취소           | Cancel        |   ← unique, MERGED
+  | 시작           | Start         |   ← duplicate StrOrigin
+  | 시작           | Begin         |   ← duplicate StrOrigin
+  | 완료           | Complete      |   ← unique, MERGED
+  +-------------------------------+
+
+  Result: 3 merged, 2 skipped (both "시작" rows)
+```
+
+**Skipped entries are exported** to `KROnly_DuplicateStrings_{timestamp}.xlsx`:
+
+| StrOrigin | Correction | StringID |
+|-----------|------------|----------|
+| 시작 | Start | SID_12345 |
+| 시작 | Begin | SID_67890 |
+
+**Workflow:** Open the Excel, delete the row you don't want, keep the correct one, re-submit via TRANSFER.
+
+**Two reports when using Unique Only:**
+1. `FailureReport_{timestamp}.xlsx` — Global failure report (all modes)
+2. `KROnly_DuplicateStrings_{timestamp}.xlsx` — Actionable duplicate report (StrOrigin Only + Unique Only)
 
 ---
 
