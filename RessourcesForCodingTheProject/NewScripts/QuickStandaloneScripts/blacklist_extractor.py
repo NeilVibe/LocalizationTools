@@ -19,7 +19,6 @@ Usage: python blacklist_extractor.py
 """
 
 import json
-import os
 import re as _re
 import sys
 import logging
@@ -129,31 +128,40 @@ def discover_valid_codes(loc_folder: Path) -> Dict[str, Path]:
 # =============================================================================
 
 def _read_xml_raw(xml_path: Path) -> Optional[str]:
-    """Read XML file with encoding fallback."""
-    try:
-        return xml_path.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
+    """Read XML file with encoding fallback (latin-1 always succeeds)."""
+    for enc in ("utf-8-sig", "utf-8", "latin-1"):
         try:
-            return xml_path.read_text(encoding="utf-8-sig")
-        except Exception as e:
-            logger.error("Failed to read %s: %s", xml_path, e)
-            return None
+            return xml_path.read_text(encoding=enc)
+        except (UnicodeDecodeError, ValueError):
+            continue
+    return None  # Unreachable — latin-1 decodes any byte sequence
 
 
-# Fix unescaped < inside attribute values (e.g., <br/> in Desc attributes)
-_attr_unescaped_lt = _re.compile(r'="([^"]*<[^"]*)"')
 # Fix bare & that aren't valid XML entities
 _bad_amp = _re.compile(r'&(?!(?:amp|lt|gt|apos|quot|#\d+|#x[0-9a-fA-F]+);)')
 # Fix malformed self-closing tags like </>
 _bad_selfclose = _re.compile(r'</>')
+# Fix unescaped < inside attribute values, but PRESERVE <br/> tags
+# Matches < that is NOT part of <br/> or <br /> patterns
+_attr_dangerous_lt = _re.compile(r'<(?![bB][rR]\s*/?>)')
+
+
+def _escape_attr_lt(m):
+    """Escape < inside attribute values, preserving <br/> tags."""
+    content = m.group(1)
+    content = _attr_dangerous_lt.sub('&lt;', content)
+    return '="' + content + '"'
+
+
+# Matches attribute values containing <
+_attr_with_lt = _re.compile(r'="([^"]*<[^"]*)"')
 
 
 def sanitize_xml(raw: str) -> str:
-    """Fix common XML issues in game data files before parsing."""
+    """Fix common XML issues in game data files before parsing.
+    PRESERVES <br/> tags inside attribute values."""
     raw = _bad_selfclose.sub('', raw)
-    raw = _attr_unescaped_lt.sub(
-        lambda m: '="' + m.group(1).replace("<", "&lt;") + '"', raw
-    )
+    raw = _attr_with_lt.sub(_escape_attr_lt, raw)
     raw = _bad_amp.sub('&amp;', raw)
     return raw
 
@@ -163,7 +171,10 @@ def _parse_root(raw: str):
     sanitized = sanitize_xml(raw)
     try:
         if USING_LXML:
-            parser = etree.XMLParser(recover=True, encoding="utf-8")
+            parser = etree.XMLParser(
+                recover=True, encoding="utf-8",
+                resolve_entities=False, load_dtd=False, no_network=True,
+            )
             return etree.fromstring(sanitized.encode("utf-8"), parser)
         else:
             return etree.fromstring(sanitized)
@@ -211,6 +222,9 @@ def read_blacklist_from_excel(
     wb = openpyxl.load_workbook(str(excel_path), read_only=True, data_only=True)
     ws = wb.active
     warnings = []
+
+    if len(wb.sheetnames) > 1:
+        warnings.append(f"Workbook has {len(wb.sheetnames)} sheets — only reading active sheet '{ws.title}'")
 
     # Read header row to detect language columns
     lang_columns: Dict[int, str] = {}  # {col_index: lang_code}
@@ -302,7 +316,7 @@ def search_languagedata(
 
         sv_lower = sv.lower()
 
-        # Check each blacklist term
+        # Check ALL blacklist terms — one row per match for easy Excel filtering
         for term_orig, term_lower in terms_lower:
             if term_lower in sv_lower:
                 results.append({
@@ -312,7 +326,6 @@ def search_languagedata(
                     "matched_term": term_orig,
                     "raw_attribs": attrs,
                 })
-                break  # One match per entry is enough
 
         if progress_fn and idx > 0 and idx % 10000 == 0:
             progress_fn(f"  Scanned {idx}/{total} entries...")
@@ -325,14 +338,20 @@ def search_languagedata(
 # =============================================================================
 
 def _xml_escape_attr(value: str) -> str:
-    """Escape a string for use in an XML attribute value."""
-    return (
+    """Escape a string for use in an XML attribute value.
+    PRESERVES <br/> tags — the standard newline format in game XML data."""
+    # Protect <br/> variants before escaping
+    value = _re.sub(r'<br\s*/?>', '\x00BR\x00', value, flags=_re.IGNORECASE)
+    value = (
         value
         .replace('&', '&amp;')
         .replace('"', '&quot;')
         .replace('<', '&lt;')
         .replace('>', '&gt;')
     )
+    # Restore <br/> tags
+    value = value.replace('\x00BR\x00', '<br/>')
+    return value
 
 
 def write_excel_report(entries: List[Dict], output_path: Path) -> bool:
@@ -386,16 +405,27 @@ def write_excel_report(entries: List[Dict], output_path: Path) -> bool:
     return True
 
 
-def write_xml_report(entries: List[Dict], output_path: Path) -> bool:
-    """Write raw LocStr elements under <root> to XML file."""
+def write_xml_report(entries: List[Dict], output_path: Path) -> int:
+    """Write raw LocStr elements under <root> to XML file.
+    Deduplicates by StringID (same entry may match multiple terms).
+    Returns number of unique entries written."""
     if not entries:
-        return False
+        return 0
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Deduplicate by StringID — one LocStr per entry in XML
+    seen_sids = set()
+    unique_entries = []
+    for e in entries:
+        sid = e["string_id"]
+        if sid not in seen_sids:
+            seen_sids.add(sid)
+            unique_entries.append(e)
+
     lines = ['<?xml version="1.0" encoding="utf-8"?>', '<root>']
 
-    for e in sorted(entries, key=lambda x: (x["matched_term"].lower(), x["string_id"].lower())):
+    for e in sorted(unique_entries, key=lambda x: x["string_id"].lower()):
         attribs = e.get("raw_attribs", {})
         if not attribs:
             attribs = {"StringID": e["string_id"], "StrOrigin": e["str_origin"], "Str": e["str_value"]}
@@ -411,7 +441,7 @@ def write_xml_report(entries: List[Dict], output_path: Path) -> bool:
     lines.append('')
 
     output_path.write_text('\n'.join(lines), encoding='utf-8')
-    return True
+    return len(unique_entries)
 
 
 # =============================================================================
@@ -484,9 +514,18 @@ class BlacklistExtractorApp:
             font=("Segoe UI", 8),
         ).pack(anchor="w", pady=(3, 0))
 
-        # Run button
-        self.run_btn = ttk.Button(main, text="EXTRACT BLACKLISTED STRINGS", command=self._run)
-        self.run_btn.pack(pady=10)
+        # Output info
+        out_frame = ttk.LabelFrame(main, text="Output", padding=5)
+        out_frame.pack(fill="x", **pad)
+        ttk.Label(out_frame, text=f"Output directory: {OUTPUT_DIR}", font=("Segoe UI", 8)).pack(anchor="w")
+        ttk.Label(out_frame, text="Per language: one Excel (.xlsx) + one XML (.xml)", font=("Segoe UI", 8)).pack(anchor="w")
+
+        # Action buttons
+        btn_frame = ttk.Frame(main)
+        btn_frame.pack(pady=10)
+        self.run_btn = ttk.Button(btn_frame, text="EXTRACT BLACKLISTED STRINGS", width=35, command=self._run)
+        self.run_btn.pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Clear All", width=12, command=self._clear_all).pack(side="left", padx=5)
 
         # Log
         f_log = ttk.LabelFrame(main, text="Log", padding=5)
@@ -521,6 +560,10 @@ class BlacklistExtractorApp:
         )
         if path:
             self.source_var.set(path)
+
+    def _clear_all(self):
+        self.source_var.set("")
+        self.log.delete("1.0", "end")
 
     def _save_loc_setting(self):
         loc = self.loc_var.get().strip()
@@ -716,9 +759,12 @@ class BlacklistExtractorApp:
 
         for lang in sorted(all_results.keys()):
             entries = all_results[lang]
-            # Count unique matched terms
             unique_terms = set(e["matched_term"].lower() for e in entries)
-            self._log(f"  {lang}: {len(entries)} entries ({len(unique_terms)} unique terms matched)", "info")
+            unique_sids = set(e["string_id"] for e in entries)
+            self._log(
+                f"  {lang}: {len(unique_sids)} entries, {len(entries)} term hits "
+                f"({len(unique_terms)} unique terms matched)", "info",
+            )
 
         # Step 6: Write per-language reports
         self._log(f"\n{'─' * 60}", "info")
@@ -734,17 +780,18 @@ class BlacklistExtractorApp:
         for lang in sorted(all_results.keys()):
             entries = all_results[lang]
 
-            # Excel output
+            # Excel output (all rows — one row per term match for filtering)
             xlsx_path = output_dir / f"BLACKLIST_{lang}.xlsx"
             if write_excel_report(entries, xlsx_path):
                 total_xlsx += 1
-                self._log(f"  {xlsx_path.name}: {len(entries)} entries", "success")
+                self._log(f"  {xlsx_path.name}: {len(entries)} rows", "success")
 
-            # XML output
+            # XML output (deduplicated by StringID — clean LocStr list)
             xml_path = output_dir / f"BLACKLIST_{lang}.xml"
-            if write_xml_report(entries, xml_path):
+            xml_count = write_xml_report(entries, xml_path)
+            if xml_count:
                 total_xml += 1
-                self._log(f"  {xml_path.name}: {len(entries)} entries", "success")
+                self._log(f"  {xml_path.name}: {xml_count} unique entries", "success")
 
         self._log(f"\n{'=' * 60}", "header")
         self._log("  DONE", "header")
