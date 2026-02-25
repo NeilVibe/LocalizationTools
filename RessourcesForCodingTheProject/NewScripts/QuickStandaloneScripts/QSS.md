@@ -93,7 +93,7 @@ Extracts any LocStr entry from languagedata whose Str value contains a blacklist
 - **Search algorithm:** Simple Python `in` operator (substring). No Aho-Corasick — keeps it zero-dependency QSS. If blacklists grow to thousands of terms, Aho-Corasick can be added later
 - **Matching:** Substring, not whole-word. "sword" WILL match "swordsman" — intentional for blacklists (catch everything)
 - **Empty cells:** Skipped (no blank term matching)
-- **Output naming:** `BLACKLIST_{lang}_{timestamp}.xml` / `.xlsx` per language, inside `Blacklist_Output/` folder
+- **Output naming:** `BLACKLIST_{lang}.xml` / `.xlsx` per language, inside `Blacklist_Output/blacklist_{timestamp}/` folder
 
 ---
 
@@ -124,7 +124,10 @@ All QSS tools share these patterns (copied, not imported — standalone):
 - **XML sanitization**: Fix unescaped `<br/>`, bare `&`, malformed `</>`
 - **Attribute case variants**: `STRINGID_ATTRS`, `STRORIGIN_ATTRS`, `STR_ATTRS`
 - **lxml/stdlib fallback**: Try lxml first, fallback to xml.etree.ElementTree
-- **`<br/>` preservation**: Newlines in XML data are `<br/>` tags — never convert
+- **`<br/>` preservation**: Sentinel-based escaping (`<br/>` → `\x00BR\x00` before XML escape → restore after)
+- **XXE protection**: lxml parser uses `resolve_entities=False, load_dtd=False, no_network=True`
+- **Encoding fallback**: utf-8-sig → utf-8 → latin-1 (latin-1 always succeeds)
+- **Settings persistence**: JSON file next to script, LOC folder path saved/loaded
 
 ---
 
