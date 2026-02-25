@@ -189,28 +189,24 @@ def write_diff_xml(
     edited: List[Tuple[str, dict, dict]],
     output_path: Path,
 ) -> int:
-    """Write diff results as XML. Returns total elements written."""
-    lines = [
-        '<?xml version="1.0" encoding="utf-8"?>',
-        '<LanguageData>',
-    ]
+    """Write diff results as XML. Returns total elements written.
+
+    Output is raw LocStr elements under <LanguageData> root — no XML
+    declaration, no extra attributes, no comments.  Mirrors the structure
+    of the original game XML files.
+    """
+    lines = ['<root>']
     count = 0
 
-    if added:
-        lines.append('  <!-- ===== ADDED ===== -->')
-        for string_id, attrs in added:
-            line = _build_locstr_line(attrs, 'diff_type="ADD"')
-            lines.append(f'  {line}')
-            count += 1
+    for _string_id, attrs in added:
+        lines.append(f'  {_build_locstr_line(attrs)}')
+        count += 1
 
-    if edited:
-        lines.append('  <!-- ===== EDITED ===== -->')
-        for string_id, source_attrs, target_attrs in edited:
-            line = _build_locstr_line(target_attrs, 'diff_type="EDIT"')
-            lines.append(f'  {line}')
-            count += 1
+    for _string_id, _source_attrs, target_attrs in edited:
+        lines.append(f'  {_build_locstr_line(target_attrs)}')
+        count += 1
 
-    lines.append('</LanguageData>')
+    lines.append('</root>')
     lines.append('')
     output_path.write_text('\n'.join(lines), encoding='utf-8')
     return count
