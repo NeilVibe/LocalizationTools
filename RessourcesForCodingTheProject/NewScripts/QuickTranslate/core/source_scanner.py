@@ -19,10 +19,10 @@ from typing import Dict, List, Optional, Set
 # Try lxml first (more robust), fallback to standard library
 try:
     from lxml import etree
-    _LXML_AVAILABLE = True
+    USING_LXML = True
 except ImportError:
     from xml.etree import ElementTree as etree
-    _LXML_AVAILABLE = False
+    USING_LXML = False
 
 import config
 from .xml_parser import iter_locstr_elements
@@ -399,7 +399,7 @@ def validate_target_files(scan_result: TargetScanResult) -> TargetScanResult:
             if f.suffix.lower() == ".xml":
                 # Validate XML: check for LocStr elements
                 try:
-                    if _LXML_AVAILABLE:
+                    if USING_LXML:
                         parser = etree.XMLParser(
                             resolve_entities=False, load_dtd=False,
                             no_network=True, recover=True,

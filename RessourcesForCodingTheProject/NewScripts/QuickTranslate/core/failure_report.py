@@ -139,6 +139,10 @@ def _classify_failure_reason(detail: Dict) -> str:
 def _is_failure(detail: Dict) -> bool:
     """Check if a detail entry represents a failure (not a success)."""
     status = detail.get("status", "").upper()
+    # Strip RECOVERED_ prefix — these come from the EventName recovery pass
+    # in xml_transfer.py and represent successful recoveries, not failures.
+    if status.startswith("RECOVERED_"):
+        status = status[len("RECOVERED_"):]
     # Success statuses
     if status in ("UPDATED", "UNCHANGED"):
         return False
@@ -1591,6 +1595,9 @@ def generate_duplicate_strorigin_excel(
     if not XLSXWRITER_AVAILABLE or not duplicate_entries:
         return None
 
+    # Sort by StrOrigin so duplicate groups are visually adjacent
+    duplicate_entries = sorted(duplicate_entries, key=lambda e: e.get("old", ""))
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = output_folder / f"KROnly_DuplicateStrings_{timestamp}.xlsx"
     output_folder.mkdir(parents=True, exist_ok=True)
@@ -1612,6 +1619,10 @@ def generate_duplicate_strorigin_excel(
         ws.set_column(0, 0, 60)   # StrOrigin
         ws.set_column(1, 1, 60)   # Correction
         ws.set_column(2, 2, 30)   # StringID
+
+        # Autofilter and freeze header row
+        ws.autofilter(0, 0, len(duplicate_entries), 2)
+        ws.freeze_panes(1, 0)
 
         workbook.close()
         logger.info(f"Duplicate StrOrigin report: {output_path.name} ({len(duplicate_entries)} entries)")

@@ -23,6 +23,7 @@ except ImportError:
 import config
 from .text_utils import normalize_text, normalize_nospace, normalize_for_matching
 from .korean_detection import is_korean_text
+from .xml_parser import get_attr, STRINGID_ATTRS, STRORIGIN_ATTRS, STR_ATTRS, LOCSTR_TAGS
 from .source_scanner import scan_source_for_languages, scan_target_for_languages, TargetScanResult
 from .postprocess import run_all_postprocess
 
@@ -136,11 +137,9 @@ def merge_corrections_to_xml(
         changed = False
 
         # Case-insensitive LocStr tag search - collect ALL variants
-        locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
         all_elements = []
-        for tag in locstr_tags:
+        for tag in LOCSTR_TAGS:
             all_elements.extend(root.iter(tag))
-        # No break - collect all tag case variants
 
         # Build set of all StringIDs in target for diagnostic purposes
         # (to distinguish "StringID not found" vs "StrOrigin mismatch")
@@ -148,24 +147,18 @@ def merge_corrections_to_xml(
         target_strorigin_map = {}  # sid.lower() → raw StrOrigin text
         target_raw_attribs_map = {}  # sid.lower() → dict of ALL attributes
         for loc in all_elements:
-            tsid = (loc.get("StringId") or loc.get("StringID") or
-                    loc.get("stringid") or loc.get("STRINGID") or
-                    loc.get("Stringid") or loc.get("stringId") or "").strip()
+            tsid = get_attr(loc, STRINGID_ATTRS).strip()
             if tsid:
                 target_stringids.add(tsid.lower())
-                tso = (loc.get("StrOrigin") or loc.get("Strorigin") or
-                       loc.get("strorigin") or loc.get("STRORIGIN") or "")
+                tso = get_attr(loc, STRORIGIN_ATTRS)
                 if tsid.lower() not in target_strorigin_map:
                     target_strorigin_map[tsid.lower()] = tso
                     target_raw_attribs_map[tsid.lower()] = dict(loc.attrib)
 
         for loc in all_elements:
             # Case-insensitive attribute access
-            sid = (loc.get("StringId") or loc.get("StringID") or
-                   loc.get("stringid") or loc.get("STRINGID") or
-                   loc.get("Stringid") or loc.get("stringId") or "").strip()
-            orig_raw = (loc.get("StrOrigin") or loc.get("Strorigin") or
-                        loc.get("strorigin") or loc.get("STRORIGIN") or "")
+            sid = get_attr(loc, STRINGID_ATTRS).strip()
+            orig_raw = get_attr(loc, STRORIGIN_ATTRS)
             orig = normalize_text(orig_raw)
 
             # Golden rule: empty StrOrigin = never write Str
@@ -193,8 +186,7 @@ def merge_corrections_to_xml(
                 result["by_category"][category]["matched"] += 1
 
                 # Get old value (case-insensitive)
-                old_str = (loc.get("Str") or loc.get("str") or
-                           loc.get("STR") or "")
+                old_str = get_attr(loc, STR_ATTRS)
 
                 # Skip already-translated entries if only_untranslated mode
                 if only_untranslated and old_str and not is_korean_text(old_str):
@@ -293,7 +285,6 @@ def merge_corrections_strorigin_only(
     dry_run: bool = False,
     only_untranslated: bool = True,
     stringid_to_category: Optional[Dict[str, str]] = None,
-    unique_only: bool = False,
 ) -> Dict:
     """
     Merge corrections into a target XML using StrOrigin-only matching.
@@ -327,7 +318,6 @@ def merge_corrections_strorigin_only(
         "not_found": 0,
         "skipped_translated": 0,
         "skipped_script": 0,
-        "skipped_duplicate_strorigin": 0,
         "unique_corrections": 0,
         "unique_matched": 0,
         "duplicate_sources": 0,
@@ -364,40 +354,6 @@ def merge_corrections_strorigin_only(
                 f"SCRIPT corrections (Dialog/Sequencer) — use StringID-Only for those"
             )
         corrections = filtered
-
-    if not corrections:
-        return result
-
-    # UNIQUE-ONLY FILTERING: skip corrections whose StrOrigin appears more than once
-    if unique_only:
-        origin_counts = Counter()
-        for c in corrections:
-            norm = normalize_for_matching(c.get("str_origin", ""))
-            if norm:
-                origin_counts[norm] += 1
-
-        unique_corrections = []
-        for c in corrections:
-            norm = normalize_for_matching(c.get("str_origin", ""))
-            if norm and origin_counts[norm] > 1:
-                result["details"].append({
-                    "string_id": c.get("string_id", ""),
-                    "status": "SKIPPED_DUPLICATE_STRORIGIN",
-                    "old": c.get("str_origin", ""),
-                    "new": c.get("corrected", ""),
-                })
-                continue
-            unique_corrections.append(c)
-
-        skipped_dup = len(corrections) - len(unique_corrections)
-        if skipped_dup > 0:
-            unique_origins = sum(1 for cnt in origin_counts.values() if cnt > 1)
-            logger.info(
-                f"Unique-only filter: skipped {skipped_dup} corrections "
-                f"({unique_origins} duplicate StrOrigin groups) — exported to report"
-            )
-        result["skipped_duplicate_strorigin"] = skipped_dup
-        corrections = unique_corrections
 
     if not corrections:
         return result
@@ -462,17 +418,13 @@ def merge_corrections_strorigin_only(
 
         changed = False
 
-        locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
         all_elements = []
-        for tag in locstr_tags:
+        for tag in LOCSTR_TAGS:
             all_elements.extend(root.iter(tag))
 
         for loc in all_elements:
-            sid = (loc.get("StringId") or loc.get("StringID") or
-                   loc.get("stringid") or loc.get("STRINGID") or
-                   loc.get("Stringid") or loc.get("stringId") or "").strip()
-            orig_raw = (loc.get("StrOrigin") or loc.get("Strorigin") or
-                        loc.get("strorigin") or loc.get("STRORIGIN") or "")
+            sid = get_attr(loc, STRINGID_ATTRS).strip()
+            orig_raw = get_attr(loc, STRORIGIN_ATTRS)
             orig = normalize_for_matching(orig_raw)
 
             # Golden rule: empty StrOrigin = never write Str
@@ -493,8 +445,7 @@ def merge_corrections_strorigin_only(
                 correction_matched[idx] = True
                 result["matched"] += 1
 
-                old_str = (loc.get("Str") or loc.get("str") or
-                           loc.get("STR") or "")
+                old_str = get_attr(loc, STR_ATTRS)
 
                 if only_untranslated and old_str and not is_korean_text(old_str):
                     result["skipped_translated"] += 1
@@ -791,30 +742,23 @@ def merge_corrections_stringid_only(
         changed = False
 
         # Case-insensitive LocStr tag search - collect ALL variants
-        locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
         all_elements = []
-        for tag in locstr_tags:
+        for tag in LOCSTR_TAGS:
             all_elements.extend(root.iter(tag))
-        # No break - collect all tag case variants
 
         # First pass: collect ALL target StringIDs (even those with empty StrOrigin)
         # so we can distinguish "truly missing" from "exists but empty StrOrigin"
         target_stringids_all = set()
         for loc in all_elements:
-            sid = (loc.get("StringId") or loc.get("StringID") or
-                   loc.get("stringid") or loc.get("STRINGID") or
-                   loc.get("Stringid") or loc.get("stringId") or "").strip()
+            sid = get_attr(loc, STRINGID_ATTRS).strip()
             if sid:
                 target_stringids_all.add(sid.lower())
 
         for loc in all_elements:
-            sid = (loc.get("StringId") or loc.get("StringID") or
-                   loc.get("stringid") or loc.get("STRINGID") or
-                   loc.get("Stringid") or loc.get("stringId") or "").strip()
+            sid = get_attr(loc, STRINGID_ATTRS).strip()
 
             # Golden rule: empty StrOrigin = never write Str
-            target_origin = (loc.get("StrOrigin") or loc.get("Strorigin") or
-                             loc.get("strorigin") or loc.get("STRORIGIN") or "").strip()
+            target_origin = get_attr(loc, STRORIGIN_ATTRS).strip()
             if not target_origin:
                 continue
 
@@ -830,8 +774,7 @@ def merge_corrections_stringid_only(
                 if category in result["by_category"]:
                     result["by_category"][category]["matched"] += 1
 
-                old_str = (loc.get("Str") or loc.get("str") or
-                           loc.get("STR") or "")
+                old_str = get_attr(loc, STR_ATTRS)
 
                 # Skip already-translated entries if only_untranslated mode
                 if only_untranslated and old_str and not is_korean_text(old_str):
@@ -982,21 +925,17 @@ def merge_corrections_fuzzy(
 
         changed = False
 
-        locstr_tags = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
         all_elements = []
-        for tag in locstr_tags:
+        for tag in LOCSTR_TAGS:
             all_elements.extend(root.iter(tag))
 
         for loc in all_elements:
             # Golden rule: empty StrOrigin = never write Str
-            target_origin = (loc.get("StrOrigin") or loc.get("Strorigin") or
-                             loc.get("strorigin") or loc.get("STRORIGIN") or "").strip()
+            target_origin = get_attr(loc, STRORIGIN_ATTRS).strip()
             if not target_origin:
                 continue
 
-            sid = (loc.get("StringId") or loc.get("StringID") or
-                   loc.get("stringid") or loc.get("STRINGID") or
-                   loc.get("Stringid") or loc.get("stringId") or "").strip()
+            sid = get_attr(loc, STRINGID_ATTRS).strip()
 
             sid_lower = sid.lower()
             if sid_lower in correction_lookup:
@@ -1005,8 +944,7 @@ def merge_corrections_fuzzy(
                 correction_matched[sid_lower] = True
                 result["matched"] += 1
 
-                old_str = (loc.get("Str") or loc.get("str") or
-                           loc.get("STR") or "")
+                old_str = get_attr(loc, STR_ATTRS)
 
                 # Skip already-translated entries if only_untranslated mode
                 if only_untranslated and old_str and not is_korean_text(old_str):
@@ -1567,6 +1505,54 @@ def transfer_folder_to_folder(
     logger.info(f"Grouped {sum(len(g['corrections']) for g in lang_groups.values()):,} corrections "
                 f"across {len(lang_groups)} languages")
 
+    # ─── GLOBAL Unique-Only pre-filter (StrOrigin-Only modes) ─────────
+    # Filter ONCE across ALL corrections per language BEFORE the per-file
+    # loop. This ensures accurate counts and avoids N*duplicates inflation.
+    if unique_only and match_mode in ("strorigin_only", "strorigin_only_fuzzy"):
+        total_skipped_dup = 0
+        total_dup_groups = 0
+        all_duplicate_details = []  # Collect globally for reporting
+
+        for lang_upper, group in lang_groups.items():
+            corrections_list = group["corrections"]
+            origin_counts = Counter()
+            for c in corrections_list:
+                norm = normalize_for_matching(c.get("str_origin", ""))
+                if norm:
+                    origin_counts[norm] += 1
+
+            unique_corrections = []
+            for c in corrections_list:
+                norm = normalize_for_matching(c.get("str_origin", ""))
+                if norm and origin_counts[norm] > 1:
+                    all_duplicate_details.append({
+                        "string_id": c.get("string_id", ""),
+                        "status": "SKIPPED_DUPLICATE_STRORIGIN",
+                        "old": c.get("str_origin", ""),
+                        "new": c.get("corrected", ""),
+                    })
+                    continue
+                unique_corrections.append(c)
+
+            skipped_dup = len(corrections_list) - len(unique_corrections)
+            dup_groups = sum(1 for cnt in origin_counts.values() if cnt > 1)
+            if skipped_dup > 0:
+                logger.info(
+                    f"[{lang_upper}] Unique-only filter: skipped {skipped_dup} corrections "
+                    f"({dup_groups} duplicate StrOrigin groups)"
+                )
+            total_skipped_dup += skipped_dup
+            total_dup_groups += dup_groups
+            group["corrections"] = unique_corrections
+
+        if total_skipped_dup > 0:
+            logger.info(
+                f"Global unique-only filter: {total_skipped_dup} corrections skipped "
+                f"({total_dup_groups} duplicate StrOrigin groups) -- exported to report"
+            )
+        results["total_skipped_duplicate_strorigin"] = total_skipped_dup
+        results["_duplicate_strorigin_details"] = all_duplicate_details
+
     # Convert lang_groups to target_groups format for the Phase 2 loop.
     # Each target file gets its own entry so the merge loop can process them independently.
     target_groups = {}
@@ -1804,7 +1790,6 @@ def transfer_folder_to_folder(
                     target_file, corrections, dry_run,
                     only_untranslated=only_untranslated,
                     stringid_to_category=stringid_to_category,
-                    unique_only=unique_only,
                 )
                 results["total_skipped"] += file_result.get("skipped_script", 0)
             elif match_mode == "strorigin_only_fuzzy":
@@ -1812,7 +1797,6 @@ def transfer_folder_to_folder(
                     target_file, corrections, dry_run,
                     only_untranslated=only_untranslated,
                     stringid_to_category=stringid_to_category,
-                    unique_only=unique_only,
                 )
                 results["total_skipped"] += file_result.get("skipped_script", 0)
                 step1_matched = file_result["matched"]
@@ -1909,7 +1893,8 @@ def transfer_folder_to_folder(
         results["total_strorigin_mismatch"] += file_result.get("strorigin_mismatch", 0)
         results["total_skipped_translated"] += file_result.get("skipped_translated", 0)
         results["total_skipped_empty_strorigin"] += file_result.get("skipped_empty_strorigin", 0)
-        results["total_skipped_duplicate_strorigin"] += file_result.get("skipped_duplicate_strorigin", 0)
+        # NOTE: total_skipped_duplicate_strorigin is set by the global pre-filter above,
+        # NOT aggregated per-file (the per-file merge no longer tracks this).
         results["errors"].extend(file_result["errors"])
 
         # Aggregate EventName recovery stats
@@ -1948,6 +1933,13 @@ def transfer_folder_to_folder(
             if f_strorigin_mm > 0:
                 parts.append(f"{f_strorigin_mm} origin mismatch")
             log_callback(f"  Result: {' · '.join(parts)}", tag)
+
+    # ─── Fix total_corrections to reflect ORIGINAL count (before unique-only filter)
+    # The per-file loop aggregated len(corrections) from the FILTERED list.
+    # Add back skipped duplicates so the summary shows the true source count.
+    skipped_dup = results.get("total_skipped_duplicate_strorigin", 0)
+    if skipped_dup > 0:
+        results["total_corrections"] += skipped_dup
 
     # ─── Missing EventName report (after all transfers complete) ──────
     if all_missing_eventnames:
@@ -2397,6 +2389,8 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         if results.get('total_skipped', 0) > 0:
             skip_label = "SCRIPT — use StringID-Only" if "strorigin" in match_mode else "non-SCRIPT"
             lines.append(V + f"   Skipped:          {results.get('total_skipped', 0):,}  ({skip_label})".ljust(width - 2) + V)
+        if results.get('total_skipped_duplicate_strorigin', 0) > 0:
+            lines.append(V + f"   Dup. StrOrigin:   {results['total_skipped_duplicate_strorigin']:,}  (unique-only filter, see report)".ljust(width - 2) + V)
         if results.get('total_eventname_recovered', 0) > 0:
             lines.append(V + f"   EN Recovery:      {results['total_eventname_recovered']:,}  (EventName→StringID resolved)".ljust(width - 2) + V)
 
@@ -2456,10 +2450,14 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
             lines.append(V + f"   EN Recovery:      {recovery['matched']:,}  (EventName→StringID resolved)".ljust(width - 2) + V)
 
     # Success rate
-    total_updated = results.get('total_updated', results.get('updated', 0))
+    # Coverage is based on EFFECTIVE corrections (excluding duplicates that were
+    # intentionally skipped by the unique-only filter — they never had a chance
+    # to match, so including them would artificially deflate the rate).
     total = results.get('total_corrections', results.get('corrections_count', 0))
+    dup_skipped = results.get('total_skipped_duplicate_strorigin', 0)
+    effective_total = total - dup_skipped
     matched = results.get('total_matched', results.get('matched', 0))
-    rate = (matched / total * 100) if total > 0 else 0.0
+    rate = (matched / effective_total * 100) if effective_total > 0 else 0.0
 
     lines.append(LT + H * (width - 2) + RT)
     rate_str = f" COVERAGE: {rate:.1f}%"

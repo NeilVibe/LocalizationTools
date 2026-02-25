@@ -16,14 +16,16 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
 from .checker import (
-    _get_attr,
-    _STR_ATTRS,
-    _STRORIGIN_ATTRS,
-    _STRINGID_ATTRS,
     should_skip_locstr,
     iter_source_xml_files,
 )
-from .xml_parser import parse_xml_file, iter_locstr_elements
+from .xml_parser import (
+    parse_xml_file, iter_locstr_elements,
+    get_attr as _get_attr,
+    STRINGID_ATTRS as _STRINGID_ATTRS,
+    STRORIGIN_ATTRS as _STRORIGIN_ATTRS,
+    STR_ATTRS as _STR_ATTRS,
+)
 
 logger = logging.getLogger(__name__)
 

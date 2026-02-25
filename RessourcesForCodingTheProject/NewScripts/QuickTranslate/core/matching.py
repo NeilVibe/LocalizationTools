@@ -10,7 +10,7 @@ All matching algorithms for QuickTranslate:
 """
 
 import logging
-from typing import Callable, Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import config
 from .text_utils import normalize_for_matching
@@ -21,15 +21,6 @@ logger = logging.getLogger(__name__)
 # SCRIPT categories - imported from config for single source of truth
 SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
 SCRIPT_EXCLUDE_SUBFOLDERS = config.SCRIPT_EXCLUDE_SUBFOLDERS
-
-
-def normalize_text(text: str) -> str:
-    """
-    Normalize text for case-insensitive matching.
-
-    Uses shared normalize_for_matching from text_utils.
-    """
-    return normalize_for_matching(text)
 
 
 def find_matches(korean_input: str, strorigin_index: Dict[str, str]) -> List[str]:
@@ -171,7 +162,7 @@ def find_matches_strict(
     for c in corrections:
         string_id = c.get("string_id", "")
         str_origin = c.get("str_origin", "")
-        key = (string_id, normalize_text(str_origin))
+        key = (string_id, normalize_for_matching(str_origin))
 
         if key in xml_entries:
             matched.append(c)
@@ -207,7 +198,7 @@ def find_matches_special_key(
         key_parts = []
         for field in key_fields:
             val = c.get(field, "")
-            key_parts.append(normalize_text(val) if val else "")
+            key_parts.append(normalize_for_matching(val) if val else "")
 
         key = ":".join(key_parts)
 
@@ -309,7 +300,7 @@ def find_matches_strict_fuzzy(
             continue
 
         # Try exact strict match first (cheap)
-        key = (string_id, normalize_text(str_origin))
+        key = (string_id, normalize_for_matching(str_origin))
         if key in xml_entries:
             matched.append(c)
             continue
@@ -452,33 +443,3 @@ def format_multiple_matches(translations: List[str]) -> str:
     return "\n".join(f"{i+1}. {t}" for i, t in enumerate(translations))
 
 
-def filter_by_categories(
-    string_ids: List[str],
-    stringid_to_category: Dict[str, str],
-    include_categories: Optional[Set[str]] = None,
-    exclude_categories: Optional[Set[str]] = None,
-) -> List[str]:
-    """
-    Filter StringIDs by category inclusion/exclusion.
-
-    Args:
-        string_ids: List of StringIDs to filter
-        stringid_to_category: Dict mapping StringID to category
-        include_categories: If set, only include these categories
-        exclude_categories: If set, exclude these categories
-
-    Returns:
-        Filtered list of StringIDs
-    """
-    result = []
-    for string_id in string_ids:
-        category = stringid_to_category.get(string_id, "Uncategorized")
-
-        if include_categories and category not in include_categories:
-            continue
-        if exclude_categories and category in exclude_categories:
-            continue
-
-        result.append(string_id)
-
-    return result

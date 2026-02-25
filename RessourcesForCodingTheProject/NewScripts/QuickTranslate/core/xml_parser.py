@@ -28,6 +28,7 @@ _tag_close = re.compile(r"</([A-Za-z0-9_]+)>")
 # ── Centralized attribute name variants (import these instead of hardcoding) ──
 STRINGID_ATTRS = ['StringId', 'StringID', 'stringid', 'STRINGID', 'Stringid', 'stringId']
 STRORIGIN_ATTRS = ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN']
+STR_ATTRS = ('Str', 'str', 'STR')
 LOCSTR_TAGS = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
 
 

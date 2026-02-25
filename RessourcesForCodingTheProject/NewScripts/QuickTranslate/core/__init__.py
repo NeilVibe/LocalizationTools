@@ -98,6 +98,8 @@ from .failure_report import (
     aggregate_transfer_results,
     check_xlsxwriter_available,
     FAILURE_REASONS,
+    # Duplicate StrOrigin report
+    generate_duplicate_strorigin_excel,
 )
 from .missing_translation_finder import (
     find_missing_translations,
@@ -226,6 +228,8 @@ __all__ = [
     "aggregate_transfer_results",
     "check_xlsxwriter_available",
     "FAILURE_REASONS",
+    # failure_report (Duplicate StrOrigin)
+    "generate_duplicate_strorigin_excel",
     # missing_translation_finder
     "find_missing_translations",
     "find_missing_translations_per_language",

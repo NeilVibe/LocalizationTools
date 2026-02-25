@@ -8,7 +8,10 @@ import logging
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from .xml_parser import parse_xml_file, iter_locstr_elements
+from .xml_parser import (
+    parse_xml_file, iter_locstr_elements,
+    get_attr, STRINGID_ATTRS, STRORIGIN_ATTRS, STR_ATTRS,
+)
 from .korean_detection import is_korean_text
 
 logger = logging.getLogger(__name__)
@@ -29,13 +32,9 @@ def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
     try:
         root = parse_xml_file(xml_path)
         for elem in iter_locstr_elements(root):
-            string_id = (elem.get('StringId') or elem.get('StringID') or
-                        elem.get('stringid') or elem.get('STRINGID') or
-                        elem.get('Stringid') or elem.get('stringId') or '').strip()
-            str_origin = (elem.get('StrOrigin') or elem.get('Strorigin') or
-                         elem.get('strorigin') or elem.get('STRORIGIN') or '').strip()
-            str_value = (elem.get('Str') or elem.get('str') or
-                        elem.get('STR') or '').strip()
+            string_id = get_attr(elem, STRINGID_ATTRS).strip()
+            str_origin = get_attr(elem, STRORIGIN_ATTRS).strip()
+            str_value = get_attr(elem, STR_ATTRS).strip()
 
             if string_id and str_value:
                 # Skip entries where Str is still Korean (untranslated).
@@ -108,29 +107,3 @@ def parse_tosubmit_xml(tosubmit_folder: Path) -> List[Dict]:
         return []
 
     return parse_folder_xml_files(tosubmit_folder)
-
-
-def extract_stringids_from_xml(xml_path: Path) -> List[str]:
-    """
-    Extract just StringIDs from an XML file.
-
-    Args:
-        xml_path: Path to XML file
-
-    Returns:
-        List of StringIDs
-    """
-    string_ids = []
-
-    try:
-        root = parse_xml_file(xml_path)
-        for elem in iter_locstr_elements(root):
-            string_id = (elem.get('StringId') or elem.get('StringID') or
-                        elem.get('stringid') or elem.get('STRINGID') or
-                        elem.get('Stringid') or elem.get('stringId') or '').strip()
-            if string_id:
-                string_ids.append(string_id)
-    except Exception as e:
-        logger.warning(f"Failed to parse XML file {xml_path}: {e}")
-
-    return string_ids

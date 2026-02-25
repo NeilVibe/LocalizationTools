@@ -28,16 +28,9 @@ except ImportError:
     from xml.etree import ElementTree as etree
     USING_LXML = False
 
+from .xml_parser import LOCSTR_TAGS, STR_ATTRS, STRORIGIN_ATTRS
+
 logger = logging.getLogger(__name__)
-
-# LocStr tag variants (case-insensitive matching)
-_LOCSTR_TAGS = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
-
-# Str attribute variants
-_STR_ATTRS = ('Str', 'str', 'STR')
-
-# StrOrigin attribute variants
-_STRORIGIN_ATTRS = ('StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN')
 
 # --- Compiled regex patterns for newline normalization ---
 
@@ -163,13 +156,19 @@ def _write_xml(tree, xml_path: Path):
 def _iter_locstr(root):
     """Iterate all LocStr elements (case-insensitive tag matching)."""
     elements = []
-    for tag in _LOCSTR_TAGS:
+    for tag in LOCSTR_TAGS:
         elements.extend(root.iter(tag))
     return elements
 
 
 def _get_attr(loc, attr_variants):
-    """Get attribute name and value from element, trying multiple case variants."""
+    """Get attribute name and value from element, trying multiple case variants.
+
+    NOTE: This is intentionally NOT the centralized get_attr() from xml_parser.py.
+    Unlike the centralized version (which returns just the value string), this
+    returns a (attr_name, value) tuple because postprocess needs the actual
+    attribute name to write back the corrected value to the same key.
+    """
     for attr_name in attr_variants:
         val = loc.get(attr_name)
         if val is not None:
@@ -194,7 +193,7 @@ def cleanup_wrong_newlines_on_tree(root) -> int:
     """
     fixed = 0
     for loc in _iter_locstr(root):
-        for attr_variants in (_STR_ATTRS, _STRORIGIN_ATTRS):
+        for attr_variants in (STR_ATTRS, STRORIGIN_ATTRS):
             attr_name, val = _get_attr(loc, attr_variants)
             if val is not None:
                 normalized = _normalize_newlines(val)
@@ -221,10 +220,10 @@ def cleanup_empty_strorigin_on_tree(root) -> int:
     """
     cleaned = 0
     for loc in _iter_locstr(root):
-        _, origin = _get_attr(loc, _STRORIGIN_ATTRS)
+        _, origin = _get_attr(loc, STRORIGIN_ATTRS)
         origin = (origin or "").strip()
 
-        _, str_val = _get_attr(loc, _STR_ATTRS)
+        _, str_val = _get_attr(loc, STR_ATTRS)
         str_val = (str_val or "").strip()
 
         if not origin and str_val:
@@ -254,7 +253,7 @@ def cleanup_no_translation_on_tree(root) -> int:
     """
     fixed = 0
     for loc in _iter_locstr(root):
-        str_attr, str_val = _get_attr(loc, _STR_ATTRS)
+        str_attr, str_val = _get_attr(loc, STR_ATTRS)
         if str_val is None:
             continue
 
@@ -264,7 +263,7 @@ def cleanup_no_translation_on_tree(root) -> int:
             continue
 
         # Get StrOrigin to copy
-        _, origin = _get_attr(loc, _STRORIGIN_ATTRS)
+        _, origin = _get_attr(loc, STRORIGIN_ATTRS)
         origin = (origin or "").strip()
 
         if origin:

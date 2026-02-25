@@ -16,6 +16,8 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Callable
 
+from .xml_parser import get_attr, STRINGID_ATTRS, STRORIGIN_ATTRS
+
 try:
     from lxml import etree
     USING_LXML = True
@@ -96,10 +98,8 @@ def build_eventname_mapping(
             # Case-insensitive attribute access for SoundEventName/EventName
             se = (node.get("SoundEventName") or node.get("soundeventname") or
                   node.get("EventName") or node.get("eventname") or "").strip()
-            sid = (node.get("StringId") or node.get("StringID") or
-                   node.get("stringid") or "").strip()
-            strorigin = (node.get("StrOrigin") or node.get("Strorigin") or
-                         node.get("strorigin") or "").strip()
+            sid = get_attr(node, STRINGID_ATTRS).strip()
+            strorigin = get_attr(node, STRORIGIN_ATTRS).strip()
 
             if se and sid:
                 mapping[se.lower()] = {"stringid": sid, "strorigin": strorigin}

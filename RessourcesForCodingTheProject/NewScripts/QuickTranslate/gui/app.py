@@ -3074,11 +3074,9 @@ class QuickTranslateApp:
 
             # === DUPLICATE STRORIGIN REPORT (Unique-Only mode) ===
             if unique_only:
-                dup_entries = []
-                for file_key, file_result in results.get("file_results", {}).items():
-                    for detail in file_result.get("details", []):
-                        if detail.get("status") == "SKIPPED_DUPLICATE_STRORIGIN":
-                            dup_entries.append(detail)
+                # Duplicate details are collected globally by transfer_folder_to_folder
+                # (not per-file), so retrieve from the top-level results key.
+                dup_entries = results.get("_duplicate_strorigin_details", [])
 
                 if dup_entries:
                     from core.failure_report import generate_duplicate_strorigin_excel
@@ -3124,6 +3122,9 @@ class QuickTranslateApp:
                 summary_lines.append(f"  Origin Mismatch:  {strorigin_mismatch:,}  (StrOrigin differs)")
             if skipped_translated > 0:
                 summary_lines.append(f"  Skipped:          {skipped_translated:,}  (already translated)")
+            skipped_dup_strorigin = results.get("total_skipped_duplicate_strorigin", 0)
+            if skipped_dup_strorigin > 0:
+                summary_lines.append(f"  Dup. StrOrigin:   {skipped_dup_strorigin:,}  (see duplicate report)")
             summary_lines.append(f"\nTarget: {target}")
 
             self._task_queue.put(('messagebox', 'showinfo', 'Transfer Complete',

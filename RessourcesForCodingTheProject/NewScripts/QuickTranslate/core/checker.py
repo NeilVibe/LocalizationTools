@@ -12,25 +12,17 @@ import re
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
-from .xml_parser import parse_xml_file, iter_locstr_elements
+from .xml_parser import (
+    parse_xml_file, iter_locstr_elements,
+    get_attr as _get_attr,
+    STRINGID_ATTRS as _STRINGID_ATTRS,
+    STRORIGIN_ATTRS as _STRORIGIN_ATTRS,
+    STR_ATTRS as _STR_ATTRS,
+)
 from .korean_detection import is_korean_text
 from .source_scanner import scan_source_for_languages
 
 logger = logging.getLogger(__name__)
-
-# Attribute name variations (case-insensitive handling)
-_STR_ATTRS = ['Str', 'str', 'STR']
-_STRORIGIN_ATTRS = ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN']
-_STRINGID_ATTRS = ['StringId', 'StringID', 'stringid', 'STRINGID', 'Stringid', 'stringId']
-
-
-def _get_attr(elem, attr_names: list) -> str:
-    """Get attribute value trying multiple case variations. Returns '' if not found."""
-    for name in attr_names:
-        val = elem.get(name)
-        if val is not None:
-            return val
-    return ""
 
 
 def should_skip_locstr(elem, skip_staticinfo_knowledge: bool = True) -> bool:

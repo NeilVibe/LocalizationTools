@@ -26,14 +26,14 @@ logger = logging.getLogger(__name__)
 # Try lxml first (more robust), fallback to standard library
 try:
     from lxml import etree as LET
-    HAS_LXML = True
+    USING_LXML = True
 except ImportError:
     LET = None
-    HAS_LXML = False
+    USING_LXML = False
 
 from xml.etree import ElementTree as ET
 
-from .xml_parser import sanitize_xml_content
+from .xml_parser import sanitize_xml_content, get_attr, iter_locstr_elements, STRINGID_ATTRS, STRORIGIN_ATTRS, STR_ATTRS as _STR_ATTRS
 from .text_utils import normalize_text
 
 
@@ -44,28 +44,6 @@ KOREAN_RE = re.compile(r'[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]')
 def has_korean(text: str) -> bool:
     """Check if text contains any Korean characters."""
     return bool(text and KOREAN_RE.search(text))
-
-
-def safe_get_attr(elem: ET.Element, name: str) -> str:
-    """Safely get attribute value, return empty string if None."""
-    v = elem.get(name)
-    return v.strip() if v is not None else ""
-
-
-def _get_attr_case_insensitive(elem: ET.Element, names: List[str]) -> str:
-    """Get attribute value with case-insensitive name lookup."""
-    for name in names:
-        v = elem.get(name)
-        if v is not None:
-            return v.strip()
-    return ""
-
-
-def _iter_locstr_elements(root) -> list:
-    """Iterate LocStr elements with case-insensitive tag matching.
-    Delegates to xml_parser.iter_locstr_elements for consistency."""
-    from .xml_parser import iter_locstr_elements
-    return iter_locstr_elements(root)
 
 
 def count_korean_words(text: str) -> int:
@@ -153,7 +131,7 @@ def _parse_xml_file(xml_path: Path) -> Optional[ET.Element]:
         content = f"<root>\n{content}\n</root>"
 
     try:
-        if HAS_LXML:
+        if USING_LXML:
             return LET.fromstring(
                 content.encode("utf-8"),
                 parser=LET.XMLParser(recover=True, huge_tree=True)
@@ -179,9 +157,9 @@ def iter_locstr_from_file(xml_path: Path):
     if root is None:
         return
 
-    for loc in _iter_locstr_elements(root):
-        so = _get_attr_case_insensitive(loc, ['StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN'])
-        sid = _get_attr_case_insensitive(loc, ['StringId', 'StringID', 'stringid', 'STRINGID', 'Stringid', 'stringId'])
+    for loc in iter_locstr_elements(root):
+        so = get_attr(loc, STRORIGIN_ATTRS).strip()
+        sid = get_attr(loc, STRINGID_ATTRS).strip()
         key = (so, sid)
         yield key, loc
 
@@ -272,7 +250,7 @@ def collect_target_korean_per_language(
         for key, loc in iter_locstr_from_file(xml_file):
             if key in entries:
                 continue
-            str_val = _get_attr_case_insensitive(loc, ['Str', 'str', 'STR'])
+            str_val = get_attr(loc, _STR_ATTRS).strip()
             if has_korean(str_val):
                 entries[key] = MissingEntry(
                     string_id=key[1],
@@ -308,7 +286,7 @@ def count_total_locstr_per_language(target_folder: Path) -> Dict[str, int]:
         root = _parse_xml_file(xml_file)
         if root is None:
             continue
-        count = len(_iter_locstr_elements(root))
+        count = len(iter_locstr_elements(root))
         result[lang] = count
 
     return result
@@ -377,8 +355,8 @@ def build_export_stringid_index(
         except ValueError:
             continue
 
-        for loc in _iter_locstr_elements(root):
-            sid = _get_attr_case_insensitive(loc, ['StringId', 'StringID', 'stringid', 'STRINGID', 'Stringid', 'stringId'])
+        for loc in iter_locstr_elements(root):
+            sid = get_attr(loc, STRINGID_ATTRS).strip()
             if sid and sid not in idx:
                 idx[sid] = rel_norm
 
@@ -927,7 +905,7 @@ def find_missing_translations(
         for key, loc in iter_locstr_from_file(target):
             if key in all_korean:
                 continue
-            str_val = _get_attr_case_insensitive(loc, ['Str', 'str', 'STR'])
+            str_val = get_attr(loc, _STR_ATTRS).strip()
             if has_korean(str_val):
                 all_korean[key] = MissingEntry(
                     string_id=key[1],

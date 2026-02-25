@@ -276,9 +276,9 @@ For GUI usage:
         from gui import QuickTranslateApp
         if QuickTranslateApp is None:
             logger.error("GUI not available (tkinter not installed)")
-            print("ERROR: tkinter not available.")
-            print("  - Windows: Reinstall Python with 'tcl/tk' checkbox enabled")
-            print("  - Linux:   sudo apt install python3-tk")
+            logger.error("ERROR: tkinter not available.")
+            logger.error("  - Windows: Reinstall Python with 'tcl/tk' checkbox enabled")
+            logger.error("  - Linux:   sudo apt install python3-tk")
             sys.exit(1)
 
         import tkinter as tk

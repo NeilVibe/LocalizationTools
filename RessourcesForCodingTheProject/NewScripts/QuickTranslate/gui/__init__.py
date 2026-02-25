@@ -5,7 +5,6 @@ Tkinter-based GUI for QuickTranslate.
 """
 
 import importlib
-import sys
 
 # Check tkinter specifically FIRST, then import the rest
 try:

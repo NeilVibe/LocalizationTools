@@ -38,9 +38,6 @@ SCRIPT_CATEGORIES = {"Sequencer", "Dialog"}
 # Empty: ALL Dialog/Sequencer subfolders are now included (clean complement with StrOrigin Only)
 SCRIPT_EXCLUDE_SUBFOLDERS = set()
 
-# Special Key fields - hardcoded for Special Key Match mode (legacy, kept for reference)
-SPECIAL_KEY_FIELDS = ["string_id", "category"]
-
 # =============================================================================
 # Fuzzy KR Match Configuration
 # =============================================================================
