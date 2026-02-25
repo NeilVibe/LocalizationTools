@@ -21,6 +21,7 @@ Usage: python blacklist_extractor.py
 import json
 import re as _re
 import sys
+import time
 import logging
 import datetime as _dt
 from pathlib import Path
@@ -280,23 +281,25 @@ def read_blacklist_from_excel(
 
 def search_languagedata(
     xml_path: Path, terms: List[str], progress_fn=None,
-) -> List[Dict]:
+) -> Tuple[List[Dict], float]:
     """
     Search a languagedata XML file for LocStr entries containing any blacklisted term.
 
     Substring match: term.lower() in str_value.lower()
 
     Returns:
-        List of {string_id, str_origin, str_value, matched_term, raw_attribs}
+        (results_list, elapsed_seconds)
     """
+    t0 = time.time()
+
     raw = _read_xml_raw(xml_path)
     if raw is None:
-        return []
+        return [], 0.0
 
     root = _parse_root(raw)
     if root is None:
         logger.error("Empty or invalid XML: %s", xml_path)
-        return []
+        return [], 0.0
 
     # Pre-lowercase all terms for matching
     terms_lower = [(t, t.lower()) for t in terms]
@@ -304,6 +307,13 @@ def search_languagedata(
     results = []
     elements = iter_locstr(root)
     total = len(elements)
+
+    if progress_fn:
+        progress_fn(f"    Parsing done — {total} entries to scan...")
+
+    # Dynamic progress interval: ~20 updates per language, min 1000
+    progress_interval = max(1000, total // 20)
+    hits = 0
 
     for idx, elem in enumerate(elements):
         attrs = dict(elem.attrib)
@@ -326,11 +336,15 @@ def search_languagedata(
                     "matched_term": term_orig,
                     "raw_attribs": attrs,
                 })
+                hits += 1
 
-        if progress_fn and idx > 0 and idx % 10000 == 0:
-            progress_fn(f"  Scanned {idx}/{total} entries...")
+        if progress_fn and idx > 0 and idx % progress_interval == 0:
+            pct = (idx / total) * 100
+            elapsed = time.time() - t0
+            progress_fn(f"    {pct:5.1f}% ({idx}/{total}) — {hits} hits so far [{elapsed:.1f}s]")
 
-    return results
+    elapsed = time.time() - t0
+    return results, elapsed
 
 
 # =============================================================================
@@ -724,34 +738,43 @@ class BlacklistExtractorApp:
 
         all_results: Dict[str, List[Dict]] = {}  # {lang: [matches]}
         total_matches = 0
+        total_elapsed = 0.0
+        langs_to_search = sorted(combined_blacklist.keys())
+        num_langs = len(langs_to_search)
 
-        for lang in sorted(combined_blacklist.keys()):
+        for lang_idx, lang in enumerate(langs_to_search, 1):
             terms = combined_blacklist[lang]
             xml_path = lang_xmls.get(lang)
 
             if not xml_path:
-                self._log(f"\n  {lang}: No languagedata file found — skipped", "warning")
+                self._log(f"\n  [{lang_idx}/{num_langs}] {lang}: No languagedata file found — skipped", "warning")
                 continue
 
-            self._log(f"\n  [{lang}] {xml_path.name} — {len(terms)} blacklist terms", "info")
+            self._log(f"\n  [{lang_idx}/{num_langs}] {lang} — {xml_path.name} — {len(terms)} blacklist terms", "info")
 
-            matches = search_languagedata(
+            matches, elapsed = search_languagedata(
                 xml_path, terms,
                 progress_fn=lambda msg: self._log(msg, "info"),
             )
+            total_elapsed += elapsed
 
             if matches:
                 all_results[lang] = matches
                 total_matches += len(matches)
-                self._log(f"  [{lang}] {len(matches)} blacklisted entries found", "success")
+                unique_sids = len(set(e["string_id"] for e in matches))
+                self._log(
+                    f"  [{lang}] {unique_sids} entries, {len(matches)} term hits [{elapsed:.1f}s]",
+                    "success",
+                )
             else:
-                self._log(f"  [{lang}] No matches", "info")
+                self._log(f"  [{lang}] No matches [{elapsed:.1f}s]", "info")
 
         # Step 5: Summary
         self._log(f"\n{'=' * 60}", "header")
         self._log("  SUMMARY", "header")
         self._log(f"{'=' * 60}", "header")
         self._log(f"  Total matches: {total_matches}", "success" if total_matches else "info")
+        self._log(f"  Search time: {total_elapsed:.1f}s across {num_langs} languages", "info")
 
         if not all_results:
             self._log("\nNo blacklisted entries found in any language.", "info")
