@@ -3120,7 +3120,8 @@ class QuickTranslateApp:
                 f"  Already Correct:  {unchanged:,}  (target already had correct value)",
             ]
             if not_found > 0:
-                summary_lines.append(f"  Not Found:        {not_found:,}  (StringID missing)")
+                nf_label = "(StrOrigin not found)" if transfer_match_mode.startswith("strorigin_only") else "(StringID missing)"
+                summary_lines.append(f"  Not Found:        {not_found:,}  {nf_label}")
             if strorigin_mismatch > 0:
                 summary_lines.append(f"  Origin Mismatch:  {strorigin_mismatch:,}  (StrOrigin differs)")
             if skipped_translated > 0:

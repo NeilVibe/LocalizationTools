@@ -103,6 +103,18 @@ FAILURE_REASONS = {
     "OTHER": "Other/Unknown error",
 }
 
+# StrOrigin-only overrides for mode-sensitive labels
+_FAILURE_REASONS_STRORIGIN = {
+    "NOT_FOUND": "StrOrigin text not found in target",
+}
+
+
+def _get_failure_reason(key: str, match_mode: str = "") -> str:
+    """Get failure reason label, adapting to match mode."""
+    if match_mode.startswith("strorigin_only") and key in _FAILURE_REASONS_STRORIGIN:
+        return _FAILURE_REASONS_STRORIGIN[key]
+    return FAILURE_REASONS.get(key, key)
+
 
 def _classify_failure_reason(detail: Dict) -> str:
     """
@@ -400,6 +412,7 @@ def extract_failed_from_transfer_results(
         List of failed entry dicts ready for generate_failed_merge_xml
     """
     failed_entries = []
+    mm = results.get("match_mode", "")
 
     details = results.get("details", [])
     for detail in details:
@@ -407,7 +420,7 @@ def extract_failed_from_transfer_results(
 
         # Only include failed/not found entries (including MISMATCH)
         if "NOT_FOUND" in status or "MISMATCH" in status or "SKIPPED" in status:
-            fail_reason = _status_to_reason(status)
+            fail_reason = _status_to_reason(status, mm)
 
             failed_entries.append({
                 "string_id": detail.get("string_id", ""),
@@ -439,6 +452,7 @@ def extract_failed_from_folder_results(
         List of failed entry dicts ready for generate_failed_merge_xml
     """
     all_failed = []
+    mm = results.get("match_mode", "")
 
     file_results = results.get("file_results", {})
     for source_file, fresult in file_results.items():
@@ -452,7 +466,7 @@ def extract_failed_from_folder_results(
             status = detail.get("status", "")
 
             if "NOT_FOUND" in status or "MISMATCH" in status or "SKIPPED" in status:
-                fail_reason = _status_to_reason(status)
+                fail_reason = _status_to_reason(status, mm)
 
                 all_failed.append({
                     "string_id": detail.get("string_id", ""),
@@ -508,15 +522,18 @@ def extract_mismatch_target_entries(results: Dict) -> List[Dict]:
     return entries
 
 
-def _status_to_reason(status: str) -> str:
+def _status_to_reason(status: str, match_mode: str = "") -> str:
     """Convert a status code to a human-readable failure reason."""
     status_upper = status.upper()
+    is_strorigin = match_mode.startswith("strorigin_only")
 
     # Check MISMATCH first (before NOT_FOUND since it's more specific)
     if "STRORIGIN_MISMATCH" in status_upper or "MISMATCH" in status_upper:
         return "StrOrigin mismatch (StringID exists but source text differs)"
 
     if "NOT_FOUND" in status_upper:
+        if is_strorigin:
+            return "StrOrigin text not found in target"
         if "L1" in status_upper:
             return "StringID not found in target (L1 exact match failed)"
         elif "L2A" in status_upper:
@@ -627,7 +644,9 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
     Returns:
         Dict with aggregated data for each sheet
     """
+    mm = results.get("match_mode", "")
     aggregated = {
+        "match_mode": mm,
         "summary": {},
         "by_reason": defaultdict(lambda: {"count": 0, "examples": []}),
         "by_file": [],
@@ -736,7 +755,7 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
                         "string_id": detail.get("string_id", ""),
                         "str_origin": detail.get("old", ""),
                         "correction": detail.get("new", ""),
-                        "reason": FAILURE_REASONS.get(reason, reason),
+                        "reason": _get_failure_reason(reason, mm),
                         "target_file": target_name,
                         "target_strorigin": detail.get("target_strorigin", ""),
                         "language": lang,
@@ -821,7 +840,7 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
                     "string_id": detail.get("string_id", ""),
                     "str_origin": detail.get("old", ""),
                     "correction": detail.get("new", ""),
-                    "reason": FAILURE_REASONS.get(reason, reason),
+                    "reason": _get_failure_reason(reason, mm),
                     "target_file": "Target file",
                     "target_strorigin": detail.get("target_strorigin", ""),
                     "language": "ALL",
@@ -1117,6 +1136,7 @@ def _write_summary_sheet(
     """Write the Summary sheet — ONE unified table with full hierarchy."""
     sheet = workbook.add_worksheet("Summary")
     summary = data["summary"]
+    is_strorigin = data.get("match_mode", "").startswith("strorigin_only")
 
     total = summary["total_corrections"] or 1  # avoid /0
     total_failures = summary["total_failures"] or 1
@@ -1182,8 +1202,9 @@ def _write_summary_sheet(
     row += 1
 
     # Failed breakdown — each reason indented further, showing % of total AND % of failed
+    not_found_label = "StrOrigin Not Found in Target" if is_strorigin else "StringID Not Found in Target"
     breakdown_items = [
-        ("StringID Not Found in Target", summary.get("not_found", 0)),
+        (not_found_label, summary.get("not_found", 0)),
         ("StrOrigin Mismatch (ID exists, text differs)", summary.get("strorigin_mismatch", 0)),
         ("Skipped: Not a SCRIPT category", summary.get("skipped_non_script", 0)),
         ("Skipped: SCRIPT category (use StringID-Only)", summary.get("skipped_script", 0)),
@@ -1314,7 +1335,7 @@ def _write_reason_sheet(workbook, data: Dict, formats: Dict):
         if count == 0:
             continue
 
-        reason_label = FAILURE_REASONS.get(reason_key, reason_key)
+        reason_label = _get_failure_reason(reason_key, data.get("match_mode", ""))
 
         fmt_cell = formats["cell_even"] if i % 2 == 0 else formats["cell_odd"]
         fmt_num = formats["number_even"] if i % 2 == 0 else formats["number_odd"]

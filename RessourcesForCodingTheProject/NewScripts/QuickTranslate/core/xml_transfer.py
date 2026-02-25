@@ -1291,6 +1291,7 @@ def transfer_folder_to_folder(
     from .excel_io import read_corrections_from_excel
 
     results = {
+        "match_mode": match_mode,
         "files_processed": 0,
         "total_corrections": 0,
         "total_matched": 0,
@@ -1931,7 +1932,7 @@ def transfer_folder_to_folder(
                 parts.append(f"{f_skipped_tr} skipped")
             if f_not_found > 0:
                 parts.append(f"{f_not_found} not found")
-            if f_strorigin_mm > 0:
+            if f_strorigin_mm > 0 and not match_mode.startswith("strorigin_only"):
                 parts.append(f"{f_strorigin_mm} origin mismatch")
             log_callback(f"  Result: {' · '.join(parts)}", tag)
 
@@ -2355,6 +2356,7 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
 
     width = 72
     is_strorigin = match_mode.startswith("strorigin_only")
+    not_found_label = "(StrOrigin text not found in target)" if is_strorigin else "(StringID missing from target)"
 
     lines.append("")
     lines.append(TL + H * (width - 2) + TR)
@@ -2380,12 +2382,12 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         lines.append(V + f"   Updated:          {total_updated:,}  (value changed in target)".ljust(width - 2) + V)
         lines.append(V + f"   Already Correct:  {total_unchanged:,}  (target already had correct value)".ljust(width - 2) + V)
         if total_not_found > 0 or total_strorigin_mismatch > 0:
-            lines.append(V + f"   Not Found:        {total_not_found:,}  (StringID missing from target)".ljust(width - 2) + V)
-        if total_strorigin_mismatch > 0:
+            lines.append(V + f"   Not Found:        {total_not_found:,}  {not_found_label}".ljust(width - 2) + V)
+        if total_strorigin_mismatch > 0 and not is_strorigin:
             lines.append(V + f"   Origin Mismatch:  {total_strorigin_mismatch:,}  (StringID exists, StrOrigin differs)".ljust(width - 2) + V)
         if total_skipped_translated > 0:
             lines.append(V + f"   Skipped:          {total_skipped_translated:,}  (already translated)".ljust(width - 2) + V)
-        if results.get('total_skipped_empty_strorigin', 0) > 0:
+        if results.get('total_skipped_empty_strorigin', 0) > 0 and not is_strorigin:
             lines.append(V + f"   Empty StrOrigin:  {results['total_skipped_empty_strorigin']:,}  (StringID exists, StrOrigin empty in target)".ljust(width - 2) + V)
         if results.get('total_skipped', 0) > 0:
             skip_label = "SCRIPT — use StringID-Only" if "strorigin" in match_mode else "non-SCRIPT"
@@ -2420,7 +2422,7 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
                     parts.append(f"{f_skipped} skipped")
                 if f_not_found > 0:
                     parts.append(f"{f_not_found} not found")
-                if f_strorigin_mismatch > 0:
+                if f_strorigin_mismatch > 0 and not is_strorigin:
                     parts.append(f"{f_strorigin_mismatch} origin mismatch")
                 detail = " | ".join(parts)
                 lines.append(V + f"   {lang}: {detail}".ljust(width - 2) + V)
@@ -2439,8 +2441,8 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         lines.append(V + f"   Updated:          {s_updated:,}  (value changed in target)".ljust(width - 2) + V)
         lines.append(V + f"   Already Correct:  {s_unchanged:,}  (target already had correct value)".ljust(width - 2) + V)
         if s_not_found > 0 or s_strorigin_mismatch > 0:
-            lines.append(V + f"   Not Found:        {s_not_found:,}  (StringID missing from target)".ljust(width - 2) + V)
-        if s_strorigin_mismatch > 0:
+            lines.append(V + f"   Not Found:        {s_not_found:,}  {not_found_label}".ljust(width - 2) + V)
+        if s_strorigin_mismatch > 0 and not is_strorigin:
             lines.append(V + f"   Origin Mismatch:  {s_strorigin_mismatch:,}  (StringID exists, StrOrigin differs)".ljust(width - 2) + V)
         if results.get('skipped_non_script', 0) > 0:
             lines.append(V + f"   Skipped:          {results.get('skipped_non_script', 0):,}  (non-SCRIPT)".ljust(width - 2) + V)
