@@ -95,7 +95,7 @@ jobs:
           sys.path.insert(0, '.')
 
           # Test config imports
-          from config import MATCHING_MODES, SCRIPT_CATEGORIES, SPECIAL_KEY_FIELDS
+          from config import MATCHING_MODES, SCRIPT_CATEGORIES
           from config import LANGUAGE_ORDER, LANGUAGE_NAMES, ensure_output_folder
           from config import LOC_FOLDER, EXPORT_FOLDER, get_settings, reload_settings
           print('config imports: OK')
