@@ -3082,14 +3082,17 @@ class QuickTranslateApp:
                     from core.failure_report import generate_duplicate_strorigin_excel
                     source_name = source.name if source.is_dir() else source.stem
                     dup_report_folder = config.get_failed_report_dir(source_name)
-                    dup_path = generate_duplicate_strorigin_excel(dup_entries, dup_report_folder)
-                    if dup_path:
+                    dup_paths = generate_duplicate_strorigin_excel(dup_entries, dup_report_folder)
+                    if dup_paths:
                         self._log("", 'info')
                         self._log("=== Duplicate StrOrigin Report ===", 'header')
-                        self._log(f"Duplicate StrOrigin report: {dup_path.name} ({len(dup_entries)} entries)", 'warning')
-                        self._log(f"  Location: {dup_path}", 'info')
+                        for dup_path in dup_paths:
+                            self._log(f"  {dup_path.name}", 'warning')
+                        self._log(f"  Total: {len(dup_entries)} entries across {len(dup_paths)} language(s)", 'warning')
+                        self._log(f"  Location: {dup_report_folder}", 'info')
                         self._log("  Delete unwanted rows, keep desired corrections, re-submit via TRANSFER", 'info')
-                        failure_reports_msg += f"\nDuplicate strings: {dup_path.name} ({len(dup_entries)} entries)"
+                        dup_names = ", ".join(p.name for p in dup_paths)
+                        failure_reports_msg += f"\nDuplicate strings: {dup_names} ({len(dup_entries)} entries)"
 
             # EventName resolution stats (if any EventNames were in source)
             eventname_msg = ""

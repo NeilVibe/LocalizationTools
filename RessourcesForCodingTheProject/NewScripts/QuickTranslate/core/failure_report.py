@@ -1576,13 +1576,37 @@ def generate_failure_report_from_transfer(
         return False, message, None
 
 
+def _write_duplicate_sheet(
+    workbook: "xlsxwriter.Workbook",
+    sheet_name: str,
+    entries: List[Dict],
+) -> None:
+    """Write a single sheet of duplicate StrOrigin entries."""
+    ws = workbook.add_worksheet(sheet_name)
+    header_fmt = workbook.add_format({'bold': True, 'bg_color': '#D9E1F2', 'border': 1})
+    ws.write(0, 0, "StrOrigin", header_fmt)
+    ws.write(0, 1, "Correction", header_fmt)
+    ws.write(0, 2, "StringID", header_fmt)
+
+    for row_idx, entry in enumerate(entries, 1):
+        ws.write(row_idx, 0, entry.get("old", ""))
+        ws.write(row_idx, 1, entry.get("new", ""))
+        ws.write_string(row_idx, 2, str(entry.get("string_id", "")))
+
+    ws.set_column(0, 0, 60)   # StrOrigin
+    ws.set_column(1, 1, 60)   # Correction
+    ws.set_column(2, 2, 30)   # StringID
+    ws.autofilter(0, 0, len(entries), 2)
+    ws.freeze_panes(1, 0)
+
+
 def generate_duplicate_strorigin_excel(
     duplicate_entries: List[Dict],
     output_folder: Path,
-) -> Optional[Path]:
-    """Generate minimal Excel for skipped duplicate StrOrigin corrections.
+) -> List[Path]:
+    """Generate per-language Excel files for skipped duplicate StrOrigin corrections.
 
-    Columns: StrOrigin / Correction / StringID
+    One file per language. Columns: StrOrigin / Correction / StringID.
     User deletes unwanted rows and re-submits via normal Excel transfer.
 
     Args:
@@ -1590,43 +1614,33 @@ def generate_duplicate_strorigin_excel(
         output_folder: Directory to write the report into
 
     Returns:
-        Path to generated Excel file, or None if nothing to write
+        List of Paths to generated Excel files (empty list if nothing to write)
     """
     if not XLSXWRITER_AVAILABLE or not duplicate_entries:
-        return None
+        return []
 
-    # Sort by StrOrigin so duplicate groups are visually adjacent
-    duplicate_entries = sorted(duplicate_entries, key=lambda e: e.get("old", ""))
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = output_folder / f"KROnly_DuplicateStrings_{timestamp}.xlsx"
     output_folder.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    try:
-        workbook = xlsxwriter.Workbook(str(output_path))
-        ws = workbook.add_worksheet("Duplicates")
+    # Group by language
+    by_lang: Dict[str, List[Dict]] = {}
+    for entry in duplicate_entries:
+        lang = entry.get("language", "UNKNOWN")
+        by_lang.setdefault(lang, []).append(entry)
 
-        header_fmt = workbook.add_format({'bold': True, 'bg_color': '#D9E1F2', 'border': 1})
-        ws.write(0, 0, "StrOrigin", header_fmt)
-        ws.write(0, 1, "Correction", header_fmt)
-        ws.write(0, 2, "StringID", header_fmt)
+    output_paths: List[Path] = []
+    for lang, entries in sorted(by_lang.items()):
+        # Sort by StrOrigin so duplicate groups are visually adjacent
+        entries = sorted(entries, key=lambda e: e.get("old", ""))
 
-        for row_idx, entry in enumerate(duplicate_entries, 1):
-            ws.write(row_idx, 0, entry.get("old", ""))
-            ws.write(row_idx, 1, entry.get("new", ""))
-            ws.write_string(row_idx, 2, str(entry.get("string_id", "")))
+        output_path = output_folder / f"KROnly_DuplicateStrings_{lang}_{timestamp}.xlsx"
+        try:
+            workbook = xlsxwriter.Workbook(str(output_path))
+            _write_duplicate_sheet(workbook, "Duplicates", entries)
+            workbook.close()
+            logger.info(f"Duplicate StrOrigin report [{lang}]: {output_path.name} ({len(entries)} entries)")
+            output_paths.append(output_path)
+        except Exception as e:
+            logger.error(f"Failed to generate duplicate StrOrigin report [{lang}]: {e}")
 
-        ws.set_column(0, 0, 60)   # StrOrigin
-        ws.set_column(1, 1, 60)   # Correction
-        ws.set_column(2, 2, 30)   # StringID
-
-        # Autofilter and freeze header row
-        ws.autofilter(0, 0, len(duplicate_entries), 2)
-        ws.freeze_panes(1, 0)
-
-        workbook.close()
-        logger.info(f"Duplicate StrOrigin report: {output_path.name} ({len(duplicate_entries)} entries)")
-        return output_path
-    except Exception as e:
-        logger.error(f"Failed to generate duplicate StrOrigin report: {e}")
-        return None
+    return output_paths

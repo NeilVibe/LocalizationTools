@@ -1530,6 +1530,7 @@ def transfer_folder_to_folder(
                         "status": "SKIPPED_DUPLICATE_STRORIGIN",
                         "old": c.get("str_origin", ""),
                         "new": c.get("corrected", ""),
+                        "language": lang_upper,
                     })
                     continue
                 unique_corrections.append(c)
