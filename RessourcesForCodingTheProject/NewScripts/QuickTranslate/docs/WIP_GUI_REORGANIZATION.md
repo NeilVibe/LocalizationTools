@@ -163,6 +163,24 @@ Secondary tools that don't need to clutter the main workflow:
 │  │  Clears Str="" for matched entries      │  │
 │  └─────────────────────────────────────────┘  │
 │                                              │
+│  ┌─ XML Diff / Revert ─────────── ⭐ ────┐  │
+│  │                                         │  │
+│  │  [DIFF] [REVERT]  ← sub-tabs           │  │
+│  │                                         │  │
+│  │  ── DIFF mode ──                        │  │
+│  │  Source (old): [_______________] [📁]   │  │
+│  │  Target (new): [_______________] [📁]   │  │
+│  │  [Run Diff]                             │  │
+│  │  → Extracts ADD + EDIT LocStr as raw XML│  │
+│  │                                         │  │
+│  │  ── REVERT mode ──                      │  │
+│  │  Before (good):  [_______________] [📁] │  │
+│  │  After (bad):    [_______________] [📁] │  │
+│  │  Current (fix):  [_______________] [📁] │  │
+│  │  [Run Revert]                           │  │
+│  │  → Removes ADDs, restores EDITs in-place│  │
+│  └─────────────────────────────────────────┘  │
+│                                              │
 └──────────────────────────────────────────────┘
 ```
 
@@ -248,6 +266,46 @@ Secondary tools that don't need to clutter the main workflow:
 4. Works alongside existing SCRIPT filter — both filters apply independently
 
 **Implementation:** Add `min_char_length` parameter to merge functions. Check `visible_char_count(existing_str)` before applying correction. GUI adds optional spinbox to transfer settings.
+
+### 4.5 XML Diff / Revert (Integrated from Standalone Script) ⭐ HIGH VALUE
+
+**What:** Two-in-one tool:
+- **DIFF:** Compare SOURCE (old) vs TARGET (new) XML, extract all ADD/EDIT LocStr elements as raw XML. Works exactly like WinMerge but for LocStr — anything that changed gets extracted.
+- **REVERT:** Undo changes that occurred between BEFORE/AFTER in a CURRENT file. ADDs get removed, EDITs get restored to the BEFORE version.
+
+**Why:** This is the **most useful** standalone tool for integration. Every localization workflow involves comparing XML versions — after a patch, after a merge, after a handoff. Currently users must either run the standalone script or manually diff in WinMerge. Having it inside QuickTranslate's Helper Functions tab means zero context-switching.
+
+**Standalone script:** `QuickStandaloneScripts/xml_diff_extractor.py`
+
+**Diff output format:**
+```xml
+<root>
+  <LocStr StringId="STR_001" StrOrigin="..." Str="..." KR="..." />
+  <LocStr StringId="STR_002" StrOrigin="..." Str="..." KR="..." />
+</root>
+```
+No XML declaration, no extra attributes, no comments. Just raw LocStr under `<root>`.
+
+**How DIFF works:**
+1. Parse both XML files → build StringId → attrs maps
+2. Compare: new StringIds = ADD, changed attrs = EDIT
+3. Write all ADD + EDIT LocStr to output XML (raw, no decoration)
+4. Report: X added, Y edited, Z deleted (deleted = info only, not extracted)
+
+**How REVERT works:**
+1. Parse BEFORE, AFTER, CURRENT XML files
+2. Diff BEFORE vs AFTER → identify ADDs and EDITs
+3. In CURRENT: remove ADDs, restore EDITs to BEFORE version (Str attribute)
+4. Write CURRENT back in-place
+
+**Reuses from QuickTranslate:**
+- XML sanitization (`sanitize_xml` — handles `<br/>`, bare `&`, malformed tags)
+- XML parsing infrastructure (lxml with fallback to stdlib)
+- Attribute handling and `<br/>` preservation
+- Log panel, threading, progress bar
+- File browse dialogs
+
+**Implementation:** Create `core/xml_diff.py` that adapts logic from `xml_diff_extractor.py`. Two sub-sections in Helper Functions tab — Diff panel and Revert panel (or a sub-notebook within the tab, matching the standalone's two-tab layout).
 
 ### 4.4 Help Button [?] → User Guide Popup
 
@@ -418,6 +476,15 @@ Secondary tools that don't need to clutter the main workflow:
 | 4B.3 | Add Transfer length threshold filter | Optional `min_char_length` spinbox in Transfer settings. Merge functions skip entries where existing target Str < threshold. New status: `SKIPPED_SHORT`. | LOW-MEDIUM |
 | 4B.4 | Add `visible_char_count()` to shared helpers | Strip `<br/>`, PAColor tags, HTML entities, then count. Used by both extraction and transfer filter. | LOW |
 
+### Phase 4C: XML Diff / Revert Integration ⭐
+
+| # | Task | Details | Risk |
+|---|------|---------|------|
+| 4C.1 | Create `core/xml_diff.py` | Port diff + revert logic from `QuickStandaloneScripts/xml_diff_extractor.py`. Reuse QuickTranslate's `sanitize_xml` and XML parsing. | LOW - logic proven in standalone |
+| 4C.2 | Add Diff/Revert section to Helper Functions tab | Sub-tabs (or toggle) for DIFF vs REVERT mode. Source/Target pickers for diff, Before/After/Current pickers for revert. | LOW |
+| 4C.3 | Wire diff output to log + file | Show summary in shared log (X added, Y edited, Z deleted). Write raw XML output to timestamped file next to target. | LOW |
+| 4C.4 | Wire revert to worker thread | In-place revert is destructive — show confirmation dialog before applying. Report removed/reverted counts in log. | LOW-MEDIUM |
+
 ### Phase 5: Help Button & Guide Popup
 
 | # | Task | Details | Risk |
@@ -471,7 +538,30 @@ self._build_new_feature_section(new_tab)
 
 ---
 
-## 7. Technical Notes
+## 7. Standalone Scripts → QuickTranslate Integration Map
+
+All standalone scripts live in `QuickStandaloneScripts/`. The table below shows which ones are candidates for integration into QuickTranslate's Helper Functions tab and their value.
+
+| Script | What It Does | Integration Value | Phase | Status |
+|--------|-------------|-------------------|-------|--------|
+| **xml_diff_extractor.py** | DIFF: extract ADD/EDIT LocStr between two XMLs. REVERT: undo changes in-place. | ⭐ **HIGHEST** — used in every patch/merge/handoff cycle | 4C | PLANNED |
+| **string_eraser_xml.py** | Erase (clear Str) in target XMLs for matching StringID+StrOrigin entries | HIGH — common cleanup operation | 4 | PLANNED |
+| **script_long_string_extractor.py** | Extract SCRIPT-type LocStr above character length threshold (Excel+XML output) | MEDIUM — useful for QA review of long dialog strings | 4B | PLANNED |
+| **file_eraser_by_name.py** | Move files from target folder when filename matches source folder | LOW — file-level operation, not LocStr-level. Better as standalone. | — | NO INTEGRATION |
+
+### Why Diff is the Highest Value
+
+Every localization workflow hits these scenarios:
+1. **Patch received** → "What changed between v1 and v2?" → DIFF
+2. **Bad merge happened** → "Undo the damage from that merge" → REVERT
+3. **Handoff review** → "Show me only the LocStr that were touched" → DIFF
+4. **Regression check** → "Did this update break anything?" → DIFF output feeds into QuickTranslate's main TRANSFER workflow
+
+The diff output (raw LocStr XML under `<root>`) can be directly used as a QuickTranslate source file for further translation/transfer operations. This creates a powerful pipeline: **DIFF → review → TRANSFER**.
+
+---
+
+## 8. Technical Notes
 
 ### File Changes Required
 
@@ -500,7 +590,7 @@ String Erase can optionally reuse the Source/Target paths from the Main tab's Fi
 
 ---
 
-## 8. Success Criteria
+## 9. Success Criteria
 
 ### Bug Fixes (Phase 3A/3B/3C) — ALL DONE ✅
 
@@ -538,6 +628,8 @@ String Erase can optionally reuse the Source/Target paths from the Main tab's Fi
 - [ ] Substring Match removed from main Match Type radios
 - [ ] Default match type is StringID-Only (not Substring)
 - [ ] String Erase works with XML and Excel source files
+- [ ] XML Diff extracts raw ADD/EDIT LocStr under `<root>` (no decoration)
+- [ ] XML Revert removes ADDs and restores EDITs in-place with confirmation
 - [ ] [?] help button shows contextual guide popup
 - [ ] Log and Progress visible from all tabs
 - [ ] All existing functionality preserved (zero regression)
@@ -547,7 +639,7 @@ String Erase can optionally reuse the Source/Target paths from the Main tab's Fi
 
 ---
 
-## 9. Risk Assessment
+## 10. Risk Assessment
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
@@ -563,7 +655,7 @@ String Erase can optionally reuse the Source/Target paths from the Main tab's Fi
 
 ---
 
-## 10. Implementation Order (Updated 2026-02-23)
+## 11. Implementation Order (Updated 2026-02-25)
 
 ```
 COMPLETED ✅:
@@ -577,10 +669,11 @@ NEXT (GUI rework):
   Phase 2  → Substring match relocation (Main → Helper Functions)
   Phase 4  → String Erase integration
   Phase 4B → Long String Extraction integration + Transfer length filter
+  Phase 4C → XML Diff / Revert integration ⭐ HIGH VALUE
   Phase 5  → Help button
   Phase 6  → Polish & testing
 ```
 
 ---
 
-*Last updated: 2026-02-23 (all Phase 3 + 3D fixes done, GUI rework next)*
+*Last updated: 2026-02-25 (added XML Diff/Revert integration plan + standalone scripts integration map)*
