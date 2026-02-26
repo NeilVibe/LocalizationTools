@@ -74,16 +74,35 @@ Compares filenames between Source and Target folders. Files in Target whose stem
 | **Match** | Filename stem, case-insensitive |
 | **Action** | Moves matched files to backup (non-destructive) |
 
-### 5. BlacklistExtractor (`blacklist_extractor.py`) — v1.0
+### 5. Script No-Voice Extractor (`script_novoice_extractor.py`) — v1.0
+
+Extracts LocStr entries that are SCRIPT type (Dialog/Sequencer) but do NOT have a SoundEventName attribute — text-only strings with no associated voice/audio data.
+
+| Feature | Description |
+|---------|-------------|
+| **EXPORT folder** | Builds StringID→Category map + set of voiced StringIDs (with SoundEventName) in a single pass |
+| **LOC folder** | `languagedata_*.xml` files — the actual extraction source |
+| **Filter** | SCRIPT categories only (Dialog/Sequencer) AND no SoundEventName |
+| **No NarrationDialog exclusion** | Unlike Long String Extractor, no-voice narration IS worth catching |
+| **Output** | Per-language `NOVOICE_{LANG}.xlsx` + `NOVOICE_{LANG}.xml` in `Extraction_Output/novoice_script_{timestamp}/` |
+| **Excel columns** | StringID, StrOrigin, Str, Correction (empty — for QuickTranslate feedback), Category |
+| **Sorting** | StringID ascending in both Excel and XML output |
+
+**Design decisions:**
+- **Single pass** over EXPORT folder for both category mapping AND SoundEventName detection (halves I/O)
+- **Scans ALL elements** (`root.iter()`) for SoundEventName, not just LocStr — voice-linked elements can be on any element type
+- **Uses `*.loc.xml` glob** within category folders (covers both category mapping AND SoundEventName since voice-linked elements are in the same files)
+- **Case-insensitive** StringID lookups everywhere (lowercase at build time)
+- **SoundEventName variants**: `SoundEventName`, `soundeventname`, `Soundeventname`, `SOUNDEVENTNAME`, `EventName`, `eventname`, `EVENTNAME`
+
+### 6. BlacklistExtractor (`blacklist_extractor.py`) — v1.0
 
 Extracts any LocStr entry from languagedata whose Str value contains a blacklisted term for that language.
 
 | Feature | Description |
 |---------|-------------|
 | **Source** | Excel file(s) — one column per language (header = language suffix: FRE, GER, ITA, etc.) |
-| **Target** | LOC folder (`languagedata_*.xml`) — same as QuickTranslate |
-| **LOC folder** | Settings-persisted LOC path — validates column headers against discovered language suffixes |
-| **Language Detection** | Column headers validated against language suffixes discovered from LOC folder |
+| **LOC folder** | Settings-persisted LOC path — serves **dual purpose**: (1) discovers valid language suffixes from `languagedata_*.xml` filenames, (2) **is the search target** — the actual XML files scanned for blacklist matches |
 | **Search** | Substring match: `term in str_value` (case-insensitive). Each cell = one blacklisted term |
 | **Output** | Per-language Excel (.xlsx) + XML (.xml) with all matching LocStr entries |
 
@@ -91,7 +110,7 @@ Extracts any LocStr entry from languagedata whose Str value contains a blacklist
 - **GUI:** Source file/folder selector + LOC folder selector (with settings persistence, same as QuickTranslate)
 - **Validation:** Column headers must match a `languagedata_*.xml` suffix in LOC — unknown columns warned and skipped
 - **Search algorithm:** Simple Python `in` operator (substring). No Aho-Corasick — keeps it zero-dependency QSS. If blacklists grow to thousands of terms, Aho-Corasick can be added later
-- **Matching:** Substring, not whole-word. "sword" WILL match "swordsman" — intentional for blacklists (catch everything)
+- **Matching:** Substring, not whole-word. "sword" WILL match "swordsman" — intentional for blacklists (catch everything). Precise for CJK (Korean, etc.) where substring is the correct approach. For Latin-script languages, short terms may produce false positives (e.g. "war" matches "software") — word-boundary mode can be added if needed
 - **Empty cells:** Skipped (no blank term matching)
 - **Output naming:** `BLACKLIST_{lang}.xml` / `.xlsx` per language, inside `Blacklist_Output/blacklist_{timestamp}/` folder
 
