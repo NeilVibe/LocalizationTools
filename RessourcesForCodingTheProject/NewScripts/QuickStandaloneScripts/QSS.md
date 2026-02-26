@@ -329,6 +329,189 @@ STR_ATTRS       = ('Str', 'str', 'STR')
 
 ---
 
+## Roadmap: Mega QSS → QuickTranslate Integration
+
+### The Vision
+
+Today: 6 separate `.py` files, each with its own window, its own settings, its own EXPORT/LOC folder picker. Users switch between tools constantly. Folder paths get re-entered. Context is lost.
+
+**Phase A:** Combine all 6 tools into a single **Mega QSS** — one window, tabbed interface, shared settings.
+**Phase B:** Integrate Mega QSS into **QuickTranslate** as additional tabs in its planned GUI rework.
+
+```
+TODAY                           PHASE A                         PHASE B
+                                (Mega QSS)                      (QuickTranslate)
+┌──────────────────┐
+│ xml_diff_ext...  │           ┌─────────────────────────┐     ┌──────────────────────────────┐
+├──────────────────┤           │ ┌─Shared Settings──────┐│     │ [Main] [Helpers] [Extractors]│
+│ long_string_e... │           │ │ EXPORT: [........] 📁││     ├──────────────────────────────┤
+├──────────────────┤           │ │ LOC:    [........] 📁││     │                              │
+│ novoice_extra... │  ──────→  │ └──────────────────────┘│ ──→ │  Extraction/Cleanup/Diff     │
+├──────────────────┤           │ [Diff][Long][NoVoice]   │     │  tools share QuickTranslate  │
+│ blacklist_ext... │           │ [Blacklist][Eraser][File]│     │  settings, log, and thread   │
+├──────────────────┤           │                         │     │  infrastructure              │
+│ string_eraser... │           │ ┌─Shared Log───────────┐│     │                              │
+├──────────────────┤           │ │                       ││     │  Output feeds directly into  │
+│ file_eraser_b... │           │ └───────────────────────┘│     │  TRANSFER workflow           │
+└──────────────────┘           └─────────────────────────┘     └──────────────────────────────┘
+ 6 windows                      1 window, 6 tabs                1 app, everything integrated
+ 6 settings files               1 shared settings               QuickTranslate settings
+ paths re-entered               paths entered once              paths already configured
+```
+
+### Phase A: Mega QSS (Standalone)
+
+Combine all tools into one `mega_qss.py` or small package with a `ttk.Notebook` tabbed interface.
+
+**Shared settings panel (always visible, above tabs):**
+
+```
+┌─ Settings ──────────────────────────────────────────────┐
+│  EXPORT folder: [....................................] 📁│
+│  LOC folder:    [....................................] 📁│
+│  [Save Settings]                                        │
+└─────────────────────────────────────────────────────────┘
+```
+
+These two paths are used by 4 of the 6 tools. Set once, used everywhere.
+
+**Tab layout:**
+
+| Tab | Tool | Needs EXPORT | Needs LOC | Extra Inputs |
+|-----|------|:---:|:---:|---|
+| **Diff** | XML Diff Extractor | for category filter | for folder mode | SOURCE/TARGET files or folders, comparison mode |
+| **Long Strings** | Script Long String Extractor | Yes | Yes (source) | Min char threshold |
+| **No-Voice** | Script No-Voice Extractor | Yes | Yes | — |
+| **Blacklist** | BlacklistExtractor | — | Yes | Excel blacklist file(s) |
+| **String Eraser** | String Eraser XML | — | — (has own target) | Source keys folder, Target XML folder |
+| **File Eraser** | File Eraser By Name | — | — | Source folder, Target folder |
+
+**Shared components:**
+- Log panel (right pane, always visible regardless of tab)
+- Progress reporting in shared log
+- Settings persistence in single JSON file
+- EXPORT index built once, cached, reused across tabs (Long Strings + No-Voice + Diff all need `category_map`)
+
+**Key benefit — shared EXPORT index:**
+
+```
+Current: Each tool scans EXPORT folder independently
+  Long String Extractor: scans EXPORT → category_map (30s)
+  No-Voice Extractor:    scans EXPORT → category_map + voiced_sids (30s)
+  XML Diff (filtered):   scans EXPORT → category_map (30s)
+
+Mega QSS: Build index ONCE, share across tabs
+  First tab to need it → builds full index (category_map + voiced_sids) (30s)
+  Other tabs → instant reuse from cache
+  [Rebuild Index] button if EXPORT folder changed
+```
+
+**Architecture:**
+
+```
+mega_qss/
+├── mega_qss.py              # Entry point + GUI shell (Notebook + shared settings + log)
+├── shared/
+│   ├── xml_utils.py         # sanitize_xml, parse, iter_locstr, br preservation, encoding
+│   ├── excel_utils.py       # xlsxwriter report writing, openpyxl reading
+│   ├── export_index.py      # category_map + voiced_sids (built once, cached)
+│   └── settings.py          # JSON persistence for all paths
+├── tabs/
+│   ├── diff_tab.py          # XML Diff + Revert (from xml_diff_extractor.py)
+│   ├── long_string_tab.py   # Long String Extraction (from script_long_string_extractor.py)
+│   ├── novoice_tab.py       # No-Voice Extraction (from script_novoice_extractor.py)
+│   ├── blacklist_tab.py     # Blacklist search (from blacklist_extractor.py)
+│   ├── string_eraser_tab.py # String Eraser (from string_eraser_xml.py)
+│   └── file_eraser_tab.py   # File Eraser (from file_eraser_by_name.py)
+└── mega_qss_settings.json   # Persisted paths + per-tab settings
+```
+
+**The standalone `.py` files stay as-is** — they're battle-tested and useful on their own. Mega QSS is a new layer on top, sharing the same logic.
+
+### Phase B: QuickTranslate Integration
+
+QuickTranslate already has a planned GUI rework (see `QuickTranslate/docs/WIP_GUI_REORGANIZATION.md`) that adds a `[Main] [Helper Functions]` tab layout. The Mega QSS tools slot in naturally:
+
+**Option 1: Helper Functions sub-tabs**
+```
+QuickTranslate
+├── [Main]              ← Translation workflow (Generate, Transfer, Pre-Submission)
+├── [Helper Functions]  ← Quick Actions, Substring Search
+└── [Extractors]        ← All 6 QSS tools as sub-tabs
+```
+
+**Option 2: Integrated into Helper Functions**
+```
+QuickTranslate
+├── [Main]              ← Translation workflow
+└── [Helper Functions]  ← Quick Actions + Diff + Eraser + Extractors (scrollable sections)
+```
+
+**Option 3: Selective integration (recommended)**
+
+Not all tools are equally useful inside QuickTranslate. Integration priority:
+
+| Priority | Tool | Why |
+|----------|------|-----|
+| **HIGH** | XML Diff + Revert | Used in every patch/merge cycle. Output feeds directly into TRANSFER |
+| **HIGH** | String Eraser | Common cleanup before TRANSFER |
+| **MEDIUM** | Long String Extractor | QA review of dialogue. Uses same EXPORT folder already in QuickTranslate settings |
+| **MEDIUM** | No-Voice Extractor | QA review. Same EXPORT folder. Correction column feeds back into TRANSFER |
+| **LOW** | BlacklistExtractor | Useful but less frequent. Own input (Excel blacklist) |
+| **SKIP** | File Eraser By Name | File-level operation, not LocStr-level. Stays standalone |
+
+**The pipeline becomes seamless:**
+```
+QuickTranslate (one app)
+  1. [Extractors tab] → Run No-Voice extraction → produces NOVOICE_ENG.xlsx
+  2. Human reviews Excel, fills Correction column
+  3. [Main tab] → Load NOVOICE_ENG.xlsx as Source → TRANSFER corrections back to XML
+```
+
+No context switching. No re-entering paths. No separate windows.
+
+**What QuickTranslate already has that Mega QSS tools need:**
+- EXPORT folder path (in settings)
+- LOC folder path (in settings)
+- XML parsing infrastructure (`xml_parser.py`, `xml_io.py`)
+- Excel reading/writing
+- Threaded worker pattern
+- Shared log + progress bar
+- `<br/>` preservation throughout
+
+### Implementation Order
+
+```
+1. STANDALONE QSS TOOLS (current state) — DONE ✅
+   All 6 tools exist and work independently
+
+2. MEGA QSS (Phase A) — FUTURE
+   Combine into tabbed interface with shared settings + EXPORT index cache
+   Still a standalone tool, no QuickTranslate dependency
+   Deliverable: single .exe via PyInstaller
+
+3. QUICKTRANSLATE INTEGRATION (Phase B) — FUTURE
+   Port high-priority tools (Diff, Eraser, Long String, No-Voice) into QT's Helper tab
+   Reuse QT infrastructure (settings, XML parsing, threading, log)
+   Low-priority tools (Blacklist, File Eraser) stay standalone or in Mega QSS
+```
+
+### Decision: Skip Mega QSS and go straight to QuickTranslate?
+
+Possible, but Mega QSS has value even if QuickTranslate integration happens later:
+
+| Mega QSS First | Skip to QT Integration |
+|---|---|
+| Faster to build (no QT coupling) | Fewer total steps |
+| Useful for people who don't use QT | Only useful inside QT |
+| Tests the shared architecture before bigger integration | Riskier — touching QT's complex GUI |
+| Can be distributed to non-translators (QA, PMs) | QT is a translator tool |
+| Shared EXPORT index saves time even standalone | QT already has EXPORT path |
+
+**Recommendation:** Build Mega QSS first as an intermediate step. It validates the shared architecture and the tabbed layout. Then porting to QuickTranslate is mostly moving tab modules into QT's Notebook with minimal adaptation.
+
+---
+
 ## Version History
 
 | Tool | Version | Key Changes |
