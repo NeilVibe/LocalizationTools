@@ -1,158 +1,343 @@
 # QuickStandaloneScripts (QSS)
 
-Standalone GUI tools for XML language data operations. Each tool is a single `.py` file with tkinter GUI — no dependencies on LocaNext or each other.
+**Standalone GUI tools for XML language data operations in a game localization pipeline.**
+
+Each tool is a **single `.py` file** with a tkinter GUI. No dependencies on LocaNext or each other — every script runs independently. They all operate on the same data: XML files containing `<LocStr>` elements with `StringID`, `StrOrigin`, and `Str` attributes that hold game text translations.
+
+```
+RessourcesForCodingTheProject/NewScripts/QuickStandaloneScripts/
+├── xml_diff_extractor.py          # 1,463 lines — v4.0
+├── script_long_string_extractor.py #   736 lines — v2.0
+├── string_eraser_xml.py           #   593 lines — v1.0
+├── file_eraser_by_name.py         #   325 lines — v1.0
+├── script_novoice_extractor.py    #   807 lines — v1.0
+├── blacklist_extractor.py         #   841 lines — v1.0
+├── QSS.md                         # This document
+└── Extraction_Output/             # Shared output directory for extractors
+```
+
+**Total: 6 tools, ~4,765 lines of Python.**
 
 ---
 
-## Tool Inventory
+## How To Run
 
-### 1. XML Diff Extractor (`xml_diff_extractor.py`) — v4.0
+All tools are plain Python scripts with a tkinter GUI. Run from any terminal:
 
-**Three tabs: DIFF (file), DIFF FOLDER, and REVERT.**
+```bash
+python xml_diff_extractor.py
+python script_long_string_extractor.py
+python string_eraser_xml.py
+python file_eraser_by_name.py
+python script_novoice_extractor.py
+python blacklist_extractor.py
+```
 
-**DIFF tab** (file mode) compares a single SOURCE (old) vs TARGET (new) XML and extracts ADD/EDIT LocStr elements.
-
-| Feature | Description |
-|---------|-------------|
-| **Comparison Modes** | Full (all attributes), StrOrigin+StringID, StrOrigin+StringID+Str, StringID+Str |
-| **Category Filter** | All, SCRIPT only (Dialog/Sequencer), NON-SCRIPT only |
-| **Export Folder** | Shown when category filter is active — provide the `export__` folder |
-| **Output** | `DIFF_{filename}_{timestamp}.xml` next to TARGET (mode/filter included when non-default) |
-
-**DIFF FOLDER tab** (v4.0) compares SOURCE folder vs TARGET folder, auto-matching by language suffix.
-
-| Feature | Description |
-|---------|-------------|
-| **SOURCE folder** | Folder with language-suffixed XML files (old versions) |
-| **TARGET folder** | Folder with language-suffixed XML files (new versions) |
-| **LOC folder** | Settings-persisted LOC path — discovers valid language suffixes from `languagedata_*.xml` |
-| **Language matching** | Auto-pairs files by suffix (ENG↔ENG, FRE↔FRE). Supports `languagedata_*.xml`, suffix files, suffix folders |
-| **Comparison Modes** | Same 4 modes as file DIFF tab |
-| **Category Filter** | Same 3 filters as file DIFF tab |
-| **Export Folder** | Shown when category filter is active — provide the `export__` folder |
-| **Output** | Auto-created `DIFF_FOLDER_{mode}{filter}_{timestamp}/` next to script, one `DIFF_{lang}.xml` per language |
-
-Comparison mode details:
-- **Full (all attributes)**: Key = StringID. Extract when ANY attribute differs. (v2.0 default behavior)
-- **StrOrigin + StringID**: Key = (StrOrigin, StringID) tuple. Extract TARGET entries whose tuple is not in SOURCE.
-- **StrOrigin + StringID + Str**: Key = (StrOrigin, StringID, Str) triple. Extract when translation text also differs.
-- **StringID + Str**: Key = (StringID, Str) pair. Extract when text changed regardless of StrOrigin.
-
-**REVERT tab** undoes changes between BEFORE/AFTER in a CURRENT file:
-- ADDs (new in AFTER) are REMOVED from CURRENT
-- EDITs: Str value RESTORED to BEFORE version
-- Everything else in CURRENT stays untouched
-
-### 2. Script Long String Extractor (`script_long_string_extractor.py`) — v2.0
-
-Extracts LocStr entries that are SCRIPT type (Dialog/Sequencer) AND above a character length threshold.
-
-| Feature | Description |
-|---------|-------------|
-| **Input** | Export folder (for category mapping) + Source folder (XML/Excel) |
-| **Filter** | SCRIPT categories only + minimum visible character count |
-| **Exclusions** | NarrationDialog subfolder excluded |
-| **Output** | Per-language Excel (.xlsx) + XML (.xml) in `Extraction_Output/` |
-
-### 3. String Eraser XML (`string_eraser_xml.py`) — v1.0
-
-Removes LocStr nodes from Target XML files that match Source entries by StringID + StrOrigin.
-
-| Feature | Description |
-|---------|-------------|
-| **Source** | Folder with Excel (.xlsx) or XML files containing StringID + StrOrigin |
-| **Target** | Folder with `languagedata_*.xml` files |
-| **Match** | Case-insensitive StringID + normalized StrOrigin |
-| **Action** | Removes matching `<LocStr>` nodes from Target XML in-place |
-
-### 4. File Eraser By Name (`file_eraser_by_name.py`) — v1.0
-
-Compares filenames between Source and Target folders. Files in Target whose stem matches a Source stem (case-insensitive, extension-ignored) get moved to an `Erased_Files` backup folder.
-
-| Feature | Description |
-|---------|-------------|
-| **Match** | Filename stem, case-insensitive |
-| **Action** | Moves matched files to backup (non-destructive) |
-
-### 5. Script No-Voice Extractor (`script_novoice_extractor.py`) — v1.0
-
-Extracts LocStr entries that are SCRIPT type (Dialog/Sequencer) but do NOT have a SoundEventName attribute — text-only strings with no associated voice/audio data.
-
-| Feature | Description |
-|---------|-------------|
-| **EXPORT folder** | Builds StringID→Category map + set of voiced StringIDs (with SoundEventName) in a single pass |
-| **LOC folder** | `languagedata_*.xml` files — the actual extraction source |
-| **Filter** | SCRIPT categories only (Dialog/Sequencer) AND no SoundEventName |
-| **No NarrationDialog exclusion** | Unlike Long String Extractor, no-voice narration IS worth catching |
-| **Output** | Per-language `NOVOICE_{LANG}.xlsx` + `NOVOICE_{LANG}.xml` in `Extraction_Output/novoice_script_{timestamp}/` |
-| **Excel columns** | StringID, StrOrigin, Str, Correction (empty — for QuickTranslate feedback), Category |
-| **Sorting** | StringID ascending in both Excel and XML output |
-
-**Design decisions:**
-- **Single pass** over EXPORT folder for both category mapping AND SoundEventName detection (halves I/O)
-- **Scans ALL elements** (`root.iter()`) for SoundEventName, not just LocStr — voice-linked elements can be on any element type
-- **Uses `*.loc.xml` glob** within category folders (covers both category mapping AND SoundEventName since voice-linked elements are in the same files)
-- **Case-insensitive** StringID lookups everywhere (lowercase at build time)
-- **SoundEventName variants**: `SoundEventName`, `soundeventname`, `Soundeventname`, `SOUNDEVENTNAME`, `EventName`, `eventname`, `EVENTNAME`
-
-### 6. BlacklistExtractor (`blacklist_extractor.py`) — v1.0
-
-Extracts any LocStr entry from languagedata whose Str value contains a blacklisted term for that language.
-
-| Feature | Description |
-|---------|-------------|
-| **Source** | Excel file(s) — one column per language (header = language suffix: FRE, GER, ITA, etc.) |
-| **LOC folder** | Settings-persisted LOC path — serves **dual purpose**: (1) discovers valid language suffixes from `languagedata_*.xml` filenames, (2) **is the search target** — the actual XML files scanned for blacklist matches |
-| **Search** | Substring match: `term in str_value` (case-insensitive). Each cell = one blacklisted term |
-| **Output** | Per-language Excel (.xlsx) + XML (.xml) with all matching LocStr entries |
-
-**Design decisions:**
-- **GUI:** Source file/folder selector + LOC folder selector (with settings persistence, same as QuickTranslate)
-- **Validation:** Column headers must match a `languagedata_*.xml` suffix in LOC — unknown columns warned and skipped
-- **Search algorithm:** Simple Python `in` operator (substring). No Aho-Corasick — keeps it zero-dependency QSS. If blacklists grow to thousands of terms, Aho-Corasick can be added later
-- **Matching:** Substring, not whole-word. "sword" WILL match "swordsman" — intentional for blacklists (catch everything). Precise for CJK (Korean, etc.) where substring is the correct approach. For Latin-script languages, short terms may produce false positives (e.g. "war" matches "software") — word-boundary mode can be added if needed
-- **Empty cells:** Skipped (no blank term matching)
-- **Output naming:** `BLACKLIST_{lang}.xml` / `.xlsx` per language, inside `Blacklist_Output/blacklist_{timestamp}/` folder
+Can also be bundled with PyInstaller for standalone `.exe` distribution.
 
 ---
 
-## v4.0 Changes (XML Diff Extractor)
+## Dependencies
 
-**What changed from v3.0:**
+| Dependency | Required By | Purpose |
+|------------|-------------|---------|
+| **Python 3.8+** | All | Runtime |
+| **tkinter** | All | GUI (included with Python) |
+| **lxml** | All except File Eraser | XML parsing with recovery mode. Falls back to stdlib `xml.etree` if missing |
+| **xlsxwriter** | Long String, No-Voice, Blacklist | Writing Excel output |
+| **openpyxl** | String Eraser, Blacklist | Reading Excel input |
 
-1. **DIFF FOLDER tab** — new tab for folder-to-folder comparison (SOURCE folder vs TARGET folder)
-2. **LOC folder setting** — persisted path to discover valid language suffixes from `languagedata_*.xml`
-3. **Auto language matching** — pairs SOURCE/TARGET files by language suffix (ENG↔ENG, FRE↔FRE, etc.)
-4. **Per-language output** — auto-created `DIFF_FOLDER_{mode}{filter}_{timestamp}/` folder with one XML per language
-5. **Original DIFF tab preserved** — file-to-file mode unchanged, now labeled "DIFF (file)"
-
-**What changed from v2.0 → v3.0:**
-
-1. **Comparison Mode dropdown** — 4 modes using composite keys instead of just StringID
-2. **Category Filter dropdown** — filter diffs to SCRIPT or NON-SCRIPT entries only
-3. **Export Folder browse** — shown only when category filter is active
-4. **Smart output naming** — filename includes mode and filter suffix (e.g. `DIFF_SO-SID_SCRIPT_...`)
-5. **Backward compatible** — "Full (all attributes)" + "All (no filter)" = identical to v2.0
+Install optional deps: `pip install lxml xlsxwriter openpyxl`
 
 ---
 
-## Shared Patterns
+## Data Concepts
 
-All QSS tools share these patterns (copied, not imported — standalone):
+Before diving into the tools, here are the key data concepts:
 
-- **XML sanitization**: Fix unescaped `<br/>`, bare `&`, malformed `</>`
-- **Attribute case variants**: `STRINGID_ATTRS`, `STRORIGIN_ATTRS`, `STR_ATTRS`
-- **lxml/stdlib fallback**: Try lxml first, fallback to xml.etree.ElementTree
-- **`<br/>` preservation**: Sentinel-based escaping (`<br/>` → `\x00BR\x00` before XML escape → restore after)
-- **XXE protection**: lxml parser uses `resolve_entities=False, load_dtd=False, no_network=True`
-- **Encoding fallback**: utf-8-sig → utf-8 → latin-1 (latin-1 always succeeds)
-- **Settings persistence**: JSON file next to script, LOC folder path saved/loaded
+| Concept | Meaning |
+|---------|---------|
+| **LocStr** | XML element holding one translated string. Has attributes like `StringID`, `StrOrigin`, `Str` |
+| **StringID** | Unique identifier for a text string across all languages |
+| **StrOrigin** | Path-like origin showing where the string came from in the game data |
+| **Str** | The actual translated text content |
+| **languagedata_*.xml** | Per-language XML file in the LOC folder (e.g. `languagedata_ENG.xml`, `languagedata_FRE.xml`) |
+| **export__ folder** | Game export folder with category subfolders (Dialog, Sequencer, Item, Quest, etc.) containing `*.loc.xml` files |
+| **SCRIPT type** | Strings from Dialog or Sequencer categories — typically voiced dialogue |
+| **SoundEventName** | Attribute linking a string to voice audio. Strings with this have recorded voice acting |
+| **`<br/>`** | Newline representation in XML language data. Must ALWAYS be preserved, never escaped |
 
 ---
 
-## Future Ideas
+## Tool #1: XML Diff Extractor
 
-- **REVERT by category**: Revert only SCRIPT or NON-SCRIPT changes (apply category filter to REVERT tab)
-- **Extraction by specific category**: Filter by Item, Quest, Character, etc. (not just SCRIPT/NON-SCRIPT)
-- **Cross-language diff**: Compare same StringID across different language XML files
-- **Diff report Excel**: Output diff results as Excel with columns for SOURCE/TARGET values side by side
+**File:** `xml_diff_extractor.py` — **v4.0** — 1,463 lines
+
+**Purpose:** Compare old vs new XML language data and extract what changed (additions + edits). Also revert unwanted changes.
+
+**When to use:** After receiving updated translation files, to see exactly what changed and isolate the diff for review or selective import.
+
+### Three Tabs
+
+#### DIFF (file mode)
+Compare a single SOURCE file (old) against a TARGET file (new).
+
+| Input | Description |
+|-------|-------------|
+| **SOURCE** | Old XML file (the baseline) |
+| **TARGET** | New XML file (the updated version) |
+| **Comparison Mode** | How to detect changes (see below) |
+| **Category Filter** | All / SCRIPT only / NON-SCRIPT only |
+| **Export Folder** | Required when category filter is active — provides StringID→Category mapping |
+
+| Comparison Mode | Key Used | Detects |
+|-----------------|----------|---------|
+| Full (all attributes) | StringID | Any attribute change |
+| StrOrigin + StringID | (StrOrigin, StringID) | New origin+ID combos |
+| StrOrigin + StringID + Str | (StrOrigin, StringID, Str) | Translation text changes |
+| StringID + Str | (StringID, Str) | Text changes regardless of origin |
+
+**Output:** `DIFF_{filename}_{timestamp}.xml` next to TARGET file.
+
+#### DIFF FOLDER (folder mode)
+Compare SOURCE folder vs TARGET folder. Auto-matches files by language suffix (ENG↔ENG, FRE↔FRE, etc.).
+
+| Input | Description |
+|-------|-------------|
+| **SOURCE folder** | Folder with old language-suffixed XML files |
+| **TARGET folder** | Folder with new language-suffixed XML files |
+| **LOC folder** | Discovers valid language suffixes from `languagedata_*.xml` filenames |
+
+**Output:** `DIFF_FOLDER_{mode}{filter}_{timestamp}/` folder with one `DIFF_{lang}.xml` per language.
+
+#### REVERT
+Undo specific changes by comparing BEFORE, AFTER, and CURRENT states.
+
+| What Happened | What REVERT Does |
+|---------------|------------------|
+| String was **added** in AFTER | **Removes** it from CURRENT |
+| String was **edited** in AFTER | **Restores** BEFORE version in CURRENT |
+| String unchanged | Left alone |
+
+---
+
+## Tool #2: Script Long String Extractor
+
+**File:** `script_long_string_extractor.py` — **v2.0** — 736 lines
+
+**Purpose:** Find SCRIPT-type dialogue strings that are unusually long — candidates for shortening or splitting.
+
+**When to use:** To audit translation quality by finding overly long dialogue/sequencer strings that may cause text overflow in-game.
+
+| Input | Description |
+|-------|-------------|
+| **Export Folder** | `export__` folder to build StringID→Category mapping |
+| **Source Folder** | Folder with `languagedata_*.xml` or `.xlsx` files to scan |
+| **Min Length** | Minimum visible character count threshold (default: 50) |
+
+**Filter logic:**
+1. Must be SCRIPT category (Dialog or Sequencer)
+2. Must have visible character count >= threshold
+3. NarrationDialog subfolder is **excluded** (narration is expected to be long)
+
+**Visible character count** strips markup tags (`<br/>`, `<PAColor>`, `<Scale>`, `<color>`, `<Style:>`, `{code blocks}`), unescapes HTML entities, and counts remaining characters.
+
+| Output | Content |
+|--------|---------|
+| **Excel** | StringID, StrOrigin, Str, CharCount — sorted by CharCount descending |
+| **XML** | Raw `<LocStr>` elements sorted by CharCount descending |
+
+**Output location:** `Extraction_Output/extraction_{threshold}chars_{timestamp}/`
+
+---
+
+## Tool #3: String Eraser XML
+
+**File:** `string_eraser_xml.py` — **v1.0** — 593 lines
+
+**Purpose:** Remove specific LocStr entries from languagedata XML files. Destructive operation (modifies files in-place).
+
+**When to use:** To clean up languagedata by removing entries that are no longer needed, have been deprecated, or were added in error.
+
+| Input | Description |
+|-------|-------------|
+| **Source** | Folder with Excel (.xlsx) or XML files listing which strings to remove (must have StringID + StrOrigin columns) |
+| **Target** | Folder with `languagedata_*.xml` files to modify |
+
+**Match logic:** Case-insensitive StringID + normalized StrOrigin. Both must match for a `<LocStr>` node to be removed.
+
+**Action:** Removes matching `<LocStr>` nodes from Target XML **in-place**. Backs up originals first.
+
+---
+
+## Tool #4: File Eraser By Name
+
+**File:** `file_eraser_by_name.py` — **v1.0** — 325 lines
+
+**Purpose:** Bulk-remove files from a Target folder based on filename matching against a Source folder.
+
+**When to use:** When you have a list of files (by name) that need to be cleaned up from a delivery or export folder.
+
+| Input | Description |
+|-------|-------------|
+| **Source** | Folder whose filenames define what to remove |
+| **Target** | Folder to clean up |
+
+**Match logic:** Filename stem only, case-insensitive. Extensions are ignored — `data.xml` in Source matches `data.txt` in Target.
+
+**Action:** Non-destructive — matched files are **moved** to an auto-created `Erased_Files/` backup folder (not deleted).
+
+---
+
+## Tool #5: Script No-Voice Extractor
+
+**File:** `script_novoice_extractor.py` — **v1.0** — 807 lines
+
+**Purpose:** Extract SCRIPT-type strings that have no associated voice audio — text-only dialogue and sequencer strings that are never spoken aloud.
+
+**When to use:** To find script strings that lack voice recording, for quality review or to feed corrections back via QuickTranslate.
+
+| Input | Description |
+|-------|-------------|
+| **EXPORT Folder** | `export__` folder — scanned once to build both the StringID→Category map AND the set of voiced StringIDs |
+| **LOC Folder** | Folder with `languagedata_*.xml` files to extract from |
+
+**Filter logic (two conditions, both must be true):**
+1. StringID belongs to a SCRIPT category (Dialog or Sequencer)
+2. StringID does NOT appear with a `SoundEventName` attribute anywhere in the EXPORT data
+
+**Key design decisions:**
+- **Single pass** over EXPORT folder — builds category map AND voiced set simultaneously (halves I/O)
+- **Scans ALL XML elements** for SoundEventName, not just LocStr — voice references can be on any element type
+- **No NarrationDialog exclusion** — unlike the Long String Extractor, unvoiced narration IS worth catching here
+- **SoundEventName variants scanned:** `SoundEventName`, `soundeventname`, `Soundeventname`, `SOUNDEVENTNAME`, `EventName`, `eventname`, `EVENTNAME`
+
+| Output | Content |
+|--------|---------|
+| **Excel** | StringID, StrOrigin, Str, **Correction** (empty), Category — sorted by StringID |
+| **XML** | Raw `<LocStr>` elements sorted by StringID |
+
+The empty **Correction** column is for the user to fill in corrections, then feed the Excel back into QuickTranslate's TRANSFER feature.
+
+**Output location:** `Extraction_Output/novoice_script_{timestamp}/` with `NOVOICE_{LANG}.xlsx` + `NOVOICE_{LANG}.xml` per language.
+
+**Statistics shown in log:**
+```
+EXPORT INDEX
+  Total StringIDs indexed: 45,230
+  SCRIPT StringIDs (Dialog/Sequencer): 12,450
+  Voiced StringIDs (with SoundEventName): 8,320
+  → SCRIPT + No Voice candidates: 4,130
+
+EXTRACTION
+  ENG: 4,130 no-voice SCRIPT entries extracted
+  FRE: 4,128 no-voice SCRIPT entries extracted
+  Orphaned (in LOC, not in EXPORT): 247 — skipped
+```
+
+---
+
+## Tool #6: BlacklistExtractor
+
+**File:** `blacklist_extractor.py` — **v1.0** — 841 lines
+
+**Purpose:** Find all LocStr entries whose translated text contains any forbidden/blacklisted term.
+
+**When to use:** To scan translations for prohibited words, brand names that shouldn't appear, outdated terminology, or any terms that need review across all languages.
+
+| Input | Description |
+|-------|-------------|
+| **LOC Folder** | Folder with `languagedata_*.xml` — dual purpose: (1) discovers language suffixes, (2) is the search target |
+| **Source** | Excel file(s) with blacklist terms — one column per language (header = language suffix like ENG, FRE, GER) |
+
+**Search logic:** Substring match — `term.lower() in str_value.lower()`. Each cell in the Excel = one blacklisted term. Intentionally catches substrings (e.g. "sword" matches "swordsman") because blacklists should be aggressive.
+
+**Multi-source support:** Can point to a single `.xlsx` file OR a folder of `.xlsx` files — all terms are combined and deduplicated per language.
+
+| Output | Content |
+|--------|---------|
+| **Excel** | StringID, StrOrigin, Str, MatchedTerm — one row per match (same entry can appear multiple times if it matches multiple terms) |
+| **XML** | Raw `<LocStr>` elements, deduplicated by StringID |
+
+**Output location:** `Blacklist_Output/blacklist_{timestamp}/` with `BLACKLIST_{LANG}.xlsx` + `BLACKLIST_{LANG}.xml` per language.
+
+---
+
+## Workflow: How The Tools Work Together
+
+The tools form a pipeline for localization quality management:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    EXTRACTION PHASE                          │
+│                                                              │
+│  XML Diff Extractor ──→ What changed between versions?       │
+│  Long String Extractor ──→ Which scripts are too long?       │
+│  No-Voice Extractor ──→ Which scripts lack voice?            │
+│  BlacklistExtractor ──→ Which strings have forbidden terms?  │
+│                                                              │
+│  All produce: Excel (for review) + XML (for reimport)        │
+├──────────────────────────────────────────────────────────────┤
+│                    REVIEW PHASE                              │
+│                                                              │
+│  Human reviews Excel output, fills in Correction column      │
+│  (No-Voice Extractor + Long String Extractor)                │
+│                                                              │
+│  Corrections fed back into QuickTranslate TRANSFER feature   │
+├──────────────────────────────────────────────────────────────┤
+│                    CLEANUP PHASE                             │
+│                                                              │
+│  String Eraser XML ──→ Remove deprecated strings from XML    │
+│  File Eraser By Name ──→ Remove obsolete files               │
+│  XML Diff Extractor (REVERT) ──→ Undo unwanted changes       │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Shared Technical Patterns
+
+All QSS tools that parse XML share these patterns (copied into each file, not imported):
+
+### XML Handling
+- **`<br/>` preservation:** `<br/>` is the newline format in game XML data. All tools use sentinel-based escaping (`<br/>` → `\x00BR\x00` → XML escape → restore `<br/>`) to prevent corruption
+- **XML sanitization:** Fixes bare `&`, malformed `</>`, and unescaped `<` in attribute values before parsing
+- **Encoding fallback:** Tries utf-8-sig → utf-8 → latin-1 (latin-1 always succeeds as it decodes any byte sequence)
+- **XXE protection:** lxml parser uses `resolve_entities=False, load_dtd=False, no_network=True`
+- **lxml/stdlib fallback:** Tries lxml first (recovery mode, attribute order preservation), falls back to stdlib `xml.etree`
+
+### Attribute Matching
+All tools handle case variants of LocStr element attributes:
+
+```python
+LOCSTR_TAGS    = ['LocStr', 'locstr', 'LOCSTR', 'LOCStr', 'Locstr']
+STRINGID_ATTRS = ('StringId', 'StringID', 'stringid', 'STRINGID', 'Stringid', 'stringId')
+STRORIGIN_ATTRS = ('StrOrigin', 'Strorigin', 'strorigin', 'STRORIGIN')
+STR_ATTRS       = ('Str', 'str', 'STR')
+```
+
+### GUI
+- tkinter with ttk widgets
+- `scrolledtext.ScrolledText` log area with color-coded tags (info/success/warning/error/header)
+- Settings persistence via JSON file next to script
+- PyInstaller-compatible path detection (`sys.frozen` check)
+
+### Output
+- Excel via **xlsxwriter** (write-only, reliable) — with autofilter, freeze panes, formatting
+- XML as hand-built string output (not serialized from tree) for full control over formatting
+- Timestamped output folders to prevent overwriting previous runs
+
+---
+
+## Version History
+
+| Tool | Version | Key Changes |
+|------|---------|-------------|
+| XML Diff Extractor | v4.0 | DIFF FOLDER tab, LOC folder setting, auto language matching |
+| | v3.0 | 4 comparison modes, category filter, export folder |
+| | v2.0 | Full attribute diff, REVERT tab |
+| Script Long String Extractor | v2.0 | Per-language output, Excel+XML, NarrationDialog exclusion |
+| String Eraser XML | v1.0 | Initial release |
+| File Eraser By Name | v1.0 | Initial release |
+| Script No-Voice Extractor | v1.0 | Initial release |
+| BlacklistExtractor | v1.0 | Initial release |
