@@ -1265,6 +1265,8 @@ def transfer_folder_to_folder(
     target_scan: Optional[TargetScanResult] = None,
     # Unique-only filtering for strorigin_only modes
     unique_only: bool = False,
+    # Non-Script Only filtering for strict modes
+    strict_non_script_only: bool = False,
 ) -> Dict:
     """
     Transfer corrections from source folder to target folder.
@@ -1303,6 +1305,7 @@ def transfer_folder_to_folder(
         "total_skipped_translated": 0,
         "total_skipped_empty_strorigin": 0,
         "total_skipped_duplicate_strorigin": 0,
+        "total_skipped_script": 0,
         "errors": [],
         "file_results": {},
     }
@@ -1554,6 +1557,24 @@ def transfer_folder_to_folder(
             )
         results["total_skipped_duplicate_strorigin"] = total_skipped_dup
         results["_duplicate_strorigin_details"] = all_duplicate_details
+
+    # ─── Non-Script pre-filter for Strict mode ──────────────────────
+    # Skip SCRIPT corrections (Dialog/Sequencer) — handle via StringID-Only pass.
+    if strict_non_script_only and stringid_to_category and match_mode in ("strict", "strict_fuzzy"):
+        ci_cat = {k.lower(): v for k, v in stringid_to_category.items()}
+        total_skipped_script = 0
+        for lang_upper, group in lang_groups.items():
+            original = group["corrections"]
+            filtered = [c for c in original
+                        if ci_cat.get(c.get("string_id", "").lower(), "") not in SCRIPT_CATEGORIES]
+            skipped = len(original) - len(filtered)
+            if skipped > 0 and log_callback:
+                log_callback(f"[{lang_upper}] Non-Script filter: skipped {skipped} SCRIPT corrections", 'warning')
+            total_skipped_script += skipped
+            group["corrections"] = filtered
+        if total_skipped_script > 0:
+            logger.info(f"Non-Script filter total: {total_skipped_script} SCRIPT corrections removed")
+        results["total_skipped_script"] = total_skipped_script
 
     # Convert lang_groups to target_groups format for the Phase 2 loop.
     # Each target file gets its own entry so the merge loop can process them independently.
@@ -1942,6 +1963,10 @@ def transfer_folder_to_folder(
     skipped_dup = results.get("total_skipped_duplicate_strorigin", 0)
     if skipped_dup > 0:
         results["total_corrections"] += skipped_dup
+
+    skipped_script = results.get("total_skipped_script", 0)
+    if skipped_script > 0:
+        results["total_corrections"] += skipped_script
 
     # ─── Missing EventName report (after all transfers complete) ──────
     if all_missing_eventnames:
@@ -2394,6 +2419,8 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
             lines.append(V + f"   Skipped:          {results.get('total_skipped', 0):,}  ({skip_label})".ljust(width - 2) + V)
         if results.get('total_skipped_duplicate_strorigin', 0) > 0:
             lines.append(V + f"   Dup. StrOrigin:   {results['total_skipped_duplicate_strorigin']:,}  (unique-only filter, see report)".ljust(width - 2) + V)
+        if results.get('total_skipped_script', 0) > 0:
+            lines.append(V + f"   Non-Script Skip:  {results['total_skipped_script']:,}  (Dialog/Sequencer filtered out)".ljust(width - 2) + V)
         if results.get('total_eventname_recovered', 0) > 0:
             lines.append(V + f"   EN Recovery:      {results['total_eventname_recovered']:,}  (EventName→StringID resolved)".ljust(width - 2) + V)
 
@@ -2458,7 +2485,8 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
     # to match, so including them would artificially deflate the rate).
     total = results.get('total_corrections', results.get('corrections_count', 0))
     dup_skipped = results.get('total_skipped_duplicate_strorigin', 0)
-    effective_total = total - dup_skipped
+    script_skipped = results.get('total_skipped_script', 0)
+    effective_total = total - dup_skipped - script_skipped
     matched = results.get('total_matched', results.get('matched', 0))
     rate = (matched / effective_total * 100) if effective_total > 0 else 0.0
 

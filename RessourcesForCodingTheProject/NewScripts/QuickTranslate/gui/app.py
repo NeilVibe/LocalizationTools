@@ -177,6 +177,12 @@ class QuickTranslateApp:
         # Unique-only filtering for StrOrigin-Only mode (skip duplicate StrOrigin)
         self.unique_only_strorigin = tk.IntVar(value=0)
 
+        # Non-Script Only for Strict mode (skip Dialog/Sequencer)
+        _presub = config.load_presubmission_settings()
+        self._strict_non_script_var = tk.BooleanVar(
+            value=_presub.get("strict_non_script_only", False)
+        )
+
         # Settings variables
         self.settings_loc_path = tk.StringVar()
         self.settings_export_path = tk.StringVar()
@@ -438,6 +444,23 @@ class QuickTranslateApp:
         tk.Label(self.unique_only_frame,
             text="Safe mode: only merges StrOrigin that appears once. Duplicates exported to Excel.",
             font=('Segoe UI', 8), bg='#e8f0fe', fg='#666', wraplength=350, justify='left'
+        ).pack(fill=tk.X, pady=(2, 0))
+
+        # === Non-Script Only frame (STRICT mode only) ===
+        self.strict_non_script_frame = tk.Frame(match_frame, bg='#fde8e8', padx=10, pady=4,
+                                                 relief='groove', bd=1)
+        # Don't pack yet - shown/hidden by _on_match_type_changed
+
+        ns_row = tk.Frame(self.strict_non_script_frame, bg='#fde8e8')
+        ns_row.pack(fill=tk.X)
+        tk.Checkbutton(ns_row, text="Non-Script only (skip Dialog/Sequencer)",
+                       variable=self._strict_non_script_var,
+                       command=self._on_presub_setting_changed,
+                       font=('Segoe UI', 9, 'bold'), bg='#fde8e8',
+                       activebackground='#fde8e8', cursor='hand2').pack(side=tk.LEFT)
+        tk.Label(self.strict_non_script_frame,
+            text="Skips SCRIPT categories (Dialog/Sequencer). Only processes game-data entries.",
+            font=('Segoe UI', 8), bg='#fde8e8', fg='#666', wraplength=350, justify='left'
         ).pack(fill=tk.X, pady=(2, 0))
 
         # === Files Section ===
@@ -1250,8 +1273,12 @@ class QuickTranslateApp:
                 # Show unique-only checkbox (StrOrigin Only specific)
                 self.unique_only_frame.pack(fill=tk.X, pady=(4, 0))
                 self._bind_mousewheel_recursive(self.unique_only_frame)
+                self.strict_non_script_frame.pack_forget()
             else:
                 self.unique_only_frame.pack_forget()
+                # Show non-script only checkbox (Strict specific)
+                self.strict_non_script_frame.pack(fill=tk.X, pady=(4, 0))
+                self._bind_mousewheel_recursive(self.strict_non_script_frame)
             # Rebind mousewheel on newly shown frames
             self._bind_mousewheel_recursive(self.precision_options_frame)
             self._bind_mousewheel_recursive(self.transfer_scope_frame)
@@ -1262,6 +1289,7 @@ class QuickTranslateApp:
             self.transfer_note_label.config(text="(Lookup only - TRANSFER not available)")
             self.transfer_scope_frame.pack_forget()
             self.unique_only_frame.pack_forget()
+            self.strict_non_script_frame.pack_forget()
         else:
             # stringid_only
             self.precision_options_frame.pack_forget()
@@ -1270,6 +1298,7 @@ class QuickTranslateApp:
             self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
             self.transfer_note_label.config(text="")
             self.unique_only_frame.pack_forget()
+            self.strict_non_script_frame.pack_forget()
             # Rebind mousewheel on newly shown frame
             self._bind_mousewheel_recursive(self.transfer_scope_frame)
 
@@ -1909,6 +1938,7 @@ class QuickTranslateApp:
         transfer_scope = self.transfer_scope.get()
         fuzzy_threshold = self.fuzzy_threshold.get()
         source_path_str = self.source_path.get()
+        non_script_only = self._strict_non_script_var.get() if match_type == "strict" else False
 
         self._disable_buttons()
         self.progress_value.set(0)
@@ -1916,6 +1946,8 @@ class QuickTranslateApp:
 
         self._log(f"=== QuickTranslate Generation ===", 'header')
         self._log(f"Match Type: {match_type.upper()}", 'info')
+        if non_script_only:
+            self._log("Non-Script Only: ON (Dialog/Sequencer will be skipped)", 'warning')
 
         def work():
             # Load data
@@ -1946,13 +1978,32 @@ class QuickTranslateApp:
                         continue
                 self._log(f"Loaded {len(excel_files)} Excel files", 'info')
 
+            # Non-Script filter: remove SCRIPT (Dialog/Sequencer) corrections for strict mode
+            skipped_script_count = 0
+            if non_script_only and self.stringid_to_category:
+                original_count = len(corrections)
+                ci_cat = {k.lower(): v for k, v in self.stringid_to_category.items()}
+                corrections = [c for c in corrections
+                               if ci_cat.get(c.get("string_id", "").lower(), "") not in config.SCRIPT_CATEGORIES]
+                skipped_script_count = original_count - len(corrections)
+                if skipped_script_count:
+                    self._log(f"Non-Script filter: skipped {skipped_script_count} SCRIPT corrections (Dialog/Sequencer)", 'warning')
+
             korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
             if not korean_inputs:
                 korean_inputs = [c.get("string_id", "") for c in corrections if c.get("string_id")]
 
             if not korean_inputs and not corrections:
-                self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'No input data found.'))
-                self._log("No input data found!", 'error')
+                if skipped_script_count > 0:
+                    msg = (f"All {skipped_script_count} corrections are SCRIPT entries "
+                           f"(Dialog/Sequencer) and were filtered by Non-Script Only.\n\n"
+                           f"Use StringID-Only mode for SCRIPT strings, or disable "
+                           f"the Non-Script Only checkbox.")
+                    self._task_queue.put(('messagebox', 'showwarning', 'No Non-Script Data', msg))
+                    self._log(f"Non-Script filter removed all {skipped_script_count} corrections — nothing to generate", 'warning')
+                else:
+                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'No input data found.'))
+                    self._log("No input data found!", 'error')
                 return
 
             self._task_queue.put(('progress', 40))
@@ -2092,9 +2143,10 @@ class QuickTranslateApp:
                 korean_inputs = [c.get("str_origin", "") for c in matched]
                 for c in matched:
                     matches_per_input.append([c.get("string_id")])
-                stats["total"] = len(corrections)
+                stats["total"] = len(corrections) + skipped_script_count
                 stats["matched"] = len(matched)
                 stats["no_match"] = not_found
+                stats["skipped"] = skipped_script_count
                 stats["total_matches"] = len(matched)
 
                 precision_label = "FUZZY" if precision == "fuzzy" else "PERFECT"
@@ -2102,6 +2154,8 @@ class QuickTranslateApp:
                 self._log(f"  - Total corrections: {stats['total']}", 'info')
                 self._log(f"  - Matched (ID+Origin): {stats['matched']}", 'success')
                 self._log(f"  - Not found: {stats['no_match']}", 'error')
+                if skipped_script_count:
+                    self._log(f"  - Skipped (SCRIPT): {skipped_script_count}", 'warning')
 
             self._task_queue.put(('progress', 70))
 
@@ -2545,10 +2599,12 @@ class QuickTranslateApp:
         """Save pre-submission settings when checkbox is toggled."""
         settings = {
             "skip_staticinfo_knowledge": self._skip_staticinfo_var.get(),
+            "strict_non_script_only": self._strict_non_script_var.get(),
         }
         config.save_presubmission_settings(settings)
-        state = "ON" if settings["skip_staticinfo_knowledge"] else "OFF"
-        self._log(f"staticinfo:knowledge skip: {state} (saved)", 'info')
+        skip_state = "ON" if settings["skip_staticinfo_knowledge"] else "OFF"
+        ns_state = "ON" if settings["strict_non_script_only"] else "OFF"
+        self._log(f"staticinfo:knowledge skip: {skip_state}, strict non-script only: {ns_state} (saved)", 'info')
 
     def _check_korean(self):
         """Run Korean character check on Source folder."""
@@ -2809,6 +2865,7 @@ class QuickTranslateApp:
         transfer_scope = self.transfer_scope.get()
         fuzzy_threshold = self.fuzzy_threshold.get()
         unique_only = bool(self.unique_only_strorigin.get()) if match_type == "strorigin_only" else False
+        non_script_only = self._strict_non_script_var.get() if match_type == "strict" else False
 
         # === GENERATE FULL TRANSFER PLAN BEFORE CONFIRMATION ===
         match_str = match_type.upper()
@@ -2821,6 +2878,8 @@ class QuickTranslateApp:
                      else "ALL matches (overwrite)")
         if unique_only:
             scope_str += " [UNIQUE ONLY]"
+        if non_script_only:
+            match_str += " [NON-SCRIPT ONLY]"
 
         # Scan target with flexible scanner (supports any XML/Excel with lang suffix)
         _transfer_target_scan = scan_target_for_languages(target)
@@ -2872,6 +2931,8 @@ class QuickTranslateApp:
         self._log(f"Transfer Scope: {scope_str}", 'info')
         if unique_only:
             self._log("Mode: UNIQUE ONLY (duplicate StrOrigin skipped, exported to Excel)", 'warning')
+        if non_script_only:
+            self._log("Non-Script Only: ON (Dialog/Sequencer will be skipped)", 'warning')
         self._log(f"Source: {source}", 'info')
         self._log(f"Target: {target}", 'info')
 
@@ -2907,7 +2968,7 @@ class QuickTranslateApp:
             # StrOrigin Only: skips Dialog/Sequencer strings (complement safeguard)
             stringid_to_category = None
             stringid_to_subfolder = None
-            if match_type in ("stringid_only", "strorigin_only"):
+            if match_type in ("stringid_only", "strorigin_only") or (match_type == "strict" and non_script_only):
                 if not self._load_data_if_needed(need_sequencer=True):
                     return
                 stringid_to_category = self.stringid_to_category
@@ -2953,6 +3014,8 @@ class QuickTranslateApp:
             }
             if unique_only:
                 transfer_kwargs["unique_only"] = True
+            if non_script_only and match_type == "strict":
+                transfer_kwargs["strict_non_script_only"] = True
 
             # Pass threshold AND pre-built fuzzy data for fuzzy modes
             # CRITICAL: Without this, transfer functions rebuild from scratch!
@@ -3129,6 +3192,9 @@ class QuickTranslateApp:
             skipped_dup_strorigin = results.get("total_skipped_duplicate_strorigin", 0)
             if skipped_dup_strorigin > 0:
                 summary_lines.append(f"  Dup. StrOrigin:   {skipped_dup_strorigin:,}  (see duplicate report)")
+            skipped_script = results.get("total_skipped_script", 0)
+            if skipped_script > 0:
+                summary_lines.append(f"  Script Skipped:   {skipped_script:,}  (Non-Script filter)")
             summary_lines.append(f"\nTarget: {target}")
 
             self._task_queue.put(('messagebox', 'showinfo', 'Transfer Complete',

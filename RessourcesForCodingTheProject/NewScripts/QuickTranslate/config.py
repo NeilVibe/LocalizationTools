@@ -134,6 +134,7 @@ PRESUBMISSION_SETTINGS_FILE = SCRIPT_DIR / "presubmission_settings.json"
 
 _PRESUBMISSION_DEFAULTS = {
     "skip_staticinfo_knowledge": True,
+    "strict_non_script_only": False,
 }
 
 
