@@ -47,6 +47,7 @@ QuickTranslate/
 ├── docs/
 │   ├── USER_GUIDE.md          ← End-user documentation
 │   ├── DEV_GUIDE.md           ← This file
+│   ├── LINEBREAK_SAFEGUARDS.md ← <br/> pipeline: golden rules, 3-layer defense, all functions
 │   ├── PYINSTALLER_ML_BUNDLING.md ← Detailed PyInstaller + ML DLL investigation
 │   └── FAISS_IMPLEMENTATION.md
 └── archive/                   ← Deprecated/legacy code (excluded from builds)
@@ -209,3 +210,4 @@ The smoke test (`--smoke-test`) is the primary validation. It tests all 58 criti
 - All config in `config.py` (paths, matching modes, language lists)
 - Column detection is always case-insensitive via `_detect_column_indices()`
 - Korean text detection via Unicode range checks (`korean_detection.py`)
+- **Linebreak handling:** See `docs/LINEBREAK_SAFEGUARDS.md` for the complete `<br/>` pipeline (golden rules, boundary conversions, three-layer defense)
