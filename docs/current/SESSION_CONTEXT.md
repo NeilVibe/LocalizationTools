@@ -1,6 +1,35 @@
 # Session Context
 
-> Last Updated: 2026-02-01 (Session 61)
+> Last Updated: 2026-02-27
+
+---
+
+## 2026-02-27: ExtractAnything — Extract Tab Added (Build 5)
+
+### What Was Done
+
+Added a new **Extract** tab to ExtractAnything — a simple, general-purpose "extract all strings from this folder" tab.
+
+### The Tab
+
+- **Source folder picker** — browse to any folder with language XMLs/Excel
+- **Category filter** — All / SCRIPT only / NON-SCRIPT only (uses EXPORT index)
+- **Path filter** — reuses the global Path Filter from the bottom bar
+- **Output** — `EXTRACT_{LANG}.xlsx` + `EXTRACT_{LANG}.xml` per language
+
+EXPORT index is loaded best-effort: always tries to populate the Category column, but only blocks if category filtering is active.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `ExtractAnything/gui/extract_tab.py` | **NEW** — Extract tab (follows NoVoice pattern) |
+| `ExtractAnything/gui/app.py` | Register ExtractTab as first tab |
+
+### Build
+
+- GitHub Build 5: **SUCCESS** (2m10s)
+- Code reviewed (1 bug found + fixed before commit: category column empty without filter)
 
 ---
 
