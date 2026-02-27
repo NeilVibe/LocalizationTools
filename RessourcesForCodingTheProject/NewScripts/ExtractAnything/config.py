@@ -5,6 +5,8 @@ import logging
 import sys
 from pathlib import Path
 
+VERSION = "1.0.0"
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
