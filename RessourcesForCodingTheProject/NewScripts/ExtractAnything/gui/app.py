@@ -123,6 +123,7 @@ class ExtractAnythingApp:
         self._progress.pack(side=tk.RIGHT, padx=(8, 0))
 
     def _register_tabs(self) -> None:
+        from .extract_tab import ExtractTab
         from .diff_tab import DiffTab
         from .long_string_tab import LongStringTab
         from .novoice_tab import NoVoiceTab
@@ -131,6 +132,7 @@ class ExtractAnythingApp:
         from .file_eraser_tab import FileEraserTab
 
         self.tabs = [
+            ExtractTab(self.notebook, self),
             DiffTab(self.notebook, self),
             LongStringTab(self.notebook, self),
             NoVoiceTab(self.notebook, self),
