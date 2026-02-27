@@ -1,6 +1,41 @@
 # NewScripts Session Context
 
-> Last Updated: 2026-02-27
+> Last Updated: 2026-02-28
+
+---
+
+## 2026-02-28: QuickTranslate — Unbalanced Bracket Check (CRITICAL)
+
+Added stack-based `{`/`}` bracket validation to the pre-submission pattern checker.
+
+### What It Does
+
+- Checks every `Str` (translation) for unbalanced curly brackets
+- Catches: missing `}`, missing `{`, wrong nesting like `}text{`
+- Runs on **ALL entries** including staticinfo:knowledge (brackets are always critical)
+- Outputs separate `MissingBrackets_{LANG}.xml` for immediate focus on critical issues
+- Also included in the combined `pattern_errors_{LANG}.xml`
+
+### Output Structure
+
+```
+CheckResults/
+├── PatternErrors/pattern_errors_ENG.xml   (all issues)
+├── MissingBrackets/MissingBrackets_ENG.xml (critical only)
+└── ...
+```
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `QuickTranslate/core/checker.py` | `_has_unbalanced_brackets()` + 3-tuple return + separate output |
+| `QuickTranslate/gui/app.py` | Summary formatting + CRITICAL log lines + `_check_all` totals |
+
+### Build & Review
+
+- GitHub Build: **SUCCESS** (11m7s)
+- Code reviewed: 2 issues found + fixed (bracket check should bypass staticinfo skip; `_check_all` summary lumped brackets into pattern count)
 
 ---
 
@@ -73,6 +108,6 @@ All 39 items fixed (3A/3B/3C/3D). Centralized `STRINGID_ATTRS`/`STRORIGIN_ATTRS`
 |---------|-----|-------------|--------|
 | **ExtractAnything** | GitHub Actions | Build 5 | SUCCESS |
 | **QACompiler** | GitHub Actions | — | — |
-| **QuickTranslate** | GitHub Actions | — | — |
+| **QuickTranslate** | GitHub Actions | Bracket check | SUCCESS |
 | **QuickSearch** | GitHub Actions | — | — |
 | **LanguageDataExporter** | GitHub Actions | — | — |
