@@ -2563,22 +2563,30 @@ class QuickTranslateApp:
         return f"{check_name}: {total} issues in {len(langs_with_issues)} languages ({', '.join(parts)})"
 
     def _format_pattern_summary(self, summary: Dict[str, tuple]) -> str:
-        """Format pattern+newline check summary for log output.
+        """Format pattern+newline+bracket check summary for log output.
 
-        summary values are (pattern_count, newline_count) tuples.
+        summary values are (pattern_count, newline_count, bracket_count) tuples.
         Shows categorized breakdown so users know what was wrong.
         """
         pattern_total = sum(v[0] for v in summary.values())
         newline_total = sum(v[1] for v in summary.values())
-        total = pattern_total + newline_total
+        bracket_total = sum(v[2] for v in summary.values())
+        total = pattern_total + newline_total + bracket_total
 
         if total == 0:
             return f"Pattern Check: All clean across {len(summary)} languages"
 
         lines = []
         # Header line
-        n_langs = len([k for k, v in summary.items() if v[0] + v[1] > 0])
+        n_langs = len([k for k, v in summary.items() if sum(v) > 0])
         lines.append(f"Pattern Check: {total} issues in {n_langs} languages")
+
+        # CRITICAL: Unbalanced brackets (show first for visibility)
+        if bracket_total > 0:
+            b_langs = {k: v[2] for k, v in summary.items() if len(v) >= 3 and v[2] > 0}
+            b_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(b_langs.items())]
+            lines.append(f"  CRITICAL — Missing brackets: {bracket_total} ({', '.join(b_parts)})")
+            lines.append("  (Separate files in MissingBrackets/ folder)")
 
         # Pattern mismatches breakdown
         if pattern_total > 0:
@@ -2645,7 +2653,7 @@ class QuickTranslateApp:
         self._run_in_thread(work)
 
     def _check_patterns(self):
-        """Run pattern mismatch + newline check on Source folder."""
+        """Run pattern mismatch + newline + bracket check on Source folder."""
         source = self._get_source_for_checks()
         if not source:
             return
@@ -2674,13 +2682,16 @@ class QuickTranslateApp:
             result_msg = self._format_pattern_summary(summary)
             pattern_total = sum(v[0] for v in summary.values())
             newline_total = sum(v[1] for v in summary.values())
-            total = pattern_total + newline_total
+            bracket_total = sum(v[2] for v in summary.values())
+            total = pattern_total + newline_total + bracket_total
 
             self._log(result_msg, 'success' if total == 0 else 'warning')
 
             if total > 0:
                 self._log(f"Results written to: {output_folder / 'PatternErrors'}", 'info')
-                self._task_queue.put(('checks_status', f"Done: {total} issues ({pattern_total}P + {newline_total}N)"))
+                if bracket_total > 0:
+                    self._log(f"CRITICAL bracket issues: {output_folder / 'MissingBrackets'}", 'warning')
+                self._task_queue.put(('checks_status', f"Done: {total} issues ({pattern_total}P + {newline_total}N + {bracket_total}B)"))
             else:
                 self._task_queue.put(('checks_status', "Done: All clean"))
 
@@ -2772,8 +2783,11 @@ class QuickTranslateApp:
             if pattern_summary:
                 p_total = sum(v[0] for v in pattern_summary.values())
                 n_total = sum(v[1] for v in pattern_summary.values())
+                b_total = sum(v[2] for v in pattern_summary.values())
                 self._log(self._format_pattern_summary(pattern_summary),
-                          'success' if (p_total + n_total) == 0 else 'warning')
+                          'success' if (p_total + n_total + b_total) == 0 else 'warning')
+                if b_total > 0:
+                    self._log(f"CRITICAL bracket issues: {output_folder / 'MissingBrackets'}", 'warning')
 
             # Quality check
             self._task_queue.put(('checks_status', "Checking quality..."))
@@ -2795,16 +2809,21 @@ class QuickTranslateApp:
 
             # Final summary
             korean_total = sum(korean_summary.values()) if korean_summary else 0
-            pattern_total = (sum(v[0] for v in pattern_summary.values()) + sum(v[1] for v in pattern_summary.values())) if pattern_summary else 0
-            grand_total = korean_total + pattern_total + quality_total
+            check_total = 0
+            bracket_total_all = 0
+            if pattern_summary:
+                check_total = sum(v[0] + v[1] + v[2] for v in pattern_summary.values())
+                bracket_total_all = sum(v[2] for v in pattern_summary.values())
+            grand_total = korean_total + check_total + quality_total
 
             if grand_total == 0:
                 self._log("All checks passed!", 'success')
                 self._task_queue.put(('checks_status', "Done: All checks passed"))
             else:
-                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {pattern_total} pattern, {quality_total} quality)", 'warning')
+                bracket_note = f", {bracket_total_all} CRITICAL brackets" if bracket_total_all else ""
+                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {check_total} pattern/newline/bracket{bracket_note}, {quality_total} quality)", 'warning')
                 self._log(f"Results written to: {output_folder}", 'info')
-                self._task_queue.put(('checks_status', f"Done: {grand_total} issues ({korean_total}K + {pattern_total}P + {quality_total}Q)"))
+                self._task_queue.put(('checks_status', f"Done: {grand_total} issues ({korean_total}K + {check_total}P + {quality_total}Q)"))
 
             self._task_queue.put(('enable_results_btn',))
 

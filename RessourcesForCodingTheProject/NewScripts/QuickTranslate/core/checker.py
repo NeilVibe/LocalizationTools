@@ -104,6 +104,30 @@ def _has_wrong_newlines(text: str) -> bool:
     return False
 
 
+def _has_unbalanced_brackets(text: str) -> bool:
+    """
+    Check if curly brackets in Str are properly paired and nested.
+
+    Uses a stack approach: '{' pushes, '}' pops. Catches:
+    - Missing closing bracket: {code without }
+    - Missing opening bracket: } without {
+    - Wrong nesting: }text{
+
+    Only checks Str (translation) — StrOrigin is assumed correct.
+    """
+    if not text:
+        return False
+    depth = 0
+    for ch in text:
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth < 0:
+                return True  # closing without opening
+    return depth != 0  # unclosed opening brackets
+
+
 def _escape_attr_value(value: str) -> str:
     """Escape attribute value for XML output."""
     return (value
@@ -151,32 +175,43 @@ def check_korean_in_file(xml_path: Path) -> list:
 def check_patterns_in_file(
     xml_path: Path,
     skip_staticinfo_knowledge: bool = True,
-) -> Tuple[list, list]:
+) -> Tuple[list, list, list]:
     """
-    Scan one XML file for pattern code mismatches AND wrong newlines.
+    Scan one XML file for pattern code mismatches, wrong newlines, and
+    unbalanced brackets.
 
     Compares normalized {code} pattern sets. If they differ, it's a pattern error.
     Also checks for wrong newline representations (only <br/> is correct).
+    Also checks for unbalanced curly brackets in Str (missing { or }).
 
     Args:
         xml_path: Path to XML file
         skip_staticinfo_knowledge: If True, skip entries containing 'staticinfo:knowledge'
 
     Returns:
-        Tuple of (pattern_errors, newline_errors) — two lists of LocStr elements.
+        Tuple of (pattern_errors, newline_errors, bracket_errors) — three lists of LocStr elements.
     """
     pattern_errors = []
     newline_errors = []
+    bracket_errors = []
     try:
         root = parse_xml_file(xml_path)
         for elem in iter_locstr_elements(root):
+            str_text = _get_attr(elem, _STR_ATTRS).strip()
+            if not str_text:
+                continue
+
+            # Bracket check runs on ALL entries — unbalanced brackets are
+            # always critical, even in staticinfo:knowledge entries.
+            if _has_unbalanced_brackets(str_text):
+                bracket_errors.append(elem)
+
+            # Pattern and newline checks respect the staticinfo skip filter
             if should_skip_locstr(elem, skip_staticinfo_knowledge):
                 continue
 
             strorigin_text = _get_attr(elem, _STRORIGIN_ATTRS).strip()
-            str_text = _get_attr(elem, _STR_ATTRS).strip()
-
-            if not strorigin_text or not str_text:
+            if not strorigin_text:
                 continue
 
             # Pattern mismatch check
@@ -192,7 +227,7 @@ def check_patterns_in_file(
     except Exception as e:
         logger.warning(f"Failed to parse {xml_path.name}: {e}")
 
-    return pattern_errors, newline_errors
+    return pattern_errors, newline_errors, bracket_errors
 
 
 def iter_source_xml_files(source_folder: Path) -> Dict[str, List[Path]]:
@@ -297,13 +332,17 @@ def run_pattern_check(
     output_folder: Path,
     progress_callback: Optional[Callable[[str], None]] = None,
     skip_staticinfo_knowledge: bool = True,
-) -> Dict[str, Tuple[int, int]]:
+) -> Dict[str, Tuple[int, int, int]]:
     """
-    Run pattern mismatch + newline check on all languages in Source folder.
+    Run pattern mismatch + newline + bracket check on all languages in Source folder.
 
     Compares {code} patterns between StrOrigin and Str for each LocStr.
     Also detects wrong newline representations (only <br/> is correct).
-    Writes per-language result XMLs to output_folder/PatternErrors/.
+    Also detects unbalanced curly brackets in Str (critical errors).
+
+    Writes per-language result XMLs to:
+    - output_folder/PatternErrors/pattern_errors_{LANG}.xml  (all issues combined)
+    - output_folder/MissingBrackets/MissingBrackets_{LANG}.xml  (critical bracket issues only)
 
     Args:
         source_folder: Path to Source folder with language subfolders
@@ -312,7 +351,7 @@ def run_pattern_check(
         skip_staticinfo_knowledge: If True, skip entries containing 'staticinfo:knowledge'
 
     Returns:
-        Summary dict: {"FRE": (pattern_count, newline_count), ...}
+        Summary dict: {"FRE": (pattern_count, newline_count, bracket_count), ...}
     """
     xml_by_lang = iter_source_xml_files(source_folder)
     if not xml_by_lang:
@@ -322,6 +361,8 @@ def run_pattern_check(
 
     pattern_dir = output_folder / "PatternErrors"
     pattern_dir.mkdir(parents=True, exist_ok=True)
+    bracket_dir = output_folder / "MissingBrackets"
+    bracket_dir.mkdir(parents=True, exist_ok=True)
 
     languages = sorted(xml_by_lang.keys())
     summary = {}
@@ -333,17 +374,19 @@ def run_pattern_check(
 
         all_pattern_errors = []
         all_newline_errors = []
+        all_bracket_errors = []
         for xml_path in xml_files:
-            p_errors, n_errors = check_patterns_in_file(xml_path, skip_staticinfo_knowledge)
+            p_errors, n_errors, b_errors = check_patterns_in_file(xml_path, skip_staticinfo_knowledge)
             all_pattern_errors.extend(p_errors)
             all_newline_errors.extend(n_errors)
+            all_bracket_errors.extend(b_errors)
 
-        summary[lang] = (len(all_pattern_errors), len(all_newline_errors))
+        summary[lang] = (len(all_pattern_errors), len(all_newline_errors), len(all_bracket_errors))
 
-        # Combine both error lists for XML output (deduplicate by element identity)
+        # Combine all error lists for main XML output (deduplicate by element identity)
         seen = set()
         combined = []
-        for elem in all_pattern_errors + all_newline_errors:
+        for elem in all_pattern_errors + all_newline_errors + all_bracket_errors:
             eid = id(elem)
             if eid not in seen:
                 seen.add(eid)
@@ -352,9 +395,17 @@ def run_pattern_check(
         if combined:
             out_path = pattern_dir / f"pattern_errors_{lang}.xml"
             _write_results_xml(out_path, combined)
-            p_count, n_count = len(all_pattern_errors), len(all_newline_errors)
-            logger.info(f"Pattern check {lang}: {p_count} pattern + {n_count} newline errors in {len(xml_files)} files -> {out_path.name}")
+            p_count = len(all_pattern_errors)
+            n_count = len(all_newline_errors)
+            b_count = len(all_bracket_errors)
+            logger.info(f"Pattern check {lang}: {p_count} pattern + {n_count} newline + {b_count} bracket errors in {len(xml_files)} files -> {out_path.name}")
         else:
             logger.info(f"Pattern check {lang}: clean ({len(xml_files)} files)")
+
+        # Write separate critical bracket file
+        if all_bracket_errors:
+            bracket_path = bracket_dir / f"MissingBrackets_{lang}.xml"
+            _write_results_xml(bracket_path, all_bracket_errors)
+            logger.info(f"Bracket check {lang}: {len(all_bracket_errors)} CRITICAL entries -> {bracket_path.name}")
 
     return summary
