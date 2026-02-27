@@ -129,3 +129,4 @@ Build - fix CI import validation
 Build - per-language duplicate StrOrigin reports
 Build - fix misleading transfer report labels
 Build - Non-Script Only filter for Strict mode
+Build - Unbalanced bracket check (CRITICAL) in pattern checker
