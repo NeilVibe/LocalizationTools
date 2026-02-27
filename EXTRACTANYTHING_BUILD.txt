@@ -3,3 +3,4 @@ ExtractAnything Build Trigger
 Append "Build N: description" to trigger CI.
 Build 1: Initial ExtractAnything release
 Build 2: Fix module import paths — use package prefix for relative imports
+Build 3: Direct imports for folder-name portability
