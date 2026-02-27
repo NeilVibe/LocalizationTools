@@ -13,7 +13,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .. import config
+import config
 from . import xml_parser
 from .language_utils import (
     discover_valid_codes,

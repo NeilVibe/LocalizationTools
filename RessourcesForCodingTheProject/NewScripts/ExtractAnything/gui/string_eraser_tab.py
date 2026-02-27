@@ -5,9 +5,9 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-from .. import config
-from ..core import string_eraser_engine
-from ..core.validators import validate_source_keys_folder, validate_xml_source_folder
+import config
+from core import string_eraser_engine
+from core.validators import validate_source_keys_folder, validate_xml_source_folder
 from .base_tab import BaseTab
 
 logger = logging.getLogger(__name__)

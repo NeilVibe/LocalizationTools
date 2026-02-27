@@ -164,9 +164,7 @@ jobs:
           echo "║  CHECK 2: MODULE IMPORT VALIDATION                         ║"
           echo "║  (Catches missing imports before build)                     ║"
           echo "╚════════════════════════════════════════════════════════════╝"
-          # ExtractAnything uses relative imports (from .. import config),
-          # so we must import from the PARENT directory with package prefix.
-          cd ${{ env.PROJECT_PATH }}/..
+          cd ${{ env.PROJECT_PATH }}
 
           python << 'EOF'
           import sys
@@ -175,39 +173,39 @@ jobs:
 
           modules = [
               # Main entry
-              'ExtractAnything.config',
-              'ExtractAnything.main',
+              'config',
+              'main',
 
               # Core engines
-              'ExtractAnything.core',
-              'ExtractAnything.core.blacklist_engine',
-              'ExtractAnything.core.diff_engine',
-              'ExtractAnything.core.excel_reader',
-              'ExtractAnything.core.excel_writer',
-              'ExtractAnything.core.export_index',
-              'ExtractAnything.core.file_eraser_engine',
-              'ExtractAnything.core.input_parser',
-              'ExtractAnything.core.language_utils',
-              'ExtractAnything.core.long_string_engine',
-              'ExtractAnything.core.novoice_engine',
-              'ExtractAnything.core.path_filter',
-              'ExtractAnything.core.string_eraser_engine',
-              'ExtractAnything.core.text_utils',
-              'ExtractAnything.core.validators',
-              'ExtractAnything.core.xml_parser',
-              'ExtractAnything.core.xml_writer',
+              'core',
+              'core.blacklist_engine',
+              'core.diff_engine',
+              'core.excel_reader',
+              'core.excel_writer',
+              'core.export_index',
+              'core.file_eraser_engine',
+              'core.input_parser',
+              'core.language_utils',
+              'core.long_string_engine',
+              'core.novoice_engine',
+              'core.path_filter',
+              'core.string_eraser_engine',
+              'core.text_utils',
+              'core.validators',
+              'core.xml_parser',
+              'core.xml_writer',
 
               # GUI
-              'ExtractAnything.gui',
-              'ExtractAnything.gui.app',
-              'ExtractAnything.gui.base_tab',
-              'ExtractAnything.gui.blacklist_tab',
-              'ExtractAnything.gui.diff_tab',
-              'ExtractAnything.gui.file_eraser_tab',
-              'ExtractAnything.gui.long_string_tab',
-              'ExtractAnything.gui.novoice_tab',
-              'ExtractAnything.gui.path_filter_dialog',
-              'ExtractAnything.gui.string_eraser_tab',
+              'gui',
+              'gui.app',
+              'gui.base_tab',
+              'gui.blacklist_tab',
+              'gui.diff_tab',
+              'gui.file_eraser_tab',
+              'gui.long_string_tab',
+              'gui.novoice_tab',
+              'gui.path_filter_dialog',
+              'gui.string_eraser_tab',
           ]
 
           errors = []
@@ -324,8 +322,7 @@ jobs:
       - name: Windows Import Validation
         shell: pwsh
         run: |
-          # Import from parent dir — ExtractAnything uses relative imports
-          cd ${{ env.PROJECT_PATH }}/..
+          cd ${{ env.PROJECT_PATH }}
           Write-Host "=== WINDOWS IMPORT VALIDATION ==="
           Write-Host "Final check before PyInstaller..."
 
@@ -335,16 +332,16 @@ jobs:
           sys.path.insert(0, '.')
 
           modules = [
-              'ExtractAnything.config',
-              'ExtractAnything.main',
-              'ExtractAnything.gui.app',
-              'ExtractAnything.core.diff_engine',
-              'ExtractAnything.core.excel_reader',
-              'ExtractAnything.core.excel_writer',
-              'ExtractAnything.core.input_parser',
-              'ExtractAnything.core.validators',
-              'ExtractAnything.core.xml_parser',
-              'ExtractAnything.core.xml_writer',
+              'config',
+              'main',
+              'gui.app',
+              'core.diff_engine',
+              'core.excel_reader',
+              'core.excel_writer',
+              'core.input_parser',
+              'core.validators',
+              'core.xml_parser',
+              'core.xml_writer',
           ]
 
           errors = []

@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 
-from .. import config
+import config
 from . import input_parser
 
 logger = logging.getLogger(__name__)

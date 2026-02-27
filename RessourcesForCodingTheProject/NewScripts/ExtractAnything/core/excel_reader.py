@@ -5,7 +5,7 @@ from pathlib import Path
 
 import openpyxl
 
-from .. import config
+import config
 from .text_utils import convert_linebreaks_for_xml
 
 logger = logging.getLogger(__name__)

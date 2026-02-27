@@ -6,16 +6,16 @@ from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-from .. import config
-from ..core import diff_engine, input_parser
-from ..core.excel_writer import write_extraction_excel
-from ..core.validators import (
+import config
+from core import diff_engine, input_parser
+from core.excel_writer import write_extraction_excel
+from core.validators import (
     validate_diff_excel_columns,
     validate_diff_folder_excel_columns,
     validate_diff_file,
     validate_xml_source_folder,
 )
-from ..core.xml_writer import write_locstr_xml
+from core.xml_writer import write_locstr_xml
 from .base_tab import BaseTab
 
 logger = logging.getLogger(__name__)

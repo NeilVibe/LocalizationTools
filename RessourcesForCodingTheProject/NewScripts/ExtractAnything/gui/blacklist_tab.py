@@ -6,17 +6,17 @@ from datetime import datetime
 from pathlib import Path
 from tkinter import ttk
 
-from .. import config
-from ..core import blacklist_engine
-from ..core.excel_reader import read_blacklist_from_excel
-from ..core.excel_writer import write_blacklist_excel
-from ..core.language_utils import discover_valid_codes
-from ..core.validators import (
+import config
+from core import blacklist_engine
+from core.excel_reader import read_blacklist_from_excel
+from core.excel_writer import write_blacklist_excel
+from core.language_utils import discover_valid_codes
+from core.validators import (
     validate_blacklist_excel,
     validate_blacklist_folder,
     validate_xml_source_folder,
 )
-from ..core.xml_writer import write_locstr_xml
+from core.xml_writer import write_locstr_xml
 from .base_tab import BaseTab
 
 logger = logging.getLogger(__name__)

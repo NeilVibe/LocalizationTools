@@ -59,7 +59,7 @@ def erase_files(
     # Create backup directory
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     if backup_dir is None:
-        from .. import config
+        import config
         backup_dir = config.SCRIPT_DIR / f"Erased_Files_{ts}"
     backup_dir.mkdir(parents=True, exist_ok=True)
 

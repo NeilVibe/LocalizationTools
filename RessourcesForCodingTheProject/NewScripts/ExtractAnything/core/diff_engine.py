@@ -5,7 +5,7 @@ import shutil
 from collections import OrderedDict
 from pathlib import Path
 
-from .. import config
+import config
 from . import xml_parser, input_parser
 from .xml_writer import write_locstr_xml
 

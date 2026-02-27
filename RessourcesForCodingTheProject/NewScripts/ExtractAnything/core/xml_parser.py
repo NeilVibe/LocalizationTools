@@ -16,7 +16,7 @@ except ImportError:
 
     USING_LXML = False
 
-from .. import config
+import config
 
 logger = logging.getLogger(__name__)
 

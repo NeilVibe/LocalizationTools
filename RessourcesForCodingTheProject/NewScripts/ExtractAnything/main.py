@@ -9,15 +9,16 @@ import tkinter as tk
 from tkinter import messagebox
 from pathlib import Path
 
-# Ensure package imports work when run as ``python main.py``
+# Add this directory to sys.path so direct imports (import config,
+# from core.xxx import ...) work regardless of what the folder is named.
 _HERE = Path(__file__).resolve().parent
-if str(_HERE.parent) not in sys.path:
-    sys.path.insert(0, str(_HERE.parent))
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
 
 
 def _setup_logging() -> None:
     """Configure root logger → file + console."""
-    from ExtractAnything.config import SCRIPT_DIR
+    from config import SCRIPT_DIR
 
     log_file = SCRIPT_DIR / "extractanything.log"
     fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
@@ -37,7 +38,7 @@ def main() -> None:
     logger = logging.getLogger(__name__)
     logger.info("ExtractAnything starting …")
 
-    from ExtractAnything.config import init_settings
+    from config import init_settings
     init_settings()
 
     root = tk.Tk()
@@ -55,7 +56,7 @@ def main() -> None:
 
     sys.excepthook = _on_error
 
-    from ExtractAnything.gui import ExtractAnythingApp
+    from gui import ExtractAnythingApp
     ExtractAnythingApp(root)
 
     logger.info("GUI ready — entering mainloop")

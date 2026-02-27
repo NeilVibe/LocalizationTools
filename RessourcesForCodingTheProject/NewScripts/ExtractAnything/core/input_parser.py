@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 
-from .. import config
+import config
 from . import xml_parser, language_utils
 from .text_utils import normalize_newlines
 

@@ -4,7 +4,7 @@ import logging
 import shutil
 from pathlib import Path
 
-from .. import config
+import config
 from . import xml_parser
 from .text_utils import normalize_text, normalize_nospace
 

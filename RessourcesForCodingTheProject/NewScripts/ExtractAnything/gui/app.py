@@ -7,11 +7,11 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, scrolledtext, ttk
 
-from .. import config
-from ..core.export_index import ExportIndex, build_export_index
-from ..core.language_utils import invalidate_code_cache
-from ..core.path_filter import precompute_path_filter, filter_entries_by_path as _filter_by_path
-from ..core.validators import validate_loc_folder, validate_export_folder
+import config
+from core.export_index import ExportIndex, build_export_index
+from core.language_utils import invalidate_code_cache
+from core.path_filter import precompute_path_filter, filter_entries_by_path as _filter_by_path
+from core.validators import validate_loc_folder, validate_export_folder
 
 logger = logging.getLogger(__name__)
 

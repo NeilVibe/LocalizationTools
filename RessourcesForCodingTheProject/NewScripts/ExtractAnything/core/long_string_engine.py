@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 
-from .. import config
+import config
 from . import xml_parser, input_parser
 from .text_utils import visible_char_count
 
