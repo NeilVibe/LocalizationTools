@@ -98,9 +98,13 @@ def _diff_full(source_entries: list[dict], target_entries: list[dict]) -> list[d
                 # Excel entry on one or both sides — no XML attributes to
                 # compare, so fall back to content-level comparison.
                 # Defense-in-depth: skip if both content fields are empty
-                # (indicates missing columns — should have been blocked).
+                # on either side (indicates missing columns — should have
+                # been blocked by GUI validation).
                 if not e["str_origin"] and not e["str_value"]:
-                    logger.warning("Skipping entry %s: both str_origin and str_value empty", e["string_id"])
+                    logger.warning("Skipping entry %s: target str_origin and str_value both empty", e["string_id"])
+                    continue
+                if not src_e["str_origin"] and not src_e["str_value"]:
+                    logger.warning("Skipping entry %s: source str_origin and str_value both empty", e["string_id"])
                     continue
                 if (e["str_origin"].lower() != src_e["str_origin"].lower()
                         or e["str_value"].lower() != src_e["str_value"].lower()):
@@ -318,9 +322,13 @@ def _compute_revert_changes(
 
             if not tgt_attribs or not src_attribs:
                 # Excel fallback: compare content fields.
-                # Defense-in-depth: skip if both content fields are empty.
+                # Defense-in-depth: skip if both content fields are empty
+                # on either side.
                 if not e.get("str_origin") and not e.get("str_value"):
-                    logger.warning("Skipping revert entry %s: both str_origin and str_value empty", sid_lower)
+                    logger.warning("Skipping revert entry %s: after str_origin and str_value both empty", sid_lower)
+                    continue
+                if not be.get("str_origin") and not be.get("str_value"):
+                    logger.warning("Skipping revert entry %s: before str_origin and str_value both empty", sid_lower)
                     continue
                 if (e.get("str_origin", "").lower() != be.get("str_origin", "").lower()
                         or e.get("str_value", "").lower() != be.get("str_value", "").lower()):
