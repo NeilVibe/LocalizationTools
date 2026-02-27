@@ -1,5 +1,7 @@
 """ExtractAnything core – shared parsing, I/O, and engine modules."""
 
+from __future__ import annotations
+
 from .xml_parser import (
     sanitize_xml,
     read_xml_raw,

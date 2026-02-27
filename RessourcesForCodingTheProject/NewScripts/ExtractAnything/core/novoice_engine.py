@@ -1,5 +1,7 @@
 """No-Voice engine – extract SCRIPT LocStr entries without SoundEventName."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 

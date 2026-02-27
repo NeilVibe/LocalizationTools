@@ -1,5 +1,7 @@
 """Diff tab – file diff, folder diff, and revert modes."""
 
+from __future__ import annotations
+
 import logging
 import tkinter as tk
 from datetime import datetime

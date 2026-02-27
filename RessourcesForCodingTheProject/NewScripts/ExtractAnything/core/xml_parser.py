@@ -1,5 +1,7 @@
 """Centralised XML sanitisation, parsing, attribute helpers, and write-back."""
 
+from __future__ import annotations
+
 import logging
 import os
 import re

@@ -1,5 +1,7 @@
 """Unified input parsing – XML or Excel → common entry format."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 

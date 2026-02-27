@@ -1,5 +1,7 @@
 """Unified EXPORT index – category, subfolder, and voiced SIDs in one pass."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 

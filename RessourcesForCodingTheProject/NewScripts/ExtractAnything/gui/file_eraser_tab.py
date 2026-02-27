@@ -1,5 +1,7 @@
 """File Eraser tab – move files whose stem matches source stems to backup."""
 
+from __future__ import annotations
+
 import logging
 import tkinter as tk
 from pathlib import Path

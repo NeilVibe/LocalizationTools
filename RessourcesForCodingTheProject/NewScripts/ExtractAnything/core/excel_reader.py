@@ -1,5 +1,7 @@
 """Read Excel files – entry extraction, blacklist loading, erase-key loading."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 

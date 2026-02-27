@@ -4,6 +4,8 @@ Provides suffix-based language detection (like QuickTranslate's source_scanner)
 with a cached valid-codes set auto-discovered from the LOC folder.
 """
 
+from __future__ import annotations
+
 import logging
 import re
 from pathlib import Path

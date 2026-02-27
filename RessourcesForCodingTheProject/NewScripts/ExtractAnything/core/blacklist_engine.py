@@ -1,5 +1,7 @@
 """Blacklist engine – find LocStr entries containing blacklisted terms."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 

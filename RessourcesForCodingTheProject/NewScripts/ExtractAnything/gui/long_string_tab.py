@@ -1,5 +1,7 @@
 """Long String extraction tab."""
 
+from __future__ import annotations
+
 import logging
 import tkinter as tk
 from datetime import datetime

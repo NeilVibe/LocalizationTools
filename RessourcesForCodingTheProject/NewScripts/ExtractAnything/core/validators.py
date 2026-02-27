@@ -9,6 +9,8 @@ adapted to ExtractAnything's multi-tab design where each operation
 accepts different input shapes.
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path

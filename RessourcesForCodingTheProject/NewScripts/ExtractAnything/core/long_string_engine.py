@@ -1,5 +1,7 @@
 """Long String engine – extract LocStr entries above a visible-character threshold."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 

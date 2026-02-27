@@ -7,6 +7,8 @@ and select folders/files.  Supports both INCLUDE and EXCLUDE modes.
 Adapted from QuickTranslate's ExcludeDialog.
 """
 
+from __future__ import annotations
+
 import logging
 import tkinter as tk
 from pathlib import Path

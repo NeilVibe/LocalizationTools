@@ -1,5 +1,7 @@
 """Diff engine – compare XML/Excel sources, category filtering, folder diff, revert."""
 
+from __future__ import annotations
+
 import logging
 import shutil
 from collections import OrderedDict

@@ -12,9 +12,7 @@ a = Analysis(
     ['main.py'],
     pathex=[spec_dir],
     binaries=[],
-    datas=[
-        ('config.py', '.'),
-    ],
+    datas=[],
     hiddenimports=[
         'openpyxl',
         'xlsxwriter',

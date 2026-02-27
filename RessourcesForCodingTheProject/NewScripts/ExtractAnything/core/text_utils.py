@@ -1,5 +1,7 @@
 """Text normalisation, visible character counting, and newline handling."""
 
+from __future__ import annotations
+
 import html
 import re
 

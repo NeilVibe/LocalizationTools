@@ -1,5 +1,7 @@
 """String Eraser tab – remove LocStr nodes from XML by key match."""
 
+from __future__ import annotations
+
 import logging
 import tkinter as tk
 from pathlib import Path

@@ -1,5 +1,7 @@
 """String Eraser engine – remove LocStr nodes from XML by StringID+StrOrigin match."""
 
+from __future__ import annotations
+
 import logging
 import shutil
 from pathlib import Path

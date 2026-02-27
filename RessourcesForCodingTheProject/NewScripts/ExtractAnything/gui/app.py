@@ -1,5 +1,7 @@
 """Main application window – PanedWindow, Notebook, shared log, settings bar."""
 
+from __future__ import annotations
+
 import logging
 import queue
 import threading
@@ -21,11 +23,9 @@ _POLL_MS = 50
 class ExtractAnythingApp:
     """Top-level application managing tabs, log, and shared state."""
 
-    VERSION = "1.0"
-
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title(f"ExtractAnything v{self.VERSION}")
+        self.root.title(f"ExtractAnything v{config.VERSION}")
         self.root.geometry("1100x700")
         self.root.minsize(900, 550)
 

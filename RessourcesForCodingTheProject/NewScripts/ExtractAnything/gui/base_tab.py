@@ -1,5 +1,7 @@
 """Abstract base class for all ExtractAnything tabs."""
 
+from __future__ import annotations
+
 import logging
 import tkinter as tk
 from abc import ABC, abstractmethod

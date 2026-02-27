@@ -3,6 +3,8 @@
 Entry point: logging setup, crash handling, GUI launch.
 """
 
+from __future__ import annotations
+
 import logging
 import sys
 import tkinter as tk
