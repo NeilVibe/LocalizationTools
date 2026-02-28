@@ -110,7 +110,7 @@ from core import (
     format_report_summary,
 )
 from core.missing_translation_finder import find_missing_with_options
-from core.checker import run_korean_check, run_pattern_check
+from core.checker import run_korean_check, run_pattern_check, check_broken_xml_in_file
 from core.quality_checker import run_quality_check
 from gui.missing_params_dialog import MissingParamsDialog
 from gui.exclude_dialog import ExcludeDialog
@@ -1051,6 +1051,13 @@ class QuickTranslateApp:
                         # Lightweight: just parse + count LocStr elements
                         root = parse_xml_file(filepath)
                         count = sum(1 for _ in iter_locstr_elements(root))
+
+                        # Check for broken XML nodes (raw-text detection)
+                        broken = check_broken_xml_in_file(filepath)
+                        if broken:
+                            self._log(f"WARNING: {filepath.name} has {len(broken)} broken LocStr node(s)!", 'warning')
+                            for sid, _fragment, _fname in broken:
+                                self._log(f"  Broken LocStr: StringID={sid}", 'error')
                     elif suffix in (".xlsx", ".xls"):
                         entries = read_corrections_from_excel(filepath)
                         count = len(entries) if entries else 0
