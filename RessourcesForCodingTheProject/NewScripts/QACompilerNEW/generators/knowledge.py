@@ -31,6 +31,7 @@ from generators.base import (
     iter_xml_files,
     load_language_tables,
     normalize_placeholders,
+    br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
     get_first_translation,
@@ -493,11 +494,11 @@ def write_workbook(
                     other_tr, sid_other = get_first_translation(lang_tbl, text)
 
             # Write core columns
-            c_orig = ws.cell(r_idx, 1, text)
-            c_eng = ws.cell(r_idx, 2, eng_tr)
+            c_orig = ws.cell(r_idx, 1, br_to_newline(text))
+            c_eng = ws.cell(r_idx, 2, br_to_newline(eng_tr))
             c_other = None
             if not is_eng:
-                c_other = ws.cell(r_idx, 3, other_tr)
+                c_other = ws.cell(r_idx, 3, br_to_newline(other_tr))
 
             # Extra columns
             col_off = 2 if is_eng else 3

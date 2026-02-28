@@ -716,7 +716,7 @@ def emit_rows_to_worksheet(
         col = 1
 
         # Original (KR)
-        cell = ws.cell(row=current_row, column=col, value=item.text)
+        cell = ws.cell(row=current_row, column=col, value=br_to_newline(item.text))
         cell.fill = get_depth_fill(item.depth)
         cell.font = get_depth_font(item.depth)
         cell.alignment = Alignment(wrap_text=True, vertical="top")
@@ -725,14 +725,14 @@ def emit_rows_to_worksheet(
 
         # English (ENG) - for now use translation if lang_code is eng
         eng_text = translation if lang_code == "eng" else ""
-        cell = ws.cell(row=current_row, column=col, value=eng_text)
+        cell = ws.cell(row=current_row, column=col, value=br_to_newline(eng_text))
         cell.alignment = Alignment(wrap_text=True, vertical="top")
         cell.border = THIN_BORDER
         col += 1
 
         # Translation (LOC) - skip for ENG workbook
         if include_translation_col:
-            cell = ws.cell(row=current_row, column=col, value=translation if lang_code != "eng" else "")
+            cell = ws.cell(row=current_row, column=col, value=br_to_newline(translation) if lang_code != "eng" else "")
             cell.alignment = Alignment(wrap_text=True, vertical="top")
             cell.border = THIN_BORDER
             col += 1

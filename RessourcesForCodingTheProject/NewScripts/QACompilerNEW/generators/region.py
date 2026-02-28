@@ -36,6 +36,7 @@ from generators.base import (
     load_language_tables,
     normalize_placeholders,
     is_good_translation,
+    br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
     get_first_translation,
@@ -695,14 +696,14 @@ def write_sheet_content(
                 trans_other, sid_other = get_first_translation(lang_tbl, text)
 
         # Original
-        c_orig = sheet.cell(r_idx, 1, text)
+        c_orig = sheet.cell(r_idx, 1, br_to_newline(text))
         c_orig.fill = fill
         c_orig.font = font
         c_orig.alignment = Alignment(indent=depth, wrap_text=True, vertical="center")
         c_orig.border = THIN_BORDER
 
         # English
-        c_eng = sheet.cell(r_idx, 2, trans_eng)
+        c_eng = sheet.cell(r_idx, 2, br_to_newline(trans_eng))
         c_eng.fill = fill
         c_eng.font = font
         c_eng.alignment = Alignment(indent=depth, wrap_text=True, vertical="center")
@@ -711,7 +712,7 @@ def write_sheet_content(
         # Target language
         col_offset = 2
         if not is_eng:
-            c_other = sheet.cell(r_idx, 3, trans_other)
+            c_other = sheet.cell(r_idx, 3, br_to_newline(trans_other))
             c_other.fill = fill
             c_other.font = font
             c_other.alignment = Alignment(indent=depth, wrap_text=True, vertical="center")

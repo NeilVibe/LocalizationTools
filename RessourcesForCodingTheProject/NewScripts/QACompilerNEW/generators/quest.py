@@ -49,6 +49,7 @@ from generators.base import (
     iter_xml_files,
     load_language_tables,
     normalize_placeholders,
+    br_to_newline,
     THIN_BORDER,
     autofit_worksheet,
     get_first_translation,
@@ -1477,9 +1478,9 @@ def write_sheet(
     r = 2
     for (depth, orig, eng, loc, sk, sid, icon, bold, cmd, status, comment, shot) in rows:
         if is_eng:
-            vals = (orig, eng, sk, cmd, status, comment, sid, shot)
+            vals = (br_to_newline(orig), br_to_newline(eng), sk, cmd, status, comment, sid, shot)
         else:
-            vals = (orig, eng, loc, sk, cmd, status, comment, sid, shot)
+            vals = (br_to_newline(orig), br_to_newline(eng), br_to_newline(loc), sk, cmd, status, comment, sid, shot)
 
         fg = _icon_fill if icon else _depth_fill.get(depth, _light_yellow)
 

@@ -31,6 +31,7 @@ from generators.base import (
     load_language_tables,
     normalize_placeholders,
     is_good_translation,
+    br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
     resolve_translation,
@@ -737,7 +738,7 @@ def write_newitem_excel(
                 def _write_row(data_type: str, kor_text: str, trans: str, sid: str) -> None:
                     """Write a single data row using pre-resolved translation."""
                     nonlocal excel_row
-                    vals = [data_type, fn, kor_text, trans, "", "", "", sid]
+                    vals = [data_type, fn, br_to_newline(kor_text), br_to_newline(trans), "", "", "", sid]
                     for ci, val in enumerate(vals, 1):
                         cell = ws.cell(excel_row, ci, val)
                         cell.fill = current_fill

@@ -31,6 +31,7 @@ from generators.base import (
     load_language_tables,
     normalize_placeholders,
     is_good_translation,
+    br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
     resolve_translation,
@@ -714,13 +715,13 @@ def write_primary_sheet(
             dkor, deng, dloc, sid, is_group
         ) = row
 
-        vals = [depth, gk, gkor, geng]
-        vals += [ik, num, nkor, neng]
+        vals = [depth, gk, br_to_newline(gkor), br_to_newline(geng)]
+        vals += [ik, num, br_to_newline(nkor), br_to_newline(neng)]
         if lang_code != "eng":
-            vals.append(nloc)
-        vals += [dkor, deng]
+            vals.append(br_to_newline(nloc))
+        vals += [br_to_newline(dkor), br_to_newline(deng)]
         if lang_code != "eng":
-            vals.append(dloc)
+            vals.append(br_to_newline(dloc))
         vals += [sid, f"/create item {ik}" if not is_group else ""]
         vals += ["", "", sid, ""]
 
@@ -949,10 +950,10 @@ def write_secondary_excel(
                 data_map = {
                     "Filename": fn,
                     "SubGroup": sub_disp,
-                    "ItemName(KOR)": itm.item_name,
-                    "ItemDesc(KOR)": itm.item_desc,
-                    "ItemName(ENG)": iname_eng,
-                    "ItemDesc(ENG)": idesc_eng,
+                    "ItemName(KOR)": br_to_newline(itm.item_name),
+                    "ItemDesc(KOR)": br_to_newline(itm.item_desc),
+                    "ItemName(ENG)": br_to_newline(iname_eng),
+                    "ItemDesc(ENG)": br_to_newline(idesc_eng),
                     "ItemKey": ik,
                     "STATUS": "",
                     "COMMENT": "",
@@ -960,8 +961,8 @@ def write_secondary_excel(
                     "SCREENSHOT": "",
                 }
                 if lang_code != "eng":
-                    data_map[f"ItemName({code})"] = iname_loc
-                    data_map[f"ItemDesc({code})"] = idesc_loc
+                    data_map[f"ItemName({code})"] = br_to_newline(iname_loc)
+                    data_map[f"ItemDesc({code})"] = br_to_newline(idesc_loc)
 
                 row_vals = [data_map.get(h, "") for h in headers]
                 rows_accum.append((sub_disp, ik, row_vals))

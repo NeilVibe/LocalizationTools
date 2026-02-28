@@ -34,6 +34,7 @@ from generators.base import (
     iter_xml_files,
     load_language_tables,
     normalize_placeholders,
+    br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
     resolve_translation,
@@ -277,20 +278,20 @@ def write_workbook(
             command = f"/create character {char.strkey}"
 
             col = 1
-            c_orig = sheet.cell(r_idx, col, char.name)
+            c_orig = sheet.cell(r_idx, col, br_to_newline(char.name))
             c_orig.fill = fill
             c_orig.border = THIN_BORDER
             c_orig.alignment = Alignment(vertical="center", wrap_text=True)
             col += 1
 
-            c_eng = sheet.cell(r_idx, col, trans_eng)
+            c_eng = sheet.cell(r_idx, col, br_to_newline(trans_eng))
             c_eng.fill = fill
             c_eng.border = THIN_BORDER
             c_eng.alignment = Alignment(vertical="center", wrap_text=True)
             col += 1
 
             if not is_eng:
-                c_other = sheet.cell(r_idx, col, trans_other)
+                c_other = sheet.cell(r_idx, col, br_to_newline(trans_other))
                 c_other.fill = fill
                 c_other.border = THIN_BORDER
                 c_other.alignment = Alignment(vertical="center", wrap_text=True)

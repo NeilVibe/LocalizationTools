@@ -28,6 +28,7 @@ from generators.base import (
     iter_xml_files,
     load_language_tables,
     normalize_placeholders,
+    br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
     resolve_translation,
@@ -566,7 +567,7 @@ def write_cluster_excel(
             dedup_key = (crow.kor_text, sid)
             global_seen.add(dedup_key)
 
-            vals = [crow.data_type, crow.kor_text, trans, "", "", "", sid]
+            vals = [crow.data_type, br_to_newline(crow.kor_text), br_to_newline(trans), "", "", "", sid]
             for ci, val in enumerate(vals, 1):
                 cell = ws.cell(excel_row, ci, val)
                 cell.fill = current_fill

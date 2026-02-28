@@ -31,6 +31,7 @@ from generators.base import (
     load_language_tables,
     normalize_placeholders,
     is_good_translation,
+    br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
     resolve_translation,
@@ -380,7 +381,7 @@ def write_dropitem_sheet(
 
         if entry.group_name_kor and entry.group_name_kor != last_group:
             group_loc = translate(tbl, entry.group_name_kor, src, export_index, consumer=consumer)
-            row = [0, "Group", entry.group_name_kor, group_loc, "", "", "", "", "", "", "", "", "", "", ""]
+            row = [0, "Group", br_to_newline(entry.group_name_kor), br_to_newline(group_loc), "", "", "", "", "", "", "", "", "", "", ""]
             rows_data.append((row, 0, "Group"))
             last_group = entry.group_name_kor
             last_gimmick = None
@@ -389,8 +390,8 @@ def write_dropitem_sheet(
             gim_loc = translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=consumer)
             # Cache group_loc from the Group row above (already consumed); use consumer=None for display-only repeat
             cached_group_loc = translate(tbl, entry.group_name_kor, src, export_index, consumer=None)
-            row = [1, "Gimmick", entry.group_name_kor, cached_group_loc,
-                   entry.gimmick_strkey, entry.gimmick_name_kor, gim_loc, "", "", "", "", "", "", "", ""]
+            row = [1, "Gimmick", br_to_newline(entry.group_name_kor), br_to_newline(cached_group_loc),
+                   entry.gimmick_strkey, br_to_newline(entry.gimmick_name_kor), br_to_newline(gim_loc), "", "", "", "", "", "", "", ""]
             rows_data.append((row, 1, "Gimmick"))
             last_gimmick = entry.gimmick_strkey
 
@@ -405,9 +406,9 @@ def write_dropitem_sheet(
                 sid = get_string_id(eng_tbl, item_kor, src, export_index, consumer=None)
 
             # Use consumer=None for repeated group/gimmick translations (already consumed above)
-            row = [2, "Item", entry.group_name_kor, translate(tbl, entry.group_name_kor, src, export_index, consumer=None),
-                   entry.gimmick_strkey, entry.gimmick_name_kor, translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=None),
-                   item_key, item_kor, item_loc, item_desc_kor, desc_loc, cmd, sid, ""]
+            row = [2, "Item", br_to_newline(entry.group_name_kor), br_to_newline(translate(tbl, entry.group_name_kor, src, export_index, consumer=None)),
+                   entry.gimmick_strkey, br_to_newline(entry.gimmick_name_kor), br_to_newline(translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=None)),
+                   item_key, br_to_newline(item_kor), br_to_newline(item_loc), br_to_newline(item_desc_kor), br_to_newline(desc_loc), cmd, sid, ""]
             rows_data.append((row, 2, "Item"))
 
     # Write rows
@@ -571,12 +572,12 @@ def write_flat_sheet(
                 sid = get_string_id(eng_tbl, item_kor, src, export_index, consumer=None)
 
             row = [
-                entry.group_name_kor, group_loc,
+                br_to_newline(entry.group_name_kor), br_to_newline(group_loc),
                 entry.gimmick_strkey,
-                entry.gimmick_name_kor, gim_loc,
+                br_to_newline(entry.gimmick_name_kor), br_to_newline(gim_loc),
                 item_key,
-                item_kor, item_loc,
-                item_desc_kor, desc_loc,
+                br_to_newline(item_kor), br_to_newline(item_loc),
+                br_to_newline(item_desc_kor), br_to_newline(desc_loc),
                 cmd, sid
             ]
             rows_data.append(row)
