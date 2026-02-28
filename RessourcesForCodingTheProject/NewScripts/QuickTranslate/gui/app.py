@@ -987,6 +987,19 @@ class QuickTranslateApp:
 
         logger.info("%s\n", separator)
 
+        # Broken XML detection for TARGET xml files
+        if role == "TARGET" and xml_files:
+            total_broken = 0
+            for xf in xml_files:
+                broken = check_broken_xml_in_file(xf)
+                if broken:
+                    total_broken += len(broken)
+                    self._log(f"WARNING: {xf.name} has {len(broken)} broken LocStr node(s)!", 'warning')
+                    for sid, _fragment, _fname in broken:
+                        self._log(f"  Broken LocStr: StringID={sid}", 'error')
+            if total_broken:
+                logger.warning("TARGET broken XML: %d broken LocStr nodes found", total_broken)
+
         # Log to GUI
         if is_eligible:
             self._log(f"{role}: ELIGIBLE for TRANSFER + Find Missing Translations", 'success')
