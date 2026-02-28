@@ -44,7 +44,7 @@ from generators.base import (
     StringIdConsumer,
     add_status_dropdown,
 )
-from generators.newitem import _find_knowledge_key, load_knowledge_data
+from generators.newitem import load_knowledge_data
 
 log = get_logger("NewSkillGenerator")
 
@@ -331,7 +331,7 @@ def parse_skill_trees(tree_file: Path) -> List[SkillTreeEntry]:
 
 
 # =============================================================================
-# EXCEL WRITER (2-tab format)
+# EXCEL WRITER (3-tab format: SkillGroup, SkillTree, SkillPC)
 # =============================================================================
 
 _header_font = Font(bold=True, color="FFFFFF")
