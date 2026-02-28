@@ -126,3 +126,4 @@ Build - unified StringID + COMMAND column + help crash fix
 Build - StringID order fix: pre-resolve before sorting in 4 generators
 Build: NewSkill generator (SkillGroup + SkillTree tabs)
 Build: Fix NewSkill StrKey lookup + SkillTreeInfo path
+Build - Add SkillPC tab (3rd tab): flat list of all skills with LearnKnowledgeKey

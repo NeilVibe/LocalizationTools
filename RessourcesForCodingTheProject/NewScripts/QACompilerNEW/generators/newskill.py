@@ -1,9 +1,10 @@
 """
 NEW Skill Datasheet Generator
 ===============================
-Row-per-text skill datasheet with two comparison tabs:
+Row-per-text skill datasheet with three comparison tabs:
   Tab 1: SkillGroup (from skillgroupinfo.staticinfo.xml)
   Tab 2: SkillTree (from SkillTreeInfo.staticinfo.xml)
+  Tab 3: SkillPC (flat list of ALL skills with LearnKnowledgeKey)
 
 Each skill produces up to 6 rows:
   1. SkillData   — SkillName
@@ -14,10 +15,11 @@ Each skill produces up to 6 rows:
   6. KnowledgeData2 — Desc  (Pass 2)
 
 Key features:
-- Two data sources for grouping: SkillGroupInfo and SkillTreeInfo
+- Three data sources: SkillGroupInfo, SkillTreeInfo, and flat SkillPC list
 - Reuses knowledge loading from newitem.py
 - Gold header rows for groups/trees
 - Alternating fill per skill, depth-based coloring for SkillTree tab
+- SkillPC tab: complete list of skills with LearnKnowledgeKey (catches skills missing from groups/trees)
 """
 
 from dataclasses import dataclass, field
@@ -419,7 +421,7 @@ def write_newskill_excel(
     export_index: Dict[str, Set[str]],
     output_path: Path,
 ) -> None:
-    """Write NewSkill Excel with 2 tabs: SkillGroup and SkillTree.
+    """Write NewSkill Excel with 3 tabs: SkillGroup, SkillTree, and SkillPC.
 
     8 columns: DataType | GroupInfo | SourceText (KR) | Translation | STATUS | COMMENT | SCREENSHOT | STRINGID
     """
@@ -557,6 +559,27 @@ def write_newskill_excel(
     _finalize_sheet(ws2, excel_row)
     log.info("  Tab 'SkillTree': %d rows", excel_row - 2)
 
+    # ==================================================================
+    # TAB 3: SkillPC (all skills with LearnKnowledgeKey)
+    # ==================================================================
+    ws3 = wb.create_sheet("SkillPC")
+    _write_column_headers(ws3)
+    excel_row = 2
+    current_fill = _fill_a
+
+    for sk, entry in skill_lookup.items():
+        if not entry.learn_knowledge_key:
+            continue  # Only include skills with LearnKnowledgeKey
+
+        # Alternate fill per skill
+        current_fill = _fill_b if current_fill == _fill_a else _fill_a
+
+        excel_row = _write_skill_rows(
+            ws3, excel_row, entry, current_fill, pre, entry.strkey)
+
+    _finalize_sheet(ws3, excel_row)
+    log.info("  Tab 'SkillPC': %d rows", excel_row - 2)
+
     wb.save(output_path)
     log.info("NewSkill Excel saved: %s", output_path.name)
 
@@ -576,7 +599,7 @@ def generate_newskill_datasheets() -> Dict:
     4. Parse skillgroupinfo.staticinfo.xml -> skill_groups
     5. Parse SkillTreeInfo.staticinfo.xml -> skill_trees
     6. Get EXPORT index
-    7. For each language: write 2-tab Excel
+    7. For each language: write 3-tab Excel
 
     Returns:
         Dict with results
