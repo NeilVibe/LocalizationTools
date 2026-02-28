@@ -441,7 +441,6 @@ def build_index_from_folder(
 
     texts = []
     entries = []
-    skipped_stringid = 0
     skipped_translated = 0
 
     for entry in all_entries_list:
@@ -449,14 +448,9 @@ def build_index_from_folder(
         if not str_origin:
             continue
 
-        # Filter 1: Only include entries with matching StringIDs
-        if stringid_filter is not None:
-            sid = entry.get("string_id", "")
-            if sid not in stringid_filter:
-                skipped_stringid += 1
-                continue
+        # StringID filtering already done during scan (scan_folder_for_entries_with_context)
 
-        # Filter 2: Only include untranslated entries (Str has Korean)
+        # Filter: Only include untranslated entries (Str has Korean)
         if only_untranslated:
             str_value = entry.get("str_value", "")
             if str_value and str_value.strip() and not is_korean_text(str_value):
@@ -466,8 +460,6 @@ def build_index_from_folder(
         texts.append(str_origin)
         entries.append(entry)
 
-    if stringid_filter is not None:
-        logger.info(f"Filtered by StringID: {len(texts)} kept, {skipped_stringid} skipped")
     if only_untranslated:
         logger.info(f"Filtered translated: {skipped_translated} skipped")
     logger.info(f"Extracted {len(texts)} StrOrigin texts from {folder}")

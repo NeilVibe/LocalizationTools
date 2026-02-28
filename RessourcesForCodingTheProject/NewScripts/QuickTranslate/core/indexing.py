@@ -134,10 +134,11 @@ def scan_folder_for_entries(
 
                 if string_id:
                     # Normalize StrOrigin for matching (same as xml_transfer.py)
+                    # Lowercase StringID for case-insensitive matching
                     normalized = normalize_for_matching(str_origin)
-                    key = (string_id, normalized)
+                    key = (string_id.lower(), normalized)
                     entries[key] = {
-                        "string_id": string_id,
+                        "string_id": string_id,  # Keep original case for display
                         "str_origin": str_origin,
                         "str_value": str_value,
                         "source_file": str(xml_file),
@@ -222,7 +223,8 @@ def scan_folder_for_entries_with_context(
                 if string_id:
                     # CRITICAL: Filter DURING scan, not after!
                     # This prevents loading 2.2M entries when we only need 1K
-                    if stringid_filter is not None and string_id not in stringid_filter:
+                    # Case-insensitive: filter set must contain lowercased StringIDs
+                    if stringid_filter is not None and string_id.lower() not in stringid_filter:
                         continue  # Skip entries not in our filter
 
                     # Compute relative path from folder root

@@ -202,6 +202,8 @@ class QuickTranslateApp:
         self._fuzzy_model = None
         self._fuzzy_index = None
         self._fuzzy_index_path = None  # Track which target folder was indexed
+        self._fuzzy_index_filter = None  # Track stringid_filter used for cached index
+        self._fuzzy_index_untranslated = None  # Track only_untranslated used for cached index
         self._fuzzy_texts = None
         self._fuzzy_entries = None
 
@@ -1452,6 +1454,14 @@ class QuickTranslateApp:
                             Only entries with these StringIDs are loaded.
             only_untranslated: If True, only load entries where Str has Korean.
         """
+        # Cache check — reuse if same target, same filter, same scope
+        if (self._fuzzy_entries is not None
+                and self._fuzzy_index_path == target_path
+                and self._fuzzy_texts
+                and self._fuzzy_index_filter == stringid_filter
+                and self._fuzzy_index_untranslated == only_untranslated):
+            return True
+
         if not target_path:
             self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Fuzzy mode requires a Target folder.'))
             return False
@@ -1479,9 +1489,11 @@ class QuickTranslateApp:
 
             # Store entries but skip expensive FAISS index build
             self._fuzzy_index_path = target_path
+            self._fuzzy_index_filter = stringid_filter
+            self._fuzzy_index_untranslated = only_untranslated
             self._fuzzy_texts = texts
             self._fuzzy_entries = entries
-            # Leave _fuzzy_index as None - not needed for strict_fuzzy
+            self._fuzzy_index = None  # Invalidate stale FAISS index
 
             self._task_queue.put(('fuzzy_status', f"Ready ({len(entries):,} entries)"))
             self._log(f"Target entries loaded: {len(entries):,} entries", 'success')
@@ -1505,11 +1517,12 @@ class QuickTranslateApp:
             stringid_filter: Optional set of StringIDs to include. CRITICAL for performance!
             only_untranslated: If True, only include entries where Str has Korean.
         """
-        # Only reuse cache if no filter specified (filter changes what we need)
+        # Reuse cache if same target, same filter, same scope
         if (self._fuzzy_index is not None
                 and self._fuzzy_index_path == target_path
                 and self._fuzzy_texts
-                and stringid_filter is None):
+                and self._fuzzy_index_filter == stringid_filter
+                and self._fuzzy_index_untranslated == only_untranslated):
             return True
 
         if not target_path:
@@ -1538,6 +1551,8 @@ class QuickTranslateApp:
                 texts, entries, self._fuzzy_model, self._update_status
             )
             self._fuzzy_index_path = target_path
+            self._fuzzy_index_filter = stringid_filter
+            self._fuzzy_index_untranslated = only_untranslated
             self._fuzzy_texts = texts
             self._fuzzy_entries = entries
 
@@ -1578,25 +1593,25 @@ class QuickTranslateApp:
             xml_files = list(source.rglob("*.xml"))
             excel_files = list(source.rglob("*.xlsx")) + list(source.rglob("*.xls"))
 
-        # Extract from XML files
+        # Extract from XML files (lowercase for case-insensitive filtering)
         for xml_file in xml_files:
             try:
                 root = parse_xml_file(xml_file)
                 for elem in iter_locstr_elements(root):
                     sid = get_attr(elem, STRINGID_ATTRS).strip()
                     if sid:
-                        stringids.add(sid)
+                        stringids.add(sid.lower())
             except Exception:
                 continue
 
-        # Extract from Excel files
+        # Extract from Excel files (lowercase for case-insensitive filtering)
         for excel_file in excel_files:
             try:
                 corrections = read_corrections_from_excel(excel_file)
                 for c in corrections:
                     sid = c.get("string_id", "")
                     if sid:
-                        stringids.add(sid)
+                        stringids.add(sid.lower())
             except Exception:
                 continue
 
@@ -1636,6 +1651,8 @@ class QuickTranslateApp:
         # Clear fuzzy cache too
         self._fuzzy_index = None
         self._fuzzy_index_path = None
+        self._fuzzy_index_filter = None
+        self._fuzzy_index_untranslated = None
         self._fuzzy_texts = None
         self._fuzzy_entries = None
         clear_fuzzy_cache()
@@ -2115,7 +2132,7 @@ class QuickTranslateApp:
                         return
 
                     # Extract StringIDs from corrections FIRST - this is the filter!
-                    correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
+                    correction_stringids = {c.get("string_id", "").lower() for c in corrections if c.get("string_id")}
                     self._log(f"Corrections have {len(correction_stringids):,} unique StringIDs", 'info')
 
                     only_untranslated = transfer_scope == "untranslated"
@@ -2563,15 +2580,16 @@ class QuickTranslateApp:
         return f"{check_name}: {total} issues in {len(langs_with_issues)} languages ({', '.join(parts)})"
 
     def _format_pattern_summary(self, summary: Dict[str, tuple]) -> str:
-        """Format pattern+newline+bracket check summary for log output.
+        """Format pattern+newline+bracket+broken XML check summary for log output.
 
-        summary values are (pattern_count, newline_count, bracket_count) tuples.
+        summary values are (pattern_count, newline_count, bracket_count, broken_xml_count) tuples.
         Shows categorized breakdown so users know what was wrong.
         """
         pattern_total = sum(v[0] for v in summary.values())
         newline_total = sum(v[1] for v in summary.values())
         bracket_total = sum(v[2] for v in summary.values())
-        total = pattern_total + newline_total + bracket_total
+        broken_total = sum(v[3] for v in summary.values()) if all(len(v) >= 4 for v in summary.values()) else 0
+        total = pattern_total + newline_total + bracket_total + broken_total
 
         if total == 0:
             return f"Pattern Check: All clean across {len(summary)} languages"
@@ -2581,7 +2599,14 @@ class QuickTranslateApp:
         n_langs = len([k for k, v in summary.items() if sum(v) > 0])
         lines.append(f"Pattern Check: {total} issues in {n_langs} languages")
 
-        # CRITICAL: Unbalanced brackets (show first for visibility)
+        # CRITICAL: Broken XML (show first — most severe)
+        if broken_total > 0:
+            x_langs = {k: v[3] for k, v in summary.items() if len(v) >= 4 and v[3] > 0}
+            x_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(x_langs.items())]
+            lines.append(f"  CRITICAL — Broken XML: {broken_total} ({', '.join(x_parts)})")
+            lines.append("  (Separate files in BrokenXML/ folder)")
+
+        # CRITICAL: Unbalanced brackets
         if bracket_total > 0:
             b_langs = {k: v[2] for k, v in summary.items() if len(v) >= 3 and v[2] > 0}
             b_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(b_langs.items())]
@@ -2683,15 +2708,18 @@ class QuickTranslateApp:
             pattern_total = sum(v[0] for v in summary.values())
             newline_total = sum(v[1] for v in summary.values())
             bracket_total = sum(v[2] for v in summary.values())
-            total = pattern_total + newline_total + bracket_total
+            broken_total = sum(v[3] for v in summary.values()) if all(len(v) >= 4 for v in summary.values()) else 0
+            total = pattern_total + newline_total + bracket_total + broken_total
 
             self._log(result_msg, 'success' if total == 0 else 'warning')
 
             if total > 0:
                 self._log(f"Results written to: {output_folder / 'PatternErrors'}", 'info')
+                if broken_total > 0:
+                    self._log(f"CRITICAL broken XML: {output_folder / 'BrokenXML'}", 'warning')
                 if bracket_total > 0:
                     self._log(f"CRITICAL bracket issues: {output_folder / 'MissingBrackets'}", 'warning')
-                self._task_queue.put(('checks_status', f"Done: {total} issues ({pattern_total}P + {newline_total}N + {bracket_total}B)"))
+                self._task_queue.put(('checks_status', f"Done: {total} issues ({broken_total}X + {pattern_total}P + {newline_total}N + {bracket_total}B)"))
             else:
                 self._task_queue.put(('checks_status', "Done: All clean"))
 
@@ -2784,8 +2812,11 @@ class QuickTranslateApp:
                 p_total = sum(v[0] for v in pattern_summary.values())
                 n_total = sum(v[1] for v in pattern_summary.values())
                 b_total = sum(v[2] for v in pattern_summary.values())
+                x_total = sum(v[3] for v in pattern_summary.values()) if all(len(v) >= 4 for v in pattern_summary.values()) else 0
                 self._log(self._format_pattern_summary(pattern_summary),
-                          'success' if (p_total + n_total + b_total) == 0 else 'warning')
+                          'success' if (p_total + n_total + b_total + x_total) == 0 else 'warning')
+                if x_total > 0:
+                    self._log(f"CRITICAL broken XML: {output_folder / 'BrokenXML'}", 'warning')
                 if b_total > 0:
                     self._log(f"CRITICAL bracket issues: {output_folder / 'MissingBrackets'}", 'warning')
 
@@ -2811,17 +2842,24 @@ class QuickTranslateApp:
             korean_total = sum(korean_summary.values()) if korean_summary else 0
             check_total = 0
             bracket_total_all = 0
+            broken_total_all = 0
             if pattern_summary:
-                check_total = sum(v[0] + v[1] + v[2] for v in pattern_summary.values())
+                check_total = sum(sum(v) for v in pattern_summary.values())
                 bracket_total_all = sum(v[2] for v in pattern_summary.values())
+                broken_total_all = sum(v[3] for v in pattern_summary.values()) if all(len(v) >= 4 for v in pattern_summary.values()) else 0
             grand_total = korean_total + check_total + quality_total
 
             if grand_total == 0:
                 self._log("All checks passed!", 'success')
                 self._task_queue.put(('checks_status', "Done: All checks passed"))
             else:
-                bracket_note = f", {bracket_total_all} CRITICAL brackets" if bracket_total_all else ""
-                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {check_total} pattern/newline/bracket{bracket_note}, {quality_total} quality)", 'warning')
+                critical_parts = []
+                if broken_total_all:
+                    critical_parts.append(f"{broken_total_all} CRITICAL broken XML")
+                if bracket_total_all:
+                    critical_parts.append(f"{bracket_total_all} CRITICAL brackets")
+                critical_note = f", {', '.join(critical_parts)}" if critical_parts else ""
+                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {check_total} pattern/newline/bracket/xml{critical_note}, {quality_total} quality)", 'warning')
                 self._log(f"Results written to: {output_folder}", 'info')
                 self._task_queue.put(('checks_status', f"Done: {grand_total} issues ({korean_total}K + {check_total}P + {quality_total}Q)"))
 
@@ -2994,8 +3032,11 @@ class QuickTranslateApp:
                 stringid_to_subfolder = self.stringid_to_subfolder
 
             # For fuzzy precision modes, extract StringIDs from source FIRST to filter index
+            # NOTE: strorigin_only mode matches by StrOrigin text, NOT StringID.
+            # Using stringid_filter would wrongly filter out all entries when source
+            # has no StringIDs (empty set != None).  Only strict mode needs this.
             source_stringids = None
-            if precision == "fuzzy" and match_type in ("strict", "strorigin_only"):
+            if precision == "fuzzy" and match_type == "strict":
                 self._log("Extracting StringIDs from source for filtered index build...", 'info')
                 source_stringids = self._extract_stringids_from_source(source)
                 self._log(f"Source has {len(source_stringids):,} unique StringIDs", 'info')

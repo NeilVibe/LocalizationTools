@@ -12,6 +12,8 @@ import re
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
+from lxml import etree as ET
+
 from .xml_parser import (
     parse_xml_file, iter_locstr_elements,
     get_attr as _get_attr,
@@ -126,6 +128,67 @@ def _has_unbalanced_brackets(text: str) -> bool:
             if depth < 0:
                 return True  # closing without opening
     return depth != 0  # unclosed opening brackets
+
+
+# Regex to extract self-closing LocStr elements from raw XML text
+_LOCSTR_RE = re.compile(r'<LocStr\b[^>]*/\s*>', re.DOTALL | re.IGNORECASE)
+# Regex to extract StringId from raw (possibly broken) LocStr text
+_RAW_STRINGID_RE = re.compile(r'StringId\s*=\s*"([^"]*?)"', re.IGNORECASE)
+
+
+def check_broken_xml_in_file(xml_path: Path) -> List[Tuple[str, str, str]]:
+    """
+    Detect malformed LocStr elements by strict-parsing each one individually.
+
+    Recovery-mode lxml silently creates elements with missing/wrong attributes
+    when XML is malformed (e.g. StrOrigin""dada", Str"<bad").  Those broken
+    nodes then pass through all other checks undetected.
+
+    This function reads raw file text, extracts each <LocStr .../> fragment,
+    and tries a strict lxml parse.  Any fragment that fails strict parse is
+    broken XML.
+
+    Args:
+        xml_path: Path to XML file
+
+    Returns:
+        List of (string_id, raw_fragment, filename) tuples for each broken LocStr.
+    """
+    broken = []
+    try:
+        raw = xml_path.read_text(encoding='utf-8')
+    except Exception as e:
+        logger.warning("Failed to read %s: %s", xml_path.name, e)
+        return broken
+
+    filename = xml_path.name
+    for m in _LOCSTR_RE.finditer(raw):
+        fragment = m.group()
+        test_xml = f'<r>{fragment}</r>'
+        try:
+            ET.fromstring(test_xml.encode('utf-8'))
+        except ET.XMLSyntaxError:
+            sid_match = _RAW_STRINGID_RE.search(fragment)
+            sid = sid_match.group(1) if sid_match else '(unknown)'
+            broken.append((sid, fragment, filename))
+
+    return broken
+
+
+def _write_broken_xml_report(output_path: Path, entries: List[Tuple[str, str, str]]):
+    """
+    Write broken XML report as plain text (broken XML can't be embedded in XML).
+
+    Each entry is a (string_id, raw_fragment, filename) tuple.
+    """
+    lines = ["Broken XML Report", "=" * 60, ""]
+    for sid, raw, fname in entries:
+        lines.append(f"File:     {fname}")
+        lines.append(f"StringId: {sid}")
+        lines.append(f"Raw:      {raw}")
+        lines.append("")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text('\n'.join(lines), encoding='utf-8')
 
 
 def _escape_attr_value(value: str) -> str:
@@ -332,17 +395,19 @@ def run_pattern_check(
     output_folder: Path,
     progress_callback: Optional[Callable[[str], None]] = None,
     skip_staticinfo_knowledge: bool = True,
-) -> Dict[str, Tuple[int, int, int]]:
+) -> Dict[str, Tuple[int, int, int, int]]:
     """
-    Run pattern mismatch + newline + bracket check on all languages in Source folder.
+    Run pattern mismatch + newline + bracket + broken XML check on all languages.
 
     Compares {code} patterns between StrOrigin and Str for each LocStr.
     Also detects wrong newline representations (only <br/> is correct).
     Also detects unbalanced curly brackets in Str (critical errors).
+    Also detects malformed/broken LocStr elements at raw text level (critical).
 
     Writes per-language result XMLs to:
     - output_folder/PatternErrors/pattern_errors_{LANG}.xml  (all issues combined)
     - output_folder/MissingBrackets/MissingBrackets_{LANG}.xml  (critical bracket issues only)
+    - output_folder/BrokenXML/BrokenXML_{LANG}.txt  (critical broken XML report)
 
     Args:
         source_folder: Path to Source folder with language subfolders
@@ -351,7 +416,7 @@ def run_pattern_check(
         skip_staticinfo_knowledge: If True, skip entries containing 'staticinfo:knowledge'
 
     Returns:
-        Summary dict: {"FRE": (pattern_count, newline_count, bracket_count), ...}
+        Summary dict: {"FRE": (pattern_count, newline_count, bracket_count, broken_xml_count), ...}
     """
     xml_by_lang = iter_source_xml_files(source_folder)
     if not xml_by_lang:
@@ -363,6 +428,8 @@ def run_pattern_check(
     pattern_dir.mkdir(parents=True, exist_ok=True)
     bracket_dir = output_folder / "MissingBrackets"
     bracket_dir.mkdir(parents=True, exist_ok=True)
+    broken_dir = output_folder / "BrokenXML"
+    broken_dir.mkdir(parents=True, exist_ok=True)
 
     languages = sorted(xml_by_lang.keys())
     summary = {}
@@ -375,13 +442,19 @@ def run_pattern_check(
         all_pattern_errors = []
         all_newline_errors = []
         all_bracket_errors = []
+        all_broken_xml = []
         for xml_path in xml_files:
             p_errors, n_errors, b_errors = check_patterns_in_file(xml_path, skip_staticinfo_knowledge)
             all_pattern_errors.extend(p_errors)
             all_newline_errors.extend(n_errors)
             all_bracket_errors.extend(b_errors)
 
-        summary[lang] = (len(all_pattern_errors), len(all_newline_errors), len(all_bracket_errors))
+            # Broken XML check — raw text level, always runs on ALL entries
+            broken = check_broken_xml_in_file(xml_path)
+            all_broken_xml.extend(broken)
+
+        summary[lang] = (len(all_pattern_errors), len(all_newline_errors),
+                         len(all_bracket_errors), len(all_broken_xml))
 
         # Combine all error lists for main XML output (deduplicate by element identity)
         seen = set()
@@ -407,5 +480,11 @@ def run_pattern_check(
             bracket_path = bracket_dir / f"MissingBrackets_{lang}.xml"
             _write_results_xml(bracket_path, all_bracket_errors)
             logger.info(f"Bracket check {lang}: {len(all_bracket_errors)} CRITICAL entries -> {bracket_path.name}")
+
+        # Write separate critical broken XML report
+        if all_broken_xml:
+            broken_path = broken_dir / f"BrokenXML_{lang}.txt"
+            _write_broken_xml_report(broken_path, all_broken_xml)
+            logger.info(f"Broken XML {lang}: {len(all_broken_xml)} CRITICAL entries -> {broken_path.name}")
 
     return summary

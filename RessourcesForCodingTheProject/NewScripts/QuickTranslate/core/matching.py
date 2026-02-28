@@ -162,7 +162,7 @@ def find_matches_strict(
     for c in corrections:
         string_id = c.get("string_id", "")
         str_origin = c.get("str_origin", "")
-        key = (string_id, normalize_for_matching(str_origin))
+        key = (string_id.lower(), normalize_for_matching(str_origin))
 
         if key in xml_entries:
             matched.append(c)
@@ -269,7 +269,7 @@ def find_matches_strict_fuzzy(
     matched = []
     not_found = 0
 
-    # Build StringID -> entries index for fast pool lookup
+    # Build StringID -> entries index for fast pool lookup (case-insensitive)
     stringid_to_entries: Dict[str, List[dict]] = defaultdict(list)
     filtered_count = 0
     for entry in fuzzy_entries:
@@ -278,7 +278,7 @@ def find_matches_strict_fuzzy(
             if only_untranslated and not _is_entry_untranslated(entry):
                 filtered_count += 1
                 continue  # Skip already-translated
-            stringid_to_entries[sid].append(entry)
+            stringid_to_entries[sid.lower()].append(entry)
 
     logger.info(f"Built StringID pool index: {len(stringid_to_entries)} unique StringIDs")
 
@@ -299,15 +299,15 @@ def find_matches_strict_fuzzy(
             not_found += 1
             continue
 
-        # Try exact strict match first (cheap)
-        key = (string_id, normalize_for_matching(str_origin))
+        # Try exact strict match first (cheap, case-insensitive StringID)
+        key = (string_id.lower(), normalize_for_matching(str_origin))
         if key in xml_entries:
             matched.append(c)
             continue
 
         # Need fuzzy matching - group by StringID for batched processing
-        if str_origin.strip() and string_id in stringid_to_entries:
-            need_fuzzy_by_stringid[string_id].append(c)
+        if str_origin.strip() and string_id.lower() in stringid_to_entries:
+            need_fuzzy_by_stringid[string_id.lower()].append(c)
         else:
             not_found += 1
 

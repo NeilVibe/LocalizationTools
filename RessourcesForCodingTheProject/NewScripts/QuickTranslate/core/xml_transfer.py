@@ -1370,7 +1370,10 @@ def transfer_folder_to_folder(
     # This filter ensures we don't load FULL languagedata (2.2M entries)!
     # Use pre-passed source_stringids if available, otherwise extract from source files.
     all_source_stringids = source_stringids  # May be None or pre-computed set from GUI
-    if all_source_stringids is None and match_mode in ("strict_fuzzy", "strorigin_only_fuzzy"):
+    # NOTE: strorigin_only_fuzzy matches by StrOrigin text, NOT StringID.
+    # Filtering the FAISS index by StringIDs would miss valid matches where
+    # source and target have different StringIDs but matching StrOrigin text.
+    if all_source_stringids is None and match_mode == "strict_fuzzy":
         from .xml_io import parse_corrections_from_xml
         from .excel_io import read_corrections_from_excel
 
@@ -1387,7 +1390,7 @@ def transfer_folder_to_folder(
                 for c in corrs:
                     sid = c.get("string_id", "")
                     if sid:
-                        all_source_stringids.add(sid)
+                        all_source_stringids.add(sid.lower())
             except ValueError as e:
                 logger.warning(f"Skipped {src_file.name} during StringID extraction: {e}")
                 continue
@@ -1410,7 +1413,8 @@ def transfer_folder_to_folder(
                 _fuzzy_model = load_model(progress_callback)
                 _fuzzy_texts, _fuzzy_entries = build_index_from_folder(
                     target_folder, progress_callback,
-                    stringid_filter=all_source_stringids
+                    stringid_filter=all_source_stringids,
+                    only_untranslated=only_untranslated,
                 )
                 if _fuzzy_texts:
                     _fuzzy_index = build_faiss_index(
@@ -2169,7 +2173,7 @@ def transfer_file_to_file(
         if _fm is None or _fi is None:
             from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
             try:
-                correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
+                correction_stringids = {c.get("string_id", "").lower() for c in corrections if c.get("string_id")}
                 logger.info(f"File-to-file strict_fuzzy: building FAISS for {len(correction_stringids):,} StringIDs")
                 _fm = _fm or load_model()
                 _ft, _fe = build_index_from_folder(
@@ -2263,11 +2267,12 @@ def transfer_file_to_file(
         if _fm is None or _fi is None:
             from .fuzzy_matching import load_model, build_index_from_folder, build_faiss_index
             try:
-                correction_stringids = {c.get("string_id", "") for c in corrections if c.get("string_id")}
-                logger.info(f"File-to-file strorigin_only_fuzzy: building FAISS for {len(correction_stringids):,} StringIDs")
+                # strorigin_only matches by StrOrigin text, NOT StringID —
+                # do NOT filter FAISS index by StringIDs
+                logger.info("File-to-file strorigin_only_fuzzy: building unfiltered FAISS index")
                 _fm = _fm or load_model()
                 _ft, _fe = build_index_from_folder(
-                    target_folder, stringid_filter=correction_stringids
+                    target_folder, stringid_filter=None
                 )
                 if _ft:
                     _fi = build_faiss_index(_ft, _fe, _fm)
