@@ -219,6 +219,7 @@ CATEGORIES = [
     "Contents",
     "NewCharacter",  # Row-per-text character datasheet with knowledge passes
     "NewRegion",     # Row-per-text region datasheet with knowledge passes
+    "NewSkill",      # Row-per-text skill datasheet (SkillGroup + SkillTree tabs)
     "Sequencer",  # → Master_Script.xlsx
     "Dialog",     # → Master_Script.xlsx
     "Face",       # Facial animation QA (custom processing)
@@ -261,6 +262,7 @@ WORKER_GROUPS = {
     "itemknowledgecluster": ["ItemKnowledgeCluster"],  # Mega cluster (own master)
     "newcharacter": ["NewCharacter"],         # Row-per-text format (separate Master_NewCharacter.xlsx)
     "newregion":    ["NewRegion"],             # Region layout + DisplayName (separate Master_NewRegion.xlsx)
+    "newskill":     ["NewSkill"],              # Row-per-text skill (SkillGroup + SkillTree tabs)
     "system":     ["Skill", "Help"],         # Must serialize (shared Master_System.xlsx)
     "script":     ["Sequencer", "Dialog"],   # Must serialize (shared Master_Script.xlsx)
 }
@@ -280,6 +282,7 @@ TRANSLATION_COLS = {
     "ItemKnowledgeCluster": {"eng": 3, "other": 3},  # Translation column (mega-sheet format)
     "NewCharacter": {"eng": 4, "other": 4},  # Translation column (row-per-text format)
     "NewRegion": {"eng": 2, "other": 3},     # Same column layout as Region
+    "NewSkill": {"eng": 4, "other": 4},      # Translation column (row-per-text format)
     "System": {"eng": 1, "other": 1},  # CONTENT column (single column for all languages)
     "Skill": {"eng": 2, "other": 3},
     "Help": {"eng": 2, "other": 3},

@@ -107,6 +107,11 @@ DATASHEET_LOCATIONS = {
         "eng_pattern": "NewRegion_LQA_ENG*.xlsx",
         "cn_pattern": "NewRegion_LQA_ZHO-CN*.xlsx",
     },
+    "NewSkill": {
+        "folder": "NewSkillData_Map_All",
+        "eng_pattern": "NewSkill_LQA_ENG*.xlsx",
+        "cn_pattern": "NewSkill_LQA_ZHO-CN*.xlsx",
+    },
 }
 
 

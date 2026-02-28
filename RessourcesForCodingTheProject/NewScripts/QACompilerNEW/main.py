@@ -113,6 +113,7 @@ def cli_list_categories():
             "NewItem": "Row-per-text item datasheet (4-step pass)",
             "NewCharacter": "Row-per-text character datasheet with knowledge passes",
             "NewRegion": "Region layout + DisplayName from RegionInfo",
+            "NewSkill": "Row-per-text skill datasheet (SkillGroup + SkillTree tabs)",
             "ItemKnowledgeCluster": "Mega item-knowledge cluster (3-pass matching)",
         }.get(cat, "")
         print(f"  {i}. {cat:12} - {desc}")
