@@ -134,8 +134,12 @@ def scan_skills_with_knowledge(
     Pass 1: LearnKnowledgeKey -> knowledge_map (direct key lookup)
     Pass 2: SkillName -> knowledge_name_index (identical name match)
 
+    IMPORTANT: Lookup is keyed by StrKey (e.g. "Skill_Wrestle_AirBodySlam"),
+    NOT by the numeric Key (e.g. "15004"). SkillGroupInfo and SkillTreeInfo
+    reference skills using StrKey values in their child elements.
+
     Returns:
-        skill_lookup: {Key: NewSkillEntry} in document order
+        skill_lookup: {StrKey: NewSkillEntry} in document order
     """
     log.info("Scanning skills with knowledge: %s", skill_file.name)
     skill_lookup: Dict[str, NewSkillEntry] = {}
@@ -155,16 +159,12 @@ def scan_skills_with_knowledge(
         skill_desc = el.get("SkillDesc") or ""
         learn_knowledge_key = el.get("LearnKnowledgeKey") or ""
 
-        if not key or not skill_name:
+        if not strkey or not skill_name:
             continue
 
-        # Dedup by Key
-        if key in skill_lookup:
+        # Dedup by StrKey
+        if strkey in skill_lookup:
             continue
-
-        # Also check _find_knowledge_key for edge cases
-        if not learn_knowledge_key:
-            learn_knowledge_key = _find_knowledge_key(el)
 
         # Pass 1: Resolve knowledge data via LearnKnowledgeKey
         knowledge_name = ""
@@ -196,7 +196,7 @@ def scan_skills_with_knowledge(
         _collect_korean_string(knowledge2_name)
         _collect_korean_string(knowledge2_desc)
 
-        skill_lookup[key] = NewSkillEntry(
+        skill_lookup[strkey] = NewSkillEntry(
             key=key,
             strkey=strkey,
             skill_name_kor=skill_name,
@@ -368,31 +368,31 @@ def _write_skill_rows(
         return excel_row
 
     # 1. SkillData -- SkillName (always)
-    t, s = pre.get((entry.key, "skill_name"), ("", ""))
+    t, s = pre.get((entry.strkey, "skill_name"), ("", ""))
     excel_row = _write_row("SkillData", entry.skill_name_kor, t, s)
 
     # 2. SkillData -- SkillDesc (always, even if empty)
-    t, s = pre.get((entry.key, "skill_desc"), ("", ""))
+    t, s = pre.get((entry.strkey, "skill_desc"), ("", ""))
     excel_row = _write_row("SkillData", entry.skill_desc_kor, t, s)
 
     # 3. KnowledgeData -- Name (skip if empty)
     if entry.knowledge_name_kor:
-        t, s = pre.get((entry.key, "knowledge_name"), ("", ""))
+        t, s = pre.get((entry.strkey, "knowledge_name"), ("", ""))
         excel_row = _write_row("KnowledgeData", entry.knowledge_name_kor, t, s)
 
     # 4. KnowledgeData -- Desc (skip if empty)
     if entry.knowledge_desc_kor:
-        t, s = pre.get((entry.key, "knowledge_desc"), ("", ""))
+        t, s = pre.get((entry.strkey, "knowledge_desc"), ("", ""))
         excel_row = _write_row("KnowledgeData", entry.knowledge_desc_kor, t, s)
 
     # 5. KnowledgeData2 -- Name (skip if empty)
     if entry.knowledge2_name_kor:
-        t, s = pre.get((entry.key, "knowledge2_name"), ("", ""))
+        t, s = pre.get((entry.strkey, "knowledge2_name"), ("", ""))
         excel_row = _write_row("KnowledgeData2", entry.knowledge2_name_kor, t, s)
 
     # 6. KnowledgeData2 -- Desc (skip if empty)
     if entry.knowledge2_desc_kor:
-        t, s = pre.get((entry.key, "knowledge2_desc"), ("", ""))
+        t, s = pre.get((entry.strkey, "knowledge2_desc"), ("", ""))
         excel_row = _write_row("KnowledgeData2", entry.knowledge2_desc_kor, t, s)
 
     return excel_row
@@ -610,7 +610,7 @@ def generate_newskill_datasheets() -> Dict:
     knowledge_folder = RESOURCE_FOLDER / "knowledgeinfo"
     skill_file = RESOURCE_FOLDER / "skillinfo" / "skillinfo_pc.staticinfo.xml"
     group_file = RESOURCE_FOLDER / "skillinfo" / "skillgroupinfo.staticinfo.xml"
-    tree_file = RESOURCE_FOLDER / "Ui" / "SkillTreeInfo.staticinfo.xml"
+    tree_file = RESOURCE_FOLDER / "skillinfo" / "SkillTreeInfo.staticinfo.xml"
 
     if not skill_file.exists():
         result["errors"].append(f"Skill file not found: {skill_file}")
