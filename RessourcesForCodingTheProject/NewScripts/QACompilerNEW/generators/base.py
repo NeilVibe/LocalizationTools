@@ -73,6 +73,17 @@ def normalize_placeholders(text: str) -> str:
     return text
 
 
+def br_to_newline(text: str) -> str:
+    """Convert <br/> tags to real newlines for Excel output.
+
+    XML attributes store linebreaks as <br/> (after lxml parse).
+    Excel cells need real \\n (displays as Alt+Enter).
+    """
+    if not text:
+        return text
+    return _br_tag_re.sub('\n', text)
+
+
 # =============================================================================
 # KOREAN DETECTION
 # =============================================================================

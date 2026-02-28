@@ -36,6 +36,7 @@ from generators.base import (
     parse_xml_file,
     load_language_tables,
     normalize_placeholders,
+    br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
     resolve_translation,
@@ -355,7 +356,7 @@ def _write_skill_rows(
 
     def _write_row(data_type: str, kor_text: str, trans: str, sid: str) -> int:
         nonlocal excel_row
-        vals = [data_type, group_info, kor_text, trans, "", "", "", sid]
+        vals = [data_type, group_info, br_to_newline(kor_text), br_to_newline(trans), "", "", "", sid]
         for ci, val in enumerate(vals, 1):
             cell = ws.cell(excel_row, ci, val)
             cell.fill = current_fill
@@ -402,7 +403,7 @@ def _write_skill_rows(
 
 def _write_header_row(ws, excel_row: int, data_type: str, group_info: str, kor_text: str) -> int:
     """Write a gold header row. Returns next excel_row."""
-    vals = [data_type, group_info, kor_text, "", "", "", "", ""]
+    vals = [data_type, group_info, br_to_newline(kor_text), "", "", "", "", ""]
     for ci, val in enumerate(vals, 1):
         cell = ws.cell(excel_row, ci, val)
         cell.fill = _gold_fill
