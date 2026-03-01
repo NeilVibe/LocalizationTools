@@ -133,3 +133,4 @@ Build - Unbalanced bracket check (CRITICAL) in pattern checker
 Build - broken XML detection + fuzzy match fixes (8 bugs)
 Build - broken XML detection during source validation
 Build - broken XML detection for TARGET folder
+Build - robust cancel for all check operations
