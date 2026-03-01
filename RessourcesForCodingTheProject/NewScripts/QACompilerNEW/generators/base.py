@@ -401,7 +401,12 @@ def sanitize_xml(raw: str) -> str:
         stripped = line.strip()
         mo = tag_open.match(stripped)
         if mo:
-            stack.append(mo.group(1)); out.append(line); continue
+            # Only push OPEN tags, not self-closing (<Tag .../>) ones.
+            # Self-closing tags end with "/>", they don't need a closing tag.
+            if not stripped.rstrip().endswith("/>"):
+                stack.append(mo.group(1))
+            out.append(line)
+            continue
         mc = tag_close.match(stripped)
         if mc:
             if stack and stack[-1] == mc.group(1):
