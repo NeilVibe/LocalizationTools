@@ -64,8 +64,8 @@ DATASHEET_LOCATIONS = {
     },
     "Skill": {
         "folder": "Skill_LQA_All",
-        "eng_pattern": "LQA_Skill_ENG*.xlsx",
-        "cn_pattern": "LQA_Skill_ZHO-CN*.xlsx",
+        "eng_pattern": "Skill_LQA_ENG*.xlsx",
+        "cn_pattern": "Skill_LQA_ZHO-CN*.xlsx",
     },
     "Help": {
         "folder": "GameAdvice_LQA_All",
@@ -106,11 +106,6 @@ DATASHEET_LOCATIONS = {
         "folder": "NewRegionData_Map_All",
         "eng_pattern": "NewRegion_LQA_ENG*.xlsx",
         "cn_pattern": "NewRegion_LQA_ZHO-CN*.xlsx",
-    },
-    "NewSkill": {
-        "folder": "NewSkillData_Map_All",
-        "eng_pattern": "NewSkill_LQA_ENG*.xlsx",
-        "cn_pattern": "NewSkill_LQA_ZHO-CN*.xlsx",
     },
 }
 

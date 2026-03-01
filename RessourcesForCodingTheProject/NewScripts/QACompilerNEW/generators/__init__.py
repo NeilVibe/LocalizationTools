@@ -68,6 +68,8 @@ def generate_datasheets(categories: List[str]) -> Dict:
                 result = generate_skill_datasheets()
                 korean_strings = get_collected_korean_strings()
                 results["korean_strings"]["Skill"] = korean_strings
+                # NOTE: Skill is now standalone (row-per-text, UIPosition ordered).
+                # It no longer merges into Master_System.xlsx.
             elif category == "knowledge":
                 from generators.knowledge import generate_knowledge_datasheets, get_collected_korean_strings
                 result = generate_knowledge_datasheets()
@@ -98,31 +100,21 @@ def generate_datasheets(categories: List[str]) -> Dict:
                 result = generate_newregion_datasheets()
                 korean_strings = get_collected_korean_strings()
                 results["korean_strings"]["NewRegion"] = korean_strings
-            elif category == "newskill":
-                from generators.newskill import generate_newskill_datasheets, get_collected_korean_strings
-                result = generate_newskill_datasheets()
-                korean_strings = get_collected_korean_strings()
-                results["korean_strings"]["NewSkill"] = korean_strings
             elif category == "quest":
                 from generators.quest import generate_quest_datasheets, get_collected_korean_strings
                 result = generate_quest_datasheets()
                 korean_strings = get_collected_korean_strings()
                 results["korean_strings"]["Quest"] = korean_strings
             elif category == "system":
-                # System = Skill + Help combined
-                from generators.skill import generate_skill_datasheets, get_collected_korean_strings as skill_strings
+                # System = Help only (Skill is now standalone)
                 from generators.help import generate_help_datasheets, get_collected_korean_strings as help_strings
-                result_skill = generate_skill_datasheets()
-                skill_korean = skill_strings()
                 result_help = generate_help_datasheets()
                 help_korean = help_strings()
                 result = {
                     "category": "System",
-                    "files_created": result_skill.get("files_created", 0) + result_help.get("files_created", 0),
-                    "errors": result_skill.get("errors", []) + result_help.get("errors", []),
+                    "files_created": result_help.get("files_created", 0),
+                    "errors": result_help.get("errors", []),
                 }
-                # Combine Skill and Help strings into System
-                results["korean_strings"]["Skill"] = skill_korean
                 results["korean_strings"]["Help"] = help_korean
             elif category == "script":
                 from generators.script import generate_script_datasheets, get_collected_korean_strings

@@ -1,47 +1,51 @@
 """
 Skill Datasheet Generator
 =========================
-Extracts SkillInfo entries and links them to KnowledgeInfo for detailed descriptions.
+Row-per-text skill datasheet ordered by UIPosition (screen reading order).
 
-Structure:
-- SkillInfo: Key, StrKey, SkillName, SkillDesc, LearnKnowledgeKey, MaxLevel
-- KnowledgeInfo: Linked via LearnKnowledgeKey, contains Name, Desc, nested children
+Each skill with LearnKnowledgeKey produces up to 6 rows:
+  1. SkillData   — SkillName
+  2. SkillData   — SkillDesc
+  3. KnowledgeData  — Name  (Pass 1: LearnKnowledgeKey direct lookup)
+  4. KnowledgeData  — Desc  (Pass 1)
+  5. KnowledgeData2 — Name  (Pass 2: identical SkillName == KnowledgeInfo.Name)
+  6. KnowledgeData2 — Desc  (Pass 2)
 
-Priority Rule:
-- When multiple SkillInfo share the same LearnKnowledgeKey, the one with highest MaxLevel wins
-- Losers use their own SkillDesc instead of the linked KnowledgeInfo
+Skills are grouped by SkillTreeInfo and sorted by UIPosition within each tree
+(reading order: left-to-right, top-to-bottom on the skill tree UI page).
+Skills not in any tree are collected at the end under "Other Skills".
 
-Output:
-- ONE Excel sheet with all skills
-- Indentation: SkillName (depth 0) -> Knowledge Name/Title (depth 1) -> Desc (depth 2)
+Key features:
+- Gold header rows per skill tree (character + weapon page)
+- UIPosition ordering within each tree for tester-friendly reading order
+- Alternating fill per skill
+- Reuses knowledge loading from newitem.py
 """
 
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.datavalidation import DataValidation
 
-from config import RESOURCE_FOLDER, LANGUAGE_FOLDER, DATASHEET_OUTPUT, STATUS_OPTIONS
+from config import RESOURCE_FOLDER, LANGUAGE_FOLDER, DATASHEET_OUTPUT
 from generators.base import (
     get_logger,
     parse_xml_file,
-    iter_xml_files,
     load_language_tables,
     normalize_placeholders,
     br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
     resolve_translation,
-    get_first_translation,
     get_export_index,
     get_ordered_export_index,
     StringIdConsumer,
+    add_status_dropdown,
 )
+from generators.newitem import load_knowledge_data
 
 log = get_logger("SkillGenerator")
 
@@ -76,406 +80,425 @@ def _collect_korean_string(text: str) -> None:
 # =============================================================================
 
 @dataclass
-class KnowledgeNode:
-    """KnowledgeInfo node - can be parent or child."""
-    strkey: str
-    name: str
-    desc: str
-    parent_key: str = ""     # Reference to parent KnowledgeInfo
-    unlock_level: int = 0    # Level at which this unlocks
-    children: List["KnowledgeNode"] = field(default_factory=list)
+class SkillEntry:
+    """Complete data for a single skill with knowledge fields."""
+    key: str                        # SkillInfo Key
+    strkey: str                     # SkillInfo StrKey
+    skill_name_kor: str             # SkillInfo.SkillName
+    skill_desc_kor: str             # SkillInfo.SkillDesc
+    learn_knowledge_key: str        # SkillInfo.LearnKnowledgeKey
+    knowledge_name_kor: str         # Pass 1: KnowledgeInfo.Name
+    knowledge_desc_kor: str         # Pass 1: KnowledgeInfo.Desc
+    knowledge2_name_kor: str        # Pass 2: identical name match
+    knowledge2_desc_kor: str        # Pass 2: desc
+    source_file: str                # skillinfo_pc filename
+    knowledge_source_file: str      # Knowledge XML filename
+    knowledge2_source_file: str = ""  # Pass 2 source file
 
 
 @dataclass
-class SkillItem:
-    """Single SkillInfo entry."""
+class SkillNodeEntry:
+    """A single SkillNode within a SkillTreeInfo."""
+    node_id: str
+    skill_key: str
+    parent_id: str
+    ui_row: int = 0      # from UIPosition "col_row" → row
+    ui_col: int = 0      # from UIPosition "col_row" → col
+
+
+@dataclass
+class SkillTreeEntry:
+    """One SkillTreeInfo element with its node hierarchy."""
     key: str
     strkey: str
-    skill_name: str
-    skill_desc: str
-    learn_knowledge_key: str
-    max_level: int
-    source_file: str = ""  # Track source file for EXPORT-aware resolution
-    # Will be filled after knowledge linking
-    knowledge: Optional[KnowledgeNode] = None
-    use_own_desc: bool = False  # True if lost priority for knowledge key
+    character_key: str
+    ui_page_name_kor: str
+    nodes: List[SkillNodeEntry] = field(default_factory=list)
 
 
 # =============================================================================
-# STYLING
+# SKILL EXTRACTION
 # =============================================================================
 
-_depth0_fill = PatternFill("solid", fgColor="FFD700")  # Gold for skill names
-_depth0_font = Font(bold=True, size=12)
-_depth0_row_height = 35
+def scan_skills_with_knowledge(
+    skill_file: Path,
+    knowledge_map: Dict[str, Tuple[str, str, str]],
+    knowledge_name_index: Dict[str, List[Tuple[str, str, str]]],
+) -> Dict[str, SkillEntry]:
+    """Parse skillinfo_pc.staticinfo.xml and build skill lookup with knowledge.
 
-_depth1_fill = PatternFill("solid", fgColor="B4C6E7")  # Light blue for knowledge names
-_depth1_font = Font(bold=True, size=11)
-_depth1_row_height = 25
+    Pass 1: LearnKnowledgeKey -> knowledge_map (direct key lookup)
+    Pass 2: SkillName -> knowledge_name_index (identical name match)
 
-_depth2_fill = PatternFill("solid", fgColor="E2EFDA")  # Light green for descriptions
-_depth2_font = Font(size=10)
-_depth2_row_height = None  # Auto
-
-_depth3_fill = PatternFill("solid", fgColor="FCE4D6")  # Light orange for sub-skills
-_depth3_font = Font(bold=True, size=10)
-
-_depth4_fill = PatternFill("solid", fgColor="DDEBF7")  # Light blue for sub-skill desc
-_depth4_font = Font(size=10)
-
-_header_font = Font(bold=True, color="FFFFFF", size=11)
-_header_fill = PatternFill("solid", fgColor="4F81BD")
-
-
-def _get_style_for_depth(depth: int) -> Tuple[PatternFill, Font, Optional[float]]:
-    """Get style for a given depth level. Returns (fill, font, row_height)."""
-    if depth == 0:
-        return _depth0_fill, _depth0_font, _depth0_row_height
-    elif depth == 1:
-        return _depth1_fill, _depth1_font, _depth1_row_height
-    elif depth == 2:
-        return _depth2_fill, _depth2_font, _depth2_row_height
-    elif depth == 3:
-        return _depth3_fill, _depth3_font, None
-    else:
-        return _depth4_fill, _depth4_font, None
-
-
-# =============================================================================
-# EXTRACTION
-# =============================================================================
-
-# Regex to parse KnowledgeList like "Knowledge_UnArmedMastery_I(2)"
-_knowledge_list_re = re.compile(r'^([A-Za-z0-9_]+)\((\d+)\)$')
-
-
-def extract_skill_data(folder: Path) -> Tuple[List[SkillItem], Dict[str, KnowledgeNode]]:
-    """
-    Scan StaticInfo folder for SkillInfo and KnowledgeInfo elements.
-
-    Knowledge parent-child relationships are determined by LevelData.KnowledgeList.
+    IMPORTANT: Lookup is keyed by StrKey (e.g. "Skill_Wrestle_AirBodySlam"),
+    NOT by the numeric Key (e.g. "15004"). SkillTreeInfo references skills
+    using StrKey values in their child SkillNode elements.
 
     Returns:
-    - List of SkillItem
-    - Dict of KnowledgeNode by StrKey (with children attached)
+        skill_lookup: {StrKey: SkillEntry} in document order
     """
-    skills: List[SkillItem] = []
-    knowledge_map: Dict[str, KnowledgeNode] = {}
+    log.info("Scanning skills with knowledge: %s", skill_file.name)
+    skill_lookup: Dict[str, SkillEntry] = {}
+    pass2_hits = 0
 
-    log.info("Scanning for Skill/Knowledge data in: %s", folder)
+    root = parse_xml_file(skill_file)
+    if root is None:
+        log.error("Cannot parse skill file: %s", skill_file)
+        return skill_lookup
 
-    # First pass: collect all KnowledgeInfo
-    for path in sorted(iter_xml_files(folder)):
-        root_el = parse_xml_file(path)
-        if root_el is None:
+    source_file = skill_file.name
+
+    for el in root.iter("SkillInfo"):
+        key = el.get("Key") or ""
+        strkey = el.get("StrKey") or ""
+        skill_name = el.get("SkillName") or ""
+        skill_desc = el.get("SkillDesc") or ""
+        learn_knowledge_key = el.get("LearnKnowledgeKey") or ""
+
+        if not strkey or not skill_name:
             continue
 
-        for kn_el in root_el.iter("KnowledgeInfo"):
-            strkey = kn_el.get("StrKey") or ""
-            name = kn_el.get("Name") or ""
-            desc = kn_el.get("Desc") or ""
+        # Dedup by StrKey
+        if strkey in skill_lookup:
+            continue
 
-            if not strkey or strkey in knowledge_map:
+        # Pass 1: Resolve knowledge data via LearnKnowledgeKey
+        knowledge_name = ""
+        knowledge_desc = ""
+        knowledge_source_file = ""
+        pass1_strkey = ""
+        if learn_knowledge_key and learn_knowledge_key in knowledge_map:
+            knowledge_name, knowledge_desc, knowledge_source_file = knowledge_map[learn_knowledge_key]
+            pass1_strkey = learn_knowledge_key
+
+        # Pass 2: Identical name match (SkillName == KnowledgeInfo.Name)
+        knowledge2_name = ""
+        knowledge2_desc = ""
+        knowledge2_source_file = ""
+        if skill_name and skill_name in knowledge_name_index:
+            for kn_strkey, kn_desc, kn_src in knowledge_name_index[skill_name]:
+                if kn_strkey != pass1_strkey:
+                    knowledge2_name = skill_name
+                    knowledge2_desc = kn_desc
+                    knowledge2_source_file = kn_src
+                    pass2_hits += 1
+                    break
+
+        # Collect Korean strings for coverage tracking
+        _collect_korean_string(skill_name)
+        _collect_korean_string(skill_desc)
+        _collect_korean_string(knowledge_name)
+        _collect_korean_string(knowledge_desc)
+        _collect_korean_string(knowledge2_name)
+        _collect_korean_string(knowledge2_desc)
+
+        skill_lookup[strkey] = SkillEntry(
+            key=key,
+            strkey=strkey,
+            skill_name_kor=skill_name,
+            skill_desc_kor=skill_desc,
+            learn_knowledge_key=learn_knowledge_key,
+            knowledge_name_kor=knowledge_name,
+            knowledge_desc_kor=knowledge_desc,
+            knowledge2_name_kor=knowledge2_name,
+            knowledge2_desc_kor=knowledge2_desc,
+            source_file=source_file,
+            knowledge_source_file=knowledge_source_file,
+            knowledge2_source_file=knowledge2_source_file,
+        )
+
+    log.info("Skills scanned: %d (Pass 2 hits: %d)", len(skill_lookup), pass2_hits)
+    return skill_lookup
+
+
+# =============================================================================
+# SKILLTREEINFO PARSING (with UIPosition)
+# =============================================================================
+
+def parse_skill_trees(tree_file: Path) -> List[SkillTreeEntry]:
+    """Parse SkillTreeInfo.staticinfo.xml.
+
+    Each SkillTreeInfo has:
+      - Key, StrKey, CharacterKey, UIPageName
+      - Child <SkillNode> elements with Id, SkillKey, ParentId, UIPosition
+
+    UIPosition format: "col_row" (e.g. "5_1" = column 5, row 1).
+    Used for sorting skills in screen reading order.
+    """
+    log.info("Parsing skill trees: %s", tree_file.name)
+    trees: List[SkillTreeEntry] = []
+
+    root = parse_xml_file(tree_file)
+    if root is None:
+        log.error("Cannot parse skill tree file: %s", tree_file)
+        return trees
+
+    for st_el in root.iter("SkillTreeInfo"):
+        key = st_el.get("Key") or ""
+        strkey = st_el.get("StrKey") or ""
+        character_key = st_el.get("CharacterKey") or ""
+        ui_page_name = st_el.get("UIPageName") or ""
+
+        if not key:
+            continue
+
+        _collect_korean_string(ui_page_name)
+
+        # Collect all SkillNode elements (flat list, no hierarchy needed)
+        all_nodes: List[SkillNodeEntry] = []
+        for sn_el in st_el.iter("SkillNode"):
+            node_id = sn_el.get("Id") or ""
+            skill_key = sn_el.get("SkillKey") or ""
+            parent_id = sn_el.get("ParentId") or ""
+
+            if not node_id:
                 continue
-            if not name and not desc:
-                continue
 
-            # Check for parent reference in LevelData
-            parent_key = ""
-            unlock_level = 0
-            for level_data in kn_el.findall("LevelData"):
-                knowledge_list = level_data.get("KnowledgeList") or ""
-                if knowledge_list:
-                    match = _knowledge_list_re.match(knowledge_list)
-                    if match:
-                        parent_key = match.group(1)
-                        unlock_level = int(match.group(2))
-                        break
+            # Parse UIPosition "col_row" → (ui_col, ui_row)
+            ui_position = sn_el.get("UIPosition") or ""
+            ui_row, ui_col = 0, 0
+            if ui_position and "_" in ui_position:
+                parts = ui_position.split("_")
+                try:
+                    ui_col = int(parts[0])
+                    ui_row = int(parts[1])
+                except (ValueError, IndexError):
+                    pass
 
-            knowledge_map[strkey] = KnowledgeNode(
-                strkey=strkey,
-                name=name,
-                desc=desc,
-                parent_key=parent_key,
-                unlock_level=unlock_level,
-            )
-
-    log.info("Found %d KnowledgeInfo entries", len(knowledge_map))
-
-    # Build parent-child relationships
-    for kn in knowledge_map.values():
-        if kn.parent_key and kn.parent_key in knowledge_map:
-            parent = knowledge_map[kn.parent_key]
-            parent.children.append(kn)
-
-    # Sort children by unlock_level
-    for kn in knowledge_map.values():
-        kn.children.sort(key=lambda c: c.unlock_level)
-
-    # Second pass: collect SkillInfo from ONLY skillinfo_pc.staticinfo.xml
-    skill_file = folder / "skillinfo" / "skillinfo_pc.staticinfo.xml"
-    if not skill_file.exists():
-        log.error("Skill file not found: %s", skill_file)
-        return skills, knowledge_map
-
-    log.info("Reading skills from: %s", skill_file.name)
-    root_el = parse_xml_file(skill_file)
-    if root_el is not None:
-        for skill_el in root_el.iter("SkillInfo"):
-            key = skill_el.get("Key") or ""
-            strkey = skill_el.get("StrKey") or ""
-            skill_name = skill_el.get("SkillName") or ""
-            skill_desc = skill_el.get("SkillDesc") or ""
-            learn_knowledge_key = skill_el.get("LearnKnowledgeKey") or ""
-            max_level_str = skill_el.get("MaxLevel") or "1"
-
-            try:
-                max_level = int(max_level_str)
-            except ValueError:
-                max_level = 1
-
-            if not skill_name and not skill_desc:
-                continue
-
-            # Collect Korean strings for coverage tracking
-            _collect_korean_string(skill_name)
-            _collect_korean_string(skill_desc)
-
-            skills.append(SkillItem(
-                key=key,
-                strkey=strkey,
-                skill_name=skill_name,
-                skill_desc=skill_desc,
-                learn_knowledge_key=learn_knowledge_key,
-                max_level=max_level,
-                source_file=skill_file.name,
+            all_nodes.append(SkillNodeEntry(
+                node_id=node_id,
+                skill_key=skill_key,
+                parent_id=parent_id,
+                ui_row=ui_row,
+                ui_col=ui_col,
             ))
 
-    log.info("Found %d SkillInfo entries", len(skills))
+        # Sort by UIPosition reading order: (row ASC, col ASC)
+        all_nodes.sort(key=lambda n: (n.ui_row, n.ui_col))
 
-    # Third pass: resolve LearnKnowledgeKey priority
-    knowledge_key_to_skills: Dict[str, List[SkillItem]] = {}
-    for skill in skills:
-        if skill.learn_knowledge_key:
-            if skill.learn_knowledge_key not in knowledge_key_to_skills:
-                knowledge_key_to_skills[skill.learn_knowledge_key] = []
-            knowledge_key_to_skills[skill.learn_knowledge_key].append(skill)
+        trees.append(SkillTreeEntry(
+            key=key,
+            strkey=strkey,
+            character_key=character_key,
+            ui_page_name_kor=ui_page_name,
+            nodes=all_nodes,
+        ))
 
-    # Resolve priorities
-    for kn_key, skill_list in knowledge_key_to_skills.items():
-        if len(skill_list) > 1:
-            skill_list.sort(key=lambda s: s.max_level, reverse=True)
-            for loser in skill_list[1:]:
-                loser.use_own_desc = True
-
-    # Link knowledge to skills
-    linked_count = 0
-    for skill in skills:
-        if skill.learn_knowledge_key and not skill.use_own_desc:
-            if skill.learn_knowledge_key in knowledge_map:
-                skill.knowledge = knowledge_map[skill.learn_knowledge_key]
-                linked_count += 1
-
-    log.info("Linked %d skills to KnowledgeInfo", linked_count)
-
-    return skills, knowledge_map
+    total_nodes = sum(len(t.nodes) for t in trees)
+    log.info("Skill trees parsed: %d trees, %d total nodes", len(trees), total_nodes)
+    return trees
 
 
 # =============================================================================
-# ROW GENERATION
+# EXCEL WRITER (single sheet: Skills)
 # =============================================================================
 
-# (depth, text, source_file)
-RowItem = Tuple[int, str, str]
+_header_font = Font(bold=True, color="FFFFFF")
+_header_fill = PatternFill("solid", fgColor="4F81BD")
+_gold_fill = PatternFill("solid", fgColor="FFD700")
+_gold_font = Font(bold=True, size=11)
+_fill_a = PatternFill("solid", fgColor="E2EFDA")  # Light green
+_fill_b = PatternFill("solid", fgColor="FCE4D6")  # Light orange
 
 
-def emit_knowledge_child_rows(child: KnowledgeNode, depth: int, source_file: str) -> List[RowItem]:
-    """Emit rows for a knowledge child (sub-skill)."""
-    rows: List[RowItem] = []
+def _write_skill_rows(
+    ws,
+    excel_row: int,
+    entry: SkillEntry,
+    current_fill: PatternFill,
+    pre: Dict[Tuple[str, str], Tuple[str, str]],
+    group_info: str,
+) -> int:
+    """Write 1-6 rows for a single skill. Returns next excel_row."""
 
-    if child.name:
-        rows.append((depth, child.name, source_file))
+    def _write_row(data_type: str, kor_text: str, trans: str, sid: str) -> int:
+        nonlocal excel_row
+        vals = [data_type, group_info, br_to_newline(kor_text), br_to_newline(trans), "", "", "", sid]
+        for ci, val in enumerate(vals, 1):
+            cell = ws.cell(excel_row, ci, val)
+            cell.fill = current_fill
+            cell.border = THIN_BORDER
+            if ci == 5:  # STATUS
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+            else:
+                cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+        # STRINGID as text format
+        ws.cell(excel_row, 8).number_format = '@'
+        excel_row += 1
+        return excel_row
 
-    if child.desc:
-        rows.append((depth + 1, child.desc, source_file))
+    # 1. SkillData -- SkillName (always)
+    t, s = pre.get((entry.strkey, "skill_name"), ("", ""))
+    excel_row = _write_row("SkillData", entry.skill_name_kor, t, s)
 
-    for nested in child.children:
-        rows.extend(emit_knowledge_child_rows(nested, depth + 1, source_file))
+    # 2. SkillData -- SkillDesc (always, even if empty)
+    t, s = pre.get((entry.strkey, "skill_desc"), ("", ""))
+    excel_row = _write_row("SkillData", entry.skill_desc_kor, t, s)
 
-    return rows
+    # 3. KnowledgeData -- Name (skip if empty)
+    if entry.knowledge_name_kor:
+        t, s = pre.get((entry.strkey, "knowledge_name"), ("", ""))
+        excel_row = _write_row("KnowledgeData", entry.knowledge_name_kor, t, s)
 
+    # 4. KnowledgeData -- Desc (skip if empty)
+    if entry.knowledge_desc_kor:
+        t, s = pre.get((entry.strkey, "knowledge_desc"), ("", ""))
+        excel_row = _write_row("KnowledgeData", entry.knowledge_desc_kor, t, s)
 
-def emit_skill_rows(skill: SkillItem) -> List[RowItem]:
-    """Generate rows for a single skill with proper nesting."""
-    rows: List[RowItem] = []
-    source_file = skill.source_file
+    # 5. KnowledgeData2 -- Name (skip if empty)
+    if entry.knowledge2_name_kor:
+        t, s = pre.get((entry.strkey, "knowledge2_name"), ("", ""))
+        excel_row = _write_row("KnowledgeData2", entry.knowledge2_name_kor, t, s)
 
-    # Depth 0: SkillName (parent)
-    if skill.skill_name:
-        rows.append((0, skill.skill_name, source_file))
+    # 6. KnowledgeData2 -- Desc (skip if empty)
+    if entry.knowledge2_desc_kor:
+        t, s = pre.get((entry.strkey, "knowledge2_desc"), ("", ""))
+        excel_row = _write_row("KnowledgeData2", entry.knowledge2_desc_kor, t, s)
 
-    if skill.knowledge and not skill.use_own_desc:
-        kn = skill.knowledge
-
-        # Depth 1: Parent Knowledge Desc
-        if kn.desc:
-            rows.append((1, kn.desc, source_file))
-        elif skill.skill_desc:
-            rows.append((1, skill.skill_desc, source_file))
-
-        # Emit children (sub-skills)
-        for child in kn.children:
-            rows.extend(emit_knowledge_child_rows(child, 1, source_file))
-    else:
-        # No knowledge link or lost priority
-        if skill.skill_desc:
-            rows.append((1, skill.skill_desc, source_file))
-
-    return rows
-
-
-def emit_rows(skills: List[SkillItem]) -> List[RowItem]:
-    """Generate all rows from skill list."""
-    rows: List[RowItem] = []
-
-    for skill in skills:
-        rows.extend(emit_skill_rows(skill))
-
-    # Postprocess: drop empty rows
-    rows = [(d, t, sf) for (d, t, sf) in rows if t and t.strip()]
-
-    return rows
+    return excel_row
 
 
-# =============================================================================
-# EXCEL WRITER
-# =============================================================================
+def _write_header_row(ws, excel_row: int, data_type: str, group_info: str, kor_text: str) -> int:
+    """Write a gold header row. Returns next excel_row."""
+    vals = [data_type, group_info, br_to_newline(kor_text), "", "", "", "", ""]
+    for ci, val in enumerate(vals, 1):
+        cell = ws.cell(excel_row, ci, val)
+        cell.fill = _gold_fill
+        cell.font = _gold_font
+        cell.border = THIN_BORDER
+        cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    return excel_row + 1
 
-def write_workbook(
-    rows: List[RowItem],
-    eng_tbl: Dict[str, List[Tuple[str, str]]],
-    lang_tbl: Optional[Dict[str, List[Tuple[str, str]]]],
+
+def write_skill_excel(
+    skill_lookup: Dict[str, SkillEntry],
+    skill_trees: List[SkillTreeEntry],
+    lang_tbl: Dict[str, List[Tuple[str, str]]],
     lang_code: str,
-    out_path: Path,
+    export_index: Dict[str, Set[str]],
+    output_path: Path,
 ) -> None:
-    """Write one workbook with ONE sheet (Skills)."""
+    """Write Skill Excel with single "Skills" sheet, UIPosition ordered.
+
+    8 columns: DataType | GroupInfo | SourceText (KR) | Translation | STATUS | COMMENT | SCREENSHOT | STRINGID
+
+    Skills are grouped by SkillTreeInfo with gold headers. Within each tree,
+    skills are sorted by UIPosition (reading order: row ASC, col ASC).
+    Skills not in any tree appear at the end under "Other Skills".
+    """
     wb = Workbook()
-    ws = wb.active
-    ws.title = "Skills"
+    wb.remove(wb.active)
+    code = lang_code.upper()
 
-    is_eng = lang_code.lower() == "eng"
-
-    # Get EXPORT index for context-aware resolution
-    export_index = get_export_index()
+    headers = [
+        "DataType",
+        "GroupInfo",
+        "SourceText (KR)",
+        f"Translation ({code})",
+        "STATUS",
+        "COMMENT",
+        "SCREENSHOT",
+        "STRINGID",
+    ]
 
     # Order-based StringID consumer (fresh per language write pass)
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
-    eng_consumer = StringIdConsumer(ordered_idx) if is_eng else None
 
-    # Header row
-    headers: List = []
-    h1 = ws.cell(1, 1, "Original (KR)")
-    h2 = ws.cell(1, 2, "English (ENG)")
-    headers.extend([h1, h2])
+    # ------------------------------------------------------------------
+    # PRE-RESOLVE: consume StringIDs in DOCUMENT ORDER (skill_lookup
+    # preserves insertion order = XML scan order of skillinfo_pc).
+    # ------------------------------------------------------------------
+    pre: Dict[Tuple[str, str], Tuple[str, str]] = {}
+    for sk, entry in skill_lookup.items():
+        pre[(sk, "skill_name")] = resolve_translation(
+            entry.skill_name_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
+        pre[(sk, "skill_desc")] = resolve_translation(
+            entry.skill_desc_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
+        if entry.knowledge_name_kor:
+            pre[(sk, "knowledge_name")] = resolve_translation(
+                entry.knowledge_name_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)
+        if entry.knowledge_desc_kor:
+            pre[(sk, "knowledge_desc")] = resolve_translation(
+                entry.knowledge_desc_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)
+        if entry.knowledge2_name_kor:
+            pre[(sk, "knowledge2_name")] = resolve_translation(
+                entry.knowledge2_name_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
+        if entry.knowledge2_desc_kor:
+            pre[(sk, "knowledge2_desc")] = resolve_translation(
+                entry.knowledge2_desc_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
 
-    if not is_eng:
-        h3 = ws.cell(1, 3, f"Translation ({lang_code.upper()})")
-        headers.append(h3)
+    if consumer.warnings:
+        log.warning("StringID overruns during pre-resolve: %d", consumer.warnings)
 
-    start_extra_col = len(headers) + 1
-    extra_names = ["STATUS", "COMMENT", "STRINGID", "SCREENSHOT"]
-    for idx, name in enumerate(extra_names, start=start_extra_col):
-        headers.append(ws.cell(1, idx, name))
-
-    for hcell in headers:
-        hcell.font = _header_font
-        hcell.fill = _header_fill
-        hcell.alignment = Alignment(horizontal="center", vertical="center")
-        hcell.border = THIN_BORDER
-    ws.row_dimensions[1].height = 25
-
-    # Column widths
-    ws.column_dimensions["A"].width = 50
-    ws.column_dimensions["B"].width = 50
-    ws.column_dimensions["B"].hidden = not is_eng
-    if not is_eng:
-        ws.column_dimensions["C"].width = 50
-        ws.column_dimensions["D"].width = 12
-        ws.column_dimensions["E"].width = 40
-        ws.column_dimensions["F"].width = 20
-        ws.column_dimensions["G"].width = 20
-    else:
-        ws.column_dimensions["C"].width = 12
-        ws.column_dimensions["D"].width = 40
-        ws.column_dimensions["E"].width = 20
-        ws.column_dimensions["F"].width = 20
-
-    # Data validation for STATUS
-    status_col = 4 if not is_eng else 3
-    dv = DataValidation(
-        type="list",
-        formula1=f'"{",".join(STATUS_OPTIONS)}"',
-        allow_blank=True,
-    )
-    dv.error = "Invalid status"
-    dv.prompt = "Select status"
-    ws.add_data_validation(dv)
-
-    # Write data rows
-    for row_idx, (depth, text, source_file) in enumerate(rows, start=2):
-        # Use context-aware resolution for duplicate handling
-        eng_tr, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
-        loc_tr, sid_other = "", ""
-        if lang_tbl:
-            loc_tr, sid_other = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
-        sid = sid_other if not is_eng else sid_eng
-
-        fill, font, row_height = _get_style_for_depth(depth)
-        indent = depth
-
-        # Column A: Original (KR)
-        c1 = ws.cell(row_idx, 1, br_to_newline(text))
-        c1.fill = fill
-        c1.font = font
-        c1.alignment = Alignment(indent=indent, wrap_text=True, vertical="center")
-        c1.border = THIN_BORDER
-
-        # Column B: English (ENG)
-        c2 = ws.cell(row_idx, 2, br_to_newline(eng_tr))
-        c2.fill = fill
-        c2.font = font
-        c2.alignment = Alignment(indent=indent, wrap_text=True, vertical="center")
-        c2.border = THIN_BORDER
-
-        col_offset = 2
-
-        # Column C: Translation (if not ENG)
-        if not is_eng:
-            c3 = ws.cell(row_idx, 3, br_to_newline(loc_tr))
-            c3.fill = fill
-            c3.font = font
-            c3.alignment = Alignment(indent=indent, wrap_text=True, vertical="center")
-            c3.border = THIN_BORDER
-            col_offset = 3
-
-        # STATUS, COMMENT, STRINGID, SCREENSHOT
-        for extra_idx, val in enumerate(["", "", sid, ""], start=col_offset + 1):
-            cell = ws.cell(row_idx, extra_idx, val)
+    def _write_column_headers(ws):
+        for col_idx, txt in enumerate(headers, 1):
+            cell = ws.cell(1, col_idx, txt)
+            cell.font = _header_font
+            cell.fill = _header_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.border = THIN_BORDER
-            cell.alignment = Alignment(vertical="center")
-            if extra_idx == col_offset + 3:
-                cell.number_format = '@'
 
-        # Apply STATUS data validation
-        dv.add(ws.cell(row_idx, status_col))
+    def _finalize_sheet(ws, excel_row):
+        if excel_row > 2:
+            ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{excel_row - 1}"
+        ws.freeze_panes = "A2"
+        add_status_dropdown(ws, col=5)
+        autofit_worksheet(ws)
 
-    # Auto-fit
-    autofit_worksheet(ws)
+    # ==================================================================
+    # Single sheet: Skills (UIPosition ordered)
+    # ==================================================================
+    ws = wb.create_sheet("Skills")
+    _write_column_headers(ws)
+    excel_row = 2
+    current_fill = _fill_a
 
-    # Save
-    wb.save(out_path)
-    log.info("Saved: %s (%d rows)", out_path.name, len(rows))
+    # Track which skills have been written (to find orphans)
+    written_skills: Set[str] = set()
+
+    # Write skills grouped by SkillTreeInfo, ordered by UIPosition
+    for tree in skill_trees:
+        # Gold header row for the tree
+        group_info = f"{tree.character_key} | {tree.ui_page_name_kor}" if tree.character_key else tree.key
+        excel_row = _write_header_row(
+            ws, excel_row, "SkillTreeHeader", group_info, tree.ui_page_name_kor)
+
+        # Nodes are already sorted by (ui_row, ui_col) from parse_skill_trees
+        for node in tree.nodes:
+            entry = skill_lookup.get(node.skill_key)
+            if not entry:
+                continue
+            if not entry.learn_knowledge_key:
+                continue  # Only include skills with LearnKnowledgeKey
+
+            # Alternate fill per skill
+            current_fill = _fill_b if current_fill == _fill_a else _fill_a
+
+            excel_row = _write_skill_rows(
+                ws, excel_row, entry, current_fill, pre, group_info)
+            written_skills.add(node.skill_key)
+
+    # Orphaned skills: have LearnKnowledgeKey but aren't in any tree
+    orphans = [
+        entry for sk, entry in skill_lookup.items()
+        if entry.learn_knowledge_key and sk not in written_skills
+    ]
+
+    if orphans:
+        excel_row = _write_header_row(
+            ws, excel_row, "SkillTreeHeader", "Other Skills", "기타 스킬")
+
+        for entry in orphans:
+            current_fill = _fill_b if current_fill == _fill_a else _fill_a
+            excel_row = _write_skill_rows(
+                ws, excel_row, entry, current_fill, pre, "Other Skills")
+
+    _finalize_sheet(ws, excel_row)
+    log.info("  Sheet 'Skills': %d rows", excel_row - 2)
+
+    wb.save(output_path)
+    log.info("Skill Excel saved: %s", output_path.name)
 
 
 # =============================================================================
@@ -486,12 +509,16 @@ def generate_skill_datasheets() -> Dict:
     """
     Generate Skill datasheets for all languages.
 
+    Pipeline:
+    1. Load language tables
+    2. Load knowledge data (Name + Desc + source_file)
+    3. Parse skillinfo_pc.staticinfo.xml -> skill_lookup
+    4. Parse SkillTreeInfo.staticinfo.xml -> skill_trees (with UIPosition)
+    5. Get EXPORT index
+    6. For each language: write single-sheet Excel (UIPosition ordered)
+
     Returns:
-        Dict with results: {
-            "category": "Skill",
-            "files_created": N,
-            "errors": [...]
-        }
+        Dict with results
     """
     result = {
         "category": "Skill",
@@ -499,19 +526,16 @@ def generate_skill_datasheets() -> Dict:
         "errors": [],
     }
 
-    # Reset Korean string collection
     reset_korean_collection()
 
     log.info("=" * 70)
     log.info("Skill Datasheet Generator")
     log.info("=" * 70)
 
-    # Ensure output folder exists
     DATASHEET_OUTPUT.mkdir(parents=True, exist_ok=True)
     output_folder = DATASHEET_OUTPUT / "Skill_LQA_All"
     output_folder.mkdir(exist_ok=True)
 
-    # Check paths
     if not RESOURCE_FOLDER.exists():
         result["errors"].append(f"Resource folder not found: {RESOURCE_FOLDER}")
         log.error("Resource folder not found: %s", RESOURCE_FOLDER)
@@ -522,40 +546,56 @@ def generate_skill_datasheets() -> Dict:
         log.error("Language folder not found: %s", LANGUAGE_FOLDER)
         return result
 
+    knowledge_folder = RESOURCE_FOLDER / "knowledgeinfo"
+    skill_file = RESOURCE_FOLDER / "skillinfo" / "skillinfo_pc.staticinfo.xml"
+    tree_file = RESOURCE_FOLDER / "skillinfo" / "SkillTreeInfo.staticinfo.xml"
+
+    if not skill_file.exists():
+        result["errors"].append(f"Skill file not found: {skill_file}")
+        log.error("Skill file not found: %s", skill_file)
+        return result
+
     try:
-        # 1. Extract Skill and Knowledge data
-        skills, knowledge_map = extract_skill_data(RESOURCE_FOLDER)
-        if not skills:
-            result["errors"].append("No Skill data found!")
-            log.warning("No Skill data found!")
+        # 1. Load language tables
+        lang_tables = load_language_tables(LANGUAGE_FOLDER)
+
+        if not lang_tables:
+            result["errors"].append("No language tables found!")
+            log.warning("No language tables found!")
             return result
 
-        # 2. Generate rows
-        rows = emit_rows(skills)
-        log.info("Generated %d rows", len(rows))
+        # 2. Load knowledge data (map + name index for Pass 2)
+        knowledge_map, knowledge_name_index = load_knowledge_data(knowledge_folder)
 
-        # 3. Load language tables
-        lang_tables = load_language_tables(LANGUAGE_FOLDER)
-        eng_tbl = lang_tables.get("eng", {})
+        # 3. Parse skillinfo_pc -> skill_lookup
+        skill_lookup = scan_skills_with_knowledge(
+            skill_file, knowledge_map, knowledge_name_index)
 
-        if not eng_tbl:
-            log.warning("English language table not found!")
+        if not skill_lookup:
+            result["errors"].append("No skill data found!")
+            log.warning("No skill data found!")
+            return result
 
-        # 4. Write workbooks (one per language)
-        # Always write English
-        write_workbook(
-            rows, eng_tbl, None, "eng",
-            output_folder / "LQA_Skill_ENG.xlsx"
-        )
-        result["files_created"] += 1
+        # 4. Parse SkillTreeInfo -> skill_trees (with UIPosition)
+        skill_trees: List[SkillTreeEntry] = []
+        if tree_file.exists():
+            skill_trees = parse_skill_trees(tree_file)
+        else:
+            log.warning("SkillTreeInfo file not found: %s", tree_file)
 
-        # Write other languages
-        for lang_code, lang_tbl in lang_tables.items():
-            if lang_code.lower() == "eng":
-                continue
-            write_workbook(
-                rows, eng_tbl, lang_tbl, lang_code,
-                output_folder / f"LQA_Skill_{lang_code.upper()}.xlsx"
+        # 5. Get EXPORT index
+        export_index = get_export_index()
+
+        # 6. Generate Excel per language
+        log.info("Processing languages...")
+        total = len(lang_tables)
+
+        for idx, (code, tbl) in enumerate(lang_tables.items(), 1):
+            log.info("(%d/%d) Language %s", idx, total, code.upper())
+            excel_path = output_folder / f"Skill_LQA_{code.upper()}.xlsx"
+            write_skill_excel(
+                skill_lookup, skill_trees,
+                tbl, code, export_index, excel_path,
             )
             result["files_created"] += 1
 

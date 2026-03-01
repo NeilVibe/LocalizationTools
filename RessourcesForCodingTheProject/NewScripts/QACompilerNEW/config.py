@@ -213,13 +213,12 @@ CATEGORIES = [
     "Region",
     "System",
     "Character",
-    "Skill",
+    "Skill",       # Row-per-text skill datasheet (UIPosition ordered)
     "Help",
     "Gimmick",
     "Contents",
     "NewCharacter",  # Row-per-text character datasheet with knowledge passes
     "NewRegion",     # Row-per-text region datasheet with knowledge passes
-    "NewSkill",      # Row-per-text skill datasheet (SkillGroup + SkillTree tabs)
     "Sequencer",  # → Master_Script.xlsx
     "Dialog",     # → Master_Script.xlsx
     "Face",       # Facial animation QA (custom processing)
@@ -228,12 +227,11 @@ CATEGORIES = [
 # Category clustering: Multiple categories can merge into one master file
 # Key = input category from folder name, Value = target master file category
 CATEGORY_TO_MASTER = {
-    "Skill": "System",      # Skill -> Master_System.xlsx
     "Help": "System",       # Help (GameAdvice) -> Master_System.xlsx
     "Gimmick": "Item",      # Gimmick -> Master_Item.xlsx
     "Sequencer": "Script",  # Sequencer -> Master_Script.xlsx
     "Dialog": "Script",     # Dialog -> Master_Script.xlsx
-    # All others map to themselves (Quest->Quest, Knowledge->Knowledge, etc.)
+    # All others map to themselves (Quest->Quest, Knowledge->Knowledge, Skill->Skill, etc.)
 }
 
 # =============================================================================
@@ -262,8 +260,8 @@ WORKER_GROUPS = {
     "itemknowledgecluster": ["ItemKnowledgeCluster"],  # Mega cluster (own master)
     "newcharacter": ["NewCharacter"],         # Row-per-text format (separate Master_NewCharacter.xlsx)
     "newregion":    ["NewRegion"],             # Region layout + DisplayName (separate Master_NewRegion.xlsx)
-    "newskill":     ["NewSkill"],              # Row-per-text skill (SkillGroup + SkillTree tabs)
-    "system":     ["Skill", "Help"],         # Must serialize (shared Master_System.xlsx)
+    "skill":        ["Skill"],                  # Row-per-text skill (UIPosition ordered)
+    "system":     ["Help"],                  # Help only (Master_System.xlsx)
     "script":     ["Sequencer", "Dialog"],   # Must serialize (shared Master_Script.xlsx)
 }
 
@@ -282,9 +280,8 @@ TRANSLATION_COLS = {
     "ItemKnowledgeCluster": {"eng": 3, "other": 3},  # Translation column (mega-sheet format)
     "NewCharacter": {"eng": 4, "other": 4},  # Translation column (row-per-text format)
     "NewRegion": {"eng": 2, "other": 3},     # Same column layout as Region
-    "NewSkill": {"eng": 4, "other": 4},      # Translation column (row-per-text format)
     "System": {"eng": 1, "other": 1},  # CONTENT column (single column for all languages)
-    "Skill": {"eng": 2, "other": 3},
+    "Skill": {"eng": 4, "other": 4},  # Translation column (row-per-text, UIPosition ordered)
     "Help": {"eng": 2, "other": 3},
     "Gimmick": {"eng": 2, "other": 3},
     "Contents": {"eng": 2, "other": 2},  # INSTRUCTIONS column (matching key, no localization)

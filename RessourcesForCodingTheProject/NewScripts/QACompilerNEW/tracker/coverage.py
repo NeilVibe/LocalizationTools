@@ -46,7 +46,6 @@ OUTPUT_FOLDERS = {
     "ItemKnowledgeCluster": SCRIPT_DIR / "ItemKnowledgeCluster",
     "NewCharacter": SCRIPT_DIR / "NewCharacterData_Map_All",
     "NewRegion":    SCRIPT_DIR / "NewRegionData_Map_All",
-    "NewSkill":     SCRIPT_DIR / "NewSkillData_Map_All",
 }
 
 # ENG file patterns per category
@@ -55,7 +54,7 @@ ENG_FILE_PATTERNS = {
     "Quest":      "Quest_LQA_ENG.xlsx",
     "Item":       "*_ENG*.xlsx",  # Multiple files
     "Knowledge":  "Knowledge_LQA_ENG.xlsx",
-    "Skill":      "LQA_Skill_ENG.xlsx",
+    "Skill":      "Skill_LQA_ENG.xlsx",
     "Region":     "Region_LQA_ENG.xlsx",
     "Gimmick":    "Gimmick_LQA_ENG.xlsx",
     "Help":       "LQA_GameAdvice_ENG.xlsx",
@@ -63,7 +62,6 @@ ENG_FILE_PATTERNS = {
     "ItemKnowledgeCluster": "ItemKnowledgeCluster_LQA_ENG.xlsx",
     "NewCharacter": "NewCharacter_LQA_ENG.xlsx",
     "NewRegion":    "NewRegion_LQA_ENG.xlsx",
-    "NewSkill":     "NewSkill_LQA_ENG.xlsx",
 }
 
 # Korean column index (1-based) per category - column A = 1
@@ -73,7 +71,7 @@ KOREAN_COLUMN = {
     "Quest":      1,            # Original
     "Item":       (6, 8),       # ItemName(KOR)=col F, ItemDesc(KOR)=col H
     "Knowledge":  1,            # Original (KR)
-    "Skill":      1,            # Original (KR)
+    "Skill":      3,            # SourceText (KR) = col C (row-per-text format)
     "Region":     1,            # Original (KR)
     "Gimmick":    (6, 9, 11),   # GimmickName(KOR)=6, ItemName(KOR)=9, ItemDesc(KOR)=11
     "Help":       1,            # Original (KR)
@@ -81,7 +79,6 @@ KOREAN_COLUMN = {
     "ItemKnowledgeCluster": 2,  # SourceText (KR) = col B
     "NewCharacter": 3,          # SourceText (KR) = col C
     "NewRegion":    1,          # Original (KR) = col A (same as Region)
-    "NewSkill":     3,          # SourceText (KR) = col C
 }
 
 # English/Translation column index (1-based) per category
@@ -90,7 +87,7 @@ TRANSLATION_COLUMN = {
     "Quest":      2,            # ENG
     "Item":       (7, 9),       # ItemName(ENG)=col G, ItemDesc(ENG)=col I
     "Knowledge":  2,            # English (ENG)
-    "Skill":      2,            # English (ENG)
+    "Skill":      4,            # Translation ({CODE}) = col D (row-per-text format)
     "Region":     2,            # English (ENG)
     "Gimmick":    (7, 10, 12),  # GimmickName(ENG)=7, ItemName(ENG)=10, ItemDesc(ENG)=12
     "Help":       2,            # English (ENG)
@@ -98,7 +95,6 @@ TRANSLATION_COLUMN = {
     "ItemKnowledgeCluster": 3,  # Translation ({CODE}) = col C
     "NewCharacter": 4,          # Translation ({CODE}) = col D
     "NewRegion":    2,          # English (ENG) = col B (same as Region)
-    "NewSkill":     4,          # Translation ({CODE}) = col D
 }
 
 # Language data folder - imported from config.py (uses settings.json drive letter)
@@ -437,7 +433,7 @@ def load_korean_strings_from_datasheets(output_folder: Path) -> Dict[str, Set[st
         ("Quest", "QuestData_Map_All", "Quest_LQA_ENG.xlsx"),
         ("Item", "ItemData_Map_All/Item_Full_LQA", "*_ENG*.xlsx"),
         ("Knowledge", "Knowledge_LQA_All", "Knowledge_LQA_ENG.xlsx"),
-        ("Skill", "Skill_LQA_All", "LQA_Skill_ENG.xlsx"),
+        ("Skill", "Skill_LQA_All", "Skill_LQA_ENG.xlsx"),
         ("Region", "Region_LQA_v3", "Region_LQA_ENG.xlsx"),
         ("Gimmick", "Gimmick_LQA_Output", "Gimmick_LQA_ENG.xlsx"),
         ("Help", "GameAdvice_LQA_All", "LQA_GameAdvice_ENG.xlsx"),
@@ -445,7 +441,6 @@ def load_korean_strings_from_datasheets(output_folder: Path) -> Dict[str, Set[st
         ("ItemKnowledgeCluster", "ItemKnowledgeCluster", "ItemKnowledgeCluster_LQA_ENG.xlsx"),
         ("NewCharacter", "NewCharacterData_Map_All", "NewCharacter_LQA_ENG.xlsx"),
         ("NewRegion", "NewRegionData_Map_All", "NewRegion_LQA_ENG.xlsx"),
-        ("NewSkill", "NewSkillData_Map_All", "NewSkill_LQA_ENG.xlsx"),
     ]
 
     for category, folder_path, file_pattern in CATEGORY_CONFIG:
@@ -628,7 +623,7 @@ def collect_category_wordcounts(output_folder: Path) -> Dict[str, CategoryWordCo
         ("Quest", "QuestData_Map_All", "Quest_LQA_ENG.xlsx"),
         ("Item", "ItemData_Map_All/Item_Full_LQA", "*_ENG*.xlsx"),
         ("Knowledge", "Knowledge_LQA_All", "Knowledge_LQA_ENG.xlsx"),
-        ("Skill", "Skill_LQA_All", "LQA_Skill_ENG.xlsx"),
+        ("Skill", "Skill_LQA_All", "Skill_LQA_ENG.xlsx"),
         ("Region", "Region_LQA_v3", "Region_LQA_ENG.xlsx"),
         ("Gimmick", "Gimmick_LQA_Output", "Gimmick_LQA_ENG.xlsx"),
         ("Help", "GameAdvice_LQA_All", "LQA_GameAdvice_ENG.xlsx"),
@@ -636,7 +631,6 @@ def collect_category_wordcounts(output_folder: Path) -> Dict[str, CategoryWordCo
         ("ItemKnowledgeCluster", "ItemKnowledgeCluster", "ItemKnowledgeCluster_LQA_ENG.xlsx"),
         ("NewCharacter", "NewCharacterData_Map_All", "NewCharacter_LQA_ENG.xlsx"),
         ("NewRegion", "NewRegionData_Map_All", "NewRegion_LQA_ENG.xlsx"),
-        ("NewSkill", "NewSkillData_Map_All", "NewSkill_LQA_ENG.xlsx"),
     ]
 
     for category, folder_path, file_pattern in CATEGORY_CONFIG:
