@@ -1,7 +1,7 @@
 """
 Skill Datasheet Generator
 =========================
-Row-per-text skill datasheet ordered by UIPosition (screen reading order).
+Row-per-text skill datasheet ordered by UIPositionXY (screen reading order).
 
 Each skill with LearnKnowledgeKey produces up to 6 rows:
   1. SkillData   — SkillName
@@ -11,20 +11,20 @@ Each skill with LearnKnowledgeKey produces up to 6 rows:
   5. KnowledgeData2 — Name  (Pass 2: identical SkillName == KnowledgeInfo.Name)
   6. KnowledgeData2 — Desc  (Pass 2)
 
-Skills are grouped by SkillTreeInfo and sorted by UIPosition within each tree
-(reading order: left-to-right, top-to-bottom on the skill tree UI page).
+Skills are grouped by SkillTreeInfo and sorted by UIPositionXY within each tree
+(reading order: Y ascending, X ascending on the skill tree UI page).
 Skills not in any tree are collected at the end under "Other Skills".
 
 Key features:
 - Gold header rows per skill tree (character + weapon page)
-- UIPosition ordering within each tree for tester-friendly reading order
+- UIPositionXY ordering within each tree for tester-friendly reading order
 - Alternating fill per skill
 - Reuses knowledge loading from newitem.py
 """
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -102,8 +102,8 @@ class SkillNodeEntry:
     node_id: str
     skill_key: str
     parent_id: str
-    ui_row: int = 0      # from UIPosition "col_row" → row
-    ui_col: int = 0      # from UIPosition "col_row" → col
+    ui_xy: Optional[Tuple[int, int]] = None  # (x, y) from UIPositionXY
+    ui_position: str = ""                     # grid "col_row" (fallback only)
 
 
 @dataclass
@@ -114,6 +114,17 @@ class SkillTreeEntry:
     character_key: str
     ui_page_name_kor: str
     nodes: List[SkillNodeEntry] = field(default_factory=list)
+
+
+def _parse_grid_sort_key(ui_position: str) -> Tuple[int, int]:
+    """Parse UIPosition grid "col_row" into (row, col) for fallback sorting."""
+    if ui_position and "_" in ui_position:
+        parts = ui_position.split("_")
+        try:
+            return (int(parts[1]), int(parts[0]))  # (row, col)
+        except (ValueError, IndexError):
+            pass
+    return (9999, 9999)
 
 
 # =============================================================================
@@ -220,10 +231,11 @@ def parse_skill_trees(tree_file: Path) -> List[SkillTreeEntry]:
 
     Each SkillTreeInfo has:
       - Key, StrKey, CharacterKey, UIPageName
-      - Child <SkillNode> elements with Id, SkillKey, ParentId, UIPosition
+      - Child <SkillNode> elements with Id, SkillKey, ParentId, UIPositionXY, UIPosition
 
-    UIPosition format: "col_row" (e.g. "5_1" = column 5, row 1).
-    Used for sorting skills in screen reading order.
+    UIPositionXY format: "X Y" pixel coordinates (e.g. "640 30").
+    Used for sorting skills in screen reading order (Y ascending, X ascending).
+    UIPosition grid format "col_row" is kept as fallback for nodes missing XY.
     """
     log.info("Parsing skill trees: %s", tree_file.name)
     trees: List[SkillTreeEntry] = []
@@ -254,27 +266,32 @@ def parse_skill_trees(tree_file: Path) -> List[SkillTreeEntry]:
             if not node_id:
                 continue
 
-            # Parse UIPosition "col_row" → (ui_col, ui_row)
-            ui_position = sn_el.get("UIPosition") or ""
-            ui_row, ui_col = 0, 0
-            if ui_position and "_" in ui_position:
-                parts = ui_position.split("_")
+            # Parse UIPositionXY "X Y" → (x, y) pixel coordinates
+            ui_xy_str = sn_el.get("UIPositionXY") or ""
+            ui_xy = None
+            if ui_xy_str:
+                xy_parts = ui_xy_str.split()
                 try:
-                    ui_col = int(parts[0])
-                    ui_row = int(parts[1])
+                    ui_xy = (int(xy_parts[0]), int(xy_parts[1]))
                 except (ValueError, IndexError):
                     pass
+
+            ui_position = sn_el.get("UIPosition") or ""
 
             all_nodes.append(SkillNodeEntry(
                 node_id=node_id,
                 skill_key=skill_key,
                 parent_id=parent_id,
-                ui_row=ui_row,
-                ui_col=ui_col,
+                ui_xy=ui_xy,
+                ui_position=ui_position,
             ))
 
-        # Sort by UIPosition reading order: (row ASC, col ASC)
-        all_nodes.sort(key=lambda n: (n.ui_row, n.ui_col))
+        # Sort by UIPositionXY (Y asc, X asc); grid fallback for nodes missing XY
+        with_xy = [n for n in all_nodes if n.ui_xy is not None]
+        without_xy = [n for n in all_nodes if n.ui_xy is None]
+        with_xy.sort(key=lambda n: (n.ui_xy[1], n.ui_xy[0]))
+        without_xy.sort(key=lambda n: _parse_grid_sort_key(n.ui_position))
+        all_nodes = with_xy + without_xy
 
         trees.append(SkillTreeEntry(
             key=key,
@@ -378,12 +395,12 @@ def write_skill_excel(
     export_index: Dict[str, Set[str]],
     output_path: Path,
 ) -> None:
-    """Write Skill Excel with single "Skills" sheet, UIPosition ordered.
+    """Write Skill Excel with single "Skills" sheet, UIPositionXY ordered.
 
     8 columns: DataType | GroupInfo | SourceText (KR) | Translation | STATUS | COMMENT | SCREENSHOT | STRINGID
 
     Skills are grouped by SkillTreeInfo with gold headers. Within each tree,
-    skills are sorted by UIPosition (reading order: row ASC, col ASC).
+    skills are sorted by UIPositionXY pixel coordinates (Y asc, X asc = screen reading order).
     Skills not in any tree appear at the end under "Other Skills".
     """
     wb = Workbook()
@@ -464,7 +481,7 @@ def write_skill_excel(
         excel_row = _write_header_row(
             ws, excel_row, "SkillTreeHeader", group_info, tree.ui_page_name_kor)
 
-        # Nodes are already sorted by (ui_row, ui_col) from parse_skill_trees
+        # Nodes are already sorted by (Y, X) from parse_skill_trees
         for node in tree.nodes:
             entry = skill_lookup.get(node.skill_key)
             if not entry:

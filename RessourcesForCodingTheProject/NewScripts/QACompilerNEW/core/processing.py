@@ -1070,18 +1070,13 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False, prel
         comment_col_indices = [col - 1 for col in comment_cols]  # 0-based
         tester_status_cols = list(tester_status_cols_map.values())
         tester_status_indices = [col - 1 for col in tester_status_cols]
-        manager_status_cols = list(status_cols_map.values())
-        manager_status_indices = [col - 1 for col in manager_status_cols]
+        manager_status_indices = [col - 1 for col in status_cols_map.values()]
         screenshot_col_list = list(screenshot_cols_map.values())
         screenshot_col_indices = [col - 1 for col in screenshot_col_list]
-        manager_comment_col_list = list(manager_comment_cols_map.values())
-        manager_comment_col_indices = [col - 1 for col in manager_comment_col_list]
 
         rows_with_comments = set()
         cols_with_comments = set()  # Store 1-based column numbers
         screenshot_cols_with_content = set()  # Store 1-based column numbers
-        status_cols_with_content = set()  # Store 1-based column numbers
-        manager_comment_cols_with_content = set()  # Store 1-based column numbers
         rows_non_issue_by_tester = set()
         rows_with_issue_status = set()
         rows_resolved_by_manager = set()
@@ -1127,22 +1122,13 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False, prel
                 if debug and row_idx <= 20:
                     print(f"    [DEBUG] Row {row_idx} has tester status but no ISSUE - will hide")
 
-            # Check manager status columns (FAST: direct tuple access)
-            for i, col_idx in enumerate(manager_status_indices):
+            # Check manager status columns for row hiding (FIXED/NON-ISSUE)
+            for col_idx in manager_status_indices:
                 if col_idx < len(row_tuple):
                     value = row_tuple[col_idx]
                     if value and str(value).strip():
-                        status_cols_with_content.add(manager_status_cols[i])
                         if str(value).strip().upper() in MANAGER_HIDE_STATUSES:
                             rows_resolved_by_manager.add(row_idx)
-
-            # Check manager comment columns (FAST: direct tuple access)
-            for i, col_idx in enumerate(manager_comment_col_indices):
-                if manager_comment_col_list[i] not in manager_comment_cols_with_content:
-                    if col_idx < len(row_tuple):
-                        value = row_tuple[col_idx]
-                        if value is not None and str(value).strip():
-                            manager_comment_cols_with_content.add(manager_comment_col_list[i])
 
         if debug:
             if rows_with_issue_status:
@@ -1191,10 +1177,9 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False, prel
 
         hidden_columns_total += hidden_cols_this_sheet
 
-        # === HIDE INDIVIDUALLY EMPTY COLUMNS ===
-        # Uses data collected in single-pass above (no additional row scan needed)
-        # Hides STATUS_{User}, MANAGER_COMMENT_{User}, SCREENSHOT_{User} when fully empty,
-        # even if the user's COMMENT column has content (group stays visible).
+        # === HIDE INDIVIDUALLY EMPTY OPTIONAL COLUMNS ===
+        # Only SCREENSHOT is individually hidden when empty (it's truly optional).
+        # STATUS and MANAGER_COMMENT stay visible — empty just means not yet reviewed.
         for uname, col in screenshot_cols_map.items():
             col_letter = get_column_letter(col)
             if ws.column_dimensions[col_letter].hidden:
@@ -1205,25 +1190,10 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False, prel
                 if debug:
                     print(f"    [DEBUG] Hidden empty SCREENSHOT column: SCREENSHOT_{uname}")
 
-        for uname, col in status_cols_map.items():
-            col_letter = get_column_letter(col)
-            if ws.column_dimensions[col_letter].hidden:
-                continue
-            if col not in status_cols_with_content:
-                ws.column_dimensions[col_letter].hidden = True
-                hidden_columns_total += 1
-                if debug:
-                    print(f"    [DEBUG] Hidden empty STATUS column: STATUS_{uname}")
-
-        for uname, col in manager_comment_cols_map.items():
-            col_letter = get_column_letter(col)
-            if ws.column_dimensions[col_letter].hidden:
-                continue
-            if col not in manager_comment_cols_with_content:
-                ws.column_dimensions[col_letter].hidden = True
-                hidden_columns_total += 1
-                if debug:
-                    print(f"    [DEBUG] Hidden empty MANAGER_COMMENT column: MANAGER_COMMENT_{uname}")
+        # STATUS_{User} and MANAGER_COMMENT_{User} are NOT individually hidden.
+        # These columns stay visible whenever the tester's COMMENT_{User} has data,
+        # because empty manager columns are normal (manager hasn't reviewed yet).
+        # Group-level hiding (above) already handles the case where EVERYTHING is empty.
 
         # === COMBINE HIDING RULES ===
         rows_to_hide = rows_non_issue_by_tester | rows_resolved_by_manager

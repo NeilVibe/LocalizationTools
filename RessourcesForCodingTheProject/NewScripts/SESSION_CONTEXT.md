@@ -4,6 +4,50 @@
 
 ---
 
+## 2026-02-28: QuickTranslate — Broken XML Detection + Fuzzy Fixes (8 bugs)
+
+### Broken XML Detection (NEW SAFEGUARD)
+
+Detects malformed LocStr nodes (e.g., `StrOrigin""dada"`, `Str"<dkadz"`) using raw-text strict-parse approach — catches what lxml's `recover=True` silently swallows.
+
+**3 detection points:**
+1. **Source validation** — `_validate_source_files_async()` logs warnings when selecting source folder
+2. **Target validation** — `_analyze_folder()` logs warnings when selecting target folder
+3. **Pattern checker** — `run_pattern_check()` outputs `BrokenXML/` report (plain text)
+
+**Technique:** Regex extracts each `<LocStr .../>` from raw file text, wraps in `<r>...</r>`, attempts strict lxml parse. If it throws `XMLSyntaxError`, the node is broken.
+
+### Fuzzy Match Fixes (8 bugs)
+
+| Bug | Fix |
+|-----|-----|
+| Empty `stringid_filter` (set()) filtered out ALL FAISS entries | Only extract StringIDs for `strict` mode, not `strorigin_only` |
+| Stale FAISS index after filter change | `_ensure_fuzzy_entries` now invalidates `_fuzzy_index` |
+| Case-sensitive StringID pool lookup | `.lower()` everywhere: filter sets, index keys, pool lookups |
+| Case-sensitive StringID in `scan_folder_for_entries` | Key uses `string_id.lower()` |
+| Case-sensitive StringID in `find_matches_strict` | Key uses `string_id.lower()` |
+| Case-sensitive `stringid_filter` check | Filter check uses `string_id.lower()` |
+| Missing `only_untranslated` in fallback builder | Added to `build_index_from_folder` call |
+| Redundant post-scan StringID filter | Removed (already filtered during scan) |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `core/checker.py` | `check_broken_xml_in_file()`, `_write_broken_xml_report()`, 4-tuple pattern return |
+| `gui/app.py` | Broken XML in source+target validation, fuzzy cache tracking, case-insensitive StringIDs |
+| `core/xml_transfer.py` | StringID filter fixes for strorigin_only_fuzzy, case-insensitive |
+| `core/matching.py` | Case-insensitive StringID pool + lookup in `find_matches_strict_fuzzy` |
+| `core/indexing.py` | Case-insensitive index key + filter check |
+| `core/fuzzy_matching.py` | Removed redundant post-scan filter |
+
+### Build & Review
+
+- GitHub Build: **SUCCESS** (3 builds total)
+- Code reviewed: 3 rounds × 3-5 agents = all clean
+
+---
+
 ## 2026-02-28: QuickTranslate — Unbalanced Bracket Check (CRITICAL)
 
 Added stack-based `{`/`}` bracket validation to the pre-submission pattern checker.
@@ -16,26 +60,10 @@ Added stack-based `{`/`}` bracket validation to the pre-submission pattern check
 - Outputs separate `MissingBrackets_{LANG}.xml` for immediate focus on critical issues
 - Also included in the combined `pattern_errors_{LANG}.xml`
 
-### Output Structure
-
-```
-CheckResults/
-├── PatternErrors/pattern_errors_ENG.xml   (all issues)
-├── MissingBrackets/MissingBrackets_ENG.xml (critical only)
-└── ...
-```
-
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `QuickTranslate/core/checker.py` | `_has_unbalanced_brackets()` + 3-tuple return + separate output |
-| `QuickTranslate/gui/app.py` | Summary formatting + CRITICAL log lines + `_check_all` totals |
-
 ### Build & Review
 
 - GitHub Build: **SUCCESS** (11m7s)
-- Code reviewed: 2 issues found + fixed (bracket check should bypass staticinfo skip; `_check_all` summary lumped brackets into pattern count)
+- Code reviewed: 2 issues found + fixed
 
 ---
 
@@ -108,6 +136,6 @@ All 39 items fixed (3A/3B/3C/3D). Centralized `STRINGID_ATTRS`/`STRORIGIN_ATTRS`
 |---------|-----|-------------|--------|
 | **ExtractAnything** | GitHub Actions | Build 5 | SUCCESS |
 | **QACompiler** | GitHub Actions | — | — |
-| **QuickTranslate** | GitHub Actions | Bracket check | SUCCESS |
+| **QuickTranslate** | GitHub Actions | Broken XML + fuzzy fixes | SUCCESS |
 | **QuickSearch** | GitHub Actions | — | — |
 | **LanguageDataExporter** | GitHub Actions | — | — |

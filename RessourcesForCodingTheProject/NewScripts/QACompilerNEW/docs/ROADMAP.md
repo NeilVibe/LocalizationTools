@@ -1,31 +1,42 @@
-# QACompiler - New Datasheets Roadmap
+# QACompiler - Roadmap
 
-> Track new datasheet development. Current datasheets remain untouched until replacements are validated.
+> Track new datasheet development and the path to generator consolidation.
 
 ---
 
 ## Strategy
 
-**Phase 1:** Build NEW datasheets alongside existing ones (new button in GUI, separate output)
-**Phase 2:** Validate and test new datasheets in production
-**Phase 3:** Replace old datasheets with new ones (remove old button, rename new)
+**Phase 1:** Build NEW generators alongside existing ones (separate output) — **DONE**
+**Phase 2:** Validate new generators in production — **IN PROGRESS**
+**Phase 3:** Consolidate — replace old generators with new ones, trim redundant sheets
 
 ---
 
-## New Datasheets
+## New Generators (Phase 1 — DONE)
 
-| # | Datasheet | Status | WIP Doc | Notes |
-|---|-----------|--------|---------|-------|
-| 1 | **NEW Item Datasheet** | IN PROGRESS | [WIP_NEW_ITEM_DATASHEET.md](WIP_NEW_ITEM_DATASHEET.md) | 4-step pass, row-per-text, minimal Excel |
-| 2 | *(future)* | - | - | TBD |
-| 3 | *(future)* | - | - | TBD |
-
----
-
-## Completed
-
-*(nothing yet)*
+| # | Generator | Old Equivalent | Status | Notes |
+|---|-----------|----------------|--------|-------|
+| 1 | **newitem.py** | item.py | DONE | Row-per-text, 4-step pass |
+| 2 | **newcharacter.py** | character.py | DONE | Row-per-text, 5 rows/char |
+| 3 | **newregion.py** | region.py | DONE | Delegates writing to region.py |
+| 4 | **newskill.py** | skill.py | DONE | 3 tabs: SkillGroup, SkillTree, SkillPC |
 
 ---
 
-*Last updated: 2026-02-24*
+## Phase 3 — Future Consolidation (NOT YET — validate first)
+
+Once new generators are proven in production, consolidate:
+
+1. **Remove old generators** — delete `item.py`, `character.py`, `region.py`, `skill.py`
+2. **Rename new → standard** — `newitem.py` → `item.py`, `newskill.py` → `skill.py`, etc.
+3. **Trim sheets** — once we know which tabs/views are actually useful, remove the rest
+   - e.g. newskill.py has 3 tabs (SkillGroup, SkillTree, SkillPC) — might keep just 1
+   - e.g. item.py has primary (hierarchical) + secondary (flat) — might keep just 1
+4. **Update all imports** — config.py, generators/__init__.py, main.py, populate_new.py, coverage.py
+5. **Update GUI** — remove old buttons, rename new buttons to replace them
+
+**Rule:** Don't consolidate until the new generators have been used in real QA cycles and confirmed correct. The old generators are the safety net until then.
+
+---
+
+*Last updated: 2026-02-28*
