@@ -72,13 +72,13 @@ KOREAN_COLUMN = {
     "Item":       (6, 8),       # ItemName(KOR)=col F, ItemDesc(KOR)=col H
     "Knowledge":  1,            # Original (KR)
     "Skill":      3,            # SourceText (KR) = col C (row-per-text format)
-    "Region":     1,            # Original (KR)
+    "Region":     2,            # Original (KR) = col B (DataType in col A)
     "Gimmick":    (6, 9, 11),   # GimmickName(KOR)=6, ItemName(KOR)=9, ItemDesc(KOR)=11
     "Help":       1,            # Original (KR)
     "NewItem":    3,            # SourceText (KR) = col C
     "ItemKnowledgeCluster": 2,  # SourceText (KR) = col B
     "NewCharacter": 3,          # SourceText (KR) = col C
-    "NewRegion":    1,          # Original (KR) = col A (same as Region)
+    "NewRegion":    2,          # Original (KR) = col B (DataType in col A)
 }
 
 # English/Translation column index (1-based) per category
@@ -88,13 +88,13 @@ TRANSLATION_COLUMN = {
     "Item":       (7, 9),       # ItemName(ENG)=col G, ItemDesc(ENG)=col I
     "Knowledge":  2,            # English (ENG)
     "Skill":      4,            # Translation ({CODE}) = col D (row-per-text format)
-    "Region":     2,            # English (ENG)
+    "Region":     3,            # English (ENG) = col C (DataType in col A)
     "Gimmick":    (7, 10, 12),  # GimmickName(ENG)=7, ItemName(ENG)=10, ItemDesc(ENG)=12
     "Help":       2,            # English (ENG)
     "NewItem":    4,            # Translation ({CODE}) = col D
     "ItemKnowledgeCluster": 3,  # Translation ({CODE}) = col C
     "NewCharacter": 4,          # Translation ({CODE}) = col D
-    "NewRegion":    2,          # English (ENG) = col B (same as Region)
+    "NewRegion":    3,          # English (ENG) = col C (DataType in col A)
 }
 
 # Language data folder - imported from config.py (uses settings.json drive letter)

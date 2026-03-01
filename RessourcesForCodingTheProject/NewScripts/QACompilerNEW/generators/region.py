@@ -531,8 +531,8 @@ def parse_shop_file(shop_path: Path, global_seen: Set[str]) -> List[ShopGroup]:
 # ROW GENERATION
 # =============================================================================
 
-# Row format: (depth, text, style_type, is_description, source_file)
-RowItem = Tuple[int, str, str, bool, str]
+# Row format: (depth, text, style_type, is_description, source_file, data_type)
+RowItem = Tuple[int, str, str, bool, str, str]
 
 
 def emit_faction_node_rows(node: FactionNodeData, depth: int) -> List[RowItem]:
@@ -540,10 +540,10 @@ def emit_faction_node_rows(node: FactionNodeData, depth: int) -> List[RowItem]:
     rows: List[RowItem] = []
 
     style = f"FactionNode_{node.node_type}" if node.node_type else "FactionNode"
-    rows.append((depth, node.name, style, False, node.source_file))
+    rows.append((depth, node.name, style, False, node.source_file, "KnowledgeInfo"))
 
     if node.description:
-        rows.append((depth + 1, node.description, "Description", True, node.source_file))
+        rows.append((depth + 1, node.description, "Description", True, node.source_file, "KnowledgeInfo.Desc"))
 
     for child in node.children:
         rows.extend(emit_faction_node_rows(child, depth + 1))
@@ -555,7 +555,7 @@ def emit_faction_rows(faction: FactionData, depth: int = 0) -> List[RowItem]:
     """Generate rows for a Faction and all its FactionNodes."""
     rows: List[RowItem] = []
 
-    rows.append((depth, faction.name, "Faction", False, faction.source_file))
+    rows.append((depth, faction.name, "Faction", False, faction.source_file, "Faction"))
 
     for node in faction.nodes:
         rows.extend(emit_faction_node_rows(node, depth + 1))
@@ -578,7 +578,7 @@ def emit_standalone_faction_rows(standalone_factions: List[FactionData]) -> List
     rows: List[RowItem] = []
 
     for faction in standalone_factions:
-        rows.append((0, faction.name, "Faction", False, faction.source_file))
+        rows.append((0, faction.name, "Faction", False, faction.source_file, "Faction"))
         for node in faction.nodes:
             rows.extend(emit_faction_node_rows(node, 1))
 
@@ -590,11 +590,11 @@ def emit_shop_rows(shop_groups: List[ShopGroup]) -> List[RowItem]:
     rows: List[RowItem] = []
 
     for group in shop_groups:
-        rows.append((0, group.name, "ShopGroup", False, group.source_file))
+        rows.append((0, group.name, "ShopGroup", False, group.source_file, "ShopGroup"))
         for stage in group.stages:
-            rows.append((1, stage.name, "ShopStage", False, stage.source_file))
+            rows.append((1, stage.name, "ShopStage", False, stage.source_file, "ShopStage"))
             if stage.description:
-                rows.append((2, stage.description, "Description", True, stage.source_file))
+                rows.append((2, stage.description, "Description", True, stage.source_file, "ShopStage.Desc"))
 
     return rows
 
@@ -657,12 +657,13 @@ def write_sheet_content(
                       For non-ENG workbooks, eng is display-only so pass None.
     """
 
-    # Headers
+    # Headers (DataType is column 1, everything else shifts right by 1)
     headers = []
-    headers.append(sheet.cell(1, 1, "Original (KR)"))
-    headers.append(sheet.cell(1, 2, "English (ENG)"))
+    headers.append(sheet.cell(1, 1, "DataType"))
+    headers.append(sheet.cell(1, 2, "Original (KR)"))
+    headers.append(sheet.cell(1, 3, "English (ENG)"))
     if not is_eng:
-        headers.append(sheet.cell(1, 3, f"Translation ({lang_code.upper()})"))
+        headers.append(sheet.cell(1, 4, f"Translation ({lang_code.upper()})"))
 
     extra_headers = ["STATUS", "COMMENT", "STRINGID", "SCREENSHOT"]
     start_col = len(headers) + 1
@@ -679,7 +680,7 @@ def write_sheet_content(
     # Data rows (raw data, no deduplication)
     r_idx = 2
 
-    for (depth, text, style_type, is_desc, source_file) in rows:
+    for (depth, text, style_type, is_desc, source_file, data_type) in rows:
         fill, font, row_height = get_style(style_type)
 
         # For ENG workbook: eng_consumer disambiguates StringIDs
@@ -695,29 +696,36 @@ def write_sheet_content(
             else:
                 trans_other, sid_other = get_first_translation(lang_tbl, text)
 
+        # DataType
+        c_dtype = sheet.cell(r_idx, 1, data_type)
+        c_dtype.fill = fill
+        c_dtype.font = font
+        c_dtype.alignment = Alignment(horizontal="center", vertical="center")
+        c_dtype.border = THIN_BORDER
+
         # Original
-        c_orig = sheet.cell(r_idx, 1, br_to_newline(text))
+        c_orig = sheet.cell(r_idx, 2, br_to_newline(text))
         c_orig.fill = fill
         c_orig.font = font
         c_orig.alignment = Alignment(indent=depth, wrap_text=True, vertical="center")
         c_orig.border = THIN_BORDER
 
         # English
-        c_eng = sheet.cell(r_idx, 2, br_to_newline(trans_eng))
+        c_eng = sheet.cell(r_idx, 3, br_to_newline(trans_eng))
         c_eng.fill = fill
         c_eng.font = font
         c_eng.alignment = Alignment(indent=depth, wrap_text=True, vertical="center")
         c_eng.border = THIN_BORDER
 
         # Target language
-        col_offset = 2
+        col_offset = 3
         if not is_eng:
-            c_other = sheet.cell(r_idx, 3, br_to_newline(trans_other))
+            c_other = sheet.cell(r_idx, 4, br_to_newline(trans_other))
             c_other.fill = fill
             c_other.font = font
             c_other.alignment = Alignment(indent=depth, wrap_text=True, vertical="center")
             c_other.border = THIN_BORDER
-            col_offset = 3
+            col_offset = 4
 
         # Extra columns
         c_status = sheet.cell(r_idx, col_offset + 1, "")
@@ -748,16 +756,16 @@ def write_sheet_content(
     last_row = r_idx - 1
 
     # Column widths
-    widths = [40, 80] + ([] if is_eng else [80]) + [15, 70, 25, 25]
+    widths = [18, 40, 80] + ([] if is_eng else [80]) + [15, 70, 25, 25]
     for idx, w in enumerate(widths, start=1):
         sheet.column_dimensions[get_column_letter(idx)].width = w
 
     # Hide English column for non-English workbooks
     if not is_eng:
-        sheet.column_dimensions["B"].hidden = True
+        sheet.column_dimensions["C"].hidden = True
 
     # Status dropdown
-    status_col = 3 if is_eng else 4
+    status_col = 4 if is_eng else 5
     dv = DataValidation(
         type="list",
         formula1=f'"{",".join(STATUS_OPTIONS)}"',

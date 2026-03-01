@@ -131,17 +131,17 @@ def emit_faction_node_rows(
 
     # 1. Name (from KnowledgeInfo.Name — same as Region)
     style = f"FactionNode_{node.node_type}" if node.node_type else "FactionNode"
-    rows.append((depth, node.name, style, False, node.source_file))
+    rows.append((depth, node.name, style, False, node.source_file, "KnowledgeInfo"))
 
     # 2. DisplayName (from RegionInfo — NEW)
     displayname = displayname_lookup.get(node.knowledge_key.lower(), "")
     if displayname and displayname != node.name:
-        rows.append((depth, displayname, style, False, node.source_file))
+        rows.append((depth, displayname, style, False, node.source_file, "RegionInfo.DisplayName"))
         _collect_korean_string(displayname)
 
     # 3. Description (from KnowledgeInfo.Desc — same as Region)
     if node.description:
-        rows.append((depth + 1, node.description, "Description", True, node.source_file))
+        rows.append((depth + 1, node.description, "Description", True, node.source_file, "KnowledgeInfo.Desc"))
 
     # Children
     for child in node.children:
@@ -158,7 +158,7 @@ def emit_faction_rows(
     """Generate rows for a Faction and all its FactionNodes."""
     rows: List[RowItem] = []
 
-    rows.append((depth, faction.name, "Faction", False, faction.source_file))
+    rows.append((depth, faction.name, "Faction", False, faction.source_file, "Faction"))
 
     for node in faction.nodes:
         rows.extend(emit_faction_node_rows(node, depth + 1, displayname_lookup))
@@ -187,7 +187,7 @@ def emit_standalone_faction_rows(
     rows: List[RowItem] = []
 
     for faction in standalone_factions:
-        rows.append((0, faction.name, "Faction", False, faction.source_file))
+        rows.append((0, faction.name, "Faction", False, faction.source_file, "Faction"))
         for node in faction.nodes:
             rows.extend(emit_faction_node_rows(node, 1, displayname_lookup))
 
