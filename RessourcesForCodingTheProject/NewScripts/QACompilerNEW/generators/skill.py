@@ -22,6 +22,7 @@ Key features:
 - Reuses knowledge loading from newitem.py
 """
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
@@ -236,59 +237,83 @@ def scan_skills_with_knowledge(
 # KNOWLEDGE CHILDREN (for sub-skill nesting)
 # =============================================================================
 
+_KNOWLEDGE_LIST_RE = re.compile(r'^([A-Za-z0-9_]+)\(\d+\)$')
+
+
 def build_knowledge_children_map(
     knowledge_folder: Path,
 ) -> Dict[str, List[KnowledgeChild]]:
-    """Build map: parent KnowledgeInfo StrKey → list of DIRECT child KnowledgeInfo.
+    """Build map: parent KnowledgeInfo StrKey → list of child KnowledgeInfo.
 
-    Scans knowledge XMLs for KnowledgeInfo elements that have nested child
-    KnowledgeInfo elements. Only direct children (NOT recursive descendants).
+    The game's XML uses </>  closing tags which makes lxml parse knowledge
+    elements as siblings, not nested children. The REAL parent-child hierarchy
+    is encoded in KnowledgeList attributes on LevelData/Learnable elements:
+
+        <KnowledgeInfo StrKey="Knowledge_LowerKick" Name="쓸어 차기">
+          <LevelData KnowledgeList="Knowledge_UnArmedMastery_I(1)"/>
+        </>
+
+    This means Knowledge_LowerKick is a child of Knowledge_UnArmedMastery_I.
 
     Returns:
         {parent_strkey.lower(): [KnowledgeChild, ...]}
     """
     from generators.base import iter_xml_files
 
-    log.info("Building knowledge children map...")
-    children_map: Dict[str, List[KnowledgeChild]] = {}
-    total_children = 0
+    log.info("Building knowledge children map (via KnowledgeList refs)...")
+    # First pass: collect all KnowledgeInfo elements
+    all_knowledge: Dict[str, KnowledgeChild] = {}  # strkey.lower() → KnowledgeChild
+    # Second pass: build parent → children from KnowledgeList references
+    parent_refs: Dict[str, List[str]] = {}  # parent_strkey.lower() → [child_strkey.lower(), ...]
 
     if not knowledge_folder.exists():
         log.warning("Knowledge folder does not exist: %s", knowledge_folder)
-        return children_map
+        return {}
 
     for path in sorted(iter_xml_files(knowledge_folder)):
         root = parse_xml_file(path)
         if root is None:
             continue
 
-        for el in root.iter("KnowledgeInfo"):
-            parent_strkey = el.get("StrKey") or ""
-            if not parent_strkey:
+        for ki in root.iter("KnowledgeInfo"):
+            strkey = ki.get("StrKey") or ""
+            if not strkey:
                 continue
 
-            # Check DIRECT children only (el[:] not el.iter)
-            direct_children: List[KnowledgeChild] = []
-            for child_el in el:
-                if child_el.tag != "KnowledgeInfo":
-                    continue
-                ch_strkey = child_el.get("StrKey") or ""
-                ch_name = child_el.get("Name") or ""
-                if not ch_strkey:
-                    continue
-                ch_desc = child_el.get("Desc") or ""
-                direct_children.append(KnowledgeChild(
-                    strkey=ch_strkey,
-                    name_kor=ch_name,
-                    desc_kor=ch_desc,
+            sk_lower = strkey.lower()
+            if sk_lower not in all_knowledge:
+                all_knowledge[sk_lower] = KnowledgeChild(
+                    strkey=strkey,
+                    name_kor=ki.get("Name") or "",
+                    desc_kor=ki.get("Desc") or "",
                     source_file=path.name,
-                ))
+                )
 
-            if direct_children:
-                pk = parent_strkey.lower()
-                if pk not in children_map:
-                    children_map[pk] = direct_children
-                    total_children += len(direct_children)
+            # Check LevelData and Learnable elements for KnowledgeList refs
+            for el in ki.iter():
+                kl = el.get("KnowledgeList") or ""
+                if not kl:
+                    continue
+                m = _KNOWLEDGE_LIST_RE.match(kl)
+                if m:
+                    parent_key = m.group(1).lower()
+                    if parent_key not in parent_refs:
+                        parent_refs[parent_key] = []
+                    if sk_lower not in parent_refs[parent_key]:
+                        parent_refs[parent_key].append(sk_lower)
+
+    # Build the final map: parent → [KnowledgeChild, ...]
+    children_map: Dict[str, List[KnowledgeChild]] = {}
+    total_children = 0
+
+    for parent_key, child_keys in parent_refs.items():
+        children = []
+        for ck in child_keys:
+            if ck in all_knowledge:
+                children.append(all_knowledge[ck])
+        if children:
+            children_map[parent_key] = children
+            total_children += len(children)
 
     log.info("  → %d parents with %d total children", len(children_map), total_children)
     return children_map
