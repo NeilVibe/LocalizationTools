@@ -44,6 +44,7 @@ from generators.base import (
     get_ordered_export_index,
     StringIdConsumer,
     add_status_dropdown,
+    iter_xml_files,
 )
 from generators.newitem import load_knowledge_data
 
@@ -94,6 +95,15 @@ class SkillEntry:
     source_file: str                # skillinfo_pc filename
     knowledge_source_file: str      # Knowledge XML filename
     knowledge2_source_file: str = ""  # Pass 2 source file
+
+
+@dataclass
+class KnowledgeChild:
+    """A child KnowledgeInfo nested under a parent KnowledgeInfo element."""
+    strkey: str        # Child KnowledgeInfo StrKey
+    name_kor: str      # Child KnowledgeInfo Name
+    desc_kor: str      # Child KnowledgeInfo Desc
+    source_file: str   # Knowledge XML filename
 
 
 @dataclass
@@ -224,6 +234,128 @@ def scan_skills_with_knowledge(
 
 
 # =============================================================================
+# KNOWLEDGE CHILDREN MAP (sub-skill nesting)
+# =============================================================================
+
+def build_knowledge_children_map(
+    knowledge_folder: Path,
+) -> Dict[str, List[KnowledgeChild]]:
+    """Build a map of parent KnowledgeInfo StrKey -> direct child KnowledgeInfo elements.
+
+    Parses knowledge XMLs and checks DIRECT children only (not recursive .iter())
+    for nested KnowledgeInfo elements.
+
+    Returns:
+        {parent_strkey.lower(): [KnowledgeChild, ...]}
+    """
+    children_map: Dict[str, List[KnowledgeChild]] = {}
+
+    if not knowledge_folder.exists():
+        log.warning("Knowledge folder does not exist for children map: %s", knowledge_folder)
+        return children_map
+
+    file_count = 0
+    child_count = 0
+    for path in iter_xml_files(knowledge_folder):
+        root = parse_xml_file(path)
+        if root is None:
+            continue
+        file_count += 1
+        source_file = path.name
+
+        for el in root.iter("KnowledgeInfo"):
+            parent_strkey = el.get("StrKey") or ""
+            if not parent_strkey:
+                continue
+
+            # Direct children only — NOT el.iter() which would recurse
+            kids: List[KnowledgeChild] = []
+            for ch in el:
+                if ch.tag == "KnowledgeInfo":
+                    ch_strkey = ch.get("StrKey") or ""
+                    ch_name = ch.get("Name") or ""
+                    ch_desc = ch.get("Desc") or ""
+                    if ch_strkey:
+                        kids.append(KnowledgeChild(
+                            strkey=ch_strkey,
+                            name_kor=ch_name,
+                            desc_kor=ch_desc,
+                            source_file=source_file,
+                        ))
+                        # Collect Korean strings for coverage
+                        _collect_korean_string(ch_name)
+                        _collect_korean_string(ch_desc)
+
+            if kids:
+                children_map[parent_strkey.lower()] = kids
+                child_count += len(kids)
+
+    log.info("Knowledge children map: %d parents with %d children from %d files",
+             len(children_map), child_count, file_count)
+    return children_map
+
+
+def build_skill_by_knowledge_map(
+    skill_lookup: Dict[str, SkillEntry],
+) -> Dict[str, str]:
+    """Reverse map: {learn_knowledge_key.lower(): skill_strkey.lower()}.
+
+    Used to check if a child KnowledgeInfo has a corresponding SkillInfo.
+    """
+    result: Dict[str, str] = {}
+    for sk, entry in skill_lookup.items():
+        if entry.learn_knowledge_key:
+            result[entry.learn_knowledge_key.lower()] = sk
+    return result
+
+
+def _discover_claimed_skills(
+    skill_lookup: Dict[str, SkillEntry],
+    knowledge_children_map: Dict[str, List[KnowledgeChild]],
+    skill_by_knowledge: Dict[str, str],
+) -> Set[str]:
+    """Pre-compute all skill keys that will appear as sub-skills of another skill.
+
+    These get skipped during tree walking and orphan calculation to prevent
+    double output. Recursive — handles multi-level nesting.
+
+    Returns:
+        Set of skill_strkey.lower() values that are claimed as sub-skills.
+    """
+    claimed: Set[str] = set()
+    visited: Set[str] = set()
+
+    def _walk(knowledge_key: str) -> None:
+        """Recursively discover claimed skills starting from a knowledge key."""
+        kk_lower = knowledge_key.lower()
+        if kk_lower in visited:
+            return
+        visited.add(kk_lower)
+
+        children = knowledge_children_map.get(kk_lower, [])
+        for child in children:
+            # If child KnowledgeInfo has a SkillInfo -> that skill is claimed
+            sub_skill_key = skill_by_knowledge.get(child.strkey.lower())
+            if sub_skill_key and sub_skill_key in skill_lookup:
+                claimed.add(sub_skill_key)
+                # Recurse: the sub-skill may have its own children
+                sub_entry = skill_lookup[sub_skill_key]
+                if sub_entry.learn_knowledge_key:
+                    _walk(sub_entry.learn_knowledge_key)
+            # Also recurse into knowledge-only children (they may have sub-children)
+            _walk(child.strkey)
+
+    # Start from every skill's LearnKnowledgeKey
+    for sk, entry in skill_lookup.items():
+        if entry.learn_knowledge_key:
+            _walk(entry.learn_knowledge_key)
+
+    if claimed:
+        log.info("Claimed sub-skills (will nest under parents): %d", len(claimed))
+    return claimed
+
+
+# =============================================================================
 # SKILLTREEINFO PARSING (with UIPosition)
 # =============================================================================
 
@@ -326,10 +458,31 @@ def _write_skill_rows(
     current_fill: PatternFill,
     pre: Dict[Tuple[str, str], Tuple[str, str]],
     group_info: str,
+    knowledge_children_map: Optional[Dict[str, List[KnowledgeChild]]] = None,
+    skill_by_knowledge: Optional[Dict[str, str]] = None,
+    skill_lookup: Optional[Dict[str, SkillEntry]] = None,
+    claimed_skills: Optional[Set[str]] = None,
+    _visited: Optional[Set[str]] = None,
+    depth: int = 0,
 ) -> int:
-    """Write 1-6 rows for a single skill. Returns next excel_row."""
+    """Write 1-6 rows for a single skill, then sub-skills. Returns next excel_row.
 
-    def _write_row(data_type: str, kor_text: str, trans: str, sid: str) -> int:
+    Sub-skills are written immediately after the parent skill's rows:
+    - If a child KnowledgeInfo has a SkillInfo -> recursive call (SkillData rows)
+    - If a child KnowledgeInfo has no SkillInfo -> SubKnowledgeData rows (Name + Desc)
+
+    depth controls Excel cell indentation (0 = top-level, 1+ = sub-skills).
+    """
+    if _visited is None:
+        _visited = set()
+
+    # Cycle protection
+    sk_lower = entry.strkey.lower()
+    if sk_lower in _visited:
+        return excel_row
+    _visited.add(sk_lower)
+
+    def _write_row(data_type: str, kor_text: str, trans: str, sid: str, indent: int = depth) -> int:
         nonlocal excel_row
         vals = [data_type, group_info, br_to_newline(kor_text), br_to_newline(trans), "", "", "", sid]
         for ci, val in enumerate(vals, 1):
@@ -338,6 +491,9 @@ def _write_skill_rows(
             cell.border = THIN_BORDER
             if ci == 5:  # STATUS
                 cell.alignment = Alignment(horizontal="center", vertical="center")
+            elif ci in (3, 4):  # SourceText + Translation — apply indent
+                cell.alignment = Alignment(
+                    horizontal="left", vertical="top", wrap_text=True, indent=indent)
             else:
                 cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
         # STRINGID as text format
@@ -346,32 +502,58 @@ def _write_skill_rows(
         return excel_row
 
     # 1. SkillData -- SkillName (always)
-    t, s = pre.get((entry.strkey.lower(), "skill_name"), ("", ""))
+    t, s = pre.get((sk_lower, "skill_name"), ("", ""))
     excel_row = _write_row("SkillData", entry.skill_name_kor, t, s)
 
     # 2. SkillData -- SkillDesc (always, even if empty)
-    t, s = pre.get((entry.strkey.lower(), "skill_desc"), ("", ""))
+    t, s = pre.get((sk_lower, "skill_desc"), ("", ""))
     excel_row = _write_row("SkillData", entry.skill_desc_kor, t, s)
 
     # 3. KnowledgeData -- Name (skip if empty)
     if entry.knowledge_name_kor:
-        t, s = pre.get((entry.strkey.lower(), "knowledge_name"), ("", ""))
+        t, s = pre.get((sk_lower, "knowledge_name"), ("", ""))
         excel_row = _write_row("KnowledgeData", entry.knowledge_name_kor, t, s)
 
     # 4. KnowledgeData -- Desc (skip if empty)
     if entry.knowledge_desc_kor:
-        t, s = pre.get((entry.strkey.lower(), "knowledge_desc"), ("", ""))
+        t, s = pre.get((sk_lower, "knowledge_desc"), ("", ""))
         excel_row = _write_row("KnowledgeData", entry.knowledge_desc_kor, t, s)
 
     # 5. KnowledgeData2 -- Name (skip if empty)
     if entry.knowledge2_name_kor:
-        t, s = pre.get((entry.strkey.lower(), "knowledge2_name"), ("", ""))
+        t, s = pre.get((sk_lower, "knowledge2_name"), ("", ""))
         excel_row = _write_row("KnowledgeData2", entry.knowledge2_name_kor, t, s)
 
     # 6. KnowledgeData2 -- Desc (skip if empty)
     if entry.knowledge2_desc_kor:
-        t, s = pre.get((entry.strkey.lower(), "knowledge2_desc"), ("", ""))
+        t, s = pre.get((sk_lower, "knowledge2_desc"), ("", ""))
         excel_row = _write_row("KnowledgeData2", entry.knowledge2_desc_kor, t, s)
+
+    # ------------------------------------------------------------------
+    # SUB-SKILLS: Write children of this skill's LearnKnowledgeKey
+    # ------------------------------------------------------------------
+    if (knowledge_children_map and skill_by_knowledge is not None
+            and skill_lookup and entry.learn_knowledge_key):
+        children = knowledge_children_map.get(entry.learn_knowledge_key.lower(), [])
+        for child in children:
+            sub_skill_key = skill_by_knowledge.get(child.strkey.lower())
+            if sub_skill_key and sub_skill_key in skill_lookup:
+                # Child has a SkillInfo -> recursive call (same fill, same group, depth+1)
+                sub_entry = skill_lookup[sub_skill_key]
+                excel_row = _write_skill_rows(
+                    ws, excel_row, sub_entry, current_fill, pre, group_info,
+                    knowledge_children_map, skill_by_knowledge,
+                    skill_lookup, claimed_skills, _visited,
+                    depth=depth + 1,
+                )
+            else:
+                # Knowledge-only child -> SubKnowledgeData rows (depth+1)
+                if child.name_kor:
+                    t, s = pre.get((child.strkey.lower(), "kchild_name"), ("", ""))
+                    excel_row = _write_row("SubKnowledgeData", child.name_kor, t, s, indent=depth + 1)
+                if child.desc_kor:
+                    t, s = pre.get((child.strkey.lower(), "kchild_desc"), ("", ""))
+                    excel_row = _write_row("SubKnowledgeData", child.desc_kor, t, s, indent=depth + 1)
 
     return excel_row
 
@@ -395,6 +577,7 @@ def write_skill_excel(
     lang_code: str,
     export_index: Dict[str, Set[str]],
     output_path: Path,
+    knowledge_children_map: Optional[Dict[str, List[KnowledgeChild]]] = None,
 ) -> None:
     """Write Skill Excel with single "Skills" sheet, UIPositionXY ordered.
 
@@ -403,7 +586,17 @@ def write_skill_excel(
     Skills are grouped by SkillTreeInfo with gold headers. Within each tree,
     skills are sorted by UIPositionXY pixel coordinates (Y asc, X asc = screen reading order).
     Skills not in any tree appear at the end under "Other Skills".
+
+    Sub-skills are nested under their parent skill via knowledge children mapping.
     """
+    if knowledge_children_map is None:
+        knowledge_children_map = {}
+
+    # Build sub-skill support structures
+    skill_by_knowledge = build_skill_by_knowledge_map(skill_lookup)
+    claimed_skills = _discover_claimed_skills(
+        skill_lookup, knowledge_children_map, skill_by_knowledge)
+
     wb = Workbook()
     wb.remove(wb.active)
     code = lang_code.upper()
@@ -446,6 +639,23 @@ def write_skill_excel(
             pre[(sk, "knowledge2_desc")] = resolve_translation(
                 entry.knowledge2_desc_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
 
+    # Pre-resolve knowledge-only children (children without a SkillInfo)
+    seen_children: set = set()
+    for children in knowledge_children_map.values():
+        for child in children:
+            ck_lower = child.strkey.lower()
+            if ck_lower in seen_children:
+                continue  # Dedup: same child under multiple parents
+            seen_children.add(ck_lower)
+            if ck_lower not in skill_by_knowledge:
+                # Knowledge-only child — resolve its Name and Desc
+                if child.name_kor:
+                    pre[(ck_lower, "kchild_name")] = resolve_translation(
+                        child.name_kor, lang_tbl, child.source_file, export_index, consumer=consumer)
+                if child.desc_kor:
+                    pre[(ck_lower, "kchild_desc")] = resolve_translation(
+                        child.desc_kor, lang_tbl, child.source_file, export_index, consumer=consumer)
+
     if consumer.warnings:
         log.warning("StringID overruns during pre-resolve: %d", consumer.warnings)
 
@@ -474,6 +684,9 @@ def write_skill_excel(
 
     # Track which skills have been written (to find orphans)
     written_skills: Set[str] = set()
+    # Shared visited set — prevents diamond-shaped duplicates where two
+    # top-level skills share a common sub-skill
+    visited_skills: Set[str] = set()
 
     # Write skills grouped by SkillTreeInfo, ordered by UIPosition
     for tree in skill_trees:
@@ -484,23 +697,32 @@ def write_skill_excel(
 
         # Nodes are already sorted by (Y, X) from parse_skill_trees
         for node in tree.nodes:
-            entry = skill_lookup.get(node.skill_key.lower())
+            sk_lower = node.skill_key.lower()
+            entry = skill_lookup.get(sk_lower)
             if not entry:
                 continue
             if not entry.learn_knowledge_key:
                 continue  # Only include skills with LearnKnowledgeKey
+            if sk_lower in claimed_skills:
+                continue  # Skip — will appear nested under its parent
 
             # Alternate fill per skill
             current_fill = _fill_b if current_fill == _fill_a else _fill_a
 
             excel_row = _write_skill_rows(
-                ws, excel_row, entry, current_fill, pre, group_info)
-            written_skills.add(node.skill_key.lower())
+                ws, excel_row, entry, current_fill, pre, group_info,
+                knowledge_children_map, skill_by_knowledge,
+                skill_lookup, claimed_skills, visited_skills,
+            )
+            written_skills.add(sk_lower)
 
     # Orphaned skills: have LearnKnowledgeKey but aren't in any tree
+    # Also exclude claimed skills (they appear nested under their parent)
     orphans = [
         entry for sk, entry in skill_lookup.items()
-        if entry.learn_knowledge_key and sk not in written_skills
+        if entry.learn_knowledge_key
+        and sk not in written_skills
+        and sk not in claimed_skills
     ]
 
     if orphans:
@@ -510,7 +732,10 @@ def write_skill_excel(
         for entry in orphans:
             current_fill = _fill_b if current_fill == _fill_a else _fill_a
             excel_row = _write_skill_rows(
-                ws, excel_row, entry, current_fill, pre, "Other Skills")
+                ws, excel_row, entry, current_fill, pre, "Other Skills",
+                knowledge_children_map, skill_by_knowledge,
+                skill_lookup, claimed_skills, visited_skills,
+            )
 
     _finalize_sheet(ws, excel_row)
     log.info("  Sheet 'Skills': %d rows", excel_row - 2)
@@ -585,6 +810,9 @@ def generate_skill_datasheets() -> Dict:
         # 2. Load knowledge data (map + name index for Pass 2)
         knowledge_map, knowledge_name_index = load_knowledge_data(knowledge_folder)
 
+        # 2b. Build knowledge children map (for sub-skill nesting)
+        knowledge_children_map = build_knowledge_children_map(knowledge_folder)
+
         # 3. Parse skillinfo_pc -> skill_lookup
         skill_lookup = scan_skills_with_knowledge(
             skill_file, knowledge_map, knowledge_name_index)
@@ -614,6 +842,7 @@ def generate_skill_datasheets() -> Dict:
             write_skill_excel(
                 skill_lookup, skill_trees,
                 tbl, code, export_index, excel_path,
+                knowledge_children_map,
             )
             result["files_created"] += 1
 
