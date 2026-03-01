@@ -183,7 +183,8 @@ def cleanup_wrong_newlines_on_tree(root) -> int:
     """
     Normalize all wrong newline representations to <br/> in parsed tree.
 
-    Scans Str and StrOrigin attributes of all LocStr elements.
+    Only modifies Str attributes. StrOrigin (Korean source) is never touched
+    — it must remain exactly as the source data provides it.
 
     Args:
         root: Parsed XML root element
@@ -193,13 +194,12 @@ def cleanup_wrong_newlines_on_tree(root) -> int:
     """
     fixed = 0
     for loc in _iter_locstr(root):
-        for attr_variants in (STR_ATTRS, STRORIGIN_ATTRS):
-            attr_name, val = _get_attr(loc, attr_variants)
-            if val is not None:
-                normalized = _normalize_newlines(val)
-                if normalized != val:
-                    loc.set(attr_name, normalized)
-                    fixed += 1
+        attr_name, val = _get_attr(loc, STR_ATTRS)
+        if val is not None:
+            normalized = _normalize_newlines(val)
+            if normalized != val:
+                loc.set(attr_name, normalized)
+                fixed += 1
     return fixed
 
 
