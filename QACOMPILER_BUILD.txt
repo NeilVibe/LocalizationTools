@@ -137,3 +137,4 @@ Build: knowledge-based sub-skill nesting with depth indentation
 Build: orphan filter fix for sub-skill nesting
 Build: revert sub-skill nesting, restore flat UIPositionXY ordering
 Build: sub-skill nesting + DataType for Region/NewRegion
+Build: KnowledgeList refs for sub-skill nesting
