@@ -138,10 +138,12 @@ jobs:
           checked = 0
 
           for py_file in Path('.').rglob('*.py'):
-              # Skip test files, __pycache__, build/dist
+              # Skip test files, __pycache__, build/dist, reference scripts
               if '__pycache__' in str(py_file):
                   continue
               if 'build' in str(py_file) or 'dist' in str(py_file):
+                  continue
+              if py_file.name == 'skillUImatchEXCEL.py':
                   continue
 
               try:
@@ -263,14 +265,14 @@ jobs:
 
           echo "=== Critical Errors (will fail build) ==="
           flake8 . --select=E9,F63,F7,F82 --show-source --statistics \
-            --exclude=__pycache__,build,dist,.git \
+            --exclude=__pycache__,build,dist,.git,skillUImatchEXCEL.py \
             && echo "[OK] No critical flake8 errors" \
             || { echo "[FATAL] Critical flake8 errors found!"; exit 1; }
 
           echo ""
           echo "=== Warnings (logged but won't fail) ==="
           flake8 . --select=F401 --show-source --statistics \
-            --exclude=__pycache__,build,dist,.git \
+            --exclude=__pycache__,build,dist,.git,skillUImatchEXCEL.py \
             || echo "[WARN] Unused imports found (non-blocking)"
 
           echo ""

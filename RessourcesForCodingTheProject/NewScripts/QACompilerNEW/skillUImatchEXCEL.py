@@ -245,9 +245,7 @@ def build_output(
             label = node.best_key or "(no key)"
             lines.append(f"???. (   ?,    ?)  [{node.node_tag}] Id={node.id}  Key={label}{extra_s}")
 
-    return "
-".join(lines) + "
-"
+    return "\n".join(lines) + "\n"
 
 
 class App(tk.Tk):
@@ -344,8 +342,7 @@ class App(tk.Tk):
             with open(path, "r", encoding="utf-8") as f:
                 text = f.read()
         except Exception as e:
-            messagebox.showerror("Read error", f"Failed to read file:
-{e}")
+            messagebox.showerror("Read error", f"Failed to read file:\n{e}")
             return
 
         try:
