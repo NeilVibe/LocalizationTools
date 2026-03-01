@@ -717,11 +717,12 @@ def write_skill_excel(
             written_skills.add(sk_lower)
 
     # Orphaned skills: have LearnKnowledgeKey but aren't in any tree
-    # Also exclude claimed skills (they appear nested under their parent)
+    # Use visited_skills (true record of what was written) instead of
+    # written_skills to catch sub-skills that were recursively written
     orphans = [
         entry for sk, entry in skill_lookup.items()
         if entry.learn_knowledge_key
-        and sk not in written_skills
+        and sk not in visited_skills
         and sk not in claimed_skills
     ]
 
