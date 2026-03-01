@@ -135,3 +135,4 @@ Build - broken XML detection during source validation
 Build - broken XML detection for TARGET folder
 Build - robust cancel for all check operations
 Build: postprocess newline normalizer skips StrOrigin
+Build: premature-close LocStr detection + TARGET threading
