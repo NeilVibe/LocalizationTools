@@ -450,6 +450,7 @@ _gold_fill = PatternFill("solid", fgColor="FFD700")
 _gold_font = Font(bold=True, size=11)
 _fill_a = PatternFill("solid", fgColor="E2EFDA")  # Light green
 _fill_b = PatternFill("solid", fgColor="FCE4D6")  # Light orange
+_fill_sub = PatternFill("solid", fgColor="E8E0F0")  # Light lavender for nested sub-skills
 
 
 def _write_skill_rows(
@@ -464,6 +465,7 @@ def _write_skill_rows(
     skill_lookup: Optional[Dict[str, 'SkillEntry']] = None,
     nested_skills: Optional[Set[str]] = None,
     _visited: Optional[Set[str]] = None,
+    depth: int = 0,
 ) -> int:
     """Write 1-6 rows for a single skill, then nest sub-skills. Returns next excel_row.
 
@@ -471,7 +473,9 @@ def _write_skill_rows(
     for child KnowledgeInfo elements. If a child has a corresponding SkillInfo,
     write it recursively as a sub-skill. If not, write SubKnowledgeData rows.
 
-    Sub-skills get the SAME group_info and fill color as the parent.
+    Args:
+        depth: Nesting depth (0 = top-level, 1+ = nested sub-skill).
+               Controls visual indentation and DataType prefix.
     """
     if _visited is None:
         _visited = set()
@@ -482,15 +486,23 @@ def _write_skill_rows(
         return excel_row
     _visited.add(sk_lower)
 
+    # Visual: nested sub-skills use lavender fill + indent
+    row_fill = _fill_sub if depth > 0 else current_fill
+    # DataType prefix: "Sub" for nested items
+    prefix = "Sub" if depth > 0 else ""
+
     def _write_row(data_type: str, kor_text: str, trans: str, sid: str) -> int:
         nonlocal excel_row
         vals = [data_type, group_info, br_to_newline(kor_text), br_to_newline(trans), "", "", "", sid]
         for ci, val in enumerate(vals, 1):
             cell = ws.cell(excel_row, ci, val)
-            cell.fill = current_fill
+            cell.fill = row_fill
             cell.border = THIN_BORDER
             if ci == 5:  # STATUS
                 cell.alignment = Alignment(horizontal="center", vertical="center")
+            elif ci in (3, 4):  # KR text and Translation — apply indent
+                cell.alignment = Alignment(
+                    indent=depth, horizontal="left", vertical="top", wrap_text=True)
             else:
                 cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
         # STRINGID as text format
@@ -500,31 +512,31 @@ def _write_skill_rows(
 
     # 1. SkillData -- SkillName (always)
     t, s = pre.get((sk_lower, "skill_name"), ("", ""))
-    excel_row = _write_row("SkillData", entry.skill_name_kor, t, s)
+    excel_row = _write_row(f"{prefix}SkillData", entry.skill_name_kor, t, s)
 
     # 2. SkillData -- SkillDesc (always, even if empty)
     t, s = pre.get((sk_lower, "skill_desc"), ("", ""))
-    excel_row = _write_row("SkillData", entry.skill_desc_kor, t, s)
+    excel_row = _write_row(f"{prefix}SkillData", entry.skill_desc_kor, t, s)
 
     # 3. KnowledgeData -- Name (skip if empty)
     if entry.knowledge_name_kor:
         t, s = pre.get((sk_lower, "knowledge_name"), ("", ""))
-        excel_row = _write_row("KnowledgeData", entry.knowledge_name_kor, t, s)
+        excel_row = _write_row(f"{prefix}KnowledgeData", entry.knowledge_name_kor, t, s)
 
     # 4. KnowledgeData -- Desc (skip if empty)
     if entry.knowledge_desc_kor:
         t, s = pre.get((sk_lower, "knowledge_desc"), ("", ""))
-        excel_row = _write_row("KnowledgeData", entry.knowledge_desc_kor, t, s)
+        excel_row = _write_row(f"{prefix}KnowledgeData", entry.knowledge_desc_kor, t, s)
 
     # 5. KnowledgeData2 -- Name (skip if empty)
     if entry.knowledge2_name_kor:
         t, s = pre.get((sk_lower, "knowledge2_name"), ("", ""))
-        excel_row = _write_row("KnowledgeData2", entry.knowledge2_name_kor, t, s)
+        excel_row = _write_row(f"{prefix}KnowledgeData2", entry.knowledge2_name_kor, t, s)
 
     # 6. KnowledgeData2 -- Desc (skip if empty)
     if entry.knowledge2_desc_kor:
         t, s = pre.get((sk_lower, "knowledge2_desc"), ("", ""))
-        excel_row = _write_row("KnowledgeData2", entry.knowledge2_desc_kor, t, s)
+        excel_row = _write_row(f"{prefix}KnowledgeData2", entry.knowledge2_desc_kor, t, s)
 
     # --- Sub-skill nesting ---
     # Check if this skill's LearnKnowledgeKey has child KnowledgeInfo elements
@@ -532,6 +544,10 @@ def _write_skill_rows(
             and nested_skills is not None and entry.learn_knowledge_key):
         lkk = entry.learn_knowledge_key.lower()
         children = knowledge_children_map.get(lkk, [])
+
+        if children and depth == 0:
+            log.info("  NESTING: %s (%s) has %d knowledge children",
+                     entry.strkey, entry.skill_name_kor, len(children))
 
         for child in children:
             child_sk = child.strkey.lower()
@@ -545,20 +561,61 @@ def _write_skill_rows(
                 sub_entry = skill_lookup[sub_skill_key]
                 # Mark as nested (exclude from orphans and tree walk)
                 nested_skills.add(sub_skill_key)
-                # Recursively write the sub-skill (same fill, same group_info)
+                log.info("    → sub-skill: %s (%s) [depth %d]",
+                         sub_entry.strkey, sub_entry.skill_name_kor, depth + 1)
+                # Recursively write the sub-skill with increased depth
                 excel_row = _write_skill_rows(
                     ws, excel_row, sub_entry, current_fill, pre, group_info,
                     knowledge_children_map, skill_by_knowledge, skill_lookup,
-                    nested_skills, _visited,
+                    nested_skills, _visited, depth + 1,
                 )
             else:
                 # Knowledge-only child (no SkillInfo) — write SubKnowledgeData rows
+                log.info("    → knowledge-only: %s (%s) [depth %d]",
+                         child.strkey, child.name_kor, depth + 1)
+                child_fill = _fill_sub
                 if child.name_kor:
                     t_name, s_name = pre.get((child_sk, "kchild_name"), ("", ""))
-                    excel_row = _write_row("SubKnowledgeData", child.name_kor, t_name, s_name)
+                    vals = ["SubKnowledgeData", group_info,
+                            br_to_newline(child.name_kor), br_to_newline(t_name),
+                            "", "", "", s_name]
+                    for ci, val in enumerate(vals, 1):
+                        cell = ws.cell(excel_row, ci, val)
+                        cell.fill = child_fill
+                        cell.border = THIN_BORDER
+                        if ci in (3, 4):
+                            cell.alignment = Alignment(
+                                indent=depth + 1, horizontal="left",
+                                vertical="top", wrap_text=True)
+                        elif ci == 5:
+                            cell.alignment = Alignment(
+                                horizontal="center", vertical="center")
+                        else:
+                            cell.alignment = Alignment(
+                                horizontal="left", vertical="top", wrap_text=True)
+                    ws.cell(excel_row, 8).number_format = '@'
+                    excel_row += 1
                 if child.desc_kor:
                     t_desc, s_desc = pre.get((child_sk, "kchild_desc"), ("", ""))
-                    excel_row = _write_row("SubKnowledgeData", child.desc_kor, t_desc, s_desc)
+                    vals = ["SubKnowledgeData", group_info,
+                            br_to_newline(child.desc_kor), br_to_newline(t_desc),
+                            "", "", "", s_desc]
+                    for ci, val in enumerate(vals, 1):
+                        cell = ws.cell(excel_row, ci, val)
+                        cell.fill = child_fill
+                        cell.border = THIN_BORDER
+                        if ci in (3, 4):
+                            cell.alignment = Alignment(
+                                indent=depth + 1, horizontal="left",
+                                vertical="top", wrap_text=True)
+                        elif ci == 5:
+                            cell.alignment = Alignment(
+                                horizontal="center", vertical="center")
+                        else:
+                            cell.alignment = Alignment(
+                                horizontal="left", vertical="top", wrap_text=True)
+                    ws.cell(excel_row, 8).number_format = '@'
+                    excel_row += 1
 
     return excel_row
 
@@ -684,7 +741,7 @@ def write_skill_excel(
         autofit_worksheet(ws)
 
     # ==================================================================
-    # Single sheet: Skills (UIPosition ordered)
+    # Single sheet: Skills (hierarchical tree walk)
     # ==================================================================
     ws = wb.create_sheet("Skills")
     _write_column_headers(ws)
@@ -696,36 +753,70 @@ def write_skill_excel(
     # Track skills that were nested under a parent (exclude from orphans)
     nested_skills: Set[str] = set()
 
-    # Write skills grouped by SkillTreeInfo, ordered by UIPosition
+    def _sort_key(n):
+        """Sort key for SkillNodes: UIPositionXY (Y asc, X asc), grid fallback."""
+        if n.ui_xy:
+            return (n.ui_xy[1], n.ui_xy[0])
+        return _parse_grid_sort_key(n.ui_position)
+
+    # Write skills grouped by SkillTreeInfo, HIERARCHICALLY via ParentId
     for tree in skill_trees:
         # Gold header row for the tree
         group_info = f"{tree.character_key} | {tree.ui_page_name_kor}" if tree.character_key else tree.key
         excel_row = _write_header_row(
             ws, excel_row, "SkillTreeHeader", group_info, tree.ui_page_name_kor)
 
-        # Nodes are already sorted by (Y, X) from parse_skill_trees
-        for node in tree.nodes:
-            sk_lower = node.skill_key.lower()
+        # Build parent→children map from ParentId for hierarchical walk
+        node_by_id: Dict[str, SkillNodeEntry] = {
+            n.node_id: n for n in tree.nodes if n.node_id}
+        children_of: Dict[str, List[SkillNodeEntry]] = {}
+        roots: List[SkillNodeEntry] = []
 
-            # Skip skills already written as sub-skills of a parent
-            if sk_lower in nested_skills:
-                written_skills.add(sk_lower)
-                continue
+        for node in tree.nodes:
+            if node.parent_id and node.parent_id in node_by_id:
+                children_of.setdefault(node.parent_id, []).append(node)
+            else:
+                roots.append(node)
+
+        # Sort roots and each children list by UIPositionXY
+        roots.sort(key=_sort_key)
+        for child_list in children_of.values():
+            child_list.sort(key=_sort_key)
+
+        log.info("  Tree '%s': %d roots, %d with children",
+                 tree.ui_page_name_kor, len(roots),
+                 sum(1 for v in children_of.values() if v))
+
+        # Recursive tree walk respecting ParentId hierarchy
+        # NO dedup — write ALL skills at their tree position
+        def _walk_tree_node(node: SkillNodeEntry, tree_depth: int) -> None:
+            nonlocal excel_row, current_fill
+            sk_lower = node.skill_key.lower()
 
             entry = skill_lookup.get(sk_lower)
             if not entry:
-                continue
-            if not entry.learn_knowledge_key:
-                continue  # Only include skills with LearnKnowledgeKey
+                # Still walk tree children even if this node has no skill entry
+                for child_node in children_of.get(node.node_id, []):
+                    _walk_tree_node(child_node, tree_depth + 1)
+                return
 
-            # Alternate fill per skill (new color for each top-level tree skill)
-            current_fill = _fill_b if current_fill == _fill_a else _fill_a
+            # Alternate fill only for root-level tree nodes
+            if tree_depth == 0:
+                current_fill = _fill_b if current_fill == _fill_a else _fill_a
 
             excel_row = _write_skill_rows(
                 ws, excel_row, entry, current_fill, pre, group_info,
                 kcm, skill_by_knowledge, skill_lookup, nested_skills,
+                None, tree_depth,
             )
             written_skills.add(sk_lower)
+
+            # Recurse into SkillTree children (via ParentId)
+            for child_node in children_of.get(node.node_id, []):
+                _walk_tree_node(child_node, tree_depth + 1)
+
+        for root_node in roots:
+            _walk_tree_node(root_node, 0)
 
     # Orphaned skills: have LearnKnowledgeKey but aren't in any tree
     # ALSO exclude skills that were nested as sub-skills
