@@ -245,26 +245,36 @@ def build_knowledge_children_map(
 ) -> Dict[str, List[KnowledgeChild]]:
     """Build map: parent KnowledgeInfo StrKey → list of child KnowledgeInfo.
 
-    The game's XML uses </>  closing tags which makes lxml parse knowledge
-    elements as siblings, not nested children. The REAL parent-child hierarchy
-    is encoded in KnowledgeList attributes on LevelData/Learnable elements:
+    The game's XML uses </>  closing tags and self-closing children like
+    <Dev/>, <UseMacroNode/>, <LevelData.../> which corrupt sanitize_xml's
+    tag stack. This makes lxml parse ALL KnowledgeInfo as flat siblings,
+    destroying the tree hierarchy.
 
-        <KnowledgeInfo StrKey="Knowledge_LowerKick" Name="쓸어 차기">
-          <LevelData KnowledgeList="Knowledge_UnArmedMastery_I(1)"/>
-        </>
+    Solution: FLAT DOCUMENT-ORDER SCAN. Don't rely on tree structure at all.
+    In document order, each KnowledgeInfo is followed by its own content
+    (Dev, LevelData, Learnable, etc.) before the next KnowledgeInfo.
+    So we track the "most recently seen KnowledgeInfo" and when we find
+    a KnowledgeList attribute, we know it belongs to that KnowledgeInfo.
 
-    This means Knowledge_LowerKick is a child of Knowledge_UnArmedMastery_I.
+    Example:
+        KnowledgeInfo StrKey="Knowledge_UnArmedMastery_I"  ← current
+        Dev (skip, no KnowledgeList)
+        KnowledgeInfo StrKey="Knowledge_LowerKick"  ← current updates
+        LevelData KnowledgeList="Knowledge_UnArmedMastery_I(1)"
+          → child "Knowledge_LowerKick" belongs to parent "Knowledge_UnArmedMastery_I"
 
     Returns:
         {parent_strkey.lower(): [KnowledgeChild, ...]}
     """
     from generators.base import iter_xml_files
 
-    log.info("Building knowledge children map (via KnowledgeList refs)...")
-    # First pass: collect all KnowledgeInfo elements
-    all_knowledge: Dict[str, KnowledgeChild] = {}  # strkey.lower() → KnowledgeChild
-    # Second pass: build parent → children from KnowledgeList references
-    parent_refs: Dict[str, List[str]] = {}  # parent_strkey.lower() → [child_strkey.lower(), ...]
+    log.info("Building knowledge children map (flat document-order scan)...")
+
+    all_knowledge: Dict[str, KnowledgeChild] = {}
+    parent_refs: Dict[str, List[str]] = {}
+    files_scanned = 0
+    knowledgeinfo_count = 0
+    knowledgelist_refs = 0
 
     if not knowledge_folder.exists():
         log.warning("Knowledge folder does not exist: %s", knowledge_folder)
@@ -274,33 +284,39 @@ def build_knowledge_children_map(
         root = parse_xml_file(path)
         if root is None:
             continue
+        files_scanned += 1
 
-        for ki in root.iter("KnowledgeInfo"):
-            strkey = ki.get("StrKey") or ""
-            if not strkey:
-                continue
+        # Flat document-order scan: iterate ALL elements, track current KnowledgeInfo
+        current_ki_strkey: Optional[str] = None
 
-            sk_lower = strkey.lower()
-            if sk_lower not in all_knowledge:
-                all_knowledge[sk_lower] = KnowledgeChild(
-                    strkey=strkey,
-                    name_kor=ki.get("Name") or "",
-                    desc_kor=ki.get("Desc") or "",
-                    source_file=path.name,
-                )
-
-            # Check LevelData and Learnable elements for KnowledgeList refs
-            for el in ki.iter():
-                kl = el.get("KnowledgeList") or ""
-                if not kl:
+        for el in root.iter():
+            if el.tag == "KnowledgeInfo":
+                strkey = el.get("StrKey") or ""
+                if not strkey:
+                    current_ki_strkey = None  # Don't misattribute following content
                     continue
-                m = _KNOWLEDGE_LIST_RE.match(kl)
-                if m:
-                    parent_key = m.group(1).lower()
-                    if parent_key not in parent_refs:
-                        parent_refs[parent_key] = []
-                    if sk_lower not in parent_refs[parent_key]:
-                        parent_refs[parent_key].append(sk_lower)
+                knowledgeinfo_count += 1
+                current_ki_strkey = strkey.lower()
+
+                if current_ki_strkey not in all_knowledge:
+                    all_knowledge[current_ki_strkey] = KnowledgeChild(
+                        strkey=strkey,
+                        name_kor=el.get("Name") or "",
+                        desc_kor=el.get("Desc") or "",
+                        source_file=path.name,
+                    )
+            else:
+                # Non-KnowledgeInfo element: check for KnowledgeList attribute
+                kl = (el.get("KnowledgeList") or "").strip()
+                if kl and current_ki_strkey:
+                    m = _KNOWLEDGE_LIST_RE.match(kl)
+                    if m:
+                        parent_key = m.group(1).lower()
+                        knowledgelist_refs += 1
+                        if parent_key not in parent_refs:
+                            parent_refs[parent_key] = []
+                        if current_ki_strkey not in parent_refs[parent_key]:
+                            parent_refs[parent_key].append(current_ki_strkey)
 
     # Build the final map: parent → [KnowledgeChild, ...]
     children_map: Dict[str, List[KnowledgeChild]] = {}
@@ -315,6 +331,8 @@ def build_knowledge_children_map(
             children_map[parent_key] = children
             total_children += len(children)
 
+    log.info("  Scanned %d files, %d KnowledgeInfo elements, %d KnowledgeList refs",
+             files_scanned, knowledgeinfo_count, knowledgelist_refs)
     log.info("  → %d parents with %d total children", len(children_map), total_children)
     return children_map
 
