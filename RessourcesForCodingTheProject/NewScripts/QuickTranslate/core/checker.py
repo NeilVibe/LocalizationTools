@@ -136,18 +136,26 @@ _LOCSTR_RE = re.compile(r'<LocStr\b[^>]*/\s*>', re.DOTALL | re.IGNORECASE)
 # Regex to extract StringId from raw (possibly broken) LocStr text
 _RAW_STRINGID_RE = re.compile(r'StringId\s*=\s*"([^"]*?)"', re.IGNORECASE)
 
+# Detect premature close: <LocStr ...> where tag closes with > instead of />
+# followed by orphaned attributes (word="...") that should have been inside.
+# LocStr is ALWAYS self-closing in game XML, so <LocStr ...> is always broken.
+# [^/]> ensures the > is NOT preceded by / (i.e. not self-closing).
+_PREMATURE_CLOSE_RE = re.compile(
+    r'<LocStr\b[^>]*[^/]>(?:\s*\w+\s*=\s*"[^"]*")*\s*/>',
+    re.DOTALL | re.IGNORECASE
+)
+
 
 def check_broken_xml_in_file(xml_path: Path) -> List[Tuple[str, str, str]]:
     """
     Detect malformed LocStr elements by strict-parsing each one individually.
 
-    Recovery-mode lxml silently creates elements with missing/wrong attributes
-    when XML is malformed (e.g. StrOrigin""dada", Str"<bad").  Those broken
-    nodes then pass through all other checks undetected.
-
-    This function reads raw file text, extracts each <LocStr .../> fragment,
-    and tries a strict lxml parse.  Any fragment that fails strict parse is
-    broken XML.
+    Two detection passes:
+      1. Self-closing LocStr (<LocStr .../>) — extract and strict-parse each one.
+         Catches: garbled attributes, bad escaping, missing quotes, etc.
+      2. Premature close (<LocStr ...> attr="..."/>) — the tag closes with >
+         instead of />, leaving attributes orphaned outside the element.
+         Catches: the specific corruption where > appears mid-tag.
 
     Args:
         xml_path: Path to XML file
@@ -163,6 +171,11 @@ def check_broken_xml_in_file(xml_path: Path) -> List[Tuple[str, str, str]]:
         return broken
 
     filename = xml_path.name
+
+    # Track positions already reported (avoid duplicate reports)
+    reported_positions = set()
+
+    # Pass 1: Self-closing LocStr fragments — strict XML parse test
     for m in _LOCSTR_RE.finditer(raw):
         fragment = m.group()
         test_xml = f'<r>{fragment}</r>'
@@ -172,6 +185,16 @@ def check_broken_xml_in_file(xml_path: Path) -> List[Tuple[str, str, str]]:
             sid_match = _RAW_STRINGID_RE.search(fragment)
             sid = sid_match.group(1) if sid_match else '(unknown)'
             broken.append((sid, fragment, filename))
+            reported_positions.add(m.start())
+
+    # Pass 2: Premature close — <LocStr ...> followed by orphaned attributes
+    for m in _PREMATURE_CLOSE_RE.finditer(raw):
+        if m.start() in reported_positions:
+            continue  # Already caught by Pass 1
+        fragment = m.group()
+        sid_match = _RAW_STRINGID_RE.search(fragment)
+        sid = sid_match.group(1) if sid_match else '(unknown)'
+        broken.append((sid, fragment, filename))
 
     return broken
 

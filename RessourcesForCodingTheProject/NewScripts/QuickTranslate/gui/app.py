@@ -987,18 +987,9 @@ class QuickTranslateApp:
 
         logger.info("%s\n", separator)
 
-        # Broken XML detection for TARGET xml files
+        # Broken XML detection for TARGET xml files (background thread)
         if role == "TARGET" and xml_files:
-            total_broken = 0
-            for xf in xml_files:
-                broken = check_broken_xml_in_file(xf)
-                if broken:
-                    total_broken += len(broken)
-                    self._log(f"WARNING: {xf.name} has {len(broken)} broken LocStr node(s)!", 'warning')
-                    for sid, _fragment, _fname in broken:
-                        self._log(f"  Broken LocStr: StringID={sid}", 'error')
-            if total_broken:
-                logger.warning("TARGET broken XML: %d broken LocStr nodes found", total_broken)
+            self._validate_target_xml_async(list(xml_files))
 
         # Log to GUI
         if is_eligible:
@@ -1018,6 +1009,46 @@ class QuickTranslateApp:
         # Run enhanced source validation (dry-run parse) in background thread
         if role == "SOURCE" and scan_result:
             self._validate_source_files_async(folder, scan_result)
+
+    def _validate_target_xml_async(self, xml_files: list) -> None:
+        """Run broken XML detection on TARGET files in a background thread.
+
+        Prevents GUI freeze when scanning large XML files for broken LocStr nodes.
+        Uses the same validation thread pattern as source validation.
+        """
+        def target_validation_work():
+            total_broken = 0
+            total = len(xml_files)
+
+            for i, xf in enumerate(xml_files):
+                # Abort if a real worker started (user clicked Transfer, etc.)
+                if self._worker_thread is not None and self._worker_thread.is_alive():
+                    self._log("Target validation interrupted (operation started)", 'info')
+                    return
+
+                progress_pct = ((i + 1) / total) * 100
+                self._task_queue.put(('status', f'Checking target XML... ({i + 1}/{total}) {xf.name}', progress_pct))
+
+                broken = check_broken_xml_in_file(xf)
+                if broken:
+                    total_broken += len(broken)
+                    self._log(f"WARNING: {xf.name} has {len(broken)} broken LocStr node(s)!", 'warning')
+                    for sid, _fragment, _fname in broken:
+                        self._log(f"  Broken LocStr: StringID={sid}", 'error')
+
+            if total_broken:
+                logger.warning("TARGET broken XML: %d broken LocStr nodes found", total_broken)
+                self._log(f"TARGET: {total_broken} broken LocStr node(s) found across {total} files", 'warning')
+            else:
+                self._log(f"TARGET: All {total} XML files passed broken LocStr check", 'success')
+
+            self._task_queue.put(('status', '', 0))
+
+        self._validation_thread = threading.Thread(
+            target=target_validation_work, daemon=True
+        )
+        self._validation_thread.start()
+        self._start_validation_poll()
 
     def _validate_source_files_async(self, folder: Path, scan_result) -> None:
         """Launch source file validation in a background thread.
