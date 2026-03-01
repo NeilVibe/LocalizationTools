@@ -130,3 +130,4 @@ Build - Add SkillPC tab (3rd tab): flat list of all skills with LearnKnowledgeKe
 Build - br_to_newline conversion for Excel output
 Build 7: apply br_to_newline() across all 12 generators - Excel linebreaks
 Build: Skill generator consolidation + UIPosition ordering
+Build 8: UIPositionXY sort + master column hiding fix
