@@ -2676,7 +2676,8 @@ class QuickTranslateApp:
                 self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
-            summary = run_korean_check(source, output_folder, progress_callback=progress_cb)
+            summary = run_korean_check(source, output_folder, progress_callback=progress_cb,
+                                       cancel_event=self._cancel_event)
 
             if not summary:
                 self._log("No XML files found in Source folder.", 'warning')
@@ -2717,7 +2718,8 @@ class QuickTranslateApp:
                 self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
-            summary = run_pattern_check(source, output_folder, progress_callback=progress_cb, skip_staticinfo_knowledge=skip_si)
+            summary = run_pattern_check(source, output_folder, progress_callback=progress_cb,
+                                        skip_staticinfo_knowledge=skip_si, cancel_event=self._cancel_event)
 
             if not summary:
                 self._log("No XML files found in Source folder.", 'warning')
@@ -2767,7 +2769,8 @@ class QuickTranslateApp:
                 self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
-            summary = run_quality_check(source, output_folder, progress_callback=progress_cb, skip_staticinfo_knowledge=skip_si)
+            summary = run_quality_check(source, output_folder, progress_callback=progress_cb,
+                                        skip_staticinfo_knowledge=skip_si, cancel_event=self._cancel_event)
 
             if not summary:
                 self._log("No XML files found in Source folder.", 'warning')
@@ -2815,10 +2818,15 @@ class QuickTranslateApp:
                 self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
-            korean_summary = run_korean_check(source, output_folder, progress_callback=korean_cb)
+            korean_summary = run_korean_check(source, output_folder, progress_callback=korean_cb,
+                                              cancel_event=self._cancel_event)
             if korean_summary:
                 self._log(self._format_check_summary(korean_summary, "Korean Check"),
                           'success' if sum(korean_summary.values()) == 0 else 'warning')
+
+            # Cancel gate: don't start pattern check if cancelled during korean check
+            if self._cancel_event.is_set():
+                raise InterruptedError("Operation cancelled by user")
 
             # Pattern + newline check
             self._task_queue.put(('checks_status', "Checking patterns..."))
@@ -2827,7 +2835,8 @@ class QuickTranslateApp:
                 self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
-            pattern_summary = run_pattern_check(source, output_folder, progress_callback=pattern_cb, skip_staticinfo_knowledge=skip_si)
+            pattern_summary = run_pattern_check(source, output_folder, progress_callback=pattern_cb,
+                                                skip_staticinfo_knowledge=skip_si, cancel_event=self._cancel_event)
             if pattern_summary:
                 p_total = sum(v[0] for v in pattern_summary.values())
                 n_total = sum(v[1] for v in pattern_summary.values())
@@ -2840,6 +2849,10 @@ class QuickTranslateApp:
                 if b_total > 0:
                     self._log(f"CRITICAL bracket issues: {output_folder / 'MissingBrackets'}", 'warning')
 
+            # Cancel gate: don't start quality check if cancelled during pattern check
+            if self._cancel_event.is_set():
+                raise InterruptedError("Operation cancelled by user")
+
             # Quality check
             self._task_queue.put(('checks_status', "Checking quality..."))
 
@@ -2847,7 +2860,8 @@ class QuickTranslateApp:
                 self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
-            quality_summary = run_quality_check(source, output_folder, progress_callback=quality_cb, skip_staticinfo_knowledge=skip_si)
+            quality_summary = run_quality_check(source, output_folder, progress_callback=quality_cb,
+                                                skip_staticinfo_knowledge=skip_si, cancel_event=self._cancel_event)
             if quality_summary:
                 script_total = sum(v[0] for v in quality_summary.values())
                 halluc_total = sum(v[1] for v in quality_summary.values())

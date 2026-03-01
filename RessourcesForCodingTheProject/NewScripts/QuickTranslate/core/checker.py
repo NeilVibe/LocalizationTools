@@ -9,6 +9,7 @@ Output format: pure LocStr elements in <root>, same format as source XML.
 
 import logging
 import re
+import threading
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
@@ -342,6 +343,7 @@ def run_korean_check(
     source_folder: Path,
     output_folder: Path,
     progress_callback: Optional[Callable[[str], None]] = None,
+    cancel_event: Optional[threading.Event] = None,
 ) -> Dict[str, int]:
     """
     Run Korean character check on all languages in Source folder.
@@ -353,6 +355,7 @@ def run_korean_check(
         source_folder: Path to Source folder with language subfolders
         output_folder: Path to CheckResults folder
         progress_callback: Optional callback for progress updates
+        cancel_event: Optional threading.Event to support cancellation
 
     Returns:
         Summary dict: {"FRE": 5, "GER": 0, ...} (finding counts per language)
@@ -370,12 +373,16 @@ def run_korean_check(
     summary = {}
 
     for i, lang in enumerate(languages):
+        if cancel_event and cancel_event.is_set():
+            raise InterruptedError("Operation cancelled by user")
         xml_files = xml_by_lang[lang]
         if progress_callback:
             progress_callback(f"Checking Korean... ({i + 1}/{len(languages)} languages: {lang})")
 
         all_findings = []
         for xml_path in xml_files:
+            if cancel_event and cancel_event.is_set():
+                raise InterruptedError("Operation cancelled by user")
             all_findings.extend(check_korean_in_file(xml_path))
 
         summary[lang] = len(all_findings)
@@ -395,6 +402,7 @@ def run_pattern_check(
     output_folder: Path,
     progress_callback: Optional[Callable[[str], None]] = None,
     skip_staticinfo_knowledge: bool = True,
+    cancel_event: Optional[threading.Event] = None,
 ) -> Dict[str, Tuple[int, int, int, int]]:
     """
     Run pattern mismatch + newline + bracket + broken XML check on all languages.
@@ -414,6 +422,7 @@ def run_pattern_check(
         output_folder: Path to CheckResults folder
         progress_callback: Optional callback for progress updates
         skip_staticinfo_knowledge: If True, skip entries containing 'staticinfo:knowledge'
+        cancel_event: Optional threading.Event to support cancellation
 
     Returns:
         Summary dict: {"FRE": (pattern_count, newline_count, bracket_count, broken_xml_count), ...}
@@ -435,6 +444,8 @@ def run_pattern_check(
     summary = {}
 
     for i, lang in enumerate(languages):
+        if cancel_event and cancel_event.is_set():
+            raise InterruptedError("Operation cancelled by user")
         xml_files = xml_by_lang[lang]
         if progress_callback:
             progress_callback(f"Checking patterns... ({i + 1}/{len(languages)} languages: {lang})")
@@ -444,6 +455,8 @@ def run_pattern_check(
         all_bracket_errors = []
         all_broken_xml = []
         for xml_path in xml_files:
+            if cancel_event and cancel_event.is_set():
+                raise InterruptedError("Operation cancelled by user")
             p_errors, n_errors, b_errors = check_patterns_in_file(xml_path, skip_staticinfo_knowledge)
             all_pattern_errors.extend(p_errors)
             all_newline_errors.extend(n_errors)

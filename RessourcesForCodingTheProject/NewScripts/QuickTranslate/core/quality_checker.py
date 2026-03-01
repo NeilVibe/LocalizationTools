@@ -11,6 +11,7 @@ import json
 import logging
 import re
 import sys
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
@@ -448,6 +449,7 @@ def run_quality_check(
     json_path: Optional[Path] = None,
     progress_callback: Optional[Callable[[str], None]] = None,
     skip_staticinfo_knowledge: bool = True,
+    cancel_event: Optional[threading.Event] = None,
 ) -> Dict[str, Tuple[int, int]]:
     """
     Run quality check (wrong script + AI hallucination) on all languages.
@@ -457,6 +459,7 @@ def run_quality_check(
         output_folder: Path to Presubmission Checks folder
         json_path: Optional path to ai_hallucination_phrases.json
         progress_callback: Optional callback for progress updates
+        cancel_event: Optional threading.Event to support cancellation
 
     Returns:
         Summary dict: {"FRE": (3, 1), "GER": (0, 2), ...}
@@ -480,6 +483,8 @@ def run_quality_check(
     summary: Dict[str, Tuple[int, int]] = {}
 
     for i, lang in enumerate(languages):
+        if cancel_event and cancel_event.is_set():
+            raise InterruptedError("Operation cancelled by user")
         xml_files = xml_by_lang[lang]
         if progress_callback:
             progress_callback(
@@ -490,6 +495,8 @@ def run_quality_check(
         script_group = _LANG_TO_GROUP.get(lang)
 
         for xml_path in xml_files:
+            if cancel_event and cancel_event.is_set():
+                raise InterruptedError("Operation cancelled by user")
             # Wrong script check (skip KOR and unknown groups)
             if script_group:
                 report.script_issues.extend(
