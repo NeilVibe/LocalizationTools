@@ -152,9 +152,9 @@ def scan_all_staticinfo(
 
         for el in root.iter("ItemInfo"):
             sk = el.get("StrKey") or ""
-            if not sk or sk in seen_item_keys:
+            if not sk or sk.lower() in seen_item_keys:
                 continue
-            seen_item_keys.add(sk)
+            seen_item_keys.add(sk.lower())
             items.append(ItemRecord(
                 strkey=sk,
                 name=el.get("ItemName") or "",
@@ -165,9 +165,9 @@ def scan_all_staticinfo(
 
         for el in root.iter("KnowledgeInfo"):
             sk = el.get("StrKey") or ""
-            if not sk or sk in seen_knowledge_keys:
+            if not sk or sk.lower() in seen_knowledge_keys:
                 continue
-            seen_knowledge_keys.add(sk)
+            seen_knowledge_keys.add(sk.lower())
             knowledges.append(KnowledgeRecord(
                 strkey=sk,
                 name=el.get("Name") or "",
@@ -309,7 +309,7 @@ def find_fuzzy_matches(
         ratio = sm.ratio()
         if ratio >= threshold:
             for strkey, desc, source_file, tag in all_name_index[name]:
-                if strkey not in exclude_strkeys:
+                if strkey.lower() not in exclude_strkeys:
                     matches.append((strkey, name, desc, source_file, ratio, tag))
 
     matches.sort(key=lambda x: -x[4])
@@ -340,7 +340,7 @@ def build_clusters(
     knowledge_by_name: Dict[str, List[KnowledgeRecord]] = defaultdict(list)
     for kr in knowledges:
         if kr.strkey:
-            knowledge_by_key[kr.strkey] = kr
+            knowledge_by_key[kr.strkey.lower()] = kr
         if kr.name:
             knowledge_by_name[kr.name].append(kr)
     log.info("  Knowledge by key: %d | Knowledge by name: %d unique names",
@@ -381,7 +381,7 @@ def build_clusters(
                      elapsed, remaining)
 
         cluster = ItemCluster(item_strkey=item.strkey, item_name=item.name)
-        exclude_strkeys: Set[str] = {item.strkey}
+        exclude_strkeys: Set[str] = {item.strkey.lower()}
 
         # ItemData rows (always)
         if item.name:
@@ -392,9 +392,9 @@ def build_clusters(
             _collect_korean_string(item.desc)
 
         # Pass 1: KnowledgeKey lookup
-        if item.knowledge_key and item.knowledge_key in knowledge_by_key:
-            kr = knowledge_by_key[item.knowledge_key]
-            exclude_strkeys.add(kr.strkey)
+        if item.knowledge_key and item.knowledge_key.lower() in knowledge_by_key:
+            kr = knowledge_by_key[item.knowledge_key.lower()]
+            exclude_strkeys.add(kr.strkey.lower())
             if kr.name:
                 cluster.rows.append(ClusterRow("KnowledgeData", kr.name, kr.source_file))
                 _collect_korean_string(kr.name)
@@ -406,8 +406,8 @@ def build_clusters(
         # Pass 2: Exact name match
         if item.name and item.name in knowledge_by_name:
             for kr in knowledge_by_name[item.name]:
-                if kr.strkey not in exclude_strkeys:
-                    exclude_strkeys.add(kr.strkey)
+                if kr.strkey.lower() not in exclude_strkeys:
+                    exclude_strkeys.add(kr.strkey.lower())
                     if kr.name:
                         cluster.rows.append(ClusterRow("KnowledgeMatch-Exact", kr.name, kr.source_file))
                         _collect_korean_string(kr.name)
@@ -430,7 +430,7 @@ def build_clusters(
             if desc:
                 cluster.rows.append(ClusterRow(dtype, desc, source_file, score))
                 _collect_korean_string(desc)
-            exclude_strkeys.add(strkey)
+            exclude_strkeys.add(strkey.lower())
             pass3_count += 1
 
         # Deduplicate rows where kor_text is identical within the same cluster.
@@ -665,12 +665,12 @@ def generate_itemknowledgecluster_datasheets() -> Dict:
             log.info("  Also scanning knowledgeinfo folder...")
             _, extra_knowledges = scan_all_staticinfo(knowledge_folder)
             # Merge, avoiding duplicates
-            seen_keys = {k.strkey for k in knowledges_raw}
+            seen_keys = {k.strkey.lower() for k in knowledges_raw}
             added = 0
             for kr in extra_knowledges:
-                if kr.strkey not in seen_keys:
+                if kr.strkey.lower() not in seen_keys:
                     knowledges_raw.append(kr)
-                    seen_keys.add(kr.strkey)
+                    seen_keys.add(kr.strkey.lower())
                     added += 1
             log.info("  Merged knowledgeinfo: +%d new records = %d total knowledge",
                      added, len(knowledges_raw))

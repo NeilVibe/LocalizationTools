@@ -411,8 +411,8 @@ def load_knowledge_descriptions(folder: Path) -> Dict[str, str]:
             strkey = el.get("StrKey") or ""
             desc = el.get("Desc") or ""
 
-            if strkey and strkey not in knowledge_map:
-                knowledge_map[strkey] = desc
+            if strkey and strkey.lower() not in knowledge_map:
+                knowledge_map[strkey.lower()] = desc
 
     log.info("Knowledge descriptions loaded: %d entries from %d files",
              len(knowledge_map), file_count)
@@ -510,7 +510,7 @@ def scan_resource_folder(
                 item_desc_attr = item.get("ItemDesc") or ""
 
                 if knowledge_key:
-                    desc = knowledge_desc_map.get(knowledge_key, "")
+                    desc = knowledge_desc_map.get(knowledge_key.lower(), "")
                     if not desc:
                         desc = item_desc_attr
                 else:

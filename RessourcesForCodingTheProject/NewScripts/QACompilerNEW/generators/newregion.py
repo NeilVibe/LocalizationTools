@@ -109,8 +109,8 @@ def build_displayname_lookup(folder: Path) -> Dict[str, str]:
                 continue
 
             # First occurrence wins (same as knowledge lookup)
-            if kk not in lookup:
-                lookup[kk] = display_name
+            if kk.lower() not in lookup:
+                lookup[kk.lower()] = display_name
                 count += 1
 
     log.info("  → %d entries", count)
@@ -134,7 +134,7 @@ def emit_faction_node_rows(
     rows.append((depth, node.name, style, False, node.source_file))
 
     # 2. DisplayName (from RegionInfo — NEW)
-    displayname = displayname_lookup.get(node.knowledge_key, "")
+    displayname = displayname_lookup.get(node.knowledge_key.lower(), "")
     if displayname and displayname != node.name:
         rows.append((depth, displayname, style, False, node.source_file))
         _collect_korean_string(displayname)

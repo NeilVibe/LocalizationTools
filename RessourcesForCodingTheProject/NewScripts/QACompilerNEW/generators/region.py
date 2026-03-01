@@ -222,12 +222,12 @@ def build_knowledge_name_lookup(folder: Path) -> Dict[str, Tuple[str, str]]:
             if not strkey or not name:
                 continue
 
-            if strkey in name_lookup:
+            if strkey.lower() in name_lookup:
                 duplicates += 1
                 continue
 
             desc = ki.get("Desc") or ""
-            name_lookup[strkey] = (name, desc)
+            name_lookup[strkey.lower()] = (name, desc)
 
     log.info("  → %d entries (%d duplicates ignored)", len(name_lookup), duplicates)
     return name_lookup
@@ -252,8 +252,8 @@ def parse_faction_node_recursive(
     node_type = elem.get("Type") or ""
 
     # Resolve display name + description via KnowledgeInfo lookup
-    if knowledge_key and knowledge_key in knowledge_lookup:
-        ki_name, ki_desc = knowledge_lookup[knowledge_key]
+    if knowledge_key and knowledge_key.lower() in knowledge_lookup:
+        ki_name, ki_desc = knowledge_lookup[knowledge_key.lower()]
         display_name = ki_name
         # Pull description from KnowledgeInfo if FactionNode has none
         if not description and ki_desc:

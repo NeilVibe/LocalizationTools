@@ -135,8 +135,8 @@ def index_iteminfo(static_folder: Path) -> Dict[str, ItemData]:
             key = item.get("StrKey")
             name = item.get("ItemName") or ""
             desc = item.get("ItemDesc") or ""
-            if key and key not in items:
-                items[key] = ItemData(strkey=key, item_name=name, item_desc=desc)
+            if key and key.lower() not in items:
+                items[key.lower()] = ItemData(strkey=key, item_name=name, item_desc=desc)
 
     log.info("Indexed %d ItemInfo entries from %d files", len(items), file_count)
     return items
@@ -396,7 +396,7 @@ def write_dropitem_sheet(
             last_gimmick = entry.gimmick_strkey
 
         for item_key in entry.drop_item_keys:
-            itm = items.get(item_key)
+            itm = items.get(item_key.lower())
             item_kor = itm.item_name if itm else ""
             item_desc_kor = itm.item_desc if itm else ""
             item_loc, sid = translate_with_sid(tbl, item_kor, src, export_index, consumer=consumer)
@@ -561,7 +561,7 @@ def write_flat_sheet(
         gim_loc = _gimmick_cache[gim_cache_key]
 
         for item_key in entry.drop_item_keys:
-            itm = items.get(item_key)
+            itm = items.get(item_key.lower())
             item_kor = itm.item_name if itm else ""
             item_desc_kor = itm.item_desc if itm else ""
 

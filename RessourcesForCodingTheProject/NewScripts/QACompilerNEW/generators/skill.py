@@ -169,8 +169,9 @@ def scan_skills_with_knowledge(
         if not strkey or not skill_name:
             continue
 
-        # Dedup by StrKey
-        if strkey in skill_lookup:
+        # Dedup by StrKey (case-insensitive — tree SkillKey may differ in case)
+        lookup_key = strkey.lower()
+        if lookup_key in skill_lookup:
             continue
 
         # Pass 1: Resolve knowledge data via LearnKnowledgeKey
@@ -178,9 +179,9 @@ def scan_skills_with_knowledge(
         knowledge_desc = ""
         knowledge_source_file = ""
         pass1_strkey = ""
-        if learn_knowledge_key and learn_knowledge_key in knowledge_map:
-            knowledge_name, knowledge_desc, knowledge_source_file = knowledge_map[learn_knowledge_key]
-            pass1_strkey = learn_knowledge_key
+        if learn_knowledge_key and learn_knowledge_key.lower() in knowledge_map:
+            knowledge_name, knowledge_desc, knowledge_source_file = knowledge_map[learn_knowledge_key.lower()]
+            pass1_strkey = learn_knowledge_key.lower()
 
         # Pass 2: Identical name match (SkillName == KnowledgeInfo.Name)
         knowledge2_name = ""
@@ -203,7 +204,7 @@ def scan_skills_with_knowledge(
         _collect_korean_string(knowledge2_name)
         _collect_korean_string(knowledge2_desc)
 
-        skill_lookup[strkey] = SkillEntry(
+        skill_lookup[lookup_key] = SkillEntry(
             key=key,
             strkey=strkey,
             skill_name_kor=skill_name,
@@ -345,31 +346,31 @@ def _write_skill_rows(
         return excel_row
 
     # 1. SkillData -- SkillName (always)
-    t, s = pre.get((entry.strkey, "skill_name"), ("", ""))
+    t, s = pre.get((entry.strkey.lower(), "skill_name"), ("", ""))
     excel_row = _write_row("SkillData", entry.skill_name_kor, t, s)
 
     # 2. SkillData -- SkillDesc (always, even if empty)
-    t, s = pre.get((entry.strkey, "skill_desc"), ("", ""))
+    t, s = pre.get((entry.strkey.lower(), "skill_desc"), ("", ""))
     excel_row = _write_row("SkillData", entry.skill_desc_kor, t, s)
 
     # 3. KnowledgeData -- Name (skip if empty)
     if entry.knowledge_name_kor:
-        t, s = pre.get((entry.strkey, "knowledge_name"), ("", ""))
+        t, s = pre.get((entry.strkey.lower(), "knowledge_name"), ("", ""))
         excel_row = _write_row("KnowledgeData", entry.knowledge_name_kor, t, s)
 
     # 4. KnowledgeData -- Desc (skip if empty)
     if entry.knowledge_desc_kor:
-        t, s = pre.get((entry.strkey, "knowledge_desc"), ("", ""))
+        t, s = pre.get((entry.strkey.lower(), "knowledge_desc"), ("", ""))
         excel_row = _write_row("KnowledgeData", entry.knowledge_desc_kor, t, s)
 
     # 5. KnowledgeData2 -- Name (skip if empty)
     if entry.knowledge2_name_kor:
-        t, s = pre.get((entry.strkey, "knowledge2_name"), ("", ""))
+        t, s = pre.get((entry.strkey.lower(), "knowledge2_name"), ("", ""))
         excel_row = _write_row("KnowledgeData2", entry.knowledge2_name_kor, t, s)
 
     # 6. KnowledgeData2 -- Desc (skip if empty)
     if entry.knowledge2_desc_kor:
-        t, s = pre.get((entry.strkey, "knowledge2_desc"), ("", ""))
+        t, s = pre.get((entry.strkey.lower(), "knowledge2_desc"), ("", ""))
         excel_row = _write_row("KnowledgeData2", entry.knowledge2_desc_kor, t, s)
 
     return excel_row
@@ -483,7 +484,7 @@ def write_skill_excel(
 
         # Nodes are already sorted by (Y, X) from parse_skill_trees
         for node in tree.nodes:
-            entry = skill_lookup.get(node.skill_key)
+            entry = skill_lookup.get(node.skill_key.lower())
             if not entry:
                 continue
             if not entry.learn_knowledge_key:
@@ -494,7 +495,7 @@ def write_skill_excel(
 
             excel_row = _write_skill_rows(
                 ws, excel_row, entry, current_fill, pre, group_info)
-            written_skills.add(node.skill_key)
+            written_skills.add(node.skill_key.lower())
 
     # Orphaned skills: have LearnKnowledgeKey but aren't in any tree
     orphans = [

@@ -172,9 +172,9 @@ def scan_characters_with_knowledge(
             knowledge_desc = ""
             knowledge_source_file = ""
             pass1_strkey = ""
-            if knowledge_key and knowledge_key in knowledge_map:
-                knowledge_name, knowledge_desc, knowledge_source_file = knowledge_map[knowledge_key]
-                pass1_strkey = knowledge_key
+            if knowledge_key and knowledge_key.lower() in knowledge_map:
+                knowledge_name, knowledge_desc, knowledge_source_file = knowledge_map[knowledge_key.lower()]
+                pass1_strkey = knowledge_key.lower()
 
             # Pass 2: Identical name match (CharacterName == KnowledgeInfo.Name)
             knowledge2_name = ""

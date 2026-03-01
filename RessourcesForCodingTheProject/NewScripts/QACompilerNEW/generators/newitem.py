@@ -222,11 +222,11 @@ def load_knowledge_data(
             name = el.get("Name") or ""
             desc = el.get("Desc") or ""
 
-            if strkey and strkey not in knowledge_map:
-                knowledge_map[strkey] = (name, desc, path.name)
+            if strkey and strkey.lower() not in knowledge_map:
+                knowledge_map[strkey.lower()] = (name, desc, path.name)
                 # Build name index for Pass 2 (only first occurrence per StrKey)
                 if name:
-                    knowledge_name_index[name].append((strkey, desc, path.name))
+                    knowledge_name_index[name].append((strkey.lower(), desc, path.name))
 
     log.info("Knowledge data loaded: %d entries from %d files, %d unique names",
              len(knowledge_map), file_count, len(knowledge_name_index))
@@ -343,9 +343,9 @@ def scan_items_with_knowledge(
                 knowledge_desc = ""
                 knowledge_source_file = ""
                 pass1_strkey = ""
-                if knowledge_key and knowledge_key in knowledge_map:
-                    knowledge_name, knowledge_desc, knowledge_source_file = knowledge_map[knowledge_key]
-                    pass1_strkey = knowledge_key
+                if knowledge_key and knowledge_key.lower() in knowledge_map:
+                    knowledge_name, knowledge_desc, knowledge_source_file = knowledge_map[knowledge_key.lower()]
+                    pass1_strkey = knowledge_key.lower()
 
                 # Pass 2: Identical name match (ItemName == KnowledgeInfo.Name)
                 knowledge2_name = ""
