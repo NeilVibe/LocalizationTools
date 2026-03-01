@@ -133,3 +133,4 @@ Build: Skill generator consolidation + UIPosition ordering
 Build 8: UIPositionXY sort + master column hiding fix
 Build 9: CI fix - exclude reference script from syntax checks
 Build: case-insensitive key matching across all generators
+Build: knowledge-based sub-skill nesting with depth indentation
