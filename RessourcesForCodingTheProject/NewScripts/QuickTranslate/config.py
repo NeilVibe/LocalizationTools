@@ -23,7 +23,6 @@ else:
 # =============================================================================
 
 MATCHING_MODES = {
-    "substring": "Substring Match (Lookup only)",
     "stringid_only": "StringID-Only (SCRIPT strings)",
     "strict": "StringID + StrOrigin (Strict)",
     "strorigin_only": "StrOrigin Only (non-script, fills duplicates)",
@@ -133,7 +132,6 @@ PRESUBMISSION_SETTINGS_FILE = SCRIPT_DIR / "presubmission_settings.json"
 # =============================================================================
 
 _PRESUBMISSION_DEFAULTS = {
-    "skip_staticinfo_knowledge": True,
     "strict_non_script_only": False,
 }
 

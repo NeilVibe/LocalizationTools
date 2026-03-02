@@ -145,17 +145,27 @@ _PREMATURE_CLOSE_RE = re.compile(
     re.DOTALL | re.IGNORECASE
 )
 
+# Detect "naked close": <LocStr attrs> where tag ends with > but NOT />
+# LocStr is ALWAYS self-closing in game XML, so this is always broken.
+# Requires at least one attr="val" pair to avoid false positives on bare <LocStr>.
+_NAKED_CLOSE_RE = re.compile(
+    r'<LocStr\b(?:\s+\w+\s*=\s*"[^"]*")+\s*>',
+    re.DOTALL | re.IGNORECASE
+)
+
 
 def check_broken_xml_in_file(xml_path: Path) -> List[Tuple[str, str, str]]:
     """
     Detect malformed LocStr elements by strict-parsing each one individually.
 
-    Two detection passes:
+    Three detection passes:
       1. Self-closing LocStr (<LocStr .../>) — extract and strict-parse each one.
          Catches: garbled attributes, bad escaping, missing quotes, etc.
       2. Premature close (<LocStr ...> attr="..."/>) — the tag closes with >
          instead of />, leaving attributes orphaned outside the element.
          Catches: the specific corruption where > appears mid-tag.
+      3. Naked close (<LocStr attrs>) — tag ends with > instead of /> with
+         NO following orphaned attributes. The simplest broken case.
 
     Args:
         xml_path: Path to XML file
@@ -195,6 +205,18 @@ def check_broken_xml_in_file(xml_path: Path) -> List[Tuple[str, str, str]]:
         sid_match = _RAW_STRINGID_RE.search(fragment)
         sid = sid_match.group(1) if sid_match else '(unknown)'
         broken.append((sid, fragment, filename))
+        reported_positions.add(m.start())
+
+    # Pass 3: Naked close — <LocStr attrs> with NO following orphaned attrs
+    # Catches the simplest broken case that Pass 2 misses.
+    for m in _NAKED_CLOSE_RE.finditer(raw):
+        if m.start() in reported_positions:
+            continue  # Already caught by Pass 1 or 2
+        fragment = m.group()
+        sid_match = _RAW_STRINGID_RE.search(fragment)
+        sid = sid_match.group(1) if sid_match else '(unknown)'
+        broken.append((sid, fragment, filename))
+        reported_positions.add(m.start())
 
     return broken
 
@@ -262,30 +284,37 @@ def check_korean_in_file(xml_path: Path) -> list:
 def check_patterns_in_file(
     xml_path: Path,
     skip_staticinfo_knowledge: bool = True,
-) -> Tuple[list, list, list]:
+) -> Tuple[list, list, list, list]:
     """
-    Scan one XML file for pattern code mismatches, wrong newlines, and
-    unbalanced brackets.
+    Scan one XML file for pattern code mismatches, wrong newlines,
+    unbalanced brackets, and empty Str with StrOrigin.
 
     Compares normalized {code} pattern sets. If they differ, it's a pattern error.
     Also checks for wrong newline representations (only <br/> is correct).
     Also checks for unbalanced curly brackets in Str (missing { or }).
+    Also flags entries where Str is empty but StrOrigin exists (untranslated).
 
     Args:
         xml_path: Path to XML file
         skip_staticinfo_knowledge: If True, skip entries containing 'staticinfo:knowledge'
 
     Returns:
-        Tuple of (pattern_errors, newline_errors, bracket_errors) — three lists of LocStr elements.
+        Tuple of (pattern_errors, newline_errors, bracket_errors, empty_str_errors).
     """
     pattern_errors = []
     newline_errors = []
     bracket_errors = []
+    empty_str_errors = []
     try:
         root = parse_xml_file(xml_path)
         for elem in iter_locstr_elements(root):
             str_text = _get_attr(elem, _STR_ATTRS).strip()
             if not str_text:
+                # Empty Str check runs on ALL entries (no staticinfo skip) —
+                # an untranslated entry is always worth flagging.
+                strorigin_for_empty = _get_attr(elem, _STRORIGIN_ATTRS).strip()
+                if strorigin_for_empty:
+                    empty_str_errors.append(elem)
                 continue
 
             # Bracket check runs on ALL entries — unbalanced brackets are
@@ -314,7 +343,7 @@ def check_patterns_in_file(
     except Exception as e:
         logger.warning(f"Failed to parse {xml_path.name}: {e}")
 
-    return pattern_errors, newline_errors, bracket_errors
+    return pattern_errors, newline_errors, bracket_errors, empty_str_errors
 
 
 def iter_source_xml_files(source_folder: Path) -> Dict[str, List[Path]]:
@@ -426,19 +455,21 @@ def run_pattern_check(
     progress_callback: Optional[Callable[[str], None]] = None,
     skip_staticinfo_knowledge: bool = True,
     cancel_event: Optional[threading.Event] = None,
-) -> Dict[str, Tuple[int, int, int, int]]:
+) -> Dict[str, Tuple[int, int, int, int, int]]:
     """
-    Run pattern mismatch + newline + bracket + broken XML check on all languages.
+    Run pattern mismatch + newline + bracket + broken XML + empty Str check.
 
     Compares {code} patterns between StrOrigin and Str for each LocStr.
     Also detects wrong newline representations (only <br/> is correct).
     Also detects unbalanced curly brackets in Str (critical errors).
     Also detects malformed/broken LocStr elements at raw text level (critical).
+    Also detects entries where Str is empty but StrOrigin exists (untranslated).
 
     Writes per-language result XMLs to:
     - output_folder/PatternErrors/pattern_errors_{LANG}.xml  (all issues combined)
     - output_folder/MissingBrackets/MissingBrackets_{LANG}.xml  (critical bracket issues only)
     - output_folder/BrokenXML/BrokenXML_{LANG}.txt  (critical broken XML report)
+    - output_folder/EmptyStr/EmptyStr_{LANG}.xml  (empty Str with StrOrigin)
 
     Args:
         source_folder: Path to Source folder with language subfolders
@@ -448,7 +479,7 @@ def run_pattern_check(
         cancel_event: Optional threading.Event to support cancellation
 
     Returns:
-        Summary dict: {"FRE": (pattern_count, newline_count, bracket_count, broken_xml_count), ...}
+        Summary dict: {"FRE": (pattern, newline, bracket, broken_xml, empty_str), ...}
     """
     xml_by_lang = iter_source_xml_files(source_folder)
     if not xml_by_lang:
@@ -462,6 +493,8 @@ def run_pattern_check(
     bracket_dir.mkdir(parents=True, exist_ok=True)
     broken_dir = output_folder / "BrokenXML"
     broken_dir.mkdir(parents=True, exist_ok=True)
+    empty_dir = output_folder / "EmptyStr"
+    empty_dir.mkdir(parents=True, exist_ok=True)
 
     languages = sorted(xml_by_lang.keys())
     summary = {}
@@ -477,25 +510,28 @@ def run_pattern_check(
         all_newline_errors = []
         all_bracket_errors = []
         all_broken_xml = []
+        all_empty_str = []
         for xml_path in xml_files:
             if cancel_event and cancel_event.is_set():
                 raise InterruptedError("Operation cancelled by user")
-            p_errors, n_errors, b_errors = check_patterns_in_file(xml_path, skip_staticinfo_knowledge)
+            p_errors, n_errors, b_errors, e_errors = check_patterns_in_file(xml_path, skip_staticinfo_knowledge)
             all_pattern_errors.extend(p_errors)
             all_newline_errors.extend(n_errors)
             all_bracket_errors.extend(b_errors)
+            all_empty_str.extend(e_errors)
 
             # Broken XML check — raw text level, always runs on ALL entries
             broken = check_broken_xml_in_file(xml_path)
             all_broken_xml.extend(broken)
 
         summary[lang] = (len(all_pattern_errors), len(all_newline_errors),
-                         len(all_bracket_errors), len(all_broken_xml))
+                         len(all_bracket_errors), len(all_broken_xml),
+                         len(all_empty_str))
 
         # Combine all error lists for main XML output (deduplicate by element identity)
         seen = set()
         combined = []
-        for elem in all_pattern_errors + all_newline_errors + all_bracket_errors:
+        for elem in all_pattern_errors + all_newline_errors + all_bracket_errors + all_empty_str:
             eid = id(elem)
             if eid not in seen:
                 seen.add(eid)
@@ -507,7 +543,8 @@ def run_pattern_check(
             p_count = len(all_pattern_errors)
             n_count = len(all_newline_errors)
             b_count = len(all_bracket_errors)
-            logger.info(f"Pattern check {lang}: {p_count} pattern + {n_count} newline + {b_count} bracket errors in {len(xml_files)} files -> {out_path.name}")
+            e_count = len(all_empty_str)
+            logger.info(f"Pattern check {lang}: {p_count} pattern + {n_count} newline + {b_count} bracket + {e_count} empty errors in {len(xml_files)} files -> {out_path.name}")
         else:
             logger.info(f"Pattern check {lang}: clean ({len(xml_files)} files)")
 
@@ -522,5 +559,11 @@ def run_pattern_check(
             broken_path = broken_dir / f"BrokenXML_{lang}.txt"
             _write_broken_xml_report(broken_path, all_broken_xml)
             logger.info(f"Broken XML {lang}: {len(all_broken_xml)} CRITICAL entries -> {broken_path.name}")
+
+        # Write separate empty Str file
+        if all_empty_str:
+            empty_path = empty_dir / f"EmptyStr_{lang}.xml"
+            _write_results_xml(empty_path, all_empty_str)
+            logger.info(f"Empty Str {lang}: {len(all_empty_str)} entries -> {empty_path.name}")
 
     return summary

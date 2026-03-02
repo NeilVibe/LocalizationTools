@@ -2,8 +2,9 @@
 QuickTranslate GUI Application.
 
 Tkinter-based GUI with folder-only source mode (auto-detects XML + Excel):
-- Match Type Selection: Substring / StringID-only / Strict / StrOrigin Only
-- Enhanced source validation (dry-run parse with per-file reporting)
+- Match Type Selection: StringID-only / Strict / StrOrigin Only
+- Tabbed layout: Transfer (main workflow) + Other Tools (Find Missing)
+- Pre-submission checks with Empty Str detection
 - Settings panel for path configuration
 - Detailed logging and reporting
 """
@@ -68,21 +69,17 @@ from core import (
     scan_folder_for_strings,
     discover_language_files,
     build_translation_lookup,
-    build_reverse_lookup,
     find_matches,
     find_matches_with_stats,
     find_matches_stringid_only,
     find_matches_strict,
     find_matches_special_key,
-    find_stringid_from_text,
     format_multiple_matches,
     detect_excel_columns,
     read_corrections_from_excel,
     get_ordered_languages,
     write_output_excel,
-    write_stringid_lookup_excel,
     write_folder_translation_excel,
-    write_reverse_lookup_excel,
     parse_corrections_from_xml,
     parse_folder_xml_files,
     # TRANSFER functions
@@ -126,7 +123,6 @@ from core.fuzzy_matching import (
 )
 from core.matching import find_matches_strict_fuzzy
 from core.language_loader import build_stringid_to_category, build_stringid_to_subfolder
-from utils import read_text_file_lines
 
 
 class QuickTranslateApp:
@@ -145,12 +141,10 @@ class QuickTranslateApp:
         self.root.configure(bg='#f0f0f0')
 
         # Variables
-        self.match_type = tk.StringVar(value="substring")  # substring, stringid_only, strict, strorigin_only
+        self.match_type = tk.StringVar(value="strict")  # stringid_only, strict, strorigin_only
 
         self.source_path = tk.StringVar()
         self.target_path = tk.StringVar()
-        self.string_id_input = tk.StringVar()
-        self.reverse_file_path = tk.StringVar()
 
         # Fuzzy matching variables
         self.fuzzy_threshold = tk.DoubleVar(value=config.FUZZY_THRESHOLD_DEFAULT)
@@ -290,11 +284,6 @@ class QuickTranslateApp:
                                       relief='flat', padx=20, pady=4, cursor='hand2')
         self.generate_btn.pack(side=tk.RIGHT, padx=(5, 0))
 
-        # Transfer note (inline in top bar)
-        self.transfer_note_label = tk.Label(top_bar, text="",
-                                            font=('Segoe UI', 8), bg='#f0f0f0', fg='#d9534f')
-        self.transfer_note_label.pack(side=tk.LEFT, padx=(15, 0))
-
         # === Horizontal Split: Controls (left) | Log (right) ===
         ttk.Separator(main, orient='horizontal').pack(fill=tk.X, pady=(0, 8))
 
@@ -302,23 +291,51 @@ class QuickTranslateApp:
                                      bg='#cccccc', sashrelief='raised')
         self._paned.pack(fill=tk.BOTH, expand=True)
 
-        # --- Left pane: scrollable controls ---
+        # --- Left pane: tabbed controls ---
         left_outer = tk.Frame(self._paned, bg='#f0f0f0')
-        self._left_canvas = tk.Canvas(left_outer, bg='#f0f0f0', highlightthickness=0)
-        left_scrollbar = ttk.Scrollbar(left_outer, orient='vertical',
-                                       command=self._left_canvas.yview)
-        self._left_inner = tk.Frame(self._left_canvas, bg='#f0f0f0', padx=10)
 
-        canvas_window = self._left_canvas.create_window((0, 0), window=self._left_inner,
-                                                         anchor='nw')
-        self._left_inner.bind('<Configure>', lambda e: self._left_canvas.configure(
-            scrollregion=self._left_canvas.bbox('all')))
-        self._left_canvas.bind('<Configure>', lambda e: self._left_canvas.itemconfigure(
-            canvas_window, width=e.width))
+        self._notebook = ttk.Notebook(left_outer)
+        self._notebook.pack(fill=tk.BOTH, expand=True)
 
-        left_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self._left_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self._left_canvas.configure(yscrollcommand=left_scrollbar.set)
+        # --- Tab 1: Transfer ---
+        tab1_frame = tk.Frame(self._notebook, bg='#f0f0f0')
+        self._notebook.add(tab1_frame, text="Transfer")
+
+        self._tab1_canvas = tk.Canvas(tab1_frame, bg='#f0f0f0', highlightthickness=0)
+        tab1_scrollbar = ttk.Scrollbar(tab1_frame, orient='vertical',
+                                        command=self._tab1_canvas.yview)
+        self._tab1_inner = tk.Frame(self._tab1_canvas, bg='#f0f0f0', padx=10)
+
+        tab1_cw = self._tab1_canvas.create_window((0, 0), window=self._tab1_inner,
+                                                    anchor='nw')
+        self._tab1_inner.bind('<Configure>', lambda e: self._tab1_canvas.configure(
+            scrollregion=self._tab1_canvas.bbox('all')))
+        self._tab1_canvas.bind('<Configure>', lambda e: self._tab1_canvas.itemconfigure(
+            tab1_cw, width=e.width))
+
+        tab1_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self._tab1_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self._tab1_canvas.configure(yscrollcommand=tab1_scrollbar.set)
+
+        # --- Tab 2: Other Tools ---
+        tab2_frame = tk.Frame(self._notebook, bg='#f0f0f0')
+        self._notebook.add(tab2_frame, text="Other Tools")
+
+        self._tab2_canvas = tk.Canvas(tab2_frame, bg='#f0f0f0', highlightthickness=0)
+        tab2_scrollbar = ttk.Scrollbar(tab2_frame, orient='vertical',
+                                        command=self._tab2_canvas.yview)
+        self._tab2_inner = tk.Frame(self._tab2_canvas, bg='#f0f0f0', padx=10)
+
+        tab2_cw = self._tab2_canvas.create_window((0, 0), window=self._tab2_inner,
+                                                    anchor='nw')
+        self._tab2_inner.bind('<Configure>', lambda e: self._tab2_canvas.configure(
+            scrollregion=self._tab2_canvas.bbox('all')))
+        self._tab2_canvas.bind('<Configure>', lambda e: self._tab2_canvas.itemconfigure(
+            tab2_cw, width=e.width))
+
+        tab2_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self._tab2_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self._tab2_canvas.configure(yscrollcommand=tab2_scrollbar.set)
 
         # --- Right pane: log + progress ---
         self._right_pane = tk.Frame(self._paned, bg='#f0f0f0', padx=10)
@@ -329,13 +346,12 @@ class QuickTranslateApp:
         # Set initial sash position after layout
         self.root.after(200, self._set_initial_sash)
 
-        # === Match Type Selection ===
-        match_frame = tk.LabelFrame(self._left_inner, text="Match Type", font=('Segoe UI', 10, 'bold'),
+        # === Match Type Selection (Tab 1) ===
+        match_frame = tk.LabelFrame(self._tab1_inner, text="Match Type", font=('Segoe UI', 10, 'bold'),
                                     bg='#f0f0f0', fg='#555', padx=15, pady=8)
         match_frame.pack(fill=tk.X, pady=(0, 8))
 
         match_types = [
-            ("substring", "Substring Match (Lookup only)", "Find Korean text in StrOrigin"),
             ("stringid_only", "StringID-Only (SCRIPT)", "SCRIPT categories only - match by StringID"),
             ("strict", "StringID + StrOrigin (STRICT)", "Requires BOTH to match exactly"),
             ("strorigin_only", "StrOrigin Only", "Match by StrOrigin text only - skips Dialog/Sequencer"),
@@ -466,7 +482,7 @@ class QuickTranslateApp:
         ).pack(fill=tk.X, pady=(2, 0))
 
         # === Files Section ===
-        files_frame = tk.LabelFrame(self._left_inner, text="Files", font=('Segoe UI', 10, 'bold'),
+        files_frame = tk.LabelFrame(self._tab1_inner, text="Files", font=('Segoe UI', 10, 'bold'),
                                     bg='#f0f0f0', fg='#555', padx=15, pady=8)
         files_frame.pack(fill=tk.X, pady=(0, 8))
 
@@ -494,67 +510,8 @@ class QuickTranslateApp:
                  font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
                  padx=10, cursor='hand2').pack(side=tk.LEFT)
 
-        # === Quick Actions Section ===
-        quick_frame = tk.LabelFrame(self._left_inner, text="Quick Actions", font=('Segoe UI', 10, 'bold'),
-                                    bg='#f0f0f0', fg='#555', padx=15, pady=8)
-        quick_frame.pack(fill=tk.X, pady=(0, 8))
-
-        # StringID Lookup
-        stringid_row = tk.Frame(quick_frame, bg='#f0f0f0')
-        stringid_row.pack(fill=tk.X, pady=(0, 6))
-        tk.Label(stringid_row, text="StringID:", font=('Segoe UI', 10), bg='#f0f0f0',
-                width=10, anchor='w').pack(side=tk.LEFT)
-        self.stringid_entry = tk.Entry(stringid_row, textvariable=self.string_id_input,
-                                       font=('Segoe UI', 9), relief='solid', bd=1)
-        self.stringid_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4, padx=(0, 8))
-        self.lookup_btn = tk.Button(stringid_row, text="Lookup", command=self._lookup_stringid,
-                 font=('Segoe UI', 9, 'bold'), bg='#5cb85c', fg='white',
-                 relief='flat', padx=14, cursor='hand2')
-        self.lookup_btn.pack(side=tk.LEFT)
-
-        # Reverse Lookup
-        reverse_row = tk.Frame(quick_frame, bg='#f0f0f0')
-        reverse_row.pack(fill=tk.X, pady=(0, 6))
-        tk.Label(reverse_row, text="Reverse:", font=('Segoe UI', 10), bg='#f0f0f0',
-                width=10, anchor='w').pack(side=tk.LEFT)
-        self.reverse_entry = tk.Entry(reverse_row, textvariable=self.reverse_file_path,
-                                      font=('Segoe UI', 9), relief='solid', bd=1)
-        self.reverse_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4, padx=(0, 8))
-        tk.Button(reverse_row, text="Browse", command=self._browse_reverse_file,
-                 font=('Segoe UI', 9), bg='#e0e0e0', relief='solid', bd=1,
-                 padx=10, cursor='hand2').pack(side=tk.LEFT, padx=(0, 8))
-        self.reverse_btn = tk.Button(reverse_row, text="Find All", command=self._reverse_lookup,
-                 font=('Segoe UI', 9, 'bold'), bg='#d9534f', fg='white',
-                 relief='flat', padx=10, cursor='hand2')
-        self.reverse_btn.pack(side=tk.LEFT)
-
-        # Missing Translations - Find Korean in Target MISSING from Source (by StrOrigin+StringId key)
-        missing_trans_row = tk.Frame(quick_frame, bg='#f0f0f0')
-        missing_trans_row.pack(fill=tk.X, pady=(6, 0))
-        tk.Label(missing_trans_row, text="", font=('Segoe UI', 10), bg='#f0f0f0',
-                width=10, anchor='w').pack(side=tk.LEFT)
-        tk.Label(missing_trans_row, text="Find Korean missing from Source",
-                font=('Segoe UI', 8), bg='#f0f0f0', fg='#888').pack(side=tk.LEFT, padx=(0, 8))
-        self.missing_trans_btn = tk.Button(missing_trans_row, text="Find Missing Translations",
-                 command=self._find_missing_translations,
-                 font=('Segoe UI', 9, 'bold'), bg='#9b59b6', fg='white',
-                 relief='flat', padx=10, cursor='hand2')
-        self.missing_trans_btn.pack(side=tk.RIGHT)
-
-        self._exclude_count_label = tk.Label(missing_trans_row, text="",
-                 font=('Segoe UI', 8, 'bold'), bg='#f0f0f0', fg='#e67e22')
-        self._exclude_count_label.pack(side=tk.RIGHT, padx=(0, 6))
-
-        self.exclude_btn = tk.Button(missing_trans_row, text="Exclude...",
-                 command=self._open_exclude_dialog,
-                 font=('Segoe UI', 9, 'bold'), bg='#e67e22', fg='white',
-                 relief='flat', padx=10, cursor='hand2')
-        self.exclude_btn.pack(side=tk.RIGHT, padx=(0, 4))
-
-        self._update_exclude_count_label()
-
         # === Pre-Submission Checks Section ===
-        checks_frame = tk.LabelFrame(self._left_inner, text="Pre-Submission Checks",
+        checks_frame = tk.LabelFrame(self._tab1_inner, text="Pre-Submission Checks",
                                       font=('Segoe UI', 10, 'bold'),
                                       bg='#f0f0f0', fg='#555', padx=15, pady=8)
         checks_frame.pack(fill=tk.X, pady=(0, 8))
@@ -593,21 +550,6 @@ class QuickTranslateApp:
             padx=10, cursor='hand2', state='disabled')
         self.open_results_btn.pack(side=tk.RIGHT)
 
-        # Pre-submission settings (persisted)
-        presub_settings = config.load_presubmission_settings()
-        checks_options_row = tk.Frame(checks_frame, bg='#f0f0f0')
-        checks_options_row.pack(fill=tk.X, pady=(4, 2))
-
-        self._skip_staticinfo_var = tk.BooleanVar(value=presub_settings.get("skip_staticinfo_knowledge", True))
-        self._skip_staticinfo_cb = tk.Checkbutton(
-            checks_options_row,
-            text="Skip staticinfo:knowledge entries (Pattern/Quality checks)",
-            variable=self._skip_staticinfo_var,
-            command=self._on_presub_setting_changed,
-            font=('Segoe UI', 8), bg='#f0f0f0', fg='#555',
-            activebackground='#f0f0f0', cursor='hand2')
-        self._skip_staticinfo_cb.pack(side=tk.LEFT)
-
         checks_status_row = tk.Frame(checks_frame, bg='#f0f0f0')
         checks_status_row.pack(fill=tk.X)
         self.checks_status_text = tk.StringVar(value="Ready")
@@ -616,7 +558,7 @@ class QuickTranslateApp:
                  anchor='w').pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # === Settings Section ===
-        settings_frame = tk.LabelFrame(self._left_inner, text="Settings", font=('Segoe UI', 10, 'bold'),
+        settings_frame = tk.LabelFrame(self._tab1_inner, text="Settings", font=('Segoe UI', 10, 'bold'),
                                        bg='#f0f0f0', fg='#555', padx=15, pady=8)
         settings_frame.pack(fill=tk.X, pady=(0, 8))
 
@@ -652,6 +594,42 @@ class QuickTranslateApp:
                  relief='flat', padx=14, cursor='hand2').pack(side=tk.RIGHT)
         tk.Label(save_row, text="Paths are saved to settings.json", font=('Segoe UI', 8),
                 bg='#f0f0f0', fg='#888').pack(side=tk.LEFT)
+
+        # === Tab 2: Other Tools ===
+        missing_frame = tk.LabelFrame(self._tab2_inner, text="Find Missing Translations",
+                                       font=('Segoe UI', 10, 'bold'),
+                                       bg='#f0f0f0', fg='#555', padx=15, pady=8)
+        missing_frame.pack(fill=tk.X, pady=(8, 8))
+
+        tk.Label(missing_frame,
+                 text="Find Korean entries in Target that are MISSING from Source.\n"
+                      "Uses Source/Target paths from the Transfer tab.",
+                 font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
+                 justify='left', anchor='w').pack(fill=tk.X, pady=(0, 8))
+
+        missing_btn_row = tk.Frame(missing_frame, bg='#f0f0f0')
+        missing_btn_row.pack(fill=tk.X)
+
+        self.missing_trans_btn = tk.Button(
+            missing_btn_row, text="Find Missing Translations",
+            command=self._find_missing_translations,
+            font=('Segoe UI', 9, 'bold'), bg='#9b59b6', fg='white',
+            relief='flat', padx=10, cursor='hand2')
+        self.missing_trans_btn.pack(side=tk.LEFT, padx=(0, 8))
+
+        self.exclude_btn = tk.Button(
+            missing_btn_row, text="Exclude...",
+            command=self._open_exclude_dialog,
+            font=('Segoe UI', 9, 'bold'), bg='#e67e22', fg='white',
+            relief='flat', padx=10, cursor='hand2')
+        self.exclude_btn.pack(side=tk.LEFT, padx=(0, 8))
+
+        self._exclude_count_label = tk.Label(
+            missing_btn_row, text="",
+            font=('Segoe UI', 8, 'bold'), bg='#f0f0f0', fg='#e67e22')
+        self._exclude_count_label.pack(side=tk.LEFT)
+
+        self._update_exclude_count_label()
 
         # === Log Section (right pane) ===
         log_frame = tk.LabelFrame(self._right_pane, text="Log", font=('Segoe UI', 10, 'bold'),
@@ -691,12 +669,14 @@ class QuickTranslateApp:
                                     relief='flat', padx=14, pady=2, cursor='hand2')
         # Hidden by default — shown during operations
 
-        # Apply initial match type state (disable TRANSFER for substring)
+        # Apply initial match type state
         self._on_match_type_changed()
 
-        # Bind mousewheel scrolling for left pane
-        self._bind_mousewheel_recursive(self._left_canvas)
-        self._bind_mousewheel_recursive(self._left_inner)
+        # Bind mousewheel scrolling per tab
+        self._bind_mousewheel_to_canvas(self._tab1_canvas, self._tab1_canvas)
+        self._bind_mousewheel_to_canvas(self._tab1_inner, self._tab1_canvas)
+        self._bind_mousewheel_to_canvas(self._tab2_canvas, self._tab2_canvas)
+        self._bind_mousewheel_to_canvas(self._tab2_inner, self._tab2_canvas)
 
     def _set_initial_sash(self):
         """Set PanedWindow sash to ~65% left / 35% right split."""
@@ -704,22 +684,24 @@ class QuickTranslateApp:
         if total_width > 1:
             self._paned.sash_place(0, int(total_width * 0.65), 0)
 
-    def _on_mousewheel(self, event):
-        """Handle mousewheel scrolling on left pane."""
-        if event.delta:  # Windows
-            self._left_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        elif event.num == 4:  # Linux scroll up
-            self._left_canvas.yview_scroll(-1, "units")
-        elif event.num == 5:  # Linux scroll down
-            self._left_canvas.yview_scroll(1, "units")
+    def _bind_mousewheel_to_canvas(self, widget, canvas):
+        """Bind mousewheel scrolling to widget targeting a specific canvas."""
+        def on_mousewheel(event):
+            if event.delta:  # Windows
+                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            elif event.num == 4:  # Linux scroll up
+                canvas.yview_scroll(-1, "units")
+            elif event.num == 5:  # Linux scroll down
+                canvas.yview_scroll(1, "units")
+        widget.bind('<MouseWheel>', on_mousewheel)
+        widget.bind('<Button-4>', on_mousewheel)
+        widget.bind('<Button-5>', on_mousewheel)
+        for child in widget.winfo_children():
+            self._bind_mousewheel_to_canvas(child, canvas)
 
     def _bind_mousewheel_recursive(self, widget):
-        """Bind mousewheel scrolling to widget and all descendants."""
-        widget.bind('<MouseWheel>', self._on_mousewheel)
-        widget.bind('<Button-4>', self._on_mousewheel)
-        widget.bind('<Button-5>', self._on_mousewheel)
-        for child in widget.winfo_children():
-            self._bind_mousewheel_recursive(child)
+        """Bind mousewheel scrolling to widget (delegates to tab1 canvas)."""
+        self._bind_mousewheel_to_canvas(widget, self._tab1_canvas)
 
     def _log(self, message: str, tag: str = 'info'):
         """Add message to log area (thread-safe).
@@ -952,7 +934,6 @@ class QuickTranslateApp:
                 file_count = 0
             working_for.append(f"TRANSFER ({file_count} language files)")
             working_for.append("Find Missing Translations")
-            working_for.append("Reverse Lookup")
             if role == "SOURCE":
                 working_for.append("Pre-Submission Checks (Korean + Pattern + Quality)")
             if all_langs:
@@ -962,13 +943,6 @@ class QuickTranslateApp:
             not_working_for.append("Find Missing Translations - needs LOC folder structure")
             if role == "SOURCE":
                 not_working_for.append("Pre-Submission Checks - no language files found")
-
-        # StringID Lookup depends on LOC folder in Settings
-        loc_folder_set = bool(config.LOC_FOLDER and config.LOC_FOLDER.exists())
-        if loc_folder_set:
-            working_for.append("StringID Lookup (LOC folder configured)")
-        else:
-            not_working_for.append("StringID Lookup - set LOC folder in Settings first")
 
         if working_for:
             logger.info("  WORKING FOR:")
@@ -1287,15 +1261,6 @@ class QuickTranslateApp:
             self.target_path.set(path)
             self._analyze_folder(path, "TARGET")
 
-    def _browse_reverse_file(self):
-        """Browse for reverse lookup text file."""
-        path = filedialog.askopenfilename(
-            title="Select Text File with List",
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
-        )
-        if path:
-            self.reverse_file_path.set(path)
-
     def _browse_loc_path(self):
         """Browse for LOC folder path."""
         path = filedialog.askdirectory(title="Select LOC Folder (languagedata_*.xml files)")
@@ -1318,7 +1283,6 @@ class QuickTranslateApp:
             self._on_precision_changed()
             # Enable TRANSFER button + show transfer scope toggle
             self.transfer_btn.config(state='normal')
-            self.transfer_note_label.config(text="")
             self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
             # SAFETY: StrOrigin Only defaults to untranslated-only (no StringID verification)
             if match_type == "strorigin_only":
@@ -1335,21 +1299,12 @@ class QuickTranslateApp:
             # Rebind mousewheel on newly shown frames
             self._bind_mousewheel_recursive(self.precision_options_frame)
             self._bind_mousewheel_recursive(self.transfer_scope_frame)
-        elif match_type == "substring":
-            self.precision_options_frame.pack_forget()
-            # Disable TRANSFER button for substring (lookup only)
-            self.transfer_btn.config(state='disabled')
-            self.transfer_note_label.config(text="(Lookup only - TRANSFER not available)")
-            self.transfer_scope_frame.pack_forget()
-            self.unique_only_frame.pack_forget()
-            self.strict_non_script_frame.pack_forget()
         else:
             # stringid_only
             self.precision_options_frame.pack_forget()
             # Enable TRANSFER button + show transfer scope toggle
             self.transfer_btn.config(state='normal')
             self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
-            self.transfer_note_label.config(text="")
             self.unique_only_frame.pack_forget()
             self.strict_non_script_frame.pack_forget()
             # Rebind mousewheel on newly shown frame
@@ -1359,7 +1314,6 @@ class QuickTranslateApp:
         """Enable/disable match type radio buttons based on detected source columns.
 
         Rules:
-        - substring: Always available (uses LOC folder data, not source columns)
         - stringid_only: Needs (StringID OR EventName) AND Correction
         - strict: Needs (StringID OR EventName) AND StrOrigin AND Correction
         - strorigin_only: Needs StrOrigin AND Correction
@@ -1373,7 +1327,6 @@ class QuickTranslateApp:
 
         # Determine which match types are valid
         valid = {
-            "substring": True,  # Always available — uses LOC data
             "stringid_only": has_id and has_correction,
             "strict": has_id and has_strorigin and has_correction,
             "strorigin_only": has_strorigin and has_correction,
@@ -1390,7 +1343,6 @@ class QuickTranslateApp:
                 rb.config(state='normal', fg='black')
                 # Restore original description
                 orig_descs = {
-                    "substring": "Find Korean text in StrOrigin",
                     "stringid_only": "SCRIPT categories only - match by StringID",
                     "strict": "Requires BOTH to match exactly",
                     "strorigin_only": "Match by StrOrigin text only - skips Dialog/Sequencer",
@@ -1400,18 +1352,21 @@ class QuickTranslateApp:
                 rb.config(state='disabled', fg='#999')
                 desc_lbl.config(text=reasons.get(value, "Missing columns"), fg='#cc0000')
 
-        # If current selection is now disabled, fall back to substring
+        # If current selection is now disabled, fall back to first valid mode
         current = self.match_type.get()
         if not valid.get(current, True):
-            self.match_type.set("substring")
-            self._on_match_type_changed()
+            for fb in ("strict", "strorigin_only", "stringid_only"):
+                if valid.get(fb, False):
+                    self.match_type.set(fb)
+                    self._on_match_type_changed()
+                    break
 
         # Log to GUI
-        available_modes = [k for k, v in valid.items() if v and k != "substring"]
+        available_modes = [k for k, v in valid.items() if v]
         if available_modes:
-            self._log(f"Available match types: Substring + {', '.join(m.replace('_', ' ').title() for m in available_modes)}", 'info')
+            self._log(f"Available match types: {', '.join(m.replace('_', ' ').title() for m in available_modes)}", 'info')
         else:
-            self._log("Only Substring (Lookup) available — source lacks transfer columns", 'warning')
+            self._log("No match types available — source lacks required columns", 'warning')
 
     def _on_transfer_scope_changed(self):
         """Warn user when switching to 'ALL' on StrOrigin Only (no StringID safety)."""
@@ -1893,8 +1848,6 @@ class QuickTranslateApp:
         """Clear all input fields."""
         self.source_path.set(str(config.SOURCE_FOLDER))
         self.target_path.set("")
-        self.string_id_input.set("")
-        self.reverse_file_path.set("")
         self.progress_value.set(0)
         self.status_text.set("Ready")
         self._clear_log()
@@ -1906,33 +1859,23 @@ class QuickTranslateApp:
         self.transfer_btn.config(state='disabled')
         self.missing_trans_btn.config(state='disabled')
         self.exclude_btn.config(state='disabled')
-        self.lookup_btn.config(state='disabled')
-        self.reverse_btn.config(state='disabled')
         self.check_korean_btn.config(state='disabled')
         self.check_patterns_btn.config(state='disabled')
         self.check_quality_btn.config(state='disabled')
         self.check_all_btn.config(state='disabled')
         self.open_results_btn.config(state='disabled')
-        self._skip_staticinfo_cb.config(state='disabled')
         self.cancel_btn.pack(side=tk.RIGHT, padx=(8, 0))
 
     def _enable_buttons(self):
-        """Re-enable all action buttons (respects match type for TRANSFER)."""
+        """Re-enable all action buttons."""
         self.generate_btn.config(state='normal')
-        # Respect match type: substring disables TRANSFER
-        if self.match_type.get() == "substring":
-            self.transfer_btn.config(state='disabled')
-        else:
-            self.transfer_btn.config(state='normal')
+        self.transfer_btn.config(state='normal')
         self.missing_trans_btn.config(state='normal')
         self.exclude_btn.config(state='normal')
-        self.lookup_btn.config(state='normal')
-        self.reverse_btn.config(state='normal')
         self.check_korean_btn.config(state='normal')
         self.check_patterns_btn.config(state='normal')
         self.check_quality_btn.config(state='normal')
         self.check_all_btn.config(state='normal')
-        self._skip_staticinfo_cb.config(state='normal')
         self.cancel_btn.pack_forget()
         self._worker_thread = None
 
@@ -2260,133 +2203,6 @@ class QuickTranslateApp:
 
         self._run_in_thread(work)
 
-    def _lookup_stringid(self):
-        """Look up a single StringID."""
-        string_id = self.string_id_input.get().strip()
-
-        if not string_id:
-            messagebox.showwarning("Warning", "Please enter a StringID.")
-            return
-
-        self._disable_buttons()
-        self._log(f"Looking up StringID: {string_id}", 'info')
-
-        def work():
-            if not self._load_data_if_needed(need_sequencer=False):
-                return
-
-            # Check if StringID exists
-            found = False
-            for lang_code, lookup in self.translation_lookup.items():
-                if string_id in lookup:
-                    found = True
-                    break
-
-            if not found:
-                self._task_queue.put(('messagebox', 'showwarning', 'Warning', f'StringID not found: {string_id}'))
-                self._log(f"StringID not found: {string_id}", 'error')
-                self._update_status(f"StringID not found: {string_id}")
-                return
-
-            # Write output
-            self._update_status("Writing output...")
-            config.ensure_output_folder()
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = config.OUTPUT_FOLDER / f"StringID_{string_id}_{timestamp}.xlsx"
-
-            write_stringid_lookup_excel(
-                output_path,
-                string_id,
-                self.translation_lookup,
-                self.available_langs,
-                config.LANGUAGE_NAMES,
-            )
-
-            self._update_status(f"Done! Lookup for {string_id}")
-            self._log(f"Output saved: {output_path}", 'success')
-            self._task_queue.put(('messagebox', 'showinfo', 'Success', f'Output saved to:\n{output_path}'))
-
-        self._run_in_thread(work)
-
-    def _reverse_lookup(self):
-        """Perform reverse lookup from any language to all languages."""
-        if not self.reverse_file_path.get():
-            messagebox.showwarning("Warning", "Please select a text file with list of strings.")
-            return
-
-        file_path = Path(self.reverse_file_path.get())
-        if not file_path.exists():
-            messagebox.showerror("Error", f"File not found:\n{file_path}")
-            return
-
-        self._disable_buttons()
-        self._log(f"Reverse lookup from: {file_path}", 'info')
-
-        def work():
-            if not self._load_data_if_needed(need_sequencer=False):
-                return
-
-            # Read input file
-            self._update_status("Reading input file...")
-            input_texts = read_text_file_lines(file_path)
-
-            if not input_texts:
-                self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'No text found in input file.'))
-                return
-
-            self._log(f"Read {len(input_texts)} texts from file", 'info')
-
-            # Build reverse lookup
-            self._update_status("Building reverse lookup...")
-            reverse_lookup = build_reverse_lookup(self.translation_lookup)
-
-            # Find StringID for each input text
-            self._update_status("Finding StringIDs...")
-            stringid_map = {}
-            not_found_list = []
-            detected_langs = set()
-
-            for text in input_texts:
-                result = find_stringid_from_text(text, reverse_lookup)
-                if result:
-                    string_id, lang = result
-                    stringid_map[text] = string_id
-                    detected_langs.add(lang)
-                else:
-                    not_found_list.append(text)
-
-            self._log(f"Found: {len(stringid_map)}, Not found: {len(not_found_list)}", 'info')
-            if detected_langs:
-                self._log(f"Detected languages: {', '.join(sorted(detected_langs))}", 'info')
-
-            # Write output
-            self._update_status("Writing output...")
-            config.ensure_output_folder()
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = config.OUTPUT_FOLDER / f"ReverseLookup_{timestamp}.xlsx"
-
-            write_reverse_lookup_excel(
-                output_path,
-                input_texts,
-                stringid_map,
-                self.translation_lookup,
-                self.available_langs,
-                config.LANGUAGE_NAMES,
-            )
-
-            found_count = len(stringid_map)
-            total_count = len(input_texts)
-            detected_str = ", ".join(sorted(detected_langs)) if detected_langs else "N/A"
-
-            self._update_status(f"Done! {found_count}/{total_count} found")
-            self._log(f"Output saved: {output_path}", 'success')
-            self._task_queue.put(('messagebox', 'showinfo', 'Success',
-                f"Output saved to:\n{output_path}\n\n"
-                f"Found: {found_count}/{total_count}\n"
-                f"Detected languages: {detected_str}"))
-
-        self._run_in_thread(work)
-
     def _open_exclude_dialog(self):
         """Open the EXPORT tree browser to configure exclusion rules."""
         export_path = config.EXPORT_FOLDER
@@ -2631,16 +2447,17 @@ class QuickTranslateApp:
         return f"{check_name}: {total} issues in {len(langs_with_issues)} languages ({', '.join(parts)})"
 
     def _format_pattern_summary(self, summary: Dict[str, tuple]) -> str:
-        """Format pattern+newline+bracket+broken XML check summary for log output.
+        """Format pattern+newline+bracket+broken XML+empty Str check summary.
 
-        summary values are (pattern_count, newline_count, bracket_count, broken_xml_count) tuples.
+        summary values are (pattern, newline, bracket, broken_xml, empty_str) tuples.
         Shows categorized breakdown so users know what was wrong.
         """
         pattern_total = sum(v[0] for v in summary.values())
         newline_total = sum(v[1] for v in summary.values())
         bracket_total = sum(v[2] for v in summary.values())
         broken_total = sum(v[3] for v in summary.values()) if all(len(v) >= 4 for v in summary.values()) else 0
-        total = pattern_total + newline_total + bracket_total + broken_total
+        empty_total = sum(v[4] for v in summary.values()) if all(len(v) >= 5 for v in summary.values()) else 0
+        total = pattern_total + newline_total + bracket_total + broken_total + empty_total
 
         if total == 0:
             return f"Pattern Check: All clean across {len(summary)} languages"
@@ -2664,6 +2481,13 @@ class QuickTranslateApp:
             lines.append(f"  CRITICAL — Missing brackets: {bracket_total} ({', '.join(b_parts)})")
             lines.append("  (Separate files in MissingBrackets/ folder)")
 
+        # Empty Str (has StrOrigin but no translation)
+        if empty_total > 0:
+            e_langs = {k: v[4] for k, v in summary.items() if len(v) >= 5 and v[4] > 0}
+            e_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(e_langs.items())]
+            lines.append(f"  Empty Str (untranslated): {empty_total} ({', '.join(e_parts)})")
+            lines.append("  (Separate files in EmptyStr/ folder)")
+
         # Pattern mismatches breakdown
         if pattern_total > 0:
             p_langs = {k: v[0] for k, v in summary.items() if v[0] > 0}
@@ -2672,8 +2496,8 @@ class QuickTranslateApp:
 
         # Wrong newlines breakdown
         if newline_total > 0:
-            n_langs = {k: v[1] for k, v in summary.items() if v[1] > 0}
-            n_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(n_langs.items())]
+            nl_langs = {k: v[1] for k, v in summary.items() if v[1] > 0}
+            n_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(nl_langs.items())]
             lines.append(f"  Wrong newlines: {newline_total} ({', '.join(n_parts)})")
             lines.append("  (Only <br/> is correct — not \\n, &#10;, <BR/>, etc.)")
 
@@ -2682,13 +2506,11 @@ class QuickTranslateApp:
     def _on_presub_setting_changed(self):
         """Save pre-submission settings when checkbox is toggled."""
         settings = {
-            "skip_staticinfo_knowledge": self._skip_staticinfo_var.get(),
             "strict_non_script_only": self._strict_non_script_var.get(),
         }
         config.save_presubmission_settings(settings)
-        skip_state = "ON" if settings["skip_staticinfo_knowledge"] else "OFF"
         ns_state = "ON" if settings["strict_non_script_only"] else "OFF"
-        self._log(f"staticinfo:knowledge skip: {skip_state}, strict non-script only: {ns_state} (saved)", 'info')
+        self._log(f"Strict non-script only: {ns_state} (saved)", 'info')
 
     def _check_korean(self):
         """Run Korean character check on Source folder."""
@@ -2704,7 +2526,6 @@ class QuickTranslateApp:
             self._task_queue.put(('checks_status', "Checking Korean..."))
 
             def progress_cb(msg):
-                self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
             summary = run_korean_check(source, output_folder, progress_callback=progress_cb,
@@ -2730,27 +2551,23 @@ class QuickTranslateApp:
         self._run_in_thread(work)
 
     def _check_patterns(self):
-        """Run pattern mismatch + newline + bracket check on Source folder."""
+        """Run pattern mismatch + newline + bracket + empty Str check on Source folder."""
         source = self._get_source_for_checks()
         if not source:
             return
 
         self._disable_buttons()
         output_folder = config.CHECK_RESULTS_FOLDER
-        skip_si = self._skip_staticinfo_var.get()
 
         def work():
             self._log("=== Pattern & Newline Check ===", 'header')
-            if not skip_si:
-                self._log("(staticinfo:knowledge skip: OFF — checking ALL entries)", 'info')
             self._task_queue.put(('checks_status', "Checking patterns..."))
 
             def progress_cb(msg):
-                self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
             summary = run_pattern_check(source, output_folder, progress_callback=progress_cb,
-                                        skip_staticinfo_knowledge=skip_si, cancel_event=self._cancel_event)
+                                        skip_staticinfo_knowledge=False, cancel_event=self._cancel_event)
 
             if not summary:
                 self._log("No XML files found in Source folder.", 'warning')
@@ -2762,7 +2579,8 @@ class QuickTranslateApp:
             newline_total = sum(v[1] for v in summary.values())
             bracket_total = sum(v[2] for v in summary.values())
             broken_total = sum(v[3] for v in summary.values()) if all(len(v) >= 4 for v in summary.values()) else 0
-            total = pattern_total + newline_total + bracket_total + broken_total
+            empty_total = sum(v[4] for v in summary.values()) if all(len(v) >= 5 for v in summary.values()) else 0
+            total = pattern_total + newline_total + bracket_total + broken_total + empty_total
 
             self._log(result_msg, 'success' if total == 0 else 'warning')
 
@@ -2772,7 +2590,9 @@ class QuickTranslateApp:
                     self._log(f"CRITICAL broken XML: {output_folder / 'BrokenXML'}", 'warning')
                 if bracket_total > 0:
                     self._log(f"CRITICAL bracket issues: {output_folder / 'MissingBrackets'}", 'warning')
-                self._task_queue.put(('checks_status', f"Done: {total} issues ({broken_total}X + {pattern_total}P + {newline_total}N + {bracket_total}B)"))
+                if empty_total > 0:
+                    self._log(f"Empty Str entries: {output_folder / 'EmptyStr'}", 'info')
+                self._task_queue.put(('checks_status', f"Done: {total} issues ({broken_total}X + {pattern_total}P + {newline_total}N + {bracket_total}B + {empty_total}E)"))
             else:
                 self._task_queue.put(('checks_status', "Done: All clean"))
 
@@ -2788,20 +2608,16 @@ class QuickTranslateApp:
 
         self._disable_buttons()
         output_folder = config.CHECK_RESULTS_FOLDER
-        skip_si = self._skip_staticinfo_var.get()
 
         def work():
             self._log("=== Quality Check (Script + AI Hallucination) ===", 'header')
-            if not skip_si:
-                self._log("(staticinfo:knowledge skip: OFF — checking ALL entries)", 'info')
             self._task_queue.put(('checks_status', "Checking quality..."))
 
             def progress_cb(msg):
-                self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
             summary = run_quality_check(source, output_folder, progress_callback=progress_cb,
-                                        skip_staticinfo_knowledge=skip_si, cancel_event=self._cancel_event)
+                                        skip_staticinfo_knowledge=False, cancel_event=self._cancel_event)
 
             if not summary:
                 self._log("No XML files found in Source folder.", 'warning')
@@ -2835,18 +2651,14 @@ class QuickTranslateApp:
 
         self._disable_buttons()
         output_folder = config.CHECK_RESULTS_FOLDER
-        skip_si = self._skip_staticinfo_var.get()
 
         def work():
             self._log("=== Pre-Submission Check ALL ===", 'header')
-            if not skip_si:
-                self._log("(staticinfo:knowledge skip: OFF — checking ALL entries)", 'info')
 
             # Korean check (never skips — checks EVERYTHING)
             self._task_queue.put(('checks_status', "Checking Korean..."))
 
             def korean_cb(msg):
-                self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
             korean_summary = run_korean_check(source, output_folder, progress_callback=korean_cb,
@@ -2859,26 +2671,28 @@ class QuickTranslateApp:
             if self._cancel_event.is_set():
                 raise InterruptedError("Operation cancelled by user")
 
-            # Pattern + newline check
+            # Pattern + newline + empty Str check
             self._task_queue.put(('checks_status', "Checking patterns..."))
 
             def pattern_cb(msg):
-                self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
             pattern_summary = run_pattern_check(source, output_folder, progress_callback=pattern_cb,
-                                                skip_staticinfo_knowledge=skip_si, cancel_event=self._cancel_event)
+                                                skip_staticinfo_knowledge=False, cancel_event=self._cancel_event)
             if pattern_summary:
                 p_total = sum(v[0] for v in pattern_summary.values())
                 n_total = sum(v[1] for v in pattern_summary.values())
                 b_total = sum(v[2] for v in pattern_summary.values())
                 x_total = sum(v[3] for v in pattern_summary.values()) if all(len(v) >= 4 for v in pattern_summary.values()) else 0
+                e_total = sum(v[4] for v in pattern_summary.values()) if all(len(v) >= 5 for v in pattern_summary.values()) else 0
                 self._log(self._format_pattern_summary(pattern_summary),
-                          'success' if (p_total + n_total + b_total + x_total) == 0 else 'warning')
+                          'success' if (p_total + n_total + b_total + x_total + e_total) == 0 else 'warning')
                 if x_total > 0:
                     self._log(f"CRITICAL broken XML: {output_folder / 'BrokenXML'}", 'warning')
                 if b_total > 0:
                     self._log(f"CRITICAL bracket issues: {output_folder / 'MissingBrackets'}", 'warning')
+                if e_total > 0:
+                    self._log(f"Empty Str entries: {output_folder / 'EmptyStr'}", 'info')
 
             # Cancel gate: don't start quality check if cancelled during pattern check
             if self._cancel_event.is_set():
@@ -2888,11 +2702,10 @@ class QuickTranslateApp:
             self._task_queue.put(('checks_status', "Checking quality..."))
 
             def quality_cb(msg):
-                self._log(msg)
                 self._task_queue.put(('checks_status', msg))
 
             quality_summary = run_quality_check(source, output_folder, progress_callback=quality_cb,
-                                                skip_staticinfo_knowledge=skip_si, cancel_event=self._cancel_event)
+                                                skip_staticinfo_knowledge=False, cancel_event=self._cancel_event)
             if quality_summary:
                 script_total = sum(v[0] for v in quality_summary.values())
                 halluc_total = sum(v[1] for v in quality_summary.values())
@@ -2908,10 +2721,12 @@ class QuickTranslateApp:
             check_total = 0
             bracket_total_all = 0
             broken_total_all = 0
+            empty_total_all = 0
             if pattern_summary:
                 check_total = sum(sum(v) for v in pattern_summary.values())
                 bracket_total_all = sum(v[2] for v in pattern_summary.values())
                 broken_total_all = sum(v[3] for v in pattern_summary.values()) if all(len(v) >= 4 for v in pattern_summary.values()) else 0
+                empty_total_all = sum(v[4] for v in pattern_summary.values()) if all(len(v) >= 5 for v in pattern_summary.values()) else 0
             grand_total = korean_total + check_total + quality_total
 
             if grand_total == 0:
@@ -2923,8 +2738,10 @@ class QuickTranslateApp:
                     critical_parts.append(f"{broken_total_all} CRITICAL broken XML")
                 if bracket_total_all:
                     critical_parts.append(f"{bracket_total_all} CRITICAL brackets")
+                if empty_total_all:
+                    critical_parts.append(f"{empty_total_all} empty Str")
                 critical_note = f", {', '.join(critical_parts)}" if critical_parts else ""
-                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {check_total} pattern/newline/bracket/xml{critical_note}, {quality_total} quality)", 'warning')
+                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {check_total} pattern/newline/bracket/xml/empty{critical_note}, {quality_total} quality)", 'warning')
                 self._log(f"Results written to: {output_folder}", 'info')
                 self._task_queue.put(('checks_status', f"Done: {grand_total} issues ({korean_total}K + {check_total}P + {quality_total}Q)"))
 
@@ -2950,12 +2767,6 @@ class QuickTranslateApp:
 
     def _transfer(self):
         """Transfer corrections from source to target XML files (LOC folder)."""
-        # Block transfer for substring mode (lookup only)
-        if self.match_type.get() == "substring":
-            messagebox.showwarning("Warning", "Substring mode is lookup-only. TRANSFER is not available.\n\n"
-                                   "Please select StringID-Only, Strict, or StrOrigin Only mode.")
-            return
-
         source = Path(self.source_path.get())
 
         # If columns haven't been detected (path pasted, not browsed), detect now

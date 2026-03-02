@@ -136,3 +136,4 @@ Build - broken XML detection for TARGET folder
 Build - robust cancel for all check operations
 Build: postprocess newline normalizer skips StrOrigin
 Build: premature-close LocStr detection + TARGET threading
+Build: GUI refactor - tabs, remove substring/skip toggle/quick actions, empty Str check
