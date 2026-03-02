@@ -70,15 +70,11 @@ from core import (
     discover_language_files,
     build_translation_lookup,
     find_matches,
-    find_matches_with_stats,
-    find_matches_stringid_only,
-    find_matches_strict,
     find_matches_special_key,
     format_multiple_matches,
     detect_excel_columns,
     read_corrections_from_excel,
     get_ordered_languages,
-    write_output_excel,
     write_folder_translation_excel,
     parse_corrections_from_xml,
     parse_folder_xml_files,
@@ -111,7 +107,6 @@ from core.checker import run_korean_check, run_pattern_check, check_broken_xml_i
 from core.quality_checker import run_quality_check
 from gui.missing_params_dialog import MissingParamsDialog
 from gui.exclude_dialog import ExcludeDialog
-from core.indexing import scan_folder_for_entries
 from core.fuzzy_matching import (
     check_model_available,
     load_model,
@@ -121,7 +116,6 @@ from core.fuzzy_matching import (
     get_cached_index_info,
     clear_cache as clear_fuzzy_cache,
 )
-from core.matching import find_matches_strict_fuzzy
 from core.language_loader import build_stringid_to_category, build_stringid_to_subfolder
 
 
@@ -278,11 +272,6 @@ class QuickTranslateApp:
                                       font=('Segoe UI', 11, 'bold'), bg='#d9534f', fg='white',
                                       relief='flat', padx=20, pady=4, cursor='hand2')
         self.transfer_btn.pack(side=tk.RIGHT, padx=(5, 0))
-
-        self.generate_btn = tk.Button(btn_container, text="Generate", command=self._generate,
-                                      font=('Segoe UI', 11, 'bold'), bg='#4a90d9', fg='white',
-                                      relief='flat', padx=20, pady=4, cursor='hand2')
-        self.generate_btn.pack(side=tk.RIGHT, padx=(5, 0))
 
         # === Horizontal Split: Controls (left) | Log (right) ===
         ttk.Separator(main, orient='horizontal').pack(fill=tk.X, pady=(0, 8))
@@ -1076,7 +1065,7 @@ class QuickTranslateApp:
             total = len(files_to_check)
 
             for i, (filepath, lang) in enumerate(files_to_check):
-                # Abort if a real worker started (user clicked Generate, etc.)
+                # Abort if a real worker started (user clicked Transfer, etc.)
                 if self._worker_thread is not None and self._worker_thread.is_alive():
                     self._log("Validation interrupted (operation started)", 'info')
                     return
@@ -1878,7 +1867,6 @@ class QuickTranslateApp:
     def _disable_buttons(self):
         """Disable all action buttons during processing."""
         self._cancel_event.clear()
-        self.generate_btn.config(state='disabled')
         self.transfer_btn.config(state='disabled')
         self.missing_trans_btn.config(state='disabled')
         self.exclude_btn.config(state='disabled')
@@ -1891,7 +1879,6 @@ class QuickTranslateApp:
 
     def _enable_buttons(self):
         """Re-enable all action buttons."""
-        self.generate_btn.config(state='normal')
         self.transfer_btn.config(state='normal')
         self.missing_trans_btn.config(state='normal')
         self.exclude_btn.config(state='normal')
@@ -1944,287 +1931,6 @@ class QuickTranslateApp:
                                  "Your source files don't have these columns.")
             return False
         return True
-
-    def _generate(self):
-        """Main generate action based on current mode."""
-        if not self.source_path.get():
-            messagebox.showwarning("Warning", "Please select a source folder.")
-            return
-
-        source = Path(self.source_path.get())
-        if not source.exists():
-            messagebox.showerror("Error", f"Source not found:\n{source}")
-            return
-
-        # If columns haven't been detected (path pasted, not browsed), detect now
-        cols = self._source_columns
-        if not any(cols.values()) and source.is_dir():
-            self._quick_detect_columns(source)
-            cols = self._source_columns
-
-        if not self._validate_columns_for_mode(cols):
-            return
-
-        # Capture StringVar values on main thread before entering worker
-        match_type = self.match_type.get()
-        target_path = self.target_path.get()
-        precision = self.match_precision.get()
-        transfer_scope = self.transfer_scope.get()
-        fuzzy_threshold = self.fuzzy_threshold.get()
-        source_path_str = self.source_path.get()
-        non_script_only = self._strict_non_script_var.get() if match_type == "strict" else False
-
-        self._disable_buttons()
-        self.progress_value.set(0)
-        self._clear_log()
-
-        self._log(f"=== QuickTranslate Generation ===", 'header')
-        self._log(f"Match Type: {match_type.upper()}", 'info')
-        if non_script_only:
-            self._log("Non-Script Only: ON (Dialog/Sequencer will be skipped)", 'warning')
-
-        def work():
-            # Load data
-            if not self._load_data_if_needed(need_sequencer=True):
-                return
-
-            self._task_queue.put(('progress', 20))
-
-            # Read input - always folder mode, auto-detect XML + Excel
-            corrections = []
-            korean_inputs = []
-
-            xml_files = list(source.rglob("*.xml"))
-            excel_files = list(source.rglob("*.xlsx")) + list(source.rglob("*.xls"))
-
-            if xml_files:
-                xml_corrections = parse_folder_xml_files(source, self._update_status)
-                corrections.extend(xml_corrections)
-                self._log(f"Loaded {len(xml_corrections)} corrections from {len(xml_files)} XML files", 'info')
-
-            if excel_files:
-                for excel_file in excel_files:
-                    try:
-                        excel_corrections = read_corrections_from_excel(excel_file)
-                        corrections.extend(excel_corrections)
-                    except ValueError as e:
-                        self._log(f"SKIPPED {excel_file.name}: {e}", 'error')
-                        continue
-                self._log(f"Loaded {len(excel_files)} Excel files", 'info')
-
-            # Non-Script filter: remove SCRIPT (Dialog/Sequencer) corrections for strict mode
-            skipped_script_count = 0
-            if non_script_only and self.stringid_to_category:
-                original_count = len(corrections)
-                ci_cat = {k.lower(): v for k, v in self.stringid_to_category.items()}
-                corrections = [c for c in corrections
-                               if ci_cat.get(c.get("string_id", "").lower(), "") not in config.SCRIPT_CATEGORIES]
-                skipped_script_count = original_count - len(corrections)
-                if skipped_script_count:
-                    self._log(f"Non-Script filter: skipped {skipped_script_count} SCRIPT corrections (Dialog/Sequencer)", 'warning')
-
-            korean_inputs = [c.get("str_origin", "") for c in corrections if c.get("str_origin")]
-            if not korean_inputs:
-                korean_inputs = [c.get("string_id", "") for c in corrections if c.get("string_id")]
-
-            if not korean_inputs and not corrections:
-                if skipped_script_count > 0:
-                    msg = (f"All {skipped_script_count} corrections are SCRIPT entries "
-                           f"(Dialog/Sequencer) and were filtered by Non-Script Only.\n\n"
-                           f"Use StringID-Only mode for SCRIPT strings, or disable "
-                           f"the Non-Script Only checkbox.")
-                    self._task_queue.put(('messagebox', 'showwarning', 'No Non-Script Data', msg))
-                    self._log(f"Non-Script filter removed all {skipped_script_count} corrections — nothing to generate", 'warning')
-                else:
-                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'No input data found.'))
-                    self._log("No input data found!", 'error')
-                return
-
-            self._task_queue.put(('progress', 40))
-
-            # Find matches based on match type
-            self._update_status("Finding matches...")
-            self._log(f"Finding matches using {match_type} mode...", 'info')
-
-            matches_per_input = []
-            stats = {"total": len(korean_inputs), "matched": 0, "no_match": 0, "multi_match": 0, "skipped": 0, "total_matches": 0}
-
-            if match_type == "substring":
-                # Use new stats-tracking function
-                matches_per_input, stats = find_matches_with_stats(korean_inputs, self.strorigin_index)
-                self._log(f"Substring search complete:", 'info')
-                self._log(f"  - Total inputs: {stats['total']}", 'info')
-                self._log(f"  - Matched (1): {stats['matched']}", 'success')
-                self._log(f"  - Multi-match: {stats['multi_match']}", 'warning')
-                self._log(f"  - Not found: {stats['no_match']}", 'error')
-
-            elif match_type == "stringid_only":
-                # StringID-only (SCRIPT): Filter to SCRIPT categories
-                if not self.stringid_to_category:
-                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Category index not loaded.'))
-                    return
-
-                if corrections:
-                    script_corrections, skipped = find_matches_stringid_only(
-                        corrections, self.stringid_to_category,
-                        self.stringid_to_subfolder,
-                    )
-                    korean_inputs = [c.get("str_origin", "") for c in script_corrections]
-                    for c in script_corrections:
-                        matches_per_input.append([c.get("string_id")])
-                    stats["total"] = len(corrections)
-                    stats["matched"] = len(script_corrections)
-                    stats["skipped"] = skipped
-                    stats["total_matches"] = len(script_corrections)
-                    self._log(f"SCRIPT filter results:", 'info')
-                    self._log(f"  - Total corrections: {stats['total']}", 'info')
-                    self._log(f"  - SCRIPT strings kept: {stats['matched']}", 'success')
-                    self._log(f"  - Non-SCRIPT skipped: {stats['skipped']}", 'warning')
-                else:
-                    # Excel mode with StringIDs in column A
-                    exclude_lower = {s.lower() for s in config.SCRIPT_EXCLUDE_SUBFOLDERS}
-                    for text in korean_inputs:
-                        sid = text.strip()
-                        category = self.stringid_to_category.get(sid, "")
-                        if category in config.SCRIPT_CATEGORIES:
-                            # Check subfolder exclusion (case-insensitive)
-                            subfolder = self.stringid_to_subfolder.get(sid, "") if self.stringid_to_subfolder else ""
-                            if subfolder.lower() in exclude_lower:
-                                matches_per_input.append([])
-                                stats["skipped"] += 1
-                                continue
-                            matches_per_input.append([sid])
-                            stats["matched"] += 1
-                        else:
-                            matches_per_input.append([])
-                            stats["skipped"] += 1
-                    stats["total_matches"] = stats["matched"]
-
-            elif match_type == "strorigin_only":
-                # StrOrigin Only mode: Match by StrOrigin text (no StringID needed)
-                if not corrections:
-                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'StrOrigin Only mode requires corrections data.'))
-                    return
-
-                matched = []
-                not_found = 0
-                for c in corrections:
-                    so = c.get("str_origin", "").strip()
-                    if so:
-                        matched.append(c)
-                    else:
-                        not_found += 1
-
-                korean_inputs = [c.get("str_origin", "") for c in matched]
-                for c in matched:
-                    sid = c.get("string_id", c.get("str_origin", ""))
-                    matches_per_input.append([sid])
-                stats["total"] = len(corrections)
-                stats["matched"] = len(matched)
-                stats["no_match"] = not_found
-                stats["total_matches"] = len(matched)
-
-                self._log(f"StrOrigin Only match results:", 'info')
-                self._log(f"  - Total corrections: {stats['total']}", 'info')
-                self._log(f"  - With StrOrigin: {stats['matched']}", 'success')
-                self._log(f"  - Empty StrOrigin: {stats['no_match']}", 'error' if not_found else 'info')
-
-            elif match_type == "strict":
-                # Strict mode: Match by StringID + StrOrigin tuple
-                if not corrections:
-                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Strict mode requires XML input or corrections data.'))
-                    return
-
-                if not target_path:
-                    self._task_queue.put(('messagebox', 'showwarning', 'Warning', 'Strict mode requires a Target folder for matching.'))
-                    return
-
-                self._log(f"Scanning target folder: {target_path}", 'info')
-                xml_entries = scan_folder_for_entries(Path(target_path), self._update_status)
-                self._log(f"Found {len(xml_entries)} entries in target", 'info')
-
-                if precision == "fuzzy":
-                    # Fuzzy precision: use SBERT similarity for StrOrigin comparison
-                    if not self._ensure_fuzzy_model():
-                        return
-
-                    # Extract StringIDs from corrections FIRST - this is the filter!
-                    correction_stringids = {c.get("string_id", "").lower() for c in corrections if c.get("string_id")}
-                    self._log(f"Corrections have {len(correction_stringids):,} unique StringIDs", 'info')
-
-                    only_untranslated = transfer_scope == "untranslated"
-
-                    # Load ONLY entries matching our correction StringIDs
-                    if not self._ensure_fuzzy_entries(
-                        target_path,
-                        stringid_filter=correction_stringids,
-                        only_untranslated=only_untranslated,
-                    ):
-                        return
-
-                    self._log(f"Strict mode with FUZZY precision (threshold: {fuzzy_threshold:.2f})", 'info')
-
-                    matched, not_found = find_matches_strict_fuzzy(
-                        corrections, xml_entries, self._fuzzy_model, self._fuzzy_index,
-                        self._fuzzy_texts, self._fuzzy_entries, fuzzy_threshold,
-                        only_untranslated=only_untranslated,
-                        progress_callback=self._progress_log_callback
-                    )
-                else:
-                    self._log("Strict mode with PERFECT precision", 'info')
-                    matched, not_found = find_matches_strict(corrections, xml_entries)
-
-                korean_inputs = [c.get("str_origin", "") for c in matched]
-                for c in matched:
-                    matches_per_input.append([c.get("string_id")])
-                stats["total"] = len(corrections) + skipped_script_count
-                stats["matched"] = len(matched)
-                stats["no_match"] = not_found
-                stats["skipped"] = skipped_script_count
-                stats["total_matches"] = len(matched)
-
-                precision_label = "FUZZY" if precision == "fuzzy" else "PERFECT"
-                self._log(f"Strict match results ({precision_label}):", 'info')
-                self._log(f"  - Total corrections: {stats['total']}", 'info')
-                self._log(f"  - Matched (ID+Origin): {stats['matched']}", 'success')
-                self._log(f"  - Not found: {stats['no_match']}", 'error')
-                if skipped_script_count:
-                    self._log(f"  - Skipped (SCRIPT): {skipped_script_count}", 'warning')
-
-            self._task_queue.put(('progress', 70))
-
-            # Write output
-            self._update_status("Writing output...")
-            self._log("Writing output Excel...", 'info')
-            config.ensure_output_folder()
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = config.OUTPUT_FOLDER / f"QuickTranslate_{timestamp}.xlsx"
-
-            write_output_excel(
-                output_path,
-                korean_inputs,
-                matches_per_input,
-                self.translation_lookup,
-                self.available_langs,
-                config.LANGUAGE_NAMES,
-                stats=stats,
-                match_type=match_type,
-            )
-
-            self._task_queue.put(('progress', 100))
-            self._update_status(f"Done! {stats['total']} inputs processed")
-            self._log(f"=== Generation Complete ===", 'header')
-            self._log(f"Output: {output_path}", 'success')
-            self._log(f"Summary: {stats['matched']} matched, {stats.get('no_match', 0)} not found, {stats.get('skipped', 0)} skipped", 'info')
-
-            self._task_queue.put(('messagebox', 'showinfo', 'Success',
-                f"Output saved to:\n{output_path}\n\n"
-                f"Total: {stats['total']}\n"
-                f"Matched: {stats['matched']}\n"
-                f"Not Found: {stats.get('no_match', 0)}\n"
-                f"Skipped: {stats.get('skipped', 0)}"))
-
-        self._run_in_thread(work)
 
     def _open_exclude_dialog(self):
         """Open the EXPORT tree browser to configure exclusion rules."""
