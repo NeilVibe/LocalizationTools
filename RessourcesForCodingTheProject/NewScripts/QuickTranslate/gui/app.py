@@ -602,10 +602,33 @@ class QuickTranslateApp:
         missing_frame.pack(fill=tk.X, pady=(8, 8))
 
         tk.Label(missing_frame,
-                 text="Find Korean entries in Target that are MISSING from Source.\n"
-                      "Uses Source/Target paths from the Transfer tab.",
+                 text="Find Korean entries in Target that are MISSING from Source.",
                  font=('Segoe UI', 9), bg='#f0f0f0', fg='#666',
-                 justify='left', anchor='w').pack(fill=tk.X, pady=(0, 8))
+                 justify='left', anchor='w').pack(fill=tk.X, pady=(0, 4))
+
+        # Show current Source/Target paths (auto-updates via textvariable)
+        path_info = tk.Frame(missing_frame, bg='#e8e8e8', padx=8, pady=6,
+                             relief='groove', bd=1)
+        path_info.pack(fill=tk.X, pady=(0, 8))
+
+        src_info = tk.Frame(path_info, bg='#e8e8e8')
+        src_info.pack(fill=tk.X, pady=(0, 2))
+        tk.Label(src_info, text="Source:", font=('Segoe UI', 9, 'bold'),
+                 bg='#e8e8e8', width=8, anchor='w').pack(side=tk.LEFT)
+        tk.Label(src_info, textvariable=self.source_path,
+                 font=('Segoe UI', 9), bg='#e8e8e8', fg='#333',
+                 anchor='w').pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        tgt_info = tk.Frame(path_info, bg='#e8e8e8')
+        tgt_info.pack(fill=tk.X)
+        tk.Label(tgt_info, text="Target:", font=('Segoe UI', 9, 'bold'),
+                 bg='#e8e8e8', width=8, anchor='w').pack(side=tk.LEFT)
+        tk.Label(tgt_info, textvariable=self.target_path,
+                 font=('Segoe UI', 9), bg='#e8e8e8', fg='#333',
+                 anchor='w').pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        tk.Label(path_info, text="(Set paths on the Transfer tab)",
+                 font=('Segoe UI', 8), bg='#e8e8e8', fg='#888').pack(anchor='w')
 
         missing_btn_row = tk.Frame(missing_frame, bg='#f0f0f0')
         missing_btn_row.pack(fill=tk.X)
@@ -2247,8 +2270,10 @@ class QuickTranslateApp:
         # Validate target (folder with languagedata_*.xml files)
         target_path_str = self.target_path.get().strip()
         if not target_path_str:
-            target_path_str = str(config.LOC_FOLDER)
-            self.target_path.set(target_path_str)
+            messagebox.showwarning("Warning",
+                "Please set a Target folder on the Transfer tab.\n\n"
+                "Target should be the LOC folder containing languagedata_*.xml files.")
+            return
 
         target = Path(target_path_str)
         if not target.exists():
@@ -2767,7 +2792,12 @@ class QuickTranslateApp:
 
     def _transfer(self):
         """Transfer corrections from source to target XML files (LOC folder)."""
-        source = Path(self.source_path.get())
+        source_str = self.source_path.get().strip()
+        if not source_str:
+            messagebox.showwarning("Warning", "Please select a Source folder.")
+            return
+
+        source = Path(source_str)
 
         # If columns haven't been detected (path pasted, not browsed), detect now
         cols = self._source_columns
@@ -2778,11 +2808,14 @@ class QuickTranslateApp:
         if not self._validate_columns_for_mode(cols):
             return
 
-        if not self.target_path.get():
-            # Default to LOC folder from config
-            self.target_path.set(str(config.LOC_FOLDER))
+        target_str = self.target_path.get().strip()
+        if not target_str:
+            messagebox.showwarning("Warning",
+                "Please set a Target folder.\n\n"
+                "Target should be the LOC folder containing languagedata_*.xml files.")
+            return
 
-        target = Path(self.target_path.get())
+        target = Path(target_str)
 
         if not source.exists():
             messagebox.showerror("Error", f"Source not found:\n{source}")

@@ -137,3 +137,4 @@ Build - robust cancel for all check operations
 Build: postprocess newline normalizer skips StrOrigin
 Build: premature-close LocStr detection + TARGET threading
 Build: GUI refactor - tabs, remove substring/skip toggle/quick actions, empty Str check
+Build: Fix Tab 2 path visibility + remove silent LOC_FOLDER fallback
