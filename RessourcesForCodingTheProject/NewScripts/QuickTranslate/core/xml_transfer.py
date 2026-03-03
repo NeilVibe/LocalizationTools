@@ -1596,7 +1596,7 @@ def _fast_folder_merge(
 
     for fi, target_file in enumerate(target_files):
         if progress_callback:
-            progress_callback(f"Fast merge: {target_file.name} ({fi+1}/{len(target_files)})")
+            progress_callback(f"Processing {target_file.name} ({fi+1}/{len(target_files)})")
 
         try:
             if USING_LXML:
@@ -2470,7 +2470,7 @@ def transfer_folder_to_folder(
             logger.info(f"═══ FAST MERGE [{lang}]: {len(corrections):,} corrections → {len(xml_files)} XML files ═══")
             if log_callback:
                 log_callback(
-                    f"── {lang} · {len(corrections):,} corrections → {len(xml_files)} XML files (fast merge) ──",
+                    f"── {lang} · {len(corrections):,} corrections → {len(xml_files)} XML files ──",
                     'header',
                 )
 
