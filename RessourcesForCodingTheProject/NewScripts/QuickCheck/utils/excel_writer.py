@@ -93,25 +93,23 @@ def write_line_check_excel(
         fmt_summary = wb.add_format({"italic": True, "font_color": "#666666"})
 
         max_trans = min(max((len(r.translations) for r in results), default=2), 8)
-        # Column layout: Source | Trans1 | SID1 | File1 | Trans2 | SID2 | File2 | ... | Status | Comment
-        status_col  = 1 + max_trans * 3
-        comment_col = 2 + max_trans * 3
+        # Column layout: Source | Trans1 | SID1 | Trans2 | SID2 | ... | Status | Comment
+        status_col  = 1 + max_trans * 2
+        comment_col = 2 + max_trans * 2
 
         # Header
         ws.set_row(0, 20)
         ws.write(0, 0, "Source (KR)", fmt_header)
         for i in range(max_trans):
-            ws.write(0, 1 + i * 3,     f"Translation {i + 1}", fmt_header)
-            ws.write(0, 1 + i * 3 + 1, f"StringID {i + 1}",    fmt_header)
-            ws.write(0, 1 + i * 3 + 2, f"FileName {i + 1}",    fmt_header)
+            ws.write(0, 1 + i * 2,     f"Translation {i + 1}", fmt_header)
+            ws.write(0, 1 + i * 2 + 1, f"StringID {i + 1}",    fmt_header)
         ws.write(0, status_col,  "Status",  fmt_header)
         ws.write(0, comment_col, "Comment", fmt_header)
 
         ws.set_column(0, 0, 30)
         for i in range(max_trans):
-            ws.set_column(1 + i * 3,     1 + i * 3,     35)
-            ws.set_column(1 + i * 3 + 1, 1 + i * 3 + 1, 20)
-            ws.set_column(1 + i * 3 + 2, 1 + i * 3 + 2, 25)
+            ws.set_column(1 + i * 2,     1 + i * 2,     35)
+            ws.set_column(1 + i * 2 + 1, 1 + i * 2 + 1, 20)
         ws.set_column(status_col,  status_col,  14)
         ws.set_column(comment_col, comment_col, 40)
 
@@ -121,11 +119,9 @@ def write_line_check_excel(
             fmt_s = fmt_sid   if idx % 2 == 0 else fmt_sid_alt
             ws.write(row, 0, result.source, fmt_source)
             for i, trans in enumerate(result.translations[:max_trans]):
-                sid  = result.string_ids[i] if i < len(result.string_ids) else ""
-                fname = result.file_names[i] if i < len(result.file_names) else ""
-                ws.write(row, 1 + i * 3,     trans,  fmt_t)
-                ws.write(row, 1 + i * 3 + 1, sid,    fmt_s)
-                ws.write(row, 1 + i * 3 + 2, fname,  fmt_s)
+                sid = result.string_ids[i] if i < len(result.string_ids) else ""
+                ws.write(row, 1 + i * 2,     trans, fmt_t)
+                ws.write(row, 1 + i * 2 + 1, sid,   fmt_s)
             ws.write(row, status_col,  "", fmt_status)
             ws.write(row, comment_col, "", fmt_comment)
             row += 1
@@ -215,7 +211,7 @@ def write_term_check_excel(
         })
 
         ws.set_row(0, 22)
-        for i, h in enumerate(["Term (KR)", "Expected Translation", "Source Text", "Translation Found", "StringID", "Status", "Comment", "FileName"]):
+        for i, h in enumerate(["Term (KR)", "Expected Translation", "Source Text", "Translation Found", "StringID", "Status", "Comment"]):
             ws.write(0, i, h, fmt_header)
 
         ws.set_column(0, 0, 22)
@@ -225,7 +221,6 @@ def write_term_check_excel(
         ws.set_column(4, 4, 20)
         ws.set_column(5, 5, 14)
         ws.set_column(6, 6, 40)
-        ws.set_column(7, 7, 25)
 
         row = 1
         for result in results:
@@ -240,7 +235,6 @@ def write_term_check_excel(
                 ws.write(row, 4, issue.string_id,  fs)
                 ws.write(row, 5, "",               fmt_status)
                 ws.write(row, 6, "",               fmt_comment)
-                ws.write(row, 7, issue.file_name,  fs)
                 row += 1
 
         if row > 1:

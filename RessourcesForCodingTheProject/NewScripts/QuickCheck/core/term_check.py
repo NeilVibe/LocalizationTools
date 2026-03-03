@@ -15,7 +15,6 @@ Match modes:
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import List, Dict, Optional, Callable, Tuple, Set
 from collections import defaultdict, Counter
@@ -43,7 +42,6 @@ class TermIssue:
     source_text: str      # Full source text containing the term
     translation_text: str  # Translation that's missing the expected term
     string_id: str = ""   # StringID of the problematic entry
-    file_name: str = ""   # Filename where the problematic entry was found
 
 
 @dataclass
@@ -268,7 +266,6 @@ def run_term_check(
                     source_text=src,
                     translation_text=tgt,
                     string_id=entry.string_id,
-                    file_name=os.path.basename(entry.file_path),
                 ))
 
     if progress_callback:
