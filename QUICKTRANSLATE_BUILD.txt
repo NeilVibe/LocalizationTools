@@ -141,3 +141,4 @@ Build: Fix Tab 2 path visibility + remove silent LOC_FOLDER fallback
 Build: remove Generate + rewrite user guides + xml_health_checker
 Build - Desc/DescOrigin support + validation warnings + user guides
 Build: shared correction lookup optimization (TMXTransfer11 pattern)
+Build: fast folder merge (TMXTransfer11 pattern)
