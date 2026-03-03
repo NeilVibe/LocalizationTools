@@ -22,7 +22,8 @@ from utils.excel_writer import write_line_check_excel
 class LineCheckResult:
     """Result of a LINE CHECK operation."""
     source: str
-    translations: List[str]  # Multiple different translations found
+    translations: List[str]       # Multiple different translations found
+    string_ids: List[str]         # First StringID seen for each translation (parallel to translations)
 
 
 def run_line_check(
@@ -83,24 +84,27 @@ def run_line_check(
     if progress_callback:
         progress_callback(f"Filtered to {len(filtered_entries)} entries")
 
-    # Group by source
-    src_trans_mapping: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    # Group by source — track occurrence count and first StringID per translation
+    src_trans_count: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    src_trans_sid: Dict[str, Dict[str, str]] = defaultdict(dict)  # source -> {translation -> first StringID}
 
     for entry in filtered_entries:
-        src_trans_mapping[entry.source][entry.translation] += 1
+        src_trans_count[entry.source][entry.translation] += 1
+        if entry.translation not in src_trans_sid[entry.source]:
+            src_trans_sid[entry.source][entry.translation] = entry.string_id
 
     # Apply min_occurrence filter if requested
     if min_occurrence is not None and min_occurrence > 1:
-        src_trans_mapping = {
+        src_trans_count = {
             src: trans_dict
-            for src, trans_dict in src_trans_mapping.items()
+            for src, trans_dict in src_trans_count.items()
             if sum(trans_dict.values()) >= min_occurrence
         }
 
     # Find inconsistent sources (>1 different translation)
     inconsistent = {
         src: trans_dict
-        for src, trans_dict in src_trans_mapping.items()
+        for src, trans_dict in src_trans_count.items()
         if len(trans_dict) > 1
     }
 
@@ -111,7 +115,8 @@ def run_line_check(
     results = []
     for source in sorted(inconsistent.keys(), key=len):
         translations = list(inconsistent[source].keys())
-        results.append(LineCheckResult(source=source, translations=translations))
+        string_ids = [src_trans_sid[source].get(t, "") for t in translations]
+        results.append(LineCheckResult(source=source, translations=translations, string_ids=string_ids))
 
     return results
 

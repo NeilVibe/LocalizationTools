@@ -26,6 +26,7 @@ COL_GROUP_BG  = "#D6E4F0"   # Light blue — term/source group header rows
 COL_ALT_BG    = "#F5F9FF"   # Very light blue — alternating rows
 COL_WHITE     = "#FFFFFF"
 COL_DARK_TEXT = "#1A1A1A"
+FG_SID        = "#555599"   # Muted purple — StringID cells
 
 
 def _require_xlsxwriter() -> None:
@@ -47,8 +48,8 @@ def write_line_check_excel(
     """
     Write LINE CHECK results to Excel.
 
-    Columns: Source (KR) | Translation 1 | Translation 2 | ...
-    One row per inconsistency group. Max 8 translation columns.
+    Columns: Source (KR) | Translation 1 | SID 1 | Translation 2 | SID 2 | ...
+    One row per inconsistency group. Max 8 translation columns (each with a SID column).
     """
     _require_xlsxwriter()
 
@@ -73,25 +74,39 @@ def write_line_check_excel(
             "bg_color": COL_ALT_BG, "font_color": COL_DARK_TEXT,
             "border": 1, "valign": "vcenter", "text_wrap": True,
         })
+        fmt_sid = wb.add_format({
+            "bg_color": COL_WHITE, "font_color": FG_SID,
+            "border": 1, "valign": "vcenter",
+        })
+        fmt_sid_alt = wb.add_format({
+            "bg_color": COL_ALT_BG, "font_color": FG_SID,
+            "border": 1, "valign": "vcenter",
+        })
         fmt_summary = wb.add_format({"italic": True, "font_color": "#666666"})
 
         max_trans = min(max((len(r.translations) for r in results), default=2), 8)
 
+        # Header: Source | Trans 1 | SID 1 | Trans 2 | SID 2 | ...
         ws.set_row(0, 20)
         ws.write(0, 0, "Source (KR)", fmt_header)
         for i in range(max_trans):
-            ws.write(0, i + 1, f"Translation {i + 1}", fmt_header)
+            ws.write(0, 1 + i * 2,     f"Translation {i + 1}", fmt_header)
+            ws.write(0, 1 + i * 2 + 1, f"StringID {i + 1}",    fmt_header)
 
         ws.set_column(0, 0, 30)
         for i in range(max_trans):
-            ws.set_column(i + 1, i + 1, 35)
+            ws.set_column(1 + i * 2,     1 + i * 2,     35)   # Translation col
+            ws.set_column(1 + i * 2 + 1, 1 + i * 2 + 1, 20)   # StringID col
 
         row = 1
         for idx, result in enumerate(results):
-            fmt_t = fmt_trans if idx % 2 == 0 else fmt_trans_alt
+            fmt_t   = fmt_trans   if idx % 2 == 0 else fmt_trans_alt
+            fmt_s   = fmt_sid     if idx % 2 == 0 else fmt_sid_alt
             ws.write(row, 0, result.source, fmt_source)
             for i, trans in enumerate(result.translations[:max_trans]):
-                ws.write(row, i + 1, trans, fmt_t)
+                sid = result.string_ids[i] if i < len(result.string_ids) else ""
+                ws.write(row, 1 + i * 2,     trans, fmt_t)
+                ws.write(row, 1 + i * 2 + 1, sid,   fmt_s)
             row += 1
 
         ws.set_row(row + 1, 16)
