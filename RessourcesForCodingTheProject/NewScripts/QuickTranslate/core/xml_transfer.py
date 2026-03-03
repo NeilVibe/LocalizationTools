@@ -23,7 +23,7 @@ except ImportError:
 import config
 from .text_utils import normalize_text, normalize_nospace, normalize_for_matching
 from .korean_detection import is_korean_text
-from .xml_parser import get_attr, STRINGID_ATTRS, STRORIGIN_ATTRS, STR_ATTRS, LOCSTR_TAGS
+from .xml_parser import get_attr, STRINGID_ATTRS, STRORIGIN_ATTRS, STR_ATTRS, DESC_ATTRS, DESCORIGIN_ATTRS, LOCSTR_TAGS
 from .source_scanner import scan_source_for_languages, scan_target_for_languages, TargetScanResult
 from .postprocess import run_all_postprocess
 
@@ -64,6 +64,33 @@ def _convert_linebreaks_for_xml(txt: str) -> str:
     # Replace escaped newlines (\\n literal string, rare but handle for robustness)
     txt = txt.replace('\\n', '<br/>')
     return txt
+
+
+def _try_write_desc(loc, correction, dry_run=False):
+    """
+    Write Desc to LocStr if correction has desc_corrected and target has DescOrigin.
+
+    Desc transfer conditions:
+    1. Correction has non-empty desc_corrected
+    2. Target LocStr has non-empty DescOrigin
+    3. The new Desc value differs from the current one
+
+    Returns True if Desc was written (or would be in dry_run).
+    """
+    desc_corrected = correction.get("desc_corrected", "")
+    if not desc_corrected:
+        return False
+    # Target must have non-empty DescOrigin
+    target_descorigin = get_attr(loc, DESCORIGIN_ATTRS).strip()
+    if not target_descorigin:
+        return False
+    old_desc = get_attr(loc, DESC_ATTRS)
+    new_desc = _convert_linebreaks_for_xml(desc_corrected)
+    if new_desc != old_desc:
+        if not dry_run:
+            loc.set("Desc", new_desc)
+        return True
+    return False
 
 
 def merge_corrections_to_xml(
@@ -225,6 +252,12 @@ def merge_corrections_to_xml(
                         "old": old_str,
                         "new": "(same)",
                     })
+
+                # Write Desc if correction has desc_corrected and target has DescOrigin
+                orig_correction = corrections[idx]
+                if _try_write_desc(loc, orig_correction, dry_run):
+                    result["desc_updated"] = result.get("desc_updated", 0) + 1
+                    changed = True
 
         # Count corrections that didn't match - store FULL data for failure reports
         # Distinguish between "StringID not found" vs "StrOrigin mismatch"
@@ -815,6 +848,11 @@ def merge_corrections_stringid_only(
                         "new": "(same)",
                     })
 
+                # Write Desc if correction has desc_corrected and target has DescOrigin
+                if _try_write_desc(loc, correction_lookup[sid_lower], dry_run):
+                    result["desc_updated"] = result.get("desc_updated", 0) + 1
+                    changed = True
+
         # Count unmatched corrections - store FULL data for failure reports
         # Distinguish "truly missing" from "exists but StrOrigin is empty"
         for sid_key, matched in correction_matched.items():
@@ -1306,6 +1344,7 @@ def transfer_folder_to_folder(
         "total_skipped_empty_strorigin": 0,
         "total_skipped_duplicate_strorigin": 0,
         "total_skipped_script": 0,
+        "total_desc_updated": 0,
         "errors": [],
         "file_results": {},
     }
@@ -1920,6 +1959,7 @@ def transfer_folder_to_folder(
         results["total_strorigin_mismatch"] += file_result.get("strorigin_mismatch", 0)
         results["total_skipped_translated"] += file_result.get("skipped_translated", 0)
         results["total_skipped_empty_strorigin"] += file_result.get("skipped_empty_strorigin", 0)
+        results["total_desc_updated"] += file_result.get("desc_updated", 0)
         # NOTE: total_skipped_duplicate_strorigin is set by the global pre-filter above,
         # NOT aggregated per-file (the per-file merge no longer tracks this).
         results["errors"].extend(file_result["errors"])
@@ -2410,6 +2450,9 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         lines.append(V + "".ljust(width - 2) + V)
         lines.append(V + f" Total Corrections: {total_corrections:,}".ljust(width - 2) + V)
         lines.append(V + f"   Updated:          {total_updated:,}  (value changed in target)".ljust(width - 2) + V)
+        total_desc_updated = results.get('total_desc_updated', 0)
+        if total_desc_updated > 0:
+            lines.append(V + f"   Desc Updated:     {total_desc_updated:,}  (voice direction descriptions)".ljust(width - 2) + V)
         lines.append(V + f"   Already Correct:  {total_unchanged:,}  (target already had correct value)".ljust(width - 2) + V)
         if total_not_found > 0 or total_strorigin_mismatch > 0:
             lines.append(V + f"   Not Found:        {total_not_found:,}  {not_found_label}".ljust(width - 2) + V)
@@ -2471,6 +2514,9 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
 
         lines.append(V + f" Corrections: {s_corrections:,}".ljust(width - 2) + V)
         lines.append(V + f"   Updated:          {s_updated:,}  (value changed in target)".ljust(width - 2) + V)
+        s_desc_updated = results.get('desc_updated', 0)
+        if s_desc_updated > 0:
+            lines.append(V + f"   Desc Updated:     {s_desc_updated:,}  (voice direction descriptions)".ljust(width - 2) + V)
         lines.append(V + f"   Already Correct:  {s_unchanged:,}  (target already had correct value)".ljust(width - 2) + V)
         if s_not_found > 0 or s_strorigin_mismatch > 0:
             lines.append(V + f"   Not Found:        {s_not_found:,}  {not_found_label}".ljust(width - 2) + V)

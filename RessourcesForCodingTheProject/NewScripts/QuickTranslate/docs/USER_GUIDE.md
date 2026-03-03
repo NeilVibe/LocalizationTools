@@ -48,6 +48,34 @@ Row 1 = headers (case-insensitive, any order). Data starts Row 2.
 
 EventName → StringID conversion is automatic (3-step waterfall: DialogVoice prefix → keyword extraction → export folder lookup).
 
+**Standard corrections with voice direction descriptions:**
+
+```
+┌──────────┬──────────────┬──────────────┬──────────────┬──────────┐
+│ StringID │ StrOrigin    │ Correction   │ DescOrigin   │ Desc     │
+├──────────┼──────────────┼──────────────┼──────────────┼──────────┤
+│ npc_001  │ 안녕하세요   │ Hello there  │ 밝은 톤으로  │ Bright   │
+│          │              │              │              │ tone     │
+│ npc_002  │ 감사합니다   │ Thank you    │              │          │
+└──────────┴──────────────┴──────────────┴──────────────┴──────────┘
+```
+
+DescOrigin/Desc are optional. Rows without Desc are processed normally — only the main Correction is transferred.
+
+### Accepted Header Names
+
+Header names are **case-insensitive** and accept these variants:
+
+| Column | Accepted Names |
+|--------|----------------|
+| StringID | `StringID`, `string_id` |
+| StrOrigin | `StrOrigin`, `str_origin` |
+| Correction | `Correction`, `Corrected` |
+| EventName | `EventName`, `event_name`, `SoundEventName` |
+| DialogVoice | `DialogVoice`, `dialog_voice` |
+| DescOrigin | `DescOrigin`, `desc_origin` |
+| Desc | `Desc`, `DescText`, `desc_text`, `DescCorrection` |
+
 ### Column Reference
 
 | Column | What | Required? |
@@ -57,6 +85,8 @@ EventName → StringID conversion is automatic (3-step waterfall: DialogVoice pr
 | **Correction** | Your translation — this gets written to XML | Always |
 | **EventName** | Sound event name (alternative to StringID) | Optional |
 | **DialogVoice** | Voice actor prefix (helps resolve EventName) | Optional |
+| **DescOrigin** | Original Korean voice direction description | Optional |
+| **Desc** | Translated voice direction description — written to XML | Optional |
 
 ### What Gets Skipped
 
@@ -130,6 +160,7 @@ Defaults to "Only untranslated" for safety. "Transfer ALL" triggers a warning di
 | **Precision** | Highest | Medium | Medium |
 | **Fan-out** | No | No | Yes |
 | **Fuzzy** | Yes | No | Yes |
+| **Desc Transfer** | Yes | Yes | No |
 | **Default scope** | Transfer ALL | Transfer ALL | Only untranslated |
 | **Risk** | Lowest | Low | Medium |
 
@@ -161,6 +192,35 @@ After every TRANSFER:
 1. Normalizes all newlines to `<br/>`
 2. Clears `Str` where `StrOrigin` is empty (Golden Rule)
 3. Replaces "no translation" with `StrOrigin` value
+
+### Desc Transfer (Voice Direction Descriptions)
+
+Some XML entries have a `DescOrigin` attribute — the original Korean voice direction description (e.g. "밝은 톤으로", "슬픈 목소리"). When you translate dialogue, you can also translate these descriptions so voice actors know the intended tone.
+
+**How to build an Excel with Desc columns:**
+
+1. **Get DescOrigin** — When you extract strings (via ExtractAnything or copy from XML), the DescOrigin value comes from the `DescOrigin` attribute on `<LocStr>` elements. Put it in a column named `DescOrigin`.
+2. **Add your translation** — Create a `Desc` column next to it. Write your translated description there (e.g. "Bright tone", "Sad voice").
+3. **Leave blank when not needed** — Not every row needs Desc. Rows without Desc are transferred normally (only Correction → Str).
+
+```
+┌──────────┬──────────────┬──────────────┬──────────────┬──────────┐
+│ StringID │ StrOrigin    │ Correction   │ DescOrigin   │ Desc     │
+├──────────┼──────────────┼──────────────┼──────────────┼──────────┤
+│ npc_001  │ 안녕하세요   │ Hello there  │ 밝은 톤으로  │ Bright   │
+│          │              │              │              │ tone     │
+│ npc_002  │ 감사합니다   │ Thank you    │              │          │
+└──────────┴──────────────┴──────────────┴──────────────┴──────────┘
+```
+
+**Shortcut:** If your Excel has DescOrigin but no Desc column yet, QuickTranslate auto-creates the Desc column during Excel merge — you can fill it in later.
+
+**Transfer rules:**
+
+- **Strict and StringID-Only only** — StrOrigin Only mode does not transfer Desc
+- **Both sides required:** your Excel row needs a non-empty Desc AND the target XML `<LocStr>` must have a non-empty `DescOrigin`
+- **Post-processing:** Same cleanup applies to Desc (newline normalization, empty DescOrigin clearing, "no translation" replacement)
+- **Validation warning:** If no Desc/DescOrigin is found in source files, the log shows a warning and Desc transfer is skipped
 
 ### Failure Reports
 
@@ -277,6 +337,8 @@ Configure in Settings section or edit `settings.json`:
 | **StrOrigin** | Original Korean source text in XML |
 | **Str** | Translated text attribute in XML |
 | **Correction** | Your translation in Excel — written to Str |
+| **DescOrigin** | Original Korean voice direction description in XML |
+| **Desc** | Translated voice direction description — written to XML |
 | **LOC folder** | Contains `languagedata_*.xml` (one per language) |
 | **EXPORT folder** | Contains categorized `.loc.xml` files (Dialog/, System/, etc.) |
 | **SCRIPT** | Dialog/ and Sequencer/ categories |

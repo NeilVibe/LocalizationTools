@@ -4,10 +4,10 @@ XML Post-Processing Pipeline.
 Runs cleanup passes on XML files AFTER transfer operations.
 Each cleanup function is independent and can be added/removed easily.
 
-Current cleanup steps (run in order):
+Current cleanup steps (run in order, applied to both Str and Desc):
   1. cleanup_wrong_newlines    - Normalize ALL newlines to <br/>
-  2. cleanup_empty_strorigin   - Clear Str when StrOrigin is empty
-  3. cleanup_no_translation    - Replace "no translation" Str with StrOrigin
+  2. cleanup_empty_strorigin   - Clear Str/Desc when StrOrigin/DescOrigin is empty
+  3. cleanup_no_translation    - Replace "no translation" Str/Desc with StrOrigin/DescOrigin
 
 Usage:
     from core.postprocess import run_all_postprocess
@@ -28,7 +28,7 @@ except ImportError:
     from xml.etree import ElementTree as etree
     USING_LXML = False
 
-from .xml_parser import LOCSTR_TAGS, STR_ATTRS, STRORIGIN_ATTRS
+from .xml_parser import LOCSTR_TAGS, STR_ATTRS, STRORIGIN_ATTRS, DESC_ATTRS, DESCORIGIN_ATTRS
 
 logger = logging.getLogger(__name__)
 
@@ -183,8 +183,8 @@ def cleanup_wrong_newlines_on_tree(root) -> int:
     """
     Normalize all wrong newline representations to <br/> in parsed tree.
 
-    Only modifies Str attributes. StrOrigin (Korean source) is never touched
-    — it must remain exactly as the source data provides it.
+    Modifies Str and Desc attributes. StrOrigin/DescOrigin (Korean source) are
+    never touched — they must remain exactly as the source data provides them.
 
     Args:
         root: Parsed XML root element
@@ -200,6 +200,13 @@ def cleanup_wrong_newlines_on_tree(root) -> int:
             if normalized != val:
                 loc.set(attr_name, normalized)
                 fixed += 1
+        # Also normalize newlines in Desc attribute
+        desc_name, desc_val = _get_attr(loc, DESC_ATTRS)
+        if desc_val is not None:
+            desc_normalized = _normalize_newlines(desc_val)
+            if desc_normalized != desc_val:
+                loc.set(desc_name, desc_normalized)
+                fixed += 1
     return fixed
 
 
@@ -208,15 +215,16 @@ def cleanup_wrong_newlines_on_tree(root) -> int:
 
 def cleanup_empty_strorigin_on_tree(root) -> int:
     """
-    Clear Str on any element where StrOrigin is empty.
+    Clear Str/Desc on any element where StrOrigin/DescOrigin is empty.
 
     Golden rule: if StrOrigin is empty, Str MUST be empty too.
+    Same applies to Desc/DescOrigin.
 
     Args:
         root: Parsed XML root element
 
     Returns:
-        Number of entries cleaned (Str cleared)
+        Number of entries cleaned (Str or Desc cleared)
     """
     cleaned = 0
     for loc in _iter_locstr(root):
@@ -229,6 +237,17 @@ def cleanup_empty_strorigin_on_tree(root) -> int:
         if not origin and str_val:
             loc.set("Str", "")
             cleaned += 1
+
+        # Golden rule for Desc/DescOrigin: if DescOrigin is empty, Desc MUST be empty
+        _, desc_origin = _get_attr(loc, DESCORIGIN_ATTRS)
+        desc_origin = (desc_origin or "").strip()
+
+        _, desc_val = _get_attr(loc, DESC_ATTRS)
+        desc_val = (desc_val or "").strip()
+
+        if not desc_origin and desc_val:
+            loc.set("Desc", "")
+            cleaned += 1
     return cleaned
 
 
@@ -240,39 +259,51 @@ _WHITESPACE_RE = re.compile(r'\s+')
 
 def cleanup_no_translation_on_tree(root) -> int:
     """
-    Replace Str with StrOrigin when Str is exactly "no translation".
+    Replace Str/Desc with StrOrigin/DescOrigin when value is exactly "no translation".
 
     Matching is case-insensitive with whitespace normalization (trim + collapse).
     So "  NO   TRANSLATION  " matches, but "some no translation text" does NOT.
+    Applies to both Str and Desc attributes independently.
 
     Args:
         root: Parsed XML root element
 
     Returns:
-        Number of entries fixed (Str replaced with StrOrigin)
+        Number of entries fixed (Str/Desc replaced with origin)
     """
     fixed = 0
     for loc in _iter_locstr(root):
         str_attr, str_val = _get_attr(loc, STR_ATTRS)
-        if str_val is None:
-            continue
+        if str_val is not None:
+            # Normalize: trim + collapse internal whitespace + lowercase
+            normalized = _WHITESPACE_RE.sub(' ', str_val.strip()).lower()
+            if normalized == 'no translation':
+                # Get StrOrigin to copy
+                _, origin = _get_attr(loc, STRORIGIN_ATTRS)
+                origin = (origin or "").strip()
 
-        # Normalize: trim + collapse internal whitespace + lowercase
-        normalized = _WHITESPACE_RE.sub(' ', str_val.strip()).lower()
-        if normalized != 'no translation':
-            continue
+                if origin:
+                    loc.set(str_attr, origin)
+                    fixed += 1
+                else:
+                    # StrOrigin is also empty — clear Str (golden rule)
+                    loc.set(str_attr, "")
+                    fixed += 1
 
-        # Get StrOrigin to copy
-        _, origin = _get_attr(loc, STRORIGIN_ATTRS)
-        origin = (origin or "").strip()
+        # Same logic for Desc: if "no translation", replace with DescOrigin
+        desc_attr, desc_val = _get_attr(loc, DESC_ATTRS)
+        if desc_val is not None:
+            desc_normalized = _WHITESPACE_RE.sub(' ', desc_val.strip()).lower()
+            if desc_normalized == 'no translation':
+                _, desc_origin = _get_attr(loc, DESCORIGIN_ATTRS)
+                desc_origin = (desc_origin or "").strip()
 
-        if origin:
-            loc.set(str_attr, origin)
-            fixed += 1
-        else:
-            # StrOrigin is also empty — clear Str (golden rule)
-            loc.set(str_attr, "")
-            fixed += 1
+                if desc_origin:
+                    loc.set(desc_attr, desc_origin)
+                    fixed += 1
+                else:
+                    loc.set(desc_attr, "")
+                    fixed += 1
 
     return fixed
 
@@ -373,10 +404,10 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
 
     Single parse, all cleanups, single write. Efficient and atomic.
 
-    Current steps (in order):
+    Current steps (in order, applied to both Str and Desc):
       1. cleanup_wrong_newlines    - Normalize ALL newlines to <br/>
-      2. cleanup_empty_strorigin   - Clear Str when StrOrigin is empty
-      3. cleanup_no_translation    - Replace "no translation" Str with StrOrigin
+      2. cleanup_empty_strorigin   - Clear Str/Desc when StrOrigin/DescOrigin is empty
+      3. cleanup_no_translation    - Replace "no translation" Str/Desc with origin
 
     Args:
         xml_path: Path to XML file

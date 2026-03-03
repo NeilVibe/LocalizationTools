@@ -11,6 +11,7 @@ from typing import Callable, Dict, List, Optional
 from .xml_parser import (
     parse_xml_file, iter_locstr_elements,
     get_attr, STRINGID_ATTRS, STRORIGIN_ATTRS, STR_ATTRS,
+    DESC_ATTRS, DESCORIGIN_ATTRS,
 )
 from .korean_detection import is_korean_text
 
@@ -46,12 +47,23 @@ def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
                 # Store ALL original attributes for exact preservation in failure reports
                 raw_attribs = dict(elem.attrib)
 
-                corrections.append({
+                # Extract Desc/DescOrigin (voice direction descriptions)
+                desc_origin = get_attr(elem, DESCORIGIN_ATTRS).strip()
+                desc_value = get_attr(elem, DESC_ATTRS).strip()
+
+                entry = {
                     "string_id": string_id,
                     "str_origin": str_origin,
                     "corrected": str_value,
                     "raw_attribs": raw_attribs,  # ALL original attributes
-                })
+                }
+
+                if desc_origin:
+                    entry["desc_origin"] = desc_origin
+                if desc_value and not is_korean_text(desc_value):
+                    entry["desc_corrected"] = desc_value
+
+                corrections.append(entry)
     except Exception as e:
         logger.warning(f"Failed to parse XML file {xml_path}: {e}")
 

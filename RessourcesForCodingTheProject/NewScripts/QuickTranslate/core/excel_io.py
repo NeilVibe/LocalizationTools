@@ -50,7 +50,7 @@ def detect_excel_columns(excel_path: Path) -> Dict[str, bool]:
 
     Returns:
         Dict with keys: has_stringid, has_strorigin, has_correction,
-                        has_eventname, has_dialogvoice
+                        has_eventname, has_dialogvoice, has_desc, has_descorigin
     """
     result = {
         "has_stringid": False,
@@ -58,6 +58,8 @@ def detect_excel_columns(excel_path: Path) -> Dict[str, bool]:
         "has_correction": False,
         "has_eventname": False,
         "has_dialogvoice": False,
+        "has_desc": False,
+        "has_descorigin": False,
     }
 
     wb = load_workbook(excel_path, read_only=True)
@@ -80,6 +82,13 @@ def detect_excel_columns(excel_path: Path) -> Dict[str, bool]:
         )
         result["has_dialogvoice"] = (
             "dialogvoice" in col_indices or "dialog_voice" in col_indices
+        )
+        result["has_descorigin"] = (
+            "descorigin" in col_indices or "desc_origin" in col_indices
+        )
+        result["has_desc"] = (
+            "desc" in col_indices or "desctext" in col_indices
+            or "desc_text" in col_indices or "desccorrection" in col_indices
         )
 
         return result
@@ -147,6 +156,8 @@ def read_corrections_from_excel(
         correction_col = None
         eventname_col = None
         dialogvoice_col = None
+        desc_col = None
+        descorigin_col = None
 
         if has_header:
             col_indices = _detect_column_indices(ws)
@@ -157,6 +168,10 @@ def read_corrections_from_excel(
             eventname_col = col_indices.get("eventname", col_indices.get("event_name",
                             col_indices.get("soundeventname", None)))
             dialogvoice_col = col_indices.get("dialogvoice", col_indices.get("dialog_voice", None))
+            # Desc/DescOrigin columns (optional — voice direction descriptions)
+            descorigin_col = col_indices.get("descorigin", col_indices.get("desc_origin", None))
+            desc_col = col_indices.get("desc", col_indices.get("desctext",
+                       col_indices.get("desc_text", col_indices.get("desccorrection", None))))
 
             # ── Column validation: fail fast with clear errors ──
             if correction_col is None:
@@ -224,6 +239,18 @@ def read_corrections_from_excel(
                     "str_origin": normalize_text(str_origin) if str_origin else "",
                     "corrected": corrected_str,  # Preserve linebreaks! Don't normalize output text
                 }
+
+                # Read Desc/DescOrigin if columns exist (voice direction descriptions)
+                if descorigin_col is not None:
+                    do_val = row[descorigin_col - 1].value if descorigin_col <= len(row) else None
+                    if do_val is not None and str(do_val).strip():
+                        entry["desc_origin"] = str(do_val).strip()
+                if desc_col is not None:
+                    d_val = row[desc_col - 1].value if desc_col <= len(row) else None
+                    if d_val is not None and str(d_val).strip():
+                        desc_str = str(d_val).strip()
+                        if not is_korean_text(desc_str):
+                            entry["desc_corrected"] = desc_str
 
                 # Per-row priority: StringID takes precedence over EventName
                 # EventName is fallback when StringID is empty for that row
@@ -724,6 +751,9 @@ def merge_corrections_to_excel(
         stringid_col = col_indices.get("stringid", col_indices.get("string_id"))
         strorigin_col = col_indices.get("strorigin", col_indices.get("str_origin"))
         str_col = col_indices.get("str")
+        desc_col = col_indices.get("desc", col_indices.get("desctext",
+                   col_indices.get("desc_text", col_indices.get("desccorrection"))))
+        descorigin_col = col_indices.get("descorigin", col_indices.get("desc_origin"))
 
         if not stringid_col:
             result["errors"].append(f"Missing required column in {excel_path.name}: StringID")
@@ -749,6 +779,10 @@ def merge_corrections_to_excel(
                     stringid_col += 1
                 if strorigin_col and strorigin_col >= str_col:
                     strorigin_col += 1
+                if descorigin_col and descorigin_col >= str_col:
+                    descorigin_col += 1
+                if desc_col and desc_col >= str_col:
+                    desc_col += 1
             else:
                 str_col = insert_after + 1
                 logger.info("Dry run: would insert Str column")
@@ -762,10 +796,14 @@ def merge_corrections_to_excel(
             sid_val = ws.cell(row=row_idx, column=stringid_col).value
             so_val = ws.cell(row=row_idx, column=strorigin_col).value if strorigin_col else None
             str_val = ws.cell(row=row_idx, column=str_col).value if str_col else None
+            do_val = ws.cell(row=row_idx, column=descorigin_col).value if descorigin_col else None
+            dv_val = ws.cell(row=row_idx, column=desc_col).value if desc_col else None
 
             sid = str(sid_val).strip() if sid_val is not None else ""
             so = str(so_val).strip() if so_val is not None else ""
             sv = str(str_val).strip() if str_val is not None else ""
+            do_str = str(do_val).strip() if do_val is not None else ""
+            dv_str = str(dv_val).strip() if dv_val is not None else ""
 
             if not sid:
                 continue
@@ -777,14 +815,34 @@ def merge_corrections_to_excel(
                 "string_id": sid,
                 "str_origin": so,
                 "str_value": sv,
+                "desc_origin": do_str,
+                "desc_value": dv_str,
                 "row": row_idx,
             })
+
+        # Auto-create Desc column if DescOrigin exists but Desc doesn't
+        # Only for modes that write Desc (strict, stringid_only — NOT strorigin_only)
+        if descorigin_col and not desc_col and not dry_run and match_mode != "strorigin_only":
+            # Insert Desc column after DescOrigin
+            desc_col = descorigin_col + 1
+            ws.insert_cols(desc_col)
+            ws.cell(row=1, column=desc_col, value="Desc")
+            ws.cell(row=1, column=desc_col).font = Font(bold=True)
+            logger.info(f"Auto-inserted 'Desc' column at position {desc_col} (after DescOrigin at {descorigin_col})")
+            # Fix shifted column references
+            if stringid_col >= desc_col:
+                stringid_col += 1
+            if strorigin_col and strorigin_col >= desc_col:
+                strorigin_col += 1
+            if str_col and str_col >= desc_col:
+                str_col += 1
 
         # Dispatch to mode-specific merge
         if match_mode == "strict":
             result = _merge_excel_strict(
                 ws, str_col, target_entries, target_stringids,
                 target_strorigin_map, corrections, only_untranslated, result,
+                desc_col=desc_col, descorigin_col=descorigin_col,
             )
         elif match_mode == "strorigin_only":
             result = _merge_excel_strorigin_only(
@@ -797,6 +855,7 @@ def merge_corrections_to_excel(
                 ws, str_col, target_entries, corrections,
                 stringid_to_category, stringid_to_subfolder,
                 only_untranslated, result,
+                desc_col=desc_col, descorigin_col=descorigin_col,
             )
         else:
             result["errors"].append(f"Unsupported match mode for Excel: {match_mode}")
@@ -830,6 +889,8 @@ def _merge_excel_strict(
     target_stringids: set, target_strorigin_map: Dict,
     corrections: List[Dict], only_untranslated: bool,
     result: Dict,
+    desc_col: Optional[int] = None,
+    descorigin_col: Optional[int] = None,
 ) -> Dict:
     """Strict matching: StringID + normalized StrOrigin."""
     target_lookup = defaultdict(list)
@@ -880,6 +941,18 @@ def _merge_excel_strict(
                         "string_id": c["string_id"], "status": "UNCHANGED",
                         "old": old_str, "new": "(same)",
                     })
+
+                # Write Desc if correction has desc_corrected and target has DescOrigin
+                if desc_col and c.get("desc_corrected"):
+                    target_do = target_entry.get("desc_origin", "")
+                    if target_do:
+                        new_desc = _convert_linebreaks_for_excel(c["desc_corrected"])
+                        old_desc = target_entry.get("desc_value", "")
+                        if new_desc != old_desc:
+                            ws.cell(row=target_entry["row"], column=desc_col, value=new_desc)
+                            if "\n" in new_desc:
+                                ws.cell(row=target_entry["row"], column=desc_col).alignment = Alignment(wrap_text=True, vertical='top')
+                            result["desc_updated"] = result.get("desc_updated", 0) + 1
         else:
             if sid_lower in target_stringids:
                 result["strorigin_mismatch"] += 1
@@ -1006,6 +1079,8 @@ def _merge_excel_stringid_only(
     stringid_to_category: Optional[Dict[str, str]],
     stringid_to_subfolder: Optional[Dict[str, str]],
     only_untranslated: bool, result: Dict,
+    desc_col: Optional[int] = None,
+    descorigin_col: Optional[int] = None,
 ) -> Dict:
     """StringID-only matching (SCRIPT types only)."""
     import config as _cfg
@@ -1121,6 +1196,18 @@ def _merge_excel_stringid_only(
                         "string_id": sid, "status": "UNCHANGED",
                         "old": old_str, "new": "(same)",
                     })
+
+                # Write Desc if correction has desc_corrected and target has DescOrigin
+                if desc_col and c.get("desc_corrected"):
+                    target_do = target_entry.get("desc_origin", "")
+                    if target_do:
+                        new_desc = _convert_linebreaks_for_excel(c["desc_corrected"])
+                        old_desc = target_entry.get("desc_value", "")
+                        if new_desc != old_desc:
+                            ws.cell(row=target_entry["row"], column=desc_col, value=new_desc)
+                            if "\n" in new_desc:
+                                ws.cell(row=target_entry["row"], column=desc_col).alignment = Alignment(wrap_text=True, vertical='top')
+                            result["desc_updated"] = result.get("desc_updated", 0) + 1
         else:
             result["not_found"] += 1
             result["details"].append({

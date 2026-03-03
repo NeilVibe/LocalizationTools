@@ -1042,7 +1042,7 @@ class QuickTranslateApp:
         Uses lightweight XML parsing (just count LocStr elements, no full
         correction extraction) to avoid blocking the GUI on large files.
         """
-        from core.xml_parser import parse_xml_file, iter_locstr_elements
+        from core.xml_parser import parse_xml_file, iter_locstr_elements, get_attr, DESCORIGIN_ATTRS, DESC_ATTRS
 
         # Collect all files to validate
         files_to_check = []
@@ -1175,6 +1175,8 @@ class QuickTranslateApp:
                 "has_correction": False,
                 "has_eventname": False,
                 "has_dialogvoice": False,
+                "has_desc": False,
+                "has_descorigin": False,
                 "has_xml": False,
             }
 
@@ -1185,6 +1187,30 @@ class QuickTranslateApp:
                 combined_columns["has_stringid"] = True
                 combined_columns["has_strorigin"] = True
                 combined_columns["has_correction"] = True
+
+                # Check for Desc/DescOrigin in XML files (lightweight: break on first find)
+                xml_has_descorigin = False
+                xml_has_desc = False
+                for filepath, _ in files_to_check:
+                    if filepath.suffix.lower() != ".xml":
+                        continue
+                    if xml_has_descorigin and xml_has_desc:
+                        break
+                    try:
+                        root = parse_xml_file(filepath)
+                        for elem in iter_locstr_elements(root):
+                            if not xml_has_descorigin and get_attr(elem, DESCORIGIN_ATTRS):
+                                xml_has_descorigin = True
+                            if not xml_has_desc and get_attr(elem, DESC_ATTRS):
+                                xml_has_desc = True
+                            if xml_has_descorigin and xml_has_desc:
+                                break
+                    except Exception:
+                        continue
+                if xml_has_descorigin:
+                    combined_columns["has_descorigin"] = True
+                if xml_has_desc:
+                    combined_columns["has_desc"] = True
 
             # Detect columns from each Excel file (union of all)
             excel_files_to_scan = [
@@ -1216,9 +1242,25 @@ class QuickTranslateApp:
                 col_info.append("StrOrigin")
             if combined_columns["has_correction"]:
                 col_info.append("Correction")
+            if combined_columns["has_descorigin"]:
+                col_info.append("DescOrigin")
+            if combined_columns["has_desc"]:
+                col_info.append("Desc")
             if combined_columns["has_xml"]:
                 col_info.append("XML")
             logger.info("  Source columns detected: %s", ", ".join(col_info) if col_info else "NONE")
+
+            # Desc availability info/warning
+            has_do = combined_columns["has_descorigin"]
+            has_d = combined_columns["has_desc"]
+            if not has_do and not has_d:
+                self._log("No Desc/DescOrigin found in source \u2014 Desc transfer will be skipped", 'warning')
+            elif has_do and not has_d:
+                self._log("DescOrigin found (Desc column will be auto-created during transfer)", 'info')
+            elif has_d and not has_do:
+                self._log("Desc found but DescOrigin missing \u2014 Desc may not match correctly", 'warning')
+            else:
+                self._log("Desc data available \u2014 voice direction descriptions will be transferred", 'info')
 
             self._task_queue.put(('status', 'Ready', 0))
 
@@ -2851,12 +2893,15 @@ class QuickTranslateApp:
             self._update_status(f"Transfer complete: {updated:,} updated, {unchanged:,} already correct")
 
             # Build clear summary where all numbers add up
+            desc_updated = results.get("total_desc_updated", 0)
             summary_lines = [
                 f"Transfer completed!\n",
                 f"Total Corrections: {results.get('total_corrections', 0):,}\n",
                 f"  Updated:          {updated:,}  (value changed)",
-                f"  Already Correct:  {unchanged:,}  (target already had correct value)",
             ]
+            if desc_updated > 0:
+                summary_lines.append(f"  Desc Updated:     {desc_updated:,}  (voice directions)")
+            summary_lines.append(f"  Already Correct:  {unchanged:,}  (target already had correct value)")
             if not_found > 0:
                 nf_label = "(StrOrigin not found)" if transfer_match_mode.startswith("strorigin_only") else "(StringID missing)"
                 summary_lines.append(f"  Not Found:        {not_found:,}  {nf_label}")

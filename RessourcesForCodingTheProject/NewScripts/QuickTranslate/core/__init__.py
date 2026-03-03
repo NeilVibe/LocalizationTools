@@ -5,7 +5,7 @@ Public exports for XML parsing, Korean detection, indexing, matching, and I/O.
 """
 
 from .text_utils import normalize_text, normalize_for_matching, normalize_nospace
-from .xml_parser import sanitize_xml_content, parse_xml_file, iter_locstr_elements
+from .xml_parser import sanitize_xml_content, parse_xml_file, iter_locstr_elements, DESC_ATTRS, DESCORIGIN_ATTRS
 from .korean_detection import KOREAN_REGEX, is_korean_text
 from .indexing import build_sequencer_strorigin_index, scan_folder_for_strings, scan_folder_for_entries, scan_folder_for_entries_with_context
 from .language_loader import (
@@ -140,6 +140,8 @@ __all__ = [
     "sanitize_xml_content",
     "parse_xml_file",
     "iter_locstr_elements",
+    "DESC_ATTRS",
+    "DESCORIGIN_ATTRS",
     # korean_detection
     "KOREAN_REGEX",
     "is_korean_text",
