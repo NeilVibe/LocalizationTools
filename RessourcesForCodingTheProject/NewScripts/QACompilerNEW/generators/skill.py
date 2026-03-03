@@ -95,6 +95,7 @@ class SkillEntry:
     source_file: str                # skillinfo_pc filename
     knowledge_source_file: str      # Knowledge XML filename
     knowledge2_source_file: str = ""  # Pass 2 source file
+    child_knowledge_entries: List[Tuple[str, str, str]] = field(default_factory=list)  # Pass 0: (name, desc, source_file)
 
 
 @dataclass
@@ -184,6 +185,18 @@ def scan_skills_with_knowledge(
         if lookup_key in skill_lookup:
             continue
 
+        # Pass 0: Inline Knowledge children (direct child nodes of SkillInfo)
+        child_knowledge_entries = []
+        for child in el.findall("Knowledge"):
+            child_name = child.get("Name") or ""
+            child_desc = child.get("Desc") or ""
+            child_strkey = (child.get("StrKey") or "").lower()
+            if child_strkey and child_strkey in knowledge_map:
+                kname, kdesc, ksrc = knowledge_map[child_strkey]
+                child_knowledge_entries.append((kname, kdesc, ksrc))
+            elif child_name or child_desc:
+                child_knowledge_entries.append((child_name, child_desc, source_file))
+
         # Pass 1: Resolve knowledge data via LearnKnowledgeKey
         knowledge_name = ""
         knowledge_desc = ""
@@ -199,16 +212,18 @@ def scan_skills_with_knowledge(
         knowledge2_source_file = ""
         if skill_name and skill_name in knowledge_name_index:
             for kn_strkey, kn_desc, kn_src in knowledge_name_index[skill_name]:
-                if kn_strkey != pass1_strkey:
-                    knowledge2_name = skill_name
-                    knowledge2_desc = kn_desc
-                    knowledge2_source_file = kn_src
-                    pass2_hits += 1
-                    break
+                knowledge2_name = skill_name
+                knowledge2_desc = kn_desc
+                knowledge2_source_file = kn_src
+                pass2_hits += 1
+                break
 
         # Collect Korean strings for coverage tracking
         _collect_korean_string(skill_name)
         _collect_korean_string(skill_desc)
+        for cname, cdesc, _ in child_knowledge_entries:
+            _collect_korean_string(cname)
+            _collect_korean_string(cdesc)
         _collect_korean_string(knowledge_name)
         _collect_korean_string(knowledge_desc)
         _collect_korean_string(knowledge2_name)
@@ -227,6 +242,7 @@ def scan_skills_with_knowledge(
             source_file=source_file,
             knowledge_source_file=knowledge_source_file,
             knowledge2_source_file=knowledge2_source_file,
+            child_knowledge_entries=child_knowledge_entries,
         )
 
     log.info("Skills scanned: %d (Pass 2 hits: %d)", len(skill_lookup), pass2_hits)
@@ -504,6 +520,15 @@ def _write_skill_rows(
     t, s = pre.get((sk_lower, "skill_desc"), ("", ""))
     excel_row = _write_row(f"{prefix}SkillData", entry.skill_desc_kor, t, s)
 
+    # 2b. ChildKnowledgeData -- inline Knowledge child Name/Desc (Pass 0)
+    for i, (cname, cdesc, _) in enumerate(entry.child_knowledge_entries):
+        if cname:
+            t, s = pre.get((sk_lower, f"ck_{i}_name"), ("", ""))
+            excel_row = _write_row(f"{prefix}ChildKnowledgeData", cname, t, s)
+        if cdesc:
+            t, s = pre.get((sk_lower, f"ck_{i}_desc"), ("", ""))
+            excel_row = _write_row(f"{prefix}ChildKnowledgeData", cdesc, t, s)
+
     # 3. KnowledgeData -- Name (skip if empty)
     if entry.knowledge_name_kor:
         t, s = pre.get((sk_lower, "knowledge_name"), ("", ""))
@@ -669,6 +694,14 @@ def write_skill_excel(
             entry.skill_name_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
         pre[(sk, "skill_desc")] = resolve_translation(
             entry.skill_desc_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
+        # Pass 0: inline child knowledge (before Pass 1 to preserve document order)
+        for i, (cname, cdesc, csrc) in enumerate(entry.child_knowledge_entries):
+            if cname:
+                pre[(sk, f"ck_{i}_name")] = resolve_translation(
+                    cname, lang_tbl, csrc, export_index, consumer=consumer)
+            if cdesc:
+                pre[(sk, f"ck_{i}_desc")] = resolve_translation(
+                    cdesc, lang_tbl, csrc, export_index, consumer=consumer)
         if entry.knowledge_name_kor:
             pre[(sk, "knowledge_name")] = resolve_translation(
                 entry.knowledge_name_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)

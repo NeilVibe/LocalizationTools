@@ -167,9 +167,7 @@ def scan_characters_with_knowledge(
             seen_strkeys.add(strkey)
 
             # Pass 0: Inline Knowledge children (direct child nodes of CharacterInfo)
-            # Must run before Pass 1 & 2 to enable deduplication.
             child_knowledge_entries = []
-            pass0_strkeys: Set[str] = set()
             for child in el.findall("Knowledge"):
                 child_name = child.get("Name") or ""
                 child_desc = child.get("Desc") or ""
@@ -181,34 +179,29 @@ def scan_characters_with_knowledge(
                 elif child_name or child_desc:
                     # Inline fallback: data lives in characterinfo file itself
                     child_knowledge_entries.append((child_name, child_desc, source_file))
-                if child_strkey:
-                    pass0_strkeys.add(child_strkey)
 
             knowledge_key = _find_knowledge_key(el)
 
             # Pass 1: Resolve knowledge data via KnowledgeKey
-            # Skip if already covered by Pass 0 (same StrKey) to avoid duplicates.
             knowledge_name = ""
             knowledge_desc = ""
             knowledge_source_file = ""
             pass1_strkey = ""
-            if knowledge_key and knowledge_key.lower() in knowledge_map and knowledge_key.lower() not in pass0_strkeys:
+            if knowledge_key and knowledge_key.lower() in knowledge_map:
                 knowledge_name, knowledge_desc, knowledge_source_file = knowledge_map[knowledge_key.lower()]
                 pass1_strkey = knowledge_key.lower()
 
             # Pass 2: Identical name match (CharacterName == KnowledgeInfo.Name)
-            # Skip entries already covered by Pass 0 (same StrKey) to avoid duplicates.
             knowledge2_name = ""
             knowledge2_desc = ""
             knowledge2_source_file = ""
             if char_name and char_name in knowledge_name_index:
                 for kn_strkey, kn_desc, kn_src in knowledge_name_index[char_name]:
-                    if kn_strkey != pass1_strkey and kn_strkey not in pass0_strkeys:
-                        knowledge2_name = char_name
-                        knowledge2_desc = kn_desc
-                        knowledge2_source_file = kn_src
-                        pass2_hits += 1
-                        break
+                    knowledge2_name = char_name
+                    knowledge2_desc = kn_desc
+                    knowledge2_source_file = kn_src
+                    pass2_hits += 1
+                    break
 
             # Collect Korean strings for coverage tracking
             _collect_korean_string(char_name)

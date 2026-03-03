@@ -15,7 +15,7 @@ Key features:
 
 import re
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
@@ -103,6 +103,7 @@ class NewItemEntry:
     knowledge2_name_kor: str = ""       # Pass 2: identical name match
     knowledge2_desc_kor: str = ""       # Pass 2: identical name match
     knowledge2_source_file: str = ""    # Pass 2: source file for EXPORT
+    child_knowledge_entries: List[Tuple[str, str, str]] = field(default_factory=list)  # Pass 0: (name, desc, source_file)
 
 
 # =============================================================================
@@ -336,6 +337,19 @@ def scan_items_with_knowledge(
 
                 item_name = item.get("ItemName") or ""
                 item_desc = item.get("ItemDesc") or ""
+
+                # Pass 0: Inline Knowledge children (direct child nodes of ItemInfo)
+                child_knowledge_entries = []
+                for child in item.findall("Knowledge"):
+                    child_name = child.get("Name") or ""
+                    child_desc = child.get("Desc") or ""
+                    child_strkey = (child.get("StrKey") or "").lower()
+                    if child_strkey and child_strkey in knowledge_map:
+                        kname, kdesc, ksrc = knowledge_map[child_strkey]
+                        child_knowledge_entries.append((kname, kdesc, ksrc))
+                    elif child_name or child_desc:
+                        child_knowledge_entries.append((child_name, child_desc, source_file))
+
                 knowledge_key = _find_knowledge_key(item)
 
                 # Pass 1: Resolve knowledge data via KnowledgeKey
@@ -353,16 +367,18 @@ def scan_items_with_knowledge(
                 knowledge2_source_file = ""
                 if item_name and item_name in knowledge_name_index:
                     for kn_strkey, kn_desc, kn_src in knowledge_name_index[item_name]:
-                        if kn_strkey != pass1_strkey:
-                            knowledge2_name = item_name
-                            knowledge2_desc = kn_desc
-                            knowledge2_source_file = kn_src
-                            pass2_hits += 1
-                            break
+                        knowledge2_name = item_name
+                        knowledge2_desc = kn_desc
+                        knowledge2_source_file = kn_src
+                        pass2_hits += 1
+                        break
 
                 # Collect Korean strings for coverage tracking
                 _collect_korean_string(item_name)
                 _collect_korean_string(item_desc)
+                for cname, cdesc, _ in child_knowledge_entries:
+                    _collect_korean_string(cname)
+                    _collect_korean_string(cdesc)
                 _collect_korean_string(knowledge_name)
                 _collect_korean_string(knowledge_desc)
                 _collect_korean_string(knowledge2_name)
@@ -382,6 +398,7 @@ def scan_items_with_knowledge(
                     knowledge2_name_kor=knowledge2_name,
                     knowledge2_desc_kor=knowledge2_desc,
                     knowledge2_source_file=knowledge2_source_file,
+                    child_knowledge_entries=child_knowledge_entries,
                 )
 
     total_items = sum(len(v) for v in group_items.values())
@@ -645,12 +662,13 @@ def write_newitem_excel(
     8 columns: DataType | Filename | SourceText (KR) | Translation | STATUS | COMMENT | SCREENSHOT | STRINGID
 
     Per-item row generation (strict order):
-    1. ItemData -- item_name_kor (always output)
-    2. ItemData -- item_desc_kor (always output)
-    3. KnowledgeData -- knowledge_name_kor (skip if empty)  [Pass 1: KnowledgeKey]
-    4. KnowledgeData -- knowledge_desc_kor (skip if empty)  [Pass 1: KnowledgeKey]
-    5. KnowledgeData2 -- knowledge2_name_kor (skip if empty) [Pass 2: identical name]
-    6. KnowledgeData2 -- knowledge2_desc_kor (skip if empty) [Pass 2: identical name]
+    1.  ItemData          -- item_name_kor (always output)
+    2.  ItemData          -- item_desc_kor (always output)
+    2b. ChildKnowledgeData -- inline child Name/Desc pairs (skip if none) [Pass 0: inline children]
+    3.  KnowledgeData     -- knowledge_name_kor (skip if empty)  [Pass 1: KnowledgeKey]
+    4.  KnowledgeData     -- knowledge_desc_kor (skip if empty)  [Pass 1: KnowledgeKey]
+    5.  KnowledgeData2    -- knowledge2_name_kor (skip if empty) [Pass 2: identical name]
+    6.  KnowledgeData2    -- knowledge2_desc_kor (skip if empty) [Pass 2: identical name]
     """
     wb = Workbook()
     wb.remove(wb.active)
@@ -683,6 +701,14 @@ def write_newitem_excel(
             entry.item_name_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
         pre[(ik, "item_desc")] = resolve_translation(
             entry.item_desc_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
+        # Pass 0: inline child knowledge (before Pass 1 to preserve document order)
+        for i, (cname, cdesc, csrc) in enumerate(entry.child_knowledge_entries):
+            if cname:
+                pre[(ik, f"ck_{i}_name")] = resolve_translation(
+                    cname, lang_tbl, csrc, export_index, consumer=consumer)
+            if cdesc:
+                pre[(ik, f"ck_{i}_desc")] = resolve_translation(
+                    cdesc, lang_tbl, csrc, export_index, consumer=consumer)
         if entry.knowledge_name_kor:
             pre[(ik, "knowledge_name")] = resolve_translation(
                 entry.knowledge_name_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)
@@ -758,6 +784,15 @@ def write_newitem_excel(
                 # 2. ItemData -- ItemDesc (always output)
                 t, s = pre[(ik, "item_desc")]
                 _write_row("ItemData", entry.item_desc_kor, t, s)
+
+                # 2b. ChildKnowledgeData -- inline Knowledge child Name/Desc (Pass 0)
+                for i, (cname, cdesc, _) in enumerate(entry.child_knowledge_entries):
+                    if cname:
+                        t, s = pre.get((ik, f"ck_{i}_name"), ("", ""))
+                        _write_row("ChildKnowledgeData", cname, t, s)
+                    if cdesc:
+                        t, s = pre.get((ik, f"ck_{i}_desc"), ("", ""))
+                        _write_row("ChildKnowledgeData", cdesc, t, s)
 
                 # 3. KnowledgeData -- Name (skip if empty)
                 if entry.knowledge_name_kor:
