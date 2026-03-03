@@ -6,3 +6,4 @@ Build 004b: false positive fix + StringID column
 Build 005: LineCheck StringID columns
 Build 006: CheckOutput auto-folder + Status/Comment + hide Substring
 Build 007: FileName column + neutral STATUS for both LINE and TERM CHECK
+Build 008: remove FileName column from LINE and TERM CHECK output
