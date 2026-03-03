@@ -64,7 +64,7 @@ DEFAULT_MIN_OCCURRENCE = 2
 DEFAULT_MAX_ISSUES_PER_TERM = 6
 DEFAULT_FILTER_SENTENCES = True
 DEFAULT_TERM_MATCH_MODE = MATCH_MODE_ISOLATED
-DEFAULT_OUTPUT_SUBDIR = "output"
+OUTPUT_FOLDER_NAME = "CheckOutput"
 
 
 # =============================================================================
@@ -83,8 +83,6 @@ class Settings:
     # Term check match mode
     term_match_mode: str = DEFAULT_TERM_MATCH_MODE
 
-    # Output directory (relative or absolute)
-    output_dir: str = DEFAULT_OUTPUT_SUBDIR
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -102,8 +100,7 @@ class Settings:
             min_occurrence=_int("min_occurrence", DEFAULT_MIN_OCCURRENCE),
             max_issues_per_term=_int("max_issues_per_term", DEFAULT_MAX_ISSUES_PER_TERM),
             filter_sentences=bool(data.get("filter_sentences", DEFAULT_FILTER_SENTENCES)),
-            term_match_mode=str(data.get("term_match_mode", DEFAULT_TERM_MATCH_MODE)),
-            output_dir=str(data.get("output_dir", DEFAULT_OUTPUT_SUBDIR)),
+            term_match_mode=MATCH_MODE_ISOLATED,  # Always isolated — substring hidden
         )
 
 
@@ -122,14 +119,9 @@ def get_settings_path() -> str:
     return os.path.join(get_base_dir(), "qc_settings.json")
 
 
-def resolve_output_dir(settings: Settings) -> str:
-    """
-    Resolve the output directory to an absolute path.
-    If settings.output_dir is relative, it's placed next to the exe/script.
-    """
-    out = settings.output_dir
-    if not os.path.isabs(out):
-        out = os.path.join(get_base_dir(), out)
+def get_output_dir() -> str:
+    """Return the fixed CheckOutput directory next to the exe, auto-created."""
+    out = os.path.join(get_base_dir(), OUTPUT_FOLDER_NAME)
     os.makedirs(out, exist_ok=True)
     return out
 

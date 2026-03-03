@@ -23,7 +23,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Dict, List, Optional, Tuple
 
 import config
-from config import Settings, get_settings, save_settings, resolve_output_dir, MATCH_MODE_ISOLATED, MATCH_MODE_SUBSTRING
+from config import Settings, get_settings, save_settings, get_output_dir, MATCH_MODE_ISOLATED
 from core.scanner import scan_folder_for_languages
 from core.line_check import run_line_check_all_languages
 from core.term_check import run_term_check_all_languages
@@ -132,17 +132,6 @@ class QuickCheckApp(tk.Tk):
         # ---- Settings section ----
         self._build_settings(outer)
 
-        # ---- Output folder ----
-        out_row = tk.Frame(outer, bg=BG_MAIN)
-        out_row.pack(fill=tk.X, pady=(0, 8))
-        tk.Label(out_row, text="Output folder:", bg=BG_MAIN, fg=FG_MAIN, font=FONT_MAIN,
-                 width=16, anchor="w").pack(side=tk.LEFT)
-        self._var_output = tk.StringVar(value=self._settings.output_dir)
-        tk.Entry(out_row, textvariable=self._var_output, bg=BG_ENTRY, fg=FG_BRIGHT,
-                 font=FONT_MAIN, relief=tk.FLAT, insertbackground=FG_BRIGHT).pack(
-                     side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
-        self._make_button(out_row, "Change", self._browse_output).pack(side=tk.LEFT)
-
         # ---- Action buttons ----
         btn_row = tk.Frame(outer, bg=BG_MAIN)
         btn_row.pack(fill=tk.X, pady=(4, 8))
@@ -238,22 +227,8 @@ class QuickCheckApp(tk.Tk):
                      side=tk.LEFT, padx=(4, 0))
         self._var_max_issues.trace_add("write", lambda *_: self._save_settings())
 
-        # Row 3: term match mode
-        r3 = tk.Frame(sf, bg=BG_FRAME)
-        r3.pack(fill=tk.X)
-        tk.Label(r3, text="Term match:", bg=BG_FRAME, fg=FG_MAIN,
-                 font=FONT_MAIN).pack(side=tk.LEFT)
-        self._var_match_mode = tk.StringVar(value=self._settings.term_match_mode)
-        tk.Radiobutton(r3, text="Isolated (word boundary)",
-                       variable=self._var_match_mode, value=MATCH_MODE_ISOLATED,
-                       bg=BG_FRAME, fg=FG_BRIGHT, selectcolor=BG_MAIN,
-                       activebackground=BG_FRAME, font=FONT_MAIN,
-                       command=self._save_settings).pack(side=tk.LEFT, padx=(6, 0))
-        tk.Radiobutton(r3, text="Substring (any occurrence)",
-                       variable=self._var_match_mode, value=MATCH_MODE_SUBSTRING,
-                       bg=BG_FRAME, fg=FG_BRIGHT, selectcolor=BG_MAIN,
-                       activebackground=BG_FRAME, font=FONT_MAIN,
-                       command=self._save_settings).pack(side=tk.LEFT, padx=(8, 0))
+        # Term match mode — always Isolated (word boundary); substring hidden
+        self._var_match_mode = tk.StringVar(value=MATCH_MODE_ISOLATED)
 
     def _make_button(self, parent: tk.Widget, text: str,
                      command: callable, width: int = 8) -> tk.Button:
@@ -275,8 +250,6 @@ class QuickCheckApp(tk.Tk):
             self._var_max_len.set(str(s.max_term_length))
             self._var_min_occ.set(str(s.min_occurrence))
             self._var_max_issues.set(str(s.max_issues_per_term))
-            self._var_match_mode.set(s.term_match_mode)
-            self._var_output.set(s.output_dir)
         finally:
             self._suppress_save = False
 
@@ -300,8 +273,7 @@ class QuickCheckApp(tk.Tk):
             s.max_term_length = int(self._var_max_len.get() or str(config.DEFAULT_MAX_TERM_LENGTH))
             s.min_occurrence = int(self._var_min_occ.get() or str(config.DEFAULT_MIN_OCCURRENCE))
             s.max_issues_per_term = int(self._var_max_issues.get() or str(config.DEFAULT_MAX_ISSUES_PER_TERM))
-            s.term_match_mode = self._var_match_mode.get()
-            s.output_dir = self._var_output.get() or config.DEFAULT_OUTPUT_SUBDIR
+            s.term_match_mode = MATCH_MODE_ISOLATED
             save_settings(s)
         except ValueError:
             pass  # Expected during partial typing
@@ -328,12 +300,6 @@ class QuickCheckApp(tk.Tk):
         if path:
             self._var_glossary.set(path)
             self._scan_glossary(path)
-
-    def _browse_output(self) -> None:
-        path = filedialog.askdirectory(title="Select Output Folder")
-        if path:
-            self._var_output.set(path)
-            self._save_settings()
 
     # ------------------------------------------------------------------
     # Language scanning
@@ -506,7 +472,7 @@ class QuickCheckApp(tk.Tk):
 
         s = self._read_settings()
         lang_files = self._get_selected_lang_files()
-        output_dir = Path(resolve_output_dir(s))
+        output_dir = Path(get_output_dir())
 
         def worker() -> None:
             try:
@@ -552,7 +518,7 @@ class QuickCheckApp(tk.Tk):
 
         s = self._read_settings()
         lang_files = self._get_selected_lang_files()
-        output_dir = Path(resolve_output_dir(s))
+        output_dir = Path(get_output_dir())
 
         def worker() -> None:
             try:
@@ -595,7 +561,7 @@ class QuickCheckApp(tk.Tk):
 
         s = self._read_settings()
         lang_files = self._get_selected_lang_files()
-        output_dir = Path(resolve_output_dir(s))
+        output_dir = Path(get_output_dir())
 
         def worker() -> None:
             try:
