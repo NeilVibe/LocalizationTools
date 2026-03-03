@@ -42,9 +42,11 @@ logger = logging.getLogger(__name__)
 # GUI CONFIGURATION
 # =============================================================================
 
-WINDOW_TITLE = "Language Data Exporter v4.0"
+WINDOW_TITLE = "Language Data Exporter v4.1"
 WINDOW_WIDTH = 850
 WINDOW_HEIGHT = 580
+
+KNOWN_DRIVES = ["D", "E", "F"]
 
 # Languages to EXCLUDE (Korean is source, not target)
 EXCLUDED_LANGUAGES = {"kor"}
@@ -104,21 +106,39 @@ class LanguageDataExporterGUI:
     # =========================================================================
 
     def _build_branch_selector(self):
-        """Build branch selector (QACompiler style)."""
+        """Build branch + drive selector row."""
         frame = ttk.Frame(self.root)
         frame.grid(row=1, column=0, sticky="ew", padx=15, pady=(0, 5))
 
+        # Branch
         ttk.Label(frame, text="Branch:", font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
 
         self.branch_var = tk.StringVar(value=config.get_branch())
-        combo = ttk.Combobox(frame, textvariable=self.branch_var,
-                             values=KNOWN_BRANCHES, width=25)
-        combo.pack(side="left", padx=5)
-        combo.bind("<<ComboboxSelected>>", self._on_branch_change)
-        combo.bind("<Return>", self._on_branch_change)
+        branch_combo = ttk.Combobox(frame, textvariable=self.branch_var,
+                                    values=KNOWN_BRANCHES, width=20)
+        branch_combo.pack(side="left", padx=5)
+        branch_combo.bind("<<ComboboxSelected>>", self._on_branch_change)
+        branch_combo.bind("<Return>", self._on_branch_change)
 
-        self.branch_status = ttk.Label(frame, text="", font=("Arial", 9))
-        self.branch_status.pack(side="left", padx=10)
+        ttk.Separator(frame, orient="vertical").pack(side="left", fill="y", padx=10)
+
+        # Drive
+        ttk.Label(frame, text="Drive:", font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
+
+        self.drive_var = tk.StringVar(value=config.get_drive())
+        drive_combo = ttk.Combobox(frame, textvariable=self.drive_var,
+                                   values=KNOWN_DRIVES, width=5)
+        drive_combo.pack(side="left", padx=5)
+        drive_combo.bind("<<ComboboxSelected>>", self._on_drive_change)
+        drive_combo.bind("<Return>", self._on_drive_change)
+
+        self.selector_status = ttk.Label(
+            frame,
+            text=f"Branch: {config.get_branch()}  Drive: {config.get_drive()}",
+            font=("Arial", 9),
+            foreground="green"
+        )
+        self.selector_status.pack(side="left", padx=10)
 
     def _on_branch_change(self, event=None):
         """Handle branch selection change."""
@@ -126,11 +146,26 @@ class LanguageDataExporterGUI:
         if not new_branch:
             return
         config.update_branch(new_branch)
-        self.branch_status.config(text=f"Branch set to: {new_branch}", foreground="green")
+        self.selector_status.config(
+            text=f"Branch: {new_branch}  Drive: {config.get_drive()}",
+            foreground="green"
+        )
+        self._update_path_labels()
+
+    def _on_drive_change(self, event=None):
+        """Handle drive letter selection change."""
+        new_drive = self.drive_var.get().strip()
+        if not new_drive:
+            return
+        config.update_drive(new_drive)  # sanitizes internally
+        self.selector_status.config(
+            text=f"Branch: {config.get_branch()}  Drive: {config.get_drive()}",
+            foreground="green"
+        )
         self._update_path_labels()
 
     def _update_path_labels(self):
-        """Refresh path labels after branch change."""
+        """Refresh path labels after branch/drive change."""
         self.loc_path_label.config(text=str(config.LOC_FOLDER))
         self.export_path_label.config(text=str(config.EXPORT_FOLDER))
         self.vrs_path_label.config(text=str(config.VOICE_RECORDING_FOLDER))

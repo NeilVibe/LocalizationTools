@@ -94,15 +94,20 @@ def _save_settings(settings_dict: dict):
         logger.error(f"Failed to save settings.json: {e}")
 
 
-def update_branch(new_branch: str):
-    """Update all paths to use new branch. Called from GUI."""
-    global _BRANCH, LOC_FOLDER, EXPORT_FOLDER, VOICE_RECORDING_FOLDER
-
-    _BRANCH = new_branch
-
+def _rebuild_paths():
+    """Rebuild all path globals from current _DRIVE_LETTER and _BRANCH."""
+    global LOC_FOLDER, EXPORT_FOLDER, VOICE_RECORDING_FOLDER
     LOC_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
     EXPORT_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
     VOICE_RECORDING_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
+
+
+def update_branch(new_branch: str):
+    """Update all paths to use new branch. Called from GUI."""
+    global _BRANCH
+
+    _BRANCH = new_branch
+    _rebuild_paths()
 
     _SETTINGS['branch'] = new_branch
     _save_settings(_SETTINGS)
@@ -113,6 +118,29 @@ def update_branch(new_branch: str):
 def get_branch() -> str:
     """Get the current branch name."""
     return _BRANCH
+
+
+def update_drive(new_drive: str):
+    """Update all paths to use new drive letter. Called from GUI."""
+    global _DRIVE_LETTER
+
+    # Sanitize: strip whitespace/colon, take first char only, must be alpha
+    clean = new_drive.strip().rstrip(':').upper()
+    if not clean or not clean[0].isalpha():
+        logger.warning(f"Invalid drive letter ignored: {new_drive!r}")
+        return
+    _DRIVE_LETTER = clean[0]
+    _rebuild_paths()
+
+    _SETTINGS['drive_letter'] = _DRIVE_LETTER
+    _save_settings(_SETTINGS)
+
+    logger.info(f"Drive updated to: {_DRIVE_LETTER}")
+
+
+def get_drive() -> str:
+    """Get the current drive letter."""
+    return _DRIVE_LETTER
 
 
 # =============================================================================
