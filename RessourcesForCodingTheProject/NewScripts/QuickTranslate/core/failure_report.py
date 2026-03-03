@@ -398,7 +398,7 @@ def extract_failed_from_transfer_results(
     language: str = "UNK",
 ) -> List[Dict]:
     """
-    Extract failed entries from transfer_file_to_file or merge results.
+    Extract failed entries from merge results.
 
     Converts the 'details' list from merge results into the format
     expected by generate_failed_merge_xml.

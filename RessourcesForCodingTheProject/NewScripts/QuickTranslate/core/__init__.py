@@ -40,11 +40,8 @@ from .excel_io import (
 from .xml_io import parse_corrections_from_xml, parse_folder_xml_files, parse_tosubmit_xml
 from .xml_transfer import (
     merge_corrections_to_xml,
-    merge_corrections_strorigin_only,
     merge_corrections_stringid_only,
-    merge_corrections_fuzzy,
     transfer_folder_to_folder,
-    transfer_file_to_file,
     format_transfer_report,
 )
 from .postprocess import (
@@ -181,11 +178,8 @@ __all__ = [
     "parse_tosubmit_xml",
     # xml_transfer
     "merge_corrections_to_xml",
-    "merge_corrections_strorigin_only",
     "merge_corrections_stringid_only",
-    "merge_corrections_fuzzy",
     "transfer_folder_to_folder",
-    "transfer_file_to_file",
     "format_transfer_report",
     # postprocess
     "cleanup_empty_strorigin",
