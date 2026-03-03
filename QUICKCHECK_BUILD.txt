@@ -1,0 +1,1 @@
+Build 001 - Initial release: LINE CHECK, TERM CHECK, EXTRACT GLOSSARY with multi-language batch + Excel output

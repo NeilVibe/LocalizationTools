@@ -1,0 +1,540 @@
+"""
+QuickCheck GUI
+
+Single-window UI for LINE CHECK and TERM CHECK across multiple languages.
+
+Modes:
+  - Auto-extract glossary: glossary is built from source files automatically
+  - External glossary: separate folder with language-tagged glossary files
+
+Settings (persisted):
+  - Max term length, min occurrences, max issues per term
+  - Filter sentences toggle
+  - Term match mode: Isolated / Substring
+"""
+from __future__ import annotations
+
+import logging
+import os
+import threading
+import tkinter as tk
+from pathlib import Path
+from tkinter import filedialog, messagebox, ttk
+from typing import Dict, List, Optional, Tuple
+
+import config
+from config import Settings, get_settings, save_settings, resolve_output_dir, MATCH_MODE_ISOLATED, MATCH_MODE_SUBSTRING
+from core.scanner import scan_folder_for_languages
+from core.line_check import run_line_check_all_languages
+from core.term_check import run_term_check_all_languages
+from core.glossary_extractor import extract_glossary_all_languages
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Colour + style constants
+# ---------------------------------------------------------------------------
+BG_MAIN = "#2b2b2b"
+BG_FRAME = "#333333"
+BG_ENTRY = "#3c3f41"
+FG_MAIN = "#bbbbbb"
+FG_BRIGHT = "#ffffff"
+FG_DIM = "#888888"
+FG_OK = "#6dbf67"
+FG_WARN = "#e0a050"
+FG_ERR = "#e05050"
+ACCENT = "#4c9be8"
+BTN_BG = "#3c6ea0"
+BTN_BG_HOVER = "#5580b0"
+BTN_FG = "#ffffff"
+FONT_MAIN = ("Segoe UI", 9)
+FONT_BOLD = ("Segoe UI", 9, "bold")
+FONT_SMALL = ("Segoe UI", 8)
+FONT_MONO = ("Consolas", 9)
+
+
+class QuickCheckApp(tk.Tk):
+    """Main application window."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.title("QuickCheck")
+        self.configure(bg=BG_MAIN)
+        self.resizable(True, True)
+        self.minsize(640, 700)
+
+        self._settings = get_settings()
+        self._source_scan: Dict[str, List[Path]] = {}
+        self._glossary_scan: Dict[str, List[Path]] = {}
+        self._running = False
+
+        self._build_ui()
+        self._apply_settings_to_ui()
+        self.update_idletasks()
+
+    # ------------------------------------------------------------------
+    # UI Construction
+    # ------------------------------------------------------------------
+
+    def _build_ui(self) -> None:
+        outer = tk.Frame(self, bg=BG_MAIN, padx=12, pady=10)
+        outer.pack(fill=tk.BOTH, expand=True)
+
+        # ---- Source folder ----
+        self._build_folder_row(outer, "Source Folder:", self._browse_source, "_var_source")
+
+        # ---- Detected languages label ----
+        self._lbl_detected = tk.Label(outer, text="Detected: (none)", bg=BG_MAIN,
+                                      fg=FG_DIM, font=FONT_SMALL, anchor="w")
+        self._lbl_detected.pack(fill=tk.X, pady=(0, 6))
+
+        # ---- Mode selection ----
+        self._mode_frame = tk.LabelFrame(outer, text=" Glossary Mode ", bg=BG_FRAME,
+                                         fg=FG_MAIN, font=FONT_BOLD, padx=8, pady=6)
+        self._mode_frame.pack(fill=tk.X, pady=(0, 6))
+        mode_frame = self._mode_frame
+
+        self._var_mode = tk.StringVar(value="auto")
+        tk.Radiobutton(
+            mode_frame, text="Auto-extract from source files (self-check)",
+            variable=self._var_mode, value="auto",
+            bg=BG_FRAME, fg=FG_BRIGHT, selectcolor=BG_MAIN,
+            activebackground=BG_FRAME, font=FONT_MAIN,
+            command=self._on_mode_change,
+        ).pack(anchor="w")
+        tk.Radiobutton(
+            mode_frame, text="External Glossary folder",
+            variable=self._var_mode, value="external",
+            bg=BG_FRAME, fg=FG_BRIGHT, selectcolor=BG_MAIN,
+            activebackground=BG_FRAME, font=FONT_MAIN,
+            command=self._on_mode_change,
+        ).pack(anchor="w", pady=(2, 0))
+
+        # ---- Glossary folder row (shown only in external mode) ----
+        self._gloss_frame = tk.Frame(outer, bg=BG_MAIN)
+        self._build_folder_row(self._gloss_frame, "Glossary Folder:", self._browse_glossary, "_var_glossary")
+        self._lbl_gloss_detected = tk.Label(self._gloss_frame, text="Glossary Detected: (none)",
+                                             bg=BG_MAIN, fg=FG_DIM, font=FONT_SMALL, anchor="w")
+        self._lbl_gloss_detected.pack(fill=tk.X)
+        # Initially hidden
+        # self._gloss_frame.pack(fill=tk.X, pady=(0, 6))
+
+        # ---- Settings section ----
+        self._build_settings(outer)
+
+        # ---- Output folder ----
+        out_row = tk.Frame(outer, bg=BG_MAIN)
+        out_row.pack(fill=tk.X, pady=(0, 8))
+        tk.Label(out_row, text="Output folder:", bg=BG_MAIN, fg=FG_MAIN, font=FONT_MAIN,
+                 width=16, anchor="w").pack(side=tk.LEFT)
+        self._var_output = tk.StringVar(value=self._settings.output_dir)
+        tk.Entry(out_row, textvariable=self._var_output, bg=BG_ENTRY, fg=FG_BRIGHT,
+                 font=FONT_MAIN, relief=tk.FLAT, insertbackground=FG_BRIGHT).pack(
+                     side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
+        self._make_button(out_row, "Change", self._browse_output).pack(side=tk.LEFT)
+
+        # ---- Action buttons ----
+        btn_row = tk.Frame(outer, bg=BG_MAIN)
+        btn_row.pack(fill=tk.X, pady=(4, 8))
+        self._btn_line = self._make_button(btn_row, "LINE CHECK", self._run_line_check, width=18)
+        self._btn_line.pack(side=tk.LEFT, padx=(0, 8))
+        self._btn_term = self._make_button(btn_row, "TERM CHECK", self._run_term_check, width=18)
+        self._btn_term.pack(side=tk.LEFT, padx=(0, 8))
+        self._btn_gloss = self._make_button(
+            btn_row, "EXTRACT GLOSSARY", self._run_extract_glossary, width=20
+        )
+        self._btn_gloss.pack(side=tk.LEFT)
+
+        # ---- Progress bar ----
+        self._progress_var = tk.DoubleVar(value=0)
+        self._progressbar = ttk.Progressbar(outer, variable=self._progress_var,
+                                            maximum=100, mode="indeterminate")
+        self._progressbar.pack(fill=tk.X, pady=(0, 4))
+
+        # ---- Status / log area ----
+        log_frame = tk.Frame(outer, bg=BG_MAIN)
+        log_frame.pack(fill=tk.BOTH, expand=True)
+
+        self._log = tk.Text(log_frame, height=10, bg=BG_ENTRY, fg=FG_MAIN,
+                            font=FONT_MONO, relief=tk.FLAT, wrap=tk.WORD,
+                            state=tk.DISABLED, insertbackground=FG_BRIGHT)
+        scrollbar = tk.Scrollbar(log_frame, command=self._log.yview,
+                                 bg=BG_FRAME, troughcolor=BG_MAIN)
+        self._log.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self._log.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Configure log text tags
+        self._log.tag_config("ok", foreground=FG_OK)
+        self._log.tag_config("warn", foreground=FG_WARN)
+        self._log.tag_config("err", foreground=FG_ERR)
+        self._log.tag_config("info", foreground=ACCENT)
+
+    def _build_folder_row(self, parent: tk.Widget, label: str,
+                          command: callable, var_attr: str) -> None:
+        """Build a labelled folder browser row."""
+        row = tk.Frame(parent, bg=parent.cget("bg") if hasattr(parent, "cget") else BG_MAIN)
+        row.pack(fill=tk.X, pady=(0, 2))
+        tk.Label(row, text=label, bg=row.cget("bg"), fg=FG_MAIN, font=FONT_MAIN,
+                 width=16, anchor="w").pack(side=tk.LEFT)
+        var = tk.StringVar()
+        setattr(self, var_attr, var)
+        tk.Entry(row, textvariable=var, bg=BG_ENTRY, fg=FG_BRIGHT, font=FONT_MAIN,
+                 relief=tk.FLAT, insertbackground=FG_BRIGHT).pack(
+                     side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
+        self._make_button(row, "Browse", command).pack(side=tk.LEFT)
+
+    def _build_settings(self, parent: tk.Widget) -> None:
+        """Build the settings section (always visible)."""
+        sf = tk.LabelFrame(parent, text=" Settings ", bg=BG_FRAME, fg=FG_MAIN,
+                           font=FONT_BOLD, padx=8, pady=6)
+        sf.pack(fill=tk.X, pady=(0, 8))
+
+        # Row 1: filter sentences + max term length
+        r1 = tk.Frame(sf, bg=BG_FRAME)
+        r1.pack(fill=tk.X, pady=(0, 4))
+
+        self._var_filter_sentences = tk.BooleanVar(value=self._settings.filter_sentences)
+        tk.Checkbutton(r1, text="Filter sentences (no phrases)",
+                       variable=self._var_filter_sentences,
+                       bg=BG_FRAME, fg=FG_BRIGHT, selectcolor=BG_MAIN,
+                       activebackground=BG_FRAME, font=FONT_MAIN,
+                       command=self._save_settings).pack(side=tk.LEFT)
+
+        tk.Label(r1, text="Max term length:", bg=BG_FRAME, fg=FG_MAIN,
+                 font=FONT_MAIN).pack(side=tk.LEFT, padx=(20, 4))
+        self._var_max_len = tk.StringVar(value=str(self._settings.max_term_length))
+        tk.Entry(r1, textvariable=self._var_max_len, width=5, bg=BG_ENTRY, fg=FG_BRIGHT,
+                 font=FONT_MAIN, relief=tk.FLAT, insertbackground=FG_BRIGHT).pack(side=tk.LEFT)
+        self._var_max_len.trace_add("write", lambda *_: self._save_settings())
+
+        # Row 2: min occurrences + max issues per term
+        r2 = tk.Frame(sf, bg=BG_FRAME)
+        r2.pack(fill=tk.X, pady=(0, 4))
+
+        tk.Label(r2, text="Min occurrences:", bg=BG_FRAME, fg=FG_MAIN,
+                 font=FONT_MAIN).pack(side=tk.LEFT)
+        self._var_min_occ = tk.StringVar(value=str(self._settings.min_occurrence))
+        tk.Entry(r2, textvariable=self._var_min_occ, width=5, bg=BG_ENTRY, fg=FG_BRIGHT,
+                 font=FONT_MAIN, relief=tk.FLAT, insertbackground=FG_BRIGHT).pack(
+                     side=tk.LEFT, padx=(4, 20))
+        self._var_min_occ.trace_add("write", lambda *_: self._save_settings())
+
+        tk.Label(r2, text="Max issues per term:", bg=BG_FRAME, fg=FG_MAIN,
+                 font=FONT_MAIN).pack(side=tk.LEFT)
+        self._var_max_issues = tk.StringVar(value=str(self._settings.max_issues_per_term))
+        tk.Entry(r2, textvariable=self._var_max_issues, width=5, bg=BG_ENTRY, fg=FG_BRIGHT,
+                 font=FONT_MAIN, relief=tk.FLAT, insertbackground=FG_BRIGHT).pack(
+                     side=tk.LEFT, padx=(4, 0))
+        self._var_max_issues.trace_add("write", lambda *_: self._save_settings())
+
+        # Row 3: term match mode
+        r3 = tk.Frame(sf, bg=BG_FRAME)
+        r3.pack(fill=tk.X)
+        tk.Label(r3, text="Term match:", bg=BG_FRAME, fg=FG_MAIN,
+                 font=FONT_MAIN).pack(side=tk.LEFT)
+        self._var_match_mode = tk.StringVar(value=self._settings.term_match_mode)
+        tk.Radiobutton(r3, text="Isolated (word boundary)",
+                       variable=self._var_match_mode, value=MATCH_MODE_ISOLATED,
+                       bg=BG_FRAME, fg=FG_BRIGHT, selectcolor=BG_MAIN,
+                       activebackground=BG_FRAME, font=FONT_MAIN,
+                       command=self._save_settings).pack(side=tk.LEFT, padx=(6, 0))
+        tk.Radiobutton(r3, text="Substring (any occurrence)",
+                       variable=self._var_match_mode, value=MATCH_MODE_SUBSTRING,
+                       bg=BG_FRAME, fg=FG_BRIGHT, selectcolor=BG_MAIN,
+                       activebackground=BG_FRAME, font=FONT_MAIN,
+                       command=self._save_settings).pack(side=tk.LEFT, padx=(8, 0))
+
+    def _make_button(self, parent: tk.Widget, text: str,
+                     command: callable, width: int = 8) -> tk.Button:
+        btn = tk.Button(parent, text=text, command=command, width=width,
+                        bg=BTN_BG, fg=BTN_FG, font=FONT_BOLD, relief=tk.FLAT,
+                        activebackground=BTN_BG_HOVER, activeforeground=BTN_FG,
+                        cursor="hand2", padx=4)
+        return btn
+
+    # ------------------------------------------------------------------
+    # Settings read/write
+    # ------------------------------------------------------------------
+
+    def _apply_settings_to_ui(self) -> None:
+        s = self._settings
+        self._var_filter_sentences.set(s.filter_sentences)
+        self._var_max_len.set(str(s.max_term_length))
+        self._var_min_occ.set(str(s.min_occurrence))
+        self._var_max_issues.set(str(s.max_issues_per_term))
+        self._var_match_mode.set(s.term_match_mode)
+        self._var_output.set(s.output_dir)
+
+    def _save_settings(self) -> None:
+        """Read UI values and persist to settings file."""
+        try:
+            s = self._settings
+            s.filter_sentences = self._var_filter_sentences.get()
+            s.max_term_length = int(self._var_max_len.get() or "15")
+            s.min_occurrence = int(self._var_min_occ.get() or "2")
+            s.max_issues_per_term = int(self._var_max_issues.get() or "6")
+            s.term_match_mode = self._var_match_mode.get()
+            s.output_dir = self._var_output.get() or "output"
+            save_settings(s)
+        except (ValueError, Exception):
+            pass  # Don't crash on invalid intermediate input
+
+    def _read_settings(self) -> Settings:
+        """Build Settings from current UI state."""
+        self._save_settings()
+        return self._settings
+
+    # ------------------------------------------------------------------
+    # Browse callbacks
+    # ------------------------------------------------------------------
+
+    def _browse_source(self) -> None:
+        path = filedialog.askdirectory(title="Select Source Folder")
+        if path:
+            self._var_source.set(path)
+            self._scan_source(path)
+
+    def _browse_glossary(self) -> None:
+        path = filedialog.askdirectory(title="Select Glossary Folder")
+        if path:
+            self._var_glossary.set(path)
+            self._scan_glossary(path)
+
+    def _browse_output(self) -> None:
+        path = filedialog.askdirectory(title="Select Output Folder")
+        if path:
+            self._var_output.set(path)
+            self._save_settings()
+
+    # ------------------------------------------------------------------
+    # Language scanning
+    # ------------------------------------------------------------------
+
+    def _scan_source(self, folder: str) -> None:
+        result = scan_folder_for_languages(Path(folder))
+        self._source_scan = result.lang_files
+        langs = result.get_languages()
+        if langs:
+            self._lbl_detected.configure(
+                text=f"Detected: {' '.join(langs)} ({len(langs)} language{'s' if len(langs) != 1 else ''})",
+                fg=FG_OK
+            )
+        else:
+            self._lbl_detected.configure(text="Detected: (no language-tagged files found)", fg=FG_WARN)
+
+    def _scan_glossary(self, folder: str) -> None:
+        result = scan_folder_for_languages(Path(folder))
+        self._glossary_scan = result.lang_files
+        langs = result.get_languages()
+        if langs:
+            self._lbl_gloss_detected.configure(
+                text=f"Glossary Detected: {' '.join(langs)} ({len(langs)} lang{'s' if len(langs) != 1 else ''})",
+                fg=FG_OK
+            )
+        else:
+            self._lbl_gloss_detected.configure(text="Glossary Detected: (none found)", fg=FG_WARN)
+
+    def _on_mode_change(self) -> None:
+        if self._var_mode.get() == "external":
+            self._gloss_frame.pack(fill=tk.X, pady=(0, 6), after=self._mode_frame)
+        else:
+            self._gloss_frame.pack_forget()
+
+    # ------------------------------------------------------------------
+    # Log helpers
+    # ------------------------------------------------------------------
+
+    def _log_msg(self, msg: str, tag: str = "") -> None:
+        self._log.configure(state=tk.NORMAL)
+        self._log.insert(tk.END, msg + "\n", tag)
+        self._log.see(tk.END)
+        self._log.configure(state=tk.DISABLED)
+        self.update_idletasks()
+
+    def _log_clear(self) -> None:
+        self._log.configure(state=tk.NORMAL)
+        self._log.delete("1.0", tk.END)
+        self._log.configure(state=tk.DISABLED)
+
+    # ------------------------------------------------------------------
+    # Pre-run validation
+    # ------------------------------------------------------------------
+
+    def _validate_run(self) -> bool:
+        if self._running:
+            return False
+        if not self._var_source.get():
+            messagebox.showwarning("QuickCheck", "Please select a source folder first.")
+            return False
+        if not self._source_scan:
+            # Attempt re-scan
+            self._scan_source(self._var_source.get())
+        if not self._source_scan:
+            messagebox.showwarning("QuickCheck",
+                                   "No language-tagged files detected in source folder.\n"
+                                   "Make sure subfolders/files have language code suffixes (e.g. FRE/, patch_GER.xml).")
+            return False
+        return True
+
+    def _get_glossary_lang_files(self) -> Tuple[bool, Optional[Dict[str, list]]]:
+        """
+        Returns (ok, glossary_lang_files).
+        ok=False means abort (validation failed).
+        glossary_lang_files=None means auto-extract from source files.
+        glossary_lang_files=dict means use external glossary files.
+        """
+        if self._var_mode.get() == "external":
+            if not self._var_glossary.get():
+                messagebox.showwarning("QuickCheck", "External Glossary mode selected but no glossary folder chosen.")
+                return False, None
+            if not self._glossary_scan:
+                self._scan_glossary(self._var_glossary.get())
+            if not self._glossary_scan:
+                messagebox.showwarning("QuickCheck",
+                                       "No language-tagged files found in glossary folder.")
+                return False, None
+            return True, self._glossary_scan
+        # Auto-extract: None = use source files
+        return True, None
+
+    def _set_buttons_state(self, state: str) -> None:
+        self._btn_line.configure(state=state)
+        self._btn_term.configure(state=state)
+        self._btn_gloss.configure(state=state)
+
+    # ------------------------------------------------------------------
+    # LINE CHECK
+    # ------------------------------------------------------------------
+
+    def _run_line_check(self) -> None:
+        if not self._validate_run():
+            return
+        self._running = True
+        self._set_buttons_state(tk.DISABLED)
+        self._log_clear()
+        self._progressbar.configure(mode="indeterminate")
+        self._progressbar.start(15)
+        self._log_msg("Starting LINE CHECK...", "info")
+
+        s = self._read_settings()
+        lang_files = dict(self._source_scan)
+        output_dir = Path(resolve_output_dir(s))
+
+        def worker() -> None:
+            try:
+                results = run_line_check_all_languages(
+                    lang_files=lang_files,
+                    output_dir=output_dir,
+                    filter_sentences=s.filter_sentences,
+                    length_threshold=s.max_term_length,
+                    min_occurrence=s.min_occurrence if s.min_occurrence > 1 else None,
+                    progress_callback=lambda msg: self.after(0, self._log_msg, msg),
+                )
+                summary_parts = [f"{lang}({count})" for lang, count in sorted(results.items())]
+                summary = "LINE CHECK done: " + " ".join(summary_parts)
+                summary += f" — saved to {output_dir}"
+                self.after(0, self._log_msg, summary, "ok")
+            except Exception as exc:
+                logger.exception("LINE CHECK failed")
+                self.after(0, self._log_msg, f"ERROR: {exc}", "err")
+            finally:
+                self.after(0, self._finish_run)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    # ------------------------------------------------------------------
+    # TERM CHECK
+    # ------------------------------------------------------------------
+
+    def _run_term_check(self) -> None:
+        if not self._validate_run():
+            return
+
+        ok, glossary_lang_files = self._get_glossary_lang_files()
+        if not ok:
+            return
+
+        self._running = True
+        self._set_buttons_state(tk.DISABLED)
+        self._log_clear()
+        self._progressbar.configure(mode="indeterminate")
+        self._progressbar.start(15)
+        mode_label = "external glossary" if glossary_lang_files else "auto-extract"
+        self._log_msg(f"Starting TERM CHECK ({mode_label})...", "info")
+
+        s = self._read_settings()
+        lang_files = dict(self._source_scan)
+        output_dir = Path(resolve_output_dir(s))
+
+        def worker() -> None:
+            try:
+                results = run_term_check_all_languages(
+                    lang_files=lang_files,
+                    output_dir=output_dir,
+                    glossary_lang_files=glossary_lang_files,
+                    filter_sentences=s.filter_sentences,
+                    length_threshold=s.max_term_length,
+                    min_occurrence=s.min_occurrence if s.min_occurrence > 1 else None,
+                    max_issues_per_term=s.max_issues_per_term,
+                    match_mode=s.term_match_mode,
+                    progress_callback=lambda msg: self.after(0, self._log_msg, msg),
+                )
+                summary_parts = [f"{lang}({count})" for lang, count in sorted(results.items())]
+                summary = "TERM CHECK done: " + " ".join(summary_parts)
+                summary += f" — saved to {output_dir}"
+                self.after(0, self._log_msg, summary, "ok")
+            except Exception as exc:
+                logger.exception("TERM CHECK failed")
+                self.after(0, self._log_msg, f"ERROR: {exc}", "err")
+            finally:
+                self.after(0, self._finish_run)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    # ------------------------------------------------------------------
+    # EXTRACT GLOSSARY
+    # ------------------------------------------------------------------
+
+    def _run_extract_glossary(self) -> None:
+        if not self._validate_run():
+            return
+        self._running = True
+        self._set_buttons_state(tk.DISABLED)
+        self._log_clear()
+        self._progressbar.configure(mode="indeterminate")
+        self._progressbar.start(15)
+        self._log_msg("Starting EXTRACT GLOSSARY...", "info")
+
+        s = self._read_settings()
+        lang_files = dict(self._source_scan)
+        output_dir = Path(resolve_output_dir(s))
+
+        def worker() -> None:
+            try:
+                results = extract_glossary_all_languages(
+                    lang_files=lang_files,
+                    output_dir=output_dir,
+                    max_term_length=s.max_term_length,
+                    min_occurrence=s.min_occurrence if s.min_occurrence > 0 else 2,
+                    filter_sentences=s.filter_sentences,
+                    progress_callback=lambda msg: self.after(0, self._log_msg, msg),
+                )
+                summary_parts = [f"{lang}({count})" for lang, count in sorted(results.items())]
+                summary = "GLOSSARY done: " + " ".join(summary_parts)
+                summary += f" — saved to {output_dir}"
+                self.after(0, self._log_msg, summary, "ok")
+            except Exception as exc:
+                logger.exception("EXTRACT GLOSSARY failed")
+                self.after(0, self._log_msg, f"ERROR: {exc}", "err")
+            finally:
+                self.after(0, self._finish_run)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _finish_run(self) -> None:
+        self._progressbar.stop()
+        self._progressbar.configure(mode="determinate")
+        self._progress_var.set(0)
+        self._set_buttons_state(tk.NORMAL)
+        self._running = False
