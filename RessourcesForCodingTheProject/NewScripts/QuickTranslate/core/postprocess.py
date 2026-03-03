@@ -395,6 +395,97 @@ def cleanup_no_translation(xml_path: Path, dry_run: bool = False) -> int:
         return 0
 
 
+# ─── Combined single-pass cleanup (for fast folder merge) ─────────────────
+
+
+def run_all_postprocess_on_tree(root) -> dict:
+    """
+    Run ALL postprocess cleanup steps in a SINGLE iteration over LocStr elements.
+
+    Combines newline normalization, empty StrOrigin enforcement, and
+    "no translation" replacement into one pass. Used by _fast_folder_merge()
+    to avoid re-parsing and re-iterating the tree.
+
+    Args:
+        root: Parsed XML root element (modified in-place)
+
+    Returns:
+        {"changed": bool, "newlines_fixed": int, "empty_strorigin_cleaned": int,
+         "no_translation_replaced": int}
+    """
+    result = {
+        "changed": False,
+        "newlines_fixed": 0,
+        "empty_strorigin_cleaned": 0,
+        "no_translation_replaced": 0,
+    }
+
+    for loc in _iter_locstr(root):
+        # --- Step 1: Normalize newlines in Str ---
+        str_attr, str_val = _get_attr(loc, STR_ATTRS)
+        if str_val is not None:
+            normalized = _normalize_newlines(str_val)
+            if normalized != str_val:
+                loc.set(str_attr, normalized)
+                result["newlines_fixed"] += 1
+                result["changed"] = True
+                str_val = normalized  # use cleaned value for later steps
+
+        # --- Step 1b: Normalize newlines in Desc ---
+        desc_attr, desc_val = _get_attr(loc, DESC_ATTRS)
+        if desc_val is not None:
+            desc_normalized = _normalize_newlines(desc_val)
+            if desc_normalized != desc_val:
+                loc.set(desc_attr, desc_normalized)
+                result["newlines_fixed"] += 1
+                result["changed"] = True
+                desc_val = desc_normalized
+
+        # --- Step 2: Empty StrOrigin enforcement ---
+        _, origin = _get_attr(loc, STRORIGIN_ATTRS)
+        origin_stripped = (origin or "").strip()
+        str_val_stripped = (str_val or "").strip() if str_val is not None else ""
+
+        if not origin_stripped and str_val_stripped:
+            loc.set("Str", "")
+            result["empty_strorigin_cleaned"] += 1
+            result["changed"] = True
+            str_val = ""  # cleared
+
+        _, desc_origin = _get_attr(loc, DESCORIGIN_ATTRS)
+        desc_origin_stripped = (desc_origin or "").strip()
+        desc_val_stripped = (desc_val or "").strip() if desc_val is not None else ""
+
+        if not desc_origin_stripped and desc_val_stripped:
+            loc.set("Desc", "")
+            result["empty_strorigin_cleaned"] += 1
+            result["changed"] = True
+            desc_val = ""
+
+        # --- Step 3: "no translation" replacement ---
+        if str_val:
+            check = _WHITESPACE_RE.sub(' ', str_val.strip()).lower()
+            if check == 'no translation':
+                if origin_stripped:
+                    loc.set(str_attr if str_attr else "Str", origin_stripped)
+                else:
+                    loc.set(str_attr if str_attr else "Str", "")
+                result["no_translation_replaced"] += 1
+                result["changed"] = True
+
+        if desc_val:
+            desc_check = _WHITESPACE_RE.sub(' ', desc_val.strip()).lower()
+            if desc_check == 'no translation':
+                if desc_origin_stripped:
+                    loc.set(desc_attr if desc_attr else "Desc", desc_origin_stripped)
+                else:
+                    loc.set(desc_attr if desc_attr else "Desc", "")
+                result["no_translation_replaced"] += 1
+                result["changed"] = True
+
+    return result
+
+
 # ─── Unified Runner ─────────────────────────────────────────────────────────
 
 

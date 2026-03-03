@@ -1506,6 +1506,376 @@ def _recover_not_found_via_eventname(
     return file_result
 
 
+# ─── Fast Folder Merge (TMXTransfer11 pattern) ──────────────────────────────
+
+
+def _fast_folder_merge(
+    target_files: List[Path],
+    corrections: List[Dict],
+    correction_lookup,
+    correction_lookup_nospace,
+    match_mode: str,
+    dry_run: bool,
+    only_untranslated: bool,
+    log_callback=None,
+    progress_callback=None,
+) -> Dict:
+    """
+    Merge ALL corrections into ALL target XML files in one tight loop.
+
+    TMXTransfer11 pattern: parse → 1 match pass + 1 postprocess pass → write.
+    No per-file details lists, no per-file correction_matched arrays.
+    Global tracking of which corrections matched SOMEWHERE across all files.
+
+    Args:
+        target_files: List of XML file paths to process
+        corrections: Full corrections list (for unmatched reporting)
+        correction_lookup: Pre-built lookup dict (mode-specific)
+        correction_lookup_nospace: Pre-built nospace fallback (strict/strorigin_only)
+        match_mode: "strict" | "strorigin_only" | "stringid_only"
+        dry_run: If True, don't write changes
+        only_untranslated: If True, skip entries that already have non-Korean Str
+        log_callback: Optional GUI log callback
+        progress_callback: Optional progress callback
+
+    Returns:
+        Dict with: total_matched, total_updated, total_not_found,
+                   total_strorigin_mismatch, total_skipped_translated,
+                   total_desc_updated, errors, per_file, unmatched_details
+    """
+    from .postprocess import run_all_postprocess_on_tree
+
+    result = {
+        "total_matched": 0,
+        "total_updated": 0,
+        "total_not_found": 0,
+        "total_strorigin_mismatch": 0,
+        "total_skipped_translated": 0,
+        "total_desc_updated": 0,
+        "errors": [],
+        "per_file": {},
+        "unmatched_details": [],
+    }
+
+    if not target_files or not corrections:
+        return result
+
+    # ─── Phase A: Global state (once, before file loop) ──────────────
+
+    if match_mode == "strict":
+        # correction_lookup: (sid_lower, norm_orig) -> list of (corrected, category, index)
+        # Track per correction index — use len(corrections) for robustness
+        # (handles edge case where some corrections are filtered out of lookup)
+        correction_matched = bytearray(len(corrections))
+
+        # For STRORIGIN_MISMATCH diagnostics
+        correction_sid_set = set()
+        for key in correction_lookup:
+            correction_sid_set.add(key[0])  # key = (sid_lower, norm_orig)
+        target_sids_seen = set()
+        target_attribs_cache = {}
+
+    elif match_mode == "strorigin_only":
+        # correction_lookup: norm_orig -> (corrected, index)
+        correction_matched = bytearray(len(corrections))
+        # Track matched origins for source-duplicate detection
+        matched_origin_set = set()
+
+    elif match_mode == "stringid_only":
+        # correction_lookup: sid_lower -> full correction dict
+        correction_matched = {sid: False for sid in correction_lookup}
+        # For SKIPPED_EMPTY_STRORIGIN diagnostics
+        target_stringids_all = set()
+
+    counters_matched = 0
+    counters_updated = 0
+    counters_skipped_translated = 0
+    counters_desc_updated = 0
+
+    # ─── Phase B: Tight file loop ────────────────────────────────────
+
+    for fi, target_file in enumerate(target_files):
+        if progress_callback:
+            progress_callback(f"Fast merge: {target_file.name} ({fi+1}/{len(target_files)})")
+
+        try:
+            if USING_LXML:
+                parser = etree.XMLParser(
+                    resolve_entities=False, load_dtd=False,
+                    no_network=True, recover=True,
+                )
+                tree = etree.parse(str(target_file), parser)
+                root = tree.getroot()
+            else:
+                tree = etree.parse(str(target_file))
+                root = tree.getroot()
+        except Exception as e:
+            result["errors"].append(f"{target_file.name}: {e}")
+            logger.error(f"Fast merge parse error: {target_file}: {e}")
+            continue
+
+        changed = False
+        file_updated = 0
+        file_matched = 0
+
+        # Collect all LocStr elements once
+        all_elements = []
+        for tag in LOCSTR_TAGS:
+            all_elements.extend(root.iter(tag))
+
+        # ─── StringID-only: collect ALL target SIDs for empty-strorigin diagnostics
+        if match_mode == "stringid_only":
+            for loc in all_elements:
+                sid = get_attr(loc, STRINGID_ATTRS).strip()
+                if sid:
+                    target_stringids_all.add(sid.lower())
+
+        # ─── ONE match pass over all elements ────────────────────────
+        for loc in all_elements:
+            sid = get_attr(loc, STRINGID_ATTRS).strip()
+            orig_raw = get_attr(loc, STRORIGIN_ATTRS)
+
+            if match_mode == "strict":
+                orig = normalize_text(orig_raw)
+                if not orig.strip():
+                    continue
+
+                sid_lower = sid.lower()
+                orig_nospace = normalize_nospace(orig)
+                key = (sid_lower, orig)
+                key_nospace = (sid_lower, orig_nospace)
+
+                match_entries = correction_lookup.get(key, [])
+                if not match_entries:
+                    match_entries = correction_lookup_nospace.get(key_nospace, [])
+
+                if match_entries:
+                    new_str, category, idx = match_entries[-1]
+                    for _, _, matched_idx in match_entries:
+                        correction_matched[matched_idx] = 1
+                    counters_matched += 1
+                    file_matched += 1
+                    target_sids_seen.add(sid_lower)  # track for STRORIGIN_MISMATCH
+
+                    old_str = get_attr(loc, STR_ATTRS)
+
+                    if only_untranslated and old_str and not is_korean_text(old_str):
+                        counters_skipped_translated += 1
+                        orig_correction = corrections[idx]
+                        result["unmatched_details"].append({
+                            "string_id": sid,
+                            "status": "SKIPPED_TRANSLATED",
+                            "old": orig_correction.get("str_origin", ""),
+                            "new": orig_correction.get("corrected", ""),
+                            "raw_attribs": orig_correction.get("raw_attribs", {}),
+                        })
+                        continue
+
+                    new_str = _convert_linebreaks_for_xml(new_str)
+                    if new_str != old_str:
+                        if not dry_run:
+                            loc.set("Str", new_str)
+                        counters_updated += 1
+                        file_updated += 1
+                        changed = True
+
+                    # Desc transfer
+                    orig_correction = corrections[idx]
+                    if _try_write_desc(loc, orig_correction, dry_run):
+                        counters_desc_updated += 1
+                        changed = True
+                else:
+                    # Not matched — capture for STRORIGIN_MISMATCH diagnostics
+                    if sid_lower in correction_sid_set:
+                        target_sids_seen.add(sid_lower)
+                        if sid_lower not in target_attribs_cache:
+                            target_attribs_cache[sid_lower] = dict(loc.attrib)
+
+            elif match_mode == "strorigin_only":
+                orig = normalize_for_matching(orig_raw)
+                if not orig.strip():
+                    continue
+
+                orig_nospace = normalize_nospace(orig)
+
+                match_data = correction_lookup.get(orig)
+                if match_data is None:
+                    match_data = correction_lookup_nospace.get(orig_nospace)
+
+                if match_data is not None:
+                    new_str, idx = match_data
+                    correction_matched[idx] = 1
+                    matched_origin_set.add(normalize_for_matching(
+                        corrections[idx].get("str_origin", "")
+                    ))
+                    counters_matched += 1
+                    file_matched += 1
+
+                    old_str = get_attr(loc, STR_ATTRS)
+
+                    if only_untranslated and old_str and not is_korean_text(old_str):
+                        counters_skipped_translated += 1
+                        orig_correction = corrections[idx]
+                        result["unmatched_details"].append({
+                            "string_id": sid,
+                            "status": "SKIPPED_TRANSLATED",
+                            "old": orig_correction.get("str_origin", ""),
+                            "new": orig_correction.get("corrected", ""),
+                            "raw_attribs": orig_correction.get("raw_attribs", {}),
+                        })
+                        continue
+
+                    new_str = _convert_linebreaks_for_xml(new_str)
+                    if new_str != old_str:
+                        if not dry_run:
+                            loc.set("Str", new_str)
+                        counters_updated += 1
+                        file_updated += 1
+                        changed = True
+
+            elif match_mode == "stringid_only":
+                target_origin = get_attr(loc, STRORIGIN_ATTRS).strip()
+                if not target_origin:
+                    continue
+
+                sid_lower = sid.lower()
+                if sid_lower in correction_lookup:
+                    c = correction_lookup[sid_lower]
+                    correction_matched[sid_lower] = True
+                    counters_matched += 1
+                    file_matched += 1
+
+                    new_str = c["corrected"]
+                    old_str = get_attr(loc, STR_ATTRS)
+
+                    if only_untranslated and old_str and not is_korean_text(old_str):
+                        counters_skipped_translated += 1
+                        result["unmatched_details"].append({
+                            "string_id": sid,
+                            "status": "SKIPPED_TRANSLATED",
+                            "old": c.get("str_origin", ""),
+                            "new": c.get("corrected", ""),
+                            "raw_attribs": c.get("raw_attribs", {}),
+                        })
+                        continue
+
+                    new_str = _convert_linebreaks_for_xml(new_str)
+                    if new_str != old_str:
+                        if not dry_run:
+                            loc.set("Str", new_str)
+                        counters_updated += 1
+                        file_updated += 1
+                        changed = True
+
+                    # Desc transfer
+                    if _try_write_desc(loc, c, dry_run):
+                        counters_desc_updated += 1
+                        changed = True
+
+        # ─── Combined postprocess (ONE pass) ─────────────────────────
+        pp = run_all_postprocess_on_tree(root)
+        if pp["changed"]:
+            changed = True
+
+        # ─── Write if anything changed ───────────────────────────────
+        if changed and not dry_run:
+            try:
+                current_mode = os.stat(target_file).st_mode
+                if not current_mode & stat.S_IWRITE:
+                    os.chmod(target_file, current_mode | stat.S_IWRITE)
+            except Exception:
+                pass
+
+            if USING_LXML:
+                tree.write(str(target_file), encoding="utf-8", xml_declaration=False, pretty_print=True)
+            else:
+                tree.write(str(target_file), encoding="utf-8", xml_declaration=False)
+
+        if file_updated > 0:
+            result["per_file"][target_file.name] = {"updated": file_updated, "matched": file_matched}
+
+    # ─── Phase C: Compute unmatched ONCE (after all files) ───────────
+
+    if match_mode == "strict":
+        for i, c in enumerate(corrections):
+            if not correction_matched[i]:
+                sid = c["string_id"]
+                sid_lower = sid.lower()
+                if sid_lower in target_sids_seen:
+                    status = "STRORIGIN_MISMATCH"
+                    result["total_strorigin_mismatch"] += 1
+                else:
+                    status = "NOT_FOUND"
+                    result["total_not_found"] += 1
+
+                detail = {
+                    "string_id": sid,
+                    "status": status,
+                    "old": c.get("str_origin", ""),
+                    "new": c["corrected"],
+                    "raw_attribs": c.get("raw_attribs", {}),
+                    "_original_eventname": c.get("_original_eventname", ""),
+                    "_original_dialogvoice": c.get("_original_dialogvoice", ""),
+                }
+                if status == "STRORIGIN_MISMATCH":
+                    detail["target_raw_attribs"] = target_attribs_cache.get(sid_lower, {})
+                    # Build target_strorigin from cached attribs
+                    cached = target_attribs_cache.get(sid_lower, {})
+                    detail["target_strorigin"] = cached.get("StrOrigin", cached.get("strorigin", ""))
+                result["unmatched_details"].append(detail)
+
+    elif match_mode == "strorigin_only":
+        for i, c in enumerate(corrections):
+            if not correction_matched[i]:
+                origin_norm = normalize_for_matching(c.get("str_origin", ""))
+                if not origin_norm:
+                    continue
+                if origin_norm in matched_origin_set:
+                    continue  # source duplicate, not a failure
+                result["total_not_found"] += 1
+                result["unmatched_details"].append({
+                    "string_id": c.get("string_id", ""),
+                    "status": "NOT_FOUND",
+                    "old": c.get("str_origin", ""),
+                    "new": c["corrected"],
+                    "raw_attribs": c.get("raw_attribs", {}),
+                    "_original_eventname": c.get("_original_eventname", ""),
+                    "_original_dialogvoice": c.get("_original_dialogvoice", ""),
+                })
+
+    elif match_mode == "stringid_only":
+        for sid_key, matched in correction_matched.items():
+            if not matched:
+                c = correction_lookup[sid_key]
+                if sid_key in target_stringids_all:
+                    status = "SKIPPED_EMPTY_STRORIGIN"
+                else:
+                    status = "NOT_FOUND"
+                    result["total_not_found"] += 1
+                result["unmatched_details"].append({
+                    "string_id": c["string_id"],
+                    "status": status,
+                    "old": c.get("str_origin", ""),
+                    "new": c["corrected"],
+                    "raw_attribs": c.get("raw_attribs", {}),
+                    "_original_eventname": c.get("_original_eventname", ""),
+                    "_original_dialogvoice": c.get("_original_dialogvoice", ""),
+                })
+
+    result["total_matched"] = counters_matched
+    result["total_updated"] = counters_updated
+    result["total_skipped_translated"] = counters_skipped_translated
+    result["total_desc_updated"] = counters_desc_updated
+
+    logger.info(
+        f"Fast merge complete: {len(target_files)} files, "
+        f"{counters_matched} matched, {counters_updated} updated, "
+        f"{result['total_not_found']} not found"
+    )
+
+    return result
+
+
 def transfer_folder_to_folder(
     source_folder: Path,
     target_folder: Path,
@@ -2031,8 +2401,9 @@ def transfer_folder_to_folder(
             else:
                 _lookup_cache[_corr_id] = (None, None)
 
-    # ─── Phase 2: ONE pass per target file with ALL corrections ─────
-    # Now handles both XML and Excel targets via dispatch
+    # ─── Phase 2: Merge corrections to target files ─────────────────
+    # ALL XML targets (including fuzzy modes) use fast folder merge (TMXTransfer11 pattern).
+    # Excel targets use the per-file loop.
 
     from .excel_io import merge_corrections_to_excel
 
@@ -2047,7 +2418,263 @@ def transfer_folder_to_folder(
 
     _preprocess_stats_counted = set()  # Track which correction lists had stats counted
 
-    for ti, (target_key, group) in enumerate(target_groups.items()):
+    # ─── Phase 2A: Fast merge for non-fuzzy XML targets ──────────────
+    # Groups all XML targets by correction list (one group per language),
+    # runs _fast_folder_merge() once per group. 10x+ faster than per-file.
+
+    _fast_merge_modes = {
+        "strict", "strorigin_only", "stringid_only",
+        "strict_fuzzy", "strorigin_only_fuzzy",
+    }
+    _remaining_targets = {}  # Targets that need per-file processing (Excel only)
+
+    if match_mode in _fast_merge_modes:
+        # Group XML targets by correction list ID (same corrections = same language)
+        _fast_groups = {}  # {corr_id: {"corrections": [...], "xml_files": [...], ...}}
+
+        for target_key, group in target_groups.items():
+            target_file = group["target_file"]
+            if target_file.suffix.lower() in (".xlsx", ".xls"):
+                _remaining_targets[target_key] = group
+                continue
+            corr_id = id(group["corrections"])
+            if corr_id not in _fast_groups:
+                _fast_groups[corr_id] = {
+                    "corrections": group["corrections"],
+                    "xml_files": [],
+                    "source_files": group["source_files"],
+                    "language": group.get("language", ""),
+                }
+            _fast_groups[corr_id]["xml_files"].append(target_file)
+
+        for corr_id, fg in _fast_groups.items():
+            _cached = _lookup_cache.get(corr_id)
+            if not _cached or _cached[0] is None:
+                logger.warning(f"No lookup for fast merge group (lang={fg['language']}), skipping")
+                continue
+
+            lookup, lookup_nospace = _cached
+            corrections = fg["corrections"]
+            xml_files = fg["xml_files"]
+            lang = fg["language"]
+            source_names = fg["source_files"]
+
+            # Handle stringid_only preprocess stats (skipped_non_script, etc.)
+            if match_mode == "stringid_only":
+                _pp_stats = _preprocess_stats_cache.get(corr_id)
+                if _pp_stats and corr_id not in _preprocess_stats_counted:
+                    results["total_skipped"] += _pp_stats.get("skipped_non_script", 0)
+                    results["total_skipped_excluded"] += _pp_stats.get("skipped_excluded", 0)
+                    _preprocess_stats_counted.add(corr_id)
+
+            logger.info(f"═══ FAST MERGE [{lang}]: {len(corrections):,} corrections → {len(xml_files)} XML files ═══")
+            if log_callback:
+                log_callback(
+                    f"── {lang} · {len(corrections):,} corrections → {len(xml_files)} XML files (fast merge) ──",
+                    'header',
+                )
+
+            # Use base mode for fast merge (strict_fuzzy → strict, etc.)
+            _fm_mode = _base_mode if match_mode.endswith("_fuzzy") else match_mode
+
+            fast_result = _fast_folder_merge(
+                xml_files, corrections,
+                lookup, lookup_nospace,
+                _fm_mode,
+                dry_run, only_untranslated,
+                log_callback, progress_callback,
+            )
+
+            # Aggregate fast_result into results
+            results["files_processed"] += len(source_names)
+            results["total_corrections"] += len(corrections)
+            results["total_matched"] += fast_result["total_matched"]
+            results["total_updated"] += fast_result["total_updated"]
+            results["total_not_found"] += fast_result["total_not_found"]
+            results["total_strorigin_mismatch"] += fast_result["total_strorigin_mismatch"]
+            results["total_skipped_translated"] += fast_result["total_skipped_translated"]
+            results["total_desc_updated"] += fast_result["total_desc_updated"]
+            results["errors"].extend(fast_result["errors"])
+
+            # Count SKIPPED_EMPTY_STRORIGIN from unmatched details (stringid_only)
+            skipped_empty_so = sum(
+                1 for d in fast_result["unmatched_details"]
+                if d.get("status") == "SKIPPED_EMPTY_STRORIGIN"
+            )
+            results["total_skipped_empty_strorigin"] += skipped_empty_so
+
+            # Build file_results entry for failure report compatibility.
+            # Use first target file as the representative (language extraction works on any).
+            representative_target = xml_files[0].name
+            combined_details = list(fast_result["unmatched_details"])
+
+            # Merge stringid_only preprocess details (SKIPPED_NON_SCRIPT, SKIPPED_EXCLUDED)
+            if match_mode == "stringid_only":
+                _pp_stats = _preprocess_stats_cache.get(corr_id)
+                if _pp_stats:
+                    combined_details.extend(_pp_stats.get("details", []))
+
+            results["file_results"][representative_target] = {
+                "target": representative_target,
+                "source_files": source_names,
+                "corrections": len(corrections),
+                "matched": fast_result["total_matched"],
+                "updated": fast_result["total_updated"],
+                "not_found": fast_result["total_not_found"],
+                "strorigin_mismatch": fast_result["total_strorigin_mismatch"],
+                "skipped_translated": fast_result["total_skipped_translated"],
+                "skipped_empty_strorigin": skipped_empty_so,
+                "desc_updated": fast_result["total_desc_updated"],
+                "errors": fast_result["errors"],
+                "details": combined_details,
+            }
+
+            # EventName recovery on unmatched (strict and stringid_only only)
+            if match_mode in ("strict", "strict_fuzzy", "stringid_only") and fast_result["total_not_found"] > 0:
+                # Run EventName recovery on the synthetic file_result against all XML files
+                # Use the first XML file as target (recovery re-parses per-file anyway)
+                _fr_entry = results["file_results"][representative_target]
+                for recovery_target in xml_files:
+                    not_found_count = sum(
+                        1 for d in _fr_entry["details"]
+                        if d.get("status") == "NOT_FOUND"
+                    )
+                    if not_found_count == 0:
+                        break
+                    _fr_entry = _recover_not_found_via_eventname(
+                        _fr_entry, recovery_target, _get_recovery_mapping(),
+                        dry_run=dry_run, only_untranslated=only_untranslated,
+                        log_callback=log_callback,
+                        original_merge_mode=match_mode if match_mode == "stringid_only" else None,
+                        stringid_to_category=stringid_to_category if match_mode == "stringid_only" else None,
+                        stringid_to_subfolder=stringid_to_subfolder if match_mode == "stringid_only" else None,
+                    )
+                # Update results with recovery
+                results["file_results"][representative_target] = _fr_entry
+                recovery = _fr_entry.get("eventname_recovery", {})
+                if recovery:
+                    results.setdefault("total_eventname_recovered", 0)
+                    results["total_eventname_recovered"] += recovery.get("matched", 0)
+                    # Adjust not_found in results (recovery resolved some)
+                    recovered_count = recovery.get("matched", 0)
+                    results["total_not_found"] = max(0, results["total_not_found"] - recovered_count)
+
+            # ─── Fuzzy Step 2: FAISS on unmatched → fast merge by StringID ───
+            if match_mode.endswith("_fuzzy") and _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
+                _fr_entry = results["file_results"][representative_target]
+                _fuzzy_statuses = {"NOT_FOUND", "STRORIGIN_MISMATCH"} if match_mode == "strict_fuzzy" else {"NOT_FOUND"}
+                unconsumed = []
+                for detail in _fr_entry["details"]:
+                    if detail.get("status") in _fuzzy_statuses:
+                        unconsumed.append({
+                            "string_id": detail["string_id"],
+                            "str_origin": detail.get("old", ""),
+                            "corrected": detail.get("new", ""),
+                            "raw_attribs": detail.get("raw_attribs", {}),
+                            "_original_status": detail["status"],
+                        })
+
+                if unconsumed:
+                    from .fuzzy_matching import find_matches_fuzzy
+                    logger.info(f"[{lang}] Fuzzy Step 2: FAISS on {len(unconsumed)} unconsumed corrections")
+                    if log_callback:
+                        log_callback(f"  Fuzzy Step 2: {len(unconsumed)} unmatched → FAISS search", 'info')
+
+                    fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
+                        unconsumed, _fuzzy_texts, _fuzzy_entries,
+                        _fuzzy_model, _fuzzy_index, effective_threshold,
+                        progress_callback=progress_callback,
+                        log_callback=log_callback,
+                    )
+
+                    if fuzzy_matched:
+                        # Build lookup: fuzzy_target_string_id.lower() → correction dict
+                        # Same structure as stringid_only (sid.lower() → dict), so _fast_folder_merge works
+                        fuzzy_lookup, _ = _build_correction_lookups(fuzzy_matched, "fuzzy")
+
+                        fuzzy_result = _fast_folder_merge(
+                            xml_files, fuzzy_matched,
+                            fuzzy_lookup, None,
+                            "stringid_only",
+                            dry_run, only_untranslated,
+                            log_callback, progress_callback,
+                        )
+
+                        # Merge fuzzy results into totals
+                        results["total_matched"] += fuzzy_result["total_matched"]
+                        results["total_updated"] += fuzzy_result["total_updated"]
+
+                        # Adjust Step 1 unmatched counts (fuzzy resolved some)
+                        fuzzy_from_not_found = sum(
+                            1 for m in fuzzy_matched if m.get("_original_status") == "NOT_FOUND"
+                        )
+                        fuzzy_from_mismatch = sum(
+                            1 for m in fuzzy_matched if m.get("_original_status") == "STRORIGIN_MISMATCH"
+                        )
+                        results["total_not_found"] = max(0, results["total_not_found"] - fuzzy_from_not_found)
+                        results["total_strorigin_mismatch"] = max(0, results["total_strorigin_mismatch"] - fuzzy_from_mismatch)
+
+                        # Update file_results details: remove resolved, add fuzzy details
+                        resolved_sids = {m.get("string_id", "") for m in fuzzy_matched}
+                        _fr_entry["details"] = [
+                            d for d in _fr_entry["details"]
+                            if not (d.get("status") in _fuzzy_statuses and d.get("string_id", "") in resolved_sids)
+                        ]
+                        _fr_entry["details"].extend(fuzzy_result["unmatched_details"])
+
+                        # Update file_results counters
+                        _fr_entry["matched"] = _fr_entry.get("matched", 0) + fuzzy_result["total_matched"]
+                        _fr_entry["updated"] = _fr_entry.get("updated", 0) + fuzzy_result["total_updated"]
+                        _fr_entry["not_found"] = max(0, _fr_entry.get("not_found", 0) - fuzzy_from_not_found)
+                        if "strorigin_mismatch" in _fr_entry:
+                            _fr_entry["strorigin_mismatch"] = max(0, _fr_entry["strorigin_mismatch"] - fuzzy_from_mismatch)
+
+                        logger.info(
+                            f"[{lang}] Fuzzy Step 2: {fuzzy_result['total_matched']} additional matches "
+                            f"({fuzzy_result['total_updated']} updated, avg_score={fuzzy_stats['avg_score']:.3f})"
+                        )
+                        if log_callback:
+                            log_callback(
+                                f"  Fuzzy Step 2: {fuzzy_result['total_matched']} recovered (avg: {fuzzy_stats['avg_score']:.2f})",
+                                'info',
+                            )
+                    else:
+                        logger.info(f"[{lang}] Fuzzy Step 2: No matches found for {len(unconsumed)} unconsumed")
+                        if log_callback:
+                            log_callback(f"  Fuzzy Step 2: 0 recovered from {len(unconsumed)} attempts", 'warning')
+                else:
+                    logger.info(f"[{lang}] Fuzzy Step 2: All corrections matched in Step 1!")
+                    if log_callback:
+                        log_callback("  Fuzzy Step 2: All matched in Step 1!", 'success')
+
+            # Log summary
+            f_updated = fast_result["total_updated"]
+            f_matched = fast_result["total_matched"]
+            f_not_found = fast_result["total_not_found"]
+            f_skipped_tr = fast_result["total_skipped_translated"]
+            f_strorigin_mm = fast_result["total_strorigin_mismatch"]
+            f_unchanged = max(0, f_matched - f_updated - f_skipped_tr)
+            logger.info(
+                f"[{lang}] fast merge: "
+                f"{f_updated} updated, {f_unchanged} already correct, {f_skipped_tr} skipped, {f_not_found} not found"
+            )
+            if log_callback:
+                tag = 'success' if f_not_found == 0 and f_strorigin_mm == 0 else 'warning'
+                parts = [f"{f_updated} updated", f"{f_unchanged} already correct"]
+                if f_skipped_tr > 0:
+                    parts.append(f"{f_skipped_tr} skipped")
+                if f_not_found > 0:
+                    parts.append(f"{f_not_found} not found")
+                if f_strorigin_mm > 0 and match_mode in ("strict", "strict_fuzzy"):
+                    parts.append(f"{f_strorigin_mm} origin mismatch")
+                log_callback(f"  Result: {' · '.join(parts)}", tag)
+    else:
+        # Unknown mode: fall back to per-file processing for all targets
+        logger.warning(f"match_mode '{match_mode}' not in fast merge modes, falling back to per-file processing")
+        _remaining_targets = dict(target_groups)
+
+    # ─── Phase 2B: Per-file loop for remaining targets (Excel only) ──
+    for ti, (target_key, group) in enumerate(_remaining_targets.items()):
         target_file = group["target_file"]
         corrections = group["corrections"]
         source_names = group["source_files"]
@@ -2059,14 +2686,14 @@ def transfer_folder_to_folder(
         _shared_lookup = _cached if _cached and _cached[0] is not None else None
 
         if progress_callback:
-            progress_callback(f"Transferring to {target_file.name}... ({ti+1}/{len(target_groups)})")
+            progress_callback(f"Transferring to {target_file.name}... ({ti+1}/{len(_remaining_targets)})")
 
         logger.info(f"═══ {target_file.name}: {len(corrections):,} corrections from {len(source_names)} files ═══")
 
         # GUI per-language header
         if log_callback:
             lang_code = group.get("language", target_file.stem.replace("languagedata_", "").upper())
-            log_callback(f"── {lang_code} ({ti+1}/{len(target_groups)}) · {len(corrections):,} corrections → {target_file.name} ──", 'header')
+            log_callback(f"── {lang_code} ({ti+1}/{len(_remaining_targets)}) · {len(corrections):,} corrections → {target_file.name} ──", 'header')
 
         # ─── Dispatch based on target file type ───────────────────────
         if is_excel:
@@ -2086,224 +2713,13 @@ def transfer_folder_to_folder(
             results["total_skipped"] += file_result.get("skipped_non_script", 0)
             results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
         else:
-            # XML target: existing merge logic (unchanged)
-            if match_mode == "stringid_only" and stringid_to_category:
-                file_result = merge_corrections_stringid_only(
-                    target_file, corrections, stringid_to_category,
-                    stringid_to_subfolder, dry_run,
-                    only_untranslated=only_untranslated,
-                    _prebuilt_lookup=_shared_lookup,
-                )
-                # When using prebuilt lookup, preprocess stats come from the shared pass
-                _pp_stats = _preprocess_stats_cache.get(_corr_id)
-                if _pp_stats and _corr_id not in _preprocess_stats_counted:
-                    results["total_skipped"] += _pp_stats.get("skipped_non_script", 0)
-                    results["total_skipped_excluded"] += _pp_stats.get("skipped_excluded", 0)
-                    # Merge preprocess detail entries into file_result for failure reports
-                    file_result.setdefault("details", []).extend(_pp_stats.get("details", []))
-                    _preprocess_stats_counted.add(_corr_id)
-                elif not _pp_stats:
-                    results["total_skipped"] += file_result.get("skipped_non_script", 0)
-                    results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
-
-                # EventName recovery pass for NOT_FOUND corrections
-                if file_result.get("not_found", 0) > 0:
-                    file_result = _recover_not_found_via_eventname(
-                        file_result, target_file, _get_recovery_mapping(),
-                        dry_run=dry_run, only_untranslated=only_untranslated,
-                        log_callback=log_callback,
-                        original_merge_mode="stringid_only",
-                        stringid_to_category=stringid_to_category,
-                        stringid_to_subfolder=stringid_to_subfolder,
-                    )
-
-            elif match_mode == "strict_fuzzy":
-                file_result = merge_corrections_to_xml(
-                    target_file, corrections, dry_run,
-                    only_untranslated=only_untranslated,
-                    _prebuilt_lookup=_shared_lookup,
-                )
-                step1_matched = file_result["matched"]
-                logger.info(f"Step 1 (perfect): {step1_matched}/{len(corrections)} matched")
-                if log_callback:
-                    pct = (step1_matched / len(corrections) * 100) if corrections else 0
-                    log_callback(f"  Pass 1 (Perfect): {step1_matched}/{len(corrections)} ({pct:.1f}%)", 'info')
-
-                # EventName recovery pass (before fuzzy, reduces fuzzy workload)
-                if file_result.get("not_found", 0) > 0:
-                    file_result = _recover_not_found_via_eventname(
-                        file_result, target_file, _get_recovery_mapping(),
-                        dry_run=dry_run, only_untranslated=only_untranslated,
-                        log_callback=log_callback,
-                    )
-
-                if _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
-                    unconsumed = []
-                    for detail in file_result["details"]:
-                        if detail["status"] in ("STRORIGIN_MISMATCH", "NOT_FOUND"):
-                            unconsumed.append({
-                                "string_id": detail["string_id"],
-                                "str_origin": detail.get("old", ""),
-                                "corrected": detail.get("new", ""),
-                                "raw_attribs": detail.get("raw_attribs", {}),
-                                "_original_status": detail["status"],
-                            })
-
-                    if unconsumed:
-                        from .fuzzy_matching import find_matches_fuzzy
-                        logger.info(f"Step 2: FAISS fuzzy on {len(unconsumed)} unconsumed corrections")
-
-                        fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
-                            unconsumed, _fuzzy_texts, _fuzzy_entries,
-                            _fuzzy_model, _fuzzy_index, effective_threshold,
-                            progress_callback=progress_callback,
-                            log_callback=log_callback,
-                        )
-
-                        if fuzzy_matched:
-                            fuzzy_result = merge_corrections_fuzzy(
-                                target_file, fuzzy_matched, dry_run,
-                                only_untranslated=only_untranslated,
-                            )
-                            file_result["matched"] += fuzzy_result["matched"]
-                            file_result["updated"] += fuzzy_result["updated"]
-
-                            fuzzy_from_not_found = sum(
-                                1 for m in fuzzy_matched
-                                if m.get("_original_status") == "NOT_FOUND"
-                            )
-                            fuzzy_from_mismatch = sum(
-                                1 for m in fuzzy_matched
-                                if m.get("_original_status") == "STRORIGIN_MISMATCH"
-                            )
-                            file_result["not_found"] = max(0, file_result.get("not_found", 0) - fuzzy_from_not_found)
-                            if "strorigin_mismatch" in file_result:
-                                file_result["strorigin_mismatch"] = max(0, file_result["strorigin_mismatch"] - fuzzy_from_mismatch)
-
-                            resolved_sids = {m["string_id"] for m in fuzzy_matched}
-                            file_result["details"] = [
-                                d for d in file_result["details"]
-                                if not (d["status"] in ("NOT_FOUND", "STRORIGIN_MISMATCH") and d["string_id"] in resolved_sids)
-                            ]
-
-                            file_result["details"].extend(fuzzy_result["details"])
-                            logger.info(
-                                f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
-                                f"({fuzzy_result['updated']} updated, avg_score={fuzzy_stats['avg_score']:.3f})"
-                            )
-                            if log_callback:
-                                log_callback(
-                                    f"  Pass 2 (Fuzzy): {fuzzy_result['matched']} recovered (avg: {fuzzy_stats['avg_score']:.2f})",
-                                    'info',
-                                )
-                        else:
-                            logger.info(f"Step 2: No fuzzy matches found for {len(unconsumed)} unconsumed")
-                            if log_callback:
-                                log_callback(f"  Pass 2 (Fuzzy): 0 recovered from {len(unconsumed)} attempts", 'warning')
-                    else:
-                        logger.info("Step 2: All corrections matched in Step 1 (perfect match)")
-                        if log_callback:
-                            log_callback("  Pass 2 (Fuzzy): All matched in Pass 1!", 'success')
-
-            elif match_mode == "strorigin_only":
-                file_result = merge_corrections_strorigin_only(
-                    target_file, corrections, dry_run,
-                    only_untranslated=only_untranslated,
-                    stringid_to_category=stringid_to_category,
-                    _prebuilt_lookup=_shared_lookup,
-                )
-                results["total_skipped"] += file_result.get("skipped_script", 0)
-            elif match_mode == "strorigin_only_fuzzy":
-                file_result = merge_corrections_strorigin_only(
-                    target_file, corrections, dry_run,
-                    only_untranslated=only_untranslated,
-                    stringid_to_category=stringid_to_category,
-                    _prebuilt_lookup=_shared_lookup,
-                )
-                results["total_skipped"] += file_result.get("skipped_script", 0)
-                step1_matched = file_result["matched"]
-                logger.info(f"Step 1 (StrOrigin exact): {step1_matched}/{len(corrections)} matched")
-                if log_callback:
-                    pct = (step1_matched / len(corrections) * 100) if corrections else 0
-                    log_callback(f"  Pass 1 (StrOrigin): {step1_matched}/{len(corrections)} ({pct:.1f}%)", 'info')
-
-                if _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
-                    unconsumed = []
-                    for detail in file_result["details"]:
-                        if detail["status"] == "NOT_FOUND":
-                            unconsumed.append({
-                                "string_id": detail.get("string_id", ""),
-                                "str_origin": detail.get("old", ""),
-                                "corrected": detail.get("new", ""),
-                                "raw_attribs": detail.get("raw_attribs", {}),
-                                "_original_status": detail["status"],
-                            })
-
-                    if unconsumed:
-                        from .fuzzy_matching import find_matches_fuzzy
-                        logger.info(f"Step 2: FAISS fuzzy on {len(unconsumed)} unconsumed corrections")
-
-                        fuzzy_matched, fuzzy_unmatched, fuzzy_stats = find_matches_fuzzy(
-                            unconsumed, _fuzzy_texts, _fuzzy_entries,
-                            _fuzzy_model, _fuzzy_index, effective_threshold,
-                            progress_callback=progress_callback,
-                            log_callback=log_callback,
-                        )
-
-                        if fuzzy_matched:
-                            fuzzy_result = merge_corrections_fuzzy(
-                                target_file, fuzzy_matched, dry_run,
-                                only_untranslated=only_untranslated,
-                            )
-                            file_result["matched"] += fuzzy_result["matched"]
-                            file_result["updated"] += fuzzy_result["updated"]
-
-                            fuzzy_from_not_found = sum(
-                                1 for m in fuzzy_matched
-                                if m.get("_original_status") == "NOT_FOUND"
-                            )
-                            file_result["not_found"] = max(0, file_result.get("not_found", 0) - fuzzy_from_not_found)
-
-                            resolved_sids = {m.get("string_id", "") for m in fuzzy_matched}
-                            file_result["details"] = [
-                                d for d in file_result["details"]
-                                if not (d["status"] == "NOT_FOUND" and d.get("string_id", "") in resolved_sids)
-                            ]
-
-                            file_result["details"].extend(fuzzy_result["details"])
-                            logger.info(
-                                f"Step 2 (FAISS fuzzy): {fuzzy_result['matched']} additional matches "
-                                f"({fuzzy_result['updated']} updated, avg_score={fuzzy_stats['avg_score']:.3f})"
-                            )
-                            if log_callback:
-                                log_callback(
-                                    f"  Pass 2 (Fuzzy): {fuzzy_result['matched']} recovered (avg: {fuzzy_stats['avg_score']:.2f})",
-                                    'info',
-                                )
-                        else:
-                            logger.info(f"Step 2: No fuzzy matches found for {len(unconsumed)} unconsumed")
-                            if log_callback:
-                                log_callback(f"  Pass 2 (Fuzzy): 0 recovered from {len(unconsumed)} attempts", 'warning')
-                    else:
-                        logger.info("Step 2: All corrections matched in Step 1 (StrOrigin exact)")
-                        if log_callback:
-                            log_callback("  Pass 2 (Fuzzy): All matched in Pass 1!", 'success')
-            else:
-                file_result = merge_corrections_to_xml(
-                    target_file, corrections, dry_run,
-                    only_untranslated=only_untranslated,
-                    _prebuilt_lookup=_shared_lookup,
-                )
-
-                # EventName recovery pass for NOT_FOUND corrections
-                if file_result.get("not_found", 0) > 0:
-                    file_result = _recover_not_found_via_eventname(
-                        file_result, target_file, _get_recovery_mapping(),
-                        dry_run=dry_run, only_untranslated=only_untranslated,
-                        log_callback=log_callback,
-                    )
-
-            # Post-process XML targets only (newlines, empty StrOrigin cleanup)
+            # Fallback: non-Excel target reaching Phase 2B (all XML should use Phase 2A fast merge)
+            logger.warning(f"Unexpected non-Excel target in Phase 2B: {target_file.name} (mode={match_mode})")
+            file_result = merge_corrections_to_xml(
+                target_file, corrections, dry_run,
+                only_untranslated=only_untranslated,
+                _prebuilt_lookup=_shared_lookup,
+            )
             if not dry_run:
                 run_all_postprocess(target_file)
 
