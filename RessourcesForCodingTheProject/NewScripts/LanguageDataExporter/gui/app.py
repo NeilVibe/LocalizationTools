@@ -65,12 +65,15 @@ class LanguageDataExporterGUI:
         self.root = root
         self.root.title(WINDOW_TITLE)
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
-        self.root.minsize(750, 500)
+        self.root.minsize(750, 560)
         self.root.resizable(True, True)
 
         # Language checkbox vars: lang_code -> BooleanVar
         self.lang_vars: dict[str, tk.BooleanVar] = {}
         self.all_var = tk.BooleanVar(value=True)
+
+        # Script toggle: when ON, ENG/ZHO-CN include script categories too
+        self.include_script_var = tk.BooleanVar(value=False)
 
         self._build_ui()
         self._check_paths()
@@ -290,12 +293,34 @@ class LanguageDataExporterGUI:
     # =========================================================================
 
     def _build_actions_section(self):
-        """Build 2-button action section."""
+        """Build action section: script toggle + 2 buttons."""
         section = ttk.LabelFrame(self.root, text="Actions", padding=10)
         section.grid(row=4, column=0, sticky="ew", padx=15, pady=5)
 
+        # Script toggle (affects ENG + ZHO-CN which normally exclude script)
+        toggle_frame = ttk.Frame(section)
+        toggle_frame.pack(fill="x", pady=(0, 8))
+
+        self.chk_include_script = ttk.Checkbutton(
+            toggle_frame,
+            text="Include Script (full languagedata)",
+            variable=self.include_script_var,
+        )
+        self.chk_include_script.pack(side="left", padx=5)
+
+        ttk.Label(
+            toggle_frame,
+            text="OFF = ENG & ZHO-CN exclude Script/Dialog (default)",
+            font=("Arial", 8),
+            foreground="gray"
+        ).pack(side="left", padx=(10, 0))
+
+        # Buttons
+        btn_frame = ttk.Frame(section)
+        btn_frame.pack(fill="x")
+
         self.btn_excel = ttk.Button(
-            section,
+            btn_frame,
             text="Generate Excel Language Data",
             command=self._generate_language_excels,
             width=32
@@ -303,7 +328,7 @@ class LanguageDataExporterGUI:
         self.btn_excel.pack(side="left", padx=10, ipady=8)
 
         self.btn_report = ttk.Button(
-            section,
+            btn_frame,
             text="Generate Word Count Report",
             command=self._generate_report,
             width=32
@@ -311,10 +336,11 @@ class LanguageDataExporterGUI:
         self.btn_report.pack(side="left", padx=10, ipady=8)
 
     def _set_buttons_enabled(self, enabled: bool):
-        """Enable or disable both action buttons."""
+        """Enable or disable action buttons and script toggle during generation."""
         state = "normal" if enabled else "disabled"
         self.btn_excel.config(state=state)
         self.btn_report.config(state=state)
+        self.chk_include_script.config(state=state)
 
     # =========================================================================
     # STATUS SECTION
@@ -340,6 +366,7 @@ class LanguageDataExporterGUI:
         """Generate individual Excel files for each selected language."""
         loc_folder = config.LOC_FOLDER
         export_folder = config.EXPORT_FOLDER
+        include_script = self.include_script_var.get()
 
         if not loc_folder.exists():
             messagebox.showerror("Error", f"LOC folder not found:\n{loc_folder}")
@@ -401,7 +428,7 @@ class LanguageDataExporterGUI:
 
                     include_english = should_include_english_column(lang_code)
                     excluded_categories = None
-                    if lang_code.lower() in LANGUAGES_WITH_DIALOG_EXCLUSION:
+                    if not include_script and lang_code.lower() in LANGUAGES_WITH_DIALOG_EXCLUSION:
                         excluded_categories = DIALOG_SEQUENCER_EXCLUSION
 
                     write_language_excel(
