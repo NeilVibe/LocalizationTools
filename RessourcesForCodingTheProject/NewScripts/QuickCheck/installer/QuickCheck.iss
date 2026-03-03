@@ -66,7 +66,7 @@ begin
   DriveLetters := GetAvailableDrives();
 
   DrivePage := CreateInputOptionPage(
-    wpSelectDir,
+    wpWelcome,
     'Select Installation Drive',
     'Choose which drive to install QuickCheck on.',
     'Available drives on your system:',

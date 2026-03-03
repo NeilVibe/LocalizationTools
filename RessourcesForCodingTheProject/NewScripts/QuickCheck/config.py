@@ -91,13 +91,19 @@ class Settings:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> Settings:
+        def _int(key: str, default: int) -> int:
+            try:
+                return int(data.get(key, default))
+            except (TypeError, ValueError):
+                return default
+
         return cls(
-            max_term_length=data.get("max_term_length", DEFAULT_MAX_TERM_LENGTH),
-            min_occurrence=data.get("min_occurrence", DEFAULT_MIN_OCCURRENCE),
-            max_issues_per_term=data.get("max_issues_per_term", DEFAULT_MAX_ISSUES_PER_TERM),
-            filter_sentences=data.get("filter_sentences", DEFAULT_FILTER_SENTENCES),
-            term_match_mode=data.get("term_match_mode", DEFAULT_TERM_MATCH_MODE),
-            output_dir=data.get("output_dir", DEFAULT_OUTPUT_SUBDIR),
+            max_term_length=_int("max_term_length", DEFAULT_MAX_TERM_LENGTH),
+            min_occurrence=_int("min_occurrence", DEFAULT_MIN_OCCURRENCE),
+            max_issues_per_term=_int("max_issues_per_term", DEFAULT_MAX_ISSUES_PER_TERM),
+            filter_sentences=bool(data.get("filter_sentences", DEFAULT_FILTER_SENTENCES)),
+            term_match_mode=str(data.get("term_match_mode", DEFAULT_TERM_MATCH_MODE)),
+            output_dir=str(data.get("output_dir", DEFAULT_OUTPUT_SUBDIR)),
         )
 
 

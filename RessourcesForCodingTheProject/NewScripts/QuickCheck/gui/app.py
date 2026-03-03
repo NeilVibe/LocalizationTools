@@ -67,6 +67,8 @@ class QuickCheckApp(tk.Tk):
         self._source_scan: Dict[str, List[Path]] = {}
         self._glossary_scan: Dict[str, List[Path]] = {}
         self._running = False
+        self._last_scanned_source: str = ""
+        self._suppress_save: bool = False
 
         self._build_ui()
         self._apply_settings_to_ui()
@@ -258,27 +260,35 @@ class QuickCheckApp(tk.Tk):
     # ------------------------------------------------------------------
 
     def _apply_settings_to_ui(self) -> None:
-        s = self._settings
-        self._var_filter_sentences.set(s.filter_sentences)
-        self._var_max_len.set(str(s.max_term_length))
-        self._var_min_occ.set(str(s.min_occurrence))
-        self._var_max_issues.set(str(s.max_issues_per_term))
-        self._var_match_mode.set(s.term_match_mode)
-        self._var_output.set(s.output_dir)
+        self._suppress_save = True
+        try:
+            s = self._settings
+            self._var_filter_sentences.set(s.filter_sentences)
+            self._var_max_len.set(str(s.max_term_length))
+            self._var_min_occ.set(str(s.min_occurrence))
+            self._var_max_issues.set(str(s.max_issues_per_term))
+            self._var_match_mode.set(s.term_match_mode)
+            self._var_output.set(s.output_dir)
+        finally:
+            self._suppress_save = False
 
     def _save_settings(self) -> None:
         """Read UI values and persist to settings file."""
+        if self._suppress_save:
+            return
         try:
             s = self._settings
             s.filter_sentences = self._var_filter_sentences.get()
-            s.max_term_length = int(self._var_max_len.get() or "15")
-            s.min_occurrence = int(self._var_min_occ.get() or "2")
-            s.max_issues_per_term = int(self._var_max_issues.get() or "6")
+            s.max_term_length = int(self._var_max_len.get() or str(config.DEFAULT_MAX_TERM_LENGTH))
+            s.min_occurrence = int(self._var_min_occ.get() or str(config.DEFAULT_MIN_OCCURRENCE))
+            s.max_issues_per_term = int(self._var_max_issues.get() or str(config.DEFAULT_MAX_ISSUES_PER_TERM))
             s.term_match_mode = self._var_match_mode.get()
-            s.output_dir = self._var_output.get() or "output"
+            s.output_dir = self._var_output.get() or config.DEFAULT_OUTPUT_SUBDIR
             save_settings(s)
-        except (ValueError, Exception):
-            pass  # Don't crash on invalid intermediate input
+        except ValueError:
+            pass  # Expected during partial typing
+        except Exception:
+            logger.warning("Settings save failed", exc_info=True)
 
     def _read_settings(self) -> Settings:
         """Build Settings from current UI state."""
@@ -314,6 +324,7 @@ class QuickCheckApp(tk.Tk):
     def _scan_source(self, folder: str) -> None:
         result = scan_folder_for_languages(Path(folder))
         self._source_scan = result.lang_files
+        self._last_scanned_source = folder
         langs = result.get_languages()
         if langs:
             self._lbl_detected.configure(
@@ -366,9 +377,10 @@ class QuickCheckApp(tk.Tk):
         if not self._var_source.get():
             messagebox.showwarning("QuickCheck", "Please select a source folder first.")
             return False
-        if not self._source_scan:
-            # Attempt re-scan
-            self._scan_source(self._var_source.get())
+        # Re-scan if path changed (handles manual Entry edits, not just Browse)
+        current_path = self._var_source.get()
+        if not self._source_scan or current_path != self._last_scanned_source:
+            self._scan_source(current_path)
         if not self._source_scan:
             messagebox.showwarning("QuickCheck",
                                    "No language-tagged files detected in source folder.\n"
@@ -532,8 +544,11 @@ class QuickCheckApp(tk.Tk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _finish_run(self) -> None:
-        self._progressbar.stop()
-        self._progressbar.configure(mode="determinate")
-        self._progress_var.set(0)
+        try:
+            self._progressbar.stop()
+            self._progressbar.configure(mode="determinate")
+            self._progress_var.set(0)
+        except Exception:
+            pass
         self._set_buttons_state(tk.NORMAL)
         self._running = False

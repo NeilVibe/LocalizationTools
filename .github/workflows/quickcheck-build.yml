@@ -181,6 +181,8 @@ jobs:
               'utils.filters',
               'utils.language_utils',
               'utils.excel_writer',
+              'gui.app',
+              'main',
           ]
 
           errors = []
@@ -307,6 +309,7 @@ jobs:
               'utils.language_utils',
               'utils.excel_writer',
               'gui.app',
+              'main',
           ]
 
           errors = []
@@ -351,7 +354,11 @@ jobs:
           $configPath = "$qcPath\config.py"
           if (Test-Path $configPath) {
             $content = Get-Content $configPath -Raw
-            $content = $content -replace 'VERSION\s*=\s*"[^"]*"', "VERSION = `"$version`""
+            if ($content -match 'VERSION\s*=') {
+              $content = $content -replace 'VERSION\s*=\s*"[^"]*"', "VERSION = `"$version`""
+            } else {
+              $content = "VERSION = `"$version`"`n" + $content
+            }
             Set-Content $configPath $content
             Write-Host "[OK] Updated: $configPath"
           }
@@ -494,3 +501,5 @@ jobs:
             ${{ env.QUICKCHECK_PATH }}/installer_output/*_Source.zip
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -23,6 +23,7 @@ a = Analysis(
         'tkinter.ttk',
         'tkinter.filedialog',
         'tkinter.messagebox',
+        'logging.handlers',
         'core',
         'core.xml_parser',
         'core.preprocessing',

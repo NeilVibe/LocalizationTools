@@ -10,7 +10,7 @@ import string
 from typing import List, Tuple, Optional, Dict
 from collections import Counter
 
-from utils.language_utils import is_korean, is_sentence, is_phrase
+from utils.language_utils import is_korean, is_phrase
 
 
 def sentence_filter(pairs: List[Tuple[str, str]]) -> List[Tuple[str, str]]:

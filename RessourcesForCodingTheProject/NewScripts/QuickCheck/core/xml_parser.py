@@ -141,8 +141,9 @@ def parse_excel_file(
             stringid_idx = None
             data_start = 0  # No header row detected
 
+        min_cols = max(str_origin_idx, str_idx, stringid_idx if stringid_idx is not None else 0)
         for row in rows[data_start:]:
-            if not row or len(row) <= max(str_origin_idx, str_idx):
+            if not row or len(row) <= min_cols:
                 continue
 
             str_origin_val = row[str_origin_idx]

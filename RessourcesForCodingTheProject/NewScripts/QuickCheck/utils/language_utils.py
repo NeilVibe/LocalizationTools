@@ -75,35 +75,6 @@ def normalize_text(text: str) -> str:
     return text.strip()
 
 
-def tokenize(text: str) -> list:
-    """
-    Tokenize text by newlines for line-by-line matching.
-
-    Args:
-        text: The text to tokenize
-
-    Returns:
-        List of tokens (lines), or empty list if invalid
-    """
-    if isinstance(text, str) and text.strip() != '' and '\t' not in text:
-        return re.split(r'\\?\n|\n', text)
-    else:
-        return []
-
-
-def is_sentence(text: str) -> bool:
-    """
-    Check if text ends with sentence-ending punctuation.
-
-    Args:
-        text: The text to check
-
-    Returns:
-        True if text ends with . ? or !
-    """
-    return bool(re.search(r'[.?!]\s*$', text.strip()))
-
-
 def is_phrase(text: str) -> bool:
     """
     Elegant phrase detection with acronym exception.

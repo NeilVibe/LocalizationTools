@@ -87,9 +87,6 @@ def extract_glossary_for_files(
     # Count and deduplicate
     glossary_with_counts = count_glossary_occurrences(filtered_pairs)
 
-    # Sort: occurrence count descending, then source length ascending
-    glossary_with_counts.sort(key=lambda x: (-x[2], len(x[0])))
-
     if progress_callback:
         progress_callback(f"Glossary built: {len(glossary_with_counts)} terms")
 
@@ -143,12 +140,13 @@ def extract_glossary_all_languages(
         )
 
         output_path = output_dir / f"glossary_{lang}.xlsx"
-        write_glossary_excel(glossary, str(output_path), lang_code=lang)
+        ok = write_glossary_excel(glossary, str(output_path), lang_code=lang)
         results[lang] = len(glossary)
 
         if progress_callback:
-            progress_callback(
-                f"Glossary {lang}: {len(glossary)} terms → {output_path.name}"
-            )
+            if ok:
+                progress_callback(f"Glossary {lang}: {len(glossary)} terms → {output_path.name}")
+            else:
+                progress_callback(f"Glossary {lang}: ERROR writing {output_path.name}")
 
     return results

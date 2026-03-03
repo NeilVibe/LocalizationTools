@@ -182,10 +182,13 @@ def run_line_check_all_languages(
         )
 
         output_path = output_dir / f"LineCheck_{lang}.xlsx"
-        save_line_check_results(check_results, str(output_path), lang_code=lang)
+        ok = save_line_check_results(check_results, str(output_path), lang_code=lang)
         results[lang] = len(check_results)
 
         if progress_callback:
-            progress_callback(f"LINE CHECK {lang}: {len(check_results)} issues → {output_path.name}")
+            if ok:
+                progress_callback(f"LINE CHECK {lang}: {len(check_results)} issues → {output_path.name}")
+            else:
+                progress_callback(f"LINE CHECK {lang}: ERROR writing {output_path.name}")
 
     return results

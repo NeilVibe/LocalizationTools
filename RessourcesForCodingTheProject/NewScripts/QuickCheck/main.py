@@ -17,8 +17,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 def _setup_logging() -> None:
     """Configure logging to both console and a rotating log file."""
     import logging.handlers
+    from config import get_base_dir
 
-    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+    log_dir = os.path.join(get_base_dir(), "logs")
     os.makedirs(log_dir, exist_ok=True)
     log_path = os.path.join(log_dir, "quickcheck.log")
 

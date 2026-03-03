@@ -223,15 +223,24 @@ def run_term_check(
             continue
 
         # --- Translation scan: which translations are present in target (ONCE) ---
-        # Uses the dual automaton: scan tgt.lower() once, collect all term_ids present
+        # ISOLATED mode: apply word-boundary check to avoid "sword" matching inside "greatsword"
+        # SUBSTRING mode: any occurrence counts (consistent with source scan mode)
         tgt_lower = tgt.lower()
         present_translations: Set[int] = set()
-        for _, (trans_id, _) in trans_auto.iter(tgt_lower):
-            present_translations.add(trans_id)
+        for end_pos, (trans_id, trans_text) in trans_auto.iter(tgt_lower):
+            if match_mode == MATCH_MODE_ISOLATED:
+                start_pos = end_pos - len(trans_text) + 1
+                if is_isolated_match(tgt_lower, start_pos, end_pos + 1):
+                    present_translations.add(trans_id)
+            else:
+                present_translations.add(trans_id)
 
         # --- Check: for each matched source term, is its translation present? ---
         for pattern_id in matches_found:
             if pattern_id not in present_translations:
+                # Cap accumulation early — terms exceeding cap will be dropped anyway
+                if len(issues[pattern_id]) > max_issues_per_term:
+                    continue
                 issues[pattern_id].append(TermIssue(
                     source_text=src,
                     translation_text=tgt
@@ -352,13 +361,16 @@ def run_term_check_all_languages(
         )
 
         output_path = output_dir / f"TermCheck_{lang}.xlsx"
-        save_term_check_results(
+        ok = save_term_check_results(
             check_results, str(output_path),
             lang_code=lang, match_mode=match_mode
         )
         results[lang] = len(check_results)
 
         if progress_callback:
-            progress_callback(f"TERM CHECK {lang}: {len(check_results)} issues → {output_path.name}")
+            if ok:
+                progress_callback(f"TERM CHECK {lang}: {len(check_results)} issues → {output_path.name}")
+            else:
+                progress_callback(f"TERM CHECK {lang}: ERROR writing {output_path.name}")
 
     return results
