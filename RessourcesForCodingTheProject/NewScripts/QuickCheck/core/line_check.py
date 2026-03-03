@@ -6,6 +6,7 @@ Uses KR BASE mode: Korean StrOrigin as the source for comparison.
 """
 from __future__ import annotations
 
+import os
 import string
 from pathlib import Path
 from typing import List, Dict, Optional, Callable, Tuple
@@ -24,6 +25,7 @@ class LineCheckResult:
     source: str
     translations: List[str]       # Multiple different translations found
     string_ids: List[str]         # First StringID seen for each translation (parallel to translations)
+    file_names: List[str]         # First FileName seen for each translation (parallel to translations)
 
 
 def run_line_check(
@@ -84,14 +86,16 @@ def run_line_check(
     if progress_callback:
         progress_callback(f"Filtered to {len(filtered_entries)} entries")
 
-    # Group by source — track occurrence count and first StringID per translation
+    # Group by source — track occurrence count, first StringID and first FileName per translation
     src_trans_count: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
-    src_trans_sid: Dict[str, Dict[str, str]] = defaultdict(dict)  # source -> {translation -> first StringID}
+    src_trans_sid:  Dict[str, Dict[str, str]] = defaultdict(dict)
+    src_trans_file: Dict[str, Dict[str, str]] = defaultdict(dict)
 
     for entry in filtered_entries:
         src_trans_count[entry.source][entry.translation] += 1
         if entry.translation not in src_trans_sid[entry.source]:
-            src_trans_sid[entry.source][entry.translation] = entry.string_id
+            src_trans_sid[entry.source][entry.translation]  = entry.string_id
+            src_trans_file[entry.source][entry.translation] = os.path.basename(entry.file_path)
 
     # Apply min_occurrence filter if requested
     if min_occurrence is not None and min_occurrence > 1:
@@ -115,8 +119,9 @@ def run_line_check(
     results = []
     for source in sorted(inconsistent.keys(), key=len):
         translations = list(inconsistent[source].keys())
-        string_ids = [src_trans_sid[source].get(t, "") for t in translations]
-        results.append(LineCheckResult(source=source, translations=translations, string_ids=string_ids))
+        string_ids = [src_trans_sid[source].get(t, "")  for t in translations]
+        file_names = [src_trans_file[source].get(t, "") for t in translations]
+        results.append(LineCheckResult(source=source, translations=translations, string_ids=string_ids, file_names=file_names))
 
     return results
 
