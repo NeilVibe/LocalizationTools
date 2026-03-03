@@ -6,6 +6,7 @@ Now integrated with utils/language_utils for language classification.
 
 Paths can be configured via settings.json (created by installer).
 """
+from __future__ import annotations
 
 from pathlib import Path
 import sys

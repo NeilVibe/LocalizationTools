@@ -197,13 +197,13 @@ class LanguageDataExporterGUI:
         section = ttk.LabelFrame(self.root, text="Languages", padding=10)
         section.grid(row=3, column=0, sticky="ew", padx=15, pady=5)
 
-        # ALL checkbox
+        # ALL checkbox (spans both language rows so it's vertically centered)
         ttk.Checkbutton(
             section,
             text="ALL",
             variable=self.all_var,
             command=self._on_all_toggle
-        ).grid(row=0, column=0, sticky="w", padx=(5, 10))
+        ).grid(row=0, column=0, rowspan=2, sticky="w", padx=(5, 10))
 
         ttk.Separator(section, orient="vertical").grid(
             row=0, column=1, rowspan=2, sticky="ns", padx=(5, 8)
@@ -248,7 +248,7 @@ class LanguageDataExporterGUI:
 
     def _get_selected_languages(self) -> list[str]:
         """Return list of currently checked language codes (in LANGUAGE_ORDER order)."""
-        return [lang for lang in LANGUAGE_ORDER if self.lang_vars.get(lang, tk.BooleanVar()).get()]
+        return [lang for lang in LANGUAGE_ORDER if lang in self.lang_vars and self.lang_vars[lang].get()]
 
     # =========================================================================
     # ACTIONS SECTION
@@ -259,19 +259,27 @@ class LanguageDataExporterGUI:
         section = ttk.LabelFrame(self.root, text="Actions", padding=10)
         section.grid(row=4, column=0, sticky="ew", padx=15, pady=5)
 
-        ttk.Button(
+        self.btn_excel = ttk.Button(
             section,
             text="Generate Excel Language Data",
             command=self._generate_language_excels,
             width=32
-        ).pack(side="left", padx=10, ipady=8)
+        )
+        self.btn_excel.pack(side="left", padx=10, ipady=8)
 
-        ttk.Button(
+        self.btn_report = ttk.Button(
             section,
             text="Generate Word Count Report",
             command=self._generate_report,
             width=32
-        ).pack(side="left", padx=10, ipady=8)
+        )
+        self.btn_report.pack(side="left", padx=10, ipady=8)
+
+    def _set_buttons_enabled(self, enabled: bool):
+        """Enable or disable both action buttons."""
+        state = "normal" if enabled else "disabled"
+        self.btn_excel.config(state=state)
+        self.btn_report.config(state=state)
 
     # =========================================================================
     # STATUS SECTION
@@ -312,6 +320,7 @@ class LanguageDataExporterGUI:
 
         self._set_status(f"Generating {len(selected_langs)} language Excel files...")
         self.progress["value"] = 0
+        self._set_buttons_enabled(False)
 
         def generate():
             try:
@@ -345,6 +354,7 @@ class LanguageDataExporterGUI:
                         "Error", "No matching language files found in LOC folder"
                     ))
                     self.root.after(0, lambda: self._set_status("Ready"))
+                    self.root.after(0, lambda: self._set_buttons_enabled(True))
                     return
 
                 for i, (lang_code, lang_path) in enumerate(sorted(lang_files.items())):
@@ -374,6 +384,7 @@ class LanguageDataExporterGUI:
                 self.root.after(0, lambda: self._set_status(
                     f"Generated {total} Excel files in {OUTPUT_FOLDER}"
                 ))
+                self.root.after(0, lambda: self._set_buttons_enabled(True))
                 self.root.after(0, lambda: messagebox.showinfo(
                     "Success", f"Generated {total} files in:\n{OUTPUT_FOLDER}"
                 ))
@@ -384,6 +395,7 @@ class LanguageDataExporterGUI:
                     "Error", f"Generation failed: {err}"
                 ))
                 self.root.after(0, lambda: self._set_status("Generation failed"))
+                self.root.after(0, lambda: self._set_buttons_enabled(True))
 
         threading.Thread(target=generate, daemon=True).start()
 
@@ -410,6 +422,7 @@ class LanguageDataExporterGUI:
 
         self._set_status(f"Generating report for {len(selected_langs)} languages...")
         self.progress["value"] = 0
+        self._set_buttons_enabled(False)
 
         def generate():
             try:
@@ -437,6 +450,7 @@ class LanguageDataExporterGUI:
                         "Error", "No matching language files found in LOC folder"
                     ))
                     self.root.after(0, lambda: self._set_status("Ready"))
+                    self.root.after(0, lambda: self._set_buttons_enabled(True))
                     return
 
                 language_data = {}
@@ -459,6 +473,7 @@ class LanguageDataExporterGUI:
 
                 self.root.after(0, lambda: self._update_progress(100))
                 self.root.after(0, lambda: self._set_status(f"Report generated: {report_path}"))
+                self.root.after(0, lambda: self._set_buttons_enabled(True))
                 self.root.after(0, lambda: messagebox.showinfo(
                     "Success", f"Report generated:\n{report_path}"
                 ))
@@ -469,6 +484,7 @@ class LanguageDataExporterGUI:
                     "Error", f"Generation failed: {err}"
                 ))
                 self.root.after(0, lambda: self._set_status("Generation failed"))
+                self.root.after(0, lambda: self._set_buttons_enabled(True))
 
         threading.Thread(target=generate, daemon=True).start()
 
