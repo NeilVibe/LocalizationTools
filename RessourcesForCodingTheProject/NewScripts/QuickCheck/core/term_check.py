@@ -244,7 +244,7 @@ def run_term_check(
         for pattern_id in matches_found:
             if pattern_id not in present_translations:
                 # Cap accumulation early — terms exceeding cap will be dropped anyway
-                if len(issues[pattern_id]) > max_issues_per_term:
+                if len(issues[pattern_id]) >= max_issues_per_term:
                     continue
                 issues[pattern_id].append(TermIssue(
                     source_text=src,

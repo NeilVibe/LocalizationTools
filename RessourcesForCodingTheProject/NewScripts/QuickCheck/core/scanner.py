@@ -161,16 +161,7 @@ def scan_folder_for_languages(root: Path) -> ScanResult:
                 result.unrecognized.append(child)
 
         elif child.is_file() and child.suffix.lower() in LANG_EXTS:
-            # Try standard name/suffix detection
             lang = extract_language_suffix(child.stem, valid_codes)
-
-            # Also handle: languagedata_XXX.xml (case-insensitive)
-            if not lang and child.stem.lower().startswith("languagedata_"):
-                suffix_part = child.stem[13:]  # after "languagedata_"
-                for code in valid_codes:
-                    if code.lower() == suffix_part.lower():
-                        lang = code
-                        break
 
             if lang:
                 result.lang_files.setdefault(lang, []).append(child)

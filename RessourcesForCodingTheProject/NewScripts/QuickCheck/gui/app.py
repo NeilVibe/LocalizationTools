@@ -70,6 +70,8 @@ class QuickCheckApp(tk.Tk):
         self._last_scanned_source: str = ""
         self._suppress_save: bool = False
         self._save_after_id: Optional[str] = None
+        self._lang_vars: Dict[str, tk.BooleanVar] = {}
+        self._all_var: tk.BooleanVar = tk.BooleanVar(value=True)
 
         self._build_ui()
         self._apply_settings_to_ui()
@@ -86,10 +88,15 @@ class QuickCheckApp(tk.Tk):
         # ---- Source folder ----
         self._build_folder_row(outer, "Source Folder:", self._browse_source, "_var_source")
 
-        # ---- Detected languages label ----
-        self._lbl_detected = tk.Label(outer, text="Detected: (none)", bg=BG_MAIN,
-                                      fg=FG_DIM, font=FONT_SMALL, anchor="w")
-        self._lbl_detected.pack(fill=tk.X, pady=(0, 6))
+        # ---- Language selection (populated after folder scan) ----
+        self._lang_check_frame = tk.Frame(outer, bg=BG_MAIN)
+        self._lang_check_frame.pack(fill=tk.X, pady=(0, 6))
+        self._lbl_no_langs = tk.Label(
+            self._lang_check_frame,
+            text="Languages: (select source folder to detect)",
+            bg=BG_MAIN, fg=FG_DIM, font=FONT_SMALL, anchor="w",
+        )
+        self._lbl_no_langs.pack(anchor="w")
 
         # ---- Mode selection ----
         self._mode_frame = tk.LabelFrame(outer, text=" Glossary Mode ", bg=BG_FRAME,
@@ -336,14 +343,7 @@ class QuickCheckApp(tk.Tk):
         result = scan_folder_for_languages(Path(folder))
         self._source_scan = result.lang_files
         self._last_scanned_source = folder
-        langs = result.get_languages()
-        if langs:
-            self._lbl_detected.configure(
-                text=f"Detected: {' '.join(langs)} ({len(langs)} language{'s' if len(langs) != 1 else ''})",
-                fg=FG_OK
-            )
-        else:
-            self._lbl_detected.configure(text="Detected: (no language-tagged files found)", fg=FG_WARN)
+        self._rebuild_lang_checkboxes(result.get_languages())
 
     def _scan_glossary(self, folder: str) -> None:
         result = scan_folder_for_languages(Path(folder))
@@ -356,6 +356,68 @@ class QuickCheckApp(tk.Tk):
             )
         else:
             self._lbl_gloss_detected.configure(text="Glossary Detected: (none found)", fg=FG_WARN)
+
+    def _rebuild_lang_checkboxes(self, langs: List[str]) -> None:
+        """Rebuild language checkboxes after a folder scan."""
+        for w in self._lang_check_frame.winfo_children():
+            w.destroy()
+        self._lang_vars.clear()
+
+        if not langs:
+            tk.Label(
+                self._lang_check_frame,
+                text="Languages: (no language-tagged files found)",
+                bg=BG_MAIN, fg=FG_WARN, font=FONT_SMALL, anchor="w",
+            ).pack(anchor="w")
+            return
+
+        tk.Label(
+            self._lang_check_frame, text="Languages:",
+            bg=BG_MAIN, fg=FG_MAIN, font=FONT_MAIN,
+        ).pack(side=tk.LEFT, padx=(0, 6))
+
+        self._all_var.set(True)
+        tk.Checkbutton(
+            self._lang_check_frame, text="ALL",
+            variable=self._all_var,
+            command=self._on_all_toggle,
+            bg=BG_MAIN, fg=FG_BRIGHT, selectcolor=BG_MAIN,
+            activebackground=BG_MAIN, font=FONT_BOLD,
+        ).pack(side=tk.LEFT, padx=(0, 2))
+
+        ttk.Separator(self._lang_check_frame, orient="vertical").pack(
+            side=tk.LEFT, fill="y", padx=(4, 8), pady=2,
+        )
+
+        for lang in langs:
+            var = tk.BooleanVar(value=True)
+            self._lang_vars[lang] = var
+            tk.Checkbutton(
+                self._lang_check_frame, text=lang,
+                variable=var,
+                command=self._on_lang_toggle,
+                bg=BG_MAIN, fg=FG_BRIGHT, selectcolor=BG_MAIN,
+                activebackground=BG_MAIN, font=FONT_SMALL,
+            ).pack(side=tk.LEFT, padx=(0, 2))
+
+    def _on_all_toggle(self) -> None:
+        state = self._all_var.get()
+        for var in self._lang_vars.values():
+            var.set(state)
+
+    def _on_lang_toggle(self) -> None:
+        all_checked = all(var.get() for var in self._lang_vars.values())
+        self._all_var.set(all_checked)
+
+    def _get_selected_lang_files(self) -> Dict[str, List[Path]]:
+        """Return source_scan filtered to only selected language checkboxes."""
+        if not self._lang_vars:
+            return dict(self._source_scan)
+        return {
+            lang: files
+            for lang, files in self._source_scan.items()
+            if lang in self._lang_vars and self._lang_vars[lang].get()
+        }
 
     def _on_mode_change(self) -> None:
         if self._var_mode.get() == "external":
@@ -396,6 +458,9 @@ class QuickCheckApp(tk.Tk):
             messagebox.showwarning("QuickCheck",
                                    "No language-tagged files detected in source folder.\n"
                                    "Make sure subfolders/files have language code suffixes (e.g. FRE/, patch_GER.xml).")
+            return False
+        if not self._get_selected_lang_files():
+            messagebox.showwarning("QuickCheck", "No languages selected.\nPlease check at least one language checkbox.")
             return False
         return True
 
@@ -440,7 +505,7 @@ class QuickCheckApp(tk.Tk):
         self._log_msg("Starting LINE CHECK...", "info")
 
         s = self._read_settings()
-        lang_files = dict(self._source_scan)
+        lang_files = self._get_selected_lang_files()
         output_dir = Path(resolve_output_dir(s))
 
         def worker() -> None:
@@ -486,7 +551,7 @@ class QuickCheckApp(tk.Tk):
         self._log_msg(f"Starting TERM CHECK ({mode_label})...", "info")
 
         s = self._read_settings()
-        lang_files = dict(self._source_scan)
+        lang_files = self._get_selected_lang_files()
         output_dir = Path(resolve_output_dir(s))
 
         def worker() -> None:
@@ -529,7 +594,7 @@ class QuickCheckApp(tk.Tk):
         self._log_msg("Starting EXTRACT GLOSSARY...", "info")
 
         s = self._read_settings()
-        lang_files = dict(self._source_scan)
+        lang_files = self._get_selected_lang_files()
         output_dir = Path(resolve_output_dir(s))
 
         def worker() -> None:

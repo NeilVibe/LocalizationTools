@@ -6,8 +6,7 @@ QuickCheck uses KR BASE only (Korean StrOrigin as source).
 """
 from __future__ import annotations
 
-import os
-from typing import List, Dict, Optional, Tuple, Callable
+from typing import List, Optional, Callable
 from dataclasses import dataclass
 
 from core.xml_parser import LocStrEntry, parse_multiple_files
@@ -61,77 +60,3 @@ def preprocess_for_consistency_check(
     ]
 
 
-def group_by_source(entries: List[PreprocessedEntry]) -> Dict[str, Dict[str, List[str]]]:
-    """
-    Group entries by source text for consistency checking.
-
-    Returns a dictionary mapping:
-        source -> {translation -> [file_paths]}
-
-    Args:
-        entries: List of PreprocessedEntry objects
-
-    Returns:
-        Nested dictionary for inconsistency detection
-    """
-    grouped: Dict[str, Dict[str, List[str]]] = {}
-
-    for entry in entries:
-        if entry.source not in grouped:
-            grouped[entry.source] = {}
-
-        if entry.translation not in grouped[entry.source]:
-            grouped[entry.source][entry.translation] = []
-
-        file_name = os.path.basename(entry.file_path)
-        if file_name not in grouped[entry.source][entry.translation]:
-            grouped[entry.source][entry.translation].append(file_name)
-
-    return grouped
-
-
-def find_inconsistent_sources(
-    grouped: Dict[str, Dict[str, List[str]]]
-) -> Dict[str, Dict[str, List[str]]]:
-    """
-    Find sources that have multiple different translations.
-
-    Args:
-        grouped: Output from group_by_source()
-
-    Returns:
-        Dictionary containing only inconsistent sources
-    """
-    return {
-        source: translations
-        for source, translations in grouped.items()
-        if len(translations) > 1
-    }
-
-
-def build_term_glossary(
-    entries: List[PreprocessedEntry],
-    dedupe: bool = True
-) -> List[Tuple[str, str]]:
-    """
-    Build a glossary of (source, translation) pairs from entries.
-
-    Args:
-        entries: List of PreprocessedEntry objects
-        dedupe: Whether to deduplicate by source
-
-    Returns:
-        List of (source, translation) tuples
-    """
-    pairs = [(entry.source, entry.translation) for entry in entries]
-
-    if dedupe:
-        seen = set()
-        deduped = []
-        for src, trans in pairs:
-            if src not in seen:
-                deduped.append((src, trans))
-                seen.add(src)
-        return deduped
-
-    return pairs

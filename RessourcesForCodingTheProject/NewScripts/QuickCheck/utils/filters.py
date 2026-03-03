@@ -81,26 +81,6 @@ def korean_translation_filter(pairs: List[Tuple[str, str]]) -> List[Tuple[str, s
     return [(src, trans) for src, trans in pairs if not is_korean(trans)]
 
 
-def occurrence_filter(pairs: List[Tuple[str, str]], min_occurrence: int) -> List[Tuple[str, str]]:
-    """
-    Filter out pairs that occur less than min_occurrence times.
-
-    Args:
-        pairs: List of (source, translation) tuples
-        min_occurrence: Minimum number of occurrences required
-
-    Returns:
-        Filtered list
-    """
-    if min_occurrence <= 1:
-        return pairs
-
-    # Count occurrences of each source
-    source_counts = Counter(src for src, _ in pairs)
-
-    return [(src, trans) for src, trans in pairs if source_counts[src] >= min_occurrence]
-
-
 def glossary_filter(
     pairs: List[Tuple[str, str]],
     length_threshold: int = 15,
@@ -156,25 +136,6 @@ def glossary_filter(
         filtered = [(src, trans) for src, trans in filtered if count_map.get(src, 0) >= min_occurrence]
 
     return filtered
-
-
-def dedupe_glossary(pairs: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
-    """
-    Deduplicate glossary by keeping first occurrence of each source.
-
-    Args:
-        pairs: List of (source, translation) tuples
-
-    Returns:
-        Deduplicated list preserving first occurrence
-    """
-    seen = set()
-    result = []
-    for src, trans in pairs:
-        if src not in seen:
-            result.append((src, trans))
-            seen.add(src)
-    return result
 
 
 def count_glossary_occurrences(pairs: List[Tuple[str, str]]) -> List[Tuple[str, str, int]]:

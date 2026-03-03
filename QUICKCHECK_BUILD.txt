@@ -1,3 +1,4 @@
 Build 001 - Initial release: LINE CHECK, TERM CHECK, EXTRACT GLOSSARY with multi-language batch + Excel output
 Build 002 - Post-review fixes: translation automaton word-boundary, drive page ordering, GITHUB_TOKEN, silent save failure reporting, type-safe settings, stale scan detection, logging path, issue cap, dead code removal
 Build 003 - Final fixes: majority translation dedupe, logging for silent errors, crash dialog, debounced settings save
+Build 004: language checkboxes + final fixes
