@@ -61,3 +61,4 @@ Build - Full rebuild all projects
 Build 029: GUI rework — stripped to 2 buttons + language checkboxes
 Build 030: post-review polish — skipped lang feedback, future annotations sweep, button disable
 Build 031: Drive selector — Branch + Drive on row 1, persists to settings.json
+Build 032: Include Script toggle — full languagedata option for ENG/ZHO-CN
