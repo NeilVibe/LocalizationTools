@@ -95,14 +95,13 @@ def _save_settings(settings_dict: dict):
 
 def update_branch(new_branch: str):
     """Update all paths to use new branch. Called from GUI."""
-    global _BRANCH, LOC_FOLDER, EXPORT_FOLDER, VOICE_RECORDING_FOLDER, LOCDEV_FOLDER
+    global _BRANCH, LOC_FOLDER, EXPORT_FOLDER, VOICE_RECORDING_FOLDER
 
     _BRANCH = new_branch
 
     LOC_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
     EXPORT_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
     VOICE_RECORDING_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
-    LOCDEV_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\locdev__")
 
     _SETTINGS['branch'] = new_branch
     _save_settings(_SETTINGS)
@@ -129,19 +128,12 @@ EXPORT_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringta
 # Used to order STORY strings (Sequencer, Dialog) in chronological story order
 VOICE_RECORDING_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
 
-# LOCDEV folder: Contains dev languagedata XML files for merging corrections back
-LOCDEV_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\locdev__")
-
 # =============================================================================
 # Output Configuration
 # =============================================================================
 
 # Output folder for generated Excel files
 OUTPUT_FOLDER = SCRIPT_DIR / "GeneratedExcel"
-
-# ToSubmit folder for files prepared for LQA submission
-TOSUBMIT_FOLDER = SCRIPT_DIR / "ToSubmit"
-SUBMIT_FILE_PATTERN = "languagedata_*.xlsx"
 
 # =============================================================================
 # Language Configuration (imported from utils for consistency)
@@ -278,28 +270,7 @@ COLUMN_WIDTHS = {
 }
 
 
-# =============================================================================
-# Tracker Configuration
-# =============================================================================
-
-# Correction Progress Tracker file
-TRACKER_PATH = SCRIPT_DIR / "Correction_ProgressTracker.xlsx"
-
-# Categories to track (all STORY + GAMEDATA categories)
-TRACKER_CATEGORIES = [
-    "Sequencer", "AIDialog", "QuestDialog", "NarrationDialog",
-    "Item", "Quest", "Character", "Gimmick", "Skill",
-    "Knowledge", "Faction", "UI", "Region", "System_Misc"
-]
-
-
 def ensure_output_folder():
     """Create output folder if it doesn't exist."""
     OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
     return OUTPUT_FOLDER
-
-
-def ensure_tosubmit_folder():
-    """Create ToSubmit folder if it doesn't exist."""
-    TOSUBMIT_FOLDER.mkdir(parents=True, exist_ok=True)
-    return TOSUBMIT_FOLDER
