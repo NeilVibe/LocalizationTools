@@ -5,6 +5,7 @@ Implements two-tier clustering algorithm:
 - Tier 1 (STORY): Dialog and Sequencer with fine-grained categories
 - Tier 2 (GAME_DATA): System/World/None/Platform with keyword clustering
 """
+from __future__ import annotations
 
 import json
 import logging

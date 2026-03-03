@@ -7,6 +7,7 @@ chronological story order.
 
 Uses xlsxwriter instead of openpyxl for reliable cell protection.
 """
+from __future__ import annotations
 
 import logging
 from pathlib import Path

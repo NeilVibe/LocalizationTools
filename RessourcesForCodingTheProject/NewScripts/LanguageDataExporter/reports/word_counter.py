@@ -4,6 +4,7 @@ Word Counter for Language Data.
 Counts words (European/SEA) or characters (CJK) per category.
 Identifies untranslated text by Korean detection.
 """
+from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field

@@ -10,6 +10,7 @@ Tier 1: STORY (Fine-grained separation)
 Tier 2: GAME_DATA (Keyword-based clustering)
 - Item, Quest, Character, Gimmick, Skill, Knowledge, Faction, UI, Region, System_Misc
 """
+from __future__ import annotations
 
 from .tier_classifier import TierClassifier, Tier
 from .dialog_clusterer import DialogClusterer

@@ -5,6 +5,7 @@ Shows week-over-week merge results per language with:
 - Language, Week, Corrections, Success, Fail, Success %
 - Professional formatting with alternating rows, thick borders, color-coded rates
 """
+from __future__ import annotations
 
 import logging
 from typing import Dict, List

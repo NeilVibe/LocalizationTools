@@ -8,6 +8,7 @@ Dialog categories are determined by the subfolder structure:
 - Dialog/StageCloseDialog → Dialog_StageClose
 - Dialog/OtherFolder → Dialog_Other (fallback)
 """
+from __future__ import annotations
 
 import logging
 from pathlib import Path

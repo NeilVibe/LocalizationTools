@@ -3,6 +3,7 @@ Utilities package for Language Data Exporter.
 
 Shared utilities for language detection, text processing, and VRS ordering.
 """
+from __future__ import annotations
 
 from .language_utils import (
     contains_korean,

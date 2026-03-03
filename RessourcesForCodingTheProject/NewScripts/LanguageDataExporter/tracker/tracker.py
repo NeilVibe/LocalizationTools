@@ -3,6 +3,7 @@ Main Correction Tracker class.
 
 Orchestrates data collection from merge results and report generation.
 """
+from __future__ import annotations
 
 import logging
 from pathlib import Path

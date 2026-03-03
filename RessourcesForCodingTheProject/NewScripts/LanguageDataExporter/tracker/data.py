@@ -6,6 +6,7 @@ Key = (week_start, language) - same key overwrites existing row.
 
 Schema tracks merge results: Corrections, Success, Fail per language per week.
 """
+from __future__ import annotations
 
 import logging
 from pathlib import Path

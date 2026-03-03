@@ -4,6 +4,7 @@ Code Pattern Analyzer for LanguageDataExporter.
 Extracts {code} patterns from languagedata XMLs, clusters by similarity,
 and generates a report showing TOP 3 categories per cluster.
 """
+from __future__ import annotations
 
 import re
 import logging

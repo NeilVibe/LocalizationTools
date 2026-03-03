@@ -8,6 +8,7 @@ Modules:
 - submit_preparer: Prepare files for LQA submission
 - locdev_merger: Merge corrections back to LOCDEV XML files
 """
+from __future__ import annotations
 
 from .xml_parser import parse_language_file, discover_language_files
 from .category_mapper import (

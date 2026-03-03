@@ -28,6 +28,7 @@ Example: World/Knowledge/KnowledgeInfo_Item.xml
 Example: System/Gimmick/gimmickinfo_item_book.xml
 - Phase 1: "gimmick" in filename → Returns "Gimmick" (gimmick wins over item!)
 """
+from __future__ import annotations
 
 import logging
 from pathlib import Path

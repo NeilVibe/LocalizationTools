@@ -5,6 +5,7 @@ Generates a SINGLE unified Excel file with:
 - General Summary sheet: Overview totals per language
 - Detailed Summary sheet: All language tables stacked vertically
 """
+from __future__ import annotations
 
 import logging
 from pathlib import Path

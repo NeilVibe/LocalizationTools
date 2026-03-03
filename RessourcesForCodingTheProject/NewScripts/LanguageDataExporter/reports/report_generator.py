@@ -3,6 +3,7 @@ Report Generator for Word Count Reports.
 
 Generates structured report data for multiple languages.
 """
+from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field

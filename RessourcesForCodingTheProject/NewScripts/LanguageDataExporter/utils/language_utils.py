@@ -7,6 +7,7 @@ Provides:
 - Character counting for CJK languages
 - Language classification constants
 """
+from __future__ import annotations
 
 import re
 from typing import Optional

@@ -9,6 +9,7 @@ ordered by their appearance in the story. We use this to sort STORY category
 strings (Sequencer, AIDialog, QuestDialog, NarrationDialog) so LQA reviewers
 see them in the order players experience them.
 """
+from __future__ import annotations
 
 import logging
 from pathlib import Path

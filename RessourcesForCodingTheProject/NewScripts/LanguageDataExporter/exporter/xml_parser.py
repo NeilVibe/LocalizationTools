@@ -10,6 +10,7 @@ IMPORTANT: Attribute names are case-sensitive!
 - Str
 - SoundEventName
 """
+from __future__ import annotations
 
 import re
 import logging

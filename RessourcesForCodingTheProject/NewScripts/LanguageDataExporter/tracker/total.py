@@ -5,6 +5,7 @@ Contains summary table showing per-language merge results:
 - Language, Corrections, Success, Fail, Success %
 - Professional formatting with color-coded success rates, bold totals
 """
+from __future__ import annotations
 
 import logging
 from typing import Dict, List, Set

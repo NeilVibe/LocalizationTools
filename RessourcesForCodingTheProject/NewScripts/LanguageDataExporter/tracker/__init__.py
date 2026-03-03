@@ -8,6 +8,7 @@ Tracks LQA merge results with:
 
 Structure follows QACompiler tracker pattern.
 """
+from __future__ import annotations
 
 from .data import (
     WeeklyDataManager,

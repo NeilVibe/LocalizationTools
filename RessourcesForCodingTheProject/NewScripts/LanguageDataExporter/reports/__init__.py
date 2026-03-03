@@ -6,6 +6,7 @@ Provides word count reports for LQA scheduling:
 - Korean text detection (untranslated)
 - Styled Excel report generation
 """
+from __future__ import annotations
 
 from .word_counter import WordCounter, CategoryWordCount
 from .report_generator import ReportGenerator, LanguageReport

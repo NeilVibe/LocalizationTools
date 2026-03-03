@@ -291,7 +291,7 @@ class LanguageDataExporterGUI:
         section.grid(row=5, column=0, sticky="ew", padx=15, pady=10)
         section.columnconfigure(0, weight=1)
 
-        self.progress = ttk.Progressbar(section, mode="determinate", length=400)
+        self.progress = ttk.Progressbar(section, mode="determinate")
         self.progress.grid(row=0, column=0, sticky="ew", pady=5)
 
         self.status_label = ttk.Label(section, text="Ready")
@@ -357,6 +357,8 @@ class LanguageDataExporterGUI:
                     self.root.after(0, lambda: self._set_buttons_enabled(True))
                     return
 
+                skipped = [l for l in selected_langs if l not in all_lang_files]
+
                 for i, (lang_code, lang_path) in enumerate(sorted(lang_files.items())):
                     lang_data = parse_language_file(lang_path)
                     display_name = LANG_DISPLAY.get(lang_code.lower(), lang_code.upper())
@@ -381,12 +383,13 @@ class LanguageDataExporterGUI:
                     progress = int((i + 1) / total * 100)
                     self.root.after(0, lambda p=progress: self._update_progress(p))
 
+                skip_note = f"\n\nSkipped (not on disk): {', '.join(s.upper() for s in skipped)}" if skipped else ""
                 self.root.after(0, lambda: self._set_status(
                     f"Generated {total} Excel files in {OUTPUT_FOLDER}"
                 ))
                 self.root.after(0, lambda: self._set_buttons_enabled(True))
-                self.root.after(0, lambda: messagebox.showinfo(
-                    "Success", f"Generated {total} files in:\n{OUTPUT_FOLDER}"
+                self.root.after(0, lambda n=skip_note: messagebox.showinfo(
+                    "Success", f"Generated {total} files in:\n{OUTPUT_FOLDER}{n}"
                 ))
 
             except Exception as ex:
@@ -453,6 +456,8 @@ class LanguageDataExporterGUI:
                     self.root.after(0, lambda: self._set_buttons_enabled(True))
                     return
 
+                skipped = [l for l in selected_langs if l not in all_lang_files]
+
                 language_data = {}
                 for i, (lang_code, lang_path) in enumerate(sorted(lang_files.items())):
                     lang_data = parse_language_file(lang_path)
@@ -471,11 +476,12 @@ class LanguageDataExporterGUI:
                 writer = ExcelReportWriter(report_path)
                 writer.write_report(report)
 
+                skip_note = f"\n\nSkipped (not on disk): {', '.join(s.upper() for s in skipped)}" if skipped else ""
                 self.root.after(0, lambda: self._update_progress(100))
                 self.root.after(0, lambda: self._set_status(f"Report generated: {report_path}"))
                 self.root.after(0, lambda: self._set_buttons_enabled(True))
-                self.root.after(0, lambda: messagebox.showinfo(
-                    "Success", f"Report generated:\n{report_path}"
+                self.root.after(0, lambda n=skip_note: messagebox.showinfo(
+                    "Success", f"Report generated:\n{report_path}{n}"
                 ))
 
             except Exception as ex:

@@ -12,6 +12,7 @@ Sequencer categories are determined by filename prefix patterns:
 - cd_minigame_* → Seq_Minigame (16 files)
 - other cd_seq_* → Seq_Other
 """
+from __future__ import annotations
 
 import re
 import logging

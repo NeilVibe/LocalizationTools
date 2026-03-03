@@ -6,6 +6,7 @@ Extracts Excel files in ToSubmit folder for clean submission format:
 - Only rows with non-empty Correction are included
 - Creates backup before overwriting
 """
+from __future__ import annotations
 
 import logging
 import shutil

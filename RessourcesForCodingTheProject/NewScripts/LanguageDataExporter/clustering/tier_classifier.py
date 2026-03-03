@@ -5,6 +5,7 @@ Classifies EXPORT folder paths into tiers:
 - STORY: Dialog and Sequencer folders (fine-grained separation)
 - GAME_DATA: Everything else (keyword-based clustering)
 """
+from __future__ import annotations
 
 import logging
 from enum import Enum

@@ -7,6 +7,7 @@ Provides a tkinter-based graphical interface for:
 - Language selection
 - Excel generation (language files + word count reports)
 """
+from __future__ import annotations
 
 from .app import LanguageDataExporterGUI, launch_gui
 

@@ -7,6 +7,7 @@ languagedata XML files using STRICT matching: StrOrigin + StringID must BOTH mat
 
 Also tracks SUCCESS/FAIL for each correction to update the Progress Tracker.
 """
+from __future__ import annotations
 
 import html
 import os
