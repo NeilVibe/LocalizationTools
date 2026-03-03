@@ -143,3 +143,4 @@ Build - hierarchical skill tree walk + visual nesting
 Trigger Build: fix sanitize_xml + tree-based knowledge children + flat tree walk
 Build - NewCharacter Pass 0: inline Knowledge child extraction
 Build - Global inline Knowledge children + remove cross-pass dedup
+Build - System category missing from system worker group in config.py

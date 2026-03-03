@@ -261,7 +261,7 @@ WORKER_GROUPS = {
     "newcharacter": ["NewCharacter"],         # Row-per-text format (separate Master_NewCharacter.xlsx)
     "newregion":    ["NewRegion"],             # Region layout + DisplayName (separate Master_NewRegion.xlsx)
     "skill":        ["Skill"],                  # Row-per-text skill (UIPosition ordered)
-    "system":     ["Help"],                  # Help only (Master_System.xlsx)
+    "system":     ["System", "Help"],          # Must serialize (shared Master_System.xlsx)
     "script":     ["Sequencer", "Dialog"],   # Must serialize (shared Master_Script.xlsx)
 }
 
