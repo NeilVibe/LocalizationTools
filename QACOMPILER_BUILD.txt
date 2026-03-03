@@ -141,3 +141,4 @@ Build: KnowledgeList refs for sub-skill nesting
 Trigger QACompiler Build: flat document-order scan for knowledge children
 Build - hierarchical skill tree walk + visual nesting
 Trigger Build: fix sanitize_xml + tree-based knowledge children + flat tree walk
+Build - NewCharacter Pass 0: inline Knowledge child extraction

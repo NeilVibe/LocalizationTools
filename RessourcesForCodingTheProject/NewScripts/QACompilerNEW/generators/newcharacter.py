@@ -15,7 +15,7 @@ Key features:
 """
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
@@ -88,6 +88,7 @@ class NewCharacterEntry:
     knowledge_source_file: str     # Knowledge XML filename (EXPORT matching)
     knowledge2_source_file: str = ""   # Pass 2: source file for EXPORT
     group_key: str = ""            # e.g., "npc", "monster" (from filename)
+    child_knowledge_entries: List[Tuple[str, str, str]] = field(default_factory=list)  # Pass 0: (name, desc, source_file)
 
 
 # =============================================================================
@@ -165,24 +166,44 @@ def scan_characters_with_knowledge(
                 continue
             seen_strkeys.add(strkey)
 
+            # Pass 0: Inline Knowledge children (direct child nodes of CharacterInfo)
+            # Must run before Pass 1 & 2 to enable deduplication.
+            child_knowledge_entries = []
+            pass0_strkeys: Set[str] = set()
+            for child in el.findall("Knowledge"):
+                child_name = child.get("Name") or ""
+                child_desc = child.get("Desc") or ""
+                child_strkey = (child.get("StrKey") or "").lower()
+                # Try external lookup first (gives proper source_file for EXPORT index)
+                if child_strkey and child_strkey in knowledge_map:
+                    kname, kdesc, ksrc = knowledge_map[child_strkey]
+                    child_knowledge_entries.append((kname, kdesc, ksrc))
+                elif child_name or child_desc:
+                    # Inline fallback: data lives in characterinfo file itself
+                    child_knowledge_entries.append((child_name, child_desc, source_file))
+                if child_strkey:
+                    pass0_strkeys.add(child_strkey)
+
             knowledge_key = _find_knowledge_key(el)
 
             # Pass 1: Resolve knowledge data via KnowledgeKey
+            # Skip if already covered by Pass 0 (same StrKey) to avoid duplicates.
             knowledge_name = ""
             knowledge_desc = ""
             knowledge_source_file = ""
             pass1_strkey = ""
-            if knowledge_key and knowledge_key.lower() in knowledge_map:
+            if knowledge_key and knowledge_key.lower() in knowledge_map and knowledge_key.lower() not in pass0_strkeys:
                 knowledge_name, knowledge_desc, knowledge_source_file = knowledge_map[knowledge_key.lower()]
                 pass1_strkey = knowledge_key.lower()
 
             # Pass 2: Identical name match (CharacterName == KnowledgeInfo.Name)
+            # Skip entries already covered by Pass 0 (same StrKey) to avoid duplicates.
             knowledge2_name = ""
             knowledge2_desc = ""
             knowledge2_source_file = ""
             if char_name and char_name in knowledge_name_index:
                 for kn_strkey, kn_desc, kn_src in knowledge_name_index[char_name]:
-                    if kn_strkey != pass1_strkey:
+                    if kn_strkey != pass1_strkey and kn_strkey not in pass0_strkeys:
                         knowledge2_name = char_name
                         knowledge2_desc = kn_desc
                         knowledge2_source_file = kn_src
@@ -191,6 +212,9 @@ def scan_characters_with_knowledge(
 
             # Collect Korean strings for coverage tracking
             _collect_korean_string(char_name)
+            for cname, cdesc, _ in child_knowledge_entries:
+                _collect_korean_string(cname)
+                _collect_korean_string(cdesc)
             _collect_korean_string(knowledge_name)
             _collect_korean_string(knowledge_desc)
             _collect_korean_string(knowledge2_name)
@@ -209,6 +233,7 @@ def scan_characters_with_knowledge(
                 knowledge_source_file=knowledge_source_file,
                 knowledge2_source_file=knowledge2_source_file,
                 group_key=group_key,
+                child_knowledge_entries=child_knowledge_entries,
             ))
 
         log.debug("  %s -> %s: scanned", path.name, group_key.upper())
@@ -245,11 +270,12 @@ def write_newcharacter_excel(
     9 columns: DataType | Filename | SourceText (KR) | Translation | COMMAND | STATUS | COMMENT | SCREENSHOT | STRINGID
 
     Per-character row generation (strict order):
-    1. CharacterData -- char_name_kor (always output)
-    2. KnowledgeData -- knowledge_name_kor (skip if empty)  [Pass 1: KnowledgeKey]
-    3. KnowledgeData -- knowledge_desc_kor (skip if empty)  [Pass 1: KnowledgeKey]
-    4. KnowledgeData2 -- knowledge2_name_kor (skip if empty) [Pass 2: identical name]
-    5. KnowledgeData2 -- knowledge2_desc_kor (skip if empty) [Pass 2: identical name]
+    1.  CharacterData       -- char_name_kor (always output)
+    1b. ChildKnowledgeData  -- inline child Name/Desc pairs (skip if none) [Pass 0: inline children]
+    2.  KnowledgeData       -- knowledge_name_kor (skip if empty)  [Pass 1: KnowledgeKey attr]
+    3.  KnowledgeData       -- knowledge_desc_kor (skip if empty)  [Pass 1: KnowledgeKey attr]
+    4.  KnowledgeData2      -- knowledge2_name_kor (skip if empty) [Pass 2: identical name match]
+    5.  KnowledgeData2      -- knowledge2_desc_kor (skip if empty) [Pass 2: identical name match]
     """
     wb = Workbook()
     wb.remove(wb.active)
@@ -282,6 +308,14 @@ def write_newcharacter_excel(
         for entry in groups[gk]:  # list order = document order
             pre[(entry.strkey, "char_name")] = resolve_translation(
                 entry.char_name_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
+            # Pass 0: inline child knowledge (before Pass 1 to preserve document order)
+            for i, (cname, cdesc, csrc) in enumerate(entry.child_knowledge_entries):
+                if cname:
+                    pre[(entry.strkey, f"ck_{i}_name")] = resolve_translation(
+                        cname, lang_tbl, csrc, export_index, consumer=consumer)
+                if cdesc:
+                    pre[(entry.strkey, f"ck_{i}_desc")] = resolve_translation(
+                        cdesc, lang_tbl, csrc, export_index, consumer=consumer)
             if entry.knowledge_name_kor:
                 pre[(entry.strkey, "knowledge_name")] = resolve_translation(
                     entry.knowledge_name_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)
@@ -357,6 +391,15 @@ def write_newcharacter_excel(
             # 1. CharacterData -- CharacterName (always output, with COMMAND)
             t, s = pre[(entry.strkey, "char_name")]
             _write_row("CharacterData", entry.char_name_kor, t, s, command)
+
+            # 1b. ChildKnowledgeData -- inline Knowledge child Name/Desc (Pass 0)
+            for i, (cname, cdesc, _) in enumerate(entry.child_knowledge_entries):
+                if cname:
+                    t, s = pre.get((entry.strkey, f"ck_{i}_name"), ("", ""))
+                    _write_row("ChildKnowledgeData", cname, t, s)
+                if cdesc:
+                    t, s = pre.get((entry.strkey, f"ck_{i}_desc"), ("", ""))
+                    _write_row("ChildKnowledgeData", cdesc, t, s)
 
             # 2. KnowledgeData -- Name (Pass 1: KnowledgeKey, skip if empty)
             if entry.knowledge_name_kor:
