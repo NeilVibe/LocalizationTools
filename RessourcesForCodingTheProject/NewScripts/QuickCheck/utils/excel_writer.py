@@ -126,7 +126,7 @@ def write_term_check_excel(
     """
     Write TERM CHECK results to Excel.
 
-    Columns: Term (KR) | Expected Translation | Source Text | Translation Found
+    Columns: Term (KR) | Expected Translation | Source Text | Translation Found | StringID
     One row per issue. Term/expected repeated on each row for easy filtering.
     """
     _require_xlsxwriter()
@@ -156,13 +156,14 @@ def write_term_check_excel(
         fmt_summary = wb.add_format({"italic": True, "font_color": "#666666"})
 
         ws.set_row(0, 22)
-        for i, h in enumerate(["Term (KR)", "Expected Translation", "Source Text", "Translation Found"]):
+        for i, h in enumerate(["Term (KR)", "Expected Translation", "Source Text", "Translation Found", "StringID"]):
             ws.write(0, i, h, fmt_header)
 
         ws.set_column(0, 0, 22)
         ws.set_column(1, 1, 22)
         ws.set_column(2, 2, 45)
         ws.set_column(3, 3, 45)
+        ws.set_column(4, 4, 20)
 
         row = 1
         for result in results:
@@ -173,6 +174,7 @@ def write_term_check_excel(
                 ws.write(row, 1, result.reference_translation, row_fmt)
                 ws.write(row, 2, issue.source_text, fmt)
                 ws.write(row, 3, issue.translation_text, fmt)
+                ws.write(row, 4, issue.string_id, fmt)
                 row += 1
 
         total_issues = sum(r.issue_count for r in results)

@@ -41,6 +41,7 @@ class TermIssue:
     """A single term consistency issue."""
     source_text: str      # Full source text containing the term
     translation_text: str  # Translation that's missing the expected term
+    string_id: str = ""   # StringID of the problematic entry
 
 
 @dataclass
@@ -62,7 +63,10 @@ def build_dual_automatons(
     Build two Aho-Corasick automatons for dual-automaton scan.
 
     Source automaton: maps term text -> (term_id, term)
-    Translation automaton: maps translation text -> (term_id, translation)
+    Translation automaton: maps translation_lower -> (frozenset[term_ids], translation_lower)
+      — multiple source terms can share the same translation string.
+      The automaton stores ALL their IDs together so one hit marks all of them present.
+      (pyahocorasick overwrites duplicate keys; grouping prevents false positives.)
     term_lookup: maps term_id -> (term, translation)
 
     Args:
@@ -77,19 +81,29 @@ def build_dual_automatons(
         raise ValueError("glossary_terms cannot be empty")
 
     source_auto = ahocorasick.Automaton()
-    trans_auto = ahocorasick.Automaton()
     term_lookup: Dict[int, Tuple[str, str]] = {}
+    # Group: translation_lower -> set of term IDs sharing this translation
+    trans_to_ids: Dict[str, Set[int]] = {}
 
     for idx, (term, translation) in enumerate(glossary_terms):
         # Skip entries with empty term or translation — would corrupt automaton results
         if not term or not translation:
             continue
         source_auto.add_word(term, (idx, term))
-        trans_auto.add_word(translation.lower(), (idx, translation))
         term_lookup[idx] = (term, translation)
+        trans_lower = translation.strip().lower()
+        if trans_lower not in trans_to_ids:
+            trans_to_ids[trans_lower] = set()
+        trans_to_ids[trans_lower].add(idx)
 
     if not term_lookup:
         raise ValueError("No valid (non-empty) glossary terms after filtering")
+
+    # Build translation automaton: one entry per unique translation string,
+    # payload = (frozenset of all IDs that use this translation, translation_lower)
+    trans_auto = ahocorasick.Automaton()
+    for trans_lower, ids in trans_to_ids.items():
+        trans_auto.add_word(trans_lower, (frozenset(ids), trans_lower))
 
     source_auto.make_automaton()
     trans_auto.make_automaton()
@@ -230,15 +244,17 @@ def run_term_check(
         # --- Translation scan: which translations are present in target (ONCE) ---
         # ISOLATED mode: apply word-boundary check to avoid "sword" matching inside "greatsword"
         # SUBSTRING mode: any occurrence counts (consistent with source scan mode)
-        tgt_lower = tgt.lower()
+        # Payload is (frozenset[ids], trans_text) — one hit can mark multiple term IDs present
+        # (multiple source terms can share the same translation string)
+        tgt_lower = tgt.strip().lower()
         present_translations: Set[int] = set()
-        for end_pos, (trans_id, trans_text) in trans_auto.iter(tgt_lower):
+        for end_pos, (ids, trans_text) in trans_auto.iter(tgt_lower):
             if match_mode == MATCH_MODE_ISOLATED:
                 start_pos = end_pos - len(trans_text) + 1
                 if is_isolated_match(tgt_lower, start_pos, end_pos + 1):
-                    present_translations.add(trans_id)
+                    present_translations.update(ids)
             else:
-                present_translations.add(trans_id)
+                present_translations.update(ids)
 
         # --- Check: for each matched source term, is its translation present? ---
         for pattern_id in matches_found:
@@ -248,7 +264,8 @@ def run_term_check(
                     continue
                 issues[pattern_id].append(TermIssue(
                     source_text=src,
-                    translation_text=tgt
+                    translation_text=tgt,
+                    string_id=entry.string_id,
                 ))
 
     if progress_callback:
