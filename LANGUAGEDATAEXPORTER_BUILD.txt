@@ -58,3 +58,4 @@ Build 20260206-115051
 Trigger LanguageDataExporter Build
 Build: Fix double-escaping of linebreaks (amp;lt;br)
 Build - Full rebuild all projects
+Build 029: GUI rework — stripped to 2 buttons + language checkboxes
