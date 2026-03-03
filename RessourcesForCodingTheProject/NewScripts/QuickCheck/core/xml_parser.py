@@ -97,7 +97,7 @@ def parse_excel_file(
     - Also reads 'StringId'/'StringID' if present
 
     Args:
-        file_path: Path to the Excel (.xlsx/.xls) file
+        file_path: Path to the Excel (.xlsx) file
         progress_callback: Optional callback for progress updates
 
     Returns:

@@ -173,7 +173,7 @@ class QuickCheckApp(tk.Tk):
     def _build_folder_row(self, parent: tk.Widget, label: str,
                           command: callable, var_attr: str) -> None:
         """Build a labelled folder browser row."""
-        row = tk.Frame(parent, bg=parent.cget("bg") if hasattr(parent, "cget") else BG_MAIN)
+        row = tk.Frame(parent, bg=parent.cget("bg"))
         row.pack(fill=tk.X, pady=(0, 2))
         tk.Label(row, text=label, bg=row.cget("bg"), fg=FG_MAIN, font=FONT_MAIN,
                  width=16, anchor="w").pack(side=tk.LEFT)
@@ -350,7 +350,6 @@ class QuickCheckApp(tk.Tk):
         self._log.insert(tk.END, msg + "\n", tag)
         self._log.see(tk.END)
         self._log.configure(state=tk.DISABLED)
-        self.update_idletasks()
 
     def _log_clear(self) -> None:
         self._log.configure(state=tk.NORMAL)

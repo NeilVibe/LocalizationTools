@@ -60,8 +60,8 @@ def normalize_text(text: str) -> str:
 
     text = ''.join(result)
 
-    # Normalize all Unicode whitespace variants
-    text = re.sub(r'[\u00A0\u1680\u180E\u2000-\u200B\u202F\u205F\u3000\uFEFF]+', ' ', text)
+    # Normalize all Unicode whitespace variants (stop at U+200A, before zero-width space)
+    text = re.sub(r'[\u00A0\u1680\u180E\u2000-\u200A\u202F\u205F\u3000\uFEFF]+', ' ', text)
 
     # Remove zero-width and directional characters
     text = re.sub(r'[\u200B-\u200F\u202A-\u202E]+', '', text)

@@ -15,7 +15,6 @@ Match modes:
 """
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import List, Dict, Optional, Callable, Tuple, Set
 from collections import defaultdict
@@ -28,7 +27,7 @@ except ImportError:
 
 import config
 from core.preprocessing import preprocess_for_consistency_check
-from utils.language_utils import is_korean
+from utils.language_utils import is_korean, is_phrase, is_word_boundary
 from utils.filters import glossary_filter
 from utils.excel_writer import write_term_check_excel
 
@@ -101,22 +100,9 @@ def build_dual_automatons(
 def is_isolated_match(text: str, start: int, end: int) -> bool:
     """
     Check if a match is isolated (at word boundaries).
-
-    Args:
-        text: The full text
-        start: Start index of match
-        end: End index of match (exclusive)
-
-    Returns:
-        True if match is isolated
+    Delegates to is_word_boundary from language_utils for consistent behavior.
     """
-    before = text[start - 1] if start > 0 else ""
-    after = text[end] if end < len(text) else ""
-
-    before_is_word = bool(re.match(r'[\w가-힣]', before))
-    after_is_word = bool(re.match(r'[\w가-힣]', after))
-
-    return not before_is_word and not after_is_word
+    return is_word_boundary(text, start, end)
 
 
 def run_term_check(
@@ -219,7 +205,7 @@ def run_term_check(
             continue
 
         # Skip sentences if filter enabled
-        if filter_sentences and re.search(r'[.?!]\s*$', src.strip()):
+        if filter_sentences and is_phrase(src):
             continue
 
         # --- Source scan: find which terms appear in this source ---
