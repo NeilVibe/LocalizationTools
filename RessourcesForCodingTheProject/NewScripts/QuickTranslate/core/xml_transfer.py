@@ -6,6 +6,7 @@ Writes corrections back to XML files using STRICT or StringID-only matching.
 """
 
 import os
+import re
 import stat
 import logging
 from collections import Counter, defaultdict
@@ -32,6 +33,205 @@ logger = logging.getLogger(__name__)
 # Import from config (single source of truth)
 SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
 SCRIPT_EXCLUDE_SUBFOLDERS = config.SCRIPT_EXCLUDE_SUBFOLDERS
+
+# ─── Pre-filter: raw-bytes regex for fast StringID/StrOrigin scanning ────
+_STRINGID_RE = re.compile(rb'stringid\s*=\s*"([^"]*)"', re.IGNORECASE)
+_STRORIGIN_RE = re.compile(rb'strorigin\s*=\s*"([^"]*)"', re.IGNORECASE)
+
+
+def _quick_scan_stringids(filepath: Path) -> Optional[set]:
+    """Scan raw bytes for all StringID values. Returns lowercase set, or None on error (fail-safe)."""
+    try:
+        data = filepath.read_bytes()
+        return {m.group(1).decode("utf-8", errors="replace").lower()
+                for m in _STRINGID_RE.finditer(data)}
+    except Exception:
+        return None
+
+
+def _quick_scan_strorigins(filepath: Path) -> Optional[set]:
+    """Scan raw bytes for all StrOrigin values, normalized. Returns set, or None on error (fail-safe)."""
+    try:
+        data = filepath.read_bytes()
+        origins = set()
+        for m in _STRORIGIN_RE.finditer(data):
+            raw = m.group(1).decode("utf-8", errors="replace")
+            # normalize_for_matching handles html.unescape + whitespace + lowercase
+            origins.add(normalize_for_matching(raw))
+        return origins
+    except Exception:
+        return None
+
+
+def _build_correction_lookups(corrections, match_mode):
+    """
+    Build correction lookup dicts ONCE for reuse across all target files.
+
+    Returns (correction_lookup, correction_lookup_nospace) tuple.
+    correction_matched is NOT included — must be built per-file since different
+    files match different corrections.
+
+    Args:
+        corrections: List of correction dicts (already filtered/preprocessed)
+        match_mode: One of "strict", "strorigin_only", "stringid_only", "fuzzy"
+    """
+    if match_mode == "strict":
+        # (StringID, normalized_StrOrigin) -> list of (corrected_text, category, index)
+        correction_lookup = defaultdict(list)
+        correction_lookup_nospace = defaultdict(list)
+        for i, c in enumerate(corrections):
+            sid_lower = c["string_id"].lower()
+            origin_norm = normalize_text(c.get("str_origin", ""))
+            origin_nospace = normalize_nospace(origin_norm)
+            category = c.get("category", "Uncategorized")
+            correction_lookup[(sid_lower, origin_norm)].append((c["corrected"], category, i))
+            correction_lookup_nospace[(sid_lower, origin_nospace)].append((c["corrected"], category, i))
+        return correction_lookup, correction_lookup_nospace
+
+    elif match_mode == "strorigin_only":
+        # normalized_StrOrigin -> (corrected_text, index)
+        correction_lookup = {}
+        correction_lookup_nospace = {}
+        for i, c in enumerate(corrections):
+            origin_norm = normalize_for_matching(c.get("str_origin", ""))
+            if not origin_norm:
+                continue
+            origin_nospace = normalize_nospace(origin_norm)
+            correction_lookup[origin_norm] = (c["corrected"], i)
+            correction_lookup_nospace[origin_nospace] = (c["corrected"], i)
+        return correction_lookup, correction_lookup_nospace
+
+    elif match_mode == "stringid_only":
+        # sid.lower() -> full correction dict
+        correction_lookup = {}
+        for c in corrections:
+            sid_lower = c["string_id"].lower()
+            correction_lookup[sid_lower] = c
+        return correction_lookup, None
+
+    elif match_mode == "fuzzy":
+        # fuzzy_target_string_id.lower() -> full correction dict
+        correction_lookup = {}
+        for c in corrections:
+            target_sid = c.get("fuzzy_target_string_id", "")
+            if target_sid:
+                correction_lookup[target_sid.lower()] = c
+        return correction_lookup, None
+
+    return None, None
+
+
+def _preprocess_stringid_only(corrections, stringid_to_category, stringid_to_subfolder=None):
+    """
+    Pre-process corrections for StringID-only mode: category filter + EventName resolution + subfolder exclusion.
+
+    Extracted from merge_corrections_stringid_only so it can run ONCE for folder mode.
+
+    Args:
+        corrections: Raw correction dicts
+        stringid_to_category: StringID -> Category mapping
+        stringid_to_subfolder: Optional StringID -> Subfolder mapping
+
+    Returns:
+        (script_corrections, preprocess_stats) where script_corrections is the filtered list
+        and preprocess_stats has counts for skipped_non_script, skipped_excluded, etc.
+    """
+    stats = {
+        "skipped_non_script": 0,
+        "skipped_excluded": 0,
+        "eventname_resolved": 0,
+        "details": [],
+    }
+
+    ci_category = {k.lower(): v for k, v in stringid_to_category.items()}
+    ci_subfolder = {k.lower(): v for k, v in stringid_to_subfolder.items()} if stringid_to_subfolder else {}
+
+    script_corrections = []
+    _en_resolver_loaded = False
+    _en_mapping = None
+    _en_extract_fn = None
+
+    def _try_resolve_as_eventname(eventname_str):
+        nonlocal _en_resolver_loaded, _en_mapping, _en_extract_fn
+        if not _en_resolver_loaded:
+            _en_resolver_loaded = True
+            try:
+                from .eventname_resolver import (
+                    get_eventname_mapping,
+                    extract_stringid_from_dialog_keyword,
+                )
+                _en_mapping = get_eventname_mapping(config.EXPORT_FOLDER)
+                _en_extract_fn = extract_stringid_from_dialog_keyword
+            except Exception:
+                _en_mapping = None
+        if not _en_mapping:
+            return None
+        extracted = _en_extract_fn(eventname_str)
+        if extracted and extracted.lower() != eventname_str.lower():
+            return extracted
+        data = _en_mapping.get(eventname_str.lower())
+        if data:
+            return data["stringid"]
+        return None
+
+    for c in corrections:
+        sid = c["string_id"]
+        sid_lower = sid.lower()
+        category = ci_category.get(sid_lower, "Uncategorized")
+        subfolder = ci_subfolder.get(sid_lower, "")
+
+        if category not in SCRIPT_CATEGORIES:
+            resolved_sid = _try_resolve_as_eventname(sid)
+            if resolved_sid:
+                resolved_lower = resolved_sid.lower()
+                resolved_category = ci_category.get(resolved_lower, "Uncategorized")
+                if resolved_category in SCRIPT_CATEGORIES:
+                    stats["eventname_resolved"] += 1
+                    logger.debug(f"EventName '{sid}' resolved to SCRIPT StringID '{resolved_sid}' (category={resolved_category})")
+                    sid = resolved_sid
+                    sid_lower = resolved_lower
+                    category = resolved_category
+                    subfolder = ci_subfolder.get(resolved_lower, "")
+                    c = dict(c)
+                    c["string_id"] = resolved_sid
+                else:
+                    stats["skipped_non_script"] += 1
+                    stats["details"].append({
+                        "string_id": sid,
+                        "status": "SKIPPED_NON_SCRIPT",
+                        "old": f"Category: {resolved_category} (resolved from EventName)",
+                        "new": c["corrected"],
+                    })
+                    logger.debug(f"Skipped non-SCRIPT EventName={sid} -> StringID={resolved_sid} (category={resolved_category})")
+                    continue
+            else:
+                stats["skipped_non_script"] += 1
+                stats["details"].append({
+                    "string_id": sid,
+                    "status": "SKIPPED_NON_SCRIPT",
+                    "old": f"Category: {category}",
+                    "new": c["corrected"],
+                })
+                logger.debug(f"Skipped non-SCRIPT StringID={sid} (category={category})")
+                continue
+
+        if subfolder.lower() in {s.lower() for s in SCRIPT_EXCLUDE_SUBFOLDERS}:
+            stats["skipped_excluded"] += 1
+            stats["details"].append({
+                "string_id": sid,
+                "status": "SKIPPED_EXCLUDED",
+                "old": f"Subfolder: {subfolder}",
+                "new": c["corrected"],
+            })
+            logger.debug(f"Skipped excluded subfolder StringID={sid} (subfolder={subfolder})")
+            continue
+
+        script_corrections.append({**c, "category": category})
+
+    if stats["eventname_resolved"]:
+        logger.info(f"EventName resolution: {stats['eventname_resolved']} EventNames resolved to SCRIPT StringIDs")
+
+    return script_corrections, stats
 
 
 def _convert_linebreaks_for_xml(txt: str) -> str:
@@ -98,6 +298,7 @@ def merge_corrections_to_xml(
     corrections: List[Dict],
     dry_run: bool = False,
     only_untranslated: bool = False,
+    _prebuilt_lookup=None,
 ) -> Dict:
     """
     Merge corrections into a target XML file.
@@ -128,18 +329,20 @@ def merge_corrections_to_xml(
         return result
 
     # Build lookup: (StringID, normalized_StrOrigin) -> list of (corrected_text, category, index)
-    correction_lookup = defaultdict(list)
-    correction_lookup_nospace = defaultdict(list)  # Fallback for whitespace variations
     correction_matched = [False] * len(corrections)
 
-    for i, c in enumerate(corrections):
-        sid_lower = c["string_id"].lower()
-        origin_norm = normalize_text(c.get("str_origin", ""))
-        origin_nospace = normalize_nospace(origin_norm)
-        category = c.get("category", "Uncategorized")
-
-        correction_lookup[(sid_lower, origin_norm)].append((c["corrected"], category, i))
-        correction_lookup_nospace[(sid_lower, origin_nospace)].append((c["corrected"], category, i))
+    if _prebuilt_lookup is not None:
+        correction_lookup, correction_lookup_nospace = _prebuilt_lookup
+    else:
+        correction_lookup = defaultdict(list)
+        correction_lookup_nospace = defaultdict(list)  # Fallback for whitespace variations
+        for i, c in enumerate(corrections):
+            sid_lower = c["string_id"].lower()
+            origin_norm = normalize_text(c.get("str_origin", ""))
+            origin_nospace = normalize_nospace(origin_norm)
+            category = c.get("category", "Uncategorized")
+            correction_lookup[(sid_lower, origin_norm)].append((c["corrected"], category, i))
+            correction_lookup_nospace[(sid_lower, origin_nospace)].append((c["corrected"], category, i))
 
     # Initialize category stats
     categories_seen = set(c.get("category", "Uncategorized") for c in corrections)
@@ -318,6 +521,7 @@ def merge_corrections_strorigin_only(
     dry_run: bool = False,
     only_untranslated: bool = True,
     stringid_to_category: Optional[Dict[str, str]] = None,
+    _prebuilt_lookup=None,
 ) -> Dict:
     """
     Merge corrections into a target XML using StrOrigin-only matching.
@@ -393,38 +597,42 @@ def merge_corrections_strorigin_only(
 
     # Build lookup: normalized_StrOrigin -> (corrected_text, index)
     # Multiple corrections with the same StrOrigin: last one wins
-    correction_lookup = {}
-    correction_lookup_nospace = {}
     correction_matched = [False] * len(corrections)
     conflicting = 0
 
-    skipped_empty = 0
-    for i, c in enumerate(corrections):
-        origin_norm = normalize_for_matching(c.get("str_origin", ""))
+    if _prebuilt_lookup is not None:
+        correction_lookup, correction_lookup_nospace = _prebuilt_lookup
+        skipped_empty = 0
+    else:
+        correction_lookup = {}
+        correction_lookup_nospace = {}
+        skipped_empty = 0
+        for i, c in enumerate(corrections):
+            origin_norm = normalize_for_matching(c.get("str_origin", ""))
 
-        # Guard: skip corrections with empty StrOrigin (would false-match any empty target)
-        if not origin_norm:
-            skipped_empty += 1
-            logger.warning(
-                f"Skipping correction #{i} with empty StrOrigin "
-                f"(StringID={c.get('string_id', '?')})"
-            )
-            continue
-
-        origin_nospace = normalize_nospace(origin_norm)
-
-        if origin_norm in correction_lookup:
-            old_c_idx = correction_lookup[origin_norm][1]
-            old_corrected = corrections[old_c_idx].get("corrected", "")
-            if old_corrected != c.get("corrected", ""):
-                conflicting += 1
-                logger.debug(
-                    f"Duplicate StrOrigin '{origin_norm[:50]}': overwriting "
-                    f"'{old_corrected[:40]}' with '{c.get('corrected', '')[:40]}'"
+            # Guard: skip corrections with empty StrOrigin (would false-match any empty target)
+            if not origin_norm:
+                skipped_empty += 1
+                logger.warning(
+                    f"Skipping correction #{i} with empty StrOrigin "
+                    f"(StringID={c.get('string_id', '?')})"
                 )
+                continue
 
-        correction_lookup[origin_norm] = (c["corrected"], i)
-        correction_lookup_nospace[origin_nospace] = (c["corrected"], i)
+            origin_nospace = normalize_nospace(origin_norm)
+
+            if origin_norm in correction_lookup:
+                old_c_idx = correction_lookup[origin_norm][1]
+                old_corrected = corrections[old_c_idx].get("corrected", "")
+                if old_corrected != c.get("corrected", ""):
+                    conflicting += 1
+                    logger.debug(
+                        f"Duplicate StrOrigin '{origin_norm[:50]}': overwriting "
+                        f"'{old_corrected[:40]}' with '{c.get('corrected', '')[:40]}'"
+                    )
+
+            correction_lookup[origin_norm] = (c["corrected"], i)
+            correction_lookup_nospace[origin_nospace] = (c["corrected"], i)
 
     if skipped_empty:
         logger.warning(f"Skipped {skipped_empty} corrections with empty StrOrigin")
@@ -576,6 +784,7 @@ def merge_corrections_stringid_only(
     stringid_to_subfolder: Optional[Dict[str, str]] = None,
     dry_run: bool = False,
     only_untranslated: bool = False,
+    _prebuilt_lookup=None,
 ) -> Dict:
     """
     Merge corrections using StringID-ONLY matching.
@@ -610,153 +819,165 @@ def merge_corrections_stringid_only(
     if not corrections:
         return result
 
-    # Build case-insensitive lookup versions of category/subfolder mappings
-    # so StringIDs from any source (Excel, EventName resolver, XML) always match
+    # Build case-insensitive category lookup (always needed for per-element matching)
     ci_category = {k.lower(): v for k, v in stringid_to_category.items()}
-    ci_subfolder = {k.lower(): v for k, v in stringid_to_subfolder.items()} if stringid_to_subfolder else {}
 
-    # Filter corrections to SCRIPT TYPE only (and not in excluded subfolders)
-    # Multi-pass: if StringID not in category index, try EventName resolution first
-    script_corrections = []
-    _eventname_resolved_count = 0
+    if _prebuilt_lookup is not None:
+        # Folder mode: preprocessing + lookup already done ONCE
+        correction_lookup, _ = _prebuilt_lookup
+        correction_matched = {sid: False for sid in correction_lookup}
 
-    # Lazy EventName resolver — only loaded if needed
-    _en_resolver_loaded = False
-    _en_mapping = None
-    _en_extract_fn = None
+        # Initialize category stats from pre-built lookup
+        for sid_lower, c in correction_lookup.items():
+            category = c.get("category", "Uncategorized")
+            if category not in result["by_category"]:
+                result["by_category"][category] = {"matched": 0, "updated": 0, "not_found": 0}
+    else:
+        # Single-file mode: do full preprocessing inline
+        ci_subfolder = {k.lower(): v for k, v in stringid_to_subfolder.items()} if stringid_to_subfolder else {}
 
-    def _try_resolve_as_eventname(eventname_str):
-        """Try to resolve a value as EventName → StringID via 3-step waterfall."""
-        nonlocal _en_resolver_loaded, _en_mapping, _en_extract_fn
-        if not _en_resolver_loaded:
-            _en_resolver_loaded = True
-            try:
-                from .eventname_resolver import (
-                    get_eventname_mapping,
-                    extract_stringid_from_dialog_keyword,
-                )
-                _en_mapping = get_eventname_mapping(config.EXPORT_FOLDER)
-                _en_extract_fn = extract_stringid_from_dialog_keyword
-            except Exception:
-                _en_mapping = None
-        if not _en_mapping:
+        # Filter corrections to SCRIPT TYPE only (and not in excluded subfolders)
+        # Multi-pass: if StringID not in category index, try EventName resolution first
+        script_corrections = []
+        _eventname_resolved_count = 0
+
+        # Lazy EventName resolver — only loaded if needed
+        _en_resolver_loaded = False
+        _en_mapping = None
+        _en_extract_fn = None
+
+        def _try_resolve_as_eventname(eventname_str):
+            """Try to resolve a value as EventName → StringID via 3-step waterfall."""
+            nonlocal _en_resolver_loaded, _en_mapping, _en_extract_fn
+            if not _en_resolver_loaded:
+                _en_resolver_loaded = True
+                try:
+                    from .eventname_resolver import (
+                        get_eventname_mapping,
+                        extract_stringid_from_dialog_keyword,
+                    )
+                    _en_mapping = get_eventname_mapping(config.EXPORT_FOLDER)
+                    _en_extract_fn = extract_stringid_from_dialog_keyword
+                except Exception:
+                    _en_mapping = None
+            if not _en_mapping:
+                return None
+
+            # Step 1: keyword extraction
+            extracted = _en_extract_fn(eventname_str)
+            if extracted and extracted.lower() != eventname_str.lower():
+                return extracted
+
+            # Step 2: export lookup
+            data = _en_mapping.get(eventname_str.lower())
+            if data:
+                return data["stringid"]
+
             return None
 
-        # Step 1: keyword extraction
-        extracted = _en_extract_fn(eventname_str)
-        if extracted and extracted.lower() != eventname_str.lower():
-            return extracted
+        for c in corrections:
+            sid = c["string_id"]
+            sid_lower = sid.lower()
+            category = ci_category.get(sid_lower, "Uncategorized")
+            subfolder = ci_subfolder.get(sid_lower, "")
 
-        # Step 2: export lookup
-        data = _en_mapping.get(eventname_str.lower())
-        if data:
-            return data["stringid"]
-
-        return None
-
-    for c in corrections:
-        sid = c["string_id"]
-        sid_lower = sid.lower()
-        category = ci_category.get(sid_lower, "Uncategorized")
-        subfolder = ci_subfolder.get(sid_lower, "")
-
-        # Check if in SCRIPT categories (Dialog/Sequencer)
-        if category not in SCRIPT_CATEGORIES:
-            # Multi-pass: before skipping, try resolving as EventName
-            # The StringID might actually be an EventName that resolves to a SCRIPT StringID
-            resolved_sid = _try_resolve_as_eventname(sid)
-            if resolved_sid:
-                resolved_lower = resolved_sid.lower()
-                resolved_category = ci_category.get(resolved_lower, "Uncategorized")
-                if resolved_category in SCRIPT_CATEGORIES:
-                    # EventName resolved to a SCRIPT StringID — use it
-                    _eventname_resolved_count += 1
-                    logger.debug(f"EventName '{sid}' resolved to SCRIPT StringID '{resolved_sid}' (category={resolved_category})")
-                    sid = resolved_sid
-                    sid_lower = resolved_lower
-                    category = resolved_category
-                    subfolder = ci_subfolder.get(resolved_lower, "")
-                    # Update the correction's string_id for downstream matching
-                    c = dict(c)
-                    c["string_id"] = resolved_sid
+            # Check if in SCRIPT categories (Dialog/Sequencer)
+            if category not in SCRIPT_CATEGORIES:
+                # Multi-pass: before skipping, try resolving as EventName
+                # The StringID might actually be an EventName that resolves to a SCRIPT StringID
+                resolved_sid = _try_resolve_as_eventname(sid)
+                if resolved_sid:
+                    resolved_lower = resolved_sid.lower()
+                    resolved_category = ci_category.get(resolved_lower, "Uncategorized")
+                    if resolved_category in SCRIPT_CATEGORIES:
+                        # EventName resolved to a SCRIPT StringID — use it
+                        _eventname_resolved_count += 1
+                        logger.debug(f"EventName '{sid}' resolved to SCRIPT StringID '{resolved_sid}' (category={resolved_category})")
+                        sid = resolved_sid
+                        sid_lower = resolved_lower
+                        category = resolved_category
+                        subfolder = ci_subfolder.get(resolved_lower, "")
+                        # Update the correction's string_id for downstream matching
+                        c = dict(c)
+                        c["string_id"] = resolved_sid
+                    else:
+                        # Resolved but still not SCRIPT
+                        result["skipped_non_script"] += 1
+                        result["details"].append({
+                            "string_id": sid,
+                            "status": "SKIPPED_NON_SCRIPT",
+                            "old": f"Category: {resolved_category} (resolved from EventName)",
+                            "new": c["corrected"],
+                        })
+                        logger.debug(f"Skipped non-SCRIPT EventName={sid} -> StringID={resolved_sid} (category={resolved_category})")
+                        continue
                 else:
-                    # Resolved but still not SCRIPT
+                    # Not resolvable as EventName either
                     result["skipped_non_script"] += 1
                     result["details"].append({
                         "string_id": sid,
                         "status": "SKIPPED_NON_SCRIPT",
-                        "old": f"Category: {resolved_category} (resolved from EventName)",
+                        "old": f"Category: {category}",
                         "new": c["corrected"],
                     })
-                    logger.debug(f"Skipped non-SCRIPT EventName={sid} -> StringID={resolved_sid} (category={resolved_category})")
+                    logger.debug(f"Skipped non-SCRIPT StringID={sid} (category={category})")
                     continue
-            else:
-                # Not resolvable as EventName either
-                result["skipped_non_script"] += 1
+
+            # Check if subfolder is in exclusion list (case-insensitive)
+            if subfolder.lower() in {s.lower() for s in SCRIPT_EXCLUDE_SUBFOLDERS}:
+                result["skipped_excluded"] += 1
                 result["details"].append({
                     "string_id": sid,
-                    "status": "SKIPPED_NON_SCRIPT",
-                    "old": f"Category: {category}",
+                    "status": "SKIPPED_EXCLUDED",
+                    "old": f"Subfolder: {subfolder}",
                     "new": c["corrected"],
                 })
-                logger.debug(f"Skipped non-SCRIPT StringID={sid} (category={category})")
+                logger.debug(f"Skipped excluded subfolder StringID={sid} (subfolder={subfolder})")
                 continue
 
-        # Check if subfolder is in exclusion list (case-insensitive)
-        if subfolder.lower() in {s.lower() for s in SCRIPT_EXCLUDE_SUBFOLDERS}:
-            result["skipped_excluded"] += 1
-            result["details"].append({
-                "string_id": sid,
-                "status": "SKIPPED_EXCLUDED",
-                "old": f"Subfolder: {subfolder}",
-                "new": c["corrected"],
+            script_corrections.append({
+                **c,
+                "category": category,
             })
-            logger.debug(f"Skipped excluded subfolder StringID={sid} (subfolder={subfolder})")
-            continue
 
-        script_corrections.append({
-            **c,
-            "category": category,
-        })
+        if _eventname_resolved_count:
+            logger.info(f"EventName resolution: {_eventname_resolved_count} EventNames resolved to SCRIPT StringIDs")
 
-    if _eventname_resolved_count:
-        logger.info(f"EventName resolution: {_eventname_resolved_count} EventNames resolved to SCRIPT StringIDs")
+        if not script_corrections:
+            logger.info(f"No SCRIPT corrections to apply to {xml_path.name}")
+            return result
 
-    if not script_corrections:
-        logger.info(f"No SCRIPT corrections to apply to {xml_path.name}")
-        return result
+        # Build StringID-only lookup - store full correction for failure reports
+        correction_lookup = {}
+        correction_matched = {}
+        duplicate_stringids = 0
 
-    # Build StringID-only lookup - store full correction for failure reports
-    correction_lookup = {}
-    correction_matched = {}
-    duplicate_stringids = 0
+        for c in script_corrections:
+            sid_lower = c["string_id"].lower()
 
-    for c in script_corrections:
-        sid_lower = c["string_id"].lower()
+            if sid_lower in correction_lookup:
+                old_corrected = correction_lookup[sid_lower].get("corrected", "")
+                if old_corrected != c.get("corrected", ""):
+                    duplicate_stringids += 1
+                    logger.debug(
+                        f"Duplicate StringID '{c['string_id']}': overwriting "
+                        f"'{old_corrected[:40]}' with '{c.get('corrected', '')[:40]}'"
+                    )
 
-        if sid_lower in correction_lookup:
-            old_corrected = correction_lookup[sid_lower].get("corrected", "")
-            if old_corrected != c.get("corrected", ""):
-                duplicate_stringids += 1
-                logger.debug(
-                    f"Duplicate StringID '{c['string_id']}': overwriting "
-                    f"'{old_corrected[:40]}' with '{c.get('corrected', '')[:40]}'"
-                )
+            correction_lookup[sid_lower] = c  # Store FULL correction dict (lowercase key)
+            correction_matched[sid_lower] = False
 
-        correction_lookup[sid_lower] = c  # Store FULL correction dict (lowercase key)
-        correction_matched[sid_lower] = False
+            # Initialize category stats
+            category = c.get("category", "Uncategorized")
+            if category not in result["by_category"]:
+                result["by_category"][category] = {"matched": 0, "updated": 0, "not_found": 0}
 
-        # Initialize category stats
-        category = c.get("category", "Uncategorized")
-        if category not in result["by_category"]:
-            result["by_category"][category] = {"matched": 0, "updated": 0, "not_found": 0}
-
-    result["duplicate_sources"] = duplicate_stringids
-    if duplicate_stringids > 0:
-        logger.info(
-            f"{len(script_corrections)} SCRIPT corrections -> {len(correction_lookup)} unique StringIDs "
-            f"({duplicate_stringids} had conflicting translations, using latest)"
-        )
+        result["duplicate_sources"] = duplicate_stringids
+        if duplicate_stringids > 0:
+            logger.info(
+                f"{len(script_corrections)} SCRIPT corrections -> {len(correction_lookup)} unique StringIDs "
+                f"({duplicate_stringids} had conflicting translations, using latest)"
+            )
 
     try:
         if USING_LXML:
@@ -908,6 +1129,7 @@ def merge_corrections_fuzzy(
     corrections: List[Dict],
     dry_run: bool = False,
     only_untranslated: bool = False,
+    _prebuilt_lookup=None,
 ) -> Dict:
     """
     Merge corrections using fuzzy-matched StringIDs.
@@ -936,14 +1158,16 @@ def merge_corrections_fuzzy(
         return result
 
     # Build lookup: fuzzy_target_string_id -> full correction dict
-    correction_lookup = {}
-    correction_matched = {}
+    if _prebuilt_lookup is not None:
+        correction_lookup, _ = _prebuilt_lookup
+    else:
+        correction_lookup = {}
+        for c in corrections:
+            target_sid = c.get("fuzzy_target_string_id", "")
+            if target_sid:
+                correction_lookup[target_sid.lower()] = c  # Store FULL correction dict (lowercase key)
 
-    for c in corrections:
-        target_sid = c.get("fuzzy_target_string_id", "")
-        if target_sid:
-            correction_lookup[target_sid.lower()] = c  # Store FULL correction dict (lowercase key)
-            correction_matched[target_sid.lower()] = False
+    correction_matched = {sid: False for sid in correction_lookup}
 
     if not correction_lookup:
         result["errors"].append("No corrections with fuzzy_target_string_id found")
@@ -1345,6 +1569,8 @@ def transfer_folder_to_folder(
         "total_skipped_duplicate_strorigin": 0,
         "total_skipped_script": 0,
         "total_desc_updated": 0,
+        "prefilter_skipped": 0,
+        "prefilter_total": 0,
         "errors": [],
         "file_results": {},
     }
@@ -1695,6 +1921,116 @@ def transfer_folder_to_folder(
         else:
             logger.warning("EventName mapping is empty — export folder may not contain SoundEventName attributes")
 
+    # ─── Pre-filter: skip target files with zero matching corrections ─────
+    # Raw-bytes regex scan (~2ms/file) avoids expensive XML parse+iterate
+    # for the 98%+ of files that have no matching StringIDs/StrOrigins.
+    prefilter_total = sum(
+        1 for g in target_groups.values()
+        if g["target_file"].suffix.lower() in (".xml",)
+    )
+    prefilter_skipped = 0
+
+    if prefilter_total > 0:
+        if progress_callback:
+            progress_callback(f"Pre-filtering {prefilter_total} target files...")
+
+        if match_mode in ("strict", "strict_fuzzy", "stringid_only"):
+            # Collect all correction StringIDs (lowercase) across all groups
+            correction_sids = set()
+            for g in target_groups.values():
+                for c in g["corrections"]:
+                    sid = c.get("string_id", "")
+                    if sid:
+                        correction_sids.add(sid.lower())
+
+            if correction_sids:
+                keys_to_skip = []
+                for target_key, group in target_groups.items():
+                    tf = group["target_file"]
+                    if tf.suffix.lower() != ".xml":
+                        continue
+                    file_sids = _quick_scan_stringids(tf)
+                    if file_sids is None:
+                        continue  # fail-safe: scan error → don't skip
+                    if not file_sids.intersection(correction_sids):
+                        keys_to_skip.append(target_key)
+                for k in keys_to_skip:
+                    logger.debug(f"Pre-filter skip: {target_groups[k]['target_file'].name}")
+                    del target_groups[k]
+                prefilter_skipped = len(keys_to_skip)
+
+        elif match_mode in ("strorigin_only", "strorigin_only_fuzzy"):
+            # Collect all correction StrOrigins (normalized) across all groups
+            correction_origins = set()
+            for g in target_groups.values():
+                for c in g["corrections"]:
+                    origin = c.get("str_origin", "")
+                    if origin:
+                        correction_origins.add(normalize_for_matching(origin))
+
+            if correction_origins:
+                keys_to_skip = []
+                for target_key, group in target_groups.items():
+                    tf = group["target_file"]
+                    if tf.suffix.lower() != ".xml":
+                        continue
+                    file_origins = _quick_scan_strorigins(tf)
+                    if file_origins is None:
+                        continue  # fail-safe: scan error → don't skip
+                    if not file_origins.intersection(correction_origins):
+                        keys_to_skip.append(target_key)
+                for k in keys_to_skip:
+                    logger.debug(f"Pre-filter skip: {target_groups[k]['target_file'].name}")
+                    del target_groups[k]
+                prefilter_skipped = len(keys_to_skip)
+
+        if prefilter_skipped > 0:
+            msg = f"Pre-filter: {prefilter_skipped}/{prefilter_total} target files skipped (zero matching corrections)"
+            logger.info(msg)
+            if log_callback:
+                log_callback(msg, 'info')
+        else:
+            logger.info(f"Pre-filter: all {prefilter_total} target files have potential matches")
+
+    results["prefilter_skipped"] = prefilter_skipped
+    results["prefilter_total"] = prefilter_total
+
+    # ─── Build correction lookups ONCE per language for reuse across target files ─
+    # TMXTransfer11 pattern: build dict once, lean dict.get() in inner loop.
+    # Multiple languages may have different corrections — cache by corrections list id.
+    _base_mode = match_mode.replace("_fuzzy", "")  # strict_fuzzy → strict
+    _lookup_cache = {}          # {id(corrections_list): (lookup, lookup_nospace)}
+    _preprocess_stats_cache = {}  # {id(corrections_list): stats_dict}
+
+    for _group in target_groups.values():
+        _corr = _group["corrections"]
+        _corr_id = id(_corr)
+        if _corr_id in _lookup_cache or not _corr:
+            continue
+
+        if _base_mode == "strict":
+            _lookup_cache[_corr_id] = _build_correction_lookups(_corr, "strict")
+            logger.info(f"Built shared strict lookup: {len(_lookup_cache[_corr_id][0]):,} keys")
+
+        elif _base_mode == "strorigin_only":
+            _lookup_cache[_corr_id] = _build_correction_lookups(_corr, "strorigin_only")
+            logger.info(f"Built shared strorigin_only lookup: {len(_lookup_cache[_corr_id][0]):,} keys")
+
+        elif _base_mode == "stringid_only" and stringid_to_category:
+            _preprocessed, _pp_stats = _preprocess_stringid_only(
+                _corr, stringid_to_category, stringid_to_subfolder,
+            )
+            _preprocess_stats_cache[_corr_id] = _pp_stats
+            if _preprocessed:
+                _lookup_cache[_corr_id] = _build_correction_lookups(_preprocessed, "stringid_only")
+                logger.info(
+                    f"Built shared stringid_only lookup: {len(_lookup_cache[_corr_id][0]):,} keys "
+                    f"(skipped {_pp_stats['skipped_non_script']} non-script, "
+                    f"{_pp_stats['skipped_excluded']} excluded)"
+                )
+            else:
+                _lookup_cache[_corr_id] = (None, None)
+
     # ─── Phase 2: ONE pass per target file with ALL corrections ─────
     # Now handles both XML and Excel targets via dispatch
 
@@ -1709,11 +2045,18 @@ def transfer_folder_to_folder(
             _recovery_mapping = get_eventname_mapping(config.EXPORT_FOLDER)
         return _recovery_mapping
 
+    _preprocess_stats_counted = set()  # Track which correction lists had stats counted
+
     for ti, (target_key, group) in enumerate(target_groups.items()):
         target_file = group["target_file"]
         corrections = group["corrections"]
         source_names = group["source_files"]
         is_excel = target_file.suffix.lower() in (".xlsx", ".xls")
+
+        # Resolve per-language shared lookup (None if not cached or empty corrections)
+        _corr_id = id(corrections)
+        _cached = _lookup_cache.get(_corr_id)
+        _shared_lookup = _cached if _cached and _cached[0] is not None else None
 
         if progress_callback:
             progress_callback(f"Transferring to {target_file.name}... ({ti+1}/{len(target_groups)})")
@@ -1749,9 +2092,19 @@ def transfer_folder_to_folder(
                     target_file, corrections, stringid_to_category,
                     stringid_to_subfolder, dry_run,
                     only_untranslated=only_untranslated,
+                    _prebuilt_lookup=_shared_lookup,
                 )
-                results["total_skipped"] += file_result.get("skipped_non_script", 0)
-                results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
+                # When using prebuilt lookup, preprocess stats come from the shared pass
+                _pp_stats = _preprocess_stats_cache.get(_corr_id)
+                if _pp_stats and _corr_id not in _preprocess_stats_counted:
+                    results["total_skipped"] += _pp_stats.get("skipped_non_script", 0)
+                    results["total_skipped_excluded"] += _pp_stats.get("skipped_excluded", 0)
+                    # Merge preprocess detail entries into file_result for failure reports
+                    file_result.setdefault("details", []).extend(_pp_stats.get("details", []))
+                    _preprocess_stats_counted.add(_corr_id)
+                elif not _pp_stats:
+                    results["total_skipped"] += file_result.get("skipped_non_script", 0)
+                    results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
 
                 # EventName recovery pass for NOT_FOUND corrections
                 if file_result.get("not_found", 0) > 0:
@@ -1768,6 +2121,7 @@ def transfer_folder_to_folder(
                 file_result = merge_corrections_to_xml(
                     target_file, corrections, dry_run,
                     only_untranslated=only_untranslated,
+                    _prebuilt_lookup=_shared_lookup,
                 )
                 step1_matched = file_result["matched"]
                 logger.info(f"Step 1 (perfect): {step1_matched}/{len(corrections)} matched")
@@ -1856,6 +2210,7 @@ def transfer_folder_to_folder(
                     target_file, corrections, dry_run,
                     only_untranslated=only_untranslated,
                     stringid_to_category=stringid_to_category,
+                    _prebuilt_lookup=_shared_lookup,
                 )
                 results["total_skipped"] += file_result.get("skipped_script", 0)
             elif match_mode == "strorigin_only_fuzzy":
@@ -1863,6 +2218,7 @@ def transfer_folder_to_folder(
                     target_file, corrections, dry_run,
                     only_untranslated=only_untranslated,
                     stringid_to_category=stringid_to_category,
+                    _prebuilt_lookup=_shared_lookup,
                 )
                 results["total_skipped"] += file_result.get("skipped_script", 0)
                 step1_matched = file_result["matched"]
@@ -1936,6 +2292,7 @@ def transfer_folder_to_folder(
                 file_result = merge_corrections_to_xml(
                     target_file, corrections, dry_run,
                     only_untranslated=only_untranslated,
+                    _prebuilt_lookup=_shared_lookup,
                 )
 
                 # EventName recovery pass for NOT_FOUND corrections
