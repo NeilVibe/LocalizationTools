@@ -143,3 +143,4 @@ Build - Desc/DescOrigin support + validation warnings + user guides
 Build: shared correction lookup optimization (TMXTransfer11 pattern)
 Build: fast folder merge (TMXTransfer11 pattern)
 Build: clean GUI log text
+Build: dead code removal (828 lines)
