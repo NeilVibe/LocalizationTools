@@ -69,6 +69,7 @@ class QuickCheckApp(tk.Tk):
         self._running = False
         self._last_scanned_source: str = ""
         self._suppress_save: bool = False
+        self._save_after_id: Optional[str] = None
 
         self._build_ui()
         self._apply_settings_to_ui()
@@ -273,9 +274,19 @@ class QuickCheckApp(tk.Tk):
             self._suppress_save = False
 
     def _save_settings(self) -> None:
-        """Read UI values and persist to settings file."""
+        """Schedule a debounced settings save (400ms after last change)."""
         if self._suppress_save:
             return
+        if self._save_after_id is not None:
+            try:
+                self.after_cancel(self._save_after_id)
+            except Exception:
+                pass
+        self._save_after_id = self.after(400, self._do_save_settings)
+
+    def _do_save_settings(self) -> None:
+        """Actually persist settings to disk."""
+        self._save_after_id = None
         try:
             s = self._settings
             s.filter_sentences = self._var_filter_sentences.get()
@@ -291,8 +302,8 @@ class QuickCheckApp(tk.Tk):
             logger.warning("Settings save failed", exc_info=True)
 
     def _read_settings(self) -> Settings:
-        """Build Settings from current UI state."""
-        self._save_settings()
+        """Flush any pending save and return current settings."""
+        self._do_save_settings()
         return self._settings
 
     # ------------------------------------------------------------------

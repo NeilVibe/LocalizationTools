@@ -7,9 +7,12 @@ Excel files: looks for StrOrigin+Str columns (case-insensitive headers), or
 """
 from __future__ import annotations
 
+import logging
 import os
 from typing import List, Dict, Optional, Tuple, Callable
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 try:
     from lxml import etree
@@ -80,6 +83,7 @@ def parse_xml_file(
     except Exception as e:
         if progress_callback:
             progress_callback(f"Error parsing {file_path}: {e}")
+        logger.warning("Error parsing %s: %s", file_path, e)
 
     return entries
 
@@ -165,6 +169,7 @@ def parse_excel_file(
     except Exception as e:
         if progress_callback:
             progress_callback(f"Error reading Excel {file_path}: {e}")
+        logger.warning("Error reading Excel %s: %s", file_path, e)
 
     return entries
 

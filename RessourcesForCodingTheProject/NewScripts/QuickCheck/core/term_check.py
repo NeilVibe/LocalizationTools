@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Dict, Optional, Callable, Tuple, Set
-from collections import defaultdict
+from collections import defaultdict, Counter
 from dataclasses import dataclass, field
 
 try:
@@ -157,12 +157,17 @@ def run_term_check(
         min_occurrence=min_occurrence,
     )
 
-    # Dedupe by source (keep first translation)
+    # Dedupe by source — keep majority (most common) translation, not just first
+    src_trans_counts: Dict[str, Counter] = defaultdict(Counter)
+    for src, trans in glossary_pairs:
+        src_trans_counts[src][trans] += 1
+
     seen: Set[str] = set()
     glossary_terms: List[Tuple[str, str]] = []
     for src, trans in glossary_pairs:
         if src not in seen:
-            glossary_terms.append((src, trans))
+            best_trans = src_trans_counts[src].most_common(1)[0][0]
+            glossary_terms.append((src, best_trans))
             seen.add(src)
 
     if not glossary_terms:

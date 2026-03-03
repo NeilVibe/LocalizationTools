@@ -6,12 +6,15 @@ Uses xlsxwriter (write-only, reliable).
 """
 from __future__ import annotations
 
+import logging
 from typing import List, Tuple
 
 try:
     import xlsxwriter
 except ImportError:
     xlsxwriter = None
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +101,8 @@ def write_line_check_excel(
         wb = None   # mark closed so finally doesn't double-close
         return True
 
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to write LineCheck Excel %s: %s", output_path, e)
         return False
 
     finally:
@@ -181,7 +185,8 @@ def write_term_check_excel(
         wb = None
         return True
 
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to write TermCheck Excel %s: %s", output_path, e)
         return False
 
     finally:
@@ -279,7 +284,8 @@ def write_glossary_excel(
         wb = None
         return True
 
-    except Exception:
+    except Exception as e:
+        logger.error("Failed to write Glossary Excel %s: %s", output_path, e)
         return False
 
     finally:

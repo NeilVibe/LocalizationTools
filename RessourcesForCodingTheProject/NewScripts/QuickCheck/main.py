@@ -57,6 +57,14 @@ def main() -> None:
         app.mainloop()
     except Exception:
         logger.exception("Fatal error during startup")
+        try:
+            import tkinter.messagebox
+            tkinter.messagebox.showerror(
+                "QuickCheck — Fatal Error",
+                "QuickCheck failed to start.\nCheck logs/quickcheck.log for details."
+            )
+        except Exception:
+            pass
         raise
 
 
