@@ -13,6 +13,7 @@ from __future__ import annotations
 from .xml_parser import parse_language_file, discover_language_files
 from .category_mapper import (
     build_stringid_category_index,
+    build_stringid_filename_index,
     load_cluster_config,
     analyze_categories,
     TwoTierCategoryMapper,
@@ -48,6 +49,7 @@ __all__ = [
     "parse_language_file",
     "discover_language_files",
     "build_stringid_category_index",
+    "build_stringid_filename_index",
     "load_cluster_config",
     "analyze_categories",
     "TwoTierCategoryMapper",

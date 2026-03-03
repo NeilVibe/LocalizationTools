@@ -36,8 +36,8 @@ try:
     from config import STORY_CATEGORIES, COLUMN_HEADERS_EU, COLUMN_HEADERS_ASIAN
 except ImportError:
     STORY_CATEGORIES = ["Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"]
-    COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "StringID"]
-    COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "StringID"]
+    COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID"]
+    COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID"]
 
 # Column widths
 DEFAULT_WIDTHS = {
@@ -51,6 +51,7 @@ DEFAULT_WIDTHS = {
     "MEMO1": 30,
     "MEMO2": 30,
     "Category": 20,
+    "FileName": 25,
     "StringID": 15,
 }
 
@@ -127,6 +128,7 @@ def write_language_excel(
     stringid_to_soundevent: Optional[Dict[str, str]] = None,
     excluded_categories: Optional[set] = None,
     protect_sheet: bool = False,  # Disabled to allow Ctrl+H (Find & Replace)
+    filename_index: Optional[Dict[str, str]] = None,
 ) -> bool:
     """
     Write Excel file for one language using xlsxwriter.
@@ -262,6 +264,9 @@ def write_language_excel(
             # Get English translation if needed
             english = eng_lookup.get(string_id, '') if include_english else None
 
+            # Get filename
+            filename = filename_index.get(string_id, '') if filename_index else ''
+
             # Determine Text State based on Korean content in Str column
             # KOREAN = contains Korean characters (untranslated)
             # TRANSLATED = no Korean characters
@@ -269,9 +274,9 @@ def write_language_excel(
 
             # Build row data (Correction, STATUS, COMMENT, MEMO columns empty, to be filled during LQA)
             if include_english:
-                row_data = [str_origin, english, str_value, "", text_state, "", "", "", "", category, string_id]
+                row_data = [str_origin, english, str_value, "", text_state, "", "", "", "", category, filename, string_id]
             else:
-                row_data = [str_origin, str_value, "", text_state, "", "", "", "", category, string_id]
+                row_data = [str_origin, str_value, "", text_state, "", "", "", "", category, filename, string_id]
 
             # Write cells with appropriate format
             for col_idx, value in enumerate(row_data):
@@ -304,9 +309,9 @@ def write_language_excel(
                 1, status_col_idx, row_num - 1, status_col_idx,
                 {
                     'validate': 'list',
-                    'source': ['ISSUE', 'NO ISSUE'],
+                    'source': ['ISSUE', 'NO ISSUE', 'FIXED'],
                     'input_title': 'Status',
-                    'input_message': 'Select ISSUE or NO ISSUE',
+                    'input_message': 'Select ISSUE, NO ISSUE, or FIXED',
                     'error_title': 'Invalid',
                     'error_message': 'Please select from the dropdown list.',
                 }

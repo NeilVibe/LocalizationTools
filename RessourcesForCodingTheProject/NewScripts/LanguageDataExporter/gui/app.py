@@ -30,6 +30,7 @@ from exporter import (
     parse_language_file,
     discover_language_files,
     build_stringid_category_index,
+    build_stringid_filename_index,
     load_cluster_config,
     write_language_excel,
 )
@@ -394,6 +395,7 @@ class LanguageDataExporterGUI:
                     cluster_cfg,
                     cluster_cfg.get("default_category", "Uncategorized")
                 )
+                filename_index = build_stringid_filename_index(export_folder)
 
                 all_lang_files = discover_language_files(loc_folder)
 
@@ -440,6 +442,7 @@ class LanguageDataExporterGUI:
                         include_english=include_english,
                         default_category=cluster_cfg.get("default_category", "Uncategorized"),
                         excluded_categories=excluded_categories,
+                        filename_index=filename_index,
                     )
 
                     progress = int((i + 1) / total * 100)

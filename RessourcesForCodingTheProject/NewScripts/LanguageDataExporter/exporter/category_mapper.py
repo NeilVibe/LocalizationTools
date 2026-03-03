@@ -357,6 +357,37 @@ def get_category(
     return category_index.get(string_id, default_category)
 
 
+def build_stringid_filename_index(export_folder: Path) -> Dict[str, str]:
+    """
+    Scan EXPORT folder and build StringID → filename mapping.
+
+    Returns the stem of the .loc.xml file (without extension) for each StringID.
+    Example: "SystemUI.loc.xml" → "SystemUI"
+
+    Args:
+        export_folder: Path to EXPORT folder
+
+    Returns:
+        {StringID: filename_stem} mapping
+    """
+    if not export_folder.exists():
+        logger.error(f"EXPORT folder not found: {export_folder}")
+        return {}
+
+    filename_index: Dict[str, str] = {}
+
+    for xml_file in export_folder.rglob("*.loc.xml"):
+        # Strip .loc.xml (8 chars) to get the stem
+        stem = xml_file.name[:-8] if xml_file.name.endswith(".loc.xml") else xml_file.stem
+        string_ids = parse_export_file(xml_file)
+        for string_id in string_ids:
+            if string_id not in filename_index:
+                filename_index[string_id] = stem
+
+    logger.info(f"Built filename index: {len(filename_index)} StringIDs mapped")
+    return filename_index
+
+
 def build_stringid_to_toplevel(export_folder: Path) -> Dict[str, str]:
     """
     Build StringID -> Top-level folder mapping.
