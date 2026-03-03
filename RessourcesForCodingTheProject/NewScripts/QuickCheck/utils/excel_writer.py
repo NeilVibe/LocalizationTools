@@ -215,7 +215,7 @@ def write_term_check_excel(
         })
 
         ws.set_row(0, 22)
-        for i, h in enumerate(["Term (KR)", "Expected Translation", "Source Text", "Translation Found", "StringID", "FileName", "Status", "Comment"]):
+        for i, h in enumerate(["Term (KR)", "Expected Translation", "Source Text", "Translation Found", "StringID", "Status", "Comment", "FileName"]):
             ws.write(0, i, h, fmt_header)
 
         ws.set_column(0, 0, 22)
@@ -223,9 +223,9 @@ def write_term_check_excel(
         ws.set_column(2, 2, 45)
         ws.set_column(3, 3, 45)
         ws.set_column(4, 4, 20)
-        ws.set_column(5, 5, 25)
-        ws.set_column(6, 6, 14)
-        ws.set_column(7, 7, 40)
+        ws.set_column(5, 5, 14)
+        ws.set_column(6, 6, 40)
+        ws.set_column(7, 7, 25)
 
         row = 1
         for result in results:
@@ -238,13 +238,13 @@ def write_term_check_excel(
                 ws.write(row, 2, issue.source_text, fmt)
                 ws.write(row, 3, issue.translation_text, fmt)
                 ws.write(row, 4, issue.string_id,  fs)
-                ws.write(row, 5, issue.file_name,  fs)
-                ws.write(row, 6, "",               fmt_status)
-                ws.write(row, 7, "",               fmt_comment)
+                ws.write(row, 5, "",               fmt_status)
+                ws.write(row, 6, "",               fmt_comment)
+                ws.write(row, 7, issue.file_name,  fs)
                 row += 1
 
         if row > 1:
-            ws.data_validation(1, 6, row - 1, 6, {
+            ws.data_validation(1, 5, row - 1, 5, {
                 "validate": "list",
                 "source":   ["ISSUE", "NO ISSUE", "FIXED"],
             })
