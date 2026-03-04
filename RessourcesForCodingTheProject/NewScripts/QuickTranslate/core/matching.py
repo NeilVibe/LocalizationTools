@@ -172,6 +172,213 @@ def find_matches_strict(
     return matched, not_found
 
 
+def find_matches_strorigin_descorigin(
+    corrections: List[Dict],
+    xml_entries: Dict[Tuple[str, str], dict],
+) -> Tuple[List[Dict], int]:
+    """
+    Match by (normalized_StrOrigin, normalized_DescOrigin) tuple.
+
+    Requires both StrOrigin AND DescOrigin to match.
+    Useful when StringID is unreliable/absent but StrOrigin + DescOrigin
+    together uniquely identify an entry.
+
+    Args:
+        corrections: List of correction dicts with "str_origin" and "desc_origin" keys
+        xml_entries: Dict keyed by (normalized_StrOrigin, normalized_DescOrigin) tuples
+
+    Returns:
+        Tuple of (matched_corrections, not_found_count)
+    """
+    matched = []
+    not_found = 0
+
+    for c in corrections:
+        str_origin = c.get("str_origin", "")
+        desc_origin = c.get("desc_origin", "")
+        key = (normalize_for_matching(str_origin), normalize_for_matching(desc_origin))
+
+        if key in xml_entries:
+            matched.append(c)
+        else:
+            not_found += 1
+
+    return matched, not_found
+
+
+def find_matches_strorigin_descorigin_fuzzy(
+    corrections: List[Dict],
+    xml_entries: Dict[Tuple[str, str], dict],
+    fuzzy_model,
+    fuzzy_index,
+    fuzzy_texts: List[str],
+    fuzzy_entries: List[dict],
+    fuzzy_threshold: float = 0.85,
+    only_untranslated: bool = False,
+    progress_callback: Optional[Callable[[str], None]] = None,
+) -> Tuple[List[Dict], int]:
+    """
+    StrOrigin+DescOrigin match with fuzzy DescOrigin verification via SBERT.
+
+    OPTIMIZED: StrOrigin pool pre-filtering + FAISS on pool only.
+
+    1. Try exact match first (normalized_StrOrigin + normalized_DescOrigin tuple)
+    2. Group remaining corrections by normalized StrOrigin
+    3. For each unique StrOrigin:
+       a. Get pool of target entries with that StrOrigin (typically small)
+       b. Encode pool DescOrigin texts, normalize, build temporary FAISS index
+       c. Encode query DescOrigin texts, normalize
+       d. Search pool FAISS index for best match
+
+    Args:
+        corrections: List of correction dicts with "str_origin" and "desc_origin" keys
+        xml_entries: Dict keyed by (normalized_StrOrigin, normalized_DescOrigin) tuples
+        fuzzy_model: Loaded SentenceTransformer model
+        fuzzy_index: Unused (kept for interface compatibility)
+        fuzzy_texts: Unused (kept for interface compatibility)
+        fuzzy_entries: Target entry dicts to build StrOrigin pool index
+        fuzzy_threshold: Minimum similarity score (default 0.85)
+        only_untranslated: If True, filter pool to entries that need translation
+        progress_callback: Optional callback for detailed progress logging
+
+    Returns:
+        Tuple of (matched_corrections, not_found_count)
+    """
+    import numpy as np
+    import faiss as faiss_lib
+    from collections import defaultdict
+
+    matched = []
+    not_found = 0
+
+    # Build StrOrigin -> entries index for fast pool lookup (normalized)
+    strorigin_to_entries: Dict[str, List[dict]] = defaultdict(list)
+    filtered_count = 0
+    for entry in fuzzy_entries:
+        str_origin = entry.get("str_origin", "")
+        if str_origin:
+            if only_untranslated and not _is_entry_untranslated(entry):
+                filtered_count += 1
+                continue
+            strorigin_to_entries[normalize_for_matching(str_origin)].append(entry)
+
+    logger.info(f"Built StrOrigin pool index: {len(strorigin_to_entries)} unique StrOrigins")
+
+    if progress_callback:
+        progress_callback(f"[Phase 1/4] Pool index: {len(strorigin_to_entries):,} StrOrigins from {len(fuzzy_entries):,} entries")
+        if only_untranslated:
+            progress_callback(f"  - Filtered out {filtered_count:,} already-translated entries")
+
+    # Separate corrections: exact matches vs need fuzzy, grouped by StrOrigin
+    need_fuzzy_by_strorigin: Dict[str, List[Dict]] = defaultdict(list)
+
+    for c in corrections:
+        str_origin = c.get("str_origin", "")
+        desc_origin = c.get("desc_origin", "")
+
+        if not str_origin:
+            not_found += 1
+            continue
+
+        # Try exact match first
+        key = (normalize_for_matching(str_origin), normalize_for_matching(desc_origin))
+        if key in xml_entries:
+            matched.append(c)
+            continue
+
+        # Need fuzzy matching - group by StrOrigin for batched processing
+        norm_origin = normalize_for_matching(str_origin)
+        if desc_origin.strip() and norm_origin in strorigin_to_entries:
+            need_fuzzy_by_strorigin[norm_origin].append(c)
+        else:
+            not_found += 1
+
+    total_need_fuzzy = sum(len(v) for v in need_fuzzy_by_strorigin.values())
+    logger.info(f"Exact matches: {len(matched)}, need fuzzy: {total_need_fuzzy} "
+                f"across {len(need_fuzzy_by_strorigin)} unique StrOrigins")
+
+    if progress_callback:
+        progress_callback(f"[Phase 2/4] Exact matches: {len(matched)}, need fuzzy: {total_need_fuzzy}")
+
+    if not need_fuzzy_by_strorigin:
+        if progress_callback:
+            progress_callback(f"[Phase 4/4] COMPLETE: {len(matched)} matched, {not_found} not found")
+            if len(corrections) > 0:
+                progress_callback(f"  - Match rate: {len(matched)/len(corrections)*100:.1f}%")
+        return matched, not_found
+
+    # Process each StrOrigin group: encode pool ONCE, then batch match all queries
+    processed = 0
+    group_count = 0
+    total_groups = len(need_fuzzy_by_strorigin)
+
+    if progress_callback:
+        progress_callback(f"[Phase 3/4] Fuzzy matching {total_groups} StrOrigin groups...")
+
+    for norm_origin, corr_group in need_fuzzy_by_strorigin.items():
+        pool = strorigin_to_entries[norm_origin]
+        group_count += 1
+
+        if processed % 100 == 0 and processed > 0:
+            logger.info(f"Fuzzy matching: {processed}/{total_need_fuzzy} processed")
+
+        if progress_callback and (processed % 10 == 0 or group_count <= 5):
+            truncated = norm_origin[:25] + "..." if len(norm_origin) > 25 else norm_origin
+            progress_callback(f"[{group_count}/{total_groups}] {truncated}: pool={len(pool)}, queries={len(corr_group)}")
+
+        # Encode pool DescOrigin texts once for this StrOrigin
+        pool_texts = [e.get("desc_origin", "") for e in pool]
+
+        # Batch encode all query DescOrigin texts for this StrOrigin
+        query_texts = [c.get("desc_origin", "").strip() for c in corr_group]
+
+        # Encode pool and queries, normalize for cosine similarity
+        pool_embeddings = fuzzy_model.encode(pool_texts, show_progress_bar=False, convert_to_numpy=True)
+        pool_embeddings = np.ascontiguousarray(pool_embeddings, dtype=np.float32)
+        faiss_lib.normalize_L2(pool_embeddings)
+
+        query_embeddings = fuzzy_model.encode(query_texts, show_progress_bar=False, convert_to_numpy=True)
+        query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
+        faiss_lib.normalize_L2(query_embeddings)
+
+        # OPTIMIZATION: Use numpy for small pools, FAISS for large pools
+        FAISS_THRESHOLD = 100
+
+        if len(pool) < FAISS_THRESHOLD:
+            scores = query_embeddings @ pool_embeddings.T
+            best_scores = scores.max(axis=1)
+        else:
+            dim = pool_embeddings.shape[1]
+            pool_index = faiss_lib.IndexFlatIP(dim)
+            pool_index.add(pool_embeddings)
+            distances, _ = pool_index.search(query_embeddings, 1)
+            best_scores = distances[:, 0]
+
+        # Process results
+        group_matched = 0
+        group_not_found = 0
+        for qi, c in enumerate(corr_group):
+            if best_scores[qi] >= fuzzy_threshold:
+                matched.append(c)
+                group_matched += 1
+            else:
+                not_found += 1
+                group_not_found += 1
+            processed += 1
+
+        if progress_callback and (processed % 10 == 0 or group_count <= 5):
+            progress_callback(f"  -> matched={group_matched}, not_found={group_not_found}")
+
+    logger.info(f"Fuzzy matching complete: {len(matched)} matched, {not_found} not found")
+
+    if progress_callback:
+        progress_callback(f"[Phase 4/4] COMPLETE: {len(matched)} matched, {not_found} not found")
+        if len(corrections) > 0:
+            progress_callback(f"  - Match rate: {len(matched)/len(corrections)*100:.1f}%")
+
+    return matched, not_found
+
+
 def find_matches_special_key(
     corrections: List[Dict],
     xml_entries: Dict[str, dict],

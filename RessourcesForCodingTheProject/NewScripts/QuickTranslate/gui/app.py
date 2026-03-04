@@ -155,6 +155,8 @@ class QuickTranslateApp:
             "has_correction": False,
             "has_eventname": False,
             "has_dialogvoice": False,
+            "has_desc": False,
+            "has_descorigin": False,
             "has_xml": False,  # XML source files always provide all fields
         }
         self._match_type_radios = {}  # value -> Radiobutton widget
@@ -344,6 +346,7 @@ class QuickTranslateApp:
             ("stringid_only", "StringID-Only (SCRIPT)", "SCRIPT categories only - match by StringID"),
             ("strict", "StringID + StrOrigin (STRICT)", "Requires BOTH to match exactly"),
             ("strorigin_only", "StrOrigin Only", "Match by StrOrigin text only - skips Dialog/Sequencer"),
+            ("strorigin_descorigin", "StrOrigin + DescOrigin", "Requires BOTH StrOrigin AND DescOrigin to match"),
         ]
 
         for value, label, desc in match_types:
@@ -1331,7 +1334,7 @@ class QuickTranslateApp:
         """Show/hide options sub-frames based on selected match type."""
         match_type = self.match_type.get()
 
-        if match_type in ("strict", "strorigin_only"):
+        if match_type in ("strict", "strorigin_only", "strorigin_descorigin"):
             self.precision_options_frame.pack(fill=tk.X, pady=(4, 0))
             # Show/hide the fuzzy sub-frame based on current precision
             self._on_precision_changed()
@@ -1344,6 +1347,10 @@ class QuickTranslateApp:
                 # Show unique-only checkbox (StrOrigin Only specific)
                 self.unique_only_frame.pack(fill=tk.X, pady=(4, 0))
                 self._bind_mousewheel_recursive(self.unique_only_frame)
+                self.strict_non_script_frame.pack_forget()
+            elif match_type == "strorigin_descorigin":
+                # No unique-only or non-script filters for this mode
+                self.unique_only_frame.pack_forget()
                 self.strict_non_script_frame.pack_forget()
             else:
                 self.unique_only_frame.pack_forget()
@@ -1378,18 +1385,21 @@ class QuickTranslateApp:
         has_id = cols["has_stringid"] or cols["has_eventname"] or cols["has_xml"]
         has_strorigin = cols["has_strorigin"] or cols["has_xml"]
         has_correction = cols["has_correction"] or cols["has_xml"]
+        has_descorigin = cols.get("has_descorigin", False)
 
         # Determine which match types are valid
         valid = {
             "stringid_only": has_id and has_correction,
             "strict": has_id and has_strorigin and has_correction,
             "strorigin_only": has_strorigin and has_correction,
+            "strorigin_descorigin": has_strorigin and has_descorigin and has_correction,
         }
 
         reasons = {
             "stringid_only": "Needs StringID/EventName + Correction columns",
             "strict": "Needs StringID/EventName + StrOrigin + Correction columns",
             "strorigin_only": "Needs StrOrigin + Correction columns",
+            "strorigin_descorigin": "Needs StrOrigin + DescOrigin + Correction columns",
         }
 
         for value, (rb, desc_lbl) in self._match_type_radios.items():
@@ -1400,6 +1410,7 @@ class QuickTranslateApp:
                     "stringid_only": "SCRIPT categories only - match by StringID",
                     "strict": "Requires BOTH to match exactly",
                     "strorigin_only": "Match by StrOrigin text only - skips Dialog/Sequencer",
+                    "strorigin_descorigin": "Requires BOTH StrOrigin AND DescOrigin to match",
                 }
                 desc_lbl.config(text=orig_descs.get(value, ""), fg='#888')
             else:
@@ -1409,7 +1420,7 @@ class QuickTranslateApp:
         # If current selection is now disabled, fall back to first valid mode
         current = self.match_type.get()
         if not valid.get(current, True):
-            for fb in ("strict", "strorigin_only", "stringid_only"):
+            for fb in ("strict", "strorigin_only", "strorigin_descorigin", "stringid_only"):
                 if valid.get(fb, False):
                     self.match_type.set(fb)
                     self._on_match_type_changed()
@@ -1944,6 +1955,7 @@ class QuickTranslateApp:
                 cols["has_strorigin"] = detected["has_strorigin"]
                 cols["has_correction"] = detected["has_correction"]
                 cols["has_eventname"] = detected["has_eventname"]
+                cols["has_descorigin"] = detected.get("has_descorigin", False)
                 break  # Only check first Excel file
             for xml in source_folder.rglob("*.xml"):
                 cols["has_xml"] = True
@@ -1971,6 +1983,10 @@ class QuickTranslateApp:
         if mt == "strorigin_only" and not (has_strorigin and has_correction):
             messagebox.showerror("Error", "StrOrigin Only mode requires StrOrigin + Correction columns.\n\n"
                                  "Your source files don't have these columns.")
+            return False
+        if mt == "strorigin_descorigin" and not (has_strorigin and cols.get("has_descorigin", False) and has_correction):
+            messagebox.showerror("Error", "StrOrigin + DescOrigin mode requires StrOrigin + DescOrigin + Correction columns.\n\n"
+                                 "Your source files don't have all required columns.")
             return False
         return True
 
@@ -2580,12 +2596,13 @@ class QuickTranslateApp:
         fuzzy_threshold = self.fuzzy_threshold.get()
         unique_only = bool(self.unique_only_strorigin.get()) if match_type == "strorigin_only" else False
         non_script_only = self._strict_non_script_var.get() if match_type == "strict" else False
+        # strorigin_descorigin has no special filters (no unique-only, no non-script)
 
         # === GENERATE FULL TRANSFER PLAN BEFORE CONFIRMATION ===
         match_str = match_type.upper()
 
         # Add precision info for modes that support it
-        if match_type in ("strict", "strorigin_only"):
+        if match_type in ("strict", "strorigin_only", "strorigin_descorigin"):
             match_str = f"{match_str} ({precision.upper()})"
 
         scope_str = ("Only untranslated (Korean)" if transfer_scope == "untranslated"
@@ -2697,11 +2714,12 @@ class QuickTranslateApp:
                 self._log("Extracting StringIDs from source for filtered index build...", 'info')
                 source_stringids = self._extract_stringids_from_source(source)
                 self._log(f"Source has {len(source_stringids):,} unique StringIDs", 'info')
+            # NOTE: strorigin_descorigin does NOT need StringID filtering (matches by StrOrigin+DescOrigin)
 
             only_untranslated = transfer_scope == "untranslated"
 
             # For strict/strorigin_only with fuzzy precision, need model + FAISS index
-            if precision == "fuzzy" and match_type in ("strict", "strorigin_only"):
+            if precision == "fuzzy" and match_type in ("strict", "strorigin_only", "strorigin_descorigin"):
                 if not self._ensure_fuzzy_model():
                     return
                 if not self._ensure_fuzzy_index(str(target), stringid_filter=source_stringids, only_untranslated=only_untranslated):
@@ -2716,6 +2734,8 @@ class QuickTranslateApp:
                 transfer_match_mode = "stringid_only"
             elif match_type == "strorigin_only":
                 transfer_match_mode = "strorigin_only_fuzzy" if precision == "fuzzy" else "strorigin_only"
+            elif match_type == "strorigin_descorigin":
+                transfer_match_mode = "strorigin_descorigin_fuzzy" if precision == "fuzzy" else "strorigin_descorigin"
             elif match_type == "strict":
                 transfer_match_mode = "strict_fuzzy" if precision == "fuzzy" else "strict"
             else:
@@ -2736,7 +2756,7 @@ class QuickTranslateApp:
 
             # Pass threshold AND pre-built fuzzy data for fuzzy modes
             # CRITICAL: Without this, transfer functions rebuild from scratch!
-            if precision == "fuzzy" and match_type in ("strict", "strorigin_only"):
+            if precision == "fuzzy" and match_type in ("strict", "strorigin_only", "strorigin_descorigin"):
                 transfer_kwargs["threshold"] = fuzzy_threshold
                 transfer_kwargs["fuzzy_model"] = self._fuzzy_model
                 transfer_kwargs["fuzzy_texts"] = self._fuzzy_texts
@@ -2903,7 +2923,7 @@ class QuickTranslateApp:
                 summary_lines.append(f"  Desc Updated:     {desc_updated:,}  (voice directions)")
             summary_lines.append(f"  Already Correct:  {unchanged:,}  (target already had correct value)")
             if not_found > 0:
-                nf_label = "(StrOrigin not found)" if transfer_match_mode.startswith("strorigin_only") else "(StringID missing)"
+                nf_label = "(StrOrigin not found)" if transfer_match_mode.startswith("strorigin_only") or transfer_match_mode.startswith("strorigin_descorigin") else "(StringID missing)"
                 summary_lines.append(f"  Not Found:        {not_found:,}  {nf_label}")
             if strorigin_mismatch > 0:
                 summary_lines.append(f"  Origin Mismatch:  {strorigin_mismatch:,}  (StrOrigin differs)")

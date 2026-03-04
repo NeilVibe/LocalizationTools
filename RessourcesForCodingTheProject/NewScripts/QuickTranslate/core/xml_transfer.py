@@ -109,6 +109,21 @@ def _build_correction_lookups(corrections, match_mode):
             correction_lookup[sid_lower] = c
         return correction_lookup, None
 
+    elif match_mode == "strorigin_descorigin":
+        # (normalized_StrOrigin, normalized_DescOrigin) -> list of (corrected_text, category, index)
+        # Uses normalize_for_matching (case-insensitive) since this mode matches by text content
+        correction_lookup = defaultdict(list)
+        correction_lookup_nospace = defaultdict(list)
+        for i, c in enumerate(corrections):
+            origin_norm = normalize_for_matching(c.get("str_origin", ""))
+            desc_norm = normalize_for_matching(c.get("desc_origin", ""))
+            origin_nospace = normalize_nospace(origin_norm)
+            desc_nospace = normalize_nospace(desc_norm)
+            category = c.get("category", "Uncategorized")
+            correction_lookup[(origin_norm, desc_norm)].append((c["corrected"], category, i))
+            correction_lookup_nospace[(origin_nospace, desc_nospace)].append((c["corrected"], category, i))
+        return correction_lookup, correction_lookup_nospace
+
     elif match_mode == "fuzzy":
         # fuzzy_target_string_id.lower() -> full correction dict
         correction_lookup = {}
@@ -1124,6 +1139,16 @@ def _fast_folder_merge(
         # For SKIPPED_EMPTY_STRORIGIN diagnostics
         target_stringids_all = set()
 
+    elif match_mode == "strorigin_descorigin":
+        # correction_lookup: (norm_orig, norm_desc) -> list of (corrected, category, index)
+        correction_matched = bytearray(len(corrections))
+        # For DESCORIGIN_MISMATCH diagnostics: track StrOrigins that were seen
+        correction_origin_set = set()
+        for key in correction_lookup:
+            correction_origin_set.add(key[0])  # key = (norm_orig, norm_desc)
+        target_origins_seen = set()
+        target_attribs_cache_so = {}
+
     counters_matched = 0
     counters_updated = 0
     counters_skipped_translated = 0
@@ -1309,6 +1334,64 @@ def _fast_folder_merge(
                         counters_desc_updated += 1
                         changed = True
 
+            elif match_mode == "strorigin_descorigin":
+                orig = normalize_for_matching(orig_raw)
+                if not orig.strip():
+                    continue
+
+                desc_raw = get_attr(loc, DESCORIGIN_ATTRS)
+                desc = normalize_for_matching(desc_raw)
+                orig_nospace = normalize_nospace(orig)
+                desc_nospace = normalize_nospace(desc)
+                key = (orig, desc)
+                key_nospace = (orig_nospace, desc_nospace)
+
+                match_entries = correction_lookup.get(key, [])
+                if not match_entries:
+                    match_entries = correction_lookup_nospace.get(key_nospace, [])
+
+                if match_entries:
+                    new_str, category, idx = match_entries[-1]
+                    for _, _, matched_idx in match_entries:
+                        correction_matched[matched_idx] = 1
+                    counters_matched += 1
+                    file_matched += 1
+                    target_origins_seen.add(orig)  # orig already normalized
+
+                    old_str = get_attr(loc, STR_ATTRS)
+
+                    if only_untranslated and old_str and not is_korean_text(old_str):
+                        counters_skipped_translated += 1
+                        orig_correction = corrections[idx]
+                        result["unmatched_details"].append({
+                            "string_id": sid,
+                            "status": "SKIPPED_TRANSLATED",
+                            "old": orig_correction.get("str_origin", ""),
+                            "new": orig_correction.get("corrected", ""),
+                            "raw_attribs": orig_correction.get("raw_attribs", {}),
+                        })
+                        continue
+
+                    new_str = _convert_linebreaks_for_xml(new_str)
+                    if new_str != old_str:
+                        if not dry_run:
+                            loc.set("Str", new_str)
+                        counters_updated += 1
+                        file_updated += 1
+                        changed = True
+
+                    # Desc transfer
+                    orig_correction = corrections[idx]
+                    if _try_write_desc(loc, orig_correction, dry_run):
+                        counters_desc_updated += 1
+                        changed = True
+                else:
+                    # Not matched — capture for DESCORIGIN_MISMATCH diagnostics
+                    if orig in correction_origin_set:
+                        target_origins_seen.add(orig)  # orig already normalized
+                        if orig not in target_attribs_cache_so:
+                            target_attribs_cache_so[orig] = dict(loc.attrib)
+
         # ─── Combined postprocess (ONE pass) ─────────────────────────
         pp = run_all_postprocess_on_tree(root)
         if pp["changed"]:
@@ -1399,6 +1482,34 @@ def _fast_folder_merge(
                     "_original_dialogvoice": c.get("_original_dialogvoice", ""),
                 })
 
+    elif match_mode == "strorigin_descorigin":
+        for i, c in enumerate(corrections):
+            if not correction_matched[i]:
+                origin_norm = normalize_for_matching(c.get("str_origin", ""))
+                if not origin_norm:
+                    continue
+                if origin_norm in target_origins_seen:
+                    status = "DESCORIGIN_MISMATCH"
+                    result["total_strorigin_mismatch"] += 1
+                else:
+                    status = "NOT_FOUND"
+                    result["total_not_found"] += 1
+
+                detail = {
+                    "string_id": c.get("string_id", ""),
+                    "status": status,
+                    "old": c.get("str_origin", ""),
+                    "new": c["corrected"],
+                    "raw_attribs": c.get("raw_attribs", {}),
+                    "_original_eventname": c.get("_original_eventname", ""),
+                    "_original_dialogvoice": c.get("_original_dialogvoice", ""),
+                }
+                if status == "DESCORIGIN_MISMATCH":
+                    detail["target_raw_attribs"] = target_attribs_cache_so.get(origin_norm, {})
+                    cached = target_attribs_cache_so.get(origin_norm, {})
+                    detail["target_descorigin"] = cached.get("DescOrigin", cached.get("descorigin", ""))
+                result["unmatched_details"].append(detail)
+
     result["total_matched"] = counters_matched
     result["total_updated"] = counters_updated
     result["total_skipped_translated"] = counters_skipped_translated
@@ -1451,7 +1562,8 @@ def transfer_folder_to_folder(
         stringid_to_category: Category mapping (required for stringid_only mode)
         stringid_to_subfolder: Subfolder mapping (for exclusion filtering)
         match_mode: "strict", "strict_fuzzy", "stringid_only",
-                    "strorigin_only", or "strorigin_only_fuzzy"
+                    "strorigin_only", "strorigin_only_fuzzy",
+                    "strorigin_descorigin", or "strorigin_descorigin_fuzzy"
         dry_run: If True, don't write changes
         progress_callback: Optional callback for progress updates
         threshold: Similarity threshold for fuzzy modes (defaults to config.FUZZY_THRESHOLD_DEFAULT)
@@ -1571,7 +1683,7 @@ def transfer_folder_to_folder(
                 continue
         logger.info(f"Extracted {len(all_source_stringids):,} unique StringIDs from {len(all_sources)} source files")
 
-    if match_mode in ("strict_fuzzy", "strorigin_only_fuzzy"):
+    if match_mode in ("strict_fuzzy", "strorigin_only_fuzzy", "strorigin_descorigin_fuzzy"):
         # 2-pass fuzzy: Step 1 = exact match, Step 2 = FAISS fuzzy on unconsumed
         # Needs model + FAISS index for Step 2
         if _fuzzy_entries is not None and _fuzzy_model is not None and _fuzzy_index is not None:
@@ -1866,7 +1978,8 @@ def transfer_folder_to_folder(
                     del target_groups[k]
                 prefilter_skipped = len(keys_to_skip)
 
-        elif match_mode in ("strorigin_only", "strorigin_only_fuzzy"):
+        elif match_mode in ("strorigin_only", "strorigin_only_fuzzy",
+                            "strorigin_descorigin", "strorigin_descorigin_fuzzy"):
             # Collect all correction StrOrigins (normalized) across all groups
             correction_origins = set()
             for g in target_groups.values():
@@ -1923,6 +2036,10 @@ def transfer_folder_to_folder(
             _lookup_cache[_corr_id] = _build_correction_lookups(_corr, "strorigin_only")
             logger.info(f"Built shared strorigin_only lookup: {len(_lookup_cache[_corr_id][0]):,} keys")
 
+        elif _base_mode == "strorigin_descorigin":
+            _lookup_cache[_corr_id] = _build_correction_lookups(_corr, "strorigin_descorigin")
+            logger.info(f"Built shared strorigin_descorigin lookup: {len(_lookup_cache[_corr_id][0]):,} keys")
+
         elif _base_mode == "stringid_only" and stringid_to_category:
             _preprocessed, _pp_stats = _preprocess_stringid_only(
                 _corr, stringid_to_category, stringid_to_subfolder,
@@ -1962,6 +2079,7 @@ def transfer_folder_to_folder(
     _fast_merge_modes = {
         "strict", "strorigin_only", "stringid_only",
         "strict_fuzzy", "strorigin_only_fuzzy",
+        "strorigin_descorigin", "strorigin_descorigin_fuzzy",
     }
     _remaining_targets = {}  # Targets that need per-file processing (Excel only)
 
@@ -2099,7 +2217,12 @@ def transfer_folder_to_folder(
             # ─── Fuzzy Step 2: FAISS on unmatched → fast merge by StringID ───
             if match_mode.endswith("_fuzzy") and _fuzzy_model and _fuzzy_index and _fuzzy_texts and _fuzzy_entries:
                 _fr_entry = results["file_results"][representative_target]
-                _fuzzy_statuses = {"NOT_FOUND", "STRORIGIN_MISMATCH"} if match_mode == "strict_fuzzy" else {"NOT_FOUND"}
+                if match_mode == "strict_fuzzy":
+                    _fuzzy_statuses = {"NOT_FOUND", "STRORIGIN_MISMATCH"}
+                elif match_mode == "strorigin_descorigin_fuzzy":
+                    _fuzzy_statuses = {"NOT_FOUND", "DESCORIGIN_MISMATCH"}
+                else:
+                    _fuzzy_statuses = {"NOT_FOUND"}
                 unconsumed = []
                 for detail in _fr_entry["details"]:
                     if detail.get("status") in _fuzzy_statuses:
@@ -2146,7 +2269,7 @@ def transfer_folder_to_folder(
                             1 for m in fuzzy_matched if m.get("_original_status") == "NOT_FOUND"
                         )
                         fuzzy_from_mismatch = sum(
-                            1 for m in fuzzy_matched if m.get("_original_status") == "STRORIGIN_MISMATCH"
+                            1 for m in fuzzy_matched if m.get("_original_status") in ("STRORIGIN_MISMATCH", "DESCORIGIN_MISMATCH")
                         )
                         results["total_not_found"] = max(0, results["total_not_found"] - fuzzy_from_not_found)
                         results["total_strorigin_mismatch"] = max(0, results["total_strorigin_mismatch"] - fuzzy_from_mismatch)

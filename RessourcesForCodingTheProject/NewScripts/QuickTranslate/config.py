@@ -26,6 +26,7 @@ MATCHING_MODES = {
     "stringid_only": "StringID-Only (SCRIPT strings)",
     "strict": "StringID + StrOrigin (Strict)",
     "strorigin_only": "StrOrigin Only (non-script, fills duplicates)",
+    "strorigin_descorigin": "StrOrigin + DescOrigin",
 }
 
 # SCRIPT categories - folder names where StrOrigin = raw KOR text
