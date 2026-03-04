@@ -145,3 +145,4 @@ Build - NewCharacter Pass 0: inline Knowledge child extraction
 Build - Global inline Knowledge children + remove cross-pass dedup
 Build - System category missing from system worker group in config.py
 Build - InspectData + InspectKnowledgeData for NewItem generator
+Build - MasterSubmitDatasheet + generator consolidation
