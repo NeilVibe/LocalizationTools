@@ -1158,7 +1158,9 @@ def _write_summary_sheet(
     """Write the Summary sheet — ONE unified table with full hierarchy."""
     sheet = workbook.add_worksheet("Summary")
     summary = data["summary"]
-    is_strorigin = data.get("match_mode", "").startswith("strorigin_only")
+    mm = data.get("match_mode", "")
+    is_strorigin = mm.startswith("strorigin_only")
+    is_strorigin_descorigin = mm.startswith("strorigin_descorigin")
 
     total = summary["total_corrections"] or 1  # avoid /0
     total_failures = summary["total_failures"] or 1
@@ -1224,10 +1226,22 @@ def _write_summary_sheet(
     row += 1
 
     # Failed breakdown — each reason indented further, showing % of total AND % of failed
-    not_found_label = "StrOrigin Not Found in Target" if is_strorigin else "StringID Not Found in Target"
+    if is_strorigin_descorigin:
+        not_found_label = "StrOrigin + DescOrigin Combo Not Found"
+    elif is_strorigin:
+        not_found_label = "StrOrigin Not Found in Target"
+    else:
+        not_found_label = "StringID Not Found in Target"
+
+    mismatch_label = (
+        "DescOrigin Mismatch (StrOrigin matches, DescOrigin differs)"
+        if is_strorigin_descorigin
+        else "StrOrigin Mismatch (ID exists, text differs)"
+    )
+
     breakdown_items = [
         (not_found_label, summary.get("not_found", 0)),
-        ("StrOrigin Mismatch (ID exists, text differs)", summary.get("strorigin_mismatch", 0)),
+        (mismatch_label, summary.get("strorigin_mismatch", 0)),
         ("Skipped: Not a SCRIPT category", summary.get("skipped_non_script", 0)),
         ("Skipped: SCRIPT category (use StringID-Only)", summary.get("skipped_script", 0)),
         ("Skipped: Already Translated (non-Korean)", summary.get("skipped_translated", 0)),

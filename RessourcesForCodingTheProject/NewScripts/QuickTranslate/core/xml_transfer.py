@@ -116,6 +116,8 @@ def _build_correction_lookups(corrections, match_mode):
         correction_lookup_nospace = defaultdict(list)
         for i, c in enumerate(corrections):
             origin_norm = normalize_for_matching(c.get("str_origin", ""))
+            if not origin_norm:
+                continue
             desc_norm = normalize_for_matching(c.get("desc_origin", ""))
             origin_nospace = normalize_nospace(origin_norm)
             desc_nospace = normalize_nospace(desc_norm)
@@ -378,6 +380,11 @@ def merge_corrections_to_xml(
         else:
             tree = etree.parse(str(xml_path))
             root = tree.getroot()
+
+        if root is None:
+            result["errors"].append(f"{xml_path.name}: empty or invalid XML (no root element)")
+            logger.error(f"merge_corrections_to_xml: {xml_path} has no root element")
+            return result
 
         changed = False
 
@@ -745,6 +752,11 @@ def merge_corrections_stringid_only(
         else:
             tree = etree.parse(str(xml_path))
             root = tree.getroot()
+
+        if root is None:
+            result["errors"].append(f"{xml_path.name}: empty or invalid XML (no root element)")
+            logger.error(f"merge_corrections_stringid_only: {xml_path} has no root element")
+            return result
 
         changed = False
 
@@ -1176,6 +1188,11 @@ def _fast_folder_merge(
             logger.error(f"Fast merge parse error: {target_file}: {e}")
             continue
 
+        if root is None:
+            result["errors"].append(f"{target_file.name}: empty or invalid XML (no root element)")
+            logger.error(f"Fast merge: {target_file} has no root element, skipping")
+            continue
+
         changed = False
         file_updated = 0
         file_matched = 0
@@ -1507,7 +1524,10 @@ def _fast_folder_merge(
                 if status == "DESCORIGIN_MISMATCH":
                     detail["target_raw_attribs"] = target_attribs_cache_so.get(origin_norm, {})
                     cached = target_attribs_cache_so.get(origin_norm, {})
-                    detail["target_descorigin"] = cached.get("DescOrigin", cached.get("descorigin", ""))
+                    detail["target_descorigin"] = (
+                        cached.get("DescOrigin") or cached.get("Descorigin") or
+                        cached.get("descorigin") or cached.get("DESCORIGIN") or ""
+                    )
                 result["unmatched_details"].append(detail)
 
     result["total_matched"] = counters_matched
@@ -2491,7 +2511,13 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
 
     width = 72
     is_strorigin = match_mode.startswith("strorigin_only")
-    not_found_label = "(StrOrigin text not found in target)" if is_strorigin else "(StringID missing from target)"
+    is_strorigin_descorigin = match_mode.startswith("strorigin_descorigin")
+    if is_strorigin_descorigin:
+        not_found_label = "(StrOrigin + DescOrigin combo not found)"
+    elif is_strorigin:
+        not_found_label = "(StrOrigin text not found in target)"
+    else:
+        not_found_label = "(StringID missing from target)"
 
     lines.append("")
     lines.append(TL + H * (width - 2) + TR)
