@@ -1348,13 +1348,9 @@ class QuickTranslateApp:
                 self.unique_only_frame.pack(fill=tk.X, pady=(4, 0))
                 self._bind_mousewheel_recursive(self.unique_only_frame)
                 self.strict_non_script_frame.pack_forget()
-            elif match_type == "strorigin_descorigin":
-                # No unique-only or non-script filters for this mode
-                self.unique_only_frame.pack_forget()
-                self.strict_non_script_frame.pack_forget()
             else:
+                # strict or strorigin_descorigin — both have StringID for category filtering
                 self.unique_only_frame.pack_forget()
-                # Show non-script only checkbox (Strict specific)
                 self.strict_non_script_frame.pack(fill=tk.X, pady=(4, 0))
                 self._bind_mousewheel_recursive(self.strict_non_script_frame)
             # Rebind mousewheel on newly shown frames
@@ -2595,8 +2591,7 @@ class QuickTranslateApp:
         transfer_scope = self.transfer_scope.get()
         fuzzy_threshold = self.fuzzy_threshold.get()
         unique_only = bool(self.unique_only_strorigin.get()) if match_type == "strorigin_only" else False
-        non_script_only = self._strict_non_script_var.get() if match_type == "strict" else False
-        # strorigin_descorigin has no special filters (no unique-only, no non-script)
+        non_script_only = self._strict_non_script_var.get() if match_type in ("strict", "strorigin_descorigin") else False
 
         # === GENERATE FULL TRANSFER PLAN BEFORE CONFIRMATION ===
         match_str = match_type.upper()
@@ -2699,7 +2694,7 @@ class QuickTranslateApp:
             # StrOrigin Only: skips Dialog/Sequencer strings (complement safeguard)
             stringid_to_category = None
             stringid_to_subfolder = None
-            if match_type in ("stringid_only", "strorigin_only") or (match_type == "strict" and non_script_only):
+            if match_type in ("stringid_only", "strorigin_only") or (match_type in ("strict", "strorigin_descorigin") and non_script_only):
                 if not self._load_data_if_needed(need_sequencer=True):
                     return
                 stringid_to_category = self.stringid_to_category
@@ -2751,7 +2746,7 @@ class QuickTranslateApp:
             }
             if unique_only:
                 transfer_kwargs["unique_only"] = True
-            if non_script_only and match_type == "strict":
+            if non_script_only and match_type in ("strict", "strorigin_descorigin"):
                 transfer_kwargs["strict_non_script_only"] = True
 
             # Pass threshold AND pre-built fuzzy data for fuzzy modes

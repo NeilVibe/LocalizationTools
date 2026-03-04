@@ -119,6 +119,8 @@ def _build_correction_lookups(corrections, match_mode):
             if not origin_norm:
                 continue
             desc_norm = normalize_for_matching(c.get("desc_origin", ""))
+            if not desc_norm:
+                continue
             origin_nospace = normalize_nospace(origin_norm)
             desc_nospace = normalize_nospace(desc_norm)
             category = c.get("category", "Uncategorized")
@@ -1358,6 +1360,8 @@ def _fast_folder_merge(
 
                 desc_raw = get_attr(loc, DESCORIGIN_ATTRS)
                 desc = normalize_for_matching(desc_raw)
+                if not desc:
+                    continue
                 orig_nospace = normalize_nospace(orig)
                 desc_nospace = normalize_nospace(desc)
                 key = (orig, desc)
@@ -1504,6 +1508,9 @@ def _fast_folder_merge(
             if not correction_matched[i]:
                 origin_norm = normalize_for_matching(c.get("str_origin", ""))
                 if not origin_norm:
+                    continue
+                desc_norm = normalize_for_matching(c.get("desc_origin", ""))
+                if not desc_norm:
                     continue
                 if origin_norm in target_origins_seen:
                     status = "DESCORIGIN_MISMATCH"
@@ -1866,9 +1873,9 @@ def transfer_folder_to_folder(
         results["total_skipped_duplicate_strorigin"] = total_skipped_dup
         results["_duplicate_strorigin_details"] = all_duplicate_details
 
-    # ─── Non-Script pre-filter for Strict mode ──────────────────────
+    # ─── Non-Script pre-filter for Strict / StrOrigin+DescOrigin modes ──────
     # Skip SCRIPT corrections (Dialog/Sequencer) — handle via StringID-Only pass.
-    if strict_non_script_only and stringid_to_category and match_mode in ("strict", "strict_fuzzy"):
+    if strict_non_script_only and stringid_to_category and match_mode in ("strict", "strict_fuzzy", "strorigin_descorigin", "strorigin_descorigin_fuzzy"):
         ci_cat = {k.lower(): v for k, v in stringid_to_category.items()}
         total_skipped_script = 0
         for lang_upper, group in lang_groups.items():
