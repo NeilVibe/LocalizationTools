@@ -145,3 +145,4 @@ Build: fast folder merge (TMXTransfer11 pattern)
 Build: clean GUI log text
 Build: dead code removal (828 lines)
 Build: StrOrigin + DescOrigin match type
+Build: DESCORIGIN_MISMATCH in failure reports

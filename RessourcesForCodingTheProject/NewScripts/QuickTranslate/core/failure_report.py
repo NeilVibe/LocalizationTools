@@ -93,6 +93,7 @@ def extract_differences(text1: str, text2: str, max_length: int = 120) -> str:
 FAILURE_REASONS = {
     "NOT_FOUND": "StringID not found in target",
     "STRORIGIN_MISMATCH": "StrOrigin mismatch",
+    "DESCORIGIN_MISMATCH": "DescOrigin mismatch (StrOrigin matches but DescOrigin differs)",
     "SKIPPED_EMPTY_STRORIGIN": "StringID exists but StrOrigin empty in target (skipped)",
     "SKIPPED_TRANSLATED": "Already translated (skipped)",
     "SKIPPED_NON_SCRIPT": "Not a SCRIPT category (skipped)",
@@ -113,6 +114,8 @@ def _get_failure_reason(key: str, match_mode: str = "") -> str:
     """Get failure reason label, adapting to match mode."""
     if match_mode.startswith("strorigin_only") and key in _FAILURE_REASONS_STRORIGIN:
         return _FAILURE_REASONS_STRORIGIN[key]
+    if match_mode.startswith("strorigin_descorigin") and key == "NOT_FOUND":
+        return "StrOrigin text not found in target"
     return FAILURE_REASONS.get(key, key)
 
 
@@ -132,6 +135,8 @@ def _classify_failure_reason(detail: Dict) -> str:
         return "SKIPPED_EMPTY_STRORIGIN"
     elif "NOT_FOUND" in status:
         return "NOT_FOUND"
+    elif "DESCORIGIN_MISMATCH" in status:
+        return "DESCORIGIN_MISMATCH"
     elif "MISMATCH" in status:
         return "STRORIGIN_MISMATCH"
     elif "SKIPPED_TRANSLATED" in status:
@@ -504,7 +509,7 @@ def extract_mismatch_target_entries(results: Dict) -> List[Dict]:
         language = _extract_language_from_filename(target_file) if target_file else "UNK"
 
         for detail in fresult.get("details", []):
-            if detail.get("status") != "STRORIGIN_MISMATCH":
+            if detail.get("status") not in ("STRORIGIN_MISMATCH", "DESCORIGIN_MISMATCH"):
                 continue
 
             target_attribs = detail.get("target_raw_attribs", {})
@@ -528,6 +533,8 @@ def _status_to_reason(status: str, match_mode: str = "") -> str:
     is_strorigin = match_mode.startswith("strorigin_only")
 
     # Check MISMATCH first (before NOT_FOUND since it's more specific)
+    if "DESCORIGIN_MISMATCH" in status_upper:
+        return "DescOrigin mismatch (StrOrigin matches but DescOrigin differs)"
     if "STRORIGIN_MISMATCH" in status_upper or "MISMATCH" in status_upper:
         return "StrOrigin mismatch (StringID exists but source text differs)"
 
