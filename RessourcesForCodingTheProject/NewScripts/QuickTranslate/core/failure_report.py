@@ -114,8 +114,11 @@ def _get_failure_reason(key: str, match_mode: str = "") -> str:
     """Get failure reason label, adapting to match mode."""
     if match_mode.startswith("strorigin_only") and key in _FAILURE_REASONS_STRORIGIN:
         return _FAILURE_REASONS_STRORIGIN[key]
-    if match_mode.startswith("strorigin_descorigin") and key == "NOT_FOUND":
-        return "StrOrigin text not found in target"
+    if match_mode.startswith("strorigin_descorigin"):
+        if key == "NOT_FOUND":
+            return "StrOrigin + DescOrigin combo not found in target"
+        if key == "DESCORIGIN_MISMATCH":
+            return FAILURE_REASONS[key]
     return FAILURE_REASONS.get(key, key)
 
 
@@ -154,14 +157,17 @@ def _classify_failure_reason(detail: Dict) -> str:
 
 
 def _is_failure(detail: Dict) -> bool:
-    """Check if a detail entry represents a failure (not a success)."""
+    """Check if a detail entry represents a failure (not a success).
+
+    SKIPPED_TRANSLATED is by design (untranslated-only scope), not a failure.
+    """
     status = detail.get("status", "").upper()
     # Strip RECOVERED_ prefix — these come from the EventName recovery pass
     # in xml_transfer.py and represent successful recoveries, not failures.
     if status.startswith("RECOVERED_"):
         status = status[len("RECOVERED_"):]
-    # Success statuses
-    if status in ("UPDATED", "UNCHANGED"):
+    # Success / by-design statuses
+    if status in ("UPDATED", "UNCHANGED", "SKIPPED_TRANSLATED"):
         return False
     # Match level suffixes are success
     if status.startswith("UPDATED (") or status.startswith("UNCHANGED ("):
@@ -423,7 +429,9 @@ def extract_failed_from_transfer_results(
     for detail in details:
         status = detail.get("status", "")
 
-        # Only include failed/not found entries (including MISMATCH)
+        # Only include real failures — SKIPPED_TRANSLATED is by design, not a failure
+        if status == "SKIPPED_TRANSLATED":
+            continue
         if "NOT_FOUND" in status or "MISMATCH" in status or "SKIPPED" in status:
             fail_reason = _status_to_reason(status, mm)
 
@@ -470,6 +478,9 @@ def extract_failed_from_folder_results(
         for detail in details:
             status = detail.get("status", "")
 
+            # Only include real failures — SKIPPED_TRANSLATED is by design, not a failure
+            if status == "SKIPPED_TRANSLATED":
+                continue
             if "NOT_FOUND" in status or "MISMATCH" in status or "SKIPPED" in status:
                 fail_reason = _status_to_reason(status, mm)
 
@@ -539,6 +550,8 @@ def _status_to_reason(status: str, match_mode: str = "") -> str:
         return "StrOrigin mismatch (StringID exists but source text differs)"
 
     if "NOT_FOUND" in status_upper:
+        if match_mode.startswith("strorigin_descorigin"):
+            return "StrOrigin + DescOrigin combo not found in target"
         if is_strorigin:
             return "StrOrigin text not found in target"
         if "L1" in status_upper:
@@ -674,8 +687,9 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
 
         total_unchanged = max(0, total_matched - total_updated - total_skipped_translated)
         total_success = total_updated
+        # SKIPPED_TRANSLATED is by design (untranslated-only scope), not a failure
         total_failures = (total_not_found + total_strorigin_mismatch + total_skipped +
-                         total_skipped_translated + total_skipped_excluded)
+                         total_skipped_excluded)
 
         # Count Korean words from StrOrigin in details (success vs failure)
         kr_words_success = 0
@@ -782,8 +796,9 @@ def aggregate_transfer_results(results: Dict, mode: str = "folder") -> Dict:
 
         unchanged = max(0, matched - updated - skipped_translated)
         total_success = updated
+        # SKIPPED_TRANSLATED is by design (untranslated-only scope), not a failure
         total_failures = (not_found + strorigin_mismatch + skipped_non_script +
-                        skipped_script + skipped_translated + skipped_excluded)
+                        skipped_script + skipped_excluded)
 
         # Count Korean words from StrOrigin in details
         kr_words_success = 0

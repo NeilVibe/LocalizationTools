@@ -2804,7 +2804,8 @@ class QuickTranslateApp:
             # === FAILURE REPORT GENERATION ===
             skipped = results.get("total_skipped", 0)
             skipped_excluded = results.get("total_skipped_excluded", 0)
-            total_failures = not_found + strorigin_mismatch + skipped_translated + skipped + skipped_excluded
+            # SKIPPED_TRANSLATED is by design (untranslated-only scope), not a failure
+            total_failures = not_found + strorigin_mismatch + skipped + skipped_excluded
             failure_reports_msg = ""
 
             if total_failures > 0:
