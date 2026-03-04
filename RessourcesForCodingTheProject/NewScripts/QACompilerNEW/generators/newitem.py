@@ -1,14 +1,17 @@
 """
 NEW Item Datasheet Generator
 =============================
-Row-per-text item datasheet with 4-step pass:
-  ItemName -> ItemDesc -> KnowledgeName -> KnowledgeDesc
+Row-per-text item datasheet with multi-pass knowledge + InspectData resolution:
+  ItemName -> ItemDesc -> ChildKnowledge -> KnowledgeData -> KnowledgeData2
+  -> InspectData -> InspectKnowledgeData
 
 Each text gets its OWN row (unlike item.py which puts name+desc on same row).
 
 Key features:
 - ItemGroupInfo hierarchy with parent-child relationships
 - Separate Knowledge data rows (Name + Desc from KnowledgeInfo)
+- InspectData extraction (Pattern A: direct children, Pattern B: PageData books)
+- InspectData -> RewardKnowledgeKey -> KnowledgeInfo chain resolution
 - Depth-based clustering for group organization
 - Monster item extraction to separate folder
 """
@@ -104,6 +107,10 @@ class NewItemEntry:
     knowledge2_desc_kor: str = ""       # Pass 2: identical name match
     knowledge2_source_file: str = ""    # Pass 2: source file for EXPORT
     child_knowledge_entries: List[Tuple[str, str, str]] = field(default_factory=list)  # Pass 0: (name, desc, source_file)
+    # InspectData entries: list of (desc, knowledge_name, knowledge_desc, knowledge_source_file)
+    # Pattern A (recipe): 1 entry — direct <InspectData> child of <ItemInfo>
+    # Pattern B (book): N entries — <PageData> -> <LeftPage>/<RightPage> -> <InspectData>
+    inspect_entries: List[Tuple[str, str, str, str]] = field(default_factory=list)
 
 
 # =============================================================================
@@ -111,17 +118,76 @@ class NewItemEntry:
 # =============================================================================
 
 def _find_knowledge_key(item_element) -> str:
-    """Search element and children for KnowledgeKey or RewardKnowledgeKey."""
+    """Search element and children for KnowledgeKey or RewardKnowledgeKey.
+
+    Skips InspectData and PageData children — those have their own
+    RewardKnowledgeKey chain handled separately by _collect_inspect_data().
+    """
     for attr in ("KnowledgeKey", "RewardKnowledgeKey"):
         direct = item_element.get(attr) or ""
         if direct:
             return direct
     for child in item_element:
+        if child.tag in ("InspectData", "PageData"):
+            continue
         for attr in ("KnowledgeKey", "RewardKnowledgeKey"):
             kk = child.get(attr) or ""
             if kk:
                 return kk
     return ""
+
+def _collect_inspect_data(
+    item_element,
+    knowledge_map: Dict[str, Tuple[str, str, str]],
+) -> List[Tuple[str, str, str, str]]:
+    """Collect all InspectData from an ItemInfo element.
+
+    Handles two XML patterns:
+      Pattern A (recipe/letter): <InspectData> is a direct child of <ItemInfo>
+      Pattern B (book): <PageData> -> <LeftPage>/<RightPage> -> <InspectData>
+
+    For each InspectData element:
+      - Skip if UseLeftPageInspectData="True" (duplicate reference)
+      - Skip if Desc is empty/missing
+      - If RewardKnowledgeKey exists, lookup in knowledge_map for linked Name+Desc
+
+    Returns:
+        List of (desc, knowledge_name, knowledge_desc, knowledge_source_file)
+        in XML document order.  Empty knowledge fields = "" when no link found.
+    """
+    results: List[Tuple[str, str, str, str]] = []
+
+    def _process_inspect(el) -> None:
+        """Process a single <InspectData> element."""
+        # Skip duplicate references (book right pages that mirror left)
+        if (el.get("UseLeftPageInspectData") or "").lower() == "true":
+            return
+        desc = el.get("Desc") or ""
+        if not desc:
+            return
+
+        # Check for linked knowledge via RewardKnowledgeKey
+        rk = el.get("RewardKnowledgeKey") or ""
+        k_name = ""
+        k_desc = ""
+        k_src = ""
+        if rk and rk.lower() in knowledge_map:
+            k_name, k_desc, k_src = knowledge_map[rk.lower()]
+
+        results.append((desc, k_name, k_desc, k_src))
+
+    # Pattern A: direct <InspectData> children of <ItemInfo>
+    for child in item_element.findall("InspectData"):
+        _process_inspect(child)
+
+    # Pattern B: <PageData> -> <LeftPage>/<RightPage> -> <InspectData>
+    for page_data in item_element.findall("PageData"):
+        for page in page_data:  # LeftPage, RightPage, etc.
+            for inspect in page.findall("InspectData"):
+                _process_inspect(inspect)
+
+    return results
+
 
 def get_depth_color(depth: int) -> str:
     """Get color name for a given depth level."""
@@ -373,6 +439,9 @@ def scan_items_with_knowledge(
                         pass2_hits += 1
                         break
 
+                # InspectData: collect from direct children + PageData books
+                inspect_entries = _collect_inspect_data(item, knowledge_map)
+
                 # Collect Korean strings for coverage tracking
                 _collect_korean_string(item_name)
                 _collect_korean_string(item_desc)
@@ -383,6 +452,10 @@ def scan_items_with_knowledge(
                 _collect_korean_string(knowledge_desc)
                 _collect_korean_string(knowledge2_name)
                 _collect_korean_string(knowledge2_desc)
+                for idesc, ikname, ikdesc, _ in inspect_entries:
+                    _collect_korean_string(idesc)
+                    _collect_korean_string(ikname)
+                    _collect_korean_string(ikdesc)
 
                 bucket.append(ik)
                 items[ik] = NewItemEntry(
@@ -399,6 +472,7 @@ def scan_items_with_knowledge(
                     knowledge2_desc_kor=knowledge2_desc,
                     knowledge2_source_file=knowledge2_source_file,
                     child_knowledge_entries=child_knowledge_entries,
+                    inspect_entries=inspect_entries,
                 )
 
     total_items = sum(len(v) for v in group_items.values())
@@ -662,13 +736,16 @@ def write_newitem_excel(
     8 columns: DataType | Filename | SourceText (KR) | Translation | STATUS | COMMENT | SCREENSHOT | STRINGID
 
     Per-item row generation (strict order):
-    1.  ItemData          -- item_name_kor (always output)
-    2.  ItemData          -- item_desc_kor (always output)
-    2b. ChildKnowledgeData -- inline child Name/Desc pairs (skip if none) [Pass 0: inline children]
-    3.  KnowledgeData     -- knowledge_name_kor (skip if empty)  [Pass 1: KnowledgeKey]
-    4.  KnowledgeData     -- knowledge_desc_kor (skip if empty)  [Pass 1: KnowledgeKey]
-    5.  KnowledgeData2    -- knowledge2_name_kor (skip if empty) [Pass 2: identical name]
-    6.  KnowledgeData2    -- knowledge2_desc_kor (skip if empty) [Pass 2: identical name]
+    1.  ItemData              -- item_name_kor (always output)
+    2.  ItemData              -- item_desc_kor (always output)
+    2b. ChildKnowledgeData    -- inline child Name/Desc pairs (skip if none) [Pass 0]
+    3.  KnowledgeData         -- knowledge_name_kor (skip if empty)  [Pass 1: KnowledgeKey]
+    4.  KnowledgeData         -- knowledge_desc_kor (skip if empty)  [Pass 1: KnowledgeKey]
+    5.  KnowledgeData2        -- knowledge2_name_kor (skip if empty) [Pass 2: identical name]
+    6.  KnowledgeData2        -- knowledge2_desc_kor (skip if empty) [Pass 2: identical name]
+    7.  InspectData           -- inspect Desc (per entry, sequential) [Pattern A or B]
+    7b. InspectKnowledgeData  -- linked knowledge Name (if RewardKnowledgeKey found)
+    7c. InspectKnowledgeData  -- linked knowledge Desc (if RewardKnowledgeKey found)
     """
     wb = Workbook()
     wb.remove(wb.active)
@@ -721,6 +798,16 @@ def write_newitem_excel(
         if entry.knowledge2_desc_kor:
             pre[(ik, "knowledge2_desc")] = resolve_translation(
                 entry.knowledge2_desc_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
+        # InspectData + InspectKnowledgeData (after all item-level knowledge)
+        for i, (idesc, ikname, ikdesc, iksrc) in enumerate(entry.inspect_entries):
+            pre[(ik, f"inspect_{i}_desc")] = resolve_translation(
+                idesc, lang_tbl, entry.source_file, export_index, consumer=consumer)
+            if ikname:
+                pre[(ik, f"inspect_{i}_kname")] = resolve_translation(
+                    ikname, lang_tbl, iksrc, export_index, consumer=consumer)
+            if ikdesc:
+                pre[(ik, f"inspect_{i}_kdesc")] = resolve_translation(
+                    ikdesc, lang_tbl, iksrc, export_index, consumer=consumer)
 
     if consumer.warnings:
         log.warning("StringID overruns during pre-resolve: %d", consumer.warnings)
@@ -813,6 +900,19 @@ def write_newitem_excel(
                 if entry.knowledge2_desc_kor:
                     t, s = pre[(ik, "knowledge2_desc")]
                     _write_row("KnowledgeData2", entry.knowledge2_desc_kor, t, s)
+
+                # 7. InspectData + InspectKnowledgeData (Pattern A: recipe, Pattern B: book)
+                for i, (idesc, ikname, ikdesc, _) in enumerate(entry.inspect_entries):
+                    # InspectData -- the Desc text from <InspectData> element
+                    t, s = pre.get((ik, f"inspect_{i}_desc"), ("", ""))
+                    _write_row("InspectData", idesc, t, s)
+                    # InspectKnowledgeData -- linked via RewardKnowledgeKey (if exists)
+                    if ikname:
+                        t, s = pre.get((ik, f"inspect_{i}_kname"), ("", ""))
+                        _write_row("InspectKnowledgeData", ikname, t, s)
+                    if ikdesc:
+                        t, s = pre.get((ik, f"inspect_{i}_kdesc"), ("", ""))
+                        _write_row("InspectKnowledgeData", ikdesc, t, s)
 
         # Sheet cosmetics
         if excel_row > 2:
