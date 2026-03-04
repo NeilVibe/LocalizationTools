@@ -207,18 +207,15 @@ VOICE_RECORDING_SHEET_FOLDER = Path(_apply_branch(_apply_drive_letter(
 CATEGORIES = [
     "Quest",
     "Knowledge",
-    "Item",
-    "NewItem",     # Row-per-text item datasheet (4-step pass)
+    "Item",            # Row-per-text item datasheet (4-step pass)
     "ItemKnowledgeCluster",  # Mega item-knowledge cluster datasheet
-    "Region",
+    "Region",          # Region datasheet with DisplayName from RegionInfo
     "System",
-    "Character",
-    "Skill",       # Row-per-text skill datasheet (UIPosition ordered)
+    "Character",       # Row-per-text character datasheet with knowledge passes
+    "Skill",           # Row-per-text skill datasheet (UIPosition ordered)
     "Help",
     "Gimmick",
     "Contents",
-    "NewCharacter",  # Row-per-text character datasheet with knowledge passes
-    "NewRegion",     # Row-per-text region datasheet with knowledge passes
     "Sequencer",  # → Master_Script.xlsx
     "Dialog",     # → Master_Script.xlsx
     "Face",       # Facial animation QA (custom processing)
@@ -256,10 +253,7 @@ WORKER_GROUPS = {
     "contents":   ["Contents"],
     "face":       ["Face"],
     "item":       ["Item", "Gimmick"],       # Must serialize (shared Master_Item.xlsx)
-    "newitem":    ["NewItem"],               # Row-per-text format (separate Master_NewItem.xlsx)
     "itemknowledgecluster": ["ItemKnowledgeCluster"],  # Mega cluster (own master)
-    "newcharacter": ["NewCharacter"],         # Row-per-text format (separate Master_NewCharacter.xlsx)
-    "newregion":    ["NewRegion"],             # Region layout + DisplayName (separate Master_NewRegion.xlsx)
     "skill":        ["Skill"],                  # Row-per-text skill (UIPosition ordered)
     "system":     ["System", "Help"],          # Must serialize (shared Master_System.xlsx)
     "script":     ["Sequencer", "Dialog"],   # Must serialize (shared Master_Script.xlsx)
@@ -273,13 +267,10 @@ WORKER_GROUPS = {
 TRANSLATION_COLS = {
     "Quest": {"eng": 2, "other": 3},
     "Knowledge": {"eng": 2, "other": 3},
-    "Character": {"eng": 2, "other": 3},
-    "Region": {"eng": 2, "other": 3},
-    "Item": {"eng": 5, "other": 7},  # ItemName column
-    "NewItem": {"eng": 4, "other": 4},  # Translation column (row-per-text format)
+    "Character": {"eng": 4, "other": 4},  # Translation column (row-per-text format)
+    "Region": {"eng": 2, "other": 3},     # DataType | Original | English | Translation
+    "Item": {"eng": 4, "other": 4},       # Translation column (row-per-text format)
     "ItemKnowledgeCluster": {"eng": 3, "other": 3},  # Translation column (mega-sheet format)
-    "NewCharacter": {"eng": 4, "other": 4},  # Translation column (row-per-text format)
-    "NewRegion": {"eng": 2, "other": 3},     # Same column layout as Region
     "System": {"eng": 1, "other": 1},  # CONTENT column (single column for all languages)
     "Skill": {"eng": 4, "other": 4},  # Translation column (row-per-text, UIPosition ordered)
     "Help": {"eng": 2, "other": 3},

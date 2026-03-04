@@ -103,16 +103,13 @@ def cli_list_categories():
         desc = {
             "Quest": "Main/Faction/Daily/Challenge/Minigame quests",
             "Knowledge": "Knowledge entries with hierarchical groups",
-            "Item": "Items with descriptions and group organization",
-            "Region": "Faction/Region exploration data",
+            "Item": "Row-per-text item datasheet (4-step knowledge pass)",
+            "Region": "Region datasheet with DisplayName from RegionInfo",
             "System": "Skill + Help combined (category clustering)",
-            "Character": "NPC/Monster character info",
+            "Character": "Row-per-text character datasheet with knowledge passes",
             "Skill": "Row-per-text skill datasheet (UIPosition ordered)",
             "Help": "GameAdvice/Help system entries",
             "Gimmick": "Interactive gimmick objects",
-            "NewItem": "Row-per-text item datasheet (4-step pass)",
-            "NewCharacter": "Row-per-text character datasheet with knowledge passes",
-            "NewRegion": "Region layout + DisplayName from RegionInfo",
             "ItemKnowledgeCluster": "Mega item-knowledge cluster (3-pass matching)",
         }.get(cat, "")
         print(f"  {i}. {cat:12} - {desc}")

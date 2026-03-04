@@ -39,4 +39,13 @@ Once new generators are proven in production, consolidate:
 
 ---
 
-*Last updated: 2026-02-28*
+---
+
+## Recent Fixes (2026-03-03)
+
+- **System category bug fixed** — `Username_System` folders were silently ignored during master build. `WORKER_GROUPS["system"]` was missing `"System"` after Skill consolidation removed it. Fixed: `["System", "Help"]`.
+- **Skill Knowledge children** — inline children + sub-skill nesting implemented. Awaiting production verification.
+
+---
+
+*Last updated: 2026-03-03*

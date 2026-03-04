@@ -48,17 +48,17 @@ DATASHEET_LOCATIONS = {
         "cn_pattern": "Knowledge_LQA_ZHO-CN*.xlsx",
     },
     "Item": {
-        "folder": "ItemData_Map_All/Item_Sorted_LQA",  # Sorted version (not Full)
-        "eng_pattern": "ITEM_WORKING_LQA_ENG*.xlsx",
-        "cn_pattern": "ITEM_WORKING_LQA_ZHO-CN*.xlsx",
+        "folder": "ItemData_Map_All",
+        "eng_pattern": "Item_LQA_ENG*.xlsx",
+        "cn_pattern": "Item_LQA_ZHO-CN*.xlsx",
     },
     "Region": {
-        "folder": "Region_LQA_v3",
+        "folder": "RegionData_Map_All",
         "eng_pattern": "Region_LQA_ENG*.xlsx",
         "cn_pattern": "Region_LQA_ZHO-CN*.xlsx",
     },
     "Character": {
-        "folder": "Character_LQA_All",
+        "folder": "CharacterData_Map_All",
         "eng_pattern": "Character_LQA_ENG*.xlsx",
         "cn_pattern": "Character_LQA_ZHO-CN*.xlsx",
     },
@@ -87,25 +87,10 @@ DATASHEET_LOCATIONS = {
         "eng_pattern": "Contents_LQA*.xlsx",  # Same file for both (no localization)
         "cn_pattern": "Contents_LQA*.xlsx",   # Same file for both (no localization)
     },
-    "NewItem": {
-        "folder": "NewItemData_Map_All",
-        "eng_pattern": "NewItem_LQA_ENG*.xlsx",
-        "cn_pattern": "NewItem_LQA_ZHO-CN*.xlsx",
-    },
     "ItemKnowledgeCluster": {
         "folder": "ItemKnowledgeCluster",
         "eng_pattern": "ItemKnowledgeCluster_LQA_ENG*.xlsx",
         "cn_pattern": "ItemKnowledgeCluster_LQA_ZHO-CN*.xlsx",
-    },
-    "NewCharacter": {
-        "folder": "NewCharacterData_Map_All",
-        "eng_pattern": "NewCharacter_LQA_ENG*.xlsx",
-        "cn_pattern": "NewCharacter_LQA_ZHO-CN*.xlsx",
-    },
-    "NewRegion": {
-        "folder": "NewRegionData_Map_All",
-        "eng_pattern": "NewRegion_LQA_ENG*.xlsx",
-        "cn_pattern": "NewRegion_LQA_ZHO-CN*.xlsx",
     },
 }
 

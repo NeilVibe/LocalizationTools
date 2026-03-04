@@ -19,7 +19,7 @@ Key features:
 - Gold header rows per skill tree (character + weapon page)
 - UIPositionXY ordering within each tree for tester-friendly reading order
 - Alternating fill per skill
-- Reuses knowledge loading from newitem.py
+- Reuses knowledge loading from base.py
 """
 
 import re
@@ -46,7 +46,7 @@ from generators.base import (
     StringIdConsumer,
     add_status_dropdown,
 )
-from generators.newitem import load_knowledge_data
+from generators.base import load_knowledge_data
 
 log = get_logger("SkillGenerator")
 

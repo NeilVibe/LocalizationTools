@@ -37,7 +37,7 @@ from generators.base import (
     StringIdConsumer,
     add_status_dropdown,
 )
-from generators.newitem import _find_knowledge_key
+from generators.base import _find_knowledge_key
 
 log = get_logger("ItemKnowledgeCluster")
 

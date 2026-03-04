@@ -1248,6 +1248,73 @@ def run_compiler():
         print("\n[CN] No Script category files to process")
 
     # ==========================================================================
+    # STEP 1b: MasterSubmitDatasheet (Non-Script categories)
+    # ==========================================================================
+    print("\n" + "=" * 60)
+    print("STEP 1b: Generating MasterSubmitDatasheet (Non-Script ISSUE rows)")
+    print("=" * 60)
+
+    from core.submit_datasheet import (
+        collect_datasheet_issue_rows,
+        generate_master_submit_datasheet,
+        generate_datasheet_conflict_file,
+    )
+
+    SCRIPT_CATEGORIES = {"Sequencer", "Dialog"}
+
+    # EN: Collect all non-script QA folders
+    en_datasheet_folders = []
+    for cat, folders in by_category_en.items():
+        if cat not in SCRIPT_CATEGORIES:
+            en_datasheet_folders.extend(folders)
+
+    if en_datasheet_folders:
+        print(f"\n[EN] Collecting from {len(en_datasheet_folders)} non-Script files...")
+        en_ds_issues, en_ds_conflicts = collect_datasheet_issue_rows(en_datasheet_folders)
+        if en_ds_issues:
+            generate_master_submit_datasheet(
+                en_ds_issues,
+                MASTER_FOLDER_EN / "MasterSubmitDatasheet_EN.xlsx",
+                "EN"
+            )
+        else:
+            print("    No ISSUE rows found for EN")
+        if en_ds_conflicts:
+            generate_datasheet_conflict_file(
+                en_ds_conflicts,
+                MASTER_FOLDER_EN / "MasterSubmitDatasheet_Conflicts_EN.xlsx",
+                "EN"
+            )
+    else:
+        print("\n[EN] No non-Script category files to process")
+
+    # CN: Same pattern
+    cn_datasheet_folders = []
+    for cat, folders in by_category_cn.items():
+        if cat not in SCRIPT_CATEGORIES:
+            cn_datasheet_folders.extend(folders)
+
+    if cn_datasheet_folders:
+        print(f"\n[CN] Collecting from {len(cn_datasheet_folders)} non-Script files...")
+        cn_ds_issues, cn_ds_conflicts = collect_datasheet_issue_rows(cn_datasheet_folders)
+        if cn_ds_issues:
+            generate_master_submit_datasheet(
+                cn_ds_issues,
+                MASTER_FOLDER_CN / "MasterSubmitDatasheet_CN.xlsx",
+                "CN"
+            )
+        else:
+            print("    No ISSUE rows found for CN")
+        if cn_ds_conflicts:
+            generate_datasheet_conflict_file(
+                cn_ds_conflicts,
+                MASTER_FOLDER_CN / "MasterSubmitDatasheet_Conflicts_CN.xlsx",
+                "CN"
+            )
+    else:
+        print("\n[CN] No non-Script category files to process")
+
+    # ==========================================================================
     # STEP 2: Process Master Files (Heavy Processing)
     # ==========================================================================
     print("\n" + "=" * 60)

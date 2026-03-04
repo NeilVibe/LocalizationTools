@@ -767,3 +767,71 @@ def emit_rows_to_worksheet(
     # Add STATUS dropdown
     status_col = 4 if include_translation_col else 3
     add_status_dropdown(ws, status_col, start_row=2, end_row=current_row)
+
+
+# =============================================================================
+# KNOWLEDGE UTILITIES (shared across item, character, skill generators)
+# =============================================================================
+
+def _find_knowledge_key(item_element) -> str:
+    """Search element and children for KnowledgeKey or RewardKnowledgeKey.
+
+    Skips InspectData and PageData children — those have their own
+    RewardKnowledgeKey chain handled separately by _collect_inspect_data().
+    """
+    for attr in ("KnowledgeKey", "RewardKnowledgeKey"):
+        direct = item_element.get(attr) or ""
+        if direct:
+            return direct
+    for child in item_element:
+        if child.tag in ("InspectData", "PageData"):
+            continue
+        for attr in ("KnowledgeKey", "RewardKnowledgeKey"):
+            kk = child.get(attr) or ""
+            if kk:
+                return kk
+    return ""
+
+
+def load_knowledge_data(
+    folder: Path,
+) -> Tuple[Dict[str, Tuple[str, str, str]], Dict[str, List[Tuple[str, str, str]]]]:
+    """Load KnowledgeKey -> (Name, Desc, source_file) from knowledge files.
+
+    Enhanced version that returns the Name field and tracks source_file
+    for EXPORT matching.
+
+    Returns:
+        (knowledge_map, knowledge_name_index) where:
+        - knowledge_map: {StrKey: (Name, Desc, source_file)}
+        - knowledge_name_index: {Name: [(StrKey, Desc, source_file), ...]}
+    """
+    log.info("Loading knowledge data...")
+    knowledge_map: Dict[str, Tuple[str, str, str]] = {}
+    knowledge_name_index: Dict[str, List[Tuple[str, str, str]]] = defaultdict(list)
+
+    if not folder.exists():
+        log.warning("Knowledge folder does not exist: %s", folder)
+        return knowledge_map, knowledge_name_index
+
+    file_count = 0
+    for path in iter_xml_files(folder):
+        root = parse_xml_file(path)
+        if root is None:
+            continue
+        file_count += 1
+
+        for el in root.iter("KnowledgeInfo"):
+            strkey = el.get("StrKey") or ""
+            name = el.get("Name") or ""
+            desc = el.get("Desc") or ""
+
+            if strkey and strkey.lower() not in knowledge_map:
+                knowledge_map[strkey.lower()] = (name, desc, path.name)
+                # Build name index for Pass 2 (only first occurrence per StrKey)
+                if name:
+                    knowledge_name_index[name].append((strkey.lower(), desc, path.name))
+
+    log.info("Knowledge data loaded: %d entries from %d files, %d unique names",
+             len(knowledge_map), file_count, len(knowledge_name_index))
+    return knowledge_map, knowledge_name_index

@@ -80,26 +80,11 @@ def generate_datasheets(categories: List[str]) -> Dict:
                 result = generate_item_datasheets()
                 korean_strings = get_collected_korean_strings()
                 results["korean_strings"]["Item"] = korean_strings
-            elif category == "newitem":
-                from generators.newitem import generate_newitem_datasheets, get_collected_korean_strings
-                result = generate_newitem_datasheets()
-                korean_strings = get_collected_korean_strings()
-                results["korean_strings"]["NewItem"] = korean_strings
             elif category == "itemknowledgecluster":
                 from generators.itemknowledgecluster import generate_itemknowledgecluster_datasheets, get_collected_korean_strings
                 result = generate_itemknowledgecluster_datasheets()
                 korean_strings = get_collected_korean_strings()
                 results["korean_strings"]["ItemKnowledgeCluster"] = korean_strings
-            elif category == "newcharacter":
-                from generators.newcharacter import generate_newcharacter_datasheets, get_collected_korean_strings
-                result = generate_newcharacter_datasheets()
-                korean_strings = get_collected_korean_strings()
-                results["korean_strings"]["NewCharacter"] = korean_strings
-            elif category == "newregion":
-                from generators.newregion import generate_newregion_datasheets, get_collected_korean_strings
-                result = generate_newregion_datasheets()
-                korean_strings = get_collected_korean_strings()
-                results["korean_strings"]["NewRegion"] = korean_strings
             elif category == "quest":
                 from generators.quest import generate_quest_datasheets, get_collected_korean_strings
                 result = generate_quest_datasheets()

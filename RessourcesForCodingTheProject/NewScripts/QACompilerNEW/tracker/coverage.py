@@ -34,67 +34,55 @@ SCRIPT_DIR = Path(__file__).parent
 
 # Output folders (relative to script location)
 OUTPUT_FOLDERS = {
-    "Character":  SCRIPT_DIR / "Character_LQA_All",
+    "Character":  SCRIPT_DIR / "CharacterData_Map_All",
     "Quest":      SCRIPT_DIR / "QuestData_Map_All",
-    "Item":       SCRIPT_DIR / "ItemData_Map_All" / "Item_Full_LQA",
+    "Item":       SCRIPT_DIR / "ItemData_Map_All",
     "Knowledge":  SCRIPT_DIR / "Knowledge_LQA_All",
     "Skill":      SCRIPT_DIR / "Skill_LQA_All",
-    "Region":     SCRIPT_DIR / "Region_LQA_v3",
+    "Region":     SCRIPT_DIR / "RegionData_Map_All",
     "Gimmick":    SCRIPT_DIR / "Gimmick_LQA_Output",
     "Help":       SCRIPT_DIR / "GameAdvice_LQA_All",
-    "NewItem":    SCRIPT_DIR / "NewItemData_Map_All",
     "ItemKnowledgeCluster": SCRIPT_DIR / "ItemKnowledgeCluster",
-    "NewCharacter": SCRIPT_DIR / "NewCharacterData_Map_All",
-    "NewRegion":    SCRIPT_DIR / "NewRegionData_Map_All",
 }
 
 # ENG file patterns per category
 ENG_FILE_PATTERNS = {
     "Character":  "Character_LQA_ENG.xlsx",
     "Quest":      "Quest_LQA_ENG.xlsx",
-    "Item":       "*_ENG*.xlsx",  # Multiple files
+    "Item":       "Item_LQA_ENG.xlsx",
     "Knowledge":  "Knowledge_LQA_ENG.xlsx",
     "Skill":      "Skill_LQA_ENG.xlsx",
     "Region":     "Region_LQA_ENG.xlsx",
     "Gimmick":    "Gimmick_LQA_ENG.xlsx",
     "Help":       "LQA_GameAdvice_ENG.xlsx",
-    "NewItem":    "NewItem_LQA_ENG.xlsx",
     "ItemKnowledgeCluster": "ItemKnowledgeCluster_LQA_ENG.xlsx",
-    "NewCharacter": "NewCharacter_LQA_ENG.xlsx",
-    "NewRegion":    "NewRegion_LQA_ENG.xlsx",
 }
 
 # Korean column index (1-based) per category - column A = 1
 # Can be int for single column, or tuple for multiple columns
 KOREAN_COLUMN = {
-    "Character":  1,            # Original (KR)
+    "Character":  3,            # SourceText (KR) = col C (row-per-text format)
     "Quest":      1,            # Original
-    "Item":       (6, 8),       # ItemName(KOR)=col F, ItemDesc(KOR)=col H
+    "Item":       3,            # SourceText (KR) = col C (row-per-text format)
     "Knowledge":  1,            # Original (KR)
     "Skill":      3,            # SourceText (KR) = col C (row-per-text format)
     "Region":     2,            # Original (KR) = col B (DataType in col A)
     "Gimmick":    (6, 9, 11),   # GimmickName(KOR)=6, ItemName(KOR)=9, ItemDesc(KOR)=11
     "Help":       1,            # Original (KR)
-    "NewItem":    3,            # SourceText (KR) = col C
     "ItemKnowledgeCluster": 2,  # SourceText (KR) = col B
-    "NewCharacter": 3,          # SourceText (KR) = col C
-    "NewRegion":    2,          # Original (KR) = col B (DataType in col A)
 }
 
 # English/Translation column index (1-based) per category
 TRANSLATION_COLUMN = {
-    "Character":  2,            # English (ENG)
+    "Character":  4,            # Translation ({CODE}) = col D (row-per-text format)
     "Quest":      2,            # ENG
-    "Item":       (7, 9),       # ItemName(ENG)=col G, ItemDesc(ENG)=col I
+    "Item":       4,            # Translation ({CODE}) = col D (row-per-text format)
     "Knowledge":  2,            # English (ENG)
     "Skill":      4,            # Translation ({CODE}) = col D (row-per-text format)
     "Region":     3,            # English (ENG) = col C (DataType in col A)
     "Gimmick":    (7, 10, 12),  # GimmickName(ENG)=7, ItemName(ENG)=10, ItemDesc(ENG)=12
     "Help":       2,            # English (ENG)
-    "NewItem":    4,            # Translation ({CODE}) = col D
     "ItemKnowledgeCluster": 3,  # Translation ({CODE}) = col C
-    "NewCharacter": 4,          # Translation ({CODE}) = col D
-    "NewRegion":    3,          # English (ENG) = col C (DataType in col A)
 }
 
 # Language data folder - imported from config.py (uses settings.json drive letter)
@@ -427,20 +415,16 @@ def load_korean_strings_from_datasheets(output_folder: Path) -> Dict[str, Set[st
         return category_strings
 
     # Exact folder names from generators + file patterns
-    # NOTE: Item uses nested folder (ItemData_Map_All/Item_Full_LQA)
     CATEGORY_CONFIG = [
-        ("Character", "Character_LQA_All", "Character_LQA_ENG.xlsx"),
+        ("Character", "CharacterData_Map_All", "Character_LQA_ENG.xlsx"),
         ("Quest", "QuestData_Map_All", "Quest_LQA_ENG.xlsx"),
-        ("Item", "ItemData_Map_All/Item_Full_LQA", "*_ENG*.xlsx"),
+        ("Item", "ItemData_Map_All", "Item_LQA_ENG.xlsx"),
         ("Knowledge", "Knowledge_LQA_All", "Knowledge_LQA_ENG.xlsx"),
         ("Skill", "Skill_LQA_All", "Skill_LQA_ENG.xlsx"),
-        ("Region", "Region_LQA_v3", "Region_LQA_ENG.xlsx"),
+        ("Region", "RegionData_Map_All", "Region_LQA_ENG.xlsx"),
         ("Gimmick", "Gimmick_LQA_Output", "Gimmick_LQA_ENG.xlsx"),
         ("Help", "GameAdvice_LQA_All", "LQA_GameAdvice_ENG.xlsx"),
-        ("NewItem", "NewItemData_Map_All", "NewItem_LQA_ENG.xlsx"),
         ("ItemKnowledgeCluster", "ItemKnowledgeCluster", "ItemKnowledgeCluster_LQA_ENG.xlsx"),
-        ("NewCharacter", "NewCharacterData_Map_All", "NewCharacter_LQA_ENG.xlsx"),
-        ("NewRegion", "NewRegionData_Map_All", "NewRegion_LQA_ENG.xlsx"),
     ]
 
     for category, folder_path, file_pattern in CATEGORY_CONFIG:
@@ -617,20 +601,16 @@ def collect_category_wordcounts(output_folder: Path) -> Dict[str, CategoryWordCo
     print(f"Scanning: {output_folder}")
 
     # Exact folder names from generators + file patterns
-    # NOTE: Item uses nested folder (ItemData_Map_All/Item_Full_LQA)
     CATEGORY_CONFIG = [
-        ("Character", "Character_LQA_All", "Character_LQA_ENG.xlsx"),
+        ("Character", "CharacterData_Map_All", "Character_LQA_ENG.xlsx"),
         ("Quest", "QuestData_Map_All", "Quest_LQA_ENG.xlsx"),
-        ("Item", "ItemData_Map_All/Item_Full_LQA", "*_ENG*.xlsx"),
+        ("Item", "ItemData_Map_All", "Item_LQA_ENG.xlsx"),
         ("Knowledge", "Knowledge_LQA_All", "Knowledge_LQA_ENG.xlsx"),
         ("Skill", "Skill_LQA_All", "Skill_LQA_ENG.xlsx"),
-        ("Region", "Region_LQA_v3", "Region_LQA_ENG.xlsx"),
+        ("Region", "RegionData_Map_All", "Region_LQA_ENG.xlsx"),
         ("Gimmick", "Gimmick_LQA_Output", "Gimmick_LQA_ENG.xlsx"),
         ("Help", "GameAdvice_LQA_All", "LQA_GameAdvice_ENG.xlsx"),
-        ("NewItem", "NewItemData_Map_All", "NewItem_LQA_ENG.xlsx"),
         ("ItemKnowledgeCluster", "ItemKnowledgeCluster", "ItemKnowledgeCluster_LQA_ENG.xlsx"),
-        ("NewCharacter", "NewCharacterData_Map_All", "NewCharacter_LQA_ENG.xlsx"),
-        ("NewRegion", "NewRegionData_Map_All", "NewRegion_LQA_ENG.xlsx"),
     ]
 
     for category, folder_path, file_pattern in CATEGORY_CONFIG:

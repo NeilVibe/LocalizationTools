@@ -1,31 +1,27 @@
 """
 Character Datasheet Generator
-=============================
-Extracts CharacterInfo nodes from staticinfo files and groups by filename pattern.
+==================================
+Row-per-text character datasheet with knowledge passes:
+  CharacterName -> KnowledgeName -> KnowledgeDesc -> Knowledge2Name -> Knowledge2Desc
 
-Tab Organization:
-  characterinfo_npc.staticinfo        ]
-  characterinfo_npc_shop.staticinfo   ] → NPC tab
-  characterinfo_npc_unique.staticinfo ]
+Each text gets its OWN row with knowledge passes.
 
-  characterinfo_monster.staticinfo        ] → MONSTER tab
-  characterinfo_monster_unique.staticinfo ]
-
-Output per-language Excel files with:
-  - One sheet per group (NPC, MONSTER, etc.)
-  - Columns: Original (KR) | English (ENG) | Translation | COMMAND | STATUS | COMMENT | STRINGID | SCREENSHOT
+Key features:
+- Scans characterinfo_*.staticinfo.xml files
+- Grouped by filename pattern (NPC, MONSTER, etc.)
+- Two-pass knowledge linking (KnowledgeKey direct + name match)
+- Alternating fill per character for visual grouping
+- One sheet per group key
 """
 
-import re
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.datavalidation import DataValidation
 
 from config import RESOURCE_FOLDER, LANGUAGE_FOLDER, DATASHEET_OUTPUT, STATUS_OPTIONS
 from generators.base import (
@@ -34,6 +30,7 @@ from generators.base import (
     iter_xml_files,
     load_language_tables,
     normalize_placeholders,
+    is_good_translation,
     br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
@@ -41,7 +38,9 @@ from generators.base import (
     get_export_index,
     get_ordered_export_index,
     StringIdConsumer,
+    add_status_dropdown,
 )
+from generators.base import _find_knowledge_key, load_knowledge_data
 
 log = get_logger("CharacterGenerator")
 
@@ -72,27 +71,24 @@ def _collect_korean_string(text: str) -> None:
 
 
 # =============================================================================
-# DATA STRUCTURES
+# DATA STRUCTURE
 # =============================================================================
 
 @dataclass
-class CharacterItem:
-    """Single character entry."""
-    strkey: str
-    name: str  # CharacterName (Korean)
-    source_file: str  # For debugging
-
-
-# =============================================================================
-# STYLING
-# =============================================================================
-
-_header_font = Font(bold=True, color="FFFFFF", size=11)
-_header_fill = PatternFill("solid", fgColor="4F81BD")
-_bold_font = Font(bold=True)
-
-_row_fill_even = PatternFill("solid", fgColor="F2F2F2")
-_row_fill_odd = PatternFill("solid", fgColor="FFFFFF")
+class CharacterEntry:
+    """Complete data for a single character with knowledge fields."""
+    strkey: str                    # CharacterInfo StrKey
+    char_name_kor: str             # CharacterInfo.CharacterName
+    knowledge_key: str             # from KnowledgeKey/RewardKnowledgeKey
+    knowledge_name_kor: str        # Pass 1: direct KnowledgeKey lookup
+    knowledge_desc_kor: str        # Pass 1: KnowledgeInfo.Desc
+    knowledge2_name_kor: str       # Pass 2: name match
+    knowledge2_desc_kor: str       # Pass 2: KnowledgeInfo.Desc
+    source_file: str               # Character XML filename (EXPORT matching)
+    knowledge_source_file: str     # Knowledge XML filename (EXPORT matching)
+    knowledge2_source_file: str = ""   # Pass 2: source file for EXPORT
+    group_key: str = ""            # e.g., "npc", "monster" (from filename)
+    child_knowledge_entries: List[Tuple[str, str, str]] = field(default_factory=list)  # Pass 0: (name, desc, source_file)
 
 
 # =============================================================================
@@ -111,9 +107,9 @@ def get_group_key(filename: str) -> str:
     """
     Extract group key from filename.
 
-    characterinfo_npc.staticinfo.xml → npc
-    characterinfo_npc_shop.staticinfo.xml → npc
-    characterinfo_monster_unique.staticinfo.xml → monster
+    characterinfo_npc.staticinfo.xml -> npc
+    characterinfo_npc_shop.staticinfo.xml -> npc
+    characterinfo_monster_unique.staticinfo.xml -> monster
     """
     stem = filename.lower()
     if stem.startswith("characterinfo_"):
@@ -125,257 +121,371 @@ def get_group_key(filename: str) -> str:
     return parts[0] if parts else "unknown"
 
 
-def extract_characters_from_file(path: Path) -> List[CharacterItem]:
-    """Extract all CharacterInfo nodes from a file."""
-    characters: List[CharacterItem] = []
+# =============================================================================
+# CHARACTER SCANNER WITH KNOWLEDGE
+# =============================================================================
 
-    root_el = parse_xml_file(path)
-    if root_el is None:
-        return characters
+def scan_characters_with_knowledge(
+    folder: Path,
+    knowledge_map: Dict[str, Tuple[str, str, str]],
+    knowledge_name_index: Dict[str, List[Tuple[str, str, str]]],
+) -> Dict[str, List[CharacterEntry]]:
+    """Scan character folder and build entries with knowledge data resolved.
 
-    for node in root_el.iter("CharacterInfo"):
-        strkey = node.get("StrKey") or ""
-        name = node.get("CharacterName") or ""
-
-        # Skip entries without both key and name
-        if not strkey or not name:
-            continue
-
-        # Collect Korean string for coverage tracking
-        _collect_korean_string(name)
-
-        characters.append(CharacterItem(
-            strkey=strkey,
-            name=name,
-            source_file=path.name
-        ))
-
-    return characters
-
-
-def build_character_groups(folder: Path) -> Dict[str, List[CharacterItem]]:
-    """
-    Build character groups organized by filename pattern.
+    Pass 1: KnowledgeKey/RewardKnowledgeKey -> knowledge_map (direct key lookup)
+    Pass 2: CharacterName -> knowledge_name_index (identical name match)
 
     Returns:
-        Dict mapping group_key (e.g., 'npc', 'monster') to list of CharacterItems
+        groups: {group_key: [CharacterEntry, ...]} -- grouped by filename pattern
     """
-    groups: Dict[str, List[CharacterItem]] = defaultdict(list)
+    log.info("Scanning characters with knowledge: %s", folder)
+    groups: Dict[str, List[CharacterEntry]] = defaultdict(list)
     seen_strkeys: Set[str] = set()
-
-    log.info("Scanning for characterinfo files...")
-
-    file_count = 0
+    total_chars = 0
     duplicates = 0
+    pass2_hits = 0
+
     for path in sorted(iter_characterinfo_files(folder)):
-        file_count += 1
+        root = parse_xml_file(path)
+        if root is None:
+            continue
+
+        source_file = path.name
         group_key = get_group_key(path.name)
 
-        characters = extract_characters_from_file(path)
+        for el in root.iter("CharacterInfo"):
+            strkey = el.get("StrKey") or ""
+            char_name = el.get("CharacterName") or ""
 
-        for char in characters:
-            if char.strkey in seen_strkeys:
+            if not strkey or not char_name:
+                continue
+
+            # Dedup by StrKey across all files
+            if strkey in seen_strkeys:
                 duplicates += 1
                 continue
-            seen_strkeys.add(char.strkey)
-            groups[group_key].append(char)
+            seen_strkeys.add(strkey)
 
-        log.debug("  %s → %s: %d characters", path.name, group_key.upper(), len(characters))
+            # Pass 0: Inline Knowledge children (direct child nodes of CharacterInfo)
+            child_knowledge_entries = []
+            for child in el.findall("Knowledge"):
+                child_name = child.get("Name") or ""
+                child_desc = child.get("Desc") or ""
+                child_strkey = (child.get("StrKey") or "").lower()
+                # Try external lookup first (gives proper source_file for EXPORT index)
+                if child_strkey and child_strkey in knowledge_map:
+                    kname, kdesc, ksrc = knowledge_map[child_strkey]
+                    child_knowledge_entries.append((kname, kdesc, ksrc))
+                elif child_name or child_desc:
+                    # Inline fallback: data lives in characterinfo file itself
+                    child_knowledge_entries.append((child_name, child_desc, source_file))
+
+            knowledge_key = _find_knowledge_key(el)
+
+            # Pass 1: Resolve knowledge data via KnowledgeKey
+            knowledge_name = ""
+            knowledge_desc = ""
+            knowledge_source_file = ""
+            pass1_strkey = ""
+            if knowledge_key and knowledge_key.lower() in knowledge_map:
+                knowledge_name, knowledge_desc, knowledge_source_file = knowledge_map[knowledge_key.lower()]
+                pass1_strkey = knowledge_key.lower()
+
+            # Pass 2: Identical name match (CharacterName == KnowledgeInfo.Name)
+            knowledge2_name = ""
+            knowledge2_desc = ""
+            knowledge2_source_file = ""
+            if char_name and char_name in knowledge_name_index:
+                for kn_strkey, kn_desc, kn_src in knowledge_name_index[char_name]:
+                    knowledge2_name = char_name
+                    knowledge2_desc = kn_desc
+                    knowledge2_source_file = kn_src
+                    pass2_hits += 1
+                    break
+
+            # Collect Korean strings for coverage tracking
+            _collect_korean_string(char_name)
+            for cname, cdesc, _ in child_knowledge_entries:
+                _collect_korean_string(cname)
+                _collect_korean_string(cdesc)
+            _collect_korean_string(knowledge_name)
+            _collect_korean_string(knowledge_desc)
+            _collect_korean_string(knowledge2_name)
+            _collect_korean_string(knowledge2_desc)
+
+            total_chars += 1
+            groups[group_key].append(CharacterEntry(
+                strkey=strkey,
+                char_name_kor=char_name,
+                knowledge_key=knowledge_key,
+                knowledge_name_kor=knowledge_name,
+                knowledge_desc_kor=knowledge_desc,
+                knowledge2_name_kor=knowledge2_name,
+                knowledge2_desc_kor=knowledge2_desc,
+                source_file=source_file,
+                knowledge_source_file=knowledge_source_file,
+                knowledge2_source_file=knowledge2_source_file,
+                group_key=group_key,
+                child_knowledge_entries=child_knowledge_entries,
+            ))
+
+        log.debug("  %s -> %s: scanned", path.name, group_key.upper())
 
     if duplicates:
         log.info("  Skipped %d duplicate StrKeys", duplicates)
-    log.info("Scanned %d files, found %d groups", file_count, len(groups))
-    for key, items in sorted(groups.items()):
-        log.info("  • %s: %d characters", key.upper(), len(items))
+    log.info("Characters scanned: %d in %d groups (Pass 2 hits: %d)",
+             total_chars, len(groups), pass2_hits)
+    for key, entries in sorted(groups.items()):
+        log.info("  %s: %d characters", key.upper(), len(entries))
 
     return dict(groups)
 
 
 # =============================================================================
-# EXCEL WRITER
+# EXCEL WRITER (row-per-text format)
 # =============================================================================
 
-def write_workbook(
-    groups: Dict[str, List[CharacterItem]],
-    eng_tbl: Dict[str, List[Tuple[str, str]]],
-    lang_tbl: Optional[Dict[str, List[Tuple[str, str]]]],
-    lang_code: str,
-    out_path: Path,
-) -> None:
-    """
-    Write one workbook with one sheet per group.
+_header_font = Font(bold=True, color="FFFFFF")
+_header_fill = PatternFill("solid", fgColor="4F81BD")
+_fill_a = PatternFill("solid", fgColor="E2EFDA")  # Light green
+_fill_b = PatternFill("solid", fgColor="FCE4D6")  # Light orange
 
-    Columns:
-      - Original (KR)
-      - English (ENG)
-      - Translation (OTHER) [skipped for ENG workbook]
-      - COMMAND
-      - STATUS
-      - COMMENT
-      - STRINGID
-      - SCREENSHOT
+
+def write_character_excel(
+    groups: Dict[str, List[CharacterEntry]],
+    lang_tbl: Dict[str, List[Tuple[str, str]]],
+    lang_code: str,
+    export_index: Dict[str, Set[str]],
+    output_path: Path,
+) -> None:
+    """Write Character Excel with one row per text field.
+
+    9 columns: DataType | Filename | SourceText (KR) | Translation | COMMAND | STATUS | COMMENT | SCREENSHOT | STRINGID
+
+    Per-character row generation (strict order):
+    1.  CharacterData       -- char_name_kor (always output)
+    1b. ChildKnowledgeData  -- inline child Name/Desc pairs (skip if none) [Pass 0: inline children]
+    2.  KnowledgeData       -- knowledge_name_kor (skip if empty)  [Pass 1: KnowledgeKey attr]
+    3.  KnowledgeData       -- knowledge_desc_kor (skip if empty)  [Pass 1: KnowledgeKey attr]
+    4.  KnowledgeData2      -- knowledge2_name_kor (skip if empty) [Pass 2: identical name match]
+    5.  KnowledgeData2      -- knowledge2_desc_kor (skip if empty) [Pass 2: identical name match]
     """
     wb = Workbook()
     wb.remove(wb.active)
+    code = lang_code.upper()
 
-    is_eng = lang_code.lower() == "eng"
+    headers = [
+        "DataType",
+        "Filename",
+        "SourceText (KR)",
+        f"Translation ({code})",
+        "COMMAND",
+        "STATUS",
+        "COMMENT",
+        "SCREENSHOT",
+        "STRINGID",
+    ]
 
-    # Get EXPORT index for context-aware duplicate resolution
-    export_index = get_export_index()
-
-    # Order-based StringID consumers (fresh per language write pass)
+    # Order-based StringID consumer (fresh per language write pass)
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
-    # ENG needs its own consumer for StringID column (consumer=None means no disambiguation)
-    eng_consumer = StringIdConsumer(ordered_idx) if is_eng else None
+
+    # ------------------------------------------------------------------
+    # PRE-RESOLVE: consume StringIDs in DOCUMENT ORDER (before sorting).
+    # The consumer's Nth call for a Korean text must match the Nth
+    # occurrence in the XML data file.  Sorting entries by strkey would
+    # break that order, so we resolve here first, then store results.
+    # ------------------------------------------------------------------
+    pre: Dict[Tuple[str, str], Tuple[str, str]] = {}  # (strkey, field) -> (trans, sid)
+    for gk in sorted(groups.keys()):
+        for entry in groups[gk]:  # list order = document order
+            pre[(entry.strkey, "char_name")] = resolve_translation(
+                entry.char_name_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
+            # Pass 0: inline child knowledge (before Pass 1 to preserve document order)
+            for i, (cname, cdesc, csrc) in enumerate(entry.child_knowledge_entries):
+                if cname:
+                    pre[(entry.strkey, f"ck_{i}_name")] = resolve_translation(
+                        cname, lang_tbl, csrc, export_index, consumer=consumer)
+                if cdesc:
+                    pre[(entry.strkey, f"ck_{i}_desc")] = resolve_translation(
+                        cdesc, lang_tbl, csrc, export_index, consumer=consumer)
+            if entry.knowledge_name_kor:
+                pre[(entry.strkey, "knowledge_name")] = resolve_translation(
+                    entry.knowledge_name_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)
+            if entry.knowledge_desc_kor:
+                pre[(entry.strkey, "knowledge_desc")] = resolve_translation(
+                    entry.knowledge_desc_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)
+            if entry.knowledge2_name_kor:
+                pre[(entry.strkey, "knowledge2_name")] = resolve_translation(
+                    entry.knowledge2_name_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
+            if entry.knowledge2_desc_kor:
+                pre[(entry.strkey, "knowledge2_desc")] = resolve_translation(
+                    entry.knowledge2_desc_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
+
+    if consumer.warnings:
+        log.warning("StringID overruns during pre-resolve: %d", consumer.warnings)
+
+    # ------------------------------------------------------------------
+    # KNOWLEDGEDATA2 DEDUP: per-cluster surgical removal of pure
+    # duplicates where (SourceText, Translation, StringID) matches a
+    # primary-type row within the SAME entity.
+    # ------------------------------------------------------------------
+    dedup_skip: Set[Tuple[str, str]] = set()  # (strkey, field) pairs to skip
+    dedup_count = 0
+    dedup_entities = 0
+    for gk in sorted(groups.keys()):
+        for entry in groups[gk]:
+            # Collect primary triples: (kor_text, translation, stringid)
+            primary_triples: Set[Tuple[str, str, str]] = set()
+            # CharacterData
+            t, s = pre[(entry.strkey, "char_name")]
+            if entry.char_name_kor:
+                primary_triples.add((entry.char_name_kor, t, s))
+            # ChildKnowledgeData (Pass 0)
+            for i, (cname, cdesc, _) in enumerate(entry.child_knowledge_entries):
+                if cname:
+                    t, s = pre.get((entry.strkey, f"ck_{i}_name"), ("", ""))
+                    primary_triples.add((cname, t, s))
+                if cdesc:
+                    t, s = pre.get((entry.strkey, f"ck_{i}_desc"), ("", ""))
+                    primary_triples.add((cdesc, t, s))
+            # KnowledgeData (Pass 1)
+            if entry.knowledge_name_kor:
+                t, s = pre[(entry.strkey, "knowledge_name")]
+                primary_triples.add((entry.knowledge_name_kor, t, s))
+            if entry.knowledge_desc_kor:
+                t, s = pre[(entry.strkey, "knowledge_desc")]
+                primary_triples.add((entry.knowledge_desc_kor, t, s))
+
+            # Check KnowledgeData2 fields against primary triples
+            entity_deduped = False
+            if entry.knowledge2_name_kor:
+                t, s = pre[(entry.strkey, "knowledge2_name")]
+                if (entry.knowledge2_name_kor, t, s) in primary_triples:
+                    dedup_skip.add((entry.strkey, "knowledge2_name"))
+                    dedup_count += 1
+                    entity_deduped = True
+                    log.debug("KnowledgeData2 dedup: '%s' in %s — matches primary data",
+                              entry.knowledge2_name_kor[:40], entry.strkey)
+            if entry.knowledge2_desc_kor:
+                t, s = pre[(entry.strkey, "knowledge2_desc")]
+                if (entry.knowledge2_desc_kor, t, s) in primary_triples:
+                    dedup_skip.add((entry.strkey, "knowledge2_desc"))
+                    dedup_count += 1
+                    entity_deduped = True
+                    log.debug("KnowledgeData2 dedup: '%s' in %s — matches primary data",
+                              entry.knowledge2_desc_kor[:40], entry.strkey)
+            if entity_deduped:
+                dedup_entities += 1
+
+    if dedup_count:
+        log.info("KnowledgeData2 dedup: removed %d duplicate rows across %d entities",
+                 dedup_count, dedup_entities)
 
     for group_key in sorted(groups.keys()):
-        characters = groups[group_key]
-        if not characters:
+        entries = groups[group_key]
+        if not entries:
             continue
 
+        # Create sheet named after group key (e.g., NPC, MONSTER)
         title = group_key.upper()[:31]
-        title = re.sub(r"[\\/*?:\[\]]", "_", title)
-        sheet = wb.create_sheet(title=title)
+        cnt = 1
+        while title in {ws.title for ws in wb.worksheets}:
+            title = f"{title[:28]}_{cnt}"
+            cnt += 1
+        ws = wb.create_sheet(title)
 
-        # Header row
-        headers = []
-        h1 = sheet.cell(1, 1, "Original (KR)")
-        h2 = sheet.cell(1, 2, "English (ENG)")
-        headers = [h1, h2]
+        # Write header row
+        for col_idx, txt in enumerate(headers, 1):
+            cell = ws.cell(1, col_idx, txt)
+            cell.font = _header_font
+            cell.fill = _header_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = THIN_BORDER
 
-        col_idx = 3
-        if not is_eng:
-            h3 = sheet.cell(1, col_idx, f"Translation ({lang_code.upper()})")
-            headers.append(h3)
-            col_idx += 1
+        excel_row = 2
+        current_fill = _fill_a
+        last_strkey = None
 
-        extra_headers = ["COMMAND", "STATUS", "COMMENT", "STRINGID", "SCREENSHOT"]
-        for name in extra_headers:
-            headers.append(sheet.cell(1, col_idx, name))
-            col_idx += 1
+        # Sort characters by strkey within each group (display order only)
+        sorted_entries = sorted(entries, key=lambda e: e.strkey)
 
-        for c in headers:
-            c.font = _header_font
-            c.fill = _header_fill
-            c.alignment = Alignment(horizontal="center", vertical="center")
-            c.border = THIN_BORDER
-        sheet.row_dimensions[1].height = 25
+        for entry in sorted_entries:
+            # Alternate fill per character for visual grouping
+            if last_strkey is not None and entry.strkey != last_strkey:
+                current_fill = _fill_b if current_fill == _fill_a else _fill_a
+            last_strkey = entry.strkey
 
-        # Write data rows
-        r_idx = 2
+            # Filename column: source XML filename
+            filename = entry.source_file
 
-        for char in characters:
-            fill = _row_fill_even if r_idx % 2 == 0 else _row_fill_odd
+            # COMMAND for CharacterData rows: /create character {strkey}
+            command = f"/create character {entry.strkey}"
 
-            # Use source_file for EXPORT-aware duplicate resolution
-            # eng_consumer for ENG workbook StringID, consumer=None for display-only eng translation
-            trans_eng, sid_eng = resolve_translation(char.name, eng_tbl, char.source_file, export_index, consumer=eng_consumer)
-            trans_other, sid_other = ("", "")
-            if not is_eng and lang_tbl is not None:
-                trans_other, sid_other = resolve_translation(char.name, lang_tbl, char.source_file, export_index, consumer=consumer)
+            def _write_row(data_type: str, kor_text: str, trans: str, sid: str, cmd: str = "") -> None:
+                """Write a single data row using pre-resolved translation."""
+                nonlocal excel_row
+                vals = [data_type, filename, br_to_newline(kor_text), br_to_newline(trans), cmd, "", "", "", sid]
+                for ci, val in enumerate(vals, 1):
+                    cell = ws.cell(excel_row, ci, val)
+                    cell.fill = current_fill
+                    cell.border = THIN_BORDER
+                    if ci == 6:  # STATUS
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                    else:
+                        cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+                # STRINGID as text format (prevent scientific notation)
+                ws.cell(excel_row, 9).number_format = '@'
+                excel_row += 1
 
-            command = f"/create character {char.strkey}"
+            # 1. CharacterData -- CharacterName (always output, with COMMAND)
+            t, s = pre[(entry.strkey, "char_name")]
+            _write_row("CharacterData", entry.char_name_kor, t, s, command)
 
-            col = 1
-            c_orig = sheet.cell(r_idx, col, br_to_newline(char.name))
-            c_orig.fill = fill
-            c_orig.border = THIN_BORDER
-            c_orig.alignment = Alignment(vertical="center", wrap_text=True)
-            col += 1
+            # 1b. ChildKnowledgeData -- inline Knowledge child Name/Desc (Pass 0)
+            for i, (cname, cdesc, _) in enumerate(entry.child_knowledge_entries):
+                if cname:
+                    t, s = pre.get((entry.strkey, f"ck_{i}_name"), ("", ""))
+                    _write_row("ChildKnowledgeData", cname, t, s)
+                if cdesc:
+                    t, s = pre.get((entry.strkey, f"ck_{i}_desc"), ("", ""))
+                    _write_row("ChildKnowledgeData", cdesc, t, s)
 
-            c_eng = sheet.cell(r_idx, col, br_to_newline(trans_eng))
-            c_eng.fill = fill
-            c_eng.border = THIN_BORDER
-            c_eng.alignment = Alignment(vertical="center", wrap_text=True)
-            col += 1
+            # 2. KnowledgeData -- Name (Pass 1: KnowledgeKey, skip if empty)
+            if entry.knowledge_name_kor:
+                t, s = pre[(entry.strkey, "knowledge_name")]
+                _write_row("KnowledgeData", entry.knowledge_name_kor, t, s)
 
-            if not is_eng:
-                c_other = sheet.cell(r_idx, col, br_to_newline(trans_other))
-                c_other.fill = fill
-                c_other.border = THIN_BORDER
-                c_other.alignment = Alignment(vertical="center", wrap_text=True)
-                col += 1
+            # 3. KnowledgeData -- Desc (Pass 1: KnowledgeKey, skip if empty)
+            if entry.knowledge_desc_kor:
+                t, s = pre[(entry.strkey, "knowledge_desc")]
+                _write_row("KnowledgeData", entry.knowledge_desc_kor, t, s)
 
-            c_command = sheet.cell(r_idx, col, command)
-            c_command.fill = fill
-            c_command.font = _bold_font
-            c_command.border = THIN_BORDER
-            c_command.alignment = Alignment(vertical="center", wrap_text=True)
-            col += 1
+            # 4. KnowledgeData2 -- Name (Pass 2: identical name match, skip if empty or deduped)
+            if entry.knowledge2_name_kor and (entry.strkey, "knowledge2_name") not in dedup_skip:
+                t, s = pre[(entry.strkey, "knowledge2_name")]
+                _write_row("KnowledgeData2", entry.knowledge2_name_kor, t, s)
 
-            c_status = sheet.cell(r_idx, col, "")
-            c_status.fill = fill
-            c_status.border = THIN_BORDER
-            c_status.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-            col += 1
+            # 5. KnowledgeData2 -- Desc (Pass 2: identical name match, skip if empty or deduped)
+            if entry.knowledge2_desc_kor and (entry.strkey, "knowledge2_desc") not in dedup_skip:
+                t, s = pre[(entry.strkey, "knowledge2_desc")]
+                _write_row("KnowledgeData2", entry.knowledge2_desc_kor, t, s)
 
-            c_comment = sheet.cell(r_idx, col, "")
-            c_comment.fill = fill
-            c_comment.border = THIN_BORDER
-            c_comment.alignment = Alignment(vertical="center", wrap_text=True)
-            col += 1
+        # Sheet cosmetics
+        if excel_row > 2:
+            ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{excel_row - 1}"
+        ws.freeze_panes = "A2"
 
-            c_stringid = sheet.cell(r_idx, col, sid_other if not is_eng else sid_eng)
-            c_stringid.fill = fill
-            c_stringid.font = _bold_font
-            c_stringid.border = THIN_BORDER
-            c_stringid.alignment = Alignment(vertical="center", wrap_text=True)
-            c_stringid.number_format = '@'  # Text format
-            col += 1
+        # Add STATUS drop-down (column 6)
+        add_status_dropdown(ws, col=6)
 
-            c_screenshot = sheet.cell(r_idx, col, "")
-            c_screenshot.fill = fill
-            c_screenshot.border = THIN_BORDER
-            c_screenshot.alignment = Alignment(vertical="center", wrap_text=True)
+        # Auto-fit column widths
+        autofit_worksheet(ws)
 
-            r_idx += 1
+        log.info("  Sheet '%s': %d rows", title, excel_row - 2)
 
-        last_row = r_idx - 1
-
-        # Column widths
-        sheet.column_dimensions["A"].width = 30
-        sheet.column_dimensions["B"].hidden = not is_eng
-        sheet.column_dimensions["B"].width = 40
-        if not is_eng:
-            sheet.column_dimensions["C"].width = 40
-            sheet.column_dimensions["D"].width = 50
-            sheet.column_dimensions["E"].width = 11
-            sheet.column_dimensions["F"].width = 50
-            sheet.column_dimensions["G"].width = 25
-            sheet.column_dimensions["H"].width = 20
-        else:
-            sheet.column_dimensions["C"].width = 50
-            sheet.column_dimensions["D"].width = 11
-            sheet.column_dimensions["E"].width = 50
-            sheet.column_dimensions["F"].width = 25
-            sheet.column_dimensions["G"].width = 20
-
-        # Add strict STATUS validation
-        status_col_idx = 5 if not is_eng else 4
-        col_letter = get_column_letter(status_col_idx)
-        dv = DataValidation(
-            type="list",
-            formula1=f'"{",".join(STATUS_OPTIONS)}"',
-            allow_blank=True,
-            showErrorMessage=True,
-            errorStyle="stop",
-            errorTitle="Invalid STATUS",
-            error="Please select from the list."
-        )
-        rng = f"{col_letter}2:{col_letter}{last_row}"
-        dv.add(rng)
-        sheet.add_data_validation(dv)
-
-        # Auto-fit columns and rows
-        autofit_worksheet(sheet)
-
-        actual_rows = last_row - 1
-        log.info("  Sheet '%s': %d rows", title, actual_rows)
-
-    if wb.worksheets:
-        wb.save(out_path)
-        log.info("→ Saved: %s (%d sheets)", out_path.name, len(wb.worksheets))
+    wb.save(output_path)
+    log.info("Character Excel saved: %s", output_path.name)
 
 
 # =============================================================================
@@ -385,6 +495,13 @@ def write_workbook(
 def generate_character_datasheets() -> Dict:
     """
     Generate Character datasheets for all languages.
+
+    Pipeline:
+    1. Load language tables
+    2. Load knowledge data (Name + Desc + source_file)
+    3. Scan characters with knowledge resolution
+    4. Get EXPORT index (for StringID disambiguation)
+    5. For each language: write row-per-text Excel
 
     Returns:
         Dict with results: {
@@ -408,7 +525,7 @@ def generate_character_datasheets() -> Dict:
 
     # Ensure output folder exists
     DATASHEET_OUTPUT.mkdir(parents=True, exist_ok=True)
-    output_folder = DATASHEET_OUTPUT / "Character_LQA_All"
+    output_folder = DATASHEET_OUTPUT / "CharacterData_Map_All"
     output_folder.mkdir(exist_ok=True)
 
     # Check paths
@@ -422,16 +539,10 @@ def generate_character_datasheets() -> Dict:
         log.error("Language folder not found: %s", LANGUAGE_FOLDER)
         return result
 
+    knowledge_folder = RESOURCE_FOLDER / "knowledgeinfo"
+
     try:
-        # 1. Build character groups from StaticInfo
-        groups = build_character_groups(RESOURCE_FOLDER)
-
-        if not groups:
-            result["errors"].append("No character groups found!")
-            log.warning("No character groups found!")
-            return result
-
-        # 2. Load language tables
+        # 1. Load language tables
         lang_tables = load_language_tables(LANGUAGE_FOLDER)
 
         if not lang_tables:
@@ -439,19 +550,30 @@ def generate_character_datasheets() -> Dict:
             log.warning("No language tables found!")
             return result
 
-        eng_tbl = lang_tables.get("eng", {})
+        # 2. Load knowledge data (map + name index for Pass 2)
+        knowledge_map, knowledge_name_index = load_knowledge_data(knowledge_folder)
 
-        # 3. Generate workbooks
-        log.info("Generating Excel workbooks...")
+        # 3. Scan characters with knowledge (Pass 1: KnowledgeKey, Pass 2: identical name)
+        groups = scan_characters_with_knowledge(
+            RESOURCE_FOLDER, knowledge_map, knowledge_name_index
+        )
+
+        if not groups:
+            result["errors"].append("No character data found!")
+            log.warning("No character data found!")
+            return result
+
+        # 4. Get EXPORT index
+        export_index = get_export_index()
+
+        # 5. Generate Excel per language
+        log.info("Processing languages...")
         total = len(lang_tables)
 
         for idx, (code, tbl) in enumerate(lang_tables.items(), 1):
-            log.info("(%d/%d) Processing language: %s", idx, total, code.upper())
-            out_xlsx = output_folder / f"Character_LQA_{code.upper()}.xlsx"
-            if code.lower() == "eng":
-                write_workbook(groups, eng_tbl, None, code, out_xlsx)
-            else:
-                write_workbook(groups, eng_tbl, tbl, code, out_xlsx)
+            log.info("(%d/%d) Language %s", idx, total, code.upper())
+            excel_path = output_folder / f"Character_LQA_{code.upper()}.xlsx"
+            write_character_excel(groups, tbl, code, export_index, excel_path)
             result["files_created"] += 1
 
         log.info("=" * 70)

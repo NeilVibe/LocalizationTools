@@ -1,20 +1,18 @@
 """
 Region Datasheet Generator
-==========================
-Extracts Region/Faction data from StaticInfo XMLs with proper hierarchy:
-  FactionGroup → Faction → FactionNode (nested)
+================================
+Region datasheet with DisplayName from RegionInfo.
 
-Structure:
-- ONE Excel sheet per FactionGroup (using GroupName as tab name)
-- Each sheet contains Factions as major sections
-- FactionNodes nested under their parent Factions
-- Proper indentation showing hierarchy depth
+Per FactionNode, outputs up to 3 rows:
+  1. KnowledgeInfo.Name  (at depth)     — same as Region
+  2. RegionInfo.DisplayName (at depth)   — NEW: only if different from Knowledge Name
+  3. KnowledgeInfo.Desc  (at depth + 1)  — same as Region
 
-Key features:
-- FactionNode.Name comes from KnowledgeInfo lookup (KnowledgeKey → StrKey match)
-- FactionNode.Desc from KnowledgeInfo lookup (KnowledgeKey → Desc fallback)
-- Standalone 세력 없음 (Empty Faction) factions → separate sheet
-- Shop data parsing (separate sheet)
+All hierarchy, indentation, colors, and shop data are IDENTICAL to Region.
+
+Linkage:
+  FactionNode.KnowledgeKey → KnowledgeInfo.(Name, Desc)
+  FactionNode.KnowledgeKey → RegionInfo.KnowledgeKey → RegionInfo.DisplayName
 """
 
 import re
@@ -56,18 +54,15 @@ _collected_korean_strings: set = set()
 
 
 def reset_korean_collection() -> None:
-    """Reset the Korean string collection before a new run."""
     global _collected_korean_strings
     _collected_korean_strings = set()
 
 
 def get_collected_korean_strings() -> set:
-    """Return a copy of collected Korean strings."""
     return _collected_korean_strings.copy()
 
 
 def _collect_korean_string(text: str) -> None:
-    """Add a Korean string to the collection (normalized)."""
     if text:
         normalized = normalize_placeholders(text)
         if normalized:
@@ -364,6 +359,14 @@ def parse_faction_group_element(
     return faction_group
 
 
+def count_nodes_recursive(nodes: List[FactionNodeData]) -> int:
+    """Count total nodes including nested children."""
+    count = len(nodes)
+    for node in nodes:
+        count += count_nodes_recursive(node.children)
+    return count
+
+
 def parse_all_faction_groups(
     folder: Path,
     knowledge_lookup: Dict[str, Tuple[str, str]],
@@ -396,14 +399,6 @@ def parse_all_faction_groups(
              len(faction_groups), total_factions, total_nodes)
 
     return faction_groups
-
-
-def count_nodes_recursive(nodes: List[FactionNodeData]) -> int:
-    """Count total nodes including nested children."""
-    count = len(nodes)
-    for node in nodes:
-        count += count_nodes_recursive(node.children)
-    return count
 
 
 def parse_standalone_factions(
@@ -535,56 +530,6 @@ def parse_shop_file(shop_path: Path, global_seen: Set[str]) -> List[ShopGroup]:
 RowItem = Tuple[int, str, str, bool, str, str]
 
 
-def emit_faction_node_rows(node: FactionNodeData, depth: int) -> List[RowItem]:
-    """Generate rows for a FactionNode and its children."""
-    rows: List[RowItem] = []
-
-    style = f"FactionNode_{node.node_type}" if node.node_type else "FactionNode"
-    rows.append((depth, node.name, style, False, node.source_file, "KnowledgeInfo"))
-
-    if node.description:
-        rows.append((depth + 1, node.description, "Description", True, node.source_file, "KnowledgeInfo.Desc"))
-
-    for child in node.children:
-        rows.extend(emit_faction_node_rows(child, depth + 1))
-
-    return rows
-
-
-def emit_faction_rows(faction: FactionData, depth: int = 0) -> List[RowItem]:
-    """Generate rows for a Faction and all its FactionNodes."""
-    rows: List[RowItem] = []
-
-    rows.append((depth, faction.name, "Faction", False, faction.source_file, "Faction"))
-
-    for node in faction.nodes:
-        rows.extend(emit_faction_node_rows(node, depth + 1))
-
-    return rows
-
-
-def emit_faction_group_rows(fg: FactionGroupData) -> List[RowItem]:
-    """Generate all rows for a FactionGroup."""
-    rows: List[RowItem] = []
-
-    for faction in fg.factions:
-        rows.extend(emit_faction_rows(faction, 0))
-
-    return rows
-
-
-def emit_standalone_faction_rows(standalone_factions: List[FactionData]) -> List[RowItem]:
-    """Generate rows for standalone Factions."""
-    rows: List[RowItem] = []
-
-    for faction in standalone_factions:
-        rows.append((0, faction.name, "Faction", False, faction.source_file, "Faction"))
-        for node in faction.nodes:
-            rows.extend(emit_faction_node_rows(node, 1))
-
-    return rows
-
-
 def emit_shop_rows(shop_groups: List[ShopGroup]) -> List[RowItem]:
     """Generate rows for Shop data."""
     rows: List[RowItem] = []
@@ -600,7 +545,121 @@ def emit_shop_rows(shop_groups: List[ShopGroup]) -> List[RowItem]:
 
 
 # =============================================================================
-# EXCEL WRITER
+# DISPLAYNAME LOOKUP (RegionInfo.KnowledgeKey → DisplayName)
+# =============================================================================
+
+def build_displayname_lookup(folder: Path) -> Dict[str, str]:
+    """
+    Build lookup: RegionInfo.KnowledgeKey → RegionInfo.DisplayName
+
+    Scans all XML files for RegionInfo elements (recursive hierarchy).
+    Used to add DisplayName rows in Region output.
+    """
+    log.info("Building RegionInfo DisplayName lookup...")
+
+    lookup: Dict[str, str] = {}
+    count = 0
+
+    for path in sorted(iter_xml_files(folder)):
+        root_el = parse_xml_file(path)
+        if root_el is None:
+            continue
+
+        for ri in root_el.iter("RegionInfo"):
+            kk = ri.get("KnowledgeKey") or ""
+            display_name = ri.get("DisplayName") or ""
+
+            if not kk or not display_name:
+                continue
+
+            # First occurrence wins (same as knowledge lookup)
+            if kk.lower() not in lookup:
+                lookup[kk.lower()] = display_name
+                count += 1
+
+    log.info("  → %d entries", count)
+    return lookup
+
+
+# =============================================================================
+# ROW GENERATION (Region rows + DisplayName)
+# =============================================================================
+
+def emit_faction_node_rows(
+    node: FactionNodeData,
+    depth: int,
+    displayname_lookup: Dict[str, str],
+) -> List[RowItem]:
+    """Generate rows for a FactionNode and its children. Adds DisplayName row."""
+    rows: List[RowItem] = []
+
+    # 1. Name (from KnowledgeInfo.Name — same as Region)
+    style = f"FactionNode_{node.node_type}" if node.node_type else "FactionNode"
+    rows.append((depth, node.name, style, False, node.source_file, "KnowledgeInfo"))
+
+    # 2. DisplayName (from RegionInfo — NEW)
+    displayname = displayname_lookup.get(node.knowledge_key.lower(), "")
+    if displayname and displayname != node.name:
+        rows.append((depth, displayname, style, False, node.source_file, "RegionInfo.DisplayName"))
+        _collect_korean_string(displayname)
+
+    # 3. Description (from KnowledgeInfo.Desc — same as Region)
+    if node.description:
+        rows.append((depth + 1, node.description, "Description", True, node.source_file, "KnowledgeInfo.Desc"))
+
+    # Children
+    for child in node.children:
+        rows.extend(emit_faction_node_rows(child, depth + 1, displayname_lookup))
+
+    return rows
+
+
+def emit_faction_rows(
+    faction: FactionData,
+    depth: int,
+    displayname_lookup: Dict[str, str],
+) -> List[RowItem]:
+    """Generate rows for a Faction and all its FactionNodes."""
+    rows: List[RowItem] = []
+
+    rows.append((depth, faction.name, "Faction", False, faction.source_file, "Faction"))
+
+    for node in faction.nodes:
+        rows.extend(emit_faction_node_rows(node, depth + 1, displayname_lookup))
+
+    return rows
+
+
+def emit_faction_group_rows(
+    fg: FactionGroupData,
+    displayname_lookup: Dict[str, str],
+) -> List[RowItem]:
+    """Generate all rows for a FactionGroup."""
+    rows: List[RowItem] = []
+
+    for faction in fg.factions:
+        rows.extend(emit_faction_rows(faction, 0, displayname_lookup))
+
+    return rows
+
+
+def emit_standalone_faction_rows(
+    standalone_factions: List[FactionData],
+    displayname_lookup: Dict[str, str],
+) -> List[RowItem]:
+    """Generate rows for standalone Factions."""
+    rows: List[RowItem] = []
+
+    for faction in standalone_factions:
+        rows.append((0, faction.name, "Faction", False, faction.source_file, "Faction"))
+        for node in faction.nodes:
+            rows.extend(emit_faction_node_rows(node, 1, displayname_lookup))
+
+    return rows
+
+
+# =============================================================================
+# EXCEL HELPERS
 # =============================================================================
 
 def get_translated_tab_name(
@@ -779,6 +838,10 @@ def write_sheet_content(
     autofit_worksheet(sheet)
 
 
+# =============================================================================
+# EXCEL WRITER (workbook)
+# =============================================================================
+
 def write_workbook(
     faction_groups: List[FactionGroupData],
     standalone_factions: List[FactionData],
@@ -788,18 +851,19 @@ def write_workbook(
     lang_code: str,
     out_path: Path,
     export_index: Optional[Dict[str, Set[str]]] = None,
-) -> None:
-    """Generate Excel workbook for a language."""
+    displayname_lookup: Optional[Dict[str, str]] = None,
+) -> bool:
+    """Generate Excel workbook for a language. Returns True if saved."""
     wb = Workbook()
     wb.remove(wb.active)
 
     is_eng = lang_code.lower() == "eng"
     used_titles: Set[str] = set()
+    dn_lookup = displayname_lookup or {}
 
-    # Order-based StringID consumers (fresh per language write pass)
+    # Order-based StringID consumer (fresh per language write pass)
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
-    # ENG workbook needs its own consumer for StringID column
     eng_consumer = StringIdConsumer(ordered_idx) if is_eng else None
 
     def get_unique_title(base: str) -> str:
@@ -813,7 +877,7 @@ def write_workbook(
 
     # FactionGroup sheets
     for fg in faction_groups:
-        rows = emit_faction_group_rows(fg)
+        rows = emit_faction_group_rows(fg, dn_lookup)
         if not rows:
             continue
 
@@ -827,7 +891,7 @@ def write_workbook(
 
     # Standalone Faction sheet
     if standalone_factions:
-        rows = emit_standalone_faction_rows(standalone_factions)
+        rows = emit_standalone_faction_rows(standalone_factions, dn_lookup)
         if rows:
             title = get_translated_tab_name(EMPTY_FACTION_NAME, eng_tbl, lang_tbl, lang_code, "No Faction")
             title = get_unique_title(title)
@@ -837,7 +901,7 @@ def write_workbook(
 
             log.info("    Sheet '%s': %d rows", title, len(rows))
 
-    # Shop sheet
+    # Shop sheet (no DisplayName needed for shop)
     if shop_groups:
         rows = emit_shop_rows(shop_groups)
         if rows:
@@ -849,6 +913,9 @@ def write_workbook(
     if wb.worksheets:
         wb.save(out_path)
         log.info("  → Saved: %s (%d sheets)", out_path.name, len(wb.worksheets))
+        return True
+
+    return False
 
 
 # =============================================================================
@@ -858,13 +925,7 @@ def write_workbook(
 def generate_region_datasheets() -> Dict:
     """
     Generate Region datasheets for all languages.
-
-    Returns:
-        Dict with results: {
-            "category": "Region",
-            "files_created": N,
-            "errors": [...]
-        }
+    Includes DisplayName rows from RegionInfo.
     """
     result = {
         "category": "Region",
@@ -872,19 +933,16 @@ def generate_region_datasheets() -> Dict:
         "errors": [],
     }
 
-    # Reset Korean string collection
     reset_korean_collection()
 
     log.info("=" * 70)
     log.info("Region Datasheet Generator")
     log.info("=" * 70)
 
-    # Ensure output folder exists
     DATASHEET_OUTPUT.mkdir(parents=True, exist_ok=True)
-    output_folder = DATASHEET_OUTPUT / "Region_LQA_v3"
+    output_folder = DATASHEET_OUTPUT / "RegionData_Map_All"
     output_folder.mkdir(exist_ok=True)
 
-    # Check paths
     if not RESOURCE_FOLDER.exists():
         result["errors"].append(f"Resource folder not found: {RESOURCE_FOLDER}")
         log.error("Resource folder not found: %s", RESOURCE_FOLDER)
@@ -896,23 +954,25 @@ def generate_region_datasheets() -> Dict:
         return result
 
     try:
-        # Global duplicate tracking
         global_seen: Set[str] = set()
 
-        # 1. Knowledge lookup
+        # 1. Knowledge lookup (Name + Desc)
         knowledge_lookup = build_knowledge_name_lookup(RESOURCE_FOLDER)
 
-        # 2. Parse FactionGroup hierarchy
+        # 2. DisplayName lookup (RegionInfo.KnowledgeKey → DisplayName)
+        displayname_lookup = build_displayname_lookup(RESOURCE_FOLDER)
+
+        # 3. Parse FactionGroup hierarchy
         faction_groups = parse_all_faction_groups(RESOURCE_FOLDER, knowledge_lookup, global_seen)
 
-        # 3. Parse Standalone Factions
+        # 4. Parse Standalone Factions
         standalone_factions = parse_standalone_factions(RESOURCE_FOLDER, knowledge_lookup, global_seen)
 
-        # 4. Parse Shop data (if file exists)
+        # 5. Parse Shop data
         shop_file = RESOURCE_FOLDER.parent / "staticinfo_quest" / "funcnpc" / "shop_world.staticinfo.xml"
         shop_groups = parse_shop_file(shop_file, global_seen)
 
-        # 5. Load language tables
+        # 6. Load language tables
         lang_tables = load_language_tables(LANGUAGE_FOLDER)
 
         if not lang_tables:
@@ -921,8 +981,6 @@ def generate_region_datasheets() -> Dict:
             return result
 
         eng_tbl = lang_tables.get("eng", {})
-
-        # 6. Get EXPORT index for context-aware duplicate resolution
         export_index = get_export_index()
 
         # 7. Generate workbooks
@@ -934,10 +992,17 @@ def generate_region_datasheets() -> Dict:
             out_path = output_folder / f"Region_LQA_{code.upper()}.xlsx"
 
             if code.lower() == "eng":
-                write_workbook(faction_groups, standalone_factions, shop_groups, eng_tbl, None, code, out_path, export_index)
+                saved = write_workbook(
+                    faction_groups, standalone_factions, shop_groups,
+                    eng_tbl, None, code, out_path, export_index, displayname_lookup,
+                )
             else:
-                write_workbook(faction_groups, standalone_factions, shop_groups, eng_tbl, tbl, code, out_path, export_index)
-            result["files_created"] += 1
+                saved = write_workbook(
+                    faction_groups, standalone_factions, shop_groups,
+                    eng_tbl, tbl, code, out_path, export_index, displayname_lookup,
+                )
+            if saved:
+                result["files_created"] += 1
 
         log.info("=" * 70)
         log.info("Done! Output folder: %s", output_folder)
@@ -952,5 +1017,4 @@ def generate_region_datasheets() -> Dict:
 
 # Allow standalone execution for testing
 if __name__ == "__main__":
-    result = generate_region_datasheets()
-    print(f"\nResult: {result}")
+    generate_region_datasheets()

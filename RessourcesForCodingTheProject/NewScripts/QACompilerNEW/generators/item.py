@@ -1,29 +1,32 @@
 """
 Item Datasheet Generator
-========================
-Extracts Item data from StaticInfo XMLs with proper hierarchy:
-  ItemGroupInfo → ItemInfo
+=============================
+Row-per-text item datasheet with multi-pass knowledge + InspectData resolution:
+  ItemName -> ItemDesc -> ChildKnowledge -> KnowledgeData -> KnowledgeData2
+  -> InspectData -> InspectKnowledgeData
+
+Each text gets its OWN row with multi-pass knowledge resolution.
 
 Key features:
 - ItemGroupInfo hierarchy with parent-child relationships
-- ItemDesc from KnowledgeKey lookup with fallback to ItemInfo.ItemDesc
+- Separate Knowledge data rows (Name + Desc from KnowledgeInfo)
+- InspectData extraction (Pattern A: direct children, Pattern B: PageData books)
+- InspectData -> RewardKnowledgeKey -> KnowledgeInfo chain resolution
 - Depth-based clustering for group organization
 - Monster item extraction to separate folder
 """
 
 import re
-import sys
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.datavalidation import DataValidation
 
-from config import RESOURCE_FOLDER, LANGUAGE_FOLDER, DATASHEET_OUTPUT, STATUS_OPTIONS, STRINGKEYTABLE_FILE
+from config import RESOURCE_FOLDER, LANGUAGE_FOLDER, DATASHEET_OUTPUT, STATUS_OPTIONS
 from generators.base import (
     get_logger,
     parse_xml_file,
@@ -39,8 +42,10 @@ from generators.base import (
     get_ordered_export_index,
     StringIdConsumer,
     get_first_translation,
+    add_status_dropdown,
+    _find_knowledge_key,
+    load_knowledge_data,
 )
-from generators.newitem import _find_knowledge_key
 
 log = get_logger("ItemGenerator")
 
@@ -70,16 +75,104 @@ def _collect_korean_string(text: str) -> None:
             _collected_korean_strings.add(normalized)
 
 
-# Clustering settings
+# =============================================================================
+# CONSTANTS
+# =============================================================================
+
 MERGE_UP_THRESHOLD = 50       # Groups with < this many items merge into parent
 FOLDER_MIN_THRESHOLD = 100    # Folders with < this many items merge into Others
 MAX_COMMANDS_PER_FILE = 300   # Split files if larger
 MIN_FOLDER_DEPTH = 1          # BLUE = minimum folder depth (ceiling)
 
-# Special folder keys
 OTHERS_KEY = "OTHERS"
 MONSTER_ITEM_KEY = "MONSTER_ITEM"
 MONSTER_SUBSTRING = "mon_"
+
+
+# =============================================================================
+# DATA STRUCTURE
+# =============================================================================
+
+@dataclass
+class ItemEntry:
+    """Complete data for a single item with separate knowledge fields."""
+    item_strkey: str           # ItemInfo StrKey
+    item_name_kor: str         # ItemInfo.ItemName
+    item_desc_kor: str         # ItemInfo.ItemDesc
+    knowledge_key: str         # ItemInfo.KnowledgeKey (may be empty)
+    knowledge_name_kor: str    # KnowledgeInfo.Name (empty if no key)
+    knowledge_desc_kor: str    # KnowledgeInfo.Desc (empty if no key)
+    group_key: str             # Parent group StrKey
+    source_file: str           # Item XML filename (EXPORT matching)
+    knowledge_source_file: str # Knowledge XML filename (EXPORT matching)
+    knowledge2_name_kor: str = ""       # Pass 2: identical name match
+    knowledge2_desc_kor: str = ""       # Pass 2: identical name match
+    knowledge2_source_file: str = ""    # Pass 2: source file for EXPORT
+    child_knowledge_entries: List[Tuple[str, str, str]] = field(default_factory=list)  # Pass 0: (name, desc, source_file)
+    # InspectData entries: list of (desc, knowledge_name, knowledge_desc, knowledge_source_file)
+    # Pattern A (recipe): 1 entry — direct <InspectData> child of <ItemInfo>
+    # Pattern B (book): N entries — <PageData> -> <LeftPage>/<RightPage> -> <InspectData>
+    inspect_entries: List[Tuple[str, str, str, str]] = field(default_factory=list)
+
+
+# =============================================================================
+# HELPER FUNCTIONS (copied from item.py for independence)
+# =============================================================================
+
+
+
+
+def _collect_inspect_data(
+    item_element,
+    knowledge_map: Dict[str, Tuple[str, str, str]],
+) -> List[Tuple[str, str, str, str]]:
+    """Collect all InspectData from an ItemInfo element.
+
+    Handles two XML patterns:
+      Pattern A (recipe/letter): <InspectData> is a direct child of <ItemInfo>
+      Pattern B (book): <PageData> -> <LeftPage>/<RightPage> -> <InspectData>
+
+    For each InspectData element:
+      - Skip if UseLeftPageInspectData="True" (duplicate reference)
+      - Skip if Desc is empty/missing
+      - If RewardKnowledgeKey exists, lookup in knowledge_map for linked Name+Desc
+
+    Returns:
+        List of (desc, knowledge_name, knowledge_desc, knowledge_source_file)
+        in XML document order.  Empty knowledge fields = "" when no link found.
+    """
+    results: List[Tuple[str, str, str, str]] = []
+
+    def _process_inspect(el) -> None:
+        """Process a single <InspectData> element."""
+        # Skip duplicate references (book right pages that mirror left)
+        if (el.get("UseLeftPageInspectData") or "").lower() == "true":
+            return
+        desc = el.get("Desc") or ""
+        if not desc:
+            return
+
+        # Check for linked knowledge via RewardKnowledgeKey
+        rk = el.get("RewardKnowledgeKey") or ""
+        k_name = ""
+        k_desc = ""
+        k_src = ""
+        if rk and rk.lower() in knowledge_map:
+            k_name, k_desc, k_src = knowledge_map[rk.lower()]
+
+        results.append((desc, k_name, k_desc, k_src))
+
+    # Pattern A: direct <InspectData> children of <ItemInfo>
+    for child in item_element.findall("InspectData"):
+        _process_inspect(child)
+
+    # Pattern B: <PageData> -> <LeftPage>/<RightPage> -> <InspectData>
+    for page_data in item_element.findall("PageData"):
+        for page in page_data:  # LeftPage, RightPage, etc.
+            for inspect in page.findall("InspectData"):
+                _process_inspect(inspect)
+
+    return results
 
 
 def get_depth_color(depth: int) -> str:
@@ -93,48 +186,6 @@ def get_depth_color(depth: int) -> str:
     else:
         return "RED"
 
-# =============================================================================
-# DATA STRUCTURES
-# =============================================================================
-
-@dataclass
-class ItemData:
-    """Complete data for a single item."""
-    strkey: str
-    item_name: str       # KOR original
-    item_desc: str       # KOR original
-    group_key: str
-    group_name_kor: str  # KOR original
-    source_file: str = ""  # For EXPORT-based duplicate resolution
-
-
-# Row format
-PrimaryRow = Tuple[
-    int, str,           # depth, group_key
-    str, str, str,      # group_name (KOR, ENG, LOC)
-    str, str,           # item_key, item_num
-    str, str, str,      # item_name (KOR, ENG, LOC)
-    str, str, str,      # item_desc (KOR, ENG, LOC)
-    str, bool           # stringid, is_group
-]
-
-# =============================================================================
-# STYLING
-# =============================================================================
-
-_depth_fill = {
-    0: PatternFill("solid", fgColor="FFD966"),  # YELLOW
-    1: PatternFill("solid", fgColor="D9E1F2"),  # BLUE
-    2: PatternFill("solid", fgColor="E2EFDA"),  # GREEN
-}
-_item_fill = PatternFill("solid", fgColor="FCE4D6")
-_header_font = Font(bold=True, color="FFFFFF")
-_header_fill = PatternFill("solid", fgColor="4F81BD")
-_bold_font = Font(bold=True)
-
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
 
 def calc_depth(node: str, parent_of: Dict[str, str]) -> int:
     """Calculate depth of a node in the hierarchy."""
@@ -147,14 +198,6 @@ def calc_depth(node: str, parent_of: Dict[str, str]) -> int:
         node = parent_of[node]
         d += 1
     return d
-
-
-def build_children_map(parent_of: Dict[str, str]) -> Dict[str, List[str]]:
-    """Build reverse mapping: parent -> children."""
-    children: Dict[str, List[str]] = {}
-    for child, parent in parent_of.items():
-        children.setdefault(parent, []).append(child)
-    return children
 
 
 def sanitize_filename(name: str) -> str:
@@ -195,31 +238,197 @@ def get_display_name(
     return sanitize_filename(fallback)
 
 
+
+
+
+
 # =============================================================================
-# STRING KEY TABLE
+# MASTER ITEM GROUP PARSING
 # =============================================================================
 
-def load_string_key_table(path: Path) -> Dict[str, str]:
-    log.info("Loading StringKeyTable: %s", path)
+def parse_master_groups(path: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """Parse ItemGroupInfo master file.
+
+    Returns:
+        (group_name, parent_of) dicts
+    """
+    log.info("Parsing ItemGroupInfo master: %s", path)
     root = parse_xml_file(path)
     if root is None:
-        sys.exit("Aborting – cannot parse StringKeyTable")
-    tbl: Dict[str, str] = {}
-    for el in root.iter("StringKeyMap"):
-        num = el.get("Key") or ""
+        log.error("Cannot parse ItemGroupInfo master file")
+        return {}, {}
+
+    group_name: Dict[str, str] = {}
+    parent_of: Dict[str, str] = {}
+    duplicate_count = 0
+
+    for el in root.iter("ItemGroupInfo"):
         sk = el.get("StrKey") or ""
-        if num and sk:
-            tbl[sk.lower()] = num
-    log.info("StringKeyTable entries: %d", len(tbl))
-    return tbl
+        name = el.get("GroupName") or ""
+        if sk:
+            if sk not in group_name:
+                group_name[sk] = name
+            p = el.getparent()
+            if p is not None and p.tag == "ItemGroupInfo":
+                parent_key = p.get("StrKey") or ""
+                if parent_key and sk not in parent_of:
+                    parent_of[sk] = parent_key
+                elif parent_key:
+                    duplicate_count += 1
+
+    for el in root.iter("ChildGroupInfo"):
+        child = el.get("StrKey") or ""
+        name = el.get("GroupName") or ""
+        p = el.getparent()
+        if child:
+            if name and child not in group_name:
+                group_name[child] = name
+            if p is not None and p.tag == "ItemGroupInfo":
+                parent_key = p.get("StrKey") or ""
+                if parent_key and child not in parent_of:
+                    parent_of[child] = parent_key
+                elif parent_key:
+                    duplicate_count += 1
+
+    log.info(
+        "Groups parsed: %d  |  parent links: %d  |  duplicates ignored: %d",
+        len(group_name), len(parent_of), duplicate_count
+    )
+    return group_name, parent_of
 
 
 # =============================================================================
-# CLUSTERING FUNCTIONS
+# ITEM SCANNER WITH KNOWLEDGE
+# =============================================================================
+
+def scan_items_with_knowledge(
+    folder: Path,
+    knowledge_map: Dict[str, Tuple[str, str, str]],
+    knowledge_name_index: Dict[str, List[Tuple[str, str, str]]],
+) -> Tuple[Dict[str, List[str]], Dict[str, str], Dict[str, ItemEntry]]:
+    """Scan item folder and build entries with knowledge data resolved.
+
+    Pass 1: KnowledgeKey -> knowledge_map (direct key lookup)
+    Pass 2: ItemName -> knowledge_name_index (identical name match)
+
+    Returns:
+        group_items: {group_key: [item_strkey, ...]} -- for clustering
+        group_names: {group_key: GroupName} -- scanned from XML
+        items: {item_strkey: ItemEntry} -- full entry for Excel writing
+    """
+    log.info("Scanning items with knowledge: %s", folder)
+    group_items: Dict[str, List[str]] = {}
+    scanned_group_names: Dict[str, str] = {}
+    items: Dict[str, ItemEntry] = {}
+    pass2_hits = 0
+
+    for path in iter_xml_files(folder):
+        root = parse_xml_file(path)
+        if root is None:
+            continue
+
+        source_file = path.name
+
+        for g_el in root.iter("ItemGroupInfo"):
+            g_key = g_el.get("StrKey") or ""
+            g_name = g_el.get("GroupName") or ""
+            if not g_key:
+                continue
+            if g_name and g_key not in scanned_group_names:
+                scanned_group_names[g_key] = g_name
+
+            bucket = group_items.setdefault(g_key, [])
+            for item in g_el.iter("ItemInfo"):
+                ik = item.get("StrKey") or ""
+                if not ik:
+                    continue
+
+                item_name = item.get("ItemName") or ""
+                item_desc = item.get("ItemDesc") or ""
+
+                # Pass 0: Inline Knowledge children (direct child nodes of ItemInfo)
+                child_knowledge_entries = []
+                for child in item.findall("Knowledge"):
+                    child_name = child.get("Name") or ""
+                    child_desc = child.get("Desc") or ""
+                    child_strkey = (child.get("StrKey") or "").lower()
+                    if child_strkey and child_strkey in knowledge_map:
+                        kname, kdesc, ksrc = knowledge_map[child_strkey]
+                        child_knowledge_entries.append((kname, kdesc, ksrc))
+                    elif child_name or child_desc:
+                        child_knowledge_entries.append((child_name, child_desc, source_file))
+
+                knowledge_key = _find_knowledge_key(item)
+
+                # Pass 1: Resolve knowledge data via KnowledgeKey
+                knowledge_name = ""
+                knowledge_desc = ""
+                knowledge_source_file = ""
+                pass1_strkey = ""
+                if knowledge_key and knowledge_key.lower() in knowledge_map:
+                    knowledge_name, knowledge_desc, knowledge_source_file = knowledge_map[knowledge_key.lower()]
+                    pass1_strkey = knowledge_key.lower()
+
+                # Pass 2: Identical name match (ItemName == KnowledgeInfo.Name)
+                knowledge2_name = ""
+                knowledge2_desc = ""
+                knowledge2_source_file = ""
+                if item_name and item_name in knowledge_name_index:
+                    for kn_strkey, kn_desc, kn_src in knowledge_name_index[item_name]:
+                        knowledge2_name = item_name
+                        knowledge2_desc = kn_desc
+                        knowledge2_source_file = kn_src
+                        pass2_hits += 1
+                        break
+
+                # InspectData: collect from direct children + PageData books
+                inspect_entries = _collect_inspect_data(item, knowledge_map)
+
+                # Collect Korean strings for coverage tracking
+                _collect_korean_string(item_name)
+                _collect_korean_string(item_desc)
+                for cname, cdesc, _ in child_knowledge_entries:
+                    _collect_korean_string(cname)
+                    _collect_korean_string(cdesc)
+                _collect_korean_string(knowledge_name)
+                _collect_korean_string(knowledge_desc)
+                _collect_korean_string(knowledge2_name)
+                _collect_korean_string(knowledge2_desc)
+                for idesc, ikname, ikdesc, _ in inspect_entries:
+                    _collect_korean_string(idesc)
+                    _collect_korean_string(ikname)
+                    _collect_korean_string(ikdesc)
+
+                bucket.append(ik)
+                items[ik] = ItemEntry(
+                    item_strkey=ik,
+                    item_name_kor=item_name,
+                    item_desc_kor=item_desc,
+                    knowledge_key=knowledge_key,
+                    knowledge_name_kor=knowledge_name,
+                    knowledge_desc_kor=knowledge_desc,
+                    group_key=g_key,
+                    source_file=source_file,
+                    knowledge_source_file=knowledge_source_file,
+                    knowledge2_name_kor=knowledge2_name,
+                    knowledge2_desc_kor=knowledge2_desc,
+                    knowledge2_source_file=knowledge2_source_file,
+                    child_knowledge_entries=child_knowledge_entries,
+                    inspect_entries=inspect_entries,
+                )
+
+    total_items = sum(len(v) for v in group_items.values())
+    log.info("Items scanned: %d items in %d groups (Pass 2 hits: %d)",
+             total_items, len(group_items), pass2_hits)
+    return group_items, scanned_group_names, items
+
+
+# =============================================================================
+# CLUSTERING FUNCTIONS (adapted from item.py for List[str] group_items)
 # =============================================================================
 
 def apply_depth_based_clustering(
-    group_items: Dict[str, List[Tuple[str, str, str, str]]],
+    group_items: Dict[str, List[str]],
     parent_of: Dict[str, str],
     group_names: Dict[str, str],
     eng_tbl: Dict[str, List[Tuple[str, str]]],
@@ -262,14 +471,14 @@ def apply_depth_based_clustering(
                     merge_target[gk] = parent
                     merge_count += 1
                     accumulated_counts[parent] = accumulated_counts.get(parent, 0) + count
-                    log.debug("  MERGE: %s→%s", get_display_name(gk, group_names, eng_tbl),
+                    log.debug("  MERGE: %s->%s", get_display_name(gk, group_names, eng_tbl),
                               get_display_name(parent, group_names, eng_tbl))
             else:
                 skip_no_parent += 1
         else:
             skip_above_threshold += 1
 
-    log.info("Merge: %d, at ceiling: %d, ≥thr: %d, no parent: %d",
+    log.info("Merge: %d, at ceiling: %d, >=thr: %d, no parent: %d",
              merge_count, skip_at_ceiling, skip_above_threshold, skip_no_parent)
 
     def resolve(gk: str, seen: Set[str]) -> str:
@@ -304,7 +513,7 @@ def apply_depth_based_clustering(
     for group_key, items_list in group_items.items():
         sub = merge_target[group_key]
         folder = find_folder_at_blue(sub)
-        for ik, _, _, _ in items_list:
+        for ik in items_list:  # List[str] — adapted from item.py's List[Tuple]
             structure[folder][sub].append(ik)
 
     log.info("Final structure:")
@@ -360,7 +569,7 @@ def consolidate_small_folders(
             special.append(fk)
         elif tot < FOLDER_MIN_THRESHOLD:
             small.append(fk)
-            log.info("  Small: %s (%d)→Others",
+            log.info("  Small: %s (%d)->Others",
                      get_display_name(fk, group_names, eng_tbl), tot)
         else:
             keep.append(fk)
@@ -385,386 +594,6 @@ def consolidate_small_folders(
                  len(others_sub), sum(len(it) for it in others_sub.values()))
 
     return new_struct
-
-
-# =============================================================================
-# KNOWLEDGE DESCRIPTIONS
-# =============================================================================
-
-def load_knowledge_descriptions(folder: Path) -> Dict[str, str]:
-    """Load KnowledgeKey -> Desc mapping from knowledge files."""
-    log.info("Loading knowledge descriptions...")
-    knowledge_map: Dict[str, str] = {}
-
-    if not folder.exists():
-        log.warning("Knowledge folder does not exist: %s", folder)
-        return knowledge_map
-
-    file_count = 0
-    for path in iter_xml_files(folder):
-        root = parse_xml_file(path)
-        if root is None:
-            continue
-        file_count += 1
-
-        for el in root.iter("KnowledgeInfo"):
-            strkey = el.get("StrKey") or ""
-            desc = el.get("Desc") or ""
-
-            if strkey and strkey.lower() not in knowledge_map:
-                knowledge_map[strkey.lower()] = desc
-
-    log.info("Knowledge descriptions loaded: %d entries from %d files",
-             len(knowledge_map), file_count)
-    return knowledge_map
-
-
-# =============================================================================
-# MASTER ITEM GROUP PARSING
-# =============================================================================
-
-def parse_master_groups(path: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
-    """Parse ItemGroupInfo master file."""
-    log.info("Parsing ItemGroupInfo master: %s", path)
-    root = parse_xml_file(path)
-    if root is None:
-        log.error("Cannot parse ItemGroupInfo master file")
-        return {}, {}
-
-    group_name: Dict[str, str] = {}
-    parent_of: Dict[str, str] = {}
-    duplicate_count = 0
-
-    for el in root.iter("ItemGroupInfo"):
-        sk = el.get("StrKey") or ""
-        name = el.get("GroupName") or ""
-        if sk:
-            if sk not in group_name:
-                group_name[sk] = name
-            p = el.getparent()
-            if p is not None and p.tag == "ItemGroupInfo":
-                parent_key = p.get("StrKey") or ""
-                if parent_key and sk not in parent_of:
-                    parent_of[sk] = parent_key
-                elif parent_key:
-                    duplicate_count += 1
-
-    for el in root.iter("ChildGroupInfo"):
-        child = el.get("StrKey") or ""
-        name = el.get("GroupName") or ""
-        p = el.getparent()
-        if child:
-            if name and child not in group_name:
-                group_name[child] = name
-            if p is not None and p.tag == "ItemGroupInfo":
-                parent_key = p.get("StrKey") or ""
-                if parent_key and child not in parent_of:
-                    parent_of[child] = parent_key
-                elif parent_key:
-                    duplicate_count += 1
-
-    log.info(
-        "Groups parsed: %d  |  parent links: %d  |  duplicates ignored: %d",
-        len(group_name), len(parent_of), duplicate_count
-    )
-    return group_name, parent_of
-
-
-# =============================================================================
-# RESOURCE SCAN
-# =============================================================================
-
-def scan_resource_folder(
-    folder: Path,
-    knowledge_desc_map: Dict[str, str]
-) -> Tuple[Dict[str, List[Tuple[str, str, str, str]]], Dict[str, str]]:
-    """Scan resource folder for items. Returns (group_items, group_names).
-
-    group_items: {group_key: [(item_key, item_name, item_desc, source_file), ...]}
-    """
-    log.info("Scanning resource folder for items: %s", folder)
-    group_items: Dict[str, List[Tuple[str, str, str, str]]] = {}
-    scanned_group_names: Dict[str, str] = {}
-
-    for path in iter_xml_files(folder):
-        root = parse_xml_file(path)
-        if root is None:
-            continue
-
-        source_file = path.name  # Track source file for EXPORT matching
-
-        for g_el in root.iter("ItemGroupInfo"):
-            g_key = g_el.get("StrKey") or ""
-            g_name = g_el.get("GroupName") or ""
-            if not g_key:
-                continue
-            if g_name and g_key not in scanned_group_names:
-                scanned_group_names[g_key] = g_name
-
-            bucket = group_items.setdefault(g_key, [])
-            for item in g_el.iter("ItemInfo"):
-                ik = item.get("StrKey") or ""
-                name = item.get("ItemName") or ""
-
-                knowledge_key = _find_knowledge_key(item)
-                item_desc_attr = item.get("ItemDesc") or ""
-
-                if knowledge_key:
-                    desc = knowledge_desc_map.get(knowledge_key.lower(), "")
-                    if not desc:
-                        desc = item_desc_attr
-                else:
-                    desc = item_desc_attr
-
-                if ik:
-                    # Collect Korean strings for coverage tracking
-                    _collect_korean_string(name)
-                    _collect_korean_string(desc)
-                    bucket.append((ik, name, desc, source_file))
-
-    total_items = sum(len(v) for v in group_items.values())
-    log.info("Group-item mapping built: Groups=%d  Total items=%d", len(group_items), total_items)
-    return group_items, scanned_group_names
-
-
-# =============================================================================
-# BUILD ITEM DATA
-# =============================================================================
-
-def build_item_data(
-    group_items: Dict[str, List[Tuple[str, str, str, str]]],
-    group_names: Dict[str, str],
-) -> Dict[str, ItemData]:
-    """Build complete item data mapping."""
-    items: Dict[str, ItemData] = {}
-    for gk, lst in group_items.items():
-        kor = group_names.get(gk, "")
-        for ik, iname, idesc, src_file in lst:
-            items[ik] = ItemData(
-                strkey=ik,
-                item_name=iname,
-                item_desc=idesc,
-                group_key=gk,
-                group_name_kor=kor,
-                source_file=src_file,
-            )
-    log.info("Built data for %d items", len(items))
-    return items
-
-
-# =============================================================================
-# ROW GENERATION
-# =============================================================================
-
-def propagate_group_names(rows: List[PrimaryRow]) -> List[PrimaryRow]:
-    """Propagate group names from group rows to item rows that follow."""
-    result: List[PrimaryRow] = []
-    last = ["", "", ""]
-    for row in rows:
-        depth, gk, gkor, geng, gloc, ik, inum, nkor, neng, nloc, dkor, deng, dloc, sid, is_group = row
-        if gkor:
-            last = [gkor, geng, gloc]
-        else:
-            gkor, geng, gloc = last
-        result.append((depth, gk, gkor, geng, gloc,
-                       ik, inum, nkor, neng, nloc, dkor, deng, dloc, sid, is_group))
-    return result
-
-
-def build_rows_for_language(
-    code: str,
-    group_names: Dict[str, str],
-    parent_of: Dict[str, str],
-    group_items: Dict[str, List[Tuple[str, str, str, str]]],
-    lang_tbl: Dict[str, List[Tuple[str, str]]],
-    id_table: Dict[str, str],
-    eng_tbl: Dict[str, List[Tuple[str, str]]],
-) -> List[PrimaryRow]:
-    """Build rows for a specific language."""
-    log.info("Building rows for %s", code.upper())
-
-    # Get EXPORT index for context-aware duplicate resolution
-    export_index = get_export_index()
-
-    # Order-based StringID consumer (fresh per language write pass)
-    ordered_idx = get_ordered_export_index()
-    consumer = StringIdConsumer(ordered_idx)
-
-    def t_eng(text: str, src_file: str = "") -> Tuple[str, str]:
-        """Translate with eng_tbl (consumer=None, display only)."""
-        if not text:
-            return "", ""
-        return resolve_translation(text, eng_tbl, src_file, export_index, consumer=None)
-
-    def t_lang_group(text: str) -> Tuple[str, str]:
-        """Translate group name with lang_tbl (no consumer — no src_file)."""
-        if not text:
-            return "", ""
-        return resolve_translation(text, lang_tbl, "", export_index, consumer=None)
-
-    # ------------------------------------------------------------------
-    # PRE-RESOLVE: consume StringIDs in DOCUMENT ORDER (before sorting).
-    # group_items lists preserve XML scan order.  recurse() sorts items
-    # by ik within each group, which would break the consumer pointer.
-    # ------------------------------------------------------------------
-    pre_name: Dict[Tuple[str, str], Tuple[str, str]] = {}  # (gk, ik) -> (trans, sid)
-    pre_desc: Dict[Tuple[str, str], Tuple[str, str]] = {}
-    for gk, item_list in group_items.items():
-        for ik, iname, idesc, src_file in item_list:  # document order
-            key = (gk, ik)
-            if key not in pre_name:  # guard against rare duplicates
-                pre_name[key] = resolve_translation(
-                    iname, lang_tbl, src_file, export_index, consumer=consumer)
-                pre_desc[key] = resolve_translation(
-                    idesc, lang_tbl, src_file, export_index, consumer=consumer)
-
-    if consumer.warnings:
-        log.warning("StringID overruns during pre-resolve: %d", consumer.warnings)
-
-    rows: List[PrimaryRow] = []
-    children_of = build_children_map(parent_of)
-    all_groups = set(group_items)
-    master_roots = sorted(g for g in group_names if g not in parent_of)
-    seen: Set[str] = set()
-
-    def recurse(gk: str):
-        if gk in seen:
-            return
-        seen.add(gk)
-        depth = calc_depth(gk, parent_of)
-        kor = group_names.get(gk, "")
-        eng, _ = t_eng(kor)
-        loc, _ = t_lang_group(kor)
-        rows.append((depth, gk, kor, eng, loc,
-                     "", "", "", "", "", "", "", "", "", True))
-
-        for ik, iname, idesc, src_file in sorted(group_items.get(gk, []), key=lambda x: x[0]):
-            ieng, _ = t_eng(iname, src_file)
-            iloc, iloc_sid = pre_name[(gk, ik)]
-            deng, _ = t_eng(idesc, src_file)
-            dloc, _ = pre_desc[(gk, ik)]
-            num = id_table.get(ik.lower(), "<MISSING>")
-            sid = iloc_sid
-            rows.append((depth+1, gk, kor, eng, loc,
-                         ik, num, iname, ieng, iloc, idesc, deng, dloc, sid, False))
-
-        for child in sorted(children_of.get(gk, [])):
-            recurse(child)
-
-    for root in master_roots:
-        recurse(root)
-    for orphan in sorted(all_groups - seen):
-        recurse(orphan)
-
-    log.info("Total rows for %s: %d", code.upper(), len(rows))
-    return rows
-
-
-# =============================================================================
-# EXCEL WRITER
-# =============================================================================
-
-def write_primary_sheet(
-    wb: Workbook,
-    lang_code: str,
-    rows: List[PrimaryRow],
-) -> None:
-    """Create the primary LQA sheet for one language."""
-    title = lang_code.upper()
-    ws = wb.create_sheet(title=title[:31])
-
-    # Build headers
-    headers = [
-        "Depth",
-        "GroupKey",
-        "GroupName(KOR)",
-        "GroupName(ENG)",
-        "ItemKey",
-        "Item#",
-        "ItemName(KOR)",
-        "ItemName(ENG)",
-    ]
-    if lang_code != "eng":
-        headers.append(f"ItemName({title})")
-
-    headers += ["ItemDesc(KOR)", "ItemDesc(ENG)"]
-    if lang_code != "eng":
-        headers.append(f"ItemDesc({title})")
-
-    headers += ["StringID", "DebugCommand"]
-
-    # Extra columns
-    headers += ["STATUS", "COMMENT", "STRINGID", "SCREENSHOT"]
-
-    # Write header row
-    for col, txt in enumerate(headers, start=1):
-        cell = ws.cell(1, col, txt)
-        cell.font = _header_font
-        cell.fill = _header_fill
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        cell.border = THIN_BORDER
-
-    # Write data rows
-    is_eng = lang_code.lower() == "eng"
-    r = 2
-
-    for row in rows:
-        (
-            depth, gk, gkor, geng, gloc,
-            ik, num, nkor, neng, nloc,
-            dkor, deng, dloc, sid, is_group
-        ) = row
-
-        vals = [depth, gk, br_to_newline(gkor), br_to_newline(geng)]
-        vals += [ik, num, br_to_newline(nkor), br_to_newline(neng)]
-        if lang_code != "eng":
-            vals.append(br_to_newline(nloc))
-        vals += [br_to_newline(dkor), br_to_newline(deng)]
-        if lang_code != "eng":
-            vals.append(br_to_newline(dloc))
-        vals += [sid, f"/create item {ik}" if not is_group else ""]
-        vals += ["", "", sid, ""]
-
-        for cidx, val in enumerate(vals, start=1):
-            c = ws.cell(r, cidx, val)
-            if isinstance(val, int):
-                c.alignment = Alignment(horizontal="center")
-            else:
-                c.alignment = Alignment(
-                    indent=(depth if cidx == 1 else 0),
-                    wrap_text=True,
-                    vertical="top",
-                )
-            c.border = THIN_BORDER
-            if is_group:
-                c.fill = _depth_fill.get(depth, _depth_fill[2])
-                if cidx in (3, 4):
-                    c.font = _bold_font
-            else:
-                c.fill = _item_fill
-        r += 1
-
-    # Sheet cosmetics
-    last_col_letter = get_column_letter(len(headers))
-    ws.auto_filter.ref = f"A1:{last_col_letter}{r-1}"
-    ws.freeze_panes = "A2"
-
-    # Hide depth column
-    ws.column_dimensions["A"].hidden = True
-
-    # Add STATUS drop-down
-    status_col_idx = headers.index("STATUS") + 1
-    col_letter = get_column_letter(status_col_idx)
-    dv = DataValidation(
-        type="list",
-        formula1=f'"{",".join(STATUS_OPTIONS)}"',
-        allow_blank=True,
-    )
-    dv.add(f"{col_letter}2:{col_letter}{ws.max_row}")
-    ws.add_data_validation(dv)
-
-    # Auto-fit
-    autofit_worksheet(ws)
 
 
 # =============================================================================
@@ -812,7 +641,7 @@ def write_text_files(
                 chunked = [all_iks[i:i+MAX_COMMANDS_PER_FILE]
                            for i in range(0, len(all_iks), MAX_COMMANDS_PER_FILE)]
                 for idx, chunk in enumerate(chunked, 1):
-                    fn = disp + (f"_{idx}.txt" if len(chunked)>1 else ".txt")
+                    fn = disp + (f"_{idx}.txt" if len(chunked) > 1 else ".txt")
                     with open(folder_path/fn, "w", encoding="utf-8") as f:
                         f.write("/reset inventory\n/expandinventory 2 300\n")
                         for ik in sorted(set(chunk)):
@@ -826,82 +655,179 @@ def write_text_files(
 
 
 # =============================================================================
-# SECONDARY EXCEL WRITER
+# EXCEL WRITER (row-per-text format)
 # =============================================================================
 
-def write_secondary_excel(
-    out_path: Path,
+_header_font = Font(bold=True, color="FFFFFF")
+_header_fill = PatternFill("solid", fgColor="4F81BD")
+_bold_font = Font(bold=True)
+_fill_a = PatternFill("solid", fgColor="E2EFDA")  # Light green
+_fill_b = PatternFill("solid", fgColor="FCE4D6")  # Light orange
+
+
+def write_item_excel(
+    items: Dict[str, ItemEntry],
     folder_files: Dict[str, List[Tuple[str, str, List[str]]]],
-    items: Dict[str, ItemData],
-    group_names: Dict[str, str],
     lang_tbl: Dict[str, List[Tuple[str, str]]],
     lang_code: str,
-    eng_tbl: Dict[str, List[Tuple[str, str]]],
+    export_index: Dict[str, Set[str]],
+    output_path: Path,
 ) -> None:
-    """Write secondary Excel with STATUS column drop-down list."""
-    def _add_status_validation(sh, status_col_idx: int, max_row: int) -> None:
-        """Adds drop-down list to STATUS column."""
-        col_letter = get_column_letter(status_col_idx)
-        dv = DataValidation(
-            type="list",
-            formula1='"ISSUE,NO ISSUE,BLOCKED,KOREAN"',
-            allow_blank=True,
-            showErrorMessage=True,
-        )
-        rng = f"{col_letter}2:{col_letter}{max_row}"
-        dv.add(rng)
-        sh.add_data_validation(dv)
+    """Write Item Excel with one row per text field.
 
+    8 columns: DataType | Filename | SourceText (KR) | Translation | STATUS | COMMENT | SCREENSHOT | STRINGID
+
+    Per-item row generation (strict order):
+    1.  ItemData              -- item_name_kor (always output)
+    2.  ItemData              -- item_desc_kor (always output)
+    2b. ChildKnowledgeData    -- inline child Name/Desc pairs (skip if none) [Pass 0]
+    3.  KnowledgeData         -- knowledge_name_kor (skip if empty)  [Pass 1: KnowledgeKey]
+    4.  KnowledgeData         -- knowledge_desc_kor (skip if empty)  [Pass 1: KnowledgeKey]
+    5.  KnowledgeData2        -- knowledge2_name_kor (skip if empty) [Pass 2: identical name]
+    6.  KnowledgeData2        -- knowledge2_desc_kor (skip if empty) [Pass 2: identical name]
+    7.  InspectData           -- inspect Desc (per entry, sequential) [Pattern A or B]
+    7b. InspectKnowledgeData  -- linked knowledge Name (if RewardKnowledgeKey found)
+    7c. InspectKnowledgeData  -- linked knowledge Desc (if RewardKnowledgeKey found)
+    """
     wb = Workbook()
     wb.remove(wb.active)
     code = lang_code.upper()
 
-    # Get EXPORT index for context-aware duplicate resolution
-    export_index = get_export_index()
+    headers = [
+        "DataType",
+        "Filename",
+        "SourceText (KR)",
+        f"Translation ({code})",
+        "STATUS",
+        "COMMENT",
+        "SCREENSHOT",
+        "STRINGID",
+    ]
 
     # Order-based StringID consumer (fresh per language write pass)
     ordered_idx = get_ordered_export_index()
     consumer = StringIdConsumer(ordered_idx)
 
-    def t_eng(text: str, src_file: str = "") -> Tuple[str, str]:
-        """Translate with eng_tbl (consumer=None, display only)."""
-        if not text:
-            return "", ""
-        return resolve_translation(text, eng_tbl, src_file, export_index, consumer=None)
-
     # ------------------------------------------------------------------
     # PRE-RESOLVE: consume StringIDs in DOCUMENT ORDER (before sorting).
-    # items dict preserves insertion order (= XML scan order).  The write
-    # loop below sorts by ik, which would break the consumer pointer.
+    # items dict preserves insertion order (= XML scan order).  The
+    # sorted write loop below would break the consumer's pointer, so we
+    # resolve here first and store results keyed by (item_strkey, field).
     # ------------------------------------------------------------------
-    pre_name: Dict[str, Tuple[str, str]] = {}  # ik -> (trans, sid)
-    pre_desc: Dict[str, Tuple[str, str]] = {}
-    for ik, itm in items.items():  # insertion order = document order
-        pre_name[ik] = resolve_translation(
-            itm.item_name, lang_tbl, itm.source_file, export_index, consumer=consumer)
-        pre_desc[ik] = resolve_translation(
-            itm.item_desc, lang_tbl, itm.source_file, export_index, consumer=consumer)
+    pre: Dict[Tuple[str, str], Tuple[str, str]] = {}  # (ik, field) -> (trans, sid)
+    for ik, entry in items.items():  # insertion order = document order
+        pre[(ik, "item_name")] = resolve_translation(
+            entry.item_name_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
+        pre[(ik, "item_desc")] = resolve_translation(
+            entry.item_desc_kor, lang_tbl, entry.source_file, export_index, consumer=consumer)
+        # Pass 0: inline child knowledge (before Pass 1 to preserve document order)
+        for i, (cname, cdesc, csrc) in enumerate(entry.child_knowledge_entries):
+            if cname:
+                pre[(ik, f"ck_{i}_name")] = resolve_translation(
+                    cname, lang_tbl, csrc, export_index, consumer=consumer)
+            if cdesc:
+                pre[(ik, f"ck_{i}_desc")] = resolve_translation(
+                    cdesc, lang_tbl, csrc, export_index, consumer=consumer)
+        if entry.knowledge_name_kor:
+            pre[(ik, "knowledge_name")] = resolve_translation(
+                entry.knowledge_name_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)
+        if entry.knowledge_desc_kor:
+            pre[(ik, "knowledge_desc")] = resolve_translation(
+                entry.knowledge_desc_kor, lang_tbl, entry.knowledge_source_file, export_index, consumer=consumer)
+        if entry.knowledge2_name_kor:
+            pre[(ik, "knowledge2_name")] = resolve_translation(
+                entry.knowledge2_name_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
+        if entry.knowledge2_desc_kor:
+            pre[(ik, "knowledge2_desc")] = resolve_translation(
+                entry.knowledge2_desc_kor, lang_tbl, entry.knowledge2_source_file, export_index, consumer=consumer)
+        # InspectData + InspectKnowledgeData (after all item-level knowledge)
+        for i, (idesc, ikname, ikdesc, iksrc) in enumerate(entry.inspect_entries):
+            pre[(ik, f"inspect_{i}_desc")] = resolve_translation(
+                idesc, lang_tbl, entry.source_file, export_index, consumer=consumer)
+            if ikname:
+                pre[(ik, f"inspect_{i}_kname")] = resolve_translation(
+                    ikname, lang_tbl, iksrc, export_index, consumer=consumer)
+            if ikdesc:
+                pre[(ik, f"inspect_{i}_kdesc")] = resolve_translation(
+                    ikdesc, lang_tbl, iksrc, export_index, consumer=consumer)
 
     if consumer.warnings:
-        log.warning("StringID overruns during pre-resolve (secondary): %d", consumer.warnings)
+        log.warning("StringID overruns during pre-resolve: %d", consumer.warnings)
 
-    width_map = {
-        "Filename": 33,
-        "ItemName(KOR)": 30,
-        "ItemDesc(KOR)": 40,
-        "ItemName(ENG)": 30,
-        "ItemDesc(ENG)": 40,
-        f"ItemName({code})": 30,
-        f"ItemDesc({code})": 40,
-        "STATUS": 15,
-        "COMMENT": 50,
-        "STRINGID": 25,
-        "SCREENSHOT": 25,
-    }
+    # ------------------------------------------------------------------
+    # KNOWLEDGEDATA2 DEDUP: per-cluster surgical removal of pure
+    # duplicates where (SourceText, Translation, StringID) matches a
+    # primary-type row within the SAME entity.
+    # ------------------------------------------------------------------
+    dedup_skip: Set[Tuple[str, str]] = set()  # (ik, field) pairs to skip
+    dedup_count = 0
+    dedup_entities = 0
+    for ik, entry in items.items():
+        # Collect primary triples: (kor_text, translation, stringid)
+        primary_triples: Set[Tuple[str, str, str]] = set()
+        # ItemData
+        t, s = pre[(ik, "item_name")]
+        if entry.item_name_kor:
+            primary_triples.add((entry.item_name_kor, t, s))
+        t, s = pre[(ik, "item_desc")]
+        if entry.item_desc_kor:
+            primary_triples.add((entry.item_desc_kor, t, s))
+        # ChildKnowledgeData (Pass 0)
+        for i, (cname, cdesc, _) in enumerate(entry.child_knowledge_entries):
+            if cname:
+                t, s = pre.get((ik, f"ck_{i}_name"), ("", ""))
+                primary_triples.add((cname, t, s))
+            if cdesc:
+                t, s = pre.get((ik, f"ck_{i}_desc"), ("", ""))
+                primary_triples.add((cdesc, t, s))
+        # KnowledgeData (Pass 1)
+        if entry.knowledge_name_kor:
+            t, s = pre[(ik, "knowledge_name")]
+            primary_triples.add((entry.knowledge_name_kor, t, s))
+        if entry.knowledge_desc_kor:
+            t, s = pre[(ik, "knowledge_desc")]
+            primary_triples.add((entry.knowledge_desc_kor, t, s))
+        # InspectData + InspectKnowledgeData
+        for i, (idesc, ikname, ikdesc, _) in enumerate(entry.inspect_entries):
+            t, s = pre.get((ik, f"inspect_{i}_desc"), ("", ""))
+            primary_triples.add((idesc, t, s))
+            if ikname:
+                t, s = pre.get((ik, f"inspect_{i}_kname"), ("", ""))
+                primary_triples.add((ikname, t, s))
+            if ikdesc:
+                t, s = pre.get((ik, f"inspect_{i}_kdesc"), ("", ""))
+                primary_triples.add((ikdesc, t, s))
+
+        # Check KnowledgeData2 fields against primary triples
+        entity_deduped = False
+        if entry.knowledge2_name_kor:
+            t, s = pre[(ik, "knowledge2_name")]
+            if (entry.knowledge2_name_kor, t, s) in primary_triples:
+                dedup_skip.add((ik, "knowledge2_name"))
+                dedup_count += 1
+                entity_deduped = True
+                log.debug("KnowledgeData2 dedup: '%s' in %s — matches primary data",
+                          entry.knowledge2_name_kor[:40], ik)
+        if entry.knowledge2_desc_kor:
+            t, s = pre[(ik, "knowledge2_desc")]
+            if (entry.knowledge2_desc_kor, t, s) in primary_triples:
+                dedup_skip.add((ik, "knowledge2_desc"))
+                dedup_count += 1
+                entity_deduped = True
+                log.debug("KnowledgeData2 dedup: '%s' in %s — matches primary data",
+                          entry.knowledge2_desc_kor[:40], ik)
+        if entity_deduped:
+            dedup_entities += 1
+
+    if dedup_count:
+        log.info("KnowledgeData2 dedup: removed %d duplicate rows across %d entities",
+                 dedup_count, dedup_entities)
 
     for folder_display, flist in sorted(folder_files.items()):
         if not flist:
             continue
+
+        # Create sheet (handle name length and duplicates)
         base = folder_display[:31]
         title = base
         cnt = 1
@@ -909,17 +835,6 @@ def write_secondary_excel(
             title = f"{base[:28]}_{cnt}"
             cnt += 1
         ws = wb.create_sheet(title)
-
-        headers = [
-            "Filename",
-            "SubGroup",
-            "ItemName(KOR)", "ItemDesc(KOR)",
-            "ItemName(ENG)", "ItemDesc(ENG)",
-        ]
-        if lang_code != "eng":
-            headers += [f"ItemName({code})", f"ItemDesc({code})"]
-
-        headers += ["ItemKey", "STATUS", "COMMENT", "STRINGID", "SCREENSHOT"]
 
         # Write header row
         for col_idx, txt in enumerate(headers, 1):
@@ -929,87 +844,102 @@ def write_secondary_excel(
             cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.border = THIN_BORDER
 
-        hide_cols = {"ItemKey"} if lang_code == "eng" else {"ItemKey", "ItemName(ENG)", "ItemDesc(ENG)"}
-        for idx, h in enumerate(headers, 1):
-            if h in hide_cols:
-                ws.column_dimensions[get_column_letter(idx)].hidden = True
-
-        rows_accum: List[Tuple[str, str, List]] = []
+        excel_row = 2
+        current_fill = _fill_a
+        last_ik = None
 
         for fn, subgroup_key, iks in flist:
             for ik in sorted(iks):
-                itm = items.get(ik)
-                if not itm:
+                entry = items.get(ik)
+                if not entry:
                     continue
-                sub_disp = get_display_name(itm.group_key, group_names, eng_tbl)
-                src = itm.source_file  # Use source_file for EXPORT-aware resolution
-                iname_eng, _ = t_eng(itm.item_name, src)
-                idesc_eng, _ = t_eng(itm.item_desc, src)
-                iname_loc, iname_sid = pre_name[ik]
-                idesc_loc, _ = pre_desc[ik]
-                data_map = {
-                    "Filename": fn,
-                    "SubGroup": sub_disp,
-                    "ItemName(KOR)": br_to_newline(itm.item_name),
-                    "ItemDesc(KOR)": br_to_newline(itm.item_desc),
-                    "ItemName(ENG)": br_to_newline(iname_eng),
-                    "ItemDesc(ENG)": br_to_newline(idesc_eng),
-                    "ItemKey": ik,
-                    "STATUS": "",
-                    "COMMENT": "",
-                    "STRINGID": iname_sid,
-                    "SCREENSHOT": "",
-                }
-                if lang_code != "eng":
-                    data_map[f"ItemName({code})"] = br_to_newline(iname_loc)
-                    data_map[f"ItemDesc({code})"] = br_to_newline(idesc_loc)
 
-                row_vals = [data_map.get(h, "") for h in headers]
-                rows_accum.append((sub_disp, ik, row_vals))
+                # Alternate fill per item for visual grouping
+                if last_ik is not None and ik != last_ik:
+                    current_fill = _fill_b if current_fill == _fill_a else _fill_a
+                last_ik = ik
 
-        rows_accum.sort(key=lambda x: (x[0], x[1]))
-        fill_a = PatternFill("solid", fgColor="E2EFDA")
-        fill_b = PatternFill("solid", fgColor="FCE4D6")
-        current_fill = fill_a
-        last_sub = None
-        excel_row = 2
+                def _write_row(data_type: str, kor_text: str, trans: str, sid: str) -> None:
+                    """Write a single data row using pre-resolved translation."""
+                    nonlocal excel_row
+                    vals = [data_type, fn, br_to_newline(kor_text), br_to_newline(trans), "", "", "", sid]
+                    for ci, val in enumerate(vals, 1):
+                        cell = ws.cell(excel_row, ci, val)
+                        cell.fill = current_fill
+                        cell.border = THIN_BORDER
+                        if ci == 5:  # STATUS
+                            cell.alignment = Alignment(horizontal="center", vertical="center")
+                        else:
+                            cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+                    # STRINGID as text format (prevent scientific notation)
+                    ws.cell(excel_row, 8).number_format = '@'
+                    excel_row += 1
 
-        for sub, _, row_vals in rows_accum:
-            if last_sub is not None and sub != last_sub:
-                current_fill = fill_b if current_fill == fill_a else fill_a
-            last_sub = sub
-            for col_idx, val in enumerate(row_vals, 1):
-                header = headers[col_idx - 1]
-                cell = ws.cell(excel_row, col_idx, val)
-                cell.fill = current_fill
-                cell.border = THIN_BORDER
-                if header == "STATUS":
-                    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-                else:
-                    cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-                cell.font = _bold_font
-            excel_row += 1
+                # 1. ItemData -- ItemName (always output)
+                t, s = pre[(ik, "item_name")]
+                _write_row("ItemData", entry.item_name_kor, t, s)
 
-        for idx, header in enumerate(headers, 1):
-            width = width_map.get(header, 20)
-            ws.column_dimensions[get_column_letter(idx)].width = width
+                # 2. ItemData -- ItemDesc (always output)
+                t, s = pre[(ik, "item_desc")]
+                _write_row("ItemData", entry.item_desc_kor, t, s)
 
-        ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{excel_row-1}"
+                # 2b. ChildKnowledgeData -- inline Knowledge child Name/Desc (Pass 0)
+                for i, (cname, cdesc, _) in enumerate(entry.child_knowledge_entries):
+                    if cname:
+                        t, s = pre.get((ik, f"ck_{i}_name"), ("", ""))
+                        _write_row("ChildKnowledgeData", cname, t, s)
+                    if cdesc:
+                        t, s = pre.get((ik, f"ck_{i}_desc"), ("", ""))
+                        _write_row("ChildKnowledgeData", cdesc, t, s)
+
+                # 3. KnowledgeData -- Name (skip if empty)
+                if entry.knowledge_name_kor:
+                    t, s = pre[(ik, "knowledge_name")]
+                    _write_row("KnowledgeData", entry.knowledge_name_kor, t, s)
+
+                # 4. KnowledgeData -- Desc (skip if empty)
+                if entry.knowledge_desc_kor:
+                    t, s = pre[(ik, "knowledge_desc")]
+                    _write_row("KnowledgeData", entry.knowledge_desc_kor, t, s)
+
+                # 5. KnowledgeData2 -- Name (Pass 2: identical name match, skip if empty or deduped)
+                if entry.knowledge2_name_kor and (ik, "knowledge2_name") not in dedup_skip:
+                    t, s = pre[(ik, "knowledge2_name")]
+                    _write_row("KnowledgeData2", entry.knowledge2_name_kor, t, s)
+
+                # 6. KnowledgeData2 -- Desc (Pass 2: identical name match, skip if empty or deduped)
+                if entry.knowledge2_desc_kor and (ik, "knowledge2_desc") not in dedup_skip:
+                    t, s = pre[(ik, "knowledge2_desc")]
+                    _write_row("KnowledgeData2", entry.knowledge2_desc_kor, t, s)
+
+                # 7. InspectData + InspectKnowledgeData (Pattern A: recipe, Pattern B: book)
+                for i, (idesc, ikname, ikdesc, _) in enumerate(entry.inspect_entries):
+                    # InspectData -- the Desc text from <InspectData> element
+                    t, s = pre.get((ik, f"inspect_{i}_desc"), ("", ""))
+                    _write_row("InspectData", idesc, t, s)
+                    # InspectKnowledgeData -- linked via RewardKnowledgeKey (if exists)
+                    if ikname:
+                        t, s = pre.get((ik, f"inspect_{i}_kname"), ("", ""))
+                        _write_row("InspectKnowledgeData", ikname, t, s)
+                    if ikdesc:
+                        t, s = pre.get((ik, f"inspect_{i}_kdesc"), ("", ""))
+                        _write_row("InspectKnowledgeData", ikdesc, t, s)
+
+        # Sheet cosmetics
+        if excel_row > 2:
+            ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{excel_row - 1}"
         ws.freeze_panes = "A2"
 
-        # Add STATUS drop-down
-        status_col_idx = headers.index("STATUS") + 1
-        _add_status_validation(ws, status_col_idx, ws.max_row)
+        # Add STATUS drop-down (column 5)
+        add_status_dropdown(ws, col=5)
 
-        # Force STRINGID column to text format (prevents scientific notation)
-        stringid_col_idx = headers.index("STRINGID") + 1
-        for row in range(2, excel_row):
-            ws.cell(row, stringid_col_idx).number_format = '@'
+        # Auto-fit column widths
+        autofit_worksheet(ws)
 
-        log.info("  Sheet '%s': %d rows", title, excel_row-2)
+        log.info("  Sheet '%s': %d rows", title, excel_row - 2)
 
-    wb.save(out_path)
-    log.info("Secondary Excel saved: %s", out_path.name)
+    wb.save(output_path)
+    log.info("Item Excel saved: %s", output_path.name)
 
 
 # =============================================================================
@@ -1019,6 +949,16 @@ def write_secondary_excel(
 def generate_item_datasheets() -> Dict:
     """
     Generate Item datasheets for all languages.
+
+    Pipeline:
+    1. Load language tables
+    2. Load knowledge data (Name + Desc + source_file)
+    3. Parse master groups (ItemGroupInfo hierarchy)
+    4. Scan items with knowledge resolution
+    5. Cluster (depth-based -> monster extraction -> small folder consolidation)
+    6. Write text files (command files for testers)
+    7. Get EXPORT index (for StringID disambiguation)
+    8. For each language: write row-per-text Excel
 
     Returns:
         Dict with results: {
@@ -1062,14 +1002,9 @@ def generate_item_datasheets() -> Dict:
         log.error("Language folder not found: %s", LANGUAGE_FOLDER)
         return result
 
-    # Create additional output folders
+    # Create text files output folder
     textfiles_folder = output_folder / "ExecuteFiles"
-    primary_lqa_folder = output_folder / "Item_Full_LQA"
-    secondary_lqa_folder = output_folder / "Item_Sorted_LQA"
-
     textfiles_folder.mkdir(exist_ok=True)
-    primary_lqa_folder.mkdir(exist_ok=True)
-    secondary_lqa_folder.mkdir(exist_ok=True)
 
     try:
         # 1. Load language tables
@@ -1081,13 +1016,10 @@ def generate_item_datasheets() -> Dict:
             log.warning("No language tables found!")
             return result
 
-        # 2. Load StringKeyTable
-        id_tbl = load_string_key_table(STRINGKEYTABLE_FILE)
+        # 2. Load knowledge data (map + name index for Pass 2)
+        knowledge_map, knowledge_name_index = load_knowledge_data(knowledge_folder)
 
-        # 3. Load knowledge descriptions
-        knowledge_desc_map = load_knowledge_descriptions(knowledge_folder)
-
-        # 4. Parse master groups
+        # 3. Parse master groups
         itemgroupinfo_file = item_folder / "itemgroupinfo.staticinfo.xml"
         if itemgroupinfo_file.exists():
             master_names, parent_of = parse_master_groups(itemgroupinfo_file)
@@ -1095,50 +1027,39 @@ def generate_item_datasheets() -> Dict:
             master_names, parent_of = {}, {}
             log.warning("ItemGroupInfo master file not found")
 
-        # 5. Scan resource folder
-        group_items, scanned_names = scan_resource_folder(item_folder, knowledge_desc_map)
+        # 4. Scan items with knowledge (Pass 1: KnowledgeKey, Pass 2: identical name)
+        group_items, scanned_names, items = scan_items_with_knowledge(
+            item_folder, knowledge_map, knowledge_name_index
+        )
 
         all_names = {**scanned_names, **master_names}
         all_names[OTHERS_KEY] = "Others"
         all_names[MONSTER_ITEM_KEY] = "Monster_Item"
-
-        # 6. Build item data
-        items = build_item_data(group_items, all_names)
 
         if not items:
             result["errors"].append("No item data found!")
             log.warning("No item data found!")
             return result
 
-        # 7. Apply clustering
+        # 5. Cluster
         structure = apply_depth_based_clustering(group_items, parent_of, all_names, eng_tbl)
         structure = extract_monster_items(structure, all_names, eng_tbl)
         structure = consolidate_small_folders(structure, all_names, eng_tbl)
 
-        # 8. Write text files (command files)
+        # 6. Write text files (command files)
         folder_files = write_text_files(textfiles_folder, structure, all_names, eng_tbl)
 
-        # 9. Generate workbooks
+        # 7. Get EXPORT index
+        export_index = get_export_index()
+
+        # 8. Generate Excel per language
         log.info("Processing languages...")
         total = len(lang_tables)
 
         for idx, (code, tbl) in enumerate(lang_tables.items(), 1):
             log.info("(%d/%d) Language %s", idx, total, code.upper())
-
-            # Primary Excel (full LQA sheet)
-            rows = build_rows_for_language(code, all_names, parent_of,
-                                           group_items, tbl, id_tbl, eng_tbl)
-            rows = propagate_group_names(rows)
-
-            wb = Workbook()
-            wb.remove(wb.active)
-            write_primary_sheet(wb, code, rows)
-            wb.save(primary_lqa_folder / f"Item_LQA_{code.upper()}.xlsx")
-            result["files_created"] += 1
-
-            # Secondary Excel (sorted by folder)
-            secondary_path = secondary_lqa_folder / f"ITEM_WORKING_LQA_{code.upper()}.xlsx"
-            write_secondary_excel(secondary_path, folder_files, items, all_names, tbl, code, eng_tbl)
+            excel_path = output_folder / f"Item_LQA_{code.upper()}.xlsx"
+            write_item_excel(items, folder_files, tbl, code, export_index, excel_path)
             result["files_created"] += 1
 
         log.info("=" * 70)
