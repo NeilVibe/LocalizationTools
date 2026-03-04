@@ -3,15 +3,14 @@
 ;
 ; Features:
 ; - Portable install (Desktop by default, NOT Program Files)
-; - Drive selection for Perforce LOC path (F:, D:, E:, etc.)
+; - Drive and branch selection via GUI at runtime (not installer)
 ; - No Python required (bundled via PyInstaller)
 ; - No admin rights required
 ;
 ; User workflow:
 ; 1. Run installer
-; 2. Select drive where Perforce is located
-; 3. Choose install location (Desktop recommended)
-; 4. Done! App works 100% standalone
+; 2. Choose install location (Desktop recommended)
+; 3. Done! Select drive/branch in the app GUI
 
 #define MyAppName "QA Compiler Suite"
 #define MyAppVersion "2.0.0"
@@ -136,56 +135,6 @@ Type: filesandordirs; Name: "{app}\Masterfolder_EN"
 Type: filesandordirs; Name: "{app}\Masterfolder_CN"
 
 [Code]
-var
-  DriveSelectionPage: TInputQueryWizardPage;
-  DriveLetter: String;
-
-procedure InitializeWizard();
-begin
-  // Create drive selection page
-  DriveSelectionPage := CreateInputQueryPage(wpWelcome,
-    'Perforce Drive Selection',
-    'Select the drive where your Perforce workspace is located.',
-    'The QA Compiler needs to know where your Perforce LOC folder is.' + #13#10 + #13#10 + 'Default path: F:\perforce\cd\mainline\resource\GameData\stringtable\loc' + #13#10 + #13#10 + 'If your Perforce is on a different drive (D:, E:, etc.), enter just the letter.'
-  );
-  DriveSelectionPage.Add('Drive Letter (e.g., F, D, E):', False);
-  DriveSelectionPage.Values[0] := 'F';
-end;
-
-function NextButtonClick(CurPageID: Integer): Boolean;
-var
-  DriveInput: String;
-begin
-  Result := True;
-
-  if CurPageID = DriveSelectionPage.ID then
-  begin
-    DriveInput := Uppercase(Trim(DriveSelectionPage.Values[0]));
-
-    // Validate: single letter A-Z
-    if (Length(DriveInput) <> 1) or (DriveInput[1] < 'A') or (DriveInput[1] > 'Z') then
-    begin
-      MsgBox('Please enter a single drive letter (A-Z).', mbError, MB_OK);
-      Result := False;
-      Exit;
-    end;
-
-    DriveLetter := DriveInput;
-
-    // Check if drive exists
-    if not DirExists(DriveLetter + ':\') then
-    begin
-      if MsgBox('Drive ' + DriveLetter + ':\ does not appear to exist.' + #13#10 +
-                'Are you sure you want to continue?',
-                mbConfirmation, MB_YESNO) = IDNO then
-      begin
-        Result := False;
-        Exit;
-      end;
-    end;
-  end;
-end;
-
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   SettingsPath: String;
@@ -193,14 +142,12 @@ var
 begin
   if CurStep = ssPostInstall then
   begin
-    // Write settings.json with selected drive letter
+    // Write default settings.json (drive/branch selected in GUI at runtime)
     SettingsPath := ExpandConstant('{app}\settings.json');
-    SettingsContent := '{"drive_letter": "' + DriveLetter + '", "version": "1.0"}';
-    SaveStringToFile(SettingsPath, AnsiString(SettingsContent), False);
+    if not FileExists(SettingsPath) then
+    begin
+      SettingsContent := '{"drive_letter": "D", "branch": "cd_beta"}';
+      SaveStringToFile(SettingsPath, AnsiString(SettingsContent), False);
+    end;
   end;
-end;
-
-function GetDriveLetter(Param: String): String;
-begin
-  Result := DriveLetter;
 end;

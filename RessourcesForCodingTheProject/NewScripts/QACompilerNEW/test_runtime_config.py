@@ -2,7 +2,7 @@
 """
 Test Runtime Configuration System
 =================================
-Tests that settings.json properly overrides the default F: drive.
+Tests that settings.json properly overrides the default D: drive.
 
 This simulates what happens when:
 1. PyInstaller bundles the app with F: hardcoded
@@ -36,8 +36,8 @@ def test_result(name: str, passed: bool, details: str = ""):
 
 
 def test_no_settings_file():
-    """Test: Without settings.json, uses default F: drive"""
-    print("\n=== TEST 1: No settings.json (default F: drive) ===")
+    """Test: Without settings.json, uses default D: drive"""
+    print("\n=== TEST 1: No settings.json (default D: drive) ===")
 
     # Create temp directory to simulate app folder
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -63,18 +63,18 @@ def test_no_settings_file():
 
             import config as test_config
 
-            # Check paths use F: drive
+            # Check paths use D: drive
             resource_str = str(test_config.RESOURCE_FOLDER)
             test_result(
-                "RESOURCE_FOLDER uses F: drive",
-                resource_str.startswith("F:"),
+                "RESOURCE_FOLDER uses D: drive",
+                resource_str.startswith("D:"),
                 f"Got: {resource_str[:20]}..."
             )
 
             language_str = str(test_config.LANGUAGE_FOLDER)
             test_result(
-                "LANGUAGE_FOLDER uses F: drive",
-                language_str.startswith("F:"),
+                "LANGUAGE_FOLDER uses D: drive",
+                language_str.startswith("D:"),
                 f"Got: {language_str[:20]}..."
             )
 
@@ -186,8 +186,8 @@ def test_with_settings_e_drive():
 
 
 def test_invalid_settings():
-    """Test: Invalid settings.json falls back to F: drive"""
-    print("\n=== TEST 4: Invalid settings.json (fallback to F:) ===")
+    """Test: Invalid settings.json falls back to D: drive"""
+    print("\n=== TEST 4: Invalid settings.json (fallback to D:) ===")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -208,11 +208,11 @@ def test_invalid_settings():
 
             import config as test_config
 
-            # Should fall back to F: drive
+            # Should fall back to D: drive
             resource_str = str(test_config.RESOURCE_FOLDER)
             test_result(
-                "Invalid JSON falls back to F: drive",
-                resource_str.startswith("F:"),
+                "Invalid JSON falls back to D: drive",
+                resource_str.startswith("D:"),
                 f"Got: {resource_str[:20]}..."
             )
 
@@ -223,8 +223,8 @@ def test_invalid_settings():
 
 
 def test_invalid_drive_letter():
-    """Test: Invalid drive letter in settings.json falls back to F:"""
-    print("\n=== TEST 5: Invalid drive_letter (fallback to F:) ===")
+    """Test: Invalid drive letter in settings.json falls back to D:"""
+    print("\n=== TEST 5: Invalid drive_letter (fallback to D:) ===")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -245,11 +245,11 @@ def test_invalid_drive_letter():
 
             import config as test_config
 
-            # Should fall back to F: drive
+            # Should fall back to D: drive
             resource_str = str(test_config.RESOURCE_FOLDER)
             test_result(
-                "Invalid drive_letter falls back to F: drive",
-                resource_str.startswith("F:"),
+                "Invalid drive_letter falls back to D: drive",
+                resource_str.startswith("D:"),
                 f"Got: {resource_str[:20]}..."
             )
 
@@ -264,7 +264,7 @@ def main():
     print("QACompiler Runtime Configuration Test")
     print("=" * 60)
     print("\nThis test verifies that settings.json properly overrides")
-    print("the default F: drive letter at runtime.")
+    print("the default D: drive letter at runtime.")
 
     # Run tests
     test_no_settings_file()

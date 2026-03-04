@@ -22,28 +22,11 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 
 SCRIPT_DIR = Path(__file__).parent
 
-# Default export path (F: drive)
-DEFAULT_EXPORT_PATH = Path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
-
 
 def get_export_folder() -> Path:
-    """Get export folder, checking settings.json for drive letter override."""
-    import json
-    settings_file = SCRIPT_DIR / "settings.json"
-
-    if settings_file.exists():
-        try:
-            with open(settings_file, 'r', encoding='utf-8') as f:
-                settings = json.load(f)
-                drive = settings.get('drive_letter', 'F')
-                path_str = str(DEFAULT_EXPORT_PATH)
-                if path_str[0].upper() == 'F':
-                    path_str = f"{drive.upper()}{path_str[1:]}"
-                return Path(path_str)
-        except:
-            pass
-
-    return DEFAULT_EXPORT_PATH
+    """Get export folder from central config (respects drive/branch settings)."""
+    from config import EXPORT_FOLDER
+    return EXPORT_FOLDER
 
 
 # =============================================================================

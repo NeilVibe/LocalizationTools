@@ -3,7 +3,7 @@
 Drive Path Replacer - Helper script for build_exe.bat
 
 Creates settings.json with the selected drive letter.
-This file is read by config.py at runtime to override the default F: drive.
+This file is read by config.py at runtime to override the default D: drive.
 
 Usage: python drive_replacer.py <drive_letter> [output_path]
 Example: python drive_replacer.py D

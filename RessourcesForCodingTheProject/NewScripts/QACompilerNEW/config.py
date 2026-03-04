@@ -33,7 +33,7 @@ def _load_settings() -> dict:
 
     Settings file format:
     {
-        "drive_letter": "D",  // Drive letter without colon (default: "F")
+        "drive_letter": "D",  // Drive letter without colon (default: "D")
         "version": "1.0"
     }
 
@@ -53,7 +53,7 @@ def _load_settings() -> dict:
         if 'drive_letter' in settings:
             drive = settings['drive_letter']
             if not isinstance(drive, str) or len(drive) != 1 or not drive.isalpha():
-                print(f"  WARNING: Invalid drive_letter in settings.json: '{drive}'. Using default F:")
+                print(f"  WARNING: Invalid drive_letter in settings.json: '{drive}'. Using default D:")
                 del settings['drive_letter']
 
         return settings
@@ -82,31 +82,74 @@ def _apply_drive_letter(path_str: str, drive_letter: str) -> str:
 
 # Load settings at module import time
 _SETTINGS = _load_settings()
-_DRIVE_LETTER = _SETTINGS.get('drive_letter', 'F')
+_DRIVE_LETTER = _SETTINGS.get('drive_letter', 'D')
 
 # Log drive letter if non-default
-if _DRIVE_LETTER != 'F':
+if _DRIVE_LETTER != 'D':
     print(f"  Using custom drive letter: {_DRIVE_LETTER}:")
 
 # Branch configuration (e.g., mainline, cd_beta, cd_lambda)
-KNOWN_BRANCHES = ["mainline", "cd_beta", "cd_alpha", "cd_lambda"]
-_BRANCH = _SETTINGS.get('branch', 'mainline')
+KNOWN_BRANCHES = ["cd_beta", "mainline", "cd_alpha", "cd_delta", "cd_lambda"]
+KNOWN_DRIVES = ["C", "D", "E", "F", "G"]
+_BRANCH = _SETTINGS.get('branch', 'cd_beta')
 
-if _BRANCH != 'mainline':
+if _BRANCH != 'cd_beta':
     print(f"  Using custom branch: {_BRANCH}")
 
 
 def _apply_branch(path_str: str, branch: str) -> str:
-    """Replace 'mainline' in a path with the configured branch name.
-
-    Args:
-        path_str: Path string containing 'mainline'.
-        branch: Target branch name (e.g., 'cd_beta').
-
-    Returns:
-        Path string with branch replaced.
-    """
+    """Replace 'mainline' in a path with the configured branch name."""
     return path_str.replace("mainline", branch)
+
+
+def _build_path(template: str) -> Path:
+    """Build a Path from a template, applying current drive letter and branch."""
+    return Path(_apply_branch(_apply_drive_letter(template, _DRIVE_LETTER), _BRANCH))
+
+
+# =============================================================================
+# PATH TEMPLATES (raw strings with F: and mainline as placeholders)
+# =============================================================================
+
+_PATH_TEMPLATES = {
+    "RESOURCE_FOLDER": r"F:\perforce\cd\mainline\resource\GameData\StaticInfo",
+    "LANGUAGE_FOLDER": r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc",
+    "EXPORT_FOLDER": r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__",
+    "QUESTGROUPINFO_FILE": r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\questgroupinfo.staticinfo.xml",
+    "SCENARIO_FOLDER": r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\main",
+    "FACTION_QUEST_FOLDER": r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\faction",
+    "CHALLENGE_FOLDER": r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\Challenge",
+    "MINIGAME_FILE": r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\contents\contents_minigame.staticinfo.xml",
+    "STRINGKEYTABLE_FILE": r"F:\perforce\cd\mainline\resource\editordata\StaticInfo__\StaticInfo_StringKeyTable.xml",
+    "SEQUENCER_FOLDER": r"F:\perforce\cd\mainline\resource\sequencer\stageseq",
+    "FACTIONINFO_FOLDER": r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo",
+    "VOICE_RECORDING_SHEET_FOLDER": r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__",
+}
+
+
+def _rebuild_paths():
+    """Rebuild ALL Perforce-dependent globals from templates using current drive/branch."""
+    global RESOURCE_FOLDER, LANGUAGE_FOLDER, EXPORT_FOLDER
+    global EXPORT_LOOKAT_FOLDER, EXPORT_QUEST_FOLDER
+    global QUESTGROUPINFO_FILE, SCENARIO_FOLDER, FACTION_QUEST_FOLDER
+    global CHALLENGE_FOLDER, MINIGAME_FILE, STRINGKEYTABLE_FILE
+    global SEQUENCER_FOLDER, FACTIONINFO_FOLDER, VOICE_RECORDING_SHEET_FOLDER
+
+    RESOURCE_FOLDER = _build_path(_PATH_TEMPLATES["RESOURCE_FOLDER"])
+    LANGUAGE_FOLDER = _build_path(_PATH_TEMPLATES["LANGUAGE_FOLDER"])
+    EXPORT_FOLDER = _build_path(_PATH_TEMPLATES["EXPORT_FOLDER"])
+    EXPORT_LOOKAT_FOLDER = EXPORT_FOLDER / "System" / "LookAt"
+    EXPORT_QUEST_FOLDER = EXPORT_FOLDER / "System" / "Quest"
+    QUESTGROUPINFO_FILE = _build_path(_PATH_TEMPLATES["QUESTGROUPINFO_FILE"])
+    SCENARIO_FOLDER = _build_path(_PATH_TEMPLATES["SCENARIO_FOLDER"])
+    FACTION_QUEST_FOLDER = _build_path(_PATH_TEMPLATES["FACTION_QUEST_FOLDER"])
+    CHALLENGE_FOLDER = _build_path(_PATH_TEMPLATES["CHALLENGE_FOLDER"])
+    MINIGAME_FILE = _build_path(_PATH_TEMPLATES["MINIGAME_FILE"])
+    STRINGKEYTABLE_FILE = _build_path(_PATH_TEMPLATES["STRINGKEYTABLE_FILE"])
+    SEQUENCER_FOLDER = _build_path(_PATH_TEMPLATES["SEQUENCER_FOLDER"])
+    FACTIONINFO_FOLDER = _build_path(_PATH_TEMPLATES["FACTIONINFO_FOLDER"])
+    VOICE_RECORDING_SHEET_FOLDER = _build_path(_PATH_TEMPLATES["VOICE_RECORDING_SHEET_FOLDER"])
+
 
 # QA Folder paths
 QA_FOLDER = SCRIPT_DIR / "QAfolder"
@@ -135,69 +178,33 @@ TESTER_TYPE_FILE = SCRIPT_DIR / "TesterType.txt"
 # =============================================================================
 # GENERATOR PATHS (for datasheet generators)
 # =============================================================================
+# All Perforce-dependent paths are built by _rebuild_paths() from templates.
+# Call _rebuild_paths() after changing _DRIVE_LETTER or _BRANCH.
 
-# Default paths - can be overridden via GUI or config file
-# Drive letter is configurable via settings.json
-RESOURCE_FOLDER = Path(_apply_branch(_apply_drive_letter(r"F:\perforce\cd\mainline\resource\GameData\StaticInfo", _DRIVE_LETTER), _BRANCH))
-LANGUAGE_FOLDER = Path(_apply_branch(_apply_drive_letter(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc", _DRIVE_LETTER), _BRANCH))
-EXPORT_FOLDER = Path(_apply_branch(_apply_drive_letter(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__", _DRIVE_LETTER), _BRANCH))
+# Declare globals (populated by _rebuild_paths below)
+RESOURCE_FOLDER = None
+LANGUAGE_FOLDER = None
+EXPORT_FOLDER = None
+EXPORT_LOOKAT_FOLDER = None
+EXPORT_QUEST_FOLDER = None
+QUESTGROUPINFO_FILE = None
+SCENARIO_FOLDER = None
+FACTION_QUEST_FOLDER = None
+CHALLENGE_FOLDER = None
+MINIGAME_FILE = None
+STRINGKEYTABLE_FILE = None
+SEQUENCER_FOLDER = None
+FACTIONINFO_FOLDER = None
+VOICE_RECORDING_SHEET_FOLDER = None
 
-# Additional export paths for coverage (strings inherently tested but not in Excel)
-EXPORT_LOOKAT_FOLDER = EXPORT_FOLDER / "System" / "LookAt"   # Additional for Item
-EXPORT_QUEST_FOLDER = EXPORT_FOLDER / "System" / "Quest"     # Additional for Quest
+# Build all paths with current drive/branch
+_rebuild_paths()
 
 # Output folder for generated datasheets
 DATASHEET_OUTPUT = SCRIPT_DIR / "GeneratedDatasheets"
 
-# =============================================================================
-# QUEST GENERATOR PATHS
-# =============================================================================
-
-# Quest-specific paths (drive letter configurable via settings.json)
-QUESTGROUPINFO_FILE = Path(_apply_branch(_apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\questgroupinfo.staticinfo.xml",
-    _DRIVE_LETTER
-), _BRANCH))
-SCENARIO_FOLDER = Path(_apply_branch(_apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\main",
-    _DRIVE_LETTER
-), _BRANCH))
-FACTION_QUEST_FOLDER = Path(_apply_branch(_apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\faction",
-    _DRIVE_LETTER
-), _BRANCH))
-CHALLENGE_FOLDER = Path(_apply_branch(_apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\Challenge",
-    _DRIVE_LETTER
-), _BRANCH))
-MINIGAME_FILE = Path(_apply_branch(_apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\contents\contents_minigame.staticinfo.xml",
-    _DRIVE_LETTER
-), _BRANCH))
-STRINGKEYTABLE_FILE = Path(_apply_branch(_apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\editordata\StaticInfo__\StaticInfo_StringKeyTable.xml",
-    _DRIVE_LETTER
-), _BRANCH))
-SEQUENCER_FOLDER = Path(_apply_branch(_apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\sequencer\stageseq",
-    _DRIVE_LETTER
-), _BRANCH))
-FACTIONINFO_FOLDER = Path(_apply_branch(_apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo",
-    _DRIVE_LETTER
-), _BRANCH))
-
 # Teleport reference file (optional - falls back gracefully if not found)
 TELEPORT_SOURCE_FILE = SCRIPT_DIR / "Quest_LQA_ENG_1231_seon_final_final.xlsx"
-
-# =============================================================================
-# VOICE RECORDING SHEET PATH (for Quest coverage calculation)
-# =============================================================================
-
-VOICE_RECORDING_SHEET_FOLDER = Path(_apply_branch(_apply_drive_letter(
-    r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__",
-    _DRIVE_LETTER
-), _BRANCH))
 
 # =============================================================================
 # CATEGORIES
@@ -496,65 +503,68 @@ def get_runtime_settings() -> dict:
 
 
 def _save_settings(settings_dict: dict):
-    """Save settings to settings.json next to the executable/script."""
+    """Save essential settings to settings.json next to the executable/script."""
     settings_file = SCRIPT_DIR / "settings.json"
+    # Only persist the keys that matter
+    essential = {k: settings_dict[k] for k in ("drive_letter", "branch") if k in settings_dict}
     try:
         with open(settings_file, 'w', encoding='utf-8') as f:
-            json.dump(settings_dict, f, indent=2)
+            json.dump(essential, f, indent=2)
     except Exception as e:
         print(f"  ERROR: Failed to save settings.json: {e}")
 
 
 def update_branch(new_branch: str):
-    """Update all Perforce paths to use a new branch. Called from GUI.
-
-    Args:
-        new_branch: Branch name (e.g., 'mainline', 'cd_beta').
-    """
-    global _BRANCH, RESOURCE_FOLDER, LANGUAGE_FOLDER, EXPORT_FOLDER
-    global EXPORT_LOOKAT_FOLDER, EXPORT_QUEST_FOLDER
-    global QUESTGROUPINFO_FILE, SCENARIO_FOLDER, FACTION_QUEST_FOLDER
-    global CHALLENGE_FOLDER, MINIGAME_FILE, STRINGKEYTABLE_FILE
-    global SEQUENCER_FOLDER, FACTIONINFO_FOLDER, VOICE_RECORDING_SHEET_FOLDER
-
+    """Update all Perforce paths to use a new branch. Called from GUI."""
+    global _BRANCH
     _BRANCH = new_branch
-
-    # Recalculate all Perforce paths
-    RESOURCE_FOLDER = Path(_apply_branch(_apply_drive_letter(r"F:\perforce\cd\mainline\resource\GameData\StaticInfo", _DRIVE_LETTER), _BRANCH))
-    LANGUAGE_FOLDER = Path(_apply_branch(_apply_drive_letter(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc", _DRIVE_LETTER), _BRANCH))
-    EXPORT_FOLDER = Path(_apply_branch(_apply_drive_letter(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__", _DRIVE_LETTER), _BRANCH))
-
-    EXPORT_LOOKAT_FOLDER = EXPORT_FOLDER / "System" / "LookAt"
-    EXPORT_QUEST_FOLDER = EXPORT_FOLDER / "System" / "Quest"
-
-    QUESTGROUPINFO_FILE = Path(_apply_branch(_apply_drive_letter(
-        r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\questgroupinfo.staticinfo.xml", _DRIVE_LETTER), _BRANCH))
-    SCENARIO_FOLDER = Path(_apply_branch(_apply_drive_letter(
-        r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\main", _DRIVE_LETTER), _BRANCH))
-    FACTION_QUEST_FOLDER = Path(_apply_branch(_apply_drive_letter(
-        r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\faction", _DRIVE_LETTER), _BRANCH))
-    CHALLENGE_FOLDER = Path(_apply_branch(_apply_drive_letter(
-        r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\Challenge", _DRIVE_LETTER), _BRANCH))
-    MINIGAME_FILE = Path(_apply_branch(_apply_drive_letter(
-        r"F:\perforce\cd\mainline\resource\GameData\staticinfo_quest\contents\contents_minigame.staticinfo.xml", _DRIVE_LETTER), _BRANCH))
-    STRINGKEYTABLE_FILE = Path(_apply_branch(_apply_drive_letter(
-        r"F:\perforce\cd\mainline\resource\editordata\StaticInfo__\StaticInfo_StringKeyTable.xml", _DRIVE_LETTER), _BRANCH))
-    SEQUENCER_FOLDER = Path(_apply_branch(_apply_drive_letter(
-        r"F:\perforce\cd\mainline\resource\sequencer\stageseq", _DRIVE_LETTER), _BRANCH))
-    FACTIONINFO_FOLDER = Path(_apply_branch(_apply_drive_letter(
-        r"F:\perforce\cd\mainline\resource\GameData\StaticInfo\factioninfo", _DRIVE_LETTER), _BRANCH))
-    VOICE_RECORDING_SHEET_FOLDER = Path(_apply_branch(_apply_drive_letter(
-        r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__", _DRIVE_LETTER), _BRANCH))
-
-    # Persist to settings.json
+    _rebuild_paths()
     _SETTINGS['branch'] = new_branch
     _save_settings(_SETTINGS)
-
     print(f"  Branch updated to: {new_branch}")
 
 
+def update_drive(new_drive: str):
+    """Update all Perforce paths to use a new drive letter. Called from GUI."""
+    global _DRIVE_LETTER
+    clean = new_drive.strip().rstrip(':').upper()
+    if not clean or not clean[0].isalpha():
+        print(f"  WARNING: Invalid drive letter ignored: {new_drive!r}")
+        return
+    _DRIVE_LETTER = clean[0]
+    _rebuild_paths()
+    _SETTINGS['drive_letter'] = _DRIVE_LETTER
+    _save_settings(_SETTINGS)
+    print(f"  Drive updated to: {_DRIVE_LETTER}:")
+
+
+def get_drive() -> str:
+    """Get the current drive letter."""
+    return _DRIVE_LETTER
+
+
+def get_branch() -> str:
+    """Get the current branch name."""
+    return _BRANCH
+
+
+def validate_paths() -> tuple:
+    """Check if critical Perforce paths exist.
+
+    Returns:
+        (all_ok: bool, missing: list[str])
+    """
+    critical = {
+        "RESOURCE_FOLDER": RESOURCE_FOLDER,
+        "LANGUAGE_FOLDER": LANGUAGE_FOLDER,
+        "EXPORT_FOLDER": EXPORT_FOLDER,
+    }
+    missing = [name for name, path in critical.items() if not path.exists()]
+    return (len(missing) == 0, missing)
+
+
 def create_default_settings_file() -> bool:
-    """Create a default settings.json file with F: drive.
+    """Create a default settings.json file with D: drive.
 
     Useful for users who want to customize the drive letter.
 
@@ -567,8 +577,8 @@ def create_default_settings_file() -> bool:
         return False
 
     default_settings = {
-        "drive_letter": "F",
-        "version": "1.0"
+        "drive_letter": "D",
+        "branch": "cd_beta"
     }
 
     try:

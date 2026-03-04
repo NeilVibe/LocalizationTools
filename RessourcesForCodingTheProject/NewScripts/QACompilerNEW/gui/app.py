@@ -19,7 +19,8 @@ from config import (
     CATEGORIES, ensure_folders_exist,
     TRACKER_UPDATE_FOLDER, TRACKER_UPDATE_QA,
     TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN,
-    KNOWN_BRANCHES, update_branch,
+    KNOWN_BRANCHES, KNOWN_DRIVES,
+    update_branch, update_drive, validate_paths,
 )
 import config
 
@@ -64,6 +65,9 @@ class QACompilerSuiteGUI:
         # Build UI
         self._build_ui()
 
+        # Initial path validation
+        self._update_path_status()
+
     def _build_ui(self):
         """Build the main UI layout."""
         # Title
@@ -74,31 +78,49 @@ class QACompilerSuiteGUI:
         )
         title_label.pack(pady=15)
 
-        # === Branch Selection ===
+        # === Branch + Drive Selection ===
         branch_frame = ttk.Frame(self.root)
         branch_frame.pack(fill="x", padx=15, pady=(0, 5))
 
         ttk.Label(branch_frame, text="Branch:", font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
 
-        self.branch_var = tk.StringVar(value=config._BRANCH)
+        self.branch_var = tk.StringVar(value=config.get_branch())
         branch_combo = ttk.Combobox(
             branch_frame, textvariable=self.branch_var,
-            values=KNOWN_BRANCHES, width=25
+            values=KNOWN_BRANCHES, width=20
         )
         branch_combo.pack(side="left", padx=5)
 
-        self.branch_status_label = ttk.Label(branch_frame, text="", font=("Arial", 9))
-        self.branch_status_label.pack(side="left", padx=10)
+        ttk.Label(branch_frame, text="Drive:", font=("Arial", 10, "bold")).pack(side="left", padx=(15, 5))
+
+        self.drive_var = tk.StringVar(value=config.get_drive())
+        drive_combo = ttk.Combobox(
+            branch_frame, textvariable=self.drive_var,
+            values=KNOWN_DRIVES, width=5
+        )
+        drive_combo.pack(side="left", padx=5)
+
+        self.path_status_label = ttk.Label(branch_frame, text="", font=("Arial", 10, "bold"))
+        self.path_status_label.pack(side="left", padx=15)
 
         def _on_branch_change(_event=None):
             new_branch = self.branch_var.get().strip()
             if new_branch:
                 config.update_branch(new_branch)
-                self.branch_status_label.config(text=f"Branch set to: {new_branch}")
+                self._update_path_status()
                 self._set_status(f"Branch changed to: {new_branch}")
+
+        def _on_drive_change(_event=None):
+            new_drive = self.drive_var.get().strip()
+            if new_drive:
+                config.update_drive(new_drive)
+                self._update_path_status()
+                self._set_status(f"Drive changed to: {new_drive}:")
 
         branch_combo.bind("<<ComboboxSelected>>", _on_branch_change)
         branch_combo.bind("<Return>", _on_branch_change)
+        drive_combo.bind("<<ComboboxSelected>>", _on_drive_change)
+        drive_combo.bind("<Return>", _on_drive_change)
 
         # === Section 1: Generate Datasheets ===
         section1_frame = ttk.LabelFrame(self.root, text="1. Generate Datasheets", padding=10)
@@ -282,6 +304,14 @@ class QACompilerSuiteGUI:
         """Get list of selected categories."""
         return [cat for cat, var in self.category_vars.items() if var.get()]
 
+    def _update_path_status(self):
+        """Update the path validation indicator."""
+        ok, missing = validate_paths()
+        if ok:
+            self.path_status_label.config(text="PATHS OK", foreground="green")
+        else:
+            self.path_status_label.config(text="PATHS NOT FOUND", foreground="red")
+
     def _set_status(self, text: str):
         """Update status text."""
         self.status_var.set(text)
@@ -305,6 +335,16 @@ class QACompilerSuiteGUI:
 
         if not selected:
             messagebox.showwarning("No Selection", "Please select at least one category.")
+            return
+
+        ok, missing = validate_paths()
+        if not ok:
+            messagebox.showerror(
+                "Path Error",
+                "Cannot generate — paths not found:\n\n"
+                + "\n".join(f"  {name}" for name in missing)
+                + "\n\nCheck your Branch and Drive settings."
+            )
             return
 
         self._set_status(f"Generating datasheets for: {', '.join(selected)}...")

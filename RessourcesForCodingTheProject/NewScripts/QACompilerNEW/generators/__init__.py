@@ -28,6 +28,18 @@ def generate_datasheets(categories: List[str]) -> Dict:
             "korean_strings": {category: Set[str]}
         }
     """
+    # CLI safety net: refuse to generate if Perforce paths don't exist
+    from config import validate_paths
+    ok, missing = validate_paths()
+    if not ok:
+        return {
+            "success": False,
+            "categories_processed": [],
+            "files_created": 0,
+            "errors": [f"Critical paths not found: {', '.join(missing)}. Check Branch and Drive settings."],
+            "korean_strings": {},
+        }
+
     results = {
         "success": True,
         "categories_processed": [],
