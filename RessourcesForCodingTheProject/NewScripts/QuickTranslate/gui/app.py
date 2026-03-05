@@ -1226,6 +1226,20 @@ class QuickTranslateApp:
                     for key in cols:
                         if cols[key]:
                             combined_columns[key] = True
+                    # Per-file column summary
+                    found = [k.replace("has_", "").replace("_", " ").title()
+                             for k, v in cols.items() if v]
+                    has_id = cols["has_stringid"] or cols["has_eventname"]
+                    has_corr = cols["has_correction"]
+                    if found:
+                        if has_id and has_corr:
+                            self._log(f"  {ef.name}: {', '.join(found)}", 'info')
+                        elif not has_id:
+                            self._log(f"  {ef.name}: {', '.join(found)} \u2014 no StringID/EventName, cannot match", 'warning')
+                        elif not has_corr:
+                            self._log(f"  {ef.name}: {', '.join(found)} \u2014 no Correction column", 'warning')
+                    else:
+                        self._log(f"  {ef.name}: no recognized columns", 'warning')
                 except Exception:
                     continue
 
