@@ -36,8 +36,8 @@ try:
     from config import STORY_CATEGORIES, COLUMN_HEADERS_EU, COLUMN_HEADERS_ASIAN
 except ImportError:
     STORY_CATEGORIES = ["Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"]
-    COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID"]
-    COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID"]
+    COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID", "DescOrigin", "Desc"]
+    COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID", "DescOrigin", "Desc"]
 
 # Column widths
 DEFAULT_WIDTHS = {
@@ -53,6 +53,8 @@ DEFAULT_WIDTHS = {
     "Category": 20,
     "FileName": 25,
     "StringID": 15,
+    "DescOrigin": 40,
+    "Desc": 40,
 }
 
 
@@ -267,6 +269,10 @@ def write_language_excel(
             # Get filename
             filename = filename_index.get(string_id, '') if filename_index else ''
 
+            # Get DescOrigin and Desc (voice direction)
+            desc_origin = entry.get('desc_origin', '')
+            desc = entry.get('desc', '')
+
             # Determine Text State based on Korean content in Str column
             # KOREAN = contains Korean characters (untranslated)
             # TRANSLATED = no Korean characters
@@ -274,9 +280,9 @@ def write_language_excel(
 
             # Build row data (Correction, STATUS, COMMENT, MEMO columns empty, to be filled during LQA)
             if include_english:
-                row_data = [str_origin, english, str_value, "", text_state, "", "", "", "", category, filename, string_id]
+                row_data = [str_origin, english, str_value, "", text_state, "", "", "", "", category, filename, string_id, desc_origin, desc]
             else:
-                row_data = [str_origin, str_value, "", text_state, "", "", "", "", category, filename, string_id]
+                row_data = [str_origin, str_value, "", text_state, "", "", "", "", category, filename, string_id, desc_origin, desc]
 
             # Write cells with appropriate format
             for col_idx, value in enumerate(row_data):

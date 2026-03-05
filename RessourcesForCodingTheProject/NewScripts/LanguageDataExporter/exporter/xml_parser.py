@@ -167,12 +167,18 @@ def parse_language_file(xml_path: Path) -> List[Dict]:
                          loc_str.get('strorigin') or loc_str.get('STRORIGIN') or '')
             str_value = (loc_str.get('Str') or loc_str.get('str') or
                         loc_str.get('STR') or '')
+            desc_origin = (loc_str.get('DescOrigin') or loc_str.get('Descorigin') or
+                          loc_str.get('descorigin') or loc_str.get('DESCORIGIN') or '')
+            desc = (loc_str.get('Desc') or loc_str.get('desc') or
+                   loc_str.get('DESC') or '')
 
             if string_id:  # Only include if we have a StringId
                 entries.append({
                     'str_origin': str_origin,
                     'str': str_value,
                     'string_id': string_id,
+                    'desc_origin': desc_origin,
+                    'desc': desc,
                 })
 
         logger.info(f"Parsed {len(entries)} entries from {xml_path.name}")

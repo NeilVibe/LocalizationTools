@@ -63,3 +63,4 @@ Build 030: post-review polish — skipped lang feedback, future annotations swee
 Build 031: Drive selector — Branch + Drive on row 1, persists to settings.json
 Build 032: Include Script toggle — full languagedata option for ENG/ZHO-CN
 Build 033: FileName column + FIXED status dropdown
+Build 034: Add DescOrigin + Desc columns to Excel output

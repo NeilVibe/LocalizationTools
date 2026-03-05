@@ -280,8 +280,8 @@ EXPORT_FILE_EXTENSION = ".loc.xml"
 # Text State: auto-filled (KOREAN/TRANSLATED based on Korean detection)
 # STATUS: dropdown validation (ISSUE / NO ISSUE)
 # COMMENT: free-text QA notes, MEMO1/2: general-purpose memo fields
-COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID"]
-COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID"]
+COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID", "DescOrigin", "Desc"]
+COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID", "DescOrigin", "Desc"]
 
 # Column widths (approximate)
 COLUMN_WIDTHS = {
@@ -296,6 +296,8 @@ COLUMN_WIDTHS = {
     "MEMO2": 30,
     "Category": 20,
     "StringID": 15,
+    "DescOrigin": 40,
+    "Desc": 40,
 }
 
 
