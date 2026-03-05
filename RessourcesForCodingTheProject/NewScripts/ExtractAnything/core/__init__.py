@@ -22,7 +22,7 @@ from .text_utils import (
 from .language_utils import discover_valid_codes, extract_language_from_filename
 from .export_index import ExportIndex, build_export_index
 from .input_parser import parse_input_file, parse_input_folder
-from .xml_writer import xml_escape_attr, write_locstr_xml
+from .xml_writer import write_locstr_xml
 from .excel_writer import write_extraction_excel, write_blacklist_excel
 from .excel_reader import read_entries_from_excel, read_blacklist_from_excel
 
@@ -35,7 +35,7 @@ __all__ = [
     "discover_valid_codes", "extract_language_from_filename",
     "ExportIndex", "build_export_index",
     "parse_input_file", "parse_input_folder",
-    "xml_escape_attr", "write_locstr_xml",
+    "write_locstr_xml",
     "write_extraction_excel", "write_blacklist_excel",
     "read_entries_from_excel", "read_blacklist_from_excel",
 ]
