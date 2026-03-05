@@ -23,6 +23,7 @@ from config import (
     OUTPUT_FOLDER,
     CLUSTER_CONFIG,
     DIALOG_SEQUENCER_EXCLUSION,
+    GAMEDATA_EXCLUSION,
     LANGUAGES_WITH_DIALOG_EXCLUSION,
     KNOWN_BRANCHES,
 )
@@ -43,7 +44,7 @@ logger = logging.getLogger(__name__)
 # GUI CONFIGURATION
 # =============================================================================
 
-WINDOW_TITLE = "Language Data Exporter v4.1"
+WINDOW_TITLE = "Language Data Exporter v4.2"
 WINDOW_WIDTH = 850
 WINDOW_HEIGHT = 580
 
@@ -73,8 +74,8 @@ class LanguageDataExporterGUI:
         self.lang_vars: dict[str, tk.BooleanVar] = {}
         self.all_var = tk.BooleanVar(value=True)
 
-        # Script toggle: when ON, ENG/ZHO-CN include script categories too
-        self.include_script_var = tk.BooleanVar(value=False)
+        # Export mode: "No Script" | "Full Export" | "Script Only"
+        self.export_mode_var = tk.StringVar(value="No Script")
 
         self._build_ui()
         self._check_paths()
@@ -294,27 +295,33 @@ class LanguageDataExporterGUI:
     # =========================================================================
 
     def _build_actions_section(self):
-        """Build action section: script toggle + 2 buttons."""
+        """Build action section: export mode selector + 2 buttons."""
         section = ttk.LabelFrame(self.root, text="Actions", padding=10)
         section.grid(row=4, column=0, sticky="ew", padx=15, pady=5)
 
-        # Script toggle (affects ENG + ZHO-CN which normally exclude script)
-        toggle_frame = ttk.Frame(section)
-        toggle_frame.pack(fill="x", pady=(0, 8))
+        # Export mode selector (replaces old Include Script checkbox)
+        mode_frame = ttk.Frame(section)
+        mode_frame.pack(fill="x", pady=(0, 8))
 
-        self.chk_include_script = ttk.Checkbutton(
-            toggle_frame,
-            text="Include Script (full languagedata)",
-            variable=self.include_script_var,
+        ttk.Label(mode_frame, text="Export Mode:", font=("Arial", 10, "bold")).pack(side="left", padx=5)
+
+        self.export_mode_combo = ttk.Combobox(
+            mode_frame,
+            textvariable=self.export_mode_var,
+            values=["No Script", "Full Export", "Script Only"],
+            state="readonly",
+            width=14,
         )
-        self.chk_include_script.pack(side="left", padx=5)
+        self.export_mode_combo.pack(side="left", padx=5)
 
-        ttk.Label(
-            toggle_frame,
-            text="OFF = ENG & ZHO-CN exclude Script/Dialog (default)",
+        self.export_mode_hint = ttk.Label(
+            mode_frame,
+            text="ENG & ZHO-CN exclude Script/Dialog",
             font=("Arial", 8),
-            foreground="gray"
-        ).pack(side="left", padx=(10, 0))
+            foreground="gray",
+        )
+        self.export_mode_hint.pack(side="left", padx=(10, 0))
+        self.export_mode_combo.bind("<<ComboboxSelected>>", self._on_export_mode_change)
 
         # Buttons
         btn_frame = ttk.Frame(section)
@@ -336,12 +343,23 @@ class LanguageDataExporterGUI:
         )
         self.btn_report.pack(side="left", padx=10, ipady=8)
 
+    def _on_export_mode_change(self, event=None):
+        """Update hint label when export mode changes."""
+        mode = self.export_mode_var.get()
+        hints = {
+            "No Script": "ENG & ZHO-CN exclude Script/Dialog",
+            "Full Export": "All categories included for all languages",
+            "Script Only": "Only Sequencer/Dialog lines (all languages)",
+        }
+        self.export_mode_hint.config(text=hints.get(mode, ""))
+
     def _set_buttons_enabled(self, enabled: bool):
-        """Enable or disable action buttons and script toggle during generation."""
+        """Enable or disable action buttons and export mode during generation."""
         state = "normal" if enabled else "disabled"
+        combo_state = "readonly" if enabled else "disabled"
         self.btn_excel.config(state=state)
         self.btn_report.config(state=state)
-        self.chk_include_script.config(state=state)
+        self.export_mode_combo.config(state=combo_state)
 
     # =========================================================================
     # STATUS SECTION
@@ -367,7 +385,7 @@ class LanguageDataExporterGUI:
         """Generate individual Excel files for each selected language."""
         loc_folder = config.LOC_FOLDER
         export_folder = config.EXPORT_FOLDER
-        include_script = self.include_script_var.get()
+        export_mode = self.export_mode_var.get()
 
         if not loc_folder.exists():
             messagebox.showerror("Error", f"LOC folder not found:\n{loc_folder}")
@@ -426,11 +444,14 @@ class LanguageDataExporterGUI:
                 for i, (lang_code, lang_path) in enumerate(sorted(lang_files.items())):
                     lang_data = parse_language_file(lang_path)
                     display_name = LANG_DISPLAY.get(lang_code.lower(), lang_code.upper())
-                    output_file = OUTPUT_FOLDER / f"LanguageData_{display_name}.xlsx"
+                    prefix = "ScriptData" if export_mode == "Script Only" else "LanguageData"
+                    output_file = OUTPUT_FOLDER / f"{prefix}_{display_name}.xlsx"
 
                     include_english = should_include_english_column(lang_code)
                     excluded_categories = None
-                    if not include_script and lang_code.lower() in LANGUAGES_WITH_DIALOG_EXCLUSION:
+                    if export_mode == "Script Only":
+                        excluded_categories = GAMEDATA_EXCLUSION
+                    elif export_mode == "No Script" and lang_code.lower() in LANGUAGES_WITH_DIALOG_EXCLUSION:
                         excluded_categories = DIALOG_SEQUENCER_EXCLUSION
 
                     write_language_excel(

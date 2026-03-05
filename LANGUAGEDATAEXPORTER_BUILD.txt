@@ -64,3 +64,4 @@ Build 031: Drive selector — Branch + Drive on row 1, persists to settings.json
 Build 032: Include Script toggle — full languagedata option for ENG/ZHO-CN
 Build 033: FileName column + FIXED status dropdown
 Build 034: Add DescOrigin + Desc columns to Excel output
+Build 034: 3-way export mode (No Script / Full Export / Script Only)

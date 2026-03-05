@@ -228,6 +228,12 @@ DIALOG_SEQUENCER_EXCLUSION = {"Sequencer", "AIDialog", "QuestDialog", "Narration
 # Languages that have DIALOG/SEQUENCER exclusion (voiced languages)
 LANGUAGES_WITH_DIALOG_EXCLUSION = {"eng", "zho-cn"}
 
+# Inverse exclusion: everything that ISN'T script/dialog (for "Script Only" export)
+GAMEDATA_EXCLUSION = {
+    "Item", "Quest", "Character", "Gimmick", "Skill",
+    "Knowledge", "Faction", "UI", "Region", "System_Misc", "Uncategorized"
+}
+
 # GAME_DATA categories (keyword-based, no special ordering)
 GAMEDATA_CATEGORIES = [
     "Item", "Quest", "Character", "Gimmick", "Skill",
