@@ -119,7 +119,7 @@ from core.excel_ops import (
     safe_load_workbook, ensure_master_folders,
     get_or_create_master,
     copy_images_with_unique_names,
-    find_column_by_header, sort_worksheet_az, build_column_map,
+    build_column_map,
     preload_worksheet_data,
     replicate_duplicate_row_data
 )
@@ -824,19 +824,6 @@ def process_category(
     if master_wb is None:
         return daily_entries, accumulated_users, dict(accumulated_stats) if accumulated_stats else {}, None, None
 
-    # EN Item category: Sort master sheets A-Z by ItemName(ENG) for consistent matching
-    if category.lower() == "item" and lang_label == "EN":
-        for sheet_name in master_wb.sheetnames:
-            if sheet_name == "STATUS":
-                continue
-            ws = master_wb[sheet_name]
-            sort_col = find_column_by_header(ws, "ItemName(ENG)")
-            if sort_col:
-                sort_worksheet_az(ws, sort_column=sort_col)
-                print(f"    Sorted {sheet_name} by column {sort_col} (ItemName(ENG))")
-            else:
-                print(f"    WARNING: ItemName(ENG) column not found in {sheet_name}, skipping sort")
-
     # Track stats - use accumulated data if provided (for clustered categories)
     all_users = accumulated_users
     user_stats = accumulated_stats
@@ -902,16 +889,6 @@ def process_category(
         else:
             qa_wb = safe_load_workbook(xlsx_path)
         print(f" {len(qa_wb.sheetnames)} sheets")
-
-        # EN Item category: Sort QA workbook sheets A-Z for consistent matching
-        if category.lower() == "item" and lang_label == "EN":
-            for sheet_name in qa_wb.sheetnames:
-                if sheet_name == "STATUS":
-                    continue
-                qa_ws = qa_wb[sheet_name]
-                sort_col = find_column_by_header(qa_ws, "ItemName(ENG)")
-                if sort_col:
-                    sort_worksheet_az(qa_ws, sort_column=sort_col)
 
         # Process each sheet
         for sheet_name in qa_wb.sheetnames:

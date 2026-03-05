@@ -329,10 +329,11 @@ FACE_STATUS_OPTIONS = ["NO ISSUE", "MISMATCH", "MISSING"]
 # Categories that use Face-type logic (custom processing, no master file)
 FACE_TYPE_CATEGORIES = {"face"}
 
-# Item description columns (for stricter Item matching)
+# Item description columns (LEGACY - no longer used, Item now uses standard STRINGID+Translation matching)
+# Kept for reference only
 ITEM_DESC_COLS = {
-    "eng": 6,   # ItemDesc(ENG)
-    "other": 8  # ItemDesc(LOC)
+    "eng": 6,   # ItemDesc(ENG) - old format
+    "other": 8  # ItemDesc(LOC) - old format
 }
 
 # =============================================================================

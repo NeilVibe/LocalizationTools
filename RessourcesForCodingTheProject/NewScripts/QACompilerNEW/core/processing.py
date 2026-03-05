@@ -410,9 +410,9 @@ def process_sheet(
     ADD/OVERWRITE: If tester changes their comment, stale manager response is cleared.
 
     Matching Strategy:
-    - Standard (Quest, Knowledge, etc.): STRINGID + Translation, fallback to Translation only
-    - Item: ItemName + ItemDesc + STRINGID, fallback to ItemName + ItemDesc
+    - Standard (Quest, Knowledge, Item, etc.): STRINGID + Translation, fallback to Translation only
     - Contents: INSTRUCTIONS column
+    - Script (Sequencer, Dialog): Translation + EventName, fallback to EventName only
 
     Args:
         master_ws: Master worksheet

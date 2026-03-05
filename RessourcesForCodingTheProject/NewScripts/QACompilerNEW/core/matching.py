@@ -8,8 +8,7 @@ Used by:
 - processing.py: Match QA rows to Master rows during build
 
 Matching Strategy by Category:
-- Standard (Quest, Knowledge, etc.): STRINGID + Translation, fallback to Translation only
-- Item: ItemName + ItemDesc + STRINGID, fallback to ItemName + ItemDesc
+- Standard (Quest, Knowledge, Item, etc.): STRINGID + Translation, fallback to Translation only
 - Contents: INSTRUCTIONS column (no fallback needed, unique identifier)
 - Script (Sequencer/Dialog): Translation + EventName, fallback to EventName only
 """
@@ -196,19 +195,6 @@ def extract_qa_row_data(qa_ws, row: int, category: str, is_english: bool, column
             "row": row,
         }
 
-    elif category_lower == "item":
-        # Item: use ItemName + ItemDesc
-        name_col = get_translation_column(category, is_english)
-        desc_col = get_item_desc_column(is_english)
-        item_name = str(qa_ws.cell(row, name_col).value or "").strip()
-        item_desc = str(qa_ws.cell(row, desc_col).value or "").strip()
-        return {
-            "item_name": item_name,
-            "item_desc": item_desc,
-            "stringid": stringid,
-            "row": row,
-        }
-
     elif category_lower in SCRIPT_TYPE_CATEGORIES:
         # Sequencer/Dialog: use Translation (Text or Translation) + EventName
         # EventName is PRIMARY identifier - try EventName first, then STRINGID
@@ -300,29 +286,6 @@ def extract_qa_row_data_fast(
             "row": row_num,
         }
 
-    elif category_lower == "item":
-        # Item: use ItemName + ItemDesc
-        # Try common header names
-        item_name = get_val("ITEMNAME(ENG)") or get_val("ITEMNAME") or get_val("NAME")
-        if not item_name and is_english:
-            # Fallback to position-based (col 2 for EN)
-            trans_col = get_translation_column(category, is_english)
-            if trans_col and trans_col - 1 < len(row_tuple):
-                item_name = str(row_tuple[trans_col - 1] or "").strip()
-
-        item_desc = get_val("ITEMDESC(ENG)") or get_val("ITEMDESC") or get_val("DESC")
-        if not item_desc and is_english:
-            desc_col = get_item_desc_column(is_english)
-            if desc_col and desc_col - 1 < len(row_tuple):
-                item_desc = str(row_tuple[desc_col - 1] or "").strip()
-
-        return {
-            "item_name": item_name,
-            "item_desc": item_desc,
-            "stringid": stringid,
-            "row": row_num,
-        }
-
     elif category_lower in SCRIPT_TYPE_CATEGORIES:
         # Sequencer/Dialog: use Translation (Text or Translation) + EventName
         translation = get_val("TEXT") or get_val("TRANSLATION")
@@ -378,8 +341,7 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
             - "consumed": set() to track used rows (prevent duplicates)
 
     The index structure varies by category:
-    - Standard: primary=(stringid, trans), fallback=trans
-    - Item: primary=(name, desc, stringid), fallback=(name, desc)
+    - Standard (incl. Item): primary=(stringid, trans), fallback=trans
     - Contents: primary=instructions (no fallback)
     - Script: primary=(translation, eventname), fallback=eventname
     """
@@ -421,28 +383,6 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
                 if instructions not in index["primary"]:
                     index["primary"][instructions] = row_idx
                 index["all_primary"][instructions].append(row_idx)
-
-    elif category_lower == "item":
-        # Item: index by (ItemName, ItemDesc, STRINGID) and (ItemName, ItemDesc)
-        name_col = get_translation_column(category, is_english)
-        desc_col = get_item_desc_column(is_english)
-
-        for row_idx, row_tuple in enumerate(data_rows, start=2):
-            stringid = sanitize_stringid_for_match(get_val(row_tuple, "STRINGID")) if stringid_idx is not None else ""
-            item_name = get_val(row_tuple, "ITEMNAME(ENG)", name_col) or get_val(row_tuple, "ITEMNAME", name_col)
-            item_desc = get_val(row_tuple, "ITEMDESC(ENG)", desc_col) or get_val(row_tuple, "ITEMDESC", desc_col)
-
-            if item_name:
-                # Primary: name + desc + stringid
-                if stringid:
-                    key = (item_name, item_desc, stringid)
-                    if key not in index["primary"]:
-                        index["primary"][key] = row_idx
-                    index["all_primary"][key].append(row_idx)
-
-                # Fallback: name + desc only
-                fallback_key = (item_name, item_desc)
-                index["fallback"][fallback_key].append(row_idx)
 
     elif category_lower in SCRIPT_TYPE_CATEGORIES:
         # Sequencer/Dialog: index by (Translation, EventName) with EventName-only fallback
@@ -611,34 +551,6 @@ def find_matching_row_in_master(
                 return row, "exact"
         if log_failures:
             _match_log(f"UNMATCHED QA row {qa_row_num}: instructions='{instructions[:50]}...' not in index", "MISS")
-        return None, None
-
-    elif category_lower == "item":
-        # Item: try name + desc + stringid first
-        item_name = qa_row_data.get("item_name", "")
-        item_desc = qa_row_data.get("item_desc", "")
-        stringid = qa_row_data.get("stringid", "")
-
-        # Primary: name + desc + stringid
-        if stringid and item_name:
-            key = (item_name, item_desc, stringid)
-            if key in master_index["primary"]:
-                row = master_index["primary"][key]
-                if row not in consumed:
-                    consumed.add(row)
-                    return row, "exact"
-
-        # Fallback: name + desc only
-        if item_name:
-            key = (item_name, item_desc)
-            if key in master_index["fallback"]:
-                for row in master_index["fallback"][key]:
-                    if row not in consumed:
-                        consumed.add(row)
-                        return row, "fallback"
-
-        if log_failures:
-            _match_log(f"UNMATCHED QA row {qa_row_num}: item_name='{item_name[:30] if item_name else ''}', item_desc='{item_desc[:30] if item_desc else ''}', stringid='{stringid}'", "MISS")
         return None, None
 
     elif category_lower in SCRIPT_TYPE_CATEGORIES:
