@@ -470,8 +470,13 @@ def write_workbook(
 
         # Data rows
         r_idx = 2
+        seen_in_cluster: Set[Tuple[str, str, str]] = set()
+        dedup_total = 0
 
         for (depth, text, needs_tr, is_icon, is_name_attr, source_file) in rows:
+            # Reset dedup set at each new cluster boundary (depth <= 2 group name)
+            if depth <= 2 and is_name_attr:
+                seen_in_cluster = set()
             fill, font, rh = _get_style_for_depth(depth, is_icon)
             if depth >= 2:
                 if is_name_attr or fill != _no_colour_fill:
@@ -492,6 +497,15 @@ def write_workbook(
                     other_tr, sid_other = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
                 else:
                     other_tr, sid_other = get_first_translation(lang_tbl, text)
+
+            # Per-cluster dedup: skip pure duplicates within same green cluster
+            if needs_tr:
+                sid_for_dedup = sid_other if not is_eng else sid_eng
+                dedup_key = (text, eng_tr, sid_for_dedup)
+                if dedup_key in seen_in_cluster:
+                    dedup_total += 1
+                    continue
+                seen_in_cluster.add(dedup_key)
 
             # Write core columns
             c_orig = ws.cell(r_idx, 1, br_to_newline(text))
@@ -542,6 +556,8 @@ def write_workbook(
             r_idx += 1
 
         last_row = r_idx - 1
+        if dedup_total > 0:
+            log.info("  Tab '%s': %d duplicate rows removed", title, dedup_total)
 
         # Column widths
         ws.column_dimensions["A"].width = 40
