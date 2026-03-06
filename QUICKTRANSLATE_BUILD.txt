@@ -153,3 +153,4 @@ Build 029: empty DescOrigin guard + non-script option for strorigin_descorigin
 Build 030: StringID-Only ALL Categories option (configurable scope with warning)
 Build 031: Model2Vec fast fuzzy engine (dual engine selector)
 Build 032: fix flake8 F821
+Build 033: Model2Vec + HNSW migration (no torch, no KR-SBERT, 40 dead functions removed)
