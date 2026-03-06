@@ -151,3 +151,4 @@ Build 028: fix root-is-None crash + review fixes (labels, empty-origin guard, De
 Build 029: empty DescOrigin guard + non-script option for strorigin_descorigin
 Build 029: empty DescOrigin guard + non-script option for strorigin_descorigin
 Build 030: StringID-Only ALL Categories option (configurable scope with warning)
+Build 031: Model2Vec fast fuzzy engine (dual engine selector)
