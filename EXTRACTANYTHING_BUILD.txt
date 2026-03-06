@@ -9,3 +9,4 @@ Build 5: Add Extract tab for general-purpose string extraction
 Build 019: pure raw lxml XML output - raw_attribs direct write, no string transformation
 Build 020: StringADD tab + diff_engine revert raw preservation fix
 Build 021: StringADD simplified to file-to-file
+Build 022: fix LocStr stacking with etree.indent

@@ -140,6 +140,9 @@ def add_missing(
         etree.SubElement(root, "LocStr", **{k: str(v) for k, v in raw.items()})
         report.append({"string_id": entry["string_id"], "status": "ADDED"})
 
+    # Re-indent entire tree so new elements stack properly with existing ones
+    etree.indent(root, space="  ")
+
     # Backup before write
     bak_path = target_path.with_suffix(target_path.suffix + ".bak")
     try:
