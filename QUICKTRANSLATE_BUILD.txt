@@ -150,3 +150,4 @@ Build: fix failure report labels + exclude SKIPPED_TRANSLATED
 Build 028: fix root-is-None crash + review fixes (labels, empty-origin guard, DescOrigin attrs)
 Build 029: empty DescOrigin guard + non-script option for strorigin_descorigin
 Build 029: empty DescOrigin guard + non-script option for strorigin_descorigin
+Build 030: StringID-Only ALL Categories option (configurable scope with warning)
