@@ -43,8 +43,7 @@ class StringAddTab(BaseTab):
         info.pack(fill=tk.X, padx=5, pady=2)
         ttk.Label(info, text="MODIFIES TARGET: Adds LocStr entries that exist in source but not in target.\n"
                              "Key = StringID + StrOrigin (2-step cascade: exact → nospace).\n"
-                             "Original LocStr format is preserved exactly (raw attributes).\n"
-                             "A .bak backup is created before writing.",
+                             "Original LocStr format is preserved exactly (raw attributes).",
                   wraplength=500, justify=tk.LEFT, foreground="#1565C0").pack(padx=5, pady=5)
 
         ttk.Button(self.frame, text="Add Missing Strings", command=self._run).pack(pady=10)

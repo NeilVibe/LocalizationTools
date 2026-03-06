@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import shutil
 from pathlib import Path
 
 from lxml import etree
@@ -133,30 +132,31 @@ def add_missing(
     if log_fn:
         log_fn(f"Found {len(missing):,} entries to add")
 
-    # Append to tree
+    # Detect indent from existing elements (tail = "\n    " → indent = "    ")
+    existing = list(root)
+    if existing:
+        sample_tail = existing[0].tail or ""
+        # tail is typically "\n" + indent (e.g. "\n    ")
+        indent = sample_tail.replace("\n", "") if "\n" in sample_tail else "    "
+    else:
+        indent = "    "
+    child_tail = "\n" + indent   # between LocStr elements
+    closing_tail = "\n"          # before closing root tag
+
+    # Fix the last existing element's tail so new elements stack below it
+    if existing:
+        existing[-1].tail = child_tail
+
+    # Append new LocStr elements with proper stacking
     report: list[dict] = []
-    for entry in missing:
+    for i, entry in enumerate(missing):
         raw = entry["raw_attribs"]
-        etree.SubElement(root, "LocStr", **{k: str(v) for k, v in raw.items()})
+        elem = etree.SubElement(root, "LocStr", **{k: str(v) for k, v in raw.items()})
+        is_last = (i == len(missing) - 1)
+        elem.tail = closing_tail if is_last else child_tail
         report.append({"string_id": entry["string_id"], "status": "ADDED"})
 
-    # Re-indent entire tree so new elements stack properly with existing ones
-    etree.indent(root, space="  ")
-
-    # Backup before write
-    bak_path = target_path.with_suffix(target_path.suffix + ".bak")
-    try:
-        shutil.copy2(target_path, bak_path)
-        logger.info("Backup created: %s", bak_path.name)
-    except Exception as exc:
-        logger.error("CANNOT create backup of %s: %s — aborting write", target_path.name, exc)
-        if log_fn:
-            log_fn(f"Backup failed — aborting: {exc}", "error")
-        return 0, []
-
     xml_parser.write_xml_tree(tree, target_path)
-    if log_fn:
-        log_fn(f"Backup: {bak_path.name}")
 
     return len(report), report
 
