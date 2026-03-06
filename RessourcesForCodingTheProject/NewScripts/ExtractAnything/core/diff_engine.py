@@ -9,6 +9,7 @@ from pathlib import Path
 
 import config
 from . import xml_parser, input_parser
+from .text_utils import extract_differences
 from .xml_writer import write_locstr_xml
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,9 @@ def diff_file(
     if mode == "Full (all attributes)":
         return _diff_full(source_entries, target_entries)
 
+    if mode == "StrOrigin Diff":
+        return _diff_strorigin(source_entries, target_entries)
+
     # Key-based modes
     source_keys = {_build_key(e, mode) for e in source_entries}
     extracted = []
@@ -115,6 +119,32 @@ def _diff_full(source_entries: list[dict], target_entries: list[dict]) -> list[d
             elif tgt_attribs != src_attribs:
                 e["_diff_type"] = "EDIT"
                 extracted.append(e)
+
+    return extracted
+
+
+def _diff_strorigin(source_entries: list[dict], target_entries: list[dict]) -> list[dict]:
+    """StrOrigin Diff: find entries where same StringID has different StrOrigin.
+
+    Returns target entries enriched with ``_old_strorigin`` and ``_strorigin_diff``.
+    """
+    src_map: dict[str, dict] = {}
+    for e in source_entries:
+        src_map[e["string_id"].lower()] = e
+
+    extracted = []
+    for e in target_entries:
+        sid_lower = e["string_id"].lower()
+        if sid_lower not in src_map:
+            continue
+        src_e = src_map[sid_lower]
+        old_so = src_e["str_origin"]
+        new_so = e["str_origin"]
+        if old_so.lower() == new_so.lower():
+            continue
+        e["_old_strorigin"] = old_so
+        e["_strorigin_diff"] = extract_differences(old_so, new_so)
+        extracted.append(e)
 
     return extracted
 

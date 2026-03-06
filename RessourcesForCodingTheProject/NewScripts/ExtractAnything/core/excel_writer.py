@@ -13,7 +13,7 @@ from .text_utils import br_to_newline
 logger = logging.getLogger(__name__)
 
 # Columns whose values may contain <br/> and need text_wrap in Excel
-_MULTILINE_KEYS = {"str_origin", "str_value", "old_value", "correction"}
+_MULTILINE_KEYS = {"str_origin", "str_value", "old_value", "correction", "_old_strorigin", "_strorigin_diff"}
 
 
 def write_extraction_excel(

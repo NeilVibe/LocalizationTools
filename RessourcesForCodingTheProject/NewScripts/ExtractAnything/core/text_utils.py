@@ -159,6 +159,38 @@ _CURLY_RE = re.compile(r"\{[^}]*\}")
 _WHITESPACE_RE = re.compile(r"\s+")
 
 
+def extract_differences(text1: str, text2: str, max_length: int = 120) -> str:
+    """Word-level diff between two strings using SequenceMatcher.
+
+    Returns a compact diff string like ``[old→new] [-deleted] [+added]``.
+    """
+    from difflib import SequenceMatcher
+
+    if not text1 or not text2:
+        return ""
+    words1 = text1.split()
+    words2 = text2.split()
+    matcher = SequenceMatcher(None, words1, words2)
+    changes = []
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == 'replace':
+            old_words = ' '.join(words1[i1:i2])
+            new_words = ' '.join(words2[j1:j2])
+            changes.append(f"[{old_words}\u2192{new_words}]")
+        elif tag == 'delete':
+            deleted_words = ' '.join(words1[i1:i2])
+            changes.append(f"[-{deleted_words}]")
+        elif tag == 'insert':
+            added_words = ' '.join(words2[j1:j2])
+            changes.append(f"[+{added_words}]")
+    if not changes:
+        return ""
+    diff_str = ' '.join(changes)
+    if len(diff_str) > max_length:
+        diff_str = diff_str[:max_length - 3] + "..."
+    return diff_str
+
+
 def visible_char_count(text: str) -> int:
     """Return the number of 'visible' characters after stripping markup."""
     t = _BR_RE.sub("", text)

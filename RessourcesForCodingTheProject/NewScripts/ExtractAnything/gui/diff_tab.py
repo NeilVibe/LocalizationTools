@@ -159,6 +159,14 @@ class DiffTab(BaseTab):
     # ------------------------------------------------------------------
     @staticmethod
     def _diff_columns(mode: str) -> list[tuple[str, str, int]]:
+        if mode == "StrOrigin Diff":
+            return [
+                ("string_id", "StringID", 35),
+                ("_old_strorigin", "Old StrOrigin", 45),
+                ("str_origin", "New StrOrigin", 45),
+                ("_strorigin_diff", "StrOrigin Diff", 60),
+                ("str_value", "Str", 60),
+            ]
         cols = [
             ("string_id", "StringID", 35),
             ("str_origin", "StrOrigin", 45),
