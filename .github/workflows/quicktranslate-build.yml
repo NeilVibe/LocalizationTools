@@ -103,10 +103,9 @@ jobs:
           # Test core module imports
           from core import (
               sanitize_xml_content, parse_xml_file,
-              is_korean_text, find_matches,
-              find_matches_stringid_only, find_matches_strict,
+              is_korean_text, format_multiple_matches,
               build_sequencer_strorigin_index, discover_language_files,
-              find_missing_translations_per_language,
+              find_missing_with_options,
           )
           print('core imports: OK')
 
