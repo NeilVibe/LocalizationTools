@@ -173,6 +173,9 @@ class QuickTranslateApp:
             value=_presub.get("strict_non_script_only", False)
         )
 
+        # StringID-Only: ALL categories override (default OFF = SCRIPT only)
+        self._stringid_all_var = tk.BooleanVar(value=False)
+
         # Settings variables
         self.settings_loc_path = tk.StringVar()
         self.settings_export_path = tk.StringVar()
@@ -471,6 +474,22 @@ class QuickTranslateApp:
         tk.Label(self.strict_non_script_frame,
             text="Skips SCRIPT categories (Dialog/Sequencer). Only processes game-data entries.",
             font=('Segoe UI', 8), bg='#fde8e8', fg='#666', wraplength=350, justify='left'
+        ).pack(fill=tk.X, pady=(2, 0))
+
+        # === StringID ALL Categories frame (StringID-Only mode) ===
+        self.stringid_all_frame = tk.Frame(match_frame, bg='#ffe0e0', padx=10, pady=4,
+                                           relief='groove', bd=1)
+        # Don't pack yet - shown/hidden by _on_match_type_changed
+
+        sid_all_row = tk.Frame(self.stringid_all_frame, bg='#ffe0e0')
+        sid_all_row.pack(fill=tk.X)
+        tk.Checkbutton(sid_all_row, text="ALL Categories (not just SCRIPT)",
+                       variable=self._stringid_all_var,
+                       font=('Segoe UI', 9, 'bold'), bg='#ffe0e0', fg='#cc0000',
+                       activebackground='#ffe0e0', cursor='hand2').pack(side=tk.LEFT)
+        tk.Label(self.stringid_all_frame,
+            text="WARNING: Matches ALL StringIDs regardless of category. Use only for exceptional cases.",
+            font=('Segoe UI', 8, 'bold'), bg='#ffe0e0', fg='#cc0000', wraplength=350, justify='left'
         ).pack(fill=tk.X, pady=(2, 0))
 
         # === Files Section ===
@@ -1348,6 +1367,10 @@ class QuickTranslateApp:
         """Show/hide options sub-frames based on selected match type."""
         match_type = self.match_type.get()
 
+        # Hide stringid_all_frame for non-stringid modes
+        if match_type != "stringid_only":
+            self.stringid_all_frame.pack_forget()
+
         if match_type in ("strict", "strorigin_only", "strorigin_descorigin"):
             self.precision_options_frame.pack(fill=tk.X, pady=(4, 0))
             # Show/hide the fuzzy sub-frame based on current precision
@@ -1378,6 +1401,9 @@ class QuickTranslateApp:
             self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
             self.unique_only_frame.pack_forget()
             self.strict_non_script_frame.pack_forget()
+            # Show ALL categories checkbox
+            self.stringid_all_frame.pack(fill=tk.X, pady=(4, 0))
+            self._bind_mousewheel_recursive(self.stringid_all_frame)
             # Rebind mousewheel on newly shown frame
             self._bind_mousewheel_recursive(self.transfer_scope_frame)
 
@@ -2606,6 +2632,22 @@ class QuickTranslateApp:
         fuzzy_threshold = self.fuzzy_threshold.get()
         unique_only = bool(self.unique_only_strorigin.get()) if match_type == "strorigin_only" else False
         non_script_only = self._strict_non_script_var.get() if match_type in ("strict", "strorigin_descorigin") else False
+        stringid_all = self._stringid_all_var.get() if match_type == "stringid_only" else False
+
+        # StringID ALL: extra warning confirmation BEFORE the normal transfer plan
+        if stringid_all:
+            warn_confirm = messagebox.askyesno(
+                "StringID ALL Categories — WARNING",
+                "You are about to match ALL StringIDs regardless of category.\n\n"
+                "This bypasses the SCRIPT-only safety filter.\n"
+                "Every StringID from your source will be matched against\n"
+                "the ENTIRE target XML — Dialog, Sequencer, AND game-data.\n\n"
+                "This is intended for EXCEPTIONAL cases only.\n\n"
+                "Are you sure?",
+                icon='warning',
+            )
+            if not warn_confirm:
+                return
 
         # === GENERATE FULL TRANSFER PLAN BEFORE CONFIRMATION ===
         match_str = match_type.upper()
@@ -2620,6 +2662,8 @@ class QuickTranslateApp:
             scope_str += " [UNIQUE ONLY]"
         if non_script_only:
             match_str += " [NON-SCRIPT ONLY]"
+        if stringid_all:
+            match_str += " [ALL CATEGORIES]"
 
         # Scan target with flexible scanner (supports any XML/Excel with lang suffix)
         _transfer_target_scan = scan_target_for_languages(target)
@@ -2673,6 +2717,8 @@ class QuickTranslateApp:
             self._log("Mode: UNIQUE ONLY (duplicate StrOrigin skipped, exported to Excel)", 'warning')
         if non_script_only:
             self._log("Non-Script Only: ON (Dialog/Sequencer will be skipped)", 'warning')
+        if stringid_all:
+            self._log("StringID ALL CATEGORIES: ON — bypassing SCRIPT-only filter!", 'warning')
         self._log(f"Source: {source}", 'info')
         self._log(f"Target: {target}", 'info')
 
@@ -2762,6 +2808,8 @@ class QuickTranslateApp:
                 transfer_kwargs["unique_only"] = True
             if non_script_only and match_type in ("strict", "strorigin_descorigin"):
                 transfer_kwargs["strict_non_script_only"] = True
+            if stringid_all and match_type == "stringid_only":
+                transfer_kwargs["stringid_all_categories"] = True
 
             # Pass threshold AND pre-built fuzzy data for fuzzy modes
             # CRITICAL: Without this, transfer functions rebuild from scratch!

@@ -707,6 +707,7 @@ def merge_corrections_to_excel(
     only_untranslated: bool = False,
     stringid_to_category: Optional[Dict[str, str]] = None,
     stringid_to_subfolder: Optional[Dict[str, str]] = None,
+    stringid_all_categories: bool = False,
 ) -> Dict:
     """
     Merge corrections into a target Excel file.
@@ -856,6 +857,7 @@ def merge_corrections_to_excel(
                 stringid_to_category, stringid_to_subfolder,
                 only_untranslated, result,
                 desc_col=desc_col, descorigin_col=descorigin_col,
+                stringid_all_categories=stringid_all_categories,
             )
         else:
             result["errors"].append(f"Unsupported match mode for Excel: {match_mode}")
@@ -1081,8 +1083,9 @@ def _merge_excel_stringid_only(
     only_untranslated: bool, result: Dict,
     desc_col: Optional[int] = None,
     descorigin_col: Optional[int] = None,
+    stringid_all_categories: bool = False,
 ) -> Dict:
-    """StringID-only matching (SCRIPT types only)."""
+    """StringID-only matching. SCRIPT types only by default, ALL when stringid_all_categories=True."""
     import config as _cfg
     SCRIPT_CATEGORIES = _cfg.SCRIPT_CATEGORIES
     SCRIPT_EXCLUDE_SUBFOLDERS = _cfg.SCRIPT_EXCLUDE_SUBFOLDERS
@@ -1129,43 +1132,44 @@ def _merge_excel_stringid_only(
         category = ci_category.get(sid_lower, "Uncategorized")
         subfolder = ci_subfolder.get(sid_lower, "")
 
-        if category not in SCRIPT_CATEGORIES:
-            # Multi-pass: try resolving as EventName before skipping
-            resolved_sid = _try_resolve_as_eventname(sid)
-            if resolved_sid:
-                resolved_lower = resolved_sid.lower()
-                resolved_category = ci_category.get(resolved_lower, "Uncategorized")
-                if resolved_category in SCRIPT_CATEGORIES:
-                    _eventname_resolved_count += 1
-                    logger.debug(f"EventName '{sid}' resolved to SCRIPT StringID '{resolved_sid}' (category={resolved_category})")
-                    sid = resolved_sid
-                    sid_lower = resolved_lower
-                    category = resolved_category
-                    subfolder = ci_subfolder.get(resolved_lower, "")
-                    c = dict(c)
-                    c["string_id"] = resolved_sid
+        if not stringid_all_categories:
+            if category not in SCRIPT_CATEGORIES:
+                # Multi-pass: try resolving as EventName before skipping
+                resolved_sid = _try_resolve_as_eventname(sid)
+                if resolved_sid:
+                    resolved_lower = resolved_sid.lower()
+                    resolved_category = ci_category.get(resolved_lower, "Uncategorized")
+                    if resolved_category in SCRIPT_CATEGORIES:
+                        _eventname_resolved_count += 1
+                        logger.debug(f"EventName '{sid}' resolved to SCRIPT StringID '{resolved_sid}' (category={resolved_category})")
+                        sid = resolved_sid
+                        sid_lower = resolved_lower
+                        category = resolved_category
+                        subfolder = ci_subfolder.get(resolved_lower, "")
+                        c = dict(c)
+                        c["string_id"] = resolved_sid
+                    else:
+                        result["skipped_non_script"] += 1
+                        result["details"].append({
+                            "string_id": sid, "status": "SKIPPED_NON_SCRIPT",
+                            "old": f"Category: {resolved_category} (resolved from EventName)", "new": c["corrected"],
+                        })
+                        continue
                 else:
                     result["skipped_non_script"] += 1
                     result["details"].append({
                         "string_id": sid, "status": "SKIPPED_NON_SCRIPT",
-                        "old": f"Category: {resolved_category} (resolved from EventName)", "new": c["corrected"],
+                        "old": f"Category: {category}", "new": c["corrected"],
                     })
                     continue
-            else:
-                result["skipped_non_script"] += 1
+
+            if subfolder.lower() in {s.lower() for s in SCRIPT_EXCLUDE_SUBFOLDERS}:
+                result["skipped_excluded"] += 1
                 result["details"].append({
-                    "string_id": sid, "status": "SKIPPED_NON_SCRIPT",
-                    "old": f"Category: {category}", "new": c["corrected"],
+                    "string_id": sid, "status": "SKIPPED_EXCLUDED",
+                    "old": f"Subfolder: {subfolder}", "new": c["corrected"],
                 })
                 continue
-
-        if subfolder.lower() in {s.lower() for s in SCRIPT_EXCLUDE_SUBFOLDERS}:
-            result["skipped_excluded"] += 1
-            result["details"].append({
-                "string_id": sid, "status": "SKIPPED_EXCLUDED",
-                "old": f"Subfolder: {subfolder}", "new": c["corrected"],
-            })
-            continue
 
         matching_entries = target_by_sid.get(sid_lower, [])
         if matching_entries:

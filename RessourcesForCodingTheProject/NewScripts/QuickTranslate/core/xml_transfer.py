@@ -1574,6 +1574,8 @@ def transfer_folder_to_folder(
     unique_only: bool = False,
     # Non-Script Only filtering for strict modes
     strict_non_script_only: bool = False,
+    # StringID-Only: match ALL categories (bypass SCRIPT filter)
+    stringid_all_categories: bool = False,
 ) -> Dict:
     """
     Transfer corrections from source folder to target folder.
@@ -2067,20 +2069,32 @@ def transfer_folder_to_folder(
             _lookup_cache[_corr_id] = _build_correction_lookups(_corr, "strorigin_descorigin")
             logger.info(f"Built shared strorigin_descorigin lookup: {len(_lookup_cache[_corr_id][0]):,} keys")
 
-        elif _base_mode == "stringid_only" and stringid_to_category:
-            _preprocessed, _pp_stats = _preprocess_stringid_only(
-                _corr, stringid_to_category, stringid_to_subfolder,
-            )
-            _preprocess_stats_cache[_corr_id] = _pp_stats
-            if _preprocessed:
-                _lookup_cache[_corr_id] = _build_correction_lookups(_preprocessed, "stringid_only")
+        elif _base_mode == "stringid_only":
+            if stringid_all_categories:
+                # ALL categories: skip preprocessing, build lookup directly from all corrections
+                _lookup_cache[_corr_id] = _build_correction_lookups(_corr, "stringid_only")
+                _preprocess_stats_cache[_corr_id] = {
+                    "skipped_non_script": 0, "skipped_excluded": 0,
+                    "eventname_resolved": 0, "details": [],
+                }
                 logger.info(
-                    f"Built shared stringid_only lookup: {len(_lookup_cache[_corr_id][0]):,} keys "
-                    f"(skipped {_pp_stats['skipped_non_script']} non-script, "
-                    f"{_pp_stats['skipped_excluded']} excluded)"
+                    f"Built shared stringid_only lookup (ALL CATEGORIES): "
+                    f"{len(_lookup_cache[_corr_id][0]):,} keys"
                 )
-            else:
-                _lookup_cache[_corr_id] = (None, None)
+            elif stringid_to_category:
+                _preprocessed, _pp_stats = _preprocess_stringid_only(
+                    _corr, stringid_to_category, stringid_to_subfolder,
+                )
+                _preprocess_stats_cache[_corr_id] = _pp_stats
+                if _preprocessed:
+                    _lookup_cache[_corr_id] = _build_correction_lookups(_preprocessed, "stringid_only")
+                    logger.info(
+                        f"Built shared stringid_only lookup: {len(_lookup_cache[_corr_id][0]):,} keys "
+                        f"(skipped {_pp_stats['skipped_non_script']} non-script, "
+                        f"{_pp_stats['skipped_excluded']} excluded)"
+                    )
+                else:
+                    _lookup_cache[_corr_id] = (None, None)
 
     # ─── Phase 2: Merge corrections to target files ─────────────────
     # ALL XML targets (including fuzzy modes) use fast folder merge (TMXTransfer11 pattern).
@@ -2223,13 +2237,15 @@ def transfer_folder_to_folder(
                     )
                     if not_found_count == 0:
                         break
+                    # When stringid_all_categories, use generic merge (no SCRIPT filter on recovery)
+                    _recovery_mode = match_mode if match_mode == "stringid_only" and not stringid_all_categories else None
                     _fr_entry = _recover_not_found_via_eventname(
                         _fr_entry, recovery_target, _get_recovery_mapping(),
                         dry_run=dry_run, only_untranslated=only_untranslated,
                         log_callback=log_callback,
-                        original_merge_mode=match_mode if match_mode == "stringid_only" else None,
-                        stringid_to_category=stringid_to_category if match_mode == "stringid_only" else None,
-                        stringid_to_subfolder=stringid_to_subfolder if match_mode == "stringid_only" else None,
+                        original_merge_mode=_recovery_mode,
+                        stringid_to_category=stringid_to_category if _recovery_mode == "stringid_only" else None,
+                        stringid_to_subfolder=stringid_to_subfolder if _recovery_mode == "stringid_only" else None,
                     )
                 # Update results with recovery
                 results["file_results"][representative_target] = _fr_entry
@@ -2396,6 +2412,7 @@ def transfer_folder_to_folder(
                 only_untranslated=only_untranslated,
                 stringid_to_category=stringid_to_category,
                 stringid_to_subfolder=stringid_to_subfolder,
+                stringid_all_categories=stringid_all_categories,
             )
             results["total_skipped"] += file_result.get("skipped_non_script", 0)
             results["total_skipped_excluded"] += file_result.get("skipped_excluded", 0)
