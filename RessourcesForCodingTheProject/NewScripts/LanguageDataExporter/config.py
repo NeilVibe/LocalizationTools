@@ -97,9 +97,18 @@ def _save_settings(settings_dict: dict):
 def _rebuild_paths():
     """Rebuild all path globals from current _DRIVE_LETTER and _BRANCH."""
     global LOC_FOLDER, EXPORT_FOLDER, VOICE_RECORDING_FOLDER
+    global AUDIO_FOLDER_EN, AUDIO_FOLDER_KR, AUDIO_FOLDER_ZH, LANG_TO_AUDIO_FOLDER
     LOC_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\loc")
     EXPORT_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringtable\export__")
     VOICE_RECORDING_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
+    AUDIO_FOLDER_EN = _build_path(r"F:\perforce\cd\mainline\resource\sound\windows\English(US)")
+    AUDIO_FOLDER_KR = _build_path(r"F:\perforce\cd\mainline\resource\sound\windows\Korean")
+    AUDIO_FOLDER_ZH = _build_path(r"F:\perforce\cd\mainline\resource\sound\windows\Chinese(PRC)")
+    LANG_TO_AUDIO_FOLDER = {
+        "eng": AUDIO_FOLDER_EN,
+        "kor": AUDIO_FOLDER_KR,
+        "zho-cn": AUDIO_FOLDER_ZH,
+    }
 
 
 def update_branch(new_branch: str):
@@ -156,6 +165,19 @@ EXPORT_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\GameData\stringta
 # VoiceRecordingSheet folder: Contains Excel files with EventName ordering
 # Used to order STORY strings (Sequencer, Dialog) in chronological story order
 VOICE_RECORDING_FOLDER = _build_path(r"F:\perforce\cd\mainline\resource\editordata\VoiceRecordingSheet__")
+
+# Audio folders: Contains .wem files for HasAudio detection
+# Same paths as MapDataGenerator (battle-tested)
+AUDIO_FOLDER_EN = _build_path(r"F:\perforce\cd\mainline\resource\sound\windows\English(US)")
+AUDIO_FOLDER_KR = _build_path(r"F:\perforce\cd\mainline\resource\sound\windows\Korean")
+AUDIO_FOLDER_ZH = _build_path(r"F:\perforce\cd\mainline\resource\sound\windows\Chinese(PRC)")
+
+# Language code -> audio folder mapping
+LANG_TO_AUDIO_FOLDER = {
+    "eng": AUDIO_FOLDER_EN,
+    "kor": AUDIO_FOLDER_KR,
+    "zho-cn": AUDIO_FOLDER_ZH,
+}
 
 # =============================================================================
 # Output Configuration
@@ -289,6 +311,10 @@ EXPORT_FILE_EXTENSION = ".loc.xml"
 COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID", "DescOrigin", "Desc"]
 COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID", "DescOrigin", "Desc"]
 
+# Script Only column headers: no MEMO1/MEMO2, adds EventName + HasAudio
+COLUMN_HEADERS_SCRIPT_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "Category", "FileName", "StringID", "EventName", "HasAudio", "DescOrigin", "Desc"]
+COLUMN_HEADERS_SCRIPT_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "Category", "FileName", "StringID", "EventName", "HasAudio", "DescOrigin", "Desc"]
+
 # Column widths (approximate)
 COLUMN_WIDTHS = {
     "StrOrigin": 40,
@@ -301,10 +327,18 @@ COLUMN_WIDTHS = {
     "MEMO1": 30,
     "MEMO2": 30,
     "Category": 20,
+    "FileName": 25,
     "StringID": 15,
+    "EventName": 35,
+    "HasAudio": 12,
     "DescOrigin": 40,
     "Desc": 40,
 }
+
+
+def get_audio_folder(lang_code: str) -> Path:
+    """Get the audio folder for a language. Falls back to English."""
+    return LANG_TO_AUDIO_FOLDER.get(lang_code.lower(), AUDIO_FOLDER_EN)
 
 
 def ensure_output_folder():

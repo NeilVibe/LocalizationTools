@@ -26,6 +26,8 @@ from config import (
     GAMEDATA_EXCLUSION,
     LANGUAGES_WITH_DIALOG_EXCLUSION,
     KNOWN_BRANCHES,
+    VOICE_RECORDING_FOLDER,
+    get_audio_folder,
 )
 from exporter import (
     parse_language_file,
@@ -35,7 +37,10 @@ from exporter import (
     load_cluster_config,
     write_language_excel,
 )
+from exporter.xml_parser import build_stringid_soundevent_map
 from utils.language_utils import should_include_english_column, LANGUAGE_NAMES as LANG_DISPLAY
+from utils.vrs_ordering import VRSOrderer
+from utils.audio_utils import build_wem_index
 from reports import ReportGenerator, ExcelReportWriter
 
 logger = logging.getLogger(__name__)
@@ -415,6 +420,16 @@ class LanguageDataExporterGUI:
                 )
                 filename_index = build_stringid_filename_index(export_folder)
 
+                # Load VRS ordering (always active, all modes)
+                vrs_orderer = VRSOrderer(config.VOICE_RECORDING_FOLDER)
+                if vrs_orderer.load():
+                    logger.info("Loaded %d EventNames for VRS ordering", vrs_orderer.total_events)
+                else:
+                    logger.warning("VRS not loaded - STORY strings won't be ordered")
+
+                # Build StringID -> SoundEventName mapping
+                stringid_to_soundevent = build_stringid_soundevent_map(export_folder)
+
                 all_lang_files = discover_language_files(loc_folder)
 
                 # Parse English for cross-reference
@@ -441,18 +456,33 @@ class LanguageDataExporterGUI:
 
                 skipped = [l for l in selected_langs if l not in all_lang_files]
 
+                is_script = export_mode == "Script Only"
+
+                # Build WEM index per-language for Script Only mode
+                # Cache to avoid re-scanning same folder for multiple languages
+                wem_cache: dict[str, set] = {}
+
                 for i, (lang_code, lang_path) in enumerate(sorted(lang_files.items())):
                     lang_data = parse_language_file(lang_path)
                     display_name = LANG_DISPLAY.get(lang_code.lower(), lang_code.upper())
-                    prefix = "ScriptData" if export_mode == "Script Only" else "LanguageData"
+                    prefix = "ScriptData" if is_script else "LanguageData"
                     output_file = OUTPUT_FOLDER / f"{prefix}_{display_name}.xlsx"
 
                     include_english = should_include_english_column(lang_code)
                     excluded_categories = None
-                    if export_mode == "Script Only":
+                    if is_script:
                         excluded_categories = GAMEDATA_EXCLUSION
                     elif export_mode == "No Script" and lang_code.lower() in LANGUAGES_WITH_DIALOG_EXCLUSION:
                         excluded_categories = DIALOG_SEQUENCER_EXCLUSION
+
+                    # Build WEM index for this language (cached)
+                    wem_index = None
+                    if is_script:
+                        audio_folder = get_audio_folder(lang_code)
+                        audio_key = str(audio_folder)
+                        if audio_key not in wem_cache:
+                            wem_cache[audio_key] = build_wem_index(audio_folder)
+                        wem_index = wem_cache[audio_key]
 
                     write_language_excel(
                         lang_code=lang_code,
@@ -462,8 +492,12 @@ class LanguageDataExporterGUI:
                         output_path=output_file,
                         include_english=include_english,
                         default_category=cluster_cfg.get("default_category", "Uncategorized"),
+                        vrs_orderer=vrs_orderer,
+                        stringid_to_soundevent=stringid_to_soundevent,
                         excluded_categories=excluded_categories,
                         filename_index=filename_index,
+                        is_script_mode=is_script,
+                        wem_index=wem_index,
                     )
 
                     progress = int((i + 1) / total * 100)

@@ -33,11 +33,16 @@ logger = logging.getLogger(__name__)
 
 # Import from config (single source of truth for column structure + categories)
 try:
-    from config import STORY_CATEGORIES, COLUMN_HEADERS_EU, COLUMN_HEADERS_ASIAN
+    from config import (
+        STORY_CATEGORIES, COLUMN_HEADERS_EU, COLUMN_HEADERS_ASIAN,
+        COLUMN_HEADERS_SCRIPT_EU, COLUMN_HEADERS_SCRIPT_ASIAN,
+    )
 except ImportError:
     STORY_CATEGORIES = ["Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"]
     COLUMN_HEADERS_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID", "DescOrigin", "Desc"]
     COLUMN_HEADERS_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "MEMO1", "MEMO2", "Category", "FileName", "StringID", "DescOrigin", "Desc"]
+    COLUMN_HEADERS_SCRIPT_EU = ["StrOrigin", "ENG", "Str", "Correction", "Text State", "STATUS", "COMMENT", "Category", "FileName", "StringID", "EventName", "HasAudio", "DescOrigin", "Desc"]
+    COLUMN_HEADERS_SCRIPT_ASIAN = ["StrOrigin", "Str", "Correction", "Text State", "STATUS", "COMMENT", "Category", "FileName", "StringID", "EventName", "HasAudio", "DescOrigin", "Desc"]
 
 # Column widths
 DEFAULT_WIDTHS = {
@@ -53,6 +58,8 @@ DEFAULT_WIDTHS = {
     "Category": 20,
     "FileName": 25,
     "StringID": 15,
+    "EventName": 35,
+    "HasAudio": 12,
     "DescOrigin": 40,
     "Desc": 40,
 }
@@ -131,6 +138,8 @@ def write_language_excel(
     excluded_categories: Optional[set] = None,
     protect_sheet: bool = False,  # Disabled to allow Ctrl+H (Find & Replace)
     filename_index: Optional[Dict[str, str]] = None,
+    is_script_mode: bool = False,
+    wem_index: Optional[set] = None,
 ) -> bool:
     """
     Write Excel file for one language using xlsxwriter.
@@ -187,17 +196,20 @@ def write_language_excel(
         workbook = xlsxwriter.Workbook(str(output_path))
         worksheet = workbook.add_worksheet(lang_code.upper())
 
-        # Define headers based on language type (imported from config.py)
-        if include_english:
-            headers = list(COLUMN_HEADERS_EU)
+        # Define headers based on language type and script mode (imported from config.py)
+        if is_script_mode:
+            headers = list(COLUMN_HEADERS_SCRIPT_EU if include_english else COLUMN_HEADERS_SCRIPT_ASIAN)
         else:
-            headers = list(COLUMN_HEADERS_ASIAN)
+            headers = list(COLUMN_HEADERS_EU if include_english else COLUMN_HEADERS_ASIAN)
 
         # Find Correction column index (0-based for xlsxwriter)
         correction_col_idx = headers.index("Correction") if "Correction" in headers else None
 
-        # Find editable column indices (STATUS, COMMENT, MEMO1, MEMO2)
-        memo_col_indices = [headers.index(col) for col in ["STATUS", "COMMENT", "MEMO1", "MEMO2"] if col in headers]
+        # Find editable column indices
+        editable_cols = ["STATUS", "COMMENT"]
+        if not is_script_mode:
+            editable_cols += ["MEMO1", "MEMO2"]
+        memo_col_indices = [headers.index(col) for col in editable_cols if col in headers]
 
         # Create formats
         header_format = workbook.add_format({
@@ -278,11 +290,26 @@ def write_language_excel(
             # TRANSLATED = no Korean characters
             text_state = "KOREAN" if contains_korean(str_value) else "TRANSLATED"
 
-            # Build row data (Correction, STATUS, COMMENT, MEMO columns empty, to be filled during LQA)
-            if include_english:
-                row_data = [str_origin, english, str_value, "", text_state, "", "", "", "", category, filename, string_id, desc_origin, desc]
+            # Build row data (Correction, STATUS, COMMENT columns empty, to be filled during LQA)
+            if is_script_mode:
+                # Script mode: EventName + HasAudio, no MEMO1/MEMO2
+                event_name = stringid_to_soundevent.get(string_id, '') if stringid_to_soundevent else ''
+                has_audio = ''
+                if event_name:
+                    if wem_index and event_name.lower() in wem_index:
+                        has_audio = 'YES'
+                    else:
+                        has_audio = 'NO'
+
+                if include_english:
+                    row_data = [str_origin, english, str_value, "", text_state, "", "", category, filename, string_id, event_name, has_audio, desc_origin, desc]
+                else:
+                    row_data = [str_origin, str_value, "", text_state, "", "", category, filename, string_id, event_name, has_audio, desc_origin, desc]
             else:
-                row_data = [str_origin, str_value, "", text_state, "", "", "", "", category, filename, string_id, desc_origin, desc]
+                if include_english:
+                    row_data = [str_origin, english, str_value, "", text_state, "", "", "", "", category, filename, string_id, desc_origin, desc]
+                else:
+                    row_data = [str_origin, str_value, "", text_state, "", "", "", "", category, filename, string_id, desc_origin, desc]
 
             # Write cells with appropriate format
             for col_idx, value in enumerate(row_data):
@@ -290,8 +317,8 @@ def write_language_excel(
                 if col_idx == correction_col_idx or col_idx in memo_col_indices:
                     # Correction and MEMO columns - UNLOCKED (editable)
                     fmt = cell_format_unlocked
-                elif headers[col_idx] == "StringID":
-                    # StringID - use string format to prevent scientific notation
+                elif headers[col_idx] in ("StringID", "EventName"):
+                    # StringID/EventName - use string format to prevent scientific notation
                     fmt = string_format_locked
                 else:
                     # All other columns - LOCKED (including Text State)
@@ -340,7 +367,7 @@ def write_language_excel(
                 'pivot_tables': False,
                 'select_unlocked_cells': True,
             })
-            logger.info(f"Sheet protection enabled - editable columns: Correction (col {correction_col_idx}), STATUS/COMMENT/MEMO1/MEMO2 (cols {memo_col_indices})")
+            logger.info(f"Sheet protection enabled - editable columns: Correction (col {correction_col_idx}), {'/'.join(editable_cols)} (cols {memo_col_indices})")
 
         workbook.close()
 
