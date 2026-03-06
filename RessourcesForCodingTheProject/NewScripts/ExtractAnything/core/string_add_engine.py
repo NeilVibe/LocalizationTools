@@ -1,4 +1,4 @@
-"""String Add engine – add LocStr nodes from source to target by StringID+StrOrigin diff."""
+"""String Add engine – add missing LocStr nodes from source to target (file-to-file)."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Key extraction (reuses string_eraser pattern)
+# Key helpers
 # ---------------------------------------------------------------------------
 
 def _make_keys(sid: str, so: str) -> tuple[tuple, tuple]:
@@ -25,7 +25,7 @@ def _make_keys(sid: str, so: str) -> tuple[tuple, tuple]:
     return (sid.lower(), nt), (sid.lower(), normalize_nospace(nt))
 
 
-def _collect_target_keys_from_root(root) -> tuple[set[tuple], set[tuple]]:
+def _collect_keys_from_root(root) -> tuple[set[tuple], set[tuple]]:
     """Collect all (StringID, StrOrigin) keys from a parsed root element."""
     keys: set[tuple] = set()
     nospace_keys: set[tuple] = set()
@@ -71,52 +71,69 @@ def _collect_source_entries(source_path: Path) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Add logic
+# Core: file-to-file add
 # ---------------------------------------------------------------------------
 
-def add_for_file_pair(
+def add_missing(
     source_path: Path,
     target_path: Path,
     *,
     log_fn=None,
-) -> list[dict]:
-    """Diff one source/target file pair and add missing entries to target.
+) -> tuple[int, list[dict]]:
+    """Diff source vs target and add missing entries to target in-place.
 
-    Single parse path: target is parsed once with ``parse_tree_from_file``,
-    keys are collected from that same tree, and missing entries are appended
-    to the same root — no dual-parse mismatch.
+    Single parse path: target is parsed once, keys collected from that
+    same tree, missing entries appended, then written back.
 
-    Returns report entries.
+    Returns ``(total_added, report)``.
     """
+    if log_fn:
+        log_fn(f"Source: {source_path.name}")
+        log_fn(f"Target: {target_path.name}")
+
     source_entries = _collect_source_entries(source_path)
     if not source_entries:
-        return []
+        if log_fn:
+            log_fn("No LocStr entries found in source.", "warning")
+        return 0, []
 
-    # Single parse of target — same tree used for key collection AND writing
+    if log_fn:
+        log_fn(f"Source: {len(source_entries):,} LocStr entries")
+
+    # Single parse of target
     try:
         tree, root = xml_parser.parse_tree_from_file(target_path)
     except Exception as exc:
         if log_fn:
-            log_fn(f"  Cannot parse {target_path.name}: {exc}", "warning")
-        return []
+            log_fn(f"Cannot parse target: {exc}", "error")
+        return 0, []
 
-    target_keys, target_nospace = _collect_target_keys_from_root(root)
+    target_keys, target_nospace = _collect_keys_from_root(root)
+    if log_fn:
+        log_fn(f"Target: {len(target_keys):,} existing entries")
 
-    # Diff with source dedup
+    # Diff with source dedup (both exact and nospace keys)
     missing: list[dict] = []
     seen: set[tuple] = set()
+    seen_nospace: set[tuple] = set()
     for entry in source_entries:
         if entry["key"] in target_keys or entry["nospace_key"] in target_nospace:
             continue
-        if entry["key"] in seen:
+        if entry["key"] in seen or entry["nospace_key"] in seen_nospace:
             continue
         seen.add(entry["key"])
+        seen_nospace.add(entry["nospace_key"])
         missing.append(entry)
 
     if not missing:
-        return []
+        if log_fn:
+            log_fn("No missing entries — target already has everything.", "success")
+        return 0, []
 
-    # Append to the already-parsed tree
+    if log_fn:
+        log_fn(f"Found {len(missing):,} entries to add")
+
+    # Append to tree
     report: list[dict] = []
     for entry in missing:
         raw = entry["raw_attribs"]
@@ -131,85 +148,14 @@ def add_for_file_pair(
     except Exception as exc:
         logger.error("CANNOT create backup of %s: %s — aborting write", target_path.name, exc)
         if log_fn:
-            log_fn(f"  SKIPPED {target_path.name}: backup failed", "error")
-        return []
+            log_fn(f"Backup failed — aborting: {exc}", "error")
+        return 0, []
 
     xml_parser.write_xml_tree(tree, target_path)
-    return report
-
-
-# ---------------------------------------------------------------------------
-# Folder-level operation
-# ---------------------------------------------------------------------------
-
-def add_folder(
-    source_folder: Path,
-    target_folder: Path,
-    *,
-    log_fn=None,
-    progress_fn=None,
-) -> tuple[int, list[dict]]:
-    """Match source/target XMLs by filename, add missing entries.
-
-    Returns ``(total_added, full_report)``.
-    """
-    # Collect source XML files
-    source_files = sorted(
-        f for f in source_folder.rglob("*.xml")
-        if f.is_file() and not f.name.startswith("~$")
-    )
-
-    if not source_files:
-        if log_fn:
-            log_fn("No XML files in source folder.", "warning")
-        return 0, []
-
     if log_fn:
-        log_fn(f"Found {len(source_files)} source XML file(s).")
+        log_fn(f"Backup: {bak_path.name}")
 
-    # Build target file index by filename (case-insensitive)
-    target_files = sorted(
-        f for f in target_folder.rglob("*.xml")
-        if f.is_file() and not f.name.startswith("~$")
-    )
-    target_index: dict[str, Path] = {f.name.lower(): f for f in target_files}
-
-    if not target_files:
-        if log_fn:
-            log_fn("No XML files in target folder.", "warning")
-        return 0, []
-
-    total = len(source_files)
-    full_report: list[dict] = []
-    total_added = 0
-    skipped = 0
-
-    for i, src_path in enumerate(source_files, 1):
-        if progress_fn:
-            progress_fn(i * 100 // total)
-
-        tgt_path = target_index.get(src_path.name.lower())
-        if tgt_path is None:
-            skipped += 1
-            if log_fn:
-                log_fn(f"  {src_path.name}: no matching target file — skipped", "warning")
-            continue
-
-        file_report = add_for_file_pair(src_path, tgt_path, log_fn=log_fn)
-        if file_report:
-            added = sum(1 for r in file_report if r["status"] == "ADDED")
-            total_added += added
-            full_report.extend(file_report)
-            if log_fn:
-                log_fn(f"  {src_path.name}: {added} entries added")
-        else:
-            if log_fn:
-                log_fn(f"  {src_path.name}: 0 missing (target already complete)")
-
-    if skipped and log_fn:
-        log_fn(f"{skipped} source file(s) had no matching target file.", "warning")
-
-    return total_added, full_report
+    return len(report), report
 
 
 def write_add_report(report: list[dict], output_dir: Path) -> Path:
