@@ -158,7 +158,7 @@ def load_engine(engine: str, progress_callback: Optional[Callable[[str], None]] 
     return load_model(progress_callback)
 
 
-def _encode_texts(model, texts: List[str]) -> 'np.ndarray':
+def _encode_texts(model, texts: List[str]):
     """
     Encode texts using the appropriate method for the model type.
 
