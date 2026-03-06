@@ -168,30 +168,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install --no-cache-dir -r ${{ env.PROJECT_PATH }}/requirements.txt
 
-          # Step 1: Install CPU-only torch FIRST (from PyTorch's CPU wheel index)
-          pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
-          # Step 2: Install ML deps. torch is already satisfied so pip won't re-download.
-          # NO --extra-index-url (that lets pip find CUDA torch on PyPI and override!)
-          # scipy + scikit-learn are REQUIRED by sentence-transformers (top-level imports)
-          # requests + deps are REQUIRED by transformers/huggingface_hub (model downloads)
-          pip install --no-cache-dir sentence-transformers faiss-cpu numpy scipy scikit-learn
+          # ML deps: Model2Vec + FAISS (no torch, no sentence-transformers)
+          pip install --no-cache-dir model2vec faiss-cpu numpy
           pip install --no-cache-dir requests urllib3 certifi charset-normalizer idna
 
-          # Step 3: Build tools
+          # Build tools
           pip install --no-cache-dir "pyinstaller>=6.0,<7.0" pyinstaller-hooks-contrib
 
       - name: Verify ML dependencies (MUST PASS)
         run: |
           python -c "
-          import torch
-          v = torch.__version__
-          print(f'torch {v}')
-          # CPU-only torch has +cpu in version string
-          assert '+cpu' in v, f'FATAL: Expected CPU-only torch (+cpu), got {v}. CUDA torch will bloat the build!'
-
-          import sentence_transformers
-          print(f'sentence-transformers {sentence_transformers.__version__}')
+          import model2vec
+          print(f'model2vec OK')
+          from model2vec import StaticModel
+          print(f'StaticModel class OK')
           import faiss
           print(f'faiss OK')
           import numpy
@@ -199,24 +189,10 @@ jobs:
           import tqdm, regex, packaging, filelock, tokenizers
           print('All transitive deps OK')
 
-          # requests + its full dependency tree (MUST be present for transformers/huggingface_hub)
           import requests
           print(f'requests {requests.__version__}')
-          import urllib3
-          print(f'urllib3 {urllib3.__version__}')
-          import certifi
-          print(f'certifi {certifi.__version__}')
-          import charset_normalizer
-          print(f'charset_normalizer {charset_normalizer.__version__}')
-          import idna
-          print(f'idna {idna.__version__}')
 
-          import scipy
-          print(f'scipy {scipy.__version__}')
-          import sklearn
-          print(f'scikit-learn OK')
-
-          print('ALL ML DEPENDENCIES VERIFIED - CPU-only torch confirmed')
+          print('ALL ML DEPENDENCIES VERIFIED - Model2Vec + FAISS')
           "
 
       - name: Check disk space before build
@@ -266,33 +242,12 @@ jobs:
             exit 1
           }
 
-          # 5. Check torch DLLs exist inside _internal/
-          $torchDlls = @("c10.dll", "torch_cpu.dll")
-          foreach ($dll in $torchDlls) {
-            $found = Get-ChildItem -Path $internalPath -Recurse -Filter $dll -ErrorAction SilentlyContinue
-            if ($found) {
-              Write-Host "${dll}: $($found.FullName)"
-            } else {
-              Write-Error "FATAL: ${dll} not found in _internal/!"
-              exit 1
-            }
-          }
-
-          # 6. Check sentence_transformers package exists
-          $stPath = Get-ChildItem -Path $internalPath -Recurse -Directory -Filter "sentence_transformers" -ErrorAction SilentlyContinue
-          if ($stPath) {
-            Write-Host "sentence_transformers: $($stPath.FullName)"
+          # 5. Check model2vec package exists
+          $m2vPath = Get-ChildItem -Path $internalPath -Recurse -Directory -Filter "model2vec" -ErrorAction SilentlyContinue
+          if ($m2vPath) {
+            Write-Host "model2vec: $($m2vPath.FullName)"
           } else {
-            Write-Error "FATAL: sentence_transformers not found in _internal/!"
-            exit 1
-          }
-
-          # 7. Check runtime hook is bundled
-          $hookFile = Get-ChildItem -Path $internalPath -Recurse -Filter "runtime_hook_torch*" -ErrorAction SilentlyContinue
-          if ($hookFile) {
-            Write-Host "runtime_hook_torch: $($hookFile.FullName)"
-          } else {
-            Write-Host "WARNING: runtime_hook_torch not found as file (may be compiled into exe)"
+            Write-Host "WARNING: model2vec directory not found (may be bundled differently)"
           }
 
           Write-Host ""
@@ -365,13 +320,12 @@ jobs:
           $distSizeRounded = [math]::Round($distSize, 1)
           Write-Host "Total dist size: $distSizeRounded MB"
 
-          # CPU-only torch build should be 400-1200 MB
-          # If CUDA torch got bundled, it would be 2000+ MB
-          if ($distSize -gt 1500) {
-            Write-Error "FATAL: Dist is $distSizeRounded MB - CUDA torch may have been bundled!"
+          # Model2Vec build (no torch) should be under 500 MB
+          if ($distSize -gt 500) {
+            Write-Error "FATAL: Dist is $distSizeRounded MB - unexpected bloat!"
             exit 1
           }
-          Write-Host "Build size OK (under 1500 MB limit)"
+          Write-Host "Build size OK (under 500 MB limit)"
 
       - name: Create output directory and working folders
         run: |

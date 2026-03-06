@@ -12,6 +12,7 @@ Logic:
 3. Optional pre-filter: exclude StringIDs from specific export paths (before comparison)
 4. Output: Per-language XML files + Summary Report (Excel)
 """
+from __future__ import annotations
 
 import logging
 import os
@@ -24,19 +25,10 @@ from dataclasses import dataclass, field
 logger = logging.getLogger(__name__)
 
 
-def _encode_texts_compat(model, texts):
-    """Encode texts using the appropriate method for the model type.
-
-    Same logic as fuzzy_matching._encode_texts but local to avoid circular imports.
-    """
-    import numpy as np
-
-    class_name = type(model).__name__
-    if class_name == "StaticModel":
-        result = model.encode(texts)
-        return np.asarray(result, dtype=np.float32)
-    else:
-        return model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
+try:
+    from .fuzzy_matching import encode_texts
+except ImportError:
+    pass  # ML deps not installed
 
 # Try lxml first (more robust), fallback to standard library
 try:
@@ -1791,7 +1783,7 @@ def find_missing_with_options(
         threshold: Fuzzy similarity threshold (only for fuzzy modes)
         export_folder: Path to EXPORT folder for category mapping
         progress_cb: Optional callback(message, percent)
-        model: Pre-loaded KR-SBERT model (required for fuzzy modes)
+        model: Pre-loaded Model2Vec model (required for fuzzy modes)
         exclude_paths: Optional list of relative paths (folders/files) to exclude
 
     Returns:
@@ -1897,12 +1889,12 @@ def find_missing_with_options(
 
     if is_fuzzy:
         import numpy as np
-        logger.info("[Step 4] Preparing fuzzy embeddings with KR-SBERT...")
+        logger.info("[Step 4] Preparing fuzzy embeddings with Model2Vec...")
 
         if not use_stringid:
             # kr_fuzzy: encode ALL unique source StrOrigin texts
             if progress_cb:
-                progress_cb("Encoding SOURCE texts with KR-SBERT...", 40)
+                progress_cb("Encoding SOURCE texts with Model2Vec...", 40)
 
             all_source_texts = list(source_origins)
 
@@ -1916,7 +1908,7 @@ def find_missing_with_options(
             all_vecs = []
             for i in range(0, len(all_source_texts), batch_size):
                 batch = all_source_texts[i:i + batch_size]
-                vecs = _encode_texts_compat(model, batch)
+                vecs = encode_texts(model, batch)
                 all_vecs.append(vecs)
                 done = min(i + batch_size, len(all_source_texts))
                 if done % 500 == 0 or done == len(all_source_texts):
@@ -1955,7 +1947,7 @@ def find_missing_with_options(
                     source_keys_normalized.add((normalize_text(so), sid))
 
             # Dry-run: scan ALL languages to find which StringIDs actually need fuzzy
-            # (strict matches and SID-not-in-source are resolved without SBERT)
+            # (strict matches and SID-not-in-source are resolved without Model2Vec)
             sids_needing_fuzzy = set()
             for lang, korean_entries in per_lang_korean.items():
                 # Apply same exclude filter as Step 5
@@ -1986,7 +1978,7 @@ def find_missing_with_options(
             total_to_encode = len(sids_needing_fuzzy)
             for idx, sid in enumerate(sids_needing_fuzzy):
                 texts = source_by_sid[sid]
-                vecs = _encode_texts_compat(model, texts)
+                vecs = encode_texts(model, texts)
                 vecs = vecs.astype(np.float32)
                 norms = np.linalg.norm(vecs, axis=1, keepdims=True)
                 norms[norms == 0] = 1
@@ -2085,9 +2077,9 @@ def find_missing_with_options(
                 # stringid_kr_fuzzy: two-phase (strict pre-match + fuzzy remainder)
                 strict_hits = 0
                 fuzzy_hits = 0
-                need_fuzzy_entries = []  # Entries that need SBERT encoding
+                need_fuzzy_entries = []  # Entries that need Model2Vec encoding
 
-                # Phase A: Strict pre-match (O(1) hash lookup, no SBERT)
+                # Phase A: Strict pre-match (O(1) hash lookup, no encoding)
                 for key, entry in korean_entries.items():
                     sid = entry.string_id
                     so = entry.str_origin.strip()
@@ -2122,13 +2114,13 @@ def find_missing_with_options(
                 logger.info(f"    Phase A strict: {strict_hits:,} HIT, {sid_not_in_source:,} SID_MISS, "
                             f"{len(need_fuzzy_entries):,} need fuzzy")
 
-                # Phase B: Fuzzy on remainder only (SBERT encoding)
+                # Phase B: Fuzzy on remainder only (Model2Vec encoding)
                 total_fuzzy = len(need_fuzzy_entries)
                 for entry_idx, (key, entry) in enumerate(need_fuzzy_entries, 1):
                     sid = entry.string_id
                     so = entry.str_origin.strip()
 
-                    target_vec = _encode_texts_compat(model, [so]).astype(np.float32)
+                    target_vec = encode_texts(model, [so]).astype(np.float32)
                     norm = np.linalg.norm(target_vec)
                     if norm > 0:
                         target_vec = target_vec / norm
@@ -2165,7 +2157,7 @@ def find_missing_with_options(
                 strict_hits = 0
                 fuzzy_hits = 0
 
-                # Phase A: Strict pre-match (O(1) hash lookup, no SBERT)
+                # Phase A: Strict pre-match (O(1) hash lookup, no encoding)
                 need_fuzzy_texts = []
                 need_fuzzy_entries = []
                 for key, entry in korean_entries.items():
@@ -2188,7 +2180,7 @@ def find_missing_with_options(
                 logger.info(f"    Phase A strict: {strict_hits:,} HIT, "
                             f"{len(need_fuzzy_texts):,} need fuzzy")
 
-                # Phase B: Fuzzy on remainder only (SBERT encoding)
+                # Phase B: Fuzzy on remainder only (Model2Vec encoding)
                 logger.info(f"    KR_FUZZY Phase B: encoding {len(need_fuzzy_texts):,} target texts, "
                             f"comparing against {source_embeddings.shape[0]:,} source texts")
 
@@ -2197,7 +2189,7 @@ def find_missing_with_options(
                     batch_texts = need_fuzzy_texts[i:i + batch_size]
                     batch_entries = need_fuzzy_entries[i:i + batch_size]
 
-                    target_vecs = _encode_texts_compat(model, batch_texts).astype(np.float32)
+                    target_vecs = encode_texts(model, batch_texts).astype(np.float32)
                     norms = np.linalg.norm(target_vecs, axis=1, keepdims=True)
                     norms[norms == 0] = 1
                     target_vecs = target_vecs / norms

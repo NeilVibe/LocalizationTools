@@ -17,6 +17,7 @@ Usage:
     python main.py          # Launch GUI
     python main.py --help   # Show help
 """
+from __future__ import annotations
 
 import argparse
 import logging
@@ -102,25 +103,13 @@ def run_smoke_test():
     test("import openpyxl", lambda: __import__('openpyxl'))
     test("import xlsxwriter", lambda: __import__('xlsxwriter'))
 
-    # --- 3. ML CORE: torch (THE critical dependency) ---
-    test("import torch", lambda: __import__('torch'))
-    test("import torch.cuda", lambda: __import__('torch.cuda'))
-    test("import torch.nn", lambda: __import__('torch.nn'))
-    test("import torch.backends", lambda: __import__('torch.backends'))
+    # --- 3. ML: Model2Vec ---
+    test("import model2vec", lambda: __import__('model2vec'))
 
-    def check_torch_cpu():
-        import torch
-        assert not torch.cuda.is_available(), "CUDA should NOT be available (CPU-only build)"
-        v = torch.__version__
-        print(f"  torch version: {v}", file=sys.stderr)
-    test("torch.cuda.is_available() == False", check_torch_cpu)
-
-    def check_torch_tensor():
-        import torch
-        t = torch.zeros(3, 3)
-        assert t.shape == (3, 3), f"Expected (3,3) got {t.shape}"
-        assert str(t.device) == 'cpu', f"Expected cpu got {t.device}"
-    test("torch.zeros on CPU", check_torch_tensor)
+    def check_model2vec_class():
+        from model2vec import StaticModel
+        assert StaticModel is not None
+    test("from model2vec import StaticModel", check_model2vec_class)
 
     # --- 4. ML: numpy ---
     test("import numpy", lambda: __import__('numpy'))
@@ -134,64 +123,38 @@ def run_smoke_test():
     # --- 5. ML: FAISS ---
     test("import faiss", lambda: __import__('faiss'))
 
-    def check_faiss_index():
+    def check_faiss_hnsw():
         import faiss
         import numpy as np
         dim = 8
-        index = faiss.IndexFlatIP(dim)
+        index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
+        index.hnsw.efConstruction = 400
+        index.hnsw.efSearch = 500
         vecs = np.random.randn(5, dim).astype(np.float32)
         faiss.normalize_L2(vecs)
         index.add(vecs)
         assert index.ntotal == 5, f"Expected 5 vectors, got {index.ntotal}"
         D, I = index.search(vecs[:1], 1)
         assert I[0][0] == 0, "Self-search should return index 0"
-    test("FAISS IndexFlatIP create + add + search", check_faiss_index)
+    test("FAISS IndexHNSWFlat create + add + search", check_faiss_hnsw)
 
-    # --- 6. ML: sentence-transformers ---
-    test("import sentence_transformers", lambda: __import__('sentence_transformers'))
-
-    def check_st_class():
-        from sentence_transformers import SentenceTransformer
-        assert SentenceTransformer is not None
-    test("from sentence_transformers import SentenceTransformer", check_st_class)
-
-    # --- 7. ML: transformers (huggingface) ---
-    test("import transformers", lambda: __import__('transformers'))
-
-    def check_transformers():
-        from transformers import AutoTokenizer, AutoModel
-        assert AutoTokenizer is not None
-        assert AutoModel is not None
-    test("from transformers import AutoTokenizer, AutoModel", check_transformers)
-
-    # --- 8. ML transitive deps ---
+    # --- 6. ML transitive deps ---
     test("import tokenizers", lambda: __import__('tokenizers'))
     test("import safetensors", lambda: __import__('safetensors'))
-    test("import huggingface_hub", lambda: __import__('huggingface_hub'))
     test("import tqdm", lambda: __import__('tqdm'))
     test("import regex", lambda: __import__('regex'))
     test("import requests", lambda: __import__('requests'))
     test("import packaging", lambda: __import__('packaging'))
     test("import filelock", lambda: __import__('filelock'))
-    test("import scipy", lambda: __import__('scipy'))
-    test("import sklearn", lambda: __import__('sklearn'))
 
-    # --- 9. torch submodules (previously excluded, caused crashes) ---
-    test("import torch.cuda", lambda: __import__('torch.cuda'))
-    test("import torch.distributed", lambda: __import__('torch.distributed'))
-    test("import torch._dynamo", lambda: __import__('torch._dynamo'))
-    test("import torch.fx", lambda: __import__('torch.fx'))
-    test("import torch.backends.cudnn", lambda: __import__('torch.backends.cudnn'))
-    test("import torch.compiler", lambda: __import__('torch.compiler'))
-
-    # --- 10. QuickTranslate own modules ---
+    # --- 7. QuickTranslate own modules ---
     test("import config", lambda: __import__('config'))
 
     def check_config():
         import config
         assert hasattr(config, 'MATCHING_MODES')
         assert hasattr(config, 'LANGUAGE_ORDER')
-        assert hasattr(config, 'KRTRANSFORMER_PATH')
+        assert hasattr(config, 'MODEL2VEC_PATH')
     test("config attributes", check_config)
 
     test("import core.xml_parser", lambda: __import__('core.xml_parser'))

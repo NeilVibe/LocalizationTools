@@ -4,6 +4,7 @@ Configuration for QuickTranslate.
 Paths and constants for translation lookup.
 Paths can be configured via settings.json (created on first run) or through the Settings UI.
 """
+from __future__ import annotations
 
 import json
 import logging
@@ -42,16 +43,9 @@ SCRIPT_EXCLUDE_SUBFOLDERS = set()
 # Fuzzy KR Match Configuration
 # =============================================================================
 
-# Path to KR-SBERT model folder (placed alongside the app)
-KRTRANSFORMER_PATH = SCRIPT_DIR / "KRTransformer"
-
 # Path to Model2Vec model folder (placed alongside the app)
+# Model: minishlab/potion-multilingual-128M (256-dim, static embeddings)
 MODEL2VEC_PATH = SCRIPT_DIR / "Model2Vec"
-
-# Fuzzy engine selection
-FUZZY_ENGINE_KRSBERT = "krsbert"
-FUZZY_ENGINE_MODEL2VEC = "model2vec"
-FUZZY_ENGINE_DEFAULT = FUZZY_ENGINE_MODEL2VEC  # Fast engine preferred
 
 # Fuzzy matching threshold range and default
 FUZZY_THRESHOLD_MIN = 0.70
@@ -59,8 +53,8 @@ FUZZY_THRESHOLD_MAX = 1.00
 FUZZY_THRESHOLD_DEFAULT = 0.85
 FUZZY_THRESHOLD_STEP = 0.01
 
-# FAISS: Uses IndexFlatIP (same as TFM FULL, XLSTransfer, KR Similar monoliths)
-# No special configuration needed - IndexFlatIP is simple and reliable
+# FAISS: IndexHNSWFlat with Model2Vec (LocaNext pattern)
+# M=32, efConstruction=400, efSearch=500, METRIC_INNER_PRODUCT
 
 # =============================================================================
 # Settings Loading

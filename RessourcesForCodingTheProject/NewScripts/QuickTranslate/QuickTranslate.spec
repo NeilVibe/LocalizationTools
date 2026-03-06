@@ -4,9 +4,7 @@
 # PATTERN: Use hidden-import + copy-metadata for packages with native DLLs.
 #   collect_all ONLY for pure-Python packages that need data files (JSON, vocab).
 #
-# WHY: collect_all('torch') preserves torch/lib/c10.dll in a subdirectory,
-# but vcruntime140.dll is in _internal/. Windows can't find it across dirs.
-# hidden-import lets PyInstaller's binary analysis place DLLs flat.
+# WHY: hidden-import lets PyInstaller's binary analysis place DLLs flat.
 # This approach is based on the user's working PyInstaller command for
 # XLSTransfer/KRSimilar monoliths (--hidden-import + --copy-metadata).
 
@@ -21,11 +19,10 @@ spec_dir = os.path.dirname(os.path.abspath(SPEC))
 #
 # Strategy 1: hidden-import + copy-metadata (for packages with DLLs)
 #   → PyInstaller traces imports, binary analysis collects DLLs FLAT
-#   → Used for: torch, numpy, faiss
+#   → Used for: numpy, faiss, model2vec
 #
 # Strategy 2: collect_all (for pure-Python packages with data files)
 #   → Collects ALL package files including configs, vocabs, etc.
-#   → Used for: sentence_transformers, transformers, huggingface_hub, etc.
 # =============================================================================
 
 ml_datas = []
@@ -35,7 +32,6 @@ ml_hiddenimports = []
 # --- Strategy 1: hidden-import + copy-metadata (packages with native DLLs) ---
 # Let PyInstaller's binary analysis trace DLL deps and place them flat.
 METADATA_PACKAGES = [
-    'torch',
     'numpy',
     'tqdm',
     'regex',
@@ -48,9 +44,6 @@ METADATA_PACKAGES = [
     'filelock',
     'tokenizers',
     'faiss-cpu',
-    'sentence-transformers',
-    'transformers',
-    'huggingface-hub',
     'safetensors',
     'model2vec',
 ]
@@ -68,10 +61,7 @@ for pkg in METADATA_PACKAGES:
 # ONLY pure-Python packages here -- NO native extensions (Rust/.pyd).
 # tokenizers and safetensors have Rust binaries, so they stay in Strategy 1.
 COLLECT_ALL_PACKAGES = [
-    'sentence_transformers',
-    'transformers',
-    'huggingface_hub',
-    'requests',       # Pure Python, needed by transformers/huggingface_hub for model downloads
+    'requests',       # Pure Python, may be needed by tokenizers/model2vec
     'urllib3',        # requests dependency
     'certifi',        # requests dependency (SSL certificates)
     'charset_normalizer',  # requests dependency (encoding detection)
@@ -106,9 +96,7 @@ a = Analysis(
     ] + ml_datas,
     hiddenimports=[
         # === Hidden imports for packages with native DLLs (flat placement) ===
-        'torch',
         'safetensors',
-        'safetensors.torch',
         'numpy',
         'tqdm',
         'tqdm.auto',
@@ -188,11 +176,9 @@ a = Analysis(
     ] + ml_hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[os.path.join(spec_dir, 'runtime_hook_torch.py')],
+    runtime_hooks=[],
     excludes=[
-        # ONLY exclude packages verified 100% NOT imported by torch/sentence_transformers/transformers.
-        # XLSTransfer works because it excludes NOTHING. We only exclude non-ML packages.
-        # DO NOT exclude ANY torch.* submodule - they have internal cross-dependencies.
+        # Exclude heavy packages not needed by Model2Vec/FAISS.
         'matplotlib',
         'pandas',
         'PIL',

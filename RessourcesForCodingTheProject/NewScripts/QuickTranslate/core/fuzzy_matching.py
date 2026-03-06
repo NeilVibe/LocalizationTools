@@ -1,13 +1,14 @@
 """
-Fuzzy Korean Matching using KR-SBERT or Model2Vec + FAISS.
+Fuzzy Korean Matching using Model2Vec + FAISS HNSW.
 
 Semantic similarity matching for Korean text using:
-- Deep engine: snunlp/KR-SBERT-V40K-klueNLI-augSTS (768-dim, 447MB)
-- Fast engine: minishlab/potion-multilingual-128M (256-dim, ~506MB, 79x faster)
-- Index: FAISS IndexFlatIP with inner product (cosine similarity after normalization)
+- Model: minishlab/potion-multilingual-128M (256-dim, static embeddings)
+- Index: FAISS IndexHNSWFlat with inner product (cosine similarity after normalization)
+- LocaNext's battle-tested encoding + HNSW configuration
 
-Model folders placed alongside the app: KRTransformer/ and Model2Vec/
+Model folder placed alongside the app: Model2Vec/
 """
+from __future__ import annotations
 
 import logging
 import threading
@@ -20,54 +21,19 @@ import config
 logger = logging.getLogger(__name__)
 
 # Module-level cache for model and index
-_cached_model = None  # KR-SBERT cache
-_cached_model2vec = None  # Model2Vec cache
+_cached_model = None
 _cached_index = None
-_cached_index_path = None  # Track which folder the index was built for
 _cached_texts = None  # StrOrigin texts corresponding to index vectors
 _cached_entries = None  # Full entry dicts corresponding to index vectors
 _cache_lock = threading.Lock()
-_model2vec_lock = threading.Lock()
+
+# HNSW parameters — same as LocaNext (server/tools/shared/faiss_manager.py)
+HNSW_M = 32
+HNSW_EF_CONSTRUCTION = 400
+HNSW_EF_SEARCH = 500
 
 
 def check_model_available() -> Tuple[bool, str]:
-    """
-    Check if the KRTransformer model folder exists and contains model files.
-
-    Returns:
-        Tuple of (available: bool, message: str)
-    """
-    model_path = config.KRTRANSFORMER_PATH
-
-    if not model_path.exists():
-        return False, (
-            f"KRTransformer model not found.\n\n"
-            f"Please place the model folder at:\n"
-            f"{model_path}\n\n"
-            f"The model (snunlp/KR-SBERT-V40K-klueNLI-augSTS) can be copied from:\n"
-            f"models/kr-sbert.deprecated/"
-        )
-
-    # Check for essential model files
-    has_config = (model_path / "config.json").exists()
-    has_model = (
-        (model_path / "model.safetensors").exists()
-        or (model_path / "pytorch_model.bin").exists()
-    )
-
-    if not has_config or not has_model:
-        return False, (
-            f"KRTransformer folder exists but appears incomplete.\n\n"
-            f"Path: {model_path}\n"
-            f"config.json: {'Found' if has_config else 'MISSING'}\n"
-            f"model weights: {'Found' if has_model else 'MISSING'}\n\n"
-            f"Please ensure the full model is present."
-        )
-
-    return True, f"Model ready at: {model_path}"
-
-
-def check_model2vec_available() -> Tuple[bool, str]:
     """
     Check if the Model2Vec model folder exists and contains model files.
 
@@ -99,14 +65,7 @@ def check_model2vec_available() -> Tuple[bool, str]:
     return True, f"Model ready at: {model_path}"
 
 
-def check_engine_available(engine: str) -> Tuple[bool, str]:
-    """Check if the specified fuzzy engine's model is available."""
-    if engine == config.FUZZY_ENGINE_MODEL2VEC:
-        return check_model2vec_available()
-    return check_model_available()
-
-
-def load_model2vec(progress_callback: Optional[Callable[[str], None]] = None):
+def load_model(progress_callback: Optional[Callable[[str], None]] = None):
     """
     Load the Model2Vec model. Cached after first load.
 
@@ -117,13 +76,13 @@ def load_model2vec(progress_callback: Optional[Callable[[str], None]] = None):
         ImportError: If model2vec is not installed
         FileNotFoundError: If model folder is missing
     """
-    global _cached_model2vec
+    global _cached_model
 
-    with _model2vec_lock:
-        if _cached_model2vec is not None:
-            return _cached_model2vec
+    with _cache_lock:
+        if _cached_model is not None:
+            return _cached_model
 
-    available, message = check_model2vec_available()
+    available, message = check_model_available()
     if not available:
         raise FileNotFoundError(message)
 
@@ -145,85 +104,38 @@ def load_model2vec(progress_callback: Optional[Callable[[str], None]] = None):
     model = StaticModel.from_pretrained(str(model_path))
     logger.info("Model2Vec model loaded successfully")
 
-    with _model2vec_lock:
-        _cached_model2vec = model
-
-    return model
-
-
-def load_engine(engine: str, progress_callback: Optional[Callable[[str], None]] = None):
-    """Load the specified fuzzy engine's model."""
-    if engine == config.FUZZY_ENGINE_MODEL2VEC:
-        return load_model2vec(progress_callback)
-    return load_model(progress_callback)
-
-
-def _encode_texts(model, texts: List[str]):
-    """
-    Encode texts using the appropriate method for the model type.
-
-    Detects engine by class name to avoid cross-imports:
-    - StaticModel (Model2Vec) → model.encode(texts)
-    - SentenceTransformer → model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
-    """
-    import numpy as np
-
-    class_name = type(model).__name__
-    if class_name == "StaticModel":
-        result = model.encode(texts)
-        return np.asarray(result, dtype=np.float32)
-    else:
-        return model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
-
-
-def load_model(progress_callback: Optional[Callable[[str], None]] = None):
-    """
-    Load the KR-SBERT model. Cached after first load.
-
-    Args:
-        progress_callback: Optional callback for status updates
-
-    Returns:
-        SentenceTransformer model instance
-
-    Raises:
-        ImportError: If sentence-transformers is not installed
-        FileNotFoundError: If model folder is missing
-        RuntimeError: If model loading fails
-    """
-    global _cached_model
-
-    with _cache_lock:
-        if _cached_model is not None:
-            return _cached_model
-
-    available, message = check_model_available()
-    if not available:
-        raise FileNotFoundError(message)
-
-    try:
-        from sentence_transformers import SentenceTransformer
-    except ImportError as e:
-        raise ImportError(
-            f"Failed to load sentence-transformers.\n\n"
-            f"Error: {e}\n\n"
-            f"This may indicate a missing DLL dependency (e.g. c10.dll).\n"
-            f"Check QuickTranslate_crash.log for details."
-        ) from e
-
-    model_path = config.KRTRANSFORMER_PATH
-
-    if progress_callback:
-        progress_callback("Loading KR-SBERT model...")
-
-    logger.info(f"Loading KR-SBERT model from: {model_path}")
-    model = SentenceTransformer(str(model_path), device='cpu')
-    logger.info("KR-SBERT model loaded successfully")
-
     with _cache_lock:
         _cached_model = model
 
     return model
+
+
+def encode_texts(model, texts):
+    """Encode texts with Model2Vec. Returns np.ndarray(float32).
+
+    Same pattern as LocaNext's EmbeddingEngine.encode().
+    Callers MUST check for empty lists before calling.
+    Normalization is done at the FAISS boundary, not here.
+    """
+    import numpy as np
+    result = model.encode(texts)
+    return np.array(result, dtype=np.float32)
+
+
+def _create_hnsw_index(dim):
+    """Create an HNSW index with LocaNext's configuration.
+
+    Args:
+        dim: Vector dimension (256 for Model2Vec)
+
+    Returns:
+        Configured FAISS IndexHNSWFlat
+    """
+    import faiss
+    index = faiss.IndexHNSWFlat(dim, HNSW_M, faiss.METRIC_INNER_PRODUCT)
+    index.hnsw.efConstruction = HNSW_EF_CONSTRUCTION
+    index.hnsw.efSearch = HNSW_EF_SEARCH
+    return index
 
 
 def build_faiss_index(
@@ -234,22 +146,22 @@ def build_faiss_index(
     batch_size: int = 100,
 ):
     """
-    Build a FAISS IndexFlatIP index from a list of texts.
+    Build a FAISS HNSW index from a list of texts.
 
-    Uses the same proven pattern as TFM FULL, XLSTransfer, and KR Similar monoliths:
+    Uses LocaNext's battle-tested pattern:
     - Batch encoding (batch_size=100) to avoid memory spikes
-    - IndexFlatIP for instant index building and 100% accurate search
-    - L2 normalization for cosine similarity via inner product
+    - IndexHNSWFlat(dim, 32, METRIC_INNER_PRODUCT) with efConstruction=400, efSearch=500
+    - L2 normalization at FAISS boundary for cosine similarity via inner product
 
     Args:
         texts: List of StrOrigin strings to encode
         entries: List of entry dicts corresponding to each text
-        model: Loaded SentenceTransformer model
+        model: Loaded Model2Vec StaticModel
         progress_callback: Optional callback for status updates
         batch_size: Number of texts to encode per batch (default: 100)
 
     Returns:
-        FAISS index with normalized vectors added
+        FAISS HNSW index with normalized vectors added
     """
     global _cached_index, _cached_texts, _cached_entries
 
@@ -268,12 +180,12 @@ def build_faiss_index(
     total = len(texts)
     logger.info(f"Encoding {total} texts in batches of {batch_size}...")
 
-    # Batch encoding - same pattern as TFM FULL monolith (batch_size=100)
+    # Batch encoding — same pattern as TFM FULL monolith (batch_size=100)
     all_embeddings = []
     for i in range(0, total, batch_size):
         batch = texts[i:i + batch_size]
-        batch_embeddings = _encode_texts(model, batch)
-        all_embeddings.extend(batch_embeddings)
+        batch_embeddings = encode_texts(model, batch)
+        all_embeddings.append(batch_embeddings)
 
         done = min(i + batch_size, total)
         if progress_callback:
@@ -281,22 +193,21 @@ def build_faiss_index(
         if done % 500 == 0 or done == total:
             logger.info(f"Embedding progress: {done}/{total}")
 
-    embeddings = np.array(all_embeddings, dtype=np.float32)
+    # Normalize at FAISS boundary — LocaNext pattern
+    embeddings = np.vstack(all_embeddings).astype(np.float32)
     embeddings = np.ascontiguousarray(embeddings)
 
     if progress_callback:
-        progress_callback(f"Building FAISS index ({total} vectors, {embeddings.shape[1]}d)...")
+        progress_callback(f"Building HNSW index ({total} vectors, {embeddings.shape[1]}d)...")
 
-    # Normalize for cosine similarity via inner product
     faiss.normalize_L2(embeddings)
 
-    # IndexFlatIP - same as TFM FULL, XLSTransfer, KR Similar monoliths
-    # Instant build, 100% accurate, perfect for <200K vectors
+    # HNSW index — same as LocaNext (faiss_manager.py)
     dim = embeddings.shape[1]
-    index = faiss.IndexFlatIP(dim)
+    index = _create_hnsw_index(dim)
     index.add(embeddings)
 
-    logger.info(f"FAISS index built: {index.ntotal} vectors, {dim}d")
+    logger.info(f"HNSW index built: {index.ntotal} vectors, {dim}d, M={HNSW_M}")
 
     with _cache_lock:
         _cached_index = index
@@ -316,12 +227,12 @@ def search_fuzzy(
     k: int = 1,
 ) -> List[Tuple[dict, float]]:
     """
-    Search the FAISS index for the closest match to query_text.
+    Search the FAISS HNSW index for the closest match to query_text.
 
     Args:
         query_text: Korean text to search for
-        model: Loaded SentenceTransformer model
-        index: Built FAISS index
+        model: Loaded Model2Vec StaticModel
+        index: Built FAISS HNSW index
         texts: StrOrigin texts corresponding to index vectors
         entries: Entry dicts corresponding to index vectors
         threshold: Minimum similarity score (0.0 - 1.0)
@@ -336,8 +247,11 @@ def search_fuzzy(
     if not query_text or not query_text.strip():
         return []
 
-    # Encode query
-    query_embedding = _encode_texts(model, [query_text.strip()])
+    if index.ntotal == 0:
+        return []
+
+    # Encode and normalize query — LocaNext pattern
+    query_embedding = encode_texts(model, [query_text.strip()])
     query_embedding = np.ascontiguousarray(query_embedding, dtype=np.float32)
     faiss.normalize_L2(query_embedding)
 
@@ -375,8 +289,8 @@ def find_matches_fuzzy(
         corrections: List of correction dicts with string_id, str_origin, corrected
         target_texts: StrOrigin texts in the FAISS index
         target_entries: Entry dicts corresponding to index vectors
-        model: Loaded SentenceTransformer model
-        index: Built FAISS index
+        model: Loaded Model2Vec StaticModel
+        index: Built FAISS HNSW index
         threshold: Minimum similarity score (0.0 - 1.0)
         progress_callback: Optional callback for status updates
         log_callback: Optional callback for GUI console messages
@@ -462,29 +376,25 @@ def get_cached_index_info() -> Optional[Dict]:
     Get info about the currently cached FAISS index.
 
     Returns:
-        Dict with ntotal, dim, path or None if no index cached
+        Dict with ntotal, path or None if no index cached
     """
     if _cached_index is None:
         return None
 
     return {
         "ntotal": _cached_index.ntotal,
-        "path": _cached_index_path,
         "texts_count": len(_cached_texts) if _cached_texts else 0,
     }
 
 
 def clear_cache():
     """Clear all cached model and index data."""
-    global _cached_model, _cached_model2vec, _cached_index, _cached_index_path, _cached_texts, _cached_entries
+    global _cached_model, _cached_index, _cached_texts, _cached_entries
     with _cache_lock:
         _cached_model = None
         _cached_index = None
-        _cached_index_path = None
         _cached_texts = None
         _cached_entries = None
-    with _model2vec_lock:
-        _cached_model2vec = None
     logger.info("Fuzzy matching cache cleared")
 
 
