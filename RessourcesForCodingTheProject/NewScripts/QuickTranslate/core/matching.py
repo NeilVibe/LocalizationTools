@@ -18,6 +18,18 @@ from .korean_detection import is_korean_text
 
 logger = logging.getLogger(__name__)
 
+
+def _encode_texts_compat(model, texts):
+    """Encode texts using the appropriate method for the model type."""
+    import numpy as np
+
+    class_name = type(model).__name__
+    if class_name == "StaticModel":
+        result = model.encode(texts)
+        return np.asarray(result, dtype=np.float32)
+    else:
+        return model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
+
 # SCRIPT categories - imported from config for single source of truth
 SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
 SCRIPT_EXCLUDE_SUBFOLDERS = config.SCRIPT_EXCLUDE_SUBFOLDERS
@@ -333,11 +345,11 @@ def find_matches_strorigin_descorigin_fuzzy(
         query_texts = [c.get("desc_origin", "").strip() for c in corr_group]
 
         # Encode pool and queries, normalize for cosine similarity
-        pool_embeddings = fuzzy_model.encode(pool_texts, show_progress_bar=False, convert_to_numpy=True)
+        pool_embeddings = _encode_texts_compat(fuzzy_model, pool_texts)
         pool_embeddings = np.ascontiguousarray(pool_embeddings, dtype=np.float32)
         faiss_lib.normalize_L2(pool_embeddings)
 
-        query_embeddings = fuzzy_model.encode(query_texts, show_progress_bar=False, convert_to_numpy=True)
+        query_embeddings = _encode_texts_compat(fuzzy_model, query_texts)
         query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
         faiss_lib.normalize_L2(query_embeddings)
 
@@ -561,11 +573,11 @@ def find_matches_strict_fuzzy(
         query_texts = [c.get("str_origin", "").strip() for c in corr_group]
 
         # Encode pool and queries, normalize for cosine similarity
-        pool_embeddings = fuzzy_model.encode(pool_texts, show_progress_bar=False, convert_to_numpy=True)
+        pool_embeddings = _encode_texts_compat(fuzzy_model, pool_texts)
         pool_embeddings = np.ascontiguousarray(pool_embeddings, dtype=np.float32)
         faiss_lib.normalize_L2(pool_embeddings)
 
-        query_embeddings = fuzzy_model.encode(query_texts, show_progress_bar=False, convert_to_numpy=True)
+        query_embeddings = _encode_texts_compat(fuzzy_model, query_texts)
         query_embeddings = np.ascontiguousarray(query_embeddings, dtype=np.float32)
         faiss_lib.normalize_L2(query_embeddings)
 

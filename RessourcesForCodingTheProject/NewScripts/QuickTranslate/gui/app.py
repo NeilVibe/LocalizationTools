@@ -109,7 +109,11 @@ from gui.missing_params_dialog import MissingParamsDialog
 from gui.exclude_dialog import ExcludeDialog
 from core.fuzzy_matching import (
     check_model_available,
+    check_model2vec_available,
+    check_engine_available,
     load_model,
+    load_model2vec,
+    load_engine,
     build_faiss_index,
     search_fuzzy,
     build_index_from_folder,
@@ -143,6 +147,11 @@ class QuickTranslateApp:
         # Fuzzy matching variables
         self.fuzzy_threshold = tk.DoubleVar(value=config.FUZZY_THRESHOLD_DEFAULT)
         self.fuzzy_model_status = tk.StringVar(value="Not loaded")
+
+        # Fuzzy engine selection: "model2vec" (fast) or "krsbert" (deep)
+        _saved_engine = config._load_settings().get("fuzzy_engine", config.FUZZY_ENGINE_DEFAULT)
+        self.fuzzy_engine = tk.StringVar(value=_saved_engine)
+        self._fuzzy_engine_used = None  # Track which engine built current index
 
         # Shared match precision: "perfect" (exact) or "fuzzy" (SBERT)
         # Used by Strict and StrOrigin Only modes
@@ -412,6 +421,20 @@ class QuickTranslateApp:
                                         font=('Segoe UI', 10, 'bold'), bg='#e8f4e8',
                                         fg='#333', width=5)
         self.threshold_label.pack(side=tk.LEFT)
+
+        # Fuzzy engine selector
+        fuzzy_engine_row = tk.Frame(self.fuzzy_sub_frame, bg='#e8f4e8')
+        fuzzy_engine_row.pack(fill=tk.X, pady=(0, 4))
+        tk.Label(fuzzy_engine_row, text="Engine:", font=('Segoe UI', 9), bg='#e8f4e8',
+                width=10, anchor='w').pack(side=tk.LEFT)
+        tk.Radiobutton(fuzzy_engine_row, text="Model2Vec (Fast)",
+                       variable=self.fuzzy_engine, value=config.FUZZY_ENGINE_MODEL2VEC,
+                       font=('Segoe UI', 9), bg='#e8f4e8', activebackground='#e8f4e8',
+                       cursor='hand2', command=self._on_engine_changed).pack(side=tk.LEFT, padx=(0, 10))
+        tk.Radiobutton(fuzzy_engine_row, text="KR-SBERT (Deep)",
+                       variable=self.fuzzy_engine, value=config.FUZZY_ENGINE_KRSBERT,
+                       font=('Segoe UI', 9), bg='#e8f4e8', activebackground='#e8f4e8',
+                       cursor='hand2', command=self._on_engine_changed).pack(side=tk.LEFT)
 
         # Fuzzy model status
         fuzzy_status_row = tk.Frame(self.fuzzy_sub_frame, bg='#e8f4e8')
@@ -1490,18 +1513,20 @@ class QuickTranslateApp:
 
     def _update_fuzzy_model_status(self):
         """Update the fuzzy model status display."""
-        available, msg = check_model_available()
+        engine = self.fuzzy_engine.get()
+        engine_label = "Model2Vec" if engine == config.FUZZY_ENGINE_MODEL2VEC else "KR-SBERT"
+        available, msg = check_engine_available(engine)
         if available:
             if self._fuzzy_model is not None:
                 info = get_cached_index_info()
                 if info:
-                    self.fuzzy_model_status.set(f"Ready ({info['ntotal']} vectors)")
+                    self.fuzzy_model_status.set(f"{engine_label}: Ready ({info['ntotal']} vectors)")
                 else:
-                    self.fuzzy_model_status.set("Model loaded, no index yet")
+                    self.fuzzy_model_status.set(f"{engine_label}: Loaded, no index yet")
             else:
-                self.fuzzy_model_status.set("Not loaded (will load on first use)")
+                self.fuzzy_model_status.set(f"{engine_label}: Not loaded (will load on first use)")
         else:
-            self.fuzzy_model_status.set("Not available - model folder missing")
+            self.fuzzy_model_status.set(f"{engine_label}: Not available - model folder missing")
 
     def _on_precision_changed(self):
         """Show/hide fuzzy threshold slider within precision options."""
@@ -1511,6 +1536,25 @@ class QuickTranslateApp:
             self._bind_mousewheel_recursive(self.fuzzy_sub_frame)
         else:
             self.fuzzy_sub_frame.pack_forget()
+
+    def _on_engine_changed(self):
+        """Handle fuzzy engine switch. Invalidates cache (different dimensions)."""
+        engine = self.fuzzy_engine.get()
+        # Persist to settings.json
+        settings = config._load_settings()
+        settings["fuzzy_engine"] = engine
+        config._save_settings(settings)
+        # Invalidate cached index/model (768-dim vs 256-dim FAISS indexes are incompatible)
+        if self._fuzzy_engine_used is not None and self._fuzzy_engine_used != engine:
+            self._fuzzy_model = None
+            self._fuzzy_index = None
+            self._fuzzy_index_path = None
+            self._fuzzy_index_filter = None
+            self._fuzzy_index_untranslated = None
+            self._fuzzy_texts = None
+            self._fuzzy_entries = None
+            self._fuzzy_engine_used = None
+        self._update_fuzzy_model_status()
 
     def _on_threshold_changed(self, value):
         """Update threshold display labels when slider moves."""
@@ -1523,24 +1567,40 @@ class QuickTranslateApp:
         """Load fuzzy model if needed. Returns True if model is ready.
 
         Thread-safe: uses queue for UI updates instead of direct widget access.
+        Uses the currently selected engine (Model2Vec or KR-SBERT).
         """
-        if self._fuzzy_model is not None:
+        engine = self.fuzzy_engine.get()
+        engine_label = "Model2Vec" if engine == config.FUZZY_ENGINE_MODEL2VEC else "KR-SBERT"
+
+        # If engine changed since last load, invalidate
+        if self._fuzzy_model is not None and self._fuzzy_engine_used == engine:
             return True
 
-        available, msg = check_model_available()
+        # Engine changed — clear old model
+        if self._fuzzy_model is not None and self._fuzzy_engine_used != engine:
+            self._fuzzy_model = None
+            self._fuzzy_index = None
+            self._fuzzy_index_path = None
+            self._fuzzy_index_filter = None
+            self._fuzzy_index_untranslated = None
+            self._fuzzy_texts = None
+            self._fuzzy_entries = None
+
+        available, msg = check_engine_available(engine)
         if not available:
-            self._task_queue.put(('messagebox', 'showerror', 'KR-SBERT Model Not Found', msg))
+            self._task_queue.put(('messagebox', 'showerror', f'{engine_label} Model Not Found', msg))
             return False
 
         try:
-            self._task_queue.put(('fuzzy_status', 'Loading...'))
-            self._fuzzy_model = load_model(self._update_status)
-            self._task_queue.put(('fuzzy_status', 'Model loaded'))
-            self._log("KR-SBERT model loaded successfully", 'success')
+            self._task_queue.put(('fuzzy_status', f'{engine_label}: Loading...'))
+            self._fuzzy_model = load_engine(engine, self._update_status)
+            self._fuzzy_engine_used = engine
+            self._task_queue.put(('fuzzy_status', f'{engine_label}: Model loaded'))
+            self._log(f"{engine_label} model loaded successfully", 'success')
             return True
         except Exception as e:
-            self._task_queue.put(('fuzzy_status', 'Load failed'))
-            self._task_queue.put(('messagebox', 'showerror', 'Model Load Error', f'Failed to load KR-SBERT model:\n{e}'))
+            self._task_queue.put(('fuzzy_status', f'{engine_label}: Load failed'))
+            self._task_queue.put(('messagebox', 'showerror', 'Model Load Error', f'Failed to load {engine_label} model:\n{e}'))
             self._log(f"Model load error: {e}", 'error')
             return False
 
@@ -1561,12 +1621,14 @@ class QuickTranslateApp:
                             Only entries with these StringIDs are loaded.
             only_untranslated: If True, only load entries where Str has Korean.
         """
-        # Cache check — reuse if same target, same filter, same scope
+        engine = self.fuzzy_engine.get()
+        # Cache check — reuse if same target, same filter, same scope, same engine
         if (self._fuzzy_entries is not None
                 and self._fuzzy_index_path == target_path
                 and self._fuzzy_texts
                 and self._fuzzy_index_filter == stringid_filter
-                and self._fuzzy_index_untranslated == only_untranslated):
+                and self._fuzzy_index_untranslated == only_untranslated
+                and self._fuzzy_engine_used == engine):
             return True
 
         if not target_path:
@@ -1598,6 +1660,7 @@ class QuickTranslateApp:
             self._fuzzy_index_path = target_path
             self._fuzzy_index_filter = stringid_filter
             self._fuzzy_index_untranslated = only_untranslated
+            self._fuzzy_engine_used = engine
             self._fuzzy_texts = texts
             self._fuzzy_entries = entries
             self._fuzzy_index = None  # Invalidate stale FAISS index
@@ -1624,12 +1687,14 @@ class QuickTranslateApp:
             stringid_filter: Optional set of StringIDs to include. CRITICAL for performance!
             only_untranslated: If True, only include entries where Str has Korean.
         """
-        # Reuse cache if same target, same filter, same scope
+        engine = self.fuzzy_engine.get()
+        # Reuse cache if same target, same filter, same scope, same engine
         if (self._fuzzy_index is not None
                 and self._fuzzy_index_path == target_path
                 and self._fuzzy_texts
                 and self._fuzzy_index_filter == stringid_filter
-                and self._fuzzy_index_untranslated == only_untranslated):
+                and self._fuzzy_index_untranslated == only_untranslated
+                and self._fuzzy_engine_used == engine):
             return True
 
         if not target_path:
@@ -1660,6 +1725,7 @@ class QuickTranslateApp:
             self._fuzzy_index_path = target_path
             self._fuzzy_index_filter = stringid_filter
             self._fuzzy_index_untranslated = only_untranslated
+            self._fuzzy_engine_used = engine
             self._fuzzy_texts = texts
             self._fuzzy_entries = entries
 
@@ -1756,12 +1822,14 @@ class QuickTranslateApp:
         self.stringid_to_subfolder = None
 
         # Clear fuzzy cache too
+        self._fuzzy_model = None
         self._fuzzy_index = None
         self._fuzzy_index_path = None
         self._fuzzy_index_filter = None
         self._fuzzy_index_untranslated = None
         self._fuzzy_texts = None
         self._fuzzy_entries = None
+        self._fuzzy_engine_used = None
         clear_fuzzy_cache()
 
         # Clear language code cache (valid codes depend on LOC folder)
@@ -2162,7 +2230,8 @@ class QuickTranslateApp:
             # For fuzzy modes, load model first
             fuzzy_model = None
             if match_mode.endswith("_fuzzy"):
-                self._log("Loading KR-SBERT model for fuzzy matching...", 'info')
+                engine_label = "Model2Vec" if self.fuzzy_engine.get() == config.FUZZY_ENGINE_MODEL2VEC else "KR-SBERT"
+                self._log(f"Loading {engine_label} model for fuzzy matching...", 'info')
                 if not self._ensure_fuzzy_model():
                     return
                 fuzzy_model = self._fuzzy_model
@@ -2779,7 +2848,8 @@ class QuickTranslateApp:
                     return
                 if not self._ensure_fuzzy_index(str(target), stringid_filter=source_stringids, only_untranslated=only_untranslated):
                     return
-                self._log(f"{match_type} TRANSFER with FUZZY precision (threshold={fuzzy_threshold:.2f})", 'info')
+                engine_label = "Model2Vec" if self.fuzzy_engine.get() == config.FUZZY_ENGINE_MODEL2VEC else "KR-SBERT"
+                self._log(f"{match_type} TRANSFER with FUZZY precision [{engine_label}] (threshold={fuzzy_threshold:.2f})", 'info')
 
             self._task_queue.put(('progress', 20))
             self._update_status("Transferring corrections...")

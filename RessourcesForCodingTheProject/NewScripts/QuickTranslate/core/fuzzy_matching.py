@@ -1,11 +1,12 @@
 """
-Fuzzy Korean Matching using KR-SBERT + FAISS.
+Fuzzy Korean Matching using KR-SBERT or Model2Vec + FAISS.
 
 Semantic similarity matching for Korean text using:
-- Model: snunlp/KR-SBERT-V40K-klueNLI-augSTS (768-dim, 447MB)
+- Deep engine: snunlp/KR-SBERT-V40K-klueNLI-augSTS (768-dim, 447MB)
+- Fast engine: minishlab/potion-multilingual-128M (256-dim, ~506MB, 79x faster)
 - Index: FAISS IndexFlatIP with inner product (cosine similarity after normalization)
 
-Model folder 'KRTransformer/' must be placed alongside the app.
+Model folders placed alongside the app: KRTransformer/ and Model2Vec/
 """
 
 import logging
@@ -19,12 +20,14 @@ import config
 logger = logging.getLogger(__name__)
 
 # Module-level cache for model and index
-_cached_model = None
+_cached_model = None  # KR-SBERT cache
+_cached_model2vec = None  # Model2Vec cache
 _cached_index = None
 _cached_index_path = None  # Track which folder the index was built for
 _cached_texts = None  # StrOrigin texts corresponding to index vectors
 _cached_entries = None  # Full entry dicts corresponding to index vectors
 _cache_lock = threading.Lock()
+_model2vec_lock = threading.Lock()
 
 
 def check_model_available() -> Tuple[bool, str]:
@@ -62,6 +65,115 @@ def check_model_available() -> Tuple[bool, str]:
         )
 
     return True, f"Model ready at: {model_path}"
+
+
+def check_model2vec_available() -> Tuple[bool, str]:
+    """
+    Check if the Model2Vec model folder exists and contains model files.
+
+    Returns:
+        Tuple of (available: bool, message: str)
+    """
+    model_path = config.MODEL2VEC_PATH
+
+    if not model_path.exists():
+        return False, (
+            f"Model2Vec model not found.\n\n"
+            f"Please place the model folder at:\n"
+            f"{model_path}\n\n"
+            f"The model (minishlab/potion-multilingual-128M) can be downloaded from HuggingFace."
+        )
+
+    has_config = (model_path / "config.json").exists()
+    has_model = (model_path / "model.safetensors").exists()
+
+    if not has_config or not has_model:
+        return False, (
+            f"Model2Vec folder exists but appears incomplete.\n\n"
+            f"Path: {model_path}\n"
+            f"config.json: {'Found' if has_config else 'MISSING'}\n"
+            f"model.safetensors: {'Found' if has_model else 'MISSING'}\n\n"
+            f"Please ensure the full model is present."
+        )
+
+    return True, f"Model ready at: {model_path}"
+
+
+def check_engine_available(engine: str) -> Tuple[bool, str]:
+    """Check if the specified fuzzy engine's model is available."""
+    if engine == config.FUZZY_ENGINE_MODEL2VEC:
+        return check_model2vec_available()
+    return check_model_available()
+
+
+def load_model2vec(progress_callback: Optional[Callable[[str], None]] = None):
+    """
+    Load the Model2Vec model. Cached after first load.
+
+    Returns:
+        StaticModel instance
+
+    Raises:
+        ImportError: If model2vec is not installed
+        FileNotFoundError: If model folder is missing
+    """
+    global _cached_model2vec
+
+    with _model2vec_lock:
+        if _cached_model2vec is not None:
+            return _cached_model2vec
+
+    available, message = check_model2vec_available()
+    if not available:
+        raise FileNotFoundError(message)
+
+    try:
+        from model2vec import StaticModel
+    except ImportError as e:
+        raise ImportError(
+            f"Failed to load model2vec.\n\n"
+            f"Error: {e}\n\n"
+            f"Install with: pip install model2vec"
+        ) from e
+
+    model_path = config.MODEL2VEC_PATH
+
+    if progress_callback:
+        progress_callback("Loading Model2Vec model...")
+
+    logger.info(f"Loading Model2Vec model from: {model_path}")
+    model = StaticModel.from_pretrained(str(model_path))
+    logger.info("Model2Vec model loaded successfully")
+
+    with _model2vec_lock:
+        _cached_model2vec = model
+
+    return model
+
+
+def load_engine(engine: str, progress_callback: Optional[Callable[[str], None]] = None):
+    """Load the specified fuzzy engine's model."""
+    if engine == config.FUZZY_ENGINE_MODEL2VEC:
+        return load_model2vec(progress_callback)
+    return load_model(progress_callback)
+
+
+def _encode_texts(model, texts: List[str]) -> 'np.ndarray':
+    """
+    Encode texts using the appropriate method for the model type.
+
+    Detects engine by class name to avoid cross-imports:
+    - StaticModel (Model2Vec) → model.encode(texts)
+    - SentenceTransformer → model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
+    """
+    import numpy as np
+
+    class_name = type(model).__name__
+    if class_name == "StaticModel":
+        result = model.encode(texts)
+        return np.asarray(result, dtype=np.float32)
+    else:
+        return model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
 
 
 def load_model(progress_callback: Optional[Callable[[str], None]] = None):
@@ -160,7 +272,7 @@ def build_faiss_index(
     all_embeddings = []
     for i in range(0, total, batch_size):
         batch = texts[i:i + batch_size]
-        batch_embeddings = model.encode(batch, convert_to_numpy=True, show_progress_bar=False)
+        batch_embeddings = _encode_texts(model, batch)
         all_embeddings.extend(batch_embeddings)
 
         done = min(i + batch_size, total)
@@ -225,7 +337,7 @@ def search_fuzzy(
         return []
 
     # Encode query
-    query_embedding = model.encode([query_text.strip()], convert_to_numpy=True, show_progress_bar=False)
+    query_embedding = _encode_texts(model, [query_text.strip()])
     query_embedding = np.ascontiguousarray(query_embedding, dtype=np.float32)
     faiss.normalize_L2(query_embedding)
 
@@ -364,13 +476,15 @@ def get_cached_index_info() -> Optional[Dict]:
 
 def clear_cache():
     """Clear all cached model and index data."""
-    global _cached_model, _cached_index, _cached_index_path, _cached_texts, _cached_entries
+    global _cached_model, _cached_model2vec, _cached_index, _cached_index_path, _cached_texts, _cached_entries
     with _cache_lock:
         _cached_model = None
         _cached_index = None
         _cached_index_path = None
         _cached_texts = None
         _cached_entries = None
+    with _model2vec_lock:
+        _cached_model2vec = None
     logger.info("Fuzzy matching cache cleared")
 
 

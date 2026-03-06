@@ -45,6 +45,14 @@ SCRIPT_EXCLUDE_SUBFOLDERS = set()
 # Path to KR-SBERT model folder (placed alongside the app)
 KRTRANSFORMER_PATH = SCRIPT_DIR / "KRTransformer"
 
+# Path to Model2Vec model folder (placed alongside the app)
+MODEL2VEC_PATH = SCRIPT_DIR / "Model2Vec"
+
+# Fuzzy engine selection
+FUZZY_ENGINE_KRSBERT = "krsbert"
+FUZZY_ENGINE_MODEL2VEC = "model2vec"
+FUZZY_ENGINE_DEFAULT = FUZZY_ENGINE_MODEL2VEC  # Fast engine preferred
+
 # Fuzzy matching threshold range and default
 FUZZY_THRESHOLD_MIN = 0.70
 FUZZY_THRESHOLD_MAX = 1.00

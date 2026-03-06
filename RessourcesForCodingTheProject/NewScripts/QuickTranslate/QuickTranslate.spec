@@ -52,6 +52,7 @@ METADATA_PACKAGES = [
     'transformers',
     'huggingface-hub',
     'safetensors',
+    'model2vec',
 ]
 
 for pkg in METADATA_PACKAGES:
@@ -138,6 +139,8 @@ a = Analysis(
         'tokenizers',
         'typing_extensions',
         'yaml',
+        # Model2Vec -- lightweight static embeddings
+        'model2vec',
         # FAISS -- import name differs from distribution name
         'faiss',
         'faiss.swigfaiss',

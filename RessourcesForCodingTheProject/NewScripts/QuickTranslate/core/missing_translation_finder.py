@@ -23,6 +23,21 @@ from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
+
+def _encode_texts_compat(model, texts):
+    """Encode texts using the appropriate method for the model type.
+
+    Same logic as fuzzy_matching._encode_texts but local to avoid circular imports.
+    """
+    import numpy as np
+
+    class_name = type(model).__name__
+    if class_name == "StaticModel":
+        result = model.encode(texts)
+        return np.asarray(result, dtype=np.float32)
+    else:
+        return model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
+
 # Try lxml first (more robust), fallback to standard library
 try:
     from lxml import etree as LET
@@ -1901,7 +1916,7 @@ def find_missing_with_options(
             all_vecs = []
             for i in range(0, len(all_source_texts), batch_size):
                 batch = all_source_texts[i:i + batch_size]
-                vecs = model.encode(batch, show_progress_bar=False)
+                vecs = _encode_texts_compat(model, batch)
                 all_vecs.append(vecs)
                 done = min(i + batch_size, len(all_source_texts))
                 if done % 500 == 0 or done == len(all_source_texts):
@@ -1971,7 +1986,7 @@ def find_missing_with_options(
             total_to_encode = len(sids_needing_fuzzy)
             for idx, sid in enumerate(sids_needing_fuzzy):
                 texts = source_by_sid[sid]
-                vecs = model.encode(texts, show_progress_bar=False)
+                vecs = _encode_texts_compat(model, texts)
                 vecs = vecs.astype(np.float32)
                 norms = np.linalg.norm(vecs, axis=1, keepdims=True)
                 norms[norms == 0] = 1
@@ -2113,7 +2128,7 @@ def find_missing_with_options(
                     sid = entry.string_id
                     so = entry.str_origin.strip()
 
-                    target_vec = model.encode([so], show_progress_bar=False).astype(np.float32)
+                    target_vec = _encode_texts_compat(model, [so]).astype(np.float32)
                     norm = np.linalg.norm(target_vec)
                     if norm > 0:
                         target_vec = target_vec / norm
@@ -2182,7 +2197,7 @@ def find_missing_with_options(
                     batch_texts = need_fuzzy_texts[i:i + batch_size]
                     batch_entries = need_fuzzy_entries[i:i + batch_size]
 
-                    target_vecs = model.encode(batch_texts, show_progress_bar=False).astype(np.float32)
+                    target_vecs = _encode_texts_compat(model, batch_texts).astype(np.float32)
                     norms = np.linalg.norm(target_vecs, axis=1, keepdims=True)
                     norms[norms == 0] = 1
                     target_vecs = target_vecs / norms
