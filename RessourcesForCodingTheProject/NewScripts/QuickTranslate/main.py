@@ -142,7 +142,6 @@ def run_smoke_test():
     test("import tokenizers", lambda: __import__('tokenizers'))
     test("import safetensors", lambda: __import__('safetensors'))
     test("import tqdm", lambda: __import__('tqdm'))
-    test("import regex", lambda: __import__('regex'))
     test("import requests", lambda: __import__('requests'))
     test("import packaging", lambda: __import__('packaging'))
     test("import filelock", lambda: __import__('filelock'))

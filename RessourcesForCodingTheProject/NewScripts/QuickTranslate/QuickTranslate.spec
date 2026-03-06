@@ -34,7 +34,6 @@ ml_hiddenimports = []
 METADATA_PACKAGES = [
     'numpy',
     'tqdm',
-    'regex',
     'requests',
     'urllib3',
     'certifi',
@@ -100,7 +99,6 @@ a = Analysis(
         'numpy',
         'tqdm',
         'tqdm.auto',
-        'regex',
         'requests',
         'requests.adapters',
         'requests.api',

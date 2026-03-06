@@ -185,7 +185,7 @@ jobs:
           print(f'faiss OK')
           import numpy
           print(f'numpy {numpy.__version__}')
-          import tqdm, regex, packaging, filelock, tokenizers
+          import tqdm, tokenizers, safetensors
           print('All transitive deps OK')
 
           import requests
