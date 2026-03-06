@@ -129,6 +129,7 @@ class ExtractAnythingApp:
         from .novoice_tab import NoVoiceTab
         from .blacklist_tab import BlacklistTab
         from .string_eraser_tab import StringEraserTab
+        from .string_add_tab import StringAddTab
         from .file_eraser_tab import FileEraserTab
 
         self.tabs = [
@@ -138,6 +139,7 @@ class ExtractAnythingApp:
             NoVoiceTab(self.notebook, self),
             BlacklistTab(self.notebook, self),
             StringEraserTab(self.notebook, self),
+            StringAddTab(self.notebook, self),
             FileEraserTab(self.notebook, self),
         ]
 

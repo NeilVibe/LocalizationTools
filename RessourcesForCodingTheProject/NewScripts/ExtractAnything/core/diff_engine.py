@@ -266,9 +266,12 @@ def revert_entries(
             to_remove.append(elem)
         elif sid_lower in edits:
             before_entry = edits[sid_lower]
+            # Use raw_attribs to preserve original format (no normalization)
+            raw = before_entry.get("raw_attribs") or {}
             str_name, _ = xml_parser.get_attr(elem, config.STR_ATTRS)
             if str_name:
-                elem.set(str_name, before_entry["str_value"])
+                raw_val = xml_parser.get_attr_value(raw, config.STR_ATTRS)
+                elem.set(str_name, raw_val if raw_val else before_entry.get("str_value", ""))
                 restored += 1
 
     # Remove ADD elements
