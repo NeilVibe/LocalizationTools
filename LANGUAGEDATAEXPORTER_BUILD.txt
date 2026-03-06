@@ -66,3 +66,4 @@ Build 033: FileName column + FIXED status dropdown
 Build 034: Add DescOrigin + Desc columns to Excel output
 Build 034: 3-way export mode (No Script / Full Export / Script Only)
 Build 035: Script Only: VRS ordering fix, EventName + HasAudio columns, WEM audio detection
+Build 034: No Script mode excludes script/dialog for ALL languages (not just ENG/ZHO-CN)

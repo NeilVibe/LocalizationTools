@@ -24,7 +24,6 @@ from config import (
     CLUSTER_CONFIG,
     DIALOG_SEQUENCER_EXCLUSION,
     GAMEDATA_EXCLUSION,
-    LANGUAGES_WITH_DIALOG_EXCLUSION,
     KNOWN_BRANCHES,
     VOICE_RECORDING_FOLDER,
     get_audio_folder,
@@ -321,7 +320,7 @@ class LanguageDataExporterGUI:
 
         self.export_mode_hint = ttk.Label(
             mode_frame,
-            text="ENG & ZHO-CN exclude Script/Dialog",
+            text="Excludes Script/Dialog for all languages",
             font=("Arial", 8),
             foreground="gray",
         )
@@ -352,7 +351,7 @@ class LanguageDataExporterGUI:
         """Update hint label when export mode changes."""
         mode = self.export_mode_var.get()
         hints = {
-            "No Script": "ENG & ZHO-CN exclude Script/Dialog",
+            "No Script": "Excludes Script/Dialog for all languages",
             "Full Export": "All categories included for all languages",
             "Script Only": "Only Sequencer/Dialog lines (all languages)",
         }
@@ -472,7 +471,7 @@ class LanguageDataExporterGUI:
                     excluded_categories = None
                     if is_script:
                         excluded_categories = GAMEDATA_EXCLUSION
-                    elif export_mode == "No Script" and lang_code.lower() in LANGUAGES_WITH_DIALOG_EXCLUSION:
+                    elif export_mode == "No Script":
                         excluded_categories = DIALOG_SEQUENCER_EXCLUSION
 
                     # Build WEM index for this language (cached)

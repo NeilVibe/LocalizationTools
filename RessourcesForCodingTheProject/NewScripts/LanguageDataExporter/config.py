@@ -243,12 +243,8 @@ DEFAULT_CATEGORY = "Uncategorized"
 # These are ordered chronologically by story appearance
 STORY_CATEGORIES = ["Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"]
 
-# Categories to EXCLUDE for ENG and ZHO-CN exports (voiced/story content)
-# These languages get voiceover, so Dialog/Sequencer strings are handled separately
+# Categories to EXCLUDE in "No Script" mode (script/dialog content)
 DIALOG_SEQUENCER_EXCLUSION = {"Sequencer", "AIDialog", "QuestDialog", "NarrationDialog"}
-
-# Languages that have DIALOG/SEQUENCER exclusion (voiced languages)
-LANGUAGES_WITH_DIALOG_EXCLUSION = {"eng", "zho-cn"}
 
 # Inverse exclusion: everything that ISN'T script/dialog (for "Script Only" export)
 GAMEDATA_EXCLUSION = {
