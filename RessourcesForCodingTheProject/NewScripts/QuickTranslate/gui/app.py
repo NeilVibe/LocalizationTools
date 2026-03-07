@@ -1970,6 +1970,7 @@ class QuickTranslateApp:
         """Quick synchronous column detection for when path was pasted, not browsed."""
         try:
             from core.excel_io import detect_excel_columns
+            from core.xml_parser import parse_xml_file, iter_locstr_elements, get_attr, DESC_ATTRS, DESCORIGIN_ATTRS
             cols = self._source_columns.copy()
             for xlsx in source_folder.rglob("*.xlsx"):
                 if xlsx.name.startswith("~$"):
@@ -1980,9 +1981,22 @@ class QuickTranslateApp:
                 cols["has_correction"] = detected["has_correction"]
                 cols["has_eventname"] = detected["has_eventname"]
                 cols["has_descorigin"] = detected.get("has_descorigin", False)
+                cols["has_desc"] = detected.get("has_desc", False)
                 break  # Only check first Excel file
             for xml in source_folder.rglob("*.xml"):
                 cols["has_xml"] = True
+                # Scan first XML for DescOrigin/Desc (same as threaded scan)
+                try:
+                    root = parse_xml_file(xml)
+                    for elem in iter_locstr_elements(root):
+                        if not cols["has_descorigin"] and get_attr(elem, DESCORIGIN_ATTRS):
+                            cols["has_descorigin"] = True
+                        if not cols["has_desc"] and get_attr(elem, DESC_ATTRS):
+                            cols["has_desc"] = True
+                        if cols["has_descorigin"] and cols["has_desc"]:
+                            break
+                except Exception:
+                    pass
                 break
             self._source_columns = cols
         except Exception:
