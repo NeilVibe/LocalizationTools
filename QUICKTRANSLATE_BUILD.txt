@@ -157,3 +157,4 @@ Build 033: Model2Vec + HNSW migration (no torch, no KR-SBERT, 40 dead functions 
 Build 034: Fix CI import validation after dead code cleanup
 Build 035: Remove stale regex dep, fix CI ML verification
 Build 036: Fuzzy match Excel report + unified br linebreaks in Excel targets
+Build 037: fix DescOrigin/Desc detection on pasted source paths
