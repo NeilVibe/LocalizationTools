@@ -186,6 +186,23 @@ DEFAULT_VRS_FOLDER = _default_paths['vrs_folder']
 
 
 # =============================================================================
+# Audio Languages (subset with separate audio folders)
+# =============================================================================
+
+AUDIO_LANGUAGES = [
+    ('eng', 'English(US)'),
+    ('kor', 'Korean'),
+    ('zho-cn', 'Chinese(PRC)'),
+]
+
+LANG_TO_AUDIO_FOLDER = {
+    'eng': 'audio_folder',
+    'kor': 'audio_folder_kr',
+    'zho-cn': 'audio_folder_zh',
+}
+
+
+# =============================================================================
 # Lazy Language Loading Config
 # =============================================================================
 
@@ -376,6 +393,7 @@ class Settings:
     font_size: int = DEFAULT_FONT_SIZE
     ui_language: str = 'English'
     selected_language: str = 'eng'  # Translation language
+    audio_language: str = 'eng'  # Audio folder language (eng/kor/zho-cn)
     colors: Dict[str, str] = field(default_factory=lambda: DEFAULT_COLORS.copy())
 
     # Perforce configuration
@@ -415,6 +433,7 @@ class Settings:
             font_size=data.get('font_size', DEFAULT_FONT_SIZE),
             ui_language=data.get('ui_language', 'English'),
             selected_language=data.get('selected_language', 'eng'),
+            audio_language=data.get('audio_language', 'eng'),
             colors=data.get('colors', DEFAULT_COLORS.copy()),
             drive_letter=data.get('drive_letter', 'F'),
             branch=data.get('branch', 'mainline'),
@@ -597,7 +616,9 @@ def _sync_settings_paths(settings: 'Settings'):
     settings.waypoint_folder = DEFAULT_WAYPOINT_FOLDER
     settings.texture_folder = DEFAULT_TEXTURE_FOLDER
     settings.character_folder = DEFAULT_CHARACTER_FOLDER
-    settings.audio_folder = DEFAULT_AUDIO_FOLDER_EN
+    template_key = LANG_TO_AUDIO_FOLDER.get(settings.audio_language, 'audio_folder')
+    paths = generate_default_paths(_DRIVE_LETTER, _BRANCH)
+    settings.audio_folder = paths[template_key]
     settings.export_folder = DEFAULT_EXPORT_FOLDER
     settings.vrs_folder = DEFAULT_VRS_FOLDER
 

@@ -31,7 +31,8 @@ from config import (
     APP_NAME, VERSION, get_settings, save_settings, load_settings,
     get_ui_text, Settings, LANGUAGES, LANGUAGE_NAMES,
     DATA_MODES, DEFAULT_MODE, KNOWN_BRANCHES, update_branch,
-    update_drive_letter,
+    update_drive_letter, AUDIO_LANGUAGES, LANG_TO_AUDIO_FOLDER,
+    generate_default_paths,
 )
 import config
 from core.linkage import LinkageResolver, DataMode
@@ -145,6 +146,7 @@ class MapDataGeneratorApp:
         self._data_loaded = False
         self._loading = False  # Loading lock - prevents rapid mode switching
         self._load_generation = 0  # Generation counter for stale callback detection
+        self._lang_change_generation = 0  # Generation counter for language change race condition
         self._current_results = []
         self._current_search_index = 0
         self._texture_folder: Optional[Path] = None
@@ -298,6 +300,29 @@ class MapDataGeneratorApp:
         )
         self._map_toggle_btn.pack(side="left", padx=20)
 
+        # Audio language selector (AUDIO mode only)
+        self._audio_lang_frame = ttk.Frame(toolbar)
+        ttk.Label(self._audio_lang_frame, text="Audio:").pack(side="left")
+        audio_lang_values = [f"{name} ({code})" for code, name in AUDIO_LANGUAGES]
+        self._audio_lang_var = tk.StringVar()
+        # Set initial value from settings
+        current_audio_lang = self.settings.audio_language
+        for code, name in AUDIO_LANGUAGES:
+            if code == current_audio_lang:
+                self._audio_lang_var.set(f"{name} ({code})")
+                break
+        else:
+            self._audio_lang_var.set(audio_lang_values[0])
+        self._audio_lang_combo = ttk.Combobox(
+            self._audio_lang_frame,
+            textvariable=self._audio_lang_var,
+            values=audio_lang_values,
+            width=18,
+            state="readonly",
+        )
+        self._audio_lang_combo.pack(side="left", padx=(5, 0))
+        self._audio_lang_combo.bind("<<ComboboxSelected>>", lambda _: self._on_audio_language_change())
+
         # Stats display (right side)
         self._stats_label = ttk.Label(toolbar, text="", foreground="gray")
         self._stats_label.pack(side="right", padx=10)
@@ -402,6 +427,12 @@ class MapDataGeneratorApp:
                 self._map_canvas = None
                 self._map_visible = False
                 self._map_toggle_var.set(False)
+
+        # Audio language selector only visible in AUDIO mode
+        if self._current_mode == DataMode.AUDIO:
+            self._audio_lang_frame.pack(side="left", padx=20)
+        else:
+            self._audio_lang_frame.pack_forget()
 
         # Export tree: show in AUDIO mode, hide otherwise
         if self._current_mode == DataMode.AUDIO:
@@ -669,10 +700,11 @@ class MapDataGeneratorApp:
         vrs_folder: Optional[Path] = None,
     ) -> None:
         """Start background audio data loading."""
-        # Set loading lock and disable mode buttons
+        # Set loading lock and disable mode buttons + audio combo
         self._loading = True
         for btn in self._mode_buttons.values():
             btn.configure(state='disabled')
+        self._audio_lang_combo.configure(state='disabled')
 
         # Increment generation to invalidate any pending callbacks
         self._load_generation += 1
@@ -736,10 +768,11 @@ class MapDataGeneratorApp:
         self._progress_bar.stop()
         self._data_loaded = True
 
-        # Clear loading lock and re-enable mode buttons
+        # Clear loading lock and re-enable mode buttons + audio combo
         self._loading = False
         for btn in self._mode_buttons.values():
             btn.configure(state='normal')
+        self._audio_lang_combo.configure(state='readonly')
 
         # Update mode visibility
         self._update_mode_visibility()
@@ -837,10 +870,11 @@ class MapDataGeneratorApp:
 
         self._progress_bar.stop()
 
-        # Clear loading lock and re-enable mode buttons
+        # Clear loading lock and re-enable mode buttons + audio combo
         self._loading = False
         for btn in self._mode_buttons.values():
             btn.configure(state='normal')
+        self._audio_lang_combo.configure(state='readonly')
 
         self._progress_var.set("Load failed")
         messagebox.showerror("Error", f"Failed to load data:\n{error}")
@@ -947,9 +981,13 @@ class MapDataGeneratorApp:
         self._result_panel.append_results(results, has_more)
 
     def _on_language_change(self, lang_code: str) -> None:
-        """Handle language change (with lazy loading)."""
+        """Handle language change (with lazy loading + race condition guard)."""
         if not self._search_engine:
             return
+
+        # Increment generation to discard stale callbacks from rapid switching
+        self._lang_change_generation += 1
+        current_gen = self._lang_change_generation
 
         # Check if language needs to be loaded
         if not self._lang_manager.is_language_loaded(lang_code):
@@ -959,14 +997,19 @@ class MapDataGeneratorApp:
             # Load in background
             def load_and_update():
                 self._lang_manager.load_language(lang_code)
-                self.root.after(0, lambda: self._apply_language_change(lang_code))
+                self.root.after(0, lambda: self._apply_language_change(lang_code, current_gen))
 
             threading.Thread(target=load_and_update, daemon=True).start()
         else:
-            self._apply_language_change(lang_code)
+            self._apply_language_change(lang_code, current_gen)
 
-    def _apply_language_change(self, lang_code: str) -> None:
+    def _apply_language_change(self, lang_code: str, generation: int) -> None:
         """Apply language change after loading."""
+        # Discard stale callbacks from rapid language switching
+        if generation != self._lang_change_generation:
+            log.debug("Ignoring stale language change (gen %d, current %d)", generation, self._lang_change_generation)
+            return
+
         lang_table = self._lang_manager.get_table(lang_code)
         self._search_engine.set_language_table(lang_table)
 
@@ -985,6 +1028,24 @@ class MapDataGeneratorApp:
         save_settings(self.settings)
 
         self._progress_var.set(get_ui_text('ready'))
+
+    def _on_audio_language_change(self) -> None:
+        """Handle audio language combobox change — update audio_folder and reload."""
+        display = self._audio_lang_var.get()
+        # Extract code from "English(US) (eng)" format
+        audio_code = display.rsplit('(', 1)[-1].rstrip(')')
+
+        # Update settings
+        self.settings.audio_language = audio_code
+        template_key = LANG_TO_AUDIO_FOLDER.get(audio_code, 'audio_folder')
+        paths = generate_default_paths(config._DRIVE_LETTER, config._BRANCH)
+        self.settings.audio_folder = paths[template_key]
+        save_settings(self.settings)
+
+        log.info("Audio language changed to: %s (folder: %s)", audio_code, self.settings.audio_folder)
+
+        # Reload audio data with new folder
+        self._auto_load_data()
 
     def _on_result_select(self, result: SearchResult) -> None:
         """Handle result selection."""
