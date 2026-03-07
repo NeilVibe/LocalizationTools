@@ -17,11 +17,11 @@ def is_korean(text: str) -> bool:
         text: The text to check
 
     Returns:
-        True if text contains Korean characters (U+AC00-U+D7A3)
+        True if text contains Korean characters (syllables + Jamo)
     """
     if not text:
         return False
-    return bool(re.search(r'[\uac00-\ud7a3]', text))
+    return bool(re.search(r'[\uac00-\ud7af\u1100-\u11ff\u3130-\u318f]', text))
 
 
 def normalize_text(text: str) -> str:

@@ -79,7 +79,7 @@ BIG_CAT_FILLS = {k: PatternFill("solid", fgColor=v) for k, v in BIG_CAT_COLOURS.
 
 # Regex patterns
 _bad_entity_re = re.compile(r'&(?!lt;|gt;|amp;|apos;|quot;)')
-korean_re      = re.compile(r'[\uac00-\ud7a3]')
+korean_re      = re.compile(r'[\uac00-\ud7af\u1100-\u11ff\u3130-\u318f]')
 _ctrl_char_re  = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
 # Tag stack repair patterns

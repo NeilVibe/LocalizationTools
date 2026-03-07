@@ -23,7 +23,7 @@ try:
     from utils.language_utils import contains_korean
 except ImportError:
     import re
-    _KOREAN_REGEX = re.compile(r'[\uac00-\ud7a3]')
+    _KOREAN_REGEX = re.compile(r'[\uac00-\ud7af\u1100-\u11ff\u3130-\u318f]')
     def contains_korean(text):
         if not text or not isinstance(text, str):
             return False

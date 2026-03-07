@@ -6,8 +6,8 @@ Detect Korean Hangul characters in text to identify untranslated strings.
 
 import re
 
-# Korean Hangul syllables range (AC00-D7A3)
-KOREAN_REGEX = re.compile(r'[\uac00-\ud7a3]')
+# Korean: syllables (AC00-D7AF) + Jamo (1100-11FF) + Compat Jamo (3130-318F)
+KOREAN_REGEX = re.compile(r'[\uac00-\ud7af\u1100-\u11ff\u3130-\u318f]')
 
 
 def is_korean_text(text: str) -> bool:
