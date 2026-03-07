@@ -88,7 +88,7 @@ def br_to_newline(text: str) -> str:
 # KOREAN DETECTION
 # =============================================================================
 
-_korean_re = re.compile(r'[\uAC00-\uD7AF]')
+_korean_re = re.compile(r'[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]')
 
 
 def contains_korean(text: str) -> bool:

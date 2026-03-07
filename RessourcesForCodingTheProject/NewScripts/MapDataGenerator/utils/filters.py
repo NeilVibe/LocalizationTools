@@ -13,7 +13,7 @@ from typing import Optional
 # =============================================================================
 
 # Korean Hangul syllables range
-_KOREAN_RE = re.compile(r'[\uAC00-\uD7AF]')
+_KOREAN_RE = re.compile(r'[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]')
 
 # Placeholder suffix pattern: {something#suffix} -> {something}
 _PLACEHOLDER_SUFFIX_RE = re.compile(r'\{([^#}]+)#[^}]+\}')
