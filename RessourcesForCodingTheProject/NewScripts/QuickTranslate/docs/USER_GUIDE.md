@@ -122,7 +122,7 @@ Uses a 2-step cascade before declaring failure:
 1. **Normalized match** — case-insensitive StringID, normalized StrOrigin (HTML unescape, whitespace collapse)
 2. **No-space fallback** — removes ALL whitespace from both sides and compares
 
-**Fuzzy option:** After cascade fails, KR-SBERT semantic similarity finds closest match.
+**Fuzzy option:** After cascade fails, Model2Vec semantic similarity finds closest match.
 
 | Threshold | Use |
 |:---------:|-----|
@@ -294,7 +294,7 @@ Configure in Settings section or edit `settings.json`:
 | `settings.json` | LOC + EXPORT paths |
 | `exclude_rules.json` | Find Missing exclusions |
 | `presubmission_settings.json` | Check settings |
-| `KRTransformer/` | KR-SBERT model (fuzzy matching) |
+| `Model2Vec/` | Model2Vec model (fuzzy matching) |
 
 ---
 
@@ -325,7 +325,7 @@ Configure in Settings section or edit `settings.json`:
 | STRORIGIN_MISMATCH everywhere | Korean source updated since extraction — sync P4, try Fuzzy |
 | Permission denied | P4 checkout needed on target XML |
 | Excel not read | Close Excel first (it locks files) |
-| Fuzzy greyed out | `KRTransformer/` folder missing |
+| Fuzzy greyed out | `Model2Vec/` folder missing |
 
 ---
 
@@ -344,6 +344,6 @@ Configure in Settings section or edit `settings.json`:
 | **SCRIPT** | Dialog/ and Sequencer/ categories |
 | **Fan-out** | One correction fills ALL entries sharing the same StrOrigin |
 | **`<br/>`** | Only correct newline format in XML |
-| **KR-SBERT** | Korean Sentence-BERT model for fuzzy matching |
+| **Model2Vec** | Static embedding model for fuzzy matching (256-dim, no torch needed) |
 
 *Last updated: March 2026*

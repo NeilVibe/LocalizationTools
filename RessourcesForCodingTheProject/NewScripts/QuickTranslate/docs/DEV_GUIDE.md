@@ -11,12 +11,11 @@ QuickTranslate/
 ├── main.py                    ← Entry point (GUI launch, --smoke-test flag)
 ├── config.py                  ← Paths, matching modes, language discovery, settings I/O
 ├── QuickTranslate.spec        ← PyInstaller build spec
-├── runtime_hook_torch.py      ← 3-layer DLL defense for frozen builds
 ├── requirements.txt           ← Core deps (lxml, openpyxl, xlsxwriter)
-├── requirements-ml.txt        ← ML deps (torch, sentence-transformers, faiss-cpu)
+├── requirements-ml.txt        ← ML deps (model2vec, faiss-cpu, numpy)
 ├── QUICKTRANSLATE_BUILD.txt   ← CI trigger file (edit + push = build)
 ├── core/                      ← Business logic
-│   ├── matching.py            ← 4 match algorithms (substring, stringid-only, strict, strorigin)
+│   ├── matching.py            ← Shared utilities (format_multiple_matches)
 │   ├── xml_transfer.py        ← TRANSFER: merge corrections into target XML
 │   ├── xml_parser.py          ← XML parsing (lxml with ElementTree fallback)
 │   ├── xml_io.py              ← XML read/write utilities
@@ -30,7 +29,7 @@ QuickTranslate/
 │   ├── quality_checker.py     ← Wrong script + AI hallucination detection
 │   ├── korean_detection.py    ← Unicode-range Korean text detection
 │   ├── text_utils.py          ← Normalization helpers
-│   ├── fuzzy_matching.py      ← KR-SBERT + FAISS fuzzy StrOrigin matching
+│   ├── fuzzy_matching.py      ← Model2Vec + FAISS HNSW fuzzy StrOrigin matching
 │   ├── category_mapper.py     ← StringID → EXPORT category mapping
 │   ├── postprocess.py         ← Golden rule enforcement (empty StrOrigin → empty Str)
 │   ├── failure_report.py      ← Excel failure report generation (3-sheet)
@@ -48,7 +47,7 @@ QuickTranslate/
 │   ├── USER_GUIDE.md          ← End-user documentation
 │   ├── DEV_GUIDE.md           ← This file
 │   ├── LINEBREAK_SAFEGUARDS.md ← <br/> pipeline: golden rules, 3-layer defense, all functions
-│   ├── PYINSTALLER_ML_BUNDLING.md ← Detailed PyInstaller + ML DLL investigation
+│   ├── PYINSTALLER_ML_BUNDLING.md ← Historical PyInstaller + ML DLL investigation
 │   └── FAISS_IMPLEMENTATION.md
 └── archive/                   ← Deprecated/legacy code (excluded from builds)
 ```
@@ -83,18 +82,15 @@ Job 2: Safety Checks (ubuntu)
   └── pip-audit security scan (advisory, doesn't fail build)
 
 Job 3: Build & Release (windows)
-  ├── Install deps: requirements.txt + CPU-only torch + ML deps + PyInstaller
-  ├── Verify ML deps (assert +cpu in torch version)
+  ├── Install deps: requirements.txt + ML deps (model2vec, faiss-cpu, numpy) + PyInstaller
+  ├── Verify ML deps (model2vec, faiss, numpy importable)
   ├── PyInstaller build (QuickTranslate.spec)
   ├── Post-build verification:
   │   ├── QuickTranslate.exe exists
   │   ├── _internal/ directory exists (clean layout)
-  │   ├── No DLLs in root (only exe + _internal/)
-  │   ├── vcruntime140.dll inside _internal/
-  │   ├── c10.dll + torch_cpu.dll inside _internal/
-  │   └── sentence_transformers package inside _internal/
-  ├── Smoke test: run actual exe with --smoke-test (58 imports verified)
-  ├── Build size gate: must be < 1500 MB (catches CUDA torch)
+  │   └── No DLLs in root (only exe + _internal/)
+  ├── Smoke test: run actual exe with --smoke-test (all imports verified)
+  ├── Build size gate: must be < 500 MB (Model2Vec builds are ~160 MB)
   ├── Inno Setup installer build
   ├── Create Portable.zip + Source.zip
   └── GitHub Release (tag: quicktranslate-vX.X.X)
@@ -116,40 +112,17 @@ Job 3: Build & Release (windows)
 
 **Use `hiddenimports` for packages with native DLLs. Use `collect_all` only for pure-Python packages.**
 
-`collect_all('torch')` preserves the `torch/lib/c10.dll` subdirectory structure, but `vcruntime140.dll` lives in `_internal/`. On fresh Windows machines (no VC++ Redist), Windows can't find vcruntime across directories → `WinError 1114`.
-
-`hiddenimports=['torch']` lets PyInstaller's binary analysis place DLLs flat in `_internal/` → everything finds its dependencies.
+See `docs/PYINSTALLER_ML_BUNDLING.md` for the full historical investigation.
 
 | Package | collect_all? | Why |
 |---------|:-----------:|-----|
-| torch, numpy, faiss, tokenizers, safetensors | **No** | Native DLLs — must be flat |
-| sentence_transformers, transformers, huggingface_hub | **Yes** | Pure Python — needs JSON configs/vocabs |
+| numpy, faiss, tokenizers, safetensors | **No** | Native DLLs — must be flat |
+| model2vec | **No** | Has native deps, keep flat |
+| requests, urllib3, certifi | **Yes** | Pure Python — needs configs/certs |
 
-See `docs/PYINSTALLER_ML_BUNDLING.md` for the full investigation and pattern reference.
+### No Runtime Hook Needed
 
-### Runtime Hook (3-Layer Defense)
-
-`runtime_hook_torch.py` runs before app code as a safety net:
-
-1. **Layer A:** `os.add_dll_directory()` — registers `_internal/` and `torch/lib/` paths (saves handles to prevent GC)
-2. **Layer B:** PATH modification — fallback for legacy DLL search
-3. **Layer C:** Pre-load critical DLLs via `ctypes.WinDLL()` — loads vcruntime140, c10, etc. into process memory
-
-### CPU-Only Torch (Critical)
-
-```bash
-# Step 1: CPU torch FIRST, from PyTorch's dedicated index
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-
-# Step 2: ML deps (torch already satisfied, won't re-download)
-pip install sentence-transformers faiss-cpu numpy
-
-# NEVER use --extra-index-url (pip can find CUDA torch on PyPI and override!)
-```
-
-Verification: `assert '+cpu' in torch.__version__`
-
-Build size: CPU-only ≈ 400–1200 MB. CUDA torch would be 2000+ MB (caught by the 1500 MB gate).
+With Model2Vec (no torch), there's no complex DLL chain to manage. PyInstaller's standard binary analysis handles all native deps correctly.
 
 ### Crash Logging
 
@@ -157,7 +130,7 @@ With `console=False` (GUI app), errors are invisible. `main.py` redirects stderr
 
 ### Smoke Test
 
-`python main.py --smoke-test` (or the built exe with `--smoke-test`) tests all 58 critical imports inside the actual bundle. CI verifies `SMOKE_TEST_PASSED` appears in output.
+`python main.py --smoke-test` (or the built exe with `--smoke-test`) tests all critical imports inside the actual bundle. CI verifies `SMOKE_TEST_PASSED` appears in output.
 
 ---
 
@@ -187,8 +160,8 @@ GitHub → Actions → "QuickTranslate Build & Release" → Run workflow. Option
 
 - Python 3.11+
 - Core: `pip install -r requirements.txt` (lxml, openpyxl, xlsxwriter)
-- ML (optional, for fuzzy matching): `pip install -r requirements-ml.txt` (torch, sentence-transformers, faiss-cpu)
-- Fuzzy matching also needs the `KRTransformer/` model folder next to the app
+- ML (optional, for fuzzy matching): `pip install -r requirements-ml.txt` (model2vec, faiss-cpu, numpy)
+- Fuzzy matching also needs the `Model2Vec/` model folder next to the app
 
 ### Run
 
@@ -200,11 +173,12 @@ python main.py --verbose    # Debug logging
 
 ### Testing
 
-The smoke test (`--smoke-test`) is the primary validation. It tests all 58 critical imports that have caused runtime failures in the past. No separate test suite — the app is validated through the CI smoke test on the actual built executable.
+The smoke test (`--smoke-test`) is the primary validation. It tests all critical imports that have caused runtime failures in the past. No separate test suite — the app is validated through the CI smoke test on the actual built executable.
 
 ### Code Conventions
 
 - Python 3.11+, PEP 8
+- `from __future__ import annotations` in every `.py` file
 - Type hints on function signatures
 - `lxml` preferred, `xml.etree.ElementTree` fallback (checked at import time)
 - All config in `config.py` (paths, matching modes, language lists)

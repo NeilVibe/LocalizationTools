@@ -122,7 +122,7 @@ MyCorrections/              ← Source로 설정
 1. **정규화 매치** — 대소문자 무시 StringID, 정규화된 StrOrigin (HTML 언이스케이프, 공백 정리)
 2. **공백 제거 폴백** — 양쪽에서 모든 공백 제거 후 비교
 
-**Fuzzy 옵션:** 캐스케이드 실패 후 KR-SBERT 시맨틱 유사도로 가장 가까운 매치 검색.
+**Fuzzy 옵션:** 캐스케이드 실패 후 Model2Vec 시맨틱 유사도로 가장 가까운 매치 검색.
 
 | 임계값 | 용도 |
 |:------:|------|
@@ -294,7 +294,7 @@ Settings 섹션 또는 `settings.json` 편집:
 | `settings.json` | LOC + EXPORT 경로 |
 | `exclude_rules.json` | Find Missing 제외 규칙 |
 | `presubmission_settings.json` | 검사 설정 |
-| `KRTransformer/` | KR-SBERT 모델 (fuzzy 매칭) |
+| `Model2Vec/` | Model2Vec 모델 (fuzzy 매칭) |
 
 ---
 
@@ -325,7 +325,7 @@ Settings 섹션 또는 `settings.json` 편집:
 | STRORIGIN_MISMATCH 전부 | 추출 이후 한국어 원문 변경 — P4 동기화, Fuzzy 시도 |
 | 권한 거부 | 대상 XML에 P4 checkout 필요 |
 | Excel 못 읽음 | Excel 먼저 닫기 (파일 잠금) |
-| Fuzzy 비활성화 | `KRTransformer/` 폴더 없음 |
+| Fuzzy 비활성화 | `Model2Vec/` 폴더 없음 |
 
 ---
 
@@ -344,6 +344,6 @@ Settings 섹션 또는 `settings.json` 편집:
 | **SCRIPT** | Dialog/ 및 Sequencer/ 카테고리 |
 | **Fan-out** | 동일 StrOrigin 공유하는 모든 항목에 1건 수정 적용 |
 | **`<br/>`** | XML의 유일한 올바른 줄바꿈 형식 |
-| **KR-SBERT** | Fuzzy 매칭용 Korean Sentence-BERT 모델 |
+| **Model2Vec** | Fuzzy 매칭용 정적 임베딩 모델 (256차원, torch 불필요) |
 
 *최종 업데이트: 2026년 3월*

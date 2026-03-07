@@ -2,47 +2,66 @@
 
 ## Overview
 
-QuickTranslate uses **FAISS IndexFlatIP** with **KR-SBERT** (`snunlp/KR-SBERT-V40K-klueNLI-augSTS`, 768-dim) for fuzzy Korean text matching. This follows the exact same battle-tested pattern used by the three monolith scripts: **TFM FULL**, **XLSTransfer**, and **KR Similar**.
+QuickTranslate uses **FAISS IndexHNSWFlat** with **Model2Vec** (`minishlab/potion-multilingual-128M`, 256-dim) for fuzzy Korean text matching. Model2Vec provides 79x faster encoding than KR-SBERT with no torch dependency.
 
 ---
 
 ## Critical Rules
 
-### IndexFlatIP ONLY - Never HNSW
+### IndexHNSWFlat - Approximate Nearest Neighbor
 
-| | IndexFlatIP (CORRECT) | IndexHNSWFlat (WRONG) |
-|--|----------------------|----------------------|
-| **Build time** | Instant | Minutes (graph construction) |
-| **Accuracy** | 100% exact | Approximate |
-| **Memory** | Low | High (graph structure) |
-| **Compatible with KR-SBERT** | Yes | No - crashes Python |
-| **Scale** | Perfect for <200K vectors | Designed for millions |
+| Parameter | Value | Why |
+|-----------|-------|-----|
+| **M** | 32 | Graph connectivity (higher = more accurate, more memory) |
+| **efConstruction** | 400 | Build-time accuracy (higher = slower build, better graph) |
+| **efSearch** | 500 | Query-time accuracy (higher = slower search, better recall) |
+| **Metric** | `METRIC_INNER_PRODUCT` | Cosine similarity after L2 normalization |
 
-**HNSW is for LocaNext's Qwen model (1024-dim, millions of TM entries). IndexFlatIP is for KR-SBERT (768-dim, <200K vectors). Two different worlds.**
+For <200K vectors, HNSW gives O(log n) search with near-perfect recall at these settings.
 
-### Batch Encoding - batch_size=100
+### Batch Encoding - batch_size=500
 
-Never encode all texts in one `model.encode()` call. Always batch:
+Model2Vec is fast enough for larger batches:
 
 ```python
-# CORRECT - batch loop (same as TFM FULL monolith)
-batch_size = 100
+# CORRECT - batch loop with np.vstack
+batch_size = 500
+all_embeddings = []
 for i in range(0, total, batch_size):
     batch = texts[i:i + batch_size]
-    batch_embeddings = model.encode(batch, convert_to_numpy=True, show_progress_bar=False)
-    all_embeddings.extend(batch_embeddings)
+    batch_emb = encode_texts(model, batch)
+    all_embeddings.append(batch_emb)
 
-# WRONG - all at once (memory spike, no progress tracking)
-embeddings = model.encode(all_170k_texts)
+embeddings = np.vstack(all_embeddings).astype(np.float32)
 ```
 
-### show_progress_bar=False on EVERY encode call
+### Single Normalization Point
 
-Every `model.encode()` call MUST have `show_progress_bar=False` to prevent tqdm "Batches: 100% 1/1" terminal spam. No exceptions.
+`faiss.normalize_L2()` is called ONCE at the FAISS boundary — never inside `encode_texts()`. This prevents double-normalization.
+
+### Empty String Guard
+
+Empty strings produce zero vectors → NaN after normalize_L2. Guard:
+```python
+texts = [t if t.strip() else " " for t in texts]
+```
 
 ---
 
 ## Architecture
+
+### Engine-Agnostic Encoding (`fuzzy_matching.py::encode_texts`)
+
+```python
+def encode_texts(model, texts):
+    """Dispatch by model type — no cross-imports needed."""
+    if type(model).__name__ == "StaticModel":
+        return model.encode(texts)           # Model2Vec
+    else:
+        return model.encode(texts,           # SentenceTransformer (legacy)
+                           convert_to_numpy=True,
+                           show_progress_bar=False)
+```
 
 ### Index Building (`fuzzy_matching.py::build_faiss_index`)
 
@@ -50,111 +69,47 @@ Every `model.encode()` call MUST have `show_progress_bar=False` to prevent tqdm 
 texts (List[str])
     |
     v
-Batch encode (100 at a time)
-    model.encode(batch, convert_to_numpy=True, show_progress_bar=False)
+Empty string guard (" " for blank texts)
     |
     v
-np.array(all_embeddings, dtype=np.float32)
+Batch encode (500 at a time)
+    encode_texts(model, batch)
+    |
+    v
+np.vstack(all_embeddings).astype(np.float32)
     |
     v
 faiss.normalize_L2(embeddings)     # L2 normalize BEFORE adding
     |
     v
-index = faiss.IndexFlatIP(dim)     # Inner product = cosine after normalization
-index.add(embeddings)              # Instant
+index = faiss.IndexHNSWFlat(dim, 32, faiss.METRIC_INNER_PRODUCT)
+index.hnsw.efConstruction = 400
+index.hnsw.efSearch = 500
+index.add(embeddings)
 ```
 
-### Search (`fuzzy_matching.py::search_fuzzy`)
+### Search (`fuzzy_matching.py::find_matches_fuzzy`)
 
-```
-query_text (str)
-    |
-    v
-model.encode([query], convert_to_numpy=True, show_progress_bar=False)
-    |
-    v
-faiss.normalize_L2(query_embedding)    # Normalize query too
-    |
-    v
-distances, indices = index.search(query_embedding, k)
-    |
-    v
-Filter by threshold (>= 0.85 default)
-```
-
-### Translation (`fuzzy_matching.py::find_matches_fuzzy`)
-
-One text at a time - same as all three monoliths:
+Used by `xml_transfer.py` for fuzzy transfer mode:
 
 ```python
 for correction in corrections:
-    results = search_fuzzy(query, model, index, texts, entries, threshold, k=1)
+    query_emb = encode_texts(model, [query])
+    faiss.normalize_L2(query_emb)
+    D, I = index.search(query_emb, k)
+    # Filter by threshold (>= 0.85 default)
 ```
 
 ---
 
-## Monolith Reference
+## Model Folder
 
-All three monoliths use the identical FAISS pattern:
+`Model2Vec/` folder placed next to exe (same pattern as legacy `KRTransformer/`). Contains:
+- `config.json`
+- `model.safetensors`
+- `tokenizer.json` (+ related tokenizer files)
 
-### TFM FULL (`TFMFULL0116.py`)
-```python
-# Index: IndexFlatIP
-index = faiss.IndexFlatIP(d)
-faiss.normalize_L2(embeddings)
-index.add(embeddings)
-
-# Encoding: batch_size=100
-batch_size = 100
-for i in range(0, len(data), batch_size):
-    batch_embeddings = model.encode(batch_data)
-
-# Search: one at a time
-sentence_embeddings = model.encode([sentence])
-faiss.normalize_L2(sentence_embeddings)
-distances, indices = index.search(sentence_embeddings, 4)
-```
-
-### XLSTransfer (`XLSTransfer0225.py`)
-```python
-# Index: IndexFlatIP
-faiss.normalize_L2(ref_kr_embeddings)
-index = faiss.IndexFlatIP(ref_kr_embeddings.shape[1])
-index.add(ref_kr_embeddings)
-
-# Encoding: one at a time
-batch_embeddings = model.encode([text], convert_to_tensor=False)
-
-# Search: one at a time
-sentence_embeddings = model.encode([clean_sentence])
-faiss.normalize_L2(sentence_embeddings)
-distances, indices = index.search(sentence_embeddings, 1)
-```
-
-### KR Similar (`KRSIMILAR0124.py`)
-```python
-# Index: IndexFlatIP (via FAISSManager in modern version)
-# Encoding: batch_size=1000
-batch_embeddings = model.encode(batch_texts, device=device)
-
-# Search: one at a time
-embedding = model.encode([line])
-faiss.normalize_L2(embedding)
-distances, indices = split_index.search(embedding, 1)
-```
-
----
-
-## Threading
-
-No monolith uses ThreadPoolExecutor for encoding or search. All use `threading.Thread` only for GUI responsiveness. Encoding and FAISS search are sequential.
-
-| Monolith | ThreadPoolExecutor | threading.Thread |
-|----------|-------------------|-----------------|
-| TFM FULL | Imported, never used | GUI wrapper only |
-| XLSTransfer | Not used | GUI wrapper only |
-| KR Similar | Text normalization only | GUI wrapper only |
-| **QuickTranslate** | Not used | GUI wrapper only |
+NOT bundled in PyInstaller build — too large (~506 MB). Distributed separately or downloaded on first run.
 
 ---
 
@@ -162,13 +117,15 @@ No monolith uses ThreadPoolExecutor for encoding or search. All use `threading.T
 
 | File | FAISS Usage |
 |------|------------|
-| `core/fuzzy_matching.py` | Index building (IndexFlatIP), single-query search |
-| `core/matching.py` | Strict fuzzy mode: StringID pool pre-filtering + temporary FAISS index on pool |
-| `core/xml_transfer.py` | Calls fuzzy_matching functions |
-| `config.py` | Threshold config only (no FAISS params needed for IndexFlatIP) |
+| `core/fuzzy_matching.py` | Index building (IndexHNSWFlat), encode_texts dispatcher, search |
+| `core/xml_transfer.py` | Calls fuzzy_matching functions for fuzzy transfer mode |
+| `core/missing_translation_finder.py` | Uses encode_texts for Find Missing fuzzy modes |
+| `config.py` | MODEL2VEC_PATH, threshold config |
 
 ---
 
 ## History
 
 **2026-02-06**: Replaced IndexHNSWFlat with IndexFlatIP. HNSW was causing slow index builds and Python crashes for 10K+ texts. Added batch encoding (batch_size=100) and show_progress_bar=False to all 7 encode calls.
+
+**2026-03-07**: Replaced KR-SBERT (torch, 768-dim) with Model2Vec (256-dim). Switched back to IndexHNSWFlat with tuned parameters (M=32, efConstruction=400, efSearch=500). Build size dropped from ~2GB to 160MB. Encoding speed improved 79x. Added engine-agnostic `encode_texts()` dispatcher, empty string guard, and single normalization point.

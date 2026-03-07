@@ -1,6 +1,9 @@
 # PyInstaller + ML Dependencies: Windows Build Guide
 
-> **Hard-won knowledge from the QuickTranslate c10.dll WinError 1114 investigation (Feb 2026).**
+> **HISTORICAL DOCUMENT (Feb 2026).** QuickTranslate no longer uses torch or sentence-transformers — replaced by Model2Vec (March 2026). Build size dropped from ~2GB to 160MB.
+> This document is kept as reference for the `hiddenimports` vs `collect_all` pattern, which still applies to any PyInstaller + native DLL project.
+
+> **Original context:** Hard-won knowledge from the QuickTranslate c10.dll WinError 1114 investigation (Feb 2026).
 > This document applies to ANY NewScripts tool that needs to bundle torch, sentence-transformers, FAISS, or similar ML packages with PyInstaller for Windows.
 
 ---
