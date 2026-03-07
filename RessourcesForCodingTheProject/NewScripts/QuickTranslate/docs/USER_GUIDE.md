@@ -226,6 +226,18 @@ Some XML entries have a `DescOrigin` attribute — the original Korean voice dir
 
 `Failed Reports/YYMMDD/source_name/` — contains reusable XML files and a 3-sheet Excel report (Summary, Breakdown, Details).
 
+### Fuzzy Match Report
+
+When fuzzy matching is used (Strict+Fuzzy, StrOrigin+Fuzzy), a `FuzzyReport_YYMMDD_HHMM.xlsx` is generated alongside failure reports. 3 sheets:
+
+| Sheet | Contents |
+|-------|----------|
+| **Summary** | Score distribution by 5-point bands (95-100%, 90-95%, ..., 70-75%) with color-coded rows and visual bars. Header stats: threshold, avg/min/max score, totals, elapsed time. |
+| **Matches** | Every fuzzy match sorted by score (best first). Columns: Score, Source StringID, Source StrOrigin, Matched StrOrigin, Correction, Status, Comment. Row colors match score bands (green→yellow→orange→red). Status dropdown: ISSUE / NO ISSUE / FIXED. |
+| **Unmatched** | Items below threshold with best available score — shows how close each one was, helps decide if threshold should be lowered. |
+
+Not generated for non-fuzzy transfers.
+
 ---
 
 ## 4. Pre-Submission Checks
@@ -312,7 +324,7 @@ Configure in Settings section or edit `settings.json`:
 |--------|----------|
 | `Output/` | Missing Translation reports |
 | `Presubmission Checks/` | Korean, PatternErrors, BracketErrors, BrokenXML, EmptyStr, QualityReport |
-| `Failed Reports/` | TRANSFER failure reports |
+| `Failed Reports/` | TRANSFER failure reports + Fuzzy Match reports |
 
 ---
 

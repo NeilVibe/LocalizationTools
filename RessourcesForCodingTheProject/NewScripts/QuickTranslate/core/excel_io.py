@@ -658,19 +658,19 @@ def write_reverse_lookup_excel(
 
 def _convert_linebreaks_for_excel(txt: str) -> str:
     """
-    Convert XML/Excel linebreaks to Excel format.
+    Normalize linebreak variants to <br/> for Excel cells.
 
-    The project's XML uses <br/> for linebreaks.
-    Excel uses \\n (Alt+Enter) for line breaks in cells.
-    Also handles &lt;br/&gt; (HTML-escaped) from XML copy-paste.
+    Unified format: <br/> everywhere (XML and Excel).
+    This prevents conversion bugs when corrections are transferred back to XML.
+    Normalizes escaped/variant forms to the canonical <br/>.
     """
     if not txt:
         return txt
-    txt = txt.replace('&lt;br/&gt;', '\n')
-    txt = txt.replace('&lt;br /&gt;', '\n')
-    txt = txt.replace('<br/>', '\n')
-    txt = txt.replace('<br />', '\n')
-    txt = txt.replace('\\n', '\n')
+    txt = txt.replace('&lt;br/&gt;', '<br/>')
+    txt = txt.replace('&lt;br /&gt;', '<br/>')
+    txt = txt.replace('<br />', '<br/>')
+    txt = txt.replace('\\n', '<br/>')
+    txt = txt.replace('\n', '<br/>')
     return txt
 
 
@@ -925,7 +925,7 @@ def _merge_excel_strict(
                 new_str = _convert_linebreaks_for_excel(c["corrected"])
                 if new_str != old_str:
                     ws.cell(row=target_entry["row"], column=str_col, value=new_str)
-                    if "\n" in new_str:
+                    if "<br/>" in new_str:
                         ws.cell(row=target_entry["row"], column=str_col).alignment = Alignment(wrap_text=True, vertical='top')
                     result["updated"] += 1
                     result["details"].append({
@@ -946,7 +946,7 @@ def _merge_excel_strict(
                         old_desc = target_entry.get("desc_value", "")
                         if new_desc != old_desc:
                             ws.cell(row=target_entry["row"], column=desc_col, value=new_desc)
-                            if "\n" in new_desc:
+                            if "<br/>" in new_desc:
                                 ws.cell(row=target_entry["row"], column=desc_col).alignment = Alignment(wrap_text=True, vertical='top')
                             result["desc_updated"] = result.get("desc_updated", 0) + 1
         else:
@@ -1047,7 +1047,7 @@ def _merge_excel_strorigin_only(
                 new_str = _convert_linebreaks_for_excel(c["corrected"])
                 if new_str != old_str:
                     ws.cell(row=target_entry["row"], column=str_col, value=new_str)
-                    if "\n" in new_str:
+                    if "<br/>" in new_str:
                         ws.cell(row=target_entry["row"], column=str_col).alignment = Alignment(wrap_text=True, vertical='top')
                     result["updated"] += 1
                     result["details"].append({
@@ -1182,7 +1182,7 @@ def _merge_excel_stringid_only(
                 new_str = _convert_linebreaks_for_excel(c["corrected"])
                 if new_str != old_str:
                     ws.cell(row=target_entry["row"], column=str_col, value=new_str)
-                    if "\n" in new_str:
+                    if "<br/>" in new_str:
                         ws.cell(row=target_entry["row"], column=str_col).alignment = Alignment(wrap_text=True, vertical='top')
                     result["updated"] += 1
                     result["details"].append({
@@ -1203,7 +1203,7 @@ def _merge_excel_stringid_only(
                         old_desc = target_entry.get("desc_value", "")
                         if new_desc != old_desc:
                             ws.cell(row=target_entry["row"], column=desc_col, value=new_desc)
-                            if "\n" in new_desc:
+                            if "<br/>" in new_desc:
                                 ws.cell(row=target_entry["row"], column=desc_col).alignment = Alignment(wrap_text=True, vertical='top')
                             result["desc_updated"] = result.get("desc_updated", 0) + 1
         else:

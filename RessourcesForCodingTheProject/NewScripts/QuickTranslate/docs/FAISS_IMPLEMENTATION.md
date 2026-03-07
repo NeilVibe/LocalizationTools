@@ -19,13 +19,13 @@ QuickTranslate uses **FAISS IndexHNSWFlat** with **Model2Vec** (`minishlab/potio
 
 For <200K vectors, HNSW gives O(log n) search with near-perfect recall at these settings.
 
-### Batch Encoding - batch_size=500
+### Batch Encoding - batch_size=100
 
-Model2Vec is fast enough for larger batches:
+Same batch pattern as TFM FULL monolith:
 
 ```python
 # CORRECT - batch loop with np.vstack
-batch_size = 500
+batch_size = 100
 all_embeddings = []
 for i in range(0, total, batch_size):
     batch = texts[i:i + batch_size]
@@ -50,17 +50,14 @@ texts = [t if t.strip() else " " for t in texts]
 
 ## Architecture
 
-### Engine-Agnostic Encoding (`fuzzy_matching.py::encode_texts`)
+### Encoding (`fuzzy_matching.py::encode_texts`)
 
 ```python
 def encode_texts(model, texts):
-    """Dispatch by model type — no cross-imports needed."""
-    if type(model).__name__ == "StaticModel":
-        return model.encode(texts)           # Model2Vec
-    else:
-        return model.encode(texts,           # SentenceTransformer (legacy)
-                           convert_to_numpy=True,
-                           show_progress_bar=False)
+    """Encode texts with Model2Vec. Returns np.ndarray(float32)."""
+    import numpy as np
+    result = model.encode(texts)
+    return np.array(result, dtype=np.float32)
 ```
 
 ### Index Building (`fuzzy_matching.py::build_faiss_index`)
@@ -72,7 +69,7 @@ texts (List[str])
 Empty string guard (" " for blank texts)
     |
     v
-Batch encode (500 at a time)
+Batch encode (100 at a time)
     encode_texts(model, batch)
     |
     v
@@ -117,8 +114,9 @@ NOT bundled in PyInstaller build — too large (~506 MB). Distributed separately
 
 | File | FAISS Usage |
 |------|------------|
-| `core/fuzzy_matching.py` | Index building (IndexHNSWFlat), encode_texts dispatcher, search |
-| `core/xml_transfer.py` | Calls fuzzy_matching functions for fuzzy transfer mode |
+| `core/fuzzy_matching.py` | Index building (IndexHNSWFlat), encode_texts, search, best-score capture for unmatched |
+| `core/xml_transfer.py` | Calls fuzzy_matching functions, accumulates `_fuzzy_matched`/`_fuzzy_unmatched` in results for report |
+| `core/failure_report.py` | `generate_fuzzy_report_excel()` — 3-sheet color-coded score distribution report |
 | `core/missing_translation_finder.py` | Uses encode_texts for Find Missing fuzzy modes |
 | `config.py` | MODEL2VEC_PATH, threshold config |
 

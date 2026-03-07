@@ -32,7 +32,7 @@ QuickTranslate/
 │   ├── fuzzy_matching.py      ← Model2Vec + FAISS HNSW fuzzy StrOrigin matching
 │   ├── category_mapper.py     ← StringID → EXPORT category mapping
 │   ├── postprocess.py         ← Golden rule enforcement (empty StrOrigin → empty Str)
-│   ├── failure_report.py      ← Excel failure report generation (3-sheet)
+│   ├── failure_report.py      ← Excel failure report + fuzzy match report generation
 │   └── __init__.py            ← Public API re-exports
 ├── gui/
 │   ├── app.py                 ← Main tkinter GUI (all buttons, layout, event handlers)

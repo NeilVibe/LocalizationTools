@@ -87,6 +87,7 @@ from core import (
     extract_failed_from_folder_results,
     extract_mismatch_target_entries,
     generate_failure_report_excel,
+    generate_fuzzy_report_excel,
     check_xlsxwriter_available,
 )
 from core.missing_translation_finder import find_missing_with_options
@@ -2938,6 +2939,41 @@ class QuickTranslateApp:
                         self._log("  Delete unwanted rows, keep desired corrections, re-submit via TRANSFER", 'info')
                         dup_names = ", ".join(p.name for p in dup_paths)
                         failure_reports_msg += f"\nDuplicate strings: {dup_names} ({len(dup_entries)} entries)"
+
+            # === FUZZY MATCH REPORT ===
+            fuzzy_matched_data = results.get("_fuzzy_matched")
+            if fuzzy_matched_data:
+                try:
+                    source_name = source.name if source.is_dir() else source.stem
+                    fuzzy_report_folder = config.get_failed_report_dir(source_name)
+                    fuzzy_timestamp = datetime.now().strftime("%y%m%d_%H%M")
+                    fuzzy_report_path = fuzzy_report_folder / f"FuzzyReport_{fuzzy_timestamp}.xlsx"
+
+                    # Enrich stats with transfer-level context for the report
+                    fuzzy_stats_data = dict(results.get("_fuzzy_stats") or {})
+                    fuzzy_stats_data["transfer_total_corrections"] = results.get("total_corrections", 0)
+                    fuzzy_stats_data["transfer_total_matched"] = results.get("total_matched", 0)
+                    fuzzy_stats_data["transfer_total_updated"] = results.get("total_updated", 0)
+
+                    generate_fuzzy_report_excel(
+                        fuzzy_matched_data,
+                        results.get("_fuzzy_unmatched", []),
+                        fuzzy_stats_data,
+                        fuzzy_report_path,
+                    )
+                    self._log("", 'info')
+                    self._log("=== Fuzzy Match Report ===", 'header')
+                    self._log(f"Fuzzy report: {fuzzy_report_path.name}", 'success')
+                    fuzzy_unmatched_count = len(results.get('_fuzzy_unmatched', []))
+                    fuzzy_sent_to_faiss = len(fuzzy_matched_data) + fuzzy_unmatched_count
+                    self._log(
+                        f"  Fuzzy recovered {len(fuzzy_matched_data)} of {fuzzy_sent_to_faiss} "
+                        f"unmatched ({fuzzy_stats_data.get('avg_score', 0):.3f} avg score)",
+                        'info',
+                    )
+                    failure_reports_msg += f"\nFuzzy Report: {fuzzy_report_path.name}"
+                except Exception as e:
+                    self._log(f"Failed to generate fuzzy report: {e}", 'error')
 
             # EventName resolution stats (if any EventNames were in source)
             eventname_msg = ""

@@ -334,6 +334,11 @@ def find_matches_fuzzy(
             matched.append(enriched)
             scores.append(score)
         else:
+            # Capture best score even when below threshold (for fuzzy report)
+            results_any = search_fuzzy(query, model, index, target_texts, target_entries, threshold=0.0, k=1)
+            if results_any:
+                best_entry, best_score = results_any[0]
+                c = {**c, "best_score": best_score, "best_match_str_origin": best_entry["str_origin"]}
             unmatched.append(c)
 
         done = i + 1

@@ -10,7 +10,7 @@
 |---------|----------------|---------------|
 | **XML on disk** (inside attributes) | `&lt;br/&gt;` | `&#10;`, `\n`, `<br>`, `&lt;BR/&gt;` |
 | **XML in memory** (after lxml parse) | `<br/>` | `\n`, `<br>`, `<BR/>`, `&lt;br/&gt;` |
-| **Excel cells** | `\n` (Alt+Enter) | `<br/>`, `&lt;br/&gt;` |
+| **Excel cells** | `<br/>` (literal text) | `\n`, `&lt;br/&gt;` |
 
 **Why two XML formats?** That's just how XML works. `<` is illegal inside attribute values, so on disk it MUST be `&lt;br/&gt;`. When lxml reads it, it automatically unescapes to `<br/>` in memory. When lxml writes it back, it automatically re-escapes to `&lt;br/&gt;`. This is invisible — you work with `<br/>` in code, lxml handles the rest.
 
@@ -28,21 +28,21 @@ Every time data crosses a format boundary, conversion is automatic:
 
 
  EXCEL ──read──> MEMORY ──write──> XML FILE
-   \n             <br/>              &lt;br/&gt;
+ <br/>            <br/>              &lt;br/&gt;
      _convert_linebreaks       lxml auto-escapes
      _for_xml() in transfer
 
 
  XML FILE ──read──> MEMORY ──write──> EXCEL
- &lt;br/&gt;         <br/>               \n
+ &lt;br/&gt;         <br/>             <br/>
      lxml auto-unescapes      _convert_linebreaks
-                              _for_excel() in excel_io
+                              _for_excel() normalizes to <br/>
 
 
  EXCEL ──read──> MEMORY ──write──> EXCEL
-   \n             <br/>               \n
+ <br/>            <br/>             <br/>
      _convert_linebreaks       _convert_linebreaks
-     _for_xml() normalizes     _for_excel() converts back
+     _for_xml() pass-through   _for_excel() pass-through
 ```
 
 **Every path produces the correct format. No manual intervention needed.**
@@ -64,15 +64,18 @@ Called every time data moves between formats.
 
 Called at 4 merge sites: strict, strorigin-only, stringid-only, fuzzy.
 
-**`_convert_linebreaks_for_excel()`** — `excel_io.py:638`
+**`_convert_linebreaks_for_excel()`** — `excel_io.py:659`
 ```
-<br/>        →  \n        (XML memory → Excel newline)
-&lt;br/&gt;  →  \n        (escaped XML → Excel newline)
-<br />       →  \n        (space variant → Excel newline)
-\\n          →  \n        (literal text → Excel newline)
+&lt;br/&gt;  →  <br/>     (HTML-escaped → canonical)
+&lt;br /&gt; →  <br/>     (escaped space variant → canonical)
+<br />       →  <br/>     (space variant → canonical)
+\\n          →  <br/>     (literal backslash-n → canonical)
+\n           →  <br/>     (real newline → canonical)
 ```
 
-Called at 3 Excel merge sites: strict, strorigin-only, stringid-only.
+Unified format: `<br/>` everywhere (XML and Excel). No conversion risk when transferring back.
+
+Called at 5 Excel merge sites: strict (str + desc), strorigin-only, stringid-only (str + desc).
 
 ### Layer 2: Postprocess Safety Net (runs after EVERY transfer)
 

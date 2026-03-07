@@ -226,6 +226,18 @@ StrOrigin="확인"인 Excel 1행 → XML 47개 항목 업데이트
 
 `Failed Reports/YYMMDD/source_name/` — 재사용 가능한 XML + 3시트 Excel (Summary, Breakdown, Details).
 
+### Fuzzy 매치 보고서
+
+Fuzzy 매칭 사용 시 (Strict+Fuzzy, StrOrigin+Fuzzy), `FuzzyReport_YYMMDD_HHMM.xlsx`가 실패 보고서와 함께 생성됩니다. 3개 시트:
+
+| 시트 | 내용 |
+|------|------|
+| **Summary** | 5% 단위 점수 분포 (95-100%, 90-95%, ..., 70-75%). 색상 코딩 행 + 시각적 바. 헤더: 임계값, 평균/최소/최대 점수, 합계, 경과 시간. |
+| **Matches** | 모든 fuzzy 매치를 점수순 정렬 (최고점 우선). 열: Score, Source StringID, Source StrOrigin, Matched StrOrigin, Correction, Status, Comment. 행 색상 = 점수 구간 (녹→황→주황→적). Status 드롭다운: ISSUE / NO ISSUE / FIXED. |
+| **Unmatched** | 임계값 미만 항목 + 최고 가용 점수 표시 — 임계값 하향 결정에 참고. |
+
+비Fuzzy 전송 시 생성되지 않습니다.
+
 ---
 
 ## 4. 사전 제출 검사
@@ -312,7 +324,7 @@ Settings 섹션 또는 `settings.json` 편집:
 |------|------|
 | `Output/` | Missing Translation 보고서 |
 | `Presubmission Checks/` | Korean, PatternErrors, BracketErrors, BrokenXML, EmptyStr, QualityReport |
-| `Failed Reports/` | TRANSFER 실패 보고서 |
+| `Failed Reports/` | TRANSFER 실패 보고서 + Fuzzy 매치 보고서 |
 
 ---
 

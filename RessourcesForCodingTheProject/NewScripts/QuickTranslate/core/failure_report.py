@@ -1701,3 +1701,284 @@ def generate_duplicate_strorigin_excel(
             logger.error(f"Failed to generate duplicate StrOrigin report [{lang}]: {e}")
 
     return output_paths
+
+
+# =============================================================================
+# Fuzzy Match Report
+# =============================================================================
+
+# Score band definitions: (lower_bound, upper_bound, label, bg_color, font_color)
+_FUZZY_BANDS = [
+    (0.95, 1.01, "95-100%", "#1B5E20", "#FFFFFF"),
+    (0.90, 0.95, "90-95%",  "#2E7D32", "#FFFFFF"),
+    (0.85, 0.90, "85-90%",  "#4CAF50", "#FFFFFF"),
+    (0.80, 0.85, "80-85%",  "#FFF176", "#5D4037"),
+    (0.75, 0.80, "75-80%",  "#FFB74D", "#4E342E"),
+    (0.70, 0.75, "70-75%",  "#EF5350", "#FFFFFF"),
+]
+_FUZZY_UNMATCHED_BG = "#BDBDBD"
+_FUZZY_UNMATCHED_FG = "#424242"
+
+
+def _get_band_index(score: float) -> int:
+    """Return the index into _FUZZY_BANDS for a given score, or -1 if below all bands."""
+    for i, (lo, hi, *_) in enumerate(_FUZZY_BANDS):
+        if lo <= score < hi:
+            return i
+    return -1
+
+
+def generate_fuzzy_report_excel(
+    fuzzy_matched: List[Dict],
+    fuzzy_unmatched: List[Dict],
+    fuzzy_stats: Dict,
+    output_path: Path,
+) -> Path:
+    """
+    Generate a colorful Excel report showing fuzzy match quality distribution.
+
+    Creates a 3-sheet workbook:
+    - Summary: Score distribution by 5-point bands with visual bars
+    - Matches: Every fuzzy match row, sorted by score desc, color-coded
+    - Unmatched: Items below threshold with best available score
+
+    Args:
+        fuzzy_matched: List of matched correction dicts (with fuzzy_score, etc.)
+        fuzzy_unmatched: List of unmatched correction dicts (with best_score, etc.)
+        fuzzy_stats: Stats dict from find_matches_fuzzy
+        output_path: Path for output Excel file
+
+    Returns:
+        Path to the generated report
+    """
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    workbook = xlsxwriter.Workbook(str(output_path))
+
+    # --- Shared formats ---
+    fmt_title = workbook.add_format({
+        "bold": True, "font_size": 16, "font_color": "#2E4057",
+        "align": "center", "valign": "vcenter", "bottom": 2, "bottom_color": "#2E4057",
+    })
+    fmt_header = workbook.add_format({
+        "bold": True, "font_size": 11, "font_color": "#FFFFFF", "bg_color": "#2E4057",
+        "align": "center", "valign": "vcenter", "border": 1, "text_wrap": True,
+    })
+    fmt_info_label = workbook.add_format({
+        "bold": True, "font_size": 10, "align": "right", "valign": "vcenter",
+    })
+    fmt_info_value = workbook.add_format({
+        "font_size": 10, "align": "left", "valign": "vcenter",
+    })
+    fmt_total_row = workbook.add_format({
+        "bold": True, "font_size": 11, "border": 1, "bg_color": "#E8EEF4",
+        "align": "center", "valign": "vcenter",
+    })
+    fmt_total_left = workbook.add_format({
+        "bold": True, "font_size": 11, "border": 1, "bg_color": "#E8EEF4",
+        "align": "left", "valign": "vcenter",
+    })
+
+    # Band formats (for Summary and Matches sheets)
+    band_formats = []
+    band_formats_score = []  # numeric score column (0.000 format)
+    for _, _, _, bg, fg in _FUZZY_BANDS:
+        band_formats.append(workbook.add_format({
+            "font_size": 10, "font_color": fg, "bg_color": bg,
+            "align": "center", "valign": "vcenter", "border": 1, "text_wrap": True,
+        }))
+        band_formats_score.append(workbook.add_format({
+            "font_size": 10, "font_color": fg, "bg_color": bg,
+            "align": "center", "valign": "vcenter", "border": 1,
+            "num_format": "0.000",
+        }))
+    # Left-aligned variant for text columns
+    band_formats_left = []
+    for _, _, _, bg, fg in _FUZZY_BANDS:
+        band_formats_left.append(workbook.add_format({
+            "font_size": 10, "font_color": fg, "bg_color": bg,
+            "align": "left", "valign": "vcenter", "border": 1, "text_wrap": True,
+        }))
+
+    fmt_unmatched = workbook.add_format({
+        "font_size": 10, "font_color": _FUZZY_UNMATCHED_FG, "bg_color": _FUZZY_UNMATCHED_BG,
+        "align": "center", "valign": "vcenter", "border": 1, "text_wrap": True,
+    })
+    fmt_unmatched_score = workbook.add_format({
+        "font_size": 10, "font_color": _FUZZY_UNMATCHED_FG, "bg_color": _FUZZY_UNMATCHED_BG,
+        "align": "center", "valign": "vcenter", "border": 1,
+        "num_format": "0.000",
+    })
+    fmt_unmatched_left = workbook.add_format({
+        "font_size": 10, "font_color": _FUZZY_UNMATCHED_FG, "bg_color": _FUZZY_UNMATCHED_BG,
+        "align": "left", "valign": "vcenter", "border": 1, "text_wrap": True,
+    })
+
+    # --- Sheet 1: Summary ---
+    ws_sum = workbook.add_worksheet("Summary")
+    ws_sum.set_column("A:A", 22)
+    ws_sum.set_column("B:B", 14)
+    ws_sum.set_column("C:C", 12)
+    ws_sum.set_column("D:D", 40)
+
+    ws_sum.merge_range("A1:D1", "Fuzzy Match Report", fmt_title)
+    row = 2
+
+    stats = fuzzy_stats or {}
+
+    # --- Transfer Overview (global context) ---
+    fmt_section = workbook.add_format({
+        "bold": True, "font_size": 12, "font_color": "#2E4057",
+        "bg_color": "#E8EEF4", "bottom": 1, "bottom_color": "#CCCCCC",
+    })
+    fuzzy_recovered = stats.get("matched", len(fuzzy_matched))
+    fuzzy_still_unmatched = stats.get("unmatched", len(fuzzy_unmatched))
+    sent_to_fuzzy = fuzzy_recovered + fuzzy_still_unmatched
+
+    # Transfer Overview — only when transfer context is available
+    total_corrections = stats.get("transfer_total_corrections", 0)
+    if total_corrections > 0 and "transfer_total_matched" in stats:
+        total_transfer_matched = stats["transfer_total_matched"]
+        total_transfer_updated = stats.get("transfer_total_updated", 0)
+        exact_matched = max(0, total_transfer_matched - fuzzy_recovered)
+        recovery_rate = (fuzzy_recovered / sent_to_fuzzy * 100) if sent_to_fuzzy > 0 else 0
+
+        ws_sum.merge_range(row, 0, row, 3, "Transfer Overview", fmt_section)
+        row += 1
+        overview_items = [
+            ("Total Corrections:", f"{total_corrections:,}"),
+            ("Step 1 (Exact Match):", f"{exact_matched:,} matched"),
+            ("Step 2 (Fuzzy):", f"{fuzzy_recovered:,} additional matches recovered"),
+            ("Still Unmatched:", f"{fuzzy_still_unmatched:,}"),
+            ("Fuzzy Recovery Rate:", f"{recovery_rate:.1f}% ({fuzzy_recovered} of {sent_to_fuzzy})"),
+            ("Total Updated:", f"{total_transfer_updated:,} values written"),
+        ]
+        for label, value in overview_items:
+            ws_sum.write(row, 0, label, fmt_info_label)
+            ws_sum.write(row, 1, value, fmt_info_value)
+            row += 1
+        row += 1
+
+    # --- Fuzzy Details ---
+    ws_sum.merge_range(row, 0, row, 3, "Fuzzy Match Details", fmt_section)
+    row += 1
+    info_items = [
+        ("Threshold:", f"{stats.get('threshold', 0):.0%}"),
+        ("Fuzzy Matched:", f"{fuzzy_recovered:,}"),
+        ("Fuzzy Unmatched:", f"{fuzzy_still_unmatched:,}"),
+        ("Avg Score:", f"{stats.get('avg_score', 0):.3f}"),
+        ("Min Score:", f"{stats.get('min_score', 0):.3f}"),
+        ("Max Score:", f"{stats.get('max_score', 0):.3f}"),
+        ("Fuzzy Elapsed:", f"{stats.get('elapsed_sec', 0):.1f}s"),
+    ]
+    for label, value in info_items:
+        ws_sum.write(row, 0, label, fmt_info_label)
+        ws_sum.write(row, 1, value, fmt_info_value)
+        row += 1
+
+    row += 1
+
+    # Band distribution table
+    ws_sum.write(row, 0, "Score Band", fmt_header)
+    ws_sum.write(row, 1, "Count", fmt_header)
+    ws_sum.write(row, 2, "% of Total", fmt_header)
+    ws_sum.write(row, 3, "Visual Bar", fmt_header)
+    row += 1
+
+    # Count matches per band
+    band_counts = [0] * len(_FUZZY_BANDS)
+    for m in fuzzy_matched:
+        score = m.get("fuzzy_score", 0)
+        idx = _get_band_index(score)
+        if idx >= 0:
+            band_counts[idx] += 1
+
+    total_matched = sum(band_counts)
+    max_count = max(band_counts) if band_counts else 1
+
+    for i, (lo, hi, label, bg, fg) in enumerate(_FUZZY_BANDS):
+        count = band_counts[i]
+        pct = (count / total_matched * 100) if total_matched > 0 else 0
+        bar_len = int((count / max_count) * 30) if max_count > 0 else 0
+        bar = "\u2588" * bar_len
+
+        fmt_c = band_formats[i]
+        fmt_l = band_formats_left[i]
+        ws_sum.write(row, 0, label, fmt_c)
+        ws_sum.write(row, 1, count, fmt_c)
+        ws_sum.write(row, 2, f"{pct:.1f}%", fmt_c)
+        ws_sum.write(row, 3, bar, fmt_l)
+        row += 1
+
+    # Total row
+    ws_sum.write(row, 0, "Total", fmt_total_row)
+    ws_sum.write(row, 1, total_matched, fmt_total_row)
+    ws_sum.write(row, 2, "100%", fmt_total_row)
+    ws_sum.write(row, 3, "", fmt_total_left)
+
+    # --- Sheet 2: Matches ---
+    ws_match = workbook.add_worksheet("Matches")
+    match_cols = ["Score", "Source StringID", "Source StrOrigin", "Matched StrOrigin", "Correction", "Status", "Comment"]
+    col_widths = [10, 25, 45, 45, 45, 12, 25]
+    for ci, (col_name, width) in enumerate(zip(match_cols, col_widths)):
+        ws_match.set_column(ci, ci, width)
+        ws_match.write(0, ci, col_name, fmt_header)
+
+    ws_match.freeze_panes(1, 0)
+    ws_match.autofilter(0, 0, max(1, len(fuzzy_matched)), len(match_cols) - 1)
+
+    # Sort by score descending
+    sorted_matched = sorted(fuzzy_matched, key=lambda m: m.get("fuzzy_score", 0), reverse=True)
+
+    for ri, m in enumerate(sorted_matched, start=1):
+        score = m.get("fuzzy_score", 0)
+        bi = _get_band_index(score)
+        fmt_c = band_formats[bi] if bi >= 0 else fmt_unmatched
+        fmt_s = band_formats_score[bi] if bi >= 0 else fmt_unmatched_score
+        fmt_l = band_formats_left[bi] if bi >= 0 else fmt_unmatched_left
+
+        ws_match.write_number(ri, 0, score, fmt_s)
+        ws_match.write(ri, 1, m.get("string_id", ""), fmt_l)
+        ws_match.write(ri, 2, m.get("str_origin", ""), fmt_l)
+        ws_match.write(ri, 3, m.get("fuzzy_target_str_origin", ""), fmt_l)
+        ws_match.write(ri, 4, m.get("corrected", ""), fmt_l)
+        ws_match.write(ri, 5, "", fmt_c)  # Status — filled by user
+        ws_match.write(ri, 6, "", fmt_l)  # Comment
+
+    # Data validation for Status column
+    if sorted_matched:
+        ws_match.data_validation(1, 5, len(sorted_matched), 5, {
+            "validate": "list",
+            "source": ["ISSUE", "NO ISSUE", "FIXED"],
+            "show_error": False,
+        })
+
+    # --- Sheet 3: Unmatched ---
+    ws_unm = workbook.add_worksheet("Unmatched")
+    unm_cols = ["Source StringID", "Source StrOrigin", "Best Score", "Best Match StrOrigin", "Correction"]
+    unm_widths = [25, 45, 12, 45, 45]
+    for ci, (col_name, width) in enumerate(zip(unm_cols, unm_widths)):
+        ws_unm.set_column(ci, ci, width)
+        ws_unm.write(0, ci, col_name, fmt_header)
+
+    ws_unm.freeze_panes(1, 0)
+    ws_unm.autofilter(0, 0, max(1, len(fuzzy_unmatched)), len(unm_cols) - 1)
+
+    # Sort by best_score descending (closest to threshold first)
+    sorted_unmatched = sorted(fuzzy_unmatched, key=lambda u: u.get("best_score", 0), reverse=True)
+
+    for ri, u in enumerate(sorted_unmatched, start=1):
+        best = u.get("best_score", 0)
+        ws_unm.write(ri, 0, u.get("string_id", ""), fmt_unmatched_left)
+        ws_unm.write(ri, 1, u.get("str_origin", ""), fmt_unmatched_left)
+        if best > 0:
+            ws_unm.write_number(ri, 2, best, fmt_unmatched_score)
+        else:
+            ws_unm.write(ri, 2, "", fmt_unmatched)
+        ws_unm.write(ri, 3, u.get("best_match_str_origin", ""), fmt_unmatched_left)
+        ws_unm.write(ri, 4, u.get("corrected", ""), fmt_unmatched_left)
+
+    workbook.close()
+    logger.info(f"Fuzzy report saved: {output_path} ({len(fuzzy_matched)} matched, {len(fuzzy_unmatched)} unmatched)")
+    return output_path

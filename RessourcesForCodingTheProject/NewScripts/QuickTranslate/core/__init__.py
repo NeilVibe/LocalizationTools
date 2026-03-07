@@ -63,6 +63,7 @@ from .failure_report import (
     extract_mismatch_target_entries,
     # Excel failure reports
     generate_failure_report_excel,
+    generate_fuzzy_report_excel,
     check_xlsxwriter_available,
     # Duplicate StrOrigin report
     generate_duplicate_strorigin_excel,
@@ -148,6 +149,7 @@ __all__ = [
     "extract_failed_from_folder_results",
     "extract_mismatch_target_entries",
     "generate_failure_report_excel",
+    "generate_fuzzy_report_excel",
     "check_xlsxwriter_available",
     "generate_duplicate_strorigin_excel",
     # missing_translation_finder

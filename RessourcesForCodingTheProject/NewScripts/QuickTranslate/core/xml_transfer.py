@@ -1621,6 +1621,9 @@ def transfer_folder_to_folder(
         "prefilter_total": 0,
         "errors": [],
         "file_results": {},
+        "_fuzzy_matched": [],
+        "_fuzzy_unmatched": [],
+        "_fuzzy_stats": None,
     }
 
     if not source_folder.exists():
@@ -2289,6 +2292,26 @@ def transfer_folder_to_folder(
                         progress_callback=progress_callback,
                         log_callback=log_callback,
                     )
+
+                    # Accumulate fuzzy data for report generation
+                    results["_fuzzy_matched"].extend(fuzzy_matched)
+                    results["_fuzzy_unmatched"].extend(fuzzy_unmatched)
+                    if fuzzy_stats:
+                        prev = results["_fuzzy_stats"]
+                        if prev is None:
+                            results["_fuzzy_stats"] = dict(fuzzy_stats)
+                        else:
+                            # Merge stats across languages
+                            prev["total"] += fuzzy_stats["total"]
+                            prev["matched"] += fuzzy_stats["matched"]
+                            prev["unmatched"] += fuzzy_stats["unmatched"]
+                            prev["elapsed_sec"] = round(prev["elapsed_sec"] + fuzzy_stats["elapsed_sec"], 2)
+                            all_scores = results["_fuzzy_matched"]
+                            all_s = [m["fuzzy_score"] for m in all_scores if "fuzzy_score" in m]
+                            if all_s:
+                                prev["avg_score"] = sum(all_s) / len(all_s)
+                                prev["min_score"] = min(all_s)
+                                prev["max_score"] = max(all_s)
 
                     if fuzzy_matched:
                         # Build lookup: fuzzy_target_string_id.lower() → correction dict
