@@ -42,15 +42,7 @@ from xml.etree import ElementTree as ET
 
 from .xml_parser import sanitize_xml_content, get_attr, iter_locstr_elements, STRINGID_ATTRS, STRORIGIN_ATTRS, STR_ATTRS as _STR_ATTRS
 from .text_utils import normalize_text
-
-
-# Korean character ranges (Hangul syllables + Jamo)
-KOREAN_RE = re.compile(r'[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]')
-
-
-def has_korean(text: str) -> bool:
-    """Check if text contains any Korean characters."""
-    return bool(text and KOREAN_RE.search(text))
+from .korean_detection import KOREAN_REGEX, is_korean_text as has_korean
 
 
 def count_korean_words(text: str) -> int:
@@ -60,16 +52,14 @@ def count_korean_words(text: str) -> int:
     """
     if not text:
         return 0
-    # Count Korean character sequences as words
-    korean_sequences = re.findall(r'[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]+', text)
-    return len(korean_sequences)
+    return len(re.findall(KOREAN_REGEX.pattern + '+', text))
 
 
 def count_korean_chars(text: str) -> int:
     """Count Korean characters in text."""
     if not text:
         return 0
-    return len(KOREAN_RE.findall(text))
+    return len(KOREAN_REGEX.findall(text))
 
 
 @dataclass

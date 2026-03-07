@@ -122,7 +122,7 @@ def contains_cjk(text: str) -> bool:
     if not text:
         return False
     # CJK Unified Ideographs + Hangul + Hiragana + Katakana
-    return bool(re.search(r'[\u4e00-\u9fff\uac00-\ud7a3\u3040-\u309f\u30a0-\u30ff]', text))
+    return bool(re.search(r'[\u4e00-\u9fff\uac00-\ud7af\u1100-\u11ff\u3130-\u318f\u3040-\u309f\u30a0-\u30ff]', text))
 
 
 def is_word_boundary(text: str, start: int, end: int) -> bool:
