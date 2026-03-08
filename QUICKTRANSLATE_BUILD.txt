@@ -160,3 +160,4 @@ Build 036: Fuzzy match Excel report + unified br linebreaks in Excel targets
 Build 037: fix DescOrigin/Desc detection on pasted source paths
 Build 038: fix Korean detection - add Jamo + Compat Jamo ranges (was missing ㅈㄱㅎ etc)
 Build 039: fix Korean detection in missing_translation_finder (import from korean_detection.py)
+Build 038: add formula safeguard — detect and skip Excel formulas/errors in Correction+Desc columns
