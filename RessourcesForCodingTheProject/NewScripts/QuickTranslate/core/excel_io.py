@@ -6,6 +6,7 @@ Uses patterns from LanguageDataExporter for robustness.
 """
 
 import logging
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -17,6 +18,52 @@ from openpyxl.styles import Font, Alignment, numbers
 
 from .korean_detection import is_korean_text
 from .text_utils import normalize_text, normalize_nospace
+
+# ---------------------------------------------------------------------------
+# Formula safeguard — detect Excel formulas, error values, and non-str types
+# ---------------------------------------------------------------------------
+
+try:
+    from openpyxl.worksheet.formula import ArrayFormula, DataTableFormula
+    _FORMULA_TYPES = (ArrayFormula, DataTableFormula)
+except ImportError:
+    _FORMULA_TYPES = ()
+
+_FORMULA_RE = re.compile(r'^[=+\-][A-Za-z]')
+
+_EXCEL_ERRORS = frozenset({
+    '#N/A', '#REF!', '#VALUE!', '#NAME?', '#NULL!',
+    '#DIV/0!', '#NUM!', '#GETTING_DATA',
+})
+
+
+def _is_bad_cell_type(value) -> Optional[str]:
+    """Check raw cell.value type. Returns reason string if bad, None if OK."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return None
+    if _FORMULA_TYPES and isinstance(value, _FORMULA_TYPES):
+        return f'Excel formula object ({type(value).__name__})'
+    if isinstance(value, bool):
+        return f'Boolean value ({value})'
+    if isinstance(value, (int, float)):
+        return f'Numeric value ({value})'
+    return f'Unexpected type ({type(value).__name__}: {str(value)[:50]})'
+
+
+def _is_bad_cell_text(text: str) -> Optional[str]:
+    """Check string cell value. Returns reason string if bad, None if OK."""
+    if not text:
+        return None
+    stripped = text.strip()
+    if _FORMULA_RE.match(stripped):
+        return f'Excel formula ({stripped[:40]})'
+    if stripped.upper() in _EXCEL_ERRORS:
+        return f'Excel error value ({stripped})'
+    if 'openpyxl.' in stripped:
+        return f'openpyxl object repr ({stripped[:40]})'
+    return None
 
 
 def _detect_column_indices(ws) -> Dict[str, int]:
@@ -122,6 +169,7 @@ def read_korean_input(excel_path: Path) -> List[str]:
 def read_corrections_from_excel(
     excel_path: Path,
     has_header: bool = True,
+    formula_report: Optional[list] = None,
 ) -> List[Dict]:
     """
     Read corrections from Excel file for transfer mode.
@@ -137,6 +185,9 @@ def read_corrections_from_excel(
     Args:
         excel_path: Path to input Excel file
         has_header: If True, detect columns from header row (case-insensitive)
+        formula_report: Optional list to collect formula/error skips.
+            Pass [] to collect; each entry is a dict with row, column,
+            string_id, reason. Pass None (default) to skip silently.
 
     Returns:
         List of correction dicts with keys: string_id, str_origin, corrected
@@ -208,6 +259,18 @@ def read_corrections_from_excel(
                 string_id = row[stringid_col - 1].value if stringid_col is not None and stringid_col <= len(row) else None
                 str_origin = row[strorigin_col - 1].value if strorigin_col is not None and strorigin_col <= len(row) else None
                 corrected = row[correction_col - 1].value if correction_col is not None and correction_col <= len(row) else None
+
+                # Formula safeguard Layer 1: type check BEFORE str coercion
+                bad_type = _is_bad_cell_type(corrected)
+                if bad_type:
+                    logger.debug("Row %s Correction skipped: %s", row[0].row, bad_type)
+                    if formula_report is not None:
+                        formula_report.append({
+                            'row': row[0].row, 'column': 'Correction',
+                            'string_id': str(string_id or ''), 'reason': bad_type,
+                        })
+                    continue
+
                 eventname = None
                 if eventname_col is not None:
                     eventname = row[eventname_col - 1].value if eventname_col <= len(row) else None
@@ -224,6 +287,18 @@ def read_corrections_from_excel(
                     continue
 
                 corrected_str = str(corrected).strip()
+
+                # Formula safeguard Layer 2: string check AFTER str coercion
+                bad_text = _is_bad_cell_text(corrected_str)
+                if bad_text:
+                    logger.debug("Row %s Correction skipped: %s", row[0].row, bad_text)
+                    if formula_report is not None:
+                        formula_report.append({
+                            'row': row[0].row, 'column': 'Correction',
+                            'string_id': str(string_id or ''), 'reason': bad_text,
+                        })
+                    continue
+
                 # Skip entries where the "correction" is still Korean (untranslated)
                 if is_korean_text(corrected_str):
                     continue
@@ -241,6 +316,16 @@ def read_corrections_from_excel(
                         entry["desc_origin"] = str(do_val).strip()
                 if desc_col is not None:
                     d_val = row[desc_col - 1].value if desc_col <= len(row) else None
+                    # Formula safeguard: neutralize bad Desc values (don't skip row)
+                    bad = _is_bad_cell_type(d_val) or (isinstance(d_val, str) and _is_bad_cell_text(d_val.strip()))
+                    if bad:
+                        logger.debug("Row %s Desc skipped: %s", row[0].row, bad)
+                        if formula_report is not None:
+                            formula_report.append({
+                                'row': row[0].row, 'column': 'Desc',
+                                'string_id': str(string_id or ''), 'reason': bad,
+                            })
+                        d_val = None  # Neutralize — prevents downstream str(d_val)
                     if d_val is not None and str(d_val).strip():
                         desc_str = str(d_val).strip()
                         if not is_korean_text(desc_str):

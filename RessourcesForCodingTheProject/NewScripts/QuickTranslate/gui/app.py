@@ -1098,8 +1098,30 @@ class QuickTranslateApp:
                             for sid, _fragment, _fname in broken:
                                 self._log(f"  Broken LocStr: StringID={sid}", 'error')
                     elif suffix in (".xlsx", ".xls"):
-                        entries = read_corrections_from_excel(filepath)
+                        formula_report = []
+                        entries = read_corrections_from_excel(filepath, formula_report=formula_report)
                         count = len(entries) if entries else 0
+
+                        if formula_report:
+                            formula_count = len(formula_report)
+                            self._log(
+                                f"WARNING: {formula_count} cell(s) skipped in {filepath.name} "
+                                f"(Excel formulas/errors detected). "
+                                f"Fix: re-save Excel with Paste Values (Ctrl+Shift+V).",
+                                'error'
+                            )
+                            for r in formula_report[:10]:
+                                sid = r['string_id'] or '(empty)'
+                                self._log(
+                                    f"  Row {r['row']} [{r['column']}] StringID={sid}: {r['reason']}",
+                                    'error'
+                                )
+                            if formula_count > 10:
+                                self._log(f"  ...and {formula_count - 10} more.", 'error')
+                            if count == 0:
+                                results.append((filepath.name, file_type, lang, 0, "FORMULA",
+                                                f"All {formula_count} rows contained formulas"))
+                                continue
                     else:
                         results.append((filepath.name, file_type, lang, 0, "SKIPPED", "Unsupported format"))
                         continue
