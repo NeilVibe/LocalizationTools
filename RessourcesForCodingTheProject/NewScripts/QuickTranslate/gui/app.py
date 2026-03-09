@@ -91,7 +91,7 @@ from core import (
     check_xlsxwriter_available,
 )
 from core.missing_translation_finder import find_missing_with_options
-from core.checker import run_korean_check, run_pattern_check, check_broken_xml_in_file
+from core.checker import run_korean_check, run_pattern_check, check_broken_xml_in_file, check_formula_text_in_file
 from core.quality_checker import run_quality_check
 from gui.missing_params_dialog import MissingParamsDialog
 from gui.exclude_dialog import ExcludeDialog
@@ -1006,13 +1006,15 @@ class QuickTranslateApp:
             self._validate_source_files_async(folder, scan_result)
 
     def _validate_target_xml_async(self, xml_files: list) -> None:
-        """Run broken XML detection on TARGET files in a background thread.
+        """Run broken XML + formula text detection on TARGET files in a background thread.
 
-        Prevents GUI freeze when scanning large XML files for broken LocStr nodes.
+        Prevents GUI freeze when scanning large XML files for broken LocStr nodes
+        and formula-like garbage text in Str/Desc attributes.
         Uses the same validation thread pattern as source validation.
         """
         def target_validation_work():
             total_broken = 0
+            total_formula = 0
             total = len(xml_files)
 
             for i, xf in enumerate(xml_files):
@@ -1031,11 +1033,27 @@ class QuickTranslateApp:
                     for sid, _fragment, _fname in broken:
                         self._log(f"  Broken LocStr: StringID={sid}", 'error')
 
-            if total_broken:
-                logger.warning("TARGET broken XML: %d broken LocStr nodes found", total_broken)
-                self._log(f"TARGET: {total_broken} broken LocStr node(s) found across {total} files", 'warning')
+                formula = check_formula_text_in_file(xf)
+                if formula:
+                    total_formula += len(formula)
+                    self._log(f"WARNING: {xf.name} has {len(formula)} formula-like text entry(ies)!", 'warning')
+                    for elem in formula[:10]:
+                        sid = elem.attrib.get('StringId', elem.attrib.get('stringid', '(unknown)'))
+                        self._log(f"  Formula text: StringID={sid}", 'error')
+                    if len(formula) > 10:
+                        self._log(f"  ...and {len(formula) - 10} more.", 'error')
+
+            issues = total_broken + total_formula
+            if issues:
+                parts = []
+                if total_broken:
+                    parts.append(f"{total_broken} broken LocStr")
+                if total_formula:
+                    parts.append(f"{total_formula} formula text")
+                logger.warning("TARGET issues: %s found", ', '.join(parts))
+                self._log(f"TARGET: {', '.join(parts)} found across {total} files", 'warning')
             else:
-                self._log(f"TARGET: All {total} XML files passed broken LocStr check", 'success')
+                self._log(f"TARGET: All {total} XML files passed checks", 'success')
 
             self._task_queue.put(('status', '', 0))
 
@@ -1087,9 +1105,14 @@ class QuickTranslateApp:
 
                 try:
                     if suffix == ".xml":
-                        # Lightweight: just parse + count LocStr elements
+                        # Parse + count + formula detection
+                        from core.xml_io import parse_corrections_from_xml
+                        xml_formula_report = []
+                        entries = parse_corrections_from_xml(filepath, formula_report=xml_formula_report)
+                        count = len(entries) if entries else 0
+
+                        # Also count raw LocStr elements for broken XML check
                         root = parse_xml_file(filepath)
-                        count = sum(1 for _ in iter_locstr_elements(root))
 
                         # Check for broken XML nodes (raw-text detection)
                         broken = check_broken_xml_in_file(filepath)
@@ -1097,6 +1120,23 @@ class QuickTranslateApp:
                             self._log(f"WARNING: {filepath.name} has {len(broken)} broken LocStr node(s)!", 'warning')
                             for sid, _fragment, _fname in broken:
                                 self._log(f"  Broken LocStr: StringID={sid}", 'error')
+
+                        # Report formula-like text in XML
+                        if xml_formula_report:
+                            xml_formula_count = len(xml_formula_report)
+                            self._log(
+                                f"WARNING: {xml_formula_count} entry(ies) in {filepath.name} "
+                                f"contain formula-like text (skipped/neutralized).",
+                                'error'
+                            )
+                            for r in xml_formula_report[:10]:
+                                sid = r['string_id'] or '(empty)'
+                                self._log(
+                                    f"  [{r['column']}] StringID={sid}: {r['reason']}",
+                                    'error'
+                                )
+                            if xml_formula_count > 10:
+                                self._log(f"  ...and {xml_formula_count - 10} more.", 'error')
                     elif suffix in (".xlsx", ".xls"):
                         formula_report = []
                         entries = read_corrections_from_excel(filepath, formula_report=formula_report)
@@ -2296,9 +2336,9 @@ class QuickTranslateApp:
         return f"{check_name}: {total} issues in {len(langs_with_issues)} languages ({', '.join(parts)})"
 
     def _format_pattern_summary(self, summary: Dict[str, tuple]) -> str:
-        """Format pattern+newline+bracket+broken XML+empty Str check summary.
+        """Format pattern+newline+bracket+broken XML+empty Str+formula check summary.
 
-        summary values are (pattern, newline, bracket, broken_xml, empty_str) tuples.
+        summary values are (pattern, newline, bracket, broken_xml, empty_str, formula_text) tuples.
         Shows categorized breakdown so users know what was wrong.
         """
         pattern_total = sum(v[0] for v in summary.values())
@@ -2306,7 +2346,8 @@ class QuickTranslateApp:
         bracket_total = sum(v[2] for v in summary.values())
         broken_total = sum(v[3] for v in summary.values()) if all(len(v) >= 4 for v in summary.values()) else 0
         empty_total = sum(v[4] for v in summary.values()) if all(len(v) >= 5 for v in summary.values()) else 0
-        total = pattern_total + newline_total + bracket_total + broken_total + empty_total
+        formula_total = sum(v[5] for v in summary.values()) if all(len(v) >= 6 for v in summary.values()) else 0
+        total = pattern_total + newline_total + bracket_total + broken_total + empty_total + formula_total
 
         if total == 0:
             return f"Pattern Check: All clean across {len(summary)} languages"
@@ -2316,7 +2357,14 @@ class QuickTranslateApp:
         n_langs = len([k for k, v in summary.items() if sum(v) > 0])
         lines.append(f"Pattern Check: {total} issues in {n_langs} languages")
 
-        # CRITICAL: Broken XML (show first — most severe)
+        # CRITICAL: Formula text (show first with broken XML — garbage data)
+        if formula_total > 0:
+            f_langs = {k: v[5] for k, v in summary.items() if len(v) >= 6 and v[5] > 0}
+            f_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(f_langs.items())]
+            lines.append(f"  CRITICAL — Formula/error text: {formula_total} ({', '.join(f_parts)})")
+            lines.append("  (Separate files in FormulaText/ folder)")
+
+        # CRITICAL: Broken XML
         if broken_total > 0:
             x_langs = {k: v[3] for k, v in summary.items() if len(v) >= 4 and v[3] > 0}
             x_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(x_langs.items())]
@@ -2429,19 +2477,22 @@ class QuickTranslateApp:
             bracket_total = sum(v[2] for v in summary.values())
             broken_total = sum(v[3] for v in summary.values()) if all(len(v) >= 4 for v in summary.values()) else 0
             empty_total = sum(v[4] for v in summary.values()) if all(len(v) >= 5 for v in summary.values()) else 0
-            total = pattern_total + newline_total + bracket_total + broken_total + empty_total
+            formula_total = sum(v[5] for v in summary.values()) if all(len(v) >= 6 for v in summary.values()) else 0
+            total = pattern_total + newline_total + bracket_total + broken_total + empty_total + formula_total
 
             self._log(result_msg, 'success' if total == 0 else 'warning')
 
             if total > 0:
                 self._log(f"Results written to: {output_folder / 'PatternErrors'}", 'info')
+                if formula_total > 0:
+                    self._log(f"CRITICAL formula text: {output_folder / 'FormulaText'}", 'warning')
                 if broken_total > 0:
                     self._log(f"CRITICAL broken XML: {output_folder / 'BrokenXML'}", 'warning')
                 if bracket_total > 0:
                     self._log(f"CRITICAL bracket issues: {output_folder / 'MissingBrackets'}", 'warning')
                 if empty_total > 0:
                     self._log(f"Empty Str entries: {output_folder / 'EmptyStr'}", 'info')
-                self._task_queue.put(('checks_status', f"Done: {total} issues ({broken_total}X + {pattern_total}P + {newline_total}N + {bracket_total}B + {empty_total}E)"))
+                self._task_queue.put(('checks_status', f"Done: {total} issues ({formula_total}F + {broken_total}X + {pattern_total}P + {newline_total}N + {bracket_total}B + {empty_total}E)"))
             else:
                 self._task_queue.put(('checks_status', "Done: All clean"))
 
@@ -2534,8 +2585,11 @@ class QuickTranslateApp:
                 b_total = sum(v[2] for v in pattern_summary.values())
                 x_total = sum(v[3] for v in pattern_summary.values()) if all(len(v) >= 4 for v in pattern_summary.values()) else 0
                 e_total = sum(v[4] for v in pattern_summary.values()) if all(len(v) >= 5 for v in pattern_summary.values()) else 0
+                f_total = sum(v[5] for v in pattern_summary.values()) if all(len(v) >= 6 for v in pattern_summary.values()) else 0
                 self._log(self._format_pattern_summary(pattern_summary),
-                          'success' if (p_total + n_total + b_total + x_total + e_total) == 0 else 'warning')
+                          'success' if (p_total + n_total + b_total + x_total + e_total + f_total) == 0 else 'warning')
+                if f_total > 0:
+                    self._log(f"CRITICAL formula text: {output_folder / 'FormulaText'}", 'warning')
                 if x_total > 0:
                     self._log(f"CRITICAL broken XML: {output_folder / 'BrokenXML'}", 'warning')
                 if b_total > 0:
@@ -2571,11 +2625,13 @@ class QuickTranslateApp:
             bracket_total_all = 0
             broken_total_all = 0
             empty_total_all = 0
+            formula_total_all = 0
             if pattern_summary:
                 check_total = sum(sum(v) for v in pattern_summary.values())
                 bracket_total_all = sum(v[2] for v in pattern_summary.values())
                 broken_total_all = sum(v[3] for v in pattern_summary.values()) if all(len(v) >= 4 for v in pattern_summary.values()) else 0
                 empty_total_all = sum(v[4] for v in pattern_summary.values()) if all(len(v) >= 5 for v in pattern_summary.values()) else 0
+                formula_total_all = sum(v[5] for v in pattern_summary.values()) if all(len(v) >= 6 for v in pattern_summary.values()) else 0
             grand_total = korean_total + check_total + quality_total
 
             if grand_total == 0:
@@ -2583,6 +2639,8 @@ class QuickTranslateApp:
                 self._task_queue.put(('checks_status', "Done: All checks passed"))
             else:
                 critical_parts = []
+                if formula_total_all:
+                    critical_parts.append(f"{formula_total_all} CRITICAL formula text")
                 if broken_total_all:
                     critical_parts.append(f"{broken_total_all} CRITICAL broken XML")
                 if bracket_total_all:
@@ -2590,7 +2648,7 @@ class QuickTranslateApp:
                 if empty_total_all:
                     critical_parts.append(f"{empty_total_all} empty Str")
                 critical_note = f", {', '.join(critical_parts)}" if critical_parts else ""
-                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {check_total} pattern/newline/bracket/xml/empty{critical_note}, {quality_total} quality)", 'warning')
+                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {check_total} pattern/newline/bracket/xml/empty/formula{critical_note}, {quality_total} quality)", 'warning')
                 self._log(f"Results written to: {output_folder}", 'info')
                 self._task_queue.put(('checks_status', f"Done: {grand_total} issues ({korean_total}K + {check_total}P + {quality_total}Q)"))
 

@@ -17,7 +17,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, numbers
 
 from .korean_detection import is_korean_text
-from .text_utils import normalize_text, normalize_nospace
+from .text_utils import normalize_text, normalize_nospace, is_formula_text
 
 # ---------------------------------------------------------------------------
 # Formula safeguard — detect Excel formulas, error values, and non-str types
@@ -28,14 +28,6 @@ try:
     _FORMULA_TYPES = (ArrayFormula, DataTableFormula)
 except ImportError:
     _FORMULA_TYPES = ()
-
-_FORMULA_RE = re.compile(r'^[=+\-][A-Za-z]')
-
-_EXCEL_ERRORS = frozenset({
-    '#N/A', '#REF!', '#VALUE!', '#NAME?', '#NULL!',
-    '#DIV/0!', '#NUM!', '#GETTING_DATA',
-})
-
 
 def _is_bad_cell_type(value) -> Optional[str]:
     """Check raw cell.value type. Returns reason string if bad, None if OK."""
@@ -53,17 +45,8 @@ def _is_bad_cell_type(value) -> Optional[str]:
 
 
 def _is_bad_cell_text(text: str) -> Optional[str]:
-    """Check string cell value. Returns reason string if bad, None if OK."""
-    if not text:
-        return None
-    stripped = text.strip()
-    if _FORMULA_RE.match(stripped):
-        return f'Excel formula ({stripped[:40]})'
-    if stripped.upper() in _EXCEL_ERRORS:
-        return f'Excel error value ({stripped})'
-    if 'openpyxl.' in stripped:
-        return f'openpyxl object repr ({stripped[:40]})'
-    return None
+    """Check string cell value. Delegates to shared is_formula_text()."""
+    return is_formula_text(text)
 
 
 def _detect_column_indices(ws) -> Dict[str, int]:

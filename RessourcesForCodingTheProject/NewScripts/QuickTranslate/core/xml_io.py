@@ -14,16 +14,22 @@ from .xml_parser import (
     DESC_ATTRS, DESCORIGIN_ATTRS,
 )
 from .korean_detection import is_korean_text
+from .text_utils import is_formula_text
 
 logger = logging.getLogger(__name__)
 
 
-def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
+def parse_corrections_from_xml(
+    xml_path: Path,
+    formula_report: Optional[list] = None,
+) -> List[Dict]:
     """
     Parse corrections from XML file (LocStr elements).
 
     Args:
         xml_path: Path to XML file
+        formula_report: Optional list to collect formula/error detections.
+            Each entry is a dict with keys: string_id, column, reason, value.
 
     Returns:
         List of correction dicts with keys: string_id, str_origin, corrected, raw_attribs
@@ -44,6 +50,19 @@ def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
                 if is_korean_text(str_value):
                     continue
 
+                # Formula/garbage text check on Str (correction value)
+                bad_str = is_formula_text(str_value)
+                if bad_str:
+                    if formula_report is not None:
+                        formula_report.append({
+                            'string_id': string_id,
+                            'column': 'Str',
+                            'reason': bad_str,
+                            'value': str_value[:60],
+                        })
+                    logger.debug("Skipping formula-like Str in XML: StringID=%s reason=%s", string_id, bad_str)
+                    continue
+
                 # Store ALL original attributes for exact preservation in failure reports
                 raw_attribs = dict(elem.attrib)
 
@@ -61,7 +80,19 @@ def parse_corrections_from_xml(xml_path: Path) -> List[Dict]:
                 if desc_origin:
                     entry["desc_origin"] = desc_origin
                 if desc_value and not is_korean_text(desc_value):
-                    entry["desc_corrected"] = desc_value
+                    # Formula/garbage text check on Desc
+                    bad_desc = is_formula_text(desc_value)
+                    if bad_desc:
+                        if formula_report is not None:
+                            formula_report.append({
+                                'string_id': string_id,
+                                'column': 'Desc',
+                                'reason': bad_desc,
+                                'value': desc_value[:60],
+                            })
+                        logger.debug("Neutralizing formula-like Desc in XML: StringID=%s reason=%s", string_id, bad_desc)
+                    else:
+                        entry["desc_corrected"] = desc_value
 
                 corrections.append(entry)
     except Exception as e:

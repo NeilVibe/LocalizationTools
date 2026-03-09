@@ -1768,7 +1768,28 @@ def transfer_folder_to_folder(
         # Parse corrections from source
         try:
             if source_file.suffix.lower() == ".xml":
-                corrections = parse_corrections_from_xml(source_file)
+                formula_report = []
+                corrections = parse_corrections_from_xml(source_file, formula_report=formula_report)
+                if formula_report:
+                    formula_count = len(formula_report)
+                    msg = (
+                        f"WARNING: {formula_count} entry(ies) in {source_file.name} "
+                        f"contain formula-like text (skipped/neutralized)"
+                    )
+                    if log_callback:
+                        log_callback(msg, 'warning')
+                    logger.warning(msg)
+                    for r in formula_report[:10]:
+                        sid = r['string_id'] or '(empty)'
+                        detail = f"  [{r['column']}] StringID={sid}: {r['reason']}"
+                        if log_callback:
+                            log_callback(detail, 'warning')
+                        logger.warning(detail)
+                    if formula_count > 10:
+                        overflow = f"  ...and {formula_count - 10} more."
+                        if log_callback:
+                            log_callback(overflow, 'warning')
+                        logger.warning(overflow)
             else:
                 formula_report = []
                 corrections = read_corrections_from_excel(source_file, formula_report=formula_report)

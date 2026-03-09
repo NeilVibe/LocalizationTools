@@ -8,6 +8,37 @@ import html
 import re
 from typing import Optional
 
+# ---------------------------------------------------------------------------
+# Formula / garbage text detection — shared across Excel and XML readers
+# ---------------------------------------------------------------------------
+
+_FORMULA_RE = re.compile(r'^[=+\-][A-Za-z]')
+
+_EXCEL_ERRORS = frozenset({
+    '#N/A', '#REF!', '#VALUE!', '#NAME?', '#NULL!',
+    '#DIV/0!', '#NUM!', '#GETTING_DATA',
+})
+
+
+def is_formula_text(text: str) -> Optional[str]:
+    """Check if a string looks like an Excel formula or error value.
+
+    Works on any string regardless of source (Excel cell, XML attribute, etc.).
+
+    Returns:
+        Reason string if the text is suspicious, None if clean.
+    """
+    if not text:
+        return None
+    stripped = text.strip()
+    if _FORMULA_RE.match(stripped):
+        return f'Excel formula ({stripped[:40]})'
+    if stripped.upper() in _EXCEL_ERRORS:
+        return f'Excel error value ({stripped})'
+    if 'openpyxl.' in stripped:
+        return f'openpyxl object repr ({stripped[:40]})'
+    return None
+
 
 def normalize_text(txt: Optional[str]) -> str:
     """
