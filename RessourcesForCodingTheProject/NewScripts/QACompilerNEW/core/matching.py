@@ -20,7 +20,7 @@ from datetime import datetime
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import TRANSLATION_COLS, ITEM_DESC_COLS, SCRIPT_COLS, SCRIPT_TYPE_CATEGORIES
+from config import TRANSLATION_COLS, SCRIPT_COLS, SCRIPT_TYPE_CATEGORIES
 from core.excel_ops import find_column_by_header, preload_worksheet_data
 
 
@@ -144,18 +144,6 @@ def get_translation_column_by_name(ws, category: str) -> int:
     # Other categories: not implemented (use position-based)
     return None
 
-
-def get_item_desc_column(is_english: bool) -> int:
-    """
-    Get ItemDesc column index for Item category.
-
-    Args:
-        is_english: True for English files
-
-    Returns:
-        Column index (1-based)
-    """
-    return ITEM_DESC_COLS["eng"] if is_english else ITEM_DESC_COLS["other"]
 
 
 # =============================================================================
@@ -694,55 +682,3 @@ def find_matching_row_for_contents_transfer(
     return None, None
 
 
-def find_matching_row_for_item_transfer(
-    old_row_data: Dict,
-    new_ws,
-    is_english: bool
-) -> Tuple[Optional[int], Optional[str]]:
-    """
-    Item-specific matching: requires BOTH ItemName AND ItemDesc to match.
-
-    Uses 2-step cascade:
-    1. ItemName + ItemDesc + STRINGID (all 3 must match)
-    2. ItemName + ItemDesc (both must match, no STRINGID required)
-
-    Args:
-        old_row_data: dict with {item_name, item_desc, stringid, row_num}
-        new_ws: New worksheet to search in
-        is_english: Whether file is English
-
-    Returns:
-        Tuple of (new_row_num, match_type) or (None, None)
-        match_type: "name+desc+stringid" or "name+desc"
-    """
-    old_stringid = sanitize_stringid_for_match(old_row_data.get("stringid"))
-    old_item_name = str(old_row_data.get("item_name", "")).strip()
-    old_item_desc = str(old_row_data.get("item_desc", "")).strip()
-
-    # Need at least ItemName to match
-    if not old_item_name:
-        return None, None
-
-    name_col = TRANSLATION_COLS["Item"]["eng"] if is_english else TRANSLATION_COLS["Item"]["other"]
-    desc_col = ITEM_DESC_COLS["eng"] if is_english else ITEM_DESC_COLS["other"]
-    stringid_col = find_column_by_header(new_ws, "STRINGID")
-
-    # Step 1: Try ItemName + ItemDesc + STRINGID match
-    if old_stringid and stringid_col:
-        for row in range(2, new_ws.max_row + 1):
-            new_stringid = sanitize_stringid_for_match(new_ws.cell(row, stringid_col).value)
-            new_name = str(new_ws.cell(row, name_col).value or "").strip()
-            new_desc = str(new_ws.cell(row, desc_col).value or "").strip()
-
-            if new_stringid == old_stringid and new_name == old_item_name and new_desc == old_item_desc:
-                return row, "name+desc+stringid"
-
-    # Step 2: Fall back to ItemName + ItemDesc only
-    for row in range(2, new_ws.max_row + 1):
-        new_name = str(new_ws.cell(row, name_col).value or "").strip()
-        new_desc = str(new_ws.cell(row, desc_col).value or "").strip()
-
-        if new_name == old_item_name and new_desc == old_item_desc:
-            return row, "name+desc"
-
-    return None, None

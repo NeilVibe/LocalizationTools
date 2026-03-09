@@ -5,7 +5,6 @@ Transfer QA files from QAfolderOLD + QAfolderNEW to QAfolder.
 
 Handles:
 - Row matching (STRINGID + Translation, or Translation only)
-- Item-specific matching (ItemName + ItemDesc)
 - Data transfer (STATUS, COMMENT, SCREENSHOT)
 - Duplicate translation detection
 """
@@ -19,7 +18,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
     QA_FOLDER, QA_FOLDER_OLD, QA_FOLDER_NEW,
-    TRANSLATION_COLS, ITEM_DESC_COLS, SCRIPT_COLS, SCRIPT_TYPE_CATEGORIES, CATEGORIES,
+    TRANSLATION_COLS, SCRIPT_COLS, SCRIPT_TYPE_CATEGORIES, CATEGORIES,
     load_tester_mapping
 )
 from core.discovery import discover_qa_folders_in
@@ -31,7 +30,6 @@ from core.matching import (
     get_translation_column,
     find_matching_row_for_transfer,
     find_matching_row_for_contents_transfer,
-    find_matching_row_for_item_transfer,
 )
 
 
@@ -105,8 +103,6 @@ def transfer_sheet_data(
         "stringid_match": 0,
         "trans_only": 0,
         "unmatched": 0,
-        "name_desc_stringid_match": 0,
-        "name_desc_match": 0,
     }
 
     # Find columns
@@ -121,12 +117,6 @@ def transfer_sheet_data(
 
     # Get translation column for matching
     old_trans_col = get_translation_column(category, is_english)
-
-    # Item category needs ItemDesc column too
-    is_item_category = category.lower() == "item"
-    old_desc_col = None
-    if is_item_category:
-        old_desc_col = ITEM_DESC_COLS["eng"] if is_english else ITEM_DESC_COLS["other"]
 
     # Process each row with data
     for old_row in range(2, old_ws.max_row + 1):
@@ -148,16 +138,8 @@ def transfer_sheet_data(
             "row_num": old_row,
         }
 
-        # For Item category, add ItemName and ItemDesc
-        if is_item_category:
-            old_row_data["item_name"] = old_ws.cell(old_row, old_trans_col).value
-            old_row_data["item_desc"] = old_ws.cell(old_row, old_desc_col).value if old_desc_col else ""
-
         # Find matching row in NEW file
-        if is_item_category:
-            new_row, match_type = find_matching_row_for_item_transfer(old_row_data, new_ws, is_english)
-        else:
-            new_row, match_type = find_matching_row_for_transfer(old_row_data, new_ws, category, is_english)
+        new_row, match_type = find_matching_row_for_transfer(old_row_data, new_ws, category, is_english)
 
         if new_row is None:
             stats["unmatched"] += 1
@@ -168,10 +150,6 @@ def transfer_sheet_data(
             stats["stringid_match"] += 1
         elif match_type == "trans_only":
             stats["trans_only"] += 1
-        elif match_type == "name+desc+stringid":
-            stats["name_desc_stringid_match"] += 1
-        elif match_type == "name+desc":
-            stats["name_desc_match"] += 1
 
         # Transfer data
         if new_comment_col and old_comment:
@@ -315,22 +293,13 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
         - script_eventname_index: {eventname: [...]} (for Script category fallback)
     """
     trans_col = get_translation_column(category, is_english)
-    is_item = category.lower() == "item"
     is_contents = category.lower() == "contents"
     is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
-
-    # For Item category, use different columns
-    if is_item:
-        name_col = TRANSLATION_COLS["Item"]["eng"] if is_english else TRANSLATION_COLS["Item"]["other"]
-        desc_col = ITEM_DESC_COLS["eng"] if is_english else ITEM_DESC_COLS["other"]
 
     # Index by (STRINGID + Translation) - exact match (list for duplicates)
     stringid_trans_index = defaultdict(list)
     # Index by Translation only - fallback (list because dupes possible)
     trans_index = defaultdict(list)
-    # For Item: index by (ItemName + ItemDesc + STRINGID) and (ItemName + ItemDesc)
-    item_full_index = defaultdict(list)
-    item_name_desc_index = defaultdict(list)
     # For Contents: index by INSTRUCTIONS (col 2) (list for duplicates)
     contents_index = defaultdict(list)
     # For Script: index by (Translation + EventName) and EventName only (fallback)
@@ -349,19 +318,6 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
                 instructions = str(ws.cell(row, 2).value or "").strip()
                 if instructions:
                     contents_index[instructions].append({"sheet": sheet_name, "row": row})
-            elif is_item:
-                item_name = str(ws.cell(row, name_col).value or "").strip()
-                item_desc = str(ws.cell(row, desc_col).value or "").strip()
-
-                if item_name:
-                    # Full index: name + desc + stringid
-                    if stringid:
-                        key = (item_name, item_desc, stringid)
-                        item_full_index[key].append({"sheet": sheet_name, "row": row})
-
-                    # Fallback: name + desc only
-                    key2 = (item_name, item_desc)
-                    item_name_desc_index[key2].append({"sheet": sheet_name, "row": row})
             elif is_script:
                 # Script: index by (Translation + EventName) with EventName-only fallback
                 trans = str(ws.cell(row, trans_col).value or "").strip()
@@ -396,8 +352,6 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
     return {
         "stringid_trans": stringid_trans_index,
         "trans_only": trans_index,
-        "item_full": item_full_index,
-        "item_name_desc": item_name_desc_index,
         "contents": contents_index,
         "script_full": script_full_index,
         "script_eventname": script_eventname_index,
@@ -411,13 +365,8 @@ def collect_old_rows_with_data(old_wb, category: str, is_english: bool) -> List[
     Returns list of dicts with row data including sheet name.
     """
     trans_col = get_translation_column(category, is_english)
-    is_item = category.lower() == "item"
     is_contents = category.lower() == "contents"
     is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
-
-    if is_item:
-        name_col = TRANSLATION_COLS["Item"]["eng"] if is_english else TRANSLATION_COLS["Item"]["other"]
-        desc_col = ITEM_DESC_COLS["eng"] if is_english else ITEM_DESC_COLS["other"]
 
     rows = []
 
@@ -460,9 +409,6 @@ def collect_old_rows_with_data(old_wb, category: str, is_english: bool) -> List[
             if is_contents:
                 # Contents: use INSTRUCTIONS (col 2) as matching key
                 row_data["instructions"] = str(ws.cell(row, 2).value or "").strip()
-            elif is_item:
-                row_data["item_name"] = str(ws.cell(row, name_col).value or "").strip()
-                row_data["item_desc"] = str(ws.cell(row, desc_col).value or "").strip()
             elif is_script:
                 # Script: use Translation + EventName
                 row_data["translation"] = str(ws.cell(row, trans_col).value or "").strip()
@@ -498,8 +444,8 @@ def transfer_folder_data(
     NO per-sheet restriction - matches across ALL sheets in the workbook.
 
     Two-pass matching:
-    1. STRINGID + Translation (or ItemName+ItemDesc+STRINGID for Item, INSTRUCTIONS for Contents)
-    2. Translation only fallback (or ItemName+ItemDesc for Item, no fallback for Contents)
+    1. STRINGID + Translation (INSTRUCTIONS for Contents, Translation+EventName for Script)
+    2. Translation only fallback (no fallback for Contents, EventName only for Script)
 
     Args:
         old_folder: dict with folder info
@@ -513,7 +459,6 @@ def transfer_folder_data(
     username = old_folder["username"]
     category = old_folder["category"]
     is_english = tester_mapping.get(username, "EN") == "EN"
-    is_item = category.lower() == "item"
     is_contents = category.lower() == "contents"
     is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
 
@@ -526,8 +471,6 @@ def transfer_folder_data(
         "stringid_match": 0,
         "trans_only": 0,
         "unmatched": 0,
-        "name_desc_stringid_match": 0,
-        "name_desc_match": 0,
         "instructions_match": 0,
         "script_full_match": 0,      # Script: Translation + EventName
         "script_eventname_match": 0,  # Script: EventName only fallback
@@ -549,7 +492,7 @@ def transfer_folder_data(
     # Shared consumed set: (sheet_name, row) pairs — prevents double-matching across passes
     consumed_rows = set()
 
-    # PASS 1: Exact match (STRINGID + Translation, ItemName+ItemDesc+STRINGID, INSTRUCTIONS, or Translation+EventName)
+    # PASS 1: Exact match (STRINGID + Translation, INSTRUCTIONS, or Translation+EventName)
     for old_row in old_rows:
         matched = False
 
@@ -563,17 +506,6 @@ def transfer_folder_data(
                         consumed_rows.add(row_key)
                         matches.append((old_row, entry["sheet"], entry["row"], "instructions"))
                         stats["instructions_match"] += 1
-                        matched = True
-                        break
-        elif is_item:
-            key = (old_row["item_name"], old_row["item_desc"], old_row["stringid"])
-            if old_row["stringid"] and key in new_index["item_full"]:
-                for entry in new_index["item_full"][key]:
-                    row_key = (entry["sheet"], entry["row"])
-                    if row_key not in consumed_rows:
-                        consumed_rows.add(row_key)
-                        matches.append((old_row, entry["sheet"], entry["row"], "name+desc+stringid"))
-                        stats["name_desc_stringid_match"] += 1
                         matched = True
                         break
         elif is_script:
@@ -603,7 +535,7 @@ def transfer_folder_data(
         if not matched:
             unmatched_rows.append(old_row)
 
-    # PASS 2: Fallback match (Translation only, ItemName+ItemDesc, or EventName only)
+    # PASS 2: Fallback match (Translation only, or EventName only)
     # Note: Contents has no fallback - INSTRUCTIONS is the unique identifier
     # Note: Script uses EventName-only fallback (NOT Translation only!)
     still_unmatched = []
@@ -613,17 +545,6 @@ def transfer_folder_data(
         if is_contents:
             # No fallback for Contents - INSTRUCTIONS must match exactly
             pass
-        elif is_item:
-            key = (old_row["item_name"], old_row["item_desc"])
-            if key in new_index["item_name_desc"]:
-                for entry in new_index["item_name_desc"][key]:
-                    row_key = (entry["sheet"], entry["row"])
-                    if row_key not in consumed_rows:
-                        consumed_rows.add(row_key)
-                        matches.append((old_row, entry["sheet"], entry["row"], "name+desc"))
-                        stats["name_desc_match"] += 1
-                        matched = True
-                        break
         elif is_script:
             # Script: fallback to EventName ONLY (NOT Translation only!)
             eventname = old_row.get("eventname", "")
@@ -685,8 +606,6 @@ def transfer_folder_data(
     # Print summary
     if is_contents:
         print(f"    Matched: {stats['instructions_match']} by INSTRUCTIONS, {stats['unmatched']} unmatched")
-    elif is_item:
-        print(f"    Matched: {stats['name_desc_stringid_match']} exact + {stats['name_desc_match']} fallback, {stats['unmatched']} unmatched")
     elif is_script:
         print(f"    Matched: {stats['script_full_match']} exact + {stats['script_eventname_match']} fallback, {stats['unmatched']} unmatched")
     else:
@@ -740,7 +659,6 @@ def print_transfer_report(stats: Dict):
 
     for (tester, category), data in sorted(stats.items()):
         total = data["total"]
-        is_item = category.lower() == "item"
         is_contents = category.lower() == "contents"
         is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
 
@@ -748,9 +666,6 @@ def print_transfer_report(stats: Dict):
             # Contents: only has exact match (INSTRUCTIONS)
             exact = data.get("instructions_match", 0)
             fallback = 0
-        elif is_item:
-            exact = data.get("name_desc_stringid_match", 0)
-            fallback = data.get("name_desc_match", 0)
         elif is_script:
             exact = data.get("script_full_match", 0)
             fallback = data.get("script_eventname_match", 0)
@@ -771,10 +686,10 @@ def print_transfer_report(stats: Dict):
     print("=" * 79)
     print()
     print("Legend:")
-    print("  Exact    = Strong match (STRINGID+Trans for most, ItemName+ItemDesc+STRINGID for Item,")
-    print("             INSTRUCTIONS for Contents, Translation+EventName for Script)")
-    print("  Fallback = Weaker match (Trans only for most, ItemName+ItemDesc for Item,")
-    print("             N/A for Contents, EventName only for Script)")
+    print("  Exact    = Strong match (STRINGID+Trans for most, INSTRUCTIONS for Contents,")
+    print("             Translation+EventName for Script)")
+    print("  Fallback = Weaker match (Trans only for most, N/A for Contents,")
+    print("             EventName only for Script)")
     unmatched = grand_total - grand_exact - grand_fallback
     print(f"  Unmatched = {unmatched} rows (not transferred)")
     print()

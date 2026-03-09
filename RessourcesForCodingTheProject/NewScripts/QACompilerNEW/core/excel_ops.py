@@ -384,7 +384,6 @@ def extract_tester_data_from_master(
 
             # Find content columns for building keys
             # Standard: STRINGID + Translation column
-            # Item: ItemName + ItemDesc + STRINGID
             # Script: EventName + Text
             # Contents: INSTRUCTIONS
 
@@ -396,15 +395,9 @@ def extract_tester_data_from_master(
             text_idx = col_map.get("TEXT") or col_map.get("TRANSLATION")
             instructions_idx = col_map.get("INSTRUCTIONS")
 
-            # For Item category
-            itemname_eng_idx = col_map.get("ITEMNAME(ENG)")
-            itemname_loc_idx = col_map.get("ITEMNAME(LOC)")
-            itemdesc_eng_idx = col_map.get("ITEMDESC(ENG)")
-            itemdesc_loc_idx = col_map.get("ITEMDESC(LOC)")
-
-            # For standard categories (Quest, Knowledge, etc.)
+            # For standard categories (Quest, Knowledge, Item, etc.)
             # Translation column positions from config
-            from config import TRANSLATION_COLS, ITEM_DESC_COLS
+            from config import TRANSLATION_COLS
             trans_col_config = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3})
             trans_col_idx = (trans_col_config["eng"] if is_english else trans_col_config["other"]) - 1  # 0-based
 
@@ -421,19 +414,6 @@ def extract_tester_data_from_master(
                         instructions = str(row_tuple[instructions_idx] or "").strip()
                         if instructions:
                             content_key = (instructions,)
-
-                elif category_lower == "item":
-                    # Item: (ItemName, ItemDesc, STRINGID)
-                    name_idx = itemname_eng_idx if is_english else itemname_loc_idx
-                    desc_idx = itemdesc_eng_idx if is_english else itemdesc_loc_idx
-                    if name_idx is not None and name_idx < len(row_tuple):
-                        item_name = str(row_tuple[name_idx] or "").strip()
-                        item_desc = ""
-                        if desc_idx is not None and desc_idx < len(row_tuple):
-                            item_desc = str(row_tuple[desc_idx] or "").strip()
-                        stringid = sanitize_stringid_for_match(row_tuple[stringid_idx]) if stringid_idx is not None and stringid_idx < len(row_tuple) else ""
-                        if item_name:
-                            content_key = (item_name, item_desc, stringid)
 
                 elif is_script:
                     # Script: (Text, EventName) - matches index order in matching.py
@@ -650,14 +630,6 @@ def restore_tester_data_to_master(
                 elif instructions and instructions in master_index["primary"]:
                     matching_rows.append(master_index["primary"][instructions])
 
-            elif category_lower == "item":
-                if len(content_key) >= 2:
-                    stringid = content_key[2] if len(content_key) > 2 else ""
-                    if stringid:
-                        pk = (content_key[0], content_key[1], stringid)
-                        if pk in master_index.get("all_primary", {}):
-                            matching_rows = list(master_index["all_primary"][pk])
-
             elif is_script:
                 if len(content_key) >= 2:
                     text, eventname = content_key[0], content_key[1]
@@ -688,15 +660,6 @@ def restore_tester_data_to_master(
 
             if category_lower == "contents":
                 pass  # Contents has no fallback
-
-            elif category_lower == "item":
-                if len(content_key) >= 2:
-                    fallback_key = (content_key[0], content_key[1])
-                    if fallback_key in master_index["fallback"]:
-                        for row in master_index["fallback"][fallback_key]:
-                            if row not in master_index["consumed"]:
-                                matching_rows.append(row)
-                                break
 
             elif is_script:
                 if len(content_key) >= 2:

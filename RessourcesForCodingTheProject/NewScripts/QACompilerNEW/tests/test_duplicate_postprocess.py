@@ -70,14 +70,14 @@ def _make_standard_wb(rows, extra_headers=None):
 
 
 def _make_item_wb(rows, extra_headers=None):
-    """Create a workbook with Item category headers.
+    """Create a workbook with Item category headers (standard format).
 
     Headers:
-        STRINGID | ITEMNAME(ENG) | ITEMDESC(ENG) | COMMENT_alice
+        STRINGID | TRANSLATION | COMMENT_alice
         | STATUS_alice | MANAGER_COMMENT_alice
     """
     headers = [
-        "STRINGID", "ITEMNAME(ENG)", "ITEMDESC(ENG)",
+        "STRINGID", "TRANSLATION",
         "COMMENT_alice", "STATUS_alice", "MANAGER_COMMENT_alice",
     ]
     if extra_headers:
@@ -309,18 +309,15 @@ class TestMultipleUsersReplicated:
 # =============================================================================
 
 class TestItemCategoryDuplicates:
-    """Item category. 3 rows with same ItemName+ItemDesc+StringID.
-    Verify duplication works using Item-specific content key."""
+    """Item category. 3 rows with same STRINGID+Translation.
+    Verify duplication works using standard content key."""
 
     def test_item_duplicates_replicated(self):
         rows = [
-            {"STRINGID": "6001", "ITEMNAME(ENG)": "Iron Sword",
-             "ITEMDESC(ENG)": "A sturdy blade",
+            {"STRINGID": "6001", "TRANSLATION": "Iron Sword",
              "COMMENT_alice": "Name OK", "STATUS_alice": "NO ISSUE"},
-            {"STRINGID": "6001", "ITEMNAME(ENG)": "Iron Sword",
-             "ITEMDESC(ENG)": "A sturdy blade"},
-            {"STRINGID": "6001", "ITEMNAME(ENG)": "Iron Sword",
-             "ITEMDESC(ENG)": "A sturdy blade"},
+            {"STRINGID": "6001", "TRANSLATION": "Iron Sword"},
+            {"STRINGID": "6001", "TRANSLATION": "Iron Sword"},
         ]
         wb = _make_item_wb(rows)
 
@@ -334,15 +331,12 @@ class TestItemCategoryDuplicates:
         assert filled == 4
 
     def test_different_items_not_grouped(self):
-        """Items with different names should NOT be grouped together."""
+        """Items with different STRINGID+Translation should NOT be grouped together."""
         rows = [
-            {"STRINGID": "6001", "ITEMNAME(ENG)": "Iron Sword",
-             "ITEMDESC(ENG)": "A sturdy blade",
+            {"STRINGID": "6001", "TRANSLATION": "Iron Sword",
              "COMMENT_alice": "Sword OK"},
-            {"STRINGID": "6002", "ITEMNAME(ENG)": "Steel Shield",
-             "ITEMDESC(ENG)": "Heavy protection"},
-            {"STRINGID": "6003", "ITEMNAME(ENG)": "Wooden Staff",
-             "ITEMDESC(ENG)": "Magic focus"},
+            {"STRINGID": "6002", "TRANSLATION": "Steel Shield"},
+            {"STRINGID": "6003", "TRANSLATION": "Wooden Staff"},
         ]
         wb = _make_item_wb(rows)
 
