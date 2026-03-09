@@ -12,18 +12,32 @@ from typing import Optional
 # Formula / garbage text detection — shared across Excel and XML readers
 # ---------------------------------------------------------------------------
 
-_FORMULA_RE = re.compile(r'^[=+\-][A-Za-z]')
+_FORMULA_RE = re.compile(r'^[=+\-@][A-Za-z_]')
+_ARRAY_FORMULA_RE = re.compile(r'^\{=.*\}$')
 
 _EXCEL_ERRORS = frozenset({
     '#N/A', '#REF!', '#VALUE!', '#NAME?', '#NULL!',
     '#DIV/0!', '#NUM!', '#GETTING_DATA',
+    '#SPILL!', '#CALC!', '#BLOCKED!', '#CONNECT!',
+    '#FIELD!', '#UNKNOWN!',
 })
+
+# Match Excel errors anywhere in the string (not just exact match)
+_EXCEL_ERROR_RE = re.compile(
+    r'#(?:N/A|REF!|VALUE!|NAME\?|NULL!|DIV/0!|NUM!|GETTING_DATA'
+    r'|SPILL!|CALC!|BLOCKED!|CONNECT!|FIELD!|UNKNOWN!)',
+    re.IGNORECASE,
+)
 
 
 def is_formula_text(text: str) -> Optional[str]:
     """Check if a string looks like an Excel formula or error value.
 
     Works on any string regardless of source (Excel cell, XML attribute, etc.).
+    Catches:
+      - Formulas: =VLOOKUP, +SUM, -AVERAGE, @SUM, {=ARRAY}, _xlfn. prefixed
+      - Excel errors: #N/A, #REF!, #VALUE!, #SPILL!, etc. (exact or embedded)
+      - openpyxl object repr leaks
 
     Returns:
         Reason string if the text is suspicious, None if clean.
@@ -33,10 +47,16 @@ def is_formula_text(text: str) -> Optional[str]:
     stripped = text.strip()
     if _FORMULA_RE.match(stripped):
         return f'Excel formula ({stripped[:40]})'
+    if _ARRAY_FORMULA_RE.match(stripped):
+        return f'Array formula ({stripped[:40]})'
     if stripped.upper() in _EXCEL_ERRORS:
         return f'Excel error value ({stripped})'
+    if _EXCEL_ERROR_RE.search(stripped):
+        return f'Contains Excel error ({_EXCEL_ERROR_RE.search(stripped).group()})'
     if 'openpyxl.' in stripped:
         return f'openpyxl object repr ({stripped[:40]})'
+    if '_xlfn.' in stripped.lower():
+        return f'Excel internal function ({stripped[:40]})'
     return None
 
 
