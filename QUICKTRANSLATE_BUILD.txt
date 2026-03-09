@@ -165,3 +165,4 @@ Build 039: extend formula safeguard to XML sources + target scanning + pre-submi
 Build 040: hardened formula regex + end-of-log formula warning summary
 Build 041: text integrity detection — broken linebreaks, encoding artifacts, invisible chars
 Build 042: add dynamic version display to window title
+Build 043: unified CheckResults Excel + CRITICAL/SECONDARY warning split + version display
