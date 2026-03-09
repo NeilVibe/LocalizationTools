@@ -163,10 +163,15 @@ def extract_comment_text(comment: str) -> str:
     Extract the original comment text (before metadata).
 
     Format: "comment text\n---\n..." -> "comment text"
+    Also strips sanitize_for_excel prefix (leading ' before =, +, -, @).
     """
     if not comment:
         return ""
-    parts = str(comment).split("---", 1)
+    text = str(comment)
+    # Reverse sanitize_for_excel: strip leading ' that was added to prevent formula injection
+    if len(text) >= 2 and text[0] == "'" and text[1] in ('=', '+', '-', '@', '\t', '\r'):
+        text = text[1:]
+    parts = text.split("---", 1)
     return parts[0].strip()
 
 
@@ -638,6 +643,9 @@ def process_sheet(
         # is stale (it was for the old comment) and must be cleared.
         if qa_comment_value and should_compile_comment:
             existing_master_comment = master_ws.cell(row=master_row, column=master_comment_col).value
+            # Check if this row has manager data that could be cleared
+            existing_mgr_status = master_ws.cell(row=master_row, column=master_user_status_col).value
+            existing_mgr_comment = master_ws.cell(row=master_row, column=master_manager_comment_col).value
             if existing_master_comment:
                 existing_text = extract_comment_text(str(existing_master_comment))
                 fresh_text = str(qa_comment_value).strip()
@@ -645,6 +653,16 @@ def process_sheet(
                     # Tester changed comment - clear manager response (it was for the old comment)
                     master_ws.cell(row=master_row, column=master_user_status_col).value = None
                     master_ws.cell(row=master_row, column=master_manager_comment_col).value = None
+                    if existing_mgr_status or existing_mgr_comment:
+                        print(f"        [MANAGER-CLEAR] Row {master_row}: CLEARED manager data (comment changed)")
+                        print(f"          existing_text={repr(existing_text[:50])}")
+                        print(f"          fresh_text   ={repr(fresh_text[:50])}")
+                        print(f"          mgr_status was: {existing_mgr_status}, mgr_comment was: {str(existing_mgr_comment)[:30] if existing_mgr_comment else None}")
+                elif existing_mgr_status or existing_mgr_comment:
+                    print(f"        [MANAGER-KEEP] Row {master_row}: manager data preserved (comment unchanged)")
+            elif existing_mgr_status or existing_mgr_comment:
+                # No existing comment in master but there IS manager data — this is weird
+                print(f"        [MANAGER-WARN] Row {master_row}: has manager data but NO existing comment in master")
 
         # Process COMMENT
         if qa_comment_value and should_compile_comment:
@@ -1323,6 +1341,10 @@ def autofit_rows_with_wordwrap(wb, default_row_height: int = 15, chars_per_line:
                 ws.column_dimensions[col_letter].width = STATUS_WIDTH
             elif header_upper.startswith("TESTER_STATUS_"):
                 ws.column_dimensions[col_letter].width = STATUS_WIDTH
+            elif header_upper.startswith("MANAGER_COMMENT_"):
+                max_len = col_max_lengths.get(idx, len(header_str))
+                width = min(max(max_len * 1.1 + 2, COMMENT_MIN_WIDTH), COMMENT_MAX_WIDTH)
+                ws.column_dimensions[col_letter].width = width
 
         # Pre-compute column widths for height calculation
         col_widths = []

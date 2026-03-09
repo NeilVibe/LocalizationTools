@@ -527,13 +527,32 @@ def extract_tester_data_from_master(
         print(f"    WARNING: Failed to extract tester data from {master_path.name}: {e}")
         return {}
 
-    # Summary
-    total_entries = sum(
-        sum(len(users) for users in sheet.values())
-        for sheet in extracted.values()
-    )
+    # Summary with manager data breakdown
+    total_entries = 0
+    manager_status_count = 0
+    manager_comment_count = 0
+    for sheet_name_s, sheet_s in extracted.items():
+        sheet_total = 0
+        sheet_mgr_status = 0
+        sheet_mgr_comment = 0
+        for users in sheet_s.values():
+            for user_data_s in users.values():
+                sheet_total += 1
+                if "manager_status" in user_data_s:
+                    sheet_mgr_status += 1
+                if "manager_comment" in user_data_s:
+                    sheet_mgr_comment += 1
+        total_entries += sheet_total
+        manager_status_count += sheet_mgr_status
+        manager_comment_count += sheet_mgr_comment
+        if sheet_mgr_status > 0 or sheet_mgr_comment > 0:
+            print(f"      {sheet_name_s}: {sheet_total} entries, {sheet_mgr_status} with manager_status, {sheet_mgr_comment} with manager_comment")
     if total_entries > 0:
         print(f"    Extracted {total_entries} tester data entries from {len(extracted)} sheets")
+        if manager_status_count > 0 or manager_comment_count > 0:
+            print(f"    [MANAGER] {manager_status_count} manager_status, {manager_comment_count} manager_comment entries found")
+        else:
+            print(f"    [MANAGER] WARNING: No manager data found in old master!")
 
     return extracted
 
@@ -737,6 +756,7 @@ def restore_tester_data_to_master(
                         status_value = user_data["manager_status"]
                         cell.value = status_value
                         cell.alignment = MANAGER_STATUS_ALIGNMENT
+                        print(f"        [MANAGER-RESTORE] Row {master_row}: STATUS_{username}={status_value} (col {status_col})")
 
                         # Apply font color
                         status_upper = str(status_value).strip().upper()
@@ -756,6 +776,7 @@ def restore_tester_data_to_master(
                         cell.alignment = COMMENT_ALIGNMENT
                         cell.fill = MANAGER_COMMENT_FILL
                         cell.border = MANAGER_COMMENT_BORDER
+                        print(f"        [MANAGER-RESTORE] Row {master_row}: MANAGER_COMMENT_{username}={str(user_data['manager_comment'])[:30]}... (col {manager_comment_col})")
 
                     # Restore screenshot (not for Script)
                     if not is_script and screenshot_col and "screenshot" in user_data:
