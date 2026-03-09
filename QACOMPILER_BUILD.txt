@@ -151,3 +151,4 @@ Build: per-green-cluster dedup in knowledge datasheets
 Build: Fix Item matching for new row-per-text format
 Build: fix Korean detection in generators/base.py - add Jamo ranges
 Build 039: Unify Item category to standard STRINGID+Translation path — remove stale ITEMNAME/ITEMDESC branches
+Build 040: add dynamic version display to window title
