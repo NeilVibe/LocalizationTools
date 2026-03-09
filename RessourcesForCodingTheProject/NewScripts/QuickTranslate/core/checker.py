@@ -25,7 +25,7 @@ from .xml_parser import (
 )
 from .korean_detection import is_korean_text
 from .source_scanner import scan_source_for_languages
-from .text_utils import is_formula_text
+from .text_utils import is_formula_text, is_text_integrity_issue
 
 logger = logging.getLogger(__name__)
 
@@ -288,6 +288,37 @@ def check_formula_text_in_file(xml_path: Path) -> list:
     return findings
 
 
+def check_text_integrity_in_file(xml_path: Path) -> list:
+    """
+    Scan one XML file for text integrity issues in Str and Desc values.
+
+    Catches broken <br/> tags, encoding artifacts, control characters,
+    and zero-width/invisible characters.
+
+    Args:
+        xml_path: Path to XML file
+
+    Returns:
+        List of matching LocStr elements (lxml elements with original attributes).
+    """
+    findings = []
+    try:
+        root = parse_xml_file(xml_path)
+        for elem in iter_locstr_elements(root):
+            str_text = _get_attr(elem, _STR_ATTRS).strip()
+            desc_text = _get_attr(elem, _DESC_ATTRS).strip()
+
+            if str_text and is_text_integrity_issue(str_text):
+                findings.append(elem)
+                continue
+            if desc_text and is_text_integrity_issue(desc_text):
+                findings.append(elem)
+    except Exception as e:
+        logger.warning(f"Failed to parse {xml_path.name}: {e}")
+
+    return findings
+
+
 def check_korean_in_file(xml_path: Path) -> list:
     """
     Scan one XML file for Korean characters in Str values.
@@ -488,7 +519,7 @@ def run_pattern_check(
     progress_callback: Optional[Callable[[str], None]] = None,
     skip_staticinfo_knowledge: bool = True,
     cancel_event: Optional[threading.Event] = None,
-) -> Dict[str, Tuple[int, int, int, int, int]]:
+) -> Dict[str, Tuple[int, int, int, int, int, int, int]]:
     """
     Run pattern mismatch + newline + bracket + broken XML + empty Str check.
 
@@ -514,7 +545,7 @@ def run_pattern_check(
         cancel_event: Optional threading.Event to support cancellation
 
     Returns:
-        Summary dict: {"FRE": (pattern, newline, bracket, broken_xml, empty_str, formula_text), ...}
+        Summary dict: {"FRE": (pattern, newline, bracket, broken_xml, empty_str, formula_text, integrity), ...}
     """
     xml_by_lang = iter_source_xml_files(source_folder)
     if not xml_by_lang:
@@ -532,6 +563,8 @@ def run_pattern_check(
     empty_dir.mkdir(parents=True, exist_ok=True)
     formula_dir = output_folder / "FormulaText"
     formula_dir.mkdir(parents=True, exist_ok=True)
+    integrity_dir = output_folder / "TextIntegrity"
+    integrity_dir.mkdir(parents=True, exist_ok=True)
 
     languages = sorted(xml_by_lang.keys())
     summary = {}
@@ -549,6 +582,7 @@ def run_pattern_check(
         all_broken_xml = []
         all_empty_str = []
         all_formula_text = []
+        all_integrity = []
         for xml_path in xml_files:
             if cancel_event and cancel_event.is_set():
                 raise InterruptedError("Operation cancelled by user")
@@ -566,14 +600,19 @@ def run_pattern_check(
             formula = check_formula_text_in_file(xml_path)
             all_formula_text.extend(formula)
 
+            # Text integrity check — broken linebreaks, encoding artifacts, bad chars
+            integrity = check_text_integrity_in_file(xml_path)
+            all_integrity.extend(integrity)
+
         summary[lang] = (len(all_pattern_errors), len(all_newline_errors),
                          len(all_bracket_errors), len(all_broken_xml),
-                         len(all_empty_str), len(all_formula_text))
+                         len(all_empty_str), len(all_formula_text),
+                         len(all_integrity))
 
         # Combine all error lists for main XML output (deduplicate by element identity)
         seen = set()
         combined = []
-        for elem in all_pattern_errors + all_newline_errors + all_bracket_errors + all_empty_str + all_formula_text:
+        for elem in all_pattern_errors + all_newline_errors + all_bracket_errors + all_empty_str + all_formula_text + all_integrity:
             eid = id(elem)
             if eid not in seen:
                 seen.add(eid)
@@ -587,7 +626,8 @@ def run_pattern_check(
             b_count = len(all_bracket_errors)
             e_count = len(all_empty_str)
             f_count = len(all_formula_text)
-            logger.info(f"Pattern check {lang}: {p_count} pattern + {n_count} newline + {b_count} bracket + {e_count} empty + {f_count} formula errors in {len(xml_files)} files -> {out_path.name}")
+            i_count = len(all_integrity)
+            logger.info(f"Pattern check {lang}: {p_count} pattern + {n_count} newline + {b_count} bracket + {e_count} empty + {f_count} formula + {i_count} integrity errors in {len(xml_files)} files -> {out_path.name}")
         else:
             logger.info(f"Pattern check {lang}: clean ({len(xml_files)} files)")
 
@@ -614,5 +654,11 @@ def run_pattern_check(
             formula_path = formula_dir / f"FormulaText_{lang}.xml"
             _write_results_xml(formula_path, all_formula_text)
             logger.info(f"Formula text {lang}: {len(all_formula_text)} CRITICAL entries -> {formula_path.name}")
+
+        # Write separate text integrity file
+        if all_integrity:
+            integrity_path = integrity_dir / f"TextIntegrity_{lang}.xml"
+            _write_results_xml(integrity_path, all_integrity)
+            logger.info(f"Text integrity {lang}: {len(all_integrity)} CRITICAL entries -> {integrity_path.name}")
 
     return summary

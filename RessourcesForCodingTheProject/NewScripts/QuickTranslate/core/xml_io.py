@@ -14,7 +14,7 @@ from .xml_parser import (
     DESC_ATTRS, DESCORIGIN_ATTRS,
 )
 from .korean_detection import is_korean_text
-from .text_utils import is_formula_text
+from .text_utils import is_formula_text, is_text_integrity_issue
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 def parse_corrections_from_xml(
     xml_path: Path,
     formula_report: Optional[list] = None,
+    integrity_report: Optional[list] = None,
 ) -> List[Dict]:
     """
     Parse corrections from XML file (LocStr elements).
@@ -30,6 +31,9 @@ def parse_corrections_from_xml(
         xml_path: Path to XML file
         formula_report: Optional list to collect formula/error detections.
             Each entry is a dict with keys: string_id, column, reason, value.
+        integrity_report: Optional list to collect text integrity detections
+            (broken linebreaks, encoding artifacts, bad chars).
+            Same dict format as formula_report.
 
     Returns:
         List of correction dicts with keys: string_id, str_origin, corrected, raw_attribs
@@ -63,6 +67,19 @@ def parse_corrections_from_xml(
                     logger.debug("Skipping formula-like Str in XML: StringID=%s reason=%s", string_id, bad_str)
                     continue
 
+                # Text integrity check on Str (broken linebreaks, encoding, bad chars)
+                bad_integrity = is_text_integrity_issue(str_value)
+                if bad_integrity:
+                    if integrity_report is not None:
+                        integrity_report.append({
+                            'string_id': string_id,
+                            'column': 'Str',
+                            'reason': bad_integrity,
+                            'value': str_value[:60],
+                        })
+                    logger.debug("Skipping integrity-issue Str in XML: StringID=%s reason=%s", string_id, bad_integrity)
+                    continue
+
                 # Store ALL original attributes for exact preservation in failure reports
                 raw_attribs = dict(elem.attrib)
 
@@ -92,7 +109,19 @@ def parse_corrections_from_xml(
                             })
                         logger.debug("Neutralizing formula-like Desc in XML: StringID=%s reason=%s", string_id, bad_desc)
                     else:
-                        entry["desc_corrected"] = desc_value
+                        # Text integrity check on Desc
+                        bad_desc_integrity = is_text_integrity_issue(desc_value)
+                        if bad_desc_integrity:
+                            if integrity_report is not None:
+                                integrity_report.append({
+                                    'string_id': string_id,
+                                    'column': 'Desc',
+                                    'reason': bad_desc_integrity,
+                                    'value': desc_value[:60],
+                                })
+                            logger.debug("Neutralizing integrity-issue Desc in XML: StringID=%s reason=%s", string_id, bad_desc_integrity)
+                        else:
+                            entry["desc_corrected"] = desc_value
 
                 corrections.append(entry)
     except Exception as e:

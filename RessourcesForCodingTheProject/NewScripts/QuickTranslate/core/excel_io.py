@@ -17,7 +17,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, numbers
 
 from .korean_detection import is_korean_text
-from .text_utils import normalize_text, normalize_nospace, is_formula_text
+from .text_utils import normalize_text, normalize_nospace, is_formula_text, is_text_integrity_issue
 
 # ---------------------------------------------------------------------------
 # Formula safeguard — detect Excel formulas, error values, and non-str types
@@ -153,6 +153,7 @@ def read_corrections_from_excel(
     excel_path: Path,
     has_header: bool = True,
     formula_report: Optional[list] = None,
+    integrity_report: Optional[list] = None,
 ) -> List[Dict]:
     """
     Read corrections from Excel file for transfer mode.
@@ -171,6 +172,8 @@ def read_corrections_from_excel(
         formula_report: Optional list to collect formula/error skips.
             Pass [] to collect; each entry is a dict with row, column,
             string_id, reason. Pass None (default) to skip silently.
+        integrity_report: Optional list to collect text integrity issue skips.
+            Same dict format as formula_report. Pass None (default) to skip silently.
 
     Returns:
         List of correction dicts with keys: string_id, str_origin, corrected
@@ -282,6 +285,17 @@ def read_corrections_from_excel(
                         })
                     continue
 
+                # Text integrity check on Correction (broken linebreaks, encoding, bad chars)
+                bad_integrity = is_text_integrity_issue(corrected_str)
+                if bad_integrity:
+                    logger.debug("Row %s Correction skipped (integrity): %s", row[0].row, bad_integrity)
+                    if integrity_report is not None:
+                        integrity_report.append({
+                            'row': row[0].row, 'column': 'Correction',
+                            'string_id': str(string_id or ''), 'reason': bad_integrity,
+                        })
+                    continue
+
                 # Skip entries where the "correction" is still Korean (untranslated)
                 if is_korean_text(corrected_str):
                     continue
@@ -309,6 +323,17 @@ def read_corrections_from_excel(
                                 'string_id': str(string_id or ''), 'reason': bad,
                             })
                         d_val = None  # Neutralize — prevents downstream str(d_val)
+                    # Text integrity check on Desc (broken linebreaks, encoding, bad chars)
+                    if d_val is not None and isinstance(d_val, str):
+                        bad_desc_integrity = is_text_integrity_issue(d_val.strip())
+                        if bad_desc_integrity:
+                            logger.debug("Row %s Desc skipped (integrity): %s", row[0].row, bad_desc_integrity)
+                            if integrity_report is not None:
+                                integrity_report.append({
+                                    'row': row[0].row, 'column': 'Desc',
+                                    'string_id': str(string_id or ''), 'reason': bad_desc_integrity,
+                                })
+                            d_val = None  # Neutralize
                     if d_val is not None and str(d_val).strip():
                         desc_str = str(d_val).strip()
                         if not is_korean_text(desc_str):

@@ -91,7 +91,7 @@ from core import (
     check_xlsxwriter_available,
 )
 from core.missing_translation_finder import find_missing_with_options
-from core.checker import run_korean_check, run_pattern_check, check_broken_xml_in_file, check_formula_text_in_file
+from core.checker import run_korean_check, run_pattern_check, check_broken_xml_in_file, check_formula_text_in_file, check_text_integrity_in_file
 from core.quality_checker import run_quality_check
 from gui.missing_params_dialog import MissingParamsDialog
 from gui.exclude_dialog import ExcludeDialog
@@ -1015,6 +1015,7 @@ class QuickTranslateApp:
         def target_validation_work():
             total_broken = 0
             total_formula = 0
+            total_integrity = 0
             total = len(xml_files)
 
             for i, xf in enumerate(xml_files):
@@ -1043,13 +1044,25 @@ class QuickTranslateApp:
                     if len(formula) > 10:
                         self._log(f"  ...and {len(formula) - 10} more.", 'error')
 
-            issues = total_broken + total_formula
+                integrity = check_text_integrity_in_file(xf)
+                if integrity:
+                    total_integrity += len(integrity)
+                    self._log(f"WARNING: {xf.name} has {len(integrity)} text integrity issue(s)!", 'warning')
+                    for elem in integrity[:10]:
+                        sid = elem.attrib.get('StringId', elem.attrib.get('stringid', '(unknown)'))
+                        self._log(f"  Integrity issue: StringID={sid}", 'error')
+                    if len(integrity) > 10:
+                        self._log(f"  ...and {len(integrity) - 10} more.", 'error')
+
+            issues = total_broken + total_formula + total_integrity
             if issues:
                 parts = []
                 if total_broken:
                     parts.append(f"{total_broken} broken LocStr")
                 if total_formula:
                     parts.append(f"{total_formula} formula text")
+                if total_integrity:
+                    parts.append(f"{total_integrity} integrity issues")
                 logger.warning("TARGET issues: %s found", ', '.join(parts))
                 self._log(f"TARGET: {', '.join(parts)} found across {total} files", 'warning')
             else:
@@ -1090,6 +1103,7 @@ class QuickTranslateApp:
         def validation_work():
             results = []
             all_formula_warnings = []  # Collect for end-of-log summary
+            all_integrity_warnings = []  # Collect for end-of-log summary
             total = len(files_to_check)
 
             for i, (filepath, lang) in enumerate(files_to_check):
@@ -1106,10 +1120,12 @@ class QuickTranslateApp:
 
                 try:
                     if suffix == ".xml":
-                        # Parse + count + formula detection
+                        # Parse + count + formula + integrity detection
                         from core.xml_io import parse_corrections_from_xml
                         xml_formula_report = []
-                        entries = parse_corrections_from_xml(filepath, formula_report=xml_formula_report)
+                        xml_integrity_report = []
+                        entries = parse_corrections_from_xml(
+                            filepath, formula_report=xml_formula_report, integrity_report=xml_integrity_report)
                         count = len(entries) if entries else 0
 
                         # Also count raw LocStr elements for broken XML check
@@ -1140,9 +1156,29 @@ class QuickTranslateApp:
                                 self._log(f"  ...and {xml_formula_count - 10} more.", 'error')
                             for r in xml_formula_report:
                                 all_formula_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
+                        # Report integrity issues in XML
+                        if xml_integrity_report:
+                            xml_integrity_count = len(xml_integrity_report)
+                            self._log(
+                                f"WARNING: {xml_integrity_count} entry(ies) in {filepath.name} "
+                                f"have text integrity issues (skipped/neutralized).",
+                                'error'
+                            )
+                            for r in xml_integrity_report[:10]:
+                                sid = r['string_id'] or '(empty)'
+                                self._log(
+                                    f"  [{r['column']}] StringID={sid}: {r['reason']}",
+                                    'error'
+                                )
+                            if xml_integrity_count > 10:
+                                self._log(f"  ...and {xml_integrity_count - 10} more.", 'error')
+                            for r in xml_integrity_report:
+                                all_integrity_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
                     elif suffix in (".xlsx", ".xls"):
                         formula_report = []
-                        entries = read_corrections_from_excel(filepath, formula_report=formula_report)
+                        integrity_report_xl = []
+                        entries = read_corrections_from_excel(
+                            filepath, formula_report=formula_report, integrity_report=integrity_report_xl)
                         count = len(entries) if entries else 0
 
                         if formula_report:
@@ -1163,10 +1199,32 @@ class QuickTranslateApp:
                                 self._log(f"  ...and {formula_count - 10} more.", 'error')
                             for r in formula_report:
                                 all_formula_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
-                            if count == 0:
-                                results.append((filepath.name, file_type, lang, 0, "FORMULA",
-                                                f"All {formula_count} rows contained formulas"))
-                                continue
+                        if integrity_report_xl:
+                            integrity_count_xl = len(integrity_report_xl)
+                            self._log(
+                                f"WARNING: {integrity_count_xl} cell(s) in {filepath.name} "
+                                f"have text integrity issues (skipped/neutralized).",
+                                'error'
+                            )
+                            for r in integrity_report_xl[:10]:
+                                sid = r['string_id'] or '(empty)'
+                                self._log(
+                                    f"  Row {r['row']} [{r['column']}] StringID={sid}: {r['reason']}",
+                                    'error'
+                                )
+                            if integrity_count_xl > 10:
+                                self._log(f"  ...and {integrity_count_xl - 10} more.", 'error')
+                            for r in integrity_report_xl:
+                                all_integrity_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
+                        if count == 0 and (formula_report or integrity_report_xl):
+                            skip_parts = []
+                            if formula_report:
+                                skip_parts.append(f"{len(formula_report)} formula")
+                            if integrity_report_xl:
+                                skip_parts.append(f"{len(integrity_report_xl)} integrity")
+                            results.append((filepath.name, file_type, lang, 0, "SKIPPED",
+                                            f"All rows filtered: {' + '.join(skip_parts)} issues"))
+                            continue
                     else:
                         results.append((filepath.name, file_type, lang, 0, "SKIPPED", "Unsupported format"))
                         continue
@@ -1254,6 +1312,17 @@ class QuickTranslateApp:
                 if len(all_formula_warnings) > 20:
                     self._log(f"  ...and {len(all_formula_warnings) - 20} more.", 'error')
                 self._log("Fix: re-save Excel with Paste Values (Ctrl+Shift+V) or fix the XML source.", 'error')
+
+            # End-of-log integrity warning summary
+            if all_integrity_warnings:
+                self._log("", 'info')
+                self._log(f"=== TEXT INTEGRITY WARNING ({len(all_integrity_warnings)} entries) ===", 'error')
+                self._log("The following entries have broken linebreaks, encoding artifacts, or invisible characters and will be SKIPPED during transfer:", 'error')
+                for fname, sid, col, reason in all_integrity_warnings[:20]:
+                    self._log(f"  {fname} | [{col}] StringID={sid or '(empty)'} | {reason}", 'error')
+                if len(all_integrity_warnings) > 20:
+                    self._log(f"  ...and {len(all_integrity_warnings) - 20} more.", 'error')
+                self._log("Fix: correct the broken text in the source file before re-transferring.", 'error')
 
             # ── Column detection: scan Excel headers to determine available match types ──
             combined_columns = {
@@ -2352,9 +2421,9 @@ class QuickTranslateApp:
         return f"{check_name}: {total} issues in {len(langs_with_issues)} languages ({', '.join(parts)})"
 
     def _format_pattern_summary(self, summary: Dict[str, tuple]) -> str:
-        """Format pattern+newline+bracket+broken XML+empty Str+formula check summary.
+        """Format pattern+newline+bracket+broken XML+empty Str+formula+integrity check summary.
 
-        summary values are (pattern, newline, bracket, broken_xml, empty_str, formula_text) tuples.
+        summary values are (pattern, newline, bracket, broken_xml, empty_str, formula_text, integrity) tuples.
         Shows categorized breakdown so users know what was wrong.
         """
         pattern_total = sum(v[0] for v in summary.values())
@@ -2363,7 +2432,8 @@ class QuickTranslateApp:
         broken_total = sum(v[3] for v in summary.values()) if all(len(v) >= 4 for v in summary.values()) else 0
         empty_total = sum(v[4] for v in summary.values()) if all(len(v) >= 5 for v in summary.values()) else 0
         formula_total = sum(v[5] for v in summary.values()) if all(len(v) >= 6 for v in summary.values()) else 0
-        total = pattern_total + newline_total + bracket_total + broken_total + empty_total + formula_total
+        integrity_total = sum(v[6] for v in summary.values()) if all(len(v) >= 7 for v in summary.values()) else 0
+        total = pattern_total + newline_total + bracket_total + broken_total + empty_total + formula_total + integrity_total
 
         if total == 0:
             return f"Pattern Check: All clean across {len(summary)} languages"
@@ -2379,6 +2449,13 @@ class QuickTranslateApp:
             f_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(f_langs.items())]
             lines.append(f"  CRITICAL — Formula/error text: {formula_total} ({', '.join(f_parts)})")
             lines.append("  (Separate files in FormulaText/ folder)")
+
+        # CRITICAL: Text integrity issues
+        if integrity_total > 0:
+            i_langs = {k: v[6] for k, v in summary.items() if len(v) >= 7 and v[6] > 0}
+            i_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(i_langs.items())]
+            lines.append(f"  CRITICAL — Text integrity: {integrity_total} ({', '.join(i_parts)})")
+            lines.append("  (Separate files in TextIntegrity/ folder)")
 
         # CRITICAL: Broken XML
         if broken_total > 0:
@@ -2494,7 +2571,8 @@ class QuickTranslateApp:
             broken_total = sum(v[3] for v in summary.values()) if all(len(v) >= 4 for v in summary.values()) else 0
             empty_total = sum(v[4] for v in summary.values()) if all(len(v) >= 5 for v in summary.values()) else 0
             formula_total = sum(v[5] for v in summary.values()) if all(len(v) >= 6 for v in summary.values()) else 0
-            total = pattern_total + newline_total + bracket_total + broken_total + empty_total + formula_total
+            integrity_total = sum(v[6] for v in summary.values()) if all(len(v) >= 7 for v in summary.values()) else 0
+            total = pattern_total + newline_total + bracket_total + broken_total + empty_total + formula_total + integrity_total
 
             self._log(result_msg, 'success' if total == 0 else 'warning')
 
@@ -2502,13 +2580,15 @@ class QuickTranslateApp:
                 self._log(f"Results written to: {output_folder / 'PatternErrors'}", 'info')
                 if formula_total > 0:
                     self._log(f"CRITICAL formula text: {output_folder / 'FormulaText'}", 'warning')
+                if integrity_total > 0:
+                    self._log(f"CRITICAL text integrity: {output_folder / 'TextIntegrity'}", 'warning')
                 if broken_total > 0:
                     self._log(f"CRITICAL broken XML: {output_folder / 'BrokenXML'}", 'warning')
                 if bracket_total > 0:
                     self._log(f"CRITICAL bracket issues: {output_folder / 'MissingBrackets'}", 'warning')
                 if empty_total > 0:
                     self._log(f"Empty Str entries: {output_folder / 'EmptyStr'}", 'info')
-                self._task_queue.put(('checks_status', f"Done: {total} issues ({formula_total}F + {broken_total}X + {pattern_total}P + {newline_total}N + {bracket_total}B + {empty_total}E)"))
+                self._task_queue.put(('checks_status', f"Done: {total} issues ({formula_total}F + {integrity_total}I + {broken_total}X + {pattern_total}P + {newline_total}N + {bracket_total}B + {empty_total}E)"))
             else:
                 self._task_queue.put(('checks_status', "Done: All clean"))
 
@@ -2602,10 +2682,13 @@ class QuickTranslateApp:
                 x_total = sum(v[3] for v in pattern_summary.values()) if all(len(v) >= 4 for v in pattern_summary.values()) else 0
                 e_total = sum(v[4] for v in pattern_summary.values()) if all(len(v) >= 5 for v in pattern_summary.values()) else 0
                 f_total = sum(v[5] for v in pattern_summary.values()) if all(len(v) >= 6 for v in pattern_summary.values()) else 0
+                i_total = sum(v[6] for v in pattern_summary.values()) if all(len(v) >= 7 for v in pattern_summary.values()) else 0
                 self._log(self._format_pattern_summary(pattern_summary),
-                          'success' if (p_total + n_total + b_total + x_total + e_total + f_total) == 0 else 'warning')
+                          'success' if (p_total + n_total + b_total + x_total + e_total + f_total + i_total) == 0 else 'warning')
                 if f_total > 0:
                     self._log(f"CRITICAL formula text: {output_folder / 'FormulaText'}", 'warning')
+                if i_total > 0:
+                    self._log(f"CRITICAL text integrity: {output_folder / 'TextIntegrity'}", 'warning')
                 if x_total > 0:
                     self._log(f"CRITICAL broken XML: {output_folder / 'BrokenXML'}", 'warning')
                 if b_total > 0:

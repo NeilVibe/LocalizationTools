@@ -1625,6 +1625,7 @@ def transfer_folder_to_folder(
         "_fuzzy_unmatched": [],
         "_fuzzy_stats": None,
         "formula_warnings": [],
+        "integrity_warnings": [],
     }
 
     if not source_folder.exists():
@@ -1770,7 +1771,9 @@ def transfer_folder_to_folder(
         try:
             if source_file.suffix.lower() == ".xml":
                 formula_report = []
-                corrections = parse_corrections_from_xml(source_file, formula_report=formula_report)
+                integrity_report = []
+                corrections = parse_corrections_from_xml(
+                    source_file, formula_report=formula_report, integrity_report=integrity_report)
                 if formula_report:
                     formula_count = len(formula_report)
                     msg = (
@@ -1794,9 +1797,34 @@ def transfer_folder_to_folder(
                     for r in formula_report:
                         results["formula_warnings"].append(
                             (source_file.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
+                if integrity_report:
+                    integrity_count = len(integrity_report)
+                    msg = (
+                        f"WARNING: {integrity_count} entry(ies) in {source_file.name} "
+                        f"have text integrity issues (skipped/neutralized)"
+                    )
+                    if log_callback:
+                        log_callback(msg, 'warning')
+                    logger.warning(msg)
+                    for r in integrity_report[:10]:
+                        sid = r['string_id'] or '(empty)'
+                        detail = f"  [{r['column']}] StringID={sid}: {r['reason']}"
+                        if log_callback:
+                            log_callback(detail, 'warning')
+                        logger.warning(detail)
+                    if integrity_count > 10:
+                        overflow = f"  ...and {integrity_count - 10} more."
+                        if log_callback:
+                            log_callback(overflow, 'warning')
+                        logger.warning(overflow)
+                    for r in integrity_report:
+                        results["integrity_warnings"].append(
+                            (source_file.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
             else:
                 formula_report = []
-                corrections = read_corrections_from_excel(source_file, formula_report=formula_report)
+                integrity_report = []
+                corrections = read_corrections_from_excel(
+                    source_file, formula_report=formula_report, integrity_report=integrity_report)
                 if formula_report:
                     formula_count = len(formula_report)
                     msg = (
@@ -1819,6 +1847,29 @@ def transfer_folder_to_folder(
                         logger.warning(overflow)
                     for r in formula_report:
                         results["formula_warnings"].append(
+                            (source_file.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
+                if integrity_report:
+                    integrity_count = len(integrity_report)
+                    msg = (
+                        f"WARNING: {integrity_count} cell(s) in {source_file.name} "
+                        f"have text integrity issues (skipped/neutralized)"
+                    )
+                    if log_callback:
+                        log_callback(msg, 'warning')
+                    logger.warning(msg)
+                    for r in integrity_report[:10]:
+                        sid = r['string_id'] or '(empty)'
+                        detail = f"  Row {r['row']} [{r['column']}] StringID={sid}: {r['reason']}"
+                        if log_callback:
+                            log_callback(detail, 'warning')
+                        logger.warning(detail)
+                    if integrity_count > 10:
+                        overflow = f"  ...and {integrity_count - 10} more."
+                        if log_callback:
+                            log_callback(overflow, 'warning')
+                        logger.warning(overflow)
+                    for r in integrity_report:
+                        results["integrity_warnings"].append(
                             (source_file.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
         except ValueError as e:
             logger.error(f"SKIPPED {source_file.name}: {e}")
@@ -2748,6 +2799,37 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
             lines.append(f"  x {error}")
         if len(errors) > 5:
             lines.append(f"  ... and {len(errors) - 5} more errors")
+
+    # ─── End-of-report formula warnings (can't-miss summary) ─────────
+    formula_warnings = results.get("formula_warnings", [])
+    if formula_warnings:
+        lines.append("")
+        lines.append("=" * 60)
+        lines.append("  === FORMULA / ERROR VALUE WARNING ===")
+        lines.append(f"  {len(formula_warnings)} source entry(ies) were skipped/neutralized")
+        lines.append("  because they contained Excel formulas or error values.")
+        for fw in formula_warnings[:10]:
+            fname, sid, col, reason = fw
+            lines.append(f"    [{col}] {fname} | {sid or '(empty)'}: {reason}")
+        if len(formula_warnings) > 10:
+            lines.append(f"    ...and {len(formula_warnings) - 10} more.")
+        lines.append("=" * 60)
+
+    # ─── End-of-report integrity warnings (can't-miss summary) ─────
+    integrity_warnings = results.get("integrity_warnings", [])
+    if integrity_warnings:
+        lines.append("")
+        lines.append("=" * 60)
+        lines.append("  === TEXT INTEGRITY WARNING ===")
+        lines.append(f"  {len(integrity_warnings)} source entry(ies) were skipped/neutralized")
+        lines.append("  because they had broken linebreaks, encoding artifacts,")
+        lines.append("  or invisible characters.")
+        for iw in integrity_warnings[:10]:
+            fname, sid, col, reason = iw
+            lines.append(f"    [{col}] {fname} | {sid or '(empty)'}: {reason}")
+        if len(integrity_warnings) > 10:
+            lines.append(f"    ...and {len(integrity_warnings) - 10} more.")
+        lines.append("=" * 60)
 
     lines.append("")
     lines.append("Legend: ● >=95% coverage  ◐ >=80% coverage  ○ <80% coverage")
