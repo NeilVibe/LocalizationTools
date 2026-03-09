@@ -162,3 +162,4 @@ Build 038: fix Korean detection - add Jamo + Compat Jamo ranges (was missing ㅈ
 Build 039: fix Korean detection in missing_translation_finder (import from korean_detection.py)
 Build 038: add formula safeguard — detect and skip Excel formulas/errors in Correction+Desc columns
 Build 039: extend formula safeguard to XML sources + target scanning + pre-submission check
+Build 040: hardened formula regex + end-of-log formula warning summary
