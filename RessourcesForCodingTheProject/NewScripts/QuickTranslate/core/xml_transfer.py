@@ -2800,35 +2800,51 @@ def format_transfer_report(results: Dict, mode: str = "folder", match_mode: str 
         if len(errors) > 5:
             lines.append(f"  ... and {len(errors) - 5} more errors")
 
-    # ─── End-of-report formula warnings (can't-miss summary) ─────────
+    # ─── Split integrity warnings into critical vs secondary ─────────
     formula_warnings = results.get("formula_warnings", [])
-    if formula_warnings:
+    integrity_warnings = results.get("integrity_warnings", [])
+    critical_integrity = [w for w in integrity_warnings if w[3].startswith('Broken') or w[3].startswith('Truncated')]
+    secondary_integrity = [w for w in integrity_warnings if not (w[3].startswith('Broken') or w[3].startswith('Truncated'))]
+
+    # ─── End-of-report CRITICAL warnings (formulas + broken linebreaks) ───
+    if formula_warnings or critical_integrity:
+        critical_total = len(formula_warnings) + len(critical_integrity)
         lines.append("")
         lines.append("=" * 60)
-        lines.append("  === FORMULA / ERROR VALUE WARNING ===")
-        lines.append(f"  {len(formula_warnings)} source entry(ies) were skipped/neutralized")
-        lines.append("  because they contained Excel formulas or error values.")
-        for fw in formula_warnings[:10]:
-            fname, sid, col, reason = fw
-            lines.append(f"    [{col}] {fname} | {sid or '(empty)'}: {reason}")
-        if len(formula_warnings) > 10:
-            lines.append(f"    ...and {len(formula_warnings) - 10} more.")
+        lines.append("  === CRITICAL WARNING ===")
+        lines.append(f"  {critical_total} source entry(ies) were skipped/neutralized:")
+        shown = 0
+        if formula_warnings:
+            lines.append("  Formula/error text:")
+            for fw in formula_warnings[:10]:
+                fname, sid, col, reason = fw
+                lines.append(f"    [{col}] {fname} | {sid or '(empty)'}: {reason}")
+            if len(formula_warnings) > 10:
+                lines.append(f"    ...and {len(formula_warnings) - 10} more.")
+            shown = min(len(formula_warnings), 10)
+        if critical_integrity:
+            lines.append("  Broken linebreak tags:")
+            remaining = max(10 - shown, 3)
+            for iw in critical_integrity[:remaining]:
+                fname, sid, col, reason = iw
+                lines.append(f"    [{col}] {fname} | {sid or '(empty)'}: {reason}")
+            if len(critical_integrity) > remaining:
+                lines.append(f"    ...and {len(critical_integrity) - remaining} more.")
         lines.append("=" * 60)
 
-    # ─── End-of-report integrity warnings (can't-miss summary) ─────
-    integrity_warnings = results.get("integrity_warnings", [])
-    if integrity_warnings:
+    # ─── End-of-report SECONDARY warnings (encoding/invisible/control) ────
+    if secondary_integrity:
         lines.append("")
         lines.append("=" * 60)
-        lines.append("  === TEXT INTEGRITY WARNING ===")
-        lines.append(f"  {len(integrity_warnings)} source entry(ies) were skipped/neutralized")
-        lines.append("  because they had broken linebreaks, encoding artifacts,")
-        lines.append("  or invisible characters.")
-        for iw in integrity_warnings[:10]:
+        lines.append("  === SECONDARY WARNING ===")
+        lines.append(f"  {len(secondary_integrity)} source entry(ies) were skipped/neutralized")
+        lines.append("  because they had encoding artifacts, invisible characters,")
+        lines.append("  or control characters.")
+        for iw in secondary_integrity[:10]:
             fname, sid, col, reason = iw
             lines.append(f"    [{col}] {fname} | {sid or '(empty)'}: {reason}")
-        if len(integrity_warnings) > 10:
-            lines.append(f"    ...and {len(integrity_warnings) - 10} more.")
+        if len(secondary_integrity) > 10:
+            lines.append(f"    ...and {len(secondary_integrity) - 10} more.")
         lines.append("=" * 60)
 
     lines.append("")

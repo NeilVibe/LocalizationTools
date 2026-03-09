@@ -6,6 +6,7 @@ Scans Source folder, groups by language, writes per-language result XMLs.
 
 Output format: pure LocStr elements in <root>, same format as source XML.
 """
+from __future__ import annotations
 
 import logging
 import re
@@ -436,6 +437,30 @@ def iter_source_xml_files(source_folder: Path) -> Dict[str, List[Path]]:
     return xml_by_lang
 
 
+def _write_check_results_excel(path: Path, sheets_data: list):
+    """Write unified check results Excel with multiple tabs.
+
+    Args:
+        path: Output .xlsx file path
+        sheets_data: List of (sheet_name, headers, rows) tuples.
+                     Only sheets with rows should be included.
+                     Each row is a tuple matching the headers.
+    """
+    import xlsxwriter
+    wb = xlsxwriter.Workbook(str(path))
+    header_fmt = wb.add_format({'bold': True, 'bg_color': '#D9E1F2'})
+    for sheet_name, headers, rows in sheets_data:
+        ws = wb.add_worksheet(sheet_name)
+        for col, h in enumerate(headers):
+            ws.write(0, col, h, header_fmt)
+        for r, row_data in enumerate(rows, 1):
+            for col, val in enumerate(row_data):
+                ws.write(r, col, val or "")
+        for col in range(len(headers)):
+            ws.set_column(col, col, 40)
+    wb.close()
+
+
 def _write_results_xml(output_path: Path, elements: list):
     """
     Write LocStr elements to XML file in pure source format.
@@ -649,16 +674,105 @@ def run_pattern_check(
             _write_results_xml(empty_path, all_empty_str)
             logger.info(f"Empty Str {lang}: {len(all_empty_str)} entries -> {empty_path.name}")
 
-        # Write separate formula text file
+        # Write separate formula text XML
         if all_formula_text:
             formula_path = formula_dir / f"FormulaText_{lang}.xml"
             _write_results_xml(formula_path, all_formula_text)
             logger.info(f"Formula text {lang}: {len(all_formula_text)} CRITICAL entries -> {formula_path.name}")
 
-        # Write separate text integrity file
+        # Write separate text integrity XML
         if all_integrity:
             integrity_path = integrity_dir / f"TextIntegrity_{lang}.xml"
             _write_results_xml(integrity_path, all_integrity)
-            logger.info(f"Text integrity {lang}: {len(all_integrity)} CRITICAL entries -> {integrity_path.name}")
+            logger.info(f"Text integrity {lang}: {len(all_integrity)} entries -> {integrity_path.name}")
+
+        # --- Unified Excel report: one file per language, tabs only if findings ---
+        elem_headers = ("StringID", "StrOrigin", "Str", "Reason")
+        sheets = []
+
+        # Tab 1: Critical — formula text + broken/truncated linebreak integrity
+        critical_rows = []
+        for elem in all_formula_text:
+            sid = _get_attr(elem, _STRINGID_ATTRS)
+            str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
+            str_val = _get_attr(elem, _STR_ATTRS)
+            desc_val = _get_attr(elem, _DESC_ATTRS)
+            reason = is_formula_text(str_val) or is_formula_text(desc_val) or "Unknown"
+            critical_rows.append((sid, str_origin, str_val, reason))
+        for elem in all_integrity:
+            str_val = _get_attr(elem, _STR_ATTRS)
+            desc_val = _get_attr(elem, _DESC_ATTRS)
+            reason = is_text_integrity_issue(str_val) or is_text_integrity_issue(desc_val) or "Unknown"
+            if reason.startswith('Broken') or reason.startswith('Truncated'):
+                sid = _get_attr(elem, _STRINGID_ATTRS)
+                str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
+                critical_rows.append((sid, str_origin, str_val, reason))
+        if critical_rows:
+            sheets.append(("Critical", elem_headers, critical_rows))
+
+        # Tab 2: Secondary — encoding artifacts, invisible chars, control chars
+        secondary_rows = []
+        for elem in all_integrity:
+            str_val = _get_attr(elem, _STR_ATTRS)
+            desc_val = _get_attr(elem, _DESC_ATTRS)
+            reason = is_text_integrity_issue(str_val) or is_text_integrity_issue(desc_val) or "Unknown"
+            if not (reason.startswith('Broken') or reason.startswith('Truncated')):
+                sid = _get_attr(elem, _STRINGID_ATTRS)
+                str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
+                secondary_rows.append((sid, str_origin, str_val, reason))
+        if secondary_rows:
+            sheets.append(("Secondary", elem_headers, secondary_rows))
+
+        # Tab 3: PatternErrors
+        if all_pattern_errors:
+            rows = []
+            for elem in all_pattern_errors:
+                sid = _get_attr(elem, _STRINGID_ATTRS)
+                str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
+                str_val = _get_attr(elem, _STR_ATTRS)
+                rows.append((sid, str_origin, str_val, "Pattern mismatch"))
+            sheets.append(("PatternErrors", elem_headers, rows))
+
+        # Tab 4: WrongNewlines
+        if all_newline_errors:
+            rows = []
+            for elem in all_newline_errors:
+                sid = _get_attr(elem, _STRINGID_ATTRS)
+                str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
+                str_val = _get_attr(elem, _STR_ATTRS)
+                rows.append((sid, str_origin, str_val, "Wrong newline format"))
+            sheets.append(("WrongNewlines", elem_headers, rows))
+
+        # Tab 5: MissingBrackets
+        if all_bracket_errors:
+            rows = []
+            for elem in all_bracket_errors:
+                sid = _get_attr(elem, _STRINGID_ATTRS)
+                str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
+                str_val = _get_attr(elem, _STR_ATTRS)
+                rows.append((sid, str_origin, str_val, "Unbalanced brackets"))
+            sheets.append(("MissingBrackets", elem_headers, rows))
+
+        # Tab 6: EmptyStr
+        if all_empty_str:
+            rows = []
+            for elem in all_empty_str:
+                sid = _get_attr(elem, _STRINGID_ATTRS)
+                str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
+                str_val = _get_attr(elem, _STR_ATTRS)
+                rows.append((sid, str_origin, str_val, "Empty translation"))
+            sheets.append(("EmptyStr", elem_headers, rows))
+
+        # Tab 7: BrokenXML — tuple data, not lxml elements
+        if all_broken_xml:
+            broken_headers = ("StringID", "Fragment", "Filename")
+            broken_rows = list(all_broken_xml)
+            sheets.append(("BrokenXML", broken_headers, broken_rows))
+
+        if sheets:
+            excel_path = output_folder / f"CheckResults_{lang}.xlsx"
+            _write_check_results_excel(excel_path, sheets)
+            tab_names = [s[0] for s in sheets]
+            logger.info(f"Check results {lang}: Excel report with tabs [{', '.join(tab_names)}] -> {excel_path.name}")
 
     return summary

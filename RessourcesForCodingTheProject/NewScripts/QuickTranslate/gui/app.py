@@ -1302,26 +1302,42 @@ class QuickTranslateApp:
                 lang_str = ", ".join(f"{lang}:{count:,}" for lang, count in sorted(lang_entries.items()))
                 self._log(f"  Per-language: {lang_str}", 'info')
 
-            # End-of-log formula warning summary
-            if all_formula_warnings:
-                self._log("", 'info')
-                self._log(f"=== FORMULA/ERROR TEXT WARNING ({len(all_formula_warnings)} entries) ===", 'error')
-                self._log("The following entries contain formula-like or error text and will be SKIPPED during transfer:", 'error')
-                for fname, sid, col, reason in all_formula_warnings[:20]:
-                    self._log(f"  {fname} | [{col}] StringID={sid or '(empty)'} | {reason}", 'error')
-                if len(all_formula_warnings) > 20:
-                    self._log(f"  ...and {len(all_formula_warnings) - 20} more.", 'error')
-                self._log("Fix: re-save Excel with Paste Values (Ctrl+Shift+V) or fix the XML source.", 'error')
+            # Split integrity warnings into critical (broken linebreaks) vs secondary
+            critical_integrity = [w for w in all_integrity_warnings if w[3].startswith('Broken') or w[3].startswith('Truncated')]
+            secondary_integrity = [w for w in all_integrity_warnings if not (w[3].startswith('Broken') or w[3].startswith('Truncated'))]
 
-            # End-of-log integrity warning summary
-            if all_integrity_warnings:
+            # End-of-log CRITICAL warning summary (formulas + broken linebreaks)
+            if all_formula_warnings or critical_integrity:
+                critical_total = len(all_formula_warnings) + len(critical_integrity)
                 self._log("", 'info')
-                self._log(f"=== TEXT INTEGRITY WARNING ({len(all_integrity_warnings)} entries) ===", 'error')
-                self._log("The following entries have broken linebreaks, encoding artifacts, or invisible characters and will be SKIPPED during transfer:", 'error')
-                for fname, sid, col, reason in all_integrity_warnings[:20]:
+                self._log(f"=== CRITICAL WARNING ({critical_total} entries) ===", 'error')
+                self._log("The following entries will be SKIPPED during transfer:", 'error')
+                shown = 0
+                if all_formula_warnings:
+                    self._log("  Formula/error text:", 'error')
+                    for fname, sid, col, reason in all_formula_warnings[:20]:
+                        self._log(f"    {fname} | [{col}] StringID={sid or '(empty)'} | {reason}", 'error')
+                    if len(all_formula_warnings) > 20:
+                        self._log(f"    ...and {len(all_formula_warnings) - 20} more.", 'error')
+                    shown = min(len(all_formula_warnings), 20)
+                if critical_integrity:
+                    self._log("  Broken linebreak tags:", 'error')
+                    remaining = max(20 - shown, 5)
+                    for fname, sid, col, reason in critical_integrity[:remaining]:
+                        self._log(f"    {fname} | [{col}] StringID={sid or '(empty)'} | {reason}", 'error')
+                    if len(critical_integrity) > remaining:
+                        self._log(f"    ...and {len(critical_integrity) - remaining} more.", 'error')
+                self._log("Fix: re-save Excel with Paste Values (Ctrl+Shift+V) or fix broken <br/> tags in the source.", 'error')
+
+            # End-of-log SECONDARY warning summary (invisible chars, encoding, control chars)
+            if secondary_integrity:
+                self._log("", 'info')
+                self._log(f"=== SECONDARY WARNING ({len(secondary_integrity)} entries) ===", 'error')
+                self._log("The following entries have encoding artifacts or invisible characters and will be SKIPPED during transfer:", 'error')
+                for fname, sid, col, reason in secondary_integrity[:20]:
                     self._log(f"  {fname} | [{col}] StringID={sid or '(empty)'} | {reason}", 'error')
-                if len(all_integrity_warnings) > 20:
-                    self._log(f"  ...and {len(all_integrity_warnings) - 20} more.", 'error')
+                if len(secondary_integrity) > 20:
+                    self._log(f"  ...and {len(secondary_integrity) - 20} more.", 'error')
                 self._log("Fix: correct the broken text in the source file before re-transferring.", 'error')
 
             # ── Column detection: scan Excel headers to determine available match types ──
@@ -3211,17 +3227,46 @@ class QuickTranslateApp:
                 summary_lines.append(f"  Script Skipped:   {skipped_script:,}  (Non-Script filter)")
             summary_lines.append(f"\nTarget: {target}")
 
-            # End-of-log formula warning summary
+            # Split transfer integrity warnings into critical vs secondary
             fw = results.get("formula_warnings", [])
-            if fw:
+            iw = results.get("integrity_warnings", [])
+            critical_iw = [w for w in iw if w[3].startswith('Broken') or w[3].startswith('Truncated')]
+            secondary_iw = [w for w in iw if not (w[3].startswith('Broken') or w[3].startswith('Truncated'))]
+
+            # End-of-log CRITICAL warning summary (formulas + broken linebreaks)
+            if fw or critical_iw:
+                critical_total = len(fw) + len(critical_iw)
                 self._log("", 'info')
-                self._log(f"=== FORMULA/ERROR TEXT WARNING ({len(fw)} entries skipped) ===", 'error')
-                for fname, sid, col, reason in fw[:20]:
+                self._log(f"=== CRITICAL WARNING ({critical_total} entries skipped) ===", 'error')
+                shown = 0
+                if fw:
+                    self._log("  Formula/error text:", 'error')
+                    for fname, sid, col, reason in fw[:20]:
+                        self._log(f"    {fname} | [{col}] StringID={sid or '(empty)'} | {reason}", 'error')
+                    if len(fw) > 20:
+                        self._log(f"    ...and {len(fw) - 20} more.", 'error')
+                    shown = min(len(fw), 20)
+                if critical_iw:
+                    self._log("  Broken linebreak tags:", 'error')
+                    remaining = max(20 - shown, 5)
+                    for fname, sid, col, reason in critical_iw[:remaining]:
+                        self._log(f"    {fname} | [{col}] StringID={sid or '(empty)'} | {reason}", 'error')
+                    if len(critical_iw) > remaining:
+                        self._log(f"    ...and {len(critical_iw) - remaining} more.", 'error')
+                self._log("Fix: re-save Excel with Paste Values (Ctrl+Shift+V) or fix broken <br/> tags in the source.", 'error')
+                summary_lines.append(f"\nWARNING: {critical_total} entries skipped (critical: formula/broken linebreak)")
+
+            # End-of-log SECONDARY warning summary (encoding/invisible/control)
+            if secondary_iw:
+                self._log("", 'info')
+                self._log(f"=== SECONDARY WARNING ({len(secondary_iw)} entries skipped) ===", 'error')
+                self._log("Encoding artifacts or invisible characters:", 'error')
+                for fname, sid, col, reason in secondary_iw[:20]:
                     self._log(f"  {fname} | [{col}] StringID={sid or '(empty)'} | {reason}", 'error')
-                if len(fw) > 20:
-                    self._log(f"  ...and {len(fw) - 20} more.", 'error')
-                self._log("Fix: re-save Excel with Paste Values (Ctrl+Shift+V) or fix the XML source.", 'error')
-                summary_lines.append(f"\nWARNING: {len(fw)} entries skipped (formula/error text)")
+                if len(secondary_iw) > 20:
+                    self._log(f"  ...and {len(secondary_iw) - 20} more.", 'error')
+                self._log("Fix: correct the broken text in the source file before re-transferring.", 'error')
+                summary_lines.append(f"\nWARNING: {len(secondary_iw)} entries skipped (secondary: encoding/invisible chars)")
 
             self._task_queue.put(('messagebox', 'showinfo', 'Transfer Complete',
                 "\n".join(summary_lines)
