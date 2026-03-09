@@ -8,6 +8,9 @@ Paths can be configured via settings.json (created by installer).
 """
 from __future__ import annotations
 
+# Version - auto-injected by CI pipeline
+VERSION = "1.0.0"
+
 from pathlib import Path
 import sys
 import json

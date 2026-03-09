@@ -343,6 +343,24 @@ jobs:
           pip install -r ${{ env.PROJECT_PATH }}/requirements.txt
           pip install pyinstaller
 
+      - name: Inject Version
+        shell: pwsh
+        run: |
+          $version = "${{ env.VERSION }}"
+          $configPath = "${{ env.PROJECT_PATH }}\config.py"
+          Write-Host "=== VERSION INJECTION ==="
+          Write-Host "Version: $version"
+          if (Test-Path $configPath) {
+            $content = Get-Content $configPath -Raw
+            if ($content -match 'VERSION\s*=') {
+              $content = $content -replace 'VERSION\s*=\s*"[^"]*"', "VERSION = `"$version`""
+            } else {
+              $content = "VERSION = `"$version`"`n" + $content
+            }
+            Set-Content $configPath $content
+            Write-Host "[OK] Updated: $configPath"
+          }
+
       - name: Build with PyInstaller
         run: |
           cd ${{ env.PROJECT_PATH }}

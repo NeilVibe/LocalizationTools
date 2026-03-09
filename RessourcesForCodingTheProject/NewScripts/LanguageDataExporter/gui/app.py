@@ -48,7 +48,8 @@ logger = logging.getLogger(__name__)
 # GUI CONFIGURATION
 # =============================================================================
 
-WINDOW_TITLE = "Language Data Exporter v4.2"
+from config import VERSION
+WINDOW_TITLE = f"Language Data Exporter v{VERSION}"
 WINDOW_WIDTH = 850
 WINDOW_HEIGHT = 580
 

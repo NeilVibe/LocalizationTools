@@ -6,6 +6,9 @@ Paths can be configured via settings.json (created on first run) or through the 
 """
 from __future__ import annotations
 
+# Version - auto-injected by CI pipeline
+VERSION = "1.0.0"
+
 import json
 import logging
 from pathlib import Path

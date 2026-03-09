@@ -111,7 +111,7 @@ class QuickTranslateApp:
 
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("QuickTranslate")
+        self.root.title(f"QuickTranslate v{config.VERSION}")
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
         win_w = max(1400, int(screen_w * 0.8))

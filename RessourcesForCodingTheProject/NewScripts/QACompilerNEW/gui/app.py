@@ -29,7 +29,8 @@ import config
 # GUI CONFIGURATION
 # =============================================================================
 
-WINDOW_TITLE = "QA Compiler Suite v2.0"
+from config import VERSION
+WINDOW_TITLE = f"QA Compiler Suite v{VERSION}"
 WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 1100
 BUTTON_WIDTH = 50
