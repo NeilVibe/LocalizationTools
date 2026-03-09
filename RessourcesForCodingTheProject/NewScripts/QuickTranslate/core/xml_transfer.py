@@ -1624,6 +1624,7 @@ def transfer_folder_to_folder(
         "_fuzzy_matched": [],
         "_fuzzy_unmatched": [],
         "_fuzzy_stats": None,
+        "formula_warnings": [],
     }
 
     if not source_folder.exists():
@@ -1790,6 +1791,9 @@ def transfer_folder_to_folder(
                         if log_callback:
                             log_callback(overflow, 'warning')
                         logger.warning(overflow)
+                    for r in formula_report:
+                        results["formula_warnings"].append(
+                            (source_file.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
             else:
                 formula_report = []
                 corrections = read_corrections_from_excel(source_file, formula_report=formula_report)
@@ -1813,6 +1817,9 @@ def transfer_folder_to_folder(
                         if log_callback:
                             log_callback(overflow, 'warning')
                         logger.warning(overflow)
+                    for r in formula_report:
+                        results["formula_warnings"].append(
+                            (source_file.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
         except ValueError as e:
             logger.error(f"SKIPPED {source_file.name}: {e}")
             results["errors"].append(f"SKIPPED {source_file.name}: {e}")

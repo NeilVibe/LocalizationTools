@@ -1089,6 +1089,7 @@ class QuickTranslateApp:
 
         def validation_work():
             results = []
+            all_formula_warnings = []  # Collect for end-of-log summary
             total = len(files_to_check)
 
             for i, (filepath, lang) in enumerate(files_to_check):
@@ -1137,6 +1138,8 @@ class QuickTranslateApp:
                                 )
                             if xml_formula_count > 10:
                                 self._log(f"  ...and {xml_formula_count - 10} more.", 'error')
+                            for r in xml_formula_report:
+                                all_formula_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
                     elif suffix in (".xlsx", ".xls"):
                         formula_report = []
                         entries = read_corrections_from_excel(filepath, formula_report=formula_report)
@@ -1158,6 +1161,8 @@ class QuickTranslateApp:
                                 )
                             if formula_count > 10:
                                 self._log(f"  ...and {formula_count - 10} more.", 'error')
+                            for r in formula_report:
+                                all_formula_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
                             if count == 0:
                                 results.append((filepath.name, file_type, lang, 0, "FORMULA",
                                                 f"All {formula_count} rows contained formulas"))
@@ -1238,6 +1243,17 @@ class QuickTranslateApp:
             if lang_entries:
                 lang_str = ", ".join(f"{lang}:{count:,}" for lang, count in sorted(lang_entries.items()))
                 self._log(f"  Per-language: {lang_str}", 'info')
+
+            # End-of-log formula warning summary
+            if all_formula_warnings:
+                self._log("", 'info')
+                self._log(f"=== FORMULA/ERROR TEXT WARNING ({len(all_formula_warnings)} entries) ===", 'error')
+                self._log("The following entries contain formula-like or error text and will be SKIPPED during transfer:", 'error')
+                for fname, sid, col, reason in all_formula_warnings[:20]:
+                    self._log(f"  {fname} | [{col}] StringID={sid or '(empty)'} | {reason}", 'error')
+                if len(all_formula_warnings) > 20:
+                    self._log(f"  ...and {len(all_formula_warnings) - 20} more.", 'error')
+                self._log("Fix: re-save Excel with Paste Values (Ctrl+Shift+V) or fix the XML source.", 'error')
 
             # ── Column detection: scan Excel headers to determine available match types ──
             combined_columns = {
@@ -3111,6 +3127,18 @@ class QuickTranslateApp:
             if skipped_script > 0:
                 summary_lines.append(f"  Script Skipped:   {skipped_script:,}  (Non-Script filter)")
             summary_lines.append(f"\nTarget: {target}")
+
+            # End-of-log formula warning summary
+            fw = results.get("formula_warnings", [])
+            if fw:
+                self._log("", 'info')
+                self._log(f"=== FORMULA/ERROR TEXT WARNING ({len(fw)} entries skipped) ===", 'error')
+                for fname, sid, col, reason in fw[:20]:
+                    self._log(f"  {fname} | [{col}] StringID={sid or '(empty)'} | {reason}", 'error')
+                if len(fw) > 20:
+                    self._log(f"  ...and {len(fw) - 20} more.", 'error')
+                self._log("Fix: re-save Excel with Paste Values (Ctrl+Shift+V) or fix the XML source.", 'error')
+                summary_lines.append(f"\nWARNING: {len(fw)} entries skipped (formula/error text)")
 
             self._task_queue.put(('messagebox', 'showinfo', 'Transfer Complete',
                 "\n".join(summary_lines)
