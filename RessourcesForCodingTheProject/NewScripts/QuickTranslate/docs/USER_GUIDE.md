@@ -1,6 +1,6 @@
 # QuickTranslate User Guide
 
-**Version 5.0** | March 2026
+**Version 6.0** | March 2026
 
 ---
 
@@ -93,6 +93,9 @@ Header names are **case-insensitive** and accept these variants:
 - **No Correction** → file skipped entirely
 - **Korean in Correction** → row silently skipped (not translated yet)
 - **Empty Correction** → row silently skipped
+- **"no translation" in Correction** → row blocked (not a real translation)
+- **Excel formulas/errors** → row blocked with CRITICAL warning
+- **Text integrity issues** → row blocked (broken `<br/>`, replacement chars, control chars)
 
 ### Organize by Language
 
@@ -153,16 +156,24 @@ Defaults to "Only untranslated" for safety. "Transfer ALL" triggers a warning di
 
 **Best for:** Bulk-filling untranslated UI labels, buttons, status messages.
 
+### StrOrigin + DescOrigin (Dual-Key)
+
+Requires **StrOrigin + DescOrigin + Correction + Desc**. Matches on both Korean text AND voice direction description.
+
+Same 2-step cascade as Strict (normalized → no-space fallback) applied to both keys.
+
+**Best for:** When multiple entries share the same StrOrigin but have different voice directions.
+
 ### Comparison
 
-| | Strict | StringID-Only | StrOrigin Only |
-|---|:-:|:-:|:-:|
-| **Precision** | Highest | Medium | Medium |
-| **Fan-out** | No | No | Yes |
-| **Fuzzy** | Yes | No | Yes |
-| **Desc Transfer** | Yes | Yes | No |
-| **Default scope** | Transfer ALL | Transfer ALL | Only untranslated |
-| **Risk** | Lowest | Low | Medium |
+| | Strict | StringID-Only | StrOrigin Only | StrOrigin+DescOrigin |
+|---|:-:|:-:|:-:|:-:|
+| **Precision** | Highest | Medium | Medium | High |
+| **Fan-out** | No | No | Yes | No |
+| **Fuzzy** | Yes | No | Yes | No |
+| **Desc Transfer** | Yes | Yes | No | Yes |
+| **Default scope** | Transfer ALL | Transfer ALL | Only untranslated | Transfer ALL |
+| **Risk** | Lowest | Low | Medium | Low |
 
 ---
 
@@ -172,6 +183,21 @@ Defaults to "Only untranslated" for safety. "Transfer ALL" triggers a warning di
 2. Set **Target** → LOC folder with `languagedata_*.xml` files
 3. Pick match type
 4. Click **TRANSFER** → review plan → confirm
+
+### Source & Target Validation
+
+When you select a source or target folder, QuickTranslate automatically validates all files:
+
+**XML Load Test** — every XML file is parsed to verify it can load. Failed files are logged as CRITICAL and skipped. You'll see a summary:
+- `XML LOAD: All 5 files loaded successfully` (green)
+- `XML LOAD: All 5 files loadable (2 with recovery mode)` (yellow)
+- `XML LOAD: 1 file(s) FAILED to load out of 5` (red)
+
+**Source file checks:**
+- Formula detection (Excel formulas/errors → CRITICAL warning, rows skipped)
+- Text integrity (broken `<br/>`, U+FFFD replacement chars, control chars → rows skipped)
+- "no translation" detection (flagged as warning)
+- Broken XML detection (malformed `<LocStr>` elements)
 
 ### Status Codes
 
@@ -188,10 +214,20 @@ Defaults to "Only untranslated" for safety. "Transfer ALL" triggers a warning di
 
 ### Post-Processing (Automatic)
 
-After every TRANSFER:
-1. Normalizes all newlines to `<br/>`
-2. Clears `Str` where `StrOrigin` is empty (Golden Rule)
-3. Replaces "no translation" with `StrOrigin` value
+After every TRANSFER, 6 cleanup steps run automatically on all transferred text. Only `Str` and `Desc` are modified — **StrOrigin and DescOrigin are never touched**.
+
+| Step | What | Action |
+|------|------|--------|
+| 1 | Wrong newlines | `\n`, `\r`, `&#10;`, `<br>`, `<BR/>` etc. → `<br/>` |
+| 2 | Empty StrOrigin | If StrOrigin is empty but Str has text → clear Str |
+| 3 | "no translation" | If Str equals "no translation" → replace with StrOrigin |
+| 4 | Curly apostrophes | 6 Unicode variants (U+2018, U+2019, U+00B4, U+02BC, U+201B, U+FF07) → ASCII `'` |
+| 5 | Invisible characters | NBSP/en-space/em-space → regular space. Zero-width/BOM/bidi marks → deleted. ZWNJ/ZWJ → warn only |
+| 6 | Hyphen lookalikes | U+2010 (Hyphen) and U+2011 (Non-breaking hyphen) → ASCII `-` |
+
+**CJK safety:** CJK ideographic space (U+3000) is never touched. En dash, em dash, and CJK-specific punctuation are never modified.
+
+The log shows a POST-PROCESSING section with per-step counts (only if fixes were applied). Invisible character details show a breakdown by type (e.g., "NBSP: 15, ZERO WIDTH SPACE: 3").
 
 ### Desc Transfer (Voice Direction Descriptions)
 
@@ -219,7 +255,7 @@ Some XML entries have a `DescOrigin` attribute — the original Korean voice dir
 
 - **Strict and StringID-Only only** — StrOrigin Only mode does not transfer Desc
 - **Both sides required:** your Excel row needs a non-empty Desc AND the target XML `<LocStr>` must have a non-empty `DescOrigin`
-- **Post-processing:** Same cleanup applies to Desc (newline normalization, empty DescOrigin clearing, "no translation" replacement)
+- **Post-processing:** Same cleanup applies to Desc (all 6 steps)
 - **Validation warning:** If no Desc/DescOrigin is found in source files, the log shows a warning and Desc transfer is skipped
 
 ### Failure Reports
@@ -338,6 +374,7 @@ Configure in Settings section or edit `settings.json`:
 | Permission denied | P4 checkout needed on target XML |
 | Excel not read | Close Excel first (it locks files) |
 | Fuzzy greyed out | `Model2Vec/` folder missing |
+| XML LOAD FAILED | XML file is corrupted — open in editor and fix syntax errors |
 
 ---
 
@@ -357,5 +394,7 @@ Configure in Settings section or edit `settings.json`:
 | **Fan-out** | One correction fills ALL entries sharing the same StrOrigin |
 | **`<br/>`** | Only correct newline format in XML |
 | **Model2Vec** | Static embedding model for fuzzy matching (256-dim, no torch needed) |
+| **Post-processing** | 6 automatic cleanup steps after every transfer |
+| **XML Load Test** | Pre-validation that checks if XML files can be parsed |
 
 *Last updated: March 2026*
