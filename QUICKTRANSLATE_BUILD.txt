@@ -167,3 +167,4 @@ Build 041: text integrity detection — broken linebreaks, encoding artifacts, i
 Build 042: add dynamic version display to window title
 Build 043: unified CheckResults Excel + CRITICAL/SECONDARY warning split + version display
 Build 044: block no-translation transfer + GUI warnings + postprocess stats report
+Build 045: auto-cleanup invisible Unicode chars (NBSP, zero-width, BOM) + hyphen normalization (U+2010, U+2011)
