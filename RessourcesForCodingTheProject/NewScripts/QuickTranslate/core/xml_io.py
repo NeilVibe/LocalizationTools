@@ -54,6 +54,14 @@ def parse_corrections_from_xml(
                 if is_korean_text(str_value):
                     continue
 
+                # Skip "no translation" entries — these are NOT corrections.
+                # Transferring them would overwrite real translations, then
+                # postprocess would replace with StrOrigin (Korean).
+                _norm = ' '.join(str_value.split()).lower()
+                if _norm == 'no translation':
+                    logger.debug("Skipping 'no translation' source entry: StringID=%s", string_id)
+                    continue
+
                 # Formula/garbage text check on Str (correction value)
                 bad_str = is_formula_text(str_value)
                 if bad_str:
@@ -96,7 +104,7 @@ def parse_corrections_from_xml(
 
                 if desc_origin:
                     entry["desc_origin"] = desc_origin
-                if desc_value and not is_korean_text(desc_value):
+                if desc_value and not is_korean_text(desc_value) and ' '.join(desc_value.split()).lower() != 'no translation':
                     # Formula/garbage text check on Desc
                     bad_desc = is_formula_text(desc_value)
                     if bad_desc:

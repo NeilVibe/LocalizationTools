@@ -8,6 +8,7 @@ Current cleanup steps (run in order, applied to both Str and Desc):
   1. cleanup_wrong_newlines    - Normalize ALL newlines to <br/>
   2. cleanup_empty_strorigin   - Clear Str/Desc when StrOrigin/DescOrigin is empty
   3. cleanup_no_translation    - Replace "no translation" Str/Desc with StrOrigin/DescOrigin
+  4. cleanup_apostrophes       - Normalize curly/fancy apostrophes to ASCII apostrophe
 
 Usage:
     from core.postprocess import run_all_postprocess
@@ -123,6 +124,23 @@ def _normalize_newlines(text: str) -> str:
     text = text.replace('\x0c', '<br/>')     # Form Feed
 
     return text
+
+
+# --- Apostrophe normalization table ---
+
+_APOSTROPHE_TABLE = str.maketrans({
+    '\u2018': "'",  # LEFT SINGLE QUOTATION MARK
+    '\u2019': "'",  # RIGHT SINGLE QUOTATION MARK
+    '\u00B4': "'",  # ACUTE ACCENT
+    '\u02BC': "'",  # MODIFIER LETTER APOSTROPHE
+    '\u201B': "'",  # SINGLE HIGH-REVERSED-9 QUOTATION MARK
+    '\uFF07': "'",  # FULLWIDTH APOSTROPHE
+})
+
+
+def _normalize_apostrophes(text: str) -> str:
+    """Normalize curly/fancy apostrophes to standard ASCII apostrophe."""
+    return text.translate(_APOSTROPHE_TABLE)
 
 
 def _parse_xml(xml_path: Path):
@@ -308,6 +326,40 @@ def cleanup_no_translation_on_tree(root) -> int:
     return fixed
 
 
+# ─── Cleanup Step 4: Apostrophe normalization ────────────────────────────────
+
+
+def cleanup_apostrophes_on_tree(root) -> int:
+    """
+    Normalize curly/fancy apostrophes to standard ASCII apostrophe in parsed tree.
+
+    Modifies Str and Desc attributes ONLY. StrOrigin/DescOrigin (Korean source) are
+    never touched — they must remain exactly as the source data provides them.
+
+    Args:
+        root: Parsed XML root element
+
+    Returns:
+        Number of attributes fixed
+    """
+    fixed = 0
+    for loc in _iter_locstr(root):
+        attr_name, val = _get_attr(loc, STR_ATTRS)
+        if val is not None:
+            normalized = _normalize_apostrophes(val)
+            if normalized != val:
+                loc.set(attr_name, normalized)
+                fixed += 1
+        # Also normalize apostrophes in Desc attribute
+        desc_name, desc_val = _get_attr(loc, DESC_ATTRS)
+        if desc_val is not None:
+            desc_normalized = _normalize_apostrophes(desc_val)
+            if desc_normalized != desc_val:
+                loc.set(desc_name, desc_normalized)
+                fixed += 1
+    return fixed
+
+
 # ─── Public API: Standalone functions (backward-compatible) ──────────────────
 
 
@@ -395,6 +447,33 @@ def cleanup_no_translation(xml_path: Path, dry_run: bool = False) -> int:
         return 0
 
 
+def cleanup_apostrophes(xml_path: Path, dry_run: bool = False) -> int:
+    """
+    Post-process: normalize curly/fancy apostrophes to ASCII apostrophe.
+
+    Modifies Str and Desc attributes only.
+
+    Args:
+        xml_path: Path to XML file
+        dry_run: If True, count but don't write
+
+    Returns:
+        Number of attributes fixed
+    """
+    try:
+        tree, root = _parse_xml(xml_path)
+        fixed = cleanup_apostrophes_on_tree(root)
+
+        if fixed > 0 and not dry_run:
+            _write_xml(tree, xml_path)
+            logger.debug("Normalized apostrophes in %d entries in %s", fixed, xml_path.name)
+
+        return fixed
+    except Exception as e:
+        logger.error(f"Error normalizing apostrophes in {xml_path}: {e}")
+        return 0
+
+
 # ─── Combined single-pass cleanup (for fast folder merge) ─────────────────
 
 
@@ -402,22 +481,23 @@ def run_all_postprocess_on_tree(root) -> dict:
     """
     Run ALL postprocess cleanup steps in a SINGLE iteration over LocStr elements.
 
-    Combines newline normalization, empty StrOrigin enforcement, and
-    "no translation" replacement into one pass. Used by _fast_folder_merge()
-    to avoid re-parsing and re-iterating the tree.
+    Combines newline normalization, empty StrOrigin enforcement,
+    "no translation" replacement, and apostrophe normalization into one pass.
+    Used by _fast_folder_merge() to avoid re-parsing and re-iterating the tree.
 
     Args:
         root: Parsed XML root element (modified in-place)
 
     Returns:
         {"changed": bool, "newlines_fixed": int, "empty_strorigin_cleaned": int,
-         "no_translation_replaced": int}
+         "no_translation_replaced": int, "apostrophes_normalized": int}
     """
     result = {
         "changed": False,
         "newlines_fixed": 0,
         "empty_strorigin_cleaned": 0,
         "no_translation_replaced": 0,
+        "apostrophes_normalized": 0,
     }
 
     for loc in _iter_locstr(root):
@@ -483,6 +563,25 @@ def run_all_postprocess_on_tree(root) -> dict:
                 result["no_translation_replaced"] += 1
                 result["changed"] = True
 
+        # --- Step 4: Normalize apostrophes in Str ---
+        # Re-read current Str value (may have been modified by earlier steps)
+        str_attr_4, str_val_4 = _get_attr(loc, STR_ATTRS)
+        if str_val_4 is not None:
+            apo_normalized = _normalize_apostrophes(str_val_4)
+            if apo_normalized != str_val_4:
+                loc.set(str_attr_4, apo_normalized)
+                result["apostrophes_normalized"] += 1
+                result["changed"] = True
+
+        # --- Step 4b: Normalize apostrophes in Desc ---
+        desc_attr_4, desc_val_4 = _get_attr(loc, DESC_ATTRS)
+        if desc_val_4 is not None:
+            desc_apo_normalized = _normalize_apostrophes(desc_val_4)
+            if desc_apo_normalized != desc_val_4:
+                loc.set(desc_attr_4, desc_apo_normalized)
+                result["apostrophes_normalized"] += 1
+                result["changed"] = True
+
     return result
 
 
@@ -499,6 +598,7 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
       1. cleanup_wrong_newlines    - Normalize ALL newlines to <br/>
       2. cleanup_empty_strorigin   - Clear Str/Desc when StrOrigin/DescOrigin is empty
       3. cleanup_no_translation    - Replace "no translation" Str/Desc with origin
+      4. cleanup_apostrophes       - Normalize curly/fancy apostrophes to ASCII
 
     Args:
         xml_path: Path to XML file
@@ -512,6 +612,7 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
         "newlines_fixed": 0,
         "empty_strorigin_cleaned": 0,
         "no_translation_replaced": 0,
+        "apostrophes_normalized": 0,
         "total_fixes": 0,
     }
 
@@ -527,10 +628,14 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
         # Step 3: Replace "no translation" with StrOrigin
         result["no_translation_replaced"] = cleanup_no_translation_on_tree(root)
 
+        # Step 4: Normalize curly/fancy apostrophes to ASCII
+        result["apostrophes_normalized"] = cleanup_apostrophes_on_tree(root)
+
         result["total_fixes"] = (
             result["newlines_fixed"]
             + result["empty_strorigin_cleaned"]
             + result["no_translation_replaced"]
+            + result["apostrophes_normalized"]
         )
 
         # Write once if anything changed
@@ -551,6 +656,11 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
                 logger.info(
                     f"Post-process: replaced {result['no_translation_replaced']} "
                     f"'no translation' entries with StrOrigin in {xml_path.name}"
+                )
+            if result["apostrophes_normalized"] > 0:
+                logger.debug(
+                    "Normalized apostrophes in %d entries in %s",
+                    result["apostrophes_normalized"], xml_path.name
                 )
 
         return result

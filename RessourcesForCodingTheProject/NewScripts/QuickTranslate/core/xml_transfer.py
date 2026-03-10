@@ -30,6 +30,16 @@ from .postprocess import run_all_postprocess
 
 logger = logging.getLogger(__name__)
 
+# ─── "No translation" guard ──────────────────────────────────────────────────
+_WS_RE = re.compile(r'\s+')
+
+
+def _is_no_translation(value: str) -> bool:
+    """Return True if value is exactly 'no translation' (case-insensitive, whitespace-collapsed)."""
+    if not value:
+        return False
+    return _WS_RE.sub(' ', value.strip()).lower() == 'no translation'
+
 # Import from config (single source of truth)
 SCRIPT_CATEGORIES = config.SCRIPT_CATEGORIES
 SCRIPT_EXCLUDE_SUBFOLDERS = config.SCRIPT_EXCLUDE_SUBFOLDERS
@@ -299,6 +309,9 @@ def _try_write_desc(loc, correction, dry_run=False):
     desc_corrected = correction.get("desc_corrected", "")
     if not desc_corrected:
         return False
+    # Never transfer "no translation" — it would overwrite a real translation
+    if _is_no_translation(desc_corrected):
+        return False
     # Target must have non-empty DescOrigin
     target_descorigin = get_attr(loc, DESCORIGIN_ATTRS).strip()
     if not target_descorigin:
@@ -453,6 +466,17 @@ def merge_corrections_to_xml(
                         "old": orig_correction.get("str_origin", ""),
                         "new": orig_correction.get("corrected", ""),
                         "raw_attribs": orig_correction.get("raw_attribs", {}),
+                    })
+                    continue
+
+                # Never transfer "no translation" — preserve existing translation
+                if _is_no_translation(new_str):
+                    logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": "SKIPPED_NO_TRANSLATION",
+                        "old": old_str,
+                        "new": new_str,
                     })
                     continue
 
@@ -808,6 +832,17 @@ def merge_corrections_stringid_only(
                         "old": orig_correction.get("str_origin", ""),
                         "new": orig_correction.get("corrected", ""),
                         "raw_attribs": orig_correction.get("raw_attribs", {}),
+                    })
+                    continue
+
+                # Never transfer "no translation" — preserve existing translation
+                if _is_no_translation(new_str):
+                    logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
+                    result["details"].append({
+                        "string_id": sid,
+                        "status": "SKIPPED_NO_TRANSLATION",
+                        "old": old_str,
+                        "new": new_str,
                     })
                     continue
 
@@ -1252,6 +1287,11 @@ def _fast_folder_merge(
                         })
                         continue
 
+                    # Never transfer "no translation" — preserve existing translation
+                    if _is_no_translation(new_str):
+                        logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
+                        continue
+
                     new_str = _convert_linebreaks_for_xml(new_str)
                     if new_str != old_str:
                         if not dry_run:
@@ -1306,6 +1346,11 @@ def _fast_folder_merge(
                         })
                         continue
 
+                    # Never transfer "no translation" — preserve existing translation
+                    if _is_no_translation(new_str):
+                        logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
+                        continue
+
                     new_str = _convert_linebreaks_for_xml(new_str)
                     if new_str != old_str:
                         if not dry_run:
@@ -1338,6 +1383,11 @@ def _fast_folder_merge(
                             "new": c.get("corrected", ""),
                             "raw_attribs": c.get("raw_attribs", {}),
                         })
+                        continue
+
+                    # Never transfer "no translation" — preserve existing translation
+                    if _is_no_translation(new_str):
+                        logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
                         continue
 
                     new_str = _convert_linebreaks_for_xml(new_str)
@@ -1391,6 +1441,11 @@ def _fast_folder_merge(
                             "new": orig_correction.get("corrected", ""),
                             "raw_attribs": orig_correction.get("raw_attribs", {}),
                         })
+                        continue
+
+                    # Never transfer "no translation" — preserve existing translation
+                    if _is_no_translation(new_str):
+                        logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
                         continue
 
                     new_str = _convert_linebreaks_for_xml(new_str)

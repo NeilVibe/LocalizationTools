@@ -300,6 +300,13 @@ def read_corrections_from_excel(
                 if is_korean_text(corrected_str):
                     continue
 
+                # Skip "no translation" entries — these are NOT corrections.
+                # Transferring them would overwrite real translations, then
+                # postprocess would replace with StrOrigin (Korean).
+                if ' '.join(corrected_str.split()).lower() == 'no translation':
+                    logger.debug("Row %s skipped: 'no translation' is not a valid correction", row[0].row)
+                    continue
+
                 entry = {
                     "string_id": str(string_id).strip() if has_id else "",
                     "str_origin": normalize_text(str_origin) if str_origin else "",
@@ -336,7 +343,7 @@ def read_corrections_from_excel(
                             d_val = None  # Neutralize
                     if d_val is not None and str(d_val).strip():
                         desc_str = str(d_val).strip()
-                        if not is_korean_text(desc_str):
+                        if not is_korean_text(desc_str) and ' '.join(desc_str.split()).lower() != 'no translation':
                             entry["desc_corrected"] = desc_str
 
                 # Per-row priority: StringID takes precedence over EventName
