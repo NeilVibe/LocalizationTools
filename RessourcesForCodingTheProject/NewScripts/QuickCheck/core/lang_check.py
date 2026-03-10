@@ -37,9 +37,13 @@ try:
 
     from fast_langdetect import detect as _fl_detect
     _HAS_FASTLANG = True
-    # Use 'full' model (lid.176.bin, 125MB) for best accuracy
-    # Downloaded at CI build time, bundled in exe folder
+    # Try full model (lid.176.bin, 125MB) first, fall back to lite if unavailable
     _FL_MODEL = "full"
+    try:
+        _fl_detect("validation test", model="full")
+    except Exception:
+        logger.warning("Full FastText model not available, falling back to lite")
+        _FL_MODEL = "lite"
 except ImportError:
     _HAS_FASTLANG = False
     _FL_MODEL = None
@@ -298,8 +302,8 @@ def _run_lang_check_single(
         if not text:
             continue
 
-        # Skip dev strings (contain underscores, e.g. "Animal_Cat")
-        if '_' in text:
+        # Skip dev strings (underscore-separated tokens with no spaces, e.g. "Animal_Cat")
+        if '_' in text and ' ' not in text.strip():
             continue
 
         # Clean text
