@@ -24,11 +24,16 @@ logger = logging.getLogger(__name__)
 try:
     # Point cache to bundled resources dir when running as frozen exe
     import sys as _sys
+    import os as _os
     if getattr(_sys, 'frozen', False):
-        import os as _os
-        _bundled_res = _os.path.join(_sys._MEIPASS, 'fast_langdetect', 'resources')
+        # One-folder mode: resources at exe_dir/_internal/fast_langdetect/resources/
+        _exe_dir = _os.path.dirname(_sys.executable)
+        _bundled_res = _os.path.join(_exe_dir, '_internal', 'fast_langdetect', 'resources')
+        if not _os.path.isdir(_bundled_res):
+            # Fallback: _MEIPASS (one-file mode)
+            _bundled_res = _os.path.join(getattr(_sys, '_MEIPASS', ''), 'fast_langdetect', 'resources')
         if _os.path.isdir(_bundled_res):
-            _os.environ.setdefault('FTLANG_CACHE', _bundled_res)
+            _os.environ['FTLANG_CACHE'] = _bundled_res
 
     from fast_langdetect import detect as _fl_detect
     _HAS_FASTLANG = True
@@ -327,7 +332,7 @@ def run_lang_check_all_languages(
     lang_files: Dict[str, List[Path]],
     output_dir: Path,
     min_text_length: int = 8,
-    confidence_threshold: float = 0.7,
+    confidence_threshold: float = 0.89,
     progress_callback: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, int]:
     """Run language detection on all selected languages.
