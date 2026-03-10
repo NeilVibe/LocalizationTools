@@ -302,8 +302,8 @@ def _run_lang_check_single(
         if not text:
             continue
 
-        # Skip dev strings (underscore-separated tokens with no spaces, e.g. "Animal_Cat")
-        if '_' in text and ' ' not in text.strip():
+        # Skip dev strings (underscores never appear in real translations)
+        if '_' in text:
             continue
 
         # Clean text

@@ -12,3 +12,4 @@ Build 010: fix installer — Desktop default, remove drive wizard (match QuickTr
 Build 011: switch to full FastText model (125MB, best accuracy), confidence 0.89, skip dev strings
 Build 012: fix full model path for one-folder PyInstaller, fix default confidence to 0.89
 Build 013: fix underscore skip (only no-space dev strings), add full→lite model fallback
+Build 014: revert underscore skip — underscores never appear in real translations
