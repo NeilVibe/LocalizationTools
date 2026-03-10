@@ -170,3 +170,4 @@ Build 044: block no-translation transfer + GUI warnings + postprocess stats repo
 Build 045: auto-cleanup invisible Unicode chars (NBSP, zero-width, BOM) + hyphen normalization (U+2010, U+2011)
 Build 046: fix CJK ideographic space (U+3000) excluded from auto-normalization
 Build 047: industrial XML load test on source/target validation + ellipsis/empty-StrOrigin warning prep
+Build 048: XML LOAD success/warning summary lines in source and target validation
