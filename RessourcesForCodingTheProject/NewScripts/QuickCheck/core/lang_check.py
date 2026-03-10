@@ -22,11 +22,19 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 try:
+    # Point cache to bundled resources dir when running as frozen exe
+    import sys as _sys
+    if getattr(_sys, 'frozen', False):
+        import os as _os
+        _bundled_res = _os.path.join(_sys._MEIPASS, 'fast_langdetect', 'resources')
+        if _os.path.isdir(_bundled_res):
+            _os.environ.setdefault('FTLANG_CACHE', _bundled_res)
+
     from fast_langdetect import detect as _fl_detect
     _HAS_FASTLANG = True
-    # Use 'lite' model (lid.176.ftz, 917KB, bundled with package)
-    # No internet download needed — fully offline safe
-    _FL_MODEL = "lite"
+    # Use 'full' model (lid.176.bin, 125MB) for best accuracy
+    # Downloaded at CI build time, bundled in exe folder
+    _FL_MODEL = "full"
 except ImportError:
     _HAS_FASTLANG = False
     _FL_MODEL = None
@@ -283,6 +291,10 @@ def _run_lang_check_single(
     for entry in all_entries:
         text = entry.str
         if not text:
+            continue
+
+        # Skip dev strings (contain underscores, e.g. "Animal_Cat")
+        if '_' in text:
             continue
 
         # Clean text

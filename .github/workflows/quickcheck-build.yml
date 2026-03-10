@@ -367,6 +367,18 @@ jobs:
             Write-Host "[OK] Updated: $configPath"
           }
 
+      - name: Download FastText full model for LANG CHECK
+        shell: pwsh
+        run: |
+          cd ${{ env.QUICKCHECK_PATH }}
+          python -c @"
+          from fast_langdetect import detect
+          # Trigger full model download (cached to TEMP/fasttext-langdetect/)
+          result = detect('Test sentence for model download', model='full')
+          print(f'Model download OK: {result}')
+          "@
+          Write-Host "[OK] FastText full model downloaded"
+
       - name: Build executable with PyInstaller
         shell: pwsh
         run: |

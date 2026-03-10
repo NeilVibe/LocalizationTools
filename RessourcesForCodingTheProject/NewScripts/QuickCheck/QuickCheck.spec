@@ -9,7 +9,7 @@ block_cipher = None
 # Get the directory containing this spec file
 spec_dir = os.path.dirname(os.path.abspath(SPEC))
 
-# Bundle fast_langdetect lite model (lid.176.ftz, ~917KB)
+# Bundle fast_langdetect resources (lite model .ftz + full model .bin if present)
 _fl_datas = []
 try:
     _fl_pkg = importlib.import_module('fast_langdetect')
@@ -18,6 +18,11 @@ try:
         _fl_datas.append((_fl_res, 'fast_langdetect/resources'))
 except ImportError:
     pass
+
+# Also bundle full model from temp cache if downloaded during CI
+_full_model = os.path.join(os.environ.get('TEMP', '/tmp'), 'fasttext-langdetect', 'lid.176.bin')
+if os.path.isfile(_full_model):
+    _fl_datas.append((_full_model, 'fast_langdetect/resources'))
 
 a = Analysis(
     ['main.py'],
