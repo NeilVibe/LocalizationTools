@@ -554,8 +554,8 @@ def _cleanup_invisible_chars(text):
             deleted_count += 1
             name = _SAFE_INVISIBLE_NAMES.get(ch, f'U+{ord(ch):04X}')
             detail_counts[name] = detail_counts.get(name, 0) + 1
-        elif ch != ' ' and unicodedata.category(ch) == 'Zs':
-            # Bucket 1: Zs space → regular space
+        elif ch != ' ' and ch != '\u3000' and unicodedata.category(ch) == 'Zs':
+            # Bucket 1: Zs space → regular space (U+3000 ideographic space excluded — CJK intentional)
             chars.append(' ')
             spaces_count += 1
             # Try to get a readable name
