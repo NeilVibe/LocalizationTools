@@ -1156,6 +1156,12 @@ def _fast_folder_merge(
         "errors": [],
         "per_file": {},
         "unmatched_details": [],
+        "postprocess_stats": {
+            "newlines_fixed": 0,
+            "empty_strorigin_cleaned": 0,
+            "no_translation_replaced": 0,
+            "apostrophes_normalized": 0,
+        },
     }
 
     if not target_files or not corrections:
@@ -1472,6 +1478,9 @@ def _fast_folder_merge(
         pp = run_all_postprocess_on_tree(root)
         if pp["changed"]:
             changed = True
+        # Aggregate postprocess stats
+        for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized"):
+            result["postprocess_stats"][key] += pp.get(key, 0)
 
         # ─── Write if anything changed ───────────────────────────────
         if changed and not dry_run:
@@ -1682,6 +1691,12 @@ def transfer_folder_to_folder(
         "formula_warnings": [],
         "integrity_warnings": [],
         "no_translation_warnings": [],
+        "postprocess_stats": {
+            "newlines_fixed": 0,
+            "empty_strorigin_cleaned": 0,
+            "no_translation_replaced": 0,
+            "apostrophes_normalized": 0,
+        },
     }
 
     if not source_folder.exists():
@@ -2362,6 +2377,9 @@ def transfer_folder_to_folder(
             results["total_skipped_translated"] += fast_result["total_skipped_translated"]
             results["total_desc_updated"] += fast_result["total_desc_updated"]
             results["errors"].extend(fast_result["errors"])
+            # Aggregate postprocess stats from fast merge
+            for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized"):
+                results["postprocess_stats"][key] += fast_result.get("postprocess_stats", {}).get(key, 0)
 
             # Count SKIPPED_EMPTY_STRORIGIN from unmatched details (stringid_only)
             skipped_empty_so = sum(
@@ -2616,7 +2634,9 @@ def transfer_folder_to_folder(
                 _prebuilt_lookup=_shared_lookup,
             )
             if not dry_run:
-                run_all_postprocess(target_file)
+                pp_result = run_all_postprocess(target_file)
+                for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized"):
+                    results["postprocess_stats"][key] += pp_result.get(key, 0)
 
         # Aggregate results
         results["files_processed"] += len(source_names)

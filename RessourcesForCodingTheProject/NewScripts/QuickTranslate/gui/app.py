@@ -3301,6 +3301,22 @@ class QuickTranslateApp:
                     self._log(f"  ...and {len(no_trans_warnings) - 20} more.", 'warning')
                 summary_lines.append(f"\nOTHER: {len(no_trans_warnings)} 'no translation' entries skipped (existing translations preserved)")
 
+            # End-of-log POST-PROCESSING report (automatic cleanup stats)
+            pp_stats = results.get("postprocess_stats", {})
+            pp_total = sum(pp_stats.get(k, 0) for k in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized"))
+            if pp_total > 0:
+                self._log("", 'info')
+                self._log(f"=== POST-PROCESSING ({pp_total} automatic fixes) ===", 'info')
+                if pp_stats.get("newlines_fixed", 0) > 0:
+                    self._log(f"  Newlines normalized:           {pp_stats['newlines_fixed']:,}", 'info')
+                if pp_stats.get("empty_strorigin_cleaned", 0) > 0:
+                    self._log(f"  Empty StrOrigin cleared:       {pp_stats['empty_strorigin_cleaned']:,}", 'info')
+                if pp_stats.get("no_translation_replaced", 0) > 0:
+                    self._log(f"  'No translation' → StrOrigin:  {pp_stats['no_translation_replaced']:,}", 'info')
+                if pp_stats.get("apostrophes_normalized", 0) > 0:
+                    self._log(f"  Apostrophes normalized:        {pp_stats['apostrophes_normalized']:,}", 'info')
+                summary_lines.append(f"\nPost-processing: {pp_total} automatic fixes applied")
+
             self._task_queue.put(('messagebox', 'showinfo', 'Transfer Complete',
                 "\n".join(summary_lines)
                 + failure_reports_msg
