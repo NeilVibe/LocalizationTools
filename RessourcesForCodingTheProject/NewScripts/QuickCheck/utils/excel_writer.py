@@ -1,13 +1,16 @@
 """
 Excel Writer Utility
 
-Writes QuickCheck output files (LineCheck, TermCheck, Glossary) as clean Excel.
+Writes QuickCheck output files (LineCheck, TermCheck, Glossary, LangCheck) as clean Excel.
 Uses xlsxwriter (write-only, reliable).
 """
 from __future__ import annotations
 
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.lang_check import LangIssue
 
 try:
     import xlsxwriter
@@ -354,6 +357,128 @@ def write_glossary_excel(
 
     except Exception as e:
         logger.error("Failed to write Glossary Excel %s: %s", output_path, e)
+        return False
+
+    finally:
+        if wb is not None:
+            try:
+                wb.close()
+            except Exception:
+                pass
+
+
+# ---------------------------------------------------------------------------
+# LangCheck Excel
+# ---------------------------------------------------------------------------
+
+def write_lang_check_excel(
+    issues: List[LangIssue],
+    output_path: str,
+    lang_code: str = "",
+) -> bool:
+    """
+    Write LANG CHECK results to Excel.
+
+    Columns: StringId | StrOrigin | Str | Expected | Detected | Confidence | Method | Details | Status | Comment
+    """
+    _require_xlsxwriter()
+
+    wb = None
+    try:
+        title = f"LangCheck {lang_code}" if lang_code else "LangCheck"
+        wb = xlsxwriter.Workbook(output_path)
+        ws = wb.add_worksheet(title[:31])
+
+        fmt_header = wb.add_format({
+            "bold": True, "bg_color": COL_HEADER_BG, "font_color": COL_HEADER_FG,
+            "border": 1, "valign": "vcenter", "text_wrap": True,
+        })
+        fmt_row = wb.add_format({
+            "bg_color": COL_WHITE, "font_color": COL_DARK_TEXT,
+            "border": 1, "valign": "vcenter", "text_wrap": True,
+        })
+        fmt_row_alt = wb.add_format({
+            "bg_color": COL_ALT_BG, "font_color": COL_DARK_TEXT,
+            "border": 1, "valign": "vcenter", "text_wrap": True,
+        })
+        fmt_sid = wb.add_format({
+            "bg_color": COL_WHITE, "font_color": FG_SID,
+            "border": 1, "valign": "vcenter",
+        })
+        fmt_sid_alt = wb.add_format({
+            "bg_color": COL_ALT_BG, "font_color": FG_SID,
+            "border": 1, "valign": "vcenter",
+        })
+        fmt_conf = wb.add_format({
+            "bg_color": COL_WHITE, "font_color": COL_DARK_TEXT,
+            "border": 1, "valign": "vcenter", "num_format": "0.00",
+        })
+        fmt_conf_alt = wb.add_format({
+            "bg_color": COL_ALT_BG, "font_color": COL_DARK_TEXT,
+            "border": 1, "valign": "vcenter", "num_format": "0.00",
+        })
+        fmt_method = wb.add_format({
+            "bold": True, "bg_color": COL_GROUP_BG, "font_color": COL_DARK_TEXT,
+            "border": 1, "align": "center", "valign": "vcenter",
+        })
+        fmt_status = wb.add_format({
+            "bold": True, "bg_color": "#FFE0E0", "font_color": "#CC0000",
+            "border": 1, "align": "center", "valign": "vcenter",
+        })
+        fmt_comment = wb.add_format({
+            "bg_color": COL_WHITE, "font_color": COL_DARK_TEXT,
+            "border": 1, "valign": "vcenter", "text_wrap": True,
+        })
+        fmt_summary = wb.add_format({"italic": True, "font_color": "#666666"})
+
+        headers = ["StringId", "StrOrigin", "Str", "Expected", "Detected",
+                    "Confidence", "Method", "Details", "Status", "Comment"]
+        widths = [20, 50, 60, 10, 10, 10, 10, 45, 14, 40]
+
+        ws.set_row(0, 22)
+        for i, h in enumerate(headers):
+            ws.write(0, i, h, fmt_header)
+            ws.set_column(i, i, widths[i])
+
+        for idx, issue in enumerate(issues):
+            row = idx + 1
+            alt = idx % 2 == 1
+            f_r = fmt_row_alt if alt else fmt_row
+            f_s = fmt_sid_alt if alt else fmt_sid
+            f_c = fmt_conf_alt if alt else fmt_conf
+
+            ws.write(row, 0, issue.string_id, f_s)
+            ws.write(row, 1, issue.str_origin, f_r)
+            ws.write(row, 2, issue.str_text, f_r)
+            ws.write(row, 3, issue.expected_lang, f_r)
+            ws.write(row, 4, issue.detected_lang, f_r)
+            ws.write(row, 5, issue.confidence, f_c)
+            ws.write(row, 6, issue.detection_method, fmt_method)
+            ws.write(row, 7, issue.details, f_r)
+            ws.write(row, 8, "", fmt_status)
+            ws.write(row, 9, "", fmt_comment)
+
+        data_rows = len(issues)
+        if data_rows > 0:
+            ws.data_validation(1, 8, data_rows, 8, {
+                "validate": "list",
+                "source": ["ISSUE", "NO ISSUE", "FIXED"],
+            })
+            ws.autofilter(0, 0, data_rows, len(headers) - 1)
+            ws.freeze_panes(1, 0)
+
+        script_count = sum(1 for i in issues if i.detection_method == "Script")
+        stat_count = sum(1 for i in issues if i.detection_method == "Statistical")
+        ws.write(data_rows + 2, 0,
+                 f"Total: {data_rows} issues ({script_count} script, {stat_count} statistical)",
+                 fmt_summary)
+
+        wb.close()
+        wb = None
+        return True
+
+    except Exception as e:
+        logger.error("Failed to write LangCheck Excel %s: %s", output_path, e)
         return False
 
     finally:

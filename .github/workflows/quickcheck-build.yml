@@ -178,9 +178,11 @@ jobs:
               'core.line_check',
               'core.term_check',
               'core.glossary_extractor',
+              'core.lang_check',
               'utils.filters',
               'utils.language_utils',
               'utils.excel_writer',
+              'utils.unicode_utils',
               'gui.app',
               'main',
           ]
@@ -305,9 +307,11 @@ jobs:
               'core.line_check',
               'core.term_check',
               'core.glossary_extractor',
+              'core.lang_check',
               'utils.filters',
               'utils.language_utils',
               'utils.excel_writer',
+              'utils.unicode_utils',
               'gui.app',
               'main',
           ]
@@ -468,7 +472,7 @@ jobs:
           body: |
             # QuickCheck v${{ env.BUILD_VERSION }}
 
-            **Multi-language LINE CHECK, TERM CHECK & Glossary Extraction Tool**
+            **Multi-language LINE CHECK, TERM CHECK, LANG CHECK & Glossary Extraction Tool**
 
             ## Download
 
@@ -488,6 +492,7 @@ jobs:
 
             - **LINE CHECK** — Finds sources with inconsistent translations across a language folder
             - **TERM CHECK** — Finds missing glossary terms using Dual Aho-Corasick automaton
+            - **LANG CHECK** — Detects wrong-language text via Unicode script + fast-langdetect statistical analysis
             - **EXTRACT GLOSSARY** — Auto-builds a glossary from language data with configurable filters
             - **Multi-language batch** — Auto-detects FRE, GER, JPN, ZHO-CN, etc. from folder/file suffixes
             - **Excel output** — All reports as clean `.xlsx` files (LineCheck_LANG, TermCheck_LANG, glossary_LANG)

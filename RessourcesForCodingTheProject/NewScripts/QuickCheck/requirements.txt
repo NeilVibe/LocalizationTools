@@ -2,3 +2,4 @@ lxml
 pyahocorasick
 xlsxwriter
 openpyxl
+fast-langdetect

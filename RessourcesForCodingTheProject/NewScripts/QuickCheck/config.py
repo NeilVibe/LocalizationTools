@@ -64,6 +64,8 @@ DEFAULT_MIN_OCCURRENCE = 2
 DEFAULT_MAX_ISSUES_PER_TERM = 6
 DEFAULT_FILTER_SENTENCES = True
 DEFAULT_TERM_MATCH_MODE = MATCH_MODE_ISOLATED
+DEFAULT_LANG_CONFIDENCE = 0.7
+DEFAULT_MIN_LANG_TEXT_LENGTH = 8
 OUTPUT_FOLDER_NAME = "CheckOutput"
 
 
@@ -83,6 +85,10 @@ class Settings:
     # Term check match mode
     term_match_mode: str = DEFAULT_TERM_MATCH_MODE
 
+    # Lang check settings
+    lang_confidence: float = DEFAULT_LANG_CONFIDENCE
+    min_lang_text_length: int = DEFAULT_MIN_LANG_TEXT_LENGTH
+
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -95,12 +101,20 @@ class Settings:
             except (TypeError, ValueError):
                 return default
 
+        def _float(key: str, default: float) -> float:
+            try:
+                return float(data.get(key, default))
+            except (TypeError, ValueError):
+                return default
+
         return cls(
             max_term_length=_int("max_term_length", DEFAULT_MAX_TERM_LENGTH),
             min_occurrence=_int("min_occurrence", DEFAULT_MIN_OCCURRENCE),
             max_issues_per_term=_int("max_issues_per_term", DEFAULT_MAX_ISSUES_PER_TERM),
             filter_sentences=bool(data.get("filter_sentences", DEFAULT_FILTER_SENTENCES)),
             term_match_mode=MATCH_MODE_ISOLATED,  # Always isolated — substring hidden
+            lang_confidence=_float("lang_confidence", DEFAULT_LANG_CONFIDENCE),
+            min_lang_text_length=_int("min_lang_text_length", DEFAULT_MIN_LANG_TEXT_LENGTH),
         )
 
 
