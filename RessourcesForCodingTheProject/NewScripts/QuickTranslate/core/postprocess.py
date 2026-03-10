@@ -9,6 +9,8 @@ Current cleanup steps (run in order, applied to both Str and Desc):
   2. cleanup_empty_strorigin   - Clear Str/Desc when StrOrigin/DescOrigin is empty
   3. cleanup_no_translation    - Replace "no translation" Str/Desc with StrOrigin/DescOrigin
   4. cleanup_apostrophes       - Normalize curly/fancy apostrophes to ASCII apostrophe
+  5. cleanup_invisible_chars   - Auto-fix invisible Unicode characters (NBSP→space, delete zero-width)
+  6. cleanup_hyphens           - Normalize Unicode hyphen lookalikes to ASCII hyphen-minus
 
 Usage:
     from core.postprocess import run_all_postprocess
@@ -19,6 +21,7 @@ import os
 import re
 import stat
 import logging
+import unicodedata
 from pathlib import Path
 
 # Try lxml first (more robust), fallback to standard library
@@ -30,6 +33,7 @@ except ImportError:
     USING_LXML = False
 
 from .xml_parser import LOCSTR_TAGS, STR_ATTRS, STRORIGIN_ATTRS, DESC_ATTRS, DESCORIGIN_ATTRS
+from .text_utils import _SAFE_INVISIBLE_DELETE, _SAFE_INVISIBLE_NAMES, _GREY_ZONE_CHARS
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +145,19 @@ _APOSTROPHE_TABLE = str.maketrans({
 def _normalize_apostrophes(text: str) -> str:
     """Normalize curly/fancy apostrophes to standard ASCII apostrophe."""
     return text.translate(_APOSTROPHE_TABLE)
+
+
+# --- Hyphen normalization table ---
+
+_HYPHEN_TABLE = str.maketrans({
+    '\u2010': "-",  # HYPHEN (visually identical to ASCII hyphen-minus)
+    '\u2011': "-",  # NON-BREAKING HYPHEN (same visual, no game engine respects non-break)
+})
+
+
+def _normalize_hyphens(text: str) -> str:
+    """Normalize Unicode hyphen lookalikes to standard ASCII hyphen-minus."""
+    return text.translate(_HYPHEN_TABLE)
 
 
 def _parse_xml(xml_path: Path):
@@ -360,6 +377,42 @@ def cleanup_apostrophes_on_tree(root) -> int:
     return fixed
 
 
+# ─── Cleanup Step 6: Hyphen normalization ─────────────────────────────────────
+
+
+def cleanup_hyphens_on_tree(root) -> int:
+    """
+    Normalize Unicode hyphen lookalikes to standard ASCII hyphen-minus in parsed tree.
+
+    Only normalizes U+2010 (Hyphen) and U+2011 (Non-breaking hyphen) — these are
+    visually identical to ASCII hyphen-minus and never intentional in game text.
+    CJK hyphens, en/em dashes, minus signs are NOT touched.
+
+    Modifies Str and Desc attributes ONLY. StrOrigin/DescOrigin are never touched.
+
+    Args:
+        root: Parsed XML root element
+
+    Returns:
+        Number of attributes fixed
+    """
+    fixed = 0
+    for loc in _iter_locstr(root):
+        attr_name, val = _get_attr(loc, STR_ATTRS)
+        if val is not None:
+            normalized = _normalize_hyphens(val)
+            if normalized != val:
+                loc.set(attr_name, normalized)
+                fixed += 1
+        desc_name, desc_val = _get_attr(loc, DESC_ATTRS)
+        if desc_val is not None:
+            desc_normalized = _normalize_hyphens(desc_val)
+            if desc_normalized != desc_val:
+                loc.set(desc_name, desc_normalized)
+                fixed += 1
+    return fixed
+
+
 # ─── Public API: Standalone functions (backward-compatible) ──────────────────
 
 
@@ -474,6 +527,128 @@ def cleanup_apostrophes(xml_path: Path, dry_run: bool = False) -> int:
         return 0
 
 
+# ─── Cleanup Step 5: Invisible character cleanup ──────────────────────────
+
+
+def _cleanup_invisible_chars(text):
+    """Clean invisible characters from a single text value.
+
+    Bucket 1 (Zs spaces): Replace with regular space U+0020
+    Bucket 2 (safe invisible): Delete entirely
+
+    Returns:
+        (cleaned_text, spaces_count, deleted_count, detail_counts)
+        detail_counts is a dict {char_name: count}
+    """
+    if not text:
+        return text, 0, 0, {}
+
+    chars = []
+    spaces_count = 0
+    deleted_count = 0
+    detail_counts = {}
+
+    for ch in text:
+        if ch in _SAFE_INVISIBLE_DELETE:
+            # Bucket 2: delete
+            deleted_count += 1
+            name = _SAFE_INVISIBLE_NAMES.get(ch, f'U+{ord(ch):04X}')
+            detail_counts[name] = detail_counts.get(name, 0) + 1
+        elif ch != ' ' and unicodedata.category(ch) == 'Zs':
+            # Bucket 1: Zs space → regular space
+            chars.append(' ')
+            spaces_count += 1
+            # Try to get a readable name
+            try:
+                name = unicodedata.name(ch, f'U+{ord(ch):04X}')
+            except ValueError:
+                name = f'U+{ord(ch):04X}'
+            detail_counts[name] = detail_counts.get(name, 0) + 1
+        else:
+            chars.append(ch)
+
+    if spaces_count == 0 and deleted_count == 0:
+        return text, 0, 0, {}
+
+    return ''.join(chars), spaces_count, deleted_count, detail_counts
+
+
+def cleanup_invisible_chars_on_tree(root) -> dict:
+    """
+    Clean invisible Unicode characters from Str and Desc attributes in parsed tree.
+
+    Bucket 1 (Zs spaces like NBSP, en-space, em-space): replaced with regular space.
+    Bucket 2 (safe invisible like zero-width space, BOM, bidi marks): deleted.
+    Grey zone (ZWNJ, ZWJ): detected and warned, but NOT modified.
+
+    StrOrigin/DescOrigin are NEVER touched.
+
+    Args:
+        root: Parsed XML root element
+
+    Returns:
+        {"spaces_normalized": int, "invisibles_removed": int,
+         "invisible_detail": {name: count}, "grey_zone_detected": {name: count}}
+    """
+    result = {
+        "spaces_normalized": 0,
+        "invisibles_removed": 0,
+        "invisible_detail": {},
+        "grey_zone_detected": {},
+    }
+
+    for loc in _iter_locstr(root):
+        for attr_variants in (STR_ATTRS, DESC_ATTRS):
+            attr_name, val = _get_attr(loc, attr_variants)
+            if val is None:
+                continue
+
+            cleaned, sp, dl, detail = _cleanup_invisible_chars(val)
+            if sp or dl:
+                loc.set(attr_name, cleaned)
+                result["spaces_normalized"] += sp
+                result["invisibles_removed"] += dl
+                for name, cnt in detail.items():
+                    result["invisible_detail"][name] = result["invisible_detail"].get(name, 0) + cnt
+
+            # Grey zone detection (no modification)
+            for ch, name in _GREY_ZONE_CHARS.items():
+                count = val.count(ch)
+                if count:
+                    result["grey_zone_detected"][name] = result["grey_zone_detected"].get(name, 0) + count
+
+    return result
+
+
+def cleanup_invisible_chars(xml_path, dry_run=False):
+    """
+    Post-process: clean invisible Unicode characters from Str/Desc attributes.
+
+    Args:
+        xml_path: Path to XML file
+        dry_run: If True, count but don't write
+
+    Returns:
+        Dict with cleanup counts
+    """
+    try:
+        tree, root = _parse_xml(xml_path)
+        result = cleanup_invisible_chars_on_tree(root)
+
+        total = result["spaces_normalized"] + result["invisibles_removed"]
+        if total > 0 and not dry_run:
+            _write_xml(tree, xml_path)
+            logger.info(
+                f"Post-process: cleaned {total} invisible chars in {xml_path.name} "
+                f"({result['spaces_normalized']} spaces, {result['invisibles_removed']} deleted)"
+            )
+
+        return result
+    except Exception as e:
+        logger.error(f"Error cleaning invisible chars in {xml_path}: {e}")
+        return {"spaces_normalized": 0, "invisibles_removed": 0, "invisible_detail": {}, "grey_zone_detected": {}}
+
+
 # ─── Combined single-pass cleanup (for fast folder merge) ─────────────────
 
 
@@ -498,6 +673,11 @@ def run_all_postprocess_on_tree(root) -> dict:
         "empty_strorigin_cleaned": 0,
         "no_translation_replaced": 0,
         "apostrophes_normalized": 0,
+        "hyphens_normalized": 0,
+        "spaces_normalized": 0,
+        "invisibles_removed": 0,
+        "invisible_detail": {},
+        "grey_zone_detected": {},
     }
 
     for loc in _iter_locstr(root):
@@ -582,6 +762,57 @@ def run_all_postprocess_on_tree(root) -> dict:
                 result["apostrophes_normalized"] += 1
                 result["changed"] = True
 
+        # --- Step 6: Normalize hyphens in Str ---
+        str_attr_6, str_val_6 = _get_attr(loc, STR_ATTRS)
+        if str_val_6 is not None:
+            hyp_normalized = _normalize_hyphens(str_val_6)
+            if hyp_normalized != str_val_6:
+                loc.set(str_attr_6, hyp_normalized)
+                result["hyphens_normalized"] += 1
+                result["changed"] = True
+
+        # --- Step 6b: Normalize hyphens in Desc ---
+        desc_attr_6, desc_val_6 = _get_attr(loc, DESC_ATTRS)
+        if desc_val_6 is not None:
+            desc_hyp_normalized = _normalize_hyphens(desc_val_6)
+            if desc_hyp_normalized != desc_val_6:
+                loc.set(desc_attr_6, desc_hyp_normalized)
+                result["hyphens_normalized"] += 1
+                result["changed"] = True
+
+        # --- Step 5: Invisible character cleanup (Str) ---
+        str_attr_5, str_val_5 = _get_attr(loc, STR_ATTRS)
+        if str_val_5 is not None:
+            cleaned, sp, dl, detail = _cleanup_invisible_chars(str_val_5)
+            if sp or dl:
+                loc.set(str_attr_5, cleaned)
+                result["spaces_normalized"] += sp
+                result["invisibles_removed"] += dl
+                result["changed"] = True
+                for name, cnt in detail.items():
+                    result["invisible_detail"][name] = result["invisible_detail"].get(name, 0) + cnt
+            # Grey zone detection (no modification)
+            for ch, name in _GREY_ZONE_CHARS.items():
+                count = str_val_5.count(ch)
+                if count:
+                    result["grey_zone_detected"][name] = result["grey_zone_detected"].get(name, 0) + count
+
+        # --- Step 5b: Invisible character cleanup (Desc) ---
+        desc_attr_5, desc_val_5 = _get_attr(loc, DESC_ATTRS)
+        if desc_val_5 is not None:
+            d_cleaned, d_sp, d_dl, d_detail = _cleanup_invisible_chars(desc_val_5)
+            if d_sp or d_dl:
+                loc.set(desc_attr_5, d_cleaned)
+                result["spaces_normalized"] += d_sp
+                result["invisibles_removed"] += d_dl
+                result["changed"] = True
+                for name, cnt in d_detail.items():
+                    result["invisible_detail"][name] = result["invisible_detail"].get(name, 0) + cnt
+            for ch, name in _GREY_ZONE_CHARS.items():
+                count = desc_val_5.count(ch)
+                if count:
+                    result["grey_zone_detected"][name] = result["grey_zone_detected"].get(name, 0) + count
+
     return result
 
 
@@ -599,6 +830,8 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
       2. cleanup_empty_strorigin   - Clear Str/Desc when StrOrigin/DescOrigin is empty
       3. cleanup_no_translation    - Replace "no translation" Str/Desc with origin
       4. cleanup_apostrophes       - Normalize curly/fancy apostrophes to ASCII
+      5. cleanup_invisible_chars   - Auto-fix invisible Unicode chars (NBSP→space, delete zero-width)
+      6. cleanup_hyphens           - Normalize Unicode hyphen lookalikes to ASCII hyphen-minus
 
     Args:
         xml_path: Path to XML file
@@ -613,6 +846,11 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
         "empty_strorigin_cleaned": 0,
         "no_translation_replaced": 0,
         "apostrophes_normalized": 0,
+        "hyphens_normalized": 0,
+        "spaces_normalized": 0,
+        "invisibles_removed": 0,
+        "invisible_detail": {},
+        "grey_zone_detected": {},
         "total_fixes": 0,
     }
 
@@ -631,11 +869,24 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
         # Step 4: Normalize curly/fancy apostrophes to ASCII
         result["apostrophes_normalized"] = cleanup_apostrophes_on_tree(root)
 
+        # Step 5: Clean invisible Unicode characters
+        invis_result = cleanup_invisible_chars_on_tree(root)
+        result["spaces_normalized"] = invis_result["spaces_normalized"]
+        result["invisibles_removed"] = invis_result["invisibles_removed"]
+        result["invisible_detail"] = invis_result["invisible_detail"]
+        result["grey_zone_detected"] = invis_result["grey_zone_detected"]
+
+        # Step 6: Normalize Unicode hyphen lookalikes to ASCII hyphen-minus
+        result["hyphens_normalized"] = cleanup_hyphens_on_tree(root)
+
         result["total_fixes"] = (
             result["newlines_fixed"]
             + result["empty_strorigin_cleaned"]
             + result["no_translation_replaced"]
             + result["apostrophes_normalized"]
+            + result["hyphens_normalized"]
+            + result["spaces_normalized"]
+            + result["invisibles_removed"]
         )
 
         # Write once if anything changed
@@ -661,6 +912,17 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
                 logger.debug(
                     "Normalized apostrophes in %d entries in %s",
                     result["apostrophes_normalized"], xml_path.name
+                )
+            if result["hyphens_normalized"] > 0:
+                logger.debug(
+                    "Normalized hyphens in %d entries in %s",
+                    result["hyphens_normalized"], xml_path.name
+                )
+            invis_total = result["spaces_normalized"] + result["invisibles_removed"]
+            if invis_total > 0:
+                logger.info(
+                    f"Post-process: cleaned {invis_total} invisible chars in {xml_path.name} "
+                    f"({result['spaces_normalized']} spaces, {result['invisibles_removed']} deleted)"
                 )
 
         return result

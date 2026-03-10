@@ -1161,6 +1161,11 @@ def _fast_folder_merge(
             "empty_strorigin_cleaned": 0,
             "no_translation_replaced": 0,
             "apostrophes_normalized": 0,
+            "hyphens_normalized": 0,
+            "spaces_normalized": 0,
+            "invisibles_removed": 0,
+            "invisible_detail": {},
+            "grey_zone_detected": {},
         },
     }
 
@@ -1479,8 +1484,13 @@ def _fast_folder_merge(
         if pp["changed"]:
             changed = True
         # Aggregate postprocess stats
-        for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized"):
+        for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized", "hyphens_normalized", "spaces_normalized", "invisibles_removed"):
             result["postprocess_stats"][key] += pp.get(key, 0)
+        # Merge invisible_detail and grey_zone_detected dicts
+        for name, cnt in pp.get("invisible_detail", {}).items():
+            result["postprocess_stats"]["invisible_detail"][name] = result["postprocess_stats"]["invisible_detail"].get(name, 0) + cnt
+        for name, cnt in pp.get("grey_zone_detected", {}).items():
+            result["postprocess_stats"]["grey_zone_detected"][name] = result["postprocess_stats"]["grey_zone_detected"].get(name, 0) + cnt
 
         # ─── Write if anything changed ───────────────────────────────
         if changed and not dry_run:
@@ -1696,6 +1706,11 @@ def transfer_folder_to_folder(
             "empty_strorigin_cleaned": 0,
             "no_translation_replaced": 0,
             "apostrophes_normalized": 0,
+            "hyphens_normalized": 0,
+            "spaces_normalized": 0,
+            "invisibles_removed": 0,
+            "invisible_detail": {},
+            "grey_zone_detected": {},
         },
     }
 
@@ -2378,8 +2393,12 @@ def transfer_folder_to_folder(
             results["total_desc_updated"] += fast_result["total_desc_updated"]
             results["errors"].extend(fast_result["errors"])
             # Aggregate postprocess stats from fast merge
-            for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized"):
+            for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized", "hyphens_normalized", "spaces_normalized", "invisibles_removed"):
                 results["postprocess_stats"][key] += fast_result.get("postprocess_stats", {}).get(key, 0)
+            for name, cnt in fast_result.get("postprocess_stats", {}).get("invisible_detail", {}).items():
+                results["postprocess_stats"]["invisible_detail"][name] = results["postprocess_stats"]["invisible_detail"].get(name, 0) + cnt
+            for name, cnt in fast_result.get("postprocess_stats", {}).get("grey_zone_detected", {}).items():
+                results["postprocess_stats"]["grey_zone_detected"][name] = results["postprocess_stats"]["grey_zone_detected"].get(name, 0) + cnt
 
             # Count SKIPPED_EMPTY_STRORIGIN from unmatched details (stringid_only)
             skipped_empty_so = sum(
@@ -2635,8 +2654,12 @@ def transfer_folder_to_folder(
             )
             if not dry_run:
                 pp_result = run_all_postprocess(target_file)
-                for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized"):
+                for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized", "hyphens_normalized", "spaces_normalized", "invisibles_removed"):
                     results["postprocess_stats"][key] += pp_result.get(key, 0)
+                for name, cnt in pp_result.get("invisible_detail", {}).items():
+                    results["postprocess_stats"]["invisible_detail"][name] = results["postprocess_stats"]["invisible_detail"].get(name, 0) + cnt
+                for name, cnt in pp_result.get("grey_zone_detected", {}).items():
+                    results["postprocess_stats"]["grey_zone_detected"][name] = results["postprocess_stats"]["grey_zone_detected"].get(name, 0) + cnt
 
         # Aggregate results
         results["files_processed"] += len(source_names)

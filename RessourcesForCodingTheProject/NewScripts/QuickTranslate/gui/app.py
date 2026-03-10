@@ -3303,7 +3303,7 @@ class QuickTranslateApp:
 
             # End-of-log POST-PROCESSING report (automatic cleanup stats)
             pp_stats = results.get("postprocess_stats", {})
-            pp_total = sum(pp_stats.get(k, 0) for k in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized"))
+            pp_total = sum(pp_stats.get(k, 0) for k in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized", "hyphens_normalized", "spaces_normalized", "invisibles_removed"))
             if pp_total > 0:
                 self._log("", 'info')
                 self._log(f"=== POST-PROCESSING ({pp_total} automatic fixes) ===", 'info')
@@ -3315,7 +3315,28 @@ class QuickTranslateApp:
                     self._log(f"  'No translation' → StrOrigin:  {pp_stats['no_translation_replaced']:,}", 'info')
                 if pp_stats.get("apostrophes_normalized", 0) > 0:
                     self._log(f"  Apostrophes normalized:        {pp_stats['apostrophes_normalized']:,}", 'info')
+                if pp_stats.get("hyphens_normalized", 0) > 0:
+                    self._log(f"  Hyphens normalized:            {pp_stats['hyphens_normalized']:,}", 'info')
+                if pp_stats.get("spaces_normalized", 0) > 0:
+                    self._log(f"  Spaces normalized (NBSP etc.): {pp_stats['spaces_normalized']:,}", 'info')
+                if pp_stats.get("invisibles_removed", 0) > 0:
+                    self._log(f"  Invisible chars removed:       {pp_stats['invisibles_removed']:,}", 'info')
+                # Per-type detail breakdown
+                invisible_detail = pp_stats.get("invisible_detail", {})
+                if invisible_detail:
+                    self._log("  Invisible Character Details:", 'info')
+                    for name, cnt in sorted(invisible_detail.items(), key=lambda x: -x[1]):
+                        self._log(f"    {name}: {cnt:,}", 'info')
                 summary_lines.append(f"\nPost-processing: {pp_total} automatic fixes applied")
+
+            # Grey zone warning (outside pp_total check — show even if zero fixes)
+            grey_zone = pp_stats.get("grey_zone_detected", {})
+            if grey_zone:
+                grey_total = sum(grey_zone.values())
+                names = ", ".join(f"{n} ({c})" for n, c in sorted(grey_zone.items(), key=lambda x: -x[1]))
+                if pp_total == 0:
+                    self._log("", 'info')
+                self._log(f"  ⚠ Grey zone chars detected (not modified): {grey_total} — {names}", 'warning')
 
             self._task_queue.put(('messagebox', 'showinfo', 'Transfer Complete',
                 "\n".join(summary_lines)

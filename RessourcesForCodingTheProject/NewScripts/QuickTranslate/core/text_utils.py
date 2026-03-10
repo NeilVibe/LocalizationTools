@@ -6,6 +6,7 @@ Single source of truth for text normalization across all modules.
 
 import html
 import re
+import unicodedata
 from typing import Optional
 
 # ---------------------------------------------------------------------------
@@ -75,16 +76,64 @@ _BROKEN_BR_RE = re.compile(
 # Excludes tab \x09, LF \x0a, CR \x0d (handled by _has_wrong_newlines)
 _CONTROL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
 
-# Zero-width and invisible characters
-_ZERO_WIDTH_CHARS = {
+# ---------------------------------------------------------------------------
+# Invisible character buckets — auto-cleanup vs blocking vs warning
+# ---------------------------------------------------------------------------
+
+# Bucket 1 — Zs spaces: auto-replace with regular space (U+0020)
+# Detected dynamically via unicodedata.category == 'Zs' (excluding U+0020)
+# Common examples: NBSP (U+00A0), en-space (U+2002), em-space (U+2003)
+
+# Bucket 2 — Safe invisible: auto-delete (silently remove)
+_SAFE_INVISIBLE_DELETE = frozenset({
+    '\u200b',   # Zero-width space
+    '\ufeff',   # BOM / zero-width no-break space
+    '\u200e',   # Left-to-right mark
+    '\u200f',   # Right-to-left mark
+    '\u2060',   # Word joiner
+    '\u00ad',   # Soft hyphen
+    '\u2061',   # Function application
+    '\u2062',   # Invisible times
+    '\u2063',   # Invisible separator
+    '\u2064',   # Invisible plus
+    '\u034f',   # Combining grapheme joiner
+    '\u061c',   # Arabic letter mark
+    '\u180e',   # Mongolian vowel separator
+    '\u2066',   # Left-to-right isolate
+    '\u2067',   # Right-to-left isolate
+    '\u2068',   # First strong isolate
+    '\u2069',   # Pop directional isolate
+    '\u202a',   # Left-to-right embedding
+    '\u202c',   # Pop directional formatting
+})
+
+# Human-readable names for detail reporting
+_SAFE_INVISIBLE_NAMES = {
     '\u200b': 'Zero-width space',
-    '\u200c': 'Zero-width non-joiner',
-    '\u200d': 'Zero-width joiner',
-    '\ufeff': 'BOM / zero-width no-break space',
+    '\ufeff': 'BOM',
     '\u200e': 'LTR mark',
     '\u200f': 'RTL mark',
     '\u2060': 'Word joiner',
     '\u00ad': 'Soft hyphen',
+    '\u2061': 'Function application',
+    '\u2062': 'Invisible times',
+    '\u2063': 'Invisible separator',
+    '\u2064': 'Invisible plus',
+    '\u034f': 'Combining grapheme joiner',
+    '\u061c': 'Arabic letter mark',
+    '\u180e': 'Mongolian vowel separator',
+    '\u2066': 'LTR isolate',
+    '\u2067': 'RTL isolate',
+    '\u2068': 'First strong isolate',
+    '\u2069': 'Pop directional isolate',
+    '\u202a': 'LTR embedding',
+    '\u202c': 'Pop directional formatting',
+}
+
+# Bucket 3 — Grey zone: warn only (don't touch, don't block)
+_GREY_ZONE_CHARS = {
+    '\u200c': 'Zero-width non-joiner (ZWNJ)',
+    '\u200d': 'Zero-width joiner (ZWJ)',
 }
 
 
@@ -117,11 +166,14 @@ def is_broken_linebreak(text: str) -> Optional[str]:
 def is_text_integrity_issue(text: str) -> Optional[str]:
     """Check if text has integrity issues (encoding artifacts, bad chars).
 
-    Catches:
+    Only catches truly corrupted text that should BLOCK transfer:
+      - Broken <br/> tags (game-breaking)
       - Replacement character U+FFFD (encoding corruption)
-      - Null bytes and control characters (C0 range)
-      - Zero-width / invisible characters
-      - Broken <br/> tags (delegates to is_broken_linebreak)
+      - Control characters (C0 range)
+
+    Invisible characters (NBSP, zero-width space, BOM, bidi marks, etc.)
+    are NOT blocked here — they are auto-cleaned by postprocess Step 5.
+    Grey zone chars (ZWNJ, ZWJ) produce warnings but don't block.
 
     Returns:
         Reason string if issue found, None if clean.
@@ -142,12 +194,6 @@ def is_text_integrity_issue(text: str) -> Optional[str]:
     m = _CONTROL_CHARS_RE.search(text)
     if m:
         return f'Control character U+{ord(m.group()):04X}'
-
-    # 4. Zero-width / invisible characters
-    for ch in text:
-        name = _ZERO_WIDTH_CHARS.get(ch)
-        if name:
-            return f'Invisible character: {name}'
 
     return None
 
