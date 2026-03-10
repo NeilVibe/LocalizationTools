@@ -1013,9 +1013,13 @@ class QuickTranslateApp:
         Uses the same validation thread pattern as source validation.
         """
         def target_validation_work():
+            from core.xml_parser import validate_xml_load
+
             total_broken = 0
             total_formula = 0
             total_integrity = 0
+            total_load_fail = 0
+            total_load_recovered = 0
             total = len(xml_files)
 
             for i, xf in enumerate(xml_files):
@@ -1026,6 +1030,16 @@ class QuickTranslateApp:
 
                 progress_pct = ((i + 1) / total) * 100
                 self._task_queue.put(('status', f'Checking target XML... ({i + 1}/{total}) {xf.name}', progress_pct))
+
+                # XML Load Test — first check, before anything else
+                load_result = validate_xml_load(xf)
+                if not load_result["ok"]:
+                    total_load_fail += 1
+                    self._log(f"CRITICAL: {xf.name} — XML LOAD FAILED at {load_result['stage']}: {load_result['error']}", 'error')
+                    continue  # Skip all other checks — file is broken
+                if load_result.get("recovery_parse_ok") and not load_result.get("strict_parse_ok"):
+                    total_load_recovered += 1
+                    self._log(f"WARNING: {xf.name} — XML loaded with recovery mode (has structural issues)", 'warning')
 
                 broken = check_broken_xml_in_file(xf)
                 if broken:
@@ -1054,9 +1068,13 @@ class QuickTranslateApp:
                     if len(integrity) > 10:
                         self._log(f"  ...and {len(integrity) - 10} more.", 'error')
 
-            issues = total_broken + total_formula + total_integrity
+            issues = total_load_fail + total_broken + total_formula + total_integrity
             if issues:
                 parts = []
+                if total_load_fail:
+                    parts.append(f"{total_load_fail} XML LOAD FAILED")
+                if total_load_recovered:
+                    parts.append(f"{total_load_recovered} recovered")
                 if total_broken:
                     parts.append(f"{total_broken} broken LocStr")
                 if total_formula:
@@ -1066,7 +1084,10 @@ class QuickTranslateApp:
                 logger.warning("TARGET issues: %s found", ', '.join(parts))
                 self._log(f"TARGET: {', '.join(parts)} found across {total} files", 'warning')
             else:
-                self._log(f"TARGET: All {total} XML files passed checks", 'success')
+                if total_load_recovered:
+                    self._log(f"TARGET: All {total} XML files loadable ({total_load_recovered} with recovery), no other issues", 'warning')
+                else:
+                    self._log(f"TARGET: All {total} XML files passed checks", 'success')
 
             self._task_queue.put(('status', '', 0))
 
@@ -1101,6 +1122,8 @@ class QuickTranslateApp:
         self._task_queue.put(('status', 'Validating source files...', 0))
 
         def validation_work():
+            from core.xml_parser import validate_xml_load
+
             results = []
             all_formula_warnings = []  # Collect for end-of-log summary
             all_integrity_warnings = []  # Collect for end-of-log summary
@@ -1115,6 +1138,16 @@ class QuickTranslateApp:
 
                 suffix = filepath.suffix.lower()
                 file_type = "XML" if suffix == ".xml" else "Excel"
+
+                # XML Load Test — first check for XML source files
+                if suffix == ".xml":
+                    load_result = validate_xml_load(filepath)
+                    if not load_result["ok"]:
+                        self._log(f"CRITICAL: {filepath.name} — XML LOAD FAILED: {load_result['error']}", 'error')
+                        results.append((filepath.name, file_type, lang, 0, "LOAD FAILED", load_result['error']))
+                        continue  # Skip all other checks
+                    if load_result.get("recovery_parse_ok") and not load_result.get("strict_parse_ok"):
+                        self._log(f"WARNING: {filepath.name} — loaded with recovery mode", 'warning')
 
                 progress_pct = ((i + 1) / total) * 100
                 self._task_queue.put(('status', f'Validating... ({i + 1}/{total}) {filepath.name}', progress_pct))
