@@ -1681,6 +1681,7 @@ def transfer_folder_to_folder(
         "_fuzzy_stats": None,
         "formula_warnings": [],
         "integrity_warnings": [],
+        "no_translation_warnings": [],
     }
 
     if not source_folder.exists():
@@ -1827,8 +1828,10 @@ def transfer_folder_to_folder(
             if source_file.suffix.lower() == ".xml":
                 formula_report = []
                 integrity_report = []
+                no_translation_report = []
                 corrections = parse_corrections_from_xml(
-                    source_file, formula_report=formula_report, integrity_report=integrity_report)
+                    source_file, formula_report=formula_report, integrity_report=integrity_report,
+                    no_translation_report=no_translation_report)
                 if formula_report:
                     formula_count = len(formula_report)
                     msg = (
@@ -1875,11 +1878,17 @@ def transfer_folder_to_folder(
                     for r in integrity_report:
                         results["integrity_warnings"].append(
                             (source_file.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
+                if no_translation_report:
+                    for r in no_translation_report:
+                        results["no_translation_warnings"].append(
+                            (source_file.name, r.get('string_id', '')))
             else:
                 formula_report = []
                 integrity_report = []
+                no_translation_report = []
                 corrections = read_corrections_from_excel(
-                    source_file, formula_report=formula_report, integrity_report=integrity_report)
+                    source_file, formula_report=formula_report, integrity_report=integrity_report,
+                    no_translation_report=no_translation_report)
                 if formula_report:
                     formula_count = len(formula_report)
                     msg = (
@@ -1926,6 +1935,10 @@ def transfer_folder_to_folder(
                     for r in integrity_report:
                         results["integrity_warnings"].append(
                             (source_file.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
+                if no_translation_report:
+                    for r in no_translation_report:
+                        results["no_translation_warnings"].append(
+                            (source_file.name, r.get('string_id', '')))
         except ValueError as e:
             logger.error(f"SKIPPED {source_file.name}: {e}")
             results["errors"].append(f"SKIPPED {source_file.name}: {e}")

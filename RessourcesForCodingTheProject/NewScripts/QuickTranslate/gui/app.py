@@ -1104,6 +1104,7 @@ class QuickTranslateApp:
             results = []
             all_formula_warnings = []  # Collect for end-of-log summary
             all_integrity_warnings = []  # Collect for end-of-log summary
+            all_no_translation_warnings = []  # Collect for end-of-log summary
             total = len(files_to_check)
 
             for i, (filepath, lang) in enumerate(files_to_check):
@@ -1124,8 +1125,10 @@ class QuickTranslateApp:
                         from core.xml_io import parse_corrections_from_xml
                         xml_formula_report = []
                         xml_integrity_report = []
+                        xml_no_translation_report = []
                         entries = parse_corrections_from_xml(
-                            filepath, formula_report=xml_formula_report, integrity_report=xml_integrity_report)
+                            filepath, formula_report=xml_formula_report, integrity_report=xml_integrity_report,
+                            no_translation_report=xml_no_translation_report)
                         count = len(entries) if entries else 0
 
                         # Also count raw LocStr elements for broken XML check
@@ -1174,11 +1177,16 @@ class QuickTranslateApp:
                                 self._log(f"  ...and {xml_integrity_count - 10} more.", 'error')
                             for r in xml_integrity_report:
                                 all_integrity_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
+                        if xml_no_translation_report:
+                            for r in xml_no_translation_report:
+                                all_no_translation_warnings.append((filepath.name, r.get('string_id', '')))
                     elif suffix in (".xlsx", ".xls"):
                         formula_report = []
                         integrity_report_xl = []
+                        xl_no_translation_report = []
                         entries = read_corrections_from_excel(
-                            filepath, formula_report=formula_report, integrity_report=integrity_report_xl)
+                            filepath, formula_report=formula_report, integrity_report=integrity_report_xl,
+                            no_translation_report=xl_no_translation_report)
                         count = len(entries) if entries else 0
 
                         if formula_report:
@@ -1216,6 +1224,9 @@ class QuickTranslateApp:
                                 self._log(f"  ...and {integrity_count_xl - 10} more.", 'error')
                             for r in integrity_report_xl:
                                 all_integrity_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', ''), r.get('reason', '')))
+                        if xl_no_translation_report:
+                            for r in xl_no_translation_report:
+                                all_no_translation_warnings.append((filepath.name, r.get('string_id', '')))
                         if count == 0 and (formula_report or integrity_report_xl):
                             skip_parts = []
                             if formula_report:
@@ -1339,6 +1350,16 @@ class QuickTranslateApp:
                 if len(secondary_integrity) > 20:
                     self._log(f"  ...and {len(secondary_integrity) - 20} more.", 'error')
                 self._log("Fix: correct the broken text in the source file before re-transferring.", 'error')
+
+            # End-of-log OTHER WARNINGS ("no translation" skips)
+            if all_no_translation_warnings:
+                self._log("", 'info')
+                self._log(f"=== OTHER WARNINGS ({len(all_no_translation_warnings)} entries) ===", 'warning')
+                self._log("Source entries with 'no translation' will be skipped to preserve existing translations:", 'warning')
+                for fname, sid in all_no_translation_warnings[:20]:
+                    self._log(f"  {fname} | StringID={sid or '(empty)'}", 'warning')
+                if len(all_no_translation_warnings) > 20:
+                    self._log(f"  ...and {len(all_no_translation_warnings) - 20} more.", 'warning')
 
             # ── Column detection: scan Excel headers to determine available match types ──
             combined_columns = {
@@ -3267,6 +3288,18 @@ class QuickTranslateApp:
                     self._log(f"  ...and {len(secondary_iw) - 20} more.", 'error')
                 self._log("Fix: correct the broken text in the source file before re-transferring.", 'error')
                 summary_lines.append(f"\nWARNING: {len(secondary_iw)} entries skipped (secondary: encoding/invisible chars)")
+
+            # End-of-log OTHER WARNINGS ("no translation" skips)
+            no_trans_warnings = results.get("no_translation_warnings", [])
+            if no_trans_warnings:
+                self._log("", 'info')
+                self._log(f"=== OTHER WARNINGS ({len(no_trans_warnings)} entries skipped) ===", 'warning')
+                self._log("Source entries with 'no translation' were skipped to preserve existing translations:", 'warning')
+                for fname, sid in no_trans_warnings[:20]:
+                    self._log(f"  {fname} | StringID={sid or '(empty)'}", 'warning')
+                if len(no_trans_warnings) > 20:
+                    self._log(f"  ...and {len(no_trans_warnings) - 20} more.", 'warning')
+                summary_lines.append(f"\nOTHER: {len(no_trans_warnings)} 'no translation' entries skipped (existing translations preserved)")
 
             self._task_queue.put(('messagebox', 'showinfo', 'Transfer Complete',
                 "\n".join(summary_lines)

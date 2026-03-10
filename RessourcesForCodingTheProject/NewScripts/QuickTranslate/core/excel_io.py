@@ -154,6 +154,7 @@ def read_corrections_from_excel(
     has_header: bool = True,
     formula_report: Optional[list] = None,
     integrity_report: Optional[list] = None,
+    no_translation_report: Optional[list] = None,
 ) -> List[Dict]:
     """
     Read corrections from Excel file for transfer mode.
@@ -305,6 +306,11 @@ def read_corrections_from_excel(
                 # postprocess would replace with StrOrigin (Korean).
                 if ' '.join(corrected_str.split()).lower() == 'no translation':
                     logger.debug("Row %s skipped: 'no translation' is not a valid correction", row[0].row)
+                    if no_translation_report is not None:
+                        no_translation_report.append({
+                            'string_id': str(string_id).strip() if string_id else '',
+                            'column': 'Correction',
+                        })
                     continue
 
                 entry = {

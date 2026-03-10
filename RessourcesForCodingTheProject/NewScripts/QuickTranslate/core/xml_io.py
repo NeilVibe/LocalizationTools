@@ -23,6 +23,7 @@ def parse_corrections_from_xml(
     xml_path: Path,
     formula_report: Optional[list] = None,
     integrity_report: Optional[list] = None,
+    no_translation_report: Optional[list] = None,
 ) -> List[Dict]:
     """
     Parse corrections from XML file (LocStr elements).
@@ -34,6 +35,8 @@ def parse_corrections_from_xml(
         integrity_report: Optional list to collect text integrity detections
             (broken linebreaks, encoding artifacts, bad chars).
             Same dict format as formula_report.
+        no_translation_report: Optional list to collect "no translation" skips.
+            Each entry is a dict with keys: string_id, column.
 
     Returns:
         List of correction dicts with keys: string_id, str_origin, corrected, raw_attribs
@@ -60,6 +63,11 @@ def parse_corrections_from_xml(
                 _norm = ' '.join(str_value.split()).lower()
                 if _norm == 'no translation':
                     logger.debug("Skipping 'no translation' source entry: StringID=%s", string_id)
+                    if no_translation_report is not None:
+                        no_translation_report.append({
+                            'string_id': string_id,
+                            'column': 'Str',
+                        })
                     continue
 
                 # Formula/garbage text check on Str (correction value)
