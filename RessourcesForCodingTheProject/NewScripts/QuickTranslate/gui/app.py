@@ -1068,6 +1068,14 @@ class QuickTranslateApp:
                     if len(integrity) > 10:
                         self._log(f"  ...and {len(integrity) - 10} more.", 'error')
 
+            # XML Load Test summary
+            if total_load_fail == 0 and total_load_recovered == 0:
+                self._log(f"XML LOAD: All {total} files loaded successfully", 'success')
+            elif total_load_fail == 0:
+                self._log(f"XML LOAD: All {total} files loadable ({total_load_recovered} with recovery mode)", 'warning')
+            else:
+                self._log(f"XML LOAD: {total_load_fail} file(s) FAILED to load out of {total}", 'error')
+
             issues = total_load_fail + total_broken + total_formula + total_integrity
             if issues:
                 parts = []
@@ -1129,6 +1137,9 @@ class QuickTranslateApp:
             all_integrity_warnings = []  # Collect for end-of-log summary
             all_no_translation_warnings = []  # Collect for end-of-log summary
             total = len(files_to_check)
+            total_xml_files = 0
+            total_load_fail = 0
+            total_load_recovered = 0
 
             for i, (filepath, lang) in enumerate(files_to_check):
                 # Abort if a real worker started (user clicked Transfer, etc.)
@@ -1141,12 +1152,15 @@ class QuickTranslateApp:
 
                 # XML Load Test — first check for XML source files
                 if suffix == ".xml":
+                    total_xml_files += 1
                     load_result = validate_xml_load(filepath)
                     if not load_result["ok"]:
+                        total_load_fail += 1
                         self._log(f"CRITICAL: {filepath.name} — XML LOAD FAILED: {load_result['error']}", 'error')
                         results.append((filepath.name, file_type, lang, 0, "LOAD FAILED", load_result['error']))
                         continue  # Skip all other checks
                     if load_result.get("recovery_parse_ok") and not load_result.get("strict_parse_ok"):
+                        total_load_recovered += 1
                         self._log(f"WARNING: {filepath.name} — loaded with recovery mode", 'warning')
 
                 progress_pct = ((i + 1) / total) * 100
@@ -1282,6 +1296,15 @@ class QuickTranslateApp:
                 except Exception as e:
                     results.append((filepath.name, file_type, lang, 0, "FAILED", str(e)))
 
+            # XML Load Test summary (source files)
+            if total_xml_files > 0:
+                if total_load_fail == 0 and total_load_recovered == 0:
+                    self._log(f"XML LOAD: All {total_xml_files} XML file(s) loaded successfully", 'success')
+                elif total_load_fail == 0:
+                    self._log(f"XML LOAD: All {total_xml_files} XML file(s) loadable ({total_load_recovered} with recovery mode)", 'warning')
+                else:
+                    self._log(f"XML LOAD: {total_load_fail} XML file(s) FAILED to load out of {total_xml_files}", 'error')
+
             # Build terminal report
             separator = "-" * 60
             logger.info("\n%s", separator)
@@ -1298,10 +1321,10 @@ class QuickTranslateApp:
             # Compute summary stats
             xml_good = sum(1 for r in results if r[1] == "XML" and r[4] == "OK")
             excel_good = sum(1 for r in results if r[1] == "Excel" and r[4] == "OK")
-            xml_fail = sum(1 for r in results if r[1] == "XML" and r[4] in ("FAILED", "EMPTY", "COLUMN ERROR"))
+            xml_fail = sum(1 for r in results if r[1] == "XML" and r[4] in ("FAILED", "EMPTY", "COLUMN ERROR", "LOAD FAILED"))
             excel_fail = sum(1 for r in results if r[1] == "Excel" and r[4] in ("FAILED", "EMPTY", "COLUMN ERROR"))
             total_entries = sum(r[3] for r in results)
-            errors = [(r[0], r[4], r[5]) for r in results if r[4] in ("FAILED", "COLUMN ERROR", "EMPTY", "SKIPPED")]
+            errors = [(r[0], r[4], r[5]) for r in results if r[4] in ("FAILED", "COLUMN ERROR", "EMPTY", "SKIPPED", "LOAD FAILED")]
 
             lang_entries = {}
             for _, _, lang, count, status, _ in results:
