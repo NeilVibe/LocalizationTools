@@ -1,27 +1,34 @@
 ; QuickCheck Inno Setup Script
-; Creates installer with drive selection
+; Clean installer - installs to Desktop by default
 
 #define MyAppName "QuickCheck"
-#define MyAppVersion "1.0.0"
+#ifndef AppVersion
+  #define MyAppVersion "1.0.0"
+#else
+  #define MyAppVersion AppVersion
+#endif
 #define MyAppPublisher "Neil"
 #define MyAppExeName "QuickCheck.exe"
-#define MyAppDescription "Multi-language LINE CHECK, TERM CHECK & Glossary Extraction Tool"
+#define MyAppDescription "Multi-language LINE CHECK, TERM CHECK, LANG CHECK & Glossary Extraction Tool"
 
 [Setup]
 AppId={{F2C4A6B8-D0E2-4F68-9A1C-3B5D7E9F1A2C}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={code:GetDefaultDir}\{#MyAppName}
+DefaultDirName={userdesktop}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=..\installer_output
 OutputBaseFilename={#MyAppName}_v{#MyAppVersion}_Setup
 Compression=lzma2/ultra64
 SolidCompression=yes
-WizardStyle=modern
 PrivilegesRequired=lowest
 DisableProgramGroupPage=yes
+DisableWelcomePage=no
+DisableDirPage=no
+DisableReadyPage=no
+DisableFinishedPage=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -39,67 +46,3 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-
-[Code]
-var
-  DrivePage: TInputOptionWizardPage;
-  DriveLetters: TStringList;
-
-function GetAvailableDrives(): TStringList;
-var
-  i: Integer;
-  DrivePath: String;
-begin
-  Result := TStringList.Create;
-  for i := Ord('C') to Ord('Z') do
-  begin
-    DrivePath := Chr(i) + ':\';
-    if DirExists(DrivePath) then
-      Result.Add(Chr(i) + ':');
-  end;
-end;
-
-procedure InitializeWizard;
-var
-  i: Integer;
-begin
-  DriveLetters := GetAvailableDrives();
-
-  DrivePage := CreateInputOptionPage(
-    wpWelcome,
-    'Select Installation Drive',
-    'Choose which drive to install QuickCheck on.',
-    'Available drives on your system:',
-    True, False
-  );
-
-  for i := 0 to DriveLetters.Count - 1 do
-  begin
-    DrivePage.Add(DriveLetters[i] + ' Drive');
-  end;
-
-  if DrivePage.Values[0] = False then
-    DrivePage.SelectedValueIndex := 0;
-end;
-
-function GetDefaultDir(Param: String): String;
-var
-  SelectedIndex: Integer;
-begin
-  if Assigned(DrivePage) and (DriveLetters.Count > 0) then
-  begin
-    SelectedIndex := DrivePage.SelectedValueIndex;
-    if (SelectedIndex >= 0) and (SelectedIndex < DriveLetters.Count) then
-      Result := DriveLetters[SelectedIndex]
-    else
-      Result := 'C:';
-  end
-  else
-    Result := 'C:';
-end;
-
-procedure DeinitializeSetup();
-begin
-  if Assigned(DriveLetters) then
-    DriveLetters.Free;
-end;
