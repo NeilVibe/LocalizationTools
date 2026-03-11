@@ -39,11 +39,11 @@ logger = logging.getLogger(__name__)
 
 # --- Compiled regex patterns for newline normalization ---
 
-# <br> tag variants: <br>, <br/>, <br />, <BR>, <BR/>, <Br>, etc.
-_BR_TAG_RE = re.compile(r'<[Bb][Rr]\s*/?>')
+# <br> tag variants: <br>, <br/>, <br />, <BR>, <BR/>, </br>, </BR>, etc.
+_BR_TAG_RE = re.compile(r'</?[Bb][Rr]\s*/?>')
 
-# HTML-escaped <br> variants: &lt;br/&gt;, &lt;br&gt;, &lt;BR/&gt;, etc.
-_BR_ESCAPED_RE = re.compile(r'&lt;[Bb][Rr]\s*/?&gt;')
+# HTML-escaped <br> variants: &lt;br/&gt;, &lt;br&gt;, &lt;/br&gt;, &lt;BR/&gt;, etc.
+_BR_ESCAPED_RE = re.compile(r'&lt;/?[Bb][Rr]\s*/?&gt;')
 
 # CRLF as XML entity combo: &#13;&#10; or &#xD;&#xA; (with optional whitespace between)
 _CRLF_ENTITY_RE = re.compile(r'&#[Xx]0?[Dd];\s*&#[Xx]0?[Aa];|&#13;\s*&#10;')
