@@ -247,6 +247,16 @@ def read_corrections_from_excel(
                 str_origin = row[strorigin_col - 1].value if strorigin_col is not None and strorigin_col <= len(row) else None
                 corrected = row[correction_col - 1].value if correction_col is not None and correction_col <= len(row) else None
 
+                eventname = None
+                if eventname_col is not None:
+                    eventname = row[eventname_col - 1].value if eventname_col <= len(row) else None
+                dialogvoice = None
+                if dialogvoice_col is not None:
+                    dialogvoice = row[dialogvoice_col - 1].value if dialogvoice_col <= len(row) else None
+
+                # Build display ID for reports (StringID preferred, EventName as fallback)
+                _report_id = str(string_id or '').strip() or str(eventname or '').strip()
+
                 # Formula safeguard Layer 1: type check BEFORE str coercion
                 bad_type = _is_bad_cell_type(corrected)
                 if bad_type:
@@ -254,16 +264,9 @@ def read_corrections_from_excel(
                     if formula_report is not None:
                         formula_report.append({
                             'row': row[0].row, 'column': 'Correction',
-                            'string_id': str(string_id or ''), 'reason': bad_type,
+                            'string_id': _report_id, 'reason': bad_type,
                         })
                     continue
-
-                eventname = None
-                if eventname_col is not None:
-                    eventname = row[eventname_col - 1].value if eventname_col <= len(row) else None
-                dialogvoice = None
-                if dialogvoice_col is not None:
-                    dialogvoice = row[dialogvoice_col - 1].value if dialogvoice_col <= len(row) else None
 
                 # Accept row if EITHER string_id or eventname is present
                 # Use 'is not None' to handle numeric 0 as a valid StringID
@@ -282,7 +285,7 @@ def read_corrections_from_excel(
                     if formula_report is not None:
                         formula_report.append({
                             'row': row[0].row, 'column': 'Correction',
-                            'string_id': str(string_id or ''), 'reason': bad_text,
+                            'string_id': _report_id, 'reason': bad_text,
                         })
                     continue
 
@@ -293,7 +296,7 @@ def read_corrections_from_excel(
                     if integrity_report is not None:
                         integrity_report.append({
                             'row': row[0].row, 'column': 'Correction',
-                            'string_id': str(string_id or ''), 'reason': bad_integrity,
+                            'string_id': _report_id, 'reason': bad_integrity,
                         })
                     continue
 
@@ -308,7 +311,7 @@ def read_corrections_from_excel(
                     logger.debug("Row %s skipped: 'no translation' is not a valid correction", row[0].row)
                     if no_translation_report is not None:
                         no_translation_report.append({
-                            'string_id': str(string_id).strip() if string_id else '',
+                            'string_id': _report_id,
                             'column': 'Correction',
                         })
                     continue
@@ -333,7 +336,7 @@ def read_corrections_from_excel(
                         if formula_report is not None:
                             formula_report.append({
                                 'row': row[0].row, 'column': 'Desc',
-                                'string_id': str(string_id or ''), 'reason': bad,
+                                'string_id': _report_id, 'reason': bad,
                             })
                         d_val = None  # Neutralize — prevents downstream str(d_val)
                     # Text integrity check on Desc (broken linebreaks, encoding, bad chars)
@@ -344,7 +347,7 @@ def read_corrections_from_excel(
                             if integrity_report is not None:
                                 integrity_report.append({
                                     'row': row[0].row, 'column': 'Desc',
-                                    'string_id': str(string_id or ''), 'reason': bad_desc_integrity,
+                                    'string_id': _report_id, 'reason': bad_desc_integrity,
                                 })
                             d_val = None  # Neutralize
                     if d_val is not None and str(d_val).strip():
