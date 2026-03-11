@@ -2916,6 +2916,19 @@ class QuickTranslateApp:
             messagebox.showerror("Error", f"Target folder not found:\n{target}")
             return
 
+        # Block source == target (would overwrite source files)
+        try:
+            if source.resolve() == target.resolve():
+                messagebox.showerror(
+                    "Error",
+                    "Source and Target folders are the same!\n\n"
+                    "Transfer writes back to the Target folder, so using the same folder "
+                    "as both Source and Target would overwrite your source files."
+                )
+                return
+        except OSError:
+            pass  # resolve() can fail on broken symlinks — let transfer proceed
+
         # Capture StringVar values on main thread
         match_type = self.match_type.get()
         precision = self.match_precision.get()
@@ -3150,10 +3163,9 @@ class QuickTranslateApp:
             skipped_translated = results.get("total_skipped_translated", 0)
 
             # === FAILURE REPORT GENERATION ===
-            skipped = results.get("total_skipped", 0)
-            skipped_excluded = results.get("total_skipped_excluded", 0)
-            # SKIPPED_TRANSLATED is by design (untranslated-only scope), not a failure
-            total_failures = not_found + strorigin_mismatch + skipped + skipped_excluded
+            # Only real failures trigger report generation.
+            # SKIPPED_NON_SCRIPT, SKIPPED_EXCLUDED, SKIPPED_TRANSLATED etc. are by design.
+            total_failures = not_found + strorigin_mismatch
             failure_reports_msg = ""
 
             if total_failures > 0:

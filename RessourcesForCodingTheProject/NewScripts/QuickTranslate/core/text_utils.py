@@ -74,7 +74,7 @@ _BROKEN_BR_RE = re.compile(
 
 # Control chars that should never appear in game text
 # Excludes tab \x09, LF \x0a, CR \x0d (handled by _has_wrong_newlines)
-_CONTROL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
+_CONTROL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
 
 # ---------------------------------------------------------------------------
 # Invisible character buckets — auto-cleanup vs blocking vs warning
@@ -104,7 +104,10 @@ _SAFE_INVISIBLE_DELETE = frozenset({
     '\u2068',   # First strong isolate
     '\u2069',   # Pop directional isolate
     '\u202a',   # Left-to-right embedding
+    '\u202b',   # Right-to-left embedding
     '\u202c',   # Pop directional formatting
+    '\u202d',   # Left-to-right override
+    '\u202e',   # Right-to-left override
 })
 
 # Human-readable names for detail reporting
@@ -127,7 +130,10 @@ _SAFE_INVISIBLE_NAMES = {
     '\u2068': 'First strong isolate',
     '\u2069': 'Pop directional isolate',
     '\u202a': 'LTR embedding',
+    '\u202b': 'RTL embedding',
     '\u202c': 'Pop directional formatting',
+    '\u202d': 'LTR override',
+    '\u202e': 'RTL override',
 }
 
 # Bucket 3 — Grey zone: warn only (don't touch, don't block)

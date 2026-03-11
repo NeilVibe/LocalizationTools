@@ -266,22 +266,22 @@ def cleanup_empty_strorigin_on_tree(root) -> int:
         _, origin = _get_attr(loc, STRORIGIN_ATTRS)
         origin = (origin or "").strip()
 
-        _, str_val = _get_attr(loc, STR_ATTRS)
+        str_attr, str_val = _get_attr(loc, STR_ATTRS)
         str_val = (str_val or "").strip()
 
         if not origin and str_val:
-            loc.set("Str", "")
+            loc.set(str_attr or "Str", "")
             cleaned += 1
 
         # Golden rule for Desc/DescOrigin: if DescOrigin is empty, Desc MUST be empty
         _, desc_origin = _get_attr(loc, DESCORIGIN_ATTRS)
         desc_origin = (desc_origin or "").strip()
 
-        _, desc_val = _get_attr(loc, DESC_ATTRS)
+        desc_attr, desc_val = _get_attr(loc, DESC_ATTRS)
         desc_val = (desc_val or "").strip()
 
         if not desc_origin and desc_val:
-            loc.set("Desc", "")
+            loc.set(desc_attr or "Desc", "")
             cleaned += 1
     return cleaned
 
@@ -707,7 +707,7 @@ def run_all_postprocess_on_tree(root) -> dict:
         str_val_stripped = (str_val or "").strip() if str_val is not None else ""
 
         if not origin_stripped and str_val_stripped:
-            loc.set("Str", "")
+            loc.set(str_attr or "Str", "")
             result["empty_strorigin_cleaned"] += 1
             result["changed"] = True
             str_val = ""  # cleared
@@ -717,7 +717,7 @@ def run_all_postprocess_on_tree(root) -> dict:
         desc_val_stripped = (desc_val or "").strip() if desc_val is not None else ""
 
         if not desc_origin_stripped and desc_val_stripped:
-            loc.set("Desc", "")
+            loc.set(desc_attr or "Desc", "")
             result["empty_strorigin_cleaned"] += 1
             result["changed"] = True
             desc_val = ""

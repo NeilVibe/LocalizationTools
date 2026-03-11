@@ -99,6 +99,8 @@ FAILURE_REASONS = {
     "SKIPPED_NON_SCRIPT": "Not a SCRIPT category (skipped)",
     "SKIPPED_SCRIPT": "SCRIPT category — use StringID-Only (skipped)",
     "SKIPPED_EXCLUDED": "Excluded subfolder (skipped)",
+    "SKIPPED_NO_TRANSLATION": "Correction is 'no translation' (skipped)",
+    "SKIPPED_DUPLICATE_STRORIGIN": "Duplicate StrOrigin in corrections (skipped)",
     "PARSE_ERROR": "Failed to parse correction",
     "WRITE_ERROR": "Failed to write to target file",
     "OTHER": "Other/Unknown error",
@@ -150,6 +152,10 @@ def _classify_failure_reason(detail: Dict) -> str:
         return "SKIPPED_SCRIPT"
     elif "SKIPPED_EXCLUDED" in status:
         return "SKIPPED_EXCLUDED"
+    elif "SKIPPED_NO_TRANSLATION" in status:
+        return "SKIPPED_NO_TRANSLATION"
+    elif "SKIPPED_DUPLICATE_STRORIGIN" in status:
+        return "SKIPPED_DUPLICATE_STRORIGIN"
     elif "ERROR" in status:
         return "PARSE_ERROR"
     else:
@@ -167,7 +173,9 @@ def _is_failure(detail: Dict) -> bool:
     if status.startswith("RECOVERED_"):
         status = status[len("RECOVERED_"):]
     # Success / by-design statuses
-    if status in ("UPDATED", "UNCHANGED", "SKIPPED_TRANSLATED"):
+    if status in ("UPDATED", "UNCHANGED", "SKIPPED_TRANSLATED", "SKIPPED_NO_TRANSLATION",
+                  "SKIPPED_NON_SCRIPT", "SKIPPED_SCRIPT", "SKIPPED_EXCLUDED",
+                  "SKIPPED_DUPLICATE_STRORIGIN"):
         return False
     # Match level suffixes are success
     if status.startswith("UPDATED (") or status.startswith("UNCHANGED ("):
@@ -427,11 +435,9 @@ def extract_failed_from_transfer_results(
 
     details = results.get("details", [])
     for detail in details:
-        status = detail.get("status", "")
-
-        # Only include real failures — SKIPPED_TRANSLATED is by design, not a failure
-        if status == "SKIPPED_TRANSLATED":
+        if not _is_failure(detail):
             continue
+        status = detail.get("status", "")
         if "NOT_FOUND" in status or "MISMATCH" in status or "SKIPPED" in status:
             fail_reason = _status_to_reason(status, mm)
 
@@ -476,11 +482,9 @@ def extract_failed_from_folder_results(
 
         details = fresult.get("details", [])
         for detail in details:
-            status = detail.get("status", "")
-
-            # Only include real failures — SKIPPED_TRANSLATED is by design, not a failure
-            if status == "SKIPPED_TRANSLATED":
+            if not _is_failure(detail):
                 continue
+            status = detail.get("status", "")
             if "NOT_FOUND" in status or "MISMATCH" in status or "SKIPPED" in status:
                 fail_reason = _status_to_reason(status, mm)
 

@@ -30,6 +30,48 @@ from .postprocess import run_all_postprocess
 
 logger = logging.getLogger(__name__)
 
+# ─── Shared helpers (dedup) ──────────────────────────────────────────────────
+
+
+def _parse_target_xml(xml_path: Path):
+    """Parse target XML file with recovery mode. Returns (tree, root)."""
+    if USING_LXML:
+        parser = etree.XMLParser(
+            resolve_entities=False, load_dtd=False,
+            no_network=True, recover=True,
+        )
+        tree = etree.parse(str(xml_path), parser)
+    else:
+        tree = etree.parse(str(xml_path))
+    return tree, tree.getroot()
+
+
+def _write_target_xml(tree, xml_path: Path):
+    """Write XML tree back to file, making it writable if needed."""
+    try:
+        current_mode = os.stat(xml_path).st_mode
+        if not current_mode & stat.S_IWRITE:
+            os.chmod(xml_path, current_mode | stat.S_IWRITE)
+    except Exception:
+        pass
+
+    if USING_LXML:
+        tree.write(str(xml_path), encoding="utf-8", xml_declaration=False, pretty_print=True)
+    else:
+        tree.write(str(xml_path), encoding="utf-8", xml_declaration=False)
+
+
+def _aggregate_postprocess_stats(target_stats: dict, pp_result: dict):
+    """Merge per-file postprocess result into running totals."""
+    for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced",
+                "apostrophes_normalized", "hyphens_normalized", "spaces_normalized", "invisibles_removed"):
+        target_stats[key] += pp_result.get(key, 0)
+    for name, cnt in pp_result.get("invisible_detail", {}).items():
+        target_stats["invisible_detail"][name] = target_stats["invisible_detail"].get(name, 0) + cnt
+    for name, cnt in pp_result.get("grey_zone_detected", {}).items():
+        target_stats["grey_zone_detected"][name] = target_stats["grey_zone_detected"].get(name, 0) + cnt
+
+
 # ─── "No translation" guard ──────────────────────────────────────────────────
 _WS_RE = re.compile(r'\s+')
 
@@ -382,19 +424,7 @@ def merge_corrections_to_xml(
         result["by_category"][cat] = {"matched": 0, "updated": 0, "not_found": 0}
 
     try:
-        if USING_LXML:
-            # Parse XML with recovery mode
-            parser = etree.XMLParser(
-                resolve_entities=False,
-                load_dtd=False,
-                no_network=True,
-                recover=True,
-            )
-            tree = etree.parse(str(xml_path), parser)
-            root = tree.getroot()
-        else:
-            tree = etree.parse(str(xml_path))
-            root = tree.getroot()
+        tree, root = _parse_target_xml(xml_path)
 
         if root is None:
             result["errors"].append(f"{xml_path.name}: empty or invalid XML (no root element)")
@@ -541,19 +571,7 @@ def merge_corrections_to_xml(
                 result["details"].append(detail_entry)
 
         if changed and not dry_run:
-            # Make file writable if read-only
-            try:
-                current_mode = os.stat(xml_path).st_mode
-                if not current_mode & stat.S_IWRITE:
-                    os.chmod(xml_path, current_mode | stat.S_IWRITE)
-                    logger.debug(f"Made {xml_path.name} writable")
-            except Exception as e:
-                logger.warning(f"Could not make {xml_path.name} writable: {e}")
-
-            if USING_LXML:
-                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False, pretty_print=True)
-            else:
-                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False)
+            _write_target_xml(tree, xml_path)
             logger.info(f"Saved {xml_path.name}: {result['updated']} entries updated")
 
     except Exception as e:
@@ -766,18 +784,7 @@ def merge_corrections_stringid_only(
             )
 
     try:
-        if USING_LXML:
-            parser = etree.XMLParser(
-                resolve_entities=False,
-                load_dtd=False,
-                no_network=True,
-                recover=True,
-            )
-            tree = etree.parse(str(xml_path), parser)
-            root = tree.getroot()
-        else:
-            tree = etree.parse(str(xml_path))
-            root = tree.getroot()
+        tree, root = _parse_target_xml(xml_path)
 
         if root is None:
             result["errors"].append(f"{xml_path.name}: empty or invalid XML (no root element)")
@@ -905,18 +912,7 @@ def merge_corrections_stringid_only(
                 })
 
         if changed and not dry_run:
-            try:
-                current_mode = os.stat(xml_path).st_mode
-                if not current_mode & stat.S_IWRITE:
-                    os.chmod(xml_path, current_mode | stat.S_IWRITE)
-                    logger.debug(f"Made {xml_path.name} writable")
-            except Exception as e:
-                logger.warning(f"Could not make {xml_path.name} writable: {e}")
-
-            if USING_LXML:
-                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False, pretty_print=True)
-            else:
-                tree.write(str(xml_path), encoding="utf-8", xml_declaration=False)
+            _write_target_xml(tree, xml_path)
             logger.info(f"Saved {xml_path.name}: {result['updated']} entries updated (StringID-only)")
 
     except Exception as e:
@@ -1221,16 +1217,7 @@ def _fast_folder_merge(
             progress_callback(f"Processing {target_file.name} ({fi+1}/{len(target_files)})")
 
         try:
-            if USING_LXML:
-                parser = etree.XMLParser(
-                    resolve_entities=False, load_dtd=False,
-                    no_network=True, recover=True,
-                )
-                tree = etree.parse(str(target_file), parser)
-                root = tree.getroot()
-            else:
-                tree = etree.parse(str(target_file))
-                root = tree.getroot()
+            tree, root = _parse_target_xml(target_file)
         except Exception as e:
             result["errors"].append(f"{target_file.name}: {e}")
             logger.error(f"Fast merge parse error: {target_file}: {e}")
@@ -1484,27 +1471,11 @@ def _fast_folder_merge(
         if pp["changed"]:
             changed = True
         # Aggregate postprocess stats
-        for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized", "hyphens_normalized", "spaces_normalized", "invisibles_removed"):
-            result["postprocess_stats"][key] += pp.get(key, 0)
-        # Merge invisible_detail and grey_zone_detected dicts
-        for name, cnt in pp.get("invisible_detail", {}).items():
-            result["postprocess_stats"]["invisible_detail"][name] = result["postprocess_stats"]["invisible_detail"].get(name, 0) + cnt
-        for name, cnt in pp.get("grey_zone_detected", {}).items():
-            result["postprocess_stats"]["grey_zone_detected"][name] = result["postprocess_stats"]["grey_zone_detected"].get(name, 0) + cnt
+        _aggregate_postprocess_stats(result["postprocess_stats"], pp)
 
         # ─── Write if anything changed ───────────────────────────────
         if changed and not dry_run:
-            try:
-                current_mode = os.stat(target_file).st_mode
-                if not current_mode & stat.S_IWRITE:
-                    os.chmod(target_file, current_mode | stat.S_IWRITE)
-            except Exception:
-                pass
-
-            if USING_LXML:
-                tree.write(str(target_file), encoding="utf-8", xml_declaration=False, pretty_print=True)
-            else:
-                tree.write(str(target_file), encoding="utf-8", xml_declaration=False)
+            _write_target_xml(tree, target_file)
 
         if file_updated > 0:
             result["per_file"][target_file.name] = {"updated": file_updated, "matched": file_matched}
@@ -1740,6 +1711,17 @@ def transfer_folder_to_folder(
             all_sources.append(item)
             # For unrecognized, try to extract from filename
             file_to_lang[item] = None
+
+    # Sort source files by modification time (oldest first).
+    # When duplicate StringIDs exist across files, the NEWEST file's
+    # correction wins (via match_entries[-1] in _fast_folder_merge).
+    def _safe_mtime(f):
+        try:
+            return f.stat().st_mtime
+        except OSError:
+            return 0  # Treat stat-failed files as oldest (overwritten by newer)
+
+    all_sources.sort(key=_safe_mtime)
 
     total = len(all_sources)
 
@@ -2393,12 +2375,7 @@ def transfer_folder_to_folder(
             results["total_desc_updated"] += fast_result["total_desc_updated"]
             results["errors"].extend(fast_result["errors"])
             # Aggregate postprocess stats from fast merge
-            for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized", "hyphens_normalized", "spaces_normalized", "invisibles_removed"):
-                results["postprocess_stats"][key] += fast_result.get("postprocess_stats", {}).get(key, 0)
-            for name, cnt in fast_result.get("postprocess_stats", {}).get("invisible_detail", {}).items():
-                results["postprocess_stats"]["invisible_detail"][name] = results["postprocess_stats"]["invisible_detail"].get(name, 0) + cnt
-            for name, cnt in fast_result.get("postprocess_stats", {}).get("grey_zone_detected", {}).items():
-                results["postprocess_stats"]["grey_zone_detected"][name] = results["postprocess_stats"]["grey_zone_detected"].get(name, 0) + cnt
+            _aggregate_postprocess_stats(results["postprocess_stats"], fast_result.get("postprocess_stats", {}))
 
             # Count SKIPPED_EMPTY_STRORIGIN from unmatched details (stringid_only)
             skipped_empty_so = sum(
@@ -2654,12 +2631,7 @@ def transfer_folder_to_folder(
             )
             if not dry_run:
                 pp_result = run_all_postprocess(target_file)
-                for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized", "hyphens_normalized", "spaces_normalized", "invisibles_removed"):
-                    results["postprocess_stats"][key] += pp_result.get(key, 0)
-                for name, cnt in pp_result.get("invisible_detail", {}).items():
-                    results["postprocess_stats"]["invisible_detail"][name] = results["postprocess_stats"]["invisible_detail"].get(name, 0) + cnt
-                for name, cnt in pp_result.get("grey_zone_detected", {}).items():
-                    results["postprocess_stats"]["grey_zone_detected"][name] = results["postprocess_stats"]["grey_zone_detected"].get(name, 0) + cnt
+                _aggregate_postprocess_stats(results["postprocess_stats"], pp_result)
 
         # Aggregate results
         results["files_processed"] += len(source_names)
