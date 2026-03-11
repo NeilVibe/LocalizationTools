@@ -153,3 +153,4 @@ Build: fix Korean detection in generators/base.py - add Jamo ranges
 Build 039: Unify Item category to standard STRINGID+Translation path — remove stale ITEMNAME/ITEMDESC branches
 Build 040: add dynamic version display to window title
 Build 041: Fix manager data preservation + MANAGER_COMMENT width + debug logging
+Build 018: 18-bug fix — master file preservation pipeline hardening
