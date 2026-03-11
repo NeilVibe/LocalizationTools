@@ -156,3 +156,4 @@ Build 041: Fix manager data preservation + MANAGER_COMMENT width + debug logging
 Build 018: 18-bug fix — master file preservation pipeline hardening
 Build 019: GUI log redesign — ScrolledText panel, log_callback pipeline, clean summary output
 Build 020: GUI horizontal layout — PanedWindow split (controls left, log right)
+Build 021: Wire log_callback to all 6 GUI actions — Generate, Transfer, Coverage, Localizer, Tracker

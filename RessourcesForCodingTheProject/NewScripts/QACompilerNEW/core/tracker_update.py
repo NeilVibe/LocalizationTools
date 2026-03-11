@@ -509,7 +509,7 @@ def aggregate_manager_stats(tester_mapping: Dict) -> Tuple[Dict, Dict]:
 # MAIN FUNCTION
 # =============================================================================
 
-def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
+def update_tracker_only(log_callback=None) -> Tuple[bool, str, List[Dict]]:
     """
     Main entry point for tracker-only update.
 
@@ -521,34 +521,31 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
     6. Rebuild DAILY and TOTAL sheets
     7. Save tracker
 
+    Args:
+        log_callback: Optional callback(message, tag) for GUI logging
+
     Returns:
         Tuple of (success, message, entries)
     """
+    def _log(msg, tag='info'):
+        if log_callback:
+            log_callback(msg, tag)
+        print(msg)
+
     # Clear log for fresh run
     _tracker_log_clear()
     _tracker_log("=" * 50)
     _tracker_log("UPDATE TRACKER ONLY - START")
     _tracker_log("=" * 50)
 
-    print()
-    print("=" * 60)
-    print("Update Tracker from TrackerUpdateFolder")
-    print("=" * 60)
-    print()
-    print("This mode updates the progress tracker WITHOUT rebuilding master files.")
-    print("Use it to retroactively add missing days to the tracker.")
-    print()
-    print("Folder structure:")
-    print(f"  {TRACKER_UPDATE_FOLDER}/")
-    print(f"  ├── QAfolder/           (tester QA files)")
-    print(f"  ├── Masterfolder_EN/    (manager stats)")
-    print(f"  └── Masterfolder_CN/    (manager stats)")
-    print()
+    _log("=== Update Tracker from TrackerUpdateFolder ===", 'header' if log_callback else 'info')
+    _log("Updates progress tracker WITHOUT rebuilding master files.")
+    _log(f"Source: {TRACKER_UPDATE_FOLDER}/")
 
     # Discover QA folders
-    print("Discovering QA folders...")
+    _log("Discovering QA folders...")
     qa_folders = discover_tracker_qa_folders()
-    print(f"  Found {len(qa_folders)} QA folder(s)")
+    _log(f"  Found {len(qa_folders)} QA folder(s)")
 
     # Check for master files
     has_master_files = (
@@ -557,18 +554,18 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
     )
     master_en_count = len(list(TRACKER_UPDATE_MASTER_EN.glob("Master_*.xlsx")))
     master_cn_count = len(list(TRACKER_UPDATE_MASTER_CN.glob("Master_*.xlsx")))
-    print(f"\nMaster files: {master_en_count} EN, {master_cn_count} CN")
+    _log(f"Master files: {master_en_count} EN, {master_cn_count} CN")
     _tracker_log(f"Master files found: EN={master_en_count}, CN={master_cn_count}")
 
     if not qa_folders and not has_master_files:
         msg = "No QA folders or master files found in TrackerUpdateFolder"
         _tracker_log(msg, "ERROR")
         _tracker_log_flush("UPDATE TRACKER - ABORTED")
-        print(f"\n{msg}")
+        _log(msg, 'error')
         return False, msg, []
 
     # Load tester mapping
-    print("\nLoading tester->language mapping...")
+    _log("Loading tester->language mapping...")
     tester_mapping = load_tester_mapping()
     _tracker_log(f"Tester mapping loaded: {len(tester_mapping)} entries")
 
@@ -577,7 +574,7 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
     # Process QA folders (tester stats)
     if qa_folders:
         _tracker_log(f"Processing {len(qa_folders)} QA folders...")
-        print("\nProcessing QA folders (tester stats)...")
+        _log("Processing QA folders (tester stats)...")
         for folder in qa_folders:
             username = folder["username"]
             category = folder["category"]
@@ -585,13 +582,12 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
             lang = tester_mapping.get(username, "EN")
             in_mapping = username in tester_mapping
 
-            print(f"\n  {username}_{category} ({file_date})")
-            print(f"    Language: {lang}{'' if in_mapping else ' (not in mapping, default)'}")
+            _log(f"  {username}_{category} ({file_date}) [{lang}]")
 
             entry = count_qa_folder_stats(folder, tester_mapping)
             entries.append(entry)
 
-            print(f"    Total: {entry['total_rows']}, Done: {entry['done']}, Issues: {entry['issues']}")
+            _log(f"    Total: {entry['total_rows']}, Done: {entry['done']}, Issues: {entry['issues']}")
 
     # Process master files (manager stats) - check if any master files exist
     manager_stats = {}
@@ -601,8 +597,7 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
         any(TRACKER_UPDATE_MASTER_CN.glob("Master_*.xlsx"))
     )
     if has_master_files:
-        print("\nProcessing master files (manager stats)...")
-        print("  Using ORIGINAL category names (Skill, Help, Gimmick → mapped to master files)")
+        _log("Processing master files (manager stats)...")
         manager_stats, manager_dates = aggregate_manager_stats(tester_mapping)
 
         for category, users in manager_stats.items():
@@ -610,12 +605,10 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
                 total = stats["fixed"] + stats["reported"] + stats["checking"] + stats["nonissue"]
                 if total > 0:
                     date = manager_dates.get((category, username), "unknown")
-                    print(f"  {username} ({category}, {date}): FIXED={stats['fixed']}, REPORTED={stats['reported']}, CHECKING={stats['checking']}, NON-ISSUE={stats['nonissue']}")
+                    _log(f"  {username} ({category}, {date}): F={stats['fixed']} R={stats['reported']} C={stats['checking']} N={stats['nonissue']}")
 
     # Update tracker
-    print("\n" + "=" * 60)
-    print("Updating Progress Tracker...")
-    print("=" * 60)
+    _log("Updating Progress Tracker...")
 
     try:
         from tracker.data import get_or_create_tracker, update_daily_data_sheet
@@ -674,26 +667,24 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
 
         _tracker_log_flush("TRACKER UPDATE COMPLETE")
 
-        print(f"\n  Saved: {tracker_path}")
+        _log(f"Saved: {tracker_path}", 'success')
         if entries:
-            print(f"  Updated {len(entries)} tester entries from {len(set(e['date'] for e in entries))} unique date(s)")
+            _log(f"  Updated {len(entries)} tester entries from {len(set(e['date'] for e in entries))} unique date(s)", 'success')
         if manager_stats:
             total_users = sum(len(users) for users in manager_stats.values())
-            print(f"  Updated manager stats for {total_users} user(s)")
+            _log(f"  Updated manager stats for {total_users} user(s)", 'success')
 
     except Exception as e:
         msg = f"Failed to update tracker: {e}"
         _tracker_log(f"ERROR: {msg}", "ERROR")
         _tracker_log_flush("TRACKER UPDATE FAILED")
-        print(f"\nERROR: {msg}")
+        _log(f"ERROR: {msg}", 'error')
         import traceback
         traceback.print_exc()
         return False, msg, entries
 
     # Summary
-    print("\n" + "=" * 60)
-    print("Tracker Update Complete!")
-    print("=" * 60)
+    _log("Tracker Update Complete!", 'success')
 
     _tracker_log("=" * 50)
     _tracker_log("UPDATE TRACKER ONLY - COMPLETE")
@@ -705,17 +696,17 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
         for entry in entries:
             by_date[entry["date"]].append(entry)
 
-        print("\nTester stats by date:")
+        _log("Tester stats by date:")
         _tracker_log("SUMMARY BY DATE:")
         for date in sorted(by_date.keys()):
             date_entries = by_date[date]
             total_done = sum(e["done"] for e in date_entries)
             total_issues = sum(e["issues"] for e in date_entries)
             users = [e["user"] for e in date_entries]
-            print(f"  {date}: {len(users)} user(s), {total_done} done, {total_issues} issues")
+            _log(f"  {date}: {len(users)} user(s), {total_done} done, {total_issues} issues")
             _tracker_log(f"  {date}: users={users} done={total_done} issues={total_issues}")
 
-    msg = f"Successfully updated tracker"
+    msg = "Successfully updated tracker"
     if entries:
         msg += f" with {len(entries)} tester entries"
     if manager_stats:
@@ -724,4 +715,5 @@ def update_tracker_only() -> Tuple[bool, str, List[Dict]]:
     _tracker_log(f"RESULT: {msg}")
     _tracker_log_flush("FINAL SUMMARY")
 
+    _log(msg, 'success')
     return True, msg, entries

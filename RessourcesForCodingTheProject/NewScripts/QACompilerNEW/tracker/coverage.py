@@ -27,6 +27,20 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import LANGUAGE_FOLDER, EXPORT_FOLDER, VOICE_RECORDING_SHEET_FOLDER
 
 # =============================================================================
+# MODULE-LEVEL LOG CALLBACK (set by GUI-facing functions)
+# =============================================================================
+
+_coverage_log_cb = None
+
+
+def _clog(msg, tag='info'):
+    """Module-level log helper — sends to GUI callback if set, always prints."""
+    if _coverage_log_cb:
+        _coverage_log_cb(msg, tag)
+    print(msg)
+
+
+# =============================================================================
 # CONFIGURATION
 # =============================================================================
 
@@ -217,17 +231,17 @@ def load_master_language_data(language_folder: Path) -> Tuple[Set[str], int]:
     Returns:
         (master_strings set, word_count)
     """
-    print(f"Loading master language data from: {language_folder}")
+    _clog(f"Loading master language data from: {language_folder}")
 
     master_strings: Set[str] = set()
 
     if not language_folder.exists():
-        print(f"  ERROR: Language folder not found")
+        _clog(f"  ERROR: Language folder not found", 'error')
         return master_strings, 0
 
     lang_files = sorted(language_folder.glob("languagedata_*.xml"))
     if not lang_files:
-        print(f"  ERROR: No language data files found")
+        _clog(f"  ERROR: No language data files found", 'error')
         return master_strings, 0
 
     # Prefer English
@@ -239,11 +253,11 @@ def load_master_language_data(language_folder: Path) -> Tuple[Set[str], int]:
     if target_file is None:
         target_file = lang_files[0]
 
-    print(f"  Using: {target_file.name}")
+    _clog(f"  Using: {target_file.name}")
 
     root = parse_xml_file(target_file)
     if root is None:
-        print(f"  ERROR: Failed to parse language file")
+        _clog(f"  ERROR: Failed to parse language file", 'error')
         return master_strings, 0
 
     for loc in root.iter("LocStr"):
@@ -254,28 +268,28 @@ def load_master_language_data(language_folder: Path) -> Tuple[Set[str], int]:
                 master_strings.add(normalized)
 
     total_words = count_words_in_set(master_strings)
-    print(f"  Loaded {len(master_strings):,} unique strings ({total_words:,} words)")
+    _clog(f"  Loaded {len(master_strings):,} unique strings ({total_words:,} words)", 'success')
 
     return master_strings, total_words
 
 
 def load_voice_recording_sheet(folder: Path) -> Set[str]:
     """Load StrOrigin values from VoiceRecordingSheet Excel file."""
-    print(f"Loading VoiceRecordingSheet from: {folder}")
+    _clog(f"Loading VoiceRecordingSheet from: {folder}")
 
     voice_strings: Set[str] = set()
 
     if not folder.exists():
-        print(f"  WARNING: VoiceRecordingSheet folder not found")
+        _clog(f"  WARNING: VoiceRecordingSheet folder not found", 'warning')
         return voice_strings
 
     excel_files = sorted(folder.glob("*.xlsx"), key=lambda f: f.stat().st_mtime, reverse=True)
     if not excel_files:
-        print(f"  WARNING: No Excel files found")
+        _clog(f"  WARNING: No Excel files found", 'warning')
         return voice_strings
 
     target_file = excel_files[0]
-    print(f"  Using: {target_file.name}")
+    _clog(f"  Using: {target_file.name}")
 
     try:
         wb = load_workbook(target_file, read_only=True, data_only=True)
@@ -309,9 +323,9 @@ def load_voice_recording_sheet(folder: Path) -> Set[str]:
         wb.close()
 
     except Exception as e:
-        print(f"  ERROR: {e}")
+        _clog(f"  ERROR: {e}", 'error')
 
-    print(f"  Loaded {len(voice_strings):,} strings from VoiceRecordingSheet")
+    _clog(f"  Loaded {len(voice_strings):,} strings from VoiceRecordingSheet", 'success')
     return voice_strings
 
 
@@ -395,23 +409,28 @@ def collect_category_strings() -> Dict[str, Set[str]]:
     return category_strings
 
 
-def load_korean_strings_from_datasheets(output_folder: Path) -> Dict[str, Set[str]]:
+def load_korean_strings_from_datasheets(output_folder: Path, log_callback=None) -> Dict[str, Set[str]]:
     """Load Korean strings from datasheet Excel files in output folder.
 
     This is a wrapper for GUI compatibility - scans subfolders for ENG Excel files.
 
     Args:
         output_folder: Path to GeneratedDatasheets folder
+        log_callback: Optional callback(message, tag) for GUI logging
 
     Returns:
         Dict mapping category name -> set of Korean strings
     """
-    print(f"\nLoading Korean strings from: {output_folder}")
+    global _coverage_log_cb
+    if log_callback:
+        _coverage_log_cb = log_callback
+
+    _clog(f"Loading Korean strings from: {output_folder}")
 
     category_strings: Dict[str, Set[str]] = {}
 
     if not output_folder.exists():
-        print(f"  ERROR: Output folder not found")
+        _clog(f"  ERROR: Output folder not found", 'error')
         return category_strings
 
     # Exact folder names from generators + file patterns
@@ -452,13 +471,13 @@ def load_korean_strings_from_datasheets(output_folder: Path) -> Dict[str, Set[st
         for xlsx_file in files:
             strings = load_korean_from_excel(xlsx_file, korean_col)
             category_set.update(strings)
-            print(f"  {category}/{xlsx_file.name}: {len(strings):,} strings")
+            _clog(f"  {category}/{xlsx_file.name}: {len(strings):,} strings")
 
         if category_set:
             category_strings[category] = category_set
 
     total = sum(len(s) for s in category_strings.values())
-    print(f"  TOTAL: {total:,} unique strings across {len(category_strings)} categories")
+    _clog(f"  TOTAL: {total:,} unique strings across {len(category_strings)} categories", 'success')
 
     return category_strings
 
@@ -1023,9 +1042,8 @@ def export_report_to_excel(
     output_file = output_folder / f"Coverage_Report_{timestamp}.xlsx"
     wb.save(output_file)
 
-    print(f"\n📊 Excel report saved: {output_file}")
-    print(f"   Sheet 1: Coverage Report")
-    print(f"   Sheet 2: Word Count by Category")
+    _clog(f"Excel report saved: {output_file}", 'success')
+    _clog(f"  Sheet 1: Coverage Report, Sheet 2: Word Count by Category")
     return output_file
 
 
@@ -1070,8 +1088,7 @@ def calculate_coverage(
         (CoverageReport, remaining unconsumed strings)
     """
     lang_folder = language_folder or LANGUAGE_FOLDER
-    print()
-    print("Calculating coverage with consume technique...")
+    _clog("Calculating coverage with consume technique...")
 
     report = CoverageReport(
         total_master_strings=len(master_strings),
@@ -1160,37 +1177,22 @@ def calculate_coverage(
 
 def print_coverage_report(report: CoverageReport) -> None:
     """Print formatted coverage report."""
-    width = 75
-
-    print()
-    print("=" * width)
-    print("                    LANGUAGE DATA COVERAGE REPORT")
-    print("=" * width)
-    print()
-    print("NOTE: All counts are UNIQUE strings (duplicates removed via normalization)")
-    print()
-
-    print(f"{'Category':<20} {'Unique Strings':>15} {'Words Covered':>15} {'% Coverage':>12}")
-    print("-" * width)
+    _clog("=== LANGUAGE DATA COVERAGE REPORT ===", 'header' if _coverage_log_cb else 'info')
+    _clog(f"{'Category':<20} {'Unique Strings':>15} {'Words Covered':>15} {'% Coverage':>12}")
 
     for cat in report.categories:
         pct = (cat.unique_strings / report.total_master_strings * 100) if report.total_master_strings > 0 else 0
-        print(f"{cat.name:<20} {cat.unique_strings:>15,} {cat.word_count:>15,} {pct:>11.1f}%")
+        _clog(f"{cat.name:<20} {cat.unique_strings:>15,} {cat.word_count:>15,} {pct:>11.1f}%")
 
         for sub in cat.sub_categories:
             sub_pct = (sub.unique_strings / report.total_master_strings * 100) if report.total_master_strings > 0 else 0
-            print(f"  {'└─ ' + sub.name:<17} {sub.unique_strings:>15,} {sub.word_count:>15,} {sub_pct:>11.1f}%")
-
-    print()
-    print("=" * width)
+            _clog(f"  {'  ' + sub.name:<17} {sub.unique_strings:>15,} {sub.word_count:>15,} {sub_pct:>11.1f}%")
 
     string_pct = (report.total_covered_strings / report.total_master_strings * 100) if report.total_master_strings > 0 else 0
     word_pct = (report.total_covered_words / report.total_master_words * 100) if report.total_master_words > 0 else 0
 
-    print(f"TOTAL COVERAGE:  {report.total_covered_strings:,} / {report.total_master_strings:,} strings ({string_pct:.1f}%)")
-    print(f"                 {report.total_covered_words:,} / {report.total_master_words:,} words ({word_pct:.1f}%)")
-    print("=" * width)
-    print()
+    _clog(f"TOTAL COVERAGE:  {report.total_covered_strings:,} / {report.total_master_strings:,} strings ({string_pct:.1f}%)", 'success')
+    _clog(f"                 {report.total_covered_words:,} / {report.total_master_words:,} words ({word_pct:.1f}%)", 'success')
 
 
 # =============================================================================
@@ -1521,6 +1523,7 @@ def run_coverage_analysis(
     voice_sheet_folder: Path = None,
     category_strings: Dict[str, Set[str]] = None,
     output_folder: Path = None,
+    log_callback=None,
 ) -> CoverageReport:
     """Run coverage analysis with provided data.
 
@@ -1529,10 +1532,14 @@ def run_coverage_analysis(
         voice_sheet_folder: Path to voice recording sheet folder (default: VOICE_RECORDING_FOLDER)
         category_strings: Pre-loaded category strings (if None, loads from OUTPUT_FOLDERS)
         output_folder: Path to save Excel reports (default: SCRIPT_DIR)
+        log_callback: Optional callback(message, tag) for GUI logging
 
     Returns:
         CoverageReport with coverage results
     """
+    global _coverage_log_cb
+    if log_callback:
+        _coverage_log_cb = log_callback
     # Use defaults if not provided
     lang_folder = language_folder or LANGUAGE_FOLDER
     voice_folder = voice_sheet_folder or VOICE_RECORDING_FOLDER
@@ -1570,24 +1577,26 @@ def run_coverage_analysis(
     # ==========================================================================
     print()
     print("=" * 70)
-    print("         WORD COUNT TABLE (Korean + Translation)")
-    print("=" * 70)
+    _clog("=== WORD COUNT TABLE ===", 'header' if _coverage_log_cb else 'info')
 
     # Collect word counts from Excel (MUST use same output folder as coverage)
     category_wordcounts = collect_category_wordcounts(out_folder)
 
     # Load additional word counts from export folders
-    print("\nLoading additional word counts from export folders...")
+    _clog("Loading additional word counts from export folders...")
     quest_additional = load_additional_wordcount(EXPORT_QUEST_FOLDER, lang_folder)
-    print(f"  System/Quest: {quest_additional.korean_words:,} KR / {quest_additional.translation_words:,} TR words")
+    _clog(f"  System/Quest: {quest_additional.korean_words:,} KR / {quest_additional.translation_words:,} TR words")
     item_additional = load_additional_wordcount(EXPORT_LOOKAT_FOLDER, lang_folder)
-    print(f"  System/LookAt: {item_additional.korean_words:,} KR / {item_additional.translation_words:,} TR words")
+    _clog(f"  System/LookAt: {item_additional.korean_words:,} KR / {item_additional.translation_words:,} TR words")
 
     # Print word count table
     print_wordcount_table(category_wordcounts, quest_additional, item_additional)
 
     # Export coverage + word count to Excel
     export_report_to_excel(report, category_wordcounts, quest_additional, item_additional, out_folder)
+
+    # Reset module-level callback
+    _coverage_log_cb = None
 
     return report
 

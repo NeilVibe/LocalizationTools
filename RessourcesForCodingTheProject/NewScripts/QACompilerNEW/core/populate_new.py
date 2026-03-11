@@ -180,7 +180,8 @@ def check_datasheet_freshness(max_age_hours: int = MAX_AGE_HOURS) -> Tuple[bool,
 
 def populate_qa_folder_new(
     force: bool = False,
-    max_age_hours: int = MAX_AGE_HOURS
+    max_age_hours: int = MAX_AGE_HOURS,
+    log_callback=None
 ) -> Tuple[bool, str]:
     """
     Auto-populate QAfolderNEW with fresh datasheets based on QAfolderOLD structure.
@@ -199,24 +200,22 @@ def populate_qa_folder_new(
     Args:
         force: If True, skip freshness check and populate anyway (DANGEROUS)
         max_age_hours: Maximum acceptable age for datasheets (default: 10 hours)
+        log_callback: Optional callback(message, tag) for GUI logging
 
     Returns:
         Tuple of (success, message)
     """
-    print()
-    print("=" * 60)
-    print("Auto-Populate QAfolderNEW (STRICT MODE)")
-    print("=" * 60)
-    print()
-    print("STRICT MODE: ALL datasheets must be present AND fresh.")
-    print("             If ANY is missing or outdated -> STOP immediately.")
-    print()
+    def _log(msg, tag='info'):
+        if log_callback:
+            log_callback(msg, tag)
+        print(msg)
+
+    _log("=== Auto-Populate QAfolderNEW ===", 'header' if log_callback else 'info')
+    _log("STRICT MODE: ALL datasheets must be present AND fresh.")
 
     # Step 1: STRICT freshness check (unless forced - which is dangerous)
     if not force:
-        print("[1/4] Checking ALL datasheets (strict mode)...")
-        print(f"      Max age: {max_age_hours} hours")
-        print()
+        _log(f"[1/4] Checking ALL datasheets (max age: {max_age_hours}h)...")
 
         all_fresh, status = check_datasheet_freshness(max_age_hours)
 
@@ -228,44 +227,41 @@ def populate_qa_folder_new(
             else:
                 marker = "[!!]"
                 missing_or_stale.append(f"{category}: {status_msg}")
-            print(f"  {marker} {category}: {status_msg}")
+            _log(f"  {marker} {category}: {status_msg}")
 
         # NON-BLOCKING: Warn but continue (strict mode disabled)
         if not all_fresh:
-            print()
-            print("[WARN] Some datasheets may be missing or stale:")
+            _log("Some datasheets may be missing or stale:", 'warning')
             for item in missing_or_stale:
-                print(f"  - {item}")
-            print()
-            print("[CONTINUING ANYWAY] Strict mode disabled - proceeding with transfer...")
+                _log(f"  - {item}", 'warning')
+            _log("Continuing anyway (strict mode disabled)...", 'warning')
         else:
-            print()
-            print("[OK] All datasheets are present and fresh!")
+            _log("All datasheets are present and fresh!", 'success')
     else:
-        print("[1/4] Freshness check SKIPPED (force=True)")
-        print("      WARNING: This may cause issues if datasheets are stale!")
-        print()
+        _log("[1/4] Freshness check SKIPPED (force=True)", 'warning')
 
     # Step 2: Discover OLD folders
-    print("\n[2/4] Discovering QAfolderOLD structure...")
+    _log("[2/4] Discovering QAfolderOLD structure...")
 
     if not QA_FOLDER_OLD.exists():
+        _log(f"QAfolderOLD not found at {QA_FOLDER_OLD}", 'error')
         return False, f"QAfolderOLD not found at {QA_FOLDER_OLD}"
 
     old_folders = discover_qa_folders_in(QA_FOLDER_OLD)
     if not old_folders:
+        _log("No valid folders found in QAfolderOLD", 'error')
         return False, "No valid folders found in QAfolderOLD"
 
-    print(f"  Found {len(old_folders)} folder(s) to populate")
+    _log(f"  Found {len(old_folders)} folder(s) to populate")
     for f in old_folders:
-        print(f"    - {f['username']}_{f['category']}")
+        _log(f"    - {f['username']}_{f['category']}")
 
     # Step 3: Load tester mapping
-    print("\n[3/4] Loading tester->language mapping...")
+    _log("[3/4] Loading tester->language mapping...")
     tester_mapping = load_tester_mapping()
 
     # Step 4: Create folders and copy sheets
-    print("\n[4/4] Populating QAfolderNEW...")
+    _log("[4/4] Populating QAfolderNEW...")
 
     # Clear QAfolderNEW first (clean slate)
     if QA_FOLDER_NEW.exists():
@@ -294,7 +290,7 @@ def populate_qa_folder_new(
 
         if source_file is None:
             errors.append(f"{folder_name}: No {lang_code} datasheet found for {category}")
-            print(f"  [FAIL] {folder_name}: No {lang_code} datasheet")
+            _log(f"  [FAIL] {folder_name}: No {lang_code} datasheet", 'error')
             continue
 
         # Create destination folder
@@ -305,30 +301,21 @@ def populate_qa_folder_new(
         dest_file = dest_folder / source_file.name
         shutil.copy2(source_file, dest_file)
 
-        print(f"  [OK] {folder_name}: {source_file.name}")
+        _log(f"  [OK] {folder_name}: {source_file.name}", 'success')
         success_count += 1
 
     # Summary
-    print()
-    print("=" * 60)
-    print("POPULATE SUMMARY")
-    print("=" * 60)
-    print(f"  Populated: {success_count}")
-    print(f"  Skipped:   {skip_count}")
-    print(f"  Failed:    {len(errors)}")
+    _log(f"Populated: {success_count}, Skipped: {skip_count}, Failed: {len(errors)}",
+         'success' if len(errors) == 0 else 'warning')
 
     if errors:
-        print()
-        print("Errors:")
         for err in errors:
-            print(f"  - {err}")
+            _log(f"  - {err}", 'error')
 
     if success_count == 0 and len(errors) > 0:
         return False, "Failed to populate any folders"
 
-    print()
-    print(f"QAfolderNEW populated at: {QA_FOLDER_NEW}")
-    print("You can now run 'Transfer QA Files' to merge OLD data with NEW sheets.")
+    _log(f"QAfolderNEW populated at: {QA_FOLDER_NEW}", 'success')
 
     return True, f"Successfully populated {success_count} folder(s)"
 

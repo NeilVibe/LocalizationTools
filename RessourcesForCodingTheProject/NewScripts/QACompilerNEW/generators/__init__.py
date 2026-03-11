@@ -12,12 +12,13 @@ from typing import Dict, List, Set
 # Import individual generators (lazy imports to avoid circular dependencies)
 
 
-def generate_datasheets(categories: List[str]) -> Dict:
+def generate_datasheets(categories: List[str], log_callback=None) -> Dict:
     """
     Generate datasheets for the specified categories.
 
     Args:
         categories: List of category names (e.g., ["Quest", "Knowledge"])
+        log_callback: Optional callback(message, tag) for GUI logging
 
     Returns:
         Dict with results: {
@@ -28,10 +29,15 @@ def generate_datasheets(categories: List[str]) -> Dict:
             "korean_strings": {category: Set[str]}
         }
     """
+    def _log(msg, tag='info'):
+        if log_callback:
+            log_callback(msg, tag)
+        print(msg)
     # CLI safety net: refuse to generate if Perforce paths don't exist
     from config import validate_paths
     ok, missing = validate_paths()
     if not ok:
+        _log(f"Critical paths not found: {', '.join(missing)}. Check Branch and Drive settings.", 'error')
         return {
             "success": False,
             "categories_processed": [],
@@ -51,7 +57,9 @@ def generate_datasheets(categories: List[str]) -> Dict:
     # Normalize category names
     categories = [c.lower() for c in categories]
 
-    for category in categories:
+    total_cats = len(categories)
+    for cat_idx, category in enumerate(categories):
+        _log(f"[{cat_idx + 1}/{total_cats}] Generating: {category.capitalize()}...")
         try:
             korean_strings: Set[str] = set()
 
@@ -122,20 +130,30 @@ def generate_datasheets(categories: List[str]) -> Dict:
                 results["errors"].append(f"Unknown category: {category}")
                 continue
 
-            results["categories_processed"].append(result.get("category", category))
-            results["files_created"] += result.get("files_created", 0)
+            cat_name = result.get("category", category)
+            cat_files = result.get("files_created", 0)
+            results["categories_processed"].append(cat_name)
+            results["files_created"] += cat_files
+            _log(f"  {cat_name}: {cat_files} file(s) created", 'success')
             if result.get("errors"):
                 results["errors"].extend(result["errors"])
+                for err in result["errors"]:
+                    _log(f"  Error: {err}", 'error')
 
         except ImportError as e:
+            _log(f"  Generator not available for {category}: {e}", 'error')
             results["errors"].append(f"Generator not available for {category}: {e}")
             results["success"] = False
         except Exception as e:
+            _log(f"  Error generating {category}: {e}", 'error')
             results["errors"].append(f"Error generating {category}: {e}")
             results["success"] = False
 
     if results["errors"]:
         results["success"] = False
+
+    _log(f"Generation complete: {results['files_created']} file(s) for {len(results['categories_processed'])} categories",
+         'success' if results["success"] else 'warning')
 
     return results
 

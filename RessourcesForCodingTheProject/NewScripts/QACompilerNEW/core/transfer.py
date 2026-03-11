@@ -436,7 +436,8 @@ def transfer_folder_data(
     old_folder: Dict,
     new_folder: Dict,
     output_dir: Path,
-    tester_mapping: Dict
+    tester_mapping: Dict,
+    log_callback=None
 ) -> Dict:
     """
     Transfer all data from OLD folder to NEW folder using GLOBAL matching.
@@ -476,14 +477,19 @@ def transfer_folder_data(
         "script_eventname_match": 0,  # Script: EventName only fallback
     }
 
+    def _log(msg, tag='info'):
+        if log_callback:
+            log_callback(msg, tag)
+        print(msg)
+
     # Build global index of NEW workbook
-    print("    Building global index...")
+    _log("    Building global index...")
     new_index = build_new_workbook_index(new_wb, category, is_english)
 
     # Collect all OLD rows with data
     old_rows = collect_old_rows_with_data(old_wb, category, is_english)
     stats["total"] = len(old_rows)
-    print(f"    Found {len(old_rows)} rows with data to transfer")
+    _log(f"    Found {len(old_rows)} rows with data to transfer")
 
     # Track matches for writing
     matches = []  # [(old_row_data, new_sheet, new_row, match_type), ...]
@@ -575,7 +581,7 @@ def transfer_folder_data(
     stats["unmatched"] = len(still_unmatched)
 
     # Write matches to NEW workbook
-    print(f"    Writing {len(matches)} matches to NEW workbook...")
+    _log(f"    Writing {len(matches)} matches to NEW workbook...")
     for old_row, new_sheet, new_row_num, match_type in matches:
         ws = new_wb[new_sheet]
 
@@ -605,11 +611,14 @@ def transfer_folder_data(
 
     # Print summary
     if is_contents:
-        print(f"    Matched: {stats['instructions_match']} by INSTRUCTIONS, {stats['unmatched']} unmatched")
+        _log(f"    Matched: {stats['instructions_match']} by INSTRUCTIONS, {stats['unmatched']} unmatched",
+             'success' if stats['unmatched'] == 0 else 'warning')
     elif is_script:
-        print(f"    Matched: {stats['script_full_match']} exact + {stats['script_eventname_match']} fallback, {stats['unmatched']} unmatched")
+        _log(f"    Matched: {stats['script_full_match']} exact + {stats['script_eventname_match']} fallback, {stats['unmatched']} unmatched",
+             'success' if stats['unmatched'] == 0 else 'warning')
     else:
-        print(f"    Matched: {stats['stringid_match']} exact + {stats['trans_only']} fallback, {stats['unmatched']} unmatched")
+        _log(f"    Matched: {stats['stringid_match']} exact + {stats['trans_only']} fallback, {stats['unmatched']} unmatched",
+             'success' if stats['unmatched'] == 0 else 'warning')
 
     # Create output folder
     output_folder = output_dir / f"{username}_{category}"
@@ -621,8 +630,8 @@ def transfer_folder_data(
         report_path = write_duplicate_translation_report(duplicates, output_folder, username, category)
         if report_path:
             total_dups = sum(len(items) for items in duplicates.values())
-            print(f"    WARNING: {total_dups} translations have different comments!")
-            print(f"    Report: {report_path.name}")
+            _log(f"    WARNING: {total_dups} translations have different comments!", 'warning')
+            _log(f"    Report: {report_path.name}", 'warning')
 
     # Save the new workbook
     output_xlsx = output_folder / new_folder["xlsx_path"].name
@@ -643,15 +652,15 @@ def transfer_folder_data(
 # REPORT PRINTING
 # =============================================================================
 
-def print_transfer_report(stats: Dict):
-    """Print formatted transfer report to terminal."""
-    print()
-    print("=" * 79)
-    print("                              TRANSFER REPORT")
-    print("=" * 79)
-    print()
-    print(f"{'Tester':<20}{'Category':<12}{'Total':>7}{'Exact':>10}{'Fallback':>10}{'Success %':>12}")
-    print("-" * 79)
+def print_transfer_report(stats: Dict, log_callback=None):
+    """Print formatted transfer report."""
+    def _log(msg, tag='info'):
+        if log_callback:
+            log_callback(msg, tag)
+        print(msg)
+
+    _log("=== TRANSFER REPORT ===", 'header' if log_callback else 'info')
+    _log(f"{'Tester':<20}{'Category':<12}{'Total':>7}{'Exact':>10}{'Fallback':>10}{'Success %':>12}")
 
     grand_total = 0
     grand_exact = 0
@@ -663,7 +672,6 @@ def print_transfer_report(stats: Dict):
         is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
 
         if is_contents:
-            # Contents: only has exact match (INSTRUCTIONS)
             exact = data.get("instructions_match", 0)
             fallback = 0
         elif is_script:
@@ -674,52 +682,48 @@ def print_transfer_report(stats: Dict):
             fallback = data.get("trans_only", 0)
 
         success = (exact + fallback) / total * 100 if total > 0 else 0
-        print(f"{tester:<20}{category:<12}{total:>7}{exact:>10}{fallback:>10}{success:>11.1f}%")
+        _log(f"{tester:<20}{category:<12}{total:>7}{exact:>10}{fallback:>10}{success:>11.1f}%")
 
         grand_total += total
         grand_exact += exact
         grand_fallback += fallback
 
-    print("-" * 79)
     grand_success = (grand_exact + grand_fallback) / grand_total * 100 if grand_total > 0 else 0
-    print(f"{'TOTAL':<20}{'':<12}{grand_total:>7}{grand_exact:>10}{grand_fallback:>10}{grand_success:>11.1f}%")
-    print("=" * 79)
-    print()
-    print("Legend:")
-    print("  Exact    = Strong match (STRINGID+Trans for most, INSTRUCTIONS for Contents,")
-    print("             Translation+EventName for Script)")
-    print("  Fallback = Weaker match (Trans only for most, N/A for Contents,")
-    print("             EventName only for Script)")
     unmatched = grand_total - grand_exact - grand_fallback
-    print(f"  Unmatched = {unmatched} rows (not transferred)")
-    print()
+    _log(f"{'TOTAL':<20}{'':<12}{grand_total:>7}{grand_exact:>10}{grand_fallback:>10}{grand_success:>11.1f}%",
+         'success' if unmatched == 0 else 'warning')
+    if unmatched > 0:
+        _log(f"  Unmatched: {unmatched} rows (not transferred)", 'warning')
 
 
 # =============================================================================
 # MAIN TRANSFER FUNCTION
 # =============================================================================
 
-def transfer_qa_files() -> bool:
+def transfer_qa_files(log_callback=None) -> bool:
     """
     Main transfer function: QAfolderOLD -> QAfolderNEW -> QAfolder
+
+    Args:
+        log_callback: Optional callback(message, tag) for GUI logging
 
     Returns:
         bool: True if transfer completed successfully
     """
-    print()
-    print("=" * 60)
-    print("QA File Transfer (OLD -> NEW structure)")
-    print("=" * 60)
+    def _log(msg, tag='info'):
+        if log_callback:
+            log_callback(msg, tag)
+        print(msg)
+
+    _log("=== QA File Transfer (OLD -> NEW) ===", 'header' if log_callback else 'info')
 
     # Check folders exist
     if not QA_FOLDER_OLD.exists():
-        print(f"ERROR: QAfolderOLD not found at {QA_FOLDER_OLD}")
-        print("Please create QAfolderOLD/ with your OLD QA files.")
+        _log(f"ERROR: QAfolderOLD not found at {QA_FOLDER_OLD}", 'error')
         return False
 
     if not QA_FOLDER_NEW.exists():
-        print(f"ERROR: QAfolderNEW not found at {QA_FOLDER_NEW}")
-        print("Please create QAfolderNEW/ with your NEW (empty) QA files.")
+        _log(f"ERROR: QAfolderNEW not found at {QA_FOLDER_NEW}", 'error')
         return False
 
     # Discover folders
@@ -727,17 +731,17 @@ def transfer_qa_files() -> bool:
     new_folders = discover_qa_folders_in(QA_FOLDER_NEW)
 
     if not old_folders:
-        print("ERROR: No valid QA folders found in QAfolderOLD/")
+        _log("ERROR: No valid QA folders found in QAfolderOLD/", 'error')
         return False
 
     if not new_folders:
-        print("ERROR: No valid QA folders found in QAfolderNEW/")
+        _log("ERROR: No valid QA folders found in QAfolderNEW/", 'error')
         return False
 
-    print(f"Found {len(old_folders)} OLD folder(s), {len(new_folders)} NEW folder(s)")
+    _log(f"Found {len(old_folders)} OLD folder(s), {len(new_folders)} NEW folder(s)")
 
     # Load tester mapping
-    print("\nLoading tester->language mapping...")
+    _log("Loading tester->language mapping...")
     tester_mapping = load_tester_mapping()
 
     # Build lookup for NEW folders
@@ -745,28 +749,28 @@ def transfer_qa_files() -> bool:
 
     # Transfer each OLD folder
     all_stats = {}
+    total_folders = len(old_folders)
 
-    for old_folder in old_folders:
+    for idx, old_folder in enumerate(old_folders):
         key = f"{old_folder['username']}_{old_folder['category']}"
         username = old_folder['username']
         lang = tester_mapping.get(username, "EN")
         in_mapping = username in tester_mapping
-        print(f"\nTransferring: {key} -> {lang}{'' if in_mapping else ' (not in mapping, default)'}")
+        _log(f"[{idx + 1}/{total_folders}] Transferring: {key} -> {lang}{'' if in_mapping else ' (default)'}")
 
         if key not in new_lookup:
-            print(f"  WARN: No matching NEW folder for {key}, skipping")
+            _log(f"  WARN: No matching NEW folder for {key}, skipping", 'warning')
             continue
 
         new_folder = new_lookup[key]
-        folder_stats = transfer_folder_data(old_folder, new_folder, QA_FOLDER, tester_mapping)
+        folder_stats = transfer_folder_data(old_folder, new_folder, QA_FOLDER, tester_mapping, log_callback=log_callback)
         all_stats.update(folder_stats)
 
     # Print report
     if all_stats:
-        print_transfer_report(all_stats)
+        print_transfer_report(all_stats, log_callback=log_callback)
 
-    print("Transfer complete!")
-    print(f"Output: {QA_FOLDER}")
-    print("You can now run 'Build Masterfiles' to compile.")
+    _log("Transfer complete!", 'success')
+    _log(f"Output: {QA_FOLDER}")
 
     return True

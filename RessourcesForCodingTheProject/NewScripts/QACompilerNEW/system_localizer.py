@@ -191,7 +191,8 @@ def localize_system_sheet(
     input_path: Path,
     lang_folder: Path,
     output_folder: Path,
-    progress_callback=None
+    progress_callback=None,
+    log_callback=None
 ) -> Dict[str, any]:
     """
     Create localized versions of a System datasheet for all languages.
@@ -205,6 +206,11 @@ def localize_system_sheet(
     Returns:
         Result dict with stats and errors
     """
+    def _log(msg, tag='info'):
+        if log_callback:
+            log_callback(msg, tag)
+        log.info(msg)
+
     result = {
         "success": True,
         "files_created": 0,
@@ -214,7 +220,7 @@ def localize_system_sheet(
     }
 
     # 1. Load language data
-    log.info("Loading language data from: %s", lang_folder)
+    _log(f"Loading language data from: {lang_folder}")
     if progress_callback:
         progress_callback(0, 100, "Loading language data...")
 
@@ -225,11 +231,10 @@ def localize_system_sheet(
         result["errors"].append("English language data not found!")
         return result
 
-    log.info("Loaded %d languages, %d English→Korean mappings",
-             len(lang_tables), len(eng_to_korean))
+    _log(f"Loaded {len(lang_tables)} languages, {len(eng_to_korean)} English->Korean mappings", 'success')
 
     # 2. Load input Excel
-    log.info("Loading input file: %s", input_path)
+    _log(f"Loading input file: {input_path}")
     if progress_callback:
         progress_callback(10, 100, "Loading input Excel...")
 
@@ -255,7 +260,7 @@ def localize_system_sheet(
         if progress_callback:
             progress_callback(progress_pct, 100, f"Processing {lang_code.upper()}...")
 
-        log.info("Processing language: %s (%d/%d)", lang_code.upper(), idx + 1, total_langs)
+        _log(f"Processing language: {lang_code.upper()} ({idx + 1}/{total_langs})")
 
         # Create new workbook by copying input
         wb_out = Workbook()
@@ -365,9 +370,8 @@ def localize_system_sheet(
             result["files_created"] += 1
             result["languages"].append(lang_code.upper())
             result["stats"][lang_code] = lang_stats
-            log.info("  Saved: %s (SID: %d, Text: %d, NoMatch: %d)",
-                     output_name, lang_stats["matched_by_sid"],
-                     lang_stats["matched_by_text"], lang_stats["no_match"])
+            _log(f"  Saved: {output_name} (SID: {lang_stats['matched_by_sid']}, Text: {lang_stats['matched_by_text']}, NoMatch: {lang_stats['no_match']})",
+                 'success')
         except Exception as e:
             result["errors"].append(f"Failed to save {output_name}: {e}")
 

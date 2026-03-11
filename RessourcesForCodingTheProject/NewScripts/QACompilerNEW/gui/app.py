@@ -450,11 +450,13 @@ class QACompilerSuiteGUI:
         def run():
             try:
                 from generators import generate_datasheets
-                log_cb(f"=== Generate Datasheets ===", 'header')
+                log_cb("=== Generate Datasheets ===", 'header')
                 log_cb(f"Categories: {', '.join(selected)}")
-                results = generate_datasheets(selected)
+                results = generate_datasheets(selected, log_callback=log_cb)
                 self.last_korean_strings = results.get("korean_strings", {})
-                log_cb(f"Generation complete: {', '.join(results.get('categories_processed', []))}", 'success')
+                if results.get("errors"):
+                    for err in results["errors"]:
+                        log_cb(f"Error: {err}", 'error')
                 progress_cb(100)
             except Exception as e:
                 traceback.print_exc()
@@ -475,9 +477,8 @@ class QACompilerSuiteGUI:
                 log_cb("=== Transfer QA Files ===", 'header')
 
                 # STEP 1: Auto-populate QAfolderNEW
-                log_cb("Populating QAfolderNEW with fresh datasheets...")
                 from core.populate_new import populate_qa_folder_new
-                populate_success, populate_msg = populate_qa_folder_new()
+                populate_success, populate_msg = populate_qa_folder_new(log_callback=log_cb)
 
                 if not populate_success:
                     log_cb(f"Populate failed: {populate_msg}", 'error')
@@ -485,17 +486,13 @@ class QACompilerSuiteGUI:
                     self._task_queue.put(('done',))
                     return
 
-                log_cb("QAfolderNEW populated", 'success')
                 progress_cb(30)
 
                 # STEP 2: Transfer
-                log_cb("Transferring QA data (OLD + NEW → QAfolder)...")
                 from core.transfer import transfer_qa_files
-                success = transfer_qa_files()
+                success = transfer_qa_files(log_callback=log_cb)
 
-                if success:
-                    log_cb("Transfer complete", 'success')
-                else:
+                if not success:
                     log_cb("Transfer failed", 'error')
                 progress_cb(100)
             except Exception as e:
@@ -536,7 +533,7 @@ class QACompilerSuiteGUI:
                 from tracker.coverage import run_coverage_analysis, load_korean_strings_from_datasheets
 
                 log_cb("=== Coverage Analysis ===", 'header')
-                category_strings = load_korean_strings_from_datasheets(DATASHEET_OUTPUT)
+                category_strings = load_korean_strings_from_datasheets(DATASHEET_OUTPUT, log_callback=log_cb)
 
                 if not category_strings:
                     log_cb(f"No datasheets found in: {DATASHEET_OUTPUT}", 'error')
@@ -544,7 +541,6 @@ class QACompilerSuiteGUI:
                     self._task_queue.put(('done',))
                     return
 
-                log_cb(f"Loaded {len(category_strings)} categories from datasheets")
                 progress_cb(30)
 
                 report = run_coverage_analysis(
@@ -552,13 +548,9 @@ class QACompilerSuiteGUI:
                     VOICE_RECORDING_SHEET_FOLDER,
                     category_strings,
                     DATASHEET_OUTPUT,
+                    log_callback=log_cb,
                 )
 
-                if report.total_master_strings > 0:
-                    pct = report.total_covered_strings / report.total_master_strings * 100
-                    log_cb(f"Coverage: {report.total_covered_strings:,} / {report.total_master_strings:,} ({pct:.1f}%)", 'success')
-                else:
-                    log_cb("No master language data found", 'warning')
                 progress_cb(100)
             except Exception as e:
                 traceback.print_exc()
@@ -592,15 +584,22 @@ class QACompilerSuiteGUI:
                 input_path = Path(input_file)
                 output_folder = DATASHEET_OUTPUT / "System_LQA_All"
 
+                log_cb(f"Input: {input_path.name}")
+                log_cb(f"Output: {output_folder}")
+
                 result = process_system_sheet(
                     input_path=input_path,
                     lang_folder=LANGUAGE_FOLDER,
-                    output_folder=output_folder
+                    output_folder=output_folder,
+                    log_callback=log_cb
                 )
 
                 if result.get("success", False):
                     files_created = result.get("files_created", 0)
+                    languages = result.get("languages", [])
                     log_cb(f"Localization complete: {files_created} files created", 'success')
+                    if languages:
+                        log_cb(f"Languages: {', '.join(languages)}")
                 else:
                     errors = result.get("errors", ["Unknown error"])
                     for err in errors[:5]:
@@ -697,18 +696,9 @@ class QACompilerSuiteGUI:
                 from core.tracker_update import update_tracker_only
 
                 log_cb("=== Update Tracker ===", 'header')
-                success, message, entries = update_tracker_only()
+                success, message, entries = update_tracker_only(log_callback=log_cb)
 
-                if success:
-                    if entries:
-                        dates = sorted(set(e["date"] for e in entries))
-                        users = sorted(set(e["user"] for e in entries))
-                        log_cb(f"Tracker updated: {len(entries)} entries", 'success')
-                        log_cb(f"  Dates: {', '.join(dates)}")
-                        log_cb(f"  Users: {', '.join(users[:10])}")
-                    else:
-                        log_cb(message, 'info')
-                else:
+                if not success:
                     log_cb(f"Tracker update failed: {message}", 'error')
                 progress_cb(100)
             except Exception as e:
