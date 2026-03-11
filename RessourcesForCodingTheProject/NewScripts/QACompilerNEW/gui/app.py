@@ -8,6 +8,8 @@ Tkinter GUI with six main functions:
 4. Coverage Analysis
 5. System Sheet Localizer
 6. Update Tracker Only
+
+Layout: Horizontal split — controls (left) | log + progress (right)
 """
 
 import queue
@@ -36,9 +38,9 @@ import config
 
 from config import VERSION
 WINDOW_TITLE = f"QA Compiler Suite v{VERSION}"
-WINDOW_WIDTH = 1000
-WINDOW_HEIGHT = 1350
-BUTTON_WIDTH = 50
+WINDOW_WIDTH = 1400
+WINDOW_HEIGHT = 800
+BUTTON_WIDTH = 40
 _MAX_LOG_LINES = 5000
 
 
@@ -53,7 +55,7 @@ class QACompilerSuiteGUI:
         self.root = root
         self.root.title(WINDOW_TITLE)
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
-        self.root.resizable(False, True)
+        self.root.resizable(True, True)
 
         # Center window on screen
         self.root.update_idletasks()
@@ -79,40 +81,40 @@ class QACompilerSuiteGUI:
         # Initial path validation
         self._update_path_status()
 
+        # Set sash position after window renders
+        self.root.after(100, self._set_initial_sash)
+
     def _build_ui(self):
-        """Build the main UI layout."""
-        # Title
-        title_label = tk.Label(
-            self.root,
-            text="QA Compiler Suite",
-            font=("Arial", 18, "bold")
-        )
-        title_label.pack(pady=10)
+        """Build the main UI layout — horizontal split."""
+        # === Top bar: Title + Branch/Drive ===
+        top_frame = tk.Frame(self.root)
+        top_frame.pack(fill="x", padx=10, pady=(8, 4))
 
-        # === Branch + Drive Selection ===
-        branch_frame = ttk.Frame(self.root)
-        branch_frame.pack(fill="x", padx=15, pady=(0, 5))
+        tk.Label(
+            top_frame, text="QA Compiler Suite",
+            font=("Arial", 14, "bold")
+        ).pack(side="left", padx=(5, 20))
 
-        ttk.Label(branch_frame, text="Branch:", font=("Arial", 10, "bold")).pack(side="left", padx=(0, 5))
+        ttk.Label(top_frame, text="Branch:", font=("Arial", 10, "bold")).pack(side="left", padx=(0, 3))
 
         self.branch_var = tk.StringVar(value=config.get_branch())
         branch_combo = ttk.Combobox(
-            branch_frame, textvariable=self.branch_var,
-            values=KNOWN_BRANCHES, width=20
+            top_frame, textvariable=self.branch_var,
+            values=KNOWN_BRANCHES, width=18
         )
-        branch_combo.pack(side="left", padx=5)
+        branch_combo.pack(side="left", padx=3)
 
-        ttk.Label(branch_frame, text="Drive:", font=("Arial", 10, "bold")).pack(side="left", padx=(15, 5))
+        ttk.Label(top_frame, text="Drive:", font=("Arial", 10, "bold")).pack(side="left", padx=(12, 3))
 
         self.drive_var = tk.StringVar(value=config.get_drive())
         drive_combo = ttk.Combobox(
-            branch_frame, textvariable=self.drive_var,
-            values=KNOWN_DRIVES, width=5
+            top_frame, textvariable=self.drive_var,
+            values=KNOWN_DRIVES, width=4
         )
-        drive_combo.pack(side="left", padx=5)
+        drive_combo.pack(side="left", padx=3)
 
-        self.path_status_label = ttk.Label(branch_frame, text="", font=("Arial", 10, "bold"))
-        self.path_status_label.pack(side="left", padx=15)
+        self.path_status_label = ttk.Label(top_frame, text="", font=("Arial", 10, "bold"))
+        self.path_status_label.pack(side="left", padx=12)
 
         def _on_branch_change(_event=None):
             new_branch = self.branch_var.get().strip()
@@ -133,83 +135,58 @@ class QACompilerSuiteGUI:
         drive_combo.bind("<<ComboboxSelected>>", _on_drive_change)
         drive_combo.bind("<Return>", _on_drive_change)
 
-        # === Section 1: Generate Datasheets ===
-        section1_frame = ttk.LabelFrame(self.root, text="1. Generate Datasheets", padding=8)
-        section1_frame.pack(fill="x", padx=15, pady=3)
+        ttk.Separator(self.root, orient='horizontal').pack(fill="x", padx=10, pady=(4, 0))
 
-        checkbox_frame = ttk.Frame(section1_frame)
-        checkbox_frame.pack(fill="x", pady=3)
+        # === Horizontal PanedWindow: Controls (left) | Log (right) ===
+        self._paned = tk.PanedWindow(
+            self.root, orient=tk.HORIZONTAL, sashwidth=6,
+            bg='#cccccc', sashrelief='raised'
+        )
+        self._paned.pack(fill="both", expand=True, padx=10, pady=5)
 
-        for i, category in enumerate(CATEGORIES):
-            var = tk.BooleanVar(value=True)
-            self.category_vars[category] = var
-            cb = ttk.Checkbutton(checkbox_frame, text=category, variable=var)
-            cb.grid(row=i // 3, column=i % 3, sticky="w", padx=10, pady=1)
+        # --- Left pane: scrollable controls ---
+        left_outer = tk.Frame(self._paned)
 
-        btn_frame = ttk.Frame(section1_frame)
-        btn_frame.pack(fill="x", pady=3)
+        left_canvas = tk.Canvas(left_outer, highlightthickness=0)
+        left_scrollbar = ttk.Scrollbar(left_outer, orient='vertical', command=left_canvas.yview)
+        self._left_inner = tk.Frame(left_canvas, padx=5)
 
-        ttk.Button(btn_frame, text="Select All", command=self._select_all).pack(side="left", padx=5)
-        ttk.Button(btn_frame, text="Deselect All", command=self._deselect_all).pack(side="left", padx=5)
-        ttk.Button(btn_frame, text="Generate Selected", command=self._do_generate).pack(side="right", padx=5)
+        left_cw = left_canvas.create_window((0, 0), window=self._left_inner, anchor='nw')
+        self._left_inner.bind('<Configure>', lambda e: left_canvas.configure(
+            scrollregion=left_canvas.bbox('all')))
+        left_canvas.bind('<Configure>', lambda e: left_canvas.itemconfigure(
+            left_cw, width=e.width))
 
-        # === Section 2: Transfer QA Files ===
-        section2_frame = ttk.LabelFrame(self.root, text="2. Transfer QA Files", padding=8)
-        section2_frame.pack(fill="x", padx=15, pady=3)
+        left_scrollbar.pack(side="right", fill="y")
+        left_canvas.pack(side="left", fill="both", expand=True)
+        left_canvas.configure(yscrollcommand=left_scrollbar.set)
 
-        ttk.Label(section2_frame, text="Transfer tester work from OLD and NEW folders to QAfolder").pack(pady=2)
-        ttk.Button(section2_frame, text="Transfer QA Files", command=self._do_transfer, width=BUTTON_WIDTH).pack(pady=3, ipady=5)
+        # Mousewheel scrolling for left pane
+        def _on_mousewheel(event):
+            if event.delta:
+                left_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            elif event.num == 4:
+                left_canvas.yview_scroll(-1, "units")
+            elif event.num == 5:
+                left_canvas.yview_scroll(1, "units")
+        left_canvas.bind('<MouseWheel>', _on_mousewheel)
+        left_canvas.bind('<Button-4>', _on_mousewheel)
+        left_canvas.bind('<Button-5>', _on_mousewheel)
+        self._left_inner.bind('<MouseWheel>', _on_mousewheel)
+        self._left_inner.bind('<Button-4>', _on_mousewheel)
+        self._left_inner.bind('<Button-5>', _on_mousewheel)
 
-        # === Section 3: Build Master Files ===
-        section3_frame = ttk.LabelFrame(self.root, text="3. Build Master Files", padding=8)
-        section3_frame.pack(fill="x", padx=15, pady=3)
+        self._build_controls(self._left_inner)
 
-        ttk.Label(section3_frame, text="Compile QA files into master files (QAfolder → Masterfolder_EN / Masterfolder_CN)").pack(pady=2)
-        ttk.Button(section3_frame, text="Build Master Files", command=self._do_build, width=BUTTON_WIDTH).pack(pady=3, ipady=5)
+        # --- Right pane: Log + Progress ---
+        right_pane = tk.Frame(self._paned, padx=5)
 
-        # === Section 4: Coverage Analysis ===
-        section4_frame = ttk.LabelFrame(self.root, text="4. Coverage Analysis", padding=8)
-        section4_frame.pack(fill="x", padx=15, pady=3)
-
-        ttk.Label(section4_frame, text="Calculate coverage of language data by generated datasheets").pack(pady=2)
-        ttk.Button(section4_frame, text="Run Coverage Analysis", command=self._do_coverage, width=BUTTON_WIDTH).pack(pady=3, ipady=5)
-
-        # === Section 5: System Localizer ===
-        section5_frame = ttk.LabelFrame(self.root, text="5. System Sheet Localizer", padding=8)
-        section5_frame.pack(fill="x", padx=15, pady=3)
-
-        ttk.Label(section5_frame, text="Create localized versions of System datasheet for all languages").pack(pady=2)
-        ttk.Button(section5_frame, text="Localize System Sheet", command=self._do_system_localizer, width=BUTTON_WIDTH).pack(pady=3, ipady=5)
-
-        # === Section 6: Update Tracker Only ===
-        section6_frame = ttk.LabelFrame(self.root, text="6. Update Tracker Only", padding=8)
-        section6_frame.pack(fill="x", padx=15, pady=3)
-
-        ttk.Label(section6_frame, text="Retroactively add missing days to tracker from TrackerUpdateFolder").pack(pady=2)
-
-        date_frame = ttk.Frame(section6_frame)
-        date_frame.pack(fill="x", pady=3)
-
-        ttk.Label(date_frame, text="Date:").pack(side="left", padx=5)
-        self.tracker_date_var = tk.StringVar(value="")
-        ttk.Entry(date_frame, textvariable=self.tracker_date_var, width=12).pack(side="left", padx=2)
-
-        ttk.Label(date_frame, text="Time:").pack(side="left", padx=5)
-        self.tracker_time_var = tk.StringVar(value="12:00")
-        ttk.Entry(date_frame, textvariable=self.tracker_time_var, width=6).pack(side="left", padx=2)
-
-        ttk.Button(date_frame, text="Most Recent", command=self._set_most_recent_datetime, width=12).pack(side="left", padx=5)
-        ttk.Button(date_frame, text="Set File Dates...", command=self._do_set_file_dates, width=15).pack(side="left", padx=5)
-
-        ttk.Button(section6_frame, text="Update Tracker", command=self._do_update_tracker, width=BUTTON_WIDTH).pack(pady=3, ipady=5)
-
-        # === Log Panel ===
-        log_frame = ttk.LabelFrame(self.root, text="Log", padding=5)
-        log_frame.pack(fill="both", expand=True, padx=15, pady=5)
+        log_frame = ttk.LabelFrame(right_pane, text="Log", padding=5)
+        log_frame.pack(fill="both", expand=True, pady=(0, 5))
 
         self.log_area = scrolledtext.ScrolledText(
             log_frame, font=('Consolas', 9), relief='solid', bd=1,
-            wrap=tk.WORD, state='disabled', height=10
+            wrap=tk.WORD, state='disabled'
         )
         self.log_area.pack(fill="both", expand=True)
 
@@ -220,19 +197,100 @@ class QACompilerSuiteGUI:
         self.log_area.tag_config('error', foreground='#FF0000')
         self.log_area.tag_config('header', foreground='#4a90d9', font=('Consolas', 9, 'bold'))
 
-        # === Status Bar + Progress ===
-        status_frame = ttk.Frame(self.root)
-        status_frame.pack(fill="x", side="bottom", padx=15, pady=(0, 8))
+        # Progress + Status
+        progress_frame = tk.Frame(right_pane)
+        progress_frame.pack(fill="x", pady=(0, 3))
 
         self.progress_value = tk.DoubleVar(value=0)
-        self.progress = ttk.Progressbar(
-            status_frame, variable=self.progress_value,
-            maximum=100, mode='determinate', length=400
-        )
-        self.progress.pack(fill="x", pady=(0, 3))
+        ttk.Progressbar(
+            progress_frame, variable=self.progress_value,
+            maximum=100, mode='determinate'
+        ).pack(fill="x", pady=(0, 3))
 
         self.status_var = tk.StringVar(value="Ready")
-        ttk.Label(status_frame, textvariable=self.status_var, font=("Arial", 10)).pack()
+        ttk.Label(progress_frame, textvariable=self.status_var, font=("Arial", 10)).pack()
+
+        # Add panes
+        self._paned.add(left_outer, minsize=400)
+        self._paned.add(right_pane, minsize=250)
+
+    def _build_controls(self, parent):
+        """Build all control sections in the left pane."""
+        # === Section 1: Generate Datasheets ===
+        s1 = ttk.LabelFrame(parent, text="1. Generate Datasheets", padding=6)
+        s1.pack(fill="x", pady=3)
+
+        checkbox_frame = ttk.Frame(s1)
+        checkbox_frame.pack(fill="x", pady=2)
+
+        for i, category in enumerate(CATEGORIES):
+            var = tk.BooleanVar(value=True)
+            self.category_vars[category] = var
+            cb = ttk.Checkbutton(checkbox_frame, text=category, variable=var)
+            cb.grid(row=i // 3, column=i % 3, sticky="w", padx=8, pady=1)
+
+        btn_frame = ttk.Frame(s1)
+        btn_frame.pack(fill="x", pady=2)
+
+        ttk.Button(btn_frame, text="Select All", command=self._select_all).pack(side="left", padx=3)
+        ttk.Button(btn_frame, text="Deselect All", command=self._deselect_all).pack(side="left", padx=3)
+        ttk.Button(btn_frame, text="Generate Selected", command=self._do_generate).pack(side="right", padx=3)
+
+        # === Section 2: Transfer QA Files ===
+        s2 = ttk.LabelFrame(parent, text="2. Transfer QA Files", padding=6)
+        s2.pack(fill="x", pady=3)
+
+        ttk.Label(s2, text="Transfer tester work from OLD and NEW folders to QAfolder").pack(pady=1)
+        ttk.Button(s2, text="Transfer QA Files", command=self._do_transfer, width=BUTTON_WIDTH).pack(pady=2, ipady=3)
+
+        # === Section 3: Build Master Files ===
+        s3 = ttk.LabelFrame(parent, text="3. Build Master Files", padding=6)
+        s3.pack(fill="x", pady=3)
+
+        ttk.Label(s3, text="Compile QA files into master files").pack(pady=1)
+        ttk.Button(s3, text="Build Master Files", command=self._do_build, width=BUTTON_WIDTH).pack(pady=2, ipady=3)
+
+        # === Section 4: Coverage Analysis ===
+        s4 = ttk.LabelFrame(parent, text="4. Coverage Analysis", padding=6)
+        s4.pack(fill="x", pady=3)
+
+        ttk.Label(s4, text="Calculate coverage of language data by datasheets").pack(pady=1)
+        ttk.Button(s4, text="Run Coverage Analysis", command=self._do_coverage, width=BUTTON_WIDTH).pack(pady=2, ipady=3)
+
+        # === Section 5: System Localizer ===
+        s5 = ttk.LabelFrame(parent, text="5. System Sheet Localizer", padding=6)
+        s5.pack(fill="x", pady=3)
+
+        ttk.Label(s5, text="Create localized versions of System datasheet").pack(pady=1)
+        ttk.Button(s5, text="Localize System Sheet", command=self._do_system_localizer, width=BUTTON_WIDTH).pack(pady=2, ipady=3)
+
+        # === Section 6: Update Tracker Only ===
+        s6 = ttk.LabelFrame(parent, text="6. Update Tracker Only", padding=6)
+        s6.pack(fill="x", pady=3)
+
+        ttk.Label(s6, text="Retroactively add missing days to tracker").pack(pady=1)
+
+        date_frame = ttk.Frame(s6)
+        date_frame.pack(fill="x", pady=2)
+
+        ttk.Label(date_frame, text="Date:").pack(side="left", padx=3)
+        self.tracker_date_var = tk.StringVar(value="")
+        ttk.Entry(date_frame, textvariable=self.tracker_date_var, width=12).pack(side="left", padx=2)
+
+        ttk.Label(date_frame, text="Time:").pack(side="left", padx=3)
+        self.tracker_time_var = tk.StringVar(value="12:00")
+        ttk.Entry(date_frame, textvariable=self.tracker_time_var, width=6).pack(side="left", padx=2)
+
+        ttk.Button(date_frame, text="Most Recent", command=self._set_most_recent_datetime, width=11).pack(side="left", padx=3)
+        ttk.Button(date_frame, text="Set File Dates...", command=self._do_set_file_dates, width=14).pack(side="left", padx=3)
+
+        ttk.Button(s6, text="Update Tracker", command=self._do_update_tracker, width=BUTTON_WIDTH).pack(pady=2, ipady=3)
+
+    def _set_initial_sash(self):
+        """Set PanedWindow sash to ~50% left / 50% right split."""
+        total_width = self._paned.winfo_width()
+        if total_width > 1:
+            self._paned.sash_place(0, int(total_width * 0.50), 0)
 
     # =========================================================================
     # Log System (QuickTranslate pattern)
