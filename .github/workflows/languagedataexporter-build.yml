@@ -473,7 +473,7 @@ jobs:
           retention-days: 30
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: languagedataexporter-v${{ env.VERSION }}
           name: LanguageDataExporter v${{ env.VERSION }}

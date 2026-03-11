@@ -463,41 +463,34 @@ jobs:
           retention-days: 30
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: quicktranslate-v${{ env.VERSION }}
           name: QuickTranslate v${{ env.VERSION }}
           body: |
             ## QuickTranslate v${{ env.VERSION }}
 
-            Translation lookup and transfer tool for Korean text matching in XML files.
+            Translation transfer tool — writes corrections from Excel/XML into languagedata XML files.
 
-            ### Features
-            **Match Types:**
-            - **Substring Match**: Original - finds text in StrOrigin
-            - **StringID-Only (SCRIPT)**: For Sequencer/Dialog strings
-            - **Strict (StringID + StrOrigin)**: Most precise matching
-            - **Special Key Match**: Match by StringID + Category
+            ### Match Types
+            - **Strict** (default): StringID + StrOrigin + Correction (safest)
+            - **StringID-Only**: For SCRIPT categories (Dialog/Sequencer)
+            - **StrOrigin Only**: Fan-out — one correction fills all matching entries
+            - **StrOrigin + DescOrigin**: Dual-key matching for voice descriptions
+            - **Fuzzy**: Model2Vec semantic similarity (Strict & StrOrigin Only)
 
-            **Input Modes:**
-            - File (single) or Folder (recursive)
-            - Excel (.xlsx) or XML (.xml) format
-
-            **Core Features:**
-            - **LOOKUP**: Find translations across 17 languages
-            - **TRANSFER**: Apply corrections to XML files
-            - **Find Missing Translations**: Per-language XML + Excel report with Korean word counts
-            - **Reverse Lookup**: Input text in any language -> find all translations
-            - **Direct StringID Lookup**: Quick lookup by StringID
-            - **Settings**: Configurable LOC/EXPORT paths (persisted to settings.json)
+            ### Key Features
+            - **TRANSFER**: Apply corrections to XML with 6-step auto-cleanup
+            - **Pre-Submission Checks**: Korean, Patterns, Quality — run before P4 submit
+            - **Find Missing Translations**: Per-language XML + Excel reports
+            - **XML Load Test**: Industrial-grade validation on source/target files
+            - **Formula Safeguard**: Blocks Excel formulas/errors from transferring
+            - **Desc Transfer**: Voice direction descriptions (DescOrigin/Desc)
 
             ### Downloads
-            - **Setup.exe**: Installer with drive selection
-            - **Portable.zip**: Standalone executable with working folders
+            - **Setup.exe**: Installer
+            - **Portable.zip**: Standalone executable
             - **Source.zip**: Python source code
-
-            ### Supported Languages
-            Korean (KOR), English (ENG), French (FRE), German (GER), Spanish (SPA), Portuguese (POR), Italian (ITA), Russian (RUS), Turkish (TUR), Polish (POL), Chinese Simplified (ZHO-CN), Chinese Traditional (ZHO-TW), Japanese (JPN), Thai (THA), Vietnamese (VIE), Indonesian (IND), Malay (MSA)
 
           files: |
             ${{ env.PROJECT_PATH }}/installer_output/*.exe
