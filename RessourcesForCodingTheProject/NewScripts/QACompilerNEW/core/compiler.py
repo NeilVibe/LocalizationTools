@@ -11,6 +11,7 @@ Handles:
 - Progress tracker updates
 """
 
+import shutil
 import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -140,25 +141,6 @@ VALID_MANAGER_STATUS = {"FIXED", "REPORTED", "CHECKING", "NON-ISSUE", "NON ISSUE
 # NOTE: Script-type categories (Sequencer/Dialog) use "NON-ISSUE" (with hyphen)
 # while other categories use "NO ISSUE" (with space). Accept both.
 VALID_TESTER_STATUS = {"ISSUE", "NO ISSUE", "NON-ISSUE", "NON ISSUE", "BLOCKED", "KOREAN"}
-
-
-# =============================================================================
-# COMMENT TEXT EXTRACTION
-# =============================================================================
-
-def extract_comment_text(full_comment) -> str:
-    """
-    Extract the actual comment text from formatted comment.
-
-    Comment format: "comment text\n---\nstringid:\n10001\n(updated: ...)"
-    Returns: Just the comment text before "---"
-    """
-    if not full_comment:
-        return ""
-    comment_str = str(full_comment).strip()
-    if "---" in comment_str:
-        return comment_str.split("---")[0].strip()
-    return comment_str
 
 
 # =============================================================================
@@ -490,11 +472,17 @@ def preprocess_script_category(
 
                     status_col = col_map.get("STATUS")
                     # Translation: try "Text" first, then "Translation"
-                    text_col = col_map.get("TEXT") or col_map.get("TRANSLATION")
+                    text_col = col_map.get("TEXT")
+                    if text_col is None:
+                        text_col = col_map.get("TRANSLATION")
                     # Unique ID: try "EventName" first, then "STRINGID"
-                    eventname_col = col_map.get("EVENTNAME") or col_map.get("STRINGID")
+                    eventname_col = col_map.get("EVENTNAME")
+                    if eventname_col is None:
+                        eventname_col = col_map.get("STRINGID")
                     # Comment: try "MEMO" first, then "COMMENT"
-                    memo_col = col_map.get("MEMO") or col_map.get("COMMENT")
+                    memo_col = col_map.get("MEMO")
+                    if memo_col is None:
+                        memo_col = col_map.get("COMMENT")
 
                     if not status_col or not text_col or not eventname_col:
                         # Not a script sheet - skip silently
@@ -622,10 +610,11 @@ def build_master_from_universe(
     target_category = get_target_master_category(category)
     master_path = master_folder / f"Master_{target_category}.xlsx"
 
-    # Delete old master if it exists (rebuild mode)
+    # Backup old master if it exists (crash-safe rebuild)
     if master_path.exists():
-        print(f"  Deleting old master: {master_path.name} (rebuilding fresh)")
-        master_path.unlink()
+        backup_path = master_path.with_suffix(".xlsx.bak")
+        print(f"  Backing up old master: {master_path.name} -> {backup_path.name}")
+        shutil.move(str(master_path), str(backup_path))
 
     wb = NewWorkbook()
     # Remove default "Sheet"
@@ -856,157 +845,168 @@ def process_category(
 
     # Process each QA folder
     for qf in qa_folders:
-        username = qf["username"]
-        xlsx_path = qf["xlsx_path"]
-        all_users.add(username)
+        try:
+            username = qf["username"]
+            xlsx_path = qf["xlsx_path"]
+            all_users.add(username)
 
-        # Ensure user exists in user_stats (may be a regular dict from previous category)
-        # This handles the case where accumulated_stats was converted from defaultdict to dict
-        if username not in user_stats:
-            user_stats[username] = {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0}
-
-        # Get file modification date for tracker
-        file_mod_time = __import__('datetime').datetime.fromtimestamp(xlsx_path.stat().st_mtime)
-        user_file_dates[username] = file_mod_time.strftime("%Y-%m-%d")
-
-        print(f"\n  Processing: {username}")
-
-        # Copy images FIRST to get mapping for screenshot links
-        # Script-type categories (Sequencer/Dialog) have NO screenshots - skip image copying
-        if category.lower() in SCRIPT_TYPE_CATEGORIES:
-            image_mapping = {}
-        else:
-            image_mapping = copy_images_with_unique_names(qf, images_folder, skip_images=fixed_screenshots)
-            total_images += len(image_mapping)
-
-        # Load QA workbook
-        # Script categories (Sequencer/Dialog) have NO screenshots, so ws.cell() is never
-        # called on QA workbook in the hot loop → safe to use read_only for 3-5x faster load.
-        # Non-Script categories need standard mode for screenshot hyperlink reads (ws.cell).
-        print(f"    Loading workbook...", end="", flush=True)
-        if category.lower() in SCRIPT_TYPE_CATEGORIES:
-            qa_wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
-        else:
-            qa_wb = safe_load_workbook(xlsx_path)
-        print(f" {len(qa_wb.sheetnames)} sheets")
-
-        # Process each sheet
-        for sheet_name in qa_wb.sheetnames:
-            if sheet_name == "STATUS":
-                continue
-
-            qa_ws = qa_wb[sheet_name]
-
-            # Check if sheet exists in master
-            if sheet_name not in master_wb.sheetnames:
-                print(f"    WARN: Sheet '{sheet_name}' not in master, skipping")
-                continue
-
-            master_ws = master_wb[sheet_name]
-
-            # Process the sheet (creates user columns internally)
-            # NOTE: prefiltered_rows optimization removed - all categories now scan
-            # all rows for STATUS, which is slightly slower but preserves data integrity
-            # Uses content-based matching for robust row matching
-            qa_rows = qa_ws.max_row - 1 if qa_ws.max_row and qa_ws.max_row > 1 else 0
-            print(f"      {sheet_name}: {qa_rows} rows...", end="", flush=True)
-
-            # OPTIMIZATION: Use pre-built index with fresh consumed set for each user
-            # This avoids rebuilding the index for each user (10x speedup for 10 users)
-            user_index = None
-            if sheet_name in master_indexes:
-                user_index = clone_with_fresh_consumed(master_indexes[sheet_name])
-
-            result = process_sheet(
-                master_ws, qa_ws, username, category,
-                is_english=is_english,
-                image_mapping=image_mapping,
-                xlsx_path=xlsx_path,
-                master_index=user_index
-            )
-
-            # Accumulate stats from result["stats"]
-            # Defensive check: ensure user exists in user_stats (fixes KeyError for clustered categories)
+            # Ensure user exists in user_stats (may be a regular dict from previous category)
+            # This handles the case where accumulated_stats was converted from defaultdict to dict
             if username not in user_stats:
                 user_stats[username] = {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0}
-            stats = result.get("stats", {})
-            for key in ["issue", "no_issue", "blocked", "korean"]:
-                user_stats[username][key] += stats.get(key, 0)
-            user_stats[username]["total"] += stats.get("total", 0)
-            total_screenshots += result.get("screenshots", 0)
 
-            # Log match stats for debugging (content-based matching)
-            match_stats = result.get("match_stats", {})
-            manager_restored = result.get("manager_restored", 0)
-            matched = match_stats.get("exact", 0) + match_stats.get("fallback", 0)
-            print(f" matched={matched}, issues={stats.get('issue', 0)}")
-            if match_stats.get("unmatched", 0) > 0:
-                print(f"        [WARN] {match_stats['exact']} exact, {match_stats['fallback']} fallback, {match_stats['unmatched']} UNMATCHED")
-            elif match_stats.get("fallback", 0) > 0:
-                print(f"        {match_stats['exact']} exact, {match_stats['fallback']} fallback")
-            # Log manager status restoration
-            if manager_restored > 0:
-                print(f"      [MANAGER] {sheet_name}: Restored {manager_restored} manager status entries")
+            # Get file modification date for tracker
+            file_mod_time = __import__('datetime').datetime.fromtimestamp(xlsx_path.stat().st_mtime)
+            user_file_dates[username] = file_mod_time.strftime("%Y-%m-%d")
 
-            # Count words (EN) or characters (CN) from translation column
-            # ONLY count rows where STATUS is filled (DONE rows)
-            # FAST: Reuse preloaded data from process_sheet (avoids redundant 3rd preload)
-            wc_col_idx, wc_data_rows = result["_preloaded"]
+            print(f"\n  Processing: {username}")
 
-            # Get column indices from preloaded header map
-            wc_status_idx = wc_col_idx.get("STATUS")
-
-            # Script-type: find "Text" or "Translation" by NAME (no position fallback!)
-            # Other categories: use position-based from config
-            if is_script_category:
-                wc_trans_idx = wc_col_idx.get("TEXT")
-                if wc_trans_idx is None:
-                    wc_trans_idx = wc_col_idx.get("TRANSLATION")
-                if wc_trans_idx is None:
-                    # Skip word counting for this sheet - no Text/Translation column found
-                    print(f"      {sheet_name}: SKIPPED word counting (no Text/Translation column)")
-                    continue  # BUG FIX: This continue was missing, causing TypeError with None trans_col
+            # Copy images FIRST to get mapping for screenshot links
+            # Script-type categories (Sequencer/Dialog) have NO screenshots - skip image copying
+            if category.lower() in SCRIPT_TYPE_CATEGORIES:
+                image_mapping = {}
             else:
-                # For non-Script categories, get index from trans_col_default (1-based column)
-                # Convert 1-based column to 0-based index by finding the header
-                trans_header = None
-                if trans_col_default:
-                    trans_header = qa_ws.cell(row=1, column=trans_col_default).value
-                    if trans_header:
-                        wc_trans_idx = wc_col_idx.get(str(trans_header).strip().upper())
+                image_mapping = copy_images_with_unique_names(qf, images_folder, skip_images=fixed_screenshots)
+                total_images += len(image_mapping)
+
+            # Load QA workbook
+            # Script categories (Sequencer/Dialog) have NO screenshots, so ws.cell() is never
+            # called on QA workbook in the hot loop → safe to use read_only for 3-5x faster load.
+            # Non-Script categories need standard mode for screenshot hyperlink reads (ws.cell).
+            print(f"    Loading workbook...", end="", flush=True)
+            if category.lower() in SCRIPT_TYPE_CATEGORIES:
+                qa_wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
+            else:
+                qa_wb = safe_load_workbook(xlsx_path)
+            print(f" {len(qa_wb.sheetnames)} sheets")
+
+            # Process each sheet
+            for sheet_name in qa_wb.sheetnames:
+                if sheet_name == "STATUS":
+                    continue
+
+                qa_ws = qa_wb[sheet_name]
+
+                # Check if sheet exists in master
+                if sheet_name not in master_wb.sheetnames:
+                    print(f"    WARN: Sheet '{sheet_name}' not in master, skipping")
+                    continue
+
+                master_ws = master_wb[sheet_name]
+
+                # Process the sheet (creates user columns internally)
+                # NOTE: prefiltered_rows optimization removed - all categories now scan
+                # all rows for STATUS, which is slightly slower but preserves data integrity
+                # Uses content-based matching for robust row matching
+                qa_rows = qa_ws.max_row - 1 if qa_ws.max_row and qa_ws.max_row > 1 else 0
+                print(f"      {sheet_name}: {qa_rows} rows...", end="", flush=True)
+
+                # OPTIMIZATION: Use pre-built index with fresh consumed set for each user
+                # This avoids rebuilding the index for each user (10x speedup for 10 users)
+                user_index = None
+                if sheet_name in master_indexes:
+                    user_index = clone_with_fresh_consumed(master_indexes[sheet_name])
+
+                result = process_sheet(
+                    master_ws, qa_ws, username, category,
+                    is_english=is_english,
+                    image_mapping=image_mapping,
+                    xlsx_path=xlsx_path,
+                    master_index=user_index
+                )
+
+                # Accumulate stats from result["stats"]
+                # Defensive check: ensure user exists in user_stats (fixes KeyError for clustered categories)
+                if username not in user_stats:
+                    user_stats[username] = {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0}
+                stats = result.get("stats", {})
+                for key in ["issue", "no_issue", "blocked", "korean"]:
+                    user_stats[username][key] += stats.get(key, 0)
+                user_stats[username]["total"] += stats.get("total", 0)
+                total_screenshots += result.get("screenshots", 0)
+
+                # Log match stats for debugging (content-based matching)
+                match_stats = result.get("match_stats", {})
+                manager_restored = result.get("manager_restored", 0)
+                matched = match_stats.get("exact", 0) + match_stats.get("fallback", 0)
+                print(f" matched={matched}, issues={stats.get('issue', 0)}")
+                if match_stats.get("unmatched", 0) > 0:
+                    print(f"        [WARN] {match_stats['exact']} exact, {match_stats['fallback']} fallback, {match_stats['unmatched']} UNMATCHED")
+                elif match_stats.get("fallback", 0) > 0:
+                    print(f"        {match_stats['exact']} exact, {match_stats['fallback']} fallback")
+                # Log manager status restoration
+                if manager_restored > 0:
+                    print(f"      [MANAGER] {sheet_name}: Restored {manager_restored} manager status entries")
+
+                # Count words (EN) or characters (CN) from translation column
+                # ONLY count rows where STATUS is filled (DONE rows)
+                # FAST: Reuse preloaded data from process_sheet (avoids redundant 3rd preload)
+                wc_col_idx, wc_data_rows = result["_preloaded"]
+
+                # Get column indices from preloaded header map
+                wc_status_idx = wc_col_idx.get("STATUS")
+
+                # Script-type: find "Text" or "Translation" by NAME (no position fallback!)
+                # Other categories: use position-based from config
+                if is_script_category:
+                    wc_trans_idx = wc_col_idx.get("TEXT")
+                    if wc_trans_idx is None:
+                        wc_trans_idx = wc_col_idx.get("TRANSLATION")
+                    if wc_trans_idx is None:
+                        # Skip word counting for this sheet - no Text/Translation column found
+                        print(f"      {sheet_name}: SKIPPED word counting (no Text/Translation column)")
+                        continue  # BUG FIX: This continue was missing, causing TypeError with None trans_col
+                else:
+                    # For non-Script categories, get index from trans_col_default (1-based column)
+                    # Convert 1-based column to 0-based index by finding the header
+                    trans_header = None
+                    if trans_col_default is not None:
+                        trans_header = qa_ws.cell(row=1, column=trans_col_default).value
+                        if trans_header:
+                            wc_trans_idx = wc_col_idx.get(str(trans_header).strip().upper())
+                        else:
+                            wc_trans_idx = None
                     else:
                         wc_trans_idx = None
-                else:
-                    wc_trans_idx = None
 
-                if wc_trans_idx is None:
-                    # Fallback: try common translation column names
-                    wc_trans_idx = wc_col_idx.get("TRANSLATION") or wc_col_idx.get("TEXT")
                     if wc_trans_idx is None:
-                        print(f"      {sheet_name}: SKIPPED word counting (no translation column)")
-                        continue
+                        # Fallback: try common translation column names
+                        wc_trans_idx = wc_col_idx.get("TRANSLATION")
+                        if wc_trans_idx is None:
+                            wc_trans_idx = wc_col_idx.get("TEXT")
+                        if wc_trans_idx is None:
+                            print(f"      {sheet_name}: SKIPPED word counting (no translation column)")
+                            continue
 
-            wc_label = "words" if is_english else "chars"
-            wc_before = user_wordcount[username]
+                wc_label = "words" if is_english else "chars"
+                wc_before = user_wordcount[username]
 
-            # FAST: Iterate through preloaded tuples (no ws.cell() calls!)
-            for row_tuple in wc_data_rows:
-                if wc_status_idx is not None:
-                    status_val = row_tuple[wc_status_idx] if wc_status_idx < len(row_tuple) else None
-                    # Accept all variants: "NO ISSUE", "NON-ISSUE", "NON ISSUE"
-                    if not status_val or str(status_val).strip().upper() not in ["ISSUE", "NO ISSUE", "NON-ISSUE", "NON ISSUE", "BLOCKED", "KOREAN"]:
-                        continue  # Skip rows not marked as done
+                # FAST: Iterate through preloaded tuples (no ws.cell() calls!)
+                for row_tuple in wc_data_rows:
+                    if wc_status_idx is not None:
+                        status_val = row_tuple[wc_status_idx] if wc_status_idx < len(row_tuple) else None
+                        # Accept all variants: "NO ISSUE", "NON-ISSUE", "NON ISSUE"
+                        if not status_val or str(status_val).strip().upper() not in ["ISSUE", "NO ISSUE", "NON-ISSUE", "NON ISSUE", "BLOCKED", "KOREAN"]:
+                            continue  # Skip rows not marked as done
 
-                cell_value = row_tuple[wc_trans_idx] if wc_trans_idx < len(row_tuple) else None
-                if is_english:
-                    user_wordcount[username] += count_words_english(cell_value)
-                else:
-                    user_wordcount[username] += count_chars_chinese(cell_value)
-            wc_added = user_wordcount[username] - wc_before
-            if wc_added > 0:
-                print(f"      {sheet_name}: {wc_added} {wc_label} counted")
+                    cell_value = row_tuple[wc_trans_idx] if wc_trans_idx < len(row_tuple) else None
+                    if is_english:
+                        user_wordcount[username] += count_words_english(cell_value)
+                    else:
+                        user_wordcount[username] += count_chars_chinese(cell_value)
+                wc_added = user_wordcount[username] - wc_before
+                if wc_added > 0:
+                    print(f"      {sheet_name}: {wc_added} {wc_label} counted")
 
-        qa_wb.close()
+            qa_wb.close()
+        except Exception as e:
+            print(f"\n  ERROR: Failed to process {qf.get('username', '?')}/{qf.get('xlsx_path', '?')}: {e}")
+            print(f"    Skipping this QA file and continuing with remaining files...")
+            # Close workbook if it was opened before the error
+            try:
+                qa_wb.close()
+            except (NameError, Exception):
+                pass
 
     # Create daily entry for tracker
     for username in all_users:
@@ -1073,6 +1073,11 @@ def process_category(
         print(f"  Saving master file...", end="", flush=True)
         master_wb.save(master_path)
         print(f" done")
+        # Clean up .bak backup now that new master is safely saved
+        backup_path = master_path.with_suffix(".xlsx.bak")
+        if backup_path.exists():
+            backup_path.unlink()
+            print(f"  Cleaned up backup: {backup_path.name}")
         print(f"\n  Saved: {master_path}")
         if hidden_sheets:
             print(f"  Hidden sheets (no comments): {', '.join(hidden_sheets)}")
@@ -1476,6 +1481,11 @@ def run_compiler():
         # 4. Save
         wb.save(path)
 
+        # Clean up .bak backup now that new master is safely saved
+        backup_path = path.with_suffix(".xlsx.bak")
+        if backup_path.exists():
+            backup_path.unlink()
+
         return {
             "lang": lang_label,
             "master": target_master,
@@ -1499,14 +1509,18 @@ def run_compiler():
         print(f"  Finalizing {len(finalize_futures)} master files in parallel...")
 
         for future in as_completed(finalize_futures):
-            result = future.result()
-            if result:
-                lang = result["lang"]
-                master = result["master"]
-                users = result["users"]
-                hidden_rows = result["hidden_rows"]
-                hidden_cols = result["hidden_columns"]
-                print(f"  [{lang}] Master_{master}: {users} users, {hidden_rows} rows hidden, saved")
+            try:
+                result = future.result()
+                if result:
+                    lang = result["lang"]
+                    master = result["master"]
+                    users = result["users"]
+                    hidden_rows = result["hidden_rows"]
+                    hidden_cols = result["hidden_columns"]
+                    print(f"  [{lang}] Master_{master}: {users} users, {hidden_rows} rows hidden, saved")
+            except Exception as e:
+                print(f"  ERROR: Failed to finalize a master file: {e}")
+                print(f"    Other master files will still be saved. Check .bak files for recovery.")
 
     # Show skipped categories
     for category in CATEGORIES:

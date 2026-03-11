@@ -46,13 +46,15 @@ def discover_qa_folders(base_folder: Path = None) -> List[Dict]:
             continue
 
         # Parse folder name: {Username}_{Category}
-        parts = folder.name.split("_")
+        # Use rsplit to handle underscored usernames (e.g., Kim_Jong_Quest → Kim_Jong + Quest)
+        # Category is always the LAST part (no categories have underscores)
+        parts = folder.name.rsplit("_", 1)
         if len(parts) < 2:
             print(f"WARN: Invalid folder name format: {folder.name} (expected: Username_Category)")
             continue
 
         username = parts[0]
-        category = "_".join(parts[1:])  # Handle categories with underscores
+        category = parts[1]
 
         if category not in CATEGORIES:
             print(f"WARN: Unknown category '{category}' in folder {folder.name}")

@@ -190,7 +190,9 @@ def extract_qa_row_data(qa_ws, row: int, category: str, is_english: bool, column
 
         # Translation column: try "Text" first, then "Translation"
         if column_cache is not None:
-            trans_col = column_cache.get("TEXT") or column_cache.get("TRANSLATION")
+            trans_col = column_cache.get("TEXT")
+            if trans_col is None:
+                trans_col = column_cache.get("TRANSLATION")
         else:
             trans_col = get_translation_column_by_name(qa_ws, category)
         translation = str(qa_ws.cell(row, trans_col).value or "").strip() if trans_col else ""
@@ -375,7 +377,9 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
     elif category_lower in SCRIPT_TYPE_CATEGORIES:
         # Sequencer/Dialog: index by (Translation, EventName) with EventName-only fallback
         # Get indices for script columns
-        trans_idx = col_idx.get("TEXT") or col_idx.get("TRANSLATION")
+        trans_idx = col_idx.get("TEXT")
+        if trans_idx is None:
+            trans_idx = col_idx.get("TRANSLATION")
         eventname_idx = col_idx.get("EVENTNAME")
 
         for row_idx, row_tuple in enumerate(data_rows, start=2):

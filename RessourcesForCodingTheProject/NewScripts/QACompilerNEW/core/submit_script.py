@@ -110,7 +110,9 @@ def collect_issue_rows(
                 # Find required columns by name
                 status_col = col_map.get("STATUS")
                 # Unique ID: try EventName first, then STRINGID
-                eventname_col = col_map.get("EVENTNAME") or col_map.get("STRINGID")
+                eventname_col = col_map.get("EVENTNAME")
+                if eventname_col is None:
+                    eventname_col = col_map.get("STRINGID")
 
                 # Comment: try MEMO first, then COMMENT, then COMMENT_{username}
                 memo_col = col_map.get("MEMO")

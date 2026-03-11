@@ -562,7 +562,9 @@ def process_sheet(
 
     # Map 1-based column numbers to 0-based tuple indices for fast access
     qa_status_idx = qa_col_idx.get("STATUS")
-    qa_comment_idx = qa_col_idx.get("MEMO") or qa_col_idx.get("COMMENT")
+    qa_comment_idx = qa_col_idx.get("MEMO")
+    if qa_comment_idx is None:
+        qa_comment_idx = qa_col_idx.get("COMMENT")
     qa_stringid_idx = qa_col_idx.get("STRINGID")
     qa_screenshot_idx = qa_col_idx.get("SCREENSHOT")
 
@@ -648,7 +650,8 @@ def process_sheet(
             existing_mgr_comment = master_ws.cell(row=master_row, column=master_manager_comment_col).value
             if existing_master_comment:
                 existing_text = extract_comment_text(str(existing_master_comment))
-                fresh_text = str(qa_comment_value).strip()
+                # Normalize fresh text through same path as existing (strip metadata, sanitize prefix)
+                fresh_text = extract_comment_text(str(qa_comment_value).strip())
                 if existing_text and fresh_text and existing_text != fresh_text:
                     # Tester changed comment - clear manager response (it was for the old comment)
                     master_ws.cell(row=master_row, column=master_user_status_col).value = None
@@ -845,13 +848,14 @@ def update_status_sheet(wb, users, user_stats):
 
     # Data rows
     for row_idx, user in enumerate(sorted(users), 2):
-        stats = user_stats.get(user, {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0})
+        stats = user_stats.get(user, {"total": 0, "issue": 0, "no_issue": 0, "blocked": 0, "korean": 0})
 
         total = stats["total"]
         issue = stats["issue"]
         no_issue = stats["no_issue"]
         blocked = stats["blocked"]
-        completed = issue + no_issue + blocked
+        korean = stats.get("korean", 0)
+        completed = issue + no_issue + blocked + korean
 
         # Calculate percentages
         completion_pct = round(completed / total * 100, 1) if total > 0 else 0
@@ -1141,12 +1145,21 @@ def hide_empty_comment_rows(wb, context_rows: int = 1, debug: bool = False, prel
                     print(f"    [DEBUG] Row {row_idx} has tester status but no ISSUE - will hide")
 
             # Check manager status columns for row hiding (FIXED/NON-ISSUE)
+            # Only hide if ALL non-empty manager statuses are resolved.
+            # If any manager has a non-resolved status (REPORTED/CHECKING/empty),
+            # the row stays visible so unresolved issues aren't hidden.
+            mgr_has_any = False
+            mgr_all_resolved = True
             for col_idx in manager_status_indices:
                 if col_idx < len(row_tuple):
                     value = row_tuple[col_idx]
                     if value and str(value).strip():
-                        if str(value).strip().upper() in MANAGER_HIDE_STATUSES:
-                            rows_resolved_by_manager.add(row_idx)
+                        mgr_has_any = True
+                        if str(value).strip().upper() not in MANAGER_HIDE_STATUSES:
+                            mgr_all_resolved = False
+                            break
+            if mgr_has_any and mgr_all_resolved:
+                rows_resolved_by_manager.add(row_idx)
 
         if debug:
             if rows_with_issue_status:

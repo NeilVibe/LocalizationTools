@@ -392,13 +392,17 @@ def extract_tester_data_from_master(
 
             stringid_idx = col_map.get("STRINGID")
             eventname_idx = col_map.get("EVENTNAME")
-            text_idx = col_map.get("TEXT") or col_map.get("TRANSLATION")
+            text_idx = col_map.get("TEXT")
+            if text_idx is None:
+                text_idx = col_map.get("TRANSLATION")
             instructions_idx = col_map.get("INSTRUCTIONS")
 
             # For standard categories (Quest, Knowledge, Item, etc.)
-            # Translation column positions from config
-            from config import TRANSLATION_COLS
-            trans_col_config = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3})
+            # Translation column positions from config.
+            # Resolve per-sheet category for clustered masters (Item+Gimmick, System+Help)
+            from config import TRANSLATION_COLS, CATEGORIES
+            sheet_category = sheet_name if sheet_name in CATEGORIES else category
+            trans_col_config = TRANSLATION_COLS.get(sheet_category, {"eng": 2, "other": 3})
             trans_col_idx = (trans_col_config["eng"] if is_english else trans_col_config["other"]) - 1  # 0-based
 
             sheet_data = {}
@@ -417,20 +421,30 @@ def extract_tester_data_from_master(
 
                 elif is_script:
                     # Script: (Text, EventName) - matches index order in matching.py
+                    # Primary key requires BOTH text and eventname (matching build_master_index)
+                    # Rows with only one value will match via fallback during restore
                     eventname = ""
                     if eventname_idx is not None and eventname_idx < len(row_tuple):
                         eventname = str(row_tuple[eventname_idx] or "").strip()
                     text = ""
                     if text_idx is not None and text_idx < len(row_tuple):
                         text = str(row_tuple[text_idx] or "").strip()
-                    if eventname or text:
-                        content_key = (text, eventname)  # Order: (text, eventname) to match build_master_index()
+                    if text and eventname:
+                        content_key = (text, eventname)  # Primary: both required (matches build_master_index)
+                    elif eventname:
+                        content_key = ("", eventname)  # Fallback key: EventName only
 
                 else:
                     # Standard: (STRINGID, Translation)
+                    # Use header-name-first resolution to match build_master_index() key format
                     stringid = sanitize_stringid_for_match(row_tuple[stringid_idx]) if stringid_idx is not None and stringid_idx < len(row_tuple) else ""
                     translation = ""
-                    if trans_col_idx < len(row_tuple):
+                    # Try "TRANSLATION" header first (matches build_master_index get_val logic)
+                    trans_header_idx = col_map.get("TRANSLATION")
+                    if trans_header_idx is not None and trans_header_idx < len(row_tuple):
+                        translation = str(row_tuple[trans_header_idx] or "").strip()
+                    # Fallback to position-based column from config
+                    if not translation and trans_col_idx < len(row_tuple):
                         translation = str(row_tuple[trans_col_idx] or "").strip()
                     if translation:
                         content_key = (stringid, translation)
@@ -524,8 +538,10 @@ def extract_tester_data_from_master(
         wb.close()
 
     except Exception as e:
-        print(f"    WARNING: Failed to extract tester data from {master_path.name}: {e}")
-        return {}
+        print(f"    WARNING: Error during extract from {master_path.name}: {e}")
+        print(f"    Returning {len(extracted)} sheets of partial data (extracted before error)")
+        # Return partial results instead of {} — whatever sheets succeeded are still valid
+        # This prevents total data loss when a single sheet has a corrupted cell
 
     # Summary with manager data breakdown
     total_entries = 0
@@ -815,6 +831,7 @@ def replicate_duplicate_row_data(master_wb, category: str, is_english: bool) -> 
     Returns total number of cells filled.
     """
     from core.matching import build_master_index
+    from config import CATEGORIES
 
     total_filled = 0
 
@@ -843,10 +860,14 @@ def replicate_duplicate_row_data(master_wb, category: str, is_english: bool) -> 
         if not user_cols:
             continue
 
+        # Resolve correct category for this sheet (clustered masters have multiple categories).
+        # Sheet names match category names (e.g., Master_Item.xlsx has "Item" and "Gimmick" sheets).
+        sheet_category = sheet_name if sheet_name in CATEGORIES else category
+
         # Use build_master_index to find duplicate groups via all_primary.
         # This reuses the same proven column detection (with position-based fallbacks)
         # that the matching system uses, so it works for ALL categories.
-        index = build_master_index(ws, category, is_english)
+        index = build_master_index(ws, sheet_category, is_english)
         all_primary = index.get("all_primary", {})
 
         # For each group with duplicates, replicate data
@@ -1021,8 +1042,11 @@ def get_or_create_master(
             if preserved_sheets:
                 print(f"    Preserving {len(preserved_sheets)} sheets from other categories: {', '.join(preserved_sheets.keys())}")
 
-        print(f"  Deleting old master: {master_path.name} (rebuilding fresh)")
-        master_path.unlink()
+        # Rename old master to .bak instead of deleting — crash safety.
+        # If the process crashes before the new master is saved, .bak survives.
+        backup_path = master_path.with_suffix(".xlsx.bak")
+        print(f"  Backing up old master: {master_path.name} -> {backup_path.name}")
+        shutil.move(str(master_path), str(backup_path))
 
     if template_file:
         print(f"  Creating new master from: {template_file.name}")
