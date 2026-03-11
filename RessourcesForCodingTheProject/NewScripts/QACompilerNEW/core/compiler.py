@@ -101,7 +101,7 @@ def _script_debug_clear():
         with open(_SCRIPT_DEBUG_FILE, "w", encoding="utf-8") as f:
             f.write(f"=== SCRIPT DEBUG LOG === {datetime.now().isoformat()}\n")
             f.write(f"Investigating why Script manager status is empty\n\n")
-    except:
+    except Exception:
         pass
 
 
@@ -152,7 +152,7 @@ VALID_TESTER_STATUS = {"ISSUE", "NO ISSUE", "NON-ISSUE", "NON ISSUE", "BLOCKED",
 # Now: ONE pass per master file with read_only=True for both data structures.
 # Manager status preservation is handled by System 1 (excel_ops.py) during rebuild.
 
-def collect_all_master_data(tester_mapping: Dict = None):
+def collect_all_master_data(tester_mapping: Dict = None, log_callback=None):
     """
     Single-pass collection of master file data for compilation.
 
@@ -170,6 +170,10 @@ def collect_all_master_data(tester_mapping: Dict = None):
     Returns:
         Tuple of (fixed_screenshots_en, fixed_screenshots_cn, manager_stats)
     """
+    def _log(msg, tag='info'):
+        if log_callback:
+            log_callback(msg, tag)
+
     if tester_mapping is None:
         tester_mapping = load_tester_mapping()
 
@@ -355,6 +359,7 @@ def collect_all_master_data(tester_mapping: Dict = None):
                 log(f"[ERROR] Failed to process {master_path}: {e}")
                 log(f"[TRACEBACK] {tb.format_exc()}")
                 print(f"\n  WARN: Error reading {master_path.name}: {e}")
+                _log(f"WARN: Error reading {master_path.name}: {e}", 'warning')
 
     # Convert manager_stats defaultdicts to regular dicts
     manager_stats_result = {}
@@ -731,7 +736,8 @@ def process_category(
     fixed_screenshots: set = None,
     accumulated_users: set = None,
     accumulated_stats: Dict = None,
-    deferred_save: bool = False
+    deferred_save: bool = False,
+    log_callback=None
 ) -> Tuple[List[Dict], set, Dict, Optional[object], Optional[Path]]:
     """
     Process all QA folders for one category.
@@ -756,6 +762,10 @@ def process_category(
         - master_wb: The master workbook (None if deferred_save=False, i.e., already saved)
         - master_path: Path to master file
     """
+    def _log(msg, tag='info'):
+        if log_callback:
+            log_callback(msg, tag)
+
     if fixed_screenshots is None:
         fixed_screenshots = set()
     if accumulated_users is None:
@@ -779,9 +789,7 @@ def process_category(
             _script_debug_log(f"    - {qf.get('username')}: {qf.get('xlsx_path')}")
         _script_debug_flush()
 
-    print(f"\n{'='*50}")
-    print(f"Processing: {category} [{lang_label}] ({len(qa_folders)} folders){cluster_info}")
-    print(f"{'='*50}")
+    _log(f"Processing: {category} [{lang_label}] ({len(qa_folders)} folders){cluster_info}", 'header')
 
     daily_entries = []
 
@@ -803,7 +811,6 @@ def process_category(
     # only kept rows WITH STATUS. This optimization caused REPORTED rows to be lost
     # when testers removed STATUS from their QA files. Now all categories use the
     # unified method which preserves data integrity while still being fast.
-    print(f"  Template: {template_user} (most recent file)")
     master_wb, master_path = get_or_create_master(
         category, master_folder, template_xlsx,
         rebuild=rebuild,
@@ -841,7 +848,6 @@ def process_category(
         master_ws = master_wb[sheet_name]
         if master_ws.max_row and master_ws.max_row > 1:
             master_indexes[sheet_name] = build_master_index(master_ws, category, is_english)
-    print(f"  Pre-built {len(master_indexes)} master indexes for O(1) matching")
 
     # Process each QA folder
     for qf in qa_folders:
@@ -859,7 +865,7 @@ def process_category(
             file_mod_time = __import__('datetime').datetime.fromtimestamp(xlsx_path.stat().st_mtime)
             user_file_dates[username] = file_mod_time.strftime("%Y-%m-%d")
 
-            print(f"\n  Processing: {username}")
+            _log(f"  {username}")
 
             # Copy images FIRST to get mapping for screenshot links
             # Script-type categories (Sequencer/Dialog) have NO screenshots - skip image copying
@@ -873,12 +879,10 @@ def process_category(
             # Script categories (Sequencer/Dialog) have NO screenshots, so ws.cell() is never
             # called on QA workbook in the hot loop → safe to use read_only for 3-5x faster load.
             # Non-Script categories need standard mode for screenshot hyperlink reads (ws.cell).
-            print(f"    Loading workbook...", end="", flush=True)
             if category.lower() in SCRIPT_TYPE_CATEGORIES:
                 qa_wb = safe_load_workbook(xlsx_path, read_only=True, data_only=True)
             else:
                 qa_wb = safe_load_workbook(xlsx_path)
-            print(f" {len(qa_wb.sheetnames)} sheets")
 
             # Process each sheet
             for sheet_name in qa_wb.sheetnames:
@@ -889,7 +893,7 @@ def process_category(
 
                 # Check if sheet exists in master
                 if sheet_name not in master_wb.sheetnames:
-                    print(f"    WARN: Sheet '{sheet_name}' not in master, skipping")
+                    _log(f"    WARN: Sheet '{sheet_name}' not in master", 'warning')
                     continue
 
                 master_ws = master_wb[sheet_name]
@@ -899,7 +903,6 @@ def process_category(
                 # all rows for STATUS, which is slightly slower but preserves data integrity
                 # Uses content-based matching for robust row matching
                 qa_rows = qa_ws.max_row - 1 if qa_ws.max_row and qa_ws.max_row > 1 else 0
-                print(f"      {sheet_name}: {qa_rows} rows...", end="", flush=True)
 
                 # OPTIMIZATION: Use pre-built index with fresh consumed set for each user
                 # This avoids rebuilding the index for each user (10x speedup for 10 users)
@@ -925,18 +928,10 @@ def process_category(
                 user_stats[username]["total"] += stats.get("total", 0)
                 total_screenshots += result.get("screenshots", 0)
 
-                # Log match stats for debugging (content-based matching)
+                # Log unmatched rows as warning
                 match_stats = result.get("match_stats", {})
-                manager_restored = result.get("manager_restored", 0)
-                matched = match_stats.get("exact", 0) + match_stats.get("fallback", 0)
-                print(f" matched={matched}, issues={stats.get('issue', 0)}")
                 if match_stats.get("unmatched", 0) > 0:
-                    print(f"        [WARN] {match_stats['exact']} exact, {match_stats['fallback']} fallback, {match_stats['unmatched']} UNMATCHED")
-                elif match_stats.get("fallback", 0) > 0:
-                    print(f"        {match_stats['exact']} exact, {match_stats['fallback']} fallback")
-                # Log manager status restoration
-                if manager_restored > 0:
-                    print(f"      [MANAGER] {sheet_name}: Restored {manager_restored} manager status entries")
+                    _log(f"    WARN: {sheet_name}: {match_stats['unmatched']} UNMATCHED rows", 'warning')
 
                 # Count words (EN) or characters (CN) from translation column
                 # ONLY count rows where STATUS is filled (DONE rows)
@@ -954,8 +949,7 @@ def process_category(
                         wc_trans_idx = wc_col_idx.get("TRANSLATION")
                     if wc_trans_idx is None:
                         # Skip word counting for this sheet - no Text/Translation column found
-                        print(f"      {sheet_name}: SKIPPED word counting (no Text/Translation column)")
-                        continue  # BUG FIX: This continue was missing, causing TypeError with None trans_col
+                        continue
                 else:
                     # For non-Script categories, get index from trans_col_default (1-based column)
                     # Convert 1-based column to 0-based index by finding the header
@@ -975,7 +969,6 @@ def process_category(
                         if wc_trans_idx is None:
                             wc_trans_idx = wc_col_idx.get("TEXT")
                         if wc_trans_idx is None:
-                            print(f"      {sheet_name}: SKIPPED word counting (no translation column)")
                             continue
 
                 wc_label = "words" if is_english else "chars"
@@ -995,13 +988,10 @@ def process_category(
                     else:
                         user_wordcount[username] += count_chars_chinese(cell_value)
                 wc_added = user_wordcount[username] - wc_before
-                if wc_added > 0:
-                    print(f"      {sheet_name}: {wc_added} {wc_label} counted")
 
             qa_wb.close()
         except Exception as e:
-            print(f"\n  ERROR: Failed to process {qf.get('username', '?')}/{qf.get('xlsx_path', '?')}: {e}")
-            print(f"    Skipping this QA file and continuing with remaining files...")
+            _log(f"  ERROR: {qf.get('username', '?')}: {e}", 'error')
             # Close workbook if it was opened before the error
             try:
                 qa_wb.close()
@@ -1028,7 +1018,6 @@ def process_category(
             "korean": stats["korean"],
             "word_count": user_wordcount[username],
         }
-        print(f"    [DEBUG] daily_entry: {entry['date']} | {entry['user']} | {entry['category']} | done={entry['done']}, issues={entry['issues']}")
         daily_entries.append(entry)
 
         # SCRIPT DEBUG: Detailed logging for Script-type categories
@@ -1051,9 +1040,6 @@ def process_category(
     if deferred_save:
         # DEFERRED SAVE: Return workbook for caller to finalize (autofit + save)
         # This enables running autofit ONCE per master after ALL categories processed
-        print(f"\n  [DEFERRED] Skipping autofit/save - will be done in final pass")
-        if total_images > 0:
-            print(f"  Images: {total_images} copied to Images/, {total_screenshots} hyperlinks updated")
         return daily_entries, all_users, dict(user_stats), master_wb, master_path
     else:
         # Post-process: replicate data across duplicate rows
@@ -1095,13 +1081,27 @@ def process_category(
 # MAIN COMPILER
 # =============================================================================
 
-def run_compiler():
+def run_compiler(log_callback=None, progress_callback=None):
     """
     Main compiler entry point.
 
     Discovers QA folders, routes by language, processes categories,
     and updates the progress tracker.
+
+    Args:
+        log_callback: Optional callable(msg, tag) for GUI logging.
+                      Tags: 'header', 'info', 'success', 'warning', 'error'
+        progress_callback: Optional callable(pct) for GUI progress bar (0-100).
     """
+    # GUI log wrappers
+    def _log(msg, tag='info'):
+        if log_callback:
+            log_callback(msg, tag)
+
+    def _progress(pct):
+        if progress_callback:
+            progress_callback(pct)
+
     # Start timing for final report
     compilation_start_time = time.time()
 
@@ -1113,19 +1113,10 @@ def run_compiler():
     # Clear master index cache for fresh run
     clear_master_index_cache()
 
-    print("=" * 60)
-    print("QA Excel Compiler (EN/CN Separation + Manager Status)")
-    print("=" * 60)
-    print("Features:")
-    print("  - Folder-based input: QAfolder/{Username}_{Category}/")
-    print("  - Language separation: Masterfolder_EN/ and Masterfolder_CN/")
-    print("  - Auto-routing testers by language mapping")
-    print("  - Manager workflow: STATUS_{User} for FIXED/REPORTED/CHECKING")
-    print("  - Combined Progress Tracker at root level")
-    print()
+    _log("=== Build Master Files ===", 'header')
+    _progress(0)
 
     # Load tester mapping
-    print("Loading tester->language mapping...")
     tester_mapping = load_tester_mapping()
 
     # Ensure folders exist
@@ -1134,31 +1125,24 @@ def run_compiler():
     # Preprocess: Collect master data in single pass (Phase A optimization)
     # Opens each master file ONCE with read_only=True
     # Manager status preservation is handled by System 1 in excel_ops.py during rebuild
-    print("\nCollecting master data (fixed screenshots + tracker stats)...")
+    _log("Collecting master data...")
     (fixed_screenshots_en, fixed_screenshots_cn,
-     manager_stats) = collect_all_master_data(tester_mapping)
+     manager_stats) = collect_all_master_data(tester_mapping, log_callback=log_callback)
 
     total_fixed = len(fixed_screenshots_en) + len(fixed_screenshots_cn)
     if total_fixed > 0:
-        print(f"  Found {len(fixed_screenshots_en)} EN + {len(fixed_screenshots_cn)} CN FIXED screenshots to skip")
+        _log(f"Found {total_fixed} FIXED screenshots to skip")
+    _progress(2)
 
     # Discover QA folders
     qa_folders = discover_qa_folders()
 
     if not qa_folders:
-        print("\nNo valid QA folders found in QAfolder/")
-        print("Expected format: QAfolder/{Username}_{Category}/")
-        print("  - Each folder should contain one .xlsx file")
-        print("  - Images should be in the same folder")
-        print(f"Valid categories: {', '.join(CATEGORIES)}")
+        _log("No valid QA folders found", 'error')
         return
 
-    print(f"Found {len(qa_folders)} QA folder(s)")
-
-    # Count images
-    total_images = sum(len(qf["images"]) for qf in qa_folders)
-    if total_images > 0:
-        print(f"Total images to process: {total_images}")
+    _log(f"Found {len(qa_folders)} QA folders")
+    _progress(5)
 
     # Group by category AND language
     by_category_en, by_category_cn = group_folders_by_language(qa_folders, tester_mapping)
@@ -1167,15 +1151,12 @@ def run_compiler():
     # EARLY OUTPUT: Generate MasterSubmitScript FIRST (quick - just ISSUE rows)
     # ==========================================================================
     # This runs BEFORE heavy Master file processing so output is available early
-    print("\n" + "=" * 60)
-    print("STEP 1: Generating MasterSubmitScript (Quick Output)")
-    print("=" * 60)
+    _log("STEP 1: Generating Submit Scripts", 'header')
 
     from core.export_index import get_soundevent_mapping
     from core.submit_script import collect_issue_rows, generate_master_submit_script, generate_conflict_file
 
     export_mapping = get_soundevent_mapping()
-    print(f"  EXPORT mapping: {len(export_mapping)} EventName entries loaded")
 
     # EN: Combine Sequencer + Dialog folders
     en_script_folders = []
@@ -1184,7 +1165,6 @@ def run_compiler():
             en_script_folders.extend(by_category_en[cat])
 
     if en_script_folders:
-        print(f"\n[EN] Collecting from {len(en_script_folders)} Script files...")
         en_issues, en_conflicts = collect_issue_rows(en_script_folders, export_mapping)
         if en_issues:
             generate_master_submit_script(
@@ -1192,8 +1172,9 @@ def run_compiler():
                 MASTER_FOLDER_EN / "MasterSubmitScript_EN.xlsx",
                 "EN"
             )
+            _log(f"  EN: {len(en_issues)} ISSUE rows -> MasterSubmitScript_EN.xlsx", 'success')
         else:
-            print("    No ISSUE rows found for EN")
+            _log("  EN: No ISSUE rows found")
         if en_conflicts:
             generate_conflict_file(
                 en_conflicts,
@@ -1201,7 +1182,7 @@ def run_compiler():
                 "EN"
             )
     else:
-        print("\n[EN] No Script category files to process")
+        _log("  EN: No Script category files to process")
 
     # CN: Same pattern
     cn_script_folders = []
@@ -1210,7 +1191,6 @@ def run_compiler():
             cn_script_folders.extend(by_category_cn[cat])
 
     if cn_script_folders:
-        print(f"\n[CN] Collecting from {len(cn_script_folders)} Script files...")
         cn_issues, cn_conflicts = collect_issue_rows(cn_script_folders, export_mapping)
         if cn_issues:
             generate_master_submit_script(
@@ -1218,8 +1198,9 @@ def run_compiler():
                 MASTER_FOLDER_CN / "MasterSubmitScript_CN.xlsx",
                 "CN"
             )
+            _log(f"  CN: {len(cn_issues)} ISSUE rows -> MasterSubmitScript_CN.xlsx", 'success')
         else:
-            print("    No ISSUE rows found for CN")
+            _log("  CN: No ISSUE rows found")
         if cn_conflicts:
             generate_conflict_file(
                 cn_conflicts,
@@ -1227,14 +1208,13 @@ def run_compiler():
                 "CN"
             )
     else:
-        print("\n[CN] No Script category files to process")
+        _log("  CN: No Script category files to process")
 
     # ==========================================================================
     # STEP 1b: MasterSubmitDatasheet (Non-Script categories)
     # ==========================================================================
-    print("\n" + "=" * 60)
-    print("STEP 1b: Generating MasterSubmitDatasheet (Non-Script ISSUE rows)")
-    print("=" * 60)
+    _progress(10)
+    _log("STEP 2: Generating Submit Datasheets", 'header')
 
     from core.submit_datasheet import (
         collect_datasheet_issue_rows,
@@ -1251,7 +1231,6 @@ def run_compiler():
             en_datasheet_folders.extend(folders)
 
     if en_datasheet_folders:
-        print(f"\n[EN] Collecting from {len(en_datasheet_folders)} non-Script files...")
         en_ds_issues, en_ds_conflicts = collect_datasheet_issue_rows(en_datasheet_folders)
         if en_ds_issues:
             generate_master_submit_datasheet(
@@ -1259,8 +1238,9 @@ def run_compiler():
                 MASTER_FOLDER_EN / "MasterSubmitDatasheet_EN.xlsx",
                 "EN"
             )
+            _log(f"  EN: {len(en_ds_issues)} ISSUE rows -> MasterSubmitDatasheet_EN.xlsx", 'success')
         else:
-            print("    No ISSUE rows found for EN")
+            _log("  EN: No ISSUE rows found")
         if en_ds_conflicts:
             generate_datasheet_conflict_file(
                 en_ds_conflicts,
@@ -1268,7 +1248,7 @@ def run_compiler():
                 "EN"
             )
     else:
-        print("\n[EN] No non-Script category files to process")
+        _log("  EN: No non-Script category files to process")
 
     # CN: Same pattern
     cn_datasheet_folders = []
@@ -1277,7 +1257,6 @@ def run_compiler():
             cn_datasheet_folders.extend(folders)
 
     if cn_datasheet_folders:
-        print(f"\n[CN] Collecting from {len(cn_datasheet_folders)} non-Script files...")
         cn_ds_issues, cn_ds_conflicts = collect_datasheet_issue_rows(cn_datasheet_folders)
         if cn_ds_issues:
             generate_master_submit_datasheet(
@@ -1285,8 +1264,9 @@ def run_compiler():
                 MASTER_FOLDER_CN / "MasterSubmitDatasheet_CN.xlsx",
                 "CN"
             )
+            _log(f"  CN: {len(cn_ds_issues)} ISSUE rows -> MasterSubmitDatasheet_CN.xlsx", 'success')
         else:
-            print("    No ISSUE rows found for CN")
+            _log("  CN: No ISSUE rows found")
         if cn_ds_conflicts:
             generate_datasheet_conflict_file(
                 cn_ds_conflicts,
@@ -1294,14 +1274,13 @@ def run_compiler():
                 "CN"
             )
     else:
-        print("\n[CN] No non-Script category files to process")
+        _log("  CN: No non-Script category files to process")
 
     # ==========================================================================
     # STEP 2: Process Master Files (Heavy Processing)
     # ==========================================================================
-    print("\n" + "=" * 60)
-    print("STEP 2: Building Master Files (WORKER GROUP PARALLELISM)")
-    print("=" * 60)
+    _progress(15)
+    _log("STEP 3: Building Master Files", 'header')
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
     import threading
@@ -1348,7 +1327,6 @@ def run_compiler():
                 prev_data = master_status_data.get(target_master)
                 if prev_data and prev_data["workbook"] is not None and prev_data["path"] is not None:
                     prev_data["workbook"].save(prev_data["path"])
-                    print(f"  Saved intermediate master for {target_master} before appending {category}")
 
             # Get or initialize accumulated data for this master
             if target_master not in master_status_data:
@@ -1371,7 +1349,8 @@ def run_compiler():
                 fixed_screenshots=fixed_screenshots,
                 accumulated_users=acc_users,
                 accumulated_stats=acc_stats,
-                deferred_save=True
+                deferred_save=True,
+                log_callback=log_callback
             )
             daily_entries.extend(entries)
             master_status_data[target_master]["users"] = acc_users
@@ -1385,10 +1364,6 @@ def run_compiler():
     # ==========================================================================
     # PARALLEL PROCESSING: Worker groups across EN + CN (up to MAX_PARALLEL_WORKERS)
     # ==========================================================================
-    print(f"\n[PARALLEL] Worker group parallelism enabled")
-    print(f"  Max workers: {MAX_PARALLEL_WORKERS}")
-    print(f"  Worker groups: {len(WORKER_GROUPS)} per language")
-
     all_daily_entries = []
     master_status_data_en = {}
     master_status_data_cn = {}
@@ -1419,7 +1394,7 @@ def run_compiler():
                 )
                 futures.append(future)
 
-        print(f"  Submitted {len(futures)} worker tasks")
+        total_futures = len(futures)
 
         # Collect results as they complete
         completed = 0
@@ -1436,12 +1411,16 @@ def run_compiler():
                         master_status_data_cn.update(master_data)
 
                 if entries:
-                    print(f"  [{lang}/{group_name}] Completed: {len(entries)} entries ({completed}/{len(futures)})")
+                    _log(f"  [{lang}/{group_name}] Complete ({completed}/{total_futures})")
+                # Progress: 15% to 85% based on worker completion
+                worker_pct = 15 + int(70 * completed / total_futures)
+                _progress(worker_pct)
             except Exception as e:
-                print(f"  [ERROR] Worker failed: {e}")
+                _log(f"Worker failed: {group_name}: {e}", 'error')
                 raise
 
-    print(f"\n  All {len(futures)} workers completed")
+    _log("All workers completed", 'success')
+    _progress(85)
 
     # ==========================================================================
     # FINAL PASS: STATUS sheet + autofit + hide + save (PARALLEL)
@@ -1449,9 +1428,8 @@ def run_compiler():
     # This is the DEFERRED SAVE optimization: instead of autofit+save after each
     # category, we do it once per master after ALL categories are processed.
     # Now also parallelized for additional speedup.
-    print("\n" + "=" * 60)
-    print("FINAL PASS: STATUS + autofit + save (PARALLEL)")
-    print("=" * 60)
+    _log("Finalizing master files...", 'header')
+    _progress(90)
 
     def finalize_master(target_master, data, lang_label):
         """Finalize and save a single master file. Thread-safe."""
@@ -1506,8 +1484,6 @@ def run_compiler():
             future = executor.submit(finalize_master, target_master, data, "CN")
             finalize_futures.append(future)
 
-        print(f"  Finalizing {len(finalize_futures)} master files in parallel...")
-
         for future in as_completed(finalize_futures):
             try:
                 result = future.result()
@@ -1515,23 +1491,19 @@ def run_compiler():
                     lang = result["lang"]
                     master = result["master"]
                     users = result["users"]
-                    hidden_rows = result["hidden_rows"]
-                    hidden_cols = result["hidden_columns"]
-                    print(f"  [{lang}] Master_{master}: {users} users, {hidden_rows} rows hidden, saved")
+                    _log(f"  Master_{master} [{lang}]: {users} users, saved", 'success')
             except Exception as e:
-                print(f"  ERROR: Failed to finalize a master file: {e}")
-                print(f"    Other master files will still be saved. Check .bak files for recovery.")
+                _log(f"ERROR: Failed to finalize: {e}", 'error')
 
     # Show skipped categories
     for category in CATEGORIES:
         if category not in by_category_en and category not in by_category_cn:
-            print(f"\nSKIP: No folders for category '{category}'")
+            _log(f"  Skipped: {category} (no folders)")
 
     # Update Progress Tracker
     if all_daily_entries:
-        print("\n" + "=" * 60)
-        print("Updating LQA User Progress Tracker...")
-        print("=" * 60)
+        _log("Updating Tracker...", 'header')
+        _progress(92)
 
         # Import tracker modules
         from tracker.data import get_or_create_tracker, update_daily_data_sheet
@@ -1539,160 +1511,78 @@ def run_compiler():
         from tracker.total import build_total_sheet
 
         # manager_stats already collected by collect_all_master_data() above
-        print("  Loading tracker workbook...")
         tracker_wb, tracker_path = get_or_create_tracker()
 
         # Separate Face entries (different schema) from standard entries
         standard_entries = [e for e in all_daily_entries if e.get("category") != "Face"]
         face_entries = [e for e in all_daily_entries if e.get("category") == "Face"]
-        print(f"  Entries: {len(standard_entries)} standard, {len(face_entries)} face")
 
         # Update standard tracker tabs
         if standard_entries:
-            print("  Writing daily data...")
             update_daily_data_sheet(tracker_wb, standard_entries, manager_stats)
-        print("  Building DAILY sheet...")
         build_daily_sheet(tracker_wb)
-        print("  Building TOTAL sheet...")
         build_total_sheet(tracker_wb)
 
         # Update Facial tracker tab (if Face entries exist)
         if face_entries:
             from tracker.facial import update_facial_data_sheet, build_facial_sheet
-            print("  Writing facial data...")
             update_facial_data_sheet(tracker_wb, face_entries)
-            print("  Building Facial sheet...")
             build_facial_sheet(tracker_wb)
 
         # Remove deprecated GRAPHS sheet
         if "GRAPHS" in tracker_wb.sheetnames:
             del tracker_wb["GRAPHS"]
 
-        print("  Saving tracker...", end="", flush=True)
         tracker_wb.save(tracker_path)
-        print(" done")
-
-        print(f"  Saved: {tracker_path}")
-        sheets_info = "DAILY (with stats), TOTAL (with rankings)"
-        if face_entries:
-            sheets_info += ", Facial (face animation)"
-        print(f"  Sheets: {sheets_info}")
+        _log(f"Tracker saved: {len(standard_entries)} standard + {len(face_entries)} face entries", 'success')
+        _progress(95)
 
     # =========================================================================
-    # FINAL REPORT TABLE
+    # FINAL SUMMARY
     # =========================================================================
     elapsed = time.time() - compilation_start_time
     minutes = int(elapsed // 60)
     seconds = elapsed % 60
 
-    # Helper for consistent 70-char box lines (| + 68 inner + |)
-    W = 68
-    sep = "+" + "-" * W + "+"
+    _log("=== COMPILATION COMPLETE ===", 'header')
 
-    print("\n")
-    print(sep)
-    print("|" + " FINAL COMPILATION REPORT".center(W) + "|")
-    print(sep)
-
-    # Timing
     if minutes > 0:
-        time_str = f"{minutes}m {seconds:.1f}s"
+        _log(f"Time: {minutes}m {seconds:.1f}s")
     else:
-        time_str = f"{seconds:.1f}s"
-    print(f"|  {'Total Time:':<20}{time_str:<{W - 22}}|")
-    print(sep)
+        _log(f"Time: {seconds:.1f}s")
 
-    # Aggregate stats from all_daily_entries
     if all_daily_entries:
         testers_en = set()
         testers_cn = set()
-        categories_seen = set()
         total_rows = 0
         total_done = 0
         total_issues = 0
-        total_no_issue = 0
         total_blocked = 0
         total_korean = 0
-        total_word_count = 0
-        total_mismatch = 0
-        total_missing = 0
 
         for entry in all_daily_entries:
             lang = entry.get("lang", "?")
             user = entry.get("user", "?")
-            cat = entry.get("category", "?")
-            categories_seen.add(cat)
-
             if lang == "EN":
                 testers_en.add(user)
             else:
                 testers_cn.add(user)
-
             total_rows += entry.get("total_rows", 0)
             total_done += entry.get("done", 0)
             total_issues += entry.get("issues", 0)
-            total_no_issue += entry.get("no_issue", 0)
             total_blocked += entry.get("blocked", 0)
             total_korean += entry.get("korean", 0)
-            total_word_count += entry.get("word_count", 0)
 
-            # Face entries have mismatch/missing instead of issues
-            if cat == "Face":
-                total_mismatch += entry.get("mismatch", 0)
-                total_missing += entry.get("missing", 0)
-
-        # Testers — inner: 2 + 20 + 8 + 5 + 8 + 5 + 8 + (W-56) = W
-        tester_hdr = f"  {'Testers':<20}{'EN':>8}     {'CN':>8}     {'Total':>8}"
-        print(f"|{tester_hdr:<{W}}|")
-        tester_val = f"  {'':20}{len(testers_en):>8}     {len(testers_cn):>8}     {len(testers_en | testers_cn):>8}"
-        print(f"|{tester_val:<{W}}|")
-        print(sep)
-
-        # Categories (truncate with ... if too long)
-        cat_full = ', '.join(sorted(categories_seen))
-        max_cat = W - 16
-        cat_str = cat_full if len(cat_full) <= max_cat else cat_full[:max_cat - 3] + "..."
-        print(f"|  {'Categories:':<14}{cat_str:<{W - 16}}|")
-        print(sep)
-
-        # Row stats — inner: 2 + 35 + 15 + (W-52) = W
-        def _metric_line(label, value):
-            return f"|  {label:<35}{value:>15,}{' ' * (W - 52)}|"
-
-        print(f"|  {'METRIC':<35}{'COUNT':>15}{' ' * (W - 52)}|")
-        print(f"|  {'-' * (W - 4)}  |")
-        print(_metric_line("Total Rows Processed", total_rows))
-        print(_metric_line("Done (has status)", total_done))
-        print(_metric_line("NO ISSUE", total_no_issue))
+        _log(f"Testers: {len(testers_en)} EN + {len(testers_cn)} CN ({len(testers_en | testers_cn)} total)")
+        _log(f"Rows: {total_rows:,} processed, {total_done:,} done")
         if total_issues > 0:
-            print(_metric_line("ISSUE", total_issues))
-        if total_blocked > 0:
-            print(_metric_line("BLOCKED", total_blocked))
-        if total_korean > 0:
-            print(_metric_line("KOREAN", total_korean))
-        if total_mismatch > 0:
-            print(_metric_line("MISMATCH (Face)", total_mismatch))
-        if total_missing > 0:
-            print(_metric_line("MISSING (Face)", total_missing))
-        if total_word_count > 0:
-            print(_metric_line("Word Count", total_word_count))
-        print(sep)
+            _log(f"Issues: {total_issues:,} ISSUE, {total_blocked:,} BLOCKED", 'warning')
 
-    # Master files generated
-    try:
-        finalize_count = len(finalize_futures)
-    except NameError:
-        finalize_count = 0
-    if finalize_count > 0:
-        print(f"|  {'Master Files Saved:':<20}{finalize_count:<{W - 22}}|")
-        print(sep)
+        try:
+            finalize_count = len(finalize_futures)
+        except NameError:
+            finalize_count = 0
+        if finalize_count > 0:
+            _log(f"Master files saved: {finalize_count}", 'success')
 
-    # Output paths (truncate if too long)
-    en_path = str(MASTER_FOLDER_EN)[:W - 16]
-    cn_path = str(MASTER_FOLDER_CN)[:W - 16]
-    print(f"|  {'Output EN:':<14}{en_path:<{W - 16}}|")
-    print(f"|  {'Output CN:':<14}{cn_path:<{W - 16}}|")
-    if all_daily_entries:
-        tr_path = str(TRACKER_PATH)[:W - 16]
-        print(f"|  {'Tracker:':<14}{tr_path:<{W - 16}}|")
-    print(sep)
+    _progress(100)

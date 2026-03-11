@@ -1,15 +1,20 @@
 """
 QA Compiler Suite - Unified GUI
 ================================
-Tkinter GUI with three main functions:
+Tkinter GUI with six main functions:
 1. Generate Datasheets (from XML sources)
 2. Transfer QA Files (OLD + NEW → QAfolder)
 3. Build Master Files (QAfolder → Masterfolder)
+4. Coverage Analysis
+5. System Sheet Localizer
+6. Update Tracker Only
 """
 
+import queue
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, scrolledtext
 from pathlib import Path
+from datetime import datetime
 import threading
 import sys
 import traceback
@@ -32,8 +37,9 @@ import config
 from config import VERSION
 WINDOW_TITLE = f"QA Compiler Suite v{VERSION}"
 WINDOW_WIDTH = 1000
-WINDOW_HEIGHT = 1100
+WINDOW_HEIGHT = 1350
 BUTTON_WIDTH = 50
+_MAX_LOG_LINES = 5000
 
 
 # =============================================================================
@@ -47,14 +53,14 @@ class QACompilerSuiteGUI:
         self.root = root
         self.root.title(WINDOW_TITLE)
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
-        self.root.resizable(False, False)
+        self.root.resizable(False, True)
 
         # Center window on screen
         self.root.update_idletasks()
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
         x = (screen_w - WINDOW_WIDTH) // 2
-        y = (screen_h - WINDOW_HEIGHT) // 2
+        y = max(0, (screen_h - WINDOW_HEIGHT) // 2)
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}+{x}+{y}")
 
         # Category checkboxes state
@@ -62,6 +68,10 @@ class QACompilerSuiteGUI:
 
         # Store last generation results for coverage analysis
         self.last_korean_strings = {}
+
+        # Thread-safe queue for log/progress/status updates
+        self._task_queue = queue.Queue()
+        self._worker_thread = None
 
         # Build UI
         self._build_ui()
@@ -77,7 +87,7 @@ class QACompilerSuiteGUI:
             text="QA Compiler Suite",
             font=("Arial", 18, "bold")
         )
-        title_label.pack(pady=15)
+        title_label.pack(pady=10)
 
         # === Branch + Drive Selection ===
         branch_frame = ttk.Frame(self.root)
@@ -124,189 +134,207 @@ class QACompilerSuiteGUI:
         drive_combo.bind("<Return>", _on_drive_change)
 
         # === Section 1: Generate Datasheets ===
-        section1_frame = ttk.LabelFrame(self.root, text="1. Generate Datasheets", padding=10)
-        section1_frame.pack(fill="x", padx=15, pady=5)
+        section1_frame = ttk.LabelFrame(self.root, text="1. Generate Datasheets", padding=8)
+        section1_frame.pack(fill="x", padx=15, pady=3)
 
-        # Category checkboxes grid (3 columns)
         checkbox_frame = ttk.Frame(section1_frame)
-        checkbox_frame.pack(fill="x", pady=5)
+        checkbox_frame.pack(fill="x", pady=3)
 
         for i, category in enumerate(CATEGORIES):
             var = tk.BooleanVar(value=True)
             self.category_vars[category] = var
             cb = ttk.Checkbutton(checkbox_frame, text=category, variable=var)
-            cb.grid(row=i // 3, column=i % 3, sticky="w", padx=10, pady=2)
+            cb.grid(row=i // 3, column=i % 3, sticky="w", padx=10, pady=1)
 
-        # Select/Deselect All buttons
         btn_frame = ttk.Frame(section1_frame)
-        btn_frame.pack(fill="x", pady=5)
+        btn_frame.pack(fill="x", pady=3)
 
-        select_all_btn = ttk.Button(btn_frame, text="Select All", command=self._select_all)
-        select_all_btn.pack(side="left", padx=5)
-
-        deselect_all_btn = ttk.Button(btn_frame, text="Deselect All", command=self._deselect_all)
-        deselect_all_btn.pack(side="left", padx=5)
-
-        generate_btn = ttk.Button(
-            btn_frame,
-            text="Generate Selected",
-            command=self._do_generate
-        )
-        generate_btn.pack(side="right", padx=5)
+        ttk.Button(btn_frame, text="Select All", command=self._select_all).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Deselect All", command=self._deselect_all).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Generate Selected", command=self._do_generate).pack(side="right", padx=5)
 
         # === Section 2: Transfer QA Files ===
-        section2_frame = ttk.LabelFrame(self.root, text="2. Transfer QA Files", padding=10)
-        section2_frame.pack(fill="x", padx=15, pady=5)
+        section2_frame = ttk.LabelFrame(self.root, text="2. Transfer QA Files", padding=8)
+        section2_frame.pack(fill="x", padx=15, pady=3)
 
-        transfer_desc = ttk.Label(
-            section2_frame,
-            text="Transfer tester work from OLD and NEW folders to QAfolder\n(QAfolderOLD + QAfolderNEW → QAfolder)"
-        )
-        transfer_desc.pack(pady=5)
-
-        transfer_btn = ttk.Button(
-            section2_frame,
-            text="Transfer QA Files",
-            command=self._do_transfer,
-            width=BUTTON_WIDTH
-        )
-        transfer_btn.pack(pady=5, ipady=8)
+        ttk.Label(section2_frame, text="Transfer tester work from OLD and NEW folders to QAfolder").pack(pady=2)
+        ttk.Button(section2_frame, text="Transfer QA Files", command=self._do_transfer, width=BUTTON_WIDTH).pack(pady=3, ipady=5)
 
         # === Section 3: Build Master Files ===
-        section3_frame = ttk.LabelFrame(self.root, text="3. Build Master Files", padding=10)
-        section3_frame.pack(fill="x", padx=15, pady=5)
+        section3_frame = ttk.LabelFrame(self.root, text="3. Build Master Files", padding=8)
+        section3_frame.pack(fill="x", padx=15, pady=3)
 
-        build_desc = ttk.Label(
-            section3_frame,
-            text="Compile QA files into master files with progress tracking\n(QAfolder → Masterfolder_EN / Masterfolder_CN)"
-        )
-        build_desc.pack(pady=5)
-
-        build_btn = ttk.Button(
-            section3_frame,
-            text="Build Master Files",
-            command=self._do_build,
-            width=BUTTON_WIDTH
-        )
-        build_btn.pack(pady=5, ipady=8)
+        ttk.Label(section3_frame, text="Compile QA files into master files (QAfolder → Masterfolder_EN / Masterfolder_CN)").pack(pady=2)
+        ttk.Button(section3_frame, text="Build Master Files", command=self._do_build, width=BUTTON_WIDTH).pack(pady=3, ipady=5)
 
         # === Section 4: Coverage Analysis ===
-        section4_frame = ttk.LabelFrame(self.root, text="4. Coverage Analysis", padding=10)
-        section4_frame.pack(fill="x", padx=15, pady=5)
+        section4_frame = ttk.LabelFrame(self.root, text="4. Coverage Analysis", padding=8)
+        section4_frame.pack(fill="x", padx=15, pady=3)
 
-        coverage_desc = ttk.Label(
-            section4_frame,
-            text="Calculate coverage of language data by generated datasheets.\nRun after 'Generate Datasheets' to see coverage statistics."
-        )
-        coverage_desc.pack(pady=5)
-
-        coverage_btn = ttk.Button(
-            section4_frame,
-            text="Run Coverage Analysis",
-            command=self._do_coverage,
-            width=BUTTON_WIDTH
-        )
-        coverage_btn.pack(pady=5, ipady=8)
+        ttk.Label(section4_frame, text="Calculate coverage of language data by generated datasheets").pack(pady=2)
+        ttk.Button(section4_frame, text="Run Coverage Analysis", command=self._do_coverage, width=BUTTON_WIDTH).pack(pady=3, ipady=5)
 
         # === Section 5: System Localizer ===
-        section5_frame = ttk.LabelFrame(self.root, text="5. System Sheet Localizer", padding=10)
-        section5_frame.pack(fill="x", padx=15, pady=5)
+        section5_frame = ttk.LabelFrame(self.root, text="5. System Sheet Localizer", padding=8)
+        section5_frame.pack(fill="x", padx=15, pady=3)
 
-        localizer_desc = ttk.Label(
-            section5_frame,
-            text="Create localized versions of System datasheet for all languages.\nSelect System Excel file → Creates System_LQA_All/ with all language versions."
-        )
-        localizer_desc.pack(pady=5)
-
-        localizer_btn = ttk.Button(
-            section5_frame,
-            text="Localize System Sheet",
-            command=self._do_system_localizer,
-            width=BUTTON_WIDTH
-        )
-        localizer_btn.pack(pady=5, ipady=8)
+        ttk.Label(section5_frame, text="Create localized versions of System datasheet for all languages").pack(pady=2)
+        ttk.Button(section5_frame, text="Localize System Sheet", command=self._do_system_localizer, width=BUTTON_WIDTH).pack(pady=3, ipady=5)
 
         # === Section 6: Update Tracker Only ===
-        section6_frame = ttk.LabelFrame(self.root, text="6. Update Tracker Only", padding=10)
-        section6_frame.pack(fill="x", padx=15, pady=5)
+        section6_frame = ttk.LabelFrame(self.root, text="6. Update Tracker Only", padding=8)
+        section6_frame.pack(fill="x", padx=15, pady=3)
 
-        tracker_desc = ttk.Label(
-            section6_frame,
-            text="Retroactively add missing days to tracker from TrackerUpdateFolder.\n"
-                 "Place QA files in QAfolder/, Master files in Masterfolder_EN/ or Masterfolder_CN/"
-        )
-        tracker_desc.pack(pady=5)
+        ttk.Label(section6_frame, text="Retroactively add missing days to tracker from TrackerUpdateFolder").pack(pady=2)
 
-        # Date/Time picker row
         date_frame = ttk.Frame(section6_frame)
-        date_frame.pack(fill="x", pady=5)
+        date_frame.pack(fill="x", pady=3)
 
         ttk.Label(date_frame, text="Date:").pack(side="left", padx=5)
         self.tracker_date_var = tk.StringVar(value="")
-        date_entry = ttk.Entry(date_frame, textvariable=self.tracker_date_var, width=12)
-        date_entry.pack(side="left", padx=2)
+        ttk.Entry(date_frame, textvariable=self.tracker_date_var, width=12).pack(side="left", padx=2)
 
         ttk.Label(date_frame, text="Time:").pack(side="left", padx=5)
         self.tracker_time_var = tk.StringVar(value="12:00")
-        time_entry = ttk.Entry(date_frame, textvariable=self.tracker_time_var, width=6)
-        time_entry.pack(side="left", padx=2)
+        ttk.Entry(date_frame, textvariable=self.tracker_time_var, width=6).pack(side="left", padx=2)
 
-        most_recent_btn = ttk.Button(
-            date_frame,
-            text="Most Recent",
-            command=self._set_most_recent_datetime,
-            width=12
+        ttk.Button(date_frame, text="Most Recent", command=self._set_most_recent_datetime, width=12).pack(side="left", padx=5)
+        ttk.Button(date_frame, text="Set File Dates...", command=self._do_set_file_dates, width=15).pack(side="left", padx=5)
+
+        ttk.Button(section6_frame, text="Update Tracker", command=self._do_update_tracker, width=BUTTON_WIDTH).pack(pady=3, ipady=5)
+
+        # === Log Panel ===
+        log_frame = ttk.LabelFrame(self.root, text="Log", padding=5)
+        log_frame.pack(fill="both", expand=True, padx=15, pady=5)
+
+        self.log_area = scrolledtext.ScrolledText(
+            log_frame, font=('Consolas', 9), relief='solid', bd=1,
+            wrap=tk.WORD, state='disabled', height=10
         )
-        most_recent_btn.pack(side="left", padx=5)
+        self.log_area.pack(fill="both", expand=True)
 
-        set_date_btn = ttk.Button(
-            date_frame,
-            text="Set File Dates...",
-            command=self._do_set_file_dates,
-            width=15
-        )
-        set_date_btn.pack(side="left", padx=5)
+        # Tag colors (QuickTranslate pattern)
+        self.log_area.tag_config('info', foreground='#333')
+        self.log_area.tag_config('success', foreground='#008000')
+        self.log_area.tag_config('warning', foreground='#FF8C00')
+        self.log_area.tag_config('error', foreground='#FF0000')
+        self.log_area.tag_config('header', foreground='#4a90d9', font=('Consolas', 9, 'bold'))
 
-        tracker_btn = ttk.Button(
-            section6_frame,
-            text="Update Tracker",
-            command=self._do_update_tracker,
-            width=BUTTON_WIDTH
-        )
-        tracker_btn.pack(pady=5, ipady=8)
-
-        # === Status Bar ===
-        self.status_var = tk.StringVar(value="")
+        # === Status Bar + Progress ===
         status_frame = ttk.Frame(self.root)
-        status_frame.pack(fill="x", side="bottom", padx=15, pady=10)
+        status_frame.pack(fill="x", side="bottom", padx=15, pady=(0, 8))
 
-        status_label = ttk.Label(
-            status_frame,
-            textvariable=self.status_var,
-            font=("Arial", 10)
+        self.progress_value = tk.DoubleVar(value=0)
+        self.progress = ttk.Progressbar(
+            status_frame, variable=self.progress_value,
+            maximum=100, mode='determinate', length=400
         )
-        status_label.pack()
+        self.progress.pack(fill="x", pady=(0, 3))
 
-        # Progress bar
-        self.progress = ttk.Progressbar(status_frame, mode='indeterminate', length=400)
-        self.progress.pack(pady=5)
+        self.status_var = tk.StringVar(value="Ready")
+        ttk.Label(status_frame, textvariable=self.status_var, font=("Arial", 10)).pack()
+
+    # =========================================================================
+    # Log System (QuickTranslate pattern)
+    # =========================================================================
+
+    def _log(self, message: str, tag: str = 'info'):
+        """Add message to log area (thread-safe)."""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        if threading.current_thread() is threading.main_thread() and (
+            self._worker_thread is None or not self._worker_thread.is_alive()
+        ):
+            self._log_on_main(timestamp, message, tag)
+        else:
+            self._task_queue.put(('log', timestamp, message, tag))
+
+    def _log_on_main(self, timestamp: str, message: str, tag: str):
+        """Insert log message into widget (must run on main thread)."""
+        try:
+            self.log_area.config(state='normal')
+            self.log_area.insert(tk.END, f"[{timestamp}] {message}\n", tag)
+            line_count = int(self.log_area.index('end-1c').split('.')[0])
+            if line_count > _MAX_LOG_LINES:
+                excess = line_count - _MAX_LOG_LINES
+                self.log_area.delete('1.0', f'{excess}.0')
+            self.log_area.see(tk.END)
+            self.log_area.config(state='disabled')
+        except tk.TclError:
+            pass
+
+    def _clear_log(self):
+        """Clear the log area."""
+        self.log_area.config(state='normal')
+        self.log_area.delete(1.0, tk.END)
+        self.log_area.config(state='disabled')
+
+    def _poll_queue(self):
+        """Process queued messages from worker threads."""
+        try:
+            while True:
+                msg = self._task_queue.get_nowait()
+                kind = msg[0]
+                if kind == 'log':
+                    _, ts, text, tag = msg
+                    self._log_on_main(ts, text, tag)
+                elif kind == 'progress':
+                    _, value = msg
+                    self.progress_value.set(value)
+                elif kind == 'status':
+                    _, text = msg
+                    self.status_var.set(text)
+                elif kind == 'done':
+                    self._drain_queue()
+                    self._on_operation_done()
+                    return
+        except queue.Empty:
+            pass
+
+        if self._worker_thread is not None and self._worker_thread.is_alive():
+            self.root.after(50, self._poll_queue)
+        elif self._worker_thread is not None:
+            self._drain_queue()
+            self._on_operation_done()
+
+    def _drain_queue(self):
+        """Drain remaining messages from queue."""
+        try:
+            while True:
+                msg = self._task_queue.get_nowait()
+                kind = msg[0]
+                if kind == 'log':
+                    _, ts, text, tag = msg
+                    self._log_on_main(ts, text, tag)
+                elif kind == 'progress':
+                    _, value = msg
+                    self.progress_value.set(value)
+                elif kind == 'status':
+                    _, text = msg
+                    self.status_var.set(text)
+        except queue.Empty:
+            pass
+
+    def _on_operation_done(self):
+        """Clean up after operation completes."""
+        self._worker_thread = None
+        self.status_var.set("Ready")
+
+    # =========================================================================
+    # Helpers
+    # =========================================================================
 
     def _select_all(self):
-        """Select all category checkboxes."""
         for var in self.category_vars.values():
             var.set(True)
 
     def _deselect_all(self):
-        """Deselect all category checkboxes."""
         for var in self.category_vars.values():
             var.set(False)
 
     def _get_selected_categories(self):
-        """Get list of selected categories."""
         return [cat for cat, var in self.category_vars.items() if var.get()]
 
     def _update_path_status(self):
-        """Update the path validation indicator."""
         ok, missing = validate_paths()
         if ok:
             self.path_status_label.config(text="PATHS OK", foreground="green")
@@ -314,17 +342,27 @@ class QACompilerSuiteGUI:
             self.path_status_label.config(text="PATHS NOT FOUND", foreground="red")
 
     def _set_status(self, text: str):
-        """Update status text."""
         self.status_var.set(text)
         self.root.update()
 
-    def _start_progress(self):
-        """Start indeterminate progress bar."""
-        self.progress.start(10)
+    def _make_callbacks(self):
+        """Create log_callback and progress_callback for worker threads."""
+        def log_cb(message, tag='info'):
+            self._task_queue.put(('log', datetime.now().strftime("%H:%M:%S"), message, tag))
 
-    def _stop_progress(self):
-        """Stop progress bar."""
-        self.progress.stop()
+        def progress_cb(pct):
+            self._task_queue.put(('progress', pct))
+
+        def status_cb(text):
+            self._task_queue.put(('status', text))
+
+        return log_cb, progress_cb, status_cb
+
+    def _start_operation(self, status_text="Working..."):
+        """Common setup for starting a background operation."""
+        self._clear_log()
+        self.progress_value.set(0)
+        self.status_var.set(status_text)
 
     # =========================================================================
     # Action Handlers
@@ -348,258 +386,151 @@ class QACompilerSuiteGUI:
             )
             return
 
-        self._set_status(f"Generating datasheets for: {', '.join(selected)}...")
-        self._start_progress()
+        self._start_operation(f"Generating datasheets for: {', '.join(selected)}...")
+        log_cb, progress_cb, status_cb = self._make_callbacks()
 
         def run():
             try:
-                # Import generators here to avoid circular imports
                 from generators import generate_datasheets
+                log_cb(f"=== Generate Datasheets ===", 'header')
+                log_cb(f"Categories: {', '.join(selected)}")
                 results = generate_datasheets(selected)
-
-                self.root.after(0, lambda: self._on_generate_complete(results))
-            except ImportError:
-                traceback.print_exc()  # Always print full traceback to terminal
-                self.root.after(0, lambda: self._on_generate_error(
-                    "Generator modules not yet implemented.\nPlease run from original scripts."
-                ))
+                self.last_korean_strings = results.get("korean_strings", {})
+                log_cb(f"Generation complete: {', '.join(results.get('categories_processed', []))}", 'success')
+                progress_cb(100)
             except Exception as e:
-                traceback.print_exc()  # Always print full traceback to terminal
-                err_msg = str(e)
-                self.root.after(0, lambda msg=err_msg: self._on_generate_error(msg))
+                traceback.print_exc()
+                log_cb(f"Generation failed: {e}", 'error')
+            self._task_queue.put(('done',))
 
-        thread = threading.Thread(target=run, daemon=True)
-        thread.start()
-
-    def _on_generate_complete(self, results):
-        """Handle generate completion."""
-        self._stop_progress()
-        self._set_status("Generation complete!")
-        # Store korean_strings for coverage analysis
-        self.last_korean_strings = results.get("korean_strings", {})
-        messagebox.showinfo(
-            "Success",
-            f"Datasheets generated!\n\nCategories: {', '.join(results.get('categories_processed', []))}\nCheck console for details."
-        )
-
-    def _on_generate_error(self, error_msg):
-        """Handle generate error."""
-        self._stop_progress()
-        self._set_status("Generation failed - check console")
-        messagebox.showerror("Error", f"Generation failed:\n{error_msg}")
+        self._worker_thread = threading.Thread(target=run, daemon=True)
+        self._worker_thread.start()
+        self.root.after(50, self._poll_queue)
 
     def _do_transfer(self):
-        """
-        Transfer QA files from OLD/NEW to QAfolder.
-
-        SEAMLESS FLOW (one button does everything):
-        1. Auto-populate QAfolderNEW with fresh datasheets
-        2. Transfer data from QAfolderOLD → merge with QAfolderNEW → output to QAfolder
-
-        STRICT MODE: If any datasheet is missing or stale, stops immediately.
-        """
-        self._set_status("Checking datasheets & populating QAfolderNEW...")
-        self._start_progress()
+        """Transfer QA files from OLD/NEW to QAfolder."""
+        self._start_operation("Transferring QA files...")
+        log_cb, progress_cb, status_cb = self._make_callbacks()
 
         def run():
             try:
-                # STEP 1: Auto-populate QAfolderNEW (STRICT MODE)
-                from core.populate_new import populate_qa_folder_new
+                log_cb("=== Transfer QA Files ===", 'header')
 
+                # STEP 1: Auto-populate QAfolderNEW
+                log_cb("Populating QAfolderNEW with fresh datasheets...")
+                from core.populate_new import populate_qa_folder_new
                 populate_success, populate_msg = populate_qa_folder_new()
 
                 if not populate_success:
-                    # Datasheets missing or stale - stop immediately
-                    self.root.after(0, lambda msg=populate_msg: self._on_populate_failed(msg))
+                    log_cb(f"Populate failed: {populate_msg}", 'error')
+                    log_cb("Run 'Generate Datasheets' first, then try again.", 'warning')
+                    self._task_queue.put(('done',))
                     return
 
-                # STEP 2: Transfer (merge OLD data with NEW sheets)
-                self._set_status_safe("Transferring QA data...")
+                log_cb("QAfolderNEW populated", 'success')
+                progress_cb(30)
 
+                # STEP 2: Transfer
+                log_cb("Transferring QA data (OLD + NEW → QAfolder)...")
                 from core.transfer import transfer_qa_files
                 success = transfer_qa_files()
 
-                self.root.after(0, lambda: self._on_transfer_complete(success))
-
-            except ImportError as e:
-                traceback.print_exc()  # Always print full traceback to terminal
-                # Fallback to original compile_qa
-                try:
-                    sys.path.insert(0, str(Path(__file__).parent.parent.parent / "QAExcelCompiler"))
-                    from compile_qa import transfer_qa_files
-                    success = transfer_qa_files()
-                    self.root.after(0, lambda: self._on_transfer_complete(success))
-                except Exception as e2:
-                    traceback.print_exc()  # Always print full traceback to terminal
-                    err_msg = str(e2)
-                    self.root.after(0, lambda msg=err_msg: self._on_transfer_error(msg))
+                if success:
+                    log_cb("Transfer complete", 'success')
+                else:
+                    log_cb("Transfer failed", 'error')
+                progress_cb(100)
             except Exception as e:
-                traceback.print_exc()  # Always print full traceback to terminal
-                err_msg = str(e)
-                self.root.after(0, lambda msg=err_msg: self._on_transfer_error(msg))
+                traceback.print_exc()
+                log_cb(f"Transfer failed: {e}", 'error')
+            self._task_queue.put(('done',))
 
-        thread = threading.Thread(target=run, daemon=True)
-        thread.start()
-
-    def _set_status_safe(self, text):
-        """Thread-safe status update."""
-        self.root.after(0, lambda: self._set_status(text))
-
-    def _on_populate_failed(self, message):
-        """Handle populate failure - datasheets missing or stale."""
-        self._stop_progress()
-        self._set_status("Transfer stopped - datasheets need refresh")
-        messagebox.showwarning(
-            "Datasheets Not Ready",
-            f"{message}\n\n"
-            "Please run 'Generate Datasheets' first (select ALL categories),\n"
-            "then try Transfer again."
-        )
-
-    def _on_transfer_complete(self, success):
-        """Handle transfer completion."""
-        self._stop_progress()
-        if success:
-            self._set_status("Transfer complete!")
-            messagebox.showinfo("Success", "Transfer completed!\nCheck console for details.")
-        else:
-            self._set_status("Transfer failed - check console")
-            messagebox.showerror("Error", "Transfer failed.\nCheck console for details.")
-
-    def _on_transfer_error(self, error_msg):
-        """Handle transfer error."""
-        self._stop_progress()
-        self._set_status("Transfer failed - check console")
-        messagebox.showerror("Error", f"Transfer failed:\n{error_msg}")
+        self._worker_thread = threading.Thread(target=run, daemon=True)
+        self._worker_thread.start()
+        self.root.after(50, self._poll_queue)
 
     def _do_build(self):
         """Build master files from QAfolder."""
-        self._set_status("Building master files...")
-        self._start_progress()
+        self._start_operation("Building master files...")
+        log_cb, progress_cb, status_cb = self._make_callbacks()
 
         def run():
             try:
-                # Import main build function
                 from core.compiler import run_compiler
-                run_compiler()
-
-                self.root.after(0, self._on_build_complete)
-            except ImportError:
-                traceback.print_exc()  # Always print full traceback to terminal
-                # Fallback to original compile_qa
-                try:
-                    sys.path.insert(0, str(Path(__file__).parent.parent.parent / "QAExcelCompiler"))
-                    from compile_qa import main as compile_main
-                    compile_main()
-                    self.root.after(0, self._on_build_complete)
-                except Exception as e:
-                    traceback.print_exc()  # Always print full traceback to terminal
-                    err_msg = str(e)
-                    self.root.after(0, lambda msg=err_msg: self._on_build_error(msg))
+                run_compiler(log_callback=log_cb, progress_callback=progress_cb)
             except Exception as e:
-                traceback.print_exc()  # Always print full traceback to terminal
-                err_msg = str(e)
-                self.root.after(0, lambda msg=err_msg: self._on_build_error(msg))
+                traceback.print_exc()
+                log_cb(f"BUILD FAILED: {e}", 'error')
+            self._task_queue.put(('done',))
 
-        thread = threading.Thread(target=run, daemon=True)
-        thread.start()
-
-    def _on_build_complete(self):
-        """Handle build completion."""
-        self._stop_progress()
-        self._set_status("Build complete!")
-        messagebox.showinfo("Success", "Build completed!\nCheck console for details.")
-
-    def _on_build_error(self, error_msg):
-        """Handle build error."""
-        self._stop_progress()
-        self._set_status("Build failed - check console")
-        messagebox.showerror("Error", f"Build failed:\n{error_msg}")
+        self._worker_thread = threading.Thread(target=run, daemon=True)
+        self._worker_thread.start()
+        self.root.after(50, self._poll_queue)
 
     def _do_coverage(self):
         """Run coverage analysis on generated datasheets."""
-        self._set_status("Running coverage analysis...")
-        self._start_progress()
+        self._start_operation("Running coverage analysis...")
+        log_cb, progress_cb, status_cb = self._make_callbacks()
 
         def run():
             try:
                 from config import LANGUAGE_FOLDER, VOICE_RECORDING_SHEET_FOLDER, DATASHEET_OUTPUT
                 from tracker.coverage import run_coverage_analysis, load_korean_strings_from_datasheets
 
-                # ALWAYS load from existing Excel files in GeneratedDatasheets folder
+                log_cb("=== Coverage Analysis ===", 'header')
                 category_strings = load_korean_strings_from_datasheets(DATASHEET_OUTPUT)
 
                 if not category_strings:
-                    self.root.after(0, lambda: self._on_coverage_error(
-                        f"No datasheets found in:\n{DATASHEET_OUTPUT}\n\nPlace generated Excel files there first."
-                    ))
+                    log_cb(f"No datasheets found in: {DATASHEET_OUTPUT}", 'error')
+                    log_cb("Generate datasheets first.", 'warning')
+                    self._task_queue.put(('done',))
                     return
+
+                log_cb(f"Loaded {len(category_strings)} categories from datasheets")
+                progress_cb(30)
 
                 report = run_coverage_analysis(
                     LANGUAGE_FOLDER,
                     VOICE_RECORDING_SHEET_FOLDER,
                     category_strings,
-                    DATASHEET_OUTPUT,  # Output folder for word count
+                    DATASHEET_OUTPUT,
                 )
 
-                self.root.after(0, lambda: self._on_coverage_complete(report))
-            except ImportError as e:
-                traceback.print_exc()  # Always print full traceback to terminal
-                err_msg = f"Coverage module not available: {e}"
-                self.root.after(0, lambda msg=err_msg: self._on_coverage_error(msg))
+                if report.total_master_strings > 0:
+                    pct = report.total_covered_strings / report.total_master_strings * 100
+                    log_cb(f"Coverage: {report.total_covered_strings:,} / {report.total_master_strings:,} ({pct:.1f}%)", 'success')
+                else:
+                    log_cb("No master language data found", 'warning')
+                progress_cb(100)
             except Exception as e:
-                traceback.print_exc()  # Always print full traceback to terminal
-                err_msg = str(e)
-                self.root.after(0, lambda msg=err_msg: self._on_coverage_error(msg))
+                traceback.print_exc()
+                log_cb(f"Coverage analysis failed: {e}", 'error')
+            self._task_queue.put(('done',))
 
-        thread = threading.Thread(target=run, daemon=True)
-        thread.start()
-
-    def _on_coverage_complete(self, report):
-        """Handle coverage analysis completion."""
-        self._stop_progress()
-        self._set_status("Coverage analysis complete!")
-
-        # Format summary for dialog
-        if report.total_master_strings > 0:
-            pct = report.total_covered_strings / report.total_master_strings * 100
-            summary = (
-                f"Coverage: {report.total_covered_strings:,} / {report.total_master_strings:,} strings ({pct:.1f}%)\n\n"
-                f"Categories analyzed: {len(report.categories)}\n\n"
-                "See console for detailed report."
-            )
-        else:
-            summary = "No master language data found.\nCheck LANGUAGE_FOLDER in config.py."
-
-        messagebox.showinfo("Coverage Analysis", summary)
-
-    def _on_coverage_error(self, error_msg):
-        """Handle coverage analysis error."""
-        self._stop_progress()
-        self._set_status("Coverage analysis failed - check console")
-        messagebox.showerror("Error", f"Coverage analysis failed:\n{error_msg}")
+        self._worker_thread = threading.Thread(target=run, daemon=True)
+        self._worker_thread.start()
+        self.root.after(50, self._poll_queue)
 
     def _do_system_localizer(self):
-        """Run System Sheet Localizer - create localized versions for all languages."""
+        """Run System Sheet Localizer."""
         from tkinter import filedialog
 
-        # Ask user to select System Excel file
         input_file = filedialog.askopenfilename(
             title="Select System Excel File",
             filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")]
         )
-
         if not input_file:
-            return  # User cancelled
+            return
 
-        self._set_status("Localizing System sheet...")
-        self._start_progress()
+        self._start_operation("Localizing System sheet...")
+        log_cb, progress_cb, status_cb = self._make_callbacks()
 
         def run():
             try:
                 from config import LANGUAGE_FOLDER, DATASHEET_OUTPUT
                 from system_localizer import process_system_sheet
 
+                log_cb("=== System Sheet Localizer ===", 'header')
                 input_path = Path(input_file)
                 output_folder = DATASHEET_OUTPUT / "System_LQA_All"
 
@@ -609,47 +540,24 @@ class QACompilerSuiteGUI:
                     output_folder=output_folder
                 )
 
-                self.root.after(0, lambda: self._on_localizer_complete(result, output_folder))
+                if result.get("success", False):
+                    files_created = result.get("files_created", 0)
+                    log_cb(f"Localization complete: {files_created} files created", 'success')
+                else:
+                    errors = result.get("errors", ["Unknown error"])
+                    for err in errors[:5]:
+                        log_cb(f"Error: {err}", 'error')
+                progress_cb(100)
             except Exception as e:
-                traceback.print_exc()  # Always print full traceback to terminal
-                err_msg = str(e)
-                self.root.after(0, lambda msg=err_msg: self._on_localizer_error(msg))
+                traceback.print_exc()
+                log_cb(f"Localization failed: {e}", 'error')
+            self._task_queue.put(('done',))
 
-        thread = threading.Thread(target=run, daemon=True)
-        thread.start()
-
-    def _on_localizer_complete(self, result, output_folder):
-        """Handle localizer completion."""
-        self._stop_progress()
-
-        if result.get("success", False):
-            files_created = result.get("files_created", 0)
-            languages = result.get("languages", [])
-            self._set_status(f"Localization complete! {files_created} files created.")
-            messagebox.showinfo(
-                "Success",
-                f"System Localization Complete!\n\n"
-                f"Files created: {files_created}\n"
-                f"Languages: {', '.join(languages[:10])}{'...' if len(languages) > 10 else ''}\n\n"
-                f"Output: {output_folder}"
-            )
-        else:
-            errors = result.get("errors", ["Unknown error"])
-            self._set_status("Localization completed with errors")
-            messagebox.showwarning(
-                "Completed with Errors",
-                f"Localization completed but with errors:\n\n" + "\n".join(errors[:5])
-            )
-
-    def _on_localizer_error(self, error_msg):
-        """Handle localizer error."""
-        self._stop_progress()
-        self._set_status("Localization failed - check console")
-        messagebox.showerror("Error", f"System localization failed:\n{error_msg}")
+        self._worker_thread = threading.Thread(target=run, daemon=True)
+        self._worker_thread.start()
+        self.root.after(50, self._poll_queue)
 
     def _set_most_recent_datetime(self):
-        """Set date/time fields to current system datetime."""
-        from datetime import datetime
         now = datetime.now()
         self.tracker_date_var.set(now.strftime("%Y-%m-%d"))
         self.tracker_time_var.set(now.strftime("%H:%M"))
@@ -666,43 +574,34 @@ class QACompilerSuiteGUI:
             messagebox.showwarning("No Date", "Please enter a date (YYYY-MM-DD)")
             return
 
-        # Default time if not provided
         if not time_str:
             time_str = "12:00"
 
-        # Validate datetime format
         try:
-            from datetime import datetime
             datetime_str = f"{date_str} {time_str}"
             target_datetime = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
             target_timestamp = target_datetime.timestamp()
         except ValueError:
             messagebox.showerror(
                 "Invalid Date/Time",
-                f"Invalid format: {date_str} {time_str}\n"
-                "Use YYYY-MM-DD HH:MM (e.g., 2025-01-18 14:30)"
+                f"Invalid format: {date_str} {time_str}\nUse YYYY-MM-DD HH:MM"
             )
             return
 
-        # Ensure TrackerUpdateFolder exists
         TRACKER_UPDATE_FOLDER.mkdir(parents=True, exist_ok=True)
         TRACKER_UPDATE_QA.mkdir(parents=True, exist_ok=True)
         TRACKER_UPDATE_MASTER_EN.mkdir(parents=True, exist_ok=True)
         TRACKER_UPDATE_MASTER_CN.mkdir(parents=True, exist_ok=True)
 
-        # Ask user to select folder
         selected_folder = filedialog.askdirectory(
             title="Select Folder to Set File Dates",
             initialdir=str(TRACKER_UPDATE_FOLDER),
             mustexist=True
         )
-
         if not selected_folder:
-            return  # User cancelled
+            return
 
         selected_path = Path(selected_folder)
-
-        # Find all xlsx files (recursively)
         xlsx_files = list(selected_path.rglob("*.xlsx"))
         xlsx_files = [f for f in xlsx_files if not f.name.startswith("~")]
 
@@ -710,82 +609,58 @@ class QACompilerSuiteGUI:
             messagebox.showwarning("No Files", f"No xlsx files found in:\n{selected_path}")
             return
 
-        # Set mtime on all files AND their parent folders
         count = 0
         folders_updated = set()
         for xlsx_path in xlsx_files:
             try:
-                # Set file mtime
                 os.utime(xlsx_path, (target_timestamp, target_timestamp))
                 count += 1
-
-                # Set parent folder mtime (track to avoid duplicates)
                 parent_folder = xlsx_path.parent
                 if parent_folder not in folders_updated:
                     os.utime(parent_folder, (target_timestamp, target_timestamp))
                     folders_updated.add(parent_folder)
             except Exception as e:
-                print(f"  WARN: Could not set date on {xlsx_path.name}: {e}")
+                self._log(f"Could not set date on {xlsx_path.name}: {e}", 'warning')
 
-        # Also set mtime on the selected folder itself
         try:
             os.utime(selected_path, (target_timestamp, target_timestamp))
-        except Exception as e:
-            print(f"  WARN: Could not set date on root folder: {e}")
+        except Exception:
+            pass
 
-        self._set_status(f"Set date to {date_str} on {count} files + {len(folders_updated)+1} folders")
-        messagebox.showinfo("Done", f"Set LastWriteTime to {date_str} on:\n• {count} file(s)\n• {len(folders_updated)+1} folder(s)\n\nFolder: {selected_path.name}")
+        self._log(f"Set date to {date_str} on {count} files + {len(folders_updated)+1} folders", 'success')
 
     def _do_update_tracker(self):
         """Update tracker from QAFolderForTracker without rebuilding masters."""
-        self._set_status("Updating tracker...")
-        self._start_progress()
+        self._start_operation("Updating tracker...")
+        log_cb, progress_cb, status_cb = self._make_callbacks()
 
         def run():
             try:
                 from core.tracker_update import update_tracker_only
+
+                log_cb("=== Update Tracker ===", 'header')
                 success, message, entries = update_tracker_only()
 
-                self.root.after(0, lambda: self._on_update_tracker_complete(success, message, entries))
+                if success:
+                    if entries:
+                        dates = sorted(set(e["date"] for e in entries))
+                        users = sorted(set(e["user"] for e in entries))
+                        log_cb(f"Tracker updated: {len(entries)} entries", 'success')
+                        log_cb(f"  Dates: {', '.join(dates)}")
+                        log_cb(f"  Users: {', '.join(users[:10])}")
+                    else:
+                        log_cb(message, 'info')
+                else:
+                    log_cb(f"Tracker update failed: {message}", 'error')
+                progress_cb(100)
             except Exception as e:
-                traceback.print_exc()  # Always print full traceback to terminal
-                err_msg = str(e)
-                self.root.after(0, lambda msg=err_msg: self._on_update_tracker_error(msg))
+                traceback.print_exc()
+                log_cb(f"Tracker update failed: {e}", 'error')
+            self._task_queue.put(('done',))
 
-        thread = threading.Thread(target=run, daemon=True)
-        thread.start()
-
-    def _on_update_tracker_complete(self, success, message, entries):
-        """Handle tracker update completion."""
-        self._stop_progress()
-
-        if success:
-            self._set_status("Tracker update complete!")
-            # Build summary
-            if entries:
-                dates = sorted(set(e["date"] for e in entries))
-                users = sorted(set(e["user"] for e in entries))
-                total_done = sum(e["done"] for e in entries)
-                summary = (
-                    f"Tracker Updated!\n\n"
-                    f"Entries: {len(entries)}\n"
-                    f"Dates: {', '.join(dates)}\n"
-                    f"Users: {', '.join(users[:5])}{'...' if len(users) > 5 else ''}\n"
-                    f"Total Done: {total_done}\n\n"
-                    "Check console for details."
-                )
-            else:
-                summary = message
-            messagebox.showinfo("Success", summary)
-        else:
-            self._set_status("Tracker update failed - check console")
-            messagebox.showerror("Error", f"Tracker update failed:\n{message}")
-
-    def _on_update_tracker_error(self, error_msg):
-        """Handle tracker update error."""
-        self._stop_progress()
-        self._set_status("Tracker update failed - check console")
-        messagebox.showerror("Error", f"Tracker update failed:\n{error_msg}")
+        self._worker_thread = threading.Thread(target=run, daemon=True)
+        self._worker_thread.start()
+        self.root.after(50, self._poll_queue)
 
 
 # =============================================================================
