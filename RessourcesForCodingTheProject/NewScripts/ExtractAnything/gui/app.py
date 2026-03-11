@@ -131,6 +131,7 @@ class ExtractAnythingApp:
         from .string_eraser_tab import StringEraserTab
         from .string_add_tab import StringAddTab
         from .file_eraser_tab import FileEraserTab
+        from .xml_tools_tab import XmlToolsTab
 
         self.tabs = [
             ExtractTab(self.notebook, self),
@@ -141,6 +142,7 @@ class ExtractAnythingApp:
             StringEraserTab(self.notebook, self),
             StringAddTab(self.notebook, self),
             FileEraserTab(self.notebook, self),
+            XmlToolsTab(self.notebook, self),
         ]
 
     # ------------------------------------------------------------------
