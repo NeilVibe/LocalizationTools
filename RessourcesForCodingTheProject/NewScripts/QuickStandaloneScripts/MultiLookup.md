@@ -1,8 +1,8 @@
-# MultiLookup v1.0
+# MultiLookup v1.1
 
-**Excel-to-Excel lookup transfer with multi-file support and normalized key matching.**
+**Excel-to-Excel lookup transfer with multi-file support, normalized key matching, and composite keys.**
 
-Single-file QSS tool: `multi_lookup.py` (929 lines). No dependencies on LocaNext or other QSS tools.
+Single-file QSS tool: `multi_lookup.py`. No dependencies on LocaNext or other QSS tools.
 
 ---
 
@@ -41,7 +41,7 @@ Can be bundled with PyInstaller for standalone `.exe` distribution.
 
 ---
 
-## Features (v1.0)
+## Features
 
 ### Multi-File Source & Target
 
@@ -52,9 +52,23 @@ Add 1+ Excel files on each side. All source files compile into ONE unified dicti
 Each file gets its own:
 - **Sheet** selection (auto-detected on file add)
 - **KEY column** (combobox populated from row 1 headers)
+- **KEY Col 2** (optional — for composite key matching on 2 columns)
 - **VALUE column** (source) or **WRITE column** (target)
 
-Click a file in the listbox → config panel updates. Same file can be added twice for different sheets.
+Click a file in the listbox → config panel updates. Switch between files freely — **selections persist**.
+
+### Composite Key Matching (v1.1)
+
+Match on **two columns** instead of just one. Set KEY Col 2 on both source and target to enable.
+
+```
+Single key:     KEY = normalize(StringID)
+Composite key:  KEY = normalize(StringID) + "|||" + normalize(StrOrigin)
+```
+
+Example use case: When StringID alone has duplicates but StringID + StrOrigin is unique.
+
+KEY Col 2 is optional per file. If not set, behaves as single-key mode. Use the [Clear] button to reset to single-key mode.
 
 ### Normalized Key Matching
 
@@ -92,10 +106,10 @@ If multiple source rows have the same normalized key, the first one wins. Duplic
 
 `multi_lookup_settings.json` saved next to the script. Remembers:
 - All source/target file paths
-- Sheet + column selections per file
+- Sheet + column selections per file (including KEY Col 2)
 - Save mode
 
-Files that no longer exist are silently skipped on reload.
+Files that no longer exist are silently skipped on reload. Switching between files preserves all config — no data loss.
 
 ### Error Handling
 
@@ -112,44 +126,35 @@ Files that no longer exist are silently skipped on reload.
 ## GUI Layout
 
 ```
-┌─ MultiLookup v1.0 ──────────────────────────────────────────┐
-│  Excel-to-Excel lookup transfer with normalized key matching │
-│                                                              │
-│  ┌─ SOURCE Files (lookup dictionary) ──────────────────────┐ │
-│  │ [Add Files...] [Remove] [Clear All]     3 files, 3 conf │ │
-│  │ ┌──────────────────────────────────────────────────────┐ │ │
-│  │ │ data_ENG.xlsx [Sheet1]                               │ │ │
-│  │ │ data_FRE.xlsx [Sheet1]                               │ │ │
-│  │ │ corrections.xlsx [Batch2]                            │ │ │
-│  │ └──────────────────────────────────────────────────────┘ │ │
-│  │ Sheet: [Sheet1 ▼]  KEY: [0: StringID ▼]  VALUE: [2: Str]│ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                              │
-│  ┌─ TARGET Files (write into) ─────────────────────────────┐ │
-│  │ [Add Files...] [Remove] [Clear All]     1 file, 1 conf  │ │
-│  │ ┌──────────────────────────────────────────────────────┐ │ │
-│  │ │ languagedata_KOR.xlsx [Main]                         │ │ │
-│  │ └──────────────────────────────────────────────────────┘ │ │
-│  │ Sheet: [Main ▼]  KEY: [0: StringID ▼]  WRITE: [3: Corr] │ │
-│  │ Save Mode: [Save as _lookup copy ▼]                      │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                              │
-│  [===== TRANSFER =====]  [Clear Log]                         │
-│                                                              │
-│  ┌─ Log ───────────────────────────────────────────────────┐ │
-│  │ ════════════════════════════════════════════════════════ │ │
-│  │   MULTILOOKUP TRANSFER v1.0                             │ │
-│  │ ════════════════════════════════════════════════════════ │ │
-│  │ BUILDING SOURCE DICTIONARY...                           │ │
-│  │   Reading: data_ENG.xlsx [Sheet1]                       │ │
-│  │     4200 rows scanned, 4180 keys added                  │ │
-│  │   Dictionary: 12,450 unique keys                        │ │
-│  │ TRANSFERRING TO TARGETS (Save as _lookup copy)...       │ │
-│  │   Processing: languagedata_KOR.xlsx [Main]              │ │
-│  │     3,891/4,200 rows matched                            │ │
-│  │     Saved: languagedata_KOR_lookup.xlsx                 │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
+┌─ MultiLookup v1.1 ──────────────────────────────────────────────────────────────┐
+│  Excel-to-Excel lookup transfer with normalized key matching                     │
+│                                                                                  │
+│  ┌─ Left Pane (60%) ─────────────────────────┬─ Right Pane (40%) ──────────────┐ │
+│  │                                           │                                 │ │
+│  │ ┌─ SOURCE Files (lookup dictionary) ────┐ │ ┌─ Log ───────────────────────┐ │ │
+│  │ │ [Add Files...] [Remove] [Clear All]   │ │ │ ═══════════════════════════ │ │ │
+│  │ │ ┌────────────────────────────────────┐│ │ │  MULTILOOKUP TRANSFER v1.1  │ │ │
+│  │ │ │ data_ENG.xlsx [Sheet1]             ││ │ │ ═══════════════════════════ │ │ │
+│  │ │ │ data_FRE.xlsx [Sheet1]             ││ │ │ BUILDING SOURCE DICTIONARY  │ │ │
+│  │ │ │ corrections.xlsx [Batch2]          ││ │ │   Reading: data_ENG.xlsx    │ │ │
+│  │ │ └────────────────────────────────────┘│ │ │     4200 rows, 4180 keys   │ │ │
+│  │ │ Sheet [____] KEY Col [____] VAL [____]│ │ │   Dictionary: 12,450 keys  │ │ │
+│  │ │              KEY Col 2 [____] [Clear] │ │ │ TRANSFERRING TO TARGETS...  │ │ │
+│  │ └──────────────────────────────────────┘ │ │   3,891/4,200 rows matched  │ │ │
+│  │                                           │ │   Saved: data_KOR_lookup    │ │ │
+│  │ ┌─ TARGET Files (write into) ───────────┐ │ │                             │ │ │
+│  │ │ [Add Files...] [Remove] [Clear All]   │ │ │                             │ │ │
+│  │ │ ┌────────────────────────────────────┐│ │ │                             │ │ │
+│  │ │ │ languagedata_KOR.xlsx [Main]       ││ │ │                             │ │ │
+│  │ │ └────────────────────────────────────┘│ │ │                             │ │ │
+│  │ │ Sheet [____] KEY Col [____] WRT [____]│ │ │                             │ │ │
+│  │ │              KEY Col 2 [____] [Clear] │ │ │                             │ │ │
+│  │ │ Save Mode: [Save as _lookup copy ▼]   │ │ │                             │ │ │
+│  │ └──────────────────────────────────────┘ │ │                             │ │ │
+│  │                                           │ │ [Clear Log]                 │ │ │
+│  │      [===== TRANSFER =====]               │ └─────────────────────────────┘ │ │
+│  └───────────────────────────────────────────┴─────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -157,22 +162,55 @@ Files that no longer exist are silently skipped on reload.
 ## Architecture
 
 ```
-multi_lookup.py (single file, ~930 lines)
-├── normalize_key()          # Key normalization for matching
-├── clean_value()            # Value cleaning (no lowercase)
-├── read_sheets()            # openpyxl introspection
-├── read_headers()           # Row 1 header reading
-├── build_source_dict()      # All sources → one {key: value} dict
-├── transfer_to_targets()    # Row-by-row lookup + write
-├── FileEntry                # Per-file config data model
-├── MultiLookupApp           # tkinter GUI
-│   ├── _build_file_section()   # Reused for SOURCE and TARGET
-│   ├── _on_listbox_select()    # Config panel sync
-│   ├── _on_sheet_select()      # Header reload on sheet change
-│   ├── _run_transfer()         # Validation + execute
-│   └── _persist_settings()     # JSON save/restore
+multi_lookup.py (single file)
+├── normalize_key()             # Key normalization for matching
+├── clean_value()               # Value cleaning (no lowercase)
+├── _make_composite_key()       # Single or composite key from row
+├── read_sheets()               # openpyxl introspection
+├── read_headers()              # Row 1 header reading
+├── build_source_dict()         # All sources → one {key: value} dict
+├── transfer_to_targets()       # Row-by-row lookup + write
+├── FileEntry                   # Per-file config (incl. col1b for KEY Col 2)
+├── MultiLookupApp              # tkinter GUI
+│   ├── _build_ui()                # PanedWindow: left controls, right log
+│   ├── _build_file_section()      # Reused for SOURCE and TARGET
+│   ├── _save_current_config()     # Save combobox state before file switch
+│   ├── _on_listbox_select()       # Config panel sync (with persistence fix)
+│   ├── _on_sheet_select()         # Header reload + targeted listbox update
+│   ├── _on_col_select()           # KEY, VALUE/WRITE, and KEY Col 2
+│   ├── _run_transfer()            # Validation + execute
+│   └── _persist_settings()        # JSON save/restore (incl. col1b)
 └── main()
 ```
+
+---
+
+## Changelog
+
+### v1.1 (2026-03-11)
+
+**Layout:**
+- PanedWindow horizontal split — controls left (60%), log right (40%)
+- Window: `850x780` → `1100x750`
+- Listbox height: 4 → 10 rows, fill=both/expand=True for resizable sections
+
+**Selection Persistence Fix:**
+- `_save_current_config()` — saves combobox state back to FileEntry before switching files
+- `_ignore_events` flag prevents event cascading during programmatic `.set()` calls
+- `_current_src_idx` / `_current_tgt_idx` tracking for save-before-switch
+- `_on_sheet_select()` — targeted single-item listbox update instead of full rebuild
+
+**Composite Keys:**
+- Optional KEY Col 2 combobox with [Clear] button per file section
+- `FileEntry.col1b` / `col1b_idx` slots for second key column
+- `_make_composite_key()` — builds `normalize(col1) + "|||" + normalize(col2)`
+- Works in both `build_source_dict()` and `transfer_to_targets()`
+- Backward compatible — missing col1b defaults to single-key mode
+- Persisted in settings JSON
+
+### v1.0 (2026-03-11)
+
+Initial release.
 
 ---
 
@@ -193,7 +231,12 @@ Target: Translation files. Match on old term column, overwrite with new term.
 Source: English master with `StringID` + `ENG`.
 Target: Korean working file. Match on `StringID`, write ENG text into a reference column.
 
-### 4. Data Migration
+### 4. Composite Key Transfer
+
+Source: Corrections Excel with `StringID` + `StrOrigin` + `Correction`.
+Target: Master file. Set KEY Col 2 to `StrOrigin` on both sides — matches only when both StringID AND StrOrigin match. Prevents wrong-row transfers when StringID has duplicates.
+
+### 5. Data Migration
 
 Source: Old system export.
 Target: New system import template. Map by shared ID column.
@@ -201,32 +244,6 @@ Target: New system import template. Map by shared ID column.
 ---
 
 ## Future Roadmap
-
-### v1.1 — Multi-Column Key (Composite Key)
-
-**The big evolution.** Instead of matching on a single column, match on 2+ columns concatenated.
-
-```
-Current (v1.0):  KEY = Column A
-Future (v1.1):   KEY = Column A + Column B  (or A + B + C)
-
-Example:
-  Source: StringID + StrOrigin → Correction
-  Target: StringID + StrOrigin → (write Correction here)
-
-  Normalized key = normalize(A) + "║" + normalize(B)
-```
-
-**GUI change:** Replace single KEY combobox with a multi-select or "Add Key Column" button:
-
-```
-KEY Columns: [0: StringID ▼] [+]        ← click [+] to add more
-             [1: StrOrigin ▼] [×]       ← click [×] to remove
-```
-
-**Code change:** Minimal — `normalize_key()` becomes `normalize_keys(values: list)` that joins with a separator. `FileEntry` stores `key_col_indices: List[int]` instead of single `col1_idx`. Everything else (dict lookup, dedup, transfer) works identically.
-
-This is the killer feature that makes MultiLookup more powerful than any VLOOKUP — composite keys are painful in Excel but trivial here.
 
 ### v1.2 — Multi-Value Write
 
@@ -279,49 +296,17 @@ MultiLookup is designed as a standalone QSS, but its architecture is graft-ready
 
 ### Option A: Mega QSS Tab
 
-The QSS roadmap (see `QSS.md`) plans a **Mega QSS** — all QSS tools combined into one tabbed window. MultiLookup slots in as a new tab:
-
-```
-Mega QSS
-├── [Diff]          ← XML Diff Extractor
-├── [Long Strings]  ← Script Long String Extractor
-├── [No-Voice]      ← Script No-Voice Extractor
-├── [Blacklist]     ← BlacklistExtractor
-├── [String Eraser] ← String Eraser XML
-├── [File Eraser]   ← File Eraser By Name
-└── [MultiLookup]   ← NEW — Excel-to-Excel transfer
-```
-
-**What changes:** The `MultiLookupApp` class becomes a tab builder (receives parent `ttk.Frame` instead of creating `tk.Tk`). The log panel becomes shared. Settings merge into `mega_qss_settings.json`.
-
-**What stays:** All core logic (`normalize_key`, `build_source_dict`, `transfer_to_targets`) is pure functions with no GUI dependency — they graft as-is.
+The QSS roadmap (see `QSS.md`) plans a **Mega QSS** — all QSS tools combined into one tabbed window. MultiLookup slots in as a new tab. The `MultiLookupApp` class becomes a tab builder (receives parent `ttk.Frame` instead of creating `tk.Tk`). The log panel becomes shared.
 
 ### Option B: QuickTranslate Helper Tab
 
-QuickTranslate already has Excel reading/writing infrastructure. MultiLookup could become a Helper Functions sub-tab:
-
-```
-QuickTranslate
-├── [Transfer]         ← Main XML transfer workflow
-├── [Other Tools]      ← Pre-submission check, search, etc.
-└── [Helper Functions]
-    ├── Quick Actions
-    ├── Substring Search
-    └── MultiLookup    ← Excel-to-Excel (no XML)
-```
-
-**Advantages of QT integration:**
-- Reuses QT's threaded worker (no GUI freeze on large files)
-- Shared settings (source/target folder paths)
-- Output feeds into QT's Transfer workflow (MultiLookup → produce Excel → QT transfers to XML)
-
-**What changes:** Replace tkinter log with QT's `log_callback`. Replace synchronous loop with QT's thread pattern. Column config moves into QT's settings panel style.
+QuickTranslate already has Excel reading/writing infrastructure. MultiLookup could become a Helper Functions sub-tab, reusing QT's threaded worker and shared settings.
 
 ### Option C: Stay Standalone
 
 Not everything needs to be integrated. MultiLookup is useful to people who don't use QuickTranslate — QA engineers, project managers, anyone working with Excel data. A standalone `.exe` via PyInstaller (< 30 MB) is easy to distribute.
 
-**Recommended path:** Stay standalone for now. Graft into Mega QSS when that project starts. Consider QT integration only if the Excel-to-Excel workflow becomes a frequent step in the translation pipeline.
+**Recommended path:** Stay standalone for now. Graft into Mega QSS when that project starts.
 
 ---
 
@@ -330,7 +315,7 @@ Not everything needs to be integrated. MultiLookup is useful to people who don't
 | Detail | Value |
 |--------|-------|
 | **Python** | 3.8+ |
-| **GUI** | tkinter + ttk |
+| **GUI** | tkinter + ttk (PanedWindow layout) |
 | **Excel library** | openpyxl (read AND write — must modify existing files) |
 | **Why not xlsxwriter?** | xlsxwriter can only create new files, can't open/modify existing ones |
 | **Source read mode** | `data_only=True` — reads cached formula results, not formulas |
@@ -351,14 +336,15 @@ MultiLookup was inspired by XLSTransfer but addresses its limitations:
 | **Sheet selection** | Hardcoded or manual | Auto-detected, combobox |
 | **Column selection** | Letter-based (A, B, C) | Header-based (clickable) |
 | **Key matching** | `clean_text()` (strip `_x000D_`) | Full normalization (strip, collapse, lowercase) |
+| **Composite keys** | No | Yes (KEY Col 2) |
 | **Duplicate handling** | Undefined | First-wins with warning |
 | **Save mode** | Overwrite only | Copy (default) or overwrite |
 | **Settings** | None | Persistent JSON |
 | **GUI** | Minimal | Full config per file |
-| **Future: composite keys** | No | Planned (v1.1) |
+| **Layout** | Vertical stack | PanedWindow (controls + log side by side) |
 
 XLSTransfer remains a sacred script (never modified). MultiLookup is its spiritual successor for Excel-only workflows.
 
 ---
 
-*Document created: 2026-03-11 — MultiLookup v1.0*
+*Document updated: 2026-03-11 — MultiLookup v1.1*
