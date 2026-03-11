@@ -155,6 +155,7 @@ def read_corrections_from_excel(
     formula_report: Optional[list] = None,
     integrity_report: Optional[list] = None,
     no_translation_report: Optional[list] = None,
+    ellipsis_report: Optional[list] = None,
 ) -> List[Dict]:
     """
     Read corrections from Excel file for transfer mode.
@@ -374,6 +375,18 @@ def read_corrections_from_excel(
                     entry["_original_eventname"] = str(eventname).strip()
                 if dialogvoice is not None:
                     entry["_original_dialogvoice"] = str(dialogvoice).strip()
+
+                # Ellipsis detection (warn only — does NOT block transfer)
+                if ellipsis_report is not None and '\u2026' in corrected_str:
+                    ellipsis_report.append({
+                        'string_id': _report_id,
+                        'column': 'Correction',
+                    })
+                if ellipsis_report is not None and entry.get("desc_corrected") and '\u2026' in entry["desc_corrected"]:
+                    ellipsis_report.append({
+                        'string_id': _report_id,
+                        'column': 'Desc',
+                    })
 
                 corrections.append(entry)
             except (IndexError, AttributeError):

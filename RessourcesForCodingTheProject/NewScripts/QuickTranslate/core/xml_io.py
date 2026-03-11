@@ -24,6 +24,7 @@ def parse_corrections_from_xml(
     formula_report: Optional[list] = None,
     integrity_report: Optional[list] = None,
     no_translation_report: Optional[list] = None,
+    ellipsis_report: Optional[list] = None,
 ) -> List[Dict]:
     """
     Parse corrections from XML file (LocStr elements).
@@ -138,6 +139,18 @@ def parse_corrections_from_xml(
                             logger.debug("Neutralizing integrity-issue Desc in XML: StringID=%s reason=%s", string_id, bad_desc_integrity)
                         else:
                             entry["desc_corrected"] = desc_value
+
+                # Ellipsis detection (warn only — does NOT block transfer)
+                if ellipsis_report is not None and '\u2026' in str_value:
+                    ellipsis_report.append({
+                        'string_id': string_id,
+                        'column': 'Str',
+                    })
+                if ellipsis_report is not None and entry.get("desc_corrected") and '\u2026' in entry["desc_corrected"]:
+                    ellipsis_report.append({
+                        'string_id': string_id,
+                        'column': 'Desc',
+                    })
 
                 corrections.append(entry)
     except Exception as e:

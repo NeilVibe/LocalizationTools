@@ -1136,6 +1136,7 @@ class QuickTranslateApp:
             all_formula_warnings = []  # Collect for end-of-log summary
             all_integrity_warnings = []  # Collect for end-of-log summary
             all_no_translation_warnings = []  # Collect for end-of-log summary
+            all_ellipsis_warnings = []  # Collect for end-of-log summary
             total = len(files_to_check)
             total_xml_files = 0
             total_load_fail = 0
@@ -1173,9 +1174,10 @@ class QuickTranslateApp:
                         xml_formula_report = []
                         xml_integrity_report = []
                         xml_no_translation_report = []
+                        xml_ellipsis_report = []
                         entries = parse_corrections_from_xml(
                             filepath, formula_report=xml_formula_report, integrity_report=xml_integrity_report,
-                            no_translation_report=xml_no_translation_report)
+                            no_translation_report=xml_no_translation_report, ellipsis_report=xml_ellipsis_report)
                         count = len(entries) if entries else 0
 
                         # Also count raw LocStr elements for broken XML check
@@ -1227,13 +1229,17 @@ class QuickTranslateApp:
                         if xml_no_translation_report:
                             for r in xml_no_translation_report:
                                 all_no_translation_warnings.append((filepath.name, r.get('string_id', '')))
+                        if xml_ellipsis_report and lang.upper() not in ('JPN', 'ZHO-CN', 'ZHO-TW', 'ZHO_CN', 'ZHO_TW'):
+                            for r in xml_ellipsis_report:
+                                all_ellipsis_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', '')))
                     elif suffix in (".xlsx", ".xls"):
                         formula_report = []
                         integrity_report_xl = []
                         xl_no_translation_report = []
+                        xl_ellipsis_report = []
                         entries = read_corrections_from_excel(
                             filepath, formula_report=formula_report, integrity_report=integrity_report_xl,
-                            no_translation_report=xl_no_translation_report)
+                            no_translation_report=xl_no_translation_report, ellipsis_report=xl_ellipsis_report)
                         count = len(entries) if entries else 0
 
                         if formula_report:
@@ -1274,6 +1280,9 @@ class QuickTranslateApp:
                         if xl_no_translation_report:
                             for r in xl_no_translation_report:
                                 all_no_translation_warnings.append((filepath.name, r.get('string_id', '')))
+                        if xl_ellipsis_report and lang.upper() not in ('JPN', 'ZHO-CN', 'ZHO-TW', 'ZHO_CN', 'ZHO_TW'):
+                            for r in xl_ellipsis_report:
+                                all_ellipsis_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', '')))
                         if count == 0 and (formula_report or integrity_report_xl):
                             skip_parts = []
                             if formula_report:
@@ -1408,14 +1417,22 @@ class QuickTranslateApp:
                 self._log("Fix: correct the broken text in the source file before re-transferring.", 'error')
 
             # End-of-log OTHER WARNINGS ("no translation" skips)
-            if all_no_translation_warnings:
+            other_total = len(all_no_translation_warnings) + len(all_ellipsis_warnings)
+            if other_total > 0:
                 self._log("", 'info')
-                self._log(f"=== OTHER WARNINGS ({len(all_no_translation_warnings)} entries) ===", 'warning')
-                self._log("Source entries with 'no translation' will be skipped to preserve existing translations:", 'warning')
-                for fname, sid in all_no_translation_warnings[:20]:
-                    self._log(f"  {fname} | StringID={sid or '(empty)'}", 'warning')
-                if len(all_no_translation_warnings) > 20:
-                    self._log(f"  ...and {len(all_no_translation_warnings) - 20} more.", 'warning')
+                self._log(f"=== OTHER WARNINGS ({other_total} entries) ===", 'warning')
+                if all_no_translation_warnings:
+                    self._log("'no translation' entries will be skipped to preserve existing translations:", 'warning')
+                    for fname, sid in all_no_translation_warnings[:20]:
+                        self._log(f"  {fname} | StringID={sid or '(empty)'}", 'warning')
+                    if len(all_no_translation_warnings) > 20:
+                        self._log(f"  ...and {len(all_no_translation_warnings) - 20} more.", 'warning')
+                if all_ellipsis_warnings:
+                    self._log(f"Unicode ellipsis (\u2026) detected in {len(all_ellipsis_warnings)} entries (not auto-fixed, CJK excluded):", 'warning')
+                    for fname, sid, col in all_ellipsis_warnings[:20]:
+                        self._log(f"  {fname} | [{col}] StringID={sid or '(empty)'}", 'warning')
+                    if len(all_ellipsis_warnings) > 20:
+                        self._log(f"  ...and {len(all_ellipsis_warnings) - 20} more.", 'warning')
 
             # ── Column detection: scan Excel headers to determine available match types ──
             combined_columns = {
