@@ -475,6 +475,7 @@ def load_korean_strings_from_datasheets(output_folder: Path, log_callback=None) 
 
         if category_set:
             category_strings[category] = category_set
+            _clog(f"  {category}: {len(category_set):,} unique strings")
 
     total = sum(len(s) for s in category_strings.values())
     _clog(f"  TOTAL: {total:,} unique strings across {len(category_strings)} categories", 'success')

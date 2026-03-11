@@ -668,6 +668,7 @@ def update_tracker_only(log_callback=None) -> Tuple[bool, str, List[Dict]]:
         _tracker_log_flush("TRACKER UPDATE COMPLETE")
 
         _log(f"Saved: {tracker_path}", 'success')
+        _log(f"  Sheets updated: {', '.join(tracker_wb.sheetnames)}")
         if entries:
             _log(f"  Updated {len(entries)} tester entries from {len(set(e['date'] for e in entries))} unique date(s)", 'success')
         if manager_stats:

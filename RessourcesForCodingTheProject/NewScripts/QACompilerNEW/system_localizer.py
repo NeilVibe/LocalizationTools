@@ -375,6 +375,12 @@ def localize_system_sheet(
         except Exception as e:
             result["errors"].append(f"Failed to save {output_name}: {e}")
 
+    # Aggregate summary across all languages
+    total_sid = sum(s.get("matched_by_sid", 0) for s in result["stats"].values())
+    total_text = sum(s.get("matched_by_text", 0) for s in result["stats"].values())
+    total_nomatch = sum(s.get("no_match", 0) for s in result["stats"].values())
+    _log(f"Summary: {total_sid:,} SID matches, {total_text:,} text matches, {total_nomatch:,} no-match across {total_langs} languages", 'success')
+
     # 5. Also copy the original English file for completeness
     try:
         import shutil

@@ -990,6 +990,11 @@ def process_category(
                 wc_added = user_wordcount[username] - wc_before
 
             qa_wb.close()
+
+            # Per-user stats summary
+            us = user_stats[username]
+            done = us['issue'] + us['no_issue'] + us['blocked'] + us['korean']
+            _log(f"    {done}/{us['total']} done, {us['issue']} issues")
         except Exception as e:
             _log(f"  ERROR: {qf.get('username', '?')}: {e}", 'error')
             # Close workbook if it was opened before the error
@@ -997,6 +1002,9 @@ def process_category(
                 qa_wb.close()
             except (NameError, Exception):
                 pass
+
+    if total_images > 0:
+        _log(f"  Images: {total_images} copied")
 
     # Create daily entry for tracker
     for username in all_users:
@@ -1126,9 +1134,12 @@ def run_compiler(log_callback=None, progress_callback=None):
     # Opens each master file ONCE with read_only=True
     # Manager status preservation is handled by System 1 in excel_ops.py during rebuild
     _log("Collecting master data...")
+    collect_start = time.time()
     (fixed_screenshots_en, fixed_screenshots_cn,
      manager_stats) = collect_all_master_data(tester_mapping, log_callback=log_callback)
+    collect_elapsed = time.time() - collect_start
 
+    _log(f"Master data collected ({collect_elapsed:.1f}s)")
     total_fixed = len(fixed_screenshots_en) + len(fixed_screenshots_cn)
     if total_fixed > 0:
         _log(f"Found {total_fixed} FIXED screenshots to skip")
@@ -1146,6 +1157,7 @@ def run_compiler(log_callback=None, progress_callback=None):
 
     # Group by category AND language
     by_category_en, by_category_cn = group_folders_by_language(qa_folders, tester_mapping)
+    _log(f"  EN: {sum(len(v) for v in by_category_en.values())} folders, CN: {sum(len(v) for v in by_category_cn.values())} folders")
 
     # ==========================================================================
     # EARLY OUTPUT: Generate MasterSubmitScript FIRST (quick - just ISSUE rows)
@@ -1181,6 +1193,7 @@ def run_compiler(log_callback=None, progress_callback=None):
                 MASTER_FOLDER_EN / "MasterSubmitScript_Conflicts_EN.xlsx",
                 "EN"
             )
+            _log(f"  EN: {len(en_conflicts)} script conflicts", 'warning')
     else:
         _log("  EN: No Script category files to process")
 
@@ -1207,6 +1220,7 @@ def run_compiler(log_callback=None, progress_callback=None):
                 MASTER_FOLDER_CN / "MasterSubmitScript_Conflicts_CN.xlsx",
                 "CN"
             )
+            _log(f"  CN: {len(cn_conflicts)} script conflicts", 'warning')
     else:
         _log("  CN: No Script category files to process")
 
@@ -1247,6 +1261,7 @@ def run_compiler(log_callback=None, progress_callback=None):
                 MASTER_FOLDER_EN / "MasterSubmitDatasheet_Conflicts_EN.xlsx",
                 "EN"
             )
+            _log(f"  EN: {len(en_ds_conflicts)} datasheet conflicts", 'warning')
     else:
         _log("  EN: No non-Script category files to process")
 
@@ -1273,6 +1288,7 @@ def run_compiler(log_callback=None, progress_callback=None):
                 MASTER_FOLDER_CN / "MasterSubmitDatasheet_Conflicts_CN.xlsx",
                 "CN"
             )
+            _log(f"  CN: {len(cn_ds_conflicts)} datasheet conflicts", 'warning')
     else:
         _log("  CN: No non-Script category files to process")
 
@@ -1491,7 +1507,8 @@ def run_compiler(log_callback=None, progress_callback=None):
                     lang = result["lang"]
                     master = result["master"]
                     users = result["users"]
-                    _log(f"  Master_{master} [{lang}]: {users} users, saved", 'success')
+                    hidden = result.get("hidden_rows", 0)
+                    _log(f"  Master_{master} [{lang}]: {users} users, {hidden} rows hidden, saved", 'success')
             except Exception as e:
                 _log(f"ERROR: Failed to finalize: {e}", 'error')
 

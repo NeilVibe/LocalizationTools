@@ -7,6 +7,7 @@ Each generator extracts data from game XML files and creates
 Excel datasheets with translations for QA testers.
 """
 
+import time
 from typing import Dict, List, Set
 
 # Import individual generators (lazy imports to avoid circular dependencies)
@@ -60,6 +61,7 @@ def generate_datasheets(categories: List[str], log_callback=None) -> Dict:
     total_cats = len(categories)
     for cat_idx, category in enumerate(categories):
         _log(f"[{cat_idx + 1}/{total_cats}] Generating: {category.capitalize()}...")
+        cat_start = time.time()
         try:
             korean_strings: Set[str] = set()
 
@@ -121,6 +123,7 @@ def generate_datasheets(categories: List[str], log_callback=None) -> Dict:
                     "errors": result_help.get("errors", []),
                 }
                 results["korean_strings"]["Help"] = help_korean
+                korean_strings = help_korean
             elif category == "script":
                 from generators.script import generate_script_datasheets, get_collected_korean_strings
                 result = generate_script_datasheets()
@@ -132,9 +135,11 @@ def generate_datasheets(categories: List[str], log_callback=None) -> Dict:
 
             cat_name = result.get("category", category)
             cat_files = result.get("files_created", 0)
+            cat_elapsed = time.time() - cat_start
             results["categories_processed"].append(cat_name)
             results["files_created"] += cat_files
-            _log(f"  {cat_name}: {cat_files} file(s) created", 'success')
+            kr_count = len(korean_strings) if korean_strings else 0
+            _log(f"  {cat_name}: {cat_files} file(s) ({cat_elapsed:.1f}s, {kr_count:,} KR strings)", 'success')
             if result.get("errors"):
                 results["errors"].extend(result["errors"])
                 for err in result["errors"]:
@@ -151,6 +156,9 @@ def generate_datasheets(categories: List[str], log_callback=None) -> Dict:
 
     if results["errors"]:
         results["success"] = False
+
+    total_kr = sum(len(s) for s in results['korean_strings'].values())
+    _log(f"Total: {total_kr:,} Korean strings collected")
 
     _log(f"Generation complete: {results['files_created']} file(s) for {len(results['categories_processed'])} categories",
          'success' if results["success"] else 'warning')

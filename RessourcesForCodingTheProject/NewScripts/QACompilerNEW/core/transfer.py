@@ -10,6 +10,7 @@ Handles:
 """
 
 import shutil
+import time
 from pathlib import Path
 from typing import Dict, Tuple, Optional, List
 from collections import defaultdict
@@ -716,6 +717,7 @@ def transfer_qa_files(log_callback=None) -> bool:
         print(msg)
 
     _log("=== QA File Transfer (OLD -> NEW) ===", 'header' if log_callback else 'info')
+    transfer_start = time.time()
 
     # Check folders exist
     if not QA_FOLDER_OLD.exists():
@@ -739,6 +741,17 @@ def transfer_qa_files(log_callback=None) -> bool:
         return False
 
     _log(f"Found {len(old_folders)} OLD folder(s), {len(new_folders)} NEW folder(s)")
+
+    # Log category breakdown
+    old_cats = defaultdict(int)
+    for f in old_folders:
+        old_cats[f['category']] += 1
+    new_cats = defaultdict(int)
+    for f in new_folders:
+        new_cats[f['category']] += 1
+    all_cats = sorted(set(old_cats) | set(new_cats))
+    for cat in all_cats:
+        _log(f"  {cat}: {old_cats.get(cat, 0)} OLD, {new_cats.get(cat, 0)} NEW")
 
     # Load tester mapping
     _log("Loading tester->language mapping...")
@@ -770,7 +783,8 @@ def transfer_qa_files(log_callback=None) -> bool:
     if all_stats:
         print_transfer_report(all_stats, log_callback=log_callback)
 
-    _log("Transfer complete!", 'success')
+    transfer_elapsed = time.time() - transfer_start
+    _log(f"Transfer complete! ({transfer_elapsed:.1f}s)", 'success')
     _log(f"Output: {QA_FOLDER}")
 
     return True
