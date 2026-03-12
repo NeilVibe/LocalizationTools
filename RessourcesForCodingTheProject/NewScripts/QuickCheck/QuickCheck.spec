@@ -28,7 +28,7 @@ a = Analysis(
     ['main.py'],
     pathex=[spec_dir],
     binaries=[],
-    datas=_fl_datas,
+    datas=_fl_datas + [(os.path.join(spec_dir, 'category_clusters.json'), '.')],
     hiddenimports=[
         'lxml',
         'lxml.etree',
@@ -50,6 +50,7 @@ a = Analysis(
         'core.term_check',
         'core.glossary_extractor',
         'core.lang_check',
+        'core.category_mapper',
         'gui',
         'gui.app',
         'utils',

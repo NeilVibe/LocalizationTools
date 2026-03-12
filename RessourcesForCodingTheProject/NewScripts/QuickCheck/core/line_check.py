@@ -10,7 +10,7 @@ import string
 from pathlib import Path
 from typing import List, Dict, Optional, Callable, Tuple
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from core.preprocessing import preprocess_for_consistency_check
 from utils.language_utils import is_korean, is_phrase
@@ -24,6 +24,8 @@ class LineCheckResult:
     source: str
     translations: List[str]       # Multiple different translations found
     string_ids: List[str]         # First StringID seen for each translation (parallel to translations)
+    categories: List[str] = field(default_factory=list)    # Parallel to string_ids
+    file_names: List[str] = field(default_factory=list)    # Parallel to string_ids
 
 
 def run_line_check(
@@ -31,7 +33,9 @@ def run_line_check(
     filter_sentences: bool = True,
     length_threshold: int = 15,
     min_occurrence: Optional[int] = None,
-    progress_callback: Optional[Callable[[str], None]] = None
+    progress_callback: Optional[Callable[[str], None]] = None,
+    category_index: Optional[Dict[str, str]] = None,
+    filename_index: Optional[Dict[str, str]] = None,
 ) -> List[LineCheckResult]:
     """
     Run LINE CHECK to find translation inconsistencies.
@@ -48,6 +52,9 @@ def run_line_check(
     Returns:
         List of LineCheckResult objects (inconsistent sources only)
     """
+    category_index = category_index or {}
+    filename_index = filename_index or {}
+
     if progress_callback:
         progress_callback("Starting LINE CHECK...")
 
@@ -116,7 +123,12 @@ def run_line_check(
     for source in sorted(inconsistent.keys(), key=len):
         translations = list(inconsistent[source].keys())
         string_ids = [src_trans_sid[source].get(t, "") for t in translations]
-        results.append(LineCheckResult(source=source, translations=translations, string_ids=string_ids))
+        categories = [category_index.get(sid, "") for sid in string_ids]
+        file_names = [filename_index.get(sid, "") for sid in string_ids]
+        results.append(LineCheckResult(
+            source=source, translations=translations,
+            string_ids=string_ids, categories=categories, file_names=file_names,
+        ))
 
     return results
 
@@ -125,6 +137,7 @@ def save_line_check_results(
     results: List[LineCheckResult],
     output_path: str,
     lang_code: str = "",
+    has_metadata: bool = False,
 ) -> bool:
     """
     Save LINE CHECK results to an Excel file.
@@ -133,11 +146,12 @@ def save_line_check_results(
         results: List of LineCheckResult objects
         output_path: Path to output .xlsx file
         lang_code: Language code for sheet naming
+        has_metadata: Whether to include Category/FileName columns
 
     Returns:
         True if successful
     """
-    return write_line_check_excel(results, output_path, lang_code=lang_code)
+    return write_line_check_excel(results, output_path, lang_code=lang_code, has_metadata=has_metadata)
 
 
 def run_line_check_all_languages(
@@ -146,7 +160,9 @@ def run_line_check_all_languages(
     filter_sentences: bool = True,
     length_threshold: int = 15,
     min_occurrence: Optional[int] = None,
-    progress_callback: Optional[Callable[[str], None]] = None
+    progress_callback: Optional[Callable[[str], None]] = None,
+    category_index: Optional[Dict[str, str]] = None,
+    filename_index: Optional[Dict[str, str]] = None,
 ) -> Dict[str, int]:
     """
     Run LINE CHECK for every language in lang_files.
@@ -184,10 +200,13 @@ def run_line_check_all_languages(
             length_threshold=length_threshold,
             min_occurrence=min_occurrence,
             progress_callback=lang_progress,
+            category_index=category_index,
+            filename_index=filename_index,
         )
 
+        has_metadata = bool(category_index)
         output_path = output_dir / f"LineCheck_{lang}.xlsx"
-        ok = save_line_check_results(check_results, str(output_path), lang_code=lang)
+        ok = save_line_check_results(check_results, str(output_path), lang_code=lang, has_metadata=has_metadata)
         results[lang] = len(check_results)
 
         if progress_callback:

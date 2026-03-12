@@ -47,12 +47,15 @@ def write_line_check_excel(
     results: list,          # List[LineCheckResult]
     output_path: str,
     lang_code: str = "",
+    has_metadata: bool = False,
 ) -> bool:
     """
     Write LINE CHECK results to Excel.
 
-    Columns: Source (KR) | Translation 1 | SID 1 | Translation 2 | SID 2 | ...
-    One row per inconsistency group. Max 8 translation columns (each with a SID column).
+    Without metadata:
+      Source (KR) | Trans1 | SID1 | Trans2 | SID2 | ... | Status | Comment
+    With metadata:
+      Source (KR) | Trans1 | SID1 | Cat1 | File1 | Trans2 | SID2 | Cat2 | File2 | ... | Status | Comment
     """
     _require_xlsxwriter()
 
@@ -96,23 +99,31 @@ def write_line_check_excel(
         fmt_summary = wb.add_format({"italic": True, "font_color": "#666666"})
 
         max_trans = min(max((len(r.translations) for r in results), default=2), 8)
-        # Column layout: Source | Trans1 | SID1 | Trans2 | SID2 | ... | Status | Comment
-        status_col  = 1 + max_trans * 2
-        comment_col = 2 + max_trans * 2
+        cols_per_group = 4 if has_metadata else 2
+        status_col  = 1 + max_trans * cols_per_group
+        comment_col = status_col + 1
 
         # Header
         ws.set_row(0, 20)
         ws.write(0, 0, "Source (KR)", fmt_header)
         for i in range(max_trans):
-            ws.write(0, 1 + i * 2,     f"Translation {i + 1}", fmt_header)
-            ws.write(0, 1 + i * 2 + 1, f"StringID {i + 1}",    fmt_header)
+            base = 1 + i * cols_per_group
+            ws.write(0, base,     f"Translation {i + 1}", fmt_header)
+            ws.write(0, base + 1, f"StringID {i + 1}",    fmt_header)
+            if has_metadata:
+                ws.write(0, base + 2, f"Category {i + 1}", fmt_header)
+                ws.write(0, base + 3, f"FileName {i + 1}", fmt_header)
         ws.write(0, status_col,  "Status",  fmt_header)
         ws.write(0, comment_col, "Comment", fmt_header)
 
         ws.set_column(0, 0, 30)
         for i in range(max_trans):
-            ws.set_column(1 + i * 2,     1 + i * 2,     35)
-            ws.set_column(1 + i * 2 + 1, 1 + i * 2 + 1, 20)
+            base = 1 + i * cols_per_group
+            ws.set_column(base,     base,     35)   # Translation
+            ws.set_column(base + 1, base + 1, 20)   # StringID
+            if has_metadata:
+                ws.set_column(base + 2, base + 2, 15)   # Category
+                ws.set_column(base + 3, base + 3, 20)   # FileName
         ws.set_column(status_col,  status_col,  14)
         ws.set_column(comment_col, comment_col, 40)
 
@@ -122,9 +133,15 @@ def write_line_check_excel(
             fmt_s = fmt_sid   if idx % 2 == 0 else fmt_sid_alt
             ws.write(row, 0, result.source, fmt_source)
             for i, trans in enumerate(result.translations[:max_trans]):
+                base = 1 + i * cols_per_group
                 sid = result.string_ids[i] if i < len(result.string_ids) else ""
-                ws.write(row, 1 + i * 2,     trans, fmt_t)
-                ws.write(row, 1 + i * 2 + 1, sid,   fmt_s)
+                ws.write(row, base,     trans, fmt_t)
+                ws.write(row, base + 1, sid,   fmt_s)
+                if has_metadata:
+                    cat = result.categories[i] if i < len(result.categories) else ""
+                    fn  = result.file_names[i] if i < len(result.file_names) else ""
+                    ws.write(row, base + 2, cat, fmt_s)
+                    ws.write(row, base + 3, fn,  fmt_s)
             ws.write(row, status_col,  "", fmt_status)
             ws.write(row, comment_col, "", fmt_comment)
             row += 1
@@ -139,7 +156,7 @@ def write_line_check_excel(
         ws.write(row + 1, 0, f"Total: {len(results)} inconsistencies", fmt_summary)
 
         wb.close()
-        wb = None   # mark closed so finally doesn't double-close
+        wb = None
         return True
 
     except Exception as e:
@@ -163,12 +180,15 @@ def write_term_check_excel(
     output_path: str,
     lang_code: str = "",
     match_mode: str = "",
+    has_metadata: bool = False,
 ) -> bool:
     """
     Write TERM CHECK results to Excel.
 
-    Columns: Term (KR) | Expected Translation | Source Text | Translation Found | StringID | FileName | Status | Comment
-    One row per issue. Term/expected repeated on each row for easy filtering.
+    Without metadata:
+      Term (KR) | Expected Translation | Source Text | Translation Found | StringID | Status | Comment
+    With metadata:
+      Term (KR) | Expected Translation | Source Text | Translation Found | StringID | Category | FileName | Status | Comment
     """
     _require_xlsxwriter()
 
@@ -213,17 +233,24 @@ def write_term_check_excel(
             "border": 1, "valign": "vcenter", "text_wrap": True,
         })
 
-        ws.set_row(0, 22)
-        for i, h in enumerate(["Term (KR)", "Expected Translation", "Source Text", "Translation Found", "StringID", "Status", "Comment"]):
-            ws.write(0, i, h, fmt_header)
+        if has_metadata:
+            headers = ["Term (KR)", "Expected Translation", "Source Text",
+                        "Translation Found", "StringID", "Category", "FileName",
+                        "Status", "Comment"]
+            widths = [22, 22, 45, 45, 20, 15, 20, 14, 40]
+            col_status = 7
+            col_comment = 8
+        else:
+            headers = ["Term (KR)", "Expected Translation", "Source Text",
+                        "Translation Found", "StringID", "Status", "Comment"]
+            widths = [22, 22, 45, 45, 20, 14, 40]
+            col_status = 5
+            col_comment = 6
 
-        ws.set_column(0, 0, 22)
-        ws.set_column(1, 1, 22)
-        ws.set_column(2, 2, 45)
-        ws.set_column(3, 3, 45)
-        ws.set_column(4, 4, 20)
-        ws.set_column(5, 5, 14)
-        ws.set_column(6, 6, 40)
+        ws.set_row(0, 22)
+        for i, h in enumerate(headers):
+            ws.write(0, i, h, fmt_header)
+            ws.set_column(i, i, widths[i])
 
         row = 1
         for result in results:
@@ -236,12 +263,15 @@ def write_term_check_excel(
                 ws.write(row, 2, issue.source_text, fmt)
                 ws.write(row, 3, issue.translation_text, fmt)
                 ws.write(row, 4, issue.string_id,  fs)
-                ws.write(row, 5, "",               fmt_status)
-                ws.write(row, 6, "",               fmt_comment)
+                if has_metadata:
+                    ws.write(row, 5, issue.category,  fs)
+                    ws.write(row, 6, issue.file_name, fs)
+                ws.write(row, col_status,  "", fmt_status)
+                ws.write(row, col_comment, "", fmt_comment)
                 row += 1
 
         if row > 1:
-            ws.data_validation(1, 5, row - 1, 5, {
+            ws.data_validation(1, col_status, row - 1, col_status, {
                 "validate": "list",
                 "source":   ["ISSUE", "NO ISSUE", "FIXED"],
             })

@@ -89,6 +89,9 @@ class Settings:
     lang_confidence: float = DEFAULT_LANG_CONFIDENCE
     min_lang_text_length: int = DEFAULT_MIN_LANG_TEXT_LENGTH
 
+    # EXPORT folder path (persisted)
+    export_folder: str = ""
+
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -115,6 +118,7 @@ class Settings:
             term_match_mode=MATCH_MODE_ISOLATED,  # Always isolated — substring hidden
             lang_confidence=_float("lang_confidence", DEFAULT_LANG_CONFIDENCE),
             min_lang_text_length=_int("min_lang_text_length", DEFAULT_MIN_LANG_TEXT_LENGTH),
+            export_folder=str(data.get("export_folder", "")),
         )
 
 

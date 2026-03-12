@@ -42,6 +42,8 @@ class TermIssue:
     source_text: str      # Full source text containing the term
     translation_text: str  # Translation that's missing the expected term
     string_id: str = ""   # StringID of the problematic entry
+    category: str = ""    # Category from EXPORT index
+    file_name: str = ""   # Filename stem from EXPORT index
 
 
 @dataclass
@@ -127,7 +129,9 @@ def run_term_check(
     min_occurrence: Optional[int] = None,
     max_issues_per_term: int = 6,
     match_mode: str = MATCH_MODE_ISOLATED,
-    progress_callback: Optional[Callable[[str], None]] = None
+    progress_callback: Optional[Callable[[str], None]] = None,
+    category_index: Optional[Dict[str, str]] = None,
+    filename_index: Optional[Dict[str, str]] = None,
 ) -> List[TermCheckResult]:
     """
     Run TERM CHECK for a single language using Dual Aho-Corasick.
@@ -147,6 +151,9 @@ def run_term_check(
     """
     if ahocorasick is None:
         raise ImportError("ahocorasick library is required for TERM CHECK")
+
+    category_index = category_index or {}
+    filename_index = filename_index or {}
 
     if progress_callback:
         progress_callback("Starting TERM CHECK...")
@@ -266,6 +273,8 @@ def run_term_check(
                     source_text=src,
                     translation_text=tgt,
                     string_id=entry.string_id,
+                    category=category_index.get(entry.string_id, ""),
+                    file_name=filename_index.get(entry.string_id, ""),
                 ))
 
     if progress_callback:
@@ -298,6 +307,7 @@ def save_term_check_results(
     output_path: str,
     lang_code: str = "",
     match_mode: str = "",
+    has_metadata: bool = False,
 ) -> bool:
     """
     Save TERM CHECK results to an Excel file.
@@ -307,12 +317,14 @@ def save_term_check_results(
         output_path: Path to output .xlsx file
         lang_code: Language code for sheet naming
         match_mode: Match mode label (Isolated / Substring)
+        has_metadata: Whether to include Category/FileName columns
 
     Returns:
         True if successful
     """
     return write_term_check_excel(
-        results, output_path, lang_code=lang_code, match_mode=match_mode
+        results, output_path, lang_code=lang_code, match_mode=match_mode,
+        has_metadata=has_metadata,
     )
 
 
@@ -325,7 +337,9 @@ def run_term_check_all_languages(
     min_occurrence: Optional[int] = None,
     max_issues_per_term: int = 6,
     match_mode: str = MATCH_MODE_ISOLATED,
-    progress_callback: Optional[Callable[[str], None]] = None
+    progress_callback: Optional[Callable[[str], None]] = None,
+    category_index: Optional[Dict[str, str]] = None,
+    filename_index: Optional[Dict[str, str]] = None,
 ) -> Dict[str, int]:
     """
     Run TERM CHECK for every language in lang_files.
@@ -380,12 +394,16 @@ def run_term_check_all_languages(
             max_issues_per_term=max_issues_per_term,
             match_mode=match_mode,
             progress_callback=lang_progress,
+            category_index=category_index,
+            filename_index=filename_index,
         )
 
+        has_metadata = bool(category_index)
         output_path = output_dir / f"TermCheck_{lang}.xlsx"
         ok = save_term_check_results(
             check_results, str(output_path),
-            lang_code=lang, match_mode=match_mode
+            lang_code=lang, match_mode=match_mode,
+            has_metadata=has_metadata,
         )
         results[lang] = len(check_results)
 

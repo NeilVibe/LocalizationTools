@@ -29,6 +29,7 @@ from core.line_check import run_line_check_all_languages
 from core.term_check import run_term_check_all_languages
 from core.glossary_extractor import extract_glossary_all_languages
 from core.lang_check import run_lang_check_all_languages
+from core.category_mapper import load_cluster_config, build_export_indexes
 
 logger = logging.getLogger(__name__)
 
@@ -73,9 +74,16 @@ class QuickCheckApp(tk.Tk):
         self._save_after_id: Optional[str] = None
         self._lang_vars: Dict[str, tk.BooleanVar] = {}
         self._all_var: tk.BooleanVar = tk.BooleanVar(value=True)
+        self._category_index: Dict[str, str] = {}
+        self._filename_index: Dict[str, str] = {}
 
         self._build_ui()
         self._apply_settings_to_ui()
+
+        # Load persisted EXPORT folder and build index if set
+        if self._settings.export_folder:
+            self._var_export.set(self._settings.export_folder)
+            self._build_export_index()
         self.update_idletasks()
 
     # ------------------------------------------------------------------
@@ -88,6 +96,14 @@ class QuickCheckApp(tk.Tk):
 
         # ---- Source folder ----
         self._build_folder_row(outer, "Source Folder:", self._browse_source, "_var_source")
+
+        # ---- EXPORT folder (optional — enables Category/FileName columns) ----
+        self._build_folder_row(outer, "EXPORT Folder:", self._browse_export, "_var_export")
+        self._lbl_export_status = tk.Label(
+            outer, text="EXPORT: (not set)", bg=BG_MAIN, fg=FG_DIM,
+            font=FONT_SMALL, anchor="w",
+        )
+        self._lbl_export_status.pack(fill=tk.X, pady=(0, 4))
 
         # ---- Language selection (populated after folder scan) ----
         self._lang_check_frame = tk.Frame(outer, bg=BG_MAIN)
@@ -304,6 +320,52 @@ class QuickCheckApp(tk.Tk):
             self._var_glossary.set(path)
             self._scan_glossary(path)
 
+    def _browse_export(self) -> None:
+        if self._running:
+            return
+        path = filedialog.askdirectory(title="Select EXPORT Folder")
+        if path:
+            self._var_export.set(path)
+            self._settings.export_folder = path
+            save_settings(self._settings)
+            self._build_export_index()
+
+    def _build_export_index(self) -> None:
+        """Scan EXPORT folder in a background thread to build category/filename indexes."""
+        export_path = self._var_export.get()
+        if not export_path:
+            self._category_index = {}
+            self._filename_index = {}
+            self._lbl_export_status.configure(text="EXPORT: (not set)", fg=FG_DIM)
+            return
+
+        self._lbl_export_status.configure(text="EXPORT: Indexing...", fg=FG_WARN)
+        self._set_buttons_state(tk.DISABLED)
+
+        def worker() -> None:
+            cluster_config = load_cluster_config(
+                Path(config.get_base_dir()) / "category_clusters.json"
+            )
+            cat_idx, fn_idx = build_export_indexes(Path(export_path), cluster_config)
+            self.after(0, self._on_export_index_done, cat_idx, fn_idx)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_export_index_done(self, cat_idx: Dict, fn_idx: Dict) -> None:
+        self._category_index = cat_idx
+        self._filename_index = fn_idx
+        count = len(fn_idx)
+        if count > 0:
+            self._lbl_export_status.configure(
+                text=f"EXPORT: {count} StringIDs indexed", fg=FG_OK,
+            )
+        else:
+            self._lbl_export_status.configure(
+                text="EXPORT: 0 files found \u2014 check folder path", fg=FG_WARN,
+            )
+        if not self._running:
+            self._set_buttons_state(tk.NORMAL)
+
     # ------------------------------------------------------------------
     # Language scanning
     # ------------------------------------------------------------------
@@ -477,6 +539,8 @@ class QuickCheckApp(tk.Tk):
         s = self._read_settings()
         lang_files = self._get_selected_lang_files()
         output_dir = Path(get_output_dir())
+        cat_idx = self._category_index
+        fn_idx = self._filename_index
 
         def worker() -> None:
             try:
@@ -487,6 +551,8 @@ class QuickCheckApp(tk.Tk):
                     length_threshold=s.max_term_length,
                     min_occurrence=s.min_occurrence if s.min_occurrence > 1 else None,
                     progress_callback=lambda msg: self.after(0, self._log_msg, msg),
+                    category_index=cat_idx,
+                    filename_index=fn_idx,
                 )
                 summary_parts = [f"{lang}({count})" for lang, count in sorted(results.items())]
                 summary = "LINE CHECK done: " + " ".join(summary_parts)
@@ -523,6 +589,8 @@ class QuickCheckApp(tk.Tk):
         s = self._read_settings()
         lang_files = self._get_selected_lang_files()
         output_dir = Path(get_output_dir())
+        cat_idx = self._category_index
+        fn_idx = self._filename_index
 
         def worker() -> None:
             try:
@@ -536,6 +604,8 @@ class QuickCheckApp(tk.Tk):
                     max_issues_per_term=s.max_issues_per_term,
                     match_mode=s.term_match_mode,
                     progress_callback=lambda msg: self.after(0, self._log_msg, msg),
+                    category_index=cat_idx,
+                    filename_index=fn_idx,
                 )
                 summary_parts = [f"{lang}({count})" for lang, count in sorted(results.items())]
                 summary = "TERM CHECK done: " + " ".join(summary_parts)
