@@ -770,7 +770,7 @@ def run_pattern_check(
             sheets.append(("BrokenXML", broken_headers, broken_rows))
 
         if sheets:
-            excel_path = output_folder / f"CheckResults_{lang}.xlsx"
+            excel_path = output_folder / f"CodeFormatIssue_{lang}.xlsx"
             _write_check_results_excel(excel_path, sheets)
             tab_names = [s[0] for s in sheets]
             logger.info(f"Check results {lang}: Excel report with tabs [{', '.join(tab_names)}] -> {excel_path.name}")
