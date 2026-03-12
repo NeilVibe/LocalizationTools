@@ -1229,7 +1229,7 @@ class QuickTranslateApp:
                         if xml_no_translation_report:
                             for r in xml_no_translation_report:
                                 all_no_translation_warnings.append((filepath.name, r.get('string_id', '')))
-                        if xml_ellipsis_report and lang.upper() not in ('JPN', 'ZHO-CN', 'ZHO-TW', 'ZHO_CN', 'ZHO_TW'):
+                        if xml_ellipsis_report and lang.upper() not in ('KOR', 'JPN', 'ZHO-CN', 'ZHO-TW', 'ZHO_CN', 'ZHO_TW'):
                             for r in xml_ellipsis_report:
                                 all_ellipsis_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', '')))
                     elif suffix in (".xlsx", ".xls"):
@@ -1280,7 +1280,7 @@ class QuickTranslateApp:
                         if xl_no_translation_report:
                             for r in xl_no_translation_report:
                                 all_no_translation_warnings.append((filepath.name, r.get('string_id', '')))
-                        if xl_ellipsis_report and lang.upper() not in ('JPN', 'ZHO-CN', 'ZHO-TW', 'ZHO_CN', 'ZHO_TW'):
+                        if xl_ellipsis_report and lang.upper() not in ('KOR', 'JPN', 'ZHO-CN', 'ZHO-TW', 'ZHO_CN', 'ZHO_TW'):
                             for r in xl_ellipsis_report:
                                 all_ellipsis_warnings.append((filepath.name, r.get('string_id', ''), r.get('column', '')))
                         if count == 0 and (formula_report or integrity_report_xl):
@@ -3201,7 +3201,8 @@ class QuickTranslateApp:
                         mismatch_folder = report_folder / "NewStrOrigin"
                         mismatch_folder.mkdir(parents=True, exist_ok=True)
                         mismatch_xml_files = generate_failed_merge_xml_per_language(
-                            mismatch_entries, mismatch_folder
+                            mismatch_entries, mismatch_folder,
+                            preserve_all_attribs=True,
                         )
                         if mismatch_xml_files:
                             self._log(f"New StrOrigin XML: {len(mismatch_xml_files)} files ({len(mismatch_entries)} strings)", 'success')
@@ -3388,7 +3389,7 @@ class QuickTranslateApp:
 
             # End-of-log POST-PROCESSING report (automatic cleanup stats)
             pp_stats = results.get("postprocess_stats", {})
-            pp_total = sum(pp_stats.get(k, 0) for k in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized", "hyphens_normalized", "spaces_normalized", "invisibles_removed"))
+            pp_total = sum(pp_stats.get(k, 0) for k in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized", "hyphens_normalized", "ellipsis_normalized", "spaces_normalized", "invisibles_removed"))
             if pp_total > 0:
                 self._log("", 'info')
                 self._log(f"=== POST-PROCESSING ({pp_total} automatic fixes) ===", 'info')
@@ -3402,6 +3403,8 @@ class QuickTranslateApp:
                     self._log(f"  Apostrophes normalized:        {pp_stats['apostrophes_normalized']:,}", 'info')
                 if pp_stats.get("hyphens_normalized", 0) > 0:
                     self._log(f"  Hyphens normalized:            {pp_stats['hyphens_normalized']:,}", 'info')
+                if pp_stats.get("ellipsis_normalized", 0) > 0:
+                    self._log(f"  Ellipsis normalized (… → ...): {pp_stats['ellipsis_normalized']:,}", 'info')
                 if pp_stats.get("spaces_normalized", 0) > 0:
                     self._log(f"  Spaces normalized (NBSP etc.): {pp_stats['spaces_normalized']:,}", 'info')
                 if pp_stats.get("invisibles_removed", 0) > 0:

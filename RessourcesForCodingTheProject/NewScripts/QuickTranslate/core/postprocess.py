@@ -11,6 +11,7 @@ Current cleanup steps (run in order, applied to both Str and Desc):
   4. cleanup_apostrophes       - Normalize curly/fancy apostrophes to ASCII apostrophe
   5. cleanup_invisible_chars   - Auto-fix invisible Unicode characters (NBSP→space, delete zero-width)
   6. cleanup_hyphens           - Normalize Unicode hyphen lookalikes to ASCII hyphen-minus
+  7. cleanup_ellipsis          - Normalize Unicode ellipsis (…) to three dots (non-CJK only)
 
 Usage:
     from core.postprocess import run_all_postprocess
@@ -36,6 +37,11 @@ from .xml_parser import LOCSTR_TAGS, STR_ATTRS, STRORIGIN_ATTRS, DESC_ATTRS, DES
 from .text_utils import _SAFE_INVISIBLE_DELETE, _SAFE_INVISIBLE_NAMES, _GREY_ZONE_CHARS
 
 logger = logging.getLogger(__name__)
+
+# Languages that NEVER get ellipsis normalization (CJK — ellipsis is intentional)
+_CJK_SKIP_LANGS = frozenset({
+    "KOR", "JPN", "ZHO-CN", "ZHO_CN", "ZHO-TW", "ZHO_TW",
+})
 
 # --- Compiled regex patterns for newline normalization ---
 
@@ -158,6 +164,19 @@ _HYPHEN_TABLE = str.maketrans({
 def _normalize_hyphens(text: str) -> str:
     """Normalize Unicode hyphen lookalikes to standard ASCII hyphen-minus."""
     return text.translate(_HYPHEN_TABLE)
+
+
+def _normalize_ellipsis(text: str) -> str:
+    """Replace Unicode horizontal ellipsis (U+2026) with three ASCII dots."""
+    return text.replace('\u2026', '...')
+
+
+def _extract_language_from_path(xml_path: Path) -> str:
+    """Extract language code from filename like 'languagedata_fre.xml' or 'languagedata_zho-cn.xml'."""
+    stem = xml_path.stem.lower()
+    if stem.startswith("languagedata_"):
+        return stem[len("languagedata_"):].upper()
+    return ""
 
 
 def _parse_xml(xml_path: Path):
@@ -413,6 +432,39 @@ def cleanup_hyphens_on_tree(root) -> int:
     return fixed
 
 
+# ─── Cleanup Step 7: Ellipsis normalization (non-CJK only) ────────────────
+
+
+def cleanup_ellipsis_on_tree(root) -> int:
+    """
+    Normalize Unicode ellipsis (U+2026 …) to three ASCII dots (...) in parsed tree.
+
+    Modifies Str and Desc attributes ONLY. StrOrigin/DescOrigin are never touched.
+    Caller is responsible for skipping CJK languages (check _CJK_SKIP_LANGS).
+
+    Args:
+        root: Parsed XML root element
+
+    Returns:
+        Number of attributes fixed
+    """
+    fixed = 0
+    for loc in _iter_locstr(root):
+        attr_name, val = _get_attr(loc, STR_ATTRS)
+        if val is not None:
+            normalized = _normalize_ellipsis(val)
+            if normalized != val:
+                loc.set(attr_name, normalized)
+                fixed += 1
+        desc_name, desc_val = _get_attr(loc, DESC_ATTRS)
+        if desc_val is not None:
+            desc_normalized = _normalize_ellipsis(desc_val)
+            if desc_normalized != desc_val:
+                loc.set(desc_name, desc_normalized)
+                fixed += 1
+    return fixed
+
+
 # ─── Public API: Standalone functions (backward-compatible) ──────────────────
 
 
@@ -524,6 +576,38 @@ def cleanup_apostrophes(xml_path: Path, dry_run: bool = False) -> int:
         return fixed
     except Exception as e:
         logger.error(f"Error normalizing apostrophes in {xml_path}: {e}")
+        return 0
+
+
+def cleanup_ellipsis(xml_path: Path, dry_run: bool = False) -> int:
+    """
+    Post-process: normalize Unicode ellipsis to three ASCII dots (non-CJK only).
+
+    Skips CJK languages (KOR, JPN, ZHO-CN, ZHO-TW) silently.
+    Modifies Str and Desc attributes only.
+
+    Args:
+        xml_path: Path to XML file
+        dry_run: If True, count but don't write
+
+    Returns:
+        Number of attributes fixed (0 for CJK languages)
+    """
+    lang = _extract_language_from_path(xml_path)
+    if lang in _CJK_SKIP_LANGS:
+        return 0
+
+    try:
+        tree, root = _parse_xml(xml_path)
+        fixed = cleanup_ellipsis_on_tree(root)
+
+        if fixed > 0 and not dry_run:
+            _write_xml(tree, xml_path)
+            logger.debug("Normalized ellipsis in %d entries in %s", fixed, xml_path.name)
+
+        return fixed
+    except Exception as e:
+        logger.error(f"Error normalizing ellipsis in {xml_path}: {e}")
         return 0
 
 
@@ -652,20 +736,23 @@ def cleanup_invisible_chars(xml_path, dry_run=False):
 # ─── Combined single-pass cleanup (for fast folder merge) ─────────────────
 
 
-def run_all_postprocess_on_tree(root) -> dict:
+def run_all_postprocess_on_tree(root, language: str = "") -> dict:
     """
     Run ALL postprocess cleanup steps in a SINGLE iteration over LocStr elements.
 
     Combines newline normalization, empty StrOrigin enforcement,
-    "no translation" replacement, and apostrophe normalization into one pass.
+    "no translation" replacement, apostrophe normalization, and ellipsis
+    normalization (non-CJK only) into one pass.
     Used by _fast_folder_merge() to avoid re-parsing and re-iterating the tree.
 
     Args:
         root: Parsed XML root element (modified in-place)
+        language: Language code (e.g. "FRE", "KOR"). CJK languages skip ellipsis step.
 
     Returns:
         {"changed": bool, "newlines_fixed": int, "empty_strorigin_cleaned": int,
-         "no_translation_replaced": int, "apostrophes_normalized": int}
+         "no_translation_replaced": int, "apostrophes_normalized": int,
+         "ellipsis_normalized": int}
     """
     result = {
         "changed": False,
@@ -674,11 +761,14 @@ def run_all_postprocess_on_tree(root) -> dict:
         "no_translation_replaced": 0,
         "apostrophes_normalized": 0,
         "hyphens_normalized": 0,
+        "ellipsis_normalized": 0,
         "spaces_normalized": 0,
         "invisibles_removed": 0,
         "invisible_detail": {},
         "grey_zone_detected": {},
     }
+
+    skip_ellipsis = language.upper() in _CJK_SKIP_LANGS if language else False
 
     for loc in _iter_locstr(root):
         # --- Step 1: Normalize newlines in Str ---
@@ -780,6 +870,25 @@ def run_all_postprocess_on_tree(root) -> dict:
                 result["hyphens_normalized"] += 1
                 result["changed"] = True
 
+        # --- Step 7: Normalize ellipsis in Str (non-CJK only) ---
+        if not skip_ellipsis:
+            str_attr_7, str_val_7 = _get_attr(loc, STR_ATTRS)
+            if str_val_7 is not None:
+                ell_normalized = _normalize_ellipsis(str_val_7)
+                if ell_normalized != str_val_7:
+                    loc.set(str_attr_7, ell_normalized)
+                    result["ellipsis_normalized"] += 1
+                    result["changed"] = True
+
+            # --- Step 7b: Normalize ellipsis in Desc ---
+            desc_attr_7, desc_val_7 = _get_attr(loc, DESC_ATTRS)
+            if desc_val_7 is not None:
+                desc_ell_normalized = _normalize_ellipsis(desc_val_7)
+                if desc_ell_normalized != desc_val_7:
+                    loc.set(desc_attr_7, desc_ell_normalized)
+                    result["ellipsis_normalized"] += 1
+                    result["changed"] = True
+
         # --- Step 5: Invisible character cleanup (Str) ---
         str_attr_5, str_val_5 = _get_attr(loc, STR_ATTRS)
         if str_val_5 is not None:
@@ -832,6 +941,7 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
       4. cleanup_apostrophes       - Normalize curly/fancy apostrophes to ASCII
       5. cleanup_invisible_chars   - Auto-fix invisible Unicode chars (NBSP→space, delete zero-width)
       6. cleanup_hyphens           - Normalize Unicode hyphen lookalikes to ASCII hyphen-minus
+      7. cleanup_ellipsis          - Normalize Unicode ellipsis to three dots (non-CJK only)
 
     Args:
         xml_path: Path to XML file
@@ -847,6 +957,7 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
         "no_translation_replaced": 0,
         "apostrophes_normalized": 0,
         "hyphens_normalized": 0,
+        "ellipsis_normalized": 0,
         "spaces_normalized": 0,
         "invisibles_removed": 0,
         "invisible_detail": {},
@@ -879,12 +990,18 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
         # Step 6: Normalize Unicode hyphen lookalikes to ASCII hyphen-minus
         result["hyphens_normalized"] = cleanup_hyphens_on_tree(root)
 
+        # Step 7: Normalize Unicode ellipsis to three dots (non-CJK only)
+        lang = _extract_language_from_path(xml_path)
+        if lang not in _CJK_SKIP_LANGS:
+            result["ellipsis_normalized"] = cleanup_ellipsis_on_tree(root)
+
         result["total_fixes"] = (
             result["newlines_fixed"]
             + result["empty_strorigin_cleaned"]
             + result["no_translation_replaced"]
             + result["apostrophes_normalized"]
             + result["hyphens_normalized"]
+            + result["ellipsis_normalized"]
             + result["spaces_normalized"]
             + result["invisibles_removed"]
         )
@@ -917,6 +1034,11 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
                 logger.debug(
                     "Normalized hyphens in %d entries in %s",
                     result["hyphens_normalized"], xml_path.name
+                )
+            if result["ellipsis_normalized"] > 0:
+                logger.debug(
+                    "Normalized ellipsis in %d entries in %s",
+                    result["ellipsis_normalized"], xml_path.name
                 )
             invis_total = result["spaces_normalized"] + result["invisibles_removed"]
             if invis_total > 0:

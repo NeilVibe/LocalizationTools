@@ -326,18 +326,20 @@ def generate_failed_merge_xml_per_language(
     failed_entries: List[Dict],
     output_folder: Path,
     timestamp: Optional[datetime] = None,
+    preserve_all_attribs: bool = False,
 ) -> Dict[str, Path]:
     """
     Generate separate XML files for each language with failed LocStr elements.
 
     Creates CLEAN XML files - just <root> with <LocStr> elements inside.
-    EXACT same format as source files: StringId, StrOrigin, Str only.
-    No extra attributes, no transformation.
+    By default outputs only StringId, StrOrigin, Str (core attributes).
+    Set preserve_all_attribs=True for full raw LocStr (e.g. NewStrOrigin reports).
 
     Args:
         failed_entries: List of failed entry dicts with 'language' key
         output_folder: Folder where XML files will be written
         timestamp: Optional timestamp (defaults to now)
+        preserve_all_attribs: If True, dump all raw_attribs. If False, only core keys.
 
     Returns:
         Dict mapping language code to output file path
@@ -355,21 +357,24 @@ def generate_failed_merge_xml_per_language(
 
     output_files = {}
 
+    # Core attributes for clean failure reports
+    _CORE_KEYS = {"StringId", "StrOrigin", "Str"}
+
     for lang, entries in sorted(by_language.items()):
         output_path = output_folder / f"FAILED_{lang}_{timestamp_str}.xml"
 
         if USING_LXML:
-            # Clean root element
             root = etree.Element("root")
 
             for entry in entries:
-                # Use raw_attribs if available (EXACT original), else fallback
                 raw = entry.get("raw_attribs", {})
                 if raw:
-                    # EXACT original LocStr - all attributes preserved
-                    etree.SubElement(root, "LocStr", **{k: str(v) for k, v in raw.items()})
+                    if preserve_all_attribs:
+                        attribs = {k: str(v) for k, v in raw.items()}
+                    else:
+                        attribs = {k: str(v) for k, v in raw.items() if k in _CORE_KEYS}
+                    etree.SubElement(root, "LocStr", **attribs)
                 else:
-                    # Fallback to basic attributes
                     etree.SubElement(root, "LocStr",
                         StringId=str(entry.get("string_id", "")),
                         StrOrigin=str(entry.get("str_origin", "")),
@@ -385,16 +390,19 @@ def generate_failed_merge_xml_per_language(
             )
 
         else:
-            # Standard library fallback
             root = etree.Element("root")
 
             for entry in entries:
                 loc_elem = etree.SubElement(root, "LocStr")
                 raw = entry.get("raw_attribs", {})
                 if raw:
-                    # EXACT original LocStr - all attributes preserved
-                    for k, v in raw.items():
-                        loc_elem.set(k, str(v))
+                    if preserve_all_attribs:
+                        for k, v in raw.items():
+                            loc_elem.set(k, str(v))
+                    else:
+                        for k, v in raw.items():
+                            if k in _CORE_KEYS:
+                                loc_elem.set(k, str(v))
                 else:
                     loc_elem.set("StringId", str(entry.get("string_id", "")))
                     loc_elem.set("StrOrigin", str(entry.get("str_origin", "")))

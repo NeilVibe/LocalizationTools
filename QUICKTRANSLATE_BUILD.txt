@@ -174,3 +174,4 @@ Build 048: XML LOAD success/warning summary lines in source and target validatio
 Build 049: auto-fix </br> (wrong slash position) to <br/> in postprocess Step 1
 Build 050: Unicode ellipsis warning + EventName fallback in warnings
 Build 051: code review fixes — bidi chars, postprocess attr bug, failure report consistency, dedup helpers
+Build 052: auto-fix ellipsis (… → ...) for non-CJK + clean failure report (core attrs only)

@@ -64,7 +64,8 @@ def _write_target_xml(tree, xml_path: Path):
 def _aggregate_postprocess_stats(target_stats: dict, pp_result: dict):
     """Merge per-file postprocess result into running totals."""
     for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced",
-                "apostrophes_normalized", "hyphens_normalized", "spaces_normalized", "invisibles_removed"):
+                "apostrophes_normalized", "hyphens_normalized", "ellipsis_normalized",
+                "spaces_normalized", "invisibles_removed"):
         target_stats[key] += pp_result.get(key, 0)
     for name, cnt in pp_result.get("invisible_detail", {}).items():
         target_stats["invisible_detail"][name] = target_stats["invisible_detail"].get(name, 0) + cnt
@@ -1158,6 +1159,7 @@ def _fast_folder_merge(
             "no_translation_replaced": 0,
             "apostrophes_normalized": 0,
             "hyphens_normalized": 0,
+            "ellipsis_normalized": 0,
             "spaces_normalized": 0,
             "invisibles_removed": 0,
             "invisible_detail": {},
@@ -1467,7 +1469,11 @@ def _fast_folder_merge(
                             target_attribs_cache_so[orig] = dict(loc.attrib)
 
         # ─── Combined postprocess (ONE pass) ─────────────────────────
-        pp = run_all_postprocess_on_tree(root)
+        # Extract language from target filename for CJK-aware ellipsis step
+        _lang = target_file.stem.upper()
+        if _lang.startswith("LANGUAGEDATA_"):
+            _lang = _lang[len("LANGUAGEDATA_"):]
+        pp = run_all_postprocess_on_tree(root, language=_lang)
         if pp["changed"]:
             changed = True
         # Aggregate postprocess stats
@@ -1678,6 +1684,7 @@ def transfer_folder_to_folder(
             "no_translation_replaced": 0,
             "apostrophes_normalized": 0,
             "hyphens_normalized": 0,
+            "ellipsis_normalized": 0,
             "spaces_normalized": 0,
             "invisibles_removed": 0,
             "invisible_detail": {},
