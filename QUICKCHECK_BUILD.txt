@@ -15,3 +15,4 @@ Build 013: fix underscore skip (only no-space dev strings), add full→lite mode
 Build 014: revert underscore skip — underscores never appear in real translations
 Build 015: add Category + FileName columns to LINE CHECK and TERM CHECK output
 Build 016: Category+FileName only on TERM CHECK (removed from LINE CHECK — too many columns)
+Build 017: TERM CHECK autofilter + freeze panes on header row

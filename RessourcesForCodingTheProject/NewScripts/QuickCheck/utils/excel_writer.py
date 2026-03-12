@@ -258,6 +258,8 @@ def write_term_check_excel(
                 "validate": "list",
                 "source":   ["ISSUE", "NO ISSUE", "FIXED"],
             })
+            ws.autofilter(0, 0, row - 1, col_comment)
+            ws.freeze_panes(1, 0)
 
         total_issues = sum(r.issue_count for r in results)
         label = f"Total: {len(results)} terms with issues, {total_issues} individual issues"
