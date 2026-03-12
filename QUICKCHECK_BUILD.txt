@@ -14,3 +14,4 @@ Build 012: fix full model path for one-folder PyInstaller, fix default confidenc
 Build 013: fix underscore skip (only no-space dev strings), add full→lite model fallback
 Build 014: revert underscore skip — underscores never appear in real translations
 Build 015: add Category + FileName columns to LINE CHECK and TERM CHECK output
+Build 016: Category+FileName only on TERM CHECK (removed from LINE CHECK — too many columns)

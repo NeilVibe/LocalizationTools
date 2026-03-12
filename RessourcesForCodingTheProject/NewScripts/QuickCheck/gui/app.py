@@ -539,8 +539,6 @@ class QuickCheckApp(tk.Tk):
         s = self._read_settings()
         lang_files = self._get_selected_lang_files()
         output_dir = Path(get_output_dir())
-        cat_idx = self._category_index
-        fn_idx = self._filename_index
 
         def worker() -> None:
             try:
@@ -551,8 +549,6 @@ class QuickCheckApp(tk.Tk):
                     length_threshold=s.max_term_length,
                     min_occurrence=s.min_occurrence if s.min_occurrence > 1 else None,
                     progress_callback=lambda msg: self.after(0, self._log_msg, msg),
-                    category_index=cat_idx,
-                    filename_index=fn_idx,
                 )
                 summary_parts = [f"{lang}({count})" for lang, count in sorted(results.items())]
                 summary = "LINE CHECK done: " + " ".join(summary_parts)
