@@ -175,3 +175,4 @@ Build 049: auto-fix </br> (wrong slash position) to <br/> in postprocess Step 1
 Build 050: Unicode ellipsis warning + EventName fallback in warnings
 Build 051: code review fixes — bidi chars, postprocess attr bug, failure report consistency, dedup helpers
 Build 052: auto-fix ellipsis (… → ...) for non-CJK + clean failure report (core attrs only)
+Build 053: rename CheckResults to CodeFormatIssue for pattern check output
