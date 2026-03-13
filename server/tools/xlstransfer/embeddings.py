@@ -36,24 +36,34 @@ def load_model(model_path: Optional[Path] = None) -> "SentenceTransformer":
     """
     Load Korean BERT model for embedding generation.
 
+    In Light Mode (no torch/sentence-transformers), returns a Model2VecModelAdapter
+    that provides a SentenceTransformer.encode()-compatible interface.
+
     Args:
         model_path: Path to model directory (uses config default if None)
 
     Returns:
-        Loaded SentenceTransformer model
+        Loaded SentenceTransformer model or Model2VecModelAdapter
 
     Note:
         Model is cached after first load for efficiency.
         SentenceTransformer is imported lazily here to avoid slow startup (~30s PyTorch load).
     """
-    # Lazy import - only load heavy ML libraries when model is actually needed
-    from sentence_transformers import SentenceTransformer
-
     global _model_instance
 
     if _model_instance is not None:
         logger.info("Using cached model instance")
         return _model_instance
+
+    # Light Mode: use Model2Vec adapter instead of SentenceTransformer
+    from server.tools.shared.embedding_engine import is_light_mode, get_model2vec_adapter
+    if is_light_mode():
+        logger.info("Light Mode: using Model2Vec adapter for XLSTransfer")
+        _model_instance = get_model2vec_adapter()
+        return _model_instance
+
+    # Full Mode: load SentenceTransformer
+    from sentence_transformers import SentenceTransformer
 
     if model_path is None:
         model_path = config.get_model_path()
@@ -600,8 +610,17 @@ class EmbeddingsManager:
             whole_mapping_path = tm_path / "embeddings" / "whole_mapping.pkl"
 
             embeddings = np.load(whole_emb_path)
+
+            # Dimension check: if stored embeddings don't match current model dim,
+            # rebuild from DB (e.g., old 1024-dim Qwen indexes in Light Mode)
+            test_emb = self.model.encode(["test"], convert_to_tensor=False)
+            model_dim = np.array(test_emb).shape[-1]
+            if embeddings.shape[1] != model_dim:
+                logger.warning(f"Dimension mismatch: PKL has {embeddings.shape[1]}-dim, model produces {model_dim}-dim. Rebuilding from DB...")
+                return self._build_from_db(tm_id)
+
             with open(whole_mapping_path, 'rb') as f:
-                mapping = pickle.load(f)
+                mapping = pickle.load(f)  # Internal TM data, not user-supplied
 
             # Build dictionaries and sentence lists
             self.whole_sentences = []

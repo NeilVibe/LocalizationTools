@@ -26,6 +26,24 @@ let setupWindow = null;
 let isSetupRunning = false;
 
 /**
+ * Check if Light Mode is enabled.
+ * Light Mode = Model2Vec only, no torch/transformers/Qwen.
+ * Detected via LOCANEXT_LIGHT_MODE env var or light-mode.flag file.
+ */
+function isLightMode(appRoot) {
+  // Check env var
+  if (process.env.LOCANEXT_LIGHT_MODE === '1' || process.env.LOCANEXT_LIGHT_MODE === 'true') {
+    return true;
+  }
+  // Check flag file at project root
+  const flagPath = path.join(appRoot || '', 'light-mode.flag');
+  if (fs.existsSync(flagPath)) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Get the flag file path in AppData (survives reinstalls/updates)
  */
 function getFlagFilePath() {
@@ -323,12 +341,12 @@ function sendProgress(step, status, progress, message) {
 /**
  * Run a Python script and capture progress
  */
-function runPythonScript(pythonExe, scriptPath, step) {
+function runPythonScript(pythonExe, scriptPath, step, args = []) {
   return new Promise((resolve, reject) => {
-    logger.info(`Running Python script: ${scriptPath}`);
+    logger.info(`Running Python script: ${scriptPath}${args.length ? ' ' + args.join(' ') : ''}`);
     sendProgress(step, 'active', 0, 'Starting...');
 
-    const proc = spawn(pythonExe, [scriptPath], {
+    const proc = spawn(pythonExe, [scriptPath, ...args], {
       cwd: path.dirname(scriptPath),
       env: {
         ...process.env,
@@ -388,14 +406,17 @@ function runPythonScript(pythonExe, scriptPath, step) {
 /**
  * Verify installation
  */
-async function verifyInstallation(paths) {
+async function verifyInstallation(paths, lightMode = false) {
   sendProgress('verify', 'active', 0, 'Checking installation...');
 
   // Check 1: Python can import core deps
   sendProgress('verify', 'active', 25, 'Checking Python imports...');
+  const importCheck = lightMode
+    ? 'import fastapi; import model2vec; import faiss; print("OK")'
+    : 'import fastapi; import torch; import transformers; print("OK")';
   try {
     const result = await new Promise((resolve, reject) => {
-      const proc = spawn(paths.pythonExe, ['-c', 'import fastapi; import torch; import transformers; print("OK")'], {
+      const proc = spawn(paths.pythonExe, ['-c', importCheck], {
         timeout: 30000,
         windowsHide: true,
         env: {
@@ -415,12 +436,17 @@ async function verifyInstallation(paths) {
     throw new Error('Python imports failed: ' + e.message);
   }
 
-  // Check 2: Model exists (models are at projectRoot, not in resources)
+  // Check 2: Model exists (skip qwen check in light mode)
   sendProgress('verify', 'active', 50, 'Checking Embedding Model...');
-  const modelPath = path.join(paths.modelsPath, 'qwen-embedding', 'config.json');
-  if (!fs.existsSync(modelPath)) {
-    sendProgress('verify', 'error', 50, 'Embedding Model not found');
-    throw new Error('Embedding Model not found at: ' + modelPath);
+  if (lightMode) {
+    // Light mode: Model2Vec downloads on first use, no pre-check needed
+    sendProgress('verify', 'active', 50, 'Light Mode — Model2Vec (auto-downloads on first use)');
+  } else {
+    const modelPath = path.join(paths.modelsPath, 'qwen-embedding', 'config.json');
+    if (!fs.existsSync(modelPath)) {
+      sendProgress('verify', 'error', 50, 'Embedding Model not found');
+      throw new Error('Embedding Model not found at: ' + modelPath);
+    }
   }
 
   // Check 3: Server directory exists (server is in resources/)
@@ -457,35 +483,50 @@ export async function runFirstRunSetup(paths) {
     const pythonExe = paths.pythonExe;
     const appRoot = paths.projectRoot;
     const toolsDir = paths.pythonToolsPath;  // tools are in resources/tools
+    const lightMode = isLightMode(appRoot);
+
+    if (lightMode) {
+      logger.info('Light Mode detected — skipping torch/transformers/Qwen');
+    }
 
     // Step 1: Install Python dependencies
     const installDepsScript = path.join(toolsDir, 'install_deps.py');
     if (fs.existsSync(installDepsScript)) {
-      await runPythonScript(pythonExe, installDepsScript, 'deps');
+      if (lightMode) {
+        // Pass --light flag to skip heavy ML packages
+        await runPythonScript(pythonExe, installDepsScript, 'deps', ['--light']);
+      } else {
+        await runPythonScript(pythonExe, installDepsScript, 'deps');
+      }
     } else {
       logger.warning('install_deps.py not found, skipping');
       sendProgress('deps', 'done', 100, 'Skipped (not found)');
     }
 
-    // Step 2: Download AI model (skip if already exists)
-    const modelConfig = path.join(paths.modelsPath, 'qwen-embedding', 'config.json');
-    if (fs.existsSync(modelConfig)) {
-      // Model already exists, skip download
-      logger.info('Model already exists, skipping download');
-      sendProgress('model', 'done', 100, 'Model ready');
+    // Step 2: Download AI model (skip in light mode)
+    if (lightMode) {
+      logger.info('Light Mode: skipping Qwen model download');
+      sendProgress('model', 'done', 100, 'Skipped — Light Mode');
     } else {
-      // Need to download model
-      const downloadModelScript = path.join(toolsDir, 'download_model.py');
-      if (fs.existsSync(downloadModelScript)) {
-        await runPythonScript(pythonExe, downloadModelScript, 'model');
+      const modelConfig = path.join(paths.modelsPath, 'qwen-embedding', 'config.json');
+      if (fs.existsSync(modelConfig)) {
+        // Model already exists, skip download
+        logger.info('Model already exists, skipping download');
+        sendProgress('model', 'done', 100, 'Model ready');
       } else {
-        logger.warning('download_model.py not found, skipping');
-        sendProgress('model', 'done', 100, 'Skipped (not found)');
+        // Need to download model
+        const downloadModelScript = path.join(toolsDir, 'download_model.py');
+        if (fs.existsSync(downloadModelScript)) {
+          await runPythonScript(pythonExe, downloadModelScript, 'model');
+        } else {
+          logger.warning('download_model.py not found, skipping');
+          sendProgress('model', 'done', 100, 'Skipped (not found)');
+        }
       }
     }
 
     // Step 3: Verify installation
-    await verifyInstallation(paths);
+    await verifyInstallation(paths, lightMode);
 
     // Success! Create flag file
     createFlagFile(appRoot);

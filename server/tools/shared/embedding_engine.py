@@ -31,6 +31,28 @@ from loguru import logger
 _engines = {}
 _current_engine_name = "model2vec"  # Default
 
+# Light mode detection cache
+_light_mode: Optional[bool] = None
+
+
+def is_light_mode() -> bool:
+    """
+    Check if LocaNext is running in Light Mode (no torch/sentence-transformers).
+
+    Lazy-checks if sentence_transformers + torch are importable, caches result.
+    Returns True when Qwen/torch is NOT available → Model2Vec only.
+    """
+    global _light_mode
+    if _light_mode is None:
+        try:
+            import sentence_transformers  # noqa: F401
+            import torch  # noqa: F401
+            _light_mode = False
+        except ImportError:
+            _light_mode = True
+            logger.warning("Light Mode: torch/sentence-transformers not available. Using Model2Vec only. Match quality may be reduced (256-dim vs 1024-dim).")
+    return _light_mode
+
 
 class EmbeddingEngine(ABC):
     """Abstract base class for embedding engines."""
@@ -235,10 +257,71 @@ class QwenEngine(EmbeddingEngine):
 
 
 # =============================================================================
+# Model2Vec Adapter — SentenceTransformer-compatible wrapper for Light Mode
+# =============================================================================
+
+class Model2VecModelAdapter:
+    """
+    Wraps Model2VecEngine with a SentenceTransformer.encode()-compatible signature.
+
+    Used by XLSTransfer and KR Similar as a drop-in replacement when
+    torch/sentence-transformers are not available (Light Mode).
+
+    Accepts and ignores kwargs like batch_size, show_progress_bar,
+    convert_to_tensor, normalize_embeddings, device, etc.
+    """
+
+    def __init__(self):
+        self._engine = None
+
+    def _ensure_loaded(self):
+        if self._engine is None:
+            # Reuse the central engine cache to avoid duplicate model in memory
+            self._engine = get_embedding_engine("model2vec")
+            self._engine.load()
+
+    def encode(self, texts, batch_size=None, show_progress_bar=False,
+               convert_to_tensor=False, normalize_embeddings=True,
+               device=None, **kwargs):
+        """SentenceTransformer.encode()-compatible interface."""
+        self._ensure_loaded()
+        return self._engine.encode(texts, normalize=normalize_embeddings)
+
+    def to(self, device):
+        """No-op for device placement (Model2Vec is CPU-only)."""
+        return self
+
+    def save(self, path):
+        """No-op for model saving."""
+        logger.debug("Model2VecModelAdapter.save() is a no-op")
+
+
+# Singleton adapter instance
+_model2vec_adapter: Optional[Model2VecModelAdapter] = None
+
+
+def get_model2vec_adapter() -> Model2VecModelAdapter:
+    """Get a cached Model2VecModelAdapter instance."""
+    global _model2vec_adapter
+    if _model2vec_adapter is None:
+        _model2vec_adapter = Model2VecModelAdapter()
+    return _model2vec_adapter
+
+
+# =============================================================================
 # Engine Registry and Selection
 # =============================================================================
 
-AVAILABLE_ENGINES = {
+def _get_available_engine_registry() -> dict:
+    """Dynamic engine registry — excludes QwenEngine in light mode."""
+    registry = {"model2vec": Model2VecEngine}
+    if not is_light_mode():
+        registry["qwen"] = QwenEngine
+    return registry
+
+
+# Static reference for internal use only — external callers use get_available_engines()
+_AVAILABLE_ENGINES = {
     "model2vec": Model2VecEngine,
     "qwen": QwenEngine,
 }
@@ -248,10 +331,9 @@ def get_available_engines() -> List[dict]:
     """
     Get list of available engines with metadata.
 
-    Returns:
-        List of dicts with engine info for UI display.
+    Returns only engines that are actually usable (excludes Qwen in light mode).
     """
-    return [
+    engines = [
         {
             "id": "model2vec",
             "name": "Model2Vec (Fast)",
@@ -260,15 +342,19 @@ def get_available_engines() -> List[dict]:
             "memory_mb": 128,
             "default": True,
         },
-        {
+    ]
+
+    if not is_light_mode():
+        engines.append({
             "id": "qwen",
             "name": "Qwen (Deep Semantic)",
             "description": "Deep understanding. Best for batch/quality work.",
             "dimension": 1024,
             "memory_mb": 2300,
             "default": False,
-        },
-    ]
+        })
+
+    return engines
 
 
 def get_current_engine_name() -> str:
@@ -282,11 +368,18 @@ def set_current_engine(engine_name: str) -> None:
 
     Args:
         engine_name: "model2vec" or "qwen"
+
+    Raises:
+        ValueError: If engine_name is "qwen" in light mode, or unknown engine.
     """
     global _current_engine_name
 
-    if engine_name not in AVAILABLE_ENGINES:
-        raise ValueError(f"Unknown engine: {engine_name}. Available: {list(AVAILABLE_ENGINES.keys())}")
+    registry = _get_available_engine_registry()
+
+    if engine_name not in registry:
+        if engine_name == "qwen" and is_light_mode():
+            raise ValueError("Qwen engine is not available in Light Mode (torch/sentence-transformers not installed). Use 'model2vec' instead.")
+        raise ValueError(f"Unknown engine: {engine_name}. Available: {list(registry.keys())}")
 
     _current_engine_name = engine_name
     logger.info(f"Embedding engine set to: {engine_name}")
@@ -302,16 +395,23 @@ def get_embedding_engine(engine_name: Optional[str] = None) -> EmbeddingEngine:
     Returns:
         EmbeddingEngine instance (lazy-loaded).
     """
-    global _engines
+    global _engines, _current_engine_name
 
     if engine_name is None:
         engine_name = _current_engine_name
 
-    if engine_name not in AVAILABLE_ENGINES:
-        raise ValueError(f"Unknown engine: {engine_name}")
+    registry = _get_available_engine_registry()
+
+    if engine_name not in registry:
+        if engine_name == "qwen" and is_light_mode():
+            logger.warning(f"Qwen requested but Light Mode active — falling back to model2vec")
+            engine_name = "model2vec"
+            _current_engine_name = "model2vec"
+        else:
+            raise ValueError(f"Unknown engine: {engine_name}")
 
     if engine_name not in _engines:
-        _engines[engine_name] = AVAILABLE_ENGINES[engine_name]()
+        _engines[engine_name] = registry[engine_name]()
 
     return _engines[engine_name]
 

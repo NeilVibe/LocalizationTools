@@ -29,6 +29,7 @@ jobs:
       version: ${{ steps.check.outputs.version }}
       mode: ${{ steps.check.outputs.mode }}
       skip_build: ${{ steps.check.outputs.skip_build }}
+      light_mode: ${{ steps.check.outputs.light_mode }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,8 +39,9 @@ jobs:
         run: |
           # ============================================================
           # ONE BUILD ONLY. QA is the default mode.
+          # Supports: Build, Build QA, Build Light, TROUBLESHOOT
           # ============================================================
-          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "^Build( QA)?$|^TROUBLESHOOT" | tail -1)
+          TRIGGER=$(cat BUILD_TRIGGER.txt | grep -E "^Build( QA| Light)?$|^TROUBLESHOOT" | tail -1)
           echo "Trigger line: $TRIGGER"
 
           if [ -n "$TRIGGER" ]; then
@@ -55,10 +57,17 @@ jobs:
             if echo "$TRIGGER" | grep -q "^TROUBLESHOOT"; then
               echo "mode=troubleshoot" >> $GITHUB_OUTPUT
               echo "skip_build=yes" >> $GITHUB_OUTPUT
+              echo "light_mode=no" >> $GITHUB_OUTPUT
               echo "[TROUBLESHOOT] Test-only mode (no Windows build)"
+            elif echo "$TRIGGER" | grep -q "^Build Light"; then
+              echo "mode=official" >> $GITHUB_OUTPUT
+              echo "skip_build=no" >> $GITHUB_OUTPUT
+              echo "light_mode=yes" >> $GITHUB_OUTPUT
+              echo "[LIGHT MODE] Model2Vec only — no torch/transformers/Qwen"
             else
               echo "mode=official" >> $GITHUB_OUTPUT
               echo "skip_build=no" >> $GITHUB_OUTPUT
+              echo "light_mode=no" >> $GITHUB_OUTPUT
               echo "[QA MODE] Running ALL tests (~1000+) - this is now the default"
             fi
           else
@@ -566,6 +575,7 @@ jobs:
 
     env:
       BUILD_VERSION: ${{ needs.check-build-trigger.outputs.version }}
+      LIGHT_MODE: ${{ needs.check-build-trigger.outputs.light_mode }}
 
     steps:
       - name: Checkout code
@@ -747,6 +757,61 @@ jobs:
         shell: pwsh
 
       # ============================================================
+      # STEP 2b: Light Mode Setup (Model2Vec only, no torch/Qwen)
+      # Only runs when triggered with "Build Light"
+      # ============================================================
+      - name: Light Mode Setup
+        if: env.LIGHT_MODE == 'yes'
+        run: |
+          Write-Host "=== LIGHT MODE: Setting up Model2Vec-only build ===" -ForegroundColor Cyan
+
+          # 1. Install model2vec + faiss-cpu in embedded Python
+          Write-Host "Installing model2vec + faiss-cpu in embedded Python..."
+          & "tools\python\python.exe" -m pip install --no-warn-script-location model2vec faiss-cpu
+          if ($LASTEXITCODE -ne 0) { Write-Error "Failed to install model2vec/faiss-cpu"; exit 1 }
+
+          # Verify
+          & "tools\python\python.exe" -c "import model2vec; print(f'[OK] model2vec ready')"
+          & "tools\python\python.exe" -c "import faiss; print(f'[OK] faiss-cpu ready')"
+
+          # 2. Create light-mode.flag at repo root
+          $flagContent = @{
+            mode = "light"
+            createdAt = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+            description = "Model2Vec only - no torch/transformers/Qwen"
+          } | ConvertTo-Json
+          [System.IO.File]::WriteAllText("light-mode.flag", $flagContent)
+          Write-Host "[OK] light-mode.flag created" -ForegroundColor Green
+
+          # 3. Add light-mode.flag to extraFiles in package.json
+          #    extraFiles places files at app root (where first-run-setup.js checks)
+          $pkgPath = "locaNext/package.json"
+          $pkg = Get-Content $pkgPath -Raw | ConvertFrom-Json
+
+          # Add extraFiles array with the flag file
+          $pkg | Add-Member -NotePropertyName "build" -NotePropertyValue $pkg.build -Force
+          if (-not $pkg.build.extraFiles) {
+            $pkg.build | Add-Member -NotePropertyName "extraFiles" -NotePropertyValue @() -Force
+          }
+          $flagEntry = @{ from = "../light-mode.flag"; to = "light-mode.flag" }
+          $pkg.build.extraFiles += $flagEntry
+
+          $pkgJson = $pkg | ConvertTo-Json -Depth 100
+          [System.IO.File]::WriteAllText($pkgPath, $pkgJson)
+
+          # Validate JSON roundtrip
+          $verify = Get-Content $pkgPath -Raw | ConvertFrom-Json
+          if ($null -eq $verify.build.extraFiles) {
+            Write-Error "[CRITICAL] package.json extraFiles not written correctly!"
+            exit 1
+          }
+          Write-Host "[OK] package.json updated with extraFiles for light-mode.flag" -ForegroundColor Green
+
+          $totalSize = (Get-ChildItem "tools\python" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+          Write-Host "[OK] Light Mode embedded Python: $([math]::Round($totalSize, 1)) MB" -ForegroundColor Green
+        shell: pwsh
+
+      # ============================================================
       # STEP 3: Build Electron app
       # ============================================================
 
@@ -876,8 +941,12 @@ jobs:
 
           Write-Host "[OK] Found installer: $($installer.Name)"
 
-          # Rename to include version
-          $newName = "LocaNext_v${version}_Light_Setup.exe"
+          # Rename to include version (and Light suffix if light mode)
+          if ($env:LIGHT_MODE -eq "yes") {
+            $newName = "LocaNext_v${version}_Light_Setup.exe"
+          } else {
+            $newName = "LocaNext_v${version}_Setup.exe"
+          }
           Copy-Item $installer.FullName -Destination "$outDir\$newName"
 
           $size = (Get-Item "$outDir\$newName").Length / 1MB
@@ -1333,56 +1402,53 @@ jobs:
           draft: false
           prerelease: false
           body: |
-            ## LocaNext Desktop Application
+            ## LocaNext Desktop Application ${{ needs.check-build-trigger.outputs.light_mode == 'yes' && '(Light Edition)' || '' }}
 
             **Version:** ${{ needs.check-build-trigger.outputs.version }}
-            **Architecture:** Small installer + first-run setup
+            **Build:** ${{ needs.check-build-trigger.outputs.light_mode == 'yes' && 'Light (Model2Vec only — no torch/Qwen)' || 'Full (torch + Qwen + Model2Vec)' }}
 
-            ### 📥 Downloads
+            ### Downloads
 
             **Windows:**
-            - `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_Setup.exe` (~150-200MB)
+            - `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_${{ needs.check-build-trigger.outputs.light_mode == 'yes' && 'Light_' || '' }}Setup.exe`
 
             **macOS:**
-            - `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_macOS.dmg` (~150-200MB)
+            - `LocaNext_v${{ needs.check-build-trigger.outputs.version }}_macOS.dmg`
 
-            ### ✅ Requirements
+            ### Requirements
 
             - **Internet connection** - For first launch setup
-            - **~3GB disk space** - For app + deps + model
+            - **${{ needs.check-build-trigger.outputs.light_mode == 'yes' && '~500MB disk space' || '~3GB disk space' }}**
             - **NO Python required!** - Everything is bundled
 
-            ### 🚀 What's Included
+            ### What's Included
 
-            - ✅ **XLSTransfer** - AI-powered Excel translation
-            - ✅ **QuickSearch** - Multi-game dictionary (BDO, BDM, BDC, CD)
-            - ✅ **KR Similar** - Korean semantic similarity search
-            - ✅ **First-Run Setup** - Automatic deps + model install with progress UI
+            - XLSTransfer - AI-powered Excel translation
+            - QuickSearch - Multi-game dictionary (BDO, BDM, BDC, CD)
+            - KR Similar - Korean semantic similarity search
+            - First-Run Setup - Automatic dependency install with progress UI
+            ${{ needs.check-build-trigger.outputs.light_mode == 'yes' && '- **Light Mode** - Uses Model2Vec (fast, 128MB) instead of Qwen (2.3GB)' || '- Full AI model (Qwen) for deep semantic matching' }}
 
-            ### 💻 Installation
+            ### Installation
 
             **Windows:**
-            1. Download the installer (~150MB)
+            1. Download the installer
             2. Run the installer (~1 min)
             3. Launch LocaNext
-            4. **First-Time Setup wizard appears automatically:**
-               - Installing Python dependencies (~15-20 min)
-               - Downloading AI model (~5-10 min)
-               - All with visible progress bars!
-            5. Setup complete → App ready!
+            4. **First-Time Setup wizard appears automatically**
+            ${{ needs.check-build-trigger.outputs.light_mode == 'yes' && '   - Light deps install (~2-3 min) — no heavy AI downloads!' || '   - Installing Python dependencies (~15-20 min)\n   - Downloading AI model (~5-10 min)' }}
+            5. Setup complete - App ready!
 
             **Subsequent launches:** Instant (no setup needed)
 
-            ### 🔐 Default Credentials
+            ### Default Credentials
 
             - Username: `admin`
             - Password: `admin123`
 
-            **⚠️ Change these for production use!**
-
             ---
 
-            🤖 Generated with [Claude Code](https://claude.com/claude-code)
+            Generated with [Claude Code](https://claude.com/claude-code)
           files: |
             artifacts/windows/*.exe
             artifacts/windows/latest.yml

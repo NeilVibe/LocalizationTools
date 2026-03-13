@@ -31,7 +31,11 @@ _models_available: Optional[bool] = None
 
 
 def _check_models_available() -> bool:
-    """Lazy check if ML models are available. Cached after first call."""
+    """Lazy check if ML models are available. Cached after first call.
+
+    In Light Mode (no torch/sentence-transformers), checks for model2vec+faiss
+    as fallback and still returns True.
+    """
     global _models_available
     if _models_available is None:
         try:
@@ -40,8 +44,15 @@ def _check_models_available() -> bool:
             import torch  # noqa: F401
             _models_available = True
         except ImportError:
-            _models_available = False
-            logger.warning("sentence_transformers/faiss not available - embeddings disabled")
+            # Light Mode fallback: check if model2vec + faiss are available
+            try:
+                import model2vec  # noqa: F401
+                import faiss  # noqa: F401
+                _models_available = True
+                logger.info("Light Mode: model2vec+faiss available for KR Similar embeddings")
+            except ImportError:
+                _models_available = False
+                logger.warning("Neither sentence_transformers nor model2vec available - embeddings disabled")
     return _models_available
 
 
@@ -114,23 +125,33 @@ class EmbeddingsManager:
         })
 
     def _ensure_model_loaded(self):
-        """Load the model if not already loaded. Uses lazy imports."""
+        """Load the model if not already loaded. Uses lazy imports.
+
+        In Light Mode, uses Model2VecModelAdapter instead of SentenceTransformer.
+        """
         if not _check_models_available():
-            raise RuntimeError("sentence_transformers not available")
+            raise RuntimeError("No embedding model available (neither sentence_transformers nor model2vec)")
 
         if self.model is None:
-            # LAZY IMPORT: Import heavy ML libraries only when model is needed
-            from sentence_transformers import SentenceTransformer
-            import torch
+            from server.tools.shared.embedding_engine import is_light_mode, get_model2vec_adapter
 
-            logger.info("Loading Korean BERT model...", {"model": MODEL_NAME})
-            self.model = SentenceTransformer(MODEL_NAME)
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self.model.to(self.device)
-            logger.success("Korean BERT model loaded", {
-                "model": MODEL_NAME,
-                "device": str(self.device)
-            })
+            if is_light_mode():
+                logger.info("Light Mode: using Model2Vec adapter for KR Similar")
+                self.model = get_model2vec_adapter()
+                self.device = None  # Model2Vec is CPU-only, no device placement
+            else:
+                # LAZY IMPORT: Import heavy ML libraries only when model is needed
+                from sentence_transformers import SentenceTransformer
+                import torch
+
+                logger.info("Loading Korean BERT model...", {"model": MODEL_NAME})
+                self.model = SentenceTransformer(MODEL_NAME)
+                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                self.model.to(self.device)
+                logger.success("Korean BERT model loaded", {
+                    "model": MODEL_NAME,
+                    "device": str(self.device)
+                })
 
     def encode_texts(self, texts: List[str], batch_size: int = 1000, progress_callback: callable = None) -> np.ndarray:
         """
@@ -151,7 +172,11 @@ class EmbeddingsManager:
 
         for i in range(0, total, batch_size):
             batch = texts[i:i + batch_size]
-            batch_embeddings = self.model.encode(batch, device=self.device)
+            if self.device is not None:
+                batch_embeddings = self.model.encode(batch, device=self.device)
+            else:
+                # Light Mode: Model2VecModelAdapter doesn't need device kwarg
+                batch_embeddings = self.model.encode(batch)
             embeddings.extend(batch_embeddings)
 
             if progress_callback:
@@ -556,5 +581,5 @@ class EmbeddingsManager:
             "split_pairs": len(self.split_dict) if self.split_dict else 0,
             "whole_pairs": len(self.whole_dict) if self.whole_dict else 0,
             "dictionaries_dir": str(self.dictionaries_dir),
-            "models_available": MODELS_AVAILABLE
+            "models_available": _check_models_available()
         }

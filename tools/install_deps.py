@@ -18,6 +18,7 @@ Packages installed:
 
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 
@@ -54,10 +55,28 @@ def install_package(package, description=""):
     return True
 
 
+def _is_light_mode() -> bool:
+    """Check if --light flag or LOCANEXT_LIGHT_MODE env var is set."""
+    if "--light" in sys.argv:
+        return True
+    if os.environ.get("LOCANEXT_LIGHT_MODE", "").lower() in ("1", "true", "yes"):
+        return True
+    return False
+
+
+# Heavy ML packages skipped in light mode
+_HEAVY_ML_PACKAGES = {"torch", "transformers", "sentence-transformers"}
+
+
 def main():
     """Main function to install all dependencies."""
+    light_mode = _is_light_mode()
+
     print("\n" + "=" * 50)
-    print("  LocaNext - Python Dependencies Installer")
+    if light_mode:
+        print("  LocaNext - Python Dependencies Installer (LIGHT)")
+    else:
+        print("  LocaNext - Python Dependencies Installer")
     print("=" * 50)
     print("0%")  # Initial progress for UI
     sys.stdout.flush()
@@ -113,9 +132,20 @@ def main():
         ("pyyaml", "YAML support"),
     ]
 
+    # Light mode: skip heavy ML packages (torch, transformers, sentence-transformers)
+    if light_mode:
+        original_count = len(packages)
+        packages = [(pkg, desc) for pkg, desc in packages if pkg not in _HEAVY_ML_PACKAGES]
+        skipped = original_count - len(packages)
+        print(f"[INFO] Light Mode: skipping {skipped} heavy ML packages (torch, transformers, sentence-transformers)")
+        sys.stdout.flush()
+
     total = len(packages)
     print(f"\n[INFO] Will install {total} packages")
-    print("[INFO] This may take 15-20 minutes...\n")
+    if light_mode:
+        print("[INFO] Light Mode install — this should be quick...\n")
+    else:
+        print("[INFO] This may take 15-20 minutes...\n")
     sys.stdout.flush()
 
     failed = []
