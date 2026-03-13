@@ -1,52 +1,30 @@
-; LocaNext Installer UI Customization
-; Shows installation progress details to user
+; LocaNext Custom NSIS Installer UI
+; Referenced by package.json: nsis.include
+;
+; Overrides electron-builder defaults to show installation progress.
 
-; Must use customHeader macro for electron-builder
-; See: https://github.com/electron-userland/electron-builder/issues/4719
+; --- Show details panel (overrides "nevershow" from common.nsh) ---
+; customHeader runs after common.nsh, so this wins.
 !macro customHeader
-  ; ShowInstDetails and ShowUnInstDetails are compile-time directives
   ShowInstDetails show
-  ShowUnInstDetails show
 !macroend
 
-; Optional: Auto-scroll the details panel
+; --- Smooth progress bar ---
 !define MUI_INSTFILESPAGE_PROGRESSBAR smooth
 
-; Set detail text at start
+; --- Install progress page header ---
+!define MUI_INSTFILESPAGE_HEADER_TEXT "Installing LocaNext"
+!define MUI_INSTFILESPAGE_HEADER_SUBTEXT "Extracting and copying files. This usually takes about 1 minute."
+
+; --- Header shown when install completes ---
+!define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "Installation Complete"
+!define MUI_INSTFILESPAGE_FINISHHEADER_SUBTEXT "LocaNext is ready to use."
+
+; --- Post-install: show completion in detail log ---
 !macro customInstall
-  ; Enable detailed output (must be in Section/Function, not compile-time macro)
-  SetDetailsPrint both
-
-  DetailPrint "================================================"
-  DetailPrint "  LocaNext Installation"
-  DetailPrint "================================================"
+  SetDetailsPrint textonly
   DetailPrint ""
-  DetailPrint "Installing application files..."
-  DetailPrint "This may take a few minutes depending on your system."
+  DetailPrint "LocaNext installed successfully."
   DetailPrint ""
-  DetailPrint "Components being installed:"
-  DetailPrint "  - LocaNext Desktop Application"
-  DetailPrint "  - Embedded Python Runtime"
-  DetailPrint "  - Backend Server"
-  DetailPrint "  - Translation Tools"
-  DetailPrint ""
-  DetailPrint "Extracting files..."
-  DetailPrint ""
-!macroend
-
-; After installation completes
-!macro customInstallEnd
-  DetailPrint ""
-  DetailPrint "================================================"
-  DetailPrint "  Installation Complete!"
-  DetailPrint "================================================"
-  DetailPrint ""
-  DetailPrint "LocaNext has been installed successfully."
-  DetailPrint ""
-  DetailPrint "On first launch, the app will:"
-  DetailPrint "  1. Install Python dependencies"
-  DetailPrint "  2. Download the Embedding Model (~2.3 GB)"
-  DetailPrint ""
-  DetailPrint "Please ensure you have an internet connection."
-  DetailPrint ""
+  SetDetailsPrint none
 !macroend

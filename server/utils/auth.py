@@ -189,10 +189,11 @@ def get_current_user(token: str, db) -> Optional[dict]:
         logger.warning("No user_id in token")
         return None
 
-    # P9: Handle OFFLINE mode - look up real OFFLINE user from database
+    # P9/P33: Handle OFFLINE and LOCAL mode — look up real user from database
     # This ensures we use the real integer user_id that works with foreign keys
-    if payload.get("offline_mode") or user_id == "OFFLINE":
-        offline_user = db.query(User).filter(User.username == "OFFLINE").first()
+    if payload.get("offline_mode") or user_id in ("OFFLINE", "LOCAL"):
+        lookup_username = "LOCAL" if user_id == "LOCAL" else "OFFLINE"
+        offline_user = db.query(User).filter(User.username == lookup_username).first()
         if offline_user:
             return {
                 "user_id": offline_user.user_id,
@@ -205,7 +206,7 @@ def get_current_user(token: str, db) -> Optional[dict]:
                 "offline_mode": True
             }
         else:
-            logger.warning("OFFLINE user not found in database - run db_setup to create it")
+            logger.warning(f"{lookup_username} user not found in database - run db_setup to create it")
             return None
 
     # Fetch user from database
@@ -262,10 +263,11 @@ async def get_current_user_async(token: str, db) -> Optional[dict]:
         logger.warning("No user_id in token")
         return None
 
-    # P9: Handle OFFLINE mode - look up real OFFLINE user from database
+    # P9/P33: Handle OFFLINE and LOCAL mode — look up real user from database
     # This ensures we use the real integer user_id that works with foreign keys
-    if payload.get("offline_mode") or user_id == "OFFLINE":
-        result = await db.execute(select(User).where(User.username == "OFFLINE"))
+    if payload.get("offline_mode") or user_id in ("OFFLINE", "LOCAL"):
+        lookup_username = "LOCAL" if user_id == "LOCAL" else "OFFLINE"
+        result = await db.execute(select(User).where(User.username == lookup_username))
         offline_user = result.scalar_one_or_none()
         if offline_user:
             return {
@@ -279,7 +281,7 @@ async def get_current_user_async(token: str, db) -> Optional[dict]:
                 "offline_mode": True
             }
         else:
-            logger.warning("OFFLINE user not found in database - run db_setup to create it")
+            logger.warning(f"{lookup_username} user not found in database - run db_setup to create it")
             return None
 
     # Fetch user from database (AsyncSession with asyncpg or aiosqlite)
