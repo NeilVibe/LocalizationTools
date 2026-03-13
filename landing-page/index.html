@@ -1544,6 +1544,47 @@
       }
     }
 
+    /* Tablet — additional sections */
+    @media (max-width: 768px) {
+      /* Section 10: Arsenal */
+      .arsenal-section {
+        padding: 80px 24px;
+      }
+
+      .orbital-container {
+        width: 90vw;
+        height: 90vw;
+      }
+
+      .orbital-center {
+        width: 110px;
+        height: 110px;
+      }
+
+      .orbital-satellite {
+        width: 90px;
+        height: 90px;
+      }
+
+      .orbital-satellite-name { font-size: 10px; }
+      .orbital-satellite-desc { font-size: 8px; }
+
+      /* Section 11: Builder */
+      .builder-section {
+        padding: 80px 24px;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+
+      /* Section 12: Closing */
+      .closing-section {
+        padding: 80px 24px 120px;
+      }
+    }
+
     /* Mobile */
     @media (max-width: 375px) {
       .hero-title {
@@ -1575,6 +1616,128 @@
       .mockup-grid-header > div,
       .mockup-grid-row > div {
         padding: 6px 6px;
+      }
+
+      /* Section 6: Architecture */
+      .arch-pillars {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .arch-diagram svg {
+        max-width: 100%;
+      }
+
+      /* Section 7: Multimodal */
+      .multimodal-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .mm-grid-header,
+      .mm-grid-row {
+        grid-template-columns: 80px 1fr 1fr;
+        font-size: 10px;
+      }
+
+      .mm-meta-cards {
+        grid-template-columns: 1fr;
+      }
+
+      /* Section 8: Pipeline */
+      .pipeline-flow {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .pipeline-connector {
+        width: 2px;
+        height: 24px;
+        flex-direction: column;
+      }
+
+      .pipeline-connector-line {
+        width: 2px;
+        height: 100%;
+      }
+
+      /* Section 9: Dev Platform */
+      .dev-editor-body {
+        grid-template-columns: 1fr;
+      }
+
+      .dev-editor-side {
+        border-left: none;
+        border-top: 1px solid var(--glass-border);
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .dev-features {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .dev-autocomplete {
+        width: 220px;
+        left: 44px;
+      }
+
+      /* Section 10: Arsenal */
+      .arsenal-section {
+        padding: 60px 16px;
+      }
+
+      .orbital-container {
+        width: 92vw;
+        height: 92vw;
+      }
+
+      .orbital-center {
+        width: 90px;
+        height: 90px;
+      }
+
+      .orbital-center-name { font-size: 13px; }
+
+      .orbital-satellite {
+        width: 70px;
+        height: 70px;
+      }
+
+      .orbital-satellite-name { font-size: 8px; }
+      .orbital-satellite-desc { font-size: 7px; }
+
+      /* Section 11: Builder */
+      .builder-section {
+        padding: 60px 16px;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .stat-card {
+        padding: 16px 10px;
+      }
+
+      .tech-pill {
+        font-size: 11px;
+        padding: 8px 16px;
+      }
+
+      /* Section 12: Closing */
+      .closing-section {
+        padding: 60px 16px 100px;
+      }
+
+      .closing-main {
+        font-size: clamp(24px, 6vw, 36px);
+      }
+
+      .closing-logo {
+        font-size: clamp(32px, 8vw, 56px);
       }
     }
 
@@ -1672,6 +1835,59 @@
         opacity: 1 !important;
         transform: none !important;
       }
+    }
+
+    /* ==========================================================================
+       ACT DIVIDERS — Gradient transitions between major acts
+       ========================================================================== */
+    .act-divider {
+      width: 100%;
+      height: 2px;
+      position: relative;
+      overflow: visible;
+    }
+
+    .act-divider::before {
+      content: '';
+      position: absolute;
+      top: -40px;
+      left: 0;
+      right: 0;
+      height: 80px;
+      pointer-events: none;
+    }
+
+    .act-divider--red-to-indigo::before {
+      background: linear-gradient(to bottom,
+        rgba(239, 68, 68, 0.08),
+        rgba(99, 102, 241, 0.08)
+      );
+    }
+
+    .act-divider--red-to-indigo {
+      background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.4), rgba(99, 102, 241, 0.4), transparent);
+    }
+
+    .act-divider--indigo-to-purple::before {
+      background: linear-gradient(to bottom,
+        rgba(6, 182, 212, 0.06),
+        rgba(139, 92, 246, 0.06)
+      );
+    }
+
+    .act-divider--indigo-to-purple {
+      background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.4), transparent);
+    }
+
+    .act-divider--purple-to-dark::before {
+      background: linear-gradient(to bottom,
+        rgba(6, 182, 212, 0.06),
+        rgba(10, 10, 15, 0.2)
+      );
+    }
+
+    .act-divider--purple-to-dark {
+      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.3), rgba(99, 102, 241, 0.2), transparent);
     }
 
     /* ==========================================================================
@@ -2085,6 +2301,9 @@
     </div>
   </section>
 
+  <!-- Act Divider: Act 1 (Red) → Act 2 (Indigo) -->
+  <div class="act-divider act-divider--red-to-indigo" aria-hidden="true"></div>
+
   <!-- ========================================================================
        SECTION 4: LOCANEXT REVEAL
        ======================================================================== -->
@@ -2316,6 +2535,9 @@
       </div>
     </div>
   </section>
+
+  <!-- Act Divider: Act 2 (Indigo) → Act 3 (Purple/Cyan) -->
+  <div class="act-divider act-divider--indigo-to-purple" aria-hidden="true"></div>
 
   <!-- ========================================================================
        SECTION 7: MULTIMODAL CONTEXT
@@ -2585,6 +2807,9 @@
       </div>
     </div>
   </section>
+
+  <!-- Act Divider: Act 3 (Purple/Cyan) → Act 4 (Dark) -->
+  <div class="act-divider act-divider--purple-to-dark" aria-hidden="true"></div>
 
   <!-- Section 10: Tool Arsenal -->
   <section class="arsenal-section" id="toolArsenal">
