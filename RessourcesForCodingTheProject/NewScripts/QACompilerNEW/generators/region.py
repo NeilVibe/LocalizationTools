@@ -789,8 +789,9 @@ def write_sheet_content(
             c_other.border = THIN_BORDER
             col_offset = 4
 
-        # Extra columns
-        c_worldpos = sheet.cell(r_idx, col_offset + 1, world_position)
+        # Extra columns — format as /teleport command for easy copy-paste
+        teleport_cmd = f"/teleport {world_position}" if world_position else ""
+        c_worldpos = sheet.cell(r_idx, col_offset + 1, teleport_cmd)
         c_worldpos.fill = fill
         c_worldpos.font = font
         c_worldpos.alignment = Alignment(horizontal="center", vertical="center")

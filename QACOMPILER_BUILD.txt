@@ -159,3 +159,4 @@ Build 020: GUI horizontal layout — PanedWindow split (controls left, log right
 Build 021: Wire log_callback to all 6 GUI actions — Generate, Transfer, Coverage, Localizer, Tracker
 Build 022: Enrich GUI log output — timing, per-user stats, conflict counts, KR strings, category breakdowns
 Build 023: Add WorldPosition column to Region generator
+Build 024: Add /teleport command to WorldPosition column
