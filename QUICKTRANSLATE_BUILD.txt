@@ -182,3 +182,4 @@ Build 056: fix false positives on XML angle brackets (from_xml gate)
 Build 057: postprocess step 8 — auto-fix double-escaped entities + from_xml false positive fix
 Build 058: REVERT unsafe step 8 entity decode
 Build 059: Safe Step 8 entity decode — explicit allowlist
+Build 060: Step 8 decode standalone double-escaped lt/gt + postprocess pipeline doc
