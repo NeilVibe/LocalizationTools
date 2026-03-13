@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LocaNext — 로컬라이제이션의 미래</title>
-  <meta name="description" content="LocaNext: AI 기반 게임 로컬라이제이션 플랫폼. 하나의 플랫폼, 하나의 비전.">
+  <meta name="description" content="LocaNext: 로컬라이제이션 프로세스를 혁신하는 멀티모달 플랫폼. 오픈소스. 무료. 엔터프라이즈급.">
 
   <!-- Fonts -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -36,6 +36,8 @@
       --accent: #06b6d4;
       --danger: #ef4444;
       --success: #10b981;
+      --amber: #f59e0b;
+      --amber-dim: rgba(245, 158, 11, 0.15);
       --text: #f1f5f9;
       --text-dim: #94a3b8;
       --glass: rgba(255, 255, 255, 0.05);
@@ -106,13 +108,6 @@
       max-width: 720px;
     }
 
-    /* Stats / numbers */
-    .stat-number {
-      font-family: var(--font-mono);
-      font-weight: 700;
-      font-size: clamp(48px, 6vw, 72px);
-    }
-
     .label {
       font-family: var(--font-body);
       font-weight: 500;
@@ -136,7 +131,6 @@
       overflow: hidden;
     }
 
-    /* Three.js canvas */
     .hero-canvas {
       position: absolute;
       top: 0;
@@ -146,18 +140,18 @@
       z-index: 0;
     }
 
-    /* Hero text content */
     .hero-content {
       position: relative;
       z-index: 1;
       text-align: center;
       padding: 0 24px;
+      max-width: 900px;
     }
 
     .hero-title {
       font-family: var(--font-display);
       font-weight: 900;
-      font-size: clamp(40px, 7vw, 96px);
+      font-size: clamp(32px, 5vw, 64px);
       color: var(--text);
       min-height: 1.2em;
       display: flex;
@@ -169,7 +163,6 @@
       display: inline;
     }
 
-    /* Typewriter cursor */
     .hero-cursor {
       display: inline-block;
       width: 3px;
@@ -188,13 +181,12 @@
     .hero-subtitle {
       font-family: var(--font-body);
       font-weight: 400;
-      font-size: clamp(18px, 2.5vw, 28px);
+      font-size: clamp(16px, 2.5vw, 24px);
       color: var(--text-dim);
       margin-top: 24px;
       opacity: 0;
     }
 
-    /* Scroll indicator */
     .scroll-indicator {
       position: absolute;
       bottom: 40px;
@@ -231,206 +223,92 @@
     }
 
     /* ==========================================================================
-       SECTION 2: PAIN POINTS
+       SECTION 2: CURRENT CHALLENGES
        ========================================================================== */
-    .pain-section {
+    .challenges-section {
       background:
-        radial-gradient(ellipse 60% 40% at 50% 50%, rgba(239, 68, 68, 0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 50% 50%, rgba(245, 158, 11, 0.06), transparent),
         var(--bg);
     }
 
-    .pain-section .section-inner {
-      max-width: 1200px;
+    .challenges-section .section-inner {
+      max-width: 1100px;
       width: 100%;
     }
 
-    .pain-section .section-title {
+    .challenges-section .section-title {
       text-align: center;
       margin-bottom: 56px;
     }
 
-    .pain-grid {
+    .challenge-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 24px;
-      margin-bottom: 48px;
     }
 
-    .pain-card {
-      padding: 32px 28px;
-      border-color: rgba(239, 68, 68, 0.2);
+    .challenge-card {
+      padding: 36px 32px;
+      border-color: rgba(245, 158, 11, 0.15);
       opacity: 0;
       transform: translateY(40px);
+      transition: border-color 0.3s, box-shadow 0.3s;
     }
 
-    .pain-card:hover {
-      border-color: rgba(239, 68, 68, 0.4);
-      box-shadow: 0 0 24px rgba(239, 68, 68, 0.06);
+    .challenge-card:hover {
+      border-color: rgba(245, 158, 11, 0.3);
+      box-shadow: 0 0 24px rgba(245, 158, 11, 0.06);
     }
 
-    .pain-card-icon {
-      font-size: 32px;
-      margin-bottom: 16px;
+    .challenge-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      background: var(--amber-dim);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      margin-bottom: 20px;
     }
 
-    .pain-card-title {
+    .challenge-card-title {
       font-family: var(--font-display);
       font-weight: 700;
       font-size: 20px;
-      color: var(--danger);
-      margin-bottom: 10px;
-    }
-
-    .pain-card-desc {
-      font-size: 15px;
-      color: var(--text-dim);
-      line-height: 1.6;
-    }
-
-    /* Terminal mock */
-    .terminal-mock {
-      border-color: rgba(239, 68, 68, 0.15);
-      padding: 0;
-      overflow: hidden;
-      max-width: 800px;
-      margin: 0 auto;
-      opacity: 0;
-      transform: translateY(30px);
-    }
-
-    .terminal-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--glass-border);
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .terminal-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-    }
-
-    .terminal-dot--red { background: #ef4444; }
-    .terminal-dot--yellow { background: #eab308; }
-    .terminal-dot--green { background: #22c55e; }
-
-    .terminal-title {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--text-dim);
-      margin-left: 8px;
-    }
-
-    .terminal-body {
-      padding: 20px;
-      max-height: 240px;
-      overflow-y: auto;
-      font-family: var(--font-mono);
-      font-size: 13px;
-      line-height: 1.8;
-    }
-
-    .terminal-body::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    .terminal-body::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 2px;
-    }
-
-    .terminal-line {
-      opacity: 0;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    .terminal-line--cmd {
-      color: var(--text-dim);
-    }
-
-    .terminal-line--error {
-      color: var(--danger);
-    }
-
-    .terminal-line--warning {
-      color: #eab308;
-    }
-
-    /* ==========================================================================
-       SECTION 3: PAIN IN NUMBERS
-       ========================================================================== */
-    .pain-numbers-section {
-      background:
-        radial-gradient(ellipse 50% 35% at 50% 50%, rgba(239, 68, 68, 0.06), transparent),
-        var(--bg-alt);
-    }
-
-    .pain-numbers-section .section-inner {
-      max-width: 900px;
-      width: 100%;
-    }
-
-    .pain-numbers-section .section-title {
-      text-align: center;
-      margin-bottom: 56px;
-    }
-
-    .pain-numbers-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 28px;
-    }
-
-    .pain-number-card {
-      padding: 40px 32px;
-      text-align: center;
-      border-color: rgba(239, 68, 68, 0.2);
-      opacity: 0;
-      transform: translateY(30px);
-    }
-
-    .pain-number-value {
-      font-family: var(--font-mono);
-      font-weight: 700;
-      font-size: clamp(40px, 5vw, 60px);
-      color: var(--danger);
+      color: var(--amber);
       margin-bottom: 12px;
     }
 
-    .pain-number-label {
-      font-family: var(--font-body);
-      font-weight: 500;
-      font-size: 16px;
+    .challenge-card-desc {
+      font-size: 15px;
       color: var(--text-dim);
+      line-height: 1.7;
     }
 
     /* ==========================================================================
-       SECTION 4: LOCANEXT REVEAL
+       SECTION 3: LOCANEXT INTRODUCTION
        ========================================================================== */
-    .reveal-section {
+    .intro-section {
       background:
         radial-gradient(ellipse 60% 40% at 50% 50%, rgba(99, 102, 241, 0.08), transparent),
         var(--bg-alt);
       overflow: hidden;
     }
 
-    .reveal-section .section-inner {
+    .intro-section .section-inner {
       max-width: 1100px;
       width: 100%;
       text-align: center;
     }
 
-    .reveal-section .section-title {
+    .intro-section .section-title {
       text-align: center;
-      margin-bottom: 56px;
-      color: var(--text-dim);
+      margin-bottom: 20px;
     }
 
-    .reveal-bloom {
+    .intro-bloom {
       position: absolute;
       top: 50%;
       left: 50%;
@@ -443,7 +321,7 @@
       z-index: 0;
     }
 
-    .reveal-logo {
+    .intro-logo {
       font-family: var(--font-display);
       font-weight: 900;
       font-size: clamp(56px, 8vw, 80px);
@@ -457,108 +335,191 @@
       z-index: 1;
     }
 
-    .reveal-tagline {
-      font-family: var(--font-body);
-      font-weight: 500;
-      font-size: clamp(16px, 2vw, 22px);
+    .intro-message {
+      max-width: 700px;
+      margin: 24px auto 0;
+      font-size: clamp(15px, 1.8vw, 18px);
       color: var(--text-dim);
-      margin-top: 20px;
+      line-height: 1.8;
       opacity: 0;
       position: relative;
       z-index: 1;
     }
 
-    .reveal-mockup {
+    .intro-message strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .intro-pillars {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
       margin-top: 56px;
-      perspective: 1200px;
       position: relative;
       z-index: 1;
     }
 
-    .reveal-mockup-inner {
+    .intro-pillar {
+      padding: 28px 20px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    .intro-pillar-icon {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 16px;
       border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .intro-pillar-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--primary-light);
+      margin-bottom: 8px;
+    }
+
+    .intro-pillar-desc {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    /* ==========================================================================
+       SECTION 4: PLATFORM UI SHOWCASE
+       ========================================================================== */
+    .showcase-section {
+      background:
+        radial-gradient(ellipse 60% 40% at 50% 50%, rgba(6, 182, 212, 0.06), transparent),
+        var(--bg);
+    }
+
+    .showcase-section .section-inner {
+      max-width: 1300px;
+      width: 100%;
+    }
+
+    .showcase-section .section-title {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    /* Large mockup container */
+    .showcase-mockup {
+      perspective: 1200px;
+      margin-bottom: 48px;
+    }
+
+    .showcase-mockup-inner {
+      border-radius: 16px;
       overflow: hidden;
       border: 1px solid var(--glass-border);
-      background: rgba(10, 10, 15, 0.9);
+      background: rgba(10, 10, 15, 0.95);
       backdrop-filter: blur(12px);
-      transform: rotateX(10deg);
+      transform: rotateX(6deg);
       opacity: 0;
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6), 0 0 60px rgba(99, 102, 241, 0.08);
     }
 
-    .mockup-chrome {
+    .showcase-chrome {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 12px 16px;
+      padding: 14px 20px;
       border-bottom: 1px solid var(--glass-border);
       background: rgba(255, 255, 255, 0.03);
     }
 
-    .mockup-dot {
+    .showcase-dot {
       width: 12px;
       height: 12px;
       border-radius: 50%;
     }
 
-    .mockup-dot--red { background: #ef4444; }
-    .mockup-dot--yellow { background: #eab308; }
-    .mockup-dot--green { background: #22c55e; }
+    .showcase-dot--red { background: #ef4444; }
+    .showcase-dot--yellow { background: #eab308; }
+    .showcase-dot--green { background: #22c55e; }
 
-    .mockup-body {
+    .showcase-tab-bar {
       display: flex;
-      min-height: 300px;
+      gap: 2px;
+      margin-left: 20px;
     }
 
-    .mockup-sidebar {
-      width: 200px;
+    .showcase-tab {
+      padding: 6px 16px;
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: var(--text-dim);
+      border-radius: 6px 6px 0 0;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .showcase-tab.active {
+      color: var(--accent);
+      background: rgba(6, 182, 212, 0.08);
+    }
+
+    .showcase-body {
+      display: grid;
+      grid-template-columns: 180px 1fr 280px;
+      min-height: 420px;
+    }
+
+    /* Sidebar */
+    .showcase-sidebar {
       border-right: 1px solid var(--glass-border);
       padding: 16px 0;
-      flex-shrink: 0;
     }
 
-    .mockup-nav-item {
+    .showcase-nav-item {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 10px 20px;
-      font-family: var(--font-body);
       font-size: 13px;
       color: var(--text-dim);
       cursor: default;
       transition: background 0.2s;
     }
 
-    .mockup-nav-item:hover {
+    .showcase-nav-item:hover {
       background: rgba(255, 255, 255, 0.03);
     }
 
-    .mockup-nav-item.active {
+    .showcase-nav-item.active {
       color: var(--accent);
       background: rgba(6, 182, 212, 0.08);
       border-right: 2px solid var(--accent);
     }
 
-    .mockup-nav-icon {
-      font-size: 16px;
-    }
+    .showcase-nav-icon { font-size: 16px; }
 
-    .mockup-grid-area {
+    /* Main translation grid */
+    .showcase-grid-area {
       flex: 1;
-      padding: 16px;
+      padding: 0;
       overflow: hidden;
     }
 
-    .mockup-grid-header,
-    .mockup-grid-row {
+    .showcase-grid-header,
+    .showcase-grid-row {
       display: grid;
-      grid-template-columns: 160px 1fr 1fr 100px;
-      gap: 1px;
+      grid-template-columns: 140px 100px 1fr 1fr 80px;
       font-size: 12px;
       font-family: var(--font-mono);
     }
 
-    .mockup-grid-header {
+    .showcase-grid-header {
       color: var(--text-dim);
       font-family: var(--font-display);
       font-weight: 600;
@@ -566,27 +527,33 @@
       text-transform: uppercase;
       letter-spacing: 0.06em;
       border-bottom: 1px solid var(--glass-border);
-      margin-bottom: 4px;
+      background: rgba(255, 255, 255, 0.02);
     }
 
-    .mockup-grid-header > div,
-    .mockup-grid-row > div {
-      padding: 8px 10px;
+    .showcase-grid-header > div,
+    .showcase-grid-row > div {
+      padding: 10px 12px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .mockup-grid-row {
+    .showcase-grid-row {
       color: var(--text);
       border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      transition: background 0.2s;
     }
 
-    .mockup-grid-row:hover {
+    .showcase-grid-row:hover {
       background: rgba(255, 255, 255, 0.02);
     }
 
-    .mockup-status {
+    .showcase-grid-row.selected {
+      background: rgba(99, 102, 241, 0.08);
+      border-left: 2px solid var(--primary);
+    }
+
+    .showcase-status {
       display: inline-block;
       padding: 2px 8px;
       border-radius: 4px;
@@ -594,475 +561,188 @@
       font-weight: 600;
     }
 
-    .mockup-status--done {
+    .showcase-status--done {
       background: rgba(16, 185, 129, 0.15);
       color: var(--success);
     }
 
-    .mockup-status--progress {
+    .showcase-status--review {
       background: rgba(99, 102, 241, 0.15);
       color: var(--primary-light);
     }
 
-    .mockup-status--new {
+    .showcase-status--new {
       background: rgba(6, 182, 212, 0.15);
       color: var(--accent);
     }
 
-    /* ==========================================================================
-       SECTION 5: PERFORMANCE BENCHMARKS
-       ========================================================================== */
-    .perf-section {
-      background:
-        radial-gradient(ellipse 50% 35% at 50% 50%, rgba(99, 102, 241, 0.06), transparent),
-        var(--bg);
-    }
-
-    .perf-section .section-inner {
-      max-width: 900px;
-      width: 100%;
-    }
-
-    .perf-section .section-title {
-      text-align: center;
-      margin-bottom: 56px;
-    }
-
-    .bench-list {
+    /* Right panel: TM + Context */
+    .showcase-right {
+      border-left: 1px solid var(--glass-border);
       display: flex;
       flex-direction: column;
-      gap: 28px;
-    }
-
-    .bench-item {
-      opacity: 0;
-      transform: translateX(-40px);
-    }
-
-    .bench-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 10px;
-    }
-
-    .bench-label {
-      font-family: var(--font-body);
-      font-weight: 500;
-      font-size: 16px;
-      color: var(--text-dim);
-    }
-
-    .bench-value {
-      font-family: var(--font-mono);
-      font-weight: 700;
-      font-size: clamp(24px, 3vw, 32px);
-    }
-
-    .bench-value--green { color: var(--success); }
-    .bench-value--cyan { color: var(--accent); }
-    .bench-value--primary { color: var(--primary); }
-    .bench-value--primary-light { color: var(--primary-light); }
-
-    .bench-bar {
-      width: 100%;
-      height: 8px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 4px;
       overflow: hidden;
     }
 
-    .bench-bar-fill {
-      height: 100%;
-      width: 0;
-      border-radius: 4px;
-      transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-
-    .bench-bar-fill--green {
-      background: linear-gradient(90deg, var(--success), #34d399);
-    }
-
-    .bench-bar-fill--cyan {
-      background: linear-gradient(90deg, var(--accent), #22d3ee);
-    }
-
-    .bench-bar-fill--primary {
-      background: linear-gradient(90deg, var(--primary), var(--primary-light));
-    }
-
-    .bench-bar-fill--primary-light {
-      background: linear-gradient(90deg, var(--primary-light), #a78bfa);
-    }
-
-    /* ==========================================================================
-       SECTION 6: ARCHITECTURE
-       ========================================================================== */
-    .arch-section {
-      background:
-        radial-gradient(ellipse 60% 40% at 50% 50%, rgba(6, 182, 212, 0.06), transparent),
-        var(--bg-alt);
-    }
-
-    .arch-section .section-inner {
-      max-width: 1100px;
-      width: 100%;
-    }
-
-    .arch-section .section-title {
-      text-align: center;
-      margin-bottom: 12px;
-    }
-
-    .arch-subtitle {
-      text-align: center;
-      font-size: clamp(16px, 2vw, 20px);
-      color: var(--text-dim);
-      margin-bottom: 56px;
-    }
-
-    .arch-pillars {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-      margin-bottom: 56px;
-    }
-
-    .arch-pillar {
-      padding: 32px 28px;
-      text-align: center;
-      opacity: 0;
-      transform: translateY(30px);
-    }
-
-    .arch-pillar-icon {
-      font-size: 36px;
-      margin-bottom: 16px;
-    }
-
-    .arch-pillar-title {
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 20px;
-      margin-bottom: 16px;
-    }
-
-    .arch-pillar-title--cyan { color: var(--accent); }
-    .arch-pillar-title--primary { color: var(--primary); }
-    .arch-pillar-title--success { color: var(--success); }
-
-    .arch-pillar-list {
-      list-style: none;
-      padding: 0;
-      text-align: left;
-    }
-
-    .arch-pillar-list li {
-      font-size: 14px;
-      color: var(--text-dim);
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      line-height: 1.5;
-    }
-
-    .arch-pillar-list li:last-child {
-      border-bottom: none;
-    }
-
-    .arch-diagram {
-      max-width: 700px;
-      margin: 0 auto;
-      opacity: 0;
-      transform: translateY(20px);
-    }
-
-    .arch-diagram svg {
-      width: 100%;
-      height: auto;
-    }
-
-    .arch-svg-line {
-      stroke-dasharray: 300;
-      stroke-dashoffset: 300;
-    }
-
-    .arch-svg-node {
-      opacity: 0;
-    }
-
-    /* ==========================================================================
-       SECTION 7: MULTIMODAL CONTEXT
-       ========================================================================== */
-    .multimodal-section {
-      background:
-        radial-gradient(ellipse 60% 40% at 30% 50%, rgba(99, 102, 241, 0.08), transparent),
-        radial-gradient(ellipse 40% 40% at 70% 50%, rgba(6, 182, 212, 0.06), transparent),
-        var(--bg);
-    }
-
-    .multimodal-section .section-inner {
-      max-width: 1200px;
-      width: 100%;
-    }
-
-    .multimodal-section .section-title {
-      text-align: center;
-      margin-bottom: 56px;
-    }
-
-    .multimodal-layout {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 32px;
-      align-items: start;
-    }
-
-    /* Translation Grid */
-    .mm-grid {
-      padding: 0;
-      overflow: hidden;
-    }
-
-    .mm-grid-header {
-      display: grid;
-      grid-template-columns: 140px 1fr 1fr;
-      background: rgba(255, 255, 255, 0.03);
-      border-bottom: 1px solid var(--glass-border);
-    }
-
-    .mm-grid-header > div {
-      padding: 12px 16px;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .mm-grid-row {
-      display: grid;
-      grid-template-columns: 140px 1fr 1fr;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      transition: background 0.2s;
-      cursor: pointer;
-    }
-
-    .mm-grid-row:last-child {
-      border-bottom: none;
-    }
-
-    .mm-grid-row:hover {
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    .mm-grid-row--selected {
-      background: rgba(99, 102, 241, 0.08) !important;
-      border-left: 2px solid var(--primary);
-    }
-
-    .mm-grid-row > div {
-      padding: 14px 16px;
-      font-size: 13px;
-      color: var(--text-dim);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .mm-grid-row > div:first-child {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--text-dim);
-      opacity: 0.7;
-    }
-
-    .mm-grid-row--selected > div {
-      color: var(--text);
-    }
-
-    /* Context Panel */
-    .mm-context {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .mm-context-item {
-      padding: 20px;
-      opacity: 0;
-      transform: translateX(40px);
-    }
-
-    .mm-context-label {
+    .showcase-panel-label {
       font-size: 11px;
       font-weight: 700;
       color: var(--accent);
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      margin-bottom: 10px;
+      padding: 12px 16px 8px;
     }
 
-    /* Screenshot placeholder */
-    .mm-screenshot {
-      width: 100%;
-      height: 140px;
+    /* TM matches */
+    .showcase-tm-list {
+      padding: 0 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .showcase-tm-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.04);
       border-radius: 8px;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.15), rgba(139, 92, 246, 0.2));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
+      font-size: 11px;
+    }
+
+    .showcase-tm-text {
       color: var(--text-dim);
-      position: relative;
+      flex: 1;
       overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 8px;
     }
 
-    .mm-screenshot::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(255, 255, 255, 0.02) 2px,
-        rgba(255, 255, 255, 0.02) 4px
-      );
-    }
-
-    /* Audio waveform */
-    .mm-waveform {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .mm-wave-play {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .showcase-tm-score {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--accent);
       flex-shrink: 0;
-      cursor: pointer;
     }
 
-    .mm-wave-play svg {
-      width: 12px;
-      height: 12px;
-      fill: white;
-      margin-left: 2px;
+    .showcase-tm-score--high {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
     }
 
-    .mm-wave-bars {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-      height: 32px;
+    /* Context panel */
+    .showcase-context {
+      padding: 0 12px 12px;
       flex: 1;
     }
 
-    .mm-wave-bar {
-      width: 3px;
-      border-radius: 2px;
-      background: var(--accent);
-      opacity: 0.6;
-      animation: mm-wave 1.4s ease-in-out infinite;
-    }
-
-    @keyframes mm-wave {
-      0%, 100% { height: 4px; opacity: 0.3; }
-      50% { height: var(--h, 16px); opacity: 0.8; }
-    }
-
-    .mm-wave-label {
-      font-size: 12px;
-      color: var(--text-dim);
-      margin-top: 8px;
-    }
-
-    /* Mini map */
-    .mm-minimap {
+    .showcase-context-img {
       width: 100%;
       height: 80px;
       border-radius: 8px;
-      background: #0d0d14;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.15));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
       position: relative;
       overflow: hidden;
     }
 
-    .mm-minimap-grid {
+    .showcase-context-img::before {
+      content: '';
       position: absolute;
       inset: 0;
-      background-image:
-        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-      background-size: 20px 20px;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.02) 2px, rgba(255,255,255,0.02) 4px);
     }
 
-    .mm-minimap-dot {
-      position: absolute;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--accent);
-      top: 35%;
-      left: 62%;
-      box-shadow: 0 0 12px var(--accent), 0 0 24px rgba(6, 182, 212, 0.3);
-      animation: mm-dot-pulse 2s ease-in-out infinite;
+    .showcase-meta-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 8px;
     }
 
-    @keyframes mm-dot-pulse {
-      0%, 100% { box-shadow: 0 0 8px var(--accent), 0 0 16px rgba(6, 182, 212, 0.2); }
-      50% { box-shadow: 0 0 16px var(--accent), 0 0 32px rgba(6, 182, 212, 0.4); }
-    }
-
-    .mm-minimap-label {
-      position: absolute;
-      bottom: 6px;
-      right: 10px;
+    .showcase-meta-tag {
+      padding: 3px 8px;
+      border-radius: 10px;
       font-size: 10px;
-      color: var(--text-dim);
-      opacity: 0.5;
+      font-weight: 600;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      color: var(--primary-light);
     }
 
-    /* Metadata cards */
-    .mm-meta-cards {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
+    /* Tree view */
+    .showcase-tree {
+      padding: 0 12px 16px;
     }
 
-    .mm-meta-card {
-      padding: 10px 12px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 8px;
+    .showcase-tree-item {
+      font-family: var(--font-mono);
       font-size: 11px;
       color: var(--text-dim);
+      padding: 3px 0;
       line-height: 1.4;
     }
 
-    .mm-meta-card strong {
-      display: block;
+    .showcase-tree-item.parent {
       color: var(--text);
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 4px;
+      font-weight: 600;
     }
 
-    .mm-meta-card code {
-      font-family: var(--font-mono);
-      font-size: 10px;
+    .showcase-tree-item .indent {
+      color: rgba(255, 255, 255, 0.15);
+    }
+
+    .showcase-tree-item .highlight {
       color: var(--accent);
     }
 
+    /* Feature highlights below mockup */
+    .showcase-features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .showcase-feature {
+      padding: 24px 20px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .showcase-feature-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+
+    .showcase-feature-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .showcase-feature-desc {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
     /* ==========================================================================
-       SECTION 8: AI PIPELINE
+       SECTION 5: HOW IT WORKS (PIPELINE)
        ========================================================================== */
     .pipeline-section {
       background:
@@ -1071,15 +751,16 @@
     }
 
     .pipeline-section .section-inner {
-      max-width: 1100px;
+      max-width: 1200px;
       width: 100%;
     }
 
     .pipeline-section .section-title {
       text-align: center;
-      margin-bottom: 56px;
+      margin-bottom: 64px;
     }
 
+    /* Pipeline flow */
     .pipeline-flow {
       display: flex;
       align-items: stretch;
@@ -1088,9 +769,8 @@
       position: relative;
     }
 
-    .pipeline-card {
+    .pipeline-step {
       flex: 1;
-      padding: 28px 20px;
       text-align: center;
       position: relative;
       z-index: 1;
@@ -1098,20 +778,37 @@
       transform: translateY(30px);
     }
 
-    .pipeline-icon {
-      width: 48px;
-      height: 48px;
+    .pipeline-step-num {
+      width: 40px;
+      height: 40px;
       margin: 0 auto 16px;
-      border-radius: 12px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
-      background: rgba(99, 102, 241, 0.15);
-      border: 1px solid rgba(99, 102, 241, 0.2);
+      font-family: var(--font-mono);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      background: rgba(99, 102, 241, 0.2);
+      border: 2px solid rgba(99, 102, 241, 0.4);
     }
 
-    .pipeline-card-title {
+    .pipeline-step-card {
+      padding: 24px 16px;
+      border-radius: 12px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .pipeline-step-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+
+    .pipeline-step-title {
       font-family: var(--font-display);
       font-weight: 700;
       font-size: 16px;
@@ -1119,13 +816,12 @@
       margin-bottom: 8px;
     }
 
-    .pipeline-card-desc {
+    .pipeline-step-desc {
       font-size: 13px;
       color: var(--text-dim);
       line-height: 1.5;
     }
 
-    /* Connecting line between cards */
     .pipeline-connector {
       display: flex;
       align-items: center;
@@ -1162,73 +858,221 @@
       100% { left: 100%; opacity: 0; }
     }
 
-    .pipeline-connector:nth-child(4) .pipeline-connector-dot { animation-delay: 0.3s; }
-    .pipeline-connector:nth-child(6) .pipeline-connector-dot { animation-delay: 0.6s; }
+    .pipeline-connector:nth-child(4) .pipeline-connector-dot { animation-delay: 0.2s; }
+    .pipeline-connector:nth-child(6) .pipeline-connector-dot { animation-delay: 0.4s; }
+    .pipeline-connector:nth-child(8) .pipeline-connector-dot { animation-delay: 0.6s; }
 
-    /* Sub-flow text */
-    .pipeline-subflow {
+    .pipeline-subtext {
       text-align: center;
-      font-size: 15px;
+      font-size: clamp(15px, 2vw, 18px);
       color: var(--text-dim);
-      margin-bottom: 40px;
+      margin-top: 8px;
     }
 
-    .pipeline-subflow span {
+    .pipeline-subtext em {
+      font-style: normal;
       color: var(--accent);
-      font-weight: 700;
-    }
-
-    /* Quality meter */
-    .pipeline-quality {
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    .pipeline-quality-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: var(--text-dim);
-      margin-bottom: 8px;
-    }
-
-    .pipeline-quality-bar {
-      height: 6px;
-      border-radius: 3px;
-      background: rgba(255, 255, 255, 0.06);
-      overflow: hidden;
-    }
-
-    .pipeline-quality-fill {
-      height: 100%;
-      width: 0%;
-      border-radius: 3px;
-      background: linear-gradient(90deg, var(--primary), var(--accent), var(--success));
-      transition: width 1.5s ease-out;
-    }
-
-    /* Final card pulse */
-    .pipeline-card--final .pipeline-icon {
-      background: rgba(16, 185, 129, 0.15);
-      border-color: rgba(16, 185, 129, 0.3);
-    }
-
-    .pipeline-card--final.is-active .pipeline-icon {
-      animation: pipeline-confirm-pulse 1.5s ease-in-out infinite;
-    }
-
-    @keyframes pipeline-confirm-pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3); }
-      50% { box-shadow: 0 0 16px 4px rgba(16, 185, 129, 0.2); }
+      font-weight: 600;
     }
 
     /* ==========================================================================
-       SECTION 9: DEV WRITING PLATFORM
+       SECTION 6: ARCHITECTURE
+       ========================================================================== */
+    .arch-section {
+      background:
+        radial-gradient(ellipse 60% 40% at 50% 50%, rgba(6, 182, 212, 0.06), transparent),
+        var(--bg);
+      overflow: hidden;
+    }
+
+    .arch-section .section-inner {
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    .arch-section .section-title {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    /* Architecture diagram */
+    .arch-diagram {
+      display: grid;
+      grid-template-columns: 1fr 100px 1fr;
+      gap: 0;
+      align-items: center;
+      margin-bottom: 64px;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .arch-box {
+      padding: 32px 28px;
+      border-radius: 16px;
+    }
+
+    .arch-box-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .arch-box-title--cyan { color: var(--accent); }
+    .arch-box-title--primary { color: var(--primary-light); }
+
+    .arch-tree {
+      list-style: none;
+      padding: 0;
+    }
+
+    .arch-tree li {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-dim);
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      line-height: 1.4;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .arch-tree li:last-child {
+      border-bottom: none;
+    }
+
+    .arch-tree-prefix {
+      color: rgba(255, 255, 255, 0.2);
+      user-select: none;
+    }
+
+    .arch-tree-label {
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .arch-tree-tech {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    /* Connection */
+    .arch-connection {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+    }
+
+    .arch-flow-line {
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .arch-flow-dot {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      top: -2.5px;
+      left: -8px;
+      box-shadow: 0 0 12px var(--accent);
+      animation: arch-flow-anim 2.5s linear infinite;
+    }
+
+    @keyframes arch-flow-anim {
+      0% { left: -8px; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { left: 100%; opacity: 0; }
+    }
+
+    .arch-flow-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+
+    /* Capability cards */
+    .arch-capabilities {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    .arch-cap {
+      padding: 28px 24px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    .arch-cap-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .arch-cap-desc {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    /* Performance stats */
+    .arch-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .arch-stat {
+      text-align: center;
+      padding: 20px;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .arch-stat-value {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: clamp(28px, 4vw, 40px);
+      background: linear-gradient(135deg, var(--primary-light), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    .arch-stat-label {
+      font-size: 14px;
+      color: var(--text-dim);
+    }
+
+    /* ==========================================================================
+       SECTION 7: FOR DEVELOPERS
        ========================================================================== */
     .devplatform-section {
       background:
         radial-gradient(ellipse 60% 40% at 50% 50%, rgba(6, 182, 212, 0.06), transparent),
-        var(--bg);
+        var(--bg-alt);
     }
 
     .devplatform-section .section-inner {
@@ -1248,6 +1092,8 @@
       border: 1px solid var(--glass-border);
       background: #0d0d14;
       margin-bottom: 48px;
+      opacity: 0;
+      transform: translateY(20px);
     }
 
     .dev-editor-bar {
@@ -1282,7 +1128,7 @@
     .dev-editor-body {
       display: grid;
       grid-template-columns: 1fr 200px;
-      min-height: 280px;
+      min-height: 260px;
     }
 
     .dev-editor-main {
@@ -1335,7 +1181,6 @@
       50% { opacity: 0; }
     }
 
-    /* Autocomplete dropdown */
     .dev-autocomplete {
       position: absolute;
       top: 60px;
@@ -1362,9 +1207,7 @@
       transform: translateY(-4px);
     }
 
-    .dev-ac-item:last-child {
-      border-bottom: none;
-    }
+    .dev-ac-item:last-child { border-bottom: none; }
 
     .dev-ac-item:first-child {
       background: rgba(99, 102, 241, 0.1);
@@ -1388,7 +1231,6 @@
       box-shadow: 0 0 8px rgba(6, 182, 212, 0.2);
     }
 
-    /* Side panel — theme tags */
     .dev-editor-side {
       border-left: 1px solid var(--glass-border);
       padding: 16px;
@@ -1429,7 +1271,7 @@
       color: var(--accent);
     }
 
-    /* Features below mockup */
+    /* Dev features grid */
     .dev-features {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -1443,700 +1285,179 @@
       transform: translateY(20px);
     }
 
-    .dev-feature-num {
-      font-family: var(--font-mono);
+    .dev-feature-icon {
       font-size: 28px;
+      margin-bottom: 12px;
+    }
+
+    .dev-feature-title {
+      font-family: var(--font-display);
       font-weight: 700;
-      color: var(--primary);
+      font-size: 15px;
+      color: var(--primary-light);
       margin-bottom: 8px;
     }
 
-    .dev-feature-text {
-      font-size: 14px;
+    .dev-feature-desc {
+      font-size: 13px;
       color: var(--text-dim);
       line-height: 1.5;
     }
 
     /* ==========================================================================
-       RESPONSIVE BREAKPOINTS
+       SECTION 8: TECH STACK & LICENSING
        ========================================================================== */
-
-    /* Tablet */
-    @media (max-width: 768px) {
-      body {
-        font-size: 16px;
-      }
-
-      .hero-title {
-        font-size: clamp(32px, 8vw, 56px);
-      }
-
-      .section {
-        padding: 80px 24px;
-      }
-
-      .pain-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
-      }
-
-      .pain-numbers-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
-      }
-
-      .mockup-sidebar {
-        width: 140px;
-      }
-
-      .mockup-grid-header,
-      .mockup-grid-row {
-        grid-template-columns: 120px 1fr 1fr 80px;
-        font-size: 10px;
-      }
-
-      .arch-pillars {
-        grid-template-columns: 1fr;
-        gap: 16px;
-      }
-
-      .multimodal-layout {
-        grid-template-columns: 1fr;
-      }
-
-      .mm-grid-header,
-      .mm-grid-row {
-        grid-template-columns: 100px 1fr 1fr;
-        font-size: 11px;
-      }
-
-      .pipeline-flow {
-        flex-direction: column;
-        align-items: center;
-        gap: 0;
-      }
-
-      .pipeline-connector {
-        width: 2px;
-        height: 32px;
-        flex-direction: column;
-      }
-
-      .pipeline-connector-line {
-        width: 2px;
-        height: 100%;
-      }
-
-      .dev-editor-body {
-        grid-template-columns: 1fr;
-      }
-
-      .dev-editor-side {
-        border-left: none;
-        border-top: 1px solid var(--glass-border);
-        flex-direction: row;
-        flex-wrap: wrap;
-      }
-
-      .dev-features {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-      }
+    .techstack-section {
+      background:
+        radial-gradient(ellipse 50% 35% at 50% 50%, rgba(99, 102, 241, 0.06), transparent),
+        var(--bg);
     }
 
-    /* Tablet — additional sections */
-    @media (max-width: 768px) {
-      /* Section 10: Arsenal */
-      .arsenal-section {
-        padding: 80px 24px;
-      }
-
-      .orbital-container {
-        width: 90vw;
-        height: 90vw;
-      }
-
-      .orbital-center {
-        width: 110px;
-        height: 110px;
-      }
-
-      .orbital-satellite {
-        width: 90px;
-        height: 90px;
-      }
-
-      .orbital-satellite-name { font-size: 10px; }
-      .orbital-satellite-desc { font-size: 8px; }
-
-      /* Section 11: Builder */
-      .builder-section {
-        padding: 80px 24px;
-      }
-
-      .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-      }
-
-      /* Section 12: Closing */
-      .closing-section {
-        padding: 80px 24px 120px;
-      }
-    }
-
-    /* Mobile */
-    @media (max-width: 375px) {
-      .hero-title {
-        font-size: 28px;
-      }
-
-      .hero-subtitle {
-        font-size: 16px;
-      }
-
-      .pain-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .pain-numbers-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .mockup-sidebar {
-        display: none;
-      }
-
-      .mockup-grid-header,
-      .mockup-grid-row {
-        grid-template-columns: 100px 1fr 1fr 60px;
-        font-size: 9px;
-      }
-
-      .mockup-grid-header > div,
-      .mockup-grid-row > div {
-        padding: 6px 6px;
-      }
-
-      /* Section 6: Architecture */
-      .arch-pillars {
-        grid-template-columns: 1fr;
-        gap: 12px;
-      }
-
-      .arch-diagram svg {
-        max-width: 100%;
-      }
-
-      /* Section 7: Multimodal */
-      .multimodal-layout {
-        grid-template-columns: 1fr;
-        gap: 20px;
-      }
-
-      .mm-grid-header,
-      .mm-grid-row {
-        grid-template-columns: 80px 1fr 1fr;
-        font-size: 10px;
-      }
-
-      .mm-meta-cards {
-        grid-template-columns: 1fr;
-      }
-
-      /* Section 8: Pipeline */
-      .pipeline-flow {
-        flex-direction: column;
-        align-items: center;
-      }
-
-      .pipeline-connector {
-        width: 2px;
-        height: 24px;
-        flex-direction: column;
-      }
-
-      .pipeline-connector-line {
-        width: 2px;
-        height: 100%;
-      }
-
-      /* Section 9: Dev Platform */
-      .dev-editor-body {
-        grid-template-columns: 1fr;
-      }
-
-      .dev-editor-side {
-        border-left: none;
-        border-top: 1px solid var(--glass-border);
-        flex-direction: row;
-        flex-wrap: wrap;
-      }
-
-      .dev-features {
-        grid-template-columns: 1fr;
-        gap: 10px;
-      }
-
-      .dev-autocomplete {
-        width: 220px;
-        left: 44px;
-      }
-
-      /* Section 10: Arsenal */
-      .arsenal-section {
-        padding: 60px 16px;
-      }
-
-      .orbital-container {
-        width: 92vw;
-        height: 92vw;
-      }
-
-      .orbital-center {
-        width: 90px;
-        height: 90px;
-      }
-
-      .orbital-center-name { font-size: 13px; }
-
-      .orbital-satellite {
-        width: 70px;
-        height: 70px;
-      }
-
-      .orbital-satellite-name { font-size: 8px; }
-      .orbital-satellite-desc { font-size: 7px; }
-
-      /* Section 11: Builder */
-      .builder-section {
-        padding: 60px 16px;
-      }
-
-      .stats-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-      }
-
-      .stat-card {
-        padding: 16px 10px;
-      }
-
-      .tech-pill {
-        font-size: 11px;
-        padding: 8px 16px;
-      }
-
-      /* Section 12: Closing */
-      .closing-section {
-        padding: 60px 16px 100px;
-      }
-
-      .closing-main {
-        font-size: clamp(24px, 6vw, 36px);
-      }
-
-      .closing-logo {
-        font-size: clamp(32px, 8vw, 56px);
-      }
-    }
-
-    /* ==========================================================================
-       REDUCED MOTION
-       ========================================================================== */
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-      }
-
-      .hero-canvas {
-        display: none;
-      }
-
-      .hero-subtitle {
-        opacity: 1;
-      }
-
-      .scroll-indicator {
-        opacity: 1;
-      }
-
-      .hero-cursor {
-        animation: none;
-        opacity: 1;
-      }
-
-      .pain-card,
-      .terminal-mock,
-      .pain-number-card,
-      .reveal-logo,
-      .reveal-tagline,
-      .reveal-mockup-inner,
-      .bench-item,
-      .arch-pillar,
-      .arch-diagram {
-        opacity: 1 !important;
-        transform: none !important;
-      }
-
-      .terminal-line {
-        opacity: 1 !important;
-      }
-
-      .arch-svg-node {
-        opacity: 1 !important;
-      }
-
-      .arch-svg-line {
-        stroke-dashoffset: 0 !important;
-      }
-
-      .bench-bar-fill {
-        width: var(--target-width, 80%) !important;
-        transition: none !important;
-      }
-
-      .mm-context-item,
-      .pipeline-card,
-      .dev-feature,
-      .dev-ac-item,
-      .dev-theme-tag {
-        opacity: 1 !important;
-        transform: none !important;
-      }
-
-      .dev-autocomplete {
-        opacity: 1 !important;
-        transform: none !important;
-      }
-
-      .pipeline-quality-fill {
-        width: 95% !important;
-      }
-
-      .mm-wave-bar {
-        animation: none !important;
-        height: var(--h, 16px) !important;
-      }
-
-      .orbital-ring,
-      .orbital-center {
-        animation: none !important;
-      }
-
-      .orbital-satellite,
-      .stat-card,
-      .tech-pill,
-      .closing-main,
-      .closing-sub,
-      .closing-logo {
-        opacity: 1 !important;
-        transform: none !important;
-      }
-    }
-
-    /* ==========================================================================
-       ACT DIVIDERS — Gradient transitions between major acts
-       ========================================================================== */
-    .act-divider {
+    .techstack-section .section-inner {
+      max-width: 1100px;
       width: 100%;
-      height: 2px;
-      position: relative;
-      overflow: visible;
     }
 
-    .act-divider::before {
-      content: '';
-      position: absolute;
-      top: -40px;
-      left: 0;
-      right: 0;
-      height: 80px;
-      pointer-events: none;
-    }
-
-    .act-divider--red-to-indigo::before {
-      background: linear-gradient(to bottom,
-        rgba(239, 68, 68, 0.08),
-        rgba(99, 102, 241, 0.08)
-      );
-    }
-
-    .act-divider--red-to-indigo {
-      background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.4), rgba(99, 102, 241, 0.4), transparent);
-    }
-
-    .act-divider--indigo-to-purple::before {
-      background: linear-gradient(to bottom,
-        rgba(6, 182, 212, 0.06),
-        rgba(139, 92, 246, 0.06)
-      );
-    }
-
-    .act-divider--indigo-to-purple {
-      background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.4), transparent);
-    }
-
-    .act-divider--purple-to-dark::before {
-      background: linear-gradient(to bottom,
-        rgba(6, 182, 212, 0.06),
-        rgba(10, 10, 15, 0.2)
-      );
-    }
-
-    .act-divider--purple-to-dark {
-      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.3), rgba(99, 102, 241, 0.2), transparent);
-    }
-
-    /* ==========================================================================
-       SECTION 10: TOOL ARSENAL (ORBITAL)
-       ========================================================================== */
-    .arsenal-section {
-      min-height: 100vh;
-      padding: 120px 5vw;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .arsenal-header {
+    .techstack-section .section-title {
       text-align: center;
-      margin-bottom: 80px;
+      margin-bottom: 56px;
     }
 
-    .orbital-container {
-      position: relative;
-      width: min(700px, 85vw);
-      height: min(700px, 85vw);
-      margin: 0 auto;
+    .techstack-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
     }
 
-    @keyframes orbitalSpin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
+    .techstack-card {
+      padding: 32px 28px;
+      opacity: 0;
+      transform: translateY(30px);
     }
 
-    .orbital-ring {
-      position: absolute;
-      inset: 0;
-      animation: orbitalSpin 90s linear infinite;
-    }
-
-    /* Connection lines SVG */
-    .orbital-lines {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-    }
-
-    .orbital-line {
-      stroke: var(--primary);
-      stroke-width: 1;
-      opacity: 0.25;
-      stroke-dasharray: 6 4;
-    }
-
-    /* Center hub */
-    .orbital-center {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 140px;
-      height: 140px;
-      border-radius: 50%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: rgba(99, 102, 241, 0.15);
-      border: 2px solid rgba(99, 102, 241, 0.5);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      box-shadow: 0 0 60px rgba(99, 102, 241, 0.35), 0 0 120px rgba(99, 102, 241, 0.12);
-      z-index: 3;
-      /* Counter-rotate so text stays upright */
-      animation: orbitalSpin 90s linear infinite reverse;
-    }
-
-    .orbital-center-name {
+    .techstack-card-title {
       font-family: var(--font-display);
       font-weight: 700;
-      font-size: 18px;
-      color: #fff;
-      margin-bottom: 2px;
+      font-size: 22px;
+      margin-bottom: 24px;
     }
 
-    .orbital-center-desc {
-      font-size: 11px;
-      color: var(--text-dim);
+    .techstack-card-title--primary { color: var(--primary-light); }
+    .techstack-card-title--success { color: var(--success); }
+
+    /* Tech stack table */
+    .tech-table {
+      width: 100%;
+      border-collapse: collapse;
     }
 
-    /* Satellite tools */
-    .orbital-satellite {
-      position: absolute;
-      width: 110px;
-      height: 110px;
-      border-radius: 50%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--glass-border);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      opacity: 0;
-      transform: scale(0.3);
-      transition: box-shadow 0.3s;
-      /* Counter-rotate so text stays upright */
-      animation: orbitalSpin 90s linear infinite reverse;
+    .tech-table td {
+      padding: 10px 12px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     }
 
-    .orbital-satellite:hover {
-      box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
-    }
-
-    .orbital-satellite-name {
+    .tech-table td:first-child {
       font-family: var(--font-display);
       font-weight: 600;
-      font-size: 11px;
-      color: #fff;
-      margin-bottom: 2px;
-      line-height: 1.2;
-    }
-
-    .orbital-satellite-desc {
-      font-size: 9px;
+      font-size: 13px;
       color: var(--text-dim);
-      line-height: 1.3;
+      width: 100px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
-    @media (max-width: 600px) {
-      .orbital-container {
-        width: 90vw;
-        height: 90vw;
-      }
-      .orbital-center {
-        width: 100px;
-        height: 100px;
-      }
-      .orbital-center-name { font-size: 14px; }
-      .orbital-satellite {
-        width: 80px;
-        height: 80px;
-      }
-      .orbital-satellite-name { font-size: 9px; }
-      .orbital-satellite-desc { font-size: 8px; }
+    .tech-table td:last-child {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text);
     }
 
-    /* ==========================================================================
-       SECTION 11: THE BUILDER (STATS)
-       ========================================================================== */
-    .builder-section {
-      min-height: 100vh;
-      padding: 120px 5vw;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .builder-header {
-      text-align: center;
-      margin-bottom: 72px;
-    }
-
-    .builder-glow {
-      position: absolute;
-      top: 30%;
-      left: 50%;
-      width: 600px;
-      height: 600px;
-      transform: translate(-50%, -50%);
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
-      pointer-events: none;
-      animation: builderPulse 6s ease-in-out infinite;
-    }
-
-    @keyframes builderPulse {
-      0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
-      50%      { opacity: 1;   transform: translate(-50%, -50%) scale(1.12); }
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 32px;
-      max-width: 1100px;
-      margin: 0 auto 80px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .stat-card {
-      text-align: center;
-      padding: 32px 16px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--glass-border);
-      opacity: 0;
-      transform: translateY(40px);
-    }
-
-    .stat-card .stat-number {
-      font-size: clamp(36px, 5vw, 56px);
-      background: linear-gradient(135deg, var(--primary-light), var(--accent));
+    /* Licensing */
+    .license-free {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: clamp(48px, 6vw, 72px);
+      background: linear-gradient(135deg, var(--success), var(--accent));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      margin-bottom: 16px;
     }
 
-    .stat-card .stat-label {
-      font-family: var(--font-body);
-      font-size: 14px;
-      color: var(--text-dim);
-      margin-top: 8px;
-    }
-
-    .tech-stack-row {
+    .license-badges {
       display: flex;
-      justify-content: center;
+      gap: 8px;
       flex-wrap: wrap;
-      gap: 16px;
-      position: relative;
-      z-index: 1;
+      margin-bottom: 20px;
     }
 
-    .tech-pill {
-      padding: 10px 24px;
-      border-radius: 999px;
+    .license-badge {
+      padding: 6px 14px;
+      border-radius: 20px;
       font-family: var(--font-mono);
       font-size: 13px;
       font-weight: 700;
-      color: var(--text);
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--glass-border);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      opacity: 0;
-      transform: translateY(20px);
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: var(--success);
     }
 
-    @media (max-width: 1024px) {
-      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .license-list {
+      list-style: none;
+      padding: 0;
     }
 
-    @media (max-width: 500px) {
-      .stats-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
-      .stat-card { padding: 20px 12px; }
+    .license-list li {
+      font-size: 14px;
+      color: var(--text-dim);
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .license-list li:last-child {
+      border-bottom: none;
+    }
+
+    .license-check {
+      color: var(--success);
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .license-cross {
+      color: var(--danger);
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .license-savings {
+      margin-top: 24px;
+      padding: 16px 20px;
+      border-radius: 12px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      text-align: center;
+    }
+
+    .license-savings-value {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 28px;
+      color: var(--success);
+    }
+
+    .license-savings-label {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 4px;
     }
 
     /* ==========================================================================
-       SECTION 12: CLOSING
+       SECTION 9: CLOSING
        ========================================================================== */
     .closing-section {
       min-height: 70vh;
@@ -2163,9 +1484,11 @@
     .closing-main {
       font-family: var(--font-display);
       font-weight: 700;
-      font-size: clamp(32px, 5vw, 56px);
+      font-size: clamp(28px, 4.5vw, 48px);
       margin-bottom: 20px;
       opacity: 0;
+      position: relative;
+      z-index: 1;
     }
 
     .closing-sub {
@@ -2173,6 +1496,8 @@
       color: var(--text-dim);
       margin-bottom: 48px;
       opacity: 0;
+      position: relative;
+      z-index: 1;
     }
 
     .closing-logo {
@@ -2185,6 +1510,252 @@
       background-clip: text;
       opacity: 0;
       filter: drop-shadow(0 0 40px rgba(99, 102, 241, 0.3));
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ==========================================================================
+       ACT DIVIDERS
+       ========================================================================== */
+    .act-divider {
+      width: 100%;
+      height: 2px;
+      position: relative;
+      overflow: visible;
+    }
+
+    .act-divider::before {
+      content: '';
+      position: absolute;
+      top: -40px;
+      left: 0;
+      right: 0;
+      height: 80px;
+      pointer-events: none;
+    }
+
+    .act-divider--amber-to-indigo::before {
+      background: linear-gradient(to bottom, rgba(245, 158, 11, 0.06), rgba(99, 102, 241, 0.06));
+    }
+
+    .act-divider--amber-to-indigo {
+      background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.3), rgba(99, 102, 241, 0.3), transparent);
+    }
+
+    .act-divider--indigo-to-purple::before {
+      background: linear-gradient(to bottom, rgba(6, 182, 212, 0.06), rgba(139, 92, 246, 0.06));
+    }
+
+    .act-divider--indigo-to-purple {
+      background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.4), transparent);
+    }
+
+    .act-divider--purple-to-dark::before {
+      background: linear-gradient(to bottom, rgba(6, 182, 212, 0.06), rgba(10, 10, 15, 0.2));
+    }
+
+    .act-divider--purple-to-dark {
+      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.3), rgba(99, 102, 241, 0.2), transparent);
+    }
+
+    /* ==========================================================================
+       RESPONSIVE: TABLET (768px)
+       ========================================================================== */
+    @media (max-width: 768px) {
+      body { font-size: 16px; }
+
+      .hero-title { font-size: clamp(24px, 6vw, 40px); }
+
+      .section { padding: 80px 24px; }
+
+      .challenge-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .intro-pillars {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+
+      .showcase-body {
+        grid-template-columns: 1fr;
+      }
+
+      .showcase-sidebar { display: none; }
+
+      .showcase-right { display: none; }
+
+      .showcase-grid-header,
+      .showcase-grid-row {
+        grid-template-columns: 120px 80px 1fr 1fr 70px;
+        font-size: 10px;
+      }
+
+      .pipeline-flow {
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+      }
+
+      .pipeline-connector {
+        width: 2px;
+        height: 32px;
+        flex-direction: column;
+      }
+
+      .pipeline-connector-line {
+        width: 2px;
+        height: 100%;
+      }
+
+      .arch-diagram {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .arch-connection {
+        flex-direction: row;
+        padding: 8px 0;
+      }
+
+      .arch-flow-line {
+        width: 100%;
+      }
+
+      .arch-capabilities {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .arch-stats {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .dev-editor-body {
+        grid-template-columns: 1fr;
+      }
+
+      .dev-editor-side {
+        border-left: none;
+        border-top: 1px solid var(--glass-border);
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .dev-features {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+
+      .showcase-features {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .techstack-layout {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+
+      .closing-section {
+        padding: 80px 24px 120px;
+      }
+    }
+
+    /* ==========================================================================
+       RESPONSIVE: MOBILE (375px)
+       ========================================================================== */
+    @media (max-width: 375px) {
+      .hero-title { font-size: 22px; }
+      .hero-subtitle { font-size: 14px; }
+
+      .challenge-grid { grid-template-columns: 1fr; }
+
+      .intro-pillars { grid-template-columns: 1fr; }
+
+      .showcase-grid-header,
+      .showcase-grid-row {
+        grid-template-columns: 100px 1fr 1fr 60px;
+        font-size: 9px;
+      }
+
+      .showcase-grid-header > div,
+      .showcase-grid-row > div {
+        padding: 6px 6px;
+      }
+
+      .pipeline-flow {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .pipeline-connector {
+        width: 2px;
+        height: 24px;
+        flex-direction: column;
+      }
+
+      .pipeline-connector-line {
+        width: 2px;
+        height: 100%;
+      }
+
+      .arch-capabilities { grid-template-columns: 1fr; }
+      .arch-stats { grid-template-columns: 1fr; }
+
+      .dev-features { grid-template-columns: 1fr; gap: 10px; }
+
+      .dev-autocomplete { width: 220px; left: 44px; }
+
+      .showcase-features { grid-template-columns: 1fr; }
+
+      .closing-main { font-size: clamp(22px, 5vw, 32px); }
+      .closing-logo { font-size: clamp(32px, 8vw, 56px); }
+    }
+
+    /* ==========================================================================
+       REDUCED MOTION
+       ========================================================================== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      .hero-canvas { display: none; }
+      .hero-subtitle { opacity: 1; }
+      .scroll-indicator { opacity: 1; }
+      .hero-cursor { animation: none; opacity: 1; }
+
+      .challenge-card,
+      .intro-logo,
+      .intro-message,
+      .intro-pillar,
+      .showcase-mockup-inner,
+      .showcase-feature,
+      .pipeline-step,
+      .arch-diagram,
+      .arch-cap,
+      .arch-stat,
+      .dev-editor,
+      .dev-feature,
+      .dev-ac-item,
+      .dev-theme-tag,
+      .techstack-card,
+      .closing-main,
+      .closing-sub,
+      .closing-logo {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      .dev-autocomplete {
+        opacity: 1 !important;
+        transform: none !important;
+      }
     }
   </style>
 </head>
@@ -2201,7 +1772,7 @@
         <span class="hero-title-text" id="heroTitleText"></span>
         <span class="hero-cursor" id="heroCursor"></span>
       </h1>
-      <p class="hero-subtitle" id="heroSubtitle">하나의 플랫폼. 하나의 비전. AI와 함께.</p>
+      <p class="hero-subtitle" id="heroSubtitle">기존 워크플로우를 바꾸지 않습니다. 더 스마트하게 만듭니다.</p>
     </div>
 
     <div class="scroll-indicator" id="scrollIndicator" aria-hidden="true">
@@ -2211,237 +1782,340 @@
   </section>
 
   <!-- ========================================================================
-       SECTION 2: THE PROBLEM (Pain Points)
+       SECTION 2: CURRENT CHALLENGES
        ======================================================================== -->
-  <section class="section pain-section" id="painPoints" aria-label="Pain Points">
+  <section class="section challenges-section" id="challenges" aria-label="Current Challenges">
     <div class="section-inner">
-      <h2 class="section-title">지금, 당신의 워크플로우를<br>솔직하게 돌아봅시다</h2>
+      <h2 class="section-title">지금 우리가 마주한 과제들</h2>
 
-      <div class="pain-grid">
-        <div class="pain-card glass">
-          <div class="pain-card-icon">🔀</div>
-          <h3 class="pain-card-title">6개의 분리된 스크립트</h3>
-          <p class="pain-card-desc">각각 다른 도구, 다른 형식, 다른 워크플로우</p>
+      <div class="challenge-grid">
+        <div class="challenge-card glass">
+          <div class="challenge-card-icon">&#128218;</div>
+          <h3 class="challenge-card-title">용어집 관리의 어려움</h3>
+          <p class="challenge-card-desc">중앙화된 시스템 없이는 용어 데이터를 추적하고 일관성을 유지하기 어렵습니다.</p>
         </div>
-        <div class="pain-card glass">
-          <div class="pain-card-icon">⌨️</div>
-          <h3 class="pain-card-title">커맨드라인 의존</h3>
-          <p class="pain-card-desc">비개발자는 접근 불가</p>
+        <div class="challenge-card glass">
+          <div class="challenge-card-icon">&#128260;</div>
+          <h3 class="challenge-card-title">데이터 비일관성</h3>
+          <p class="challenge-card-desc">데이터가 여러 곳에 분산되어 있어 각 데이터의 용도, 활성 여부, 관계를 파악하기 어렵습니다.</p>
         </div>
-        <div class="pain-card glass">
-          <div class="pain-card-icon">🔒</div>
-          <h3 class="pain-card-title">협업 불가능</h3>
-          <p class="pain-card-desc">한 명이 파일 열면 다른 사람은 대기</p>
+        <div class="challenge-card glass">
+          <div class="challenge-card-icon">&#128269;</div>
+          <h3 class="challenge-card-title">자동화된 파싱의 부재</h3>
+          <p class="challenge-card-desc">데이터를 자동으로 분석하고 즉시 인사이트를 제공하는 시스템이 없습니다.</p>
         </div>
-        <div class="pain-card glass">
-          <div class="pain-card-icon">📡</div>
-          <h3 class="pain-card-title">오프라인 작업 불가</h3>
-          <p class="pain-card-desc">서버 다운 = 작업 중단</p>
-        </div>
-        <div class="pain-card glass">
-          <div class="pain-card-icon">🐌</div>
-          <h3 class="pain-card-title">느린 검색, 느린 매칭</h3>
-          <p class="pain-card-desc">50만 행에서 검색? 커피 한 잔 하고 오세요</p>
-        </div>
-        <div class="pain-card glass">
-          <div class="pain-card-icon">📊</div>
-          <h3 class="pain-card-title">엑셀 지옥</h3>
-          <p class="pain-card-desc">모든 것이 엑셀. 버전 관리? 불가능</p>
+        <div class="challenge-card glass">
+          <div class="challenge-card-icon">&#128736;</div>
+          <h3 class="challenge-card-title">최적화되지 않은 작업 환경</h3>
+          <p class="challenge-card-desc">XML을 VSCode로 직접 편집하거나 Excel로 관리하는 현재 방식은 한계가 있습니다.</p>
         </div>
       </div>
+    </div>
+  </section>
 
-      <div class="terminal-mock glass" id="terminalMock">
-        <div class="terminal-header">
-          <span class="terminal-dot terminal-dot--red"></span>
-          <span class="terminal-dot terminal-dot--yellow"></span>
-          <span class="terminal-dot terminal-dot--green"></span>
-          <span class="terminal-title">localization_workflow.sh</span>
+  <!-- Act Divider -->
+  <div class="act-divider act-divider--amber-to-indigo" aria-hidden="true"></div>
+
+  <!-- ========================================================================
+       SECTION 3: LOCANEXT INTRODUCTION
+       ======================================================================== -->
+  <section class="section intro-section" id="intro" aria-label="LocaNext Introduction">
+    <div class="intro-bloom" id="introBloom"></div>
+    <div class="section-inner">
+      <h2 class="section-title">LocaNext가 도와드립니다</h2>
+
+      <div class="intro-logo" id="introLogo">LocaNext</div>
+      <div class="intro-message" id="introMessage">
+        <strong>기존 Excel과 XML을 그대로 사용하세요.</strong><br>
+        우리는 편리한 UI를 제공하고, 자동으로 데이터를 파싱하고, 임베딩하고, 분류합니다.<br>
+        <strong>기존 데이터를 변경하지 않습니다.</strong> 더 스마트하게 활용할 뿐입니다.
+      </div>
+
+      <div class="intro-pillars" id="introPillars">
+        <div class="glass intro-pillar">
+          <div class="intro-pillar-icon">&#128218;</div>
+          <div class="intro-pillar-title">통합 용어집</div>
+          <div class="intro-pillar-desc">일관된 용어 관리</div>
         </div>
-        <div class="terminal-body" id="terminalBody">
-          <div class="terminal-line terminal-line--cmd">> python transfer.py --source KR --target EN</div>
-          <div class="terminal-line terminal-line--error">ERROR: FileNotFoundError: corrections_v3_final_FINAL.xlsx</div>
-          <div class="terminal-line terminal-line--cmd">> python extract.py --mode diff --old v2 --new v3</div>
-          <div class="terminal-line terminal-line--warning">WARNING: 847 mismatched StringIDs detected</div>
-          <div class="terminal-line terminal-line--cmd">> git pull origin main</div>
-          <div class="terminal-line terminal-line--error">CONFLICT (content): Merge conflict in languagedata_KR.xml</div>
-          <div class="terminal-line terminal-line--cmd">> python search.py "마을" --fuzzy</div>
-          <div class="terminal-line terminal-line--warning">Processing... 500,000 rows... ETA: 4 minutes</div>
-          <div class="terminal-line terminal-line--cmd">> python qa_check.py --all</div>
-          <div class="terminal-line terminal-line--error">ERROR: UnicodeDecodeError: invalid continuation byte</div>
+        <div class="glass intro-pillar">
+          <div class="intro-pillar-icon">&#129504;</div>
+          <div class="intro-pillar-title">자동 분류 & 임베딩</div>
+          <div class="intro-pillar-desc">데이터 자동 분석</div>
+        </div>
+        <div class="glass intro-pillar">
+          <div class="intro-pillar-icon">&#127795;</div>
+          <div class="intro-pillar-title">데이터 트리 뷰</div>
+          <div class="intro-pillar-desc">부모/자식 관계, 클러스터 시각화</div>
+        </div>
+        <div class="glass intro-pillar">
+          <div class="intro-pillar-icon">&#10024;</div>
+          <div class="intro-pillar-title">쾌적한 UI</div>
+          <div class="intro-pillar-desc">Svelte 기반 미니멀리스트 인터페이스</div>
         </div>
       </div>
     </div>
   </section>
 
   <!-- ========================================================================
-       SECTION 3: PAIN IN NUMBERS
+       SECTION 4: PLATFORM UI SHOWCASE
        ======================================================================== -->
-  <section class="section pain-numbers-section" id="painNumbers" aria-label="Pain in Numbers">
+  <section class="section showcase-section" id="showcase" aria-label="Platform UI Showcase">
     <div class="section-inner">
-      <h2 class="section-title" style="color: var(--danger);">숫자로 보는 현실</h2>
+      <h2 class="section-title">직관적이고 강력한 인터페이스</h2>
 
-      <div class="pain-numbers-grid">
-        <div class="pain-number-card glass">
-          <div class="pain-number-value"><span class="count-up" data-target="40">0</span>+ 시간</div>
-          <div class="pain-number-label">수동 작업 시간 (매주)</div>
-        </div>
-        <div class="pain-number-card glass">
-          <div class="pain-number-value"><span class="count-up" data-target="50">0</span>+ 회</div>
-          <div class="pain-number-label">스크립트 전환 (하루)</div>
-        </div>
-        <div class="pain-number-card glass">
-          <div class="pain-number-value" style="font-size: clamp(32px, 4vw, 48px);">항상</div>
-          <div class="pain-number-label">데이터 유실 위험</div>
-        </div>
-        <div class="pain-number-card glass">
-          <div class="pain-number-value" style="font-size: clamp(32px, 4vw, 48px);">불가능</div>
-          <div class="pain-number-label">실시간 협업</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Act Divider: Act 1 (Red) → Act 2 (Indigo) -->
-  <div class="act-divider act-divider--red-to-indigo" aria-hidden="true"></div>
-
-  <!-- ========================================================================
-       SECTION 4: LOCANEXT REVEAL
-       ======================================================================== -->
-  <section class="section reveal-section" id="reveal" aria-label="LocaNext Reveal">
-    <div class="reveal-bloom" id="revealBloom"></div>
-    <div class="section-inner">
-      <h2 class="section-title">이제, 제대로 된 걸 보여드리겠습니다</h2>
-
-      <div class="reveal-logo" id="revealLogo">LocaNext</div>
-      <p class="reveal-tagline" id="revealTagline">빠르고. 완벽하고. 적응하는. 게임 로컬라이제이션 플랫폼.</p>
-
-      <div class="reveal-mockup" id="revealMockup">
-        <div class="reveal-mockup-inner">
-          <div class="mockup-chrome">
-            <span class="mockup-dot mockup-dot--red"></span>
-            <span class="mockup-dot mockup-dot--yellow"></span>
-            <span class="mockup-dot mockup-dot--green"></span>
+      <div class="showcase-mockup" id="showcaseMockup">
+        <div class="showcase-mockup-inner">
+          <div class="showcase-chrome">
+            <span class="showcase-dot showcase-dot--red"></span>
+            <span class="showcase-dot showcase-dot--yellow"></span>
+            <span class="showcase-dot showcase-dot--green"></span>
+            <div class="showcase-tab-bar">
+              <div class="showcase-tab active">Translation</div>
+              <div class="showcase-tab">TM Search</div>
+              <div class="showcase-tab">QA Check</div>
+            </div>
           </div>
-          <div class="mockup-body">
-            <div class="mockup-sidebar">
-              <div class="mockup-nav-item active">
-                <span class="mockup-nav-icon">📝</span>
+          <div class="showcase-body">
+            <!-- Sidebar -->
+            <div class="showcase-sidebar">
+              <div class="showcase-nav-item active">
+                <span class="showcase-nav-icon">&#128221;</span>
                 <span>Translation</span>
               </div>
-              <div class="mockup-nav-item">
-                <span class="mockup-nav-icon">🔍</span>
+              <div class="showcase-nav-item">
+                <span class="showcase-nav-icon">&#128270;</span>
                 <span>TM Search</span>
               </div>
-              <div class="mockup-nav-item">
-                <span class="mockup-nav-icon">📊</span>
+              <div class="showcase-nav-item">
+                <span class="showcase-nav-icon">&#128202;</span>
                 <span>QA Check</span>
               </div>
-              <div class="mockup-nav-item">
-                <span class="mockup-nav-icon">📁</span>
+              <div class="showcase-nav-item">
+                <span class="showcase-nav-icon">&#128218;</span>
+                <span>Glossary</span>
+              </div>
+              <div class="showcase-nav-item">
+                <span class="showcase-nav-icon">&#128193;</span>
                 <span>File Manager</span>
               </div>
-              <div class="mockup-nav-item">
-                <span class="mockup-nav-icon">⚙️</span>
+              <div class="showcase-nav-item">
+                <span class="showcase-nav-icon">&#9881;</span>
                 <span>Settings</span>
               </div>
             </div>
-            <div class="mockup-grid-area">
-              <div class="mockup-grid-header">
+
+            <!-- Main translation grid -->
+            <div class="showcase-grid-area">
+              <div class="showcase-grid-header">
                 <div>StringID</div>
-                <div>Source (EN)</div>
-                <div>Target (KR)</div>
+                <div>Category</div>
+                <div>StrOrigin (KR)</div>
+                <div>Str (EN)</div>
                 <div>Status</div>
               </div>
-              <div class="mockup-grid-row">
+              <div class="showcase-grid-row">
                 <div>UI_BTN_START</div>
-                <div>Start Game</div>
+                <div>SystemUI</div>
                 <div>게임 시작</div>
-                <div><span class="mockup-status mockup-status--done">Done</span></div>
+                <div>Start Game</div>
+                <div><span class="showcase-status showcase-status--done">Done</span></div>
               </div>
-              <div class="mockup-grid-row">
+              <div class="showcase-grid-row">
                 <div>UI_MSG_SAVE</div>
-                <div>Save your progress?</div>
+                <div>SystemUI</div>
                 <div>진행 상황을 저장할까요?</div>
-                <div><span class="mockup-status mockup-status--done">Done</span></div>
+                <div>Save your progress?</div>
+                <div><span class="showcase-status showcase-status--done">Done</span></div>
               </div>
-              <div class="mockup-grid-row">
+              <div class="showcase-grid-row selected">
                 <div>QUEST_01_DESC</div>
-                <div>Find the ancient ruins</div>
-                <div>고대 유적을 찾으세요</div>
-                <div><span class="mockup-status mockup-status--progress">Review</span></div>
+                <div>Quest</div>
+                <div>잊혀진 유적의 비밀을 풀어라</div>
+                <div>Unravel the secrets of the forgotten ruins</div>
+                <div><span class="showcase-status showcase-status--review">Review</span></div>
               </div>
-              <div class="mockup-grid-row">
+              <div class="showcase-grid-row">
                 <div>NPC_ELDER_01</div>
-                <div>Welcome, traveler.</div>
-                <div>환영합니다, 여행자여.</div>
-                <div><span class="mockup-status mockup-status--done">Done</span></div>
+                <div>Dialog</div>
+                <div>여행자여, 오랜만이구나</div>
+                <div>Traveler, it's been a while</div>
+                <div><span class="showcase-status showcase-status--done">Done</span></div>
               </div>
-              <div class="mockup-grid-row">
+              <div class="showcase-grid-row">
                 <div>ITEM_SWORD_01</div>
-                <div>Blade of Dawn</div>
+                <div>Item</div>
                 <div>여명의 검</div>
-                <div><span class="mockup-status mockup-status--new">New</span></div>
+                <div>Blade of Dawn</div>
+                <div><span class="showcase-status showcase-status--new">New</span></div>
+              </div>
+              <div class="showcase-grid-row">
+                <div>SKILL_HEAL_01</div>
+                <div>Skill</div>
+                <div>생명의 축복</div>
+                <div>Blessing of Life</div>
+                <div><span class="showcase-status showcase-status--done">Done</span></div>
+              </div>
+              <div class="showcase-grid-row">
+                <div>REGION_FOREST</div>
+                <div>Region</div>
+                <div>안개 낀 숲의 깊은 곳</div>
+                <div>Deep within the misty forest</div>
+                <div><span class="showcase-status showcase-status--review">Review</span></div>
+              </div>
+            </div>
+
+            <!-- Right panel -->
+            <div class="showcase-right">
+              <div class="showcase-panel-label">TM Matches</div>
+              <div class="showcase-tm-list">
+                <div class="showcase-tm-item">
+                  <span class="showcase-tm-text">잊혀진 왕국의 비밀을 풀어라</span>
+                  <span class="showcase-tm-score showcase-tm-score--high">96%</span>
+                </div>
+                <div class="showcase-tm-item">
+                  <span class="showcase-tm-text">고대 유적의 비밀</span>
+                  <span class="showcase-tm-score">87%</span>
+                </div>
+                <div class="showcase-tm-item">
+                  <span class="showcase-tm-text">잊혀진 던전을 탐험하라</span>
+                  <span class="showcase-tm-score">74%</span>
+                </div>
+              </div>
+
+              <div class="showcase-panel-label">Context</div>
+              <div class="showcase-context">
+                <div class="showcase-context-img">
+                  <span>QUEST_01 - 유적 입구 장면</span>
+                </div>
+                <div class="showcase-meta-tags">
+                  <span class="showcase-meta-tag">Quest</span>
+                  <span class="showcase-meta-tag">MainStory</span>
+                  <span class="showcase-meta-tag">Lore</span>
+                </div>
+              </div>
+
+              <div class="showcase-panel-label">Data Tree</div>
+              <div class="showcase-tree">
+                <div class="showcase-tree-item parent">&#9660; QuestInfo</div>
+                <div class="showcase-tree-item"><span class="indent">&nbsp;&nbsp;&#9500;&#9472;</span> <span class="highlight">QUEST_01_DESC</span></div>
+                <div class="showcase-tree-item"><span class="indent">&nbsp;&nbsp;&#9500;&#9472;</span> QUEST_01_TITLE</div>
+                <div class="showcase-tree-item"><span class="indent">&nbsp;&nbsp;&#9500;&#9472;</span> QUEST_01_HINT</div>
+                <div class="showcase-tree-item"><span class="indent">&nbsp;&nbsp;&#9492;&#9472;</span> KnowledgeKey: quest_ruins</div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Feature highlights -->
+      <div class="showcase-features" id="showcaseFeatures">
+        <div class="glass showcase-feature">
+          <div class="showcase-feature-icon">&#128269;</div>
+          <div class="showcase-feature-title">실시간 TM 매칭</div>
+          <div class="showcase-feature-desc">번역 메모리 자동 제안</div>
+        </div>
+        <div class="glass showcase-feature">
+          <div class="showcase-feature-icon">&#128196;</div>
+          <div class="showcase-feature-title">컨텍스트 패널</div>
+          <div class="showcase-feature-desc">이미지, 메타데이터, 관계 데이터</div>
+        </div>
+        <div class="glass showcase-feature">
+          <div class="showcase-feature-icon">&#127795;</div>
+          <div class="showcase-feature-title">데이터 트리</div>
+          <div class="showcase-feature-desc">계층 구조 시각화</div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- ========================================================================
-       SECTION 5: PERFORMANCE BENCHMARKS
-       ======================================================================== -->
-  <section class="section perf-section" id="performance" aria-label="Performance Benchmarks">
-    <div class="section-inner">
-      <h2 class="section-title">속도가 다릅니다</h2>
+  <!-- Act Divider -->
+  <div class="act-divider act-divider--indigo-to-purple" aria-hidden="true"></div>
 
-      <div class="bench-list" id="benchList">
-        <div class="bench-item">
-          <div class="bench-top">
-            <span class="bench-label">50만 행 로드</span>
-            <span class="bench-value bench-value--green">3초</span>
-          </div>
-          <div class="bench-bar">
-            <div class="bench-bar-fill bench-bar-fill--green" data-width="95%"></div>
-          </div>
-        </div>
-        <div class="bench-item">
-          <div class="bench-top">
-            <span class="bench-label">TM 구축: 70만 엔트리</span>
-            <span class="bench-value bench-value--green">즉시</span>
-          </div>
-          <div class="bench-bar">
-            <div class="bench-bar-fill bench-bar-fill--green" data-width="100%"></div>
+  <!-- ========================================================================
+       SECTION 5: HOW IT WORKS (PIPELINE)
+       ======================================================================== -->
+  <section class="section pipeline-section" id="pipeline" aria-label="How It Works">
+    <div class="section-inner">
+      <h2 class="section-title">어떻게 작동하나요?</h2>
+
+      <div class="pipeline-flow" id="pipelineFlow">
+        <!-- Step 1 -->
+        <div class="pipeline-step" data-pipe="0">
+          <div class="pipeline-step-num">1</div>
+          <div class="pipeline-step-card">
+            <div class="pipeline-step-icon">&#128228;</div>
+            <div class="pipeline-step-title">데이터 입력</div>
+            <div class="pipeline-step-desc">Excel, XML 파일을<br>그대로 업로드</div>
           </div>
         </div>
-        <div class="bench-item">
-          <div class="bench-top">
-            <span class="bench-label">시맨틱 검색</span>
-            <span class="bench-value bench-value--cyan">10ms</span>
-          </div>
-          <div class="bench-bar">
-            <div class="bench-bar-fill bench-bar-fill--cyan" data-width="98%"></div>
+
+        <div class="pipeline-connector">
+          <div class="pipeline-connector-line">
+            <div class="pipeline-connector-dot"></div>
           </div>
         </div>
-        <div class="bench-item">
-          <div class="bench-top">
-            <span class="bench-label">벡터 임베딩</span>
-            <span class="bench-value bench-value--primary">79x 빠름</span>
-          </div>
-          <div class="bench-bar">
-            <div class="bench-bar-fill bench-bar-fill--primary" data-width="88%"></div>
-          </div>
-        </div>
-        <div class="bench-item">
-          <div class="bench-top">
-            <span class="bench-label">앱 크기</span>
-            <span class="bench-value bench-value--primary-light">160MB <span style="font-size:0.6em;color:var(--text-dim);">(2GB+ &rarr;)</span></span>
-          </div>
-          <div class="bench-bar">
-            <div class="bench-bar-fill bench-bar-fill--primary-light" data-width="75%"></div>
+
+        <!-- Step 2 -->
+        <div class="pipeline-step" data-pipe="1">
+          <div class="pipeline-step-num">2</div>
+          <div class="pipeline-step-card">
+            <div class="pipeline-step-icon">&#128270;</div>
+            <div class="pipeline-step-title">자동 파싱</div>
+            <div class="pipeline-step-desc">데이터 구조 자동 분석<br>및 분류</div>
           </div>
         </div>
+
+        <div class="pipeline-connector">
+          <div class="pipeline-connector-line">
+            <div class="pipeline-connector-dot"></div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="pipeline-step" data-pipe="2">
+          <div class="pipeline-step-num">3</div>
+          <div class="pipeline-step-card">
+            <div class="pipeline-step-icon">&#129504;</div>
+            <div class="pipeline-step-title">임베딩 & 인덱싱</div>
+            <div class="pipeline-step-desc">벡터 임베딩으로<br>시맨틱 검색 활성화</div>
+          </div>
+        </div>
+
+        <div class="pipeline-connector">
+          <div class="pipeline-connector-line">
+            <div class="pipeline-connector-dot"></div>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="pipeline-step" data-pipe="3">
+          <div class="pipeline-step-num">4</div>
+          <div class="pipeline-step-card">
+            <div class="pipeline-step-icon">&#128204;</div>
+            <div class="pipeline-step-title">통합 관리</div>
+            <div class="pipeline-step-desc">용어집, TM, 컨텍스트를<br>한 곳에서</div>
+          </div>
+        </div>
+
+        <div class="pipeline-connector">
+          <div class="pipeline-connector-line">
+            <div class="pipeline-connector-dot"></div>
+          </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="pipeline-step" data-pipe="4">
+          <div class="pipeline-step-num">5</div>
+          <div class="pipeline-step-card">
+            <div class="pipeline-step-icon">&#128230;</div>
+            <div class="pipeline-step-title">결과 내보내기</div>
+            <div class="pipeline-step-desc">기존 형식 그대로<br>Excel/XML로 내보내기</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-subtext">
+        <em>기존 데이터를 변경하지 않습니다.</em> 더 스마트하게 활용할 뿐입니다.
       </div>
     </div>
   </section>
@@ -2451,286 +2125,131 @@
        ======================================================================== -->
   <section class="section arch-section" id="architecture" aria-label="Architecture">
     <div class="section-inner">
-      <h2 class="section-title">온라인. 오프라인. 제로 지연 동기화.</h2>
-      <p class="arch-subtitle">어디서든, 언제든, 끊김 없이.</p>
+      <h2 class="section-title">엔터프라이즈급 아키텍처</h2>
 
-      <div class="arch-pillars">
-        <div class="arch-pillar glass">
-          <div class="arch-pillar-icon">🌐</div>
-          <h3 class="arch-pillar-title arch-pillar-title--cyan">온라인 모드</h3>
-          <ul class="arch-pillar-list">
-            <li>PostgreSQL + WebSocket</li>
-            <li>50+ 동시 사용자</li>
-            <li>실시간 동기화</li>
-          </ul>
-        </div>
-        <div class="arch-pillar glass">
-          <div class="arch-pillar-icon">💾</div>
-          <h3 class="arch-pillar-title arch-pillar-title--primary">오프라인 모드</h3>
-          <ul class="arch-pillar-list">
-            <li>SQLite 자동 전환</li>
-            <li>완전한 기능 동일성</li>
-            <li>데이터 무손실</li>
-          </ul>
-        </div>
-        <div class="arch-pillar glass">
-          <div class="arch-pillar-icon">🔄</div>
-          <h3 class="arch-pillar-title arch-pillar-title--success">충돌 해결</h3>
-          <ul class="arch-pillar-list">
-            <li>Clean conflict resolution</li>
-            <li>데이터 무결성 보장</li>
-            <li>제로 지연 동기화</li>
-          </ul>
-        </div>
-      </div>
-
+      <!-- Architecture Diagram -->
       <div class="arch-diagram" id="archDiagram">
-        <svg viewBox="0 0 700 400" xmlns="http://www.w3.org/2000/svg">
-          <!-- Connection lines -->
-          <line class="arch-svg-line" x1="350" y1="180" x2="140" y2="320" stroke="#06b6d4" stroke-width="2"/>
-          <line class="arch-svg-line" x1="350" y1="180" x2="350" y2="320" stroke="#06b6d4" stroke-width="2"/>
-          <line class="arch-svg-line" x1="350" y1="180" x2="560" y2="320" stroke="#06b6d4" stroke-width="2"/>
-          <line class="arch-svg-line" x1="350" y1="180" x2="600" y2="220" stroke="#ef4444" stroke-width="2" stroke-dasharray="8 6" opacity="0.6"/>
-
-          <!-- Central PostgreSQL node -->
-          <g class="arch-svg-node" id="archNodeCenter">
-            <circle cx="350" cy="160" r="50" fill="rgba(99, 102, 241, 0.15)" stroke="#6366f1" stroke-width="2"/>
-            <text x="350" y="150" text-anchor="middle" fill="#e2e8f0" font-family="Pretendard Variable, sans-serif" font-size="11" font-weight="700">PostgreSQL</text>
-            <text x="350" y="170" text-anchor="middle" fill="#94a3b8" font-family="Pretendard Variable, sans-serif" font-size="9">Central Server</text>
-          </g>
-
-          <!-- Client nodes -->
-          <g class="arch-svg-node" id="archNode1">
-            <circle cx="140" cy="330" r="36" fill="rgba(6, 182, 212, 0.12)" stroke="#06b6d4" stroke-width="1.5"/>
-            <text x="140" y="325" text-anchor="middle" fill="#e2e8f0" font-family="Pretendard Variable, sans-serif" font-size="10" font-weight="600">Client A</text>
-            <text x="140" y="340" text-anchor="middle" fill="#06b6d4" font-family="JetBrains Mono, monospace" font-size="8">ONLINE</text>
-          </g>
-
-          <g class="arch-svg-node" id="archNode2">
-            <circle cx="350" cy="330" r="36" fill="rgba(6, 182, 212, 0.12)" stroke="#06b6d4" stroke-width="1.5"/>
-            <text x="350" y="325" text-anchor="middle" fill="#e2e8f0" font-family="Pretendard Variable, sans-serif" font-size="10" font-weight="600">Client B</text>
-            <text x="350" y="340" text-anchor="middle" fill="#06b6d4" font-family="JetBrains Mono, monospace" font-size="8">ONLINE</text>
-          </g>
-
-          <g class="arch-svg-node" id="archNode3">
-            <circle cx="560" cy="330" r="36" fill="rgba(6, 182, 212, 0.12)" stroke="#06b6d4" stroke-width="1.5"/>
-            <text x="560" y="325" text-anchor="middle" fill="#e2e8f0" font-family="Pretendard Variable, sans-serif" font-size="10" font-weight="600">Client C</text>
-            <text x="560" y="340" text-anchor="middle" fill="#06b6d4" font-family="JetBrains Mono, monospace" font-size="8">ONLINE</text>
-          </g>
-
-          <!-- Offline client -->
-          <g class="arch-svg-node" id="archNodeOffline">
-            <circle cx="620" cy="200" r="32" fill="rgba(239, 68, 68, 0.1)" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="6 4"/>
-            <text x="620" y="195" text-anchor="middle" fill="#e2e8f0" font-family="Pretendard Variable, sans-serif" font-size="10" font-weight="600">Client D</text>
-            <text x="620" y="210" text-anchor="middle" fill="#ef4444" font-family="JetBrains Mono, monospace" font-size="8">OFFLINE</text>
-          </g>
-
-          <!-- Labels -->
-          <text x="350" y="90" text-anchor="middle" fill="#94a3b8" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="0.08em">LOCANEXT ARCHITECTURE</text>
-
-          <!-- Local stack label on offline client -->
-          <text x="620" y="240" text-anchor="middle" fill="#94a3b8" font-family="Pretendard Variable, sans-serif" font-size="8">SQLite + FAISS</text>
-          <text x="620" y="252" text-anchor="middle" fill="#94a3b8" font-family="Pretendard Variable, sans-serif" font-size="8">Auto-fallback</text>
-        </svg>
-      </div>
-    </div>
-  </section>
-
-  <!-- Act Divider: Act 2 (Indigo) → Act 3 (Purple/Cyan) -->
-  <div class="act-divider act-divider--indigo-to-purple" aria-hidden="true"></div>
-
-  <!-- ========================================================================
-       SECTION 7: MULTIMODAL CONTEXT
-       ======================================================================== -->
-  <section class="section multimodal-section" id="multimodal">
-    <div class="section-inner">
-      <h2 class="section-title">번역 그 이상. 멀티모달 컨텍스트.</h2>
-
-      <div class="multimodal-layout">
-        <!-- LEFT: Translation Grid -->
-        <div class="glass mm-grid" id="mmGrid">
-          <div class="mm-grid-header">
-            <div>StringID</div>
-            <div>KR (StrOrigin)</div>
-            <div>EN (Str)</div>
+        <!-- Left: User's PC -->
+        <div class="arch-box glass">
+          <div class="arch-box-title arch-box-title--cyan">
+            <span>&#128187;</span> User's PC
           </div>
-          <div class="mm-grid-row" data-row="0">
-            <div>quest_001_title</div>
-            <div>잊혀진 유적의 비밀</div>
-            <div>Secrets of the Forgotten Ruins</div>
-          </div>
-          <div class="mm-grid-row mm-grid-row--selected" data-row="1">
-            <div>npc_042_greeting</div>
-            <div>여행자여, 오랜만이구나</div>
-            <div>Traveler, it's been a while</div>
-          </div>
-          <div class="mm-grid-row" data-row="2">
-            <div>item_blacksword</div>
-            <div>흑요석 검</div>
-            <div>Obsidian Sword</div>
-          </div>
-          <div class="mm-grid-row" data-row="3">
-            <div>region_forest_desc</div>
-            <div>안개 낀 숲의 깊은 곳</div>
-            <div>Deep within the misty forest</div>
-          </div>
+          <ul class="arch-tree">
+            <li>
+              <span class="arch-tree-prefix">&#9500;&#9472;</span>
+              <span class="arch-tree-tech">Electron 35</span>
+              <span class="arch-tree-label">+ Svelte + Vite</span>
+            </li>
+            <li>
+              <span class="arch-tree-prefix">&#9500;&#9472;</span>
+              <span class="arch-tree-tech">FastAPI</span>
+              <span class="arch-tree-label">Backend</span>
+            </li>
+            <li>
+              <span class="arch-tree-prefix">&#9500;&#9472;</span>
+              <span class="arch-tree-tech">FAISS</span>
+              <span class="arch-tree-label">Vector Search</span>
+            </li>
+            <li>
+              <span class="arch-tree-prefix">&#9500;&#9472;</span>
+              <span class="arch-tree-tech">Model2Vec</span>
+              <span class="arch-tree-label">256-dim Embeddings</span>
+            </li>
+            <li>
+              <span class="arch-tree-prefix">&#9492;&#9472;</span>
+              <span class="arch-tree-tech">SQLite</span>
+              <span class="arch-tree-label">Offline Mode</span>
+            </li>
+          </ul>
         </div>
 
-        <!-- RIGHT: Context Panel -->
-        <div class="mm-context" id="mmContext">
-          <!-- Screenshot -->
-          <div class="glass mm-context-item" data-mm="0">
-            <div class="mm-context-label">게임 내 스크린샷</div>
-            <div class="mm-screenshot">
-              <span>npc_042 — 마을 광장 대화 장면</span>
-            </div>
+        <!-- Connection -->
+        <div class="arch-connection">
+          <div class="arch-flow-label">WebSocket</div>
+          <div class="arch-flow-line">
+            <div class="arch-flow-dot"></div>
           </div>
+          <div class="arch-flow-label">Real-time Sync</div>
+        </div>
 
-          <!-- Audio Waveform -->
-          <div class="glass mm-context-item" data-mm="1">
-            <div class="mm-context-label">음성 데이터</div>
-            <div class="mm-waveform">
-              <div class="mm-wave-play">
-                <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
-              </div>
-              <div class="mm-wave-bars">
-                <div class="mm-wave-bar" style="--h:8px;animation-delay:0s"></div>
-                <div class="mm-wave-bar" style="--h:18px;animation-delay:0.1s"></div>
-                <div class="mm-wave-bar" style="--h:12px;animation-delay:0.15s"></div>
-                <div class="mm-wave-bar" style="--h:24px;animation-delay:0.2s"></div>
-                <div class="mm-wave-bar" style="--h:16px;animation-delay:0.25s"></div>
-                <div class="mm-wave-bar" style="--h:28px;animation-delay:0.05s"></div>
-                <div class="mm-wave-bar" style="--h:10px;animation-delay:0.3s"></div>
-                <div class="mm-wave-bar" style="--h:22px;animation-delay:0.12s"></div>
-                <div class="mm-wave-bar" style="--h:14px;animation-delay:0.22s"></div>
-                <div class="mm-wave-bar" style="--h:26px;animation-delay:0.08s"></div>
-                <div class="mm-wave-bar" style="--h:8px;animation-delay:0.18s"></div>
-                <div class="mm-wave-bar" style="--h:20px;animation-delay:0.28s"></div>
-                <div class="mm-wave-bar" style="--h:12px;animation-delay:0.35s"></div>
-                <div class="mm-wave-bar" style="--h:18px;animation-delay:0.14s"></div>
-                <div class="mm-wave-bar" style="--h:6px;animation-delay:0.26s"></div>
-                <div class="mm-wave-bar" style="--h:22px;animation-delay:0.04s"></div>
-                <div class="mm-wave-bar" style="--h:14px;animation-delay:0.32s"></div>
-                <div class="mm-wave-bar" style="--h:20px;animation-delay:0.16s"></div>
-              </div>
-            </div>
-            <div class="mm-wave-label">음성 재생: KR / EN</div>
+        <!-- Right: Central Server -->
+        <div class="arch-box glass">
+          <div class="arch-box-title arch-box-title--primary">
+            <span>&#9729;</span> Central Server
           </div>
+          <ul class="arch-tree">
+            <li>
+              <span class="arch-tree-prefix">&#9500;&#9472;</span>
+              <span class="arch-tree-tech">FastAPI</span>
+              <span class="arch-tree-label">+ Uvicorn</span>
+            </li>
+            <li>
+              <span class="arch-tree-prefix">&#9500;&#9472;</span>
+              <span class="arch-tree-tech">PostgreSQL 14+</span>
+              <span class="arch-tree-label">Database</span>
+            </li>
+            <li>
+              <span class="arch-tree-prefix">&#9500;&#9472;</span>
+              <span class="arch-tree-tech">PgBouncer</span>
+              <span class="arch-tree-label">Connection Pooling</span>
+            </li>
+            <li>
+              <span class="arch-tree-prefix">&#9500;&#9472;</span>
+              <span class="arch-tree-tech">WebSocket</span>
+              <span class="arch-tree-label">Real-time Sync</span>
+            </li>
+            <li>
+              <span class="arch-tree-prefix">&#9492;&#9472;</span>
+              <span class="arch-tree-tech">Gitea CI/CD</span>
+              <span class="arch-tree-label">Build Pipeline</span>
+            </li>
+          </ul>
+        </div>
+      </div>
 
-          <!-- Mini Map -->
-          <div class="glass mm-context-item" data-mm="2">
-            <div class="mm-context-label">맵 위치</div>
-            <div class="mm-minimap">
-              <div class="mm-minimap-grid"></div>
-              <div class="mm-minimap-dot"></div>
-              <div class="mm-minimap-label">마을 광장 (342, 78, 512)</div>
-            </div>
-          </div>
+      <!-- Capability cards -->
+      <div class="arch-capabilities" id="archCaps">
+        <div class="glass arch-cap">
+          <div class="arch-cap-title">100+ 동시 사용자</div>
+          <div class="arch-cap-desc">PgBouncer 커넥션 풀링으로 무지연 처리</div>
+        </div>
+        <div class="glass arch-cap">
+          <div class="arch-cap-title">완전한 오프라인 모드</div>
+          <div class="arch-cap-desc">SQLite 자동 전환, 기능 동일성 100%</div>
+        </div>
+        <div class="glass arch-cap">
+          <div class="arch-cap-title">실시간 동기화</div>
+          <div class="arch-cap-desc">WebSocket 기반, 충돌 해결 내장</div>
+        </div>
+      </div>
 
-          <!-- Metadata -->
-          <div class="glass mm-context-item" data-mm="3">
-            <div class="mm-context-label">메타데이터</div>
-            <div class="mm-meta-cards">
-              <div class="mm-meta-card">
-                <strong>캐릭터 배경</strong>
-                은퇴한 기사. 40년간 마을을 지킨 수호자.
-              </div>
-              <div class="mm-meta-card">
-                <strong>아이템 속성</strong>
-                공격력 +340, 흑요석 강화, 유니크 등급
-              </div>
-              <div class="mm-meta-card">
-                <strong>관련 퀘스트</strong>
-                잊혀진 유적의 비밀 (메인 #42)
-              </div>
-              <div class="mm-meta-card">
-                <strong>디버그</strong>
-                <code>/teleport 342 78 512</code>
-              </div>
-            </div>
-          </div>
+      <!-- Performance stats -->
+      <div class="arch-stats" id="archStats">
+        <div class="glass arch-stat">
+          <div class="arch-stat-value">20,000</div>
+          <div class="arch-stat-label">rows/second 벌크 삽입</div>
+        </div>
+        <div class="glass arch-stat">
+          <div class="arch-stat-value">&lt;50ms</div>
+          <div class="arch-stat-label">TM 검색 (70만+ 엔트리)</div>
+        </div>
+        <div class="glass arch-stat">
+          <div class="arch-stat-value">79x</div>
+          <div class="arch-stat-label">임베딩 속도 향상 (Model2Vec)</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ========================================================================
-       SECTION 8: AI PIPELINE
-       ======================================================================== -->
-  <section class="section pipeline-section" id="pipeline">
-    <div class="section-inner">
-      <h2 class="section-title">컨텍스트가 AI를 바꿉니다</h2>
-
-      <div class="pipeline-flow" id="pipelineFlow">
-        <!-- Card 1 -->
-        <div class="glass pipeline-card" data-pipe="0">
-          <div class="pipeline-icon">&#128196;</div>
-          <div class="pipeline-card-title">컨텍스트 파싱</div>
-          <div class="pipeline-card-desc">이미지, 오디오, 메타데이터</div>
-        </div>
-
-        <div class="pipeline-connector">
-          <div class="pipeline-connector-line">
-            <div class="pipeline-connector-dot"></div>
-          </div>
-        </div>
-
-        <!-- Card 2 -->
-        <div class="glass pipeline-card" data-pipe="1">
-          <div class="pipeline-icon">&#129504;</div>
-          <div class="pipeline-card-title">AI 맥락 전달</div>
-          <div class="pipeline-card-desc">정확한 맥락으로 번역 품질 향상</div>
-        </div>
-
-        <div class="pipeline-connector">
-          <div class="pipeline-connector-line">
-            <div class="pipeline-connector-dot"></div>
-          </div>
-        </div>
-
-        <!-- Card 3 -->
-        <div class="glass pipeline-card" data-pipe="2">
-          <div class="pipeline-icon">&#11088;</div>
-          <div class="pipeline-card-title">인간 수준 품질</div>
-          <div class="pipeline-card-desc">컨텍스트 기반 번역</div>
-        </div>
-
-        <div class="pipeline-connector">
-          <div class="pipeline-connector-line">
-            <div class="pipeline-connector-dot"></div>
-          </div>
-        </div>
-
-        <!-- Card 4 -->
-        <div class="glass pipeline-card pipeline-card--final" data-pipe="3">
-          <div class="pipeline-icon">&#10004;</div>
-          <div class="pipeline-card-title">번역가 확인</div>
-          <div class="pipeline-card-desc">최종 검증만</div>
-        </div>
-      </div>
-
-      <div class="pipeline-subflow">
-        <span>개발자 작성</span> &nbsp;&#8594;&nbsp; <span>AI 번역</span> &nbsp;&#8594;&nbsp; <span>번역가 확인</span>
-      </div>
-
-      <div class="pipeline-quality" id="pipelineQuality">
-        <div class="pipeline-quality-label">
-          <span>번역 품질</span>
-          <span class="pipeline-quality-pct">0%</span>
-        </div>
-        <div class="pipeline-quality-bar">
-          <div class="pipeline-quality-fill" id="pipelineQualityFill"></div>
-        </div>
-      </div>
-    </div>
-  </section>
+  <!-- Act Divider -->
+  <div class="act-divider act-divider--purple-to-dark" aria-hidden="true"></div>
 
   <!-- ========================================================================
-       SECTION 9: DEV WRITING PLATFORM
+       SECTION 7: FOR DEVELOPERS
        ======================================================================== -->
-  <section class="section devplatform-section" id="devplatform">
+  <section class="section devplatform-section" id="devplatform" aria-label="For Developers">
     <div class="section-inner">
-      <h2 class="section-title">개발자도 직접 씁니다. VSCODE는 이제 그만.</h2>
+      <h2 class="section-title">개발자를 위한 전용 기능</h2>
 
       <!-- Editor Mockup -->
       <div class="dev-editor" id="devEditor">
@@ -2789,148 +2308,79 @@
       <!-- Features -->
       <div class="dev-features" id="devFeatures">
         <div class="glass dev-feature">
-          <div class="dev-feature-num">01</div>
-          <div class="dev-feature-text">실시간 용어집/TM/TB 관리</div>
+          <div class="dev-feature-icon">&#128161;</div>
+          <div class="dev-feature-title">실시간 벡터 임베딩</div>
+          <div class="dev-feature-desc">타이핑할 때마다 적응형 제안</div>
         </div>
         <div class="glass dev-feature">
-          <div class="dev-feature-num">02</div>
-          <div class="dev-feature-text">타이핑할 때마다 적응형 벡터 임베딩</div>
+          <div class="dev-feature-icon">&#128218;</div>
+          <div class="dev-feature-title">통합 용어 관리</div>
+          <div class="dev-feature-desc">TM, TB, 용어집을 한 곳에서 관리</div>
         </div>
         <div class="glass dev-feature">
-          <div class="dev-feature-num">03</div>
-          <div class="dev-feature-text">유사도 + 테마 기반 제안</div>
+          <div class="dev-feature-icon">&#128204;</div>
+          <div class="dev-feature-title">자동 분류 시스템</div>
+          <div class="dev-feature-desc">카테고리, 클러스터, 관계 자동 파악</div>
         </div>
         <div class="glass dev-feature">
-          <div class="dev-feature-num">04</div>
-          <div class="dev-feature-text">통합 용어 관리 — 혼란 없는 일관성</div>
+          <div class="dev-feature-icon">&#128269;</div>
+          <div class="dev-feature-title">시맨틱 검색</div>
+          <div class="dev-feature-desc">의미 기반 유사 문자열 검색</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Act Divider: Act 3 (Purple/Cyan) → Act 4 (Dark) -->
-  <div class="act-divider act-divider--purple-to-dark" aria-hidden="true"></div>
+  <!-- ========================================================================
+       SECTION 8: TECH STACK & LICENSING
+       ======================================================================== -->
+  <section class="section techstack-section" id="techstack" aria-label="Tech Stack and Licensing">
+    <div class="section-inner">
+      <h2 class="section-title">기술 스택 & 라이선싱</h2>
 
-  <!-- Section 10: Tool Arsenal -->
-  <section class="arsenal-section" id="toolArsenal">
-    <div class="arsenal-header">
-      <h2 class="section-title">하나가 아닙니다. 전체 생태계입니다.</h2>
-    </div>
+      <div class="techstack-layout">
+        <!-- Tech Stack -->
+        <div class="glass techstack-card" id="techCard">
+          <div class="techstack-card-title techstack-card-title--primary">Tech Stack</div>
+          <table class="tech-table">
+            <tr><td>Frontend</td><td>Electron 35, Svelte, Tailwind, Vite</td></tr>
+            <tr><td>Backend</td><td>Python 3.10+, FastAPI, SQLAlchemy 2.0</td></tr>
+            <tr><td>Database</td><td>PostgreSQL 14+, PgBouncer, SQLite</td></tr>
+            <tr><td>AI/ML</td><td>FAISS, Model2Vec, Qwen (local)</td></tr>
+            <tr><td>CI/CD</td><td>Gitea, GitHub Actions</td></tr>
+          </table>
+        </div>
 
-    <div class="orbital-container" id="orbitalContainer">
-      <!-- SVG connection lines -->
-      <svg class="orbital-lines" id="orbitalLines" viewBox="0 0 700 700">
-        <line class="orbital-line" x1="350" y1="350" x2="350" y2="45" />
-        <line class="orbital-line" x1="350" y1="350" x2="565" y2="133" />
-        <line class="orbital-line" x1="350" y1="350" x2="655" y2="350" />
-        <line class="orbital-line" x1="350" y1="350" x2="565" y2="567" />
-        <line class="orbital-line" x1="350" y1="350" x2="350" y2="655" />
-        <line class="orbital-line" x1="350" y1="350" x2="135" y2="567" />
-        <line class="orbital-line" x1="350" y1="350" x2="45" y2="350" />
-        <line class="orbital-line" x1="350" y1="350" x2="135" y2="133" />
-      </svg>
-
-      <!-- Rotating ring holds satellites -->
-      <div class="orbital-ring" id="orbitalRing">
-        <!-- 8 satellites positioned via JS for perfect circle -->
-        <div class="orbital-satellite" data-idx="0">
-          <span class="orbital-satellite-name">QuickTranslate</span>
-          <span class="orbital-satellite-desc">Excel↔XML 전송</span>
+        <!-- Licensing -->
+        <div class="glass techstack-card" id="licenseCard">
+          <div class="techstack-card-title techstack-card-title--success">Licensing</div>
+          <div class="license-free">100% 무료</div>
+          <div class="license-badges">
+            <span class="license-badge">MIT</span>
+            <span class="license-badge">Apache 2.0</span>
+          </div>
+          <ul class="license-list">
+            <li><span class="license-cross">&#10007;</span> GPL 없음, AGPL 없음</li>
+            <li><span class="license-check">&#10003;</span> 상용 사용 가능</li>
+            <li><span class="license-check">&#10003;</span> 수정 가능</li>
+            <li><span class="license-check">&#10003;</span> 배포 가능</li>
+            <li><span class="license-check">&#10003;</span> 라이선스 비용: $0</li>
+          </ul>
+          <div class="license-savings">
+            <div class="license-savings-value">$29,350 / year</div>
+            <div class="license-savings-label">경쟁 솔루션 대비 절감 비용</div>
+          </div>
         </div>
-        <div class="orbital-satellite" data-idx="1">
-          <span class="orbital-satellite-name">QACompiler</span>
-          <span class="orbital-satellite-desc">데이터시트 생성</span>
-        </div>
-        <div class="orbital-satellite" data-idx="2">
-          <span class="orbital-satellite-name">LanguageData Exporter</span>
-          <span class="orbital-satellite-desc">XML→Excel 분류</span>
-        </div>
-        <div class="orbital-satellite" data-idx="3">
-          <span class="orbital-satellite-name">MapData Generator</span>
-          <span class="orbital-satellite-desc">데이터 시각화</span>
-        </div>
-        <div class="orbital-satellite" data-idx="4">
-          <span class="orbital-satellite-name">ExtractAnything</span>
-          <span class="orbital-satellite-desc">추출 도구</span>
-        </div>
-        <div class="orbital-satellite" data-idx="5">
-          <span class="orbital-satellite-name">QuickSearch</span>
-          <span class="orbital-satellite-desc">용어집 QA</span>
-        </div>
-        <div class="orbital-satellite" data-idx="6">
-          <span class="orbital-satellite-name">KR Similar</span>
-          <span class="orbital-satellite-desc">유사 문자열</span>
-        </div>
-        <div class="orbital-satellite" data-idx="7">
-          <span class="orbital-satellite-name">XLS Transfer</span>
-          <span class="orbital-satellite-desc">일괄 전송</span>
-        </div>
-      </div>
-
-      <!-- Center hub (outside ring so it doesn't rotate with it — has own counter-rotate) -->
-      <div class="orbital-center">
-        <span class="orbital-center-name">LocaNext</span>
-        <span class="orbital-center-desc">메인 플랫폼</span>
       </div>
     </div>
   </section>
 
-  <!-- Section 11: The Builder (Stats) -->
-  <section class="builder-section" id="theBuilder">
-    <div class="builder-glow"></div>
-    <div class="builder-header">
-      <h2 class="section-title">이 모든 것을 한 사람이 만들었습니다.<br>AI와 함께.</h2>
-    </div>
-
-    <div class="stats-grid" id="statsGrid">
-      <div class="stat-card">
-        <div class="stat-number" data-count="912">0</div>
-        <div class="stat-label">테스트 통과</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" data-count="161">0</div>
-        <div class="stat-label">버그 수정 (미해결: 0)</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" data-count="60">0</div>
-        <div class="stat-label">빌드 릴리스</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" data-count="9">0</div>
-        <div class="stat-label">도구</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" data-count="55">0</div>
-        <div class="stat-label">API 엔드포인트</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" data-count="13">0</div>
-        <div class="stat-label">언어 지원</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" data-count="50" data-suffix="만+">0</div>
-        <div class="stat-label">행 처리</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" data-count="70" data-suffix="만+">0</div>
-        <div class="stat-label">TM 엔트리</div>
-      </div>
-    </div>
-
-    <div class="tech-stack-row" id="techStack">
-      <span class="tech-pill">PostgreSQL</span>
-      <span class="tech-pill">FastAPI</span>
-      <span class="tech-pill">Svelte 5</span>
-      <span class="tech-pill">Electron</span>
-      <span class="tech-pill">FAISS</span>
-      <span class="tech-pill">Model2Vec</span>
-    </div>
-  </section>
-
-  <!-- Section 12: Closing -->
-  <section class="closing-section" id="closingSection">
-    <div class="closing-main">이것이 로컬라이제이션의 미래입니다.</div>
-    <div class="closing-sub">그리고 이 웹페이지도 AI가 만들었습니다.</div>
+  <!-- ========================================================================
+       SECTION 9: CLOSING
+       ======================================================================== -->
+  <section class="closing-section" id="closingSection" aria-label="Closing">
+    <div class="closing-main">로컬라이제이션의 새로운 가능성을 함께 만들어갑니다.</div>
+    <div class="closing-sub">LocaNext &mdash; 오픈소스. 무료. 엔터프라이즈급.</div>
     <div class="closing-logo">LocaNext</div>
   </section>
 
@@ -2944,8 +2394,8 @@
        ----------------------------------------------------------------------- */
     gsap.registerPlugin(ScrollTrigger);
 
-    const isMobile = window.innerWidth < 768;
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var isMobile = window.innerWidth < 768;
+    var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     /* -----------------------------------------------------------------------
        THREE.JS PARTICLE FIELD
@@ -2953,42 +2403,41 @@
     (function initParticles() {
       if (isMobile || prefersReducedMotion) return;
 
-      const canvas = document.getElementById('heroCanvas');
-      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+      var canvas = document.getElementById('heroCanvas');
+      var renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: false });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(window.innerWidth, window.innerHeight);
 
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      var scene = new THREE.Scene();
+      var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
       camera.position.z = 300;
 
-      // Particle count: 1500 desktop, 800 tablet
-      const isTablet = window.innerWidth < 1024;
-      const PARTICLE_COUNT = isTablet ? 800 : 1500;
+      var isTablet = window.innerWidth < 1024;
+      var PARTICLE_COUNT = isTablet ? 800 : 1500;
 
-      const positions = new Float32Array(PARTICLE_COUNT * 3);
-      const colors = new Float32Array(PARTICLE_COUNT * 3);
+      var positions = new Float32Array(PARTICLE_COUNT * 3);
+      var colors = new Float32Array(PARTICLE_COUNT * 3);
 
-      const colorIndigo = new THREE.Color(0x6366f1);
-      const colorCyan = new THREE.Color(0x06b6d4);
+      var colorIndigo = new THREE.Color(0x6366f1);
+      var colorCyan = new THREE.Color(0x06b6d4);
 
-      for (let i = 0; i < PARTICLE_COUNT; i++) {
-        const i3 = i * 3;
+      for (var i = 0; i < PARTICLE_COUNT; i++) {
+        var i3 = i * 3;
         positions[i3]     = (Math.random() - 0.5) * 800;
         positions[i3 + 1] = (Math.random() - 0.5) * 600;
         positions[i3 + 2] = (Math.random() - 0.5) * 400;
 
-        const c = Math.random() > 0.5 ? colorIndigo : colorCyan;
+        var c = Math.random() > 0.5 ? colorIndigo : colorCyan;
         colors[i3]     = c.r;
         colors[i3 + 1] = c.g;
         colors[i3 + 2] = c.b;
       }
 
-      const geometry = new THREE.BufferGeometry();
+      var geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
       geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-      const material = new THREE.PointsMaterial({
+      var material = new THREE.PointsMaterial({
         size: 2.5,
         vertexColors: true,
         transparent: true,
@@ -2998,58 +2447,40 @@
         depthWrite: false
       });
 
-      const particles = new THREE.Points(geometry, material);
+      var particles = new THREE.Points(geometry, material);
       scene.add(particles);
 
-      // Mouse tracking for parallax
-      let mouseX = 0;
-      let mouseY = 0;
-      let targetMouseX = 0;
-      let targetMouseY = 0;
+      var mouseX = 0, mouseY = 0, targetMouseX = 0, targetMouseY = 0;
 
       document.addEventListener('mousemove', function(e) {
         targetMouseX = (e.clientX / window.innerWidth - 0.5) * 2;
         targetMouseY = (e.clientY / window.innerHeight - 0.5) * 2;
       });
 
-      // Resize handler
       function onResize() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
+        var w = window.innerWidth, h = window.innerHeight;
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
       }
       window.addEventListener('resize', onResize);
 
-      // Animation loop
       function animate() {
         requestAnimationFrame(animate);
-
-        // Smooth mouse interpolation
         mouseX += (targetMouseX - mouseX) * 0.05;
         mouseY += (targetMouseY - mouseY) * 0.05;
-
-        // Parallax displacement
         particles.rotation.x = mouseY * 0.08;
         particles.rotation.y = mouseX * 0.08;
-
-        // Continuous slow drift
         particles.rotation.z += 0.0003;
         particles.rotation.x += 0.0001;
 
-        // Drift individual particles upward slowly
-        const posArr = geometry.attributes.position.array;
-        for (let i = 0; i < PARTICLE_COUNT; i++) {
-          const i3 = i * 3;
-          posArr[i3 + 1] += 0.02;
-          // Wrap around when particle drifts too far up
-          if (posArr[i3 + 1] > 300) {
-            posArr[i3 + 1] = -300;
-          }
+        var posArr = geometry.attributes.position.array;
+        for (var j = 0; j < PARTICLE_COUNT; j++) {
+          var j3 = j * 3;
+          posArr[j3 + 1] += 0.02;
+          if (posArr[j3 + 1] > 300) posArr[j3 + 1] = -300;
         }
         geometry.attributes.position.needsUpdate = true;
-
         renderer.render(scene, camera);
       }
 
@@ -3060,14 +2491,13 @@
        TYPEWRITER EFFECT
        ----------------------------------------------------------------------- */
     (function initTypewriter() {
-      const titleText = '로컬라이제이션의 미래가 시작됩니다';
-      const titleEl = document.getElementById('heroTitleText');
-      const cursorEl = document.getElementById('heroCursor');
-      const subtitleEl = document.getElementById('heroSubtitle');
-      const scrollIndicator = document.getElementById('scrollIndicator');
+      var titleText = '\uB85C\uCEEC\uB77C\uC774\uC81C\uC774\uC158 \uD504\uB85C\uC138\uC2A4\uB97C \uD601\uC2E0\uD558\uB294 \uBA40\uD2F0\uBAA8\uB2EC \uD50C\uB7AB\uD3FC';
+      var titleEl = document.getElementById('heroTitleText');
+      var cursorEl = document.getElementById('heroCursor');
+      var subtitleEl = document.getElementById('heroSubtitle');
+      var scrollIndicator = document.getElementById('scrollIndicator');
 
       if (prefersReducedMotion) {
-        // Show everything immediately
         titleEl.textContent = titleText;
         cursorEl.style.display = 'none';
         subtitleEl.style.opacity = '1';
@@ -3075,8 +2505,8 @@
         return;
       }
 
-      let charIndex = 0;
-      const CHAR_DELAY = 40; // ms per character
+      var charIndex = 0;
+      var CHAR_DELAY = 40;
 
       function typeNext() {
         if (charIndex < titleText.length) {
@@ -3084,218 +2514,161 @@
           charIndex++;
           setTimeout(typeNext, CHAR_DELAY);
         } else {
-          // Typing complete: hide cursor after a pause, fade in subtitle
           setTimeout(function() {
             gsap.to(cursorEl, { opacity: 0, duration: 0.5, onComplete: function() {
               cursorEl.style.display = 'none';
             }});
           }, 600);
 
-          // Fade in subtitle 1s after title completes
           setTimeout(function() {
             gsap.to(subtitleEl, { opacity: 1, duration: 1, ease: 'power2.out' });
           }, 1000);
 
-          // Fade in scroll indicator after subtitle
           setTimeout(function() {
             gsap.to(scrollIndicator, { opacity: 1, duration: 1, ease: 'power2.out' });
           }, 2200);
         }
       }
 
-      // Start typewriter after a brief initial delay
       setTimeout(typeNext, 500);
     })();
 
     /* -----------------------------------------------------------------------
-       SECTION 2: PAIN POINT CARDS + TERMINAL
+       SECTION 2: CHALLENGE CARDS
        ----------------------------------------------------------------------- */
-    (function initPainSection() {
-      // Stagger pain cards in
-      gsap.to('.pain-card', {
+    (function initChallenges() {
+      gsap.to('.challenge-card', {
         opacity: 1,
         y: 0,
         duration: 0.6,
         stagger: 0.15,
         ease: 'power2.out',
         scrollTrigger: {
-          trigger: '#painPoints',
+          trigger: '#challenges',
           start: 'top 75%',
           once: true
         }
       });
-
-      // Terminal fade in
-      gsap.to('.terminal-mock', {
-        opacity: 1,
-        y: 0,
-        duration: 0.8,
-        ease: 'power2.out',
-        scrollTrigger: {
-          trigger: '.terminal-mock',
-          start: 'top 85%',
-          once: true,
-          onEnter: function() {
-            // Auto-type terminal lines one by one
-            var lines = document.querySelectorAll('.terminal-line');
-            var body = document.getElementById('terminalBody');
-            var delay = 0;
-            lines.forEach(function(line, i) {
-              setTimeout(function() {
-                gsap.to(line, { opacity: 1, duration: 0.3 });
-                body.scrollTop = body.scrollHeight;
-              }, delay);
-              // Commands appear faster, results linger
-              delay += (i % 2 === 0) ? 400 : 700;
-            });
-          }
-        }
-      });
     })();
 
     /* -----------------------------------------------------------------------
-       SECTION 3: PAIN IN NUMBERS — COUNT-UP + FADE
+       SECTION 3: LOCANEXT INTRODUCTION
        ----------------------------------------------------------------------- */
-    (function initPainNumbers() {
-      // Count-up utility using requestAnimationFrame
-      function countUp(el, target, duration) {
-        var start = 0;
-        var startTime = null;
+    (function initIntro() {
+      var bloom = document.getElementById('introBloom');
+      var logo = document.getElementById('introLogo');
+      var message = document.getElementById('introMessage');
 
-        function step(timestamp) {
-          if (!startTime) startTime = timestamp;
-          var progress = Math.min((timestamp - startTime) / duration, 1);
-          // Ease out quad
-          var eased = 1 - (1 - progress) * (1 - progress);
-          el.textContent = Math.floor(eased * target);
-          if (progress < 1) {
-            requestAnimationFrame(step);
-          } else {
-            el.textContent = target;
-          }
-        }
-
-        requestAnimationFrame(step);
-      }
-
-      // Fade in number cards
-      gsap.to('.pain-number-card', {
-        opacity: 1,
-        y: 0,
-        duration: 0.7,
-        stagger: 0.15,
-        ease: 'power2.out',
-        scrollTrigger: {
-          trigger: '#painNumbers',
-          start: 'top 75%',
-          once: true,
-          onEnter: function() {
-            // Trigger count-up for numeric values
-            document.querySelectorAll('.count-up').forEach(function(el) {
-              var target = parseInt(el.getAttribute('data-target'), 10);
-              countUp(el, target, 1500);
-            });
-          }
-        }
-      });
-    })();
-
-    /* -----------------------------------------------------------------------
-       SECTION 4: LOCANEXT REVEAL — BLOOM + LOGO + MOCKUP
-       ----------------------------------------------------------------------- */
-    (function initReveal() {
-      var bloom = document.getElementById('revealBloom');
-      var logo = document.getElementById('revealLogo');
-      var tagline = document.getElementById('revealTagline');
-      var mockupInner = document.querySelector('.reveal-mockup-inner');
-
-      // Bloom expansion on scroll
       gsap.to(bloom, {
         width: 800,
         height: 800,
         ease: 'none',
         scrollTrigger: {
-          trigger: '#reveal',
+          trigger: '#intro',
           start: 'top 80%',
           end: 'center center',
           scrub: 1
         }
       });
 
-      // Logo + tagline + mockup timeline
-      var revealTl = gsap.timeline({
+      var introTl = gsap.timeline({
         scrollTrigger: {
-          trigger: '#reveal',
+          trigger: '#intro',
           start: 'top 65%',
           once: true
         }
       });
 
-      revealTl
+      introTl
         .to(logo, {
           opacity: 1,
           scale: 1,
           duration: 0.8,
           ease: 'back.out(1.7)'
         })
-        .to(tagline, {
+        .to(message, {
           opacity: 1,
           duration: 0.6,
           ease: 'power2.out'
-        }, '-=0.3')
-        .to(mockupInner, {
-          opacity: 1,
-          rotateX: 0,
-          duration: 1,
-          ease: 'power3.out'
-        }, '-=0.2');
-    })();
+        }, '-=0.3');
 
-    /* -----------------------------------------------------------------------
-       SECTION 5: PERFORMANCE BENCHMARKS — BAR ANIMATIONS
-       ----------------------------------------------------------------------- */
-    (function initPerformance() {
-      gsap.to('.bench-item', {
+      gsap.to('.intro-pillar', {
         opacity: 1,
-        x: 0,
+        y: 0,
         duration: 0.6,
-        stagger: 0.2,
+        stagger: 0.12,
         ease: 'power2.out',
         scrollTrigger: {
-          trigger: '#performance',
-          start: 'top 75%',
-          once: true,
-          onEnter: function() {
-            // Animate bar fills after items appear
-            setTimeout(function() {
-              document.querySelectorAll('.bench-bar-fill').forEach(function(fill) {
-                fill.style.width = fill.getAttribute('data-width');
-              });
-            }, 400);
-          }
+          trigger: '#introPillars',
+          start: 'top 80%',
+          once: true
         }
       });
     })();
 
     /* -----------------------------------------------------------------------
-       SECTION 6: ARCHITECTURE — PILLARS + DIAGRAM
+       SECTION 4: PLATFORM UI SHOWCASE
        ----------------------------------------------------------------------- */
-    (function initArchitecture() {
-      // Pillar cards fade in
-      gsap.to('.arch-pillar', {
+    (function initShowcase() {
+      var mockupInner = document.querySelector('.showcase-mockup-inner');
+
+      gsap.to(mockupInner, {
         opacity: 1,
-        y: 0,
-        duration: 0.7,
-        stagger: 0.15,
-        ease: 'power2.out',
+        rotateX: 0,
+        duration: 1.2,
+        ease: 'power3.out',
         scrollTrigger: {
-          trigger: '.arch-pillars',
-          start: 'top 75%',
+          trigger: '#showcase',
+          start: 'top 70%',
           once: true
         }
       });
 
-      // Diagram fade in
+      gsap.to('.showcase-feature', {
+        opacity: 1,
+        y: 0,
+        duration: 0.5,
+        stagger: 0.12,
+        ease: 'power2.out',
+        scrollTrigger: {
+          trigger: '#showcaseFeatures',
+          start: 'top 85%',
+          once: true
+        }
+      });
+    })();
+
+    /* -----------------------------------------------------------------------
+       SECTION 5: PIPELINE
+       ----------------------------------------------------------------------- */
+    (function initPipeline() {
+      var pipelineFlow = document.getElementById('pipelineFlow');
+      if (!pipelineFlow) return;
+
+      var steps = pipelineFlow.querySelectorAll('.pipeline-step');
+
+      ScrollTrigger.create({
+        trigger: '#pipeline',
+        start: 'top 70%',
+        once: true,
+        onEnter: function() {
+          steps.forEach(function(step, i) {
+            gsap.to(step, {
+              y: 0,
+              opacity: 1,
+              duration: 0.6,
+              delay: i * 0.25,
+              ease: 'power3.out'
+            });
+          });
+        }
+      });
+    })();
+
+    /* -----------------------------------------------------------------------
+       SECTION 6: ARCHITECTURE
+       ----------------------------------------------------------------------- */
+    (function initArchitecture() {
       gsap.to('#archDiagram', {
         opacity: 1,
         y: 0,
@@ -3303,148 +2676,45 @@
         ease: 'power2.out',
         scrollTrigger: {
           trigger: '#archDiagram',
+          start: 'top 80%',
+          once: true
+        }
+      });
+
+      gsap.to('.arch-cap', {
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        stagger: 0.15,
+        ease: 'power2.out',
+        scrollTrigger: {
+          trigger: '#archCaps',
+          start: 'top 80%',
+          once: true
+        }
+      });
+
+      gsap.to('.arch-stat', {
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        stagger: 0.15,
+        ease: 'power2.out',
+        scrollTrigger: {
+          trigger: '#archStats',
           start: 'top 85%',
-          once: true,
-          onEnter: function() {
-            // Animate SVG nodes sequentially
-            var nodes = document.querySelectorAll('.arch-svg-node');
-            nodes.forEach(function(node, i) {
-              gsap.to(node, {
-                opacity: 1,
-                duration: 0.5,
-                delay: i * 0.2,
-                ease: 'power2.out'
-              });
-            });
-
-            // Animate connection lines
-            var lines = document.querySelectorAll('.arch-svg-line');
-            lines.forEach(function(line, i) {
-              gsap.to(line, {
-                strokeDashoffset: 0,
-                duration: 1,
-                delay: 0.3 + i * 0.15,
-                ease: 'power2.inOut'
-              });
-            });
-          }
+          once: true
         }
       });
     })();
 
-    /* ========================================================================
-       SECTION 7: MULTIMODAL CONTEXT
-       ======================================================================== */
-    (function() {
-      var mmGrid = document.getElementById('mmGrid');
-      var mmContext = document.getElementById('mmContext');
-      if (!mmGrid || !mmContext) return;
-
-      var contextItems = mmContext.querySelectorAll('.mm-context-item');
-
-      ScrollTrigger.create({
-        trigger: '#multimodal',
-        start: 'top 70%',
-        once: true,
-        onEnter: function() {
-          // Grid slides in from left
-          gsap.from(mmGrid, {
-            x: -60,
-            opacity: 0,
-            duration: 0.8,
-            ease: 'power3.out'
-          });
-
-          // Context panel slides from right, items stagger
-          contextItems.forEach(function(item, i) {
-            gsap.to(item, {
-              x: 0,
-              opacity: 1,
-              duration: 0.6,
-              delay: 0.4 + i * 0.15,
-              ease: 'power3.out',
-              onComplete: function() {
-                // Glow pulse on appear
-                gsap.fromTo(item, {
-                  boxShadow: '0 0 0 rgba(6, 182, 212, 0)'
-                }, {
-                  boxShadow: '0 0 20px rgba(6, 182, 212, 0.15)',
-                  duration: 0.4,
-                  yoyo: true,
-                  repeat: 1
-                });
-              }
-            });
-          });
-        }
-      });
-    })();
-
-    /* ========================================================================
-       SECTION 8: AI PIPELINE
-       ======================================================================== */
-    (function() {
-      var pipelineFlow = document.getElementById('pipelineFlow');
-      var qualityFill = document.getElementById('pipelineQualityFill');
-      var qualityPct = document.querySelector('.pipeline-quality-pct');
-      if (!pipelineFlow) return;
-
-      var cards = pipelineFlow.querySelectorAll('.pipeline-card');
-
-      ScrollTrigger.create({
-        trigger: '#pipeline',
-        start: 'top 70%',
-        once: true,
-        onEnter: function() {
-          // Cards build left to right
-          cards.forEach(function(card, i) {
-            gsap.to(card, {
-              y: 0,
-              opacity: 1,
-              duration: 0.6,
-              delay: i * 0.3,
-              ease: 'power3.out',
-              onComplete: function() {
-                // Final card pulse
-                if (card.classList.contains('pipeline-card--final')) {
-                  card.classList.add('is-active');
-                }
-              }
-            });
-          });
-
-          // Quality bar fills
-          if (qualityFill) {
-            gsap.to(qualityFill, {
-              width: '95%',
-              duration: 1.5,
-              delay: 1.2,
-              ease: 'power2.out'
-            });
-          }
-
-          // Quality percentage counts up
-          if (qualityPct) {
-            gsap.to({ val: 0 }, {
-              val: 95,
-              duration: 1.5,
-              delay: 1.2,
-              ease: 'power2.out',
-              onUpdate: function() {
-                qualityPct.textContent = Math.round(this.targets()[0].val) + '%';
-              }
-            });
-          }
-        }
-      });
-    })();
-
-    /* ========================================================================
-       SECTION 9: DEV WRITING PLATFORM
-       ======================================================================== */
-    (function() {
+    /* -----------------------------------------------------------------------
+       SECTION 7: FOR DEVELOPERS
+       ----------------------------------------------------------------------- */
+    (function initDevPlatform() {
       var editorText = document.getElementById('devEditorText');
       var autocomplete = document.getElementById('devAutocomplete');
+      var devEditor = document.getElementById('devEditor');
       var devFeatures = document.getElementById('devFeatures');
       if (!editorText) return;
 
@@ -3452,7 +2722,6 @@
       var typeIndex = 0;
 
       function renderEditor(chars) {
-        // Build text content safely using DOM
         while (editorText.firstChild) editorText.removeChild(editorText.firstChild);
 
         var prefix = document.createElement('span');
@@ -3493,7 +2762,6 @@
           ease: 'power2.out'
         });
 
-        // Stagger items
         var items = autocomplete.querySelectorAll('.dev-ac-item');
         items.forEach(function(item, i) {
           gsap.to(item, {
@@ -3505,7 +2773,6 @@
           });
         });
 
-        // Count up badges
         var badges = autocomplete.querySelectorAll('.dev-ac-badge');
         badges.forEach(function(badge, i) {
           var target = parseInt(badge.getAttribute('data-target'));
@@ -3520,7 +2787,6 @@
           });
         });
 
-        // Theme tags fade in
         var tags = document.querySelectorAll('.dev-theme-tag');
         tags.forEach(function(tag, i) {
           gsap.to(tag, {
@@ -3538,8 +2804,16 @@
         start: 'top 70%',
         once: true,
         onEnter: function() {
-          // Start typewriter
-          typeChar();
+          // Fade in editor
+          gsap.to(devEditor, {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            ease: 'power2.out'
+          });
+
+          // Start typewriter after editor appears
+          setTimeout(typeChar, 400);
 
           // Features stagger in
           if (devFeatures) {
@@ -3559,129 +2833,25 @@
     })();
 
     /* -----------------------------------------------------------------------
-       SECTION 10: TOOL ARSENAL — ORBITAL LAYOUT
+       SECTION 8: TECH STACK & LICENSING
        ----------------------------------------------------------------------- */
-    (function initToolArsenal() {
-      var container = document.getElementById('orbitalContainer');
-      var satellites = document.querySelectorAll('.orbital-satellite');
-      var lines = document.querySelectorAll('.orbital-line');
-      if (!container || !satellites.length) return;
-
-      // Position satellites in a circle
-      var containerSize = container.offsetWidth || 700;
-      var radius = containerSize * 0.43; // distance from center
-      var satSize = satellites[0].offsetWidth || 110;
-      var cx = containerSize / 2;
-      var cy = containerSize / 2;
-
-      satellites.forEach(function(sat, i) {
-        var angle = (i / 8) * Math.PI * 2 - Math.PI / 2; // start from top
-        var x = cx + radius * Math.cos(angle) - satSize / 2;
-        var y = cy + radius * Math.sin(angle) - satSize / 2;
-        sat.style.left = x + 'px';
-        sat.style.top = y + 'px';
-      });
-
-      // Animate satellites flying in
-      ScrollTrigger.create({
-        trigger: '#toolArsenal',
-        start: 'top 70%',
-        once: true,
-        onEnter: function() {
-          satellites.forEach(function(sat, i) {
-            gsap.to(sat, {
-              opacity: 1,
-              scale: 1,
-              duration: 0.6,
-              delay: i * 0.12,
-              ease: 'back.out(1.4)',
-              onComplete: function() {
-                sat.style.boxShadow = '0 0 20px rgba(99,102,241,0.2)';
-              }
-            });
-          });
-
-          // Draw connection lines after satellites are in
-          lines.forEach(function(line, i) {
-            var len = line.getTotalLength ? line.getTotalLength() : 300;
-            line.style.strokeDasharray = len;
-            line.style.strokeDashoffset = len;
-            gsap.to(line, {
-              strokeDashoffset: 0,
-              duration: 0.5,
-              delay: 1.2 + i * 0.06,
-              ease: 'power2.out'
-            });
-          });
+    (function initTechStack() {
+      gsap.to('.techstack-card', {
+        opacity: 1,
+        y: 0,
+        duration: 0.7,
+        stagger: 0.2,
+        ease: 'power2.out',
+        scrollTrigger: {
+          trigger: '#techstack',
+          start: 'top 75%',
+          once: true
         }
       });
     })();
 
     /* -----------------------------------------------------------------------
-       SECTION 11: THE BUILDER — STATS COUNT-UP
-       ----------------------------------------------------------------------- */
-    (function initBuilderStats() {
-      var statCards = document.querySelectorAll('.stat-card');
-      var techPills = document.querySelectorAll('.tech-pill');
-      if (!statCards.length) return;
-
-      function countUp(el, target, suffix) {
-        var duration = 2000;
-        var start = 0;
-        var startTime = null;
-        suffix = suffix || '+';
-
-        function step(timestamp) {
-          if (!startTime) startTime = timestamp;
-          var progress = Math.min((timestamp - startTime) / duration, 1);
-          // Ease out quad
-          var eased = 1 - (1 - progress) * (1 - progress);
-          var current = Math.floor(eased * target);
-          el.textContent = current.toLocaleString() + suffix;
-          if (progress < 1) {
-            requestAnimationFrame(step);
-          }
-        }
-        requestAnimationFrame(step);
-      }
-
-      ScrollTrigger.create({
-        trigger: '#statsGrid',
-        start: 'top 75%',
-        once: true,
-        onEnter: function() {
-          statCards.forEach(function(card, i) {
-            gsap.to(card, {
-              opacity: 1,
-              y: 0,
-              duration: 0.6,
-              delay: i * 0.1,
-              ease: 'power3.out',
-              onStart: function() {
-                var numEl = card.querySelector('.stat-number');
-                var target = parseInt(numEl.getAttribute('data-count'), 10);
-                var suffix = numEl.getAttribute('data-suffix') || '+';
-                countUp(numEl, target, suffix);
-              }
-            });
-          });
-
-          // Tech stack pills stagger
-          techPills.forEach(function(pill, i) {
-            gsap.to(pill, {
-              opacity: 1,
-              y: 0,
-              duration: 0.5,
-              delay: 1.0 + i * 0.1,
-              ease: 'power2.out'
-            });
-          });
-        }
-      });
-    })();
-
-    /* -----------------------------------------------------------------------
-       SECTION 12: CLOSING
+       SECTION 9: CLOSING
        ----------------------------------------------------------------------- */
     (function initClosing() {
       var main = document.querySelector('.closing-main');
