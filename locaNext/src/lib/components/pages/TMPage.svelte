@@ -261,9 +261,9 @@
     showSettings = !showSettings;
   }
 
-  function handleUploadComplete() {
+  async function handleUploadComplete() {
     showUploadModal = false;
-    loadTMs();
+    await loadTMs();
     // Refresh grid after upload
     if (tmGridRef?.reload) {
       tmGridRef.reload();

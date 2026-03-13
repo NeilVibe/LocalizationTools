@@ -104,70 +104,73 @@
         }
       }, 500);
 
-      const response = await fetch(`${API_BASE}/api/ldm/tm/upload`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: formData
-      });
-
-      clearInterval(progressInterval);
-      uploadProgress = 100;
-
-      if (response.ok) {
-        uploadResult = await response.json();
-        uploadStatus = "success";
-        logger.success("TM uploaded", {
-          name: uploadResult.name,
-          tmId: uploadResult.tm_id,
-          entries: uploadResult.entry_count,
-          rate: uploadResult.rate_per_second
+      try {
+        const response = await fetch(`${API_BASE}/api/ldm/tm/upload`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: formData
         });
 
-        // Sprint 5: Auto-assign to target scope if specified
-        if (targetScope && uploadResult.tm_id) {
-          try {
-            const assignParams = new URLSearchParams();
-            if (targetScope.type === 'platform') assignParams.set('platform_id', targetScope.id);
-            else if (targetScope.type === 'project') assignParams.set('project_id', targetScope.id);
-            else if (targetScope.type === 'folder') assignParams.set('folder_id', targetScope.id);
+        clearInterval(progressInterval);
+        uploadProgress = 100;
 
-            const assignResponse = await fetch(
-              `${API_BASE}/api/ldm/tm/${uploadResult.tm_id}/assign?${assignParams.toString()}`,
-              {
-                method: 'PATCH',
-                headers: getAuthHeaders()
+        if (response.ok) {
+          uploadResult = await response.json();
+          uploadStatus = "success";
+          logger.success("TM uploaded", {
+            name: uploadResult.name,
+            tmId: uploadResult.tm_id,
+            entries: uploadResult.entry_count,
+            rate: uploadResult.rate_per_second
+          });
+
+          // Sprint 5: Auto-assign to target scope if specified
+          if (targetScope && uploadResult.tm_id) {
+            try {
+              const assignParams = new URLSearchParams();
+              if (targetScope.type === 'platform') assignParams.set('platform_id', targetScope.id);
+              else if (targetScope.type === 'project') assignParams.set('project_id', targetScope.id);
+              else if (targetScope.type === 'folder') assignParams.set('folder_id', targetScope.id);
+
+              const assignResponse = await fetch(
+                `${API_BASE}/api/ldm/tm/${uploadResult.tm_id}/assign?${assignParams.toString()}`,
+                {
+                  method: 'PATCH',
+                  headers: getAuthHeaders()
+                }
+              );
+
+              if (assignResponse.ok) {
+                logger.success("TM assigned to scope", { tmId: uploadResult.tm_id, scope: targetScope });
+              } else {
+                logger.warn("TM uploaded but assignment failed", { tmId: uploadResult.tm_id, scope: targetScope });
               }
-            );
-
-            if (assignResponse.ok) {
-              logger.success("TM assigned to scope", { tmId: uploadResult.tm_id, scope: targetScope });
-            } else {
-              logger.warn("TM uploaded but assignment failed", { tmId: uploadResult.tm_id, scope: targetScope });
+            } catch (assignErr) {
+              logger.warn("TM uploaded but assignment failed", { error: assignErr.message });
             }
-          } catch (assignErr) {
-            logger.warn("TM uploaded but assignment failed", { error: assignErr.message });
           }
+
+          // Dispatch event and close after delay
+          setTimeout(() => {
+            dispatch('uploaded', uploadResult);
+            resetForm();
+            open = false;
+          }, 1500);
+
+        } else {
+          const error = await response.json();
+          errorMessage = error.detail || "Upload failed";
+          uploadStatus = "error";
+          logger.error("TM upload failed", { error: errorMessage });
         }
 
-        // Dispatch event and close after delay
-        setTimeout(() => {
-          dispatch('uploaded', uploadResult);
-          resetForm();
-          open = false;
-        }, 1500);
-
-      } else {
-        const error = await response.json();
-        errorMessage = error.detail || "Upload failed";
+      } catch (err) {
+        errorMessage = err.message;
         uploadStatus = "error";
-        logger.error("TM upload failed", { error: errorMessage });
+        logger.error("TM upload error", { error: err.message });
+      } finally {
+        clearInterval(progressInterval);
       }
-
-    } catch (err) {
-      errorMessage = err.message;
-      uploadStatus = "error";
-      logger.error("TM upload error", { error: err.message });
-    }
   }
 
   // Handle modal close - UI-055 FIX: Dispatch 'close' event for parent control

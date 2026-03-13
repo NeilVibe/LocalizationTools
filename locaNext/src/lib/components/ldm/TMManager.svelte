@@ -266,9 +266,9 @@
   }
 
   // Handle upload complete
-  function handleUploadComplete(event) {
+  async function handleUploadComplete(event) {
     showUploadModal = false;
-    loadTMs();
+    await loadTMs();
     dispatch('tmUploaded', event.detail);
   }
 

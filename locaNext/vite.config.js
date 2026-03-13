@@ -7,6 +7,7 @@ export default defineConfig({
   // Without this, paths like /_app/ resolve to C:/_app/ on Windows
   base: './',
   server: {
+    host: true,
     port: 5173,
     strictPort: true
   },
