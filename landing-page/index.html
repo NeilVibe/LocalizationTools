@@ -93,7 +93,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 100px 5vw;
+      padding: 112px 5vw;
     }
 
     .section-title {
@@ -1716,6 +1716,179 @@
     }
 
     /* ==========================================================================
+       SCROLL PROGRESS BAR
+       ========================================================================== */
+    .scroll-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      z-index: 9999;
+      width: 0;
+      pointer-events: none;
+    }
+
+    /* ==========================================================================
+       HERO GRID BACKGROUND
+       ========================================================================== */
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+      -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+      animation: grid-drift 20s linear infinite;
+      z-index: 0;
+      pointer-events: none;
+    }
+    @keyframes grid-drift {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(60px, 60px); }
+    }
+
+    /* ==========================================================================
+       FLOATING PARTICLES (CSS-only, for sections)
+       ========================================================================== */
+    .section-particles {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .floating-particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--primary);
+      opacity: 0;
+      animation: float-up 10s linear infinite;
+    }
+    .floating-particle--accent { background: var(--accent); }
+    .floating-particle--sm { width: 3px; height: 3px; }
+    .floating-particle--lg { width: 6px; height: 6px; }
+    @keyframes float-up {
+      0% { transform: translateY(100%) translateX(0); opacity: 0; }
+      8% { opacity: 0.2; }
+      85% { opacity: 0.15; }
+      100% { transform: translateY(-100%) translateX(40px); opacity: 0; }
+    }
+
+    /* ==========================================================================
+       SECTION DIVIDER (animated width)
+       ========================================================================== */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--primary), var(--accent), transparent);
+      width: 0;
+      margin: 0 auto;
+      max-width: 60%;
+    }
+
+    /* ==========================================================================
+       3D CARD HOVER
+       ========================================================================== */
+    .glass-card-3d {
+      transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.4s ease;
+      will-change: transform;
+    }
+    .glass-card-3d:hover {
+      transform: perspective(800px) rotateY(-2deg) rotateX(2deg) translateZ(10px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 30px rgba(99,102,241,0.08);
+    }
+
+    /* ==========================================================================
+       MOCKUP GLOW + SCANLINE
+       ========================================================================== */
+    .showcase-mockup-inner {
+      position: relative;
+    }
+    .mockup-glow {
+      animation: mockup-breathe 4s ease-in-out infinite;
+    }
+    @keyframes mockup-breathe {
+      0%, 100% { box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 30px rgba(99,102,241,0.1); }
+      50% { box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 60px rgba(99,102,241,0.2), 0 0 120px rgba(6,182,212,0.05); }
+    }
+    .mockup-scanline {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.008) 2px,
+        rgba(255,255,255,0.008) 4px
+      );
+    }
+    .mockup-border-glow {
+      position: absolute;
+      inset: -1px;
+      border-radius: 17px;
+      pointer-events: none;
+      z-index: -1;
+      background: conic-gradient(from 0deg, var(--primary), var(--accent), var(--primary-light), var(--primary));
+      opacity: 0.15;
+      animation: border-rotate 8s linear infinite;
+      filter: blur(2px);
+    }
+    @keyframes border-rotate {
+      0% { filter: blur(2px) hue-rotate(0deg); }
+      100% { filter: blur(2px) hue-rotate(360deg); }
+    }
+
+    /* ==========================================================================
+       ARCHITECTURE DIAGRAM ENHANCEMENTS
+       ========================================================================== */
+    .arch-diagram-bg {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(6,182,212,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(6,182,212,0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      border-radius: 16px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .arch-diagram {
+      position: relative;
+    }
+    .arch-server-pulse {
+      animation: server-pulse 3s ease-in-out infinite;
+    }
+    @keyframes server-pulse {
+      0%, 100% { box-shadow: inset 0 0 0 rgba(139,92,246,0); }
+      50% { box-shadow: inset 0 0 30px rgba(139,92,246,0.05); }
+    }
+
+    /* ==========================================================================
+       COUNTER ANIMATION HELPER
+       ========================================================================== */
+    .counter-value {
+      display: inline-block;
+    }
+
+    /* ==========================================================================
+       SVG ICON CONTAINERS
+       ========================================================================== */
+    .icon-svg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-svg svg {
+      flex-shrink: 0;
+    }
+
+    /* ==========================================================================
        REDUCED MOTION
        ========================================================================== */
     @media (prefers-reduced-motion: reduce) {
@@ -1756,15 +1929,34 @@
         opacity: 1 !important;
         transform: none !important;
       }
+
+      .hero-grid,
+      .section-particles,
+      .mockup-border-glow,
+      .mockup-scanline {
+        display: none !important;
+      }
+
+      .section-divider {
+        width: 60% !important;
+      }
+
+      .scroll-progress {
+        display: none !important;
+      }
     }
   </style>
 </head>
 <body>
 
+  <!-- Scroll Progress Bar -->
+  <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
   <!-- ========================================================================
        SECTION 1: HERO
        ======================================================================== -->
   <section class="hero" id="hero" aria-label="Hero">
+    <div class="hero-grid" aria-hidden="true"></div>
     <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
 
     <div class="hero-content">
@@ -1785,33 +1977,45 @@
        SECTION 2: CURRENT CHALLENGES
        ======================================================================== -->
   <section class="section challenges-section" id="challenges" aria-label="Current Challenges">
+    <div class="section-particles" aria-hidden="true">
+      <div class="floating-particle" style="left:5%;animation-delay:0s;animation-duration:9s;"></div>
+      <div class="floating-particle floating-particle--accent" style="left:15%;animation-delay:1.2s;animation-duration:11s;"></div>
+      <div class="floating-particle floating-particle--sm" style="left:30%;animation-delay:2.5s;animation-duration:8s;"></div>
+      <div class="floating-particle floating-particle--lg" style="left:50%;animation-delay:0.8s;animation-duration:12s;"></div>
+      <div class="floating-particle" style="left:65%;animation-delay:3s;animation-duration:10s;"></div>
+      <div class="floating-particle floating-particle--accent" style="left:80%;animation-delay:1.8s;animation-duration:9s;"></div>
+      <div class="floating-particle floating-particle--sm" style="left:92%;animation-delay:4s;animation-duration:11s;"></div>
+    </div>
     <div class="section-inner">
-      <h2 class="section-title">지금 우리가 마주한 과제들</h2>
+      <h2 class="section-title section-title-anim">지금 우리가 마주한 과제들</h2>
 
       <div class="challenge-grid">
-        <div class="challenge-card glass">
-          <div class="challenge-card-icon">&#128218;</div>
+        <div class="challenge-card glass glass-card-3d">
+          <div class="challenge-card-icon icon-svg"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--amber);"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="13" y2="11"/></svg></div>
           <h3 class="challenge-card-title">용어집 관리의 어려움</h3>
           <p class="challenge-card-desc">중앙화된 시스템 없이는 용어 데이터를 추적하고 일관성을 유지하기 어렵습니다.</p>
         </div>
-        <div class="challenge-card glass">
-          <div class="challenge-card-icon">&#128260;</div>
+        <div class="challenge-card glass glass-card-3d">
+          <div class="challenge-card-icon icon-svg"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--amber);"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div>
           <h3 class="challenge-card-title">데이터 비일관성</h3>
           <p class="challenge-card-desc">데이터가 여러 곳에 분산되어 있어 각 데이터의 용도, 활성 여부, 관계를 파악하기 어렵습니다.</p>
         </div>
-        <div class="challenge-card glass">
-          <div class="challenge-card-icon">&#128269;</div>
+        <div class="challenge-card glass glass-card-3d">
+          <div class="challenge-card-icon icon-svg"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--amber);"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
           <h3 class="challenge-card-title">자동화된 파싱의 부재</h3>
           <p class="challenge-card-desc">데이터를 자동으로 분석하고 즉시 인사이트를 제공하는 시스템이 없습니다.</p>
         </div>
-        <div class="challenge-card glass">
-          <div class="challenge-card-icon">&#128736;</div>
+        <div class="challenge-card glass glass-card-3d">
+          <div class="challenge-card-icon icon-svg"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--amber);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
           <h3 class="challenge-card-title">최적화되지 않은 작업 환경</h3>
           <p class="challenge-card-desc">XML을 VSCode로 직접 편집하거나 Excel로 관리하는 현재 방식은 한계가 있습니다.</p>
         </div>
       </div>
     </div>
   </section>
+
+  <!-- Section Divider -->
+  <div class="section-divider" aria-hidden="true"></div>
 
   <!-- Act Divider -->
   <div class="act-divider act-divider--amber-to-indigo" aria-hidden="true"></div>
@@ -1820,9 +2024,17 @@
        SECTION 3: LOCANEXT INTRODUCTION
        ======================================================================== -->
   <section class="section intro-section" id="intro" aria-label="LocaNext Introduction">
+    <div class="section-particles" aria-hidden="true">
+      <div class="floating-particle floating-particle--accent" style="left:8%;animation-delay:0.5s;animation-duration:10s;"></div>
+      <div class="floating-particle" style="left:22%;animation-delay:2s;animation-duration:8s;"></div>
+      <div class="floating-particle floating-particle--lg" style="left:40%;animation-delay:1s;animation-duration:12s;"></div>
+      <div class="floating-particle floating-particle--accent floating-particle--sm" style="left:58%;animation-delay:3s;animation-duration:9s;"></div>
+      <div class="floating-particle" style="left:75%;animation-delay:0.3s;animation-duration:11s;"></div>
+      <div class="floating-particle floating-particle--accent" style="left:88%;animation-delay:2.5s;animation-duration:10s;"></div>
+    </div>
     <div class="intro-bloom" id="introBloom"></div>
     <div class="section-inner">
-      <h2 class="section-title">LocaNext가 도와드립니다</h2>
+      <h2 class="section-title section-title-anim">LocaNext가 도와드립니다</h2>
 
       <div class="intro-logo" id="introLogo">LocaNext</div>
       <div class="intro-message" id="introMessage">
@@ -1832,23 +2044,23 @@
       </div>
 
       <div class="intro-pillars" id="introPillars">
-        <div class="glass intro-pillar">
-          <div class="intro-pillar-icon">&#128218;</div>
+        <div class="glass intro-pillar glass-card-3d">
+          <div class="intro-pillar-icon icon-svg"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="13" y2="11"/></svg></div>
           <div class="intro-pillar-title">통합 용어집</div>
           <div class="intro-pillar-desc">일관된 용어 관리</div>
         </div>
-        <div class="glass intro-pillar">
-          <div class="intro-pillar-icon">&#129504;</div>
+        <div class="glass intro-pillar glass-card-3d">
+          <div class="intro-pillar-icon icon-svg"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg></div>
           <div class="intro-pillar-title">자동 분류 & 임베딩</div>
           <div class="intro-pillar-desc">데이터 자동 분석</div>
         </div>
-        <div class="glass intro-pillar">
-          <div class="intro-pillar-icon">&#127795;</div>
+        <div class="glass intro-pillar glass-card-3d">
+          <div class="intro-pillar-icon icon-svg"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><polygon points="12 2 2 7 12 12 22 7"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>
           <div class="intro-pillar-title">데이터 트리 뷰</div>
           <div class="intro-pillar-desc">부모/자식 관계, 클러스터 시각화</div>
         </div>
-        <div class="glass intro-pillar">
-          <div class="intro-pillar-icon">&#10024;</div>
+        <div class="glass intro-pillar glass-card-3d">
+          <div class="intro-pillar-icon icon-svg"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
           <div class="intro-pillar-title">쾌적한 UI</div>
           <div class="intro-pillar-desc">Svelte 기반 미니멀리스트 인터페이스</div>
         </div>
@@ -1860,11 +2072,20 @@
        SECTION 4: PLATFORM UI SHOWCASE
        ======================================================================== -->
   <section class="section showcase-section" id="showcase" aria-label="Platform UI Showcase">
+    <div class="section-particles" aria-hidden="true">
+      <div class="floating-particle" style="left:10%;animation-delay:0.2s;animation-duration:9s;"></div>
+      <div class="floating-particle floating-particle--accent floating-particle--lg" style="left:35%;animation-delay:1.5s;animation-duration:11s;"></div>
+      <div class="floating-particle floating-particle--sm" style="left:55%;animation-delay:3s;animation-duration:8s;"></div>
+      <div class="floating-particle floating-particle--accent" style="left:78%;animation-delay:0.8s;animation-duration:10s;"></div>
+      <div class="floating-particle" style="left:93%;animation-delay:2.2s;animation-duration:12s;"></div>
+    </div>
     <div class="section-inner">
-      <h2 class="section-title">직관적이고 강력한 인터페이스</h2>
+      <h2 class="section-title section-title-anim">직관적이고 강력한 인터페이스</h2>
 
       <div class="showcase-mockup" id="showcaseMockup">
-        <div class="showcase-mockup-inner">
+        <div class="showcase-mockup-inner mockup-glow">
+          <div class="mockup-border-glow" aria-hidden="true"></div>
+          <div class="mockup-scanline" aria-hidden="true"></div>
           <div class="showcase-chrome">
             <span class="showcase-dot showcase-dot--red"></span>
             <span class="showcase-dot showcase-dot--yellow"></span>
@@ -1879,27 +2100,27 @@
             <!-- Sidebar -->
             <div class="showcase-sidebar">
               <div class="showcase-nav-item active">
-                <span class="showcase-nav-icon">&#128221;</span>
+                <span class="showcase-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
                 <span>Translation</span>
               </div>
               <div class="showcase-nav-item">
-                <span class="showcase-nav-icon">&#128270;</span>
+                <span class="showcase-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
                 <span>TM Search</span>
               </div>
               <div class="showcase-nav-item">
-                <span class="showcase-nav-icon">&#128202;</span>
+                <span class="showcase-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
                 <span>QA Check</span>
               </div>
               <div class="showcase-nav-item">
-                <span class="showcase-nav-icon">&#128218;</span>
+                <span class="showcase-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
                 <span>Glossary</span>
               </div>
               <div class="showcase-nav-item">
-                <span class="showcase-nav-icon">&#128193;</span>
+                <span class="showcase-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>
                 <span>File Manager</span>
               </div>
               <div class="showcase-nav-item">
-                <span class="showcase-nav-icon">&#9881;</span>
+                <span class="showcase-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
                 <span>Settings</span>
               </div>
             </div>
@@ -2009,18 +2230,18 @@
 
       <!-- Feature highlights -->
       <div class="showcase-features" id="showcaseFeatures">
-        <div class="glass showcase-feature">
-          <div class="showcase-feature-icon">&#128269;</div>
+        <div class="glass showcase-feature glass-card-3d">
+          <div class="showcase-feature-icon icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
           <div class="showcase-feature-title">실시간 TM 매칭</div>
           <div class="showcase-feature-desc">번역 메모리 자동 제안</div>
         </div>
-        <div class="glass showcase-feature">
-          <div class="showcase-feature-icon">&#128196;</div>
+        <div class="glass showcase-feature glass-card-3d">
+          <div class="showcase-feature-icon icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
           <div class="showcase-feature-title">컨텍스트 패널</div>
           <div class="showcase-feature-desc">이미지, 메타데이터, 관계 데이터</div>
         </div>
-        <div class="glass showcase-feature">
-          <div class="showcase-feature-icon">&#127795;</div>
+        <div class="glass showcase-feature glass-card-3d">
+          <div class="showcase-feature-icon icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);"><polygon points="12 2 2 7 12 12 22 7"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>
           <div class="showcase-feature-title">데이터 트리</div>
           <div class="showcase-feature-desc">계층 구조 시각화</div>
         </div>
@@ -2030,20 +2251,28 @@
 
   <!-- Act Divider -->
   <div class="act-divider act-divider--indigo-to-purple" aria-hidden="true"></div>
+  <div class="section-divider" aria-hidden="true"></div>
 
   <!-- ========================================================================
        SECTION 5: HOW IT WORKS (PIPELINE)
        ======================================================================== -->
   <section class="section pipeline-section" id="pipeline" aria-label="How It Works">
+    <div class="section-particles" aria-hidden="true">
+      <div class="floating-particle" style="left:12%;animation-delay:0.4s;animation-duration:10s;"></div>
+      <div class="floating-particle floating-particle--accent floating-particle--sm" style="left:28%;animation-delay:2s;animation-duration:9s;"></div>
+      <div class="floating-particle floating-particle--lg" style="left:48%;animation-delay:1.2s;animation-duration:11s;"></div>
+      <div class="floating-particle floating-particle--accent" style="left:68%;animation-delay:3.5s;animation-duration:8s;"></div>
+      <div class="floating-particle" style="left:85%;animation-delay:0.8s;animation-duration:12s;"></div>
+    </div>
     <div class="section-inner">
-      <h2 class="section-title">어떻게 작동하나요?</h2>
+      <h2 class="section-title section-title-anim">어떻게 작동하나요?</h2>
 
       <div class="pipeline-flow" id="pipelineFlow">
         <!-- Step 1 -->
         <div class="pipeline-step" data-pipe="0">
           <div class="pipeline-step-num">1</div>
           <div class="pipeline-step-card">
-            <div class="pipeline-step-icon">&#128228;</div>
+            <div class="pipeline-step-icon icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
             <div class="pipeline-step-title">데이터 입력</div>
             <div class="pipeline-step-desc">Excel, XML 파일을<br>그대로 업로드</div>
           </div>
@@ -2059,7 +2288,7 @@
         <div class="pipeline-step" data-pipe="1">
           <div class="pipeline-step-num">2</div>
           <div class="pipeline-step-card">
-            <div class="pipeline-step-icon">&#128270;</div>
+            <div class="pipeline-step-icon icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
             <div class="pipeline-step-title">자동 파싱</div>
             <div class="pipeline-step-desc">데이터 구조 자동 분석<br>및 분류</div>
           </div>
@@ -2075,7 +2304,7 @@
         <div class="pipeline-step" data-pipe="2">
           <div class="pipeline-step-num">3</div>
           <div class="pipeline-step-card">
-            <div class="pipeline-step-icon">&#129504;</div>
+            <div class="pipeline-step-icon icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg></div>
             <div class="pipeline-step-title">임베딩 & 인덱싱</div>
             <div class="pipeline-step-desc">벡터 임베딩으로<br>시맨틱 검색 활성화</div>
           </div>
@@ -2091,7 +2320,7 @@
         <div class="pipeline-step" data-pipe="3">
           <div class="pipeline-step-num">4</div>
           <div class="pipeline-step-card">
-            <div class="pipeline-step-icon">&#128204;</div>
+            <div class="pipeline-step-icon icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg></div>
             <div class="pipeline-step-title">통합 관리</div>
             <div class="pipeline-step-desc">용어집, TM, 컨텍스트를<br>한 곳에서</div>
           </div>
@@ -2107,7 +2336,7 @@
         <div class="pipeline-step" data-pipe="4">
           <div class="pipeline-step-num">5</div>
           <div class="pipeline-step-card">
-            <div class="pipeline-step-icon">&#128230;</div>
+            <div class="pipeline-step-icon icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
             <div class="pipeline-step-title">결과 내보내기</div>
             <div class="pipeline-step-desc">기존 형식 그대로<br>Excel/XML로 내보내기</div>
           </div>
@@ -2124,15 +2353,23 @@
        SECTION 6: ARCHITECTURE
        ======================================================================== -->
   <section class="section arch-section" id="architecture" aria-label="Architecture">
+    <div class="section-particles" aria-hidden="true">
+      <div class="floating-particle floating-particle--accent" style="left:6%;animation-delay:0.6s;animation-duration:10s;"></div>
+      <div class="floating-particle" style="left:25%;animation-delay:2.2s;animation-duration:9s;"></div>
+      <div class="floating-particle floating-particle--accent floating-particle--lg" style="left:45%;animation-delay:1s;animation-duration:11s;"></div>
+      <div class="floating-particle floating-particle--sm" style="left:70%;animation-delay:3.2s;animation-duration:8s;"></div>
+      <div class="floating-particle floating-particle--accent" style="left:90%;animation-delay:0.4s;animation-duration:12s;"></div>
+    </div>
     <div class="section-inner">
-      <h2 class="section-title">엔터프라이즈급 아키텍처</h2>
+      <h2 class="section-title section-title-anim">엔터프라이즈급 아키텍처</h2>
 
       <!-- Architecture Diagram -->
       <div class="arch-diagram" id="archDiagram">
+        <div class="arch-diagram-bg" aria-hidden="true"></div>
         <!-- Left: User's PC -->
         <div class="arch-box glass">
           <div class="arch-box-title arch-box-title--cyan">
-            <span>&#128187;</span> User's PC
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> User's PC
           </div>
           <ul class="arch-tree">
             <li>
@@ -2173,9 +2410,9 @@
         </div>
 
         <!-- Right: Central Server -->
-        <div class="arch-box glass">
+        <div class="arch-box glass arch-server-pulse">
           <div class="arch-box-title arch-box-title--primary">
-            <span>&#9729;</span> Central Server
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg> Central Server
           </div>
           <ul class="arch-tree">
             <li>
@@ -2209,15 +2446,15 @@
 
       <!-- Capability cards -->
       <div class="arch-capabilities" id="archCaps">
-        <div class="glass arch-cap">
+        <div class="glass arch-cap glass-card-3d">
           <div class="arch-cap-title">100+ 동시 사용자</div>
           <div class="arch-cap-desc">PgBouncer 커넥션 풀링으로 무지연 처리</div>
         </div>
-        <div class="glass arch-cap">
+        <div class="glass arch-cap glass-card-3d">
           <div class="arch-cap-title">완전한 오프라인 모드</div>
           <div class="arch-cap-desc">SQLite 자동 전환, 기능 동일성 100%</div>
         </div>
-        <div class="glass arch-cap">
+        <div class="glass arch-cap glass-card-3d">
           <div class="arch-cap-title">실시간 동기화</div>
           <div class="arch-cap-desc">WebSocket 기반, 충돌 해결 내장</div>
         </div>
@@ -2243,13 +2480,21 @@
 
   <!-- Act Divider -->
   <div class="act-divider act-divider--purple-to-dark" aria-hidden="true"></div>
+  <div class="section-divider" aria-hidden="true"></div>
 
   <!-- ========================================================================
        SECTION 7: FOR DEVELOPERS
        ======================================================================== -->
   <section class="section devplatform-section" id="devplatform" aria-label="For Developers">
+    <div class="section-particles" aria-hidden="true">
+      <div class="floating-particle" style="left:7%;animation-delay:1s;animation-duration:11s;"></div>
+      <div class="floating-particle floating-particle--accent floating-particle--sm" style="left:32%;animation-delay:0.5s;animation-duration:9s;"></div>
+      <div class="floating-particle floating-particle--lg" style="left:52%;animation-delay:2.8s;animation-duration:10s;"></div>
+      <div class="floating-particle floating-particle--accent" style="left:72%;animation-delay:1.5s;animation-duration:12s;"></div>
+      <div class="floating-particle" style="left:90%;animation-delay:3.5s;animation-duration:8s;"></div>
+    </div>
     <div class="section-inner">
-      <h2 class="section-title">개발자를 위한 전용 기능</h2>
+      <h2 class="section-title section-title-anim">개발자를 위한 전용 기능</h2>
 
       <!-- Editor Mockup -->
       <div class="dev-editor" id="devEditor">
@@ -2307,23 +2552,23 @@
 
       <!-- Features -->
       <div class="dev-features" id="devFeatures">
-        <div class="glass dev-feature">
-          <div class="dev-feature-icon">&#128161;</div>
+        <div class="glass dev-feature glass-card-3d">
+          <div class="dev-feature-icon icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg></div>
           <div class="dev-feature-title">실시간 벡터 임베딩</div>
           <div class="dev-feature-desc">타이핑할 때마다 적응형 제안</div>
         </div>
-        <div class="glass dev-feature">
-          <div class="dev-feature-icon">&#128218;</div>
+        <div class="glass dev-feature glass-card-3d">
+          <div class="dev-feature-icon icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="13" y2="11"/></svg></div>
           <div class="dev-feature-title">통합 용어 관리</div>
           <div class="dev-feature-desc">TM, TB, 용어집을 한 곳에서 관리</div>
         </div>
-        <div class="glass dev-feature">
-          <div class="dev-feature-icon">&#128204;</div>
+        <div class="glass dev-feature glass-card-3d">
+          <div class="dev-feature-icon icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><polygon points="12 2 2 7 12 12 22 7"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>
           <div class="dev-feature-title">자동 분류 시스템</div>
           <div class="dev-feature-desc">카테고리, 클러스터, 관계 자동 파악</div>
         </div>
-        <div class="glass dev-feature">
-          <div class="dev-feature-icon">&#128269;</div>
+        <div class="glass dev-feature glass-card-3d">
+          <div class="dev-feature-icon icon-svg"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-light);"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
           <div class="dev-feature-title">시맨틱 검색</div>
           <div class="dev-feature-desc">의미 기반 유사 문자열 검색</div>
         </div>
@@ -2335,12 +2580,18 @@
        SECTION 8: TECH STACK & LICENSING
        ======================================================================== -->
   <section class="section techstack-section" id="techstack" aria-label="Tech Stack and Licensing">
+    <div class="section-particles" aria-hidden="true">
+      <div class="floating-particle floating-particle--accent" style="left:10%;animation-delay:0.8s;animation-duration:10s;"></div>
+      <div class="floating-particle floating-particle--sm" style="left:38%;animation-delay:2.5s;animation-duration:9s;"></div>
+      <div class="floating-particle" style="left:60%;animation-delay:1.2s;animation-duration:11s;"></div>
+      <div class="floating-particle floating-particle--accent floating-particle--lg" style="left:82%;animation-delay:3s;animation-duration:8s;"></div>
+    </div>
     <div class="section-inner">
-      <h2 class="section-title">기술 스택 & 라이선싱</h2>
+      <h2 class="section-title section-title-anim">기술 스택 & 라이선싱</h2>
 
       <div class="techstack-layout">
         <!-- Tech Stack -->
-        <div class="glass techstack-card" id="techCard">
+        <div class="glass techstack-card glass-card-3d" id="techCard">
           <div class="techstack-card-title techstack-card-title--primary">Tech Stack</div>
           <table class="tech-table">
             <tr><td>Frontend</td><td>Electron 35, Svelte, Tailwind, Vite</td></tr>
@@ -2352,7 +2603,7 @@
         </div>
 
         <!-- Licensing -->
-        <div class="glass techstack-card" id="licenseCard">
+        <div class="glass techstack-card glass-card-3d" id="licenseCard">
           <div class="techstack-card-title techstack-card-title--success">Licensing</div>
           <div class="license-free">100% 무료</div>
           <div class="license-badges">
@@ -2360,15 +2611,15 @@
             <span class="license-badge">Apache 2.0</span>
           </div>
           <ul class="license-list">
-            <li><span class="license-cross">&#10007;</span> GPL 없음, AGPL 없음</li>
-            <li><span class="license-check">&#10003;</span> 상용 사용 가능</li>
-            <li><span class="license-check">&#10003;</span> 수정 가능</li>
-            <li><span class="license-check">&#10003;</span> 배포 가능</li>
-            <li><span class="license-check">&#10003;</span> 라이선스 비용: $0</li>
+            <li><span class="license-cross"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> GPL 없음, AGPL 없음</li>
+            <li><span class="license-check"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 상용 사용 가능</li>
+            <li><span class="license-check"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 수정 가능</li>
+            <li><span class="license-check"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 배포 가능</li>
+            <li><span class="license-check"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 라이선스 비용: $0</li>
           </ul>
           <div class="license-savings">
-            <div class="license-savings-value">$29,350 / year</div>
-            <div class="license-savings-label">경쟁 솔루션 대비 절감 비용</div>
+            <div class="license-savings-value">$0</div>
+            <div class="license-savings-label">모든 기능, 영원히 무료</div>
           </div>
         </div>
       </div>
@@ -2396,6 +2647,102 @@
 
     var isMobile = window.innerWidth < 768;
     var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* -----------------------------------------------------------------------
+       SCROLL PROGRESS BAR
+       ----------------------------------------------------------------------- */
+    (function initScrollProgress() {
+      var progressBar = document.getElementById('scrollProgress');
+      if (!progressBar || prefersReducedMotion) return;
+
+      gsap.to(progressBar, {
+        width: '100%',
+        ease: 'none',
+        scrollTrigger: {
+          trigger: document.body,
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: 0.3
+        }
+      });
+    })();
+
+    /* -----------------------------------------------------------------------
+       SECTION TITLE CINEMATIC ENTRANCE
+       ----------------------------------------------------------------------- */
+    (function initSectionTitles() {
+      if (prefersReducedMotion) return;
+      document.querySelectorAll('.section-title-anim').forEach(function(title) {
+        gsap.from(title, {
+          y: 40,
+          opacity: 0,
+          scale: 0.96,
+          duration: 1,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: title,
+            start: 'top 82%',
+            once: true
+          }
+        });
+      });
+    })();
+
+    /* -----------------------------------------------------------------------
+       SECTION DIVIDER ANIMATIONS
+       ----------------------------------------------------------------------- */
+    (function initSectionDividers() {
+      if (prefersReducedMotion) return;
+      document.querySelectorAll('.section-divider').forEach(function(divider) {
+        gsap.to(divider, {
+          width: '60%',
+          duration: 1.2,
+          ease: 'power2.inOut',
+          scrollTrigger: {
+            trigger: divider,
+            start: 'top 90%',
+            once: true
+          }
+        });
+      });
+    })();
+
+    /* -----------------------------------------------------------------------
+       COUNTER ANIMATIONS
+       ----------------------------------------------------------------------- */
+    (function initCounters() {
+      if (prefersReducedMotion) return;
+      var statValues = document.querySelectorAll('.arch-stat-value');
+      statValues.forEach(function(el) {
+        var text = el.textContent.trim();
+        var numMatch = text.match(/([\d,]+)/);
+        if (!numMatch) return;
+        var targetNum = parseInt(numMatch[1].replace(/,/g, ''));
+        var prefix = text.substring(0, text.indexOf(numMatch[1]));
+        var suffix = text.substring(text.indexOf(numMatch[1]) + numMatch[1].length);
+        var hasComma = numMatch[1].includes(',');
+
+        el.textContent = prefix + '0' + suffix;
+
+        ScrollTrigger.create({
+          trigger: el,
+          start: 'top 85%',
+          once: true,
+          onEnter: function() {
+            gsap.to({ val: 0 }, {
+              val: targetNum,
+              duration: 1.5,
+              ease: 'power2.out',
+              onUpdate: function() {
+                var v = Math.round(this.targets()[0].val);
+                if (hasComma) v = v.toLocaleString();
+                el.textContent = prefix + v + suffix;
+              }
+            });
+          }
+        });
+      });
+    })();
 
     /* -----------------------------------------------------------------------
        THREE.JS PARTICLE FIELD
@@ -2612,10 +2959,15 @@
     (function initShowcase() {
       var mockupInner = document.querySelector('.showcase-mockup-inner');
 
+      // Set initial state for dramatic entrance
+      gsap.set(mockupInner, { rotateX: 12, rotateY: -3, scale: 0.92 });
+
       gsap.to(mockupInner, {
         opacity: 1,
         rotateX: 0,
-        duration: 1.2,
+        rotateY: 0,
+        scale: 1,
+        duration: 1.6,
         ease: 'power3.out',
         scrollTrigger: {
           trigger: '#showcase',
