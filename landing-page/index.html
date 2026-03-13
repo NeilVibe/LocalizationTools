@@ -231,6 +231,184 @@
     }
 
     /* ==========================================================================
+       SECTION 2: PAIN POINTS
+       ========================================================================== */
+    .pain-section {
+      background:
+        radial-gradient(ellipse 60% 40% at 50% 50%, rgba(239, 68, 68, 0.08), transparent),
+        var(--bg);
+    }
+
+    .pain-section .section-inner {
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    .pain-section .section-title {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .pain-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    .pain-card {
+      padding: 32px 28px;
+      border-color: rgba(239, 68, 68, 0.2);
+      opacity: 0;
+      transform: translateY(40px);
+    }
+
+    .pain-card:hover {
+      border-color: rgba(239, 68, 68, 0.4);
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.06);
+    }
+
+    .pain-card-icon {
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+
+    .pain-card-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 20px;
+      color: var(--danger);
+      margin-bottom: 10px;
+    }
+
+    .pain-card-desc {
+      font-size: 15px;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    /* Terminal mock */
+    .terminal-mock {
+      border-color: rgba(239, 68, 68, 0.15);
+      padding: 0;
+      overflow: hidden;
+      max-width: 800px;
+      margin: 0 auto;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .terminal-dot--red { background: #ef4444; }
+    .terminal-dot--yellow { background: #eab308; }
+    .terminal-dot--green { background: #22c55e; }
+
+    .terminal-title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-left: 8px;
+    }
+
+    .terminal-body {
+      padding: 20px;
+      max-height: 240px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .terminal-body::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .terminal-body::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+
+    .terminal-line {
+      opacity: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .terminal-line--cmd {
+      color: var(--text-dim);
+    }
+
+    .terminal-line--error {
+      color: var(--danger);
+    }
+
+    .terminal-line--warning {
+      color: #eab308;
+    }
+
+    /* ==========================================================================
+       SECTION 3: PAIN IN NUMBERS
+       ========================================================================== */
+    .pain-numbers-section {
+      background:
+        radial-gradient(ellipse 50% 35% at 50% 50%, rgba(239, 68, 68, 0.06), transparent),
+        var(--bg-alt);
+    }
+
+    .pain-numbers-section .section-inner {
+      max-width: 900px;
+      width: 100%;
+    }
+
+    .pain-numbers-section .section-title {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .pain-numbers-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 28px;
+    }
+
+    .pain-number-card {
+      padding: 40px 32px;
+      text-align: center;
+      border-color: rgba(239, 68, 68, 0.2);
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    .pain-number-value {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: clamp(40px, 5vw, 60px);
+      color: var(--danger);
+      margin-bottom: 12px;
+    }
+
+    .pain-number-label {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 16px;
+      color: var(--text-dim);
+    }
+
+    /* ==========================================================================
        RESPONSIVE BREAKPOINTS
        ========================================================================== */
 
@@ -247,6 +425,16 @@
       .section {
         padding: 80px 24px;
       }
+
+      .pain-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+
+      .pain-numbers-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
     }
 
     /* Mobile */
@@ -257,6 +445,14 @@
 
       .hero-subtitle {
         font-size: 16px;
+      }
+
+      .pain-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .pain-numbers-grid {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -286,6 +482,17 @@
         animation: none;
         opacity: 1;
       }
+
+      .pain-card,
+      .terminal-mock,
+      .pain-number-card {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      .terminal-line {
+        opacity: 1 !important;
+      }
     }
   </style>
 </head>
@@ -311,9 +518,98 @@
     </div>
   </section>
 
-  <!-- Section 2: The Problem -->
+  <!-- ========================================================================
+       SECTION 2: THE PROBLEM (Pain Points)
+       ======================================================================== -->
+  <section class="section pain-section" id="painPoints" aria-label="Pain Points">
+    <div class="section-inner">
+      <h2 class="section-title">지금, 당신의 워크플로우를<br>솔직하게 돌아봅시다</h2>
 
-  <!-- Section 3: The Vision -->
+      <div class="pain-grid">
+        <div class="pain-card glass">
+          <div class="pain-card-icon">🔀</div>
+          <h3 class="pain-card-title">6개의 분리된 스크립트</h3>
+          <p class="pain-card-desc">각각 다른 도구, 다른 형식, 다른 워크플로우</p>
+        </div>
+        <div class="pain-card glass">
+          <div class="pain-card-icon">⌨️</div>
+          <h3 class="pain-card-title">커맨드라인 의존</h3>
+          <p class="pain-card-desc">비개발자는 접근 불가</p>
+        </div>
+        <div class="pain-card glass">
+          <div class="pain-card-icon">🔒</div>
+          <h3 class="pain-card-title">협업 불가능</h3>
+          <p class="pain-card-desc">한 명이 파일 열면 다른 사람은 대기</p>
+        </div>
+        <div class="pain-card glass">
+          <div class="pain-card-icon">📡</div>
+          <h3 class="pain-card-title">오프라인 작업 불가</h3>
+          <p class="pain-card-desc">서버 다운 = 작업 중단</p>
+        </div>
+        <div class="pain-card glass">
+          <div class="pain-card-icon">🐌</div>
+          <h3 class="pain-card-title">느린 검색, 느린 매칭</h3>
+          <p class="pain-card-desc">50만 행에서 검색? 커피 한 잔 하고 오세요</p>
+        </div>
+        <div class="pain-card glass">
+          <div class="pain-card-icon">📊</div>
+          <h3 class="pain-card-title">엑셀 지옥</h3>
+          <p class="pain-card-desc">모든 것이 엑셀. 버전 관리? 불가능</p>
+        </div>
+      </div>
+
+      <div class="terminal-mock glass" id="terminalMock">
+        <div class="terminal-header">
+          <span class="terminal-dot terminal-dot--red"></span>
+          <span class="terminal-dot terminal-dot--yellow"></span>
+          <span class="terminal-dot terminal-dot--green"></span>
+          <span class="terminal-title">localization_workflow.sh</span>
+        </div>
+        <div class="terminal-body" id="terminalBody">
+          <div class="terminal-line terminal-line--cmd">> python transfer.py --source KR --target EN</div>
+          <div class="terminal-line terminal-line--error">ERROR: FileNotFoundError: corrections_v3_final_FINAL.xlsx</div>
+          <div class="terminal-line terminal-line--cmd">> python extract.py --mode diff --old v2 --new v3</div>
+          <div class="terminal-line terminal-line--warning">WARNING: 847 mismatched StringIDs detected</div>
+          <div class="terminal-line terminal-line--cmd">> git pull origin main</div>
+          <div class="terminal-line terminal-line--error">CONFLICT (content): Merge conflict in languagedata_KR.xml</div>
+          <div class="terminal-line terminal-line--cmd">> python search.py "마을" --fuzzy</div>
+          <div class="terminal-line terminal-line--warning">Processing... 500,000 rows... ETA: 4 minutes</div>
+          <div class="terminal-line terminal-line--cmd">> python qa_check.py --all</div>
+          <div class="terminal-line terminal-line--error">ERROR: UnicodeDecodeError: invalid continuation byte</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECTION 3: PAIN IN NUMBERS
+       ======================================================================== -->
+  <section class="section pain-numbers-section" id="painNumbers" aria-label="Pain in Numbers">
+    <div class="section-inner">
+      <h2 class="section-title" style="color: var(--danger);">숫자로 보는 현실</h2>
+
+      <div class="pain-numbers-grid">
+        <div class="pain-number-card glass">
+          <div class="pain-number-value"><span class="count-up" data-target="40">0</span>+ 시간</div>
+          <div class="pain-number-label">수동 작업 시간 (매주)</div>
+        </div>
+        <div class="pain-number-card glass">
+          <div class="pain-number-value"><span class="count-up" data-target="50">0</span>+ 회</div>
+          <div class="pain-number-label">스크립트 전환 (하루)</div>
+        </div>
+        <div class="pain-number-card glass">
+          <div class="pain-number-value" style="font-size: clamp(32px, 4vw, 48px);">항상</div>
+          <div class="pain-number-label">데이터 유실 위험</div>
+        </div>
+        <div class="pain-number-card glass">
+          <div class="pain-number-value" style="font-size: clamp(32px, 4vw, 48px);">불가능</div>
+          <div class="pain-number-label">실시간 협업</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 3 Vision placeholder -->
 
   <!-- Section 4: Platform Overview -->
 
@@ -504,6 +800,99 @@
 
       // Start typewriter after a brief initial delay
       setTimeout(typeNext, 500);
+    })();
+
+    /* -----------------------------------------------------------------------
+       SECTION 2: PAIN POINT CARDS + TERMINAL
+       ----------------------------------------------------------------------- */
+    (function initPainSection() {
+      // Stagger pain cards in
+      gsap.to('.pain-card', {
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        stagger: 0.15,
+        ease: 'power2.out',
+        scrollTrigger: {
+          trigger: '#painPoints',
+          start: 'top 75%',
+          once: true
+        }
+      });
+
+      // Terminal fade in
+      gsap.to('.terminal-mock', {
+        opacity: 1,
+        y: 0,
+        duration: 0.8,
+        ease: 'power2.out',
+        scrollTrigger: {
+          trigger: '.terminal-mock',
+          start: 'top 85%',
+          once: true,
+          onEnter: function() {
+            // Auto-type terminal lines one by one
+            var lines = document.querySelectorAll('.terminal-line');
+            var body = document.getElementById('terminalBody');
+            var delay = 0;
+            lines.forEach(function(line, i) {
+              setTimeout(function() {
+                gsap.to(line, { opacity: 1, duration: 0.3 });
+                body.scrollTop = body.scrollHeight;
+              }, delay);
+              // Commands appear faster, results linger
+              delay += (i % 2 === 0) ? 400 : 700;
+            });
+          }
+        }
+      });
+    })();
+
+    /* -----------------------------------------------------------------------
+       SECTION 3: PAIN IN NUMBERS — COUNT-UP + FADE
+       ----------------------------------------------------------------------- */
+    (function initPainNumbers() {
+      // Count-up utility using requestAnimationFrame
+      function countUp(el, target, duration) {
+        var start = 0;
+        var startTime = null;
+
+        function step(timestamp) {
+          if (!startTime) startTime = timestamp;
+          var progress = Math.min((timestamp - startTime) / duration, 1);
+          // Ease out quad
+          var eased = 1 - (1 - progress) * (1 - progress);
+          el.textContent = Math.floor(eased * target);
+          if (progress < 1) {
+            requestAnimationFrame(step);
+          } else {
+            el.textContent = target;
+          }
+        }
+
+        requestAnimationFrame(step);
+      }
+
+      // Fade in number cards
+      gsap.to('.pain-number-card', {
+        opacity: 1,
+        y: 0,
+        duration: 0.7,
+        stagger: 0.15,
+        ease: 'power2.out',
+        scrollTrigger: {
+          trigger: '#painNumbers',
+          start: 'top 75%',
+          once: true,
+          onEnter: function() {
+            // Trigger count-up for numeric values
+            document.querySelectorAll('.count-up').forEach(function(el) {
+              var target = parseInt(el.getAttribute('data-target'), 10);
+              countUp(el, target, 1500);
+            });
+          }
+        }
+      });
     })();
   </script>
 
