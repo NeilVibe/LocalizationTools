@@ -72,7 +72,7 @@ class OfflineDatabase:
             logger.error(f"Offline schema not found: {schema_path}")
             return
 
-        with open(schema_path, "r") as f:
+        with open(schema_path, "r", encoding="utf-8") as f:
             schema_sql = f.read()
 
         # Use sync connection for startup initialization

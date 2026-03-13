@@ -300,7 +300,7 @@ let updateState = 'idle'; // 'idle' | 'checking' | 'available' | 'downloading' |
 function setupAutoUpdater() {
   logger.info('Auto-updater check', {
     autoUpdaterLoaded: !!autoUpdater,
-    isAutoUpdateEnabled,
+    isAutoUpdateEnabled: isAutoUpdateEnabled(),
     NODE_ENV: process.env.NODE_ENV
   });
 
@@ -312,11 +312,11 @@ function setupAutoUpdater() {
     logger.warning('Patch updater init failed (will use full updates)', { error: err.message });
   }
 
-  if (!autoUpdater || !isAutoUpdateEnabled) {
+  if (!autoUpdater || !isAutoUpdateEnabled()) {
     logger.info('Auto-updater disabled', {
       reason: !autoUpdater ? 'module not loaded' : 'disabled by config',
       autoUpdaterLoaded: !!autoUpdater,
-      isAutoUpdateEnabled
+      isAutoUpdateEnabled: isAutoUpdateEnabled()
     });
     return;
   }
@@ -525,7 +525,7 @@ ipcMain.handle('check-for-updates', async () => {
  */
 ipcMain.handle('check-patch-update', async () => {
   // Light/Demo Mode: no network calls
-  if (!isAutoUpdateEnabled) {
+  if (!isAutoUpdateEnabled()) {
     return { success: true, available: false, reason: 'Updates disabled (Light/Demo Mode)' };
   }
   try {
