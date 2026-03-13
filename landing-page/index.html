@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LocaNext — 로컬라이제이션의 미래</title>
+  <meta name="description" content="LocaNext: AI 기반 게임 로컬라이제이션 플랫폼. 하나의 플랫폼, 하나의 비전.">
+
+  <!-- Fonts -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+
+  <!-- Three.js + GSAP -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+  <style>
+    /* ==========================================================================
+       CSS RESET
+       ========================================================================== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* ==========================================================================
+       CSS VARIABLES
+       ========================================================================== */
+    :root {
+      --bg: #0a0a0f;
+      --bg-alt: #12121a;
+      --primary: #6366f1;
+      --primary-light: #8b5cf6;
+      --accent: #06b6d4;
+      --danger: #ef4444;
+      --success: #10b981;
+      --text: #f1f5f9;
+      --text-dim: #94a3b8;
+      --glass: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+
+      --font-display: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'Noto Sans KR', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    /* ==========================================================================
+       BASE TYPOGRAPHY & BODY
+       ========================================================================== */
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-body);
+      font-weight: 400;
+      font-size: 18px;
+      line-height: 1.7;
+      color: var(--text);
+      background: var(--bg);
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: var(--font-display);
+      line-height: 1.2;
+    }
+
+    /* ==========================================================================
+       GLASSMORPHISM UTILITY
+       ========================================================================== */
+    .glass {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 16px;
+    }
+
+    /* ==========================================================================
+       SECTION BASE
+       ========================================================================== */
+    .section {
+      position: relative;
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 100px 5vw;
+    }
+
+    .section-title {
+      font-weight: 700;
+      font-size: clamp(36px, 5vw, 56px);
+      margin-bottom: 24px;
+    }
+
+    .section-body {
+      font-size: clamp(16px, 2vw, 20px);
+      color: var(--text-dim);
+      max-width: 720px;
+    }
+
+    /* Stats / numbers */
+    .stat-number {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: clamp(48px, 6vw, 72px);
+    }
+
+    .label {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    /* ==========================================================================
+       HERO SECTION (Section 1)
+       ========================================================================== */
+    .hero {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Three.js canvas */
+    .hero-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+
+    /* Hero text content */
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 0 24px;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: clamp(40px, 7vw, 96px);
+      color: var(--text);
+      min-height: 1.2em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-title-text {
+      display: inline;
+    }
+
+    /* Typewriter cursor */
+    .hero-cursor {
+      display: inline-block;
+      width: 3px;
+      height: 0.85em;
+      background: var(--accent);
+      margin-left: 4px;
+      vertical-align: baseline;
+      animation: cursorBlink 0.8s steps(1) infinite;
+    }
+
+    @keyframes cursorBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .hero-subtitle {
+      font-family: var(--font-body);
+      font-weight: 400;
+      font-size: clamp(18px, 2.5vw, 28px);
+      color: var(--text-dim);
+      margin-top: 24px;
+      opacity: 0;
+    }
+
+    /* Scroll indicator */
+    .scroll-indicator {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      opacity: 0;
+    }
+
+    .scroll-indicator-label {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+    }
+
+    .scroll-indicator-arrow {
+      width: 24px;
+      height: 24px;
+      border-right: 2px solid var(--accent);
+      border-bottom: 2px solid var(--accent);
+      transform: rotate(45deg);
+      animation: scrollPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes scrollPulse {
+      0%, 100% { opacity: 0.4; transform: rotate(45deg) translateY(0); }
+      50% { opacity: 1; transform: rotate(45deg) translateY(6px); }
+    }
+
+    /* ==========================================================================
+       RESPONSIVE BREAKPOINTS
+       ========================================================================== */
+
+    /* Tablet */
+    @media (max-width: 768px) {
+      body {
+        font-size: 16px;
+      }
+
+      .hero-title {
+        font-size: clamp(32px, 8vw, 56px);
+      }
+
+      .section {
+        padding: 80px 24px;
+      }
+    }
+
+    /* Mobile */
+    @media (max-width: 375px) {
+      .hero-title {
+        font-size: 28px;
+      }
+
+      .hero-subtitle {
+        font-size: 16px;
+      }
+    }
+
+    /* ==========================================================================
+       REDUCED MOTION
+       ========================================================================== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      .hero-canvas {
+        display: none;
+      }
+
+      .hero-subtitle {
+        opacity: 1;
+      }
+
+      .scroll-indicator {
+        opacity: 1;
+      }
+
+      .hero-cursor {
+        animation: none;
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       SECTION 1: HERO
+       ======================================================================== -->
+  <section class="hero" id="hero" aria-label="Hero">
+    <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
+
+    <div class="hero-content">
+      <h1 class="hero-title">
+        <span class="hero-title-text" id="heroTitleText"></span>
+        <span class="hero-cursor" id="heroCursor"></span>
+      </h1>
+      <p class="hero-subtitle" id="heroSubtitle">하나의 플랫폼. 하나의 비전. AI와 함께.</p>
+    </div>
+
+    <div class="scroll-indicator" id="scrollIndicator" aria-hidden="true">
+      <span class="scroll-indicator-label">SCROLL</span>
+      <div class="scroll-indicator-arrow"></div>
+    </div>
+  </section>
+
+  <!-- Section 2: The Problem -->
+
+  <!-- Section 3: The Vision -->
+
+  <!-- Section 4: Platform Overview -->
+
+  <!-- Section 5: Core Features -->
+
+  <!-- Section 6: AI Engine -->
+
+  <!-- Section 7: Workflow -->
+
+  <!-- Section 8: Performance Stats -->
+
+  <!-- Section 9: Comparison -->
+
+  <!-- Section 10: Testimonials -->
+
+  <!-- Section 11: Roadmap -->
+
+  <!-- Section 12: CTA / Footer -->
+
+
+  <!-- ========================================================================
+       JAVASCRIPT
+       ======================================================================== -->
+  <script>
+    /* -----------------------------------------------------------------------
+       INIT
+       ----------------------------------------------------------------------- */
+    gsap.registerPlugin(ScrollTrigger);
+
+    const isMobile = window.innerWidth < 768;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* -----------------------------------------------------------------------
+       THREE.JS PARTICLE FIELD
+       ----------------------------------------------------------------------- */
+    (function initParticles() {
+      if (isMobile || prefersReducedMotion) return;
+
+      const canvas = document.getElementById('heroCanvas');
+      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 300;
+
+      // Particle count: 1500 desktop, 800 tablet
+      const isTablet = window.innerWidth < 1024;
+      const PARTICLE_COUNT = isTablet ? 800 : 1500;
+
+      const positions = new Float32Array(PARTICLE_COUNT * 3);
+      const colors = new Float32Array(PARTICLE_COUNT * 3);
+
+      const colorIndigo = new THREE.Color(0x6366f1);
+      const colorCyan = new THREE.Color(0x06b6d4);
+
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const i3 = i * 3;
+        positions[i3]     = (Math.random() - 0.5) * 800;
+        positions[i3 + 1] = (Math.random() - 0.5) * 600;
+        positions[i3 + 2] = (Math.random() - 0.5) * 400;
+
+        const c = Math.random() > 0.5 ? colorIndigo : colorCyan;
+        colors[i3]     = c.r;
+        colors[i3 + 1] = c.g;
+        colors[i3 + 2] = c.b;
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+      const material = new THREE.PointsMaterial({
+        size: 2.5,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.7,
+        sizeAttenuation: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      const particles = new THREE.Points(geometry, material);
+      scene.add(particles);
+
+      // Mouse tracking for parallax
+      let mouseX = 0;
+      let mouseY = 0;
+      let targetMouseX = 0;
+      let targetMouseY = 0;
+
+      document.addEventListener('mousemove', function(e) {
+        targetMouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+        targetMouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+      });
+
+      // Resize handler
+      function onResize() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      }
+      window.addEventListener('resize', onResize);
+
+      // Animation loop
+      function animate() {
+        requestAnimationFrame(animate);
+
+        // Smooth mouse interpolation
+        mouseX += (targetMouseX - mouseX) * 0.05;
+        mouseY += (targetMouseY - mouseY) * 0.05;
+
+        // Parallax displacement
+        particles.rotation.x = mouseY * 0.08;
+        particles.rotation.y = mouseX * 0.08;
+
+        // Continuous slow drift
+        particles.rotation.z += 0.0003;
+        particles.rotation.x += 0.0001;
+
+        // Drift individual particles upward slowly
+        const posArr = geometry.attributes.position.array;
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+          const i3 = i * 3;
+          posArr[i3 + 1] += 0.02;
+          // Wrap around when particle drifts too far up
+          if (posArr[i3 + 1] > 300) {
+            posArr[i3 + 1] = -300;
+          }
+        }
+        geometry.attributes.position.needsUpdate = true;
+
+        renderer.render(scene, camera);
+      }
+
+      animate();
+    })();
+
+    /* -----------------------------------------------------------------------
+       TYPEWRITER EFFECT
+       ----------------------------------------------------------------------- */
+    (function initTypewriter() {
+      const titleText = '로컬라이제이션의 미래가 시작됩니다';
+      const titleEl = document.getElementById('heroTitleText');
+      const cursorEl = document.getElementById('heroCursor');
+      const subtitleEl = document.getElementById('heroSubtitle');
+      const scrollIndicator = document.getElementById('scrollIndicator');
+
+      if (prefersReducedMotion) {
+        // Show everything immediately
+        titleEl.textContent = titleText;
+        cursorEl.style.display = 'none';
+        subtitleEl.style.opacity = '1';
+        scrollIndicator.style.opacity = '1';
+        return;
+      }
+
+      let charIndex = 0;
+      const CHAR_DELAY = 40; // ms per character
+
+      function typeNext() {
+        if (charIndex < titleText.length) {
+          titleEl.textContent = titleText.substring(0, charIndex + 1);
+          charIndex++;
+          setTimeout(typeNext, CHAR_DELAY);
+        } else {
+          // Typing complete: hide cursor after a pause, fade in subtitle
+          setTimeout(function() {
+            gsap.to(cursorEl, { opacity: 0, duration: 0.5, onComplete: function() {
+              cursorEl.style.display = 'none';
+            }});
+          }, 600);
+
+          // Fade in subtitle 1s after title completes
+          setTimeout(function() {
+            gsap.to(subtitleEl, { opacity: 1, duration: 1, ease: 'power2.out' });
+          }, 1000);
+
+          // Fade in scroll indicator after subtitle
+          setTimeout(function() {
+            gsap.to(scrollIndicator, { opacity: 1, duration: 1, ease: 'power2.out' });
+          }, 2200);
+        }
+      }
+
+      // Start typewriter after a brief initial delay
+      setTimeout(typeNext, 500);
+    })();
+  </script>
+
+</body>
+</html>
