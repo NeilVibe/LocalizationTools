@@ -232,13 +232,16 @@ def is_markup_contamination(text: str) -> Optional[str]:
         if not _VALID_BR_RE.fullmatch(tag_text):
             return f'HTML/XML tag: {tag_text[:40]}'
 
-    # A3: Lone < not part of <br/> (engine-breaking — only < is illegal in XML)
-    # Note: lone > is valid XML and common in game text ("Level > 5"), not flagged
+    # A3: Lone < or > not part of <br/> (engine-breaking)
     stripped = _VALID_BR_RE.sub('', text)
     if '<' in stripped:
         idx = stripped.index('<')
         context = stripped[max(0, idx - 5):idx + 15]
         return f'Lone < character: ...{context}...'
+    if '>' in stripped:
+        idx = stripped.index('>')
+        context = stripped[max(0, idx - 5):idx + 15]
+        return f'Lone > character: ...{context}...'
 
     # --- Group B: Entity contamination (double-escaping artifacts) ---
 
