@@ -77,6 +77,41 @@ _BROKEN_BR_RE = re.compile(
 _CONTROL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
 
 # ---------------------------------------------------------------------------
+# Markup contamination detection — HTML tags, entities, lone angle brackets
+# ---------------------------------------------------------------------------
+
+# Valid <br> variants (postprocess handles these — must NOT false-positive)
+_VALID_BR_RE = re.compile(r'</?[Bb][Rr]\s*/?>')
+
+# HTML comments: <!-- anything -->
+_HTML_COMMENT_RE = re.compile(r'<!--.*?-->', re.DOTALL)
+
+# HTML/XML tags (any <tag> or </tag> — br variants filtered in function)
+_HTML_TAG_RE = re.compile(r'</?[A-Za-z][A-Za-z0-9]*(?:\s[^>]*)?\s*/?>')
+
+# Double-escaped XML entities (literal text after lxml parse = double-escaping)
+# Also catches triple-escaping: &amp;lt; &amp;gt; &amp;amp; etc.
+_DOUBLE_ESCAPED_ENTITY_RE = re.compile(
+    r'&amp;(?:lt|gt|amp|quot|apos);'   # triple-escaped: &amp;lt; etc.
+    r'|&(?:lt|gt|amp|quot|apos);',      # double-escaped: &lt; etc.
+    re.IGNORECASE,
+)
+
+# Named HTML entities as literal text (should have been decoded by parser)
+_NAMED_HTML_ENTITY_RE = re.compile(
+    r'&(?:nbsp|copy|reg|trade|eacute|egrave|agrave|aacute|ouml|uuml|iuml'
+    r'|ntilde|ccedil|szlig|oslash|aring|auml|euml|ocirc|ucirc|acirc'
+    r'|thorn|eth|laquo|raquo|mdash|ndash|hellip|bull|middot|sect|para'
+    r'|deg|plusmn|sup[123]|frac(?:12|14|34)|times|divide|micro|pound'
+    r'|yen|euro|cent|curren|iexcl|iquest|ordf|ordm|not|macr|cedil'
+    r'|acute|uml)\s*;',
+    re.IGNORECASE,
+)
+
+# Numeric HTML entities: &#160; &#x20; &#xA0; etc.
+_NUMERIC_ENTITY_RE = re.compile(r'&#(?:[0-9]+|[Xx][0-9A-Fa-f]+);')
+
+# ---------------------------------------------------------------------------
 # Invisible character buckets — auto-cleanup vs blocking vs warning
 # ---------------------------------------------------------------------------
 
@@ -169,13 +204,70 @@ def is_broken_linebreak(text: str) -> Optional[str]:
     return None
 
 
+def is_markup_contamination(text: str) -> Optional[str]:
+    """Check if text contains HTML/XML markup contamination.
+
+    After lxml parses XML, attribute values are unescaped. The ONLY valid
+    tag in game text is <br/> (and variants that postprocess normalizes).
+    Anything else — HTML tags, comments, double-escaped entities, or lone
+    angle brackets — indicates contamination that will break the game engine.
+
+    Returns:
+        Reason string if contamination found, None if clean.
+    """
+    if not text:
+        return None
+
+    # --- Group A: Angle bracket contamination ---
+
+    # A1: HTML comments <!-- ... -->
+    m = _HTML_COMMENT_RE.search(text)
+    if m:
+        snippet = m.group()[:40]
+        return f'HTML comment: {snippet}'
+
+    # A2: HTML/XML tags (exclude valid <br> variants)
+    for m in _HTML_TAG_RE.finditer(text):
+        tag_text = m.group()
+        if not _VALID_BR_RE.fullmatch(tag_text):
+            return f'HTML/XML tag: {tag_text[:40]}'
+
+    # A3: Lone < not part of <br/> (engine-breaking — only < is illegal in XML)
+    # Note: lone > is valid XML and common in game text ("Level > 5"), not flagged
+    stripped = _VALID_BR_RE.sub('', text)
+    if '<' in stripped:
+        idx = stripped.index('<')
+        context = stripped[max(0, idx - 5):idx + 15]
+        return f'Lone < character: ...{context}...'
+
+    # --- Group B: Entity contamination (double-escaping artifacts) ---
+
+    # B1: Double-escaped XML entities (&lt; &gt; &amp; as literal text)
+    m = _DOUBLE_ESCAPED_ENTITY_RE.search(text)
+    if m:
+        return f'Double-escaped entity: {m.group()}'
+
+    # B2: Named HTML entities as literal text (&nbsp; &copy; etc.)
+    m = _NAMED_HTML_ENTITY_RE.search(text)
+    if m:
+        return f'HTML entity: {m.group()}'
+
+    # B3: Numeric HTML entities (&#160; &#x20; &#xA0; etc.)
+    m = _NUMERIC_ENTITY_RE.search(text)
+    if m:
+        return f'Numeric entity: {m.group()}'
+
+    return None
+
+
 def is_text_integrity_issue(text: str) -> Optional[str]:
     """Check if text has integrity issues (encoding artifacts, bad chars).
 
-    Only catches truly corrupted text that should BLOCK transfer:
+    Catches corrupted text that should BLOCK transfer:
       - Broken <br/> tags (game-breaking)
       - Replacement character U+FFFD (encoding corruption)
       - Control characters (C0 range)
+      - Markup contamination (HTML tags, lone angle brackets, entities)
 
     Invisible characters (NBSP, zero-width space, BOM, bidi marks, etc.)
     are NOT blocked here — they are auto-cleaned by postprocess Step 5.
@@ -200,6 +292,11 @@ def is_text_integrity_issue(text: str) -> Optional[str]:
     m = _CONTROL_CHARS_RE.search(text)
     if m:
         return f'Control character U+{ord(m.group()):04X}'
+
+    # 4. Markup contamination (HTML tags, lone brackets, entities)
+    markup_issue = is_markup_contamination(text)
+    if markup_issue:
+        return markup_issue
 
     return None
 
