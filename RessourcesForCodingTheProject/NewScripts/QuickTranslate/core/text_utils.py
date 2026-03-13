@@ -89,13 +89,12 @@ _HTML_COMMENT_RE = re.compile(r'<!--.*?-->', re.DOTALL)
 # HTML/XML tags (any <tag> or </tag> — br variants filtered in function)
 _HTML_TAG_RE = re.compile(r'</?[A-Za-z][A-Za-z0-9]*(?:\s[^>]*)?\s*/?>')
 
-# Double-escaped XML entities (literal text after lxml parse = double-escaping)
-# Also catches triple-escaping: &amp;lt; &amp;gt; &amp;amp; etc.
-_DOUBLE_ESCAPED_ENTITY_RE = re.compile(
-    r'&amp;(?:lt|gt|amp|quot|apos);'   # triple-escaped: &amp;lt; etc.
-    r'|&(?:lt|gt|amp|quot|apos);',      # double-escaped: &lt; etc.
-    re.IGNORECASE,
-)
+# Triple-escaped angle bracket entities (no auto-fix exists)
+# &amp;lt; &amp;gt; in memory means &amp;amp;lt; &amp;amp;gt; was on disk — no safe decode
+_TRIPLE_ESCAPED_RE = re.compile(r'&amp;(?:lt|gt);', re.IGNORECASE)
+
+# Well-formed &lt;br/&gt; pattern (Step 1 auto-fixes these → <br/>)
+_FIXABLE_BR_ENTITY_RE = re.compile(r'&lt;/?[Bb][Rr]\s*/?&gt;', re.IGNORECASE)
 
 # Named HTML entities as literal text (should have been decoded by parser)
 _NAMED_HTML_ENTITY_RE = re.compile(
@@ -249,10 +248,20 @@ def is_markup_contamination(text: str, *, from_xml: bool = False) -> Optional[st
 
     # --- Group B: Entity contamination (always runs) ---
 
-    # B1: Double-escaped XML entities (&lt; &gt; &amp; as literal text)
-    m = _DOUBLE_ESCAPED_ENTITY_RE.search(text)
+    # B1a: Triple-escaped (no auto-fix exists) — always block
+    m = _TRIPLE_ESCAPED_RE.search(text)
     if m:
-        return f'Double-escaped entity: {m.group()}'
+        return f'Triple-escaped entity: {m.group()}'
+
+    # B1b: Double-escaped &lt;/&gt; — block only orphaned ones (not part of BR tag)
+    # Strip out fixable &lt;br/&gt; patterns (Step 1 auto-fixes these), then check
+    stripped_fixable = _FIXABLE_BR_ENTITY_RE.sub('', text)
+    if '&lt;' in stripped_fixable or '&gt;' in stripped_fixable:
+        # Find the first orphaned entity for the error message
+        for entity in ('&lt;', '&gt;'):
+            idx = stripped_fixable.find(entity)
+            if idx >= 0:
+                return f'Double-escaped entity: {entity}'
 
     # B2: Named HTML entities as literal text (&nbsp; &copy; etc.)
     m = _NAMED_HTML_ENTITY_RE.search(text)

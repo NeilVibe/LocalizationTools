@@ -12,6 +12,7 @@ Current cleanup steps (run in order, applied to both Str and Desc):
   5. cleanup_invisible_chars   - Auto-fix invisible Unicode characters (NBSP→space, delete zero-width)
   6. cleanup_hyphens           - Normalize Unicode hyphen lookalikes to ASCII hyphen-minus
   7. cleanup_ellipsis          - Normalize Unicode ellipsis (…) to three dots (non-CJK only)
+  8. cleanup_double_escaped    - Safe decode of &quot; &apos; &amp;ENTITY; (explicit allowlist)
 
 Usage:
     from core.postprocess import run_all_postprocess
@@ -169,6 +170,37 @@ def _normalize_hyphens(text: str) -> str:
 def _normalize_ellipsis(text: str) -> str:
     """Replace Unicode horizontal ellipsis (U+2026) with three ASCII dots."""
     return text.replace('\u2026', '...')
+
+
+# --- Step 8: Safe double-escaped entity decode ---
+# Explicit allowlist approach: every decode pattern is complete and atomic.
+# &lt;/&gt; are NEVER touched here — Step 1 owns BR normalization exclusively.
+_SAFE_AMP_ENTITIES_RE = re.compile(
+    r'&amp;(desc|nbsp|ensp|emsp|thinsp|hellip|bull|middot|lrm|rlm);',
+    re.IGNORECASE,
+)
+
+
+def _decode_safe_entities(text: str) -> str:
+    """Safely decode double-escaped XML entities.
+
+    Decodes (explicit allowlist — no guessing):
+      - &amp;desc;     → &desc;   (and other known named entities)
+      - &quot;         → "        (standalone, no pairing risk)
+      - &apos;         → '        (standalone, no pairing risk)
+
+    NOT decoded (owned by Step 1 or too dangerous):
+      - &lt; / &gt;    → Step 1 handles these as BR normalization
+      - &amp;          → NOT blindly decoded (could create broken entities)
+
+    Every pattern is complete and atomic. No partial decode possible.
+    """
+    # 1. Decode known &amp;ENTITY; compounds (explicit allowlist)
+    text = _SAFE_AMP_ENTITIES_RE.sub(lambda m: f'&{m.group(1)};', text)
+    # 2. Decode &quot; and &apos; (standalone, no pairing risk)
+    text = text.replace('&quot;', '"')
+    text = text.replace('&apos;', "'")
+    return text
 
 
 def _extract_language_from_path(xml_path: Path) -> str:
@@ -461,6 +493,38 @@ def cleanup_ellipsis_on_tree(root) -> int:
             desc_normalized = _normalize_ellipsis(desc_val)
             if desc_normalized != desc_val:
                 loc.set(desc_name, desc_normalized)
+                fixed += 1
+    return fixed
+
+
+# ─── Cleanup Step 8: Safe double-escaped entity decode ─────────────────────
+
+
+def cleanup_double_escaped_on_tree(root) -> int:
+    """
+    Safe decode of double-escaped entities (&quot; &apos; &amp;ENTITY;) in parsed tree.
+
+    Modifies Str and Desc attributes ONLY. StrOrigin/DescOrigin are never touched.
+
+    Args:
+        root: Parsed XML root element
+
+    Returns:
+        Number of attributes fixed
+    """
+    fixed = 0
+    for loc in _iter_locstr(root):
+        attr_name, val = _get_attr(loc, STR_ATTRS)
+        if val is not None:
+            decoded = _decode_safe_entities(val)
+            if decoded != val:
+                loc.set(attr_name, decoded)
+                fixed += 1
+        desc_name, desc_val = _get_attr(loc, DESC_ATTRS)
+        if desc_val is not None:
+            desc_decoded = _decode_safe_entities(desc_val)
+            if desc_decoded != desc_val:
+                loc.set(desc_name, desc_decoded)
                 fixed += 1
     return fixed
 
@@ -762,6 +826,7 @@ def run_all_postprocess_on_tree(root, language: str = "") -> dict:
         "apostrophes_normalized": 0,
         "hyphens_normalized": 0,
         "ellipsis_normalized": 0,
+        "entities_decoded": 0,
         "spaces_normalized": 0,
         "invisibles_removed": 0,
         "invisible_detail": {},
@@ -889,6 +954,24 @@ def run_all_postprocess_on_tree(root, language: str = "") -> dict:
                     result["ellipsis_normalized"] += 1
                     result["changed"] = True
 
+        # --- Step 8: Safe decode of double-escaped entities in Str ---
+        str_attr_8, str_val_8 = _get_attr(loc, STR_ATTRS)
+        if str_val_8 is not None:
+            ent_decoded = _decode_safe_entities(str_val_8)
+            if ent_decoded != str_val_8:
+                loc.set(str_attr_8, ent_decoded)
+                result["entities_decoded"] += 1
+                result["changed"] = True
+
+        # --- Step 8b: Safe decode of double-escaped entities in Desc ---
+        desc_attr_8, desc_val_8 = _get_attr(loc, DESC_ATTRS)
+        if desc_val_8 is not None:
+            desc_ent_decoded = _decode_safe_entities(desc_val_8)
+            if desc_ent_decoded != desc_val_8:
+                loc.set(desc_attr_8, desc_ent_decoded)
+                result["entities_decoded"] += 1
+                result["changed"] = True
+
         # --- Step 5: Invisible character cleanup (Str) ---
         str_attr_5, str_val_5 = _get_attr(loc, STR_ATTRS)
         if str_val_5 is not None:
@@ -958,6 +1041,7 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
         "apostrophes_normalized": 0,
         "hyphens_normalized": 0,
         "ellipsis_normalized": 0,
+        "entities_decoded": 0,
         "spaces_normalized": 0,
         "invisibles_removed": 0,
         "invisible_detail": {},
@@ -995,6 +1079,9 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
         if lang not in _CJK_SKIP_LANGS:
             result["ellipsis_normalized"] = cleanup_ellipsis_on_tree(root)
 
+        # Step 8: Safe decode of double-escaped entities
+        result["entities_decoded"] = cleanup_double_escaped_on_tree(root)
+
         result["total_fixes"] = (
             result["newlines_fixed"]
             + result["empty_strorigin_cleaned"]
@@ -1002,6 +1089,7 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
             + result["apostrophes_normalized"]
             + result["hyphens_normalized"]
             + result["ellipsis_normalized"]
+            + result["entities_decoded"]
             + result["spaces_normalized"]
             + result["invisibles_removed"]
         )
@@ -1039,6 +1127,11 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
                 logger.debug(
                     "Normalized ellipsis in %d entries in %s",
                     result["ellipsis_normalized"], xml_path.name
+                )
+            if result["entities_decoded"] > 0:
+                logger.debug(
+                    "Decoded double-escaped entities in %d entries in %s",
+                    result["entities_decoded"], xml_path.name
                 )
             invis_total = result["spaces_normalized"] + result["invisibles_removed"]
             if invis_total > 0:
