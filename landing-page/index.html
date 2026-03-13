@@ -791,6 +791,673 @@
     }
 
     /* ==========================================================================
+       SECTION 7: MULTIMODAL CONTEXT
+       ========================================================================== */
+    .multimodal-section {
+      background:
+        radial-gradient(ellipse 60% 40% at 30% 50%, rgba(99, 102, 241, 0.08), transparent),
+        radial-gradient(ellipse 40% 40% at 70% 50%, rgba(6, 182, 212, 0.06), transparent),
+        var(--bg);
+    }
+
+    .multimodal-section .section-inner {
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    .multimodal-section .section-title {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .multimodal-layout {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+
+    /* Translation Grid */
+    .mm-grid {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .mm-grid-header {
+      display: grid;
+      grid-template-columns: 140px 1fr 1fr;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .mm-grid-header > div {
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .mm-grid-row {
+      display: grid;
+      grid-template-columns: 140px 1fr 1fr;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+
+    .mm-grid-row:last-child {
+      border-bottom: none;
+    }
+
+    .mm-grid-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .mm-grid-row--selected {
+      background: rgba(99, 102, 241, 0.08) !important;
+      border-left: 2px solid var(--primary);
+    }
+
+    .mm-grid-row > div {
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mm-grid-row > div:first-child {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      opacity: 0.7;
+    }
+
+    .mm-grid-row--selected > div {
+      color: var(--text);
+    }
+
+    /* Context Panel */
+    .mm-context {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .mm-context-item {
+      padding: 20px;
+      opacity: 0;
+      transform: translateX(40px);
+    }
+
+    .mm-context-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+
+    /* Screenshot placeholder */
+    .mm-screenshot {
+      width: 100%;
+      height: 140px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.15), rgba(139, 92, 246, 0.2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      color: var(--text-dim);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mm-screenshot::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 255, 255, 0.02) 2px,
+        rgba(255, 255, 255, 0.02) 4px
+      );
+    }
+
+    /* Audio waveform */
+    .mm-waveform {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mm-wave-play {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .mm-wave-play svg {
+      width: 12px;
+      height: 12px;
+      fill: white;
+      margin-left: 2px;
+    }
+
+    .mm-wave-bars {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      height: 32px;
+      flex: 1;
+    }
+
+    .mm-wave-bar {
+      width: 3px;
+      border-radius: 2px;
+      background: var(--accent);
+      opacity: 0.6;
+      animation: mm-wave 1.4s ease-in-out infinite;
+    }
+
+    @keyframes mm-wave {
+      0%, 100% { height: 4px; opacity: 0.3; }
+      50% { height: var(--h, 16px); opacity: 0.8; }
+    }
+
+    .mm-wave-label {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 8px;
+    }
+
+    /* Mini map */
+    .mm-minimap {
+      width: 100%;
+      height: 80px;
+      border-radius: 8px;
+      background: #0d0d14;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mm-minimap-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    .mm-minimap-dot {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      top: 35%;
+      left: 62%;
+      box-shadow: 0 0 12px var(--accent), 0 0 24px rgba(6, 182, 212, 0.3);
+      animation: mm-dot-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes mm-dot-pulse {
+      0%, 100% { box-shadow: 0 0 8px var(--accent), 0 0 16px rgba(6, 182, 212, 0.2); }
+      50% { box-shadow: 0 0 16px var(--accent), 0 0 32px rgba(6, 182, 212, 0.4); }
+    }
+
+    .mm-minimap-label {
+      position: absolute;
+      bottom: 6px;
+      right: 10px;
+      font-size: 10px;
+      color: var(--text-dim);
+      opacity: 0.5;
+    }
+
+    /* Metadata cards */
+    .mm-meta-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .mm-meta-card {
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      font-size: 11px;
+      color: var(--text-dim);
+      line-height: 1.4;
+    }
+
+    .mm-meta-card strong {
+      display: block;
+      color: var(--text);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+
+    .mm-meta-card code {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--accent);
+    }
+
+    /* ==========================================================================
+       SECTION 8: AI PIPELINE
+       ========================================================================== */
+    .pipeline-section {
+      background:
+        radial-gradient(ellipse 50% 50% at 50% 40%, rgba(139, 92, 246, 0.07), transparent),
+        var(--bg-alt);
+    }
+
+    .pipeline-section .section-inner {
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    .pipeline-section .section-title {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .pipeline-flow {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      margin-bottom: 48px;
+      position: relative;
+    }
+
+    .pipeline-card {
+      flex: 1;
+      padding: 28px 20px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    .pipeline-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 16px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .pipeline-card-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .pipeline-card-desc {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    /* Connecting line between cards */
+    .pipeline-connector {
+      display: flex;
+      align-items: center;
+      width: 48px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 0;
+    }
+
+    .pipeline-connector-line {
+      width: 100%;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pipeline-connector-dot {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      top: -2px;
+      left: -6px;
+      animation: pipeline-dot-flow 2s linear infinite;
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    @keyframes pipeline-dot-flow {
+      0% { left: -6px; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { left: 100%; opacity: 0; }
+    }
+
+    .pipeline-connector:nth-child(4) .pipeline-connector-dot { animation-delay: 0.3s; }
+    .pipeline-connector:nth-child(6) .pipeline-connector-dot { animation-delay: 0.6s; }
+
+    /* Sub-flow text */
+    .pipeline-subflow {
+      text-align: center;
+      font-size: 15px;
+      color: var(--text-dim);
+      margin-bottom: 40px;
+    }
+
+    .pipeline-subflow span {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* Quality meter */
+    .pipeline-quality {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .pipeline-quality-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    .pipeline-quality-bar {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+    }
+
+    .pipeline-quality-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--accent), var(--success));
+      transition: width 1.5s ease-out;
+    }
+
+    /* Final card pulse */
+    .pipeline-card--final .pipeline-icon {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .pipeline-card--final.is-active .pipeline-icon {
+      animation: pipeline-confirm-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pipeline-confirm-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3); }
+      50% { box-shadow: 0 0 16px 4px rgba(16, 185, 129, 0.2); }
+    }
+
+    /* ==========================================================================
+       SECTION 9: DEV WRITING PLATFORM
+       ========================================================================== */
+    .devplatform-section {
+      background:
+        radial-gradient(ellipse 60% 40% at 50% 50%, rgba(6, 182, 212, 0.06), transparent),
+        var(--bg);
+    }
+
+    .devplatform-section .section-inner {
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    .devplatform-section .section-title {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    /* Editor mockup */
+    .dev-editor {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--glass-border);
+      background: #0d0d14;
+      margin-bottom: 48px;
+    }
+
+    .dev-editor-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--glass-border);
+      gap: 8px;
+    }
+
+    .dev-editor-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dev-editor-dot--red { background: #ef4444; }
+    .dev-editor-dot--yellow { background: #eab308; }
+    .dev-editor-dot--green { background: #22c55e; }
+
+    .dev-editor-tab {
+      margin-left: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-dim);
+      padding: 4px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+
+    .dev-editor-body {
+      display: grid;
+      grid-template-columns: 1fr 200px;
+      min-height: 280px;
+    }
+
+    .dev-editor-main {
+      display: flex;
+      position: relative;
+    }
+
+    .dev-editor-lines {
+      padding: 16px 0;
+      width: 44px;
+      text-align: right;
+      flex-shrink: 0;
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .dev-editor-lines span {
+      display: block;
+      padding: 2px 10px 2px 0;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.15);
+      line-height: 1.8;
+    }
+
+    .dev-editor-content {
+      padding: 16px 20px;
+      flex: 1;
+      position: relative;
+    }
+
+    .dev-editor-text {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.8;
+      white-space: pre-wrap;
+    }
+
+    .dev-editor-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 16px;
+      background: var(--accent);
+      vertical-align: middle;
+      animation: dev-cursor-blink 0.8s step-end infinite;
+    }
+
+    @keyframes dev-cursor-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* Autocomplete dropdown */
+    .dev-autocomplete {
+      position: absolute;
+      top: 60px;
+      left: 64px;
+      width: 340px;
+      border-radius: 8px;
+      background: #16161e;
+      border: 1px solid var(--glass-border);
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-8px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .dev-ac-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 13px;
+      color: var(--text-dim);
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+
+    .dev-ac-item:last-child {
+      border-bottom: none;
+    }
+
+    .dev-ac-item:first-child {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--text);
+    }
+
+    .dev-ac-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--accent);
+      min-width: 44px;
+      text-align: center;
+    }
+
+    .dev-ac-badge--high {
+      background: rgba(6, 182, 212, 0.2);
+      box-shadow: 0 0 8px rgba(6, 182, 212, 0.2);
+    }
+
+    /* Side panel — theme tags */
+    .dev-editor-side {
+      border-left: 1px solid var(--glass-border);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .dev-side-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .dev-theme-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .dev-theme-tag {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      color: var(--primary-light);
+      opacity: 0;
+      transform: scale(0.8);
+    }
+
+    .dev-theme-tag--active {
+      background: rgba(6, 182, 212, 0.15);
+      border-color: rgba(6, 182, 212, 0.3);
+      color: var(--accent);
+    }
+
+    /* Features below mockup */
+    .dev-features {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+
+    .dev-feature {
+      padding: 24px 20px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .dev-feature-num {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .dev-feature-text {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    /* ==========================================================================
        RESPONSIVE BREAKPOINTS
        ========================================================================== */
 
@@ -831,6 +1498,49 @@
       .arch-pillars {
         grid-template-columns: 1fr;
         gap: 16px;
+      }
+
+      .multimodal-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .mm-grid-header,
+      .mm-grid-row {
+        grid-template-columns: 100px 1fr 1fr;
+        font-size: 11px;
+      }
+
+      .pipeline-flow {
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+      }
+
+      .pipeline-connector {
+        width: 2px;
+        height: 32px;
+        flex-direction: column;
+      }
+
+      .pipeline-connector-line {
+        width: 2px;
+        height: 100%;
+      }
+
+      .dev-editor-body {
+        grid-template-columns: 1fr;
+      }
+
+      .dev-editor-side {
+        border-left: none;
+        border-top: 1px solid var(--glass-border);
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .dev-features {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
       }
     }
 
@@ -923,6 +1633,29 @@
       .bench-bar-fill {
         width: var(--target-width, 80%) !important;
         transition: none !important;
+      }
+
+      .mm-context-item,
+      .pipeline-card,
+      .dev-feature,
+      .dev-ac-item,
+      .dev-theme-tag {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      .dev-autocomplete {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      .pipeline-quality-fill {
+        width: 95% !important;
+      }
+
+      .mm-wave-bar {
+        animation: none !important;
+        height: var(--h, 16px) !important;
       }
     }
   </style>
@@ -1272,11 +2005,280 @@
     </div>
   </section>
 
-  <!-- Section 7: Workflow -->
+  <!-- ========================================================================
+       SECTION 7: MULTIMODAL CONTEXT
+       ======================================================================== -->
+  <section class="section multimodal-section" id="multimodal">
+    <div class="section-inner">
+      <h2 class="section-title">번역 그 이상. 멀티모달 컨텍스트.</h2>
 
-  <!-- Section 8: Performance Stats -->
+      <div class="multimodal-layout">
+        <!-- LEFT: Translation Grid -->
+        <div class="glass mm-grid" id="mmGrid">
+          <div class="mm-grid-header">
+            <div>StringID</div>
+            <div>KR (StrOrigin)</div>
+            <div>EN (Str)</div>
+          </div>
+          <div class="mm-grid-row" data-row="0">
+            <div>quest_001_title</div>
+            <div>잊혀진 유적의 비밀</div>
+            <div>Secrets of the Forgotten Ruins</div>
+          </div>
+          <div class="mm-grid-row mm-grid-row--selected" data-row="1">
+            <div>npc_042_greeting</div>
+            <div>여행자여, 오랜만이구나</div>
+            <div>Traveler, it's been a while</div>
+          </div>
+          <div class="mm-grid-row" data-row="2">
+            <div>item_blacksword</div>
+            <div>흑요석 검</div>
+            <div>Obsidian Sword</div>
+          </div>
+          <div class="mm-grid-row" data-row="3">
+            <div>region_forest_desc</div>
+            <div>안개 낀 숲의 깊은 곳</div>
+            <div>Deep within the misty forest</div>
+          </div>
+        </div>
 
-  <!-- Section 9: Comparison -->
+        <!-- RIGHT: Context Panel -->
+        <div class="mm-context" id="mmContext">
+          <!-- Screenshot -->
+          <div class="glass mm-context-item" data-mm="0">
+            <div class="mm-context-label">게임 내 스크린샷</div>
+            <div class="mm-screenshot">
+              <span>npc_042 — 마을 광장 대화 장면</span>
+            </div>
+          </div>
+
+          <!-- Audio Waveform -->
+          <div class="glass mm-context-item" data-mm="1">
+            <div class="mm-context-label">음성 데이터</div>
+            <div class="mm-waveform">
+              <div class="mm-wave-play">
+                <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+              </div>
+              <div class="mm-wave-bars">
+                <div class="mm-wave-bar" style="--h:8px;animation-delay:0s"></div>
+                <div class="mm-wave-bar" style="--h:18px;animation-delay:0.1s"></div>
+                <div class="mm-wave-bar" style="--h:12px;animation-delay:0.15s"></div>
+                <div class="mm-wave-bar" style="--h:24px;animation-delay:0.2s"></div>
+                <div class="mm-wave-bar" style="--h:16px;animation-delay:0.25s"></div>
+                <div class="mm-wave-bar" style="--h:28px;animation-delay:0.05s"></div>
+                <div class="mm-wave-bar" style="--h:10px;animation-delay:0.3s"></div>
+                <div class="mm-wave-bar" style="--h:22px;animation-delay:0.12s"></div>
+                <div class="mm-wave-bar" style="--h:14px;animation-delay:0.22s"></div>
+                <div class="mm-wave-bar" style="--h:26px;animation-delay:0.08s"></div>
+                <div class="mm-wave-bar" style="--h:8px;animation-delay:0.18s"></div>
+                <div class="mm-wave-bar" style="--h:20px;animation-delay:0.28s"></div>
+                <div class="mm-wave-bar" style="--h:12px;animation-delay:0.35s"></div>
+                <div class="mm-wave-bar" style="--h:18px;animation-delay:0.14s"></div>
+                <div class="mm-wave-bar" style="--h:6px;animation-delay:0.26s"></div>
+                <div class="mm-wave-bar" style="--h:22px;animation-delay:0.04s"></div>
+                <div class="mm-wave-bar" style="--h:14px;animation-delay:0.32s"></div>
+                <div class="mm-wave-bar" style="--h:20px;animation-delay:0.16s"></div>
+              </div>
+            </div>
+            <div class="mm-wave-label">음성 재생: KR / EN</div>
+          </div>
+
+          <!-- Mini Map -->
+          <div class="glass mm-context-item" data-mm="2">
+            <div class="mm-context-label">맵 위치</div>
+            <div class="mm-minimap">
+              <div class="mm-minimap-grid"></div>
+              <div class="mm-minimap-dot"></div>
+              <div class="mm-minimap-label">마을 광장 (342, 78, 512)</div>
+            </div>
+          </div>
+
+          <!-- Metadata -->
+          <div class="glass mm-context-item" data-mm="3">
+            <div class="mm-context-label">메타데이터</div>
+            <div class="mm-meta-cards">
+              <div class="mm-meta-card">
+                <strong>캐릭터 배경</strong>
+                은퇴한 기사. 40년간 마을을 지킨 수호자.
+              </div>
+              <div class="mm-meta-card">
+                <strong>아이템 속성</strong>
+                공격력 +340, 흑요석 강화, 유니크 등급
+              </div>
+              <div class="mm-meta-card">
+                <strong>관련 퀘스트</strong>
+                잊혀진 유적의 비밀 (메인 #42)
+              </div>
+              <div class="mm-meta-card">
+                <strong>디버그</strong>
+                <code>/teleport 342 78 512</code>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECTION 8: AI PIPELINE
+       ======================================================================== -->
+  <section class="section pipeline-section" id="pipeline">
+    <div class="section-inner">
+      <h2 class="section-title">컨텍스트가 AI를 바꿉니다</h2>
+
+      <div class="pipeline-flow" id="pipelineFlow">
+        <!-- Card 1 -->
+        <div class="glass pipeline-card" data-pipe="0">
+          <div class="pipeline-icon">&#128196;</div>
+          <div class="pipeline-card-title">컨텍스트 파싱</div>
+          <div class="pipeline-card-desc">이미지, 오디오, 메타데이터</div>
+        </div>
+
+        <div class="pipeline-connector">
+          <div class="pipeline-connector-line">
+            <div class="pipeline-connector-dot"></div>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="glass pipeline-card" data-pipe="1">
+          <div class="pipeline-icon">&#129504;</div>
+          <div class="pipeline-card-title">AI 맥락 전달</div>
+          <div class="pipeline-card-desc">정확한 맥락으로 번역 품질 향상</div>
+        </div>
+
+        <div class="pipeline-connector">
+          <div class="pipeline-connector-line">
+            <div class="pipeline-connector-dot"></div>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="glass pipeline-card" data-pipe="2">
+          <div class="pipeline-icon">&#11088;</div>
+          <div class="pipeline-card-title">인간 수준 품질</div>
+          <div class="pipeline-card-desc">컨텍스트 기반 번역</div>
+        </div>
+
+        <div class="pipeline-connector">
+          <div class="pipeline-connector-line">
+            <div class="pipeline-connector-dot"></div>
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="glass pipeline-card pipeline-card--final" data-pipe="3">
+          <div class="pipeline-icon">&#10004;</div>
+          <div class="pipeline-card-title">번역가 확인</div>
+          <div class="pipeline-card-desc">최종 검증만</div>
+        </div>
+      </div>
+
+      <div class="pipeline-subflow">
+        <span>개발자 작성</span> &nbsp;&#8594;&nbsp; <span>AI 번역</span> &nbsp;&#8594;&nbsp; <span>번역가 확인</span>
+      </div>
+
+      <div class="pipeline-quality" id="pipelineQuality">
+        <div class="pipeline-quality-label">
+          <span>번역 품질</span>
+          <span class="pipeline-quality-pct">0%</span>
+        </div>
+        <div class="pipeline-quality-bar">
+          <div class="pipeline-quality-fill" id="pipelineQualityFill"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECTION 9: DEV WRITING PLATFORM
+       ======================================================================== -->
+  <section class="section devplatform-section" id="devplatform">
+    <div class="section-inner">
+      <h2 class="section-title">개발자도 직접 씁니다. VSCODE는 이제 그만.</h2>
+
+      <!-- Editor Mockup -->
+      <div class="dev-editor" id="devEditor">
+        <div class="dev-editor-bar">
+          <div class="dev-editor-dot dev-editor-dot--red"></div>
+          <div class="dev-editor-dot dev-editor-dot--yellow"></div>
+          <div class="dev-editor-dot dev-editor-dot--green"></div>
+          <div class="dev-editor-tab">quest_042_dialog.loc.xml</div>
+        </div>
+        <div class="dev-editor-body">
+          <div class="dev-editor-main">
+            <div class="dev-editor-lines">
+              <span>1</span>
+              <span>2</span>
+              <span>3</span>
+              <span>4</span>
+              <span>5</span>
+              <span>6</span>
+              <span>7</span>
+              <span>8</span>
+            </div>
+            <div class="dev-editor-content">
+              <div class="dev-editor-text" id="devEditorText"></div>
+              <div class="dev-autocomplete" id="devAutocomplete">
+                <div class="dev-ac-item">
+                  <span>잊혀진 유적의 비밀</span>
+                  <span class="dev-ac-badge dev-ac-badge--high" data-target="98">0%</span>
+                </div>
+                <div class="dev-ac-item">
+                  <span>잊혀진 왕국의 전설</span>
+                  <span class="dev-ac-badge" data-target="87">0%</span>
+                </div>
+                <div class="dev-ac-item">
+                  <span>고대 유적 탐험</span>
+                  <span class="dev-ac-badge" data-target="72">0%</span>
+                </div>
+                <div class="dev-ac-item">
+                  <span>비밀의 던전</span>
+                  <span class="dev-ac-badge" data-target="65">0%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="dev-editor-side">
+            <div class="dev-side-title">테마 클러스터</div>
+            <div class="dev-theme-tags">
+              <span class="dev-theme-tag dev-theme-tag--active">Quest</span>
+              <span class="dev-theme-tag">Dungeon</span>
+              <span class="dev-theme-tag dev-theme-tag--active">Lore</span>
+              <span class="dev-theme-tag">Combat</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Features -->
+      <div class="dev-features" id="devFeatures">
+        <div class="glass dev-feature">
+          <div class="dev-feature-num">01</div>
+          <div class="dev-feature-text">실시간 용어집/TM/TB 관리</div>
+        </div>
+        <div class="glass dev-feature">
+          <div class="dev-feature-num">02</div>
+          <div class="dev-feature-text">타이핑할 때마다 적응형 벡터 임베딩</div>
+        </div>
+        <div class="glass dev-feature">
+          <div class="dev-feature-num">03</div>
+          <div class="dev-feature-text">유사도 + 테마 기반 제안</div>
+        </div>
+        <div class="glass dev-feature">
+          <div class="dev-feature-num">04</div>
+          <div class="dev-feature-text">통합 용어 관리 — 혼란 없는 일관성</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 10: Testimonials -->
+
+  <!-- Section 11: Roadmap -->
+
+  <!-- Section 12: CTA / Footer -->
 
   <!-- Section 10: Testimonials -->
 
@@ -1675,6 +2677,232 @@
                 duration: 1,
                 delay: 0.3 + i * 0.15,
                 ease: 'power2.inOut'
+              });
+            });
+          }
+        }
+      });
+    })();
+
+    /* ========================================================================
+       SECTION 7: MULTIMODAL CONTEXT
+       ======================================================================== */
+    (function() {
+      var mmGrid = document.getElementById('mmGrid');
+      var mmContext = document.getElementById('mmContext');
+      if (!mmGrid || !mmContext) return;
+
+      var contextItems = mmContext.querySelectorAll('.mm-context-item');
+
+      ScrollTrigger.create({
+        trigger: '#multimodal',
+        start: 'top 70%',
+        once: true,
+        onEnter: function() {
+          // Grid slides in from left
+          gsap.from(mmGrid, {
+            x: -60,
+            opacity: 0,
+            duration: 0.8,
+            ease: 'power3.out'
+          });
+
+          // Context panel slides from right, items stagger
+          contextItems.forEach(function(item, i) {
+            gsap.to(item, {
+              x: 0,
+              opacity: 1,
+              duration: 0.6,
+              delay: 0.4 + i * 0.15,
+              ease: 'power3.out',
+              onComplete: function() {
+                // Glow pulse on appear
+                gsap.fromTo(item, {
+                  boxShadow: '0 0 0 rgba(6, 182, 212, 0)'
+                }, {
+                  boxShadow: '0 0 20px rgba(6, 182, 212, 0.15)',
+                  duration: 0.4,
+                  yoyo: true,
+                  repeat: 1
+                });
+              }
+            });
+          });
+        }
+      });
+    })();
+
+    /* ========================================================================
+       SECTION 8: AI PIPELINE
+       ======================================================================== */
+    (function() {
+      var pipelineFlow = document.getElementById('pipelineFlow');
+      var qualityFill = document.getElementById('pipelineQualityFill');
+      var qualityPct = document.querySelector('.pipeline-quality-pct');
+      if (!pipelineFlow) return;
+
+      var cards = pipelineFlow.querySelectorAll('.pipeline-card');
+
+      ScrollTrigger.create({
+        trigger: '#pipeline',
+        start: 'top 70%',
+        once: true,
+        onEnter: function() {
+          // Cards build left to right
+          cards.forEach(function(card, i) {
+            gsap.to(card, {
+              y: 0,
+              opacity: 1,
+              duration: 0.6,
+              delay: i * 0.3,
+              ease: 'power3.out',
+              onComplete: function() {
+                // Final card pulse
+                if (card.classList.contains('pipeline-card--final')) {
+                  card.classList.add('is-active');
+                }
+              }
+            });
+          });
+
+          // Quality bar fills
+          if (qualityFill) {
+            gsap.to(qualityFill, {
+              width: '95%',
+              duration: 1.5,
+              delay: 1.2,
+              ease: 'power2.out'
+            });
+          }
+
+          // Quality percentage counts up
+          if (qualityPct) {
+            gsap.to({ val: 0 }, {
+              val: 95,
+              duration: 1.5,
+              delay: 1.2,
+              ease: 'power2.out',
+              onUpdate: function() {
+                qualityPct.textContent = Math.round(this.targets()[0].val) + '%';
+              }
+            });
+          }
+        }
+      });
+    })();
+
+    /* ========================================================================
+       SECTION 9: DEV WRITING PLATFORM
+       ======================================================================== */
+    (function() {
+      var editorText = document.getElementById('devEditorText');
+      var autocomplete = document.getElementById('devAutocomplete');
+      var devFeatures = document.getElementById('devFeatures');
+      if (!editorText) return;
+
+      var typewriterChars = 'StrOrigin="\uc78a\ud600\uc9c4 \uc720\uc801\uc758'.split('');
+      var typeIndex = 0;
+
+      function renderEditor(chars) {
+        // Build text content safely using DOM
+        while (editorText.firstChild) editorText.removeChild(editorText.firstChild);
+
+        var prefix = document.createElement('span');
+        prefix.style.color = 'var(--accent)';
+        prefix.textContent = 'KR=';
+        editorText.appendChild(prefix);
+
+        var quote1 = document.createTextNode('"');
+        editorText.appendChild(quote1);
+
+        var typed = document.createTextNode(chars.join(''));
+        editorText.appendChild(typed);
+
+        var cursor = document.createElement('span');
+        cursor.className = 'dev-editor-cursor';
+        editorText.appendChild(cursor);
+
+        var quote2 = document.createTextNode('"');
+        editorText.appendChild(quote2);
+      }
+
+      function typeChar() {
+        if (typeIndex <= typewriterChars.length) {
+          renderEditor(typewriterChars.slice(0, typeIndex));
+          typeIndex++;
+          setTimeout(typeChar, 80 + Math.random() * 60);
+        } else {
+          showAutocomplete();
+        }
+      }
+
+      function showAutocomplete() {
+        if (!autocomplete) return;
+        gsap.to(autocomplete, {
+          opacity: 1,
+          y: 0,
+          duration: 0.3,
+          ease: 'power2.out'
+        });
+
+        // Stagger items
+        var items = autocomplete.querySelectorAll('.dev-ac-item');
+        items.forEach(function(item, i) {
+          gsap.to(item, {
+            opacity: 1,
+            y: 0,
+            duration: 0.3,
+            delay: i * 0.1,
+            ease: 'power2.out'
+          });
+        });
+
+        // Count up badges
+        var badges = autocomplete.querySelectorAll('.dev-ac-badge');
+        badges.forEach(function(badge, i) {
+          var target = parseInt(badge.getAttribute('data-target'));
+          gsap.to({ val: 0 }, {
+            val: target,
+            duration: 0.8,
+            delay: 0.3 + i * 0.1,
+            ease: 'power2.out',
+            onUpdate: function() {
+              badge.textContent = Math.round(this.targets()[0].val) + '%';
+            }
+          });
+        });
+
+        // Theme tags fade in
+        var tags = document.querySelectorAll('.dev-theme-tag');
+        tags.forEach(function(tag, i) {
+          gsap.to(tag, {
+            opacity: 1,
+            scale: 1,
+            duration: 0.3,
+            delay: 0.5 + i * 0.1,
+            ease: 'back.out(1.4)'
+          });
+        });
+      }
+
+      ScrollTrigger.create({
+        trigger: '#devplatform',
+        start: 'top 70%',
+        once: true,
+        onEnter: function() {
+          // Start typewriter
+          typeChar();
+
+          // Features stagger in
+          if (devFeatures) {
+            var featureCards = devFeatures.querySelectorAll('.dev-feature');
+            featureCards.forEach(function(card, i) {
+              gsap.to(card, {
+                y: 0,
+                opacity: 1,
+                duration: 0.5,
+                delay: 1.5 + i * 0.15,
+                ease: 'power3.out'
               });
             });
           }
