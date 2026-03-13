@@ -3389,7 +3389,7 @@ class QuickTranslateApp:
 
             # End-of-log POST-PROCESSING report (automatic cleanup stats)
             pp_stats = results.get("postprocess_stats", {})
-            pp_total = sum(pp_stats.get(k, 0) for k in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized", "hyphens_normalized", "ellipsis_normalized", "spaces_normalized", "invisibles_removed"))
+            pp_total = sum(pp_stats.get(k, 0) for k in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced", "apostrophes_normalized", "hyphens_normalized", "ellipsis_normalized", "entities_decoded", "spaces_normalized", "invisibles_removed"))
             if pp_total > 0:
                 self._log("", 'info')
                 self._log(f"=== POST-PROCESSING ({pp_total} automatic fixes) ===", 'info')
@@ -3405,6 +3405,8 @@ class QuickTranslateApp:
                     self._log(f"  Hyphens normalized:            {pp_stats['hyphens_normalized']:,}", 'info')
                 if pp_stats.get("ellipsis_normalized", 0) > 0:
                     self._log(f"  Ellipsis normalized (… → ...): {pp_stats['ellipsis_normalized']:,}", 'info')
+                if pp_stats.get("entities_decoded", 0) > 0:
+                    self._log(f"  Double-escaped entities fixed:  {pp_stats['entities_decoded']:,}", 'info')
                 if pp_stats.get("spaces_normalized", 0) > 0:
                     self._log(f"  Spaces normalized (NBSP etc.): {pp_stats['spaces_normalized']:,}", 'info')
                 if pp_stats.get("invisibles_removed", 0) > 0:
