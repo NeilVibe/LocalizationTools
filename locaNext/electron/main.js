@@ -108,13 +108,15 @@ const getAppPaths = () => {
     const appRoot = path.join(resourcesPath, '..');
 
     // QA FULL builds bundle models in resources/models (extraResources)
-    // LIGHT builds download to appRoot/models post-install
+    // LIGHT/DEMO builds bundle Model2Vec in resources/models
     // Check bundled location first, fall back to download location
     const bundledModelsPath = path.join(resourcesPath, 'models');
     const downloadedModelsPath = path.join(appRoot, 'models');
-    const modelsPath = fs.existsSync(path.join(bundledModelsPath, 'qwen-embedding', 'config.json'))
-      ? bundledModelsPath  // QA FULL: use bundled model
-      : downloadedModelsPath;  // LIGHT: use downloaded model
+    const hasBundledQwen = fs.existsSync(path.join(bundledModelsPath, 'qwen-embedding', 'config.json'));
+    const hasBundledModel2Vec = fs.existsSync(path.join(bundledModelsPath, 'Model2Vec', 'config.json'));
+    const modelsPath = (hasBundledQwen || hasBundledModel2Vec)
+      ? bundledModelsPath  // Bundled model found
+      : downloadedModelsPath;  // Fallback: downloaded model
 
     return {
       projectRoot: appRoot,
@@ -129,6 +131,13 @@ const getAppPaths = () => {
 const paths = getAppPaths();
 const projectRoot = paths.projectRoot;
 const pythonToolsPath = paths.pythonToolsPath;
+
+// Detect Light/Demo Mode and set env var for Python backend
+const lightModeFlagPath = path.join(paths.projectRoot, 'light-mode.flag');
+if (fs.existsSync(lightModeFlagPath) && !process.env.LOCANEXT_LIGHT_MODE) {
+  process.env.LOCANEXT_LIGHT_MODE = '1';
+  logger.info('Light/Demo Mode detected from flag file');
+}
 
 // ==================== BACKEND SERVER MANAGEMENT ====================
 
@@ -515,6 +524,10 @@ ipcMain.handle('check-for-updates', async () => {
  * Returns available components that need updating without downloading full installer
  */
 ipcMain.handle('check-patch-update', async () => {
+  // Light/Demo Mode: no network calls
+  if (!isAutoUpdateEnabled) {
+    return { success: true, available: false, reason: 'Updates disabled (Light/Demo Mode)' };
+  }
   try {
     const result = await checkForPatchUpdate();
     logger.info('Patch update check result', {

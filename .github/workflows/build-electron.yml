@@ -783,18 +783,28 @@ jobs:
           [System.IO.File]::WriteAllText("light-mode.flag", $flagContent)
           Write-Host "[OK] light-mode.flag created" -ForegroundColor Green
 
-          # 3. Add light-mode.flag to extraFiles in package.json
-          #    extraFiles places files at app root (where first-run-setup.js checks)
+          # 3. Download Model2Vec model (so it's fully offline — no HuggingFace at runtime)
+          Write-Host "Downloading Model2Vec model for offline use..."
+          New-Item -ItemType Directory -Force -Path "models\Model2Vec" | Out-Null
+          & "tools\python\python.exe" -c "from model2vec import StaticModel; m = StaticModel.from_pretrained('minishlab/potion-multilingual-128M'); m.save_pretrained('models/Model2Vec')"
+          if ($LASTEXITCODE -ne 0) { Write-Error "Failed to download Model2Vec model"; exit 1 }
+          if (!(Test-Path "models\Model2Vec\config.json")) { Write-Error "Model2Vec config.json not found"; exit 1 }
+          $modelSize = (Get-ChildItem "models\Model2Vec" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+          Write-Host "[OK] Model2Vec model downloaded: $([math]::Round($modelSize, 1)) MB" -ForegroundColor Green
+
+          # 4. Update package.json: add extraFiles (flag at app root) + extraResources (model)
           $pkgPath = "locaNext/package.json"
           $pkg = Get-Content $pkgPath -Raw | ConvertFrom-Json
 
-          # Add extraFiles array with the flag file
-          $pkg | Add-Member -NotePropertyName "build" -NotePropertyValue $pkg.build -Force
+          # extraFiles: light-mode.flag at app root (detected by first-run-setup.js + main.js)
           if (-not $pkg.build.extraFiles) {
             $pkg.build | Add-Member -NotePropertyName "extraFiles" -NotePropertyValue @() -Force
           }
-          $flagEntry = @{ from = "../light-mode.flag"; to = "light-mode.flag" }
-          $pkg.build.extraFiles += $flagEntry
+          $pkg.build.extraFiles += @{ from = "../light-mode.flag"; to = "light-mode.flag" }
+
+          # extraResources: Model2Vec model in resources/models/Model2Vec
+          $modelEntry = @{ from = "../models/Model2Vec"; to = "models/Model2Vec"; filter = @("**/*") }
+          $pkg.build.extraResources += $modelEntry
 
           $pkgJson = $pkg | ConvertTo-Json -Depth 100
           [System.IO.File]::WriteAllText($pkgPath, $pkgJson)
@@ -805,10 +815,15 @@ jobs:
             Write-Error "[CRITICAL] package.json extraFiles not written correctly!"
             exit 1
           }
-          Write-Host "[OK] package.json updated with extraFiles for light-mode.flag" -ForegroundColor Green
+          if ($verify.build.extraResources.Count -lt 5) {
+            Write-Error "[CRITICAL] package.json extraResources looks incomplete!"
+            exit 1
+          }
+          Write-Host "[OK] package.json updated (extraFiles + Model2Vec in extraResources)" -ForegroundColor Green
 
           $totalSize = (Get-ChildItem "tools\python" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-          Write-Host "[OK] Light Mode embedded Python: $([math]::Round($totalSize, 1)) MB" -ForegroundColor Green
+          Write-Host "[OK] Light/Demo Mode embedded Python: $([math]::Round($totalSize, 1)) MB" -ForegroundColor Green
+          Write-Host "[OK] FULLY OFFLINE — no internet needed after install!" -ForegroundColor Green
         shell: pwsh
 
       # ============================================================
@@ -1418,8 +1433,9 @@ jobs:
             ### Requirements
 
             - **Internet connection** - For first launch setup
-            - **${{ needs.check-build-trigger.outputs.light_mode == 'yes' && '~500MB disk space' || '~3GB disk space' }}**
+            - **${{ needs.check-build-trigger.outputs.light_mode == 'yes' && '~700MB disk space' || '~3GB disk space' }}**
             - **NO Python required!** - Everything is bundled
+            ${{ needs.check-build-trigger.outputs.light_mode == 'yes' && '- **NO internet required!** - Fully offline after install' || '- **Internet connection** - For first launch setup' }}
 
             ### What's Included
 
@@ -1436,7 +1452,7 @@ jobs:
             2. Run the installer (~1 min)
             3. Launch LocaNext
             4. **First-Time Setup wizard appears automatically**
-            ${{ needs.check-build-trigger.outputs.light_mode == 'yes' && '   - Light deps install (~2-3 min) — no heavy AI downloads!' || '   - Installing Python dependencies (~15-20 min)\n   - Downloading AI model (~5-10 min)' }}
+            ${{ needs.check-build-trigger.outputs.light_mode == 'yes' && '   - No setup needed! Everything is pre-bundled.' || '   - Installing Python dependencies (~15-20 min)\n   - Downloading AI model (~5-10 min)' }}
             5. Setup complete - App ready!
 
             **Subsequent launches:** Instant (no setup needed)

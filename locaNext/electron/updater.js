@@ -57,8 +57,8 @@ if (UPDATE_SERVER === 'gitea') {
 
 export { autoUpdaterConfig };
 
-// For development, disable auto-updates
-export const isAutoUpdateEnabled = process.env.NODE_ENV !== 'development';
+// Disable auto-updates in development OR Light Mode (no external network calls)
+export const isAutoUpdateEnabled = process.env.NODE_ENV !== 'development' && process.env.LOCANEXT_LIGHT_MODE !== '1';
 
 /**
  * DEPLOYMENT OPTIONS:

@@ -136,14 +136,36 @@ class Model2VecEngine(EmbeddingEngine):
     def is_loaded(self) -> bool:
         return self._model is not None
 
+    @staticmethod
+    def _find_local_model_path() -> Optional[Path]:
+        """Check for bundled Model2Vec model next to exe or in known locations."""
+        candidates = [
+            # Bundled in Electron resources (Light/Demo builds)
+            Path(os.environ.get("LOCANEXT_MODELS_PATH", "")) / "Model2Vec",
+            # Next to server directory (DEV mode)
+            Path(__file__).parent.parent.parent.parent / "models" / "Model2Vec",
+        ]
+        for p in candidates:
+            if p.exists() and (p / "config.json").exists():
+                return p
+        return None
+
     def load(self) -> None:
         if self._model is not None:
             return
 
-        logger.info(f"Loading Model2Vec engine: {self.MODEL_NAME}")
         try:
             from model2vec import StaticModel
-            self._model = StaticModel.from_pretrained(self.MODEL_NAME)
+
+            # Check for bundled local model first (no internet needed)
+            local_path = self._find_local_model_path()
+            if local_path:
+                logger.info(f"Loading Model2Vec from local path: {local_path}")
+                self._model = StaticModel.from_pretrained(str(local_path))
+            else:
+                logger.info(f"Loading Model2Vec from HuggingFace: {self.MODEL_NAME}")
+                self._model = StaticModel.from_pretrained(self.MODEL_NAME)
+
             # Update dimension from actual model
             test_emb = self._model.encode(["test"])
             self._dimension = test_emb.shape[1]

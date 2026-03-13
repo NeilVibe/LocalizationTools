@@ -54,8 +54,22 @@ function getFlagFilePath() {
 /**
  * Check if first-run setup is needed
  * Flag file is stored in AppData so it survives installer updates
+ *
+ * Light/Demo Mode: If light-mode.flag exists, everything is pre-bundled
+ * in the installer — no first-run setup needed at all.
  */
 export function isFirstRunNeeded(appRoot) {
+  // Light/Demo Mode: deps + model are bundled, skip first-run entirely
+  if (isLightMode(appRoot)) {
+    logger.info('Light/Demo Mode: all deps pre-bundled, skipping first-run setup');
+    // Create the flag file so future checks are instant
+    const flagFile = getFlagFilePath();
+    if (!fs.existsSync(flagFile)) {
+      createFlagFile(appRoot);
+    }
+    return false;
+  }
+
   const flagFile = getFlagFilePath();
   const exists = fs.existsSync(flagFile);
   logger.info('First-run check', { flagFile, exists, needed: !exists });
