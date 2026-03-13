@@ -12,12 +12,14 @@ Current cleanup steps (run in order, applied to both Str and Desc):
   5. cleanup_invisible_chars   - Auto-fix invisible Unicode characters (NBSP→space, delete zero-width)
   6. cleanup_hyphens           - Normalize Unicode hyphen lookalikes to ASCII hyphen-minus
   7. cleanup_ellipsis          - Normalize Unicode ellipsis (…) to three dots (non-CJK only)
-  8. cleanup_double_escaped    - Safe decode of &quot; &apos; &amp;ENTITY; (explicit allowlist)
+  8. cleanup_double_escaped    - Decode double-escaped entities (&lt;/&gt;/&quot;/&apos;/&amp;ENTITY;)
 
 Usage:
     from core.postprocess import run_all_postprocess
     fixed = run_all_postprocess(xml_path)
 """
+
+from __future__ import annotations
 
 import os
 import re
@@ -174,7 +176,6 @@ def _normalize_ellipsis(text: str) -> str:
 
 # --- Step 8: Safe double-escaped entity decode ---
 # Explicit allowlist approach: every decode pattern is complete and atomic.
-# &lt;/&gt; are NEVER touched here — Step 1 owns BR normalization exclusively.
 _SAFE_AMP_ENTITIES_RE = re.compile(
     r'&amp;(desc|nbsp|ensp|emsp|thinsp|hellip|bull|middot|lrm|rlm);',
     re.IGNORECASE,
@@ -185,19 +186,24 @@ def _decode_safe_entities(text: str) -> str:
     """Safely decode double-escaped XML entities.
 
     Decodes (explicit allowlist — no guessing):
+      - &lt; / &gt;    → < / >    (double-escaped on disk → decoded in memory)
       - &amp;desc;     → &desc;   (and other known named entities)
       - &quot;         → "        (standalone, no pairing risk)
       - &apos;         → '        (standalone, no pairing risk)
 
-    NOT decoded (owned by Step 1 or too dangerous):
-      - &lt; / &gt;    → Step 1 handles these as BR normalization
+    NOT decoded (too dangerous):
       - &amp;          → NOT blindly decoded (could create broken entities)
 
     Every pattern is complete and atomic. No partial decode possible.
     """
     # 1. Decode known &amp;ENTITY; compounds (explicit allowlist)
     text = _SAFE_AMP_ENTITIES_RE.sub(lambda m: f'&{m.group(1)};', text)
-    # 2. Decode &quot; and &apos; (standalone, no pairing risk)
+    # 2. Decode double-escaped &lt; and &gt; (safe: these can ONLY exist in
+    #    memory from &amp;lt; / &amp;gt; on disk. Step 1 already converted
+    #    br-tag cases, so remaining ones are standalone.)
+    text = text.replace('&lt;', '<')
+    text = text.replace('&gt;', '>')
+    # 3. Decode &quot; and &apos; (standalone, no pairing risk)
     text = text.replace('&quot;', '"')
     text = text.replace('&apos;', "'")
     return text
