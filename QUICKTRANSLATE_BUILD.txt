@@ -179,3 +179,4 @@ Build 053: rename CheckResults to CodeFormatIssue for pattern check output
 Build 054: markup contamination detection — HTML tags, lone brackets, double/triple-escaped entities
 Build 055: restore full markup detection + lone > check
 Build 056: fix false positives on XML angle brackets (from_xml gate)
+Build 057: postprocess step 8 — auto-fix double-escaped entities + from_xml false positive fix
