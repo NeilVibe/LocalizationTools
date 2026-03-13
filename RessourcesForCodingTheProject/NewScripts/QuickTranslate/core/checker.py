@@ -309,10 +309,10 @@ def check_text_integrity_in_file(xml_path: Path) -> list:
             str_text = _get_attr(elem, _STR_ATTRS).strip()
             desc_text = _get_attr(elem, _DESC_ATTRS).strip()
 
-            if str_text and is_text_integrity_issue(str_text):
+            if str_text and is_text_integrity_issue(str_text, from_xml=True):
                 findings.append(elem)
                 continue
-            if desc_text and is_text_integrity_issue(desc_text):
+            if desc_text and is_text_integrity_issue(desc_text, from_xml=True):
                 findings.append(elem)
     except Exception as e:
         logger.warning(f"Failed to parse {xml_path.name}: {e}")
@@ -702,7 +702,7 @@ def run_pattern_check(
         for elem in all_integrity:
             str_val = _get_attr(elem, _STR_ATTRS)
             desc_val = _get_attr(elem, _DESC_ATTRS)
-            reason = is_text_integrity_issue(str_val) or is_text_integrity_issue(desc_val) or "Unknown"
+            reason = is_text_integrity_issue(str_val, from_xml=True) or is_text_integrity_issue(desc_val, from_xml=True) or "Unknown"
             if reason.startswith('Broken') or reason.startswith('Truncated'):
                 sid = _get_attr(elem, _STRINGID_ATTRS)
                 str_origin = _get_attr(elem, _STRORIGIN_ATTRS)
@@ -715,7 +715,7 @@ def run_pattern_check(
         for elem in all_integrity:
             str_val = _get_attr(elem, _STR_ATTRS)
             desc_val = _get_attr(elem, _DESC_ATTRS)
-            reason = is_text_integrity_issue(str_val) or is_text_integrity_issue(desc_val) or "Unknown"
+            reason = is_text_integrity_issue(str_val, from_xml=True) or is_text_integrity_issue(desc_val, from_xml=True) or "Unknown"
             if not (reason.startswith('Broken') or reason.startswith('Truncated')):
                 sid = _get_attr(elem, _STRINGID_ATTRS)
                 str_origin = _get_attr(elem, _STRORIGIN_ATTRS)

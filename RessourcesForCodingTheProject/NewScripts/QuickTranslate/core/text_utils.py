@@ -204,13 +204,17 @@ def is_broken_linebreak(text: str) -> Optional[str]:
     return None
 
 
-def is_markup_contamination(text: str) -> Optional[str]:
+def is_markup_contamination(text: str, *, from_xml: bool = False) -> Optional[str]:
     """Check if text contains HTML/XML markup contamination.
 
-    After lxml parses XML, attribute values are unescaped. The ONLY valid
-    tag in game text is <br/> (and variants that postprocess normalizes).
-    Anything else — HTML tags, comments, double-escaped entities, or lone
-    angle brackets — indicates contamination that will break the game engine.
+    Group A (angle bracket checks) only runs for non-XML sources (e.g. Excel).
+    After lxml parses XML, any < or > in memory came from properly escaped
+    &lt;/&gt; in the file — legitimate game content like <!-- group names -->.
+    Group B (entity checks) always runs regardless of source.
+
+    Args:
+        text: Text to check.
+        from_xml: True if text came from lxml-parsed XML (skip Group A).
 
     Returns:
         Reason string if contamination found, None if clean.
@@ -218,32 +222,32 @@ def is_markup_contamination(text: str) -> Optional[str]:
     if not text:
         return None
 
-    # --- Group A: Angle bracket contamination ---
+    # --- Group A: Angle bracket contamination (Excel-sourced text only) ---
+    if not from_xml:
+        # A1: HTML comments <!-- ... -->
+        m = _HTML_COMMENT_RE.search(text)
+        if m:
+            snippet = m.group()[:40]
+            return f'HTML comment: {snippet}'
 
-    # A1: HTML comments <!-- ... -->
-    m = _HTML_COMMENT_RE.search(text)
-    if m:
-        snippet = m.group()[:40]
-        return f'HTML comment: {snippet}'
+        # A2: HTML/XML tags (exclude valid <br> variants)
+        for m in _HTML_TAG_RE.finditer(text):
+            tag_text = m.group()
+            if not _VALID_BR_RE.fullmatch(tag_text):
+                return f'HTML/XML tag: {tag_text[:40]}'
 
-    # A2: HTML/XML tags (exclude valid <br> variants)
-    for m in _HTML_TAG_RE.finditer(text):
-        tag_text = m.group()
-        if not _VALID_BR_RE.fullmatch(tag_text):
-            return f'HTML/XML tag: {tag_text[:40]}'
+        # A3: Lone < or > not part of <br/> (engine-breaking)
+        stripped = _VALID_BR_RE.sub('', text)
+        if '<' in stripped:
+            idx = stripped.index('<')
+            context = stripped[max(0, idx - 5):idx + 15]
+            return f'Lone < character: ...{context}...'
+        if '>' in stripped:
+            idx = stripped.index('>')
+            context = stripped[max(0, idx - 5):idx + 15]
+            return f'Lone > character: ...{context}...'
 
-    # A3: Lone < or > not part of <br/> (engine-breaking)
-    stripped = _VALID_BR_RE.sub('', text)
-    if '<' in stripped:
-        idx = stripped.index('<')
-        context = stripped[max(0, idx - 5):idx + 15]
-        return f'Lone < character: ...{context}...'
-    if '>' in stripped:
-        idx = stripped.index('>')
-        context = stripped[max(0, idx - 5):idx + 15]
-        return f'Lone > character: ...{context}...'
-
-    # --- Group B: Entity contamination (double-escaping artifacts) ---
+    # --- Group B: Entity contamination (always runs) ---
 
     # B1: Double-escaped XML entities (&lt; &gt; &amp; as literal text)
     m = _DOUBLE_ESCAPED_ENTITY_RE.search(text)
@@ -263,18 +267,23 @@ def is_markup_contamination(text: str) -> Optional[str]:
     return None
 
 
-def is_text_integrity_issue(text: str) -> Optional[str]:
+def is_text_integrity_issue(text: str, *, from_xml: bool = False) -> Optional[str]:
     """Check if text has integrity issues (encoding artifacts, bad chars).
 
     Catches corrupted text that should BLOCK transfer:
       - Broken <br/> tags (game-breaking)
       - Replacement character U+FFFD (encoding corruption)
       - Control characters (C0 range)
-      - Markup contamination (HTML tags, lone angle brackets, entities)
+      - Markup contamination (entities always; angle brackets only from Excel)
 
     Invisible characters (NBSP, zero-width space, BOM, bidi marks, etc.)
     are NOT blocked here — they are auto-cleaned by postprocess Step 5.
     Grey zone chars (ZWNJ, ZWJ) produce warnings but don't block.
+
+    Args:
+        text: Text to check.
+        from_xml: True if text came from lxml-parsed XML (skip angle bracket
+                  checks — those are legitimate escaped content).
 
     Returns:
         Reason string if issue found, None if clean.
@@ -296,8 +305,8 @@ def is_text_integrity_issue(text: str) -> Optional[str]:
     if m:
         return f'Control character U+{ord(m.group()):04X}'
 
-    # 4. Markup contamination (HTML tags, lone brackets, entities)
-    markup_issue = is_markup_contamination(text)
+    # 4. Markup contamination
+    markup_issue = is_markup_contamination(text, from_xml=from_xml)
     if markup_issue:
         return markup_issue
 

@@ -85,7 +85,7 @@ def parse_corrections_from_xml(
                     continue
 
                 # Text integrity check on Str (broken linebreaks, encoding, bad chars)
-                bad_integrity = is_text_integrity_issue(str_value)
+                bad_integrity = is_text_integrity_issue(str_value, from_xml=True)
                 if bad_integrity:
                     if integrity_report is not None:
                         integrity_report.append({
@@ -127,7 +127,7 @@ def parse_corrections_from_xml(
                         logger.debug("Neutralizing formula-like Desc in XML: StringID=%s reason=%s", string_id, bad_desc)
                     else:
                         # Text integrity check on Desc
-                        bad_desc_integrity = is_text_integrity_issue(desc_value)
+                        bad_desc_integrity = is_text_integrity_issue(desc_value, from_xml=True)
                         if bad_desc_integrity:
                             if integrity_report is not None:
                                 integrity_report.append({
