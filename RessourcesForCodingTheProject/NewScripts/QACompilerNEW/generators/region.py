@@ -85,6 +85,7 @@ class FactionNodeData:
     description: str       # From KnowledgeInfo.Desc (via KnowledgeKey)
     knowledge_key: str
     node_type: str         # Main, Sub, etc.
+    world_position: str = ""  # WorldPosition attribute from FactionNode
     source_file: str = ""
     children: List["FactionNodeData"] = field(default_factory=list)
 
@@ -245,6 +246,7 @@ def parse_faction_node_recursive(
     knowledge_key = elem.get("KnowledgeKey") or elem.get("RewardKnowledgeKey") or ""
     description = elem.get("Desc") or ""
     node_type = elem.get("Type") or ""
+    world_position = elem.get("WorldPosition") or ""
 
     # Resolve display name + description via KnowledgeInfo lookup
     if knowledge_key and knowledge_key.lower() in knowledge_lookup:
@@ -276,6 +278,7 @@ def parse_faction_node_recursive(
         description=description,
         knowledge_key=knowledge_key,
         node_type=node_type,
+        world_position=world_position,
         source_file=source_file,
     )
 
@@ -526,8 +529,8 @@ def parse_shop_file(shop_path: Path, global_seen: Set[str]) -> List[ShopGroup]:
 # ROW GENERATION
 # =============================================================================
 
-# Row format: (depth, text, style_type, is_description, source_file, data_type)
-RowItem = Tuple[int, str, str, bool, str, str]
+# Row format: (depth, text, style_type, is_description, source_file, data_type, world_position)
+RowItem = Tuple[int, str, str, bool, str, str, str]
 
 
 def emit_shop_rows(shop_groups: List[ShopGroup]) -> List[RowItem]:
@@ -535,11 +538,11 @@ def emit_shop_rows(shop_groups: List[ShopGroup]) -> List[RowItem]:
     rows: List[RowItem] = []
 
     for group in shop_groups:
-        rows.append((0, group.name, "ShopGroup", False, group.source_file, "ShopGroup"))
+        rows.append((0, group.name, "ShopGroup", False, group.source_file, "ShopGroup", ""))
         for stage in group.stages:
-            rows.append((1, stage.name, "ShopStage", False, stage.source_file, "ShopStage"))
+            rows.append((1, stage.name, "ShopStage", False, stage.source_file, "ShopStage", ""))
             if stage.description:
-                rows.append((2, stage.description, "Description", True, stage.source_file, "ShopStage.Desc"))
+                rows.append((2, stage.description, "Description", True, stage.source_file, "ShopStage.Desc", ""))
 
     return rows
 
@@ -595,17 +598,17 @@ def emit_faction_node_rows(
 
     # 1. Name (from KnowledgeInfo.Name — same as Region)
     style = f"FactionNode_{node.node_type}" if node.node_type else "FactionNode"
-    rows.append((depth, node.name, style, False, node.source_file, "KnowledgeInfo"))
+    rows.append((depth, node.name, style, False, node.source_file, "KnowledgeInfo", node.world_position))
 
     # 2. DisplayName (from RegionInfo — NEW)
     displayname = displayname_lookup.get(node.knowledge_key.lower(), "")
     if displayname and displayname != node.name:
-        rows.append((depth, displayname, style, False, node.source_file, "RegionInfo.DisplayName"))
+        rows.append((depth, displayname, style, False, node.source_file, "RegionInfo.DisplayName", node.world_position))
         _collect_korean_string(displayname)
 
     # 3. Description (from KnowledgeInfo.Desc — same as Region)
     if node.description:
-        rows.append((depth + 1, node.description, "Description", True, node.source_file, "KnowledgeInfo.Desc"))
+        rows.append((depth + 1, node.description, "Description", True, node.source_file, "KnowledgeInfo.Desc", node.world_position))
 
     # Children
     for child in node.children:
@@ -622,7 +625,7 @@ def emit_faction_rows(
     """Generate rows for a Faction and all its FactionNodes."""
     rows: List[RowItem] = []
 
-    rows.append((depth, faction.name, "Faction", False, faction.source_file, "Faction"))
+    rows.append((depth, faction.name, "Faction", False, faction.source_file, "Faction", ""))
 
     for node in faction.nodes:
         rows.extend(emit_faction_node_rows(node, depth + 1, displayname_lookup))
@@ -651,7 +654,7 @@ def emit_standalone_faction_rows(
     rows: List[RowItem] = []
 
     for faction in standalone_factions:
-        rows.append((0, faction.name, "Faction", False, faction.source_file, "Faction"))
+        rows.append((0, faction.name, "Faction", False, faction.source_file, "Faction", ""))
         for node in faction.nodes:
             rows.extend(emit_faction_node_rows(node, 1, displayname_lookup))
 
@@ -724,7 +727,7 @@ def write_sheet_content(
     if not is_eng:
         headers.append(sheet.cell(1, 4, f"Translation ({lang_code.upper()})"))
 
-    extra_headers = ["STATUS", "COMMENT", "STRINGID", "SCREENSHOT"]
+    extra_headers = ["WorldPosition", "STATUS", "COMMENT", "STRINGID", "SCREENSHOT"]
     start_col = len(headers) + 1
     for idx, name in enumerate(extra_headers, start=start_col):
         headers.append(sheet.cell(1, idx, name))
@@ -739,7 +742,7 @@ def write_sheet_content(
     # Data rows (raw data, no deduplication)
     r_idx = 2
 
-    for (depth, text, style_type, is_desc, source_file, data_type) in rows:
+    for (depth, text, style_type, is_desc, source_file, data_type, world_position) in rows:
         fill, font, row_height = get_style(style_type)
 
         # For ENG workbook: eng_consumer disambiguates StringIDs
@@ -787,22 +790,28 @@ def write_sheet_content(
             col_offset = 4
 
         # Extra columns
-        c_status = sheet.cell(r_idx, col_offset + 1, "")
+        c_worldpos = sheet.cell(r_idx, col_offset + 1, world_position)
+        c_worldpos.fill = fill
+        c_worldpos.font = font
+        c_worldpos.alignment = Alignment(horizontal="center", vertical="center")
+        c_worldpos.border = THIN_BORDER
+
+        c_status = sheet.cell(r_idx, col_offset + 2, "")
         c_status.fill = fill
         c_status.alignment = Alignment(horizontal="center", vertical="center")
         c_status.border = THIN_BORDER
 
-        c_comment = sheet.cell(r_idx, col_offset + 2, "")
+        c_comment = sheet.cell(r_idx, col_offset + 3, "")
         c_comment.fill = fill
         c_comment.border = THIN_BORDER
 
-        c_stringid = sheet.cell(r_idx, col_offset + 3, sid_other if not is_eng else sid_eng)
+        c_stringid = sheet.cell(r_idx, col_offset + 4, sid_other if not is_eng else sid_eng)
         c_stringid.fill = fill
         c_stringid.font = Font(bold=True)
         c_stringid.border = THIN_BORDER
         c_stringid.number_format = '@'
 
-        c_screenshot = sheet.cell(r_idx, col_offset + 4, "")
+        c_screenshot = sheet.cell(r_idx, col_offset + 5, "")
         c_screenshot.fill = fill
         c_screenshot.border = THIN_BORDER
 
@@ -815,7 +824,7 @@ def write_sheet_content(
     last_row = r_idx - 1
 
     # Column widths
-    widths = [18, 40, 80] + ([] if is_eng else [80]) + [15, 70, 25, 25]
+    widths = [18, 40, 80] + ([] if is_eng else [80]) + [30, 15, 70, 25, 25]
     for idx, w in enumerate(widths, start=1):
         sheet.column_dimensions[get_column_letter(idx)].width = w
 
@@ -824,7 +833,7 @@ def write_sheet_content(
         sheet.column_dimensions["C"].hidden = True
 
     # Status dropdown
-    status_col = 4 if is_eng else 5
+    status_col = 5 if is_eng else 6
     dv = DataValidation(
         type="list",
         formula1=f'"{",".join(STATUS_OPTIONS)}"',
