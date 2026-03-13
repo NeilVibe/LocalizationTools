@@ -1657,6 +1657,318 @@
         animation: none !important;
         height: var(--h, 16px) !important;
       }
+
+      .orbital-ring,
+      .orbital-center {
+        animation: none !important;
+      }
+
+      .orbital-satellite,
+      .stat-card,
+      .tech-pill,
+      .closing-main,
+      .closing-sub,
+      .closing-logo {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+    }
+
+    /* ==========================================================================
+       SECTION 10: TOOL ARSENAL (ORBITAL)
+       ========================================================================== */
+    .arsenal-section {
+      min-height: 100vh;
+      padding: 120px 5vw;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .arsenal-header {
+      text-align: center;
+      margin-bottom: 80px;
+    }
+
+    .orbital-container {
+      position: relative;
+      width: min(700px, 85vw);
+      height: min(700px, 85vw);
+      margin: 0 auto;
+    }
+
+    @keyframes orbitalSpin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    .orbital-ring {
+      position: absolute;
+      inset: 0;
+      animation: orbitalSpin 90s linear infinite;
+    }
+
+    /* Connection lines SVG */
+    .orbital-lines {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .orbital-line {
+      stroke: var(--primary);
+      stroke-width: 1;
+      opacity: 0.25;
+      stroke-dasharray: 6 4;
+    }
+
+    /* Center hub */
+    .orbital-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(99, 102, 241, 0.15);
+      border: 2px solid rgba(99, 102, 241, 0.5);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 0 60px rgba(99, 102, 241, 0.35), 0 0 120px rgba(99, 102, 241, 0.12);
+      z-index: 3;
+      /* Counter-rotate so text stays upright */
+      animation: orbitalSpin 90s linear infinite reverse;
+    }
+
+    .orbital-center-name {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 18px;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+
+    .orbital-center-desc {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    /* Satellite tools */
+    .orbital-satellite {
+      position: absolute;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      opacity: 0;
+      transform: scale(0.3);
+      transition: box-shadow 0.3s;
+      /* Counter-rotate so text stays upright */
+      animation: orbitalSpin 90s linear infinite reverse;
+    }
+
+    .orbital-satellite:hover {
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
+    }
+
+    .orbital-satellite-name {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 11px;
+      color: #fff;
+      margin-bottom: 2px;
+      line-height: 1.2;
+    }
+
+    .orbital-satellite-desc {
+      font-size: 9px;
+      color: var(--text-dim);
+      line-height: 1.3;
+    }
+
+    @media (max-width: 600px) {
+      .orbital-container {
+        width: 90vw;
+        height: 90vw;
+      }
+      .orbital-center {
+        width: 100px;
+        height: 100px;
+      }
+      .orbital-center-name { font-size: 14px; }
+      .orbital-satellite {
+        width: 80px;
+        height: 80px;
+      }
+      .orbital-satellite-name { font-size: 9px; }
+      .orbital-satellite-desc { font-size: 8px; }
+    }
+
+    /* ==========================================================================
+       SECTION 11: THE BUILDER (STATS)
+       ========================================================================== */
+    .builder-section {
+      min-height: 100vh;
+      padding: 120px 5vw;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .builder-header {
+      text-align: center;
+      margin-bottom: 72px;
+    }
+
+    .builder-glow {
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      width: 600px;
+      height: 600px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+      animation: builderPulse 6s ease-in-out infinite;
+    }
+
+    @keyframes builderPulse {
+      0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+      50%      { opacity: 1;   transform: translate(-50%, -50%) scale(1.12); }
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 32px;
+      max-width: 1100px;
+      margin: 0 auto 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .stat-card {
+      text-align: center;
+      padding: 32px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border);
+      opacity: 0;
+      transform: translateY(40px);
+    }
+
+    .stat-card .stat-number {
+      font-size: clamp(36px, 5vw, 56px);
+      background: linear-gradient(135deg, var(--primary-light), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stat-card .stat-label {
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-top: 8px;
+    }
+
+    .tech-stack-row {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .tech-pill {
+      padding: 10px 24px;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    @media (max-width: 1024px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 500px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+      .stat-card { padding: 20px 12px; }
+    }
+
+    /* ==========================================================================
+       SECTION 12: CLOSING
+       ========================================================================== */
+    .closing-section {
+      min-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 5vw 160px;
+      position: relative;
+    }
+
+    .closing-section::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40%;
+      background: linear-gradient(to bottom, transparent, #050508);
+      pointer-events: none;
+    }
+
+    .closing-main {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: clamp(32px, 5vw, 56px);
+      margin-bottom: 20px;
+      opacity: 0;
+    }
+
+    .closing-sub {
+      font-size: clamp(14px, 2vw, 18px);
+      color: var(--text-dim);
+      margin-bottom: 48px;
+      opacity: 0;
+    }
+
+    .closing-logo {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: clamp(40px, 7vw, 80px);
+      background: linear-gradient(135deg, var(--primary-light), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      opacity: 0;
+      filter: drop-shadow(0 0 40px rgba(99, 102, 241, 0.3));
     }
   </style>
 </head>
@@ -2274,17 +2586,128 @@
     </div>
   </section>
 
-  <!-- Section 10: Testimonials -->
+  <!-- Section 10: Tool Arsenal -->
+  <section class="arsenal-section" id="toolArsenal">
+    <div class="arsenal-header">
+      <h2 class="section-title">하나가 아닙니다. 전체 생태계입니다.</h2>
+    </div>
 
-  <!-- Section 11: Roadmap -->
+    <div class="orbital-container" id="orbitalContainer">
+      <!-- SVG connection lines -->
+      <svg class="orbital-lines" id="orbitalLines" viewBox="0 0 700 700">
+        <line class="orbital-line" x1="350" y1="350" x2="350" y2="45" />
+        <line class="orbital-line" x1="350" y1="350" x2="565" y2="133" />
+        <line class="orbital-line" x1="350" y1="350" x2="655" y2="350" />
+        <line class="orbital-line" x1="350" y1="350" x2="565" y2="567" />
+        <line class="orbital-line" x1="350" y1="350" x2="350" y2="655" />
+        <line class="orbital-line" x1="350" y1="350" x2="135" y2="567" />
+        <line class="orbital-line" x1="350" y1="350" x2="45" y2="350" />
+        <line class="orbital-line" x1="350" y1="350" x2="135" y2="133" />
+      </svg>
 
-  <!-- Section 12: CTA / Footer -->
+      <!-- Rotating ring holds satellites -->
+      <div class="orbital-ring" id="orbitalRing">
+        <!-- 8 satellites positioned via JS for perfect circle -->
+        <div class="orbital-satellite" data-idx="0">
+          <span class="orbital-satellite-name">QuickTranslate</span>
+          <span class="orbital-satellite-desc">Excel↔XML 전송</span>
+        </div>
+        <div class="orbital-satellite" data-idx="1">
+          <span class="orbital-satellite-name">QACompiler</span>
+          <span class="orbital-satellite-desc">데이터시트 생성</span>
+        </div>
+        <div class="orbital-satellite" data-idx="2">
+          <span class="orbital-satellite-name">LanguageData Exporter</span>
+          <span class="orbital-satellite-desc">XML→Excel 분류</span>
+        </div>
+        <div class="orbital-satellite" data-idx="3">
+          <span class="orbital-satellite-name">MapData Generator</span>
+          <span class="orbital-satellite-desc">데이터 시각화</span>
+        </div>
+        <div class="orbital-satellite" data-idx="4">
+          <span class="orbital-satellite-name">ExtractAnything</span>
+          <span class="orbital-satellite-desc">추출 도구</span>
+        </div>
+        <div class="orbital-satellite" data-idx="5">
+          <span class="orbital-satellite-name">QuickSearch</span>
+          <span class="orbital-satellite-desc">용어집 QA</span>
+        </div>
+        <div class="orbital-satellite" data-idx="6">
+          <span class="orbital-satellite-name">KR Similar</span>
+          <span class="orbital-satellite-desc">유사 문자열</span>
+        </div>
+        <div class="orbital-satellite" data-idx="7">
+          <span class="orbital-satellite-name">XLS Transfer</span>
+          <span class="orbital-satellite-desc">일괄 전송</span>
+        </div>
+      </div>
 
-  <!-- Section 10: Testimonials -->
+      <!-- Center hub (outside ring so it doesn't rotate with it — has own counter-rotate) -->
+      <div class="orbital-center">
+        <span class="orbital-center-name">LocaNext</span>
+        <span class="orbital-center-desc">메인 플랫폼</span>
+      </div>
+    </div>
+  </section>
 
-  <!-- Section 11: Roadmap -->
+  <!-- Section 11: The Builder (Stats) -->
+  <section class="builder-section" id="theBuilder">
+    <div class="builder-glow"></div>
+    <div class="builder-header">
+      <h2 class="section-title">이 모든 것을 한 사람이 만들었습니다.<br>AI와 함께.</h2>
+    </div>
 
-  <!-- Section 12: CTA / Footer -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-number" data-count="912">0</div>
+        <div class="stat-label">테스트 통과</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" data-count="161">0</div>
+        <div class="stat-label">버그 수정 (미해결: 0)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" data-count="60">0</div>
+        <div class="stat-label">빌드 릴리스</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" data-count="9">0</div>
+        <div class="stat-label">도구</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" data-count="55">0</div>
+        <div class="stat-label">API 엔드포인트</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" data-count="13">0</div>
+        <div class="stat-label">언어 지원</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" data-count="50" data-suffix="만+">0</div>
+        <div class="stat-label">행 처리</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" data-count="70" data-suffix="만+">0</div>
+        <div class="stat-label">TM 엔트리</div>
+      </div>
+    </div>
+
+    <div class="tech-stack-row" id="techStack">
+      <span class="tech-pill">PostgreSQL</span>
+      <span class="tech-pill">FastAPI</span>
+      <span class="tech-pill">Svelte 5</span>
+      <span class="tech-pill">Electron</span>
+      <span class="tech-pill">FAISS</span>
+      <span class="tech-pill">Model2Vec</span>
+    </div>
+  </section>
+
+  <!-- Section 12: Closing -->
+  <section class="closing-section" id="closingSection">
+    <div class="closing-main">이것이 로컬라이제이션의 미래입니다.</div>
+    <div class="closing-sub">그리고 이 웹페이지도 AI가 만들었습니다.</div>
+    <div class="closing-logo">LocaNext</div>
+  </section>
 
 
   <!-- ========================================================================
@@ -2906,6 +3329,149 @@
               });
             });
           }
+        }
+      });
+    })();
+
+    /* -----------------------------------------------------------------------
+       SECTION 10: TOOL ARSENAL — ORBITAL LAYOUT
+       ----------------------------------------------------------------------- */
+    (function initToolArsenal() {
+      var container = document.getElementById('orbitalContainer');
+      var satellites = document.querySelectorAll('.orbital-satellite');
+      var lines = document.querySelectorAll('.orbital-line');
+      if (!container || !satellites.length) return;
+
+      // Position satellites in a circle
+      var containerSize = container.offsetWidth || 700;
+      var radius = containerSize * 0.43; // distance from center
+      var satSize = satellites[0].offsetWidth || 110;
+      var cx = containerSize / 2;
+      var cy = containerSize / 2;
+
+      satellites.forEach(function(sat, i) {
+        var angle = (i / 8) * Math.PI * 2 - Math.PI / 2; // start from top
+        var x = cx + radius * Math.cos(angle) - satSize / 2;
+        var y = cy + radius * Math.sin(angle) - satSize / 2;
+        sat.style.left = x + 'px';
+        sat.style.top = y + 'px';
+      });
+
+      // Animate satellites flying in
+      ScrollTrigger.create({
+        trigger: '#toolArsenal',
+        start: 'top 70%',
+        once: true,
+        onEnter: function() {
+          satellites.forEach(function(sat, i) {
+            gsap.to(sat, {
+              opacity: 1,
+              scale: 1,
+              duration: 0.6,
+              delay: i * 0.12,
+              ease: 'back.out(1.4)',
+              onComplete: function() {
+                sat.style.boxShadow = '0 0 20px rgba(99,102,241,0.2)';
+              }
+            });
+          });
+
+          // Draw connection lines after satellites are in
+          lines.forEach(function(line, i) {
+            var len = line.getTotalLength ? line.getTotalLength() : 300;
+            line.style.strokeDasharray = len;
+            line.style.strokeDashoffset = len;
+            gsap.to(line, {
+              strokeDashoffset: 0,
+              duration: 0.5,
+              delay: 1.2 + i * 0.06,
+              ease: 'power2.out'
+            });
+          });
+        }
+      });
+    })();
+
+    /* -----------------------------------------------------------------------
+       SECTION 11: THE BUILDER — STATS COUNT-UP
+       ----------------------------------------------------------------------- */
+    (function initBuilderStats() {
+      var statCards = document.querySelectorAll('.stat-card');
+      var techPills = document.querySelectorAll('.tech-pill');
+      if (!statCards.length) return;
+
+      function countUp(el, target, suffix) {
+        var duration = 2000;
+        var start = 0;
+        var startTime = null;
+        suffix = suffix || '+';
+
+        function step(timestamp) {
+          if (!startTime) startTime = timestamp;
+          var progress = Math.min((timestamp - startTime) / duration, 1);
+          // Ease out quad
+          var eased = 1 - (1 - progress) * (1 - progress);
+          var current = Math.floor(eased * target);
+          el.textContent = current.toLocaleString() + suffix;
+          if (progress < 1) {
+            requestAnimationFrame(step);
+          }
+        }
+        requestAnimationFrame(step);
+      }
+
+      ScrollTrigger.create({
+        trigger: '#statsGrid',
+        start: 'top 75%',
+        once: true,
+        onEnter: function() {
+          statCards.forEach(function(card, i) {
+            gsap.to(card, {
+              opacity: 1,
+              y: 0,
+              duration: 0.6,
+              delay: i * 0.1,
+              ease: 'power3.out',
+              onStart: function() {
+                var numEl = card.querySelector('.stat-number');
+                var target = parseInt(numEl.getAttribute('data-count'), 10);
+                var suffix = numEl.getAttribute('data-suffix') || '+';
+                countUp(numEl, target, suffix);
+              }
+            });
+          });
+
+          // Tech stack pills stagger
+          techPills.forEach(function(pill, i) {
+            gsap.to(pill, {
+              opacity: 1,
+              y: 0,
+              duration: 0.5,
+              delay: 1.0 + i * 0.1,
+              ease: 'power2.out'
+            });
+          });
+        }
+      });
+    })();
+
+    /* -----------------------------------------------------------------------
+       SECTION 12: CLOSING
+       ----------------------------------------------------------------------- */
+    (function initClosing() {
+      var main = document.querySelector('.closing-main');
+      var sub = document.querySelector('.closing-sub');
+      var logo = document.querySelector('.closing-logo');
+      if (!main) return;
+
+      ScrollTrigger.create({
+        trigger: '#closingSection',
+        start: 'top 75%',
+        once: true,
+        onEnter: function() {
+          gsap.to(main, { opacity: 1, duration: 2, ease: 'power2.out' });
+          gsap.to(sub,  { opacity: 1, duration: 2, delay: 0.6, ease: 'power2.out' });
+          gsap.to(logo, { opacity: 1, duration: 2, delay: 1.2, ease: 'power2.out' });
         }
       });
     })();
