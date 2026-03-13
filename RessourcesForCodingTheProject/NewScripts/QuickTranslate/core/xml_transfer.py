@@ -65,7 +65,7 @@ def _aggregate_postprocess_stats(target_stats: dict, pp_result: dict):
     """Merge per-file postprocess result into running totals."""
     for key in ("newlines_fixed", "empty_strorigin_cleaned", "no_translation_replaced",
                 "apostrophes_normalized", "hyphens_normalized", "ellipsis_normalized",
-                "entities_decoded", "spaces_normalized", "invisibles_removed"):
+                "spaces_normalized", "invisibles_removed"):
         target_stats[key] += pp_result.get(key, 0)
     for name, cnt in pp_result.get("invisible_detail", {}).items():
         target_stats["invisible_detail"][name] = target_stats["invisible_detail"].get(name, 0) + cnt
@@ -1160,7 +1160,6 @@ def _fast_folder_merge(
             "apostrophes_normalized": 0,
             "hyphens_normalized": 0,
             "ellipsis_normalized": 0,
-            "entities_decoded": 0,
             "spaces_normalized": 0,
             "invisibles_removed": 0,
             "invisible_detail": {},
@@ -1686,7 +1685,6 @@ def transfer_folder_to_folder(
             "apostrophes_normalized": 0,
             "hyphens_normalized": 0,
             "ellipsis_normalized": 0,
-            "entities_decoded": 0,
             "spaces_normalized": 0,
             "invisibles_removed": 0,
             "invisible_detail": {},

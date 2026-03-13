@@ -12,7 +12,6 @@ Current cleanup steps (run in order, applied to both Str and Desc):
   5. cleanup_invisible_chars   - Auto-fix invisible Unicode characters (NBSP→space, delete zero-width)
   6. cleanup_hyphens           - Normalize Unicode hyphen lookalikes to ASCII hyphen-minus
   7. cleanup_ellipsis          - Normalize Unicode ellipsis (…) to three dots (non-CJK only)
-  8. cleanup_double_escaped    - Decode double-escaped XML entities (&lt; &gt; &amp; &quot; &apos;)
 
 Usage:
     from core.postprocess import run_all_postprocess
@@ -170,32 +169,6 @@ def _normalize_hyphens(text: str) -> str:
 def _normalize_ellipsis(text: str) -> str:
     """Replace Unicode horizontal ellipsis (U+2026) with three ASCII dots."""
     return text.replace('\u2026', '...')
-
-
-# --- Step 8: Double-escaped XML entity decode ---
-# Only the 5 XML entities. Order matters: &amp; LAST to avoid double-decode.
-_DOUBLE_ESCAPE_MAP = [
-    ('&lt;', '<'),
-    ('&gt;', '>'),
-    ('&quot;', '"'),
-    ('&apos;', "'"),
-    ('&amp;', '&'),     # MUST be last — otherwise &amp;lt; → &lt; → < in one pass
-]
-
-
-def _decode_double_escaped(text: str) -> str:
-    """Decode one level of double-escaped XML entities.
-
-    After lxml parse, double-escaped entities appear as literal text:
-      &amp;amp;desc; → &amp;desc; (in memory) → &desc; (after decode)
-      &amp;quot;X&amp;quot; → &quot;X&quot; (in memory) → "X" (after decode)
-
-    Only decodes the 5 XML entities: &lt; &gt; &amp; &quot; &apos;
-    Named HTML entities (&nbsp; etc.) are NOT decoded — those are different contamination.
-    """
-    for escaped, decoded in _DOUBLE_ESCAPE_MAP:
-        text = text.replace(escaped, decoded)
-    return text
 
 
 def _extract_language_from_path(xml_path: Path) -> str:
@@ -789,7 +762,6 @@ def run_all_postprocess_on_tree(root, language: str = "") -> dict:
         "apostrophes_normalized": 0,
         "hyphens_normalized": 0,
         "ellipsis_normalized": 0,
-        "entities_decoded": 0,
         "spaces_normalized": 0,
         "invisibles_removed": 0,
         "invisible_detail": {},
@@ -916,24 +888,6 @@ def run_all_postprocess_on_tree(root, language: str = "") -> dict:
                     loc.set(desc_attr_7, desc_ell_normalized)
                     result["ellipsis_normalized"] += 1
                     result["changed"] = True
-
-        # --- Step 8: Decode double-escaped XML entities in Str ---
-        str_attr_8, str_val_8 = _get_attr(loc, STR_ATTRS)
-        if str_val_8 is not None:
-            ent_decoded = _decode_double_escaped(str_val_8)
-            if ent_decoded != str_val_8:
-                loc.set(str_attr_8, ent_decoded)
-                result["entities_decoded"] += 1
-                result["changed"] = True
-
-        # --- Step 8b: Decode double-escaped XML entities in Desc ---
-        desc_attr_8, desc_val_8 = _get_attr(loc, DESC_ATTRS)
-        if desc_val_8 is not None:
-            desc_ent_decoded = _decode_double_escaped(desc_val_8)
-            if desc_ent_decoded != desc_val_8:
-                loc.set(desc_attr_8, desc_ent_decoded)
-                result["entities_decoded"] += 1
-                result["changed"] = True
 
         # --- Step 5: Invisible character cleanup (Str) ---
         str_attr_5, str_val_5 = _get_attr(loc, STR_ATTRS)

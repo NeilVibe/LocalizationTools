@@ -249,8 +249,10 @@ def is_markup_contamination(text: str, *, from_xml: bool = False) -> Optional[st
 
     # --- Group B: Entity contamination (always runs) ---
 
-    # B1: Double-escaped XML entities (&lt; &gt; &amp; &quot; &apos;)
-    # NO LONGER BLOCKS — postprocess step 8 auto-fixes these.
+    # B1: Double-escaped XML entities (&lt; &gt; &amp; as literal text)
+    m = _DOUBLE_ESCAPED_ENTITY_RE.search(text)
+    if m:
+        return f'Double-escaped entity: {m.group()}'
 
     # B2: Named HTML entities as literal text (&nbsp; &copy; etc.)
     m = _NAMED_HTML_ENTITY_RE.search(text)
