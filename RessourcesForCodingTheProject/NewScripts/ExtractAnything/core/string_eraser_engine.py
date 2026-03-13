@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 from pathlib import Path
 
@@ -134,6 +135,11 @@ def erase_from_xml(
     if not report:
         return report
 
+    # No actual erasures — skip backup and write
+    has_erasures = any(r["status"] == "ERASED" for r in report)
+    if not has_erasures:
+        return report
+
     # Backup before destructive write — abort if backup fails
     bak_path = target_path.with_suffix(target_path.suffix + ".bak")
     try:
@@ -197,6 +203,80 @@ def erase_folder(
     return total_erased, full_report
 
 
+def erase_folder_from_file(
+    source_path: Path,
+    target_folder: Path,
+    *,
+    log_fn=None,
+    progress_fn=None,
+) -> tuple[int, list[dict]]:
+    """Erase entries matching *source_path* from all XMLs in *target_folder*.
+
+    Source keys are loaded from a single XML file, then each target XML
+    in the folder is processed individually.
+    Returns ``(total_erased, full_report)``.
+    """
+    if log_fn:
+        log_fn("Loading erase keys from source file...", "header")
+    keys, nospace_keys = load_source_keys_from_xml(source_path)
+
+    if not keys:
+        if log_fn:
+            log_fn("No erase keys found in source file.", "warning")
+        return 0, []
+
+    if log_fn:
+        log_fn(f"Source: {source_path.name} — {len(keys)} erase keys")
+        log_fn(f"Target folder: {target_folder}")
+
+    xml_files = sorted(target_folder.rglob("*.xml"))
+    # Skip source file if it lives inside target folder
+    xml_files = [
+        f for f in xml_files
+        if not _is_same_file(source_path, f)
+    ]
+
+    total = len(xml_files)
+    if not xml_files:
+        if log_fn:
+            log_fn("No XML files in target folder.", "warning")
+        return 0, []
+
+    if log_fn:
+        log_fn(f"Found {total} target XML files. Scanning...")
+
+    full_report: list[dict] = []
+    total_erased = 0
+
+    for i, xml_path in enumerate(xml_files, 1):
+        if progress_fn:
+            progress_fn(i * 100 // total)
+
+        file_report = erase_from_xml(xml_path, keys, nospace_keys, log_fn=log_fn)
+        if file_report:
+            for r in file_report:
+                r["target_file"] = xml_path.name
+            erased = sum(1 for r in file_report if r["status"] == "ERASED")
+            total_erased += erased
+            full_report.extend(file_report)
+            if log_fn:
+                log_fn(f"  {xml_path.name}: {erased} erased")
+
+    return total_erased, full_report
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _is_same_file(a: Path, b: Path) -> bool:
+    """Check if two paths point to the same file (handles symlinks, case)."""
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
 def write_erase_report(report: list[dict], output_dir: Path) -> Path:
     """Write a plain-text erase report."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -206,7 +286,8 @@ def write_erase_report(report: list[dict], output_dir: Path) -> Path:
 
     lines = [f"Erase Report – {ts}", "=" * 60, ""]
     for r in report:
-        lines.append(f"  {r['string_id']:40s} {r['status']:15s} {r['old_value']}")
+        target = r.get("target_file", "")
+        lines.append(f"  {r['string_id']:40s} {r['status']:15s} {r['old_value']:60s} {target}")
     lines.append("")
     lines.append(f"Total: {len(report)} entries processed")
 

@@ -13,3 +13,4 @@ Build 022: fix LocStr stacking with etree.indent
 Build 023: proper LocStr stacking (detect indent from target), remove .bak
 Build 024: StrOrigin Diff mode (5th compare mode, word-level difflib)
 Build 025: XML Tools tab — 8 operations grafted from QSS (restore, swap, extract, dual-extract, erase, modify, stack, replace-by-SID)
+Build 026: Str Add/Erase — file source + folder target (apply master XML to entire LOC folder)
