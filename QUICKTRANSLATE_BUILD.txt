@@ -177,3 +177,4 @@ Build 051: code review fixes — bidi chars, postprocess attr bug, failure repor
 Build 052: auto-fix ellipsis (… → ...) for non-CJK + clean failure report (core attrs only)
 Build 053: rename CheckResults to CodeFormatIssue for pattern check output
 Build 054: markup contamination detection — HTML tags, lone brackets, double/triple-escaped entities
+Build 055: restore full markup detection + lone > check
