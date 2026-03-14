@@ -2571,6 +2571,17 @@
                   onmouseenter={() => handleCellMouseEnter(row, 'source')}
                 >
                   <span class="cell-content"><ColorText text={formatGridText(row.source) || ""} /></span>
+                  <!-- CTX-07: Translation source badge (AI/TM indicator) -->
+                  {#if row.translation_source === 'ai'}
+                    <span class="translation-source-badge ai" title="AI Translated">
+                      <MachineLearningModel size={10} />
+                      <span class="badge-text">AI</span>
+                    </span>
+                  {:else if row.translation_source === 'tm'}
+                    <span class="translation-source-badge tm" title="TM Match">
+                      <span class="badge-text">TM</span>
+                    </span>
+                  {/if}
                 </div>
 
                 <!-- Target (always visible, EDITABLE) -->
@@ -3932,6 +3943,43 @@
 
   .ai-badge:hover {
     opacity: 1;
+  }
+
+  /* CTX-07: Translation source badge (AI/TM indicator in source cell) */
+  .translation-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    vertical-align: middle;
+    flex-shrink: 0;
+    opacity: 0.85;
+    transition: opacity 0.15s ease;
+  }
+
+  .translation-source-badge:hover {
+    opacity: 1;
+  }
+
+  .translation-source-badge.ai {
+    background: rgba(139, 92, 246, 0.15);
+    color: #8b5cf6;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+  }
+
+  .translation-source-badge.tm {
+    background: rgba(15, 98, 254, 0.12);
+    color: #0f62fe;
+    border: 1px solid rgba(15, 98, 254, 0.25);
+  }
+
+  .translation-source-badge .badge-text {
+    line-height: 1;
   }
 
   /* P4: Semantic search no-TM message */

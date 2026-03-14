@@ -17,6 +17,8 @@ class RowResponse(BaseModel):
     # QA fields (P2: Auto-LQA)
     qa_checked_at: Optional[datetime] = None
     qa_flag_count: int = 0
+    # CTX-07: Translation source indicator ("human", "ai", "tm", or null)
+    translation_source: Optional[str] = None
 
     class Config:
         from_attributes = True
