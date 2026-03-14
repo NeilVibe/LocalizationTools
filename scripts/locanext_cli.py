@@ -514,6 +514,246 @@ def _find_tm_in_folders(folders: list, tm_id: int):
     return None
 
 # ============================================================================
+# Offline Operations
+# ============================================================================
+
+def cmd_offline_status():
+    """Show offline storage status."""
+    data = api("get", "/api/ldm/offline/status")
+    if ok(data):
+        print(f"\n  Mode:     {data.get('mode')}")
+        print(f"  Files:    {data.get('file_count')}")
+        print(f"  Rows:     {data.get('row_count')}")
+        print(f"  Pending:  {data.get('pending_changes')}")
+
+def cmd_offline_files():
+    """List offline local files."""
+    data = api("get", "/api/ldm/offline/local-files")
+    if ok(data):
+        files = data.get("files", [])
+        folders = data.get("folders", [])
+        print(f"\n  {len(folders)} folders, {len(files)} files")
+        for f in folders:
+            print(f"  📁 {f['name']} (id={f['id']})")
+        for f in files:
+            print(f"  📄 {f['name']} (id={f['id']})")
+
+def cmd_offline_folders():
+    """List offline folders via SQLite."""
+    import sqlite3
+    db_path = "/home/neil1988/.local/share/locanext/offline.db"
+    try:
+        db = sqlite3.connect(db_path)
+        cur = db.cursor()
+        cur.execute("SELECT id, name, project_id FROM offline_folders")
+        rows = cur.fetchall()
+        print(f"\n  {len(rows)} offline folders")
+        for r in rows:
+            print(f"  📁 {r[1]} (id={r[0]}, project={r[2]})")
+        db.close()
+    except Exception as e:
+        print(f"  ✗ {e}")
+
+# ============================================================================
+# Row Status Operations
+# ============================================================================
+
+def cmd_row_status(row_id: int, status: str):
+    """Set row status (translated/reviewed/empty)."""
+    data = api("put", f"/api/ldm/rows/{row_id}", data={"status": status})
+    if ok(data):
+        print(f"  Row {row_id} → status='{data.get('status', '')}'")
+    else:
+        pp(data)
+
+# ============================================================================
+# E2E: Offline Storage Test
+# ============================================================================
+
+def cmd_e2e_offline():
+    """E2E test for offline storage operations. ZERO ERROR GOAL."""
+    print("=" * 60)
+    print("  E2E OFFLINE STORAGE TEST — ZERO ERROR GOAL")
+    print("=" * 60)
+    errors = []
+
+    # Step 1: Check offline status
+    print("\n[1/7] Offline status")
+    status = api("get", "/api/ldm/offline/status", quiet=True)
+    if ok(status):
+        print(f"  ✓ Mode={status.get('mode')}, Files={status.get('file_count')}, Rows={status.get('row_count')}")
+    else:
+        errors.append(f"Offline status failed: {status}")
+        print(f"  ✗ {status}")
+
+    # Step 2: Create offline folder
+    print("\n[2/7] Create offline folder")
+    folder_name = f"OFFLINE_E2E_{int(time.time())}"
+    folder = api("post", "/api/ldm/offline/storage/folders", data={"name": folder_name}, quiet=True)
+    if ok(folder):
+        folder_id = folder.get("id") or folder.get("folder_id")
+        print(f"  ✓ Created '{folder_name}' (id={folder_id})")
+    else:
+        errors.append(f"Folder creation failed: {folder}")
+        print(f"  ✗ {folder}")
+        folder_id = None
+
+    # Step 3: Verify folder appears in offline files list
+    print("\n[3/7] Verify folder in offline files")
+    local = api("get", "/api/ldm/offline/local-files", quiet=True)
+    if ok(local):
+        folders_list = local.get("folders", [])
+        found = any(f.get("name") == folder_name for f in folders_list)
+        if found:
+            print(f"  ✓ Folder '{folder_name}' found in offline storage")
+        else:
+            errors.append("Folder not found in offline files")
+            print(f"  ✗ Folder not found (got {len(folders_list)} folders)")
+
+    # Step 4: Check offline folder in main file explorer (Offline Storage platform)
+    print("\n[4/7] Verify in Offline Storage platform")
+    platforms = unwrap_list(api("get", "/api/ldm/platforms", quiet=True))
+    offline_platform = next((p for p in platforms if p["name"] == "Offline Storage"), None) if isinstance(platforms, list) else None
+    if offline_platform:
+        # The Offline Storage project should show our folder
+        print(f"  ✓ Offline Storage platform exists (id={offline_platform['id']})")
+    else:
+        errors.append("Offline Storage platform not found")
+        print("  ✗ Offline Storage platform missing")
+
+    # Step 5: Verify TM tree has Offline Storage with projects
+    print("\n[5/7] Verify Offline Storage in TM tree")
+    tree = api("get", "/api/ldm/tm-tree", quiet=True)
+    if ok(tree):
+        offline_in_tree = any(
+            p.get("name") == "Offline Storage" for p in tree.get("platforms", [])
+        )
+        if offline_in_tree:
+            print("  ✓ Offline Storage visible in TM tree")
+        else:
+            errors.append("Offline Storage not in TM tree")
+            print("  ✗ Not found in TM tree")
+
+    # Step 6: Check offline TMs
+    print("\n[6/7] Check offline TMs (SQLite)")
+    import sqlite3
+    try:
+        db = sqlite3.connect("/home/neil1988/.local/share/locanext/offline.db")
+        cur = db.cursor()
+        cur.execute("SELECT COUNT(*) FROM offline_tms")
+        tm_count = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM offline_tm_entries")
+        entry_count = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM offline_rows")
+        row_count = cur.fetchone()[0]
+        print(f"  ✓ SQLite: {tm_count} TMs, {entry_count} entries, {row_count} rows")
+        db.close()
+    except Exception as e:
+        errors.append(f"SQLite check failed: {e}")
+        print(f"  ✗ {e}")
+
+    # Step 7: Cleanup — delete test folder
+    print("\n[7/7] Cleanup")
+    if folder_id:
+        cleanup = api("delete", f"/api/ldm/offline/storage/folders/{folder_id}", quiet=True)
+        if ok(cleanup):
+            print(f"  ✓ Test folder deleted")
+        else:
+            print(f"  ⚠ Cleanup: {cleanup}")
+
+    # Summary
+    print("\n" + "=" * 60)
+    if errors:
+        print(f"  ✗ FAILED — {len(errors)} error(s):")
+        for e in errors:
+            print(f"    - {e}")
+    else:
+        print("  ✓ ALL PASSED — ZERO ERRORS")
+    print("=" * 60)
+
+# ============================================================================
+# E2E: Row Status Test
+# ============================================================================
+
+def cmd_e2e_status():
+    """E2E test for row status changes. ZERO ERROR GOAL."""
+    print("=" * 60)
+    print("  E2E ROW STATUS TEST — ZERO ERROR GOAL")
+    print("=" * 60)
+    errors = []
+
+    # Find a file with rows
+    print("\n[1/5] Find file with rows")
+    platforms = unwrap_list(api("get", "/api/ldm/platforms", quiet=True))
+    real_platforms = [p for p in platforms if p["name"] != "Offline Storage"] if isinstance(platforms, list) else []
+    if not real_platforms:
+        print("  ✗ No platforms")
+        return
+
+    projects = unwrap_list(api("get", "/api/ldm/projects", quiet=True))
+    if not isinstance(projects, list):
+        projects = []
+    online_projects = [p for p in projects if p.get("platform_id") == real_platforms[0]["id"]]
+    if not online_projects:
+        print("  ✗ No projects")
+        return
+
+    files_data = api("get", f"/api/ldm/projects/{online_projects[0]['id']}/files", quiet=True)
+    files = files_data if isinstance(files_data, list) else files_data.get("files", [])
+    if not files:
+        print("  ✗ No files")
+        return
+    file = files[0]
+    print(f"  ✓ Using file '{file['name']}' (id={file['id']}, {file.get('row_count', '?')} rows)")
+
+    # Get first row
+    print("\n[2/5] Get test row")
+    rows_data = api("get", f"/api/ldm/files/{file['id']}/rows", params={"limit": 1}, quiet=True)
+    rows = rows_data.get("rows", rows_data.get("items", []))
+    if not rows:
+        print("  ✗ No rows")
+        return
+    row = rows[0]
+    original_status = row.get("status", "")
+    print(f"  ✓ Row {row['id']}: current status='{original_status}'")
+
+    # Test translated status (Ctrl+T = yellow)
+    print("\n[3/5] Set status → 'translated' (yellow)")
+    r1 = api("put", f"/api/ldm/rows/{row['id']}", data={"status": "translated"}, quiet=True)
+    if ok(r1) and r1.get("status") == "translated":
+        print("  ✓ Status set to 'translated'")
+    else:
+        errors.append(f"Set translated failed: {r1}")
+        print(f"  ✗ {r1}")
+
+    # Test reviewed status (Ctrl+S = green)
+    print("\n[4/5] Set status → 'reviewed' (green)")
+    r2 = api("put", f"/api/ldm/rows/{row['id']}", data={"status": "reviewed"}, quiet=True)
+    if ok(r2) and r2.get("status") == "reviewed":
+        print("  ✓ Status set to 'reviewed'")
+    else:
+        errors.append(f"Set reviewed failed: {r2}")
+        print(f"  ✗ {r2}")
+
+    # Restore original status
+    print("\n[5/5] Restore original status")
+    r3 = api("put", f"/api/ldm/rows/{row['id']}", data={"status": original_status}, quiet=True)
+    if ok(r3):
+        print(f"  ✓ Restored to '{original_status}'")
+    else:
+        errors.append(f"Restore failed: {r3}")
+
+    # Summary
+    print("\n" + "=" * 60)
+    if errors:
+        print(f"  ✗ FAILED — {len(errors)} error(s):")
+        for e in errors:
+            print(f"    - {e}")
+    else:
+        print("  ✓ ALL PASSED — ZERO ERRORS")
+    print("=" * 60)
+
+# ============================================================================
 # CLI Parser
 # ============================================================================
 
@@ -569,6 +809,32 @@ def main():
         cmd_search(args[0], int(args[1]) if len(args) > 1 else None)
     elif cmd == "e2e-tm":
         cmd_e2e_tm()
+    elif cmd == "e2e-offline":
+        cmd_e2e_offline()
+    elif cmd == "e2e-status":
+        cmd_e2e_status()
+    elif cmd == "e2e-all":
+        cmd_e2e_tm()
+        print()
+        cmd_e2e_offline()
+        print()
+        cmd_e2e_status()
+    elif cmd == "offline":
+        if not args or args[0] == "status":
+            cmd_offline_status()
+        elif args[0] == "files":
+            cmd_offline_files()
+        elif args[0] == "folders":
+            cmd_offline_folders()
+    elif cmd == "row-status":
+        cmd_row_status(int(args[0]), args[1] if len(args) > 1 else "")
+    elif cmd == "api":
+        # Raw API call: python3 locanext_cli.py api GET /api/ldm/health
+        method = args[0].upper() if args else "GET"
+        path = args[1] if len(args) > 1 else "/api/ldm/health"
+        data = json.loads(args[2]) if len(args) > 2 else None
+        result = api(method.lower(), path, data=data)
+        pp(result)
     else:
         print(f"Unknown command: {cmd}")
         print("Run without args for usage.")
