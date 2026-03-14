@@ -33,13 +33,13 @@
 ### Search
 
 - [x] **SRCH-01**: Semantic search using Model2Vec (FAISS vectors) finds similar-meaning translations
-- [ ] **SRCH-02**: Semantic search UI prominently showcases the "find similar" capability
+- [x] **SRCH-02**: Semantic search UI prominently showcases the "find similar" capability
 - [x] **SRCH-03**: Search performance is near-instant (sub-second for typical TM sizes)
 
 ### AI Features
 
 - [x] **AI-01**: Model2Vec powers the entire semantic pipeline (TM matching, search, entity detection) as the default/standard model
-- [ ] **AI-02**: "AI-suggested" indicator visible in editor for Model2Vec-matched translations
+- [x] **AI-02**: "AI-suggested" indicator visible in editor for Model2Vec-matched translations
 
 ### Offline Demo
 
@@ -159,10 +159,10 @@
 | UI-02 | Phase 3 | Complete |
 | UI-03 | Phase 3 | Complete |
 | SRCH-01 | Phase 4 | Complete |
-| SRCH-02 | Phase 4 | Pending |
+| SRCH-02 | Phase 4 | Complete |
 | SRCH-03 | Phase 4 | Complete |
 | AI-01 | Phase 4 | Complete |
-| AI-02 | Phase 4 | Pending |
+| AI-02 | Phase 4 | Complete |
 | UI-04 | Phase 5 | Pending |
 | UI-05 | Phase 5 | Pending |
 | MAP-01 | Phase 5 | Pending |

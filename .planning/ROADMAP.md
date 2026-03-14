@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Stability Foundation** - Server starts reliably, DB layer works correctly across SQLite and PostgreSQL, no zombie processes (completed 2026-03-14)
 - [x] **Phase 2: Editor Core** - Production-quality translation grid with virtual scrolling, editing, search/filter, export, and segment status (completed 2026-03-14)
 - [x] **Phase 3: TM Workflow** - TM tree auto-mirrors file structure, TM assignment and lookup with match percentages, semantic matching (completed 2026-03-14)
-- [ ] **Phase 4: Search and AI Differentiators** - Semantic search UI powered by Model2Vec, near-instant search performance, AI-matched translation indicators
+- [x] **Phase 4: Search and AI Differentiators** - Semantic search UI powered by Model2Vec, near-instant search performance, AI-matched translation indicators (completed 2026-03-14)
 - [ ] **Phase 5: Visual Polish and Integration** - Settings UI, MapDataGenerator in the grid, overall visual quality matching landing page
 - [ ] **Phase 5.1: Contextual Intelligence & QA Engine** - INSERTED - Aho-Corasick entity detection (reuse QuickSearch/QuickCheck logic), auto glossary extraction, context panel, QA capabilities (Line Check, Term Check), category clustering, AI Translated status
 - [ ] **Phase 6: Offline Demo Validation** - Offline mode works flawlessly for the full demo narrative, mode switching is transparent
@@ -82,7 +82,7 @@ Plans:
   3. Search results return in under one second for typical TM sizes (Model2Vec is 79x faster than alternatives)
   4. Model2Vec powers the entire semantic pipeline — TM matching, search, entity detection
   5. AI-matched translations are clearly indicated in the editor
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 04-01-PLAN.md -- Backend semantic search endpoint with TMSearcher wiring, unit tests, performance validation
@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 | 1. Stability Foundation | 3/3 | Complete    | 2026-03-14 |
 | 2. Editor Core | 3/3 | Complete | 2026-03-14 |
 | 3. TM Workflow | 3/3 | Complete   | 2026-03-14 |
-| 4. Search and AI Differentiators | 1/2 | In Progress | - |
+| 4. Search and AI Differentiators | 2/2 | Complete   | 2026-03-14 |
 | 5. Visual Polish and Integration | 0/2 | Not started | - |
 | 5.1. Contextual Intelligence & QA Engine | 0/4 | Not started | - |
 | 6. Offline Demo Validation | 0/1 | Not started | - |
