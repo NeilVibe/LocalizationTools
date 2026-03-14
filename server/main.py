@@ -4,6 +4,7 @@ LocalizationTools Server
 Central logging and analytics server for LocalizationTools.
 """
 
+import os
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -19,6 +20,37 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from server import config
+
+
+def _cleanup_stale_port(port: int) -> None:
+    """Kill any stale process occupying the given port (DEV_MODE only).
+
+    Prevents 'Address already in use' errors after prior crashes.
+    Only runs when DEV_MODE is enabled to avoid killing production processes.
+    """
+    if not config.DEV_MODE:
+        return
+
+    try:
+        import psutil
+    except ImportError:
+        logger.warning("psutil not installed -- skipping stale port cleanup")
+        return
+
+    for conn in psutil.net_connections(kind="inet"):
+        if conn.laddr.port == port and conn.status == psutil.CONN_LISTEN:
+            try:
+                proc = psutil.Process(conn.pid)
+                logger.warning(
+                    f"Pre-startup cleanup: killing stale process PID {conn.pid} "
+                    f"({proc.name()}) on port {port}"
+                )
+                proc.kill()
+                proc.wait(timeout=3)
+                logger.info(f"Stale process PID {conn.pid} cleaned up")
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired) as e:
+                logger.warning(f"Could not clean up PID {conn.pid}: {e}")
+            break
 from sqlalchemy.orm import Session
 from server.utils.dependencies import initialize_database, initialize_async_database, get_async_db, get_db
 from server.api import auth, logs, sessions
@@ -61,6 +93,9 @@ def setup_logging():
 
 # Setup logging
 setup_logging()
+
+# Pre-startup: clean stale processes on server port (DEV_MODE only)
+_cleanup_stale_port(config.SERVER_PORT)
 
 # Validate security configuration on startup
 if not config.validate_security_on_startup():
