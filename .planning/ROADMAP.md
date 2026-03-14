@@ -80,7 +80,7 @@ Plans:
   1. User can search for a concept and find relevant translations even when the wording differs from the query
   2. Semantic search UI prominently showcases the "find similar" capability with similarity scores and relevance ranking
   3. Search results return in under one second for typical TM sizes (Model2Vec is 79x faster than alternatives)
-  4. Model2Vec powers the entire semantic pipeline — TM matching, search, entity detection
+  4. Model2Vec powers the entire semantic pipeline -- TM matching, search, entity detection
   5. AI-matched translations are clearly indicated in the editor
 **Plans:** 2/2 plans complete
 
@@ -105,33 +105,33 @@ Plans:
 - [ ] 05-02-PLAN.md -- Frontend Image/Audio tabs in RightPanel, visual polish pass, E2E tests
 
 ### Phase 5.1: Contextual Intelligence & QA Engine (INSERTED)
-**Goal**: The editor becomes context-aware — auto-detecting entities via Aho-Corasick (reusing proven QuickSearch/QuickCheck logic), surfacing rich game context, AND providing integrated QA capabilities (Line Check, Term Check) so translators catch inconsistencies without leaving LocaNext
+**Goal**: The editor becomes context-aware -- auto-detecting entities via Aho-Corasick (reusing proven QuickSearch/QuickCheck logic), surfacing rich game context, AND providing integrated QA capabilities (Line Check, Term Check) so translators catch inconsistencies without leaving LocaNext
 **Depends on**: Phase 5
 **Requirements**: CTX-01, CTX-02, CTX-03, CTX-04, CTX-05, CTX-06, CTX-07, CTX-08, CTX-09, CTX-10, QA-01, QA-02, QA-03
 
-**Reuse Strategy** (CRITICAL — research before implementing):
+**Reuse Strategy** (CRITICAL -- research before implementing):
   - **QuickSearch** (`RFC/NewScripts/QuickSearch/`): Aho-Corasick automaton (`core/term_check.py:build_automaton()`), glossary extraction with AC validation (`core/glossary.py:extract_glossary_with_validation()`), word boundary detection (`is_isolated_match()`), filter pipeline (`utils/filters.py:glossary_filter()`)
   - **QuickCheck** (`RFC/NewScripts/QuickCheck/`): LINE CHECK (`core/line_check.py`), TERM CHECK with dual AC automaton (`core/term_check.py`), multi-language folder scanning (`core/scanner.py`), Excel output writers (`utils/excel_writer.py`)
   - **Both projects share**: XML parser (`core/xml_parser.py`), preprocessing with KR/ENG BASE modes (`core/preprocessing.py`), language utilities (`utils/language_utils.py`)
 
 **Glossary Extraction Parameters** (defaults from QuickSearch/QuickCheck):
   - `min_occurrence`: 2 (term must appear at least twice)
-  - `max_term_length`: 25 chars (user override — QuickSearch default is 15, QuickCheck is 20)
+  - `max_term_length`: 25 chars (user override -- QuickSearch default is 15, QuickCheck is 20)
   - `filter_sentences`: True (skip entries ending with `.?!`)
-  - `match_mode`: ISOLATED only (word boundary check, no substring — prevents Korean compound false matches)
+  - `match_mode`: ISOLATED only (word boundary check, no substring -- prevents Korean compound false matches)
   - `max_issues_per_term`: 6 (noise filter for Term Check)
 
 **Success Criteria** (what must be TRUE):
-  1. Glossary automatically extracted from game data (QACompiler/LDE generators) — all character, location, item, skill names — using QuickSearch's `extract_glossary_with_validation()` pattern with min_occurrence=2, max_length=25, no sentences
-  2. Aho-Corasick automaton built from glossary scans strings in real-time — "The warrior enters Stormhold Castle" instantly detects both entities — reusing QuickSearch's `build_automaton()` + `is_isolated_match()`
-  3. Detected character names → context panel shows metadata (gender, age, job, race), quest info, audio samples (including indirect matches)
-  4. Detected location names → context panel shows location images and map position from staticinfo
+  1. Glossary automatically extracted from game data (QACompiler/LDE generators) -- all character, location, item, skill names -- using QuickSearch's `extract_glossary_with_validation()` pattern with min_occurrence=2, max_length=25, no sentences
+  2. Aho-Corasick automaton built from glossary scans strings in real-time -- "The warrior enters Stormhold Castle" instantly detects both entities -- reusing QuickSearch's `build_automaton()` + `is_isolated_match()`
+  3. Detected character names -> context panel shows metadata (gender, age, job, race), quest info, audio samples (including indirect matches)
+  4. Detected location names -> context panel shows location images and map position from staticinfo
   5. Glossary terms mapped to staticinfo datapoints where images, DESC, and audio files can be found
   6. Category clustering auto-assigns string types using QACompiler/LanguageDataExporter technology
   7. "AI Translated" status visible in grid, distinguishing human from AI translations
   8. Context panel updates dynamically as user navigates between segments
-  9. **LINE CHECK** integrated — same source translated differently flagged as inconsistency (reuse QuickCheck's `run_line_check()` logic)
-  10. **TERM CHECK** integrated — glossary term in source but missing translation flagged (reuse QuickCheck's dual Aho-Corasick + noise filter logic)
+  9. **LINE CHECK** integrated -- same source translated differently flagged as inconsistency (reuse QuickCheck's `run_line_check()` logic)
+  10. **TERM CHECK** integrated -- glossary term in source but missing translation flagged (reuse QuickCheck's dual Aho-Corasick + noise filter logic)
   11. QA results displayed in a dedicated panel/tab within the editor, not as a separate tool
 **Plans:** 5 plans
 
@@ -150,10 +150,11 @@ Plans:
   1. User can disconnect from the network and continue uploading, editing, searching, and exporting without any error or degraded behavior
   2. All features delivered in Phases 2-5 function identically in offline mode (SQLite) as they do in online mode (PostgreSQL)
   3. Mode switching happens transparently -- user never needs to manually configure or toggle between online and offline
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md -- Backend offline workflow validation (repo-level E2E, service degradation, schema drift)
+- [ ] 06-02-PLAN.md -- Mode detection validation and API endpoint smoke tests in SQLite mode
 
 ## Progress
 
@@ -168,4 +169,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 | 4. Search and AI Differentiators | 2/2 | Complete   | 2026-03-14 |
 | 5. Visual Polish and Integration | 2/2 | Complete   | 2026-03-14 |
 | 5.1. Contextual Intelligence & QA Engine | 3/5 | In Progress | - |
-| 6. Offline Demo Validation | 0/1 | Not started | - |
+| 6. Offline Demo Validation | 0/2 | Not started | - |
