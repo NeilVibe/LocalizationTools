@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md (TM color-coded matches + tabbed right panel)
-last_updated: "2026-03-14T12:38:36Z"
-last_activity: 2026-03-14 -- Plan 03-02 executed (tabbed RightPanel, color-coded TM, word diff, explorer CSS)
+stopped_at: Completed 03-01-PLAN.md (TM auto-mirror + leverage API + search cascade verification)
+last_updated: "2026-03-14T12:40:19Z"
+last_activity: 2026-03-14 -- Plan 03-01 executed (auto-mirror hook, leverage endpoint, TMSearcher cascade tests)
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 38
+  total_plans: 9
+  completed_plans: 9
+  percent: 42
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-14)
 ## Current Position
 
 Phase: 3 of 7 (TM Workflow)
-Plan: 2 of 3 in current phase
-Status: Plan 03-02 complete (tabbed right panel + TM color coding)
-Last activity: 2026-03-14 -- Plan 03-02 executed (tabbed RightPanel, color-coded TM, word diff, explorer CSS)
+Plan: 2 of 3 in current phase (03-01 + 03-02 done, 03-03 remaining)
+Status: Plan 03-01 complete (TM backend foundations)
+Last activity: 2026-03-14 -- Plan 03-01 executed (auto-mirror hook, leverage endpoint, TMSearcher cascade tests)
 
-Progress: [████░░░░░░] 38%
+Progress: [████░░░░░░] 42%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 19min
-- Total execution time: 2.5 hours
+- Total plans completed: 9
+- Average duration: 18min
+- Total execution time: 2.6 hours
 
 **By Phase:**
 
@@ -45,7 +45,7 @@ Progress: [████░░░░░░] 38%
 |-------|-------|-------|----------|
 | 01 | 3 | 79min | 26min |
 | 02 | 3 | 47min | 16min |
-| 03 | 2 | 25min | 13min |
+| 03 | 3 | 32min | 11min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -80,6 +80,10 @@ Recent decisions affecting current work:
 - Custom LCS diff over diff-match-patch (zero deps, CJK syllable-level tokenization)
 - QA issues as persistent footer below tabs (always visible regardless of active tab)
 - Color system: green (#24a148) >= 100%, yellow (#c6a300) >= 92%, orange (#ff832b) >= 75%, red (#da1e28) < 75%
+- Auto-mirror uses folder-level scope (one TM per folder, simplest approach)
+- Leverage thresholds: score >= 1.0 exact, >= 0.75 fuzzy, else new
+- Auto-mirror failure is non-blocking (try/except with warning log)
+- TMSearcher tests use hash-only indexes (no FAISS runtime dependency for unit tests)
 
 ### Pending Todos
 
@@ -92,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T12:38:36Z
-Stopped at: Completed 03-02-PLAN.md (TM color-coded matches + tabbed right panel)
+Last session: 2026-03-14T12:40:19Z
+Stopped at: Completed 03-01-PLAN.md (TM auto-mirror + leverage API + search cascade verification)
 Resume file: .planning/phases/03-tm-workflow/03-03-PLAN.md
