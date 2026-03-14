@@ -92,22 +92,51 @@ async def _get_glossary_terms(
     return await tm_repo.get_glossary_terms(tm_ids, max_length=max_length)
 
 
+def _build_line_check_index(
+    file_rows: List[Dict[str, Any]]
+) -> Dict[str, List[tuple]]:
+    """
+    Build a source-to-targets grouping dict for O(1) Line Check lookups.
+
+    Args:
+        file_rows: All rows in the file as dicts
+
+    Returns:
+        Dict mapping source_text -> list of (row_id, row_num, target_text)
+    """
+    from collections import defaultdict
+    index: Dict[str, List[tuple]] = defaultdict(list)
+    for row in file_rows:
+        source = (row.get("source") or "").strip()
+        target = (row.get("target") or "").strip()
+        if source and target:
+            index[source].append((
+                row.get("id"),
+                row.get("row_num", 0),
+                target
+            ))
+    return dict(index)
+
+
 async def _run_qa_checks(
     row: Dict[str, Any],
     checks: List[str],
     file_rows: Optional[List[Dict[str, Any]]] = None,
-    glossary_terms: Optional[List[tuple]] = None
+    glossary_terms: Optional[List[tuple]] = None,
+    line_check_index: Optional[Dict[str, List[tuple]]] = None,
 ) -> List[dict]:
     """
     Run QA checks on a single row.
 
     P10: Works with dicts from Repository Pattern (not LDMRow objects).
+    P051-02: Enhanced with pre-built line_check_index for O(1) lookups.
 
     Args:
         row: Row dict with id, file_id, row_num, source, target
         checks: List of check types to run
-        file_rows: All rows in the file as dicts (needed for line check)
+        file_rows: All rows in the file as dicts (needed for line check if no index)
         glossary_terms: List of (source, target) tuples for term check
+        line_check_index: Pre-built index from _build_line_check_index (optional, built on-the-fly if needed)
 
     Returns:
         List of issue dicts
@@ -146,38 +175,30 @@ async def _run_qa_checks(
             })
 
     # 2. Line Check - Same source with different translations
-    # Simple: compare all entries, flag inconsistencies
-    if "line" in checks and file_rows:
+    # P051-02: Group-based O(n) approach instead of O(n^2) per-row comparison
+    if "line" in checks and (file_rows or line_check_index):
         source_text = source.strip()
         target_text = target.strip()
 
-        for other_row in file_rows:
-            other_id = other_row.get("id")
-            other_source = other_row.get("source", "")
-            other_target = other_row.get("target", "")
+        # Build index on-the-fly if not provided (single-row QA mode)
+        if line_check_index is None and file_rows:
+            line_check_index = _build_line_check_index(file_rows)
 
-            if other_id == row_id:
-                continue
-            if not other_source or not other_target:
-                continue
-
-            other_source_stripped = other_source.strip()
-            other_target_stripped = other_target.strip()
-
-            if other_source_stripped == source_text:
-                # Same source, check if target differs
-                if other_target_stripped != target_text:
+        if line_check_index and source_text in line_check_index:
+            for other_id, other_row_num, other_target in line_check_index[source_text]:
+                if other_id == row_id:
+                    continue
+                if other_target != target_text:
                     issues.append({
                         "check_type": "line",
                         "severity": "warning",
-                        "message": f"Inconsistent: '{target_text[:50]}' vs '{other_target_stripped[:50]}' at row {other_row.get('row_num', 0)}",
+                        "message": f"Inconsistent: '{target_text[:50]}' vs '{other_target[:50]}' at row {other_row_num}",
                         "details": {
                             "other_row_id": other_id,
-                            "other_row_num": other_row.get("row_num", 0),
-                            "other_target": other_target_stripped[:100]
+                            "other_row_num": other_row_num,
+                            "other_target": other_target[:100]
                         }
                     })
-                    break  # Only report first conflict
 
     # 3. Term Check - Glossary terms must be present in translation
     # Uses Aho-Corasick matching with word isolation

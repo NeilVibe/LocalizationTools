@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from server.tools.ldm.routes.qa import (
     _run_qa_checks,
+    _build_line_check_index,
 )
 from server.tools.ldm.schemas.qa import QACheckRequest
 from server.main import app as wrapped_app
@@ -163,6 +164,81 @@ class TestRunQAChecks:
         issues = await _run_qa_checks(row, ["pattern"], None, None)
 
         assert len(issues) == 0
+
+
+# =============================================================================
+# Test Enhanced Line Check (051-02: Group-based inconsistency detection)
+# =============================================================================
+
+class TestEnhancedLineCheck:
+    """Test group-based Line Check that reports ALL inconsistencies."""
+
+    @pytest.mark.asyncio
+    async def test_line_check_reports_all_inconsistencies(self):
+        """Line Check with 3 rows: same source, 2 different translations -> flags both."""
+        row1 = make_row_dict(id=1, row_num=1, source="공격", target="Attack")
+        row2 = make_row_dict(id=2, row_num=2, source="공격", target="Attaque")
+        row3 = make_row_dict(id=3, row_num=3, source="공격", target="Attack")
+        all_rows = [row1, row2, row3]
+
+        # Check row1 - should see row2 as inconsistent
+        issues = await _run_qa_checks(row1, ["line"], all_rows, None)
+        assert len(issues) >= 1
+        assert all(i["check_type"] == "line" for i in issues)
+        # Should report row2's different translation
+        other_row_nums = [i["details"]["other_row_num"] for i in issues]
+        assert 2 in other_row_nums
+
+    @pytest.mark.asyncio
+    async def test_line_check_identical_pairs_no_issues(self):
+        """Line Check with identical source+target pairs -> no issues."""
+        row1 = make_row_dict(id=1, row_num=1, source="공격", target="Attack")
+        row2 = make_row_dict(id=2, row_num=2, source="공격", target="Attack")
+        all_rows = [row1, row2]
+
+        issues = await _run_qa_checks(row1, ["line"], all_rows, None)
+        line_issues = [i for i in issues if i["check_type"] == "line"]
+        assert len(line_issues) == 0
+
+    @pytest.mark.asyncio
+    async def test_line_check_empty_rows_skipped(self):
+        """Line Check with empty source or target -> skipped gracefully."""
+        row1 = make_row_dict(id=1, row_num=1, source="공격", target="Attack")
+        empty_row = make_row_dict(id=2, row_num=2, source="공격", target="")
+        no_source = make_row_dict(id=3, row_num=3, source="", target="Attack")
+        all_rows = [row1, empty_row, no_source]
+
+        issues = await _run_qa_checks(row1, ["line"], all_rows, None)
+        line_issues = [i for i in issues if i["check_type"] == "line"]
+        assert len(line_issues) == 0
+
+    @pytest.mark.asyncio
+    async def test_line_check_details_include_other_info(self):
+        """Line Check results include other_row_num and other_target in details."""
+        row1 = make_row_dict(id=1, row_num=1, source="공격", target="Attack")
+        row2 = make_row_dict(id=2, row_num=5, source="공격", target="Attaque")
+        all_rows = [row1, row2]
+
+        issues = await _run_qa_checks(row1, ["line"], all_rows, None)
+        assert len(issues) == 1
+        details = issues[0]["details"]
+        assert "other_row_num" in details
+        assert details["other_row_num"] == 5
+        assert "other_target" in details
+        assert details["other_target"] == "Attaque"
+
+    def test_build_line_check_index(self):
+        """_build_line_check_index creates correct grouping."""
+        rows = [
+            make_row_dict(id=1, row_num=1, source="공격", target="Attack"),
+            make_row_dict(id=2, row_num=2, source="공격", target="Attaque"),
+            make_row_dict(id=3, row_num=3, source="방어", target="Defense"),
+        ]
+        index = _build_line_check_index(rows)
+        assert "공격" in index
+        assert len(index["공격"]) == 2
+        assert "방어" in index
+        assert len(index["방어"]) == 1
 
 
 # =============================================================================
