@@ -2897,9 +2897,10 @@
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     color: var(--cds-text-secondary);
-    transition: background 0.1s ease, color 0.1s ease;
+    transition: background 0.15s ease, color 0.15s ease;
+    line-height: 1.4;
   }
 
   .breadcrumb-item:hover {
@@ -2975,6 +2976,30 @@
     flex-direction: column;
   }
 
+  /* Custom scrollbar for grid container */
+  .grid-container :global(.explorer-grid) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--cds-border-subtle-01) transparent;
+  }
+
+  .grid-container :global(.explorer-grid)::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .grid-container :global(.explorer-grid)::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .grid-container :global(.explorer-grid)::-webkit-scrollbar-thumb {
+    background: var(--cds-border-subtle-01);
+    border-radius: 3px;
+  }
+
+  .grid-container :global(.explorer-grid)::-webkit-scrollbar-thumb:hover {
+    background: var(--cds-text-03);
+  }
+
   /* Context Menu */
   .context-menu {
     position: fixed;
@@ -2982,9 +3007,10 @@
     min-width: 180px;
     background: var(--cds-layer-01);
     border: 1px solid var(--cds-border-subtle-01);
-    border-radius: 4px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 1px 4px rgba(0, 0, 0, 0.1);
     padding: 0.25rem 0;
+    backdrop-filter: blur(8px);
   }
 
   .context-menu-item {

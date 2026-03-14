@@ -861,6 +861,26 @@
     flex: 1;
     overflow-y: auto;
     padding: 0.5rem 0;
+    /* Custom scrollbar matching VirtualGrid */
+    scrollbar-width: thin;
+    scrollbar-color: var(--cds-border-subtle-01) transparent;
+  }
+
+  .tree-content::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .tree-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .tree-content::-webkit-scrollbar-thumb {
+    background: var(--cds-border-subtle-01);
+    border-radius: 3px;
+  }
+
+  .tree-content::-webkit-scrollbar-thumb:hover {
+    background: var(--cds-text-03);
   }
 
   .empty-state {
@@ -908,13 +928,19 @@
     border-radius: 4px;
     cursor: pointer;
     font-family: inherit;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     color: var(--cds-text-01);
     text-align: left;
+    transition: background 0.1s ease;
+    line-height: 1.4;
   }
 
   .tree-header:hover {
     background: var(--cds-layer-hover-01);
+  }
+
+  .tree-header:active {
+    background: var(--cds-layer-active-01, var(--cds-layer-hover-01));
   }
 
   .tree-header.platform {
@@ -970,11 +996,16 @@
     color: #c9a227; /* Amber for folders */
   }
 
-  /* Tree Children */
+  /* Tree Children - indentation guides */
   .tree-children {
-    margin-left: 0.5rem;
+    margin-left: 0.75rem;
     border-left: 1px solid var(--cds-border-subtle-01);
     padding-left: 0.5rem;
+    transition: border-color 0.15s ease;
+  }
+
+  .tree-children:hover {
+    border-left-color: var(--cds-text-03);
   }
 
   /* TM Item */
@@ -1004,6 +1035,7 @@
     background: var(--cds-layer-selected-01);
     outline: 2px solid var(--cds-link-01);
     outline-offset: -2px;
+    font-weight: 500;
   }
 
   .tm-item.active {

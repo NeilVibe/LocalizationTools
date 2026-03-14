@@ -11,7 +11,7 @@
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import VirtualGrid from '$lib/components/ldm/VirtualGrid.svelte';
-  import TMQAPanel from '$lib/components/ldm/TMQAPanel.svelte';
+  import RightPanel from '$lib/components/ldm/RightPanel.svelte';
   import { Button } from 'carbon-components-svelte';
   import { ArrowLeft, Column, Document, DataBase } from 'carbon-icons-svelte';
 
@@ -271,7 +271,7 @@
       on:dismissQA={handleDismissQA}
     />
 
-    <TMQAPanel
+    <RightPanel
       bind:collapsed={sidePanelCollapsed}
       bind:width={sidePanelWidth}
       selectedRow={sidePanelSelectedRow}
