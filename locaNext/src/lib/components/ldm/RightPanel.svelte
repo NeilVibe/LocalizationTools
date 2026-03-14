@@ -20,6 +20,8 @@
   import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import TMTab from "$lib/components/ldm/TMTab.svelte";
+  import ImageTab from "$lib/components/ldm/ImageTab.svelte";
+  import AudioTab from "$lib/components/ldm/AudioTab.svelte";
 
   const dispatch = createEventDispatcher();
 
@@ -138,17 +140,9 @@
             on:applyTM={handleApplyTM}
           />
         {:else if activeTab === 'image'}
-          <div class="placeholder-tab">
-            <Image size={32} />
-            <span class="placeholder-title">Image Context</span>
-            <span class="placeholder-desc">Coming in Phase 5</span>
-          </div>
+          <ImageTab {selectedRow} />
         {:else if activeTab === 'audio'}
-          <div class="placeholder-tab">
-            <Music size={32} />
-            <span class="placeholder-title">Audio Context</span>
-            <span class="placeholder-desc">Coming in Phase 5</span>
-          </div>
+          <AudioTab {selectedRow} />
         {:else if activeTab === 'context'}
           <div class="placeholder-tab">
             <MachineLearningModel size={32} />
