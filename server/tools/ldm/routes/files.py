@@ -36,6 +36,60 @@ router = APIRouter(tags=["LDM"])
 
 
 # =============================================================================
+# TM Auto-Mirror Helper
+# =============================================================================
+
+async def _auto_mirror_tm(
+    folder_id: Optional[int],
+    project_id: Optional[int],
+    tm_repo,
+    folder_repo,
+) -> None:
+    """
+    Auto-create and assign a TM for a folder if none exists.
+
+    Called after successful file upload. Idempotent: skips if a TM
+    is already assigned to the folder scope. Failures are logged but
+    never propagated -- file upload must not be blocked.
+
+    Args:
+        folder_id: Folder the file was uploaded to (None = skip)
+        project_id: Parent project ID
+        tm_repo: TMRepository instance
+        folder_repo: FolderRepository instance
+    """
+    if not folder_id:
+        return
+
+    try:
+        from server.repositories.interfaces.tm_repository import AssignmentTarget
+
+        # Check if any TM already exists for this folder (active or inactive)
+        existing = await tm_repo.get_for_scope(folder_id=folder_id, include_inactive=True)
+        if existing:
+            logger.debug(f"[AUTO-MIRROR] Folder {folder_id} already has {len(existing)} TM(s), skipping")
+            return
+
+        # Get folder name for TM naming
+        folder = await folder_repo.get(folder_id)
+        folder_name = folder.get("name", f"Folder-{folder_id}") if folder else f"Folder-{folder_id}"
+
+        # Create TM
+        tm_name = f"TM - {folder_name}"
+        tm = await tm_repo.create(name=tm_name, source_lang="ko", target_lang="en")
+        tm_id = tm["id"]
+
+        # Assign to folder and activate
+        await tm_repo.assign(tm_id, AssignmentTarget(folder_id=folder_id))
+        await tm_repo.activate(tm_id)
+
+        logger.success(f"[AUTO-MIRROR] Created TM '{tm_name}' (id={tm_id}) for folder {folder_id}")
+
+    except Exception as e:
+        logger.warning(f"[AUTO-MIRROR] Failed for folder {folder_id}: {e}")
+
+
+# =============================================================================
 # File CRUD Endpoints
 # =============================================================================
 
@@ -136,6 +190,7 @@ async def upload_file(
     project_repo: ProjectRepository = Depends(get_project_repository),
     folder_repo: FolderRepository = Depends(get_folder_repository),
     file_repo: FileRepository = Depends(get_file_repository),
+    tm_repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
     """
@@ -317,6 +372,15 @@ async def upload_file(
     result = await asyncio.to_thread(_insert_file_and_rows)
 
     logger.success(f"[FILES] File uploaded: id={result['id']}, name='{filename}', rows={total_rows}, has_metadata={file_metadata is not None}")
+
+    # Auto-mirror: create TM for folder if none exists (non-blocking)
+    if folder_id:
+        await _auto_mirror_tm(
+            folder_id=folder_id,
+            project_id=project_id,
+            tm_repo=tm_repo,
+            folder_repo=folder_repo,
+        )
 
     # Return FileResponse-compatible dict
     return result

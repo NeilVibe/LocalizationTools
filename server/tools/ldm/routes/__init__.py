@@ -18,6 +18,7 @@ from .pretranslate import router as pretranslate_router
 from .sync import router as sync_router
 from .settings import router as settings_router
 from .qa import router as qa_router
+from .tm_leverage import router as tm_leverage_router
 
 __all__ = [
     "health_router",
@@ -30,6 +31,7 @@ __all__ = [
     "tm_search_router",
     "tm_indexes_router",
     "tm_linking_router",
+    "tm_leverage_router",
     "pretranslate_router",
     "sync_router",
     "settings_router",
