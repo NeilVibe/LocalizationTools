@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Stability Foundation** - Server starts reliably, DB layer works correctly across SQLite and PostgreSQL, no zombie processes (completed 2026-03-14)
 - [x] **Phase 2: Editor Core** - Production-quality translation grid with virtual scrolling, editing, search/filter, export, and segment status (completed 2026-03-14)
-- [x] **Phase 3: TM Workflow** - TM tree auto-mirrors file structure, TM assignment and lookup with match percentages, semantic matching (completed 2026-03-14)
+- [x] **Phase 3: TM Workflow** - TM tree auto-mirrors file structure, TM assignment and lookup with match percentages, semantic matching (completed 2026-03-14)
 - [ ] **Phase 4: Search and AI Differentiators** - Semantic search UI powered by Model2Vec, near-instant search performance, AI-matched translation indicators
 - [ ] **Phase 5: Visual Polish and Integration** - Settings UI, MapDataGenerator in the grid, overall visual quality matching landing page
 - [ ] **Phase 5.1: Contextual Intelligence & QA Engine** - INSERTED - Aho-Corasick entity detection (reuse QuickSearch/QuickCheck logic), auto glossary extraction, context panel, QA capabilities (Line Check, Term Check), category clustering, AI Translated status
@@ -82,11 +82,11 @@ Plans:
   3. Search results return in under one second for typical TM sizes (Model2Vec is 79x faster than alternatives)
   4. Model2Vec powers the entire semantic pipeline — TM matching, search, entity detection
   5. AI-matched translations are clearly indicated in the editor
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md -- Backend semantic search endpoint with TMSearcher wiring, unit tests, performance validation
+- [ ] 04-02-PLAN.md -- Frontend semantic search UI with similarity scores overlay, AI-suggested badges, E2E tests
 
 ### Phase 5: Visual Polish and Integration
 **Goal**: The app looks executive-demo-ready with settings management, MapDataGenerator context in the grid, and overall visual quality matching the cinematic landing page
@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 | 1. Stability Foundation | 3/3 | Complete    | 2026-03-14 |
 | 2. Editor Core | 3/3 | Complete | 2026-03-14 |
 | 3. TM Workflow | 3/3 | Complete   | 2026-03-14 |
-| 4. Search and AI Differentiators | 0/2 | Not started | - |
+| 4. Search and AI Differentiators | 0/2 | Planned | - |
 | 5. Visual Polish and Integration | 0/2 | Not started | - |
 | 5.1. Contextual Intelligence & QA Engine | 0/4 | Not started | - |
 | 6. Offline Demo Validation | 0/1 | Not started | - |
