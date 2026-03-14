@@ -1982,6 +1982,277 @@
     }
 
     /* ================================================================
+       SCROLL-PINNED SCENE SYSTEM — Context Engine deep-dive
+       Scenes appear below the mockup as you scroll
+       ================================================================ */
+    .ctx-scenes-wrap {
+      margin-top: 80px;
+    }
+
+    .ctx-scene {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+      padding: 100px 0;
+      border-top: 1px solid var(--border);
+      opacity: 0;
+      transform: translateY(24px);
+    }
+
+    .ctx-scene:first-child {
+      border-top: none;
+    }
+
+    .ctx-scene-text {
+      max-width: 480px;
+    }
+
+    .ctx-scene-num {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      color: var(--warm);
+      margin-bottom: 16px;
+    }
+
+    .ctx-scene-title {
+      font-weight: 800;
+      font-size: clamp(24px, 3vw, 36px);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+    }
+
+    .ctx-scene-desc {
+      font-size: 15px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      font-weight: 300;
+    }
+
+    .ctx-scene-desc strong {
+      color: var(--warm-bright);
+      font-weight: 600;
+    }
+
+    .ctx-scene-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .ctx-scene-tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 6px 14px;
+      border-radius: 4px;
+      background: var(--warm-dim);
+      color: var(--warm);
+      border: 1px solid rgba(212,154,92,0.12);
+    }
+
+    /* Scene visual — mini mockup / diagram */
+    .ctx-scene-visual {
+      position: relative;
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      min-height: 320px;
+    }
+
+    .ctx-scene-visual-header {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ctx-scene-visual-header svg { color: var(--warm); }
+
+    .ctx-scene-visual-body {
+      padding: 20px;
+    }
+
+    /* Character profile card */
+    .char-profile {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .char-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #2a2a35, #1a1a25);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: var(--warm);
+    }
+
+    .char-name {
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .char-name-kr {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+
+    .char-meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .char-meta-item {
+      font-size: 11px;
+      font-family: var(--mono);
+    }
+
+    .char-meta-key {
+      color: var(--text-muted);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .char-meta-val {
+      color: var(--text-dim);
+    }
+
+    /* Quest appearances list */
+    .char-quests {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .char-quest-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 11px;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .char-quest-item:last-child { border-bottom: none; }
+
+    .char-quest-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--warm);
+      flex-shrink: 0;
+    }
+
+    /* Entity detection visualization */
+    .entity-detect {
+      font-family: var(--mono);
+      font-size: 14px;
+      line-height: 2.2;
+      color: var(--text-dim);
+      padding: 8px 0;
+    }
+
+    .entity-hl {
+      position: relative;
+      color: var(--warm-bright);
+      font-weight: 700;
+    }
+
+    .entity-hl::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--warm);
+      border-radius: 1px;
+    }
+
+    .entity-tag {
+      display: inline-block;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      padding: 2px 6px;
+      border-radius: 3px;
+      vertical-align: super;
+      margin-left: 4px;
+    }
+
+    .entity-tag--loc { background: rgba(108,140,200,0.2); color: var(--cold); }
+    .entity-tag--char { background: rgba(108,170,122,0.2); color: var(--green); }
+    .entity-tag--item { background: rgba(212,154,92,0.2); color: var(--warm); }
+
+    /* Entity resolution arrows */
+    .entity-resolve {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .entity-resolve-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      font-family: var(--mono);
+    }
+
+    .entity-resolve-from {
+      color: var(--warm-bright);
+      font-weight: 700;
+      min-width: 60px;
+    }
+
+    .entity-resolve-arrow {
+      color: var(--text-muted);
+    }
+
+    .entity-resolve-to {
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .entity-resolve-to svg { color: var(--warm); flex-shrink: 0; }
+
+    @media (max-width: 768px) {
+      .ctx-scene { grid-template-columns: 1fr; gap: 32px; }
+      .ctx-scene-visual { min-height: 260px; }
+      .char-profile { grid-template-columns: 1fr; }
+    }
+
+    /* ================================================================
        CLOSING — GRAND FINALE
        ================================================================ */
     .closing {
@@ -2769,6 +3040,232 @@
         <div class="ctx-tech-badge"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> 101 Languages Supported</div>
         <div class="ctx-tech-badge"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> 5-Tier Cascade Search</div>
       </div>
+
+      <!-- ============================================================
+           DEEP-DIVE SCENES — scroll-triggered feature showcase
+           ============================================================ -->
+      <div class="ctx-scenes-wrap" id="ctxScenes">
+
+        <!-- SCENE 1: Character Context -->
+        <div class="ctx-scene" id="ctxScene1">
+          <div class="ctx-scene-text">
+            <div class="ctx-scene-num">SCENE 01</div>
+            <h3 class="ctx-scene-title">캐릭터를 선택하면<br>모든 것이 보입니다</h3>
+            <p class="ctx-scene-desc">
+              번역 중인 문장에서 <strong>캐릭터 이름</strong>이 감지되면 자동으로 프로필이 표시됩니다.
+              성별, 나이, 직업, 종족 — 그리고 해당 캐릭터가 등장하는 모든 퀘스트와 상호작용하는 NPC 목록까지.
+              음성 샘플도 함께 제공되어 <strong>캐릭터의 말투와 톤</strong>을 파악할 수 있습니다.
+            </p>
+            <div class="ctx-scene-tags">
+              <span class="ctx-scene-tag">Aho-Corasick Detection</span>
+              <span class="ctx-scene-tag">Character Profile</span>
+              <span class="ctx-scene-tag">Voice Samples</span>
+            </div>
+          </div>
+          <div class="ctx-scene-visual">
+            <div class="ctx-scene-visual-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              CHARACTER PROFILE — NPC_ELDER_01
+            </div>
+            <div class="ctx-scene-visual-body">
+              <div class="char-profile">
+                <div class="char-avatar">&#128104;&#8205;&#129459;</div>
+                <div>
+                  <div class="char-name">Elder Varon</div>
+                  <div class="char-name-kr">장로 바론</div>
+                  <div class="char-meta-grid">
+                    <div class="char-meta-item"><span class="char-meta-key">Gender</span><span class="char-meta-val">Male</span></div>
+                    <div class="char-meta-item"><span class="char-meta-key">Age</span><span class="char-meta-val">Elder (72)</span></div>
+                    <div class="char-meta-item"><span class="char-meta-key">Job</span><span class="char-meta-val">Village Elder</span></div>
+                    <div class="char-meta-item"><span class="char-meta-key">Race</span><span class="char-meta-val">Human</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="char-quests">
+                <div class="ctx-scene-visual-header" style="padding:0 0 8px;border:none;margin-top:0;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  QUEST APPEARANCES (3)
+                </div>
+                <div class="char-quest-item"><span class="char-quest-dot"></span> 잊혀진 유적의 비밀 — Quest Giver</div>
+                <div class="char-quest-item"><span class="char-quest-dot"></span> 고대의 예언 — Key NPC</div>
+                <div class="char-quest-item"><span class="char-quest-dot"></span> 마을 방어전 — Allied NPC</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCENE 2: Entity Detection in Strings -->
+        <div class="ctx-scene" id="ctxScene2">
+          <div class="ctx-scene-visual">
+            <div class="ctx-scene-visual-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              ENTITY DETECTION — REAL-TIME
+            </div>
+            <div class="ctx-scene-visual-body">
+              <div class="entity-detect">
+                <span class="entity-hl">잊혀진 유적<span class="entity-tag entity-tag--loc">LOC</span></span>의
+                비밀을 풀어라 —
+                <span class="entity-hl">장로<span class="entity-tag entity-tag--char">CHAR</span></span>의
+                의뢰로
+                <span class="entity-hl">여명의 검<span class="entity-tag entity-tag--item">ITEM</span></span>을 찾아야 한다
+              </div>
+              <div class="entity-resolve">
+                <div class="entity-resolve-row">
+                  <span class="entity-resolve-from">유적</span>
+                  <span class="entity-resolve-arrow">→</span>
+                  <span class="entity-resolve-to">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    ruins_entrance.dds + Map Pin (B1)
+                  </span>
+                </div>
+                <div class="entity-resolve-row">
+                  <span class="entity-resolve-from">장로</span>
+                  <span class="entity-resolve-arrow">→</span>
+                  <span class="entity-resolve-to">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                    Elder_Varon_VO.wem (12 lines)
+                  </span>
+                </div>
+                <div class="entity-resolve-row">
+                  <span class="entity-resolve-from">여명의 검</span>
+                  <span class="entity-resolve-arrow">→</span>
+                  <span class="entity-resolve-to">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    item_sword_dawn.dds + Stats
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ctx-scene-text">
+            <div class="ctx-scene-num">SCENE 02</div>
+            <h3 class="ctx-scene-title">문장 안의 <span class="t-accent">모든 개체</span>를<br>자동으로 감지합니다</h3>
+            <p class="ctx-scene-desc">
+              Aho-Corasick 알고리즘이 글로서리 용어집을 스캔하여
+              <strong>위치, 캐릭터, 아이템</strong> 등 모든 개체를 실시간으로 감지합니다.
+              감지된 각 개체는 staticinfo 데이터포인트에 매핑되어
+              이미지, 오디오, 지도 위치가 자동으로 표시됩니다.
+              <strong>N-gram 없이 O(n+m) 단일 패스</strong>로 수행됩니다.
+            </p>
+            <div class="ctx-scene-tags">
+              <span class="ctx-scene-tag">O(n+m) Single Pass</span>
+              <span class="ctx-scene-tag">Glossary Automaton</span>
+              <span class="ctx-scene-tag">staticinfo Mapping</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCENE 3: Audio Context -->
+        <div class="ctx-scene" id="ctxScene3">
+          <div class="ctx-scene-text">
+            <div class="ctx-scene-num">SCENE 03</div>
+            <h3 class="ctx-scene-title">음성 데이터로<br><span class="t-accent">톤과 뉘앙스</span>를 파악</h3>
+            <p class="ctx-scene-desc">
+              StringID에 직접 연결된 음성이 없더라도 문장 속 <strong>캐릭터 이름</strong>을 감지하여
+              해당 캐릭터의 모든 음성 샘플을 자동으로 찾아냅니다.
+              WEM 파일을 vgmstream으로 변환하여 즉시 재생 가능.
+              <strong>한국어/영어 스크립트</strong>가 함께 표시되어
+              원문과 번역을 동시에 확인합니다.
+            </p>
+            <div class="ctx-scene-tags">
+              <span class="ctx-scene-tag">WEM → WAV</span>
+              <span class="ctx-scene-tag">vgmstream</span>
+              <span class="ctx-scene-tag">KR/EN Script</span>
+              <span class="ctx-scene-tag">Character Voice Detection</span>
+            </div>
+          </div>
+          <div class="ctx-scene-visual">
+            <div class="ctx-scene-visual-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+              VOICE LINES — Elder Varon (장로 바론)
+            </div>
+            <div class="ctx-scene-visual-body">
+              <div class="ctx-audio-player" style="margin-bottom:16px;">
+                <div class="ctx-waveform" id="sceneWaveform" style="height:36px;"></div>
+                <div class="ctx-audio-controls">
+                  <div class="ctx-audio-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                  <span class="ctx-audio-time">0:00 / 0:03</span>
+                  <span class="ctx-img-meta-label" style="margin-left:auto;">Elder_Varon_01.wem</span>
+                </div>
+              </div>
+              <div class="ctx-audio-script" style="margin-bottom:12px;">
+                <div class="ctx-audio-script-row"><span class="ctx-audio-lang">KR</span><span class="ctx-audio-text">여행자여, 오랜만이구나. 유적에 대해 물어볼 것이 있느냐?</span></div>
+                <div class="ctx-audio-script-row"><span class="ctx-audio-lang">EN</span><span class="ctx-audio-text">Traveler, it's been a while. Do you have questions about the ruins?</span></div>
+              </div>
+              <div class="ctx-audio-script">
+                <div class="ctx-audio-script-row"><span class="ctx-audio-lang">KR</span><span class="ctx-audio-text">조심하게. 그 유적은 위험천만한 곳이야.</span></div>
+                <div class="ctx-audio-script-row"><span class="ctx-audio-lang">EN</span><span class="ctx-audio-text">Be careful. Those ruins are extremely dangerous.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCENE 4: AI-Powered Semantic Search -->
+        <div class="ctx-scene" id="ctxScene4">
+          <div class="ctx-scene-visual">
+            <div class="ctx-scene-visual-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              5-TIER CASCADE SEARCH
+            </div>
+            <div class="ctx-scene-visual-body">
+              <!-- 5-tier visualization -->
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+                  <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--warm);min-width:20px;">T1</span>
+                  <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);flex:1;">Hash Exact Match</span>
+                  <span style="font-family:var(--mono);font-size:10px;color:var(--green);">O(1)</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:rgba(212,154,92,0.04);border-radius:6px;border:1px solid rgba(212,154,92,0.15);">
+                  <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--warm);min-width:20px;">T2</span>
+                  <span style="font-family:var(--mono);font-size:11px;color:var(--warm-bright);flex:1;font-weight:600;">FAISS Vector Search (Model2Vec 256-dim)</span>
+                  <span style="font-family:var(--mono);font-size:10px;color:var(--warm);">&lt;50ms</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+                  <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--warm);min-width:20px;">T3</span>
+                  <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);flex:1;">N-gram Fuzzy (pg_trgm)</span>
+                  <span style="font-family:var(--mono);font-size:10px;color:var(--text-muted);">~200ms</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+                  <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--warm);min-width:20px;">T4</span>
+                  <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);flex:1;">Threshold Filter</span>
+                  <span style="font-family:var(--mono);font-size:10px;color:var(--text-muted);">≥70%</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+                  <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--warm);min-width:20px;">T5</span>
+                  <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);flex:1;">Graceful Fallback</span>
+                  <span style="font-family:var(--mono);font-size:10px;color:var(--text-muted);">∅</span>
+                </div>
+              </div>
+              <div style="margin-top:16px;padding:12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);">
+                <div style="font-family:var(--mono);font-size:10px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:8px;">HNSW INDEX CONFIG</div>
+                <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);line-height:1.8;">
+                  M=32 · ef_construction=400 · ef_search=500<br>
+                  Metric: cosine (inner product on L2-normed vectors)<br>
+                  Index: potion-multilingual-128M · 256-dim
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ctx-scene-text">
+            <div class="ctx-scene-num">SCENE 04</div>
+            <h3 class="ctx-scene-title">5단계 <span class="t-accent">캐스케이드</span><br>검색 엔진</h3>
+            <p class="ctx-scene-desc">
+              단순 해시 매칭부터 <strong>FAISS 벡터 검색</strong>까지,
+              5단계에 걸쳐 최적의 번역 메모리 매칭을 수행합니다.
+              Model2Vec 256차원 임베딩으로 <strong>101개 언어</strong>에서
+              의미적 유사도를 실시간으로 계산합니다.
+              HNSW 인덱스로 <strong>50ms 이내</strong> 응답을 보장합니다.
+            </p>
+            <div class="ctx-scene-tags">
+              <span class="ctx-scene-tag">FAISS HNSW</span>
+              <span class="ctx-scene-tag">Model2Vec 256-dim</span>
+              <span class="ctx-scene-tag">&lt;50ms Response</span>
+              <span class="ctx-scene-tag">101 Languages</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </section>
 
@@ -3411,6 +3908,27 @@
         }
 
         setTimeout(switchTab, 2000);
+      }
+
+      // Deep-dive scenes — staggered scroll reveals
+      document.querySelectorAll('.ctx-scene').forEach(function(scene) {
+        gsap.to(scene, {
+          opacity: 1, y: 0, duration: 1, ease: 'power3.out',
+          scrollTrigger: { trigger: scene, start: 'top 80%', once: true }
+        });
+      });
+
+      // Generate waveform for Scene 3
+      var sceneWf = document.getElementById('sceneWaveform');
+      if (sceneWf && !sceneWf.children.length) {
+        for (var sw = 0; sw < 50; sw++) {
+          var sbar = document.createElement('div');
+          sbar.className = 'ctx-waveform-bar';
+          var spos = sw / 50;
+          var senv = Math.sin(spos * Math.PI) * 0.8 + 0.2;
+          sbar.style.height = ((6 + Math.random() * 28) * senv) + 'px';
+          sceneWf.appendChild(sbar);
+        }
       }
 
       // Closing — grand finale
