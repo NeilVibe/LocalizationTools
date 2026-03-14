@@ -506,11 +506,10 @@
 
   async function activateTM(tm, active = true) {
     try {
-      logger.apiCall(`/api/ldm/tm/${tm.tm_id}/activate`, 'PATCH');
-      const response = await fetch(`${API_BASE}/api/ldm/tm/${tm.tm_id}/activate`, {
+      logger.apiCall(`/api/ldm/tm/${tm.tm_id}/activate?active=${active}`, 'PATCH');
+      const response = await fetch(`${API_BASE}/api/ldm/tm/${tm.tm_id}/activate?active=${active}`, {
         method: 'PATCH',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active })
+        headers: getAuthHeaders()
       });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);

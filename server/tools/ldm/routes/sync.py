@@ -563,7 +563,23 @@ async def sync_subscription(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"[SYNC] [SYNC] Sync subscription failed: {e}", exc_info=True)
+        error_msg = str(e).lower()
+        # Auto-remove stale subscriptions for deleted entities
+        if "not found" in error_msg or "does not exist" in error_msg:
+            logger.warning(f"[SYNC] Stale subscription: {request.entity_type}={request.entity_id} — entity gone, removing subscription")
+            try:
+                offline_db = get_offline_db()
+                await offline_db.remove_subscription(request.entity_type, request.entity_id)
+            except Exception:
+                pass
+            return SyncSubscriptionResponse(
+                success=False,
+                entity_type=request.entity_type,
+                entity_id=request.entity_id,
+                updated_count=0,
+                message=f"Entity deleted — subscription removed"
+            )
+        logger.error(f"[SYNC] Sync subscription failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
