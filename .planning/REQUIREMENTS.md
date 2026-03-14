@@ -53,13 +53,13 @@
 - [x] **UI-02**: File explorer tree view polished with professional appearance
 - [x] **UI-03**: TM explorer tree view polished with assignment UI
 - [x] **UI-04**: Settings UI for branches, drives, metadata reading
-- [ ] **UI-05**: Overall visual polish matches the cinematic quality of the landing page
+- [x] **UI-05**: Overall visual polish matches the cinematic quality of the landing page
 
 ### MapDataGenerator Integration
 
 - [x] **MAP-01**: Image mapping visible directly in the translation grid
 - [x] **MAP-02**: Audio mapping visible directly in the translation grid
-- [ ] **MAP-03**: MapDataGenerator data integrated organically (not a separate tool feel)
+- [x] **MAP-03**: MapDataGenerator data integrated organically (not a separate tool feel)
 
 ### Contextual Intelligence
 
@@ -164,10 +164,10 @@
 | AI-01 | Phase 4 | Complete |
 | AI-02 | Phase 4 | Complete |
 | UI-04 | Phase 5 | Complete |
-| UI-05 | Phase 5 | Pending |
+| UI-05 | Phase 5 | Complete |
 | MAP-01 | Phase 5 | Complete |
 | MAP-02 | Phase 5 | Complete |
-| MAP-03 | Phase 5 | Pending |
+| MAP-03 | Phase 5 | Complete |
 | CTX-01 | Phase 5.1 | Pending |
 | CTX-02 | Phase 5.1 | Pending |
 | CTX-03 | Phase 5.1 | Pending |

@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Editor Core** - Production-quality translation grid with virtual scrolling, editing, search/filter, export, and segment status (completed 2026-03-14)
 - [x] **Phase 3: TM Workflow** - TM tree auto-mirrors file structure, TM assignment and lookup with match percentages, semantic matching (completed 2026-03-14)
 - [x] **Phase 4: Search and AI Differentiators** - Semantic search UI powered by Model2Vec, near-instant search performance, AI-matched translation indicators (completed 2026-03-14)
-- [ ] **Phase 5: Visual Polish and Integration** - Settings UI, MapDataGenerator in the grid, overall visual quality matching landing page
+- [x] **Phase 5: Visual Polish and Integration** - Settings UI, MapDataGenerator in the grid, overall visual quality matching landing page (completed 2026-03-14)
 - [ ] **Phase 5.1: Contextual Intelligence & QA Engine** - INSERTED - Aho-Corasick entity detection (reuse QuickSearch/QuickCheck logic), auto glossary extraction, context panel, QA capabilities (Line Check, Term Check), category clustering, AI Translated status
 - [ ] **Phase 6: Offline Demo Validation** - Offline mode works flawlessly for the full demo narrative, mode switching is transparent
 
@@ -165,6 +165,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 | 2. Editor Core | 3/3 | Complete | 2026-03-14 |
 | 3. TM Workflow | 3/3 | Complete   | 2026-03-14 |
 | 4. Search and AI Differentiators | 2/2 | Complete   | 2026-03-14 |
-| 5. Visual Polish and Integration | 1/2 | In Progress|  |
+| 5. Visual Polish and Integration | 2/2 | Complete   | 2026-03-14 |
 | 5.1. Contextual Intelligence & QA Engine | 0/4 | Not started | - |
 | 6. Offline Demo Validation | 0/1 | Not started | - |
