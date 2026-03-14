@@ -3,30 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-02-PLAN.md (repository parity tests for all 9 repos)
-last_updated: "2026-03-14T10:13:39.986Z"
-last_activity: 2026-03-14 -- Plan 01-02 executed (9 repo parity test files, 451 total tests, 2 TM bugs fixed)
+stopped_at: Completed 02-01-PLAN.md (grid save fix + 3-state status colors)
+last_updated: "2026-03-14T11:20:05Z"
+last_activity: 2026-03-14 -- Plan 02-01 executed (Ctrl+S race condition fix, 3-state colors, 10 Playwright tests)
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 3
-  completed_plans: 3
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Completed 01-02-PLAN.md (repository parity tests for all 9 repos)
-last_updated: "2026-03-14T10:07:03Z"
-last_activity: 2026-03-14 -- Plan 01-02 executed (9 repo parity test files, 451 total tests, 2 TM bugs fixed)
-progress:
-  total_phases: 7
-  completed_phases: 0
-  total_plans: 3
-  completed_plans: 3
-  percent: 15
+  completed_plans: 1
+  percent: 20
 ---
 
 # Project State
@@ -41,25 +26,25 @@ See: .planning/PROJECT.md (updated 2026-03-14)
 ## Current Position
 
 Phase: 2 of 6 (Editor Core)
-Plan: 2 of 3 in current phase
+Plan: 1 of 3 in current phase
 Status: Executing
-Last activity: 2026-03-14 -- Plan 02-02 executed (10 tests: 5 Playwright search/filter + 5 pytest export roundtrip)
+Last activity: 2026-03-14 -- Plan 02-01 executed (Ctrl+S race condition fix, 3-state colors, 10 Playwright tests)
 
-Progress: [███░░░░░░░] 25%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
 - Total plans completed: 4
-- Average duration: 24min
-- Total execution time: 1.6 hours
+- Average duration: 26min
+- Total execution time: 1.8 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 3 | 79min | 26min |
-| 02 | 1 | 16min | 16min |
+| 02 | 1 | 29min | 29min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -86,6 +71,9 @@ Recent decisions affecting current work:
 - TM repo SERVER mode had missing owner_id and sqlite3.Row .get() bugs (fixed)
 - Playwright E2E tests use API-seeded data (upload via fetch in beforeAll) for reliability
 - Explorer navigation uses .grid-row with :text-is() exact match selectors
+- Green (#24a148) for confirmed, yellow (#c6a300) for draft, gray for empty status colors
+- setTimeout(0) for guard flag reset in confirmInlineEdit (matches cancelInlineEdit pattern)
+- confirm-row.spec.ts fully rewritten with current login flow (Mode Selection -> Launcher form)
 
 ### Pending Todos
 
@@ -98,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T11:06:52Z
-Stopped at: Completed 02-02-PLAN.md (search/filter + export roundtrip tests)
-Resume file: .planning/phases/02-editor-core/02-03-PLAN.md
+Last session: 2026-03-14T11:20:05Z
+Stopped at: Completed 02-01-PLAN.md (grid save fix + 3-state status colors)
+Resume file: .planning/phases/02-editor-core/02-02-PLAN.md
