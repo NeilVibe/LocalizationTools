@@ -43,6 +43,9 @@
   let activeTMs = $state([]);
   let activeTMsLoading = $state(false);
 
+  // Leverage stats
+  let leverageStats = $state(null);
+
   /**
    * Load active TMs for the current file (TM Hierarchy cascade)
    */
@@ -68,10 +71,36 @@
     }
   }
 
-  // Load active TMs when fileId changes
+  /**
+   * Load leverage stats for the current file (non-blocking)
+   */
+  async function loadLeverageStats() {
+    if (!fileId) return;
+
+    try {
+      logger.apiCall(`/api/ldm/files/${fileId}/leverage`, 'GET');
+      const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/leverage`, {
+        headers: getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        logger.warning('Failed to load leverage stats', { status: response.status });
+        return;
+      }
+
+      leverageStats = await response.json();
+      logger.success('Leverage stats loaded', { exact: leverageStats.exact_pct, fuzzy: leverageStats.fuzzy_pct, new: leverageStats.new_pct });
+    } catch (err) {
+      logger.warning('Leverage stats unavailable', { error: err.message });
+      leverageStats = null;
+    }
+  }
+
+  // Load active TMs and leverage when fileId changes
   $effect(() => {
     if (fileId) {
       loadActiveTMs();
+      loadLeverageStats();
     }
   });
 
@@ -279,6 +308,7 @@
       qaIssues={sidePanelQAIssues}
       tmLoading={sidePanelTMLoading}
       qaLoading={sidePanelQALoading}
+      {leverageStats}
       on:applyTM={handleApplyTMFromPanel}
     />
   </div>

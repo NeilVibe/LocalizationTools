@@ -21,7 +21,8 @@
   let {
     selectedRow = $bindable(null),
     tmMatches = $bindable([]),
-    tmLoading = $bindable(false)
+    tmLoading = $bindable(false),
+    leverageStats = null
   } = $props();
 
   /**
@@ -60,6 +61,30 @@
 </script>
 
 <div class="tm-tab">
+  <!-- Leverage stats bar -->
+  {#if leverageStats}
+    <div class="leverage-section" data-testid="leverage-stats">
+      {#if leverageStats.total === 0}
+        <div class="leverage-empty">No segments to analyze</div>
+      {:else}
+        <div class="leverage-bar">
+          {#if leverageStats.exact_pct > 0}
+            <div class="leverage-segment exact" style="width: {leverageStats.exact_pct}%;" title="Exact: {leverageStats.exact_pct}%"></div>
+          {/if}
+          {#if leverageStats.fuzzy_pct > 0}
+            <div class="leverage-segment fuzzy" style="width: {leverageStats.fuzzy_pct}%;" title="Fuzzy: {leverageStats.fuzzy_pct}%"></div>
+          {/if}
+          {#if leverageStats.new_pct > 0}
+            <div class="leverage-segment new" style="width: {leverageStats.new_pct}%;" title="New: {leverageStats.new_pct}%"></div>
+          {/if}
+        </div>
+        <div class="leverage-text">
+          {leverageStats.exact_pct}% exact | {leverageStats.fuzzy_pct}% fuzzy | {leverageStats.new_pct}% new
+        </div>
+      {/if}
+    </div>
+  {/if}
+
   {#if tmLoading}
     <div class="tm-loading">
       <InlineLoading description="Searching TM..." />
@@ -163,6 +188,53 @@
     flex-direction: column;
     flex: 1;
     overflow-y: auto;
+  }
+
+  /* Leverage stats bar */
+  .leverage-section {
+    padding: 8px 0 10px;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+
+  .leverage-bar {
+    display: flex;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--cds-layer-02);
+  }
+
+  .leverage-segment {
+    transition: width 0.3s ease;
+  }
+
+  .leverage-segment.exact {
+    background: #24a148;
+  }
+
+  .leverage-segment.fuzzy {
+    background: #c6a300;
+  }
+
+  .leverage-segment.new {
+    background: var(--cds-text-05, #6f6f6f);
+  }
+
+  .leverage-text {
+    font-size: 0.625rem;
+    color: var(--cds-text-03);
+    margin-top: 4px;
+    text-align: center;
+    letter-spacing: 0.2px;
+  }
+
+  .leverage-empty {
+    font-size: 0.6875rem;
+    color: var(--cds-text-03);
+    text-align: center;
+    font-style: italic;
   }
 
   .tm-loading {

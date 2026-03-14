@@ -31,7 +31,8 @@
     tmLoading = false,
     qaLoading = false,
     collapsed = $bindable(false),
-    width = $bindable(300)
+    width = $bindable(300),
+    leverageStats = null
   } = $props();
 
   // Tab state
@@ -133,6 +134,7 @@
             bind:selectedRow={selectedRow}
             bind:tmMatches={tmMatches}
             bind:tmLoading={tmLoading}
+            {leverageStats}
             on:applyTM={handleApplyTM}
           />
         {:else if activeTab === 'image'}
