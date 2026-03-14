@@ -2532,7 +2532,13 @@
     <!-- UI-041: Removed grid-footer (useless "Showing rows X-Y of Z") -->
   {:else}
     <div class="empty-state">
-      <p>Select a file from the explorer to view its contents</p>
+      <div class="empty-state-content">
+        <svg class="empty-state-icon" width="48" height="48" viewBox="0 0 32 32" fill="currentColor" opacity="0.3">
+          <path d="M25.7 9.3l-7-7A.908.908 0 0018 2H8a2.006 2.006 0 00-2 2v24a2.006 2.006 0 002 2h16a2.006 2.006 0 002-2V10a.908.908 0 00-.3-.7zM18 4.4l5.6 5.6H18zM24 28H8V4h8v6a2.006 2.006 0 002 2h6z"/>
+        </svg>
+        <p class="empty-state-title">No file selected</p>
+        <p class="empty-state-hint">Select a file from the explorer to view its contents</p>
+      </div>
     </div>
   {/if}
 
@@ -3001,12 +3007,16 @@
   .table-header {
     display: flex;
     background: var(--cds-layer-accent-01);
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-    font-weight: 500;
+    border-bottom: 2px solid var(--cds-border-subtle-02, #525252);
+    font-weight: 600;
     font-size: 0.8125rem;
     text-transform: none; /* Cleaner look without uppercase */
     letter-spacing: normal;
-    color: var(--cds-text-02);
+    color: var(--cds-text-01);
+    /* Sticky header for long scrolls */
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
 
   /* UI-083: Full-height column resize bars (unified system) */
@@ -3032,8 +3042,8 @@
   }
 
   .th {
-    padding: 0.875rem 1rem; /* Match cell padding for alignment */
-    border-right: 1px solid var(--cds-border-subtle-01);
+    padding: 0.625rem 0.75rem; /* Match cell padding for alignment */
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -3081,6 +3091,25 @@
     scrollbar-gutter: stable;
   }
 
+  /* Custom scrollbar styling for executive-demo polish */
+  .scroll-container::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .scroll-container::-webkit-scrollbar-track {
+    background: var(--cds-layer-01);
+  }
+
+  .scroll-container::-webkit-scrollbar-thumb {
+    background: var(--cds-border-subtle-02, #525252);
+    border-radius: 4px;
+    border: 2px solid var(--cds-layer-01);
+  }
+
+  .scroll-container::-webkit-scrollbar-thumb:hover {
+    background: var(--cds-text-03);
+  }
+
   .scroll-content {
     position: relative;
     width: 100%;
@@ -3098,8 +3127,8 @@
     left: 0;
     right: 0;
     display: flex;
-    /* Subtle row separator for cleaner look */
-    border-bottom: 1px solid var(--cds-border-subtle-01, #393939);
+    /* Subtle row separator - thinner for cleaner look */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     background: var(--cds-layer-01);
     transition: background-color 0.15s ease;
     /* VARIABLE HEIGHT: Row height is set via inline style, content can expand */
@@ -3136,13 +3165,13 @@
   }
 
   .cell {
-    padding: 0.75rem 1rem; /* More spacious padding for cleaner look */
+    padding: 0.5rem 0.75rem; /* Balanced padding: 8px 12px */
     font-size: var(--grid-font-size, 14px);
     font-weight: var(--grid-font-weight, 400);
     font-family: var(--grid-font-family, inherit);
     color: var(--grid-font-color, var(--cds-text-01));
     /* Subtle border for cleaner look */
-    border-right: 1px solid var(--cds-border-subtle-01, #393939);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     align-items: flex-start;
     /* VARIABLE HEIGHT: Cells expand to fit content */
@@ -3659,6 +3688,32 @@
     align-items: center;
     height: 100%;
     color: var(--cds-text-02);
+  }
+
+  .empty-state-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: center;
+  }
+
+  .empty-state-icon {
+    color: var(--cds-text-03);
+    margin-bottom: 0.25rem;
+  }
+
+  .empty-state-title {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--cds-text-01);
+    margin: 0;
+  }
+
+  .empty-state-hint {
+    font-size: 0.8125rem;
+    color: var(--cds-text-03);
+    margin: 0;
   }
 
   /* ========================================
