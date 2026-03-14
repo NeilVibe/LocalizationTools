@@ -188,7 +188,7 @@ def _bulk_copy_sqlite(
     batch_size: int = 1000
 ) -> int:
     """
-    SQLite fallback for bulk_copy using batch INSERT.
+    Server-local SQLite implementation for bulk_copy using batch INSERT.
 
     Args:
         db: SQLAlchemy database session
@@ -840,7 +840,7 @@ def _upsert_batch_sqlite(
     batch_size: int = 1000
 ) -> dict:
     """
-    SQLite fallback for upsert using INSERT OR REPLACE.
+    Server-local SQLite implementation for upsert using INSERT OR REPLACE.
 
     Args:
         db: Database session

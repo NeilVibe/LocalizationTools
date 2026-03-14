@@ -9,7 +9,7 @@ Automatically selects the correct repository based on mode:
 
 3-MODE DETECTION:
 ├─ Offline mode (header)      → SQLiteRepo(schema_mode=OFFLINE)  → offline_* tables
-├─ Server SQLite fallback     → SQLiteRepo(schema_mode=SERVER)   → ldm_* tables
+├─ Server local (SQLite)      → SQLiteRepo(schema_mode=SERVER)   → ldm_* tables
 └─ PostgreSQL available       → PostgreSQLRepo(db, user)         → ldm_* tables
 
 Routes ONLY use repositories. No direct DB access. Ever.
@@ -49,16 +49,16 @@ def _is_offline_mode(request: Request) -> bool:
     return auth_header.startswith("Bearer OFFLINE_MODE_")
 
 
-def _is_sqlite_fallback() -> bool:
+def _is_server_local() -> bool:
     """
-    ARCH-001: Detect if server is running in SQLite fallback mode.
+    ARCH-001: Detect if server is running in server-local SQLite mode.
 
     When PostgreSQL is unavailable, the server uses SQLite with the ldm_* schema
     (same table structure as PostgreSQL). This is different from offline mode
     which uses the offline_* schema.
 
     Returns:
-        True if server is using SQLite fallback (ACTIVE_DATABASE_TYPE == "sqlite")
+        True if server is using server-local SQLite (ACTIVE_DATABASE_TYPE == "sqlite")
     """
     from server import config
     return config.ACTIVE_DATABASE_TYPE == "sqlite"
@@ -74,7 +74,7 @@ def get_tm_repository(
 
     ARCH-001: 3-Mode Detection
     - Offline mode (header) → SQLiteRepo(OFFLINE) → offline_tms
-    - SQLite fallback       → SQLiteRepo(SERVER)  → ldm_translation_memories
+    - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_translation_memories
     - PostgreSQL available  → PostgreSQLRepo      → ldm_translation_memories
     """
     from server.repositories.postgresql.tm_repo import PostgreSQLTMRepository
@@ -83,7 +83,7 @@ def get_tm_repository(
 
     if _is_offline_mode(request):
         return SQLiteTMRepository(schema_mode=SchemaMode.OFFLINE)
-    elif _is_sqlite_fallback():
+    elif _is_server_local():
         return SQLiteTMRepository(schema_mode=SchemaMode.SERVER)
     else:
         return PostgreSQLTMRepository(db, current_user)
@@ -99,7 +99,7 @@ def get_file_repository(
 
     ARCH-001: 3-Mode Detection
     - Offline mode (header) → SQLiteRepo(OFFLINE) → offline_files
-    - SQLite fallback       → SQLiteRepo(SERVER)  → ldm_files
+    - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_files
     - PostgreSQL available  → PostgreSQLRepo      → ldm_files
     """
     from server.repositories.postgresql.file_repo import PostgreSQLFileRepository
@@ -108,7 +108,7 @@ def get_file_repository(
 
     if _is_offline_mode(request):
         return SQLiteFileRepository(schema_mode=SchemaMode.OFFLINE)
-    elif _is_sqlite_fallback():
+    elif _is_server_local():
         return SQLiteFileRepository(schema_mode=SchemaMode.SERVER)
     else:
         return PostgreSQLFileRepository(db, current_user)
@@ -124,7 +124,7 @@ def get_row_repository(
 
     ARCH-001: 3-Mode Detection + Negative ID Routing
     - Offline mode (header) → SQLiteRepo(OFFLINE) → offline_rows
-    - SQLite fallback       → SQLiteRepo(SERVER)  → ldm_rows  
+    - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_rows
     - PostgreSQL available  → RoutingRepo wrapping PostgreSQL
     
     RoutingRowRepository handles negative IDs (local Electron data) transparently.
@@ -138,8 +138,8 @@ def get_row_repository(
     if _is_offline_mode(request):
         # Full offline mode - all IDs are negative/local
         return SQLiteRowRepository(schema_mode=SchemaMode.OFFLINE)
-    elif _is_sqlite_fallback():
-        # Server SQLite fallback - wrap with routing for local IDs
+    elif _is_server_local():
+        # Server local SQLite - wrap with routing for local IDs
         primary = SQLiteRowRepository(schema_mode=SchemaMode.SERVER)
         return RoutingRowRepository(primary)
     else:
@@ -158,7 +158,7 @@ def get_project_repository(
 
     ARCH-001: 3-Mode Detection
     - Offline mode (header) → SQLiteRepo(OFFLINE) → offline_projects
-    - SQLite fallback       → SQLiteRepo(SERVER)  → ldm_projects
+    - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_projects
     - PostgreSQL available  → PostgreSQLRepo      → ldm_projects
     """
     from server.repositories.postgresql.project_repo import PostgreSQLProjectRepository
@@ -167,7 +167,7 @@ def get_project_repository(
 
     if _is_offline_mode(request):
         return SQLiteProjectRepository(schema_mode=SchemaMode.OFFLINE)
-    elif _is_sqlite_fallback():
+    elif _is_server_local():
         return SQLiteProjectRepository(schema_mode=SchemaMode.SERVER)
     else:
         return PostgreSQLProjectRepository(db, current_user)
@@ -183,7 +183,7 @@ def get_folder_repository(
 
     ARCH-001: 3-Mode Detection
     - Offline mode (header) → SQLiteRepo(OFFLINE) → offline_folders
-    - SQLite fallback       → SQLiteRepo(SERVER)  → ldm_folders
+    - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_folders
     - PostgreSQL available  → PostgreSQLRepo      → ldm_folders
     """
     from server.repositories.postgresql.folder_repo import PostgreSQLFolderRepository
@@ -192,7 +192,7 @@ def get_folder_repository(
 
     if _is_offline_mode(request):
         return SQLiteFolderRepository(schema_mode=SchemaMode.OFFLINE)
-    elif _is_sqlite_fallback():
+    elif _is_server_local():
         return SQLiteFolderRepository(schema_mode=SchemaMode.SERVER)
     else:
         return PostgreSQLFolderRepository(db, current_user)
@@ -208,7 +208,7 @@ def get_platform_repository(
 
     ARCH-001: 3-Mode Detection
     - Offline mode (header) → SQLiteRepo(OFFLINE) → offline_platforms
-    - SQLite fallback       → SQLiteRepo(SERVER)  → ldm_platforms
+    - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_platforms
     - PostgreSQL available  → PostgreSQLRepo      → ldm_platforms
     """
     from server.repositories.postgresql.platform_repo import PostgreSQLPlatformRepository
@@ -217,7 +217,7 @@ def get_platform_repository(
 
     if _is_offline_mode(request):
         return SQLitePlatformRepository(schema_mode=SchemaMode.OFFLINE)
-    elif _is_sqlite_fallback():
+    elif _is_server_local():
         return SQLitePlatformRepository(schema_mode=SchemaMode.SERVER)
     else:
         return PostgreSQLPlatformRepository(db, current_user)
@@ -233,7 +233,7 @@ def get_qa_repository(
 
     ARCH-001: 3-Mode Detection
     - Offline mode (header) → SQLiteRepo(OFFLINE) → offline_qa_results
-    - SQLite fallback       → SQLiteRepo(SERVER)  → ldm_qa_results
+    - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_qa_results
     - PostgreSQL available  → PostgreSQLRepo      → ldm_qa_results
     """
     from server.repositories.postgresql.qa_repo import PostgreSQLQAResultRepository
@@ -242,7 +242,7 @@ def get_qa_repository(
 
     if _is_offline_mode(request):
         return SQLiteQAResultRepository(schema_mode=SchemaMode.OFFLINE)
-    elif _is_sqlite_fallback():
+    elif _is_server_local():
         return SQLiteQAResultRepository(schema_mode=SchemaMode.SERVER)
     else:
         return PostgreSQLQAResultRepository(db, current_user)
@@ -258,7 +258,7 @@ def get_trash_repository(
 
     ARCH-001: 3-Mode Detection
     - Offline mode (header) → SQLiteRepo(OFFLINE) → offline_trash
-    - SQLite fallback       → SQLiteRepo(SERVER)  → ldm_trash
+    - Server local (SQLite) → SQLiteRepo(SERVER)  → ldm_trash
     - PostgreSQL available  → PostgreSQLRepo      → ldm_trash
     """
     from server.repositories.postgresql.trash_repo import PostgreSQLTrashRepository
@@ -267,7 +267,7 @@ def get_trash_repository(
 
     if _is_offline_mode(request):
         return SQLiteTrashRepository(schema_mode=SchemaMode.OFFLINE)
-    elif _is_sqlite_fallback():
+    elif _is_server_local():
         return SQLiteTrashRepository(schema_mode=SchemaMode.SERVER)
     else:
         return PostgreSQLTrashRepository(db, current_user)
@@ -283,7 +283,7 @@ def get_capability_repository(
 
     ARCH-001: 3-Mode Detection
     - Offline mode (header) → SQLiteRepo(OFFLINE) (stub - single user)
-    - SQLite fallback       → SQLiteRepo(SERVER) (stub - no multi-user)
+    - Server local (SQLite) → SQLiteRepo(SERVER) (stub - no multi-user)
     - PostgreSQL available  → PostgreSQLRepo (admin-only)
 
     Note: Capability management is admin-only and not available in SQLite modes.
@@ -294,7 +294,7 @@ def get_capability_repository(
 
     if _is_offline_mode(request):
         return SQLiteCapabilityRepository()
-    elif _is_sqlite_fallback():
+    elif _is_server_local():
         # Capability repo is a stub in SQLite modes - no user management
         return SQLiteCapabilityRepository()
     else:

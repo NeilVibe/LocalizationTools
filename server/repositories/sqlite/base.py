@@ -4,7 +4,7 @@ SQLite Repository Base - Schema-Aware Infrastructure.
 ARCH-001: This module provides TRUE layer abstraction for SQLite repositories.
 Repositories can operate in two modes:
 - OFFLINE: Uses offline_* tables (Electron app offline mode)
-- SERVER: Uses ldm_* tables (server SQLite fallback when PostgreSQL unavailable)
+- SERVER: Uses ldm_* tables (server-local SQLite when PostgreSQL unavailable)
 
 The factory chooses the mode. Repositories stay PURE - no config checks inside.
 """
@@ -22,7 +22,7 @@ class SchemaMode(Enum):
              This is the Electron app's local SQLite database for offline work.
 
     SERVER: Uses ldm_* tables (ldm_platforms, ldm_projects, etc.)
-            This is the server's SQLite fallback when PostgreSQL is unavailable.
+            This is the server-local SQLite when PostgreSQL is unavailable.
     """
     OFFLINE = "offline"
     SERVER = "server"
