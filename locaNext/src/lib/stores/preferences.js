@@ -35,7 +35,12 @@ const defaultPreferences = {
 
   // Reference Settings
   referenceMatchMode: 'stringIdOnly', // 'stringIdOnly' | 'stringIdAndSource'
-  referenceFileId: null
+  referenceFileId: null,
+
+  // MapData Generator Settings (Phase 5: branch/drive configuration)
+  mdgBranch: 'mainline',
+  mdgDrive: 'F',
+  mdgMetadataReading: true
 };
 
 // Load preferences from localStorage
