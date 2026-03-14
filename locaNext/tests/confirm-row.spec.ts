@@ -1,6 +1,6 @@
 /**
- * Test: Row Confirmation UI (Ctrl+S) saves to database
- * Bug fix verification: PATCH → PUT
+ * Test: Row Confirmation UI (Ctrl+S) saves to database with 'reviewed' status
+ * Verifies the confirm flow sets status correctly via API
  *
  * Prerequisites: DEV servers running (./scripts/start_all_servers.sh --with-vite)
  */
@@ -9,108 +9,142 @@ import { test, expect } from '@playwright/test';
 const API_BASE = 'http://localhost:8888';
 const DEV_URL = 'http://localhost:5173';
 
-test.describe('Row Confirmation UI', () => {
-  test.setTimeout(90000);
+/** Helper: Login and navigate to a file with rows in the grid */
+async function loginAndOpenFile(page: any) {
+  await page.goto(DEV_URL);
 
-  test.skip('Ctrl+S in selection mode confirms row', async ({ page, request }) => {
-    // Get auth token for API verification
+  // Mode Selection: click "Login"
+  await page.click('text=Login');
+  await page.waitForTimeout(500);
+
+  // Login form
+  await page.fill('input[placeholder="Enter username"]', 'admin');
+  await page.fill('input[placeholder="Enter password"]', 'admin123');
+  await page.click('button:has-text("Login"):not(:text-is("Back"))');
+  await page.waitForTimeout(5000);
+
+  // Navigate: Double-click through file explorer
+  const bdoRow = page.locator('[role="row"]').filter({ hasText: 'BDO' }).first();
+  await expect(bdoRow).toBeVisible({ timeout: 5000 });
+  await bdoRow.dblclick();
+  await page.waitForTimeout(2000);
+
+  const projectRow = page.locator('[role="row"]').filter({ hasText: /ITEM|project/i }).first();
+  await expect(projectRow).toBeVisible({ timeout: 5000 });
+  await projectRow.dblclick();
+  await page.waitForTimeout(2000);
+
+  const fileRow = page.locator('[role="row"]').filter({ hasText: /\.txt|\.xml/ }).first();
+  await expect(fileRow).toBeVisible({ timeout: 5000 });
+  await fileRow.dblclick();
+  await page.waitForTimeout(3000);
+}
+
+test.describe('Row Confirmation UI', () => {
+  test.setTimeout(120000);
+
+  test('Ctrl+S in edit mode sets row status to reviewed', async ({ page, request }) => {
+    // Get auth token
     const loginResponse = await request.post(`${API_BASE}/api/auth/login`, {
       data: { username: 'admin', password: 'admin123' }
     });
     const { access_token: authToken } = await loginResponse.json();
 
-    // Get initial confirmed count
-    const beforeResponse = await request.get(
-      `${API_BASE}/api/ldm/files/118/rows?filter=confirmed`,
-      { headers: { 'Authorization': `Bearer ${authToken}` } }
-    );
-    const beforeData = await beforeResponse.json();
-    const beforeCount = beforeData.total;
-    console.log(`BEFORE: ${beforeCount} confirmed rows`);
+    await loginAndOpenFile(page);
 
-    // 1. Go to login page
-    await page.goto(DEV_URL);
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(1000);
-
-    // Take screenshot of login page
-    await page.screenshot({ path: '/tmp/confirm_01_login.png' }).catch(() => {});
-
-    // 2. Login using the exact form structure (label-based, not placeholder)
-    // Fill username field (first input)
-    await page.locator('input').first().fill('admin');
-    // Fill password field
-    await page.locator('input[type="password"]').fill('admin123');
-    // Click Login button
-    await page.locator('button:has-text("Login")').click();
-
-    await page.waitForTimeout(3000);
-    await page.screenshot({ path: '/tmp/confirm_02_logged_in.png' }).catch(() => {});
-
-    // 3. Navigate to LDM
-    await page.goto(`${DEV_URL}/ldm`);
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
-
-    await page.screenshot({ path: '/tmp/confirm_03_ldm.png' }).catch(() => {});
-
-    // 4. Click on "Playwright Test Project" to expand it
-    console.log('Looking for Playwright Test Project...');
-    const projectLink = page.getByText('Playwright Test Project', { exact: false });
-    if (await projectLink.isVisible().catch(() => false)) {
-      await projectLink.click();
-      await page.waitForTimeout(1500);
-      console.log('Clicked Playwright Test Project');
-    }
-
-    await page.screenshot({ path: '/tmp/confirm_04_project_expanded.png' }).catch(() => {});
-
-    // 5. Click on sample_language_data.txt file
-    console.log('Looking for sample_language_data file...');
-    const fileLink = page.getByText('sample_language_data', { exact: false });
-    if (await fileLink.isVisible().catch(() => false)) {
-      await fileLink.click();
-      await page.waitForTimeout(2000);
-      console.log('Clicked sample_language_data file');
-    }
-
-    await page.screenshot({ path: '/tmp/confirm_05_file_loaded.png' }).catch(() => {});
-
-    // 5. Click on a target cell to select it
     const targetCells = page.locator('.cell.target');
-    const cellCount = await targetCells.count();
-    console.log(`Found ${cellCount} target cells`);
+    await expect(targetCells.first()).toBeVisible({ timeout: 15000 });
 
-    if (cellCount > 0) {
-      // Click on second cell (first might already be confirmed)
-      const cellToClick = cellCount > 1 ? targetCells.nth(1) : targetCells.first();
-      await cellToClick.click();
-      await page.waitForTimeout(500);
+    // Intercept the PUT request to capture the response
+    let putResponseStatus = '';
+    let putRowId = '';
+    page.on('response', async (response: any) => {
+      if (response.url().includes('/api/ldm/rows/') && response.request().method() === 'PUT') {
+        try {
+          const data = await response.json();
+          putResponseStatus = data.status;
+          putRowId = data.id;
+          console.log(`PUT response: row ${data.id}, status=${data.status}`);
+        } catch (e) {
+          // ignore
+        }
+      }
+    });
 
-      await page.screenshot({ path: '/tmp/confirm_06_selected.png' }).catch(() => {});
+    // Edit a row and confirm with Ctrl+S
+    await targetCells.nth(5).dblclick();
+    await page.waitForTimeout(500);
 
-      // 6. Press Ctrl+S to confirm
-      console.log('Pressing Ctrl+S...');
-      await page.keyboard.press('Control+s');
-      await page.waitForTimeout(2000);
+    const editArea = page.locator('.inline-edit-textarea[contenteditable="true"]');
+    await expect(editArea).toBeVisible({ timeout: 5000 });
 
-      await page.screenshot({ path: '/tmp/confirm_07_after_ctrl_s.png' }).catch(() => {});
+    const testText = `CONFIRM_TEST_${Date.now()}`;
+    await page.keyboard.press('Control+a');
+    await page.keyboard.type(testText);
+    await page.waitForTimeout(300);
+
+    // Ctrl+S to confirm
+    await page.keyboard.press('Control+s');
+    await page.waitForTimeout(3000);
+
+    // Verify the API response set status to 'reviewed'
+    console.log(`API confirmed status: ${putResponseStatus}`);
+    expect(putResponseStatus).toBe('reviewed');
+
+    // Double verify via API
+    if (putRowId) {
+      const verifyResponse = await request.get(`${API_BASE}/api/ldm/rows/${putRowId}`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (verifyResponse.ok()) {
+        const rowData = await verifyResponse.json();
+        console.log(`Verified via API: row ${rowData.id}, status=${rowData.status}`);
+        expect(rowData.status).toBe('reviewed');
+      }
     }
 
-    // 7. Verify via API that confirmed count increased
-    const afterResponse = await request.get(
-      `${API_BASE}/api/ldm/files/118/rows?filter=confirmed`,
-      { headers: { 'Authorization': `Bearer ${authToken}` } }
-    );
-    const afterData = await afterResponse.json();
-    const afterCount = afterData.total;
-    console.log(`AFTER: ${afterCount} confirmed rows`);
+    await page.screenshot({ path: '/tmp/confirm_row_test.png' }).catch(() => {});
+  });
 
-    // 8. Take final screenshot showing the result
-    await page.screenshot({ path: '/tmp/confirm_08_final.png' }).catch(() => {});
+  test('Enter save sets row status to translated (not reviewed)', async ({ page }) => {
+    await loginAndOpenFile(page);
 
-    // Assert
-    console.log(`Result: ${beforeCount} → ${afterCount} confirmed rows`);
-    expect(afterCount).toBeGreaterThanOrEqual(beforeCount);
+    const targetCells = page.locator('.cell.target');
+    await expect(targetCells.first()).toBeVisible({ timeout: 15000 });
+
+    // Intercept the PUT request
+    let putResponseStatus = '';
+    page.on('response', async (response: any) => {
+      if (response.url().includes('/api/ldm/rows/') && response.request().method() === 'PUT') {
+        try {
+          const data = await response.json();
+          putResponseStatus = data.status;
+          console.log(`PUT response: status=${data.status}`);
+        } catch (e) {
+          // ignore
+        }
+      }
+    });
+
+    // Edit a row and save with Enter (not Ctrl+S)
+    await targetCells.nth(6).dblclick();
+    await page.waitForTimeout(500);
+
+    const editArea = page.locator('.inline-edit-textarea[contenteditable="true"]');
+    await expect(editArea).toBeVisible({ timeout: 5000 });
+
+    const testText = `ENTER_SAVE_TEST_${Date.now()}`;
+    await page.keyboard.press('Control+a');
+    await page.keyboard.type(testText);
+    await page.waitForTimeout(300);
+
+    // Enter to save (translated status)
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(3000);
+
+    console.log(`API saved status: ${putResponseStatus}`);
+    expect(putResponseStatus).toBe('translated');
+
+    await page.screenshot({ path: '/tmp/confirm_row_enter.png' }).catch(() => {});
   });
 });

@@ -1818,12 +1818,12 @@
     logger.info("Real-time updates applied", { count: updates.length });
   }
 
-  // Get status tag type
+  // Get status tag type (3-state: green=confirmed, yellow=draft, gray=empty)
   function getStatusKind(status) {
     switch (status) {
       case 'approved': return 'green';
-      case 'reviewed': return 'blue';
-      case 'translated': return 'teal';
+      case 'reviewed': return 'green';
+      case 'translated': return 'warm-gray';
       default: return 'gray';
     }
   }
@@ -2445,7 +2445,7 @@
 
                 <!-- Target (always visible, EDITABLE) -->
                 <!-- Phase 2: Inline editing on double-click -->
-                <!-- Cell color indicates status: default=pending, translated=teal, confirmed=green -->
+                <!-- Cell color indicates status: gray=pending, yellow=translated(draft), green=reviewed/approved(confirmed) -->
                 <div
                   class="cell target"
                   class:locked={rowLock}
@@ -3461,27 +3461,32 @@
   }
 
   /* Status-based cell colors (replaces Status column)
-   * Simple 2-state scheme:
-   * - Unconfirmed (pending, translated) = Gray (default, no styling)
-   * - Confirmed (reviewed, approved) = Teal highlight
+   * 3-state scheme:
+   * - Empty (pending, untranslated) = Gray (default, no styling)
+   * - Draft (translated) = Yellow/amber highlight
+   * - Confirmed (reviewed, approved) = Green highlight
    */
 
-  /* Unconfirmed: No special styling - just default gray background */
-  /* .cell.target.status-translated - intentionally unstyled */
+  /* Draft: Yellow/amber highlight for translated rows */
+  .cell.target.status-translated {
+    background: rgba(198, 163, 0, 0.12); /* amber - draft */
+    border-left: 3px solid #c6a300;
+  }
 
-  /* Confirmed: Teal highlight for reviewed rows */
+  /* Confirmed: Green highlight for reviewed rows */
   .cell.target.status-reviewed {
-    background: rgba(0, 157, 154, 0.15); /* teal - confirmed */
-    border-left: 3px solid var(--cds-support-04);
+    background: rgba(36, 161, 72, 0.15); /* green - confirmed */
+    border-left: 3px solid #24a148;
   }
 
-  /* Confirmed: Teal highlight for approved rows (same as reviewed) */
+  /* Confirmed: Green highlight for approved rows (same as reviewed) */
   .cell.target.status-approved {
-    background: rgba(0, 157, 154, 0.15); /* teal - confirmed */
-    border-left: 3px solid var(--cds-support-04);
+    background: rgba(36, 161, 72, 0.15); /* green - confirmed */
+    border-left: 3px solid #24a148;
   }
 
-  /* Status hover overrides for confirmed cells */
+  /* Status hover overrides for styled cells */
+  .cell.target.status-translated:hover,
   .cell.target.status-reviewed:hover,
   .cell.target.status-approved:hover {
     filter: brightness(1.1);
