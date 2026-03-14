@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FactionNodeDataList>
+  <FactionNodeData NodeName="Stormhold Castle" KnowledgeKey="KNOW_REGION_STORMHOLD" RegionType="Fortress" />
+  <FactionNodeData NodeName="Ashenvale Forest" KnowledgeKey="KNOW_REGION_ASHENVALE" RegionType="Wilderness" />
+  <FactionNodeData NodeName="Crystal Caverns" KnowledgeKey="KNOW_REGION_CRYSTAL" RegionType="Dungeon" />
+</FactionNodeDataList>
