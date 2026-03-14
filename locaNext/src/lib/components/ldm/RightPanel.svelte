@@ -6,12 +6,9 @@
    * QA issues shown as persistent footer (always visible regardless of tab).
    * Preserves resize and collapse behavior from TMQAPanel.
    */
-  import { Tag, InlineLoading } from "carbon-components-svelte";
   import {
     ChevronLeft,
     ChevronRight,
-    WarningAltFilled,
-    Checkmark,
     DataBase,
     Image,
     Music,
@@ -22,6 +19,7 @@
   import TMTab from "$lib/components/ldm/TMTab.svelte";
   import ImageTab from "$lib/components/ldm/ImageTab.svelte";
   import AudioTab from "$lib/components/ldm/AudioTab.svelte";
+  import QAFooter from "$lib/components/ldm/QAFooter.svelte";
 
   const dispatch = createEventDispatcher();
 
@@ -155,42 +153,12 @@
       {/key}
 
       <!-- QA Issues (persistent footer - always visible) -->
-      {#if qaIssues.length > 0 || qaLoading || selectedRow}
-        <div class="qa-footer">
-          <div class="qa-header">
-            <span class="qa-title">
-              <WarningAltFilled size={12} />
-              QA
-            </span>
-            {#if qaLoading}
-              <InlineLoading description="" />
-            {/if}
-            {#if qaIssues.length > 0}
-              <span class="qa-count">{qaIssues.length}</span>
-            {/if}
-          </div>
-
-          {#if !selectedRow}
-            <!-- hidden when no row selected, footer only shows when relevant -->
-          {:else if qaIssues.length > 0}
-            <div class="qa-items">
-              {#each qaIssues as issue (issue.id)}
-                <div class="qa-item" class:error={issue.severity === 'error'} class:warning={issue.severity === 'warning'}>
-                  <Tag type={issue.severity === 'error' ? 'red' : 'magenta'} size="sm">
-                    {issue.check_type}
-                  </Tag>
-                  <div class="qa-message">{issue.message}</div>
-                </div>
-              {/each}
-            </div>
-          {:else if !qaLoading}
-            <div class="qa-ok">
-              <Checkmark size={12} />
-              <span>No issues</span>
-            </div>
-          {/if}
-        </div>
-      {/if}
+      <QAFooter
+        {qaIssues}
+        {qaLoading}
+        {selectedRow}
+        onNavigateToRow={(rowId) => dispatch('navigateToRow', { rowId })}
+      />
     </div>
   {/if}
 </div>
@@ -341,78 +309,5 @@
     font-style: italic;
   }
 
-  /* QA Footer */
-  .qa-footer {
-    flex-shrink: 0;
-    border-top: 1px solid var(--cds-border-subtle-01);
-    padding: 8px 12px;
-    max-height: 140px;
-    overflow-y: auto;
-  }
-
-  .qa-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 6px;
-  }
-
-  .qa-title {
-    font-size: 0.6875rem;
-    font-weight: 600;
-    color: var(--cds-text-02);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: flex;
-    align-items: center;
-    gap: 3px;
-  }
-
-  .qa-count {
-    font-size: 0.625rem;
-    font-weight: 600;
-    background: var(--cds-support-error, #da1e28);
-    color: #fff;
-    padding: 0 5px;
-    border-radius: 8px;
-    min-width: 16px;
-    text-align: center;
-  }
-
-  .qa-items {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .qa-item {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    padding: 6px;
-    background: var(--cds-layer-02);
-    border-radius: 4px;
-  }
-
-  .qa-item.error {
-    border-left: 3px solid var(--cds-support-01);
-  }
-
-  .qa-item.warning {
-    border-left: 3px solid var(--cds-support-03);
-  }
-
-  .qa-message {
-    font-size: 0.6875rem;
-    color: var(--cds-text-01);
-    line-height: 1.4;
-  }
-
-  .qa-ok {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.6875rem;
-    color: var(--cds-support-02);
-  }
+  /* QA Footer - styles moved to QAFooter.svelte component */
 </style>
