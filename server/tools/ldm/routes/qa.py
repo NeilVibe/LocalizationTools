@@ -51,6 +51,10 @@ except ImportError:
 
 router = APIRouter(tags=["LDM-QA"])
 
+# P051-02: Noise filter threshold -- terms triggering more issues than this
+# across a file are likely false positives and get excluded
+MAX_ISSUES_PER_TERM = 6
+
 
 # =============================================================================
 # QA Check Logic
@@ -76,6 +80,18 @@ async def _get_glossary_terms(
     Returns:
         List of (source, target) tuples
     """
+    # P051-02: Try GlossaryService first (if available from Plan 01)
+    try:
+        from server.tools.ldm.services.glossary_service import get_glossary_service
+        glossary_svc = get_glossary_service()
+        if glossary_svc and glossary_svc.is_loaded():
+            terms = glossary_svc.get_terms_for_file(file_id)
+            if terms:
+                logger.debug(f"[QA] Using GlossaryService for file_id={file_id}, {len(terms)} terms")
+                return terms
+    except (ImportError, AttributeError):
+        pass  # GlossaryService not available, fall back to TM-based
+
     # Get active TMs for this file (inherits from folder/project/platform)
     active_tms = await tm_repo.get_active_for_file(file_id)
 
@@ -118,25 +134,92 @@ def _build_line_check_index(
     return dict(index)
 
 
+def _build_term_automaton(glossary_terms: List[tuple]):
+    """
+    Build an Aho-Corasick automaton from glossary terms (once, reused for all rows).
+
+    P051-02: Extracted from _run_qa_checks to enable service-level reuse.
+
+    Args:
+        glossary_terms: List of (source, target) tuples
+
+    Returns:
+        Tuple of (automaton, term_map) where term_map maps index -> (source, target)
+    """
+    if not HAS_AHOCORASICK or not glossary_terms:
+        return None, {}
+
+    automaton = ahocorasick.Automaton()
+    term_map = {}
+    for idx, (term_source, term_target) in enumerate(glossary_terms):
+        automaton.add_word(term_source, (idx, term_source, term_target))
+        term_map[idx] = (term_source, term_target)
+    automaton.make_automaton()
+    return automaton, term_map
+
+
+def _apply_noise_filter(issues: List[dict]) -> List[dict]:
+    """
+    Remove term check issues for terms that trigger too many times (false positives).
+
+    P051-02: If a glossary term triggers more than MAX_ISSUES_PER_TERM issues
+    across a file, it's likely a false positive (too generic) and is excluded.
+
+    Args:
+        issues: List of issue dicts (term check only)
+
+    Returns:
+        Filtered list with noisy terms removed
+    """
+    from collections import Counter
+
+    # Count occurrences per glossary_source
+    term_counts: Counter = Counter()
+    for issue in issues:
+        if issue.get("check_type") == "term":
+            glossary_source = issue.get("details", {}).get("glossary_source", "")
+            if glossary_source:
+                term_counts[glossary_source] += 1
+
+    # Filter out noisy terms
+    noisy_terms = {term for term, count in term_counts.items() if count > MAX_ISSUES_PER_TERM}
+
+    if not noisy_terms:
+        return issues
+
+    logger.debug(f"[QA] Noise filter removing {len(noisy_terms)} noisy terms: {noisy_terms}")
+
+    return [
+        issue for issue in issues
+        if issue.get("check_type") != "term"
+        or issue.get("details", {}).get("glossary_source", "") not in noisy_terms
+    ]
+
+
 async def _run_qa_checks(
     row: Dict[str, Any],
     checks: List[str],
     file_rows: Optional[List[Dict[str, Any]]] = None,
     glossary_terms: Optional[List[tuple]] = None,
     line_check_index: Optional[Dict[str, List[tuple]]] = None,
+    term_automaton=None,
+    term_map: Optional[Dict[int, tuple]] = None,
 ) -> List[dict]:
     """
     Run QA checks on a single row.
 
     P10: Works with dicts from Repository Pattern (not LDMRow objects).
-    P051-02: Enhanced with pre-built line_check_index for O(1) lookups.
+    P051-02: Enhanced with pre-built line_check_index for O(1) lookups,
+             pre-built term_automaton for efficient multi-pattern matching.
 
     Args:
         row: Row dict with id, file_id, row_num, source, target
         checks: List of check types to run
         file_rows: All rows in the file as dicts (needed for line check if no index)
         glossary_terms: List of (source, target) tuples for term check
-        line_check_index: Pre-built index from _build_line_check_index (optional, built on-the-fly if needed)
+        line_check_index: Pre-built index from _build_line_check_index
+        term_automaton: Pre-built AC automaton from _build_term_automaton
+        term_map: Term map from _build_term_automaton
 
     Returns:
         List of issue dicts
@@ -201,20 +284,19 @@ async def _run_qa_checks(
                     })
 
     # 3. Term Check - Glossary terms must be present in translation
-    # Uses Aho-Corasick matching with word isolation
+    # P051-02: Uses pre-built AC automaton (service-level), reports ALL missing terms
     if "term" in checks and glossary_terms:
         source_text = source.strip()
         target_text = target.strip()
 
-        if HAS_AHOCORASICK:
-            # Build automaton for efficient multi-pattern matching
-            automaton = ahocorasick.Automaton()
-            for idx, (term_source, term_target) in enumerate(glossary_terms):
-                automaton.add_word(term_source, (idx, term_source, term_target))
-            automaton.make_automaton()
+        # Build automaton on-the-fly if not provided (single-row QA mode)
+        ac = term_automaton
+        if ac is None and HAS_AHOCORASICK:
+            ac, term_map = _build_term_automaton(glossary_terms)
 
-            # Find all glossary terms in source
-            for end_index, (idx, term_source, term_target) in automaton.iter(source_text):
+        if ac is not None:
+            # Find all glossary terms in source using AC automaton
+            for end_index, (idx, term_source, term_target) in ac.iter(source_text):
                 start_index = end_index - len(term_source) + 1
 
                 # Check if match is isolated (whole word)
@@ -230,13 +312,11 @@ async def _run_qa_checks(
                                 "glossary_target": term_target
                             }
                         })
-                        break  # Only report first missing term
         else:
-            # Fallback: simple substring matching
+            # Fallback: simple substring matching (no ahocorasick)
             for term_source, term_target in glossary_terms:
                 pos = source_text.find(term_source)
                 if pos != -1:
-                    # Check isolation
                     if is_isolated(source_text, pos, pos + len(term_source)):
                         if term_target.lower() not in target_text.lower():
                             issues.append({
@@ -248,7 +328,6 @@ async def _run_qa_checks(
                                     "glossary_target": term_target
                                 }
                             })
-                            break
 
     return issues
 
@@ -427,6 +506,16 @@ async def check_file_qa(
     if "term" in request.checks:
         glossary_terms = await _get_glossary_terms(file_id, tm_repo)
 
+    # P051-02: Build pre-computed structures ONCE for all rows
+    line_check_index = None
+    if "line" in request.checks:
+        line_check_index = _build_line_check_index(rows)
+
+    term_automaton = None
+    term_map = None
+    if "term" in request.checks and glossary_terms:
+        term_automaton, term_map = _build_term_automaton(glossary_terms)
+
     # Summary counters
     summary = {
         check: {"issue_count": 0, "severity": "ok"}
@@ -434,6 +523,9 @@ async def check_file_qa(
     }
     total_issues = 0
     rows_checked = 0
+
+    # P051-02: Collect all term issues for noise filtering
+    all_term_issues: List[tuple] = []  # (row_id, file_id, issue)
 
     # Check each row
     for row in rows:
@@ -447,25 +539,68 @@ async def check_file_qa(
         if not source or not target:
             continue
 
-        # Run checks
-        issues = await _run_qa_checks(row, request.checks, rows, glossary_terms)
+        # Run checks with pre-built structures
+        issues = await _run_qa_checks(
+            row, request.checks, rows, glossary_terms,
+            line_check_index=line_check_index,
+            term_automaton=term_automaton,
+            term_map=term_map,
+        )
 
-        # Save results using repository
-        await _save_qa_results(qa_repo, row.get("id"), file_id, issues)
+        # Separate term issues for noise filter, save non-term issues immediately
+        non_term_issues = [i for i in issues if i["check_type"] != "term"]
+        term_issues = [i for i in issues if i["check_type"] == "term"]
+
+        if term_issues:
+            for ti in term_issues:
+                all_term_issues.append((row.get("id"), file_id, ti))
+
+        # Save non-term results immediately
+        await _save_qa_results(qa_repo, row.get("id"), file_id, non_term_issues)
 
         rows_checked += 1
-        total_issues += len(issues)
+        total_issues += len(non_term_issues)
 
-        # Update summary
-        for issue in issues:
+        # Update summary for non-term issues
+        for issue in non_term_issues:
             check_type = issue["check_type"]
             if check_type in summary:
                 summary[check_type]["issue_count"] += 1
-                # Upgrade severity if needed
                 if issue["severity"] == "error":
                     summary[check_type]["severity"] = "error"
                 elif issue["severity"] == "warning" and summary[check_type]["severity"] == "ok":
                     summary[check_type]["severity"] = "warning"
+
+    # P051-02: Apply noise filter to collected term issues, then save
+    if all_term_issues:
+        all_term_issue_dicts = [ti for _, _, ti in all_term_issues]
+        filtered_term_issues = _apply_noise_filter(all_term_issue_dicts)
+
+        # Build a set of filtered issues for fast lookup
+        filtered_set = set()
+        for fi in filtered_term_issues:
+            key = (fi["details"]["glossary_source"], fi["details"]["glossary_target"])
+            filtered_set.add(key)
+
+        # Save filtered term issues grouped by row
+        from collections import defaultdict
+        row_term_issues: Dict[int, List[dict]] = defaultdict(list)
+        for row_id_val, file_id_val, ti in all_term_issues:
+            key = (ti["details"]["glossary_source"], ti["details"]["glossary_target"])
+            if key in filtered_set:
+                row_term_issues[row_id_val].append(ti)
+
+        for rid, term_issues_for_row in row_term_issues.items():
+            # Append term issues to existing saved results for this row
+            await _save_qa_results(qa_repo, rid, file_id, term_issues_for_row)
+            total_issues += len(term_issues_for_row)
+
+        # Update term summary
+        if "term" in summary:
+            term_count = sum(len(v) for v in row_term_issues.values())
+            summary["term"]["issue_count"] = term_count
+            if term_count > 0:
+                summary["term"]["severity"] = "warning"
 
     checked_at = datetime.utcnow()
 

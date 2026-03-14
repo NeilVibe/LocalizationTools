@@ -15,6 +15,9 @@ from fastapi.testclient import TestClient
 from server.tools.ldm.routes.qa import (
     _run_qa_checks,
     _build_line_check_index,
+    _build_term_automaton,
+    _apply_noise_filter,
+    MAX_ISSUES_PER_TERM,
 )
 from server.tools.ldm.schemas.qa import QACheckRequest
 from server.main import app as wrapped_app
@@ -401,6 +404,106 @@ class TestQAEndpointErrors:
         response = client.post("/api/ldm/qa-results/1/resolve")
         assert response.status_code == 400
         assert "already resolved" in response.json()["detail"].lower()
+
+
+# =============================================================================
+# Test Enhanced Term Check (051-02: Service-level automaton + noise filter)
+# =============================================================================
+
+class TestEnhancedTermCheck:
+    """Test Term Check with pre-built automaton and noise filter."""
+
+    @pytest.mark.asyncio
+    async def test_term_check_finds_missing_glossary_term(self):
+        """Term Check finds 'Iron Sword' in source, flags when translation missing."""
+        row = make_row_dict(
+            source="Iron Sword is powerful",
+            target="C'est puissant"  # Missing "Iron Sword" equivalent
+        )
+        glossary = [("Iron Sword", "Epee de fer")]
+
+        issues = await _run_qa_checks(row, ["term"], None, glossary)
+        term_issues = [i for i in issues if i["check_type"] == "term"]
+        assert len(term_issues) >= 1
+        assert "Epee de fer" in term_issues[0]["message"]
+
+    @pytest.mark.asyncio
+    async def test_term_check_isolation_prevents_partial_match(self):
+        """Term Check with is_isolated prevents 'Iron' matching inside 'Ironclad'."""
+        row = make_row_dict(
+            source="Ironclad defense",
+            target="Defense incassable"
+        )
+        glossary = [("Iron", "Fer")]
+
+        issues = await _run_qa_checks(row, ["term"], None, glossary)
+        term_issues = [i for i in issues if i["check_type"] == "term"]
+        # "Iron" in "Ironclad" is NOT isolated -> should NOT flag
+        assert len(term_issues) == 0
+
+    @pytest.mark.asyncio
+    async def test_term_check_no_glossary_no_issues(self):
+        """Term Check with no glossary terms -> no issues."""
+        row = make_row_dict(
+            source="Some text here",
+            target="Du texte ici"
+        )
+
+        issues = await _run_qa_checks(row, ["term"], None, [])
+        term_issues = [i for i in issues if i["check_type"] == "term"]
+        assert len(term_issues) == 0
+
+    def test_noise_filter_removes_frequent_terms(self):
+        """Noise filter: term triggering >6 issues is excluded."""
+        # Create issues where "Attack" triggers 7 times (> MAX_ISSUES_PER_TERM)
+        all_issues = []
+        for i in range(7):
+            all_issues.append({
+                "check_type": "term",
+                "severity": "warning",
+                "message": f"Missing term 'Attack' for '공격'",
+                "details": {"glossary_source": "공격", "glossary_target": "Attack"}
+            })
+        # Add a normal term that triggers once
+        all_issues.append({
+            "check_type": "term",
+            "severity": "warning",
+            "message": "Missing term 'Defense' for '방어'",
+            "details": {"glossary_source": "방어", "glossary_target": "Defense"}
+        })
+
+        filtered = _apply_noise_filter(all_issues)
+        # "Attack" (7 hits) should be removed, "Defense" (1 hit) should remain
+        assert len(filtered) == 1
+        assert filtered[0]["details"]["glossary_target"] == "Defense"
+
+    def test_build_term_automaton(self):
+        """_build_term_automaton creates automaton and term_map."""
+        glossary = [("공격", "Attack"), ("방어", "Defense")]
+        automaton, term_map = _build_term_automaton(glossary)
+
+        # Should have entries
+        assert len(term_map) == 2
+        # Automaton should find terms in text
+        hits = list(automaton.iter("공격 증가 방어"))
+        assert len(hits) >= 2
+
+    @pytest.mark.asyncio
+    async def test_term_check_with_prebuilt_automaton(self):
+        """File-level QA should accept pre-built automaton."""
+        row = make_row_dict(
+            source="공격 증가",
+            target="Increase power"  # Missing "Attack"
+        )
+        glossary = [("공격", "Attack")]
+        automaton, term_map = _build_term_automaton(glossary)
+
+        issues = await _run_qa_checks(
+            row, ["term"], None, glossary,
+            term_automaton=automaton, term_map=term_map
+        )
+        term_issues = [i for i in issues if i["check_type"] == "term"]
+        assert len(term_issues) >= 1
 
 
 # =============================================================================
