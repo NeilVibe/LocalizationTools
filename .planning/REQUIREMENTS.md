@@ -23,7 +23,7 @@
 
 ### Editor
 
-- [ ] **EDIT-01**: Virtual scrolling grid handles 10K+ segments without jank or lag
+- [x] **EDIT-01**: Virtual scrolling grid handles 10K+ segments without jank or lag
 - [x] **EDIT-02**: Segment status indicators with color coding (confirmed/draft/empty)
 - [x] **EDIT-03**: Search and filter segments by text and by status
 - [x] **EDIT-04**: Ctrl+S saves current segment without overflowing to the row below (bug fix)
@@ -49,7 +49,7 @@
 
 ### UI Rework
 
-- [ ] **UI-01**: Main translation grid reworked to production-quality, executive-demo-ready
+- [x] **UI-01**: Main translation grid reworked to production-quality, executive-demo-ready
 - [ ] **UI-02**: File explorer tree view polished with professional appearance
 - [ ] **UI-03**: TM explorer tree view polished with assignment UI
 - [ ] **UI-04**: Settings UI for branches, drives, metadata reading
@@ -144,13 +144,13 @@
 | STAB-03 | Phase 1 | Complete |
 | STAB-04 | Phase 1 | Complete |
 | STAB-05 | Phase 1 | Complete |
-| EDIT-01 | Phase 2 | Pending |
+| EDIT-01 | Phase 2 | Complete |
 | EDIT-02 | Phase 2 | Complete |
 | EDIT-03 | Phase 2 | Complete |
 | EDIT-04 | Phase 2 | Complete |
 | EDIT-05 | Phase 2 | Complete |
 | EDIT-06 | Phase 2 | Complete |
-| UI-01 | Phase 2 | Pending |
+| UI-01 | Phase 2 | Complete |
 | TM-01 | Phase 3 | Pending |
 | TM-02 | Phase 3 | Pending |
 | TM-03 | Phase 3 | Pending |

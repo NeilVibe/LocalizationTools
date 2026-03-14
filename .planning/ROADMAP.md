@@ -13,7 +13,7 @@ LocaNext has a mature architecture but incomplete implementation. The path to de
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Stability Foundation** - Server starts reliably, DB layer works correctly across SQLite and PostgreSQL, no zombie processes (completed 2026-03-14)
-- [ ] **Phase 2: Editor Core** - Production-quality translation grid with virtual scrolling, editing, search/filter, export, and segment status
+- [x] **Phase 2: Editor Core** - Production-quality translation grid with virtual scrolling, editing, search/filter, export, and segment status (completed 2026-03-14)
 - [ ] **Phase 3: TM Workflow** - TM tree auto-mirrors file structure, TM assignment and lookup with match percentages, semantic matching
 - [ ] **Phase 4: Search and AI Differentiators** - Semantic search UI powered by Model2Vec, near-instant search performance, AI-matched translation indicators
 - [ ] **Phase 5: Visual Polish and Integration** - Settings UI, MapDataGenerator in the grid, overall visual quality matching landing page
@@ -162,7 +162,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Stability Foundation | 3/3 | Complete    | 2026-03-14 |
-| 2. Editor Core | 0/3 | Not started | - |
+| 2. Editor Core | 3/3 | Complete | 2026-03-14 |
 | 3. TM Workflow | 0/3 | Not started | - |
 | 4. Search and AI Differentiators | 0/2 | Not started | - |
 | 5. Visual Polish and Integration | 0/2 | Not started | - |
