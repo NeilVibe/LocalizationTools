@@ -32,7 +32,7 @@ for PORT in "${!SERVERS[@]}"; do
     PID=$(lsof -t -i:$PORT 2>/dev/null || true)
     if [ -n "$PID" ]; then
         kill -9 $PID 2>/dev/null || true
-        echo -e "${GREEN}✓ Stopped${NC}"
+        echo -e "${GREEN}✓ Stopped${NC} (PID: $PID)"
     else
         echo -e "${YELLOW}Not running${NC}"
     fi
