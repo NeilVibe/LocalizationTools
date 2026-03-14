@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Search and AI Differentiators** - Semantic search UI powered by Model2Vec, near-instant search performance, AI-matched translation indicators (completed 2026-03-14)
 - [x] **Phase 5: Visual Polish and Integration** - Settings UI, MapDataGenerator in the grid, overall visual quality matching landing page (completed 2026-03-14)
 - [ ] **Phase 5.1: Contextual Intelligence & QA Engine** - INSERTED - Aho-Corasick entity detection (reuse QuickSearch/QuickCheck logic), auto glossary extraction, context panel, QA capabilities (Line Check, Term Check), category clustering, AI Translated status
-- [ ] **Phase 6: Offline Demo Validation** - Offline mode works flawlessly for the full demo narrative, mode switching is transparent
+- [x] **Phase 6: Offline Demo Validation** - Offline mode works flawlessly for the full demo narrative, mode switching is transparent (completed 2026-03-14)
 
 ## Phase Details
 
@@ -150,7 +150,7 @@ Plans:
   1. User can disconnect from the network and continue uploading, editing, searching, and exporting without any error or degraded behavior
   2. All features delivered in Phases 2-5 function identically in offline mode (SQLite) as they do in online mode (PostgreSQL)
   3. Mode switching happens transparently -- user never needs to manually configure or toggle between online and offline
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 06-01-PLAN.md -- Backend offline workflow validation (repo-level E2E, service degradation, schema drift)
@@ -169,4 +169,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 | 4. Search and AI Differentiators | 2/2 | Complete   | 2026-03-14 |
 | 5. Visual Polish and Integration | 2/2 | Complete   | 2026-03-14 |
 | 5.1. Contextual Intelligence & QA Engine | 5/5 | Complete | 2026-03-14 |
-| 6. Offline Demo Validation | 1/2 | In Progress | - |
+| 6. Offline Demo Validation | 2/2 | Complete   | 2026-03-14 |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-03-14T15:06:48Z"
-last_activity: 2026-03-14 -- Plan 06-01 complete (Backend offline workflow validation)
+stopped_at: Completed 06-02-PLAN.md (Phase 6 complete)
+last_updated: "2026-03-15T15:11:00Z"
+last_activity: 2026-03-15 -- Plan 06-02 complete (Mode detection + API smoke tests in SQLite mode)
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 23
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-14)
 
 **Core value:** Flawless end-to-end localization workflow -- upload, TM auto-mirror, search/edit, export -- working seamlessly offline and online, polished enough for executive demos.
-**Current focus:** Phase 6 in progress. Backend offline validation complete. Next: Phase 6 Plan 02 (mode detection + API smoke tests).
+**Current focus:** Phase 6 complete. All offline mode detection and API smoke tests passing. Next: Phase 7 or milestone complete.
 
 ## Current Position
 
 Phase: 6 of 7 (Offline Demo Validation)
-Plan: 1 of 2 in current phase
-Status: In Progress
-Last activity: 2026-03-14 -- Plan 06-01 complete (Backend offline workflow validation)
+Plan: 2 of 2 in current phase
+Status: Phase Complete
+Last activity: 2026-03-15 -- Plan 06-02 complete (Mode detection + API smoke tests in SQLite mode)
 
-Progress: [██████████] 96% (22/23 plans across 6 phases)
+Progress: [██████████] 100% (23/23 plans across 6 phases)
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [██████████] 96% (22/23 plans across 6 phases)
 | Phase 5.1 P03 | 4min | 2 tasks | 5 files |
 | Phase 5.1 P05 | 2min | 3 tasks | 3 files |
 | Phase 06 P01 | 8min | 2 tasks | 2 files |
+| Phase 06 P02 | 12min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,8 @@ Recent decisions affecting current work:
 - [Phase 5.1]: /context/status before /context/{string_id} to prevent route shadowing
 - [Phase 5.1]: Entity highlight colors match Carbon Tag type colors (purple/teal/cyan/magenta)
 - [Phase 5.1]: 503 from context API = not-configured state with settings hint
+- [Phase 06]: socketio.ASGIApp.other_asgi_app for TestClient access to inner FastAPI instance
+- [Phase 06]: Session-scoped template DB pattern for API smoke tests (copy from Base.metadata.create_all)
 - [Phase 06]: Pure repo-level testing validates offline workflow without live server
 - [Phase 06]: EntityContext.entities (single list) is the correct field for empty context checks
 
@@ -137,6 +140,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T15:06:48Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-03-15T15:11:00Z
+Stopped at: Completed 06-02-PLAN.md (Phase 6 complete)
 Resume file: None
