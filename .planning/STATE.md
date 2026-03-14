@@ -3,29 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 051-02-PLAN.md
-last_updated: "2026-03-14T14:27:40Z"
-last_activity: 2026-03-14 -- Plan 051-02 complete (Enhanced QA checks with group-based Line Check + service-level Term Check)
+stopped_at: Completed 051-03-PLAN.md
+last_updated: "2026-03-14T14:36:00Z"
+last_activity: 2026-03-14 -- Plan 051-03 complete (ContextService + Context API routes)
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 18
-  completed_plans: 18
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-03-14T13:57:43Z"
-last_activity: 2026-03-14 -- Plan 05-02 complete (Image/Audio tabs + visual polish)
-progress:
-  total_phases: 7
-  completed_phases: 5
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 19
+  completed_plans: 19
 ---
 
 # Project State
@@ -40,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-03-14)
 ## Current Position
 
 Phase: 5.1 of 7 (Contextual Intelligence & QA Engine)
-Plan: 5 of 5 in current phase (COMPLETE)
-Status: Phase 5.1 Complete
-Last activity: 2026-03-14 -- Plan 051-02 complete (Enhanced QA checks with group-based Line Check + service-level Term Check)
+Plan: 3 of 5 in current phase
+Status: Executing
+Last activity: 2026-03-14 -- Plan 051-03 complete (ContextService + Context API routes)
 
-Progress: [██████████] 100% (18/18 plans across 5.1 phases)
+Progress: [██████████] 100% (19/19 plans across 5.1 phases)
 
 ## Performance Metrics
 
@@ -76,6 +61,7 @@ Progress: [██████████] 100% (18/18 plans across 5.1 phases)
 | Phase 5.1 P01 | 5min | 2 tasks | 7 files |
 | Phase 5.1 P04 | 4min | 2 tasks | 4 files |
 | Phase 5.1 P02 | 5min | 2 tasks | 2 files |
+| Phase 5.1 P03 | 4min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -129,6 +115,9 @@ Recent decisions affecting current work:
 - [Phase 5.1]: Entity index keyed by term name (not numeric ID) for direct O(1) lookup
 - [Phase 5.1]: AC automaton built once at init, reused across all detect_entities() calls
 - [Phase 5.1]: lxml recovery mode for XML parsing (handles malformed game data)
+- [Phase 5.1]: StrKey-first with KnowledgeKey fallback for indirect image/audio (CTX-03, CTX-04)
+- [Phase 5.1]: Graceful degradation returns empty EntityContext (not HTTP errors) when services not loaded
+- [Phase 5.1]: /context/status before /context/{string_id} to prevent route shadowing
 
 ### Pending Todos
 
@@ -142,6 +131,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T14:27:40Z
-Stopped at: Completed 051-02-PLAN.md
+Last session: 2026-03-14T14:36:00Z
+Stopped at: Completed 051-03-PLAN.md
 Resume file: None
