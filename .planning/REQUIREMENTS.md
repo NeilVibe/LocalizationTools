@@ -7,10 +7,10 @@
 
 ### Stability
 
-- [ ] **STAB-01**: Server starts reliably every time without errors or zombie processes
+- [x] **STAB-01**: Server starts reliably every time without errors or zombie processes
 - [ ] **STAB-02**: Offline mode (SQLite) delivers full feature parity with online mode
 - [ ] **STAB-03**: DB Factory and Repository pattern implementations work correctly across all repository interfaces
-- [ ] **STAB-04**: No Python zombie processes on startup, shutdown, or crash recovery
+- [x] **STAB-04**: No Python zombie processes on startup, shutdown, or crash recovery
 - [ ] **STAB-05**: SQLite schema matches PostgreSQL schema for all operations (no divergence bugs)
 
 ### TM Management
@@ -139,10 +139,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STAB-01 | Phase 1 | Pending |
+| STAB-01 | Phase 1 | Complete |
 | STAB-02 | Phase 1 | Pending |
 | STAB-03 | Phase 1 | Pending |
-| STAB-04 | Phase 1 | Pending |
+| STAB-04 | Phase 1 | Complete |
 | STAB-05 | Phase 1 | Pending |
 | EDIT-01 | Phase 2 | Pending |
 | EDIT-02 | Phase 2 | Pending |
