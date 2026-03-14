@@ -67,10 +67,10 @@
 - [ ] **CTX-02**: Auto-detect location names within strings and display location images and map positions
 - [ ] **CTX-03**: Audio samples shown for detected characters — both directly linked audio AND other samples from the same character
 - [ ] **CTX-04**: Image context shown for detected entities (characters, locations, items) even when not directly linked to the StringID
-- [ ] **CTX-05**: Aho-Corasick automaton built from extracted glossary — scans strings in real-time O(n) to detect all entities (characters, locations, items, skills) simultaneously in one pass
-- [ ] **CTX-06**: Category clustering using QACompiler/LanguageDataExporter technology to auto-assign string types
-- [ ] **CTX-09**: Automatic glossary extraction from game data (QACompiler/LDE generators) → character names, location names, item names, skill names
-- [ ] **CTX-10**: Glossary-to-datapoint mapping — each glossary term maps to staticinfo paths where images, DESC, and audio can be found
+- [x] **CTX-05**: Aho-Corasick automaton built from extracted glossary — scans strings in real-time O(n) to detect all entities (characters, locations, items, skills) simultaneously in one pass
+- [x] **CTX-06**: Category clustering using QACompiler/LanguageDataExporter technology to auto-assign string types
+- [x] **CTX-09**: Automatic glossary extraction from game data (QACompiler/LDE generators) → character names, location names, item names, skill names
+- [x] **CTX-10**: Glossary-to-datapoint mapping — each glossary term maps to staticinfo paths where images, DESC, and audio can be found
 - [x] **CTX-07**: "AI Translated" status type visible in the grid to distinguish human vs AI translations
 - [ ] **CTX-08**: Context panel in the editor that dynamically shows all detected entity information for the current segment
 
@@ -172,12 +172,12 @@
 | CTX-02 | Phase 5.1 | Pending |
 | CTX-03 | Phase 5.1 | Pending |
 | CTX-04 | Phase 5.1 | Pending |
-| CTX-05 | Phase 5.1 | Pending |
-| CTX-06 | Phase 5.1 | Pending |
+| CTX-05 | Phase 5.1 | Complete |
+| CTX-06 | Phase 5.1 | Complete |
 | CTX-07 | Phase 5.1 | Complete |
 | CTX-08 | Phase 5.1 | Pending |
-| CTX-09 | Phase 5.1 | Pending |
-| CTX-10 | Phase 5.1 | Pending |
+| CTX-09 | Phase 5.1 | Complete |
+| CTX-10 | Phase 5.1 | Complete |
 | OFFL-01 | Phase 6 | Pending |
 | OFFL-02 | Phase 6 | Pending |
 | OFFL-03 | Phase 6 | Pending |
