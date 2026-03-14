@@ -98,11 +98,11 @@ Plans:
   3. Audio references from MapDataGenerator are visible directly in translation grid rows alongside their segments
   4. MapDataGenerator data feels organically integrated into the grid, not like a bolted-on separate tool
   5. Overall visual quality (typography, spacing, colors, transitions) is consistent and polished across all views
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md -- Backend MapData context service, API endpoints, BranchDrive settings modal
+- [ ] 05-02-PLAN.md -- Frontend Image/Audio tabs in RightPanel, visual polish pass, E2E tests
 
 ### Phase 5.1: Contextual Intelligence & QA Engine (INSERTED)
 **Goal**: The editor becomes context-aware — auto-detecting entities via Aho-Corasick (reusing proven QuickSearch/QuickCheck logic), surfacing rich game context, AND providing integrated QA capabilities (Line Check, Term Check) so translators catch inconsistencies without leaving LocaNext
