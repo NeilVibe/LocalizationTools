@@ -85,26 +85,25 @@
     uploadProgress = 10;
     errorMessage = "";
 
-    try {
-      const formData = new FormData();
-      formData.append('name', tmName.trim());
-      formData.append('source_lang', sourceLang);
-      formData.append('target_lang', targetLang);
-      if (description.trim()) {
-        formData.append('description', description.trim());
+    const formData = new FormData();
+    formData.append('name', tmName.trim());
+    formData.append('source_lang', sourceLang);
+    formData.append('target_lang', targetLang);
+    if (description.trim()) {
+      formData.append('description', description.trim());
+    }
+    formData.append('file', file);
+
+    logger.info("Uploading TM", { name: tmName, file: file.name, size: file.size });
+
+    // Simulate progress while uploading
+    const progressInterval = setInterval(() => {
+      if (uploadProgress < 90) {
+        uploadProgress += 10;
       }
-      formData.append('file', file);
+    }, 500);
 
-      logger.info("Uploading TM", { name: tmName, file: file.name, size: file.size });
-
-      // Simulate progress while uploading
-      const progressInterval = setInterval(() => {
-        if (uploadProgress < 90) {
-          uploadProgress += 10;
-        }
-      }, 500);
-
-      try {
+    try {
         const response = await fetch(`${API_BASE}/api/ldm/tm/upload`, {
           method: 'POST',
           headers: getAuthHeaders(),
