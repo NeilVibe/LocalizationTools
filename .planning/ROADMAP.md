@@ -12,7 +12,7 @@ LocaNext has a mature architecture but incomplete implementation. The path to de
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 1: Stability Foundation** - Server starts reliably, DB layer works correctly across SQLite and PostgreSQL, no zombie processes (completed 2026-03-14)
+- [x] **Phase 1: Stability Foundation** - Server starts reliably, DB layer works correctly across SQLite and PostgreSQL, no zombie processes (completed 2026-03-14)
 - [ ] **Phase 2: Editor Core** - Production-quality translation grid with virtual scrolling, editing, search/filter, export, and segment status
 - [ ] **Phase 3: TM Workflow** - TM tree auto-mirrors file structure, TM assignment and lookup with match percentages, semantic matching
 - [ ] **Phase 4: Search and AI Differentiators** - Semantic search UI powered by Model2Vec, near-instant search performance, AI-matched translation indicators
@@ -48,12 +48,12 @@ Plans:
   3. User can filter segments by status (confirmed/draft/empty) and search by text, seeing results update in the grid
   4. User can export translated segments and the output file is structurally identical to the input (preserving XML structure, attributes, and br-tags)
   5. Each segment row displays a clear color-coded status indicator (green=confirmed, yellow=draft, gray=empty)
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
-- [ ] 02-03: TBD
+- [ ] 02-01-PLAN.md -- Fix Ctrl+S save overflow bug, 3-state status colors, editing reliability
+- [ ] 02-02-PLAN.md -- Search/filter verification, export round-trip validation with br-tags
+- [ ] 02-03-PLAN.md -- Performance validation for 10K+ segments, UI visual polish to demo-ready
 
 ### Phase 3: TM Workflow
 **Goal**: Users can manage Translation Memories through a mirrored tree structure, assign TMs to files, and see match results with quality indicators
