@@ -52,13 +52,13 @@
 - [x] **UI-01**: Main translation grid reworked to production-quality, executive-demo-ready
 - [x] **UI-02**: File explorer tree view polished with professional appearance
 - [x] **UI-03**: TM explorer tree view polished with assignment UI
-- [ ] **UI-04**: Settings UI for branches, drives, metadata reading
+- [x] **UI-04**: Settings UI for branches, drives, metadata reading
 - [ ] **UI-05**: Overall visual polish matches the cinematic quality of the landing page
 
 ### MapDataGenerator Integration
 
-- [ ] **MAP-01**: Image mapping visible directly in the translation grid
-- [ ] **MAP-02**: Audio mapping visible directly in the translation grid
+- [x] **MAP-01**: Image mapping visible directly in the translation grid
+- [x] **MAP-02**: Audio mapping visible directly in the translation grid
 - [ ] **MAP-03**: MapDataGenerator data integrated organically (not a separate tool feel)
 
 ### Contextual Intelligence
@@ -163,10 +163,10 @@
 | SRCH-03 | Phase 4 | Complete |
 | AI-01 | Phase 4 | Complete |
 | AI-02 | Phase 4 | Complete |
-| UI-04 | Phase 5 | Pending |
+| UI-04 | Phase 5 | Complete |
 | UI-05 | Phase 5 | Pending |
-| MAP-01 | Phase 5 | Pending |
-| MAP-02 | Phase 5 | Pending |
+| MAP-01 | Phase 5 | Complete |
+| MAP-02 | Phase 5 | Complete |
 | MAP-03 | Phase 5 | Pending |
 | CTX-01 | Phase 5.1 | Pending |
 | CTX-02 | Phase 5.1 | Pending |

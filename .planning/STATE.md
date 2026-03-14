@@ -35,23 +35,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-14)
 
 **Core value:** Flawless end-to-end localization workflow -- upload, TM auto-mirror, search/edit, export -- working seamlessly offline and online, polished enough for executive demos.
-**Current focus:** Phase 4 complete. All 11 plans across 4 phases done. Next: Phase 5 (Visual Polish and Integration)
+**Current focus:** Phase 5 executing. Plan 01 complete (MapData context + settings). Next: Plan 02.
 
 ## Current Position
 
-Phase: 4 of 7 (Search and AI Differentiators) -- COMPLETE
-Plan: 2 of 2 in current phase (all done)
-Status: Phase 4 Complete
-Last activity: 2026-03-14 -- Plan 04-02 complete (semantic search UI + AI badges)
+Phase: 5 of 7 (Visual Polish and Integration)
+Plan: 1 of 2 in current phase
+Status: Executing Phase 5
+Last activity: 2026-03-14 -- Plan 05-01 complete (MapData context service + branch/drive settings)
 
-Progress: [██████████] 100% (11/11 plans across 4 phases)
+Progress: [████████████] 100% (12/13 plans across 5 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: 17min
-- Total execution time: 2.7 hours
+- Total plans completed: 12
+- Average duration: 16min
+- Total execution time: 2.8 hours
 
 **By Phase:**
 
@@ -71,6 +71,7 @@ Progress: [██████████] 100% (11/11 plans across 4 phases)
 | Phase 04 P01 | 5min | 2 tasks | 4 files |
 | Phase 04 P02 | 5min | 3 tasks | 4 files |
 | Phase 04 P02 | 5min | 3 tasks | 4 files |
+| Phase 05 P01 | 4min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,9 @@ Recent decisions affecting current work:
 - [Phase 04]: Model2Vec only for semantic search endpoint (TMSearcher auto-loads via get_current_engine_name)
 - [Phase 04]: FastAPI dependency_overrides for route-level test isolation (not module-level patches)
 - [Phase 04]: SemanticResults overlay inside search-control, AI badge via in-memory Map, route interception for E2E
+- [Phase 05]: Multi-key indexing (StrKey/StringID/KnowledgeKey -> same entry) for MapDataService
+- [Phase 05]: Non-blocking backend configure call for offline mode compatibility
+- [Phase 05]: Client-side path preview from templates (no server round-trip)
 
 ### Pending Todos
 
@@ -121,6 +125,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T13:31:32.377Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-03-14T13:51:29Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None
