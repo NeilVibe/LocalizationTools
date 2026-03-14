@@ -6,7 +6,7 @@
     Button,
     Dropdown
   } from "carbon-components-svelte";
-  import { Edit, Locked, Settings, ChevronDown } from "carbon-icons-svelte";
+  import { Edit, Locked, Settings, ChevronDown, MachineLearningModel } from "carbon-icons-svelte";
   import { createEventDispatcher, onMount, onDestroy, tick } from "svelte";
   import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
@@ -17,6 +17,7 @@
   import PresenceBar from "./PresenceBar.svelte";
   import ColorText from "./ColorText.svelte";
   import { stripColorTags, paColorToHtml, htmlToPaColor, hexToCSS } from "$lib/utils/colorParser.js";
+  import SemanticResults from "./SemanticResults.svelte";
 
   const dispatch = createEventDispatcher();
 
@@ -80,6 +81,14 @@
 
   // P5: Search settings popover state
   let showSearchSettings = $state(false);
+
+  // P4: Semantic search state (fuzzy/Similar mode)
+  let semanticResults = $state([]);
+  let semanticSearchTime = $state(0);
+  let semanticLoading = $state(false);
+
+  // P4: AI badge tracking - rows that had TM suggestions applied
+  let tmAppliedRows = $state(new Map()); // row_id -> { match_type: 'exact'|'fuzzy'|'semantic' }
 
   // Svelte 5: Virtual scroll state
   let containerEl = $state(null);
@@ -672,14 +681,120 @@
 
   // Handle search with debounce
   function handleSearch(event) {
-    logger.info("handleSearch triggered", { searchTerm, event: event?.type || 'no event' });
+    logger.info("handleSearch triggered", { searchTerm, searchMode, event: event?.type || 'no event' });
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
+      // P4: Semantic search for fuzzy/Similar mode
+      if (searchMode === 'fuzzy') {
+        performSemanticSearch();
+        return;
+      }
+      // Clear semantic results when not in fuzzy mode
+      semanticResults = [];
+      semanticSearchTime = 0;
+
       logger.info("handleSearch executing search", { searchTerm });
       loadedPages.clear();
       rows = [];
       loadRows();
     }, 300);
+  }
+
+  // P4: Perform semantic search via API
+  async function performSemanticSearch() {
+    const query = searchTerm?.trim();
+    if (!query) {
+      semanticResults = [];
+      semanticSearchTime = 0;
+      return;
+    }
+
+    // Need at least one active TM for semantic search
+    if (!activeTMs || activeTMs.length === 0) {
+      semanticResults = [];
+      semanticSearchTime = 0;
+      logger.info("Semantic search skipped - no active TMs");
+      return;
+    }
+
+    semanticLoading = true;
+    try {
+      const tmId = activeTMs[0].tm_id;
+      const params = new URLSearchParams({
+        query,
+        tm_id: tmId.toString(),
+        threshold: '0.5',
+        max_results: '20'
+      });
+
+      logger.apiCall(`/api/ldm/semantic-search?${params}`, 'GET');
+      const response = await fetch(`${API_BASE}/api/ldm/semantic-search?${params}`, {
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        semanticResults = data.results || [];
+        semanticSearchTime = data.search_time_ms || 0;
+        logger.info("Semantic search results", { count: semanticResults.length, timeMs: semanticSearchTime });
+      } else {
+        logger.error("Semantic search failed", { status: response.status });
+        semanticResults = [];
+      }
+    } catch (err) {
+      logger.error("Semantic search error", { error: err.message });
+      semanticResults = [];
+    } finally {
+      semanticLoading = false;
+    }
+  }
+
+  // P4: Handle semantic result selection - scroll to matching row
+  function handleSemanticResultSelect(result) {
+    // Try to find a matching row in loaded data by source text
+    const matchRow = rows.find(r => r && r.source === result.source_text);
+    if (matchRow) {
+      scrollToRowById(matchRow.id);
+    }
+    // Close the overlay
+    semanticResults = [];
+    semanticSearchTime = 0;
+    logger.userAction("Semantic result selected", { source: result.source_text?.substring(0, 30) });
+  }
+
+  // P4: Close semantic results overlay
+  function closeSemanticResults() {
+    semanticResults = [];
+    semanticSearchTime = 0;
+  }
+
+  // P4: Apply TM suggestion to a row (called from GridPage via side panel)
+  export function applyTMToRow(lineNumber, targetText) {
+    // Find the row by line_number (row_num)
+    const row = rows.find(r => r && r.row_num === lineNumber);
+    if (!row) {
+      logger.warning("applyTMToRow: row not found", { lineNumber });
+      return;
+    }
+    // Start inline edit with the TM target text pre-filled
+    startInlineEdit(row);
+    tick().then(() => {
+      if (inlineEditTextarea) {
+        inlineEditTextarea.innerText = targetText;
+        // Save immediately
+        saveInlineEdit(false);
+        // Mark as TM-applied for AI badge
+        markRowAsTMApplied(row.id, 'fuzzy');
+      }
+    });
+    logger.userAction("Applied TM to row", { lineNumber, target: targetText?.substring(0, 30) });
+  }
+
+  // P4: Export function to mark a row as TM-applied (called from parent)
+  export function markRowAsTMApplied(rowId, matchType = 'fuzzy') {
+    tmAppliedRows.set(rowId.toString(), { match_type: matchType });
+    tmAppliedRows = new Map(tmAppliedRows); // trigger reactivity
+    logger.info("Row marked as TM-applied", { rowId, matchType });
   }
 
   // P2: Handle filter change
@@ -2327,6 +2442,21 @@
           <!-- Backdrop to close popover -->
           <div class="settings-backdrop" onclick={() => showSearchSettings = false}></div>
         {/if}
+
+        <!-- P4: Semantic Search Results Overlay (fuzzy/Similar mode) -->
+        {#if searchMode === 'fuzzy' && (!activeTMs || activeTMs.length === 0) && searchTerm?.trim()}
+          <div class="semantic-no-tm">
+            <MachineLearningModel size={14} />
+            Assign a TM to enable semantic search
+          </div>
+        {/if}
+        <SemanticResults
+          bind:results={semanticResults}
+          searchTimeMs={semanticSearchTime}
+          visible={searchMode === 'fuzzy' && semanticResults.length > 0}
+          onSelect={handleSemanticResultSelect}
+          onClose={closeSemanticResults}
+        />
       </div>
 
       <!-- P2: Filter Dropdown -->
@@ -2480,6 +2610,12 @@
                   {:else}
                     <!-- Display mode -->
                     <span class="cell-content"><ColorText text={formatGridText(row.target) || ""} /></span>
+                    {#if tmAppliedRows.has(row.id)}
+                      {@const tmInfo = tmAppliedRows.get(row.id)}
+                      <span class="ai-badge" title="AI-matched ({tmInfo.match_type})">
+                        <MachineLearningModel size={12} />
+                      </span>
+                    {/if}
                     {#if row.qa_flag_count > 0}
                       <span class="qa-icon" title="{row.qa_flag_count} QA issue(s)">
                         <WarningAltFilled size={14} />
@@ -3782,5 +3918,38 @@
     font-size: 0.75rem;
     color: var(--cds-text-02);
     opacity: 0.7;
+  }
+
+  /* P4: AI Badge - indicates TM-applied translations */
+  .ai-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 4px;
+    color: #0f62fe;
+    opacity: 0.7;
+    vertical-align: middle;
+  }
+
+  .ai-badge:hover {
+    opacity: 1;
+  }
+
+  /* P4: Semantic search no-TM message */
+  .semantic-no-tm {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--cds-layer-01);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    font-size: 0.8rem;
+    color: var(--cds-text-02);
   }
 </style>
