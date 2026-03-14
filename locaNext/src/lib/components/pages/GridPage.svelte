@@ -21,7 +21,8 @@
     fileName = '',
     linkedTM = null,
     onShowGridColumns = () => {},
-    onShowReferenceSettings = () => {}
+    onShowReferenceSettings = () => {},
+    onShowBranchDriveSettings = () => {}
   } = $props();
 
   const dispatch = createEventDispatcher();
@@ -283,6 +284,14 @@
         iconDescription="Reference Settings"
         tooltipAlignment="end"
         on:click={onShowReferenceSettings}
+      />
+      <Button
+        kind="ghost"
+        size="small"
+        icon={DataBase}
+        iconDescription="Branch & Drive Settings"
+        tooltipAlignment="end"
+        on:click={onShowBranchDriveSettings}
       />
     </div>
   </div>

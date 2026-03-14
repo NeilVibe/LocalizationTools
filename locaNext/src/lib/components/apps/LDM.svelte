@@ -24,6 +24,7 @@
   // UI-097: PreferencesModal removed - use top nav Settings > Preferences
   import GridColumnsModal from "$lib/components/GridColumnsModal.svelte";
   import ReferenceSettingsModal from "$lib/components/ReferenceSettingsModal.svelte";
+  import BranchDriveSettingsModal from "$lib/components/BranchDriveSettingsModal.svelte";
   import ServerStatus from "$lib/components/ServerStatus.svelte";
 
   // TM Manager state
@@ -36,6 +37,9 @@
 
   // Reference settings modal state
   let showReferenceSettings = $state(false);
+
+  // Branch/drive settings modal state
+  let showBranchDriveSettings = $state(false);
 
   // Server status modal state
   let showServerStatus = $state(false);
@@ -895,6 +899,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
           {linkedTM}
           onShowGridColumns={() => showGridColumns = true}
           onShowReferenceSettings={() => showReferenceSettings = true}
+          onShowBranchDriveSettings={() => showBranchDriveSettings = true}
           on:dismissQA={handleDismissQA}
         />
       {:else if $currentPage === 'tm-entries'}
@@ -942,6 +947,9 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
 
   <!-- Reference Settings Modal -->
   <ReferenceSettingsModal bind:open={showReferenceSettings} />
+
+  <!-- Branch/Drive Settings Modal -->
+  <BranchDriveSettingsModal bind:open={showBranchDriveSettings} />
 
   <!-- UI-097: PreferencesModal removed - use top nav Settings > Preferences -->
 
