@@ -55,6 +55,7 @@ from .routes.maintenance import router as maintenance_router  # EMB-003: TM Main
 from .routes.tm_leverage import router as tm_leverage_router  # Phase 3: TM Leverage Statistics
 from .routes.semantic_search import router as semantic_search_router  # Phase 4: Semantic Search
 from .routes.mapdata import router as mapdata_router  # Phase 5: MapData Context
+from .routes.context import router as context_router  # Phase 5.1: Entity Context
 
 # =============================================================================
 # Include all routers
@@ -86,6 +87,7 @@ router.include_router(maintenance_router)  # EMB-003: TM Maintenance (stale chec
 router.include_router(tm_leverage_router)  # Phase 3: TM Leverage Statistics
 router.include_router(semantic_search_router)  # Phase 4: Semantic Search
 router.include_router(mapdata_router)  # Phase 5: MapData Context
+router.include_router(context_router)  # Phase 5.1: Entity Context
 
 # =============================================================================
 # WebSocket endpoint (still needs special handling)
