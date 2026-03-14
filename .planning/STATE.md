@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md (parity test infrastructure + schema drift guard)
-last_updated: "2026-03-14T07:57:30Z"
-last_activity: 2026-03-14 -- Plan 01-01 executed (schema drift guard, test infrastructure)
+stopped_at: Completed 01-02-PLAN.md (repository parity tests for all 9 repos)
+last_updated: "2026-03-14T10:07:03Z"
+last_activity: 2026-03-14 -- Plan 01-02 executed (9 repo parity test files, 451 total tests, 2 TM bugs fixed)
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
-  percent: 10
+  completed_plans: 3
+  percent: 15
 ---
 
 # Project State
@@ -26,24 +26,24 @@ See: .planning/PROJECT.md (updated 2026-03-14)
 ## Current Position
 
 Phase: 1 of 6 (Stability Foundation)
-Plan: 2 of 3 in current phase
+Plan: 3 of 3 in current phase
 Status: Executing
-Last activity: 2026-03-14 -- Plan 01-01 executed (schema drift guard, test infrastructure)
+Last activity: 2026-03-14 -- Plan 01-02 executed (9 repo parity test files, 451 total tests, 2 TM bugs fixed)
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [██░░░░░░░░] 15%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 7min
-- Total execution time: 0.23 hours
+- Total plans completed: 3
+- Average duration: 26min
+- Total execution time: 1.3 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01 | 2 | 14min | 7min |
+| 01 | 3 | 79min | 26min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -65,6 +65,9 @@ Recent decisions affecting current work:
 - All stability tests use SQLite mode to avoid PostgreSQL dependency
 - OFFLINE_ONLY_COLUMNS is global (per-table diffs tracked in KNOWN_SCHEMA_DRIFT)
 - Pre-existing schema drift documented, not fixed (5 table pairs have column mismatches)
+- Template DB caching (session-scoped) for server_local test performance
+- Capability repo tests verify stub degradation, not parity
+- TM repo SERVER mode had missing owner_id and sqlite3.Row .get() bugs (fixed)
 
 ### Pending Todos
 
@@ -77,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T07:57:30Z
-Stopped at: Completed 01-01-PLAN.md (parity test infrastructure + schema drift guard)
-Resume file: .planning/phases/01-stability-foundation/01-02-PLAN.md
+Last session: 2026-03-14T10:07:03Z
+Stopped at: Completed 01-02-PLAN.md (repository parity tests for all 9 repos)
+Resume file: .planning/phases/01-stability-foundation/01-03-PLAN.md
