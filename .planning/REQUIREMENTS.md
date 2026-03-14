@@ -16,7 +16,7 @@
 ### TM Management
 
 - [x] **TM-01**: TM tree auto-mirrors file explorer folder structure when files are uploaded
-- [ ] **TM-02**: User can assign TMs to folders/files through the mirrored tree
+- [x] **TM-02**: User can assign TMs to folders/files through the mirrored tree
 - [x] **TM-03**: TM lookup shows match percentages with color coding (100%=green, fuzzy=yellow, no-match=red)
 - [x] **TM-04**: TM leverage statistics displayed per file ("45% exact, 30% fuzzy, 25% new")
 - [x] **TM-05**: Model2Vec-based semantic matching (light build, fast performance over Qwen for TM matching)
@@ -152,7 +152,7 @@
 | EDIT-06 | Phase 2 | Complete |
 | UI-01 | Phase 2 | Complete |
 | TM-01 | Phase 3 | Complete |
-| TM-02 | Phase 3 | Pending |
+| TM-02 | Phase 3 | Complete |
 | TM-03 | Phase 3 | Complete |
 | TM-04 | Phase 3 | Complete |
 | TM-05 | Phase 3 | Complete |

@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Stability Foundation** - Server starts reliably, DB layer works correctly across SQLite and PostgreSQL, no zombie processes (completed 2026-03-14)
 - [x] **Phase 2: Editor Core** - Production-quality translation grid with virtual scrolling, editing, search/filter, export, and segment status (completed 2026-03-14)
-- [ ] **Phase 3: TM Workflow** - TM tree auto-mirrors file structure, TM assignment and lookup with match percentages, semantic matching
+- [x] **Phase 3: TM Workflow** - TM tree auto-mirrors file structure, TM assignment and lookup with match percentages, semantic matching (completed 2026-03-14)
 - [ ] **Phase 4: Search and AI Differentiators** - Semantic search UI powered by Model2Vec, near-instant search performance, AI-matched translation indicators
 - [ ] **Phase 5: Visual Polish and Integration** - Settings UI, MapDataGenerator in the grid, overall visual quality matching landing page
 - [ ] **Phase 5.1: Contextual Intelligence & QA Engine** - INSERTED - Aho-Corasick entity detection (reuse QuickSearch/QuickCheck logic), auto glossary extraction, context panel, QA capabilities (Line Check, Term Check), category clustering, AI Translated status
@@ -65,7 +65,7 @@ Plans:
   3. When user selects a segment, TM matches appear with color-coded percentages (green=100%, yellow=fuzzy, red=no match) and word-level diff highlighting
   4. User can see per-file TM leverage statistics showing exact, fuzzy, and new match percentages
   5. File explorer and TM explorer tree views look polished and professional (not raw component defaults)
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 03-01-PLAN.md -- Backend TM auto-mirror hook, leverage stats API, TM search cascade verification
@@ -163,7 +163,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 |-------|----------------|--------|-----------|
 | 1. Stability Foundation | 3/3 | Complete    | 2026-03-14 |
 | 2. Editor Core | 3/3 | Complete | 2026-03-14 |
-| 3. TM Workflow | 2/3 | In Progress|  |
+| 3. TM Workflow | 3/3 | Complete   | 2026-03-14 |
 | 4. Search and AI Differentiators | 0/2 | Not started | - |
 | 5. Visual Polish and Integration | 0/2 | Not started | - |
 | 5.1. Contextual Intelligence & QA Engine | 0/4 | Not started | - |
