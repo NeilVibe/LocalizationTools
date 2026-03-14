@@ -106,15 +106,16 @@ Plans:
 ### Phase 5.1: Contextual Intelligence (INSERTED)
 **Goal**: The editor becomes context-aware — auto-detecting characters, locations, and items within strings and surfacing rich game context (images, audio, metadata, map positions) that makes translators smarter and executives say "wow"
 **Depends on**: Phase 5
-**Requirements**: CTX-01, CTX-02, CTX-03, CTX-04, CTX-05, CTX-06, CTX-07, CTX-08
+**Requirements**: CTX-01, CTX-02, CTX-03, CTX-04, CTX-05, CTX-06, CTX-07, CTX-08, CTX-09, CTX-10
 **Success Criteria** (what must be TRUE):
-  1. When a string contains a character name, the context panel shows character metadata (gender, age, job, race) and quest/interaction information
-  2. When a string contains a location name (castle, city, etc.), the context panel shows location images and map position
-  3. Audio samples appear for detected characters — including samples not directly linked to the current StringID
-  4. Vectorial n-gram analysis detects multiple entities within a single sentence (e.g., "The warrior enters the castle" → character info + location info)
-  5. Category clustering auto-assigns string types using QACompiler/LanguageDataExporter technology
-  6. "AI Translated" status is visible in the grid, distinguishing human from AI translations
-  7. Context panel updates dynamically as user navigates between segments
+  1. Glossary automatically extracted from game data (QACompiler/LDE generators) — all character, location, item, skill names
+  2. Aho-Corasick automaton built from glossary scans strings in real-time — "The warrior enters Stormhold Castle" instantly detects both entities
+  3. Detected character names → context panel shows metadata (gender, age, job, race), quest info, audio samples (including indirect matches)
+  4. Detected location names → context panel shows location images and map position from staticinfo
+  5. Glossary terms mapped to staticinfo datapoints where images, DESC, and audio files can be found
+  6. Category clustering auto-assigns string types using QACompiler/LanguageDataExporter technology
+  7. "AI Translated" status visible in grid, distinguishing human from AI translations
+  8. Context panel updates dynamically as user navigates between segments
 **Plans**: TBD
 
 Plans:
