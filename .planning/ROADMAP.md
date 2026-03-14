@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 3: TM Workflow** - TM tree auto-mirrors file structure, TM assignment and lookup with match percentages, semantic matching
 - [ ] **Phase 4: Search and AI Differentiators** - Semantic search UI powered by Model2Vec, near-instant search performance, AI-matched translation indicators
 - [ ] **Phase 5: Visual Polish and Integration** - Settings UI, MapDataGenerator in the grid, overall visual quality matching landing page
-- [ ] **Phase 5.1: Contextual Intelligence** - INSERTED - Auto-detect characters, locations, items within strings; show rich context (images, audio, metadata, map positions); category clustering; AI Translated status
+- [ ] **Phase 5.1: Contextual Intelligence & QA Engine** - INSERTED - Aho-Corasick entity detection (reuse QuickSearch/QuickCheck logic), auto glossary extraction, context panel, QA capabilities (Line Check, Term Check), category clustering, AI Translated status
 - [ ] **Phase 6: Offline Demo Validation** - Offline mode works flawlessly for the full demo narrative, mode switching is transparent
 
 ## Phase Details
@@ -103,25 +103,42 @@ Plans:
 - [ ] 05-01: TBD
 - [ ] 05-02: TBD
 
-### Phase 5.1: Contextual Intelligence (INSERTED)
-**Goal**: The editor becomes context-aware — auto-detecting characters, locations, and items within strings and surfacing rich game context (images, audio, metadata, map positions) that makes translators smarter and executives say "wow"
+### Phase 5.1: Contextual Intelligence & QA Engine (INSERTED)
+**Goal**: The editor becomes context-aware — auto-detecting entities via Aho-Corasick (reusing proven QuickSearch/QuickCheck logic), surfacing rich game context, AND providing integrated QA capabilities (Line Check, Term Check) so translators catch inconsistencies without leaving LocaNext
 **Depends on**: Phase 5
-**Requirements**: CTX-01, CTX-02, CTX-03, CTX-04, CTX-05, CTX-06, CTX-07, CTX-08, CTX-09, CTX-10
+**Requirements**: CTX-01, CTX-02, CTX-03, CTX-04, CTX-05, CTX-06, CTX-07, CTX-08, CTX-09, CTX-10, QA-01, QA-02, QA-03
+
+**Reuse Strategy** (CRITICAL — research before implementing):
+  - **QuickSearch** (`RFC/NewScripts/QuickSearch/`): Aho-Corasick automaton (`core/term_check.py:build_automaton()`), glossary extraction with AC validation (`core/glossary.py:extract_glossary_with_validation()`), word boundary detection (`is_isolated_match()`), filter pipeline (`utils/filters.py:glossary_filter()`)
+  - **QuickCheck** (`RFC/NewScripts/QuickCheck/`): LINE CHECK (`core/line_check.py`), TERM CHECK with dual AC automaton (`core/term_check.py`), multi-language folder scanning (`core/scanner.py`), Excel output writers (`utils/excel_writer.py`)
+  - **Both projects share**: XML parser (`core/xml_parser.py`), preprocessing with KR/ENG BASE modes (`core/preprocessing.py`), language utilities (`utils/language_utils.py`)
+
+**Glossary Extraction Parameters** (defaults from QuickSearch/QuickCheck):
+  - `min_occurrence`: 2 (term must appear at least twice)
+  - `max_term_length`: 25 chars (user override — QuickSearch default is 15, QuickCheck is 20)
+  - `filter_sentences`: True (skip entries ending with `.?!`)
+  - `match_mode`: ISOLATED only (word boundary check, no substring — prevents Korean compound false matches)
+  - `max_issues_per_term`: 6 (noise filter for Term Check)
+
 **Success Criteria** (what must be TRUE):
-  1. Glossary automatically extracted from game data (QACompiler/LDE generators) — all character, location, item, skill names
-  2. Aho-Corasick automaton built from glossary scans strings in real-time — "The warrior enters Stormhold Castle" instantly detects both entities
+  1. Glossary automatically extracted from game data (QACompiler/LDE generators) — all character, location, item, skill names — using QuickSearch's `extract_glossary_with_validation()` pattern with min_occurrence=2, max_length=25, no sentences
+  2. Aho-Corasick automaton built from glossary scans strings in real-time — "The warrior enters Stormhold Castle" instantly detects both entities — reusing QuickSearch's `build_automaton()` + `is_isolated_match()`
   3. Detected character names → context panel shows metadata (gender, age, job, race), quest info, audio samples (including indirect matches)
   4. Detected location names → context panel shows location images and map position from staticinfo
   5. Glossary terms mapped to staticinfo datapoints where images, DESC, and audio files can be found
   6. Category clustering auto-assigns string types using QACompiler/LanguageDataExporter technology
   7. "AI Translated" status visible in grid, distinguishing human from AI translations
   8. Context panel updates dynamically as user navigates between segments
+  9. **LINE CHECK** integrated — same source translated differently flagged as inconsistency (reuse QuickCheck's `run_line_check()` logic)
+  10. **TERM CHECK** integrated — glossary term in source but missing translation flagged (reuse QuickCheck's dual Aho-Corasick + noise filter logic)
+  11. QA results displayed in a dedicated panel/tab within the editor, not as a separate tool
 **Plans**: TBD
 
 Plans:
 - [ ] 05.1-01: TBD
 - [ ] 05.1-02: TBD
 - [ ] 05.1-03: TBD
+- [ ] 05.1-04: TBD
 
 ### Phase 6: Offline Demo Validation
 **Goal**: The complete demo narrative works flawlessly offline -- user can disconnect network and continue working through the entire upload-translate-search-export flow without interruption
@@ -148,5 +165,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 | 3. TM Workflow | 0/3 | Not started | - |
 | 4. Search and AI Differentiators | 0/2 | Not started | - |
 | 5. Visual Polish and Integration | 0/2 | Not started | - |
-| 5.1. Contextual Intelligence | 0/3 | Not started | - |
+| 5.1. Contextual Intelligence & QA Engine | 0/4 | Not started | - |
 | 6. Offline Demo Validation | 0/1 | Not started | - |
