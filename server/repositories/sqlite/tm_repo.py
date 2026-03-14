@@ -168,9 +168,9 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
             else:
                 await conn.execute(
                     f"""INSERT INTO {self._table('tms')}
-                       (id, name, source_lang, target_lang, entry_count, status, created_at, updated_at)
-                       VALUES (?, ?, ?, ?, 0, 'ready', ?, ?)""",
-                    (tm_id, name, source_lang, target_lang, now, now)
+                       (id, name, source_lang, target_lang, owner_id, entry_count, status, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, 0, 'ready', ?, ?)""",
+                    (tm_id, name, source_lang, target_lang, owner_id or 1, now, now)
                 )
             await conn.commit()
 
@@ -653,8 +653,8 @@ class SQLiteTMRepository(SQLiteBaseRepository, TMRepository):
                     "source_text": row["source_text"],
                     "target_text": row["target_text"],
                     "source_hash": row["source_hash"],
-                    "string_id": row.get("string_id"),
-                    "is_confirmed": bool(row.get("is_confirmed", 0)),
+                    "string_id": dict(row).get("string_id"),
+                    "is_confirmed": bool(dict(row).get("is_confirmed", 0)),
                 }
                 for row in rows
             ]
