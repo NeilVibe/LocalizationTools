@@ -130,6 +130,7 @@
       </div>
 
       <!-- Tab content -->
+      {#key activeTab}
       <div class="tab-content">
         {#if activeTab === 'tm'}
           <TMTab
@@ -151,6 +152,7 @@
           </div>
         {/if}
       </div>
+      {/key}
 
       <!-- QA Issues (persistent footer - always visible) -->
       {#if qaIssues.length > 0 || qaLoading || selectedRow}
@@ -223,6 +225,7 @@
 
   .resize-handle:hover {
     background: var(--cds-interactive-01);
+    transition: background 0.15s ease;
   }
 
   /* Collapse button */
@@ -307,6 +310,12 @@
     overflow-y: auto;
     padding: 12px;
     min-height: 0;
+    animation: tabFadeIn 0.15s ease;
+  }
+
+  @keyframes tabFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   /* Placeholder tabs */
