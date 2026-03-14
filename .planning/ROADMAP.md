@@ -65,12 +65,12 @@ Plans:
   3. When user selects a segment, TM matches appear with color-coded percentages (green=100%, yellow=fuzzy, red=no match) and word-level diff highlighting
   4. User can see per-file TM leverage statistics showing exact, fuzzy, and new match percentages
   5. File explorer and TM explorer tree views look polished and professional (not raw component defaults)
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
-- [ ] 03-03: TBD
+- [ ] 03-01-PLAN.md -- Backend TM auto-mirror hook, leverage stats API, TM search cascade verification
+- [ ] 03-02-PLAN.md -- Tabbed right panel, color-coded TM matches with word-level diff, explorer CSS polish
+- [ ] 03-03-PLAN.md -- End-to-end integration wiring, leverage display, assignment E2E, visual checkpoint
 
 ### Phase 4: Search and AI Differentiators
 **Goal**: Users can find translations by meaning (not just exact text) using Model2Vec, with near-instant performance and clear AI-matched indicators
@@ -163,7 +163,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 |-------|----------------|--------|-----------|
 | 1. Stability Foundation | 3/3 | Complete    | 2026-03-14 |
 | 2. Editor Core | 3/3 | Complete | 2026-03-14 |
-| 3. TM Workflow | 0/3 | Not started | - |
+| 3. TM Workflow | 0/3 | Planned | - |
 | 4. Search and AI Differentiators | 0/2 | Not started | - |
 | 5. Visual Polish and Integration | 0/2 | Not started | - |
 | 5.1. Contextual Intelligence & QA Engine | 0/4 | Not started | - |
