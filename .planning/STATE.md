@@ -3,30 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-03-PLAN.md (Phase 3 complete)
-last_updated: "2026-03-14T13:03:14.107Z"
-last_activity: 2026-03-14 -- Plan 03-03 complete (TM integration wiring + visual checkpoint approved)
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-14T13:21:00Z"
+last_activity: 2026-03-14 -- Plan 04-01 complete (semantic search endpoint + tests)
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Completed 03-03-PLAN.md (Phase 3 complete)
-last_updated: "2026-03-14T12:58:22Z"
-last_activity: 2026-03-14 -- Plan 03-03 complete (TM integration wiring + visual checkpoint approved)
-progress:
-  total_phases: 7
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
+  total_plans: 11
+  completed_plans: 10
 ---
 
 # Project State
@@ -36,23 +20,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-14)
 
 **Core value:** Flawless end-to-end localization workflow -- upload, TM auto-mirror, search/edit, export -- working seamlessly offline and online, polished enough for executive demos.
-**Current focus:** Phase 3 complete. Next: Phase 4 (Search and AI Differentiators)
+**Current focus:** Phase 4 in progress. Plan 04-01 complete, Plan 04-02 next (frontend semantic search UI)
 
 ## Current Position
 
-Phase: 3 of 7 (TM Workflow -- COMPLETE)
-Plan: 3 of 3 in current phase (all complete)
-Status: Phase 3 complete (human checkpoint approved)
-Last activity: 2026-03-14 -- Plan 03-03 complete (TM integration wiring + visual checkpoint approved)
+Phase: 4 of 7 (Search and AI Differentiators)
+Plan: 1 of 2 in current phase
+Status: Executing Phase 4
+Last activity: 2026-03-14 -- Plan 04-01 complete (semantic search endpoint + tests)
 
-Progress: [██████████] 100% (9/9 plans across 3 phases)
+Progress: [█████████░] 91% (10/11 plans across 4 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 18min
-- Total execution time: 2.6 hours
+- Total plans completed: 10
+- Average duration: 17min
+- Total execution time: 2.7 hours
 
 **By Phase:**
 
@@ -61,6 +45,7 @@ Progress: [██████████] 100% (9/9 plans across 3 phases)
 | 01 | 3 | 79min | 26min |
 | 02 | 3 | 47min | 16min |
 | 03 | 3 | 32min | 11min |
+| 04 | 1 | 5min | 5min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -68,6 +53,7 @@ Progress: [██████████] 100% (9/9 plans across 3 phases)
 
 *Updated after each plan completion*
 | Phase 03 P03 | 6min | 3 tasks | 5 files |
+| Phase 04 P01 | 5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -102,6 +88,8 @@ Recent decisions affecting current work:
 - TMSearcher tests use hash-only indexes (no FAISS runtime dependency for unit tests)
 - [Phase 03]: Leverage bar uses CSS segments (green/yellow/gray) matching established color system
 - [Phase 03]: E2E tests use Playwright request fixture for API auth
+- [Phase 04]: Model2Vec only for semantic search endpoint (TMSearcher auto-loads via get_current_engine_name)
+- [Phase 04]: FastAPI dependency_overrides for route-level test isolation (not module-level patches)
 
 ### Pending Todos
 
@@ -115,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T12:58:22.142Z
-Stopped at: Completed 03-03-PLAN.md (Phase 3 complete)
+Last session: 2026-03-14T13:21:00Z
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
