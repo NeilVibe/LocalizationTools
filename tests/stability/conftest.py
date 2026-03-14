@@ -14,6 +14,7 @@ Usage:
 from __future__ import annotations
 
 import os
+import shutil
 import sqlite3
 import tempfile
 from enum import Enum
@@ -51,34 +52,51 @@ def db_mode(request) -> DbMode:
 # Clean Database Fixture
 # =============================================================================
 
+# =============================================================================
+# Template DB Cache (session-scoped for performance)
+# =============================================================================
+# SQLAlchemy Base.metadata.create_all takes ~70s for ldm_* tables.
+# We create the template DB once per session and copy it for each test.
+
+_server_local_template: str | None = None
+
+
+@pytest.fixture(scope="session")
+def _server_local_template_db(tmp_path_factory):
+    """Create server_local template DB once per session (expensive: ~70s first time)."""
+    global _server_local_template
+    template_dir = tmp_path_factory.mktemp("templates")
+    template_path = template_dir / "server_local_template.db"
+
+    from sqlalchemy import create_engine
+    from server.database.models import Base
+    engine = create_engine(f"sqlite:///{template_path}")
+    Base.metadata.create_all(engine)
+    engine.dispose()
+
+    _server_local_template = str(template_path)
+    return str(template_path)
+
+
 @pytest.fixture
-def clean_db(db_mode, tmp_path):
+def clean_db(db_mode, tmp_path, _server_local_template_db):
     """
     Provide a clean database for each test.
 
     Returns:
-        - ONLINE: async engine + session (or skip if PostgreSQL unavailable)
-        - SERVER_LOCAL: path to temp SQLite file with ldm_* tables
+        - ONLINE: skips (PostgreSQL not available)
+        - SERVER_LOCAL: path to temp SQLite file with ldm_* tables (copied from template)
         - OFFLINE: path to temp SQLite file with offline_* tables
     """
     if db_mode == DbMode.ONLINE:
-        # Skip ONLINE tests if PostgreSQL is not available
         pytest.skip("PostgreSQL not available in test environment")
 
     elif db_mode == DbMode.SERVER_LOCAL:
         db_path = tmp_path / "server_local_test.db"
-        conn = sqlite3.connect(str(db_path))
-        # Create ldm_* tables via SQLAlchemy metadata
-        try:
-            from sqlalchemy import create_engine
-            from server.database.models import Base
-            engine = create_engine(f"sqlite:///{db_path}")
-            Base.metadata.create_all(engine)
-            engine.dispose()
-        except Exception:
-            conn.close()
-            raise
+        # Copy from pre-built template (fast: <1ms vs 70s)
+        shutil.copy2(_server_local_template_db, str(db_path))
         # Enable WAL and foreign keys
+        conn = sqlite3.connect(str(db_path))
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA journal_mode = WAL")
         conn.commit()
@@ -172,15 +190,46 @@ def assert_equivalent(
 _TEST_USER = {"id": 1, "username": "test_admin", "role": "admin"}
 
 
+def _make_test_db(db_mode: DbMode, db_path: str):
+    """
+    Create a database wrapper pointing at the test database path.
+
+    This avoids using the singleton database instances (which point to real databases)
+    and instead creates fresh instances pointing at the test temp database.
+    """
+    if db_mode == DbMode.SERVER_LOCAL:
+        from server.database.server_sqlite import ServerSQLiteDatabase
+        return ServerSQLiteDatabase(db_path=db_path)
+    else:  # OFFLINE
+        # For offline, we can't use OfflineDatabase directly because its __init__
+        # runs _init_schema_sync which re-creates schema. We already have the schema
+        # from clean_db. Create a minimal wrapper with the same _get_async_connection.
+        from server.database.server_sqlite import ServerSQLiteDatabase
+        # ServerSQLiteDatabase has the same _get_async_connection interface
+        # and doesn't run schema init, so it works for offline too.
+        return ServerSQLiteDatabase(db_path=db_path)
+
+
+def _make_repo(db_mode, clean_db, repo_class, schema_mode):
+    """Create a repo instance wired to the test database."""
+    repo = repo_class(schema_mode=schema_mode)
+    repo._db = _make_test_db(db_mode, clean_db)
+    return repo
+
+
+def _get_schema_mode(db_mode):
+    """Get SchemaMode for the given DbMode."""
+    from server.repositories.sqlite.base import SchemaMode
+    return SchemaMode.SERVER if db_mode == DbMode.SERVER_LOCAL else SchemaMode.OFFLINE
+
+
 @pytest.fixture
 def platform_repo(db_mode, clean_db):
     """Platform repository for current db_mode."""
     if db_mode == DbMode.ONLINE:
         pytest.skip("PostgreSQL not available")
     from server.repositories.sqlite.platform_repo import SQLitePlatformRepository
-    from server.repositories.sqlite.base import SchemaMode
-    mode = SchemaMode.SERVER if db_mode == DbMode.SERVER_LOCAL else SchemaMode.OFFLINE
-    return SQLitePlatformRepository(schema_mode=mode)
+    return _make_repo(db_mode, clean_db, SQLitePlatformRepository, _get_schema_mode(db_mode))
 
 
 @pytest.fixture
@@ -189,9 +238,7 @@ def project_repo(db_mode, clean_db):
     if db_mode == DbMode.ONLINE:
         pytest.skip("PostgreSQL not available")
     from server.repositories.sqlite.project_repo import SQLiteProjectRepository
-    from server.repositories.sqlite.base import SchemaMode
-    mode = SchemaMode.SERVER if db_mode == DbMode.SERVER_LOCAL else SchemaMode.OFFLINE
-    return SQLiteProjectRepository(schema_mode=mode)
+    return _make_repo(db_mode, clean_db, SQLiteProjectRepository, _get_schema_mode(db_mode))
 
 
 @pytest.fixture
@@ -200,9 +247,7 @@ def folder_repo(db_mode, clean_db):
     if db_mode == DbMode.ONLINE:
         pytest.skip("PostgreSQL not available")
     from server.repositories.sqlite.folder_repo import SQLiteFolderRepository
-    from server.repositories.sqlite.base import SchemaMode
-    mode = SchemaMode.SERVER if db_mode == DbMode.SERVER_LOCAL else SchemaMode.OFFLINE
-    return SQLiteFolderRepository(schema_mode=mode)
+    return _make_repo(db_mode, clean_db, SQLiteFolderRepository, _get_schema_mode(db_mode))
 
 
 @pytest.fixture
@@ -211,9 +256,7 @@ def file_repo(db_mode, clean_db):
     if db_mode == DbMode.ONLINE:
         pytest.skip("PostgreSQL not available")
     from server.repositories.sqlite.file_repo import SQLiteFileRepository
-    from server.repositories.sqlite.base import SchemaMode
-    mode = SchemaMode.SERVER if db_mode == DbMode.SERVER_LOCAL else SchemaMode.OFFLINE
-    return SQLiteFileRepository(schema_mode=mode)
+    return _make_repo(db_mode, clean_db, SQLiteFileRepository, _get_schema_mode(db_mode))
 
 
 @pytest.fixture
@@ -222,9 +265,7 @@ def row_repo(db_mode, clean_db):
     if db_mode == DbMode.ONLINE:
         pytest.skip("PostgreSQL not available")
     from server.repositories.sqlite.row_repo import SQLiteRowRepository
-    from server.repositories.sqlite.base import SchemaMode
-    mode = SchemaMode.SERVER if db_mode == DbMode.SERVER_LOCAL else SchemaMode.OFFLINE
-    return SQLiteRowRepository(schema_mode=mode)
+    return _make_repo(db_mode, clean_db, SQLiteRowRepository, _get_schema_mode(db_mode))
 
 
 @pytest.fixture
@@ -233,9 +274,7 @@ def tm_repo(db_mode, clean_db):
     if db_mode == DbMode.ONLINE:
         pytest.skip("PostgreSQL not available")
     from server.repositories.sqlite.tm_repo import SQLiteTMRepository
-    from server.repositories.sqlite.base import SchemaMode
-    mode = SchemaMode.SERVER if db_mode == DbMode.SERVER_LOCAL else SchemaMode.OFFLINE
-    return SQLiteTMRepository(schema_mode=mode)
+    return _make_repo(db_mode, clean_db, SQLiteTMRepository, _get_schema_mode(db_mode))
 
 
 @pytest.fixture
@@ -244,9 +283,7 @@ def qa_repo(db_mode, clean_db):
     if db_mode == DbMode.ONLINE:
         pytest.skip("PostgreSQL not available")
     from server.repositories.sqlite.qa_repo import SQLiteQAResultRepository
-    from server.repositories.sqlite.base import SchemaMode
-    mode = SchemaMode.SERVER if db_mode == DbMode.SERVER_LOCAL else SchemaMode.OFFLINE
-    return SQLiteQAResultRepository(schema_mode=mode)
+    return _make_repo(db_mode, clean_db, SQLiteQAResultRepository, _get_schema_mode(db_mode))
 
 
 @pytest.fixture
@@ -255,9 +292,7 @@ def trash_repo(db_mode, clean_db):
     if db_mode == DbMode.ONLINE:
         pytest.skip("PostgreSQL not available")
     from server.repositories.sqlite.trash_repo import SQLiteTrashRepository
-    from server.repositories.sqlite.base import SchemaMode
-    mode = SchemaMode.SERVER if db_mode == DbMode.SERVER_LOCAL else SchemaMode.OFFLINE
-    return SQLiteTrashRepository(schema_mode=mode)
+    return _make_repo(db_mode, clean_db, SQLiteTrashRepository, _get_schema_mode(db_mode))
 
 
 @pytest.fixture
