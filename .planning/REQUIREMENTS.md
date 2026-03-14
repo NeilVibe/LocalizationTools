@@ -38,8 +38,8 @@
 
 ### AI Features
 
-- [ ] **AI-01**: Local AI pretranslation using Qwen model works end-to-end (zero cloud dependency)
-- [ ] **AI-02**: Pretranslation results displayed in editor with clear "AI-suggested" indicator
+- [ ] **AI-01**: Model2Vec powers the entire semantic pipeline (TM matching, search, entity detection) as the default/standard model
+- [ ] **AI-02**: "AI-suggested" indicator visible in editor for Model2Vec-matched translations
 
 ### Offline Demo
 
@@ -109,6 +109,11 @@
 - **NS-01**: QuickSearch integration into LocaNext
 - **NS-02**: QuickTranslate integration into LocaNext
 - **NS-03**: ExtractAnything integration into LocaNext
+
+### Qwen AI Pretranslation
+
+- **QWEN-01**: Local AI pretranslation using Qwen model (zero cloud dependency)
+- **QWEN-02**: Qwen-powered pretranslation results with quality scoring
 
 ### Visual Polish
 

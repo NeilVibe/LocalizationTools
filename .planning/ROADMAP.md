@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 1: Stability Foundation** - Server starts reliably, DB layer works correctly across SQLite and PostgreSQL, no zombie processes
 - [ ] **Phase 2: Editor Core** - Production-quality translation grid with virtual scrolling, editing, search/filter, export, and segment status
 - [ ] **Phase 3: TM Workflow** - TM tree auto-mirrors file structure, TM assignment and lookup with match percentages, semantic matching
-- [ ] **Phase 4: Search and AI Differentiators** - Semantic search UI, local AI pretranslation with Qwen, near-instant search performance
+- [ ] **Phase 4: Search and AI Differentiators** - Semantic search UI powered by Model2Vec, near-instant search performance, AI-matched translation indicators
 - [ ] **Phase 5: Visual Polish and Integration** - Settings UI, MapDataGenerator in the grid, overall visual quality matching landing page
 - [ ] **Phase 5.1: Contextual Intelligence** - INSERTED - Auto-detect characters, locations, items within strings; show rich context (images, audio, metadata, map positions); category clustering; AI Translated status
 - [ ] **Phase 6: Offline Demo Validation** - Offline mode works flawlessly for the full demo narrative, mode switching is transparent
@@ -72,15 +72,15 @@ Plans:
 - [ ] 03-03: TBD
 
 ### Phase 4: Search and AI Differentiators
-**Goal**: Users can find translations by meaning (not just exact text) and get AI-generated pretranslations from a local model with zero cloud dependency
+**Goal**: Users can find translations by meaning (not just exact text) using Model2Vec, with near-instant performance and clear AI-matched indicators
 **Depends on**: Phase 3
 **Requirements**: SRCH-01, SRCH-02, SRCH-03, AI-01, AI-02
 **Success Criteria** (what must be TRUE):
   1. User can search for a concept and find relevant translations even when the wording differs from the query
   2. Semantic search UI prominently showcases the "find similar" capability with similarity scores and relevance ranking
-  3. Search results return in under one second for typical TM sizes
-  4. User can trigger AI pretranslation on untranslated segments and see results marked with a clear "AI-suggested" indicator
-  5. AI pretranslation works entirely offline with the local Qwen model (no network request made)
+  3. Search results return in under one second for typical TM sizes (Model2Vec is 79x faster than alternatives)
+  4. Model2Vec powers the entire semantic pipeline — TM matching, search, entity detection
+  5. AI-matched translations are clearly indicated in the editor
 **Plans**: TBD
 
 Plans:
