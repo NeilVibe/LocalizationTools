@@ -25,10 +25,10 @@
 
 - [ ] **EDIT-01**: Virtual scrolling grid handles 10K+ segments without jank or lag
 - [ ] **EDIT-02**: Segment status indicators with color coding (confirmed/draft/empty)
-- [ ] **EDIT-03**: Search and filter segments by text and by status
+- [x] **EDIT-03**: Search and filter segments by text and by status
 - [ ] **EDIT-04**: Ctrl+S saves current segment without overflowing to the row below (bug fix)
 - [ ] **EDIT-05**: Editing and saving translations works reliably in the grid
-- [ ] **EDIT-06**: Export workflow produces correct output files in original format
+- [x] **EDIT-06**: Export workflow produces correct output files in original format
 
 ### Search
 
@@ -146,10 +146,10 @@
 | STAB-05 | Phase 1 | Complete |
 | EDIT-01 | Phase 2 | Pending |
 | EDIT-02 | Phase 2 | Pending |
-| EDIT-03 | Phase 2 | Pending |
+| EDIT-03 | Phase 2 | Complete |
 | EDIT-04 | Phase 2 | Pending |
 | EDIT-05 | Phase 2 | Pending |
-| EDIT-06 | Phase 2 | Pending |
+| EDIT-06 | Phase 2 | Complete |
 | UI-01 | Phase 2 | Pending |
 | TM-01 | Phase 3 | Pending |
 | TM-02 | Phase 3 | Pending |

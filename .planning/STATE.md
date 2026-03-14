@@ -36,29 +36,30 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-14)
 
 **Core value:** Flawless end-to-end localization workflow -- upload, TM auto-mirror, search/edit, export -- working seamlessly offline and online, polished enough for executive demos.
-**Current focus:** Phase 1: Stability Foundation
+**Current focus:** Phase 2: Editor Core
 
 ## Current Position
 
-Phase: 1 of 6 (Stability Foundation)
-Plan: 3 of 3 in current phase
+Phase: 2 of 6 (Editor Core)
+Plan: 2 of 3 in current phase
 Status: Executing
-Last activity: 2026-03-14 -- Plan 01-02 executed (9 repo parity test files, 451 total tests, 2 TM bugs fixed)
+Last activity: 2026-03-14 -- Plan 02-02 executed (10 tests: 5 Playwright search/filter + 5 pytest export roundtrip)
 
-Progress: [██░░░░░░░░] 15%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 26min
-- Total execution time: 1.3 hours
+- Total plans completed: 4
+- Average duration: 24min
+- Total execution time: 1.6 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 3 | 79min | 26min |
+| 02 | 1 | 16min | 16min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -83,6 +84,8 @@ Recent decisions affecting current work:
 - Template DB caching (session-scoped) for server_local test performance
 - Capability repo tests verify stub degradation, not parity
 - TM repo SERVER mode had missing owner_id and sqlite3.Row .get() bugs (fixed)
+- Playwright E2E tests use API-seeded data (upload via fetch in beforeAll) for reliability
+- Explorer navigation uses .grid-row with :text-is() exact match selectors
 
 ### Pending Todos
 
@@ -95,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T10:07:03Z
-Stopped at: Completed 01-02-PLAN.md (repository parity tests for all 9 repos)
-Resume file: .planning/phases/01-stability-foundation/01-03-PLAN.md
+Last session: 2026-03-14T11:06:52Z
+Stopped at: Completed 02-02-PLAN.md (search/filter + export roundtrip tests)
+Resume file: .planning/phases/02-editor-core/02-03-PLAN.md
