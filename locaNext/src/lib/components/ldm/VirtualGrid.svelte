@@ -1517,6 +1517,13 @@
       return;
     }
 
+    // Ctrl+T: Mark as translated/needs review (yellow status)
+    if (e.ctrlKey && e.key === 't') {
+      e.preventDefault();
+      markAsTranslated();
+      return;
+    }
+
     // Ctrl+D: Dismiss QA issues for current row
     if (e.ctrlKey && e.key === 'd') {
       e.preventDefault();
@@ -1565,6 +1572,43 @@
   /**
    * Confirm translation: Save as "reviewed" status and add to linked TM
    */
+  /**
+   * Mark translation as "translated" (needs review) — yellow status via Ctrl+T
+   * Saves current text without adding to TM (unlike Ctrl+S confirm which = reviewed + TM)
+   */
+  async function markAsTranslated() {
+    if (!inlineEditingRowId) return;
+
+    const row = getRowById(inlineEditingRowId);
+    if (!row) return;
+
+    const currentHtml = inlineEditTextarea?.innerHTML || "";
+    const rawText = htmlToPaColor(currentHtml);
+    const textToSave = formatTextForSave(rawText);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/rows/${row.id}`, {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: textToSave, status: 'translated' })
+      });
+
+      if (response.ok) {
+        row.target = textToSave;
+        row.status = 'translated';
+        const rowIndex = getRowIndexById(row.id);
+        if (rowIndex !== undefined) {
+          rowHeightCache.delete(rowIndex);
+          rebuildCumulativeHeights();
+        }
+        logger.success("Marked as translated (needs review)", { rowId: row.id });
+        cancelInlineEdit();
+      }
+    } catch (err) {
+      logger.error("Failed to mark as translated", { error: err.message });
+    }
+  }
+
   async function confirmInlineEdit() {
     if (!inlineEditingRowId || isConfirming) return;
 
@@ -2476,6 +2520,7 @@
     <div class="hotkey-bar">
       <span class="hotkey"><kbd>Enter</kbd> Save & Next</span>
       <span class="hotkey"><kbd>Ctrl+S</kbd> Confirm</span>
+      <span class="hotkey"><kbd>Ctrl+T</kbd> Translated</span>
       <span class="hotkey"><kbd>Esc</kbd> Cancel</span>
       <span class="hotkey"><kbd>Ctrl+D</kbd> Dismiss QA</span>
       <span class="hotkey"><kbd>Ctrl+Z</kbd> Undo</span>

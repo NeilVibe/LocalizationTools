@@ -57,9 +57,10 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 # ============================================
 
 # Host and port
-# Default to 127.0.0.1 (localhost) to avoid Windows firewall popup
-# For network access, set SERVER_HOST=0.0.0.0 in environment
-SERVER_HOST = os.getenv("SERVER_HOST", "127.0.0.1")
+# DEV_MODE: bind to 0.0.0.0 (WSL2 needs this for port forwarding)
+# Production: default to 127.0.0.1 to avoid Windows firewall popup
+_DEV_HOST_DEFAULT = "0.0.0.0" if os.getenv("DEV_MODE") else "127.0.0.1"
+SERVER_HOST = os.getenv("SERVER_HOST", _DEV_HOST_DEFAULT)
 SERVER_PORT = int(os.getenv("SERVER_PORT", "8888"))
 
 # Admin dashboard
