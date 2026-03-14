@@ -1,0 +1,164 @@
+# Requirements: LocaNext Demo-Ready CAT Tool
+
+**Defined:** 2026-03-14
+**Core Value:** Flawless end-to-end localization workflow — upload, TM auto-mirror, search/edit, export — working seamlessly offline and online, polished enough for executive demos.
+
+## v1 Requirements
+
+### Stability
+
+- [ ] **STAB-01**: Server starts reliably every time without errors or zombie processes
+- [ ] **STAB-02**: Offline mode (SQLite) delivers full feature parity with online mode
+- [ ] **STAB-03**: DB Factory and Repository pattern implementations work correctly across all repository interfaces
+- [ ] **STAB-04**: No Python zombie processes on startup, shutdown, or crash recovery
+- [ ] **STAB-05**: SQLite schema matches PostgreSQL schema for all operations (no divergence bugs)
+
+### TM Management
+
+- [ ] **TM-01**: TM tree auto-mirrors file explorer folder structure when files are uploaded
+- [ ] **TM-02**: User can assign TMs to folders/files through the mirrored tree
+- [ ] **TM-03**: TM lookup shows match percentages with color coding (100%=green, fuzzy=yellow, no-match=red)
+- [ ] **TM-04**: TM leverage statistics displayed per file ("45% exact, 30% fuzzy, 25% new")
+- [ ] **TM-05**: Model2Vec-based semantic matching (light build, fast performance over Qwen for TM matching)
+
+### Editor
+
+- [ ] **EDIT-01**: Virtual scrolling grid handles 10K+ segments without jank or lag
+- [ ] **EDIT-02**: Segment status indicators with color coding (confirmed/draft/empty)
+- [ ] **EDIT-03**: Search and filter segments by text and by status
+- [ ] **EDIT-04**: Ctrl+S saves current segment without overflowing to the row below (bug fix)
+- [ ] **EDIT-05**: Editing and saving translations works reliably in the grid
+- [ ] **EDIT-06**: Export workflow produces correct output files in original format
+
+### Search
+
+- [ ] **SRCH-01**: Semantic search using Model2Vec (FAISS vectors) finds similar-meaning translations
+- [ ] **SRCH-02**: Semantic search UI prominently showcases the "find similar" capability
+- [ ] **SRCH-03**: Search performance is near-instant (sub-second for typical TM sizes)
+
+### AI Features
+
+- [ ] **AI-01**: Local AI pretranslation using Qwen model works end-to-end (zero cloud dependency)
+- [ ] **AI-02**: Pretranslation results displayed in editor with clear "AI-suggested" indicator
+
+### Offline Demo
+
+- [ ] **OFFL-01**: Offline mode demo flow works flawlessly (disconnect network, keep working)
+- [ ] **OFFL-02**: All core operations (upload, edit, search, export) function identically offline
+- [ ] **OFFL-03**: Mode switching is transparent — user doesn't need to know or configure anything
+
+### UI Rework
+
+- [ ] **UI-01**: Main translation grid reworked to production-quality, executive-demo-ready
+- [ ] **UI-02**: File explorer tree view polished with professional appearance
+- [ ] **UI-03**: TM explorer tree view polished with assignment UI
+- [ ] **UI-04**: Settings UI for branches, drives, metadata reading
+- [ ] **UI-05**: Overall visual polish matches the cinematic quality of the landing page
+
+### MapDataGenerator Integration
+
+- [ ] **MAP-01**: Image mapping visible directly in the translation grid
+- [ ] **MAP-02**: Audio mapping visible directly in the translation grid
+- [ ] **MAP-03**: MapDataGenerator data integrated organically (not a separate tool feel)
+
+## v2 Requirements
+
+### Online Collaboration
+
+- **COLLAB-01**: Online mode (PostgreSQL) works for multi-user collaboration
+- **COLLAB-02**: Real-time multi-user editing via WebSocket
+- **COLLAB-03**: Conflict resolution for concurrent edits
+
+### Editor Enhancements
+
+- **EDIT-07**: Keyboard navigation (Tab between segments, Enter to confirm)
+- **EDIT-08**: Undo/redo in editor cells
+- **EDIT-09**: Concordance search panel (right-click or Ctrl+F)
+- **EDIT-10**: Glossary/terminology panel with auto-detected terms
+- **EDIT-11**: Batch operations (bulk confirm, bulk pretranslate)
+
+### Navigation/Menus
+
+- **NAV-01**: App switching UI rework
+- **NAV-02**: Sidebar navigation rework
+
+### Game-Specific
+
+- **GAME-01**: Character limit display per field with warnings
+- **GAME-02**: Variable placeholder highlighting and protection
+
+### Legacy Parity
+
+- **LEG-01**: XLSTransfer in LocaNext matches legacy script output
+- **LEG-02**: KRSimilar in LocaNext matches legacy script output
+- **LEG-03**: Apps menu functions verified against legacy scripts
+
+### Additional NewScripts
+
+- **NS-01**: QuickSearch integration into LocaNext
+- **NS-02**: QuickTranslate integration into LocaNext
+- **NS-03**: ExtractAnything integration into LocaNext
+
+### Visual Polish
+
+- **VIS-01**: Dark mode / theme switching
+- **VIS-02**: Activity/audit log for enterprise compliance
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Full MT engine integration (Google/DeepL API) | LocaNext differentiates with LOCAL AI (Qwen), not API wrappers. Breaks offline story |
+| WYSIWYG in-context preview | Massive effort rendering game UI. MapDataGenerator provides context without the nightmare |
+| Plugin/extension marketplace | Premature. Core must work first |
+| Automated workflow orchestration | Enterprise TMS feature, not demo-ready CAT tool |
+| Cost estimation / billing | Irrelevant for internal enterprise tool |
+| 100+ file format support | XML primary, Excel for import/export. Three formats done well |
+| Mobile app | Desktop-first. Translators don't work on phones |
+| Multi-language UI | Not planned |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| STAB-01 | — | Pending |
+| STAB-02 | — | Pending |
+| STAB-03 | — | Pending |
+| STAB-04 | — | Pending |
+| STAB-05 | — | Pending |
+| TM-01 | — | Pending |
+| TM-02 | — | Pending |
+| TM-03 | — | Pending |
+| TM-04 | — | Pending |
+| TM-05 | — | Pending |
+| EDIT-01 | — | Pending |
+| EDIT-02 | — | Pending |
+| EDIT-03 | — | Pending |
+| EDIT-04 | — | Pending |
+| EDIT-05 | — | Pending |
+| EDIT-06 | — | Pending |
+| SRCH-01 | — | Pending |
+| SRCH-02 | — | Pending |
+| SRCH-03 | — | Pending |
+| AI-01 | — | Pending |
+| AI-02 | — | Pending |
+| OFFL-01 | — | Pending |
+| OFFL-02 | — | Pending |
+| OFFL-03 | — | Pending |
+| UI-01 | — | Pending |
+| UI-02 | — | Pending |
+| UI-03 | — | Pending |
+| UI-04 | — | Pending |
+| UI-05 | — | Pending |
+| MAP-01 | — | Pending |
+| MAP-02 | — | Pending |
+| MAP-03 | — | Pending |
+
+**Coverage:**
+- v1 requirements: 32 total
+- Mapped to phases: 0
+- Unmapped: 32 ⚠️
+
+---
+*Requirements defined: 2026-03-14*
+*Last updated: 2026-03-14 after initial definition*
