@@ -31,11 +31,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. All repository interfaces return identical results when tested against SQLite and PostgreSQL with the same input data
   3. Shutting down the app (normal close, force quit, crash) leaves zero orphaned Python processes
   4. SQLite and PostgreSQL schemas produce identical behavior for all CRUD operations used by the app
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- Test infrastructure, schema drift guard, and terminology rename
+- [ ] 01-02-PLAN.md -- Repository parity tests for all 9 interfaces (3 modes x ~95 methods)
+- [ ] 01-03-PLAN.md -- Startup reliability tests, zombie process tests, and stop script
 
 ### Phase 2: Editor Core
 **Goal**: Users can open a file and work in a fast, professional translation grid -- editing, saving, searching, filtering, and exporting segments
@@ -160,7 +161,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Stability Foundation | 0/2 | Not started | - |
+| 1. Stability Foundation | 0/3 | Not started | - |
 | 2. Editor Core | 0/3 | Not started | - |
 | 3. TM Workflow | 0/3 | Not started | - |
 | 4. Search and AI Differentiators | 0/2 | Not started | - |
