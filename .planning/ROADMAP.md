@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. All repository interfaces return identical results when tested against SQLite and PostgreSQL with the same input data
   3. Shutting down the app (normal close, force quit, crash) leaves zero orphaned Python processes
   4. SQLite and PostgreSQL schemas produce identical behavior for all CRUD operations used by the app
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 01-01-PLAN.md -- Test infrastructure, schema drift guard, and terminology rename
@@ -161,7 +161,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Stability Foundation | 1/3 | In Progress|  |
+| 1. Stability Foundation | 2/3 | In Progress|  |
 | 2. Editor Core | 0/3 | Not started | - |
 | 3. TM Workflow | 0/3 | Not started | - |
 | 4. Search and AI Differentiators | 0/2 | Not started | - |
