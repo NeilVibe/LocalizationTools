@@ -17,6 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 3: TM Workflow** - TM tree auto-mirrors file structure, TM assignment and lookup with match percentages, semantic matching
 - [ ] **Phase 4: Search and AI Differentiators** - Semantic search UI, local AI pretranslation with Qwen, near-instant search performance
 - [ ] **Phase 5: Visual Polish and Integration** - Settings UI, MapDataGenerator in the grid, overall visual quality matching landing page
+- [ ] **Phase 5.1: Contextual Intelligence** - INSERTED - Auto-detect characters, locations, items within strings; show rich context (images, audio, metadata, map positions); category clustering; AI Translated status
 - [ ] **Phase 6: Offline Demo Validation** - Offline mode works flawlessly for the full demo narrative, mode switching is transparent
 
 ## Phase Details
@@ -102,6 +103,25 @@ Plans:
 - [ ] 05-01: TBD
 - [ ] 05-02: TBD
 
+### Phase 5.1: Contextual Intelligence (INSERTED)
+**Goal**: The editor becomes context-aware — auto-detecting characters, locations, and items within strings and surfacing rich game context (images, audio, metadata, map positions) that makes translators smarter and executives say "wow"
+**Depends on**: Phase 5
+**Requirements**: CTX-01, CTX-02, CTX-03, CTX-04, CTX-05, CTX-06, CTX-07, CTX-08
+**Success Criteria** (what must be TRUE):
+  1. When a string contains a character name, the context panel shows character metadata (gender, age, job, race) and quest/interaction information
+  2. When a string contains a location name (castle, city, etc.), the context panel shows location images and map position
+  3. Audio samples appear for detected characters — including samples not directly linked to the current StringID
+  4. Vectorial n-gram analysis detects multiple entities within a single sentence (e.g., "The warrior enters the castle" → character info + location info)
+  5. Category clustering auto-assigns string types using QACompiler/LanguageDataExporter technology
+  6. "AI Translated" status is visible in the grid, distinguishing human from AI translations
+  7. Context panel updates dynamically as user navigates between segments
+**Plans**: TBD
+
+Plans:
+- [ ] 05.1-01: TBD
+- [ ] 05.1-02: TBD
+- [ ] 05.1-03: TBD
+
 ### Phase 6: Offline Demo Validation
 **Goal**: The complete demo narrative works flawlessly offline -- user can disconnect network and continue working through the entire upload-translate-search-export flow without interruption
 **Depends on**: Phase 5
@@ -118,7 +138,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -127,4 +147,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 3. TM Workflow | 0/3 | Not started | - |
 | 4. Search and AI Differentiators | 0/2 | Not started | - |
 | 5. Visual Polish and Integration | 0/2 | Not started | - |
+| 5.1. Contextual Intelligence | 0/3 | Not started | - |
 | 6. Offline Demo Validation | 0/1 | Not started | - |

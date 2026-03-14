@@ -61,6 +61,17 @@
 - [ ] **MAP-02**: Audio mapping visible directly in the translation grid
 - [ ] **MAP-03**: MapDataGenerator data integrated organically (not a separate tool feel)
 
+### Contextual Intelligence
+
+- [ ] **CTX-01**: Auto-detect character names within strings and display character metadata (gender, age, job, race, quest appearances, character interactions)
+- [ ] **CTX-02**: Auto-detect location names within strings and display location images and map positions
+- [ ] **CTX-03**: Audio samples shown for detected characters — both directly linked audio AND other samples from the same character
+- [ ] **CTX-04**: Image context shown for detected entities (characters, locations, items) even when not directly linked to the StringID
+- [ ] **CTX-05**: Vectorial n-gram entity detection within sentences — detect multiple entities (character + location + item) in a single string
+- [ ] **CTX-06**: Category clustering using QACompiler/LanguageDataExporter technology to auto-assign string types
+- [ ] **CTX-07**: "AI Translated" status type visible in the grid to distinguish human vs AI translations
+- [ ] **CTX-08**: Context panel in the editor that dynamically shows all detected entity information for the current segment
+
 ## v2 Requirements
 
 ### Online Collaboration
@@ -150,13 +161,21 @@
 | MAP-01 | Phase 5 | Pending |
 | MAP-02 | Phase 5 | Pending |
 | MAP-03 | Phase 5 | Pending |
+| CTX-01 | Phase 5.1 | Pending |
+| CTX-02 | Phase 5.1 | Pending |
+| CTX-03 | Phase 5.1 | Pending |
+| CTX-04 | Phase 5.1 | Pending |
+| CTX-05 | Phase 5.1 | Pending |
+| CTX-06 | Phase 5.1 | Pending |
+| CTX-07 | Phase 5.1 | Pending |
+| CTX-08 | Phase 5.1 | Pending |
 | OFFL-01 | Phase 6 | Pending |
 | OFFL-02 | Phase 6 | Pending |
 | OFFL-03 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 32 total
-- Mapped to phases: 32
+- v1 requirements: 40 total
+- Mapped to phases: 40
 - Unmapped: 0
 
 ---
