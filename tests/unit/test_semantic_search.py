@@ -14,30 +14,15 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from server.tools.ldm.routes.semantic_search import router
+from server.utils.dependencies import get_current_active_user_async
+from server.repositories import get_tm_repository
 
 
 # ---------------------------------------------------------------------------
 # Test App Setup
 # ---------------------------------------------------------------------------
 
-def create_test_app():
-    """Create a minimal FastAPI app with the semantic search router."""
-    app = FastAPI()
-    app.include_router(router, prefix="/api/ldm")
-    return app
-
-
-# Mock user dependency
 MOCK_USER = {"id": 1, "username": "testuser", "role": "admin"}
-
-
-def override_auth():
-    return MOCK_USER
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
 
 MOCK_SEARCH_RESULTS = {
     "tier": 2,
@@ -47,7 +32,7 @@ MOCK_SEARCH_RESULTS = {
         {
             "entry_id": 1,
             "source_text": "Save the file",
-            "target_text": "파일을 저장하기",
+            "target_text": "\ud30c\uc77c\uc744 \uc800\uc7a5\ud558\uae30",
             "string_id": "STR_001",
             "score": 0.95,
             "match_type": "whole_embedding",
@@ -55,7 +40,7 @@ MOCK_SEARCH_RESULTS = {
         {
             "entry_id": 2,
             "source_text": "Save your progress",
-            "target_text": "진행 상황을 저장하기",
+            "target_text": "\uc9c4\ud589 \uc0c1\ud669\uc744 \uc800\uc7a5\ud558\uae30",
             "string_id": "STR_002",
             "score": 0.87,
             "match_type": "whole_embedding",
@@ -63,7 +48,7 @@ MOCK_SEARCH_RESULTS = {
         {
             "entry_id": 3,
             "source_text": "Save and exit",
-            "target_text": "저장하고 종료하기",
+            "target_text": "\uc800\uc7a5\ud558\uace0 \uc885\ub8cc\ud558\uae30",
             "string_id": "STR_003",
             "score": 0.72,
             "match_type": "whole_embedding",
@@ -72,13 +57,12 @@ MOCK_SEARCH_RESULTS = {
 }
 
 
-@pytest.fixture
-def client():
-    """Create test client with mocked dependencies."""
-    from server.utils.dependencies import get_current_active_user_async
-
-    app = create_test_app()
-    app.dependency_overrides[get_current_active_user_async] = override_auth
+def _make_app_and_client(tm_repo_mock):
+    """Create test app with dependency overrides."""
+    app = FastAPI()
+    app.include_router(router, prefix="/api/ldm")
+    app.dependency_overrides[get_current_active_user_async] = lambda: MOCK_USER
+    app.dependency_overrides[get_tm_repository] = lambda: tm_repo_mock
     return TestClient(app)
 
 
@@ -91,24 +75,14 @@ class TestSemanticSearchBasic:
 
     @patch("server.tools.ldm.routes.semantic_search.TMSearcher")
     @patch("server.tools.ldm.routes.semantic_search.TMIndexer")
-    @patch("server.tools.ldm.routes.semantic_search.get_tm_repository")
-    def test_search_returns_results_with_scores(self, mock_get_repo, mock_indexer_cls, mock_searcher_cls, client):
+    def test_search_returns_results_with_scores(self, mock_indexer_cls, mock_searcher_cls):
         """GET /api/ldm/semantic-search with query + tm_id returns results with similarity scores."""
-        # Setup mock TM repo
         mock_repo = AsyncMock()
         mock_repo.get.return_value = {"id": 1, "name": "Test TM", "entry_count": 100}
-        mock_get_repo.return_value = mock_repo
-        client.app.dependency_overrides[mock_get_repo] = lambda: mock_repo
+        client = _make_app_and_client(mock_repo)
 
-        # Setup mock indexer
-        mock_indexer_instance = MagicMock()
-        mock_indexer_instance.load_indexes.return_value = {"whole_lookup": {}, "line_lookup": {}}
-        mock_indexer_cls.return_value = mock_indexer_instance
-
-        # Setup mock searcher
-        mock_searcher_instance = MagicMock()
-        mock_searcher_instance.search.return_value = MOCK_SEARCH_RESULTS
-        mock_searcher_cls.return_value = mock_searcher_instance
+        mock_indexer_cls.return_value.load_indexes.return_value = {"whole_lookup": {}, "line_lookup": {}}
+        mock_searcher_cls.return_value.search.return_value = MOCK_SEARCH_RESULTS
 
         response = client.get("/api/ldm/semantic-search", params={"query": "save file", "tm_id": 1})
 
@@ -116,33 +90,24 @@ class TestSemanticSearchBasic:
         data = response.json()
         assert "results" in data
         assert len(data["results"]) == 3
-        # Each result has a similarity score
         for result in data["results"]:
             assert "similarity" in result
             assert isinstance(result["similarity"], float)
 
-
-# ---------------------------------------------------------------------------
-# Test 2: Results ranked by similarity descending
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Test 2: Results ranked by similarity descending
+    # ---------------------------------------------------------------------------
 
     @patch("server.tools.ldm.routes.semantic_search.TMSearcher")
     @patch("server.tools.ldm.routes.semantic_search.TMIndexer")
-    @patch("server.tools.ldm.routes.semantic_search.get_tm_repository")
-    def test_results_ranked_by_similarity_descending(self, mock_get_repo, mock_indexer_cls, mock_searcher_cls, client):
+    def test_results_ranked_by_similarity_descending(self, mock_indexer_cls, mock_searcher_cls):
         """Results are ranked by similarity descending."""
         mock_repo = AsyncMock()
         mock_repo.get.return_value = {"id": 1, "name": "Test TM", "entry_count": 100}
-        mock_get_repo.return_value = mock_repo
-        client.app.dependency_overrides[mock_get_repo] = lambda: mock_repo
+        client = _make_app_and_client(mock_repo)
 
-        mock_indexer_instance = MagicMock()
-        mock_indexer_instance.load_indexes.return_value = {"whole_lookup": {}, "line_lookup": {}}
-        mock_indexer_cls.return_value = mock_indexer_instance
-
-        mock_searcher_instance = MagicMock()
-        mock_searcher_instance.search.return_value = MOCK_SEARCH_RESULTS
-        mock_searcher_cls.return_value = mock_searcher_instance
+        mock_indexer_cls.return_value.load_indexes.return_value = {"whole_lookup": {}, "line_lookup": {}}
+        mock_searcher_cls.return_value.search.return_value = MOCK_SEARCH_RESULTS
 
         response = client.get("/api/ldm/semantic-search", params={"query": "save", "tm_id": 1})
 
@@ -151,67 +116,48 @@ class TestSemanticSearchBasic:
         scores = [r["similarity"] for r in data["results"]]
         assert scores == sorted(scores, reverse=True), "Results must be ranked by similarity descending"
 
-
-# ---------------------------------------------------------------------------
-# Test 3: Threshold filters low-similarity results
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Test 3: Threshold filters low-similarity results
+    # ---------------------------------------------------------------------------
 
     @patch("server.tools.ldm.routes.semantic_search.TMSearcher")
     @patch("server.tools.ldm.routes.semantic_search.TMIndexer")
-    @patch("server.tools.ldm.routes.semantic_search.get_tm_repository")
-    def test_threshold_parameter_filters_results(self, mock_get_repo, mock_indexer_cls, mock_searcher_cls, client):
-        """Threshold parameter filters out low-similarity results."""
+    def test_threshold_parameter_passed_to_searcher(self, mock_indexer_cls, mock_searcher_cls):
+        """Threshold parameter is passed through to TMSearcher."""
         mock_repo = AsyncMock()
         mock_repo.get.return_value = {"id": 1, "name": "Test TM", "entry_count": 100}
-        mock_get_repo.return_value = mock_repo
-        client.app.dependency_overrides[mock_get_repo] = lambda: mock_repo
+        client = _make_app_and_client(mock_repo)
 
-        mock_indexer_instance = MagicMock()
-        mock_indexer_instance.load_indexes.return_value = {"whole_lookup": {}, "line_lookup": {}}
-        mock_indexer_cls.return_value = mock_indexer_instance
-
-        # Searcher returns all results (threshold passed through)
-        mock_searcher_instance = MagicMock()
-        mock_searcher_instance.search.return_value = MOCK_SEARCH_RESULTS
-        mock_searcher_cls.return_value = mock_searcher_instance
+        mock_indexer_cls.return_value.load_indexes.return_value = {"whole_lookup": {}, "line_lookup": {}}
+        mock_searcher_cls.return_value.search.return_value = MOCK_SEARCH_RESULTS
 
         response = client.get("/api/ldm/semantic-search", params={"query": "save", "tm_id": 1, "threshold": 0.9})
 
         assert response.status_code == 200
-        # Verify threshold was passed to searcher
-        mock_searcher_instance.search.assert_called_once()
-        call_kwargs = mock_searcher_instance.search.call_args
-        assert call_kwargs[1].get("threshold") == 0.9 or call_kwargs[0][0] == "save"
+        mock_searcher_cls.return_value.search.assert_called_once()
+        call_kwargs = mock_searcher_cls.return_value.search.call_args
+        assert call_kwargs[1].get("threshold") == 0.9
 
-
-# ---------------------------------------------------------------------------
-# Test 4: max_results limits result count
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Test 4: max_results limits result count
+    # ---------------------------------------------------------------------------
 
     @patch("server.tools.ldm.routes.semantic_search.TMSearcher")
     @patch("server.tools.ldm.routes.semantic_search.TMIndexer")
-    @patch("server.tools.ldm.routes.semantic_search.get_tm_repository")
-    def test_max_results_limits_count(self, mock_get_repo, mock_indexer_cls, mock_searcher_cls, client):
-        """max_results parameter limits result count."""
+    def test_max_results_limits_count(self, mock_indexer_cls, mock_searcher_cls):
+        """max_results parameter limits result count via top_k."""
         mock_repo = AsyncMock()
         mock_repo.get.return_value = {"id": 1, "name": "Test TM", "entry_count": 100}
-        mock_get_repo.return_value = mock_repo
-        client.app.dependency_overrides[mock_get_repo] = lambda: mock_repo
+        client = _make_app_and_client(mock_repo)
 
-        mock_indexer_instance = MagicMock()
-        mock_indexer_instance.load_indexes.return_value = {"whole_lookup": {}, "line_lookup": {}}
-        mock_indexer_cls.return_value = mock_indexer_instance
-
-        mock_searcher_instance = MagicMock()
-        mock_searcher_instance.search.return_value = MOCK_SEARCH_RESULTS
-        mock_searcher_cls.return_value = mock_searcher_instance
+        mock_indexer_cls.return_value.load_indexes.return_value = {"whole_lookup": {}, "line_lookup": {}}
+        mock_searcher_cls.return_value.search.return_value = MOCK_SEARCH_RESULTS
 
         response = client.get("/api/ldm/semantic-search", params={"query": "save", "tm_id": 1, "max_results": 5})
 
         assert response.status_code == 200
-        # Verify top_k was passed to searcher
-        mock_searcher_instance.search.assert_called_once()
-        call_kwargs = mock_searcher_instance.search.call_args
+        mock_searcher_cls.return_value.search.assert_called_once()
+        call_kwargs = mock_searcher_cls.return_value.search.call_args
         assert call_kwargs[1].get("top_k") == 5
 
 
@@ -222,28 +168,29 @@ class TestSemanticSearchBasic:
 class TestSemanticSearchValidation:
     """Test validation and error cases."""
 
-    def test_missing_tm_id_returns_422(self, client):
+    def test_missing_tm_id_returns_422(self):
         """Missing tm_id returns 422 (validation error)."""
+        mock_repo = AsyncMock()
+        client = _make_app_and_client(mock_repo)
         response = client.get("/api/ldm/semantic-search", params={"query": "save"})
         assert response.status_code == 422
 
-    def test_missing_query_returns_422(self, client):
+    def test_missing_query_returns_422(self):
         """Missing query returns 422 (validation error)."""
+        mock_repo = AsyncMock()
+        client = _make_app_and_client(mock_repo)
         response = client.get("/api/ldm/semantic-search", params={"tm_id": 1})
         assert response.status_code == 422
 
+    # ---------------------------------------------------------------------------
+    # Test 6: Invalid tm_id returns 404
+    # ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Test 6: Invalid tm_id returns 404
-# ---------------------------------------------------------------------------
-
-    @patch("server.tools.ldm.routes.semantic_search.get_tm_repository")
-    def test_invalid_tm_id_returns_404(self, mock_get_repo, client):
+    def test_invalid_tm_id_returns_404(self):
         """Invalid tm_id returns 404."""
         mock_repo = AsyncMock()
         mock_repo.get.return_value = None  # TM not found
-        mock_get_repo.return_value = mock_repo
-        client.app.dependency_overrides[mock_get_repo] = lambda: mock_repo
+        client = _make_app_and_client(mock_repo)
 
         response = client.get("/api/ldm/semantic-search", params={"query": "save", "tm_id": 99999})
         assert response.status_code == 404
@@ -258,21 +205,14 @@ class TestSemanticSearchPerformance:
 
     @patch("server.tools.ldm.routes.semantic_search.TMSearcher")
     @patch("server.tools.ldm.routes.semantic_search.TMIndexer")
-    @patch("server.tools.ldm.routes.semantic_search.get_tm_repository")
-    def test_search_completes_under_one_second(self, mock_get_repo, mock_indexer_cls, mock_searcher_cls, client):
+    def test_search_completes_under_one_second(self, mock_indexer_cls, mock_searcher_cls):
         """Single search completes in under 1 second (mocked FAISS, endpoint overhead only)."""
         mock_repo = AsyncMock()
         mock_repo.get.return_value = {"id": 1, "name": "Test TM", "entry_count": 100}
-        mock_get_repo.return_value = mock_repo
-        client.app.dependency_overrides[mock_get_repo] = lambda: mock_repo
+        client = _make_app_and_client(mock_repo)
 
-        mock_indexer_instance = MagicMock()
-        mock_indexer_instance.load_indexes.return_value = {"whole_lookup": {}, "line_lookup": {}}
-        mock_indexer_cls.return_value = mock_indexer_instance
-
-        mock_searcher_instance = MagicMock()
-        mock_searcher_instance.search.return_value = MOCK_SEARCH_RESULTS
-        mock_searcher_cls.return_value = mock_searcher_instance
+        mock_indexer_cls.return_value.load_indexes.return_value = {"whole_lookup": {}, "line_lookup": {}}
+        mock_searcher_cls.return_value.search.return_value = MOCK_SEARCH_RESULTS
 
         start = time.time()
         response = client.get("/api/ldm/semantic-search", params={"query": "save", "tm_id": 1})
@@ -281,7 +221,6 @@ class TestSemanticSearchPerformance:
         assert response.status_code == 200
         assert elapsed < 1.0, f"Search took {elapsed:.2f}s, must be under 1s"
 
-        # Also check search_time_ms is in the response
         data = response.json()
         assert "search_time_ms" in data
         assert isinstance(data["search_time_ms"], float)
@@ -296,21 +235,14 @@ class TestSemanticSearchResponseShape:
 
     @patch("server.tools.ldm.routes.semantic_search.TMSearcher")
     @patch("server.tools.ldm.routes.semantic_search.TMIndexer")
-    @patch("server.tools.ldm.routes.semantic_search.get_tm_repository")
-    def test_response_shape(self, mock_get_repo, mock_indexer_cls, mock_searcher_cls, client):
+    def test_response_shape(self, mock_indexer_cls, mock_searcher_cls):
         """Response matches {results: [{source_text, target_text, similarity, match_type, tier}], count, search_time_ms}."""
         mock_repo = AsyncMock()
         mock_repo.get.return_value = {"id": 1, "name": "Test TM", "entry_count": 100}
-        mock_get_repo.return_value = mock_repo
-        client.app.dependency_overrides[mock_get_repo] = lambda: mock_repo
+        client = _make_app_and_client(mock_repo)
 
-        mock_indexer_instance = MagicMock()
-        mock_indexer_instance.load_indexes.return_value = {"whole_lookup": {}, "line_lookup": {}}
-        mock_indexer_cls.return_value = mock_indexer_instance
-
-        mock_searcher_instance = MagicMock()
-        mock_searcher_instance.search.return_value = MOCK_SEARCH_RESULTS
-        mock_searcher_cls.return_value = mock_searcher_instance
+        mock_indexer_cls.return_value.load_indexes.return_value = {"whole_lookup": {}, "line_lookup": {}}
+        mock_searcher_cls.return_value.search.return_value = MOCK_SEARCH_RESULTS
 
         response = client.get("/api/ldm/semantic-search", params={"query": "save", "tm_id": 1})
 
@@ -341,18 +273,13 @@ class TestSemanticSearchEdgeCases:
     """Test edge cases like missing indexes."""
 
     @patch("server.tools.ldm.routes.semantic_search.TMIndexer")
-    @patch("server.tools.ldm.routes.semantic_search.get_tm_repository")
-    def test_no_index_returns_not_built_status(self, mock_get_repo, mock_indexer_cls, client):
+    def test_no_index_returns_not_built_status(self, mock_indexer_cls):
         """Missing FAISS index returns {results: [], index_status: 'not_built'}."""
         mock_repo = AsyncMock()
         mock_repo.get.return_value = {"id": 1, "name": "Test TM", "entry_count": 100}
-        mock_get_repo.return_value = mock_repo
-        client.app.dependency_overrides[mock_get_repo] = lambda: mock_repo
+        client = _make_app_and_client(mock_repo)
 
-        # Simulate FileNotFoundError from load_indexes
-        mock_indexer_instance = MagicMock()
-        mock_indexer_instance.load_indexes.side_effect = FileNotFoundError("TM indexes not found")
-        mock_indexer_cls.return_value = mock_indexer_instance
+        mock_indexer_cls.return_value.load_indexes.side_effect = FileNotFoundError("TM indexes not found")
 
         response = client.get("/api/ldm/semantic-search", params={"query": "save", "tm_id": 1})
 
