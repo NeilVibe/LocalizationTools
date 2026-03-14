@@ -71,7 +71,7 @@
 - [ ] **CTX-06**: Category clustering using QACompiler/LanguageDataExporter technology to auto-assign string types
 - [ ] **CTX-09**: Automatic glossary extraction from game data (QACompiler/LDE generators) → character names, location names, item names, skill names
 - [ ] **CTX-10**: Glossary-to-datapoint mapping — each glossary term maps to staticinfo paths where images, DESC, and audio can be found
-- [ ] **CTX-07**: "AI Translated" status type visible in the grid to distinguish human vs AI translations
+- [x] **CTX-07**: "AI Translated" status type visible in the grid to distinguish human vs AI translations
 - [ ] **CTX-08**: Context panel in the editor that dynamically shows all detected entity information for the current segment
 
 ## v2 Requirements
@@ -174,7 +174,7 @@
 | CTX-04 | Phase 5.1 | Pending |
 | CTX-05 | Phase 5.1 | Pending |
 | CTX-06 | Phase 5.1 | Pending |
-| CTX-07 | Phase 5.1 | Pending |
+| CTX-07 | Phase 5.1 | Complete |
 | CTX-08 | Phase 5.1 | Pending |
 | CTX-09 | Phase 5.1 | Pending |
 | CTX-10 | Phase 5.1 | Pending |
