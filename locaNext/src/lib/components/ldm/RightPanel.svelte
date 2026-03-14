@@ -19,6 +19,7 @@
   import TMTab from "$lib/components/ldm/TMTab.svelte";
   import ImageTab from "$lib/components/ldm/ImageTab.svelte";
   import AudioTab from "$lib/components/ldm/AudioTab.svelte";
+  import ContextTab from "$lib/components/ldm/ContextTab.svelte";
   import QAFooter from "$lib/components/ldm/QAFooter.svelte";
 
   const dispatch = createEventDispatcher();
@@ -143,11 +144,7 @@
         {:else if activeTab === 'audio'}
           <AudioTab {selectedRow} />
         {:else if activeTab === 'context'}
-          <div class="placeholder-tab">
-            <MachineLearningModel size={32} />
-            <span class="placeholder-title">AI Context</span>
-            <span class="placeholder-desc">Coming in Phase 5.1</span>
-          </div>
+          <ContextTab {selectedRow} />
         {/if}
       </div>
       {/key}
@@ -284,29 +281,6 @@
   @keyframes tabFadeIn {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* Placeholder tabs */
-  .placeholder-tab {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 3rem 1rem;
-    color: var(--cds-text-03);
-    text-align: center;
-  }
-
-  .placeholder-title {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--cds-text-02);
-  }
-
-  .placeholder-desc {
-    font-size: 0.75rem;
-    font-style: italic;
   }
 
   /* QA Footer - styles moved to QAFooter.svelte component */
