@@ -3,30 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-03-PLAN.md (performance validation + visual polish, Phase 2 complete)
-last_updated: "2026-03-14T11:51:46.111Z"
-last_activity: 2026-03-14 -- Plan 02-03 executed (performance tests, CSS polish, human approval)
+stopped_at: Completed 03-02-PLAN.md (TM color-coded matches + tabbed right panel)
+last_updated: "2026-03-14T12:38:36Z"
+last_activity: 2026-03-14 -- Plan 03-02 executed (tabbed RightPanel, color-coded TM, word diff, explorer CSS)
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Completed 02-03-PLAN.md (performance validation + visual polish, Phase 2 complete)
-last_updated: "2026-03-14T11:49:00Z"
-last_activity: 2026-03-14 -- Plan 02-03 executed (performance tests, CSS polish, human approval)
-progress:
-  total_phases: 7
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
-  percent: 33
+  total_plans: 8
+  completed_plans: 8
+  percent: 38
 ---
 
 # Project State
@@ -36,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-14)
 
 **Core value:** Flawless end-to-end localization workflow -- upload, TM auto-mirror, search/edit, export -- working seamlessly offline and online, polished enough for executive demos.
-**Current focus:** Phase 2: Editor Core (COMPLETE) -- next: Phase 3: TM Workflow
+**Current focus:** Phase 3: TM Workflow (in progress)
 
 ## Current Position
 
-Phase: 2 of 7 (Editor Core) -- COMPLETE
-Plan: 3 of 3 in current phase (all done)
-Status: Phase 2 complete, ready for Phase 3
-Last activity: 2026-03-14 -- Plan 02-03 executed (performance tests, CSS polish, human approval)
+Phase: 3 of 7 (TM Workflow)
+Plan: 2 of 3 in current phase
+Status: Plan 03-02 complete (tabbed right panel + TM color coding)
+Last activity: 2026-03-14 -- Plan 03-02 executed (tabbed RightPanel, color-coded TM, word diff, explorer CSS)
 
-Progress: [███░░░░░░░] 33%
+Progress: [████░░░░░░] 38%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 22min
-- Total execution time: 2.1 hours
+- Total plans completed: 8
+- Average duration: 19min
+- Total execution time: 2.5 hours
 
 **By Phase:**
 
@@ -60,6 +45,7 @@ Progress: [███░░░░░░░] 33%
 |-------|-------|-------|----------|
 | 01 | 3 | 79min | 26min |
 | 02 | 3 | 47min | 16min |
+| 03 | 2 | 25min | 13min |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -91,6 +77,9 @@ Recent decisions affecting current work:
 - confirm-row.spec.ts fully rewritten with current login flow (Mode Selection -> Launcher form)
 - CSS-only polish for VirtualGrid (no JS changes = zero perf regression risk)
 - User feedback noted for future: status color semantics, right panel tabs, export patterns
+- Custom LCS diff over diff-match-patch (zero deps, CJK syllable-level tokenization)
+- QA issues as persistent footer below tabs (always visible regardless of active tab)
+- Color system: green (#24a148) >= 100%, yellow (#c6a300) >= 92%, orange (#ff832b) >= 75%, red (#da1e28) < 75%
 
 ### Pending Todos
 
@@ -103,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T11:49:00Z
-Stopped at: Completed 02-03-PLAN.md (performance validation + visual polish, Phase 2 complete)
-Resume file: .planning/phases/03-tm-workflow/ (Phase 3 needs planning)
+Last session: 2026-03-14T12:38:36Z
+Stopped at: Completed 03-02-PLAN.md (TM color-coded matches + tabbed right panel)
+Resume file: .planning/phases/03-tm-workflow/03-03-PLAN.md

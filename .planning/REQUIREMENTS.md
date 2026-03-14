@@ -17,7 +17,7 @@
 
 - [ ] **TM-01**: TM tree auto-mirrors file explorer folder structure when files are uploaded
 - [ ] **TM-02**: User can assign TMs to folders/files through the mirrored tree
-- [ ] **TM-03**: TM lookup shows match percentages with color coding (100%=green, fuzzy=yellow, no-match=red)
+- [x] **TM-03**: TM lookup shows match percentages with color coding (100%=green, fuzzy=yellow, no-match=red)
 - [ ] **TM-04**: TM leverage statistics displayed per file ("45% exact, 30% fuzzy, 25% new")
 - [ ] **TM-05**: Model2Vec-based semantic matching (light build, fast performance over Qwen for TM matching)
 
@@ -50,8 +50,8 @@
 ### UI Rework
 
 - [x] **UI-01**: Main translation grid reworked to production-quality, executive-demo-ready
-- [ ] **UI-02**: File explorer tree view polished with professional appearance
-- [ ] **UI-03**: TM explorer tree view polished with assignment UI
+- [x] **UI-02**: File explorer tree view polished with professional appearance
+- [x] **UI-03**: TM explorer tree view polished with assignment UI
 - [ ] **UI-04**: Settings UI for branches, drives, metadata reading
 - [ ] **UI-05**: Overall visual polish matches the cinematic quality of the landing page
 
@@ -153,11 +153,11 @@
 | UI-01 | Phase 2 | Complete |
 | TM-01 | Phase 3 | Pending |
 | TM-02 | Phase 3 | Pending |
-| TM-03 | Phase 3 | Pending |
+| TM-03 | Phase 3 | Complete |
 | TM-04 | Phase 3 | Pending |
 | TM-05 | Phase 3 | Pending |
-| UI-02 | Phase 3 | Pending |
-| UI-03 | Phase 3 | Pending |
+| UI-02 | Phase 3 | Complete |
+| UI-03 | Phase 3 | Complete |
 | SRCH-01 | Phase 4 | Pending |
 | SRCH-02 | Phase 4 | Pending |
 | SRCH-03 | Phase 4 | Pending |
