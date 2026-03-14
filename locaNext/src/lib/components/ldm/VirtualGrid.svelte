@@ -113,6 +113,7 @@
   let inlineEditValue = $state("");
   let inlineEditTextarea = $state(null);
   let isCancellingEdit = $state(false); // Flag to prevent blur-save race condition
+  let isConfirming = $state(false); // Guard flag to prevent re-entry during confirm
 
   // Color picker state for inline editing
   let showColorPicker = $state(false);
@@ -1450,10 +1451,15 @@
    * Confirm translation: Save as "reviewed" status and add to linked TM
    */
   async function confirmInlineEdit() {
-    if (!inlineEditingRowId) return;
+    if (!inlineEditingRowId || isConfirming) return;
+
+    // Set guard flags to prevent re-entry and blur-triggered saves
+    isConfirming = true;
+    isCancellingEdit = true;
 
     const row = getRowById(inlineEditingRowId);
     if (!row) {
+      isConfirming = false;
       cancelInlineEdit();
       return;
     }
@@ -1526,6 +1532,12 @@
         await startInlineEdit(nextRow);
       }
     }
+
+    // Reset guard flags after move-to-next completes (via microtask to ensure blur has fired)
+    setTimeout(() => {
+      isCancellingEdit = false;
+      isConfirming = false;
+    }, 0);
   }
 
   /**
