@@ -15,8 +15,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Stability Foundation** - Server starts reliably, DB layer works correctly across SQLite and PostgreSQL, no zombie processes (completed 2026-03-14)
 - [x] **Phase 2: Editor Core** - Production-quality translation grid with virtual scrolling, editing, search/filter, export, and segment status (completed 2026-03-14)
 - [x] **Phase 3: TM Workflow** - TM tree auto-mirrors file structure, TM assignment and lookup with match percentages, semantic matching (completed 2026-03-14)
-- [x] **Phase 4: Search and AI Differentiators** - Semantic search UI powered by Model2Vec, near-instant search performance, AI-matched translation indicators (completed 2026-03-14)
-- [x] **Phase 5: Visual Polish and Integration** - Settings UI, MapDataGenerator in the grid, overall visual quality matching landing page (completed 2026-03-14)
+- [x] **Phase 4: Search and AI Differentiators** - Semantic search UI powered by Model2Vec, near-instant search performance, AI-matched translation indicators (completed 2026-03-14)
+- [x] **Phase 5: Visual Polish and Integration** - Settings UI, MapDataGenerator in the grid, overall visual quality matching landing page (completed 2026-03-14)
 - [ ] **Phase 5.1: Contextual Intelligence & QA Engine** - INSERTED - Aho-Corasick entity detection (reuse QuickSearch/QuickCheck logic), auto glossary extraction, context panel, QA capabilities (Line Check, Term Check), category clustering, AI Translated status
 - [ ] **Phase 6: Offline Demo Validation** - Offline mode works flawlessly for the full demo narrative, mode switching is transparent
 
@@ -133,13 +133,14 @@ Plans:
   9. **LINE CHECK** integrated — same source translated differently flagged as inconsistency (reuse QuickCheck's `run_line_check()` logic)
   10. **TERM CHECK** integrated — glossary term in source but missing translation flagged (reuse QuickCheck's dual Aho-Corasick + noise filter logic)
   11. QA results displayed in a dedicated panel/tab within the editor, not as a separate tool
-**Plans**: TBD
+**Plans:** 5 plans
 
 Plans:
-- [ ] 05.1-01: TBD
-- [ ] 05.1-02: TBD
-- [ ] 05.1-03: TBD
-- [ ] 05.1-04: TBD
+- [ ] 051-01-PLAN.md -- GlossaryService with AC automaton, glossary extraction, TwoTierCategoryMapper
+- [ ] 051-02-PLAN.md -- QA Engine enhancement (Line Check grouping, Term Check service-level automaton)
+- [ ] 051-03-PLAN.md -- ContextService with entity metadata resolution, context API routes
+- [ ] 051-04-PLAN.md -- AI Translated status badge in grid, enhanced QAFooter component
+- [ ] 051-05-PLAN.md -- Frontend ContextTab and EntityCard, RightPanel wiring, visual checkpoint
 
 ### Phase 6: Offline Demo Validation
 **Goal**: The complete demo narrative works flawlessly offline -- user can disconnect network and continue working through the entire upload-translate-search-export flow without interruption
@@ -166,5 +167,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 | 3. TM Workflow | 3/3 | Complete   | 2026-03-14 |
 | 4. Search and AI Differentiators | 2/2 | Complete   | 2026-03-14 |
 | 5. Visual Polish and Integration | 2/2 | Complete   | 2026-03-14 |
-| 5.1. Contextual Intelligence & QA Engine | 0/4 | Not started | - |
+| 5.1. Contextual Intelligence & QA Engine | 0/5 | Not started | - |
 | 6. Offline Demo Validation | 0/1 | Not started | - |
