@@ -43,8 +43,8 @@
 
 ### Offline Demo
 
-- [ ] **OFFL-01**: Offline mode demo flow works flawlessly (disconnect network, keep working)
-- [ ] **OFFL-02**: All core operations (upload, edit, search, export) function identically offline
+- [x] **OFFL-01**: Offline mode demo flow works flawlessly (disconnect network, keep working)
+- [x] **OFFL-02**: All core operations (upload, edit, search, export) function identically offline
 - [ ] **OFFL-03**: Mode switching is transparent — user doesn't need to know or configure anything
 
 ### UI Rework
@@ -178,8 +178,8 @@
 | CTX-08 | Phase 5.1 | Complete |
 | CTX-09 | Phase 5.1 | Complete |
 | CTX-10 | Phase 5.1 | Complete |
-| OFFL-01 | Phase 6 | Pending |
-| OFFL-02 | Phase 6 | Pending |
+| OFFL-01 | Phase 6 | Complete |
+| OFFL-02 | Phase 6 | Complete |
 | OFFL-03 | Phase 6 | Pending |
 
 **Coverage:**

@@ -168,5 +168,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 5.1 -> 6
 | 3. TM Workflow | 3/3 | Complete   | 2026-03-14 |
 | 4. Search and AI Differentiators | 2/2 | Complete   | 2026-03-14 |
 | 5. Visual Polish and Integration | 2/2 | Complete   | 2026-03-14 |
-| 5.1. Contextual Intelligence & QA Engine | 3/5 | In Progress | - |
-| 6. Offline Demo Validation | 0/2 | Not started | - |
+| 5.1. Contextual Intelligence & QA Engine | 5/5 | Complete | 2026-03-14 |
+| 6. Offline Demo Validation | 1/2 | In Progress | - |

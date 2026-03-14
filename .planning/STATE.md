@@ -3,29 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 051-05-PLAN.md (Phase 5.1 complete)
-last_updated: "2026-03-14T14:46:56.653Z"
-last_activity: 2026-03-14 -- Plan 051-05 complete (ContextTab + EntityCard frontend components)
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-14T15:06:48Z"
+last_activity: 2026-03-14 -- Plan 06-01 complete (Backend offline workflow validation)
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 13
-  completed_plans: 13
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Completed 051-05-PLAN.md (Phase 5.1 complete)
-last_updated: "2026-03-14T14:40:38Z"
-last_activity: 2026-03-14 -- Plan 051-05 complete (ContextTab + EntityCard frontend components)
-progress:
-  total_phases: 7
-  completed_phases: 5
-  total_plans: 19
-  completed_plans: 21
+  total_plans: 23
+  completed_plans: 22
 ---
 
 # Project State
@@ -35,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-14)
 
 **Core value:** Flawless end-to-end localization workflow -- upload, TM auto-mirror, search/edit, export -- working seamlessly offline and online, polished enough for executive demos.
-**Current focus:** Phase 5 complete. All plans delivered (MapData context + UI tabs + polish). Next: Phase 5.1 or Phase 6.
+**Current focus:** Phase 6 in progress. Backend offline validation complete. Next: Phase 6 Plan 02 (mode detection + API smoke tests).
 
 ## Current Position
 
-Phase: 5.1 of 7 (Contextual Intelligence & QA Engine)
-Plan: 5 of 5 in current phase
-Status: Phase Complete
-Last activity: 2026-03-14 -- Plan 051-05 complete (ContextTab + EntityCard frontend components)
+Phase: 6 of 7 (Offline Demo Validation)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-03-14 -- Plan 06-01 complete (Backend offline workflow validation)
 
-Progress: [██████████] 100% (21/21 plans across 5.1 phases)
+Progress: [██████████] 96% (22/23 plans across 6 phases)
 
 ## Performance Metrics
 
@@ -78,6 +63,7 @@ Progress: [██████████] 100% (21/21 plans across 5.1 phases)
 | Phase 5.1 P02 | 5min | 2 tasks | 2 files |
 | Phase 5.1 P03 | 4min | 2 tasks | 5 files |
 | Phase 5.1 P05 | 2min | 3 tasks | 3 files |
+| Phase 06 P01 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -136,6 +122,8 @@ Recent decisions affecting current work:
 - [Phase 5.1]: /context/status before /context/{string_id} to prevent route shadowing
 - [Phase 5.1]: Entity highlight colors match Carbon Tag type colors (purple/teal/cyan/magenta)
 - [Phase 5.1]: 503 from context API = not-configured state with settings hint
+- [Phase 06]: Pure repo-level testing validates offline workflow without live server
+- [Phase 06]: EntityContext.entities (single list) is the correct field for empty context checks
 
 ### Pending Todos
 
@@ -149,6 +137,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T14:40:38Z
-Stopped at: Completed 051-05-PLAN.md (Phase 5.1 complete)
+Last session: 2026-03-14T15:06:48Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
