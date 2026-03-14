@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LocStrList>
+  <!-- Character dialogue -->
+  <LocStr StringId="SID_VARON_001" StrOrigin="엘리언교 대사제 레하드 모테논의 주관 아래 서북부 전진기지가 검은별 연구와 토벌을 위해 세워졌다." Str="" DescOrigin="" Desc="" />
+  <LocStr StringId="SID_VARON_002" StrOrigin="대외적으로는 잿빛 역병으로 폐쇄되었다고 알려진 서북부로 들어갈 수 있는 허가증이다." Str="" DescOrigin="" Desc="" />
+  <LocStr StringId="SID_KIRA_001" StrOrigin="지금은 검은별의 괴물로 변해버린 칼수르의 연인이었던 딜라아르가 서북부 전진기지의 광명의 형제회로부터 도망치며 가져온 잿빛 역병 치료제의 조제법." Str="" DescOrigin="" Desc="" />
+  <LocStr StringId="SID_KIRA_002" StrOrigin="※해당 아이템은 의뢰 아이템 입니다." Str="" DescOrigin="" Desc="" />
+  <LocStr StringId="SID_DRAKMAR_001" StrOrigin="광명의 형제회가 검은별 연구를 협조한 아히브와 그림자 기사단 몰래 만든 잿빛 역병 폭탄." Str="" DescOrigin="" Desc="" />
+  <LocStr StringId="SID_QUEST_001" StrOrigin="검은별 마을로 향하라" Str="" DescOrigin="장로 바론의 지시" Desc="" />
+  <LocStr StringId="SID_QUEST_002" StrOrigin="역병 치료제 재료를 수집하라" Str="" DescOrigin="마법사 드라크마르의 의뢰" Desc="" />
+  <LocStr StringId="SID_ITEM_DESC_001" StrOrigin="검은별의 검" Str="" DescOrigin="고대의 저주받은 검" Desc="" />
+</LocStrList>

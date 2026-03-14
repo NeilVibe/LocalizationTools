@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<KnowledgeInfoList>
+  <!-- Characters -->
+  <KnowledgeInfo StrKey="KNOW_CHAR_VARON" Name="장로 바론" Desc="검은별 마을의 장로. 300년간 마을을 지켜온 현자.&lt;br/&gt;역병에 맞서 싸우며 마을의 마지막 희망이 되었다." UITextureName="character_varon" />
+  <KnowledgeInfo StrKey="KNOW_CHAR_KIRA" Name="전사 키라" Desc="북부 전초기지 출신의 전사.&lt;br/&gt;검은별의 비밀을 밝히기 위해 모험을 시작했다." UITextureName="character_kira" />
+  <KnowledgeInfo StrKey="KNOW_CHAR_DRAKMAR" Name="마법사 드라크마르" Desc="고대 엘프 마법사. 역병의 원인을 추적하고 있다." UITextureName="character_drakmar" />
+  <KnowledgeInfo StrKey="KNOW_CHAR_LUNE" Name="정찰병 루네" Desc="숲의 안내자. 위험한 지역을 탐색하는 전문가." UITextureName="character_lune" />
+  <KnowledgeInfo StrKey="KNOW_CHAR_GRIMJAW" Name="대장장이 그림조" Desc="전설적인 무기를 만드는 드워프 대장장이.&lt;br/&gt;검은별 무기의 비밀을 알고 있다." UITextureName="character_grimjaw" />
+
+  <!-- Items -->
+  <KnowledgeInfo StrKey="KNOW_ITEM_BLACKSTAR" Name="검은별의 검" Desc="고대의 저주받은 검. 역병의 근원과 관련이 있다." UITextureName="item_blackstar_sword" />
+  <KnowledgeInfo StrKey="KNOW_ITEM_MOONSTONE" Name="달빛 부적" Desc="루네가 만든 보호 부적. 역병에 대한 저항력을 부여한다." UITextureName="item_moonstone_amulet" />
+  <KnowledgeInfo StrKey="KNOW_ITEM_PLAGUE_CURE" Name="잿빛 역병 치료제" Desc="드라크마르가 조합한 치료제.&lt;br/&gt;아직 미완성이나 완성 시 어떤 위력을 가져올지 상상조차 할 수 없다." UITextureName="item_plague_cure" />
+
+  <!-- Regions -->
+  <KnowledgeInfo StrKey="KNOW_REGION_BLACKSTAR" Name="검은별 마을" Desc="대외적으로는 잿빛 역병으로 폐쇄되었다고 알려진 서북부로 들어갈 수 있는 허가증이다." UITextureName="region_blackstar_village" />
+  <KnowledgeInfo StrKey="KNOW_REGION_FORTRESS" Name="광명의 형제회 전초기지" Desc="북부 산맥에 위치한 고대 요새." UITextureName="region_fortress" />
+</KnowledgeInfoList>

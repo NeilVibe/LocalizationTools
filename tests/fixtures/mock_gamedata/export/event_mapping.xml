@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EventMappingList>
+  <EventMapping SoundEventName="varon_greeting" StringId="SID_VARON_001" />
+  <EventMapping SoundEventName="kira_battle_cry" StringId="SID_KIRA_001" />
+  <EventMapping SoundEventName="drakmar_spell" StringId="SID_DRAKMAR_001" />
+  <EventMapping SoundEventName="lune_scout_report" StringId="SID_QUEST_001" />
+  <EventMapping SoundEventName="grimjaw_forge" StringId="SID_ITEM_DESC_001" />
+</EventMappingList>
