@@ -53,6 +53,7 @@ from .routes.search import router as search_router  # EXPLORER-004: Explorer Sea
 from .routes.capabilities import router as capabilities_router  # EXPLORER-009: Privileged Operations
 from .routes.maintenance import router as maintenance_router  # EMB-003: TM Maintenance
 from .routes.tm_leverage import router as tm_leverage_router  # Phase 3: TM Leverage Statistics
+from .routes.semantic_search import router as semantic_search_router  # Phase 4: Semantic Search
 
 # =============================================================================
 # Include all routers
@@ -82,6 +83,7 @@ router.include_router(search_router)  # EXPLORER-004: Explorer Search
 router.include_router(capabilities_router)  # EXPLORER-009: Privileged Operations (Admin)
 router.include_router(maintenance_router)  # EMB-003: TM Maintenance (stale check + sync)
 router.include_router(tm_leverage_router)  # Phase 3: TM Leverage Statistics
+router.include_router(semantic_search_router)  # Phase 4: Semantic Search
 
 # =============================================================================
 # WebSocket endpoint (still needs special handling)
