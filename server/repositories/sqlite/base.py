@@ -55,6 +55,8 @@ OFFLINE_ONLY_COLUMNS = frozenset({
     "server_folder_id",
     "server_tm_id",
     "server_parent_id",
+    "memo",            # offline_rows has memo, ldm_rows uses extra_data JSON
+    "error_message",   # offline_files sync error tracking
 })
 
 
