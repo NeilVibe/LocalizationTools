@@ -23,6 +23,7 @@
   let dynamicColumns = $state(null);
   let fileLoading = $state(false);
   let virtualGrid = $state(null);
+  let treeRef = $state(null);
 
   // Naming panel state (Phase 21)
   let editingEntityName = $state('');
@@ -114,10 +115,10 @@
    * Refresh the file explorer tree
    */
   function refreshTree() {
-    // Force re-render by toggling path
-    const current = activePath;
-    activePath = '';
-    setTimeout(() => { activePath = current; }, 50);
+    if (treeRef?.reload) {
+      treeRef.reload();
+    }
+    logger.userAction('Game Dev tree refreshed');
   }
 
   /**
@@ -194,6 +195,7 @@
     <div class="explorer-tree-container">
       {#if activePath}
         <FileExplorerTree
+          bind:this={treeRef}
           basePath={activePath}
           onFileSelect={handleFileSelect}
         />

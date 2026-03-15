@@ -106,6 +106,13 @@
     });
   }
 
+  /**
+   * Public reload method -- allows parent to refresh tree without remount
+   */
+  export function reload() {
+    loadTree();
+  }
+
   // Reload when basePath changes
   $effect(() => {
     if (basePath) {
