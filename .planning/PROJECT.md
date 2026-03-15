@@ -39,9 +39,21 @@ The platform delivers real, working localization workflows — real XML parsing,
 - ✓ CLI-01 through CLI-04 — CLI merge/export/detect, E2E round-trip — v2.0
 - ✓ FIX-01 through FIX-03 — Offline TM visibility, TM paste, folder 404 — v2.0
 
-### Active
+### Active — v3.0
 
-(To be defined in v3.0 milestone — `/gsd:new-milestone`)
+## Current Milestone: v3.0 Game Dev Platform + AI Intelligence
+
+**Goal:** Build a full Game Dev authoring experience with AI-powered suggestions, interactive Codex, QA pipeline integration, and category clustering — all powered by a comprehensive mock gamedata universe for E2E testing.
+
+**Target features:**
+- Full mock gamedata universe (reverse-engineered from QACompiler/NewScripts staticinfo patterns)
+- Game Dev Grid with file explorer matching real gamedata folder structure
+- Game World Codex with interactive map, character/item encyclopedia
+- AI context summaries and translation suggestions via Qwen3 (right column, suggestions only)
+- AI naming coherence suggestions for game devs (confirm in grid, never auto-replace)
+- QuickCheck QA pipeline integration (Term Check + Line Check in editor)
+- Category clustering for translation grid (item/quest/UI/system via LanguageDataExporter logic)
+- Auto-generated placeholder images/audio for missing assets
 
 ### Out of Scope
 
@@ -58,7 +70,7 @@ The platform delivers real, working localization workflows — real XML parsing,
 - **NewScripts patterns fully ported** — XMLParsingEngine, merge engine, postprocess, export all based on battle-tested code
 - **Dual platform** — Translator mode (LocStr files) + Game Dev mode (non-LocStr XML) with automatic detection
 - **AI pipeline operational** — Qwen3-4B via Ollama at 117 tok/s (RTX 4070 Ti, CUDA in WSL2)
-- **v3.0 candidates** — Game World Codex, AI Translation Suggestions, AI Naming, Auto-gen assets, Game Dev full CRUD
+- **v3.0 in progress** — Game Dev Platform, Codex, AI Suggestions, QA Pipeline, Category Clustering, Mock GameData
 - Landing page live on Netlify
 - Tech stack: Electron + Svelte 5 (Runes) + FastAPI + SQLite/PostgreSQL + FAISS + Model2Vec + Qwen3/Ollama
 
@@ -93,4 +105,4 @@ The platform delivers real, working localization workflows — real XML parsing,
 | Post-milestone code review | Catch issues before archiving | ✓ Good — found 11 real issues including 2 crashes |
 
 ---
-*Last updated: 2026-03-15 after v2.0 milestone complete*
+*Last updated: 2026-03-15 after v3.0 milestone started*
