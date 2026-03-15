@@ -263,12 +263,11 @@ async def upload_file(
         source_lang = get_source_language()
         file_metadata = get_file_metadata()
     elif ext == 'xml':
-        from server.tools.ldm.file_handlers.xml_handler import parse_xml_file, get_file_format, get_source_language, get_file_metadata
+        from server.tools.ldm.file_handlers.xml_handler import parse_xml_file, get_file_format, get_source_language
         file_content = await file.read()
-        rows_data = parse_xml_file(file_content, filename)
+        rows_data, file_metadata = parse_xml_file(file_content, filename)
         file_format = get_file_format()
         source_lang = get_source_language()
-        file_metadata = get_file_metadata()
     elif ext in ('xlsx', 'xls'):
         from server.tools.ldm.file_handlers.excel_handler import parse_excel_file, get_file_format, get_source_language, get_file_metadata
         file_content = await file.read()
@@ -955,7 +954,7 @@ async def merge_file(
     if format_lower == "txt":
         original_rows = parse_txt_file(original_content, original_filename)
     else:  # xml
-        original_rows = parse_xml_file(original_content, original_filename)
+        original_rows, _xml_meta = parse_xml_file(original_content, original_filename)
 
     if not original_rows:
         raise HTTPException(status_code=400, detail="Could not parse original file or file is empty")

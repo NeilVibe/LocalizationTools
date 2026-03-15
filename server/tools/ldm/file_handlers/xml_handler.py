@@ -1,34 +1,38 @@
 """
 LDM XML File Handler
 
-Parses XML localization files with LocStr elements:
-- StringId attribute: String identifier
+Parses XML localization files with LocStr elements via XMLParsingEngine (lxml).
+- StringId attribute: String identifier (case-variant lookup)
 - StrOrigin attribute: Source text (Korean/Original)
 - Str attribute: Target text (Translation)
 - All other attributes: Preserved in extra_data for full reconstruction
 
-Returns list of row dicts ready for database insertion.
-Also returns file-level metadata for full file reconstruction.
+Returns tuple of (rows, metadata) for database insertion and file reconstruction.
 """
 
-import xml.etree.ElementTree as ET
+from __future__ import annotations
+
 import re
-from typing import List, Dict
+from typing import Dict, List, Tuple
+
 from loguru import logger
 
-# Factor Power: Use centralized text utils
+from server.tools.ldm.services.xml_parsing import (
+    get_xml_parsing_engine,
+    get_attr,
+    iter_locstr_elements,
+    STRINGID_ATTRS,
+    STRORIGIN_ATTRS,
+    STR_ATTRS,
+)
 from server.utils.text_utils import normalize_text
-
-
-# Module-level state for file metadata
-_file_metadata: Dict = {}
 
 
 # Core attributes that are stored in dedicated columns (case-insensitive matching)
 CORE_ATTRIBUTES = {'stringid', 'strorigin', 'str'}
 
 
-def parse_xml_file(file_content: bytes, filename: str) -> List[Dict]:
+def parse_xml_file(file_content: bytes, filename: str) -> Tuple[List[Dict], Dict]:
     """
     Parse XML file content and extract rows.
 
@@ -36,61 +40,54 @@ def parse_xml_file(file_content: bytes, filename: str) -> List[Dict]:
     - Core attributes (StringId, StrOrigin, Str) stored in dedicated columns
     - All other attributes stored in extra_data for reconstruction
 
-    XML Format expected:
-    <Root>
-      <LocStr StringId="xxx" StrOrigin="Korean text" Str="Translation" OtherAttr="..." />
-      ...
-    </Root>
-
     Args:
         file_content: Raw file bytes
         filename: Original filename (for logging)
 
     Returns:
-        List of row dicts with keys: row_num, string_id, source, target, extra_data
+        Tuple of (rows, metadata):
+        - rows: List of row dicts with keys: row_num, string_id, source, target, extra_data
+        - metadata: Dict with encoding, xml_declaration, root_element, etc.
     """
-    global _file_metadata
-    rows = []
-    detected_encoding = None
+    rows: List[Dict] = []
+    metadata: Dict = {}
+
+    engine = get_xml_parsing_engine()
 
     try:
-        # Decode with multiple fallbacks
-        text_content = None
-        for encoding in ['utf-8', 'utf-16', 'cp1252', 'iso-8859-1']:
-            try:
-                text_content = file_content.decode(encoding)
-                detected_encoding = encoding
-                break
-            except UnicodeDecodeError:
-                continue
+        root, detected_encoding = engine.parse_bytes(file_content, filename)
 
-        if text_content is None:
-            logger.error(f"Could not decode file {filename}")
-            return rows
+        if root is None:
+            logger.error(f"Could not parse XML file {filename}")
+            return rows, metadata
 
-        # Extract XML declaration if present
+        # Extract XML declaration from raw bytes for metadata
         xml_declaration = None
-        decl_match = re.match(r'(<\?xml[^?]*\?>)', text_content)
-        if decl_match:
-            xml_declaration = decl_match.group(1)
-
-        # Parse XML
-        root = ET.fromstring(text_content)
+        try:
+            text_start = file_content[:200].decode('utf-8', errors='ignore')
+            decl_match = re.match(r'(<\?xml[^?]*\?>)', text_start)
+            if decl_match:
+                xml_declaration = decl_match.group(1)
+        except Exception:
+            pass
 
         # Store root element info
         root_tag = root.tag
         root_attribs = dict(root.attrib) if root.attrib else None
 
-        # Find the element tag used for localization strings
-        # Try common patterns: LocStr, String, etc.
-        loc_elements = root.findall('.//LocStr')
-        element_tag = 'LocStr'
+        # Find LocStr elements using case-variant matching
+        loc_elements = list(iter_locstr_elements(root))
+        element_tag = loc_elements[0].tag if loc_elements else 'LocStr'
+
+        # If no LocStr variants found, try String tag and generic StringId lookup
         if not loc_elements:
-            loc_elements = root.findall('.//String')
+            loc_elements = list(root.iter('String'))
             element_tag = 'String'
         if not loc_elements:
-            # Try any element with StringId attribute
-            loc_elements = [el for el in root.iter() if 'StringId' in el.attrib or 'stringid' in {k.lower() for k in el.attrib}]
+            loc_elements = [
+                el for el in root.iter()
+                if get_attr(el, STRINGID_ATTRS) is not None
+            ]
             if loc_elements:
                 element_tag = loc_elements[0].tag
 
@@ -98,18 +95,10 @@ def parse_xml_file(file_content: bytes, filename: str) -> List[Dict]:
         for loc in loc_elements:
             row_num += 1
 
-            # Case-insensitive attribute lookup
-            attribs = loc.attrib
-            attrib_lower_map = {k.lower(): k for k in attribs}
-
-            # Extract core attributes (case-insensitive)
-            string_id_key = attrib_lower_map.get('stringid', 'StringId')
-            strorigin_key = attrib_lower_map.get('strorigin', 'StrOrigin')
-            str_key = attrib_lower_map.get('str', 'Str')
-
-            string_id = attribs.get(string_id_key, '') or ''
-            source = normalize_text(attribs.get(strorigin_key, '') or '')
-            target = normalize_text(attribs.get(str_key, '') or '')
+            # Case-variant attribute lookup via XMLParsingEngine helpers
+            string_id = get_attr(loc, STRINGID_ATTRS) or ''
+            source = normalize_text(get_attr(loc, STRORIGIN_ATTRS) or '')
+            target = normalize_text(get_attr(loc, STR_ATTRS) or '')
 
             # Skip if both source and target are empty
             if not source and not target:
@@ -117,7 +106,7 @@ def parse_xml_file(file_content: bytes, filename: str) -> List[Dict]:
 
             # Capture ALL other attributes (excluding core ones)
             extra_attribs = {}
-            for key, val in attribs.items():
+            for key, val in loc.attrib.items():
                 if key.lower() not in CORE_ATTRIBUTES:
                     extra_attribs[key] = val
 
@@ -132,8 +121,8 @@ def parse_xml_file(file_content: bytes, filename: str) -> List[Dict]:
                 "extra_data": extra_data
             })
 
-        # Store file-level metadata for reconstruction
-        _file_metadata = {
+        # Build file-level metadata
+        metadata = {
             "encoding": detected_encoding,
             "xml_declaration": xml_declaration,
             "root_element": root_tag,
@@ -145,27 +134,10 @@ def parse_xml_file(file_content: bytes, filename: str) -> List[Dict]:
 
         logger.info(f"Parsed {filename}: {len(rows)} rows, root=<{root_tag}>, encoding={detected_encoding}")
 
-    except ET.ParseError as e:
-        logger.error(f"XML parse error in {filename}: {e}")
     except Exception as e:
         logger.error(f"Failed to parse XML file {filename}: {e}")
 
-    return rows
-
-
-def get_file_metadata() -> Dict:
-    """
-    Get file-level metadata for full reconstruction.
-
-    Returns dict with:
-    - encoding: Detected file encoding
-    - xml_declaration: Original <?xml ...?> if present
-    - root_element: Root element tag name
-    - root_attributes: Root element attributes
-    - element_tag: Tag name used for localization elements
-    """
-    global _file_metadata
-    return _file_metadata.copy()
+    return rows, metadata
 
 
 def get_source_language() -> str:

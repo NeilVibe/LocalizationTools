@@ -191,7 +191,7 @@ class TMManager:
         Parse XML file for TM entries.
         REUSES xml_handler.py (StrOrigin = Source, Str = Target).
         """
-        rows = parse_xml_file(file_content, filename)
+        rows, _meta = parse_xml_file(file_content, filename)
 
         # Convert to TM entry format
         entries = []
