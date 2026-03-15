@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Real Data + Dual Platform
 status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-03-15T01:58:21Z"
-last_activity: 2026-03-15 -- Plan 01 file type detection + Game Dev parser
+stopped_at: Completed 08-02-PLAN.md (Phase 08 complete)
+last_updated: "2026-03-15T02:07:00Z"
+last_activity: 2026-03-15 -- Plan 02 dual column configs + mode badge
 progress:
   total_phases: 8
-  completed_phases: 1
-  total_plans: 11
-  completed_plans: 4
+  completed_phases: 2
+  total_plans: 5
+  completed_plans: 5
 ---
 
 # Project State
@@ -20,17 +20,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Real, working localization workflows -- real XML parsing, real merge logic, real image/audio, AI summaries -- all local, dual-mode for translators and game developers.
-**Current focus:** Phase 08 -- Dual UI Mode
+**Current focus:** Phase 08 -- Dual UI Mode (complete)
 
 ## Current Position
 
 Milestone: v2.0 Real Data + Dual Platform
 Phase: 08 of 14 (Dual UI Mode)
-Plan: 1 of 1 in current phase (done)
+Plan: 2 of 2 in current phase (done)
 Status: Phase Complete
-Last activity: 2026-03-15 -- Plan 01 file type detection + Game Dev parser
+Last activity: 2026-03-15 -- Plan 02 dual column configs + mode badge
 
-Progress: [=====             ] 36%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -46,6 +46,7 @@ Progress: [=====             ] 36%
 | 07    | 03   | 5min     | 1     | 4     |
 | 07    | 02   | 5min     | 2     | 8     |
 | 08    | 01   | 4min     | 2     | 5     |
+| 08    | 02   | 5min     | 2     | 2     |
 
 ## Accumulated Context
 
@@ -69,6 +70,9 @@ Progress: [=====             ] 36%
 - Game Dev file type determined by absence of LocStr/String/StringId elements
 - Game Dev rows: source=tag, target=formatted attributes, extra_data for full structure
 - FileResponse.file_type defaults to "translator" for backward compatibility
+- Single VirtualGrid serves both modes via $derived column switching -- no component duplication
+- Game Dev columns map source/target to Node/Attributes, extra_data for Values/Children
+- Inline editing disabled for Game Dev mode (deferred to v3.0)
 
 ### Pending Todos
 
@@ -83,6 +87,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15
-Stopped at: Completed 08-01-PLAN.md (Phase 08 complete)
+Last session: 2026-03-15T02:07:05.164Z
+Stopped at: Completed 08-02-PLAN.md
 Resume: `/gsd:execute-phase 09` to start Phase 09

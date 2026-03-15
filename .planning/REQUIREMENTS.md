@@ -10,10 +10,10 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 ### Dual UI
 
 - [x] **DUAL-01**: System detects file type (LocStr nodes = Translator, other nodes = Game Dev) and switches UI mode automatically
-- [ ] **DUAL-02**: Translator mode shows translation-specific columns (Source, Target, Status, Match%, TM Source)
+- [x] **DUAL-02**: Translator mode shows translation-specific columns (Source, Target, Status, Match%, TM Source)
 - [x] **DUAL-03**: Game Dev mode shows XML-structure columns (NodeName, Attributes, Values, Children count)
-- [ ] **DUAL-04**: Mode indicator visible in editor header showing current file type
-- [ ] **DUAL-05**: Both modes share the same virtual grid infrastructure with different column configs
+- [x] **DUAL-04**: Mode indicator visible in editor header showing current file type
+- [x] **DUAL-05**: Both modes share the same virtual grid infrastructure with different column configs
 
 ### XML Parsing
 
@@ -126,10 +126,10 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 | FIX-02 | Phase 07 | Complete |
 | FIX-03 | Phase 07 | Complete |
 | DUAL-01 | Phase 08 | Complete |
-| DUAL-02 | Phase 08 | Pending |
+| DUAL-02 | Phase 08 | Complete |
 | DUAL-03 | Phase 08 | Complete |
-| DUAL-04 | Phase 08 | Pending |
-| DUAL-05 | Phase 08 | Pending |
+| DUAL-04 | Phase 08 | Complete |
+| DUAL-05 | Phase 08 | Complete |
 | TMERGE-01 | Phase 09 | Pending |
 | TMERGE-02 | Phase 09 | Pending |
 | TMERGE-03 | Phase 09 | Pending |
