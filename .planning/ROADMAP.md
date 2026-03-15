@@ -104,10 +104,11 @@ Plans:
   2. User selects a string with a linked WEM audio file and can play it back in the Audio tab
   3. Real data flows from MapDataService through the API to the frontend Image/Audio tabs without mock fixtures
   4. Missing image or audio shows a styled placeholder with explanatory text instead of a broken icon
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 11-01: TBD
+- [ ] 11-01-PLAN.md -- MediaConverter service (DDS-to-PNG, WEM-to-WAV conversion + caching)
+- [ ] 11-02-PLAN.md -- Thumbnail/audio stream endpoints + AudioTab wiring
 
 ### Phase 12: Game Dev Merge
 **Goal**: Game developers can merge XML changes at the structural level (nodes, attributes, children) preserving document order
@@ -172,7 +173,7 @@ Note: Phase 11 and 13 depend only on Phase 07 and could execute in parallel with
 | 08. Dual UI Mode | 2/2 | Complete    | 2026-03-15 | - |
 | 09. Translator Merge | 2/2 | Complete    | 2026-03-15 | - |
 | 10. Export Pipeline | 1/1 | Complete    | 2026-03-15 | - |
-| 11. Image & Audio Pipeline | v2.0 | 0/1 | Not started | - |
+| 11. Image & Audio Pipeline | v2.0 | 0/2 | Not started | - |
 | 12. Game Dev Merge | v2.0 | 0/2 | Not started | - |
 | 13. AI Summaries | v2.0 | 0/1 | Not started | - |
 | 14. E2E Validation + CLI | v2.0 | 0/1 | Not started | - |
