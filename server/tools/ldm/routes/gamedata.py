@@ -39,7 +39,7 @@ def _get_base_dir() -> Path:
 
     Checks for mock_gamedata first (Phase 15), then falls back to project root.
     """
-    mock_dir = _DEFAULT_BASE_DIR / "tests" / "mock_gamedata"
+    mock_dir = _DEFAULT_BASE_DIR / "tests" / "fixtures" / "mock_gamedata"
     if mock_dir.is_dir():
         return mock_dir
     return _DEFAULT_BASE_DIR
