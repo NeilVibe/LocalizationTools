@@ -4,7 +4,8 @@
 
 - v1.0 Demo-Ready CAT Tool (Phases 01-06) -- SHIPPED 2026-03-15
 - v2.0 Real Data + Dual Platform (Phases 07-14) -- SHIPPED 2026-03-15
-- v3.0 Game Dev Platform + AI Intelligence (Phases 15-21) -- IN PROGRESS
+- v3.0 Game Dev Platform + AI Intelligence (Phases 15-21) -- SHIPPED 2026-03-15
+- v3.1 Debug + Polish + Svelte 5 Migration (Phases 22-24) -- IN PROGRESS
 
 ## Phases
 
@@ -35,134 +36,69 @@
 
 </details>
 
-### v3.0 Game Dev Platform + AI Intelligence (In Progress)
+<details>
+<summary>v3.0 Game Dev Platform + AI Intelligence (Phases 15-21) -- SHIPPED 2026-03-15</summary>
 
-**Milestone Goal:** Build a full Game Dev authoring experience with AI-powered suggestions, interactive Codex encyclopedia, QA pipeline integration, and category clustering -- all powered by a comprehensive mock gamedata universe for E2E testing.
+- [x] Phase 15: Mock Gamedata Universe (2/2 plans) -- completed 2026-03-15
+- [x] Phase 16: Category Clustering + QA Pipeline (2/2 plans) -- completed 2026-03-15
+- [x] Phase 17: AI Translation Suggestions (2/2 plans) -- completed 2026-03-15
+- [x] Phase 18: Game Dev Grid + File Explorer (2/2 plans) -- completed 2026-03-15
+- [x] Phase 19: Game World Codex (2/2 plans) -- completed 2026-03-15
+- [x] Phase 20: Interactive World Map (2/2 plans) -- completed 2026-03-15
+- [x] Phase 21: AI Naming Coherence + Placeholders (2/2 plans) -- completed 2026-03-15
 
-- [x] **Phase 15: Mock Gamedata Universe** - Generate realistic XML gamedata matching real staticinfo patterns with cross-references, media refs, and round-trip validation (completed 2026-03-15)
-- [x] **Phase 16: Category Clustering + QA Pipeline** - Auto-classify content types and integrate Term Check + Line Check QA inline in the editor (completed 2026-03-15)
-- [x] **Phase 17: AI Translation Suggestions** - Ranked translation suggestions via Qwen3 with confidence scores and click-to-accept (completed 2026-03-15)
-- [x] **Phase 18: Game Dev Grid + File Explorer** - VS Code-like file explorer with hierarchical XML entity editing grid (completed 2026-03-15)
-- [x] **Phase 19: Game World Codex** - Interactive encyclopedia with character/item pages, semantic search, inline media (completed 2026-03-15)
-- [x] **Phase 20: Interactive World Map** - Pan/zoom SVG map with positioned region nodes linked to Codex pages (completed 2026-03-15)
-- [x] **Phase 21: AI Naming Coherence + Placeholders** - Naming pattern suggestions and auto-generated placeholder assets for missing media (completed 2026-03-15)
+</details>
+
+### v3.1 Debug + Polish + Svelte 5 Migration (In Progress)
+
+**Milestone Goal:** Fix all runtime bugs from v3.0 code review, migrate entire frontend from Svelte 4 event patterns to pure Svelte 5 Runes, and polish UI/UX across all v3.0 features.
+
+- [ ] **Phase 22: Svelte 5 Migration** - Purge all createEventDispatcher and on: directives, converting VirtualGrid, LDM.svelte, and all v3.0 components to $props callback pattern
+- [ ] **Phase 23: Bug Fixes** - Fix 10 runtime bugs from 3-agent swarm audit plus stale test fixture
+- [ ] **Phase 24: UIUX Polish** - Accessibility attributes, visual consistency, and error state handling across v3.0 features
 
 ## Phase Details
 
-### Phase 15: Mock Gamedata Universe
-**Goal**: Every Game Dev feature has realistic XML data to parse, display, search, and merge against -- no feature builds against empty state
-**Depends on**: Nothing (v3.0 foundation -- all subsequent phases depend on this)
-**Requirements**: MOCK-01, MOCK-02, MOCK-03, MOCK-04, MOCK-05, MOCK-06, MOCK-07, MOCK-08
+### Phase 22: Svelte 5 Migration
+**Goal**: The entire frontend uses pure Svelte 5 Runes patterns with zero legacy Svelte 4 event dispatching -- making the codebase maintainable and consistent
+**Depends on**: Nothing (v3.1 foundation -- clean event model required before fixing bugs that touch the same components)
+**Requirements**: SV5-01, SV5-02, SV5-03, SV5-04, SV5-05, SV5-06
 **Success Criteria** (what must be TRUE):
-  1. Opening the mock gamedata folder in LocaNext produces parseable XML across all entity types (items, characters, regions, skills, gimmicks)
-  2. Cross-reference chains resolve correctly (clicking a KnowledgeKey link finds the referenced entity)
-  3. Mock language data files load in Translator mode with Korean source text and matching StringIDs
-  4. Round-trip validation passes (generate -> parse -> merge -> export -> re-parse produces identical data)
-  5. Mock universe contains sufficient volume for meaningful grid performance testing (100+ items, 30+ characters, 10+ regions)
-**Plans**: 2 plans
+  1. VirtualGrid emits row selection, edit, and scroll events via callback props passed through $props, not createEventDispatcher
+  2. LDM.svelte receives all child component events (grid, panels, filters) via callback props bound with $props destructuring
+  3. All v3.0 components (AISuggestionsTab, QAInlineBadge, CategoryFilter, NamingPanel, CodexSearchBar, MapCanvas) use $props callbacks for parent communication
+  4. Searching the codebase for "createEventDispatcher" returns zero results
+  5. Searching the codebase for " on:" event directives returns zero results (excluding Carbon component interop where the library requires it)
+**Plans**: TBD
 
-Plans:
-- [ ] 15-01-PLAN.md — Generator script + StaticInfo XML + binary stubs + cross-ref/volume/structure tests
-- [ ] 15-02-PLAN.md — Language data + EXPORT indexes + round-trip validation tests
-
-### Phase 16: Category Clustering + QA Pipeline
-**Goal**: Translators see content categories at a glance and get instant QA feedback on glossary consistency and translation uniformity without leaving the editor
-**Depends on**: Phase 15 (mock data for Game Dev mode testing; Translator mode works independently)
-**Requirements**: CAT-01, CAT-02, CAT-03, QA-01, QA-02, QA-03, QA-04, QA-05, QA-06
+### Phase 23: Bug Fixes
+**Goal**: All runtime bugs identified in the v3.0 3-agent swarm audit are fixed -- no crashes, no broken navigation, no infinite loading states
+**Depends on**: Phase 22 (event wiring must be stable before fixing component-level bugs that depend on event flow)
+**Requirements**: FIX-01, FIX-02, FIX-03, FIX-04, FIX-05, FIX-06, FIX-07, FIX-08, FIX-09, FIX-10, TEST-01
 **Success Criteria** (what must be TRUE):
-  1. Every row in the translation grid shows its auto-detected content category (Item, Quest, UI, System, Character, Skill, Region, Gimmick)
-  2. User can filter the grid by one or more categories to focus on specific content types
-  3. QA Term Check flags glossary terms present in source but missing in target translation inline in the editor
-  4. QA Line Check flags same source text translated inconsistently across the project
-  5. User can dismiss individual QA findings to prevent false positive fatigue
-**Plans**: 2 plans
+  1. GameDevPage loads files without creating fallback IDs -- error states show meaningful messages instead of silent Date.now() workarounds
+  2. Audio playback in CodexEntityDetail falls back to PlaceholderAudio on decode error instead of showing a broken player
+  3. Clicking "Navigate to NPC" in MapDetailPanel opens the correct Codex entity page for that NPC
+  4. Loading indicators in AISuggestionsTab and NamingPanel clear when debounce timers are cancelled (no infinite spinners)
+  5. WorldMapPage tooltip does not appear over the detail panel, and route keys are deduplicated to prevent {#each} crashes
+**Plans**: TBD
 
-Plans:
-- [ ] 16-01-PLAN.md -- Category Service backend + grid column + multi-select filter (CAT-01, CAT-02, CAT-03)
-- [ ] 16-02-PLAN.md -- Inline QA indicators + QA panel enhancement + dismiss (QA-01 through QA-06)
-
-### Phase 17: AI Translation Suggestions
-**Goal**: Translators get ranked AI-powered translation suggestions for the selected segment that they can accept with one click -- never auto-replacing
-**Depends on**: Phase 15 (entity embeddings enrich context), Phase 16 (not strict -- can run in parallel)
-**Requirements**: AISUG-01, AISUG-02, AISUG-03, AISUG-04, AISUG-05
+### Phase 24: UIUX Polish
+**Goal**: All v3.0 features meet accessibility standards and visual consistency -- no broken layouts, missing fallbacks, or inaccessible controls
+**Depends on**: Phase 23 (bugs fixed before polishing the same components)
+**Requirements**: UX-01, UX-02, UX-03, UX-04, UX-05
 **Success Criteria** (what must be TRUE):
-  1. Selecting a segment in the translation grid shows ranked AI suggestions in a right-side panel with confidence scores
-  2. Clicking a suggestion applies it to the translation field without auto-replacing any existing content
-  3. Suggestions consider entity context (type, parent hierarchy, surrounding segments) for relevance
-  4. When Qwen3/Ollama is unavailable, the panel shows "AI unavailable" gracefully without crashes or spinners
-**Plans**: 2 plans
-
-Plans:
-- [ ] 17-01-PLAN.md — AISuggestionService backend + REST endpoint + unit tests (AISUG-01, AISUG-02, AISUG-04, AISUG-05)
-- [ ] 17-02-PLAN.md — AISuggestionsTab frontend + RightPanel integration + click-to-apply wiring (AISUG-01, AISUG-02, AISUG-03, AISUG-05)
-
-### Phase 18: Game Dev Grid + File Explorer
-**Goal**: Game developers can browse the gamedata folder structure and edit entity attributes inline in a hierarchical grid that handles large files smoothly
-**Depends on**: Phase 15 (mock data to browse), Phase 16 (QA checks available on edit), Phase 17 (AI suggestions available on edit)
-**Requirements**: GDEV-01, GDEV-02, GDEV-03, GDEV-04, GDEV-05, GDEV-06, GDEV-07
-**Success Criteria** (what must be TRUE):
-  1. File explorer panel displays gamedata folder structure matching real gamedata paths with expand/collapse
-  2. Clicking a file in the explorer loads its XML entities in a hierarchical grid with parent-child nesting visualized
-  3. User can edit Name, Desc, and text attributes inline and changes save back with proper XML encoding (br-tag preservation)
-  4. Grid shows appropriate metadata columns per data type (Key, StrKey, KnowledgeKey, etc.)
-  5. Grid handles large files (1000+ entities) smoothly via virtual scrolling
-**Plans**: 2 plans
-
-Plans:
-- [ ] 18-01-PLAN.md — Backend browse/edit services + REST endpoints + schemas + unit tests (GDEV-01, GDEV-02, GDEV-05, GDEV-06)
-- [ ] 18-02-PLAN.md — FileExplorerTree + GameDevPage + VirtualGrid inline edit + dynamic columns (GDEV-01 through GDEV-07)
-
-### Phase 19: Game World Codex
-**Goal**: Both translators and game devs can browse an interactive encyclopedia of characters, items, and entities with images, audio, cross-references, and semantic search
-**Depends on**: Phase 15 (entity data), Phase 18 (grid infrastructure for navigation)
-**Requirements**: CODEX-01, CODEX-02, CODEX-03, CODEX-04, CODEX-05
-**Success Criteria** (what must be TRUE):
-  1. Character encyclopedia page shows name, image, description, race, job, quest appearances, and related entities
-  2. Item encyclopedia page shows name, image, description, category, stats, and similar items via semantic search
-  3. Codex is searchable via semantic search (Model2Vec + FAISS) across all entity types with relevant results
-  4. Codex pages display inline DDS->PNG images and WEM->WAV audio playback when available
-**Plans**: 2 plans
-
-Plans:
-- [ ] 19-01-PLAN.md — CodexService backend + entity registry + FAISS search + REST endpoints + unit tests (CODEX-01, CODEX-02, CODEX-03, CODEX-04, CODEX-05)
-- [ ] 19-02-PLAN.md — CodexPage frontend + CodexEntityDetail + CodexSearchBar + navigation integration (CODEX-01, CODEX-02, CODEX-03, CODEX-04, CODEX-05)
-
-### Phase 20: Interactive World Map
-**Goal**: Users can visually explore the game world via a pan/zoom map with positioned region nodes that link to Codex pages
-**Depends on**: Phase 15 (region position data), Phase 19 (Codex pages for click-through)
-**Requirements**: MAP-01, MAP-02, MAP-03, MAP-04, MAP-05
-**Success Criteria** (what must be TRUE):
-  1. Map renders region nodes at correct WorldPosition coordinates from XML data
-  2. Hovering a map node shows tooltip with region name, description, and key NPCs
-  3. Clicking a map node opens a detail panel linking to Codex pages for characters, items, and quests in that region
-  4. Route connections between region nodes are visualized from NodeWaypointInfo data
-  5. Map supports pan and zoom interaction for navigating the full world
-**Plans**: 2 plans
-
-Plans:
-- [ ] 20-01-PLAN.md -- WorldMap backend service + schemas + REST endpoint + tests (MAP-01, MAP-02, MAP-03, MAP-04)
-- [ ] 20-02-PLAN.md -- WorldMap frontend SVG canvas + d3-zoom + tooltip + detail panel + navigation (MAP-01 through MAP-05)
-
-### Phase 21: AI Naming Coherence + Placeholders
-**Goal**: Game devs get naming pattern suggestions when editing entity names, and all missing media shows styled placeholders instead of broken/blank states
-**Depends on**: Phase 15 (entity index), Phase 17 (AI pipeline), Phase 19 (Codex displays placeholders)
-**Requirements**: AINAME-01, AINAME-02, AINAME-03, PLACEHOLDER-01, PLACEHOLDER-02, PLACEHOLDER-03
-**Success Criteria** (what must be TRUE):
-  1. Editing a Name field in Game Dev mode shows similar existing entity names via embedding search
-  2. AI suggests coherent naming alternatives based on existing patterns via Qwen3 in a non-blocking panel
-  3. Missing images display a styled SVG placeholder with entity name and category-specific icon
-  4. Missing audio displays a waveform SVG placeholder with entity name and "[No Audio]" label
-**Plans**: 2 plans
-
-Plans:
-- [ ] 21-01-PLAN.md — NamingCoherenceService backend + REST endpoints + unit tests (AINAME-01, AINAME-02, AINAME-03)
-- [ ] 21-02-PLAN.md — NamingPanel frontend + PlaceholderImage/Audio SVGs + Codex/GameDev integration (AINAME-01 through PLACEHOLDER-03)
+  1. FileExplorerTree folder buttons announce their expand/collapse state to screen readers via aria-expanded
+  2. Navigation tab dividers render consistently across all 5 tabs (not just the first tab)
+  3. CodexPage card images display PlaceholderImage SVG when the actual image returns 404
+  4. PlaceholderImage renders correctly in Chromium-based Electron using div layout instead of foreignObject
+  5. MapDetailPanel long text content wraps properly without overflow at all viewport widths
+**Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21
-(Phases 16 and 17 can execute in parallel -- they are independent)
+Phases execute in numeric order: 22 -> 23 -> 24
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -181,10 +117,13 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21
 | 12. Game Dev Merge | v2.0 | 2/2 | Complete | 2026-03-15 |
 | 13. AI Summaries | v2.0 | 2/2 | Complete | 2026-03-15 |
 | 14. E2E Validation + CLI | v2.0 | 2/2 | Complete | 2026-03-15 |
-| 15. Mock Gamedata Universe | 2/2 | Complete    | 2026-03-15 | - |
-| 16. Category Clustering + QA Pipeline | 2/2 | Complete    | 2026-03-15 | - |
-| 17. AI Translation Suggestions | 2/2 | Complete    | 2026-03-15 | - |
-| 18. Game Dev Grid + File Explorer | 2/2 | Complete    | 2026-03-15 | - |
-| 19. Game World Codex | 2/2 | Complete    | 2026-03-15 | - |
-| 20. Interactive World Map | 2/2 | Complete    | 2026-03-15 | - |
-| 21. AI Naming Coherence + Placeholders | 2/2 | Complete    | 2026-03-15 | - |
+| 15. Mock Gamedata Universe | v3.0 | 2/2 | Complete | 2026-03-15 |
+| 16. Category Clustering + QA Pipeline | v3.0 | 2/2 | Complete | 2026-03-15 |
+| 17. AI Translation Suggestions | v3.0 | 2/2 | Complete | 2026-03-15 |
+| 18. Game Dev Grid + File Explorer | v3.0 | 2/2 | Complete | 2026-03-15 |
+| 19. Game World Codex | v3.0 | 2/2 | Complete | 2026-03-15 |
+| 20. Interactive World Map | v3.0 | 2/2 | Complete | 2026-03-15 |
+| 21. AI Naming Coherence + Placeholders | v3.0 | 2/2 | Complete | 2026-03-15 |
+| 22. Svelte 5 Migration | v3.1 | 0/0 | Not started | - |
+| 23. Bug Fixes | v3.1 | 0/0 | Not started | - |
+| 24. UIUX Polish | v3.1 | 0/0 | Not started | - |

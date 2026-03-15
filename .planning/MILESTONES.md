@@ -1,28 +1,35 @@
 # Milestones
 
-## v3.0 Game Dev Platform + AI Intelligence (Shipped: 2026-03-15)
+## v3.1 Debug + Polish + Svelte 5 Migration (In Progress)
 
-**Phases completed:** 7 phases, 14 plans, 0 tasks
+**Phases:** 22-24 (3 phases)
+**Requirements:** 22 total (4 categories: SV5, FIX, UX, TEST)
+**Goal:** Fix all runtime bugs from v3.0 code review, migrate entire frontend to pure Svelte 5 Runes, and polish UI/UX across all v3.0 features.
 
-**Key accomplishments:**
-- (none recorded)
+**Phase structure:**
+1. Phase 22: Svelte 5 Migration (purge all Svelte 4 event patterns)
+2. Phase 23: Bug Fixes (10 runtime bugs + 1 stale test)
+3. Phase 24: UIUX Polish (accessibility, visual consistency, error states)
 
 ---
 
-## v3.0 Game Dev Platform + AI Intelligence (In Progress)
+## v3.0 Game Dev Platform + AI Intelligence (Shipped: 2026-03-15)
 
-**Phases:** 15-21 (7 phases)
-**Requirements:** 45 total (9 categories)
-**Goal:** Full Game Dev authoring experience with AI-powered suggestions, interactive Codex encyclopedia, QA pipeline integration, and category clustering -- all powered by a comprehensive mock gamedata universe for E2E testing.
+**Phases completed:** 7 phases, 14 plans
+**Requirements:** 45/45 complete (9 categories)
+**Post-milestone review:** 9 issues found and fixed (1 build-breaking, 2 critical, 6 important)
 
-**Phase structure:**
-1. Phase 15: Mock Gamedata Universe (foundation -- all phases depend on this)
-2. Phase 16: Category Clustering + QA Pipeline (proven code ports, immediate value)
-3. Phase 17: AI Translation Suggestions (extends Qwen3 pipeline)
-4. Phase 18: Game Dev Grid + File Explorer (core Game Dev UI)
-5. Phase 19: Game World Codex (interactive encyclopedia)
-6. Phase 20: Interactive World Map (crown jewel visual)
-7. Phase 21: AI Naming Coherence + Placeholders (polish, deferrable)
+**Key accomplishments:**
+1. **Mock Gamedata Universe** -- Generator script producing 352 entities across 6 types, 704 StringIDs, cross-reference chains, binary media stubs
+2. **Category Clustering** -- Auto-classification from StringID prefixes, grid column, multi-select filter
+3. **QA Pipeline** -- Term Check + Line Check inline badges, dismiss workflow, severity thresholds
+4. **AI Translation Suggestions** -- Qwen3-powered ranked suggestions with blended confidence scores, click-to-accept
+5. **Game Dev Grid + File Explorer** -- VS Code-like tree, hierarchical XML editing, dynamic columns per entity type
+6. **Game World Codex** -- Interactive encyclopedia with semantic search, DDS/WEM media, cross-references
+7. **Interactive World Map** -- d3-zoom SVG with positioned region nodes, route connections, Codex links
+8. **AI Naming Coherence + Placeholders** -- FAISS similarity search, Qwen3 naming suggestions, styled SVG placeholders
+
+**Archive:** [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) | [v3.0-REQUIREMENTS.md](milestones/v3.0-REQUIREMENTS.md)
 
 ---
 

@@ -1,147 +1,69 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Game Dev Platform + AI Intelligence
-status: executing
-stopped_at: Completed 21-02-PLAN.md
-last_updated: "2026-03-15T16:00:49.106Z"
-last_activity: 2026-03-15 -- Completed Phase 21 Plan 02 (Naming Panel + Placeholders)
+milestone: v3.1
+milestone_name: Debug + Polish + Svelte 5 Migration
+status: ready_to_plan
+stopped_at: Roadmap created
+last_updated: "2026-03-16"
+last_activity: 2026-03-16 -- Roadmap created for v3.1 milestone
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 14
-  completed_plans: 14
----
-
----
-gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Game Dev Platform + AI Intelligence
-status: executing
-stopped_at: Completed 21-02-PLAN.md
-last_updated: "2026-03-15T15:03:20Z"
-last_activity: 2026-03-15 -- Completed Phase 21 Plan 02 (Naming Panel + Placeholders)
-progress:
-  total_phases: 7
-  completed_phases: 6
-  total_plans: 14
-  completed_plans: 14
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-15)
+See: .planning/PROJECT.md (updated 2026-03-16)
 
-**Core value:** Game Dev authoring platform with AI-powered suggestions, interactive Codex, and integrated QA -- all local, zero cloud dependency
-**Current focus:** Phase 21 - AI Naming Coherence + Placeholders
+**Core value:** Fix runtime issues, migrate to pure Svelte 5, polish UI/UX
+**Current focus:** Phase 22 - Svelte 5 Migration
 
 ## Current Position
 
-Phase: 21 (7 of 7 in v3.0) [AI Naming Coherence + Placeholders]
-Plan: 2 of 2 in current phase (2 DONE, 0 remaining)
-Status: Phase 21 complete -- all plans done. v3.0 milestone complete!
-Last activity: 2026-03-15 -- Completed Phase 21 Plan 02 (Naming Panel + Placeholders)
+Phase: 22 (1 of 3 in v3.1) [Svelte 5 Migration]
+Plan: 0 of 0 in current phase (not yet planned)
+Status: Ready to plan
+Last activity: 2026-03-16 -- Roadmap created for v3.1 milestone
 
-Progress: [██████████] 100% v3.0 plans (all 7 phases, 14 plans complete)
+Progress: [..........] 0%
 
 ## Performance Metrics
 
-**Velocity (v1.0 + v2.0):**
-- Total plans completed: 37
-- v1.0: 20 plans across 7 phases
-- v2.0: 17 plans across 8 phases
+**Velocity (all milestones):**
+- Total plans completed: 51 (v1.0: 20, v2.0: 17, v3.0: 14)
+- v3.1 plans completed: 0
 
 | Milestone | Phases | Plans | Requirements |
 |-----------|--------|-------|--------------|
 | v1.0 | 7 | 20 | 42/42 |
 | v2.0 | 8 | 17 | 40/40 |
 | v3.0 | 7 | 14 | 45/45 |
+| v3.1 | 3 | TBD | 0/22 |
 
-| Phase | Plan | Duration | Tasks | Files |
-|-------|------|----------|-------|-------|
-| 16-01 | Category Clustering | 9min | 2 | 9 |
-| 16-02 | QA Pipeline | 7min | 2 | 5 |
-| 17-01 | AI Suggestion Service | 7min | 2 | 7 |
-| 17-02 | Frontend Suggestion Panel | 5min | 3 | 3 |
-| 18-01 | Gamedata Backend APIs | 3min | 2 | 8 |
-| 18-02 | Game Dev Grid Frontend | 7min | 3 | 6 |
-| 19-01 | Codex Backend | 6min | 2 | 6 |
-| 19-02 | Codex Frontend | 5min | 3 | 6 |
-| 20-01 | WorldMap Backend | 4min | 2 | 6 |
-| 20-02 | WorldMap Frontend | 6min | 3 | 9 |
-| 21-01 | Naming Coherence Backend | 4min | 2 | 6 |
-| 21-02 | Naming Panel + Placeholders | 5min | 2 | 5 |
+*Updated after each plan completion*
 
 ## Accumulated Context
 
 ### Decisions
 
-All v1.0/v2.0 decisions archived in PROJECT.md Key Decisions table.
-
-- [v3.0 Roadmap]: Mock gamedata universe must be Phase 15 (all Game Dev features depend on it)
-- [v3.0 Roadmap]: Phases 16 and 17 can parallelize (independent of each other)
-- [v3.0 Roadmap]: Phase 21 (Naming + Placeholders) is safe to defer if timeline is tight
-- [15-01]: CrossRefRegistry validates all 6 reference chains after generation by construction
-- [15-01]: Korean text corpus uses 30+ templates with parametric substitution for 300+ unique strings
-- [15-01]: Binary stubs copy existing DDS/WEM templates for guaranteed valid headers
-- [15-02]: LanguageDataCollector centralizes entity-to-StringID mapping for all 6 entity types
-- [15-02]: StringID format SID_{TYPE}_{INDEX}_{NAME|DESC} produces 704 entries (352 entities x 2)
-- [15-02]: Translation corpus uses parallel arrays (EN/FR) matching KR corpus indices
-- [16-01]: Category is a computed field (Python-side), not stored in DB -- avoids schema migration
-- [16-01]: StringID prefix lookup O(k) with k=7 prefixes -- fast enough for batch processing
-- [16-01]: Category filter fetches all rows then filters in Python -- acceptable for current scale
-- [16-02]: QAInlineBadge uses absolute-positioned popover with backdrop for click-outside handling
-- [16-02]: Severity badge threshold: 3+ = red, 1-2 = magenta (Carbon Tag types)
-- [16-02]: Both inline badge and panel share same resolve endpoint for dismiss consistency
-- [17-01]: Blended confidence formula: 0.4 * max_embedding_similarity + 0.6 * llm_confidence
-- [17-01]: Cache key includes md5 hash of source_text to invalidate on text changes
-- [17-01]: FAISS similarity search is enrichment-only -- graceful empty return when unavailable
-- [17-01]: Route registered in router.py following existing aggregation pattern
-- [17-02]: 500ms debounce + AbortController prevents request flooding during rapid row navigation
-- [17-02]: Reuses applyTMToRow for applying suggestions -- no new cell-update mechanism needed
-- [17-02]: Confidence badge thresholds: High (green) >= 85%, Medium (yellow) >= 60%, Low (orange) < 60%
-- [18-01]: EDITABLE_ATTRS map defines per-entity editable attributes (6 entity types)
-- [18-01]: Path traversal uses Path.resolve() + is_relative_to() for security
-- [18-01]: br-tag handling relies on lxml auto-escape behavior (no pre-escape needed)
-- [18-02]: Svelte 5 snippets for recursive folder tree rendering (no child components needed)
-- [18-02]: GameDevPage composes VirtualGrid directly (not GridPage wrapper) for gamedev-specific props
-- [18-02]: Dynamic columns convert ColumnHint list to allColumns format with static fallback
-- [18-02]: XML save-back is fire-and-forget after DB save -- DB is source of truth
-- [19-01]: Entity type detected from XML child tag names (CharacterInfo, ItemInfo, etc.) -- no config needed
-- [19-01]: GimmickGroupInfo parsed with nested scan for inner GimmickInfo/SealData Desc
-- [19-01]: FactionNode represents regions -- AliasName or StrKey used as name, KnowledgeKey for cross-ref
-- [19-01]: audio_key = entity.strkey for all entities -- audio keyed by StrKey convention
-- [19-01]: Module-level singleton pattern for CodexService (same as GameDataBrowseService)
-- [19-02]: CodexSearchBar uses AbortController pattern from AISuggestionsTab for request cancellation
-- [19-02]: Entity detail renders type-specific sections based on entity_type field
-- [19-02]: Codex navigation added to header dropdown accessible in both translator and game dev modes
-- [20-01]: WorldMapService uses module-level codex_service variable for decoupled Codex enrichment
-- [20-01]: WorldPosition "X,0,Z" parsed by comma-split (Y always 0, ignored for 2D map)
-- [20-01]: Fallback to StrKey as node name when CodexService unavailable
-- [20-01]: entity_type_counts derived from Codex related_entities cross-references
-- [20-02]: d3-zoom applied in onMount with scaleExtent [0.5, 4] and double-click reset to identity
-- [20-02]: Node color/size by region_type: Main=blue/10, Dungeon=red/8, Town=green/9
-- [20-02]: Coordinate mapping uses linear scale from world bounds to 1000x1000 SVG viewBox with 50px padding
-- [20-02]: MapTooltip uses position:fixed with pointer-events:none to avoid hover interference
-- [21-01]: Cache key is entity_type:name (simpler than md5 hash since entity names are short)
-- [21-01]: Prompt includes /no_think tag for speed (naming is creative, not analytical)
-- [21-01]: Temperature 0.8 for naming suggestions (higher than 0.7 for translations -- more creative)
-- [21-02]: PlaceholderImage uses foreignObject for Carbon icons inside SVG (cross-browser compatible)
-- [21-02]: NamingPanel applies suggestions via clipboard copy (respects AINAME-03: never auto-replace)
-- [21-02]: Entity type derived from XML node name in rowSelect handler (no extra API call needed)
+- [v3.1 Roadmap]: Svelte 5 migration first (Phase 22) -- stable event model before component-level bug fixes
+- [v3.1 Roadmap]: TEST-01 grouped with bug fixes (Phase 23) -- stale test reference, not UIUX
+- [v3.0 21-02]: PlaceholderImage uses foreignObject -- UX-04 will replace with div layout for Chromium compat
 
 ### Pending Todos
 
-None.
+None yet.
 
 ### Blockers/Concerns
 
-None.
+None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T15:03:20Z
-Stopped at: Completed 21-02-PLAN.md
-Resume: Phase 21 complete. v3.0 milestone complete -- all 7 phases, 14 plans, 45 requirements delivered.
+Last session: 2026-03-16
+Stopped at: Roadmap created for v3.1 milestone (3 phases, 22 requirements)
+Resume file: None

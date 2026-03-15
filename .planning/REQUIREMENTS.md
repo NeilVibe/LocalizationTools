@@ -51,12 +51,33 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (Populated during roadmap creation) | | |
+| SV5-01 | Phase 22 | Pending |
+| SV5-02 | Phase 22 | Pending |
+| SV5-03 | Phase 22 | Pending |
+| SV5-04 | Phase 22 | Pending |
+| SV5-05 | Phase 22 | Pending |
+| SV5-06 | Phase 22 | Pending |
+| FIX-01 | Phase 23 | Pending |
+| FIX-02 | Phase 23 | Pending |
+| FIX-03 | Phase 23 | Pending |
+| FIX-04 | Phase 23 | Pending |
+| FIX-05 | Phase 23 | Pending |
+| FIX-06 | Phase 23 | Pending |
+| FIX-07 | Phase 23 | Pending |
+| FIX-08 | Phase 23 | Pending |
+| FIX-09 | Phase 23 | Pending |
+| FIX-10 | Phase 23 | Pending |
+| TEST-01 | Phase 23 | Pending |
+| UX-01 | Phase 24 | Pending |
+| UX-02 | Phase 24 | Pending |
+| UX-03 | Phase 24 | Pending |
+| UX-04 | Phase 24 | Pending |
+| UX-05 | Phase 24 | Pending |
 
 **Coverage:**
 - v3.1 requirements: 22 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 22
+- Mapped to phases: 22
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-16*
