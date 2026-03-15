@@ -7,7 +7,7 @@
   } from "carbon-components-svelte";
   import { DataBase, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload, Column, Document } from "carbon-icons-svelte";
   import { preferences } from "$lib/stores/preferences.js";
-  import { currentPage, openFile, openFileInGrid, closeGrid, openTM, openTMInGrid, closeTMGrid, goToGameDev, goToCodex } from "$lib/stores/navigation.js";
+  import { currentPage, openFile, openFileInGrid, closeGrid, openTM, openTMInGrid, closeTMGrid, goToGameDev, goToCodex, goToWorldMap } from "$lib/stores/navigation.js";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
@@ -25,6 +25,8 @@
   import GameDevPage from "$lib/components/pages/GameDevPage.svelte";
   // Phase 19: Game World Codex page
   import CodexPage from "$lib/components/pages/CodexPage.svelte";
+  // Phase 20: Interactive World Map page
+  import WorldMapPage from "$lib/components/pages/WorldMapPage.svelte";
   // UI-097: PreferencesModal removed - use top nav Settings > Preferences
   import GridColumnsModal from "$lib/components/GridColumnsModal.svelte";
   import ReferenceSettingsModal from "$lib/components/ReferenceSettingsModal.svelte";
@@ -912,6 +914,9 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
       {:else if $currentPage === 'codex'}
         <!-- Phase 19: Game World Codex -->
         <CodexPage />
+      {:else if $currentPage === 'worldmap'}
+        <!-- Phase 20: Interactive World Map -->
+        <WorldMapPage />
       {:else if $currentPage === 'tm-entries'}
         <!-- TM Entries Page: Full-page TM entries viewer -->
         <div class="tm-entries-page">

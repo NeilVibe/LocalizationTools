@@ -42,6 +42,8 @@
   "dependencies": {
     "carbon-components-svelte": "^0.95.0",
     "carbon-icons-svelte": "^13.0.0",
+    "d3-selection": "^3.0.0",
+    "d3-zoom": "^3.0.0",
     "electron-updater": "^6.6.2",
     "socket.io-client": "^4.6.0"
   },
@@ -60,17 +62,31 @@
       {
         "from": "../tools/python",
         "to": "tools/python",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "../server",
         "to": "server",
-        "filter": ["**/*.py", "**/*.json", "**/*.txt", "**/*.md", "**/*.sql", "!**/__pycache__/**", "!**/*.pyc", "!**/*.pyo"]
+        "filter": [
+          "**/*.py",
+          "**/*.json",
+          "**/*.txt",
+          "**/*.md",
+          "**/*.sql",
+          "!**/__pycache__/**",
+          "!**/*.pyc",
+          "!**/*.pyo"
+        ]
       },
       {
         "from": "../tools",
         "to": "tools",
-        "filter": ["*.bat", "*.py"]
+        "filter": [
+          "*.bat",
+          "*.py"
+        ]
       },
       {
         "from": "../version.py",

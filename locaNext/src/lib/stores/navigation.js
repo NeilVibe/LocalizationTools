@@ -123,6 +123,14 @@ export function goToCodex() {
 }
 
 /**
+ * Phase 20: Navigate to Interactive World Map page
+ */
+export function goToWorldMap() {
+  currentPage.set('worldmap');
+  openFile.set(null);
+}
+
+/**
  * Close TM entries viewer and return to TM list
  */
 export function closeTMGrid() {
