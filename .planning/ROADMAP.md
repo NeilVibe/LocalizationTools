@@ -29,7 +29,7 @@
 - [x] **Phase 09: Translator Merge** - Port QuickTranslate merge logic (exact/source/fuzzy match + postprocess pipeline) (completed 2026-03-15)
 - [x] **Phase 10: Export Pipeline** - XML, Excel, and plain text export with br-tag preservation (completed 2026-03-15)
 - [x] **Phase 11: Image & Audio Pipeline** - DDS-to-PNG conversion, WEM audio playback, real data flowing to context tabs (completed 2026-03-15)
-- [ ] **Phase 12: Game Dev Merge** - Position-aware XML merge at node/attribute/children depth
+- [x] **Phase 12: Game Dev Merge** - Position-aware XML merge at node/attribute/children depth (completed 2026-03-15)
 - [ ] **Phase 13: AI Summaries** - Qwen3 via Ollama for contextual summaries with caching and graceful fallback
 - [ ] **Phase 14: E2E Validation + CLI** - Round-trip integration tests and CLI coverage for merge/export operations
 
@@ -174,6 +174,6 @@ Note: Phase 11 and 13 depend only on Phase 07 and could execute in parallel with
 | 09. Translator Merge | 2/2 | Complete    | 2026-03-15 | - |
 | 10. Export Pipeline | 1/1 | Complete    | 2026-03-15 | - |
 | 11. Image & Audio Pipeline | 2/2 | Complete    | 2026-03-15 | - |
-| 12. Game Dev Merge | 1/2 | In Progress|  | - |
+| 12. Game Dev Merge | 2/2 | Complete   | 2026-03-15 | - |
 | 13. AI Summaries | v2.0 | 0/1 | Not started | - |
 | 14. E2E Validation + CLI | v2.0 | 0/1 | Not started | - |
