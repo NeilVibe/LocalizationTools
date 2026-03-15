@@ -78,8 +78,16 @@ class WorldMapService:
             # Parse WorldPosition "X,0,Z" format
             world_pos = node_el.get("WorldPosition", "0,0,0")
             parts = world_pos.split(",")
-            x = float(parts[0]) if len(parts) >= 1 else 0.0
-            z = float(parts[2]) if len(parts) >= 3 else 0.0
+            try:
+                x = float(parts[0]) if len(parts) >= 1 else 0.0
+            except ValueError:
+                logger.warning(f"[WorldMap] Malformed X coordinate in WorldPosition '{world_pos}' for {strkey}, defaulting to 0.0")
+                x = 0.0
+            try:
+                z = float(parts[2]) if len(parts) >= 3 else 0.0
+            except (ValueError, IndexError):
+                logger.warning(f"[WorldMap] Malformed Z coordinate in WorldPosition '{world_pos}' for {strkey}, defaulting to 0.0")
+                z = 0.0
 
             self._nodes[strkey] = MapNode(
                 strkey=strkey,
