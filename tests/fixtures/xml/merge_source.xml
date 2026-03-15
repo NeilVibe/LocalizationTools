@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LocData>
+  <!-- Normal correction: strict match candidate -->
+  <LocStr StringID="UI_OK" StrOrigin="확인" Str="OK" />
+
+  <!-- StringID-only match candidate: same ID but different StrOrigin -->
+  <LocStr StringID="UI_CANCEL" StrOrigin="취소 버튼" Str="Cancel Button" />
+
+  <!-- StrOrigin-only match candidate: different ID but same StrOrigin -->
+  <LocStr StringID="NEW_CONFIRM" StrOrigin="확인하다" Str="Confirm" />
+
+  <!-- Should be SKIPPED: target is Korean (untranslated) -->
+  <LocStr StringID="UI_SKIP_KR" StrOrigin="건너뛰기" Str="건너뛰기 처리" />
+
+  <!-- Should be SKIPPED: target is "no translation" -->
+  <LocStr StringID="UI_NOTRANS" StrOrigin="번역없음" Str="no translation" />
+
+  <!-- Should be SKIPPED: target starts with = (formula) -->
+  <LocStr StringID="UI_FORMULA" StrOrigin="공식" Str="=SUM(A1:B2)" />
+
+  <!-- Should be SKIPPED: empty StrOrigin (golden rule) -->
+  <LocStr StringID="UI_EMPTY" StrOrigin="" Str="SomeValue" />
+
+  <!-- Fuzzy match candidate: similar but not identical source -->
+  <LocStr StringID="UI_FUZZY_SRC" StrOrigin="게임을 시작합니다" Str="Start the Game" />
+</LocData>
