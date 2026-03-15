@@ -28,7 +28,7 @@
   let API_BASE = $derived(getApiBase());
 
   // Svelte 5: Props
-  let { fileId = $bindable(null), fileName = "", fileType = "translator", activeTMs = [], isLocalFile = false } = $props();
+  let { fileId = $bindable(null), fileName = "", fileType = "translator", activeTMs = [], isLocalFile = false, gamedevDynamicColumns = null } = $props();
 
   // Virtual scrolling constants
   const MIN_ROW_HEIGHT = 48; // Minimum row height (base)
@@ -329,7 +329,12 @@
   };
 
   // Dual UI Mode: switch columns based on file type
-  let allColumns = $derived(fileType === 'gamedev' ? gameDevColumns : translatorColumns);
+  // Phase 18: Dynamic columns from GameDevPage override static defaults
+  let allColumns = $derived(
+    fileType === 'gamedev'
+      ? (gamedevDynamicColumns || gameDevColumns)
+      : translatorColumns
+  );
 
   // Reference data cache (loaded when referenceFileId changes)
   let referenceData = $state(new Map()); // string_id -> { target, source }
@@ -1291,6 +1296,26 @@
           }
 
           logger.success("Inline edit saved", { rowId: row.id, offline: isLocalFile });
+
+          // Phase 18: Save back to XML file for gamedev mode
+          if (fileType === 'gamedev' && row.extra_data?.source_xml_path) {
+            try {
+              await fetch(`${API_BASE}/api/ldm/gamedata/save`, {
+                method: 'PUT',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  xml_path: row.extra_data.source_xml_path,
+                  entity_index: row.extra_data.entity_index ?? (row.row_num - 1),
+                  attr_name: row.extra_data.editing_attr || 'Name',
+                  new_value: textToSave
+                })
+              });
+            } catch (err) {
+              console.warn('XML save-back failed (DB row saved):', err);
+              // Don't fail the edit -- DB row is already saved
+            }
+          }
+
           dispatch('rowUpdate', { rowId: row.id });
         } else {
           logger.error("Failed to save inline edit", { status: response.status });
@@ -2742,7 +2767,7 @@
                   class:source-hovered={hoveredRowId === row.id && hoveredCell === 'source'}
                   class:row-active={hoveredRowId === row.id || selectedRowId === row.id}
                   class:cell-selected={selectedRowId === row.id}
-                  style="flex: {sourceWidthPercent} 1 0;"
+                  style="flex: {sourceWidthPercent} 1 0;{fileType === 'gamedev' ? ` padding-left: ${(row.extra_data?.depth || 0) * 20 + 8}px` : ''}"
                   onmouseenter={() => handleCellMouseEnter(row, 'source')}
                 >
                   <span class="cell-content"><ColorText text={formatGridText(row.source) || ""} /></span>
@@ -2775,10 +2800,10 @@
                   class:qa-flagged={row.qa_flag_count > 0}
                   style="flex: {100 - sourceWidthPercent} 1 0;"
                   onmouseenter={() => handleCellMouseEnter(row, 'target')}
-                  ondblclick={() => fileType !== 'gamedev' && !rowLock && startInlineEdit(row)}
+                  ondblclick={() => !rowLock && startInlineEdit(row)}
                   role="button"
                   tabindex="0"
-                  onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && fileType !== 'gamedev' && !rowLock && !inlineEditingRowId && startInlineEdit(row)}
+                  onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && !rowLock && !inlineEditingRowId && startInlineEdit(row)}
                 >
                   {#if inlineEditingRowId === row.id}
                     <!-- WYSIWYG inline editing - colors render directly -->
