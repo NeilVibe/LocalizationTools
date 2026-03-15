@@ -53,36 +53,7 @@
     dynamicColumns = null;
 
     try {
-      // Step 1: Upload/parse the XML file via existing upload mechanism
-      const formData = new FormData();
-      // Create a reference to the server-side file path
-      formData.append('server_path', file.path);
-      formData.append('file_type', 'gamedev');
-
-      logger.apiCall('/api/ldm/files/upload-path', 'POST');
-      const uploadResponse = await fetch(`${API_BASE}/api/ldm/files/upload-path`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: formData
-      });
-
-      let fileData;
-      if (uploadResponse.ok) {
-        fileData = await uploadResponse.json();
-      } else {
-        // Fallback: try the standard upload endpoint with server_path
-        logger.warning('upload-path failed, trying standard file object approach');
-        // Create a minimal file object for navigation
-        fileData = {
-          id: null,
-          name: file.name,
-          path: file.path,
-          format: 'xml',
-          file_type: 'gamedev'
-        };
-      }
-
-      // Step 2: Fetch dynamic columns
+      // Fetch dynamic columns for the selected XML file
       try {
         const colResponse = await fetch(`${API_BASE}/api/ldm/gamedata/columns`, {
           method: 'POST',
@@ -120,9 +91,9 @@
         logger.warning('Dynamic columns unavailable', { error: err.message });
       }
 
-      // Step 3: Set the file in the openFile store so VirtualGrid loads it
+      // Set file in openFile store -- use path as stable, deterministic ID
       const gridFile = {
-        id: fileData.id || Date.now(), // Use timestamp as fallback ID
+        id: file.path,
         name: file.name,
         path: file.path,
         format: 'xml',
