@@ -115,6 +115,14 @@ export function goToGameDev() {
 }
 
 /**
+ * Phase 19: Navigate to Game World Codex page
+ */
+export function goToCodex() {
+  currentPage.set('codex');
+  openFile.set(null);
+}
+
+/**
  * Close TM entries viewer and return to TM list
  */
 export function closeTMGrid() {
