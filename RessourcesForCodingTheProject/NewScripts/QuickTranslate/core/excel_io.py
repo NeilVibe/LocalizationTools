@@ -5,6 +5,7 @@ Read input Excel files and write output Excel files.
 Uses patterns from LanguageDataExporter for robustness.
 """
 
+import html
 import logging
 import re
 from collections import defaultdict
@@ -279,8 +280,9 @@ def read_corrections_from_excel(
 
                 corrected_str = str(corrected).strip()
 
-                # Normalize linebreaks BEFORE integrity check so double-escaped
-                # br tags (&amp;lt;br/&amp;gt;) don't get falsely flagged
+                # Decode double-escaped entities (&amp;lt; → &lt;) so lxml doesn't
+                # triple-escape on write. Then normalize linebreaks.
+                corrected_str = _decode_excel_entities(corrected_str)
                 corrected_str = _convert_linebreaks_for_excel(corrected_str)
 
                 # Formula safeguard Layer 2: string check AFTER str coercion
@@ -344,8 +346,9 @@ def read_corrections_from_excel(
                                 'string_id': _report_id, 'reason': bad,
                             })
                         d_val = None  # Neutralize — prevents downstream str(d_val)
-                    # Normalize linebreaks in Desc before integrity check
+                    # Decode double-escaped entities and normalize linebreaks in Desc
                     if d_val is not None and isinstance(d_val, str):
+                        d_val = _decode_excel_entities(d_val)
                         d_val = _convert_linebreaks_for_excel(d_val)
                     # Text integrity check on Desc (broken linebreaks, encoding, bad chars)
                     if d_val is not None and isinstance(d_val, str):
@@ -785,6 +788,33 @@ def write_reverse_lookup_excel(
 # =============================================================================
 
 
+def _decode_excel_entities(txt: str) -> str:
+    """
+    Decode HTML entities in Excel text to prevent double-escaping by lxml.
+
+    When lxml writes text to an XML attribute, it escapes < > & " automatically.
+    If Excel text already contains entities (&lt; &gt; &amp;), lxml would
+    double-escape them (&lt; → &amp;lt; on disk). We decode ALL entity levels
+    so lxml's single escaping produces the correct result.
+
+    Decode order:
+      1. Double-escaped: &amp;lt; → &lt; (regex, one level)
+      2. Single-escaped: &lt; → < (html.unescape, all standard entities)
+
+    After this, lxml re-escapes once: < → &lt; on disk. Correct.
+    """
+    if not txt:
+        return txt
+    # Step 1: Decode double-escaped (&amp;ENTITY; → &ENTITY;)
+    if '&amp;' in txt:
+        txt = re.sub(r'&amp;([a-zA-Z]+;|#[0-9]+;|#[xX][0-9a-fA-F]+;)',
+                      lambda m: f'&{m.group(1)}', txt)
+    # Step 2: Decode single-escaped (&lt; → <, &gt; → >, &amp; → &, etc.)
+    if '&' in txt:
+        txt = html.unescape(txt)
+    return txt
+
+
 def _convert_linebreaks_for_excel(txt: str) -> str:
     """
     Normalize linebreak variants to <br/> for Excel cells.
@@ -795,9 +825,9 @@ def _convert_linebreaks_for_excel(txt: str) -> str:
     """
     if not txt:
         return txt
-    # Double-escaped: &amp;lt;br/&amp;gt; → <br/> (MUST come before single-escaped)
+    # Double-escaped br: &amp;lt;br/&amp;gt; → <br/> (MUST come before single-escaped)
     txt = re.sub(r'&amp;lt;/?[Bb][Rr]\s*/?&amp;gt;', '<br/>', txt)
-    # Single-escaped: &lt;br/&gt; → <br/>
+    # Single-escaped br: &lt;br/&gt; → <br/>
     txt = txt.replace('&lt;br/&gt;', '<br/>')
     txt = txt.replace('&lt;br /&gt;', '<br/>')
     txt = txt.replace('<br />', '<br/>')

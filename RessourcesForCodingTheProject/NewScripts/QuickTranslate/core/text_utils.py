@@ -210,16 +210,15 @@ def is_broken_linebreak(text: str) -> Optional[str]:
 
 
 def is_markup_contamination(text: str, *, from_xml: bool = False) -> Optional[str]:
-    """Check if text contains HTML/XML markup contamination.
+    """Check if text contains entity contamination.
 
-    Group A (angle bracket checks) only runs for non-XML sources (e.g. Excel).
-    After lxml parses XML, any < or > in memory came from properly escaped
-    &lt;/&gt; in the file — legitimate game content like <!-- group names -->.
-    Group B (entity checks) always runs regardless of source.
+    Checks for double/triple-escaped entities that indicate encoding issues.
+    Angle brackets (< >) are NOT checked — for XML they're legitimate
+    escaped content, for Excel lxml auto-escapes them when writing to XML.
 
     Args:
         text: Text to check.
-        from_xml: True if text came from lxml-parsed XML (skip Group A).
+        from_xml: True if text came from lxml-parsed XML.
 
     Returns:
         Reason string if contamination found, None if clean.
@@ -227,38 +226,15 @@ def is_markup_contamination(text: str, *, from_xml: bool = False) -> Optional[st
     if not text:
         return None
 
-    # --- Group A: Angle bracket contamination (Excel-sourced text only) ---
-    if not from_xml:
-        # A1: HTML comments <!-- ... -->
-        m = _HTML_COMMENT_RE.search(text)
-        if m:
-            snippet = m.group()[:40]
-            return f'HTML comment: {snippet}'
+    # NOTE: Group A (angle bracket checks) was removed. Raw < and > in Excel
+    # are safe — lxml auto-escapes them to &lt;/&gt; when writing to XML
+    # attributes. For XML-parsed text, < and > in memory came from properly
+    # escaped entities on disk — also legitimate.
 
-        # A2: HTML/XML tags (exclude valid <br> variants)
-        for m in _HTML_TAG_RE.finditer(text):
-            tag_text = m.group()
-            if not _VALID_BR_RE.fullmatch(tag_text):
-                return f'HTML/XML tag: {tag_text[:40]}'
-
-        # A3: Lone < or > not part of <br/> (engine-breaking)
-        stripped = _VALID_BR_RE.sub('', text)
-        if '<' in stripped:
-            idx = stripped.index('<')
-            context = stripped[max(0, idx - 5):idx + 15]
-            return f'Lone < character: ...{context}...'
-        if '>' in stripped:
-            idx = stripped.index('>')
-            context = stripped[max(0, idx - 5):idx + 15]
-            return f'Lone > character: ...{context}...'
-
-    # --- Group B: Entity contamination (always runs) ---
+    # --- Entity contamination checks ---
 
     # B1a: Double-escaped &amp; entities (&amp;lt; / &amp;gt;)
     # Strip out fixable &amp;lt;br/&amp;gt; patterns first (preprocess handles these).
-    # PRECONDITION for from_xml=False: caller must normalize linebreaks
-    # (e.g. _convert_linebreaks_for_excel) BEFORE calling this function,
-    # otherwise double-escaped br-tags would be silently accepted.
     stripped_amp_br = _FIXABLE_AMP_BR_RE.sub('', text)
     m = _DOUBLE_AMP_ENTITY_RE.search(stripped_amp_br)
     if m:

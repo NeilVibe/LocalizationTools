@@ -1243,6 +1243,15 @@ def run_preprocess_excel(xlsx_path: Path, dry_run: bool = False) -> dict:
                     text = original
 
                     try:
+                        # Step 0: Decode all HTML entities to prevent double-escaping
+                        # Uses same logic as _decode_excel_entities in excel_io.py
+                        import html as _html
+                        if '&amp;' in text:
+                            text = re.sub(r'&amp;([a-zA-Z]+;|#[0-9]+;|#[xX][0-9a-fA-F]+;)',
+                                          lambda m: f'&{m.group(1)}', text)
+                        if '&' in text:
+                            text = _html.unescape(text)
+
                         # Step 1: Normalize linebreaks (double-escaped + single-escaped + control chars)
                         text = re.sub(r'&amp;lt;/?[Bb][Rr]\s*/?&amp;gt;', '<br/>', text)
                         text = text.replace('&lt;br/&gt;', '<br/>')

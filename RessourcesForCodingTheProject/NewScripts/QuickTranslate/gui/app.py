@@ -2540,19 +2540,18 @@ class QuickTranslateApp:
         return f"{check_name}: {total} issues in {len(langs_with_issues)} languages ({', '.join(parts)})"
 
     def _format_pattern_summary(self, summary: Dict[str, tuple]) -> str:
-        """Format pattern+newline+bracket+broken XML+empty Str+formula+integrity check summary.
+        """Format pattern+bracket+broken XML+empty Str+formula+integrity check summary.
 
-        summary values are (pattern, newline, bracket, broken_xml, empty_str, formula_text, integrity) tuples.
+        summary values are (pattern, bracket, broken_xml, empty_str, formula_text, integrity) tuples.
         Shows categorized breakdown so users know what was wrong.
         """
         pattern_total = sum(v[0] for v in summary.values())
-        newline_total = sum(v[1] for v in summary.values())
-        bracket_total = sum(v[2] for v in summary.values())
-        broken_total = sum(v[3] for v in summary.values()) if all(len(v) >= 4 for v in summary.values()) else 0
-        empty_total = sum(v[4] for v in summary.values()) if all(len(v) >= 5 for v in summary.values()) else 0
-        formula_total = sum(v[5] for v in summary.values()) if all(len(v) >= 6 for v in summary.values()) else 0
-        integrity_total = sum(v[6] for v in summary.values()) if all(len(v) >= 7 for v in summary.values()) else 0
-        total = pattern_total + newline_total + bracket_total + broken_total + empty_total + formula_total + integrity_total
+        bracket_total = sum(v[1] for v in summary.values())
+        broken_total = sum(v[2] for v in summary.values()) if all(len(v) >= 3 for v in summary.values()) else 0
+        empty_total = sum(v[3] for v in summary.values()) if all(len(v) >= 4 for v in summary.values()) else 0
+        formula_total = sum(v[4] for v in summary.values()) if all(len(v) >= 5 for v in summary.values()) else 0
+        integrity_total = sum(v[5] for v in summary.values()) if all(len(v) >= 6 for v in summary.values()) else 0
+        total = pattern_total + bracket_total + broken_total + empty_total + formula_total + integrity_total
 
         if total == 0:
             return f"Pattern Check: All clean across {len(summary)} languages"
@@ -2564,35 +2563,35 @@ class QuickTranslateApp:
 
         # CRITICAL: Formula text (show first with broken XML — garbage data)
         if formula_total > 0:
-            f_langs = {k: v[5] for k, v in summary.items() if len(v) >= 6 and v[5] > 0}
+            f_langs = {k: v[4] for k, v in summary.items() if len(v) >= 5 and v[4] > 0}
             f_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(f_langs.items())]
             lines.append(f"  CRITICAL — Formula/error text: {formula_total} ({', '.join(f_parts)})")
             lines.append("  (Separate files in FormulaText/ folder)")
 
         # CRITICAL: Text integrity issues
         if integrity_total > 0:
-            i_langs = {k: v[6] for k, v in summary.items() if len(v) >= 7 and v[6] > 0}
+            i_langs = {k: v[5] for k, v in summary.items() if len(v) >= 6 and v[5] > 0}
             i_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(i_langs.items())]
             lines.append(f"  CRITICAL — Text integrity: {integrity_total} ({', '.join(i_parts)})")
             lines.append("  (Separate files in TextIntegrity/ folder)")
 
         # CRITICAL: Broken XML
         if broken_total > 0:
-            x_langs = {k: v[3] for k, v in summary.items() if len(v) >= 4 and v[3] > 0}
+            x_langs = {k: v[2] for k, v in summary.items() if len(v) >= 3 and v[2] > 0}
             x_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(x_langs.items())]
             lines.append(f"  CRITICAL — Broken XML: {broken_total} ({', '.join(x_parts)})")
             lines.append("  (Separate files in BrokenXML/ folder)")
 
         # CRITICAL: Unbalanced brackets
         if bracket_total > 0:
-            b_langs = {k: v[2] for k, v in summary.items() if len(v) >= 3 and v[2] > 0}
+            b_langs = {k: v[1] for k, v in summary.items() if len(v) >= 2 and v[1] > 0}
             b_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(b_langs.items())]
             lines.append(f"  CRITICAL — Missing brackets: {bracket_total} ({', '.join(b_parts)})")
             lines.append("  (Separate files in MissingBrackets/ folder)")
 
         # Empty Str (has StrOrigin but no translation)
         if empty_total > 0:
-            e_langs = {k: v[4] for k, v in summary.items() if len(v) >= 5 and v[4] > 0}
+            e_langs = {k: v[3] for k, v in summary.items() if len(v) >= 4 and v[3] > 0}
             e_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(e_langs.items())]
             lines.append(f"  Empty Str (untranslated): {empty_total} ({', '.join(e_parts)})")
             lines.append("  (Separate files in EmptyStr/ folder)")
@@ -2602,13 +2601,6 @@ class QuickTranslateApp:
             p_langs = {k: v[0] for k, v in summary.items() if v[0] > 0}
             p_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(p_langs.items())]
             lines.append(f"  Pattern mismatches: {pattern_total} ({', '.join(p_parts)})")
-
-        # Wrong newlines breakdown
-        if newline_total > 0:
-            nl_langs = {k: v[1] for k, v in summary.items() if v[1] > 0}
-            n_parts = [f"{lang}: {cnt}" for lang, cnt in sorted(nl_langs.items())]
-            lines.append(f"  Wrong newlines: {newline_total} ({', '.join(n_parts)})")
-            lines.append("  (Only <br/> is correct — not \\n, &#10;, <BR/>, etc.)")
 
         return '\n'.join(lines)
 
@@ -2679,19 +2671,18 @@ class QuickTranslateApp:
                                         skip_staticinfo_knowledge=False, cancel_event=self._cancel_event)
 
             if not summary:
-                self._log("No XML files found in Source folder.", 'warning')
+                self._log("No XML or Excel files found in Source folder.", 'warning')
                 self._task_queue.put(('checks_status', "No files found"))
                 return
 
             result_msg = self._format_pattern_summary(summary)
             pattern_total = sum(v[0] for v in summary.values())
-            newline_total = sum(v[1] for v in summary.values())
-            bracket_total = sum(v[2] for v in summary.values())
-            broken_total = sum(v[3] for v in summary.values()) if all(len(v) >= 4 for v in summary.values()) else 0
-            empty_total = sum(v[4] for v in summary.values()) if all(len(v) >= 5 for v in summary.values()) else 0
-            formula_total = sum(v[5] for v in summary.values()) if all(len(v) >= 6 for v in summary.values()) else 0
-            integrity_total = sum(v[6] for v in summary.values()) if all(len(v) >= 7 for v in summary.values()) else 0
-            total = pattern_total + newline_total + bracket_total + broken_total + empty_total + formula_total + integrity_total
+            bracket_total = sum(v[1] for v in summary.values())
+            broken_total = sum(v[2] for v in summary.values()) if all(len(v) >= 3 for v in summary.values()) else 0
+            empty_total = sum(v[3] for v in summary.values()) if all(len(v) >= 4 for v in summary.values()) else 0
+            formula_total = sum(v[4] for v in summary.values()) if all(len(v) >= 5 for v in summary.values()) else 0
+            integrity_total = sum(v[5] for v in summary.values()) if all(len(v) >= 6 for v in summary.values()) else 0
+            total = pattern_total + bracket_total + broken_total + empty_total + formula_total + integrity_total
 
             self._log(result_msg, 'success' if total == 0 else 'warning')
 
@@ -2707,7 +2698,7 @@ class QuickTranslateApp:
                     self._log(f"CRITICAL bracket issues: {output_folder / 'MissingBrackets'}", 'warning')
                 if empty_total > 0:
                     self._log(f"Empty Str entries: {output_folder / 'EmptyStr'}", 'info')
-                self._task_queue.put(('checks_status', f"Done: {total} issues ({formula_total}F + {integrity_total}I + {broken_total}X + {pattern_total}P + {newline_total}N + {bracket_total}B + {empty_total}E)"))
+                self._task_queue.put(('checks_status', f"Done: {total} issues ({formula_total}F + {integrity_total}I + {broken_total}X + {pattern_total}P + {bracket_total}B + {empty_total}E)"))
             else:
                 self._task_queue.put(('checks_status', "Done: All clean"))
 
@@ -2796,14 +2787,13 @@ class QuickTranslateApp:
                                                 skip_staticinfo_knowledge=False, cancel_event=self._cancel_event)
             if pattern_summary:
                 p_total = sum(v[0] for v in pattern_summary.values())
-                n_total = sum(v[1] for v in pattern_summary.values())
-                b_total = sum(v[2] for v in pattern_summary.values())
-                x_total = sum(v[3] for v in pattern_summary.values()) if all(len(v) >= 4 for v in pattern_summary.values()) else 0
-                e_total = sum(v[4] for v in pattern_summary.values()) if all(len(v) >= 5 for v in pattern_summary.values()) else 0
-                f_total = sum(v[5] for v in pattern_summary.values()) if all(len(v) >= 6 for v in pattern_summary.values()) else 0
-                i_total = sum(v[6] for v in pattern_summary.values()) if all(len(v) >= 7 for v in pattern_summary.values()) else 0
+                b_total = sum(v[1] for v in pattern_summary.values())
+                x_total = sum(v[2] for v in pattern_summary.values()) if all(len(v) >= 3 for v in pattern_summary.values()) else 0
+                e_total = sum(v[3] for v in pattern_summary.values()) if all(len(v) >= 4 for v in pattern_summary.values()) else 0
+                f_total = sum(v[4] for v in pattern_summary.values()) if all(len(v) >= 5 for v in pattern_summary.values()) else 0
+                i_total = sum(v[5] for v in pattern_summary.values()) if all(len(v) >= 6 for v in pattern_summary.values()) else 0
                 self._log(self._format_pattern_summary(pattern_summary),
-                          'success' if (p_total + n_total + b_total + x_total + e_total + f_total + i_total) == 0 else 'warning')
+                          'success' if (p_total + b_total + x_total + e_total + f_total + i_total) == 0 else 'warning')
                 if f_total > 0:
                     self._log(f"CRITICAL formula text: {output_folder / 'FormulaText'}", 'warning')
                 if i_total > 0:
@@ -2846,10 +2836,10 @@ class QuickTranslateApp:
             formula_total_all = 0
             if pattern_summary:
                 check_total = sum(sum(v) for v in pattern_summary.values())
-                bracket_total_all = sum(v[2] for v in pattern_summary.values())
-                broken_total_all = sum(v[3] for v in pattern_summary.values()) if all(len(v) >= 4 for v in pattern_summary.values()) else 0
-                empty_total_all = sum(v[4] for v in pattern_summary.values()) if all(len(v) >= 5 for v in pattern_summary.values()) else 0
-                formula_total_all = sum(v[5] for v in pattern_summary.values()) if all(len(v) >= 6 for v in pattern_summary.values()) else 0
+                bracket_total_all = sum(v[1] for v in pattern_summary.values())
+                broken_total_all = sum(v[2] for v in pattern_summary.values()) if all(len(v) >= 3 for v in pattern_summary.values()) else 0
+                empty_total_all = sum(v[3] for v in pattern_summary.values()) if all(len(v) >= 4 for v in pattern_summary.values()) else 0
+                formula_total_all = sum(v[4] for v in pattern_summary.values()) if all(len(v) >= 5 for v in pattern_summary.values()) else 0
             grand_total = korean_total + check_total + quality_total
 
             if grand_total == 0:
@@ -2866,7 +2856,7 @@ class QuickTranslateApp:
                 if empty_total_all:
                     critical_parts.append(f"{empty_total_all} empty Str")
                 critical_note = f", {', '.join(critical_parts)}" if critical_parts else ""
-                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {check_total} pattern/newline/bracket/xml/empty/formula{critical_note}, {quality_total} quality)", 'warning')
+                self._log(f"Total issues: {grand_total} ({korean_total} Korean, {check_total} pattern/bracket/xml/empty/formula/integrity{critical_note}, {quality_total} quality)", 'warning')
                 self._log(f"Results written to: {output_folder}", 'info')
                 self._task_queue.put(('checks_status', f"Done: {grand_total} issues ({korean_total}K + {check_total}P + {quality_total}Q)"))
 
