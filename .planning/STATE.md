@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Real Data + Dual Platform
 status: executing
+stopped_at: Completed 14-02-PLAN.md
+last_updated: "2026-03-15T07:20:35.306Z"
+last_activity: 2026-03-15 -- Plan 01 CLI merge/export/detect commands
+progress:
+  total_phases: 8
+  completed_phases: 8
+  total_plans: 16
+  completed_plans: 16
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v2.0
+milestone_name: Real Data + Dual Platform
+status: executing
 stopped_at: Completed 13-02-PLAN.md
 last_updated: "2026-03-15T07:09:21.775Z"
 last_activity: 2026-03-15 -- Plan 02 AI Summary frontend display in ContextTab
 progress:
-  total_phases: 8
+  [██████████] 100%
   completed_phases: 7
   total_plans: 14
   completed_plans: 14
@@ -87,6 +103,7 @@ Progress: [███████████████████░] 95% (Ph
 | Phase 13 P01 | 3min | 2 tasks | 3 files |
 | Phase 13 P02 | 2min | 1 task  | 1 file  |
 | 14    | 01   | 3min     | 1     | 2     |
+| Phase 14 P02 | 5min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -138,6 +155,7 @@ Progress: [███████████████████░] 95% (Ph
 - [Phase 13]: In-memory dict cache per StringID with explicit clear_cache() for AI summaries
 - [Phase 13]: AI summary section in ContextTab with status-driven conditional rendering (unavailable badge vs summary text)
 - [Phase 14]: CLI commands use requests.get for binary export, api() for JSON endpoints, sys.argv parsing for consistency
+- [Phase 14]: XML fixtures use LocStr element tags under GameData root (matching real game data format)
 
 ### Pending Todos
 
@@ -151,6 +169,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T07:18:00Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-03-15T07:20:35.303Z
+Stopped at: Completed 14-02-PLAN.md
 Resume: `/gsd:execute-phase 14` to continue Phase 14 Plan 02

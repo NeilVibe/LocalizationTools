@@ -31,7 +31,7 @@
 - [x] **Phase 11: Image & Audio Pipeline** - DDS-to-PNG conversion, WEM audio playback, real data flowing to context tabs (completed 2026-03-15)
 - [x] **Phase 12: Game Dev Merge** - Position-aware XML merge at node/attribute/children depth (completed 2026-03-15)
 - [x] **Phase 13: AI Summaries** - Qwen3 via Ollama for contextual summaries with caching and graceful fallback (completed 2026-03-15)
-- [ ] **Phase 14: E2E Validation + CLI** - Round-trip integration tests and CLI coverage for merge/export operations
+- [x] **Phase 14: E2E Validation + CLI** - Round-trip integration tests and CLI coverage for merge/export operations (completed 2026-03-15)
 
 ## Phase Details
 
@@ -178,4 +178,4 @@ Note: Phase 11 and 13 depend only on Phase 07 and could execute in parallel with
 | 11. Image & Audio Pipeline | 2/2 | Complete    | 2026-03-15 | - |
 | 12. Game Dev Merge | 2/2 | Complete    | 2026-03-15 | - |
 | 13. AI Summaries | 2/2 | Complete    | 2026-03-15 | - |
-| 14. E2E Validation + CLI | 1/2 | In Progress|  | - |
+| 14. E2E Validation + CLI | 2/2 | Complete   | 2026-03-15 | - |
