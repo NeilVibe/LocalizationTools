@@ -12,6 +12,7 @@
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
   import CodexSearchBar from "$lib/components/ldm/CodexSearchBar.svelte";
+  import PlaceholderImage from "$lib/components/ldm/PlaceholderImage.svelte";
   import CodexEntityDetail from "$lib/components/ldm/CodexEntityDetail.svelte";
   import { onMount } from "svelte";
   import { get } from "svelte/store";
@@ -46,6 +47,7 @@
   let loadingList = $state(false);
   let loadingDetail = $state(false);
   let apiError = $state(null);
+  let failedImages = $state(new Set());
 
   // Sorted tab list (exclude 'knowledge' internal type)
   let tabList = $derived(
@@ -265,13 +267,19 @@
           {#each entities as entity (entity.strkey)}
             <button class="entity-card" onclick={() => selectEntity(entity)}>
               <div class="card-image">
-                {#if entity.image_texture}
+                {#if entity.image_texture && !failedImages.has(entity.strkey)}
                   <img
                     src="{API_BASE}/api/ldm/mapdata/thumbnail/{entity.image_texture}"
                     alt={entity.name}
                     class="card-thumb"
-                    onerror={(e) => { e.target.style.display = 'none'; }}
+                    onerror={() => {
+                      const next = new Set(failedImages);
+                      next.add(entity.strkey);
+                      failedImages = next;
+                    }}
                   />
+                {:else}
+                  <PlaceholderImage entityType={entity.entity_type} entityName={entity.name} />
                 {/if}
               </div>
               <div class="card-info">

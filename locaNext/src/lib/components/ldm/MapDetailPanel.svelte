@@ -165,9 +165,8 @@
     font-weight: 600;
     color: var(--cds-text-01);
     margin: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .close-btn {
@@ -208,6 +207,8 @@
     color: var(--cds-text-01);
     line-height: 1.5;
     white-space: pre-line;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .npc-list {
@@ -231,6 +232,8 @@
     font-size: 0.8125rem;
     cursor: pointer;
     transition: background 0.15s;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .npc-link:hover {
