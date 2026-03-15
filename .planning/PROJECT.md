@@ -51,9 +51,19 @@ The platform delivers real, working localization workflows — real XML parsing,
 - ✓ AINAME-01 through AINAME-03 — Naming coherence, FAISS similarity, Qwen3 suggestions — v3.0
 - ✓ PLACEHOLDER-01 through PLACEHOLDER-03 — Styled SVG placeholders for missing media — v3.0
 
-### Active
+### Active — v3.1
 
-(No active milestone — v3.0 complete. Run `/gsd:new-milestone` for v4.0.)
+## Current Milestone: v3.1 Debug + Polish + Svelte 5 Migration
+
+**Goal:** Fix all runtime bugs from v3.0 code review, migrate entire frontend from Svelte 4 event patterns to pure Svelte 5 Runes, and polish UI/UX across all v3.0 features.
+
+**Target features:**
+- Full Svelte 5 migration — purge createEventDispatcher/on: across VirtualGrid, LDM.svelte, all v3.0 components
+- Fix 20 bugs from 3-agent swarm audit (crashes, broken flows, bad UX, cosmetic)
+- Backend fixes — gamedata path, WorldMap singleton, error handling
+- UIUX polish — accessibility (aria-expanded, keyboard nav), error states, visual consistency
+- Loading state fixes — debounce cleanup, infinite spinners
+- Fixture test repair — stale pipeline test reference
 
 ### Out of Scope
 
