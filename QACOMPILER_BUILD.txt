@@ -161,3 +161,4 @@ Build 022: Enrich GUI log output — timing, per-user stats, conflict counts, KR
 Build 023: Add WorldPosition column to Region generator
 Build 024: Add /teleport command to WorldPosition column
 Build 025: Revamp gimmick generator (folder tabs, SealData.Desc, /create gimmick), region shop teleport via AliasName, Knowledge_Contents tab with 3-hop position chain
+Build 026: Filter Knowledge_Contents — only show entries with resolved teleport position
