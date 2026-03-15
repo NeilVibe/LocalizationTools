@@ -3,29 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Real Data + Dual Platform
 status: executing
-stopped_at: Completed 11-01-PLAN.md
-last_updated: "2026-03-15T03:25:32.512Z"
-last_activity: 2026-03-15 -- Plan 01 ExportService (XML, Excel, Text)
+stopped_at: Completed 11-02-PLAN.md
+last_updated: "2026-03-15T03:28:43Z"
+last_activity: 2026-03-15 -- Plan 02 Media Streaming Endpoints
 progress:
   total_phases: 8
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 10
-  completed_plans: 9
----
-
----
-gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Real Data + Dual Platform
-status: executing
-stopped_at: Completed 10-01-PLAN.md (Phase 10 complete)
-last_updated: "2026-03-15T03:07:04Z"
-last_activity: 2026-03-15 -- Plan 01 ExportService (XML, Excel, Text)
-progress:
-  total_phases: 8
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  completed_plans: 10
 ---
 
 # Project State
@@ -35,17 +20,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Real, working localization workflows -- real XML parsing, real merge logic, real image/audio, AI summaries -- all local, dual-mode for translators and game developers.
-**Current focus:** Phase 10 -- Export Pipeline
+**Current focus:** Phase 11 -- Image/Audio Pipeline
 
 ## Current Position
 
 Milestone: v2.0 Real Data + Dual Platform
-Phase: 10 of 14 (Export Pipeline) -- Plan 01 COMPLETE
-Plan: 1 of 1 in current phase (done)
+Phase: 11 of 14 (Image/Audio Pipeline) -- Plan 02 COMPLETE
+Plan: 2 of 2 in current phase (done)
 Status: Executing
-Last activity: 2026-03-15 -- Plan 01 ExportService (XML, Excel, Text)
+Last activity: 2026-03-15 -- Plan 02 Media Streaming Endpoints
 
-Progress: [██████████] 100% (Phase 10 complete)
+Progress: [██████████] 100% (Phase 11 complete)
 
 ## Performance Metrics
 
@@ -65,7 +50,8 @@ Progress: [██████████] 100% (Phase 10 complete)
 | 09    | 01   | 4min     | 2     | 5     |
 | 09    | 02   | 4min     | 2     | 6     |
 | 10    | 01   | 4min     | 2     | 3     |
-| Phase 11 P01 | 2min | 1 tasks | 2 files |
+| 11    | 01   | 2min     | 1     | 2     |
+| 11    | 02   | 2min     | 2     | 3     |
 
 ## Accumulated Context
 
@@ -103,6 +89,8 @@ Progress: [██████████] 100% (Phase 10 complete)
 - [Phase 10]: EU 14-column order: StrOrigin|ENG|Str|Correction|TextState|STATUS|COMMENT|MEMO1|MEMO2|Category|FileName|StringID|DescOrigin|Desc
 - [Phase 11]: Pillow native DDS support (no pillow-dds needed) -- verified with real DDS fixture
 - [Phase 11]: OrderedDict LRU cache for PNG thumbnails with explicit size control and clear_caches()
+- [Phase 11]: asyncio.to_thread wraps blocking Pillow/vgmstream calls in streaming endpoints
+- [Phase 11]: Cache-Control: public, max-age=86400 for thumbnail responses (24h browser cache)
 
 ### Pending Todos
 
@@ -117,6 +105,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T03:25:32.509Z
-Stopped at: Completed 11-01-PLAN.md
-Resume: `/gsd:execute-phase 11` to start Phase 11
+Last session: 2026-03-15T03:28:43Z
+Stopped at: Completed 11-02-PLAN.md (Phase 11 complete)
+Resume: `/gsd:execute-phase 12` to start Phase 12

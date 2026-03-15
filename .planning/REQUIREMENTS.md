@@ -29,7 +29,7 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 - [x] **MEDIA-01**: DDS textures convert to PNG via Pillow+pillow-dds for browser display
 - [x] **MEDIA-02**: WEM audio files play back via vgmstream-cli conversion or WAV fallback
-- [ ] **MEDIA-03**: Real data flows from MapDataService → API endpoint → ImageTab/AudioTab components
+- [x] **MEDIA-03**: Real data flows from MapDataService → API endpoint → ImageTab/AudioTab components
 - [x] **MEDIA-04**: Missing image/audio shows graceful placeholder (not broken icon)
 
 ### Translator Merge
@@ -139,7 +139,7 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 | TMERGE-07 | Phase 10 | Complete |
 | MEDIA-01 | Phase 11 | Complete |
 | MEDIA-02 | Phase 11 | Complete |
-| MEDIA-03 | Phase 11 | Pending |
+| MEDIA-03 | Phase 11 | Complete |
 | MEDIA-04 | Phase 11 | Complete |
 | GMERGE-01 | Phase 12 | Pending |
 | GMERGE-02 | Phase 12 | Pending |
