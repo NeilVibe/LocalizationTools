@@ -9,7 +9,7 @@
    * Phase 5.1: Contextual Intelligence & QA Engine (Plan 05)
    */
   import { InlineLoading } from "carbon-components-svelte";
-  import { MachineLearningModel, SettingsAdjust } from "carbon-icons-svelte";
+  import { MachineLearningModel, SettingsAdjust, WarningAlt } from "carbon-icons-svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
   import EntityCard from "$lib/components/ldm/EntityCard.svelte";
@@ -25,6 +25,8 @@
   let loading = $state(false);
   let error = $state(null);
   let notConfigured = $state(false);
+  let aiSummary = $state(null);
+  let aiStatus = $state(null);
 
   // Fetch context when selected row changes
   $effect(() => {
@@ -34,6 +36,8 @@
       detectedTerms = [];
       error = null;
       notConfigured = false;
+      aiSummary = null;
+      aiStatus = null;
       return;
     }
 
@@ -52,14 +56,20 @@
           const data = await response.json();
           entities = data.entities || [];
           detectedTerms = data.detected_in_text || [];
+          aiSummary = data.ai_summary || null;
+          aiStatus = data.ai_status || null;
         } else if (response.status === 404) {
           entities = [];
           detectedTerms = [];
+          aiSummary = null;
+          aiStatus = null;
         } else if (response.status === 503) {
           // Service not configured
           notConfigured = true;
           entities = [];
           detectedTerms = [];
+          aiSummary = null;
+          aiStatus = null;
         } else {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -69,6 +79,8 @@
         error = err.message;
         entities = [];
         detectedTerms = [];
+        aiSummary = null;
+        aiStatus = null;
       })
       .finally(() => {
         loading = false;
@@ -153,6 +165,19 @@
           <EntityCard {entity} />
         {/each}
       </div>
+
+      <!-- AI Summary -->
+      {#if aiStatus === 'unavailable'}
+        <div class="ai-badge-unavailable" data-testid="ai-unavailable-badge">
+          <WarningAlt size={14} />
+          <span>AI unavailable</span>
+        </div>
+      {:else if aiSummary}
+        <div class="ai-summary-section" data-testid="ai-summary">
+          <span class="ai-label">AI Summary</span>
+          <p class="ai-text">{aiSummary}</p>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
@@ -260,5 +285,43 @@
     font-size: 0.6875rem;
     color: var(--cds-text-03);
     font-weight: 500;
+  }
+
+  /* AI Summary section */
+  .ai-summary-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    background: var(--cds-layer-02);
+    border-radius: 4px;
+    border: 1px solid var(--cds-border-subtle-01);
+  }
+
+  .ai-badge-unavailable {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.6875rem;
+    color: var(--cds-text-03);
+    padding: 6px 8px;
+    background: var(--cds-layer-02);
+    border-radius: 4px;
+  }
+
+  .ai-label {
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: var(--cds-text-03);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .ai-text {
+    font-size: 0.75rem;
+    color: var(--cds-text-01);
+    line-height: 1.5;
+    margin: 0;
+    white-space: pre-line;
   }
 </style>
