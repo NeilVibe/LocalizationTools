@@ -1,5 +1,14 @@
 # Milestones
 
+## v3.0 Game Dev Platform + AI Intelligence (Shipped: 2026-03-15)
+
+**Phases completed:** 7 phases, 14 plans, 0 tasks
+
+**Key accomplishments:**
+- (none recorded)
+
+---
+
 ## v3.0 Game Dev Platform + AI Intelligence (In Progress)
 
 **Phases:** 15-21 (7 phases)

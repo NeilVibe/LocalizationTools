@@ -8,14 +8,16 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
-## Current State (v2.0 shipped 2026-03-15)
+## Current State (v3.0 shipped 2026-03-16)
 
 - v1.0: 7 phases, 20 plans, 42 requirements — architecture scaffolds + tests
 - v2.0: 8 phases, 17 plans, 40 requirements — real data pipelines + merge + AI
-- 478 LDM tests (254 new in v2.0), zero regressions
-- 9 new services, 4 new routes, dual UI mode
-- Post-milestone review: 11 issues found and fixed
-- Full offline/online parity maintained across both milestones
+- v3.0: 7 phases, 14 plans, 45 requirements — game dev platform + AI intelligence
+- ~200+ LDM tests, 89 commits, 25K+ lines added in v3.0
+- 7 new services (Category, AISuggestion, GameDataBrowse, GameDataEdit, Codex, WorldMap, NamingCoherence)
+- 3 new pages (GameDevPage, CodexPage, WorldMapPage), 12 new Svelte components
+- Post-milestone review: 9 issues found and fixed (1 build-breaking, 2 critical, 6 important)
+- Full offline/online parity maintained across all three milestones
 
 ## Requirements
 
@@ -39,21 +41,19 @@ The platform delivers real, working localization workflows — real XML parsing,
 - ✓ CLI-01 through CLI-04 — CLI merge/export/detect, E2E round-trip — v2.0
 - ✓ FIX-01 through FIX-03 — Offline TM visibility, TM paste, folder 404 — v2.0
 
-### Active — v3.0
+- ✓ MOCK-01 through MOCK-08 — Mock gamedata universe, StaticInfo XMLs, language data, cross-refs — v3.0
+- ✓ CAT-01 through CAT-03 — Category classification, grid column, multi-select filter — v3.0
+- ✓ QA-01 through QA-06 — Term Check, Line Check, inline QA badges, dismiss — v3.0
+- ✓ AISUG-01 through AISUG-05 — AI translation suggestions, blended confidence, graceful fallback — v3.0
+- ✓ GDEV-01 through GDEV-07 — File explorer, hierarchical grid, inline edit, dynamic columns — v3.0
+- ✓ CODEX-01 through CODEX-05 — Entity encyclopedia, semantic search, DDS/WEM media — v3.0
+- ✓ MAP-04, MAP-05 — World map nodes, route connections, pan/zoom, Codex links — v3.0
+- ✓ AINAME-01 through AINAME-03 — Naming coherence, FAISS similarity, Qwen3 suggestions — v3.0
+- ✓ PLACEHOLDER-01 through PLACEHOLDER-03 — Styled SVG placeholders for missing media — v3.0
 
-## Current Milestone: v3.0 Game Dev Platform + AI Intelligence
+### Active
 
-**Goal:** Build a full Game Dev authoring experience with AI-powered suggestions, interactive Codex, QA pipeline integration, and category clustering — all powered by a comprehensive mock gamedata universe for E2E testing.
-
-**Target features:**
-- Full mock gamedata universe (reverse-engineered from QACompiler/NewScripts staticinfo patterns)
-- Game Dev Grid with file explorer matching real gamedata folder structure
-- Game World Codex with interactive map, character/item encyclopedia
-- AI context summaries and translation suggestions via Qwen3 (right column, suggestions only)
-- AI naming coherence suggestions for game devs (confirm in grid, never auto-replace)
-- QuickCheck QA pipeline integration (Term Check + Line Check in editor)
-- Category clustering for translation grid (item/quest/UI/system via LanguageDataExporter logic)
-- Auto-generated placeholder images/audio for missing assets
+(No active milestone — v3.0 complete. Run `/gsd:new-milestone` for v4.0.)
 
 ### Out of Scope
 
@@ -70,7 +70,7 @@ The platform delivers real, working localization workflows — real XML parsing,
 - **NewScripts patterns fully ported** — XMLParsingEngine, merge engine, postprocess, export all based on battle-tested code
 - **Dual platform** — Translator mode (LocStr files) + Game Dev mode (non-LocStr XML) with automatic detection
 - **AI pipeline operational** — Qwen3-4B via Ollama at 117 tok/s (RTX 4070 Ti, CUDA in WSL2)
-- **v3.0 in progress** — Game Dev Platform, Codex, AI Suggestions, QA Pipeline, Category Clustering, Mock GameData
+- **v3.0 shipped** — Game Dev Platform, Codex, World Map, AI Suggestions, QA Pipeline, Category Clustering, Naming Coherence, Mock GameData
 - Landing page live on Netlify
 - Tech stack: Electron + Svelte 5 (Runes) + FastAPI + SQLite/PostgreSQL + FAISS + Model2Vec + Qwen3/Ollama
 
@@ -103,6 +103,10 @@ The platform delivers real, working localization workflows — real XML parsing,
 | httpx direct for Ollama (not ollama package) | Zero new dependencies, httpx already installed | ✓ Good — simple, reliable |
 | Separate text_matching.py for merge | LocaNext's normalize_text differs from QuickTranslate's | ✓ Good — prevents matching bugs |
 | Post-milestone code review | Catch issues before archiving | ✓ Good — found 11 real issues including 2 crashes |
+| v3.0 post-milestone review | Same pattern as v2.0 | ✓ Good — found 9 issues (1 build-breaking, 2 critical) |
+| d3-zoom for World Map | SVG pan/zoom for 14 nodes, no Leaflet needed | ✓ Good — lightweight, correct paradigm |
+| CodexService + FAISS for entity search | Reuse existing embedding infrastructure | ✓ Good — semantic search across all entity types |
+| Route-handler category filtering | Keep repo layer clean, filter in Python | ✓ Good — simpler than DB-side filtering |
 
 ---
-*Last updated: 2026-03-15 after v3.0 milestone started*
+*Last updated: 2026-03-16 after v3.0 milestone completed*
