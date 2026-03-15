@@ -140,17 +140,8 @@ def parse_corrections_from_xml(
                         else:
                             entry["desc_corrected"] = desc_value
 
-                # Ellipsis detection (warn only — does NOT block transfer)
-                if ellipsis_report is not None and '\u2026' in str_value:
-                    ellipsis_report.append({
-                        'string_id': string_id,
-                        'column': 'Str',
-                    })
-                if ellipsis_report is not None and entry.get("desc_corrected") and '\u2026' in entry["desc_corrected"]:
-                    ellipsis_report.append({
-                        'string_id': string_id,
-                        'column': 'Desc',
-                    })
+                # NOTE: Ellipsis detection removed — postprocess Step 7 auto-fixes
+                # Unicode ellipsis (…) to three dots for non-CJK languages.
 
                 corrections.append(entry)
     except Exception as e:

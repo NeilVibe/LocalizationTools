@@ -386,17 +386,8 @@ def read_corrections_from_excel(
                 if dialogvoice is not None:
                     entry["_original_dialogvoice"] = str(dialogvoice).strip()
 
-                # Ellipsis detection (warn only — does NOT block transfer)
-                if ellipsis_report is not None and '\u2026' in corrected_str:
-                    ellipsis_report.append({
-                        'string_id': _report_id,
-                        'column': 'Correction',
-                    })
-                if ellipsis_report is not None and entry.get("desc_corrected") and '\u2026' in entry["desc_corrected"]:
-                    ellipsis_report.append({
-                        'string_id': _report_id,
-                        'column': 'Desc',
-                    })
+                # NOTE: Ellipsis detection removed — postprocess Step 7 auto-fixes
+                # Unicode ellipsis (…) to three dots for non-CJK languages.
 
                 corrections.append(entry)
             except (IndexError, AttributeError):

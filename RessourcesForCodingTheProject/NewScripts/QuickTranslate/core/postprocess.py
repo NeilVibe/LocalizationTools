@@ -1196,12 +1196,17 @@ def run_preprocess_excel(xlsx_path: Path, dry_run: bool = False) -> dict:
         logger.error("openpyxl required for Excel preprocess — install with: pip install openpyxl")
         return {"total_fixes": 0, "error": "openpyxl not installed"}
 
+    # Detect CJK from filename (e.g. corrections_KOR.xlsx, languagedata_jpn.xlsx)
+    _is_cjk_file = any(code in xlsx_path.stem.upper()
+                        for code in ("KOR", "JPN", "ZHO-CN", "ZHO_CN", "ZHO-TW", "ZHO_TW"))
+
     result = {
         "linebreaks_fixed": 0,
         "apostrophes_normalized": 0,
         "invisibles_cleaned": 0,
         "hyphens_normalized": 0,
         "entities_decoded": 0,
+        "ellipsis_normalized": 0,
         "total_fixes": 0,
     }
 
@@ -1290,6 +1295,13 @@ def run_preprocess_excel(xlsx_path: Path, dry_run: bool = False) -> dict:
                             result["entities_decoded"] += 1
                         text = ent
 
+                        # Step 6: Normalize ellipsis (non-CJK only)
+                        if not _is_cjk_file:
+                            ell = _normalize_ellipsis(text)
+                            if ell != text:
+                                result["ellipsis_normalized"] += 1
+                            text = ell
+
                         if text != original:
                             cell.value = text
                     except Exception as e:
@@ -1302,6 +1314,7 @@ def run_preprocess_excel(xlsx_path: Path, dry_run: bool = False) -> dict:
             + result["invisibles_cleaned"]
             + result["hyphens_normalized"]
             + result["entities_decoded"]
+            + result["ellipsis_normalized"]
         )
 
         if result["total_fixes"] > 0 and not dry_run:
