@@ -140,8 +140,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 20-01: TBD
-- [ ] 20-02: TBD
+- [ ] 20-01-PLAN.md -- WorldMap backend service + schemas + REST endpoint + tests (MAP-01, MAP-02, MAP-03, MAP-04)
+- [ ] 20-02-PLAN.md -- WorldMap frontend SVG canvas + d3-zoom + tooltip + detail panel + navigation (MAP-01 through MAP-05)
 
 ### Phase 21: AI Naming Coherence + Placeholders
 **Goal**: Game devs get naming pattern suggestions when editing entity names, and all missing media shows styled placeholders instead of broken/blank states
