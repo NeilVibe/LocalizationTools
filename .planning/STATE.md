@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Debug + Polish + Svelte 5 Migration
 status: unknown
-stopped_at: Completed 25-07-PLAN.md
-last_updated: "2026-03-15T22:46:35.661Z"
+stopped_at: Completed 25-06-PLAN.md
+last_updated: "2026-03-15T22:46:49.819Z"
 progress:
   total_phases: 4
   completed_phases: 3
@@ -64,6 +64,7 @@ progress:
 - [Phase 25]: AI tests accept 200 OR 503 (model offline) -- never require perfect AI output
 - [Phase 25]: Accept flexible status codes (401/403) for auth failures since FastAPI middleware varies
 - [Phase 25]: [25-07]: Parametrized column detection across 10 entity types for comprehensive coverage
+- [Phase 25]: Renamed test_tm_search.py to test_tm_search_api.py to avoid overwriting existing TMSearcher unit tests
 
 ### Pending Todos
 
@@ -79,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T22:46:35.659Z
-Stopped at: Completed 25-07-PLAN.md
+Last session: 2026-03-15T22:46:49.817Z
+Stopped at: Completed 25-06-PLAN.md
 Resume file: None
