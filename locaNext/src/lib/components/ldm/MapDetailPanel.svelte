@@ -125,7 +125,7 @@
         kind="primary"
         size="small"
         icon={Book}
-        on:click={openInCodex}
+        onclick={openInCodex}
       >
         Open in Codex
       </Button>
