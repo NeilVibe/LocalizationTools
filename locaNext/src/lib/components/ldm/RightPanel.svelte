@@ -2,7 +2,7 @@
   /**
    * RightPanel.svelte - Tabbed side panel replacing TMQAPanel
    *
-   * Tabs: TM | Image | Audio | AI Context
+   * Tabs: TM | Image | Audio | AI Context | AI Suggest
    * QA issues shown as persistent footer (always visible regardless of tab).
    * Preserves resize and collapse behavior from TMQAPanel.
    */
@@ -12,7 +12,8 @@
     DataBase,
     Image,
     Music,
-    MachineLearningModel
+    MachineLearningModel,
+    AiRecommend
   } from "carbon-icons-svelte";
   import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
@@ -20,6 +21,7 @@
   import ImageTab from "$lib/components/ldm/ImageTab.svelte";
   import AudioTab from "$lib/components/ldm/AudioTab.svelte";
   import ContextTab from "$lib/components/ldm/ContextTab.svelte";
+  import AISuggestionsTab from "$lib/components/ldm/AISuggestionsTab.svelte";
   import QAFooter from "$lib/components/ldm/QAFooter.svelte";
 
   const dispatch = createEventDispatcher();
@@ -43,7 +45,8 @@
     { id: 'tm', label: 'TM', icon: DataBase },
     { id: 'image', label: 'Image', icon: Image },
     { id: 'audio', label: 'Audio', icon: Music },
-    { id: 'context', label: 'AI Context', icon: MachineLearningModel }
+    { id: 'context', label: 'AI Context', icon: MachineLearningModel },
+    { id: 'ai-suggest', label: 'AI Suggest', icon: AiRecommend }
   ];
 
   // Resize state (copied from TMQAPanel)
@@ -87,6 +90,10 @@
 
   function handleApplyTM(event) {
     dispatch('applyTM', event.detail);
+  }
+
+  function handleApplySuggestion(event) {
+    dispatch('applySuggestion', event.detail);
   }
 </script>
 
@@ -145,6 +152,8 @@
           <AudioTab {selectedRow} />
         {:else if activeTab === 'context'}
           <ContextTab {selectedRow} />
+        {:else if activeTab === 'ai-suggest'}
+          <AISuggestionsTab {selectedRow} on:applySuggestion={handleApplySuggestion} />
         {/if}
       </div>
       {/key}
