@@ -1,166 +1,125 @@
-# Requirements: LocaNext v2.0
+# Requirements: LocaNext v3.0
 
 **Defined:** 2026-03-15
-**Core Value:** Real, working localization workflows -- real XML parsing, real merge logic, real image/audio, AI summaries -- all local, dual-mode for translators and game developers.
+**Core Value:** Game Dev authoring platform with AI-powered suggestions, interactive Codex, and integrated QA — all local, zero cloud dependency.
 
-## v2.0 Requirements
+## v3.0 Requirements
 
-Requirements for v2.0 milestone. Each maps to roadmap phases.
+Requirements for v3.0 milestone. Each maps to roadmap phases.
 
-### Dual UI
+### Mock Gamedata
 
-- [x] **DUAL-01**: System detects file type (LocStr nodes = Translator, other nodes = Game Dev) and switches UI mode automatically
-- [x] **DUAL-02**: Translator mode shows translation-specific columns (Source, Target, Status, Match%, TM Source)
-- [x] **DUAL-03**: Game Dev mode shows XML-structure columns (NodeName, Attributes, Values, Children count)
-- [x] **DUAL-04**: Mode indicator visible in editor header showing current file type
-- [x] **DUAL-05**: Both modes share the same virtual grid infrastructure with different column configs
+- [ ] **MOCK-01**: System generates a realistic mock gamedata folder structure matching real staticinfo XML patterns (items, characters, regions, skills, knowledge, gimmicks)
+- [ ] **MOCK-02**: Mock data includes cross-reference chains between entities (KnowledgeKey, StrKey, LearnKnowledgeKey links)
+- [ ] **MOCK-03**: Mock data includes DDS image file references and WEM audio file references per entity
+- [ ] **MOCK-04**: Mock data includes language data files (languagedata_eng.xml, etc.) with LocStr entries matching mock Korean source text
+- [ ] **MOCK-05**: Mock data includes EXPORT index files (.loc.xml) with StringID mappings per file
+- [ ] **MOCK-06**: Mock data includes region WorldPosition coordinates and NodeWaypointInfo route data for map visualization
+- [ ] **MOCK-07**: Mock universe has sufficient volume for meaningful testing (100+ items, 30+ characters, 10+ regions, 50+ skills, 20+ gimmicks)
+- [ ] **MOCK-08**: Mock data passes round-trip validation (parse → merge → export → re-parse produces consistent results)
 
-### XML Parsing
+### Category Clustering
 
-- [x] **XML-01**: MapDataService parses real KnowledgeInfo XMLs and builds StrKey→UITextureName→DDS chains
-- [x] **XML-02**: GlossaryService wires to real game data and builds Aho-Corasick automaton from staticinfo
-- [x] **XML-03**: ContextService resolves multi-pass KnowledgeKey chains with full metadata
-- [x] **XML-04**: XML sanitizer + recovery pattern handles malformed game data files gracefully
-- [x] **XML-05**: Cross-reference chain resolution works across multiple XML files (join keys)
-- [x] **XML-06**: Language table parsing extracts all language columns from loc.xml files correctly
-- [x] **XML-07**: StringIdConsumer pattern provides fresh consumer per language for deduplication
+- [ ] **CAT-01**: System auto-classifies StringIDs into content categories (Item, Quest, UI, System, Character, Skill, Region, Gimmick) using LanguageDataExporter two-tier logic
+- [ ] **CAT-02**: Category column is visible and filterable in the translation grid
+- [ ] **CAT-03**: User can filter grid by one or more categories to focus on specific content types
 
-### Image & Audio Pipeline
+### QA Pipeline
 
-- [x] **MEDIA-01**: DDS textures convert to PNG via Pillow+pillow-dds for browser display
-- [x] **MEDIA-02**: WEM audio files play back via vgmstream-cli conversion or WAV fallback
-- [x] **MEDIA-03**: Real data flows from MapDataService → API endpoint → ImageTab/AudioTab components
-- [x] **MEDIA-04**: Missing image/audio shows graceful placeholder (not broken icon)
+- [ ] **QA-01**: Term Check detects glossary terms present in source but missing in target translation using dual Aho-Corasick automaton
+- [ ] **QA-02**: Line Check detects same source text translated inconsistently across the project
+- [ ] **QA-03**: QA results display inline in the editor with severity tiers (ERROR/WARNING/INFO)
+- [ ] **QA-04**: User can dismiss individual QA findings per cell (prevents false positive fatigue)
+- [ ] **QA-05**: QA checks run on-demand via a dedicated QA panel in the editor
+- [ ] **QA-06**: QA panel shows summary counts per check type (term issues, line issues)
 
-### Translator Merge
+### AI Suggestions
 
-- [x] **TMERGE-01**: Exact StringID match transfers translation values between files
-- [x] **TMERGE-02**: StrOrigin match (source text match) transfers when StringID differs
-- [x] **TMERGE-03**: Fuzzy matching via Model2Vec finds similar source strings above threshold
-- [x] **TMERGE-04**: Postprocessing pipeline applies 7-step CJK-safe cleanup after transfer
-- [x] **TMERGE-05**: Export produces correct XML with br-tag preservation
-- [x] **TMERGE-06**: Export produces Excel format with correct column structure
-- [x] **TMERGE-07**: Export produces plain tabulated text (StringID + source + translation)
+- [ ] **AISUG-01**: AI translation suggestions appear in a right-side panel for the selected segment using Qwen3
+- [ ] **AISUG-02**: Suggestions are ranked with confidence scores (embedding similarity + LLM certainty blend)
+- [ ] **AISUG-03**: User clicks a suggestion to apply it to the translation field (never auto-replace)
+- [ ] **AISUG-04**: AI suggestions consider context (entity type, parent hierarchy, surrounding segments) in prompts
+- [ ] **AISUG-05**: Graceful fallback when Qwen3/Ollama is unavailable (show "AI unavailable" state, no crash)
 
-### Game Dev Merge
+### AI Naming Coherence
 
-- [x] **GMERGE-01**: Global export identifies all changed nodes across entire file
-- [x] **GMERGE-02**: Merge operates at node level (add/remove/modify nodes)
-- [x] **GMERGE-03**: Merge operates at attribute value level within nodes
-- [x] **GMERGE-04**: Merge handles parent→children→sub-children depth correctly
-- [x] **GMERGE-05**: Position-based merge preserves XML document order (not match-type based)
+- [ ] **AINAME-01**: When editing a Name field in Game Dev mode, system shows similar existing entity names via Model2Vec embedding search
+- [ ] **AINAME-02**: AI suggests coherent naming alternatives based on existing patterns via Qwen3
+- [ ] **AINAME-03**: Suggestions display as a non-blocking panel — game dev confirms in the grid, never auto-replace
 
-### AI Summaries
+### Game Dev Grid
 
-- [x] **AISUM-01**: Qwen3-4B/8B endpoint via Ollama responds with structured JSON
-- [x] **AISUM-02**: Character/item/region metadata generates 2-line contextual summary
-- [x] **AISUM-03**: Summary appears in ContextTab for selected string
-- [x] **AISUM-04**: Summaries cache per StringID to avoid re-generation
-- [x] **AISUM-05**: Graceful fallback when Ollama is unavailable (show "AI unavailable" badge)
-
-### CLI & Testing
-
-- [x] **CLI-01**: CLI commands cover merge operations (translator + game dev modes)
-- [x] **CLI-02**: CLI commands cover export in all formats (XML, Excel, text)
-- [x] **CLI-03**: CLI commands verify dual UI file type detection
-- [x] **CLI-04**: E2E tests validate full merge→export→verify round-trip
-
-### Bug Fixes
-
-- [x] **FIX-01**: Offline TMs appear in online TM tree (architectural fix for SQLite→PostgreSQL visibility)
-- [x] **FIX-02**: TM Paste UI flow works correctly end-to-end
-- [x] **FIX-03**: Folder fetch returns 200 (not 404) after creation
-
-## v3.0 Requirements (Deferred)
+- [ ] **GDEV-01**: File explorer panel shows gamedata folder structure matching real gamedata paths
+- [ ] **GDEV-02**: User clicks a folder/file in explorer to load its contents in the grid
+- [ ] **GDEV-03**: Grid displays XML entity hierarchy (parent-child nesting visualized with indentation/depth)
+- [ ] **GDEV-04**: User can edit Name, Desc, and text attributes of existing entities inline in the grid
+- [ ] **GDEV-05**: Grid shows entity metadata columns appropriate to the data type (Key, StrKey, KnowledgeKey, etc.)
+- [ ] **GDEV-06**: Changes are saved back to the data model with proper XML attribute encoding (br-tag preservation)
+- [ ] **GDEV-07**: Game Dev Grid reuses virtual scroll engine for performance with large files (1000+ entities)
 
 ### Game World Codex
 
-- **CODEX-01**: Interactive world map with regions, cities, NPCs
-- **CODEX-02**: Character codex pages with images, relationships, quest appearances
-- **CODEX-03**: Item codex pages with stats, similar items via embeddings
-- **CODEX-04**: Full-text semantic search across all codex entities
+- [ ] **CODEX-01**: Character encyclopedia page shows name, image, description, race, job, quest appearances, related entities
+- [ ] **CODEX-02**: Item encyclopedia page shows name, image, description, category, stats, similar items via Model2Vec
+- [ ] **CODEX-03**: Codex is searchable via semantic search (Model2Vec + FAISS) across all entity types
+- [ ] **CODEX-04**: Both translators and game devs can access Codex pages for reference while working
+- [ ] **CODEX-05**: Codex pages show inline images (DDS→PNG) and audio playback (WEM→WAV) when available
 
-### AI Translation & Content
+### Interactive World Map
 
-- **AITRANS-01**: AI-generated translation suggestions with confidence scores
-- **AITRANS-02**: AI naming suggestions for game dev entity creation
-- **AITRANS-03**: AI autocorrection and writing quality feedback
-- **AITRANS-04**: Real-time glossary inconsistency detection while typing
+- [ ] **MAP-01**: Interactive map renders region nodes at correct WorldPosition coordinates (X, Z from XML)
+- [ ] **MAP-02**: Hover over a map node shows tooltip with name, description, and key NPCs
+- [ ] **MAP-03**: Click a map node opens detail panel linking to Codex pages (characters, items, quests in that region)
+- [ ] **MAP-04**: Route connections between nodes are visualized (from NodeWaypointInfo waypoints)
+- [ ] **MAP-05**: Map supports pan and zoom interaction (d3-zoom or equivalent)
 
-### Auto-Generation
+### Placeholder Assets
 
-- **AUTOGEN-01**: Auto-generate missing images via Nano Banana
-- **AUTOGEN-02**: Auto-generate missing audio via voice synthesis
+- [ ] **PLACEHOLDER-01**: Missing images show a styled SVG placeholder with entity name + category-specific icon instead of broken/blank state
+- [ ] **PLACEHOLDER-02**: Missing audio shows a waveform SVG placeholder with entity name and "[No Audio]" label
+- [ ] **PLACEHOLDER-03**: Placeholders are cached per StringID for consistent display
 
-### Game Dev Grid (Full CRUD)
+## Future Requirements (v4.0+)
 
-- **GDEV-01**: Game dev can create new parent/children nodes in XML
-- **GDEV-02**: Game dev can nest new children under existing parents
-- **GDEV-03**: XML schema validation before save
+### Game Dev CRUD
+- **CRUD-01**: User can create new XML nodes (items, characters, skills) with schema validation
+- **CRUD-02**: User can delete/restructure XML node hierarchy
+
+### Enterprise Integration
+- **XLIFF-01**: XLIFF/TMX import/export for TMS interoperability
+- **COLLAB-01**: Real-time collaborative editing with conflict resolution
+
+### Advanced AI
+- **SPELL-01**: Language-specific spell check and grammar checking
+- **VOICE-01**: AI voice synthesis for missing audio
+- **AUTOGEN-01**: AI image generation for placeholder assets
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Full MT engine integration (Google/DeepL) | LOCAL AI only -- no cloud dependency |
-| WYSIWYG in-context preview | MapDataGenerator provides context |
-| Plugin/extension marketplace | Core must work first |
-| Automated workflow orchestration | Enterprise TMS feature |
-| Mobile app | Desktop-first |
-| Multi-language UI | Not planned |
-| OAuth/SSO login | Email/password sufficient |
-| Real-time collaborative editing | Single-user focus for now |
+| Full CRUD (create/delete XML nodes) | Schema rules undocumented, QACompiler only reads — v4.0+ |
+| Cloud MT integration | Breaks offline-first competitive moat |
+| Real-time collaborative editing | OT/CRDT complexity too high for demo value |
+| Voice synthesis (TTS) | CJK quality too poor in open-source |
+| AI autocorrection | Qwen3-4B lacks nuance, wrong suggestions erode trust |
+| WYSIWYG in-context preview | Requires game engine integration |
+| Plugin marketplace | Premature — core features must stabilize first |
+| Drag-and-drop map editing | Map is read-only visualization, not authoring |
+| AI image generation via cloud | Contradicts offline-first architecture |
+| Spell check / grammar check | CJK support weak, false positives worse than no check |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| XML-01 | Phase 07 | Complete |
-| XML-02 | Phase 07 | Complete |
-| XML-03 | Phase 07 | Complete |
-| XML-04 | Phase 07 | Complete |
-| XML-05 | Phase 07 | Complete |
-| XML-06 | Phase 07 | Complete |
-| XML-07 | Phase 07 | Complete |
-| FIX-01 | Phase 07 | Complete |
-| FIX-02 | Phase 07 | Complete |
-| FIX-03 | Phase 07 | Complete |
-| DUAL-01 | Phase 08 | Complete |
-| DUAL-02 | Phase 08 | Complete |
-| DUAL-03 | Phase 08 | Complete |
-| DUAL-04 | Phase 08 | Complete |
-| DUAL-05 | Phase 08 | Complete |
-| TMERGE-01 | Phase 09 | Complete |
-| TMERGE-02 | Phase 09 | Complete |
-| TMERGE-03 | Phase 09 | Complete |
-| TMERGE-04 | Phase 09 | Complete |
-| TMERGE-05 | Phase 10 | Complete |
-| TMERGE-06 | Phase 10 | Complete |
-| TMERGE-07 | Phase 10 | Complete |
-| MEDIA-01 | Phase 11 | Complete |
-| MEDIA-02 | Phase 11 | Complete |
-| MEDIA-03 | Phase 11 | Complete |
-| MEDIA-04 | Phase 11 | Complete |
-| GMERGE-01 | Phase 12 | Complete |
-| GMERGE-02 | Phase 12 | Complete |
-| GMERGE-03 | Phase 12 | Complete |
-| GMERGE-04 | Phase 12 | Complete |
-| GMERGE-05 | Phase 12 | Complete |
-| AISUM-01 | Phase 13 | Complete |
-| AISUM-02 | Phase 13 | Complete |
-| AISUM-03 | Phase 13 | Complete |
-| AISUM-04 | Phase 13 | Complete |
-| AISUM-05 | Phase 13 | Complete |
-| CLI-01 | Phase 14 | Complete |
-| CLI-02 | Phase 14 | Complete |
-| CLI-03 | Phase 14 | Complete |
-| CLI-04 | Phase 14 | Complete |
+| (Populated during roadmap creation) | | |
 
 **Coverage:**
-- v2.0 requirements: 40 total
-- Mapped to phases: 40
-- Unmapped: 0
+- v3.0 requirements: 40 total
+- Mapped to phases: (pending roadmap)
+- Unmapped: (pending roadmap)
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after roadmap creation*
+*Last updated: 2026-03-15 after research synthesis*
