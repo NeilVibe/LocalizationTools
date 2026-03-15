@@ -120,11 +120,11 @@ Plans:
   3. User merges at attribute level and individual attribute values update without affecting sibling attributes
   4. User merges a file with nested parent-children-sub-children and depth is preserved correctly
   5. Merged output preserves original XML document order (position-based, not match-type-based)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 12-01: TBD
-- [ ] 12-02: TBD
+- [ ] 12-01-PLAN.md -- GameDevMergeService: parallel tree walk diff + in-place apply (GMERGE-01, GMERGE-02, GMERGE-03, GMERGE-04, GMERGE-05)
+- [ ] 12-02-PLAN.md -- bulk_update extra_data + gamedev-merge API endpoint (GMERGE-01, GMERGE-02, GMERGE-03, GMERGE-04, GMERGE-05)
 
 ### Phase 13: AI Summaries
 **Goal**: Users see AI-generated contextual summaries for game entities powered by local Qwen3 with zero cloud dependency
@@ -135,7 +135,7 @@ Plans:
   2. Summaries are cached per StringID so re-selecting the same string loads instantly without re-generation
   3. When Ollama is not running, the ContextTab shows an "AI unavailable" badge instead of errors or spinners
   4. Qwen3 endpoint returns structured JSON that the frontend parses reliably
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 13-01: TBD
@@ -149,7 +149,7 @@ Plans:
   2. CLI export commands produce XML, Excel, and plain text in all formats
   3. CLI file-type detection command correctly identifies Translator vs Game Dev files
   4. E2E round-trip test (parse real XML, merge, export, re-parse, compare) passes with zero data loss
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 14-01: TBD
