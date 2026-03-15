@@ -193,7 +193,7 @@
     {/each}
 
     <!-- Routes (dashed polylines) -->
-    {#each routes as route (route.from_node + '-' + route.to_node)}
+    {#each routes as route, i (`${route.from_node}-${route.to_node}-${i}`)}
       {@const points = getRoutePoints(route)}
       {#if points}
         <polyline

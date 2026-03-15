@@ -66,6 +66,7 @@
    * Handle node hover from MapCanvas
    */
   function handleNodeHover(node, x, y) {
+    if (selectedNode) return;  // Suppress tooltip when detail panel is open
     tooltipNode = node;
     tooltipX = x + 12;
     tooltipY = y + 12;
@@ -83,6 +84,7 @@
    */
   function handleNodeClick(node) {
     selectedNode = node;
+    tooltipNode = null;  // Clear tooltip when panel opens
   }
 
   /**
