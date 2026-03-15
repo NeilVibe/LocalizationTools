@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ItemData>
+  <Item Name="Iron Sword" Type="Weapon" Value="150" Grade="Common">
+    <Stats Attack="25" Speed="10" />
+    <Effect EffectId="BUFF_001" Duration="30">
+      <Modifier Stat="Attack" Value="+5" />
+    </Effect>
+  </Item>
+  <Item Name="Healing Potion" Type="Consumable" Value="50" Grade="Uncommon">
+    <Stats HealAmount="100" />
+  </Item>
+  <Item Name="Dragon Shield" Type="Armor" Value="500" Grade="Rare" Set="DragonSet">
+    <Stats Defense="40" Block="15" />
+    <Effect EffectId="BUFF_002" Duration="60">
+      <Modifier Stat="Defense" Value="+10" />
+      <Modifier Stat="Block" Value="+5" />
+    </Effect>
+  </Item>
+  <!-- This is a comment that should be skipped -->
+  <Item Name="Magic Ring" Type="Accessory" Value="300" Grade="Epic">
+    <Stats MagicPower="35" />
+  </Item>
+  <Item Name="Shadow Cloak" Type="Armor" Value="450" Grade="Legendary" Set="ShadowSet">
+    <Stats Defense="30" Evasion="20" />
+  </Item>
+</ItemData>
