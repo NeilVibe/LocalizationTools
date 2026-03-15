@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Debug + Polish + Svelte 5 Migration
-status: unknown
-stopped_at: Completed 24-01-PLAN.md
-last_updated: "2026-03-15T22:18:20.124Z"
+status: in-progress
+stopped_at: Completed 24-02-PLAN.md
+last_updated: "2026-03-15T22:25:46Z"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 19
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 -----|--------|-------|--------------|
@@ -20,6 +20,7 @@ progress:
 
 *Updated after each plan completion*
 | Phase 23 P02 | 2min | 2 tasks | 5 files |
+| Phase 24 P02 | 6min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -45,6 +46,10 @@ progress:
 - [23-04]: API health check treats 4xx as warnings (endpoint exists but auth-gated), only 5xx as failures
 - [Phase 24]: Reactive Set pattern for failedImages -- new Set() reassignment triggers Svelte 5 reactivity
 - [Phase 24]: Removed SVG entirely from PlaceholderImage -- div+flex+aspect-ratio is simpler and Electron-safe
+- [24-02]: Consistent focus style: outline: 2px solid var(--cds-focus) with outline-offset across all custom buttons
+- [24-02]: Error messages show human-readable text, never raw HTTP status codes
+- [24-02]: MapTooltip viewport clamping uses $derived with window dimensions
+- [24-02]: CategoryFilter skipped for a11y -- Carbon MultiSelect handles its own accessibility
 
 ### Pending Todos
 
@@ -60,6 +65,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T22:18:20.121Z
-Stopped at: Completed 24-01-PLAN.md
+Last session: 2026-03-15T22:25:46Z
+Stopped at: Completed 24-02-PLAN.md
 Resume file: None

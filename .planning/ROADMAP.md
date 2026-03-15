@@ -55,7 +55,7 @@
 
 - [x] **Phase 22: Svelte 5 Migration** - Purge all createEventDispatcher and on: directives, converting VirtualGrid, LDM.svelte, and all v3.0 components to $props callback pattern (completed 2026-03-15)
 - [x] **Phase 23: Bug Fixes** - Fix 10 runtime bugs from 3-agent swarm audit plus stale test fixture (completed 2026-03-15)
-- [ ] **Phase 24: UIUX Polish** - Accessibility attributes, visual consistency, and error state handling across v3.0 features
+- [x] **Phase 24: UIUX Polish** - Accessibility attributes, visual consistency, and error state handling across v3.0 features (completed 2026-03-15)
 
 ## Phase Details
 
@@ -103,7 +103,7 @@ Plans:
   3. CodexPage card images display PlaceholderImage SVG when the actual image returns 404
   4. PlaceholderImage renders correctly in Chromium-based Electron using div layout instead of foreignObject
   5. MapDetailPanel long text content wraps properly without overflow at all viewport widths
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 24-01-PLAN.md — Fix all 5 UX requirements: aria-expanded, tab dividers, image fallbacks, PlaceholderImage div layout, text wrapping
 - [ ] 24-02-PLAN.md — Skill-driven UIUX review: audit + harden + clarify pass across all v3.0 components
@@ -165,5 +165,5 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25
 | 21. AI Naming Coherence + Placeholders | v3.0 | 2/2 | Complete | 2026-03-15 |
 | 22. Svelte 5 Migration | 3/3 | Complete    | 2026-03-15 | - |
 | 23. Bug Fixes | 4/4 | Complete    | 2026-03-15 | - |
-| 24. UIUX Polish | 1/2 | In Progress|  | - |
+| 24. UIUX Polish | 2/2 | Complete   | 2026-03-15 | - |
 | 25. Comprehensive API E2E Testing | v3.1 | 0/10 | Not started | - |
