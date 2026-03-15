@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Region Datasheet Generator
 ================================
@@ -119,6 +121,7 @@ class ShopStage:
     category: str = ""
     npc_key: str = ""
     dev_comment: str = ""
+    alias_name: str = ""
     source_file: str = ""
 
 
@@ -130,6 +133,25 @@ class ShopGroup:
     group: str
     source_file: str = ""
     stages: List[ShopStage] = field(default_factory=list)
+
+
+@dataclass
+class KnowledgeContentEntry:
+    """A KnowledgeInfo from knowledgeinfo_contents for the Knowledge_Contents tab."""
+    strkey: str
+    name: str
+    description: str
+    world_position: str = ""    # Resolved via 3-hop chain
+    source_file: str = ""
+
+
+@dataclass
+class KnowledgeContentGroup:
+    """A KnowledgeGroupInfo from knowledgeinfo_contents."""
+    strkey: str
+    group_name: str             # GroupName attribute
+    source_file: str = ""
+    entries: List[KnowledgeContentEntry] = field(default_factory=list)
 
 
 # =============================================================================
@@ -449,6 +471,201 @@ def parse_standalone_factions(
 
 
 # =============================================================================
+# SCENEOBJECTDATA LOOKUP (AliasName → Position for shop teleport)
+# =============================================================================
+
+def build_sceneobjectdata_lookup(folder: Path) -> Dict[str, str]:
+    """
+    Build lookup: SceneObjectData.AliasName → Position
+
+    Scans normal StaticInfo XMLs for SceneObjectData elements.
+    Used to resolve shop stage positions via AliasName cross-reference.
+
+    Returns:
+        Dict mapping AliasName (lowercase) to Position string "x,y,z"
+    """
+    log.info("Building SceneObjectData AliasName→Position lookup...")
+
+    lookup: Dict[str, str] = {}
+
+    for path in sorted(iter_xml_files(folder)):
+        root_el = parse_xml_file(path)
+        if root_el is None:
+            continue
+
+        for sod in root_el.iter("SceneObjectData"):
+            alias = sod.get("AliasName") or ""
+            position = sod.get("Position") or ""
+
+            if not alias or not position:
+                continue
+
+            # First occurrence wins
+            if alias.lower() not in lookup:
+                lookup[alias.lower()] = position
+
+    log.info("  → %d SceneObjectData entries with AliasName+Position", len(lookup))
+    return lookup
+
+
+# =============================================================================
+# KNOWLEDGE CONTENTS PARSING (3-hop position chain)
+# =============================================================================
+
+def _build_uimaptexture_lookup(folder: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """
+    Build two lookups from UIMapTextureInfo elements:
+      1. KnowledgeKey (lowercase) → UIMapTextureInfo.StrKey
+      2. UIMapTextureInfo.StrKey (lowercase) → first SceneObjectData.Position
+
+    Scans uimaptextureinfo files for KnowledgeKey mapping,
+    then scans all staticinfo for LevelGimmickSceneObjectInfo to get positions.
+    """
+    log.info("Building UIMapTextureInfo lookups...")
+
+    # Hop 1: KnowledgeKey → UIMapTextureInfo.StrKey
+    knowledge_to_texture: Dict[str, str] = {}
+
+    for path in iter_xml_files(folder):
+        if "uimaptextureinfo" not in path.name.lower():
+            continue
+        root_el = parse_xml_file(path)
+        if root_el is None:
+            continue
+
+        for el in root_el.iter("UIMapTextureInfo"):
+            kk = el.get("KnowledgeKey") or ""
+            strkey = el.get("StrKey") or ""
+            if kk and strkey and kk.lower() not in knowledge_to_texture:
+                knowledge_to_texture[kk.lower()] = strkey
+
+    log.info("  → UIMapTextureInfo: %d KnowledgeKey→StrKey mappings", len(knowledge_to_texture))
+
+    # Hop 2: UIMapTextureKey → first SceneObjectData.Position
+    # Collect all texture StrKeys we need to resolve
+    texture_keys_needed: Set[str] = set(v.lower() for v in knowledge_to_texture.values())
+
+    texture_to_position: Dict[str, str] = {}
+
+    for path in iter_xml_files(folder):
+        root_el = parse_xml_file(path)
+        if root_el is None:
+            continue
+
+        for lgsoi in root_el.iter("LevelGimmickSceneObjectInfo"):
+            ui_key = lgsoi.get("UIMapTextureKey") or ""
+            if not ui_key or ui_key.lower() not in texture_keys_needed:
+                continue
+            if ui_key.lower() in texture_to_position:
+                continue  # Already have position for this key (first win)
+
+            # Get first SceneObjectData with Position
+            for sod in lgsoi.iter("SceneObjectData"):
+                pos = sod.get("Position") or ""
+                if pos:
+                    texture_to_position[ui_key.lower()] = pos
+                    break
+
+    unresolved = texture_keys_needed - set(texture_to_position.keys())
+    log.info("  → LevelGimmickSceneObjectInfo: %d positions resolved", len(texture_to_position))
+    if unresolved:
+        log.warning("  → %d UIMapTextureKeys could not be resolved to positions", len(unresolved))
+    return knowledge_to_texture, texture_to_position
+
+
+def parse_knowledge_contents(
+    static_folder: Path,
+    global_seen: Set[str],
+) -> List[KnowledgeContentGroup]:
+    """
+    Parse knowledgeinfo_contents.staticinfo.xml for the Knowledge_Contents tab.
+
+    Resolves teleport positions via 3-hop chain:
+      KnowledgeInfo.StrKey → UIMapTextureInfo.KnowledgeKey → StrKey
+      → LevelGimmickSceneObjectInfo.UIMapTextureKey → SceneObjectData.Position
+    """
+    # Find the knowledge contents file
+    contents_file = None
+    for path in iter_xml_files(static_folder):
+        if "knowledgeinfo_contents" in path.name.lower():
+            contents_file = path
+            break
+
+    if contents_file is None:
+        log.info("knowledgeinfo_contents file not found — skipping Knowledge_Contents tab")
+        return []
+
+    log.info("Parsing knowledge contents: %s", contents_file.name)
+
+    root_el = parse_xml_file(contents_file)
+    if root_el is None:
+        log.error("Failed to parse knowledge contents file")
+        return []
+
+    # Build position resolution chain
+    knowledge_to_texture, texture_to_position = _build_uimaptexture_lookup(static_folder)
+
+    source_file = contents_file.name
+    groups: List[KnowledgeContentGroup] = []
+
+    for group_el in root_el.iter("KnowledgeGroupInfo"):
+        group_name = group_el.get("GroupName") or ""
+        group_strkey = group_el.get("StrKey") or ""
+
+        if not group_name:
+            continue
+
+        _collect_korean_string(group_name)
+
+        group = KnowledgeContentGroup(
+            strkey=group_strkey,
+            group_name=group_name,
+            source_file=source_file,
+        )
+
+        for ki in group_el.findall("KnowledgeInfo"):
+            strkey = ki.get("StrKey") or ""
+            name = ki.get("Name") or ""
+            desc = ki.get("Desc") or ""
+
+            if not strkey or not name:
+                continue
+
+            # Dedup
+            dedup_key = f"kc_{strkey}"
+            if dedup_key in global_seen:
+                continue
+            global_seen.add(dedup_key)
+
+            _collect_korean_string(name)
+            if desc:
+                _collect_korean_string(desc)
+
+            # Resolve position via 3-hop chain
+            world_position = ""
+            texture_strkey = knowledge_to_texture.get(strkey.lower(), "")
+            if texture_strkey:
+                pos_csv = texture_to_position.get(texture_strkey.lower(), "")
+                if pos_csv:
+                    world_position = pos_csv.replace(",", " ")
+
+            group.entries.append(KnowledgeContentEntry(
+                strkey=strkey,
+                name=name,
+                description=desc,
+                world_position=world_position,
+                source_file=source_file,
+            ))
+
+        if group.entries:
+            groups.append(group)
+
+    total_entries = sum(len(g.entries) for g in groups)
+    log.info("  → %d groups, %d knowledge entries", len(groups), total_entries)
+    return groups
+
+
+# =============================================================================
 # SHOP PARSING
 # =============================================================================
 
@@ -485,6 +702,7 @@ def parse_shop_file(shop_path: Path, global_seen: Set[str]) -> List[ShopGroup]:
             desc = stage_el.get("Desc") or ""
             category = stage_el.get("Category") or ""
             npc_key = stage_el.get("NPCShopCharacterKey") or ""
+            alias_name = stage_el.get("AliasName") or ""
 
             if not stage_name:
                 continue
@@ -500,6 +718,7 @@ def parse_shop_file(shop_path: Path, global_seen: Set[str]) -> List[ShopGroup]:
                 description=desc,
                 category=category,
                 npc_key=npc_key,
+                alias_name=alias_name,
                 source_file=source_file,
             )
             new_stages.append(stage)
@@ -533,16 +752,46 @@ def parse_shop_file(shop_path: Path, global_seen: Set[str]) -> List[ShopGroup]:
 RowItem = Tuple[int, str, str, bool, str, str, str]
 
 
-def emit_shop_rows(shop_groups: List[ShopGroup]) -> List[RowItem]:
-    """Generate rows for Shop data."""
+def emit_shop_rows(
+    shop_groups: List[ShopGroup],
+    sceneobject_lookup: Optional[Dict[str, str]] = None,
+) -> List[RowItem]:
+    """Generate rows for Shop data with position from SceneObjectData lookup."""
     rows: List[RowItem] = []
+    sod = sceneobject_lookup or {}
 
     for group in shop_groups:
         rows.append((0, group.name, "ShopGroup", False, group.source_file, "ShopGroup", ""))
         for stage in group.stages:
-            rows.append((1, stage.name, "ShopStage", False, stage.source_file, "ShopStage", ""))
+            # Resolve position via AliasName → SceneObjectData.Position
+            world_position = ""
+            if stage.alias_name:
+                pos_csv = sod.get(stage.alias_name.lower(), "")
+                if pos_csv:
+                    # Convert "x,y,z" to "x y z" for /teleport command
+                    world_position = pos_csv.replace(",", " ")
+            rows.append((1, stage.name, "ShopStage", False, stage.source_file, "ShopStage", world_position))
             if stage.description:
-                rows.append((2, stage.description, "Description", True, stage.source_file, "ShopStage.Desc", ""))
+                rows.append((2, stage.description, "Description", True, stage.source_file, "ShopStage.Desc", world_position))
+
+    return rows
+
+
+def emit_knowledge_content_rows(groups: List[KnowledgeContentGroup]) -> List[RowItem]:
+    """Generate rows for the Knowledge_Contents tab."""
+    rows: List[RowItem] = []
+
+    for group in groups:
+        # Root: KnowledgeGroupInfo.GroupName (depth 0)
+        rows.append((0, group.group_name, "Faction", False, group.source_file, "KnowledgeGroupInfo", ""))
+
+        for entry in group.entries:
+            # Name row (depth 1) with teleport
+            rows.append((1, entry.name, "FactionNode_Main", False, entry.source_file, "KnowledgeInfo", entry.world_position))
+
+            # Desc row (depth 2)
+            if entry.description:
+                rows.append((2, entry.description, "Description", True, entry.source_file, "KnowledgeInfo.Desc", entry.world_position))
 
     return rows
 
@@ -862,6 +1111,8 @@ def write_workbook(
     out_path: Path,
     export_index: Optional[Dict[str, Set[str]]] = None,
     displayname_lookup: Optional[Dict[str, str]] = None,
+    sceneobject_lookup: Optional[Dict[str, str]] = None,
+    knowledge_content_groups: Optional[List[KnowledgeContentGroup]] = None,
 ) -> bool:
     """Generate Excel workbook for a language. Returns True if saved."""
     wb = Workbook()
@@ -913,11 +1164,19 @@ def write_workbook(
 
     # Shop sheet (no DisplayName needed for shop)
     if shop_groups:
-        rows = emit_shop_rows(shop_groups)
+        rows = emit_shop_rows(shop_groups, sceneobject_lookup)
         if rows:
             sheet = wb.create_sheet(title="Shop")
             write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer, eng_consumer)
             log.info("    Sheet 'Shop': %d rows", len(rows))
+
+    # Knowledge_Contents sheet (3-hop position resolution)
+    if knowledge_content_groups:
+        rows = emit_knowledge_content_rows(knowledge_content_groups)
+        if rows:
+            sheet = wb.create_sheet(title="Knowledge_Contents")
+            write_sheet_content(sheet, rows, is_eng, eng_tbl, lang_tbl, lang_code, export_index, consumer, eng_consumer)
+            log.info("    Sheet 'Knowledge_Contents': %d rows", len(rows))
 
     # Save
     if wb.worksheets:
@@ -982,6 +1241,12 @@ def generate_region_datasheets() -> Dict:
         shop_file = RESOURCE_FOLDER.parent / "staticinfo_quest" / "funcnpc" / "shop_world.staticinfo.xml"
         shop_groups = parse_shop_file(shop_file, global_seen)
 
+        # 5.5. Build SceneObjectData lookup (AliasName → Position for shop teleport)
+        sceneobject_lookup = build_sceneobjectdata_lookup(RESOURCE_FOLDER)
+
+        # 5.6. Parse Knowledge Contents (3-hop position chain)
+        knowledge_content_groups = parse_knowledge_contents(RESOURCE_FOLDER, global_seen)
+
         # 6. Load language tables
         lang_tables = load_language_tables(LANGUAGE_FOLDER)
 
@@ -1005,11 +1270,13 @@ def generate_region_datasheets() -> Dict:
                 saved = write_workbook(
                     faction_groups, standalone_factions, shop_groups,
                     eng_tbl, None, code, out_path, export_index, displayname_lookup,
+                    sceneobject_lookup, knowledge_content_groups,
                 )
             else:
                 saved = write_workbook(
                     faction_groups, standalone_factions, shop_groups,
                     eng_tbl, tbl, code, out_path, export_index, displayname_lookup,
+                    sceneobject_lookup, knowledge_content_groups,
                 )
             if saved:
                 result["files_created"] += 1

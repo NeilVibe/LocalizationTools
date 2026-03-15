@@ -1,39 +1,46 @@
 """
-Gimmick Datasheet Generator
-===========================
-Extracts Gimmick data from StaticInfo XMLs with proper hierarchy:
-  GimmickAttributeGroup (GimmickName) → GimmickInfo (StrKey, GimmickName) → DropItem (Key)
+Gimmick Datasheet Generator (Revamped)
+=======================================
+Extracts Gimmick data from StaticInfo/gimmickinfo/ with folder-based organization.
 
-FILTER: Only includes gimmicks that have ALL of:
-  - GimmickInfo with StrKey
-  - GimmickInfo with GimmickName (not empty)
-  - DropItem with Key
+Structure:
+  ONE TAB = ONE FOLDER (e.g., "Background", "Item")
+  Within each tab:
+    ROOT (depth 0): Filename section header
+    Depth 1: GimmickGroupInfo (Name or StrKey)
+    Depth 2+: GimmickInfo entries
+    Description row: SealData.Desc (depth+1 from parent GimmickInfo)
 
-Output per-language Excel files with:
-  Sheet 1: GimmickDropItem – Hierarchical view with Group→Gimmick→Item
+Columns:
+  DataType | GroupInfo | GimmickName(KOR) | GimmickName(LOC) | SealDesc(KOR) | SealDesc(LOC) |
+  Command | WorldPosition | STATUS | COMMENT | STRINGID | SCREENSHOT
+
+Command format: /create gimmick {GimmickInfo.StrKey}
 """
 
+from __future__ import annotations
+
+import re
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
-from lxml import etree as ET
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-from config import RESOURCE_FOLDER, LANGUAGE_FOLDER, DATASHEET_OUTPUT, STATUS_OPTIONS, STRINGKEYTABLE_FILE
+from config import RESOURCE_FOLDER, LANGUAGE_FOLDER, DATASHEET_OUTPUT, STATUS_OPTIONS
 from generators.base import (
     get_logger,
     parse_xml_file,
-    iter_xml_files,
     load_language_tables,
     normalize_placeholders,
-    is_good_translation,
     br_to_newline,
     autofit_worksheet,
     THIN_BORDER,
+    get_first_translation,
     resolve_translation,
     get_export_index,
     get_ordered_export_index,
@@ -73,564 +80,435 @@ def _collect_korean_string(text: str) -> None:
 # =============================================================================
 
 @dataclass
-class ItemData:
-    """Item info for DropItem lookups."""
+class GimmickInfoEntry:
+    """A single GimmickInfo element with optional SealData description."""
     strkey: str
-    item_name: str       # KOR
-    item_desc: str       # KOR
+    gimmick_name: str           # GimmickName attribute (KOR)
+    seal_desc: str = ""         # SealData.Desc (KOR, optional)
+    source_file: str = ""
+    order_index: int = 0
 
 
 @dataclass
-class GimmickEntry:
-    """
-    A valid gimmick entry with all required fields.
-    Organized by: AttributeGroup (group_name) → GimmickInfo → DropItems
-    """
-    # From GimmickAttributeGroup
-    group_name_kor: str          # GimmickName on AttributeGroup (group level)
-
-    # From GimmickInfo
-    gimmick_strkey: str          # StrKey
-    gimmick_name_kor: str        # GimmickName on GimmickInfo
-
-    # From DropItem(s)
-    drop_item_keys: List[str] = field(default_factory=list)
-
-    # For ordering (file + element order)
+class GimmickGroupEntry:
+    """A GimmickGroupInfo element containing GimmickInfo entries."""
+    strkey: str
+    group_name: str             # GimmickGroupInfo name (GimmickName or StrKey fallback)
     source_file: str = ""
-    order_index: int = 0
+    gimmick_infos: List[GimmickInfoEntry] = field(default_factory=list)
+
+
+@dataclass
+class GimmickFileData:
+    """All gimmick data from a single XML file."""
+    filename: str               # e.g., "GimmickInfo_Background_Door.StaticInfo.xml"
+    display_name: str           # Clean name for display (e.g., "Background_Door")
+    groups: List[GimmickGroupEntry] = field(default_factory=list)
 
 
 # =============================================================================
 # STYLING
 # =============================================================================
 
-_depth_fill = {
-    0: PatternFill("solid", fgColor="FFD966"),  # YELLOW - group
-    1: PatternFill("solid", fgColor="D9E1F2"),  # BLUE - gimmick
-    2: PatternFill("solid", fgColor="E2EFDA"),  # GREEN - item
+STYLES = {
+    "FileRoot": {
+        "fill": PatternFill("solid", fgColor="4472C4"),  # Dark blue
+        "font": Font(bold=True, size=12, color="FFFFFF"),
+        "row_height": 35,
+    },
+    "GroupInfo": {
+        "fill": PatternFill("solid", fgColor="5B9BD5"),  # Medium blue
+        "font": Font(bold=True, size=11, color="FFFFFF"),
+        "row_height": 30,
+    },
+    "GimmickInfo": {
+        "fill": PatternFill("solid", fgColor="B4C6E7"),  # Light blue
+        "font": Font(bold=True),
+        "row_height": None,
+    },
+    "Description": {
+        "fill": PatternFill("solid", fgColor="F5F5F5"),  # Light gray
+        "font": Font(italic=False),
+        "row_height": None,
+    },
 }
-_header_font = Font(bold=True, color="FFFFFF")
+
+_header_font = Font(bold=True, color="FFFFFF", size=11)
 _header_fill = PatternFill("solid", fgColor="4F81BD")
-_bold_font = Font(bold=True)
+_default_font = Font()
+_default_fill = PatternFill("solid", fgColor="FFFFFF")
 
 
-# =============================================================================
-# ITEM INDEXING
-# =============================================================================
-
-def index_iteminfo(static_folder: Path) -> Dict[str, ItemData]:
-    """Index all ItemInfo entries from StaticInfo."""
-    log.info("Indexing ItemInfo from StaticInfo...")
-    items: Dict[str, ItemData] = {}
-    file_count = 0
-
-    for xml in iter_xml_files(static_folder):
-        root = parse_xml_file(xml)
-        if root is None:
-            continue
-        file_count += 1
-
-        for item in root.iter("ItemInfo"):
-            key = item.get("StrKey")
-            name = item.get("ItemName") or ""
-            desc = item.get("ItemDesc") or ""
-            if key and key.lower() not in items:
-                items[key.lower()] = ItemData(strkey=key, item_name=name, item_desc=desc)
-
-    log.info("Indexed %d ItemInfo entries from %d files", len(items), file_count)
-    return items
-
-
-# =============================================================================
-# STRING KEY TABLE
-# =============================================================================
-
-def load_string_key_table(path: Path) -> Dict[str, str]:
-    log.info("Loading StringKeyTable: %s", path)
-    root = parse_xml_file(path)
-    if root is None:
-        log.error("Cannot parse StringKeyTable")
-        return {}
-    tbl: Dict[str, str] = {}
-    for el in root.iter("StringKeyMap"):
-        num = el.get("Key") or ""
-        sk = el.get("StrKey") or ""
-        if num and sk:
-            tbl[sk.lower()] = num
-    log.info("StringKeyTable entries: %d", len(tbl))
-    return tbl
+def get_style(style_type: str) -> Tuple[PatternFill, Font, Optional[float]]:
+    """Get style for a row type. Returns (fill, font, row_height)."""
+    style = STYLES.get(style_type, {})
+    return (
+        style.get("fill", _default_fill),
+        style.get("font", _default_font),
+        style.get("row_height"),
+    )
 
 
 # =============================================================================
 # GIMMICK EXTRACTION
 # =============================================================================
 
-def find_parent_attribute_group(el: ET._Element) -> Tuple[str, Optional[ET._Element]]:
+def _extract_gimmick_infos(
+    parent_el,
+    source_file: str,
+    global_seen: Set[str],
+    counter: List[int],
+) -> List[GimmickInfoEntry]:
+    """Recursively extract GimmickInfo elements from a parent element.
+
+    Walks through GimmickAttributeGroup nesting transparently —
+    only GimmickGroupInfo and GimmickInfo matter for output.
     """
-    Walk up from GimmickInfo to find nearest GimmickAttributeGroup with GimmickName.
-    Returns (group_name, group_element) or ("", None).
-    """
-    parent = el.getparent()
-    while parent is not None:
-        if parent.tag == "GimmickAttributeGroup":
-            gname = parent.get("GimmickName") or ""
-            if gname:
-                return gname, parent
-        parent = parent.getparent()
-    return "", None
+    entries: List[GimmickInfoEntry] = []
 
-
-def index_gimmicks(static_folder: Path) -> List[GimmickEntry]:
-    """
-    Index gimmicks with the required structure.
-
-    FILTER: Only include when ALL are present:
-      - GimmickInfo with StrKey
-      - GimmickInfo with GimmickName (not empty)
-      - DropItem with Key
-
-    Returns list of GimmickEntry in document order.
-    """
-    log.info("Indexing Gimmicks from StaticInfo...")
-    entries: List[GimmickEntry] = []
-
-    file_count = 0
-    gimmick_count = 0
-    skipped_no_name = 0
-    skipped_no_drop = 0
-
-    for xml in sorted(iter_xml_files(static_folder)):
-        root = parse_xml_file(xml)
-        if root is None:
-            continue
-        file_count += 1
-
-        # Find all GimmickInfo elements
-        for idx, gim_el in enumerate(root.iter("GimmickInfo")):
-            strkey = gim_el.get("StrKey") or ""
-            gim_name = gim_el.get("GimmickName") or ""
-
+    for child in parent_el:
+        if child.tag == "GimmickInfo":
+            strkey = child.get("StrKey") or ""
             if not strkey:
                 continue
 
-            # FILTER: Must have GimmickName
-            if not gim_name:
-                skipped_no_name += 1
+            # Dedup
+            if strkey.lower() in global_seen:
                 continue
+            global_seen.add(strkey.lower())
 
-            # Collect DropItem keys
-            drop_keys: List[str] = []
-            for drop_el in gim_el.findall(".//DropItem"):
-                dk = drop_el.get("Key")
-                if dk:
-                    drop_keys.append(dk)
+            gimmick_name = child.get("GimmickName") or strkey  # fallback to StrKey
 
-            # FILTER: Must have at least one DropItem
-            if not drop_keys:
-                skipped_no_drop += 1
-                continue
+            # Look for SealData.Desc
+            seal_desc = ""
+            seal_el = child.find("SealData")
+            if seal_el is not None:
+                seal_desc = seal_el.get("Desc") or ""
 
-            # Find parent GimmickAttributeGroup with GimmickName
-            group_name, _ = find_parent_attribute_group(gim_el)
+            # Collect Korean strings
+            _collect_korean_string(gimmick_name)
+            if seal_desc:
+                _collect_korean_string(seal_desc)
 
-            # Collect Korean strings for coverage tracking
-            _collect_korean_string(gim_name)
-            _collect_korean_string(group_name)
+            counter[0] += 1
+            entries.append(GimmickInfoEntry(
+                strkey=strkey,
+                gimmick_name=gimmick_name,
+                seal_desc=seal_desc,
+                source_file=source_file,
+                order_index=counter[0],
+            ))
 
-            entry = GimmickEntry(
-                group_name_kor=group_name,
-                gimmick_strkey=strkey,
-                gimmick_name_kor=gim_name,
-                drop_item_keys=drop_keys,
-                source_file=xml.name,
-                order_index=idx,
-            )
-            entries.append(entry)
-            gimmick_count += 1
+        elif child.tag == "GimmickAttributeGroup":
+            # Recurse into GimmickAttributeGroup (transparent nesting)
+            entries.extend(_extract_gimmick_infos(child, source_file, global_seen, counter))
 
-    log.info(
-        "Indexed %d valid gimmicks from %d files (skipped: %d no name, %d no dropitem)",
-        gimmick_count, file_count, skipped_no_name, skipped_no_drop
-    )
     return entries
 
 
-# =============================================================================
-# TRANSLATION HELPERS
-# =============================================================================
+def _clean_filename_for_display(filename: str) -> str:
+    """Convert filename to clean display name.
 
-def translate(
-    lang_tbl: Dict[str, List[Tuple[str, str]]],
-    kor_text: str,
-    source_file: str = "",
-    export_index: Optional[Dict[str, Set[str]]] = None,
-    fallback_to_kor: bool = True,
-    consumer: Optional[StringIdConsumer] = None,
-) -> str:
-    """Translate Korean text using language table with EXPORT-aware duplicate resolution."""
-    if not kor_text:
-        return ""
-    result, _ = resolve_translation(kor_text, lang_tbl, source_file, export_index, consumer=consumer)
-    if result and is_good_translation(result):
-        return result
-    return kor_text if fallback_to_kor else ""
-
-
-def get_string_id(
-    lang_tbl: Dict[str, List[Tuple[str, str]]],
-    kor_text: str,
-    source_file: str = "",
-    export_index: Optional[Dict[str, Set[str]]] = None,
-    consumer: Optional[StringIdConsumer] = None,
-) -> str:
-    """Get StringID for Korean text from language table with EXPORT-aware duplicate resolution."""
-    if not kor_text:
-        return ""
-    _, stringid = resolve_translation(kor_text, lang_tbl, source_file, export_index, consumer=consumer)
-    return stringid
-
-
-def translate_with_sid(
-    lang_tbl: Dict[str, List[Tuple[str, str]]],
-    kor_text: str,
-    source_file: str = "",
-    export_index: Optional[Dict[str, Set[str]]] = None,
-    consumer: Optional[StringIdConsumer] = None,
-) -> Tuple[str, str]:
-    """Translate Korean text and return (translation, stringid) in one call.
-
-    Avoids double-consumption from separate translate() + get_string_id() calls.
+    e.g., "GimmickInfo_Background_Door.StaticInfo.xml" -> "Background_Door"
     """
-    if not kor_text:
-        return "", ""
-    trans, sid = resolve_translation(kor_text, lang_tbl, source_file, export_index, consumer=consumer)
-    if trans and is_good_translation(trans):
-        return trans, sid
-    return kor_text, sid
+    name = filename
+    # Remove extensions
+    name = re.sub(r'\.StaticInfo\.xml$', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'\.xml$', '', name, flags=re.IGNORECASE)
+    # Remove GimmickInfo_ prefix
+    name = re.sub(r'^GimmickInfo_', '', name, flags=re.IGNORECASE)
+    return name or filename
+
+
+def index_gimmick_folder(
+    gimmick_folder: Path,
+    global_seen: Set[str],
+) -> Dict[str, List[GimmickFileData]]:
+    """
+    Index all gimmick data organized by subfolder.
+
+    Returns:
+        Dict mapping folder_name → [GimmickFileData, ...]
+    """
+    log.info("Indexing gimmick data from: %s", gimmick_folder)
+
+    if not gimmick_folder.exists():
+        log.warning("Gimmick folder not found: %s", gimmick_folder)
+        return {}
+
+    folder_data: Dict[str, List[GimmickFileData]] = OrderedDict()
+    total_groups = 0
+    total_gimmicks = 0
+    counter: List[int] = [0]  # Mutable counter for ordering
+
+    # Walk subfolders in sorted order
+    for subfolder in sorted(gimmick_folder.iterdir()):
+        if not subfolder.is_dir():
+            continue
+
+        folder_name = subfolder.name
+        file_list: List[GimmickFileData] = []
+
+        # Parse all XML files in this subfolder
+        for xml_path in sorted(subfolder.iterdir()):
+            if not xml_path.is_file():
+                continue
+            if not xml_path.name.lower().endswith(".xml"):
+                continue
+
+            root_el = parse_xml_file(xml_path)
+            if root_el is None:
+                continue
+
+            source_file = xml_path.name
+            display_name = _clean_filename_for_display(source_file)
+
+            file_data = GimmickFileData(
+                filename=source_file,
+                display_name=display_name,
+            )
+
+            # Find GimmickGroupInfo elements
+            for group_el in root_el.iter("GimmickGroupInfo"):
+                group_strkey = group_el.get("StrKey") or ""
+                # Use GimmickGroupInfo's name attributes, fallback to StrKey
+                group_name = group_el.get("GimmickName") or group_el.get("Name") or group_strkey
+
+                if not group_name:
+                    continue
+
+                _collect_korean_string(group_name)
+
+                group_entry = GimmickGroupEntry(
+                    strkey=group_strkey,
+                    group_name=group_name,
+                    source_file=source_file,
+                )
+
+                # Extract GimmickInfo entries (recursing through GimmickAttributeGroup)
+                group_entry.gimmick_infos = _extract_gimmick_infos(
+                    group_el, source_file, global_seen, counter
+                )
+
+                if group_entry.gimmick_infos:
+                    file_data.groups.append(group_entry)
+                    total_groups += 1
+                    total_gimmicks += len(group_entry.gimmick_infos)
+
+            if file_data.groups:
+                file_list.append(file_data)
+
+        if file_list:
+            folder_data[folder_name] = file_list
+
+    log.info("  → %d folders, %d groups, %d gimmicks",
+             len(folder_data), total_groups, total_gimmicks)
+    return folder_data
+
+
+# =============================================================================
+# ROW GENERATION
+# =============================================================================
+
+# Row format: (depth, text, style_type, is_description, source_file, data_type, extra_text)
+# extra_text is used for: command (/create gimmick X), group_name for filtering
+RowItem = Tuple[int, str, str, bool, str, str, str]
+
+
+def emit_gimmick_rows(file_list: List[GimmickFileData]) -> List[RowItem]:
+    """Generate rows for one folder tab."""
+    rows: List[RowItem] = []
+
+    for file_data in file_list:
+        # File root row (depth 0)
+        rows.append((0, file_data.display_name, "FileRoot", False, file_data.filename, "FileRoot", ""))
+
+        for group in file_data.groups:
+            # Group row (depth 1)
+            rows.append((1, group.group_name, "GroupInfo", False, group.source_file, "GroupInfo", group.group_name))
+
+            for ginfo in group.gimmick_infos:
+                # GimmickInfo row (depth 2)
+                command = f"/create gimmick {ginfo.strkey}"
+                rows.append((2, ginfo.gimmick_name, "GimmickInfo", False, ginfo.source_file, "GimmickInfo", command))
+
+                # SealData.Desc row (depth 3, description)
+                if ginfo.seal_desc:
+                    rows.append((3, ginfo.seal_desc, "Description", True, ginfo.source_file, "SealData.Desc", command))
+
+    return rows
 
 
 # =============================================================================
 # EXCEL WRITER
 # =============================================================================
 
-def write_dropitem_sheet(
-    wb: Workbook,
-    lang_code: str,
-    entries: List[GimmickEntry],
-    items: Dict[str, ItemData],
-    lang_tbl: Dict[str, List[Tuple[str, str]]],
+def write_sheet_content(
+    sheet,
+    rows: List[RowItem],
+    is_eng: bool,
     eng_tbl: Dict[str, List[Tuple[str, str]]],
-    id_tbl: Dict[str, str],
+    lang_tbl: Optional[Dict[str, List[Tuple[str, str]]]],
+    lang_code: str,
+    export_index: Optional[Dict[str, Set[str]]] = None,
+    consumer: Optional[StringIdConsumer] = None,
+    eng_consumer: Optional[StringIdConsumer] = None,
 ) -> None:
-    """
-    Sheet 1: GimmickDropItem with STATUS column
-    Hierarchical view: Group → Gimmick → Item
-    """
-    code = lang_code.upper()
-    ws = wb.create_sheet(title="GimmickDropItem")
+    """Write rows to a sheet with proper formatting."""
 
-    # Build headers
-    headers = [
-        "Depth",
-        "Type",
-        "GroupName(KOR)",
-        f"GroupName({code})" if lang_code != "eng" else "GroupName(ENG)",
-        "GimmickKey",
-        "GimmickName(KOR)",
-        f"GimmickName({code})" if lang_code != "eng" else "GimmickName(ENG)",
-        "ItemKey",
-        "ItemName(KOR)",
-        f"ItemName({code})" if lang_code != "eng" else "ItemName(ENG)",
-        "ItemDesc(KOR)",
-        f"ItemDesc({code})" if lang_code != "eng" else "ItemDesc(ENG)",
-        "Command",
-        "StringID",
-        "STATUS",
-    ]
+    # Headers
+    headers = ["DataType", "GroupInfo", "Original (KR)", "English (ENG)"]
+    if not is_eng:
+        headers.append(f"Translation ({lang_code.upper()})")
 
-    # Write headers
+    headers.extend(["Command", "STATUS", "COMMENT", "STRINGID", "SCREENSHOT"])
+
     for col, txt in enumerate(headers, start=1):
-        cell = ws.cell(1, col, txt)
+        cell = sheet.cell(1, col, txt)
         cell.font = _header_font
         cell.fill = _header_fill
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.border = THIN_BORDER
+    sheet.row_dimensions[1].height = 25
 
-    # Hidden columns
-    hidden_cols = {"Depth", "GroupName(KOR)", "GimmickName(KOR)", "ItemName(KOR)", "ItemDesc(KOR)"}
-    for idx, h in enumerate(headers, 1):
-        if h in hidden_cols:
-            ws.column_dimensions[get_column_letter(idx)].hidden = True
+    # Data rows
+    r_idx = 2
 
-    # Get EXPORT index for context-aware duplicate resolution
-    export_index = get_export_index()
+    for (depth, text, style_type, is_desc, source_file, data_type, extra_text) in rows:
+        fill, font, row_height = get_style(style_type)
 
-    # Order-based StringID consumer (fresh per language write pass)
-    ordered_idx = get_ordered_export_index()
-    consumer = StringIdConsumer(ordered_idx)
+        # Translate
+        if source_file and export_index:
+            trans_eng, sid_eng = resolve_translation(text, eng_tbl, source_file, export_index, consumer=eng_consumer)
+        else:
+            trans_eng, sid_eng = get_first_translation(eng_tbl, text)
 
-    # Build hierarchical rows
-    rows_data: List[Tuple[List, int, str]] = []
-    last_group = None
-    last_gimmick = None
+        trans_other = sid_other = ""
+        if not is_eng and lang_tbl:
+            if source_file and export_index:
+                trans_other, sid_other = resolve_translation(text, lang_tbl, source_file, export_index, consumer=consumer)
+            else:
+                trans_other, sid_other = get_first_translation(lang_tbl, text)
 
-    for entry in entries:
-        src = entry.source_file  # Track source file for EXPORT matching
-        tbl = lang_tbl if lang_code != "eng" else eng_tbl
+        col = 1
 
-        if entry.group_name_kor and entry.group_name_kor != last_group:
-            group_loc = translate(tbl, entry.group_name_kor, src, export_index, consumer=consumer)
-            row = [0, "Group", br_to_newline(entry.group_name_kor), br_to_newline(group_loc), "", "", "", "", "", "", "", "", "", "", ""]
-            rows_data.append((row, 0, "Group"))
-            last_group = entry.group_name_kor
-            last_gimmick = None
+        # DataType
+        c = sheet.cell(r_idx, col, data_type)
+        c.fill = fill; c.font = font
+        c.alignment = Alignment(horizontal="center", vertical="center")
+        c.border = THIN_BORDER
+        col += 1
 
-        if entry.gimmick_strkey != last_gimmick:
-            gim_loc = translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=consumer)
-            # Cache group_loc from the Group row above (already consumed); use consumer=None for display-only repeat
-            cached_group_loc = translate(tbl, entry.group_name_kor, src, export_index, consumer=None)
-            row = [1, "Gimmick", br_to_newline(entry.group_name_kor), br_to_newline(cached_group_loc),
-                   entry.gimmick_strkey, br_to_newline(entry.gimmick_name_kor), br_to_newline(gim_loc), "", "", "", "", "", "", "", ""]
-            rows_data.append((row, 1, "Gimmick"))
-            last_gimmick = entry.gimmick_strkey
+        # GroupInfo (for filtering — only populated on GroupInfo/GimmickInfo/Desc rows)
+        c = sheet.cell(r_idx, col, extra_text if data_type == "GroupInfo" else "")
+        c.fill = fill; c.font = font
+        c.alignment = Alignment(vertical="center")
+        c.border = THIN_BORDER
+        col += 1
 
-        for item_key in entry.drop_item_keys:
-            itm = items.get(item_key.lower())
-            item_kor = itm.item_name if itm else ""
-            item_desc_kor = itm.item_desc if itm else ""
-            item_loc, sid = translate_with_sid(tbl, item_kor, src, export_index, consumer=consumer)
-            desc_loc = translate(tbl, item_desc_kor, src, export_index, consumer=consumer)
-            cmd = f"/create item {item_key}"
-            if not sid:
-                sid = get_string_id(eng_tbl, item_kor, src, export_index, consumer=None)
+        # Original (KR)
+        c = sheet.cell(r_idx, col, br_to_newline(text))
+        c.fill = fill; c.font = font
+        c.alignment = Alignment(indent=depth, wrap_text=True, vertical="center")
+        c.border = THIN_BORDER
+        col += 1
 
-            # Use consumer=None for repeated group/gimmick translations (already consumed above)
-            row = [2, "Item", br_to_newline(entry.group_name_kor), br_to_newline(translate(tbl, entry.group_name_kor, src, export_index, consumer=None)),
-                   entry.gimmick_strkey, br_to_newline(entry.gimmick_name_kor), br_to_newline(translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=None)),
-                   item_key, br_to_newline(item_kor), br_to_newline(item_loc), br_to_newline(item_desc_kor), br_to_newline(desc_loc), cmd, sid, ""]
-            rows_data.append((row, 2, "Item"))
+        # English (ENG)
+        c = sheet.cell(r_idx, col, br_to_newline(trans_eng))
+        c.fill = fill; c.font = font
+        c.alignment = Alignment(indent=depth, wrap_text=True, vertical="center")
+        c.border = THIN_BORDER
+        col += 1
 
-    # Write rows
-    for r_idx, (row, depth, row_type) in enumerate(rows_data, start=2):
-        fill = _depth_fill.get(depth, _depth_fill[2])
-        for c_idx, val in enumerate(row, start=1):
-            cell = ws.cell(r_idx, c_idx, val)
-            cell.fill = fill
-            cell.border = THIN_BORDER
-            if row_type in ("Group", "Gimmick"):
-                cell.font = _bold_font
-            cell.alignment = Alignment(
-                horizontal="left" if c_idx > 1 else "center",
-                vertical="top",
-                wrap_text=True,
-                indent=depth if c_idx == 2 else 0
-            )
+        # Target language
+        if not is_eng:
+            c = sheet.cell(r_idx, col, br_to_newline(trans_other))
+            c.fill = fill; c.font = font
+            c.alignment = Alignment(indent=depth, wrap_text=True, vertical="center")
+            c.border = THIN_BORDER
+            col += 1
 
-    # Add STATUS validation
+        # Command
+        cmd = extra_text if data_type in ("GimmickInfo", "SealData.Desc") else ""
+        c = sheet.cell(r_idx, col, cmd)
+        c.fill = fill; c.font = font
+        c.alignment = Alignment(horizontal="left", vertical="center")
+        c.border = THIN_BORDER
+        col += 1
+
+        # STATUS
+        c = sheet.cell(r_idx, col, "")
+        c.fill = fill
+        c.alignment = Alignment(horizontal="center", vertical="center")
+        c.border = THIN_BORDER
+        col += 1
+
+        # COMMENT
+        c = sheet.cell(r_idx, col, "")
+        c.fill = fill
+        c.border = THIN_BORDER
+        col += 1
+
+        # STRINGID
+        sid = sid_other if not is_eng else sid_eng
+        c = sheet.cell(r_idx, col, sid)
+        c.fill = fill; c.font = Font(bold=True)
+        c.border = THIN_BORDER
+        c.number_format = '@'
+        col += 1
+
+        # SCREENSHOT
+        c = sheet.cell(r_idx, col, "")
+        c.fill = fill
+        c.border = THIN_BORDER
+
+        if row_height:
+            sheet.row_dimensions[r_idx].height = row_height
+
+        r_idx += 1
+
+    last_row = r_idx - 1
+
+    # Column widths
+    base_widths = [18, 25, 40, 80]
+    if not is_eng:
+        base_widths.append(80)
+    base_widths.extend([40, 15, 70, 25, 25])
+    for idx, w in enumerate(base_widths, start=1):
+        sheet.column_dimensions[get_column_letter(idx)].width = w
+
+    # Hide English column for non-English workbooks
+    if not is_eng:
+        sheet.column_dimensions["D"].hidden = True
+
+    # Status dropdown
     status_col_idx = headers.index("STATUS") + 1
     dv = DataValidation(
         type="list",
         formula1=f'"{",".join(STATUS_OPTIONS)}"',
         allow_blank=True,
-        showErrorMessage=True,
     )
     col_letter = get_column_letter(status_col_idx)
-    rng = f"{col_letter}2:{col_letter}{ws.max_row}"
-    dv.add(rng)
-    ws.add_data_validation(dv)
+    dv.add(f"{col_letter}2:{col_letter}{last_row}")
+    sheet.add_data_validation(dv)
 
-    # Force StringID column to text format
-    stringid_col_idx = headers.index("StringID") + 1
-    for row in range(2, ws.max_row + 1):
-        ws.cell(row, stringid_col_idx).number_format = '@'
-
-    # Finalize
+    # Freeze + auto-filter
     last_col = get_column_letter(len(headers))
-    ws.auto_filter.ref = f"A1:{last_col}{len(rows_data)+1}"
-    ws.freeze_panes = "A2"
+    sheet.auto_filter.ref = f"A1:{last_col}{last_row}"
+    sheet.freeze_panes = "A2"
 
-    # Column widths
-    width_map = {
-        "Depth": 8, "Type": 10, "GroupName(KOR)": 20, f"GroupName({code})": 25, "GroupName(ENG)": 25,
-        "GimmickKey": 40, "GimmickName(KOR)": 20, f"GimmickName({code})": 25, "GimmickName(ENG)": 25,
-        "ItemKey": 30, "ItemName(KOR)": 20, f"ItemName({code})": 25, "ItemName(ENG)": 25,
-        "ItemDesc(KOR)": 25, f"ItemDesc({code})": 35, "ItemDesc(ENG)": 35,
-        "Command": 35, "StringID": 15, "STATUS": 15
-    }
-    for idx, h in enumerate(headers, 1):
-        ws.column_dimensions[get_column_letter(idx)].width = width_map.get(h, 20)
-
-    # Auto-fit columns and rows
-    autofit_worksheet(ws)
-
-    log.info("  Sheet GimmickDropItem: %d rows", len(rows_data))
+    # Auto-fit
+    autofit_worksheet(sheet)
 
 
 # =============================================================================
-# SHEET 2: GIMMICK FLAT VIEW
+# TAB NAME HELPER
 # =============================================================================
 
-def write_flat_sheet(
-    wb: Workbook,
-    lang_code: str,
-    entries: List[GimmickEntry],
-    items: Dict[str, ItemData],
-    lang_tbl: Dict[str, List[Tuple[str, str]]],
-    eng_tbl: Dict[str, List[Tuple[str, str]]],
-    id_tbl: Dict[str, str],
-) -> None:
-    """
-    Sheet 2: GimmickFlat
-
-    One row per Gimmick→Item pair, flat view for easy filtering.
-
-    Columns:
-    - GroupName(KOR) [hidden]
-    - GroupName(LOC)
-    - GimmickKey
-    - GimmickName(KOR) [hidden]
-    - GimmickName(LOC)
-    - ItemKey
-    - ItemName(KOR) [hidden]
-    - ItemName(LOC)
-    - ItemDesc(KOR) [hidden]
-    - ItemDesc(LOC)
-    - Command
-    - StringID
-    """
-    code = lang_code.upper()
-    ws = wb.create_sheet(title="GimmickFlat")
-
-    # Build headers
-    headers = [
-        "GroupName(KOR)",
-        f"GroupName({code})" if lang_code != "eng" else "GroupName(ENG)",
-        "GimmickKey",
-        "GimmickName(KOR)",
-        f"GimmickName({code})" if lang_code != "eng" else "GimmickName(ENG)",
-        "ItemKey",
-        "ItemName(KOR)",
-        f"ItemName({code})" if lang_code != "eng" else "ItemName(ENG)",
-        "ItemDesc(KOR)",
-        f"ItemDesc({code})" if lang_code != "eng" else "ItemDesc(ENG)",
-        "Command",
-        "StringID",
-    ]
-
-    # Write headers
-    for col, txt in enumerate(headers, start=1):
-        cell = ws.cell(1, col, txt)
-        cell.font = _header_font
-        cell.fill = _header_fill
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        cell.border = THIN_BORDER
-
-    # Hidden columns
-    hidden_cols = {"GroupName(KOR)", "GimmickName(KOR)", "ItemName(KOR)", "ItemDesc(KOR)"}
-    for idx, h in enumerate(headers, 1):
-        if h in hidden_cols:
-            ws.column_dimensions[get_column_letter(idx)].hidden = True
-
-    # Get EXPORT index for context-aware duplicate resolution
-    export_index = get_export_index()
-
-    # Order-based StringID consumer (fresh per language write pass)
-    ordered_idx = get_ordered_export_index()
-    consumer = StringIdConsumer(ordered_idx)
-
-    # Build flat rows
-    rows_data: List[List] = []
-
-    # Cache group/gimmick translations to avoid repeated consumer advancement
-    _group_cache: Dict[str, str] = {}
-    _gimmick_cache: Dict[str, str] = {}
-
-    for entry in entries:
-        src = entry.source_file  # Track source file for EXPORT matching
-        tbl = lang_tbl if lang_code != "eng" else eng_tbl
-
-        # Consume only on first encounter; reuse cached translation for repeats
-        if entry.group_name_kor not in _group_cache:
-            _group_cache[entry.group_name_kor] = translate(tbl, entry.group_name_kor, src, export_index, consumer=consumer)
-        group_loc = _group_cache[entry.group_name_kor]
-
-        gim_cache_key = (entry.gimmick_strkey, entry.gimmick_name_kor)
-        if gim_cache_key not in _gimmick_cache:
-            _gimmick_cache[gim_cache_key] = translate(tbl, entry.gimmick_name_kor, src, export_index, consumer=consumer)
-        gim_loc = _gimmick_cache[gim_cache_key]
-
-        for item_key in entry.drop_item_keys:
-            itm = items.get(item_key.lower())
-            item_kor = itm.item_name if itm else ""
-            item_desc_kor = itm.item_desc if itm else ""
-
-            item_loc, sid = translate_with_sid(tbl, item_kor, src, export_index, consumer=consumer)
-            desc_loc = translate(tbl, item_desc_kor, src, export_index, consumer=consumer)
-            cmd = f"/create item {item_key}"
-            if not sid:
-                sid = get_string_id(eng_tbl, item_kor, src, export_index, consumer=None)
-
-            row = [
-                br_to_newline(entry.group_name_kor), br_to_newline(group_loc),
-                entry.gimmick_strkey,
-                br_to_newline(entry.gimmick_name_kor), br_to_newline(gim_loc),
-                item_key,
-                br_to_newline(item_kor), br_to_newline(item_loc),
-                br_to_newline(item_desc_kor), br_to_newline(desc_loc),
-                cmd, sid
-            ]
-            rows_data.append(row)
-
-    # Write rows with alternating colors
-    fill_a = PatternFill("solid", fgColor="E2EFDA")
-    fill_b = PatternFill("solid", fgColor="FCE4D6")
-    current_fill = fill_a
-    last_gimmick = None
-
-    for r_idx, row in enumerate(rows_data, start=2):
-        gim_key = row[2]  # GimmickKey
-        if last_gimmick is not None and gim_key != last_gimmick:
-            current_fill = fill_b if current_fill == fill_a else fill_a
-        last_gimmick = gim_key
-
-        for c_idx, val in enumerate(row, start=1):
-            cell = ws.cell(r_idx, c_idx, val)
-            cell.fill = current_fill
-            cell.border = THIN_BORDER
-            cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-
-    # Finalize
-    last_col = get_column_letter(len(headers))
-    ws.auto_filter.ref = f"A1:{last_col}{len(rows_data)+1}"
-    ws.freeze_panes = "A2"
-
-    # Column widths
-    width_map = {
-        "GroupName(KOR)": 20,
-        f"GroupName({code})": 25,
-        "GroupName(ENG)": 25,
-        "GimmickKey": 40,
-        "GimmickName(KOR)": 20,
-        f"GimmickName({code})": 25,
-        "GimmickName(ENG)": 25,
-        "ItemKey": 30,
-        "ItemName(KOR)": 20,
-        f"ItemName({code})": 25,
-        "ItemName(ENG)": 25,
-        "ItemDesc(KOR)": 25,
-        f"ItemDesc({code})": 35,
-        "ItemDesc(ENG)": 35,
-        "Command": 35,
-        "StringID": 15,
-    }
-    for idx, h in enumerate(headers, 1):
-        ws.column_dimensions[get_column_letter(idx)].width = width_map.get(h, 20)
-
-    # Auto-fit columns and rows
-    autofit_worksheet(ws)
-
-    log.info("  Sheet GimmickFlat: %d rows", len(rows_data))
+def _sanitize_tab_name(name: str) -> str:
+    """Sanitize folder name for Excel tab (max 31 chars, no special chars)."""
+    name = re.sub(r"[\\/*?:\[\]]", "_", name)
+    return name[:31]
 
 
 # =============================================================================
@@ -658,7 +536,7 @@ def generate_gimmick_datasheets() -> Dict:
     reset_korean_collection()
 
     log.info("=" * 70)
-    log.info("Gimmick Datasheet Generator")
+    log.info("Gimmick Datasheet Generator (Revamped)")
     log.info("=" * 70)
 
     # Ensure output folder exists
@@ -678,28 +556,27 @@ def generate_gimmick_datasheets() -> Dict:
         return result
 
     try:
-        # 1. Load language tables
+        # 1. Index gimmick data by folder
+        gimmick_folder = RESOURCE_FOLDER / "gimmickinfo"
+        global_seen: Set[str] = set()
+        folder_data = index_gimmick_folder(gimmick_folder, global_seen)
+
+        if not folder_data:
+            result["errors"].append("No valid gimmick data found!")
+            log.warning("No valid gimmick data found!")
+            return result
+
+        # 2. Load language tables
         lang_tables = load_language_tables(LANGUAGE_FOLDER)
         eng_tbl = lang_tables.get("eng", {})
 
         if not eng_tbl:
             log.warning("English language table not found!")
 
-        # 2. Load StringKeyTable
-        id_tbl = load_string_key_table(STRINGKEYTABLE_FILE)
+        # 3. Get EXPORT index
+        export_index = get_export_index()
 
-        # 3. Index items
-        items = index_iteminfo(RESOURCE_FOLDER)
-
-        # 4. Index gimmicks
-        entries = index_gimmicks(RESOURCE_FOLDER)
-
-        if not entries:
-            result["errors"].append("No valid gimmick entries found!")
-            log.warning("No valid gimmick entries found!")
-            return result
-
-        # 5. Generate workbooks for each language
+        # 4. Generate workbooks for each language
         log.info("Processing languages...")
         total = len(lang_tables)
 
@@ -709,17 +586,36 @@ def generate_gimmick_datasheets() -> Dict:
             wb = Workbook()
             wb.remove(wb.active)
 
-            # Sheet 1: Hierarchical DropItem view
-            write_dropitem_sheet(wb, code, entries, items, tbl, eng_tbl, id_tbl)
+            is_eng = code.lower() == "eng"
 
-            # Sheet 2: Flat view for easy filtering
-            write_flat_sheet(wb, code, entries, items, tbl, eng_tbl, id_tbl)
+            # Order-based StringID consumer (fresh per language)
+            ordered_idx = get_ordered_export_index()
+            consumer = StringIdConsumer(ordered_idx)
+            eng_consumer = StringIdConsumer(ordered_idx) if is_eng else None
+
+            # One tab per folder
+            for folder_name, file_list in folder_data.items():
+                rows = emit_gimmick_rows(file_list)
+                if not rows:
+                    continue
+
+                tab_name = _sanitize_tab_name(folder_name)
+
+                sheet = wb.create_sheet(title=tab_name)
+                write_sheet_content(
+                    sheet, rows, is_eng, eng_tbl,
+                    tbl if not is_eng else None,
+                    code, export_index, consumer, eng_consumer,
+                )
+
+                log.info("    Tab '%s': %d rows", tab_name, len(rows))
 
             # Save
-            out_path = output_folder / f"Gimmick_LQA_{code.upper()}.xlsx"
-            wb.save(out_path)
-            log.info("  Saved: %s", out_path.name)
-            result["files_created"] += 1
+            if wb.worksheets:
+                out_path = output_folder / f"Gimmick_LQA_{code.upper()}.xlsx"
+                wb.save(out_path)
+                log.info("  Saved: %s", out_path.name)
+                result["files_created"] += 1
 
         log.info("=" * 70)
         log.info("Done! Output folder: %s", output_folder)
