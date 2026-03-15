@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Debug + Polish + Svelte 5 Migration
-status: unknown
-stopped_at: Completed 24-02-PLAN.md
-last_updated: "2026-03-15T22:29:51.141Z"
+status: in-progress
+stopped_at: Completed 25-04-PLAN.md
+last_updated: "2026-03-15T22:33:21Z"
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 19
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 -----|--------|-------|--------------|
@@ -21,6 +21,7 @@ progress:
 *Updated after each plan completion*
 | Phase 23 P02 | 2min | 2 tasks | 5 files |
 | Phase 24 P02 | 6min | 2 tasks | 12 files |
+| Phase 25 P04 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -50,6 +51,8 @@ progress:
 - [24-02]: Error messages show human-readable text, never raw HTTP status codes
 - [24-02]: MapTooltip viewport clamping uses $derived with window dimensions
 - [24-02]: CategoryFilter skipped for a11y -- Carbon MultiSelect handles its own accessibility
+- [25-04]: 19 subsystems in dependency-safe order matching Wave 2 test file structure
+- [25-04]: Graceful skip for missing test files allows runner to work before Wave 2 completes
 
 ### Pending Todos
 
@@ -65,6 +68,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T22:25:46Z
-Stopped at: Completed 24-02-PLAN.md
+Last session: 2026-03-15T22:33:21Z
+Stopped at: Completed 25-04-PLAN.md
 Resume file: None
