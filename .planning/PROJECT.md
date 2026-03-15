@@ -1,12 +1,26 @@
-# LocaNext — Demo-Ready CAT Tool
+# LocaNext — Real Data CAT Tool + Game Dev Platform
 
 ## What This Is
 
-LocaNext is a desktop localization management platform (Electron + FastAPI + Svelte 5) that provides a Language Data Manager (CAT tool) for game localization teams. It handles file uploads, translation memory management, semantic search, entity-aware context panels, integrated QA (Line Check, Term Check), and XML-based language data editing. v1.0 shipped with full offline/online parity, executive-demo-ready polish, and Aho-Corasick entity detection.
+LocaNext is a desktop localization management platform (Electron + FastAPI + Svelte 5) for game localization teams AND game developers. v1.0 delivered the architecture scaffold with tests. v2.0 wires real XML parsing from NewScripts, adds dual UI modes (Translator vs Game Dev), implements actual merge/export logic, and enables AI context summaries via local Qwen3 — transforming the scaffolded demo into a production-capable tool with real game data flowing end-to-end.
 
 ## Core Value
 
-The CAT tool delivers a flawless end-to-end localization workflow — upload files, automatically organize TMs mirroring the folder structure, search/edit translations with rich game context, and export — working seamlessly in both offline and online modes, polished enough to demo to executives.
+The platform delivers real, working localization workflows — not scaffolds: real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers.
+
+## Current Milestone: v2.0 Real Data + Dual Platform
+
+**Goal:** Wire real XML parsing, merge/export logic, dual UI modes, and AI summaries — replacing v1.0 scaffolds with production-ready data pipelines sourced from proven NewScripts patterns.
+
+**Target features:**
+- Dual UI detection (Translator vs Game Dev based on file type)
+- Real XML parsing using all 10 patterns from NewScripts
+- DDS→PNG image conversion + WEM audio playback
+- Translator merge with QuickTranslate exact logic
+- Game Dev position-aware XML merge
+- AI context summaries via Qwen3-4B/8B (Ollama)
+- CLI toolkit expansion for full API coverage
+- Bug fixes (offline TMs, TM paste, 404 on folder fetch)
 
 ## Current State (v1.0 shipped 2026-03-15)
 
@@ -32,7 +46,7 @@ The CAT tool delivers a flawless end-to-end localization workflow — upload fil
 
 ### Active
 
-(To be defined in v2.0 milestone — `/gsd:new-milestone`)
+(Defined in REQUIREMENTS.md for v2.0)
 
 ### Out of Scope
 
@@ -42,13 +56,20 @@ The CAT tool delivers a flawless end-to-end localization workflow — upload fil
 - Automated workflow orchestration — Enterprise TMS feature
 - Mobile app — Desktop-first
 - Multi-language UI — Not planned
+- Game World Codex (Interactive Encyclopedia) — v3.0 milestone (needs all XML parsing wired first)
+- Game Dev Grid full CRUD — v2.0 focuses on read + edit, full create/nest in v3.0
+- AI Translation Suggestions — v3.0 (needs LLM endpoint + embedding index mature)
+- AI Naming Suggestions — v3.0 (depends on AI Translation foundation)
+- Auto-generate missing images/audio — v3.0 (Nano Banana + voice synthesis)
 
 ## Context
 
-- **Shipped v1.0** with 7 phases covering stability, editor, TM workflow, semantic search, visual polish, contextual intelligence, and offline validation
-- v1.0 is scaffold/test-focused — wires real patterns but uses mock data and test fixtures
-- **v2.0 goals** (from memory): Wire real XML parsing, merge logic, dual UI (Translator vs Game Dev), AI summaries via Qwen3
-- Landing page live on Netlify with cinematic design
+- **Shipped v1.0** with 7 phases — scaffolds + tests covering stability, editor, TM workflow, semantic search, visual polish, contextual intelligence, offline validation
+- **v2.0 is the "make it real" milestone** — wire actual XML parsing, real merge logic, real image/audio pipeline, AI summaries
+- **NewScripts are the source of truth** — MapDataGenerator, QACompiler, LanguageDataExporter, QuickCheck, QuickTranslate all have battle-tested patterns to reuse
+- 10 XML parsing patterns documented in memory (reference_xml_parsing_patterns.md)
+- Qwen3-4B/8B available via Ollama at 117 tok/s (RTX 4070 Ti, 12GB VRAM, CUDA in WSL2)
+- Landing page live on Netlify
 - Tech stack: Electron + Svelte 5 (Runes) + FastAPI + SQLite/PostgreSQL + FAISS + Model2Vec
 
 ## Constraints
@@ -61,6 +82,9 @@ The CAT tool delivers a flawless end-to-end localization workflow — upload fil
 - **Sacred Scripts**: XLSTransfer, KR Similar, QuickSearch core logic — never modify
 - **Excel libs**: xlsxwriter for writing, openpyxl only for reading
 - **Build pipeline**: Gitea CI for LocaNext, GitHub Actions for NewScripts
+- **Model2Vec ONLY** for embeddings (not Qwen) — Qwen3 for AI summaries only
+- **Research before implementing** — always read NewScripts source before writing new code
+- **YOLO mode** — auto-approve all checkpoints
 
 ## Key Decisions
 
@@ -74,7 +98,10 @@ The CAT tool delivers a flawless end-to-end localization workflow — upload fil
 | Custom LCS diff over diff-match-patch | Zero deps, CJK syllable-level tokenization | ✓ Good — accurate word diffs |
 | QA footer as persistent panel | Always visible regardless of active tab | ✓ Good — natural QA workflow |
 | Auto-mirror at folder-level scope | Simplest TM-per-folder approach | ✓ Good — clean UX |
-| v1.0 as scaffold with tests | Validate architecture before wiring real data | — Pending v2.0 validation |
+| v1.0 as scaffold with tests | Validate architecture before wiring real data | ✓ Good — v2.0 now wires real data |
+| Dual UI via file type detection | LocStr nodes = Translator, other = Game Dev | — Pending v2.0 |
+| QuickTranslate logic for Translator merge | Proven match types, postprocess, CJK-safe | — Pending v2.0 |
+| Qwen3-4B for AI summaries | 117 tok/s local, zero cloud dependency | — Pending v2.0 |
 
 ---
-*Last updated: 2026-03-15 after v1.0 milestone*
+*Last updated: 2026-03-15 after v2.0 milestone start*

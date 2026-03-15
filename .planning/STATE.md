@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: Demo-Ready CAT Tool
-status: completed
-stopped_at: Milestone v1.0 archived
-last_updated: "2026-03-15T16:00:00Z"
-last_activity: 2026-03-15 -- v1.0 milestone complete and archived
+milestone: v2.0
+milestone_name: Real Data + Dual Platform
+status: defining_requirements
+stopped_at: Defining requirements for v2.0
+last_updated: "2026-03-15T17:00:00Z"
+last_activity: 2026-03-15 -- v2.0 milestone started
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 20
-  completed_plans: 20
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -19,16 +19,18 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-03-15)
 
-**Core value:** Flawless end-to-end localization workflow — upload, TM auto-mirror, search/edit with context, export — seamless offline/online, executive-demo-ready.
-**Current focus:** v1.0 shipped. Planning v2.0 milestone (real XML parsing, merge logic, dual UI, AI summaries).
+**Core value:** Real, working localization workflows — real XML parsing, real merge logic, real image/audio, AI summaries — all local, dual-mode for translators and game developers.
+**Current focus:** Defining v2.0 requirements — wire real data, merge/export, dual UI, AI summaries.
 
 ## Current Position
 
-Milestone: v1.0 COMPLETE
-Status: Archived — ready for v2.0
-Last activity: 2026-03-15 — milestone archived
+Milestone: v2.0 Real Data + Dual Platform
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-15 — Milestone v2.0 started
 
-Progress: [██████████] 100% (20/20 plans across 7 phases)
+Progress: ░░░░░░░░░░ 0%
 
 ## Performance Metrics
 
@@ -41,7 +43,12 @@ Progress: [██████████] 100% (20/20 plans across 7 phases)
 
 ### Decisions
 
-All v1.0 decisions archived in PROJECT.md Key Decisions table.
+- Dual UI detection: LocStr nodes = Translator, other = Game Dev
+- QuickTranslate exact logic for Translator merge
+- Position-aware XML merge for Game Dev
+- Qwen3-4B/8B via Ollama for AI summaries
+- DDS→PNG via Pillow+pillow-dds, WEM via vgmstream-cli
+- All 10 XML parsing patterns from NewScripts as foundation
 
 ### Pending Todos
 
@@ -49,14 +56,12 @@ None.
 
 ### Blockers/Concerns
 
-v2.0 will need:
-- Real XML file parsing (not mock fixtures)
-- Dual UI detection (Translator vs Game Dev file types)
-- QuickTranslate merge logic integration
-- Qwen3 AI summary endpoint
+- Research NewScripts source before implementing each feature
+- Game Dev merge needs further design (position-based, not match-type)
+- Offline TMs invisible in online TM tree (architectural fix needed)
 
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: v1.0 milestone archived
-Resume: `/gsd:new-milestone` to start v2.0
+Stopped at: Defining requirements for v2.0
+Resume: Continue with requirements definition → roadmap creation
