@@ -11,7 +11,7 @@
    * - Create Project, Create Folder, Upload File
    * - Breadcrumb navigation
    */
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
   import { Modal, TextInput, Select, SelectItem, TextArea, ProgressBar, InlineLoading } from 'carbon-components-svelte';
   import { Home, ChevronRight, FolderAdd, DocumentAdd, Folder, Download, Renew, Translate, DataBase, TextMining, Flash, CloudUpload, CloudDownload, Edit, TrashCan, Merge, Application, Archive, Locked, Copy, Cut, CloudOffline } from 'carbon-icons-svelte';
@@ -31,7 +31,6 @@
   import { pushAction, undo, redo, ActionTypes, undoStack, redoStack } from '$lib/stores/undoStack.js';
   import ExplorerSearch from '$lib/components/ldm/ExplorerSearch.svelte';
 
-  const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
 
   // Props
@@ -41,7 +40,16 @@
     selectedFileId = $bindable(null),
     selectedTMId = $bindable(),  // P11-FIX: Add missing prop that LDM.svelte binds to
     linkedTM = $bindable(null),
-    connectionMode = 'online'
+    connectionMode = 'online',
+    // Callback props (Svelte 5 migration)
+    onFileSelect = undefined,
+    onProjectSelect = undefined,
+    onTmSelect = undefined,
+    onManageTMs = undefined,
+    onUploadToServer = undefined,
+    onRunQA = undefined,
+    onTmRegistered = undefined,
+    onPretranslateComplete = undefined
   } = $props();
 
   // Navigation state
@@ -511,10 +519,10 @@
 
   // ============== Grid Event Handlers ==============
 
-  function handleSelect(event) {
-    selectedItem = event.detail.item;
-    if (event.detail.selectedIds) {
-      selectedIds = event.detail.selectedIds;
+  function handleSelect(data) {
+    selectedItem = data.item;
+    if (data.selectedIds) {
+      selectedIds = data.selectedIds;
     }
     // Only update selectedFileId, don't open file (that's double-click)
     if (selectedItem?.type === 'file') {
@@ -522,8 +530,8 @@
     }
   }
 
-  async function handleMoveItems(event) {
-    const { items, targetFolder } = event.detail;
+  async function handleMoveItems(data) {
+    const { items, targetFolder } = data;
     if (!items || items.length === 0 || !targetFolder) return;
 
     // P9: Determine target ID based on target folder type
@@ -612,8 +620,8 @@
   /**
    * Handle drag-drop of projects onto platforms
    */
-  async function handleAssignToPlatform(event) {
-    const { projects, platform } = event.detail;
+  async function handleAssignToPlatform(data) {
+    const { projects, platform } = data;
     if (!projects || projects.length === 0 || !platform) return;
 
     try {
@@ -643,8 +651,8 @@
     }
   }
 
-  async function handleEnterFolder(event) {
-    const item = event.detail.item;
+  async function handleEnterFolder(data) {
+    const item = data.item;
 
     // GDP: BUG-042 Debug
     logger.warning('GDP: FilesPage handleEnterFolder received', {
@@ -949,8 +957,8 @@
     }
   }
 
-  function handleOpenFile(event) {
-    const file = event.detail.item;
+  function handleOpenFile(data) {
+    const file = data.item;
     selectedFileId = file.id;
 
     // P3: Auto-sync file for offline when opened (background, non-blocking)
@@ -964,7 +972,7 @@
       projectId: selectedProjectId,
       items: [...currentItems]
     };
-    dispatch('fileSelect', { fileId: file.id, file, filesState });
+    onFileSelect?.({ fileId: file.id, file, filesState });
   }
 
   async function handleGoUp() {
@@ -977,8 +985,8 @@
 
   // ============== Context Menu ==============
 
-  function handleContextMenu(event) {
-    const { event: e, item } = event.detail;
+  function handleContextMenu(data) {
+    const { event: e, item } = data;
     contextMenuItem = item;
     contextMenuX = e.clientX;
     contextMenuY = e.clientY;
@@ -988,8 +996,8 @@
     checkContextItemSubscription();
   }
 
-  function handleBackgroundContextMenu(event) {
-    const { event: e } = event.detail;
+  function handleBackgroundContextMenu(data) {
+    const { event: e } = data;
     bgMenuX = e.clientX;
     bgMenuY = e.clientY;
     showBackgroundMenu = true;
@@ -1145,9 +1153,9 @@
   function handlePretranslateComplete(event) {
     showPretranslateModal = false;
     pretranslateFile = null;
-    dispatch('pretranslateComplete', event.detail);
+    onPretranslateComplete?.(event.detail);
     if (selectedFileId) {
-      dispatch('fileSelect', { fileId: selectedFileId });
+      onFileSelect?.({ fileId: selectedFileId });
     }
   }
 
@@ -1156,7 +1164,7 @@
     if (!isFileType(contextMenuItem)) return;
     const file = { ...contextMenuItem };
     closeMenus();
-    dispatch('runQA', { fileId: file.id, type: 'all', fileName: file.name });
+    onRunQA?.({ fileId: file.id, type: 'all', fileName: file.name });
   }
 
   // TM Registration
@@ -1190,7 +1198,7 @@
         logger.success('TM registered', { name: tmName, tmId: result.tm_id });
         showTMRegistrationModal = false;
         tmRegistrationFile = null;
-        dispatch('tmRegistered', { tmId: result.tm_id, name: tmName });
+        onTmRegistered?.({ tmId: result.tm_id, name: tmName });
       } else {
         const error = await response.json();
         logger.error('TM registration failed', { error: error.detail });
@@ -1336,7 +1344,7 @@
       if (response.ok) {
         const result = await response.json();
         logger.success('File synced to server', { file: uploadToServerFile.name, newFileId: result.new_file_id });
-        dispatch('uploadToServer', { fileId: result.new_file_id, fileName: uploadToServerFile.name });
+        onUploadToServer?.({ fileId: result.new_file_id, fileName: uploadToServerFile.name });
         showUploadToServerModal = false;
       } else {
         const error = await response.json();
@@ -2507,16 +2515,16 @@
       bind:selectedIds
       {loading}
       isItemCut={checkItemCut}
-      on:select={handleSelect}
-      on:enterFolder={handleEnterFolder}
-      on:openFile={handleOpenFile}
-      on:goUp={handleGoUp}
-      on:contextMenu={handleContextMenu}
-      on:backgroundContextMenu={handleBackgroundContextMenu}
-      on:delete={openDelete}
-      on:rename={openRename}
-      on:moveItems={handleMoveItems}
-      on:assignToPlatform={handleAssignToPlatform}
+      onSelect={handleSelect}
+      onEnterFolder={handleEnterFolder}
+      onOpenFile={handleOpenFile}
+      onGoUp={handleGoUp}
+      onContextMenu={handleContextMenu}
+      onBackgroundContextMenu={handleBackgroundContextMenu}
+      onDelete={openDelete}
+      onRename={openRename}
+      onMoveItems={handleMoveItems}
+      onAssignToPlatform={handleAssignToPlatform}
     />
   </div>
 </div>

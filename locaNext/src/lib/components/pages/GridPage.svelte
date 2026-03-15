@@ -5,7 +5,6 @@
    * Full-page grid viewer for editing translation files.
    * Includes VirtualGrid and TM/QA side panel.
    */
-  import { createEventDispatcher } from 'svelte';
   import { openFile, closeGrid } from '$lib/stores/navigation.js';
   import { preferences } from '$lib/stores/preferences.js';
   import { logger } from '$lib/utils/logger.js';
@@ -22,13 +21,12 @@
     linkedTM = null,
     onShowGridColumns = () => {},
     onShowReferenceSettings = () => {},
-    onShowBranchDriveSettings = () => {}
+    onShowBranchDriveSettings = () => {},
+    onDismissQA = undefined
   } = $props();
 
   // Derive file type from openFile store (Dual UI Mode - Phase 08)
   let fileType = $derived($openFile?.file_type || 'translator');
-
-  const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
 
   // Component refs
@@ -112,8 +110,8 @@
   /**
    * Handle row selection - load TM matches
    */
-  async function handleRowSelect(event) {
-    const { row } = event.detail;
+  async function handleRowSelect(data) {
+    const { row } = data;
     sidePanelSelectedRow = row;
     sidePanelTMMatches = [];
     sidePanelQAIssues = row?.qa_issues || [];
@@ -169,8 +167,8 @@
   /**
    * Apply TM suggestion from side panel
    */
-  function handleApplyTMFromPanel(event) {
-    const { target } = event.detail;
+  function handleApplyTMFromPanel(data) {
+    const { target } = data;
     if (virtualGrid && sidePanelSelectedRow) {
       virtualGrid.applyTMToRow(sidePanelSelectedRow.line_number, target);
     }
@@ -179,8 +177,8 @@
   /**
    * Apply AI suggestion from side panel
    */
-  function handleApplySuggestionFromPanel(event) {
-    const { target } = event.detail;
+  function handleApplySuggestionFromPanel(data) {
+    const { target } = data;
     if (virtualGrid && sidePanelSelectedRow) {
       virtualGrid.applyTMToRow(sidePanelSelectedRow.line_number, target);
       logger.userAction('Applied AI suggestion from panel', { row: sidePanelSelectedRow.line_number });
@@ -192,8 +190,8 @@
    * Uses hierarchy activeTMs - entries auto-added to first active TM
    * VirtualGrid sends: {rowId, source, target}
    */
-  async function handleConfirmTranslation(event) {
-    const { rowId, source, target } = event.detail;
+  async function handleConfirmTranslation(data) {
+    const { rowId, source, target } = data;
 
     // Auto-add to active TM from hierarchy (not linkedTM)
     if (activeTMs.length > 0 && source && target) {
@@ -230,8 +228,8 @@
   /**
    * Handle QA dismissal
    */
-  function handleDismissQA(event) {
-    dispatch('dismissQA', event.detail);
+  function handleDismissQA(data) {
+    onDismissQA?.(data);
   }
 
   /**
@@ -319,9 +317,9 @@
       {fileType}
       {activeTMs}
       isLocalFile={$openFile?.type === 'local-file'}
-      on:rowSelect={handleRowSelect}
-      on:confirmTranslation={handleConfirmTranslation}
-      on:dismissQA={handleDismissQA}
+      onRowSelect={handleRowSelect}
+      onConfirmTranslation={handleConfirmTranslation}
+      onDismissQA={handleDismissQA}
     />
 
     <RightPanel
@@ -333,8 +331,8 @@
       tmLoading={sidePanelTMLoading}
       qaLoading={sidePanelQALoading}
       {leverageStats}
-      on:applyTM={handleApplyTMFromPanel}
-      on:applySuggestion={handleApplySuggestionFromPanel}
+      onApplyTM={handleApplyTMFromPanel}
+      onApplySuggestion={handleApplySuggestionFromPanel}
     />
   </div>
 </div>

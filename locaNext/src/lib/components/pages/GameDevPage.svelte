@@ -163,8 +163,8 @@
    * Only triggers when user actually starts editing a cell (double-click/Enter),
    * not on simple row selection.
    */
-  function handleInlineEditStart(e) {
-    const { row, column, value } = e.detail || {};
+  function handleInlineEditStart(data) {
+    const { row, column, value } = data || {};
     if (!row || !value) {
       editingEntityName = '';
       return;
@@ -250,7 +250,7 @@
         fileName={currentFileName}
         fileType="gamedev"
         gamedevDynamicColumns={dynamicColumns}
-        on:inlineEditStart={handleInlineEditStart}
+        onInlineEditStart={handleInlineEditStart}
       />
       {#if editingEntityName}
         <NamingPanel

@@ -227,8 +227,8 @@
   /**
    * Handle file selection from explorer
    */
-  function handleFileSelect(event) {
-    const { fileId, file, filesState } = event.detail;
+  function handleFileSelect(data) {
+    const { fileId, file, filesState } = data;
     selectedFileId = fileId;
     selectedFileName = file.name;
     // P33: Clear TM selection when file is selected
@@ -244,8 +244,8 @@
   /**
    * Handle project selection
    */
-  function handleProjectSelect(event) {
-    const { projectId } = event.detail;
+  function handleProjectSelect(data) {
+    const { projectId } = data;
     selectedProjectId = projectId;
     selectedFileId = null;
     selectedFileName = "";
@@ -256,8 +256,8 @@
    * UI-095: Handle QA run from file context menu
    * Opens QAMenuPanel with the specified file and check type
    */
-  function handleRunQA(event) {
-    const { fileId, type, fileName } = event.detail;
+  function handleRunQA(data) {
+    const { fileId, type, fileName } = data;
     logger.userAction("QA triggered from context menu", { fileId, type, fileName });
 
     // Set the file context for QAMenuPanel
@@ -271,8 +271,8 @@
   /**
    * P33 Phase 3: Handle TM selection from explorer
    */
-  function handleTMSelect(event) {
-    const { tmId, tm } = event.detail;
+  function handleTMSelect(data) {
+    const { tmId, tm } = data;
     selectedTMId = tmId;
     selectedTMName = tm.name;
     // Clear file selection when TM is selected
@@ -285,8 +285,8 @@
   /**
    * Handle click on QA issue: scroll to row, highlight, and open edit modal
    */
-  async function handleOpenEditModal(event) {
-    const { rowId, rowNum } = event.detail;
+  async function handleOpenEditModal(data) {
+    const { rowId, rowNum } = data;
     // openEditModalByRowId handles scroll + highlight + open modal
     if (virtualGrid) {
       await virtualGrid.openEditModalByRowId(rowId);
@@ -299,8 +299,8 @@
   /**
    * Phase 1: Handle row selection - load TM matches and QA issues for side panel
    */
-  async function handleRowSelect(event) {
-    const { row } = event.detail;
+  async function handleRowSelect(data) {
+    const { row } = data;
     if (!row || !row.source) {
       sidePanelSelectedRow = null;
       sidePanelTMMatches = [];
@@ -399,8 +399,7 @@
   /**
    * Phase 1: Handle apply TM from side panel
    */
-  function handleApplyTMFromPanel(event) {
-    const match = event.detail;
+  function handleApplyTMFromPanel(match) {
     // This will be wired up in Phase 2 for inline editing
     logger.userAction('TM apply requested from side panel', { similarity: match.similarity });
     // For now, just log - in Phase 2 this will apply to the active edit cell
@@ -410,8 +409,8 @@
    * Phase 2: Handle confirm translation (Ctrl+S) - marks as reviewed and adds to TM
    * Automatically adds entry to linked TM if one is configured for the project
    */
-  async function handleConfirmTranslation(event) {
-    const { rowId, source, target } = event.detail;
+  async function handleConfirmTranslation(data) {
+    const { rowId, source, target } = data;
     logger.userAction('Translation confirmed (Ctrl+S)', { rowId, source: source?.substring(0, 30), target: target?.substring(0, 30) });
 
     // Add to linked TM if available
@@ -446,8 +445,8 @@
    * Phase 2: Handle dismiss QA issues (Ctrl+D)
    * Resolves all QA issues for the row via API and updates visual state
    */
-  async function handleDismissQA(event) {
-    const { rowId } = event.detail;
+  async function handleDismissQA(data) {
+    const { rowId } = data;
     logger.userAction('QA issues dismissed (Ctrl+D)', { rowId });
 
     // Get QA issues to resolve (from side panel or fetch them)
@@ -884,18 +883,18 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
           bind:selectedTMId
           bind:linkedTM
           connectionMode={connectionStatus.mode}
-          on:fileSelect={handleFileSelect}
-          on:projectSelect={handleProjectSelect}
-          on:tmSelect={handleTMSelect}
-          on:manageTMs={() => showTMManager = true}
-          on:uploadToServer={(e) => logger.info("Upload to server requested", e.detail)}
-          on:runQA={handleRunQA}
+          onFileSelect={handleFileSelect}
+          onProjectSelect={handleProjectSelect}
+          onTmSelect={handleTMSelect}
+          onManageTMs={() => showTMManager = true}
+          onUploadToServer={(data) => logger.info("Upload to server requested", data)}
+          onRunQA={handleRunQA}
         />
       {:else if $currentPage === 'tm'}
         <!-- TM Page: Full-width TM management -->
         <TMPage
           bind:selectedTMId
-          on:tmSelect={handleTMSelect}
+          onTmSelect={handleTMSelect}
         />
       {:else if $currentPage === 'grid'}
         <!-- Grid Page: File viewer with side panel -->
@@ -906,7 +905,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
           onShowGridColumns={() => showGridColumns = true}
           onShowReferenceSettings={() => showReferenceSettings = true}
           onShowBranchDriveSettings={() => showBranchDriveSettings = true}
-          on:dismissQA={handleDismissQA}
+          onDismissQA={handleDismissQA}
         />
       {:else if $currentPage === 'gamedev'}
         <!-- Phase 18: Game Dev Page: File explorer + grid for gamedata -->
@@ -943,12 +942,12 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
           bind:selectedTMId
           bind:linkedTM
           connectionMode={connectionStatus.mode}
-          on:fileSelect={handleFileSelect}
-          on:projectSelect={handleProjectSelect}
-          on:tmSelect={handleTMSelect}
-          on:manageTMs={() => showTMManager = true}
-          on:uploadToServer={(e) => logger.info("Upload to server requested", e.detail)}
-          on:runQA={handleRunQA}
+          onFileSelect={handleFileSelect}
+          onProjectSelect={handleProjectSelect}
+          onTmSelect={handleTMSelect}
+          onManageTMs={() => showTMManager = true}
+          onUploadToServer={(data) => logger.info("Upload to server requested", data)}
+          onRunQA={handleRunQA}
         />
       {/if}
     </div>
@@ -976,7 +975,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
     bind:open={showQAMenu}
     fileId={selectedFileId}
     fileName={selectedFileName}
-    on:openEditModal={handleOpenEditModal}
+    onOpenEditModal={handleOpenEditModal}
   />
 </div>
 
