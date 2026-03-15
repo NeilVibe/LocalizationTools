@@ -6,10 +6,9 @@ Extracts Gimmick data from StaticInfo/gimmickinfo/ with folder-based organizatio
 Structure:
   ONE TAB = ONE FOLDER (e.g., "Background", "Item")
   Within each tab:
-    ROOT (depth 0): Filename section header
-    Depth 1: GimmickGroupInfo (Name or StrKey)
-    Depth 2+: GimmickInfo entries
-    Description row: SealData.Desc (depth+1 from parent GimmickInfo)
+    Depth 0: GimmickGroupInfo (Name or StrKey) — filtered out if all children have no GimmickName
+    Depth 1: GimmickInfo entries — filtered out if no GimmickName
+    Depth 2: SealData.Desc (description row)
 
 Columns:
   DataType | GroupInfo | GimmickName(KOR) | GimmickName(LOC) | SealDesc(KOR) | SealDesc(LOC) |
@@ -102,7 +101,6 @@ class GimmickGroupEntry:
 class GimmickFileData:
     """All gimmick data from a single XML file."""
     filename: str               # e.g., "GimmickInfo_Background_Door.StaticInfo.xml"
-    display_name: str           # Clean name for display (e.g., "Background_Door")
     groups: List[GimmickGroupEntry] = field(default_factory=list)
 
 
@@ -111,15 +109,10 @@ class GimmickFileData:
 # =============================================================================
 
 STYLES = {
-    "FileRoot": {
+    "GroupInfo": {
         "fill": PatternFill("solid", fgColor="4472C4"),  # Dark blue
         "font": Font(bold=True, size=12, color="FFFFFF"),
         "row_height": 35,
-    },
-    "GroupInfo": {
-        "fill": PatternFill("solid", fgColor="5B9BD5"),  # Medium blue
-        "font": Font(bold=True, size=11, color="FFFFFF"),
-        "row_height": 30,
     },
     "GimmickInfo": {
         "fill": PatternFill("solid", fgColor="B4C6E7"),  # Light blue
@@ -177,7 +170,10 @@ def _extract_gimmick_infos(
                 continue
             global_seen.add(strkey.lower())
 
-            gimmick_name = child.get("GimmickName") or strkey  # fallback to StrKey
+            gimmick_name = child.get("GimmickName") or ""
+            # Filter: skip entries with no GimmickName (no source text = nothing to translate)
+            if not gimmick_name:
+                continue
 
             # Look for SealData.Desc
             seal_desc = ""
@@ -204,20 +200,6 @@ def _extract_gimmick_infos(
             entries.extend(_extract_gimmick_infos(child, source_file, global_seen, counter))
 
     return entries
-
-
-def _clean_filename_for_display(filename: str) -> str:
-    """Convert filename to clean display name.
-
-    e.g., "GimmickInfo_Background_Door.StaticInfo.xml" -> "Background_Door"
-    """
-    name = filename
-    # Remove extensions
-    name = re.sub(r'\.StaticInfo\.xml$', '', name, flags=re.IGNORECASE)
-    name = re.sub(r'\.xml$', '', name, flags=re.IGNORECASE)
-    # Remove GimmickInfo_ prefix
-    name = re.sub(r'^GimmickInfo_', '', name, flags=re.IGNORECASE)
-    return name or filename
 
 
 def index_gimmick_folder(
@@ -261,11 +243,9 @@ def index_gimmick_folder(
                 continue
 
             source_file = xml_path.name
-            display_name = _clean_filename_for_display(source_file)
 
             file_data = GimmickFileData(
                 filename=source_file,
-                display_name=display_name,
             )
 
             # Find GimmickGroupInfo elements
@@ -317,27 +297,30 @@ RowItem = Tuple[int, str, str, bool, str, str, str, str]
 
 
 def emit_gimmick_rows(file_list: List[GimmickFileData]) -> List[RowItem]:
-    """Generate rows for one folder tab."""
+    """Generate rows for one folder tab.
+
+    No FileRoot rows — tab name is sufficient.
+    Groups with zero valid children are excluded entirely.
+    """
     rows: List[RowItem] = []
 
     for file_data in file_list:
-        # File root row (depth 0)
-        rows.append((0, file_data.display_name, "FileRoot", False, file_data.filename, "FileRoot", "", ""))
-
         for group in file_data.groups:
             gname = group.group_name
 
-            # Group row (depth 1)
-            rows.append((1, gname, "GroupInfo", False, group.source_file, "GroupInfo", "", gname))
-
+            # Build children rows first to check if any exist
+            child_rows: List[RowItem] = []
             for ginfo in group.gimmick_infos:
-                # GimmickInfo row (depth 2)
                 command = f"/create gimmick {ginfo.strkey}"
-                rows.append((2, ginfo.gimmick_name, "GimmickInfo", False, ginfo.source_file, "GimmickInfo", command, gname))
+                child_rows.append((1, ginfo.gimmick_name, "GimmickInfo", False, ginfo.source_file, "GimmickInfo", command, gname))
 
-                # SealData.Desc row (depth 3, description)
                 if ginfo.seal_desc:
-                    rows.append((3, ginfo.seal_desc, "Description", True, ginfo.source_file, "SealData.Desc", command, gname))
+                    child_rows.append((2, ginfo.seal_desc, "Description", True, ginfo.source_file, "SealData.Desc", command, gname))
+
+            # Only emit group + children if at least one child exists
+            if child_rows:
+                rows.append((0, gname, "GroupInfo", False, group.source_file, "GroupInfo", "", gname))
+                rows.extend(child_rows)
 
     return rows
 
