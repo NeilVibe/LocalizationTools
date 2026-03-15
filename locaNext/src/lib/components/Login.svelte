@@ -239,7 +239,7 @@
       />
     {/if}
 
-    <form on:submit|preventDefault={handleLogin}>
+    <form onsubmit={(e) => { e.preventDefault(); handleLogin(); }}>
       <TextInput
         labelText="Username"
         placeholder="Enter your username"

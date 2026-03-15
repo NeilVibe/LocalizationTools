@@ -74,8 +74,7 @@
   }
 
   // Handle file selection from picker
-  function handleFileSelect(e) {
-    const file = e.detail;
+  function handleFileSelect(file) {
     referenceFileId = file.id;
     referenceFileName = file.name;
     referenceFileRowCount = file.row_count || 0;
@@ -212,7 +211,7 @@
   bind:open={showFilePicker}
   title="Select Reference File"
   selectedFileId={referenceFileId}
-  on:select={handleFileSelect}
+  onSelect={handleFileSelect}
 />
 
 <style>
