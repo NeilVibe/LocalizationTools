@@ -75,12 +75,12 @@ Plans:
   1. User merges two loc.xml files and translations transfer correctly via exact StringID match
   2. User merges files where StringIDs differ but source text matches, and translations still transfer
   3. User triggers fuzzy merge and sees Model2Vec-based similar string matches above the configured threshold
-  4. Merged translations pass through the 7-step CJK-safe postprocess pipeline (whitespace, br-tags, punctuation normalization)
-**Plans**: TBD
+  4. Merged translations pass through the 8-step CJK-safe postprocess pipeline (whitespace, br-tags, punctuation normalization)
+**Plans**: 2 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
+- [ ] 09-01-PLAN.md -- Text matching utilities + Korean detection + 8-step postprocess pipeline (TMERGE-04)
+- [ ] 09-02-PLAN.md -- TranslatorMergeService with 4 match modes + skip guards + API endpoint (TMERGE-01, TMERGE-02, TMERGE-03)
 
 ### Phase 10: Export Pipeline
 **Goal**: Users can export their translation work in XML, Excel, and plain text formats with full data integrity
