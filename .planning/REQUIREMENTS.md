@@ -9,13 +9,13 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 ### Mock Gamedata
 
-- [ ] **MOCK-01**: System generates a realistic mock gamedata folder structure matching real staticinfo XML patterns (items, characters, regions, skills, knowledge, gimmicks)
-- [ ] **MOCK-02**: Mock data includes cross-reference chains between entities (KnowledgeKey, StrKey, LearnKnowledgeKey links)
-- [ ] **MOCK-03**: Mock data includes DDS image file references and WEM audio file references per entity
+- [x] **MOCK-01**: System generates a realistic mock gamedata folder structure matching real staticinfo XML patterns (items, characters, regions, skills, knowledge, gimmicks)
+- [x] **MOCK-02**: Mock data includes cross-reference chains between entities (KnowledgeKey, StrKey, LearnKnowledgeKey links)
+- [x] **MOCK-03**: Mock data includes DDS image file references and WEM audio file references per entity
 - [ ] **MOCK-04**: Mock data includes language data files (languagedata_eng.xml, etc.) with LocStr entries matching mock Korean source text
 - [ ] **MOCK-05**: Mock data includes EXPORT index files (.loc.xml) with StringID mappings per file
-- [ ] **MOCK-06**: Mock data includes region WorldPosition coordinates and NodeWaypointInfo route data for map visualization
-- [ ] **MOCK-07**: Mock universe has sufficient volume for meaningful testing (100+ items, 30+ characters, 10+ regions, 50+ skills, 20+ gimmicks)
+- [x] **MOCK-06**: Mock data includes region WorldPosition coordinates and NodeWaypointInfo route data for map visualization
+- [x] **MOCK-07**: Mock universe has sufficient volume for meaningful testing (100+ items, 30+ characters, 10+ regions, 50+ skills, 20+ gimmicks)
 - [ ] **MOCK-08**: Mock data passes round-trip validation (parse -> merge -> export -> re-parse produces consistent results)
 
 ### Category Clustering
@@ -113,13 +113,13 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MOCK-01 | Phase 15 | Pending |
-| MOCK-02 | Phase 15 | Pending |
-| MOCK-03 | Phase 15 | Pending |
+| MOCK-01 | Phase 15 | Complete |
+| MOCK-02 | Phase 15 | Complete |
+| MOCK-03 | Phase 15 | Complete |
 | MOCK-04 | Phase 15 | Pending |
 | MOCK-05 | Phase 15 | Pending |
-| MOCK-06 | Phase 15 | Pending |
-| MOCK-07 | Phase 15 | Pending |
+| MOCK-06 | Phase 15 | Complete |
+| MOCK-07 | Phase 15 | Complete |
 | MOCK-08 | Phase 15 | Pending |
 | CAT-01 | Phase 16 | Pending |
 | CAT-02 | Phase 16 | Pending |
