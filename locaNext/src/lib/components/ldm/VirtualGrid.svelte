@@ -7,7 +7,7 @@
     Dropdown
   } from "carbon-components-svelte";
   import { Edit, Locked, Settings, ChevronDown, MachineLearningModel } from "carbon-icons-svelte";
-  import { createEventDispatcher, onMount, onDestroy, tick } from "svelte";
+  import { onMount, onDestroy, tick } from "svelte";
   import { get } from "svelte/store";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
@@ -29,13 +29,26 @@
   import SemanticResults from "./SemanticResults.svelte";
   import QAInlineBadge from "./QAInlineBadge.svelte";
 
-  const dispatch = createEventDispatcher();
-
   // API base URL - centralized in api.js
   let API_BASE = $derived(getApiBase());
 
   // Svelte 5: Props
-  let { fileId = $bindable(null), fileName = "", fileType = "translator", activeTMs = [], isLocalFile = false, gamedevDynamicColumns = null } = $props();
+  let {
+    fileId = $bindable(null),
+    fileName = "",
+    fileType = "translator",
+    activeTMs = [],
+    isLocalFile = false,
+    gamedevDynamicColumns = null,
+    // Callback props (Svelte 5 migration)
+    onInlineEditStart = undefined,
+    onRowUpdate = undefined,
+    onRowSelect = undefined,
+    onConfirmTranslation = undefined,
+    onDismissQA = undefined,
+    onRunQA = undefined,
+    onAddToTM = undefined
+  } = $props();
 
   // Virtual scrolling constants
   const MIN_ROW_HEIGHT = 48; // Minimum row height (base)
@@ -1237,7 +1250,7 @@
     logger.userAction("Inline edit started", { rowId: row.id });
 
     // Dispatch event for consumers (e.g., NamingPanel in GameDevPage)
-    dispatch("inlineEditStart", {
+    onInlineEditStart?.({
       rowId: row.id,
       row,
       column: row.extra_data?.editing_attr || 'Name',
@@ -1328,7 +1341,7 @@
             }
           }
 
-          dispatch('rowUpdate', { rowId: row.id });
+          onRowUpdate?.({ rowId: row.id });
         } else {
           logger.error("Failed to save inline edit", { status: response.status });
         }
@@ -1354,7 +1367,7 @@
         const nextRow = rows[currentIndex + 1];
         if (nextRow && !nextRow.placeholder) {
           selectedRowId = nextRow.id;
-          dispatch('rowSelect', { row: nextRow });
+          onRowSelect?.({ row: nextRow });
           // Auto-start editing on next row
           await startInlineEdit(nextRow);
         }
@@ -1566,7 +1579,7 @@
       const currentIndex = getRowIndexById(selectedRowId);
       if (currentIndex !== undefined && rows[currentIndex + 1]) {
         selectedRowId = rows[currentIndex + 1].id;
-        dispatch('rowSelect', { row: rows[currentIndex + 1] });
+        onRowSelect?.({ row: rows[currentIndex + 1] });
       }
       return;
     }
@@ -1577,7 +1590,7 @@
       const currentIndex = getRowIndexById(selectedRowId);
       if (currentIndex !== undefined && currentIndex > 0 && rows[currentIndex - 1]) {
         selectedRowId = rows[currentIndex - 1].id;
-        dispatch('rowSelect', { row: rows[currentIndex - 1] });
+        onRowSelect?.({ row: rows[currentIndex - 1] });
       }
       return;
     }
@@ -1606,19 +1619,19 @@
         logger.success("Row confirmed (selection mode)", { rowId: row.id });
 
         // Dispatch event to add to linked TM
-        dispatch('confirmTranslation', {
+        onConfirmTranslation?.({
           rowId: row.id,
           source: row.source,
           target: row.target
         });
 
-        dispatch('rowUpdate', { rowId: row.id });
+        onRowUpdate?.({ rowId: row.id });
 
         // Move to next row
         const currentIndex = getRowIndexById(row.id);
         if (currentIndex !== undefined && rows[currentIndex + 1]) {
           selectedRowId = rows[currentIndex + 1].id;
-          dispatch('rowSelect', { row: rows[currentIndex + 1] });
+          onRowSelect?.({ row: rows[currentIndex + 1] });
         }
       }
     } catch (err) {
@@ -1787,13 +1800,13 @@
         logger.success("Translation confirmed", { rowId: row.id, status: 'reviewed' });
 
         // Dispatch event to add to linked TM (handled by LDM.svelte)
-        dispatch('confirmTranslation', {
+        onConfirmTranslation?.({
           rowId: row.id,
           source: row.source,
           target: textToSave
         });
 
-        dispatch('rowUpdate', { rowId: row.id });
+        onRowUpdate?.({ rowId: row.id });
       } else {
         logger.error("Failed to confirm translation", { status: response.status });
       }
@@ -1816,7 +1829,7 @@
       const nextRow = rows[currentIndex + 1];
       if (nextRow && !nextRow.placeholder) {
         selectedRowId = nextRow.id;
-        dispatch('rowSelect', { row: nextRow });
+        onRowSelect?.({ row: nextRow });
         await startInlineEdit(nextRow);
       }
     }
@@ -1839,7 +1852,7 @@
     const row = getRowById(targetRowId);
     if (!row) return;
 
-    dispatch('dismissQA', { rowId: row.id });
+    onDismissQA?.({ rowId: row.id });
     logger.userAction("QA issues dismissed", { rowId: row.id });
   }
 
@@ -1875,7 +1888,7 @@
       if (response.ok) {
         row.status = 'untranslated';
         logger.success("Row reverted to untranslated", { rowId: row.id });
-        dispatch('rowUpdate', { rowId: row.id });
+        onRowUpdate?.({ rowId: row.id });
       } else {
         logger.error("Failed to revert row status", { rowId: row.id, status: response.status });
       }
@@ -1903,7 +1916,7 @@
     selectedRowId = rowId;
     const row = getRowById(rowId);
     if (row) {
-      dispatch('rowSelect', { row });
+      onRowSelect?.({ row });
     }
   }
 
@@ -1938,11 +1951,11 @@
       if (response.ok) {
         row.status = status;
         logger.success(`Row status set to ${status}`, { rowId: row.id });
-        dispatch('rowUpdate', { rowId: row.id });
+        onRowUpdate?.({ rowId: row.id });
 
         // If confirming, also dispatch for TM auto-add
         if (status === 'reviewed') {
-          dispatch('confirmTranslation', {
+          onConfirmTranslation?.({
             rowId: row.id,
             source: row.source,
             target: row.target
@@ -1978,7 +1991,7 @@
     if (!row) return;
 
     // Dispatch QA request event
-    dispatch('runQA', { rowId: row.id, source: row.source, target: row.target });
+    onRunQA?.({ rowId: row.id, source: row.source, target: row.target });
     logger.userAction("QA check requested from context menu", { rowId: row.id });
   }
 
@@ -1989,7 +2002,7 @@
     closeContextMenu();
     if (!contextMenuRowId) return;
 
-    dispatch('dismissQA', { rowId: contextMenuRowId });
+    onDismissQA?.({ rowId: contextMenuRowId });
     logger.userAction("QA dismissed from context menu", { rowId: contextMenuRowId });
   }
 
@@ -2003,7 +2016,7 @@
     const row = getRowById(contextMenuRowId);
     if (!row) return;
 
-    dispatch('addToTM', { rowId: row.id, source: row.source, target: row.target });
+    onAddToTM?.({ rowId: row.id, source: row.source, target: row.target });
     logger.userAction("Add to TM requested from context menu", { rowId: row.id });
   }
 
@@ -2321,7 +2334,7 @@
     selectedRowId = row.id;
 
     // Phase 1: Dispatch rowSelect event for side panel
-    dispatch('rowSelect', { row });
+    onRowSelect?.({ row });
 
     // Pre-fetch TM suggestions if not already fetched
     if (prefetchedRowId !== row.id && row.source) {

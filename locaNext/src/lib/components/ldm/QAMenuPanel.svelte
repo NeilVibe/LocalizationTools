@@ -8,17 +8,19 @@
     InlineNotification
   } from "carbon-components-svelte";
   import { Close, WarningAltFilled, WarningFilled, InformationFilled, Renew, ArrowRight, StopFilled } from "carbon-icons-svelte";
-  import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
-
-  const dispatch = createEventDispatcher();
 
   // API base URL - centralized in api.js
   const API_BASE = getApiBase();
 
   // Props
-  let { open = $bindable(false), fileId = null, fileName = "" } = $props();
+  let {
+    open = $bindable(false),
+    fileId = null,
+    fileName = "",
+    onOpenEditModal = undefined
+  } = $props();
 
   // State
   let loading = $state(false);
@@ -207,7 +209,7 @@
 
   // Click on issue: scroll to row, highlight, and open edit modal
   function handleIssueClick(rowId, rowNum) {
-    dispatch('openEditModal', { rowId, rowNum });
+    onOpenEditModal?.({ rowId, rowNum });
     logger.userAction("Open row from QA menu", { rowId, rowNum });
   }
 

@@ -14,7 +14,6 @@
    * - F2: Rename selected item
    * - Home/End: Go to first/last item
    */
-  import { createEventDispatcher } from 'svelte';
   import { Folder, Document, DocumentBlank, Table, Code, Application, Locked, TrashCan, CloudOffline } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
 
@@ -24,10 +23,19 @@
     selectedId = null,    // Currently selected item ID (single)
     selectedIds = $bindable([]), // Multi-select IDs
     loading = false,
-    isItemCut = () => false  // EXPLORER-001: Function to check if item is cut
+    isItemCut = () => false,  // EXPLORER-001: Function to check if item is cut
+    // Callback props (Svelte 5 migration)
+    onSelect = undefined,
+    onEnterFolder = undefined,
+    onOpenFile = undefined,
+    onAssignToPlatform = undefined,
+    onMoveItems = undefined,
+    onContextMenu = undefined,
+    onBackgroundContextMenu = undefined,
+    onGoUp = undefined,
+    onDelete = undefined,
+    onRename = undefined
   } = $props();
-
-  const dispatch = createEventDispatcher();
 
   // Track grid container for focus management
   let gridBody = $state(null);
@@ -171,7 +179,7 @@
       lastSelectedIndex = index;
     }
 
-    dispatch('select', { item, selectedIds });
+    onSelect?.({ item, selectedIds });
   }
 
   /**
@@ -194,15 +202,15 @@
 
     if (item.type === 'folder' || item.type === 'local-folder' || item.type === 'project' || item.type === 'platform' || item.type === 'recycle-bin' || item.type === 'offline-storage') {
       logger.warning('GDP: Dispatching enterFolder event', { itemType: item.type });
-      dispatch('enterFolder', { item });
+      onEnterFolder?.({ item });
     } else if (item.type === 'trash-item') {
       // EXPLORER-008: Double-click on trash item does nothing (use context menu to restore)
       return;
     } else if (item.type === 'local-file') {
       // P9: Local files ARE openable - they're real files in Offline Storage
-      dispatch('openFile', { item });
+      onOpenFile?.({ item });
     } else {
-      dispatch('openFile', { item });
+      onOpenFile?.({ item });
     }
   }
 
@@ -285,13 +293,13 @@
       if (projectsOnly.length === 0) return;
 
       // Dispatch assignToPlatform event for projects dropped on platforms
-      dispatch('assignToPlatform', {
+      onAssignToPlatform?.({
         projects: projectsOnly,
         platform: targetItem
       });
     } else {
       // Dispatch move event with items to move and target folder
-      dispatch('moveItems', {
+      onMoveItems?.({
         items: draggedItems,
         targetFolder: targetItem
       });
@@ -309,7 +317,7 @@
   function handleContextMenu(event, item) {
     event.preventDefault();
     event.stopPropagation();
-    dispatch('contextMenu', { event, item });
+    onContextMenu?.({ event, item });
   }
 
   /**
@@ -319,7 +327,7 @@
     // Only trigger if clicking on grid body background, not on a row
     if (event.target.closest('.grid-row')) return;
     event.preventDefault();
-    dispatch('backgroundContextMenu', { event });
+    onBackgroundContextMenu?.({ event });
   }
 
   /**
@@ -336,7 +344,7 @@
   function selectByIndex(index) {
     if (index < 0 || index >= items.length) return;
     const item = items[index];
-    dispatch('select', { item });
+    onSelect?.({ item });
 
     // Focus the row button
     if (gridBody) {
@@ -384,17 +392,17 @@
 
       case 'Backspace':
         event.preventDefault();
-        dispatch('goUp');
+        onGoUp?.();
         break;
 
       case 'Delete':
         event.preventDefault();
-        dispatch('delete', { item });
+        onDelete?.({ item });
         break;
 
       case 'F2':
         event.preventDefault();
-        dispatch('rename', { item });
+        onRename?.({ item });
         break;
     }
   }

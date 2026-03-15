@@ -5,29 +5,27 @@
    * Windows/SharePoint style breadcrumb navigation.
    * Shows current path and allows clicking to navigate back.
    */
-  import { createEventDispatcher } from 'svelte';
   import { ChevronRight, Home } from 'carbon-icons-svelte';
 
   // Props
   let {
-    path = []  // Array of { type, id, name } items
+    path = [],  // Array of { type, id, name } items
+    onNavigate = undefined
   } = $props();
-
-  const dispatch = createEventDispatcher();
 
   /**
    * Navigate to a specific breadcrumb item
    */
   function navigateTo(index) {
     const item = path[index];
-    dispatch('navigate', { index, item, path: path.slice(0, index + 1) });
+    onNavigate?.({ index, item, path: path.slice(0, index + 1) });
   }
 
   /**
    * Navigate to root (Projects)
    */
   function navigateToRoot() {
-    dispatch('navigate', { index: -1, item: null, path: [] });
+    onNavigate?.({ index: -1, item: null, path: [] });
   }
 </script>
 

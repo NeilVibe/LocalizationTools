@@ -15,7 +15,6 @@
     MachineLearningModel,
     AiRecommend
   } from "carbon-icons-svelte";
-  import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import TMTab from "$lib/components/ldm/TMTab.svelte";
   import ImageTab from "$lib/components/ldm/ImageTab.svelte";
@@ -23,8 +22,6 @@
   import ContextTab from "$lib/components/ldm/ContextTab.svelte";
   import AISuggestionsTab from "$lib/components/ldm/AISuggestionsTab.svelte";
   import QAFooter from "$lib/components/ldm/QAFooter.svelte";
-
-  const dispatch = createEventDispatcher();
 
   // Props (same as TMQAPanel for backward compat)
   let {
@@ -35,7 +32,11 @@
     qaLoading = false,
     collapsed = $bindable(false),
     width = $bindable(300),
-    leverageStats = null
+    leverageStats = null,
+    // Callback props (Svelte 5 migration)
+    onApplyTM = undefined,
+    onApplySuggestion = undefined,
+    onNavigateToRow = undefined
   } = $props();
 
   // Tab state
@@ -88,12 +89,12 @@
     logger.userAction('Toggled right panel', { collapsed });
   }
 
-  function handleApplyTM(event) {
-    dispatch('applyTM', event.detail);
+  function handleApplyTM(data) {
+    onApplyTM?.(data);
   }
 
-  function handleApplySuggestion(event) {
-    dispatch('applySuggestion', event.detail);
+  function handleApplySuggestion(data) {
+    onApplySuggestion?.(data);
   }
 </script>
 
@@ -144,7 +145,7 @@
             bind:tmMatches={tmMatches}
             bind:tmLoading={tmLoading}
             {leverageStats}
-            on:applyTM={handleApplyTM}
+            onApplyTM={handleApplyTM}
           />
         {:else if activeTab === 'image'}
           <ImageTab {selectedRow} />
@@ -153,7 +154,7 @@
         {:else if activeTab === 'context'}
           <ContextTab {selectedRow} />
         {:else if activeTab === 'ai-suggest'}
-          <AISuggestionsTab {selectedRow} on:applySuggestion={handleApplySuggestion} />
+          <AISuggestionsTab {selectedRow} onApplySuggestion={handleApplySuggestion} />
         {/if}
       </div>
       {/key}
@@ -163,7 +164,7 @@
         {qaIssues}
         {qaLoading}
         {selectedRow}
-        onNavigateToRow={(rowId) => dispatch('navigateToRow', { rowId })}
+        onNavigateToRow={(rowId) => onNavigateToRow?.({ rowId })}
       />
     </div>
   {/if}
