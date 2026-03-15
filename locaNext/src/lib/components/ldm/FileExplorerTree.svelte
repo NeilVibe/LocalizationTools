@@ -136,11 +136,13 @@
       </button>
     </div>
   {:else if treeData}
-    <div class="tree-content">
+    <div class="tree-content" role="tree">
       {#snippet renderFolder(folder, depth)}
         <div class="tree-item">
           <button
             class="tree-node folder-node"
+            role="treeitem"
+            aria-expanded={expandedNodes.has(folder.path)}
             style="padding-left: {depth * 16 + 8}px"
             onclick={() => toggleNode(folder.path)}
           >
@@ -158,13 +160,14 @@
           </button>
 
           {#if expandedNodes.has(folder.path)}
-            <div class="tree-children">
+            <div class="tree-children" role="group">
               {#each folder.folders || [] as subfolder (subfolder.path)}
                 {@render renderFolder(subfolder, depth + 1)}
               {/each}
               {#each folder.files || [] as file (file.path)}
                 <button
                   class="tree-node file-node"
+                  role="treeitem"
                   class:selected={selectedFilePath === file.path}
                   style="padding-left: {(depth + 1) * 16 + 8}px"
                   onclick={() => selectFile(file)}

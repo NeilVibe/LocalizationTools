@@ -661,7 +661,7 @@
     position: relative;
   }
 
-  .ldm-nav-tab:first-child {
+  .ldm-nav-tab:not(:last-child) {
     border-right: 1px solid var(--cds-border-subtle-01);
   }
 

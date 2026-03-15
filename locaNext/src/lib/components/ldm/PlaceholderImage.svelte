@@ -1,11 +1,13 @@
 <script>
   /**
-   * PlaceholderImage.svelte - Styled SVG image placeholder with category-specific Carbon icon
+   * PlaceholderImage.svelte - Styled image placeholder with category-specific Carbon icon
    *
    * Renders a deterministic placeholder when entity images are missing.
    * Uses Carbon icons mapped to entity types for visual differentiation.
+   * Uses div+CSS layout for Chromium/Electron compatibility (no SVG wrapping).
    *
    * Phase 21: AI Naming Coherence + Placeholders (Plan 02)
+   * Phase 24: UX-04 - Replaced SVG with div layout for Electron compat
    */
   import { User, ShoppingCart, Lightning, GameWireless, Earth } from "carbon-icons-svelte";
 
@@ -28,35 +30,25 @@
   );
 </script>
 
-<svg class="placeholder-image" viewBox="0 0 160 120" xmlns="http://www.w3.org/2000/svg">
-  <rect
-    x="0" y="0" width="160" height="120"
-    rx="4" ry="4"
-    fill="var(--cds-layer-02)"
-  />
-  <!-- Carbon icon centered via foreignObject -->
-  <foreignObject x="56" y="20" width="48" height="48">
-    <div class="icon-container" xmlns="http://www.w3.org/1999/xhtml">
-      <IconComponent size={48} />
-    </div>
-  </foreignObject>
-  <!-- Entity name at bottom -->
-  <text
-    x="80" y="100"
-    text-anchor="middle"
-    fill="var(--cds-text-03)"
-    font-size="11"
-    font-family="'IBM Plex Sans', sans-serif"
-  >
-    {displayName}
-  </text>
-</svg>
+<div class="placeholder-image">
+  <div class="icon-container">
+    <IconComponent size={48} />
+  </div>
+  <span class="placeholder-name">{displayName}</span>
+</div>
 
 <style>
   .placeholder-image {
     width: 100%;
     max-width: 200px;
+    aspect-ratio: 160 / 120;
     border-radius: 4px;
+    background: var(--cds-layer-02);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
 
   .icon-container {
@@ -66,5 +58,16 @@
     width: 48px;
     height: 48px;
     color: var(--cds-text-03);
+  }
+
+  .placeholder-name {
+    font-size: 11px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--cds-text-03);
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 90%;
   }
 </style>
