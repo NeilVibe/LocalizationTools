@@ -1,182 +1,288 @@
 # Technology Stack
 
-**Project:** LocaNext v2.0 — Real Data + Dual Platform
+**Project:** LocaNext v3.0 -- Game Dev Platform + AI Intelligence
 **Researched:** 2026-03-15
-**Scope:** NEW additions only. Existing stack (Electron, Svelte 5, FastAPI, SQLite/PostgreSQL, FAISS, Model2Vec, Carbon Components, WebSocket) is validated and unchanged.
+**Scope:** NEW additions only. Existing validated stack is unchanged.
 
-## Stack Additions for v2.0
+## Existing Stack (DO NOT RE-RESEARCH)
 
-### XML Parsing (Already Available)
+Already validated and shipping in v2.0:
+- Electron + Svelte 5 (Runes) + FastAPI + SQLite/PostgreSQL
+- FAISS + Model2Vec for semantic search
+- Qwen3-4B via Ollama (httpx async) for AI summaries
+- lxml for XML parsing (XMLParsingEngine)
+- Aho-Corasick (ahocorasick) for entity detection
+- Pillow for DDS->PNG, vgmstream-cli for WEM->WAV
+- xlsxwriter for writing, openpyxl for reading Excel
+- Carbon Components Svelte for UI
+- socket.io-client for WebSocket sync
+
+---
+
+## Stack Additions for v3.0
+
+### Frontend: Interactive World Map
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| lxml | >=4.9.0 (installed) | XML parsing for all game data | Already in requirements.txt and used by ALL 8 NewScripts projects. Battle-tested with sanitizer+recovery pattern. No version bump needed. |
+| d3-zoom | ^3.0.0 | Pan/zoom transforms for SVG canvas | Mature, battle-tested, works with raw SVG. No need for d3-geo (this is a fantasy game map, not geographic). Svelte 5 manages the DOM, d3-zoom handles only the math/gestures. |
+| d3-force | ^3.0.0 | Force-directed node layout fallback | For auto-positioning nodes when WorldPosition data is missing or sparse. Optional -- only if manual positions are incomplete. |
 
-**No action required.** lxml is already a dependency. The work is porting parsing patterns from NewScripts, not adding libraries.
+**Why NOT full D3.js:** Import only d3-zoom and d3-force (tree-shakeable). Full d3 bundle is 290KB+ and we only need transform math + force simulation. Svelte handles all DOM rendering.
 
-### Image Pipeline (DDS to PNG)
+**Why NOT svelte-konva / Konva:** Canvas-based rendering loses SVG advantages (CSS styling, accessibility, DOM events on individual nodes). The world map has ~50-200 nodes, not thousands -- SVG performs fine at this scale. Konva adds 150KB for capabilities we do not need.
+
+**Why NOT Leaflet / Mapbox:** These are geographic map libraries. Our world map is a fantasy game map with arbitrary XY positions from XML `WorldPosition` attributes. No tile layers, no lat/lng projections needed.
+
+**Integration pattern:**
+```svelte
+<script>
+  import { zoom, zoomIdentity } from 'd3-zoom';
+  import { select } from 'd3-selection';
+
+  let svgElement = $state(null);
+  let transform = $state(zoomIdentity);
+
+  $effect(() => {
+    if (svgElement) {
+      const zoomBehavior = zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', (event) => { transform = event.transform; });
+      select(svgElement).call(zoomBehavior);
+    }
+  });
+</script>
+
+<svg bind:this={svgElement}>
+  <g transform={transform}>
+    {#each regions as region (region.strkey)}
+      <circle cx={region.x} cy={region.y} r="8" />
+    {/each}
+  </g>
+</svg>
+```
+
+**Confidence:** HIGH -- d3-zoom is the standard for SVG pan/zoom. Used by thousands of projects. Svelte 5 integration is straightforward via `$effect` + `bind:this`.
+
+### Frontend: No New UI Framework Additions
+
+| Decision | Rationale |
+|----------|-----------|
+| No new grid library | Existing virtual grid component handles Game Dev Grid. Add column configs for XML attributes. |
+| No tree-view library | Carbon Components has TreeView. Use for XML node hierarchy in Game Dev Grid. |
+| No tooltip library | Carbon has Tooltip. Use for map node hover. |
+| No modal library | Carbon has Modal/ComposedModal. Use for entity detail panels. |
+
+**Confidence:** HIGH -- Carbon Components already covers all UI primitives needed. Checked existing components in v2.0.
+
+### Backend: Mock Gamedata Generator
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| Pillow | >=10.0.0 (installed) | DDS texture loading and PNG conversion | Already in requirements.txt. Built-in `DdsImagePlugin` handles DXT1, DXT3, DXT5, BC2, BC3, BC5 reading. |
-| pillow-dds | >=1.0.0 (NEW, Windows build only) | Extended DDS format support (BC7) | Game textures use BC7 compression. Pillow's built-in DDS plugin does NOT support BC7 reading per official docs. pillow-dds registers as a Pillow plugin via side-effect import, extending format coverage. MapDataGenerator already uses this exact pattern. |
+| Faker | ^33.0.0 | Generate realistic names, descriptions, text | Battle-tested fake data library. Korean locale support (`ko_KR`). Use for character names, item descriptions, region names. Already in Python ecosystem. |
 
-**Integration approach:** Port `DDSHandler` from `MapDataGenerator/core/dds_handler.py` into `server/tools/ldm/services/`. Convert DDS to PNG on the backend, serve as base64 or cached file via the existing `/mapdata/image/{string_id}` endpoint. The frontend receives PNG — no DDS handling in the browser.
+**Why Faker:** The mock gamedata generator needs realistic-looking Korean and English strings for items, characters, regions, skills. Faker provides locale-aware generation. The XML structure itself comes from studying QACompiler generator patterns (lxml + dataclasses, no new library needed).
 
-**Key detail:** pillow-dds is Windows-only (DDS files come from game builds on Windows). In LocaNext's Electron deployment, the embedded Python backend runs on Windows where pillow-dds is available. In WSL dev mode, DDS files are accessed via `/mnt/c/` paths but pillow-dds may not install cleanly — use Pillow's built-in DDS support (DXT1/DXT5) for dev testing, with pillow-dds only required in the Windows build.
+**Why NOT random/lorem ipsum:** Mock data must look convincing for executive demos. Faker generates contextually appropriate names and descriptions per locale.
 
+**What we do NOT need:**
+- No Jinja2 for XML templates -- lxml `etree.SubElement` is already our pattern from XMLParsingEngine
+- No schema validation library -- QACompiler generators already encode the schema knowledge in Python dataclasses
+- No JSON Schema -- XML is the format, lxml handles it
+
+**Confidence:** HIGH -- Faker is Python's standard fake data library. 78K+ GitHub stars.
+
+### Backend: AI Translation Suggestions
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| (No new library) | -- | Qwen3 via existing httpx/Ollama | AI suggestions reuse the existing `AISummaryService` pattern. New prompt templates + structured JSON output via Ollama `format` parameter. Zero new dependencies. |
+
+**Why no new library:**
+- httpx async already calls Ollama REST API
+- Pydantic already defines response schemas
+- Model2Vec + FAISS already do semantic similarity for finding similar entities
+- The "suggestion" feature is a new **prompt + API endpoint**, not a new library
+
+**New service pattern (extends existing):**
 ```python
-# Pattern from MapDataGenerator — import for side-effect registration
-import sys
-if sys.platform == "win32":
-    try:
-        import pillow_dds  # noqa: F401
-    except ImportError:
-        pass
+class AITranslationSuggestionService:
+    """Reuses Ollama endpoint. New prompt templates for translation suggestions."""
+    OLLAMA_URL = "http://localhost:11434/api/generate"
+    MODEL = "qwen3:4b"
 
-from PIL import Image
-img = Image.open(dds_path)  # Works with both built-in and pillow-dds formats
-png_bytes = io.BytesIO()
-img.convert("RGBA").save(png_bytes, format="PNG")
+    async def suggest_translations(
+        self, source_text: str, context: dict, similar_entries: list[dict]
+    ) -> list[dict]:
+        # 1. Model2Vec finds similar TM entries (existing FAISS index)
+        # 2. Qwen3 generates ranked alternatives with confidence
+        # 3. Return structured suggestions
+        ...
 ```
 
-### Audio Pipeline (WEM to WAV)
+**Confidence:** HIGH -- extends proven v2.0 AI pipeline.
+
+### Backend: QuickCheck QA Integration
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| vgmstream-cli | r2083+ (bundled binary) | WEM to WAV conversion | External binary, NOT a Python package. WEM is Wwise proprietary audio — no Python library can decode it. vgmstream is the standard tool, already bundled in MapDataGenerator/tools/. |
+| (No new library) | -- | Port QuickCheck core logic | `term_check.py` and `line_check.py` use ahocorasick (already installed). Port the `TermCheck` and `LineCheck` classes into LocaNext server services. |
 
-**Integration approach:** Port `AudioHandler` from `MapDataGenerator/core/audio_handler.py` into `server/tools/ldm/services/`. Key changes from MapDataGenerator:
-1. Remove `winsound` playback (MapDataGenerator is a Tkinter desktop app) — LocaNext serves WAV bytes via HTTP endpoint instead
-2. Keep the subprocess-based WEM-to-WAV conversion (same `vgmstream-cli -o output.wav input.wem` pattern)
-3. Keep the path-hashed temp file caching (avoids re-conversion)
-4. Serve converted WAV via streaming endpoint for `<audio>` element playback in the browser
+**What gets ported:**
+- `core/term_check.py` -- Dual Aho-Corasick automaton for glossary term consistency
+- `core/line_check.py` -- Same-source different-translation inconsistency detection
+- `core/preprocessing.py` -- Text normalization for consistency checks
 
-**No Python dependencies needed.** vgmstream-cli is a standalone binary bundled with the app. The AudioHandler just calls it via `subprocess.run()`.
+**What does NOT get ported:**
+- `core/lang_check.py` -- Language detection (FastText model, 125MB). Not needed in v3.0.
+- `core/glossary_extractor.py` -- Already have glossary via TM entries
+- Excel writing utilities -- LocaNext has its own export pipeline
 
-**Binary location:** Bundle `vgmstream-cli.exe` in `server/tools/ldm/bin/` (or reference from MapDataGenerator's `tools/` folder during dev). The `_find_vgmstream()` pattern from MapDataGenerator handles discovery.
+**Confidence:** HIGH -- QuickCheck is our own code, patterns are proven, ahocorasick already in requirements.
 
-### AI Summaries (Qwen3 via Ollama)
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| httpx | 0.27.0 (installed) | HTTP client for Ollama REST API | Already a dependency. Use httpx directly against `http://localhost:11434/api/generate` — simpler than adding the `ollama` Python package. Zero new dependencies. |
-
-**Do NOT install the `ollama` Python package.** httpx is already in requirements.txt and provides everything needed. The Ollama REST API is simple:
-
-```python
-import httpx
-
-async def generate_summary(prompt: str, model: str = "qwen3:4b") -> str:
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            "http://localhost:11434/api/generate",
-            json={
-                "model": model,
-                "prompt": prompt,
-                "stream": False,
-                "options": {"temperature": 0.3, "num_predict": 200}
-            }
-        )
-        return response.json()["response"]
-```
-
-**Why httpx over `ollama` package:**
-1. httpx is already a dependency (0 new packages)
-2. We only need `/api/generate` — one endpoint, one POST call
-3. The `ollama` package (0.6.1) adds httpx as its own dependency anyway — circular waste
-4. Full control over timeout, retry, error handling (FastAPI patterns)
-5. Async-native (matches FastAPI's async handlers)
-
-**Model choice:** Qwen3-4B for speed (117 tok/s on RTX 4070 Ti). Fall back gracefully when Ollama is unavailable — return `{"summary": null, "status": "ai_unavailable"}`. Cache summaries per StringID in the database (add `ai_summary` column to rows table or a dedicated `ai_cache` table).
-
-### Translator Merge (QuickTranslate Logic)
+### Backend: Category Clustering
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| Model2Vec | >=0.3.0 (installed) | Fuzzy matching for merge | Already used for TM search. Same embeddings used for source-text similarity when StringID match fails. |
-| xlsxwriter | 3.2.0 (installed) | Excel export | Already a dependency. Used for translator export (LanguageDataExporter column format). |
-| openpyxl | 3.1.5 (installed) | Excel reading (import) | Already a dependency. Read-only for importing Excel translations back. |
+| (No new library) | -- | Port LanguageDataExporter clustering | `TwoTierCategoryMapper` and `TierClassifier` from LanguageDataExporter + QuickCheck. Pure Python with path-based heuristics + keyword matching. No ML needed. |
 
-**No new dependencies.** The merge logic is algorithmic — porting QuickTranslate's match types (exact StringID, StrOrigin match, fuzzy via embeddings) and 7-step postprocessing pipeline. All supporting libraries already exist.
+**What gets ported:**
+- `clustering/tier_classifier.py` -- STORY vs GAME_DATA tier classification
+- `clustering/dialog_clusterer.py` -- Fine-grained dialog categories
+- `clustering/gamedata_clusterer.py` -- Keyword-based game data categories
+- `exporter/category_mapper.py` -- Combined category mapping (already partially ported to QuickCheck)
 
-### Game Dev Merge (Position-Aware XML)
+**Confidence:** HIGH -- pure Python, no external dependencies, proven logic.
 
-**No new dependencies.** Position-aware merge uses lxml (already installed) with custom comparison logic. This is pure algorithmic code — compare XML trees by node position, detect add/remove/modify at node, attribute, and children levels.
+### Backend: Placeholder Image Generation
 
-## Summary: What to Install
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Pillow | (already installed) | Generate colored placeholder images | Create simple colored rectangles with entity name text overlay. 64x64 or 128x128 PNG placeholders when DDS textures are missing. |
 
-### Python (server/)
+**Why NOT Nano Banana / Gemini:** The DEFERRED_IDEAS.md mentions Nano Banana for AI-generated images. For v3.0, simple colored placeholders with text are sufficient. AI image generation is a separate future feature -- it requires Gemini API (cloud dependency, violates offline-first constraint). Colored placeholders with category-based colors (blue for characters, green for items, brown for regions) provide enough visual context.
 
+**Confidence:** HIGH -- Pillow is already installed, `ImageDraw.text()` is trivial.
+
+### Backend: Placeholder Audio Generation
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| piper-tts | ^1.4.1 | Local neural TTS for placeholder voice audio | Fast, offline, ONNX-based. ~50MB model files. Generates WAV from text. Supports multiple languages. Runs on CPU (no CUDA needed). |
+
+**Why piper-tts:** The DEFERRED_IDEAS.md calls for AI voice synthesis for missing audio. Piper is the best local/offline TTS engine: no cloud dependency, fast inference, natural-sounding voices, Python package available via pip.
+
+**Why NOT cloud TTS (Google/Azure):** Violates offline-first constraint. LocaNext must work without internet.
+
+**Why NOT espeak/festival:** Low quality robotic voices. Piper uses neural VITS models -- significantly better quality.
+
+**Installation:**
 ```bash
-# NOTHING NEW for pip install in development.
-# All required libraries already in requirements.txt:
-#   lxml>=4.9.0, Pillow>=10.0.0, httpx==0.27.0,
-#   model2vec>=0.3.0, xlsxwriter==3.2.0, openpyxl==3.1.5
-
-# Windows build ONLY — add to build step (not requirements.txt):
-pip install pillow-dds
+pip install piper-tts  # ~5MB package
+# Download voice model separately (~50MB per voice)
+# Korean: ko_KR-kss-low.onnx
+# English: en_US-lessac-medium.onnx
 ```
 
-### Binary (bundled)
+**IMPORTANT caveat:** piper-tts is OPTIONAL for v3.0. If model download is too heavy for the build pipeline, defer to a later phase. Simple silence WAV files (Pillow/wave module can generate these) are an acceptable MVP fallback.
+
+**Confidence:** MEDIUM -- piper-tts works well standalone but integration with PyInstaller builds needs testing. Model files add to build size.
+
+---
+
+## NPM Additions Summary
 
 ```bash
-# vgmstream-cli — bundle in server/tools/ldm/bin/ or reference MapDataGenerator/tools/
-# Download: https://github.com/vgmstream/vgmstream/releases (r2083+)
-# Only vgmstream-cli.exe needed (2.4MB)
+cd locaNext
+npm install d3-zoom d3-selection
+# Optional, only if force-directed layout needed:
+npm install d3-force
 ```
 
-### Frontend (locaNext/)
+**Total new frontend weight:** ~45KB minified (d3-zoom + d3-selection). Negligible for an Electron app.
+
+## Pip Additions Summary
 
 ```bash
-# No new npm packages needed for v2.0.
-# DDS→PNG conversion happens on backend, served as PNG to frontend.
-# Audio served as WAV stream, played with native <audio> element.
-# AI summaries fetched via existing API pattern (fetch → JSON).
+pip install Faker>=33.0.0
+# Optional (placeholder audio):
+pip install piper-tts>=1.4.0
 ```
+
+**Total new backend weight:** Faker ~1.5MB. piper-tts ~5MB + ~50MB per voice model.
+
+---
 
 ## Alternatives Considered
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
-| Ollama client | httpx (direct REST) | `ollama` Python package (0.6.1) | Already have httpx. ollama pkg adds dependency for 1 endpoint call. |
-| DDS conversion | Pillow + pillow-dds | `pydds`, `texconv`, `DirectXTex` | Pillow is already installed. pillow-dds is proven in MapDataGenerator. pydds is less maintained. |
-| WEM conversion | vgmstream-cli (binary) | `ffmpeg`, `pysox` | ffmpeg cannot decode WEM. vgmstream is the ONLY tool that handles Wwise WEM files. |
-| AI summaries | Direct Ollama REST | LangChain, LlamaIndex | Massive overkill. We need one prompt-in, text-out call. No chains, no agents, no RAG. |
-| Excel export | xlsxwriter | pandas to_excel | xlsxwriter is already a project rule (MEMORY.md). Lighter, more control over formatting. |
-| XML parsing | lxml | xml.etree.ElementTree | lxml handles malformed XML (recovery mode), has XPath, proven in all NewScripts. ElementTree crashes on malformed data. |
+| Map pan/zoom | d3-zoom (math only) | svelte-konva (Canvas) | SVG better for <200 nodes: CSS styling, DOM events, accessibility. Canvas overkill. |
+| Map pan/zoom | d3-zoom | @panzoom/panzoom | d3-zoom has better transform API, integrates with d3-force if needed later. |
+| Map rendering | Raw SVG + Svelte | Leaflet/Mapbox | Geographic map libs. Our map is fantasy XY positions, not lat/lng. |
+| Map rendering | Raw SVG + Svelte | Three.js/WebGL | 3D is unnecessary complexity for a 2D node map. |
+| Fake data | Faker | Mimesis | Faker has better Korean locale support, larger community. |
+| AI suggestions | Existing Ollama/httpx | ollama Python package | httpx direct is simpler, already proven in v2.0. No new dep. |
+| TTS | piper-tts | espeak | Piper sounds natural. espeak sounds robotic. |
+| TTS | piper-tts | Coqui TTS | Coqui requires PyTorch (already installed but heavy). Piper uses ONNX -- lighter. |
+| Category clustering | Port from LDE | sklearn/ML clustering | Overkill. Path-based heuristics + keywords work perfectly for known XML folder structure. |
+| XML mock generation | lxml etree | Jinja2 templates | lxml is already the standard pattern. Templates add abstraction without benefit. |
 
-## What NOT to Add
+---
 
-| Package | Why Not |
-|---------|---------|
-| `ollama` Python package | httpx does the same thing, already installed |
-| `langchain` / `llama-index` | Absurd overhead for a single generate call |
-| `ffmpeg-python` | Cannot decode WEM format |
-| `pydds` | pillow-dds is proven in MapDataGenerator, no reason to switch |
-| `diff-match-patch` | Already handled in v1.0 with custom LCS diff (CJK syllable-level) |
-| `pandas` for XML | lxml + manual parsing is the NewScripts pattern, proven and faster |
-| Any cloud API SDK (google-cloud, boto3, deepl) | LOCAL ONLY — zero cloud dependency is a core constraint |
+## What We Already Have (No Addition Needed)
 
-## Version Verification
+| v3.0 Feature | Existing Tech | Notes |
+|--------------|---------------|-------|
+| Game Dev Grid | Virtual grid component + Carbon | Add new column configurations for XML attributes |
+| XML node CRUD | lxml + XMLParsingEngine | Add write-back methods to existing engine |
+| Entity detection | Aho-Corasick (ahocorasick) | Already in requirements, used in context panel |
+| Semantic search (Codex) | Model2Vec + FAISS | Already operational for TM search. Extend index to game entities. |
+| AI summaries (Codex) | Qwen3-4B + httpx + Ollama | Already operational. New prompt templates for Codex context. |
+| File explorer tree | Carbon TreeView + existing FilesPage | Extend for gamedata folder structure |
+| Image preview | Pillow DDS->PNG pipeline | Already in v2.0 mapdata service |
+| Audio preview | vgmstream-cli WEM->WAV | Already in v2.0 mapdata service |
+| Export/merge | xlsxwriter/openpyxl + merge engine | Extend for Game Dev mode exports |
+| Offline parity | Repository pattern + SQLite/PG | New services follow same pattern |
 
-| Package | In requirements.txt | Latest on PyPI | Action |
-|---------|-------------------|----------------|--------|
-| lxml | >=4.9.0 | 5.3.1 (2025-12) | No change — floor version is fine, pip resolves latest |
-| Pillow | >=10.0.0 | 12.1.1 (2026-02) | No change — floor version is fine |
-| httpx | 0.27.0 | 0.28.1 (2025-12) | Pinned at 0.27.0, works fine for Ollama REST calls |
-| Model2Vec | >=0.3.0 | 0.4.0+ | No change — floor version is fine |
-| xlsxwriter | 3.2.0 | 3.2.2 (2025) | Minor patch, no breaking changes. Keep pinned. |
-| openpyxl | 3.1.5 | 3.1.5 | Current |
+---
 
-**Confidence:** HIGH — all libraries verified against existing requirements.txt, MapDataGenerator source code, and official documentation.
+## Integration Points with Existing Stack
+
+### World Map -> Existing Services
+- Region XML data parsed by XMLParsingEngine (v2.0)
+- `WorldPosition` attribute already extracted by QACompiler region generator
+- Entity images served by existing mapdata routes
+- Entity details via existing context panel API
+
+### AI Suggestions -> Existing AI Pipeline
+- Ollama endpoint reused from AISummaryService
+- Model2Vec similarity search reused from TM search
+- FAISS index extended to cover game entities (items, characters, regions)
+- Structured JSON output via existing Pydantic response models
+
+### QA Pipeline -> Existing Aho-Corasick
+- Term Check builds on same ahocorasick automaton as entity detection
+- Glossary terms sourced from existing TM entries API
+- Results displayed in existing QA panel component
+
+### Mock Data -> Existing XML Patterns
+- Generator follows QACompiler generator patterns (base.py, dataclasses)
+- XML files written with lxml etree (same as XMLParsingEngine output)
+- Folder structure mirrors real staticinfo layout
+
+---
 
 ## Sources
 
-- [Pillow DDS format documentation](https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html) — built-in DDS support (DXT1/DXT3/DXT5/BC2/BC3/BC5, NOT BC7)
-- [Pillow DdsImagePlugin source](https://github.com/python-pillow/Pillow/blob/main/src/PIL/DdsImagePlugin.py) — BC7 support status
-- [vgmstream releases](https://github.com/vgmstream/vgmstream/releases) — r2083 (2026-01-25)
-- [Ollama Python library on PyPI](https://pypi.org/project/ollama/) — v0.6.1
-- [Ollama REST API docs](https://docs.ollama.com/api/introduction) — `/api/generate` endpoint
-- MapDataGenerator source: `core/dds_handler.py`, `core/audio_handler.py` — proven patterns
-- LocaNext `requirements.txt` — existing dependency inventory
+- [d3-zoom npm](https://www.npmjs.com/package/d3-zoom) -- SVG pan/zoom transforms
+- [d3-force npm](https://www.npmjs.com/package/d3-force) -- Force-directed layout
+- [Faker PyPI](https://pypi.org/project/Faker/) -- Python fake data generation
+- [piper-tts PyPI](https://pypi.org/project/piper-tts/) -- Local neural TTS (v1.4.1)
+- [piper GitHub](https://github.com/rhasspy/piper) -- Fast local TTS engine
+- [svelte-konva](https://github.com/konvajs/svelte-konva) -- Considered, not selected (Canvas overkill)
+- [Svelte + D3 integration](https://datavisualizationwithsvelte.com/) -- Reference patterns
+- QACompiler generators at `RFC/NewScripts/QACompilerNEW/generators/` -- XML schema knowledge
+- QuickCheck core at `RFC/NewScripts/QuickCheck/core/` -- QA pipeline source
+- LanguageDataExporter clustering at `RFC/NewScripts/LanguageDataExporter/clustering/` -- Category logic
+- Existing `server/tools/ldm/services/ai_summary_service.py` -- AI pattern to extend

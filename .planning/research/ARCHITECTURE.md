@@ -1,587 +1,490 @@
 # Architecture Patterns
 
-**Domain:** Localization management platform (CAT Tool + Game Dev) -- v2.0 integration
+**Domain:** Game Dev Platform + AI Intelligence (v3.0 milestone for LocaNext)
 **Researched:** 2026-03-15
-**Confidence:** HIGH (based on existing codebase inspection + battle-tested NewScripts patterns)
+**Confidence:** HIGH (all integration points verified against existing v2.0 source code)
 
-## Current Architecture (v1.0 Baseline)
+## Recommended Architecture
 
-```
-Electron Shell
-  |
-  +-- Svelte 5 Frontend (Carbon Components)
-  |     +-- VirtualGrid (translation editor, 4048 lines)
-  |     +-- TMExplorerTree / TMManager
-  |     +-- ImageTab / AudioTab / ContextTab
-  |     +-- QAFooter (persistent panel)
-  |
-  +-- FastAPI Backend (embedded Python)
-        +-- Repository Layer (9 interfaces, PG + SQLite)
-        +-- Services Layer (singleton pattern)
-        |     +-- MapDataService (scaffolded -- empty indexes)
-        |     +-- GlossaryService (scaffolded -- AC automaton ready)
-        |     +-- ContextService (orchestrates glossary + mapdata)
-        |     +-- TMService, IndexingService, CategoryMapper
-        +-- Routes Layer (tools/ldm/routes/)
-        +-- FAISS + Model2Vec (semantic search)
-        +-- WebSocket (real-time sync, online mode)
-```
-
-**Key insight:** v1.0 built the scaffolding correctly. Services exist as singletons with `get_*_service()` factories. Routes are clean, using dependency injection. The v2.0 work is about **filling the scaffolds with real data pipelines**, not restructuring.
-
-## Recommended Architecture (v2.0 Additions)
+v3.0 extends the existing Electron + FastAPI + Svelte 5 architecture. No new infrastructure needed -- all features integrate through new services, routes, and components that follow established v2.0 patterns.
 
 ### High-Level Integration Map
 
 ```
-                     EXISTING (keep)                    NEW (v2.0)
-                  +-------------------+            +-------------------+
-  Frontend        | VirtualGrid       |            | Column configs    |
-                  | (4048 lines)      |----+------>| per file type     |
-                  +-------------------+    |       | (Translator vs    |
-                                           |       |  Game Dev mode)   |
-                                           |       +-------------------+
-                                           |
-                  +-------------------+    |       +-------------------+
-  File Detection  | FilesPage.svelte  |----+------>| FileTypeDetector  |
-                  | ExplorerGrid      |            | (LocStr scan)     |
-                  +-------------------+            +-------------------+
+EXISTING (v2.0)                          NEW (v3.0)
+===========================              ===========================
 
-                  +-------------------+            +-------------------+
-  Services        | MapDataService    |<-----------| XMLParsingEngine  |
-  (fill scaffolds)| (empty indexes)   |  populate  | (lxml + sanitizer)|
-                  +-------------------+            +-------------------+
-                  | GlossaryService   |<-----------| StaticInfoParser  |
-                  | (AC automaton)    |  populate  | (KnowledgeInfo,   |
-                  +-------------------+            |  CharacterInfo)   |
-                  | ContextService    |            +-------------------+
-                  | (orchestrator)    |
-                  +-------------------+
-                                                   +-------------------+
-  New Services                                     | MergeEngine       |
-                                                   |  +TranslatorMerge |
-                                                   |  +GameDevMerge    |
-                                                   +-------------------+
-                                                   | ExportService     |
-                                                   |  (XML/Excel/Text) |
-                                                   +-------------------+
-                                                   | MediaConverter    |
-                                                   |  (DDS->PNG,       |
-                                                   |   WEM->WAV)       |
-                                                   +-------------------+
-                                                   | AISummaryService  |
-                                                   |  (Ollama/Qwen3)   |
-                                                   +-------------------+
+server/tools/ldm/services/              server/tools/ldm/services/
+  xml_parsing.py         ─────────────→   gamedata_universe.py (mock data gen)
+  ai_summary_service.py  ─────────────→   ai_suggestion_service.py (ranked suggestions)
+  glossary_service.py    ─────────────→   qa_pipeline_service.py (QuickCheck integration)
+  category_mapper.py     ─────────────→   category_cluster_service.py (StringID clustering)
+  mapdata_service.py     ─────────────→   placeholder_generator.py (auto-gen missing assets)
+  context_service.py     ─────────────→   codex_service.py (entity encyclopedia)
+  media_converter.py     ─────────────→   (extends for placeholder flag)
+
+server/tools/ldm/routes/                server/tools/ldm/routes/
+  context.py             ─────────────→   codex.py (map, character, item endpoints)
+  qa.py                  ─────────────→   qa_pipeline.py (term check + line check)
+  mapdata.py                              ai_suggestions.py (ranked translation/naming)
+                                          gamedata.py (mock gamedata management)
+
+locaNext/src/lib/components/            locaNext/src/lib/components/
+  ldm/VirtualGrid.svelte ─────────────→   ldm/GameDevGrid.svelte (new component)
+  ldm/RightPanel.svelte  ─────────────→   (new "AI Suggestions" tab added)
+  ldm/QAFooter.svelte    ─────────────→   (extended with QuickCheck results)
+  ldm/ContextTab.svelte  ─────────────→   (extended with richer codex links)
+  pages/GridPage.svelte  ─────────────→   pages/CodexPage.svelte (new page)
+                                          ldm/codex/ (MapView, CharacterCard, ItemCard)
 ```
 
 ### Component Boundaries
 
-| Component | Responsibility | Communicates With | New/Modified |
-|-----------|---------------|-------------------|--------------|
-| **FileTypeDetector** | Scan XML for LocStr nodes, classify as Translator vs Game Dev | FilesPage, VirtualGrid, Routes | NEW service |
-| **XMLParsingEngine** | Sanitize + parse XML using QuickTranslate patterns (lxml + recovery) | MapDataService, GlossaryService, MergeEngine | NEW service |
-| **TranslatorMergeEngine** | StringID match, StrOrigin match, fuzzy match + postprocess | ExportService, VirtualGrid | NEW service |
-| **GameDevMergeEngine** | Position-based node-level merge (add/remove/modify at any depth) | ExportService, VirtualGrid | NEW service |
-| **ExportService** | Write XML (br-tag safe), Excel (xlsxwriter), plain text | TranslatorMerge, GameDevMerge, Routes | NEW service |
-| **MediaConverter** | DDS to PNG (Pillow+pillow-dds), WEM to WAV (vgmstream-cli) | MapDataService, ImageTab, AudioTab | NEW service |
-| **AISummaryService** | Qwen3-4B via Ollama, structured JSON, per-StringID cache | ContextService, ContextTab | NEW service |
-| **MapDataService** | StrKey-to-image/audio O(1) lookups | ContextService, Routes | MODIFIED (fill indexes) |
-| **GlossaryService** | AC automaton entity detection | ContextService, Routes | MODIFIED (fill indexes) |
-| **VirtualGrid** | Translation editor with virtual scrolling | Routes, all services via API | MODIFIED (column configs) |
-| **Repository Layer** | DB abstraction (9 interfaces, PG + SQLite) | All routes | UNCHANGED |
+| Component | Responsibility | Communicates With |
+|-----------|---------------|-------------------|
+| **gamedata_universe.py** (NEW service) | Generate/manage mock gamedata folder structure mimicking real staticinfo XML | XMLParsingEngine (reuse parsing), GlossaryService (entity extraction) |
+| **ai_suggestion_service.py** (NEW service) | Generate ranked translation/naming suggestions via Qwen3 + Model2Vec | AISummaryService (shared Ollama endpoint), FAISS index (embeddings), GlossaryService (entity context) |
+| **qa_pipeline_service.py** (NEW service) | Run QuickCheck Term Check + Line Check on grid rows | Aho-Corasick automaton (existing GlossaryService), QAResultRepository |
+| **category_cluster_service.py** (NEW service) | Classify StringIDs into categories (Item/Quest/UI/Skill/etc) | TwoTierCategoryMapper (extends existing), XMLParsingEngine (file path info) |
+| **codex_service.py** (NEW service) | Aggregate entity data for Codex encyclopedia views | GlossaryService (entity index), MapDataService (media), ContextService, Model2Vec+FAISS (similarity) |
+| **placeholder_generator.py** (NEW service) | Generate placeholder images/audio for missing assets | MediaConverter (format pipeline), Pillow (image gen), optionally piper-tts |
+| **GameDevGrid.svelte** (NEW component) | Hierarchical XML authoring grid for game devs -- tree view + editable attributes | VirtualGrid (shared virtual scrolling logic), RightPanel (AI suggestions tab) |
+| **CodexPage.svelte** (NEW page) | Codex encyclopedia page with map, character browser, item browser | Navigation store (new page type), codex API module |
+| **MapView.svelte** (NEW component) | Interactive world map with clickable regions | SVG + d3-zoom (transform math only, Svelte owns DOM), codex API |
+| **CharacterCard.svelte** (NEW component) | Character detail view with image, metadata, related strings | ImageTab (reuse media display), codex API |
+| **ItemCard.svelte** (NEW component) | Item detail view with image, stats, similar items | SemanticResults (reuse similarity display), codex API |
 
-## New Components: Detailed Design
+### Data Flow
 
-### 1. FileTypeDetector (server/tools/ldm/services/filetype_detector.py)
-
-**Pattern:** Stateless utility -- no singleton needed.
-
-```python
-from lxml import etree
-from enum import Enum
-
-class FileType(Enum):
-    TRANSLATOR = "translator"    # Has LocStr nodes
-    GAMEDEV = "gamedev"          # XML without LocStr (staticinfo, etc.)
-    UNKNOWN = "unknown"          # Non-XML or empty
-
-def detect_file_type(xml_content: str) -> FileType:
-    """Scan first 50 LocStr-tagged elements. If found -> TRANSLATOR, else -> GAMEDEV."""
-    # Use raw bytes regex for speed (same pattern as QuickTranslate's _quick_scan_stringids)
-    if re.search(rb'<(?:LocStr|locstr|LOCSTR)', xml_content.encode('utf-8', errors='replace')):
-        return FileType.TRANSLATOR
-    # Check if valid XML at all
-    try:
-        etree.fromstring(xml_content.encode())
-        return FileType.GAMEDEV
-    except Exception:
-        return FileType.UNKNOWN
-```
-
-**Integration point:** Called when file is opened. Result stored in file metadata and sent to frontend via API response. Frontend uses it to switch column configs.
-
-### 2. XMLParsingEngine (server/tools/ldm/services/xml_parsing.py)
-
-**Pattern:** Singleton service, wraps QuickTranslate's battle-tested parsing.
-
-This is NOT a new invention -- it is a **direct port** of these existing modules:
-- `QuickTranslate/core/xml_parser.py` -- sanitizer, entity fix, tag repair
-- `QuickTranslate/core/xml_io.py` -- LocStr element iteration, attribute extraction
-- `MapDataGenerator/core/xml_parser.py` -- generic XML iteration
-- `MapDataGenerator/core/linkage.py` -- KnowledgeInfo chain resolution
-
-```python
-class XMLParsingEngine:
-    """Centralized XML parsing with sanitization and recovery."""
-
-    def parse_locstr_file(self, path: Path) -> List[LocStrRow]:
-        """Parse translator file: extract LocStr elements with all attributes."""
-        # Port from QuickTranslate/core/xml_io.py::parse_corrections_from_xml
-        # + xml_parser.py sanitization pipeline
-
-    def parse_staticinfo_file(self, path: Path) -> List[StaticInfoNode]:
-        """Parse game dev file: extract node tree with attributes."""
-        # Port from MapDataGenerator/core/xml_parser.py
-
-    def build_knowledge_chain(self, knowledge_folder: Path) -> Dict[str, KnowledgeLookup]:
-        """Build StrKey -> KnowledgeLookup from KnowledgeInfo XMLs."""
-        # Port from MapDataGenerator/core/linkage.py::KnowledgeLookup
-
-    def sanitize(self, raw_xml: str) -> str:
-        """Fix bad entities, repair tags, preprocess newlines."""
-        # Port from QuickTranslate/core/xml_parser.py
-```
-
-**Critical:** Use lxml with `recover=True` parser. Never stdlib ElementTree for game data (too fragile).
-
-### 3. MergeEngine Architecture
-
-Two distinct engines, sharing a common result type.
-
-```python
-class MergeResult:
-    """Unified merge result."""
-    matched: int
-    unmatched: int
-    changes: List[MergeChange]  # (string_id, field, old_value, new_value)
-
-class TranslatorMergeEngine:
-    """Port of QuickTranslate's _fast_folder_merge logic."""
-
-    def merge_by_string_id(self, source, target) -> MergeResult:
-        """Exact StringID match -- O(n) via dict lookup."""
-
-    def merge_by_str_origin(self, source, target) -> MergeResult:
-        """Source text match when StringIDs differ."""
-
-    def merge_fuzzy(self, source, target, threshold=0.7) -> MergeResult:
-        """Model2Vec similarity above threshold."""
-
-    def postprocess(self, rows) -> PostprocessResult:
-        """8-step CJK-safe cleanup pipeline."""
-        # Direct port from QuickTranslate/core/postprocess.py
-
-class GameDevMergeEngine:
-    """Position-aware XML node merge (NOT string-match based)."""
-
-    def merge_at_node_level(self, source_tree, target_tree) -> MergeResult:
-        """Add/remove/modify nodes by XPath position."""
-
-    def merge_at_attribute_level(self, source_node, target_node) -> MergeResult:
-        """Diff attributes within matching nodes."""
-
-    def merge_children(self, source_parent, target_parent, depth=0) -> MergeResult:
-        """Recursive children merge preserving document order."""
-```
-
-### 4. ExportService (server/tools/ldm/services/export_service.py)
-
-```python
-class ExportService:
-    """Handles all export formats."""
-
-    def export_xml(self, rows, output_path: Path) -> Path:
-        """Write XML with <br/> preservation. Uses lxml raw_attribs pattern."""
-        # Port from QuickTranslate's xml_transfer.py::_write_target_xml
-
-    def export_excel(self, rows, output_path: Path, columns: List[str]) -> Path:
-        """Write Excel via xlsxwriter (NEVER openpyxl for writing)."""
-
-    def export_text(self, rows, output_path: Path) -> Path:
-        """Write tab-delimited text (StringID + source + translation)."""
-```
-
-### 5. MediaConverter (server/tools/ldm/services/media_converter.py)
-
-```python
-class MediaConverter:
-    """DDS/WEM conversion for browser display."""
-
-    def dds_to_png(self, dds_path: Path, output_path: Path,
-                   max_size: tuple = (256, 256)) -> Optional[Path]:
-        """Convert DDS texture to PNG thumbnail."""
-        # Port from MapDataGenerator/core/dds_handler.py::DDSHandler
-        # Uses Pillow + pillow-dds plugin
-        # LRU cache for repeated lookups
-
-    def wem_to_wav(self, wem_path: Path, output_path: Path) -> Optional[Path]:
-        """Convert WEM audio to WAV via vgmstream-cli."""
-        # subprocess call to vgmstream-cli
-        # Fallback: return None (UI shows "Audio unavailable" badge)
-```
-
-**Integration:** MapDataService calls MediaConverter when populating indexes. Converted files cached in temp directory. API serves them as static files.
-
-### 6. AISummaryService (server/tools/ldm/services/ai_summary.py)
-
-```python
-class AISummaryService:
-    """Qwen3 via Ollama for contextual summaries."""
-
-    def __init__(self):
-        self._cache: Dict[str, str] = {}  # string_id -> summary
-        self._ollama_url = "http://localhost:11434"
-        self._model = "qwen3:4b"  # or 8b
-
-    async def get_summary(self, string_id, context) -> Optional[str]:
-        """Generate 2-line contextual summary. Cached per string_id."""
-        if string_id in self._cache:
-            return self._cache[string_id]
-        prompt = self._build_prompt(context)
-        response = await self._call_ollama(prompt)
-        self._cache[string_id] = response
-        return response
-
-    def is_available(self) -> bool:
-        """Check if Ollama is running and model is loaded."""
-```
-
-**Integration:** ContextService calls AISummaryService. ContextTab shows summary or "AI unavailable" badge.
-
-## Data Flow: End-to-End
-
-### File Open Flow (Modified)
+#### 1. Mock Gamedata Universe
 
 ```
-User clicks file in ExplorerGrid
-  |
-  v
-[1] API: GET /api/ldm/files/{id}/content
-  |
-  v
-[2] FileTypeDetector.detect(content)  --> FileType.TRANSLATOR or .GAMEDEV
-  |
-  v
-[3] Response includes file_type field
-  |
-  v
-[4] Frontend: VirtualGrid receives file_type
-  |
-  v
-[5] VirtualGrid.getVisibleColumns() switches column config:
-     TRANSLATOR: [#, StringID, Source(KR), Target, Reference]
-     GAMEDEV:    [#, NodeName, Attributes, Values, Children]
+Phase start: Generate mock data
+  gamedata_universe.py
+    ├── Uses QACompiler generator patterns (Item, Character, Region, Skill)
+    │     Source: RFC/NewScripts/QACompilerNEW/generators/
+    │     Patterns: item.py, character.py, region.py, skill.py
+    ├── Creates folder structure: mock_gamedata/StaticInfo/{characterinfo,iteminfo,regioninfo,...}
+    ├── Generates realistic XML files with StringIDs, Names, Descs, attributes
+    ├── Generates matching stringtable/loc/ files (LocStr format for translator mode)
+    ├── Creates mock texture paths and audio event mappings
+    └── Outputs: folder on disk + index in GlossaryService + entries in MapDataService
+
+On app start (lazy):
+  server/main.py → gamedata_universe.ensure_mock_data()
+    → GlossaryService.build_from_entity_names(extracted_entities)
+    → MapDataService.index_from_mock(mock_media_mappings)
 ```
 
-### XML Parsing + Index Population Flow (New)
+#### 2. Game Dev Grid (read + edit XML staticinfo)
 
 ```
-MapDataService.initialize(branch, drive)
-  |
-  v
-XMLParsingEngine.build_knowledge_chain(knowledge_folder)
-  --> Dict[strkey, KnowledgeLookup]
-  |
-  v
-For each KnowledgeLookup:
-  MediaConverter.dds_to_png(lookup.ui_texture_name)
-  --> MapDataService._strkey_to_image[strkey] = ImageContext(...)
-  |
-  v
-GlossaryService.build_from_entity_names(extracted_entities)
-  --> AC automaton populated
-  |
-  v
-ContextService now has real data for:
-  - Entity detection (GlossaryService)
-  - Image/audio lookups (MapDataService)
-  - AI summaries (AISummaryService)
+User opens staticinfo file in File Explorer:
+  FilesPage → fileType detection = "gamedev" → navigates to GridPage
+
+GridPage renders GameDevGrid (not VirtualGrid) when fileType === "gamedev":
+  GameDevGrid.svelte
+    ├── Fetches parsed XML tree: GET /api/ldm/gamedata/tree/{file_id}
+    │     → XMLParsingEngine.parse_full_tree() (NEW method, returns nested structure)
+    ├── Renders hierarchical tree view (parent nodes + child nodes)
+    ├── Each node: Name, Desc, attributes as editable cells
+    ├── On edit: PATCH /api/ldm/rows/{id} (reuse existing row update)
+    │     → AI suggestion request triggered in parallel
+    │     → QA pipeline check triggered in parallel
+    └── On save: POST /api/ldm/gamedata/save-xml/{file_id}
+
+Right panel shows:
+  AI Suggestions tab (new) → ranked naming/translation suggestions
+  Image tab (existing) → entity image from mapdata
+  Audio tab (existing) → entity audio from mapdata
+  Context tab (existing) → AI summary + entity links
 ```
 
-### Merge Flow (New)
+#### 3. AI Suggestions Pipeline
 
 ```
-User initiates merge (Translator mode)
-  |
-  v
-[1] API: POST /api/ldm/merge/translator
-     body: { source_file_id, target_file_id, match_types: [...] }
-  |
-  v
-[2] XMLParsingEngine.parse_locstr_file(source) --> source_rows
-    XMLParsingEngine.parse_locstr_file(target) --> target_rows
-  |
-  v
-[3] TranslatorMergeEngine.merge_by_string_id(source, target)
-    Then: .merge_by_str_origin(unmatched)
-    Then: .merge_fuzzy(still_unmatched, threshold=0.7)
-  |
-  v
-[4] TranslatorMergeEngine.postprocess(merged_rows)
-  |
-  v
-[5] ExportService.export_xml(merged_rows, output_path)
-    or: ExportService.export_excel(merged_rows, output_path)
-  |
-  v
-[6] Response: MergeResult { matched, unmatched, changes[] }
+User selects a row (translator or game dev mode):
+  Grid row selection
+    → POST /api/ldm/ai/suggestions
+        {string_id, source_text, entity_type, file_path, mode: "translate"|"naming"}
+    → ai_suggestion_service.py:
+        1. Model2Vec: find top-K similar entities via existing FAISS index
+        2. Aho-Corasick: detect entities in source text via existing GlossaryService
+        3. Qwen3: generate ranked suggestions with confidence scores
+           Prompt includes: similar entity names, parent context, game genre
+        4. Return: [{suggestion, confidence, reasoning, source_type}]
+    → RightPanel "AI Suggestions" tab renders ranked list
+    → User clicks suggestion → populates grid cell (NEVER auto-replace)
 ```
 
-### AI Summary Flow (New)
+#### 4. QA Pipeline (QuickCheck Integration)
 
 ```
-User selects row in VirtualGrid
-  |
-  v
-[1] RightPanel/ContextTab: GET /api/ldm/context/{string_id}?source_text=...
-  |
-  v
-[2] ContextService.resolve_context_for_row(string_id, source_text)
-     --> entities, image, audio (existing flow)
-  |
-  v
-[3] AISummaryService.get_summary(string_id, context)
-     --> Ollama call (or cache hit)
-  |
-  v
-[4] Response includes ai_summary field
-  |
-  v
-[5] ContextTab renders summary or "AI unavailable" badge
+Two triggers:
+  A) Real-time (on cell edit):
+    Grid cell blur → POST /api/ldm/qa/pipeline-check
+      {row_id, source, target, glossary_terms}
+    → qa_pipeline_service.py:
+        1. Term Check: Aho-Corasick glossary scan (source has term, target missing)
+             Port from: RFC/NewScripts/QuickCheck/core/term_check.py
+        2. Line Check: Same source → different translations detected
+             Port from: RFC/NewScripts/QuickCheck/core/line_check.py
+        3. Return: [{check_type, severity, message, term, positions}]
+    → QAFooter updates with new issues (existing component, extended check_types)
+
+  B) Batch (full file):
+    File-level "Run QA Pipeline" button → POST /api/ldm/qa/pipeline-file/{file_id}
+    → Iterates all rows, runs both checks, stores results in QAResultRepository
+    → QAFooter shows aggregate results with existing filtering
+```
+
+#### 5. Codex (Interactive Encyclopedia)
+
+```
+User navigates to Codex page:
+  Navigation store: currentPage = 'codex'
+  CodexPage.svelte renders three sub-views (tabs):
+
+  A) World Map:
+    GET /api/ldm/codex/regions
+      → codex_service.py: aggregate Region entities + WorldPosition from staticinfo
+         Source patterns: QACompiler Region generator knows all locations
+      → Returns: [{name, description, position: {x, y}, connected_regions, npcs, quests}]
+    MapView.svelte renders positioned nodes on SVG
+      → d3-zoom handles pan/zoom transforms (math only, Svelte renders SVG nodes)
+    Click region → detail panel with full context
+
+  B) Character Browser:
+    GET /api/ldm/codex/characters?search=&page=
+      → codex_service.py: aggregate Character entities with metadata
+      → Returns: [{name, image_url, gender, race, job, quest_appearances}]
+    Search: GET /api/ldm/codex/characters/search?q= (Model2Vec semantic search)
+    Click character → CharacterCard with full detail
+
+  C) Item Browser:
+    GET /api/ldm/codex/items?search=&category=&page=
+      → codex_service.py: aggregate Item entities with Model2Vec similarity
+      → Returns: [{name, image_url, description, category, similar_items}]
+    Click item → ItemCard with detail + similar items list
+```
+
+#### 6. Category Clustering
+
+```
+On file parse (automatic):
+  XMLParsingEngine.parse() → rows with file_path metadata
+    → category_cluster_service.classify_rows(rows)
+      → TwoTierCategoryMapper (existing, extended with more keywords)
+      → Returns: {row_id: category_label} mapping
+    → Stored as column in grid data (category column)
+    → VirtualGrid/GameDevGrid shows category as filterable Tag column
+    → Filter bar gets "Category" dropdown (Item, Quest, Skill, Region, UI, System, etc.)
+```
+
+#### 7. Auto-Generated Placeholders
+
+```
+When media requested but missing:
+  ImageTab/AudioTab → GET /api/ldm/mapdata/image/{strkey}
+    → MapDataService: lookup returns has_image=false
+    → placeholder_generator.py:
+        Image: Generate via Pillow (text overlay on colored background by category)
+               OR Gemini API via nano-banana skill (if available, non-blocking)
+        Audio: Generate silence placeholder with TTS metadata
+               OR local TTS via piper (if available)
+    → Cache generated placeholder
+    → Return with is_placeholder=true flag
+  UI shows placeholder with distinct styling (dashed border, watermark)
 ```
 
 ## Patterns to Follow
 
-### Pattern 1: Singleton Service with Lazy Init (Existing Pattern)
-
-All v1.0 services use this pattern. v2.0 services MUST follow it.
-
+### Pattern 1: Service Singleton with Lazy Init
+**What:** All new services follow GlossaryService/MapDataService singleton pattern.
+**When:** Every new service in `server/tools/ldm/services/`.
+**Example:**
 ```python
-_service_instance: Optional[MyService] = None
+_instance: Optional[CodexService] = None
 
-def get_my_service() -> MyService:
-    global _service_instance
-    if _service_instance is None:
-        _service_instance = MyService()
-    return _service_instance
+def get_codex_service() -> CodexService:
+    global _instance
+    if _instance is None:
+        _instance = CodexService()
+    return _instance
 ```
 
-**When:** Every new service (XMLParsingEngine, MergeEngine, ExportService, AISummaryService).
-**Why:** Consistent with MapDataService, GlossaryService, ContextService. DI via `Depends()` in routes.
+### Pattern 2: Route Module Registration
+**What:** New routes follow the established `router.py` aggregation pattern.
+**When:** Every new route file.
+**Example:**
+```python
+# In router.py, add:
+from .routes.codex import router as codex_router
+from .routes.ai_suggestions import router as ai_suggestions_router
+from .routes.qa_pipeline import router as qa_pipeline_router
+from .routes.gamedata import router as gamedata_router
 
-### Pattern 2: Port NewScripts Logic, Don't Reinvent
+router.include_router(codex_router)
+router.include_router(ai_suggestions_router)
+router.include_router(qa_pipeline_router)
+router.include_router(gamedata_router)
+```
 
-The NewScripts codebase has battle-tested XML handling. Port directly.
-
-| v2.0 Feature | Source Code to Port | Key Module |
-|---|---|---|
-| XML sanitization | `QuickTranslate/core/xml_parser.py` | `_fix_bad_entities`, `_repair_tag_stack` |
-| LocStr parsing | `QuickTranslate/core/xml_io.py` | `parse_corrections_from_xml` |
-| Transfer/merge | `QuickTranslate/core/xml_transfer.py` | `_fast_folder_merge` |
-| Postprocess | `QuickTranslate/core/postprocess.py` | `run_all_postprocess` (8 steps) |
-| Knowledge chains | `MapDataGenerator/core/linkage.py` | `KnowledgeLookup`, `DataEntry` |
-| DDS conversion | `MapDataGenerator/core/dds_handler.py` | `DDSHandler.load_dds` |
-| Attribute constants | `QuickTranslate/core/xml_parser.py` | `STRINGID_ATTRS`, `LOCSTR_TAGS`, etc. |
-
-**When:** Any XML, merge, or media feature.
-**Why:** These patterns handle edge cases (malformed XML, CJK encoding, formula injection, br-tag variants) that would take weeks to rediscover.
-
-### Pattern 3: Column Config Objects for Dual UI
-
-Extend `allColumns` in VirtualGrid with mode-specific configs rather than creating separate grids.
-
+### Pattern 3: Navigation Page Registration
+**What:** New pages register in navigation store and render in LDM.svelte.
+**When:** Adding CodexPage.
+**Example:**
 ```javascript
-// VirtualGrid.svelte
-const translatorColumns = {
-  row_num: { key: "row_num", label: "#", width: 60 },
-  string_id: { key: "string_id", label: "StringID", width: 150 },
-  source: { key: "source", label: "Source (KR)", width: 350, always: true },
-  target: { key: "target", label: "Target", width: 350, always: true },
-  reference: { key: "reference", label: "Reference", width: 300 },
-};
+// navigation.js - add 'codex' to page types:
+// currentPage: 'files' | 'tm' | 'grid' | 'tm-entries' | 'codex'
 
-const gameDevColumns = {
-  row_num: { key: "row_num", label: "#", width: 60 },
-  node_name: { key: "node_name", label: "Node", width: 200, always: true },
-  attributes: { key: "attributes", label: "Attributes", width: 300, always: true },
-  values: { key: "values", label: "Values", width: 300, always: true },
-  children_count: { key: "children_count", label: "Children", width: 100 },
-};
-
-let activeColumns = $derived(
-  fileType === 'gamedev' ? gameDevColumns : translatorColumns
-);
+// LDM.svelte - add codex page rendering:
+// {:else if $currentPage === 'codex'}
+//   <CodexPage />
 ```
 
-**When:** Dual UI switching.
-**Why:** Reuses 4000+ lines of VirtualGrid infrastructure (virtual scrolling, resize, editing, search). Building a second grid would be architectural debt.
-
-### Pattern 4: Async Ollama with Timeout + Fallback
-
-```python
-async def _call_ollama(self, prompt: str, timeout: float = 10.0) -> Optional[str]:
-    try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                f"{self._ollama_url}/api/generate",
-                json={"model": self._model, "prompt": prompt, "stream": False}
-            )
-            return response.json().get("response", "")
-    except (httpx.TimeoutException, httpx.ConnectError):
-        logger.warning("[AI] Ollama unavailable")
-        return None
+### Pattern 4: Optimistic UI for Grid Edits
+**What:** Grid cell edits update UI immediately, sync to server in background.
+**When:** All GameDevGrid cell edits, AI suggestion acceptance.
+**Example:**
+```svelte
+function acceptSuggestion(rowId, field, value) {
+    rows[rowIndex][field] = value;  // Optimistic update
+    fetch(`${API_BASE}/api/ldm/rows/${rowId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ [field]: value }),
+        headers: getAuthHeaders()
+    }).catch(() => {
+        rows[rowIndex][field] = previousValue;  // Revert on failure
+    });
+}
 ```
 
-**When:** AI summary integration.
-**Why:** Ollama may not be running. Never block UI. Show badge instead.
+### Pattern 5: Parallel Non-Blocking AI/QA Requests
+**What:** AI suggestions and QA checks fire in parallel on row selection, never block the grid.
+**When:** Row selection, cell edit blur.
+**Example:**
+```svelte
+async function onRowSelect(row) {
+    selectedRow = row;
+    // Fire in parallel, never await sequentially
+    fetchAISuggestions(row);    // updates AI Suggestions tab
+    fetchQAPipelineCheck(row); // updates QAFooter
+    fetchMediaContext(row);    // updates Image/Audio tabs
+}
+```
+
+### Pattern 6: Port-and-Adapt from NewScripts
+**What:** Copy core logic from NewScripts, adapt to FastAPI service interface.
+**When:** Any feature porting proven NewScripts code (QuickCheck, LDE).
+**Key changes when porting:**
+- Replace `print/logging` with `loguru`
+- Replace file-based I/O with in-memory data structures
+- Add `async` to service methods
+- Use existing repository pattern for data access
+- Keep the algorithmic logic identical
+- NEVER import NewScripts modules directly (creates coupling)
+
+### Pattern 7: SVG + d3-zoom (World Map)
+**What:** Svelte owns the DOM (SVG elements via `{#each}`). d3-zoom owns only the transform math.
+**When:** Interactive visualizations with pan/zoom.
+**Key principle:** Never let d3 touch the DOM. Svelte renders, d3 calculates.
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Separate Grid Components for Each Mode
+### Anti-Pattern 1: Separate AI Service Per Feature
+**What:** Creating ai_translation_service.py, ai_naming_service.py, ai_quality_service.py separately.
+**Why bad:** All share the same Ollama endpoint, same timeout handling, same cache pattern. Duplication of connection management and fallback logic.
+**Instead:** Single `ai_suggestion_service.py` with mode parameter ("translate", "naming", "quality"). Shared Ollama client, shared cache, shared fallback. Extends existing `AISummaryService` pattern.
 
-**What:** Creating `TranslatorGrid.svelte` and `GameDevGrid.svelte` as separate components.
-**Why bad:** VirtualGrid is 4048 lines of complex virtual scrolling, resize handling, editing, search, WebSocket sync, TM integration, QA integration. Duplicating even 20% would create maintenance hell.
-**Instead:** Single VirtualGrid with column config objects selected by file type. The grid renders whatever columns it receives.
+### Anti-Pattern 2: New Grid Component from Scratch
+**What:** Building GameDevGrid.svelte as completely independent from VirtualGrid.
+**Why bad:** Virtual scrolling, cell editing, presence bar, column resizing, search/filter -- all exist in VirtualGrid (4048+ lines). Duplicating even 20% creates maintenance nightmare.
+**Instead:** GameDevGrid wraps/extends VirtualGrid's core virtual scrolling and cell editing. Adds tree hierarchy rendering on top. Consider extracting shared scrolling logic into a base module that both components use.
 
-### Anti-Pattern 2: Parsing XML in Routes
+### Anti-Pattern 3: Codex as Separate App
+**What:** Adding Codex as a new app in `+page.svelte` alongside XLSTransfer/QuickSearch/LDM.
+**Why bad:** Codex is part of the LDM experience -- it shows data from the same parsed files. Separate app breaks navigation flow and context.
+**Instead:** Codex is a page within LDM, accessible via navigation store (`currentPage = 'codex'`). Same pattern as `files`, `grid`, `tm` pages.
 
-**What:** Putting XML parsing logic directly in FastAPI route handlers.
-**Why bad:** Routes should be thin (5-10 lines). XML parsing has error handling, sanitization, recovery -- it belongs in services.
-**Instead:** Route calls service, service calls XMLParsingEngine.
+### Anti-Pattern 4: Loading All Mock Data into Memory at Startup
+**What:** Parsing all mock gamedata XML into memory eagerly.
+**Why bad:** Real game data has thousands of files. Pattern should scale.
+**Instead:** Index entity names + metadata at startup (lightweight Aho-Corasick + dict). Load full XML tree only when user opens a specific file. Cache parsed trees with LRU eviction.
 
-### Anti-Pattern 3: Using stdlib ElementTree for Game Data
+### Anti-Pattern 5: QA Pipeline as Background Task for Single Rows
+**What:** Running QuickCheck QA as a background task that sends results via WebSocket.
+**Why bad:** For single-row checks, latency matters -- user wants instant feedback (<50ms).
+**Instead:** Single-row QA is synchronous (fast, <50ms with Aho-Corasick). Full-file QA uses BackgroundTask with progress tracking (existing TrackedOperation pattern).
 
-**What:** Using `xml.etree.ElementTree` instead of lxml.
-**Why bad:** Game XML files are frequently malformed (bad entities, unclosed tags, encoding issues). stdlib ET throws on first error. lxml's `recover=True` handles gracefully.
-**Instead:** Always lxml with recovery parser. QuickTranslate already has the fallback pattern if lxml unavailable.
+### Anti-Pattern 6: d3 DOM Manipulation in Svelte
+**What:** Using `d3.select().append()` to create SVG elements in the World Map.
+**Why bad:** Fights Svelte's reactivity. Creates elements outside Svelte's awareness.
+**Instead:** Use d3 only for math (scales, transforms, forces). Svelte renders with `{#each}`.
 
-### Anti-Pattern 4: Building Merge Logic from Scratch
+### Anti-Pattern 7: AI Auto-Apply
+**What:** Having AI suggestions automatically modify translations or names.
+**Why bad:** Users lose trust if AI changes their work without consent.
+**Instead:** Always show suggestions in a panel. User explicitly clicks to apply. This is a core design principle for v3.0.
 
-**What:** Writing new string matching, postprocessing, or transfer logic.
-**Why bad:** QuickTranslate's merge pipeline handles dozens of edge cases: formula injection, Korean detection, br-tag normalization, invisible chars, CJK ellipsis, double-escaped entities. Missing any one of them means data corruption.
-**Instead:** Port `xml_transfer.py` and `postprocess.py` functions directly. Adapt interfaces, keep logic.
+### Anti-Pattern 8: Generating Mock Data Without Round-Trip Testing
+**What:** Building the mock generator without testing XMLParsingEngine can read the output.
+**Why bad:** Subtle XML formatting issues (attribute order, namespace, encoding) break parsing silently.
+**Instead:** Write round-trip tests: generate XML -> parse with XMLParsingEngine -> verify all fields extracted correctly.
 
-### Anti-Pattern 5: Synchronous Ollama Calls
+## New vs Modified Components (Explicit)
 
-**What:** Blocking the FastAPI event loop waiting for Qwen3 response.
-**Why bad:** Even at 117 tok/s, a summary takes 1-3 seconds. Blocking kills concurrent requests.
-**Instead:** Use `httpx.AsyncClient` with timeout. Cache results per StringID.
+### Backend -- NEW Files (12 files)
 
-## Component File Layout (New Files)
+| File | Type | Purpose |
+|------|------|---------|
+| `services/gamedata_universe.py` | Service | Mock gamedata generation and management |
+| `services/ai_suggestion_service.py` | Service | Ranked AI suggestions (translate + naming modes) |
+| `services/qa_pipeline_service.py` | Service | QuickCheck Term Check + Line Check integration |
+| `services/category_cluster_service.py` | Service | StringID category classification |
+| `services/codex_service.py` | Service | Entity aggregation for Codex views |
+| `services/placeholder_generator.py` | Service | Auto-generate missing image/audio placeholders |
+| `routes/codex.py` | Route | Codex API endpoints (regions, characters, items, search) |
+| `routes/ai_suggestions.py` | Route | AI suggestion endpoints |
+| `routes/qa_pipeline.py` | Route | Extended QA pipeline endpoints (term + line check) |
+| `routes/gamedata.py` | Route | Mock gamedata management + XML tree endpoints |
+| `schemas/codex.py` | Schema | Pydantic models for Codex responses |
+| `schemas/ai_suggestions.py` | Schema | Pydantic models for AI suggestion responses |
+
+### Backend -- MODIFIED Files (8 files)
+
+| File | Modification |
+|------|-------------|
+| `services/xml_parsing.py` | Add `parse_full_tree()` method returning hierarchical node structure |
+| `services/category_mapper.py` | Extend TwoTierCategoryMapper with more keywords + sub-categories |
+| `services/media_converter.py` | Add `is_placeholder` flag to response, delegate to placeholder_generator |
+| `services/mapdata_service.py` | Support mock media mappings, `is_placeholder` flag in ImageContext/AudioContext |
+| `services/glossary_service.py` | Index mock gamedata entities at startup via gamedata_universe |
+| `services/context_service.py` | Add codex link generation to entity context responses |
+| `routes/qa.py` | Import and delegate to qa_pipeline_service for extended check types |
+| `router.py` | Register 4 new route modules (codex, ai_suggestions, qa_pipeline, gamedata) |
+
+### Frontend -- NEW Files (11 files)
+
+| File | Type | Purpose |
+|------|------|---------|
+| `components/ldm/GameDevGrid.svelte` | Component | Hierarchical XML authoring grid for game devs |
+| `components/ldm/AISuggestionsTab.svelte` | Component | Ranked AI suggestions panel tab in RightPanel |
+| `components/ldm/CategoryFilter.svelte` | Component | Category dropdown filter for grid toolbar |
+| `components/pages/CodexPage.svelte` | Page | Codex encyclopedia page with sub-views |
+| `components/ldm/codex/MapView.svelte` | Component | Interactive world map (SVG + d3-zoom) |
+| `components/ldm/codex/CharacterCard.svelte` | Component | Character detail view |
+| `components/ldm/codex/ItemCard.svelte` | Component | Item detail view with similarity |
+| `components/ldm/codex/EntitySearch.svelte` | Component | Semantic search across all entities |
+| `stores/codex.js` | Store | Codex state (selected entity, search, filters) |
+| `api/codex.js` | API | Codex API client functions |
+| `api/ai_suggestions.js` | API | AI suggestions API client |
+
+### Frontend -- MODIFIED Files (6 files)
+
+| File | Modification |
+|------|-------------|
+| `components/ldm/RightPanel.svelte` | Add 5th tab "AI Suggestions" with AISuggestionsTab |
+| `components/ldm/QAFooter.svelte` | Support new check_types (`term_check`, `line_check` from QuickCheck) |
+| `components/ldm/VirtualGrid.svelte` | Add category column, category filter integration in toolbar |
+| `components/pages/GridPage.svelte` | Conditionally render GameDevGrid for `fileType === 'gamedev'` |
+| `stores/navigation.js` | Add `'codex'` page type to currentPage |
+| `components/apps/LDM.svelte` | Add CodexPage rendering + Codex nav button in sidebar |
+
+### Mock Data -- NEW Files
+
+| Path | Purpose |
+|------|---------|
+| `mock_gamedata/` (folder tree) | Entire mock gamedata universe under server data |
+| `mock_gamedata/StaticInfo/characterinfo/*.xml` | Mock character XML files |
+| `mock_gamedata/StaticInfo/iteminfo/*.xml` | Mock item XML files |
+| `mock_gamedata/StaticInfo/regioninfo/*.xml` | Mock region XML files (with WorldPosition) |
+| `mock_gamedata/StaticInfo/skillinfo/*.xml` | Mock skill XML files |
+| `mock_gamedata/stringtable/loc/*.xml` | Mock LocStr translation files |
+| `mock_gamedata/texture/` | Mock texture references (placeholder PNGs) |
+| `mock_gamedata/sound/` | Mock audio references (placeholder WAVs) |
+
+## Suggested Build Order (Dependency-Driven)
 
 ```
-server/tools/ldm/
-  services/
-    # EXISTING (modify)
-    mapdata_service.py        # Fill indexes with real XML data
-    glossary_service.py       # Build AC from real staticinfo
-    context_service.py        # Add AI summary orchestration
+Phase 1: Mock Gamedata Universe (FOUNDATION -- everything depends on this)
+  ├── NEW: gamedata_universe.py, routes/gamedata.py
+  ├── MOD: glossary_service.py, mapdata_service.py
+  └── Output: mock_gamedata/ folder with realistic XML + media mappings
 
-    # NEW
-    filetype_detector.py      # FileType enum + detect_file_type()
-    xml_parsing.py            # XMLParsingEngine (ports QuickTranslate patterns)
-    merge_translator.py       # TranslatorMergeEngine
-    merge_gamedev.py          # GameDevMergeEngine
-    export_service.py         # ExportService (XML/Excel/Text)
-    media_converter.py        # DDS->PNG, WEM->WAV
-    ai_summary.py             # AISummaryService (Ollama/Qwen3)
+Phase 2: Category Clustering (LOW RISK, HIGH VALUE, needs Phase 1 data)
+  ├── NEW: category_cluster_service.py, CategoryFilter.svelte
+  ├── MOD: category_mapper.py, VirtualGrid.svelte
+  └── Output: category column visible in existing grid
 
-  routes/
-    # EXISTING (modify)
-    files.py                  # Add file_type to response
-    context.py                # Add ai_summary field
-    mapdata.py                # Wire real initialization
+Phase 3: QA Pipeline Integration (PROVEN LOGIC from QuickCheck)
+  ├── NEW: qa_pipeline_service.py, routes/qa_pipeline.py
+  ├── MOD: qa.py, QAFooter.svelte
+  ├── Port from: QuickCheck/core/term_check.py, line_check.py
+  └── Output: term/line check active in QAFooter for both modes
 
-    # NEW
-    merge.py                  # POST /merge/translator, /merge/gamedev
-    export.py                 # POST /export/{format}
+Phase 4: AI Suggestions (CORE AI, needs Phase 1 for embeddings)
+  ├── NEW: ai_suggestion_service.py, routes/ai_suggestions.py, AISuggestionsTab.svelte
+  ├── MOD: RightPanel.svelte (add 5th tab)
+  ├── Uses: existing FAISS + Model2Vec + Qwen3 via Ollama
+  └── Output: ranked suggestions in right panel for any selected row
 
-locaNext/src/lib/
-  components/ldm/
-    # EXISTING (modify)
-    VirtualGrid.svelte        # Add column config switching
-    ContextTab.svelte         # Add AI summary display
-    ImageTab.svelte           # Wire real DDS->PNG URLs
-    AudioTab.svelte           # Wire real WEM->WAV playback
+Phase 5: Game Dev Grid (HIGHEST COMPLEXITY, benefits from Phases 2-4)
+  ├── NEW: GameDevGrid.svelte
+  ├── MOD: xml_parsing.py (parse_full_tree), GridPage.svelte
+  ├── Integrates: AI suggestions, QA pipeline, category filtering
+  └── Output: hierarchical XML editor for staticinfo files
 
-  stores/
-    # EXISTING (modify)
-    ldm.js                    # Add fileType state
+Phase 6: Codex (SHOWCASE, needs Phase 1 entities + Phase 4 search)
+  ├── NEW: codex_service.py, routes/codex.py, CodexPage.svelte
+  ├── NEW: codex/MapView.svelte, CharacterCard.svelte, ItemCard.svelte, EntitySearch.svelte
+  ├── NEW: stores/codex.js, api/codex.js
+  ├── MOD: navigation.js, LDM.svelte, context_service.py
+  └── Output: interactive encyclopedia with map, character browser, item browser
 
-  utils/
-    # NEW (if needed)
-    columnConfigs.js          # Translator vs GameDev column definitions
+Phase 7: Auto-Generated Placeholders (POLISH, last)
+  ├── NEW: placeholder_generator.py
+  ├── MOD: media_converter.py, mapdata_service.py, ImageTab.svelte, AudioTab.svelte
+  └── Output: placeholder images/audio for missing assets with distinct UI styling
 ```
+
+**Phase ordering rationale:**
+- Phase 1 (Mock Data) is the foundation -- every other feature needs realistic data to test and demo. Without it, nothing works end-to-end.
+- Phases 2-4 (Clustering, QA, AI) are independent of each other but all need Phase 1. They enhance the EXISTING grid before building the new one, providing immediate demo value.
+- Phase 5 (Game Dev Grid) is the most complex UI component. Building after QA and AI means it integrates them from day one rather than retrofitting.
+- Phase 6 (Codex) is the visual showcase. Depends on all entity data being indexed (Phase 1) and semantic search working (Phase 4).
+- Phase 7 (Placeholders) is polish that makes the demo complete but has lowest priority.
+
+**Parallelization opportunity:** Phases 2, 3, and 4 are independent and can be built in parallel by separate agents/sessions.
 
 ## Scalability Considerations
 
-| Concern | Current (v2.0) | At 10K files | At 100K strings |
-|---------|----------------|--------------|-----------------|
-| XML parsing speed | lxml, ~1000 files/sec | Fine (lxml is C-based) | Fine |
-| Knowledge index | In-memory dict | ~50MB RAM for 100K entries | Fine |
-| DDS conversion | On-demand + LRU cache | Pre-convert on init | Background job queue |
-| AI summaries | Per-request + cache | Cache in SQLite | Background pre-generation |
-| Merge operations | In-memory | Streaming for large files | Chunked processing |
-| AC automaton | ~100K terms fine | ~500K terms fine | Fine (ahocorasick is C) |
+| Concern | Mock Data (100s of entities) | Real Data (10K entities) | Full Scale (100K+ entities) |
+|---------|-----|-----|-----|
+| Entity Index | In-memory dict, instant | Aho-Corasick automaton (existing), ~10MB | Same AC, ~50MB, still O(n) text scan |
+| FAISS Search | Flat index, <10ms | IVF index, <50ms | IVF with nprobe tuning, <100ms |
+| AI Suggestions | Single Qwen3 call, ~2s | Same, context window limits apply | Queue + cache, batch similar requests |
+| Codex Load | All entities in memory | Paginated API, lazy load details | Paginated + search index |
+| XML Tree Parse | Single file <100ms | Single file <100ms (same) | File-level, no full-corpus parse needed |
+| QA Pipeline | Real-time <50ms per row | Same (AC is O(n) on text length) | Same, batch mode for full-file |
+| Category Clustering | Instant (keyword match) | Instant (same algorithm) | Instant (no ML, just keyword matching) |
+| World Map SVG | Trivial | Use clustering/LOD | Canvas fallback needed |
+| Mock Data Gen | <1s | ~10s | ~2min |
 
-## Build Order (Dependency-Driven)
-
-The integration dependencies dictate this build order:
-
-```
-Phase 1: XML Parsing Foundation
-  XMLParsingEngine + FileTypeDetector
-  (everything else depends on being able to parse XML)
-
-Phase 2: Dual UI + Media Pipeline
-  VirtualGrid column switching + MediaConverter
-  (visible progress, parallelize with Phase 3)
-
-Phase 3: Wire Existing Services
-  MapDataService (fill indexes) + GlossaryService (fill AC)
-  (depends on XMLParsingEngine from Phase 1)
-
-Phase 4: Merge Engines
-  TranslatorMergeEngine + GameDevMergeEngine
-  (depends on XMLParsingEngine, complex logic, needs testing)
-
-Phase 5: Export
-  ExportService (XML/Excel/Text)
-  (depends on merge engines producing data)
-
-Phase 6: AI Summaries
-  AISummaryService + ContextTab integration
-  (independent of merge, but lowest priority)
-
-Phase 7: Bug Fixes + CLI + E2E
-  FIX-01/02/03, CLI commands, round-trip tests
-  (can start earlier for bug fixes)
-```
-
-**Rationale:** XML parsing is the foundation -- merge, export, index population all need it. Dual UI is high-visibility (demo value). AI summaries are independent and lowest risk, so they go last. Bug fixes can be sprinkled throughout.
+For v3.0, all features target the 100-10K entity range. 100K is future enterprise territory.
 
 ## Sources
 
-- Inspected: `server/tools/ldm/services/mapdata_service.py` (singleton pattern, scaffolded indexes)
-- Inspected: `server/tools/ldm/services/glossary_service.py` (AC automaton, entity detection)
-- Inspected: `server/tools/ldm/services/context_service.py` (orchestrator pattern)
-- Inspected: `server/tools/ldm/routes/mapdata.py`, `context.py` (clean route pattern)
-- Inspected: `locaNext/src/lib/components/ldm/VirtualGrid.svelte` (column config, 4048 lines)
-- Inspected: `QuickTranslate/core/xml_parser.py` (sanitizer, attribute constants)
-- Inspected: `QuickTranslate/core/xml_io.py` (LocStr parsing)
-- Inspected: `QuickTranslate/core/xml_transfer.py` (merge logic, postprocess integration)
-- Inspected: `QuickTranslate/core/postprocess.py` (8-step cleanup pipeline)
-- Inspected: `MapDataGenerator/core/linkage.py` (KnowledgeLookup, DataEntry)
-- Inspected: `MapDataGenerator/core/dds_handler.py` (DDS conversion via Pillow)
-- Inspected: `docs/architecture/ARCHITECTURE_SUMMARY.md` (repository pattern, 3-mode detection)
-- Inspected: `.planning/PROJECT.md` + `.planning/REQUIREMENTS.md` (40 requirements)
+- **Codebase inspection (HIGH confidence):**
+  - `server/tools/ldm/services/` -- all 17 existing service files analyzed
+  - `server/tools/ldm/routes/` -- all 22 existing route files analyzed
+  - `server/tools/ldm/router.py` -- route registration pattern (99 lines)
+  - `locaNext/src/lib/components/ldm/` -- all 25 component files listed
+  - `locaNext/src/lib/stores/navigation.js` -- page types, navigation actions
+  - `locaNext/src/lib/stores/ldm.js` -- WebSocket state, cell updates
+  - `locaNext/src/lib/components/pages/` -- GridPage, FilesPage, TMPage structure
+  - `locaNext/src/routes/+page.svelte` -- app routing pattern (LDM as default)
+  - `RFC/NewScripts/QACompilerNEW/generators/` -- 12 generator files for staticinfo patterns
+- **Project context:**
+  - `.planning/PROJECT.md` -- v2.0 shipped state, v3.0 scope
+  - `.planning/DEFERRED_IDEAS.md` -- detailed feature specs with tech stack summary

@@ -1,194 +1,188 @@
-# Feature Landscape: LocaNext v2.0 — Real Data + Dual Platform
+# Feature Landscape: v3.0 Game Dev Platform + AI Intelligence
 
-**Domain:** Desktop CAT tool + game dev platform / game localization management
+**Domain:** Game localization CAT tool with game dev authoring + AI intelligence
 **Researched:** 2026-03-15
 **Overall confidence:** MEDIUM-HIGH
-**Scope:** NEW features for v2.0 only. v1.0 table stakes (editor, TM, search, offline) already shipped.
+**Scope:** NEW features for v3.0 only. v1.0 (scaffolds) and v2.0 (real data + dual platform) already shipped.
+**Competitive context:** memoQ, Gridly, Xbench, Phrase, Owlcat LocalizationTool, Eidos-Montreal Codex (internal)
 
 ---
 
-## Table Stakes (for v2.0 scope)
+## Table Stakes
 
-Features that v2.0 MUST deliver for the "make it real" promise. Without these, v2.0 is just v1.0 with more scaffolds.
+Features users expect from a professional game localization/dev tool at this tier. Missing = product feels incomplete given the dual-mode promise delivered in v2.0.
 
-| # | Feature | Why Expected | Complexity | Dependencies | Notes |
-|---|---------|--------------|------------|--------------|-------|
-| T1 | **Real XML parsing replacing mock fixtures** | v1.0 used mocks. Users opening real game XML files and seeing actual data flow is the entire point of v2.0. Without this, nothing else works. | High | None (foundation) | 10 battle-tested patterns from NewScripts. Sanitizer+recovery handles malformed files. Cross-reference chain resolution across multiple XMLs. `<br/>` tag preservation is CRITICAL. |
-| T2 | **Translator merge: exact StringID match** | The most basic merge operation. Every CAT tool does exact-match transfer. QuickTranslate already has this proven. Not having it means the tool can't do its primary job. | Med | T1 (XML parsing) | Direct port from QuickTranslate. StringID-to-StringID transfer of translation values. |
-| T3 | **Translator merge: source text match** | When StringIDs differ between file versions but source text is identical, translators expect the tool to find and transfer those matches. Trados/memoQ do this automatically. | Med | T1, T2 | StrOrigin match from QuickTranslate. Handles renamed StringIDs across file revisions. |
-| T4 | **Export to XML with format preservation** | Translators export their work back to game-consumable XML. Tags, encoding, `<br/>` newlines, attribute order must survive the round-trip. Broken export = broken game. | Med-High | T1 | lxml raw_attribs pattern from ExtractAnything. XML declaration, encoding, whitespace preservation. Round-trip tests mandatory. |
-| T5 | **Export to Excel** | Excel is the lingua franca of localization teams. PMs, reviewers, QA all work in spreadsheets. Every CAT tool exports to Excel. | Med | T1 | xlsxwriter for writing. Column structure: StrOrigin, ENG, Target, Correction, Status, etc. (LanguageDataExporter pattern). |
-| T6 | **Dual UI mode detection** | v2.0 promises both Translator and Game Dev modes. Auto-detecting `<LocStr>` nodes vs other XML structures is the minimum to deliver on "dual platform." | Med | T1 | File type heuristic: `<LocStr>` presence = Translator mode. Everything else = Game Dev mode. Mode indicator in editor header. |
-| T7 | **Translator-mode column layout** | When in Translator mode, the grid must show translation-relevant columns: Source, Target, Status, Match%, TM Source. This is what translators recognize. | Low | T6, existing grid | Reuses existing virtual grid with different column config. Already have the grid infrastructure from v1.0. |
-| T8 | **Game Dev mode column layout** | When in Game Dev mode, the grid must show XML-structure columns: NodeName, Attributes, Values, Children count. Game devs need to see the data structure, not just strings. | Med | T6, existing grid | New column config for the same grid. Must handle nested XML display (parent > child hierarchy). |
-| T9 | **DDS-to-PNG image display** | MapDataGenerator integration was scaffolded in v1.0. Showing actual game textures (DDS format) as PNG thumbnails in the context panel is what makes "we understand games" real. | Med | T1 (for StrKey chains) | Pillow 12.x has native DDS support (DdsImagePlugin). No external binary needed. StrKey > UITextureName > DDS chain from KnowledgeInfo XMLs. Cache converted PNGs. |
-| T10 | **Graceful missing asset handling** | When images or audio are missing (common in game dev), showing broken icons kills the demo. Placeholder with "Asset not found" is the minimum. | Low | T9 | Styled placeholder component. Not a broken `<img>` tag. |
-| T11 | **Language table parsing** | Extracting all language columns (KR, EN, JP, etc.) from loc.xml files correctly. This is the fundamental data extraction that feeds both Translator and Game Dev modes. | Med | T1 | Pattern from LanguageDataExporter. Multiple language attributes per node. |
-| T12 | **XML sanitizer + recovery** | Real game data files are messy. Malformed XML, encoding issues, orphan tags. The tool must not crash on bad input. | Med | None | Sanitizer pattern from NewScripts. Try parse > sanitize > retry > report errors. |
-| T13 | **Postprocessing pipeline for merge output** | After transferring translations, CJK-specific cleanup is needed: trailing spaces, width normalization, punctuation fixes. QuickTranslate's 7-step pipeline is proven. | Med | T2, T3 | Direct port from QuickTranslate postprocess. CJK-safe. Only modifies Str/Desc fields. |
-| T14 | **Bug fixes (offline TMs, paste, folder 404)** | v1.0 shipped with 3 known bugs. Shipping v2.0 without fixing these undermines credibility. | Low-Med | Existing code | FIX-01: SQLite > PostgreSQL TM visibility. FIX-02: TM paste flow. FIX-03: folder creation 404. |
+| # | Feature | Why Expected | Complexity | Dependencies (v1/v2) | Notes |
+|---|---------|--------------|------------|----------------------|-------|
+| T1 | **Mock gamedata universe** | Cannot demo ANY Game Dev feature without realistic data. Every v3.0 feature downstream depends on having representative Items, Characters, Regions, Skills with cross-references, image paths, and audio paths. Not user-facing, but absolutely foundational. | High | XML-01 through XML-07 (XMLParsingEngine), QACompiler generators (Item, Character, Region, Skill) | Reverse-engineer from QACompiler generators. Must include: items with DDS image refs, characters with metadata (race, job, gender), regions with X/Y positions, skills with SkillGroup/SkillTree nesting. Cross-reference keys between files (StrKey chains). Enough volume for semantic search to be meaningful (100+ items, 30+ characters, 10+ regions, 50+ skills). |
+| T2 | **Category clustering / content type labels** | memoQ lets users filter by content type. Gridly uses "structured content" with typed grids. Xbench allows project-based filtering. Every serious tool lets translators know WHAT they are editing (item description, quest dialogue, UI string, system message). Without this, a 10K-row grid is an undifferentiated wall of text. | Medium | CTX-01 (entity detection), XML-03 (language tables), LanguageDataExporter categorization logic | LanguageDataExporter already has proven categorization logic (folder structure + filename patterns = category). Port it. Categories: Item, Quest, UI, System, Character, Skill, Region. Show as filterable tags in the grid. Auto-detected from file path + XML structure, not manual tagging. |
+| T3 | **QA term consistency checks** | Xbench is THE industry standard for terminology QA. memoQ has built-in term base verification. Phrase and Lokalise both flag missing glossary terms. Any localization tool claiming QA capability must flag: glossary term present in source but absent in target translation. This is the single most common QA check in the industry. | Low | CTX-04 (glossary service), Aho-Corasick entity detection (already operational) | QuickCheck Term Check already exists as proven, battle-tested code. Dual Aho-Corasick automaton + noise filter. Integration effort, not invention. Show results inline in the grid (red underline or QA badge per segment). |
+| T4 | **QA line consistency checks** | Same source text translated differently across the project = inconsistency. memoQ, Xbench, Phrase, and Trados all flag this. Translators expect it as baseline QA. Inconsistencies erode player trust (same item described two different ways). | Low | SRCH-01 (semantic search), TM-03 (match percentages), QuickCheck Line Check code | QuickCheck Line Check already implemented. Uses source text grouping + translation comparison. Show flagged segments in a dedicated QA panel or inline badges. Can run on-demand or as background check after file load. |
+| T5 | **AI translation suggestions** | Gridly, Phrase, and memoQ all offer MT/AI suggestions in 2025-2026. DMM Game Translate demonstrated AI agents for game localization at GDC 2025. The industry has moved past TM-only matching into AI-generated alternatives. Users now expect ranked AI suggestions alongside TM matches. LocaNext already has Qwen3 running locally -- NOT offering suggestions from it is a missed opportunity. | Medium | AISUM-01 through AISUM-05 (Qwen3 endpoint, already operational), TM-01 (TM matching), SRCH-01 (semantic search), Model2Vec + FAISS | LOCAL only via Qwen3 -- this is the differentiator vs cloud-dependent competitors. Show ranked suggestions with confidence scores in a side panel. Confidence = blend of embedding similarity + LLM certainty. Not auto-replace -- suggestions panel only, user clicks to accept. |
+| T6 | **Game Dev Grid with file explorer** | Owlcat's LocalizationTool has a directory tree with filter propagation. Gridly uses structured grid views. Every professional tool shows content in a navigable hierarchy, not a flat list. Game devs expect VS Code-like folder browsing for staticinfo. Without a tree view, Game Dev mode is just a table -- no different from Excel. | Medium | DUAL-01 through DUAL-05 (dual UI mode), XML-01 (XMLParsingEngine), UI-01 (grid infrastructure) | Tree view of gamedata folder structure in left panel. Click folder = show contents in grid. Click file = load and display XML structure. Must show parent/child hierarchy within files (SkillGroup > Skill > SkillInfo). Reuse virtual scroll grid but extend for nested/hierarchical data. |
 
 ---
 
 ## Differentiators
 
-Features that set v2.0 apart from generic CAT tools. These are NOT expected in memoQ/Trados/Phrase but are genuinely impressive for game localization.
+Features that set LocaNext apart. Not expected in every tool, but create the "wow" that justifies the product's existence. These are what make executives lean forward during a demo.
 
-| # | Feature | Value Proposition | Complexity | Dependencies | Notes |
-|---|---------|-------------------|------------|--------------|-------|
-| D1 | **Fuzzy matching via Model2Vec embeddings** | Most CAT tools use edit-distance fuzzy matching (Levenshtein). LocaNext uses semantic vector similarity. "Find translations that MEAN similar things, not just look similar." This is the v1.0 wow factor extended to merge operations. | Med | T2, T3, Model2Vec index | Already have Model2Vec + FAISS from v1.0. Apply the same pipeline to merge: when exact and source-match fail, find semantically similar source strings above threshold. |
-| D2 | **AI context summaries via local Qwen3** | No CAT tool offers on-device LLM-generated context summaries. Translators see "This is a weapon description for a legendary sword in the Crimson Region, used by warrior-class characters." Zero cloud, zero cost. | Med-High | T1 (parsed data), Ollama | Qwen3-4B at 117 tok/s on RTX 4070 Ti. Structured JSON output. 2-line contextual summary per string. Cache per StringID. Graceful "AI unavailable" badge when Ollama is down. |
-| D3 | **Position-aware XML merge for Game Dev** | General CAT tools don't handle game dev XML merging (add/remove/modify nodes while preserving document structure). This is game-dev-specific and genuinely useful for data authors. | High | T6, T8, T1 | Not match-type based (unlike Translator merge). Operates at node level: detect added/removed/modified nodes. Preserve XML document order. Handle parent > children > sub-children depth. |
-| D4 | **Cross-reference chain resolution** | Resolving StrKey > UITextureName > DDS across multiple XML files to show contextual images. No CAT tool does multi-file join-key resolution for game assets. | Med-High | T1, T9 | QACompiler pattern: join keys across XML files. Build chains at file load time, cache for lookup. |
-| D5 | **WEM audio playback** | Playing Wwise audio files inline gives translators voice context for dialogue strings. Hearing the tone/delivery while translating is genuinely valuable and unique. | Med | T1 (for audio mapping) | vgmstream-cli converts WEM to WAV. If vgmstream unavailable, fall back to WAV files. Audio player component in context panel. |
-| D6 | **StringIdConsumer deduplication** | Fresh consumer per language prevents duplicate StringID processing in multi-language files. Ensures clean output when the same StringID appears across language tables. | Low-Med | T11 | Pattern from QACompiler. One consumer instance per language. Already proven. |
-| D7 | **Export to plain tabulated text** | Quick clipboard-friendly export (StringID + source + translation) for ad-hoc review, chat sharing, or integration with external tools. Simpler than Excel, faster than XML. | Low | T1 | Tab-separated values. Simple but useful. No other CAT tool offers this quick-export format natively. |
-| D8 | **CLI coverage for merge and export** | Scriptable merge and export operations for automation, CI/CD integration, and batch processing. Most CAT tools are GUI-only. CLI-first is a developer differentiator. | Med | T2, T3, T4, T5, D3 | Extends existing CLI toolkit from v1.0. Commands for translator merge, game dev merge, export in all formats. |
+| # | Feature | Value Proposition | Complexity | Dependencies (v1/v2) | Notes |
+|---|---------|-------------------|------------|----------------------|-------|
+| D1 | **Game World Codex -- Character/Item encyclopedia** | NO competitor offers an integrated interactive encyclopedia. memoQ has term bases (flat glossary lists). Gridly has structured grids (spreadsheets). Nobody has a browsable, searchable Codex with images, audio, and cross-references linking characters to quests to regions. Eidos-Montreal built "Codex" internally for Guardians of the Galaxy and called the metadata/context "the most helpful element for foreign-language actors." LocaNext would be the first PRODUCT to offer this. | High | MEDIA-01 through MEDIA-04 (DDS/WEM preview), SRCH-01 (semantic search), CTX-01 (entity detection), T1 (mock gamedata) | Character pages: name, image, race, job, gender, age, quest appearances, related characters. Item pages: name, image, description, category, stats, similar items via Model2Vec. Both translators AND game devs use it -- translators for translation context, game devs for lore reference while writing. Searchable via Model2Vec + FAISS. |
+| D2 | **Game World Codex -- Interactive world map** | Visual, spatial context for localization is extremely rare. No commercial tool offers an interactive map linking regions to characters, quests, and items. This is the single highest "wow factor" feature for executive demos. Mass Effect's codex and Assassin's Creed encyclopedias prove players value this -- now give the same experience to the people MAKING the game. | Very High | T1 (mock gamedata with region positions), D1 (Codex pages to link to), D3.js + Canvas/SVG rendering | D3.js + Svelte is proven tech (multiple working examples in Svelte playground). Hover location = tooltip with name, description, key NPCs. Click location = detail panel with linked quests, connected characters, items. Data sourced from QACompiler Region generator (has X/Y positions). Custom map background (stylized game world, not real-world geography). |
+| D3 | **AI naming coherence for game devs** | Unique to LocaNext. No competitor checks whether a new item name is coherent with existing naming patterns across thousands of entities. A game dev writing "Blade of the Forgotten" should know that 12 other items already use "Forgotten" and what naming pattern they follow. Prevents the slow drift of naming inconsistency that plagues large games. | Medium | Model2Vec + FAISS index (already operational), AISUM-01 (Qwen3 endpoint), T1 (mock gamedata indexed) | Vector embeddings find similar existing entities by name + description. Qwen3 analyzes naming patterns and suggests coherent alternatives. Show as: "Similar existing names: Forgotten Shore, Forgotten Temple, Forgotten Blade. Suggestion: consider 'Forsaken' or 'Lost' for variety." NEVER auto-replace -- suggestions only, game dev confirms in grid. |
+| D4 | **Auto-generated placeholder images for missing assets** | When a StringID references an image that doesn't exist yet (common during early development), generate a contextual placeholder instead of showing a broken icon or "not found." Translators and game devs get visual context even when assets are incomplete. No competitor does this -- they all show blank/broken states. | Medium | MEDIA-01 (DDS pipeline), AISUM-01 (Qwen3 for context description), T1 (mock gamedata) | Primary: Gemini image generation via Nano Banana skill (produces actual contextual images). Fallback: styled SVG placeholder with entity name + category-specific icon (sword for weapons, shield for armor, etc.). Cache generated placeholders per StringID. Show "[AI Generated]" badge to distinguish from real assets. |
+| D5 | **Offline AI for all features -- zero cloud dependency** | Gridly, Phrase, memoQ all require cloud connectivity for AI features. LocaNext runs Qwen3-4B locally at 117 tok/s on RTX 4070 Ti. Demo works on an airplane. Full AI pipeline (suggestions, naming, summaries) without internet. This is a genuine competitive moat for security-conscious game studios who cannot send game data to cloud APIs. | Already built (foundation) | AISUM-01 through AISUM-05 (v2.0), Ollama + CUDA | v2.0 already has the Qwen3 endpoint for summaries. v3.0 extends it with translation suggestions (T5) + naming coherence (D3). The foundation is proven -- new features are prompt engineering + UI, not infrastructure. |
 
 ---
 
 ## Anti-Features
 
-Features to explicitly NOT build in v2.0. Tempting but wrong.
+Features to explicitly NOT build in v3.0. Tempting but wrong.
 
 | # | Anti-Feature | Why Avoid | What to Do Instead |
 |---|--------------|-----------|-------------------|
-| A1 | **Full Game Dev CRUD (create/nest new nodes)** | v2.0 is "read + edit," not full authoring. Creating new XML nodes requires schema validation, parent-child rules, and attribute templates. Massive scope. | Read existing nodes, edit values, merge changes. Full CRUD is v3.0 (GDEV-01, GDEV-02, GDEV-03). |
-| A2 | **Game World Codex (interactive encyclopedia)** | Requires ALL XML parsing wired first, plus map rendering, character pages, item pages. Beautiful but enormous. | v3.0 milestone. The XML parsing foundation from v2.0 enables this later. |
-| A3 | **AI translation suggestions** | Generating alternative translations needs mature LLM endpoint + embedding index + confidence scoring. The LLM endpoint barely exists yet. | Build the AI summary foundation in v2.0 (AISUM-01 through AISUM-05). Translation suggestions layer on top in v3.0. |
-| A4 | **Real-time glossary inconsistency detection** | Aho-Corasick on every keystroke across all entities is a performance challenge. v1.0 has on-demand detection. | Keep on-demand entity detection from v1.0. Real-time is v3.0 optimization. |
-| A5 | **XLIFF/TMX import/export** | Industry-standard interchange formats that enable interop with Trados/memoQ. Important eventually, but v2.0 scope is XML game data, not tool interop. | XML + Excel + plain text are the v2.0 export formats. XLIFF/TMX can come in v3.0 if enterprise interop is needed. |
-| A6 | **Auto-generate missing images/audio** | Nano Banana for images, voice synthesis for audio. Technically possible but scope explosion. Also requires quality review. | Show graceful placeholders (T10) for missing assets. Auto-generation is v3.0 (AUTOGEN-01, AUTOGEN-02). |
-| A7 | **Multi-file batch merge** | Merging across an entire folder of XMLs at once. Useful but complex (conflict resolution, progress tracking, error aggregation). | Single-file merge in v2.0. Batch in v3.0 when single-file is proven solid. |
-| A8 | **Schema validation for Game Dev XML** | Validating XML against game-specific schemas (required attributes, valid values, constraints). Requires schema definitions that may not exist. | Basic well-formedness check (XML sanitizer, T12). Schema validation is v3.0 (GDEV-03). |
+| A1 | **Full CRUD in Game Dev Grid (create new nodes)** | Creating new XML nodes requires schema validation, parent-child hierarchy rules, key generation, cross-reference integrity. QACompiler generators READ data -- they do not CREATE it. Building a full XML authoring engine is enormous scope and the schema rules are not formally documented anywhere. | Read + Edit only for v3.0. Game devs can view full XML structure and modify existing Name/DESC/attribute values. Node creation is v4+. |
+| A2 | **Cloud MT integration (DeepL, Google Translate)** | Breaks the offline-first promise that is LocaNext's competitive moat. Adds API key management, rate limiting, cost tracking, and error handling for external services. Cloud MT is commodity -- every competitor already has it. | Qwen3 local only. If users want cloud MT, they paste results into the tool. LocaNext differentiates on LOCAL AI, not cloud APIs. |
+| A3 | **Real-time collaborative editing (multi-cursor)** | WebSocket sync exists for data updates, but real-time cursor sharing and conflict resolution for simultaneous editing requires OT/CRDT algorithms. Massive engineering effort for a demo feature. Google Docs took years to get this right. | Keep existing WebSocket sync for data state. Single-user editing per segment is fine. Collaborative = shared data, not shared cursors. |
+| A4 | **Voice synthesis for missing audio** | Quality voice synthesis requires large models (2GB+), language-specific voice profiles, and results are often uncanny valley. CJK voice synthesis is particularly weak in open-source models. A bad voice demo is worse than no voice demo. | Styled audio placeholder (waveform SVG with entity name and "[No Audio]" label). If real WEM audio exists, play it (already built in v2.0). If not, show placeholder gracefully. |
+| A5 | **Spell check / grammar check** | Requires language-specific dictionaries for every target language. CJK support is weak in most spellcheckers. Qwen3-4B at 4B parameters is not reliable enough for grammar correction. Half-baked spell check (missing errors or false positives) is worse than no spell check. | Use QA term/line consistency checks (T3, T4) -- these are more valuable and proven. Defer spell check to v4+ with a larger model or dedicated spellcheck library. |
+| A6 | **WYSIWYG in-context preview** | Rendering game UI as it appears in-game requires engine integration, font rendering with game fonts, layout simulation, and screen capture. This is closer to building a game engine preview than a localization feature. | Game World Codex + inline images/audio provide visual context without in-game rendering. Context summaries from Qwen3 describe where text appears. |
+| A7 | **Plugin/extension marketplace** | Premature architecture. Core v3.0 features must be solid before opening an extension API. Plugin APIs create backward compatibility obligations and API surface that constrains future development. | Build all v3.0 features directly into the core. Consider plugin architecture as a v5+ initiative once the product is stable. |
+| A8 | **XLIFF/TMX import/export** | Industry-standard interchange formats for TMS interop. Important for enterprise adoption, but v3.0 scope is game dev platform + AI intelligence, not enterprise integration. Adding format support is straightforward but orthogonal to the v3.0 vision. | Keep XML + Excel + plain text exports from v2.0. XLIFF/TMX can be a quick addition in v4.0 if enterprise customers request it. |
+| A9 | **AI autocorrection / writing quality scoring** | Providing real-time writing feedback (grammar, style, quality scores) sounds impressive but Qwen3-4B lacks the nuance for style consistency analysis. Wrong suggestions erode trust faster than no suggestions. | AI naming coherence (D3) covers the highest-value use case (naming consistency). General writing quality requires a larger model or fine-tuning. |
+| A10 | **Drag-and-drop map editing** | The world map is for VISUALIZATION and CONTEXT, not for authoring region data. Adding drag-and-drop editing means two-way data binding to XML, undo/redo on spatial data, and collision detection. Massive scope for minimal value. | Map is read-only. Click to view details, hover for tooltips. Editing happens in the Game Dev Grid. |
+| A11 | **AI image generation via cloud (Gemini/DALL-E)** | Cloud dependency for image generation contradicts offline-first. Also, generated game art rarely matches a studio's art style. | Simple Pillow-based placeholders (colored rectangles with text overlay + category icon). Optionally integrate Nano Banana for demo scenarios only. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-Foundation layer (must be first):
-  T1 (Real XML parsing) ──> EVERYTHING ELSE
-  T12 (XML sanitizer) ──> T1
+T1 (Mock Gamedata Universe) ─────────────────────────────┐
+  Required by everything Game Dev related                 │
+  │                                                       │
+  ├──> T2 (Category Clustering)                           │
+  │      Uses LanguageDataExporter logic on parsed data   │
+  │                                                       │
+  ├──> T6 (Game Dev Grid + File Explorer)                 │
+  │      ├──> D3 (AI Naming Coherence)                    │
+  │      │      Needs indexed gamedata + Qwen3            │
+  │      └──> D4 (Auto-gen Placeholder Images)            │
+  │             Needs entity context for generation        │
+  │                                                       │
+  ├──> D1 (Codex -- Character/Item Encyclopedia)          │
+  │      ├──> Uses MEDIA (DDS/WEM) from v2.0              │
+  │      ├──> Uses SRCH (semantic search) from v1.0       │
+  │      └──> D2 (Codex -- Interactive World Map)         │
+  │             Needs region position data from T1         │
+  │             Needs character/item pages from D1         │
+  │                                                       │
+  └──> D3 (AI Naming Coherence)                           │
+         Needs Model2Vec index of all game entities        │
+                                                          │
+T3 (QA Term Check) ──────────────────────────────────────┘
+  INDEPENDENT -- works on ANY loaded file data
+  Uses existing Aho-Corasick + glossary from v1/v2
+  Does NOT need mock gamedata
 
-Translator merge chain:
-  T1 ──> T11 (Language tables) ──> T2 (Exact match) ──> T3 (Source match) ──> D1 (Fuzzy/semantic)
-  T2/T3/D1 ──> T13 (Postprocess) ──> T4 (Export XML)
-  T2/T3/D1 ──> T5 (Export Excel)
-  T2/T3/D1 ──> D7 (Export text)
+T4 (QA Line Check) ──────────────────────────────────────
+  INDEPENDENT -- works on ANY loaded file data
+  Uses existing semantic search from v1.0
 
-Dual UI chain:
-  T1 ──> T6 (Mode detection) ──> T7 (Translator columns)
-                               ──> T8 (Game Dev columns)
-
-Game Dev merge chain:
-  T1 ──> T6 ──> T8 ──> D3 (Position-aware merge)
-
-Media pipeline:
-  T1 ──> D4 (Cross-ref chains) ──> T9 (DDS > PNG)
-  T1 ──> D4 ──> D5 (WEM audio)
-  T9/D5 ──> T10 (Missing asset placeholders)
-
-AI pipeline:
-  T1 (parsed data) ──> D2 (AI summaries via Qwen3)
-  D2 requires Ollama running (graceful degradation if not)
-
-Bug fixes:
-  T14 ──> independent (can be done anytime)
-
-CLI:
-  D8 ──> depends on T2, T3, T4, T5, D3 being implemented first
+T5 (AI Translation Suggestions) ─────────────────────────
+  INDEPENDENT -- extends existing Qwen3 endpoint
+  Works on any data, not just game dev data
+  Uses TM matching + Model2Vec for context
 ```
 
----
-
-## MVP Recommendation (v2.0 Phase Ordering)
-
-### Phase 1: Foundation (XML parsing + dual UI detection)
-1. **T12 — XML sanitizer + recovery** — Must handle bad input before anything else.
-2. **T1 — Real XML parsing** — The foundation everything depends on.
-3. **T11 — Language table parsing** — Extract translatable data from files.
-4. **T6 — Dual UI mode detection** — Route files to correct mode.
-5. **T7 + T8 — Column layouts** — Both modes need their columns.
-6. **D6 — StringIdConsumer** — Clean deduplication from the start.
-
-### Phase 2: Translator merge (the core value)
-7. **T2 — Exact StringID match** — Most common merge operation.
-8. **T3 — Source text match** — Handles file version changes.
-9. **D1 — Fuzzy/semantic matching** — The differentiator, built on v1.0 infrastructure.
-10. **T13 — Postprocessing pipeline** — CJK cleanup after merge.
-
-### Phase 3: Export pipeline
-11. **T4 — Export to XML** — Round-trip fidelity with `<br/>` preservation.
-12. **T5 — Export to Excel** — xlsxwriter, LanguageDataExporter column structure.
-13. **D7 — Export to plain text** — Quick and simple.
-
-### Phase 4: Media pipeline
-14. **T9 — DDS-to-PNG** — Pillow native support, straightforward.
-15. **D5 — WEM audio** — vgmstream-cli conversion.
-16. **D4 — Cross-reference chains** — Wire StrKey > UITextureName > DDS.
-17. **T10 — Missing asset placeholders** — Graceful fallback.
-
-### Phase 5: Game Dev merge
-18. **D3 — Position-aware XML merge** — Node-level operations, most complex feature.
-
-### Phase 6: AI summaries
-19. **D2 — Qwen3 context summaries** — Requires Ollama, structured JSON, caching.
-
-### Phase 7: CLI + bugs + validation
-20. **D8 — CLI merge/export commands** — Scriptable operations.
-21. **T14 — Bug fixes** — Offline TMs, paste, folder 404.
-22. E2E round-trip validation tests.
-
-### Defer to v3.0:
-- **A1** (Full Game Dev CRUD): Needs schema definitions, parent-child rules.
-- **A2** (Codex): Needs all XML parsing + map rendering + entity pages.
-- **A3** (AI translation suggestions): Needs mature LLM + embedding pipeline.
-- **A6** (Auto-gen images/audio): Needs Nano Banana + voice synthesis integration.
+**Critical path:** T1 (Mock Gamedata) is the foundation. Without it, T2, T6, D1, D2, D3, D4 all have nothing to operate on. T3, T4, T5 are INDEPENDENT and can be built in parallel with T1.
 
 ---
 
-## Competitive Context
+## MVP Recommendation
 
-### What major CAT tools offer that LocaNext v2.0 matches:
-- TM matching with exact + fuzzy (Trados, memoQ, Phrase all have this)
-- XML file handling with tag preservation (standard across all tools)
-- Export to Excel (universal requirement)
-- QA checks (tag verification, structural validation)
+### Phase 1 -- Foundation + Quick Wins (build in parallel)
+1. **T1 -- Mock Gamedata Universe** -- Reverse-engineer QACompiler generators. Generate Items, Characters, Regions, Skills with cross-references, images, audio. CRITICAL PATH.
+2. **T3 -- QA Term Check** -- Port QuickCheck. Low effort, high value, independent of mock data.
+3. **T4 -- QA Line Check** -- Port QuickCheck. Low effort, independent.
+4. **T2 -- Category Clustering** -- Port LanguageDataExporter logic. Low-medium effort, depends on T1 for game dev data but works immediately on translator data.
 
-### What LocaNext v2.0 offers that competitors do NOT:
-- **Semantic fuzzy matching** via vector embeddings (competitors use edit-distance only)
-- **Local AI context summaries** with zero cloud dependency (unique)
-- **Game asset preview** (DDS textures, WEM audio inline) -- no CAT tool does this
-- **Dual Translator/Game Dev mode** in one tool -- competitors serve translators only
-- **Position-aware XML merge** for game data authoring -- unique to game dev workflow
-- **Full offline parity** with transparent mode switching (most tools are cloud-only or desktop-only, not both)
-- **CLI-first merge/export** for automation (most CAT tools are GUI-only)
+### Phase 2 -- Core Game Dev Experience
+5. **T6 -- Game Dev Grid + File Explorer** -- Tree view + read/edit of staticinfo. Medium effort, core to v3.0 promise.
+6. **T5 -- AI Translation Suggestions** -- Extend Qwen3 with ranked suggestions. Medium effort, table stakes in 2025-2026. Independent of game dev features.
 
-### Industry trends (2025-2026) that validate v2.0 direction:
-- **Local AI adoption accelerating**: Enterprise security teams increasingly prefer on-device models over cloud APIs. LocaNext's Qwen3 local inference aligns perfectly.
-- **Context-aware translation**: Smartling's RAG-powered prompt tooling, XTM's visual context -- the industry is moving toward giving translators more context. LocaNext's AI summaries + game asset preview are ahead of this curve.
-- **Game localization specialization**: Gridly, LocalizeDirect, and XTM Cloud all added game-specific features in 2025. The market recognizes game localization as a distinct vertical. LocaNext's dual-mode approach is uniquely positioned.
+### Phase 3 -- Wow Features (demo-ready differentiators)
+7. **D1 -- Codex: Character/Item Encyclopedia** -- Browsable pages with images, audio, cross-references, semantic search. High wow, high effort.
+8. **D3 -- AI Naming Coherence** -- Model2Vec similarity + Qwen3 suggestions. Medium effort, unique differentiator.
+9. **D4 -- Auto-generated Placeholder Images** -- Pillow placeholders or styled SVG fallback. Medium effort, visual polish.
+
+### Phase 4 -- Crown Jewel
+10. **D2 -- Codex: Interactive World Map** -- D3.js + Svelte, region positions, linked entities. Highest wow factor, highest complexity.
+
+### Defer to v4+
+- Full CRUD in Game Dev Grid (A1)
+- Voice synthesis (A4)
+- Spell/grammar check (A5)
+- Cloud MT (A2)
+- XLIFF/TMX interchange (A8)
+- Plugin marketplace (A7)
+
+---
+
+## Competitive Positioning Matrix
+
+| Capability | memoQ | Gridly | Xbench | Phrase | Owlcat Tool | **LocaNext v3.0** |
+|------------|-------|--------|--------|-------|-------------|-------------------|
+| TM matching | Yes | Yes | No (QA only) | Yes | Basic | **Yes (4-mode + semantic)** |
+| Term QA checks | Yes (term base) | Partial | **Best in class** | Yes | Tags only | **Yes (QuickCheck dual Aho-Corasick)** |
+| Line consistency QA | Yes | No | Yes | Yes | Updated-source only | **Yes (QuickCheck)** |
+| AI suggestions | Cloud MT only | Cloud MT only | No | Cloud MT only | No | **Local LLM (Qwen3, offline)** |
+| Content categorization | By project | By grid type | No | By tag (manual) | No | **Auto-detected from file path + XML** |
+| File explorer / tree | Flat list | Grid views | No | Flat list | **Directory tree** | **VS Code-like tree** |
+| Game data structure view | No | Spreadsheet | No | No | No | **Full XML hierarchy** |
+| Visual context (images) | No | No | No | Screenshot upload | No | **Inline DDS/WEM + auto-gen placeholders** |
+| Audio context | No | No | No | No | No | **Inline WEM playback** |
+| Interactive codex | No | No | No | No | No | **Character/Item encyclopedia** |
+| Interactive world map | No | No | No | No | No | **D3.js region map** |
+| Naming coherence AI | No | No | No | No | No | **Vector + LLM analysis** |
+| Offline AI | No | No | No | No | N/A | **Full pipeline (Qwen3 local)** |
+
+**LocaNext v3.0's unique position:** The only tool combining localization QA with game dev data authoring, visual/audio context inline, an interactive game world encyclopedia with map, AI naming coherence, and fully offline AI. No competitor attempts this combination. The closest analog is Eidos-Montreal's internal "Codex" tool -- but that was never productized.
 
 ---
 
 ## Sources
 
-- [CAT Tools Comparison 2026](https://geotargetly.com/blog/cat-tools) -- Feature comparison across major tools
-- [memoQ vs Trados vs Phrase](https://better-i18n.com/en/blog/cat-tools-comparison-guide/) -- Detailed feature matrix
-- [AI in Localization Roadmap 2025-2028](https://medium.com/@hastur/embracing-ai-in-localization-a-2025-2028-roadmap-a5e9c4cd67b0) -- Industry direction for LLM integration
-- [Smartling AI Translation Growth](https://www.smartling.com/company-news/growth-in-ai-translation-in-2025) -- 218% growth in AI translation adoption
-- [Pillow DDS Support](https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html) -- Native DdsImagePlugin in Pillow 12.x (HIGH confidence)
-- [vgmstream WEM playback](https://github.com/vgmstream/vgmstream) -- WEM-to-WAV conversion tool
-- [XTM Visual Localization](https://xtm.cloud/use-cases/game-translation/) -- Visual context in game localization
-- [TMX Standard](https://www.maxprograms.com/articles/tmx.html) -- Translation memory exchange format
-- [Fuzzy Matching (Wikipedia)](https://en.wikipedia.org/wiki/Fuzzy_matching_(computer-assisted_translation)) -- Edit-distance vs semantic approaches
-- [Gridly Game Localization Guide](https://www.gridly.com/blog/game-localization-guide/) -- Game-specific localization workflow patterns
-- LocaNext v1.0 FEATURES.md (internal) -- Previous milestone feature analysis
-- NewScripts source code patterns (internal) -- 10 XML parsing patterns, QuickTranslate merge logic, LanguageDataExporter export patterns
+### HIGH confidence (official docs, open source, first-party presentations)
+- [Owlcat LocalizationTool (GitHub)](https://github.com/OwlcatGames/LocalizationTool) -- Open source, inspectable features (directory tree, tag mismatch, spelling filter)
+- [Behind Codex -- GDC 2022 (Eidos-Montreal)](https://www.gamedeveloper.com/marketing/behind-codex-the-tool-powering-the-dialogue-of-i-marvel-s-guardians-of-the-galaxy-i-) -- First-party GDC talk on internal localization codex tool
+- [Xbench QA on memoQ files](https://docs.xbench.net/user-guide/run-qa-memoq/) -- Official documentation for QA integration
+- [Xbench.net](https://www.xbench.net/) -- Industry-standard terminology QA tool
+- [D3.js Maps with Svelte](https://dev.to/learners/maps-with-d3-and-svelte-8p3) -- Working tutorial with code examples
+- [Svelte D3 World Map Playground](https://svelte.dev/playground/1ee2000a93d748bea7a08aba8d55d6f2) -- Official Svelte playground with working map
+
+### MEDIUM confidence (vendor marketing, industry blogs, GDC recaps)
+- [memoQ Game Localization](https://www.memoq.com/solutions/game-localization/) -- Vendor feature claims
+- [Gridly Platform](https://www.gridly.com/) -- Vendor feature claims for spreadsheet CMS
+- [Gridly AI Translation Guide](https://www.gridly.com/blog/ai-translation-game-localization/) -- Vendor blog on AI in localization
+- [DMM Game Translate GDC 2025](https://dmm-game-translate.medium.com/revolutionizing-game-localization-with-ai-agents-our-gdc-2025-journey-4f20832d2f94) -- AI agents for game localization
+- [CAT Tools Comparison 2026](https://www.versioninternationale.com/en/blog/cat-tools-localization-2026/) -- Industry review
+- [Lokalise Translation QA](https://lokalise.com/product/translation-quality-assurance/) -- Competitor QA features
+- [Phrase Localization](https://www.softwaresuggest.com/phrase) -- TMS feature set
+- [LQA Guide (LocalizeDirect)](https://www.localizedirect.com/posts/lqa-what-is-game-localization-testing) -- Localization QA workflow overview
+- [Gridly Localization QA](https://www.gridly.com/localization-qa/) -- Automated QA features
+
+### Internal (project knowledge, proven code)
+- QACompiler generators (Item, Character, Region, Skill) -- Schema knowledge for mock gamedata
+- QuickCheck Term Check + Line Check -- Battle-tested QA code to port
+- LanguageDataExporter categorization logic -- Proven content type classification
+- Model2Vec + FAISS pipeline -- Operational semantic search infrastructure
+- Qwen3-4B via Ollama -- Operational local LLM at 117 tok/s
 
 ---
 
-*Researched: 2026-03-15 for v2.0 milestone planning*
-*Supersedes: v1.0 FEATURES.md (demo-ready scope)*
-*Confidence: MEDIUM-HIGH -- core features well-understood from NewScripts patterns; AI summary and Game Dev merge less proven in production*
+*Researched: 2026-03-15 for v3.0 milestone planning*
+*Supersedes: v2.0 FEATURES.md (real data + dual platform scope)*
+*Confidence: MEDIUM-HIGH -- table stakes well-understood from competitors + existing code; Codex and world map are novel (no direct competitor reference), validated by Eidos-Montreal internal Codex success*
