@@ -251,6 +251,8 @@ class PostgreSQLRowRepository(RowRepository):
                 row.target = update["target"]
             if "status" in update:
                 row.status = update["status"]
+            if "extra_data" in update and update["extra_data"] is not None:
+                row.extra_data = update["extra_data"]
             row.updated_at = datetime.utcnow()
             count += 1
 

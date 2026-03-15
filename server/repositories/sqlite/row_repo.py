@@ -120,12 +120,13 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
                     (row_id, file_id, row_num, string_id, source, target, status, extra_json, now, now)
                 )
             else:
+                # SERVER mode: ldm_rows has no 'memo' or 'created_at' columns
                 await conn.execute(
                     f"""INSERT INTO {self._table('rows')}
-                       (id, file_id, row_num, string_id, source, target, memo, status,
-                        extra_data, created_at, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?)""",
-                    (row_id, file_id, row_num, string_id, source, target, status, extra_json, now, now)
+                       (id, file_id, row_num, string_id, source, target, status,
+                        extra_data, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (row_id, file_id, row_num, string_id, source, target, status, extra_json, now)
                 )
 
             # Update file row count
@@ -266,11 +267,12 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
                         )
                     )
                 else:
+                    # SERVER mode: ldm_rows has no 'memo' or 'created_at' columns
                     await conn.execute(
                         f"""INSERT INTO {self._table('rows')}
-                           (id, file_id, row_num, string_id, source, target, memo,
-                            status, extra_data, created_at, updated_at)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                           (id, file_id, row_num, string_id, source, target,
+                            status, extra_data, updated_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                         (
                             row_id,
                             file_id,
@@ -278,10 +280,8 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
                             row_data.get("string_id"),
                             row_data.get("source", ""),
                             row_data.get("target", ""),
-                            row_data.get("memo", ""),
                             row_data.get("status", "pending"),
                             extra_json,
-                            now,
                             now,
                         )
                     )
@@ -318,6 +318,9 @@ class SQLiteRowRepository(SQLiteBaseRepository, RowRepository):
                 if "status" in update:
                     update_parts.append("status = ?")
                     params.append(update["status"])
+                if "extra_data" in update and update["extra_data"] is not None:
+                    update_parts.append("extra_data = ?")
+                    params.append(json.dumps(update["extra_data"]))
 
                 if len(update_parts) == 1:
                     continue  # Nothing to update besides timestamp

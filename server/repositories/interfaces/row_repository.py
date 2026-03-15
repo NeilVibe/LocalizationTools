@@ -126,7 +126,7 @@ class RowRepository(ABC):
         Bulk update multiple rows.
 
         Args:
-            updates: List of dicts with: id, target, status
+            updates: List of dicts with: id, target, status, extra_data
 
         Returns:
             Count of rows updated.
