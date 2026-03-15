@@ -20,9 +20,9 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 ### Category Clustering
 
-- [ ] **CAT-01**: System auto-classifies StringIDs into content categories (Item, Quest, UI, System, Character, Skill, Region, Gimmick) using LanguageDataExporter two-tier logic
-- [ ] **CAT-02**: Category column is visible and filterable in the translation grid
-- [ ] **CAT-03**: User can filter grid by one or more categories to focus on specific content types
+- [x] **CAT-01**: System auto-classifies StringIDs into content categories (Item, Quest, UI, System, Character, Skill, Region, Gimmick) using LanguageDataExporter two-tier logic
+- [x] **CAT-02**: Category column is visible and filterable in the translation grid
+- [x] **CAT-03**: User can filter grid by one or more categories to focus on specific content types
 
 ### QA Pipeline
 
@@ -121,9 +121,9 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 | MOCK-06 | Phase 15 | Complete |
 | MOCK-07 | Phase 15 | Complete |
 | MOCK-08 | Phase 15 | Complete |
-| CAT-01 | Phase 16 | Pending |
-| CAT-02 | Phase 16 | Pending |
-| CAT-03 | Phase 16 | Pending |
+| CAT-01 | Phase 16 | Complete |
+| CAT-02 | Phase 16 | Complete |
+| CAT-03 | Phase 16 | Complete |
 | QA-01 | Phase 16 | Pending |
 | QA-02 | Phase 16 | Pending |
 | QA-03 | Phase 16 | Pending |
