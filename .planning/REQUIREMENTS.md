@@ -75,9 +75,9 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 ### Placeholder Assets
 
-- [ ] **PLACEHOLDER-01**: Missing images show a styled SVG placeholder with entity name + category-specific icon instead of broken/blank state
-- [ ] **PLACEHOLDER-02**: Missing audio shows a waveform SVG placeholder with entity name and "[No Audio]" label
-- [ ] **PLACEHOLDER-03**: Placeholders are cached per StringID for consistent display
+- [x] **PLACEHOLDER-01**: Missing images show a styled SVG placeholder with entity name + category-specific icon instead of broken/blank state
+- [x] **PLACEHOLDER-02**: Missing audio shows a waveform SVG placeholder with entity name and "[No Audio]" label
+- [x] **PLACEHOLDER-03**: Placeholders are cached per StringID for consistent display
 
 ## Future Requirements (v4.0+)
 
@@ -155,9 +155,9 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 | MAP-03 | Phase 20 | Complete |
 | MAP-04 | Phase 20 | Complete |
 | MAP-05 | Phase 20 | Complete |
-| PLACEHOLDER-01 | Phase 21 | Pending |
-| PLACEHOLDER-02 | Phase 21 | Pending |
-| PLACEHOLDER-03 | Phase 21 | Pending |
+| PLACEHOLDER-01 | Phase 21 | Complete |
+| PLACEHOLDER-02 | Phase 21 | Complete |
+| PLACEHOLDER-03 | Phase 21 | Complete |
 
 **Coverage:**
 - v3.0 requirements: 45 total
