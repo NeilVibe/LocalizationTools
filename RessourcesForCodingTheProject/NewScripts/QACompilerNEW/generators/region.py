@@ -607,6 +607,7 @@ def parse_knowledge_contents(
 
     source_file = contents_file.name
     groups: List[KnowledgeContentGroup] = []
+    skipped_no_pos = 0
 
     for group_el in root_el.iter("KnowledgeGroupInfo"):
         group_name = group_el.get("GroupName") or ""
@@ -649,6 +650,11 @@ def parse_knowledge_contents(
                 if pos_csv:
                     world_position = pos_csv.replace(",", " ")
 
+            # Filter: only keep entries that resolved a position
+            if not world_position:
+                skipped_no_pos += 1
+                continue
+
             group.entries.append(KnowledgeContentEntry(
                 strkey=strkey,
                 name=name,
@@ -657,11 +663,13 @@ def parse_knowledge_contents(
                 source_file=source_file,
             ))
 
+        # Filter: skip entire group if no children have positions
         if group.entries:
             groups.append(group)
 
     total_entries = sum(len(g.entries) for g in groups)
-    log.info("  → %d groups, %d knowledge entries", len(groups), total_entries)
+    log.info("  → %d groups, %d knowledge entries (%d skipped — no position)",
+             len(groups), total_entries, skipped_no_pos)
     return groups
 
 
