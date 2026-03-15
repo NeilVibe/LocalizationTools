@@ -86,7 +86,7 @@ Plans:
   4. Loading indicators in AISuggestionsTab and NamingPanel clear when debounce timers are cancelled (no infinite spinners)
   5. WorldMapPage tooltip does not appear over the detail panel, and route keys are deduplicated to prevent {#each} crashes
   6. GameDevPage file selection works end-to-end using gamedata/browse and gamedata/columns APIs (no non-existent upload-path endpoint)
-**Plans:** 4 plans
+**Plans:** 3/4 plans executed
 Plans:
 - [ ] 23-01-PLAN.md — GameDevPage: remove upload-path call, eliminate Date.now() fallback, fix tree refresh flicker
 - [ ] 23-02-PLAN.md — WorldMap + Codex: tooltip suppression, route key dedup, NPC navigation, entity type sorting
@@ -164,6 +164,6 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25
 | 20. Interactive World Map | v3.0 | 2/2 | Complete | 2026-03-15 |
 | 21. AI Naming Coherence + Placeholders | v3.0 | 2/2 | Complete | 2026-03-15 |
 | 22. Svelte 5 Migration | 3/3 | Complete    | 2026-03-15 | - |
-| 23. Bug Fixes | v3.1 | 0/4 | Not started | - |
+| 23. Bug Fixes | 3/4 | In Progress|  | - |
 | 24. UIUX Polish | v3.1 | 0/2 | Not started | - |
 | 25. Comprehensive API E2E Testing | v3.1 | 0/10 | Not started | - |

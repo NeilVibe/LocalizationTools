@@ -17,11 +17,11 @@
 ### Bug Fixes
 
 - [ ] **FIX-01**: GameDevPage Date.now() fallback file ID replaced with proper error handling
-- [ ] **FIX-02**: CodexEntityDetail audio element has onerror fallback to PlaceholderAudio
+- [x] **FIX-02**: CodexEntityDetail audio element has onerror fallback to PlaceholderAudio
 - [ ] **FIX-03**: MapDetailPanel navigateToNPC passes NPC name to Codex search
 - [ ] **FIX-04**: WorldMapPage tooltip suppressed while detail panel is open
-- [ ] **FIX-05**: AISuggestionsTab and NamingPanel loading state cleared on debounce cancel
-- [ ] **FIX-06**: QAInlineBadge handleClickOutside properly attached, backdrop has tabindex
+- [x] **FIX-05**: AISuggestionsTab and NamingPanel loading state cleared on debounce cancel
+- [x] **FIX-06**: QAInlineBadge handleClickOutside properly attached, backdrop has tabindex
 - [ ] **FIX-07**: MapCanvas route key deduplication to prevent {#each} crash
 - [ ] **FIX-08**: GameDevPage tree refresh uses reload method instead of remount flicker
 - [ ] **FIX-09**: CodexPage entity type sort handles unknown types (sorts last, not first)
@@ -59,11 +59,11 @@
 | SV5-05 | Phase 22 | Complete |
 | SV5-06 | Phase 22 | Complete |
 | FIX-01 | Phase 23 | Pending |
-| FIX-02 | Phase 23 | Pending |
+| FIX-02 | Phase 23 | Complete |
 | FIX-03 | Phase 23 | Pending |
 | FIX-04 | Phase 23 | Pending |
-| FIX-05 | Phase 23 | Pending |
-| FIX-06 | Phase 23 | Pending |
+| FIX-05 | Phase 23 | Complete |
+| FIX-06 | Phase 23 | Complete |
 | FIX-07 | Phase 23 | Pending |
 | FIX-08 | Phase 23 | Pending |
 | FIX-09 | Phase 23 | Pending |
