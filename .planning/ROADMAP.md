@@ -186,5 +186,5 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21
 | 17. AI Translation Suggestions | 2/2 | Complete    | 2026-03-15 | - |
 | 18. Game Dev Grid + File Explorer | 2/2 | Complete    | 2026-03-15 | - |
 | 19. Game World Codex | 2/2 | Complete    | 2026-03-15 | - |
-| 20. Interactive World Map | v3.0 | 0/? | Not started | - |
+| 20. Interactive World Map | 1/2 | In Progress|  | - |
 | 21. AI Naming Coherence + Placeholders | v3.0 | 0/? | Not started | - |

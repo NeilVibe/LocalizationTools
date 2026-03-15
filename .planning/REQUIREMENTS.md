@@ -67,10 +67,10 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 ### Interactive World Map
 
-- [ ] **MAP-01**: Interactive map renders region nodes at correct WorldPosition coordinates (X, Z from XML)
-- [ ] **MAP-02**: Hover over a map node shows tooltip with name, description, and key NPCs
-- [ ] **MAP-03**: Click a map node opens detail panel linking to Codex pages (characters, items, quests in that region)
-- [ ] **MAP-04**: Route connections between nodes are visualized (from NodeWaypointInfo waypoints)
+- [x] **MAP-01**: Interactive map renders region nodes at correct WorldPosition coordinates (X, Z from XML)
+- [x] **MAP-02**: Hover over a map node shows tooltip with name, description, and key NPCs
+- [x] **MAP-03**: Click a map node opens detail panel linking to Codex pages (characters, items, quests in that region)
+- [x] **MAP-04**: Route connections between nodes are visualized (from NodeWaypointInfo waypoints)
 - [ ] **MAP-05**: Map supports pan and zoom interaction (d3-zoom or equivalent)
 
 ### Placeholder Assets
@@ -150,10 +150,10 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 | CODEX-03 | Phase 19 | Complete |
 | CODEX-04 | Phase 19 | Complete |
 | CODEX-05 | Phase 19 | Complete |
-| MAP-01 | Phase 20 | Pending |
-| MAP-02 | Phase 20 | Pending |
-| MAP-03 | Phase 20 | Pending |
-| MAP-04 | Phase 20 | Pending |
+| MAP-01 | Phase 20 | Complete |
+| MAP-02 | Phase 20 | Complete |
+| MAP-03 | Phase 20 | Complete |
+| MAP-04 | Phase 20 | Complete |
 | MAP-05 | Phase 20 | Pending |
 | PLACEHOLDER-01 | Phase 21 | Pending |
 | PLACEHOLDER-02 | Phase 21 | Pending |

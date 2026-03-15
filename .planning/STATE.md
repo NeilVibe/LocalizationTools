@@ -3,29 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Game Dev Platform + AI Intelligence
 status: executing
-stopped_at: Completed 19-02-PLAN.md
-last_updated: "2026-03-15T14:06:39.465Z"
-last_activity: 2026-03-15 -- Completed Phase 19 Plan 02 (Codex Frontend)
+stopped_at: Completed 20-01-PLAN.md
+last_updated: "2026-03-15T14:25:00Z"
+last_activity: 2026-03-15 -- Completed Phase 20 Plan 01 (WorldMap Backend)
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 10
-  completed_plans: 10
----
-
----
-gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Game Dev Platform + AI Intelligence
-status: executing
-stopped_at: Completed 19-02-PLAN.md
-last_updated: "2026-03-15T14:05:00Z"
-last_activity: 2026-03-15 -- Completed Phase 19 Plan 02 (Codex Frontend)
-progress:
-  total_phases: 7
-  completed_phases: 5
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 12
+  completed_plans: 11
 ---
 
 # Project State
@@ -35,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Game Dev authoring platform with AI-powered suggestions, interactive Codex, and integrated QA -- all local, zero cloud dependency
-**Current focus:** Phase 19 Complete - Game World Codex
+**Current focus:** Phase 20 In Progress - Interactive World Map
 
 ## Current Position
 
-Phase: 19 (5 of 7 in v3.0) [Game World Codex] COMPLETE
-Plan: 2 of 2 in current phase (2 DONE, 0 remaining)
-Status: Phase 19 Complete
-Last activity: 2026-03-15 -- Completed Phase 19 Plan 02 (Codex Frontend)
+Phase: 20 (6 of 7 in v3.0) [Interactive World Map] IN PROGRESS
+Plan: 1 of 2 in current phase (1 DONE, 1 remaining)
+Status: Plan 01 complete, Plan 02 pending
+Last activity: 2026-03-15 -- Completed Phase 20 Plan 01 (WorldMap Backend)
 
-Progress: [██████████] 100% v3.0 (phases 15-19 complete, 20-21 remaining)
+Progress: [██████████] 96% v3.0 (phases 15-19 complete, 20 in progress, 21 remaining)
 
 ## Performance Metrics
 
@@ -69,6 +54,7 @@ Progress: [██████████] 100% v3.0 (phases 15-19 complete, 20-
 | 18-02 | Game Dev Grid Frontend | 7min | 3 | 6 |
 | 19-01 | Codex Backend | 6min | 2 | 6 |
 | 19-02 | Codex Frontend | 5min | 3 | 6 |
+| 20-01 | WorldMap Backend | 4min | 2 | 6 |
 
 ## Accumulated Context
 
@@ -113,6 +99,10 @@ All v1.0/v2.0 decisions archived in PROJECT.md Key Decisions table.
 - [19-02]: CodexSearchBar uses AbortController pattern from AISuggestionsTab for request cancellation
 - [19-02]: Entity detail renders type-specific sections based on entity_type field
 - [19-02]: Codex navigation added to header dropdown accessible in both translator and game dev modes
+- [20-01]: WorldMapService uses module-level codex_service variable for decoupled Codex enrichment
+- [20-01]: WorldPosition "X,0,Z" parsed by comma-split (Y always 0, ignored for 2D map)
+- [20-01]: Fallback to StrKey as node name when CodexService unavailable
+- [20-01]: entity_type_counts derived from Codex related_entities cross-references
 
 ### Pending Todos
 
@@ -124,6 +114,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T14:05:00Z
-Stopped at: Completed 19-02-PLAN.md
-Resume: Phase 19 complete. Plan Phase 20 (Interactive World Map) next.
+Last session: 2026-03-15T14:25:00Z
+Stopped at: Completed 20-01-PLAN.md
+Resume: Phase 20 Plan 01 complete. Execute Plan 02 (WorldMap Frontend) next.
