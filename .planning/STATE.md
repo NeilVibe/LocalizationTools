@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Debug + Polish + Svelte 5 Migration
 status: executing
-stopped_at: Completed 22-01-PLAN.md
-last_updated: "2026-03-15T21:52:02Z"
-last_activity: 2026-03-15 -- Completed 22-01 core grid pipeline event migration
+stopped_at: Completed 22-03-PLAN.md
+last_updated: "2026-03-15T22:00:18Z"
+last_activity: 2026-03-15 -- Completed 22-03 codebase-wide event migration cleanup sweep
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 19
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -24,18 +24,18 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 
 ## Current Position
 
-Phase: 22 (1 of 4 in v3.1) [Svelte 5 Migration]
-Plan: 2 of 3 in current phase (22-01 and 22-02 complete)
+Phase: 23 (2 of 4 in v3.1) [Bug Fixes]
+Plan: 0 of 4 in current phase (Phase 22 complete)
 Status: Executing
-Last activity: 2026-03-15 -- Completed 22-01 core grid pipeline event migration
+Last activity: 2026-03-15 -- Completed 22-03 codebase-wide event migration cleanup sweep
 
-Progress: [██░░░░░░░░] 10%
+Progress: [██░░░░░░░░] 15%
 
 ## Performance Metrics
 
 **Velocity (all milestones):**
-- Total plans completed: 53 (v1.0: 20, v2.0: 17, v3.0: 14, v3.1: 2)
-- v3.1 plans completed: 2
+- Total plans completed: 54 (v1.0: 20, v2.0: 17, v3.0: 14, v3.1: 3)
+- v3.1 plans completed: 3
 
 | Milestone | Phases | Plans | Requirements |
 |-----------|--------|-------|--------------|
@@ -57,6 +57,8 @@ Progress: [██░░░░░░░░] 10%
 - [22-02]: Callback naming convention: on + PascalCase event name (onApplyTM, onUploaded, onTmSelect)
 - [22-01]: Carbon on:click/on:close/on:select left as-is (Carbon Svelte uses Svelte 4 events internally)
 - [22-01]: TMTab migrated alongside RightPanel to keep event chain intact
+- [22-03]: 8 e.detail usages remain as Carbon-exempt (Checkbox, Toggle, Slider, MultiSelect, RadioButtonGroup)
+- [22-03]: Phase 22 complete -- 0 createEventDispatcher, 0 non-Carbon on: directives across entire codebase
 
 ### Pending Todos
 
@@ -72,6 +74,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T21:52:02Z
-Stopped at: Completed 22-01-PLAN.md
-Resume file: .planning/phases/22-svelte-5-migration/22-01-SUMMARY.md
+Last session: 2026-03-15T22:00:18Z
+Stopped at: Completed 22-03-PLAN.md (Phase 22 complete)
+Resume file: .planning/phases/22-svelte-5-migration/22-03-SUMMARY.md

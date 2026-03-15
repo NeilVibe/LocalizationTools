@@ -11,8 +11,8 @@
 - [x] **SV5-02**: LDM.svelte uses callback props instead of on: event listeners for all child component events
 - [x] **SV5-03**: All v3.0 components (AISuggestionsTab, QAInlineBadge, CategoryFilter, NamingPanel) use $props callbacks, not dispatchers
 - [x] **SV5-04**: GameDevPage, GridPage, CodexPage use $props callbacks to receive child events
-- [ ] **SV5-05**: No createEventDispatcher import exists anywhere in the codebase
-- [ ] **SV5-06**: No on: event directive exists anywhere in codebase (except Carbon component interop where required)
+- [x] **SV5-05**: No createEventDispatcher import exists anywhere in the codebase
+- [x] **SV5-06**: No on: event directive exists anywhere in codebase (except Carbon component interop where required)
 
 ### Bug Fixes
 
@@ -56,8 +56,8 @@
 | SV5-02 | Phase 22 | Complete |
 | SV5-03 | Phase 22 | Complete |
 | SV5-04 | Phase 22 | Complete |
-| SV5-05 | Phase 22 | Pending |
-| SV5-06 | Phase 22 | Pending |
+| SV5-05 | Phase 22 | Complete |
+| SV5-06 | Phase 22 | Complete |
 | FIX-01 | Phase 23 | Pending |
 | FIX-02 | Phase 23 | Pending |
 | FIX-03 | Phase 23 | Pending |
