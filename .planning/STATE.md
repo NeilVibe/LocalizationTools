@@ -50,17 +50,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Real, working localization workflows -- real XML parsing, real merge logic, real image/audio, AI summaries -- all local, dual-mode for translators and game developers.
-**Current focus:** Phase 13 -- AI Summaries
+**Current focus:** Phase 14 -- E2E Validation + CLI
 
 ## Current Position
 
 Milestone: v2.0 Real Data + Dual Platform
-Phase: 13 of 14 (AI Summaries) -- COMPLETE
-Plan: 2 of 2 in current phase -- COMPLETE
+Phase: 14 of 14 (E2E Validation + CLI)
+Plan: 1 of 2 in current phase -- COMPLETE
 Status: Executing
-Last activity: 2026-03-15 -- Plan 02 AI Summary frontend display in ContextTab
+Last activity: 2026-03-15 -- Plan 01 CLI merge/export/detect commands
 
-Progress: [██████████] 100% (Phase 13 complete, Phase 14 remaining)
+Progress: [███████████████████░] 95% (Phase 14, Plan 1/2 complete)
 
 ## Performance Metrics
 
@@ -86,6 +86,7 @@ Progress: [██████████] 100% (Phase 13 complete, Phase 14 rem
 | 12    | 02   | 5min     | 2     | 7     |
 | Phase 13 P01 | 3min | 2 tasks | 3 files |
 | Phase 13 P02 | 2min | 1 task  | 1 file  |
+| 14    | 01   | 3min     | 1     | 2     |
 
 ## Accumulated Context
 
@@ -136,6 +137,7 @@ Progress: [██████████] 100% (Phase 13 complete, Phase 14 rem
 - [Phase 13]: Pydantic model_json_schema() as Ollama format parameter for structured JSON output
 - [Phase 13]: In-memory dict cache per StringID with explicit clear_cache() for AI summaries
 - [Phase 13]: AI summary section in ContextTab with status-driven conditional rendering (unavailable badge vs summary text)
+- [Phase 14]: CLI commands use requests.get for binary export, api() for JSON endpoints, sys.argv parsing for consistency
 
 ### Pending Todos
 
@@ -149,6 +151,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T07:05:00Z
-Stopped at: Completed 13-02-PLAN.md
-Resume: `/gsd:execute-phase 14` to start Phase 14 (Offline Validation)
+Last session: 2026-03-15T07:18:00Z
+Stopped at: Completed 14-01-PLAN.md
+Resume: `/gsd:execute-phase 14` to continue Phase 14 Plan 02

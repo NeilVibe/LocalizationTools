@@ -60,9 +60,9 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 ### CLI & Testing
 
-- [ ] **CLI-01**: CLI commands cover merge operations (translator + game dev modes)
-- [ ] **CLI-02**: CLI commands cover export in all formats (XML, Excel, text)
-- [ ] **CLI-03**: CLI commands verify dual UI file type detection
+- [x] **CLI-01**: CLI commands cover merge operations (translator + game dev modes)
+- [x] **CLI-02**: CLI commands cover export in all formats (XML, Excel, text)
+- [x] **CLI-03**: CLI commands verify dual UI file type detection
 - [ ] **CLI-04**: E2E tests validate full merge→export→verify round-trip
 
 ### Bug Fixes
@@ -151,9 +151,9 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 | AISUM-03 | Phase 13 | Complete |
 | AISUM-04 | Phase 13 | Complete |
 | AISUM-05 | Phase 13 | Complete |
-| CLI-01 | Phase 14 | Pending |
-| CLI-02 | Phase 14 | Pending |
-| CLI-03 | Phase 14 | Pending |
+| CLI-01 | Phase 14 | Complete |
+| CLI-02 | Phase 14 | Complete |
+| CLI-03 | Phase 14 | Complete |
 | CLI-04 | Phase 14 | Pending |
 
 **Coverage:**
