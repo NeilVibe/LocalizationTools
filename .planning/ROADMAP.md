@@ -153,7 +153,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 14-01: TBD
+- [ ] 14-01-PLAN.md -- CLI merge/export/detect commands + unit tests (CLI-01, CLI-02, CLI-03)
+- [ ] 14-02-PLAN.md -- E2E round-trip tests for Translator and Game Dev pipelines (CLI-04)
 
 ## Progress
 
@@ -177,4 +178,4 @@ Note: Phase 11 and 13 depend only on Phase 07 and could execute in parallel with
 | 11. Image & Audio Pipeline | 2/2 | Complete    | 2026-03-15 | - |
 | 12. Game Dev Merge | 2/2 | Complete    | 2026-03-15 | - |
 | 13. AI Summaries | 2/2 | Complete    | 2026-03-15 | - |
-| 14. E2E Validation + CLI | v2.0 | 0/1 | Not started | - |
+| 14. E2E Validation + CLI | v2.0 | 0/2 | Not started | - |
