@@ -1,7 +1,7 @@
 # Requirements: LocaNext v3.0
 
 **Defined:** 2026-03-15
-**Core Value:** Game Dev authoring platform with AI-powered suggestions, interactive Codex, and integrated QA — all local, zero cloud dependency.
+**Core Value:** Game Dev authoring platform with AI-powered suggestions, interactive Codex, and integrated QA -- all local, zero cloud dependency.
 
 ## v3.0 Requirements
 
@@ -16,7 +16,7 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 - [ ] **MOCK-05**: Mock data includes EXPORT index files (.loc.xml) with StringID mappings per file
 - [ ] **MOCK-06**: Mock data includes region WorldPosition coordinates and NodeWaypointInfo route data for map visualization
 - [ ] **MOCK-07**: Mock universe has sufficient volume for meaningful testing (100+ items, 30+ characters, 10+ regions, 50+ skills, 20+ gimmicks)
-- [ ] **MOCK-08**: Mock data passes round-trip validation (parse → merge → export → re-parse produces consistent results)
+- [ ] **MOCK-08**: Mock data passes round-trip validation (parse -> merge -> export -> re-parse produces consistent results)
 
 ### Category Clustering
 
@@ -45,7 +45,7 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 - [ ] **AINAME-01**: When editing a Name field in Game Dev mode, system shows similar existing entity names via Model2Vec embedding search
 - [ ] **AINAME-02**: AI suggests coherent naming alternatives based on existing patterns via Qwen3
-- [ ] **AINAME-03**: Suggestions display as a non-blocking panel — game dev confirms in the grid, never auto-replace
+- [ ] **AINAME-03**: Suggestions display as a non-blocking panel -- game dev confirms in the grid, never auto-replace
 
 ### Game Dev Grid
 
@@ -63,7 +63,7 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 - [ ] **CODEX-02**: Item encyclopedia page shows name, image, description, category, stats, similar items via Model2Vec
 - [ ] **CODEX-03**: Codex is searchable via semantic search (Model2Vec + FAISS) across all entity types
 - [ ] **CODEX-04**: Both translators and game devs can access Codex pages for reference while working
-- [ ] **CODEX-05**: Codex pages show inline images (DDS→PNG) and audio playback (WEM→WAV) when available
+- [ ] **CODEX-05**: Codex pages show inline images (DDS->PNG) and audio playback (WEM->WAV) when available
 
 ### Interactive World Map
 
@@ -98,13 +98,13 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 | Feature | Reason |
 |---------|--------|
-| Full CRUD (create/delete XML nodes) | Schema rules undocumented, QACompiler only reads — v4.0+ |
+| Full CRUD (create/delete XML nodes) | Schema rules undocumented, QACompiler only reads -- v4.0+ |
 | Cloud MT integration | Breaks offline-first competitive moat |
 | Real-time collaborative editing | OT/CRDT complexity too high for demo value |
 | Voice synthesis (TTS) | CJK quality too poor in open-source |
 | AI autocorrection | Qwen3-4B lacks nuance, wrong suggestions erode trust |
 | WYSIWYG in-context preview | Requires game engine integration |
-| Plugin marketplace | Premature — core features must stabilize first |
+| Plugin marketplace | Premature -- core features must stabilize first |
 | Drag-and-drop map editing | Map is read-only visualization, not authoring |
 | AI image generation via cloud | Contradicts offline-first architecture |
 | Spell check / grammar check | CJK support weak, false positives worse than no check |
@@ -113,13 +113,57 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (Populated during roadmap creation) | | |
+| MOCK-01 | Phase 15 | Pending |
+| MOCK-02 | Phase 15 | Pending |
+| MOCK-03 | Phase 15 | Pending |
+| MOCK-04 | Phase 15 | Pending |
+| MOCK-05 | Phase 15 | Pending |
+| MOCK-06 | Phase 15 | Pending |
+| MOCK-07 | Phase 15 | Pending |
+| MOCK-08 | Phase 15 | Pending |
+| CAT-01 | Phase 16 | Pending |
+| CAT-02 | Phase 16 | Pending |
+| CAT-03 | Phase 16 | Pending |
+| QA-01 | Phase 16 | Pending |
+| QA-02 | Phase 16 | Pending |
+| QA-03 | Phase 16 | Pending |
+| QA-04 | Phase 16 | Pending |
+| QA-05 | Phase 16 | Pending |
+| QA-06 | Phase 16 | Pending |
+| AISUG-01 | Phase 17 | Pending |
+| AISUG-02 | Phase 17 | Pending |
+| AISUG-03 | Phase 17 | Pending |
+| AISUG-04 | Phase 17 | Pending |
+| AISUG-05 | Phase 17 | Pending |
+| AINAME-01 | Phase 21 | Pending |
+| AINAME-02 | Phase 21 | Pending |
+| AINAME-03 | Phase 21 | Pending |
+| GDEV-01 | Phase 18 | Pending |
+| GDEV-02 | Phase 18 | Pending |
+| GDEV-03 | Phase 18 | Pending |
+| GDEV-04 | Phase 18 | Pending |
+| GDEV-05 | Phase 18 | Pending |
+| GDEV-06 | Phase 18 | Pending |
+| GDEV-07 | Phase 18 | Pending |
+| CODEX-01 | Phase 19 | Pending |
+| CODEX-02 | Phase 19 | Pending |
+| CODEX-03 | Phase 19 | Pending |
+| CODEX-04 | Phase 19 | Pending |
+| CODEX-05 | Phase 19 | Pending |
+| MAP-01 | Phase 20 | Pending |
+| MAP-02 | Phase 20 | Pending |
+| MAP-03 | Phase 20 | Pending |
+| MAP-04 | Phase 20 | Pending |
+| MAP-05 | Phase 20 | Pending |
+| PLACEHOLDER-01 | Phase 21 | Pending |
+| PLACEHOLDER-02 | Phase 21 | Pending |
+| PLACEHOLDER-03 | Phase 21 | Pending |
 
 **Coverage:**
-- v3.0 requirements: 40 total
-- Mapped to phases: (pending roadmap)
-- Unmapped: (pending roadmap)
+- v3.0 requirements: 45 total
+- Mapped to phases: 45/45
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after research synthesis*
+*Last updated: 2026-03-15 after roadmap creation*
