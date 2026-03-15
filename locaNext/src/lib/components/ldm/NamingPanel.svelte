@@ -130,7 +130,9 @@
   <div class="panel-header">
     <span class="panel-title">Naming Suggestions</span>
     {#if loading}
-      <InlineLoading description="Searching..." />
+      <span role="status" aria-live="polite">
+        <InlineLoading description="Searching for similar names..." />
+      </span>
     {/if}
   </div>
 
@@ -141,12 +143,14 @@
     </div>
   {/if}
 
-  {#if !loading && !editingName}
-    <div class="panel-empty">Select a Name field to see suggestions</div>
+  {#if status === 'error'}
+    <div class="panel-empty" role="alert" aria-live="assertive">Could not load naming suggestions -- check your connection or try again.</div>
+  {:else if !loading && !editingName}
+    <div class="panel-empty">Select a Name field to see naming suggestions</div>
   {:else if !loading && editingName && editingName.length < 2}
-    <div class="panel-empty">Type at least 2 characters</div>
+    <div class="panel-empty">Type at least 2 characters to search for similar names</div>
   {:else if !loading && similarNames.length === 0 && aiSuggestions.length === 0 && status !== 'idle'}
-    <div class="panel-empty">No similar names found</div>
+    <div class="panel-empty">No similar names found -- this name appears to be unique</div>
   {/if}
 
   <!-- Similar Names section -->
@@ -264,6 +268,11 @@
     border-color: var(--cds-interactive-01);
   }
 
+  .name-tag:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
+  }
+
   .name-text {
     font-weight: 500;
   }
@@ -297,6 +306,11 @@
     border-color: var(--cds-interactive-01);
   }
 
+  .suggestion-item:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
+  }
+
   .suggestion-header {
     display: flex;
     align-items: center;
@@ -308,6 +322,7 @@
     font-size: 0.8125rem;
     font-weight: 500;
     color: var(--cds-text-01);
+    overflow-wrap: break-word;
   }
 
   .confidence-badge {
@@ -325,5 +340,6 @@
     color: var(--cds-text-03);
     font-style: italic;
     line-height: 1.3;
+    overflow-wrap: break-word;
   }
 </style>

@@ -124,19 +124,21 @@
   />
 
   {#if showDropdown}
-    <div class="search-dropdown">
+    <div class="search-dropdown" role="listbox" aria-label="Search results">
       {#if loading}
-        <div class="search-state">
-          <InlineLoading description="Searching..." />
+        <div class="search-state" role="status" aria-live="polite">
+          <InlineLoading description="Searching entities..." />
         </div>
       {:else if noResults}
-        <div class="search-state">
-          <span class="no-results">No matching entities found</span>
+        <div class="search-state" role="status" aria-live="polite">
+          <span class="no-results">No matching entities found -- try a different search term</span>
         </div>
       {:else}
         {#each results as result (result.entity.strkey)}
           <button
             class="search-result"
+            role="option"
+            aria-label="{result.entity.name} ({result.entity.entity_type}) -- {(result.similarity * 100).toFixed(0)}% match"
             onclick={() => selectResult(result)}
           >
             <div class="result-info">
@@ -202,6 +204,11 @@
 
   .search-result:hover {
     background: var(--cds-layer-hover-02);
+  }
+
+  .search-result:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
   }
 
   .search-result:last-child {

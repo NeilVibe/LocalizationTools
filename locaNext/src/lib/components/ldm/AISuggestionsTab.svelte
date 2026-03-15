@@ -122,8 +122,8 @@
 
 <div class="ai-suggestions-tab">
   {#if loading}
-    <div class="suggestions-loading" data-testid="ai-suggestions-loading">
-      <InlineLoading description="Generating suggestions..." />
+    <div class="suggestions-loading" data-testid="ai-suggestions-loading" role="status" aria-live="polite">
+      <InlineLoading description="Generating AI translation suggestions..." />
     </div>
   {:else if !selectedRow}
     <div class="suggestions-empty" data-testid="ai-suggestions-empty">
@@ -138,10 +138,10 @@
       <span class="empty-desc">Ollama service is not running. Start Ollama to enable AI suggestions.</span>
     </div>
   {:else if error}
-    <div class="suggestions-empty" data-testid="ai-suggestions-error">
+    <div class="suggestions-empty" data-testid="ai-suggestions-error" role="alert" aria-live="assertive">
       <WarningAlt size={32} />
-      <span class="empty-title">Error</span>
-      <span class="empty-desc">{error}</span>
+      <span class="empty-title">Failed to load suggestions</span>
+      <span class="empty-desc">Could not retrieve AI suggestions -- check your network connection or try again later.</span>
     </div>
   {:else if suggestions.length === 0}
     <div class="suggestions-empty" data-testid="ai-suggestions-no-results">
@@ -158,6 +158,7 @@
           class="suggestion-card"
           onclick={() => handleApplySuggestion(suggestion)}
           title="Click to apply this suggestion"
+          aria-label="Apply suggestion: {suggestion.text?.substring(0, 50)}"
           data-testid="ai-suggestion-card"
         >
           <div class="suggestion-header">
@@ -238,6 +239,11 @@
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
   }
 
+  .suggestion-card:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
+  }
+
   /* Header with confidence badge */
   .suggestion-header {
     display: flex;
@@ -271,6 +277,7 @@
     line-height: 1.5;
     overflow: hidden;
     text-overflow: ellipsis;
+    overflow-wrap: break-word;
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;

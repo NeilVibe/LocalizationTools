@@ -221,16 +221,19 @@
       <p>{apiError}</p>
     </div>
   {:else if loadingTypes}
-    <div class="codex-loading">
-      <InlineLoading description="Loading Codex..." />
+    <div class="codex-loading" role="status" aria-live="polite">
+      <InlineLoading description="Loading Codex entity types..." />
     </div>
   {:else}
     <!-- Entity Type Tabs -->
-    <div class="codex-tabs">
+    <div class="codex-tabs" role="tablist" aria-label="Entity type tabs">
       {#each tabList as [type, count] (type)}
         <button
           class="codex-tab"
           class:active={activeTab === type}
+          role="tab"
+          aria-selected={activeTab === type}
+          aria-label="{TYPE_LABELS[type] || type} ({count})"
           onclick={() => selectTab(type)}
         >
           <span class="tab-label">{TYPE_LABELS[type] || type}</span>
@@ -244,7 +247,7 @@
       {#if selectedEntity}
         <!-- Detail View -->
         <div class="detail-view">
-          <button class="back-btn" onclick={clearSelection}>
+          <button class="back-btn" onclick={clearSelection} aria-label="Back to entity list">
             <ArrowLeft size={16} />
             <span>Back to list</span>
           </button>
@@ -265,7 +268,7 @@
         <!-- Entity Grid -->
         <div class="entity-grid">
           {#each entities as entity (entity.strkey)}
-            <button class="entity-card" onclick={() => selectEntity(entity)}>
+            <button class="entity-card" onclick={() => selectEntity(entity)} aria-label="View {entity.name} ({entity.entity_type})">
               <div class="card-image">
                 {#if entity.image_texture && !failedImages.has(entity.strkey)}
                   <img
@@ -296,7 +299,7 @@
 
           {#if entities.length === 0}
             <div class="no-entities">
-              <p>No entities found for this type.</p>
+              <p>No entities found for this type -- ensure gamedata files are loaded and indexed.</p>
             </div>
           {/if}
         </div>
@@ -395,6 +398,11 @@
     background: var(--cds-layer-hover-01);
   }
 
+  .codex-tab:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+
   .codex-tab.active {
     color: var(--cds-text-01);
     border-bottom-color: var(--cds-interactive-01, #0f62fe);
@@ -440,6 +448,11 @@
     background: var(--cds-layer-hover-01);
   }
 
+  .back-btn:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
+  }
+
   .entity-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -474,6 +487,11 @@
   .entity-card:hover {
     background: var(--cds-layer-hover-01);
     border-color: var(--cds-border-strong-01);
+  }
+
+  .entity-card:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
   }
 
   .card-image {

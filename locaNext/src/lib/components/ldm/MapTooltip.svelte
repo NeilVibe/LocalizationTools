@@ -11,6 +11,23 @@
 
   let { node = null, x = 0, y = 0 } = $props();
 
+  // Clamp position to viewport to prevent off-screen rendering
+  const TOOLTIP_WIDTH = 300;
+  const TOOLTIP_HEIGHT_ESTIMATE = 150;
+  const VIEWPORT_PADDING = 8;
+
+  let clampedX = $derived(
+    typeof window !== 'undefined'
+      ? Math.min(x, window.innerWidth - TOOLTIP_WIDTH - VIEWPORT_PADDING)
+      : x
+  );
+
+  let clampedY = $derived(
+    typeof window !== 'undefined'
+      ? Math.min(y, window.innerHeight - TOOLTIP_HEIGHT_ESTIMATE - VIEWPORT_PADDING)
+      : y
+  );
+
   // Region type colors for Carbon Tag
   const TYPE_TAG_COLORS = {
     Main: 'blue',
@@ -46,7 +63,8 @@
 {#if node}
   <div
     class="map-tooltip"
-    style="left: {x}px; top: {y}px;"
+    style="left: {clampedX}px; top: {clampedY}px;"
+    role="tooltip"
   >
     <div class="tooltip-header">
       <span class="tooltip-name">{node.name}</span>
@@ -109,6 +127,7 @@
     font-size: 0.75rem;
     color: var(--cds-text-02, #c6c6c6);
     line-height: 1.4;
+    overflow-wrap: break-word;
   }
 
   .tooltip-npcs,

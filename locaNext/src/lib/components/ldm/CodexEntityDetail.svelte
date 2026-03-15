@@ -232,6 +232,7 @@
               <button
                 class="related-badge"
                 onclick={() => onsimilar(result.entity.strkey)}
+                aria-label="View similar item: {result.entity.name}"
               >
                 {result.entity.name}
                 <span class="similarity">{(result.similarity * 100).toFixed(0)}%</span>
@@ -255,6 +256,7 @@
             <button
               class="related-badge"
               onclick={() => onsimilar(relatedKey)}
+              aria-label="View related entity: {relatedKey}"
             >
               {relatedKey}
             </button>
@@ -336,6 +338,7 @@
     line-height: 1.5;
     margin: 0;
     white-space: pre-line;
+    overflow-wrap: break-word;
   }
 
   .attr-grid {
@@ -422,6 +425,11 @@
 
   .related-badge:hover {
     background: var(--cds-layer-hover-02);
+  }
+
+  .related-badge:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
   }
 
   .similarity {

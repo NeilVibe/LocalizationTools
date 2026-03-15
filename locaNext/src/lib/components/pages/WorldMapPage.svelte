@@ -113,12 +113,12 @@
 
   <!-- Content -->
   {#if apiError}
-    <div class="worldmap-error">
+    <div class="worldmap-error" role="alert" aria-live="assertive">
       <p>{apiError}</p>
     </div>
   {:else if loading}
-    <div class="worldmap-loading">
-      <InlineLoading description="Loading world map..." />
+    <div class="worldmap-loading" role="status" aria-live="polite">
+      <InlineLoading description="Loading world map regions and routes..." />
     </div>
   {:else}
     <div class="worldmap-content">

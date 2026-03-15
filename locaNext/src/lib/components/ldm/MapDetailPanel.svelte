@@ -100,7 +100,7 @@
         <h3 class="section-title">Entities</h3>
         <div class="entity-counts">
           {#each entityEntries as [type, count]}
-            <button class="entity-count-item" onclick={openInCodex}>
+            <button class="entity-count-item" onclick={openInCodex} aria-label="View {count} {type}{count !== 1 ? 's' : ''} in Codex">
               <span class="count-number">{count}</span>
               <span class="count-type">{type}{count !== 1 ? 's' : ''}</span>
             </button>
@@ -187,6 +187,11 @@
     background: var(--cds-layer-hover-01);
   }
 
+  .close-btn:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
+  }
+
   .panel-section {
     padding: 12px 16px;
     border-bottom: 1px solid var(--cds-border-subtle-01);
@@ -241,6 +246,11 @@
     text-decoration: underline;
   }
 
+  .npc-link:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
+  }
+
   .entity-counts {
     display: flex;
     flex-wrap: wrap;
@@ -264,6 +274,11 @@
   .entity-count-item:hover {
     background: var(--cds-layer-hover-01);
     border-color: var(--cds-interactive-01, #0f62fe);
+  }
+
+  .entity-count-item:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
   }
 
   .count-number {

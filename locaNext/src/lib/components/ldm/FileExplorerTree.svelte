@@ -130,7 +130,7 @@
     <div class="error-state">
       <p class="error-message">Failed to load folder</p>
       <p class="error-detail">{error}</p>
-      <button class="retry-button" onclick={() => loadTree()}>
+      <button class="retry-button" onclick={() => loadTree()} aria-label="Retry loading folder tree">
         <Renew size={14} />
         Retry
       </button>
@@ -256,6 +256,11 @@
     background: var(--cds-layer-hover-01);
   }
 
+  .retry-button:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
+  }
+
   .tree-content {
     flex: 1;
     overflow-y: auto;
@@ -297,6 +302,11 @@
 
   .tree-node:hover {
     background: var(--cds-layer-hover-01);
+  }
+
+  .tree-node:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
   }
 
   .folder-node {

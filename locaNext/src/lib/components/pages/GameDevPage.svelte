@@ -174,7 +174,7 @@
   <div class="explorer-panel">
     <div class="explorer-header">
       <h3 class="explorer-title">Game Data</h3>
-      <button class="icon-button" onclick={refreshTree} title="Refresh">
+      <button class="icon-button" onclick={refreshTree} title="Refresh" aria-label="Refresh file tree">
         <Renew size={16} />
       </button>
     </div>
@@ -187,7 +187,7 @@
         onkeydown={handlePathKeydown}
         placeholder="Enter gamedata folder path..."
       />
-      <button class="browse-button" onclick={applyPath} title="Browse">
+      <button class="browse-button" onclick={applyPath} title="Browse" aria-label="Apply path">
         <FolderOpen size={16} />
       </button>
     </div>
@@ -213,8 +213,8 @@
   <!-- Right Panel: Grid or Placeholder -->
   <div class="grid-panel">
     {#if fileLoading}
-      <div class="grid-placeholder">
-        <p>Loading file...</p>
+      <div class="grid-placeholder" role="status" aria-live="polite">
+        <p>Loading game data file...</p>
       </div>
     {:else if selectedGameDevFile && currentFileId}
       <VirtualGrid
@@ -294,6 +294,11 @@
     background: var(--cds-layer-hover-01);
   }
 
+  .icon-button:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
+  }
+
   .path-input-row {
     display: flex;
     gap: 4px;
@@ -337,6 +342,11 @@
 
   .browse-button:hover {
     background: var(--cds-layer-hover-01);
+  }
+
+  .browse-button:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
   }
 
   .explorer-tree-container {

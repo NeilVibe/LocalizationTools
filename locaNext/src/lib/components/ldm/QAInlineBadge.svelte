@@ -151,6 +151,7 @@
     role="button"
     tabindex="0"
     title="{localCount} QA issue(s) - click to view"
+    aria-label="{localCount} QA {localCount === 1 ? 'issue' : 'issues'} -- click to view details"
   >
     <Tag type={getBadgeColor()} size="sm">
       {localCount}
@@ -177,7 +178,7 @@
 
         <div class="qa-popover-content">
           {#if loading}
-            <div class="qa-popover-loading">Loading...</div>
+            <div class="qa-popover-loading" role="status" aria-live="polite">Loading QA issues...</div>
           {:else if issues.length === 0}
             <div class="qa-popover-empty">No unresolved issues</div>
           {:else}
@@ -220,6 +221,12 @@
     align-items: center;
     cursor: pointer;
     z-index: 2;
+    border-radius: 4px;
+  }
+
+  .qa-inline-badge:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
   }
 
   .qa-popover-backdrop {
@@ -274,6 +281,11 @@
 
   .qa-popover-close:hover {
     color: var(--cds-text-01);
+  }
+
+  .qa-popover-close:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
   }
 
   .qa-popover-content {
@@ -361,6 +373,12 @@
   .issue-dismiss:hover {
     opacity: 1;
     color: var(--cds-support-01, #da1e28);
+  }
+
+  .issue-dismiss:focus {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
+    opacity: 1;
   }
 
   .issue-text {
