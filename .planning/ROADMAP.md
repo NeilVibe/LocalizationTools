@@ -93,8 +93,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 17-01: TBD
-- [ ] 17-02: TBD
+- [ ] 17-01-PLAN.md — AISuggestionService backend + REST endpoint + unit tests (AISUG-01, AISUG-02, AISUG-04, AISUG-05)
+- [ ] 17-02-PLAN.md — AISuggestionsTab frontend + RightPanel integration + click-to-apply wiring (AISUG-01, AISUG-02, AISUG-03, AISUG-05)
 
 ### Phase 18: Game Dev Grid + File Explorer
 **Goal**: Game developers can browse the gamedata folder structure and edit entity attributes inline in a hierarchical grid that handles large files smoothly
@@ -184,7 +184,7 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21
 | 14. E2E Validation + CLI | v2.0 | 2/2 | Complete | 2026-03-15 |
 | 15. Mock Gamedata Universe | 2/2 | Complete    | 2026-03-15 | - |
 | 16. Category Clustering + QA Pipeline | 2/2 | Complete    | 2026-03-15 | - |
-| 17. AI Translation Suggestions | v3.0 | 0/? | Not started | - |
+| 17. AI Translation Suggestions | v3.0 | 0/2 | Planned | - |
 | 18. Game Dev Grid + File Explorer | v3.0 | 0/? | Not started | - |
 | 19. Game World Codex | v3.0 | 0/? | Not started | - |
 | 20. Interactive World Map | v3.0 | 0/? | Not started | - |
