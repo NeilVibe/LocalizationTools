@@ -20,6 +20,7 @@
   import { CATEGORY_COLORS } from "./CategoryFilter.svelte";
   import { stripColorTags, paColorToHtml, htmlToPaColor, hexToCSS } from "$lib/utils/colorParser.js";
   import SemanticResults from "./SemanticResults.svelte";
+  import QAInlineBadge from "./QAInlineBadge.svelte";
 
   const dispatch = createEventDispatcher();
 
@@ -632,6 +633,20 @@
       logger.info('Updated row QA flag', { rowId, flagCount });
     } else {
       logger.warning("Row not found for QA flag update", { rowId });
+    }
+  }
+
+  // P16-02: Handle QA dismiss from inline badge (optimistic UI)
+  function handleQADismiss(rowId) {
+    const rowIndex = getRowIndexById(rowId);
+    if (rowIndex !== undefined && rows[rowIndex]) {
+      const currentCount = rows[rowIndex].qa_flag_count || 0;
+      rows[rowIndex] = {
+        ...rows[rowIndex],
+        qa_flag_count: Math.max(0, currentCount - 1)
+      };
+      rows = [...rows]; // Trigger reactivity
+      logger.info('QA inline dismiss', { rowId, newCount: rows[rowIndex].qa_flag_count });
     }
   }
 
@@ -2788,9 +2803,7 @@
                       </span>
                     {/if}
                     {#if row.qa_flag_count > 0}
-                      <span class="qa-icon" title="{row.qa_flag_count} QA issue(s)">
-                        <WarningAltFilled size={14} />
-                      </span>
+                      <QAInlineBadge qaFlagCount={row.qa_flag_count} rowId={row.id} onDismiss={handleQADismiss} />
                     {/if}
                     {#if rowLock}
                       <span class="lock-icon"><Locked size={12} /></span>
