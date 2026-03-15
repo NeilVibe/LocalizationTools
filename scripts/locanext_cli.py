@@ -23,12 +23,17 @@ Examples:
     python3 scripts/locanext_cli.py qa check 5           # Run QA on file
     python3 scripts/locanext_cli.py search "warrior"     # Semantic search
     python3 scripts/locanext_cli.py e2e-tm               # Full TM E2E test
+    python3 scripts/locanext_cli.py merge 5 3             # Merge source 3 into target 5
+    python3 scripts/locanext_cli.py gamedev-merge 5       # Game Dev merge for file 5
+    python3 scripts/locanext_cli.py export 5 --format xml # Export file 5 as XML
+    python3 scripts/locanext_cli.py detect 5              # Detect file type (translator/gamedev)
 """
 from __future__ import annotations
 
 import sys
 import json
 import time
+import base64
 import requests
 import argparse
 from typing import Optional
@@ -754,6 +759,92 @@ def cmd_e2e_status():
     print("=" * 60)
 
 # ============================================================================
+# Merge / Export / Detect Commands
+# ============================================================================
+
+def cmd_merge(target_id: int, source_id: int, mode: str = "cascade",
+              threshold: float = 0.85, is_cjk: bool = False):
+    """Merge source file into target file using Translator merge."""
+    print(f"=== Merge: source {source_id} → target {target_id} (mode={mode}) ===")
+    body = {
+        "source_file_id": source_id,
+        "match_mode": mode,
+        "threshold": threshold,
+        "is_cjk": is_cjk,
+    }
+    data = api("post", f"/api/ldm/files/{target_id}/merge", data=body)
+    if ok(data):
+        print(f"  Matched:    {data.get('matched', 0)}")
+        print(f"  Skipped:    {data.get('skipped', 0)}")
+        print(f"  Total:      {data.get('total', 0)}")
+        print(f"  Updated:    {data.get('rows_updated', 0)}")
+        counts = data.get("match_type_counts", {})
+        if counts:
+            print(f"  Match types: {counts}")
+    else:
+        pp(data)
+
+
+def cmd_gamedev_merge(file_id: int, max_depth: int = 3, output_path: str = None):
+    """Run Game Dev position-based merge on a file."""
+    print(f"=== Game Dev Merge: file {file_id} (max_depth={max_depth}) ===")
+    body = {"max_depth": max_depth}
+    data = api("post", f"/api/ldm/files/{file_id}/gamedev-merge", data=body)
+    if ok(data):
+        print(f"  Total nodes:   {data.get('total_nodes', 0)}")
+        print(f"  Changed:       {data.get('changed_nodes', 0)}")
+        print(f"  Added:         {data.get('added_nodes', 0)}")
+        print(f"  Removed:       {data.get('removed_nodes', 0)}")
+        print(f"  Modified attrs:{data.get('modified_attributes', 0)}")
+        print(f"  Rows updated:  {data.get('rows_updated', 0)}")
+
+        # Save output XML
+        output_xml_b64 = data.get("output_xml", "")
+        if output_xml_b64:
+            out = output_path or f"gamedev_merge_{file_id}.xml"
+            xml_bytes = base64.b64decode(output_xml_b64)
+            with open(out, "wb") as f:
+                f.write(xml_bytes)
+            print(f"  Saved: {out} ({len(xml_bytes)} bytes)")
+    else:
+        pp(data)
+
+
+def cmd_export(file_id: int, fmt: str = "xml", output_path: str = None,
+               status_filter: str = None):
+    """Export file to disk (XML, Excel, or text)."""
+    print(f"=== Export: file {file_id} (format={fmt}) ===")
+    url = f"{API_BASE}/api/ldm/files/{file_id}/download"
+    params = {}
+    if status_filter:
+        params["status_filter"] = status_filter
+    try:
+        r = requests.get(url, params=params, timeout=60)
+        if r.ok:
+            out = output_path or f"export_{file_id}.{fmt}"
+            with open(out, "wb") as f:
+                f.write(r.content)
+            print(f"  Saved: {out} ({len(r.content)} bytes)")
+        else:
+            print(f"  Export failed: {r.status_code} {r.text[:200]}")
+    except requests.ConnectionError:
+        print("  Connection refused -- is backend running?")
+    except Exception as e:
+        print(f"  Error: {e}")
+
+
+def cmd_detect(file_id: int):
+    """Detect file type (translator or gamedev)."""
+    data = api("get", f"/api/ldm/files/{file_id}")
+    if ok(data):
+        file_type = data.get("file_type", "translator")
+        name = data.get("name", "unknown")
+        print(f"  File {file_id}: {name} -> {file_type}")
+    else:
+        pp(data)
+
+
+# ============================================================================
 # CLI Parser
 # ============================================================================
 
@@ -828,6 +919,78 @@ def main():
             cmd_offline_folders()
     elif cmd == "row-status":
         cmd_row_status(int(args[0]), args[1] if len(args) > 1 else "")
+    elif cmd == "merge":
+        # merge <target_id> <source_id> [--mode cascade] [--threshold 0.85] [--cjk]
+        if len(args) < 2:
+            print("Usage: merge <target_id> <source_id> [--mode cascade] [--threshold 0.85] [--cjk]")
+            sys.exit(1)
+        target_id = int(args[0])
+        source_id = int(args[1])
+        mode = "cascade"
+        threshold = 0.85
+        is_cjk = False
+        i = 2
+        while i < len(args):
+            if args[i] == "--mode" and i + 1 < len(args):
+                mode = args[i + 1]
+                i += 2
+            elif args[i] == "--threshold" and i + 1 < len(args):
+                threshold = float(args[i + 1])
+                i += 2
+            elif args[i] == "--cjk":
+                is_cjk = True
+                i += 1
+            else:
+                i += 1
+        cmd_merge(target_id, source_id, mode, threshold, is_cjk)
+    elif cmd == "gamedev-merge":
+        # gamedev-merge <file_id> [--depth 3] [--output path]
+        if not args:
+            print("Usage: gamedev-merge <file_id> [--depth 3] [--output path]")
+            sys.exit(1)
+        file_id = int(args[0])
+        max_depth = 3
+        output_path = None
+        i = 1
+        while i < len(args):
+            if args[i] == "--depth" and i + 1 < len(args):
+                max_depth = int(args[i + 1])
+                i += 2
+            elif args[i] == "--output" and i + 1 < len(args):
+                output_path = args[i + 1]
+                i += 2
+            else:
+                i += 1
+        cmd_gamedev_merge(file_id, max_depth, output_path)
+    elif cmd == "export":
+        # export <file_id> [--format xml|xlsx|txt] [--output path] [--status reviewed|translated|all]
+        if not args:
+            print("Usage: export <file_id> [--format xml] [--output path] [--status reviewed]")
+            sys.exit(1)
+        file_id = int(args[0])
+        fmt = "xml"
+        output_path = None
+        status_filter = None
+        i = 1
+        while i < len(args):
+            if args[i] == "--format" and i + 1 < len(args):
+                fmt = args[i + 1]
+                i += 2
+            elif args[i] == "--output" and i + 1 < len(args):
+                output_path = args[i + 1]
+                i += 2
+            elif args[i] == "--status" and i + 1 < len(args):
+                status_filter = args[i + 1]
+                i += 2
+            else:
+                i += 1
+        cmd_export(file_id, fmt, output_path, status_filter)
+    elif cmd == "detect":
+        # detect <file_id>
+        if not args:
+            print("Usage: detect <file_id>")
+            sys.exit(1)
+        cmd_detect(int(args[0]))
     elif cmd == "api":
         # Raw API call: python3 locanext_cli.py api GET /api/ldm/health
         method = args[0].upper() if args else "GET"
