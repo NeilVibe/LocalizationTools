@@ -10,6 +10,7 @@
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import FileExplorerTree from '$lib/components/ldm/FileExplorerTree.svelte';
   import VirtualGrid from '$lib/components/ldm/VirtualGrid.svelte';
+  import NamingPanel from '$lib/components/ldm/NamingPanel.svelte';
   import { Button, TextInput } from 'carbon-components-svelte';
   import { Renew, FolderOpen } from 'carbon-icons-svelte';
 
@@ -22,6 +23,10 @@
   let dynamicColumns = $state(null);
   let fileLoading = $state(false);
   let virtualGrid = $state(null);
+
+  // Naming panel state (Phase 21)
+  let editingEntityName = $state('');
+  let editingEntityType = $state('');
 
   // Derive file type for VirtualGrid
   let currentFileId = $derived($openFile?.id || null);
@@ -152,6 +157,46 @@
       applyPath();
     }
   }
+
+  /**
+   * Phase 21: Handle row selection from VirtualGrid -- show naming panel
+   * When user selects a row, extract the entity name (from source/target)
+   * and entity type (from the file's XML node structure) for naming suggestions.
+   */
+  function handleRowSelect(e) {
+    const row = e.detail?.row;
+    if (!row) {
+      editingEntityName = '';
+      return;
+    }
+
+    // Extract entity name: use target (Name attribute) or source (node name)
+    const name = row.target || row.source || '';
+    editingEntityName = name;
+
+    // Derive entity type from XML node name or file name
+    const nodeName = (row.source || '').toLowerCase();
+    if (nodeName.includes('character')) editingEntityType = 'character';
+    else if (nodeName.includes('item')) editingEntityType = 'item';
+    else if (nodeName.includes('skill')) editingEntityType = 'skill';
+    else if (nodeName.includes('gimmick')) editingEntityType = 'gimmick';
+    else if (nodeName.includes('faction') || nodeName.includes('region')) editingEntityType = 'region';
+    else editingEntityType = 'character'; // safe default
+
+    logger.userAction('Row selected for naming panel', { name, entityType: editingEntityType });
+  }
+
+  /**
+   * Phase 21: Apply naming suggestion -- copy to clipboard (respects AINAME-03)
+   */
+  async function handleNamingApply(name) {
+    try {
+      await navigator.clipboard.writeText(name);
+      logger.userAction('Naming suggestion copied to clipboard', { name });
+    } catch {
+      logger.warning('Clipboard copy failed for naming suggestion', { name });
+    }
+  }
 </script>
 
 <div class="gamedev-page">
@@ -207,7 +252,15 @@
         fileName={currentFileName}
         fileType="gamedev"
         gamedevDynamicColumns={dynamicColumns}
+        on:rowSelect={handleRowSelect}
       />
+      {#if editingEntityName}
+        <NamingPanel
+          editingName={editingEntityName}
+          entityType={editingEntityType}
+          onApply={handleNamingApply}
+        />
+      {/if}
     {:else}
       <div class="grid-placeholder">
         <FolderOpen size={48} />
