@@ -7,10 +7,27 @@ Phase 16 Plan 01: Category Clustering
 from __future__ import annotations
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 from fastapi.testclient import TestClient
-from server.main import app
+
+from server.main import app as wrapped_app
+from server.utils.dependencies import get_current_active_user_async
+from server.repositories.factory import (
+    get_row_repository,
+    get_file_repository,
+)
+
+# Get the original FastAPI app for dependency_overrides
+fastapi_app = wrapped_app.other_asgi_app
+
+MOCK_USER = {
+    "user_id": 1,
+    "username": "testuser",
+    "role": "user",
+    "is_active": True,
+    "dev_mode": False,
+}
 
 
 def _make_row(id: int, row_num: int, string_id: str, source: str = "src",
@@ -36,44 +53,36 @@ MIXED_ROWS = [
 
 
 @pytest.fixture
-def mock_auth_and_repos():
+def mock_repos():
     """Mock auth + repositories for rows endpoint testing."""
-    mock_user = {"user_id": 1, "username": "testuser", "is_admin": False}
     mock_row_repo = AsyncMock()
     mock_file_repo = AsyncMock()
 
-    with (
-        patch(
-            "server.tools.ldm.routes.rows.get_current_active_user_async",
-        ) as mock_auth,
-        patch(
-            "server.tools.ldm.routes.rows.get_row_repository",
-        ) as mock_row_dep,
-        patch(
-            "server.tools.ldm.routes.rows.get_file_repository",
-        ) as mock_file_dep,
-    ):
-        mock_auth.return_value = mock_user
-        mock_row_dep.return_value = mock_row_repo
-        mock_file_dep.return_value = mock_file_repo
-        mock_file_repo.get = AsyncMock(return_value={"id": 1, "name": "test.xml"})
-        yield mock_user, mock_row_repo, mock_file_repo
+    async def override_get_user():
+        return MOCK_USER
+
+    fastapi_app.dependency_overrides[get_current_active_user_async] = override_get_user
+    fastapi_app.dependency_overrides[get_row_repository] = lambda: mock_row_repo
+    fastapi_app.dependency_overrides[get_file_repository] = lambda: mock_file_repo
+
+    mock_file_repo.get = AsyncMock(return_value={"id": 1, "name": "test.xml"})
+
+    yield mock_row_repo, mock_file_repo
+
+    fastapi_app.dependency_overrides.clear()
 
 
 class TestSingleCategoryFilter:
     """Test ?category=Item returns only Item rows."""
 
-    def test_filter_single_category(self, mock_auth_and_repos):
-        _, mock_row_repo, _ = mock_auth_and_repos
+    def test_filter_single_category(self, mock_repos):
+        mock_row_repo, _ = mock_repos
         mock_row_repo.get_for_file = AsyncMock(
             return_value=(list(MIXED_ROWS), len(MIXED_ROWS))
         )
 
-        client = TestClient(app)
-        response = client.get(
-            "/api/ldm/files/1/rows?category=Item",
-            headers={"Authorization": "Bearer test-token"},
-        )
+        client = TestClient(wrapped_app)
+        response = client.get("/api/ldm/files/1/rows?category=Item")
 
         assert response.status_code == 200
         data = response.json()
@@ -86,17 +95,14 @@ class TestSingleCategoryFilter:
 class TestMultiCategoryFilter:
     """Test ?category=Item,Character returns both."""
 
-    def test_filter_multi_category(self, mock_auth_and_repos):
-        _, mock_row_repo, _ = mock_auth_and_repos
+    def test_filter_multi_category(self, mock_repos):
+        mock_row_repo, _ = mock_repos
         mock_row_repo.get_for_file = AsyncMock(
             return_value=(list(MIXED_ROWS), len(MIXED_ROWS))
         )
 
-        client = TestClient(app)
-        response = client.get(
-            "/api/ldm/files/1/rows?category=Item,Character",
-            headers={"Authorization": "Bearer test-token"},
-        )
+        client = TestClient(wrapped_app)
+        response = client.get("/api/ldm/files/1/rows?category=Item,Character")
 
         assert response.status_code == 200
         data = response.json()
@@ -109,8 +115,8 @@ class TestMultiCategoryFilter:
 class TestCategoryFilterCombinedWithSearch:
     """Test category filter combined with search."""
 
-    def test_category_with_search(self, mock_auth_and_repos):
-        _, mock_row_repo, _ = mock_auth_and_repos
+    def test_category_with_search(self, mock_repos):
+        mock_row_repo, _ = mock_repos
         # Simulate search already filtered on backend
         search_results = [
             _make_row(1, 1, "SID_ITEM_001_NAME", source="Sword"),
@@ -120,11 +126,8 @@ class TestCategoryFilterCombinedWithSearch:
             return_value=(search_results, len(search_results))
         )
 
-        client = TestClient(app)
-        response = client.get(
-            "/api/ldm/files/1/rows?search=sword&category=Item",
-            headers={"Authorization": "Bearer test-token"},
-        )
+        client = TestClient(wrapped_app)
+        response = client.get("/api/ldm/files/1/rows?search=sword&category=Item")
 
         assert response.status_code == 200
         data = response.json()
@@ -136,8 +139,8 @@ class TestCategoryFilterCombinedWithSearch:
 class TestCategoryFilterCombinedWithStatus:
     """Test category filter combined with status filter."""
 
-    def test_category_with_status(self, mock_auth_and_repos):
-        _, mock_row_repo, _ = mock_auth_and_repos
+    def test_category_with_status(self, mock_repos):
+        mock_row_repo, _ = mock_repos
         # Simulate status filter already applied on backend
         confirmed_rows = [
             _make_row(6, 6, "SID_ITEM_003_NAME", source="Potion", status="approved"),
@@ -147,11 +150,8 @@ class TestCategoryFilterCombinedWithStatus:
             return_value=(confirmed_rows, len(confirmed_rows))
         )
 
-        client = TestClient(app)
-        response = client.get(
-            "/api/ldm/files/1/rows?category=Item&filter=confirmed",
-            headers={"Authorization": "Bearer test-token"},
-        )
+        client = TestClient(wrapped_app)
+        response = client.get("/api/ldm/files/1/rows?category=Item&filter=confirmed")
 
         assert response.status_code == 200
         data = response.json()
@@ -162,17 +162,14 @@ class TestCategoryFilterCombinedWithStatus:
 class TestCategoryFilterNoMatches:
     """Test category filter with no matches returns empty."""
 
-    def test_no_matches(self, mock_auth_and_repos):
-        _, mock_row_repo, _ = mock_auth_and_repos
+    def test_no_matches(self, mock_repos):
+        mock_row_repo, _ = mock_repos
         mock_row_repo.get_for_file = AsyncMock(
             return_value=(list(MIXED_ROWS), len(MIXED_ROWS))
         )
 
-        client = TestClient(app)
-        response = client.get(
-            "/api/ldm/files/1/rows?category=Region",
-            headers={"Authorization": "Bearer test-token"},
-        )
+        client = TestClient(wrapped_app)
+        response = client.get("/api/ldm/files/1/rows?category=Region")
 
         assert response.status_code == 200
         data = response.json()

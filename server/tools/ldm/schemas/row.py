@@ -19,6 +19,8 @@ class RowResponse(BaseModel):
     qa_flag_count: int = 0
     # CTX-07: Translation source indicator ("human", "ai", "tm", or null)
     translation_source: Optional[str] = None
+    # P16: Content category (Item, Character, Skill, etc.)
+    category: Optional[str] = None
 
     class Config:
         from_attributes = True

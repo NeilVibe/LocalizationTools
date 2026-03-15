@@ -7,46 +7,52 @@ Phase 16 Plan 01: Category Clustering
 from __future__ import annotations
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 from fastapi.testclient import TestClient
-from server.main import app
+
+from server.main import app as wrapped_app
+from server.utils.dependencies import get_current_active_user_async
+from server.repositories.factory import (
+    get_row_repository,
+    get_file_repository,
+)
+
+# Get the original FastAPI app for dependency_overrides
+fastapi_app = wrapped_app.other_asgi_app
+
+MOCK_USER = {
+    "user_id": 1,
+    "username": "testuser",
+    "role": "user",
+    "is_active": True,
+    "dev_mode": False,
+}
 
 
 @pytest.fixture
-def mock_auth_and_repos():
+def mock_repos():
     """Mock auth + repositories for rows endpoint testing."""
-    mock_user = {"user_id": 1, "username": "testuser", "is_admin": False}
-
     mock_row_repo = AsyncMock()
     mock_file_repo = AsyncMock()
 
-    with (
-        patch(
-            "server.utils.dependencies.get_current_active_user_async",
-            return_value=lambda: mock_user,
-        ) as _,
-        patch(
-            "server.tools.ldm.routes.rows.get_current_active_user_async",
-        ) as mock_auth,
-        patch(
-            "server.tools.ldm.routes.rows.get_row_repository",
-        ) as mock_row_dep,
-        patch(
-            "server.tools.ldm.routes.rows.get_file_repository",
-        ) as mock_file_dep,
-    ):
-        mock_auth.return_value = mock_user
-        mock_row_dep.return_value = mock_row_repo
-        mock_file_dep.return_value = mock_file_repo
-        yield mock_user, mock_row_repo, mock_file_repo
+    async def override_get_user():
+        return MOCK_USER
+
+    fastapi_app.dependency_overrides[get_current_active_user_async] = override_get_user
+    fastapi_app.dependency_overrides[get_row_repository] = lambda: mock_row_repo
+    fastapi_app.dependency_overrides[get_file_repository] = lambda: mock_file_repo
+
+    yield mock_row_repo, mock_file_repo
+
+    fastapi_app.dependency_overrides.clear()
 
 
 class TestRowsResponseIncludesCategory:
     """Test that GET /api/ldm/files/{id}/rows returns category field."""
 
-    def test_rows_include_category_field(self, mock_auth_and_repos):
-        mock_user, mock_row_repo, mock_file_repo = mock_auth_and_repos
+    def test_rows_include_category_field(self, mock_repos):
+        mock_row_repo, mock_file_repo = mock_repos
 
         mock_file_repo.get = AsyncMock(return_value={"id": 1, "name": "test.xml"})
         mock_row_repo.get_for_file = AsyncMock(
@@ -70,19 +76,16 @@ class TestRowsResponseIncludesCategory:
             )
         )
 
-        client = TestClient(app)
-        response = client.get(
-            "/api/ldm/files/1/rows",
-            headers={"Authorization": "Bearer test-token"},
-        )
+        client = TestClient(wrapped_app)
+        response = client.get("/api/ldm/files/1/rows")
 
         assert response.status_code == 200
         data = response.json()
         assert len(data["rows"]) == 1
         assert data["rows"][0]["category"] == "Item"
 
-    def test_category_populated_for_known_prefixes(self, mock_auth_and_repos):
-        mock_user, mock_row_repo, mock_file_repo = mock_auth_and_repos
+    def test_category_populated_for_known_prefixes(self, mock_repos):
+        mock_row_repo, mock_file_repo = mock_repos
 
         mock_file_repo.get = AsyncMock(return_value={"id": 1, "name": "test.xml"})
         mock_row_repo.get_for_file = AsyncMock(
@@ -114,11 +117,8 @@ class TestRowsResponseIncludesCategory:
             )
         )
 
-        client = TestClient(app)
-        response = client.get(
-            "/api/ldm/files/1/rows",
-            headers={"Authorization": "Bearer test-token"},
-        )
+        client = TestClient(wrapped_app)
+        response = client.get("/api/ldm/files/1/rows")
 
         assert response.status_code == 200
         rows = response.json()["rows"]

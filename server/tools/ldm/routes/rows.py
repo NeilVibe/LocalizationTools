@@ -17,6 +17,7 @@ from loguru import logger
 
 from server.utils.dependencies import get_current_active_user_async, get_db
 from server.tools.ldm.schemas import PaginatedRows, RowResponse, RowUpdate
+from server.tools.ldm.services.category_service import CategoryService
 from server.tools.ldm.websocket import broadcast_cell_update
 from server.tools.ldm.routes.tm_entries import _auto_sync_tm_indexes
 from server.repositories import (
@@ -28,6 +29,9 @@ from server.repositories import (
 )
 
 router = APIRouter(tags=["LDM"])
+
+# P16: Singleton CategoryService for row classification
+_category_service = CategoryService()
 
 
 # =============================================================================
@@ -64,6 +68,7 @@ async def list_rows(
     search_fields: Optional[str] = Query("source,target", description="Comma-separated fields: string_id, source, target"),
     status: Optional[str] = None,
     filter: Optional[str] = Query(None, description="Filter: all, confirmed, unconfirmed, qa_flagged"),
+    category: Optional[str] = Query(None, description="Comma-separated categories: Item,Character,Skill,Region,Gimmick,Knowledge,Quest,Other"),
     current_user: dict = Depends(get_current_active_user_async),
     repo: RowRepository = Depends(get_row_repository),
     file_repo: FileRepository = Depends(get_file_repository)
@@ -95,17 +100,43 @@ async def list_rows(
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
 
+    # P16: Parse category filter (comma-separated)
+    requested_categories = None
+    if category:
+        requested_categories = [c.strip() for c in category.split(",") if c.strip()]
+
+    # When category filter is active, fetch ALL rows (category is a computed field,
+    # not stored in DB). DB-level filtering would require a category column (future optimization).
+    if requested_categories:
+        fetch_page = 1
+        fetch_limit = 10000  # Fetch all rows for category filtering
+    else:
+        fetch_page = page
+        fetch_limit = limit
+
     # Use Repository Pattern - RoutingRowRepository handles negative IDs transparently
     rows, total = await repo.get_for_file(
         file_id=file_id,
-        page=page,
-        limit=limit,
+        page=fetch_page,
+        limit=fetch_limit,
         search=search,
         search_mode=search_mode or "contain",
         search_fields=search_fields or "source,target",
         status=status,
         filter_type=filter
     )
+
+    # P16: Categorize all rows (adds 'category' field to each row dict)
+    _category_service.categorize_rows(rows)
+
+    # P16: Apply category filter (Python-side, after categorization)
+    if requested_categories:
+        category_set = set(requested_categories)
+        rows = [r for r in rows if r.get("category") in category_set]
+        total = len(rows)
+        # Apply pagination to filtered results
+        start = (page - 1) * limit
+        rows = rows[start:start + limit]
 
     total_pages = (total + limit - 1) // limit if limit > 0 else 1
 
