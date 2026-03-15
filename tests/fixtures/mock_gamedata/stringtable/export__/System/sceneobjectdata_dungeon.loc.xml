@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LocStrList>
+  <LocStr StringId="SID_SOD_DUNGEON_0001_NAME"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0001_DESC"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0002_NAME"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0002_DESC"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0003_NAME"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0003_DESC"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0004_NAME"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0004_DESC"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0005_NAME"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0005_DESC"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0006_NAME"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0006_DESC"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0007_NAME"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0007_DESC"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0008_NAME"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0008_DESC"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0009_NAME"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0009_DESC"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0010_NAME"/>
+  <LocStr StringId="SID_SOD_DUNGEON_0010_DESC"/>
+</LocStrList>

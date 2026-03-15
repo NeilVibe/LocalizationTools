@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LocStrList>
+  <LocStr StringId="SID_QUEST_MAIN_0001_NAME"/>
+  <LocStr StringId="SID_QUEST_MAIN_0001_DESC"/>
+  <LocStr StringId="SID_QUEST_MAIN_0002_NAME"/>
+  <LocStr StringId="SID_QUEST_MAIN_0002_DESC"/>
+  <LocStr StringId="SID_QUEST_MAIN_0003_NAME"/>
+  <LocStr StringId="SID_QUEST_MAIN_0003_DESC"/>
+  <LocStr StringId="SID_QUEST_MAIN_0004_NAME"/>
+  <LocStr StringId="SID_QUEST_MAIN_0004_DESC"/>
+  <LocStr StringId="SID_QUEST_MAIN_0005_NAME"/>
+  <LocStr StringId="SID_QUEST_MAIN_0005_DESC"/>
+  <LocStr StringId="SID_QUEST_MAIN_0006_NAME"/>
+  <LocStr StringId="SID_QUEST_MAIN_0006_DESC"/>
+  <LocStr StringId="SID_QUEST_MAIN_0007_NAME"/>
+  <LocStr StringId="SID_QUEST_MAIN_0007_DESC"/>
+  <LocStr StringId="SID_QUEST_MAIN_0008_NAME"/>
+  <LocStr StringId="SID_QUEST_MAIN_0008_DESC"/>
+  <LocStr StringId="SID_QUEST_MAIN_0009_NAME"/>
+  <LocStr StringId="SID_QUEST_MAIN_0009_DESC"/>
+  <LocStr StringId="SID_QUEST_MAIN_0010_NAME"/>
+  <LocStr StringId="SID_QUEST_MAIN_0010_DESC"/>
+  <LocStr StringId="SID_QUEST_MAIN_0011_NAME"/>
+  <LocStr StringId="SID_QUEST_MAIN_0011_DESC"/>
+  <LocStr StringId="SID_QUEST_MAIN_0012_NAME"/>
+  <LocStr StringId="SID_QUEST_MAIN_0012_DESC"/>
+</LocStrList>

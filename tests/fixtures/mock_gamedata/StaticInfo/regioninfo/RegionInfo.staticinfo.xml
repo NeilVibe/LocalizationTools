@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<RegionInfoList>
+  <RegionInfo Key="60001" StrKey="STR_REGION_0001" RegionName="시작의 마을" RegionDesc="모험의 시작점이 되는 평화로운 마을.&lt;br/&gt;초보 모험가들이 처음 발을 딛는 곳이다." RegionType="Town" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60002" StrKey="STR_REGION_0002" RegionName="어둠의 숲" RegionDesc="울창한 나무가 빛을 가리는 숲.&lt;br/&gt;위험한 몬스터가 출몰한다." RegionType="Field" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60003" StrKey="STR_REGION_0003" RegionName="잊혀진 던전&lt;br/&gt;지하 미궁" RegionDesc="고대 문명의 유적 아래에 숨겨진 던전.&lt;br/&gt;수많은 함정과 보물이 잠들어 있다." RegionType="Dungeon" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60004" StrKey="STR_REGION_0004" RegionName="교역의 도시" RegionDesc="상인들이 모이는 번화한 도시.&lt;br/&gt;다양한 물건을 거래할 수 있다." RegionType="Town" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60005" StrKey="STR_REGION_0005" RegionName="용암 화산" RegionDesc="뜨거운 용암이 흐르는 활화산 지역.&lt;br/&gt;화염 저항 장비가 필수적이다.&lt;br/&gt;강력한 화염 몬스터가 서식한다." RegionType="Field" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60006" StrKey="STR_REGION_0006" RegionName="얼음 협곡" RegionDesc="만년설이 덮인 얼어붙은 협곡." RegionType="Field" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60007" StrKey="STR_REGION_0007" RegionName="고대 신전" RegionDesc="신들을 모시던 고대의 신전.&lt;br/&gt;신성한 기운이 감돌고 있다." RegionType="Special" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60008" StrKey="STR_REGION_0008" RegionName="해적의 항구" RegionDesc="해적들이 거점으로 삼는 항구 도시.&lt;br/&gt;무법지대이지만 희귀한 물건을 구할 수 있다." RegionType="Town" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60009" StrKey="STR_REGION_0009" RegionName="사막 오아시스" RegionDesc="광활한 사막 한가운데의 오아시스.&lt;br/&gt;여행자들의 유일한 쉼터이다." RegionType="Field" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60010" StrKey="STR_REGION_0010" RegionName="마왕의 성&lt;br/&gt;최종 결전지" RegionDesc="마왕이 군림하는 어둠의 성.&lt;br/&gt;최고 수준의 장비와 실력이 요구된다." RegionType="Dungeon" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60011" StrKey="STR_REGION_0011" RegionName="정령의 숲" RegionDesc="정령들이 살고 있는 신비로운 숲.&lt;br/&gt;자연의 기운이 넘쳐흐른다." RegionType="Special" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60012" StrKey="STR_REGION_0012" RegionName="전장 평원" RegionDesc="대규모 전투가 벌어지는 평원." RegionType="Field" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60013" StrKey="STR_REGION_0013" RegionName="수중 도시" RegionDesc="바다 속에 잠긴 고대 도시.&lt;br/&gt;수중 호흡 능력이 필요하다.&lt;br/&gt;신비한 해양 생물이 서식한다." RegionType="Special" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60014" StrKey="STR_REGION_0014" RegionName="하늘의 탑" RegionDesc="구름 위에 솟아있는 거대한 탑.&lt;br/&gt;최상층에는 전설의 보물이 잠들어 있다." RegionType="Dungeon" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+  <RegionInfo Key="60015" StrKey="STR_REGION_0015" RegionName="왕국의 수도" RegionDesc="왕국의 정치와 문화의 중심지.&lt;br/&gt;거대한 성과 번화가가 있다." RegionType="Town" ParentRegion="" FactionKey="FAC_BLACKSTAR"/>
+</RegionInfoList>

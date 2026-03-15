@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LocStrList>
+  <LocStr StringId="SID_REGION_0001_NAME"/>
+  <LocStr StringId="SID_REGION_0001_DESC"/>
+  <LocStr StringId="SID_REGION_0002_NAME"/>
+  <LocStr StringId="SID_REGION_0002_DESC"/>
+  <LocStr StringId="SID_REGION_0003_NAME"/>
+  <LocStr StringId="SID_REGION_0003_DESC"/>
+  <LocStr StringId="SID_REGION_0004_NAME"/>
+  <LocStr StringId="SID_REGION_0004_DESC"/>
+  <LocStr StringId="SID_REGION_0005_NAME"/>
+  <LocStr StringId="SID_REGION_0005_DESC"/>
+  <LocStr StringId="SID_REGION_0006_NAME"/>
+  <LocStr StringId="SID_REGION_0006_DESC"/>
+  <LocStr StringId="SID_REGION_0007_NAME"/>
+  <LocStr StringId="SID_REGION_0007_DESC"/>
+  <LocStr StringId="SID_REGION_0008_NAME"/>
+  <LocStr StringId="SID_REGION_0008_DESC"/>
+  <LocStr StringId="SID_REGION_0009_NAME"/>
+  <LocStr StringId="SID_REGION_0009_DESC"/>
+  <LocStr StringId="SID_REGION_0010_NAME"/>
+  <LocStr StringId="SID_REGION_0010_DESC"/>
+  <LocStr StringId="SID_REGION_0011_NAME"/>
+  <LocStr StringId="SID_REGION_0011_DESC"/>
+  <LocStr StringId="SID_REGION_0012_NAME"/>
+  <LocStr StringId="SID_REGION_0012_DESC"/>
+  <LocStr StringId="SID_REGION_0013_NAME"/>
+  <LocStr StringId="SID_REGION_0013_DESC"/>
+  <LocStr StringId="SID_REGION_0014_NAME"/>
+  <LocStr StringId="SID_REGION_0014_DESC"/>
+  <LocStr StringId="SID_REGION_0015_NAME"/>
+  <LocStr StringId="SID_REGION_0015_DESC"/>
+</LocStrList>
