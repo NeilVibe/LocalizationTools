@@ -10,15 +10,13 @@
    */
   import { InlineLoading } from "carbon-components-svelte";
   import { MachineLearningModel, WarningAlt } from "carbon-icons-svelte";
-  import { createEventDispatcher } from "svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
 
   const API_BASE = getApiBase();
-  const dispatch = createEventDispatcher();
 
   // Props
-  let { selectedRow = null } = $props();
+  let { selectedRow = null, onApplySuggestion = () => {} } = $props();
 
   // State
   let suggestions = $state([]);
@@ -49,7 +47,7 @@
    * Apply a suggestion to the translation field
    */
   function handleApplySuggestion(suggestion) {
-    dispatch('applySuggestion', { target: suggestion.text });
+    onApplySuggestion({ target: suggestion.text });
     logger.userAction('Apply AI suggestion', { confidence: suggestion.confidence });
   }
 
@@ -117,6 +115,7 @@
     // Cleanup on effect re-run
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
+      loading = false;
     };
   });
 </script>
