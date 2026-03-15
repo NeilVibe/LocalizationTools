@@ -1,5 +1,27 @@
 # Milestones
 
+## v2.0 Real Data + Dual Platform (Shipped: 2026-03-15)
+
+**Phases completed:** 8 phases, 17 plans
+**Timeline:** 2026-03-15 (single day sprint — all phases planned, executed, reviewed, and fixed)
+**Requirements:** 40/40 complete
+**Tests:** 478 total LDM tests (254 new), zero regressions
+**Post-milestone review:** 11 issues found and fixed (2 critical runtime crashes, 1 merge logic bug, 8 quality/security)
+
+**Key accomplishments:**
+1. **XML Parsing Foundation** — XMLParsingEngine with lxml, 5-step sanitizer, language tables, StringIdConsumer, 3 bug fixes (offline TM visibility, TM paste, folder 404)
+2. **Dual UI Mode** — Auto-detect LocStr vs Game Dev file types, column switching, mode badge, state reset, inline editing guard
+3. **Translator Merge** — 4 match modes (strict→stringid_only→strorigin_only→fuzzy), 5 skip guards, cascade, ported from QuickTranslate
+4. **8-Step Postprocess + Export** — CJK-safe pipeline with br-tag defense, XML/Excel(14-col EU)/text export via ExportService
+5. **Image & Audio Pipeline** — DDS→PNG (Pillow native), WEM→WAV (vgmstream-cli), LRU/disk cache, API streaming endpoints
+6. **Game Dev Merge** — Novel parallel tree walk diff algorithm, position-based matching, in-place lxml modification, bulk_update extra_data
+7. **AI Summaries** — Qwen3-4B via Ollama (httpx async), per-StringID cache, graceful "AI unavailable" fallback, ContextTab integration
+8. **E2E Validation + CLI** — Full round-trip tests (parse→merge→export→re-parse→compare), CLI merge/export/detect commands
+
+**Archive:** [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) | [v2.0-REQUIREMENTS.md](milestones/v2.0-REQUIREMENTS.md)
+
+---
+
 ## v1.0 Demo-Ready CAT Tool (Shipped: 2026-03-15)
 
 **Phases completed:** 7 phases, 20 plans
