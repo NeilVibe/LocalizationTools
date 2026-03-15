@@ -20,10 +20,10 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 - [ ] **XML-01**: MapDataService parses real KnowledgeInfo XMLs and builds StrKey→UITextureName→DDS chains
 - [ ] **XML-02**: GlossaryService wires to real game data and builds Aho-Corasick automaton from staticinfo
 - [ ] **XML-03**: ContextService resolves multi-pass KnowledgeKey chains with full metadata
-- [ ] **XML-04**: XML sanitizer + recovery pattern handles malformed game data files gracefully
+- [x] **XML-04**: XML sanitizer + recovery pattern handles malformed game data files gracefully
 - [ ] **XML-05**: Cross-reference chain resolution works across multiple XML files (join keys)
-- [ ] **XML-06**: Language table parsing extracts all language columns from loc.xml files correctly
-- [ ] **XML-07**: StringIdConsumer pattern provides fresh consumer per language for deduplication
+- [x] **XML-06**: Language table parsing extracts all language columns from loc.xml files correctly
+- [x] **XML-07**: StringIdConsumer pattern provides fresh consumer per language for deduplication
 
 ### Image & Audio Pipeline
 
@@ -118,10 +118,10 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 | XML-01 | Phase 07 | Pending |
 | XML-02 | Phase 07 | Pending |
 | XML-03 | Phase 07 | Pending |
-| XML-04 | Phase 07 | Pending |
+| XML-04 | Phase 07 | Complete |
 | XML-05 | Phase 07 | Pending |
-| XML-06 | Phase 07 | Pending |
-| XML-07 | Phase 07 | Pending |
+| XML-06 | Phase 07 | Complete |
+| XML-07 | Phase 07 | Complete |
 | FIX-01 | Phase 07 | Pending |
 | FIX-02 | Phase 07 | Pending |
 | FIX-03 | Phase 07 | Pending |
