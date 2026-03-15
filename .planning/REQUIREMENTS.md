@@ -37,7 +37,7 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 - [x] **AISUG-01**: AI translation suggestions appear in a right-side panel for the selected segment using Qwen3
 - [x] **AISUG-02**: Suggestions are ranked with confidence scores (embedding similarity + LLM certainty blend)
-- [ ] **AISUG-03**: User clicks a suggestion to apply it to the translation field (never auto-replace)
+- [x] **AISUG-03**: User clicks a suggestion to apply it to the translation field (never auto-replace)
 - [x] **AISUG-04**: AI suggestions consider context (entity type, parent hierarchy, surrounding segments) in prompts
 - [x] **AISUG-05**: Graceful fallback when Qwen3/Ollama is unavailable (show "AI unavailable" state, no crash)
 
@@ -132,7 +132,7 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 | QA-06 | Phase 16 | Complete |
 | AISUG-01 | Phase 17 | Complete |
 | AISUG-02 | Phase 17 | Complete |
-| AISUG-03 | Phase 17 | Pending |
+| AISUG-03 | Phase 17 | Complete |
 | AISUG-04 | Phase 17 | Complete |
 | AISUG-05 | Phase 17 | Complete |
 | AINAME-01 | Phase 21 | Pending |
