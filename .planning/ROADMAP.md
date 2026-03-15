@@ -138,7 +138,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 13-01: TBD
+- [ ] 13-01-PLAN.md -- AISummaryService + context endpoint wiring (AISUM-01, AISUM-02, AISUM-04, AISUM-05)
+- [ ] 13-02-PLAN.md -- ContextTab AI summary section + unavailable badge (AISUM-03)
 
 ### Phase 14: E2E Validation + CLI
 **Goal**: Full pipeline validated end-to-end with real data round-trips, and CLI provides scriptable access to all merge/export operations
@@ -175,5 +176,5 @@ Note: Phase 11 and 13 depend only on Phase 07 and could execute in parallel with
 | 10. Export Pipeline | 1/1 | Complete    | 2026-03-15 | - |
 | 11. Image & Audio Pipeline | 2/2 | Complete    | 2026-03-15 | - |
 | 12. Game Dev Merge | 2/2 | Complete    | 2026-03-15 | - |
-| 13. AI Summaries | v2.0 | 0/1 | Not started | - |
+| 13. AI Summaries | v2.0 | 0/2 | Not started | - |
 | 14. E2E Validation + CLI | v2.0 | 0/1 | Not started | - |
