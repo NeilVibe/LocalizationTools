@@ -92,7 +92,10 @@
       <!-- Audio player -->
       <div class="player-wrapper">
         <audio controls preload="none" class="audio-player">
-          <source src="{audioContext.wem_path}" />
+          <source
+            src="{API_BASE}/api/ldm/mapdata/audio/stream/{encodeURIComponent(selectedRow?.string_id)}"
+            type="audio/wav"
+          />
           Your browser does not support the audio element.
         </audio>
       </div>
@@ -123,7 +126,7 @@
     <div class="audio-tab-empty" data-testid="audio-tab-empty">
       <Music size={32} />
       <span class="empty-title">No Audio Context</span>
-      <span class="empty-desc">No audio data available for this segment</span>
+      <span class="empty-desc">No audio linked to this string</span>
     </div>
   {/if}
 </div>
