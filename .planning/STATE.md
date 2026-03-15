@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Debug + Polish + Svelte 5 Migration
 status: unknown
-stopped_at: Completed 25-03-PLAN.md
-last_updated: "2026-03-15T22:37:48Z"
+stopped_at: Completed 25-02-PLAN.md, 25-03-PLAN.md
+last_updated: "2026-03-15T22:38:30Z"
 progress:
   total_phases: 4
   completed_phases: 3
@@ -22,6 +22,7 @@ progress:
 | Phase 23 P02 | 2min | 2 tasks | 5 files |
 | Phase 24 P02 | 6min | 2 tasks | 12 files |
 | Phase 25 P04 | 3min | 2 tasks | 3 files |
+| Phase 25 P02 | 8min | 3 tasks | 13 files |
 | Phase 25 P03 | 7min | 3 tasks | 6 files |
 
 ## Accumulated Context
@@ -55,6 +56,9 @@ progress:
 - [25-04]: 19 subsystems in dependency-safe order matching Wave 2 test file structure
 - [25-04]: Graceful skip for missing test files allows runner to work before Wave 2 completes
 - [Phase 25-01]: Followed existing LocStrList/StringId pattern for loc.xml files instead of LanguageData format from plan
+- [25-02]: xlsxwriter for Excel generation, openpyxl for reading (project convention)
+- [25-02]: Generation scripts kept alongside fixtures for reproducibility
+- [25-02]: br-tags in XML attributes stored as &lt;br/&gt; matching production lxml behavior
 - [25-03]: APIClient returns raw Response objects so callers assert status_code before .json()
 - [25-03]: 128 public methods covering all subsystems including offline/sync for full API coverage
 
@@ -72,6 +76,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T22:37:48Z
-Stopped at: Completed 25-03-PLAN.md
+Last session: 2026-03-15T22:38:30Z
+Stopped at: Completed 25-02-PLAN.md, 25-03-PLAN.md
 Resume file: None
