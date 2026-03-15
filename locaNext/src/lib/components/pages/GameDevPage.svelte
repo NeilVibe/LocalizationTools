@@ -159,22 +159,20 @@
   }
 
   /**
-   * Phase 21: Handle row selection from VirtualGrid -- show naming panel
-   * When user selects a row, extract the entity name (from source/target)
-   * and entity type (from the file's XML node structure) for naming suggestions.
+   * Phase 21: Handle inline edit start from VirtualGrid -- show naming panel
+   * Only triggers when user actually starts editing a cell (double-click/Enter),
+   * not on simple row selection.
    */
-  function handleRowSelect(e) {
-    const row = e.detail?.row;
-    if (!row) {
+  function handleInlineEditStart(e) {
+    const { row, column, value } = e.detail || {};
+    if (!row || !value) {
       editingEntityName = '';
       return;
     }
 
-    // Extract entity name: use target (Name attribute) or source (node name)
-    const name = row.target || row.source || '';
-    editingEntityName = name;
+    editingEntityName = value;
 
-    // Derive entity type from XML node name or file name
+    // Derive entity type from XML node name
     const nodeName = (row.source || '').toLowerCase();
     if (nodeName.includes('character')) editingEntityType = 'character';
     else if (nodeName.includes('item')) editingEntityType = 'item';
@@ -183,7 +181,7 @@
     else if (nodeName.includes('faction') || nodeName.includes('region')) editingEntityType = 'region';
     else editingEntityType = 'character'; // safe default
 
-    logger.userAction('Row selected for naming panel', { name, entityType: editingEntityType });
+    logger.userAction('Inline edit started for naming panel', { name: value, column, entityType: editingEntityType });
   }
 
   /**
@@ -252,7 +250,7 @@
         fileName={currentFileName}
         fileType="gamedev"
         gamedevDynamicColumns={dynamicColumns}
-        on:rowSelect={handleRowSelect}
+        on:inlineEditStart={handleInlineEditStart}
       />
       {#if editingEntityName}
         <NamingPanel

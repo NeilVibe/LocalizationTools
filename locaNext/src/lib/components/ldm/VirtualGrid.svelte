@@ -1229,6 +1229,14 @@
 
     logger.userAction("Inline edit started", { rowId: row.id });
 
+    // Dispatch event for consumers (e.g., NamingPanel in GameDevPage)
+    dispatch("inlineEditStart", {
+      rowId: row.id,
+      row,
+      column: row.extra_data?.editing_attr || 'Name',
+      value: row.target || row.source || ''
+    });
+
     // Focus the contenteditable after render and set initial content
     await tick();
     if (inlineEditTextarea) {
