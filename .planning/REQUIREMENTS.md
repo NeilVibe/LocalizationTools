@@ -67,9 +67,9 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 ### Bug Fixes
 
-- [ ] **FIX-01**: Offline TMs appear in online TM tree (architectural fix for SQLite→PostgreSQL visibility)
-- [ ] **FIX-02**: TM Paste UI flow works correctly end-to-end
-- [ ] **FIX-03**: Folder fetch returns 200 (not 404) after creation
+- [x] **FIX-01**: Offline TMs appear in online TM tree (architectural fix for SQLite→PostgreSQL visibility)
+- [x] **FIX-02**: TM Paste UI flow works correctly end-to-end
+- [x] **FIX-03**: Folder fetch returns 200 (not 404) after creation
 
 ## v3.0 Requirements (Deferred)
 
@@ -122,9 +122,9 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 | XML-05 | Phase 07 | Pending |
 | XML-06 | Phase 07 | Complete |
 | XML-07 | Phase 07 | Complete |
-| FIX-01 | Phase 07 | Pending |
-| FIX-02 | Phase 07 | Pending |
-| FIX-03 | Phase 07 | Pending |
+| FIX-01 | Phase 07 | Complete |
+| FIX-02 | Phase 07 | Complete |
+| FIX-03 | Phase 07 | Complete |
 | DUAL-01 | Phase 08 | Pending |
 | DUAL-02 | Phase 08 | Pending |
 | DUAL-03 | Phase 08 | Pending |

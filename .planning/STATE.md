@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Real Data + Dual Platform
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-03-15T01:26:00Z"
-last_activity: 2026-03-15 -- Phase 07 Plan 01 executed (XMLParsingEngine + xml_handler migration)
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-03-15T01:27:00Z"
+last_activity: 2026-03-15 -- Phase 07 Plan 03 executed (3 bug fixes with 25 tests)
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 11
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 
 Milestone: v2.0 Real Data + Dual Platform
 Phase: 07 of 14 (XML Parsing Foundation + Bug Fixes)
-Plan: 1 of 2 in current phase
+Plan: 2 of 3 in current phase
 Status: Executing
-Last activity: 2026-03-15 -- Phase 07 Plan 01 executed (XMLParsingEngine + xml_handler migration)
+Last activity: 2026-03-15 -- Plan 03 bug fixes (offline TM visibility, TM paste, folder 404)
 
-Progress: █░░░░░░░░░ 9%
+Progress: [==                ] 18%
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Progress: █░░░░░░░░░ 9%
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 07    | 01   | 5min     | 2     | 9     |
+| 07    | 03   | 5min     | 1     | 4     |
 
 ## Accumulated Context
 
@@ -57,6 +58,9 @@ Progress: █░░░░░░░░░ 9%
 - parse_xml_file returns (rows, metadata) tuple -- eliminates module-level mutable state
 - XMLParsingEngine singleton pattern for consistent parsing across all LDM modules
 - br-tag three-layer defense ported from QuickTranslate (disk/memory/Excel representations)
+- FIX-01: Merge offline tree at route level, not repo level, to avoid coupling
+- FIX-02: TM paste flow confirmed functional, added test coverage
+- FIX-03: Negative ID handling confirmed correct, added regression tests
 
 ### Pending Todos
 
@@ -72,5 +76,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Completed 07-01-PLAN.md
-Resume: `/gsd:execute-phase 07` to continue with Plan 02 (bug fixes)
+Stopped at: Completed 07-03-PLAN.md
+Resume: `/gsd:execute-phase 07` to continue with remaining plans
