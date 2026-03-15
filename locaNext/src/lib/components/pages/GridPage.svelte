@@ -25,6 +25,9 @@
     onShowBranchDriveSettings = () => {}
   } = $props();
 
+  // Derive file type from openFile store (Dual UI Mode - Phase 08)
+  let fileType = $derived($openFile?.file_type || 'translator');
+
   const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
 
@@ -302,6 +305,7 @@
       bind:this={virtualGrid}
       {fileId}
       {fileName}
+      {fileType}
       {activeTMs}
       isLocalFile={$openFile?.type === 'local-file'}
       on:rowSelect={handleRowSelect}

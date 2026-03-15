@@ -25,7 +25,7 @@
   let API_BASE = $derived(getApiBase());
 
   // Svelte 5: Props
-  let { fileId = $bindable(null), fileName = "", activeTMs = [], isLocalFile = false } = $props();
+  let { fileId = $bindable(null), fileName = "", fileType = "translator", activeTMs = [], isLocalFile = false } = $props();
 
   // Virtual scrolling constants
   const MIN_ROW_HEIGHT = 48; // Minimum row height (base)
@@ -225,12 +225,15 @@
   function getFixedWidthBefore() {
     let width = 0;
     if ($preferences.showIndex) width += indexColumnWidth;
-    if ($preferences.showStringId) width += stringIdColumnWidth;
+    // StringID only in Translator mode
+    if ($preferences.showStringId && fileType !== 'gamedev') width += stringIdColumnWidth;
     return width;
   }
 
   // Calculate total fixed width after target column
   function getFixedWidthAfter() {
+    // Game Dev mode: Values (250) + Children (100) after target
+    if (fileType === 'gamedev') return 350;
     return $preferences.showReference ? referenceColumnWidth : 0;
   }
 
@@ -287,7 +290,9 @@
 
   // Table column definitions (base config, actual widths from state)
   // Note: Status column REMOVED - using cell colors instead
-  const allColumns = {
+
+  // Translator columns (original column set)
+  const translatorColumns = {
     row_num: { key: "row_num", label: "#", width: 60, prefKey: "showIndex" },
     string_id: { key: "string_id", label: "StringID", width: 150, prefKey: "showStringId" },
     source: { key: "source", label: "Source (KR)", width: 350, always: true },
@@ -295,6 +300,20 @@
     reference: { key: "reference", label: "Reference", width: 300, prefKey: "showReference" },
     tm_result: { key: "tm_result", label: "TM Match", width: 300, prefKey: "showTmResults" }
   };
+
+  // Game Dev columns (XML structure view)
+  // node_name maps to source field, attributes maps to target field
+  // values and children_count read from row.extra_data
+  const gameDevColumns = {
+    row_num: { key: "row_num", label: "#", width: 60, prefKey: "showIndex" },
+    node_name: { key: "source", label: "Node", width: 200, always: true },
+    attributes: { key: "target", label: "Attributes", width: 300, always: true },
+    values: { key: "values", label: "Values", width: 250, always: true },
+    children_count: { key: "children_count", label: "Children", width: 100, always: true }
+  };
+
+  // Dual UI Mode: switch columns based on file type
+  let allColumns = $derived(fileType === 'gamedev' ? gameDevColumns : translatorColumns);
 
   // Reference data cache (loaded when referenceFileId changes)
   let referenceData = $state(new Map()); // string_id -> { target, source }
@@ -304,7 +323,8 @@
   let tmResults = $state(new Map()); // row_id -> { target, similarity, source }
 
   // Svelte 5: Derived - visible columns based on preferences
-  let visibleColumns = $derived(getVisibleColumns($preferences));
+  // Dual UI Mode: visibleColumns reacts to fileType changes via allColumns dependency
+  let visibleColumns = $derived(getVisibleColumns($preferences, allColumns));
 
   // Svelte 5: Derived - font styles from preferences (UI-031, UI-032, P2)
   let gridFontSize = $derived(getFontSizeValue($preferences.fontSize));
@@ -312,9 +332,20 @@
   let gridFontFamily = $derived(getFontFamilyValue($preferences.fontFamily));
   let gridFontColor = $derived(getFontColorValue($preferences.fontColor));
 
-  function getVisibleColumns(prefs) {
+  function getVisibleColumns(prefs, _cols = null) {
     const cols = [];
 
+    // Game Dev mode: show all defined columns (no preference toggles for Game Dev)
+    if (fileType === 'gamedev') {
+      if (prefs.showIndex && allColumns.row_num) cols.push(allColumns.row_num);
+      if (allColumns.node_name) cols.push(allColumns.node_name);
+      if (allColumns.attributes) cols.push(allColumns.attributes);
+      if (allColumns.values) cols.push(allColumns.values);
+      if (allColumns.children_count) cols.push(allColumns.children_count);
+      return cols;
+    }
+
+    // Translator mode: original column logic
     // Optional: Index number
     if (prefs.showIndex) {
       cols.push(allColumns.row_num);
@@ -597,6 +628,20 @@
     cumulativeHeights = [0]; // VARIABLE HEIGHT: Reset cumulative heights
     total = 0;
     initialLoading = true;
+
+    // Dual UI Mode: Reset all interaction state on file switch
+    inlineEditingRowId = null;
+    selectedRowId = null;
+    hoveredRowId = null;
+    hoveredCell = null;
+    tmResults = new Map();
+    referenceData = new Map();
+    semanticResults = [];
+    activeFilter = "all";
+    tmAppliedRows = new Map();
+    searchTerm = "";
+    const inputEl = document.getElementById('ldm-search-input');
+    if (inputEl) inputEl.value = "";
 
     // OPTIMIZATION: Single API call for first page + count (not 2 calls)
     // The first page response includes total count
@@ -1103,6 +1148,9 @@
    */
   async function startInlineEdit(row) {
     if (!row) return;
+
+    // Dual UI Mode: Disable inline editing in Game Dev mode
+    if (fileType === 'gamedev') return;
 
     // P9: Skip locking for orphaned files (Offline Storage) - no multi-user sync
     if (!isLocalFile) {
@@ -2392,6 +2440,9 @@
       <div class="header-left">
         <h4>{fileName || `File #${fileId}`}</h4>
         <span class="row-count">{total.toLocaleString()} rows</span>
+        <Tag type={fileType === 'gamedev' ? 'teal' : 'blue'} size="sm">
+          {fileType === 'gamedev' ? 'Game Dev' : 'Translator'}
+        </Tag>
       </div>
       <!-- UI-029: Removed download menu - users download via right-click on file list -->
       <div class="header-right">
@@ -2573,7 +2624,7 @@
                 {#if $preferences.showIndex}
                   <div class="cell row-num" style="width: {indexColumnWidth}px;">{row.row_num}</div>
                 {/if}
-                {#if $preferences.showStringId}
+                {#if $preferences.showStringId && fileType !== 'gamedev'}
                   <div class="cell string-id loading-cell" style="width: {stringIdColumnWidth}px;">
                     <div class="placeholder-shimmer"></div>
                   </div>
@@ -2585,8 +2636,16 @@
                 <div class="cell target loading-cell" style="flex: {100 - sourceWidthPercent} 1 0;">
                   <div class="placeholder-shimmer"></div>
                 </div>
-                {#if $preferences.showReference}
+                {#if $preferences.showReference && fileType !== 'gamedev'}
                   <div class="cell reference loading-cell" style="width: {referenceColumnWidth}px;">
+                    <div class="placeholder-shimmer"></div>
+                  </div>
+                {/if}
+                {#if fileType === 'gamedev'}
+                  <div class="cell gamedev-values loading-cell" style="width: 250px;">
+                    <div class="placeholder-shimmer"></div>
+                  </div>
+                  <div class="cell gamedev-children loading-cell" style="width: 100px;">
                     <div class="placeholder-shimmer"></div>
                   </div>
                 {/if}
@@ -2599,7 +2658,8 @@
                 {/if}
 
                 <!-- UI-083: StringID (conditional) - resize via full-height bar -->
-                {#if $preferences.showStringId}
+                <!-- Hidden in Game Dev mode (no StringID concept) -->
+                {#if $preferences.showStringId && fileType !== 'gamedev'}
                   <div class="cell string-id" style="width: {stringIdColumnWidth}px;">
                     {row.string_id || "-"}
                   </div>
@@ -2645,10 +2705,10 @@
                   class:qa-flagged={row.qa_flag_count > 0}
                   style="flex: {100 - sourceWidthPercent} 1 0;"
                   onmouseenter={() => handleCellMouseEnter(row, 'target')}
-                  ondblclick={() => !rowLock && startInlineEdit(row)}
+                  ondblclick={() => fileType !== 'gamedev' && !rowLock && startInlineEdit(row)}
                   role="button"
                   tabindex="0"
-                  onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && !rowLock && !inlineEditingRowId && startInlineEdit(row)}
+                  onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && fileType !== 'gamedev' && !rowLock && !inlineEditingRowId && startInlineEdit(row)}
                 >
                   {#if inlineEditingRowId === row.id}
                     <!-- WYSIWYG inline editing - colors render directly -->
@@ -2686,7 +2746,8 @@
                 </div>
 
                 <!-- UI-083: Reference Column (conditional) - resize via full-height bar -->
-                {#if $preferences.showReference}
+                <!-- Hidden in Game Dev mode (no reference file concept) -->
+                {#if $preferences.showReference && fileType !== 'gamedev'}
                   {@const refText = getReferenceForRow(row, $preferences.referenceMatchMode)}
                   <div
                     class="cell reference"
@@ -2707,6 +2768,16 @@
                 {/if}
 
                 <!-- UI-039: Removed TM Result Column - only StringID (left) and Reference (right) are third column options -->
+
+                <!-- Dual UI Mode: Game Dev extra_data columns -->
+                {#if fileType === 'gamedev'}
+                  <div class="cell gamedev-values" style="width: 250px;">
+                    <span class="cell-content">{row.extra_data?.values || ''}</span>
+                  </div>
+                  <div class="cell gamedev-children" style="width: 100px;">
+                    <span class="cell-content">{row.extra_data?.children_count ?? 0}</span>
+                  </div>
+                {/if}
               {/if}
             </div>
           {/each}
@@ -3801,6 +3872,22 @@
     font-style: italic;
     font-size: 0.75rem;
     opacity: 0.7;
+  }
+
+  /* ========================================
+     Game Dev Columns (Dual UI Mode - Phase 08)
+     ======================================== */
+  .cell.gamedev-values,
+  .cell.gamedev-children {
+    background: var(--cds-layer-02);
+    color: var(--cds-text-02);
+    font-size: 0.8rem;
+    flex: none;
+  }
+
+  .cell.gamedev-children {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
   }
 
   /* ========================================
