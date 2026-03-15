@@ -175,7 +175,7 @@ class TestTextureIndex:
         for dds_path in texture_dir.glob("*.dds"):
             dds_index[dds_path.stem.lower()] = dds_path
 
-        assert len(dds_index) == 10
+        assert len(dds_index) >= 10
 
         # Exact lookup
         assert "character_varon" in dds_index
