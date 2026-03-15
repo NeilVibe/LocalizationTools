@@ -59,7 +59,8 @@
         throw new Error(err.detail || `HTTP ${response.status}`);
       }
 
-      treeData = await response.json();
+      const responseData = await response.json();
+      treeData = responseData.root;
 
       // Auto-expand root level
       if (treeData?.path) {
@@ -69,8 +70,8 @@
       }
 
       logger.success('File explorer tree loaded', {
-        folders: treeData?.subfolders?.length || 0,
-        files: treeData?.xml_files?.length || 0
+        folders: treeData?.folders?.length || 0,
+        files: treeData?.files?.length || 0
       });
     } catch (err) {
       error = err.message;
@@ -144,17 +145,17 @@
               <Folder size={16} class="folder-icon" />
             {/if}
             <span class="node-name">{folder.name}</span>
-            {#if (folder.xml_files?.length || 0) > 0}
-              <span class="count-badge">{folder.xml_files.length}</span>
+            {#if (folder.files?.length || 0) > 0}
+              <span class="count-badge">{folder.files.length}</span>
             {/if}
           </button>
 
           {#if expandedNodes.has(folder.path)}
             <div class="tree-children">
-              {#each folder.subfolders || [] as subfolder (subfolder.path)}
+              {#each folder.folders || [] as subfolder (subfolder.path)}
                 {@render renderFolder(subfolder, depth + 1)}
               {/each}
-              {#each folder.xml_files || [] as file (file.path)}
+              {#each folder.files || [] as file (file.path)}
                 <button
                   class="tree-node file-node"
                   class:selected={selectedFilePath === file.path}
@@ -168,7 +169,7 @@
                   {/if}
                 </button>
               {/each}
-              {#if (folder.subfolders?.length || 0) === 0 && (folder.xml_files?.length || 0) === 0}
+              {#if (folder.folders?.length || 0) === 0 && (folder.files?.length || 0) === 0}
                 <div class="empty-hint" style="padding-left: {(depth + 1) * 16 + 8}px">
                   No XML files found
                 </div>

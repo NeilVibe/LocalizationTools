@@ -97,10 +97,10 @@
               node_name: { key: "source", label: "Node", width: 200, always: true }
             };
             for (const hint of colData.columns) {
-              cols[hint.attr_name] = {
-                key: hint.attr_name,
-                label: hint.attr_name,
-                width: hint.is_editable ? 250 : 150,
+              cols[hint.key] = {
+                key: hint.key,
+                label: hint.label,
+                width: hint.editable ? 250 : 150,
                 always: true
               };
             }

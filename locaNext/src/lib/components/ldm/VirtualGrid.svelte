@@ -1198,9 +1198,6 @@
   async function startInlineEdit(row) {
     if (!row) return;
 
-    // Dual UI Mode: Disable inline editing in Game Dev mode
-    if (fileType === 'gamedev') return;
-
     // P9: Skip locking for orphaned files (Offline Storage) - no multi-user sync
     if (!isLocalFile) {
       // Check if row is locked by another user
