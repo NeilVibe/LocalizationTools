@@ -3,59 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Real Data + Dual Platform
 status: executing
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-03-15T02:41:52.517Z"
-last_activity: 2026-03-15 -- Plan 01 text utilities + postprocess pipeline
+stopped_at: Completed 09-02-PLAN.md (Phase 09 complete)
+last_updated: "2026-03-15T02:47:33Z"
+last_activity: 2026-03-15 -- Plan 02 TranslatorMergeService + merge API endpoint
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
----
-
----
-gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Real Data + Dual Platform
-status: executing
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-03-15T02:41:38.814Z"
-last_activity: 2026-03-15 -- Plan 01 text utilities + postprocess pipeline
-progress:
-  total_phases: 8
-  completed_phases: 2
-  total_plans: 7
-  completed_plans: 6
----
-
----
-gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Real Data + Dual Platform
-status: executing
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-03-15T02:41:28.558Z"
-last_activity: 2026-03-15 -- Plan 02 dual column configs + mode badge
-progress:
-  total_phases: 8
-  completed_phases: 2
-  total_plans: 7
-  completed_plans: 6
----
-
----
-gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Real Data + Dual Platform
-status: executing
-stopped_at: Completed 08-02-PLAN.md (Phase 08 complete)
-last_updated: "2026-03-15T02:07:00Z"
-last_activity: 2026-03-15 -- Plan 02 dual column configs + mode badge
-progress:
-  total_phases: 8
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  completed_plans: 7
 ---
 
 # Project State
@@ -70,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 ## Current Position
 
 Milestone: v2.0 Real Data + Dual Platform
-Phase: 09 of 14 (Translator Merge)
-Plan: 1 of 2 in current phase (done)
+Phase: 09 of 14 (Translator Merge) -- COMPLETE
+Plan: 2 of 2 in current phase (done)
 Status: Executing
-Last activity: 2026-03-15 -- Plan 01 text utilities + postprocess pipeline
+Last activity: 2026-03-15 -- Plan 02 TranslatorMergeService + merge API endpoint
 
-Progress: [█████████░] 86%
+Progress: [██████████] 100% (Phase 09 complete)
 
 ## Performance Metrics
 
@@ -93,6 +48,7 @@ Progress: [█████████░] 86%
 | 08    | 01   | 4min     | 2     | 5     |
 | 08    | 02   | 5min     | 2     | 2     |
 | 09    | 01   | 4min     | 2     | 5     |
+| 09    | 02   | 4min     | 2     | 6     |
 
 ## Accumulated Context
 
@@ -121,6 +77,10 @@ Progress: [█████████░] 86%
 - Inline editing disabled for Game Dev mode (deferred to v3.0)
 - [Phase 09]: normalize_text_for_match named separately from LocaNext display normalize_text (different purpose)
 - [Phase 09]: postprocess_value source=None means step 2 skipped; source='' means target cleared
+- [Phase 09]: Cascade priority: strict > strorigin_only > fuzzy (stringid_only excluded from cascade)
+- [Phase 09]: Skip guards applied once to source corrections via parse_corrections(), not per-target-row
+- [Phase 09]: FAISS IndexFlatIP for cosine similarity on normalized embeddings
+- [Phase 09]: Merge endpoint is transactional: compute all matches, then bulk_update once
 
 ### Pending Todos
 
@@ -135,6 +95,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T02:41:52.515Z
-Stopped at: Completed 09-01-PLAN.md
-Resume: `/gsd:execute-phase 09` to start Phase 09
+Last session: 2026-03-15T02:47:33Z
+Stopped at: Completed 09-02-PLAN.md (Phase 09 complete)
+Resume: `/gsd:execute-phase 10` to start Phase 10

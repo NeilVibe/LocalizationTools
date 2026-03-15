@@ -34,9 +34,9 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 ### Translator Merge
 
-- [ ] **TMERGE-01**: Exact StringID match transfers translation values between files
-- [ ] **TMERGE-02**: StrOrigin match (source text match) transfers when StringID differs
-- [ ] **TMERGE-03**: Fuzzy matching via Model2Vec finds similar source strings above threshold
+- [x] **TMERGE-01**: Exact StringID match transfers translation values between files
+- [x] **TMERGE-02**: StrOrigin match (source text match) transfers when StringID differs
+- [x] **TMERGE-03**: Fuzzy matching via Model2Vec finds similar source strings above threshold
 - [x] **TMERGE-04**: Postprocessing pipeline applies 7-step CJK-safe cleanup after transfer
 - [ ] **TMERGE-05**: Export produces correct XML with br-tag preservation
 - [ ] **TMERGE-06**: Export produces Excel format with correct column structure
@@ -130,9 +130,9 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 | DUAL-03 | Phase 08 | Complete |
 | DUAL-04 | Phase 08 | Complete |
 | DUAL-05 | Phase 08 | Complete |
-| TMERGE-01 | Phase 09 | Pending |
-| TMERGE-02 | Phase 09 | Pending |
-| TMERGE-03 | Phase 09 | Pending |
+| TMERGE-01 | Phase 09 | Complete |
+| TMERGE-02 | Phase 09 | Complete |
+| TMERGE-03 | Phase 09 | Complete |
 | TMERGE-04 | Phase 09 | Complete |
 | TMERGE-05 | Phase 10 | Pending |
 | TMERGE-06 | Phase 10 | Pending |
