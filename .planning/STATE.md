@@ -68,6 +68,8 @@ Progress: [████░░░░░░] 37%
 - [23-01]: Use file.path as deterministic ID for GameDevPage -- no server-generated ID or Date.now() fallback needed
 - [23-01]: Added public reload() export to FileExplorerTree for flicker-free tree refresh
 - [Phase 23-02]: FIX-10 satisfied: WorldMapPage uses inline fetch, no duplicate service instantiation exists
+- [23-04]: Kept both named and numbered texture assertions since XML UITextureName still references named files
+- [23-04]: API health check treats 4xx as warnings (endpoint exists but auth-gated), only 5xx as failures
 
 ### Pending Todos
 
@@ -83,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T22:09:42.334Z
-Stopped at: Completed 23-02-PLAN.md
-Resume file: None
+Last session: 2026-03-15T22:09:29Z
+Stopped at: Completed 23-04-PLAN.md (Phase 23 complete)
+Resume file: .planning/phases/23-bug-fixes/23-04-SUMMARY.md
