@@ -13,18 +13,18 @@
     Tag
   } from "carbon-components-svelte";
   import { Folder, Document, ChevronRight } from "carbon-icons-svelte";
-  import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
 
-  const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
 
   // Props
   let {
     open = $bindable(false),
     title = "Select File",
-    selectedFileId = null
+    selectedFileId = null,
+    onSelect = undefined,
+    onClose = undefined
   } = $props();
 
   // State
@@ -136,7 +136,7 @@
   // Confirm selection
   function confirmSelection() {
     if (selectedFile) {
-      dispatch('select', selectedFile);
+      onSelect?.(selectedFile);
       open = false;
     }
   }
@@ -144,7 +144,7 @@
   // Cancel
   function handleClose() {
     open = false;
-    dispatch('close');
+    onClose?.();
   }
 
   // Initialize when opened

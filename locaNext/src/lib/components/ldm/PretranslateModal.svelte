@@ -19,12 +19,10 @@
     WarningAlt,
     Document
   } from "carbon-icons-svelte";
-  import { createEventDispatcher, onMount } from "svelte";
+  import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { preferences } from "$lib/stores/preferences.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
-
-  const dispatch = createEventDispatcher();
 
   // API base URL
   const API_BASE = getApiBase();
@@ -32,7 +30,9 @@
   // Svelte 5: Props
   let {
     open = $bindable(false),
-    file = null // {id, name, row_count, format}
+    file = null, // {id, name, row_count, format}
+    onCompleted = undefined,
+    onClose = undefined
   } = $props();
 
   // Svelte 5: State - Form
@@ -125,9 +125,9 @@
           time: result.time_seconds
         });
 
-        // Dispatch event after delay
+        // Callback after delay
         setTimeout(() => {
-          dispatch('completed', result);
+          onCompleted?.(result);
           resetAndClose();
         }, 2000);
 
@@ -153,7 +153,7 @@
     errorMessage = "";
     result = null;
     open = false;
-    dispatch('close');
+    onClose?.();
   }
 
   // Handle close

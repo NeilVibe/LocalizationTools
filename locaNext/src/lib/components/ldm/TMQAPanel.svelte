@@ -11,10 +11,7 @@
    */
   import { Tag, InlineLoading } from "carbon-components-svelte";
   import { ChevronLeft, ChevronRight, WarningAltFilled, Search, Checkmark } from "carbon-icons-svelte";
-  import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
-
-  const dispatch = createEventDispatcher();
 
   // Props
   let {
@@ -24,7 +21,8 @@
     tmLoading = false,
     qaLoading = false,
     collapsed = $bindable(false),
-    width = $bindable(300)
+    width = $bindable(300),
+    onApplyTM = undefined
   } = $props();
 
   // Resize state
@@ -69,7 +67,7 @@
   }
 
   function handleApplyTM(match) {
-    dispatch('applyTM', match);
+    onApplyTM?.(match);
     logger.userAction('Apply TM from side panel', { similarity: match.similarity });
   }
 </script>

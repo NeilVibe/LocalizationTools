@@ -18,18 +18,15 @@
     Renew,
     Warning
   } from "carbon-icons-svelte";
-  import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { formatDate, formatDateCompact } from "$lib/utils/formatters.js";
-
-  const dispatch = createEventDispatcher();
 
   // API base URL - centralized in api.js
   let API_BASE = $derived(getApiBase());
 
   // Svelte 5: Props
-  let { tmId = null, tmName = "" } = $props();
+  let { tmId = null, tmName = "", onSynced = undefined, onUpdated = undefined } = $props();
 
   // Svelte 5: State
   let entries = $state([]);
@@ -246,7 +243,7 @@
         syncStatus.lastSynced = new Date().toISOString();
         syncStatus.loading = false;
 
-        dispatch('synced', data);
+        onSynced?.(data);
       } else {
         const error = await response.json();
         errorMessage = error.detail || "Sync failed";
@@ -356,7 +353,7 @@
 
         cancelEdit();
         markAsStale(); // FEAT-004: Mark indexes as stale
-        dispatch('updated');
+        onUpdated?.();
       } else {
         const error = await response.json();
         errorMessage = error.detail || "Failed to update entry";
@@ -386,7 +383,7 @@
         logger.success("TM entry deleted", { entryId: entry.id });
         await loadEntries();
         markAsStale(); // FEAT-004: Mark indexes as stale
-        dispatch('updated');
+        onUpdated?.();
       } else {
         const error = await response.json();
         errorMessage = error.detail || "Failed to delete entry";
@@ -476,7 +473,7 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="tm-data-grid">
   <!-- Header -->

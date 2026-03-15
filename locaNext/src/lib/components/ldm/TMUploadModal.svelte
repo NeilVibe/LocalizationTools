@@ -14,11 +14,8 @@
     CheckmarkFilled,
     WarningAlt
   } from "carbon-icons-svelte";
-  import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
-
-  const dispatch = createEventDispatcher();
 
   // API base URL - centralized in api.js
   const API_BASE = getApiBase();
@@ -27,7 +24,9 @@
   // targetScope: { type: 'platform'|'project'|'folder', id: number, name: string } - optional
   let {
     open = $bindable(false),
-    targetScope = null  // Sprint 5: Where to assign TM after upload
+    targetScope = null,  // Sprint 5: Where to assign TM after upload
+    onUploaded = undefined,
+    onClose = undefined
   } = $props();
 
   // Svelte 5: Form state
@@ -151,7 +150,7 @@
 
           // Dispatch event and close after delay
           setTimeout(() => {
-            dispatch('uploaded', uploadResult);
+            onUploaded?.(uploadResult);
             resetForm();
             open = false;
           }, 1500);
@@ -172,12 +171,12 @@
       }
   }
 
-  // Handle modal close - UI-055 FIX: Dispatch 'close' event for parent control
+  // Handle modal close - UI-055 FIX: Callback for parent control
   function handleClose() {
     if (uploadStatus !== "uploading") {
       resetForm();
       open = false;
-      dispatch('close');
+      onClose?.();
     }
   }
 

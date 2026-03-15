@@ -18,18 +18,16 @@
     Close,
     Download
   } from "carbon-icons-svelte";
-  import { createEventDispatcher, tick } from "svelte";
+  import { tick } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { formatDate } from "$lib/utils/formatters.js";
-
-  const dispatch = createEventDispatcher();
 
   // API base URL - centralized in api.js
   const API_BASE = getApiBase();
 
   // Svelte 5: Props
-  let { open = $bindable(false), tm = null } = $props();
+  let { open = $bindable(false), tm = null, onUpdated = undefined, onClose = undefined } = $props();
 
   // Svelte 5: State
   let entries = $state([]);
@@ -207,11 +205,11 @@
     editStringId = "";
   }
 
-  // UI-055 FIX: Handle modal close with event dispatch for parent control
+  // UI-055 FIX: Handle modal close with callback for parent control
   function handleModalClose() {
     open = false;
     cancelEdit();
-    dispatch('close');
+    onClose?.();
   }
 
   // Save entry
@@ -235,7 +233,7 @@
         logger.success("TM entry updated", { entryId });
         cancelEdit();
         await loadEntries();
-        dispatch('updated');
+        onUpdated?.();
       } else {
         const error = await response.json();
         errorMessage = error.detail || "Failed to update entry";
@@ -262,7 +260,7 @@
       if (response.ok) {
         logger.success("TM entry deleted", { entryId });
         await loadEntries();
-        dispatch('updated');
+        onUpdated?.();
       } else {
         const error = await response.json();
         errorMessage = error.detail || "Failed to delete entry";
@@ -326,7 +324,7 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 <Modal
   bind:open

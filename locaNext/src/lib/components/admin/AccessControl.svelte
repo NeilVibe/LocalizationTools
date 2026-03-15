@@ -8,13 +8,12 @@
    * - View users with access
    * - Add/remove user access
    */
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import { Modal, Toggle, Button, InlineLoading, Tag } from 'carbon-components-svelte';
   import { Add, TrashCan, Locked, Unlocked, User, Close } from 'carbon-icons-svelte';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import { logger } from '$lib/utils/logger.js';
 
-  const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
 
   // Props
@@ -22,7 +21,9 @@
     open = $bindable(false),
     resourceType = 'platform',  // 'platform' or 'project'
     resourceId = null,
-    resourceName = ''
+    resourceName = '',
+    onChange = undefined,
+    onClose = undefined
   } = $props();
 
   // State
@@ -84,7 +85,7 @@
       if (response.ok) {
         isRestricted = !isRestricted;
         logger.success(`${resourceType} ${isRestricted ? 'restricted' : 'made public'}`);
-        dispatch('change', { isRestricted });
+        onChange?.({ isRestricted });
       } else {
         const error = await response.json();
         logger.error('Failed to update restriction', { error: error.detail });
@@ -160,7 +161,7 @@
 
   function handleClose() {
     open = false;
-    dispatch('close');
+    onClose?.();
   }
 </script>
 

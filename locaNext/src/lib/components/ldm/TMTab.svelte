@@ -11,18 +11,16 @@
    */
   import { InlineLoading } from "carbon-components-svelte";
   import { Search, Checkmark } from "carbon-icons-svelte";
-  import { createEventDispatcher } from "svelte";
   import { computeWordDiff } from "$lib/utils/wordDiff.js";
   import { logger } from "$lib/utils/logger.js";
-
-  const dispatch = createEventDispatcher();
 
   // Props (Svelte 5 runes)
   let {
     selectedRow = $bindable(null),
     tmMatches = $bindable([]),
     tmLoading = $bindable(false),
-    leverageStats = null
+    leverageStats = null,
+    onApplyTM = undefined
   } = $props();
 
   /**
@@ -45,7 +43,7 @@
    * Apply a TM match
    */
   function handleApplyTM(match) {
-    dispatch('applyTM', match);
+    onApplyTM?.(match);
     logger.userAction('Apply TM from TMTab', { similarity: match.similarity });
   }
 
