@@ -167,16 +167,11 @@ async def get_file(
     Repository automatically selects PostgreSQL or SQLite based on mode.
     """
     # P10: Repository handles both PostgreSQL and SQLite, permissions checked inside
+    # file_type is extracted from extra_data in the repository layer (_file_to_dict / _normalize_file)
     file = await repo.get(file_id)
 
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-
-    # Extract file_type from extra_data (stored by xml_handler during upload)
-    if isinstance(file, dict):
-        extra_data = file.get("extra_data") or {}
-        if isinstance(extra_data, dict) and "file_type" not in file:
-            file["file_type"] = extra_data.get("file_type", "translator")
 
     return file
 

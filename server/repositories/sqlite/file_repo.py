@@ -306,8 +306,8 @@ class SQLiteFileRepository(SQLiteBaseRepository, FileRepository):
 
         now = datetime.now().isoformat()
         async with self.db._get_async_connection() as conn:
-            for row_data in rows:
-                row_id = -int(time.time() * 1000) % 1000000000
+            for idx, row_data in enumerate(rows):
+                row_id = -int(time.time() * 1000 + idx) % 1000000000
                 extra_data_json = json.dumps(row_data.get("extra_data")) if row_data.get("extra_data") else None
 
                 if self.schema_mode == SchemaMode.OFFLINE:
@@ -333,11 +333,12 @@ class SQLiteFileRepository(SQLiteBaseRepository, FileRepository):
                         )
                     )
                 else:
+                    # SERVER mode: ldm_rows has no 'memo' or 'created_at' columns
                     await conn.execute(
                         f"""INSERT INTO {self._table('rows')}
-                           (id, file_id, row_num, string_id, source, target, memo,
-                            status, extra_data, created_at, updated_at)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                           (id, file_id, row_num, string_id, source, target,
+                            status, extra_data, updated_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                         (
                             row_id,
                             file_id,
@@ -345,10 +346,8 @@ class SQLiteFileRepository(SQLiteBaseRepository, FileRepository):
                             row_data.get("string_id"),
                             row_data.get("source"),
                             row_data.get("target"),
-                            row_data.get("memo"),
                             row_data.get("status", "normal"),
                             extra_data_json,
-                            now,
                             now,
                         )
                     )
@@ -478,6 +477,18 @@ class SQLiteFileRepository(SQLiteBaseRepository, FileRepository):
         if not file:
             return None
 
+        # Parse extra_data for file_type extraction
+        raw_extra = file.get("extra_data")
+        if isinstance(raw_extra, str):
+            try:
+                extra_data = json.loads(raw_extra)
+            except (json.JSONDecodeError, TypeError):
+                extra_data = {}
+        elif isinstance(raw_extra, dict):
+            extra_data = raw_extra
+        else:
+            extra_data = {}
+
         result = {
             "id": file.get("id"),
             "name": file.get("name"),
@@ -491,6 +502,8 @@ class SQLiteFileRepository(SQLiteBaseRepository, FileRepository):
             "extra_data": file.get("extra_data"),
             "created_at": file.get("created_at"),
             "updated_at": file.get("updated_at"),
+            # Extract file_type from extra_data (stored by xml_handler during upload)
+            "file_type": extra_data.get("file_type", "translator"),
         }
 
         # Only include sync_status for OFFLINE mode

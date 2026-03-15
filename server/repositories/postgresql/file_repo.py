@@ -109,6 +109,8 @@ class PostgreSQLFileRepository(FileRepository):
 
     def _file_to_dict(self, file: LDMFile, project: Optional[LDMProject] = None) -> Dict[str, Any]:
         """Convert LDMFile model to dict."""
+        extra_data = file.extra_data or {}
+
         result = {
             "id": file.id,
             "name": file.name,
@@ -122,6 +124,8 @@ class PostgreSQLFileRepository(FileRepository):
             "extra_data": file.extra_data,
             "created_at": file.created_at.isoformat() if file.created_at else None,
             "updated_at": file.updated_at.isoformat() if file.updated_at else None,
+            # Extract file_type from extra_data (stored by xml_handler during upload)
+            "file_type": extra_data.get("file_type", "translator") if isinstance(extra_data, dict) else "translator",
         }
 
         if project:
