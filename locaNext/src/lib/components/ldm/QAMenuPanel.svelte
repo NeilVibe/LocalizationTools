@@ -7,7 +7,7 @@
     Switch,
     InlineNotification
   } from "carbon-components-svelte";
-  import { Close, WarningAltFilled, Renew, ArrowRight, StopFilled } from "carbon-icons-svelte";
+  import { Close, WarningAltFilled, WarningFilled, InformationFilled, Renew, ArrowRight, StopFilled } from "carbon-icons-svelte";
   import { createEventDispatcher } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
@@ -227,9 +227,51 @@
     }
   }
 
-  // Get severity color
+  // Get severity color for Tag component
   function getSeverityType(severity) {
-    return severity === 'error' ? 'red' : 'magenta';
+    if (severity === 'error') return 'red';
+    if (severity === 'warning') return 'magenta';
+    return 'cool-gray'; // info
+  }
+
+  // Get severity label text
+  function getSeverityLabel(severity) {
+    if (severity === 'error') return 'ERROR';
+    if (severity === 'warning') return 'WARNING';
+    return 'INFO';
+  }
+
+  // P16-02: Dismiss/resolve a single QA issue from the panel
+  async function dismissIssue(event, issueId) {
+    event.stopPropagation();
+    event.preventDefault();
+
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/qa-results/${issueId}/resolve`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+
+      if (response.ok) {
+        // Optimistic removal from issue list
+        issues = issues.filter(i => i.id !== issueId);
+
+        // Update summary counts optimistically
+        if (summary) {
+          const dismissed = issues.find(i => i.id === issueId);
+          summary = {
+            ...summary,
+            total: Math.max(0, (summary.total || 0) - 1)
+          };
+        }
+
+        logger.info("QA issue dismissed from panel", { issueId });
+      } else {
+        logger.error("Failed to dismiss QA issue", { issueId, status: response.status });
+      }
+    } catch (err) {
+      logger.error("QA dismiss error", { issueId, error: err.message });
+    }
   }
 
   // Dismiss error message
@@ -400,26 +442,39 @@
           {/if}
         </div>
       {:else}
-        {#each issues as issue}
-          <button
-            class="issue-item"
-            onclick={() => handleIssueClick(issue.row_id, issue.row_num)}
-            title="Click to edit row"
-          >
-            <div class="issue-header">
-              <Tag type={getSeverityType(issue.severity)} size="sm">
-                {issue.check_type}
-              </Tag>
-              <span class="row-num">Row {issue.row_num}</span>
-              <ArrowRight size={14} class="go-icon" />
-            </div>
-            <div class="issue-message">{issue.message}</div>
-            {#if issue.source}
-              <div class="issue-source" title={issue.source}>
-                {issue.source.length > 60 ? issue.source.substring(0, 60) + '...' : issue.source}
+        {#each issues as issue (issue.id)}
+          <div class="issue-item-wrapper">
+            <button
+              class="issue-item"
+              onclick={() => handleIssueClick(issue.row_id, issue.row_num)}
+              title="Click to edit row"
+            >
+              <div class="issue-header">
+                <Tag type={getSeverityType(issue.severity)} size="sm">
+                  {issue.check_type}
+                </Tag>
+                <Tag type={getSeverityType(issue.severity)} size="sm">
+                  {getSeverityLabel(issue.severity)}
+                </Tag>
+                <span class="row-num">Row {issue.row_num}</span>
+                <ArrowRight size={14} class="go-icon" />
               </div>
-            {/if}
-          </button>
+              <div class="issue-message">{issue.message}</div>
+              {#if issue.source}
+                <div class="issue-source" title={issue.source}>
+                  {issue.source.length > 60 ? issue.source.substring(0, 60) + '...' : issue.source}
+                </div>
+              {/if}
+            </button>
+            <button
+              class="issue-dismiss-btn"
+              onclick={(e) => dismissIssue(e, issue.id)}
+              title="Dismiss this issue"
+              aria-label="Dismiss QA issue"
+            >
+              <Close size={14} />
+            </button>
+          </div>
         {/each}
       {/if}
     </div>
@@ -619,23 +674,55 @@
     color: var(--cds-support-success, #24a148);
   }
 
-  .issue-item {
-    display: block;
-    width: 100%;
-    padding: 0.75rem;
+  .issue-item-wrapper {
+    display: flex;
+    align-items: stretch;
     margin-bottom: 0.5rem;
     border: 1px solid var(--cds-border-subtle-01);
     border-radius: 4px;
     background: var(--cds-layer-01);
+    transition: border-color 0.15s;
+  }
+
+  .issue-item-wrapper:hover {
+    border-color: var(--cds-border-interactive);
+  }
+
+  .issue-item {
+    display: block;
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 4px 0 0 4px;
+    background: transparent;
     text-align: left;
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    transition: background 0.15s, transform 0.1s;
   }
 
   .issue-item:hover {
     background: var(--cds-layer-hover-01);
-    border-color: var(--cds-border-interactive);
     transform: translateX(-2px);
+  }
+
+  .issue-dismiss-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    min-width: 32px;
+    border: none;
+    border-left: 1px solid var(--cds-border-subtle-01);
+    border-radius: 0 4px 4px 0;
+    background: transparent;
+    cursor: pointer;
+    color: var(--cds-icon-02, #999);
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .issue-dismiss-btn:hover {
+    background: rgba(218, 30, 40, 0.1);
+    color: var(--cds-support-01, #da1e28);
   }
 
   .issue-header {
