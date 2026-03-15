@@ -69,7 +69,7 @@
   3. All v3.0 components (AISuggestionsTab, QAInlineBadge, CategoryFilter, NamingPanel, CodexSearchBar, MapCanvas) use $props callbacks for parent communication
   4. Searching the codebase for "createEventDispatcher" returns zero results
   5. Searching the codebase for " on:" event directives returns zero results (excluding Carbon component interop where the library requires it)
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 Plans:
 - [ ] 22-01-PLAN.md — Core grid pipeline: VirtualGrid (20 dispatchers) + LDM.svelte + page consumers
 - [ ] 22-02-PLAN.md — TM subsystem + modals: TMDataGrid, TMManager, TMViewer, TMPage + FilePickerDialog, PretranslateModal, AccessControl
@@ -163,7 +163,7 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25
 | 19. Game World Codex | v3.0 | 2/2 | Complete | 2026-03-15 |
 | 20. Interactive World Map | v3.0 | 2/2 | Complete | 2026-03-15 |
 | 21. AI Naming Coherence + Placeholders | v3.0 | 2/2 | Complete | 2026-03-15 |
-| 22. Svelte 5 Migration | v3.1 | 0/3 | Not started | - |
+| 22. Svelte 5 Migration | 1/3 | In Progress|  | - |
 | 23. Bug Fixes | v3.1 | 0/4 | Not started | - |
 | 24. UIUX Polish | v3.1 | 0/2 | Not started | - |
 | 25. Comprehensive API E2E Testing | v3.1 | 0/10 | Not started | - |

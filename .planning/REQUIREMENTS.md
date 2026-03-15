@@ -9,8 +9,8 @@
 
 - [ ] **SV5-01**: VirtualGrid.svelte uses callback props ($props) instead of createEventDispatcher for all events
 - [ ] **SV5-02**: LDM.svelte uses callback props instead of on: event listeners for all child component events
-- [ ] **SV5-03**: All v3.0 components (AISuggestionsTab, QAInlineBadge, CategoryFilter, NamingPanel) use $props callbacks, not dispatchers
-- [ ] **SV5-04**: GameDevPage, GridPage, CodexPage use $props callbacks to receive child events
+- [x] **SV5-03**: All v3.0 components (AISuggestionsTab, QAInlineBadge, CategoryFilter, NamingPanel) use $props callbacks, not dispatchers
+- [x] **SV5-04**: GameDevPage, GridPage, CodexPage use $props callbacks to receive child events
 - [ ] **SV5-05**: No createEventDispatcher import exists anywhere in the codebase
 - [ ] **SV5-06**: No on: event directive exists anywhere in codebase (except Carbon component interop where required)
 
@@ -54,8 +54,8 @@
 |-------------|-------|--------|
 | SV5-01 | Phase 22 | Pending |
 | SV5-02 | Phase 22 | Pending |
-| SV5-03 | Phase 22 | Pending |
-| SV5-04 | Phase 22 | Pending |
+| SV5-03 | Phase 22 | Complete |
+| SV5-04 | Phase 22 | Complete |
 | SV5-05 | Phase 22 | Pending |
 | SV5-06 | Phase 22 | Pending |
 | FIX-01 | Phase 23 | Pending |

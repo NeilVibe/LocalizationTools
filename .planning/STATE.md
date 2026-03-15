@@ -2,30 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Debug + Polish + Svelte 5 Migration
-status: ready_to_plan
-stopped_at: Phase 25 context gathered
-last_updated: "2026-03-15T18:13:23.634Z"
-last_activity: 2026-03-16 -- Roadmap created for v3.1 milestone
+status: executing
+stopped_at: Completed 22-02-PLAN.md
+last_updated: "2026-03-15T21:43:11Z"
+last_activity: 2026-03-15 -- Completed 22-02 TM subsystem event migration
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 9
-  completed_plans: 0
----
-
----
-gsd_state_version: 1.0
-milestone: v3.1
-milestone_name: Debug + Polish + Svelte 5 Migration
-status: ready_to_plan
-stopped_at: Roadmap created
-last_updated: "2026-03-16"
-last_activity: 2026-03-16 -- Roadmap created for v3.1 milestone
-progress:
-  total_phases: 3
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 19
+  completed_plans: 1
 ---
 
 # Project State
@@ -39,18 +24,18 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 
 ## Current Position
 
-Phase: 22 (1 of 3 in v3.1) [Svelte 5 Migration]
-Plan: 0 of 0 in current phase (not yet planned)
-Status: Ready to plan
-Last activity: 2026-03-16 -- Roadmap created for v3.1 milestone
+Phase: 22 (1 of 4 in v3.1) [Svelte 5 Migration]
+Plan: 2 of 3 in current phase
+Status: Executing
+Last activity: 2026-03-15 -- Completed 22-02 TM subsystem event migration
 
-Progress: [..........] 0%
+Progress: [█░░░░░░░░░] 5%
 
 ## Performance Metrics
 
 **Velocity (all milestones):**
-- Total plans completed: 51 (v1.0: 20, v2.0: 17, v3.0: 14)
-- v3.1 plans completed: 0
+- Total plans completed: 52 (v1.0: 20, v2.0: 17, v3.0: 14, v3.1: 1)
+- v3.1 plans completed: 1
 
 | Milestone | Phases | Plans | Requirements |
 |-----------|--------|-------|--------------|
@@ -68,6 +53,8 @@ Progress: [..........] 0%
 - [v3.1 Roadmap]: Svelte 5 migration first (Phase 22) -- stable event model before component-level bug fixes
 - [v3.1 Roadmap]: TEST-01 grouped with bug fixes (Phase 23) -- stale test reference, not UIUX
 - [v3.0 21-02]: PlaceholderImage uses foreignObject -- UX-04 will replace with div layout for Chromium compat
+- [22-02]: Carbon component on: directives preserved as exempt (on:click, on:close, on:change, on:toggle, on:select)
+- [22-02]: Callback naming convention: on + PascalCase event name (onApplyTM, onUploaded, onTmSelect)
 
 ### Pending Todos
 
@@ -83,6 +70,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T18:13:23.632Z
-Stopped at: Phase 25 context gathered
-Resume file: .planning/phases/25-comprehensive-api-e2e-testing/25-CONTEXT.md
+Last session: 2026-03-15T21:43:11Z
+Stopped at: Completed 22-02-PLAN.md
+Resume file: .planning/phases/22-svelte-5-migration/22-02-SUMMARY.md
