@@ -3,29 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Game Dev Platform + AI Intelligence
 status: executing
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-03-15T12:05:02.707Z"
-last_activity: 2026-03-15 -- Completed Phase 16 Plan 02 (QA Pipeline)
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-03-15T12:31:49Z"
+last_activity: 2026-03-15 -- Completed Phase 17 Plan 01 (AI Suggestion Service)
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
----
-
----
-gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Game Dev Platform + AI Intelligence
-status: executing
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-03-15T11:58:10Z"
-last_activity: 2026-03-15 -- Completed Phase 16 Plan 02 (QA Pipeline)
-progress:
-  total_phases: 7
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State
@@ -35,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Game Dev authoring platform with AI-powered suggestions, interactive Codex, and integrated QA -- all local, zero cloud dependency
-**Current focus:** Phase 16 - Category Clustering & QA Pipeline
+**Current focus:** Phase 17 - AI Translation Suggestions
 
 ## Current Position
 
-Phase: 16 (2 of 7 in v3.0) [Category Clustering & QA Pipeline] -- COMPLETE
-Plan: 2 of 2 in current phase (all done)
-Status: Phase 16 Complete
-Last activity: 2026-03-15 -- Completed Phase 16 Plan 02 (QA Pipeline)
+Phase: 17 (3 of 7 in v3.0) [AI Translation Suggestions] -- IN PROGRESS
+Plan: 1 of 2 in current phase
+Status: Executing Phase 17
+Last activity: 2026-03-15 -- Completed Phase 17 Plan 01 (AI Suggestion Service)
 
-Progress: [######....] 57% v3.0
+Progress: [######....] 71% v3.0
 
 ## Performance Metrics
 
@@ -57,12 +42,13 @@ Progress: [######....] 57% v3.0
 |-----------|--------|-------|--------------|
 | v1.0 | 7 | 20 | 42/42 |
 | v2.0 | 8 | 17 | 40/40 |
-| v3.0 | 7 | 4 | 17/45 |
+| v3.0 | 7 | 5 | 21/45 |
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 16-01 | Category Clustering | 9min | 2 | 9 |
 | 16-02 | QA Pipeline | 7min | 2 | 5 |
+| 17-01 | AI Suggestion Service | 7min | 2 | 7 |
 
 ## Accumulated Context
 
@@ -85,6 +71,10 @@ All v1.0/v2.0 decisions archived in PROJECT.md Key Decisions table.
 - [16-02]: QAInlineBadge uses absolute-positioned popover with backdrop for click-outside handling
 - [16-02]: Severity badge threshold: 3+ = red, 1-2 = magenta (Carbon Tag types)
 - [16-02]: Both inline badge and panel share same resolve endpoint for dismiss consistency
+- [17-01]: Blended confidence formula: 0.4 * max_embedding_similarity + 0.6 * llm_confidence
+- [17-01]: Cache key includes md5 hash of source_text to invalidate on text changes
+- [17-01]: FAISS similarity search is enrichment-only -- graceful empty return when unavailable
+- [17-01]: Route registered in router.py following existing aggregation pattern
 
 ### Pending Todos
 
@@ -97,5 +87,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Completed 16-02-PLAN.md
-Resume: `/gsd:plan-phase 17` (next phase: AI Suggestions)
+Stopped at: Completed 17-01-PLAN.md
+Resume: `/gsd:execute-phase 17` to continue with Plan 02 (Frontend Suggestion Panel)

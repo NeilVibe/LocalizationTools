@@ -35,11 +35,11 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 ### AI Suggestions
 
-- [ ] **AISUG-01**: AI translation suggestions appear in a right-side panel for the selected segment using Qwen3
-- [ ] **AISUG-02**: Suggestions are ranked with confidence scores (embedding similarity + LLM certainty blend)
+- [x] **AISUG-01**: AI translation suggestions appear in a right-side panel for the selected segment using Qwen3
+- [x] **AISUG-02**: Suggestions are ranked with confidence scores (embedding similarity + LLM certainty blend)
 - [ ] **AISUG-03**: User clicks a suggestion to apply it to the translation field (never auto-replace)
-- [ ] **AISUG-04**: AI suggestions consider context (entity type, parent hierarchy, surrounding segments) in prompts
-- [ ] **AISUG-05**: Graceful fallback when Qwen3/Ollama is unavailable (show "AI unavailable" state, no crash)
+- [x] **AISUG-04**: AI suggestions consider context (entity type, parent hierarchy, surrounding segments) in prompts
+- [x] **AISUG-05**: Graceful fallback when Qwen3/Ollama is unavailable (show "AI unavailable" state, no crash)
 
 ### AI Naming Coherence
 
@@ -130,11 +130,11 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 | QA-04 | Phase 16 | Complete |
 | QA-05 | Phase 16 | Complete |
 | QA-06 | Phase 16 | Complete |
-| AISUG-01 | Phase 17 | Pending |
-| AISUG-02 | Phase 17 | Pending |
+| AISUG-01 | Phase 17 | Complete |
+| AISUG-02 | Phase 17 | Complete |
 | AISUG-03 | Phase 17 | Pending |
-| AISUG-04 | Phase 17 | Pending |
-| AISUG-05 | Phase 17 | Pending |
+| AISUG-04 | Phase 17 | Complete |
+| AISUG-05 | Phase 17 | Complete |
 | AINAME-01 | Phase 21 | Pending |
 | AINAME-02 | Phase 21 | Pending |
 | AINAME-03 | Phase 21 | Pending |
