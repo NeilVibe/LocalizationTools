@@ -49,12 +49,12 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 ### Game Dev Grid
 
-- [ ] **GDEV-01**: File explorer panel shows gamedata folder structure matching real gamedata paths
-- [ ] **GDEV-02**: User clicks a folder/file in explorer to load its contents in the grid
+- [x] **GDEV-01**: File explorer panel shows gamedata folder structure matching real gamedata paths
+- [x] **GDEV-02**: User clicks a folder/file in explorer to load its contents in the grid
 - [ ] **GDEV-03**: Grid displays XML entity hierarchy (parent-child nesting visualized with indentation/depth)
 - [ ] **GDEV-04**: User can edit Name, Desc, and text attributes of existing entities inline in the grid
-- [ ] **GDEV-05**: Grid shows entity metadata columns appropriate to the data type (Key, StrKey, KnowledgeKey, etc.)
-- [ ] **GDEV-06**: Changes are saved back to the data model with proper XML attribute encoding (br-tag preservation)
+- [x] **GDEV-05**: Grid shows entity metadata columns appropriate to the data type (Key, StrKey, KnowledgeKey, etc.)
+- [x] **GDEV-06**: Changes are saved back to the data model with proper XML attribute encoding (br-tag preservation)
 - [ ] **GDEV-07**: Game Dev Grid reuses virtual scroll engine for performance with large files (1000+ entities)
 
 ### Game World Codex
@@ -138,12 +138,12 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 | AINAME-01 | Phase 21 | Pending |
 | AINAME-02 | Phase 21 | Pending |
 | AINAME-03 | Phase 21 | Pending |
-| GDEV-01 | Phase 18 | Pending |
-| GDEV-02 | Phase 18 | Pending |
+| GDEV-01 | Phase 18 | Complete |
+| GDEV-02 | Phase 18 | Complete |
 | GDEV-03 | Phase 18 | Pending |
 | GDEV-04 | Phase 18 | Pending |
-| GDEV-05 | Phase 18 | Pending |
-| GDEV-06 | Phase 18 | Pending |
+| GDEV-05 | Phase 18 | Complete |
+| GDEV-06 | Phase 18 | Complete |
 | GDEV-07 | Phase 18 | Pending |
 | CODEX-01 | Phase 19 | Pending |
 | CODEX-02 | Phase 19 | Pending |

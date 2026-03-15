@@ -3,29 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Game Dev Platform + AI Intelligence
 status: executing
-stopped_at: Completed 17-02-PLAN.md (Phase 17 complete)
-last_updated: "2026-03-15T12:44:45.182Z"
-last_activity: 2026-03-15 -- Completed Phase 17 Plan 02 (Frontend Suggestion Panel)
+stopped_at: Completed 18-01-PLAN.md
+last_updated: "2026-03-15T13:07:30Z"
+last_activity: 2026-03-15 -- Completed Phase 18 Plan 01 (Gamedata Backend APIs)
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
----
-
----
-gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Game Dev Platform + AI Intelligence
-status: executing
-stopped_at: Completed 17-02-PLAN.md (Phase 17 complete)
-last_updated: "2026-03-15T12:39:08.980Z"
-last_activity: 2026-03-15 -- Completed Phase 17 Plan 02 (Frontend Suggestion Panel)
-progress:
-  total_phases: 7
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
 ---
 
 # Project State
@@ -35,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Game Dev authoring platform with AI-powered suggestions, interactive Codex, and integrated QA -- all local, zero cloud dependency
-**Current focus:** Phase 17 - AI Translation Suggestions
+**Current focus:** Phase 18 - Game Dev Grid
 
 ## Current Position
 
-Phase: 17 (3 of 7 in v3.0) [AI Translation Suggestions] -- COMPLETE
-Plan: 2 of 2 in current phase (all complete)
-Status: Phase 17 Complete
-Last activity: 2026-03-15 -- Completed Phase 17 Plan 02 (Frontend Suggestion Panel)
+Phase: 18 (4 of 7 in v3.0) [Game Dev Grid + File Explorer]
+Plan: 1 of 2 in current phase
+Status: Executing Phase 18
+Last activity: 2026-03-15 -- Completed Phase 18 Plan 01 (Gamedata Backend APIs)
 
-Progress: [██████████] 100% v3.0 (phases 15-17 complete)
+Progress: [███████░░░] 70% v3.0 (phases 15-17 complete, 18 in progress)
 
 ## Performance Metrics
 
@@ -57,7 +42,7 @@ Progress: [██████████] 100% v3.0 (phases 15-17 complete)
 |-----------|--------|-------|--------------|
 | v1.0 | 7 | 20 | 42/42 |
 | v2.0 | 8 | 17 | 40/40 |
-| v3.0 | 7 | 6 | 25/45 |
+| v3.0 | 7 | 8 | 29/45 |
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -65,6 +50,7 @@ Progress: [██████████] 100% v3.0 (phases 15-17 complete)
 | 16-02 | QA Pipeline | 7min | 2 | 5 |
 | 17-01 | AI Suggestion Service | 7min | 2 | 7 |
 | 17-02 | Frontend Suggestion Panel | 5min | 3 | 3 |
+| 18-01 | Gamedata Backend APIs | 3min | 2 | 8 |
 
 ## Accumulated Context
 
@@ -94,6 +80,9 @@ All v1.0/v2.0 decisions archived in PROJECT.md Key Decisions table.
 - [17-02]: 500ms debounce + AbortController prevents request flooding during rapid row navigation
 - [17-02]: Reuses applyTMToRow for applying suggestions -- no new cell-update mechanism needed
 - [17-02]: Confidence badge thresholds: High (green) >= 85%, Medium (yellow) >= 60%, Low (orange) < 60%
+- [18-01]: EDITABLE_ATTRS map defines per-entity editable attributes (6 entity types)
+- [18-01]: Path traversal uses Path.resolve() + is_relative_to() for security
+- [18-01]: br-tag handling relies on lxml auto-escape behavior (no pre-escape needed)
 
 ### Pending Todos
 
@@ -105,6 +94,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T12:39:08.977Z
-Stopped at: Completed 17-02-PLAN.md (Phase 17 complete)
-Resume: Next phase planning needed -- Phase 18 (Game Dev Grid) or other v3.0 phases
+Last session: 2026-03-15T13:07:30Z
+Stopped at: Completed 18-01-PLAN.md
+Resume: Execute 18-02-PLAN.md (Game Dev Grid frontend)
