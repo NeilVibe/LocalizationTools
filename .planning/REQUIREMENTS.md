@@ -29,11 +29,11 @@
 
 ### UIUX Polish
 
-- [ ] **UX-01**: FileExplorerTree folder buttons have aria-expanded reflecting expand state
-- [ ] **UX-02**: Navigation tab dividers CSS covers all 5 tabs, not just first
-- [ ] **UX-03**: CodexPage card images fallback to PlaceholderImage on 404
-- [ ] **UX-04**: PlaceholderImage uses div layout instead of foreignObject for Chromium compatibility
-- [ ] **UX-05**: MapDetailPanel long text wraps properly at all viewport sizes
+- [x] **UX-01**: FileExplorerTree folder buttons have aria-expanded reflecting expand state
+- [x] **UX-02**: Navigation tab dividers CSS covers all 5 tabs, not just first
+- [x] **UX-03**: CodexPage card images fallback to PlaceholderImage on 404
+- [x] **UX-04**: PlaceholderImage uses div layout instead of foreignObject for Chromium compatibility
+- [x] **UX-05**: MapDetailPanel long text wraps properly at all viewport sizes
 
 ### Test Fixes
 
@@ -70,11 +70,11 @@
 | FIX-10 | Phase 23 | Complete |
 | FIX-11 | Phase 23 | Complete |
 | TEST-01 | Phase 23 | Complete |
-| UX-01 | Phase 24 | Pending |
-| UX-02 | Phase 24 | Pending |
-| UX-03 | Phase 24 | Pending |
-| UX-04 | Phase 24 | Pending |
-| UX-05 | Phase 24 | Pending |
+| UX-01 | Phase 24 | Complete |
+| UX-02 | Phase 24 | Complete |
+| UX-03 | Phase 24 | Complete |
+| UX-04 | Phase 24 | Complete |
+| UX-05 | Phase 24 | Complete |
 
 **Coverage:**
 - v3.1 requirements: 23 total

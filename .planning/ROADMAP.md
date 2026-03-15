@@ -103,7 +103,7 @@ Plans:
   3. CodexPage card images display PlaceholderImage SVG when the actual image returns 404
   4. PlaceholderImage renders correctly in Chromium-based Electron using div layout instead of foreignObject
   5. MapDetailPanel long text content wraps properly without overflow at all viewport widths
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
 - [ ] 24-01-PLAN.md — Fix all 5 UX requirements: aria-expanded, tab dividers, image fallbacks, PlaceholderImage div layout, text wrapping
 - [ ] 24-02-PLAN.md — Skill-driven UIUX review: audit + harden + clarify pass across all v3.0 components
@@ -165,5 +165,5 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25
 | 21. AI Naming Coherence + Placeholders | v3.0 | 2/2 | Complete | 2026-03-15 |
 | 22. Svelte 5 Migration | 3/3 | Complete    | 2026-03-15 | - |
 | 23. Bug Fixes | 4/4 | Complete    | 2026-03-15 | - |
-| 24. UIUX Polish | v3.1 | 0/2 | Not started | - |
+| 24. UIUX Polish | 1/2 | In Progress|  | - |
 | 25. Comprehensive API E2E Testing | v3.1 | 0/10 | Not started | - |
