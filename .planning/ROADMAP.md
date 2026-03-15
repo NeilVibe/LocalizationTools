@@ -124,8 +124,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 19-01: TBD
-- [ ] 19-02: TBD
+- [ ] 19-01-PLAN.md — CodexService backend + entity registry + FAISS search + REST endpoints + unit tests (CODEX-01, CODEX-02, CODEX-03, CODEX-04, CODEX-05)
+- [ ] 19-02-PLAN.md — CodexPage frontend + CodexEntityDetail + CodexSearchBar + navigation integration (CODEX-01, CODEX-02, CODEX-03, CODEX-04, CODEX-05)
 
 ### Phase 20: Interactive World Map
 **Goal**: Users can visually explore the game world via a pan/zoom map with positioned region nodes that link to Codex pages
@@ -185,6 +185,6 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21
 | 16. Category Clustering + QA Pipeline | 2/2 | Complete    | 2026-03-15 | - |
 | 17. AI Translation Suggestions | 2/2 | Complete    | 2026-03-15 | - |
 | 18. Game Dev Grid + File Explorer | 2/2 | Complete    | 2026-03-15 | - |
-| 19. Game World Codex | v3.0 | 0/? | Not started | - |
+| 19. Game World Codex | v3.0 | 0/2 | Planned | - |
 | 20. Interactive World Map | v3.0 | 0/? | Not started | - |
 | 21. AI Naming Coherence + Placeholders | v3.0 | 0/? | Not started | - |
