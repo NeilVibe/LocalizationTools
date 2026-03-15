@@ -11,6 +11,7 @@ Phase 21: AI Naming Coherence + Placeholders (Plan 01)
 from __future__ import annotations
 
 import json
+from collections import OrderedDict
 from typing import Dict, List, Optional
 
 import httpx
@@ -58,9 +59,10 @@ class NamingCoherenceService:
     OLLAMA_URL = "http://localhost:11434/api/generate"
     MODEL = "qwen3:4b"
     TIMEOUT = 15.0
+    MAX_CACHE_SIZE = 500
 
     def __init__(self) -> None:
-        self._cache: Dict[str, list] = {}
+        self._cache: OrderedDict[str, list] = OrderedDict()
         self._available: Optional[bool] = None
 
     def find_similar_names(
@@ -157,7 +159,9 @@ class NamingCoherenceService:
             # Sort by confidence descending
             suggestions.sort(key=lambda x: x["confidence"], reverse=True)
 
-            # Cache and return
+            # Cache with FIFO eviction
+            if len(self._cache) >= self.MAX_CACHE_SIZE:
+                self._cache.popitem(last=False)
             self._cache[cache_key] = suggestions
             self._available = True
             logger.debug(f"[Naming] Generated {len(suggestions)} suggestions for {entity_type}:{name}")

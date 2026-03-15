@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import OrderedDict
 from typing import Dict, List, Optional
 
 import httpx
@@ -58,9 +59,10 @@ class AISuggestionService:
     TIMEOUT = 15.0
     BLEND_WEIGHT_EMBEDDING = 0.4
     BLEND_WEIGHT_LLM = 0.6
+    MAX_CACHE_SIZE = 500
 
     def __init__(self) -> None:
-        self._cache: Dict[str, list] = {}
+        self._cache: OrderedDict[str, list] = OrderedDict()
         self._available: Optional[bool] = None
 
     def _find_similar_segments(self, source_text: str, top_k: int = 3) -> list[dict]:
@@ -199,7 +201,9 @@ class AISuggestionService:
             # Sort by confidence descending
             blended_suggestions.sort(key=lambda x: x["confidence"], reverse=True)
 
-            # Cache and return
+            # Cache with FIFO eviction
+            if len(self._cache) >= self.MAX_CACHE_SIZE:
+                self._cache.popitem(last=False)
             self._cache[cache_key] = blended_suggestions
             self._available = True
             logger.debug(f"[AI Suggestions] Generated {len(blended_suggestions)} suggestions for {string_id}")
