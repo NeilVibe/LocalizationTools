@@ -121,7 +121,7 @@ Plans:
   6. TM 5-tier cascade search returns results at appropriate tiers
   7. GameData column detection works for all entity types
   8. Test suite runs headless for overnight autonomous execution
-**Plans:** 1/10 plans executed
+**Plans:** 2/10 plans executed
 Plans:
 - [ ] 25-01-PLAN.md — Expand mock StaticInfo: questinfo, sceneobjectdata, sealdatainfo, regioninfo + loc.xml files
 - [ ] 25-02-PLAN.md — Create upload fixtures: EU 14-col Excel, TXT/TSV, LocStr XML + multilingual language data
@@ -166,4 +166,4 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25
 | 22. Svelte 5 Migration | 3/3 | Complete    | 2026-03-15 | - |
 | 23. Bug Fixes | 4/4 | Complete    | 2026-03-15 | - |
 | 24. UIUX Polish | 2/2 | Complete    | 2026-03-15 | - |
-| 25. Comprehensive API E2E Testing | 1/10 | In Progress|  | - |
+| 25. Comprehensive API E2E Testing | 2/10 | In Progress|  | - |
