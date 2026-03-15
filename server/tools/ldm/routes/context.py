@@ -16,6 +16,7 @@ from loguru import logger
 
 from server.utils.dependencies import get_current_active_user_async
 from server.tools.ldm.services.context_service import get_context_service
+from server.tools.ldm.services.ai_summary_service import get_ai_summary_service
 
 
 router = APIRouter(tags=["LDM-Context"])
@@ -56,6 +57,8 @@ class EntityContextResponse(BaseModel):
     entities: List[EntityResponse] = []
     detected_in_text: List[DetectedEntityResponse] = []
     string_id_context: Dict[str, Any] = {}
+    ai_summary: Optional[str] = None
+    ai_status: Optional[str] = None
 
 
 # =============================================================================
@@ -67,9 +70,12 @@ class EntityContextResponse(BaseModel):
 async def get_context_status(
     current_user: dict = Depends(get_current_active_user_async),
 ):
-    """Get context service status (glossary + mapdata)."""
+    """Get context service status (glossary + mapdata + AI)."""
     service = get_context_service()
-    return service.get_status()
+    ai_service = get_ai_summary_service()
+    status = service.get_status()
+    status["ai"] = ai_service.get_status()
+    return status
 
 
 @router.get("/context/{string_id}", response_model=EntityContextResponse)
@@ -85,7 +91,25 @@ async def get_context_by_string_id(
     """
     service = get_context_service()
     result = service.resolve_context_for_row(string_id, source_text)
-    return EntityContextResponse(**result.to_dict())
+
+    # AI summary generation
+    ai_service = get_ai_summary_service()
+    entities = result.entities
+    if entities:
+        entity_name = entities[0].name
+        entity_type = entities[0].entity_type
+    else:
+        entity_name = string_id
+        entity_type = "unknown"
+
+    ai_result = await ai_service.generate_summary(
+        string_id, entity_name, entity_type, source_text
+    )
+
+    response = EntityContextResponse(**result.to_dict())
+    response.ai_summary = ai_result.get("ai_summary")
+    response.ai_status = ai_result.get("ai_status")
+    return response
 
 
 @router.post("/context/detect", response_model=EntityContextResponse)
