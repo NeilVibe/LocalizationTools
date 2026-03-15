@@ -157,14 +157,22 @@ class TestTextureIndex:
     """Test DDS texture index and lookup."""
 
     def test_texture_files_exist(self):
-        """All expected DDS files exist in fixtures."""
+        """All expected DDS files exist in fixtures — named + generated numbered."""
         texture_dir = FIXTURES / "textures"
-        expected = [
+        # Named textures referenced by KnowledgeInfo UITextureName
+        named = [
             "character_varon.dds", "character_kira.dds",
             "item_blackstar_sword.dds", "region_blackstar_village.dds",
         ]
-        for name in expected:
-            assert (texture_dir / name).exists(), f"Missing texture: {name}"
+        for name in named:
+            assert (texture_dir / name).exists(), f"Missing named texture: {name}"
+        # Generated universe numbered textures (Phase 15 mock universe)
+        numbered = [
+            "character_0001.dds", "character_0002.dds",
+            "item_0001.dds", "region_0001.dds",
+        ]
+        for name in numbered:
+            assert (texture_dir / name).exists(), f"Missing numbered texture: {name}"
 
     def test_texture_index_build(self):
         """Build texture index and perform O(1) lookups."""
@@ -177,9 +185,13 @@ class TestTextureIndex:
 
         assert len(dds_index) >= 10
 
-        # Exact lookup
+        # Named texture lookup (UITextureName references)
         assert "character_varon" in dds_index
         assert dds_index["character_varon"].suffix == ".dds"
+
+        # Generated numbered texture lookup (Phase 15 universe)
+        assert "character_0001" in dds_index
+        assert dds_index["character_0001"].suffix == ".dds"
 
         # Case-insensitive
         lookup_name = "CHARACTER_VARON".lower()
