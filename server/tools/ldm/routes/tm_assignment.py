@@ -10,7 +10,7 @@ The repository is automatically selected based on user's mode (token-based detec
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from loguru import logger
 
@@ -250,6 +250,7 @@ async def get_active_tms_for_file(
 
 @router.get("/tm-tree")
 async def get_tm_tree(
+    request: Request,
     repo: TMRepository = Depends(get_tm_repository),
     current_user: dict = Depends(get_current_active_user_async)
 ):
@@ -263,6 +264,80 @@ async def get_tm_tree(
 
     P9-ARCH: Uses Repository Pattern - automatically builds correct tree
     for online (PostgreSQL) or offline (SQLite) mode.
+
+    FIX-01: When online (PostgreSQL), also includes offline TMs from SQLite
+    so users see both online and offline TMs in the same tree.
     """
-    # Repository handles all tree building logic for the appropriate database
-    return await repo.get_tree()
+    from server.repositories.factory import _is_offline_mode, _is_server_local
+
+    # Get primary tree from current repository
+    tree = await repo.get_tree()
+
+    # FIX-01: When online (PostgreSQL), merge offline SQLite TMs into the tree
+    if not _is_offline_mode(request) and not _is_server_local():
+        try:
+            from server.repositories.sqlite.tm_repo import SQLiteTMRepository
+            from server.repositories.sqlite.base import SchemaMode
+
+            offline_repo = SQLiteTMRepository(schema_mode=SchemaMode.OFFLINE)
+            offline_tree = await offline_repo.get_tree()
+
+            # Merge offline tree into primary tree
+            tree = _merge_tm_trees(tree, offline_tree)
+            logger.debug("[TM-TREE] Merged offline TMs into online tree")
+        except Exception as e:
+            # If offline DB is unavailable, just return online tree
+            logger.warning(f"[TM-TREE] Could not merge offline TMs: {e}")
+
+    return tree
+
+
+def _merge_tm_trees(primary: dict, offline: dict) -> dict:
+    """
+    Merge offline TM tree into primary (online) tree.
+
+    FIX-01: Combines unassigned TMs and merges platform/project/folder
+    structures so both online and offline TMs appear in one tree.
+    """
+    if not isinstance(primary, dict) or not isinstance(offline, dict):
+        return primary
+
+    # Merge unassigned TMs
+    primary_unassigned = primary.get("unassigned", [])
+    offline_unassigned = offline.get("unassigned", [])
+    merged_unassigned = primary_unassigned + offline_unassigned
+
+    # Merge platforms
+    primary_platforms = primary.get("platforms", [])
+    offline_platforms = offline.get("platforms", [])
+
+    # Build lookup by platform name for merging
+    platform_by_name = {p["name"]: p for p in primary_platforms}
+
+    for off_platform in offline_platforms:
+        name = off_platform.get("name", "")
+        if name in platform_by_name:
+            # Merge TMs and projects into existing platform
+            existing = platform_by_name[name]
+            existing["tms"] = existing.get("tms", []) + off_platform.get("tms", [])
+
+            # Merge projects by name
+            existing_projects_by_name = {p["name"]: p for p in existing.get("projects", [])}
+            for off_project in off_platform.get("projects", []):
+                proj_name = off_project.get("name", "")
+                if proj_name in existing_projects_by_name:
+                    # Merge TMs into existing project
+                    existing_proj = existing_projects_by_name[proj_name]
+                    existing_proj["tms"] = existing_proj.get("tms", []) + off_project.get("tms", [])
+                    # Merge folders
+                    existing_proj["folders"] = existing_proj.get("folders", []) + off_project.get("folders", [])
+                else:
+                    existing.setdefault("projects", []).append(off_project)
+        else:
+            # Add entire offline platform
+            primary_platforms.append(off_platform)
+
+    return {
+        "unassigned": merged_unassigned,
+        "platforms": primary_platforms
+    }
