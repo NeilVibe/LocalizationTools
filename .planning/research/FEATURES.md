@@ -1,151 +1,194 @@
-# Feature Landscape: LocaNext CAT Tool (Demo-Ready)
+# Feature Landscape: LocaNext v2.0 — Real Data + Dual Platform
 
-**Domain:** Desktop CAT tool / game localization management platform
-**Researched:** 2026-03-14
-**Overall confidence:** MEDIUM-HIGH (based on memoQ docs, Trados features, Smartcat help, Phrase/Memsource docs, game localization guides)
+**Domain:** Desktop CAT tool + game dev platform / game localization management
+**Researched:** 2026-03-15
+**Overall confidence:** MEDIUM-HIGH
+**Scope:** NEW features for v2.0 only. v1.0 table stakes (editor, TM, search, offline) already shipped.
 
 ---
 
-## Table Stakes
+## Table Stakes (for v2.0 scope)
 
-Features users (and especially executive audiences) expect. Missing = product feels incomplete or amateurish in a demo.
+Features that v2.0 MUST deliver for the "make it real" promise. Without these, v2.0 is just v1.0 with more scaffolds.
 
-| # | Feature | Why Expected | Complexity | Notes |
-|---|---------|--------------|------------|-------|
-| T1 | **Side-by-side source/target editor** | Every CAT tool shows source and target columns. Executives recognize this layout instantly. | Med | LocaNext has a grid — ensure it looks polished with clear source/target separation |
-| T2 | **Translation Memory lookup with match percentages** | Core value prop of any CAT tool. TM matches must show 100%, fuzzy (75-99%), and no-match with visual color coding. | Med | Already have FAISS + exact search. Need percentage display and color-coded match indicators in the UI |
-| T3 | **Concordance search** | Ability to highlight text and search across all TMs for that phrase. Every major tool (memoQ, Trados, Smartcat) has this. | Med | Leverage existing FAISS semantic search. Add a right-click or Ctrl+F concordance panel |
-| T4 | **File explorer / project tree** | Hierarchical navigation of platforms > projects > folders > files. Standard in memoQ, Trados. | Low | Already exists (FilesPage.svelte). Polish the tree UI |
-| T5 | **TM tree with assignment** | TMs organized in a tree, assignable to platform/project/folder scope. memoQ has this exact pattern. | Low | Already exists (TMExplorerTree.svelte). Already designed with assignment levels |
-| T6 | **File upload and parsing** | Import files (XML, XLIFF, Excel) and parse into translatable segments. | Med | Exists but needs end-to-end validation. XML with `<br/>` preservation is critical |
-| T7 | **Export / download workflow** | Export translated files back to original format. Executives will ask "and then what happens?" | Med | Must produce clean output files. Demo flow: upload > translate > export |
-| T8 | **Search and filter in editor** | Find text across segments, filter by status (translated/untranslated/fuzzy). Every CAT tool has this. | Low-Med | Basic search likely exists. Add status filters (confirmed, draft, empty) |
-| T9 | **Segment status indicators** | Visual status per row: confirmed, draft, untranslated, fuzzy match applied. Color-coded. | Low | Icons or colored indicators in the grid. Green=confirmed, yellow=fuzzy, red=empty |
-| T10 | **Undo/redo in editor** | Executives will test this. Missing undo = "this feels unfinished." | Low | Standard text editing. Ensure grid cells support Ctrl+Z |
-| T11 | **Keyboard navigation** | Tab between segments, Enter to confirm, Ctrl+Enter to confirm and advance. Power users expect this. | Low-Med | Critical for demo fluidity — shows the tool is "real" |
-| T12 | **Basic QA checks** | Tag verification, missing translations, number consistency. Trados and memoQ both have extensive QA. | Med | Already have QA repository interface. Need visible QA panel with pass/fail indicators |
-| T13 | **User authentication** | Login screen with user/password. Enterprise = multi-user aware. | Low | Already exists (JWT auth, offline mode detection) |
-| T14 | **Responsive, polished grid** | Smooth scrolling through thousands of segments. No lag, no jank. Virtual scrolling for large files. | Med-High | This is the #1 demo killer if it feels slow. Virtual scrolling is mandatory for files with 10K+ segments |
+| # | Feature | Why Expected | Complexity | Dependencies | Notes |
+|---|---------|--------------|------------|--------------|-------|
+| T1 | **Real XML parsing replacing mock fixtures** | v1.0 used mocks. Users opening real game XML files and seeing actual data flow is the entire point of v2.0. Without this, nothing else works. | High | None (foundation) | 10 battle-tested patterns from NewScripts. Sanitizer+recovery handles malformed files. Cross-reference chain resolution across multiple XMLs. `<br/>` tag preservation is CRITICAL. |
+| T2 | **Translator merge: exact StringID match** | The most basic merge operation. Every CAT tool does exact-match transfer. QuickTranslate already has this proven. Not having it means the tool can't do its primary job. | Med | T1 (XML parsing) | Direct port from QuickTranslate. StringID-to-StringID transfer of translation values. |
+| T3 | **Translator merge: source text match** | When StringIDs differ between file versions but source text is identical, translators expect the tool to find and transfer those matches. Trados/memoQ do this automatically. | Med | T1, T2 | StrOrigin match from QuickTranslate. Handles renamed StringIDs across file revisions. |
+| T4 | **Export to XML with format preservation** | Translators export their work back to game-consumable XML. Tags, encoding, `<br/>` newlines, attribute order must survive the round-trip. Broken export = broken game. | Med-High | T1 | lxml raw_attribs pattern from ExtractAnything. XML declaration, encoding, whitespace preservation. Round-trip tests mandatory. |
+| T5 | **Export to Excel** | Excel is the lingua franca of localization teams. PMs, reviewers, QA all work in spreadsheets. Every CAT tool exports to Excel. | Med | T1 | xlsxwriter for writing. Column structure: StrOrigin, ENG, Target, Correction, Status, etc. (LanguageDataExporter pattern). |
+| T6 | **Dual UI mode detection** | v2.0 promises both Translator and Game Dev modes. Auto-detecting `<LocStr>` nodes vs other XML structures is the minimum to deliver on "dual platform." | Med | T1 | File type heuristic: `<LocStr>` presence = Translator mode. Everything else = Game Dev mode. Mode indicator in editor header. |
+| T7 | **Translator-mode column layout** | When in Translator mode, the grid must show translation-relevant columns: Source, Target, Status, Match%, TM Source. This is what translators recognize. | Low | T6, existing grid | Reuses existing virtual grid with different column config. Already have the grid infrastructure from v1.0. |
+| T8 | **Game Dev mode column layout** | When in Game Dev mode, the grid must show XML-structure columns: NodeName, Attributes, Values, Children count. Game devs need to see the data structure, not just strings. | Med | T6, existing grid | New column config for the same grid. Must handle nested XML display (parent > child hierarchy). |
+| T9 | **DDS-to-PNG image display** | MapDataGenerator integration was scaffolded in v1.0. Showing actual game textures (DDS format) as PNG thumbnails in the context panel is what makes "we understand games" real. | Med | T1 (for StrKey chains) | Pillow 12.x has native DDS support (DdsImagePlugin). No external binary needed. StrKey > UITextureName > DDS chain from KnowledgeInfo XMLs. Cache converted PNGs. |
+| T10 | **Graceful missing asset handling** | When images or audio are missing (common in game dev), showing broken icons kills the demo. Placeholder with "Asset not found" is the minimum. | Low | T9 | Styled placeholder component. Not a broken `<img>` tag. |
+| T11 | **Language table parsing** | Extracting all language columns (KR, EN, JP, etc.) from loc.xml files correctly. This is the fundamental data extraction that feeds both Translator and Game Dev modes. | Med | T1 | Pattern from LanguageDataExporter. Multiple language attributes per node. |
+| T12 | **XML sanitizer + recovery** | Real game data files are messy. Malformed XML, encoding issues, orphan tags. The tool must not crash on bad input. | Med | None | Sanitizer pattern from NewScripts. Try parse > sanitize > retry > report errors. |
+| T13 | **Postprocessing pipeline for merge output** | After transferring translations, CJK-specific cleanup is needed: trailing spaces, width normalization, punctuation fixes. QuickTranslate's 7-step pipeline is proven. | Med | T2, T3 | Direct port from QuickTranslate postprocess. CJK-safe. Only modifies Str/Desc fields. |
+| T14 | **Bug fixes (offline TMs, paste, folder 404)** | v1.0 shipped with 3 known bugs. Shipping v2.0 without fixing these undermines credibility. | Low-Med | Existing code | FIX-01: SQLite > PostgreSQL TM visibility. FIX-02: TM paste flow. FIX-03: folder creation 404. |
 
 ---
 
 ## Differentiators
 
-Features that set LocaNext apart. Not expected in every CAT tool, but impressive in a demo and valuable for game localization specifically.
+Features that set v2.0 apart from generic CAT tools. These are NOT expected in memoQ/Trados/Phrase but are genuinely impressive for game localization.
 
-| # | Feature | Value Proposition | Complexity | Notes |
-|---|---------|-------------------|------------|-------|
-| D1 | **Semantic search (FAISS vectors)** | "Find translations that mean similar things, not just exact text matches." Most CAT tools only do fuzzy string matching (edit distance). Semantic search using embeddings is genuinely ahead of memoQ/Trados. | Low (already built) | Qwen model + FAISS already exist. **Demo this prominently** — it is the wow factor |
-| D2 | **Full offline mode with parity** | Most CAT tools are either desktop-only (Trados) or cloud-only (Phrase/Smartcat). LocaNext does both with transparent switching. memoQ has online/offline but it is clunky. | Med (architecture exists, needs validation) | DB abstraction layer already designed. Validate it works. Demo: pull network cable, keep working |
-| D3 | **Local AI pretranslation (Qwen)** | On-device ML model for pretranslation without cloud API costs. No data leaves the machine. Enterprise security teams love this. | Low (already built) | 2.3GB Qwen model runs locally. No API keys, no cloud dependency, no per-word costs |
-| D4 | **MapDataGenerator integration** | Visual mapping of image/audio assets to translation strings. Game-specific — no general CAT tool does this. Shows "we understand games." | Med | Standalone Python tool needs organic integration into the grid. Image thumbnails in the translation grid would be visually striking in a demo |
-| D5 | **Game-aware context: character limits + variables** | Show character limits per field (UI space constraints), highlight `{variables}` and `<tags>` in source/target. Game localization specific — Trados/memoQ don't do this natively. | Med | Character count display per cell, warning when exceeding limits. Variable placeholder highlighting with protection against accidental deletion |
-| D6 | **Real-time multi-user collaboration** | WebSocket-based live editing. See other translators' cursors and changes. Phrase/Smartcat have this for cloud — rare in desktop tools. | High | Infrastructure exists (WebSocket). Full implementation is complex. Save for later phases, but architecture supports it |
-| D7 | **TM leverage statistics / analysis** | "Upload a file, instantly see: 45% already translated, 30% fuzzy matches, 25% new." Executives love numbers. Shows ROI. | Med | Analyze file against TMs, produce breakdown: 100% / fuzzy tiers / new. Display as a dashboard widget or modal |
-| D8 | **Glossary/terminology panel** | Side panel showing glossary terms detected in current segment. Terms highlighted in source text. | Med | `get_glossary_terms()` already in TM interface. Need UI panel that auto-shows matches as user navigates segments |
-| D9 | **Batch operations** | Confirm all fuzzy matches above 95%, pretranslate entire file, bulk status changes. Shows workflow efficiency. | Med | Bulk confirm, bulk pretranslate, bulk export. Important for "at scale" narrative in demos |
-| D10 | **Dark mode / theme switching** | Modern apps have this. Quick visual differentiation from older tools like Trados. | Low-Med | Carbon Components supports theming. Toggle in preferences |
-| D11 | **Activity/audit log** | "Who changed what, when." Enterprise compliance requirement. Also useful in demos to show accountability. | Med | Log edits with timestamp, user, old/new value. Display in a side panel or modal |
+| # | Feature | Value Proposition | Complexity | Dependencies | Notes |
+|---|---------|-------------------|------------|--------------|-------|
+| D1 | **Fuzzy matching via Model2Vec embeddings** | Most CAT tools use edit-distance fuzzy matching (Levenshtein). LocaNext uses semantic vector similarity. "Find translations that MEAN similar things, not just look similar." This is the v1.0 wow factor extended to merge operations. | Med | T2, T3, Model2Vec index | Already have Model2Vec + FAISS from v1.0. Apply the same pipeline to merge: when exact and source-match fail, find semantically similar source strings above threshold. |
+| D2 | **AI context summaries via local Qwen3** | No CAT tool offers on-device LLM-generated context summaries. Translators see "This is a weapon description for a legendary sword in the Crimson Region, used by warrior-class characters." Zero cloud, zero cost. | Med-High | T1 (parsed data), Ollama | Qwen3-4B at 117 tok/s on RTX 4070 Ti. Structured JSON output. 2-line contextual summary per string. Cache per StringID. Graceful "AI unavailable" badge when Ollama is down. |
+| D3 | **Position-aware XML merge for Game Dev** | General CAT tools don't handle game dev XML merging (add/remove/modify nodes while preserving document structure). This is game-dev-specific and genuinely useful for data authors. | High | T6, T8, T1 | Not match-type based (unlike Translator merge). Operates at node level: detect added/removed/modified nodes. Preserve XML document order. Handle parent > children > sub-children depth. |
+| D4 | **Cross-reference chain resolution** | Resolving StrKey > UITextureName > DDS across multiple XML files to show contextual images. No CAT tool does multi-file join-key resolution for game assets. | Med-High | T1, T9 | QACompiler pattern: join keys across XML files. Build chains at file load time, cache for lookup. |
+| D5 | **WEM audio playback** | Playing Wwise audio files inline gives translators voice context for dialogue strings. Hearing the tone/delivery while translating is genuinely valuable and unique. | Med | T1 (for audio mapping) | vgmstream-cli converts WEM to WAV. If vgmstream unavailable, fall back to WAV files. Audio player component in context panel. |
+| D6 | **StringIdConsumer deduplication** | Fresh consumer per language prevents duplicate StringID processing in multi-language files. Ensures clean output when the same StringID appears across language tables. | Low-Med | T11 | Pattern from QACompiler. One consumer instance per language. Already proven. |
+| D7 | **Export to plain tabulated text** | Quick clipboard-friendly export (StringID + source + translation) for ad-hoc review, chat sharing, or integration with external tools. Simpler than Excel, faster than XML. | Low | T1 | Tab-separated values. Simple but useful. No other CAT tool offers this quick-export format natively. |
+| D8 | **CLI coverage for merge and export** | Scriptable merge and export operations for automation, CI/CD integration, and batch processing. Most CAT tools are GUI-only. CLI-first is a developer differentiator. | Med | T2, T3, T4, T5, D3 | Extends existing CLI toolkit from v1.0. Commands for translator merge, game dev merge, export in all formats. |
 
 ---
 
 ## Anti-Features
 
-Features to explicitly NOT build. Either out of scope, counterproductive, or traps that consume effort without value.
+Features to explicitly NOT build in v2.0. Tempting but wrong.
 
 | # | Anti-Feature | Why Avoid | What to Do Instead |
 |---|--------------|-----------|-------------------|
-| A1 | **Full MT engine integration (Google/DeepL API)** | Distraction from core value. Every tool has MT. LocaNext's differentiator is LOCAL AI (Qwen), not yet-another-API-wrapper. MT APIs also require keys, billing, and network — breaks offline story. | Lean into Qwen local pretranslation. "Zero cloud costs, zero data leakage" is a stronger pitch than "we also call Google Translate" |
-| A2 | **WYSIWYG in-context preview** | Rendering game UI in the CAT tool is a massive undertaking (different engines, formats, resolutions). memoQ/Trados don't even do this well for games. | Show image/screenshot references alongside segments (MapDataGenerator). Context without the rendering nightmare |
-| A3 | **Plugin/extension marketplace** | Premature. Trados has an app marketplace after 20+ years. Building extension APIs before the core works is a trap. | Hardcode the integrations you need. Extensibility comes after stability |
-| A4 | **Automated workflow orchestration** | Complex state machines for translation workflows (assign > translate > review > QA > approve). Enterprise TMS feature, not demo-ready CAT tool feature. | Simple status per segment (draft/confirmed). Manual workflow. Don't over-engineer process management |
-| A5 | **Cost estimation / billing** | Phrase and Smartcat have word-count-based pricing calculators. Irrelevant for an internal enterprise tool. | TM leverage statistics (D7) give the cost-saving narrative without building billing infrastructure |
-| A6 | **100+ file format support** | Trados supports dozens of formats. LocaNext handles XML game data files. Supporting DOCX, PDF, PO, XLIFF, etc. is scope creep. | XML (primary), Excel (import/export), maybe XLIFF for interop. Three formats, done well |
-| A7 | **Mobile app** | Explicitly out of scope per PROJECT.md. Translators don't work on phones. | Desktop-first. Electron app is the product |
-| A8 | **Spellcheck / grammar check in all languages** | LanguageTool integration exists but only works online. CJK spellcheck is notoriously unreliable. | QA checks for structural issues (tags, numbers, length). Leave linguistic quality to human reviewers |
+| A1 | **Full Game Dev CRUD (create/nest new nodes)** | v2.0 is "read + edit," not full authoring. Creating new XML nodes requires schema validation, parent-child rules, and attribute templates. Massive scope. | Read existing nodes, edit values, merge changes. Full CRUD is v3.0 (GDEV-01, GDEV-02, GDEV-03). |
+| A2 | **Game World Codex (interactive encyclopedia)** | Requires ALL XML parsing wired first, plus map rendering, character pages, item pages. Beautiful but enormous. | v3.0 milestone. The XML parsing foundation from v2.0 enables this later. |
+| A3 | **AI translation suggestions** | Generating alternative translations needs mature LLM endpoint + embedding index + confidence scoring. The LLM endpoint barely exists yet. | Build the AI summary foundation in v2.0 (AISUM-01 through AISUM-05). Translation suggestions layer on top in v3.0. |
+| A4 | **Real-time glossary inconsistency detection** | Aho-Corasick on every keystroke across all entities is a performance challenge. v1.0 has on-demand detection. | Keep on-demand entity detection from v1.0. Real-time is v3.0 optimization. |
+| A5 | **XLIFF/TMX import/export** | Industry-standard interchange formats that enable interop with Trados/memoQ. Important eventually, but v2.0 scope is XML game data, not tool interop. | XML + Excel + plain text are the v2.0 export formats. XLIFF/TMX can come in v3.0 if enterprise interop is needed. |
+| A6 | **Auto-generate missing images/audio** | Nano Banana for images, voice synthesis for audio. Technically possible but scope explosion. Also requires quality review. | Show graceful placeholders (T10) for missing assets. Auto-generation is v3.0 (AUTOGEN-01, AUTOGEN-02). |
+| A7 | **Multi-file batch merge** | Merging across an entire folder of XMLs at once. Useful but complex (conflict resolution, progress tracking, error aggregation). | Single-file merge in v2.0. Batch in v3.0 when single-file is proven solid. |
+| A8 | **Schema validation for Game Dev XML** | Validating XML against game-specific schemas (required attributes, valid values, constraints). Requires schema definitions that may not exist. | Basic well-formedness check (XML sanitizer, T12). Schema validation is v3.0 (GDEV-03). |
 
 ---
 
 ## Feature Dependencies
 
 ```
-T1 (Side-by-side editor) ──> T8 (Search/filter) ──> T9 (Status indicators)
-                          ──> T10 (Undo/redo)
-                          ──> T11 (Keyboard nav)
+Foundation layer (must be first):
+  T1 (Real XML parsing) ──> EVERYTHING ELSE
+  T12 (XML sanitizer) ──> T1
 
-T6 (File upload) ──> T7 (Export)
-                 ──> D7 (TM leverage stats) -- requires TM + file analysis
+Translator merge chain:
+  T1 ──> T11 (Language tables) ──> T2 (Exact match) ──> T3 (Source match) ──> D1 (Fuzzy/semantic)
+  T2/T3/D1 ──> T13 (Postprocess) ──> T4 (Export XML)
+  T2/T3/D1 ──> T5 (Export Excel)
+  T2/T3/D1 ──> D7 (Export text)
 
-T2 (TM lookup + match %) ──> T3 (Concordance search)
-                          ──> D8 (Glossary panel)
-                          ──> D9 (Batch operations)
+Dual UI chain:
+  T1 ──> T6 (Mode detection) ──> T7 (Translator columns)
+                               ──> T8 (Game Dev columns)
 
-T5 (TM tree) ──> T2 (TM lookup) -- TM must be assigned/active to provide matches
+Game Dev merge chain:
+  T1 ──> T6 ──> T8 ──> D3 (Position-aware merge)
 
-T4 (File explorer) ──> T6 (File upload)
-                   ──> D4 (MapDataGenerator) -- image/audio mapping in file context
+Media pipeline:
+  T1 ──> D4 (Cross-ref chains) ──> T9 (DDS > PNG)
+  T1 ──> D4 ──> D5 (WEM audio)
+  T9/D5 ──> T10 (Missing asset placeholders)
 
-D1 (Semantic search) ──> T3 (Concordance) -- semantic concordance is the differentiator
+AI pipeline:
+  T1 (parsed data) ──> D2 (AI summaries via Qwen3)
+  D2 requires Ollama running (graceful degradation if not)
 
-T14 (Polished grid) ──> EVERYTHING -- if the grid is slow, nothing else matters
+Bug fixes:
+  T14 ──> independent (can be done anytime)
+
+CLI:
+  D8 ──> depends on T2, T3, T4, T5, D3 being implemented first
 ```
 
 ---
 
-## MVP Recommendation (Demo-Ready)
+## MVP Recommendation (v2.0 Phase Ordering)
 
-### Must have for first demo (Phase 1):
+### Phase 1: Foundation (XML parsing + dual UI detection)
+1. **T12 — XML sanitizer + recovery** — Must handle bad input before anything else.
+2. **T1 — Real XML parsing** — The foundation everything depends on.
+3. **T11 — Language table parsing** — Extract translatable data from files.
+4. **T6 — Dual UI mode detection** — Route files to correct mode.
+5. **T7 + T8 — Column layouts** — Both modes need their columns.
+6. **D6 — StringIdConsumer** — Clean deduplication from the start.
 
-1. **T14 — Polished, fast grid** — This is the foundation. If it stutters, the demo fails.
-2. **T1 — Side-by-side editor** — The recognizable CAT tool layout.
-3. **T4 + T5 — File explorer + TM tree** — Already exist, need polish.
-4. **T6 + T7 — Upload + Export** — End-to-end workflow for the demo narrative.
-5. **T2 — TM lookup with match percentages** — Core value proposition.
-6. **T9 — Segment status indicators** — Visual confirmation the tool tracks translation state.
-7. **T11 — Keyboard navigation** — Makes the demo feel professional.
-8. **D1 — Semantic search** — Already built. The wow moment. "Watch this find similar translations even with different wording."
+### Phase 2: Translator merge (the core value)
+7. **T2 — Exact StringID match** — Most common merge operation.
+8. **T3 — Source text match** — Handles file version changes.
+9. **D1 — Fuzzy/semantic matching** — The differentiator, built on v1.0 infrastructure.
+10. **T13 — Postprocessing pipeline** — CJK cleanup after merge.
 
-### Add for impressive demo (Phase 2):
+### Phase 3: Export pipeline
+11. **T4 — Export to XML** — Round-trip fidelity with `<br/>` preservation.
+12. **T5 — Export to Excel** — xlsxwriter, LanguageDataExporter column structure.
+13. **D7 — Export to plain text** — Quick and simple.
 
-9. **T3 — Concordance search** — Builds on semantic search.
-10. **D3 — Local AI pretranslation** — Already built. Show Qwen in action.
-11. **D7 — TM leverage statistics** — "This file is 60% pre-translated." Executives love ROI numbers.
-12. **D8 — Glossary panel** — Side panel with auto-detected terms.
-13. **T12 — QA checks** — "Before you export, run QA. Zero errors."
-14. **D2 — Offline mode demo** — Pull the plug, keep working.
+### Phase 4: Media pipeline
+14. **T9 — DDS-to-PNG** — Pillow native support, straightforward.
+15. **D5 — WEM audio** — vgmstream-cli conversion.
+16. **D4 — Cross-reference chains** — Wire StrKey > UITextureName > DDS.
+17. **T10 — Missing asset placeholders** — Graceful fallback.
 
-### Defer:
+### Phase 5: Game Dev merge
+18. **D3 — Position-aware XML merge** — Node-level operations, most complex feature.
 
-- **D4 (MapDataGenerator):** Visually impressive but requires significant integration work. Phase 3.
-- **D5 (Character limits/variables):** Game-specific polish. Phase 3.
-- **D6 (Real-time collab):** Infrastructure exists but full implementation is Phase 4+.
-- **D10 (Dark mode):** Nice-to-have polish. Any phase.
-- **D11 (Audit log):** Enterprise feature, not demo-critical. Phase 4.
+### Phase 6: AI summaries
+19. **D2 — Qwen3 context summaries** — Requires Ollama, structured JSON, caching.
+
+### Phase 7: CLI + bugs + validation
+20. **D8 — CLI merge/export commands** — Scriptable operations.
+21. **T14 — Bug fixes** — Offline TMs, paste, folder 404.
+22. E2E round-trip validation tests.
+
+### Defer to v3.0:
+- **A1** (Full Game Dev CRUD): Needs schema definitions, parent-child rules.
+- **A2** (Codex): Needs all XML parsing + map rendering + entity pages.
+- **A3** (AI translation suggestions): Needs mature LLM + embedding pipeline.
+- **A6** (Auto-gen images/audio): Needs Nano Banana + voice synthesis integration.
 
 ---
 
-## What Executives Want to See in a Demo
+## Competitive Context
 
-Based on competitive analysis, these are the "moments" that sell:
+### What major CAT tools offer that LocaNext v2.0 matches:
+- TM matching with exact + fuzzy (Trados, memoQ, Phrase all have this)
+- XML file handling with tag preservation (standard across all tools)
+- Export to Excel (universal requirement)
+- QA checks (tag verification, structural validation)
 
-1. **Speed** — Open a 10,000-line file instantly. No loading spinner that lasts more than 1 second.
-2. **The TM match moment** — Type or navigate to a segment, watch the TM panel instantly show a 94% match with the difference highlighted.
-3. **Semantic search surprise** — Search for "The warrior attacks" and find "The fighter strikes" at 87% semantic similarity. This is where LocaNext beats Trados/memoQ.
-4. **Upload-to-translate flow** — Drag a file in, see it parsed, see TM matches applied, edit a few segments, export. Under 2 minutes.
-5. **Offline resilience** — "What if the server goes down?" Show it working with zero disruption.
-6. **Numbers** — "This 50,000-word project: 45% exact match, 25% fuzzy, 30% new. That is 70% less work."
+### What LocaNext v2.0 offers that competitors do NOT:
+- **Semantic fuzzy matching** via vector embeddings (competitors use edit-distance only)
+- **Local AI context summaries** with zero cloud dependency (unique)
+- **Game asset preview** (DDS textures, WEM audio inline) -- no CAT tool does this
+- **Dual Translator/Game Dev mode** in one tool -- competitors serve translators only
+- **Position-aware XML merge** for game data authoring -- unique to game dev workflow
+- **Full offline parity** with transparent mode switching (most tools are cloud-only or desktop-only, not both)
+- **CLI-first merge/export** for automation (most CAT tools are GUI-only)
+
+### Industry trends (2025-2026) that validate v2.0 direction:
+- **Local AI adoption accelerating**: Enterprise security teams increasingly prefer on-device models over cloud APIs. LocaNext's Qwen3 local inference aligns perfectly.
+- **Context-aware translation**: Smartling's RAG-powered prompt tooling, XTM's visual context -- the industry is moving toward giving translators more context. LocaNext's AI summaries + game asset preview are ahead of this curve.
+- **Game localization specialization**: Gridly, LocalizeDirect, and XTM Cloud all added game-specific features in 2025. The market recognizes game localization as a distinct vertical. LocaNext's dual-mode approach is uniquely positioned.
 
 ---
 
 ## Sources
 
-- [memoQ Translation Memory docs](https://docs.memoq.com/current/en/Concepts/concepts-translation-memories.html) — TM management, context matching, assignment patterns
-- [Trados features page](https://www.trados.com/product/features/) — QA checks, file format support, editor capabilities
-- [Trados QA checks](https://www.web-translations.com/blog/quality-control-features-in-trados/) — Tag verifier, terminology verifier, number/punctuation checks
-- [Smartcat Editor overview](https://help.smartcat.com/1539449-editor-functionalities-overview/) — CAT panel, concordance, glossary integration
-- [Smartcat glossary management](https://help.smartcat.com/1539721-working-with-glossary-terms/) — Terminology detection, glossary-in-editor workflow
-- [CAT Tools Comparison guide](https://better-i18n.com/en/blog/cat-tools-comparison-guide/) — memoQ vs Trados vs Phrase comparison
-- [XTM enterprise guide](https://xtm.ai/en-us/blog/cat-tools-guide) — Enterprise CAT tool expectations
-- [Gridly game localization guide](https://www.gridly.com/blog/game-localization-guide/) — Character limits, variable placeholders, context
-- [Phrase game localization](https://phrase.com/solutions/game-localization/) — Game-specific CAT features
-- [Smartcat word match levels](https://help.smartcat.com/cat-tool-word-matches/) — Fuzzy match percentage tiers and leverage reporting
+- [CAT Tools Comparison 2026](https://geotargetly.com/blog/cat-tools) -- Feature comparison across major tools
+- [memoQ vs Trados vs Phrase](https://better-i18n.com/en/blog/cat-tools-comparison-guide/) -- Detailed feature matrix
+- [AI in Localization Roadmap 2025-2028](https://medium.com/@hastur/embracing-ai-in-localization-a-2025-2028-roadmap-a5e9c4cd67b0) -- Industry direction for LLM integration
+- [Smartling AI Translation Growth](https://www.smartling.com/company-news/growth-in-ai-translation-in-2025) -- 218% growth in AI translation adoption
+- [Pillow DDS Support](https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html) -- Native DdsImagePlugin in Pillow 12.x (HIGH confidence)
+- [vgmstream WEM playback](https://github.com/vgmstream/vgmstream) -- WEM-to-WAV conversion tool
+- [XTM Visual Localization](https://xtm.cloud/use-cases/game-translation/) -- Visual context in game localization
+- [TMX Standard](https://www.maxprograms.com/articles/tmx.html) -- Translation memory exchange format
+- [Fuzzy Matching (Wikipedia)](https://en.wikipedia.org/wiki/Fuzzy_matching_(computer-assisted_translation)) -- Edit-distance vs semantic approaches
+- [Gridly Game Localization Guide](https://www.gridly.com/blog/game-localization-guide/) -- Game-specific localization workflow patterns
+- LocaNext v1.0 FEATURES.md (internal) -- Previous milestone feature analysis
+- NewScripts source code patterns (internal) -- 10 XML parsing patterns, QuickTranslate merge logic, LanguageDataExporter export patterns
+
+---
+
+*Researched: 2026-03-15 for v2.0 milestone planning*
+*Supersedes: v1.0 FEATURES.md (demo-ready scope)*
+*Confidence: MEDIUM-HIGH -- core features well-understood from NewScripts patterns; AI summary and Game Dev merge less proven in production*
