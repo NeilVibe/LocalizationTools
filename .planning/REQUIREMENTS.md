@@ -37,6 +37,7 @@
 
 ### Test Fixes
 
+- [ ] **FIX-11**: GameDevPage handleFileSelect removes non-existent upload-path call and loads XML directly via gamedata/browse + columns endpoints
 - [ ] **TEST-01**: test_mock_gamedata_pipeline.py texture test updated for generated universe filenames
 
 ## Out of Scope
@@ -67,6 +68,7 @@
 | FIX-08 | Phase 23 | Pending |
 | FIX-09 | Phase 23 | Pending |
 | FIX-10 | Phase 23 | Pending |
+| FIX-11 | Phase 23 | Pending |
 | TEST-01 | Phase 23 | Pending |
 | UX-01 | Phase 24 | Pending |
 | UX-02 | Phase 24 | Pending |
@@ -75,8 +77,8 @@
 | UX-05 | Phase 24 | Pending |
 
 **Coverage:**
-- v3.1 requirements: 22 total
-- Mapped to phases: 22
+- v3.1 requirements: 23 total
+- Mapped to phases: 23
 - Unmapped: 0
 
 ---

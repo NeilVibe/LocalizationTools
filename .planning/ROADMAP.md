@@ -74,13 +74,14 @@
 ### Phase 23: Bug Fixes
 **Goal**: All runtime bugs identified in the v3.0 3-agent swarm audit are fixed -- no crashes, no broken navigation, no infinite loading states
 **Depends on**: Phase 22 (event wiring must be stable before fixing component-level bugs that depend on event flow)
-**Requirements**: FIX-01, FIX-02, FIX-03, FIX-04, FIX-05, FIX-06, FIX-07, FIX-08, FIX-09, FIX-10, TEST-01
+**Requirements**: FIX-01, FIX-02, FIX-03, FIX-04, FIX-05, FIX-06, FIX-07, FIX-08, FIX-09, FIX-10, FIX-11, TEST-01
 **Success Criteria** (what must be TRUE):
   1. GameDevPage loads files without creating fallback IDs -- error states show meaningful messages instead of silent Date.now() workarounds
   2. Audio playback in CodexEntityDetail falls back to PlaceholderAudio on decode error instead of showing a broken player
   3. Clicking "Navigate to NPC" in MapDetailPanel opens the correct Codex entity page for that NPC
   4. Loading indicators in AISuggestionsTab and NamingPanel clear when debounce timers are cancelled (no infinite spinners)
   5. WorldMapPage tooltip does not appear over the detail panel, and route keys are deduplicated to prevent {#each} crashes
+  6. GameDevPage file selection works end-to-end using gamedata/browse and gamedata/columns APIs (no non-existent upload-path endpoint)
 **Plans**: TBD
 
 ### Phase 24: UIUX Polish
