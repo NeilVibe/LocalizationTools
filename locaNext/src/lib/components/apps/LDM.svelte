@@ -7,7 +7,7 @@
   } from "carbon-components-svelte";
   import { DataBase, ServerProxy, Cloud, CloudOffline, Renew, CloudUpload, Column, Document } from "carbon-icons-svelte";
   import { preferences } from "$lib/stores/preferences.js";
-  import { currentPage, openFile, openFileInGrid, closeGrid, openTM, openTMInGrid, closeTMGrid, goToGameDev } from "$lib/stores/navigation.js";
+  import { currentPage, openFile, openFileInGrid, closeGrid, openTM, openTMInGrid, closeTMGrid, goToGameDev, goToCodex } from "$lib/stores/navigation.js";
   import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
@@ -23,6 +23,8 @@
   import GridPage from "$lib/components/pages/GridPage.svelte";
   // Phase 18: Game Dev page
   import GameDevPage from "$lib/components/pages/GameDevPage.svelte";
+  // Phase 19: Game World Codex page
+  import CodexPage from "$lib/components/pages/CodexPage.svelte";
   // UI-097: PreferencesModal removed - use top nav Settings > Preferences
   import GridColumnsModal from "$lib/components/GridColumnsModal.svelte";
   import ReferenceSettingsModal from "$lib/components/ReferenceSettingsModal.svelte";
@@ -907,6 +909,9 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
       {:else if $currentPage === 'gamedev'}
         <!-- Phase 18: Game Dev Page: File explorer + grid for gamedata -->
         <GameDevPage />
+      {:else if $currentPage === 'codex'}
+        <!-- Phase 19: Game World Codex -->
+        <CodexPage />
       {:else if $currentPage === 'tm-entries'}
         <!-- TM Entries Page: Full-page TM entries viewer -->
         <div class="tm-entries-page">
