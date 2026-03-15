@@ -90,10 +90,10 @@ Plans:
   1. User exports to XML and br-tags round-trip correctly (no corruption, no entity encoding)
   2. User exports to Excel and sees the correct column structure (StrOrigin, ENG, Str, Correction, etc.)
   3. User exports to plain text and gets a clean StringID + source + translation tabulated format
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 10-01: TBD
+- [ ] 10-01-PLAN.md -- ExportService (XML/Excel/text) + route wiring (TMERGE-05, TMERGE-06, TMERGE-07)
 
 ### Phase 11: Image & Audio Pipeline
 **Goal**: Users see real game images and hear game audio inline in the context panel
