@@ -19,6 +19,7 @@ const defaultPreferences = {
   // UI-004: showTmResults removed - TM results only shown in edit modal
   showIndex: false,
   showStringId: false,
+  showCategory: true,  // P16: Category column (default visible)
   showReference: false,
 
   // TM Settings

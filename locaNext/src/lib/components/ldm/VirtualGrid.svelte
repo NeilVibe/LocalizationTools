@@ -16,6 +16,8 @@
   import { WarningAltFilled } from "carbon-icons-svelte";
   import PresenceBar from "./PresenceBar.svelte";
   import ColorText from "./ColorText.svelte";
+  import CategoryFilter from "./CategoryFilter.svelte";
+  import { CATEGORY_COLORS } from "./CategoryFilter.svelte";
   import { stripColorTags, paColorToHtml, htmlToPaColor, hexToCSS } from "$lib/utils/colorParser.js";
   import SemanticResults from "./SemanticResults.svelte";
 
@@ -62,6 +64,18 @@
     { id: "unconfirmed", text: "Unconfirmed" },
     { id: "qa_flagged", text: "QA Flagged" }
   ];
+
+  // P16: Category filter state
+  let selectedCategories = $state([]);
+
+  /**
+   * Get CSS color for a content category.
+   * @param {string} category - Category name
+   * @returns {string} Hex color code
+   */
+  function getCategoryColor(category) {
+    return CATEGORY_COLORS[category] || "#D9D9D9";
+  }
 
   // P5: Advanced Search state
   let searchMode = $state("contain"); // 'contain' | 'exact' | 'not_contain' | 'fuzzy'
@@ -295,6 +309,7 @@
   const translatorColumns = {
     row_num: { key: "row_num", label: "#", width: 60, prefKey: "showIndex" },
     string_id: { key: "string_id", label: "StringID", width: 150, prefKey: "showStringId" },
+    category: { key: "category", label: "Category", width: 100, minWidth: 80, prefKey: "showCategory" },
     source: { key: "source", label: "Source (KR)", width: 350, always: true },
     target: { key: "target", label: "Target", width: 350, always: true },
     reference: { key: "reference", label: "Reference", width: 300, prefKey: "showReference" },
@@ -493,6 +508,10 @@
       if (activeFilter && activeFilter !== 'all') {
         params.append('filter', activeFilter);
       }
+      // P16: Add category filter param
+      if (selectedCategories.length > 0) {
+        params.append('category', selectedCategories.join(','));
+      }
 
       // P9: Unified endpoint - backend handles both PostgreSQL and SQLite
       const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
@@ -638,6 +657,7 @@
     referenceData = new Map();
     semanticResults = [];
     activeFilter = "all";
+    selectedCategories = []; // P16: Reset category filter on file change
     tmAppliedRows = new Map();
     searchTerm = "";
     const inputEl = document.getElementById('ldm-search-input');
@@ -849,6 +869,15 @@
     rows = [];
     loadRows();
     logger.userAction("Filter changed", { filter: activeFilter });
+  }
+
+  // P16: Category filter change handler
+  function handleCategoryFilterChange(categories) {
+    selectedCategories = categories;
+    loadedPages.clear();
+    rows = [];
+    loadRows();
+    logger.userAction("Category filter changed", { categories: selectedCategories });
   }
 
   // Go to specific row - REMOVED (BUG-001 - not useful)
@@ -2565,6 +2594,14 @@
           hideLabel
         />
       </div>
+
+      <!-- P16: Category Filter -->
+      {#if fileType !== 'gamedev'}
+        <CategoryFilter
+          bind:selectedCategories={selectedCategories}
+          onchange={handleCategoryFilterChange}
+        />
+      {/if}
     </div>
 
     <!-- Hotkey Reference Bar -->
@@ -2629,6 +2666,11 @@
                     <div class="placeholder-shimmer"></div>
                   </div>
                 {/if}
+                {#if $preferences.showCategory && fileType !== 'gamedev'}
+                  <div class="cell category loading-cell" style="width: 100px;">
+                    <div class="placeholder-shimmer"></div>
+                  </div>
+                {/if}
                 <!-- UI-090: Use flex-grow ratios to share remaining space after fixed columns -->
                 <div class="cell source loading-cell" style="flex: {sourceWidthPercent} 1 0;">
                   <div class="placeholder-shimmer"></div>
@@ -2662,6 +2704,19 @@
                 {#if $preferences.showStringId && fileType !== 'gamedev'}
                   <div class="cell string-id" style="width: {stringIdColumnWidth}px;">
                     {row.string_id || "-"}
+                  </div>
+                {/if}
+
+                <!-- P16: Category column (translator mode only) -->
+                {#if $preferences.showCategory && fileType !== 'gamedev'}
+                  <div class="cell category" style="width: 100px;">
+                    {#if row.category}
+                      <Tag type="outline" size="sm" style="--cds-tag-background-color: {getCategoryColor(row.category)}; --cds-tag-color: #333; background-color: {getCategoryColor(row.category)}30; border-color: {getCategoryColor(row.category)};">
+                        {row.category}
+                      </Tag>
+                    {:else}
+                      <span class="category-empty">-</span>
+                    {/if}
                   </div>
                 {/if}
 
