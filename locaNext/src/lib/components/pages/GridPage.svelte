@@ -177,6 +177,17 @@
   }
 
   /**
+   * Apply AI suggestion from side panel
+   */
+  function handleApplySuggestionFromPanel(event) {
+    const { target } = event.detail;
+    if (virtualGrid && sidePanelSelectedRow) {
+      virtualGrid.applyTMToRow(sidePanelSelectedRow.line_number, target);
+      logger.userAction('Applied AI suggestion from panel', { row: sidePanelSelectedRow.line_number });
+    }
+  }
+
+  /**
    * Handle translation confirmation (auto-add to TM)
    * Uses hierarchy activeTMs - entries auto-added to first active TM
    * VirtualGrid sends: {rowId, source, target}
@@ -323,6 +334,7 @@
       qaLoading={sidePanelQALoading}
       {leverageStats}
       on:applyTM={handleApplyTMFromPanel}
+      on:applySuggestion={handleApplySuggestionFromPanel}
     />
   </div>
 </div>
