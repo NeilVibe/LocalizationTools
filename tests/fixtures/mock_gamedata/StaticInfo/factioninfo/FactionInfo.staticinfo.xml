@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<FactionNodeDataList>
+  <FactionGroup GroupName="모험의 대륙" StrKey="FGRP_MAIN">
+    <Faction Name="검은별 세력" StrKey="FAC_BLACKSTAR">
+      <FactionNode StrKey="FNODE_0001" KnowledgeKey="KNOW_REGION_0001" WorldPosition="2403.5,0,4807.9" Type="Main"/>
+      <FactionNode StrKey="FNODE_0002" KnowledgeKey="KNOW_REGION_0002" WorldPosition="4979.4,0,3001.0" Type="Sub"/>
+      <FactionNode StrKey="FNODE_0003" KnowledgeKey="KNOW_REGION_0003" WorldPosition="3732.8,0,1196.6" Type="Dungeon"/>
+      <FactionNode StrKey="FNODE_0004" KnowledgeKey="KNOW_REGION_0004" WorldPosition="1835.2,0,4859.2" Type="Town"/>
+      <FactionNode StrKey="FNODE_0005" KnowledgeKey="KNOW_REGION_0005" WorldPosition="3106.3,0,2939.9" Type="Fortress"/>
+      <FactionNode StrKey="FNODE_0006" KnowledgeKey="KNOW_REGION_0006" WorldPosition="3865.9,0,757.2" Type="Wilderness"/>
+      <FactionNode StrKey="FNODE_0007" KnowledgeKey="KNOW_REGION_0007" WorldPosition="3128.8,0,2762.8" Type="Main"/>
+      <FactionNode StrKey="FNODE_0008" KnowledgeKey="KNOW_REGION_0008" WorldPosition="4337.2,0,1208.4" Type="Sub"/>
+      <FactionNode StrKey="FNODE_0009" KnowledgeKey="KNOW_REGION_0009" WorldPosition="4823.5,0,860.5" Type="Dungeon"/>
+      <FactionNode StrKey="FNODE_0010" KnowledgeKey="KNOW_REGION_0010" WorldPosition="1336.2,0,3177.7" Type="Town"/>
+      <FactionNode StrKey="FNODE_0011" KnowledgeKey="KNOW_REGION_0011" WorldPosition="3538.5,0,1558.4" Type="Fortress"/>
+      <FactionNode StrKey="FNODE_0012" KnowledgeKey="KNOW_REGION_0012" WorldPosition="1039.5,0,4506.3" Type="Wilderness"/>
+      <FactionNode StrKey="FNODE_0013" KnowledgeKey="KNOW_REGION_0013" WorldPosition="1608.0,0,3175.3" Type="Main"/>
+      <FactionNode StrKey="FNODE_0014" KnowledgeKey="KNOW_REGION_0014" WorldPosition="3287.2,0,2386.5" Type="Sub"/>
+    </Faction>
+  </FactionGroup>
+</FactionNodeDataList>

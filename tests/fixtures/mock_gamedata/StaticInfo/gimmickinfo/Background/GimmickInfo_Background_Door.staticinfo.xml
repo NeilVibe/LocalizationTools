@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<GimmickGroupInfoList>
+  <GimmickGroupInfo StrKey="GGRP_0001" GimmickName="봉인된 문">
+    <GimmickInfo StrKey="GIMM_0001" GimmickName="봉인된 문">
+      <SealData Desc="고대 봉인이 걸려 있다.&lt;br/&gt;열쇠가 필요하다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0004" GimmickName="비밀 통로">
+    <GimmickInfo StrKey="GIMM_0004" GimmickName="비밀 통로">
+      <SealData Desc="벽 뒤에 숨겨진 비밀 통로.&lt;br/&gt;자세히 살펴보면 발견할 수 있다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0007" GimmickName="수정 기둥">
+    <GimmickInfo StrKey="GIMM_0007" GimmickName="수정 기둥">
+      <SealData Desc="오래된 보물이 잠들어 있는 상자.&lt;br/&gt;함정이 설치되어 있을 수 있다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0010" GimmickName="석상">
+    <GimmickInfo StrKey="GIMM_0010" GimmickName="석상">
+      <SealData Desc="바닥에 설치된 함정.&lt;br/&gt;밟으면 화살이 발사된다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0013" GimmickName="신비한 오벨리스크">
+    <GimmickInfo StrKey="GIMM_0013" GimmickName="신비한 오벨리스크">
+      <SealData Desc="강력한 마법으로 봉인된 장치.&lt;br/&gt;특별한 주문이 필요하다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0016" GimmickName="용의 석상">
+    <GimmickInfo StrKey="GIMM_0016" GimmickName="용의 석상">
+      <SealData Desc="고대 봉인이 걸려 있다.&lt;br/&gt;열쇠가 필요하다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0019" GimmickName="봉인 장치">
+    <GimmickInfo StrKey="GIMM_0019" GimmickName="봉인 장치">
+      <SealData Desc="벽 뒤에 숨겨진 비밀 통로.&lt;br/&gt;자세히 살펴보면 발견할 수 있다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0022" GimmickName="잠자는 골렘">
+    <GimmickInfo StrKey="GIMM_0022" GimmickName="잠자는 골렘">
+      <SealData Desc="오래된 보물이 잠들어 있는 상자.&lt;br/&gt;함정이 설치되어 있을 수 있다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0025" GimmickName="얼음 기둥">
+    <GimmickInfo StrKey="GIMM_0025" GimmickName="얼음 기둥">
+      <SealData Desc="바닥에 설치된 함정.&lt;br/&gt;밟으면 화살이 발사된다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+</GimmickGroupInfoList>

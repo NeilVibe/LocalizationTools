@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SkillInfoList>
+  <SkillInfo Key="15001" StrKey="Skill_0001_강타" SkillName="강타" SkillDesc="강력한 일격을 가한다.&lt;br/&gt;적에게 큰 피해를 준다." LearnKnowledgeKey="KNOW_SKILL_0001"/>
+  <SkillInfo Key="15002" StrKey="Skill_0002_회전_베기" SkillName="회전 베기" SkillDesc="회전하며 주변의 적을 공격한다." LearnKnowledgeKey="KNOW_SKILL_0002"/>
+  <SkillInfo Key="15003" StrKey="Skill_0003_돌진" SkillName="돌진" SkillDesc="전방으로 돌진하여 적을 밀어낸다.&lt;br/&gt;이동과 공격을 동시에 수행한다." LearnKnowledgeKey="KNOW_SKILL_0003"/>
+  <SkillInfo Key="15004" StrKey="Skill_0004_방어_자세" SkillName="방어 자세" SkillDesc="방어 태세를 취하여 받는 피해를 줄인다." LearnKnowledgeKey="KNOW_SKILL_0004"/>
+  <SkillInfo Key="15005" StrKey="Skill_0005_기합" SkillName="기합" SkillDesc="정신을 집중하여 능력치를 일시적으로 상승시킨다.&lt;br/&gt;집중력이 높을수록 효과가 크다." LearnKnowledgeKey="KNOW_SKILL_0005"/>
+  <SkillInfo Key="15006" StrKey="Skill_0006_화염구" SkillName="화염구" SkillDesc="불타는 화염구를 발사한다.&lt;br/&gt;범위 피해를 입힌다." LearnKnowledgeKey="KNOW_SKILL_0006"/>
+  <SkillInfo Key="15007" StrKey="Skill_0007_냉기_화살" SkillName="냉기 화살" SkillDesc="얼음 화살을 발사하여 적을 감속시킨다." LearnKnowledgeKey="KNOW_SKILL_0007"/>
+  <SkillInfo Key="15008" StrKey="Skill_0008_번개_낙뢰" SkillName="번개 낙뢰" SkillDesc="하늘에서 번개를 떨어뜨린다.&lt;br/&gt;높은 확률로 기절시킨다." LearnKnowledgeKey="KNOW_SKILL_0008"/>
+  <SkillInfo Key="15009" StrKey="Skill_0009_치유의_빛" SkillName="치유의 빛" SkillDesc="신성한 빛으로 아군을 치유한다." LearnKnowledgeKey="KNOW_SKILL_0009"/>
+  <SkillInfo Key="15010" StrKey="Skill_0010_보호막" SkillName="보호막" SkillDesc="마법 보호막을 생성하여 피해를 흡수한다.&lt;br/&gt;지속 시간 동안 피해를 대신 받는다." LearnKnowledgeKey="KNOW_SKILL_0010"/>
+  <SkillInfo Key="15011" StrKey="Skill_0011_은신" SkillName="은신" SkillDesc="그림자 속에 몸을 숨긴다.&lt;br/&gt;이동 속도가 감소하지만 적에게 발견되지 않는다." LearnKnowledgeKey="KNOW_SKILL_0011"/>
+  <SkillInfo Key="15012" StrKey="Skill_0012_급소_공격" SkillName="급소 공격" SkillDesc="적의 약점을 정확히 공격한다.&lt;br/&gt;치명타 확률이 크게 증가한다." LearnKnowledgeKey="KNOW_SKILL_0012"/>
+  <SkillInfo Key="15013" StrKey="Skill_0013_독침" SkillName="독침" SkillDesc="독이 묻은 침을 발사한다." LearnKnowledgeKey="KNOW_SKILL_0001"/>
+  <SkillInfo Key="15014" StrKey="Skill_0014_연막탄" SkillName="연막탄" SkillDesc="연막탄을 던져 시야를 가린다.&lt;br/&gt;적의 명중률을 크게 감소시킨다." LearnKnowledgeKey="KNOW_SKILL_0002"/>
+  <SkillInfo Key="15015" StrKey="Skill_0015_추적" SkillName="추적" SkillDesc="표적을 추적하여 이동 속도를 상승시킨다." LearnKnowledgeKey="KNOW_SKILL_0003"/>
+  <SkillInfo Key="15016" StrKey="Skill_0016_소환:_정령" SkillName="소환: 정령" SkillDesc="정령을 소환하여 함께 전투한다.&lt;br/&gt;소환된 정령은 일정 시간 후 사라진다." LearnKnowledgeKey="KNOW_SKILL_0004"/>
+  <SkillInfo Key="15017" StrKey="Skill_0017_강화_마법" SkillName="강화 마법" SkillDesc="아군에게 강화 마법을 부여한다." LearnKnowledgeKey="KNOW_SKILL_0005"/>
+  <SkillInfo Key="15018" StrKey="Skill_0018_저주" SkillName="저주" SkillDesc="적에게 저주를 걸어 능력치를 감소시킨다.&lt;br/&gt;중첩 가능하다." LearnKnowledgeKey="KNOW_SKILL_0006"/>
+  <SkillInfo Key="15019" StrKey="Skill_0019_해제" SkillName="해제" SkillDesc="부정적인 효과를 해제한다." LearnKnowledgeKey="KNOW_SKILL_0007"/>
+  <SkillInfo Key="15020" StrKey="Skill_0020_부활" SkillName="부활" SkillDesc="쓰러진 아군을 부활시킨다.&lt;br/&gt;부활 후 일정 시간 무적 상태이다." LearnKnowledgeKey="KNOW_SKILL_0008"/>
+  <SkillInfo Key="15021" StrKey="Skill_0021_연타" SkillName="연타" SkillDesc="강력한 일격을 가한다.&lt;br/&gt;적에게 큰 피해를 준다." LearnKnowledgeKey="KNOW_SKILL_0009"/>
+  <SkillInfo Key="15022" StrKey="Skill_0022_관통_사격" SkillName="관통 사격" SkillDesc="회전하며 주변의 적을 공격한다." LearnKnowledgeKey="KNOW_SKILL_0010"/>
+  <SkillInfo Key="15023" StrKey="Skill_0023_광역_폭발" SkillName="광역 폭발" SkillDesc="전방으로 돌진하여 적을 밀어낸다.&lt;br/&gt;이동과 공격을 동시에 수행한다." LearnKnowledgeKey="KNOW_SKILL_0011"/>
+  <SkillInfo Key="15024" StrKey="Skill_0024_집중" SkillName="집중" SkillDesc="방어 태세를 취하여 받는 피해를 줄인다." LearnKnowledgeKey="KNOW_SKILL_0012"/>
+  <SkillInfo Key="15025" StrKey="Skill_0025_분노_폭발" SkillName="분노 폭발" SkillDesc="정신을 집중하여 능력치를 일시적으로 상승시킨다.&lt;br/&gt;집중력이 높을수록 효과가 크다." LearnKnowledgeKey="KNOW_SKILL_0001"/>
+  <SkillInfo Key="15026" StrKey="Skill_0026_공중_강습" SkillName="공중 강습" SkillDesc="불타는 화염구를 발사한다.&lt;br/&gt;범위 피해를 입힌다." LearnKnowledgeKey="KNOW_SKILL_0002"/>
+  <SkillInfo Key="15027" StrKey="Skill_0027_지면_강타" SkillName="지면 강타" SkillDesc="얼음 화살을 발사하여 적을 감속시킨다." LearnKnowledgeKey="KNOW_SKILL_0003"/>
+  <SkillInfo Key="15028" StrKey="Skill_0028_돌풍_베기" SkillName="돌풍 베기" SkillDesc="하늘에서 번개를 떨어뜨린다.&lt;br/&gt;높은 확률로 기절시킨다." LearnKnowledgeKey="KNOW_SKILL_0004"/>
+  <SkillInfo Key="15029" StrKey="Skill_0029_얼음_감옥" SkillName="얼음 감옥" SkillDesc="신성한 빛으로 아군을 치유한다." LearnKnowledgeKey="KNOW_SKILL_0005"/>
+  <SkillInfo Key="15030" StrKey="Skill_0030_불꽃_폭풍" SkillName="불꽃 폭풍" SkillDesc="마법 보호막을 생성하여 피해를 흡수한다.&lt;br/&gt;지속 시간 동안 피해를 대신 받는다." LearnKnowledgeKey="KNOW_SKILL_0006"/>
+  <SkillInfo Key="15031" StrKey="Skill_0031_그림자_이동" SkillName="그림자 이동" SkillDesc="그림자 속에 몸을 숨긴다.&lt;br/&gt;이동 속도가 감소하지만 적에게 발견되지 않는다." LearnKnowledgeKey="KNOW_SKILL_0007"/>
+  <SkillInfo Key="15032" StrKey="Skill_0032_독안개" SkillName="독안개" SkillDesc="적의 약점을 정확히 공격한다.&lt;br/&gt;치명타 확률이 크게 증가한다." LearnKnowledgeKey="KNOW_SKILL_0008"/>
+  <SkillInfo Key="15033" StrKey="Skill_0033_생명_흡수" SkillName="생명 흡수" SkillDesc="독이 묻은 침을 발사한다." LearnKnowledgeKey="KNOW_SKILL_0009"/>
+  <SkillInfo Key="15034" StrKey="Skill_0034_마나_흡수" SkillName="마나 흡수" SkillDesc="연막탄을 던져 시야를 가린다.&lt;br/&gt;적의 명중률을 크게 감소시킨다." LearnKnowledgeKey="KNOW_SKILL_0010"/>
+  <SkillInfo Key="15035" StrKey="Skill_0035_시간_정지" SkillName="시간 정지" SkillDesc="표적을 추적하여 이동 속도를 상승시킨다." LearnKnowledgeKey="KNOW_SKILL_0011"/>
+  <SkillInfo Key="15036" StrKey="Skill_0036_용의_숨결" SkillName="용의 숨결" SkillDesc="정령을 소환하여 함께 전투한다.&lt;br/&gt;소환된 정령은 일정 시간 후 사라진다." LearnKnowledgeKey="KNOW_SKILL_0012"/>
+  <SkillInfo Key="15037" StrKey="Skill_0037_성스러운_일격" SkillName="성스러운 일격" SkillDesc="아군에게 강화 마법을 부여한다." LearnKnowledgeKey="KNOW_SKILL_0001"/>
+  <SkillInfo Key="15038" StrKey="Skill_0038_암흑_파동" SkillName="암흑 파동" SkillDesc="적에게 저주를 걸어 능력치를 감소시킨다.&lt;br/&gt;중첩 가능하다." LearnKnowledgeKey="KNOW_SKILL_0002"/>
+  <SkillInfo Key="15039" StrKey="Skill_0039_바람의_칼날" SkillName="바람의 칼날" SkillDesc="부정적인 효과를 해제한다." LearnKnowledgeKey="KNOW_SKILL_0003"/>
+  <SkillInfo Key="15040" StrKey="Skill_0040_대지의_힘" SkillName="대지의 힘" SkillDesc="쓰러진 아군을 부활시킨다.&lt;br/&gt;부활 후 일정 시간 무적 상태이다." LearnKnowledgeKey="KNOW_SKILL_0004"/>
+  <SkillInfo Key="15041" StrKey="Skill_0041_번개_연쇄" SkillName="번개 연쇄" SkillDesc="강력한 일격을 가한다.&lt;br/&gt;적에게 큰 피해를 준다." LearnKnowledgeKey="KNOW_SKILL_0005"/>
+  <SkillInfo Key="15042" StrKey="Skill_0042_빙결_폭풍" SkillName="빙결 폭풍" SkillDesc="회전하며 주변의 적을 공격한다." LearnKnowledgeKey="KNOW_SKILL_0006"/>
+  <SkillInfo Key="15043" StrKey="Skill_0043_화염_벽" SkillName="화염 벽" SkillDesc="전방으로 돌진하여 적을 밀어낸다.&lt;br/&gt;이동과 공격을 동시에 수행한다." LearnKnowledgeKey="KNOW_SKILL_0007"/>
+  <SkillInfo Key="15044" StrKey="Skill_0044_치유의_비" SkillName="치유의 비" SkillDesc="방어 태세를 취하여 받는 피해를 줄인다." LearnKnowledgeKey="KNOW_SKILL_0008"/>
+  <SkillInfo Key="15045" StrKey="Skill_0045_수호의_결계" SkillName="수호의 결계" SkillDesc="정신을 집중하여 능력치를 일시적으로 상승시킨다.&lt;br/&gt;집중력이 높을수록 효과가 크다." LearnKnowledgeKey="KNOW_SKILL_0009"/>
+  <SkillInfo Key="15046" StrKey="Skill_0046_질풍_연무" SkillName="질풍 연무" SkillDesc="불타는 화염구를 발사한다.&lt;br/&gt;범위 피해를 입힌다." LearnKnowledgeKey="KNOW_SKILL_0010"/>
+  <SkillInfo Key="15047" StrKey="Skill_0047_천둥_강타" SkillName="천둥 강타" SkillDesc="얼음 화살을 발사하여 적을 감속시킨다." LearnKnowledgeKey="KNOW_SKILL_0011"/>
+  <SkillInfo Key="15048" StrKey="Skill_0048_극대_마법" SkillName="극대 마법" SkillDesc="하늘에서 번개를 떨어뜨린다.&lt;br/&gt;높은 확률로 기절시킨다." LearnKnowledgeKey="KNOW_SKILL_0012"/>
+  <SkillInfo Key="15049" StrKey="Skill_0049_환영_분신" SkillName="환영 분신" SkillDesc="신성한 빛으로 아군을 치유한다." LearnKnowledgeKey="KNOW_SKILL_0001"/>
+  <SkillInfo Key="15050" StrKey="Skill_0050_최후의_일격" SkillName="최후의 일격" SkillDesc="마법 보호막을 생성하여 피해를 흡수한다.&lt;br/&gt;지속 시간 동안 피해를 대신 받는다." LearnKnowledgeKey="KNOW_SKILL_0002"/>
+  <SkillInfo Key="15051" StrKey="Skill_0051_폭풍_사격" SkillName="폭풍 사격" SkillDesc="그림자 속에 몸을 숨긴다.&lt;br/&gt;이동 속도가 감소하지만 적에게 발견되지 않는다." LearnKnowledgeKey="KNOW_SKILL_0003"/>
+  <SkillInfo Key="15052" StrKey="Skill_0052_연속_자상" SkillName="연속 자상" SkillDesc="적의 약점을 정확히 공격한다.&lt;br/&gt;치명타 확률이 크게 증가한다." LearnKnowledgeKey="KNOW_SKILL_0004"/>
+  <SkillInfo Key="15053" StrKey="Skill_0053_회복_명상" SkillName="회복 명상" SkillDesc="독이 묻은 침을 발사한다." LearnKnowledgeKey="KNOW_SKILL_0005"/>
+  <SkillInfo Key="15054" StrKey="Skill_0054_전투_함성" SkillName="전투 함성" SkillDesc="연막탄을 던져 시야를 가린다.&lt;br/&gt;적의 명중률을 크게 감소시킨다." LearnKnowledgeKey="KNOW_SKILL_0006"/>
+  <SkillInfo Key="15055" StrKey="Skill_0055_축복의_기도" SkillName="축복의 기도" SkillDesc="표적을 추적하여 이동 속도를 상승시킨다." LearnKnowledgeKey="KNOW_SKILL_0007"/>
+  <SkillInfo Key="15056" StrKey="Skill_0056_강타" SkillName="강타_1" SkillDesc="정령을 소환하여 함께 전투한다.&lt;br/&gt;소환된 정령은 일정 시간 후 사라진다." LearnKnowledgeKey="KNOW_SKILL_0008"/>
+</SkillInfoList>

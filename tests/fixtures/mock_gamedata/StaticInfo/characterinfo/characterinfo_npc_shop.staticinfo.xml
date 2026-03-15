@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<CharacterInfoList>
+  <CharacterInfo StrKey="STR_CHAR_0001" CharacterName="Character_0001" KnowledgeKey="KNOW_CHAR_0001" Gender="Female" Age="464" Job="Elder" Race="Human"/>
+  <CharacterInfo StrKey="STR_CHAR_0002" CharacterName="Character_0002" KnowledgeKey="KNOW_CHAR_0002" Gender="Male" Age="44" Job="Warrior" Race="Elf"/>
+  <CharacterInfo StrKey="STR_CHAR_0003" CharacterName="Character_0003" KnowledgeKey="KNOW_CHAR_0003" Gender="Male" Age="58" Job="Sorcerer" Race="Elf"/>
+  <CharacterInfo StrKey="STR_CHAR_0004" CharacterName="Character_0004" KnowledgeKey="KNOW_CHAR_0004" Gender="Male" Age="404" Job="Scout" Race="Beastkin"/>
+  <CharacterInfo StrKey="STR_CHAR_0005" CharacterName="Character_0005" KnowledgeKey="KNOW_CHAR_0005" Gender="Male" Age="80" Job="Blacksmith" Race="Undead"/>
+  <CharacterInfo StrKey="STR_CHAR_0006" CharacterName="Character_0006" KnowledgeKey="KNOW_CHAR_0006" Gender="Male" Age="150" Job="Merchant" Race="Beastkin"/>
+  <CharacterInfo StrKey="STR_CHAR_0007" CharacterName="Character_0007" KnowledgeKey="KNOW_CHAR_0007" Gender="Female" Age="123" Job="Sage" Race="Undead"/>
+  <CharacterInfo StrKey="STR_CHAR_0008" CharacterName="Character_0008" KnowledgeKey="KNOW_CHAR_0008" Gender="Male" Age="380" Job="Archer" Race="Undead"/>
+</CharacterInfoList>

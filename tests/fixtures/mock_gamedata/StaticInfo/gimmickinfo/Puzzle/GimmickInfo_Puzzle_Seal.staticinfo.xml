@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<GimmickGroupInfoList>
+  <GimmickGroupInfo StrKey="GGRP_0003" GimmickName="고대 봉인">
+    <GimmickInfo StrKey="GIMM_0003" GimmickName="고대 봉인">
+      <SealData Desc="강력한 마법으로 봉인된 장치.&lt;br/&gt;특별한 주문이 필요하다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0006" GimmickName="마법 제단">
+    <GimmickInfo StrKey="GIMM_0006" GimmickName="마법 제단">
+      <SealData Desc="고대 봉인이 걸려 있다.&lt;br/&gt;열쇠가 필요하다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0009" GimmickName="마법진">
+    <GimmickInfo StrKey="GIMM_0009" GimmickName="마법진">
+      <SealData Desc="벽 뒤에 숨겨진 비밀 통로.&lt;br/&gt;자세히 살펴보면 발견할 수 있다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0012" GimmickName="잠긴 금고">
+    <GimmickInfo StrKey="GIMM_0012" GimmickName="잠긴 금고">
+      <SealData Desc="오래된 보물이 잠들어 있는 상자.&lt;br/&gt;함정이 설치되어 있을 수 있다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0015" GimmickName="고대 비석">
+    <GimmickInfo StrKey="GIMM_0015" GimmickName="고대 비석">
+      <SealData Desc="바닥에 설치된 함정.&lt;br/&gt;밟으면 화살이 발사된다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0018" GimmickName="마법 거울">
+    <GimmickInfo StrKey="GIMM_0018" GimmickName="마법 거울">
+      <SealData Desc="강력한 마법으로 봉인된 장치.&lt;br/&gt;특별한 주문이 필요하다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0021" GimmickName="파괴된 기계">
+    <GimmickInfo StrKey="GIMM_0021" GimmickName="파괴된 기계">
+      <SealData Desc="고대 봉인이 걸려 있다.&lt;br/&gt;열쇠가 필요하다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0024" GimmickName="불의 제단">
+    <GimmickInfo StrKey="GIMM_0024" GimmickName="불의 제단">
+      <SealData Desc="벽 뒤에 숨겨진 비밀 통로.&lt;br/&gt;자세히 살펴보면 발견할 수 있다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+  <GimmickGroupInfo StrKey="GGRP_0027" GimmickName="신비한 연못">
+    <GimmickInfo StrKey="GIMM_0027" GimmickName="신비한 연못">
+      <SealData Desc="오래된 보물이 잠들어 있는 상자.&lt;br/&gt;함정이 설치되어 있을 수 있다."/>
+    </GimmickInfo>
+  </GimmickGroupInfo>
+</GimmickGroupInfoList>

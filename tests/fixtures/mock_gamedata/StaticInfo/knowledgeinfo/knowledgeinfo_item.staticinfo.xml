@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<KnowledgeInfoList>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0001" Name="철 검" Desc="전투에서 유용한 검.&lt;br/&gt;장인이 정성껏 제작했다." UITextureName="item_0001"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0002" Name="강철 도끼" Desc="강력한 힘이 깃든 도끼.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." UITextureName="item_0002"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0003" Name="미스릴 창" Desc="고대 유적에서 발견된 창." UITextureName="item_0003"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0004" Name="아다만 활" Desc="희귀한 재료로 만들어진 활.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." UITextureName="item_0004"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0005" Name="오리칼쿰 단검" Desc="전장에서 검증된 단검.&lt;br/&gt;수많은 전투를 함께한 동반자이다." UITextureName="item_0005"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0006" Name="화염 지팡이" Desc="전투에서 유용한 지팡이.&lt;br/&gt;장인이 정성껏 제작했다." UITextureName="item_0006"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0007" Name="냉기 석궁" Desc="강력한 힘이 깃든 석궁.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." UITextureName="item_0007"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0008" Name="번개 해머" Desc="고대 유적에서 발견된 해머." UITextureName="item_0008"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0009" Name="독 낫" Desc="희귀한 재료로 만들어진 낫.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." UITextureName="item_0009"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0010" Name="신성 채찍" Desc="전장에서 검증된 채찍.&lt;br/&gt;수많은 전투를 함께한 동반자이다." UITextureName="item_0010"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0011" Name="고대 투구" Desc="전투에서 유용한 투구.&lt;br/&gt;장인이 정성껏 제작했다." UITextureName="item_0011"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0012" Name="전설 갑옷" Desc="강력한 힘이 깃든 갑옷.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." UITextureName="item_0012"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0013" Name="마법 장갑" Desc="고대 유적에서 발견된 장갑." UITextureName="item_0013"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0014" Name="저주받은 신발" Desc="희귀한 재료로 만들어진 신발.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." UITextureName="item_0014"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0015" Name="축복받은 방패" Desc="전장에서 검증된 방패.&lt;br/&gt;수많은 전투를 함께한 동반자이다." UITextureName="item_0015"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0016" Name="용사 물약" Desc="전투에서 유용한 물약.&lt;br/&gt;장인이 정성껏 제작했다." UITextureName="item_0016"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0017" Name="영웅 주문서" Desc="강력한 힘이 깃든 주문서.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." UITextureName="item_0017"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0018" Name="현자 음식" Desc="고대 유적에서 발견된 음식." UITextureName="item_0018"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0019" Name="암흑 폭탄" Desc="희귀한 재료로 만들어진 폭탄.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." UITextureName="item_0019"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0020" Name="황금 부적" Desc="전장에서 검증된 부적.&lt;br/&gt;수많은 전투를 함께한 동반자이다." UITextureName="item_0020"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0021" Name="룬 반지" Desc="전투에서 유용한 반지.&lt;br/&gt;장인이 정성껏 제작했다." UITextureName="item_0021"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0022" Name="별빛 목걸이" Desc="강력한 힘이 깃든 목걸이.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." UITextureName="item_0022"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0023" Name="달빛 귀걸이" Desc="고대 유적에서 발견된 귀걸이." UITextureName="item_0023"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0024" Name="태양 팔찌" Desc="희귀한 재료로 만들어진 팔찌.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." UITextureName="item_0024"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0025" Name="그림자 벨트" Desc="전장에서 검증된 벨트.&lt;br/&gt;수많은 전투를 함께한 동반자이다." UITextureName="item_0025"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0026" Name="철 검" Desc="전투에서 유용한 검.&lt;br/&gt;장인이 정성껏 제작했다." UITextureName="item_0026"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0027" Name="강철 도끼" Desc="강력한 힘이 깃든 도끼.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." UITextureName="item_0027"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0028" Name="미스릴 창" Desc="고대 유적에서 발견된 창." UITextureName="item_0028"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0029" Name="아다만 활" Desc="희귀한 재료로 만들어진 활.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." UITextureName="item_0029"/>
+  <KnowledgeInfo StrKey="KNOW_ITEM_0030" Name="오리칼쿰 단검" Desc="전장에서 검증된 단검.&lt;br/&gt;수많은 전투를 함께한 동반자이다." UITextureName="item_0030"/>
+</KnowledgeInfoList>

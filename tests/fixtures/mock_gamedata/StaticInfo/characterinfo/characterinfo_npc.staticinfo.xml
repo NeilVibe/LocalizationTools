@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<CharacterInfoList>
+  <CharacterInfo StrKey="STR_CHAR_0023" CharacterName="Character_0023" KnowledgeKey="KNOW_CHAR_0023" Gender="Female" Age="231" Job="Paladin" Race="Dwarf"/>
+  <CharacterInfo StrKey="STR_CHAR_0024" CharacterName="Character_0024" KnowledgeKey="KNOW_CHAR_0024" Gender="Female" Age="457" Job="Berserker" Race="Dwarf"/>
+  <CharacterInfo StrKey="STR_CHAR_0025" CharacterName="Character_0025" KnowledgeKey="KNOW_CHAR_0025" Gender="Male" Age="46" Job="Summoner" Race="Human"/>
+  <CharacterInfo StrKey="STR_CHAR_0026" CharacterName="Character_0026" KnowledgeKey="KNOW_CHAR_0026" Gender="Female" Age="424" Job="Spellsword" Race="Dwarf"/>
+  <CharacterInfo StrKey="STR_CHAR_0027" CharacterName="Character_0027" KnowledgeKey="KNOW_CHAR_0027" Gender="Male" Age="113" Job="Pirate" Race="Human"/>
+  <CharacterInfo StrKey="STR_CHAR_0028" CharacterName="Character_0028" KnowledgeKey="KNOW_CHAR_0028" Gender="Female" Age="86" Job="Monk" Race="Elf"/>
+  <CharacterInfo StrKey="STR_CHAR_0029" CharacterName="Character_0029" KnowledgeKey="KNOW_CHAR_0029" Gender="Male" Age="157" Job="Necromancer" Race="Dwarf"/>
+  <CharacterInfo StrKey="STR_CHAR_0030" CharacterName="Character_0030" KnowledgeKey="KNOW_CHAR_0030" Gender="Male" Age="462" Job="Fortune Teller" Race="Beastkin"/>
+  <CharacterInfo StrKey="STR_CHAR_0031" CharacterName="Character_0031" KnowledgeKey="KNOW_CHAR_0031" Gender="Female" Age="428" Job="Wanderer" Race="Human"/>
+  <CharacterInfo StrKey="STR_CHAR_0032" CharacterName="Character_0032" KnowledgeKey="KNOW_CHAR_0032" Gender="Male" Age="40" Job="Archmage" Race="Undead"/>
+  <CharacterInfo StrKey="STR_CHAR_0033" CharacterName="Character_0033" KnowledgeKey="KNOW_CHAR_0033" Gender="Male" Age="62" Job="Mercenary" Race="Undead"/>
+  <CharacterInfo StrKey="STR_CHAR_0034" CharacterName="Character_0034" KnowledgeKey="KNOW_CHAR_0034" Gender="Male" Age="223" Job="Priest" Race="Elf"/>
+  <CharacterInfo StrKey="STR_CHAR_0035" CharacterName="Character_0035" KnowledgeKey="KNOW_CHAR_0035" Gender="Female" Age="124" Job="Explorer" Race="Beastkin"/>
+  <CharacterInfo StrKey="STR_CHAR_0036" CharacterName="Character_0036" KnowledgeKey="KNOW_CHAR_0036" Gender="Male" Age="99" Job="Elder" Race="Dwarf"/>
+  <CharacterInfo StrKey="STR_CHAR_0037" CharacterName="Character_0037" KnowledgeKey="KNOW_CHAR_0001" Gender="Male" Age="214" Job="Warrior" Race="Dwarf"/>
+  <CharacterInfo StrKey="STR_CHAR_0038" CharacterName="Character_0038" KnowledgeKey="KNOW_CHAR_0002" Gender="Female" Age="161" Job="Sorcerer" Race="Elf"/>
+</CharacterInfoList>
