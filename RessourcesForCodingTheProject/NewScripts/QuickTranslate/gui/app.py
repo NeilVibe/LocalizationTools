@@ -260,6 +260,13 @@ class QuickTranslateApp:
                  font=('Segoe UI', 10), bg='#e0e0e0', relief='solid', bd=1,
                  padx=12, pady=4, cursor='hand2').pack(side=tk.RIGHT, padx=(5, 0))
 
+        self.preprocess_btn = tk.Button(btn_container, text="PRE-PROCESS",
+                                        command=self._preprocess,
+                                        font=('Segoe UI', 10), bg='#8fbc8f', fg='white',
+                                        relief='solid', bd=1,
+                                        padx=12, pady=4, cursor='hand2')
+        self.preprocess_btn.pack(side=tk.RIGHT, padx=(5, 0))
+
         self.transfer_btn = tk.Button(btn_container, text="TRANSFER", command=self._transfer,
                                       font=('Segoe UI', 11, 'bold'), bg='#d9534f', fg='white',
                                       relief='flat', padx=20, pady=4, cursor='hand2')
@@ -2202,6 +2209,7 @@ class QuickTranslateApp:
         """Disable all action buttons during processing."""
         self._cancel_event.clear()
         self.transfer_btn.config(state='disabled')
+        self.preprocess_btn.config(state='disabled')
         self.missing_trans_btn.config(state='disabled')
         self.exclude_btn.config(state='disabled')
         self.check_korean_btn.config(state='disabled')
@@ -2214,6 +2222,7 @@ class QuickTranslateApp:
     def _enable_buttons(self):
         """Re-enable all action buttons."""
         self.transfer_btn.config(state='normal')
+        self.preprocess_btn.config(state='normal')
         self.missing_trans_btn.config(state='normal')
         self.exclude_btn.config(state='normal')
         self.check_korean_btn.config(state='normal')
@@ -2880,6 +2889,88 @@ class QuickTranslateApp:
                 subprocess.Popen(["xdg-open", str(folder)])
         except Exception as e:
             self._log(f"Could not open folder: {e}", 'error')
+
+    def _preprocess(self):
+        """Run cleanup (postprocess) standalone on all XML/Excel files in Source folder."""
+        source_str = self.source_path.get().strip()
+        if not source_str:
+            messagebox.showwarning("Warning", "Please select a Source folder.")
+            return
+
+        source = Path(source_str)
+        if not source.is_dir():
+            messagebox.showwarning("Warning", f"Source folder not found:\n{source}")
+            return
+
+        # Collect all XML and Excel files
+        xml_files = sorted(source.rglob("*.xml"))
+        xlsx_files = sorted(source.rglob("*.xlsx"))
+
+        if not xml_files and not xlsx_files:
+            messagebox.showinfo("Info", "No XML or Excel files found in Source folder.")
+            return
+
+        total = len(xml_files) + len(xlsx_files)
+        msg = f"Pre-process {total} file(s)?\n\n"
+        if xml_files:
+            msg += f"  XML files: {len(xml_files)}\n"
+        if xlsx_files:
+            msg += f"  Excel files: {len(xlsx_files)}\n"
+        msg += "\nThis will normalize linebreaks, apostrophes, invisible characters,\nhyphens, and double-escaped entities in-place."
+
+        if not messagebox.askyesno("Pre-Process", msg):
+            return
+
+        self._clear_log()
+        self._disable_buttons()
+        self._log(f"Pre-processing {total} files...", 'info')
+
+        def _work():
+            from core.postprocess import run_all_postprocess, run_preprocess_excel
+
+            total_fixes = 0
+            files_fixed = 0
+            errors = 0
+
+            # Process XML files
+            for i, xml_path in enumerate(xml_files):
+                if self._cancel_event.is_set():
+                    raise InterruptedError()
+                self._task_queue.put(('status', f'XML {i + 1}/{len(xml_files)}: {xml_path.name}', None))
+                result = run_all_postprocess(xml_path)
+                if result.get("error"):
+                    self._log(f"  ERROR {xml_path.name}: {result['error']}", 'error')
+                    errors += 1
+                elif result["total_fixes"] > 0:
+                    files_fixed += 1
+                    total_fixes += result["total_fixes"]
+                    self._log(f"  {xml_path.name}: {result['total_fixes']} fixes", 'info')
+
+            # Process Excel files
+            for i, xlsx_path in enumerate(xlsx_files):
+                if self._cancel_event.is_set():
+                    raise InterruptedError()
+                self._task_queue.put(('status', f'Excel {i + 1}/{len(xlsx_files)}: {xlsx_path.name}', None))
+                result = run_preprocess_excel(xlsx_path)
+                if result.get("error"):
+                    self._log(f"  ERROR {xlsx_path.name}: {result['error']}", 'error')
+                    errors += 1
+                elif result["total_fixes"] > 0:
+                    files_fixed += 1
+                    total_fixes += result["total_fixes"]
+                    self._log(f"  {xlsx_path.name}: {result['total_fixes']} fixes", 'info')
+
+            summary = f"\nPre-process complete: {total_fixes} fixes in {files_fixed} file(s)."
+            if errors > 0:
+                summary += f"\nWARNING: {errors} file(s) had errors — check above."
+                self._log(summary, 'warning')
+            elif total_fixes > 0:
+                self._log(summary, 'success')
+            else:
+                self._log("\nPre-process complete: all files are already clean.", 'success')
+            self._task_queue.put(('status', 'Pre-process complete', None))
+
+        self._run_in_thread(_work)
 
     def _transfer(self):
         """Transfer corrections from source to target XML files (LOC folder)."""

@@ -279,6 +279,10 @@ def read_corrections_from_excel(
 
                 corrected_str = str(corrected).strip()
 
+                # Normalize linebreaks BEFORE integrity check so double-escaped
+                # br tags (&amp;lt;br/&amp;gt;) don't get falsely flagged
+                corrected_str = _convert_linebreaks_for_excel(corrected_str)
+
                 # Formula safeguard Layer 2: string check AFTER str coercion
                 bad_text = _is_bad_cell_text(corrected_str)
                 if bad_text:
@@ -340,6 +344,9 @@ def read_corrections_from_excel(
                                 'string_id': _report_id, 'reason': bad,
                             })
                         d_val = None  # Neutralize — prevents downstream str(d_val)
+                    # Normalize linebreaks in Desc before integrity check
+                    if d_val is not None and isinstance(d_val, str):
+                        d_val = _convert_linebreaks_for_excel(d_val)
                     # Text integrity check on Desc (broken linebreaks, encoding, bad chars)
                     if d_val is not None and isinstance(d_val, str):
                         bad_desc_integrity = is_text_integrity_issue(d_val.strip())
@@ -788,11 +795,20 @@ def _convert_linebreaks_for_excel(txt: str) -> str:
     """
     if not txt:
         return txt
+    # Double-escaped: &amp;lt;br/&amp;gt; → <br/> (MUST come before single-escaped)
+    txt = re.sub(r'&amp;lt;/?[Bb][Rr]\s*/?&amp;gt;', '<br/>', txt)
+    # Single-escaped: &lt;br/&gt; → <br/>
     txt = txt.replace('&lt;br/&gt;', '<br/>')
     txt = txt.replace('&lt;br /&gt;', '<br/>')
     txt = txt.replace('<br />', '<br/>')
-    txt = txt.replace('\\n', '<br/>')
+    # Actual control characters (CRLF combo first!)
+    txt = txt.replace('\r\n', '<br/>')
+    txt = txt.replace('\r', '<br/>')
     txt = txt.replace('\n', '<br/>')
+    # Literal escape sequences
+    txt = txt.replace('\\r\\n', '<br/>')
+    txt = txt.replace('\\n', '<br/>')
+    txt = txt.replace('\\r', '<br/>')
     return txt
 
 

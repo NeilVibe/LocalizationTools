@@ -28,7 +28,7 @@ from .xml_transfer import (
     transfer_folder_to_folder,
     format_transfer_report,
 )
-from .postprocess import run_all_postprocess
+from .postprocess import run_all_postprocess, run_preprocess_excel
 try:
     from .fuzzy_matching import (
         check_model_available,
@@ -125,6 +125,7 @@ __all__ = [
     "format_transfer_report",
     # postprocess
     "run_all_postprocess",
+    "run_preprocess_excel",
     # fuzzy_matching
     "check_model_available",
     "load_fuzzy_model",

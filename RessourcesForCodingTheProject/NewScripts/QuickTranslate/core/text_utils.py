@@ -89,9 +89,15 @@ _HTML_COMMENT_RE = re.compile(r'<!--.*?-->', re.DOTALL)
 # HTML/XML tags (any <tag> or </tag> — br variants filtered in function)
 _HTML_TAG_RE = re.compile(r'</?[A-Za-z][A-Za-z0-9]*(?:\s[^>]*)?\s*/?>')
 
-# Triple-escaped angle bracket entities (no auto-fix exists)
-# &amp;lt; &amp;gt; in memory means &amp;amp;lt; &amp;amp;gt; was on disk — no safe decode
-_TRIPLE_ESCAPED_RE = re.compile(r'&amp;(?:lt|gt);', re.IGNORECASE)
+# Double-escaped &amp; entities: &amp;lt; &amp;gt;
+# Context matters:
+#   XML (from_xml=True):  &amp;lt; in memory = &amp;amp;lt; on disk = triple-escaped → unfixable
+#   Excel (from_xml=False): &amp;lt; in cell = double-escaped → fixable by preprocess
+# Regex matches both cases; the label and severity are set by from_xml context.
+_DOUBLE_AMP_ENTITY_RE = re.compile(r'&amp;(?:lt|gt);', re.IGNORECASE)
+
+# Double-escaped &amp;lt;br/&amp;gt; pattern — fixable (preprocess handles these)
+_FIXABLE_AMP_BR_RE = re.compile(r'&amp;lt;/?[Bb][Rr]\s*/?&amp;gt;', re.IGNORECASE)
 
 # Well-formed &lt;br/&gt; pattern (Step 1 auto-fixes these → <br/>)
 _FIXABLE_BR_ENTITY_RE = re.compile(r'&lt;/?[Bb][Rr]\s*/?&gt;', re.IGNORECASE)
@@ -248,10 +254,20 @@ def is_markup_contamination(text: str, *, from_xml: bool = False) -> Optional[st
 
     # --- Group B: Entity contamination (always runs) ---
 
-    # B1a: Triple-escaped (no auto-fix exists) — always block
-    m = _TRIPLE_ESCAPED_RE.search(text)
+    # B1a: Double-escaped &amp; entities (&amp;lt; / &amp;gt;)
+    # Strip out fixable &amp;lt;br/&amp;gt; patterns first (preprocess handles these).
+    # PRECONDITION for from_xml=False: caller must normalize linebreaks
+    # (e.g. _convert_linebreaks_for_excel) BEFORE calling this function,
+    # otherwise double-escaped br-tags would be silently accepted.
+    stripped_amp_br = _FIXABLE_AMP_BR_RE.sub('', text)
+    m = _DOUBLE_AMP_ENTITY_RE.search(stripped_amp_br)
     if m:
-        return f'Triple-escaped entity: {m.group()}'
+        if from_xml:
+            # After lxml parse, &amp;lt; in memory = &amp;amp;lt; on disk = triple-escaped
+            return f'Triple-escaped entity: {m.group()}'
+        else:
+            # In Excel, &amp;lt; is just double-escaped — still block non-BR orphans
+            return f'Double-escaped entity: {m.group()}'
 
     # B1b: Double-escaped &lt;/&gt; — block only orphaned ones (not part of BR tag)
     # Strip out fixable &lt;br/&gt; patterns (Step 1 auto-fixes these), then check

@@ -97,6 +97,10 @@ def _normalize_newlines(text: str) -> str:
     if not text:
         return text
 
+    # Step 0: Decode double-escaped &amp;lt;br/&amp;gt; patterns first
+    # In memory after lxml: &amp;lt;br/&amp;gt; (from &amp;amp;lt;br/&amp;amp;gt; on disk)
+    text = re.sub(r'&amp;lt;/?[Bb][Rr]\s*/?&amp;gt;', '<br/>', text)
+
     # Step 1: Unescape HTML-escaped <br> variants (from double-escaping)
     # &lt;br/&gt; → <br/>,  &lt;br&gt; → <br/>,  &lt;BR/&gt; → <br/>
     text = _BR_ESCAPED_RE.sub('<br/>', text)
@@ -1150,3 +1154,171 @@ def run_all_postprocess(xml_path: Path, dry_run: bool = False) -> dict:
     except Exception as e:
         logger.error(f"Error in postprocess for {xml_path}: {e}")
         return result
+
+
+# ─── Excel Pre-Process ────────────────────────────────────────────────────────
+
+
+# Columns to clean in Excel (case-insensitive matching)
+_EXCEL_CLEAN_COLUMNS = frozenset({
+    "str", "correction", "desc", "description",
+})
+
+# Columns to NEVER touch (source data)
+_EXCEL_SKIP_COLUMNS = frozenset({
+    "stringid", "strorigin", "descorigin", "key", "id",
+})
+
+
+def run_preprocess_excel(xlsx_path: Path, dry_run: bool = False) -> dict:
+    """
+    Run cleanup on an Excel file — same normalizations as XML postprocess.
+
+    Cleans Str/Correction/Desc columns (NOT StrOrigin/DescOrigin/StringID).
+
+    Steps applied to each cell:
+      1. Normalize linebreaks (including double-escaped &amp;lt;br/&amp;gt;)
+      2. Normalize apostrophes (curly → ASCII)
+      3. Clean invisible characters (NBSP → space, delete zero-width)
+      4. Normalize hyphens (Unicode → ASCII hyphen-minus)
+      5. Decode double-escaped entities (&amp;desc; → &desc;, &quot; → ", etc.)
+
+    Args:
+        xlsx_path: Path to Excel file
+        dry_run: If True, count but don't write
+
+    Returns:
+        Dict with counts per cleanup step + total_fixes
+    """
+    try:
+        import openpyxl
+    except ImportError:
+        logger.error("openpyxl required for Excel preprocess — install with: pip install openpyxl")
+        return {"total_fixes": 0, "error": "openpyxl not installed"}
+
+    result = {
+        "linebreaks_fixed": 0,
+        "apostrophes_normalized": 0,
+        "invisibles_cleaned": 0,
+        "hyphens_normalized": 0,
+        "entities_decoded": 0,
+        "total_fixes": 0,
+    }
+
+    try:
+        wb = openpyxl.load_workbook(str(xlsx_path))
+    except Exception as e:
+        logger.error(f"Cannot open Excel file {xlsx_path}: {e}")
+        result["error"] = f"Cannot open: {e}"
+        return result
+
+    try:
+        for ws in wb.worksheets:
+            # Find header row and identify cleanable columns
+            header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=False), None)
+            if not header_row:
+                continue
+
+            clean_cols = []  # list of (col_index, col_name)
+            for cell in header_row:
+                if cell.value and isinstance(cell.value, str):
+                    name_lower = cell.value.strip().lower()
+                    if name_lower in _EXCEL_CLEAN_COLUMNS and name_lower not in _EXCEL_SKIP_COLUMNS:
+                        clean_cols.append((cell.column, cell.value.strip()))
+
+            if not clean_cols:
+                continue
+
+            # Process data rows
+            for row in ws.iter_rows(min_row=2):
+                for col_idx, col_name in clean_cols:
+                    # Guard against ragged rows (fewer cells than header)
+                    if col_idx - 1 >= len(row):
+                        continue
+                    cell = row[col_idx - 1]
+                    if cell.value is None or not isinstance(cell.value, str):
+                        continue
+
+                    original = cell.value
+                    text = original
+
+                    try:
+                        # Step 1: Normalize linebreaks (double-escaped + single-escaped + control chars)
+                        text = re.sub(r'&amp;lt;/?[Bb][Rr]\s*/?&amp;gt;', '<br/>', text)
+                        text = text.replace('&lt;br/&gt;', '<br/>')
+                        text = text.replace('&lt;br /&gt;', '<br/>')
+                        text = text.replace('<br />', '<br/>')
+                        text = text.replace('\r\n', '<br/>')
+                        text = text.replace('\r', '<br/>')
+                        text = text.replace('\n', '<br/>')
+                        text = text.replace('\\r\\n', '<br/>')
+                        text = text.replace('\\n', '<br/>')
+                        text = text.replace('\\r', '<br/>')
+                        if text != original:
+                            result["linebreaks_fixed"] += 1
+
+                        # Step 2: Normalize apostrophes
+                        apo = _normalize_apostrophes(text)
+                        if apo != text:
+                            result["apostrophes_normalized"] += 1
+                        text = apo
+
+                        # Step 3: Clean invisible characters
+                        cleaned, sp, dl, _ = _cleanup_invisible_chars(text)
+                        if sp or dl:
+                            result["invisibles_cleaned"] += sp + dl
+                        text = cleaned
+
+                        # Step 4: Normalize hyphens
+                        hyp = _normalize_hyphens(text)
+                        if hyp != text:
+                            result["hyphens_normalized"] += 1
+                        text = hyp
+
+                        # Step 5: Decode double-escaped entities
+                        ent = _decode_safe_entities(text)
+                        if ent != text:
+                            result["entities_decoded"] += 1
+                        text = ent
+
+                        if text != original:
+                            cell.value = text
+                    except Exception as e:
+                        logger.warning(f"Skipping cell row={cell.row} col={col_name}: {e}")
+                        continue
+
+        result["total_fixes"] = (
+            result["linebreaks_fixed"]
+            + result["apostrophes_normalized"]
+            + result["invisibles_cleaned"]
+            + result["hyphens_normalized"]
+            + result["entities_decoded"]
+        )
+
+        if result["total_fixes"] > 0 and not dry_run:
+            try:
+                wb.save(str(xlsx_path))
+            except PermissionError:
+                logger.error(f"Cannot save {xlsx_path.name}: file is locked (close Excel first)")
+                result["total_fixes"] = 0
+                result["error"] = f"File locked: close {xlsx_path.name} in Excel and retry"
+                return result
+            except Exception as e:
+                logger.error(f"Failed to save {xlsx_path.name}: {e}")
+                result["total_fixes"] = 0
+                result["error"] = f"Save failed: {e}"
+                return result
+            logger.info(
+                f"Pre-process Excel: fixed {result['total_fixes']} issues in {xlsx_path.name} "
+                f"(linebreaks={result['linebreaks_fixed']}, apostrophes={result['apostrophes_normalized']}, "
+                f"invisibles={result['invisibles_cleaned']}, hyphens={result['hyphens_normalized']}, "
+                f"entities={result['entities_decoded']})"
+            )
+
+        return result
+    except Exception as e:
+        logger.error(f"Error in Excel preprocess for {xlsx_path}: {e}")
+        result["error"] = str(e)
+        return result
+    finally:
+        wb.close()
