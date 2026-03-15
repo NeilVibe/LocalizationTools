@@ -20,6 +20,7 @@ from .settings import router as settings_router
 from .qa import router as qa_router
 from .tm_leverage import router as tm_leverage_router
 from .semantic_search import router as semantic_search_router
+from .merge import router as merge_router
 
 __all__ = [
     "health_router",
@@ -38,4 +39,5 @@ __all__ = [
     "settings_router",
     "qa_router",
     "semantic_search_router",
+    "merge_router",
 ]
