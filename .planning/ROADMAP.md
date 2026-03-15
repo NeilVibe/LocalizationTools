@@ -45,11 +45,12 @@
   3. User opens a loc.xml file and all language columns (KR, EN, JP, etc.) are correctly extracted
   4. Offline TMs appear in the online TM tree, TM paste works end-to-end, and folder fetch returns 200 after creation
   5. GlossaryService builds an Aho-Corasick automaton from real staticinfo XML data
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [ ] 07-01-PLAN.md -- XMLParsingEngine + xml_handler migration (XML-04, XML-06, XML-07)
+- [ ] 07-02-PLAN.md -- Service wiring: MapData, Glossary, Context (XML-01, XML-02, XML-03, XML-05)
+- [ ] 07-03-PLAN.md -- Bug fixes: offline TM, TM paste, folder 404 (FIX-01, FIX-02, FIX-03)
 
 ### Phase 08: Dual UI Mode
 **Goal**: Users see the correct editor layout automatically based on the type of XML file they open
@@ -166,7 +167,7 @@ Note: Phase 11 and 13 depend only on Phase 07 and could execute in parallel with
 | 05. Visual Polish and Integration | v1.0 | 2/2 | Complete | 2026-03-14 |
 | 05.1. Contextual Intelligence & QA | v1.0 | 5/5 | Complete | 2026-03-14 |
 | 06. Offline Demo Validation | v1.0 | 2/2 | Complete | 2026-03-14 |
-| 07. XML Parsing Foundation + Bug Fixes | v2.0 | 0/2 | Not started | - |
+| 07. XML Parsing Foundation + Bug Fixes | v2.0 | 0/3 | Planned | - |
 | 08. Dual UI Mode | v2.0 | 0/1 | Not started | - |
 | 09. Translator Merge | v2.0 | 0/2 | Not started | - |
 | 10. Export Pipeline | v2.0 | 0/1 | Not started | - |
