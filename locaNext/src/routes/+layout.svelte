@@ -7,12 +7,12 @@
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole, Book } from "carbon-icons-svelte";
+  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole, Book, Earth } from "carbon-icons-svelte";
   // UI-001: Theme toggle removed (dark mode only) - Light, Moon icons no longer needed
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
-  import { currentPage, goToFiles, goToTM, goToGameDev, goToCodex } from "$lib/stores/navigation.js";
+  import { currentPage, goToFiles, goToTM, goToGameDev, goToCodex, goToWorldMap } from "$lib/stores/navigation.js";
   import { get } from 'svelte/store';
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
@@ -91,6 +91,14 @@
     currentApp.set('ldm');
     currentView.set('app');
     goToCodex();
+  }
+
+  // Phase 20: World Map navigation
+  function navigateToWorldMap() {
+    logger.userAction("Navigate to World Map page");
+    currentApp.set('ldm');
+    currentView.set('app');
+    goToWorldMap();
   }
 
   function showTasks() {
@@ -333,6 +341,14 @@
         >
           <Book size={16} />
           <span>Codex</span>
+        </button>
+        <button
+          class="ldm-nav-tab"
+          class:active={$currentApp === 'ldm' && $currentPage === 'worldmap'}
+          onclick={navigateToWorldMap}
+        >
+          <Earth size={16} />
+          <span>Map</span>
         </button>
       </div>
 
