@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LocStrList>
+  <LocStr StringId="SID_GIMM_0003_NAME"/>
+  <LocStr StringId="SID_GIMM_0003_DESC"/>
+  <LocStr StringId="SID_GIMM_0006_NAME"/>
+  <LocStr StringId="SID_GIMM_0006_DESC"/>
+  <LocStr StringId="SID_GIMM_0009_NAME"/>
+  <LocStr StringId="SID_GIMM_0009_DESC"/>
+  <LocStr StringId="SID_GIMM_0012_NAME"/>
+  <LocStr StringId="SID_GIMM_0012_DESC"/>
+  <LocStr StringId="SID_GIMM_0015_NAME"/>
+  <LocStr StringId="SID_GIMM_0015_DESC"/>
+  <LocStr StringId="SID_GIMM_0018_NAME"/>
+  <LocStr StringId="SID_GIMM_0018_DESC"/>
+  <LocStr StringId="SID_GIMM_0021_NAME"/>
+  <LocStr StringId="SID_GIMM_0021_DESC"/>
+  <LocStr StringId="SID_GIMM_0024_NAME"/>
+  <LocStr StringId="SID_GIMM_0024_DESC"/>
+  <LocStr StringId="SID_GIMM_0027_NAME"/>
+  <LocStr StringId="SID_GIMM_0027_DESC"/>
+</LocStrList>

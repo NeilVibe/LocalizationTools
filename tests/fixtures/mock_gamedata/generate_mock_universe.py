@@ -30,6 +30,9 @@ OUTPUT_DIR = Path(__file__).parent
 STATIC_DIR = OUTPUT_DIR / "StaticInfo"
 TEXTURES_DIR = OUTPUT_DIR / "textures"
 AUDIO_DIR = OUTPUT_DIR / "audio"
+STRINGTABLE_DIR = OUTPUT_DIR / "stringtable"
+LOC_DIR = STRINGTABLE_DIR / "loc"
+EXPORT_DIR = STRINGTABLE_DIR / "export__" / "System"
 
 # Template files for binary stubs
 DDS_TEMPLATE = TEXTURES_DIR / "character_varon.dds"
@@ -806,6 +809,616 @@ def generate_binary_stubs(
 
 
 # ---------------------------------------------------------------------------
+# English Translation Corpus
+# ---------------------------------------------------------------------------
+EN_CHAR_NAMES = [
+    "Elder Varon", "Warrior Kira", "Sorcerer Drakmar", "Scout Rune", "Blacksmith Grimzo",
+    "Merchant Hana", "Sage Mir", "Archer Sera", "Healer Yura", "Knight Kael",
+    "Rogue Jin", "Bard Aria", "Witch Norna", "Guardian Velion", "Alchemist Kor",
+    "Hunter Taka", "Gladiator Rex", "Shaman Oka", "Dancer Lina", "Scholar Aiden",
+    "Dragon Knight Drake", "Assassin Silva", "Paladin Lumia", "Berserker Gron", "Summoner Eva",
+    "Spellsword Kai", "Pirate Morgan", "Monk Chen", "Necromancer Dark", "Fortune Teller Bianca",
+    "Wanderer Roy", "Archmage Arc", "Mercenary Chrome", "Priest Nova", "Explorer Marco",
+]
+
+EN_CHAR_DESCS = [
+    "Guardian of the old village.<br/>Living in seclusion to avoid the war.",
+    "A brave warrior from the northern outpost.<br/>Tracking the secret of the Blackstar.",
+    "A sorcerer who explores ancient knowledge.<br/>Warns of the dangers of forbidden magic.",
+    "A scout who knows the forest paths.<br/>Guides safely through dangerous areas.",
+    "A master craftsman who forges legendary weapons.<br/>Knows the secret of Blackstar metal.",
+    "A traveling merchant dealing in rare goods.",
+    "A sage who deciphers ancient texts.<br/>The only one who can read the forgotten language.",
+    "An archer famous for precise marksmanship.<br/>Boasts a perfect hit rate.",
+    "Heals the wounded with divine power.<br/>Known as the battlefield guardian angel.",
+    "From the kingdom's elite knight order.<br/>Fights for honor.",
+    "A rogue operating in the shadows.<br/>Skilled in intelligence gathering.",
+    "A bard who sings legendary songs.<br/>Magic resides in their melodies.",
+    "A witch researching forbidden magic.<br/>A dangerous but powerful ally.",
+    "A guardian who defends the walls.<br/>Boasts an impenetrable defense.",
+    "An alchemist who concocts various substances.<br/>Can create anything from cures to poisons.",
+    "A seasoned hunter roaming the wilderness.<br/>Understands wild animal behavior.",
+    "A gladiator and arena champion.<br/>Receives enthusiastic support from the crowd.",
+    "A shaman who communes with spirits.<br/>Wields the power of nature.",
+    "A dancer who mesmerizes foes with enchanting dance.<br/>Combat techniques are hidden in the dance.",
+    "A scholar with vast knowledge.<br/>Has a habit of recording everything.",
+    "A knight who flies on dragons.<br/>Commands air superiority.",
+    "An assassin who moves like a shadow.<br/>Targets can never escape.",
+    "A paladin who defeats evil with the power of light.<br/>Devoted to justice.",
+    "A berserker who fights with the power of rage.<br/>Knows no fear in battle.",
+    "A mage who summons beings from other planes.<br/>Forms a mental bond with summons.",
+    "Wields magic and swordsmanship simultaneously.<br/>Freely switches between two combat styles.",
+    "A pirate captain sailing the seas.<br/>Possesses a treasure map.",
+    "A monk who trains inner energy.<br/>Breaks steel with bare hands.",
+    "A necromancer who commands the souls of the dead.<br/>Uses taboo magic.",
+    "Reads the future through the movement of stars.<br/>The accuracy of prophecies is astonishing.",
+    "A wanderer roaming the world without a set destination.<br/>Gained wisdom through diverse experiences.",
+    "The greatest mage of the magic tower.<br/>Researches the origin of magic.",
+    "A mercenary who fights for money.<br/>Anyone can be hired if the contract is fulfilled.",
+    "A priest of the temple.<br/>A cleric who conveys the will of the divine.",
+    "An adventurer exploring unknown lands.<br/>Lives for the joy of discovery.",
+]
+
+EN_ITEM_PREFIXES = [
+    "Iron", "Steel", "Mithril", "Adamant", "Orichalcum",
+    "Flame", "Frost", "Lightning", "Poison", "Holy",
+    "Ancient", "Legendary", "Magical", "Cursed", "Blessed",
+    "Hero's", "Champion's", "Sage's", "Shadow", "Golden",
+    "Runic", "Starlight", "Moonlight", "Solar", "Shadow",
+]
+
+EN_ITEM_TEMPLATES = [
+    ("Sword", "Weapon"), ("Axe", "Weapon"), ("Spear", "Weapon"), ("Bow", "Weapon"), ("Dagger", "Weapon"),
+    ("Staff", "Weapon"), ("Crossbow", "Weapon"), ("Hammer", "Weapon"), ("Scythe", "Weapon"), ("Whip", "Weapon"),
+    ("Helm", "Armor"), ("Chestplate", "Armor"), ("Gauntlets", "Armor"), ("Boots", "Armor"), ("Shield", "Armor"),
+    ("Potion", "Consumable"), ("Scroll", "Consumable"), ("Food", "Consumable"), ("Bomb", "Consumable"), ("Charm", "Consumable"),
+    ("Ring", "Accessory"), ("Necklace", "Accessory"), ("Earring", "Accessory"), ("Bracelet", "Accessory"), ("Belt", "Accessory"),
+]
+
+EN_ITEM_DESCS = [
+    "A useful {type} for battle.<br/>Carefully crafted by a master artisan.",
+    "A {type} imbued with powerful energy.<br/>Grants special abilities to the wielder.",
+    "A {type} discovered in ancient ruins.",
+    "A {type} made from rare materials.<br/>Only those who know its value can use it.",
+    "A battle-tested {type}.<br/>A companion through countless battles.",
+]
+
+EN_SKILL_NAMES = [
+    "Smash", "Spinning Slash", "Charge", "Defensive Stance", "Focus",
+    "Fireball", "Frost Arrow", "Lightning Strike", "Healing Light", "Barrier",
+    "Stealth", "Critical Strike", "Poison Sting", "Smoke Bomb", "Tracking",
+    "Summon: Spirit", "Enhancement", "Curse", "Dispel", "Resurrection",
+    "Combo Attack", "Piercing Shot", "AoE Explosion", "Concentration", "Fury Burst",
+    "Aerial Assault", "Ground Slam", "Gale Slash", "Ice Prison", "Firestorm",
+    "Shadow Step", "Poison Cloud", "Life Drain", "Mana Drain", "Time Stop",
+    "Dragon Breath", "Holy Strike", "Dark Wave", "Wind Blade", "Earth Power",
+    "Chain Lightning", "Blizzard", "Flame Wall", "Rain of Healing", "Guardian Ward",
+    "Tempest Dance", "Thunder Smash", "Grand Magic", "Phantom Clone", "Final Strike",
+    "Storm Shot", "Rapid Stab", "Recovery Meditation", "Battle Cry", "Blessed Prayer",
+]
+
+EN_SKILL_DESCS = [
+    "Delivers a powerful strike.<br/>Deals heavy damage to the enemy.",
+    "Attacks surrounding enemies with a spin.",
+    "Charges forward to push the enemy.<br/>Combines movement and attack.",
+    "Takes a defensive stance to reduce incoming damage.",
+    "Focuses the mind to temporarily boost stats.<br/>The higher the concentration, the greater the effect.",
+    "Launches a burning fireball.<br/>Deals area damage.",
+    "Fires an ice arrow to slow the enemy.",
+    "Calls lightning from the sky.<br/>High chance to stun.",
+    "Heals allies with divine light.",
+    "Creates a magic barrier that absorbs damage.<br/>Absorbs damage for the duration.",
+    "Hides in the shadows.<br/>Movement speed decreases but cannot be detected.",
+    "Strikes the enemy's weak point precisely.<br/>Greatly increases critical hit chance.",
+    "Fires a poison-coated needle.",
+    "Throws a smoke bomb to block vision.<br/>Greatly reduces enemy accuracy.",
+    "Increases movement speed while tracking the target.",
+    "Summons a spirit to fight alongside.<br/>The summoned spirit disappears after a set time.",
+    "Grants enhancement magic to an ally.",
+    "Curses the enemy to reduce their stats.<br/>Can be stacked.",
+    "Removes negative effects.",
+    "Revives a fallen ally.<br/>Grants invincibility for a short time after revival.",
+]
+
+EN_REGION_NAMES = [
+    "Blackstar Village", "Outpost of Light", "Dragon's Nest", "Ancient Ruins",
+    "Crystal Cave", "Storm Fortress", "Dark Forest", "Tower of Immortality",
+    "Twilight Harbor", "Forgotten Temple", "Warrior's Plain", "Mage Tower",
+    "Dwarf Mines", "Elven Forest", "Pirate's Hideout", "Lava Fields",
+]
+
+EN_REGION_DESCS = [
+    "A village with a long history.<br/>Peaceful but danger lurks nearby.",
+    "An outpost at a strategic location.<br/>Requires constant vigilance.",
+    "A place where an ancient dragon sleeps.<br/>Rumored to contain the dragon's treasure.",
+    "Ruins with traces of a forgotten civilization.",
+    "A cave filled with beautiful crystals.<br/>Precious minerals are mined here.",
+    "A fortress with never-ending wind.<br/>Known as an impregnable stronghold.",
+    "A dark forest where light cannot reach.<br/>Dangerous creatures inhabit it.",
+    "A tower ruled by an undying sorcerer.<br/>Those who enter rarely return alive.",
+    "A harbor most beautiful at twilight.<br/>Many merchants gather here.",
+    "An ancient temple abandoned by the gods.<br/>Mysterious power still lingers.",
+    "A plain where countless battles occurred.<br/>Spirits of warriors wander here.",
+    "A tower at the center of magical research.<br/>Magical ability is required to enter.",
+    "Mines long excavated by dwarves.<br/>Something unknown lurks in the depths.",
+    "A sacred forest protected by elves for generations.",
+    "A secret base for pirates.<br/>A place where treasure and danger coexist.",
+    "A dangerous area with endless lava flows.<br/>Powerful fire creatures inhabit it.",
+]
+
+EN_GIMMICK_NAMES = [
+    "Sealed Door", "Treasure Chest", "Ancient Seal", "Secret Passage", "Trap Device",
+    "Magic Altar", "Crystal Pillar", "Teleporter", "Magic Circle", "Stone Statue",
+    "Treasure Box", "Locked Safe", "Mystic Obelisk", "Mana Spring", "Ancient Stele",
+    "Dragon Statue", "Altar", "Magic Mirror", "Seal Device", "Secret Bookshelf",
+    "Broken Machine", "Sleeping Golem", "Cursed Shield", "Fire Altar", "Ice Pillar",
+    "Ancient Lever", "Mystic Pond", "War Banner", "Collapsed Bridge", "Magic Orb",
+]
+
+EN_GIMMICK_DESCS = [
+    "An ancient seal is placed upon it.<br/>A key is required.",
+    "A chest containing old treasure.<br/>Traps may be set.",
+    "A device sealed by powerful magic.<br/>A special incantation is required.",
+    "A secret passage hidden behind the wall.<br/>Can be discovered with careful inspection.",
+    "A trap installed on the floor.<br/>Arrows are launched if stepped on.",
+]
+
+# ---------------------------------------------------------------------------
+# French Translation Corpus
+# ---------------------------------------------------------------------------
+FR_CHAR_NAMES = [
+    "Ancien Varon", "Guerriere Kira", "Sorcier Drakmar", "Eclaireur Rune", "Forgeron Grimzo",
+    "Marchande Hana", "Sage Mir", "Archere Sera", "Guerisseuse Yura", "Chevalier Kael",
+    "Voleur Jin", "Barde Aria", "Sorciere Norna", "Gardien Velion", "Alchimiste Kor",
+    "Chasseur Taka", "Gladiateur Rex", "Chaman Oka", "Danseuse Lina", "Erudit Aiden",
+    "Chevalier Dragon Drake", "Assassin Silva", "Paladin Lumia", "Berserker Gron", "Invocatrice Eva",
+    "Mage-Epee Kai", "Pirate Morgan", "Moine Chen", "Necromancien Dark", "Devineresse Bianca",
+    "Vagabond Roy", "Archimage Arc", "Mercenaire Chrome", "Pretre Nova", "Explorateur Marco",
+]
+
+FR_CHAR_DESCS = [
+    "Gardien de l'ancien village.<br/>Vit en reclusion pour echapper a la guerre.",
+    "Un brave guerrier du poste avance nord.<br/>Traque le secret de l'Etoile Noire.",
+    "Un sorcier qui explore les savoirs anciens.<br/>Met en garde contre les dangers de la magie interdite.",
+    "Un eclaireur qui connait les chemins de la foret.<br/>Guide en securite a travers les zones dangereuses.",
+    "Un maitre artisan qui forge des armes legendaires.<br/>Connait le secret du metal Etoile Noire.",
+    "Un marchand ambulant specialise en objets rares.",
+    "Un sage qui dechiffre les textes anciens.<br/>Le seul a pouvoir lire la langue oubliee.",
+    "Une archere celebre pour sa precision.<br/>Se vante d'un taux de reussite parfait.",
+    "Guerit les blesses avec un pouvoir divin.<br/>Connue comme l'ange gardien du champ de bataille.",
+    "Issu de l'ordre de chevalerie d'elite du royaume.<br/>Se bat pour l'honneur.",
+    "Un voleur operant dans l'ombre.<br/>Expert en collecte de renseignements.",
+    "Un barde qui chante des chansons legendaires.<br/>La magie reside dans ses melodies.",
+    "Une sorciere etudiant la magie interdite.<br/>Une alliee dangereuse mais puissante.",
+    "Un gardien qui defend les remparts.<br/>Se vante d'une defense impenetrable.",
+    "Un alchimiste qui concocte diverses substances.<br/>Peut creer des remedes comme des poisons.",
+    "Un chasseur experimente parcourant les terres sauvages.<br/>Comprend le comportement des animaux.",
+    "Un gladiateur et champion de l'arene.<br/>Recoit le soutien enthousiaste de la foule.",
+    "Un chaman qui communie avec les esprits.<br/>Manie le pouvoir de la nature.",
+    "Une danseuse qui fascine les ennemis par sa danse.<br/>Des techniques de combat sont cachees dans la danse.",
+    "Un erudit aux connaissances vastes.<br/>A l'habitude de tout enregistrer.",
+    "Un chevalier qui vole sur les dragons.<br/>Commande la superiorite aerienne.",
+    "Un assassin qui se deplace comme une ombre.<br/>Les cibles ne peuvent jamais s'echapper.",
+    "Un paladin qui vainc le mal avec le pouvoir de la lumiere.<br/>Devoue a la justice.",
+    "Un berserker qui combat avec la puissance de la rage.<br/>Ne connait pas la peur au combat.",
+    "Un mage qui invoque des etres d'autres plans.<br/>Forme un lien mental avec les invocations.",
+    "Manie la magie et l'epee simultanement.<br/>Passe librement entre deux styles de combat.",
+    "Un capitaine pirate naviguant les mers.<br/>Possede une carte au tresor.",
+    "Un moine qui entraine l'energie interieure.<br/>Brise l'acier a mains nues.",
+    "Un necromancien qui commande les ames des morts.<br/>Utilise une magie taboue.",
+    "Lit l'avenir dans le mouvement des etoiles.<br/>La precision des propheties est etonnante.",
+    "Un vagabond parcourant le monde sans destination fixe.<br/>A acquis la sagesse par des experiences diverses.",
+    "Le plus grand mage de la tour de magie.<br/>Recherche l'origine de la magie.",
+    "Un mercenaire qui se bat pour l'argent.<br/>N'importe qui peut etre engage si le contrat est rempli.",
+    "Un pretre du temple.<br/>Un clerc qui transmet la volonte du divin.",
+    "Un aventurier explorant des terres inconnues.<br/>Vit pour la joie de la decouverte.",
+]
+
+FR_ITEM_PREFIXES = [
+    "de Fer", "d'Acier", "de Mithril", "d'Adamant", "d'Orichalque",
+    "de Flamme", "de Givre", "de Foudre", "de Poison", "Sacre",
+    "Ancien", "Legendaire", "Magique", "Maudit", "Beni",
+    "du Heros", "du Champion", "du Sage", "de l'Ombre", "Dore",
+    "Runique", "d'Etoile", "de Lune", "Solaire", "d'Ombre",
+]
+
+FR_ITEM_TEMPLATES = [
+    ("Epee", "Arme"), ("Hache", "Arme"), ("Lance", "Arme"), ("Arc", "Arme"), ("Dague", "Arme"),
+    ("Baton", "Arme"), ("Arbalete", "Arme"), ("Marteau", "Arme"), ("Faux", "Arme"), ("Fouet", "Arme"),
+    ("Heaume", "Armure"), ("Plastron", "Armure"), ("Gantelets", "Armure"), ("Bottes", "Armure"), ("Bouclier", "Armure"),
+    ("Potion", "Consommable"), ("Parchemin", "Consommable"), ("Nourriture", "Consommable"), ("Bombe", "Consommable"), ("Amulette", "Consommable"),
+    ("Anneau", "Accessoire"), ("Collier", "Accessoire"), ("Boucle d'Oreille", "Accessoire"), ("Bracelet", "Accessoire"), ("Ceinture", "Accessoire"),
+]
+
+FR_ITEM_DESCS = [
+    "Un(e) {type} utile au combat.<br/>Fabrique(e) avec soin par un maitre artisan.",
+    "Un(e) {type} impregnee d'une energie puissante.<br/>Confere des capacites speciales a son porteur.",
+    "Un(e) {type} decouvert(e) dans des ruines anciennes.",
+    "Un(e) {type} fabrique(e) a partir de materiaux rares.<br/>Seuls ceux qui en connaissent la valeur peuvent l'utiliser.",
+    "Un(e) {type} eprouve(e) au combat.<br/>Un compagnon a travers d'innombrables batailles.",
+]
+
+FR_SKILL_NAMES = [
+    "Frappe", "Taille Tournante", "Charge", "Posture Defensive", "Concentration",
+    "Boule de Feu", "Fleche de Givre", "Foudre", "Lumiere Guerisseuse", "Barriere",
+    "Furtivite", "Coup Critique", "Dard Empoisonne", "Bombe Fumigene", "Pistage",
+    "Invocation: Esprit", "Renforcement", "Malediction", "Dissipation", "Resurrection",
+    "Enchainement", "Tir Percant", "Explosion de Zone", "Focus", "Eclat de Fureur",
+    "Assaut Aerien", "Impact au Sol", "Taille de Bourrasque", "Prison de Glace", "Tempete de Feu",
+    "Pas d'Ombre", "Nuage Toxique", "Drain de Vie", "Drain de Mana", "Arret du Temps",
+    "Souffle du Dragon", "Frappe Sacree", "Vague Obscure", "Lame de Vent", "Force Terrestre",
+    "Foudre en Chaine", "Blizzard", "Mur de Flammes", "Pluie de Soin", "Protection Gardienne",
+    "Danse de Tempete", "Fracas de Tonnerre", "Grande Magie", "Clone Fantome", "Frappe Finale",
+    "Tir d'Orage", "Estoc Rapide", "Meditation de Soin", "Cri de Guerre", "Priere de Benediction",
+]
+
+FR_SKILL_DESCS = [
+    "Porte un coup puissant.<br/>Inflige de lourds degats a l'ennemi.",
+    "Attaque les ennemis environnants avec une rotation.",
+    "Charge en avant pour repousser l'ennemi.<br/>Combine mouvement et attaque.",
+    "Adopte une posture defensive pour reduire les degats recus.",
+    "Concentre l'esprit pour augmenter temporairement les statistiques.<br/>Plus la concentration est elevee, plus l'effet est grand.",
+    "Lance une boule de feu ardente.<br/>Inflige des degats de zone.",
+    "Tire une fleche de glace pour ralentir l'ennemi.",
+    "Fait tomber la foudre du ciel.<br/>Forte chance d'etourdir.",
+    "Guerit les allies avec une lumiere divine.",
+    "Cree une barriere magique qui absorbe les degats.<br/>Absorbe les degats pendant la duree.",
+    "Se cache dans les ombres.<br/>La vitesse de deplacement diminue mais on ne peut etre detecte.",
+    "Frappe le point faible de l'ennemi avec precision.<br/>Augmente grandement les chances de coup critique.",
+    "Tire une aiguille enduite de poison.",
+    "Lance une bombe fumigene pour bloquer la vision.<br/>Reduit grandement la precision de l'ennemi.",
+    "Augmente la vitesse de deplacement en pistant la cible.",
+    "Invoque un esprit pour combattre aux cotes du joueur.<br/>L'esprit invoque disparait apres un temps defini.",
+    "Accorde une magie de renforcement a un allie.",
+    "Maudit l'ennemi pour reduire ses statistiques.<br/>Peut etre empile.",
+    "Supprime les effets negatifs.",
+    "Ressuscite un allie tombe.<br/>Accorde l'invincibilite pour un court moment apres la resurrection.",
+]
+
+FR_REGION_NAMES = [
+    "Village de l'Etoile Noire", "Avant-poste de Lumiere", "Nid du Dragon", "Ruines Anciennes",
+    "Grotte de Cristal", "Forteresse de la Tempete", "Foret Sombre", "Tour de l'Immortalite",
+    "Port du Crepuscule", "Temple Oublie", "Plaine du Guerrier", "Tour du Mage",
+    "Mines des Nains", "Foret Elfique", "Repaire des Pirates", "Champs de Lave",
+]
+
+FR_REGION_DESCS = [
+    "Un village avec une longue histoire.<br/>Paisible mais le danger rode.",
+    "Un avant-poste a un emplacement strategique.<br/>Necessite une vigilance constante.",
+    "Un endroit ou un dragon ancien sommeille.<br/>On dit qu'il contient le tresor du dragon.",
+    "Des ruines avec les traces d'une civilisation oubliee.",
+    "Une grotte remplie de beaux cristaux.<br/>Des mineraux precieux y sont extraits.",
+    "Une forteresse avec un vent incessant.<br/>Connue comme une place forte imprenable.",
+    "Une foret sombre ou la lumiere ne penetre pas.<br/>Des creatures dangereuses y vivent.",
+    "Une tour gouvernee par un sorcier immortel.<br/>Ceux qui y entrent reviennent rarement vivants.",
+    "Un port magnifique au crepuscule.<br/>De nombreux marchands s'y rassemblent.",
+    "Un ancien temple abandonne par les dieux.<br/>Un pouvoir mysterieux y persiste.",
+    "Une plaine ou d'innombrables batailles ont eu lieu.<br/>Les esprits des guerriers y errent.",
+    "Une tour au centre de la recherche magique.<br/>La capacite magique est requise pour entrer.",
+    "Des mines longuement exploitees par les nains.<br/>Quelque chose d'inconnu se cache dans les profondeurs.",
+    "Une foret sacree protegee par les elfes depuis des generations.",
+    "Une base secrete de pirates.<br/>Un lieu ou le tresor et le danger coexistent.",
+    "Une zone dangereuse avec des coulees de lave sans fin.<br/>De puissantes creatures de feu y vivent.",
+]
+
+FR_GIMMICK_NAMES = [
+    "Porte Scellee", "Coffre au Tresor", "Sceau Ancien", "Passage Secret", "Dispositif Piege",
+    "Autel Magique", "Pilier de Cristal", "Teleporteur", "Cercle Magique", "Statue de Pierre",
+    "Coffre a Tresor", "Coffre-fort Verrouille", "Obelisque Mystique", "Source de Mana", "Stele Ancienne",
+    "Statue de Dragon", "Autel", "Miroir Magique", "Dispositif de Sceau", "Etagere Secrete",
+    "Machine Brisee", "Golem Endormi", "Bouclier Maudit", "Autel de Feu", "Pilier de Glace",
+    "Levier Ancien", "Etang Mystique", "Banniere de Guerre", "Pont Effondre", "Orbe Magique",
+]
+
+FR_GIMMICK_DESCS = [
+    "Un sceau ancien est appose.<br/>Une cle est necessaire.",
+    "Un coffre contenant un vieux tresor.<br/>Des pieges peuvent etre poses.",
+    "Un dispositif scelle par une magie puissante.<br/>Une incantation speciale est requise.",
+    "Un passage secret cache derriere le mur.<br/>Peut etre decouvert avec une inspection attentive.",
+    "Un piege installe au sol.<br/>Des fleches sont lancees si on marche dessus.",
+]
+
+
+# ---------------------------------------------------------------------------
+# Language Data Entry Collector
+# ---------------------------------------------------------------------------
+class LanguageDataCollector:
+    """Collect all entity data for language file generation."""
+
+    def __init__(self) -> None:
+        self.entries: list[dict] = []
+        # Maps source_file_stem -> list of StringIDs
+        self.source_file_map: dict[str, list[str]] = {}
+
+    def add_entry(
+        self,
+        entity_type: str,
+        index: int,
+        kr_name: str,
+        kr_desc: str,
+        en_name: str,
+        en_desc: str,
+        fr_name: str,
+        fr_desc: str,
+        source_file_stem: str,
+    ) -> None:
+        """Add an entity with NAME and DESC StringIDs."""
+        name_sid = f"SID_{entity_type}_{index:04d}_NAME"
+        desc_sid = f"SID_{entity_type}_{index:04d}_DESC"
+
+        self.entries.append({
+            "string_id": name_sid,
+            "kr_str": kr_name,
+            "en_str": en_name,
+            "fr_str": fr_name,
+            "kr_desc": "",
+            "en_desc": "",
+            "fr_desc": "",
+        })
+        self.entries.append({
+            "string_id": desc_sid,
+            "kr_str": kr_desc,
+            "en_str": en_desc,
+            "fr_str": fr_desc,
+            "kr_desc": "",
+            "en_desc": "",
+            "fr_desc": "",
+        })
+
+        if source_file_stem not in self.source_file_map:
+            self.source_file_map[source_file_stem] = []
+        self.source_file_map[source_file_stem].append(name_sid)
+        self.source_file_map[source_file_stem].append(desc_sid)
+
+
+def collect_language_data(
+    knowledge: dict[str, list[dict]],
+    item_categories: dict[str, list[etree._Element]],
+    char_categories: dict[str, list[etree._Element]],
+    skills: list[dict],
+    nodes: list[dict],
+    gimmick_count: int,
+    rng: random.Random,
+) -> LanguageDataCollector:
+    """Collect all entity data for language file generation."""
+    collector = LanguageDataCollector()
+
+    # 1. Knowledge entries (4 categories)
+    know_type_map = {
+        "character": "KNOW",
+        "item": "KNOW",
+        "region": "KNOW",
+        "contents": "KNOW",
+    }
+    for category, entries in knowledge.items():
+        for i, entry in enumerate(entries):
+            idx = i + 1
+            en_name, en_desc, fr_name, fr_desc = _get_knowledge_translations(category, i)
+            source_stem = f"knowledgeinfo_{category}"
+            collector.add_entry(
+                entity_type=f"KNOW_{category.upper()[:4]}",
+                index=idx,
+                kr_name=entry["name"],
+                kr_desc=entry["desc"],
+                en_name=en_name,
+                en_desc=en_desc,
+                fr_name=fr_name,
+                fr_desc=fr_desc,
+                source_file_stem=source_stem,
+            )
+
+    # 2. Items (4 categories)
+    item_global_idx = 0
+    for cat_name, items in item_categories.items():
+        for item_el in items:
+            item_global_idx += 1
+            kr_name = item_el.get("ItemName", "")
+            kr_desc = item_el.get("ItemDesc", "")
+
+            en_prefix = EN_ITEM_PREFIXES[(item_global_idx - 1) % len(EN_ITEM_PREFIXES)]
+            en_template = EN_ITEM_TEMPLATES[(item_global_idx - 1) % len(EN_ITEM_TEMPLATES)]
+            en_name = f"{en_prefix} {en_template[0]}"
+            en_desc_t = EN_ITEM_DESCS[(item_global_idx - 1) % len(EN_ITEM_DESCS)]
+            en_desc = en_desc_t.format(type=en_template[0])
+
+            fr_prefix = FR_ITEM_PREFIXES[(item_global_idx - 1) % len(FR_ITEM_PREFIXES)]
+            fr_template = FR_ITEM_TEMPLATES[(item_global_idx - 1) % len(FR_ITEM_TEMPLATES)]
+            fr_name = f"{fr_template[0]} {fr_prefix}"
+            fr_desc_t = FR_ITEM_DESCS[(item_global_idx - 1) % len(FR_ITEM_DESCS)]
+            fr_desc = fr_desc_t.format(type=fr_template[0])
+
+            collector.add_entry(
+                entity_type="ITEM",
+                index=item_global_idx,
+                kr_name=kr_name,
+                kr_desc=kr_desc,
+                en_name=en_name,
+                en_desc=en_desc,
+                fr_name=fr_name,
+                fr_desc=fr_desc,
+                source_file_stem=f"iteminfo_{cat_name}",
+            )
+
+    # 3. Characters (3 categories)
+    char_global_idx = 0
+    for cat_name, chars in char_categories.items():
+        for char_el in chars:
+            char_global_idx += 1
+            kr_name = KR_CHAR_NAMES[(char_global_idx - 1) % len(KR_CHAR_NAMES)]
+            kr_desc = KR_CHAR_DESCS[(char_global_idx - 1) % len(KR_CHAR_DESCS)]
+            en_name = EN_CHAR_NAMES[(char_global_idx - 1) % len(EN_CHAR_NAMES)]
+            en_desc = EN_CHAR_DESCS[(char_global_idx - 1) % len(EN_CHAR_DESCS)]
+            fr_name = FR_CHAR_NAMES[(char_global_idx - 1) % len(FR_CHAR_NAMES)]
+            fr_desc = FR_CHAR_DESCS[(char_global_idx - 1) % len(FR_CHAR_DESCS)]
+
+            collector.add_entry(
+                entity_type="CHAR",
+                index=char_global_idx,
+                kr_name=kr_name,
+                kr_desc=kr_desc,
+                en_name=en_name,
+                en_desc=en_desc,
+                fr_name=fr_name,
+                fr_desc=fr_desc,
+                source_file_stem=f"characterinfo_{cat_name}",
+            )
+
+    # 4. Skills
+    for i, skill in enumerate(skills):
+        idx = i + 1
+        kr_name = KR_SKILL_NAMES[i % len(KR_SKILL_NAMES)]
+        kr_desc = KR_SKILL_DESCS[i % len(KR_SKILL_DESCS)]
+        en_name = EN_SKILL_NAMES[i % len(EN_SKILL_NAMES)]
+        en_desc = EN_SKILL_DESCS[i % len(EN_SKILL_DESCS)]
+        fr_name = FR_SKILL_NAMES[i % len(FR_SKILL_NAMES)]
+        fr_desc = FR_SKILL_DESCS[i % len(FR_SKILL_DESCS)]
+
+        collector.add_entry(
+            entity_type="SKILL",
+            index=idx,
+            kr_name=kr_name,
+            kr_desc=kr_desc,
+            en_name=en_name,
+            en_desc=en_desc,
+            fr_name=fr_name,
+            fr_desc=fr_desc,
+            source_file_stem="skillinfo_pc",
+        )
+
+    # 5. Regions (from faction nodes)
+    for i, node in enumerate(nodes):
+        idx = i + 1
+        kr_name = KR_REGION_NAMES[i % len(KR_REGION_NAMES)]
+        kr_desc = KR_REGION_DESCS[i % len(KR_REGION_DESCS)]
+        en_name = EN_REGION_NAMES[i % len(EN_REGION_NAMES)]
+        en_desc = EN_REGION_DESCS[i % len(EN_REGION_DESCS)]
+        fr_name = FR_REGION_NAMES[i % len(FR_REGION_NAMES)]
+        fr_desc = FR_REGION_DESCS[i % len(FR_REGION_DESCS)]
+
+        collector.add_entry(
+            entity_type="REGION",
+            index=idx,
+            kr_name=kr_name,
+            kr_desc=kr_desc,
+            en_name=en_name,
+            en_desc=en_desc,
+            fr_name=fr_name,
+            fr_desc=fr_desc,
+            source_file_stem="factioninfo",
+        )
+
+    # 6. Gimmicks (3 folders)
+    folder_keys = ["Background", "Item", "Puzzle"]
+    for i in range(gimmick_count):
+        idx = i + 1
+        folder = folder_keys[i % len(folder_keys)]
+        kr_name = KR_GIMMICK_NAMES[i % len(KR_GIMMICK_NAMES)]
+        kr_desc = KR_GIMMICK_DESCS[i % len(KR_GIMMICK_DESCS)]
+        en_name = EN_GIMMICK_NAMES[i % len(EN_GIMMICK_NAMES)]
+        en_desc = EN_GIMMICK_DESCS[i % len(EN_GIMMICK_DESCS)]
+        fr_name = FR_GIMMICK_NAMES[i % len(FR_GIMMICK_NAMES)]
+        fr_desc = FR_GIMMICK_DESCS[i % len(FR_GIMMICK_DESCS)]
+
+        # Map gimmick folder to export file stem
+        source_stem = f"gimmickinfo_{folder.lower()}"
+
+        collector.add_entry(
+            entity_type="GIMM",
+            index=idx,
+            kr_name=kr_name,
+            kr_desc=kr_desc,
+            en_name=en_name,
+            en_desc=en_desc,
+            fr_name=fr_name,
+            fr_desc=fr_desc,
+            source_file_stem=source_stem,
+        )
+
+    return collector
+
+
+def _get_knowledge_translations(category: str, index: int) -> tuple[str, str, str, str]:
+    """Get English and French translations for a knowledge entry."""
+    if category == "character":
+        en_name = EN_CHAR_NAMES[index % len(EN_CHAR_NAMES)]
+        en_desc = EN_CHAR_DESCS[index % len(EN_CHAR_DESCS)]
+        fr_name = FR_CHAR_NAMES[index % len(FR_CHAR_NAMES)]
+        fr_desc = FR_CHAR_DESCS[index % len(FR_CHAR_DESCS)]
+    elif category == "item":
+        en_prefix = EN_ITEM_PREFIXES[index % len(EN_ITEM_PREFIXES)]
+        en_template = EN_ITEM_TEMPLATES[index % len(EN_ITEM_TEMPLATES)]
+        en_name = f"{en_prefix} {en_template[0]}"
+        en_desc_t = EN_ITEM_DESCS[index % len(EN_ITEM_DESCS)]
+        en_desc = en_desc_t.format(type=en_template[0])
+        fr_prefix = FR_ITEM_PREFIXES[index % len(FR_ITEM_PREFIXES)]
+        fr_template = FR_ITEM_TEMPLATES[index % len(FR_ITEM_TEMPLATES)]
+        fr_name = f"{fr_template[0]} {fr_prefix}"
+        fr_desc_t = FR_ITEM_DESCS[index % len(FR_ITEM_DESCS)]
+        fr_desc = fr_desc_t.format(type=fr_template[0])
+    elif category == "region":
+        en_name = EN_REGION_NAMES[index % len(EN_REGION_NAMES)]
+        en_desc = EN_REGION_DESCS[index % len(EN_REGION_DESCS)]
+        fr_name = FR_REGION_NAMES[index % len(FR_REGION_NAMES)]
+        fr_desc = FR_REGION_DESCS[index % len(FR_REGION_DESCS)]
+    elif category == "contents":
+        en_name = EN_SKILL_NAMES[index % len(EN_SKILL_NAMES)]
+        en_desc = EN_SKILL_DESCS[index % len(EN_SKILL_DESCS)]
+        fr_name = FR_SKILL_NAMES[index % len(FR_SKILL_NAMES)]
+        fr_desc = FR_SKILL_DESCS[index % len(FR_SKILL_DESCS)]
+    else:
+        en_name = f"Unknown_{index}"
+        en_desc = f"Unknown description {index}"
+        fr_name = f"Inconnu_{index}"
+        fr_desc = f"Description inconnue {index}"
+    return en_name, en_desc, fr_name, fr_desc
+
+
+# ---------------------------------------------------------------------------
+# Language Data File Writer
+# ---------------------------------------------------------------------------
+def write_language_data(collector: LanguageDataCollector) -> None:
+    """Write 3 language data XML files (KOR, ENG, FRE)."""
+    lang_configs = {
+        "kor": ("kr_str", "kr_desc"),
+        "eng": ("en_str", "en_desc"),
+        "fre": ("fr_str", "fr_desc"),
+    }
+
+    for lang, (str_field, desc_field) in lang_configs.items():
+        root = etree.Element("LocStrList")
+
+        for entry in collector.entries:
+            el = etree.SubElement(root, "LocStr")
+            el.set("StringId", entry["string_id"])
+            if lang == "kor":
+                el.set("StrOrigin", entry["kr_str"])
+                el.set("Str", "")
+                el.set("DescOrigin", entry.get("kr_desc", ""))
+                el.set("Desc", "")
+            else:
+                el.set("StrOrigin", entry["kr_str"])
+                el.set("Str", entry[str_field])
+                el.set("DescOrigin", entry.get("kr_desc", ""))
+                el.set("Desc", entry.get(desc_field, ""))
+
+        path = LOC_DIR / f"languagedata_{lang}.xml"
+        write_xml(root, path)
+
+
+def write_export_indexes(collector: LanguageDataCollector) -> None:
+    """Write EXPORT .loc.xml index files mapping StringIDs to source files."""
+    for source_stem, string_ids in collector.source_file_map.items():
+        root = etree.Element("LocStrList")
+
+        for sid in string_ids:
+            el = etree.SubElement(root, "LocStr")
+            el.set("StringId", sid)
+
+        path = EXPORT_DIR / f"{source_stem}.loc.xml"
+        write_xml(root, path)
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
@@ -836,7 +1449,7 @@ def main() -> None:
     registry = CrossRefRegistry()
 
     # Step 1: Generate Knowledge FIRST
-    print("\n[1/8] Generating Knowledge entries...")
+    print("\n[1/9] Generating Knowledge entries...")
     knowledge = generate_knowledge(
         registry, rng,
         char_count=KNOWLEDGE_CHAR_COUNT,
@@ -849,46 +1462,64 @@ def main() -> None:
     print(f"  -> {total_knowledge} knowledge entries across 4 files")
 
     # Step 2: Generate Items
-    print("[2/8] Generating Items...")
+    print("[2/9] Generating Items...")
     item_categories = generate_items(registry, rng, knowledge["item"], ITEM_COUNT)
     write_items_xml(item_categories)
     total_items = sum(len(v) for v in item_categories.values())
     print(f"  -> {total_items} items across 4 files")
 
     # Step 3: Generate Characters
-    print("[3/8] Generating Characters...")
+    print("[3/9] Generating Characters...")
     char_categories = generate_characters(registry, rng, knowledge["character"], CHAR_COUNT)
     write_characters_xml(char_categories)
     total_chars = sum(len(v) for v in char_categories.values())
     print(f"  -> {total_chars} characters across 3 files")
 
     # Step 4: Generate Skills
-    print("[4/8] Generating Skills...")
+    print("[4/9] Generating Skills...")
     skills = generate_skills(registry, rng, knowledge["contents"], SKILL_COUNT)
     print(f"  -> {len(skills)} skills in 1 file")
 
     # Step 5: Generate Skill Trees
-    print("[5/8] Generating Skill Trees...")
+    print("[5/9] Generating Skill Trees...")
     generate_skill_trees(registry, rng, skills, SKILL_TREE_COUNT)
     print(f"  -> {SKILL_TREE_COUNT} skill trees")
 
     # Step 6: Generate Factions/Regions
-    print("[6/8] Generating Factions/Regions...")
+    print("[6/9] Generating Factions/Regions...")
     nodes = generate_factions(registry, rng, knowledge["region"], REGION_NODE_COUNT)
     generate_waypoints(rng, nodes)
     print(f"  -> {len(nodes)} faction nodes + waypoints")
 
     # Step 7: Generate Gimmicks
-    print("[7/8] Generating Gimmicks...")
+    print("[7/9] Generating Gimmicks...")
     generate_gimmicks(rng, GIMMICK_COUNT)
     print(f"  -> {GIMMICK_COUNT} gimmicks across 3 folders")
 
     # Step 8: Generate Binary Stubs
-    print("[8/8] Generating Binary Stubs...")
+    print("[8/9] Generating Binary Stubs...")
     generate_binary_stubs(registry, knowledge, CHAR_COUNT)
     dds_count = len(list(TEXTURES_DIR.glob("*.dds")))
     wem_count = len(list(AUDIO_DIR.glob("*.wem")))
     print(f"  -> {dds_count} DDS stubs, {wem_count} WEM stubs")
+
+    # Step 9: Generate Language Data + EXPORT indexes
+    print("[9/9] Generating Language Data + EXPORT indexes...")
+    collector = collect_language_data(
+        knowledge=knowledge,
+        item_categories=item_categories,
+        char_categories=char_categories,
+        skills=skills,
+        nodes=nodes,
+        gimmick_count=GIMMICK_COUNT,
+        rng=rng,
+    )
+    write_language_data(collector)
+    write_export_indexes(collector)
+    locstr_count = len(collector.entries)
+    export_count = len(collector.source_file_map)
+    print(f"  -> {locstr_count} LocStr entries across 3 language files")
+    print(f"  -> {export_count} EXPORT .loc.xml index files")
 
     # Validate cross-references
     print("\nValidating cross-references...")
@@ -906,8 +1537,12 @@ def main() -> None:
     print(f"  Gimmicks: {GIMMICK_COUNT}")
     print(f"  DDS Stubs: {dds_count}")
     print(f"  WEM Stubs: {wem_count}")
+    print(f"  LocStr Entries: {locstr_count}")
+    print(f"  EXPORT Files: {export_count}")
     xml_count = len(list(STATIC_DIR.rglob("*.xml")))
-    print(f"  XML Files: {xml_count}")
+    loc_xml_count = len(list(STRINGTABLE_DIR.rglob("*.xml")))
+    print(f"  StaticInfo XML Files: {xml_count}")
+    print(f"  Stringtable XML Files: {loc_xml_count}")
 
 
 if __name__ == "__main__":

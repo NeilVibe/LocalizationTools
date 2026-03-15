@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LocStrList>
+  <LocStr StringId="SID_CHAR_0025_NAME"/>
+  <LocStr StringId="SID_CHAR_0025_DESC"/>
+  <LocStr StringId="SID_CHAR_0026_NAME"/>
+  <LocStr StringId="SID_CHAR_0026_DESC"/>
+  <LocStr StringId="SID_CHAR_0027_NAME"/>
+  <LocStr StringId="SID_CHAR_0027_DESC"/>
+  <LocStr StringId="SID_CHAR_0028_NAME"/>
+  <LocStr StringId="SID_CHAR_0028_DESC"/>
+  <LocStr StringId="SID_CHAR_0029_NAME"/>
+  <LocStr StringId="SID_CHAR_0029_DESC"/>
+  <LocStr StringId="SID_CHAR_0030_NAME"/>
+  <LocStr StringId="SID_CHAR_0030_DESC"/>
+  <LocStr StringId="SID_CHAR_0031_NAME"/>
+  <LocStr StringId="SID_CHAR_0031_DESC"/>
+  <LocStr StringId="SID_CHAR_0032_NAME"/>
+  <LocStr StringId="SID_CHAR_0032_DESC"/>
+  <LocStr StringId="SID_CHAR_0033_NAME"/>
+  <LocStr StringId="SID_CHAR_0033_DESC"/>
+  <LocStr StringId="SID_CHAR_0034_NAME"/>
+  <LocStr StringId="SID_CHAR_0034_DESC"/>
+  <LocStr StringId="SID_CHAR_0035_NAME"/>
+  <LocStr StringId="SID_CHAR_0035_DESC"/>
+  <LocStr StringId="SID_CHAR_0036_NAME"/>
+  <LocStr StringId="SID_CHAR_0036_DESC"/>
+  <LocStr StringId="SID_CHAR_0037_NAME"/>
+  <LocStr StringId="SID_CHAR_0037_DESC"/>
+  <LocStr StringId="SID_CHAR_0038_NAME"/>
+  <LocStr StringId="SID_CHAR_0038_DESC"/>
+</LocStrList>

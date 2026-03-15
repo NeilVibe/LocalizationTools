@@ -1,0 +1,707 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<LocStrList>
+  <LocStr StringId="SID_KNOW_CHAR_0001_NAME" StrOrigin="장로 바론" Str="Elder Varon" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0001_DESC" StrOrigin="오래된 마을의 수호자.&lt;br/&gt;전쟁을 피해 은둔 중이다." Str="Guardian of the old village.&lt;br/&gt;Living in seclusion to avoid the war." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0002_NAME" StrOrigin="전사 키라" Str="Warrior Kira" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0002_DESC" StrOrigin="북부 전초기지에서 온 용맹한 전사.&lt;br/&gt;검은별의 비밀을 추적하고 있다." Str="A brave warrior from the northern outpost.&lt;br/&gt;Tracking the secret of the Blackstar." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0003_NAME" StrOrigin="마법사 드라크마르" Str="Sorcerer Drakmar" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0003_DESC" StrOrigin="고대의 지식을 탐구하는 마법사.&lt;br/&gt;금지된 마법의 위험성을 경고한다." Str="A sorcerer who explores ancient knowledge.&lt;br/&gt;Warns of the dangers of forbidden magic." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0004_NAME" StrOrigin="정찰병 루네" Str="Scout Rune" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0004_DESC" StrOrigin="숲의 길을 아는 정찰병.&lt;br/&gt;위험한 지역을 안전하게 안내한다." Str="A scout who knows the forest paths.&lt;br/&gt;Guides safely through dangerous areas." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0005_NAME" StrOrigin="대장장이 그림조" Str="Blacksmith Grimzo" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0005_DESC" StrOrigin="전설적인 무기를 만드는 장인.&lt;br/&gt;검은별 금속의 비밀을 알고 있다." Str="A master craftsman who forges legendary weapons.&lt;br/&gt;Knows the secret of Blackstar metal." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0006_NAME" StrOrigin="상인 하나" Str="Merchant Hana" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0006_DESC" StrOrigin="떠돌이 상인으로 희귀한 물건을 취급한다." Str="A traveling merchant dealing in rare goods." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0007_NAME" StrOrigin="현자 미르" Str="Sage Mir" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0007_DESC" StrOrigin="고대 문헌을 해독하는 현자.&lt;br/&gt;잊혀진 언어를 유일하게 읽을 수 있다." Str="A sage who deciphers ancient texts.&lt;br/&gt;The only one who can read the forgotten language." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0008_NAME" StrOrigin="궁수 세라" Str="Archer Sera" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0008_DESC" StrOrigin="정밀한 활솜씨로 유명한 궁수.&lt;br/&gt;백발백중의 실력을 자랑한다." Str="An archer famous for precise marksmanship.&lt;br/&gt;Boasts a perfect hit rate." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0009_NAME" StrOrigin="치유사 유라" Str="Healer Yura" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0009_DESC" StrOrigin="신성한 힘으로 부상자를 치유한다.&lt;br/&gt;전장의 수호천사로 불린다." Str="Heals the wounded with divine power.&lt;br/&gt;Known as the battlefield guardian angel." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0010_NAME" StrOrigin="기사 카엘" Str="Knight Kael" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0010_DESC" StrOrigin="왕국의 정예 기사단 출신.&lt;br/&gt;명예를 위해 싸운다." Str="From the kingdom's elite knight order.&lt;br/&gt;Fights for honor." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0011_NAME" StrOrigin="도적 진" Str="Rogue Jin" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0011_DESC" StrOrigin="어둠 속에서 활동하는 도적.&lt;br/&gt;정보 수집에 능하다." Str="A rogue operating in the shadows.&lt;br/&gt;Skilled in intelligence gathering." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0012_NAME" StrOrigin="음유시인 아리아" Str="Bard Aria" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0012_DESC" StrOrigin="전설의 노래를 부르는 음유시인.&lt;br/&gt;그의 노래에는 마법이 깃들어 있다." Str="A bard who sings legendary songs.&lt;br/&gt;Magic resides in their melodies." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0013_NAME" StrOrigin="마녀 노르나" Str="Witch Norna" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0013_DESC" StrOrigin="금지된 마법을 연구하는 마녀.&lt;br/&gt;위험하지만 강력한 동맹이다." Str="A witch researching forbidden magic.&lt;br/&gt;A dangerous but powerful ally." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0014_NAME" StrOrigin="수호자 벨리온" Str="Guardian Velion" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0014_DESC" StrOrigin="성벽을 지키는 수호자.&lt;br/&gt;어떤 적도 뚫지 못하는 방어를 자랑한다." Str="A guardian who defends the walls.&lt;br/&gt;Boasts an impenetrable defense." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0015_NAME" StrOrigin="연금술사 코르" Str="Alchemist Kor" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0015_DESC" StrOrigin="다양한 약물을 제조하는 연금술사.&lt;br/&gt;치료제부터 독약까지 만들 수 있다." Str="An alchemist who concocts various substances.&lt;br/&gt;Can create anything from cures to poisons." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0016_NAME" StrOrigin="사냥꾼 타카" Str="Hunter Taka" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0016_DESC" StrOrigin="산야를 누비는 노련한 사냥꾼.&lt;br/&gt;야생 동물의 습성을 꿰뚫고 있다." Str="A seasoned hunter roaming the wilderness.&lt;br/&gt;Understands wild animal behavior." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0017_NAME" StrOrigin="검투사 렉스" Str="Gladiator Rex" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0017_DESC" StrOrigin="투기장의 챔피언인 검투사.&lt;br/&gt;관중들의 열광적인 지지를 받는다." Str="A gladiator and arena champion.&lt;br/&gt;Receives enthusiastic support from the crowd." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0018_NAME" StrOrigin="주술사 오카" Str="Shaman Oka" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0018_DESC" StrOrigin="정령과 교감하는 주술사.&lt;br/&gt;자연의 힘을 다룬다." Str="A shaman who communes with spirits.&lt;br/&gt;Wields the power of nature." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0019_NAME" StrOrigin="무희 리나" Str="Dancer Lina" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0019_DESC" StrOrigin="매혹적인 춤으로 적을 현혹시키는 무희.&lt;br/&gt;춤에는 전투 기술이 숨겨져 있다." Str="A dancer who mesmerizes foes with enchanting dance.&lt;br/&gt;Combat techniques are hidden in the dance." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0020_NAME" StrOrigin="학자 에이든" Str="Scholar Aiden" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0020_DESC" StrOrigin="방대한 지식을 가진 학자.&lt;br/&gt;모든 것을 기록하는 습관이 있다." Str="A scholar with vast knowledge.&lt;br/&gt;Has a habit of recording everything." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0021_NAME" StrOrigin="용기사 드레이크" Str="Dragon Knight Drake" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0021_DESC" StrOrigin="용을 타고 하늘을 나는 기사.&lt;br/&gt;하늘의 패권을 장악하고 있다." Str="A knight who flies on dragons.&lt;br/&gt;Commands air superiority." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0022_NAME" StrOrigin="암살자 실바" Str="Assassin Silva" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0022_DESC" StrOrigin="그림자처럼 움직이는 암살자.&lt;br/&gt;표적은 결코 벗어날 수 없다." Str="An assassin who moves like a shadow.&lt;br/&gt;Targets can never escape." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0023_NAME" StrOrigin="성기사 루미아" Str="Paladin Lumia" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0023_DESC" StrOrigin="빛의 힘으로 악을 물리치는 성기사.&lt;br/&gt;정의를 위해 헌신한다." Str="A paladin who defeats evil with the power of light.&lt;br/&gt;Devoted to justice." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0024_NAME" StrOrigin="광전사 그론" Str="Berserker Gron" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0024_DESC" StrOrigin="분노의 힘으로 싸우는 광전사.&lt;br/&gt;전투에서 두려움을 모른다." Str="A berserker who fights with the power of rage.&lt;br/&gt;Knows no fear in battle." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0025_NAME" StrOrigin="소환사 에바" Str="Summoner Eva" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0025_DESC" StrOrigin="이계의 존재를 소환하는 마법사.&lt;br/&gt;소환수와 정신적 유대를 맺는다." Str="A mage who summons beings from other planes.&lt;br/&gt;Forms a mental bond with summons." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0026_NAME" StrOrigin="마검사 카이" Str="Spellsword Kai" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0026_DESC" StrOrigin="마법과 검술을 동시에 구사한다.&lt;br/&gt;두 가지 전투 스타일을 자유롭게 전환한다." Str="Wields magic and swordsmanship simultaneously.&lt;br/&gt;Freely switches between two combat styles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0027_NAME" StrOrigin="해적 모건" Str="Pirate Morgan" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0027_DESC" StrOrigin="바다를 누비는 해적 선장.&lt;br/&gt;보물 지도를 소유하고 있다." Str="A pirate captain sailing the seas.&lt;br/&gt;Possesses a treasure map." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0028_NAME" StrOrigin="수도승 첸" Str="Monk Chen" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0028_DESC" StrOrigin="내면의 기를 수련하는 수도승.&lt;br/&gt;맨손으로 강철을 부순다." Str="A monk who trains inner energy.&lt;br/&gt;Breaks steel with bare hands." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0029_NAME" StrOrigin="사령술사 다크" Str="Necromancer Dark" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0029_DESC" StrOrigin="죽은 자의 영혼을 다루는 사령술사.&lt;br/&gt;금기시되는 마법을 사용한다." Str="A necromancer who commands the souls of the dead.&lt;br/&gt;Uses taboo magic." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0030_NAME" StrOrigin="점술사 비안카" Str="Fortune Teller Bianca" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0030_DESC" StrOrigin="별의 움직임으로 미래를 읽는다.&lt;br/&gt;예언의 정확도는 놀라울 정도이다." Str="Reads the future through the movement of stars.&lt;br/&gt;The accuracy of prophecies is astonishing." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0031_NAME" StrOrigin="방랑자 로이" Str="Wanderer Roy" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0031_DESC" StrOrigin="정해진 곳 없이 세계를 떠도는 방랑자.&lt;br/&gt;다양한 경험으로 지혜를 얻었다." Str="A wanderer roaming the world without a set destination.&lt;br/&gt;Gained wisdom through diverse experiences." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0032_NAME" StrOrigin="대마법사 아크" Str="Archmage Arc" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0032_DESC" StrOrigin="마법 탑의 최고 마법사.&lt;br/&gt;마법의 근원을 연구하고 있다." Str="The greatest mage of the magic tower.&lt;br/&gt;Researches the origin of magic." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0033_NAME" StrOrigin="용병 크롬" Str="Mercenary Chrome" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0033_DESC" StrOrigin="돈을 위해 싸우는 용병.&lt;br/&gt;의뢰만 완수하면 누구든 고용할 수 있다." Str="A mercenary who fights for money.&lt;br/&gt;Anyone can be hired if the contract is fulfilled." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0034_NAME" StrOrigin="제사장 노바" Str="Priest Nova" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0034_DESC" StrOrigin="신전의 제사장.&lt;br/&gt;신의 뜻을 전하는 사제이다." Str="A priest of the temple.&lt;br/&gt;A cleric who conveys the will of the divine." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0035_NAME" StrOrigin="탐험가 마르코" Str="Explorer Marco" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0035_DESC" StrOrigin="미지의 땅을 탐험하는 모험가.&lt;br/&gt;발견의 기쁨을 위해 산다." Str="An adventurer exploring unknown lands.&lt;br/&gt;Lives for the joy of discovery." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0036_NAME" StrOrigin="장로 바론_035" Str="Elder Varon" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CHAR_0036_DESC" StrOrigin="오래된 마을의 수호자.&lt;br/&gt;전쟁을 피해 은둔 중이다." Str="Guardian of the old village.&lt;br/&gt;Living in seclusion to avoid the war." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0001_NAME" StrOrigin="철 검" Str="Iron Sword" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0001_DESC" StrOrigin="전투에서 유용한 검.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Sword for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0002_NAME" StrOrigin="강철 도끼" Str="Steel Axe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0002_DESC" StrOrigin="강력한 힘이 깃든 도끼.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Axe imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0003_NAME" StrOrigin="미스릴 창" Str="Mithril Spear" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0003_DESC" StrOrigin="고대 유적에서 발견된 창." Str="A Spear discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0004_NAME" StrOrigin="아다만 활" Str="Adamant Bow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0004_DESC" StrOrigin="희귀한 재료로 만들어진 활.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bow made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0005_NAME" StrOrigin="오리칼쿰 단검" Str="Orichalcum Dagger" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0005_DESC" StrOrigin="전장에서 검증된 단검.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Dagger.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0006_NAME" StrOrigin="화염 지팡이" Str="Flame Staff" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0006_DESC" StrOrigin="전투에서 유용한 지팡이.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Staff for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0007_NAME" StrOrigin="냉기 석궁" Str="Frost Crossbow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0007_DESC" StrOrigin="강력한 힘이 깃든 석궁.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Crossbow imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0008_NAME" StrOrigin="번개 해머" Str="Lightning Hammer" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0008_DESC" StrOrigin="고대 유적에서 발견된 해머." Str="A Hammer discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0009_NAME" StrOrigin="독 낫" Str="Poison Scythe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0009_DESC" StrOrigin="희귀한 재료로 만들어진 낫.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Scythe made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0010_NAME" StrOrigin="신성 채찍" Str="Holy Whip" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0010_DESC" StrOrigin="전장에서 검증된 채찍.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Whip.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0011_NAME" StrOrigin="고대 투구" Str="Ancient Helm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0011_DESC" StrOrigin="전투에서 유용한 투구.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Helm for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0012_NAME" StrOrigin="전설 갑옷" Str="Legendary Chestplate" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0012_DESC" StrOrigin="강력한 힘이 깃든 갑옷.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Chestplate imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0013_NAME" StrOrigin="마법 장갑" Str="Magical Gauntlets" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0013_DESC" StrOrigin="고대 유적에서 발견된 장갑." Str="A Gauntlets discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0014_NAME" StrOrigin="저주받은 신발" Str="Cursed Boots" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0014_DESC" StrOrigin="희귀한 재료로 만들어진 신발.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Boots made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0015_NAME" StrOrigin="축복받은 방패" Str="Blessed Shield" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0015_DESC" StrOrigin="전장에서 검증된 방패.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Shield.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0016_NAME" StrOrigin="용사 물약" Str="Hero's Potion" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0016_DESC" StrOrigin="전투에서 유용한 물약.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Potion for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0017_NAME" StrOrigin="영웅 주문서" Str="Champion's Scroll" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0017_DESC" StrOrigin="강력한 힘이 깃든 주문서.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Scroll imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0018_NAME" StrOrigin="현자 음식" Str="Sage's Food" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0018_DESC" StrOrigin="고대 유적에서 발견된 음식." Str="A Food discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0019_NAME" StrOrigin="암흑 폭탄" Str="Shadow Bomb" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0019_DESC" StrOrigin="희귀한 재료로 만들어진 폭탄.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bomb made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0020_NAME" StrOrigin="황금 부적" Str="Golden Charm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0020_DESC" StrOrigin="전장에서 검증된 부적.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Charm.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0021_NAME" StrOrigin="룬 반지" Str="Runic Ring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0021_DESC" StrOrigin="전투에서 유용한 반지.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Ring for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0022_NAME" StrOrigin="별빛 목걸이" Str="Starlight Necklace" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0022_DESC" StrOrigin="강력한 힘이 깃든 목걸이.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Necklace imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0023_NAME" StrOrigin="달빛 귀걸이" Str="Moonlight Earring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0023_DESC" StrOrigin="고대 유적에서 발견된 귀걸이." Str="A Earring discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0024_NAME" StrOrigin="태양 팔찌" Str="Solar Bracelet" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0024_DESC" StrOrigin="희귀한 재료로 만들어진 팔찌.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bracelet made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0025_NAME" StrOrigin="그림자 벨트" Str="Shadow Belt" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0025_DESC" StrOrigin="전장에서 검증된 벨트.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Belt.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0026_NAME" StrOrigin="철 검" Str="Iron Sword" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0026_DESC" StrOrigin="전투에서 유용한 검.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Sword for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0027_NAME" StrOrigin="강철 도끼" Str="Steel Axe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0027_DESC" StrOrigin="강력한 힘이 깃든 도끼.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Axe imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0028_NAME" StrOrigin="미스릴 창" Str="Mithril Spear" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0028_DESC" StrOrigin="고대 유적에서 발견된 창." Str="A Spear discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0029_NAME" StrOrigin="아다만 활" Str="Adamant Bow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0029_DESC" StrOrigin="희귀한 재료로 만들어진 활.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bow made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0030_NAME" StrOrigin="오리칼쿰 단검" Str="Orichalcum Dagger" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_ITEM_0030_DESC" StrOrigin="전장에서 검증된 단검.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Dagger.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0001_NAME" StrOrigin="검은별 마을" Str="Blackstar Village" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0001_DESC" StrOrigin="오래된 역사를 가진 마을.&lt;br/&gt;평화롭지만 위험이 도사리고 있다." Str="A village with a long history.&lt;br/&gt;Peaceful but danger lurks nearby." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0002_NAME" StrOrigin="광명의 전초기지" Str="Outpost of Light" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0002_DESC" StrOrigin="전략적 요충지에 위치한 전초기지.&lt;br/&gt;끊임없는 경계가 필요하다." Str="An outpost at a strategic location.&lt;br/&gt;Requires constant vigilance." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0003_NAME" StrOrigin="용의 둥지" Str="Dragon's Nest" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0003_DESC" StrOrigin="고대 용이 잠들어 있는 곳.&lt;br/&gt;용의 보물이 숨겨져 있다는 소문이 있다." Str="A place where an ancient dragon sleeps.&lt;br/&gt;Rumored to contain the dragon's treasure." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0004_NAME" StrOrigin="고대 유적지" Str="Ancient Ruins" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0004_DESC" StrOrigin="잊혀진 문명의 흔적이 남아 있는 유적지." Str="Ruins with traces of a forgotten civilization." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0005_NAME" StrOrigin="수정 동굴" Str="Crystal Cave" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0005_DESC" StrOrigin="아름다운 수정으로 가득한 동굴.&lt;br/&gt;귀중한 광물이 채굴된다." Str="A cave filled with beautiful crystals.&lt;br/&gt;Precious minerals are mined here." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0006_NAME" StrOrigin="폭풍의 성" Str="Storm Fortress" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0006_DESC" StrOrigin="바람이 끊이지 않는 성.&lt;br/&gt;난공불락의 요새로 알려져 있다." Str="A fortress with never-ending wind.&lt;br/&gt;Known as an impregnable stronghold." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0007_NAME" StrOrigin="어둠의 숲" Str="Dark Forest" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0007_DESC" StrOrigin="빛이 닿지 않는 어두운 숲.&lt;br/&gt;위험한 마물들이 서식한다." Str="A dark forest where light cannot reach.&lt;br/&gt;Dangerous creatures inhabit it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0008_NAME" StrOrigin="불사의 탑" Str="Tower of Immortality" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0008_DESC" StrOrigin="죽지 않는 마법사가 지배하는 탑.&lt;br/&gt;들어가면 살아 돌아오기 힘들다." Str="A tower ruled by an undying sorcerer.&lt;br/&gt;Those who enter rarely return alive." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0009_NAME" StrOrigin="황혼의 항구" Str="Twilight Harbor" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0009_DESC" StrOrigin="황혼 무렵 가장 아름다운 항구.&lt;br/&gt;많은 상인들이 모여든다." Str="A harbor most beautiful at twilight.&lt;br/&gt;Many merchants gather here." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0010_NAME" StrOrigin="잊혀진 사원" Str="Forgotten Temple" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0010_DESC" StrOrigin="신들이 버린 고대의 사원.&lt;br/&gt;아직도 신비한 힘이 남아 있다." Str="An ancient temple abandoned by the gods.&lt;br/&gt;Mysterious power still lingers." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0011_NAME" StrOrigin="전사의 평원" Str="Warrior's Plain" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0011_DESC" StrOrigin="수많은 전투가 벌어진 평원.&lt;br/&gt;전사들의 영혼이 떠돌고 있다." Str="A plain where countless battles occurred.&lt;br/&gt;Spirits of warriors wander here." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0012_NAME" StrOrigin="마법사의 탑" Str="Mage Tower" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0012_DESC" StrOrigin="마법 연구의 중심지인 탑.&lt;br/&gt;입장하려면 마법 능력이 필요하다." Str="A tower at the center of magical research.&lt;br/&gt;Magical ability is required to enter." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0013_NAME" StrOrigin="드워프 광산" Str="Dwarf Mines" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0013_DESC" StrOrigin="드워프들이 오랫동안 파 온 광산.&lt;br/&gt;깊은 곳에는 알 수 없는 것이 도사린다." Str="Mines long excavated by dwarves.&lt;br/&gt;Something unknown lurks in the depths." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0014_NAME" StrOrigin="엘프의 숲" Str="Elven Forest" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_REGI_0014_DESC" StrOrigin="엘프 종족이 대대로 지켜온 성스러운 숲." Str="A sacred forest protected by elves for generations." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0001_NAME" StrOrigin="강타" Str="Smash" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0001_DESC" StrOrigin="강력한 일격을 가한다.&lt;br/&gt;적에게 큰 피해를 준다." Str="Delivers a powerful strike.&lt;br/&gt;Deals heavy damage to the enemy." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0002_NAME" StrOrigin="회전 베기" Str="Spinning Slash" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0002_DESC" StrOrigin="회전하며 주변의 적을 공격한다." Str="Attacks surrounding enemies with a spin." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0003_NAME" StrOrigin="돌진" Str="Charge" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0003_DESC" StrOrigin="전방으로 돌진하여 적을 밀어낸다.&lt;br/&gt;이동과 공격을 동시에 수행한다." Str="Charges forward to push the enemy.&lt;br/&gt;Combines movement and attack." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0004_NAME" StrOrigin="방어 자세" Str="Defensive Stance" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0004_DESC" StrOrigin="방어 태세를 취하여 받는 피해를 줄인다." Str="Takes a defensive stance to reduce incoming damage." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0005_NAME" StrOrigin="기합" Str="Focus" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0005_DESC" StrOrigin="정신을 집중하여 능력치를 일시적으로 상승시킨다.&lt;br/&gt;집중력이 높을수록 효과가 크다." Str="Focuses the mind to temporarily boost stats.&lt;br/&gt;The higher the concentration, the greater the effect." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0006_NAME" StrOrigin="화염구" Str="Fireball" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0006_DESC" StrOrigin="불타는 화염구를 발사한다.&lt;br/&gt;범위 피해를 입힌다." Str="Launches a burning fireball.&lt;br/&gt;Deals area damage." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0007_NAME" StrOrigin="냉기 화살" Str="Frost Arrow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0007_DESC" StrOrigin="얼음 화살을 발사하여 적을 감속시킨다." Str="Fires an ice arrow to slow the enemy." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0008_NAME" StrOrigin="번개 낙뢰" Str="Lightning Strike" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0008_DESC" StrOrigin="하늘에서 번개를 떨어뜨린다.&lt;br/&gt;높은 확률로 기절시킨다." Str="Calls lightning from the sky.&lt;br/&gt;High chance to stun." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0009_NAME" StrOrigin="치유의 빛" Str="Healing Light" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0009_DESC" StrOrigin="신성한 빛으로 아군을 치유한다." Str="Heals allies with divine light." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0010_NAME" StrOrigin="보호막" Str="Barrier" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0010_DESC" StrOrigin="마법 보호막을 생성하여 피해를 흡수한다.&lt;br/&gt;지속 시간 동안 피해를 대신 받는다." Str="Creates a magic barrier that absorbs damage.&lt;br/&gt;Absorbs damage for the duration." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0011_NAME" StrOrigin="은신" Str="Stealth" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0011_DESC" StrOrigin="그림자 속에 몸을 숨긴다.&lt;br/&gt;이동 속도가 감소하지만 적에게 발견되지 않는다." Str="Hides in the shadows.&lt;br/&gt;Movement speed decreases but cannot be detected." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0012_NAME" StrOrigin="급소 공격" Str="Critical Strike" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_KNOW_CONT_0012_DESC" StrOrigin="적의 약점을 정확히 공격한다.&lt;br/&gt;치명타 확률이 크게 증가한다." Str="Strikes the enemy's weak point precisely.&lt;br/&gt;Greatly increases critical hit chance." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0001_NAME" StrOrigin="철 검" Str="Iron Sword" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0001_DESC" StrOrigin="전투에서 유용한 검.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Sword for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0002_NAME" StrOrigin="강철 도끼" Str="Steel Axe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0002_DESC" StrOrigin="강력한 힘이 깃든 도끼.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Axe imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0003_NAME" StrOrigin="미스릴 창" Str="Mithril Spear" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0003_DESC" StrOrigin="고대 유적에서 발견된 창." Str="A Spear discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0004_NAME" StrOrigin="아다만 활" Str="Adamant Bow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0004_DESC" StrOrigin="희귀한 재료로 만들어진 활.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bow made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0005_NAME" StrOrigin="오리칼쿰 단검" Str="Orichalcum Dagger" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0005_DESC" StrOrigin="전장에서 검증된 단검.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Dagger.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0006_NAME" StrOrigin="화염 지팡이" Str="Flame Staff" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0006_DESC" StrOrigin="전투에서 유용한 지팡이.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Staff for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0007_NAME" StrOrigin="냉기 석궁" Str="Frost Crossbow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0007_DESC" StrOrigin="강력한 힘이 깃든 석궁.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Crossbow imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0008_NAME" StrOrigin="번개 해머" Str="Lightning Hammer" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0008_DESC" StrOrigin="고대 유적에서 발견된 해머." Str="A Hammer discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0009_NAME" StrOrigin="독 낫" Str="Poison Scythe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0009_DESC" StrOrigin="희귀한 재료로 만들어진 낫.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Scythe made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0010_NAME" StrOrigin="신성 채찍" Str="Holy Whip" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0010_DESC" StrOrigin="전장에서 검증된 채찍.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Whip.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0011_NAME" StrOrigin="철 검" Str="Ancient Helm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0011_DESC" StrOrigin="전투에서 유용한 검.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Helm for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0012_NAME" StrOrigin="강철 도끼" Str="Legendary Chestplate" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0012_DESC" StrOrigin="강력한 힘이 깃든 도끼.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Chestplate imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0013_NAME" StrOrigin="미스릴 창" Str="Magical Gauntlets" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0013_DESC" StrOrigin="고대 유적에서 발견된 창." Str="A Gauntlets discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0014_NAME" StrOrigin="아다만 활" Str="Cursed Boots" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0014_DESC" StrOrigin="희귀한 재료로 만들어진 활.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Boots made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0015_NAME" StrOrigin="오리칼쿰 단검" Str="Blessed Shield" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0015_DESC" StrOrigin="전장에서 검증된 단검.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Shield.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0016_NAME" StrOrigin="화염 지팡이" Str="Hero's Potion" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0016_DESC" StrOrigin="전투에서 유용한 지팡이.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Potion for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0017_NAME" StrOrigin="냉기 석궁" Str="Champion's Scroll" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0017_DESC" StrOrigin="강력한 힘이 깃든 석궁.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Scroll imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0018_NAME" StrOrigin="번개 해머" Str="Sage's Food" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0018_DESC" StrOrigin="고대 유적에서 발견된 해머." Str="A Food discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0019_NAME" StrOrigin="독 낫" Str="Shadow Bomb" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0019_DESC" StrOrigin="희귀한 재료로 만들어진 낫.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bomb made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0020_NAME" StrOrigin="신성 채찍" Str="Golden Charm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0020_DESC" StrOrigin="전장에서 검증된 채찍.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Charm.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0021_NAME" StrOrigin="철 검" Str="Runic Ring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0021_DESC" StrOrigin="전투에서 유용한 검.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Ring for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0022_NAME" StrOrigin="강철 도끼" Str="Starlight Necklace" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0022_DESC" StrOrigin="강력한 힘이 깃든 도끼.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Necklace imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0023_NAME" StrOrigin="미스릴 창" Str="Moonlight Earring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0023_DESC" StrOrigin="고대 유적에서 발견된 창." Str="A Earring discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0024_NAME" StrOrigin="아다만 활" Str="Solar Bracelet" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0024_DESC" StrOrigin="희귀한 재료로 만들어진 활.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bracelet made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0025_NAME" StrOrigin="오리칼쿰 단검" Str="Shadow Belt" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0025_DESC" StrOrigin="전장에서 검증된 단검.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Belt.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0026_NAME" StrOrigin="화염 지팡이" Str="Iron Sword" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0026_DESC" StrOrigin="전투에서 유용한 지팡이.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Sword for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0027_NAME" StrOrigin="냉기 석궁" Str="Steel Axe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0027_DESC" StrOrigin="강력한 힘이 깃든 석궁.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Axe imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0028_NAME" StrOrigin="번개 해머" Str="Mithril Spear" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0028_DESC" StrOrigin="고대 유적에서 발견된 해머." Str="A Spear discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0029_NAME" StrOrigin="독 낫" Str="Adamant Bow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0029_DESC" StrOrigin="희귀한 재료로 만들어진 낫.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bow made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0030_NAME" StrOrigin="신성 채찍" Str="Orichalcum Dagger" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0030_DESC" StrOrigin="전장에서 검증된 채찍.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Dagger.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0031_NAME" StrOrigin="철 검" Str="Flame Staff" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0031_DESC" StrOrigin="전투에서 유용한 검.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Staff for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0032_NAME" StrOrigin="강철 도끼" Str="Frost Crossbow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0032_DESC" StrOrigin="강력한 힘이 깃든 도끼.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Crossbow imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0033_NAME" StrOrigin="미스릴 창" Str="Lightning Hammer" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0033_DESC" StrOrigin="고대 유적에서 발견된 창." Str="A Hammer discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0034_NAME" StrOrigin="아다만 활" Str="Poison Scythe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0034_DESC" StrOrigin="희귀한 재료로 만들어진 활.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Scythe made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0035_NAME" StrOrigin="오리칼쿰 단검" Str="Holy Whip" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0035_DESC" StrOrigin="전장에서 검증된 단검.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Whip.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0036_NAME" StrOrigin="화염 지팡이" Str="Ancient Helm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0036_DESC" StrOrigin="전투에서 유용한 지팡이.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Helm for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0037_NAME" StrOrigin="냉기 석궁" Str="Legendary Chestplate" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0037_DESC" StrOrigin="강력한 힘이 깃든 석궁.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Chestplate imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0038_NAME" StrOrigin="번개 해머" Str="Magical Gauntlets" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0038_DESC" StrOrigin="고대 유적에서 발견된 해머." Str="A Gauntlets discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0039_NAME" StrOrigin="독 낫" Str="Cursed Boots" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0039_DESC" StrOrigin="희귀한 재료로 만들어진 낫.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Boots made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0040_NAME" StrOrigin="신성 채찍" Str="Blessed Shield" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0040_DESC" StrOrigin="전장에서 검증된 채찍.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Shield.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0041_NAME" StrOrigin="철 검" Str="Hero's Potion" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0041_DESC" StrOrigin="전투에서 유용한 검.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Potion for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0042_NAME" StrOrigin="강철 도끼" Str="Champion's Scroll" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0042_DESC" StrOrigin="강력한 힘이 깃든 도끼.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Scroll imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0043_NAME" StrOrigin="미스릴 창" Str="Sage's Food" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0043_DESC" StrOrigin="고대 유적에서 발견된 창." Str="A Food discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0044_NAME" StrOrigin="아다만 활" Str="Shadow Bomb" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0044_DESC" StrOrigin="희귀한 재료로 만들어진 활.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bomb made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0045_NAME" StrOrigin="오리칼쿰 단검" Str="Golden Charm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0045_DESC" StrOrigin="전장에서 검증된 단검.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Charm.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0046_NAME" StrOrigin="화염 지팡이" Str="Runic Ring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0046_DESC" StrOrigin="전투에서 유용한 지팡이.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Ring for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0047_NAME" StrOrigin="냉기 석궁" Str="Starlight Necklace" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0047_DESC" StrOrigin="강력한 힘이 깃든 석궁.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Necklace imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0048_NAME" StrOrigin="번개 해머" Str="Moonlight Earring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0048_DESC" StrOrigin="고대 유적에서 발견된 해머." Str="A Earring discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0049_NAME" StrOrigin="독 낫" Str="Solar Bracelet" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0049_DESC" StrOrigin="희귀한 재료로 만들어진 낫.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bracelet made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0050_NAME" StrOrigin="신성 채찍" Str="Shadow Belt" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0050_DESC" StrOrigin="전장에서 검증된 채찍.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Belt.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0051_NAME" StrOrigin="고대 투구" Str="Iron Sword" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0051_DESC" StrOrigin="전투에서 유용한 투구.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Sword for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0052_NAME" StrOrigin="전설 갑옷" Str="Steel Axe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0052_DESC" StrOrigin="강력한 힘이 깃든 갑옷.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Axe imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0053_NAME" StrOrigin="마법 장갑" Str="Mithril Spear" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0053_DESC" StrOrigin="고대 유적에서 발견된 장갑." Str="A Spear discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0054_NAME" StrOrigin="저주받은 신발" Str="Adamant Bow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0054_DESC" StrOrigin="희귀한 재료로 만들어진 신발.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bow made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0055_NAME" StrOrigin="축복받은 방패" Str="Orichalcum Dagger" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0055_DESC" StrOrigin="전장에서 검증된 방패.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Dagger.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0056_NAME" StrOrigin="고대 투구" Str="Flame Staff" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0056_DESC" StrOrigin="전투에서 유용한 투구.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Staff for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0057_NAME" StrOrigin="전설 갑옷" Str="Frost Crossbow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0057_DESC" StrOrigin="강력한 힘이 깃든 갑옷.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Crossbow imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0058_NAME" StrOrigin="마법 장갑" Str="Lightning Hammer" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0058_DESC" StrOrigin="고대 유적에서 발견된 장갑." Str="A Hammer discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0059_NAME" StrOrigin="저주받은 신발" Str="Poison Scythe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0059_DESC" StrOrigin="희귀한 재료로 만들어진 신발.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Scythe made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0060_NAME" StrOrigin="축복받은 방패" Str="Holy Whip" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0060_DESC" StrOrigin="전장에서 검증된 방패.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Whip.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0061_NAME" StrOrigin="고대 투구" Str="Ancient Helm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0061_DESC" StrOrigin="전투에서 유용한 투구.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Helm for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0062_NAME" StrOrigin="전설 갑옷" Str="Legendary Chestplate" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0062_DESC" StrOrigin="강력한 힘이 깃든 갑옷.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Chestplate imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0063_NAME" StrOrigin="마법 장갑" Str="Magical Gauntlets" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0063_DESC" StrOrigin="고대 유적에서 발견된 장갑." Str="A Gauntlets discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0064_NAME" StrOrigin="저주받은 신발" Str="Cursed Boots" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0064_DESC" StrOrigin="희귀한 재료로 만들어진 신발.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Boots made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0065_NAME" StrOrigin="축복받은 방패" Str="Blessed Shield" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0065_DESC" StrOrigin="전장에서 검증된 방패.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Shield.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0066_NAME" StrOrigin="고대 투구" Str="Hero's Potion" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0066_DESC" StrOrigin="전투에서 유용한 투구.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Potion for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0067_NAME" StrOrigin="전설 갑옷" Str="Champion's Scroll" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0067_DESC" StrOrigin="강력한 힘이 깃든 갑옷.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Scroll imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0068_NAME" StrOrigin="마법 장갑" Str="Sage's Food" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0068_DESC" StrOrigin="고대 유적에서 발견된 장갑." Str="A Food discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0069_NAME" StrOrigin="저주받은 신발" Str="Shadow Bomb" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0069_DESC" StrOrigin="희귀한 재료로 만들어진 신발.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bomb made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0070_NAME" StrOrigin="축복받은 방패" Str="Golden Charm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0070_DESC" StrOrigin="전장에서 검증된 방패.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Charm.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0071_NAME" StrOrigin="고대 투구" Str="Runic Ring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0071_DESC" StrOrigin="전투에서 유용한 투구.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Ring for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0072_NAME" StrOrigin="전설 갑옷" Str="Starlight Necklace" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0072_DESC" StrOrigin="강력한 힘이 깃든 갑옷.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Necklace imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0073_NAME" StrOrigin="마법 장갑" Str="Moonlight Earring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0073_DESC" StrOrigin="고대 유적에서 발견된 장갑." Str="A Earring discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0074_NAME" StrOrigin="저주받은 신발" Str="Solar Bracelet" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0074_DESC" StrOrigin="희귀한 재료로 만들어진 신발.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bracelet made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0075_NAME" StrOrigin="축복받은 방패" Str="Shadow Belt" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0075_DESC" StrOrigin="전장에서 검증된 방패.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Belt.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0076_NAME" StrOrigin="용사 물약" Str="Iron Sword" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0076_DESC" StrOrigin="전투에서 유용한 물약.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Sword for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0077_NAME" StrOrigin="영웅 주문서" Str="Steel Axe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0077_DESC" StrOrigin="강력한 힘이 깃든 주문서.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Axe imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0078_NAME" StrOrigin="현자 음식" Str="Mithril Spear" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0078_DESC" StrOrigin="고대 유적에서 발견된 음식." Str="A Spear discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0079_NAME" StrOrigin="암흑 폭탄" Str="Adamant Bow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0079_DESC" StrOrigin="희귀한 재료로 만들어진 폭탄.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bow made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0080_NAME" StrOrigin="황금 부적" Str="Orichalcum Dagger" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0080_DESC" StrOrigin="전장에서 검증된 부적.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Dagger.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0081_NAME" StrOrigin="용사 물약" Str="Flame Staff" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0081_DESC" StrOrigin="전투에서 유용한 물약.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Staff for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0082_NAME" StrOrigin="영웅 주문서" Str="Frost Crossbow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0082_DESC" StrOrigin="강력한 힘이 깃든 주문서.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Crossbow imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0083_NAME" StrOrigin="현자 음식" Str="Lightning Hammer" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0083_DESC" StrOrigin="고대 유적에서 발견된 음식." Str="A Hammer discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0084_NAME" StrOrigin="암흑 폭탄" Str="Poison Scythe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0084_DESC" StrOrigin="희귀한 재료로 만들어진 폭탄.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Scythe made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0085_NAME" StrOrigin="황금 부적" Str="Holy Whip" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0085_DESC" StrOrigin="전장에서 검증된 부적.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Whip.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0086_NAME" StrOrigin="용사 물약" Str="Ancient Helm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0086_DESC" StrOrigin="전투에서 유용한 물약.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Helm for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0087_NAME" StrOrigin="영웅 주문서" Str="Legendary Chestplate" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0087_DESC" StrOrigin="강력한 힘이 깃든 주문서.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Chestplate imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0088_NAME" StrOrigin="현자 음식" Str="Magical Gauntlets" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0088_DESC" StrOrigin="고대 유적에서 발견된 음식." Str="A Gauntlets discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0089_NAME" StrOrigin="암흑 폭탄" Str="Cursed Boots" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0089_DESC" StrOrigin="희귀한 재료로 만들어진 폭탄.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Boots made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0090_NAME" StrOrigin="황금 부적" Str="Blessed Shield" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0090_DESC" StrOrigin="전장에서 검증된 부적.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Shield.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0091_NAME" StrOrigin="용사 물약" Str="Hero's Potion" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0091_DESC" StrOrigin="전투에서 유용한 물약.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Potion for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0092_NAME" StrOrigin="영웅 주문서" Str="Champion's Scroll" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0092_DESC" StrOrigin="강력한 힘이 깃든 주문서.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Scroll imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0093_NAME" StrOrigin="현자 음식" Str="Sage's Food" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0093_DESC" StrOrigin="고대 유적에서 발견된 음식." Str="A Food discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0094_NAME" StrOrigin="암흑 폭탄" Str="Shadow Bomb" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0094_DESC" StrOrigin="희귀한 재료로 만들어진 폭탄.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bomb made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0095_NAME" StrOrigin="황금 부적" Str="Golden Charm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0095_DESC" StrOrigin="전장에서 검증된 부적.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Charm.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0096_NAME" StrOrigin="용사 물약" Str="Runic Ring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0096_DESC" StrOrigin="전투에서 유용한 물약.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Ring for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0097_NAME" StrOrigin="영웅 주문서" Str="Starlight Necklace" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0097_DESC" StrOrigin="강력한 힘이 깃든 주문서.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Necklace imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0098_NAME" StrOrigin="현자 음식" Str="Moonlight Earring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0098_DESC" StrOrigin="고대 유적에서 발견된 음식." Str="A Earring discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0099_NAME" StrOrigin="암흑 폭탄" Str="Solar Bracelet" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0099_DESC" StrOrigin="희귀한 재료로 만들어진 폭탄.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bracelet made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0100_NAME" StrOrigin="황금 부적" Str="Shadow Belt" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0100_DESC" StrOrigin="전장에서 검증된 부적.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Belt.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0101_NAME" StrOrigin="룬 반지" Str="Iron Sword" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0101_DESC" StrOrigin="전투에서 유용한 반지.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Sword for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0102_NAME" StrOrigin="별빛 목걸이" Str="Steel Axe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0102_DESC" StrOrigin="강력한 힘이 깃든 목걸이.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Axe imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0103_NAME" StrOrigin="달빛 귀걸이" Str="Mithril Spear" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0103_DESC" StrOrigin="고대 유적에서 발견된 귀걸이." Str="A Spear discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0104_NAME" StrOrigin="태양 팔찌" Str="Adamant Bow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0104_DESC" StrOrigin="희귀한 재료로 만들어진 팔찌.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bow made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0105_NAME" StrOrigin="그림자 벨트" Str="Orichalcum Dagger" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0105_DESC" StrOrigin="전장에서 검증된 벨트.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Dagger.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0106_NAME" StrOrigin="룬 반지" Str="Flame Staff" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0106_DESC" StrOrigin="전투에서 유용한 반지.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Staff for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0107_NAME" StrOrigin="별빛 목걸이" Str="Frost Crossbow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0107_DESC" StrOrigin="강력한 힘이 깃든 목걸이.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Crossbow imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0108_NAME" StrOrigin="달빛 귀걸이" Str="Lightning Hammer" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0108_DESC" StrOrigin="고대 유적에서 발견된 귀걸이." Str="A Hammer discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0109_NAME" StrOrigin="태양 팔찌" Str="Poison Scythe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0109_DESC" StrOrigin="희귀한 재료로 만들어진 팔찌.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Scythe made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0110_NAME" StrOrigin="그림자 벨트" Str="Holy Whip" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0110_DESC" StrOrigin="전장에서 검증된 벨트.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Whip.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0111_NAME" StrOrigin="룬 반지" Str="Ancient Helm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0111_DESC" StrOrigin="전투에서 유용한 반지.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Helm for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0112_NAME" StrOrigin="별빛 목걸이" Str="Legendary Chestplate" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0112_DESC" StrOrigin="강력한 힘이 깃든 목걸이.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Chestplate imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0113_NAME" StrOrigin="달빛 귀걸이" Str="Magical Gauntlets" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0113_DESC" StrOrigin="고대 유적에서 발견된 귀걸이." Str="A Gauntlets discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0114_NAME" StrOrigin="태양 팔찌" Str="Cursed Boots" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0114_DESC" StrOrigin="희귀한 재료로 만들어진 팔찌.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Boots made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0115_NAME" StrOrigin="그림자 벨트" Str="Blessed Shield" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0115_DESC" StrOrigin="전장에서 검증된 벨트.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Shield.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0116_NAME" StrOrigin="룬 반지" Str="Hero's Potion" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0116_DESC" StrOrigin="전투에서 유용한 반지.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Potion for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0117_NAME" StrOrigin="별빛 목걸이" Str="Champion's Scroll" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0117_DESC" StrOrigin="강력한 힘이 깃든 목걸이.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Scroll imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0118_NAME" StrOrigin="달빛 귀걸이" Str="Sage's Food" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0118_DESC" StrOrigin="고대 유적에서 발견된 귀걸이." Str="A Food discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0119_NAME" StrOrigin="태양 팔찌" Str="Shadow Bomb" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0119_DESC" StrOrigin="희귀한 재료로 만들어진 팔찌.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bomb made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0120_NAME" StrOrigin="그림자 벨트" Str="Golden Charm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0120_DESC" StrOrigin="전장에서 검증된 벨트.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Charm.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0121_NAME" StrOrigin="룬 반지" Str="Runic Ring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0121_DESC" StrOrigin="전투에서 유용한 반지.&lt;br/&gt;장인이 정성껏 제작했다." Str="A useful Ring for battle.&lt;br/&gt;Carefully crafted by a master artisan." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0122_NAME" StrOrigin="별빛 목걸이" Str="Starlight Necklace" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0122_DESC" StrOrigin="강력한 힘이 깃든 목걸이.&lt;br/&gt;사용자에게 특별한 능력을 부여한다." Str="A Necklace imbued with powerful energy.&lt;br/&gt;Grants special abilities to the wielder." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0123_NAME" StrOrigin="달빛 귀걸이" Str="Moonlight Earring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0123_DESC" StrOrigin="고대 유적에서 발견된 귀걸이." Str="A Earring discovered in ancient ruins." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0124_NAME" StrOrigin="태양 팔찌" Str="Solar Bracelet" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0124_DESC" StrOrigin="희귀한 재료로 만들어진 팔찌.&lt;br/&gt;그 가치를 아는 자만이 사용할 수 있다." Str="A Bracelet made from rare materials.&lt;br/&gt;Only those who know its value can use it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0125_NAME" StrOrigin="그림자 벨트" Str="Shadow Belt" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_ITEM_0125_DESC" StrOrigin="전장에서 검증된 벨트.&lt;br/&gt;수많은 전투를 함께한 동반자이다." Str="A battle-tested Belt.&lt;br/&gt;A companion through countless battles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0001_NAME" StrOrigin="장로 바론" Str="Elder Varon" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0001_DESC" StrOrigin="오래된 마을의 수호자.&lt;br/&gt;전쟁을 피해 은둔 중이다." Str="Guardian of the old village.&lt;br/&gt;Living in seclusion to avoid the war." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0002_NAME" StrOrigin="전사 키라" Str="Warrior Kira" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0002_DESC" StrOrigin="북부 전초기지에서 온 용맹한 전사.&lt;br/&gt;검은별의 비밀을 추적하고 있다." Str="A brave warrior from the northern outpost.&lt;br/&gt;Tracking the secret of the Blackstar." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0003_NAME" StrOrigin="마법사 드라크마르" Str="Sorcerer Drakmar" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0003_DESC" StrOrigin="고대의 지식을 탐구하는 마법사.&lt;br/&gt;금지된 마법의 위험성을 경고한다." Str="A sorcerer who explores ancient knowledge.&lt;br/&gt;Warns of the dangers of forbidden magic." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0004_NAME" StrOrigin="정찰병 루네" Str="Scout Rune" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0004_DESC" StrOrigin="숲의 길을 아는 정찰병.&lt;br/&gt;위험한 지역을 안전하게 안내한다." Str="A scout who knows the forest paths.&lt;br/&gt;Guides safely through dangerous areas." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0005_NAME" StrOrigin="대장장이 그림조" Str="Blacksmith Grimzo" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0005_DESC" StrOrigin="전설적인 무기를 만드는 장인.&lt;br/&gt;검은별 금속의 비밀을 알고 있다." Str="A master craftsman who forges legendary weapons.&lt;br/&gt;Knows the secret of Blackstar metal." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0006_NAME" StrOrigin="상인 하나" Str="Merchant Hana" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0006_DESC" StrOrigin="떠돌이 상인으로 희귀한 물건을 취급한다." Str="A traveling merchant dealing in rare goods." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0007_NAME" StrOrigin="현자 미르" Str="Sage Mir" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0007_DESC" StrOrigin="고대 문헌을 해독하는 현자.&lt;br/&gt;잊혀진 언어를 유일하게 읽을 수 있다." Str="A sage who deciphers ancient texts.&lt;br/&gt;The only one who can read the forgotten language." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0008_NAME" StrOrigin="궁수 세라" Str="Archer Sera" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0008_DESC" StrOrigin="정밀한 활솜씨로 유명한 궁수.&lt;br/&gt;백발백중의 실력을 자랑한다." Str="An archer famous for precise marksmanship.&lt;br/&gt;Boasts a perfect hit rate." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0009_NAME" StrOrigin="치유사 유라" Str="Healer Yura" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0009_DESC" StrOrigin="신성한 힘으로 부상자를 치유한다.&lt;br/&gt;전장의 수호천사로 불린다." Str="Heals the wounded with divine power.&lt;br/&gt;Known as the battlefield guardian angel." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0010_NAME" StrOrigin="기사 카엘" Str="Knight Kael" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0010_DESC" StrOrigin="왕국의 정예 기사단 출신.&lt;br/&gt;명예를 위해 싸운다." Str="From the kingdom's elite knight order.&lt;br/&gt;Fights for honor." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0011_NAME" StrOrigin="도적 진" Str="Rogue Jin" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0011_DESC" StrOrigin="어둠 속에서 활동하는 도적.&lt;br/&gt;정보 수집에 능하다." Str="A rogue operating in the shadows.&lt;br/&gt;Skilled in intelligence gathering." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0012_NAME" StrOrigin="음유시인 아리아" Str="Bard Aria" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0012_DESC" StrOrigin="전설의 노래를 부르는 음유시인.&lt;br/&gt;그의 노래에는 마법이 깃들어 있다." Str="A bard who sings legendary songs.&lt;br/&gt;Magic resides in their melodies." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0013_NAME" StrOrigin="마녀 노르나" Str="Witch Norna" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0013_DESC" StrOrigin="금지된 마법을 연구하는 마녀.&lt;br/&gt;위험하지만 강력한 동맹이다." Str="A witch researching forbidden magic.&lt;br/&gt;A dangerous but powerful ally." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0014_NAME" StrOrigin="수호자 벨리온" Str="Guardian Velion" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0014_DESC" StrOrigin="성벽을 지키는 수호자.&lt;br/&gt;어떤 적도 뚫지 못하는 방어를 자랑한다." Str="A guardian who defends the walls.&lt;br/&gt;Boasts an impenetrable defense." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0015_NAME" StrOrigin="연금술사 코르" Str="Alchemist Kor" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0015_DESC" StrOrigin="다양한 약물을 제조하는 연금술사.&lt;br/&gt;치료제부터 독약까지 만들 수 있다." Str="An alchemist who concocts various substances.&lt;br/&gt;Can create anything from cures to poisons." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0016_NAME" StrOrigin="사냥꾼 타카" Str="Hunter Taka" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0016_DESC" StrOrigin="산야를 누비는 노련한 사냥꾼.&lt;br/&gt;야생 동물의 습성을 꿰뚫고 있다." Str="A seasoned hunter roaming the wilderness.&lt;br/&gt;Understands wild animal behavior." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0017_NAME" StrOrigin="검투사 렉스" Str="Gladiator Rex" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0017_DESC" StrOrigin="투기장의 챔피언인 검투사.&lt;br/&gt;관중들의 열광적인 지지를 받는다." Str="A gladiator and arena champion.&lt;br/&gt;Receives enthusiastic support from the crowd." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0018_NAME" StrOrigin="주술사 오카" Str="Shaman Oka" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0018_DESC" StrOrigin="정령과 교감하는 주술사.&lt;br/&gt;자연의 힘을 다룬다." Str="A shaman who communes with spirits.&lt;br/&gt;Wields the power of nature." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0019_NAME" StrOrigin="무희 리나" Str="Dancer Lina" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0019_DESC" StrOrigin="매혹적인 춤으로 적을 현혹시키는 무희.&lt;br/&gt;춤에는 전투 기술이 숨겨져 있다." Str="A dancer who mesmerizes foes with enchanting dance.&lt;br/&gt;Combat techniques are hidden in the dance." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0020_NAME" StrOrigin="학자 에이든" Str="Scholar Aiden" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0020_DESC" StrOrigin="방대한 지식을 가진 학자.&lt;br/&gt;모든 것을 기록하는 습관이 있다." Str="A scholar with vast knowledge.&lt;br/&gt;Has a habit of recording everything." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0021_NAME" StrOrigin="용기사 드레이크" Str="Dragon Knight Drake" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0021_DESC" StrOrigin="용을 타고 하늘을 나는 기사.&lt;br/&gt;하늘의 패권을 장악하고 있다." Str="A knight who flies on dragons.&lt;br/&gt;Commands air superiority." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0022_NAME" StrOrigin="암살자 실바" Str="Assassin Silva" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0022_DESC" StrOrigin="그림자처럼 움직이는 암살자.&lt;br/&gt;표적은 결코 벗어날 수 없다." Str="An assassin who moves like a shadow.&lt;br/&gt;Targets can never escape." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0023_NAME" StrOrigin="성기사 루미아" Str="Paladin Lumia" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0023_DESC" StrOrigin="빛의 힘으로 악을 물리치는 성기사.&lt;br/&gt;정의를 위해 헌신한다." Str="A paladin who defeats evil with the power of light.&lt;br/&gt;Devoted to justice." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0024_NAME" StrOrigin="광전사 그론" Str="Berserker Gron" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0024_DESC" StrOrigin="분노의 힘으로 싸우는 광전사.&lt;br/&gt;전투에서 두려움을 모른다." Str="A berserker who fights with the power of rage.&lt;br/&gt;Knows no fear in battle." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0025_NAME" StrOrigin="소환사 에바" Str="Summoner Eva" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0025_DESC" StrOrigin="이계의 존재를 소환하는 마법사.&lt;br/&gt;소환수와 정신적 유대를 맺는다." Str="A mage who summons beings from other planes.&lt;br/&gt;Forms a mental bond with summons." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0026_NAME" StrOrigin="마검사 카이" Str="Spellsword Kai" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0026_DESC" StrOrigin="마법과 검술을 동시에 구사한다.&lt;br/&gt;두 가지 전투 스타일을 자유롭게 전환한다." Str="Wields magic and swordsmanship simultaneously.&lt;br/&gt;Freely switches between two combat styles." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0027_NAME" StrOrigin="해적 모건" Str="Pirate Morgan" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0027_DESC" StrOrigin="바다를 누비는 해적 선장.&lt;br/&gt;보물 지도를 소유하고 있다." Str="A pirate captain sailing the seas.&lt;br/&gt;Possesses a treasure map." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0028_NAME" StrOrigin="수도승 첸" Str="Monk Chen" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0028_DESC" StrOrigin="내면의 기를 수련하는 수도승.&lt;br/&gt;맨손으로 강철을 부순다." Str="A monk who trains inner energy.&lt;br/&gt;Breaks steel with bare hands." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0029_NAME" StrOrigin="사령술사 다크" Str="Necromancer Dark" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0029_DESC" StrOrigin="죽은 자의 영혼을 다루는 사령술사.&lt;br/&gt;금기시되는 마법을 사용한다." Str="A necromancer who commands the souls of the dead.&lt;br/&gt;Uses taboo magic." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0030_NAME" StrOrigin="점술사 비안카" Str="Fortune Teller Bianca" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0030_DESC" StrOrigin="별의 움직임으로 미래를 읽는다.&lt;br/&gt;예언의 정확도는 놀라울 정도이다." Str="Reads the future through the movement of stars.&lt;br/&gt;The accuracy of prophecies is astonishing." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0031_NAME" StrOrigin="방랑자 로이" Str="Wanderer Roy" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0031_DESC" StrOrigin="정해진 곳 없이 세계를 떠도는 방랑자.&lt;br/&gt;다양한 경험으로 지혜를 얻었다." Str="A wanderer roaming the world without a set destination.&lt;br/&gt;Gained wisdom through diverse experiences." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0032_NAME" StrOrigin="대마법사 아크" Str="Archmage Arc" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0032_DESC" StrOrigin="마법 탑의 최고 마법사.&lt;br/&gt;마법의 근원을 연구하고 있다." Str="The greatest mage of the magic tower.&lt;br/&gt;Researches the origin of magic." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0033_NAME" StrOrigin="용병 크롬" Str="Mercenary Chrome" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0033_DESC" StrOrigin="돈을 위해 싸우는 용병.&lt;br/&gt;의뢰만 완수하면 누구든 고용할 수 있다." Str="A mercenary who fights for money.&lt;br/&gt;Anyone can be hired if the contract is fulfilled." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0034_NAME" StrOrigin="제사장 노바" Str="Priest Nova" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0034_DESC" StrOrigin="신전의 제사장.&lt;br/&gt;신의 뜻을 전하는 사제이다." Str="A priest of the temple.&lt;br/&gt;A cleric who conveys the will of the divine." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0035_NAME" StrOrigin="탐험가 마르코" Str="Explorer Marco" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0035_DESC" StrOrigin="미지의 땅을 탐험하는 모험가.&lt;br/&gt;발견의 기쁨을 위해 산다." Str="An adventurer exploring unknown lands.&lt;br/&gt;Lives for the joy of discovery." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0036_NAME" StrOrigin="장로 바론" Str="Elder Varon" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0036_DESC" StrOrigin="오래된 마을의 수호자.&lt;br/&gt;전쟁을 피해 은둔 중이다." Str="Guardian of the old village.&lt;br/&gt;Living in seclusion to avoid the war." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0037_NAME" StrOrigin="전사 키라" Str="Warrior Kira" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0037_DESC" StrOrigin="북부 전초기지에서 온 용맹한 전사.&lt;br/&gt;검은별의 비밀을 추적하고 있다." Str="A brave warrior from the northern outpost.&lt;br/&gt;Tracking the secret of the Blackstar." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0038_NAME" StrOrigin="마법사 드라크마르" Str="Sorcerer Drakmar" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_CHAR_0038_DESC" StrOrigin="고대의 지식을 탐구하는 마법사.&lt;br/&gt;금지된 마법의 위험성을 경고한다." Str="A sorcerer who explores ancient knowledge.&lt;br/&gt;Warns of the dangers of forbidden magic." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0001_NAME" StrOrigin="강타" Str="Smash" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0001_DESC" StrOrigin="강력한 일격을 가한다.&lt;br/&gt;적에게 큰 피해를 준다." Str="Delivers a powerful strike.&lt;br/&gt;Deals heavy damage to the enemy." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0002_NAME" StrOrigin="회전 베기" Str="Spinning Slash" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0002_DESC" StrOrigin="회전하며 주변의 적을 공격한다." Str="Attacks surrounding enemies with a spin." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0003_NAME" StrOrigin="돌진" Str="Charge" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0003_DESC" StrOrigin="전방으로 돌진하여 적을 밀어낸다.&lt;br/&gt;이동과 공격을 동시에 수행한다." Str="Charges forward to push the enemy.&lt;br/&gt;Combines movement and attack." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0004_NAME" StrOrigin="방어 자세" Str="Defensive Stance" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0004_DESC" StrOrigin="방어 태세를 취하여 받는 피해를 줄인다." Str="Takes a defensive stance to reduce incoming damage." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0005_NAME" StrOrigin="기합" Str="Focus" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0005_DESC" StrOrigin="정신을 집중하여 능력치를 일시적으로 상승시킨다.&lt;br/&gt;집중력이 높을수록 효과가 크다." Str="Focuses the mind to temporarily boost stats.&lt;br/&gt;The higher the concentration, the greater the effect." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0006_NAME" StrOrigin="화염구" Str="Fireball" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0006_DESC" StrOrigin="불타는 화염구를 발사한다.&lt;br/&gt;범위 피해를 입힌다." Str="Launches a burning fireball.&lt;br/&gt;Deals area damage." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0007_NAME" StrOrigin="냉기 화살" Str="Frost Arrow" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0007_DESC" StrOrigin="얼음 화살을 발사하여 적을 감속시킨다." Str="Fires an ice arrow to slow the enemy." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0008_NAME" StrOrigin="번개 낙뢰" Str="Lightning Strike" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0008_DESC" StrOrigin="하늘에서 번개를 떨어뜨린다.&lt;br/&gt;높은 확률로 기절시킨다." Str="Calls lightning from the sky.&lt;br/&gt;High chance to stun." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0009_NAME" StrOrigin="치유의 빛" Str="Healing Light" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0009_DESC" StrOrigin="신성한 빛으로 아군을 치유한다." Str="Heals allies with divine light." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0010_NAME" StrOrigin="보호막" Str="Barrier" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0010_DESC" StrOrigin="마법 보호막을 생성하여 피해를 흡수한다.&lt;br/&gt;지속 시간 동안 피해를 대신 받는다." Str="Creates a magic barrier that absorbs damage.&lt;br/&gt;Absorbs damage for the duration." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0011_NAME" StrOrigin="은신" Str="Stealth" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0011_DESC" StrOrigin="그림자 속에 몸을 숨긴다.&lt;br/&gt;이동 속도가 감소하지만 적에게 발견되지 않는다." Str="Hides in the shadows.&lt;br/&gt;Movement speed decreases but cannot be detected." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0012_NAME" StrOrigin="급소 공격" Str="Critical Strike" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0012_DESC" StrOrigin="적의 약점을 정확히 공격한다.&lt;br/&gt;치명타 확률이 크게 증가한다." Str="Strikes the enemy's weak point precisely.&lt;br/&gt;Greatly increases critical hit chance." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0013_NAME" StrOrigin="독침" Str="Poison Sting" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0013_DESC" StrOrigin="독이 묻은 침을 발사한다." Str="Fires a poison-coated needle." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0014_NAME" StrOrigin="연막탄" Str="Smoke Bomb" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0014_DESC" StrOrigin="연막탄을 던져 시야를 가린다.&lt;br/&gt;적의 명중률을 크게 감소시킨다." Str="Throws a smoke bomb to block vision.&lt;br/&gt;Greatly reduces enemy accuracy." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0015_NAME" StrOrigin="추적" Str="Tracking" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0015_DESC" StrOrigin="표적을 추적하여 이동 속도를 상승시킨다." Str="Increases movement speed while tracking the target." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0016_NAME" StrOrigin="소환: 정령" Str="Summon: Spirit" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0016_DESC" StrOrigin="정령을 소환하여 함께 전투한다.&lt;br/&gt;소환된 정령은 일정 시간 후 사라진다." Str="Summons a spirit to fight alongside.&lt;br/&gt;The summoned spirit disappears after a set time." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0017_NAME" StrOrigin="강화 마법" Str="Enhancement" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0017_DESC" StrOrigin="아군에게 강화 마법을 부여한다." Str="Grants enhancement magic to an ally." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0018_NAME" StrOrigin="저주" Str="Curse" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0018_DESC" StrOrigin="적에게 저주를 걸어 능력치를 감소시킨다.&lt;br/&gt;중첩 가능하다." Str="Curses the enemy to reduce their stats.&lt;br/&gt;Can be stacked." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0019_NAME" StrOrigin="해제" Str="Dispel" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0019_DESC" StrOrigin="부정적인 효과를 해제한다." Str="Removes negative effects." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0020_NAME" StrOrigin="부활" Str="Resurrection" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0020_DESC" StrOrigin="쓰러진 아군을 부활시킨다.&lt;br/&gt;부활 후 일정 시간 무적 상태이다." Str="Revives a fallen ally.&lt;br/&gt;Grants invincibility for a short time after revival." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0021_NAME" StrOrigin="연타" Str="Combo Attack" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0021_DESC" StrOrigin="강력한 일격을 가한다.&lt;br/&gt;적에게 큰 피해를 준다." Str="Delivers a powerful strike.&lt;br/&gt;Deals heavy damage to the enemy." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0022_NAME" StrOrigin="관통 사격" Str="Piercing Shot" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0022_DESC" StrOrigin="회전하며 주변의 적을 공격한다." Str="Attacks surrounding enemies with a spin." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0023_NAME" StrOrigin="광역 폭발" Str="AoE Explosion" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0023_DESC" StrOrigin="전방으로 돌진하여 적을 밀어낸다.&lt;br/&gt;이동과 공격을 동시에 수행한다." Str="Charges forward to push the enemy.&lt;br/&gt;Combines movement and attack." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0024_NAME" StrOrigin="집중" Str="Concentration" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0024_DESC" StrOrigin="방어 태세를 취하여 받는 피해를 줄인다." Str="Takes a defensive stance to reduce incoming damage." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0025_NAME" StrOrigin="분노 폭발" Str="Fury Burst" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0025_DESC" StrOrigin="정신을 집중하여 능력치를 일시적으로 상승시킨다.&lt;br/&gt;집중력이 높을수록 효과가 크다." Str="Focuses the mind to temporarily boost stats.&lt;br/&gt;The higher the concentration, the greater the effect." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0026_NAME" StrOrigin="공중 강습" Str="Aerial Assault" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0026_DESC" StrOrigin="불타는 화염구를 발사한다.&lt;br/&gt;범위 피해를 입힌다." Str="Launches a burning fireball.&lt;br/&gt;Deals area damage." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0027_NAME" StrOrigin="지면 강타" Str="Ground Slam" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0027_DESC" StrOrigin="얼음 화살을 발사하여 적을 감속시킨다." Str="Fires an ice arrow to slow the enemy." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0028_NAME" StrOrigin="돌풍 베기" Str="Gale Slash" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0028_DESC" StrOrigin="하늘에서 번개를 떨어뜨린다.&lt;br/&gt;높은 확률로 기절시킨다." Str="Calls lightning from the sky.&lt;br/&gt;High chance to stun." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0029_NAME" StrOrigin="얼음 감옥" Str="Ice Prison" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0029_DESC" StrOrigin="신성한 빛으로 아군을 치유한다." Str="Heals allies with divine light." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0030_NAME" StrOrigin="불꽃 폭풍" Str="Firestorm" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0030_DESC" StrOrigin="마법 보호막을 생성하여 피해를 흡수한다.&lt;br/&gt;지속 시간 동안 피해를 대신 받는다." Str="Creates a magic barrier that absorbs damage.&lt;br/&gt;Absorbs damage for the duration." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0031_NAME" StrOrigin="그림자 이동" Str="Shadow Step" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0031_DESC" StrOrigin="그림자 속에 몸을 숨긴다.&lt;br/&gt;이동 속도가 감소하지만 적에게 발견되지 않는다." Str="Hides in the shadows.&lt;br/&gt;Movement speed decreases but cannot be detected." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0032_NAME" StrOrigin="독안개" Str="Poison Cloud" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0032_DESC" StrOrigin="적의 약점을 정확히 공격한다.&lt;br/&gt;치명타 확률이 크게 증가한다." Str="Strikes the enemy's weak point precisely.&lt;br/&gt;Greatly increases critical hit chance." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0033_NAME" StrOrigin="생명 흡수" Str="Life Drain" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0033_DESC" StrOrigin="독이 묻은 침을 발사한다." Str="Fires a poison-coated needle." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0034_NAME" StrOrigin="마나 흡수" Str="Mana Drain" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0034_DESC" StrOrigin="연막탄을 던져 시야를 가린다.&lt;br/&gt;적의 명중률을 크게 감소시킨다." Str="Throws a smoke bomb to block vision.&lt;br/&gt;Greatly reduces enemy accuracy." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0035_NAME" StrOrigin="시간 정지" Str="Time Stop" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0035_DESC" StrOrigin="표적을 추적하여 이동 속도를 상승시킨다." Str="Increases movement speed while tracking the target." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0036_NAME" StrOrigin="용의 숨결" Str="Dragon Breath" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0036_DESC" StrOrigin="정령을 소환하여 함께 전투한다.&lt;br/&gt;소환된 정령은 일정 시간 후 사라진다." Str="Summons a spirit to fight alongside.&lt;br/&gt;The summoned spirit disappears after a set time." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0037_NAME" StrOrigin="성스러운 일격" Str="Holy Strike" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0037_DESC" StrOrigin="아군에게 강화 마법을 부여한다." Str="Grants enhancement magic to an ally." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0038_NAME" StrOrigin="암흑 파동" Str="Dark Wave" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0038_DESC" StrOrigin="적에게 저주를 걸어 능력치를 감소시킨다.&lt;br/&gt;중첩 가능하다." Str="Curses the enemy to reduce their stats.&lt;br/&gt;Can be stacked." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0039_NAME" StrOrigin="바람의 칼날" Str="Wind Blade" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0039_DESC" StrOrigin="부정적인 효과를 해제한다." Str="Removes negative effects." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0040_NAME" StrOrigin="대지의 힘" Str="Earth Power" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0040_DESC" StrOrigin="쓰러진 아군을 부활시킨다.&lt;br/&gt;부활 후 일정 시간 무적 상태이다." Str="Revives a fallen ally.&lt;br/&gt;Grants invincibility for a short time after revival." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0041_NAME" StrOrigin="번개 연쇄" Str="Chain Lightning" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0041_DESC" StrOrigin="강력한 일격을 가한다.&lt;br/&gt;적에게 큰 피해를 준다." Str="Delivers a powerful strike.&lt;br/&gt;Deals heavy damage to the enemy." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0042_NAME" StrOrigin="빙결 폭풍" Str="Blizzard" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0042_DESC" StrOrigin="회전하며 주변의 적을 공격한다." Str="Attacks surrounding enemies with a spin." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0043_NAME" StrOrigin="화염 벽" Str="Flame Wall" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0043_DESC" StrOrigin="전방으로 돌진하여 적을 밀어낸다.&lt;br/&gt;이동과 공격을 동시에 수행한다." Str="Charges forward to push the enemy.&lt;br/&gt;Combines movement and attack." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0044_NAME" StrOrigin="치유의 비" Str="Rain of Healing" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0044_DESC" StrOrigin="방어 태세를 취하여 받는 피해를 줄인다." Str="Takes a defensive stance to reduce incoming damage." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0045_NAME" StrOrigin="수호의 결계" Str="Guardian Ward" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0045_DESC" StrOrigin="정신을 집중하여 능력치를 일시적으로 상승시킨다.&lt;br/&gt;집중력이 높을수록 효과가 크다." Str="Focuses the mind to temporarily boost stats.&lt;br/&gt;The higher the concentration, the greater the effect." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0046_NAME" StrOrigin="질풍 연무" Str="Tempest Dance" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0046_DESC" StrOrigin="불타는 화염구를 발사한다.&lt;br/&gt;범위 피해를 입힌다." Str="Launches a burning fireball.&lt;br/&gt;Deals area damage." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0047_NAME" StrOrigin="천둥 강타" Str="Thunder Smash" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0047_DESC" StrOrigin="얼음 화살을 발사하여 적을 감속시킨다." Str="Fires an ice arrow to slow the enemy." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0048_NAME" StrOrigin="극대 마법" Str="Grand Magic" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0048_DESC" StrOrigin="하늘에서 번개를 떨어뜨린다.&lt;br/&gt;높은 확률로 기절시킨다." Str="Calls lightning from the sky.&lt;br/&gt;High chance to stun." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0049_NAME" StrOrigin="환영 분신" Str="Phantom Clone" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0049_DESC" StrOrigin="신성한 빛으로 아군을 치유한다." Str="Heals allies with divine light." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0050_NAME" StrOrigin="최후의 일격" Str="Final Strike" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0050_DESC" StrOrigin="마법 보호막을 생성하여 피해를 흡수한다.&lt;br/&gt;지속 시간 동안 피해를 대신 받는다." Str="Creates a magic barrier that absorbs damage.&lt;br/&gt;Absorbs damage for the duration." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0051_NAME" StrOrigin="폭풍 사격" Str="Storm Shot" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0051_DESC" StrOrigin="그림자 속에 몸을 숨긴다.&lt;br/&gt;이동 속도가 감소하지만 적에게 발견되지 않는다." Str="Hides in the shadows.&lt;br/&gt;Movement speed decreases but cannot be detected." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0052_NAME" StrOrigin="연속 자상" Str="Rapid Stab" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0052_DESC" StrOrigin="적의 약점을 정확히 공격한다.&lt;br/&gt;치명타 확률이 크게 증가한다." Str="Strikes the enemy's weak point precisely.&lt;br/&gt;Greatly increases critical hit chance." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0053_NAME" StrOrigin="회복 명상" Str="Recovery Meditation" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0053_DESC" StrOrigin="독이 묻은 침을 발사한다." Str="Fires a poison-coated needle." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0054_NAME" StrOrigin="전투 함성" Str="Battle Cry" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0054_DESC" StrOrigin="연막탄을 던져 시야를 가린다.&lt;br/&gt;적의 명중률을 크게 감소시킨다." Str="Throws a smoke bomb to block vision.&lt;br/&gt;Greatly reduces enemy accuracy." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0055_NAME" StrOrigin="축복의 기도" Str="Blessed Prayer" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0055_DESC" StrOrigin="표적을 추적하여 이동 속도를 상승시킨다." Str="Increases movement speed while tracking the target." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0056_NAME" StrOrigin="강타" Str="Smash" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_SKILL_0056_DESC" StrOrigin="정령을 소환하여 함께 전투한다.&lt;br/&gt;소환된 정령은 일정 시간 후 사라진다." Str="Summons a spirit to fight alongside.&lt;br/&gt;The summoned spirit disappears after a set time." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0001_NAME" StrOrigin="검은별 마을" Str="Blackstar Village" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0001_DESC" StrOrigin="오래된 역사를 가진 마을.&lt;br/&gt;평화롭지만 위험이 도사리고 있다." Str="A village with a long history.&lt;br/&gt;Peaceful but danger lurks nearby." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0002_NAME" StrOrigin="광명의 전초기지" Str="Outpost of Light" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0002_DESC" StrOrigin="전략적 요충지에 위치한 전초기지.&lt;br/&gt;끊임없는 경계가 필요하다." Str="An outpost at a strategic location.&lt;br/&gt;Requires constant vigilance." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0003_NAME" StrOrigin="용의 둥지" Str="Dragon's Nest" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0003_DESC" StrOrigin="고대 용이 잠들어 있는 곳.&lt;br/&gt;용의 보물이 숨겨져 있다는 소문이 있다." Str="A place where an ancient dragon sleeps.&lt;br/&gt;Rumored to contain the dragon's treasure." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0004_NAME" StrOrigin="고대 유적지" Str="Ancient Ruins" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0004_DESC" StrOrigin="잊혀진 문명의 흔적이 남아 있는 유적지." Str="Ruins with traces of a forgotten civilization." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0005_NAME" StrOrigin="수정 동굴" Str="Crystal Cave" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0005_DESC" StrOrigin="아름다운 수정으로 가득한 동굴.&lt;br/&gt;귀중한 광물이 채굴된다." Str="A cave filled with beautiful crystals.&lt;br/&gt;Precious minerals are mined here." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0006_NAME" StrOrigin="폭풍의 성" Str="Storm Fortress" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0006_DESC" StrOrigin="바람이 끊이지 않는 성.&lt;br/&gt;난공불락의 요새로 알려져 있다." Str="A fortress with never-ending wind.&lt;br/&gt;Known as an impregnable stronghold." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0007_NAME" StrOrigin="어둠의 숲" Str="Dark Forest" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0007_DESC" StrOrigin="빛이 닿지 않는 어두운 숲.&lt;br/&gt;위험한 마물들이 서식한다." Str="A dark forest where light cannot reach.&lt;br/&gt;Dangerous creatures inhabit it." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0008_NAME" StrOrigin="불사의 탑" Str="Tower of Immortality" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0008_DESC" StrOrigin="죽지 않는 마법사가 지배하는 탑.&lt;br/&gt;들어가면 살아 돌아오기 힘들다." Str="A tower ruled by an undying sorcerer.&lt;br/&gt;Those who enter rarely return alive." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0009_NAME" StrOrigin="황혼의 항구" Str="Twilight Harbor" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0009_DESC" StrOrigin="황혼 무렵 가장 아름다운 항구.&lt;br/&gt;많은 상인들이 모여든다." Str="A harbor most beautiful at twilight.&lt;br/&gt;Many merchants gather here." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0010_NAME" StrOrigin="잊혀진 사원" Str="Forgotten Temple" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0010_DESC" StrOrigin="신들이 버린 고대의 사원.&lt;br/&gt;아직도 신비한 힘이 남아 있다." Str="An ancient temple abandoned by the gods.&lt;br/&gt;Mysterious power still lingers." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0011_NAME" StrOrigin="전사의 평원" Str="Warrior's Plain" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0011_DESC" StrOrigin="수많은 전투가 벌어진 평원.&lt;br/&gt;전사들의 영혼이 떠돌고 있다." Str="A plain where countless battles occurred.&lt;br/&gt;Spirits of warriors wander here." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0012_NAME" StrOrigin="마법사의 탑" Str="Mage Tower" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0012_DESC" StrOrigin="마법 연구의 중심지인 탑.&lt;br/&gt;입장하려면 마법 능력이 필요하다." Str="A tower at the center of magical research.&lt;br/&gt;Magical ability is required to enter." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0013_NAME" StrOrigin="드워프 광산" Str="Dwarf Mines" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0013_DESC" StrOrigin="드워프들이 오랫동안 파 온 광산.&lt;br/&gt;깊은 곳에는 알 수 없는 것이 도사린다." Str="Mines long excavated by dwarves.&lt;br/&gt;Something unknown lurks in the depths." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0014_NAME" StrOrigin="엘프의 숲" Str="Elven Forest" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_REGION_0014_DESC" StrOrigin="엘프 종족이 대대로 지켜온 성스러운 숲." Str="A sacred forest protected by elves for generations." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0001_NAME" StrOrigin="봉인된 문" Str="Sealed Door" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0001_DESC" StrOrigin="고대 봉인이 걸려 있다.&lt;br/&gt;열쇠가 필요하다." Str="An ancient seal is placed upon it.&lt;br/&gt;A key is required." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0002_NAME" StrOrigin="보물 상자" Str="Treasure Chest" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0002_DESC" StrOrigin="오래된 보물이 잠들어 있는 상자.&lt;br/&gt;함정이 설치되어 있을 수 있다." Str="A chest containing old treasure.&lt;br/&gt;Traps may be set." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0003_NAME" StrOrigin="고대 봉인" Str="Ancient Seal" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0003_DESC" StrOrigin="강력한 마법으로 봉인된 장치.&lt;br/&gt;특별한 주문이 필요하다." Str="A device sealed by powerful magic.&lt;br/&gt;A special incantation is required." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0004_NAME" StrOrigin="비밀 통로" Str="Secret Passage" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0004_DESC" StrOrigin="벽 뒤에 숨겨진 비밀 통로.&lt;br/&gt;자세히 살펴보면 발견할 수 있다." Str="A secret passage hidden behind the wall.&lt;br/&gt;Can be discovered with careful inspection." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0005_NAME" StrOrigin="함정 장치" Str="Trap Device" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0005_DESC" StrOrigin="바닥에 설치된 함정.&lt;br/&gt;밟으면 화살이 발사된다." Str="A trap installed on the floor.&lt;br/&gt;Arrows are launched if stepped on." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0006_NAME" StrOrigin="마법 제단" Str="Magic Altar" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0006_DESC" StrOrigin="고대 봉인이 걸려 있다.&lt;br/&gt;열쇠가 필요하다." Str="An ancient seal is placed upon it.&lt;br/&gt;A key is required." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0007_NAME" StrOrigin="수정 기둥" Str="Crystal Pillar" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0007_DESC" StrOrigin="오래된 보물이 잠들어 있는 상자.&lt;br/&gt;함정이 설치되어 있을 수 있다." Str="A chest containing old treasure.&lt;br/&gt;Traps may be set." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0008_NAME" StrOrigin="전이 장치" Str="Teleporter" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0008_DESC" StrOrigin="강력한 마법으로 봉인된 장치.&lt;br/&gt;특별한 주문이 필요하다." Str="A device sealed by powerful magic.&lt;br/&gt;A special incantation is required." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0009_NAME" StrOrigin="마법진" Str="Magic Circle" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0009_DESC" StrOrigin="벽 뒤에 숨겨진 비밀 통로.&lt;br/&gt;자세히 살펴보면 발견할 수 있다." Str="A secret passage hidden behind the wall.&lt;br/&gt;Can be discovered with careful inspection." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0010_NAME" StrOrigin="석상" Str="Stone Statue" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0010_DESC" StrOrigin="바닥에 설치된 함정.&lt;br/&gt;밟으면 화살이 발사된다." Str="A trap installed on the floor.&lt;br/&gt;Arrows are launched if stepped on." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0011_NAME" StrOrigin="보물함" Str="Treasure Box" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0011_DESC" StrOrigin="고대 봉인이 걸려 있다.&lt;br/&gt;열쇠가 필요하다." Str="An ancient seal is placed upon it.&lt;br/&gt;A key is required." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0012_NAME" StrOrigin="잠긴 금고" Str="Locked Safe" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0012_DESC" StrOrigin="오래된 보물이 잠들어 있는 상자.&lt;br/&gt;함정이 설치되어 있을 수 있다." Str="A chest containing old treasure.&lt;br/&gt;Traps may be set." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0013_NAME" StrOrigin="신비한 오벨리스크" Str="Mystic Obelisk" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0013_DESC" StrOrigin="강력한 마법으로 봉인된 장치.&lt;br/&gt;특별한 주문이 필요하다." Str="A device sealed by powerful magic.&lt;br/&gt;A special incantation is required." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0014_NAME" StrOrigin="마력 샘" Str="Mana Spring" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0014_DESC" StrOrigin="벽 뒤에 숨겨진 비밀 통로.&lt;br/&gt;자세히 살펴보면 발견할 수 있다." Str="A secret passage hidden behind the wall.&lt;br/&gt;Can be discovered with careful inspection." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0015_NAME" StrOrigin="고대 비석" Str="Ancient Stele" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0015_DESC" StrOrigin="바닥에 설치된 함정.&lt;br/&gt;밟으면 화살이 발사된다." Str="A trap installed on the floor.&lt;br/&gt;Arrows are launched if stepped on." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0016_NAME" StrOrigin="용의 석상" Str="Dragon Statue" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0016_DESC" StrOrigin="고대 봉인이 걸려 있다.&lt;br/&gt;열쇠가 필요하다." Str="An ancient seal is placed upon it.&lt;br/&gt;A key is required." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0017_NAME" StrOrigin="제단" Str="Altar" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0017_DESC" StrOrigin="오래된 보물이 잠들어 있는 상자.&lt;br/&gt;함정이 설치되어 있을 수 있다." Str="A chest containing old treasure.&lt;br/&gt;Traps may be set." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0018_NAME" StrOrigin="마법 거울" Str="Magic Mirror" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0018_DESC" StrOrigin="강력한 마법으로 봉인된 장치.&lt;br/&gt;특별한 주문이 필요하다." Str="A device sealed by powerful magic.&lt;br/&gt;A special incantation is required." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0019_NAME" StrOrigin="봉인 장치" Str="Seal Device" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0019_DESC" StrOrigin="벽 뒤에 숨겨진 비밀 통로.&lt;br/&gt;자세히 살펴보면 발견할 수 있다." Str="A secret passage hidden behind the wall.&lt;br/&gt;Can be discovered with careful inspection." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0020_NAME" StrOrigin="비밀 서가" Str="Secret Bookshelf" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0020_DESC" StrOrigin="바닥에 설치된 함정.&lt;br/&gt;밟으면 화살이 발사된다." Str="A trap installed on the floor.&lt;br/&gt;Arrows are launched if stepped on." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0021_NAME" StrOrigin="파괴된 기계" Str="Broken Machine" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0021_DESC" StrOrigin="고대 봉인이 걸려 있다.&lt;br/&gt;열쇠가 필요하다." Str="An ancient seal is placed upon it.&lt;br/&gt;A key is required." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0022_NAME" StrOrigin="잠자는 골렘" Str="Sleeping Golem" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0022_DESC" StrOrigin="오래된 보물이 잠들어 있는 상자.&lt;br/&gt;함정이 설치되어 있을 수 있다." Str="A chest containing old treasure.&lt;br/&gt;Traps may be set." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0023_NAME" StrOrigin="저주받은 방패" Str="Cursed Shield" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0023_DESC" StrOrigin="강력한 마법으로 봉인된 장치.&lt;br/&gt;특별한 주문이 필요하다." Str="A device sealed by powerful magic.&lt;br/&gt;A special incantation is required." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0024_NAME" StrOrigin="불의 제단" Str="Fire Altar" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0024_DESC" StrOrigin="벽 뒤에 숨겨진 비밀 통로.&lt;br/&gt;자세히 살펴보면 발견할 수 있다." Str="A secret passage hidden behind the wall.&lt;br/&gt;Can be discovered with careful inspection." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0025_NAME" StrOrigin="얼음 기둥" Str="Ice Pillar" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0025_DESC" StrOrigin="바닥에 설치된 함정.&lt;br/&gt;밟으면 화살이 발사된다." Str="A trap installed on the floor.&lt;br/&gt;Arrows are launched if stepped on." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0026_NAME" StrOrigin="고대 레버" Str="Ancient Lever" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0026_DESC" StrOrigin="고대 봉인이 걸려 있다.&lt;br/&gt;열쇠가 필요하다." Str="An ancient seal is placed upon it.&lt;br/&gt;A key is required." DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0027_NAME" StrOrigin="신비한 연못" Str="Mystic Pond" DescOrigin="" Desc=""/>
+  <LocStr StringId="SID_GIMM_0027_DESC" StrOrigin="오래된 보물이 잠들어 있는 상자.&lt;br/&gt;함정이 설치되어 있을 수 있다." Str="A chest containing old treasure.&lt;br/&gt;Traps may be set." DescOrigin="" Desc=""/>
+</LocStrList>
