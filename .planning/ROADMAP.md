@@ -61,10 +61,11 @@ Plans:
   2. User opens a non-LocStr XML file and sees Game Dev columns (NodeName, Attributes, Values, Children count)
   3. Mode indicator in the editor header shows "Translator" or "Game Dev" matching the loaded file
   4. Switching between files of different types changes the column layout without leftover state from the previous mode
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: TBD
+- [ ] 08-01-PLAN.md -- Backend file type detection + Game Dev node parsing (DUAL-01, DUAL-03)
+- [ ] 08-02-PLAN.md -- Frontend dual column configs + mode badge (DUAL-02, DUAL-04, DUAL-05)
 
 ### Phase 09: Translator Merge
 **Goal**: Translators can merge translations between files using exact, source-text, and fuzzy matching with automatic post-processing
@@ -168,7 +169,7 @@ Note: Phase 11 and 13 depend only on Phase 07 and could execute in parallel with
 | 05.1. Contextual Intelligence & QA | v1.0 | 5/5 | Complete | 2026-03-14 |
 | 06. Offline Demo Validation | v1.0 | 2/2 | Complete | 2026-03-14 |
 | 07. XML Parsing Foundation + Bug Fixes | 3/3 | Complete    | 2026-03-15 | - |
-| 08. Dual UI Mode | v2.0 | 0/1 | Not started | - |
+| 08. Dual UI Mode | v2.0 | 0/2 | Not started | - |
 | 09. Translator Merge | v2.0 | 0/2 | Not started | - |
 | 10. Export Pipeline | v2.0 | 0/1 | Not started | - |
 | 11. Image & Audio Pipeline | v2.0 | 0/1 | Not started | - |
