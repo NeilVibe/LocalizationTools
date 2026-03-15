@@ -26,12 +26,12 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 ### QA Pipeline
 
-- [ ] **QA-01**: Term Check detects glossary terms present in source but missing in target translation using dual Aho-Corasick automaton
-- [ ] **QA-02**: Line Check detects same source text translated inconsistently across the project
-- [ ] **QA-03**: QA results display inline in the editor with severity tiers (ERROR/WARNING/INFO)
-- [ ] **QA-04**: User can dismiss individual QA findings per cell (prevents false positive fatigue)
-- [ ] **QA-05**: QA checks run on-demand via a dedicated QA panel in the editor
-- [ ] **QA-06**: QA panel shows summary counts per check type (term issues, line issues)
+- [x] **QA-01**: Term Check detects glossary terms present in source but missing in target translation using dual Aho-Corasick automaton
+- [x] **QA-02**: Line Check detects same source text translated inconsistently across the project
+- [x] **QA-03**: QA results display inline in the editor with severity tiers (ERROR/WARNING/INFO)
+- [x] **QA-04**: User can dismiss individual QA findings per cell (prevents false positive fatigue)
+- [x] **QA-05**: QA checks run on-demand via a dedicated QA panel in the editor
+- [x] **QA-06**: QA panel shows summary counts per check type (term issues, line issues)
 
 ### AI Suggestions
 
@@ -124,12 +124,12 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 | CAT-01 | Phase 16 | Complete |
 | CAT-02 | Phase 16 | Complete |
 | CAT-03 | Phase 16 | Complete |
-| QA-01 | Phase 16 | Pending |
-| QA-02 | Phase 16 | Pending |
-| QA-03 | Phase 16 | Pending |
-| QA-04 | Phase 16 | Pending |
-| QA-05 | Phase 16 | Pending |
-| QA-06 | Phase 16 | Pending |
+| QA-01 | Phase 16 | Complete |
+| QA-02 | Phase 16 | Complete |
+| QA-03 | Phase 16 | Complete |
+| QA-04 | Phase 16 | Complete |
+| QA-05 | Phase 16 | Complete |
+| QA-06 | Phase 16 | Complete |
 | AISUG-01 | Phase 17 | Pending |
 | AISUG-02 | Phase 17 | Pending |
 | AISUG-03 | Phase 17 | Pending |

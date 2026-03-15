@@ -40,7 +40,7 @@
 **Milestone Goal:** Build a full Game Dev authoring experience with AI-powered suggestions, interactive Codex encyclopedia, QA pipeline integration, and category clustering -- all powered by a comprehensive mock gamedata universe for E2E testing.
 
 - [x] **Phase 15: Mock Gamedata Universe** - Generate realistic XML gamedata matching real staticinfo patterns with cross-references, media refs, and round-trip validation (completed 2026-03-15)
-- [ ] **Phase 16: Category Clustering + QA Pipeline** - Auto-classify content types and integrate Term Check + Line Check QA inline in the editor
+- [x] **Phase 16: Category Clustering + QA Pipeline** - Auto-classify content types and integrate Term Check + Line Check QA inline in the editor (completed 2026-03-15)
 - [ ] **Phase 17: AI Translation Suggestions** - Ranked translation suggestions via Qwen3 with confidence scores and click-to-accept
 - [ ] **Phase 18: Game Dev Grid + File Explorer** - VS Code-like file explorer with hierarchical XML entity editing grid
 - [ ] **Phase 19: Game World Codex** - Interactive encyclopedia with character/item pages, semantic search, inline media
@@ -183,7 +183,7 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21
 | 13. AI Summaries | v2.0 | 2/2 | Complete | 2026-03-15 |
 | 14. E2E Validation + CLI | v2.0 | 2/2 | Complete | 2026-03-15 |
 | 15. Mock Gamedata Universe | 2/2 | Complete    | 2026-03-15 | - |
-| 16. Category Clustering + QA Pipeline | 1/2 | In Progress|  | - |
+| 16. Category Clustering + QA Pipeline | 2/2 | Complete   | 2026-03-15 | - |
 | 17. AI Translation Suggestions | v3.0 | 0/? | Not started | - |
 | 18. Game Dev Grid + File Explorer | v3.0 | 0/? | Not started | - |
 | 19. Game World Codex | v3.0 | 0/? | Not started | - |
