@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<QuestInfoList>
+  <QuestInfo Key="32001" StrKey="STR_QUEST_DAILY_0001" QuestName="일일 순찰" QuestDesc="마을 주변을 순찰하고 이상 유무를 보고하라.&lt;br/&gt;몬스터 출현 여부를 확인하라." QuestType="Daily" Grade="Common" RewardKey="REWARD_DAILY_0001"/>
+  <QuestInfo Key="32002" StrKey="STR_QUEST_DAILY_0002" QuestName="채집 일과&lt;br/&gt;숲의 선물" QuestDesc="숲에서 약초와 열매를 채집하라.&lt;br/&gt;희귀 약초를 발견하면 추가 보상이 있다." QuestType="Daily" Grade="Common" RewardKey="REWARD_DAILY_0002"/>
+  <QuestInfo Key="32003" StrKey="STR_QUEST_DAILY_0003" QuestName="훈련장 방문" QuestDesc="훈련장에서 전투 훈련을 완료하라." QuestType="Daily" Grade="Common" RewardKey="REWARD_DAILY_0003"/>
+  <QuestInfo Key="32004" StrKey="STR_QUEST_DAILY_0004" QuestName="몬스터 토벌" QuestDesc="지정된 지역의 몬스터를 10마리 처치하라.&lt;br/&gt;보상은 처치한 몬스터 등급에 따라 다르다." QuestType="Daily" Grade="Common" RewardKey="REWARD_DAILY_0004"/>
+  <QuestInfo Key="32005" StrKey="STR_QUEST_DAILY_0005" QuestName="낚시 대회&lt;br/&gt;참가" QuestDesc="호수에서 물고기 5마리를 잡아라.&lt;br/&gt;희귀 어종을 잡으면 추가 보상이 있다." QuestType="Daily" Grade="Common" RewardKey="REWARD_DAILY_0005"/>
+  <QuestInfo Key="32006" StrKey="STR_QUEST_DAILY_0006" QuestName="광물 채굴" QuestDesc="광산에서 광석을 20개 채굴하라." QuestType="Daily" Grade="Common" RewardKey="REWARD_DAILY_0006"/>
+  <QuestInfo Key="32007" StrKey="STR_QUEST_DAILY_0007" QuestName="요리 납품" QuestDesc="주점에 요리를 납품하라.&lt;br/&gt;특별 재료를 사용하면 품질이 올라간다." QuestType="Daily" Grade="Common" RewardKey="REWARD_DAILY_0007"/>
+  <QuestInfo Key="32008" StrKey="STR_QUEST_DAILY_0008" QuestName="던전 탐험" QuestDesc="던전을 클리어하고 보스를 처치하라.&lt;br/&gt;파티원과 함께 도전하는 것을 추천한다." QuestType="Daily" Grade="Uncommon" RewardKey="REWARD_DAILY_0008"/>
+  <QuestInfo Key="32009" StrKey="STR_QUEST_DAILY_0009" QuestName="무역 호위" QuestDesc="상인의 무역 행렬을 목적지까지 호위하라." QuestType="Daily" Grade="Uncommon" RewardKey="REWARD_DAILY_0009"/>
+  <QuestInfo Key="32010" StrKey="STR_QUEST_DAILY_0010" QuestName="아레나 도전&lt;br/&gt;오늘의 상대" QuestDesc="아레나에서 오늘의 도전자를 상대하라.&lt;br/&gt;연승하면 특별한 칭호를 획득할 수 있다." QuestType="Daily" Grade="Rare" RewardKey="REWARD_DAILY_0010"/>
+</QuestInfoList>

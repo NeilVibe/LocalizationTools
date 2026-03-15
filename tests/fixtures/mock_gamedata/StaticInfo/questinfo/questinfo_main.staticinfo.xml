@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<QuestInfoList>
+  <QuestInfo Key="30001" StrKey="STR_QUEST_MAIN_0001" QuestName="검은별의 부름" QuestDesc="검은별 세력의 본거지를 찾아라.&lt;br/&gt;마을 장로에게 먼저 이야기하라." QuestType="Main" Grade="Common" RewardKey="REWARD_MAIN_0001"/>
+  <QuestInfo Key="30002" StrKey="STR_QUEST_MAIN_0002" QuestName="고대 유적 탐사&lt;br/&gt;첫 번째 임무" QuestDesc="고대 유적의 입구를 찾아 탐사를 시작하라.&lt;br/&gt;위험한 함정에 주의하라." QuestType="Main" Grade="Uncommon" RewardKey="REWARD_MAIN_0002"/>
+  <QuestInfo Key="30003" StrKey="STR_QUEST_MAIN_0003" QuestName="용사의 시련" QuestDesc="전설의 용사가 되기 위한 시련을 통과하라." QuestType="Main" Grade="Rare" RewardKey="REWARD_MAIN_0003"/>
+  <QuestInfo Key="30004" StrKey="STR_QUEST_MAIN_0004" QuestName="잊혀진 왕국의 비밀" QuestDesc="잊혀진 왕국의 비밀을 밝혀라.&lt;br/&gt;고대 문서를 해독해야 한다.&lt;br/&gt;현자 미르에게 도움을 구하라." QuestType="Main" Grade="Epic" RewardKey="REWARD_MAIN_0004"/>
+  <QuestInfo Key="30005" StrKey="STR_QUEST_MAIN_0005" QuestName="어둠의 군단&lt;br/&gt;최후의 결전" QuestDesc="어둠의 군단이 침공했다.&lt;br/&gt;성벽을 방어하고 적장을 처치하라." QuestType="Main" Grade="Legendary" RewardKey="REWARD_MAIN_0005"/>
+  <QuestInfo Key="30006" StrKey="STR_QUEST_MAIN_0006" QuestName="봉인된 마법진" QuestDesc="마법진의 봉인을 해제하라.&lt;br/&gt;네 개의 원소 결정이 필요하다." QuestType="Main" Grade="Rare" RewardKey="REWARD_MAIN_0006"/>
+  <QuestInfo Key="30007" StrKey="STR_QUEST_MAIN_0007" QuestName="드래곤의 둥지" QuestDesc="드래곤의 둥지를 발견했다. 조심스럽게 접근하라." QuestType="Main" Grade="Epic" RewardKey="REWARD_MAIN_0007"/>
+  <QuestInfo Key="30008" StrKey="STR_QUEST_MAIN_0008" QuestName="왕좌를 향한 길" QuestDesc="왕좌에 오르기 위한 마지막 관문.&lt;br/&gt;모든 세력의 인정을 받아야 한다." QuestType="Main" Grade="Legendary" RewardKey="REWARD_MAIN_0008"/>
+  <QuestInfo Key="30009" StrKey="STR_QUEST_MAIN_0009" QuestName="마왕 토벌전" QuestDesc="마왕의 성에 진입하여 최종 전투를 벌여라." QuestType="Main" Grade="Legendary" RewardKey="REWARD_MAIN_0009"/>
+  <QuestInfo Key="30010" StrKey="STR_QUEST_MAIN_0010" QuestName="세계수의 위기&lt;br/&gt;구원의 여정" QuestDesc="세계수가 시들고 있다.&lt;br/&gt;원인을 조사하고 해결책을 찾아라." QuestType="Main" Grade="Epic" RewardKey="REWARD_MAIN_0010"/>
+  <QuestInfo Key="30011" StrKey="STR_QUEST_MAIN_0011" QuestName="전쟁의 서막" QuestDesc="전쟁이 시작되었다. 동맹군을 모아 전선을 구축하라." QuestType="Main" Grade="Rare" RewardKey="REWARD_MAIN_0011"/>
+  <QuestInfo Key="30012" StrKey="STR_QUEST_MAIN_0012" QuestName="최후의 희망" QuestDesc="모든 것이 끝나가고 있다.&lt;br/&gt;마지막 희망을 찾아 떠나라.&lt;br/&gt;전설의 무기가 잠든 곳으로 향하라." QuestType="Main" Grade="Legendary" RewardKey="REWARD_MAIN_0012"/>
+</QuestInfoList>

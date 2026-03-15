@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<QuestInfoList>
+  <QuestInfo Key="31001" StrKey="STR_QUEST_SUB_0001" QuestName="약초 수집" QuestDesc="마을 치유사에게 약초 10개를 전달하라.&lt;br/&gt;숲 남쪽에서 채집할 수 있다." QuestType="Sub" Grade="Common" RewardKey="REWARD_SUB_0001"/>
+  <QuestInfo Key="31002" StrKey="STR_QUEST_SUB_0002" QuestName="잃어버린 물건&lt;br/&gt;찾기" QuestDesc="상인이 잃어버린 화물을 찾아 돌려주라.&lt;br/&gt;도적들이 훔쳐간 것으로 보인다." QuestType="Sub" Grade="Common" RewardKey="REWARD_SUB_0002"/>
+  <QuestInfo Key="31003" StrKey="STR_QUEST_SUB_0003" QuestName="늑대 퇴치" QuestDesc="마을 주변의 늑대를 5마리 처치하라." QuestType="Sub" Grade="Common" RewardKey="REWARD_SUB_0003"/>
+  <QuestInfo Key="31004" StrKey="STR_QUEST_SUB_0004" QuestName="광산 조사" QuestDesc="폐광에서 이상한 소리가 들린다.&lt;br/&gt;원인을 조사하고 보고하라." QuestType="Sub" Grade="Uncommon" RewardKey="REWARD_SUB_0004"/>
+  <QuestInfo Key="31005" StrKey="STR_QUEST_SUB_0005" QuestName="전령의 임무" QuestDesc="긴급 서신을 인근 요새에 전달하라.&lt;br/&gt;적의 매복에 주의하라." QuestType="Sub" Grade="Common" RewardKey="REWARD_SUB_0005"/>
+  <QuestInfo Key="31006" StrKey="STR_QUEST_SUB_0006" QuestName="포로 구출&lt;br/&gt;작전" QuestDesc="적에게 붙잡힌 포로들을 구출하라.&lt;br/&gt;은밀하게 접근해야 한다." QuestType="Sub" Grade="Uncommon" RewardKey="REWARD_SUB_0006"/>
+  <QuestInfo Key="31007" StrKey="STR_QUEST_SUB_0007" QuestName="대장장이의 부탁" QuestDesc="특수한 광석을 구해 대장장이에게 가져다주라." QuestType="Sub" Grade="Common" RewardKey="REWARD_SUB_0007"/>
+  <QuestInfo Key="31008" StrKey="STR_QUEST_SUB_0008" QuestName="식량 보급" QuestDesc="전선의 병사들에게 식량을 보급하라.&lt;br/&gt;안전한 경로를 선택해야 한다." QuestType="Sub" Grade="Common" RewardKey="REWARD_SUB_0008"/>
+  <QuestInfo Key="31009" StrKey="STR_QUEST_SUB_0009" QuestName="정찰 임무" QuestDesc="적의 진영을 정찰하고 돌아와 보고하라." QuestType="Sub" Grade="Uncommon" RewardKey="REWARD_SUB_0009"/>
+  <QuestInfo Key="31010" StrKey="STR_QUEST_SUB_0010" QuestName="고대 유물 발굴" QuestDesc="유적지에서 고대 유물을 발굴하라.&lt;br/&gt;함정이 설치되어 있을 수 있다.&lt;br/&gt;조심해서 진행하라." QuestType="Sub" Grade="Rare" RewardKey="REWARD_SUB_0010"/>
+</QuestInfoList>
