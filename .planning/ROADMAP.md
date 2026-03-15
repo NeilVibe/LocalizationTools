@@ -59,11 +59,11 @@
   3. Mock language data files load in Translator mode with Korean source text and matching StringIDs
   4. Round-trip validation passes (generate -> parse -> merge -> export -> re-parse produces identical data)
   5. Mock universe contains sufficient volume for meaningful grid performance testing (100+ items, 30+ characters, 10+ regions)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 15-01: TBD
-- [ ] 15-02: TBD
+- [ ] 15-01-PLAN.md — Generator script + StaticInfo XML + binary stubs + cross-ref/volume/structure tests
+- [ ] 15-02-PLAN.md — Language data + EXPORT indexes + round-trip validation tests
 
 ### Phase 16: Category Clustering + QA Pipeline
 **Goal**: Translators see content categories at a glance and get instant QA feedback on glossary consistency and translation uniformity without leaving the editor
@@ -75,7 +75,7 @@ Plans:
   3. QA Term Check flags glossary terms present in source but missing in target translation inline in the editor
   4. QA Line Check flags same source text translated inconsistently across the project
   5. User can dismiss individual QA findings to prevent false positive fatigue
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 16-01: TBD
@@ -91,7 +91,7 @@ Plans:
   2. Clicking a suggestion applies it to the translation field without auto-replacing any existing content
   3. Suggestions consider entity context (type, parent hierarchy, surrounding segments) for relevance
   4. When Qwen3/Ollama is unavailable, the panel shows "AI unavailable" gracefully without crashes or spinners
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 17-01: TBD
@@ -107,7 +107,7 @@ Plans:
   3. User can edit Name, Desc, and text attributes inline and changes save back with proper XML encoding (br-tag preservation)
   4. Grid shows appropriate metadata columns per data type (Key, StrKey, KnowledgeKey, etc.)
   5. Grid handles large files (1000+ entities) smoothly via virtual scrolling
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 18-01: TBD
@@ -123,7 +123,7 @@ Plans:
   2. Item encyclopedia page shows name, image, description, category, stats, and similar items via semantic search
   3. Codex is searchable via semantic search (Model2Vec + FAISS) across all entity types with relevant results
   4. Codex pages display inline DDS->PNG images and WEM->WAV audio playback when available
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 19-01: TBD
@@ -139,7 +139,7 @@ Plans:
   3. Clicking a map node opens a detail panel linking to Codex pages for characters, items, and quests in that region
   4. Route connections between region nodes are visualized from NodeWaypointInfo data
   5. Map supports pan and zoom interaction for navigating the full world
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 20-01: TBD
@@ -154,7 +154,7 @@ Plans:
   2. AI suggests coherent naming alternatives based on existing patterns via Qwen3 in a non-blocking panel
   3. Missing images display a styled SVG placeholder with entity name and category-specific icon
   4. Missing audio displays a waveform SVG placeholder with entity name and "[No Audio]" label
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 21-01: TBD
@@ -183,7 +183,7 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21
 | 12. Game Dev Merge | v2.0 | 2/2 | Complete | 2026-03-15 |
 | 13. AI Summaries | v2.0 | 2/2 | Complete | 2026-03-15 |
 | 14. E2E Validation + CLI | v2.0 | 2/2 | Complete | 2026-03-15 |
-| 15. Mock Gamedata Universe | v3.0 | 0/? | Not started | - |
+| 15. Mock Gamedata Universe | v3.0 | 0/2 | Planning complete | - |
 | 16. Category Clustering + QA Pipeline | v3.0 | 0/? | Not started | - |
 | 17. AI Translation Suggestions | v3.0 | 0/? | Not started | - |
 | 18. Game Dev Grid + File Explorer | v3.0 | 0/? | Not started | - |
