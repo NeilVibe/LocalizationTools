@@ -54,7 +54,7 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 - [x] **AISUM-01**: Qwen3-4B/8B endpoint via Ollama responds with structured JSON
 - [x] **AISUM-02**: Character/item/region metadata generates 2-line contextual summary
-- [ ] **AISUM-03**: Summary appears in ContextTab for selected string
+- [x] **AISUM-03**: Summary appears in ContextTab for selected string
 - [x] **AISUM-04**: Summaries cache per StringID to avoid re-generation
 - [x] **AISUM-05**: Graceful fallback when Ollama is unavailable (show "AI unavailable" badge)
 
@@ -148,7 +148,7 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 | GMERGE-05 | Phase 12 | Complete |
 | AISUM-01 | Phase 13 | Complete |
 | AISUM-02 | Phase 13 | Complete |
-| AISUM-03 | Phase 13 | Pending |
+| AISUM-03 | Phase 13 | Complete |
 | AISUM-04 | Phase 13 | Complete |
 | AISUM-05 | Phase 13 | Complete |
 | CLI-01 | Phase 14 | Pending |
