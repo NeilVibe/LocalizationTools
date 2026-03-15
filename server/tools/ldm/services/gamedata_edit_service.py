@@ -51,7 +51,11 @@ class GameDataEditService:
         """
         resolved = self._validate_path(xml_path)
 
-        tree = etree.parse(str(resolved))
+        try:
+            tree = etree.parse(str(resolved))
+        except etree.XMLSyntaxError as exc:
+            raise ValueError(f"Malformed XML in {resolved.name}: {exc}") from exc
+
         root = tree.getroot()
         entities = list(root)
 
@@ -66,7 +70,10 @@ class GameDataEditService:
         old_value = entity.get(attr_name, "<missing>")
         entity.set(attr_name, new_value)
 
-        tree.write(str(resolved), encoding="UTF-8", xml_declaration=True)
+        try:
+            tree.write(str(resolved), encoding="UTF-8", xml_declaration=True)
+        except OSError as exc:
+            raise ValueError(f"Failed to write XML {resolved.name}: {exc}") from exc
 
         logger.info(
             f"[GameDataEdit] Updated {entity.tag}[{entity_index}].{attr_name}: "
