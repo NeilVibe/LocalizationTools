@@ -12,6 +12,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
+from lxml.etree import XMLSyntaxError
 
 from server.utils.dependencies import get_current_active_user_async
 from server.tools.ldm.schemas.gamedata import (
@@ -69,12 +70,12 @@ async def browse_gamedata(
         root_node = svc.scan_folder(request.path, max_depth=request.max_depth)
     except ValueError as e:
         logger.warning(f"[GameData API] Path traversal attempt: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Path not found: {request.path}")
-
-    if not Path(request.path).is_dir():
-        raise HTTPException(status_code=404, detail=f"Directory not found: {request.path}")
+    except Exception as e:
+        logger.error(f"[GameData API] browse_gamedata failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     return FolderTreeResponse(root=root_node, base_path=str(base_dir))
 
@@ -96,15 +97,20 @@ async def detect_columns(
     """
     base_dir = _get_base_dir()
 
-    if not Path(request.xml_path).is_file():
-        raise HTTPException(status_code=404, detail=f"File not found: {request.xml_path}")
-
     try:
         svc = GameDataBrowseService(base_dir=base_dir)
         result = svc.detect_columns(request.xml_path)
     except ValueError as e:
         logger.warning(f"[GameData API] Path traversal attempt: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e))
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"File not found: {request.xml_path}")
+    except XMLSyntaxError as e:
+        logger.warning(f"[GameData API] Malformed XML: {request.xml_path}: {e}")
+        raise HTTPException(status_code=422, detail=f"Malformed XML: {e}")
+    except Exception as e:
+        logger.error(f"[GameData API] detect_columns failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     return result
 
@@ -126,9 +132,6 @@ async def save_gamedata(
     """
     base_dir = _get_base_dir()
 
-    if not Path(request.xml_path).is_file():
-        raise HTTPException(status_code=404, detail=f"File not found: {request.xml_path}")
-
     try:
         svc = GameDataEditService(base_dir=base_dir)
         success = svc.update_entity_attribute(
@@ -138,8 +141,16 @@ async def save_gamedata(
             new_value=request.new_value,
         )
     except ValueError as e:
-        logger.warning(f"[GameData API] Path traversal attempt: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning(f"[GameData API] Invalid request: {e}")
+        raise HTTPException(status_code=403, detail=str(e))
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"File not found: {request.xml_path}")
+    except XMLSyntaxError as e:
+        logger.warning(f"[GameData API] Malformed XML: {request.xml_path}: {e}")
+        raise HTTPException(status_code=422, detail=f"Malformed XML: {e}")
+    except Exception as e:
+        logger.error(f"[GameData API] save_gamedata failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     if not success:
         raise HTTPException(
