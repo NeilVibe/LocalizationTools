@@ -3,6 +3,21 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Debug + Polish + Svelte 5 Migration
 status: ready_to_plan
+stopped_at: Phase 25 context gathered
+last_updated: "2026-03-15T18:13:23.634Z"
+last_activity: 2026-03-16 -- Roadmap created for v3.1 milestone
+progress:
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 9
+  completed_plans: 0
+---
+
+---
+gsd_state_version: 1.0
+milestone: v3.1
+milestone_name: Debug + Polish + Svelte 5 Migration
+status: ready_to_plan
 stopped_at: Roadmap created
 last_updated: "2026-03-16"
 last_activity: 2026-03-16 -- Roadmap created for v3.1 milestone
@@ -58,12 +73,16 @@ Progress: [..........] 0%
 
 None yet.
 
+### Roadmap Evolution
+
+- Phase 25 added: Comprehensive API E2E Testing
+
 ### Blockers/Concerns
 
 None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16
-Stopped at: Roadmap created for v3.1 milestone (3 phases, 22 requirements)
-Resume file: None
+Last session: 2026-03-15T18:13:23.632Z
+Stopped at: Phase 25 context gathered
+Resume file: .planning/phases/25-comprehensive-api-e2e-testing/25-CONTEXT.md
