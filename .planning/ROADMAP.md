@@ -155,8 +155,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 21-01: TBD
-- [ ] 21-02: TBD
+- [ ] 21-01-PLAN.md — NamingCoherenceService backend + REST endpoints + unit tests (AINAME-01, AINAME-02, AINAME-03)
+- [ ] 21-02-PLAN.md — NamingPanel frontend + PlaceholderImage/Audio SVGs + Codex/GameDev integration (AINAME-01 through PLACEHOLDER-03)
 
 ## Progress
 
