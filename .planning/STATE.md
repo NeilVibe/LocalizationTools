@@ -4,13 +4,15 @@ milestone: v3.1
 milestone_name: Debug + Polish + Svelte 5 Migration
 status: unknown
 stopped_at: Completed 25-09-PLAN.md
-last_updated: "2026-03-15T22:53:03.000Z"
+last_updated: "2026-03-15T22:55:08.746Z"
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 19
-  completed_plans: 18
--------|--------------|
+  completed_plans: 19
+---
+
+----|--------------|
 | v1.0 | 7 | 20 | 42/42 |
 | v2.0 | 8 | 17 | 40/40 |
 | v3.0 | 7 | 14 | 45/45 |
@@ -67,6 +69,7 @@ progress:
 - [25-09]: Tools tests try multiple URL prefixes for endpoint discovery since tool routes may be mounted at different paths
 - [25-09]: Offline tests accept GRACEFUL tuple (200/404/422/500/501/503) since offline mode may not be active in test env
 - [25-09]: Admin no-500 batch check validates 8 admin-adjacent endpoints simultaneously
+- [Phase 25]: Socket.IO wrapper unwrapped via other_asgi_app for FastAPI route introspection
 
 ### Pending Todos
 
