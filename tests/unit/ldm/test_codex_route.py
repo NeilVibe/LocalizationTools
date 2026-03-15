@@ -12,7 +12,19 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-MOCK_GAMEDATA = Path(__file__).resolve().parents[2] / "fixtures" / "mock_gamedata"
+from server.main import app as wrapped_app
+from server.utils.dependencies import get_current_active_user_async
+
+# Get the original FastAPI app for dependency_overrides
+fastapi_app = wrapped_app.other_asgi_app
+
+MOCK_USER = {
+    "user_id": 1,
+    "username": "testuser",
+    "role": "user",
+    "is_active": True,
+    "dev_mode": False,
+}
 
 
 def _mock_embedding_engine():
@@ -35,22 +47,14 @@ def _mock_embedding_engine():
 
 
 @pytest.fixture
-def client():
-    """FastAPI TestClient with mocked auth and embedding engine."""
-    mock_engine = _mock_embedding_engine()
+def mock_auth():
+    """Mock auth for route tests."""
+    async def override_get_user():
+        return MOCK_USER
 
-    with patch("server.tools.ldm.services.codex_service.get_embedding_engine",
-               return_value=mock_engine):
-        with patch("server.tools.ldm.routes.codex.get_current_active_user_async",
-                   return_value=lambda: {"id": 1, "username": "test"}):
-            from server.main import app
-            # Override auth dependency
-            from server.utils.dependencies import get_current_active_user_async as dep
-            app.dependency_overrides[dep] = lambda: {"id": 1, "username": "test"}
-
-            yield TestClient(app)
-
-            app.dependency_overrides.clear()
+    fastapi_app.dependency_overrides[get_current_active_user_async] = override_get_user
+    yield
+    fastapi_app.dependency_overrides.clear()
 
 
 # Reset the codex service singleton between tests
@@ -61,6 +65,16 @@ def reset_codex_singleton():
     codex_module._codex_service = None
     yield
     codex_module._codex_service = None
+
+
+@pytest.fixture
+def client(mock_auth):
+    """FastAPI TestClient with mocked auth and embedding engine."""
+    mock_engine = _mock_embedding_engine()
+
+    with patch("server.tools.ldm.services.codex_service.get_embedding_engine",
+               return_value=mock_engine):
+        yield TestClient(wrapped_app)
 
 
 # =============================================================================
@@ -101,12 +115,12 @@ class TestEntityEndpoint:
     """Tests for GET /api/ldm/codex/entity/{entity_type}/{strkey}."""
 
     def test_get_entity_found(self, client):
-        """GET /api/ldm/codex/entity/character/STR_CHAR_VARON returns 200."""
-        response = client.get("/api/ldm/codex/entity/character/STR_CHAR_VARON")
+        """GET /api/ldm/codex/entity/character/STR_CHAR_0023 returns 200."""
+        response = client.get("/api/ldm/codex/entity/character/STR_CHAR_0023")
         assert response.status_code == 200
         data = response.json()
         assert data["entity_type"] == "character"
-        assert data["strkey"] == "STR_CHAR_VARON"
+        assert data["strkey"] == "STR_CHAR_0023"
 
     def test_get_entity_not_found(self, client):
         """GET /api/ldm/codex/entity/item/NONEXISTENT returns 404."""
