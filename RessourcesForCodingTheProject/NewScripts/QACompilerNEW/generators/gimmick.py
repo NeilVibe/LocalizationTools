@@ -310,9 +310,10 @@ def index_gimmick_folder(
 # ROW GENERATION
 # =============================================================================
 
-# Row format: (depth, text, style_type, is_description, source_file, data_type, extra_text)
-# extra_text is used for: command (/create gimmick X), group_name for filtering
-RowItem = Tuple[int, str, str, bool, str, str, str]
+# Row format: (depth, text, style_type, is_description, source_file, data_type, command, group_name)
+# command: /create gimmick X (on GimmickInfo + Desc rows)
+# group_name: repeated on EVERY row within a group for Excel filtering
+RowItem = Tuple[int, str, str, bool, str, str, str, str]
 
 
 def emit_gimmick_rows(file_list: List[GimmickFileData]) -> List[RowItem]:
@@ -321,20 +322,22 @@ def emit_gimmick_rows(file_list: List[GimmickFileData]) -> List[RowItem]:
 
     for file_data in file_list:
         # File root row (depth 0)
-        rows.append((0, file_data.display_name, "FileRoot", False, file_data.filename, "FileRoot", ""))
+        rows.append((0, file_data.display_name, "FileRoot", False, file_data.filename, "FileRoot", "", ""))
 
         for group in file_data.groups:
+            gname = group.group_name
+
             # Group row (depth 1)
-            rows.append((1, group.group_name, "GroupInfo", False, group.source_file, "GroupInfo", group.group_name))
+            rows.append((1, gname, "GroupInfo", False, group.source_file, "GroupInfo", "", gname))
 
             for ginfo in group.gimmick_infos:
                 # GimmickInfo row (depth 2)
                 command = f"/create gimmick {ginfo.strkey}"
-                rows.append((2, ginfo.gimmick_name, "GimmickInfo", False, ginfo.source_file, "GimmickInfo", command))
+                rows.append((2, ginfo.gimmick_name, "GimmickInfo", False, ginfo.source_file, "GimmickInfo", command, gname))
 
                 # SealData.Desc row (depth 3, description)
                 if ginfo.seal_desc:
-                    rows.append((3, ginfo.seal_desc, "Description", True, ginfo.source_file, "SealData.Desc", command))
+                    rows.append((3, ginfo.seal_desc, "Description", True, ginfo.source_file, "SealData.Desc", command, gname))
 
     return rows
 
@@ -374,7 +377,7 @@ def write_sheet_content(
     # Data rows
     r_idx = 2
 
-    for (depth, text, style_type, is_desc, source_file, data_type, extra_text) in rows:
+    for (depth, text, style_type, is_desc, source_file, data_type, command, group_name) in rows:
         fill, font, row_height = get_style(style_type)
 
         # Translate
@@ -399,8 +402,8 @@ def write_sheet_content(
         c.border = THIN_BORDER
         col += 1
 
-        # GroupInfo (for filtering — only populated on GroupInfo/GimmickInfo/Desc rows)
-        c = sheet.cell(r_idx, col, extra_text if data_type == "GroupInfo" else "")
+        # GroupInfo (repeated every row within a group for easy Excel filtering)
+        c = sheet.cell(r_idx, col, group_name)
         c.fill = fill; c.font = font
         c.alignment = Alignment(vertical="center")
         c.border = THIN_BORDER
@@ -429,8 +432,7 @@ def write_sheet_content(
             col += 1
 
         # Command
-        cmd = extra_text if data_type in ("GimmickInfo", "SealData.Desc") else ""
-        c = sheet.cell(r_idx, col, cmd)
+        c = sheet.cell(r_idx, col, command)
         c.fill = fill; c.font = font
         c.alignment = Alignment(horizontal="left", vertical="center")
         c.border = THIN_BORDER
