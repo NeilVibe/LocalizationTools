@@ -3,6 +3,21 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Debug + Polish + Svelte 5 Migration
 status: executing
+stopped_at: Completed 23-02-PLAN.md
+last_updated: "2026-03-15T22:09:42.336Z"
+last_activity: 2026-03-15 -- Completed 23-03 component bug fixes (audio fallback, loading cleanup, QA badge a11y)
+progress:
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 19
+  completed_plans: 6
+---
+
+---
+gsd_state_version: 1.0
+milestone: v3.1
+milestone_name: Debug + Polish + Svelte 5 Migration
+status: executing
 stopped_at: Completed 23-03-PLAN.md
 last_updated: "2026-03-15T22:09:14Z"
 last_activity: 2026-03-15 -- Completed 23-03 component bug fixes (audio fallback, loading cleanup, QA badge a11y)
@@ -45,6 +60,7 @@ Progress: [██░░░░░░░░] 21%
 | v3.1 | 3 | TBD | 0/22 |
 
 *Updated after each plan completion*
+| Phase 23 P02 | 2min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -62,6 +78,8 @@ Progress: [██░░░░░░░░] 21%
 - [23-03]: AISuggestionsTab already had loading=false in cleanup -- no change needed
 - [23-03]: Added abortController.abort() to NamingPanel cleanup (was missing unlike AISuggestionsTab)
 - [23-03]: Removed dead handleClickOutside from QAInlineBadge -- backdrop onclick approach is cleaner
+- [Phase 23-02]: codexSearchQuery writable store for cross-page NPC search (consumed and cleared on CodexPage mount)
+- [Phase 23-02]: FIX-10 satisfied: WorldMapPage uses inline fetch, no duplicate service instantiation exists
 
 ### Pending Todos
 
@@ -77,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T22:08:39Z
-Stopped at: Completed 23-03-PLAN.md
-Resume file: .planning/phases/23-bug-fixes/23-03-SUMMARY.md
+Last session: 2026-03-15T22:09:42.334Z
+Stopped at: Completed 23-02-PLAN.md
+Resume file: None

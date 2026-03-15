@@ -18,14 +18,14 @@
 
 - [ ] **FIX-01**: GameDevPage Date.now() fallback file ID replaced with proper error handling
 - [x] **FIX-02**: CodexEntityDetail audio element has onerror fallback to PlaceholderAudio
-- [ ] **FIX-03**: MapDetailPanel navigateToNPC passes NPC name to Codex search
-- [ ] **FIX-04**: WorldMapPage tooltip suppressed while detail panel is open
+- [x] **FIX-03**: MapDetailPanel navigateToNPC passes NPC name to Codex search
+- [x] **FIX-04**: WorldMapPage tooltip suppressed while detail panel is open
 - [x] **FIX-05**: AISuggestionsTab and NamingPanel loading state cleared on debounce cancel
 - [x] **FIX-06**: QAInlineBadge handleClickOutside properly attached, backdrop has tabindex
-- [ ] **FIX-07**: MapCanvas route key deduplication to prevent {#each} crash
+- [x] **FIX-07**: MapCanvas route key deduplication to prevent {#each} crash
 - [ ] **FIX-08**: GameDevPage tree refresh uses reload method instead of remount flicker
-- [ ] **FIX-09**: CodexPage entity type sort handles unknown types (sorts last, not first)
-- [ ] **FIX-10**: WorldMapService reuses CodexService singleton instead of creating duplicate
+- [x] **FIX-09**: CodexPage entity type sort handles unknown types (sorts last, not first)
+- [x] **FIX-10**: WorldMapService reuses CodexService singleton instead of creating duplicate
 
 ### UIUX Polish
 
@@ -60,14 +60,14 @@
 | SV5-06 | Phase 22 | Complete |
 | FIX-01 | Phase 23 | Pending |
 | FIX-02 | Phase 23 | Complete |
-| FIX-03 | Phase 23 | Pending |
-| FIX-04 | Phase 23 | Pending |
+| FIX-03 | Phase 23 | Complete |
+| FIX-04 | Phase 23 | Complete |
 | FIX-05 | Phase 23 | Complete |
 | FIX-06 | Phase 23 | Complete |
-| FIX-07 | Phase 23 | Pending |
+| FIX-07 | Phase 23 | Complete |
 | FIX-08 | Phase 23 | Pending |
-| FIX-09 | Phase 23 | Pending |
-| FIX-10 | Phase 23 | Pending |
+| FIX-09 | Phase 23 | Complete |
+| FIX-10 | Phase 23 | Complete |
 | FIX-11 | Phase 23 | Pending |
 | TEST-01 | Phase 23 | Pending |
 | UX-01 | Phase 24 | Pending |
