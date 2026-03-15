@@ -33,16 +33,14 @@
   /**
    * Format entity type counts
    */
-  let entityCountText = $derived(() => {
-    if (!node?.entity_type_counts) return '';
-    const parts = [];
-    for (const [type, count] of Object.entries(node.entity_type_counts)) {
-      if (count > 0) {
-        parts.push(`${count} ${type}${count !== 1 ? 's' : ''}`);
-      }
-    }
-    return parts.join(', ');
-  });
+  let entityCountText = $derived(
+    node?.entity_type_counts
+      ? Object.entries(node.entity_type_counts)
+          .filter(([, count]) => count > 0)
+          .map(([type, count]) => `${count} ${type}${count !== 1 ? 's' : ''}`)
+          .join(', ')
+      : ''
+  );
 </script>
 
 {#if node}
@@ -68,10 +66,10 @@
       </div>
     {/if}
 
-    {#if entityCountText()}
+    {#if entityCountText}
       <div class="tooltip-counts">
         <span class="tooltip-label">Entities:</span>
-        <span>{entityCountText()}</span>
+        <span>{entityCountText}</span>
       </div>
     {/if}
   </div>
