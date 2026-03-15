@@ -59,11 +59,11 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 ### Game World Codex
 
-- [ ] **CODEX-01**: Character encyclopedia page shows name, image, description, race, job, quest appearances, related entities
-- [ ] **CODEX-02**: Item encyclopedia page shows name, image, description, category, stats, similar items via Model2Vec
-- [ ] **CODEX-03**: Codex is searchable via semantic search (Model2Vec + FAISS) across all entity types
-- [ ] **CODEX-04**: Both translators and game devs can access Codex pages for reference while working
-- [ ] **CODEX-05**: Codex pages show inline images (DDS->PNG) and audio playback (WEM->WAV) when available
+- [x] **CODEX-01**: Character encyclopedia page shows name, image, description, race, job, quest appearances, related entities
+- [x] **CODEX-02**: Item encyclopedia page shows name, image, description, category, stats, similar items via Model2Vec
+- [x] **CODEX-03**: Codex is searchable via semantic search (Model2Vec + FAISS) across all entity types
+- [x] **CODEX-04**: Both translators and game devs can access Codex pages for reference while working
+- [x] **CODEX-05**: Codex pages show inline images (DDS->PNG) and audio playback (WEM->WAV) when available
 
 ### Interactive World Map
 
@@ -145,11 +145,11 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 | GDEV-05 | Phase 18 | Complete |
 | GDEV-06 | Phase 18 | Complete |
 | GDEV-07 | Phase 18 | Complete |
-| CODEX-01 | Phase 19 | Pending |
-| CODEX-02 | Phase 19 | Pending |
-| CODEX-03 | Phase 19 | Pending |
-| CODEX-04 | Phase 19 | Pending |
-| CODEX-05 | Phase 19 | Pending |
+| CODEX-01 | Phase 19 | Complete |
+| CODEX-02 | Phase 19 | Complete |
+| CODEX-03 | Phase 19 | Complete |
+| CODEX-04 | Phase 19 | Complete |
+| CODEX-05 | Phase 19 | Complete |
 | MAP-01 | Phase 20 | Pending |
 | MAP-02 | Phase 20 | Pending |
 | MAP-03 | Phase 20 | Pending |
