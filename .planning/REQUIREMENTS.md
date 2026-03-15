@@ -43,9 +43,9 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 
 ### AI Naming Coherence
 
-- [ ] **AINAME-01**: When editing a Name field in Game Dev mode, system shows similar existing entity names via Model2Vec embedding search
-- [ ] **AINAME-02**: AI suggests coherent naming alternatives based on existing patterns via Qwen3
-- [ ] **AINAME-03**: Suggestions display as a non-blocking panel -- game dev confirms in the grid, never auto-replace
+- [x] **AINAME-01**: When editing a Name field in Game Dev mode, system shows similar existing entity names via Model2Vec embedding search
+- [x] **AINAME-02**: AI suggests coherent naming alternatives based on existing patterns via Qwen3
+- [x] **AINAME-03**: Suggestions display as a non-blocking panel -- game dev confirms in the grid, never auto-replace
 
 ### Game Dev Grid
 
@@ -135,9 +135,9 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 | AISUG-03 | Phase 17 | Complete |
 | AISUG-04 | Phase 17 | Complete |
 | AISUG-05 | Phase 17 | Complete |
-| AINAME-01 | Phase 21 | Pending |
-| AINAME-02 | Phase 21 | Pending |
-| AINAME-03 | Phase 21 | Pending |
+| AINAME-01 | Phase 21 | Complete |
+| AINAME-02 | Phase 21 | Complete |
+| AINAME-03 | Phase 21 | Complete |
 | GDEV-01 | Phase 18 | Complete |
 | GDEV-02 | Phase 18 | Complete |
 | GDEV-03 | Phase 18 | Complete |

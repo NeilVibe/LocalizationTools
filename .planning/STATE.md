@@ -3,30 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Game Dev Platform + AI Intelligence
 status: executing
-stopped_at: Completed 20-02-PLAN.md
-last_updated: "2026-03-15T14:38:25.689Z"
-last_activity: 2026-03-15 -- Completed Phase 20 Plan 02 (WorldMap Frontend)
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-03-15T14:55:10Z"
+last_activity: 2026-03-15 -- Completed Phase 21 Plan 01 (Naming Coherence Backend)
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 12
-  completed_plans: 12
----
-
----
-gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Game Dev Platform + AI Intelligence
-status: executing
-stopped_at: Completed 20-02-PLAN.md
-last_updated: "2026-03-15T14:36:00Z"
-last_activity: 2026-03-15 -- Completed Phase 20 Plan 02 (WorldMap Frontend)
-progress:
-  total_phases: 7
-  completed_phases: 6
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_plans: 14
+  completed_plans: 13
 ---
 
 # Project State
@@ -36,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Game Dev authoring platform with AI-powered suggestions, interactive Codex, and integrated QA -- all local, zero cloud dependency
-**Current focus:** Phase 20 Complete - Interactive World Map
+**Current focus:** Phase 21 - AI Naming Coherence + Placeholders
 
 ## Current Position
 
-Phase: 20 (6 of 7 in v3.0) [Interactive World Map] COMPLETE
-Plan: 2 of 2 in current phase (2 DONE, 0 remaining)
-Status: Phase 20 complete, Phase 21 next
-Last activity: 2026-03-15 -- Completed Phase 20 Plan 02 (WorldMap Frontend)
+Phase: 21 (7 of 7 in v3.0) [AI Naming Coherence + Placeholders]
+Plan: 1 of 2 in current phase (1 DONE, 1 remaining)
+Status: Phase 21 Plan 01 complete, Plan 02 next
+Last activity: 2026-03-15 -- Completed Phase 21 Plan 01 (Naming Coherence Backend)
 
-Progress: [██████████] 100% v3.0 plans (phases 15-20 complete, 21 remaining)
+Progress: [█████████▒] 93% v3.0 plans (phases 15-20 complete, 21 in progress)
 
 ## Performance Metrics
 
@@ -58,7 +42,7 @@ Progress: [██████████] 100% v3.0 plans (phases 15-20 complet
 |-----------|--------|-------|--------------|
 | v1.0 | 7 | 20 | 42/42 |
 | v2.0 | 8 | 17 | 40/40 |
-| v3.0 | 7 | 12 | 39/45 |
+| v3.0 | 7 | 14 | 42/45 |
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -72,6 +56,7 @@ Progress: [██████████] 100% v3.0 plans (phases 15-20 complet
 | 19-02 | Codex Frontend | 5min | 3 | 6 |
 | 20-01 | WorldMap Backend | 4min | 2 | 6 |
 | 20-02 | WorldMap Frontend | 6min | 3 | 9 |
+| 21-01 | Naming Coherence Backend | 4min | 2 | 6 |
 
 ## Accumulated Context
 
@@ -124,6 +109,9 @@ All v1.0/v2.0 decisions archived in PROJECT.md Key Decisions table.
 - [20-02]: Node color/size by region_type: Main=blue/10, Dungeon=red/8, Town=green/9
 - [20-02]: Coordinate mapping uses linear scale from world bounds to 1000x1000 SVG viewBox with 50px padding
 - [20-02]: MapTooltip uses position:fixed with pointer-events:none to avoid hover interference
+- [21-01]: Cache key is entity_type:name (simpler than md5 hash since entity names are short)
+- [21-01]: Prompt includes /no_think tag for speed (naming is creative, not analytical)
+- [21-01]: Temperature 0.8 for naming suggestions (higher than 0.7 for translations -- more creative)
 
 ### Pending Todos
 
@@ -135,6 +123,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T14:34:23.347Z
-Stopped at: Completed 20-02-PLAN.md
-Resume: Phase 20 complete. Plan Phase 21 (AI Naming Coherence + Placeholders) next.
+Last session: 2026-03-15T14:55:10Z
+Stopped at: Completed 21-01-PLAN.md
+Resume: Phase 21 Plan 01 complete. Execute Plan 02 (Placeholder Detection) next.
