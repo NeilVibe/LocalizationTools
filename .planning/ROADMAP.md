@@ -78,9 +78,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 16-01: TBD
-- [ ] 16-02: TBD
-- [ ] 16-03: TBD
+- [ ] 16-01-PLAN.md -- Category Service backend + grid column + multi-select filter (CAT-01, CAT-02, CAT-03)
+- [ ] 16-02-PLAN.md -- Inline QA indicators + QA panel enhancement + dismiss (QA-01 through QA-06)
 
 ### Phase 17: AI Translation Suggestions
 **Goal**: Translators get ranked AI-powered translation suggestions for the selected segment that they can accept with one click -- never auto-replacing
@@ -184,7 +183,7 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21
 | 13. AI Summaries | v2.0 | 2/2 | Complete | 2026-03-15 |
 | 14. E2E Validation + CLI | v2.0 | 2/2 | Complete | 2026-03-15 |
 | 15. Mock Gamedata Universe | 2/2 | Complete    | 2026-03-15 | - |
-| 16. Category Clustering + QA Pipeline | v3.0 | 0/? | Not started | - |
+| 16. Category Clustering + QA Pipeline | v3.0 | 0/2 | Planned | - |
 | 17. AI Translation Suggestions | v3.0 | 0/? | Not started | - |
 | 18. Game Dev Grid + File Explorer | v3.0 | 0/? | Not started | - |
 | 19. Game World Codex | v3.0 | 0/? | Not started | - |
