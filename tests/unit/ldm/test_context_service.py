@@ -16,6 +16,7 @@ from server.tools.ldm.services.glossary_service import (
 from server.tools.ldm.services.mapdata_service import (
     ImageContext,
     AudioContext,
+    KnowledgeLookup,
 )
 from server.tools.ldm.services.context_service import (
     ContextService,
@@ -238,6 +239,91 @@ class TestContextServiceStatus:
 # =============================================================================
 # Singleton Tests
 # =============================================================================
+
+
+# =============================================================================
+# Chain Resolution Tests (XML-03)
+# =============================================================================
+
+
+class TestResolveChain:
+    """Test resolve_chain() tracks step-by-step StrKey -> Knowledge -> DDS resolution."""
+
+    def test_chain_resolution_full(self):
+        """Full chain: StrKey -> KnowledgeLookup -> UITextureName -> DDS -> ImageContext."""
+        mock_mapdata = MagicMock()
+        mock_mapdata.get_knowledge_lookup.return_value = KnowledgeLookup(
+            strkey="str_npc_001",
+            name="Guard Captain",
+            desc="Veteran guard",
+            ui_texture_name="ui_npc_portrait_001",
+            group_key="npc_group_01",
+            source_file="knowledgeinfo_chain.xml",
+        )
+        mock_mapdata.get_image_context.return_value = SAMPLE_IMAGE
+
+        ctx_svc = ContextService()
+        with patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata):
+            result = ctx_svc.resolve_chain("str_npc_001")
+
+        assert result["result"] is not None
+        assert result["partial"] is False
+        assert len(result["steps"]) == 3
+        assert all(step["found"] for step in result["steps"])
+
+    def test_chain_resolution_partial_no_dds(self):
+        """Knowledge found but no DDS -> partial=True, step 3 not found."""
+        mock_mapdata = MagicMock()
+        mock_mapdata.get_knowledge_lookup.return_value = KnowledgeLookup(
+            strkey="str_npc_001",
+            name="Guard Captain",
+            desc="Veteran guard",
+            ui_texture_name="ui_npc_portrait_001",
+            group_key="npc_group_01",
+            source_file="knowledgeinfo_chain.xml",
+        )
+        mock_mapdata.get_image_context.return_value = None  # No DDS found
+
+        ctx_svc = ContextService()
+        with patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata):
+            result = ctx_svc.resolve_chain("str_npc_001")
+
+        assert result["result"] is None
+        assert result["partial"] is True
+        assert len(result["steps"]) == 3
+        assert result["steps"][0]["found"] is True
+        assert result["steps"][1]["found"] is True
+        assert result["steps"][2]["found"] is False
+
+    def test_chain_resolution_missing_strkey(self):
+        """Unknown StrKey -> step 1 not found, partial=False."""
+        mock_mapdata = MagicMock()
+        mock_mapdata.get_knowledge_lookup.return_value = None
+
+        ctx_svc = ContextService()
+        with patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata):
+            result = ctx_svc.resolve_chain("unknown_strkey")
+
+        assert result["result"] is None
+        assert result["partial"] is False
+        assert len(result["steps"]) == 1
+        assert result["steps"][0]["found"] is False
+
+    def test_resolve_context_for_row_includes_chain_steps(self):
+        """resolve_context_for_row includes chain_steps in string_id_context."""
+        mock_glossary = MagicMock()
+        mock_glossary.detect_entities.return_value = []
+        mock_mapdata = MagicMock()
+        mock_mapdata.get_knowledge_lookup.return_value = None
+        mock_mapdata.get_audio_context.return_value = None
+
+        ctx_svc = ContextService()
+        with patch("server.tools.ldm.services.context_service.get_glossary_service", return_value=mock_glossary), \
+             patch("server.tools.ldm.services.context_service.get_mapdata_service", return_value=mock_mapdata):
+            result = ctx_svc.resolve_context_for_row("ROW_001", "Some text")
+
+        assert "chain_steps" in result.string_id_context
+        assert isinstance(result.string_id_context["chain_steps"], list)
 
 
 class TestContextServiceSingleton:

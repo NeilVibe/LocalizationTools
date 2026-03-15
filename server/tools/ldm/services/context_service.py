@@ -132,8 +132,72 @@ class ContextService:
             detected_in_text=detected,
         )
 
+    def resolve_chain(self, strkey: str) -> Dict:
+        """Resolve the full StrKey -> Knowledge -> UITextureName -> DDS chain.
+
+        Tracks each step for debugging "No Image" issues. Returns partial
+        results so callers know exactly where the chain broke.
+
+        Args:
+            strkey: The StrKey to resolve.
+
+        Returns:
+            Dict with "steps" list, "result" (ImageContext or None), "partial" bool.
+        """
+        mapdata_svc = get_mapdata_service()
+        steps = []
+
+        # Step 1: StrKey -> KnowledgeLookup
+        knowledge = mapdata_svc.get_knowledge_lookup(strkey)
+        steps.append({
+            "step": 1,
+            "name": "StrKey -> KnowledgeLookup",
+            "found": knowledge is not None,
+            "value": knowledge.name if knowledge else None,
+        })
+
+        if knowledge is None:
+            logger.debug(f"[CONTEXT] Chain broke at step 1: StrKey={strkey} not in knowledge table")
+            return {"steps": steps, "result": None, "partial": False}
+
+        # Step 2: KnowledgeLookup -> UITextureName
+        texture_name = knowledge.ui_texture_name
+        has_texture = bool(texture_name)
+        steps.append({
+            "step": 2,
+            "name": "KnowledgeLookup -> UITextureName",
+            "found": has_texture,
+            "value": texture_name if has_texture else None,
+        })
+
+        if not has_texture:
+            logger.debug(f"[CONTEXT] Chain broke at step 2: StrKey={strkey} has no UITextureName")
+            return {"steps": steps, "result": None, "partial": True}
+
+        # Step 3: UITextureName -> DDS path (via image context)
+        image = mapdata_svc.get_image_context(strkey)
+        steps.append({
+            "step": 3,
+            "name": "UITextureName -> DDS path",
+            "found": image is not None,
+            "value": image.dds_path if image else None,
+        })
+
+        if image is None:
+            logger.debug(
+                f"[CONTEXT] Chain broke at step 3: StrKey={strkey}, "
+                f"UITextureName={texture_name} not in DDS index"
+            )
+            return {"steps": steps, "result": None, "partial": True}
+
+        logger.debug(f"[CONTEXT] Chain resolved: StrKey={strkey} -> {image.dds_path}")
+        return {"steps": steps, "result": image, "partial": False}
+
     def resolve_context_for_row(self, string_id: str, source_text: str) -> EntityContext:
         """Resolve context combining StringID-direct lookups with text detection.
+
+        Uses resolve_chain() for step-by-step StringID media lookup with
+        chain_steps tracking for debugging.
 
         Args:
             string_id: The row's StringID for direct media lookup.
@@ -145,14 +209,16 @@ class ContextService:
         # First: entity detection from text
         result = self.resolve_context(source_text)
 
-        # Second: direct StringID media lookup
+        # Second: direct StringID media lookup via chain resolution
         mapdata_svc = get_mapdata_service()
-        direct_image = mapdata_svc.get_image_context(string_id)
+        chain = self.resolve_chain(string_id)
+        direct_image = chain.get("result")
         direct_audio = mapdata_svc.get_audio_context(string_id)
 
         result.string_id_context = {
             "image": direct_image.to_dict() if direct_image else None,
             "audio": direct_audio.to_dict() if direct_audio else None,
+            "chain_steps": chain.get("steps", []),
         }
 
         return result

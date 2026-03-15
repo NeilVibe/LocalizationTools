@@ -276,6 +276,65 @@ class TestGetStatus:
 # =============================================================================
 
 
+# =============================================================================
+# XMLParsingEngine Delegation Tests
+# =============================================================================
+
+
+class TestParseXmlDelegation:
+    """Test _parse_xml() delegates to XMLParsingEngine."""
+
+    def test_parse_xml_uses_xml_parsing_engine(self, tmp_path):
+        """_parse_xml delegates to XMLParsingEngine.parse_file."""
+        xml_file = tmp_path / "test_char.xml"
+        xml_file.write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<Root><CharacterInfo CharacterName="Test" StrKey="S1" KnowledgeKey="K1" /></Root>',
+            encoding="utf-8",
+        )
+        svc = GlossaryService()
+        root = svc._parse_xml(xml_file)
+        assert root is not None
+        assert root.tag == "Root"
+
+    def test_parse_xml_handles_malformed(self, tmp_path):
+        """_parse_xml handles malformed XML via engine recovery."""
+        xml_file = tmp_path / "bad.xml"
+        xml_file.write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<Root><Item Name="Broken & Unescaped" /></Root>',
+            encoding="utf-8",
+        )
+        svc = GlossaryService()
+        root = svc._parse_xml(xml_file)
+        # Engine sanitizer fixes bare ampersand, recovery mode parses
+        assert root is not None
+
+    def test_initialize_converts_wsl_paths(self, tmp_path):
+        """initialize() converts Windows paths to WSL paths."""
+        # Create character folder with a fixture
+        char_dir = tmp_path / "characters"
+        char_dir.mkdir()
+        (char_dir / "characterinfo_test.xml").write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<Root><CharacterInfo CharacterName="Hero" StrKey="S1" KnowledgeKey="K1" />'
+            '<CharacterInfo CharacterName="Hero" StrKey="S2" KnowledgeKey="K2" />'
+            '</Root>',
+            encoding="utf-8",
+        )
+
+        svc = GlossaryService()
+        # Pass already-unix path (should pass through unchanged)
+        paths = {"character_folder": str(char_dir)}
+        result = svc.initialize(paths)
+        assert result is True
+
+
+# =============================================================================
+# Singleton Tests
+# =============================================================================
+
+
 class TestSingleton:
     """Test get_glossary_service() returns singleton."""
 

@@ -308,31 +308,35 @@ class GlossaryService:
     def initialize(self, paths: dict) -> bool:
         """Initialize service from game data paths.
 
-        Calls all extract_* methods, applies glossary filter, builds automaton.
+        Applies WSL path conversion to all folder paths, then calls all
+        extract_* methods, applies glossary filter, and builds automaton.
 
         Args:
             paths: Dict with keys like 'character_folder', 'item_folder', etc.
+                   Values can be Windows paths (auto-converted to WSL).
 
         Returns:
             True if initialization succeeded.
         """
+        from server.tools.ldm.services.mapdata_service import convert_to_wsl_path
+
         all_entities: List[Tuple[str, EntityInfo]] = []
 
         character_folder = paths.get("character_folder")
         if character_folder:
-            folder = Path(character_folder)
+            folder = Path(convert_to_wsl_path(character_folder))
             if folder.exists():
                 all_entities.extend(self.extract_character_glossary(folder))
 
         item_folder = paths.get("item_folder")
         if item_folder:
-            folder = Path(item_folder)
+            folder = Path(convert_to_wsl_path(item_folder))
             if folder.exists():
                 all_entities.extend(self.extract_item_glossary(folder))
 
         region_folder = paths.get("region_folder") or paths.get("faction_folder")
         if region_folder:
-            folder = Path(region_folder)
+            folder = Path(convert_to_wsl_path(region_folder))
             if folder.exists():
                 all_entities.extend(self.extract_region_glossary(folder))
 
@@ -389,7 +393,11 @@ class GlossaryService:
 
     @staticmethod
     def _parse_xml(path: Path):
-        """Parse XML file with lxml recovery mode.
+        """Parse XML file via centralized XMLParsingEngine.
+
+        Delegates to XMLParsingEngine for sanitization, encoding detection,
+        and recovery mode parsing. All XML parsing goes through the centralized
+        sanitizer to handle malformed game data consistently.
 
         Args:
             path: Path to XML file.
@@ -397,11 +405,10 @@ class GlossaryService:
         Returns:
             lxml Element root, or None on failure.
         """
+        from server.tools.ldm.services.xml_parsing import get_xml_parsing_engine
+
         try:
-            from lxml import etree
-            parser = etree.XMLParser(recover=True, encoding="utf-8")
-            tree = etree.parse(str(path), parser)
-            return tree.getroot()
+            return get_xml_parsing_engine().parse_file(path)
         except Exception as e:
             logger.warning(f"[GLOSSARY] Failed to parse {path}: {e}")
             return None
