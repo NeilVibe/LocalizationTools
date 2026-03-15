@@ -44,11 +44,11 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 ### Game Dev Merge
 
-- [ ] **GMERGE-01**: Global export identifies all changed nodes across entire file
-- [ ] **GMERGE-02**: Merge operates at node level (add/remove/modify nodes)
-- [ ] **GMERGE-03**: Merge operates at attribute value level within nodes
-- [ ] **GMERGE-04**: Merge handles parent→children→sub-children depth correctly
-- [ ] **GMERGE-05**: Position-based merge preserves XML document order (not match-type based)
+- [x] **GMERGE-01**: Global export identifies all changed nodes across entire file
+- [x] **GMERGE-02**: Merge operates at node level (add/remove/modify nodes)
+- [x] **GMERGE-03**: Merge operates at attribute value level within nodes
+- [x] **GMERGE-04**: Merge handles parent→children→sub-children depth correctly
+- [x] **GMERGE-05**: Position-based merge preserves XML document order (not match-type based)
 
 ### AI Summaries
 
@@ -141,11 +141,11 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 | MEDIA-02 | Phase 11 | Complete |
 | MEDIA-03 | Phase 11 | Complete |
 | MEDIA-04 | Phase 11 | Complete |
-| GMERGE-01 | Phase 12 | Pending |
-| GMERGE-02 | Phase 12 | Pending |
-| GMERGE-03 | Phase 12 | Pending |
-| GMERGE-04 | Phase 12 | Pending |
-| GMERGE-05 | Phase 12 | Pending |
+| GMERGE-01 | Phase 12 | Complete |
+| GMERGE-02 | Phase 12 | Complete |
+| GMERGE-03 | Phase 12 | Complete |
+| GMERGE-04 | Phase 12 | Complete |
+| GMERGE-05 | Phase 12 | Complete |
 | AISUM-01 | Phase 13 | Pending |
 | AISUM-02 | Phase 13 | Pending |
 | AISUM-03 | Phase 13 | Pending |
