@@ -17,7 +17,14 @@
   import PresenceBar from "./PresenceBar.svelte";
   import ColorText from "./ColorText.svelte";
   import CategoryFilter from "./CategoryFilter.svelte";
-  import { CATEGORY_COLORS } from "./CategoryFilter.svelte";
+
+  // Category color map (synced with CategoryFilter)
+  const CATEGORY_COLORS = {
+    "Item": "#D9D2E9", "Character": "#F8CBAD", "Quest": "#D9D2E9",
+    "Skill": "#D9D2E9", "Region": "#F8CBAD", "Gimmick": "#D9D2E9",
+    "Knowledge": "#D9D2E9", "UI": "#A9D08E", "Other": "#D9D9D9",
+    "Uncategorized": "#D9D9D9",
+  };
   import { stripColorTags, paColorToHtml, htmlToPaColor, hexToCSS } from "$lib/utils/colorParser.js";
   import SemanticResults from "./SemanticResults.svelte";
   import QAInlineBadge from "./QAInlineBadge.svelte";
