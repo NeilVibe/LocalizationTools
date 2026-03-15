@@ -22,6 +22,7 @@
 
   // State
   let imageError = $state(false);
+  let audioError = $state(false);
   let similarItems = $state([]);
   let loadingSimilar = $state(false);
 
@@ -113,10 +114,11 @@
     }
   });
 
-  // Reset image error when entity changes
+  // Reset image/audio error when entity changes
   $effect(() => {
     if (entity) {
       imageError = false;
+      audioError = false;
     }
   });
 </script>
@@ -195,13 +197,18 @@
 
     <!-- Audio section -->
     <div class="detail-section">
-      {#if audioUrl}
+      {#if audioUrl && !audioError}
         <div class="audio-section">
           <div class="section-header">
             <Music size={16} />
             <span>Audio</span>
           </div>
-          <audio controls preload="none" class="audio-player">
+          <audio
+            controls
+            preload="none"
+            class="audio-player"
+            onerror={() => { audioError = true; }}
+          >
             <source src={audioUrl} />
             Your browser does not support the audio element.
           </audio>
