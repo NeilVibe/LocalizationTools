@@ -56,6 +56,7 @@ from .routes.tm_leverage import router as tm_leverage_router  # Phase 3: TM Leve
 from .routes.semantic_search import router as semantic_search_router  # Phase 4: Semantic Search
 from .routes.mapdata import router as mapdata_router  # Phase 5: MapData Context
 from .routes.context import router as context_router  # Phase 5.1: Entity Context
+from .routes.merge import router as merge_router  # Phase 9/12: Translator + Game Dev merge
 
 # =============================================================================
 # Include all routers
@@ -88,6 +89,7 @@ router.include_router(tm_leverage_router)  # Phase 3: TM Leverage Statistics
 router.include_router(semantic_search_router)  # Phase 4: Semantic Search
 router.include_router(mapdata_router)  # Phase 5: MapData Context
 router.include_router(context_router)  # Phase 5.1: Entity Context
+router.include_router(merge_router)  # Phase 9/12: Translator + Game Dev merge
 
 # =============================================================================
 # WebSocket endpoint (still needs special handling)
