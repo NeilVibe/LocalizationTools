@@ -9,9 +9,11 @@
    * Phase 19: Game World Codex (Plan 02)
    */
   import { Tag, InlineLoading } from "carbon-components-svelte";
-  import { Music, Image as ImageIcon } from "carbon-icons-svelte";
+  import { Music } from "carbon-icons-svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
+  import PlaceholderImage from "./PlaceholderImage.svelte";
+  import PlaceholderAudio from "./PlaceholderAudio.svelte";
 
   const API_BASE = getApiBase();
 
@@ -132,10 +134,7 @@
             onerror={() => { imageError = true; }}
           />
         {:else}
-          <div class="image-placeholder">
-            <ImageIcon size={48} />
-            <span class="placeholder-label">{entity.entity_type}</span>
-          </div>
+          <PlaceholderImage entityType={entity.entity_type} entityName={entity.name} />
         {/if}
       </div>
 
@@ -208,7 +207,7 @@
           </audio>
         </div>
       {:else}
-        <span class="no-audio">[No Audio]</span>
+        <PlaceholderAudio entityName={entity.name} />
       {/if}
     </div>
 
@@ -299,19 +298,6 @@
     height: 100%;
     object-fit: contain;
     display: block;
-  }
-
-  .image-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    color: var(--cds-text-03);
-  }
-
-  .placeholder-label {
-    font-size: 0.6875rem;
-    text-transform: capitalize;
   }
 
   .detail-meta {
@@ -405,12 +391,6 @@
     height: 32px;
     filter: invert(1) hue-rotate(180deg);
     opacity: 0.85;
-  }
-
-  .no-audio {
-    font-size: 0.75rem;
-    color: var(--cds-text-03);
-    font-style: italic;
   }
 
   .related-list {
