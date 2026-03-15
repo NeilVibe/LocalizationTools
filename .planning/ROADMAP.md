@@ -42,7 +42,7 @@
 - [x] **Phase 15: Mock Gamedata Universe** - Generate realistic XML gamedata matching real staticinfo patterns with cross-references, media refs, and round-trip validation (completed 2026-03-15)
 - [x] **Phase 16: Category Clustering + QA Pipeline** - Auto-classify content types and integrate Term Check + Line Check QA inline in the editor (completed 2026-03-15)
 - [x] **Phase 17: AI Translation Suggestions** - Ranked translation suggestions via Qwen3 with confidence scores and click-to-accept (completed 2026-03-15)
-- [ ] **Phase 18: Game Dev Grid + File Explorer** - VS Code-like file explorer with hierarchical XML entity editing grid
+- [x] **Phase 18: Game Dev Grid + File Explorer** - VS Code-like file explorer with hierarchical XML entity editing grid (completed 2026-03-15)
 - [ ] **Phase 19: Game World Codex** - Interactive encyclopedia with character/item pages, semantic search, inline media
 - [ ] **Phase 20: Interactive World Map** - Pan/zoom SVG map with positioned region nodes linked to Codex pages
 - [ ] **Phase 21: AI Naming Coherence + Placeholders** - Naming pattern suggestions and auto-generated placeholder assets for missing media
@@ -184,7 +184,7 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21
 | 15. Mock Gamedata Universe | 2/2 | Complete    | 2026-03-15 | - |
 | 16. Category Clustering + QA Pipeline | 2/2 | Complete    | 2026-03-15 | - |
 | 17. AI Translation Suggestions | 2/2 | Complete    | 2026-03-15 | - |
-| 18. Game Dev Grid + File Explorer | 1/2 | In Progress|  | - |
+| 18. Game Dev Grid + File Explorer | 2/2 | Complete   | 2026-03-15 | - |
 | 19. Game World Codex | v3.0 | 0/? | Not started | - |
 | 20. Interactive World Map | v3.0 | 0/? | Not started | - |
 | 21. AI Naming Coherence + Placeholders | v3.0 | 0/? | Not started | - |
