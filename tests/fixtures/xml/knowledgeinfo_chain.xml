@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<KnowledgeInfoList>
+  <KnowledgeData StrKey="str_npc_001" UITextureName="ui_npc_portrait_001" Name="Guard Captain" Desc="Veteran guard" GroupKey="npc_group_01" />
+  <KnowledgeData StrKey="str_item_sword" UITextureName="ui_item_sword_icon" Name="Iron Sword" Desc="Basic weapon" GroupKey="item_group_01" />
+  <KnowledgeData StrKey="str_region_castle" UITextureName="ui_map_castle" Name="Castle Town" Desc="Capital city" GroupKey="region_group_01" />
+</KnowledgeInfoList>

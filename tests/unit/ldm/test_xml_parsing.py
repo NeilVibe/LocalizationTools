@@ -220,3 +220,46 @@ class TestConstantsAndHelpers:
         e1 = get_xml_parsing_engine()
         e2 = get_xml_parsing_engine()
         assert e1 is e2
+
+
+# =========================================================================
+# Cross-Reference Chain Tests (XML-05)
+# =========================================================================
+
+
+class TestCrossReferenceChain:
+    """Test building knowledge tables across multiple XML files."""
+
+    def test_cross_reference_across_files(self, engine: XMLParsingEngine, tmp_path: Path):
+        """Two XML files with different KnowledgeData -> all entries resolve."""
+        from server.tools.ldm.services.mapdata_service import build_knowledge_table
+
+        xml1 = tmp_path / "knowledge_a.xml"
+        xml1.write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<KnowledgeInfoList>\n'
+            '  <KnowledgeData StrKey="str_npc_001" UITextureName="tex_npc_001" '
+            'Name="Guard" Desc="Guard desc" GroupKey="g1" />\n'
+            '</KnowledgeInfoList>\n',
+            encoding="utf-8",
+        )
+
+        xml2 = tmp_path / "knowledge_b.xml"
+        xml2.write_text(
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<KnowledgeInfoList>\n'
+            '  <KnowledgeData StrKey="str_item_bow" UITextureName="tex_bow_001" '
+            'Name="Longbow" Desc="Ranged weapon" GroupKey="g2" />\n'
+            '  <KnowledgeData StrKey="str_region_forest" UITextureName="tex_forest" '
+            'Name="Dark Forest" Desc="Dangerous area" GroupKey="g3" />\n'
+            '</KnowledgeInfoList>\n',
+            encoding="utf-8",
+        )
+
+        table = build_knowledge_table(tmp_path, engine)
+        assert "str_npc_001" in table
+        assert "str_item_bow" in table
+        assert "str_region_forest" in table
+        assert table["str_npc_001"].name == "Guard"
+        assert table["str_item_bow"].ui_texture_name == "tex_bow_001"
+        assert table["str_region_forest"].source_file == "knowledge_b.xml"
