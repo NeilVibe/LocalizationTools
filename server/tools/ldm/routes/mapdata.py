@@ -9,16 +9,21 @@ Phase 5: Visual Polish and Integration (Plan 01)
 
 from __future__ import annotations
 
+import asyncio
+from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from loguru import logger
 
 from server.utils.dependencies import get_current_active_user_async
 from server.tools.ldm.services.mapdata_service import (
     get_mapdata_service,
+    convert_to_wsl_path,
     KNOWN_BRANCHES,
 )
+from server.tools.ldm.services.media_converter import get_media_converter
 
 router = APIRouter(tags=["LDM"])
 
@@ -72,6 +77,64 @@ class ConfigureResponse(BaseModel):
 # =============================================================================
 # Endpoints
 # =============================================================================
+
+@router.get("/mapdata/thumbnail/{texture_name}")
+async def get_thumbnail(
+    texture_name: str,
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Serve a PNG thumbnail for a DDS texture by name.
+
+    Looks up the texture in the DDS index (case-insensitive), converts
+    DDS -> PNG via MediaConverter, and returns PNG bytes with cache headers.
+    """
+    service = get_mapdata_service()
+    dds_path = service._dds_index.get(texture_name.lower())
+    if dds_path is None:
+        raise HTTPException(status_code=404, detail=f"Texture '{texture_name}' not found")
+
+    wsl_path = convert_to_wsl_path(str(dds_path))
+    converter = get_media_converter()
+
+    png_bytes = await asyncio.to_thread(
+        converter.convert_dds_to_png, Path(wsl_path)
+    )
+    if png_bytes is None:
+        raise HTTPException(status_code=500, detail=f"Failed to convert '{texture_name}'")
+
+    return Response(
+        content=png_bytes,
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@router.get("/mapdata/audio/stream/{string_id}")
+async def stream_audio(
+    string_id: str,
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Stream WAV audio for a string_id.
+
+    Looks up audio context, converts WEM -> WAV via MediaConverter,
+    and returns the WAV file.
+    """
+    service = get_mapdata_service()
+    audio_ctx = service.get_audio_context(string_id)
+    if audio_ctx is None:
+        raise HTTPException(status_code=404, detail=f"No audio for '{string_id}'")
+
+    wsl_path = convert_to_wsl_path(audio_ctx.wem_path)
+    converter = get_media_converter()
+
+    wav_path = await asyncio.to_thread(
+        converter.convert_wem_to_wav, Path(wsl_path)
+    )
+    if wav_path is None:
+        raise HTTPException(status_code=500, detail="Audio conversion failed")
+
+    return FileResponse(str(wav_path), media_type="audio/wav")
+
 
 @router.get("/mapdata/image/{string_id}", response_model=ImageContextResponse)
 async def get_image_context(
