@@ -3,29 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Debug + Polish + Svelte 5 Migration
 status: executing
-stopped_at: Completed 23-02-PLAN.md
-last_updated: "2026-03-15T22:09:42.336Z"
-last_activity: 2026-03-15 -- Completed 23-03 component bug fixes (audio fallback, loading cleanup, QA badge a11y)
+stopped_at: Completed 23-04-PLAN.md (Phase 23 complete)
+last_updated: "2026-03-15T22:09:29Z"
+last_activity: 2026-03-15 -- Completed 23-04 test fixtures update + API health check script
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 19
-  completed_plans: 6
----
-
----
-gsd_state_version: 1.0
-milestone: v3.1
-milestone_name: Debug + Polish + Svelte 5 Migration
-status: executing
-stopped_at: Completed 23-03-PLAN.md
-last_updated: "2026-03-15T22:09:14Z"
-last_activity: 2026-03-15 -- Completed 23-03 component bug fixes (audio fallback, loading cleanup, QA badge a11y)
-progress:
-  total_phases: 4
-  completed_phases: 1
-  total_plans: 19
-  completed_plans: 4
+  completed_plans: 7
+  percent: 37
 ---
 
 # Project State
@@ -35,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Fix runtime issues, migrate to pure Svelte 5, polish UI/UX
-**Current focus:** Phase 23 - Bug Fixes
+**Current focus:** Phase 24 - UI/UX Polish
 
 ## Current Position
 
-Phase: 23 (2 of 4 in v3.1) [Bug Fixes]
-Plan: 3 of 4 in current phase
+Phase: 24 (3 of 4 in v3.1) [UI/UX Polish]
+Plan: 0 of 11 in current phase (Phase 23 complete)
 Status: Executing
-Last activity: 2026-03-15 -- Completed 23-03 component bug fixes (audio fallback, loading cleanup, QA badge a11y)
+Last activity: 2026-03-15 -- Completed 23-04 test fixtures update + API health check script
 
-Progress: [██░░░░░░░░] 21%
+Progress: [████░░░░░░] 37%
 
 ## Performance Metrics
 
 **Velocity (all milestones):**
-- Total plans completed: 55 (v1.0: 20, v2.0: 17, v3.0: 14, v3.1: 4)
-- v3.1 plans completed: 4
+- Total plans completed: 57 (v1.0: 20, v2.0: 17, v3.0: 14, v3.1: 6)
+- v3.1 plans completed: 7
 
 | Milestone | Phases | Plans | Requirements |
 |-----------|--------|-------|--------------|
@@ -79,6 +65,8 @@ Progress: [██░░░░░░░░] 21%
 - [23-03]: Added abortController.abort() to NamingPanel cleanup (was missing unlike AISuggestionsTab)
 - [23-03]: Removed dead handleClickOutside from QAInlineBadge -- backdrop onclick approach is cleaner
 - [Phase 23-02]: codexSearchQuery writable store for cross-page NPC search (consumed and cleared on CodexPage mount)
+- [23-01]: Use file.path as deterministic ID for GameDevPage -- no server-generated ID or Date.now() fallback needed
+- [23-01]: Added public reload() export to FileExplorerTree for flicker-free tree refresh
 - [Phase 23-02]: FIX-10 satisfied: WorldMapPage uses inline fetch, no duplicate service instantiation exists
 
 ### Pending Todos
