@@ -52,11 +52,11 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 ### AI Summaries
 
-- [ ] **AISUM-01**: Qwen3-4B/8B endpoint via Ollama responds with structured JSON
-- [ ] **AISUM-02**: Character/item/region metadata generates 2-line contextual summary
+- [x] **AISUM-01**: Qwen3-4B/8B endpoint via Ollama responds with structured JSON
+- [x] **AISUM-02**: Character/item/region metadata generates 2-line contextual summary
 - [ ] **AISUM-03**: Summary appears in ContextTab for selected string
-- [ ] **AISUM-04**: Summaries cache per StringID to avoid re-generation
-- [ ] **AISUM-05**: Graceful fallback when Ollama is unavailable (show "AI unavailable" badge)
+- [x] **AISUM-04**: Summaries cache per StringID to avoid re-generation
+- [x] **AISUM-05**: Graceful fallback when Ollama is unavailable (show "AI unavailable" badge)
 
 ### CLI & Testing
 
@@ -146,11 +146,11 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 | GMERGE-03 | Phase 12 | Complete |
 | GMERGE-04 | Phase 12 | Complete |
 | GMERGE-05 | Phase 12 | Complete |
-| AISUM-01 | Phase 13 | Pending |
-| AISUM-02 | Phase 13 | Pending |
+| AISUM-01 | Phase 13 | Complete |
+| AISUM-02 | Phase 13 | Complete |
 | AISUM-03 | Phase 13 | Pending |
-| AISUM-04 | Phase 13 | Pending |
-| AISUM-05 | Phase 13 | Pending |
+| AISUM-04 | Phase 13 | Complete |
+| AISUM-05 | Phase 13 | Complete |
 | CLI-01 | Phase 14 | Pending |
 | CLI-02 | Phase 14 | Pending |
 | CLI-03 | Phase 14 | Pending |
