@@ -12,16 +12,14 @@ Completely separate from TranslatorMergeService.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
+from loguru import logger
 from lxml import etree
 
 from server.tools.ldm.file_handlers.xml_handler import parse_gamedev_nodes
-
-logger = logging.getLogger(__name__)
 
 
 class ChangeType(Enum):
@@ -311,7 +309,7 @@ class GameDevMergeService:
                 # Nested element -- find parent by walking current tree
                 # For simplicity, append to root (position handling for nested adds is complex)
                 root.append(new_elem)
-                logger.debug("Added nested element %s at depth %d (appended to root)", change.tag, change.depth)
+                logger.warning("Added nested element %s at depth %d (appended to root)", change.tag, change.depth)
 
     def _insert_at_depth1(
         self,

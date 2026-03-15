@@ -21,10 +21,10 @@ Steps:
 from __future__ import annotations
 
 import re
-import logging
 import unicodedata
+from typing import Callable
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 # ---------------------------------------------------------------------------
 # Step 1: Newline normalization
@@ -234,17 +234,12 @@ def _decode_safe_entities(text: str) -> str:
 
     Decodes:
       - &amp;desc; -> &desc; (and other known named entities)
-      - &lt; / &gt; -> < / >
-      - &quot; -> "
-      - &apos; -> '
+      - &amp; -> & (only standalone &amp; that is itself double-escaped)
 
-    NOT decoded: &amp; alone (could create broken entities).
+    NOT decoded: &lt;/&gt;/&quot;/&apos; -- these are XML-significant
+    and must NOT be collapsed in the text processing layer.
     """
     text = _SAFE_AMP_ENTITIES_RE.sub(lambda m: f'&{m.group(1)};', text)
-    text = text.replace('&lt;', '<')
-    text = text.replace('&gt;', '>')
-    text = text.replace('&quot;', '"')
-    text = text.replace('&apos;', "'")
     return text
 
 
@@ -254,7 +249,7 @@ def _decode_safe_entities(text: str) -> str:
 
 # Each entry is (step_name, step_function)
 # Step functions take (text: str) -> str, except step 2 which needs source
-POSTPROCESS_STEPS: list[tuple[str, callable]] = [
+POSTPROCESS_STEPS: list[tuple[str, Callable[..., str]]] = [
     ("newlines", _normalize_newlines),
     ("empty_strorigin", _enforce_empty_strorigin),
     ("no_translation", _remove_no_translation),

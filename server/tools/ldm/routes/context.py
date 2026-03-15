@@ -81,7 +81,7 @@ async def get_context_status(
 @router.get("/context/{string_id}", response_model=EntityContextResponse)
 async def get_context_by_string_id(
     string_id: str,
-    source_text: str = Query(default="", description="Source text for entity detection"),
+    source_text: str = Query(default="", max_length=2000, description="Source text for entity detection"),
     current_user: dict = Depends(get_current_active_user_async),
 ):
     """Get entity context for a string_id.

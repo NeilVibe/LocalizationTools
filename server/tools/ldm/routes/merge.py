@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import base64
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -56,6 +58,7 @@ async def merge_files(
     file_id: int,
     request: MergeRequest,
     current_user: dict = Depends(get_current_active_user_async),
+    row_repo=Depends(get_row_repository),
 ):
     """Merge corrections from source file into target file.
 
@@ -78,8 +81,6 @@ async def merge_files(
             detail=f"Invalid match_mode '{request.match_mode}'. Must be one of: {sorted(valid_modes)}",
         )
 
-    row_repo = get_row_repository()
-
     logger.info(
         "[MERGE] Merge request: target_file=%d, source_file=%d, mode=%s, threshold=%.2f",
         file_id,
@@ -89,23 +90,24 @@ async def merge_files(
     )
 
     # Fetch source and target rows
-    source_rows = await row_repo.get_by_file(request.source_file_id)
+    source_rows = await row_repo.get_all_for_file(request.source_file_id)
     if not source_rows:
         raise HTTPException(
             status_code=404,
             detail=f"No rows found for source file {request.source_file_id}",
         )
 
-    target_rows = await row_repo.get_by_file(file_id)
+    target_rows = await row_repo.get_all_for_file(file_id)
     if not target_rows:
         raise HTTPException(
             status_code=404,
             detail=f"No rows found for target file {file_id}",
         )
 
-    # Run merge (compute all changes)
+    # Run merge (compute all changes) -- CPU-bound, offload to thread
     svc = TranslatorMergeService()
-    result = svc.merge_files(
+    result = await asyncio.to_thread(
+        svc.merge_files,
         source_rows=source_rows,
         target_rows=target_rows,
         match_mode=request.match_mode,
@@ -236,9 +238,11 @@ async def gamedev_merge_file(
         len(current_rows),
     )
 
-    # Run merge
+    # Run merge -- CPU-bound, offload to thread
     svc = GameDevMergeService()
-    result = svc.merge(original_xml, current_rows, max_depth=request.max_depth)
+    result = await asyncio.to_thread(
+        svc.merge, original_xml, current_rows, max_depth=request.max_depth
+    )
 
     # Build bulk_update list for rows with modified extra_data
     rows_updated = 0

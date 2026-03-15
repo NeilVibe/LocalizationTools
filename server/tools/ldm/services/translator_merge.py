@@ -19,13 +19,13 @@ Skip guards (applied to source corrections):
 
 from __future__ import annotations
 
-import logging
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
+from loguru import logger
 
 from server.tools.ldm.services.korean_detection import is_korean_text
 from server.tools.ldm.services.postprocess import postprocess_rows
@@ -36,8 +36,6 @@ from server.tools.ldm.services.text_matching import (
     normalize_text_for_match,
 )
 from server.tools.shared.embedding_engine import get_embedding_engine
-
-logger = logging.getLogger(__name__)
 
 # "No translation" pattern (whitespace-collapsed, case-insensitive)
 _WS_RE = re.compile(r"\s+")
@@ -372,8 +370,9 @@ class TranslatorMergeService:
         threshold: float,
         result: MergeResult,
     ) -> None:
-        """Cascade: strict > strorigin_only > fuzzy. First match wins."""
+        """Cascade: strict > stringid_only > strorigin_only > fuzzy. First match wins."""
         strict_lookup, strict_ns = self._build_lookups(corrections, "strict")
+        stringid_lookup, _ = self._build_lookups(corrections, "stringid_only")
         strorigin_lookup, strorigin_ns = self._build_lookups(corrections, "strorigin_only")
 
         unmatched: list[dict] = []
@@ -387,6 +386,16 @@ class TranslatorMergeService:
                 result.updated_rows.append(updated)
                 result.matched += 1
                 result.match_type_counts["strict"] += 1
+                continue
+
+            # Try stringid_only
+            matched_text = self._find_stringid_match(target, stringid_lookup)
+            if matched_text is not None:
+                updated = dict(target)
+                updated["target"] = matched_text
+                result.updated_rows.append(updated)
+                result.matched += 1
+                result.match_type_counts["stringid_only"] += 1
                 continue
 
             # Try strorigin_only

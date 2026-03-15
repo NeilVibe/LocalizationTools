@@ -121,6 +121,11 @@ class AISummaryService:
         Returns:
             Prompt string for Ollama.
         """
+        # Truncate inputs to prevent prompt injection / excessive token usage
+        entity_name = entity_name[:100]
+        entity_type = entity_type[:50]
+        source_text = source_text[:500]
+
         return (
             f"You are a game localization assistant. "
             f"Generate a concise 1-2 sentence contextual summary for translators.\n\n"

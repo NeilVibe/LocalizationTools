@@ -189,17 +189,20 @@ class TestStep8DoubleEscaped:
         result, _ = postprocess_value("&amp;desc;stuff")
         assert result == "&desc;stuff"
 
-    def test_lt_gt(self):
+    def test_lt_gt_preserved(self):
+        """&lt;/&gt; must NOT be decoded -- XML encoding is preserved in text layer."""
         result, _ = postprocess_value("&lt;tag&gt;")
-        assert result == "<tag>"
+        assert result == "&lt;tag&gt;"
 
-    def test_quot(self):
+    def test_quot_preserved(self):
+        """&quot; must NOT be decoded -- XML encoding is preserved in text layer."""
         result, _ = postprocess_value("&quot;hello&quot;")
-        assert result == '"hello"'
+        assert result == "&quot;hello&quot;"
 
-    def test_apos(self):
+    def test_apos_preserved(self):
+        """&apos; must NOT be decoded -- XML encoding is preserved in text layer."""
         result, _ = postprocess_value("&apos;hello&apos;")
-        assert result == "'hello'"
+        assert result == "&apos;hello&apos;"
 
 
 class TestBrTagRoundtrip:

@@ -198,6 +198,12 @@ async def configure_mapdata(
     if not branch:
         raise HTTPException(status_code=400, detail="Branch name cannot be empty")
 
+    if branch not in KNOWN_BRANCHES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown branch '{branch}'. Must be one of: {KNOWN_BRANCHES}",
+        )
+
     logger.info(
         f"[MAPDATA] User {current_user['username']} configuring: "
         f"branch={branch}, drive={drive}"
