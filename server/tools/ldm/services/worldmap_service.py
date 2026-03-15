@@ -138,12 +138,16 @@ class WorldMapService:
 
     def _enrich_with_codex(self) -> None:
         """Enrich nodes with Codex entity data (names, descriptions, NPCs)."""
-        # Use module-level codex_service reference (set by route layer or tests)
+        # Lazy import to avoid circular dependencies and ensure service is available
         svc = codex_service
-
         if svc is None:
-            logger.debug("[WorldMap] CodexService unavailable, using fallback names")
-            return
+            try:
+                from server.tools.ldm.services.codex_service import CodexService
+                svc = CodexService(base_dir=self.base_dir)
+                logger.debug("[WorldMap] Created CodexService instance for enrichment")
+            except Exception as exc:
+                logger.debug(f"[WorldMap] CodexService unavailable ({exc}), using fallback names")
+                return
 
         try:
             if not getattr(svc, "_initialized", False):
