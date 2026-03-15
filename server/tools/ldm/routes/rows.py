@@ -9,6 +9,8 @@ P10: FULL ABSTRACT + REPO Pattern
 Migrated from api.py lines 660-933
 """
 
+from __future__ import annotations
+
 import asyncio
 from collections import defaultdict
 from typing import Optional
