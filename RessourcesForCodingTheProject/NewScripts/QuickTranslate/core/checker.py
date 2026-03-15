@@ -1,8 +1,9 @@
 """
 Pre-Submission Quality Checks.
 
-Korean detection and pattern code mismatch checking for languagedata XML files.
-Scans Source folder, groups by language, writes per-language result XMLs.
+Korean detection and pattern code mismatch checking for languagedata files.
+Supports both XML and Excel source files (mixed sources per language).
+Scans Source folder, groups by language, writes per-language results.
 
 Output format: pure LocStr elements in <root>, same format as source XML.
 """
@@ -27,6 +28,7 @@ from .xml_parser import (
 from .korean_detection import is_korean_text
 from .source_scanner import scan_source_for_languages
 from .text_utils import is_formula_text, is_text_integrity_issue
+from .excel_io import _convert_linebreaks_for_excel
 
 logger = logging.getLogger(__name__)
 
@@ -411,6 +413,239 @@ def check_patterns_in_file(
     return pattern_errors, newline_errors, bracket_errors, empty_str_errors
 
 
+# ─── Excel Support ─────────────────────────────────────────────────────────
+
+
+class _CheckRow:
+    """Lightweight stand-in for an lxml element, used for Excel-sourced findings.
+
+    Compatible with get_attr() and _elem_to_locstr_line() so all existing
+    report generation code works unchanged.
+    """
+    def __init__(self, string_id: str = "", str_origin: str = "",
+                 str_val: str = "", desc_val: str = ""):
+        self.attrib = {}
+        if string_id:
+            self.attrib["StringId"] = str(string_id)
+        if str_origin:
+            self.attrib["StrOrigin"] = str(str_origin)
+        if str_val:
+            self.attrib["Str"] = str(str_val)
+        if desc_val:
+            self.attrib["Desc"] = str(desc_val)
+
+    def get(self, key, default=None):
+        return self.attrib.get(key, default)
+
+
+def _has_wrong_newlines_excel(text: str) -> bool:
+    """Check for wrong newline representations in Excel text.
+
+    Same as _has_wrong_newlines but skips bare \\n and \\r (normal in Excel cells).
+    Flags: literal backslash-n/r, Unicode separators, wrong <br> variants,
+    escaped br-tag entities that should be decoded.
+    """
+    if not text:
+        return False
+
+    # Literal \n or \r as text (backslash + letter — someone typed it)
+    if '\\n' in text or '\\r' in text:
+        return True
+
+    # Unicode line separator / paragraph separator
+    if '\u2028' in text or '\u2029' in text:
+        return True
+
+    # Wrong <br> variants (not exactly <br/>)
+    for m in _BR_TAG_RE.finditer(text):
+        if m.group() != '<br/>':
+            return True
+
+    # Escaped br tags that should be plain <br/>
+    if '&lt;br' in text.lower() or '&amp;lt;br' in text.lower():
+        return True
+
+    return False
+
+
+def _resolve_excel_col(col_indices: dict, *names: str) -> Optional[int]:
+    """Find a column index by trying multiple name variants."""
+    for name in names:
+        if name in col_indices:
+            return col_indices[name]
+    return None
+
+
+def check_patterns_in_excel(
+    xlsx_path: Path,
+    skip_staticinfo_knowledge: bool = True,
+) -> Tuple[list, list, list, list, list, list]:
+    """
+    Run all pattern checks on one Excel file.
+
+    Same checks as check_patterns_in_file but reads from Excel columns:
+    StringID, StrOrigin, Str/Correction, Desc.
+    Broken XML check is skipped (not applicable to Excel).
+
+    Returns:
+        Tuple of (pattern_errors, newline_errors, bracket_errors,
+                  empty_str_errors, formula_findings, integrity_findings).
+    """
+    pattern_errors = []
+    newline_errors = []
+    bracket_errors = []
+    empty_str_errors = []
+    formula_findings = []
+    integrity_findings = []
+
+    _empty = (pattern_errors, newline_errors, bracket_errors, empty_str_errors, formula_findings, integrity_findings)
+
+    try:
+        from openpyxl import load_workbook
+    except ImportError:
+        logger.error(
+            "openpyxl is required for Excel pattern checks but is not installed. "
+            "Excel file %s was NOT checked. Install with: pip install openpyxl",
+            xlsx_path.name
+        )
+        return _empty
+
+    try:
+        wb = load_workbook(str(xlsx_path), read_only=True)
+    except Exception as e:
+        logger.error(
+            f"Failed to open Excel file {xlsx_path.name}: {e}. "
+            f"Check that the file is not corrupted, password-protected, or open in another program."
+        )
+        return _empty
+
+    try:
+        ws = wb.active
+        if ws is None:
+            logger.warning(f"No active worksheet in {xlsx_path.name} — skipping Excel pattern check")
+            return _empty
+
+        from .excel_io import _detect_column_indices
+        col_indices = _detect_column_indices(ws)
+
+        # Find columns
+        sid_col = _resolve_excel_col(col_indices, "stringid", "string_id")
+        strorigin_col = _resolve_excel_col(col_indices, "strorigin", "str_origin")
+        str_col = _resolve_excel_col(col_indices, "str", "correction", "corrected")
+        desc_col = _resolve_excel_col(col_indices, "desc", "description", "desccorrection")
+
+        if not str_col:
+            logger.warning(
+                f"No Str/Correction column found in {xlsx_path.name} — "
+                f"available columns: {list(col_indices.keys())}. Skipping pattern check."
+            )
+            return _empty
+
+        for row in ws.iter_rows(min_row=2, values_only=False):
+            # Extract cell values safely
+            def _cell_str(col_idx):
+                if col_idx is None or col_idx - 1 >= len(row):
+                    return ""
+                val = row[col_idx - 1].value
+                return str(val).strip() if val is not None else ""
+
+            string_id = _cell_str(sid_col)
+            str_origin = _cell_str(strorigin_col)
+            str_val = _cell_str(str_col)
+            desc_val = _cell_str(desc_col)
+
+            # Skip completely empty rows
+            if not str_val and not str_origin:
+                continue
+
+            row_obj = _CheckRow(string_id, str_origin, str_val, desc_val)
+
+            # --- Empty Str check ---
+            if not str_val:
+                if str_origin:
+                    empty_str_errors.append(row_obj)
+                continue
+
+            # --- Bracket check (always runs — critical) ---
+            if _has_unbalanced_brackets(str_val):
+                bracket_errors.append(row_obj)
+
+            # --- staticinfo:knowledge filter ---
+            if skip_staticinfo_knowledge:
+                if ("staticinfo:knowledge" in str_val.lower()
+                        or "staticinfo:knowledge" in str_origin.lower()):
+                    continue
+
+            # --- Pattern mismatch check ---
+            if str_origin:
+                origin_patterns = normalize_pattern_set(extract_code_patterns(str_origin))
+                str_patterns = normalize_pattern_set(extract_code_patterns(str_val))
+                if origin_patterns != str_patterns:
+                    pattern_errors.append(row_obj)
+
+            # --- Wrong newline check (Excel-adapted) ---
+            if _has_wrong_newlines_excel(str_val):
+                newline_errors.append(row_obj)
+            elif str_origin and _has_wrong_newlines_excel(str_origin):
+                newline_errors.append(row_obj)
+
+            # --- Formula text check ---
+            formula_reason = is_formula_text(str_val) or is_formula_text(desc_val)
+            if formula_reason:
+                formula_findings.append(row_obj)
+
+            # --- Text integrity check (from_xml=False for Excel) ---
+            # Normalize linebreaks first so bare \n doesn't false-positive
+            normalized_str = _convert_linebreaks_for_excel(str_val)
+            normalized_desc = _convert_linebreaks_for_excel(desc_val) if desc_val else ""
+            integrity_reason = (
+                is_text_integrity_issue(normalized_str, from_xml=False)
+                or (normalized_desc and is_text_integrity_issue(normalized_desc, from_xml=False))
+            )
+            if integrity_reason:
+                integrity_findings.append(row_obj)
+
+    except Exception as e:
+        partial = (len(pattern_errors) + len(newline_errors) + len(bracket_errors)
+                   + len(empty_str_errors) + len(formula_findings) + len(integrity_findings))
+        logger.error(
+            f"Error checking Excel {xlsx_path.name}: {e}. "
+            f"Check was INCOMPLETE — {partial} findings collected before error.",
+            exc_info=True
+        )
+    finally:
+        wb.close()
+
+    return pattern_errors, newline_errors, bracket_errors, empty_str_errors, formula_findings, integrity_findings
+
+
+def iter_source_files(source_folder: Path) -> Tuple[Dict[str, List[Path]], Dict[str, List[Path]]]:
+    """
+    Discover all XML and Excel files in Source folder, grouped by language.
+
+    Returns:
+        Tuple of (xml_by_lang, xlsx_by_lang) dicts.
+        Example: ({"FRE": [xml1, xml2]}, {"FRE": [xlsx1]})
+    """
+    scan_result = scan_source_for_languages(source_folder)
+
+    xml_by_lang = {}
+    xlsx_by_lang = {}
+    for lang, files in scan_result.lang_files.items():
+        xml_files = [f for f in files if f.suffix.lower() == ".xml"]
+        xlsx_files = [f for f in files if f.suffix.lower() == ".xlsx"]
+        xls_files = [f for f in files if f.suffix.lower() == ".xls"]
+        if xls_files:
+            logger.warning(f"Legacy .xls files for {lang} not supported (use .xlsx): "
+                           f"{[f.name for f in xls_files]}")
+        if xml_files:
+            xml_by_lang[lang] = xml_files
+        if xlsx_files:
+            xlsx_by_lang[lang] = xlsx_files
+
+    return xml_by_lang, xlsx_by_lang
+
+
 def iter_source_xml_files(source_folder: Path) -> Dict[str, List[Path]]:
     """
     Discover all XML files in Source folder, grouped by language.
@@ -572,10 +807,11 @@ def run_pattern_check(
     Returns:
         Summary dict: {"FRE": (pattern, newline, bracket, broken_xml, empty_str, formula_text, integrity), ...}
     """
-    xml_by_lang = iter_source_xml_files(source_folder)
-    if not xml_by_lang:
+    xml_by_lang, xlsx_by_lang = iter_source_files(source_folder)
+    all_langs = sorted(set(list(xml_by_lang.keys()) + list(xlsx_by_lang.keys())))
+    if not all_langs:
         if progress_callback:
-            progress_callback("No XML files found in Source folder")
+            progress_callback("No XML or Excel files found in Source folder")
         return {}
 
     pattern_dir = output_folder / "PatternErrors"
@@ -591,13 +827,15 @@ def run_pattern_check(
     integrity_dir = output_folder / "TextIntegrity"
     integrity_dir.mkdir(parents=True, exist_ok=True)
 
-    languages = sorted(xml_by_lang.keys())
+    languages = all_langs
     summary = {}
 
     for i, lang in enumerate(languages):
         if cancel_event and cancel_event.is_set():
             raise InterruptedError("Operation cancelled by user")
-        xml_files = xml_by_lang[lang]
+        xml_files = xml_by_lang.get(lang, [])
+        xlsx_files = xlsx_by_lang.get(lang, [])
+        file_count = len(xml_files) + len(xlsx_files)
         if progress_callback:
             progress_callback(f"Checking patterns... ({i + 1}/{len(languages)} languages: {lang})")
 
@@ -608,6 +846,8 @@ def run_pattern_check(
         all_empty_str = []
         all_formula_text = []
         all_integrity = []
+
+        # --- Process XML files ---
         for xml_path in xml_files:
             if cancel_event and cancel_event.is_set():
                 raise InterruptedError("Operation cancelled by user")
@@ -628,6 +868,19 @@ def run_pattern_check(
             # Text integrity check — broken linebreaks, encoding artifacts, bad chars
             integrity = check_text_integrity_in_file(xml_path)
             all_integrity.extend(integrity)
+
+        # --- Process Excel files ---
+        for xlsx_path in xlsx_files:
+            if cancel_event and cancel_event.is_set():
+                raise InterruptedError("Operation cancelled by user")
+            xl_pattern, xl_newline, xl_bracket, xl_empty, xl_formula, xl_integrity = \
+                check_patterns_in_excel(xlsx_path, skip_staticinfo_knowledge)
+            all_pattern_errors.extend(xl_pattern)
+            all_newline_errors.extend(xl_newline)
+            all_bracket_errors.extend(xl_bracket)
+            all_empty_str.extend(xl_empty)
+            all_formula_text.extend(xl_formula)
+            all_integrity.extend(xl_integrity)
 
         summary[lang] = (len(all_pattern_errors), len(all_newline_errors),
                          len(all_bracket_errors), len(all_broken_xml),
@@ -652,9 +905,9 @@ def run_pattern_check(
             e_count = len(all_empty_str)
             f_count = len(all_formula_text)
             i_count = len(all_integrity)
-            logger.info(f"Pattern check {lang}: {p_count} pattern + {n_count} newline + {b_count} bracket + {e_count} empty + {f_count} formula + {i_count} integrity errors in {len(xml_files)} files -> {out_path.name}")
+            logger.info(f"Pattern check {lang}: {p_count} pattern + {n_count} newline + {b_count} bracket + {e_count} empty + {f_count} formula + {i_count} integrity errors in {file_count} files -> {out_path.name}")
         else:
-            logger.info(f"Pattern check {lang}: clean ({len(xml_files)} files)")
+            logger.info(f"Pattern check {lang}: clean ({file_count} files)")
 
         # Write separate critical bracket file
         if all_bracket_errors:
