@@ -16,6 +16,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from loguru import logger
+from server.tools.ldm.services.export_service import ExportService
 
 # P10: FULL ABSTRACT - No AsyncSession or get_async_db needed - routes use repositories, not direct DB
 from server.utils.dependencies import get_current_active_user_async, get_db
@@ -871,18 +872,18 @@ async def download_file(
         raise HTTPException(status_code=404, detail="No rows found for this file")
 
     # Build file content based on format (case-insensitive)
-    # Use _from_dicts builders since repository returns dicts
+    export_service = ExportService()
     format_lower = (file.get("format") or "").lower()
     if format_lower == "txt":
-        content = _build_txt_file_from_dicts(rows, file_metadata)
+        content = export_service.export_text(rows, file_metadata)
         media_type = "text/plain"
         extension = ".txt"
     elif format_lower == "xml":
-        content = _build_xml_file_from_dicts(rows, file_metadata)
+        content = export_service.export_xml(rows, file_metadata)
         media_type = "application/xml"
         extension = ".xml"
     elif format_lower in ["xlsx", "excel"]:
-        content = _build_excel_file_from_dicts(rows, file_metadata)
+        content = export_service.export_excel(rows, file_metadata)
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         extension = ".xlsx"
     else:
@@ -1013,13 +1014,14 @@ async def merge_file(
             added_count += 1
 
     # Build merged file content
+    export_service = ExportService()
     file_extra_data = file.get("extra_data") or {}
     if format_lower == "txt":
-        content = _build_txt_file_from_dicts(merged_rows, file_extra_data)
+        content = export_service.export_text(merged_rows, file_extra_data)
         media_type = "text/plain"
         extension = ".txt"
     else:  # xml
-        content = _build_xml_file_from_dicts(merged_rows, file_extra_data)
+        content = export_service.export_xml(merged_rows, file_extra_data)
         media_type = "application/xml"
         extension = ".xml"
 
@@ -1098,17 +1100,18 @@ async def convert_file(
     # Get file metadata
     file_metadata = file.get("extra_data") or {}
 
-    # Build file in target format (using _from_dicts builders)
+    # Build file in target format via ExportService
+    export_service = ExportService()
     if target_format == "xlsx":
-        content = _build_excel_file_from_dicts(rows, file_metadata)
+        content = export_service.export_excel(rows, file_metadata)
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         extension = ".xlsx"
     elif target_format == "xml":
-        content = _build_xml_file_from_dicts(rows, file_metadata)
+        content = export_service.export_xml(rows, file_metadata)
         media_type = "application/xml"
         extension = ".xml"
     elif target_format == "txt":
-        content = _build_txt_file_from_dicts(rows, file_metadata)
+        content = export_service.export_text(rows, file_metadata)
         media_type = "text/plain"
         extension = ".txt"
     elif target_format == "tmx":
@@ -1254,6 +1257,8 @@ def _build_txt_file_from_dicts(rows: List[dict], file_metadata: dict = None) -> 
     Build TXT file from dict rows.
 
     P10: Works with dict rows from Repository Pattern.
+
+    DEPRECATED: Use ExportService.export_text() instead.
     """
     file_metadata = file_metadata or {}
     lines = []
@@ -1298,6 +1303,8 @@ def _build_xml_file_from_dicts(rows: List[dict], file_metadata: dict = None) -> 
     Build XML file from dict rows (used by merge).
 
     Same as _build_xml_file but works with dicts instead of LDMRow objects.
+
+    DEPRECATED: Use ExportService.export_xml() instead.
     """
     import xml.etree.ElementTree as ET
     from xml.dom import minidom
@@ -1339,6 +1346,8 @@ def _build_excel_file_from_dicts(rows: List[dict], file_metadata: dict = None) -
     Build Excel file from dict rows (used by Repository Pattern).
 
     Same as _build_excel_file but works with dicts instead of LDMRow objects.
+
+    DEPRECATED: Use ExportService.export_excel() instead.
     """
     import openpyxl
 
