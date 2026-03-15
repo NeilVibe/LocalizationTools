@@ -104,7 +104,12 @@ class GameDataBrowseService:
         """
         resolved = self._validate_path(xml_path)
 
-        tree = etree.parse(str(resolved))
+        try:
+            tree = etree.parse(str(resolved))
+        except etree.XMLSyntaxError as exc:
+            logger.warning(f"[GameDataBrowse] Malformed XML, cannot detect columns: {resolved}: {exc}")
+            return FileColumnsResponse(columns=[], editable_attrs=[])
+
         root = tree.getroot()
 
         if len(root) == 0:
