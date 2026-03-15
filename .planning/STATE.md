@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Debug + Polish + Svelte 5 Migration
 status: unknown
-stopped_at: Completed 25-02-PLAN.md, 25-03-PLAN.md
-last_updated: "2026-03-15T22:38:30Z"
+stopped_at: Completed 25-05-PLAN.md
+last_updated: "2026-03-15T22:46:24.701Z"
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 19
-  completed_plans: 12
+  completed_plans: 16
 ---
 
------|--------|-------|--------------|
+-----|-------|--------------|
 | v1.0 | 7 | 20 | 42/42 |
 | v2.0 | 8 | 17 | 40/40 |
 | v3.0 | 7 | 14 | 45/45 |
@@ -61,6 +61,8 @@ progress:
 - [25-02]: br-tags in XML attributes stored as &lt;br/&gt; matching production lxml behavior
 - [25-03]: APIClient returns raw Response objects so callers assert status_code before .json()
 - [25-03]: 128 public methods covering all subsystems including offline/sync for full API coverage
+- [Phase 25]: AI tests accept 200 OR 503 (model offline) -- never require perfect AI output
+- [Phase 25]: Accept flexible status codes (401/403) for auth failures since FastAPI middleware varies
 
 ### Pending Todos
 
@@ -76,6 +78,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T22:38:30Z
-Stopped at: Completed 25-02-PLAN.md, 25-03-PLAN.md
+Last session: 2026-03-15T22:46:24.698Z
+Stopped at: Completed 25-05-PLAN.md
 Resume file: None
