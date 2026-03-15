@@ -11,6 +11,7 @@ Phase 5: Visual Polish and Integration (Plan 01)
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
+from pathlib import Path
 from typing import Dict, Optional
 from loguru import logger
 
@@ -64,6 +65,100 @@ class AudioContext:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+@dataclass
+class KnowledgeLookup:
+    """Knowledge entry from KnowledgeInfo XML -- maps StrKey to entity metadata."""
+    strkey: str
+    name: str
+    desc: str
+    ui_texture_name: str
+    group_key: str
+    source_file: str
+
+
+# =============================================================================
+# Knowledge Table & DDS Index Builders
+# =============================================================================
+
+
+def build_knowledge_table(knowledge_folder: Path, parser: "XMLParsingEngine") -> Dict[str, KnowledgeLookup]:
+    """Build StrKey -> KnowledgeLookup mapping from KnowledgeInfo XML files.
+
+    Parses all .xml files in knowledge_folder, extracts KnowledgeData elements,
+    and builds a lookup dict keyed by StrKey.
+
+    Args:
+        knowledge_folder: Path to folder containing knowledgeinfo XML files.
+        parser: XMLParsingEngine instance for parsing.
+
+    Returns:
+        Dict mapping StrKey -> KnowledgeLookup.
+    """
+    from server.tools.ldm.services.xml_parsing import get_xml_parsing_engine
+
+    table: Dict[str, KnowledgeLookup] = {}
+
+    if not knowledge_folder.is_dir():
+        logger.warning(f"[MAPDATA] Knowledge folder does not exist: {knowledge_folder}")
+        return table
+
+    xml_files = sorted(knowledge_folder.rglob("*.xml"))
+    if not xml_files:
+        logger.debug(f"[MAPDATA] No XML files found in {knowledge_folder}")
+        return table
+
+    for xml_path in xml_files:
+        root = parser.parse_file(xml_path)
+        if root is None:
+            continue
+
+        count = 0
+        for elem in root.iter("KnowledgeData"):
+            strkey = elem.get("StrKey") or ""
+            if not strkey:
+                continue
+
+            entry = KnowledgeLookup(
+                strkey=strkey,
+                name=elem.get("Name") or "",
+                desc=elem.get("Desc") or "",
+                ui_texture_name=elem.get("UITextureName") or "",
+                group_key=elem.get("GroupKey") or "",
+                source_file=xml_path.name,
+            )
+            table[strkey] = entry
+            count += 1
+
+        if count > 0:
+            logger.debug(f"[MAPDATA] Extracted {count} KnowledgeData entries from {xml_path.name}")
+
+    logger.info(f"[MAPDATA] Knowledge table built: {len(table)} entries from {len(xml_files)} files")
+    return table
+
+
+def build_dds_index(texture_folder: Path) -> Dict[str, Path]:
+    """Build lowercase-stem -> Path mapping for DDS texture files.
+
+    Args:
+        texture_folder: Path to folder containing DDS files.
+
+    Returns:
+        Dict mapping lowercase stem (no extension) to file Path.
+    """
+    index: Dict[str, Path] = {}
+
+    if not texture_folder.is_dir():
+        logger.warning(f"[MAPDATA] Texture folder does not exist: {texture_folder}")
+        return index
+
+    for dds_path in texture_folder.rglob("*.dds"):
+        stem_lower = dds_path.stem.lower()
+        index[stem_lower] = dds_path
+
+    logger.info(f"[MAPDATA] DDS index built: {len(index)} textures")
+    return index
 
 
 # =============================================================================
@@ -128,24 +223,32 @@ class MapDataService:
     def __init__(self):
         self._strkey_to_image: Dict[str, ImageContext] = {}
         self._strkey_to_audio: Dict[str, AudioContext] = {}
+        self._knowledge_table: Dict[str, KnowledgeLookup] = {}
+        self._dds_index: Dict[str, Path] = {}
         self._loaded: bool = False
         self._branch: str = "mainline"
         self._drive: str = "F"
 
     def initialize(self, branch: str = "mainline", drive: str = "F") -> bool:
-        """Initialize the service by building indexes.
+        """Initialize the service by building indexes from real XML data.
 
-        In production, this would parse staticinfo XML files using
-        MapDataGenerator's LinkageResolver pattern. For now, sets up
-        the infrastructure for manual or future automated population.
+        Parses KnowledgeInfo XMLs via XMLParsingEngine and builds:
+        1. Knowledge table (StrKey -> KnowledgeLookup)
+        2. DDS index (lowercase stem -> Path)
+        3. Image chains (StrKey -> UITextureName -> DDS -> ImageContext)
+
+        Gracefully degrades: if paths don't exist, logs warnings and still
+        marks as loaded with empty indexes.
 
         Args:
             branch: Perforce branch name
             drive: Drive letter
 
         Returns:
-            True if initialization succeeded, False if paths don't exist.
+            True if initialization succeeded.
         """
+        from server.tools.ldm.services.xml_parsing import get_xml_parsing_engine
+
         self._branch = branch
         self._drive = drive
 
@@ -155,10 +258,70 @@ class MapDataService:
             f"texture_folder={paths.get('texture_folder', 'N/A')}"
         )
 
-        # Infrastructure ready - indexes can be populated by future XML parsing
-        # or manually for testing. Service reports as loaded if initialize called.
+        parser = get_xml_parsing_engine()
+
+        # Build knowledge table from KnowledgeInfo XMLs
+        knowledge_path_str = paths.get("knowledge_folder", "")
+        knowledge_wsl = convert_to_wsl_path(knowledge_path_str)
+        knowledge_folder = Path(knowledge_wsl) if knowledge_wsl else Path(".")
+
+        self._knowledge_table = build_knowledge_table(knowledge_folder, parser)
+
+        # Build DDS texture index
+        texture_path_str = paths.get("texture_folder", "")
+        texture_wsl = convert_to_wsl_path(texture_path_str)
+        texture_folder = Path(texture_wsl) if texture_wsl else Path(".")
+
+        self._dds_index = build_dds_index(texture_folder)
+
+        # Resolve image chains: StrKey -> Knowledge -> UITextureName -> DDS
+        self._resolve_image_chains()
+
         self._loaded = True
+        logger.info(
+            f"[MAPDATA] Initialized: {len(self._knowledge_table)} knowledge entries, "
+            f"{len(self._dds_index)} DDS textures, "
+            f"{len(self._strkey_to_image)} image chains resolved"
+        )
         return True
+
+    def _resolve_image_chains(self) -> None:
+        """Resolve StrKey -> KnowledgeLookup -> UITextureName -> DDS -> ImageContext.
+
+        For each knowledge table entry, looks up UITextureName in DDS index.
+        If found, creates ImageContext and indexes under StrKey.
+        """
+        resolved = 0
+        missing_texture = 0
+
+        for strkey, knowledge in self._knowledge_table.items():
+            texture_name = knowledge.ui_texture_name
+            if not texture_name:
+                continue
+
+            texture_lower = texture_name.lower()
+            dds_path = self._dds_index.get(texture_lower)
+
+            if dds_path is not None:
+                img = ImageContext(
+                    texture_name=texture_name,
+                    dds_path=str(dds_path),
+                    thumbnail_url=f"/api/ldm/mapdata/thumbnail/{texture_name}",
+                    has_image=True,
+                )
+                self._strkey_to_image[strkey] = img
+                resolved += 1
+            else:
+                logger.debug(
+                    f"[MAPDATA] Missing DDS for StrKey={strkey}, "
+                    f"UITextureName={texture_name}"
+                )
+                missing_texture += 1
+
+        logger.info(
+            f"[MAPDATA] Image chains: {resolved} resolved, "
+            f"{missing_texture} missing textures"
+        )
 
     def get_image_context(self, string_id: str) -> Optional[ImageContext]:
         """Look up image context by StrKey, StringID, or KnowledgeKey.
@@ -168,6 +331,20 @@ class MapDataService:
         if not self._loaded:
             return None
         return self._strkey_to_image.get(string_id)
+
+    def get_knowledge_lookup(self, strkey: str) -> Optional[KnowledgeLookup]:
+        """Look up raw KnowledgeLookup entry by StrKey.
+
+        Used by ContextService.resolve_chain() to access UITextureName
+        and other metadata for step-by-step chain resolution.
+
+        Args:
+            strkey: The StrKey to look up.
+
+        Returns:
+            KnowledgeLookup or None if not found.
+        """
+        return self._knowledge_table.get(strkey)
 
     def get_audio_context(self, string_id: str) -> Optional[AudioContext]:
         """Look up audio context by StrKey, StringID, or KnowledgeKey.

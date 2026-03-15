@@ -296,6 +296,7 @@ class TestResolveImageChain:
         svc._knowledge_table = build_knowledge_table(knowledge_dir, engine)
         svc._dds_index = build_dds_index(texture_dir)
         svc._resolve_image_chains()
+        svc._loaded = True
 
         result = svc.get_image_context("str_npc_001")
         assert result is not None
@@ -320,6 +321,7 @@ class TestResolveImageChain:
         svc._knowledge_table = build_knowledge_table(knowledge_dir, engine)
         svc._dds_index = {}
         svc._resolve_image_chains()
+        svc._loaded = True
 
         result = svc.get_image_context("str_npc_001")
         assert result is None
