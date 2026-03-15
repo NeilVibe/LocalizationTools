@@ -1,7 +1,7 @@
 # Requirements: LocaNext v2.0
 
 **Defined:** 2026-03-15
-**Core Value:** Real, working localization workflows — real XML parsing, real merge logic, real image/audio, AI summaries — all local, dual-mode for translators and game developers.
+**Core Value:** Real, working localization workflows -- real XML parsing, real merge logic, real image/audio, AI summaries -- all local, dual-mode for translators and game developers.
 
 ## v2.0 Requirements
 
@@ -102,7 +102,7 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 | Feature | Reason |
 |---------|--------|
-| Full MT engine integration (Google/DeepL) | LOCAL AI only — no cloud dependency |
+| Full MT engine integration (Google/DeepL) | LOCAL AI only -- no cloud dependency |
 | WYSIWYG in-context preview | MapDataGenerator provides context |
 | Plugin/extension marketplace | Core must work first |
 | Automated workflow orchestration | Enterprise TMS feature |
@@ -115,13 +115,52 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| *(To be filled by roadmapper)* | | |
+| XML-01 | Phase 07 | Pending |
+| XML-02 | Phase 07 | Pending |
+| XML-03 | Phase 07 | Pending |
+| XML-04 | Phase 07 | Pending |
+| XML-05 | Phase 07 | Pending |
+| XML-06 | Phase 07 | Pending |
+| XML-07 | Phase 07 | Pending |
+| FIX-01 | Phase 07 | Pending |
+| FIX-02 | Phase 07 | Pending |
+| FIX-03 | Phase 07 | Pending |
+| DUAL-01 | Phase 08 | Pending |
+| DUAL-02 | Phase 08 | Pending |
+| DUAL-03 | Phase 08 | Pending |
+| DUAL-04 | Phase 08 | Pending |
+| DUAL-05 | Phase 08 | Pending |
+| TMERGE-01 | Phase 09 | Pending |
+| TMERGE-02 | Phase 09 | Pending |
+| TMERGE-03 | Phase 09 | Pending |
+| TMERGE-04 | Phase 09 | Pending |
+| TMERGE-05 | Phase 10 | Pending |
+| TMERGE-06 | Phase 10 | Pending |
+| TMERGE-07 | Phase 10 | Pending |
+| MEDIA-01 | Phase 11 | Pending |
+| MEDIA-02 | Phase 11 | Pending |
+| MEDIA-03 | Phase 11 | Pending |
+| MEDIA-04 | Phase 11 | Pending |
+| GMERGE-01 | Phase 12 | Pending |
+| GMERGE-02 | Phase 12 | Pending |
+| GMERGE-03 | Phase 12 | Pending |
+| GMERGE-04 | Phase 12 | Pending |
+| GMERGE-05 | Phase 12 | Pending |
+| AISUM-01 | Phase 13 | Pending |
+| AISUM-02 | Phase 13 | Pending |
+| AISUM-03 | Phase 13 | Pending |
+| AISUM-04 | Phase 13 | Pending |
+| AISUM-05 | Phase 13 | Pending |
+| CLI-01 | Phase 14 | Pending |
+| CLI-02 | Phase 14 | Pending |
+| CLI-03 | Phase 14 | Pending |
+| CLI-04 | Phase 14 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 40 total
-- Mapped to phases: 0
-- Unmapped: 40
+- Mapped to phases: 40
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after initial definition*
+*Last updated: 2026-03-15 after roadmap creation*
