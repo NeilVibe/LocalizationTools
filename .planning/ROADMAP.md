@@ -108,10 +108,36 @@ Plans:
 - [ ] 24-01-PLAN.md — Fix all 5 UX requirements: aria-expanded, tab dividers, image fallbacks, PlaceholderImage div layout, text wrapping
 - [ ] 24-02-PLAN.md — Skill-driven UIUX review: audit + harden + clarify pass across all v3.0 components
 
+### Phase 25: Comprehensive API E2E Testing
+**Goal**: Every API endpoint tested E2E with mock data -- complete CRUD workflows for all 12 subsystems, expanded mock fixtures covering all StaticInfo entity types, br-tag and Korean text round-trip verification
+**Depends on:** Phase 24
+**Requirements**: TEST-E2E-01 through TEST-E2E-25
+**Success Criteria** (what must be TRUE):
+  1. All 10 StaticInfo entity types have mock XML files with 10+ entities each
+  2. Upload fixtures exist for XML, Excel (EU 14-col), and TXT/TSV formats
+  3. Every API endpoint (275 total) has at least one pytest test
+  4. br-tag `<br/>` content survives upload -> edit -> export round-trip
+  5. Korean Unicode text survives upload -> edit -> export round-trip
+  6. TM 5-tier cascade search returns results at appropriate tiers
+  7. GameData column detection works for all entity types
+  8. Test suite runs headless for overnight autonomous execution
+**Plans:** 10 plans
+Plans:
+- [ ] 25-01-PLAN.md — Expand mock StaticInfo: questinfo, sceneobjectdata, sealdatainfo, regioninfo + loc.xml files
+- [ ] 25-02-PLAN.md — Create upload fixtures: EU 14-col Excel, TXT/TSV, LocStr XML + multilingual language data
+- [ ] 25-03-PLAN.md — API test infrastructure: conftest, typed APIClient, assertions, constants
+- [ ] 25-04-PLAN.md — Test runner script + pytest configuration for overnight execution
+- [ ] 25-05-PLAN.md — Test suite: Health + Auth + Projects + Folders + Files (54 endpoints)
+- [ ] 25-06-PLAN.md — Test suite: Rows + TM CRUD + TM Search + TM Entries (42 endpoints)
+- [ ] 25-07-PLAN.md — Test suite: GameData + Codex + WorldMap (8 endpoints, all entity types)
+- [ ] 25-08-PLAN.md — Test suite: AI Intelligence + Search + QA/Grammar (33 endpoints)
+- [ ] 25-09-PLAN.md — Test suite: Merge + Export + Offline + Admin + Tools (93 endpoints)
+- [ ] 25-10-PLAN.md — Integration workflows + br-tag/Korean tests + endpoint coverage validation
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 22 -> 23 -> 24
+Phases execute in numeric order: 22 -> 23 -> 24 -> 25
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -140,3 +166,4 @@ Phases execute in numeric order: 22 -> 23 -> 24
 | 22. Svelte 5 Migration | v3.1 | 0/3 | Not started | - |
 | 23. Bug Fixes | v3.1 | 0/4 | Not started | - |
 | 24. UIUX Polish | v3.1 | 0/2 | Not started | - |
+| 25. Comprehensive API E2E Testing | v3.1 | 0/10 | Not started | - |
