@@ -10,6 +10,7 @@ import { writable, derived } from 'svelte/store';
  * - 'tm': TM Explorer page (manage translation memories)
  * - 'grid': Grid viewer (viewing/editing a file)
  * - 'tm-entries': TM entries viewer (viewing TM entries full-page)
+ * - 'gamedev': Game Dev page (file explorer + grid for gamedata XML)
  */
 export const currentPage = writable('files');
 
@@ -34,6 +35,20 @@ export const breadcrumbPath = writable([]);
  * Navigation history for back/forward (future use)
  */
 export const navigationHistory = writable([]);
+
+/**
+ * Phase 18: Game Dev base path (persisted in localStorage)
+ */
+const storedGamedevPath = typeof localStorage !== 'undefined'
+  ? localStorage.getItem('gamedev_base_path') || ''
+  : '';
+export const gamedevBasePath = writable(storedGamedevPath);
+// Persist changes to localStorage
+if (typeof localStorage !== 'undefined') {
+  gamedevBasePath.subscribe(value => {
+    localStorage.setItem('gamedev_base_path', value || '');
+  });
+}
 
 /**
  * Saved Files page path - restored when returning from grid view
@@ -92,6 +107,14 @@ export function openTMInGrid(tm) {
 }
 
 /**
+ * Phase 18: Navigate to Game Dev page
+ */
+export function goToGameDev() {
+  currentPage.set('gamedev');
+  openFile.set(null);
+}
+
+/**
  * Close TM entries viewer and return to TM list
  */
 export function closeTMGrid() {
@@ -126,7 +149,7 @@ export function navigateUp() {
 /**
  * Whether we're currently viewing a file
  */
-export const isViewingFile = derived(currentPage, $page => $page === 'grid');
+export const isViewingFile = derived(currentPage, $page => $page === 'grid' || $page === 'gamedev');
 
 /**
  * Current breadcrumb as string (for display)

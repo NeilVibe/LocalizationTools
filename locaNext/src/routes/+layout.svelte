@@ -7,12 +7,12 @@
     Content,
     Theme
   } from "carbon-components-svelte";
-  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase } from "carbon-icons-svelte";
+  import { Apps, UserAvatar, Settings, TaskComplete, Folder, DataBase, GameConsole } from "carbon-icons-svelte";
   // UI-001: Theme toggle removed (dark mode only) - Light, Moon icons no longer needed
   import { preferences } from "$lib/stores/preferences.js";
   import { onMount } from "svelte";
   import { currentApp, currentView, isAuthenticated, user } from "$lib/stores/app.js";
-  import { currentPage, goToFiles, goToTM } from "$lib/stores/navigation.js";
+  import { currentPage, goToFiles, goToTM, goToGameDev } from "$lib/stores/navigation.js";
   import { get } from 'svelte/store';
   import { api } from "$lib/api/client.js";
   import Login from "$lib/components/Login.svelte";
@@ -75,6 +75,14 @@
     currentApp.set('ldm');
     currentView.set('app');
     goToTM();
+  }
+
+  // Phase 18: Game Dev navigation
+  function navigateToGameDev() {
+    logger.userAction("Navigate to Game Dev page");
+    currentApp.set('ldm');
+    currentView.set('app');
+    goToGameDev();
   }
 
   function showTasks() {
@@ -301,6 +309,14 @@
         >
           <DataBase size={16} />
           <span>TM</span>
+        </button>
+        <button
+          class="ldm-nav-tab"
+          class:active={$currentApp === 'ldm' && $currentPage === 'gamedev'}
+          onclick={navigateToGameDev}
+        >
+          <GameConsole size={16} />
+          <span>Game Dev</span>
         </button>
       </div>
 
