@@ -116,10 +116,16 @@ export function goToGameDev() {
 
 /**
  * Phase 19: Navigate to Game World Codex page
+ * @param {string} searchQuery - Optional search query to pre-populate in Codex search
  */
-export function goToCodex() {
+export const codexSearchQuery = writable('');
+
+export function goToCodex(searchQuery = '') {
   currentPage.set('codex');
   openFile.set(null);
+  if (searchQuery) {
+    codexSearchQuery.set(searchQuery);
+  }
 }
 
 /**

@@ -42,8 +42,7 @@
    * Navigate to Codex for a specific NPC
    */
   function navigateToNPC(npcName) {
-    // Navigate to codex - the user can search for the NPC there
-    goToCodex();
+    goToCodex(npcName);
   }
 
   /**

@@ -14,6 +14,8 @@
   import CodexSearchBar from "$lib/components/ldm/CodexSearchBar.svelte";
   import CodexEntityDetail from "$lib/components/ldm/CodexEntityDetail.svelte";
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
+  import { codexSearchQuery } from "$lib/stores/navigation.js";
 
   const API_BASE = getApiBase();
 
@@ -51,7 +53,10 @@
       .filter(([type]) => type !== 'knowledge')
       .sort(([a], [b]) => {
         const order = ['character', 'item', 'skill', 'region', 'gimmick'];
-        return order.indexOf(a) - order.indexOf(b);
+        const idxA = order.indexOf(a);
+        const idxB = order.indexOf(b);
+        // Unknown types (-1) sort last by mapping to a high number
+        return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
       })
   );
 
@@ -184,7 +189,14 @@
   }
 
   onMount(() => {
-    fetchTypes();
+    fetchTypes().then(() => {
+      // Consume codexSearchQuery if set (e.g., navigated from MapDetailPanel NPC click)
+      const pendingQuery = get(codexSearchQuery);
+      if (pendingQuery) {
+        codexSearchQuery.set('');
+        handleSimilarNavigation(pendingQuery);
+      }
+    });
   });
 </script>
 
