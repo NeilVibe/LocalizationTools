@@ -172,6 +172,12 @@ async def get_file(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
+    # Extract file_type from extra_data (stored by xml_handler during upload)
+    if isinstance(file, dict):
+        extra_data = file.get("extra_data") or {}
+        if isinstance(extra_data, dict) and "file_type" not in file:
+            file["file_type"] = extra_data.get("file_type", "translator")
+
     return file
 
 
@@ -352,6 +358,9 @@ async def upload_file(
                 sync_db.commit()
                 sync_db.refresh(new_file)
 
+                # Extract file_type from metadata for response
+                upload_file_type = file_metadata.get("file_type", "translator") if file_metadata else "translator"
+
                 return {
                     "id": new_file.id,
                     "project_id": new_file.project_id,
@@ -359,6 +368,7 @@ async def upload_file(
                     "name": new_file.name,
                     "original_filename": new_file.original_filename,
                     "format": new_file.format,
+                    "file_type": upload_file_type,
                     "row_count": new_file.row_count,
                     "source_language": new_file.source_language,
                     "target_language": new_file.target_language,
@@ -553,10 +563,14 @@ async def _serialize_file_for_trash_repo(
     """
     rows = await file_repo.get_rows_for_export(file_dict["id"])
 
+    extra_data = file_dict.get("extra_data") or {}
+    trash_file_type = extra_data.get("file_type", "translator") if isinstance(extra_data, dict) else "translator"
+
     return {
         "name": file_dict["name"],
         "original_filename": file_dict.get("original_filename"),
         "format": file_dict.get("format"),
+        "file_type": trash_file_type,
         "source_language": file_dict.get("source_language"),
         "target_language": file_dict.get("target_language"),
         "row_count": file_dict.get("row_count", len(rows)),

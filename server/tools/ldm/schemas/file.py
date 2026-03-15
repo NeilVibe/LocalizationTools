@@ -14,6 +14,7 @@ class FileResponse(BaseModel):
     name: str
     original_filename: str
     format: str
+    file_type: str = "translator"  # "translator" (LocStr) or "gamedev" (non-LocStr)
     row_count: int
     source_language: str
     target_language: Optional[str]
