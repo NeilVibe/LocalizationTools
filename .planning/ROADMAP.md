@@ -109,9 +109,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 18-01: TBD
-- [ ] 18-02: TBD
-- [ ] 18-03: TBD
+- [ ] 18-01-PLAN.md — Backend browse/edit services + REST endpoints + schemas + unit tests (GDEV-01, GDEV-02, GDEV-05, GDEV-06)
+- [ ] 18-02-PLAN.md — FileExplorerTree + GameDevPage + VirtualGrid inline edit + dynamic columns (GDEV-01 through GDEV-07)
 
 ### Phase 19: Game World Codex
 **Goal**: Both translators and game devs can browse an interactive encyclopedia of characters, items, and entities with images, audio, cross-references, and semantic search
@@ -185,7 +184,7 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21
 | 15. Mock Gamedata Universe | 2/2 | Complete    | 2026-03-15 | - |
 | 16. Category Clustering + QA Pipeline | 2/2 | Complete    | 2026-03-15 | - |
 | 17. AI Translation Suggestions | 2/2 | Complete    | 2026-03-15 | - |
-| 18. Game Dev Grid + File Explorer | v3.0 | 0/? | Not started | - |
+| 18. Game Dev Grid + File Explorer | v3.0 | 0/2 | Not started | - |
 | 19. Game World Codex | v3.0 | 0/? | Not started | - |
 | 20. Interactive World Map | v3.0 | 0/? | Not started | - |
 | 21. AI Naming Coherence + Placeholders | v3.0 | 0/? | Not started | - |
