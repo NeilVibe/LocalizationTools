@@ -1651,7 +1651,23 @@ class OfflineDatabase:
                    ORDER BY name"""
             )
             rows = await cursor.fetchall()
-            return [dict(row) for row in rows]
+            results = []
+            for row in rows:
+                d = dict(row)
+                # Extract file_type from extra_data JSON
+                raw_extra = d.get("extra_data")
+                if isinstance(raw_extra, str):
+                    try:
+                        extra_data = json.loads(raw_extra)
+                        d["file_type"] = extra_data.get("file_type", "translator")
+                    except (json.JSONDecodeError, TypeError):
+                        d["file_type"] = "translator"
+                elif isinstance(raw_extra, dict):
+                    d["file_type"] = raw_extra.get("file_type", "translator")
+                else:
+                    d["file_type"] = "translator"
+                results.append(d)
+            return results
 
     async def get_local_file(self, file_id: int) -> Optional[Dict]:
         """P9: Get a single local file by ID."""

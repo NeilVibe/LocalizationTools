@@ -712,6 +712,7 @@
           name: f.name,
           format: f.format,
           row_count: f.row_count,
+          file_type: f.file_type || 'translator',
           error_message: f.error_message,
           updated_at: f.updated_at
         }));

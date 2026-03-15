@@ -16,6 +16,8 @@ P10-REPO: Migrated to Repository Pattern (2026-01-13)
 - Uses FileRepository, FolderRepository, TMRepository for entity lookups
 """
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
@@ -592,6 +594,7 @@ class OrphanedFileInfo(BaseModel):
     name: str
     format: str
     row_count: int
+    file_type: str = "translator"
     error_message: Optional[str]
     updated_at: Optional[str]
 
@@ -646,17 +649,29 @@ async def list_local_files(
             # Inside a folder: get files in that folder
             local_files = [f for f in all_local_files if f.get("folder_id") == parent_id]
 
-        files = [
-            OrphanedFileInfo(
+        files = []
+        for f in local_files:
+            # Extract file_type from extra_data JSON
+            file_type = "translator"
+            raw_extra = f.get("extra_data")
+            if isinstance(raw_extra, str):
+                try:
+                    extra_data = json.loads(raw_extra)
+                    file_type = extra_data.get("file_type", "translator")
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            elif isinstance(raw_extra, dict):
+                file_type = raw_extra.get("file_type", "translator")
+
+            files.append(OrphanedFileInfo(
                 id=f["id"],
                 name=f["name"],
                 format=f.get("format", "txt"),
                 row_count=f.get("row_count", 0),
+                file_type=file_type,
                 error_message=f.get("error_message"),
                 updated_at=f.get("updated_at")
-            )
-            for f in local_files
-        ]
+            ))
 
         return OrphanedFilesResponse(
             files=files,
