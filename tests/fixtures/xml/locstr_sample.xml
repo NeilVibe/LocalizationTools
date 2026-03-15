@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameData>
+  <LocStr StringId="LOC_001" StrOrigin="Korean source 1" Str="English translation 1" Desc="Description 1" DescOrigin="Desc origin 1" Category="Items" />
+  <LocStr StringID="LOC_002" StrOrigin="Korean source 2" Str="English translation 2" Desc="Description 2" DescOrigin="Desc origin 2" Category="Skills" />
+  <locstr stringid="LOC_003" strorigin="Korean source 3" str="English translation 3" />
+  <LOCSTR STRINGID="LOC_004" StrOrigin="Korean source 4" Str="English translation 4" />
+  <Locstr Stringid="LOC_005" StrOrigin="Korean source 5" Str="English translation 5" />
+</GameData>

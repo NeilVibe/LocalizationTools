@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <LocStr StringId="LANG_001" StrOrigin="Original text 1" Str="English text 1" Desc="Eng desc 1" DescOrigin="Original desc 1" />
+  <LocStr StringId="LANG_002" StrOrigin="Original text 2" Str="English text 2" Desc="Eng desc 2" DescOrigin="Original desc 2" />
+  <LocStr StringId="LANG_003" StrOrigin="Original text 3" Str="English text 3" />
+</LanguageData>

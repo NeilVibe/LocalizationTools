@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameData>
+  <LocStr StringId="MAL_001" StrOrigin="Rock & Roll" Str="Translation1" />
+  <LocStr StringId="MAL_002" StrOrigin="Test with control chars" Str="Translation2" />
+  <LocStr StringId="MAL_003" StrOrigin="Unclosed tag problem" Str="Translation3"
+</GameData>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <LocStr StringId="LANG_001" StrOrigin="Korean source 1" Str="Korean translation 1" Desc="Korean desc 1" DescOrigin="Korean desc origin 1" />
+  <LocStr StringId="LANG_002" StrOrigin="Korean source 2" Str="Korean translation 2" Desc="Korean desc 2" DescOrigin="Korean desc origin 2" />
+  <LocStr StringId="LANG_003" StrOrigin="Korean source 3" Str="Korean translation 3" />
+</LanguageData>
