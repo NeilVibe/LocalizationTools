@@ -184,3 +184,4 @@ Build 058: REVERT unsafe step 8 entity decode
 Build 059: Safe Step 8 entity decode — explicit allowlist
 Build 060: Step 8 decode standalone double-escaped lt/gt + postprocess pipeline doc
 Build 061: fix double-escape detection, add Pre-Process button (XML+Excel)
+Build 062: Pattern Check supports Excel files (all 6 check types)
