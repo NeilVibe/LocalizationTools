@@ -27,7 +27,7 @@
 - [x] **Phase 07: XML Parsing Foundation + Bug Fixes** - Replace stdlib ET with lxml, wire real XML parsing services, fix 3 v1.0 bugs (completed 2026-03-15)
 - [x] **Phase 08: Dual UI Mode** - Auto-detect file type and switch between Translator and Game Dev column layouts (completed 2026-03-15)
 - [x] **Phase 09: Translator Merge** - Port QuickTranslate merge logic (exact/source/fuzzy match + postprocess pipeline) (completed 2026-03-15)
-- [ ] **Phase 10: Export Pipeline** - XML, Excel, and plain text export with br-tag preservation
+- [x] **Phase 10: Export Pipeline** - XML, Excel, and plain text export with br-tag preservation (completed 2026-03-15)
 - [ ] **Phase 11: Image & Audio Pipeline** - DDS-to-PNG conversion, WEM audio playback, real data flowing to context tabs
 - [ ] **Phase 12: Game Dev Merge** - Position-aware XML merge at node/attribute/children depth
 - [ ] **Phase 13: AI Summaries** - Qwen3 via Ollama for contextual summaries with caching and graceful fallback
@@ -171,7 +171,7 @@ Note: Phase 11 and 13 depend only on Phase 07 and could execute in parallel with
 | 07. XML Parsing Foundation + Bug Fixes | 3/3 | Complete    | 2026-03-15 | - |
 | 08. Dual UI Mode | 2/2 | Complete    | 2026-03-15 | - |
 | 09. Translator Merge | 2/2 | Complete    | 2026-03-15 | - |
-| 10. Export Pipeline | v2.0 | 0/1 | Not started | - |
+| 10. Export Pipeline | 1/1 | Complete   | 2026-03-15 | - |
 | 11. Image & Audio Pipeline | v2.0 | 0/1 | Not started | - |
 | 12. Game Dev Merge | v2.0 | 0/2 | Not started | - |
 | 13. AI Summaries | v2.0 | 0/1 | Not started | - |

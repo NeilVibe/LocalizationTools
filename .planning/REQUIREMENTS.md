@@ -38,9 +38,9 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 - [x] **TMERGE-02**: StrOrigin match (source text match) transfers when StringID differs
 - [x] **TMERGE-03**: Fuzzy matching via Model2Vec finds similar source strings above threshold
 - [x] **TMERGE-04**: Postprocessing pipeline applies 7-step CJK-safe cleanup after transfer
-- [ ] **TMERGE-05**: Export produces correct XML with br-tag preservation
-- [ ] **TMERGE-06**: Export produces Excel format with correct column structure
-- [ ] **TMERGE-07**: Export produces plain tabulated text (StringID + source + translation)
+- [x] **TMERGE-05**: Export produces correct XML with br-tag preservation
+- [x] **TMERGE-06**: Export produces Excel format with correct column structure
+- [x] **TMERGE-07**: Export produces plain tabulated text (StringID + source + translation)
 
 ### Game Dev Merge
 
@@ -134,9 +134,9 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 | TMERGE-02 | Phase 09 | Complete |
 | TMERGE-03 | Phase 09 | Complete |
 | TMERGE-04 | Phase 09 | Complete |
-| TMERGE-05 | Phase 10 | Pending |
-| TMERGE-06 | Phase 10 | Pending |
-| TMERGE-07 | Phase 10 | Pending |
+| TMERGE-05 | Phase 10 | Complete |
+| TMERGE-06 | Phase 10 | Complete |
+| TMERGE-07 | Phase 10 | Complete |
 | MEDIA-01 | Phase 11 | Pending |
 | MEDIA-02 | Phase 11 | Pending |
 | MEDIA-03 | Phase 11 | Pending |

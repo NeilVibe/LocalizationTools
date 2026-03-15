@@ -3,29 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Real Data + Dual Platform
 status: executing
-stopped_at: Completed 09-02-PLAN.md (Phase 09 complete)
-last_updated: "2026-03-15T02:52:17.976Z"
-last_activity: 2026-03-15 -- Plan 02 TranslatorMergeService + merge API endpoint
+stopped_at: Completed 10-01-PLAN.md (Phase 10 complete)
+last_updated: "2026-03-15T03:07:04Z"
+last_activity: 2026-03-15 -- Plan 01 ExportService (XML, Excel, Text)
 progress:
   total_phases: 8
-  completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
----
-
----
-gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Real Data + Dual Platform
-status: executing
-stopped_at: Completed 09-02-PLAN.md (Phase 09 complete)
-last_updated: "2026-03-15T02:47:33Z"
-last_activity: 2026-03-15 -- Plan 02 TranslatorMergeService + merge API endpoint
-progress:
-  total_phases: 8
-  completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  completed_phases: 4
+  total_plans: 8
+  completed_plans: 8
 ---
 
 # Project State
@@ -35,17 +20,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Real, working localization workflows -- real XML parsing, real merge logic, real image/audio, AI summaries -- all local, dual-mode for translators and game developers.
-**Current focus:** Phase 09 -- Translator Merge
+**Current focus:** Phase 10 -- Export Pipeline
 
 ## Current Position
 
 Milestone: v2.0 Real Data + Dual Platform
-Phase: 09 of 14 (Translator Merge) -- COMPLETE
-Plan: 2 of 2 in current phase (done)
+Phase: 10 of 14 (Export Pipeline) -- Plan 01 COMPLETE
+Plan: 1 of 1 in current phase (done)
 Status: Executing
-Last activity: 2026-03-15 -- Plan 02 TranslatorMergeService + merge API endpoint
+Last activity: 2026-03-15 -- Plan 01 ExportService (XML, Excel, Text)
 
-Progress: [██████████] 100% (Phase 09 complete)
+Progress: [██████████] 100% (Phase 10 complete)
 
 ## Performance Metrics
 
@@ -64,6 +49,7 @@ Progress: [██████████] 100% (Phase 09 complete)
 | 08    | 02   | 5min     | 2     | 2     |
 | 09    | 01   | 4min     | 2     | 5     |
 | 09    | 02   | 4min     | 2     | 6     |
+| 10    | 01   | 4min     | 2     | 3     |
 
 ## Accumulated Context
 
@@ -96,6 +82,9 @@ Progress: [██████████] 100% (Phase 09 complete)
 - [Phase 09]: Skip guards applied once to source corrections via parse_corrections(), not per-target-row
 - [Phase 09]: FAISS IndexFlatIP for cosine similarity on normalized embeddings
 - [Phase 09]: Merge endpoint is transactional: compute all matches, then bulk_update once
+- [Phase 10]: ExportService replaces inline _build_*_from_dicts with lxml + xlsxwriter
+- [Phase 10]: lxml nsmap for xmlns, write_string for StringID anti-scientific-notation
+- [Phase 10]: EU 14-column order: StrOrigin|ENG|Str|Correction|TextState|STATUS|COMMENT|MEMO1|MEMO2|Category|FileName|StringID|DescOrigin|Desc
 
 ### Pending Todos
 
@@ -110,6 +99,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T02:47:33Z
-Stopped at: Completed 09-02-PLAN.md (Phase 09 complete)
-Resume: `/gsd:execute-phase 10` to start Phase 10
+Last session: 2026-03-15T03:07:04Z
+Stopped at: Completed 10-01-PLAN.md (Phase 10 complete)
+Resume: `/gsd:execute-phase 11` to start Phase 11
