@@ -27,7 +27,7 @@
     Flash,
     MachineLearning
   } from "carbon-icons-svelte";
-  import { createEventDispatcher, onMount } from "svelte";
+  import { onMount } from "svelte";
   import { logger } from "$lib/utils/logger.js";
   import { preferences } from "$lib/stores/preferences.js";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
@@ -35,13 +35,11 @@
   import TMUploadModal from "./TMUploadModal.svelte";
   import TMViewer from "./TMViewer.svelte";
 
-  const dispatch = createEventDispatcher();
-
   // API base URL - centralized in api.js
   const API_BASE = getApiBase();
 
   // Svelte 5: Props
-  let { open = $bindable(false) } = $props();
+  let { open = $bindable(false), onTmUploaded = undefined } = $props();
 
   // Svelte 5: State
   let tms = $state([]);
@@ -266,10 +264,10 @@
   }
 
   // Handle upload complete
-  async function handleUploadComplete(event) {
+  async function handleUploadComplete(data) {
     showUploadModal = false;
     await loadTMs();
-    dispatch('tmUploaded', event.detail);
+    onTmUploaded?.(data);
   }
 
   // Open delete confirmation
@@ -595,8 +593,8 @@
 {#if showUploadModal}
 <TMUploadModal
   open={true}
-  on:uploaded={handleUploadComplete}
-  on:close={() => showUploadModal = false}
+  onUploaded={handleUploadComplete}
+  onClose={() => showUploadModal = false}
 />
 {/if}
 
@@ -655,8 +653,8 @@
 <TMViewer
   open={true}
   tm={tmToView}
-  on:updated={handleViewerUpdate}
-  on:close={() => showViewerModal = false}
+  onUpdated={handleViewerUpdate}
+  onClose={() => showViewerModal = false}
 />
 {/if}
 

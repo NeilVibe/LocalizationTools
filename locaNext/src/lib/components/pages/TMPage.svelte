@@ -6,7 +6,7 @@
    * Everything through context menu and double-click.
    * No ugly buttons, no prompt/confirm dialogs.
    */
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import { Slider } from 'carbon-components-svelte';
   import {
     CheckmarkFilled,
@@ -28,10 +28,10 @@
 
   // Props
   let {
-    selectedTMId = $bindable(null)
+    selectedTMId = $bindable(null),
+    onTmSelect = undefined
   } = $props();
 
-  const dispatch = createEventDispatcher();
   const API_BASE = getApiBase();
 
   // State
@@ -137,7 +137,7 @@
   function selectTM(tm) {
     selectedTMId = tm.id;
     selectedTM = tm;
-    dispatch('tmSelect', { tmId: tm.id, tm });
+    onTmSelect?.({ tmId: tm.id, tm });
   }
 
   async function activateTM(tm) {
@@ -273,7 +273,7 @@
   function handleTMSelect(tm) {
     selectedTMId = tm.tm_id;
     selectedTM = tm;
-    dispatch('tmSelect', { tmId: tm.tm_id, tm });
+    onTmSelect?.({ tmId: tm.tm_id, tm });
   }
 
   function handleViewEntries(tm) {
@@ -414,11 +414,11 @@
 <TMUploadModal
   bind:open={showUploadModal}
   targetScope={uploadTargetScope}
-  on:uploaded={(e) => {
+  onUploaded={(data) => {
     uploadTargetScope = null;  // Reset scope after upload
-    handleUploadComplete(e);
+    handleUploadComplete(data);
   }}
-  on:close={() => uploadTargetScope = null}
+  onClose={() => uploadTargetScope = null}
 />
 
 <!-- TM Viewer removed - now uses full-page navigation via openTMInGrid -->
