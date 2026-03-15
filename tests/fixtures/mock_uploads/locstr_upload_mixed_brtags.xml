@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LanguageData>
+  <LocStr StrKey="STR_MIX_0001" StrOrigin="전사의 검&lt;br/&gt;공격력 +50" Str="Warrior's Sword&lt;br/&gt;ATK +50" Desc="Basic warrior weapon"/>
+  <LocStr StrKey="STR_MIX_0002" StrOrigin="마법사의 지팡이&lt;br/&gt;마력 +30&lt;br/&gt;주문 속도 +10%" Str="Mage Staff&lt;br/&gt;Magic +30&lt;br/&gt;Cast Speed +10%" Desc="Magic weapon"/>
+  <LocStr StrKey="STR_MIX_0003" StrOrigin="궁수의 활&lt;br/&gt;명중률 +20" Str="Archer's Bow&lt;br/&gt;Accuracy +20" Desc="Ranged weapon"/>
+  <LocStr StrKey="STR_MIX_0004" StrOrigin="치유의 물약&lt;br/&gt;체력 500 회복" Str="Healing Potion&lt;br/&gt;Restores 500 HP" Desc="Consumable"/>
+  <LocStr StrKey="STR_MIX_0005" StrOrigin="회전 베기 스킬&lt;br/&gt;범위 공격&lt;br/&gt;쿨타임 10초&lt;br/&gt;소모 MP 50" Str="Spinning Slash&lt;br/&gt;AoE Attack&lt;br/&gt;CD 10s&lt;br/&gt;Cost 50 MP" Desc="Skill description"/>
+  <LocStr StrKey="STR_MIX_0006" StrOrigin="신성한 방패&lt;br/&gt;방어력 +100&lt;br/&gt;마법 저항 +20" Str="Holy Shield&lt;br/&gt;DEF +100&lt;br/&gt;Magic Resist +20" Desc="Defense equipment"/>
+  <LocStr StrKey="STR_MIX_0007" StrOrigin="고대의 반지&lt;br/&gt;전체 능력치 +5" Str="Ancient Ring&lt;br/&gt;All Stats +5" Desc="Accessory"/>
+  <LocStr StrKey="STR_MIX_0008" StrOrigin="독안개 스킬&lt;br/&gt;지속 피해&lt;br/&gt;이동 속도 감소" Str="Poison Fog&lt;br/&gt;DoT Damage&lt;br/&gt;Move Speed Reduction" Desc="Debuff skill"/>
+  <LocStr StrKey="STR_MIX_0009" StrOrigin="전설의 갑옷&lt;br/&gt;방어력 +200" Str="Legendary Armor&lt;br/&gt;DEF +200" Desc="Legendary gear"/>
+  <LocStr StrKey="STR_MIX_0010" StrOrigin="분노의 일격&lt;br/&gt;적 기절&lt;br/&gt;추가 피해 200%" Str="Fury Strike&lt;br/&gt;Stun Enemy&lt;br/&gt;Extra Damage 200%" Desc="Ultimate skill"/>
+  <LocStr StrKey="STR_MIX_0011" StrOrigin="회복 마법&lt;br/&gt;아군 전체 치유&lt;br/&gt;부활 효과 포함" Str="Recovery Magic&lt;br/&gt;Heal All Allies&lt;br/&gt;Includes Revive" Desc="Heal skill"/>
+  <LocStr StrKey="STR_MIX_0012" StrOrigin="마왕의 저주&lt;br/&gt;공격력 감소 50%" Str="Demon Lord's Curse&lt;br/&gt;ATK Decrease 50%" Desc="Debuff"/>
+  <LocStr StrKey="STR_MIX_0013" StrOrigin="용의 브레스&lt;br/&gt;화염 피해&lt;br/&gt;범위 공격&lt;br/&gt;방어 무시" Str="Dragon Breath&lt;br/&gt;Fire Damage&lt;br/&gt;AoE&lt;br/&gt;Ignores Defense" Desc="Boss attack"/>
+  <LocStr StrKey="STR_MIX_0014" StrOrigin="텔레포트&lt;br/&gt;지정 위치로 순간이동" Str="Teleport&lt;br/&gt;Instant move to target" Desc="Movement skill"/>
+  <LocStr StrKey="STR_MIX_0015" StrOrigin="강화 주문서&lt;br/&gt;성공 확률 30%&lt;br/&gt;실패 시 파괴" Str="Enhancement Scroll&lt;br/&gt;30% Success&lt;br/&gt;Destroyed on Failure" Desc="Enhancement item"/>
+  <LocStr StrKey="STR_MIX_0016" StrOrigin="연금술 제조법&lt;br/&gt;재료: 허브 x5&lt;br/&gt;제작 시간: 10분" Str="Alchemy Recipe&lt;br/&gt;Material: Herb x5&lt;br/&gt;Craft Time: 10min" Desc="Crafting recipe"/>
+  <LocStr StrKey="STR_MIX_0017" StrOrigin="길드 공지&lt;br/&gt;이번 주 길드전 안내" Str="Guild Notice&lt;br/&gt;This Week's GvG Info" Desc="Guild system"/>
+  <LocStr StrKey="STR_MIX_0018" StrOrigin="퀘스트 보상&lt;br/&gt;경험치 10000&lt;br/&gt;금화 500&lt;br/&gt;아이템 상자 1개" Str="Quest Reward&lt;br/&gt;EXP 10000&lt;br/&gt;Gold 500&lt;br/&gt;Item Box x1" Desc="Quest reward"/>
+  <LocStr StrKey="STR_MIX_0019" StrOrigin="NPC 대사&lt;br/&gt;용사여, 조심하시오!" Str="NPC Dialogue&lt;br/&gt;Hero, be careful!" Desc="NPC dialogue"/>
+  <LocStr StrKey="STR_MIX_0020" StrOrigin="시스템 메시지&lt;br/&gt;서버 점검 안내&lt;br/&gt;시간: 04:00-06:00" Str="System Message&lt;br/&gt;Server Maintenance&lt;br/&gt;Time: 04:00-06:00" Desc="System message"/>
+  <LocStr StrKey="STR_MIX_0021" StrOrigin="장비 설명&lt;br/&gt;착용 조건: 레벨 50 이상" Str="Equipment Desc&lt;br/&gt;Requirement: Level 50+" Desc="Equipment info"/>
+  <LocStr StrKey="STR_MIX_0022" StrOrigin="업적 달성&lt;br/&gt;보스 처치 완료!&lt;br/&gt;보상: 칭호 획득" Str="Achievement&lt;br/&gt;Boss Defeated!&lt;br/&gt;Reward: Title Earned" Desc="Achievement"/>
+  <LocStr StrKey="STR_MIX_0023" StrOrigin="펫 정보&lt;br/&gt;이름: 꼬마 용&lt;br/&gt;특기: 아이템 줍기&lt;br/&gt;레벨: 1" Str="Pet Info&lt;br/&gt;Name: Baby Dragon&lt;br/&gt;Skill: Item Pickup&lt;br/&gt;Level: 1" Desc="Pet system"/>
+  <LocStr StrKey="STR_MIX_0024" StrOrigin="경매장 안내&lt;br/&gt;등록 수수료 5%" Str="Auction House&lt;br/&gt;Listing Fee 5%" Desc="Auction info"/>
+  <LocStr StrKey="STR_MIX_0025" StrOrigin="주의사항&lt;br/&gt;되돌릴 수 없습니다&lt;br/&gt;진행하시겠습니까?" Str="Warning&lt;br/&gt;Cannot be undone&lt;br/&gt;Proceed?" Desc="Warning dialog"/>
+</LanguageData>

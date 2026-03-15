@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LanguageData>
+  <LocStr StrKey="STR_QUEST_0001" StrOrigin="잃어버린 보물을 찾아서" Str="In Search of Lost Treasure" Desc="Find the hidden treasure in the ancient ruins"/>
+  <LocStr StrKey="STR_QUEST_0002" StrOrigin="마을의 위기" Str="Crisis in the Village" Desc="Defend the village from the monster invasion"/>
+  <LocStr StrKey="STR_QUEST_0003" StrOrigin="고대 유적 탐험" Str="Ancient Ruins Expedition" Desc="Explore the temple and uncover its secrets"/>
+  <LocStr StrKey="STR_QUEST_0004" StrOrigin="용의 둥지" Str="Dragon's Nest" Desc="Defeat the dragon and claim the reward"/>
+  <LocStr StrKey="STR_QUEST_0005" StrOrigin="어둠의 숲 정화" Str="Purifying the Dark Forest" Desc="Clear the corruption spreading through the forest"/>
+  <LocStr StrKey="STR_QUEST_0006" StrOrigin="전쟁의 서막" Str="Prelude to War" Desc="Prepare the kingdom's defenses for the coming battle"/>
+  <LocStr StrKey="STR_QUEST_0007" StrOrigin="비밀 통로 발견" Str="Secret Passage Discovery" Desc="Find the hidden path beneath the castle"/>
+  <LocStr StrKey="STR_QUEST_0008" StrOrigin="마왕의 부활" Str="Demon King's Revival" Desc="Stop the dark ritual before the Demon King returns"/>
+  <LocStr StrKey="STR_QUEST_0009" StrOrigin="영웅의 귀환" Str="Return of the Hero" Desc="Escort the legendary hero back to the capital"/>
+  <LocStr StrKey="STR_QUEST_0010" StrOrigin="최후의 결전" Str="Final Battle" Desc="Face the ultimate enemy in the last confrontation"/>
+  <LocStr StrKey="STR_QUEST_0011" StrOrigin="길드 마스터의 시험" Str="Guild Master's Trial" Desc="Complete three challenges to become Guild Master"/>
+  <LocStr StrKey="STR_QUEST_0012" StrOrigin="사막의 오아시스 탐험" Str="Desert Oasis Expedition" Desc="Navigate the desert to find the hidden oasis"/>
+  <LocStr StrKey="STR_QUEST_0013" StrOrigin="해적선의 비밀" Str="Secret of the Pirate Ship" Desc="Board the ghost ship and recover the treasure map"/>
+  <LocStr StrKey="STR_QUEST_0014" StrOrigin="얼어붙은 왕국" Str="The Frozen Kingdom" Desc="Lift the curse from the ice-bound kingdom"/>
+  <LocStr StrKey="STR_QUEST_0015" StrOrigin="별이 떨어진 날" Str="The Day Stars Fell" Desc="Investigate the meteor crash site and its effects"/>
+</LanguageData>

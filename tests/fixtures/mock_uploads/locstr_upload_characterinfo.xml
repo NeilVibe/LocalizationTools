@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LanguageData>
+  <LocStr StrKey="STR_CHAR_0001" StrOrigin="용감한 기사" Str="Brave Knight" Desc="A valiant warrior who fights for justice"/>
+  <LocStr StrKey="STR_CHAR_0002" StrOrigin="현명한 마법사" Str="Wise Mage" Desc="A sage versed in ancient magic"/>
+  <LocStr StrKey="STR_CHAR_0003" StrOrigin="은밀한 도적" Str="Stealthy Rogue" Desc="A shadow operative skilled in espionage"/>
+  <LocStr StrKey="STR_CHAR_0004" StrOrigin="신성한 사제" Str="Holy Priest" Desc="A healer blessed by divine power"/>
+  <LocStr StrKey="STR_CHAR_0005" StrOrigin="노련한 궁수" Str="Veteran Archer" Desc="A marksman with unmatched accuracy"/>
+  <LocStr StrKey="STR_CHAR_0006" StrOrigin="광전사 그론" Str="Berserker Gron" Desc="A fearless warrior who knows no retreat"/>
+  <LocStr StrKey="STR_CHAR_0007" StrOrigin="음유시인 아리아" Str="Bard Aria" Desc="Her songs carry magical power"/>
+  <LocStr StrKey="STR_CHAR_0008" StrOrigin="연금술사 코르" Str="Alchemist Kor" Desc="Master of potions and transmutation"/>
+  <LocStr StrKey="STR_CHAR_0009" StrOrigin="사냥꾼 타카" Str="Hunter Taka" Desc="Knows every trail in the wilderness"/>
+  <LocStr StrKey="STR_CHAR_0010" StrOrigin="무희 리나" Str="Dancer Lina" Desc="Her dance mesmerizes enemies"/>
+  <LocStr StrKey="STR_CHAR_0011" StrOrigin="용기사 드레이크" Str="Dragon Knight Drake" Desc="Rides dragons into battle"/>
+  <LocStr StrKey="STR_CHAR_0012" StrOrigin="암살자 실바" Str="Assassin Silva" Desc="Strikes from the shadows without mercy"/>
+  <LocStr StrKey="STR_CHAR_0013" StrOrigin="성기사 루미아" Str="Paladin Lumia" Desc="Champion of light and justice"/>
+  <LocStr StrKey="STR_CHAR_0014" StrOrigin="주술사 오카" Str="Shaman Oka" Desc="Communes with nature spirits"/>
+  <LocStr StrKey="STR_CHAR_0015" StrOrigin="검투사 렉스" Str="Gladiator Rex" Desc="Champion of the arena"/>
+  <LocStr StrKey="STR_CHAR_0016" StrOrigin="학자 에이든" Str="Scholar Aiden" Desc="Possesses vast knowledge of history"/>
+  <LocStr StrKey="STR_CHAR_0017" StrOrigin="마녀 노르나" Str="Witch Norna" Desc="Practices forbidden magic"/>
+  <LocStr StrKey="STR_CHAR_0018" StrOrigin="수호자 벨리온" Str="Guardian Bellion" Desc="Protects the walls with unwavering resolve"/>
+  <LocStr StrKey="STR_CHAR_0019" StrOrigin="치유사 유라" Str="Healer Yura" Desc="Angel of the battlefield"/>
+  <LocStr StrKey="STR_CHAR_0020" StrOrigin="상인 하나" Str="Merchant Hana" Desc="Deals in rare goods from distant lands"/>
+</LanguageData>

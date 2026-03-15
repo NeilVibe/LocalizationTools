@@ -1,0 +1,41 @@
+StringID	StrOrigin	Str	Desc
+SID_ITEM_0001	검은별의 장검	Blackstar Longsword	A legendary sword forged from blackstar fragments
+SID_ITEM_0002	카란다의 날개	Karanda's Wing	Wings crafted from the feathers of Karanda
+SID_ITEM_0003	크자카의 단검	Kzarka's Dagger	A cursed dagger from Kzarka's domain
+SID_ITEM_0004	누베르의 방패	Nouver's Shield	Desert shield infused with Nouver's power
+SID_ITEM_0005	쿠툼의 갑옷	Kutum's Armor	Ancient armor from Kutum's lair
+SID_ITEM_0006	오가의 반지	Ogre's Ring	A massive ring torn from an ogre
+SID_ITEM_0007	바실리스크의 허리띠	Basilisk's Belt	Petrified belt from the basilisk caves
+SID_ITEM_0008	시크리드의 목걸이	Sicrid's Necklace	An enchanted necklace of power
+SID_ITEM_0009	투발라의 귀걸이	Tuvala Earring	Earring from the Tuvala mines
+SID_ITEM_0010	나르실란의 검	Narsilan Sword	Legendary blade of ancient heroes
+SID_CHAR_0001	장로 바론	Elder Varon	Guardian of the old village
+SID_CHAR_0002	전사 키라	Warrior Kira	Brave warrior from the northern outpost
+SID_CHAR_0003	마법사 드라크마르	Sorcerer Drakmar	A sorcerer exploring ancient knowledge
+SID_CHAR_0004	정찰병 루네	Scout Rune	A scout who knows the forest paths
+SID_CHAR_0005	대장장이 그림조	Blacksmith Grimjo	Legendary weaponsmith
+SID_SKILL_0001	회전 베기	Spinning Slash	AoE melee attack skill
+SID_SKILL_0002	폭풍 찌르기	Storm Thrust	Piercing attack with storm damage
+SID_SKILL_0003	마력 폭발	Mana Explosion	Explosive magic burst
+SID_SKILL_0004	그림자 도약	Shadow Leap	Teleport behind the enemy
+SID_SKILL_0005	신성 방패	Holy Shield	Divine protection barrier
+SID_QUEST_0001	잃어버린 보물을 찾아서	In Search of Lost Treasure	Find the hidden treasure in the ruins
+SID_QUEST_0002	마을의 위기	Crisis in the Village	Defend the village from monsters
+SID_QUEST_0003	고대 유적 탐험	Ancient Ruins Expedition	Explore the ancient temple
+SID_QUEST_0004	용의 둥지	Dragon's Nest	Defeat the dragon and claim reward
+SID_QUEST_0005	어둠의 숲 정화	Purifying the Dark Forest	Clear corruption from the forest
+SID_UI_0001	저장하시겠습니까?	Do you want to save?	Save confirmation dialog
+SID_UI_0002	취소	Cancel	Cancel button label
+SID_UI_0003	확인	Confirm	Confirm button label
+SID_UI_0004	설정	Settings	Settings menu label
+SID_UI_0005	로그아웃	Logout	Logout button label
+SID_SYS_0001	접속 중...	Connecting...	Connection status message
+SID_SYS_0002	오류가 발생했습니다	An error occurred	Generic error message
+SID_SYS_0003	데이터를 불러오는 중	Loading data	Data loading status
+SID_SYS_0004	변경 사항이 저장되었습니다	Changes saved	Save confirmation message
+SID_SYS_0005	삭제하시겠습니까?	Are you sure you want to delete?	Delete confirmation dialog
+SID_SYS_0006	서버에 연결할 수 없습니다	Cannot connect to server	Server connection failure
+SID_SYS_0007	세션이 만료되었습니다	Session expired	Session timeout message
+SID_SYS_0008	권한이 없습니다	Permission denied	Authorization failure
+SID_SYS_0009	파일을 찾을 수 없습니다	File not found	File missing error
+SID_SYS_0010	업로드 완료	Upload complete	Upload success message
