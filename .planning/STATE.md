@@ -3,16 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Debug + Polish + Svelte 5 Migration
 status: unknown
-stopped_at: Completed 25-06-PLAN.md
-last_updated: "2026-03-15T22:46:49.819Z"
+stopped_at: Completed 25-09-PLAN.md
+last_updated: "2026-03-15T22:53:03.000Z"
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 19
-  completed_plans: 17
----
-
------|-------|--------------|
+  completed_plans: 18
+-------|--------------|
 | v1.0 | 7 | 20 | 42/42 |
 | v2.0 | 8 | 17 | 40/40 |
 | v3.0 | 7 | 14 | 45/45 |
@@ -24,6 +22,7 @@ progress:
 | Phase 25 P04 | 3min | 2 tasks | 3 files |
 | Phase 25 P02 | 8min | 3 tasks | 13 files |
 | Phase 25 P03 | 7min | 3 tasks | 6 files |
+| Phase 25 P09 | 4min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -65,6 +64,9 @@ progress:
 - [Phase 25]: Accept flexible status codes (401/403) for auth failures since FastAPI middleware varies
 - [Phase 25]: [25-07]: Parametrized column detection across 10 entity types for comprehensive coverage
 - [Phase 25]: Renamed test_tm_search.py to test_tm_search_api.py to avoid overwriting existing TMSearcher unit tests
+- [25-09]: Tools tests try multiple URL prefixes for endpoint discovery since tool routes may be mounted at different paths
+- [25-09]: Offline tests accept GRACEFUL tuple (200/404/422/500/501/503) since offline mode may not be active in test env
+- [25-09]: Admin no-500 batch check validates 8 admin-adjacent endpoints simultaneously
 
 ### Pending Todos
 
@@ -80,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T22:46:49.817Z
-Stopped at: Completed 25-06-PLAN.md
+Last session: 2026-03-15T22:53:03.000Z
+Stopped at: Completed 25-09-PLAN.md
 Resume file: None
