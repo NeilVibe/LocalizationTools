@@ -3,14 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Game Dev Platform + AI Intelligence
 status: executing
-stopped_at: Completed 20-01-PLAN.md
-last_updated: "2026-03-15T14:25:00Z"
-last_activity: 2026-03-15 -- Completed Phase 20 Plan 01 (WorldMap Backend)
+stopped_at: Completed 20-02-PLAN.md
+last_updated: "2026-03-15T14:36:00Z"
+last_activity: 2026-03-15 -- Completed Phase 20 Plan 02 (WorldMap Frontend)
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
@@ -20,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Game Dev authoring platform with AI-powered suggestions, interactive Codex, and integrated QA -- all local, zero cloud dependency
-**Current focus:** Phase 20 In Progress - Interactive World Map
+**Current focus:** Phase 20 Complete - Interactive World Map
 
 ## Current Position
 
-Phase: 20 (6 of 7 in v3.0) [Interactive World Map] IN PROGRESS
-Plan: 1 of 2 in current phase (1 DONE, 1 remaining)
-Status: Plan 01 complete, Plan 02 pending
-Last activity: 2026-03-15 -- Completed Phase 20 Plan 01 (WorldMap Backend)
+Phase: 20 (6 of 7 in v3.0) [Interactive World Map] COMPLETE
+Plan: 2 of 2 in current phase (2 DONE, 0 remaining)
+Status: Phase 20 complete, Phase 21 next
+Last activity: 2026-03-15 -- Completed Phase 20 Plan 02 (WorldMap Frontend)
 
-Progress: [██████████] 96% v3.0 (phases 15-19 complete, 20 in progress, 21 remaining)
+Progress: [██████████] 100% v3.0 plans (phases 15-20 complete, 21 remaining)
 
 ## Performance Metrics
 
@@ -42,7 +43,7 @@ Progress: [██████████] 96% v3.0 (phases 15-19 complete, 20 i
 |-----------|--------|-------|--------------|
 | v1.0 | 7 | 20 | 42/42 |
 | v2.0 | 8 | 17 | 40/40 |
-| v3.0 | 7 | 10 | 34/45 |
+| v3.0 | 7 | 12 | 39/45 |
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -55,6 +56,7 @@ Progress: [██████████] 96% v3.0 (phases 15-19 complete, 20 i
 | 19-01 | Codex Backend | 6min | 2 | 6 |
 | 19-02 | Codex Frontend | 5min | 3 | 6 |
 | 20-01 | WorldMap Backend | 4min | 2 | 6 |
+| 20-02 | WorldMap Frontend | 6min | 3 | 9 |
 
 ## Accumulated Context
 
@@ -103,6 +105,10 @@ All v1.0/v2.0 decisions archived in PROJECT.md Key Decisions table.
 - [20-01]: WorldPosition "X,0,Z" parsed by comma-split (Y always 0, ignored for 2D map)
 - [20-01]: Fallback to StrKey as node name when CodexService unavailable
 - [20-01]: entity_type_counts derived from Codex related_entities cross-references
+- [20-02]: d3-zoom applied in onMount with scaleExtent [0.5, 4] and double-click reset to identity
+- [20-02]: Node color/size by region_type: Main=blue/10, Dungeon=red/8, Town=green/9
+- [20-02]: Coordinate mapping uses linear scale from world bounds to 1000x1000 SVG viewBox with 50px padding
+- [20-02]: MapTooltip uses position:fixed with pointer-events:none to avoid hover interference
 
 ### Pending Todos
 
@@ -114,6 +120,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T14:25:00Z
-Stopped at: Completed 20-01-PLAN.md
-Resume: Phase 20 Plan 01 complete. Execute Plan 02 (WorldMap Frontend) next.
+Last session: 2026-03-15T14:34:23.347Z
+Stopped at: Completed 20-02-PLAN.md
+Resume: Phase 20 complete. Plan Phase 21 (AI Naming Coherence + Placeholders) next.

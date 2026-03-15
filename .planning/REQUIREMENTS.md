@@ -71,7 +71,7 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 - [x] **MAP-02**: Hover over a map node shows tooltip with name, description, and key NPCs
 - [x] **MAP-03**: Click a map node opens detail panel linking to Codex pages (characters, items, quests in that region)
 - [x] **MAP-04**: Route connections between nodes are visualized (from NodeWaypointInfo waypoints)
-- [ ] **MAP-05**: Map supports pan and zoom interaction (d3-zoom or equivalent)
+- [x] **MAP-05**: Map supports pan and zoom interaction (d3-zoom or equivalent)
 
 ### Placeholder Assets
 
@@ -154,7 +154,7 @@ Requirements for v3.0 milestone. Each maps to roadmap phases.
 | MAP-02 | Phase 20 | Complete |
 | MAP-03 | Phase 20 | Complete |
 | MAP-04 | Phase 20 | Complete |
-| MAP-05 | Phase 20 | Pending |
+| MAP-05 | Phase 20 | Complete |
 | PLACEHOLDER-01 | Phase 21 | Pending |
 | PLACEHOLDER-02 | Phase 21 | Pending |
 | PLACEHOLDER-03 | Phase 21 | Pending |

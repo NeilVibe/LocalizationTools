@@ -44,7 +44,7 @@
 - [x] **Phase 17: AI Translation Suggestions** - Ranked translation suggestions via Qwen3 with confidence scores and click-to-accept (completed 2026-03-15)
 - [x] **Phase 18: Game Dev Grid + File Explorer** - VS Code-like file explorer with hierarchical XML entity editing grid (completed 2026-03-15)
 - [x] **Phase 19: Game World Codex** - Interactive encyclopedia with character/item pages, semantic search, inline media (completed 2026-03-15)
-- [ ] **Phase 20: Interactive World Map** - Pan/zoom SVG map with positioned region nodes linked to Codex pages
+- [x] **Phase 20: Interactive World Map** - Pan/zoom SVG map with positioned region nodes linked to Codex pages (completed 2026-03-15)
 - [ ] **Phase 21: AI Naming Coherence + Placeholders** - Naming pattern suggestions and auto-generated placeholder assets for missing media
 
 ## Phase Details
@@ -186,5 +186,5 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18 -> 19 -> 20 -> 21
 | 17. AI Translation Suggestions | 2/2 | Complete    | 2026-03-15 | - |
 | 18. Game Dev Grid + File Explorer | 2/2 | Complete    | 2026-03-15 | - |
 | 19. Game World Codex | 2/2 | Complete    | 2026-03-15 | - |
-| 20. Interactive World Map | 1/2 | In Progress|  | - |
+| 20. Interactive World Map | 2/2 | Complete   | 2026-03-15 | - |
 | 21. AI Naming Coherence + Placeholders | v3.0 | 0/? | Not started | - |
