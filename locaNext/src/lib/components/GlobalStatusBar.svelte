@@ -49,7 +49,7 @@
   {#if !$statusBarVisible}
     <button
       class="minimized-indicator"
-      on:click={showStatusBar}
+      onclick={showStatusBar}
       title="Show progress"
     >
       <span class="pulse"></span>

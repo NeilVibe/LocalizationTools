@@ -486,7 +486,7 @@
     {:else}
       <!-- Main Buttons -->
       <div class="launcher-buttons">
-        <button class="launcher-btn offline-btn" on:click={handleStartOffline}>
+        <button class="launcher-btn offline-btn" onclick={handleStartOffline}>
           <CloudOffline size={32} />
           <span class="btn-title">Start Offline</span>
           <span class="btn-subtitle">No account needed</span>
@@ -494,7 +494,7 @@
 
         <button
           class="launcher-btn login-btn"
-          on:click={handleLoginClick}
+          onclick={handleLoginClick}
           disabled={$serverStatus !== 'connected'}
         >
           <LoginIcon size={32} />
