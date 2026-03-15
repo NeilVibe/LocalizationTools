@@ -1150,10 +1150,10 @@
     showPretranslateModal = true;
   }
 
-  function handlePretranslateComplete(event) {
+  function handlePretranslateComplete(result) {
     showPretranslateModal = false;
     pretranslateFile = null;
-    onPretranslateComplete?.(event.detail);
+    onPretranslateComplete?.(result);
     if (selectedFileId) {
       onFileSelect?.({ fileId: selectedFileId });
     }
@@ -2837,8 +2837,8 @@
   <PretranslateModal
     bind:open={showPretranslateModal}
     file={pretranslateFile}
-    on:complete={handlePretranslateComplete}
-    on:close={() => { showPretranslateModal = false; pretranslateFile = null; }}
+    onCompleted={handlePretranslateComplete}
+    onClose={() => { showPretranslateModal = false; pretranslateFile = null; }}
   />
 {/if}
 
@@ -2872,8 +2872,8 @@
     resourceType={accessControlResource.type}
     resourceId={accessControlResource.id}
     resourceName={accessControlResource.name}
-    on:change={handleAccessControlChange}
-    on:close={() => { showAccessControlModal = false; accessControlResource = null; }}
+    onChange={handleAccessControlChange}
+    onClose={() => { showAccessControlModal = false; accessControlResource = null; }}
   />
 {/if}
 
