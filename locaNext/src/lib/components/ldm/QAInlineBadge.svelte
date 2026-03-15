@@ -134,18 +134,6 @@
   }
 
   /**
-   * Handle click outside to close popover
-   */
-  function handleClickOutside(event) {
-    // Close if click is outside the badge container
-    const target = event.target;
-    const container = event.currentTarget?.closest?.('.qa-inline-badge');
-    if (!container?.contains(target)) {
-      closePopover();
-    }
-  }
-
-  /**
    * Truncate message to max chars
    */
   function truncate(text, maxLen = 80) {
@@ -170,11 +158,12 @@
 
     {#if expanded}
       <!-- Popover backdrop for click-outside -->
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         class="qa-popover-backdrop"
         onclick={(e) => { e.stopPropagation(); closePopover(); }}
         onkeydown={(e) => e.key === "Escape" && closePopover()}
+        tabindex="-1"
+        role="presentation"
       ></div>
 
       <!-- Popover -->

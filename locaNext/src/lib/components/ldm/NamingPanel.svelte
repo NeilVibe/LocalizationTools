@@ -120,6 +120,8 @@
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
+      if (abortController) abortController.abort();
+      loading = false;
     };
   });
 </script>
