@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SceneObjectDataList>
+  <SceneObjectData Key="40001" StrKey="STR_SOD_TOWN_0001" ObjectName="마을 우물" ObjectDesc="마을 중앙에 있는 오래된 우물.&lt;br/&gt;깨끗한 물이 끊임없이 솟아난다." ObjectType="Landmark" Position="120.5,0,340.2" SceneType="Town" AliasName="Well_Central"/>
+  <SceneObjectData Key="40002" StrKey="STR_SOD_TOWN_0002" ObjectName="대장간" ObjectDesc="무기와 방어구를 제작하는 대장간.&lt;br/&gt;망치 소리가 끊이지 않는다." ObjectType="Shop" Position="150.3,0,280.7" SceneType="Town" AliasName="Blacksmith_Main"/>
+  <SceneObjectData Key="40003" StrKey="STR_SOD_TOWN_0003" ObjectName="여관&lt;br/&gt;달빛 쉼터" ObjectDesc="여행자들이 쉬어가는 여관.&lt;br/&gt;따뜻한 식사와 편안한 잠자리를 제공한다." ObjectType="Inn" Position="200.1,0,310.5" SceneType="Town" AliasName="Inn_Moonlight"/>
+  <SceneObjectData Key="40004" StrKey="STR_SOD_TOWN_0004" ObjectName="광장 분수대" ObjectDesc="아름다운 조각이 새겨진 분수대." ObjectType="Landmark" Position="175.0,0,325.0" SceneType="Town" AliasName="Fountain_Square"/>
+  <SceneObjectData Key="40005" StrKey="STR_SOD_TOWN_0005" ObjectName="모험가 길드" ObjectDesc="모험가들이 모이는 길드 건물.&lt;br/&gt;퀘스트 게시판이 입구에 있다.&lt;br/&gt;다양한 의뢰를 수주할 수 있다." ObjectType="Guild" Position="130.8,0,290.3" SceneType="Town" AliasName="Guild_Adventurer"/>
+  <SceneObjectData Key="40006" StrKey="STR_SOD_TOWN_0006" ObjectName="잡화점" ObjectDesc="생활에 필요한 다양한 물건을 판매한다." ObjectType="Shop" Position="160.2,0,350.1" SceneType="Town" AliasName="Shop_General"/>
+  <SceneObjectData Key="40007" StrKey="STR_SOD_TOWN_0007" ObjectName="마법상점" ObjectDesc="마법 재료와 주문서를 취급하는 상점.&lt;br/&gt;희귀한 마법 도구도 구할 수 있다." ObjectType="Shop" Position="190.7,0,265.4" SceneType="Town" AliasName="Shop_Magic"/>
+  <SceneObjectData Key="40008" StrKey="STR_SOD_TOWN_0008" ObjectName="마을 게시판" ObjectDesc="마을의 소식과 의뢰가 게시된 게시판." ObjectType="Landmark" Position="175.5,0,330.0" SceneType="Town" AliasName="Board_Notice"/>
+  <SceneObjectData Key="40009" StrKey="STR_SOD_TOWN_0009" ObjectName="성문" ObjectDesc="마을을 보호하는 거대한 성문.&lt;br/&gt;경비병이 항상 지키고 있다." ObjectType="Gate" Position="100.0,0,400.0" SceneType="Town" AliasName="Gate_Main"/>
+  <SceneObjectData Key="40010" StrKey="STR_SOD_TOWN_0010" ObjectName="교회" ObjectDesc="신앙의 중심지인 교회.&lt;br/&gt;치유와 축복을 받을 수 있다." ObjectType="Temple" Position="210.5,0,270.8" SceneType="Town" AliasName="Church_Main"/>
+  <SceneObjectData Key="40011" StrKey="STR_SOD_TOWN_0011" ObjectName="창고" ObjectDesc="물자를 보관하는 대형 창고." ObjectType="Storage" Position="140.0,0,360.5" SceneType="Town" AliasName="Warehouse_Main"/>
+  <SceneObjectData Key="40012" StrKey="STR_SOD_TOWN_0012" ObjectName="마을 장로의 집" ObjectDesc="마을 장로가 거주하는 저택.&lt;br/&gt;중요한 결정이 이곳에서 내려진다." ObjectType="Residence" Position="185.3,0,300.0" SceneType="Town" AliasName="House_Elder"/>
+</SceneObjectDataList>
