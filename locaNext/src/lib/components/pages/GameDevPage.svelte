@@ -18,6 +18,8 @@
 
   // Check if running in Electron (for native folder picker)
   const isElectron = typeof window !== 'undefined' && window.electron;
+  // Check if browser supports File System Access API (Chrome/Edge)
+  const hasFileSystemAccess = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
   // State (Svelte 5 Runes)
   let selectedGameDevFile = $state(null);
@@ -31,6 +33,33 @@
   // Naming panel state (Phase 21)
   let editingEntityName = $state('');
   let editingEntityType = $state('');
+
+  // NAV-04: Auto-load indicator state
+  let autoLoading = $state(false);
+
+  // DEV mode: auto-load mock gamedata if no path is set
+  $effect(() => {
+    if (!activePath && !$gamedevBasePath) {
+      autoLoading = true;
+      // Try to auto-detect mock gamedata via API
+      fetch(`${API_BASE}/api/ldm/gamedata/browse`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base_path: '' })
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.base_path) {
+            pathInput = data.base_path;
+            activePath = data.base_path;
+            gamedevBasePath.set(data.base_path);
+            logger.info('Auto-loaded mock gamedata path', { path: data.base_path });
+          }
+        })
+        .catch(() => { /* silent — user can set path manually */ })
+        .finally(() => { autoLoading = false; });
+    }
+  });
 
   // Derive file type for VirtualGrid
   let currentFileId = $derived($openFile?.id || null);
@@ -49,35 +78,64 @@
   }
 
   /**
-   * Open native folder picker dialog (Electron only)
-   * Falls back to applyPath() in browser/DEV mode.
+   * Open folder picker dialog.
+   * Electron: native dialog. Browser: File System Access API. Fallback: apply text input.
    */
   async function browseFolder() {
-    if (!isElectron) {
-      // In DEV mode, just apply the typed path
-      applyPath();
-      return;
-    }
-
-    try {
-      const folderPath = await window.electron.selectFolder({
-        title: 'Select Gamedata Folder'
-      });
-
-      if (!folderPath) {
-        logger.info('Folder selection cancelled');
+    // Electron: native folder dialog
+    if (isElectron) {
+      try {
+        const folderPath = await window.electron.selectFolder({
+          title: 'Select Gamedata Folder'
+        });
+        if (!folderPath) {
+          logger.info('Folder selection cancelled');
+          return;
+        }
+        pathInput = folderPath;
+        activePath = folderPath;
+        gamedevBasePath.set(folderPath);
+        logger.userAction('Game Dev folder selected via Electron dialog', { path: folderPath });
         return;
+      } catch (err) {
+        logger.error('Electron folder picker failed', { error: err.message });
       }
-
-      pathInput = folderPath;
-      activePath = folderPath;
-      gamedevBasePath.set(folderPath);
-      logger.userAction('Game Dev folder selected via dialog', { path: folderPath });
-    } catch (err) {
-      logger.error('Folder picker failed', { error: err.message });
-      // Fallback: apply whatever is in the input
-      applyPath();
     }
+
+    // Browser: File System Access API (Chrome/Edge)
+    if (hasFileSystemAccess) {
+      try {
+        const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+        // Send the directory handle to the backend via a special endpoint
+        // that registers the handle and returns a virtual path
+        const response = await fetch(`${API_BASE}/api/ldm/gamedata/register-browser-folder`, {
+          method: 'POST',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder_name: dirHandle.name })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          pathInput = data.path || dirHandle.name;
+          activePath = pathInput;
+          gamedevBasePath.set(pathInput);
+          logger.userAction('Game Dev folder selected via browser picker', { path: pathInput });
+        } else {
+          // Fallback: use the folder name directly
+          pathInput = dirHandle.name;
+          applyPath();
+        }
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          logger.info('Folder selection cancelled');
+          return;
+        }
+        logger.warning('Browser folder picker failed, falling back to text input', { error: err.message });
+      }
+    }
+
+    // Fallback: apply whatever is in the text input
+    applyPath();
   }
 
   /**
@@ -229,6 +287,13 @@
         <ArrowRight size={16} />
       </button>
     </div>
+
+    {#if autoLoading}
+      <div class="auto-load-indicator">
+        <span class="auto-load-dot"></span>
+        Loading game data...
+      </div>
+    {/if}
 
     <div class="explorer-tree-container">
       {#if activePath}
@@ -398,6 +463,30 @@
 
   .apply-button {
     color: var(--cds-link-01);
+  }
+
+  .auto-load-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    color: var(--cds-text-02);
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    flex-shrink: 0;
+  }
+
+  .auto-load-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cds-interactive);
+    animation: pulse-dot 1s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
   }
 
   .explorer-tree-container {
