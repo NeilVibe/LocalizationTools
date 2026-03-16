@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: GameData Tree UI + Context Intelligence + Image Gen
-status: completed
-stopped_at: Phase 29 deep research complete, context updated
-last_updated: "2026-03-16T08:05:35.473Z"
-last_activity: 2026-03-16 -- Phase 28 Plan 03 executed (cross-ref navigation + visual polish)
+status: in-progress
+stopped_at: Completed 29-01-PLAN.md
+last_updated: "2026-03-16T08:26:34.775Z"
+last_activity: 2026-03-16 -- Phase 29 Plan 01 executed (GameDataIndexer + GameDataSearcher)
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
-  percent: 100
+  total_plans: 9
+  completed_plans: 7
+  percent: 78
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Game developers explore hierarchical XML game data in a beautiful tree interface with AI-powered context intelligence -- faster than any code editor.
-**Current focus:** Phase 28 - Hierarchical Tree UI
+**Current focus:** Phase 29 - Multi-Tier Indexing
 
 ## Current Position
 
-Phase: 28 of 31 (Hierarchical Tree UI)
-Plan: 3 of 3 in current phase
-Status: Phase 28 complete (all 3 plans done)
-Last activity: 2026-03-16 -- Phase 28 Plan 03 executed (cross-ref navigation + visual polish)
+Phase: 29 of 31 (Multi-Tier Indexing)
+Plan: 1 of 3 in current phase
+Status: Plan 01 complete, 2 plans remaining
+Last activity: 2026-03-16 -- Phase 29 Plan 01 executed (GameDataIndexer + GameDataSearcher)
 
-Progress: [██████████] 100%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [██████████] 100%
 | Phase 28 P01 | 4min | 2 tasks | 2 files |
 | Phase 28 P03 | 3min | 2 tasks | 1 files |
 | Phase 28 P02 | 3min | 2 tasks | 2 files |
+| Phase 29 P01 | 5min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Recent decisions affecting current work:
 - [Phase 28-03]: Single ChevronRight with CSS rotate(90deg) animation instead of icon swapping
 - [Phase 28-03]: ENTITY_TYPE_COLORS map with 14 entity types for centralized color palette
 - [Phase 28]: PUT method for save endpoint (matching backend router definition); editable attrs sorted first in attribute list
+- [Phase 29]: FAISSManager.build_index(path=None) for in-memory gamedata indexes -- rebuilt on each folder load
+- [Phase 29]: Whole lookup indexes 3 keys per entity (name, Key, StrKey) for O(1) IDX-01 lookup
+- [Phase 29]: AC automaton stores (idx, name, node_id, tag) tuple for direct entity detection without secondary lookup
 
 ### Pending Todos
 
@@ -90,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T08:05:35.471Z
-Stopped at: Phase 29 deep research complete, context updated
-Resume file: .planning/phases/29-multi-tier-indexing/29-CONTEXT.md
+Last session: 2026-03-16T08:25:07Z
+Stopped at: Completed 29-01-PLAN.md
+Resume file: .planning/phases/29-multi-tier-indexing/29-01-SUMMARY.md

@@ -213,6 +213,6 @@ Phases execute in numeric order: 26 -> 27 -> 28 -> 29 -> 30 -> 31
 | 26. Navigation + DEV Parity | 1/1 | Complete    | 2026-03-16 | - |
 | 27. Tree Backend + Mock Data | 2/2 | Complete    | 2026-03-16 | - |
 | 28. Hierarchical Tree UI | 3/3 | Complete    | 2026-03-16 | - |
-| 29. Multi-Tier Indexing | v3.2 | 0/3 | Not started | - |
+| 29. Multi-Tier Indexing | v3.2 | 1/3 | In progress | - |
 | 30. Context Intelligence Panel | v3.2 | 0/2 | Not started | - |
 | 31. Codex AI Image Generation | v3.2 | 0/2 | Not started | - |
