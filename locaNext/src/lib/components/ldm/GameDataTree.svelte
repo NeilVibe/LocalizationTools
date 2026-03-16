@@ -46,6 +46,15 @@
   let hoveredNodeId = $state(null);
   let hoverTimer = null;
 
+  // Index state (Phase 29: auto-index + search)
+  let indexReady = $state(false);
+  let indexing = $state(false);
+  let indexStats = $state(null);
+  let searchQuery = $state('');
+  let searchResults = $state([]);
+  let searching = $state(false);
+  let searchDebounceTimer = null;
+
   // Flat list of visible nodes for keyboard navigation
   let visibleNodes = $derived(buildVisibleNodes());
 
@@ -320,6 +329,9 @@
         nodeCount: data.node_count,
         entityType: data.entity_type
       });
+      // Phase 29: Auto-build index for single file (extract directory)
+      const dirPath = path.substring(0, path.lastIndexOf('/'));
+      if (dirPath) buildIndex(dirPath);
     }, 'file tree');
   }
 
@@ -343,6 +355,8 @@
         fileCount: treeData.length,
         totalNodes: data.total_nodes
       });
+      // Phase 29: Auto-build index after folder tree loads (fire-and-forget)
+      buildIndex(path);
     }, 'folder tree');
   }
 
@@ -484,9 +498,120 @@
     if (filePath) loadFileTree(filePath);
     else if (folderPath) loadFolderTree(folderPath);
   }
+
+  // ========================================
+  // Index Integration (Phase 29)
+  // ========================================
+
+  /**
+   * Build search index for the loaded folder (fire-and-forget after tree load)
+   */
+  async function buildIndex(path) {
+    indexing = true;
+    indexReady = false;
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/gamedata/index/build`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        indexStats = data;
+        indexReady = true;
+        logger.success('Index built', { entities: data.entity_count, ms: data.build_time_ms });
+      } else {
+        logger.error('Index build returned error', { status: response.status });
+      }
+    } catch (err) {
+      logger.error('Index build failed', { error: err.message });
+    } finally {
+      indexing = false;
+    }
+  }
+
+  /**
+   * Search entities via cascade search API
+   */
+  async function searchEntities(query) {
+    if (!query.trim() || !indexReady) {
+      searchResults = [];
+      return;
+    }
+    searching = true;
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/gamedata/index/search`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query.trim(), top_k: 10 })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        searchResults = data.results || [];
+      }
+    } catch (err) {
+      logger.error('Search failed', { error: err.message });
+    } finally {
+      searching = false;
+    }
+  }
+
+  /**
+   * Debounced search handler (300ms)
+   */
+  function handleSearchInput(event) {
+    searchQuery = event.target.value;
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => searchEntities(searchQuery), 300);
+  }
+
+  /**
+   * Navigate to a search result node: expand parents, select, scroll into view
+   */
+  function navigateToResult(result) {
+    const targetNodeId = result.node_id;
+    const found = selectAndRevealNode(targetNodeId);
+    if (found) {
+      searchResults = [];
+      searchQuery = '';
+    } else {
+      logger.warning('Search result node not found in tree', { node_id: targetNodeId });
+    }
+  }
 </script>
 
 <div class="gamedata-tree" role="tree" tabindex="0" onkeydown={handleKeydown}>
+  <!-- Phase 29: Search bar (visible when folder/file is loaded) -->
+  {#if folderPath || filePath}
+    <div class="tree-search">
+      <input
+        type="search"
+        placeholder={indexReady ? `Search ${indexStats?.entity_count || ''} entities...` : indexing ? 'Indexing...' : 'Search entities...'}
+        value={searchQuery}
+        oninput={handleSearchInput}
+        disabled={!indexReady}
+        class="search-input"
+      />
+      {#if indexing}
+        <span class="index-status">Indexing...</span>
+      {/if}
+      {#if searching}
+        <span class="index-status">Searching...</span>
+      {/if}
+      {#if searchResults.length > 0}
+        <div class="search-dropdown">
+          {#each searchResults as result (result.node_id + result.entity_name)}
+            <button class="search-result" onclick={() => navigateToResult(result)}>
+              <span class="result-name">{result.entity_name}</span>
+              <span class="result-tag">{result.tag}</span>
+              <span class="result-score">{result.match_type}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {/if}
+
   {#if loading}
     <div class="loading-state">
       <SkeletonText lines={8} />
@@ -1011,5 +1136,108 @@
   /* Tree children indentation guide */
   .tree-children {
     /* Indentation handled via padding-left on each node */
+  }
+
+  /* Phase 29: Search Bar */
+  .tree-search {
+    position: relative;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    flex-shrink: 0;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    background: var(--cds-field-01);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    color: var(--cds-text-01);
+    font-size: 0.75rem;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  .search-input:focus {
+    border-color: var(--cds-focus);
+    box-shadow: 0 0 0 1px var(--cds-focus);
+  }
+
+  .search-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .search-input::placeholder {
+    color: var(--cds-text-03);
+  }
+
+  .index-status {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.6875rem;
+    color: var(--cds-text-03);
+  }
+
+  .search-dropdown {
+    position: absolute;
+    left: 0.5rem;
+    right: 0.5rem;
+    top: calc(100% - 2px);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 10;
+    background: var(--cds-layer-02);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  }
+
+  .search-result {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.75rem;
+    color: var(--cds-text-01);
+    text-align: left;
+  }
+
+  .search-result:last-child {
+    border-bottom: none;
+  }
+
+  .search-result:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .result-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .result-tag {
+    font-size: 0.6875rem;
+    color: var(--cds-text-02);
+    flex-shrink: 0;
+  }
+
+  .result-score {
+    font-size: 0.625rem;
+    color: var(--cds-text-03);
+    flex-shrink: 0;
+    padding: 1px 4px;
+    background: var(--cds-layer-01);
+    border-radius: 3px;
   }
 </style>
