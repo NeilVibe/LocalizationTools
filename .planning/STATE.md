@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: GameData Tree UI + Context Intelligence + Image Gen
 status: completed
-stopped_at: Completed 28-02-PLAN.md
-last_updated: "2026-03-16T07:33:12.025Z"
-last_activity: 2026-03-16 -- Phase 28 Plan 02 executed (NodeDetailPanel with editable attrs + optimistic save)
+stopped_at: Completed 28-03-PLAN.md
+last_updated: "2026-03-16T07:33:20Z"
+last_activity: 2026-03-16 -- Phase 28 Plan 03 executed (cross-ref navigation + visual polish)
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 28 of 31 (Hierarchical Tree UI)
-Plan: 2 of 3 in current phase
-Status: Phase 28 plan 02 complete
-Last activity: 2026-03-16 -- Phase 28 Plan 02 executed (NodeDetailPanel with editable attrs + optimistic save)
+Plan: 3 of 3 in current phase
+Status: Phase 28 complete (all 3 plans done)
+Last activity: 2026-03-16 -- Phase 28 Plan 03 executed (cross-ref navigation + visual polish)
 
-Progress: [████████░░] 83%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [████████░░] 83%
 | 27-02 | 2min | 2 | 2 |
 | Phase 27 P01 | 6min | 2 tasks | 6 files |
 | Phase 28 P01 | 4min | 2 tasks | 2 files |
+| Phase 28 P03 | 3min | 2 tasks | 1 files |
 | Phase 28 P02 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
@@ -73,6 +74,10 @@ Recent decisions affecting current work:
 - [Phase 28-01]: Lightning icon for skills (Fleet unavailable in carbon-icons-svelte); 13 entity types mapped
 - [Phase 28-01]: Recursive {#snippet renderNode(node, depth)} pattern for hierarchical tree rendering
 - [Phase 28-01]: EDITABLE_ATTRS mirrored from backend to derive primary display labels client-side
+- [Phase 28-03]: Cross-ref detection uses explicit set + heuristic (ending in Key/Id) for extensibility
+- [Phase 28-03]: Node index uses prefixed keys (key:, nodeid:, id:) to avoid collisions
+- [Phase 28-03]: Single ChevronRight with CSS rotate(90deg) animation instead of icon swapping
+- [Phase 28-03]: ENTITY_TYPE_COLORS map with 14 entity types for centralized color palette
 - [Phase 28]: PUT method for save endpoint (matching backend router definition); editable attrs sorted first in attribute list
 
 ### Pending Todos
@@ -85,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T07:33:12.023Z
-Stopped at: Completed 28-02-PLAN.md
-Resume file: None
+Last session: 2026-03-16T07:33:20Z
+Stopped at: Completed 28-03-PLAN.md (cross-ref navigation + visual polish)
+Resume file: Next phase

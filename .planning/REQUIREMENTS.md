@@ -12,9 +12,9 @@
 - [x] **TREE-03**: Dynamic node rendering adapts per XML structure — skills show SkillTree→SkillNode→Knowledge hierarchy, items show flat ItemInfo, gimmicks show GimmickGroup→Gimmick nesting, regions show SceneObjectData children
 - [x] **TREE-04**: Node detail panel shows all attributes of selected node + its children inline, with editable text fields for name/desc attributes (respects EDITABLE_ATTRS mapping)
 - [x] **TREE-05**: Backend XML parser uses clean lxml tree walking (like QACompiler region/skill generators — `el.iter()`, `el.findall()`, parent/child navigation), not flat row extraction
-- [ ] **TREE-06**: Cross-reference resolution — SkillInfo.LearnKnowledgeKey links to KnowledgeInfo, KnowledgeList links children to parents, all navigable in UI via clickable links
+- [x] **TREE-06**: Cross-reference resolution — SkillInfo.LearnKnowledgeKey links to KnowledgeInfo, KnowledgeList links children to parents, all navigable in UI via clickable links
 - [x] **TREE-07**: Mock gamedata fixtures expanded with real hierarchical examples (SkillTreeInfo with nested SkillNodes + ParentId, KnowledgeInfo with KnowledgeList children) based on exampleofskillgamedata.txt patterns
-- [ ] **TREE-08**: Tree UI is BEAUTIFUL — better than VS Code tree view. Proper indentation, color-coded node types, expand/collapse animations, entity icons per type, hover previews
+- [x] **TREE-08**: Tree UI is BEAUTIFUL — better than VS Code tree view. Proper indentation, color-coded node types, expand/collapse animations, entity icons per type, hover previews
 
 ### IDX — Multi-Tier Indexing & Performance
 
@@ -82,8 +82,8 @@
 | TREE-02 | Phase 28 | Complete |
 | TREE-03 | Phase 28 | Complete |
 | TREE-04 | Phase 28 | Complete |
-| TREE-06 | Phase 28 | Pending |
-| TREE-08 | Phase 28 | Pending |
+| TREE-06 | Phase 28 | Complete |
+| TREE-08 | Phase 28 | Complete |
 | IDX-01 | Phase 29 | Pending |
 | IDX-02 | Phase 29 | Pending |
 | IDX-03 | Phase 29 | Pending |
