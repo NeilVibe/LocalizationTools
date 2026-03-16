@@ -65,7 +65,7 @@
 **Milestone Goal:** Rework the Game Data page from flat grid to hierarchical XML tree navigator with parent/child node expansion, add a right-side context panel with TM suggestions/images/audio/AI context, generate AI images for Codex, and achieve sub-second lookup via multi-tier indexing.
 
 - [x] **Phase 26: Navigation + DEV Parity** - Rename sidebar tabs, add showDirectoryPicker for browser, auto-load mock data, enforce file type separation (completed 2026-03-16)
-- [ ] **Phase 27: Tree Backend + Mock Data** - lxml tree walker API and expanded mock fixtures with real hierarchical XML structures
+- [x] **Phase 27: Tree Backend + Mock Data** - lxml tree walker API and expanded mock fixtures with real hierarchical XML structures (completed 2026-03-16)
 - [ ] **Phase 28: Hierarchical Tree UI** - Beautiful expandable tree with node detail panel, cross-reference links, and folder loading
 - [ ] **Phase 29: Multi-Tier Indexing** - Hashtable + FAISS + Aho-Corasick indexing for instant entity lookup across all loaded gamedata
 - [ ] **Phase 30: Context Intelligence Panel** - Right panel with TM suggestions, images, audio, AI context via 5-tier cascade search, and cross-references
@@ -210,7 +210,7 @@ Phases execute in numeric order: 26 -> 27 -> 28 -> 29 -> 30 -> 31
 | 24. UIUX Polish | v3.1 | 2/2 | Complete | 2026-03-15 |
 | 25. Comprehensive API E2E Testing | v3.1 | 10/10 | Complete | 2026-03-16 |
 | 26. Navigation + DEV Parity | 1/1 | Complete    | 2026-03-16 | - |
-| 27. Tree Backend + Mock Data | 1/2 | In Progress|  | - |
+| 27. Tree Backend + Mock Data | 2/2 | Complete   | 2026-03-16 | - |
 | 28. Hierarchical Tree UI | v3.2 | 0/3 | Not started | - |
 | 29. Multi-Tier Indexing | v3.2 | 0/2 | Not started | - |
 | 30. Context Intelligence Panel | v3.2 | 0/2 | Not started | - |

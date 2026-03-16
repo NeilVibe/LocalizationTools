@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: GameData Tree UI + Context Intelligence + Image Gen
 status: completed
-stopped_at: Completed 27-02-PLAN.md (mock data expansion)
-last_updated: "2026-03-16T06:39:34.851Z"
-last_activity: 2026-03-16 -- Phase 26 Plan 01 executed (NAV-01 through NAV-05)
+stopped_at: Completed 27-01-PLAN.md (tree backend service + endpoints)
+last_updated: "2026-03-16T06:44:50.596Z"
+last_activity: 2026-03-16 -- Phase 27 Plan 02 executed (TREE-07 mock data expansion)
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 3
-  completed_plans: 2
-  percent: 100
+  completed_plans: 3
+  percent: 67
 ---
 
 # Project State
@@ -49,6 +49,7 @@ Progress: [███████░░░] 67%
 | Phase-Plan | Duration | Tasks | Files |
 |------------|----------|-------|-------|
 | 27-02 | 2min | 2 | 2 |
+| Phase 27 P01 | 6min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,8 @@ Recent decisions affecting current work:
 - [Phase 26]: File type enforcement via optional context Form parameter -- backward compatible
 - [Phase 26]: Validation server-side after XML parse, not client-side MIME check
 - [Phase 27-02]: Used real game data patterns from exampleofskillgamedata.txt for authentic hierarchy structures in fixtures
+- [Phase 27]: Use findall('*') for lxml tree walking to satisfy TREE-05 and skip XML comments
+- [Phase 27]: ParentNodeId='0' treated as root-level children; other values nested under matching NodeId
 
 ### Pending Todos
 
@@ -76,6 +79,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T06:39:34.849Z
-Stopped at: Completed 27-02-PLAN.md (mock data expansion)
+Last session: 2026-03-16T06:44:50.594Z
+Stopped at: Completed 27-01-PLAN.md (tree backend service + endpoints)
 Resume file: None
