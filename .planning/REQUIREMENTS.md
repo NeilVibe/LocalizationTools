@@ -16,13 +16,13 @@
 
 ### CDX -- Codex Revamp
 
-- [ ] **CDX-01**: Codex loads entities in pages of 50 via paginated API (offset/limit) instead of loading all at once
-- [ ] **CDX-02**: IntersectionObserver sentinel triggers next page load as user scrolls near bottom
-- [ ] **CDX-03**: Skeleton cards show during page load, matching real card dimensions
-- [ ] **CDX-04**: Entity images use loading="lazy" with placeholder shown until image enters viewport
+- [x] **CDX-01**: Codex loads entities in pages of 50 via paginated API (offset/limit) instead of loading all at once
+- [x] **CDX-02**: IntersectionObserver sentinel triggers next page load as user scrolls near bottom
+- [x] **CDX-03**: Skeleton cards show during page load, matching real card dimensions
+- [x] **CDX-04**: Entity images use loading="lazy" with placeholder shown until image enters viewport
 - [ ] **CDX-05**: Search-first UX -- search bar prominent at top, results update as user types with debounce
 - [ ] **CDX-06**: Category tabs with counts, cached per tab so switching is instant
-- [ ] **CDX-07**: Codex feels like a polished encyclopedia -- consistent card sizes, smooth transitions, no layout shift
+- [x] **CDX-07**: Codex feels like a polished encyclopedia -- consistent card sizes, smooth transitions, no layout shift
 
 ### GDT -- GameData Tree Polish
 
@@ -90,13 +90,13 @@
 | FND-04 | Phase 32 | Complete |
 | FND-05 | Phase 32 | Complete |
 | FND-06 | Phase 32 | Complete |
-| CDX-01 | Phase 33 | Pending |
-| CDX-02 | Phase 33 | Pending |
-| CDX-03 | Phase 33 | Pending |
-| CDX-04 | Phase 33 | Pending |
+| CDX-01 | Phase 33 | Complete |
+| CDX-02 | Phase 33 | Complete |
+| CDX-03 | Phase 33 | Complete |
+| CDX-04 | Phase 33 | Complete |
 | CDX-05 | Phase 33 | Pending |
 | CDX-06 | Phase 33 | Pending |
-| CDX-07 | Phase 33 | Pending |
+| CDX-07 | Phase 33 | Complete |
 | GDT-01 | Phase 34 | Pending |
 | GDT-02 | Phase 34 | Pending |
 | GDT-03 | Phase 34 | Pending |
