@@ -7,9 +7,9 @@
 
 ### TREE — GameData Hierarchical Tree UI
 
-- [ ] **TREE-01**: GameData XML files display as expandable node trees showing parent/child hierarchy (SkillNode ParentId, KnowledgeInfo KnowledgeList nesting, GimmickGroup→GimmickInfo, etc.)
-- [ ] **TREE-02**: Full folder loading — user selects a gamedata root folder and the entire tree loads with all XML files browsable instantly via pre-indexing
-- [ ] **TREE-03**: Dynamic node rendering adapts per XML structure — skills show SkillTree→SkillNode→Knowledge hierarchy, items show flat ItemInfo, gimmicks show GimmickGroup→Gimmick nesting, regions show SceneObjectData children
+- [x] **TREE-01**: GameData XML files display as expandable node trees showing parent/child hierarchy (SkillNode ParentId, KnowledgeInfo KnowledgeList nesting, GimmickGroup→GimmickInfo, etc.)
+- [x] **TREE-02**: Full folder loading — user selects a gamedata root folder and the entire tree loads with all XML files browsable instantly via pre-indexing
+- [x] **TREE-03**: Dynamic node rendering adapts per XML structure — skills show SkillTree→SkillNode→Knowledge hierarchy, items show flat ItemInfo, gimmicks show GimmickGroup→Gimmick nesting, regions show SceneObjectData children
 - [ ] **TREE-04**: Node detail panel shows all attributes of selected node + its children inline, with editable text fields for name/desc attributes (respects EDITABLE_ATTRS mapping)
 - [x] **TREE-05**: Backend XML parser uses clean lxml tree walking (like QACompiler region/skill generators — `el.iter()`, `el.findall()`, parent/child navigation), not flat row extraction
 - [ ] **TREE-06**: Cross-reference resolution — SkillInfo.LearnKnowledgeKey links to KnowledgeInfo, KnowledgeList links children to parents, all navigable in UI via clickable links
@@ -78,9 +78,9 @@
 | NAV-05 | Phase 26 | Complete |
 | TREE-05 | Phase 27 | Complete |
 | TREE-07 | Phase 27 | Complete |
-| TREE-01 | Phase 28 | Pending |
-| TREE-02 | Phase 28 | Pending |
-| TREE-03 | Phase 28 | Pending |
+| TREE-01 | Phase 28 | Complete |
+| TREE-02 | Phase 28 | Complete |
+| TREE-03 | Phase 28 | Complete |
 | TREE-04 | Phase 28 | Pending |
 | TREE-06 | Phase 28 | Pending |
 | TREE-08 | Phase 28 | Pending |

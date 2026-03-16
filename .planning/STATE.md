@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: GameData Tree UI + Context Intelligence + Image Gen
-status: completed
-stopped_at: Phase 28 planned and verified
-last_updated: "2026-03-16T07:04:33.678Z"
+status: in-progress
+stopped_at: Completed 28-01-PLAN.md (tree component + page wiring)
+last_updated: "2026-03-16T07:10:26.125Z"
 last_activity: 2026-03-16 -- Phase 27 Plan 02 executed (TREE-07 mock data expansion)
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 67
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Game developers explore hierarchical XML game data in a beautiful tree interface with AI-powered context intelligence -- faster than any code editor.
-**Current focus:** Phase 27 - Tree Backend + Mock Data
+**Current focus:** Phase 28 - Hierarchical Tree UI
 
 ## Current Position
 
-Phase: 27 of 31 (Tree Backend + Mock Data)
-Plan: 2 of 2 in current phase
-Status: Phase 27 plan 02 complete
-Last activity: 2026-03-16 -- Phase 27 Plan 02 executed (TREE-07 mock data expansion)
+Phase: 28 of 31 (Hierarchical Tree UI)
+Plan: 1 of 3 in current phase
+Status: Phase 28 plan 01 complete
+Last activity: 2026-03-16 -- Phase 28 Plan 01 executed (GameDataTree component + GameDevPage wiring)
 
-Progress: [███████░░░] 67%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -42,7 +42,7 @@ Progress: [███████░░░] 67%
 | v2.0 | 8 | 17 | 40/40 |
 | v3.0 | 7 | 14 | 45/45 |
 | v3.1 | 4 | 19 | 48/48 |
-| v3.2 | 6 | 12 | 6/25 |
+| v3.2 | 6 | 12 | 9/25 |
 
 **Recent Execution:**
 
@@ -50,6 +50,7 @@ Progress: [███████░░░] 67%
 |------------|----------|-------|-------|
 | 27-02 | 2min | 2 | 2 |
 | Phase 27 P01 | 6min | 2 tasks | 6 files |
+| Phase 28 P01 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,9 @@ Recent decisions affecting current work:
 - [Phase 27-02]: Used real game data patterns from exampleofskillgamedata.txt for authentic hierarchy structures in fixtures
 - [Phase 27]: Use findall('*') for lxml tree walking to satisfy TREE-05 and skip XML comments
 - [Phase 27]: ParentNodeId='0' treated as root-level children; other values nested under matching NodeId
+- [Phase 28-01]: Lightning icon for skills (Fleet unavailable in carbon-icons-svelte); 13 entity types mapped
+- [Phase 28-01]: Recursive {#snippet renderNode(node, depth)} pattern for hierarchical tree rendering
+- [Phase 28-01]: EDITABLE_ATTRS mirrored from backend to derive primary display labels client-side
 
 ### Pending Todos
 
@@ -79,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T07:04:33.676Z
-Stopped at: Phase 28 planned and verified
-Resume file: .planning/phases/28-hierarchical-tree-ui/28-01-PLAN.md
+Last session: 2026-03-16T07:10:26Z
+Stopped at: Completed 28-01-PLAN.md (tree component + page wiring)
+Resume file: .planning/phases/28-hierarchical-tree-ui/28-02-PLAN.md
