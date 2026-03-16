@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: GameData Tree UI + Context Intelligence + Image Gen
-status: in-progress
-stopped_at: Completed 29-02-PLAN.md
-last_updated: "2026-03-16T08:34:01.412Z"
-last_activity: 2026-03-16 -- Phase 29 Plan 02 executed (Index API endpoints + performance validation)
+status: completed
+stopped_at: Completed 29-03-PLAN.md
+last_updated: "2026-03-16T08:38:46.418Z"
+last_activity: 2026-03-16 -- Phase 29 Plan 03 executed (Frontend index integration)
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 9
-  completed_plans: 8
-  percent: 89
+  completed_plans: 9
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Game developers explore hierarchical XML game data in a beautiful tree interface with AI-powered context intelligence -- faster than any code editor.
-**Current focus:** Phase 29 - Multi-Tier Indexing
+**Current focus:** Phase 29 complete - Multi-Tier Indexing
 
 ## Current Position
 
-Phase: 29 of 31 (Multi-Tier Indexing)
-Plan: 2 of 3 in current phase
-Status: Plan 02 complete, 1 plan remaining
-Last activity: 2026-03-16 -- Phase 29 Plan 02 executed (Index API endpoints + performance validation)
+Phase: 29 of 31 (Multi-Tier Indexing) -- COMPLETE
+Plan: 3 of 3 in current phase (all complete)
+Status: Phase 29 complete, ready for Phase 30
+Last activity: 2026-03-16 -- Phase 29 Plan 03 executed (Frontend index integration)
 
-Progress: [█████████░] 89%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [█████████░] 89%
 | Phase 28 P02 | 3min | 2 tasks | 2 files |
 | Phase 29 P01 | 5min | 2 tasks | 5 files |
 | Phase 29 P02 | 4min | 2 tasks | 3 files |
+| Phase 29 P03 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,8 @@ Recent decisions affecting current work:
 - [Phase 29]: Whole lookup indexes 3 keys per entity (name, Key, StrKey) for O(1) IDX-01 lookup
 - [Phase 29]: AC automaton stores (idx, name, node_id, tag) tuple for direct entity detection without secondary lookup
 - [Phase 29-02]: IndexBuildResponse.status set to 'ready' at endpoint layer (indexer metadata lacks status field)
+- [Phase 29]: Fire-and-forget buildIndex call after tree load -- no await, user browses while index builds
+- [Phase 29]: Entity detection scans ALL attributes (not just editable) for comprehensive cross-reference highlighting
 
 ### Pending Todos
 
@@ -96,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T08:34:01.410Z
-Stopped at: Completed 29-02-PLAN.md
+Last session: 2026-03-16T08:38:46.416Z
+Stopped at: Completed 29-03-PLAN.md
 Resume file: None
