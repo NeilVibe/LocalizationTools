@@ -33,9 +33,9 @@
 
 ### LDG -- Language Data Grid Polish
 
-- [ ] **LDG-01**: Language Data Grid passes full UI/UX audit (column alignment, status colors in dark mode, empty states)
-- [ ] **LDG-02**: Loading states use skeleton rows matching grid dimensions instead of spinner
-- [ ] **LDG-03**: Search/filter bar has consistent styling with other pages, clear feedback on empty results
+- [x] **LDG-01**: Language Data Grid passes full UI/UX audit (column alignment, status colors in dark mode, empty states)
+- [x] **LDG-02**: Loading states use skeleton rows matching grid dimensions instead of spinner
+- [x] **LDG-03**: Search/filter bar has consistent styling with other pages, clear feedback on empty results
 
 ### WMP -- World Map Polish
 
@@ -44,8 +44,8 @@
 
 ### TMP -- TM Panel Polish
 
-- [ ] **TMP-01**: TM Panel passes UI/UX audit (match percentages, diff highlighting, dark mode consistency)
-- [ ] **TMP-02**: Loading and empty states for TM suggestions are polished
+- [x] **TMP-01**: TM Panel passes UI/UX audit (match percentages, diff highlighting, dark mode consistency)
+- [x] **TMP-02**: Loading and empty states for TM suggestions are polished
 
 ### XPG -- Cross-Page Consistency
 
@@ -101,13 +101,13 @@
 | GDT-02 | Phase 34 | Pending |
 | GDT-03 | Phase 34 | Pending |
 | GDT-04 | Phase 34 | Pending |
-| LDG-01 | Phase 34 | Pending |
-| LDG-02 | Phase 34 | Pending |
-| LDG-03 | Phase 34 | Pending |
+| LDG-01 | Phase 34 | Complete |
+| LDG-02 | Phase 34 | Complete |
+| LDG-03 | Phase 34 | Complete |
 | WMP-01 | Phase 34 | Complete |
 | WMP-02 | Phase 34 | Complete |
-| TMP-01 | Phase 34 | Pending |
-| TMP-02 | Phase 34 | Pending |
+| TMP-01 | Phase 34 | Complete |
+| TMP-02 | Phase 34 | Complete |
 | XPG-01 | Phase 35 | Pending |
 | XPG-02 | Phase 35 | Pending |
 | XPG-03 | Phase 35 | Pending |
