@@ -25,6 +25,10 @@
   let saving = $state(new Set());
   let saveErrors = $state({});
 
+  // Phase 29: Entity detection state
+  let detectedEntities = $state([]);
+  let detecting = $state(false);
+
   // Type color accent mapping (matching EntityCard/CodexEntityDetail)
   const TYPE_COLORS = {
     CharacterInfo: '#ee5396',    // magenta
@@ -149,6 +153,109 @@
       event.target.blur();
     }
   }
+
+  // ========================================
+  // Entity Detection (Phase 29: AC highlights)
+  // ========================================
+
+  /**
+   * Detect entity names in node attribute values via Aho-Corasick API
+   */
+  async function detectEntities(nodeData) {
+    if (!nodeData?.attributes) {
+      detectedEntities = [];
+      return;
+    }
+    const editableAttrs = nodeData.editable_attrs || [];
+    const allAttrs = Object.keys(nodeData.attributes);
+    const attrsToScan = allAttrs.filter(a => nodeData.attributes[a] && String(nodeData.attributes[a]).length > 0);
+
+    if (attrsToScan.length === 0) {
+      detectedEntities = [];
+      return;
+    }
+
+    detecting = true;
+    try {
+      const allDetected = [];
+      for (const attr of attrsToScan) {
+        const text = String(nodeData.attributes[attr] || '');
+        if (!text || text.length < 2) continue;
+        const response = await fetch(`${API_BASE}/api/ldm/gamedata/index/detect`, {
+          method: 'POST',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          for (const entity of (data.entities || [])) {
+            allDetected.push({ ...entity, attribute: attr });
+          }
+        }
+      }
+      detectedEntities = allDetected;
+    } catch (err) {
+      logger.error('Entity detection failed', { error: err.message });
+    } finally {
+      detecting = false;
+    }
+  }
+
+  // Trigger entity detection when node changes
+  $effect(() => {
+    if (node) {
+      detectEntities(node);
+    } else {
+      detectedEntities = [];
+    }
+  });
+
+  /**
+   * Get entities detected in a specific attribute
+   */
+  function entitiesInAttr(attrName) {
+    return detectedEntities.filter(e => e.attribute === attrName);
+  }
+
+  /**
+   * Build highlighted text segments for an attribute value
+   */
+  function highlightText(text, entities, attrName) {
+    const attrEntities = entities.filter(e => e.attribute === attrName);
+    if (attrEntities.length === 0) return [{ text, isHighlight: false }];
+
+    // Sort by start position, then by length descending (prefer longer matches)
+    const sorted = [...attrEntities].sort((a, b) => a.start - b.start || b.end - a.end);
+
+    const segments = [];
+    let lastEnd = 0;
+
+    for (const entity of sorted) {
+      // Skip overlapping entities
+      if (entity.start < lastEnd) continue;
+
+      // Add non-highlighted text before this entity
+      if (entity.start > lastEnd) {
+        segments.push({ text: text.slice(lastEnd, entity.start), isHighlight: false });
+      }
+
+      // Add highlighted entity
+      segments.push({
+        text: text.slice(entity.start, entity.end),
+        isHighlight: true,
+        entity
+      });
+
+      lastEnd = entity.end;
+    }
+
+    // Add remaining text
+    if (lastEnd < text.length) {
+      segments.push({ text: text.slice(lastEnd), isHighlight: false });
+    }
+
+    return segments;
+  }
 </script>
 
 {#if node}
@@ -168,7 +275,14 @@
       {#each sortedAttributes as [key, value] (key)}
         {#if isEditable(key)}
           <div class="attr-row editable">
-            <label class="attr-key" for="attr-{key}">{key}</label>
+            <div class="attr-key-row">
+              <label class="attr-key" for="attr-{key}">{key}</label>
+              {#if entitiesInAttr(key).length > 0}
+                <span class="entity-badge" title="Contains {entitiesInAttr(key).length} entity reference(s)">
+                  {entitiesInAttr(key).length}
+                </span>
+              {/if}
+            </div>
             <div class="attr-input-wrapper">
               <input
                 id="attr-{key}"
@@ -190,7 +304,15 @@
         {:else}
           <div class="attr-row">
             <span class="attr-key">{key}</span>
-            <span class="attr-value" title={String(value ?? '')}>{value ?? ''}</span>
+            <span class="attr-value" title={String(value ?? '')}>
+              {#each highlightText(String(value ?? ''), detectedEntities, key) as segment}
+                {#if segment.isHighlight}
+                  <mark class="entity-highlight" title="{segment.entity.entity_name} ({segment.entity.tag})">{segment.text}</mark>
+                {:else}
+                  {segment.text}
+                {/if}
+              {/each}
+            </span>
           </div>
         {/if}
       {/each}
@@ -415,5 +537,31 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--cds-text-01);
+  }
+
+  /* Phase 29: Entity detection highlights */
+  .attr-key-row {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .entity-highlight {
+    background-color: rgba(255, 214, 0, 0.25);
+    border-radius: 2px;
+    padding: 0 2px;
+    cursor: help;
+    border-bottom: 1px dashed rgba(255, 214, 0, 0.6);
+  }
+
+  .entity-badge {
+    font-size: 0.625rem;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 8px;
+    background: var(--cds-support-info, #0043ce);
+    color: #fff;
+    flex-shrink: 0;
+    line-height: 1.2;
   }
 </style>
