@@ -26,10 +26,10 @@
 
 ### GDT -- GameData Tree Polish
 
-- [ ] **GDT-01**: GameData Tree page passes full UI/UX audit (spacing, colors, dark mode, empty states, loading states)
-- [ ] **GDT-02**: Node detail panel has consistent spacing, proper typography hierarchy, and smooth transitions
-- [ ] **GDT-03**: Context Intelligence Panel (right panel) has polished tabs, loading states, and empty states for each section
-- [ ] **GDT-04**: Tree performance verified with 1000+ nodes -- no scroll lag, expand/collapse stays smooth
+- [x] **GDT-01**: GameData Tree page passes full UI/UX audit (spacing, colors, dark mode, empty states, loading states)
+- [x] **GDT-02**: Node detail panel has consistent spacing, proper typography hierarchy, and smooth transitions
+- [x] **GDT-03**: Context Intelligence Panel (right panel) has polished tabs, loading states, and empty states for each section
+- [x] **GDT-04**: Tree performance verified with 1000+ nodes -- no scroll lag, expand/collapse stays smooth
 
 ### LDG -- Language Data Grid Polish
 
@@ -97,10 +97,10 @@
 | CDX-05 | Phase 33 | Complete |
 | CDX-06 | Phase 33 | Complete |
 | CDX-07 | Phase 33 | Complete |
-| GDT-01 | Phase 34 | Pending |
-| GDT-02 | Phase 34 | Pending |
-| GDT-03 | Phase 34 | Pending |
-| GDT-04 | Phase 34 | Pending |
+| GDT-01 | Phase 34 | Complete |
+| GDT-02 | Phase 34 | Complete |
+| GDT-03 | Phase 34 | Complete |
+| GDT-04 | Phase 34 | Complete |
 | LDG-01 | Phase 34 | Complete |
 | LDG-02 | Phase 34 | Complete |
 | LDG-03 | Phase 34 | Complete |
