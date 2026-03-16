@@ -184,6 +184,8 @@ async def upload_file(
     file: UploadFile = File(...),
     # P9: Storage destination - 'server' (PostgreSQL) or 'local' (SQLite Offline Storage)
     storage: Optional[str] = Form("server"),
+    # NAV-05: Page context for file type enforcement
+    context: Optional[str] = Form(None),  # "translator" or "gamedev" — validates file type after parse
     # Excel column mapping (optional, only used for Excel files)
     source_col: Optional[int] = Form(None),      # Column index for source (0=A, 1=B, etc.)
     target_col: Optional[int] = Form(None),      # Column index for target
@@ -227,7 +229,8 @@ async def upload_file(
             target_col=target_col,
             stringid_col=stringid_col,
             has_header=has_header,
-            folder_id=folder_id  # P9-FIX: Pass folder_id for creating files inside local folders
+            folder_id=folder_id,  # P9-FIX: Pass folder_id for creating files inside local folders
+            context=context,  # NAV-05: File type enforcement
         )
 
     # Server storage requires project_id
@@ -295,6 +298,19 @@ async def upload_file(
         raise HTTPException(
             status_code=400,
             detail="No valid rows found in file"
+        )
+
+    # NAV-05: File type enforcement -- reject wrong file types based on page context
+    upload_file_type_check = file_metadata.get("file_type", "translator") if file_metadata else "translator"
+    if context == "translator" and upload_file_type_check == "gamedev":
+        raise HTTPException(
+            status_code=422,
+            detail="This file contains game data (StaticInfo XML), not language data. Please use the Game Data page instead."
+        )
+    if context == "gamedev" and upload_file_type_check == "translator":
+        raise HTTPException(
+            status_code=422,
+            detail="This file contains language data (LocStr XML), not game data. Please use the Localization Data page instead."
         )
 
     # TASK-001: Add TrackedOperation for progress tracking on large files
@@ -1478,7 +1494,8 @@ async def _upload_to_local_storage(
     target_col: Optional[int] = None,
     stringid_col: Optional[int] = None,
     has_header: Optional[bool] = True,
-    folder_id: Optional[int] = None  # P9-FIX: Support creating files inside local folders
+    folder_id: Optional[int] = None,  # P9-FIX: Support creating files inside local folders
+    context: Optional[str] = None,  # NAV-05: File type enforcement
 ) -> dict:
     """
     P9: Upload a file to SQLite Offline Storage with proper parsing.
@@ -1537,6 +1554,19 @@ async def _upload_to_local_storage(
         raise HTTPException(
             status_code=400,
             detail="No valid rows found in file"
+        )
+
+    # NAV-05: File type enforcement for local storage
+    local_file_type = file_metadata.get("file_type", "translator") if file_metadata else "translator"
+    if context == "translator" and local_file_type == "gamedev":
+        raise HTTPException(
+            status_code=422,
+            detail="This file contains game data (StaticInfo XML), not language data. Please use the Game Data page instead."
+        )
+    if context == "gamedev" and local_file_type == "translator":
+        raise HTTPException(
+            status_code=422,
+            detail="This file contains language data (LocStr XML), not game data. Please use the Localization Data page instead."
         )
 
     try:

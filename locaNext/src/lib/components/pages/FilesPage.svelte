@@ -1648,6 +1648,7 @@
           const formData = new FormData();
           formData.append('file', file);
           formData.append('storage', 'local');
+          formData.append('context', 'translator');  // NAV-05: file type enforcement
           // P9-FIX: Include folder_id if inside a local folder
           if (currentFolderId !== null) {
             formData.append('folder_id', currentFolderId);
@@ -1694,6 +1695,7 @@
           formData.append('folder_id', uploadTargetFolderId);
         }
         formData.append('file', file);
+        formData.append('context', 'translator');  // NAV-05: file type enforcement
 
         try {
           tracker.update(30, 'Uploading to server...');
