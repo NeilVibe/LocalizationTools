@@ -84,7 +84,8 @@ class GameDataTreeService:
         root = self._parse_xml(resolved)
 
         # Build initial subtrees from direct children of XML root element.
-        children = [c for c in root if isinstance(c.tag, str)]
+        # Use findall("*") for lxml tree walking (TREE-05 requirement).
+        children = [c for c in root.findall("*") if isinstance(c.tag, str)]
         if not children:
             return GameDataTreeResponse(
                 roots=[],
@@ -210,8 +211,8 @@ class GameDataTreeService:
         if max_depth != -1 and depth >= max_depth:
             return node
 
-        # Recurse into XML child elements (skip comments/PIs).
-        child_elements = [c for c in element if isinstance(c.tag, str)]
+        # Recurse into XML child elements via findall (skip comments/PIs).
+        child_elements = element.findall("*")
         for child_idx, child_el in enumerate(child_elements):
             child_node = self._build_subtree(
                 child_el,
