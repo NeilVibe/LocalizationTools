@@ -98,23 +98,23 @@
     position: fixed;
     z-index: 9999;
     pointer-events: none;
-    padding: 10px 14px;
+    padding: 0.625rem 0.875rem;
     background: var(--cds-layer-02, #262626);
     border: 1px solid var(--cds-border-subtle-01, #353535);
-    border-radius: 4px;
+    border-radius: var(--card-radius, 4px);
     color: var(--cds-text-01, #f4f4f4);
     font-size: 0.8125rem;
     max-width: 300px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--card-shadow, 0 4px 12px rgba(0, 0, 0, 0.5));
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 0.375rem;
   }
 
   .tooltip-header {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
   }
 
   .tooltip-name {
@@ -139,6 +139,6 @@
   .tooltip-label {
     font-weight: 600;
     color: var(--cds-text-01, #f4f4f4);
-    margin-right: 4px;
+    margin-right: 0.25rem;
   }
 </style>

@@ -147,7 +147,7 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    padding: 16px;
+    padding: 1rem;
     border-bottom: 1px solid var(--cds-border-subtle-01);
     flex-shrink: 0;
   }
@@ -155,7 +155,7 @@
   .header-info {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 0.375rem;
     flex: 1;
     min-width: 0;
   }
@@ -174,8 +174,8 @@
     border: none;
     color: var(--cds-text-02);
     cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -193,7 +193,7 @@
   }
 
   .panel-section {
-    padding: 12px 16px;
+    padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--cds-border-subtle-01);
   }
 
@@ -203,7 +203,7 @@
     color: var(--cds-text-02);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin: 0 0 8px 0;
+    margin: 0 0 0.5rem 0;
   }
 
   .section-text {
@@ -222,17 +222,17 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0.125rem;
   }
 
   .npc-link {
     display: block;
     width: 100%;
     text-align: left;
-    padding: 6px 8px;
+    padding: 0.375rem 0.5rem;
     background: transparent;
     border: none;
-    border-radius: 4px;
+    border-radius: 0.25rem;
     color: var(--cds-link-01, #78a9ff);
     font-size: 0.8125rem;
     cursor: pointer;
@@ -254,17 +254,17 @@
   .entity-counts {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 0.375rem;
   }
 
   .entity-count-item {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
     background: var(--cds-layer-02);
     border: 1px solid var(--cds-border-subtle-01);
-    border-radius: 4px;
+    border-radius: 0.25rem;
     color: var(--cds-text-01);
     font-size: 0.8125rem;
     cursor: pointer;
@@ -293,14 +293,14 @@
 
   .coordinates {
     display: flex;
-    gap: 16px;
+    gap: 1rem;
     font-size: 0.8125rem;
     color: var(--cds-text-02);
     font-family: monospace;
   }
 
   .panel-footer {
-    padding: 16px;
+    padding: 1rem;
     flex-shrink: 0;
     margin-top: auto;
   }
