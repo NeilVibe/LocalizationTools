@@ -131,6 +131,7 @@
   // Component refs (Svelte 5 requires $state for bindable refs)
   let fileExplorer = $state(null);
   let virtualGrid = $state(null);
+  let gridPageRef = $state(null);
 
   /**
    * Check LDM API health
@@ -288,8 +289,8 @@
   async function handleOpenEditModal(data) {
     const { rowId, rowNum } = data;
     // openEditModalByRowId handles scroll + highlight + open modal
-    if (virtualGrid) {
-      await virtualGrid.openEditModalByRowId(rowId);
+    if (gridPageRef) {
+      await gridPageRef.openEditModalByRowId(rowId);
       logger.userAction("Opened edit modal from QA", { rowId, rowNum });
     }
     // Close QA menu after modal opens
@@ -499,8 +500,8 @@
 
     // Dispatch event to update row's visual state in VirtualGrid
     // The VirtualGrid needs to update the row's qa_flag_count to 0
-    if (virtualGrid) {
-      virtualGrid.updateRowQAFlag(rowId, 0);
+    if (gridPageRef) {
+      gridPageRef.updateRowQAFlag(rowId, 0);
     }
   }
 
@@ -899,6 +900,7 @@ TEST_010\t\t\t\t\t테스트 문자열 10\tTest String 10`;
       {:else if $currentPage === 'grid'}
         <!-- Grid Page: File viewer with side panel -->
         <GridPage
+          bind:this={gridPageRef}
           fileId={selectedFileId}
           fileName={selectedFileName}
           {linkedTM}

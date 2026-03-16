@@ -451,7 +451,7 @@
             class="engine-btn"
             class:active={currentEngine === 'model2vec'}
             disabled={engineLoading}
-            on:click={() => setEmbeddingEngine('model2vec')}
+            onclick={() => setEmbeddingEngine('model2vec')}
             title="79x faster, lightweight. Best for real-time search."
           >
             Fast
@@ -460,7 +460,7 @@
             class="engine-btn"
             class:active={currentEngine === 'qwen'}
             disabled={engineLoading}
-            on:click={() => setEmbeddingEngine('qwen')}
+            onclick={() => setEmbeddingEngine('qwen')}
             title="Deep semantic understanding. Best for batch/quality work."
           >
             Deep
@@ -551,7 +551,7 @@
                     class="status-toggle"
                     class:is-active={isActive}
                     title={isActive ? "Click to deactivate" : "Click to activate"}
-                    on:click={() => toggleActiveTm(tm)}
+                    onclick={() => toggleActiveTm(tm)}
                   >
                     {#if isActive}
                       <span class="status-dot active"></span>
@@ -717,7 +717,7 @@
               <input
                 type="checkbox"
                 checked={exportColumns.includes("string_id")}
-                on:change={() => toggleExportColumn("string_id")}
+                onchange={() => toggleExportColumn("string_id")}
               />
               StringID
             </label>
@@ -725,7 +725,7 @@
               <input
                 type="checkbox"
                 checked={exportColumns.includes("created_at")}
-                on:change={() => toggleExportColumn("created_at")}
+                onchange={() => toggleExportColumn("created_at")}
               />
               Created At
             </label>

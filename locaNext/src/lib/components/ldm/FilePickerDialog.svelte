@@ -69,9 +69,9 @@
         const data = await response.json();
         treeNodes = buildTreeNodes(data.tree || []);
         // Auto-expand first level
-        expandedIds = treeNodes
+        expandedFolders = new Set(treeNodes
           .filter(n => n.children && n.children.length > 0)
-          .map(n => n.id);
+          .map(n => n.id));
         logger.info("FilePickerDialog: loaded tree", { projectId, nodes: treeNodes.length });
       }
     } catch (err) {

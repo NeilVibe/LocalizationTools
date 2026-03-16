@@ -243,6 +243,14 @@
   export function getVirtualGrid() {
     return virtualGrid;
   }
+
+  export function openEditModalByRowId(rowId) {
+    return virtualGrid?.openEditModalByRowId(rowId);
+  }
+
+  export function updateRowQAFlag(rowId, count) {
+    virtualGrid?.updateRowQAFlag(rowId, count);
+  }
 </script>
 
 <div class="grid-page">
