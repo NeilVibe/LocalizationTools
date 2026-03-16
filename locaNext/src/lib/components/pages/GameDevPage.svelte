@@ -9,10 +9,11 @@
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import FileExplorerTree from '$lib/components/ldm/FileExplorerTree.svelte';
+  import GameDataTree from '$lib/components/ldm/GameDataTree.svelte';
   import VirtualGrid from '$lib/components/ldm/VirtualGrid.svelte';
   import NamingPanel from '$lib/components/ldm/NamingPanel.svelte';
   import { Button, TextInput } from 'carbon-components-svelte';
-  import { Renew, FolderOpen, ArrowRight } from 'carbon-icons-svelte';
+  import { Renew, FolderOpen, ArrowRight, TreeView } from 'carbon-icons-svelte';
 
   const API_BASE = getApiBase();
 
@@ -29,6 +30,11 @@
   let fileLoading = $state(false);
   let virtualGrid = $state(null);
   let treeRef = $state(null);
+
+  // Phase 28: Tree view state
+  let treeFilePath = $state(null);
+  let folderTreePath = $state(null);
+  let selectedTreeNode = $state(null);
 
   // Naming panel state (Phase 21)
   let editingEntityName = $state('');
@@ -139,69 +145,33 @@
   }
 
   /**
-   * Handle file selection from FileExplorerTree
+   * Handle file selection from FileExplorerTree -- load tree view (Phase 28)
    */
-  async function handleFileSelect(file) {
+  function handleFileSelect(file) {
     selectedGameDevFile = file;
-    fileLoading = true;
-    dynamicColumns = null;
+    treeFilePath = file.path;
+    folderTreePath = null;
+    selectedTreeNode = null;
+    logger.userAction('Game Dev file selected for tree view', { name: file.name, path: file.path });
+  }
 
-    try {
-      // Fetch dynamic columns for the selected XML file
-      try {
-        const colResponse = await fetch(`${API_BASE}/api/ldm/gamedata/columns`, {
-          method: 'POST',
-          headers: {
-            ...getAuthHeaders(),
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ xml_path: file.path })
-        });
+  /**
+   * Phase 28: Load all files in active folder as combined tree
+   */
+  function loadAllTrees() {
+    if (!activePath) return;
+    folderTreePath = activePath;
+    treeFilePath = null;
+    selectedTreeNode = null;
+    logger.userAction('Loading all files as tree', { path: activePath });
+  }
 
-        if (colResponse.ok) {
-          const colData = await colResponse.json();
-          if (colData.columns && colData.columns.length > 0) {
-            // Convert ColumnHint list to gameDevColumns-compatible object
-            const cols = {
-              row_num: { key: "row_num", label: "#", width: 60, prefKey: "showIndex" },
-              node_name: { key: "source", label: "Node", width: 200, always: true }
-            };
-            for (const hint of colData.columns) {
-              cols[hint.key] = {
-                key: hint.key,
-                label: hint.label,
-                width: hint.editable ? 250 : 150,
-                always: true
-              };
-            }
-            cols.children_count = { key: "children_count", label: "Children", width: 100, always: true };
-            dynamicColumns = cols;
-            logger.success('Dynamic columns loaded', { count: colData.columns.length });
-          }
-        } else {
-          logger.warning('Dynamic columns fetch failed, using defaults');
-        }
-      } catch (err) {
-        logger.warning('Dynamic columns unavailable', { error: err.message });
-      }
-
-      // Set file in openFile store -- use path as stable, deterministic ID
-      const gridFile = {
-        id: file.path,
-        name: file.name,
-        path: file.path,
-        format: 'xml',
-        file_type: 'gamedev',
-        entity_count: file.entity_count
-      };
-      openFile.set(gridFile);
-
-      logger.success('Game Dev file selected', { name: file.name, entity_count: file.entity_count });
-    } catch (err) {
-      logger.error('Failed to load game dev file', { error: err.message });
-    } finally {
-      fileLoading = false;
-    }
+  /**
+   * Phase 28: Handle tree node selection
+   */
+  function handleNodeSelect(node) {
+    selectedTreeNode = node;
+    logger.userAction('Tree node selected', { nodeId: node.node_id, tag: node.tag });
   }
 
   /**
@@ -267,9 +237,14 @@
   <div class="explorer-panel">
     <div class="explorer-header">
       <h3 class="explorer-title">Game Data</h3>
-      <button class="icon-button" onclick={refreshTree} title="Refresh" aria-label="Refresh file tree">
-        <Renew size={16} />
-      </button>
+      <div class="explorer-actions">
+        <button class="icon-button" onclick={loadAllTrees} title="Load all files as tree" aria-label="Load all files as tree">
+          <TreeView size={16} />
+        </button>
+        <button class="icon-button" onclick={refreshTree} title="Refresh" aria-label="Refresh file tree">
+          <Renew size={16} />
+        </button>
+      </div>
     </div>
 
     <div class="path-input-row">
@@ -313,32 +288,43 @@
   <!-- Resize Handle -->
   <div class="resize-handle"></div>
 
-  <!-- Right Panel: Grid or Placeholder -->
+  <!-- Right Panel: Tree View or Placeholder -->
   <div class="grid-panel">
     {#if fileLoading}
       <div class="grid-placeholder" role="status" aria-live="polite">
-        <p>Loading game data file...</p>
+        <p>Loading game data...</p>
       </div>
-    {:else if selectedGameDevFile && currentFileId}
-      <VirtualGrid
-        bind:this={virtualGrid}
-        fileId={currentFileId}
-        fileName={currentFileName}
-        fileType="gamedev"
-        gamedevDynamicColumns={dynamicColumns}
-        onInlineEditStart={handleInlineEditStart}
-      />
-      {#if editingEntityName}
-        <NamingPanel
-          editingName={editingEntityName}
-          entityType={editingEntityType}
-          onApply={handleNamingApply}
-        />
-      {/if}
+    {:else if treeFilePath || folderTreePath}
+      <div class="tree-and-detail">
+        <div class="tree-panel-main">
+          <GameDataTree
+            filePath={treeFilePath}
+            folderPath={folderTreePath}
+            onNodeSelect={handleNodeSelect}
+          />
+        </div>
+        {#if selectedTreeNode}
+          <div class="detail-panel-placeholder">
+            <p class="detail-tag">{selectedTreeNode.tag}</p>
+            <p class="detail-id">{selectedTreeNode.node_id}</p>
+            {#if selectedTreeNode.attributes}
+              <div class="detail-attrs">
+                {#each Object.entries(selectedTreeNode.attributes) as [key, value] (key)}
+                  <div class="detail-attr-row">
+                    <span class="detail-attr-key">{key}</span>
+                    <span class="detail-attr-value">{value}</span>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+            <!-- Full detail panel in Plan 02 -->
+          </div>
+        {/if}
+      </div>
     {:else}
       <div class="grid-placeholder">
         <FolderOpen size={48} />
-        <p>Select a file from the explorer to view entities</p>
+        <p>Select a file from the explorer to view its tree</p>
       </div>
     {/if}
   </div>
@@ -372,6 +358,12 @@
     padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--cds-border-subtle-01);
     flex-shrink: 0;
+  }
+
+  .explorer-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
   }
 
   .explorer-title {
@@ -540,5 +532,66 @@
 
   .grid-placeholder p {
     margin: 0;
+  }
+
+  /* Phase 28: Tree + Detail layout */
+  .tree-and-detail {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .tree-panel-main {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .detail-panel-placeholder {
+    width: 300px;
+    min-width: 200px;
+    border-left: 1px solid var(--cds-border-subtle-01);
+    padding: 1rem;
+    overflow-y: auto;
+    background: var(--cds-layer-01);
+  }
+
+  .detail-tag {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--cds-text-01);
+    margin: 0 0 0.25rem;
+  }
+
+  .detail-id {
+    font-size: 0.75rem;
+    color: var(--cds-text-03);
+    margin: 0 0 0.75rem;
+  }
+
+  .detail-attrs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .detail-attr-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .detail-attr-key {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--cds-text-02);
+    text-transform: capitalize;
+  }
+
+  .detail-attr-value {
+    font-size: 0.8125rem;
+    color: var(--cds-text-01);
+    word-break: break-word;
   }
 </style>
