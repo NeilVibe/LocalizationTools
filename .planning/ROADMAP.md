@@ -78,7 +78,7 @@
 **Milestone Goal:** Audit, critique, and polish ALL 5 pages (GameData Tree, Language Data Grid, Codex, World Map, TM) for visual consistency, performance, and production-readiness. Codex gets a full revamp with lazy loading. Cross-page consistency enforced so the app feels like ONE product.
 
 - [x] **Phase 32: Design Token Foundation** - CSS tokens, shared micro-components (PageHeader, SkeletonCard, EmptyState, ErrorState, InfiniteScroll) (completed 2026-03-16)
-- [ ] **Phase 33: Codex Revamp** - Paginated loading, IntersectionObserver infinite scroll, skeleton states, search-first UX, tab caching
+- [x] **Phase 33: Codex Revamp** - Paginated loading, IntersectionObserver infinite scroll, skeleton states, search-first UX, tab caching (completed 2026-03-16)
 - [ ] **Phase 34: Page-by-Page Polish** - Parallel UI/UX audit and polish for GameData Tree, Language Data Grid, World Map, and TM Panel
 - [ ] **Phase 35: Cross-Page Consistency** - Unified PageHeader adoption, dark mode enforcement, sidebar consistency, error handling standardization
 - [ ] **Phase 36: Visual Verification** - Playwright screenshots, performance benchmarks, memory leak testing, regression testing
@@ -200,7 +200,7 @@ Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 | 30. Context Intelligence Panel | v3.2 | 2/2 | Complete | 2026-03-16 |
 | 31. Codex AI Image Generation | v3.2 | 2/2 | Complete | 2026-03-16 |
 | 32. Design Token Foundation | 1/1 | Complete   | 2026-03-16 | - |
-| 33. Codex Revamp | 1/2 | In Progress|  | - |
+| 33. Codex Revamp | 2/2 | Complete   | 2026-03-16 | - |
 | 34. Page-by-Page Polish | v3.3 | 0/3 | Not started | - |
 | 35. Cross-Page Consistency | v3.3 | 0/1 | Not started | - |
 | 36. Visual Verification | v3.3 | 0/1 | Not started | - |
