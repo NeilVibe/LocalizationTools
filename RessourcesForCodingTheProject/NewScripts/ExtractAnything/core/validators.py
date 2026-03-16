@@ -298,6 +298,7 @@ _DIFF_MODE_COLUMNS: dict[str, set[str]] = {
     "StrOrigin + StringID + Str":  {"stringid", "strorigin", "str"},
     "StringID + Str":              {"stringid", "str"},
     "StrOrigin Diff":              {"stringid", "strorigin"},
+    "Str Diff":                    {"stringid", "str"},
 }
 
 # Human-readable display names for logical column names.

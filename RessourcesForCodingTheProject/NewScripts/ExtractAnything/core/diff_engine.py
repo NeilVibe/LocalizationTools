@@ -120,6 +120,8 @@ def diff_file(
         result = _diff_full(source_entries, target_entries)
     elif mode == "StrOrigin Diff":
         result = _diff_strorigin(source_entries, target_entries)
+    elif mode == "Str Diff":
+        result = _diff_str(source_entries, target_entries)
     else:
         # Key-based modes
         source_keys = {_build_key(e, mode) for e in source_entries}
@@ -193,6 +195,32 @@ def _diff_strorigin(source_entries: list[dict], target_entries: list[dict]) -> l
             continue
         e["_old_strorigin"] = old_so
         e["_strorigin_diff"] = extract_differences(old_so, new_so)
+        extracted.append(e)
+
+    return extracted
+
+
+def _diff_str(source_entries: list[dict], target_entries: list[dict]) -> list[dict]:
+    """Str Diff: find entries where same StringID has different Str.
+
+    Returns target entries enriched with ``_old_str`` and ``_str_diff``.
+    """
+    src_map: dict[str, dict] = {}
+    for e in source_entries:
+        src_map[e["string_id"].lower()] = e
+
+    extracted = []
+    for e in target_entries:
+        sid_lower = e["string_id"].lower()
+        if sid_lower not in src_map:
+            continue
+        src_e = src_map[sid_lower]
+        old_sv = src_e.get("str_value", "")
+        new_sv = e.get("str_value", "")
+        if old_sv.lower() == new_sv.lower():
+            continue
+        e["_old_str"] = old_sv
+        e["_str_diff"] = extract_differences(old_sv, new_sv)
         extracted.append(e)
 
     return extracted

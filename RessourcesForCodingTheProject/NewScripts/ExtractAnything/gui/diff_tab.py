@@ -177,6 +177,14 @@ class DiffTab(BaseTab):
                 ("_strorigin_diff", "StrOrigin Diff", 60),
                 ("str_value", "Str", 60),
             ]
+        if mode == "Str Diff":
+            return [
+                ("string_id", "StringID", 35),
+                ("str_origin", "StrOrigin", 45),
+                ("_old_str", "Old Str", 60),
+                ("str_value", "New Str", 60),
+                ("_str_diff", "Str Diff", 60),
+            ]
         cols = [
             ("string_id", "StringID", 35),
             ("str_origin", "StrOrigin", 45),

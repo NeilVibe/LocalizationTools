@@ -49,6 +49,7 @@ COMPARE_MODES = [
     "StrOrigin + StringID + Str",
     "StringID + Str",
     "StrOrigin Diff",
+    "Str Diff",
 ]
 
 # Category filter options (Diff tab)
