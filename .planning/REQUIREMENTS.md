@@ -7,12 +7,12 @@
 
 ### FND -- Design Foundation
 
-- [ ] **FND-01**: CSS custom properties defined in app.css for spacing scale, color tokens, shadow tokens, and border-radius -- all pages use tokens instead of hardcoded values
-- [ ] **FND-02**: Shared PageHeader component with consistent padding, title styling, and optional action slot used across all 5 pages
-- [ ] **FND-03**: Shared SkeletonCard component matching Codex card dimensions for loading states
-- [ ] **FND-04**: Shared EmptyState component (icon + headline + description + optional CTA) used when pages have no data
-- [ ] **FND-05**: Shared ErrorState component (error message + retry button) used for inline error recovery on all pages
-- [ ] **FND-06**: Shared InfiniteScroll component using IntersectionObserver with $effect cleanup for paginated loading
+- [x] **FND-01**: CSS custom properties defined in app.css for spacing scale, color tokens, shadow tokens, and border-radius -- all pages use tokens instead of hardcoded values
+- [x] **FND-02**: Shared PageHeader component with consistent padding, title styling, and optional action slot used across all 5 pages
+- [x] **FND-03**: Shared SkeletonCard component matching Codex card dimensions for loading states
+- [x] **FND-04**: Shared EmptyState component (icon + headline + description + optional CTA) used when pages have no data
+- [x] **FND-05**: Shared ErrorState component (error message + retry button) used for inline error recovery on all pages
+- [x] **FND-06**: Shared InfiniteScroll component using IntersectionObserver with $effect cleanup for paginated loading
 
 ### CDX -- Codex Revamp
 
@@ -84,12 +84,12 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FND-01 | Phase 32 | Pending |
-| FND-02 | Phase 32 | Pending |
-| FND-03 | Phase 32 | Pending |
-| FND-04 | Phase 32 | Pending |
-| FND-05 | Phase 32 | Pending |
-| FND-06 | Phase 32 | Pending |
+| FND-01 | Phase 32 | Complete |
+| FND-02 | Phase 32 | Complete |
+| FND-03 | Phase 32 | Complete |
+| FND-04 | Phase 32 | Complete |
+| FND-05 | Phase 32 | Complete |
+| FND-06 | Phase 32 | Complete |
 | CDX-01 | Phase 33 | Pending |
 | CDX-02 | Phase 33 | Pending |
 | CDX-03 | Phase 33 | Pending |
