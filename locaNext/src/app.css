@@ -52,6 +52,34 @@
   --app-border: #262626;
   --app-hover: #303030;
   --app-accent: #4589ff;
+
+  /* === Design Token Foundation (v3.3) === */
+
+  /* Page layout tokens */
+  --page-header-height: 48px;
+  --page-header-padding: 0.75rem 1rem;
+  --page-content-padding: 1rem;
+  --page-gap: 0.75rem;
+
+  /* Panel tokens */
+  --panel-width-sm: 280px;
+  --panel-width-md: 320px;
+  --panel-width-max: 500px;
+  --panel-border: 1px solid var(--cds-border-subtle-01);
+
+  /* Card tokens */
+  --card-radius: 6px;
+  --card-padding: 0.625rem;
+  --card-gap: 0.625rem;
+
+  /* Transition tokens */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+
+  /* Skeleton tokens */
+  --skeleton-bg: var(--cds-layer-02);
+  --skeleton-shimmer-from: var(--cds-layer-02);
+  --skeleton-shimmer-mid: var(--cds-layer-03);
 }
 
 /* Light Theme - REMOVED (UI-001: Dark mode only)
