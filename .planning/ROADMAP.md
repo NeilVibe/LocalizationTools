@@ -68,7 +68,7 @@
 - [x] **Phase 27: Tree Backend + Mock Data** - lxml tree walker API and expanded mock fixtures with real hierarchical XML structures (completed 2026-03-16)
 - [x] **Phase 28: Hierarchical Tree UI** - Beautiful expandable tree with node detail panel, cross-reference links, and folder loading (completed 2026-03-16)
 - [x] **Phase 29: Multi-Tier Indexing** - Hashtable + FAISS + Aho-Corasick indexing for instant entity lookup across all loaded gamedata (completed 2026-03-16)
-- [ ] **Phase 30: Context Intelligence Panel** - Right panel with TM suggestions, images, audio, AI context via 5-tier cascade search, and cross-references
+- [x] **Phase 30: Context Intelligence Panel** - Right panel with TM suggestions, images, audio, AI context via 5-tier cascade search, and cross-references (completed 2026-03-16)
 - [ ] **Phase 31: Codex AI Image Generation** - Nano Banana / Gemini image generation for Codex entities with entity-aware prompts and batch mode
 
 ## Phase Details
@@ -214,5 +214,5 @@ Phases execute in numeric order: 26 -> 27 -> 28 -> 29 -> 30 -> 31
 | 27. Tree Backend + Mock Data | 2/2 | Complete    | 2026-03-16 | - |
 | 28. Hierarchical Tree UI | 3/3 | Complete    | 2026-03-16 | - |
 | 29. Multi-Tier Indexing | 3/3 | Complete    | 2026-03-16 | - |
-| 30. Context Intelligence Panel | 1/2 | In Progress|  | - |
+| 30. Context Intelligence Panel | 2/2 | Complete   | 2026-03-16 | - |
 | 31. Codex AI Image Generation | v3.2 | 0/2 | Not started | - |
