@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.3
 milestone_name: UI/UX Polish + Performance
-status: completed
-stopped_at: Completed 34-01-PLAN.md
-last_updated: "2026-03-16T17:36:27.986Z"
-last_activity: 2026-03-17 -- Phase 34 plans executed in parallel
+status: in-progress
+stopped_at: Completed 35-01-PLAN.md
+last_updated: "2026-03-17T17:41:00Z"
+last_activity: 2026-03-17 -- Phase 35 cross-page consistency complete
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
-  percent: 57
+  completed_phases: 4
+  total_plans: 7
+  completed_plans: 7
+  percent: 86
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** All 5 pages polished to production quality -- consistent, performant, beautiful, one unified app experience.
-**Current focus:** Phase 34 - Page Polish
+**Current focus:** Phase 36 - Visual Verification (next)
 
 ## Current Position
 
-Phase: 34 of 36 (Page Polish) -- third of 5 v3.3 phases
-Plan: 3 of 3 in current phase
-Status: Phase 34 complete (all 3 parallel plans executed)
-Last activity: 2026-03-17 -- Phase 34 plans executed in parallel
+Phase: 35 of 36 (Cross-Page Consistency) -- fourth of 5 v3.3 phases
+Plan: 1 of 1 in current phase
+Status: Phase 35 complete
+Last activity: 2026-03-17 -- Phase 35 cross-page consistency complete
 
-Progress: [######░░░░] 57%
+Progress: [########░░] 86%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [######░░░░] 57%
 | Phase 34 P03 | 3min | 2 tasks | 3 files |
 | Phase 34 P02 | 4min | 2 tasks | 3 files |
 | Phase 34 P01 | 5min | 2 tasks | 4 files |
+| Phase 35 P01 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ Recent decisions affecting current work:
 - [Phase 34]: Left-border accent pattern for TM indicators (dark mode safe)
 - [Phase 34]: Skeleton rows match grid column dimensions for loading states
 - [Phase 34]: TYPE_COLORS kept as intentional hex accents; box-shadows removed for matte theme; tier badges use --cds-support-* tokens
+- [Phase 35]: GameDevPage/GridPage retain specialized toolbars (not page headers); CSS var() fallbacks are standard, not hardcoded colors
+- [Phase 35]: CodexPage box-shadow removed from entity card hover for matte consistency
 
 ### Pending Todos
 
@@ -93,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T17:36:27.984Z
-Stopped at: Completed 34-01-PLAN.md
+Last session: 2026-03-17T17:41:00Z
+Stopped at: Completed 35-01-PLAN.md
 Resume file: None

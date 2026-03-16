@@ -49,10 +49,10 @@
 
 ### XPG -- Cross-Page Consistency
 
-- [ ] **XPG-01**: All 5 pages use the shared PageHeader component with consistent look
-- [ ] **XPG-02**: Dark mode works consistently across all pages -- no hardcoded colors, no missing tokens
-- [ ] **XPG-03**: Sidebar navigation has consistent active states, hover effects, and spacing
-- [ ] **XPG-04**: Error handling is consistent -- all pages use ErrorState component with retry
+- [x] **XPG-01**: All 5 pages use the shared PageHeader component with consistent look
+- [x] **XPG-02**: Dark mode works consistently across all pages -- no hardcoded colors, no missing tokens
+- [x] **XPG-03**: Sidebar navigation has consistent active states, hover effects, and spacing
+- [x] **XPG-04**: Error handling is consistent -- all pages use ErrorState component with retry
 
 ### VER -- Verification
 
@@ -108,10 +108,10 @@
 | WMP-02 | Phase 34 | Complete |
 | TMP-01 | Phase 34 | Complete |
 | TMP-02 | Phase 34 | Complete |
-| XPG-01 | Phase 35 | Pending |
-| XPG-02 | Phase 35 | Pending |
-| XPG-03 | Phase 35 | Pending |
-| XPG-04 | Phase 35 | Pending |
+| XPG-01 | Phase 35 | Complete |
+| XPG-02 | Phase 35 | Complete |
+| XPG-03 | Phase 35 | Complete |
+| XPG-04 | Phase 35 | Complete |
 | VER-01 | Phase 36 | Pending |
 | VER-02 | Phase 36 | Pending |
 | VER-03 | Phase 36 | Pending |

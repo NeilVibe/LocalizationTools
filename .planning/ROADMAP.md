@@ -80,7 +80,7 @@
 - [x] **Phase 32: Design Token Foundation** - CSS tokens, shared micro-components (PageHeader, SkeletonCard, EmptyState, ErrorState, InfiniteScroll) (completed 2026-03-16)
 - [x] **Phase 33: Codex Revamp** - Paginated loading, IntersectionObserver infinite scroll, skeleton states, search-first UX, tab caching (completed 2026-03-16)
 - [x] **Phase 34: Page-by-Page Polish** - Parallel UI/UX audit and polish for GameData Tree, Language Data Grid, World Map, and TM Panel (completed 2026-03-16)
-- [ ] **Phase 35: Cross-Page Consistency** - Unified PageHeader adoption, dark mode enforcement, sidebar consistency, error handling standardization
+- [x] **Phase 35: Cross-Page Consistency** - Unified PageHeader adoption, dark mode enforcement, sidebar consistency, error handling standardization (completed 2026-03-17)
 - [ ] **Phase 36: Visual Verification** - Playwright screenshots, performance benchmarks, memory leak testing, regression testing
 
 ## Phase Details
@@ -202,7 +202,7 @@ Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 | 32. Design Token Foundation | v3.3 | 1/1 | Complete | 2026-03-16 |
 | 33. Codex Revamp | v3.3 | 2/2 | Complete | 2026-03-16 |
 | 34. Page-by-Page Polish | 3/3 | Complete   | 2026-03-16 | - |
-| 35. Cross-Page Consistency | v3.3 | 0/1 | Not started | - |
+| 35. Cross-Page Consistency | v3.3 | 1/1 | Complete | 2026-03-17 |
 | 36. Visual Verification | v3.3 | 0/1 | Not started | - |
 
 ---
