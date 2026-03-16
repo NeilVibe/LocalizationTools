@@ -30,8 +30,16 @@ from server.tools.ldm.schemas.gamedata import (
     GameDataTreeResponse,
     GameDevSaveRequest,
     GameDevSaveResponse,
+    IndexBuildRequest,
+    IndexBuildResponse,
+    IndexSearchRequest,
+    IndexSearchResult,
+    IndexSearchResponse,
+    IndexStatusResponse,
     TreeRequest,
 )
+from server.tools.ldm.indexing.gamedata_indexer import get_gamedata_indexer
+from server.tools.ldm.indexing.gamedata_searcher import GameDataSearcher
 from server.tools.ldm.services.gamedata_browse_service import (
     EDITABLE_ATTRS,
     GameDataBrowseService,
@@ -383,3 +391,79 @@ async def get_gamedata_tree_folder(
         logger.error(f"[GameData API] get_gamedata_tree_folder failed: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
     return result
+
+
+# =============================================================================
+# Index endpoints (Phase 29: Multi-Tier Indexing)
+# =============================================================================
+
+
+@router.post("/gamedata/index/build", response_model=IndexBuildResponse)
+async def build_gamedata_index(
+    request: IndexBuildRequest,
+    user=Depends(get_current_active_user_async),
+):
+    """Build multi-tier indexes from a gamedata folder.
+
+    Parses all XML files in folder via GameDataTreeService.parse_folder(),
+    then feeds TreeNode data to GameDataIndexer.build_from_folder_tree().
+    """
+    indexer = get_gamedata_indexer()
+    tree_service = GameDataTreeService(base_dir=Path(request.path).parent)
+
+    try:
+        folder_data = tree_service.parse_folder(request.path)
+    except (FileNotFoundError, ValueError) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    if folder_data.total_nodes == 0:
+        raise HTTPException(status_code=400, detail="No entities found in folder")
+
+    result = indexer.build_from_folder_tree(folder_data)
+    return IndexBuildResponse(**result, status="ready")
+
+
+@router.post("/gamedata/index/search", response_model=IndexSearchResponse)
+async def search_gamedata_index(
+    request: IndexSearchRequest,
+    user=Depends(get_current_active_user_async),
+):
+    """Search gamedata entities using 6-tier cascade."""
+    indexer = get_gamedata_indexer()
+    if not indexer.is_ready:
+        raise HTTPException(status_code=400, detail="Index not built yet")
+
+    searcher = GameDataSearcher(indexer.indexes)
+    result = searcher.search(request.query, top_k=request.top_k, threshold=request.threshold)
+
+    return IndexSearchResponse(
+        tier=result["tier"],
+        tier_name=result["tier_name"],
+        results=[IndexSearchResult(**r) for r in result["results"]],
+        perfect_match=result["perfect_match"],
+    )
+
+
+@router.post("/gamedata/index/detect")
+async def detect_entities_in_text(
+    request: dict,
+    user=Depends(get_current_active_user_async),
+):
+    """Detect entity names in text via Aho-Corasick scan."""
+    indexer = get_gamedata_indexer()
+    if not indexer.is_ready:
+        raise HTTPException(status_code=400, detail="Index not built yet")
+
+    searcher = GameDataSearcher(indexer.indexes)
+    entities = searcher.detect_entities(request.get("text", ""))
+    return {"entities": entities}
+
+
+@router.get("/gamedata/index/status", response_model=IndexStatusResponse)
+async def get_index_status(
+    user=Depends(get_current_active_user_async),
+):
+    """Get current index build status."""
+    indexer = get_gamedata_indexer()
+    status = indexer.get_status()
+    return IndexStatusResponse(**status)
