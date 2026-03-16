@@ -1,5 +1,20 @@
 # Milestones
 
+## v3.3 UI/UX Polish + Performance (IN PROGRESS)
+
+**Phases:** 32-36 (5 phases, 8 plans)
+**Requirements:** 0/32 complete (8 categories: FND, CDX, GDT, LDG, WMP, TMP, XPG, VER)
+**Goal:** Audit, critique, and polish ALL 5 pages for visual consistency, performance, and production-readiness. Codex gets a full revamp with lazy loading. Cross-page consistency enforced so the app feels like ONE product.
+
+**Phase structure:**
+1. Phase 32: Design Token Foundation (CSS tokens + 5 shared micro-components)
+2. Phase 33: Codex Revamp (paginated loading, IntersectionObserver, skeleton states, search-first UX)
+3. Phase 34: Page-by-Page Polish (GameData Tree, Language Data Grid, World Map, TM Panel -- parallelizable)
+4. Phase 35: Cross-Page Consistency (unified headers, dark mode, sidebar, error handling)
+5. Phase 36: Visual Verification (Playwright screenshots, perf benchmarks, memory leaks, regression tests)
+
+---
+
 ## v3.2 GameData Tree UI + Context Intelligence + Image Gen (Shipped: 2026-03-16)
 
 **Phases:** 26-31 (6 phases, 12 plans)

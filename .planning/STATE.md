@@ -5,11 +5,11 @@ milestone_name: UI/UX Polish + Performance
 status: active
 stopped_at: null
 last_updated: "2026-03-17T00:00:00.000Z"
-last_activity: 2026-03-17 -- Milestone v3.3 started
+last_activity: 2026-03-17 -- Roadmap created for v3.3 (5 phases, 8 plans, 32 requirements)
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 8
   completed_plans: 0
   percent: 0
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** All 5 pages polished to production quality -- consistent, performant, beautiful, one unified app experience.
-**Current focus:** Defining requirements for v3.3
+**Current focus:** Phase 32 - Design Token Foundation
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-17 -- Milestone v3.3 started
+Phase: 32 of 36 (Design Token Foundation) -- first of 5 v3.3 phases
+Plan: 0 of 1 in current phase
+Status: Ready to plan
+Last activity: 2026-03-17 -- Roadmap created for v3.3
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -42,17 +42,13 @@ Progress: [░░░░░░░░░░] 0%
 | v2.0 | 8 | 17 | 40/40 |
 | v3.0 | 7 | 14 | 45/45 |
 | v3.1 | 4 | 19 | 48/48 |
-| v3.2 | 6 | 12 | 10/25 |
+| v3.2 | 6 | 12 | 25/25 |
+| v3.3 | 5 | 8 | 0/32 |
 
 **Recent Execution:**
 
 | Phase-Plan | Duration | Tasks | Files |
 |------------|----------|-------|-------|
-| 27-02 | 2min | 2 | 2 |
-| Phase 27 P01 | 6min | 2 tasks | 6 files |
-| Phase 28 P01 | 4min | 2 tasks | 2 files |
-| Phase 28 P03 | 3min | 2 tasks | 1 files |
-| Phase 28 P02 | 3min | 2 tasks | 2 files |
 | Phase 29 P01 | 5min | 2 tasks | 5 files |
 | Phase 29 P02 | 4min | 2 tasks | 3 files |
 | Phase 29 P03 | 3min | 2 tasks | 2 files |
@@ -67,44 +63,11 @@ Progress: [░░░░░░░░░░] 0%
 
 Recent decisions affecting current work:
 
-- [v3.2 Roadmap]: 5-Tier Cascade Smart Search for CTX-04: (1) Exact hashtable O(1), (2) Aho-Corasick multi-pattern O(n), (3) Fuzzy/prefix, (4) FAISS semantic, (5) Qwen3 LLM inference
-- [v3.2 Roadmap]: Aho-Corasick superior to string.includes() -- finds ALL entity names in single pass
-- [v3.2 Roadmap]: Tree parser must use lxml tree walking (like QACompiler skill.py), not flat row extraction
-- [v3.2 Roadmap]: Reference files: exampleofskillgamedata.txt (hierarchy), skill.py (tree walking code)
-- [Post-v3.1 GameDev]: Created POST /api/ldm/gamedata/rows -- XML entities loaded directly, no DB file_id
-- [Post-v3.1 GameDev]: Split GameDev browse into two buttons (folder picker + apply arrow)
-- [Phase 26]: File type enforcement via optional context Form parameter -- backward compatible
-- [Phase 26]: Validation server-side after XML parse, not client-side MIME check
-- [Phase 27-02]: Used real game data patterns from exampleofskillgamedata.txt for authentic hierarchy structures in fixtures
-- [Phase 27]: Use findall('*') for lxml tree walking to satisfy TREE-05 and skip XML comments
-- [Phase 27]: ParentNodeId='0' treated as root-level children; other values nested under matching NodeId
-- [Phase 28-01]: Lightning icon for skills (Fleet unavailable in carbon-icons-svelte); 13 entity types mapped
-- [Phase 28-01]: Recursive {#snippet renderNode(node, depth)} pattern for hierarchical tree rendering
-- [Phase 28-01]: EDITABLE_ATTRS mirrored from backend to derive primary display labels client-side
-- [Phase 28-03]: Cross-ref detection uses explicit set + heuristic (ending in Key/Id) for extensibility
-- [Phase 28-03]: Node index uses prefixed keys (key:, nodeid:, id:) to avoid collisions
-- [Phase 28-03]: Single ChevronRight with CSS rotate(90deg) animation instead of icon swapping
-- [Phase 28-03]: ENTITY_TYPE_COLORS map with 14 entity types for centralized color palette
-- [Phase 28]: PUT method for save endpoint (matching backend router definition); editable attrs sorted first in attribute list
-- [Phase 29]: FAISSManager.build_index(path=None) for in-memory gamedata indexes -- rebuilt on each folder load
-- [Phase 29]: Whole lookup indexes 3 keys per entity (name, Key, StrKey) for O(1) IDX-01 lookup
-- [Phase 29]: AC automaton stores (idx, name, node_id, tag) tuple for direct entity detection without secondary lookup
-- [Phase 29-02]: IndexBuildResponse.status set to 'ready' at endpoint layer (indexer metadata lacks status field)
-- [Phase 29]: Fire-and-forget buildIndex call after tree load -- no await, user browses while index builds
-- [Phase 29]: Entity detection scans ALL attributes (not just editable) for comprehensive cross-reference highlighting
-- [Phase 30-01]: Reverse index built during folder index build (hooks into build_gamedata_index endpoint)
-- [Phase 30-01]: TM suggestions conditional on StrKey attribute -- hidden for non-language entities
-- [Phase 30-01]: Context data cached per node_id in frontend Map for instant revisit
-- [Phase 30-01]: GameDataTree bind:this for cross-ref navigation from context panel
-- [Phase 30-02]: Ollama availability checked via /api/tags 2s timeout before AI summary generation
-- [Phase 30-02]: Progressive reveal uses single fetch + staggered setTimeout (50ms/100ms) not separate endpoints
-- [Phase 30-02]: Qwen3 system prompt includes /no_think for deterministic output
-- [Phase 31]: Prompt templates stored as Python dict in ai_image_service.py, not separate JSON
-- [Phase 31]: Grade glow keywords injected per entity Grade attribute for visual quality differentiation
-- [Phase 31]: StrKey sanitization via regex + path resolution check against CACHE_DIR for security
-- [Phase 31]: Two-phase batch flow: confirm=false preview, confirm=true launches background TrackedOperation
-- [Phase 31]: asyncio.Event cancellation for batch generation stored in module-level dict
-- [Phase 31]: WebSocket progress listeners in Svelte $effect with cleanup return for auto-unsubscribe
+- [v3.3 Roadmap]: Research says zero new production deps -- Carbon SkeletonText/SkeletonPlaceholder + native IntersectionObserver + loading="lazy" cover all needs
+- [v3.3 Roadmap]: Foundation-first build order: tokens -> components -> Codex revamp -> page polish -> cross-page -> verify
+- [v3.3 Roadmap]: Phase 34 plans fully parallelizable (3 plans across independent pages)
+- [v3.3 Roadmap]: VirtualGrid.svelte (1000+ lines) explicitly left unchanged -- polish around it, not in it
+- [v3.3 Roadmap]: Codex pagination via offset/limit params on existing codex list API (wrapper-layer change only)
 
 ### Pending Todos
 
@@ -116,6 +79,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T10:25:37.323Z
-Stopped at: Completed 31-02-PLAN.md
+Last session: 2026-03-17
+Stopped at: Roadmap created for v3.3 milestone
 Resume file: None
