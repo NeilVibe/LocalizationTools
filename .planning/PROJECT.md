@@ -62,7 +62,18 @@ The platform delivers real, working localization workflows — real XML parsing,
 
 ### Active
 
-(No active milestone — planning next)
+## Current Milestone: v3.2 GameData Tree UI + Context Intelligence + Image Gen
+
+**Goal:** Rework the Game Data page from flat grid to hierarchical XML tree navigator with parent/child node expansion, add a right-side context panel with TM suggestions/images/audio/AI context, generate AI images for Codex, and achieve sub-second lookup via multi-tier indexing (hashtable + FAISS vector + Aho-Corasick glossary).
+
+**Target features:**
+- GameData hierarchical tree UI (better than VS Code — beautiful, fast, expandable nodes)
+- Right panel: TM embedding search, images, audio, AI context, 5-tier cascade smart search
+- Aho-Corasick auto-glossary extraction from full gamedata (QuickSearch patterns)
+- AI image generation for Codex entities (Nano Banana / Gemini)
+- Full folder loading with instant indexing
+- Navigation rename: "Localization Data" + "Game Data"
+- Browser DEV parity (showDirectoryPicker, auto-load mock data)
 
 ### Out of Scope
 
