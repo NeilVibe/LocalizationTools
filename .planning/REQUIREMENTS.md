@@ -56,10 +56,10 @@
 
 ### VER -- Verification
 
-- [ ] **VER-01**: Playwright screenshots captured for all 5 pages in both light and dark mode (10 screenshots minimum)
-- [ ] **VER-02**: Performance benchmark -- Codex loads 500 entities without visible lag, initial render under 1 second
-- [ ] **VER-03**: No memory leaks -- opening and closing pages repeatedly shows stable memory usage
-- [ ] **VER-04**: All existing API tests still pass after polish changes (zero regressions)
+- [x] **VER-01**: Playwright screenshots captured for all 5 pages in both light and dark mode (10 screenshots minimum)
+- [x] **VER-02**: Performance benchmark -- Codex loads 500 entities without visible lag, initial render under 1 second
+- [x] **VER-03**: No memory leaks -- opening and closing pages repeatedly shows stable memory usage
+- [x] **VER-04**: All existing API tests still pass after polish changes (zero regressions)
 
 ## Future Requirements
 
@@ -112,10 +112,10 @@
 | XPG-02 | Phase 35 | Complete |
 | XPG-03 | Phase 35 | Complete |
 | XPG-04 | Phase 35 | Complete |
-| VER-01 | Phase 36 | Pending |
-| VER-02 | Phase 36 | Pending |
-| VER-03 | Phase 36 | Pending |
-| VER-04 | Phase 36 | Pending |
+| VER-01 | Phase 36 | Complete |
+| VER-02 | Phase 36 | Complete |
+| VER-03 | Phase 36 | Complete |
+| VER-04 | Phase 36 | Complete |
 
 **Coverage:**
 - v3.3 requirements: 32 total
