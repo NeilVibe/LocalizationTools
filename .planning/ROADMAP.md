@@ -129,11 +129,12 @@ Plans:
   3. Pasting or typing text in any field highlights all recognized entity names found via Aho-Corasick single-pass scan (reusing QuickSearch/QuickCheck automaton patterns)
   4. Loading a gamedata folder automatically extracts a glossary of all entity names and descriptions and builds the Aho-Corasick automaton from them
   5. Full gamedata folder with 5000+ entities indexes completely in under 3 seconds
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
 - [ ] 29-01-PLAN.md &mdash; GameDataIndexer + GameDataSearcher: hash, FAISS, AC indexes + 6-tier cascade search engine
 - [ ] 29-02-PLAN.md &mdash; API endpoints (build, search, detect, status) + performance validation (<3s for 5000+ entities)
+- [ ] 29-03-PLAN.md &mdash; Frontend integration: auto-index on folder load, search bar in GameDataTree, AC glossary highlights in NodeDetailPanel
 
 ### Phase 30: Context Intelligence Panel
 **Goal**: Selecting any node in the tree opens a right panel showing TM suggestions, related images, audio playback, AI-powered context analysis via 5-tier cascade search, and cross-reference maps -- giving game developers instant, rich context for any entity
@@ -212,6 +213,6 @@ Phases execute in numeric order: 26 -> 27 -> 28 -> 29 -> 30 -> 31
 | 26. Navigation + DEV Parity | 1/1 | Complete    | 2026-03-16 | - |
 | 27. Tree Backend + Mock Data | 2/2 | Complete    | 2026-03-16 | - |
 | 28. Hierarchical Tree UI | 3/3 | Complete    | 2026-03-16 | - |
-| 29. Multi-Tier Indexing | v3.2 | 0/2 | Not started | - |
+| 29. Multi-Tier Indexing | v3.2 | 0/3 | Not started | - |
 | 30. Context Intelligence Panel | v3.2 | 0/2 | Not started | - |
 | 31. Codex AI Image Generation | v3.2 | 0/2 | Not started | - |
