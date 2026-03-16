@@ -192,6 +192,13 @@ class DiffTab(BaseTab):
         ]
         if mode == "Full (all attributes)":
             cols.append(("_diff_type", "DiffType", 10))
+        # Word-level diff columns for all non-dedicated modes
+        cols.extend([
+            ("_old_strorigin", "Old StrOrigin", 45),
+            ("_strorigin_diff", "StrOrigin Diff", 60),
+            ("_old_str", "Old Str", 60),
+            ("_str_diff", "Str Diff", 60),
+        ])
         return cols
 
     @staticmethod

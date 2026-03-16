@@ -43,6 +43,50 @@ def _entries_to_ordered(entries: list[dict]) -> OrderedDict:
 
 
 # ---------------------------------------------------------------------------
+# Post-enrichment: word-level diff visualization
+# ---------------------------------------------------------------------------
+
+def _enrich_with_diffs(
+    source_entries: list[dict],
+    extracted: list[dict],
+) -> None:
+    """Enrich extracted entries with word-level diff columns.
+
+    For each entry with a matching StringID in source, computes:
+    - ``_old_str`` / ``_str_diff`` when Str changed
+    - ``_old_strorigin`` / ``_strorigin_diff`` when StrOrigin changed
+
+    Skips entries that already have these keys (from dedicated diff modes).
+    Modifies entries in-place.
+    """
+    src_map: dict[str, dict] = {}
+    for e in source_entries:
+        src_map[e["string_id"].lower()] = e
+
+    for e in extracted:
+        sid_lower = e["string_id"].lower()
+        src_e = src_map.get(sid_lower)
+        if src_e is None:
+            continue
+
+        # Str diff
+        if "_old_str" not in e:
+            old_sv = src_e.get("str_value", "")
+            new_sv = e.get("str_value", "")
+            if old_sv != new_sv:
+                e["_old_str"] = old_sv
+                e["_str_diff"] = extract_differences(old_sv, new_sv) if old_sv and new_sv else ""
+
+        # StrOrigin diff
+        if "_old_strorigin" not in e:
+            old_so = src_e.get("str_origin", "")
+            new_so = e.get("str_origin", "")
+            if old_so != new_so:
+                e["_old_strorigin"] = old_so
+                e["_strorigin_diff"] = extract_differences(old_so, new_so) if old_so and new_so else ""
+
+
+# ---------------------------------------------------------------------------
 # Post-filter: non-letter-only changes
 # ---------------------------------------------------------------------------
 
@@ -126,6 +170,9 @@ def diff_file(
         # Key-based modes
         source_keys = {_build_key(e, mode) for e in source_entries}
         result = [e for e in target_entries if _build_key(e, mode) not in source_keys]
+
+    # Enrich all extracted entries with word-level diff visualization
+    _enrich_with_diffs(source_entries, result)
 
     if filter_nonletter:
         result = _filter_nonletter_changes(source_entries, result, log_fn=log_fn)
