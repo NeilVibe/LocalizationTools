@@ -117,7 +117,7 @@ async def generate_image(
 
     # Generate via Gemini (sync call wrapped in thread)
     try:
-        prompt = svc._build_prompt(entity)
+        prompt = svc.build_prompt(entity)
         png_bytes = await asyncio.to_thread(svc.generate_image, entity)
         svc.save_to_cache(strkey, png_bytes, prompt)
 
@@ -130,6 +130,11 @@ async def generate_image(
         raise HTTPException(status_code=500, detail=str(exc))
     except Exception as exc:
         logger.error(f"[Codex API] Unexpected error generating image for {entity_type}/{strkey}: {exc}")
+        exc_str = str(exc).upper()
+        if "SAFETY" in exc_str:
+            raise HTTPException(status_code=422, detail="Content blocked by safety filter")
+        if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str:
+            raise HTTPException(status_code=429, detail="Rate limit exceeded")
         raise HTTPException(status_code=500, detail=f"Image generation failed: {exc}")
 
 
@@ -189,8 +194,8 @@ async def _run_batch_generation(
             break
 
         try:
+            prompt = svc.build_prompt(entity)
             png_bytes = await asyncio.to_thread(svc.generate_image, entity)
-            prompt = svc._build_prompt(entity)
             svc.save_to_cache(entity.strkey, png_bytes, prompt)
             generated += 1
         except Exception as exc:
@@ -200,9 +205,10 @@ async def _run_batch_generation(
             failed += 1
 
         pct = ((i + 1) / total) * 100
+        fail_suffix = f", {failed} failed" if failed > 0 else ""
         op.update(
             pct,
-            f"{i + 1}/{total} images generated",
+            f"Generated {generated}/{total}{fail_suffix}",
             completed_steps=i + 1,
             total_steps=total,
         )
@@ -269,7 +275,10 @@ async def batch_generate(
         total_steps=len(to_generate),
     )
     op = tracked.__enter__()
-    operation_id = tracked.operation_id or 0
+    if tracked.operation_id is None:
+        tracked.__exit__(None, None, None)
+        raise HTTPException(503, "Operation tracking unavailable")
+    operation_id = tracked.operation_id
 
     # Create cancellation event
     cancel_event = asyncio.Event()
@@ -334,7 +343,7 @@ async def search_codex(
         return svc.search(query=q, entity_type=entity_type, limit=limit)
     except Exception as e:
         logger.error(f"[Codex API] Search failed: {e}")
-        return CodexSearchResponse(results=[], count=0, search_time_ms=0.0)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/entity/{entity_type}/{strkey}", response_model=CodexEntity)
@@ -386,7 +395,7 @@ async def list_codex_entities(
         return svc.list_entities(entity_type)
     except Exception as e:
         logger.error(f"[Codex API] list_entities failed: {e}")
-        return CodexListResponse(entities=[], entity_type=entity_type, count=0)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/types")
@@ -403,4 +412,4 @@ async def get_codex_types(
         return svc.get_entity_types()
     except Exception as e:
         logger.error(f"[Codex API] get_entity_types failed: {e}")
-        return {}
+        raise HTTPException(status_code=500, detail=str(e))

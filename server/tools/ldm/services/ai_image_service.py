@@ -60,6 +60,16 @@ PROMPT_TEMPLATES: Dict[str, str] = {
         "Style: magical sigil, glowing runes, centered on dark background, "
         "mystical energy."
     ),
+    "faction": (
+        "A heraldic faction banner for '{name}' in a fantasy game. "
+        "Medieval banner design with faction emblem, ornate border, faction colors. "
+        "Professional game art, heraldic style."
+    ),
+    "skilltree": (
+        "A skill tree diagram visualization for '{name}' in a fantasy game. "
+        "Branching progression paths with connected nodes, magical borders, "
+        "class-themed decorations. Game UI illustration style."
+    ),
 }
 
 ASPECT_RATIOS: Dict[str, str] = {
@@ -92,7 +102,7 @@ class AIImageService:
     """
 
     MODEL = "gemini-3-pro-image-preview"
-    CACHE_DIR = Path("server/data/cache/ai_images/by_strkey")
+    CACHE_DIR = Path(__file__).resolve().parents[4] / "server" / "data" / "cache" / "ai_images" / "by_strkey"
 
     def __init__(self) -> None:
         api_key = os.environ.get("GEMINI_API_KEY")
@@ -103,8 +113,12 @@ class AIImageService:
                 self._client = genai.Client(api_key=api_key)
                 self._available = True
                 logger.info("[AI Image] Service initialized (Gemini available)")
+            except ImportError as exc:
+                logger.warning(f"[AI Image] google-genai package not installed: {exc}")
+                self._client = None
+                self._available = False
             except Exception as exc:
-                logger.warning(f"[AI Image] Failed to create Gemini client: {exc}")
+                logger.error(f"[AI Image] Failed to create Gemini client: {exc}")
                 self._client = None
                 self._available = False
         else:
@@ -131,31 +145,38 @@ class AIImageService:
         path = self.CACHE_DIR / safe_key / "generated.png"
         return path if path.exists() else None
 
-    def save_to_cache(self, strkey: str, png_bytes: bytes, prompt: str) -> Path:
-        """Write PNG + metadata.json to cache directory."""
-        safe_key = self._sanitize_strkey(strkey)
-        cache_dir = self.CACHE_DIR / safe_key
-        cache_dir.mkdir(parents=True, exist_ok=True)
+    def save_to_cache(self, strkey: str, png_bytes: bytes, prompt: str) -> Optional[Path]:
+        """Write PNG + metadata.json to cache directory.
 
-        png_path = cache_dir / "generated.png"
-        png_path.write_bytes(png_bytes)
+        Returns the path on success, None on disk failure (logged but not raised).
+        """
+        try:
+            safe_key = self._sanitize_strkey(strkey)
+            cache_dir = self.CACHE_DIR / safe_key
+            cache_dir.mkdir(parents=True, exist_ok=True)
 
-        metadata = {
-            "model": self.MODEL,
-            "prompt": prompt,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-        }
-        meta_path = cache_dir / "metadata.json"
-        meta_path.write_text(json.dumps(metadata, indent=2))
+            png_path = cache_dir / "generated.png"
+            png_path.write_bytes(png_bytes)
 
-        logger.debug(f"[AI Image] Cached image for {safe_key} ({len(png_bytes)} bytes)")
-        return png_path
+            metadata = {
+                "model": self.MODEL,
+                "prompt": prompt,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            meta_path = cache_dir / "metadata.json"
+            meta_path.write_text(json.dumps(metadata, indent=2))
+
+            logger.debug(f"[AI Image] Cached image for {safe_key} ({len(png_bytes)} bytes)")
+            return png_path
+        except OSError as exc:
+            logger.error(f"[AI Image] Failed to write cache for {strkey}: {exc}")
+            return None
 
     # -------------------------------------------------------------------------
     # Prompt building
     # -------------------------------------------------------------------------
 
-    def _build_prompt(self, entity: CodexEntity) -> str:
+    def build_prompt(self, entity: CodexEntity) -> str:
         """Build a generation prompt from entity attributes."""
         attrs = entity.attributes or {}
         name = entity.name or entity.strkey
@@ -215,7 +236,9 @@ class AIImageService:
         # Verify resolved path stays within CACHE_DIR
         resolved = (self.CACHE_DIR / cleaned).resolve()
         cache_resolved = self.CACHE_DIR.resolve()
-        if not str(resolved).startswith(str(cache_resolved)):
+        try:
+            resolved.relative_to(cache_resolved)
+        except ValueError:
             logger.warning(f"[AI Image] Path traversal attempt: {strkey}")
             cleaned = "_sanitized_"
 
@@ -243,7 +266,7 @@ class AIImageService:
 
         from google.genai import types
 
-        prompt = self._build_prompt(entity)
+        prompt = self.build_prompt(entity)
         aspect = self._get_aspect_ratio(entity.entity_type)
 
         logger.info(f"[AI Image] Generating image for {entity.entity_type}/{entity.strkey}")

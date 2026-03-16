@@ -224,33 +224,33 @@ class TestCache:
 
 class TestPromptBuilding:
     def test_character_prompt_includes_race_job(self, service_available, sample_entity):
-        prompt = service_available._build_prompt(sample_entity)
+        prompt = service_available.build_prompt(sample_entity)
         assert "Aelric the Bold" in prompt
         assert "Human" in prompt
         assert "Knight" in prompt
 
     def test_item_prompt_includes_item_type(self, service_available, item_entity):
-        prompt = service_available._build_prompt(item_entity)
+        prompt = service_available.build_prompt(item_entity)
         assert "Blade of Dawn" in prompt
         assert "Weapon" in prompt
 
     def test_region_prompt_includes_landscape(self, service_available, region_entity):
-        prompt = service_available._build_prompt(region_entity)
+        prompt = service_available.build_prompt(region_entity)
         assert "Frostpeak Mountains" in prompt
         assert "landscape" in prompt.lower()
 
     def test_skill_prompt_includes_skill_icon(self, service_available, skill_entity):
-        prompt = service_available._build_prompt(skill_entity)
+        prompt = service_available.build_prompt(skill_entity)
         assert "Fireball" in prompt
         assert "skill" in prompt.lower()
 
     def test_gimmick_prompt_includes_sigil(self, service_available, gimmick_entity):
-        prompt = service_available._build_prompt(gimmick_entity)
+        prompt = service_available.build_prompt(gimmick_entity)
         assert "Dark Seal" in prompt
         assert "sigil" in prompt.lower()
 
     def test_graceful_degradation_missing_attrs(self, service_available, minimal_entity):
-        prompt = service_available._build_prompt(minimal_entity)
+        prompt = service_available.build_prompt(minimal_entity)
         assert "Ancient Lore" in prompt
         # Should use fallback template, not crash
         assert "fantasy" in prompt.lower() or "knowledge" in prompt.lower()
