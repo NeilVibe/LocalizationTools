@@ -41,11 +41,11 @@
 
 ### NAV — Navigation & DEV Parity
 
-- [ ] **NAV-01**: Files page renamed to "Localization Data" in sidebar tabs
-- [ ] **NAV-02**: GameDev page renamed to "Game Data" in sidebar tabs
-- [ ] **NAV-03**: Browser DEV mode uses `showDirectoryPicker` for native folder dialog (parity with Electron)
-- [ ] **NAV-04**: DEV mode auto-loads mock gamedata on Game Data page mount (no manual path entry needed)
-- [ ] **NAV-05**: Only language data files (.loc.xml, LocStr) uploadable to Localization Data; only gamedata XML (StaticInfo) loadable in Game Data — strict separation
+- [x] **NAV-01**: Files page renamed to "Localization Data" in sidebar tabs
+- [x] **NAV-02**: GameDev page renamed to "Game Data" in sidebar tabs
+- [x] **NAV-03**: Browser DEV mode uses `showDirectoryPicker` for native folder dialog (parity with Electron)
+- [x] **NAV-04**: DEV mode auto-loads mock gamedata on Game Data page mount (no manual path entry needed)
+- [x] **NAV-05**: Only language data files (.loc.xml, LocStr) uploadable to Localization Data; only gamedata XML (StaticInfo) loadable in Game Data — strict separation
 
 ## v3.3+ Requirements (Deferred)
 
@@ -71,11 +71,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NAV-01 | Phase 26 | Pending |
-| NAV-02 | Phase 26 | Pending |
-| NAV-03 | Phase 26 | Pending |
-| NAV-04 | Phase 26 | Pending |
-| NAV-05 | Phase 26 | Pending |
+| NAV-01 | Phase 26 | Complete |
+| NAV-02 | Phase 26 | Complete |
+| NAV-03 | Phase 26 | Complete |
+| NAV-04 | Phase 26 | Complete |
+| NAV-05 | Phase 26 | Complete |
 | TREE-05 | Phase 27 | Pending |
 | TREE-07 | Phase 27 | Pending |
 | TREE-01 | Phase 28 | Pending |
