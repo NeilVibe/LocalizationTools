@@ -1,71 +1,35 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <SkillTreeInfoList>
-  <SkillTreeInfo Key="1" StrKey="TREE_001" CharacterKey="CHAR_CLASS_001" UIPageName="전사 스킬">
-    <SkillNode NodeId="1" SkillKey="Skill_0001_강타" ParentNodeId="0" UIPositionXY="0,0"/>
-    <SkillNode NodeId="2" SkillKey="Skill_0002_회전_베기" ParentNodeId="1" UIPositionXY="100,0"/>
-    <SkillNode NodeId="3" SkillKey="Skill_0003_돌진" ParentNodeId="2" UIPositionXY="200,0"/>
-    <SkillNode NodeId="4" SkillKey="Skill_0004_방어_자세" ParentNodeId="3" UIPositionXY="300,0"/>
-    <SkillNode NodeId="5" SkillKey="Skill_0005_기합" ParentNodeId="4" UIPositionXY="0,80"/>
-    <SkillNode NodeId="6" SkillKey="Skill_0006_화염구" ParentNodeId="5" UIPositionXY="100,80"/>
-    <SkillNode NodeId="7" SkillKey="Skill_0007_냉기_화살" ParentNodeId="6" UIPositionXY="200,80"/>
-    <SkillNode NodeId="8" SkillKey="Skill_0008_번개_낙뢰" ParentNodeId="7" UIPositionXY="300,80"/>
-    <SkillNode NodeId="9" SkillKey="Skill_0009_치유의_빛" ParentNodeId="8" UIPositionXY="0,160"/>
+  <SkillTreeInfo Key="1" StrKey="TREE_001" CharacterKey="Kliff" UIPageName="전사 검술">
+    <!-- Root: Sword Mastery -->
+    <SkillNode NodeId="100" SkillKey="Skill_SwordMastery" SkillLevel="1" ParentNodeId="0" UIPositionXY="640 270" UISkillTreeNodeType="Graymane"/>
+    <!-- Branch A from root: Move Cutting path -->
+    <SkillNode NodeId="150" SkillKey="Skill_MoveCutting" SkillLevel="1" ParentNodeId="100" UIPositionXY="539 222" UISkillTreeNodeType="Graymane"/>
+    <SkillNode NodeId="160" SkillKey="Skill_ShieldAttack" SkillLevel="1" ParentNodeId="150" UIPositionXY="440 171" UISkillTreeNodeType="Graymane"/>
+    <SkillNode NodeId="200" SkillKey="Skill_RotationBash" SkillLevel="1" ParentNodeId="160" UIPositionXY="376 139" UISkillTreeNodeType="Graymane"/>
+    <!-- Branch B from root: Turn Bash path -->
+    <SkillNode NodeId="250" SkillKey="Skill_TurnBash" SkillLevel="1" ParentNodeId="100" UIPositionXY="834 168" UISkillTreeNodeType="Graymane"/>
+    <SkillNode NodeId="300" SkillKey="Skill_Lunge" SkillLevel="1" ParentNodeId="250" UIPositionXY="738 222" UISkillTreeNodeType="Graymane"/>
+    <SkillNode NodeId="650" SkillKey="Skill_LightReflection" SkillLevel="1" ParentNodeId="300" UIPositionXY="898 131" UISkillTreeNodeType="Graymane"/>
+    <SkillNode NodeId="950" SkillKey="Skill_SwordRush" SkillLevel="1" ParentNodeId="650" UIPositionXY="833 89" UISkillTreeNodeType="Graymane"/>
   </SkillTreeInfo>
-  <SkillTreeInfo Key="2" StrKey="TREE_002" CharacterKey="CHAR_CLASS_002" UIPageName="마법사 스킬">
-    <SkillNode NodeId="1" SkillKey="Skill_0010_보호막" ParentNodeId="0" UIPositionXY="0,0"/>
-    <SkillNode NodeId="2" SkillKey="Skill_0011_은신" ParentNodeId="1" UIPositionXY="100,0"/>
-    <SkillNode NodeId="3" SkillKey="Skill_0012_급소_공격" ParentNodeId="2" UIPositionXY="200,0"/>
-    <SkillNode NodeId="4" SkillKey="Skill_0013_독침" ParentNodeId="3" UIPositionXY="300,0"/>
-    <SkillNode NodeId="5" SkillKey="Skill_0014_연막탄" ParentNodeId="4" UIPositionXY="0,80"/>
-    <SkillNode NodeId="6" SkillKey="Skill_0015_추적" ParentNodeId="5" UIPositionXY="100,80"/>
-    <SkillNode NodeId="7" SkillKey="Skill_0016_소환:_정령" ParentNodeId="6" UIPositionXY="200,80"/>
-    <SkillNode NodeId="8" SkillKey="Skill_0017_강화_마법" ParentNodeId="7" UIPositionXY="300,80"/>
-    <SkillNode NodeId="9" SkillKey="Skill_0018_저주" ParentNodeId="8" UIPositionXY="0,160"/>
+  <SkillTreeInfo Key="2" StrKey="TREE_002" CharacterKey="Kliff" UIPageName="체술">
+    <!-- Root 1: Wrestling -->
+    <SkillNode NodeId="450" SkillKey="Skill_Wrestle" SkillLevel="1" ParentNodeId="0" UIPositionXY="640 270" UISkillTreeNodeType="Graymane"/>
+    <SkillNode NodeId="455" SkillKey="Skill_Wrestle_Lariat" SkillLevel="1" ParentNodeId="450" UIPositionXY="580 210" UISkillTreeNodeType="Graymane"/>
+    <SkillNode NodeId="460" SkillKey="Skill_Wrestle_AirBodySlam" SkillLevel="1" ParentNodeId="450" UIPositionXY="670 360" UISkillTreeNodeType="Graymane_Abyss"/>
+    <SkillNode NodeId="465" SkillKey="Skill_Wrestle_GiantSwing" SkillLevel="1" ParentNodeId="450" UIPositionXY="550 180" UISkillTreeNodeType="Graymane"/>
+    <!-- Root 2: Unarmed kicks -->
+    <SkillNode NodeId="500" SkillKey="Skill_UnArmedMastery" SkillLevel="1" ParentNodeId="0" UIPositionXY="700 210" UISkillTreeNodeType="Graymane"/>
+    <SkillNode NodeId="505" SkillKey="Skill_DropKick" SkillLevel="1" ParentNodeId="500" UIPositionXY="1020 210" UISkillTreeNodeType="Graymane"/>
+    <SkillNode NodeId="510" SkillKey="Skill_DoubleKick" SkillLevel="1" ParentNodeId="500" UIPositionXY="980 210" UISkillTreeNodeType="Graymane"/>
+    <SkillNode NodeId="515" SkillKey="Skill_JumpDoubleKick" SkillLevel="1" ParentNodeId="500" UIPositionXY="980 390" UISkillTreeNodeType="Graymane_Abyss"/>
+    <SkillNode NodeId="520" SkillKey="Skill_SkyKick" SkillLevel="1" ParentNodeId="515" UIPositionXY="1010 420" UISkillTreeNodeType="Graymane_Abyss"/>
   </SkillTreeInfo>
-  <SkillTreeInfo Key="3" StrKey="TREE_003" CharacterKey="CHAR_CLASS_003" UIPageName="궁수 스킬">
-    <SkillNode NodeId="1" SkillKey="Skill_0019_해제" ParentNodeId="0" UIPositionXY="0,0"/>
-    <SkillNode NodeId="2" SkillKey="Skill_0020_부활" ParentNodeId="1" UIPositionXY="100,0"/>
-    <SkillNode NodeId="3" SkillKey="Skill_0021_연타" ParentNodeId="2" UIPositionXY="200,0"/>
-    <SkillNode NodeId="4" SkillKey="Skill_0022_관통_사격" ParentNodeId="3" UIPositionXY="300,0"/>
-    <SkillNode NodeId="5" SkillKey="Skill_0023_광역_폭발" ParentNodeId="4" UIPositionXY="0,80"/>
-    <SkillNode NodeId="6" SkillKey="Skill_0024_집중" ParentNodeId="5" UIPositionXY="100,80"/>
-    <SkillNode NodeId="7" SkillKey="Skill_0025_분노_폭발" ParentNodeId="6" UIPositionXY="200,80"/>
-    <SkillNode NodeId="8" SkillKey="Skill_0026_공중_강습" ParentNodeId="7" UIPositionXY="300,80"/>
-    <SkillNode NodeId="9" SkillKey="Skill_0027_지면_강타" ParentNodeId="8" UIPositionXY="0,160"/>
-  </SkillTreeInfo>
-  <SkillTreeInfo Key="4" StrKey="TREE_004" CharacterKey="CHAR_CLASS_004" UIPageName="도적 스킬">
-    <SkillNode NodeId="1" SkillKey="Skill_0028_돌풍_베기" ParentNodeId="0" UIPositionXY="0,0"/>
-    <SkillNode NodeId="2" SkillKey="Skill_0029_얼음_감옥" ParentNodeId="1" UIPositionXY="100,0"/>
-    <SkillNode NodeId="3" SkillKey="Skill_0030_불꽃_폭풍" ParentNodeId="2" UIPositionXY="200,0"/>
-    <SkillNode NodeId="4" SkillKey="Skill_0031_그림자_이동" ParentNodeId="3" UIPositionXY="300,0"/>
-    <SkillNode NodeId="5" SkillKey="Skill_0032_독안개" ParentNodeId="4" UIPositionXY="0,80"/>
-    <SkillNode NodeId="6" SkillKey="Skill_0033_생명_흡수" ParentNodeId="5" UIPositionXY="100,80"/>
-    <SkillNode NodeId="7" SkillKey="Skill_0034_마나_흡수" ParentNodeId="6" UIPositionXY="200,80"/>
-    <SkillNode NodeId="8" SkillKey="Skill_0035_시간_정지" ParentNodeId="7" UIPositionXY="300,80"/>
-    <SkillNode NodeId="9" SkillKey="Skill_0036_용의_숨결" ParentNodeId="8" UIPositionXY="0,160"/>
-  </SkillTreeInfo>
-  <SkillTreeInfo Key="5" StrKey="TREE_005" CharacterKey="CHAR_CLASS_005" UIPageName="치유사 스킬">
-    <SkillNode NodeId="1" SkillKey="Skill_0037_성스러운_일격" ParentNodeId="0" UIPositionXY="0,0"/>
-    <SkillNode NodeId="2" SkillKey="Skill_0038_암흑_파동" ParentNodeId="1" UIPositionXY="100,0"/>
-    <SkillNode NodeId="3" SkillKey="Skill_0039_바람의_칼날" ParentNodeId="2" UIPositionXY="200,0"/>
-    <SkillNode NodeId="4" SkillKey="Skill_0040_대지의_힘" ParentNodeId="3" UIPositionXY="300,0"/>
-    <SkillNode NodeId="5" SkillKey="Skill_0041_번개_연쇄" ParentNodeId="4" UIPositionXY="0,80"/>
-    <SkillNode NodeId="6" SkillKey="Skill_0042_빙결_폭풍" ParentNodeId="5" UIPositionXY="100,80"/>
-    <SkillNode NodeId="7" SkillKey="Skill_0043_화염_벽" ParentNodeId="6" UIPositionXY="200,80"/>
-    <SkillNode NodeId="8" SkillKey="Skill_0044_치유의_비" ParentNodeId="7" UIPositionXY="300,80"/>
-    <SkillNode NodeId="9" SkillKey="Skill_0045_수호의_결계" ParentNodeId="8" UIPositionXY="0,160"/>
-  </SkillTreeInfo>
-  <SkillTreeInfo Key="6" StrKey="TREE_006" CharacterKey="CHAR_CLASS_006" UIPageName="소환사 스킬">
-    <SkillNode NodeId="1" SkillKey="Skill_0046_질풍_연무" ParentNodeId="0" UIPositionXY="0,0"/>
-    <SkillNode NodeId="2" SkillKey="Skill_0047_천둥_강타" ParentNodeId="1" UIPositionXY="100,0"/>
-    <SkillNode NodeId="3" SkillKey="Skill_0048_극대_마법" ParentNodeId="2" UIPositionXY="200,0"/>
-    <SkillNode NodeId="4" SkillKey="Skill_0049_환영_분신" ParentNodeId="3" UIPositionXY="300,0"/>
-    <SkillNode NodeId="5" SkillKey="Skill_0050_최후의_일격" ParentNodeId="4" UIPositionXY="0,80"/>
-    <SkillNode NodeId="6" SkillKey="Skill_0051_폭풍_사격" ParentNodeId="5" UIPositionXY="100,80"/>
-    <SkillNode NodeId="7" SkillKey="Skill_0052_연속_자상" ParentNodeId="6" UIPositionXY="200,80"/>
-    <SkillNode NodeId="8" SkillKey="Skill_0053_회복_명상" ParentNodeId="7" UIPositionXY="300,80"/>
-    <SkillNode NodeId="9" SkillKey="Skill_0054_전투_함성" ParentNodeId="8" UIPositionXY="0,160"/>
-    <SkillNode NodeId="10" SkillKey="Skill_0055_축복의_기도" ParentNodeId="9" UIPositionXY="100,160"/>
-    <SkillNode NodeId="11" SkillKey="Skill_0056_강타" ParentNodeId="10" UIPositionXY="200,160"/>
+  <SkillTreeInfo Key="3" StrKey="TREE_003" CharacterKey="Mage_001" UIPageName="마법사 스킬">
+    <!-- Simple linear chain for contrast -->
+    <SkillNode NodeId="1" SkillKey="Skill_Fireball" SkillLevel="1" ParentNodeId="0" UIPositionXY="640 270" UISkillTreeNodeType="Graymane"/>
+    <SkillNode NodeId="2" SkillKey="Skill_IceArrow" SkillLevel="1" ParentNodeId="1" UIPositionXY="740 220" UISkillTreeNodeType="Graymane"/>
+    <SkillNode NodeId="3" SkillKey="Skill_Lightning" SkillLevel="1" ParentNodeId="2" UIPositionXY="840 170" UISkillTreeNodeType="Graymane"/>
   </SkillTreeInfo>
 </SkillTreeInfoList>
