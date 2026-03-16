@@ -40,10 +40,10 @@ pytestmark = [pytest.mark.files]
 
 def _locstr_xml(entries: list[tuple[str, str, str]]) -> bytes:
     """Build a minimal LocStr XML from (strkey, kr, en) tuples."""
-    lines = ['<?xml version="1.0" encoding="utf-8"?>', "<LocStr>"]
+    lines = ['<?xml version="1.0" encoding="utf-8"?>', "<LanguageData>"]
     for key, kr, en in entries:
-        lines.append(f'  <String StrKey="{key}" KR="{kr}" EN="{en}" />')
-    lines.append("</LocStr>")
+        lines.append(f'  <LocStr StrKey="{key}" KR="{kr}" EN="{en}" />')
+    lines.append("</LanguageData>")
     return "\n".join(lines).encode("utf-8")
 
 

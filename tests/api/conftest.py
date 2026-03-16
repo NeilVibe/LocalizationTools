@@ -118,11 +118,11 @@ def test_folder_id(
 
 _SAMPLE_LOCSTR_XML = """\
 <?xml version="1.0" encoding="utf-8"?>
-<LocStr>
-  <String StrKey="TEST_001" KR="테스트 텍스트" EN="Test text" />
-  <String StrKey="TEST_002" KR="두 번째<br/>줄" EN="Second line" />
-  <String StrKey="TEST_003" KR="세 번째 항목" EN="Third item" />
-</LocStr>
+<LanguageData>
+  <LocStr StrKey="TEST_001" KR="테스트 텍스트" EN="Test text" />
+  <LocStr StrKey="TEST_002" KR="두 번째<br/>줄" EN="Second line" />
+  <LocStr StrKey="TEST_003" KR="세 번째 항목" EN="Third item" />
+</LanguageData>
 """
 
 
@@ -140,7 +140,7 @@ def uploaded_xml_file_id(
         files={"file": ("test_locstr.xml", _SAMPLE_LOCSTR_XML.encode(), "text/xml")},
     )
     if resp.status_code != 200:
-        pytest.skip(f"XML upload failed ({resp.status_code}): {resp.text[:200]}")
+        pytest.fail(f"XML upload failed ({resp.status_code}): {resp.text[:200]}")
     yield resp.json()["id"]
 
 

@@ -15,13 +15,13 @@ import pytest
 
 _XML_BRTAG = """\
 <?xml version="1.0" encoding="utf-8"?>
-<LocStr>
-  <String StrKey="BR_001" KR="첫 줄<br/>둘째 줄" EN="Line one<br/>Line two" />
-  <String StrKey="BR_002" KR="A<br/>B<br/>C" EN="X<br/>Y<br/>Z" />
-  <String StrKey="BR_003" KR="단일 줄" EN="Single line" />
-  <String StrKey="BR_004" KR="<br/>시작" EN="<br/>Start" />
-  <String StrKey="BR_005" KR="끝<br/>" EN="End<br/>" />
-</LocStr>
+<LanguageData>
+  <LocStr StrKey="BR_001" KR="첫 줄<br/>둘째 줄" EN="Line one<br/>Line two" />
+  <LocStr StrKey="BR_002" KR="A<br/>B<br/>C" EN="X<br/>Y<br/>Z" />
+  <LocStr StrKey="BR_003" KR="단일 줄" EN="Single line" />
+  <LocStr StrKey="BR_004" KR="<br/>시작" EN="<br/>Start" />
+  <LocStr StrKey="BR_005" KR="끝<br/>" EN="End<br/>" />
+</LanguageData>
 """
 
 _TM_BRTAG = "Source\tTarget\n첫 줄<br/>둘째 줄\tLine one<br/>Line two\n단순\tSimple\n"
@@ -269,7 +269,7 @@ class TestBrtagExport:
             assert resp.status_code == 200
             content = resp.text
             # br-tags in XML attributes are stored as &lt;br/&gt; on disk
-            assert "<br/>" in content or "&lt;br/&gt;" in content or "br/" in content
+            assert "<br/>" in content or "&lt;br/&gt;" in content
         finally:
             api.delete_project(pid, permanent=True)
 
@@ -306,7 +306,9 @@ class TestBrtagExport:
             resp = api.download_file(fid, fmt="xml")
             assert resp.status_code == 200
             content = resp.text
-            assert "<br/>" in content or "&lt;br/&gt;" in content
+            assert "<br/>" in content or "&lt;br/&gt;" in content, (
+                f"br-tags lost in full roundtrip. Content: {content[:500]}"
+            )
         finally:
             api.delete_project(pid, permanent=True)
 
@@ -340,7 +342,7 @@ class TestBrtagEdgeCases:
                 updated = [r for r in rows2 if r["id"] == rows[0]["id"]]
                 if updated:
                     tgt = updated[0].get("target", "") or ""
-                    assert tgt.count("<br/>") >= 3 or "br/" in tgt
+                    assert tgt.count("<br/>") >= 3, f"Expected 3+ br-tags, got: {tgt!r}"
         finally:
             api.delete_project(pid, permanent=True)
 
@@ -360,7 +362,7 @@ class TestBrtagEdgeCases:
                 sid = r.get("string_id", "") or r.get("str_key", "")
                 if sid in ("BR_004", "BR_005"):
                     src = r.get("source", "") or r.get("kr", "") or ""
-                    assert "<br/>" in src or "br/" in src, f"br-tag lost in {sid}: {src!r}"
+                    assert "<br/>" in src, f"br-tag lost in {sid}: {src!r}"
         finally:
             api.delete_project(pid, permanent=True)
 

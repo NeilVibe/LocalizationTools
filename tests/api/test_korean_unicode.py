@@ -29,13 +29,13 @@ _KOREAN_LONG_TEXT = "한국어 " * 200  # 1400+ chars
 
 _XML_KOREAN = """\
 <?xml version="1.0" encoding="utf-8"?>
-<LocStr>
-  <String StrKey="KR_001" KR="검은 칼날의 전사" EN="Warrior of the Black Blade" />
-  <String StrKey="KR_002" KR="마법사의 지팡이가 빛났다" EN="The wizard staff glowed" />
-  <String StrKey="KR_003" KR="ㄱㄴㄷ 자모 테스트" EN="Jamo test" />
-  <String StrKey="KR_004" KR="한일중 혼합: 勇者の剣 용사의 검 勇者之剑" EN="Mixed CJK" />
-  <String StrKey="KR_005" KR="English and 한국어 mixed text" EN="Mixed" />
-</LocStr>
+<LanguageData>
+  <LocStr StrKey="KR_001" KR="검은 칼날의 전사" EN="Warrior of the Black Blade" />
+  <LocStr StrKey="KR_002" KR="마법사의 지팡이가 빛났다" EN="The wizard staff glowed" />
+  <LocStr StrKey="KR_003" KR="ㄱㄴㄷ 자모 테스트" EN="Jamo test" />
+  <LocStr StrKey="KR_004" KR="한일중 혼합: 勇者の剣 용사의 검 勇者之剑" EN="Mixed CJK" />
+  <LocStr StrKey="KR_005" KR="English and 한국어 mixed text" EN="Mixed" />
+</LanguageData>
 """
 
 _TM_KOREAN = (
@@ -257,9 +257,9 @@ class TestKoreanInOperations:
 
             merge_xml = """\
 <?xml version="1.0" encoding="utf-8"?>
-<LocStr>
-  <String StrKey="KR_001" KR="검은 칼날의 전사" EN="Updated Warrior" />
-</LocStr>
+<LanguageData>
+  <LocStr StrKey="KR_001" KR="검은 칼날의 전사" EN="Updated Warrior" />
+</LanguageData>
 """
             resp = api.merge_file(
                 fid,
