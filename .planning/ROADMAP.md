@@ -82,7 +82,7 @@
   2. In browser DEV mode, clicking a folder button on Game Data page opens a native folder picker dialog via showDirectoryPicker
   3. Opening the Game Data page in DEV mode automatically loads mock gamedata without any manual path entry
   4. Attempting to load a LocStr XML file on Game Data page is rejected; attempting to load a StaticInfo XML on Localization Data page is rejected
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 - [ ] 26-01: Sidebar rename + file type enforcement + browser folder picker + DEV auto-load
