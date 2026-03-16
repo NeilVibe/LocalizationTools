@@ -28,6 +28,7 @@ class CodexEntity(BaseModel):
     source_file: str
     attributes: Dict[str, str] = {}
     related_entities: List[str] = []
+    ai_image_url: Optional[str] = None
 
 
 # =============================================================================
