@@ -46,6 +46,25 @@ Found and fixed 15 issues total across two commits. First commit (daa2245a) fixe
 - **Game Dev data flow**: XML entities load directly via POST with file path — no DB file_id needed for gamedata.
 - **All 5 main pages verified working**: Files, Game Dev, Codex, Map, TM — confirmed with Playwright screenshots.
 
+### Next Session Plan (v3.2 Prep)
+
+**Priority 1: Browser folder picker for Game Dev**
+The browse folder button (📁) in Game Dev currently falls back to `applyPath()` in DEV/browser mode because `window.electron.selectFolder()` only works in Electron. The browser version should NOT be a limited version — use the browser File System Access API (`showDirectoryPicker()`) for native folder selection in Chrome/Edge. This way we test everything in DEV before going to Windows app.
+
+**Priority 2: v3.2 milestone planning**
+Run `/gsd:new-milestone` to plan v3.2. Candidate features from DEFERRED_IDEAS.md:
+- AI Autocorrection & Writing Quality for Game Devs
+- Auto-Generate Missing Images (Nano Banana / Gemini)
+- Auto-Generate Missing Audio (AI Voice Synthesis)
+- Real-time Glossary Analysis (Aho-Corasick on every string)
+Plus any new ideas from the user.
+
+**Priority 3: Windows app validation**
+After browser version is fully tested, build and test on Windows Electron app. Focus on what specifically doesn't work in Electron (CDP testing, native dialogs, file system access).
+
+### Design Philosophy (User Feedback)
+**DEV browser version = full feature parity.** Don't limit browser to a stripped-down version. Test everything in DEV first, then Windows app only for Electron-specific validation.
+
 ---
 
 ## SESSION 61: Folder Schema Mismatch Fix - OFFLINE Mode Fully Working
