@@ -1,7 +1,7 @@
 # ExtractAnything — Session Status
 
 > **Purpose:** Recovery doc so we never lose context when sessions get cut off.
-> **Last updated:** 2026-02-26
+> **Last updated:** 2026-03-16
 
 ---
 
@@ -60,6 +60,54 @@ Ported all QuickTranslate safeguards to ExtractAnything — 7 files modified:
 | 3 | Backup failure doesn't abort write | string_eraser_engine.py, diff_engine.py | backup_ok flag |
 | 4 | `~$` filter missing in eraser loop | string_eraser_engine.py | Added at loop level |
 | 5 | `_MULTILINE_KEYS` incomplete | excel_writer.py | Added "correction" |
+
+## Diff Tab Enhancements (2026-03-16, Builds 027-029)
+
+Three builds adding smart diff filtering and visualization:
+
+### Build 027 — Non-Letter Filter Checkbox
+
+Added `☑ Filter non-letter-only changes` checkbox to both File Diff and Folder Diff sub-tabs. When enabled, entries where the Str diff consists only of punctuation, quotes, special unicode spaces, or symbols are filtered out. At least one letter change (`str.isalpha()`) or `<br/>` count change required to keep an entry.
+
+**Core function:** `has_letter_change(old_str, new_str)` in `text_utils.py` — character-level `SequenceMatcher`, None-safe, handles `<br/>` as structural change.
+
+**Files:** `text_utils.py`, `diff_engine.py` (`_filter_nonletter_changes` post-filter), `diff_tab.py` (checkbox UI).
+
+### Build 028 — Str Diff Mode (6th Compare Mode)
+
+New dedicated "Str Diff" mode — matches by StringID (must exist in both source and target), compares `str_value`, shows word-level diff visualization.
+
+**Output columns:** `StringID | StrOrigin | Old Str | New Str | Str Diff`
+
+Mirrors existing "StrOrigin Diff" pattern but for translated text. Composes with the non-letter filter checkbox.
+
+**Files:** `diff_engine.py` (`_diff_str`), `config.py` (COMPARE_MODES), `diff_tab.py` (columns), `validators.py` (`_DIFF_MODE_COLUMNS`), `excel_writer.py` (`_MULTILINE_KEYS`).
+
+### Build 029 — Universal Word-Level Diff Enrichment
+
+Added `_enrich_with_diffs()` post-step that runs on ALL diff modes. For any entry with a matching StringID in source, computes:
+
+- `_old_str` / `_str_diff` — when Str changed
+- `_old_strorigin` / `_strorigin_diff` — when StrOrigin changed
+
+Uses `extract_differences()` (same word-level difflib from QuickTranslate failure reports). Dedicated Str Diff / StrOrigin Diff modes skip re-enrichment via key-existence guards.
+
+**Key fixes from review:** Case-sensitive enrichment (so case-only changes get visualization), empty-to-text transitions enriched, Excel `_MULTILINE_KEYS` updated for `<br/>` rendering.
+
+### Current Diff Tab Capabilities
+
+| Mode | Match Key | Diff Visualization |
+|------|-----------|-------------------|
+| Full (all attributes) | StringID | ADD/EDIT tag + Old Str/StrOrigin + word-level diff |
+| StrOrigin + StringID | (StrOrigin, SID) | Old Str/StrOrigin + word-level diff |
+| StrOrigin + StringID + Str | (StrOrigin, SID, Str) | Old Str/StrOrigin + word-level diff |
+| StringID + Str | (SID, Str) | Old Str/StrOrigin + word-level diff |
+| StrOrigin Diff | StringID (both must exist) | Old StrOrigin + StrOrigin Diff + cross-enriched Str diff |
+| Str Diff | StringID (both must exist) | Old Str + Str Diff + cross-enriched StrOrigin diff |
+
+**Filters:** Category filter (All / SCRIPT / NON-SCRIPT) + Non-letter filter checkbox.
+
+---
 
 ## New Feature: Path-Based String Extraction (Planned)
 
