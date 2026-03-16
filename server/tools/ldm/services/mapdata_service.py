@@ -86,7 +86,7 @@ class KnowledgeLookup:
 def build_knowledge_table(knowledge_folder: Path, parser: "XMLParsingEngine") -> Dict[str, KnowledgeLookup]:
     """Build StrKey -> KnowledgeLookup mapping from KnowledgeInfo XML files.
 
-    Parses all .xml files in knowledge_folder, extracts KnowledgeData elements,
+    Parses all .xml files in knowledge_folder, extracts KnowledgeInfo elements,
     and builds a lookup dict keyed by StrKey.
 
     Args:
@@ -115,7 +115,7 @@ def build_knowledge_table(knowledge_folder: Path, parser: "XMLParsingEngine") ->
             continue
 
         count = 0
-        for elem in root.iter("KnowledgeData"):
+        for elem in root.iter("KnowledgeInfo"):
             strkey = elem.get("StrKey") or ""
             if not strkey:
                 continue
@@ -132,7 +132,7 @@ def build_knowledge_table(knowledge_folder: Path, parser: "XMLParsingEngine") ->
             count += 1
 
         if count > 0:
-            logger.debug(f"[MAPDATA] Extracted {count} KnowledgeData entries from {xml_path.name}")
+            logger.debug(f"[MAPDATA] Extracted {count} KnowledgeInfo entries from {xml_path.name}")
 
     logger.info(f"[MAPDATA] Knowledge table built: {len(table)} entries from {len(xml_files)} files")
     return table

@@ -63,6 +63,9 @@ async def search_codex(
 
     Returns ranked results across all entity types (or filtered to one type).
     """
+    if entity_type is not None:
+        entity_type = entity_type.lower()
+
     svc = _get_codex_service()
 
     try:
@@ -82,6 +85,7 @@ async def get_codex_entity(
 
     Returns 404 if entity not found.
     """
+    entity_type = entity_type.lower()
     svc = _get_codex_service()
 
     try:
@@ -108,6 +112,7 @@ async def list_codex_entities(
 
     Returns empty list for unknown entity types (graceful).
     """
+    entity_type = entity_type.lower()
     svc = _get_codex_service()
 
     try:

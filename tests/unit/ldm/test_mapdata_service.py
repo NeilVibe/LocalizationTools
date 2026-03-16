@@ -225,7 +225,7 @@ class TestBuildKnowledgeTable:
         return XMLParsingEngine()
 
     def test_build_knowledge_table(self, engine):
-        """knowledgeinfo_chain.xml with 3 KnowledgeData elements -> 3 entries."""
+        """knowledgeinfo_chain.xml with 3 KnowledgeInfo elements -> 3 entries."""
         table = build_knowledge_table(FIXTURES, engine)
         assert len(table) == 3
         assert "str_npc_001" in table
@@ -280,7 +280,7 @@ class TestResolveImageChain:
         (knowledge_dir / "test.xml").write_text(
             '<?xml version="1.0" encoding="utf-8"?>\n'
             '<KnowledgeInfoList>\n'
-            '  <KnowledgeData StrKey="str_npc_001" UITextureName="npc_portrait" '
+            '  <KnowledgeInfo StrKey="str_npc_001" UITextureName="npc_portrait" '
             'Name="Guard" Desc="Guard desc" GroupKey="g1" />\n'
             '</KnowledgeInfoList>\n',
             encoding="utf-8",
@@ -310,7 +310,7 @@ class TestResolveImageChain:
         (knowledge_dir / "test.xml").write_text(
             '<?xml version="1.0" encoding="utf-8"?>\n'
             '<KnowledgeInfoList>\n'
-            '  <KnowledgeData StrKey="str_npc_001" UITextureName="missing_texture" '
+            '  <KnowledgeInfo StrKey="str_npc_001" UITextureName="missing_texture" '
             'Name="Guard" Desc="Guard desc" GroupKey="g1" />\n'
             '</KnowledgeInfoList>\n',
             encoding="utf-8",
@@ -353,7 +353,7 @@ class TestMapDataInitialize:
         (knowledge_dir / "test.xml").write_text(
             '<?xml version="1.0" encoding="utf-8"?>\n'
             '<KnowledgeInfoList>\n'
-            '  <KnowledgeData StrKey="str_npc_001" UITextureName="tex_npc" '
+            '  <KnowledgeInfo StrKey="str_npc_001" UITextureName="tex_npc" '
             'Name="Guard" Desc="Guard desc" GroupKey="g1" />\n'
             '</KnowledgeInfoList>\n',
             encoding="utf-8",

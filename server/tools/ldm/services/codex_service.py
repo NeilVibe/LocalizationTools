@@ -213,6 +213,9 @@ class CodexService:
                         entity.description = know.description
                     if entity.image_texture is None:
                         entity.image_texture = know.image_texture
+                    # BUG 4: Enrich name if it still equals strkey (no proper name found)
+                    if entity.name == entity.strkey and know.name:
+                        entity.name = know.name
 
     # =========================================================================
     # Related entities
@@ -285,6 +288,16 @@ class CodexService:
 
         t0 = time.time()
 
+        # BUG 3: Empty/whitespace query returns garbage from zero vector
+        if not query or not query.strip():
+            return CodexSearchResponse(
+                results=[], count=0, search_time_ms=0.0
+            )
+
+        # BUG 1: Normalize entity_type to lowercase for case-insensitive matching
+        if entity_type:
+            entity_type = entity_type.lower()
+
         if self._faiss_index is None or not self._index_keys:
             return CodexSearchResponse(
                 results=[], count=0, search_time_ms=0.0
@@ -336,12 +349,31 @@ class CodexService:
         if not self._initialized:
             self.initialize()
 
-        return self._registry.get(entity_type, {}).get(strkey)
+        # BUG 1: Normalize entity_type to lowercase
+        entity_type = entity_type.lower()
+
+        registry = self._registry.get(entity_type, {})
+
+        # BUG 2: Case-insensitive StrKey lookup
+        entity = registry.get(strkey)
+        if entity is not None:
+            return entity
+
+        # Fallback: case-insensitive search
+        strkey_lower = strkey.lower()
+        for key, ent in registry.items():
+            if key.lower() == strkey_lower:
+                return ent
+
+        return None
 
     def list_entities(self, entity_type: str) -> CodexListResponse:
         """Return all entities of a given type."""
         if not self._initialized:
             self.initialize()
+
+        # BUG 1: Normalize entity_type to lowercase
+        entity_type = entity_type.lower()
 
         entities = list(self._registry.get(entity_type, {}).values())
         return CodexListResponse(

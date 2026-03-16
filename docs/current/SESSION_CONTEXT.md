@@ -1,6 +1,39 @@
 # Session Context
 
-> Last Updated: 2026-02-01 (Session 61)
+> Last Updated: 2026-03-16 (Post-v3.1 Debug Session)
+
+---
+
+## POST-v3.1 DEBUG SESSION: Test & Server Fixes (8 Issues)
+
+### What Was Done
+
+Found and fixed 8 issues — 4 in tests, 4 in server code. All related to incorrect assumptions, wrong XML tag names, and case sensitivity bugs.
+
+### Test Fixes (4)
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `tests/integration/server_tests/test_dashboard_api.py` | DEV_MODE auth detection checked env var in test process, but server auto-authenticates localhost | Fixed to detect DEV_MODE by checking actual server response |
+| `tests/integration/test_export_roundtrip.py` | XML attribute casing: test used lowercase `strorigin`/`str` but server exports PascalCase | Added fallback pattern for both casings |
+| `tests/stability/test_row_repo.py` | SQLite edit history: asserted `len(history) >= 1` but SQLite mode returns empty list (no-op) | Added DbMode enum check for SERVER_LOCAL and OFFLINE |
+| `tests/fixtures/xml/knowledgeinfo_chain.xml` + 2 test files | Used wrong XML tag `KnowledgeData` instead of `KnowledgeInfo` | Fixed tag names in fixtures and tests |
+
+### Server Fixes (4)
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `server/tools/ldm/services/mapdata_service.py` | `build_knowledge_table()` iterated `KnowledgeData` tag instead of `KnowledgeInfo` | Fixed tag name — image chain resolution was completely broken |
+| `server/tools/ldm/services/gamedata_browse_service.py` | Missing EDITABLE_ATTRS for QuestInfo, RegionInfo, SceneObjectData, SealDataInfo, SkillTreeInfo, NodeWaypointInfo; wrong tag names for GimmickGroupInfo/FactionGroup | Added all missing entries, fixed tag names |
+| `server/tools/ldm/services/codex_service.py` | Case-sensitive entity_type and StrKey lookups; empty search returned all results; region names not enriched | Added `.lower()` for case-insensitive lookups, empty search returns 0, region names from KnowledgeInfo |
+| `server/tools/ldm/routes/codex.py` | Case-sensitive entity_type in route handlers | Added `.lower()` normalization in all 3 route handlers |
+
+### Key Patterns
+
+- **KnowledgeInfo vs KnowledgeData**: The XML tag for knowledge entries is `KnowledgeInfo`, not `KnowledgeData`. This was wrong in both server code and test fixtures.
+- **Case sensitivity**: Codex entity types and StrKey lookups must be case-insensitive to handle mixed-case input from UI.
+- **DEV_MODE testing**: Never check `os.environ` in tests for server behavior — check actual server responses instead.
+- **SQLite edit history**: SQLite mode returns empty edit history (by design), tests must account for this.
 
 ---
 
@@ -468,6 +501,7 @@ StrOrigin | Str | Correction | Category | StringID
 
 | Session | Achievement |
 |---------|-------------|
+| **Post-v3.1** | Debug session: 8 fixes (4 test + 4 server) — KnowledgeInfo tags, codex case sensitivity, EDITABLE_ATTRS |
 | **61** | Folder schema mismatch fix + OFFLINE mode fully working |
 | **60+** | LIMIT-001/002 Fixed + RoutingRowRepository + 6-agent review |
 | **60** | aiosqlite bug fixes (11 bugs) + E2E testing + Debug docs |

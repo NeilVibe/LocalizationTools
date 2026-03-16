@@ -132,8 +132,8 @@ class TestExportRoundTrip:
         # Verify BR_001: br-tags preserved
         assert "BR_001" in elem_map, f"BR_001 not found in export. Found: {list(elem_map.keys())}"
         br1 = elem_map["BR_001"]
-        br1_source = br1.get("strorigin", "")
-        br1_target = br1.get("str", "")
+        br1_source = br1.get("StrOrigin", "") or br1.get("strorigin", "")
+        br1_target = br1.get("Str", "") or br1.get("str", "")
 
         # In memory, ElementTree gives us <br/> (unescaped)
         # When written to XML, it becomes &lt;br/&gt; (escaped) in the file
@@ -143,8 +143,8 @@ class TestExportRoundTrip:
         # Verify BR_003: multiple br-tags
         assert "BR_003" in elem_map, "BR_003 not found in export"
         br3 = elem_map["BR_003"]
-        br3_source = br3.get("strorigin", "")
-        br3_target = br3.get("str", "")
+        br3_source = br3.get("StrOrigin", "") or br3.get("strorigin", "")
+        br3_target = br3.get("Str", "") or br3.get("str", "")
         assert br3_source.count("<br/>") == 2, f"BR_003 source should have 2 br-tags: '{br3_source}'"
         assert br3_target.count("<br/>") == 2, f"BR_003 target should have 2 br-tags: '{br3_target}'"
 
@@ -178,10 +178,10 @@ class TestExportRoundTrip:
         assert "ATTR_001" in elem_map, f"ATTR_001 not found. Keys: {list(elem_map.keys())}"
         attr1 = elem_map["ATTR_001"]
 
-        # Core attributes
-        assert attr1.get("stringid") == "ATTR_001"
-        assert attr1.get("strorigin") is not None
-        assert attr1.get("str") is not None
+        # Core attributes (server may preserve PascalCase or lowercase)
+        assert (attr1.get("StringId") or attr1.get("stringid")) == "ATTR_001"
+        assert (attr1.get("StrOrigin") or attr1.get("strorigin")) is not None
+        assert (attr1.get("Str") or attr1.get("str")) is not None
 
         # Extra attributes preserved via extra_data
         attr1_attribs = dict(attr1.attrib)
@@ -213,11 +213,11 @@ class TestExportRoundTrip:
         root = ET.fromstring(resp.content)
         elements = root.findall(".//LocStr") or root.findall(".//*")
         # Filter to only direct children that have stringid
-        loc_elements = [e for e in elements if e.get("stringid")]
+        loc_elements = [e for e in elements if (e.get("StringId") or e.get("stringid"))]
 
         assert len(loc_elements) == 5, (
             f"Expected 5 elements, got {len(loc_elements)}. "
-            f"StringIds: {[e.get('stringid') for e in loc_elements]}"
+            f"StringIds: {[(e.get('StringId') or e.get('stringid')) for e in loc_elements]}"
         )
 
     def test_edit_then_export_reflects_change(self, auth_headers, uploaded_file):
@@ -271,13 +271,14 @@ class TestExportRoundTrip:
 
         # BR_002 should have the edited value
         assert "BR_002" in elem_map, "BR_002 not found after edit"
-        assert elem_map["BR_002"].get("str") == "Edited translation", (
-            f"Edit not reflected. Got: '{elem_map['BR_002'].get('str')}'"
+        br002_str = elem_map["BR_002"].get("Str") or elem_map["BR_002"].get("str")
+        assert br002_str == "Edited translation", (
+            f"Edit not reflected. Got: '{br002_str}'"
         )
 
         # BR_001 should be unchanged (still has br-tags)
         assert "BR_001" in elem_map, "BR_001 missing after edit"
-        br1_source = elem_map["BR_001"].get("strorigin", "")
+        br1_source = elem_map["BR_001"].get("StrOrigin", "") or elem_map["BR_001"].get("strorigin", "")
         assert "<br/>" in br1_source, f"BR_001 source corrupted after edit: '{br1_source}'"
 
     def test_xml_structure_preserved(self, auth_headers, uploaded_file):

@@ -25,9 +25,16 @@ EDITABLE_ATTRS = {
     "ItemInfo": ["ItemName", "ItemDesc"],
     "CharacterInfo": ["CharacterName"],
     "SkillInfo": ["SkillName", "SkillDesc"],
-    "GimmickInfo": ["Name", "Desc"],
+    "GimmickGroupInfo": ["GimmickName"],
+    "GimmickInfo": ["GimmickName"],
     "KnowledgeInfo": ["Name", "Desc"],
-    "FactionNode": ["AliasName"],
+    "FactionGroup": ["GroupName"],
+    "QuestInfo": ["QuestName", "QuestDesc"],
+    "RegionInfo": ["RegionName", "RegionDesc"],
+    "SceneObjectData": ["ObjectName", "ObjectDesc", "AliasName"],
+    "SealDataInfo": ["SealName", "Desc"],
+    "SkillTreeInfo": ["UIPageName"],
+    "NodeWaypointInfo": [],
 }
 
 

@@ -7,6 +7,7 @@ Korean/English game-realistic data used throughout.
 from __future__ import annotations
 
 import pytest
+from tests.stability.conftest import DbMode
 
 pytestmark = [pytest.mark.stability, pytest.mark.asyncio]
 
@@ -203,7 +204,11 @@ async def test_row_edit_history(row_repo, platform_repo, project_repo, file_repo
     )
     history = await row_repo.get_edit_history(created["id"])
     assert isinstance(history, list)
-    assert len(history) >= 1
+    if db_mode in (DbMode.SERVER_LOCAL, DbMode.OFFLINE):
+        # SQLite modes: edit history not supported, returns empty list
+        assert len(history) == 0
+    else:
+        assert len(history) >= 1
 
 
 # =============================================================================

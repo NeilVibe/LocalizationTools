@@ -196,16 +196,17 @@ class TestCodexEnrichment:
         assert len(node1.npcs) > 0
 
     def test_graceful_without_codex(self, worldmap_service):
-        """Service works when CodexService is unavailable (fallback names)."""
+        """Service works when global CodexService is unavailable (creates local instance)."""
         worldmap_service._parse_faction_nodes()
 
         # Mock codex_service as None (not initialized)
         with patch("server.tools.ldm.services.worldmap_service.codex_service", None):
             worldmap_service._enrich_with_codex()
 
-        # Nodes still have StrKey as fallback name
+        # Worldmap creates local CodexService from base_dir, enriches names from KnowledgeInfo
         node1 = worldmap_service._nodes["FNODE_0001"]
-        assert node1.name == "FNODE_0001"
+        assert node1.name != "FNODE_0001", "Name should be enriched from KnowledgeInfo"
+        assert node1.name == "검은별 마을"
 
 
 # =============================================================================

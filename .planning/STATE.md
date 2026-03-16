@@ -30,6 +30,15 @@ progress:
 
 ### Decisions
 
+- [Post-v3.1 Debug Session]: Found and fixed 8 issues across tests and server code:
+  - TEST FIX: test_dashboard_api.py DEV_MODE auth detection — checked env var in test process instead of server response
+  - TEST FIX: test_export_roundtrip.py XML attribute casing — lowercase vs PascalCase (StrOrigin/Str), added fallback
+  - TEST FIX: test_row_repo.py SQLite edit history — asserted history exists but SQLite returns empty (no-op), added DbMode check
+  - TEST FIX: knowledgeinfo_chain.xml + test_mapdata_service.py + test_xml_parsing.py — KnowledgeData→KnowledgeInfo wrong XML tag
+  - SERVER FIX: mapdata_service.py build_knowledge_table() iterated KnowledgeData instead of KnowledgeInfo — image chain completely broken
+  - SERVER FIX: gamedata_browse_service.py missing EDITABLE_ATTRS for 6 entity types + wrong tag names for GimmickGroupInfo/FactionGroup
+  - SERVER FIX: codex_service.py case-insensitive entity_type and StrKey lookups, empty search returns 0, region names from KnowledgeInfo
+  - SERVER FIX: codex.py routes case normalization .lower() on entity_type in all 3 handlers
 - [v3.1 Roadmap]: Svelte 5 migration first (Phase 22) -- stable event model before component-level bug fixes
 - [v3.1 Roadmap]: TEST-01 grouped with bug fixes (Phase 23) -- stale test reference, not UIUX
 - [v3.0 21-02]: PlaceholderImage uses foreignObject -- UX-04 will replace with div layout for Chromium compat

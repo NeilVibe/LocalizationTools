@@ -231,14 +231,14 @@ class TestCrossReferenceChain:
     """Test building knowledge tables across multiple XML files."""
 
     def test_cross_reference_across_files(self, engine: XMLParsingEngine, tmp_path: Path):
-        """Two XML files with different KnowledgeData -> all entries resolve."""
+        """Two XML files with different KnowledgeInfo -> all entries resolve."""
         from server.tools.ldm.services.mapdata_service import build_knowledge_table
 
         xml1 = tmp_path / "knowledge_a.xml"
         xml1.write_text(
             '<?xml version="1.0" encoding="utf-8"?>\n'
             '<KnowledgeInfoList>\n'
-            '  <KnowledgeData StrKey="str_npc_001" UITextureName="tex_npc_001" '
+            '  <KnowledgeInfo StrKey="str_npc_001" UITextureName="tex_npc_001" '
             'Name="Guard" Desc="Guard desc" GroupKey="g1" />\n'
             '</KnowledgeInfoList>\n',
             encoding="utf-8",
@@ -248,9 +248,9 @@ class TestCrossReferenceChain:
         xml2.write_text(
             '<?xml version="1.0" encoding="utf-8"?>\n'
             '<KnowledgeInfoList>\n'
-            '  <KnowledgeData StrKey="str_item_bow" UITextureName="tex_bow_001" '
+            '  <KnowledgeInfo StrKey="str_item_bow" UITextureName="tex_bow_001" '
             'Name="Longbow" Desc="Ranged weapon" GroupKey="g2" />\n'
-            '  <KnowledgeData StrKey="str_region_forest" UITextureName="tex_forest" '
+            '  <KnowledgeInfo StrKey="str_region_forest" UITextureName="tex_forest" '
             'Name="Dark Forest" Desc="Dangerous area" GroupKey="g3" />\n'
             '</KnowledgeInfoList>\n',
             encoding="utf-8",
