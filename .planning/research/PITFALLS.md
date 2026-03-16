@@ -1,88 +1,79 @@
 # Domain Pitfalls
 
-**Domain:** Game Dev Platform + AI Intelligence for localization tool
-**Researched:** 2026-03-15
-**Milestone:** v3.0
+**Domain:** UI/UX Polish + Performance for Electron + Svelte 5 App
+**Researched:** 2026-03-17
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites or major issues.
+### Pitfall 1: CSS Token Replacement Breaking Layout
+**What goes wrong:** Blindly replacing hardcoded values with Carbon tokens changes actual rendered values (e.g., replacing `padding: 12px` with `--cds-spacing-05` which is 16px).
+**Why it happens:** Carbon spacing tokens use a specific scale (4, 8, 12, 16, 24, 32, 48) -- not every hardcoded value has an exact token match.
+**Consequences:** Layout shifts, misaligned elements, broken responsive behavior.
+**Prevention:** When replacing values, compare the actual pixel value of the Carbon token vs the hardcoded value. If no exact match exists, use the nearest token and verify visually. Document intentional deviations.
+**Detection:** Before/after screenshots of each page at the same viewport size.
 
-### Pitfall 1: Mock Data XML Incompatible with XMLParsingEngine
-**What goes wrong:** Mock data generator produces XML that looks correct but fails parsing by XMLParsingEngine due to subtle format differences (attribute order, encoding declarations, namespace handling, `<br/>` tag format).
-**Why it happens:** QACompiler generators write Excel output, not XML. The mock generator must produce XML that matches what the *game* outputs, not what QACompiler reads. The XML format comes from the game engine, and XMLParsingEngine was built to parse that specific format.
-**Consequences:** Every UI feature built on mock data silently shows wrong/empty data. Discovered late.
-**Prevention:** Write a round-trip integration test FIRST: generate XML -> parse with XMLParsingEngine -> assert all fields extracted correctly. Run this test before any UI work begins.
-**Detection:** Empty grids, missing attributes, parsing errors in loguru output.
+### Pitfall 2: IntersectionObserver Memory Leaks in Svelte 5
+**What goes wrong:** Creating IntersectionObserver instances without cleaning them up when components unmount.
+**Why it happens:** Svelte 5 actions need explicit `destroy()` cleanup. If the action is on an element inside an `{#each}` block that re-renders, observers pile up.
+**Consequences:** Memory grows continuously when switching tabs or scrolling the Codex.
+**Prevention:** Always return `{ destroy: () => observer.disconnect() }` from Svelte actions. Use a single shared observer for multiple elements (one observer, many `observe()` calls) rather than one observer per element.
+**Detection:** DevTools Memory tab -- take heap snapshots before and after 10 tab switches.
 
-### Pitfall 2: d3-zoom Fighting Svelte Reactivity
-**What goes wrong:** Using d3's DOM manipulation (`.append()`, `.attr()`) to create SVG elements instead of letting Svelte render them. Results in elements that don't update when state changes, memory leaks from orphaned DOM nodes.
-**Why it happens:** Most d3 tutorials show d3 managing the DOM. In Svelte, d3 should only provide the math (transforms, scales, forces).
-**Consequences:** Map stops updating when data changes. Duplicate nodes. Memory leaks in Electron.
-**Prevention:** Strict rule: d3-zoom provides the `transform` object via callback. Svelte applies it via `transform={transform}` attribute. d3 never calls `.append()` or `.attr()` on SVG elements.
-**Detection:** Console warnings about duplicate elements. Map not reflecting state changes.
-
-### Pitfall 3: AI Suggestions Without Rate Limiting
-**What goes wrong:** Every string selection triggers an Ollama call. At 117 tok/s, Qwen3 takes 2-5 seconds per suggestion. Rapid navigation queues dozens of requests, freezing the UI.
-**Why it happens:** Optimistic UI pattern (instant response) conflicts with slow LLM inference.
-**Consequences:** UI freezes. Ollama queue backs up. GPU memory pressure.
-**Prevention:** Debounce suggestion requests (500ms). Cancel in-flight requests when user navigates away. Show "loading" indicator. Cache results per source text. Limit concurrent Ollama requests to 1.
-**Detection:** UI lag when navigating quickly. High GPU utilization from queued requests.
+### Pitfall 3: Pagination Breaks Entity Selection
+**What goes wrong:** User selects entity, switches tab, comes back -- their entity list is reset to page 1.
+**Why it happens:** Pagination state (current offset, loaded entities) is lost when tab switches because `fetchEntityList()` resets `entities = []`.
+**Consequences:** User loses their scroll position and must scroll down again to find where they were.
+**Prevention:** Cache loaded entities per tab in a Map. When switching back to a tab, restore from cache. Only re-fetch if data is stale.
+**Detection:** Manual testing: scroll down in Items tab, switch to Characters, switch back. Items should restore.
 
 ## Moderate Pitfalls
 
-### Pitfall 4: WorldPosition Coordinate Scale Mismatch
-**What goes wrong:** Region XML `WorldPosition` values are in game engine units (could be anything: meters, arbitrary scale). Mapping directly to SVG viewport without normalization produces maps where all nodes cluster in one corner or overlap.
-**Prevention:** Analyze actual WorldPosition values from sample data. Normalize to SVG viewport using min/max scaling. Add padding. Test with edge cases (negative coordinates, extreme ranges).
+### Pitfall 4: Skeleton Placeholder Height Mismatch
+**What goes wrong:** Skeleton cards are a different height than real cards, causing visible "jump" when content loads.
+**Prevention:** Match skeleton card dimensions exactly to real card dimensions. Use the same CSS classes for both skeleton and real cards.
 
-### Pitfall 5: Category Clustering False Positives
-**What goes wrong:** LanguageDataExporter's keyword-based clustering misclassifies files when folder structure differs from expected patterns. A file in an unexpected path gets "Uncategorized".
-**Prevention:** Port the `TwoTierCategoryMapper` with its fallback chain intact. Add a "manual override" mechanism for misclassified entries. Test with mock data that includes edge-case folder names.
+### Pitfall 5: Lazy Loading Causing Visible Placeholder Flicker
+**What goes wrong:** Images show placeholder -> blank -> loaded image, creating a triple state flash.
+**Prevention:** Use `loading="lazy"` on `<img>` which handles this natively. For the PlaceholderImage -> real image pattern, keep the placeholder visible until `onload` fires on the real image.
 
-### Pitfall 6: QA Pipeline Performance on Large Files
-**What goes wrong:** Building Aho-Corasick automaton on every file open. For a glossary with 5000+ terms, automaton build takes noticeable time.
-**Prevention:** Cache the automaton per glossary version. Rebuild only when glossary changes. The automaton is the expensive step; scanning is O(text_length) and fast.
+### Pitfall 6: Stylelint Conflicts with Svelte Scoped Styles
+**What goes wrong:** Stylelint doesn't understand Svelte's `<style>` blocks and `::global()` syntax out of the box.
+**Prevention:** Use `postcss-html` parser with stylelint to properly parse Svelte files. Add `stylelint-config-html/svelte` to the config.
 
-### Pitfall 7: Piper-TTS in PyInstaller Build
-**What goes wrong:** piper-tts uses ONNX Runtime which has complex native dependencies. PyInstaller may miss shared libraries or voice model files.
-**Prevention:** Make piper-tts entirely optional. Placeholder audio MVP = silence WAV generated with Python's `wave` module (zero dependencies). Add piper-tts as an enhancement after build pipeline is validated.
-
-### Pitfall 8: Game Dev CRUD XML Write-Back Corruption
-**What goes wrong:** Writing modified XML back to disk changes formatting, attribute order, or encoding in ways that break other tools reading the same file.
-**Prevention:** For v3.0 MVP, consider read + edit-in-memory only (no disk write-back). If write-back is needed, use lxml's `etree.tostring()` with `xml_declaration=True, encoding='utf-8'` and round-trip test against the original.
+### Pitfall 7: Carbon Token Dark Mode Gaps
+**What goes wrong:** Some Carbon tokens don't change between light and dark themes (e.g., `--cds-interactive-01` is the same blue in both). If you relied on contrast against a dark background, the blue-on-dark may be hard to read.
+**Prevention:** Test every page in both light and dark themes after token migration. Focus on text readability and interactive element visibility.
 
 ## Minor Pitfalls
 
-### Pitfall 9: Codex Image Loading Waterfall
-**What goes wrong:** Codex pages load entity images one-by-one, causing visible waterfall loading.
-**Prevention:** Use intersection observer for lazy loading. Preload images for visible entities. Use placeholder colors while loading.
+### Pitfall 8: Empty State Design Inconsistency
+**What goes wrong:** Each developer/phase designs empty states differently -- different icons, different text styles, different button placements.
+**Prevention:** Create a single `EmptyState` component used across all pages. Props: icon, title, description, optional action button.
 
-### Pitfall 10: Mock Data Inconsistent Cross-References
-**What goes wrong:** Mock data has StringIDs referenced across files that do not match. Character in one file references a region that does not exist in region files.
-**Prevention:** Generate mock data in dependency order: regions first, then characters (with valid region references), then items, then skills. Validate cross-references after generation.
+### Pitfall 9: Scroll Position Reset on Re-render
+**What goes wrong:** Svelte 5 reactivity causes the entity grid to re-render when state changes, resetting scroll position.
+**Prevention:** Use `{#key}` blocks carefully. Don't replace the entire array when appending (use `entities.push(...newItems)` with Svelte 5 proxied arrays).
 
-### Pitfall 11: SVG Rendering Performance with Many Nodes
-**What goes wrong:** World map with 200+ region nodes and connection lines renders slowly on zoom/pan.
-**Prevention:** At 200 nodes this is unlikely. If it happens: simplify path rendering during zoom, use CSS `will-change: transform` on the map group, consider level-of-detail.
+### Pitfall 10: Performance Regression from Token Migration
+**What goes wrong:** CSS custom properties are slower to resolve than static values. With 1000+ DOM elements in VirtualGrid, this could add up.
+**Prevention:** Don't tokenize values inside VirtualGrid cell rendering. VirtualGrid already works -- focus token migration on structural/layout CSS, not high-frequency cell styles.
 
 ## Phase-Specific Warnings
 
 | Phase Topic | Likely Pitfall | Mitigation |
 |-------------|---------------|------------|
-| Mock Data Generator | XML format incompatibility (#1) | Round-trip integration test before ANY UI work |
-| Mock Data Generator | Cross-reference inconsistency (#10) | Generate in dependency order, validate refs |
-| Game Dev Grid | XML write-back corruption (#8) | Start read-only, add write carefully with tests |
-| World Map | d3 DOM manipulation (#2) | d3 for math only, Svelte for DOM |
-| World Map | Coordinate scale mismatch (#4) | Normalize WorldPosition to viewport |
-| AI Suggestions | Rate limiting / UI freeze (#3) | Debounce, cancel, cache, max 1 concurrent |
-| QA Pipeline | Automaton build perf (#6) | Cache per glossary version |
-| Placeholder Audio | PyInstaller compatibility (#7) | Make piper-tts optional, silence WAV as fallback |
-| Category Clustering | False positives (#5) | Port full fallback chain, add manual override |
+| CSS token audit | #1 - Breaking layout with wrong token values | Before/after screenshots for every page |
+| Codex revamp | #2 - IntersectionObserver leaks | Single shared observer, proper cleanup |
+| Codex pagination | #3 - Losing scroll position on tab switch | Cache entities per tab |
+| Loading states | #4 - Skeleton height mismatch | Same CSS classes for skeleton and real |
+| Lazy images | #5 - Placeholder flicker | Keep placeholder until onload fires |
+| Stylelint setup | #6 - Svelte parsing issues | Use postcss-html parser |
+| Dark mode | #7 - Token contrast gaps | Test both themes after migration |
 
 ## Sources
 
-- v2.0 post-milestone review (11 issues found) -- learned to test round-trips
-- QuickCheck source code -- Aho-Corasick performance characteristics
-- d3-zoom documentation -- transform API design
-- piper-tts GitHub issues -- PyInstaller compatibility reports
-- QACompiler generators -- cross-reference patterns between XML files
+- Codebase analysis of existing component patterns
+- Svelte 5 action lifecycle (official docs)
+- IntersectionObserver API gotchas (MDN)
+- Carbon Design System theming documentation
+- Experience from v3.1 UIUX audit (60 fixes)
