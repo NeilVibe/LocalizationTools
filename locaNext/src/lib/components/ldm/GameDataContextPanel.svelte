@@ -15,9 +15,10 @@
     ConnectionSignal,
     Search,
     Image,
-    Translate
+    Translate,
+    MachineLearningModel
   } from 'carbon-icons-svelte';
-  import { SkeletonText } from 'carbon-components-svelte';
+  import { SkeletonText, InlineLoading } from 'carbon-components-svelte';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import NodeDetailPanel from '$lib/components/ldm/NodeDetailPanel.svelte';
@@ -48,6 +49,16 @@
   let contextLoading = $state(false);
   let contextError = $state(null);
   let contextCache = $state(new Map());
+
+  // Progressive loading states
+  let crossRefsLoading = $state(false);
+  let relatedLoading = $state(false);
+  let mediaLoading = $state(false);
+
+  // AI Summary state (on-demand)
+  let aiSummary = $state('');
+  let aiLoading = $state(false);
+  let aiAvailable = $state(true);
 
   // Resize state
   let isResizing = $state(false);
@@ -92,16 +103,27 @@
       contextData = null;
       contextLoading = false;
       contextError = null;
+      crossRefsLoading = false;
+      relatedLoading = false;
+      mediaLoading = false;
+      aiSummary = '';
     }
   });
 
   async function fetchContext(nodeData) {
     const cacheKey = nodeData.node_id;
 
+    // Reset AI summary on node change
+    aiSummary = '';
+    aiLoading = false;
+
     // Check cache
     if (contextCache.has(cacheKey)) {
       contextData = contextCache.get(cacheKey);
       contextLoading = false;
+      crossRefsLoading = false;
+      relatedLoading = false;
+      mediaLoading = false;
       contextError = null;
       return;
     }
@@ -113,6 +135,9 @@
     abortController = new AbortController();
 
     contextLoading = true;
+    crossRefsLoading = true;
+    relatedLoading = true;
+    mediaLoading = true;
     contextError = null;
 
     try {
@@ -136,6 +161,11 @@
       const data = await response.json();
       contextData = data;
 
+      // Progressive reveal: cross-refs first (instant), related staggered, media last
+      crossRefsLoading = false;
+      setTimeout(() => { relatedLoading = false; }, 50);
+      setTimeout(() => { mediaLoading = false; }, 100);
+
       // Update cache
       const newCache = new Map(contextCache);
       newCache.set(cacheKey, data);
@@ -152,9 +182,42 @@
     } catch (err) {
       if (err.name === 'AbortError') return;
       contextError = err.message;
+      crossRefsLoading = false;
+      relatedLoading = false;
+      mediaLoading = false;
       logger.error('Context fetch failed', { error: err.message });
     } finally {
       contextLoading = false;
+    }
+  }
+
+  // ========================================
+  // AI Summary (on-demand)
+  // ========================================
+
+  async function requestAISummary() {
+    if (!node || aiLoading) return;
+    aiLoading = true;
+    try {
+      const response = await fetch(`${API_BASE}/api/ldm/gamedata/context/ai-summary`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          node_id: node.node_id,
+          tag: node.tag,
+          attributes: node.attributes || {},
+          editable_attrs: node.editable_attrs || []
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        aiSummary = data.summary;
+        aiAvailable = data.available;
+      }
+    } catch (err) {
+      logger.error('AI summary failed', { error: err.message });
+    } finally {
+      aiLoading = false;
     }
   }
 
@@ -272,7 +335,7 @@
 
           <!-- Cross-Refs Tab -->
           {:else if activeTab === 'crossrefs'}
-            {#if contextLoading}
+            {#if crossRefsLoading}
               <div class="loading-section">
                 <SkeletonText lines={4} />
               </div>
@@ -339,7 +402,7 @@
 
           <!-- Related Tab -->
           {:else if activeTab === 'related'}
-            {#if contextLoading}
+            {#if relatedLoading}
               <div class="loading-section">
                 <SkeletonText lines={4} />
               </div>
@@ -352,7 +415,7 @@
               <div class="related-section">
                 <h4 class="section-header">Similar Entities</h4>
                 {#if contextData?.related?.length > 0}
-                  {#each contextData.related as item (item.node_id)}
+                  {#each contextData.related as item (item.node_id + item.entity_name)}
                     <button class="related-item" onclick={() => onNavigateToNode(item.node_id)}>
                       <span class="related-dot" style="background: {getEntityColor(item.tag)};"></span>
                       <div class="related-info">
@@ -362,7 +425,15 @@
                         {/if}
                       </div>
                       <span class="tier-badge {getTierBadgeClass(item.match_type)}">
-                        {item.match_type === 'perfect_whole' ? 'exact' : `${formatScore(item.score)}`}
+                        {#if item.match_type === 'perfect_whole' || item.match_type === 'perfect_line'}
+                          exact
+                        {:else if item.match_type?.includes('embedding')}
+                          semantic {formatScore(item.score)}
+                        {:else if item.match_type === 'ngram'}
+                          n-gram {formatScore(item.score)}
+                        {:else}
+                          {formatScore(item.score)}
+                        {/if}
                       </span>
                     </button>
                   {/each}
@@ -395,11 +466,29 @@
                   {/if}
                 </div>
               {/if}
+
+              <!-- AI Context Summary (on-demand) -->
+              <div class="ai-summary-section">
+                <button class="ai-summary-btn" onclick={requestAISummary} disabled={aiLoading || !aiAvailable}>
+                  {#if aiLoading}
+                    <InlineLoading description="Generating..." />
+                  {:else}
+                    <MachineLearningModel size={14} />
+                    Generate AI Context
+                  {/if}
+                </button>
+                {#if !aiAvailable}
+                  <span class="ai-unavailable">Ollama not running</span>
+                {/if}
+                {#if aiSummary}
+                  <div class="ai-summary-text">{aiSummary}</div>
+                {/if}
+              </div>
             {/if}
 
           <!-- Media Tab -->
           {:else if activeTab === 'media'}
-            {#if contextLoading}
+            {#if mediaLoading}
               <div class="loading-section">
                 <SkeletonText lines={2} />
               </div>
@@ -834,5 +923,52 @@
     font-size: 0.6875rem;
     color: var(--cds-text-03);
     font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* AI Summary */
+  .ai-summary-section {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--cds-border-subtle-01);
+  }
+
+  .ai-summary-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--cds-field-01);
+    border: 1px solid var(--cds-border-strong-01);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-family: inherit;
+    color: var(--cds-text-01);
+  }
+
+  .ai-summary-btn:hover {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .ai-summary-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .ai-summary-text {
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: var(--cds-field-01);
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    color: var(--cds-text-01);
+    line-height: 1.5;
+  }
+
+  .ai-unavailable {
+    font-size: 0.6875rem;
+    color: var(--cds-text-03);
+    margin-left: 0.5rem;
   }
 </style>
