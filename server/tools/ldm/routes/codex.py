@@ -382,17 +382,20 @@ async def get_codex_entity(
 @router.get("/list/{entity_type}", response_model=CodexListResponse)
 async def list_codex_entities(
     entity_type: str,
+    offset: int = Query(0, ge=0, description="Skip N entities"),
+    limit: int = Query(50, ge=1, le=200, description="Max entities per page"),
     current_user: dict = Depends(get_current_active_user_async),
 ):
-    """List all entities of a given type.
+    """List entities of a given type with pagination.
 
-    Returns empty list for unknown entity types (graceful).
+    Returns paginated results with total count and has_more flag.
+    Default: 50 entities per page starting from offset 0.
     """
     entity_type = entity_type.lower()
     svc = _get_codex_service()
 
     try:
-        return svc.list_entities(entity_type)
+        return svc.list_entities(entity_type, offset=offset, limit=limit)
     except Exception as e:
         logger.error(f"[Codex API] list_entities failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))

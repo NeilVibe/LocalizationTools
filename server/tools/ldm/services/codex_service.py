@@ -367,8 +367,13 @@ class CodexService:
 
         return None
 
-    def list_entities(self, entity_type: str) -> CodexListResponse:
-        """Return all entities of a given type."""
+    def list_entities(
+        self,
+        entity_type: str,
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> CodexListResponse:
+        """Return entities of a given type, optionally paginated with offset/limit."""
         if not self._initialized:
             self.initialize()
 
@@ -376,10 +381,21 @@ class CodexService:
         entity_type = entity_type.lower()
 
         entities = list(self._registry.get(entity_type, {}).values())
+        total = len(entities)
+
+        if limit is not None:
+            page = entities[offset:offset + limit]
+            has_more = (offset + len(page)) < total
+        else:
+            page = entities
+            has_more = False
+
         return CodexListResponse(
-            entities=entities,
+            entities=page,
             entity_type=entity_type,
-            count=len(entities),
+            count=len(page),
+            total=total,
+            has_more=has_more,
         )
 
     def get_entity_types(self) -> Dict[str, int]:

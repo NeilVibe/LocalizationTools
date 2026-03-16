@@ -63,3 +63,5 @@ class CodexListResponse(BaseModel):
     entities: List[CodexEntity]
     entity_type: str
     count: int
+    total: int = 0
+    has_more: bool = False
