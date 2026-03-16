@@ -17,7 +17,11 @@ from lxml.etree import XMLSyntaxError
 
 from server.utils.dependencies import get_current_active_user_async
 
+import httpx
+
 from server.tools.ldm.schemas.gamedata import (
+    AISummaryRequest,
+    AISummaryResponse,
     BrowseRequest,
     CrossRefItem,
     CrossRefsResponse,
@@ -569,4 +573,52 @@ async def get_gamedata_context(
         tm_suggestions=tm_suggestions,
         has_strkey=has_strkey,
         media=media,
+    )
+
+
+@router.post("/gamedata/context/ai-summary", response_model=AISummaryResponse)
+async def get_ai_summary(
+    request: AISummaryRequest,
+    user=Depends(get_current_active_user_async),
+):
+    """Generate an AI context summary for a gamedata entity using Qwen3 via Ollama.
+
+    On-demand endpoint -- only called when user clicks "Generate AI Context".
+    Checks Ollama availability first to fail fast.
+    """
+    # Check Ollama availability first (fast fail)
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            await client.get("http://localhost:11434/api/tags")
+    except Exception:
+        return AISummaryResponse(summary="", available=False)
+
+    context_service = get_gamedata_context_service()
+
+    # Reconstruct minimal TreeNode from request
+    node = TreeNode(
+        node_id=request.node_id,
+        tag=request.tag,
+        attributes=request.attributes,
+        editable_attrs=request.editable_attrs,
+    )
+
+    # Get cross-refs and related for context
+    try:
+        cross_refs = context_service.get_cross_refs(request.node_id, node)
+    except Exception:
+        cross_refs = {"forward": [], "backward": []}
+
+    try:
+        related = context_service.get_related(node)
+    except Exception:
+        related = []
+
+    # Generate AI summary
+    summary = await context_service.generate_ai_summary(node, cross_refs, related)
+
+    return AISummaryResponse(
+        summary=summary,
+        model="qwen3",
+        available=True,
     )

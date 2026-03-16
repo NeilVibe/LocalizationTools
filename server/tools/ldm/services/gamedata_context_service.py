@@ -1,6 +1,6 @@
-"""GameData Context Intelligence Service -- cross-refs, related entities, TM suggestions, media.
+"""GameData Context Intelligence Service -- cross-refs, related entities, TM suggestions, media, AI summary.
 
-Phase 30: Context Intelligence Panel (Plan 01)
+Phase 30: Context Intelligence Panel (Plans 01 + 02)
 
 Provides:
 - Reverse index for backward cross-reference resolution
@@ -8,12 +8,14 @@ Provides:
 - Related entity search via 6-tier cascade (GameDataSearcher)
 - TM suggestions from loaded language data (conditional on StrKey)
 - Media resolution (texture + audio attribute detection)
+- AI context summary generation via Ollama/Qwen3
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+import httpx
 from loguru import logger
 
 from server.tools.ldm.schemas.gamedata import TreeNode, FolderTreeDataResponse
@@ -346,6 +348,126 @@ class GameDataContextService:
                 break
 
         return result
+
+    # =========================================================================
+    # 6. AI Context Summary (Qwen3 via Ollama)
+    # =========================================================================
+
+    OLLAMA_GENERATE_URL = "http://localhost:11434/api/generate"
+    OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
+    AI_MODEL = "qwen3:latest"
+    AI_TIMEOUT = 10.0
+    AI_SYSTEM_PROMPT = (
+        "You are a game data analyst. Provide a concise 2-3 sentence summary "
+        "of this game entity based on its attributes and relationships. Focus on "
+        "what this entity is, what it does, and how it connects to other game "
+        "elements. Be factual and specific. /no_think"
+    )
+
+    async def generate_ai_summary(
+        self,
+        node: TreeNode,
+        cross_refs: Dict[str, Any],
+        related: List[Dict[str, Any]],
+    ) -> str:
+        """Generate an AI context summary for a game entity using Qwen3 via Ollama.
+
+        Builds a prompt from the entity's attributes, cross-references, and related
+        entities, then calls Ollama to generate a concise narrative summary.
+
+        Args:
+            node: The TreeNode to summarize.
+            cross_refs: Dict with 'forward' and 'backward' lists.
+            related: List of related entity dicts.
+
+        Returns:
+            Summary string, or empty string on error.
+        """
+        # Build entity name
+        editable = EDITABLE_ATTRS.get(node.tag, [])
+        entity_name = ""
+        if editable:
+            entity_name = str(node.attributes.get(editable[0], ""))
+        if not entity_name:
+            entity_name = str(node.attributes.get("Key", node.tag))
+
+        # Build prompt parts
+        parts = [
+            f"Entity: {entity_name}",
+            f"Type: {node.tag}",
+        ]
+
+        # Key attributes (top 5 non-empty)
+        attr_count = 0
+        attr_lines = []
+        for attr_name, attr_value in node.attributes.items():
+            val = str(attr_value)
+            if val and attr_count < 5:
+                attr_lines.append(f"  {attr_name}: {val[:100]}")
+                attr_count += 1
+        if attr_lines:
+            parts.append("Key attributes:")
+            parts.extend(attr_lines)
+
+        # Cross-references summary
+        forward = cross_refs.get("forward", [])
+        backward = cross_refs.get("backward", [])
+        if forward or backward:
+            ref_tags = set()
+            for ref in forward:
+                ref_tags.add(ref.get("tag", "unknown"))
+            for ref in backward:
+                ref_tags.add(ref.get("tag", "unknown"))
+            total_refs = len(forward) + len(backward)
+            parts.append(
+                f"Cross-references: Referenced by/to {total_refs} entities: "
+                f"{', '.join(sorted(ref_tags))}"
+            )
+
+        # Related entities (top 3)
+        if related:
+            related_names = [
+                f"{r.get('entity_name', '?')} ({r.get('score', 0):.0%})"
+                for r in related[:3]
+            ]
+            parts.append(f"Similar to: {', '.join(related_names)}")
+
+        prompt = "\n".join(parts)
+
+        try:
+            async with httpx.AsyncClient(timeout=self.AI_TIMEOUT) as client:
+                response = await client.post(
+                    self.OLLAMA_GENERATE_URL,
+                    json={
+                        "model": self.AI_MODEL,
+                        "prompt": prompt,
+                        "system": self.AI_SYSTEM_PROMPT,
+                        "stream": False,
+                        "options": {
+                            "temperature": 0.3,
+                            "num_predict": 200,
+                        },
+                    },
+                )
+                if response.status_code != 200:
+                    logger.warning(f"[ContextService] Ollama returned HTTP {response.status_code}")
+                    return ""
+
+                data = response.json()
+                summary = data.get("response", "").strip()
+
+                # Strip /no_think artifacts if present
+                summary = summary.replace("/no_think", "").strip()
+
+                logger.debug(f"[ContextService] AI summary generated ({len(summary)} chars)")
+                return summary
+
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            logger.warning(f"[ContextService] Ollama unavailable for AI summary: {exc}")
+            return ""
+        except Exception as exc:
+            logger.error(f"[ContextService] AI summary generation failed: {exc}")
+            return ""
 
     # =========================================================================
     # Helpers

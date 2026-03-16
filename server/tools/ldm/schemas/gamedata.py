@@ -325,3 +325,25 @@ class GameDataContextResponse(BaseModel):
     tm_suggestions: List[TMSuggestion] = []
     has_strkey: bool = False
     media: MediaContext
+
+
+# =============================================================================
+# AI Summary schemas (Phase 30, Plan 02)
+# =============================================================================
+
+
+class AISummaryRequest(BaseModel):
+    """Request for AI context summary endpoint."""
+
+    node_id: str
+    tag: str
+    attributes: Dict[str, Any] = {}
+    editable_attrs: List[str] = []
+
+
+class AISummaryResponse(BaseModel):
+    """Response for AI context summary endpoint."""
+
+    summary: str
+    model: str = "qwen3"
+    available: bool = True
