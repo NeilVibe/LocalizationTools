@@ -241,6 +241,9 @@
       const data = await response.json();
       const batch = data.entities || [];
 
+      // Guard against stale responses from rapid tab switching
+      if (entityType !== activeTab) return;
+
       if (page === 0) {
         entities = batch;
       } else {
@@ -426,7 +429,7 @@
         {#if batchInProgress}
           <div class="batch-progress">
             <ProgressBar value={batchProgress} labelText={batchStatus} />
-            <Button kind="ghost" size="small" icon={Close} iconDescription="Cancel" on:click={cancelBatchGenerate}>Cancel</Button>
+            <Button kind="ghost" size="small" icon={Close} iconDescription="Cancel" onclick={cancelBatchGenerate}>Cancel</Button>
           </div>
         {:else if batchPreview}
           <InlineNotification
@@ -437,8 +440,8 @@
             subtitle="{batchPreview.to_generate} entities need images. Estimated cost: {batchPreview.estimated_cost}"
           />
           <div class="batch-confirm">
-            <Button kind="primary" size="small" on:click={confirmBatchGenerate}>Generate</Button>
-            <Button kind="ghost" size="small" on:click={() => { batchPreview = null; }}>Cancel</Button>
+            <Button kind="primary" size="small" onclick={confirmBatchGenerate}>Generate</Button>
+            <Button kind="ghost" size="small" onclick={() => { batchPreview = null; }}>Cancel</Button>
           </div>
         {:else}
           <Button
@@ -446,7 +449,7 @@
             size="small"
             icon={ImageReference}
             iconDescription="Generate All Images"
-            on:click={previewBatchGenerate}
+            onclick={previewBatchGenerate}
           >Generate All Images</Button>
         {/if}
         {#if batchError}
@@ -456,7 +459,7 @@
             hideCloseButton
             title="Error"
             subtitle={batchError}
-            on:close={() => { batchError = null; }}
+            onclose={() => { batchError = null; }}
           />
         {/if}
       </div>
