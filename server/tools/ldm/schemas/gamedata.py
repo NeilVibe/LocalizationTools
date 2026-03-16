@@ -47,7 +47,7 @@ class FolderTreeResponse(BaseModel):
 class BrowseRequest(BaseModel):
     """Request for browse endpoint."""
 
-    path: str
+    path: str = ""
     max_depth: int = 4
 
 
@@ -132,3 +132,54 @@ class GameDataRowsResponse(BaseModel):
     page: int
     limit: int
     total_pages: int
+
+
+# =============================================================================
+# Tree schemas (hierarchical XML tree view)
+# =============================================================================
+
+
+class TreeNode(BaseModel):
+    """A node in the hierarchical XML tree."""
+
+    node_id: str  # unique ID within the tree (e.g., "root_0_child_2")
+    tag: str  # XML element name (e.g., "SkillTreeInfo", "SkillNode")
+    attributes: Dict[str, Any] = {}  # all XML attributes
+    children: List[TreeNode] = []
+    parent_id: Optional[str] = None  # back-reference for navigation
+    editable_attrs: List[str] = []  # from EDITABLE_ATTRS mapping
+
+
+# Rebuild model to resolve forward references for TreeNode
+TreeNode.model_rebuild()
+
+
+class TreeRequest(BaseModel):
+    """Request for tree endpoint."""
+
+    path: str
+    max_depth: int = -1  # -1 = unlimited
+
+
+class GameDataTreeResponse(BaseModel):
+    """Response for tree endpoint -- hierarchical tree."""
+
+    roots: List[TreeNode]
+    file_path: str
+    entity_type: str  # tag name of root's children (e.g., "SkillTreeInfo")
+    node_count: int
+
+
+class FolderTreeDataRequest(BaseModel):
+    """Request for folder tree endpoint."""
+
+    path: str
+    max_depth: int = -1
+
+
+class FolderTreeDataResponse(BaseModel):
+    """Response for folder tree endpoint -- combined tree of all XML files."""
+
+    files: List[GameDataTreeResponse]
+    base_path: str
+    total_nodes: int
