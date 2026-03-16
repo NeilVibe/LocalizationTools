@@ -159,8 +159,8 @@ Tiers 1-3 always fire in sequence (fast to slower). Tier 4 is conditional on emp
 **Plans**: 2 plans
 
 Plans:
-- [ ] 30-01: Right panel layout + TM embedding suggestions + image/audio display
-- [ ] 30-02: 5-tier cascade search engine + AI context summary + cross-reference map
+- [ ] 30-01-PLAN.md &mdash; Backend context service + reverse index + tabbed context panel with Details/Cross-Refs/Related/Media tabs
+- [ ] 30-02-PLAN.md &mdash; Progressive loading + tier badges + on-demand AI context summary via Qwen3
 
 ### Phase 31: Codex AI Image Generation
 **Goal**: Codex entities get AI-generated images replacing SVG placeholders -- entity-type-aware prompts produce character portraits, item icons, region landscapes, and skill effects, with batch generation for entire categories
