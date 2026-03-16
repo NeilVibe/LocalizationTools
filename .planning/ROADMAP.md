@@ -109,11 +109,11 @@ Plans:
   3. Entity images only load when scrolled into view (loading="lazy"), not all at once on page open
   4. Search bar is prominent at the top, results update as the user types with visible debounce feedback
   5. Switching between category tabs is instant (cached results) with correct entity counts shown per tab
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 33-01: Backend pagination endpoint (offset/limit on codex list API)
-- [ ] 33-02: Frontend Codex revamp (InfiniteScroll, SkeletonCard, lazy images, search-first, tab cache)
+- [ ] 33-01-PLAN.md -- Backend pagination + frontend InfiniteScroll + SkeletonCard + lazy images
+- [ ] 33-02-PLAN.md -- Search-first UX + category tab caching + visual polish
 
 ### Phase 34: Page-by-Page Polish
 **Goal**: GameData Tree, Language Data Grid, World Map, and TM Panel all pass UI/UX audits with consistent loading/empty/error states, proper dark mode, and polished spacing/typography
