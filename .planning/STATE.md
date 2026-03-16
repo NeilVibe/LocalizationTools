@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 
 ## Current Position
 
-Phase: 29 of 31 (Multi-Tier Indexing) -- COMPLETE
-Plan: 3 of 3 in current phase (all complete)
-Status: Phase 29 complete, ready for Phase 30
-Last activity: 2026-03-16 -- Phase 29 Plan 03 executed (Frontend index integration)
+Phase: 30 of 31 (Context Intelligence Panel) -- IN PROGRESS
+Plan: 1 of 2 in current phase
+Status: Phase 30 Plan 01 complete (Context Intelligence Backend + Panel)
+Last activity: 2026-03-16 -- Phase 30 Plan 01 executed (Context intelligence backend + panel)
 
-Progress: [██████████] 100%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [██████████] 100%
 | Phase 29 P01 | 5min | 2 tasks | 5 files |
 | Phase 29 P02 | 4min | 2 tasks | 3 files |
 | Phase 29 P03 | 3min | 2 tasks | 2 files |
+| Phase 30 P01 | 7min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,10 @@ Recent decisions affecting current work:
 - [Phase 29-02]: IndexBuildResponse.status set to 'ready' at endpoint layer (indexer metadata lacks status field)
 - [Phase 29]: Fire-and-forget buildIndex call after tree load -- no await, user browses while index builds
 - [Phase 29]: Entity detection scans ALL attributes (not just editable) for comprehensive cross-reference highlighting
+- [Phase 30-01]: Reverse index built during folder index build (hooks into build_gamedata_index endpoint)
+- [Phase 30-01]: TM suggestions conditional on StrKey attribute -- hidden for non-language entities
+- [Phase 30-01]: Context data cached per node_id in frontend Map for instant revisit
+- [Phase 30-01]: GameDataTree bind:this for cross-ref navigation from context panel
 
 ### Pending Todos
 
@@ -99,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T09:17:45.095Z
-Stopped at: Phase 30 plans verified
-Resume file: .planning/phases/30-context-intelligence-panel/30-01-PLAN.md
+Last session: 2026-03-16T09:26:20Z
+Stopped at: Completed 30-01-PLAN.md
+Resume file: .planning/phases/30-context-intelligence-panel/30-02-PLAN.md
