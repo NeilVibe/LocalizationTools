@@ -10,6 +10,7 @@
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import FileExplorerTree from '$lib/components/ldm/FileExplorerTree.svelte';
   import GameDataTree from '$lib/components/ldm/GameDataTree.svelte';
+  import NodeDetailPanel from '$lib/components/ldm/NodeDetailPanel.svelte';
   import VirtualGrid from '$lib/components/ldm/VirtualGrid.svelte';
   import NamingPanel from '$lib/components/ldm/NamingPanel.svelte';
   import { Button, TextInput } from 'carbon-components-svelte';
@@ -175,6 +176,21 @@
   }
 
   /**
+   * Phase 28: Derive active file path for save operations
+   * Single file mode: use treeFilePath. Folder mode: extract from treeData context.
+   */
+  let activeTreeFilePath = $derived(treeFilePath || '');
+
+  /**
+   * Phase 28: Handle child node click from NodeDetailPanel
+   * Sets the child as the selected node (navigates into it)
+   */
+  function handleChildClick(childNode) {
+    selectedTreeNode = childNode;
+    logger.userAction('Child node navigated', { nodeId: childNode.node_id, tag: childNode.tag });
+  }
+
+  /**
    * Refresh the file explorer tree
    */
   function refreshTree() {
@@ -304,20 +320,12 @@
           />
         </div>
         {#if selectedTreeNode}
-          <div class="detail-panel-placeholder">
-            <p class="detail-tag">{selectedTreeNode.tag}</p>
-            <p class="detail-id">{selectedTreeNode.node_id}</p>
-            {#if selectedTreeNode.attributes}
-              <div class="detail-attrs">
-                {#each Object.entries(selectedTreeNode.attributes) as [key, value] (key)}
-                  <div class="detail-attr-row">
-                    <span class="detail-attr-key">{key}</span>
-                    <span class="detail-attr-value">{value}</span>
-                  </div>
-                {/each}
-              </div>
-            {/if}
-            <!-- Full detail panel in Plan 02 -->
+          <div class="detail-panel">
+            <NodeDetailPanel
+              node={selectedTreeNode}
+              filePath={activeTreeFilePath}
+              onChildClick={handleChildClick}
+            />
           </div>
         {/if}
       </div>
@@ -548,50 +556,14 @@
     overflow: hidden;
   }
 
-  .detail-panel-placeholder {
-    width: 300px;
-    min-width: 200px;
+  .detail-panel {
+    width: 320px;
+    min-width: 240px;
+    max-width: 500px;
     border-left: 1px solid var(--cds-border-subtle-01);
-    padding: 1rem;
     overflow-y: auto;
     background: var(--cds-layer-01);
-  }
-
-  .detail-tag {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--cds-text-01);
-    margin: 0 0 0.25rem;
-  }
-
-  .detail-id {
-    font-size: 0.75rem;
-    color: var(--cds-text-03);
-    margin: 0 0 0.75rem;
-  }
-
-  .detail-attrs {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-  }
-
-  .detail-attr-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-  }
-
-  .detail-attr-key {
-    font-size: 0.6875rem;
-    font-weight: 500;
-    color: var(--cds-text-02);
-    text-transform: capitalize;
-  }
-
-  .detail-attr-value {
-    font-size: 0.8125rem;
-    color: var(--cds-text-01);
-    word-break: break-word;
+    scrollbar-width: thin;
+    scrollbar-color: var(--cds-border-subtle-01) transparent;
   }
 </style>
