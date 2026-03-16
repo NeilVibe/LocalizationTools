@@ -124,12 +124,12 @@ Plans:
   2. Language Data Grid uses skeleton rows for loading (not a spinner), has proper column alignment in dark mode, and shows clear feedback on empty search results
   3. World Map has consistent node styling, route lines, and tooltips in dark mode, plus a helpful empty state when no map data is loaded
   4. TM Panel has polished match percentage display, diff highlighting that works in dark mode, and proper loading/empty states for suggestions
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 34-01: GameData Tree polish (GDT-01 through GDT-04)
-- [ ] 34-02: Language Data Grid polish (LDG-01 through LDG-03)
-- [ ] 34-03: World Map + TM Panel polish (WMP-01, WMP-02, TMP-01, TMP-02)
+- [ ] 34-01-PLAN.md -- GameData Tree polish (GameDevPage, GameDataTree, NodeDetailPanel, GameDataContextPanel)
+- [ ] 34-02-PLAN.md -- Language Data Grid + TM Panel polish (GridPage, TMPage, TMExplorerGrid)
+- [ ] 34-03-PLAN.md -- World Map polish (WorldMapPage, MapCanvas, MapTooltip, MapDetailPanel)
 
 ### Phase 35: Cross-Page Consistency
 **Goal**: All five pages feel like one unified application -- same header pattern, same dark mode behavior, same sidebar interactions, same error recovery pattern
@@ -199,8 +199,8 @@ Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 | 29. Multi-Tier Indexing | v3.2 | 3/3 | Complete | 2026-03-16 |
 | 30. Context Intelligence Panel | v3.2 | 2/2 | Complete | 2026-03-16 |
 | 31. Codex AI Image Generation | v3.2 | 2/2 | Complete | 2026-03-16 |
-| 32. Design Token Foundation | 1/1 | Complete   | 2026-03-16 | - |
-| 33. Codex Revamp | 2/2 | Complete   | 2026-03-16 | - |
+| 32. Design Token Foundation | v3.3 | 1/1 | Complete | 2026-03-16 |
+| 33. Codex Revamp | v3.3 | 2/2 | Complete | 2026-03-16 |
 | 34. Page-by-Page Polish | v3.3 | 0/3 | Not started | - |
 | 35. Cross-Page Consistency | v3.3 | 0/1 | Not started | - |
 | 36. Visual Verification | v3.3 | 0/1 | Not started | - |
