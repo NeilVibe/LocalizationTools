@@ -63,7 +63,7 @@
     showDropdown = true;
     noResults = false;
 
-    debounceTimer = setTimeout(() => fetchResults(query), 300);
+    debounceTimer = setTimeout(() => fetchResults(query), 200);
   }
 
   /**
@@ -123,6 +123,10 @@
     size="lg"
   />
 
+  {#if loading}
+    <div class="search-progress" aria-hidden="true"></div>
+  {/if}
+
   {#if showDropdown}
     <div class="search-dropdown" role="listbox" aria-label="Search results">
       {#if loading}
@@ -161,6 +165,22 @@
     width: 100%;
   }
 
+  .search-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--cds-interactive-01, #0f62fe);
+    animation: search-progress-pulse 1s ease-in-out infinite;
+    z-index: 101;
+  }
+
+  @keyframes search-progress-pulse {
+    0%, 100% { opacity: 0.3; transform: scaleX(0.3); transform-origin: left; }
+    50% { opacity: 1; transform: scaleX(1); transform-origin: left; }
+  }
+
   .search-dropdown {
     position: absolute;
     top: 100%;
@@ -170,10 +190,16 @@
     background: var(--cds-layer-02);
     border: 1px solid var(--cds-border-subtle-01);
     border-top: none;
-    border-radius: 0 0 4px 4px;
+    border-radius: 0 0 var(--card-radius, 4px) var(--card-radius, 4px);
     max-height: 400px;
     overflow-y: auto;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    animation: dropdown-slide 0.15s ease-out;
+  }
+
+  @keyframes dropdown-slide {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .search-state {
