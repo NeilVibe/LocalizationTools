@@ -8,8 +8,8 @@
    *
    * Phase 19: Game World Codex (Plan 02)
    */
-  import { Tag, InlineLoading } from "carbon-components-svelte";
-  import { Music } from "carbon-icons-svelte";
+  import { Tag, InlineLoading, Button } from "carbon-components-svelte";
+  import { Music, ImageReference, Renew } from "carbon-icons-svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
   import PlaceholderImage from "./PlaceholderImage.svelte";
@@ -25,6 +25,58 @@
   let audioError = $state(false);
   let similarItems = $state([]);
   let loadingSimilar = $state(false);
+
+  // AI Image generation state
+  let generating = $state(false);
+  let imageGenAvailable = $state(false);
+  let aiImageUrl = $state(null);
+
+  // Check image-gen availability on mount (one-time)
+  let statusChecked = $state(false);
+  $effect(() => {
+    if (!statusChecked) {
+      statusChecked = true;
+      fetch(`${API_BASE}/api/ldm/codex/image-gen/status`, { headers: getAuthHeaders() })
+        .then(r => r.json())
+        .then(data => { imageGenAvailable = data.available; })
+        .catch(() => { imageGenAvailable = false; });
+    }
+  });
+
+  // Update aiImageUrl when entity changes
+  $effect(() => {
+    if (entity?.ai_image_url) {
+      aiImageUrl = `${API_BASE}${entity.ai_image_url}`;
+    } else {
+      aiImageUrl = null;
+    }
+  });
+
+  /**
+   * Generate or regenerate AI image for current entity
+   */
+  async function generateImage(force = false) {
+    if (!entity) return;
+    generating = true;
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/ldm/codex/generate-image/${entity.entity_type}/${entity.strkey}?force=${force}`,
+        { method: 'POST', headers: getAuthHeaders() }
+      );
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      aiImageUrl = `${API_BASE}${data.image_url}?t=${Date.now()}`;
+      imageError = false;
+      logger.info('AI image generated', { strkey: entity.strkey, status: data.status });
+    } catch (err) {
+      logger.error('AI image generation failed', { error: err.message });
+    } finally {
+      generating = false;
+    }
+  }
 
   // Type badge colors
   const TYPE_COLORS = {
@@ -128,7 +180,30 @@
     <div class="detail-layout">
       <!-- Left: Image -->
       <div class="detail-image">
-        {#if imageUrl && !imageError}
+        {#if generating}
+          <div class="generating-spinner">
+            <InlineLoading description="Generating..." />
+          </div>
+        {:else if aiImageUrl}
+          <div class="ai-image-wrapper">
+            <img
+              src={aiImageUrl}
+              alt={entity.name}
+              class="entity-image"
+              onerror={() => { aiImageUrl = null; }}
+            />
+            {#if imageGenAvailable}
+              <Button
+                kind="ghost"
+                size="small"
+                icon={Renew}
+                iconDescription="Regenerate"
+                class="regenerate-btn"
+                on:click={() => generateImage(true)}
+              >Regenerate</Button>
+            {/if}
+          </div>
+        {:else if imageUrl && !imageError}
           <img
             src={imageUrl}
             alt={entity.name}
@@ -136,7 +211,18 @@
             onerror={() => { imageError = true; }}
           />
         {:else}
-          <PlaceholderImage entityType={entity.entity_type} entityName={entity.name} />
+          <div class="placeholder-wrapper">
+            <PlaceholderImage entityType={entity.entity_type} entityName={entity.name} />
+            {#if imageGenAvailable}
+              <Button
+                kind="ghost"
+                size="small"
+                icon={ImageReference}
+                iconDescription="Generate Image"
+                on:click={() => generateImage(false)}
+              >Generate Image</Button>
+            {/if}
+          </div>
         {/if}
       </div>
 
@@ -306,6 +392,42 @@
     height: 100%;
     object-fit: contain;
     display: block;
+  }
+
+  .generating-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 120px;
+  }
+
+  .ai-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .ai-image-wrapper :global(.regenerate-btn) {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+  }
+
+  .ai-image-wrapper:hover :global(.regenerate-btn) {
+    opacity: 1;
+  }
+
+  .placeholder-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
   }
 
   .detail-meta {

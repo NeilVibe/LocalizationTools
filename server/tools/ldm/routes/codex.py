@@ -4,14 +4,15 @@ Phase 19: Game World Codex -- provides REST endpoints for the interactive
 Codex encyclopedia with semantic search across all entity types.
 
 Phase 31: AI Image Generation -- generate/serve/status endpoints for
-Gemini-powered entity images.
+Gemini-powered entity images. Plan 02 adds batch generation with
+TrackedOperation progress and cancellation.
 """
 
 from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
@@ -25,6 +26,7 @@ from server.tools.ldm.schemas.codex import (
 )
 from server.tools.ldm.services.codex_service import CodexService
 from server.tools.ldm.services.ai_image_service import get_ai_image_service
+from server.utils.progress_tracker import TrackedOperation
 
 
 router = APIRouter(prefix="/codex", tags=["Codex"])
@@ -34,6 +36,9 @@ _codex_service: Optional[CodexService] = None
 
 # Default base directory for StaticInfo
 _DEFAULT_BASE_DIR = Path(__file__).resolve().parents[4]  # project root
+
+# Batch generation cancellation events keyed by operation_id
+_cancel_events: Dict[int, asyncio.Event] = {}
 
 
 def _get_codex_service() -> CodexService:
@@ -152,6 +157,156 @@ async def get_codex_image(
         media_type="image/png",
         headers={"Cache-Control": "public, max-age=604800"},
     )
+
+
+# =============================================================================
+# Batch Generation Endpoints (Phase 31, Plan 02)
+# =============================================================================
+
+
+async def _run_batch_generation(
+    entities: list,
+    svc,
+    operation_id: int,
+    op,
+    cancel_event: asyncio.Event,
+):
+    """Background task for sequential batch image generation."""
+    total = len(entities)
+    generated = 0
+    failed = 0
+
+    for i, entity in enumerate(entities):
+        # Check cancellation before each generation
+        if cancel_event.is_set():
+            logger.info(f"[Codex API] Batch generation cancelled at {i}/{total}")
+            op.update(
+                (i / total) * 100,
+                f"Cancelled after {generated} images",
+                completed_steps=i,
+                total_steps=total,
+            )
+            break
+
+        try:
+            png_bytes = await asyncio.to_thread(svc.generate_image, entity)
+            prompt = svc._build_prompt(entity)
+            svc.save_to_cache(entity.strkey, png_bytes, prompt)
+            generated += 1
+        except Exception as exc:
+            logger.warning(
+                f"[Codex API] Batch: failed to generate {entity.strkey}: {exc}"
+            )
+            failed += 1
+
+        pct = ((i + 1) / total) * 100
+        op.update(
+            pct,
+            f"{i + 1}/{total} images generated",
+            completed_steps=i + 1,
+            total_steps=total,
+        )
+
+        # Rate limit: 10 images per minute => 6 second delay between images
+        if i < total - 1 and not cancel_event.is_set():
+            await asyncio.sleep(6)
+
+    logger.info(
+        f"[Codex API] Batch generation done: {generated} generated, {failed} failed"
+    )
+
+    # Clean up cancel event
+    _cancel_events.pop(operation_id, None)
+
+
+@router.post("/batch-generate/{entity_type}")
+async def batch_generate(
+    entity_type: str,
+    confirm: bool = Query(False, description="If false, returns preview. If true, starts batch."),
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Batch generate AI images for all entities of a type missing cached images.
+
+    Two-phase flow:
+    - confirm=false: Returns count and estimated cost preview
+    - confirm=true: Launches background batch generation with TrackedOperation
+    """
+    entity_type = entity_type.lower()
+    svc = get_ai_image_service()
+    codex = _get_codex_service()
+
+    if not svc.available:
+        raise HTTPException(
+            status_code=503,
+            detail="AI image generation unavailable (GEMINI_API_KEY not set)",
+        )
+
+    # Get all entities and filter to those without cached images
+    list_response = codex.list_entities(entity_type)
+    all_entities = list_response.entities
+    to_generate = [e for e in all_entities if not svc.get_cached_image_path(e.strkey)]
+
+    if not confirm:
+        # Preview mode: return count and cost estimate
+        return {
+            "to_generate": len(to_generate),
+            "estimated_cost": f"~${len(to_generate) * 0.05:.2f}",
+            "entity_type": entity_type,
+            "total_entities": len(all_entities),
+        }
+
+    if len(to_generate) == 0:
+        return {"status": "complete", "to_generate": 0, "message": "All entities already have images"}
+
+    # Start batch generation with TrackedOperation
+    user_id = current_user.get("user_id", 0)
+    tracked = TrackedOperation(
+        f"AI Image Generation ({entity_type})",
+        user_id,
+        username=current_user.get("username", "system"),
+        tool_name="Codex",
+        function_name="batch_generate",
+        total_steps=len(to_generate),
+    )
+    op = tracked.__enter__()
+    operation_id = tracked.operation_id or 0
+
+    # Create cancellation event
+    cancel_event = asyncio.Event()
+    _cancel_events[operation_id] = cancel_event
+
+    # Launch background task
+    async def _batch_wrapper():
+        try:
+            await _run_batch_generation(to_generate, svc, operation_id, op, cancel_event)
+            tracked.__exit__(None, None, None)
+        except Exception as exc:
+            tracked.__exit__(type(exc), exc, exc.__traceback__)
+
+    asyncio.create_task(_batch_wrapper())
+
+    return {
+        "status": "started",
+        "operation_id": operation_id,
+        "to_generate": len(to_generate),
+    }
+
+
+@router.post("/batch-generate/cancel/{operation_id:int}")
+async def cancel_batch_generate(
+    operation_id: int,
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Cancel a running batch generation operation."""
+    cancel_event = _cancel_events.get(operation_id)
+    if cancel_event is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No active batch operation with id {operation_id}",
+        )
+
+    cancel_event.set()
+    return {"status": "cancelling", "operation_id": operation_id}
 
 
 # =============================================================================
