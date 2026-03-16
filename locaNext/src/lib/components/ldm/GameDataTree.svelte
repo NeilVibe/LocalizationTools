@@ -328,6 +328,14 @@
    */
   function loadFolderTree(path) {
     fetchTree('/api/ldm/gamedata/tree/folder', path, (data) => {
+      // Annotate each node with its source file path for save operations
+      for (const fileEntry of (data.files || [])) {
+        const annotate = (node) => {
+          node._filePath = fileEntry.file_path;
+          for (const child of (node.children || [])) annotate(child);
+        };
+        for (const root of (fileEntry.roots || [])) annotate(root);
+      }
       treeData = data.files || [];
       expandedNodes = new Set(treeData.map(f => `file:${f.file_path}`));
       logger.success('Folder tree loaded', {

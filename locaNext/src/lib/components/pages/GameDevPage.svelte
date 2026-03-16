@@ -5,15 +5,12 @@
    * Split layout: FileExplorerTree (left panel) + GridPage (right).
    * Browse gamedata folders, select XML files, view/edit entities in grid.
    */
-  import { openFile, openFileInGrid, gamedevBasePath } from '$lib/stores/navigation.js';
+  import { gamedevBasePath } from '$lib/stores/navigation.js';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import FileExplorerTree from '$lib/components/ldm/FileExplorerTree.svelte';
   import GameDataTree from '$lib/components/ldm/GameDataTree.svelte';
   import NodeDetailPanel from '$lib/components/ldm/NodeDetailPanel.svelte';
-  import VirtualGrid from '$lib/components/ldm/VirtualGrid.svelte';
-  import NamingPanel from '$lib/components/ldm/NamingPanel.svelte';
-  import { Button, TextInput } from 'carbon-components-svelte';
   import { Renew, FolderOpen, ArrowRight, TreeView } from 'carbon-icons-svelte';
 
   const API_BASE = getApiBase();
@@ -24,22 +21,14 @@
   const hasFileSystemAccess = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
   // State (Svelte 5 Runes)
-  let selectedGameDevFile = $state(null);
   let pathInput = $state($gamedevBasePath || '');
   let activePath = $state($gamedevBasePath || '');
-  let dynamicColumns = $state(null);
-  let fileLoading = $state(false);
-  let virtualGrid = $state(null);
   let treeRef = $state(null);
 
   // Phase 28: Tree view state
   let treeFilePath = $state(null);
   let folderTreePath = $state(null);
   let selectedTreeNode = $state(null);
-
-  // Naming panel state (Phase 21)
-  let editingEntityName = $state('');
-  let editingEntityType = $state('');
 
   // NAV-04: Auto-load indicator state
   let autoLoading = $state(false);
@@ -67,10 +56,6 @@
         .finally(() => { autoLoading = false; });
     }
   });
-
-  // Derive file type for VirtualGrid
-  let currentFileId = $derived($openFile?.id || null);
-  let currentFileName = $derived($openFile?.name || '');
 
   /**
    * Handle path input submission
@@ -149,7 +134,6 @@
    * Handle file selection from FileExplorerTree -- load tree view (Phase 28)
    */
   function handleFileSelect(file) {
-    selectedGameDevFile = file;
     treeFilePath = file.path;
     folderTreePath = null;
     selectedTreeNode = null;
@@ -179,7 +163,7 @@
    * Phase 28: Derive active file path for save operations
    * Single file mode: use treeFilePath. Folder mode: extract from treeData context.
    */
-  let activeTreeFilePath = $derived(treeFilePath || '');
+  let activeTreeFilePath = $derived(treeFilePath || selectedTreeNode?._filePath || '');
 
   /**
    * Phase 28: Handle child node click from NodeDetailPanel
@@ -209,43 +193,6 @@
     }
   }
 
-  /**
-   * Phase 21: Handle inline edit start from VirtualGrid -- show naming panel
-   * Only triggers when user actually starts editing a cell (double-click/Enter),
-   * not on simple row selection.
-   */
-  function handleInlineEditStart(data) {
-    const { row, column, value } = data || {};
-    if (!row || !value) {
-      editingEntityName = '';
-      return;
-    }
-
-    editingEntityName = value;
-
-    // Derive entity type from XML node name
-    const nodeName = (row.source || '').toLowerCase();
-    if (nodeName.includes('character')) editingEntityType = 'character';
-    else if (nodeName.includes('item')) editingEntityType = 'item';
-    else if (nodeName.includes('skill')) editingEntityType = 'skill';
-    else if (nodeName.includes('gimmick')) editingEntityType = 'gimmick';
-    else if (nodeName.includes('faction') || nodeName.includes('region')) editingEntityType = 'region';
-    else editingEntityType = 'character'; // safe default
-
-    logger.userAction('Inline edit started for naming panel', { name: value, column, entityType: editingEntityType });
-  }
-
-  /**
-   * Phase 21: Apply naming suggestion -- copy to clipboard (respects AINAME-03)
-   */
-  async function handleNamingApply(name) {
-    try {
-      await navigator.clipboard.writeText(name);
-      logger.userAction('Naming suggestion copied to clipboard', { name });
-    } catch {
-      logger.warning('Clipboard copy failed for naming suggestion', { name });
-    }
-  }
 </script>
 
 <div class="gamedev-page">
@@ -306,11 +253,7 @@
 
   <!-- Right Panel: Tree View or Placeholder -->
   <div class="grid-panel">
-    {#if fileLoading}
-      <div class="grid-placeholder" role="status" aria-live="polite">
-        <p>Loading game data...</p>
-      </div>
-    {:else if treeFilePath || folderTreePath}
+    {#if treeFilePath || folderTreePath}
       <div class="tree-and-detail">
         <div class="tree-panel-main">
           <GameDataTree
