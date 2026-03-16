@@ -4,11 +4,11 @@
 
 ---
 
-## POST-v3.1 DEBUG SESSION: Test & Server Fixes (8 Issues)
+## POST-v3.1 DEBUG SESSION: 15 Bug Fixes (11 Swarm Audit + 4 Game Dev Grid)
 
 ### What Was Done
 
-Found and fixed 8 issues — 4 in tests, 4 in server code. All related to incorrect assumptions, wrong XML tag names, and case sensitivity bugs.
+Found and fixed 15 issues total across two commits. First commit (daa2245a) fixed 11 bugs from swarm audit (4 test + 4 server + 3 frontend). Second commit (357bf86a) fixed Game Dev grid — was completely broken (0 rows loaded).
 
 ### Test Fixes (4)
 
@@ -28,12 +28,23 @@ Found and fixed 8 issues — 4 in tests, 4 in server code. All related to incorr
 | `server/tools/ldm/services/codex_service.py` | Case-sensitive entity_type and StrKey lookups; empty search returned all results; region names not enriched | Added `.lower()` for case-insensitive lookups, empty search returns 0, region names from KnowledgeInfo |
 | `server/tools/ldm/routes/codex.py` | Case-sensitive entity_type in route handlers | Added `.lower()` normalization in all 3 route handlers |
 
+### Game Dev Grid Fixes (4) — Commit 357bf86a
+
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| Game Dev grid showed 0 rows | VirtualGrid sent file path as integer file_id to GET /files/{id}/rows — path is not an ID | Created POST /api/ldm/gamedata/rows endpoint that accepts XML path directly |
+| Path resolution broken | `_validate_path` rejected relative paths | Relative paths resolve against base_dir, CWD fallback for user-typed paths |
+| Browse UX confusing | Single button tried to do folder pick + apply | Split into folder picker button + apply arrow button |
+| VirtualGrid gamedev fetch | Used wrong endpoint for gamedev mode | POST /gamedata/rows instead of GET /files/{id}/rows |
+
 ### Key Patterns
 
 - **KnowledgeInfo vs KnowledgeData**: The XML tag for knowledge entries is `KnowledgeInfo`, not `KnowledgeData`. This was wrong in both server code and test fixtures.
 - **Case sensitivity**: Codex entity types and StrKey lookups must be case-insensitive to handle mixed-case input from UI.
 - **DEV_MODE testing**: Never check `os.environ` in tests for server behavior — check actual server responses instead.
 - **SQLite edit history**: SQLite mode returns empty edit history (by design), tests must account for this.
+- **Game Dev data flow**: XML entities load directly via POST with file path — no DB file_id needed for gamedata.
+- **All 5 main pages verified working**: Files, Game Dev, Codex, Map, TM — confirmed with Playwright screenshots.
 
 ---
 
@@ -501,7 +512,7 @@ StrOrigin | Str | Correction | Category | StringID
 
 | Session | Achievement |
 |---------|-------------|
-| **Post-v3.1** | Debug session: 8 fixes (4 test + 4 server) — KnowledgeInfo tags, codex case sensitivity, EDITABLE_ATTRS |
+| **Post-v3.1** | Debug session: 15 fixes (11 swarm audit + 4 Game Dev grid) — KnowledgeInfo tags, codex case sensitivity, EDITABLE_ATTRS, gamedata/rows endpoint |
 | **61** | Folder schema mismatch fix + OFFLINE mode fully working |
 | **60+** | LIMIT-001/002 Fixed + RoutingRowRepository + 6-agent review |
 | **60** | aiosqlite bug fixes (11 bugs) + E2E testing + Debug docs |

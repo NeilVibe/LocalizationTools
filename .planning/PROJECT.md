@@ -18,6 +18,9 @@ The platform delivers real, working localization workflows — real XML parsing,
 - 36 Svelte components migrated to pure Svelte 5 Runes (zero createEventDispatcher)
 - 12 runtime bugs fixed, 60 UIUX audit issues resolved
 - 7 post-review bugs caught and fixed (FilePickerDialog, virtualGrid ref, audio onerror, Escape key, XML format, br-tag assertions)
+- Post-v3.1: 15 bugs found and fixed (11 from swarm audit + 4 Game Dev grid)
+- Game Dev grid now loads entities from XML files directly via POST /api/ldm/gamedata/rows
+- All 5 main pages verified working (Files, Game Dev, Codex, Map, TM)
 - 5676 mock entities across 10 StaticInfo directories
 - Full offline/online parity maintained across all four milestones
 
@@ -114,6 +117,7 @@ The platform delivers real, working localization workflows — real XML parsing,
 | d3-zoom for World Map | SVG pan/zoom for 14 nodes, no Leaflet needed | ✓ Good — lightweight, correct paradigm |
 | CodexService + FAISS for entity search | Reuse existing embedding infrastructure | ✓ Good — semantic search across all entity types |
 | Route-handler category filtering | Keep repo layer clean, filter in Python | ✓ Good — simpler than DB-side filtering |
+| gamedata/rows endpoint for direct XML loading | Game Dev entities come from XML files, not DB — no file_id exists | ✓ Good — POST with path, no DB dependency |
 
 ---
-*Last updated: 2026-03-16 after v3.0 milestone completed*
+*Last updated: 2026-03-16 after post-v3.1 debug session*

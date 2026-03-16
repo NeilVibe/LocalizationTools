@@ -79,6 +79,10 @@ progress:
 - [25-09]: Offline tests accept GRACEFUL tuple (200/404/422/500/501/503) since offline mode may not be active in test env
 - [25-09]: Admin no-500 batch check validates 8 admin-adjacent endpoints simultaneously
 - [Phase 25]: Socket.IO wrapper unwrapped via other_asgi_app for FastAPI route introspection
+- [Post-v3.1 GameDev]: Created POST /api/ldm/gamedata/rows endpoint — XML entities loaded directly, no DB file_id needed
+- [Post-v3.1 GameDev]: Fixed _validate_path — relative paths resolve against base_dir, CWD fallback for user-typed paths
+- [Post-v3.1 GameDev]: Split GameDev browse into two buttons (folder picker + apply arrow)
+- [Post-v3.1 GameDev]: VirtualGrid gamedev mode uses POST /gamedata/rows instead of GET /files/{id}/rows
 
 ### Pending Todos
 
