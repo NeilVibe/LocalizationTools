@@ -8,12 +8,13 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
-## Current State (v3.1 shipped 2026-03-16)
+## Current State (v3.2 shipped 2026-03-16)
 
 - v1.0: 7 phases, 20 plans, 42 requirements — architecture scaffolds + tests
 - v2.0: 8 phases, 17 plans, 40 requirements — real data pipelines + merge + AI
 - v3.0: 7 phases, 14 plans, 45 requirements — game dev platform + AI intelligence
 - v3.1: 4 phases, 19 plans, 48 tasks — Svelte 5 migration + bug fixes + UIUX polish + API E2E testing
+- v3.2: 6 phases, 12 plans, 25 requirements — GameData Tree UI + Context Intelligence + Image Gen
 - 834 API test functions across 40 test files covering 275 endpoints
 - 36 Svelte components migrated to pure Svelte 5 Runes (zero createEventDispatcher)
 - 12 runtime bugs fixed, 60 UIUX audit issues resolved
@@ -62,18 +63,16 @@ The platform delivers real, working localization workflows — real XML parsing,
 
 ### Active
 
-## Current Milestone: v3.2 GameData Tree UI + Context Intelligence + Image Gen
+## Current Milestone: v3.3 UI/UX Polish + Performance
 
-**Goal:** Rework the Game Data page from flat grid to hierarchical XML tree navigator with parent/child node expansion, add a right-side context panel with TM suggestions/images/audio/AI context, generate AI images for Codex, and achieve sub-second lookup via multi-tier indexing (hashtable + FAISS vector + Aho-Corasick glossary).
+**Goal:** Audit, critique, and polish ALL 5 pages (GameData Tree, Language Data Grid, Codex, World Map, TM) for visual consistency, performance, and production-readiness. Codex gets a full revamp with lazy loading. Cross-page consistency enforced (spacing, dark mode, states, typography).
 
 **Target features:**
-- GameData hierarchical tree UI (better than VS Code — beautiful, fast, expandable nodes)
-- Right panel: TM embedding search, images, audio, AI context, 5-tier cascade smart search
-- Aho-Corasick auto-glossary extraction from full gamedata (QuickSearch patterns)
-- AI image generation for Codex entities (Nano Banana / Gemini)
-- Full folder loading with instant indexing
-- Navigation rename: "Localization Data" + "Game Data"
-- Browser DEV parity (showDirectoryPicker, auto-load mock data)
+- GameData Tree UI — full design audit + polish (built but never reviewed)
+- Language Data Grid — UX audit, edge cases, loading/empty/error states
+- Codex — REVAMP: virtualized/paginated loading, search-first UX, skeleton states
+- World Map — quick verification pass
+- Cross-page consistency — all pages feel like ONE app (sidebar, nav, dark mode, spacing)
 
 ### Out of Scope
 
@@ -131,4 +130,4 @@ The platform delivers real, working localization workflows — real XML parsing,
 | gamedata/rows endpoint for direct XML loading | Game Dev entities come from XML files, not DB — no file_id exists | ✓ Good — POST with path, no DB dependency |
 
 ---
-*Last updated: 2026-03-16 after post-v3.1 debug session*
+*Last updated: 2026-03-17 after v3.3 milestone start*

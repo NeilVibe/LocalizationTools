@@ -1,9 +1,9 @@
 # Milestones
 
-## v3.2 GameData Tree UI + Context Intelligence + Image Gen (In Progress)
+## v3.2 GameData Tree UI + Context Intelligence + Image Gen (Shipped: 2026-03-16)
 
 **Phases:** 26-31 (6 phases, 12 plans)
-**Requirements:** 25 total (5 categories: TREE, IDX, CTX, IMG, NAV)
+**Requirements:** 25/25 complete (5 categories: TREE, IDX, CTX, IMG, NAV)
 **Goal:** Rework Game Data page from flat grid to hierarchical XML tree navigator, add right-side context panel with TM/images/audio/AI context via 5-tier cascade search, generate AI images for Codex, and achieve sub-second lookup via multi-tier indexing.
 
 **Phase structure:**
