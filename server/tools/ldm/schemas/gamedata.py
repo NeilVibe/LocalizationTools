@@ -238,6 +238,12 @@ class IndexSearchResponse(BaseModel):
     perfect_match: bool
 
 
+class DetectEntitiesRequest(BaseModel):
+    """Request for entity detection endpoint."""
+
+    text: str
+
+
 class IndexStatusResponse(BaseModel):
     """Response for index status endpoint."""
 

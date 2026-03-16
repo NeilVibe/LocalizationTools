@@ -470,9 +470,11 @@ class GameDataIndexer:
             automaton.add_word(name, (idx, name, entity["node_id"], entity["tag"]))
             idx += 1
 
-        if idx > 0:
-            automaton.make_automaton()
+        if idx == 0:
+            logger.warning("[GameDataIndexer] No terms for AC automaton, returning None")
+            return None
 
+        automaton.make_automaton()
         logger.info(f"[GameDataIndexer] Built AC automaton with {idx} terms")
         return automaton
 

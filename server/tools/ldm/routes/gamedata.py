@@ -36,6 +36,7 @@ from server.tools.ldm.schemas.gamedata import (
     IndexSearchResult,
     IndexSearchResponse,
     IndexStatusResponse,
+    DetectEntitiesRequest,
     TreeRequest,
 )
 from server.tools.ldm.indexing.gamedata_indexer import get_gamedata_indexer
@@ -409,17 +410,24 @@ async def build_gamedata_index(
     then feeds TreeNode data to GameDataIndexer.build_from_folder_tree().
     """
     indexer = get_gamedata_indexer()
-    tree_service = GameDataTreeService(base_dir=Path(request.path).parent)
+    tree_service = GameDataTreeService(base_dir=_get_base_dir())
 
     try:
         folder_data = tree_service.parse_folder(request.path)
-    except (FileNotFoundError, ValueError) as e:
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
     if folder_data.total_nodes == 0:
         raise HTTPException(status_code=400, detail="No entities found in folder")
 
-    result = indexer.build_from_folder_tree(folder_data)
+    try:
+        result = indexer.build_from_folder_tree(folder_data)
+    except Exception as e:
+        logger.error(f"[GameData API] Index build failed: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"Index build failed: {e}")
+
     return IndexBuildResponse(**result, status="ready")
 
 
@@ -433,8 +441,12 @@ async def search_gamedata_index(
     if not indexer.is_ready:
         raise HTTPException(status_code=400, detail="Index not built yet")
 
-    searcher = GameDataSearcher(indexer.indexes)
-    result = searcher.search(request.query, top_k=request.top_k, threshold=request.threshold)
+    try:
+        searcher = GameDataSearcher(indexer.indexes)
+        result = searcher.search(request.query, top_k=request.top_k, threshold=request.threshold)
+    except Exception as e:
+        logger.error(f"[GameData API] Search failed: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {e}")
 
     return IndexSearchResponse(
         tier=result["tier"],
@@ -446,7 +458,7 @@ async def search_gamedata_index(
 
 @router.post("/gamedata/index/detect")
 async def detect_entities_in_text(
-    request: dict,
+    request: DetectEntitiesRequest,
     user=Depends(get_current_active_user_async),
 ):
     """Detect entity names in text via Aho-Corasick scan."""
@@ -454,8 +466,13 @@ async def detect_entities_in_text(
     if not indexer.is_ready:
         raise HTTPException(status_code=400, detail="Index not built yet")
 
-    searcher = GameDataSearcher(indexer.indexes)
-    entities = searcher.detect_entities(request.get("text", ""))
+    try:
+        searcher = GameDataSearcher(indexer.indexes)
+        entities = searcher.detect_entities(request.text)
+    except Exception as e:
+        logger.error(f"[GameData API] Entity detection failed: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"Detection failed: {e}")
+
     return {"entities": entities}
 
 

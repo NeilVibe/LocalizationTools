@@ -136,8 +136,12 @@ class GameDataSearcher:
             }
 
         # TIER 2: Whole Embedding Match (FAISS)
-        if self.whole_index and self.whole_mapping:
-            self._ensure_model_loaded()
+        if FAISS_AVAILABLE and self.whole_index and self.whole_mapping:
+            try:
+                self._ensure_model_loaded()
+            except RuntimeError as e:
+                logger.warning(f"[GameDataSearcher] Tier 2 skipped — {e}")
+                self.whole_index = None  # Disable for remaining tiers
 
             query_embedding = self.model.encode(
                 [query_for_embedding], normalize=True, show_progress=False
@@ -204,8 +208,12 @@ class GameDataSearcher:
             }
 
         # TIER 4: Line Embedding Match (FAISS)
-        if self.line_index and self.line_mapping and query_lines:
-            self._ensure_model_loaded()
+        if FAISS_AVAILABLE and self.line_index and self.line_mapping and query_lines:
+            try:
+                self._ensure_model_loaded()
+            except RuntimeError as e:
+                logger.warning(f"[GameDataSearcher] Tier 4 skipped — {e}")
+                self.line_index = None
 
             line_results = []
             for i, line in enumerate(query_lines):
