@@ -37,7 +37,7 @@
 - [x] **IMG-01**: AI-generated entity images replace SVG placeholders in Codex using Nano Banana / Gemini image generation
 - [x] **IMG-02**: Entity-type aware prompts — character portraits, item icons, region landscape scenes, skill effect icons
 - [x] **IMG-03**: Generated images cached on disk with entity StrKey as filename, served via existing `/api/ldm/mapdata/thumbnail/` endpoint
-- [ ] **IMG-04**: Batch generation mode — generate images for all entities in a category with progress tracking
+- [x] **IMG-04**: Batch generation mode — generate images for all entities in a category with progress tracking
 
 ### NAV — Navigation & DEV Parity
 
@@ -97,7 +97,7 @@
 | IMG-01 | Phase 31 | Complete |
 | IMG-02 | Phase 31 | Complete |
 | IMG-03 | Phase 31 | Complete |
-| IMG-04 | Phase 31 | Pending |
+| IMG-04 | Phase 31 | Complete |
 
 **Coverage:**
 - v3.2 requirements: 25 total

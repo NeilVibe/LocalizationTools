@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: GameData Tree UI + Context Intelligence + Image Gen
 status: completed
-stopped_at: Completed 31-01-PLAN.md
-last_updated: "2026-03-16T10:19:48.466Z"
-last_activity: 2026-03-16 -- Phase 31 Plan 01 executed (AIImageService + REST endpoints)
+stopped_at: Completed 31-02-PLAN.md
+last_updated: "2026-03-16T10:25:37.326Z"
+last_activity: 2026-03-16 -- Phase 31 Plan 02 executed (frontend integration + batch generation)
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 31 of 31 (Codex AI Image Generation)
-Plan: 1 of 2 in current phase -- COMPLETE
-Status: Plan 31-01 complete (Gemini backend + endpoints + cache)
-Last activity: 2026-03-16 -- Phase 31 Plan 01 executed (AIImageService + REST endpoints)
+Plan: 2 of 2 in current phase -- COMPLETE
+Status: Phase 31 complete (all plans executed)
+Last activity: 2026-03-16 -- Phase 31 Plan 02 executed (frontend integration + batch generation)
 
-Progress: [█████████░] 92%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [█████████░] 92%
 | Phase 30 P01 | 7min | 2 tasks | 5 files |
 | Phase 30 P02 | 5min | 2 tasks | 4 files |
 | Phase 31 P01 | 4min | 2 tasks | 4 files |
+| Phase 31 P02 | 3min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,9 @@ Recent decisions affecting current work:
 - [Phase 31]: Prompt templates stored as Python dict in ai_image_service.py, not separate JSON
 - [Phase 31]: Grade glow keywords injected per entity Grade attribute for visual quality differentiation
 - [Phase 31]: StrKey sanitization via regex + path resolution check against CACHE_DIR for security
+- [Phase 31]: Two-phase batch flow: confirm=false preview, confirm=true launches background TrackedOperation
+- [Phase 31]: asyncio.Event cancellation for batch generation stored in module-level dict
+- [Phase 31]: WebSocket progress listeners in Svelte $effect with cleanup return for auto-unsubscribe
 
 ### Pending Todos
 
@@ -112,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T10:19:48.464Z
-Stopped at: Completed 31-01-PLAN.md
+Last session: 2026-03-16T10:25:37.323Z
+Stopped at: Completed 31-02-PLAN.md
 Resume file: None
