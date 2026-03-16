@@ -129,11 +129,11 @@ Plans:
   3. Pasting or typing text in any field highlights all recognized entity names found via Aho-Corasick single-pass scan (reusing QuickSearch/QuickCheck automaton patterns)
   4. Loading a gamedata folder automatically extracts a glossary of all entity names and descriptions and builds the Aho-Corasick automaton from them
   5. Full gamedata folder with 5000+ entities indexes completely in under 3 seconds
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 29-01: Hashtable index + FAISS vector index on folder load
-- [ ] 29-02: Aho-Corasick automaton from entity names + auto-glossary extraction + performance validation
+- [ ] 29-01-PLAN.md &mdash; GameDataIndexer + GameDataSearcher: hash, FAISS, AC indexes + 6-tier cascade search engine
+- [ ] 29-02-PLAN.md &mdash; API endpoints (build, search, detect, status) + performance validation (<3s for 5000+ entities)
 
 ### Phase 30: Context Intelligence Panel
 **Goal**: Selecting any node in the tree opens a right panel showing TM suggestions, related images, audio playback, AI-powered context analysis via 5-tier cascade search, and cross-reference maps -- giving game developers instant, rich context for any entity
@@ -155,7 +155,7 @@ Tiers 1-3 always fire in sequence (fast to slower). Tier 4 is conditional on emp
   2. If the selected entity has a texture reference or Codex image, the context panel displays the image; if it references a character with voice data, an audio player appears
   3. AI context summary appears for the selected entity, with results arriving progressively as each cascade tier completes (fast tiers first, LLM last)
   4. The context panel shows which other entities reference the selected one (skills using this knowledge, items in this region, etc.) as navigable links
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 30-01: Right panel layout + TM embedding suggestions + image/audio display
@@ -170,7 +170,7 @@ Plans:
   2. Generated images match entity type -- characters get portraits, items get icons, regions get landscape scenes, skills get effect visualizations
   3. Generated images are cached on disk keyed by entity StrKey and served via the existing mapdata thumbnail API endpoint
   4. User can trigger batch generation for an entire category (e.g., "generate all character images") with a progress bar showing completion
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 31-01: Nano Banana / Gemini integration + entity-type-aware prompt templates + disk caching
