@@ -11,7 +11,7 @@
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import VirtualGrid from '$lib/components/ldm/VirtualGrid.svelte';
   import RightPanel from '$lib/components/ldm/RightPanel.svelte';
-  import { Button } from 'carbon-components-svelte';
+  import { Button, InlineLoading } from 'carbon-components-svelte';
   import { ArrowLeft, Column, Document, DataBase } from 'carbon-icons-svelte';
 
   // Props
@@ -272,7 +272,7 @@
     <!-- TM Indicator (TM Hierarchy) - Simple display with TM ACTIVE prefix -->
     <div class="tm-indicator" class:has-tm={activeTMs.length > 0}>
       {#if activeTMsLoading}
-        <span class="tm-loading">Loading TM...</span>
+        <span class="tm-loading"><InlineLoading description="Loading TM..." /></span>
       {:else if activeTMs.length > 0}
         <div class="tm-info">
           <DataBase size={16} class="tm-info-icon" />
@@ -410,6 +410,8 @@
   .tm-loading {
     font-size: 0.75rem;
     color: var(--cds-text-03);
+    display: flex;
+    align-items: center;
   }
 
   .tm-none {
@@ -426,8 +428,9 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.375rem 1rem;
-    background: rgba(36, 161, 72, 0.15);
-    border: 1px solid rgba(36, 161, 72, 0.3);
+    background: var(--cds-layer-02);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-left: 3px solid var(--cds-support-success);
     border-radius: 4px;
     font-size: 0.875rem;
     color: var(--cds-text-01);
