@@ -28,19 +28,17 @@
 
   // AI Image generation state
   let generating = $state(false);
+  let genError = $state(null);
   let imageGenAvailable = $state(false);
   let aiImageUrl = $state(null);
 
-  // Check image-gen availability on mount (one-time)
-  let statusChecked = $state(false);
-  $effect(() => {
-    if (!statusChecked) {
-      statusChecked = true;
-      fetch(`${API_BASE}/api/ldm/codex/image-gen/status`, { headers: getAuthHeaders() })
-        .then(r => r.json())
-        .then(data => { imageGenAvailable = data.available; })
-        .catch(() => { imageGenAvailable = false; });
-    }
+  // Check image-gen availability on mount
+  import { onMount } from "svelte";
+  onMount(() => {
+    fetch(`${API_BASE}/api/ldm/codex/image-gen/status`, { headers: getAuthHeaders() })
+      .then(r => r.json())
+      .then(data => { imageGenAvailable = data.available; })
+      .catch((err) => { logger.warning('Image gen status check failed', { error: err?.message }); imageGenAvailable = false; });
   });
 
   // Update aiImageUrl when entity changes
@@ -58,6 +56,7 @@
   async function generateImage(force = false) {
     if (!entity) return;
     generating = true;
+    genError = null;
     try {
       const response = await fetch(
         `${API_BASE}/api/ldm/codex/generate-image/${entity.entity_type}/${entity.strkey}?force=${force}`,
@@ -73,6 +72,7 @@
       logger.info('AI image generated', { strkey: entity.strkey, status: data.status });
     } catch (err) {
       logger.error('AI image generation failed', { error: err.message });
+      genError = err.message || 'Image generation failed';
     } finally {
       generating = false;
     }
@@ -190,7 +190,7 @@
               src={aiImageUrl}
               alt={entity.name}
               class="entity-image"
-              onerror={() => { aiImageUrl = null; }}
+              onerror={() => { logger.warning('AI image failed to load', { strkey: entity?.strkey }); aiImageUrl = null; }}
             />
             {#if imageGenAvailable}
               <Button
@@ -225,6 +225,12 @@
           </div>
         {/if}
       </div>
+
+      {#if genError}
+        <div class="gen-error" role="alert">
+          <span class="gen-error-text">Image generation failed: {genError}</span>
+        </div>
+      {/if}
 
       <!-- Right: Metadata -->
       <div class="detail-meta">
@@ -378,6 +384,7 @@
     flex-shrink: 0;
     width: 160px;
     min-height: 120px;
+    max-height: 160px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -385,6 +392,18 @@
     border-radius: 4px;
     border: 1px solid var(--cds-border-subtle-01);
     overflow: hidden;
+  }
+
+  .gen-error {
+    padding: 6px 10px;
+    background: var(--cds-support-01, #da1e28);
+    border-radius: 4px;
+    margin-top: -8px;
+  }
+
+  .gen-error-text {
+    font-size: 0.75rem;
+    color: var(--cds-text-on-color, #fff);
   }
 
   .entity-image {

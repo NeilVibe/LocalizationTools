@@ -59,17 +59,7 @@
   let batchOperationId = $state(null);
   let batchError = $state(null);
 
-  // Check image-gen availability on mount
-  let genStatusChecked = $state(false);
-  $effect(() => {
-    if (!genStatusChecked) {
-      genStatusChecked = true;
-      fetch(`${API_BASE}/api/ldm/codex/image-gen/status`, { headers: getAuthHeaders() })
-        .then(r => r.json())
-        .then(data => { imageGenAvailable = data.available; })
-        .catch(() => { imageGenAvailable = false; });
-    }
-  });
+  // Image-gen availability checked in onMount below
 
   // WebSocket listeners for batch progress
   let unsubProgress;
@@ -77,40 +67,40 @@
   let unsubFailed;
 
   $effect(() => {
-    if (batchInProgress && batchOperationId) {
-      websocket.socket?.emit('subscribe', { events: ['progress'] });
+    if (!batchInProgress || !batchOperationId) return;
 
-      unsubProgress = websocket.on('progress_update', (data) => {
-        if (data.operation_id === batchOperationId) {
-          batchProgress = data.progress_percentage ?? 0;
-          batchStatus = data.current_step ?? `${data.completed_steps}/${data.total_steps} images generated`;
-        }
-      });
+    websocket.socket?.emit('subscribe', { events: ['progress'] });
 
-      unsubComplete = websocket.on('operation_complete', (data) => {
-        if (data.operation_id === batchOperationId) {
-          batchInProgress = false;
-          batchProgress = 100;
-          batchStatus = 'Complete';
-          batchOperationId = null;
-          fetchEntityList(activeTab);
-        }
-      });
+    unsubProgress = websocket.on('progress_update', (data) => {
+      if (data.operation_id === batchOperationId) {
+        batchProgress = data.progress_percentage ?? 0;
+        batchStatus = data.current_step ?? `${data.completed_steps}/${data.total_steps} images generated`;
+      }
+    });
 
-      unsubFailed = websocket.on('operation_failed', (data) => {
-        if (data.operation_id === batchOperationId) {
-          batchInProgress = false;
-          batchError = data.error_message;
-          batchOperationId = null;
-        }
-      });
+    unsubComplete = websocket.on('operation_complete', (data) => {
+      if (data.operation_id === batchOperationId) {
+        batchInProgress = false;
+        batchProgress = 100;
+        batchStatus = 'Complete';
+        batchOperationId = null;
+        fetchEntityList(activeTab);
+      }
+    });
 
-      return () => {
-        unsubProgress?.();
-        unsubComplete?.();
-        unsubFailed?.();
-      };
-    }
+    unsubFailed = websocket.on('operation_failed', (data) => {
+      if (data.operation_id === batchOperationId) {
+        batchInProgress = false;
+        batchError = data.error_message;
+        batchOperationId = null;
+      }
+    });
+
+    return () => {
+      unsubProgress?.();
+      unsubComplete?.();
+      unsubFailed?.();
+    };
   });
 
   /**
@@ -159,6 +149,7 @@
    */
   async function cancelBatchGenerate() {
     if (!batchOperationId) return;
+    const previousStatus = batchStatus;
     batchStatus = 'Cancelling...';
     try {
       await fetch(
@@ -167,6 +158,8 @@
       );
     } catch (err) {
       logger.error('Batch cancel failed', { error: err.message });
+      batchStatus = previousStatus;
+      batchError = 'Failed to cancel: ' + (err.message || 'Unknown error');
     }
   }
 
@@ -312,6 +305,12 @@
   }
 
   onMount(() => {
+    // Check image-gen availability
+    fetch(`${API_BASE}/api/ldm/codex/image-gen/status`, { headers: getAuthHeaders() })
+      .then(r => r.json())
+      .then(data => { imageGenAvailable = data.available; })
+      .catch((err) => { logger.warning('Image gen status check failed', { error: err?.message }); imageGenAvailable = false; });
+
     fetchTypes().then(() => {
       // Consume codexSearchQuery if set (e.g., navigated from MapDetailPanel NPC click)
       const pendingQuery = get(codexSearchQuery);
