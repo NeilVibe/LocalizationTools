@@ -93,7 +93,8 @@
     const oldValue = node.attributes[attrName];
     if (newValue === oldValue) return; // no change
 
-    // Optimistic: update node in place
+    // Optimistic: update local edit state + node attributes
+    editValues = { ...editValues, [attrName]: newValue };
     node.attributes[attrName] = newValue;
     saving = new Set([...saving, attrName]);
 
@@ -108,12 +109,15 @@
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           xml_path: filePath,
-          entity_index: parseInt(node.node_id.replace(/[^0-9]/g, '')) || 0,
+          entity_index: parseInt(node.node_id.split('_').filter(s => /^\d+$/.test(s))[0] ?? '0'),
           attr_name: attrName,
           new_value: newValue
         })
       });
-      if (!response.ok) throw new Error('Save failed');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
+        throw new Error(errData.detail || errData.message || `Save failed (HTTP ${response.status})`);
+      }
       const data = await response.json();
       if (!data.success) throw new Error(data.message || 'Save failed');
       logger.success('Attribute saved', { attr: attrName, value: newValue });

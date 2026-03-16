@@ -117,11 +117,9 @@
    * Get the primary display label for a node
    */
   function getNodeLabel(node) {
-    const attrs = EDITABLE_ATTRS[node.tag];
-    if (attrs && attrs.length > 0) {
-      const val = node.attributes?.[attrs[0]];
-      if (val) return val;
-    }
+    const primaryAttr = EDITABLE_ATTRS[node.tag]?.[0];
+    const primaryVal = primaryAttr && node.attributes?.[primaryAttr];
+    if (primaryVal) return primaryVal;
     return node.attributes?.Key || node.attributes?.NodeId || node.attributes?.Name || node.tag;
   }
 
@@ -137,15 +135,16 @@
     'RewardKey'
   ]);
 
+  /** Identity attribute names that should NOT be treated as cross-references */
+  const IDENTITY_ATTRS = new Set(['Key', 'NodeId', 'Id', 'StrKey']);
+
   /**
    * Check if an attribute name is a cross-reference
    */
-  function isCrossRefAttr(attrName, nodeTag) {
+  function isCrossRefAttr(attrName) {
     if (CROSS_REF_ATTRS.has(attrName)) return true;
     // Heuristic: any attr ending in "Key" or "Id" that is NOT the node's own identifier
-    if ((attrName.endsWith('Key') || attrName.endsWith('Id')) &&
-        attrName !== 'Key' && attrName !== 'NodeId' && attrName !== 'Id' &&
-        attrName !== 'StrKey') return true;
+    if ((attrName.endsWith('Key') || attrName.endsWith('Id')) && !IDENTITY_ATTRS.has(attrName)) return true;
     return false;
   }
 
@@ -194,20 +193,18 @@
     return ancestors;
   }
 
+  /** Prefixes to try when resolving cross-reference lookups */
+  const CROSS_REF_PREFIXES = ['key:', 'nodeid:', 'id:'];
+
   /**
    * Resolve a cross-reference attribute to a target node_id
    */
   function resolveCrossRef(attrName, attrValue) {
     if (!attrValue || attrValue === '0' || attrValue === '') return null;
-    // Try exact key lookup
-    let target = nodeIndex.get(`key:${attrValue}`);
-    if (target) return target.node_id;
-    // Try NodeId lookup
-    target = nodeIndex.get(`nodeid:${attrValue}`);
-    if (target) return target.node_id;
-    // Try Id lookup
-    target = nodeIndex.get(`id:${attrValue}`);
-    if (target) return target.node_id;
+    for (const prefix of CROSS_REF_PREFIXES) {
+      const target = nodeIndex.get(`${prefix}${attrValue}`);
+      if (target) return target.node_id;
+    }
     return null;
   }
 
@@ -229,7 +226,7 @@
 
     // Select the target
     selectedNodeId = targetNode.node_id;
-    onNodeSelect(targetNode);
+    onNodeSelect?.(targetNode);
 
     // Scroll into view after DOM update
     requestAnimationFrame(() => {
@@ -254,12 +251,6 @@
     if (!treeData) return [];
     const nodes = [];
 
-    function walkFile(fileData) {
-      for (const root of fileData.roots || []) {
-        walkNode(root);
-      }
-    }
-
     function walkNode(node) {
       nodes.push(node);
       if (expandedNodes.has(node.node_id) && node.children?.length > 0) {
@@ -269,9 +260,9 @@
       }
     }
 
-    if (Array.isArray(treeData)) {
-      for (const fileData of treeData) {
-        walkFile(fileData);
+    for (const fileData of treeData) {
+      for (const root of fileData.roots || []) {
+        walkNode(root);
       }
     }
     return nodes;
@@ -282,16 +273,16 @@
   // ========================================
 
   /**
-   * Load tree for a single file
+   * Shared fetch helper for tree endpoints
    */
-  async function loadFileTree(path) {
+  async function fetchTree(endpoint, path, onSuccess, logLabel) {
     if (!path) return;
     loading = true;
     error = null;
 
     try {
-      logger.apiCall('/api/ldm/gamedata/tree', 'POST');
-      const response = await fetch(`${API_BASE}/api/ldm/gamedata/tree`, {
+      logger.apiCall(endpoint, 'POST');
+      const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),
@@ -306,77 +297,45 @@
       }
 
       const data = await response.json();
-      treeData = [data];
-
-      // Auto-expand root level
-      const newSet = new Set();
-      for (const root of data.roots || []) {
-        newSet.add(root.node_id);
-      }
-      expandedNodes = newSet;
+      onSuccess(data);
       selectedNodeId = null;
-
-      logger.success('File tree loaded', {
-        file: path,
-        nodeCount: data.node_count,
-        entityType: data.entity_type
-      });
     } catch (err) {
       error = err.message;
       treeData = null;
-      logger.error('Failed to load file tree', { error: err.message, path });
+      logger.error(`Failed to load ${logLabel}`, { error: err.message, path });
     } finally {
       loading = false;
     }
   }
 
   /**
+   * Load tree for a single file
+   */
+  function loadFileTree(path) {
+    fetchTree('/api/ldm/gamedata/tree', path, (data) => {
+      treeData = [data];
+      expandedNodes = new Set((data.roots || []).map(r => r.node_id));
+      logger.success('File tree loaded', {
+        file: path,
+        nodeCount: data.node_count,
+        entityType: data.entity_type
+      });
+    }, 'file tree');
+  }
+
+  /**
    * Load tree for entire folder
    */
-  async function loadFolderTree(path) {
-    if (!path) return;
-    loading = true;
-    error = null;
-
-    try {
-      logger.apiCall('/api/ldm/gamedata/tree/folder', 'POST');
-      const response = await fetch(`${API_BASE}/api/ldm/gamedata/tree/folder`, {
-        method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ path })
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
-        throw new Error(err.detail || `HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
+  function loadFolderTree(path) {
+    fetchTree('/api/ldm/gamedata/tree/folder', path, (data) => {
       treeData = data.files || [];
-
-      // Auto-expand file groups
-      const newSet = new Set();
-      for (const fileData of treeData) {
-        newSet.add(`file:${fileData.file_path}`);
-      }
-      expandedNodes = newSet;
-      selectedNodeId = null;
-
+      expandedNodes = new Set(treeData.map(f => `file:${f.file_path}`));
       logger.success('Folder tree loaded', {
         path,
         fileCount: treeData.length,
         totalNodes: data.total_nodes
       });
-    } catch (err) {
-      error = err.message;
-      treeData = null;
-      logger.error('Failed to load folder tree', { error: err.message, path });
-    } finally {
-      loading = false;
-    }
+    }, 'folder tree');
   }
 
   // ========================================
@@ -386,11 +345,7 @@
   $effect(() => {
     if (filePath) {
       loadFileTree(filePath);
-    }
-  });
-
-  $effect(() => {
-    if (folderPath) {
+    } else if (folderPath) {
       loadFolderTree(folderPath);
     }
   });
@@ -417,32 +372,16 @@
    */
   function selectNode(node) {
     selectedNodeId = node.node_id;
-    onNodeSelect(node);
+    onNodeSelect?.(node);
   }
 
   /**
-   * Find parent node for keyboard navigation
+   * Find parent node for keyboard navigation (uses nodeIndex for O(1) lookup)
    */
   function findParentNode(nodeId) {
-    function search(nodes) {
-      for (const node of nodes) {
-        if (node.children?.some(c => c.node_id === nodeId)) {
-          return node;
-        }
-        if (node.children?.length > 0) {
-          const found = search(node.children);
-          if (found) return found;
-        }
-      }
-      return null;
-    }
-
-    if (!treeData) return null;
-    for (const fileData of treeData) {
-      const found = search(fileData.roots || []);
-      if (found) return found;
-    }
-    return null;
+    const node = nodeIndex.get(nodeId);
+    if (!node?.parent_id) return null;
+    return nodeIndex.get(node.parent_id) || null;
   }
 
   /**
@@ -664,7 +603,7 @@
       {/if}
 
       <!-- Cross-reference links (max 2 per row) -->
-      {@const crossRefs = Object.entries(node.attributes || {}).filter(([attr, val]) => isCrossRefAttr(attr, node.tag) && resolveCrossRef(attr, val)).slice(0, 2)}
+      {@const crossRefs = Object.entries(node.attributes || {}).filter(([attr, val]) => isCrossRefAttr(attr) && resolveCrossRef(attr, val)).slice(0, 2)}
       {#each crossRefs as [attr, val]}
         <button
           class="cross-ref-link"
