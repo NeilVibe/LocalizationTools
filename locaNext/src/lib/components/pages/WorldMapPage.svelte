@@ -12,6 +12,7 @@
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
   import { onMount } from "svelte";
+  import { EmptyState, ErrorState } from "$lib/components/common";
   import MapCanvas from "$lib/components/ldm/MapCanvas.svelte";
   import MapTooltip from "$lib/components/ldm/MapTooltip.svelte";
   import MapDetailPanel from "$lib/components/ldm/MapDetailPanel.svelte";
@@ -113,12 +114,20 @@
 
   <!-- Content -->
   {#if apiError}
-    <div class="worldmap-error" role="alert" aria-live="assertive">
-      <p>{apiError}</p>
+    <div class="worldmap-state-container">
+      <ErrorState message={apiError} onretry={fetchMapData} />
     </div>
   {:else if loading}
     <div class="worldmap-loading" role="status" aria-live="polite">
       <InlineLoading description="Loading world map regions and routes..." />
+    </div>
+  {:else if nodes.length === 0}
+    <div class="worldmap-state-container">
+      <EmptyState
+        icon={Earth}
+        headline="No map data available"
+        description="Configure a gamedata folder in Game Data page to load world map regions"
+      />
     </div>
   {:else}
     <div class="worldmap-content">
@@ -163,7 +172,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    padding: 0.75rem 1rem;
     background: var(--cds-layer-01);
     border-bottom: 1px solid var(--cds-border-subtle-01);
     flex-shrink: 0;
@@ -172,7 +181,7 @@
   .header-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
     color: var(--cds-text-01);
   }
 
@@ -187,17 +196,11 @@
     color: var(--cds-text-02);
   }
 
-  .worldmap-error {
+  .worldmap-state-container {
     display: flex;
     align-items: center;
     justify-content: center;
     flex: 1;
-    padding: 32px;
-    color: var(--cds-text-02);
-  }
-
-  .worldmap-error p {
-    font-size: 0.875rem;
   }
 
   .worldmap-loading {
@@ -205,7 +208,7 @@
     align-items: center;
     justify-content: center;
     flex: 1;
-    padding: 32px;
+    padding: 2rem;
   }
 
   .worldmap-content {
@@ -222,6 +225,6 @@
   }
 
   .map-area.has-panel {
-    /* Shrink map when detail panel is open */
+    flex: 1 1 0;
   }
 </style>
