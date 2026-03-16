@@ -12,9 +12,12 @@
   import VirtualGrid from '$lib/components/ldm/VirtualGrid.svelte';
   import NamingPanel from '$lib/components/ldm/NamingPanel.svelte';
   import { Button, TextInput } from 'carbon-components-svelte';
-  import { Renew, FolderOpen } from 'carbon-icons-svelte';
+  import { Renew, FolderOpen, ArrowRight } from 'carbon-icons-svelte';
 
   const API_BASE = getApiBase();
+
+  // Check if running in Electron (for native folder picker)
+  const isElectron = typeof window !== 'undefined' && window.electron;
 
   // State (Svelte 5 Runes)
   let selectedGameDevFile = $state(null);
@@ -43,6 +46,38 @@
     // Store in localStorage via the store
     gamedevBasePath.set(trimmed);
     logger.userAction('Game Dev path set', { path: trimmed });
+  }
+
+  /**
+   * Open native folder picker dialog (Electron only)
+   * Falls back to applyPath() in browser/DEV mode.
+   */
+  async function browseFolder() {
+    if (!isElectron) {
+      // In DEV mode, just apply the typed path
+      applyPath();
+      return;
+    }
+
+    try {
+      const folderPath = await window.electron.selectFolder({
+        title: 'Select Gamedata Folder'
+      });
+
+      if (!folderPath) {
+        logger.info('Folder selection cancelled');
+        return;
+      }
+
+      pathInput = folderPath;
+      activePath = folderPath;
+      gamedevBasePath.set(folderPath);
+      logger.userAction('Game Dev folder selected via dialog', { path: folderPath });
+    } catch (err) {
+      logger.error('Folder picker failed', { error: err.message });
+      // Fallback: apply whatever is in the input
+      applyPath();
+    }
   }
 
   /**
@@ -187,8 +222,11 @@
         onkeydown={handlePathKeydown}
         placeholder="Enter gamedata folder path..."
       />
-      <button class="browse-button" onclick={applyPath} title="Browse" aria-label="Apply path">
+      <button class="browse-button" onclick={browseFolder} title="Browse for folder" aria-label="Browse for folder">
         <FolderOpen size={16} />
+      </button>
+      <button class="browse-button apply-button" onclick={applyPath} title="Apply path" aria-label="Apply path" disabled={!pathInput.trim()}>
+        <ArrowRight size={16} />
       </button>
     </div>
 
@@ -347,6 +385,19 @@
   .browse-button:focus {
     outline: 2px solid var(--cds-focus);
     outline-offset: 1px;
+  }
+
+  .browse-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .browse-button:disabled:hover {
+    background: var(--cds-field-01);
+  }
+
+  .apply-button {
+    color: var(--cds-link-01);
   }
 
   .explorer-tree-container {

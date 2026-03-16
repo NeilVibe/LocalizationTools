@@ -45,8 +45,29 @@ class GameDataBrowseService:
         self.base_dir = Path(base_dir).resolve()
 
     def _validate_path(self, path: str) -> Path:
-        """Resolve path and ensure it is within the allowed base directory."""
-        resolved = Path(path).resolve()
+        """Resolve path and ensure it is within the allowed base directory.
+
+        Resolution order:
+        1. Absolute paths → used as-is
+        2. Relative paths → try base_dir/path first
+        3. If base_dir/path doesn't exist → try CWD/path (user may type full relative path)
+        All results must be within base_dir.
+        """
+        path_obj = Path(path)
+        if path_obj.is_absolute():
+            resolved = path_obj.resolve()
+        else:
+            # Try relative to base_dir first
+            candidate = (self.base_dir / path).resolve()
+            if candidate.exists():
+                resolved = candidate
+            else:
+                # Fall back to CWD-relative (user typed "tests/fixtures/mock_gamedata/...")
+                cwd_candidate = Path(path).resolve()
+                if cwd_candidate.exists():
+                    resolved = cwd_candidate
+                else:
+                    resolved = candidate  # Use base_dir version for error message
         if not resolved.is_relative_to(self.base_dir):
             raise ValueError(
                 f"Path {path} is outside allowed base directory {self.base_dir}"

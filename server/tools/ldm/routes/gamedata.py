@@ -12,18 +12,26 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
+from lxml import etree
 from lxml.etree import XMLSyntaxError
 
 from server.utils.dependencies import get_current_active_user_async
+
 from server.tools.ldm.schemas.gamedata import (
     BrowseRequest,
     FileColumnsRequest,
     FileColumnsResponse,
     FolderTreeResponse,
+    GameDataRow,
+    GameDataRowsRequest,
+    GameDataRowsResponse,
     GameDevSaveRequest,
     GameDevSaveResponse,
 )
-from server.tools.ldm.services.gamedata_browse_service import GameDataBrowseService
+from server.tools.ldm.services.gamedata_browse_service import (
+    EDITABLE_ATTRS,
+    GameDataBrowseService,
+)
 from server.tools.ldm.services.gamedata_edit_service import GameDataEditService
 
 
@@ -161,4 +169,128 @@ async def save_gamedata(
     return GameDevSaveResponse(
         success=True,
         message=f"Updated {request.attr_name} on entity {request.entity_index}",
+    )
+
+
+@router.post("/gamedata/rows", response_model=GameDataRowsResponse)
+async def get_gamedata_rows(
+    request: GameDataRowsRequest,
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Read entities from a gamedata XML file and return paginated rows.
+
+    Returns rows in a format compatible with VirtualGrid, with entity
+    attributes flattened into extra_data.  Supports text search across
+    all attribute values and server-side pagination.
+
+    Args:
+        request: Contains xml_path, page, limit, and optional search term.
+
+    Returns:
+        GameDataRowsResponse with paginated rows and total counts.
+    """
+    base_dir = _get_base_dir()
+
+    # --- path validation (reuse browse service) -------------------------
+    svc = GameDataBrowseService(base_dir=base_dir)
+    try:
+        resolved = svc._validate_path(request.xml_path)
+    except ValueError as e:
+        logger.warning(f"[GameData API] Path traversal attempt: {e}")
+        raise HTTPException(status_code=403, detail=str(e))
+
+    if not resolved.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=f"File not found: {request.xml_path}",
+        )
+
+    # --- parse XML -------------------------------------------------------
+    try:
+        tree = etree.parse(str(resolved))
+    except XMLSyntaxError as e:
+        logger.warning(f"[GameData API] Malformed XML: {request.xml_path}: {e}")
+        raise HTTPException(status_code=422, detail=f"Malformed XML: {e}")
+    except Exception as e:
+        logger.error(f"[GameData API] get_gamedata_rows parse failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+    root = tree.getroot()
+    entities = list(root)
+
+    # --- Identifying-attribute heuristic ---------------------------------
+    _IDENT_ATTRS = ("StrKey", "Key", "ID", "Name", "Id")
+
+    def _string_id(elem: etree._Element) -> str:
+        """Return the first identifying attribute value, or the tag name."""
+        for attr in _IDENT_ATTRS:
+            val = elem.get(attr)
+            if val is not None:
+                return val
+        # Fallback: first attribute value (if any)
+        if elem.attrib:
+            return next(iter(elem.attrib.values()))
+        return elem.tag
+
+    def _target_value(elem: etree._Element) -> str:
+        """Return the first editable attribute value or the tag name."""
+        editable = EDITABLE_ATTRS.get(elem.tag, [])
+        for attr in editable:
+            val = elem.get(attr)
+            if val is not None:
+                return val
+        return elem.tag
+
+    # --- build row dicts -------------------------------------------------
+    all_rows: list[GameDataRow] = []
+    search_lower = request.search.lower().strip()
+
+    for idx, entity in enumerate(entities):
+        attrs = dict(entity.attrib)
+
+        # Search filter: match against any attribute value
+        if search_lower:
+            matched = any(
+                search_lower in val.lower() for val in attrs.values()
+            )
+            if not matched:
+                continue
+
+        extra = dict(attrs)
+        extra["source_xml_path"] = str(resolved)
+        extra["entity_index"] = idx
+
+        all_rows.append(
+            GameDataRow(
+                id=idx,
+                row_num=idx + 1,
+                string_id=_string_id(entity),
+                source=entity.tag,
+                target=_target_value(entity),
+                status="pending",
+                extra_data=extra,
+            )
+        )
+
+    # --- paginate --------------------------------------------------------
+    total = len(all_rows)
+    page = max(1, request.page)
+    limit = max(1, min(request.limit, 500))  # cap at 500
+    total_pages = max(1, (total + limit - 1) // limit)
+
+    start = (page - 1) * limit
+    end = start + limit
+    page_rows = all_rows[start:end]
+
+    logger.debug(
+        f"[GameData API] Returning {len(page_rows)}/{total} rows "
+        f"(page {page}/{total_pages}) for {resolved.name}"
+    )
+
+    return GameDataRowsResponse(
+        rows=page_rows,
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=total_pages,
     )

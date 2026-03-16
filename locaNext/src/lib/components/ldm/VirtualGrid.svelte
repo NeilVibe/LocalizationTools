@@ -540,9 +540,35 @@
       }
 
       // P9: Unified endpoint - backend handles both PostgreSQL and SQLite
-      const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
-        headers: getAuthHeaders()
-      });
+      // Game Dev files use a different endpoint (POST with xml_path)
+      let response;
+      if (fileType === 'gamedev') {
+        const body = {
+          xml_path: fileId,
+          page: page,
+          limit: PAGE_SIZE,
+          search: searchTerm || ""
+        };
+        if (searchTerm) {
+          body.search_mode = searchMode;
+          body.search_fields = searchFields.join(',');
+        }
+        if (activeFilter && activeFilter !== 'all') {
+          body.filter = activeFilter;
+        }
+        if (selectedCategories.length > 0) {
+          body.category = selectedCategories.join(',');
+        }
+        response = await fetch(`${API_BASE}/api/ldm/gamedata/rows`, {
+          method: 'POST',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+      } else {
+        response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
+          headers: getAuthHeaders()
+        });
+      }
 
       if (response.ok) {
         const data = await response.json();
@@ -720,9 +746,30 @@
       }
 
       // P9: Unified endpoint - backend handles both PostgreSQL and SQLite
-      const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
-        headers: getAuthHeaders()
-      });
+      // Game Dev files use a different endpoint (POST with xml_path)
+      let response;
+      if (fileType === 'gamedev') {
+        const body = {
+          xml_path: fileId,
+          page: 1,
+          limit: PAGE_SIZE,
+          search: ""
+        };
+        if (searchTerm && searchTerm.trim()) {
+          body.search = searchTerm.trim();
+          body.search_mode = searchMode;
+          body.search_fields = searchFields.join(',');
+        }
+        response = await fetch(`${API_BASE}/api/ldm/gamedata/rows`, {
+          method: 'POST',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+      } else {
+        response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/rows?${params}`, {
+          headers: getAuthHeaders()
+        });
+      }
 
       if (response.ok) {
         const data = await response.json();

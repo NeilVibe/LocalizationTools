@@ -5,7 +5,7 @@ Phase 18: Game Dev Grid -- folder browsing, XML entity parsing, attribute editin
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -96,3 +96,39 @@ class GameDevSaveResponse(BaseModel):
 
     success: bool
     message: str
+
+
+# =============================================================================
+# Rows schemas (VirtualGrid-compatible)
+# =============================================================================
+
+
+class GameDataRowsRequest(BaseModel):
+    """Request for rows endpoint -- paginated entity rows from an XML file."""
+
+    xml_path: str
+    page: int = 1
+    limit: int = 50
+    search: str = ""
+
+
+class GameDataRow(BaseModel):
+    """A single entity row for the VirtualGrid."""
+
+    id: int
+    row_num: int
+    string_id: str
+    source: str
+    target: str
+    status: str
+    extra_data: Dict[str, Any]
+
+
+class GameDataRowsResponse(BaseModel):
+    """Response for rows endpoint -- paginated rows for VirtualGrid."""
+
+    rows: List[GameDataRow]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
