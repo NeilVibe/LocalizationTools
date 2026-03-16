@@ -697,14 +697,12 @@
     text-align: left;
     color: var(--cds-text-01);
     transition: background var(--transition-fast, 0.15s ease),
-                border-color var(--transition-fast, 0.15s ease),
-                box-shadow var(--transition-fast, 0.15s ease);
+                border-color var(--transition-fast, 0.15s ease);
   }
 
   .entity-card:hover {
     background: var(--cds-layer-hover-01);
     border-color: var(--cds-border-strong-01);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   }
 
   .entity-card:focus {

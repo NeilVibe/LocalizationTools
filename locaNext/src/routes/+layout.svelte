@@ -316,7 +316,7 @@
           onclick={navigateToFiles}
         >
           <Folder size={16} />
-          <span>Files</span>
+          <span>Localization Data</span>
         </button>
         <button
           class="ldm-nav-tab"
@@ -332,7 +332,7 @@
           onclick={navigateToGameDev}
         >
           <GameConsole size={16} />
-          <span>Game Dev</span>
+          <span>Game Data</span>
         </button>
         <button
           class="ldm-nav-tab"
@@ -602,7 +602,7 @@
   }
 
   .compact-dropdown-item.logout:hover {
-    background: rgba(218, 30, 40, 0.1);
+    background: var(--cds-layer-hover-01);
   }
 
   .compact-dropdown-item .item-title {
