@@ -8,16 +8,18 @@ LocaNext is a desktop localization management platform (Electron + FastAPI + Sve
 
 The platform delivers real, working localization workflows — real XML parsing, real merge logic matching QuickTranslate patterns, real image/audio from game data, and AI-powered context summaries — all running locally with zero cloud dependency, dual-mode for both translators and game developers, polished enough to demo to executives.
 
-## Current State (v3.0 shipped 2026-03-16)
+## Current State (v3.1 shipped 2026-03-16)
 
 - v1.0: 7 phases, 20 plans, 42 requirements — architecture scaffolds + tests
 - v2.0: 8 phases, 17 plans, 40 requirements — real data pipelines + merge + AI
 - v3.0: 7 phases, 14 plans, 45 requirements — game dev platform + AI intelligence
-- ~200+ LDM tests, 89 commits, 25K+ lines added in v3.0
-- 7 new services (Category, AISuggestion, GameDataBrowse, GameDataEdit, Codex, WorldMap, NamingCoherence)
-- 3 new pages (GameDevPage, CodexPage, WorldMapPage), 12 new Svelte components
-- Post-milestone review: 9 issues found and fixed (1 build-breaking, 2 critical, 6 important)
-- Full offline/online parity maintained across all three milestones
+- v3.1: 4 phases, 19 plans, 48 tasks — Svelte 5 migration + bug fixes + UIUX polish + API E2E testing
+- 834 API test functions across 40 test files covering 275 endpoints
+- 36 Svelte components migrated to pure Svelte 5 Runes (zero createEventDispatcher)
+- 12 runtime bugs fixed, 60 UIUX audit issues resolved
+- 7 post-review bugs caught and fixed (FilePickerDialog, virtualGrid ref, audio onerror, Escape key, XML format, br-tag assertions)
+- 5676 mock entities across 10 StaticInfo directories
+- Full offline/online parity maintained across all four milestones
 
 ## Requirements
 
@@ -50,20 +52,14 @@ The platform delivers real, working localization workflows — real XML parsing,
 - ✓ MAP-04, MAP-05 — World map nodes, route connections, pan/zoom, Codex links — v3.0
 - ✓ AINAME-01 through AINAME-03 — Naming coherence, FAISS similarity, Qwen3 suggestions — v3.0
 - ✓ PLACEHOLDER-01 through PLACEHOLDER-03 — Styled SVG placeholders for missing media — v3.0
+- ✓ SV5-01 through SV5-06 — VirtualGrid/LDM/TM callback props, zero createEventDispatcher, zero legacy on: — v3.1
+- ✓ FIX-01 through FIX-11, TEST-01 — GameDev upload-path, audio fallback, NPC nav, tooltip, loading, QA badge, tree refresh — v3.1
+- ✓ UX-01 through UX-05 — aria-expanded, tab dividers, PlaceholderImage div layout, image fallback, text wrap — v3.1
+- ✓ TEST-E2E-01 through TEST-E2E-25 — 834 API test functions, 40 files, 275 endpoints, mock expansion — v3.1
 
-### Active — v3.1
+### Active
 
-## Current Milestone: v3.1 Debug + Polish + Svelte 5 Migration
-
-**Goal:** Fix all runtime bugs from v3.0 code review, migrate entire frontend from Svelte 4 event patterns to pure Svelte 5 Runes, and polish UI/UX across all v3.0 features.
-
-**Target features:**
-- Full Svelte 5 migration — purge createEventDispatcher/on: across VirtualGrid, LDM.svelte, all v3.0 components
-- Fix 20 bugs from 3-agent swarm audit (crashes, broken flows, bad UX, cosmetic)
-- Backend fixes — gamedata path, WorldMap singleton, error handling
-- UIUX polish — accessibility (aria-expanded, keyboard nav), error states, visual consistency
-- Loading state fixes — debounce cleanup, infinite spinners
-- Fixture test repair — stale pipeline test reference
+(No active milestone — planning next)
 
 ### Out of Scope
 
@@ -81,6 +77,7 @@ The platform delivers real, working localization workflows — real XML parsing,
 - **Dual platform** — Translator mode (LocStr files) + Game Dev mode (non-LocStr XML) with automatic detection
 - **AI pipeline operational** — Qwen3-4B via Ollama at 117 tok/s (RTX 4070 Ti, CUDA in WSL2)
 - **v3.0 shipped** — Game Dev Platform, Codex, World Map, AI Suggestions, QA Pipeline, Category Clustering, Naming Coherence, Mock GameData
+- **v3.1 shipped** — Pure Svelte 5 Runes, 12 bug fixes, 60 UIUX audit fixes, 834 API E2E tests, 7 post-review fixes
 - Landing page live on Netlify
 - Tech stack: Electron + Svelte 5 (Runes) + FastAPI + SQLite/PostgreSQL + FAISS + Model2Vec + Qwen3/Ollama
 

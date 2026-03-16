@@ -1,5 +1,14 @@
 # Milestones
 
+## v3.1 Debug + Polish + Svelte 5 Migration (Shipped: 2026-03-16)
+
+**Phases completed:** 4 phases, 19 plans, 0 tasks
+
+**Key accomplishments:**
+- (none recorded)
+
+---
+
 ## v3.1 Debug + Polish + Svelte 5 Migration (In Progress)
 
 **Phases:** 22-24 (3 phases)
