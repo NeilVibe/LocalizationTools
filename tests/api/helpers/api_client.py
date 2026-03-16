@@ -469,6 +469,14 @@ class APIClient:
             "new_value": new_value,
         })
 
+    def get_gamedata_tree(self, path: str, max_depth: int = -1):
+        """POST /api/ldm/gamedata/tree"""
+        return self._post("/api/ldm/gamedata/tree", json={"path": path, "max_depth": max_depth})
+
+    def get_gamedata_tree_folder(self, path: str, max_depth: int = -1):
+        """POST /api/ldm/gamedata/tree/folder"""
+        return self._post("/api/ldm/gamedata/tree/folder", json={"path": path, "max_depth": max_depth})
+
     # ==================================================================
     # Codex  (/api/ldm/codex)
     # ==================================================================

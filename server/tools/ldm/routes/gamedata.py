@@ -21,18 +21,23 @@ from server.tools.ldm.schemas.gamedata import (
     BrowseRequest,
     FileColumnsRequest,
     FileColumnsResponse,
+    FolderTreeDataRequest,
+    FolderTreeDataResponse,
     FolderTreeResponse,
     GameDataRow,
     GameDataRowsRequest,
     GameDataRowsResponse,
+    GameDataTreeResponse,
     GameDevSaveRequest,
     GameDevSaveResponse,
+    TreeRequest,
 )
 from server.tools.ldm.services.gamedata_browse_service import (
     EDITABLE_ATTRS,
     GameDataBrowseService,
 )
 from server.tools.ldm.services.gamedata_edit_service import GameDataEditService
+from server.tools.ldm.services.gamedata_tree_service import GameDataTreeService
 
 
 router = APIRouter(tags=["GameData"])
@@ -72,10 +77,11 @@ async def browse_gamedata(
         FolderTreeResponse with recursive folder tree and XML file metadata.
     """
     base_dir = _get_base_dir()
+    browse_path = request.path if request.path else str(base_dir)
 
     try:
         svc = GameDataBrowseService(base_dir=base_dir)
-        root_node = svc.scan_folder(request.path, max_depth=request.max_depth)
+        root_node = svc.scan_folder(browse_path, max_depth=request.max_depth)
     except ValueError as e:
         logger.warning(f"[GameData API] Path traversal attempt: {e}")
         raise HTTPException(status_code=403, detail=str(e))
@@ -86,6 +92,20 @@ async def browse_gamedata(
         raise HTTPException(status_code=500, detail="Internal server error")
 
     return FolderTreeResponse(root=root_node, base_path=str(base_dir))
+
+
+@router.post("/gamedata/register-browser-folder")
+async def register_browser_folder(
+    request: dict,
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Register a browser-selected folder.
+
+    In browser DEV mode, the File System Access API provides a folder handle.
+    This endpoint returns the mock_gamedata path for the Game Dev Grid.
+    """
+    base_dir = _get_base_dir()
+    return {"path": str(base_dir), "folder_name": request.get("folder_name", "")}
 
 
 @router.post("/gamedata/columns", response_model=FileColumnsResponse)
@@ -294,3 +314,72 @@ async def get_gamedata_rows(
         limit=limit,
         total_pages=total_pages,
     )
+
+
+# =============================================================================
+# Tree endpoints (Phase 27)
+# =============================================================================
+
+
+@router.post("/gamedata/tree", response_model=GameDataTreeResponse)
+async def get_gamedata_tree(
+    request: TreeRequest,
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Parse an XML gamedata file and return hierarchical tree with nested nodes.
+
+    Handles both XML-nested hierarchies (GimmickGroup > GimmickInfo) and
+    reference-based hierarchies (SkillNode ParentNodeId).
+
+    Args:
+        request: Contains path to XML file and optional max_depth (-1 = unlimited).
+
+    Returns:
+        GameDataTreeResponse with nested TreeNode roots.
+    """
+    base_dir = _get_base_dir()
+    try:
+        svc = GameDataTreeService(base_dir=base_dir)
+        result = svc.parse_file(request.path, max_depth=request.max_depth)
+    except ValueError as e:
+        logger.warning(f"[GameData API] Path traversal attempt: {e}")
+        raise HTTPException(status_code=403, detail=str(e))
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"File not found: {request.path}")
+    except XMLSyntaxError as e:
+        logger.warning(f"[GameData API] Malformed XML: {request.path}: {e}")
+        raise HTTPException(status_code=422, detail=f"Malformed XML: {e}")
+    except Exception as e:
+        logger.error(f"[GameData API] get_gamedata_tree failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    return result
+
+
+@router.post("/gamedata/tree/folder", response_model=FolderTreeDataResponse)
+async def get_gamedata_tree_folder(
+    request: FolderTreeDataRequest,
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Parse all XML files in a folder and return combined hierarchical tree.
+
+    Used by the tree UI to load an entire gamedata folder at once.
+
+    Args:
+        request: Contains path to folder and optional max_depth.
+
+    Returns:
+        FolderTreeDataResponse with tree data for each XML file.
+    """
+    base_dir = _get_base_dir()
+    try:
+        svc = GameDataTreeService(base_dir=base_dir)
+        result = svc.parse_folder(request.path, max_depth=request.max_depth)
+    except ValueError as e:
+        logger.warning(f"[GameData API] Path traversal attempt: {e}")
+        raise HTTPException(status_code=403, detail=str(e))
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Path not found: {request.path}")
+    except Exception as e:
+        logger.error(f"[GameData API] get_gamedata_tree_folder failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    return result

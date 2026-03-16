@@ -368,3 +368,58 @@ class TestGameDataSave:
         if resp.status_code == 200:
             data = resp.json()
             assert_json_fields(data, ["success", "message"], "GameDevSaveResponse")
+
+
+# ===========================================================================
+# Tree endpoint tests (Phase 27)
+# ===========================================================================
+
+
+class TestGameDataTree:
+    """Tests for POST /api/ldm/gamedata/tree and /tree/folder."""
+
+    def test_gamedata_tree_single_file(self, api):
+        """POST /api/ldm/gamedata/tree with SkillTreeInfo returns nested tree."""
+        resp = api.get_gamedata_tree(
+            path="StaticInfo/skillinfo/SkillTreeInfo.staticinfo.xml"
+        )
+        assert_status_ok(resp, "Tree single file")
+        data = resp.json()
+        assert_json_fields(data, ["roots", "file_path", "entity_type", "node_count"], "GameDataTreeResponse")
+        assert data["entity_type"] == "SkillTreeInfo"
+        assert len(data["roots"]) == 3  # 3 SkillTreeInfo entries in fixture
+        # Verify nested structure (not flat)
+        first_root = data["roots"][0]
+        assert len(first_root["children"]) >= 1
+        # Children should be SkillNode with further nesting
+        child = first_root["children"][0]
+        assert child["tag"] == "SkillNode"
+        assert len(child["children"]) >= 1  # nested via ParentNodeId
+
+    def test_gamedata_tree_folder(self, api):
+        """POST /api/ldm/gamedata/tree/folder returns combined tree for all XML files."""
+        resp = api.get_gamedata_tree_folder(path="StaticInfo")
+        assert_status_ok(resp, "Tree folder")
+        data = resp.json()
+        assert_json_fields(data, ["files", "base_path", "total_nodes"], "FolderTreeDataResponse")
+        assert len(data["files"]) > 0
+        assert data["total_nodes"] > 0
+        # Should have multiple entity types
+        entity_types = {f["entity_type"] for f in data["files"]}
+        assert len(entity_types) > 1
+
+    def test_gamedata_tree_not_found(self, api):
+        """POST /api/ldm/gamedata/tree with nonexistent path returns 404."""
+        resp = api.get_gamedata_tree(path="StaticInfo/nonexistent.xml")
+        assert resp.status_code == 404, f"Expected 404, got {resp.status_code}"
+
+    def test_gamedata_tree_max_depth(self, api):
+        """POST /api/ldm/gamedata/tree with max_depth=0 returns no children."""
+        resp = api.get_gamedata_tree(
+            path="StaticInfo/gimmickinfo/Item/GimmickInfo_Item_Chest.staticinfo.xml",
+            max_depth=0,
+        )
+        assert_status_ok(resp, "Tree max_depth=0")
+        data = resp.json()
+        for root_node in data["roots"]:
+            assert len(root_node["children"]) == 0, "max_depth=0 should have no children"
