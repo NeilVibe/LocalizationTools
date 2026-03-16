@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: GameData Tree UI + Context Intelligence + Image Gen
 status: in-progress
-stopped_at: Completed 29-01-PLAN.md
-last_updated: "2026-03-16T08:26:34.775Z"
-last_activity: 2026-03-16 -- Phase 29 Plan 01 executed (GameDataIndexer + GameDataSearcher)
+stopped_at: Completed 29-02-PLAN.md
+last_updated: "2026-03-16T08:34:01.412Z"
+last_activity: 2026-03-16 -- Phase 29 Plan 02 executed (Index API endpoints + performance validation)
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 9
-  completed_plans: 7
-  percent: 78
+  completed_plans: 8
+  percent: 89
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 29 of 31 (Multi-Tier Indexing)
-Plan: 1 of 3 in current phase
-Status: Plan 01 complete, 2 plans remaining
-Last activity: 2026-03-16 -- Phase 29 Plan 01 executed (GameDataIndexer + GameDataSearcher)
+Plan: 2 of 3 in current phase
+Status: Plan 02 complete, 1 plan remaining
+Last activity: 2026-03-16 -- Phase 29 Plan 02 executed (Index API endpoints + performance validation)
 
-Progress: [████████░░] 78%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [████████░░] 78%
 | Phase 28 P03 | 3min | 2 tasks | 1 files |
 | Phase 28 P02 | 3min | 2 tasks | 2 files |
 | Phase 29 P01 | 5min | 2 tasks | 5 files |
+| Phase 29 P02 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,7 @@ Recent decisions affecting current work:
 - [Phase 29]: FAISSManager.build_index(path=None) for in-memory gamedata indexes -- rebuilt on each folder load
 - [Phase 29]: Whole lookup indexes 3 keys per entity (name, Key, StrKey) for O(1) IDX-01 lookup
 - [Phase 29]: AC automaton stores (idx, name, node_id, tag) tuple for direct entity detection without secondary lookup
+- [Phase 29-02]: IndexBuildResponse.status set to 'ready' at endpoint layer (indexer metadata lacks status field)
 
 ### Pending Todos
 
@@ -94,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T08:25:07Z
-Stopped at: Completed 29-01-PLAN.md
-Resume file: .planning/phases/29-multi-tier-indexing/29-01-SUMMARY.md
+Last session: 2026-03-16T08:34:01.410Z
+Stopped at: Completed 29-02-PLAN.md
+Resume file: None

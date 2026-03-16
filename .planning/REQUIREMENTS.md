@@ -22,7 +22,7 @@
 - [x] **IDX-02**: FAISS vector index for semantic search across all entity names and descriptions (reuse existing Model2Vec + FAISS infrastructure)
 - [x] **IDX-03**: Aho-Corasick automaton built from all entity names for real-time glossary detection in any text field (reuse QuickSearch/QuickCheck patterns)
 - [x] **IDX-04**: Auto-glossary extraction — on folder load, build glossary from all entity names/descriptions across the full gamedata tree
-- [ ] **IDX-05**: Full gamedata folder indexes in under 3 seconds for 5000+ entities
+- [x] **IDX-05**: Full gamedata folder indexes in under 3 seconds for 5000+ entities
 
 ### CTX — Right Panel Context Intelligence
 
@@ -88,7 +88,7 @@
 | IDX-02 | Phase 29 | Complete |
 | IDX-03 | Phase 29 | Complete |
 | IDX-04 | Phase 29 | Complete |
-| IDX-05 | Phase 29 | Pending |
+| IDX-05 | Phase 29 | Complete |
 | CTX-01 | Phase 30 | Pending |
 | CTX-02 | Phase 30 | Pending |
 | CTX-03 | Phase 30 | Pending |
