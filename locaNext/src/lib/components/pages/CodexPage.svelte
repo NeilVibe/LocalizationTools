@@ -17,6 +17,7 @@
   import CodexEntityDetail from "$lib/components/ldm/CodexEntityDetail.svelte";
   import InfiniteScroll from "$lib/components/common/InfiniteScroll.svelte";
   import SkeletonCard from "$lib/components/common/SkeletonCard.svelte";
+  import { PageHeader, ErrorState } from "$lib/components/common";
   import { onMount } from "svelte";
   import { get } from "svelte/store";
   import { codexSearchQuery } from "$lib/stores/navigation.js";
@@ -385,12 +386,7 @@
 
 <div class="codex-page">
   <!-- Header -->
-  <div class="codex-header">
-    <div class="header-title">
-      <Book size={24} />
-      <h1>Game World Codex</h1>
-    </div>
-  </div>
+  <PageHeader icon={Book} title="Game World Codex" />
 
   <!-- Search Bar -->
   <div class="codex-search">
@@ -398,8 +394,8 @@
   </div>
 
   {#if apiError}
-    <div class="codex-error">
-      <p>{apiError}</p>
+    <div class="codex-state-container">
+      <ErrorState message={apiError} onretry={fetchTypes} />
     </div>
   {:else if loadingTypes}
     <div class="codex-loading" role="status" aria-live="polite">
@@ -565,27 +561,11 @@
     overflow: hidden;
   }
 
-  .codex-header {
+  .codex-state-container {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: var(--cds-layer-01);
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-    flex-shrink: 0;
-  }
-
-  .header-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--cds-text-01);
-  }
-
-  .header-title h1 {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin: 0;
+    justify-content: center;
+    flex: 1;
   }
 
   .codex-search {
@@ -593,19 +573,6 @@
     background: var(--cds-layer-01);
     border-bottom: 1px solid var(--cds-border-subtle-01);
     flex-shrink: 0;
-  }
-
-  .codex-error {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    padding: 32px;
-    color: var(--cds-text-02);
-  }
-
-  .codex-error p {
-    font-size: 0.875rem;
   }
 
   .codex-loading {

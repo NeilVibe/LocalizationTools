@@ -19,6 +19,7 @@
     MachineLearning,
     DataBase
   } from 'carbon-icons-svelte';
+  import { PageHeader } from '$lib/components/common';
   import { preferences } from '$lib/stores/preferences.js';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
@@ -298,11 +299,7 @@
 
 <div class="tm-page">
   <!-- Clean header -->
-  <div class="tm-page-header">
-    <div class="header-title">
-      <DataBase size={20} />
-      <h2>Translation Memories</h2>
-    </div>
+  <PageHeader icon={DataBase} title="Translation Memories">
     <div class="header-actions">
       <button
         class="icon-button"
@@ -319,7 +316,7 @@
         <Settings size={20} />
       </button>
     </div>
-  </div>
+  </PageHeader>
 
   <!-- Main Content -->
   <div class="tm-content">
@@ -442,29 +439,6 @@
     width: 100%;
     height: 100%;
     background: var(--cds-background);
-  }
-
-  .tm-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-    background: var(--cds-layer-01);
-  }
-
-  .header-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--cds-text-01);
-  }
-
-  .header-title h2 {
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: var(--cds-text-01);
   }
 
   .header-actions {

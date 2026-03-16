@@ -12,7 +12,7 @@
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
   import { onMount } from "svelte";
-  import { EmptyState, ErrorState } from "$lib/components/common";
+  import { PageHeader, EmptyState, ErrorState } from "$lib/components/common";
   import MapCanvas from "$lib/components/ldm/MapCanvas.svelte";
   import MapTooltip from "$lib/components/ldm/MapTooltip.svelte";
   import MapDetailPanel from "$lib/components/ldm/MapDetailPanel.svelte";
@@ -102,15 +102,11 @@
 
 <div class="worldmap-page">
   <!-- Header -->
-  <div class="worldmap-header">
-    <div class="header-title">
-      <Earth size={24} />
-      <h1>Interactive World Map</h1>
-    </div>
+  <PageHeader icon={Earth} title="Interactive World Map">
     {#if nodes.length > 0}
       <span class="node-count">{nodes.length} regions, {routes.length} routes</span>
     {/if}
-  </div>
+  </PageHeader>
 
   <!-- Content -->
   {#if apiError}
@@ -166,29 +162,6 @@
     height: 100%;
     width: 100%;
     overflow: hidden;
-  }
-
-  .worldmap-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem 1rem;
-    background: var(--cds-layer-01);
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-    flex-shrink: 0;
-  }
-
-  .header-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--cds-text-01);
-  }
-
-  .header-title h1 {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin: 0;
   }
 
   .node-count {
