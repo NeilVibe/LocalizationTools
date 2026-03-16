@@ -10,7 +10,7 @@
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import FileExplorerTree from '$lib/components/ldm/FileExplorerTree.svelte';
   import GameDataTree from '$lib/components/ldm/GameDataTree.svelte';
-  import NodeDetailPanel from '$lib/components/ldm/NodeDetailPanel.svelte';
+  import GameDataContextPanel from '$lib/components/ldm/GameDataContextPanel.svelte';
   import { Renew, FolderOpen, ArrowRight, TreeView } from 'carbon-icons-svelte';
 
   const API_BASE = getApiBase();
@@ -29,6 +29,9 @@
   let treeFilePath = $state(null);
   let folderTreePath = $state(null);
   let selectedTreeNode = $state(null);
+
+  // Phase 30: Tree ref for cross-ref navigation
+  let gameDataTreeRef = $state(null);
 
   // NAV-04: Auto-load indicator state
   let autoLoading = $state(false);
@@ -175,6 +178,17 @@
   }
 
   /**
+   * Phase 30: Navigate to a node by ID via GameDataTree's navigateToNode export
+   */
+  function navigateToNodeInTree(nodeId) {
+    if (gameDataTreeRef?.navigateToNode) {
+      gameDataTreeRef.navigateToNode(nodeId);
+    } else {
+      logger.warning('GameDataTree ref not available for navigation', { nodeId });
+    }
+  }
+
+  /**
    * Refresh the file explorer tree
    */
   function refreshTree() {
@@ -257,19 +271,19 @@
       <div class="tree-and-detail">
         <div class="tree-panel-main">
           <GameDataTree
+            bind:this={gameDataTreeRef}
             filePath={treeFilePath}
             folderPath={folderTreePath}
             onNodeSelect={handleNodeSelect}
           />
         </div>
         {#if selectedTreeNode}
-          <div class="detail-panel">
-            <NodeDetailPanel
-              node={selectedTreeNode}
-              filePath={activeTreeFilePath}
-              onChildClick={handleChildClick}
-            />
-          </div>
+          <GameDataContextPanel
+            node={selectedTreeNode}
+            filePath={activeTreeFilePath}
+            onChildClick={handleChildClick}
+            onNavigateToNode={navigateToNodeInTree}
+          />
         {/if}
       </div>
     {:else}
