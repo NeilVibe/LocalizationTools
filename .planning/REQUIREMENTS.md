@@ -29,7 +29,7 @@
 - [ ] **CTX-01**: Right panel appears when a node is selected, showing TM suggestions via embedding search (similar words/sentences from loaded language data)
 - [ ] **CTX-02**: Image display — if selected entity has a texture reference or Codex image, show it in the context panel
 - [ ] **CTX-03**: Audio playback — if selected entity references a character with voice data, show audio player
-- [ ] **CTX-04**: AI context summary — Qwen3 provides automatic context analysis of the selected entity using 5-tier cascade smart search (exact match → hashtable → Aho-Corasick → FAISS semantic → LLM inference)
+- [ ] **CTX-04**: Smart search uses 4-tier cascade with conditional 5th tier: (1) Line/whole 100% match with normalized linebreak logic — whole line include + split line matching, (2) Aho-Corasick word-level multi-pattern match across all entity names in single O(n) pass, (3) Line/whole embedding match via Model2Vec (standard default — NOT Qwen embeddings), (4) N-gram matching — CONDITIONAL: only fires if tiers 1-3 return zero results. AI context via Qwen3 uses cascade results to generate summaries.
 - [ ] **CTX-05**: Entity cross-references shown — what other entities reference this one (skills that use this knowledge, items in this region, etc.)
 
 ### IMG — Codex AI Image Generation

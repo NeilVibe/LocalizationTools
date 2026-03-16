@@ -140,15 +140,15 @@ Plans:
 **Depends on**: Phase 29 (indexes must exist for cascade search, glossary detection, and semantic lookup)
 **Requirements**: CTX-01, CTX-02, CTX-03, CTX-04, CTX-05
 
-**Design Decision -- 5-Tier Cascade Smart Search (CTX-04):**
-The AI context summary uses a cascading search strategy for maximum speed and relevance:
-1. **Tier 1 - Exact hashtable O(1):** Direct Key/StrKey lookup in the hashtable index
-2. **Tier 2 - Aho-Corasick multi-pattern O(n):** Single-pass scan finding ALL known entity names in the text simultaneously (superior to string.includes() -- finds every term in one pass)
-3. **Tier 3 - Fuzzy/prefix match:** Handles typos, partial names, abbreviations
-4. **Tier 4 - FAISS semantic similarity:** Model2Vec embedding search for conceptually related entities
-5. **Tier 5 - LLM inference via Qwen3:** AI-generated context when no index matches (slowest, most creative)
+**Design Decision -- 4-Tier Cascade + Conditional 5th Tier (CTX-04):**
+The smart search uses a cascading strategy where each tier fires only if previous tiers return insufficient results:
+1. **Tier 1 - Line/whole 100% match:** Exact string matching with normalized linebreak logic — whole line include + split line matching. Fastest possible, handles br-tag normalization.
+2. **Tier 2 - Aho-Corasick word match:** Multi-pattern automaton built from ALL entity names. Single O(n) pass finds every known term simultaneously. Far superior to string.includes() — catches all entity references in one scan.
+3. **Tier 3 - Line/whole embedding match via Model2Vec:** Standard default embeddings (NOT Qwen). Fast semantic similarity for conceptually related entities. Sub-millisecond per query with FAISS.
+4. **Tier 4 - N-gram matching (CONDITIONAL):** Only fires if tiers 1-3 return ZERO results. Catches partial matches, typos, abbreviations via character n-gram overlap.
+5. **AI Context (post-cascade):** Qwen3 generates human-readable context summary using whatever the cascade found. Not a search tier — it's the presentation layer that consumes cascade results.
 
-Each tier only fires if the previous tier returns insufficient results. This gives sub-second response for 95%+ of queries.
+Tiers 1-3 always fire in sequence (fast to slower). Tier 4 is conditional on empty results. AI summary runs after cascade completes.
 
 **Success Criteria** (what must be TRUE):
   1. Selecting a tree node opens a right panel showing TM suggestions (similar words/sentences found via embedding search in loaded language data)
