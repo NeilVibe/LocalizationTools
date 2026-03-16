@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: GameData Tree UI + Context Intelligence + Image Gen
 status: completed
-stopped_at: Phase 31 plans verified, executing
-last_updated: "2026-03-16T10:13:37.990Z"
-last_activity: 2026-03-16 -- Phase 30 Plan 02 executed (Progressive loading + tier badges + AI summary)
+stopped_at: Completed 31-01-PLAN.md
+last_updated: "2026-03-16T10:19:48.466Z"
+last_activity: 2026-03-16 -- Phase 31 Plan 01 executed (AIImageService + REST endpoints)
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 13
-  completed_plans: 11
-  percent: 95
+  completed_plans: 12
+  percent: 92
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 
 ## Current Position
 
-Phase: 30 of 31 (Context Intelligence Panel) -- COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase 30 complete (Progressive loading + AI summary)
-Last activity: 2026-03-16 -- Phase 30 Plan 02 executed (Progressive loading + tier badges + AI summary)
+Phase: 31 of 31 (Codex AI Image Generation)
+Plan: 1 of 2 in current phase -- COMPLETE
+Status: Plan 31-01 complete (Gemini backend + endpoints + cache)
+Last activity: 2026-03-16 -- Phase 31 Plan 01 executed (AIImageService + REST endpoints)
 
-Progress: [██████████] 95%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [██████████] 95%
 | Phase 29 P03 | 3min | 2 tasks | 2 files |
 | Phase 30 P01 | 7min | 2 tasks | 5 files |
 | Phase 30 P02 | 5min | 2 tasks | 4 files |
+| Phase 31 P01 | 4min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,9 @@ Recent decisions affecting current work:
 - [Phase 30-02]: Ollama availability checked via /api/tags 2s timeout before AI summary generation
 - [Phase 30-02]: Progressive reveal uses single fetch + staggered setTimeout (50ms/100ms) not separate endpoints
 - [Phase 30-02]: Qwen3 system prompt includes /no_think for deterministic output
+- [Phase 31]: Prompt templates stored as Python dict in ai_image_service.py, not separate JSON
+- [Phase 31]: Grade glow keywords injected per entity Grade attribute for visual quality differentiation
+- [Phase 31]: StrKey sanitization via regex + path resolution check against CACHE_DIR for security
 
 ### Pending Todos
 
@@ -108,6 +112,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T10:13:37.988Z
-Stopped at: Phase 31 plans verified, executing
-Resume file: .planning/phases/31-codex-ai-image-generation/31-01-PLAN.md
+Last session: 2026-03-16T10:19:48.464Z
+Stopped at: Completed 31-01-PLAN.md
+Resume file: None
