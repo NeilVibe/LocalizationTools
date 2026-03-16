@@ -39,8 +39,8 @@
 
 ### WMP -- World Map Polish
 
-- [ ] **WMP-01**: World Map passes quick UI/UX audit (node styling, route lines, tooltips, dark mode)
-- [ ] **WMP-02**: Empty state when no map data is loaded shows helpful message
+- [x] **WMP-01**: World Map passes quick UI/UX audit (node styling, route lines, tooltips, dark mode)
+- [x] **WMP-02**: Empty state when no map data is loaded shows helpful message
 
 ### TMP -- TM Panel Polish
 
@@ -104,8 +104,8 @@
 | LDG-01 | Phase 34 | Pending |
 | LDG-02 | Phase 34 | Pending |
 | LDG-03 | Phase 34 | Pending |
-| WMP-01 | Phase 34 | Pending |
-| WMP-02 | Phase 34 | Pending |
+| WMP-01 | Phase 34 | Complete |
+| WMP-02 | Phase 34 | Complete |
 | TMP-01 | Phase 34 | Pending |
 | TMP-02 | Phase 34 | Pending |
 | XPG-01 | Phase 35 | Pending |
