@@ -94,7 +94,7 @@
   2. A shared PageHeader component renders consistently when dropped into any page with title, icon, and action slot
   3. SkeletonCard, EmptyState, ErrorState, and InfiniteScroll components exist in lib/components/common/ and render correctly in isolation
   4. InfiniteScroll fires a callback when its sentinel enters the viewport and cleans up the IntersectionObserver via $effect
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 - [ ] 32-01: CSS design tokens and shared micro-components
