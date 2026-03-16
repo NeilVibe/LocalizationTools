@@ -736,8 +736,7 @@
       {/if}
 
       <!-- Cross-reference links (max 2 per row) -->
-      {@const crossRefs = Object.entries(node.attributes || {}).filter(([attr, val]) => isCrossRefAttr(attr) && resolveCrossRef(attr, val)).slice(0, 2)}
-      {#each crossRefs as [attr, val]}
+      {#each Object.entries(node.attributes || {}).filter(([attr, val]) => isCrossRefAttr(attr) && resolveCrossRef(attr, val)).slice(0, 2) as [attr, val]}
         <button
           class="cross-ref-link"
           title="{attr}: {val} (click to navigate)"
