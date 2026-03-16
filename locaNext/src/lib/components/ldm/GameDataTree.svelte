@@ -43,6 +43,8 @@
   let selectedNodeId = $state(null);
   let loading = $state(false);
   let error = $state(null);
+  let hoveredNodeId = $state(null);
+  let hoverTimer = null;
 
   // Flat list of visible nodes for keyboard navigation
   let visibleNodes = $derived(buildVisibleNodes());
@@ -87,6 +89,28 @@
    */
   function getNodeIcon(tag) {
     return ICON_MAP[tag] || DataStructured;
+  }
+
+  // Entity type color palette for row accents and badges
+  const ENTITY_TYPE_COLORS = {
+    SkillTreeInfo: '#a855f7',
+    SkillInfo: '#a855f7',
+    SkillNode: '#c084fc',
+    ItemInfo: '#06b6d4',
+    CharacterInfo: '#8b5cf6',
+    GimmickGroupInfo: '#f59e0b',
+    GimmickInfo: '#fbbf24',
+    KnowledgeInfo: '#10b981',
+    QuestInfo: '#f97316',
+    RegionInfo: '#14b8a6',
+    SceneObjectData: '#14b8a6',
+    SealDataInfo: '#6366f1',
+    FactionGroup: '#ec4899',
+    NodeWaypointInfo: '#94a3b8',
+  };
+
+  function getNodeColor(tag) {
+    return ENTITY_TYPE_COLORS[tag] || '#64748b';
   }
 
   /**
@@ -491,6 +515,22 @@
   }
 
   /**
+   * Hover handlers for tooltip display (300ms delay)
+   */
+  function handleNodeMouseEnter(nodeId) {
+    if (hoverTimer) clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(() => {
+      hoveredNodeId = nodeId;
+    }, 300);
+  }
+
+  function handleNodeMouseLeave() {
+    if (hoverTimer) clearTimeout(hoverTimer);
+    hoverTimer = null;
+    hoveredNodeId = null;
+  }
+
+  /**
    * Public reload method
    */
   export function reload() {
@@ -572,39 +612,43 @@
   {@const isSelected = selectedNodeId === node.node_id}
   {@const NodeIcon = getNodeIcon(node.tag)}
   {@const label = getNodeLabel(node)}
-  <div class="tree-item">
+  {@const nodeColor = getNodeColor(node.tag)}
+  <div class="tree-item" style="position: relative;">
     <button
       class="tree-node"
       class:selected={isSelected}
       class:has-children={hasChildren}
+      class:depth-gt-0={depth > 0}
       data-node-id={node.node_id}
       role="treeitem"
       aria-expanded={hasChildren ? isExpanded : undefined}
       aria-selected={isSelected}
-      style="padding-left: {depth * 20 + 8}px"
+      style="--indent-px: {depth * 20 + 8}px; padding-left: {depth * 20 + 8}px; border-left-color: {isSelected ? 'var(--cds-link-01)' : nodeColor};"
       onclick={() => selectNode(node)}
       ondblclick={() => { if (hasChildren) toggleExpand(node.node_id); }}
+      onmouseenter={() => handleNodeMouseEnter(node.node_id)}
+      onmouseleave={handleNodeMouseLeave}
     >
-      <!-- Chevron -->
+      <!-- Chevron (animated rotation) -->
       {#if hasChildren}
         <span
           class="chevron"
           role="button"
           tabindex="-1"
-          onclick|stopPropagation={() => toggleExpand(node.node_id)}
+          onclick={(e) => { e.stopPropagation(); toggleExpand(node.node_id); }}
         >
-          {#if isExpanded}
-            <ChevronDown size={14} />
-          {:else}
+          <span class="chevron-icon" class:rotated={isExpanded}>
             <ChevronRight size={14} />
-          {/if}
+          </span>
         </span>
       {:else}
         <span class="chevron-spacer"></span>
       {/if}
 
-      <!-- Entity type icon -->
-      <NodeIcon size={16} class="entity-icon entity-icon-{node.tag.toLowerCase()}" />
+      <!-- Entity type icon (colored by entity type) -->
+      <span class="entity-icon-wrap" style="color: {nodeColor};">
+        <NodeIcon size={16} />
+      </span>
 
       <!-- Tag name -->
       <span class="node-tag">{node.tag}</span>
@@ -614,9 +658,9 @@
         <span class="node-label">{label}</span>
       {/if}
 
-      <!-- Children count badge -->
+      <!-- Children count badge (entity-color tinted) -->
       {#if hasChildren}
-        <span class="count-badge">{node.children.length}</span>
+        <span class="count-badge" style="background: {nodeColor}20; color: {nodeColor};">{node.children.length}</span>
       {/if}
 
       <!-- Cross-reference links (max 2 per row) -->
@@ -632,12 +676,29 @@
       {/each}
     </button>
 
-    <!-- Children -->
-    {#if hasChildren && isExpanded}
-      <div class="tree-children" role="group">
-        {#each node.children as child (child.node_id)}
-          {@render renderNode(child, depth + 1)}
+    <!-- Hover tooltip (first 3 attributes) -->
+    {#if hoveredNodeId === node.node_id}
+      <div class="node-tooltip" style="left: {depth * 20 + 40}px;">
+        {#each Object.entries(node.attributes || {}).slice(0, 3) as [key, val]}
+          <div class="tooltip-row">
+            <span class="tooltip-key">{key}:</span>
+            <span class="tooltip-val">{String(val).substring(0, 40)}</span>
+          </div>
         {/each}
+        {#if Object.keys(node.attributes || {}).length > 3}
+          <div class="tooltip-more">+{Object.keys(node.attributes).length - 3} more</div>
+        {/if}
+      </div>
+    {/if}
+
+    <!-- Children (animated wrapper) -->
+    {#if hasChildren}
+      <div class="tree-children-wrapper" class:collapsed={!isExpanded} class:expanded={isExpanded}>
+        <div class="tree-children" role="group">
+          {#each node.children as child (child.node_id)}
+            {@render renderNode(child, depth + 1)}
+          {/each}
+        </div>
       </div>
     {/if}
   </div>
@@ -812,8 +873,32 @@
     font-size: inherit;
     color: var(--cds-text-01);
     text-align: left;
-    transition: background 0.1s ease, border-color 0.1s ease;
+    transition: background 0.15s ease, border-color 0.15s ease;
     line-height: 1.4;
+    position: relative;
+  }
+
+  /* Tree connector lines (vertical + horizontal) for nested nodes */
+  .tree-node.depth-gt-0::before {
+    content: '';
+    position: absolute;
+    left: calc(var(--indent-px) - 12px);
+    top: 0;
+    height: 100%;
+    width: 1px;
+    background: var(--cds-border-subtle-01);
+    pointer-events: none;
+  }
+
+  .tree-node.depth-gt-0::after {
+    content: '';
+    position: absolute;
+    left: calc(var(--indent-px) - 12px);
+    top: 50%;
+    width: 8px;
+    height: 1px;
+    background: var(--cds-border-subtle-01);
+    pointer-events: none;
   }
 
   .tree-node:hover {
@@ -827,10 +912,11 @@
 
   .tree-node.selected {
     background: var(--cds-layer-selected-01);
-    border-left-color: var(--cds-link-01);
+    border-left-color: var(--cds-link-01) !important;
+    border-left-width: 3px;
   }
 
-  /* Chevron */
+  /* Chevron with rotation animation */
   .chevron {
     display: flex;
     align-items: center;
@@ -849,58 +935,43 @@
     color: var(--cds-text-01);
   }
 
+  .chevron-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 200ms ease;
+  }
+
+  .chevron-icon.rotated {
+    transform: rotate(90deg);
+  }
+
   .chevron-spacer {
     width: 16px;
     flex-shrink: 0;
   }
 
-  /* Entity icon colors */
-  :global(.entity-icon) {
+  /* Entity icon wrapper (colored inline by entity type) */
+  .entity-icon-wrap {
+    display: flex;
+    align-items: center;
     flex-shrink: 0;
   }
 
-  :global(.entity-icon-skillinfo),
-  :global(.entity-icon-skilltreeinfo),
-  :global(.entity-icon-skillnode) {
-    color: #a56eff; /* Purple for skills */
+  /* Expand/collapse animation */
+  .tree-children-wrapper {
+    overflow: hidden;
+    transition: max-height 200ms ease-out, opacity 200ms ease-out;
   }
 
-  :global(.entity-icon-iteminfo) {
-    color: #0072c3; /* Cyan for items */
+  .tree-children-wrapper.collapsed {
+    max-height: 0;
+    opacity: 0;
   }
 
-  :global(.entity-icon-characterinfo) {
-    color: #ee5396; /* Magenta for characters */
-  }
-
-  :global(.entity-icon-gimmickgroupinfo),
-  :global(.entity-icon-gimmickinfo) {
-    color: #ff832b; /* Orange for gimmicks */
-  }
-
-  :global(.entity-icon-knowledgeinfo) {
-    color: #009d9a; /* Teal for knowledge */
-  }
-
-  :global(.entity-icon-questinfo) {
-    color: #0f62fe; /* Blue for quests */
-  }
-
-  :global(.entity-icon-regioninfo),
-  :global(.entity-icon-sceneobjectdata) {
-    color: #24a148; /* Green for regions */
-  }
-
-  :global(.entity-icon-sealdatainfo) {
-    color: #d4bbff; /* Light purple for seals */
-  }
-
-  :global(.entity-icon-factiongroup) {
-    color: #c9a227; /* Gold for factions */
-  }
-
-  :global(.entity-icon-nodewaypointinfo) {
-    color: #82cfff; /* Light blue for waypoints */
+  .tree-children-wrapper.expanded {
+    max-height: 10000px;
+    opacity: 1;
   }
 
   /* Node label parts */
@@ -927,6 +998,44 @@
     border-radius: 10px;
     color: var(--cds-text-03);
     flex-shrink: 0;
+  }
+
+  /* Hover tooltip */
+  .node-tooltip {
+    position: absolute;
+    top: 100%;
+    z-index: 100;
+    padding: 6px 10px;
+    background: var(--cds-layer-02);
+    border: 1px solid var(--cds-border-subtle-01);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-size: 0.6875rem;
+    white-space: nowrap;
+    pointer-events: none;
+    max-width: 300px;
+  }
+
+  .tooltip-row {
+    display: flex;
+    gap: 4px;
+  }
+
+  .tooltip-key {
+    color: var(--cds-text-03);
+    flex-shrink: 0;
+  }
+
+  .tooltip-val {
+    color: var(--cds-text-01);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tooltip-more {
+    color: var(--cds-text-03);
+    font-style: italic;
+    margin-top: 2px;
   }
 
   /* Cross-reference link buttons */
