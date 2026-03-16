@@ -6,6 +6,7 @@
 - v2.0 Real Data + Dual Platform (Phases 07-14) -- SHIPPED 2026-03-15
 - v3.0 Game Dev Platform + AI Intelligence (Phases 15-21) -- SHIPPED 2026-03-15
 - v3.1 Debug + Polish + Svelte 5 Migration (Phases 22-25) -- SHIPPED 2026-03-16
+- v3.2 GameData Tree UI + Context Intelligence + Image Gen (Phases 26-31) -- IN PROGRESS
 
 ## Phases
 
@@ -49,95 +50,136 @@
 
 </details>
 
-### v3.1 Debug + Polish + Svelte 5 Migration (SHIPPED 2026-03-16)
+<details>
+<summary>v3.1 Debug + Polish + Svelte 5 Migration (Phases 22-25) -- SHIPPED 2026-03-16</summary>
 
-**Milestone Goal:** Fix all runtime bugs from v3.0 code review, migrate entire frontend from Svelte 4 event patterns to pure Svelte 5 Runes, and polish UI/UX across all v3.0 features.
+- [x] Phase 22: Svelte 5 Migration (3/3 plans) -- completed 2026-03-15
+- [x] Phase 23: Bug Fixes (4/4 plans) -- completed 2026-03-15
+- [x] Phase 24: UIUX Polish (2/2 plans) -- completed 2026-03-15
+- [x] Phase 25: Comprehensive API E2E Testing (10/10 plans) -- completed 2026-03-16
 
-- [x] **Phase 22: Svelte 5 Migration** - Purge all createEventDispatcher and on: directives, converting VirtualGrid, LDM.svelte, and all v3.0 components to $props callback pattern (completed 2026-03-15)
-- [x] **Phase 23: Bug Fixes** - Fix 10 runtime bugs from 3-agent swarm audit plus stale test fixture (completed 2026-03-15)
-- [x] **Phase 24: UIUX Polish** - Accessibility attributes, visual consistency, and error state handling across v3.0 features (completed 2026-03-15)
+</details>
+
+### v3.2 GameData Tree UI + Context Intelligence + Image Gen (IN PROGRESS)
+
+**Milestone Goal:** Rework the Game Data page from flat grid to hierarchical XML tree navigator with parent/child node expansion, add a right-side context panel with TM suggestions/images/audio/AI context, generate AI images for Codex, and achieve sub-second lookup via multi-tier indexing.
+
+- [ ] **Phase 26: Navigation + DEV Parity** - Rename sidebar tabs, add showDirectoryPicker for browser, auto-load mock data, enforce file type separation
+- [ ] **Phase 27: Tree Backend + Mock Data** - lxml tree walker API and expanded mock fixtures with real hierarchical XML structures
+- [ ] **Phase 28: Hierarchical Tree UI** - Beautiful expandable tree with node detail panel, cross-reference links, and folder loading
+- [ ] **Phase 29: Multi-Tier Indexing** - Hashtable + FAISS + Aho-Corasick indexing for instant entity lookup across all loaded gamedata
+- [ ] **Phase 30: Context Intelligence Panel** - Right panel with TM suggestions, images, audio, AI context via 5-tier cascade search, and cross-references
+- [ ] **Phase 31: Codex AI Image Generation** - Nano Banana / Gemini image generation for Codex entities with entity-aware prompts and batch mode
 
 ## Phase Details
 
-### Phase 22: Svelte 5 Migration
-**Goal**: The entire frontend uses pure Svelte 5 Runes patterns with zero legacy Svelte 4 event dispatching -- making the codebase maintainable and consistent
-**Depends on**: Nothing (v3.1 foundation -- clean event model required before fixing bugs that touch the same components)
-**Requirements**: SV5-01, SV5-02, SV5-03, SV5-04, SV5-05, SV5-06
+### Phase 26: Navigation + DEV Parity
+**Goal**: The Game Data and Localization Data pages have correct naming, browser DEV mode has full folder picking parity with Electron, and file types are strictly separated between the two modes
+**Depends on**: Nothing (v3.2 foundation -- quick wins that rename existing UI and add DEV conveniences)
+**Requirements**: NAV-01, NAV-02, NAV-03, NAV-04, NAV-05
 **Success Criteria** (what must be TRUE):
-  1. VirtualGrid emits row selection, edit, and scroll events via callback props passed through $props, not createEventDispatcher
-  2. LDM.svelte receives all child component events (grid, panels, filters) via callback props bound with $props destructuring
-  3. All v3.0 components (AISuggestionsTab, QAInlineBadge, CategoryFilter, NamingPanel, CodexSearchBar, MapCanvas) use $props callbacks for parent communication
-  4. Searching the codebase for "createEventDispatcher" returns zero results
-  5. Searching the codebase for " on:" event directives returns zero results (excluding Carbon component interop where the library requires it)
-**Plans:** 3/3 plans complete
-Plans:
-- [ ] 22-01-PLAN.md — Core grid pipeline: VirtualGrid (20 dispatchers) + LDM.svelte + page consumers
-- [ ] 22-02-PLAN.md — TM subsystem + modals: TMDataGrid, TMManager, TMViewer, TMPage + FilePickerDialog, PretranslateModal, AccessControl
-- [ ] 22-03-PLAN.md — Remaining on: directives, e.detail cleanup, and codebase-wide zero-count verification
+  1. Sidebar shows "Localization Data" instead of "Files" and "Game Data" instead of "GameDev"
+  2. In browser DEV mode, clicking a folder button on Game Data page opens a native folder picker dialog via showDirectoryPicker
+  3. Opening the Game Data page in DEV mode automatically loads mock gamedata without any manual path entry
+  4. Attempting to load a LocStr XML file on Game Data page is rejected; attempting to load a StaticInfo XML on Localization Data page is rejected
+**Plans**: TBD
 
-### Phase 23: Bug Fixes
-**Goal**: All runtime bugs identified in the v3.0 3-agent swarm audit are fixed -- no crashes, no broken navigation, no infinite loading states
-**Depends on**: Phase 22 (event wiring must be stable before fixing component-level bugs that depend on event flow)
-**Requirements**: FIX-01, FIX-02, FIX-03, FIX-04, FIX-05, FIX-06, FIX-07, FIX-08, FIX-09, FIX-10, FIX-11, TEST-01
-**Success Criteria** (what must be TRUE):
-  1. GameDevPage loads files without creating fallback IDs -- error states show meaningful messages instead of silent Date.now() workarounds
-  2. Audio playback in CodexEntityDetail falls back to PlaceholderAudio on decode error instead of showing a broken player
-  3. Clicking "Navigate to NPC" in MapDetailPanel opens the correct Codex entity page for that NPC
-  4. Loading indicators in AISuggestionsTab and NamingPanel clear when debounce timers are cancelled (no infinite spinners)
-  5. WorldMapPage tooltip does not appear over the detail panel, and route keys are deduplicated to prevent {#each} crashes
-  6. GameDevPage file selection works end-to-end using gamedata/browse and gamedata/columns APIs (no non-existent upload-path endpoint)
-**Plans:** 4/4 plans complete
 Plans:
-- [ ] 23-01-PLAN.md — GameDevPage: remove upload-path call, eliminate Date.now() fallback, fix tree refresh flicker
-- [ ] 23-02-PLAN.md — WorldMap + Codex: tooltip suppression, route key dedup, NPC navigation, entity type sorting
-- [ ] 23-03-PLAN.md — AI/QA components: audio error fallback, loading state cleanup, QA badge click-outside fix
-- [ ] 23-04-PLAN.md — Test fixture update + API testing shell wrapper script
+- [ ] 26-01: Sidebar rename + file type enforcement + browser folder picker + DEV auto-load
 
-### Phase 24: UIUX Polish
-**Goal**: All v3.0 features meet accessibility standards and visual consistency -- no broken layouts, missing fallbacks, or inaccessible controls
-**Depends on**: Phase 23 (bugs fixed before polishing the same components)
-**Requirements**: UX-01, UX-02, UX-03, UX-04, UX-05
+### Phase 27: Tree Backend + Mock Data
+**Goal**: The backend can parse any XML gamedata file into a hierarchical tree structure (parent/child/sibling relationships) and return it as structured JSON, with expanded mock fixtures demonstrating real nesting patterns
+**Depends on**: Phase 26 (navigation naming in place, DEV auto-load available for testing)
+**Requirements**: TREE-05, TREE-07
 **Success Criteria** (what must be TRUE):
-  1. FileExplorerTree folder buttons announce their expand/collapse state to screen readers via aria-expanded
-  2. Navigation tab dividers render consistently across all 5 tabs (not just the first tab)
-  3. CodexPage card images display PlaceholderImage SVG when the actual image returns 404
-  4. PlaceholderImage renders correctly in Chromium-based Electron using div layout instead of foreignObject
-  5. MapDetailPanel long text content wraps properly without overflow at all viewport widths
-**Plans:** 2/2 plans complete
-Plans:
-- [ ] 24-01-PLAN.md — Fix all 5 UX requirements: aria-expanded, tab dividers, image fallbacks, PlaceholderImage div layout, text wrapping
-- [ ] 24-02-PLAN.md — Skill-driven UIUX review: audit + harden + clarify pass across all v3.0 components
+  1. API endpoint accepts an XML file path and returns a JSON tree with nested parent/child nodes (not flat rows)
+  2. Tree parser uses lxml el.iter(), el.findall(), and parent/child navigation (like QACompiler generators), not flat row extraction
+  3. Mock fixtures include SkillTreeInfo with nested SkillNodes + ParentId references, KnowledgeInfo with KnowledgeList children, and GimmickGroup with GimmickInfo nesting
+  4. Parser handles all existing mock entity types (iteminfo, characterinfo, skillinfo, knowledgeinfo, gimmickgroupinfo, regioninfo, questinfo, sceneobjectdata, sealdatainfo)
+**Plans**: TBD
 
-### Phase 25: Comprehensive API E2E Testing
-**Goal**: Every API endpoint tested E2E with mock data -- complete CRUD workflows for all 12 subsystems, expanded mock fixtures covering all StaticInfo entity types, br-tag and Korean text round-trip verification
-**Depends on:** Phase 24
-**Requirements**: TEST-E2E-01 through TEST-E2E-25
-**Success Criteria** (what must be TRUE):
-  1. All 10 StaticInfo entity types have mock XML files with 10+ entities each
-  2. Upload fixtures exist for XML, Excel (EU 14-col), and TXT/TSV formats
-  3. Every API endpoint (275 total) has at least one pytest test
-  4. br-tag `<br/>` content survives upload -> edit -> export round-trip
-  5. Korean Unicode text survives upload -> edit -> export round-trip
-  6. TM 5-tier cascade search returns results at appropriate tiers
-  7. GameData column detection works for all entity types
-  8. Test suite runs headless for overnight autonomous execution
-**Plans:** 10/10 plans complete
 Plans:
-- [ ] 25-01-PLAN.md — Expand mock StaticInfo: questinfo, sceneobjectdata, sealdatainfo, regioninfo + loc.xml files
-- [ ] 25-02-PLAN.md — Create upload fixtures: EU 14-col Excel, TXT/TSV, LocStr XML + multilingual language data
-- [ ] 25-03-PLAN.md — API test infrastructure: conftest, typed APIClient, assertions, constants
-- [ ] 25-04-PLAN.md — Test runner script + pytest configuration for overnight execution
-- [ ] 25-05-PLAN.md — Test suite: Health + Auth + Projects + Folders + Files (54 endpoints)
-- [ ] 25-06-PLAN.md — Test suite: Rows + TM CRUD + TM Search + TM Entries (42 endpoints)
-- [ ] 25-07-PLAN.md — Test suite: GameData + Codex + WorldMap (8 endpoints, all entity types)
-- [ ] 25-08-PLAN.md — Test suite: AI Intelligence + Search + QA/Grammar (33 endpoints)
-- [ ] 25-09-PLAN.md — Test suite: Merge + Export + Offline + Admin + Tools (93 endpoints)
-- [ ] 25-10-PLAN.md — Integration workflows + br-tag/Korean tests + endpoint coverage validation
+- [ ] 27-01: lxml hierarchical tree parser API endpoint (tree walking, parent/child, nesting detection)
+- [ ] 27-02: Expand mock gamedata fixtures with real hierarchical examples
+
+### Phase 28: Hierarchical Tree UI
+**Goal**: Users can explore XML gamedata as a beautiful, expandable tree -- navigating parent/child hierarchies, viewing node details, editing text attributes, and following cross-reference links between entities
+**Depends on**: Phase 27 (tree parser API returns hierarchical JSON)
+**Requirements**: TREE-01, TREE-02, TREE-03, TREE-04, TREE-06, TREE-08
+**Success Criteria** (what must be TRUE):
+  1. Selecting a gamedata folder loads all XML files as a browsable tree with expand/collapse per node, showing real hierarchy (SkillTree nodes nested under parents, GimmickInfo under GimmickGroup)
+  2. Each XML structure type renders appropriately -- skills show SkillTree/SkillNode/Knowledge hierarchy, items show flat ItemInfo list, regions show SceneObjectData children
+  3. Clicking a tree node shows its attributes in a detail panel with editable text fields for name/desc attributes (respecting EDITABLE_ATTRS mapping)
+  4. Cross-reference keys (e.g., SkillInfo.LearnKnowledgeKey linking to KnowledgeInfo) render as clickable links that navigate to the referenced entity in the tree
+  5. Tree UI has proper indentation, color-coded node types, expand/collapse animations, entity icons per type, and hover previews -- visually superior to a code editor tree view
+**Plans**: TBD
+
+Plans:
+- [ ] 28-01: Tree component with folder loading, expand/collapse, dynamic node rendering per XML structure
+- [ ] 28-02: Node detail panel with attribute display, editable text fields, EDITABLE_ATTRS mapping
+- [ ] 28-03: Cross-reference resolution + clickable links + visual polish (colors, icons, animations, hover previews)
+
+### Phase 29: Multi-Tier Indexing
+**Goal**: All loaded gamedata entities are indexed for instant lookup -- hashtable for O(1) key lookup, FAISS for semantic similarity, and Aho-Corasick for real-time glossary detection -- all built automatically when a folder loads
+**Depends on**: Phase 28 (tree UI loads folders, providing the entity data to index)
+**Requirements**: IDX-01, IDX-02, IDX-03, IDX-04, IDX-05
+**Success Criteria** (what must be TRUE):
+  1. Looking up an entity by Key, StrKey, or exact name returns results instantly (O(1) hashtable) across all loaded XML files
+  2. Searching by a description phrase or concept returns semantically similar entities via FAISS vector search (reusing existing Model2Vec + FAISS infrastructure)
+  3. Pasting or typing text in any field highlights all recognized entity names found via Aho-Corasick single-pass scan (reusing QuickSearch/QuickCheck automaton patterns)
+  4. Loading a gamedata folder automatically extracts a glossary of all entity names and descriptions and builds the Aho-Corasick automaton from them
+  5. Full gamedata folder with 5000+ entities indexes completely in under 3 seconds
+**Plans**: TBD
+
+Plans:
+- [ ] 29-01: Hashtable index + FAISS vector index on folder load
+- [ ] 29-02: Aho-Corasick automaton from entity names + auto-glossary extraction + performance validation
+
+### Phase 30: Context Intelligence Panel
+**Goal**: Selecting any node in the tree opens a right panel showing TM suggestions, related images, audio playback, AI-powered context analysis via 5-tier cascade search, and cross-reference maps -- giving game developers instant, rich context for any entity
+**Depends on**: Phase 29 (indexes must exist for cascade search, glossary detection, and semantic lookup)
+**Requirements**: CTX-01, CTX-02, CTX-03, CTX-04, CTX-05
+
+**Design Decision -- 5-Tier Cascade Smart Search (CTX-04):**
+The AI context summary uses a cascading search strategy for maximum speed and relevance:
+1. **Tier 1 - Exact hashtable O(1):** Direct Key/StrKey lookup in the hashtable index
+2. **Tier 2 - Aho-Corasick multi-pattern O(n):** Single-pass scan finding ALL known entity names in the text simultaneously (superior to string.includes() -- finds every term in one pass)
+3. **Tier 3 - Fuzzy/prefix match:** Handles typos, partial names, abbreviations
+4. **Tier 4 - FAISS semantic similarity:** Model2Vec embedding search for conceptually related entities
+5. **Tier 5 - LLM inference via Qwen3:** AI-generated context when no index matches (slowest, most creative)
+
+Each tier only fires if the previous tier returns insufficient results. This gives sub-second response for 95%+ of queries.
+
+**Success Criteria** (what must be TRUE):
+  1. Selecting a tree node opens a right panel showing TM suggestions (similar words/sentences found via embedding search in loaded language data)
+  2. If the selected entity has a texture reference or Codex image, the context panel displays the image; if it references a character with voice data, an audio player appears
+  3. AI context summary appears for the selected entity, with results arriving progressively as each cascade tier completes (fast tiers first, LLM last)
+  4. The context panel shows which other entities reference the selected one (skills using this knowledge, items in this region, etc.) as navigable links
+**Plans**: TBD
+
+Plans:
+- [ ] 30-01: Right panel layout + TM embedding suggestions + image/audio display
+- [ ] 30-02: 5-tier cascade search engine + AI context summary + cross-reference map
+
+### Phase 31: Codex AI Image Generation
+**Goal**: Codex entities get AI-generated images replacing SVG placeholders -- entity-type-aware prompts produce character portraits, item icons, region landscapes, and skill effects, with batch generation for entire categories
+**Depends on**: Phase 28 (tree UI provides entity data; Codex already exists from v3.0)
+**Requirements**: IMG-01, IMG-02, IMG-03, IMG-04
+**Success Criteria** (what must be TRUE):
+  1. Codex entities that previously showed SVG placeholders now display AI-generated images (via Nano Banana / Gemini)
+  2. Generated images match entity type -- characters get portraits, items get icons, regions get landscape scenes, skills get effect visualizations
+  3. Generated images are cached on disk keyed by entity StrKey and served via the existing mapdata thumbnail API endpoint
+  4. User can trigger batch generation for an entire category (e.g., "generate all character images") with a progress bar showing completion
+**Plans**: TBD
+
+Plans:
+- [ ] 31-01: Nano Banana / Gemini integration + entity-type-aware prompt templates + disk caching
+- [ ] 31-02: Batch generation mode with progress tracking + Codex UI integration
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 22 -> 23 -> 24 -> 25
+Phases execute in numeric order: 26 -> 27 -> 28 -> 29 -> 30 -> 31
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -163,7 +205,13 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25
 | 19. Game World Codex | v3.0 | 2/2 | Complete | 2026-03-15 |
 | 20. Interactive World Map | v3.0 | 2/2 | Complete | 2026-03-15 |
 | 21. AI Naming Coherence + Placeholders | v3.0 | 2/2 | Complete | 2026-03-15 |
-| 22. Svelte 5 Migration | 3/3 | Complete    | 2026-03-15 | - |
-| 23. Bug Fixes | 4/4 | Complete    | 2026-03-15 | - |
-| 24. UIUX Polish | 2/2 | Complete    | 2026-03-15 | - |
-| 25. Comprehensive API E2E Testing | 10/10 | Complete    | 2026-03-16 | - |
+| 22. Svelte 5 Migration | v3.1 | 3/3 | Complete | 2026-03-15 |
+| 23. Bug Fixes | v3.1 | 4/4 | Complete | 2026-03-15 |
+| 24. UIUX Polish | v3.1 | 2/2 | Complete | 2026-03-15 |
+| 25. Comprehensive API E2E Testing | v3.1 | 10/10 | Complete | 2026-03-16 |
+| 26. Navigation + DEV Parity | v3.2 | 0/1 | Not started | - |
+| 27. Tree Backend + Mock Data | v3.2 | 0/2 | Not started | - |
+| 28. Hierarchical Tree UI | v3.2 | 0/3 | Not started | - |
+| 29. Multi-Tier Indexing | v3.2 | 0/2 | Not started | - |
+| 30. Context Intelligence Panel | v3.2 | 0/2 | Not started | - |
+| 31. Codex AI Image Generation | v3.2 | 0/2 | Not started | - |

@@ -1,24 +1,33 @@
 # Milestones
 
-## v3.1 Debug + Polish + Svelte 5 Migration (Shipped: 2026-03-16)
+## v3.2 GameData Tree UI + Context Intelligence + Image Gen (In Progress)
 
-**Phases completed:** 4 phases, 19 plans, 0 tasks
+**Phases:** 26-31 (6 phases, 12 plans)
+**Requirements:** 25 total (5 categories: TREE, IDX, CTX, IMG, NAV)
+**Goal:** Rework Game Data page from flat grid to hierarchical XML tree navigator, add right-side context panel with TM/images/audio/AI context via 5-tier cascade search, generate AI images for Codex, and achieve sub-second lookup via multi-tier indexing.
 
-**Key accomplishments:**
-- (none recorded)
+**Phase structure:**
+1. Phase 26: Navigation + DEV Parity (sidebar rename, folder picker, auto-load, file type separation)
+2. Phase 27: Tree Backend + Mock Data (lxml tree walker API, expanded hierarchical mock fixtures)
+3. Phase 28: Hierarchical Tree UI (expandable tree, node detail panel, cross-refs, visual polish)
+4. Phase 29: Multi-Tier Indexing (hashtable + FAISS + Aho-Corasick, auto-glossary, <3s performance)
+5. Phase 30: Context Intelligence Panel (TM suggestions, images, audio, 5-tier cascade search, cross-refs)
+6. Phase 31: Codex AI Image Generation (Nano Banana / Gemini, entity-type prompts, batch mode)
 
 ---
 
-## v3.1 Debug + Polish + Svelte 5 Migration (In Progress)
+## v3.1 Debug + Polish + Svelte 5 Migration (Shipped: 2026-03-16)
 
-**Phases:** 22-24 (3 phases)
-**Requirements:** 22 total (4 categories: SV5, FIX, UX, TEST)
-**Goal:** Fix all runtime bugs from v3.0 code review, migrate entire frontend to pure Svelte 5 Runes, and polish UI/UX across all v3.0 features.
+**Phases completed:** 4 phases, 19 plans
+**Requirements:** 48/48 complete (4 categories: SV5, FIX, UX, TEST-E2E)
 
-**Phase structure:**
-1. Phase 22: Svelte 5 Migration (purge all Svelte 4 event patterns)
-2. Phase 23: Bug Fixes (10 runtime bugs + 1 stale test)
-3. Phase 24: UIUX Polish (accessibility, visual consistency, error states)
+**Key accomplishments:**
+1. **Svelte 5 Migration** -- 36 components purged of createEventDispatcher and on: directives, pure $props callbacks
+2. **Bug Fixes** -- 12 runtime bugs fixed (GameDev upload-path, audio fallback, NPC nav, tooltip, loading states)
+3. **UIUX Polish** -- 60 audit issues resolved (aria-expanded, tab dividers, PlaceholderImage, image fallback, text wrap)
+4. **API E2E Testing** -- 834 test functions, 40 files, 275 endpoints, mock expansion to 10 StaticInfo types
+
+**Archive:** [v3.1-ROADMAP.md](milestones/v3.1-ROADMAP.md) | [v3.1-REQUIREMENTS.md](milestones/v3.1-REQUIREMENTS.md)
 
 ---
 

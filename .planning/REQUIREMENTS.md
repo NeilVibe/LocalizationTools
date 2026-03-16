@@ -69,17 +69,41 @@
 
 ## Traceability
 
-(Populated during roadmap creation)
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| — | — | — |
+| NAV-01 | Phase 26 | Pending |
+| NAV-02 | Phase 26 | Pending |
+| NAV-03 | Phase 26 | Pending |
+| NAV-04 | Phase 26 | Pending |
+| NAV-05 | Phase 26 | Pending |
+| TREE-05 | Phase 27 | Pending |
+| TREE-07 | Phase 27 | Pending |
+| TREE-01 | Phase 28 | Pending |
+| TREE-02 | Phase 28 | Pending |
+| TREE-03 | Phase 28 | Pending |
+| TREE-04 | Phase 28 | Pending |
+| TREE-06 | Phase 28 | Pending |
+| TREE-08 | Phase 28 | Pending |
+| IDX-01 | Phase 29 | Pending |
+| IDX-02 | Phase 29 | Pending |
+| IDX-03 | Phase 29 | Pending |
+| IDX-04 | Phase 29 | Pending |
+| IDX-05 | Phase 29 | Pending |
+| CTX-01 | Phase 30 | Pending |
+| CTX-02 | Phase 30 | Pending |
+| CTX-03 | Phase 30 | Pending |
+| CTX-04 | Phase 30 | Pending |
+| CTX-05 | Phase 30 | Pending |
+| IMG-01 | Phase 31 | Pending |
+| IMG-02 | Phase 31 | Pending |
+| IMG-03 | Phase 31 | Pending |
+| IMG-04 | Phase 31 | Pending |
 
 **Coverage:**
 - v3.2 requirements: 25 total
-- Mapped to phases: 0
-- Unmapped: 25 ⚠️
+- Mapped to phases: 25/25
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-16 after milestone v3.2 definition*
+*Last updated: 2026-03-16 after roadmap creation*
