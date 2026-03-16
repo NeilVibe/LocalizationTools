@@ -58,6 +58,9 @@
   let loadingMore = $state(false);
   const PAGE_SIZE = 50;
 
+  // Per-tab cache: Map<entityType, { entities: [], currentPage: number, hasMore: boolean }>
+  let tabCache = $state(new Map());
+
   // AI image generation state
   let imageGenAvailable = $state(false);
   let batchPreview = $state(null);
@@ -92,6 +95,9 @@
         batchProgress = 100;
         batchStatus = 'Complete';
         batchOperationId = null;
+        // Invalidate cache for this tab so fresh data is fetched
+        tabCache.delete(activeTab);
+        tabCache = new Map(tabCache);
         fetchEntityPage(activeTab, 0);
       }
     });
@@ -242,6 +248,11 @@
       }
       hasMore = data.has_more ?? (batch.length === PAGE_SIZE);
       currentPage = page;
+
+      // Update tab cache for instant switching
+      tabCache.set(entityType, { entities, currentPage, hasMore });
+      tabCache = new Map(tabCache);
+
       logger.info('Codex entity page loaded', { type: entityType, page, count: batch.length, total: data.total });
     } catch (err) {
       logger.error('Failed to fetch entity page', { error: err.message });
@@ -267,6 +278,17 @@
   function selectTab(type) {
     activeTab = type;
     selectedEntity = null;
+
+    // Check cache for instant tab switching
+    const cached = tabCache.get(type);
+    if (cached) {
+      entities = cached.entities;
+      currentPage = cached.currentPage;
+      hasMore = cached.hasMore;
+      return;
+    }
+
+    // No cache -- fetch from page 0
     currentPage = 0;
     hasMore = true;
     fetchEntityPage(type, 0);
@@ -564,7 +586,7 @@
   }
 
   .codex-search {
-    padding: 12px 16px;
+    padding: 16px 16px 12px;
     background: var(--cds-layer-01);
     border-bottom: 1px solid var(--cds-border-subtle-01);
     flex-shrink: 0;
@@ -642,7 +664,7 @@
   .codex-content {
     flex: 1;
     overflow-y: auto;
-    padding: 16px;
+    padding: var(--page-content-padding, 16px);
     min-height: 0;
   }
 
@@ -679,7 +701,7 @@
   .entity-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    gap: var(--card-gap, 12px);
   }
 
   @media (max-width: 1200px) {
@@ -696,20 +718,23 @@
 
   .entity-card {
     display: flex;
-    gap: 10px;
-    padding: 10px;
+    gap: var(--card-gap, 10px);
+    padding: var(--card-padding, 10px);
     background: var(--cds-layer-01);
     border: 1px solid var(--cds-border-subtle-01);
-    border-radius: 6px;
+    border-radius: var(--card-radius, 6px);
     cursor: pointer;
     text-align: left;
     color: var(--cds-text-01);
-    transition: all 0.15s;
+    transition: background var(--transition-fast, 0.15s ease),
+                border-color var(--transition-fast, 0.15s ease),
+                box-shadow var(--transition-fast, 0.15s ease);
   }
 
   .entity-card:hover {
     background: var(--cds-layer-hover-01);
     border-color: var(--cds-border-strong-01);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   }
 
   .entity-card:focus {
