@@ -9,6 +9,7 @@
   import {
     ChevronDown,
     ChevronRight,
+    ArrowRight,
     Lightning,
     ShoppingCatalog,
     UserAvatar,
@@ -98,6 +99,128 @@
       if (val) return val;
     }
     return node.attributes?.Key || node.attributes?.NodeId || node.attributes?.Name || node.tag;
+  }
+
+  // ========================================
+  // Cross-Reference Detection & Navigation
+  // ========================================
+
+  /** Known cross-reference attribute names */
+  const CROSS_REF_ATTRS = new Set([
+    'LearnKnowledgeKey', 'RequireSkillKey', 'LinkedQuestKey', 'RegionKey',
+    'ParentNodeId', 'ParentId', 'TargetKey', 'ItemKey', 'CharacterKey',
+    'GimmickKey', 'SealKey', 'FactionKey', 'SkillKey', 'KnowledgeKey',
+    'RewardKey'
+  ]);
+
+  /**
+   * Check if an attribute name is a cross-reference
+   */
+  function isCrossRefAttr(attrName, nodeTag) {
+    if (CROSS_REF_ATTRS.has(attrName)) return true;
+    // Heuristic: any attr ending in "Key" or "Id" that is NOT the node's own identifier
+    if ((attrName.endsWith('Key') || attrName.endsWith('Id')) &&
+        attrName !== 'Key' && attrName !== 'NodeId' && attrName !== 'Id' &&
+        attrName !== 'StrKey') return true;
+    return false;
+  }
+
+  /** Global node lookup index -- maps various keys to node objects */
+  let nodeIndex = $state(new Map());
+
+  // Build node index when tree data loads
+  $effect(() => {
+    if (!treeData || treeData.length === 0) {
+      nodeIndex = new Map();
+      return;
+    }
+    const index = new Map();
+    function indexNode(node) {
+      // Index by node_id
+      index.set(node.node_id, node);
+      // Index by Key attribute
+      if (node.attributes?.Key) index.set(`key:${node.attributes.Key}`, node);
+      // Index by NodeId attribute
+      if (node.attributes?.NodeId) index.set(`nodeid:${node.attributes.NodeId}`, node);
+      // Index by Id attribute
+      if (node.attributes?.Id) index.set(`id:${node.attributes.Id}`, node);
+      for (const child of node.children || []) indexNode(child);
+    }
+    for (const fileTree of treeData) {
+      for (const root of fileTree.roots || []) indexNode(root);
+    }
+    nodeIndex = index;
+  });
+
+  /**
+   * Get ancestor node_ids by walking up via parent_id
+   */
+  function getAncestorIds(node) {
+    const ancestors = [];
+    let currentId = node.parent_id;
+    while (currentId) {
+      ancestors.push(currentId);
+      const parent = nodeIndex.get(currentId);
+      if (parent) {
+        currentId = parent.parent_id;
+      } else {
+        break;
+      }
+    }
+    return ancestors;
+  }
+
+  /**
+   * Resolve a cross-reference attribute to a target node_id
+   */
+  function resolveCrossRef(attrName, attrValue) {
+    if (!attrValue || attrValue === '0' || attrValue === '') return null;
+    // Try exact key lookup
+    let target = nodeIndex.get(`key:${attrValue}`);
+    if (target) return target.node_id;
+    // Try NodeId lookup
+    target = nodeIndex.get(`nodeid:${attrValue}`);
+    if (target) return target.node_id;
+    // Try Id lookup
+    target = nodeIndex.get(`id:${attrValue}`);
+    if (target) return target.node_id;
+    return null;
+  }
+
+  /**
+   * Navigate to a target node: expand ancestors, select it, scroll into view
+   */
+  function selectAndRevealNode(targetNodeId) {
+    const targetNode = nodeIndex.get(targetNodeId);
+    if (!targetNode) {
+      logger.warning('Cross-ref target not found', { targetNodeId });
+      return false;
+    }
+
+    // Expand all ancestors to reveal the target
+    const ancestors = getAncestorIds(targetNode);
+    const newExpanded = new Set(expandedNodes);
+    for (const id of ancestors) newExpanded.add(id);
+    expandedNodes = newExpanded;
+
+    // Select the target
+    selectedNodeId = targetNode.node_id;
+    onNodeSelect(targetNode);
+
+    // Scroll into view after DOM update
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-node-id="${targetNode.node_id}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    return true;
+  }
+
+  /**
+   * Public method for external cross-ref navigation (e.g., NodeDetailPanel)
+   */
+  export function navigateToNode(nodeId) {
+    return selectAndRevealNode(nodeId);
   }
 
   /**
@@ -454,6 +577,7 @@
       class="tree-node"
       class:selected={isSelected}
       class:has-children={hasChildren}
+      data-node-id={node.node_id}
       role="treeitem"
       aria-expanded={hasChildren ? isExpanded : undefined}
       aria-selected={isSelected}
@@ -494,6 +618,18 @@
       {#if hasChildren}
         <span class="count-badge">{node.children.length}</span>
       {/if}
+
+      <!-- Cross-reference links (max 2 per row) -->
+      {@const crossRefs = Object.entries(node.attributes || {}).filter(([attr, val]) => isCrossRefAttr(attr, node.tag) && resolveCrossRef(attr, val)).slice(0, 2)}
+      {#each crossRefs as [attr, val]}
+        <button
+          class="cross-ref-link"
+          title="{attr}: {val} (click to navigate)"
+          onclick={(e) => { e.stopPropagation(); selectAndRevealNode(resolveCrossRef(attr, val)); }}
+        >
+          <ArrowRight size={12} />
+        </button>
+      {/each}
     </button>
 
     <!-- Children -->
@@ -791,6 +927,29 @@
     border-radius: 10px;
     color: var(--cds-text-03);
     flex-shrink: 0;
+  }
+
+  /* Cross-reference link buttons */
+  .cross-ref-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    margin-left: 2px;
+    background: transparent;
+    border: 1px solid var(--cds-link-01);
+    border-radius: 3px;
+    color: var(--cds-link-01);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .cross-ref-link:hover {
+    background: var(--cds-link-01);
+    color: var(--cds-inverse-01);
   }
 
   /* Tree children indentation guide */
