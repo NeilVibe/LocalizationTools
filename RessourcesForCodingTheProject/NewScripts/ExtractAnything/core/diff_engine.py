@@ -9,7 +9,7 @@ from pathlib import Path
 
 import config
 from . import xml_parser, input_parser
-from .text_utils import extract_differences
+from .text_utils import extract_differences, has_letter_change
 from .xml_writer import write_locstr_xml
 
 logger = logging.getLogger(__name__)
@@ -43,6 +43,55 @@ def _entries_to_ordered(entries: list[dict]) -> OrderedDict:
 
 
 # ---------------------------------------------------------------------------
+# Post-filter: non-letter-only changes
+# ---------------------------------------------------------------------------
+
+def _filter_nonletter_changes(
+    source_entries: list[dict],
+    extracted: list[dict],
+    log_fn=None,
+) -> list[dict]:
+    """Remove entries whose Str diff contains NO letter changes.
+
+    Builds a SID→entry map from *source_entries*, then for each extracted
+    entry checks whether the Str difference involves at least one letter
+    (or a ``<br/>`` structural change).  Pure-punctuation / symbol diffs
+    are dropped.
+    """
+    src_map: dict[str, dict] = {}
+    for e in source_entries:
+        src_map[e["string_id"].lower()] = e
+
+    kept: list[dict] = []
+    filtered_count = 0
+    for e in extracted:
+        sid_lower = e["string_id"].lower()
+        src_e = src_map.get(sid_lower)
+        if src_e is None:
+            # ADD — no source to compare, always keep
+            kept.append(e)
+            continue
+        old_str = src_e.get("str_value", "")
+        new_str = e.get("str_value", "")
+        if old_str == new_str:
+            # Str unchanged — change is in other attributes, keep it
+            kept.append(e)
+            continue
+        if has_letter_change(old_str, new_str):
+            kept.append(e)
+        else:
+            filtered_count += 1
+            logger.debug(
+                "Filtered non-letter-only change: SID=%s old=%r new=%r",
+                e["string_id"], old_str, new_str,
+            )
+
+    if filtered_count and log_fn:
+        log_fn(f"Filtered {filtered_count:,} non-letter-only change(s)", "info")
+    return kept
+
+
+# ---------------------------------------------------------------------------
 # File-level diff
 # ---------------------------------------------------------------------------
 
@@ -53,6 +102,8 @@ def diff_file(
     mode: str = "Full (all attributes)",
     category_filter: str = "All (no filter)",
     category_map: dict[str, str] | None = None,
+    filter_nonletter: bool = False,
+    log_fn=None,
 ) -> list[dict]:
     """Compare *source* and *target* entries, return extracted entries.
 
@@ -66,19 +117,17 @@ def diff_file(
         target_entries = _filter_by_category(target_entries, category_filter, category_map)
 
     if mode == "Full (all attributes)":
-        return _diff_full(source_entries, target_entries)
+        result = _diff_full(source_entries, target_entries)
+    elif mode == "StrOrigin Diff":
+        result = _diff_strorigin(source_entries, target_entries)
+    else:
+        # Key-based modes
+        source_keys = {_build_key(e, mode) for e in source_entries}
+        result = [e for e in target_entries if _build_key(e, mode) not in source_keys]
 
-    if mode == "StrOrigin Diff":
-        return _diff_strorigin(source_entries, target_entries)
-
-    # Key-based modes
-    source_keys = {_build_key(e, mode) for e in source_entries}
-    extracted = []
-    for e in target_entries:
-        key = _build_key(e, mode)
-        if key not in source_keys:
-            extracted.append(e)
-    return extracted
+    if filter_nonletter:
+        result = _filter_nonletter_changes(source_entries, result, log_fn=log_fn)
+    return result
 
 
 def _diff_full(source_entries: list[dict], target_entries: list[dict]) -> list[dict]:
@@ -181,6 +230,7 @@ def diff_folder(
     mode: str = "Full (all attributes)",
     category_filter: str = "All (no filter)",
     category_map: dict[str, str] | None = None,
+    filter_nonletter: bool = False,
     valid_codes: set[str] | None = None,
     log_fn=None,
     progress_fn=None,
@@ -240,7 +290,8 @@ def diff_folder(
         if not tgt:
             continue
         extracted = diff_file(src, tgt, mode=mode, category_filter=category_filter,
-                              category_map=category_map)
+                              category_map=category_map, filter_nonletter=filter_nonletter,
+                              log_fn=log_fn)
         if extracted:
             result[lang] = extracted
             if log_fn:

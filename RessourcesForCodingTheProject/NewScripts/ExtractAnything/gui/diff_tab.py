@@ -75,6 +75,11 @@ class DiffTab(BaseTab):
         ttk.Combobox(opt, textvariable=self._file_cat_var, values=config.CATEGORY_FILTERS,
                      state="readonly", width=30).grid(row=1, column=1, padx=5, pady=2)
 
+        self._file_nonletter_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(opt, text="Filter non-letter-only changes",
+                        variable=self._file_nonletter_var).grid(row=2, column=0, columnspan=2,
+                                                                 sticky="w", padx=5, pady=2)
+
         # Action
         ttk.Button(f, text="Run File Diff", command=self._run_file_diff).pack(pady=10)
 
@@ -115,6 +120,11 @@ class DiffTab(BaseTab):
         self._folder_cat_var = tk.StringVar(value=config.CATEGORY_FILTERS[0])
         ttk.Combobox(opt, textvariable=self._folder_cat_var, values=config.CATEGORY_FILTERS,
                      state="readonly", width=30).grid(row=1, column=1, padx=5, pady=2)
+
+        self._folder_nonletter_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(opt, text="Filter non-letter-only changes",
+                        variable=self._folder_nonletter_var).grid(row=2, column=0, columnspan=2,
+                                                                    sticky="w", padx=5, pady=2)
 
         ttk.Button(f, text="Run Folder Diff", command=self._run_folder_diff).pack(pady=10)
 
@@ -198,11 +208,14 @@ class DiffTab(BaseTab):
 
         mode = self._file_mode_var.get()
         cat_filter = self._file_cat_var.get()
+        filter_nonletter = self._file_nonletter_var.get()
 
         def work():
             self._log_header(f"File Diff: {mode} | {cat_filter}")
             self.set_progress(5)
 
+            if filter_nonletter:
+                self.log("Non-letter-only changes will be filtered out")
             if self.app.path_filter_active:
                 self.log(f"Path filter active: {self.app.path_filter_count} paths selected")
 
@@ -239,6 +252,7 @@ class DiffTab(BaseTab):
             extracted = diff_engine.diff_file(
                 src_entries, tgt_entries,
                 mode=mode, category_filter=cat_filter, category_map=cat_map,
+                filter_nonletter=filter_nonletter, log_fn=self.log,
             )
             extracted = self.filter_entries_by_path(extracted)
             self.set_progress(90)
@@ -278,10 +292,13 @@ class DiffTab(BaseTab):
 
         mode = self._folder_mode_var.get()
         cat_filter = self._folder_cat_var.get()
+        filter_nonletter = self._folder_nonletter_var.get()
 
         def work():
             self._log_header(f"Folder Diff: {mode} | {cat_filter}")
 
+            if filter_nonletter:
+                self.log("Non-letter-only changes will be filtered out")
             if self.app.path_filter_active:
                 self.log(f"Path filter active: {self.app.path_filter_count} paths selected")
 
@@ -304,6 +321,7 @@ class DiffTab(BaseTab):
             result = diff_engine.diff_folder(
                 Path(src), Path(tgt),
                 mode=mode, category_filter=cat_filter, category_map=cat_map,
+                filter_nonletter=filter_nonletter,
                 log_fn=self.log,
                 progress_fn=self.set_progress,
             )

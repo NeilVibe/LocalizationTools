@@ -159,6 +159,47 @@ _CURLY_RE = re.compile(r"\{[^}]*\}")
 _WHITESPACE_RE = re.compile(r"\s+")
 
 
+def has_letter_change(old_str: str, new_str: str) -> bool:
+    """Return True if the diff between *old_str* and *new_str* contains at least
+    one letter change (``str.isalpha``) or a ``<br/>`` structural change.
+
+    Returns False when the only differences are punctuation, quotation marks,
+    special unicode spaces, symbols, or other non-letter characters.
+    """
+    from difflib import SequenceMatcher
+
+    old_str = old_str or ""
+    new_str = new_str or ""
+
+    if old_str == new_str:
+        return False
+
+    # Detect <br/> count changes — structural, always significant
+    old_br_count = len(_BR_TAG_NL_RE.findall(old_str))
+    new_br_count = len(_BR_TAG_NL_RE.findall(new_str))
+    if old_br_count != new_br_count:
+        return True
+
+    # Strip <br/> tags so they don't interfere with character-level diff
+    old_clean = _BR_TAG_NL_RE.sub('', old_str)
+    new_clean = _BR_TAG_NL_RE.sub('', new_str)
+
+    if old_clean == new_clean:
+        return False
+
+    matcher = SequenceMatcher(None, old_clean, new_clean)
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == 'equal':
+            continue
+        # Check characters involved in this change
+        old_chars = old_clean[i1:i2]
+        new_chars = new_clean[j1:j2]
+        for ch in old_chars + new_chars:
+            if ch.isalpha():
+                return True
+    return False
+
+
 def extract_differences(text1: str, text2: str, max_length: int = 120) -> str:
     """Word-level diff between two strings using SequenceMatcher.
 
