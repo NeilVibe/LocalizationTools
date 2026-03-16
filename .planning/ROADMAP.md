@@ -96,11 +96,11 @@ Plans:
   2. Tree parser uses lxml el.iter(), el.findall(), and parent/child navigation (like QACompiler generators), not flat row extraction
   3. Mock fixtures include SkillTreeInfo with nested SkillNodes + ParentId references, KnowledgeInfo with KnowledgeList children, and GimmickGroup with GimmickInfo nesting
   4. Parser handles all existing mock entity types (iteminfo, characterinfo, skillinfo, knowledgeinfo, gimmickgroupinfo, regioninfo, questinfo, sceneobjectdata, sealdatainfo)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 27-01: lxml hierarchical tree parser API endpoint (tree walking, parent/child, nesting detection)
-- [ ] 27-02: Expand mock gamedata fixtures with real hierarchical examples
+- [ ] 27-01-PLAN.md — lxml hierarchical tree parser API endpoint + TreeNode schemas + unit/API tests
+- [ ] 27-02-PLAN.md — Expand mock fixtures with multi-branch SkillTree + KnowledgeList nesting
 
 ### Phase 28: Hierarchical Tree UI
 **Goal**: Users can explore XML gamedata as a beautiful, expandable tree -- navigating parent/child hierarchies, viewing node details, editing text attributes, and following cross-reference links between entities
