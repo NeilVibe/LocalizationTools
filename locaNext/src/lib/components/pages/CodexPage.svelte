@@ -7,10 +7,11 @@
    *
    * Phase 19: Game World Codex (Plan 02)
    */
-  import { InlineLoading, Tag } from "carbon-components-svelte";
-  import { Book, ArrowLeft } from "carbon-icons-svelte";
+  import { InlineLoading, Tag, Button, ProgressBar, InlineNotification } from "carbon-components-svelte";
+  import { Book, ArrowLeft, ImageReference, Close } from "carbon-icons-svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
+  import { websocket } from "$lib/api/websocket.js";
   import CodexSearchBar from "$lib/components/ldm/CodexSearchBar.svelte";
   import PlaceholderImage from "$lib/components/ldm/PlaceholderImage.svelte";
   import CodexEntityDetail from "$lib/components/ldm/CodexEntityDetail.svelte";
@@ -48,6 +49,126 @@
   let loadingDetail = $state(false);
   let apiError = $state(null);
   let failedImages = $state(new Set());
+
+  // AI image generation state
+  let imageGenAvailable = $state(false);
+  let batchPreview = $state(null);
+  let batchInProgress = $state(false);
+  let batchProgress = $state(0);
+  let batchStatus = $state('');
+  let batchOperationId = $state(null);
+  let batchError = $state(null);
+
+  // Check image-gen availability on mount
+  let genStatusChecked = $state(false);
+  $effect(() => {
+    if (!genStatusChecked) {
+      genStatusChecked = true;
+      fetch(`${API_BASE}/api/ldm/codex/image-gen/status`, { headers: getAuthHeaders() })
+        .then(r => r.json())
+        .then(data => { imageGenAvailable = data.available; })
+        .catch(() => { imageGenAvailable = false; });
+    }
+  });
+
+  // WebSocket listeners for batch progress
+  let unsubProgress;
+  let unsubComplete;
+  let unsubFailed;
+
+  $effect(() => {
+    if (batchInProgress && batchOperationId) {
+      websocket.socket?.emit('subscribe', { events: ['progress'] });
+
+      unsubProgress = websocket.on('progress_update', (data) => {
+        if (data.operation_id === batchOperationId) {
+          batchProgress = data.progress_percentage ?? 0;
+          batchStatus = data.current_step ?? `${data.completed_steps}/${data.total_steps} images generated`;
+        }
+      });
+
+      unsubComplete = websocket.on('operation_complete', (data) => {
+        if (data.operation_id === batchOperationId) {
+          batchInProgress = false;
+          batchProgress = 100;
+          batchStatus = 'Complete';
+          batchOperationId = null;
+          fetchEntityList(activeTab);
+        }
+      });
+
+      unsubFailed = websocket.on('operation_failed', (data) => {
+        if (data.operation_id === batchOperationId) {
+          batchInProgress = false;
+          batchError = data.error_message;
+          batchOperationId = null;
+        }
+      });
+
+      return () => {
+        unsubProgress?.();
+        unsubComplete?.();
+        unsubFailed?.();
+      };
+    }
+  });
+
+  /**
+   * Preview batch generation (cost estimate)
+   */
+  async function previewBatchGenerate() {
+    batchError = null;
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/ldm/codex/batch-generate/${activeTab}?confirm=false`,
+        { method: 'POST', headers: getAuthHeaders() }
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      batchPreview = await response.json();
+    } catch (err) {
+      logger.error('Batch preview failed', { error: err.message });
+      batchError = err.message;
+    }
+  }
+
+  /**
+   * Confirm and start batch generation
+   */
+  async function confirmBatchGenerate() {
+    batchPreview = null;
+    batchError = null;
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/ldm/codex/batch-generate/${activeTab}?confirm=true`,
+        { method: 'POST', headers: getAuthHeaders() }
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      batchInProgress = true;
+      batchOperationId = data.operation_id;
+      batchProgress = 0;
+      batchStatus = `0/${data.to_generate} images generated`;
+    } catch (err) {
+      logger.error('Batch generation start failed', { error: err.message });
+      batchError = err.message;
+    }
+  }
+
+  /**
+   * Cancel running batch generation
+   */
+  async function cancelBatchGenerate() {
+    if (!batchOperationId) return;
+    batchStatus = 'Cancelling...';
+    try {
+      await fetch(
+        `${API_BASE}/api/ldm/codex/batch-generate/cancel/${batchOperationId}`,
+        { method: 'POST', headers: getAuthHeaders() }
+      );
+    } catch (err) {
+      logger.error('Batch cancel failed', { error: err.message });
+    }
+  }
 
   // Sorted tab list (exclude 'knowledge' internal type)
   let tabList = $derived(
@@ -242,6 +363,48 @@
       {/each}
     </div>
 
+    <!-- Batch Generation Controls -->
+    {#if imageGenAvailable && activeTab}
+      <div class="batch-controls">
+        {#if batchInProgress}
+          <div class="batch-progress">
+            <ProgressBar value={batchProgress} labelText={batchStatus} />
+            <Button kind="ghost" size="small" icon={Close} iconDescription="Cancel" on:click={cancelBatchGenerate}>Cancel</Button>
+          </div>
+        {:else if batchPreview}
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title="Batch Generation"
+            subtitle="{batchPreview.to_generate} entities need images. Estimated cost: {batchPreview.estimated_cost}"
+          />
+          <div class="batch-confirm">
+            <Button kind="primary" size="small" on:click={confirmBatchGenerate}>Generate</Button>
+            <Button kind="ghost" size="small" on:click={() => { batchPreview = null; }}>Cancel</Button>
+          </div>
+        {:else}
+          <Button
+            kind="ghost"
+            size="small"
+            icon={ImageReference}
+            iconDescription="Generate All Images"
+            on:click={previewBatchGenerate}
+          >Generate All Images</Button>
+        {/if}
+        {#if batchError}
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title="Error"
+            subtitle={batchError}
+            on:close={() => { batchError = null; }}
+          />
+        {/if}
+      </div>
+    {/if}
+
     <!-- Content Area -->
     <div class="codex-content">
       {#if selectedEntity}
@@ -270,7 +433,18 @@
           {#each entities as entity (entity.strkey)}
             <button class="entity-card" onclick={() => selectEntity(entity)} aria-label="View {entity.name} ({entity.entity_type})">
               <div class="card-image">
-                {#if entity.image_texture && !failedImages.has(entity.strkey)}
+                {#if entity.ai_image_url && !failedImages.has('ai_' + entity.strkey)}
+                  <img
+                    src="{API_BASE}{entity.ai_image_url}"
+                    alt={entity.name}
+                    class="card-thumb"
+                    onerror={() => {
+                      const next = new Set(failedImages);
+                      next.add('ai_' + entity.strkey);
+                      failedImages = next;
+                    }}
+                  />
+                {:else if entity.image_texture && !failedImages.has(entity.strkey)}
                   <img
                     src="{API_BASE}/api/ldm/mapdata/thumbnail/{entity.image_texture}"
                     alt={entity.name}
@@ -542,5 +716,33 @@
     padding: 32px;
     color: var(--cds-text-02);
     font-size: 0.875rem;
+  }
+
+  .batch-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--cds-layer-01);
+    border-bottom: 1px solid var(--cds-border-subtle-01);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .batch-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .batch-progress :global(.bx--progress-bar) {
+    flex: 1;
+  }
+
+  .batch-confirm {
+    display: flex;
+    gap: 4px;
   }
 </style>
