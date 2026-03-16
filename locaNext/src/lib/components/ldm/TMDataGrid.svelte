@@ -503,7 +503,7 @@
         size="small"
         icon={Renew}
         disabled={syncing}
-        on:click={syncIndexes}
+        onclick={syncIndexes}
       >
         {syncing ? "Syncing..." : "Sync Indexes"}
       </Button>
@@ -514,7 +514,7 @@
         size="sm"
         items={metadataOptions}
         selectedId={selectedMetadata}
-        on:select={handleMetadataChange}
+        onselect={handleMetadataChange}
       />
     </div>
   </div>
@@ -524,7 +524,7 @@
       kind="error"
       title="Error"
       subtitle={errorMessage}
-      on:close={() => errorMessage = ""}
+      onclose={() => errorMessage = ""}
     />
   {/if}
 
@@ -533,8 +533,8 @@
     <div class="toolbar-left">
       <Search
         bind:value={searchTerm}
-        on:clear={() => { searchTerm = ""; handleSearch(); }}
-        on:input={handleSearch}
+        onclear={() => { searchTerm = ""; handleSearch(); }}
+        oninput={handleSearch}
         placeholder="Search source, target, or StringID..."
         size="sm"
       />
@@ -544,7 +544,7 @@
         kind="ghost"
         size="small"
         icon={Checkmark}
-        on:click={loadEntries}
+        onclick={loadEntries}
       >
         Refresh
       </Button>
@@ -672,7 +672,7 @@
                   icon={Edit}
                   iconDescription="Edit"
                   tooltipAlignment="end"
-                  on:click={() => startEdit(entry)}
+                  onclick={() => startEdit(entry)}
                 />
                 <Button
                   kind="danger-ghost"
@@ -680,7 +680,7 @@
                   icon={TrashCan}
                   iconDescription="Delete"
                   tooltipAlignment="end"
-                  on:click={() => deleteEntry(entry)}
+                  onclick={() => deleteEntry(entry)}
                 />
               </td>
             </tr>

@@ -99,7 +99,7 @@
   bind:open
   modalHeading="About LocaNext"
   passiveModal
-  on:close={handleClose}
+  onclose={handleClose}
   size="sm"
 >
   <div class="about-content">
@@ -156,7 +156,7 @@
       <Button
         kind="tertiary"
         icon={Renew}
-        on:click={checkForUpdates}
+        onclick={checkForUpdates}
         disabled={checkingUpdate}
       >
         {#if checkingUpdate}

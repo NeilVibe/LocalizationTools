@@ -66,7 +66,7 @@
   {danger}
   on:click:button--primary={handleSubmit}
   on:click:button--secondary={handleCancel}
-  on:close={handleCancel}
+  onclose={handleCancel}
   size="sm"
 >
   <TextInput
@@ -74,6 +74,6 @@
     bind:value={inputValue}
     labelText={label}
     {placeholder}
-    on:keydown={handleKeydown}
+    onkeydown={handleKeydown}
   />
 </Modal>

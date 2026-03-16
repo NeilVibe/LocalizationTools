@@ -643,7 +643,7 @@
       kind={notificationType}
       title={notificationType === 'success' ? 'Success' : notificationType === 'error' ? 'Error' : 'Info'}
       subtitle={notificationMessage}
-      on:close={() => showNotification = false}
+      onclose={() => showNotification = false}
     />
   {/if}
 
@@ -668,14 +668,14 @@
         <Button
           icon={Renew}
           kind="secondary"
-          on:click={refreshTasks}
+          onclick={refreshTasks}
         >
           Refresh
         </Button>
         <Button
           icon={TrashCan}
           kind="danger-tertiary"
-          on:click={clearHistory}
+          onclick={clearHistory}
           title="Clear completed, failed, and zombie tasks"
         >
           Clear All

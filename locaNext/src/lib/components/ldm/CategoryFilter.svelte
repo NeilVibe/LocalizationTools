@@ -55,7 +55,7 @@
     label="Category"
     items={categoryItems}
     selectedIds={selectedCategories}
-    on:select={handleSelect}
+    onselect={handleSelect}
     sortItem={(a, b) => a.text.localeCompare(b.text)}
   />
 </div>

@@ -170,7 +170,7 @@
   modalHeading="Manage Access: {resourceName}"
   passiveModal
   size="sm"
-  on:close={handleClose}
+  onclose={handleClose}
 >
   {#if loading}
     <div class="loading-state">
@@ -194,7 +194,7 @@
             size="sm"
             toggled={isRestricted}
             disabled={saving}
-            on:toggle={toggleRestriction}
+            ontoggle={toggleRestriction}
           />
         </div>
         <p class="restriction-help">
@@ -217,7 +217,7 @@
               icon={Add}
               iconDescription="Add user"
               disabled={saving || availableUsers.length === 0}
-              on:click={() => showUserPicker = true}
+              onclick={() => showUserPicker = true}
             >
               Add User
             </Button>
@@ -242,7 +242,7 @@
                     icon={TrashCan}
                     iconDescription="Revoke access"
                     disabled={saving}
-                    on:click={() => revokeAccess(user.user_id)}
+                    onclick={() => revokeAccess(user.user_id)}
                   />
                 </li>
               {/each}

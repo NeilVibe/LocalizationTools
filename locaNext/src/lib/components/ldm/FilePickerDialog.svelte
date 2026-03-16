@@ -194,7 +194,7 @@
   secondaryButtonText="Cancel"
   on:click:button--primary={confirmSelection}
   on:click:button--secondary={handleClose}
-  on:close={handleClose}
+  onclose={handleClose}
   size="sm"
 >
   <div class="file-picker">
@@ -206,7 +206,7 @@
         <Select
           labelText="Project"
           selected={selectedProjectId || ''}
-          on:change={handleProjectChange}
+          onchange={handleProjectChange}
           size="sm"
         >
           <SelectItem value="" text="-- Select Project --" disabled />

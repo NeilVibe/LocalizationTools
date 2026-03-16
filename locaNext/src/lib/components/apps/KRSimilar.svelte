@@ -545,7 +545,7 @@
         title={notificationType === 'success' ? 'Success' : notificationType === 'error' ? 'Error' : 'Info'}
         subtitle={statusMessage}
         timeout={5000}
-        on:close={() => showNotification = false}
+        onclose={() => showNotification = false}
       />
     </div>
   {/if}
@@ -561,7 +561,7 @@
     <Button
       kind="primary"
       icon={Upload}
-      on:click={() => showCreateDictionaryModal = true}
+      onclick={() => showCreateDictionaryModal = true}
     >
       Create Dictionary
     </Button>
@@ -569,7 +569,7 @@
     <Button
       kind="secondary"
       icon={FolderOpen}
-      on:click={() => showLoadDictionaryModal = true}
+      onclick={() => showLoadDictionaryModal = true}
     >
       Load Dictionary
     </Button>
@@ -578,7 +578,7 @@
       <Button
         kind="tertiary"
         icon={Search}
-        on:click={() => showExtractSimilarModal = true}
+        onclick={() => showExtractSimilarModal = true}
       >
         Extract Similar
       </Button>
@@ -586,7 +586,7 @@
       <Button
         kind="tertiary"
         icon={Translate}
-        on:click={() => showAutoTranslateModal = true}
+        onclick={() => showAutoTranslateModal = true}
       >
         Auto-Translate
       </Button>
@@ -594,7 +594,7 @@
       <Button
         kind="danger-tertiary"
         icon={TrashCan}
-        on:click={clearDictionary}
+        onclick={clearDictionary}
       >
         Clear Dictionary
       </Button>
@@ -671,7 +671,7 @@
           kind="primary"
           icon={Search}
           disabled={isSearching || !searchQuery.trim()}
-          on:click={performSearch}
+          onclick={performSearch}
         >
           {isSearching ? 'Searching...' : 'Search'}
         </Button>

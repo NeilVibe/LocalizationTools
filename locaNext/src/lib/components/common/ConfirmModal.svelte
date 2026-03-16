@@ -38,7 +38,7 @@
   {danger}
   on:click:button--primary={handleConfirm}
   on:click:button--secondary={handleCancel}
-  on:close={handleCancel}
+  onclose={handleCancel}
   size="sm"
 >
   <p class="confirm-message">{message}</p>

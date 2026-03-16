@@ -78,8 +78,8 @@
   secondaryButtonText="Cancel"
   primaryButtonDisabled={loading || success}
   on:click:button--secondary={handleClose}
-  on:close={handleClose}
-  on:submit={handleSubmit}
+  onclose={handleClose}
+  onsubmit={handleSubmit}
   size="sm"
 >
   {#if success}
@@ -95,11 +95,11 @@
         kind="error"
         title="Error"
         subtitle={error}
-        on:close={() => error = null}
+        onclose={() => error = null}
       />
     {/if}
 
-    <Form on:submit={handleSubmit}>
+    <Form onsubmit={handleSubmit}>
       <FormGroup legendText="">
         <TextInput
           id="current-password"

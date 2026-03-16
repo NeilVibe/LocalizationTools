@@ -66,7 +66,7 @@
   bind:open
   modalHeading="Grid Columns"
   passiveModal
-  on:close={handleClose}
+  onclose={handleClose}
   size="xs"
 >
   <div class="modal-content">
@@ -87,17 +87,17 @@
       <Checkbox
         labelText="Index Number"
         checked={showIndex}
-        on:check={(e) => { showIndex = e.detail; handleColumnToggle('showIndex', e.detail); }}
+        oncheck={(e) => { showIndex = e.detail; handleColumnToggle('showIndex', e.detail); }}
       />
       <Checkbox
         labelText="String ID"
         checked={showStringId}
-        on:check={(e) => { showStringId = e.detail; handleColumnToggle('showStringId', e.detail); }}
+        oncheck={(e) => { showStringId = e.detail; handleColumnToggle('showStringId', e.detail); }}
       />
       <Checkbox
         labelText="Reference Column"
         checked={showReference}
-        on:check={(e) => { showReference = e.detail; handleColumnToggle('showReference', e.detail); }}
+        oncheck={(e) => { showReference = e.detail; handleColumnToggle('showReference', e.detail); }}
       />
     </div>
 

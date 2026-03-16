@@ -302,7 +302,7 @@
   primaryButtonDisabled={updateState === 'downloading' || updateState === 'error'}
   on:click:button--primary={() => updateState === 'downloaded' ? handleRestartNow() : handleDownload()}
   on:click:button--secondary={handleLater}
-  on:close={handleClose}
+  onclose={handleClose}
   preventCloseOnClickOutside={updateState === 'downloading'}
   size="sm"
 >

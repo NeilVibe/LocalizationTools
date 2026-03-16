@@ -328,7 +328,7 @@
         size="small"
         icon={Close}
         iconDescription="Close"
-        on:click={closePanel}
+        onclick={closePanel}
       />
     </div>
 
@@ -342,7 +342,7 @@
             size="small"
             icon={StopFilled}
             iconDescription="Cancel QA Check"
-            on:click={cancelOperations}
+            onclick={cancelOperations}
           >
             Cancel
           </Button>
@@ -353,7 +353,7 @@
             icon={Renew}
             iconDescription="Run Full QA"
             disabled={loading}
-            on:click={runFullQA}
+            onclick={runFullQA}
           >
             Run Full QA
           </Button>
@@ -369,13 +369,13 @@
           title="Error"
           subtitle={errorMessage}
           lowContrast
-          on:close={dismissError}
+          onclose={dismissError}
         />
         <Button
           kind="ghost"
           size="small"
           icon={Renew}
-          on:click={retryLoad}
+          onclick={retryLoad}
         >
           Retry
         </Button>
@@ -412,7 +412,7 @@
     <div class="qa-filter">
       <ContentSwitcher
         selectedIndex={selectedCheckType}
-        on:change={handleCheckTypeChange}
+        onchange={handleCheckTypeChange}
       >
         {#each checkTypes as type}
           <Switch text={type.label} />

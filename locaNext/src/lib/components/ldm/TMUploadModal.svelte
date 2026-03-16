@@ -204,7 +204,7 @@
   secondaryButtonText="Cancel"
   on:click:button--primary={uploadTM}
   on:click:button--secondary={handleClose}
-  on:close={handleClose}
+  onclose={handleClose}
 >
   <div class="upload-form">
     {#if uploadStatus === "uploading"}
@@ -236,7 +236,7 @@
         kind="error"
         title="Upload Failed"
         subtitle={errorMessage}
-        on:close={() => { uploadStatus = ""; errorMessage = ""; }}
+        onclose={() => { uploadStatus = ""; errorMessage = ""; }}
       />
 
       <div class="form-fields">

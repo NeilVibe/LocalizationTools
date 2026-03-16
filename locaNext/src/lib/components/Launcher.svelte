@@ -461,7 +461,7 @@
           labelText="Password"
           placeholder="Enter password"
           disabled={loginLoading}
-          on:keydown={(e) => e.key === 'Enter' && handleLogin()}
+          onkeydown={(e) => e.key === 'Enter' && handleLogin()}
         />
 
         <Checkbox
@@ -471,10 +471,10 @@
         />
 
         <div class="login-buttons">
-          <Button kind="secondary" on:click={handleBackClick} disabled={loginLoading}>
+          <Button kind="secondary" onclick={handleBackClick} disabled={loginLoading}>
             Back
           </Button>
-          <Button kind="primary" on:click={handleLogin} disabled={loginLoading || !username || !password}>
+          <Button kind="primary" onclick={handleLogin} disabled={loginLoading || !username || !password}>
             {#if loginLoading}
               <InlineLoading description="Logging in..." />
             {:else}
@@ -518,10 +518,10 @@
           {/if}
         </div>
         <div class="update-actions">
-          <Button kind="ghost" size="small" on:click={handleSkipUpdate}>
+          <Button kind="ghost" size="small" onclick={handleSkipUpdate}>
             Later
           </Button>
-          <Button kind="primary" size="small" on:click={handleRestartNow}>
+          <Button kind="primary" size="small" onclick={handleRestartNow}>
             <Restart size={16} />
             Restart Now
           </Button>
@@ -561,7 +561,7 @@
         </div>
 
         <div class="update-actions">
-          <Button kind="ghost" size="small" on:click={handleSkipUpdate}>
+          <Button kind="ghost" size="small" onclick={handleSkipUpdate}>
             Skip
           </Button>
         </div>

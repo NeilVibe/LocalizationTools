@@ -145,7 +145,7 @@
   modalHeading="Server Status"
   passiveModal
   size="sm"
-  on:close={() => open = false}
+  onclose={() => open = false}
 >
   <div class="status-panel">
     {#if loading && !status}
@@ -224,7 +224,7 @@
           icon={Renew}
           iconDescription="Refresh"
           disabled={loading}
-          on:click={checkHealth}
+          onclick={checkHealth}
         >
           Refresh
         </Button>
@@ -234,7 +234,7 @@
       <div class="error-state">
         <Error size={32} />
         <p>{errorMessage}</p>
-        <Button kind="tertiary" size="small" on:click={checkHealth}>Retry</Button>
+        <Button kind="tertiary" size="small" onclick={checkHealth}>Retry</Button>
       </div>
     {/if}
   </div>

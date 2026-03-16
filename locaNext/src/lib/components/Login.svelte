@@ -235,7 +235,7 @@
         title="Login Failed"
         subtitle={error}
         hideCloseButton={false}
-        on:close={() => error = ""}
+        onclose={() => error = ""}
       />
     {/if}
 
@@ -245,7 +245,7 @@
         placeholder="Enter your username"
         bind:value={username}
         disabled={isLoading}
-        on:keypress={handleKeyPress}
+        onkeypress={handleKeyPress}
         required
       />
 
@@ -254,7 +254,7 @@
         placeholder="Enter your password"
         bind:value={password}
         disabled={isLoading}
-        on:keypress={handleKeyPress}
+        onkeypress={handleKeyPress}
         required
       />
 

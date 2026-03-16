@@ -139,7 +139,7 @@
   bind:open
   modalHeading="Branch & Drive Settings"
   passiveModal
-  on:close={handleClose}
+  onclose={handleClose}
   size="sm"
 >
   <div class="modal-content">
@@ -220,7 +220,7 @@
         data-testid="settings-save-btn"
         kind="primary"
         size="small"
-        on:click={handleSave}
+        onclick={handleSave}
       >
         Save
       </Button>
@@ -229,7 +229,7 @@
         size="small"
         icon={Reset}
         iconDescription="Reset to defaults"
-        on:click={handleReset}
+        onclick={handleReset}
       >
         Reset
       </Button>

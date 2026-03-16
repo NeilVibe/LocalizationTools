@@ -405,7 +405,7 @@
   modalHeading="Translation Memories"
   passiveModal
   size="lg"
-  on:close={() => open = false}
+  onclose={() => open = false}
 >
   <div class="tm-manager">
     {#if errorMessage}
@@ -413,7 +413,7 @@
         kind="error"
         title="Error"
         subtitle={errorMessage}
-        on:close={() => errorMessage = ""}
+        onclose={() => errorMessage = ""}
       />
     {/if}
 
@@ -423,7 +423,7 @@
           kind="primary"
           size="small"
           icon={Add}
-          on:click={() => showUploadModal = true}
+          onclick={() => showUploadModal = true}
         >
           Upload TM
         </Button>
@@ -432,7 +432,7 @@
           size="small"
           icon={Renew}
           iconDescription="Refresh"
-          on:click={loadTMs}
+          onclick={loadTMs}
         />
       </div>
 
@@ -535,7 +535,7 @@
                     icon={View}
                     iconDescription="View Entries"
                     tooltipAlignment="end"
-                    on:click={() => viewTM(tm)}
+                    onclick={() => viewTM(tm)}
                   />
                   <!-- Export TM -->
                   <Button
@@ -544,7 +544,7 @@
                     icon={Download}
                     iconDescription="Export TM"
                     tooltipAlignment="end"
-                    on:click={() => openExportModal(tm)}
+                    onclick={() => openExportModal(tm)}
                   />
                   <!-- UI-003: Activate/Deactivate button -->
                   <button
@@ -568,7 +568,7 @@
                       iconDescription="Build Indexes"
                       tooltipAlignment="end"
                       disabled={buildingIndexes.has(tm.id)}
-                      on:click={() => confirmBuildIndexes(tm)}
+                      onclick={() => confirmBuildIndexes(tm)}
                     />
                   {/if}
                   <Button
@@ -577,7 +577,7 @@
                     icon={TrashCan}
                     iconDescription="Delete TM"
                     tooltipAlignment="end"
-                    on:click={() => confirmDelete(tm)}
+                    onclick={() => confirmDelete(tm)}
                   />
                 </td>
               </tr>
@@ -608,7 +608,7 @@
   danger
   on:click:button--primary={deleteTM}
   on:click:button--secondary={() => { deleteConfirmOpen = false; tmToDelete = null; }}
-  on:close={() => { deleteConfirmOpen = false; tmToDelete = null; }}
+  onclose={() => { deleteConfirmOpen = false; tmToDelete = null; }}
 >
   {#if tmToDelete}
     <p>Are you sure you want to delete <strong>{tmToDelete.name}</strong>?</p>
@@ -628,7 +628,7 @@
   secondaryButtonText="Cancel"
   on:click:button--primary={executeBuildIndexes}
   on:click:button--secondary={() => { buildConfirmOpen = false; tmToBuild = null; }}
-  on:close={() => { buildConfirmOpen = false; tmToBuild = null; }}
+  onclose={() => { buildConfirmOpen = false; tmToBuild = null; }}
 >
   {#if tmToBuild}
     <p>Build semantic search indexes for <strong>{tmToBuild.name}</strong>?</p>
@@ -668,7 +668,7 @@
   primaryButtonDisabled={exporting}
   on:click:button--primary={executeExport}
   on:click:button--secondary={closeExportModal}
-  on:close={closeExportModal}
+  onclose={closeExportModal}
 >
   {#if tmToExport}
     <div class="export-modal">

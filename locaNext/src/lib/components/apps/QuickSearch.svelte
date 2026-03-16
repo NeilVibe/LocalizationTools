@@ -1015,7 +1015,7 @@
         title={notificationType === 'success' ? 'Success' : 'Error'}
         subtitle={statusMessage}
         timeout={5000}
-        on:close={() => showNotification = false}
+        onclose={() => showNotification = false}
       />
     </div>
   {/if}
@@ -1038,7 +1038,7 @@
     <Button
       kind="primary"
       icon={Upload}
-      on:click={() => showCreateDictionaryModal = true}
+      onclick={() => showCreateDictionaryModal = true}
     >
       Create Dictionary
     </Button>
@@ -1046,7 +1046,7 @@
     <Button
       kind="secondary"
       icon={FolderOpen}
-      on:click={() => showLoadDictionaryModal = true}
+      onclick={() => showLoadDictionaryModal = true}
     >
       Load Dictionary
     </Button>
@@ -1055,7 +1055,7 @@
       <Button
         kind="tertiary"
         icon={FolderOpen}
-        on:click={() => showSetReferenceModal = true}
+        onclick={() => showSetReferenceModal = true}
       >
         Set Reference
       </Button>
@@ -1064,7 +1064,7 @@
         <Toggle
           labelText={referenceEnabled ? "Reference: ON" : "Reference: OFF"}
           toggled={referenceEnabled}
-          on:toggle={(e) => toggleReference(e.detail.toggled)}
+          ontoggle={(e) => toggleReference(e.detail.toggled)}
         />
       {/if}
     {/if}
@@ -1120,7 +1120,7 @@
           labelText="Search Query"
           placeholder="Enter Korean or Translation text..."
           bind:value={searchQuery}
-          on:keydown={(e) => e.key === 'Enter' && performSearch()}
+          onkeydown={(e) => e.key === 'Enter' && performSearch()}
         />
       {:else}
         <TextArea
@@ -1136,7 +1136,7 @@
           kind="primary"
           icon={Search}
           disabled={isSearching || !searchQuery.trim()}
-          on:click={performSearch}
+          onclick={performSearch}
         >
           {isSearching ? 'Searching...' : 'Search'}
         </Button>
@@ -1174,7 +1174,7 @@
             totalItems={totalResults}
             pageSize={pageSize}
             pageSizes={[25, 50, 100]}
-            on:update={handlePageChange}
+            onupdate={handlePageChange}
           />
         {/if}
       </div>
@@ -1220,7 +1220,7 @@
               {/if}
             </div>
 
-            <Button kind="ghost" size="small" on:click={clearQAResults}>Clear All</Button>
+            <Button kind="ghost" size="small" onclick={clearQAResults}>Clear All</Button>
           </div>
 
           <!-- Progress Bar -->
@@ -1264,12 +1264,12 @@
                   <Button
                     kind="primary"
                     disabled={qaIsProcessing || qaFiles.length === 0}
-                    on:click={runQAExtractGlossary}
+                    onclick={runQAExtractGlossary}
                   >
                     {qaIsProcessing && qaCurrentOperation === 'extract-glossary' ? 'Extracting...' : 'Extract Glossary'}
                   </Button>
                   {#if qaGlossaryResults}
-                    <Button kind="ghost" icon={DocumentExport} on:click={() => exportQAResults('glossary')}>Export</Button>
+                    <Button kind="ghost" icon={DocumentExport} onclick={() => exportQAResults('glossary')}>Export</Button>
                   {/if}
                 </div>
 
@@ -1320,12 +1320,12 @@
                   <Button
                     kind="primary"
                     disabled={qaIsProcessing || qaFiles.length === 0}
-                    on:click={runQALineCheck}
+                    onclick={runQALineCheck}
                   >
                     {qaIsProcessing && qaCurrentOperation === 'line-check' ? 'Checking...' : 'Run Line Check'}
                   </Button>
                   {#if qaLineCheckResults}
-                    <Button kind="ghost" icon={DocumentExport} on:click={() => exportQAResults('line-check')}>Export</Button>
+                    <Button kind="ghost" icon={DocumentExport} onclick={() => exportQAResults('line-check')}>Export</Button>
                   {/if}
                 </div>
 
@@ -1383,12 +1383,12 @@
                   <Button
                     kind="primary"
                     disabled={qaIsProcessing || qaFiles.length === 0}
-                    on:click={runQATermCheck}
+                    onclick={runQATermCheck}
                   >
                     {qaIsProcessing && qaCurrentOperation === 'term-check' ? 'Checking...' : 'Run Term Check'}
                   </Button>
                   {#if qaTermCheckResults}
-                    <Button kind="ghost" icon={DocumentExport} on:click={() => exportQAResults('term-check')}>Export</Button>
+                    <Button kind="ghost" icon={DocumentExport} onclick={() => exportQAResults('term-check')}>Export</Button>
                   {/if}
                 </div>
 
@@ -1430,12 +1430,12 @@
                   <Button
                     kind="primary"
                     disabled={qaIsProcessing || qaFiles.length === 0}
-                    on:click={runQAPatternCheck}
+                    onclick={runQAPatternCheck}
                   >
                     {qaIsProcessing && qaCurrentOperation === 'pattern-check' ? 'Checking...' : 'Run Pattern Check'}
                   </Button>
                   {#if qaPatternCheckResults}
-                    <Button kind="ghost" icon={DocumentExport} on:click={() => exportQAResults('pattern-check')}>Export</Button>
+                    <Button kind="ghost" icon={DocumentExport} onclick={() => exportQAResults('pattern-check')}>Export</Button>
                   {/if}
                 </div>
 
@@ -1482,12 +1482,12 @@
                   <Button
                     kind="primary"
                     disabled={qaIsProcessing || qaFiles.length === 0}
-                    on:click={runQACharacterCount}
+                    onclick={runQACharacterCount}
                   >
                     {qaIsProcessing && qaCurrentOperation === 'character-count' ? 'Checking...' : 'Run Character Count'}
                   </Button>
                   {#if qaCharCountResults}
-                    <Button kind="ghost" icon={DocumentExport} on:click={() => exportQAResults('char-count')}>Export</Button>
+                    <Button kind="ghost" icon={DocumentExport} onclick={() => exportQAResults('char-count')}>Export</Button>
                   {/if}
                 </div>
 
@@ -1544,7 +1544,7 @@
     <RadioButtonGroup
       legendText="Source Selection Mode"
       bind:selected={sourceMode}
-      on:change={() => { createFiles = []; selectedFolderPath = ''; folderFilesCount = 0; }}
+      onchange={() => { createFiles = []; selectedFolderPath = ''; folderFilesCount = 0; }}
     >
       <RadioButton labelText="Select Files (XML/TXT)" value="files" />
       <RadioButton labelText="Select Folder (recursive)" value="folder" />
@@ -1561,7 +1561,7 @@
       />
     {:else}
       <div class="folder-selection">
-        <Button kind="secondary" icon={FolderOpen} on:click={selectFolder}>
+        <Button kind="secondary" icon={FolderOpen} onclick={selectFolder}>
           Select Folder
         </Button>
         {#if selectedFolderPath}

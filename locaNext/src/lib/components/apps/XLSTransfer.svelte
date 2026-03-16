@@ -1539,7 +1539,7 @@
   <input
     type="file"
     bind:this={fileInputCreateDict}
-    on:change={handleCreateDictFiles}
+    onchange={handleCreateDictFiles}
     accept=".xlsx,.xls"
     multiple
     style="display: none;"
@@ -1547,27 +1547,27 @@
   <input
     type="file"
     bind:this={fileInputTransferClose}
-    on:change={handleTransferCloseFile}
+    onchange={handleTransferCloseFile}
     accept=".txt"
     style="display: none;"
   />
   <input
     type="file"
     bind:this={fileInputTransferExcel}
-    on:change={handleTransferExcelFile}
+    onchange={handleTransferExcelFile}
     accept=".xlsx,.xls"
     style="display: none;"
   />
 
   <div class="button-frame">
     <!-- Button 1: Create dictionary -->
-    <Button on:click={createDictionary} kind="secondary" size="default">
+    <Button onclick={createDictionary} kind="secondary" size="default">
       Create dictionary
     </Button>
 
     <!-- Button 2: Load dictionary -->
     <Button
-      on:click={loadDictionary}
+      onclick={loadDictionary}
       kind="secondary"
       size="default"
       class={isDictionaryLoaded ? 'loaded' : ''}
@@ -1577,7 +1577,7 @@
 
     <!-- Button 3: Transfer to Close (initially disabled) -->
     <Button
-      on:click={transferToClose}
+      onclick={transferToClose}
       kind="secondary"
       size="default"
       disabled={!isTransferEnabled}
@@ -1597,13 +1597,13 @@
     </div>
 
     <!-- Button 4: STOP -->
-    <Button on:click={stopProcessingFunction} kind="danger" size="default">
+    <Button onclick={stopProcessingFunction} kind="danger" size="default">
       STOP
     </Button>
 
     <!-- Button 5: Transfer to Excel (initially disabled) -->
     <Button
-      on:click={transferToExcel}
+      onclick={transferToExcel}
       kind="secondary"
       size="default"
       disabled={!isTransferEnabled}
@@ -1612,22 +1612,22 @@
     </Button>
 
     <!-- Button 6: Check Newlines -->
-    <Button on:click={checkNewlines} kind="secondary" size="default">
+    <Button onclick={checkNewlines} kind="secondary" size="default">
       Check Newlines
     </Button>
 
     <!-- Button 7: Combine Excel Files -->
-    <Button on:click={combineExcelFiles} kind="secondary" size="default">
+    <Button onclick={combineExcelFiles} kind="secondary" size="default">
       Combine Excel Files
     </Button>
 
     <!-- Button 8: Newline Auto Adapt -->
-    <Button on:click={newlineAutoAdapt} kind="secondary" size="default">
+    <Button onclick={newlineAutoAdapt} kind="secondary" size="default">
       Newline Auto Adapt
     </Button>
 
     <!-- Button 9: Simple Excel Transfer -->
-    <Button on:click={simpleExcelTransfer} kind="secondary" size="default">
+    <Button onclick={simpleExcelTransfer} kind="secondary" size="default">
       Simple Excel Transfer
     </Button>
   </div>
@@ -1689,7 +1689,7 @@
         title={notificationType === 'success' ? 'Success' : notificationType === 'error' ? 'Error' : notificationType === 'info' ? 'Info' : 'Warning'}
         subtitle={statusMessage}
         timeout={5000}
-        on:close={() => showNotification = false}
+        onclose={() => showNotification = false}
       />
     </div>
   {/if}

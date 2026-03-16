@@ -201,7 +201,7 @@
   secondaryButtonText="Cancel"
   on:click:button--primary={runPretranslation}
   on:click:button--secondary={handleClose}
-  on:close={handleClose}
+  onclose={handleClose}
 >
   <div class="pretranslate-form">
     {#if status === "running"}
@@ -250,7 +250,7 @@
         kind="error"
         title="Error"
         subtitle={errorMessage}
-        on:close={() => { status = ""; errorMessage = ""; }}
+        onclose={() => { status = ""; errorMessage = ""; }}
       />
       <!-- Show form again after error -->
       <div class="form-fields">

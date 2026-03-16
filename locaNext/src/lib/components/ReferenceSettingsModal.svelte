@@ -128,7 +128,7 @@
   bind:open
   modalHeading="Reference Settings"
   passiveModal
-  on:close={handleClose}
+  onclose={handleClose}
   size="sm"
 >
   <div class="modal-content">
@@ -162,14 +162,14 @@
               size="small"
               icon={FolderOpen}
               iconDescription="Change file"
-              on:click={() => showFilePicker = true}
+              onclick={() => showFilePicker = true}
             />
             <Button
               kind="ghost"
               size="small"
               icon={Close}
               iconDescription="Clear reference"
-              on:click={clearReferenceFile}
+              onclick={clearReferenceFile}
             />
           </div>
         </div>
@@ -180,7 +180,7 @@
             kind="tertiary"
             size="small"
             icon={FolderOpen}
-            on:click={() => showFilePicker = true}
+            onclick={() => showFilePicker = true}
           >
             Browse Files...
           </Button>
@@ -193,7 +193,7 @@
       <RadioButtonGroup
         legendText="Match Mode"
         selected={referenceMatchMode}
-        on:change={handleMatchModeChange}
+        onchange={handleMatchModeChange}
       >
         <RadioButton value="stringIdOnly" labelText="Match by String ID only" />
         <RadioButton value="stringIdAndSource" labelText="Match by String ID + Source text" />

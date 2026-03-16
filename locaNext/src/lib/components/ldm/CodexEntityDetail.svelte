@@ -199,7 +199,7 @@
                 icon={Renew}
                 iconDescription="Regenerate"
                 class="regenerate-btn"
-                on:click={() => generateImage(true)}
+                onclick={() => generateImage(true)}
               >Regenerate</Button>
             {/if}
           </div>
@@ -219,7 +219,7 @@
                 size="small"
                 icon={ImageReference}
                 iconDescription="Generate Image"
-                on:click={() => generateImage(false)}
+                onclick={() => generateImage(false)}
               >Generate Image</Button>
             {/if}
           </div>

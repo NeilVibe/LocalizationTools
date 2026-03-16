@@ -331,7 +331,7 @@
   modalHeading={tm ? `TM Viewer: ${tm.name}` : "TM Viewer"}
   passiveModal
   size="lg"
-  on:close={handleModalClose}
+  onclose={handleModalClose}
 >
   <div class="tm-viewer">
     {#if errorMessage}
@@ -339,7 +339,7 @@
         kind="error"
         title="Error"
         subtitle={errorMessage}
-        on:close={() => errorMessage = ""}
+        onclose={() => errorMessage = ""}
       />
     {/if}
 
@@ -348,8 +348,8 @@
       <div class="toolbar-left">
         <Search
           bind:value={searchTerm}
-          on:clear={() => { searchTerm = ""; handleSearch(); }}
-          on:input={handleSearch}
+          onclear={() => { searchTerm = ""; handleSearch(); }}
+          oninput={handleSearch}
           placeholder="Search source, target, or StringID..."
           size="sm"
         />
@@ -360,7 +360,7 @@
           size="sm"
           items={metadataOptions}
           selectedId={selectedMetadata}
-          on:select={handleMetadataChange}
+          onselect={handleMetadataChange}
         />
         <span class="entry-count">
           {total.toLocaleString()} entries
@@ -469,7 +469,7 @@
                       iconDescription="Save"
                       tooltipAlignment="end"
                       disabled={saving}
-                      on:click={() => saveEntry(entry.id)}
+                      onclick={() => saveEntry(entry.id)}
                     />
                     <Button
                       kind="ghost"
@@ -477,7 +477,7 @@
                       icon={Close}
                       iconDescription="Cancel"
                       tooltipAlignment="end"
-                      on:click={cancelEdit}
+                      onclick={cancelEdit}
                     />
                   </td>
                 </tr>
@@ -508,7 +508,7 @@
                       icon={Edit}
                       iconDescription="Edit"
                       tooltipAlignment="end"
-                      on:click={() => startEdit(entry)}
+                      onclick={() => startEdit(entry)}
                     />
                     <Button
                       kind="danger-ghost"
@@ -516,7 +516,7 @@
                       icon={TrashCan}
                       iconDescription="Delete"
                       tooltipAlignment="end"
-                      on:click={() => deleteEntry(entry.id)}
+                      onclick={() => deleteEntry(entry.id)}
                     />
                   </td>
                 </tr>

@@ -116,10 +116,10 @@
   <Search
     placeholder="Search entities by name or description..."
     bind:value={query}
-    on:input={handleInput}
-    on:clear={() => { query = ''; results = []; showDropdown = false; noResults = false; }}
-    on:focus={() => { if (results.length > 0) showDropdown = true; }}
-    on:blur={handleBlur}
+    oninput={handleInput}
+    onclear={() => { query = ''; results = []; showDropdown = false; noResults = false; }}
+    onfocus={() => { if (results.length > 0) showDropdown = true; }}
+    onblur={handleBlur}
     size="lg"
   />
 

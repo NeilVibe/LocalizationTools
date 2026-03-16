@@ -128,7 +128,7 @@
   bind:open
   modalHeading="Display Settings"
   passiveModal
-  on:close={handleClose}
+  onclose={handleClose}
   size="xs"
 >
   <div class="modal-content">
@@ -149,7 +149,7 @@
       <Select
         labelText="Font Size"
         selected={currentFontSize}
-        on:change={handleFontSizeChange}
+        onchange={handleFontSizeChange}
       >
         {#each fontSizes as size (size.value)}
           <SelectItem value={size.value} text={size.label} />
@@ -163,7 +163,7 @@
         labelA="Normal"
         labelB="Bold"
         toggled={currentFontWeight === 'bold'}
-        on:toggle={(e) => handleFontWeightChange(e.detail.toggled)}
+        ontoggle={(e) => handleFontWeightChange(e.detail.toggled)}
       />
     </div>
 
@@ -171,7 +171,7 @@
       <Select
         labelText="Font Family"
         selected={currentFontFamily}
-        on:change={handleFontFamilyChange}
+        onchange={handleFontFamilyChange}
       >
         {#each fontFamilies as family (family.value)}
           <SelectItem value={family.value} text={family.label} />
@@ -183,7 +183,7 @@
       <Select
         labelText="Text Contrast"
         selected={currentFontColor}
-        on:change={handleFontColorChange}
+        onchange={handleFontColorChange}
       >
         {#each fontColors as color (color.value)}
           <SelectItem value={color.value} text={color.label} />
