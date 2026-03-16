@@ -112,7 +112,7 @@ Plans:
   3. Clicking a tree node shows its attributes in a detail panel with editable text fields for name/desc attributes (respecting EDITABLE_ATTRS mapping)
   4. Cross-reference keys (e.g., SkillInfo.LearnKnowledgeKey linking to KnowledgeInfo) render as clickable links that navigate to the referenced entity in the tree
   5. Tree UI has proper indentation, color-coded node types, expand/collapse animations, entity icons per type, and hover previews -- visually superior to a code editor tree view
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 28-01: Tree component with folder loading, expand/collapse, dynamic node rendering per XML structure
