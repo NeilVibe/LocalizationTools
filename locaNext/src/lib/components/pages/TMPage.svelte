@@ -16,7 +16,8 @@
     Settings,
     Upload,
     Flash,
-    MachineLearning
+    MachineLearning,
+    DataBase
   } from 'carbon-icons-svelte';
   import { preferences } from '$lib/stores/preferences.js';
   import { logger } from '$lib/utils/logger.js';
@@ -299,6 +300,7 @@
   <!-- Clean header -->
   <div class="tm-page-header">
     <div class="header-title">
+      <DataBase size={20} />
       <h2>Translation Memories</h2>
     </div>
     <div class="header-actions">
@@ -451,9 +453,16 @@
     background: var(--cds-layer-01);
   }
 
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--cds-text-01);
+  }
+
   .header-title h2 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 1.125rem;
     font-weight: 600;
     color: var(--cds-text-01);
   }
@@ -621,43 +630,5 @@
     cursor: not-allowed;
   }
 
-  /* Context Menu */
-  .context-menu {
-    position: fixed;
-    z-index: 9999;
-    min-width: 160px;
-    background: var(--cds-layer-01);
-    border: 1px solid var(--cds-border-subtle-01);
-    border-radius: 4px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
-  }
-
-  .context-menu-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.75rem 1rem;
-    background: transparent;
-    border: none;
-    color: var(--cds-text-01);
-    font-size: 0.875rem;
-    cursor: pointer;
-    text-align: left;
-  }
-
-  .context-menu-item:hover {
-    background: var(--cds-layer-hover-01);
-  }
-
-  .context-menu-item.danger {
-    color: var(--cds-support-error);
-  }
-
-  .context-menu-divider {
-    height: 1px;
-    background: var(--cds-border-subtle-01);
-    margin: 0.25rem 0;
-  }
+  /* Context menu is rendered by TMExplorerGrid -- no dead CSS here */
 </style>

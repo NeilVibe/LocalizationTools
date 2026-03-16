@@ -13,6 +13,7 @@
    * - Drag-drop TM reassignment
    */
   import { onMount } from 'svelte';
+  import { SkeletonText } from 'carbon-components-svelte';
   import {
     Home,
     ChevronRight,
@@ -27,6 +28,7 @@
   } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
+  import { EmptyState } from '$lib/components/common';
   import ConfirmModal from '$lib/components/common/ConfirmModal.svelte';
   import { clipboard, copyToClipboard, cutToClipboard, clearClipboard, isItemCut } from '$lib/stores/clipboard.js';
 
@@ -1074,15 +1076,24 @@
 
   <!-- Grid -->
   {#if loading}
-    <div class="loading-state">
-      <span>Loading...</span>
+    <div class="skeleton-loading">
+      {#each Array(5) as _, i (i)}
+        <div class="skeleton-row">
+          <div class="skeleton-cell name-skeleton"><SkeletonText width="{40 + (i % 3) * 15}%" /></div>
+          <div class="skeleton-cell size-skeleton"><SkeletonText width="60%" /></div>
+          <div class="skeleton-cell status-skeleton"><SkeletonText width="50%" /></div>
+          <div class="skeleton-cell type-skeleton"><SkeletonText width="40%" /></div>
+        </div>
+      {/each}
     </div>
   {:else if currentItems.length === 0}
-    <div class="empty-state">
-      <DocumentBlank size={48} />
-      <p>No items here</p>
-      <span>Right-click to create a new TM or upload</span>
-    </div>
+    <EmptyState
+      icon={DataBase}
+      headline="No items here"
+      description="Right-click to create a new TM or upload"
+      ctaLabel="Upload TM"
+      onaction={() => { if (onUploadTM) onUploadTM(); }}
+    />
   {:else}
     <!-- Header row -->
     <div class="grid-header" role="row">
@@ -1293,27 +1304,38 @@
     flex-shrink: 0;
   }
 
-  /* Loading / Empty states */
-  .loading-state,
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+  /* Skeleton loading state */
+  .skeleton-loading {
     flex: 1;
-    padding: 2rem;
-    color: var(--cds-text-02);
+    padding: 0.5rem 0;
   }
 
-  .empty-state p {
-    margin: 1rem 0 0.25rem;
-    font-size: 1rem;
-    font-weight: 500;
-    color: var(--cds-text-01);
+  .skeleton-row {
+    display: flex;
+    padding: 0.625rem 1rem;
+    border-bottom: 1px solid var(--cds-border-subtle-01);
   }
 
-  .empty-state span {
-    font-size: 0.875rem;
+  .skeleton-cell {
+    display: flex;
+    align-items: center;
+  }
+
+  .name-skeleton {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .size-skeleton {
+    width: 120px;
+  }
+
+  .status-skeleton {
+    width: 80px;
+  }
+
+  .type-skeleton {
+    width: 80px;
   }
 
   /* Grid header */
@@ -1414,19 +1436,19 @@
   /* Item icons */
   .grid-row :global(.item-icon) {
     flex-shrink: 0;
-    color: #a8b0b8;
+    color: var(--cds-icon-secondary);
   }
 
   .grid-row.platform :global(.item-icon) {
-    color: #4589ff;
+    color: var(--cds-link-01);
   }
 
   .grid-row.project :global(.item-icon) {
-    color: #5a9a6e;
+    color: var(--cds-support-success);
   }
 
   .grid-row.folder :global(.item-icon) {
-    color: #d4a574;
+    color: var(--cds-support-warning);
   }
 
   /* TM activation toggle */
@@ -1447,11 +1469,11 @@
   }
 
   :global(.tm-icon.active) {
-    color: #24a148 !important;
+    color: var(--cds-support-success) !important;
   }
 
   :global(.tm-icon.inactive) {
-    color: #6f6f6f !important;
+    color: var(--cds-text-03) !important;
   }
 
   .item-name {
@@ -1478,8 +1500,9 @@
   }
 
   .status-badge.active {
-    background: rgba(36, 161, 72, 0.2);
-    color: #24a148;
+    background: var(--cds-layer-02);
+    border-left: 2px solid var(--cds-support-success);
+    color: var(--cds-support-success);
   }
 
   /* Context menu */
@@ -1516,7 +1539,7 @@
   }
 
   .context-item.danger:hover {
-    background: rgba(250, 77, 86, 0.1);
+    background: var(--cds-layer-hover-01);
   }
 
   /* UX-003: Context menu divider */
