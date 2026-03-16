@@ -12,6 +12,7 @@
   import GameDataTree from '$lib/components/ldm/GameDataTree.svelte';
   import GameDataContextPanel from '$lib/components/ldm/GameDataContextPanel.svelte';
   import { Renew, FolderOpen, ArrowRight, TreeView } from 'carbon-icons-svelte';
+  import { EmptyState } from '$lib/components/common';
 
   const API_BASE = getApiBase();
 
@@ -255,9 +256,7 @@
           onFileSelect={handleFileSelect}
         />
       {:else}
-        <div class="explorer-placeholder">
-          <p>Enter a gamedata folder path above to browse XML files</p>
-        </div>
+        <EmptyState icon={FolderOpen} headline="No gamedata folder" description="Enter a gamedata folder path above to browse XML files" />
       {/if}
     </div>
   </div>
@@ -287,10 +286,7 @@
         {/if}
       </div>
     {:else}
-      <div class="grid-placeholder">
-        <FolderOpen size={48} />
-        <p>Select a file from the explorer to view its tree</p>
-      </div>
+      <EmptyState icon={TreeView} headline="No file selected" description="Select a file from the explorer to view its tree structure" />
     {/if}
   </div>
 </div>
@@ -352,6 +348,7 @@
 
   .icon-button:hover {
     background: var(--cds-layer-hover-01);
+    transition: background var(--transition-fast, 0.1s ease);
   }
 
   .icon-button:focus {
@@ -361,7 +358,7 @@
 
   .path-input-row {
     display: flex;
-    gap: 4px;
+    gap: 0.25rem;
     padding: 0.5rem;
     border-bottom: 1px solid var(--cds-border-subtle-01);
     flex-shrink: 0;
@@ -402,6 +399,7 @@
 
   .browse-button:hover {
     background: var(--cds-layer-hover-01);
+    transition: background var(--transition-fast, 0.1s ease);
   }
 
   .browse-button:focus {
@@ -452,17 +450,6 @@
     overflow: hidden;
   }
 
-  .explorer-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    padding: 1rem;
-    color: var(--cds-text-02);
-    font-size: 0.8125rem;
-    text-align: center;
-  }
-
   /* Resize Handle */
   .resize-handle {
     width: 4px;
@@ -484,21 +471,6 @@
     overflow: hidden;
   }
 
-  .grid-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    gap: 1rem;
-    color: var(--cds-text-02);
-    font-size: 0.875rem;
-  }
-
-  .grid-placeholder p {
-    margin: 0;
-  }
-
   /* Phase 28: Tree + Detail layout */
   .tree-and-detail {
     display: flex;
@@ -513,14 +485,4 @@
     overflow: hidden;
   }
 
-  .detail-panel {
-    width: 320px;
-    min-width: 240px;
-    max-width: 500px;
-    border-left: 1px solid var(--cds-border-subtle-01);
-    overflow-y: auto;
-    background: var(--cds-layer-01);
-    scrollbar-width: thin;
-    scrollbar-color: var(--cds-border-subtle-01) transparent;
-  }
 </style>

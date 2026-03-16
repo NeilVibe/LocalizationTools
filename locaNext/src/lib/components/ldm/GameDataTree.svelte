@@ -25,6 +25,7 @@
     Renew
   } from 'carbon-icons-svelte';
   import { SkeletonText } from 'carbon-components-svelte';
+  import { EmptyState, ErrorState } from '$lib/components/common';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
 
@@ -613,18 +614,15 @@
   {/if}
 
   {#if loading}
-    <div class="loading-state">
-      <SkeletonText lines={8} />
+    <div class="tree-loading">
+      {#each Array(8) as _, i}
+        <div class="tree-skeleton-row" style="padding-left: {(i % 3) * 20 + 8}px;">
+          <SkeletonText width="{60 - (i % 3) * 10}%" />
+        </div>
+      {/each}
     </div>
   {:else if error}
-    <div class="error-state">
-      <p class="error-message">Failed to load tree</p>
-      <p class="error-detail">{error}</p>
-      <button class="retry-button" onclick={() => reload()} aria-label="Retry loading tree">
-        <Renew size={14} />
-        Retry
-      </button>
-    </div>
+    <ErrorState message={error} onretry={reload} />
   {:else if treeData && treeData.length > 0}
     <div class="tree-content">
       {#if treeData.length === 1}
@@ -639,11 +637,10 @@
         {/each}
       {/if}
     </div>
+  {:else if treeData && treeData.length === 0}
+    <EmptyState icon={DataStructured} headline="Empty file" description="This XML file contains no data nodes" />
   {:else}
-    <div class="empty-state">
-      <DataStructured size={32} />
-      <p>Select a file from the explorer to view its tree structure</p>
-    </div>
+    <EmptyState icon={DataStructured} headline="No file loaded" description="Select a file from the explorer to view its tree structure" />
   {/if}
 </div>
 
@@ -791,54 +788,12 @@
     outline: none;
   }
 
-  .loading-state {
-    padding: 1rem;
+  .tree-loading {
+    padding: 0.5rem 0;
   }
 
-  .error-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1.5rem 1rem;
-    text-align: center;
-  }
-
-  .error-message {
-    margin: 0;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--cds-support-error);
-  }
-
-  .error-detail {
-    margin: 0;
-    font-size: 0.75rem;
-    color: var(--cds-text-02);
-    word-break: break-word;
-  }
-
-  .retry-button {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.375rem 0.75rem;
-    margin-top: 0.5rem;
-    background: transparent;
-    border: 1px solid var(--cds-border-strong-01);
-    border-radius: 4px;
-    color: var(--cds-text-01);
-    cursor: pointer;
-    font-size: 0.8125rem;
-  }
-
-  .retry-button:hover {
-    background: var(--cds-layer-hover-01);
-  }
-
-  .retry-button:focus {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: 1px;
+  .tree-skeleton-row {
+    padding: 0.375rem 1rem;
   }
 
   .tree-content {
@@ -860,22 +815,6 @@
   .tree-content::-webkit-scrollbar-thumb {
     background: var(--cds-border-subtle-01);
     border-radius: 3px;
-  }
-
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    padding: 2rem;
-    color: var(--cds-text-02);
-    text-align: center;
-  }
-
-  .empty-state p {
-    margin: 0.5rem 0 0;
-    font-size: 0.8125rem;
   }
 
   /* File Group (folder mode) */
@@ -1080,7 +1019,6 @@
     background: var(--cds-layer-02);
     border: 1px solid var(--cds-border-subtle-01);
     border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     font-size: 0.6875rem;
     white-space: nowrap;
     pointer-events: none;
@@ -1130,11 +1068,6 @@
   .cross-ref-link:hover {
     background: var(--cds-link-01);
     color: var(--cds-inverse-01);
-  }
-
-  /* Tree children indentation guide */
-  .tree-children {
-    /* Indentation handled via padding-left on each node */
   }
 
   /* Phase 29: Search Bar */
@@ -1190,7 +1123,6 @@
     background: var(--cds-layer-02);
     border: 1px solid var(--cds-border-subtle-01);
     border-radius: 0 0 4px 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   }
 
   .search-result {
