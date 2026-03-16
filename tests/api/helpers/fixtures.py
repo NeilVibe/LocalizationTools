@@ -38,17 +38,17 @@ def sample_locstr_xml(num_rows: int = 5) -> str:
         f'  <String StrKey="KEY_{i:03d}" KR="한국어 텍스트 {i}" EN="English text {i}" />'
         for i in range(1, num_rows + 1)
     )
-    return f'<?xml version="1.0" encoding="utf-8"?>\n<LocStr>\n{rows}\n</LocStr>\n'
+    return f'<?xml version="1.0" encoding="utf-8"?>\n<LanguageData>\n{rows}\n</LanguageData>\n'
 
 
 def sample_locstr_xml_with_brtags() -> str:
     """Return a LocStr XML string with br-tags (multiline text)."""
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
-        "<LocStr>\n"
+        "<LanguageData>\n"
         '  <String StrKey="BR_001" KR="첫 줄<br/>둘째 줄" EN="Line 1<br/>Line 2" />\n'
         '  <String StrKey="BR_002" KR="A<br/>B<br/>C" EN="A<br/>B<br/>C" />\n'
-        "</LocStr>\n"
+        "</LanguageData>\n"
     )
 
 

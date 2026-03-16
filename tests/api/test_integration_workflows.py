@@ -14,28 +14,28 @@ import pytest
 
 _LOCSTR_XML_WITH_BRTAGS = """\
 <?xml version="1.0" encoding="utf-8"?>
-<LocStr>
+<LanguageData>
   <String StrKey="INT_001" KR="첫 번째<br/>줄" EN="First line" />
   <String StrKey="INT_002" KR="두 번째 항목" EN="Second item" />
   <String StrKey="INT_003" KR="세 번째<br/>테스트" EN="Third<br/>test" />
   <String StrKey="INT_004" KR="네 번째" EN="Fourth" />
   <String StrKey="INT_005" KR="다섯 번째" EN="Fifth" />
-</LocStr>
+</LanguageData>
 """
 
 _LOCSTR_XML_B = """\
 <?xml version="1.0" encoding="utf-8"?>
-<LocStr>
+<LanguageData>
   <String StrKey="FILE_B_001" KR="검은 칼" EN="Black Sword" />
   <String StrKey="FILE_B_002" KR="하얀 방패" EN="White Shield" />
-</LocStr>
+</LanguageData>
 """
 
 _LOCSTR_XML_C = """\
 <?xml version="1.0" encoding="utf-8"?>
-<LocStr>
+<LanguageData>
   <String StrKey="FILE_C_001" KR="마법사의 지팡이" EN="Wizard Staff" />
-</LocStr>
+</LanguageData>
 """
 
 _TM_TSV = "Source\tTarget\n검\tSword\n방패\tShield\n마법\tMagic\n칼\tBlade\n"
