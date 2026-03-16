@@ -211,7 +211,7 @@ Phases execute in numeric order: 26 -> 27 -> 28 -> 29 -> 30 -> 31
 | 25. Comprehensive API E2E Testing | v3.1 | 10/10 | Complete | 2026-03-16 |
 | 26. Navigation + DEV Parity | 1/1 | Complete    | 2026-03-16 | - |
 | 27. Tree Backend + Mock Data | 2/2 | Complete    | 2026-03-16 | - |
-| 28. Hierarchical Tree UI | v3.2 | 1/3 | In progress | - |
+| 28. Hierarchical Tree UI | 2/3 | In Progress|  | - |
 | 29. Multi-Tier Indexing | v3.2 | 0/2 | Not started | - |
 | 30. Context Intelligence Panel | v3.2 | 0/2 | Not started | - |
 | 31. Codex AI Image Generation | v3.2 | 0/2 | Not started | - |

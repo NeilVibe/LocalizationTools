@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: GameData Tree UI + Context Intelligence + Image Gen
-status: in-progress
-stopped_at: Completed 28-01-PLAN.md (tree component + page wiring)
-last_updated: "2026-03-16T07:10:26.125Z"
-last_activity: 2026-03-16 -- Phase 27 Plan 02 executed (TREE-07 mock data expansion)
+status: completed
+stopped_at: Completed 28-02-PLAN.md
+last_updated: "2026-03-16T07:33:12.025Z"
+last_activity: 2026-03-16 -- Phase 28 Plan 02 executed (NodeDetailPanel with editable attrs + optimistic save)
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 28 of 31 (Hierarchical Tree UI)
-Plan: 1 of 3 in current phase
-Status: Phase 28 plan 01 complete
-Last activity: 2026-03-16 -- Phase 28 Plan 01 executed (GameDataTree component + GameDevPage wiring)
+Plan: 2 of 3 in current phase
+Status: Phase 28 plan 02 complete
+Last activity: 2026-03-16 -- Phase 28 Plan 02 executed (NodeDetailPanel with editable attrs + optimistic save)
 
 Progress: [████████░░] 83%
 
@@ -51,6 +51,7 @@ Progress: [████████░░] 83%
 | 27-02 | 2min | 2 | 2 |
 | Phase 27 P01 | 6min | 2 tasks | 6 files |
 | Phase 28 P01 | 4min | 2 tasks | 2 files |
+| Phase 28 P02 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,7 @@ Recent decisions affecting current work:
 - [Phase 28-01]: Lightning icon for skills (Fleet unavailable in carbon-icons-svelte); 13 entity types mapped
 - [Phase 28-01]: Recursive {#snippet renderNode(node, depth)} pattern for hierarchical tree rendering
 - [Phase 28-01]: EDITABLE_ATTRS mirrored from backend to derive primary display labels client-side
+- [Phase 28]: PUT method for save endpoint (matching backend router definition); editable attrs sorted first in attribute list
 
 ### Pending Todos
 
@@ -83,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T07:10:26Z
-Stopped at: Completed 28-01-PLAN.md (tree component + page wiring)
-Resume file: .planning/phases/28-hierarchical-tree-ui/28-02-PLAN.md
+Last session: 2026-03-16T07:33:12.023Z
+Stopped at: Completed 28-02-PLAN.md
+Resume file: None
