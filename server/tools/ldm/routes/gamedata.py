@@ -19,11 +19,15 @@ from server.utils.dependencies import get_current_active_user_async
 
 from server.tools.ldm.schemas.gamedata import (
     BrowseRequest,
+    CrossRefItem,
+    CrossRefsResponse,
     FileColumnsRequest,
     FileColumnsResponse,
     FolderTreeDataRequest,
     FolderTreeDataResponse,
     FolderTreeResponse,
+    GameDataContextRequest,
+    GameDataContextResponse,
     GameDataRow,
     GameDataRowsRequest,
     GameDataRowsResponse,
@@ -37,6 +41,10 @@ from server.tools.ldm.schemas.gamedata import (
     IndexSearchResponse,
     IndexStatusResponse,
     DetectEntitiesRequest,
+    MediaContext,
+    RelatedEntity,
+    TMSuggestion,
+    TreeNode,
     TreeRequest,
 )
 from server.tools.ldm.indexing.gamedata_indexer import get_gamedata_indexer
@@ -45,8 +53,10 @@ from server.tools.ldm.services.gamedata_browse_service import (
     EDITABLE_ATTRS,
     GameDataBrowseService,
 )
+from server.tools.ldm.services.gamedata_context_service import get_gamedata_context_service
 from server.tools.ldm.services.gamedata_edit_service import GameDataEditService
 from server.tools.ldm.services.gamedata_tree_service import GameDataTreeService
+from server.repositories import get_row_repository
 
 
 router = APIRouter(tags=["GameData"])
@@ -428,6 +438,13 @@ async def build_gamedata_index(
         logger.error(f"[GameData API] Index build failed: {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=f"Index build failed: {e}")
 
+    # Phase 30: Build reverse index for cross-reference resolution
+    try:
+        context_service = get_gamedata_context_service()
+        context_service.build_reverse_index(folder_data)
+    except Exception as e:
+        logger.warning(f"[GameData API] Reverse index build failed (non-fatal): {e}")
+
     return IndexBuildResponse(**result, status="ready")
 
 
@@ -484,3 +501,72 @@ async def get_index_status(
     indexer = get_gamedata_indexer()
     status = indexer.get_status()
     return IndexStatusResponse(**status)
+
+
+# =============================================================================
+# Context Intelligence endpoint (Phase 30)
+# =============================================================================
+
+
+@router.post("/gamedata/context", response_model=GameDataContextResponse)
+async def get_gamedata_context(
+    request: GameDataContextRequest,
+    user=Depends(get_current_active_user_async),
+    row_repo=Depends(get_row_repository),
+):
+    """Get combined context intelligence for a gamedata entity.
+
+    Returns cross-references, related entities, TM suggestions from
+    language data, and media context for the given node.
+    """
+    context_service = get_gamedata_context_service()
+
+    # Reconstruct minimal TreeNode from request
+    node = TreeNode(
+        node_id=request.node_id,
+        tag=request.tag,
+        attributes=request.attributes,
+        editable_attrs=request.editable_attrs,
+    )
+
+    try:
+        cross_refs_data = context_service.get_cross_refs(request.node_id, node)
+        cross_refs = CrossRefsResponse(
+            forward=[CrossRefItem(**ref) for ref in cross_refs_data["forward"]],
+            backward=[CrossRefItem(**ref) for ref in cross_refs_data["backward"]],
+        )
+    except Exception as e:
+        logger.error(f"[GameData API] Cross-ref resolution failed: {e}")
+        cross_refs = CrossRefsResponse()
+
+    try:
+        related_data = context_service.get_related(node)
+        related = [RelatedEntity(**r) for r in related_data]
+    except Exception as e:
+        logger.error(f"[GameData API] Related search failed: {e}")
+        related = []
+
+    # TM suggestions (conditional on StrKey)
+    has_strkey = context_service.has_strkey(node)
+    tm_suggestions = []
+    if has_strkey:
+        try:
+            tm_data = await context_service.get_tm_suggestions(node, row_repo)
+            tm_suggestions = [TMSuggestion(**s) for s in tm_data]
+        except Exception as e:
+            logger.error(f"[GameData API] TM suggestions failed: {e}")
+
+    try:
+        media_data = context_service.get_media(node)
+        media = MediaContext(**media_data)
+    except Exception as e:
+        logger.error(f"[GameData API] Media resolution failed: {e}")
+        media = MediaContext()
+
+    return GameDataContextResponse(
+        cross_refs=cross_refs,
+        related=related,
+        tm_suggestions=tm_suggestions,
+        has_strkey=has_strkey,
+        media=media,
+    )

@@ -253,3 +253,75 @@ class IndexStatusResponse(BaseModel):
     ac_terms_count: int
     whole_lookup_count: int
     line_lookup_count: int
+
+
+# =============================================================================
+# Context Intelligence schemas (Phase 30)
+# =============================================================================
+
+
+class GameDataContextRequest(BaseModel):
+    """Request for context endpoint -- minimal TreeNode info."""
+
+    node_id: str
+    tag: str
+    attributes: Dict[str, Any] = {}
+    editable_attrs: List[str] = []
+
+
+class CrossRefItem(BaseModel):
+    """A single cross-reference (forward or backward)."""
+
+    node_id: str
+    tag: str
+    name: str
+    via_attr: str
+
+
+class CrossRefsResponse(BaseModel):
+    """Forward and backward cross-references for an entity."""
+
+    forward: List[CrossRefItem] = []
+    backward: List[CrossRefItem] = []
+
+
+class RelatedEntity(BaseModel):
+    """A semantically related entity from cascade search."""
+
+    entity_name: str
+    entity_desc: str = ""
+    node_id: str
+    tag: str
+    score: float
+    match_type: str
+    tier_name: str = ""
+
+
+class TMSuggestion(BaseModel):
+    """A TM suggestion from loaded language data."""
+
+    source: str
+    target: str = ""
+    similarity: float
+    file_name: str = ""
+
+
+class MediaContext(BaseModel):
+    """Media asset context for an entity."""
+
+    has_image: bool = False
+    texture_name: str = ""
+    thumbnail_url: str = ""
+    has_audio: bool = False
+    voice_id: str = ""
+    stream_url: str = ""
+
+
+class GameDataContextResponse(BaseModel):
+    """Combined context intelligence response for a gamedata entity."""
+
+    cross_refs: CrossRefsResponse
+    related: List[RelatedEntity] = []
+    tm_suggestions: List[TMSuggestion] = []
+    has_strkey: bool = False
+    media: MediaContext
