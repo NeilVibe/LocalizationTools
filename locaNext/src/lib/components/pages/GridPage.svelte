@@ -262,7 +262,7 @@
         size="small"
         icon={ArrowLeft}
         iconDescription="Back to Files"
-        on:click={goBack}
+        onclick={goBack}
       />
       <span class="file-name">{fileName || 'Untitled'}</span>
       {#if $openFile?.format}
@@ -295,7 +295,7 @@
         icon={Column}
         iconDescription="Grid Columns"
         tooltipAlignment="end"
-        on:click={onShowGridColumns}
+        onclick={onShowGridColumns}
       />
       <Button
         kind="ghost"
@@ -303,7 +303,7 @@
         icon={Document}
         iconDescription="Reference Settings"
         tooltipAlignment="end"
-        on:click={onShowReferenceSettings}
+        onclick={onShowReferenceSettings}
       />
       <Button
         kind="ghost"
@@ -311,7 +311,7 @@
         icon={DataBase}
         iconDescription="Branch & Drive Settings"
         tooltipAlignment="end"
-        on:click={onShowBranchDriveSettings}
+        onclick={onShowBranchDriveSettings}
       />
     </div>
   </div>

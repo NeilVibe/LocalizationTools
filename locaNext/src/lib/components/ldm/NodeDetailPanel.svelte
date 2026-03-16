@@ -305,7 +305,7 @@
           <div class="attr-row">
             <span class="attr-key">{key}</span>
             <span class="attr-value" title={String(value ?? '')}>
-              {#each highlightText(String(value ?? ''), detectedEntities, key) as segment}
+              {#each highlightText(String(value ?? ''), detectedEntities, key) as segment, i (i)}
                 {#if segment.isHighlight}
                   <mark class="entity-highlight" title="{segment.entity.entity_name} ({segment.entity.tag})">{segment.text}</mark>
                 {:else}

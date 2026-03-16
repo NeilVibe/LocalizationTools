@@ -733,7 +733,7 @@
       {/if}
 
       <!-- Cross-reference links (max 2 per row) -->
-      {#each Object.entries(node.attributes || {}).filter(([attr, val]) => isCrossRefAttr(attr) && resolveCrossRef(attr, val)).slice(0, 2) as [attr, val]}
+      {#each Object.entries(node.attributes || {}).filter(([attr, val]) => isCrossRefAttr(attr) && resolveCrossRef(attr, val)).slice(0, 2) as [attr, val] (attr)}
         <button
           class="cross-ref-link"
           title="{attr}: {val} (click to navigate)"
@@ -747,7 +747,7 @@
     <!-- Hover tooltip (first 3 attributes) -->
     {#if hoveredNodeId === node.node_id}
       <div class="node-tooltip" style="left: {depth * 20 + 40}px;">
-        {#each Object.entries(node.attributes || {}).slice(0, 3) as [key, val]}
+        {#each Object.entries(node.attributes || {}).slice(0, 3) as [key, val] (key)}
           <div class="tooltip-row">
             <span class="tooltip-key">{key}:</span>
             <span class="tooltip-val">{String(val).substring(0, 40)}</span>

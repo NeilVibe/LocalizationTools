@@ -83,7 +83,7 @@
       <div class="panel-section">
         <h3 class="section-title">NPCs ({node.npcs.length})</h3>
         <ul class="npc-list">
-          {#each node.npcs as npc}
+          {#each node.npcs as npc (npc)}
             <li>
               <button class="npc-link" onclick={() => navigateToNPC(npc)}>
                 {npc}
@@ -99,7 +99,7 @@
       <div class="panel-section">
         <h3 class="section-title">Entities</h3>
         <div class="entity-counts">
-          {#each entityEntries as [type, count]}
+          {#each entityEntries as [type, count] (type)}
             <button class="entity-count-item" onclick={openInCodex} aria-label="View {count} {type}{count !== 1 ? 's' : ''} in Codex">
               <span class="count-number">{count}</span>
               <span class="count-type">{type}{count !== 1 ? 's' : ''}</span>

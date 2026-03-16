@@ -398,7 +398,7 @@
             value={Math.round($preferences.tmThreshold * 100)}
             step={1}
             hideTextInput={true}
-            on:change={(e) => preferences.setTmThreshold(e.detail / 100)}
+            onchange={(e) => preferences.setTmThreshold(e.detail / 100)}
           />
           <p class="setting-hint">Minimum similarity for TM matches</p>
         </div>
