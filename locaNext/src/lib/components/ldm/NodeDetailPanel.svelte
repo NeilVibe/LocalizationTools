@@ -370,7 +370,7 @@
 
   .node-tag-title {
     margin: 0;
-    font-size: 0.875rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--cds-text-01);
   }
@@ -414,9 +414,11 @@
   }
 
   .attr-key {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 500;
     color: var(--cds-text-02);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .attr-row.editable .attr-key {
@@ -424,7 +426,7 @@
   }
 
   .attr-value {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--cds-text-01);
     word-break: break-word;
     overflow: hidden;
@@ -450,7 +452,7 @@
     font-size: 0.8125rem;
     font-family: 'IBM Plex Mono', monospace;
     outline: none;
-    transition: border-color 0.15s;
+    transition: border-color var(--transition-fast, 0.15s ease), background var(--transition-fast, 0.15s ease);
   }
 
   .attr-input:focus {
@@ -464,9 +466,9 @@
 
   .saving-indicator {
     position: absolute;
-    right: 8px;
-    width: 8px;
-    height: 8px;
+    right: 0.5rem;
+    width: 0.5rem;
+    height: 0.5rem;
     border-radius: 50%;
     background: var(--cds-link-01);
     animation: pulse-save 1s ease-in-out infinite;
@@ -512,7 +514,7 @@
     font-family: inherit;
     font-size: 0.75rem;
     color: var(--cds-text-01);
-    transition: background 0.1s, border-color 0.1s;
+    transition: background var(--transition-fast, 0.1s ease), border-color var(--transition-fast, 0.1s ease);
   }
 
   .child-link:hover {
@@ -547,11 +549,11 @@
   }
 
   .entity-highlight {
-    background-color: rgba(255, 214, 0, 0.25);
+    background-color: var(--cds-highlight, rgba(255, 214, 0, 0.25));
     border-radius: 2px;
-    padding: 0 2px;
+    padding: 0 0.125rem;
     cursor: help;
-    border-bottom: 1px dashed rgba(255, 214, 0, 0.6);
+    border-bottom: 1px dashed var(--cds-border-interactive, var(--cds-interactive));
   }
 
   .entity-badge {
@@ -560,7 +562,7 @@
     padding: 1px 5px;
     border-radius: 8px;
     background: var(--cds-support-info, #0043ce);
-    color: #fff;
+    color: var(--cds-inverse-01, #fff);
     flex-shrink: 0;
     line-height: 1.2;
   }

@@ -19,6 +19,7 @@
     MachineLearningModel
   } from 'carbon-icons-svelte';
   import { SkeletonText, InlineLoading } from 'carbon-components-svelte';
+  import { EmptyState } from '$lib/components/common';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
   import NodeDetailPanel from '$lib/components/ldm/NodeDetailPanel.svelte';
@@ -394,10 +395,7 @@
                 {/if}
               </div>
             {:else}
-              <div class="empty-section">
-                <ConnectionSignal size={32} />
-                <p class="empty-text">No cross-references found</p>
-              </div>
+              <EmptyState icon={ConnectionSignal} headline="No cross-references" description="This node has no incoming or outgoing references" />
             {/if}
 
           <!-- Related Tab -->
@@ -438,7 +436,7 @@
                     </button>
                   {/each}
                 {:else}
-                  <p class="empty-text">No related entities found</p>
+                  <EmptyState icon={Search} headline="No related items" description="No semantically similar items found" />
                 {/if}
               </div>
 
@@ -518,16 +516,10 @@
               {/if}
 
               {#if !contextData.media.has_image && !contextData.media.has_audio}
-                <div class="empty-section">
-                  <Image size={32} />
-                  <p class="empty-text">No media associated with this entity</p>
-                </div>
+                <EmptyState icon={Image} headline="No media" description="No images or audio associated with this node" />
               {/if}
             {:else}
-              <div class="empty-section">
-                <Image size={32} />
-                <p class="empty-text">No media associated with this entity</p>
-              </div>
+              <EmptyState icon={Image} headline="No media" description="No images or audio associated with this node" />
             {/if}
           {/if}
 
@@ -591,6 +583,7 @@
 
   .collapse-btn:hover {
     background: var(--cds-layer-hover-01);
+    transition: background var(--transition-fast, 0.1s ease);
   }
 
   /* Panel content */
@@ -632,8 +625,9 @@
   }
 
   .tab-btn.active {
-    color: var(--cds-interactive-01);
-    border-bottom-color: var(--cds-interactive-01);
+    color: var(--cds-text-01);
+    border-bottom: 2px solid var(--cds-interactive);
+    font-weight: 600;
   }
 
   .tab-label {
@@ -678,16 +672,6 @@
     margin: 0;
     font-size: 0.8125rem;
     color: var(--cds-support-error);
-  }
-
-  .empty-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem 1rem;
-    color: var(--cds-text-03);
-    gap: 0.5rem;
   }
 
   .empty-text {
@@ -852,18 +836,18 @@
   }
 
   .tier-exact {
-    background: rgba(36, 161, 72, 0.15);
-    color: #24a148;
+    background: var(--cds-support-success-inverse, rgba(36, 161, 72, 0.15));
+    color: var(--cds-support-success);
   }
 
   .tier-semantic {
-    background: rgba(0, 114, 195, 0.15);
-    color: #0072c3;
+    background: var(--cds-support-info-inverse, rgba(0, 114, 195, 0.15));
+    color: var(--cds-support-info);
   }
 
   .tier-ngram {
-    background: rgba(245, 158, 11, 0.15);
-    color: #d97706;
+    background: var(--cds-support-warning-inverse, rgba(245, 158, 11, 0.15));
+    color: var(--cds-support-warning);
   }
 
   /* TM suggestion items */
