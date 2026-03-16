@@ -183,3 +183,67 @@ class FolderTreeDataResponse(BaseModel):
     files: List[GameDataTreeResponse]
     base_path: str
     total_nodes: int
+
+
+# =============================================================================
+# Index schemas (Phase 29: Multi-Tier Indexing)
+# =============================================================================
+
+
+class IndexBuildRequest(BaseModel):
+    """Request for index build endpoint."""
+
+    path: str  # folder path
+
+
+class IndexBuildResponse(BaseModel):
+    """Response for index build endpoint."""
+
+    entity_count: int
+    whole_lookup_count: int
+    line_lookup_count: int
+    whole_embeddings_count: int
+    line_embeddings_count: int
+    ac_terms_count: int
+    build_time_ms: int
+    status: str
+
+
+class IndexSearchRequest(BaseModel):
+    """Request for index search endpoint."""
+
+    query: str
+    top_k: int = 5
+    threshold: float = 0.92
+
+
+class IndexSearchResult(BaseModel):
+    """A single search result from cascade search."""
+
+    entity_name: str
+    entity_desc: str
+    node_id: str
+    tag: str
+    file_path: str
+    score: float
+    match_type: str
+
+
+class IndexSearchResponse(BaseModel):
+    """Response for index search endpoint."""
+
+    tier: int
+    tier_name: str
+    results: List[IndexSearchResult]
+    perfect_match: bool
+
+
+class IndexStatusResponse(BaseModel):
+    """Response for index status endpoint."""
+
+    ready: bool
+    entity_count: int
+    build_time_ms: int
+    ac_terms_count: int
+    whole_lookup_count: int
+    line_lookup_count: int
