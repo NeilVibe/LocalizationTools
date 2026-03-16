@@ -15,6 +15,8 @@
   import CodexSearchBar from "$lib/components/ldm/CodexSearchBar.svelte";
   import PlaceholderImage from "$lib/components/ldm/PlaceholderImage.svelte";
   import CodexEntityDetail from "$lib/components/ldm/CodexEntityDetail.svelte";
+  import InfiniteScroll from "$lib/components/common/InfiniteScroll.svelte";
+  import SkeletonCard from "$lib/components/common/SkeletonCard.svelte";
   import { onMount } from "svelte";
   import { get } from "svelte/store";
   import { codexSearchQuery } from "$lib/stores/navigation.js";
@@ -50,6 +52,12 @@
   let apiError = $state(null);
   let failedImages = $state(new Set());
 
+  // Pagination state
+  let currentPage = $state(0);
+  let hasMore = $state(true);
+  let loadingMore = $state(false);
+  const PAGE_SIZE = 50;
+
   // AI image generation state
   let imageGenAvailable = $state(false);
   let batchPreview = $state(null);
@@ -84,7 +92,7 @@
         batchProgress = 100;
         batchStatus = 'Complete';
         batchOperationId = null;
-        fetchEntityList(activeTab);
+        fetchEntityPage(activeTab, 0);
       }
     });
 
@@ -197,7 +205,7 @@
       const firstTab = Object.keys(entityTypes).find(t => t !== 'knowledge');
       if (firstTab) {
         activeTab = firstTab;
-        await fetchEntityList(firstTab);
+        await fetchEntityPage(firstTab, 0);
       }
     } catch (err) {
       logger.error('Failed to fetch codex types', { error: err.message });
@@ -208,26 +216,48 @@
   }
 
   /**
-   * Fetch entity list for a given type
+   * Fetch a page of entities for a given type (paginated)
    */
-  async function fetchEntityList(entityType) {
-    loadingList = true;
-    entities = [];
+  async function fetchEntityPage(entityType, page) {
+    if (loadingMore && page > 0) return;
+    if (page === 0) { loadingList = true; entities = []; }
+    else { loadingMore = true; }
 
     try {
-      const response = await fetch(`${API_BASE}/api/ldm/codex/list/${entityType}`, {
-        headers: getAuthHeaders()
-      });
+      const offset = page * PAGE_SIZE;
+      const response = await fetch(
+        `${API_BASE}/api/ldm/codex/list/${entityType}?offset=${offset}&limit=${PAGE_SIZE}`,
+        { headers: getAuthHeaders() }
+      );
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
-      entities = data.entities || [];
-      logger.info('Codex entity list loaded', { type: entityType, count: entities.length });
+      const batch = data.entities || [];
+
+      if (page === 0) {
+        entities = batch;
+      } else {
+        entities = [...entities, ...batch];
+      }
+      hasMore = data.has_more ?? (batch.length === PAGE_SIZE);
+      currentPage = page;
+      logger.info('Codex entity page loaded', { type: entityType, page, count: batch.length, total: data.total });
     } catch (err) {
-      logger.error('Failed to fetch entity list', { error: err.message });
+      logger.error('Failed to fetch entity page', { error: err.message });
+      if (page === 0) apiError = 'Failed to load entities';
     } finally {
       loadingList = false;
+      loadingMore = false;
+    }
+  }
+
+  /**
+   * Load more entities (called by InfiniteScroll sentinel)
+   */
+  function loadMore() {
+    if (hasMore && !loadingMore) {
+      fetchEntityPage(activeTab, currentPage + 1);
     }
   }
 
@@ -237,7 +267,9 @@
   function selectTab(type) {
     activeTab = type;
     selectedEntity = null;
-    fetchEntityList(type);
+    currentPage = 0;
+    hasMore = true;
+    fetchEntityPage(type, 0);
   }
 
   /**
@@ -255,7 +287,9 @@
     // Switch to entity's tab if different
     if (entity.entity_type !== activeTab && entity.entity_type !== 'knowledge') {
       activeTab = entity.entity_type;
-      fetchEntityList(entity.entity_type);
+      currentPage = 0;
+      hasMore = true;
+      fetchEntityPage(entity.entity_type, 0);
     }
   }
 
@@ -277,7 +311,9 @@
           selectedEntity = data.results[0].entity;
           if (selectedEntity.entity_type !== activeTab && selectedEntity.entity_type !== 'knowledge') {
             activeTab = selectedEntity.entity_type;
-            fetchEntityList(selectedEntity.entity_type);
+            currentPage = 0;
+            hasMore = true;
+            fetchEntityPage(selectedEntity.entity_type, 0);
           }
         }
       }
@@ -423,8 +459,8 @@
           {/if}
         </div>
       {:else if loadingList}
-        <div class="codex-loading">
-          <InlineLoading description="Loading entities..." />
+        <div class="entity-grid">
+          <SkeletonCard count={12} />
         </div>
       {:else}
         <!-- Entity Grid -->
@@ -437,6 +473,7 @@
                     src="{API_BASE}{entity.ai_image_url}"
                     alt={entity.name}
                     class="card-thumb"
+                    loading="lazy"
                     onerror={() => {
                       const next = new Set(failedImages);
                       next.add('ai_' + entity.strkey);
@@ -448,6 +485,7 @@
                     src="{API_BASE}/api/ldm/mapdata/thumbnail/{entity.image_texture}"
                     alt={entity.name}
                     class="card-thumb"
+                    loading="lazy"
                     onerror={() => {
                       const next = new Set(failedImages);
                       next.add(entity.strkey);
@@ -470,12 +508,24 @@
             </button>
           {/each}
 
-          {#if entities.length === 0}
+          {#if entities.length === 0 && !loadingList}
             <div class="no-entities">
               <p>No entities found for this type -- ensure gamedata files are loaded and indexed.</p>
             </div>
           {/if}
         </div>
+
+        <InfiniteScroll
+          onloadmore={loadMore}
+          loading={loadingMore}
+          {hasMore}
+        />
+
+        {#if loadingMore}
+          <div class="skeleton-loading-grid">
+            <SkeletonCard count={6} />
+          </div>
+        {/if}
       {/if}
     </div>
   {/if}
@@ -743,5 +793,10 @@
   .batch-confirm {
     display: flex;
     gap: 4px;
+  }
+
+  .skeleton-loading-grid {
+    padding: 0;
+    margin-top: 12px;
   }
 </style>
