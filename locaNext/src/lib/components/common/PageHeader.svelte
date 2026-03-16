@@ -9,7 +9,7 @@
 <header class="page-header">
   <div class="page-header__left">
     {#if Icon}
-      <svelte:component this={Icon} size={20} />
+      <Icon size={20} />
     {/if}
     <h1>{title}</h1>
   </div>

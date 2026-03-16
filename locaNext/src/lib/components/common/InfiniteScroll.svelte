@@ -6,13 +6,19 @@
   let { onloadmore, loading = false, hasMore = true, loadingSnippet = undefined } = $props();
 
   let sentinel = $state(null);
+  let fired = $state(false);
 
   $effect(() => {
-    if (!sentinel || !hasMore || loading) return;
+    if (!sentinel || !hasMore || loading) {
+      fired = false;
+      return;
+    }
 
+    fired = false;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && !loading && hasMore) {
+        if (entries[0]?.isIntersecting && !fired) {
+          fired = true;
           onloadmore();
         }
       },

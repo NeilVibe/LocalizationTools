@@ -15,7 +15,7 @@
   </div>
   <p class="error-state__message">{message}</p>
   {#if onretry}
-    <Button kind="ghost" size="small" icon={Renew} on:click={onretry}>Retry</Button>
+    <Button kind="ghost" size="small" icon={Renew} onclick={onretry}>Retry</Button>
   {/if}
 </div>
 

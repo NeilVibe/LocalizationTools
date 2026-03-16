@@ -11,7 +11,7 @@
 <div class="empty-state">
   {#if Icon}
     <div class="empty-state__icon">
-      <svelte:component this={Icon} size={48} />
+      <Icon size={48} />
     </div>
   {/if}
   <p class="empty-state__headline">{headline}</p>
@@ -19,7 +19,7 @@
     <p class="empty-state__description">{description}</p>
   {/if}
   {#if ctaLabel && onaction}
-    <Button kind="tertiary" size="small" on:click={onaction}>{ctaLabel}</Button>
+    <Button kind="tertiary" size="small" onclick={onaction}>{ctaLabel}</Button>
   {/if}
 </div>
 
