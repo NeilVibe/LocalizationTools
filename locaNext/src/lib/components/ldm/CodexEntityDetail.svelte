@@ -207,9 +207,8 @@
             controls
             preload="none"
             class="audio-player"
-            onerror={() => { audioError = true; }}
           >
-            <source src={audioUrl} />
+            <source src={audioUrl} onerror={() => { audioError = true; }} />
             Your browser does not support the audio element.
           </audio>
         </div>

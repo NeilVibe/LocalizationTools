@@ -147,7 +147,10 @@
   <span
     class="qa-inline-badge"
     onclick={toggleExpand}
-    onkeydown={(e) => e.key === "Enter" && toggleExpand(e)}
+    onkeydown={(e) => {
+      if (e.key === "Enter") toggleExpand(e);
+      if (e.key === "Escape" && expanded) closePopover();
+    }}
     role="button"
     tabindex="0"
     title="{localCount} QA issue(s) - click to view"
