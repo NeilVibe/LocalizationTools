@@ -19,3 +19,4 @@ Build 028: Str Diff mode — match by StringID, show Str changes with word-level
 Build 029: Universal word-level diff enrichment — all modes show Old Str/StrOrigin + Str Diff/StrOrigin Diff columns
 Build 030: add ExtractAnything program icon (orange-amber gradient sphere)
 Build 031: add window/taskbar icon (EA icon in title bar + taskbar)
+Build 032: add AppUserModelID for taskbar icon

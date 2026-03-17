@@ -70,3 +70,4 @@ Build 034: No Script mode excludes script/dialog for ALL languages (not just ENG
 Build 035: add dynamic version display to window title
 Build 036: add LDE program icon (teal-seagreen gradient sphere)
 Build 037: add window/taskbar icon (LDE icon in title bar + taskbar)
+Build 038: add AppUserModelID for taskbar icon

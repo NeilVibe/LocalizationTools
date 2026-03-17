@@ -192,3 +192,4 @@ Build 066: review fixes — single-file warning, target unrecognized always show
 Build 067: orange highlight for unrecognized language rows in validation table
 Build 068: add QT program icon (blue-cyan gradient sphere)
 Build 069: add window/taskbar icon (QT icon in title bar + taskbar)
+Build 070: add AppUserModelID for taskbar icon
