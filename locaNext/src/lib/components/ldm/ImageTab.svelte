@@ -69,10 +69,11 @@
       <span class="empty-desc">Select a row in the grid to view image context</span>
     </div>
   {:else if imageContext && imageContext.has_image}
+    {@const thumbUrl = `${API_BASE}${imageContext.thumbnail_url}?v=${Date.now()}`}
     <div class="image-context" data-testid="image-tab-thumbnail">
       <div class="thumbnail-wrapper">
         <img
-          src={imageContext.thumbnail_url}
+          src={thumbUrl}
           alt={imageContext.texture_name}
           class="thumbnail"
           onerror={(e) => { e.target.style.display = 'none'; }}

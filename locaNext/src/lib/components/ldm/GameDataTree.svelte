@@ -582,7 +582,7 @@
   let copyToastTimer = null;
 
   async function copyAttrValue(event, value) {
-    event.stopPropagation();
+    // Don't stopPropagation — let the click bubble to selectNode on the xml-row
     try {
       await navigator.clipboard.writeText(value);
       // Create ripple at click position
