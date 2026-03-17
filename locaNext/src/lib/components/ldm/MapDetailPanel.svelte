@@ -1,11 +1,12 @@
 <script>
   /**
-   * MapDetailPanel.svelte - Detail panel for selected world map node
+   * MapDetailPanel.svelte - Fantasy-styled detail panel for selected world map node
    *
-   * Right-side panel showing region info, NPC list, entity counts,
+   * Right-side panel showing region info with warm copper/sepia aesthetic,
+   * danger level badges, Korean names, NPC list, entity counts,
    * and Codex navigation links.
    *
-   * Phase 20: Interactive World Map (Plan 02)
+   * Phase 38: Fantasy World Map (Plan 03)
    */
   import { Tag, Button } from "carbon-components-svelte";
   import { Close, Book } from "carbon-icons-svelte";
@@ -60,10 +61,23 @@
     <!-- Header -->
     <div class="panel-header">
       <div class="header-info">
-        <h2 class="panel-title">{node.name}</h2>
-        <Tag type={TYPE_TAG_COLORS[node.region_type] || 'gray'} size="sm">
-          {node.region_type}
-        </Tag>
+        <h2 class="panel-title">{node.name_kr || node.name}</h2>
+        {#if node.name_en}
+          <span class="panel-subtitle">{node.name_en}</span>
+        {/if}
+        <div class="header-badges">
+          <Tag type={TYPE_TAG_COLORS[node.region_type] || 'gray'} size="sm">
+            {node.region_type}
+          </Tag>
+          {#if node.danger_level}
+            <span class="danger-badge danger-{node.danger_level}">
+              {#if node.danger_level === 1}Safe
+              {:else if node.danger_level === 2}Moderate
+              {:else}Dangerous
+              {/if}
+            </span>
+          {/if}
+        </div>
       </div>
       <button class="close-btn" onclick={onClose} aria-label="Close panel">
         <Close size={20} />
@@ -135,12 +149,14 @@
 <style>
   .map-detail-panel {
     width: 320px;
-    background: var(--cds-layer-01, #262626);
-    border-left: 1px solid var(--cds-border-subtle-01, #353535);
+    background: linear-gradient(180deg, rgba(42, 31, 14, 0.95) 0%, rgba(26, 20, 8, 0.98) 100%);
+    border-left: 1px solid rgba(212, 154, 92, 0.25);
     overflow-y: auto;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
+    transform: translateX(0);
+    transition: transform 300ms cubic-bezier(0.25, 1, 0.5, 1);
   }
 
   .panel-header {
@@ -148,7 +164,8 @@
     align-items: flex-start;
     justify-content: space-between;
     padding: 1rem;
-    border-bottom: 1px solid var(--cds-border-subtle-01);
+    border-bottom: 1px solid rgba(212, 154, 92, 0.2);
+    background: rgba(212, 154, 92, 0.05);
     flex-shrink: 0;
   }
 
@@ -160,19 +177,33 @@
     min-width: 0;
   }
 
+  .header-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
   .panel-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--cds-text-01);
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: rgba(240, 184, 120, 0.95);
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
     margin: 0;
     word-break: break-word;
     overflow-wrap: break-word;
   }
 
+  .panel-subtitle {
+    font-size: 0.75rem;
+    color: rgba(212, 154, 92, 0.6);
+    font-style: italic;
+  }
+
   .close-btn {
     background: transparent;
     border: none;
-    color: var(--cds-text-02);
+    color: rgba(212, 154, 92, 0.6);
     cursor: pointer;
     padding: 0.25rem;
     border-radius: 0.25rem;
@@ -180,11 +211,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: color 150ms ease-out, background 150ms ease-out;
   }
 
   .close-btn:hover {
-    color: var(--cds-text-01);
-    background: var(--cds-layer-hover-01);
+    color: rgba(240, 184, 120, 0.9);
+    background: rgba(212, 154, 92, 0.1);
   }
 
   .close-btn:focus {
@@ -194,13 +226,13 @@
 
   .panel-section {
     padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--cds-border-subtle-01);
+    border-bottom: 1px solid rgba(212, 154, 92, 0.1);
   }
 
   .section-title {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--cds-text-02);
+    color: rgba(212, 154, 92, 0.7);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin: 0 0 0.5rem 0;
@@ -209,7 +241,7 @@
   .section-text {
     margin: 0;
     font-size: 0.8125rem;
-    color: var(--cds-text-01);
+    color: rgba(240, 184, 120, 0.75);
     line-height: 1.5;
     white-space: pre-line;
     word-break: break-word;
@@ -233,17 +265,17 @@
     background: transparent;
     border: none;
     border-radius: 0.25rem;
-    color: var(--cds-link-01, #78a9ff);
+    color: rgba(240, 184, 120, 0.8);
     font-size: 0.8125rem;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.15s ease-out, color 0.15s ease-out;
     word-break: break-word;
     overflow-wrap: break-word;
   }
 
   .npc-link:hover {
-    background: var(--cds-layer-hover-01);
-    text-decoration: underline;
+    color: rgba(240, 184, 120, 1);
+    background: rgba(212, 154, 92, 0.1);
   }
 
   .npc-link:focus {
@@ -262,18 +294,18 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.375rem 0.75rem;
-    background: var(--cds-layer-02);
-    border: 1px solid var(--cds-border-subtle-01);
+    background: rgba(212, 154, 92, 0.08);
+    border: 1px solid rgba(212, 154, 92, 0.15);
     border-radius: 0.25rem;
-    color: var(--cds-text-01);
+    color: rgba(240, 184, 120, 0.75);
     font-size: 0.8125rem;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.15s ease-out, border-color 0.15s ease-out;
   }
 
   .entity-count-item:hover {
-    background: var(--cds-layer-hover-01);
-    border-color: var(--cds-interactive-01, #0f62fe);
+    background: rgba(212, 154, 92, 0.15);
+    border-color: rgba(212, 154, 92, 0.3);
   }
 
   .entity-count-item:focus {
@@ -284,18 +316,47 @@
   .count-number {
     font-weight: 700;
     font-size: 0.875rem;
-    color: var(--cds-interactive-01, #0f62fe);
+    color: rgba(240, 184, 120, 0.9);
   }
 
   .count-type {
     text-transform: capitalize;
   }
 
+  .danger-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .danger-1 {
+    background: rgba(36, 161, 72, 0.15);
+    color: #24a148;
+    border: 1px solid rgba(36, 161, 72, 0.3);
+  }
+
+  .danger-2 {
+    background: rgba(241, 194, 27, 0.15);
+    color: #f1c21b;
+    border: 1px solid rgba(241, 194, 27, 0.3);
+  }
+
+  .danger-3 {
+    background: rgba(218, 30, 40, 0.15);
+    color: #da1e28;
+    border: 1px solid rgba(218, 30, 40, 0.3);
+  }
+
   .coordinates {
     display: flex;
     gap: 1rem;
     font-size: 0.8125rem;
-    color: var(--cds-text-02);
+    color: rgba(212, 154, 92, 0.6);
     font-family: monospace;
   }
 
