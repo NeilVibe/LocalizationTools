@@ -189,3 +189,4 @@ Build 063: robust entity decode, remove false-positive WrongNewlines and angle b
 Build 064: remove false ellipsis warning, add ellipsis to Excel preprocess
 Build 065: log files with unsupported extensions instead of silently dropping
 Build 066: review fixes — single-file warning, target unrecognized always shown, confirmation overflow
+Build 067: orange highlight for unrecognized language rows in validation table
