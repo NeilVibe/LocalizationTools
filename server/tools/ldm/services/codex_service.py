@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from loguru import logger
@@ -408,3 +408,93 @@ class CodexService:
             for etype, entities in self._registry.items()
             if len(entities) > 0
         }
+
+    def get_relationships(self) -> Dict[str, Any]:
+        """Extract entity relationships from cross-references for graph visualization.
+
+        Scans all entities for attributes ending in 'Key' or 'Id' that reference
+        other entities. Returns nodes + links for D3 force graph.
+        """
+        if not self._initialized:
+            self.initialize()
+
+        nodes: List[Dict[str, Any]] = []
+        links: List[Dict[str, Any]] = []
+        seen_links: set = set()  # (source_strkey, target_strkey, rel_type) dedup
+        entity_index: Dict[str, int] = {}  # strkey -> node index
+
+        # Build node list from all non-knowledge entities
+        for etype in ["character", "item", "skill", "region", "gimmick"]:
+            for strkey, entity in self._registry.get(etype, {}).items():
+                entity_index[strkey] = len(nodes)
+                nodes.append({
+                    "id": strkey,
+                    "name": entity.name or strkey,
+                    "entity_type": etype,
+                    "has_image": bool(entity.ai_image_url or entity.image_texture),
+                    "image_url": f"/api/ldm/codex/image/{strkey}" if entity.ai_image_url else None,
+                })
+
+        # Relationship type classification based on attribute name
+        REL_TYPE_MAP = {
+            "ItemKey": "owns",
+            "RewardKey": "owns",
+            "SkillKey": "knows",
+            "RequireSkillKey": "knows",
+            "LearnKnowledgeKey": "knows",
+            "KnowledgeKey": "knows",
+            "FactionKey": "member_of",
+            "RegionKey": "located_in",
+            "CharacterKey": "enemy_of",
+            "TargetKey": "enemy_of",
+        }
+
+        # Scan entities for cross-ref attributes
+        for etype in ["character", "item", "skill", "region", "gimmick"]:
+            for strkey, entity in self._registry.get(etype, {}).items():
+                if strkey not in entity_index:
+                    continue
+                for attr_name, attr_value in entity.attributes.items():
+                    if not attr_value:
+                        continue
+                    # Check if this attribute is a cross-ref
+                    rel_type = REL_TYPE_MAP.get(attr_name)
+                    if rel_type is None:
+                        continue
+                    # Find target in registry
+                    target_strkey = str(attr_value)
+                    if target_strkey not in entity_index:
+                        continue
+                    # Dedup
+                    link_key = (strkey, target_strkey, rel_type)
+                    if link_key in seen_links:
+                        continue
+                    seen_links.add(link_key)
+                    links.append({
+                        "source": strkey,
+                        "target": target_strkey,
+                        "rel_type": rel_type,
+                    })
+
+        # Add related_entities links (from same-file grouping)
+        for etype in ["character", "item", "skill", "region", "gimmick"]:
+            for strkey, entity in self._registry.get(etype, {}).items():
+                if strkey not in entity_index:
+                    continue
+                for related_ref in (entity.related_entities or []):
+                    # related_ref format: "type/strkey"
+                    parts = related_ref.split("/", 1)
+                    if len(parts) == 2:
+                        target_strkey = parts[1]
+                        if target_strkey in entity_index:
+                            link_key = (strkey, target_strkey, "related")
+                            if link_key not in seen_links:
+                                seen_links.add(link_key)
+                                links.append({
+                                    "source": strkey,
+                                    "target": target_strkey,
+                                    "rel_type": "related",
+                                })
+
+        logger.info(f"[Codex] Relationships extracted: {len(nodes)} nodes, {len(links)} links")
+        return {"nodes": nodes, "links": links}

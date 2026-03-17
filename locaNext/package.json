@@ -42,6 +42,8 @@
   "dependencies": {
     "carbon-components-svelte": "^0.95.0",
     "carbon-icons-svelte": "^13.0.0",
+    "d3-drag": "^3.0.0",
+    "d3-force": "^3.0.0",
     "d3-selection": "^3.0.0",
     "d3-zoom": "^3.0.0",
     "electron-updater": "^6.6.2",

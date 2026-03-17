@@ -416,3 +416,20 @@ async def get_codex_types(
     except Exception as e:
         logger.error(f"[Codex API] get_entity_types failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/relationships")
+async def get_relationships(
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Get entity relationship graph data for D3 force visualization.
+
+    Returns nodes (entities) and links (cross-references) for the
+    force-directed graph in the Codex page.
+    """
+    svc = _get_codex_service()
+    try:
+        return svc.get_relationships()
+    except Exception as e:
+        logger.error(f"[Codex API] get_relationships failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
