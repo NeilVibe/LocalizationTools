@@ -1,65 +1,16 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <NodeWaypointInfoList>
-  <NodeWaypointInfo FromNodeKey="FNODE_0001" ToNodeKey="FNODE_0002">
-    <WorldPosition X="2921.3" Y="0" Z="4439.2"/>
-    <WorldPosition X="3424.3" Y="0" Z="4091.9"/>
-    <WorldPosition X="3941.6" Y="0" Z="3714.4"/>
-    <WorldPosition X="4449.5" Y="0" Z="3368.2"/>
-  </NodeWaypointInfo>
-  <NodeWaypointInfo FromNodeKey="FNODE_0002" ToNodeKey="FNODE_0003">
-    <WorldPosition X="4660.4" Y="0" Z="2559.9"/>
-    <WorldPosition X="4339.0" Y="0" Z="2097.1"/>
-    <WorldPosition X="4064.4" Y="0" Z="1667.5"/>
-  </NodeWaypointInfo>
-  <NodeWaypointInfo FromNodeKey="FNODE_0003" ToNodeKey="FNODE_0004">
-    <WorldPosition X="3101.8" Y="0" Z="2417.7"/>
-    <WorldPosition X="2453.0" Y="0" Z="3632.3"/>
-  </NodeWaypointInfo>
-  <NodeWaypointInfo FromNodeKey="FNODE_0004" ToNodeKey="FNODE_0005">
-    <WorldPosition X="2274.1" Y="0" Z="4214.2"/>
-    <WorldPosition X="2668.9" Y="0" Z="3593.0"/>
-  </NodeWaypointInfo>
-  <NodeWaypointInfo FromNodeKey="FNODE_0005" ToNodeKey="FNODE_0006">
-    <WorldPosition X="3250.3" Y="0" Z="2522.7"/>
-    <WorldPosition X="3422.4" Y="0" Z="2068.0"/>
-    <WorldPosition X="3568.8" Y="0" Z="1632.5"/>
-    <WorldPosition X="3731.2" Y="0" Z="1177.9"/>
-  </NodeWaypointInfo>
-  <NodeWaypointInfo FromNodeKey="FNODE_0006" ToNodeKey="FNODE_0007">
-    <WorldPosition X="3610.8" Y="0" Z="1441.4"/>
-    <WorldPosition X="3384.2" Y="0" Z="2080.5"/>
-  </NodeWaypointInfo>
-  <NodeWaypointInfo FromNodeKey="FNODE_0007" ToNodeKey="FNODE_0008">
-    <WorldPosition X="3435.1" Y="0" Z="2382.9"/>
-    <WorldPosition X="3721.2" Y="0" Z="1991.0"/>
-    <WorldPosition X="4025.7" Y="0" Z="1596.6"/>
-  </NodeWaypointInfo>
-  <NodeWaypointInfo FromNodeKey="FNODE_0008" ToNodeKey="FNODE_0009">
-    <WorldPosition X="4483.0" Y="0" Z="1089.4"/>
-    <WorldPosition X="4652.5" Y="0" Z="956.6"/>
-  </NodeWaypointInfo>
-  <NodeWaypointInfo FromNodeKey="FNODE_0009" ToNodeKey="FNODE_0010">
-    <WorldPosition X="3666.6" Y="0" Z="1623.4"/>
-    <WorldPosition X="2508.3" Y="0" Z="2407.3"/>
-  </NodeWaypointInfo>
-  <NodeWaypointInfo FromNodeKey="FNODE_0010" ToNodeKey="FNODE_0011">
-    <WorldPosition X="1889.2" Y="0" Z="2757.3"/>
-    <WorldPosition X="2455.1" Y="0" Z="2375.7"/>
-    <WorldPosition X="2973.9" Y="0" Z="1944.7"/>
-  </NodeWaypointInfo>
-  <NodeWaypointInfo FromNodeKey="FNODE_0011" ToNodeKey="FNODE_0012">
-    <WorldPosition X="2917.0" Y="0" Z="2281.3"/>
-    <WorldPosition X="2274.1" Y="0" Z="3024.7"/>
-    <WorldPosition X="1680.2" Y="0" Z="3781.2"/>
-  </NodeWaypointInfo>
-  <NodeWaypointInfo FromNodeKey="FNODE_0012" ToNodeKey="FNODE_0013">
-    <WorldPosition X="1244.9" Y="0" Z="4051.0"/>
-    <WorldPosition X="1408.5" Y="0" Z="3603.1"/>
-  </NodeWaypointInfo>
-  <NodeWaypointInfo FromNodeKey="FNODE_0013" ToNodeKey="FNODE_0014">
-    <WorldPosition X="1959.2" Y="0" Z="3013.8"/>
-    <WorldPosition X="2284.5" Y="0" Z="2846.0"/>
-    <WorldPosition X="2632.7" Y="0" Z="2716.6"/>
-    <WorldPosition X="2970.4" Y="0" Z="2556.7"/>
-  </NodeWaypointInfo>
+  <NodeWaypointInfo FromNodeKey="mist_forest" ToNodeKey="sealed_library" DangerLevel="2" TravelTime="3 hours" />
+  <NodeWaypointInfo FromNodeKey="sealed_library" ToNodeKey="blackstar_village" DangerLevel="1" TravelTime="2 hours" />
+  <NodeWaypointInfo FromNodeKey="blackstar_village" ToNodeKey="dark_cult_hq" DangerLevel="2" TravelTime="4 hours" />
+  <NodeWaypointInfo FromNodeKey="mist_forest" ToNodeKey="moonlight_lake" DangerLevel="1" TravelTime="1 hour" />
+  <NodeWaypointInfo FromNodeKey="moonlight_lake" ToNodeKey="dragon_tomb" DangerLevel="3" TravelTime="5 hours" />
+  <NodeWaypointInfo FromNodeKey="dragon_tomb" ToNodeKey="sage_tower" DangerLevel="2" TravelTime="3 hours" />
+  <NodeWaypointInfo FromNodeKey="sage_tower" ToNodeKey="blackstar_village" DangerLevel="1" TravelTime="2 hours" />
+  <NodeWaypointInfo FromNodeKey="sage_tower" ToNodeKey="wind_canyon" DangerLevel="2" TravelTime="4 hours" />
+  <NodeWaypointInfo FromNodeKey="wind_canyon" ToNodeKey="forgotten_fortress" DangerLevel="2" TravelTime="3 hours" />
+  <NodeWaypointInfo FromNodeKey="forgotten_fortress" ToNodeKey="volcanic_zone" DangerLevel="3" TravelTime="6 hours" />
+  <NodeWaypointInfo FromNodeKey="dark_cult_hq" ToNodeKey="forgotten_fortress" DangerLevel="2" TravelTime="3 hours" />
+  <NodeWaypointInfo FromNodeKey="blackstar_village" ToNodeKey="sage_tower" DangerLevel="1" TravelTime="2 hours" />
+  <NodeWaypointInfo FromNodeKey="volcanic_zone" ToNodeKey="dark_cult_hq" DangerLevel="3" TravelTime="5 hours" />
 </NodeWaypointInfoList>

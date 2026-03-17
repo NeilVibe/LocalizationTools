@@ -1,21 +1,33 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<FactionNodeDataList>
-  <FactionGroup GroupName="모험의 대륙" StrKey="FGRP_MAIN">
-    <Faction Name="검은별 세력" StrKey="FAC_BLACKSTAR">
-      <FactionNode StrKey="FNODE_0001" KnowledgeKey="KNOW_REGION_0001" WorldPosition="2403.5,0,4807.9" Type="Main"/>
-      <FactionNode StrKey="FNODE_0002" KnowledgeKey="KNOW_REGION_0002" WorldPosition="4979.4,0,3001.0" Type="Sub"/>
-      <FactionNode StrKey="FNODE_0003" KnowledgeKey="KNOW_REGION_0003" WorldPosition="3732.8,0,1196.6" Type="Dungeon"/>
-      <FactionNode StrKey="FNODE_0004" KnowledgeKey="KNOW_REGION_0004" WorldPosition="1835.2,0,4859.2" Type="Town"/>
-      <FactionNode StrKey="FNODE_0005" KnowledgeKey="KNOW_REGION_0005" WorldPosition="3106.3,0,2939.9" Type="Fortress"/>
-      <FactionNode StrKey="FNODE_0006" KnowledgeKey="KNOW_REGION_0006" WorldPosition="3865.9,0,757.2" Type="Wilderness"/>
-      <FactionNode StrKey="FNODE_0007" KnowledgeKey="KNOW_REGION_0007" WorldPosition="3128.8,0,2762.8" Type="Main"/>
-      <FactionNode StrKey="FNODE_0008" KnowledgeKey="KNOW_REGION_0008" WorldPosition="4337.2,0,1208.4" Type="Sub"/>
-      <FactionNode StrKey="FNODE_0009" KnowledgeKey="KNOW_REGION_0009" WorldPosition="4823.5,0,860.5" Type="Dungeon"/>
-      <FactionNode StrKey="FNODE_0010" KnowledgeKey="KNOW_REGION_0010" WorldPosition="1336.2,0,3177.7" Type="Town"/>
-      <FactionNode StrKey="FNODE_0011" KnowledgeKey="KNOW_REGION_0011" WorldPosition="3538.5,0,1558.4" Type="Fortress"/>
-      <FactionNode StrKey="FNODE_0012" KnowledgeKey="KNOW_REGION_0012" WorldPosition="1039.5,0,4506.3" Type="Wilderness"/>
-      <FactionNode StrKey="FNODE_0013" KnowledgeKey="KNOW_REGION_0013" WorldPosition="1608.0,0,3175.3" Type="Main"/>
-      <FactionNode StrKey="FNODE_0014" KnowledgeKey="KNOW_REGION_0014" WorldPosition="3287.2,0,2386.5" Type="Sub"/>
-    </Faction>
-  </FactionGroup>
-</FactionNodeDataList>
+<?xml version="1.0" encoding="utf-8"?>
+<FactionInfoList>
+  <FactionNode StrKey="mist_forest" KnowledgeKey="knowledge_mist_forest" Type="Wilderness" WorldPosition="150,0,200" DangerLevel="2" NameKR="안개의 숲" NameEN="Mist Forest" DescriptionKR="고대의 안개가 끊이지 않는 신비로운 숲">
+    <Polygon Points="110,160;190,160;200,200;180,240;120,240;100,200" />
+  </FactionNode>
+  <FactionNode StrKey="sealed_library" KnowledgeKey="knowledge_sealed_library" Type="Dungeon" WorldPosition="350,0,150" DangerLevel="3" NameKR="봉인된 도서관" NameEN="Sealed Library" DescriptionKR="금지된 지식이 봉인된 고대 도서관">
+    <Polygon Points="310,110;390,110;400,150;380,190;320,190;300,150" />
+  </FactionNode>
+  <FactionNode StrKey="blackstar_village" KnowledgeKey="knowledge_blackstar_village" Type="Town" WorldPosition="500,0,300" DangerLevel="1" NameKR="흑성 마을" NameEN="Blackstar Village" DescriptionKR="모험가들의 거점이 되는 평화로운 마을">
+    <Polygon Points="460,260;540,260;550,300;540,340;460,340;450,300" />
+  </FactionNode>
+  <FactionNode StrKey="dragon_tomb" KnowledgeKey="knowledge_dragon_tomb" Type="Dungeon" WorldPosition="200,0,500" DangerLevel="3" NameKR="용의 무덤" NameEN="Dragon's Tomb" DescriptionKR="태고의 용이 잠든 위험한 무덤">
+    <Polygon Points="160,460;240,460;250,500;230,540;170,540;150,500" />
+  </FactionNode>
+  <FactionNode StrKey="sage_tower" KnowledgeKey="knowledge_sage_tower" Type="Main" WorldPosition="400,0,450" DangerLevel="1" NameKR="현자의 탑" NameEN="Sage Tower" DescriptionKR="세계의 균형을 지키는 현자들의 탑">
+    <Polygon Points="360,410;440,410;450,450;430,490;370,490;350,450" />
+  </FactionNode>
+  <FactionNode StrKey="dark_cult_hq" KnowledgeKey="knowledge_dark_cult_hq" Type="Fortress" WorldPosition="650,0,200" DangerLevel="3" NameKR="어둠의 교단" NameEN="Dark Cult HQ" DescriptionKR="어둠의 세력이 모이는 비밀 요새">
+    <Polygon Points="610,160;690,160;700,200;680,240;620,240;600,200" />
+  </FactionNode>
+  <FactionNode StrKey="wind_canyon" KnowledgeKey="knowledge_wind_canyon" Type="Wilderness" WorldPosition="300,0,650" DangerLevel="2" NameKR="바람의 협곡" NameEN="Wind Canyon" DescriptionKR="거센 바람이 몰아치는 깊은 협곡">
+    <Polygon Points="260,610;340,610;350,650;330,690;270,690;250,650" />
+  </FactionNode>
+  <FactionNode StrKey="forgotten_fortress" KnowledgeKey="knowledge_forgotten_fortress" Type="Fortress" WorldPosition="600,0,550" DangerLevel="2" NameKR="잊힌 요새" NameEN="Forgotten Fortress" DescriptionKR="세월 속에 잊힌 고대의 요새">
+    <Polygon Points="560,510;640,510;650,550;630,590;570,590;550,550" />
+  </FactionNode>
+  <FactionNode StrKey="moonlight_lake" KnowledgeKey="knowledge_moonlight_lake" Type="Sub" WorldPosition="100,0,400" DangerLevel="1" NameKR="달빛 호수" NameEN="Moonlight Lake" DescriptionKR="달빛에 비추어 빛나는 신성한 호수">
+    <Polygon Points="60,360;140,360;150,400;130,440;70,440;50,400" />
+  </FactionNode>
+  <FactionNode StrKey="volcanic_zone" KnowledgeKey="knowledge_volcanic_zone" Type="Wilderness" WorldPosition="750,0,450" DangerLevel="3" NameKR="화산 지대" NameEN="Volcanic Zone" DescriptionKR="용암이 흐르는 위험한 화산 지대">
+    <Polygon Points="710,410;790,410;800,450;780,490;720,490;700,450" />
+  </FactionNode>
+</FactionInfoList>

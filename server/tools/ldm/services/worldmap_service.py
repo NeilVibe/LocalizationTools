@@ -89,13 +89,43 @@ class WorldMapService:
                 logger.warning(f"[WorldMap] Malformed Z coordinate in WorldPosition '{world_pos}' for {strkey}, defaulting to 0.0")
                 z = 0.0
 
+            # Parse new showcase fields
+            danger_level = int(node_el.get("DangerLevel", "1"))
+            name_kr = node_el.get("NameKR", "")
+            name_en = node_el.get("NameEN", "")
+            description_kr = node_el.get("DescriptionKR", "")
+
+            # Parse polygon child element
+            polygon_points: List[List[float]] = []
+            polygon_el = node_el.find("Polygon")
+            if polygon_el is not None:
+                pts_str = polygon_el.get("Points", "")
+                if pts_str:
+                    for pt in pts_str.split(";"):
+                        coords = pt.strip().split(",")
+                        if len(coords) >= 2:
+                            try:
+                                polygon_points.append([float(coords[0]), float(coords[1])])
+                            except ValueError:
+                                pass
+
+            # Name priority: name_kr > name_en > strkey
+            display_name = name_kr or name_en or strkey
+
             self._nodes[strkey] = MapNode(
                 strkey=strkey,
                 knowledge_key=knowledge_key,
-                name=strkey,  # fallback; enriched by Codex later
+                name=display_name,
+                name_kr=name_kr or None,
+                name_en=name_en or None,
+                description=description_kr or None,
                 region_type=region_type,
                 x=x,
                 z=z,
+                center_x=x,
+                center_y=z,
+                polygon_points=polygon_points,
+                danger_level=danger_level,
             )
 
         logger.debug(f"[WorldMap] Parsed {len(self._nodes)} FactionNode positions")
@@ -132,10 +162,16 @@ class WorldMapService:
                 z = float(wp_el.get("Z", "0"))
                 waypoints.append({"x": x, "z": z})
 
+            # Parse new showcase fields
+            danger_level = int(waypoint_el.get("DangerLevel", "1"))
+            travel_time = waypoint_el.get("TravelTime", None)
+
             self._routes.append(MapRoute(
                 from_node=from_node,
                 to_node=to_node,
                 waypoints=waypoints,
+                danger_level=danger_level,
+                travel_time=travel_time,
             ))
 
         logger.debug(f"[WorldMap] Parsed {len(self._routes)} waypoint routes")
