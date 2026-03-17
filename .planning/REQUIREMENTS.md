@@ -143,8 +143,8 @@
 
 - [x] **WOW-10**: Entity cards have glassmorphism (backdrop-filter blur + semi-transparent bg) with AI portrait
 - [x] **WOW-11**: Hovering card produces parallax shift on background image
-- [ ] **WOW-12**: D3 force-directed graph shows entity relationships with typed link styles
-- [ ] **WOW-13**: Hovering graph node highlights connected nodes and dims unconnected
+- [x] **WOW-12**: D3 force-directed graph shows entity relationships with typed link styles
+- [x] **WOW-13**: Hovering graph node highlights connected nodes and dims unconnected
 
 ### WOW -- Cross-cutting Polish (Phase 40)
 
