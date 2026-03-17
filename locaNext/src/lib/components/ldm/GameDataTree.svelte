@@ -514,6 +514,60 @@
   function handleGlobalClick() {
     if (contextMenu.show) closeContextMenu();
   }
+
+  // === Hover Preview Tooltip (WOW-02) ===
+  let previewCache = new Map();
+  let hoveredRef = $state(null);
+  let hoverTimer = null;
+  let tooltipPos = $state({ x: 0, y: 0 });
+
+  function onRefMouseEnter(event, attrValue) {
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(async () => {
+      const cacheKey = attrValue;
+      if (!previewCache.has(cacheKey)) {
+        try {
+          const resp = await fetch(`${API_BASE}/api/ldm/gamedata/index/search`, {
+            method: 'POST',
+            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: attrValue, top_k: 1 })
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.results?.length > 0) {
+              previewCache.set(cacheKey, data.results[0]);
+              // LRU eviction at 100 entries
+              if (previewCache.size > 100) {
+                const firstKey = previewCache.keys().next().value;
+                previewCache.delete(firstKey);
+              }
+            }
+          }
+        } catch (err) {
+          logger.error('Preview fetch failed', { error: err.message });
+        }
+      }
+      const result = previewCache.get(cacheKey);
+      if (result) {
+        hoveredRef = result;
+        // Position with viewport edge detection
+        const rect = event.target.getBoundingClientRect();
+        let x = rect.right + 8;
+        let y = rect.top - 4;
+        // Flip left if overflowing right
+        if (x + 290 > window.innerWidth) x = rect.left - 290;
+        // Flip up if overflowing bottom
+        if (y + 130 > window.innerHeight) y = window.innerHeight - 140;
+        if (y < 8) y = 8;
+        tooltipPos = { x, y };
+      }
+    }, 300);
+  }
+
+  function onRefMouseLeave() {
+    clearTimeout(hoverTimer);
+    hoveredRef = null;
+  }
 </script>
 
 <div class="xml-viewer" role="tree" tabindex="0" onkeydown={handleKeydown} onclick={handleGlobalClick}>
@@ -615,6 +669,30 @@
       <button class="context-item" onclick={() => { closeContextMenu(); }}>
         Generate AI Context
       </button>
+    </div>
+  {/if}
+
+  {#if hoveredRef}
+    <div
+      class="preview-tooltip"
+      style="left: {tooltipPos.x}px; top: {tooltipPos.y}px;"
+    >
+      <div class="preview-thumb" style="background: {getEntityColor(hoveredRef.tag)}20; color: {getEntityColor(hoveredRef.tag)};">
+        {getEntityIcon(hoveredRef.tag)}
+      </div>
+      <div class="preview-info">
+        <div class="preview-key" title={hoveredRef.entity_name || hoveredRef.node_id}>
+          {(hoveredRef.entity_name || hoveredRef.node_id || '').slice(0, 28)}{(hoveredRef.entity_name || hoveredRef.node_id || '').length > 28 ? '...' : ''}
+        </div>
+        <div class="preview-type">
+          <span class="preview-type-badge" style="background: {getEntityColor(hoveredRef.tag)}20; color: {getEntityColor(hoveredRef.tag)}; border: 1px solid {getEntityColor(hoveredRef.tag)}40;">
+            {hoveredRef.tag}
+          </span>
+        </div>
+        {#if hoveredRef.attributes?.Key}
+          <div class="preview-detail">{hoveredRef.attributes.Key}</div>
+        {/if}
+      </div>
     </div>
   {/if}
 </div>
@@ -768,6 +846,8 @@
         title="Navigate to {attrName}: {attrValue}"
         onclick={(e) => { e.stopPropagation(); selectAndRevealNode(xrefTarget); }}
         ondblclick={(e) => handleAttrDoubleClick(e, node, attrName, attrValue)}
+        onmouseenter={(e) => onRefMouseEnter(e, String(attrValue))}
+        onmouseleave={onRefMouseLeave}
       >"{attrValue}"</button>{:else if isEditable}<span
         class="t-value editable"
         title="Double-click to edit"
@@ -779,6 +859,8 @@
         role="button"
         tabindex="-1"
         ondblclick={(e) => handleAttrDoubleClick(e, node, attrName, attrValue)}
+        onmouseenter={category === 'crossref' ? (e) => onRefMouseEnter(e, String(attrValue)) : undefined}
+        onmouseleave={category === 'crossref' ? onRefMouseLeave : undefined}
       >"{attrValue}"</span>{/if}
   {/each}
 {/snippet}
@@ -1190,5 +1272,72 @@
   @keyframes fadeSlideIn {
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* === Hover Preview Tooltip (WOW-02) === */
+  .preview-tooltip {
+    position: fixed;
+    z-index: 100;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    width: 280px;
+    padding: 10px 12px;
+    background: #1e1e2e;
+    border: 1px solid #3c3c4c;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: tooltipFadeIn 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+
+  @keyframes tooltipFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .preview-thumb {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .preview-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .preview-key {
+    font-size: 12px;
+    font-weight: 600;
+    color: #d4d4d4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .preview-type { display: flex; align-items: center; gap: 6px; }
+
+  .preview-type-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .preview-detail {
+    font-size: 11px;
+    color: #8b8b9b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 </style>
