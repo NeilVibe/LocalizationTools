@@ -207,6 +207,9 @@ def scan_source_for_languages(source_path: Path) -> SourceScanResult:
             result.lang_files[lang] = [source_path]
         else:
             result.unrecognized.append(source_path)
+            reason = f"{source_path.name}: No valid language suffix detected — cannot determine target language"
+            result.warnings.append(reason)
+            logger.warning(reason)
         return result
 
     # Scan immediate children of source folder
@@ -243,6 +246,9 @@ def scan_source_for_languages(source_path: Path) -> SourceScanResult:
             else:
                 # No language suffix - mark as unrecognized
                 result.unrecognized.append(child)
+                reason = f"{child.name}/: No valid language suffix detected — folder skipped"
+                result.warnings.append(reason)
+                logger.warning(reason)
 
         elif child.is_file():
             if child.suffix.lower() not in _SUPPORTED_EXTENSIONS:
@@ -273,6 +279,9 @@ def scan_source_for_languages(source_path: Path) -> SourceScanResult:
                 logger.debug(f"File {child.name}: -> {lang}")
             else:
                 result.unrecognized.append(child)
+                reason = f"{child.name}: No valid language suffix detected — cannot determine target language"
+                result.warnings.append(reason)
+                logger.warning(reason)
 
     # Build stats
     result.stats = {
@@ -377,6 +386,9 @@ def scan_target_for_languages(target_path: Path) -> TargetScanResult:
                     result.warnings.append(f"Folder {child.name} has suffix {lang} but no target files")
             else:
                 result.unrecognized.append(child)
+                reason = f"{child.name}/: No valid language suffix detected — folder skipped"
+                result.warnings.append(reason)
+                logger.warning(reason)
 
         elif child.is_file():
             if child.suffix.lower() not in _SUPPORTED_EXTENSIONS:
@@ -408,6 +420,9 @@ def scan_target_for_languages(target_path: Path) -> TargetScanResult:
                 logger.debug(f"Target file {child.name}: -> {lang}")
             else:
                 result.unrecognized.append(child)
+                reason = f"{child.name}: No valid language suffix detected — cannot determine target language"
+                result.warnings.append(reason)
+                logger.warning(reason)
 
     result.xml_count = xml_count
     result.excel_count = excel_count

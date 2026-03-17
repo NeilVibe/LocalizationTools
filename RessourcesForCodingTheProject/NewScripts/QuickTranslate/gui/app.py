@@ -892,17 +892,17 @@ class QuickTranslateApp:
                             target_scan_result.total_files, target_scan_result.language_count,
                             target_scan_result.xml_count, target_scan_result.excel_count)
 
-                if target_scan_result.unrecognized:
-                    logger.info("\n  UNRECOGNIZED ITEMS (%d):", len(target_scan_result.unrecognized))
-                    for item in target_scan_result.unrecognized[:5]:
-                        item_type = "folder" if item.is_dir() else "file"
-                        logger.info("    - %s (%s)", item.name, item_type)
-                    if len(target_scan_result.unrecognized) > 5:
-                        logger.info("    ... and %d more", len(target_scan_result.unrecognized) - 5)
             elif not lang_files:
                 logger.warning("  No language files detected (no languagedata_*.xml, no language-suffixed files/folders)")
 
-            # Show skipped files OUTSIDE has_smart_scan guard — must display even when no valid files found
+            # Show unrecognized + skipped OUTSIDE has_smart_scan guard — must display even when no valid files found
+            if target_scan_result.unrecognized:
+                logger.warning("\n  [!!] UNRECOGNIZED ITEMS (%d) — no valid language suffix:", len(target_scan_result.unrecognized))
+                for item in target_scan_result.unrecognized[:10]:
+                    item_type = "folder" if item.is_dir() else "file"
+                    logger.warning("    - %s (%s)", item.name, item_type)
+                if len(target_scan_result.unrecognized) > 10:
+                    logger.warning("    ... and %d more", len(target_scan_result.unrecognized) - 10)
             if target_scan_result.skipped_files:
                 logger.warning("\n  [!!] SKIPPED FILES (%d) — unsupported file type:", len(target_scan_result.skipped_files))
                 for reason in target_scan_result.skipped_files[:10]:
@@ -3087,7 +3087,10 @@ class QuickTranslateApp:
 
         # Show warnings if any
         if transfer_plan.warnings:
-            plan_summary += f"\n\nWarnings:\n" + "\n".join(f"  - {w}" for w in transfer_plan.warnings[:3])
+            shown = transfer_plan.warnings[:5]
+            plan_summary += f"\n\nWarnings ({len(transfer_plan.warnings)}):\n" + "\n".join(f"  - {w}" for w in shown)
+            if len(transfer_plan.warnings) > 5:
+                plan_summary += f"\n  ...and {len(transfer_plan.warnings) - 5} more (see Log panel)"
 
         confirm = messagebox.askyesno(
             "Confirm Transfer",
