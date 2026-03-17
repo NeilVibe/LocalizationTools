@@ -449,6 +449,14 @@
     if (selectAndRevealNode(result.node_id)) {
       searchResults = [];
       searchQuery = '';
+      // Add highlight pulse (WOW-04)
+      requestAnimationFrame(() => {
+        const el = document.querySelector(`[data-node-id="${result.node_id}"]`);
+        if (el) {
+          el.classList.add('search-highlight-pulse');
+          setTimeout(() => el.classList.remove('search-highlight-pulse'), 1000);
+        }
+      });
     }
   }
 
@@ -567,6 +575,33 @@
   function onRefMouseLeave() {
     clearTimeout(hoverTimer);
     hoveredRef = null;
+  }
+
+  // === Copy-on-Click (WOW-04) ===
+  let copyToast = $state(null);
+  let copyToastTimer = null;
+
+  async function copyAttrValue(event, value) {
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(value);
+      // Create ripple at click position
+      const target = event.currentTarget;
+      const ripple = document.createElement('span');
+      ripple.className = 'copy-ripple';
+      const rect = target.getBoundingClientRect();
+      ripple.style.left = `${event.clientX - rect.left}px`;
+      ripple.style.top = `${event.clientY - rect.top}px`;
+      target.style.position = 'relative';
+      target.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 400);
+      // Show toast
+      clearTimeout(copyToastTimer);
+      copyToast = value.length > 30 ? value.slice(0, 30) + '...' : value;
+      copyToastTimer = setTimeout(() => { copyToast = null; }, 1500);
+    } catch (err) {
+      logger.error('Copy failed', { error: err.message });
+    }
   }
 </script>
 
@@ -693,6 +728,12 @@
           <div class="preview-detail">{hoveredRef.attributes.Key}</div>
         {/if}
       </div>
+    </div>
+  {/if}
+
+  {#if copyToast}
+    <div class="copy-toast">
+      Copied: {copyToast}
     </div>
   {/if}
 </div>
@@ -858,6 +899,7 @@
         class="t-value attr-val-{category}"
         role="button"
         tabindex="-1"
+        onclick={(e) => copyAttrValue(e, String(attrValue))}
         ondblclick={(e) => handleAttrDoubleClick(e, node, attrName, attrValue)}
         onmouseenter={category === 'crossref' ? (e) => onRefMouseEnter(e, String(attrValue)) : undefined}
         onmouseleave={category === 'crossref' ? onRefMouseLeave : undefined}
@@ -1272,6 +1314,60 @@
   @keyframes fadeSlideIn {
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* === Copy Ripple (WOW-04) === */
+  :global(.copy-ripple) {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(152, 195, 121, 0.3);
+    animation: rippleExpand 0.4s ease-out;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+  }
+
+  @keyframes rippleExpand {
+    from { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+    to   { transform: translate(-50%, -50%) scale(4); opacity: 0; }
+  }
+
+  /* === Copy Toast === */
+  .copy-toast {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e1e2e;
+    color: #98c379;
+    border: 1px solid #3c3c4c;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    z-index: 50;
+    animation: toastSlideIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @keyframes toastSlideIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* === Search Highlight Pulse (WOW-04) === */
+  .search-highlight-pulse {
+    animation: highlightPulse 1s ease-out;
+  }
+
+  @keyframes highlightPulse {
+    0%   { background-color: rgba(97, 175, 239, 0.3); }
+    50%  { background-color: rgba(97, 175, 239, 0.1); }
+    100% { background-color: transparent; }
   }
 
   /* === Hover Preview Tooltip (WOW-02) === */
