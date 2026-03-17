@@ -64,7 +64,8 @@
         return;
       }
 
-      initGraph(data.nodes, data.links);
+      // Defer to next frame so flex layout has settled and container has height
+      requestAnimationFrame(() => initGraph(data.nodes, data.links));
     } catch (err) {
       logger.error('Failed to fetch relationships', { error: err.message });
       error = 'Failed to load relationship data: ' + err.message;
