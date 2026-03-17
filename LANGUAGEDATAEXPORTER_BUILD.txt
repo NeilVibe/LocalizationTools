@@ -69,3 +69,4 @@ Build 035: Script Only: VRS ordering fix, EventName + HasAudio columns, WEM audi
 Build 034: No Script mode excludes script/dialog for ALL languages (not just ENG/ZHO-CN)
 Build 035: add dynamic version display to window title
 Build 036: add LDE program icon (teal-seagreen gradient sphere)
+Build 037: add window/taskbar icon (LDE icon in title bar + taskbar)
