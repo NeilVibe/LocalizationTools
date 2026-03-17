@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 
 ## Current Position
 
-Phase: 37 of 37 (XML Viewer WOW Polish)
-Plan: 3 of 3 in current phase
+Phase: 40 of 40 (Cross-cutting WOW Polish)
+Plan: 1 of 2 in current phase
 Status: in-progress
-Last activity: 2026-03-17 -- Phase 37 Plan 03 complete (context panel animations)
+Last activity: 2026-03-17 -- Phase 40 Plan 01 complete (page crossfade + shimmer loading)
 
 Progress: [##########] 100%
 
@@ -70,6 +70,7 @@ Progress: [##########] 100%
 | Phase 38 P03 | 286 | 2 tasks | 3 files |
 | Phase 39 P01 | 4min | 2 tasks | 2 files |
 | Phase 39 P02 | 234 | 3 tasks | 5 files |
+| Phase 40 P01 | 3min | 2 tasks | 5 files |
 | Phase 40 P02 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
@@ -100,6 +101,7 @@ Recent decisions affecting current work:
 - [Phase 38]: Used $derived.by() for viewportRect needing getBoundingClientRect
 - [Phase 39]: CSS transition with .visible class for staggered entrance (avoids animation replay)
 - [Phase 39]: Used ChartNetwork icon (Network unavailable); graph node click switches to grid view then navigates; entity tabs hidden in graph mode
+- [Phase 40]: PageTransition uses {#key $currentPage} + transition:fade (150ms); shimmer skeleton pattern reused from SkeletonCard
 - [Phase 40]: ToastContainer replaces GlobalToast preserving WebSocket subscriptions; toast duration stored per-object for progress bar
 
 ### Pending Todos
