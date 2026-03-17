@@ -140,7 +140,7 @@ Plans:
   2. Dark mode works on every page with zero hardcoded colors -- toggling dark mode shows no broken elements on any page
   3. Sidebar navigation has consistent active states, hover effects, and spacing across all pages
   4. Every page uses the shared ErrorState component with a retry button for error recovery -- no page silently fails
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 35-01: Cross-page consistency enforcement (PageHeader, dark mode, sidebar, error handling)
@@ -154,7 +154,7 @@ Plans:
   2. Codex loads 500 entities without visible lag, with initial render completing under 1 second
   3. Opening and closing pages 10 times shows stable memory usage with no growth trend (heap snapshot comparison)
   4. All 834+ existing API tests pass with zero regressions after all polish changes
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 36-01: Playwright screenshots + performance benchmarks + regression test suite
@@ -194,12 +194,12 @@ Plans:
   3. Each node type has a distinct SVG icon (castle=Town, skull=Dungeon, shield=Fortress, tent=Wilderness, compass=Main, tree=Sub)
   4. Routes between regions animate on hover with a travel-path effect and danger-level coloring
   5. Click region → smooth zoom-to-fit with d3 transition + detail panel
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 38-01: Mock map data (10 regions, 13 routes) + parchment aesthetic
-- [ ] 38-02: Region polygons + terrain icons + node markers
-- [ ] 38-03: Route animations + zoom interactions + mini-map
+- [ ] 38-01-PLAN.md -- Mock map data (10 regions, 13 routes) + parchment aesthetic
+- [ ] 38-02-PLAN.md -- Region polygons + terrain icons + node markers
+- [ ] 38-03-PLAN.md -- Route animations + zoom interactions + mini-map
 
 ### Phase 39: Codex Cards + Relationship Graph
 **Goal**: Codex entity grid uses glassmorphism cards with parallax hover, and a D3 force-directed graph shows entity relationships
@@ -210,7 +210,7 @@ Plans:
   2. Hovering a card produces parallax shift on the background image
   3. D3 force-directed graph shows character→item, character→skill, character→faction relationships with typed link styles
   4. Hovering a graph node highlights all connected nodes and dims unconnected ones
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 39-01: Glassmorphism entity cards with parallax hover
@@ -225,7 +225,7 @@ Plans:
   2. All loading states use shimmer skeletons matching the content dimensions (no spinners anywhere)
   3. Ctrl+K opens a command palette for global search across all entities
   4. Toast notifications slide in from top-right with auto-dismiss after 3 seconds
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 40-01: Page transitions + shimmer loading choreography
