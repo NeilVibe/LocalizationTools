@@ -32,12 +32,14 @@
   let hoveredRoute = $state(null);
   let hoveredRegion = $state(null);
   let hoveredMegaRegion = $state(null);
-  let zoomBehaviorRef = $state(null);
-  let svgSelectionRef = $state(null);
+  let zoomBehaviorRef = null;  // plain var — D3 objects must not be proxied by $state
+  let svgSelectionRef = null;
 
   // Constants
   const SVG_SIZE = 1000;
   const PADDING = 50;
+  const MINIMAP_SIZE = 150;
+  const MINIMAP_SCALE = MINIMAP_SIZE / SVG_SIZE;
 
   // Route danger level colors
   const DANGER_COLORS = {
@@ -88,16 +90,10 @@
     return { x: svgX, y: svgY };
   }
 
-  /**
-   * Get color for a node based on region_type
-   */
   function getNodeColor(regionType) {
     return NODE_COLORS[regionType] || '#525252';
   }
 
-  /**
-   * Get radius for a node based on region_type
-   */
   function getNodeRadius(regionType) {
     return NODE_RADIUS[regionType] || 7;
   }
@@ -177,25 +173,17 @@
   let viewportRect = $derived.by(() => {
     const svgRect = svgElement?.getBoundingClientRect();
     if (!svgRect) return null;
-    const miniScale = 150 / SVG_SIZE;
-    const vx = (-transform.x / transform.k) * miniScale;
-    const vy = (-transform.y / transform.k) * miniScale;
-    const vw = (svgRect.width / transform.k) * miniScale;
-    const vh = (svgRect.height / transform.k) * miniScale;
-    return { x: vx, y: vy, w: Math.min(vw, 150), h: Math.min(vh, 150) };
+    const vx = (-transform.x / transform.k) * MINIMAP_SCALE;
+    const vy = (-transform.y / transform.k) * MINIMAP_SCALE;
+    const vw = (svgRect.width / transform.k) * MINIMAP_SCALE;
+    const vh = (svgRect.height / transform.k) * MINIMAP_SCALE;
+    return { x: vx, y: vy, w: Math.min(vw, MINIMAP_SIZE), h: Math.min(vh, MINIMAP_SIZE) };
   });
 
   /**
-   * Handle node hover - pass mouse coordinates for tooltip positioning
+   * Handle node hover/move - pass mouse coordinates for tooltip positioning
    */
   function handleNodeHover(node, event) {
-    onNodeHover(node, event.clientX, event.clientY);
-  }
-
-  /**
-   * Handle node mouse move - update tooltip position
-   */
-  function handleNodeMove(node, event) {
     onNodeHover(node, event.clientX, event.clientY);
   }
 
@@ -225,19 +213,21 @@
 
   // Derived: mega-region polygon data (6 tessellating biome zones)
   let megaRegionData = $derived(
-    megaRegions.map(region => {
-      const svgPoints = region.polygon.map(([wx, wz]) => {
-        const p = worldToSvg(wx, wz);
-        return `${p.x},${p.y}`;
-      }).join(' ');
+    megaRegions
+      .filter(region => region.polygon && region.polygon.length >= 3)
+      .map(region => {
+        const svgPoints = region.polygon.map(([wx, wz]) => {
+          const p = worldToSvg(wx, wz);
+          return `${p.x},${p.y}`;
+        }).join(' ');
 
-      // Centroid for label positioning
-      const cx = region.polygon.reduce((s, p) => s + p[0], 0) / region.polygon.length;
-      const cz = region.polygon.reduce((s, p) => s + p[1], 0) / region.polygon.length;
-      const center = worldToSvg(cx, cz);
+        // Centroid for label positioning
+        const cx = region.polygon.reduce((s, p) => s + p[0], 0) / region.polygon.length;
+        const cz = region.polygon.reduce((s, p) => s + p[1], 0) / region.polygon.length;
+        const center = worldToSvg(cx, cz);
 
-      return { ...region, svgPoints, center };
-    })
+        return { ...region, svgPoints, center };
+      })
   );
 
   // Grid lines for visual reference
@@ -292,6 +282,11 @@
         <feFuncA type="linear" slope="0.08" intercept="0" />
       </feComponentTransfer>
       <feBlend in="SourceGraphic" in2="alphaedNoise" mode="overlay" />
+    </filter>
+
+    <!-- Text shadow filter (cross-browser, replaces CSS text-shadow on SVG) -->
+    <filter id="text-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="3" flood-color="rgba(0,0,0,0.9)" />
     </filter>
 
     <!-- Region glow filter -->
@@ -424,7 +419,7 @@
           font-weight="700"
           letter-spacing="2"
           class="mega-region-label"
-          style="text-shadow: 0 0 10px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.8);"
+          filter="url(#text-shadow)"
         >
           {mega.name_kr}
         </text>
@@ -480,7 +475,7 @@
           font-size="15"
           font-weight="600"
           class="region-name-label"
-          style="text-shadow: 0 0 6px rgba(212,154,92,0.5), 0 1px 2px rgba(0,0,0,0.8);"
+          filter="url(#text-shadow)"
         >
           {region.name_kr || region.name}
         </text>
@@ -523,7 +518,7 @@
               x={midPoint.x} y={midPoint.y - 10}
               text-anchor="middle" fill="rgba(240,184,120,0.9)"
               font-size="10" font-weight="500"
-              style="text-shadow: 0 1px 3px rgba(0,0,0,0.9);"
+              filter="url(#text-shadow)"
               class="route-label"
             >
               {route.travel_time}
@@ -544,7 +539,7 @@
         role="button"
         tabindex="0"
         onmouseenter={(e) => handleNodeHover(node, e)}
-        onmousemove={(e) => handleNodeMove(node, e)}
+        onmousemove={(e) => handleNodeHover(node, e)}
         onmouseleave={() => onNodeLeave()}
         onclick={() => { zoomToRegion(node); onNodeClick(node); }}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNodeClick(node); }}
@@ -586,15 +581,15 @@
 
 <!-- Mini-map overlay -->
 <div class="mini-map">
-  <svg viewBox="0 0 150 150" width="150" height="150">
-    <rect width="150" height="150" fill="rgba(26,20,8,0.85)" rx="4" />
-    <rect x="1" y="1" width="148" height="148" fill="none" stroke="rgba(212,154,92,0.3)" rx="4" />
+  <svg viewBox="0 0 {MINIMAP_SIZE} {MINIMAP_SIZE}" width={MINIMAP_SIZE} height={MINIMAP_SIZE}>
+    <rect width={MINIMAP_SIZE} height={MINIMAP_SIZE} fill="rgba(26,20,8,0.85)" rx="4" />
+    <rect x="1" y="1" width={MINIMAP_SIZE - 2} height={MINIMAP_SIZE - 2} fill="none" stroke="rgba(212,154,92,0.3)" rx="4" />
 
     <!-- Simplified region shapes -->
     {#each polygonData as region (region.strkey + '-mini')}
       {@const miniPoints = region.polygon_points?.map(([wx, wz]) => {
         const p = worldToSvg(wx, wz);
-        return `${p.x * 150/SVG_SIZE},${p.y * 150/SVG_SIZE}`;
+        return `${p.x * MINIMAP_SCALE},${p.y * MINIMAP_SCALE}`;
       }).join(' ') || ''}
       {#if miniPoints}
         <polygon points={miniPoints}
@@ -606,8 +601,8 @@
     <!-- Node dots -->
     {#each nodePositions as node (node.strkey + '-mini')}
       <circle
-        cx={node.svgPos.x * 150/SVG_SIZE}
-        cy={node.svgPos.y * 150/SVG_SIZE}
+        cx={node.svgPos.x * MINIMAP_SCALE}
+        cy={node.svgPos.y * MINIMAP_SCALE}
         r="2"
         fill={getNodeColor(node.region_type)}
       />
@@ -657,7 +652,6 @@
     pointer-events: none;
     user-select: none;
     font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
-    text-transform: uppercase;
   }
 
   /* Region polygon styles */

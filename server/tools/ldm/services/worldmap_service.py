@@ -16,6 +16,20 @@ from lxml import etree
 
 from server.tools.ldm.schemas.worldmap import MapNode, MapRoute, MegaRegion, WorldMapData
 
+# Bounds expansion padding so mega-region polygons extend past outermost nodes
+_BOUNDS_PADDING = 60
+
+
+def _safe_float(parts: List[str], index: int, label: str) -> float:
+    """Extract a float from a split coordinate list, defaulting to 0.0 on error."""
+    if index >= len(parts):
+        return 0.0
+    try:
+        return float(parts[index])
+    except ValueError:
+        logger.warning(f"[WorldMap] Malformed coordinate {label}, defaulting to 0.0")
+        return 0.0
+
 
 class WorldMapService:
     """Parses world map data from StaticInfo XML and enriches with Codex."""
@@ -78,16 +92,8 @@ class WorldMapService:
             # Parse WorldPosition "X,0,Z" format
             world_pos = node_el.get("WorldPosition", "0,0,0")
             parts = world_pos.split(",")
-            try:
-                x = float(parts[0]) if len(parts) >= 1 else 0.0
-            except ValueError:
-                logger.warning(f"[WorldMap] Malformed X coordinate in WorldPosition '{world_pos}' for {strkey}, defaulting to 0.0")
-                x = 0.0
-            try:
-                z = float(parts[2]) if len(parts) >= 3 else 0.0
-            except (ValueError, IndexError):
-                logger.warning(f"[WorldMap] Malformed Z coordinate in WorldPosition '{world_pos}' for {strkey}, defaulting to 0.0")
-                z = 0.0
+            x = _safe_float(parts, 0, f"X in '{world_pos}' for {strkey}")
+            z = _safe_float(parts, 2, f"Z in '{world_pos}' for {strkey}")
 
             # Parse new showcase fields
             danger_level = int(node_el.get("DangerLevel", "1"))
@@ -251,10 +257,10 @@ class WorldMapService:
             return []
 
         # Expand bounds slightly for full coverage
-        x0 = bounds.get("min_x", 100) - 60
-        x1 = bounds.get("max_x", 750) + 60
-        z0 = bounds.get("min_z", 150) - 60
-        z1 = bounds.get("max_z", 650) + 60
+        x0 = bounds.get("min_x", 100) - _BOUNDS_PADDING
+        x1 = bounds.get("max_x", 750) + _BOUNDS_PADDING
+        z0 = bounds.get("min_z", 150) - _BOUNDS_PADDING
+        z1 = bounds.get("max_z", 650) + _BOUNDS_PADDING
 
         # Dividing lines
         mid_x = (x0 + x1) / 2  # ~425

@@ -43,6 +43,15 @@
     related:    { color: '#6f6f6f', dash: '4,2',    width: 1 },
   };
 
+  /**
+   * Resolve a D3 link endpoint to its node ID.
+   * Before simulation ticks, source/target are string IDs;
+   * after ticking, they become node objects.
+   */
+  function linkNodeId(endpoint) {
+    return typeof endpoint === 'object' ? endpoint.id : endpoint;
+  }
+
   // Cleanup simulation on destroy
   $effect(() => {
     return () => {
@@ -58,14 +67,23 @@
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
 
-      if (data.nodes.length === 0) {
+      if (!data.nodes || !data.links || data.nodes.length === 0) {
         loading = false;
         error = 'No entities found -- ensure gamedata is indexed.';
         return;
       }
 
       // Defer to next frame so flex layout has settled and container has height
-      requestAnimationFrame(() => initGraph(data.nodes, data.links));
+      requestAnimationFrame(() => {
+        try {
+          if (!container) return;
+          initGraph(data.nodes, data.links);
+        } catch (err) {
+          logger.error('Failed to render graph', { error: err.message });
+          error = 'Failed to render relationship graph';
+          loading = false;
+        }
+      });
     } catch (err) {
       logger.error('Failed to fetch relationships', { error: err.message });
       error = 'Failed to load relationship data: ' + err.message;
@@ -107,11 +125,16 @@
     // Connection count for node sizing
     const connectionCount = {};
     links.forEach(l => {
-      const sid = typeof l.source === 'object' ? l.source.id : l.source;
-      const tid = typeof l.target === 'object' ? l.target.id : l.target;
+      const sid = linkNodeId(l.source);
+      const tid = linkNodeId(l.target);
       connectionCount[sid] = (connectionCount[sid] || 0) + 1;
       connectionCount[tid] = (connectionCount[tid] || 0) + 1;
     });
+
+    /** Node radius scales with connection count, capped at 24px */
+    function nodeRadius(id) {
+      return Math.min(8 + (connectionCount[id] || 0) * 2, 24);
+    }
 
     // Force simulation — use forceX/forceY to keep nodes within bounds
     simulation = forceSimulation(nodes)
@@ -148,15 +171,19 @@
 
     // Node circles
     node.append('circle')
-      .attr('r', d => Math.min(8 + (connectionCount[d.id] || 0) * 2, 24))
+      .attr('r', d => nodeRadius(d.id))
       .attr('fill', d => NODE_COLORS[d.entity_type] || '#6f6f6f')
       .attr('stroke', 'rgba(255,255,255,0.3)')
       .attr('stroke-width', 1.5);
 
     // Node labels
     node.append('text')
-      .text(d => d.name.length > 12 ? d.name.slice(0, 12) + '...' : d.name)
-      .attr('dy', d => Math.min(8 + (connectionCount[d.id] || 0) * 2, 24) + 14)
+      .text(d => {
+        const isCJK = /[\uac00-\ud7af\u4e00-\u9fff\u3040-\u309f]/.test(d.name);
+        const max = isCJK ? 6 : 12;
+        return d.name.length > max ? d.name.slice(0, max) + '\u2026' : d.name;
+      })
+      .attr('dy', d => nodeRadius(d.id) + 14)
       .attr('text-anchor', 'middle')
       .attr('fill', 'var(--cds-text-02, #c6c6c6)')
       .attr('font-size', '10px')
@@ -167,8 +194,8 @@
       hoveredNodeId = d.id;
       const connected = new Set([d.id]);
       links.forEach(l => {
-        const sid = typeof l.source === 'object' ? l.source.id : l.source;
-        const tid = typeof l.target === 'object' ? l.target.id : l.target;
+        const sid = linkNodeId(l.source);
+        const tid = linkNodeId(l.target);
         if (sid === d.id) connected.add(tid);
         if (tid === d.id) connected.add(sid);
       });
@@ -182,8 +209,8 @@
       // Dim unconnected links
       link.transition().duration(200)
         .attr('opacity', l => {
-          const sid = typeof l.source === 'object' ? l.source.id : l.source;
-          const tid = typeof l.target === 'object' ? l.target.id : l.target;
+          const sid = linkNodeId(l.source);
+          const tid = linkNodeId(l.target);
           return (sid === d.id || tid === d.id) ? 0.8 : 0.1;
         });
     });
