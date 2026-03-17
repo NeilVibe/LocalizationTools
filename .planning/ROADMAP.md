@@ -159,10 +159,83 @@ Plans:
 Plans:
 - [ ] 36-01: Playwright screenshots + performance benchmarks + regression test suite
 
+### v3.5 WOW Showcase (Phases 37-40)
+
+**Milestone Goal:** Transform LocaNext from functional to STUNNING with maximum demo WOW effect. Smart attribute highlighting in XML viewer, fantasy world map, codex relationship graph, and cross-cutting micro-interactions.
+
+- [ ] **Phase 37: XML Viewer WOW Polish** - Smart attribute semantic colors, hover preview tooltips, smooth panel/tab animations, micro-interactions
+- [ ] **Phase 38: Fantasy World Map** - Parchment aesthetic, region polygons, terrain icons, custom SVG markers, route animations, mini-map
+- [ ] **Phase 39: Codex Cards + Relationship Graph** - Glassmorphism entity cards, D3 force-directed relationship graph, parallax hover
+- [ ] **Phase 40: Cross-cutting WOW Polish** - Page transitions, shimmer loading choreography, Ctrl+K command palette, micro-interactions
+
+### Phase 37: XML Viewer WOW Polish
+**Goal**: Every attribute in the XML viewer is semantically colored, hovering cross-refs shows entity previews, and all panel interactions have smooth animations
+**Depends on**: v3.3 complete
+**Requirements**: WOW-01, WOW-02, WOW-03, WOW-04
+**Success Criteria** (what must be TRUE):
+  1. Cross-ref attributes (KnowledgeKey, FactionKey, etc.) render blue with underline; identity attrs gold; editable attrs green; media attrs purple; stat attrs cyan
+  2. Hovering a cross-ref attribute value for 300ms shows a mini-preview card with entity name, type badge, and thumbnail image
+  3. Panel entrance has slide-in animation, tab switching has crossfade, image loading has shimmer-to-reveal
+  4. Clicking an attribute value copies it to clipboard with a ripple effect
+**Plans**: 3 plans
+
+Plans:
+- [ ] 37-01-PLAN.md -- Smart attribute semantic highlighting (classifyAttr + 6 color categories)
+- [ ] 37-02-PLAN.md -- Hover preview tooltips + copy ripple + search highlight pulse
+- [ ] 37-03-PLAN.md -- Panel slide-in + tab crossfade + image shimmer + dict stagger animations
+
+### Phase 38: Fantasy World Map
+**Goal**: The map page looks like a real fantasy game world map with parchment background, region polygons, terrain indicators, and smooth navigation
+**Depends on**: Phase 37 (establishes animation patterns)
+**Requirements**: WOW-05, WOW-06, WOW-07, WOW-08, WOW-09
+**Success Criteria** (what must be TRUE):
+  1. Map has parchment/aged paper background with CSS gradients (no external images) and ornamental border frame
+  2. 10 regions render as semi-transparent polygons with glow-on-hover and Korean fantasy names
+  3. Each node type has a distinct SVG icon (castle=Town, skull=Dungeon, shield=Fortress, tent=Wilderness, compass=Main, tree=Sub)
+  4. Routes between regions animate on hover with a travel-path effect and danger-level coloring
+  5. Click region → smooth zoom-to-fit with d3 transition + detail panel
+**Plans**: TBD
+
+Plans:
+- [ ] 38-01: Mock map data (10 regions, 13 routes) + parchment aesthetic
+- [ ] 38-02: Region polygons + terrain icons + node markers
+- [ ] 38-03: Route animations + zoom interactions + mini-map
+
+### Phase 39: Codex Cards + Relationship Graph
+**Goal**: Codex entity grid uses glassmorphism cards with parallax hover, and a D3 force-directed graph shows entity relationships
+**Depends on**: Phase 37 (animation patterns), Phase 38 (mock data enrichment)
+**Requirements**: WOW-10, WOW-11, WOW-12, WOW-13
+**Success Criteria** (what must be TRUE):
+  1. Entity cards have glassmorphism effect (backdrop-filter blur, semi-transparent background) with AI portrait as card image
+  2. Hovering a card produces parallax shift on the background image
+  3. D3 force-directed graph shows character→item, character→skill, character→faction relationships with typed link styles
+  4. Hovering a graph node highlights all connected nodes and dims unconnected ones
+**Plans**: TBD
+
+Plans:
+- [ ] 39-01: Glassmorphism entity cards with parallax hover
+- [ ] 39-02: D3 force-directed relationship graph
+
+### Phase 40: Cross-cutting WOW Polish
+**Goal**: Every page transition, loading state, and interaction across the entire app feels polished and delightful
+**Depends on**: Phases 37-39 (all visual work complete)
+**Requirements**: WOW-14, WOW-15, WOW-16, WOW-17
+**Success Criteria** (what must be TRUE):
+  1. Navigating between pages has crossfade transition (not instant swap)
+  2. All loading states use shimmer skeletons matching the content dimensions (no spinners anywhere)
+  3. Ctrl+K opens a command palette for global search across all entities
+  4. Toast notifications slide in from top-right with auto-dismiss after 3 seconds
+**Plans**: TBD
+
+Plans:
+- [ ] 40-01: Page transitions + shimmer loading choreography
+- [ ] 40-02: Ctrl+K command palette + toast system
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 32 -> 33 -> 34 -> 35 -> 36
+Phases execute in numeric order: 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38 -> 39 -> 40
+Note: Phase 38 and 39 can be partially parallelized after Phase 37.
 Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -204,7 +277,12 @@ Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 | 34. Page-by-Page Polish | 3/3 | Complete   | 2026-03-16 | - |
 | 35. Cross-Page Consistency | v3.3 | 1/1 | Complete | 2026-03-17 |
 | 36. Visual Verification | v3.3 | 1/1 | Complete | 2026-03-17 |
+| 37. XML Viewer WOW Polish | v3.5 | 0/3 | Planned | - |
+| 38. Fantasy World Map | v3.5 | 0/3 | Planned | - |
+| 39. Codex Cards + Relationship Graph | v3.5 | 0/2 | Planned | - |
+| 40. Cross-cutting WOW Polish | v3.5 | 0/2 | Planned | - |
 
 ---
 *Roadmap created: 2026-03-14*
 *v3.3 milestone added: 2026-03-17*
+*v3.5 WOW Showcase milestone added: 2026-03-17*
