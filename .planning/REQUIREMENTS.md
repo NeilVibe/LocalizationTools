@@ -136,8 +136,8 @@
 - [ ] **WOW-05**: Map has parchment background via CSS gradients + ornamental SVG border frame
 - [ ] **WOW-06**: 10 regions render as semi-transparent polygons with glow-on-hover and Korean names
 - [ ] **WOW-07**: Each node type has a distinct SVG icon (castle, skull, shield, tent, compass, tree)
-- [ ] **WOW-08**: Routes animate on hover with travel-path effect and danger-level coloring
-- [ ] **WOW-09**: Click region → smooth zoom-to-fit via d3 transition + detail panel slides in
+- [x] **WOW-08**: Routes animate on hover with travel-path effect and danger-level coloring
+- [x] **WOW-09**: Click region → smooth zoom-to-fit via d3 transition + detail panel slides in
 
 ### WOW -- Codex Enhancement (Phase 39)
 
