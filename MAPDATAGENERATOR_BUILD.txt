@@ -50,3 +50,4 @@ Build - unified settings dialog, remove installer drive selector
 Build - polish: deduped paths, hardened migration, spinbox fix
 Build - fix audio folder language selection, add audio language combobox, fix language switch race condition
 Build 012: add MapDataGenerator program icon (indigo-blue gradient sphere)
+Build 013: add window/taskbar icon (MDG icon in title bar + taskbar)
