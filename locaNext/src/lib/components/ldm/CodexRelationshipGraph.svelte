@@ -10,7 +10,7 @@
   import { onMount } from "svelte";
   import { select } from "d3-selection";
   import { zoom, zoomIdentity } from "d3-zoom";
-  import { forceSimulation, forceManyBody, forceLink, forceCenter, forceCollide } from "d3-force";
+  import { forceSimulation, forceManyBody, forceLink, forceCenter, forceCollide, forceX, forceY } from "d3-force";
   import { drag } from "d3-drag";
   import { InlineLoading } from "carbon-components-svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
@@ -87,8 +87,8 @@
       node.y = cy + radius * Math.sin(angleStep * i);
     });
 
-    // Clear previous
-    select(container).select('svg').remove();
+    // Clear previous graph SVG (not legend SVGs inside .graph-legend)
+    select(container).selectAll(':scope > svg').remove();
 
     const svg = select(container)
       .append('svg')
@@ -113,12 +113,14 @@
       connectionCount[tid] = (connectionCount[tid] || 0) + 1;
     });
 
-    // Force simulation
+    // Force simulation — use forceX/forceY to keep nodes within bounds
     simulation = forceSimulation(nodes)
-      .force("link", forceLink(links).id(d => d.id).distance(120).strength(0.5))
-      .force("charge", forceManyBody().strength(-300))
+      .force("link", forceLink(links).id(d => d.id).distance(80).strength(0.5))
+      .force("charge", forceManyBody().strength(-200))
       .force("center", forceCenter(cx, cy))
-      .force("collision", forceCollide(40))
+      .force("x", forceX(cx).strength(0.05))
+      .force("y", forceY(cy).strength(0.08))
+      .force("collision", forceCollide(35))
       .alpha(1)
       .alphaDecay(0.02);
 
