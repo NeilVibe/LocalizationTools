@@ -754,6 +754,7 @@
   <div
     class="xml-row file-header-row"
     class:expanded={expandedNodes.has(row.fileKey)}
+    style="--entity-color: {getEntityColor('')}"
     onclick={() => toggleExpand(row.fileKey)}
   >
     <span class="line-gutter" style="width: {gutterWidth}px;">{row.line}</span>
@@ -776,6 +777,7 @@
   <div
     class="xml-row"
     class:selected={isRowSelected(row)}
+    style="--entity-color: {color}"
     data-node-id={node.node_id}
     onclick={() => selectNode(node)}
     oncontextmenu={(e) => handleContextMenu(e, node)}
@@ -806,6 +808,7 @@
   <div
     class="xml-row"
     class:selected={isRowSelected(row)}
+    style="--entity-color: {color}"
     data-node-id={node.node_id}
     onclick={() => selectNode(node)}
     oncontextmenu={(e) => handleContextMenu(e, node)}
@@ -827,6 +830,7 @@
   <div
     class="xml-row"
     class:selected={isRowSelected(row)}
+    style="--entity-color: {color}"
     data-node-id={node.node_id}
     onclick={() => selectNode(node)}
     oncontextmenu={(e) => handleContextMenu(e, node)}
@@ -856,6 +860,7 @@
   <div
     class="xml-row close-row"
     class:selected={isRowSelected(row)}
+    style="--entity-color: {color}"
   >
     <span class="line-gutter" style="width: {gutterWidth}px;">{row.line}</span>
     <span class="fold-gutter"></span>
@@ -882,7 +887,7 @@
     {@const xrefTarget = isXref ? resolveCrossRef(attrName, String(attrValue)) : null}
     {@const isEditable = (EDITABLE_ATTRS[node.tag] || []).includes(attrName)}
     {@const category = classifyAttr(attrName)}
-    {' '}<span class="t-attr">{attrName}</span><span class="t-bracket">=</span>{#if xrefTarget}<button
+    {' '}<span class="attr-pair"><span class="t-attr">{attrName}</span><span class="t-bracket">=</span>{#if xrefTarget}<button
         class="t-xref"
         title="Navigate to {attrName}: {attrValue}"
         onclick={(e) => { e.stopPropagation(); selectAndRevealNode(xrefTarget); }}
@@ -903,7 +908,7 @@
         ondblclick={(e) => handleAttrDoubleClick(e, node, attrName, attrValue)}
         onmouseenter={category === 'crossref' ? (e) => onRefMouseEnter(e, String(attrValue)) : undefined}
         onmouseleave={category === 'crossref' ? onRefMouseLeave : undefined}
-      >"{attrValue}"</span>{/if}
+      >"{attrValue}"</span>{/if}</span>
   {/each}
 {/snippet}
 
@@ -1047,11 +1052,45 @@
     padding: 1px 16px 1px 0;
     cursor: pointer;
     position: relative;
-    transition: background 0.08s ease;
+    overflow: hidden;
+    transition: background 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.15s ease;
   }
 
-  .xml-row:hover { background: var(--xml-bg-hover); }
-  .xml-row.selected { background: var(--xml-bg-selected); }
+  /* === GAME UI HOVER (Entity-Aware) === */
+  .xml-row:hover {
+    background: color-mix(in srgb, var(--entity-color, #61afef) 8%, transparent);
+    box-shadow: inset 0 0 12px color-mix(in srgb, var(--entity-color, #61afef) 10%, transparent);
+  }
+
+  .xml-row.selected {
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--entity-color, #61afef) 18%, transparent) 0%,
+      color-mix(in srgb, var(--entity-color, #61afef) 8%, transparent) 50%,
+      transparent 100%
+    );
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--entity-color, #61afef) 30%, transparent),
+      0 0 16px color-mix(in srgb, var(--entity-color, #61afef) 20%, transparent);
+  }
+
+  .xml-row.selected::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--entity-color, #61afef);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--entity-color, #61afef) 60%, transparent);
+    animation: selectedAccentPulse 0.5s ease-out;
+  }
+
+  @keyframes selectedAccentPulse {
+    0% { box-shadow: 0 0 24px var(--entity-color, #61afef); width: 5px; }
+    100% { box-shadow: 0 0 12px color-mix(in srgb, var(--entity-color, #61afef) 60%, transparent); width: 3px; }
+  }
 
   .xml-row:hover .indent-guide { background: var(--xml-indent-guide-active); }
 
@@ -1252,7 +1291,7 @@
 
   /* ===== SELECTED ROW PULSE ===== */
   .xml-row.selected {
-    animation: selectPulse 0.3s ease-out;
+    animation: selectPulse 0.3s ease-out, selectedAccentPulse 0.5s ease-out;
   }
 
   /* ===== ACTIVE INDENT GUIDES ON SELECTED ROW ===== */
@@ -1435,5 +1474,52 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  /* === ATTRIBUTE PAIR HOVER === */
+  .attr-pair {
+    position: relative;
+    padding: 0 1px;
+    border-radius: 3px;
+    transition: background-color 0.12s ease;
+  }
+
+  .attr-pair:hover {
+    background: rgba(209, 154, 102, 0.1);
+  }
+
+  .attr-pair:hover .t-attr {
+    color: #e8b85f;
+    font-weight: 600;
+    transition: color 0.1s ease;
+  }
+
+  .attr-pair:hover .t-bracket {
+    color: #8b8b9b;
+  }
+
+  .attr-pair:hover :global(.attr-val-crossref) {
+    color: #8cc4f0;
+    text-shadow: 0 0 8px rgba(97, 175, 239, 0.5);
+    text-decoration-style: wavy;
+  }
+
+  .attr-pair:hover :global(.attr-val-identity) {
+    color: #ffd666;
+    font-weight: 700;
+  }
+
+  .attr-pair:hover :global(.attr-val-media) {
+    color: #d9a0f0;
+  }
+
+  .attr-pair:hover :global(.attr-val-stat) {
+    color: #7ce8f0;
+  }
+
+  /* === REDUCED MOTION === */
+  @media (prefers-reduced-motion: reduce) {
+    .xml-row.selected::after { animation: none; }
+    .xml-row { transition-duration: 0.01s; }
   }
 </style>
