@@ -141,8 +141,8 @@
 
 ### WOW -- Codex Enhancement (Phase 39)
 
-- [ ] **WOW-10**: Entity cards have glassmorphism (backdrop-filter blur + semi-transparent bg) with AI portrait
-- [ ] **WOW-11**: Hovering card produces parallax shift on background image
+- [x] **WOW-10**: Entity cards have glassmorphism (backdrop-filter blur + semi-transparent bg) with AI portrait
+- [x] **WOW-11**: Hovering card produces parallax shift on background image
 - [ ] **WOW-12**: D3 force-directed graph shows entity relationships with typed link styles
 - [ ] **WOW-13**: Hovering graph node highlights connected nodes and dims unconnected
 
