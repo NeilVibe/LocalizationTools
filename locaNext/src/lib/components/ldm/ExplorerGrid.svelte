@@ -428,8 +428,10 @@
 
 <div class="explorer-grid" role="grid" aria-label="File explorer" oncontextmenu={handleBackgroundContextMenu}>
   {#if loading}
-    <div class="loading-state">
-      <span>Loading...</span>
+    <div class="shimmer-loading" role="status" aria-label="Loading files">
+      {#each [80, 60, 80, 60, 80, 60] as width, i (i)}
+        <div class="shimmer-skeleton shimmer-file-row" style="width: {width}%"></div>
+      {/each}
     </div>
   {:else if items.length === 0}
     <div class="empty-state">
@@ -518,7 +520,29 @@
     background: var(--cds-background);
   }
 
-  .loading-state,
+  .shimmer-loading {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 1rem;
+    flex: 1;
+  }
+
+  .shimmer-skeleton {
+    background: var(--skeleton-bg, var(--cds-layer-02));
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+
+  .shimmer-file-row {
+    height: 36px;
+    border-radius: 4px;
+  }
+
+  @keyframes skeleton-shimmer {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+  }
+
   .empty-state {
     display: flex;
     flex-direction: column;

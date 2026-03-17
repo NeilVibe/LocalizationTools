@@ -242,9 +242,10 @@
     </div>
 
     {#if autoLoading}
-      <div class="auto-load-indicator">
-        <span class="auto-load-dot"></span>
-        Loading game data...
+      <div class="auto-load-shimmer" role="status" aria-label="Loading game data">
+        {#each [60, 45, 70, 55, 40, 65, 50, 35] as width, i (i)}
+          <div class="shimmer-skeleton shimmer-tree-row" style="width: {width}%"></div>
+        {/each}
       </div>
     {/if}
 
@@ -420,28 +421,28 @@
     color: var(--cds-link-01);
   }
 
-  .auto-load-indicator {
+  .auto-load-shimmer {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.75rem;
-    color: var(--cds-text-02);
+    flex-direction: column;
+    gap: 4px;
+    padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--cds-border-subtle-01);
     flex-shrink: 0;
   }
 
-  .auto-load-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--cds-interactive);
-    animation: pulse-dot 1s ease-in-out infinite;
+  .shimmer-skeleton {
+    background: var(--skeleton-bg, var(--cds-layer-02));
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
   }
 
-  @keyframes pulse-dot {
+  .shimmer-tree-row {
+    height: 28px;
+    border-radius: 4px;
+  }
+
+  @keyframes skeleton-shimmer {
     0%, 100% { opacity: 0.4; }
-    50% { opacity: 1; }
+    50% { opacity: 0.8; }
   }
 
   .explorer-tree-container {

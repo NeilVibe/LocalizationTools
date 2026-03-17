@@ -7,7 +7,6 @@
    *
    * Phase 20: Interactive World Map (Plan 02)
    */
-  import { InlineLoading } from "carbon-components-svelte";
   import { Earth } from "carbon-icons-svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
@@ -114,8 +113,8 @@
       <ErrorState message={apiError} onretry={fetchMapData} />
     </div>
   {:else if loading}
-    <div class="worldmap-loading" role="status" aria-live="polite">
-      <InlineLoading description="Loading world map regions and routes..." />
+    <div class="worldmap-loading" role="status" aria-live="polite" aria-label="Loading world map regions and routes">
+      <div class="shimmer-skeleton shimmer-map-area"></div>
     </div>
   {:else if nodes.length === 0}
     <div class="worldmap-state-container">
@@ -182,6 +181,22 @@
     justify-content: center;
     flex: 1;
     padding: 2rem;
+  }
+
+  .shimmer-skeleton {
+    background: var(--skeleton-bg, var(--cds-layer-02));
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+
+  .shimmer-map-area {
+    width: 100%;
+    height: 400px;
+    border-radius: 8px;
+  }
+
+  @keyframes skeleton-shimmer {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
   }
 
   .worldmap-content {
