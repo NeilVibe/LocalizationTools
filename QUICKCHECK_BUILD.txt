@@ -17,3 +17,4 @@ Build 015: add Category + FileName columns to LINE CHECK and TERM CHECK output
 Build 016: Category+FileName only on TERM CHECK (removed from LINE CHECK — too many columns)
 Build 017: TERM CHECK autofilter + freeze panes on header row
 Build 018: add QuickCheck program icon (red-crimson gradient sphere)
+Build 019: add window/taskbar icon (QC icon in title bar + taskbar)
