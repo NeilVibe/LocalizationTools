@@ -32,6 +32,7 @@
   let hoveredRoute = $state(null);
   let hoveredRegion = $state(null);
   let hoveredMegaRegion = $state(null);
+  let bgImageFailed = $state(false);  // fallback to CSS parchment if image 404s
   let zoomBehaviorRef = null;  // plain var — D3 objects must not be proxied by $state
   let svgSelectionRef = null;
 
@@ -370,12 +371,13 @@
 
   <g transform="translate({transform.x},{transform.y}) scale({transform.k})">
     <!-- Background: AI-generated fantasy map or CSS parchment fallback -->
-    {#if backgroundImage}
+    {#if backgroundImage && !bgImageFailed}
       <image
         href={backgroundImage}
         x="0" y="0"
         width={SVG_SIZE} height={SVG_SIZE}
         preserveAspectRatio="xMidYMid slice"
+        onerror={() => { bgImageFailed = true; }}
       />
     {:else}
       <rect x="0" y="0" width={SVG_SIZE} height={SVG_SIZE} fill="#1a1408" />
@@ -408,21 +410,23 @@
           style="transition: fill-opacity 300ms ease-out, stroke-opacity 300ms ease-out, stroke-width 300ms ease-out;"
         />
 
-        <!-- Mega-region Korean name label -->
-        <text
-          x={mega.center.x}
-          y={mega.center.y}
-          text-anchor="middle"
-          dominant-baseline="middle"
-          fill="rgba(240,200,140,0.7)"
-          font-size="18"
-          font-weight="700"
-          letter-spacing="2"
-          class="mega-region-label"
-          filter="url(#text-shadow)"
-        >
-          {mega.name_kr}
-        </text>
+        <!-- Mega-region Korean name label (visible at default zoom, fades when zoomed in) -->
+        {#if transform.k < 1.8}
+          <text
+            x={mega.center.x}
+            y={mega.center.y}
+            text-anchor="middle"
+            dominant-baseline="middle"
+            fill="rgba(240,200,140,{Math.max(0, 0.7 - (transform.k - 1) * 0.5)})"
+            font-size="18"
+            font-weight="700"
+            letter-spacing="2"
+            class="mega-region-label"
+            filter="url(#text-shadow)"
+          >
+            {mega.name_kr}
+          </text>
+        {/if}
       </g>
     {/each}
 
@@ -465,20 +469,22 @@
           style="transition: fill-opacity 200ms ease-out, stroke-opacity 200ms ease-out, stroke-width 200ms ease-out;"
         />
 
-        <!-- Korean region name at center -->
-        <text
-          x={region.center.x}
-          y={region.center.y}
-          text-anchor="middle"
-          dominant-baseline="middle"
-          fill="rgba(240,184,120,0.95)"
-          font-size="15"
-          font-weight="600"
-          class="region-name-label"
-          filter="url(#text-shadow)"
-        >
-          {region.name_kr || region.name}
-        </text>
+        <!-- Korean region name at center (show when zoomed in) -->
+        {#if transform.k >= 1.5}
+          <text
+            x={region.center.x}
+            y={region.center.y}
+            text-anchor="middle"
+            dominant-baseline="middle"
+            fill="rgba(240,184,120,0.95)"
+            font-size="15"
+            font-weight="600"
+            class="region-name-label"
+            filter="url(#text-shadow)"
+          >
+            {region.name_kr || region.name}
+          </text>
+        {/if}
       </g>
     {/each}
 
@@ -560,8 +566,8 @@
           <path d={icon.path} fill={getNodeColor(node.region_type)} />
         </g>
 
-        <!-- Label (prefer Korean name, hide if polygon already shows it) -->
-        {#if !node.polygon_points || node.polygon_points.length === 0}
+        <!-- Label (show when zoomed in past 1.2x, hide if polygon shows it) -->
+        {#if transform.k >= 1.2 && (!node.polygon_points || node.polygon_points.length === 0)}
           <text
             x={node.svgPos.x}
             y={node.svgPos.y + halfSize + 14}
@@ -570,6 +576,7 @@
             font-size="11"
             font-weight="500"
             class="node-label"
+            filter="url(#text-shadow)"
           >
             {node.name_kr || node.name}
           </text>
@@ -584,6 +591,17 @@
   <svg viewBox="0 0 {MINIMAP_SIZE} {MINIMAP_SIZE}" width={MINIMAP_SIZE} height={MINIMAP_SIZE}>
     <rect width={MINIMAP_SIZE} height={MINIMAP_SIZE} fill="rgba(26,20,8,0.85)" rx="4" />
     <rect x="1" y="1" width={MINIMAP_SIZE - 2} height={MINIMAP_SIZE - 2} fill="none" stroke="rgba(212,154,92,0.3)" rx="4" />
+
+    <!-- Mega-region biome outlines -->
+    {#each megaRegionData as mega (mega.id + '-mini')}
+      {@const miniMegaPoints = mega.polygon.map(([wx, wz]) => {
+        const p = worldToSvg(wx, wz);
+        return `${p.x * MINIMAP_SCALE},${p.y * MINIMAP_SCALE}`;
+      }).join(' ')}
+      <polygon points={miniMegaPoints}
+        fill={mega.color} fill-opacity="0.15"
+        stroke={mega.color} stroke-opacity="0.4" stroke-width="0.5" />
+    {/each}
 
     <!-- Simplified region shapes -->
     {#each polygonData as region (region.strkey + '-mini')}
