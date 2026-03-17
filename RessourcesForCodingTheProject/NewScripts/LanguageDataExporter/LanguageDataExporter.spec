@@ -21,6 +21,7 @@ a = Analysis(
         # Configuration files ONLY (NOT Python modules!)
         ('category_clusters.json', '.'),
         ('README.md', '.'),
+        ('images', 'images'),
     ],
     hiddenimports=[
         # Our own packages (PyInstaller analyzes these, NOT copied as data)
@@ -119,7 +120,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # Add icon path if available
+    icon='images/LDEico.ico',
 )
 
 coll = COLLECT(

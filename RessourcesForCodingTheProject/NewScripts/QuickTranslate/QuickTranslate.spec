@@ -92,6 +92,7 @@ a = Analysis(
         ('utils', 'utils'),
         # User Guide — bundled with the app so users always have it
         ('docs/USER_GUIDE.md', '.'),
+        ('images', 'images'),
     ] + ml_datas,
     hiddenimports=[
         # === Hidden imports for packages with native DLLs (flat placement) ===
@@ -205,6 +206,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='images/QTico.ico',
 )
 
 coll = COLLECT(

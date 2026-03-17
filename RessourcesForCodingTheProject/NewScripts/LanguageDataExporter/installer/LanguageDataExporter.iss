@@ -23,7 +23,7 @@ AllowNoIcons=yes
 PrivilegesRequired=lowest
 OutputDir=..\dist
 OutputBaseFilename={#AppName}_v{#AppVersion}_Setup
-SetupIconFile=
+SetupIconFile=..\images\LDEico.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -55,11 +55,11 @@ Source: "..\README.md"; DestDir: "{app}"; Components: docs; Flags: ignoreversion
 Name: "{app}\GeneratedExcel"; Permissions: users-modify
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
-Name: "{group}\{#AppName} (GUI)"; Filename: "{app}\{#AppExeName}"; Parameters: "--gui"
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\images\LDEico.ico"
+Name: "{group}\{#AppName} (GUI)"; Filename: "{app}\{#AppExeName}"; Parameters: "--gui"; IconFilename: "{app}\images\LDEico.ico"
 Name: "{group}\User Guide"; Filename: "{app}\USER_GUIDE.pdf"; Components: docs
 Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
-Name: "{userdesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{userdesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\images\LDEico.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Parameters: "--help"; Flags: nowait postinstall skipifsilent shellexec
