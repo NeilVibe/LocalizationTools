@@ -122,6 +122,42 @@
 - Mapped to phases: 32/32
 - Unmapped: 0
 
+## v3.5 Requirements — WOW Showcase
+
+### WOW -- XML Viewer Polish (Phase 37)
+
+- [x] **WOW-01**: XML attributes have semantic color highlighting — cross-refs blue, identity gold, editable green, stats cyan, media purple
+- [ ] **WOW-02**: Hovering a cross-ref attribute value for 300ms shows a mini-preview card with entity name, type badge, and thumbnail
+- [ ] **WOW-03**: Panel entrance has slide-in animation, tab switch has crossfade, image load has shimmer-to-reveal
+- [ ] **WOW-04**: Clicking an attribute value copies to clipboard with visual ripple feedback
+
+### WOW -- Fantasy World Map (Phase 38)
+
+- [ ] **WOW-05**: Map has parchment background via CSS gradients + ornamental SVG border frame
+- [ ] **WOW-06**: 10 regions render as semi-transparent polygons with glow-on-hover and Korean names
+- [ ] **WOW-07**: Each node type has a distinct SVG icon (castle, skull, shield, tent, compass, tree)
+- [ ] **WOW-08**: Routes animate on hover with travel-path effect and danger-level coloring
+- [ ] **WOW-09**: Click region → smooth zoom-to-fit via d3 transition + detail panel slides in
+
+### WOW -- Codex Enhancement (Phase 39)
+
+- [ ] **WOW-10**: Entity cards have glassmorphism (backdrop-filter blur + semi-transparent bg) with AI portrait
+- [ ] **WOW-11**: Hovering card produces parallax shift on background image
+- [ ] **WOW-12**: D3 force-directed graph shows entity relationships with typed link styles
+- [ ] **WOW-13**: Hovering graph node highlights connected nodes and dims unconnected
+
+### WOW -- Cross-cutting Polish (Phase 40)
+
+- [ ] **WOW-14**: Page navigation has crossfade transition
+- [ ] **WOW-15**: All loading states use shimmer skeletons matching content dimensions
+- [ ] **WOW-16**: Ctrl+K opens command palette for global entity search
+- [ ] **WOW-17**: Toast notifications slide in from top-right with auto-dismiss
+
+**v3.5 Coverage:**
+- v3.5 requirements: 17 total
+- Mapped to phases: 17/17
+- Unmapped: 0
+
 ---
 *Requirements defined: 2026-03-17*
-*Traceability updated: 2026-03-17 after roadmap creation*
+*v3.5 WOW Showcase requirements added: 2026-03-17*
