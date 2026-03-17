@@ -210,7 +210,7 @@ Plans:
   2. Hovering a card produces parallax shift on the background image
   3. D3 force-directed graph shows character→item, character→skill, character→faction relationships with typed link styles
   4. Hovering a graph node highlights all connected nodes and dims unconnected ones
-**Plans**: 3 plans
+**Plans**: 2 plans
 
 Plans:
 - [ ] 39-01: Glassmorphism entity cards with parallax hover
@@ -225,7 +225,7 @@ Plans:
   2. All loading states use shimmer skeletons matching the content dimensions (no spinners anywhere)
   3. Ctrl+K opens a command palette for global search across all entities
   4. Toast notifications slide in from top-right with auto-dismiss after 3 seconds
-**Plans**: 3 plans
+**Plans**: 2 plans
 
 Plans:
 - [ ] 40-01: Page transitions + shimmer loading choreography
