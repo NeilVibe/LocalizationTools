@@ -843,13 +843,6 @@
     padding-top: 40px;
     overflow: hidden;
     flex: 1;
-    animation: panelSlideIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* Panel slide-in animation (WOW-03) */
-  @keyframes panelSlideIn {
-    from { opacity: 0; transform: translateX(16px); }
-    to   { opacity: 1; transform: translateX(0); }
   }
 
   /* Tab crossfade animated wrapper (WOW-03) */

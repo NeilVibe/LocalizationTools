@@ -1084,12 +1084,6 @@
     height: 100%;
     background: var(--entity-color, #61afef);
     box-shadow: 0 0 12px color-mix(in srgb, var(--entity-color, #61afef) 60%, transparent);
-    animation: selectedAccentPulse 0.5s ease-out;
-  }
-
-  @keyframes selectedAccentPulse {
-    0% { box-shadow: 0 0 24px var(--entity-color, #61afef); width: 5px; }
-    100% { box-shadow: 0 0 12px color-mix(in srgb, var(--entity-color, #61afef) 60%, transparent); width: 3px; }
   }
 
   .xml-row:hover .indent-guide { background: var(--xml-indent-guide-active); }
@@ -1284,15 +1278,7 @@
   .status-sep { color: var(--xml-border); }
   .status-ready { color: #10b981; }
 
-  /* ===== ROW ENTER ANIMATION ===== */
-  .xml-row {
-    animation: rowFadeIn 0.18s ease-out both;
-  }
-
-  /* ===== SELECTED ROW PULSE ===== */
-  .xml-row.selected {
-    animation: selectPulse 0.3s ease-out, selectedAccentPulse 0.5s ease-out;
-  }
+  /* ===== SELECTED ROW ===== */
 
   /* ===== ACTIVE INDENT GUIDES ON SELECTED ROW ===== */
   .xml-row.selected .indent-guide {
@@ -1305,16 +1291,9 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  @keyframes rowFadeIn {
-    from { opacity: 0; transform: translateY(-2px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes selectPulse {
-    0% { background: rgba(38, 79, 120, 0.9); }
-    50% { background: rgba(50, 100, 150, 0.7); }
-    100% { background: var(--xml-bg-selected); }
-  }
+  /* Removed: rowFadeIn, selectPulse, selectedAccentPulse — CSS animations
+     replay on every Svelte re-render causing flash/stutter. Use CSS transitions
+     for smooth state changes instead. */
 
   /* ===== CONTEXT MENU ===== */
   .context-menu {
