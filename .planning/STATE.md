@@ -75,6 +75,10 @@ Progress: [##########] 100%
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 41 added: Qwen3-TTS Korean Voice Generation (2026-03-18)
+
 ### Decisions
 
 Recent decisions affecting current work:
