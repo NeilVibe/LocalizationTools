@@ -178,10 +178,15 @@ class CodexService:
 
         image_texture = element.get("UITextureName")
 
+        # Prefer Korean name/description from attributes for display
+        display_name = attributes.get("NameKR") or name or strkey
+        if not description:
+            description = attributes.get("DescriptionKR")
+
         entity = CodexEntity(
             entity_type=entity_type,
             strkey=strkey,
-            name=name,
+            name=display_name,
             description=description,
             knowledge_key=knowledge_key,
             image_texture=image_texture,
