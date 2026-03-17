@@ -122,11 +122,11 @@
 - Mapped to phases: 32/32
 - Unmapped: 0
 
-## v3.5 Requirements — WOW Showcase
+## v3.5 Requirements -- WOW Showcase
 
 ### WOW -- XML Viewer Polish (Phase 37)
 
-- [x] **WOW-01**: XML attributes have semantic color highlighting — cross-refs blue, identity gold, editable green, stats cyan, media purple
+- [x] **WOW-01**: XML attributes have semantic color highlighting -- cross-refs blue, identity gold, editable green, stats cyan, media purple
 - [x] **WOW-02**: Hovering a cross-ref attribute value for 300ms shows a mini-preview card with entity name, type badge, and thumbnail
 - [x] **WOW-03**: Panel entrance has slide-in animation, tab switch has crossfade, image load has shimmer-to-reveal
 - [x] **WOW-04**: Clicking an attribute value copies to clipboard with visual ripple feedback
@@ -137,7 +137,7 @@
 - [ ] **WOW-06**: 10 regions render as semi-transparent polygons with glow-on-hover and Korean names
 - [ ] **WOW-07**: Each node type has a distinct SVG icon (castle, skull, shield, tent, compass, tree)
 - [x] **WOW-08**: Routes animate on hover with travel-path effect and danger-level coloring
-- [x] **WOW-09**: Click region → smooth zoom-to-fit via d3 transition + detail panel slides in
+- [x] **WOW-09**: Click region -> smooth zoom-to-fit via d3 transition + detail panel slides in
 
 ### WOW -- Codex Enhancement (Phase 39)
 
@@ -158,6 +158,30 @@
 - Mapped to phases: 17/17
 - Unmapped: 0
 
+## Phase 41 Requirements -- Qwen3-TTS Korean Voice Generation
+
+### TTS -- Text-to-Speech Voice Generation
+
+- [ ] **TTS-01**: TTSService singleton with lazy Qwen3-TTS model loading (loads on first request, not on startup)
+- [ ] **TTS-02**: 5 character voice profiles with distinct voice instructions (Elder Varon=wise/slow, Kira=cold/sharp, Grimjaw=gruff/strong, Lune=young/alert, Drakmar=mysterious/echoing)
+- [ ] **TTS-03**: POST /api/ldm/codex/generate-voice/{strkey} generates .wav audio and returns audio URL with duration
+- [ ] **TTS-04**: Generated audio cached on disk at mock_gamedata/audio/{strkey}.wav -- repeat calls return cached version without regeneration
+- [ ] **TTS-05**: Codex entity detail shows "Generate Voice" button, loading state during generation, audio player with auto-play after generation, and regenerate option
+
+**Phase 41 Coverage:**
+- Phase 41 requirements: 5 total
+- Mapped to plans: 5/5 (TTS-01..04 -> Plan 01, TTS-05 -> Plan 02)
+- Unmapped: 0
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| TTS-01 | Phase 41 | 41-01 | Pending |
+| TTS-02 | Phase 41 | 41-01 | Pending |
+| TTS-03 | Phase 41 | 41-01 | Pending |
+| TTS-04 | Phase 41 | 41-01 | Pending |
+| TTS-05 | Phase 41 | 41-02 | Pending |
+
 ---
 *Requirements defined: 2026-03-17*
 *v3.5 WOW Showcase requirements added: 2026-03-17*
+*Phase 41 TTS requirements added: 2026-03-18*

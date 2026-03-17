@@ -231,10 +231,26 @@ Plans:
 - [ ] 40-01: Page transitions + shimmer loading choreography
 - [ ] 40-02: Ctrl+K command palette + toast system
 
+### Phase 41: Qwen3-TTS Korean Voice Generation
+**Goal**: Install Qwen3-TTS and integrate Korean voice generation into the Codex, with unique voice profiles for each of the 5 game characters and frontend audio playback
+**Depends on**: Phase 40
+**Requirements**: TTS-01, TTS-02, TTS-03, TTS-04, TTS-05
+**Success Criteria** (what must be TRUE):
+  1. TTSService loads Qwen3-TTS lazily on first voice generation request
+  2. Each of the 5 characters has a distinct voice profile with unique instructions
+  3. POST /api/ldm/codex/generate-voice/{strkey} generates .wav and returns audio URL
+  4. Generated audio is cached on disk -- repeat calls skip regeneration
+  5. Codex entity detail shows Generate Voice button, loading state, audio player with auto-play
+**Plans**: 2 plans
+
+Plans:
+- [ ] 41-01-PLAN.md -- TTS backend service + API endpoints (TTSService, voice profiles, generate/serve routes)
+- [ ] 41-02-PLAN.md -- Frontend voice generation UI (CodexEntityDetail integration)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38 -> 39 -> 40
+Phases execute in numeric order: 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38 -> 39 -> 40 -> 41
 Note: Phase 38 and 39 can be partially parallelized after Phase 37.
 Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 
@@ -281,8 +297,10 @@ Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 | 38. Fantasy World Map | 2/3 | In Progress|  | - |
 | 39. Codex Cards + Relationship Graph | 2/2 | Complete   | 2026-03-17 | - |
 | 40. Cross-cutting WOW Polish | 1/2 | In Progress|  | - |
+| 41. Qwen3-TTS Korean Voice | 0/2 | Planned |  | - |
 
 ---
 *Roadmap created: 2026-03-14*
 *v3.3 milestone added: 2026-03-17*
 *v3.5 WOW Showcase milestone added: 2026-03-17*
+*Phase 41 planned: 2026-03-18*
