@@ -1348,7 +1348,12 @@ class QuickTranslateApp:
             for idx, (fname, ftype, lang, count, status, err) in enumerate(results, 1):
                 count_str = f"{count:,}" if count > 0 else "0"
                 status_str = status if not err or status == "OK" else f"{status} ({err[:40]})"
-                logger.info("  %-4d %-30s %-6s %-8s %8s  %s", idx, fname[:30], ftype, lang, count_str, status_str)
+                row_line = "  %-4d %-30s %-6s %-8s %8s  %s"
+                row_args = (idx, fname[:30], ftype, lang, count_str, status_str)
+                if lang == "???":
+                    logger.warning(row_line, *row_args)
+                else:
+                    logger.info(row_line, *row_args)
 
             # Compute summary stats
             xml_good = sum(1 for r in results if r[1] == "XML" and r[4] == "OK")
@@ -1377,8 +1382,12 @@ class QuickTranslateApp:
             logger.info("  Total entries parsed: %s", f"{total_entries:,}")
 
             if lang_entries:
+                has_unknown = "???" in lang_entries
                 lang_str = "  ".join(f"{lang}: {count:,}" for lang, count in sorted(lang_entries.items()))
-                logger.info("  Per-language: %s", lang_str)
+                if has_unknown:
+                    logger.warning("  Per-language: %s", lang_str)
+                else:
+                    logger.info("  Per-language: %s", lang_str)
 
             if errors:
                 logger.warning("  PROBLEMS (%d):", len(errors))
@@ -1398,8 +1407,9 @@ class QuickTranslateApp:
                 self._log(f"Source validation: {', '.join(summary_parts)}, {total_entries:,} entries total", 'success')
 
             if lang_entries:
+                has_unknown = "???" in lang_entries
                 lang_str = ", ".join(f"{lang}:{count:,}" for lang, count in sorted(lang_entries.items()))
-                self._log(f"  Per-language: {lang_str}", 'info')
+                self._log(f"  Per-language: {lang_str}", 'warning' if has_unknown else 'info')
 
             # Split integrity warnings into critical (broken linebreaks) vs secondary
             critical_integrity = [w for w in all_integrity_warnings if w[3].startswith('Broken') or w[3].startswith('Truncated')]
