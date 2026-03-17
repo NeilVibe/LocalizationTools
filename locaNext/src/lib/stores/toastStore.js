@@ -17,7 +17,7 @@ const toasts = writable([]);
 let nextId = 1;
 
 // Default toast duration in ms
-const DEFAULT_DURATION = 4000;
+const DEFAULT_DURATION = 3000;
 
 // Max visible toasts at once
 const MAX_TOASTS = 3;
@@ -67,7 +67,8 @@ export function addToast({ message, kind = 'info', title = null, duration = DEFA
     message,
     kind,
     title: title || defaultTitles[kind] || 'Notification',
-    timestamp: now
+    timestamp: now,
+    duration
   };
 
   toasts.update(t => {

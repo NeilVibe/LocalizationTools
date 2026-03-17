@@ -22,7 +22,7 @@
   import PreferencesModal from "$lib/components/PreferencesModal.svelte";
   import UpdateModal from "$lib/components/UpdateModal.svelte";
   import GlobalStatusBar from "$lib/components/GlobalStatusBar.svelte";
-  import GlobalToast from "$lib/components/GlobalToast.svelte";
+  import ToastContainer from "$lib/components/common/ToastContainer.svelte";
   import UserProfileModal from "$lib/components/UserProfileModal.svelte";
   import { logger } from "$lib/utils/logger.js";
   import { remoteLogger } from "$lib/utils/remote-logger.js";
@@ -440,8 +440,8 @@
     <!-- Global Status Bar (P18.5.5) - Shows active operations across all apps -->
     <GlobalStatusBar />
 
-    <!-- Global Toast Notifications (BUG-016) - Shows operation start/complete/fail -->
-    <GlobalToast />
+    <!-- Phase 40: Redesigned Toast Notifications with slide-in + progress bar -->
+    <ToastContainer />
 
     <!-- Phase 40: Global Ctrl+K Command Palette -->
     <CommandPalette />
