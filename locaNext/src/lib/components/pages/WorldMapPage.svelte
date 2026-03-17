@@ -22,6 +22,8 @@
   let nodes = $state([]);
   let routes = $state([]);
   let bounds = $state({});
+  let megaRegions = $state([]);
+  let backgroundImage = $state(null);
   let loading = $state(true);
   let apiError = $state(null);
 
@@ -49,6 +51,8 @@
       nodes = data.nodes || [];
       routes = data.routes || [];
       bounds = data.bounds || {};
+      megaRegions = data.mega_regions || [];
+      backgroundImage = data.background_image || null;
 
       logger.info('World map data loaded', {
         nodes: nodes.length,
@@ -131,6 +135,8 @@
           {nodes}
           {routes}
           {bounds}
+          {megaRegions}
+          {backgroundImage}
           onNodeHover={handleNodeHover}
           onNodeLeave={handleNodeLeave}
           onNodeClick={handleNodeClick}

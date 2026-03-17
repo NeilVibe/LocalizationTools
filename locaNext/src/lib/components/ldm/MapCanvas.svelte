@@ -18,9 +18,12 @@
     nodes = [],
     routes = [],
     bounds = {},
+    megaRegions = [],
+    backgroundImage = null,
     onNodeHover = () => {},
     onNodeLeave = () => {},
-    onNodeClick = () => {}
+    onNodeClick = () => {},
+    onMegaRegionClick = () => {}
   } = $props();
 
   // State
@@ -28,6 +31,7 @@
   let transform = $state({ x: 0, y: 0, k: 1 });
   let hoveredRoute = $state(null);
   let hoveredRegion = $state(null);
+  let hoveredMegaRegion = $state(null);
   let zoomBehaviorRef = $state(null);
   let svgSelectionRef = $state(null);
 
@@ -219,6 +223,23 @@
     })
   );
 
+  // Derived: mega-region polygon data (6 tessellating biome zones)
+  let megaRegionData = $derived(
+    megaRegions.map(region => {
+      const svgPoints = region.polygon.map(([wx, wz]) => {
+        const p = worldToSvg(wx, wz);
+        return `${p.x},${p.y}`;
+      }).join(' ');
+
+      // Centroid for label positioning
+      const cx = region.polygon.reduce((s, p) => s + p[0], 0) / region.polygon.length;
+      const cz = region.polygon.reduce((s, p) => s + p[1], 0) / region.polygon.length;
+      const center = worldToSvg(cx, cz);
+
+      return { ...region, svgPoints, center };
+    })
+  );
+
   // Grid lines for visual reference
   let gridLines = $derived(
     Array.from({ length: 5 }, (_, i) => (i + 1) * 200)
@@ -353,29 +374,76 @@
   </g>
 
   <g transform="translate({transform.x},{transform.y}) scale({transform.k})">
-    <!-- Parchment background layers -->
-    <!-- Base dark sepia -->
-    <rect x="0" y="0" width={SVG_SIZE} height={SVG_SIZE} fill="#1a1408" />
-    <!-- Warm gradient overlay -->
-    <rect x="0" y="0" width={SVG_SIZE} height={SVG_SIZE} fill="url(#parchment-gradient)" />
-    <!-- Noise texture overlay -->
-    <rect x="0" y="0" width={SVG_SIZE} height={SVG_SIZE} fill="#1a1408" opacity="0.3" filter="url(#parchment-noise)" />
-    <!-- Vignette -->
+    <!-- Background: AI-generated fantasy map or CSS parchment fallback -->
+    {#if backgroundImage}
+      <image
+        href={backgroundImage}
+        x="0" y="0"
+        width={SVG_SIZE} height={SVG_SIZE}
+        preserveAspectRatio="xMidYMid slice"
+      />
+    {:else}
+      <rect x="0" y="0" width={SVG_SIZE} height={SVG_SIZE} fill="#1a1408" />
+      <rect x="0" y="0" width={SVG_SIZE} height={SVG_SIZE} fill="url(#parchment-gradient)" />
+      <rect x="0" y="0" width={SVG_SIZE} height={SVG_SIZE} fill="#1a1408" opacity="0.3" filter="url(#parchment-noise)" />
+    {/if}
+    <!-- Vignette overlay (always) -->
     <rect x="0" y="0" width={SVG_SIZE} height={SVG_SIZE} fill="url(#vignette)" />
 
-    <!-- Grid lines (parchment-tinted) -->
+    <!-- Mega-region biome zones (tessellating polygons) -->
+    {#each megaRegionData as mega (mega.id)}
+      <g class="mega-region"
+         class:mega-hovered={hoveredMegaRegion === mega.id}
+         onmouseenter={() => hoveredMegaRegion = mega.id}
+         onmouseleave={() => hoveredMegaRegion = null}
+         onclick={() => onMegaRegionClick(mega)}
+         role="button"
+         tabindex="0"
+         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onMegaRegionClick(mega); }}
+      >
+        <!-- Biome boundary polygon -->
+        <polygon
+          points={mega.svgPoints}
+          fill={mega.color}
+          fill-opacity={hoveredMegaRegion === mega.id ? 0.2 : 0.05}
+          stroke={mega.color}
+          stroke-opacity={hoveredMegaRegion === mega.id ? 0.6 : 0.25}
+          stroke-width={hoveredMegaRegion === mega.id ? 2.5 : 1.5}
+          stroke-dasharray={hoveredMegaRegion === mega.id ? '' : '8 4'}
+          style="transition: fill-opacity 300ms ease-out, stroke-opacity 300ms ease-out, stroke-width 300ms ease-out;"
+        />
+
+        <!-- Mega-region Korean name label -->
+        <text
+          x={mega.center.x}
+          y={mega.center.y}
+          text-anchor="middle"
+          dominant-baseline="middle"
+          fill="rgba(240,200,140,0.7)"
+          font-size="18"
+          font-weight="700"
+          letter-spacing="2"
+          class="mega-region-label"
+          style="text-shadow: 0 0 10px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.8);"
+        >
+          {mega.name_kr}
+        </text>
+      </g>
+    {/each}
+
+    <!-- Grid lines (subtle, over background) -->
     {#each gridLines as pos}
       <line
         x1={pos} y1="0" x2={pos} y2={SVG_SIZE}
         stroke="#3d321e"
         stroke-width="0.5"
-        opacity="0.25"
+        opacity="0.15"
       />
       <line
         x1="0" y1={pos} x2={SVG_SIZE} y2={pos}
         stroke="#3d321e"
         stroke-width="0.5"
-        opacity="0.25"
+        opacity="0.15"
       />
     {/each}
 
@@ -577,6 +645,19 @@
   .compass-corner,
   .compass-rose {
     pointer-events: none;
+  }
+
+  /* Mega-region biome zone styles */
+  .mega-region {
+    cursor: pointer;
+    outline: none;
+  }
+
+  .mega-region-label {
+    pointer-events: none;
+    user-select: none;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    text-transform: uppercase;
   }
 
   /* Region polygon styles */
