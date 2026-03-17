@@ -6,7 +6,6 @@
    * Tabs at TOP, content fills remaining space.
    * One Dark Pro theme matching the XML viewer.
    */
-  import { fade } from 'svelte/transition';
   import { ChevronRight, ChevronLeft, Pin } from 'carbon-icons-svelte';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
@@ -469,7 +468,6 @@
     </button>
 
     {#if !collapsed}
-      {#key node?.node_id}
       <div class="panel-content">
         <!-- Panel Header -->
         <div class="panel-header">
@@ -522,8 +520,7 @@
 
         <!-- TAB CONTENT (fills ALL remaining space) -->
         <div class="tab-content">
-          {#key activeTab}
-          <div class="tab-content-animated" in:fade={{ duration: 150 }}>
+          <div class="tab-content-animated">
 
           <!-- Dictionary Tab -->
           {#if activeTab === 'dictionary'}
@@ -737,10 +734,8 @@
           {/if}
 
           </div>
-          {/key}
         </div>
       </div>
-      {/key}
     {/if}
   </div>
 
