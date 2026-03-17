@@ -28,7 +28,7 @@ a = Analysis(
     ['main.py'],
     pathex=[spec_dir],
     binaries=[],
-    datas=_fl_datas + [(os.path.join(spec_dir, 'category_clusters.json'), '.')],
+    datas=_fl_datas + [(os.path.join(spec_dir, 'category_clusters.json'), '.'), ('images', 'images')],
     hiddenimports=[
         'lxml',
         'lxml.etree',
@@ -87,6 +87,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='images/QCico.ico',
 )
 
 coll = COLLECT(

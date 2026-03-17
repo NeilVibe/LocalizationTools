@@ -22,6 +22,7 @@ a = Analysis(
         ('tools', 'tools'),  # vgmstream audio converter
         # User Guide — bundled with the app so users always have it
         ('docs/USER_GUIDE.md', '.'),
+        ('images', 'images'),
     ],
     hiddenimports=[
         'PIL',
@@ -90,7 +91,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='icon.ico' if Path('icon.ico').exists() else None,
+    icon='images/MDGico.ico',
 )
 
 coll = COLLECT(
