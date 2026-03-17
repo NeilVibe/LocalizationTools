@@ -64,3 +64,19 @@ async def get_worldmap_data(
     except Exception as e:
         logger.error(f"[WorldMap API] get_map_data failed: {e}")
         return WorldMapData(nodes=[], routes=[], bounds={})
+
+
+@router.post("/reload")
+async def reload_worldmap(
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Force re-initialization of the WorldMapService singleton."""
+    global _worldmap_service
+    _worldmap_service = None
+    svc = _get_worldmap_service()
+    data = svc.get_map_data()
+    return {
+        "status": "reloaded",
+        "nodes": len(data.nodes),
+        "routes": len(data.routes),
+    }

@@ -21,7 +21,7 @@
 
   // Refs
   let inputRef = $state(null);
-  let debounceTimer = $state(null);
+  let debounceTimer = null; // NOT $state — used only in $effect, not rendered
 
   // Keyboard shortcut: Ctrl+K / Cmd+K
   $effect(() => {
@@ -59,10 +59,12 @@
 
   // Debounced search on query change
   $effect(() => {
-    const q = query;
+    const q = query; // track only query
+    // Use untracked timeout to avoid effect_update_depth_exceeded
     if (debounceTimer) clearTimeout(debounceTimer);
 
     if (!q || q.trim().length === 0) {
+      // Direct assignments outside async are fine since query is the only tracked dep
       results = [];
       selectedIndex = 0;
       isSearching = false;
@@ -70,20 +72,24 @@
     }
 
     isSearching = true;
-    debounceTimer = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const response = await api.request('/api/ldm/gamedata/dictionary-lookup', {
           method: 'POST',
-          body: JSON.stringify({ text: q.trim(), top_k: 8, threshold: 0.6 })
+          body: JSON.stringify({ text: q.trim(), top_k: 8, threshold: 0.3 })
         });
-        results = response.results || [];
-        selectedIndex = 0;
+        // Only update if query hasn't changed during fetch
+        if (query === q) {
+          results = response.results || [];
+          selectedIndex = 0;
+        }
       } catch {
-        results = [];
+        if (query === q) results = [];
       } finally {
-        isSearching = false;
+        if (query === q) isSearching = false;
       }
-    }, 150);
+    }, 200);
+    debounceTimer = timer;
   });
 
   function openModal() {
