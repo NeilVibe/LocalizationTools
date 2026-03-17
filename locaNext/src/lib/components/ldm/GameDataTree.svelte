@@ -1,33 +1,27 @@
 <script>
   /**
-   * GameDataTree.svelte - Phase 28: Hierarchical Game Data Tree
+   * GameDataTree.svelte - v3.4: Chrome DevTools-style XML Viewer
    *
-   * Renders XML game data as an expandable tree with per-entity-type icons,
-   * keyboard navigation, and API integration to Phase 27 tree endpoints.
-   * Replaces VirtualGrid as the primary Game Dev view.
+   * Renders XML game data as syntax-highlighted inline XML with:
+   * - Line numbers + fold gutters + indent guides
+   * - One Dark Pro color scheme
+   * - Collapsible nodes with animated fold arrows
+   * - Cross-reference links (blue, clickable)
+   * - Inline editable attribute values (dashed underline)
+   * - Collapsed nodes show inline "N children" badge
+   * - Keyboard navigation (arrows, enter, space)
+   * - Search bar with cascade index
+   * - IME-safe Korean text editing
    */
   import {
-    ChevronDown,
     ChevronRight,
-    ArrowRight,
-    Lightning,
-    ShoppingCatalog,
-    UserAvatar,
-    GameWireless,
-    Book,
-    Task,
-    Map as MapIcon,
-    Locked,
-    GroupPresentation,
-    LocationStar,
-    DataStructured,
-    Code,
-    Renew
+    ArrowRight
   } from 'carbon-icons-svelte';
   import { SkeletonText } from 'carbon-components-svelte';
   import { EmptyState, ErrorState } from '$lib/components/common';
   import { logger } from '$lib/utils/logger.js';
   import { getAuthHeaders, getApiBase } from '$lib/utils/api.js';
+  import AttributeEditModal from './AttributeEditModal.svelte';
 
   // Props
   let {
@@ -38,16 +32,14 @@
 
   const API_BASE = getApiBase();
 
-  // State (Svelte 5 Runes)
+  // === State ===
   let treeData = $state(null);
   let expandedNodes = $state(new Set());
   let selectedNodeId = $state(null);
   let loading = $state(false);
   let error = $state(null);
-  let hoveredNodeId = $state(null);
-  let hoverTimer = null;
 
-  // Index state (Phase 29: auto-index + search)
+  // Index state (Phase 29)
   let indexReady = $state(false);
   let indexing = $state(false);
   let indexStats = $state(null);
@@ -56,13 +48,17 @@
   let searching = $state(false);
   let searchDebounceTimer = null;
 
-  // Flat list of visible nodes for keyboard navigation
-  let visibleNodes = $derived(buildVisibleNodes());
+  // Flat visible rows for rendering + keyboard nav
+  let visibleRows = $derived(buildVisibleRows());
 
-  // Editable attributes mapping (mirrors backend EDITABLE_ATTRS)
+  // Line counter derived from visible rows
+  let lineCounter = $derived(visibleRows.length > 0 ? visibleRows[visibleRows.length - 1].line : 0);
+
+  // === Constants ===
+
   const EDITABLE_ATTRS = {
     ItemInfo: ['ItemName', 'ItemDesc'],
-    CharacterInfo: ['CharacterName'],
+    CharacterInfo: ['CharacterName', 'CharacterDesc'],
     SkillInfo: ['SkillName', 'SkillDesc'],
     GimmickGroupInfo: ['GimmickName'],
     GimmickInfo: ['GimmickName'],
@@ -76,68 +72,28 @@
     NodeWaypointInfo: []
   };
 
-  // Icon mapping by entity tag
-  const ICON_MAP = {
-    SkillTreeInfo: Lightning,
-    SkillInfo: Lightning,
-    SkillNode: Lightning,
-    ItemInfo: ShoppingCatalog,
-    CharacterInfo: UserAvatar,
-    GimmickGroupInfo: GameWireless,
-    GimmickInfo: GameWireless,
-    KnowledgeInfo: Book,
-    QuestInfo: Task,
-    RegionInfo: MapIcon,
-    SceneObjectData: MapIcon,
-    SealDataInfo: Locked,
-    FactionGroup: GroupPresentation,
-    NodeWaypointInfo: LocationStar
+  /** Entity type icons (emoji for lightweight rendering) */
+  const ENTITY_ICONS = {
+    SkillTreeInfo: '\u26A1', SkillInfo: '\u26A1', SkillNode: '\u26A1',
+    ItemInfo: '\uD83D\uDECD', CharacterInfo: '\uD83D\uDC64',
+    GimmickGroupInfo: '\u2699', GimmickInfo: '\u2699',
+    KnowledgeInfo: '\uD83D\uDCD6', QuestInfo: '\uD83D\uDCCB',
+    RegionInfo: '\uD83C\uDF0E', SceneObjectData: '\uD83C\uDF0E',
+    SealDataInfo: '\uD83D\uDD12', FactionGroup: '\uD83D\uDC65',
+    NodeWaypointInfo: '\u2B50'
   };
 
-  /**
-   * Get the icon component for a given tag name
-   */
-  function getNodeIcon(tag) {
-    return ICON_MAP[tag] || DataStructured;
-  }
-
-  // Entity type color palette for row accents and badges
-  const ENTITY_TYPE_COLORS = {
-    SkillTreeInfo: '#a855f7',
-    SkillInfo: '#a855f7',
-    SkillNode: '#c084fc',
-    ItemInfo: '#06b6d4',
-    CharacterInfo: '#8b5cf6',
-    GimmickGroupInfo: '#f59e0b',
-    GimmickInfo: '#fbbf24',
-    KnowledgeInfo: '#10b981',
-    QuestInfo: '#f97316',
-    RegionInfo: '#14b8a6',
-    SceneObjectData: '#14b8a6',
-    SealDataInfo: '#6366f1',
-    FactionGroup: '#ec4899',
-    NodeWaypointInfo: '#94a3b8',
+  const ENTITY_COLORS = {
+    SkillTreeInfo: '#a855f7', SkillInfo: '#a855f7', SkillNode: '#c084fc',
+    ItemInfo: '#06b6d4', CharacterInfo: '#8b5cf6',
+    GimmickGroupInfo: '#f59e0b', GimmickInfo: '#fbbf24',
+    KnowledgeInfo: '#10b981', QuestInfo: '#f97316',
+    RegionInfo: '#14b8a6', SceneObjectData: '#14b8a6',
+    SealDataInfo: '#6366f1', FactionGroup: '#ec4899',
+    NodeWaypointInfo: '#94a3b8'
   };
 
-  function getNodeColor(tag) {
-    return ENTITY_TYPE_COLORS[tag] || '#64748b';
-  }
-
-  /**
-   * Get the primary display label for a node
-   */
-  function getNodeLabel(node) {
-    const primaryAttr = EDITABLE_ATTRS[node.tag]?.[0];
-    const primaryVal = primaryAttr && node.attributes?.[primaryAttr];
-    if (primaryVal) return primaryVal;
-    return node.attributes?.Key || node.attributes?.NodeId || node.attributes?.Name || node.tag;
-  }
-
-  // ========================================
-  // Cross-Reference Detection & Navigation
-  // ========================================
-
-  /** Known cross-reference attribute names */
+  /** Cross-reference attribute names */
   const CROSS_REF_ATTRS = new Set([
     'LearnKnowledgeKey', 'RequireSkillKey', 'LinkedQuestKey', 'RegionKey',
     'ParentNodeId', 'ParentId', 'TargetKey', 'ItemKey', 'CharacterKey',
@@ -145,37 +101,57 @@
     'RewardKey'
   ]);
 
-  /** Identity attribute names that should NOT be treated as cross-references */
   const IDENTITY_ATTRS = new Set(['Key', 'NodeId', 'Id', 'StrKey']);
 
-  /**
-   * Check if an attribute name is a cross-reference
-   */
+  /** Semantic attribute categories for color highlighting (WOW-01) */
+  const ATTR_CATEGORIES = {
+    identity: new Set(['Key', 'StrKey', 'Id', 'StringID', 'NodeId']),
+    crossref: CROSS_REF_ATTRS,
+    editable: new Set([
+      'CharacterName', 'CharacterDesc', 'ItemName', 'ItemDesc',
+      'SkillName', 'SkillDesc', 'QuestName', 'QuestDesc',
+      'RegionName', 'AliasName', 'Desc', 'Name', 'GimmickName',
+      'SealName', 'ObjectName', 'ObjectDesc', 'UIPageName'
+    ]),
+    stat: new Set([
+      'Level', 'HP', 'MP', 'CooldownSec', 'Damage', 'Defense',
+      'Weight', 'Price', 'DropRate', 'SpawnRate', 'Radius',
+      'MinLevel', 'MaxLevel', 'RequireLevel', 'SkillLevel',
+      'AttackPower', 'Speed', 'CritRate', 'Age'
+    ]),
+    media: new Set([
+      'UITextureName', 'VoicePath', 'IconPath', 'TexturePath',
+      'SoundPath', 'AnimationPath', 'ModelPath'
+    ])
+  };
+
+  function classifyAttr(attrName) {
+    for (const [category, names] of Object.entries(ATTR_CATEGORIES)) {
+      if (names.has(attrName)) return category;
+    }
+    if (attrName.endsWith('Key') || attrName.endsWith('Id')) return 'crossref';
+    return 'default';
+  }
+
   function isCrossRefAttr(attrName) {
     if (CROSS_REF_ATTRS.has(attrName)) return true;
-    // Heuristic: any attr ending in "Key" or "Id" that is NOT the node's own identifier
     if ((attrName.endsWith('Key') || attrName.endsWith('Id')) && !IDENTITY_ATTRS.has(attrName)) return true;
     return false;
   }
 
-  /** Global node lookup index -- maps various keys to node objects */
+  function getEntityIcon(tag) { return ENTITY_ICONS[tag] || '\uD83D\uDCC4'; }
+  function getEntityColor(tag) { return ENTITY_COLORS[tag] || '#64748b'; }
+
+  // === Node Index (for cross-ref resolution) ===
   let nodeIndex = $state(new Map());
 
-  // Build node index when tree data loads
   $effect(() => {
-    if (!treeData || treeData.length === 0) {
-      nodeIndex = new Map();
-      return;
-    }
+    if (!treeData || treeData.length === 0) { nodeIndex = new Map(); return; }
     const index = new Map();
     function indexNode(node) {
-      // Index by node_id
       index.set(node.node_id, node);
-      // Index by Key attribute
       if (node.attributes?.Key) index.set(`key:${node.attributes.Key}`, node);
-      // Index by NodeId attribute
       if (node.attributes?.NodeId) index.set(`nodeid:${node.attributes.NodeId}`, node);
-      // Index by Id attribute
       if (node.attributes?.Id) index.set(`id:${node.attributes.Id}`, node);
       for (const child of node.children || []) indexNode(child);
     }
@@ -185,163 +161,123 @@
     nodeIndex = index;
   });
 
-  /**
-   * Get ancestor node_ids by walking up via parent_id
-   */
   function getAncestorIds(node) {
     const ancestors = [];
     let currentId = node.parent_id;
     while (currentId) {
       ancestors.push(currentId);
       const parent = nodeIndex.get(currentId);
-      if (parent) {
-        currentId = parent.parent_id;
-      } else {
-        break;
-      }
+      currentId = parent?.parent_id || null;
     }
     return ancestors;
   }
 
-  /** Prefixes to try when resolving cross-reference lookups */
-  const CROSS_REF_PREFIXES = ['key:', 'nodeid:', 'id:'];
-
-  /**
-   * Resolve a cross-reference attribute to a target node_id
-   */
   function resolveCrossRef(attrName, attrValue) {
     if (!attrValue || attrValue === '0' || attrValue === '') return null;
-    for (const prefix of CROSS_REF_PREFIXES) {
+    for (const prefix of ['key:', 'nodeid:', 'id:']) {
       const target = nodeIndex.get(`${prefix}${attrValue}`);
       if (target) return target.node_id;
     }
     return null;
   }
 
+  // === Row Building (flat list for rendering) ===
+
   /**
-   * Navigate to a target node: expand ancestors, select it, scroll into view
+   * Row types:
+   * - 'open': <Tag attr="val"> with children
+   * - 'self-close': <Tag attr="val" />
+   * - 'close': </Tag>
+   * - 'collapsed': <Tag attr="val">...N children...</Tag>  (inline)
+   * - 'comment': <!-- text -->
+   * - 'file-header': file group header
    */
-  function selectAndRevealNode(targetNodeId) {
-    const targetNode = nodeIndex.get(targetNodeId);
-    if (!targetNode) {
-      logger.warning('Cross-ref target not found', { targetNodeId });
-      return false;
+  function buildVisibleRows() {
+    if (!treeData) return [];
+    const rows = [];
+    let line = 1;
+
+    function addNodeRows(node, depth) {
+      const hasChildren = node.children?.length > 0;
+      const isExpanded = expandedNodes.has(node.node_id);
+
+      if (hasChildren && isExpanded) {
+        // Opening tag
+        rows.push({ type: 'open', node, depth, line: line++ });
+        // Children
+        for (const child of node.children) {
+          addNodeRows(child, depth + 1);
+        }
+        // Closing tag
+        rows.push({ type: 'close', node, depth, line: line++ });
+      } else if (hasChildren && !isExpanded) {
+        // Collapsed: show inline with child count
+        rows.push({ type: 'collapsed', node, depth, line: line++ });
+      } else {
+        // Self-closing leaf
+        rows.push({ type: 'self-close', node, depth, line: line++ });
+      }
     }
 
-    // Expand all ancestors to reveal the target
-    const ancestors = getAncestorIds(targetNode);
-    const newExpanded = new Set(expandedNodes);
-    for (const id of ancestors) newExpanded.add(id);
-    expandedNodes = newExpanded;
+    if (treeData.length === 1) {
+      for (const root of treeData[0].roots || []) {
+        addNodeRows(root, 0);
+      }
+    } else {
+      for (const fileData of treeData) {
+        const fileKey = `file:${fileData.file_path}`;
+        const fileName = fileData.file_path.split('/').pop() || fileData.file_path;
+        rows.push({ type: 'file-header', fileKey, fileName, nodeCount: fileData.node_count, line: line++ });
 
-    // Select the target
-    selectedNodeId = targetNode.node_id;
-    onNodeSelect?.(targetNode);
-
-    // Scroll into view after DOM update
-    requestAnimationFrame(() => {
-      const el = document.querySelector(`[data-node-id="${targetNode.node_id}"]`);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
-
-    return true;
-  }
-
-  /**
-   * Public method for external cross-ref navigation (e.g., NodeDetailPanel)
-   */
-  export function navigateToNode(nodeId) {
-    return selectAndRevealNode(nodeId);
-  }
-
-  /**
-   * Build flat list of visible nodes (for keyboard navigation)
-   */
-  function buildVisibleNodes() {
-    if (!treeData) return [];
-    const nodes = [];
-
-    function walkNode(node) {
-      nodes.push(node);
-      if (expandedNodes.has(node.node_id) && node.children?.length > 0) {
-        for (const child of node.children) {
-          walkNode(child);
+        if (expandedNodes.has(fileKey)) {
+          for (const root of fileData.roots || []) {
+            addNodeRows(root, 1);
+          }
         }
       }
     }
 
-    for (const fileData of treeData) {
-      for (const root of fileData.roots || []) {
-        walkNode(root);
-      }
-    }
-    return nodes;
+    return rows;
   }
 
-  // ========================================
-  // API Integration
-  // ========================================
+  // === API Integration ===
 
-  /**
-   * Shared fetch helper for tree endpoints
-   */
   async function fetchTree(endpoint, path, onSuccess, logLabel) {
     if (!path) return;
     loading = true;
     error = null;
-
     try {
-      logger.apiCall(endpoint, 'POST');
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ path })
       });
-
       if (!response.ok) {
         const err = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
         throw new Error(err.detail || `HTTP ${response.status}`);
       }
-
       const data = await response.json();
       onSuccess(data);
       selectedNodeId = null;
     } catch (err) {
       error = err.message;
       treeData = null;
-      logger.error(`Failed to load ${logLabel}`, { error: err.message, path });
     } finally {
       loading = false;
     }
   }
 
-  /**
-   * Load tree for a single file
-   */
   function loadFileTree(path) {
     fetchTree('/api/ldm/gamedata/tree', path, (data) => {
       treeData = [data];
       expandedNodes = new Set((data.roots || []).map(r => r.node_id));
-      logger.success('File tree loaded', {
-        file: path,
-        nodeCount: data.node_count,
-        entityType: data.entity_type
-      });
-      // Phase 29: Auto-build index for single file (extract directory)
       const dirPath = path.substring(0, path.lastIndexOf('/'));
       if (dirPath) buildIndex(dirPath);
     }, 'file tree');
   }
 
-  /**
-   * Load tree for entire folder
-   */
   function loadFolderTree(path) {
     fetchTree('/api/ldm/gamedata/tree/folder', path, (data) => {
-      // Annotate each node with its source file path for save operations
       for (const fileEntry of (data.files || [])) {
         const annotate = (node) => {
           node._filePath = fileEntry.file_path;
@@ -351,162 +287,117 @@
       }
       treeData = data.files || [];
       expandedNodes = new Set(treeData.map(f => `file:${f.file_path}`));
-      logger.success('Folder tree loaded', {
-        path,
-        fileCount: treeData.length,
-        totalNodes: data.total_nodes
-      });
-      // Phase 29: Auto-build index after folder tree loads (fire-and-forget)
       buildIndex(path);
     }, 'folder tree');
   }
 
-  // ========================================
-  // Reactive Loading
-  // ========================================
-
   $effect(() => {
-    if (filePath) {
-      loadFileTree(filePath);
-    } else if (folderPath) {
-      loadFolderTree(folderPath);
-    }
+    if (filePath) loadFileTree(filePath);
+    else if (folderPath) loadFolderTree(folderPath);
   });
 
-  // ========================================
-  // Node Interaction
-  // ========================================
+  // === Node Interaction ===
 
-  /**
-   * Toggle expand/collapse for a node
-   */
   function toggleExpand(nodeId) {
     const newSet = new Set(expandedNodes);
-    if (newSet.has(nodeId)) {
-      newSet.delete(nodeId);
-    } else {
-      newSet.add(nodeId);
-    }
+    if (newSet.has(nodeId)) newSet.delete(nodeId);
+    else newSet.add(nodeId);
     expandedNodes = newSet;
   }
 
-  /**
-   * Select a node and notify parent
-   */
   function selectNode(node) {
     selectedNodeId = node.node_id;
     onNodeSelect?.(node);
   }
 
-  /**
-   * Find parent node for keyboard navigation (uses nodeIndex for O(1) lookup)
-   */
-  function findParentNode(nodeId) {
-    const node = nodeIndex.get(nodeId);
-    if (!node?.parent_id) return null;
-    return nodeIndex.get(node.parent_id) || null;
+  function selectAndRevealNode(targetNodeId) {
+    const targetNode = nodeIndex.get(targetNodeId);
+    if (!targetNode) return false;
+    const ancestors = getAncestorIds(targetNode);
+    const newExpanded = new Set(expandedNodes);
+    for (const id of ancestors) newExpanded.add(id);
+    expandedNodes = newExpanded;
+    selectedNodeId = targetNode.node_id;
+    onNodeSelect?.(targetNode);
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-node-id="${targetNode.node_id}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return true;
   }
 
-  /**
-   * Keyboard navigation handler
-   */
-  function handleKeydown(event) {
-    if (!visibleNodes.length) return;
-
-    const currentIdx = visibleNodes.findIndex(n => n.node_id === selectedNodeId);
-    const currentNode = currentIdx >= 0 ? visibleNodes[currentIdx] : null;
-
-    switch (event.key) {
-      case 'ArrowDown': {
-        event.preventDefault();
-        const nextIdx = currentIdx < visibleNodes.length - 1 ? currentIdx + 1 : 0;
-        selectNode(visibleNodes[nextIdx]);
-        break;
-      }
-      case 'ArrowUp': {
-        event.preventDefault();
-        const prevIdx = currentIdx > 0 ? currentIdx - 1 : visibleNodes.length - 1;
-        selectNode(visibleNodes[prevIdx]);
-        break;
-      }
-      case 'ArrowRight': {
-        event.preventDefault();
-        if (currentNode) {
-          if (currentNode.children?.length > 0 && !expandedNodes.has(currentNode.node_id)) {
-            toggleExpand(currentNode.node_id);
-          } else if (currentNode.children?.length > 0) {
-            // Move to first child
-            const nextIdx = currentIdx + 1;
-            if (nextIdx < visibleNodes.length) {
-              selectNode(visibleNodes[nextIdx]);
-            }
-          }
-        }
-        break;
-      }
-      case 'ArrowLeft': {
-        event.preventDefault();
-        if (currentNode) {
-          if (expandedNodes.has(currentNode.node_id) && currentNode.children?.length > 0) {
-            toggleExpand(currentNode.node_id);
-          } else {
-            // Move to parent
-            const parent = findParentNode(currentNode.node_id);
-            if (parent) {
-              selectNode(parent);
-            }
-          }
-        }
-        break;
-      }
-      case 'Enter': {
-        event.preventDefault();
-        if (currentNode?.children?.length > 0) {
-          toggleExpand(currentNode.node_id);
-        }
-        break;
-      }
-      case ' ': {
-        event.preventDefault();
-        if (currentNode) {
-          selectNode(currentNode);
-        }
-        break;
-      }
-    }
-  }
-
-  /**
-   * Hover handlers for tooltip display (300ms delay)
-   */
-  function handleNodeMouseEnter(nodeId) {
-    if (hoverTimer) clearTimeout(hoverTimer);
-    hoverTimer = setTimeout(() => {
-      hoveredNodeId = nodeId;
-    }, 300);
-  }
-
-  function handleNodeMouseLeave() {
-    if (hoverTimer) clearTimeout(hoverTimer);
-    hoverTimer = null;
-    hoveredNodeId = null;
-  }
-
-  /**
-   * Public reload method
-   */
+  export function navigateToNode(nodeId) { return selectAndRevealNode(nodeId); }
   export function reload() {
     if (filePath) loadFileTree(filePath);
     else if (folderPath) loadFolderTree(folderPath);
   }
 
-  // ========================================
-  // Index Integration (Phase 29)
-  // ========================================
+  // === Keyboard Navigation ===
 
-  /**
-   * Build search index for the loaded folder (fire-and-forget after tree load)
-   */
+  function getNodeRows() {
+    return visibleRows.filter(r => r.node && (r.type === 'open' || r.type === 'self-close' || r.type === 'collapsed'));
+  }
+
+  function handleKeydown(event) {
+    const nodeRows = getNodeRows();
+    if (!nodeRows.length) return;
+    const currentIdx = nodeRows.findIndex(r => r.node.node_id === selectedNodeId);
+    const currentRow = currentIdx >= 0 ? nodeRows[currentIdx] : null;
+
+    switch (event.key) {
+      case 'ArrowDown': {
+        event.preventDefault();
+        const next = currentIdx < nodeRows.length - 1 ? currentIdx + 1 : 0;
+        selectNode(nodeRows[next].node);
+        scrollToNode(nodeRows[next].node.node_id);
+        break;
+      }
+      case 'ArrowUp': {
+        event.preventDefault();
+        const prev = currentIdx > 0 ? currentIdx - 1 : nodeRows.length - 1;
+        selectNode(nodeRows[prev].node);
+        scrollToNode(nodeRows[prev].node.node_id);
+        break;
+      }
+      case 'ArrowRight': {
+        event.preventDefault();
+        if (currentRow?.node?.children?.length > 0 && !expandedNodes.has(currentRow.node.node_id)) {
+          toggleExpand(currentRow.node.node_id);
+        }
+        break;
+      }
+      case 'ArrowLeft': {
+        event.preventDefault();
+        if (currentRow?.node && expandedNodes.has(currentRow.node.node_id)) {
+          toggleExpand(currentRow.node.node_id);
+        } else if (currentRow?.node?.parent_id) {
+          const parent = nodeIndex.get(currentRow.node.parent_id);
+          if (parent) { selectNode(parent); scrollToNode(parent.node_id); }
+        }
+        break;
+      }
+      case 'Enter': {
+        event.preventDefault();
+        if (currentRow?.node?.children?.length > 0) toggleExpand(currentRow.node.node_id);
+        break;
+      }
+      case ' ': {
+        event.preventDefault();
+        if (currentRow?.node) selectNode(currentRow.node);
+        break;
+      }
+    }
+  }
+
+  function scrollToNode(nodeId) {
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-node-id="${nodeId}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
+
+  // === Index / Search (Phase 29) ===
+
   async function buildIndex(path) {
     indexing = true;
     indexReady = false;
@@ -520,9 +411,6 @@
         const data = await response.json();
         indexStats = data;
         indexReady = true;
-        logger.success('Index built', { entities: data.entity_count, ms: data.build_time_ms });
-      } else {
-        logger.error('Index build returned error', { status: response.status });
       }
     } catch (err) {
       logger.error('Index build failed', { error: err.message });
@@ -531,14 +419,8 @@
     }
   }
 
-  /**
-   * Search entities via cascade search API
-   */
   async function searchEntities(query) {
-    if (!query.trim() || !indexReady) {
-      searchResults = [];
-      return;
-    }
+    if (!query.trim() || !indexReady) { searchResults = []; return; }
     searching = true;
     try {
       const response = await fetch(`${API_BASE}/api/ldm/gamedata/index/search`, {
@@ -557,52 +439,108 @@
     }
   }
 
-  /**
-   * Debounced search handler (300ms)
-   */
   function handleSearchInput(event) {
     searchQuery = event.target.value;
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => searchEntities(searchQuery), 300);
   }
 
-  /**
-   * Navigate to a search result node: expand parents, select, scroll into view
-   */
   function navigateToResult(result) {
-    const targetNodeId = result.node_id;
-    const found = selectAndRevealNode(targetNodeId);
-    if (found) {
+    if (selectAndRevealNode(result.node_id)) {
       searchResults = [];
       searchQuery = '';
-    } else {
-      logger.warning('Search result node not found in tree', { node_id: targetNodeId });
     }
+  }
+
+  // === Helpers ===
+
+  /** Get the primary display label for a node (for badges) */
+  function getNodeLabel(node) {
+    const primaryAttr = EDITABLE_ATTRS[node.tag]?.[0];
+    const primaryVal = primaryAttr && node.attributes?.[primaryAttr];
+    if (primaryVal) return primaryVal;
+    return node.attributes?.Key || node.attributes?.NodeId || node.attributes?.Name || null;
+  }
+
+  /** Check if a row's node is selected */
+  function isRowSelected(row) {
+    if (!row.node) return false;
+    return row.node.node_id === selectedNodeId;
+  }
+
+  /** Line gutter width based on total lines */
+  let gutterWidth = $derived(lineCounter > 999 ? 56 : lineCounter > 99 ? 48 : 40);
+
+  // === Attribute Edit Modal ===
+  let editModal = $state({ open: false, attrName: '', attrValue: '', filePath: '', entityIndex: 0 });
+
+  function handleAttrDoubleClick(event, node, attrName, attrValue) {
+    event.preventDefault();
+    event.stopPropagation();
+    // Extract entity index from node_id (e.g., "r0" -> 0, "r2" -> 2)
+    const match = node.node_id?.match(/r(\d+)/);
+    const entityIndex = match ? parseInt(match[1]) : 0;
+    // Resolve file path: annotated _filePath (folder mode) or component prop
+    const resolvedPath = node._filePath || filePath || '';
+    editModal = {
+      open: true,
+      attrName,
+      attrValue: String(attrValue ?? ''),
+      filePath: resolvedPath,
+      entityIndex
+    };
+  }
+
+  function handleEditSave(attrName, newValue) {
+    editModal = { ...editModal, open: false };
+    // Reload tree to reflect saved changes
+    if (filePath) loadFileTree(filePath);
+    else if (folderPath) loadFolderTree(folderPath);
+  }
+
+  // === Context Menu ===
+  let contextMenu = $state({ show: false, x: 0, y: 0, node: null });
+
+  function handleContextMenu(event, node) {
+    event.preventDefault();
+    event.stopPropagation();
+    contextMenu = { show: true, x: event.clientX, y: event.clientY, node };
+  }
+
+  function closeContextMenu() {
+    contextMenu = { show: false, x: 0, y: 0, node: null };
+  }
+
+  function handleGlobalClick() {
+    if (contextMenu.show) closeContextMenu();
   }
 </script>
 
-<div class="gamedata-tree" role="tree" tabindex="0" onkeydown={handleKeydown}>
-  <!-- Phase 29: Search bar (visible when folder/file is loaded) -->
+<div class="xml-viewer" role="tree" tabindex="0" onkeydown={handleKeydown} onclick={handleGlobalClick}>
+  <!-- Search bar -->
   {#if folderPath || filePath}
-    <div class="tree-search">
+    <div class="viewer-search">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+      </svg>
       <input
         type="search"
+        class="search-input"
         placeholder={indexReady ? `Search ${indexStats?.entity_count || ''} entities...` : indexing ? 'Indexing...' : 'Search entities...'}
         value={searchQuery}
         oninput={handleSearchInput}
         disabled={!indexReady}
-        class="search-input"
       />
       {#if indexing}
-        <span class="index-status">Indexing...</span>
-      {/if}
-      {#if searching}
-        <span class="index-status">Searching...</span>
+        <span class="search-status">Indexing...</span>
+      {:else if indexReady}
+        <span class="search-status ready">{indexStats?.entity_count || 0} indexed</span>
       {/if}
       {#if searchResults.length > 0}
         <div class="search-dropdown">
           {#each searchResults as result (result.node_id + result.entity_name)}
             <button class="search-result" onclick={() => navigateToResult(result)}>
+              <span class="result-icon">{getEntityIcon(result.tag)}</span>
               <span class="result-name">{result.entity_name}</span>
               <span class="result-tag">{result.tag}</span>
               <span class="result-score">{result.match_type}</span>
@@ -613,562 +551,644 @@
     </div>
   {/if}
 
+  <!-- Content -->
   {#if loading}
-    <div class="tree-loading">
-      {#each Array(8) as _, i}
-        <div class="tree-skeleton-row" style="padding-left: {(i % 3) * 20 + 8}px;">
-          <SkeletonText width="{60 - (i % 3) * 10}%" />
+    <div class="viewer-loading">
+      {#each Array(12) as _, i}
+        <div class="skeleton-row" style="padding-left: {(i % 4) * 20 + 66}px;">
+          <SkeletonText width="{70 - (i % 4) * 12}%" />
         </div>
       {/each}
     </div>
   {:else if error}
     <ErrorState message={error} onretry={reload} />
-  {:else if treeData && treeData.length > 0}
-    <div class="tree-content">
-      {#if treeData.length === 1}
-        <!-- Single file mode: render roots directly -->
-        {#each treeData[0].roots || [] as rootNode (rootNode.node_id)}
-          {@render renderNode(rootNode, 0)}
-        {/each}
-      {:else}
-        <!-- Folder mode: group by file -->
-        {#each treeData as fileData (fileData.file_path)}
-          {@render renderFileGroup(fileData)}
-        {/each}
+  {:else if visibleRows.length > 0}
+    <div class="xml-content">
+      {#each visibleRows as row (row.type === 'file-header' ? row.fileKey : `${row.node?.node_id}_${row.type}_${row.line}`)}
+        {#if row.type === 'file-header'}
+          {@render fileHeaderRow(row)}
+        {:else if row.type === 'open'}
+          {@render openTagRow(row)}
+        {:else if row.type === 'self-close'}
+          {@render selfCloseRow(row)}
+        {:else if row.type === 'collapsed'}
+          {@render collapsedRow(row)}
+        {:else if row.type === 'close'}
+          {@render closeTagRow(row)}
+        {/if}
+      {/each}
+    </div>
+  {:else if treeData}
+    <EmptyState headline="No data" description="This file contains no XML nodes" />
+  {:else}
+    <EmptyState headline="No file loaded" description="Select a file from the explorer" />
+  {/if}
+
+  <!-- Status bar -->
+  {#if treeData}
+    <div class="status-bar">
+      <span>{lineCounter} lines</span>
+      <span class="status-sep">|</span>
+      <span>{visibleRows.filter(r => r.node).length} visible</span>
+      {#if indexReady}
+        <span class="status-sep">|</span>
+        <span class="status-ready">Index Ready</span>
       {/if}
     </div>
-  {:else if treeData && treeData.length === 0}
-    <EmptyState icon={DataStructured} headline="Empty file" description="This XML file contains no data nodes" />
-  {:else}
-    <EmptyState icon={DataStructured} headline="No file loaded" description="Select a file from the explorer to view its tree structure" />
+  {/if}
+
+  {#if contextMenu.show}
+    <div
+      class="context-menu"
+      style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
+    >
+      <button class="context-item" onclick={() => { navigator.clipboard.writeText(contextMenu.node?.attributes?.Key || contextMenu.node?.node_id || ''); closeContextMenu(); }}>
+        Copy Key
+      </button>
+      <button class="context-item" onclick={() => { navigator.clipboard.writeText(JSON.stringify(contextMenu.node?.attributes || {}, null, 2)); closeContextMenu(); }}>
+        Copy All Attributes
+      </button>
+      <div class="context-divider"></div>
+      <button class="context-item" onclick={() => { onNodeSelect?.(contextMenu.node); closeContextMenu(); }}>
+        View Details
+      </button>
+      <button class="context-item" onclick={() => { closeContextMenu(); }}>
+        Generate AI Context
+      </button>
+    </div>
   {/if}
 </div>
 
-{#snippet renderFileGroup(fileData)}
-  {@const fileKey = `file:${fileData.file_path}`}
-  {@const fileName = fileData.file_path.split('/').pop() || fileData.file_path}
-  {@const isFileExpanded = expandedNodes.has(fileKey)}
-  <div class="file-group">
-    <button
-      class="file-group-header"
-      role="treeitem"
-      aria-expanded={isFileExpanded}
-      onclick={() => toggleExpand(fileKey)}
-    >
-      {#if isFileExpanded}
-        <ChevronDown size={14} />
-      {:else}
-        <ChevronRight size={14} />
-      {/if}
-      <Code size={16} class="file-icon" />
-      <span class="file-name">{fileName}</span>
-      <span class="count-badge">{fileData.node_count} nodes</span>
-    </button>
+<AttributeEditModal
+  bind:open={editModal.open}
+  attrName={editModal.attrName}
+  attrValue={editModal.attrValue}
+  filePath={editModal.filePath}
+  entityIndex={editModal.entityIndex}
+  onSave={handleEditSave}
+  onCancel={() => { editModal.open = false; }}
+/>
 
-    {#if isFileExpanded}
-      <div class="file-group-children" role="group">
-        {#each fileData.roots || [] as rootNode (rootNode.node_id)}
-          {@render renderNode(rootNode, 1)}
-        {/each}
-      </div>
-    {/if}
+<!-- ===== SNIPPETS ===== -->
+
+{#snippet fileHeaderRow(row)}
+  <div
+    class="xml-row file-header-row"
+    class:expanded={expandedNodes.has(row.fileKey)}
+    onclick={() => toggleExpand(row.fileKey)}
+  >
+    <span class="line-gutter" style="width: {gutterWidth}px;">{row.line}</span>
+    <span class="fold-gutter">
+      <span class="fold-arrow" class:expanded={expandedNodes.has(row.fileKey)}>
+        <ChevronRight size={12} />
+      </span>
+    </span>
+    <div class="xml-content-inner">
+      <span class="file-header-icon">&#128196;</span>
+      <span class="file-header-name">{row.fileName}</span>
+      <span class="count-badge">{row.nodeCount} nodes</span>
+    </div>
   </div>
 {/snippet}
 
-{#snippet renderNode(node, depth)}
-  {@const hasChildren = node.children?.length > 0}
-  {@const isExpanded = expandedNodes.has(node.node_id)}
-  {@const isSelected = selectedNodeId === node.node_id}
-  {@const NodeIcon = getNodeIcon(node.tag)}
-  {@const label = getNodeLabel(node)}
-  {@const nodeColor = getNodeColor(node.tag)}
-  <div class="tree-item" style="position: relative;">
-    <button
-      class="tree-node"
-      class:selected={isSelected}
-      class:has-children={hasChildren}
-      class:depth-gt-0={depth > 0}
-      data-node-id={node.node_id}
-      role="treeitem"
-      aria-expanded={hasChildren ? isExpanded : undefined}
-      aria-selected={isSelected}
-      style="--indent-px: {depth * 20 + 8}px; padding-left: {depth * 20 + 8}px; border-left-color: {isSelected ? 'var(--cds-link-01)' : nodeColor};"
-      onclick={() => selectNode(node)}
-      ondblclick={() => { if (hasChildren) toggleExpand(node.node_id); }}
-      onmouseenter={() => handleNodeMouseEnter(node.node_id)}
-      onmouseleave={handleNodeMouseLeave}
-    >
-      <!-- Chevron (animated rotation) -->
-      {#if hasChildren}
-        <span
-          class="chevron"
-          role="button"
-          tabindex="-1"
-          onclick={(e) => { e.stopPropagation(); toggleExpand(node.node_id); }}
-        >
-          <span class="chevron-icon" class:rotated={isExpanded}>
-            <ChevronRight size={14} />
-          </span>
-        </span>
-      {:else}
-        <span class="chevron-spacer"></span>
-      {/if}
-
-      <!-- Entity type icon (colored by entity type) -->
-      <span class="entity-icon-wrap" style="color: {nodeColor};">
-        <NodeIcon size={16} />
+{#snippet openTagRow(row)}
+  {@const node = row.node}
+  {@const color = getEntityColor(node.tag)}
+  <div
+    class="xml-row"
+    class:selected={isRowSelected(row)}
+    data-node-id={node.node_id}
+    onclick={() => selectNode(node)}
+    oncontextmenu={(e) => handleContextMenu(e, node)}
+  >
+    <span class="line-gutter" style="width: {gutterWidth}px;">{row.line}</span>
+    <span class="fold-gutter" onclick={(e) => { e.stopPropagation(); toggleExpand(node.node_id); }}>
+      <span class="fold-arrow expanded">
+        <ChevronRight size={12} />
       </span>
-
-      <!-- Tag name -->
-      <span class="node-tag">{node.tag}</span>
-
-      <!-- Primary label -->
-      {#if label !== node.tag}
-        <span class="node-label">{label}</span>
+    </span>
+    {@render indentGuides(row.depth)}
+    <div class="xml-content-inner">
+      <span class="t-bracket">&lt;</span><span class="t-tag" style="color: {color};">{node.tag}</span>
+      {@render attributeTokens(node)}
+      <span class="t-bracket">&gt;</span>
+      {#if node.children?.length > 0}
+        <span class="entity-badge" style="color: {color};">
+          {getEntityIcon(node.tag)} {node.children.length}
+        </span>
       {/if}
-
-      <!-- Children count badge (entity-color tinted) -->
-      {#if hasChildren}
-        <span class="count-badge" style="background: {nodeColor}20; color: {nodeColor};">{node.children.length}</span>
-      {/if}
-
-      <!-- Cross-reference links (max 2 per row) -->
-      {#each Object.entries(node.attributes || {}).filter(([attr, val]) => isCrossRefAttr(attr) && resolveCrossRef(attr, val)).slice(0, 2) as [attr, val] (attr)}
-        <button
-          class="cross-ref-link"
-          title="{attr}: {val} (click to navigate)"
-          onclick={(e) => { e.stopPropagation(); selectAndRevealNode(resolveCrossRef(attr, val)); }}
-        >
-          <ArrowRight size={12} />
-        </button>
-      {/each}
-    </button>
-
-    <!-- Hover tooltip (first 3 attributes) -->
-    {#if hoveredNodeId === node.node_id}
-      <div class="node-tooltip" style="left: {depth * 20 + 40}px;">
-        {#each Object.entries(node.attributes || {}).slice(0, 3) as [key, val] (key)}
-          <div class="tooltip-row">
-            <span class="tooltip-key">{key}:</span>
-            <span class="tooltip-val">{String(val).substring(0, 40)}</span>
-          </div>
-        {/each}
-        {#if Object.keys(node.attributes || {}).length > 3}
-          <div class="tooltip-more">+{Object.keys(node.attributes).length - 3} more</div>
-        {/if}
-      </div>
-    {/if}
-
-    <!-- Children (animated wrapper) -->
-    {#if hasChildren}
-      <div class="tree-children-wrapper" class:collapsed={!isExpanded} class:expanded={isExpanded}>
-        <div class="tree-children" role="group">
-          {#each node.children as child (child.node_id)}
-            {@render renderNode(child, depth + 1)}
-          {/each}
-        </div>
-      </div>
-    {/if}
+    </div>
   </div>
+{/snippet}
+
+{#snippet selfCloseRow(row)}
+  {@const node = row.node}
+  {@const color = getEntityColor(node.tag)}
+  <div
+    class="xml-row"
+    class:selected={isRowSelected(row)}
+    data-node-id={node.node_id}
+    onclick={() => selectNode(node)}
+    oncontextmenu={(e) => handleContextMenu(e, node)}
+  >
+    <span class="line-gutter" style="width: {gutterWidth}px;">{row.line}</span>
+    <span class="fold-gutter"></span>
+    {@render indentGuides(row.depth)}
+    <div class="xml-content-inner">
+      <span class="t-bracket">&lt;</span><span class="t-tag" style="color: {color};">{node.tag}</span>
+      {@render attributeTokens(node)}
+      <span class="t-bracket"> /&gt;</span>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet collapsedRow(row)}
+  {@const node = row.node}
+  {@const color = getEntityColor(node.tag)}
+  <div
+    class="xml-row"
+    class:selected={isRowSelected(row)}
+    data-node-id={node.node_id}
+    onclick={() => selectNode(node)}
+    oncontextmenu={(e) => handleContextMenu(e, node)}
+  >
+    <span class="line-gutter" style="width: {gutterWidth}px;">{row.line}</span>
+    <span class="fold-gutter" onclick={(e) => { e.stopPropagation(); toggleExpand(node.node_id); }}>
+      <span class="fold-arrow">
+        <ChevronRight size={12} />
+      </span>
+    </span>
+    {@render indentGuides(row.depth)}
+    <div class="xml-content-inner">
+      <span class="t-bracket">&lt;</span><span class="t-tag" style="color: {color};">{node.tag}</span>
+      {@render attributeTokens(node)}
+      <span class="t-bracket">&gt;</span>
+      <span class="collapsed-indicator" onclick={(e) => { e.stopPropagation(); toggleExpand(node.node_id); }}>
+        {node.children?.length || 0} {node.children?.length === 1 ? 'child' : 'children'}
+      </span>
+      <span class="t-bracket">&lt;/</span><span class="t-tag" style="color: {color};">{node.tag}</span><span class="t-bracket">&gt;</span>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet closeTagRow(row)}
+  {@const node = row.node}
+  {@const color = getEntityColor(node.tag)}
+  <div
+    class="xml-row close-row"
+    class:selected={isRowSelected(row)}
+  >
+    <span class="line-gutter" style="width: {gutterWidth}px;">{row.line}</span>
+    <span class="fold-gutter"></span>
+    {@render indentGuides(row.depth)}
+    <div class="xml-content-inner">
+      <span class="t-bracket">&lt;/</span><span class="t-tag" style="color: {color};">{node.tag}</span><span class="t-bracket">&gt;</span>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet indentGuides(depth)}
+  {#if depth > 0}
+    <div class="indent-area" style="width: {depth * 20}px;">
+      {#each Array(depth) as _, i}
+        <div class="indent-guide" style="left: {i * 20 + 10}px;"></div>
+      {/each}
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet attributeTokens(node)}
+  {#each Object.entries(node.attributes || {}) as [attrName, attrValue] (attrName)}
+    {@const isXref = isCrossRefAttr(attrName)}
+    {@const xrefTarget = isXref ? resolveCrossRef(attrName, String(attrValue)) : null}
+    {@const isEditable = (EDITABLE_ATTRS[node.tag] || []).includes(attrName)}
+    {@const category = classifyAttr(attrName)}
+    {' '}<span class="t-attr">{attrName}</span><span class="t-bracket">=</span>{#if xrefTarget}<button
+        class="t-xref"
+        title="Navigate to {attrName}: {attrValue}"
+        onclick={(e) => { e.stopPropagation(); selectAndRevealNode(xrefTarget); }}
+        ondblclick={(e) => handleAttrDoubleClick(e, node, attrName, attrValue)}
+      >"{attrValue}"</button>{:else if isEditable}<span
+        class="t-value editable"
+        title="Double-click to edit"
+        role="button"
+        tabindex="-1"
+        ondblclick={(e) => handleAttrDoubleClick(e, node, attrName, attrValue)}
+      >"{attrValue}"</span>{:else}<span
+        class="t-value attr-val-{category}"
+        role="button"
+        tabindex="-1"
+        ondblclick={(e) => handleAttrDoubleClick(e, node, attrName, attrValue)}
+      >"{attrValue}"</span>{/if}
+  {/each}
 {/snippet}
 
 <style>
-  .gamedata-tree {
+  /* ===== BASE LAYOUT ===== */
+  .xml-viewer {
     display: flex;
     flex-direction: column;
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: var(--cds-layer-01);
-    font-family: 'IBM Plex Mono', 'Consolas', monospace;
+    background: var(--xml-bg, #1e1e1e);
+    font-family: 'D2Coding', 'Noto Sans Mono CJK KR', 'IBM Plex Mono', 'Consolas', monospace;
     font-size: 13px;
+    line-height: 1.6;
+    --xml-bg: #1e1e1e;
+    --xml-bg-hover: #2c313a;
+    --xml-bg-selected: #264f78;
+    --xml-border: #3c3c3c;
+    --xml-border-subtle: #2d2d2d;
+    --xml-tag: #e06c75;
+    --xml-attr: #d19a66;
+    --xml-value: #98c379;
+    --xml-bracket: #636d83;
+    --xml-comment: #5c6370;
+    --xml-text: #abb2bf;
+    --xml-text-bright: #d4d4d4;
+    --xml-text-dim: #6b7280;
+    --xml-link: #61afef;
+    --xml-indent-guide: rgba(255,255,255,0.06);
+    --xml-indent-guide-active: rgba(255,255,255,0.15);
+    color: var(--xml-text);
   }
 
-  .gamedata-tree:focus {
-    outline: none;
-  }
+  .xml-viewer:focus { outline: none; }
 
-  .tree-loading {
-    padding: 0.5rem 0;
-  }
-
-  .tree-skeleton-row {
-    padding: 0.375rem 1rem;
-  }
-
-  .tree-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0.25rem 0;
-    scrollbar-width: thin;
-    scrollbar-color: var(--cds-border-subtle-01) transparent;
-  }
-
-  .tree-content::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .tree-content::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .tree-content::-webkit-scrollbar-thumb {
-    background: var(--cds-border-subtle-01);
-    border-radius: 3px;
-  }
-
-  /* File Group (folder mode) */
-  .file-group {
-    margin-bottom: 2px;
-  }
-
-  .file-group-header {
+  /* ===== SEARCH BAR ===== */
+  .viewer-search {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    background: var(--cds-layer-02);
-    border: none;
-    border-radius: 2px;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: inherit;
-    font-weight: 600;
-    color: var(--cds-text-01);
-    text-align: left;
-    transition: background 0.1s ease;
-  }
-
-  .file-group-header:hover {
-    background: var(--cds-layer-hover-01);
-  }
-
-  .file-group-header:focus {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: -2px;
-  }
-
-  :global(.file-icon) {
+    gap: 8px;
+    padding: 6px 12px;
+    background: #252526;
+    border-bottom: 1px solid var(--xml-border);
     flex-shrink: 0;
-    color: var(--cds-link-01);
-  }
-
-  .file-name {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .file-group-children {
-    margin-left: 0.5rem;
-    border-left: 1px solid var(--cds-border-subtle-01);
-    padding-left: 0.25rem;
-  }
-
-  /* Tree Node */
-  .tree-node {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    width: 100%;
-    padding: 0.3125rem 0.5rem;
-    background: transparent;
-    border: none;
-    border-left: 3px solid transparent;
-    border-radius: 0 2px 2px 0;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: inherit;
-    color: var(--cds-text-01);
-    text-align: left;
-    transition: background 0.15s ease, border-color 0.15s ease;
-    line-height: 1.4;
     position: relative;
   }
 
-  /* Tree connector lines (vertical + horizontal) for nested nodes */
-  .tree-node.depth-gt-0::before {
-    content: '';
-    position: absolute;
-    left: calc(var(--indent-px) - 12px);
-    top: 0;
-    height: 100%;
-    width: 1px;
-    background: var(--cds-border-subtle-01);
-    pointer-events: none;
-  }
-
-  .tree-node.depth-gt-0::after {
-    content: '';
-    position: absolute;
-    left: calc(var(--indent-px) - 12px);
-    top: 50%;
-    width: 8px;
-    height: 1px;
-    background: var(--cds-border-subtle-01);
-    pointer-events: none;
-  }
-
-  .tree-node:hover {
-    background: var(--cds-layer-hover-01);
-  }
-
-  .tree-node:focus {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: -2px;
-  }
-
-  .tree-node.selected {
-    background: var(--cds-layer-selected-01);
-    border-left-color: var(--cds-link-01) !important;
-    border-left-width: 3px;
-  }
-
-  /* Chevron with rotation animation */
-  .chevron {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 16px;
-    height: 16px;
-    border: none;
-    background: transparent;
-    padding: 0;
-    cursor: pointer;
-    color: var(--cds-text-02);
-  }
-
-  .chevron:hover {
-    color: var(--cds-text-01);
-  }
-
-  .chevron-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 200ms ease;
-  }
-
-  .chevron-icon.rotated {
-    transform: rotate(90deg);
-  }
-
-  .chevron-spacer {
-    width: 16px;
-    flex-shrink: 0;
-  }
-
-  /* Entity icon wrapper (colored inline by entity type) */
-  .entity-icon-wrap {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-  }
-
-  /* Expand/collapse animation */
-  .tree-children-wrapper {
-    overflow: hidden;
-    transition: max-height 200ms ease-out, opacity 200ms ease-out;
-  }
-
-  .tree-children-wrapper.collapsed {
-    max-height: 0;
-    opacity: 0;
-  }
-
-  .tree-children-wrapper.expanded {
-    max-height: 10000px;
-    opacity: 1;
-  }
-
-  /* Node label parts */
-  .node-tag {
-    font-weight: 500;
-    color: var(--cds-text-02);
-    font-size: 0.75rem;
-    flex-shrink: 0;
-  }
-
-  .node-label {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--cds-text-01);
-    font-weight: 400;
-  }
-
-  .count-badge {
-    font-size: 0.6875rem;
-    padding: 0.0625rem 0.375rem;
-    background: var(--cds-layer-02);
-    border-radius: 10px;
-    color: var(--cds-text-03);
-    flex-shrink: 0;
-  }
-
-  /* Hover tooltip */
-  .node-tooltip {
-    position: absolute;
-    top: 100%;
-    z-index: 100;
-    padding: 6px 10px;
-    background: var(--cds-layer-02);
-    border: 1px solid var(--cds-border-subtle-01);
-    border-radius: 4px;
-    font-size: 0.6875rem;
-    white-space: nowrap;
-    pointer-events: none;
-    max-width: 300px;
-  }
-
-  .tooltip-row {
-    display: flex;
-    gap: 4px;
-  }
-
-  .tooltip-key {
-    color: var(--cds-text-03);
-    flex-shrink: 0;
-  }
-
-  .tooltip-val {
-    color: var(--cds-text-01);
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .tooltip-more {
-    color: var(--cds-text-03);
-    font-style: italic;
-    margin-top: 2px;
-  }
-
-  /* Cross-reference link buttons */
-  .cross-ref-link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    padding: 0;
-    margin-left: 2px;
-    background: transparent;
-    border: 1px solid var(--cds-link-01);
-    border-radius: 3px;
-    color: var(--cds-link-01);
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.15s ease, color 0.15s ease;
-  }
-
-  .cross-ref-link:hover {
-    background: var(--cds-link-01);
-    color: var(--cds-inverse-01);
-  }
-
-  /* Phase 29: Search Bar */
-  .tree-search {
-    position: relative;
-    padding: 0.5rem;
-    border-bottom: 1px solid var(--cds-border-subtle-01);
-    flex-shrink: 0;
-  }
+  .search-icon { color: var(--xml-text-dim); flex-shrink: 0; }
 
   .search-input {
-    width: 100%;
-    padding: 0.375rem 0.5rem;
-    background: var(--cds-field-01);
-    border: 1px solid var(--cds-border-subtle-01);
+    flex: 1;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--xml-border);
     border-radius: 4px;
-    color: var(--cds-text-01);
-    font-size: 0.75rem;
+    padding: 4px 8px;
+    color: var(--xml-text);
     font-family: inherit;
+    font-size: 12px;
     outline: none;
-    box-sizing: border-box;
   }
 
   .search-input:focus {
-    border-color: var(--cds-focus);
-    box-shadow: 0 0 0 1px var(--cds-focus);
+    border-color: #528bff;
+    box-shadow: 0 0 0 1px #528bff;
   }
 
-  .search-input:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .search-input:disabled { opacity: 0.4; cursor: not-allowed; }
+  .search-input::placeholder { color: var(--xml-text-dim); }
+
+  .search-status {
+    font-size: 11px;
+    color: var(--xml-text-dim);
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
-  .search-input::placeholder {
-    color: var(--cds-text-03);
-  }
-
-  .index-status {
-    display: block;
-    margin-top: 0.25rem;
-    font-size: 0.6875rem;
-    color: var(--cds-text-03);
-  }
+  .search-status.ready { color: #10b981; }
 
   .search-dropdown {
     position: absolute;
-    left: 0.5rem;
-    right: 0.5rem;
-    top: calc(100% - 2px);
+    left: 12px;
+    right: 12px;
+    top: 100%;
     max-height: 300px;
     overflow-y: auto;
     z-index: 10;
-    background: var(--cds-layer-02);
-    border: 1px solid var(--cds-border-subtle-01);
+    background: #252526;
+    border: 1px solid var(--xml-border);
     border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
 
   .search-result {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
     width: 100%;
-    padding: 0.375rem 0.5rem;
+    padding: 6px 10px;
     background: transparent;
     border: none;
-    border-bottom: 1px solid var(--cds-border-subtle-01);
+    border-bottom: 1px solid var(--xml-border-subtle);
     cursor: pointer;
     font-family: inherit;
-    font-size: 0.75rem;
-    color: var(--cds-text-01);
+    font-size: 12px;
+    color: var(--xml-text);
     text-align: left;
   }
 
-  .search-result:last-child {
-    border-bottom: none;
-  }
+  .search-result:last-child { border-bottom: none; }
+  .search-result:hover { background: var(--xml-bg-hover); }
 
-  .search-result:hover {
-    background: var(--cds-layer-hover-01);
-  }
+  .result-icon { flex-shrink: 0; }
+  .result-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .result-tag { font-size: 11px; color: var(--xml-text-dim); flex-shrink: 0; }
+  .result-score { font-size: 10px; color: var(--xml-text-dim); padding: 1px 4px; background: rgba(255,255,255,0.04); border-radius: 3px; flex-shrink: 0; }
 
-  .result-name {
+  /* ===== LOADING ===== */
+  .viewer-loading { padding: 8px 0; }
+  .skeleton-row { padding: 3px 16px; }
+
+  /* ===== XML CONTENT ===== */
+  .xml-content {
     flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-weight: 500;
+    overflow-y: auto;
+    overflow-x: auto;
+    padding: 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--xml-border) transparent;
   }
 
-  .result-tag {
-    font-size: 0.6875rem;
-    color: var(--cds-text-02);
-    flex-shrink: 0;
+  .xml-content::-webkit-scrollbar { width: 8px; height: 8px; }
+  .xml-content::-webkit-scrollbar-track { background: transparent; }
+  .xml-content::-webkit-scrollbar-thumb { background: var(--xml-border); border-radius: 4px; }
+
+  /* ===== XML ROW ===== */
+  .xml-row {
+    display: flex;
+    align-items: flex-start;
+    min-height: 24px;
+    padding: 1px 16px 1px 0;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.08s ease;
   }
 
-  .result-score {
-    font-size: 0.625rem;
-    color: var(--cds-text-03);
+  .xml-row:hover { background: var(--xml-bg-hover); }
+  .xml-row.selected { background: var(--xml-bg-selected); }
+
+  .xml-row:hover .indent-guide { background: var(--xml-indent-guide-active); }
+
+  /* ===== LINE GUTTER ===== */
+  .line-gutter {
+    min-width: 40px;
+    text-align: right;
+    padding-right: 10px;
+    color: var(--xml-text-dim);
+    font-size: 12px;
+    user-select: none;
     flex-shrink: 0;
-    padding: 1px 4px;
-    background: var(--cds-layer-01);
+    opacity: 0.5;
+  }
+
+  /* ===== FOLD GUTTER ===== */
+  .fold-gutter {
+    width: 16px;
+    min-width: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--xml-text-dim);
+    user-select: none;
+  }
+
+  .fold-gutter:hover {
+    color: var(--xml-text-bright);
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 3px;
+  }
+
+  .fold-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease;
+    cursor: pointer;
+  }
+
+  .fold-arrow.expanded { transform: rotate(90deg); }
+
+  /* ===== INDENT GUIDES ===== */
+  .indent-area {
+    position: relative;
+    flex-shrink: 0;
+    align-self: stretch;
+  }
+
+  .indent-guide {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--xml-indent-guide);
+    transition: background 0.1s ease;
+  }
+
+  /* ===== XML CONTENT INNER ===== */
+  .xml-content-inner {
+    flex: 1;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-wrap: break-word;
+    min-width: 0;
+    padding: 0 4px;
+  }
+
+  /* ===== SYNTAX TOKENS ===== */
+  .t-bracket { color: #808080; }
+  .t-tag { color: var(--xml-tag); font-weight: 500; }
+  .t-attr { color: var(--xml-attr); }
+
+  .t-value { color: var(--xml-value); }
+
+  .t-value.editable {
+    cursor: text;
+    border-bottom: 1px dashed rgba(152, 195, 121, 0.3);
+    padding: 0 1px;
+    border-radius: 2px;
+  }
+
+  .t-value.editable:hover {
+    background: rgba(152, 195, 121, 0.1);
+    border-bottom-color: var(--xml-value);
+  }
+
+  /* Semantic attribute value colors (WOW-01) */
+  .attr-val-identity   { color: #e5c07b; font-weight: 600; border-bottom: 1px solid rgba(229, 192, 123, 0.25); }
+  .attr-val-crossref   { color: #61afef; text-decoration: underline; cursor: pointer;
+                         transition: text-shadow 0.15s ease; }
+  .attr-val-crossref:hover { text-shadow: 0 0 6px rgba(97,175,239,0.4); }
+  .attr-val-stat       { color: #56b6c2; font-family: 'JetBrains Mono', 'D2Coding', monospace;
+                         font-variant-numeric: tabular-nums; }
+  .attr-val-media      { color: #c678dd; font-style: italic; }
+  .attr-val-default    { color: #e06c75; }
+
+  .t-xref {
+    color: var(--xml-link);
+    cursor: pointer;
+    background: none;
+    border: none;
+    border-bottom: 1px dotted var(--xml-link);
+    font-family: inherit;
+    font-size: inherit;
+    padding: 0;
+    line-height: inherit;
+  }
+
+  .t-xref:hover {
+    text-decoration: underline;
+    color: #8cc4f0;
+  }
+
+  /* ===== BADGES ===== */
+  .entity-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    padding: 0 5px;
+    margin-left: 8px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.06);
+    font-weight: 400;
+    vertical-align: middle;
+  }
+
+  .count-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 10px;
+    color: var(--xml-text-dim);
+    margin-left: 6px;
+  }
+
+  .collapsed-indicator {
+    display: inline-block;
+    padding: 0 6px;
+    margin: 0 3px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    color: var(--xml-text-dim);
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid var(--xml-border-subtle);
+    transition: all 0.1s ease;
+  }
+
+  .collapsed-indicator:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--xml-text);
+    border-color: var(--xml-border);
+  }
+
+  /* ===== FILE HEADER ===== */
+  .file-header-row {
+    background: #252526;
+    border-bottom: 1px solid var(--xml-border-subtle);
+    margin-bottom: 2px;
+  }
+
+  .file-header-row:hover { background: var(--xml-bg-hover); }
+
+  .file-header-icon { margin-right: 4px; }
+
+  .file-header-name {
+    font-weight: 600;
+    color: var(--xml-text-bright);
+  }
+
+  /* ===== CLOSE ROW ===== */
+  .close-row { opacity: 0.7; }
+
+  /* ===== STATUS BAR ===== */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 12px;
+    background: #252526;
+    border-top: 1px solid var(--xml-border);
+    font-size: 11px;
+    color: var(--xml-text-dim);
+    flex-shrink: 0;
+    height: 22px;
+  }
+
+  .status-sep { color: var(--xml-border); }
+  .status-ready { color: #10b981; }
+
+  /* ===== ROW ENTER ANIMATION ===== */
+  .xml-row {
+    animation: rowFadeIn 0.18s ease-out both;
+  }
+
+  /* ===== SELECTED ROW PULSE ===== */
+  .xml-row.selected {
+    animation: selectPulse 0.3s ease-out;
+  }
+
+  /* ===== ACTIVE INDENT GUIDES ON SELECTED ROW ===== */
+  .xml-row.selected .indent-guide {
+    background: rgba(255,255,255,0.2);
+  }
+
+  /* ===== ANIMATIONS ===== */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-2px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes rowFadeIn {
+    from { opacity: 0; transform: translateY(-2px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes selectPulse {
+    0% { background: rgba(38, 79, 120, 0.9); }
+    50% { background: rgba(50, 100, 150, 0.7); }
+    100% { background: var(--xml-bg-selected); }
+  }
+
+  /* ===== CONTEXT MENU ===== */
+  .context-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 180px;
+    background: #21252b;
+    border: 1px solid rgba(212, 154, 92, 0.2);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(212, 154, 92, 0.1);
+    padding: 4px 0;
+    animation: fadeSlideIn 0.15s ease-out;
+  }
+  .context-item {
+    display: block;
+    width: 100%;
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    text-align: left;
+    color: #abb2bf;
+    font-size: 12px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    cursor: pointer;
+    transition: background 0.1s ease;
+  }
+  .context-item:hover {
+    background: rgba(212, 154, 92, 0.1);
+    color: #d4d4d4;
+  }
+  .context-divider {
+    height: 1px;
+    background: #3c3c3c;
+    margin: 4px 0;
+  }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 </style>
