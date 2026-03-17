@@ -31,6 +31,9 @@
   let loadedTabs = $state(new Set());
   let pinned = $state(false);
 
+  // === Image shimmer state (WOW-03) ===
+  let imageLoadStates = $state(new Map()); // key -> 'loading' | 'loaded' | 'error'
+
   function switchTab(tab) {
     activeTab = tab;
     const next = new Set(loadedTabs);
@@ -175,6 +178,7 @@
       mediaData = null;
       mediaError = null;
       mediaNodeId = null;
+      imageLoadStates = new Map();
 
       // Reset loaded tabs on node change
       loadedTabs = new Set();
@@ -597,15 +601,33 @@
               {:else if mediaData && (mediaData.has_image || mediaData.has_audio)}
                 {#if mediaData.has_image}
                   {@const thumbUrl = `${API_BASE}${mediaData.thumbnail_url}?v=${Date.now()}`}
+                  {@const imgKey = mediaData.texture_name || 'main-image'}
                   <div class="media-card">
                     <button class="media-image-wrap" onclick={() => { imageOverlay = thumbUrl; }}>
-                      <img
-                        class="media-image"
-                        src={thumbUrl}
-                        alt={entityLabel}
-                        loading="lazy"
-                        onerror={(e) => { e.target.classList.add('broken'); }}
-                      />
+                      <div class="image-container">
+                        {#if imageLoadStates.get(imgKey) !== 'loaded'}
+                          <div class="image-shimmer"></div>
+                        {/if}
+                        <img
+                          class="media-image"
+                          class:image-reveal={imageLoadStates.get(imgKey) === 'loaded'}
+                          class:image-hidden={imageLoadStates.get(imgKey) !== 'loaded'}
+                          src={thumbUrl}
+                          alt={entityLabel}
+                          loading="lazy"
+                          onload={() => {
+                            const next = new Map(imageLoadStates);
+                            next.set(imgKey, 'loaded');
+                            imageLoadStates = next;
+                          }}
+                          onerror={(e) => {
+                            e.target.classList.add('broken');
+                            const next = new Map(imageLoadStates);
+                            next.set(imgKey, 'error');
+                            imageLoadStates = next;
+                          }}
+                        />
+                      </div>
                     </button>
                     <span class="media-card-name">{entityLabel}</span>
                     <span class="media-card-label">{mediaData.texture_name || 'image'}</span>
@@ -1426,6 +1448,42 @@
   @keyframes statusPulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
+  }
+
+  /* === Image Shimmer to Reveal (WOW-03) === */
+  .image-container {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 100px;
+    width: 100%;
+  }
+
+  .image-shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, #2d2d3d 25%, #3d3d4d 50%, #2d2d3d 75%);
+    background-size: 200% 100%;
+    animation: imageShimmer 1.5s infinite;
+    border-radius: 16px;
+  }
+
+  @keyframes imageShimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .image-hidden {
+    opacity: 0;
+  }
+
+  .image-reveal {
+    animation: imageReveal 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes imageReveal {
+    from { opacity: 0; filter: blur(8px); }
+    to   { opacity: 1; filter: blur(0); }
   }
 
   /* ===== IMAGE OVERLAY ===== */
