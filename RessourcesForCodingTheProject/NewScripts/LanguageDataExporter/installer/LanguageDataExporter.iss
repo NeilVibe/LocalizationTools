@@ -1,5 +1,5 @@
 ; LanguageDataExporter Inno Setup Script
-; Builds installer with drive selection for Perforce paths
+; Drive/Branch selection is now in the GUI — installer just writes default settings
 
 #ifndef AppVersion
   #define AppVersion "1.0.0"
@@ -65,81 +65,26 @@ Name: "{userdesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename:
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Parameters: "--help"; Flags: nowait postinstall skipifsilent shellexec
 
 [Code]
-var
-  DriveSelectionPage: TInputQueryWizardPage;
-
-procedure InitializeWizard;
-begin
-  // Create drive selection page
-  DriveSelectionPage := CreateInputQueryPage(wpSelectDir,
-    'Perforce Drive Selection',
-    'Select the drive where your Perforce workspace is located.',
-    'The application needs to know which drive contains your Perforce workspace.' + #13#10 +
-    'Default paths use F: drive. Enter a different letter if your workspace is on another drive.' + #13#10#13#10 +
-    'Examples: F, D, E, G');
-
-  DriveSelectionPage.Add('Drive Letter (without colon):', False);
-  DriveSelectionPage.Values[0] := 'F';
-end;
-
-function GetDriveLetter: String;
-var
-  Drive: String;
-begin
-  Drive := Uppercase(Trim(DriveSelectionPage.Values[0]));
-  // Validate single letter A-Z
-  if (Length(Drive) = 1) and (Drive[1] >= 'A') and (Drive[1] <= 'Z') then
-    Result := Drive
-  else
-    Result := 'F';
-end;
-
-function NextButtonClick(CurPageID: Integer): Boolean;
-var
-  Drive: String;
-  DrivePath: String;
-begin
-  Result := True;
-
-  if CurPageID = DriveSelectionPage.ID then
-  begin
-    Drive := GetDriveLetter;
-    DrivePath := Drive + ':\';
-
-    // Check if drive exists
-    if not DirExists(DrivePath) then
-    begin
-      if MsgBox('Drive ' + DrivePath + ' does not appear to exist.' + #13#10 +
-                'This may cause issues if the Perforce workspace is not accessible.' + #13#10#13#10 +
-                'Continue anyway?', mbConfirmation, MB_YESNO) = IDNO then
-      begin
-        Result := False;
-      end;
-    end;
-  end;
-end;
-
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   SettingsFile: String;
-  Drive: String;
   Content: String;
 begin
   if CurStep = ssPostInstall then
   begin
-    // Write settings.json with selected drive
-    Drive := GetDriveLetter;
+    // Write default settings.json (user changes Drive/Branch in the GUI)
     SettingsFile := ExpandConstant('{app}\settings.json');
-
-    Content := '{' + #13#10 +
-               '  "drive_letter": "' + Drive + '",' + #13#10 +
-               '  "branch": "mainline",' + #13#10 +
-               '  "loc_folder": "' + Drive + ':\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\loc",' + #13#10 +
-               '  "export_folder": "' + Drive + ':\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\export__",' + #13#10 +
-               '  "vrs_folder": "' + Drive + ':\\perforce\\cd\\mainline\\resource\\editordata\\VoiceRecordingSheet__",' + #13#10 +
-               '  "description": "Runtime configuration - edit paths if needed"' + #13#10 +
-               '}';
-
-    SaveStringToFile(SettingsFile, Content, False);
+    if not FileExists(SettingsFile) then
+    begin
+      Content := '{' + #13#10 +
+                 '  "drive_letter": "F",' + #13#10 +
+                 '  "branch": "mainline",' + #13#10 +
+                 '  "loc_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\loc",' + #13#10 +
+                 '  "export_folder": "F:\\perforce\\cd\\mainline\\resource\\GameData\\stringtable\\export__",' + #13#10 +
+                 '  "vrs_folder": "F:\\perforce\\cd\\mainline\\resource\\editordata\\VoiceRecordingSheet__",' + #13#10 +
+                 '  "description": "Runtime configuration - change Drive and Branch in the GUI"' + #13#10 +
+                 '}';
+      SaveStringToFile(SettingsFile, Content, False);
+    end;
   end;
 end;
