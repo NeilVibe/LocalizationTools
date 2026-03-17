@@ -305,9 +305,9 @@
 
   <!-- Ornamental border (fixed, not affected by zoom) -->
   <rect x="4" y="4" width={SVG_SIZE - 8} height={SVG_SIZE - 8}
-    fill="none" stroke="#5c4a2e" stroke-width="2" rx="2" class="map-border-outer" />
+    fill="none" stroke="#8b6914" stroke-width="2.5" rx="2" opacity="0.6" class="map-border-outer" />
   <rect x="10" y="10" width={SVG_SIZE - 20} height={SVG_SIZE - 20}
-    fill="none" stroke="#3d321e" stroke-width="1" rx="1" class="map-border-inner" />
+    fill="none" stroke="#5c4a2e" stroke-width="1.5" rx="1" opacity="0.5" class="map-border-inner" />
 
   <!-- Compass rose corners (fixed) -->
   <!-- Top-left -->
@@ -408,8 +408,8 @@
           y={region.center.y}
           text-anchor="middle"
           dominant-baseline="middle"
-          fill="rgba(240,184,120,0.9)"
-          font-size="13"
+          fill="rgba(240,184,120,0.95)"
+          font-size="15"
           font-weight="600"
           class="region-name-label"
           style="text-shadow: 0 0 6px rgba(212,154,92,0.5), 0 1px 2px rgba(0,0,0,0.8);"
