@@ -520,6 +520,19 @@
     <rect width="150" height="150" fill="rgba(26,20,8,0.85)" rx="4" />
     <rect x="1" y="1" width="148" height="148" fill="none" stroke="rgba(212,154,92,0.3)" rx="4" />
 
+    <!-- Simplified region shapes -->
+    {#each polygonData as region (region.strkey + '-mini')}
+      {@const miniPoints = region.polygon_points?.map(([wx, wz]) => {
+        const p = worldToSvg(wx, wz);
+        return `${p.x * 150/SVG_SIZE},${p.y * 150/SVG_SIZE}`;
+      }).join(' ') || ''}
+      {#if miniPoints}
+        <polygon points={miniPoints}
+          fill={getNodeColor(region.region_type)} fill-opacity="0.3"
+          stroke={getNodeColor(region.region_type)} stroke-opacity="0.5" stroke-width="0.5" />
+      {/if}
+    {/each}
+
     <!-- Node dots -->
     {#each nodePositions as node (node.strkey + '-mini')}
       <circle
