@@ -166,3 +166,4 @@ Build 027: Gimmick — repeat GroupInfo on every row for easy Excel filtering
 Build 028: Gimmick — remove FileRoot rows, filter empty entries/groups, shift depths
 Build 029: add QACompiler program icon (green-emerald gradient sphere)
 Build 030: add window/taskbar icon (QACompiler icon in title bar + taskbar)
+Build 031: replace position-based column matching with header-name detection (fixes Gimmick)
