@@ -14,7 +14,7 @@ from typing import Dict, List, Optional
 from loguru import logger
 from lxml import etree
 
-from server.tools.ldm.schemas.worldmap import MapNode, MapRoute, WorldMapData
+from server.tools.ldm.schemas.worldmap import MapNode, MapRoute, MegaRegion, WorldMapData
 
 
 class WorldMapService:
@@ -236,6 +236,126 @@ class WorldMapService:
     # Public API
     # =========================================================================
 
+    def _build_mega_regions(self, bounds: Dict[str, float]) -> List[MegaRegion]:
+        """Build 6 tessellating mega-region polygons covering the full map.
+
+        Layout matches the AI-generated background image:
+        ┌────────────┬─────────────┬────────────┐
+        │  Mist Forest │ Sealed Ruins │ Dark Lands │
+        ├──────┬──────┴──────┬──────┴────────────┤
+        │ Moon │  Highlands  │    Volcanic        │
+        │ Lake │   (center)  │     Zone           │
+        └──────┴─────────────┴────────────────────┘
+        """
+        if not bounds:
+            return []
+
+        # Expand bounds slightly for full coverage
+        x0 = bounds.get("min_x", 100) - 60
+        x1 = bounds.get("max_x", 750) + 60
+        z0 = bounds.get("min_z", 150) - 60
+        z1 = bounds.get("max_z", 650) + 60
+
+        # Dividing lines
+        mid_x = (x0 + x1) / 2  # ~425
+        left_x = x0 + (x1 - x0) * 0.33  # ~307
+        right_x = x0 + (x1 - x0) * 0.66  # ~614
+        mid_z = (z0 + z1) / 2  # ~395
+
+        # Organic offsets to avoid grid-look
+        jog = 30
+
+        regions = [
+            MegaRegion(
+                id="mega_mist_forest",
+                name_kr="안개의 숲",
+                name_en="Mist Forest",
+                biome="forest",
+                color="#1a6b3a",
+                polygon=[
+                    [x0, z0], [left_x + jog, z0],
+                    [left_x - jog, mid_z - jog],
+                    [x0, mid_z + jog],
+                ],
+                node_strkeys=["mist_forest", "moonlight_lake"],
+            ),
+            MegaRegion(
+                id="mega_sealed_ruins",
+                name_kr="봉인된 유적",
+                name_en="Sealed Ruins",
+                biome="ruins",
+                color="#8b6914",
+                polygon=[
+                    [left_x + jog, z0], [right_x - jog, z0],
+                    [right_x + jog, mid_z - jog],
+                    [mid_x, mid_z + jog],
+                    [left_x - jog, mid_z - jog],
+                ],
+                node_strkeys=["sealed_library", "sage_tower"],
+            ),
+            MegaRegion(
+                id="mega_dark_lands",
+                name_kr="어둠의 땅",
+                name_en="Dark Lands",
+                biome="wasteland",
+                color="#6b1a6b",
+                polygon=[
+                    [right_x - jog, z0], [x1, z0],
+                    [x1, mid_z + jog],
+                    [right_x + jog, mid_z - jog],
+                ],
+                node_strkeys=["dark_cult_hq", "blackstar_village"],
+            ),
+            MegaRegion(
+                id="mega_moonlight_valley",
+                name_kr="달빛 골짜기",
+                name_en="Moonlight Valley",
+                biome="lake",
+                color="#1a4b6b",
+                polygon=[
+                    [x0, mid_z + jog],
+                    [left_x - jog, mid_z - jog],
+                    [mid_x - jog, mid_z + jog],
+                    [left_x, z1],
+                    [x0, z1],
+                ],
+                node_strkeys=["dragon_tomb"],
+            ),
+            MegaRegion(
+                id="mega_central_highlands",
+                name_kr="중앙 고원",
+                name_en="Central Highlands",
+                biome="highlands",
+                color="#6b5a1a",
+                polygon=[
+                    [mid_x - jog, mid_z + jog],
+                    [mid_x, mid_z + jog],
+                    [right_x + jog, mid_z - jog],
+                    [right_x, mid_z + jog],
+                    [right_x - jog, z1],
+                    [left_x, z1],
+                ],
+                node_strkeys=["wind_canyon", "forgotten_fortress"],
+            ),
+            MegaRegion(
+                id="mega_volcanic_zone",
+                name_kr="화산 지대",
+                name_en="Volcanic Zone",
+                biome="volcanic",
+                color="#8b2a0a",
+                polygon=[
+                    [right_x + jog, mid_z - jog],
+                    [x1, mid_z + jog],
+                    [x1, z1],
+                    [right_x - jog, z1],
+                    [right_x, mid_z + jog],
+                ],
+                node_strkeys=["volcanic_zone"],
+            ),
+        ]
+
+        return regions
+
     def get_map_data(self) -> WorldMapData:
         """Return complete world map dataset. Lazy-initializes on first call."""
         if not self._initialized:
@@ -255,10 +375,15 @@ class WorldMapService:
                 "max_z": max(zs),
             }
 
+        # Build mega-regions (6 tessellating biome zones)
+        mega_regions = self._build_mega_regions(bounds)
+
         return WorldMapData(
             nodes=nodes,
             routes=self._routes,
             bounds=bounds,
+            mega_regions=mega_regions,
+            background_image="/map_background.png",
         )
 
 

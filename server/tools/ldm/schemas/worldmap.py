@@ -41,9 +41,23 @@ class MapRoute(BaseModel):
     travel_time: Optional[str] = None
 
 
+class MegaRegion(BaseModel):
+    """A large biome zone that tessellates the full map area."""
+
+    id: str
+    name_kr: str
+    name_en: str
+    biome: str  # forest, ruins, wasteland, lake, highlands, volcanic
+    color: str  # accent color for overlay
+    polygon: List[List[float]]  # world-coordinate polygon [[x,z], ...]
+    node_strkeys: List[str] = []  # nodes contained in this region
+
+
 class WorldMapData(BaseModel):
     """Complete world map dataset returned by the API."""
 
     nodes: List[MapNode]
     routes: List[MapRoute]
     bounds: Dict[str, float] = {}  # {"min_x", "max_x", "min_z", "max_z"}
+    mega_regions: List[MegaRegion] = []
+    background_image: Optional[str] = None  # URL path to background image
