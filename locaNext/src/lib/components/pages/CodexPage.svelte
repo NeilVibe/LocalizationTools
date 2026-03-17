@@ -8,13 +8,14 @@
    * Phase 19: Game World Codex (Plan 02)
    */
   import { InlineLoading, Button, ProgressBar, InlineNotification } from "carbon-components-svelte";
-  import { Book, ArrowLeft, ImageReference, Close } from "carbon-icons-svelte";
+  import { Book, ArrowLeft, ImageReference, Close, ChartNetwork } from "carbon-icons-svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
   import { websocket } from "$lib/api/websocket.js";
   import CodexSearchBar from "$lib/components/ldm/CodexSearchBar.svelte";
   import CodexCard from "$lib/components/ldm/CodexCard.svelte";
   import CodexEntityDetail from "$lib/components/ldm/CodexEntityDetail.svelte";
+  import CodexRelationshipGraph from "$lib/components/ldm/CodexRelationshipGraph.svelte";
   import InfiniteScroll from "$lib/components/common/InfiniteScroll.svelte";
   import SkeletonCard from "$lib/components/common/SkeletonCard.svelte";
   import { PageHeader, ErrorState } from "$lib/components/common";
@@ -52,6 +53,9 @@
   let loadingDetail = $state(false);
   let apiError = $state(null);
   let failedImages = $state(new Set());
+
+  // View mode: 'grid' (entity cards) or 'graph' (relationship graph)
+  let viewMode = $state('grid');
 
   // Pagination state
   let currentPage = $state(0);
@@ -393,25 +397,46 @@
       <InlineLoading description="Loading Codex entity types..." />
     </div>
   {:else}
-    <!-- Entity Type Tabs -->
-    <div class="codex-tabs" role="tablist" aria-label="Entity type tabs">
-      {#each tabList as [type, count] (type)}
+    <!-- View Toggle + Entity Type Tabs -->
+    <div class="codex-toolbar">
+      {#if viewMode === 'grid'}
+        <div class="codex-tabs" role="tablist" aria-label="Entity type tabs">
+          {#each tabList as [type, count] (type)}
+            <button
+              class="codex-tab"
+              class:active={activeTab === type}
+              role="tab"
+              aria-selected={activeTab === type}
+              aria-label="{TYPE_LABELS[type] || type} ({count})"
+              onclick={() => selectTab(type)}
+            >
+              <span class="tab-label">{TYPE_LABELS[type] || type}</span>
+              <span class="tab-count">{count}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+      <div class="view-toggle">
         <button
-          class="codex-tab"
-          class:active={activeTab === type}
-          role="tab"
-          aria-selected={activeTab === type}
-          aria-label="{TYPE_LABELS[type] || type} ({count})"
-          onclick={() => selectTab(type)}
+          class="toggle-btn"
+          class:active={viewMode === 'grid'}
+          onclick={() => { viewMode = 'grid'; }}
+          aria-label="Grid view"
+        >Grid</button>
+        <button
+          class="toggle-btn"
+          class:active={viewMode === 'graph'}
+          onclick={() => { viewMode = 'graph'; }}
+          aria-label="Relationship graph"
         >
-          <span class="tab-label">{TYPE_LABELS[type] || type}</span>
-          <span class="tab-count">{count}</span>
+          <ChartNetwork size={16} />
+          Graph
         </button>
-      {/each}
+      </div>
     </div>
 
     <!-- Batch Generation Controls -->
-    {#if imageGenAvailable && activeTab}
+    {#if viewMode === 'grid' && imageGenAvailable && activeTab}
       <div class="batch-controls">
         {#if batchInProgress}
           <div class="batch-progress">
@@ -453,8 +478,12 @@
     {/if}
 
     <!-- Content Area -->
-    <div class="codex-content">
-      {#if selectedEntity}
+    <div class="codex-content" class:graph-mode={viewMode === 'graph'}>
+      {#if viewMode === 'graph'}
+        <CodexRelationshipGraph
+          onentityclick={(strkey) => { viewMode = 'grid'; handleSimilarNavigation(strkey); }}
+        />
+      {:else if selectedEntity}
         <!-- Detail View -->
         <div class="detail-view">
           <button class="back-btn" onclick={clearSelection} aria-label="Back to entity list">
@@ -545,13 +574,19 @@
     padding: 32px;
   }
 
+  .codex-toolbar {
+    display: flex;
+    align-items: stretch;
+    background: var(--cds-layer-01);
+    border-bottom: 2px solid var(--cds-border-subtle-01);
+    flex-shrink: 0;
+  }
+
   .codex-tabs {
     display: flex;
     gap: 0;
     padding: 0 16px;
-    background: var(--cds-layer-01);
-    border-bottom: 2px solid var(--cds-border-subtle-01);
-    flex-shrink: 0;
+    flex: 1;
     overflow-x: auto;
   }
 
@@ -676,5 +711,52 @@
   .skeleton-loading-grid {
     padding: 0;
     margin-top: 12px;
+  }
+
+  .view-toggle {
+    display: flex;
+    gap: 0;
+    padding: 4px 16px 4px 8px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1px solid var(--cds-border-subtle-01);
+    background: transparent;
+    color: var(--cds-text-02);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .toggle-btn:first-child {
+    border-radius: 4px 0 0 4px;
+  }
+
+  .toggle-btn:last-child {
+    border-radius: 0 4px 4px 0;
+    border-left: none;
+  }
+
+  .toggle-btn.active {
+    background: var(--cds-interactive-01, #0f62fe);
+    color: var(--cds-text-on-color, #fff);
+    border-color: var(--cds-interactive-01, #0f62fe);
+  }
+
+  .toggle-btn:hover:not(.active) {
+    background: var(--cds-layer-hover-01);
+  }
+
+  .codex-content.graph-mode {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
   }
 </style>
