@@ -30,6 +30,8 @@
   import SyncStatusPanel from "$lib/components/sync/SyncStatusPanel.svelte";
   import { initSync, cleanupSync } from "$lib/stores/sync.js";
   import { showLauncher, resetLauncher } from "$lib/stores/launcher.js";
+  import CommandPalette from "$lib/components/common/CommandPalette.svelte";
+  import PageTransition from "$lib/components/common/PageTransition.svelte";
 
   // Svelte 5: SvelteKit layout props
   let { data, children } = $props();
@@ -432,7 +434,7 @@
     <UpdateModal />
 
     <Content>
-      {@render children()}
+      <PageTransition>{@render children()}</PageTransition>
     </Content>
 
     <!-- Global Status Bar (P18.5.5) - Shows active operations across all apps -->
@@ -440,6 +442,9 @@
 
     <!-- Global Toast Notifications (BUG-016) - Shows operation start/complete/fail -->
     <GlobalToast />
+
+    <!-- Phase 40: Global Ctrl+K Command Palette -->
+    <CommandPalette />
     </div>
   {/if}
 </Theme>
