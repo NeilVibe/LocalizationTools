@@ -68,3 +68,4 @@ Build 034: 3-way export mode (No Script / Full Export / Script Only)
 Build 035: Script Only: VRS ordering fix, EventName + HasAudio columns, WEM audio detection
 Build 034: No Script mode excludes script/dialog for ALL languages (not just ENG/ZHO-CN)
 Build 035: add dynamic version display to window title
+Build 036: add LDE program icon (teal-seagreen gradient sphere)
