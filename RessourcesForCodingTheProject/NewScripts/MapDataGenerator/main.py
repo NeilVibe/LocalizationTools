@@ -27,6 +27,13 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+# Set Windows AppUserModelID so taskbar shows our icon (not Python's)
+try:
+    import ctypes
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("MapDataGenerator.1.0")
+except Exception:
+    pass
+
 # Ensure package imports work in PyInstaller frozen executables
 sys.path.insert(0, str(Path(__file__).parent))
 

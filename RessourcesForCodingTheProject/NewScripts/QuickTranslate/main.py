@@ -26,6 +26,13 @@ import sys
 import traceback
 from pathlib import Path
 
+# Set Windows AppUserModelID so taskbar shows our icon (not Python's)
+try:
+    import ctypes
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("QuickTranslate.1.0")
+except Exception:
+    pass
+
 # PyInstaller console=False sets sys.stdout/stderr to None.
 # Libraries (tqdm, logging, etc.) call .isatty() on these streams and crash.
 # Fix: ensure they're always valid file objects BEFORE any other imports.

@@ -10,6 +10,13 @@ import logging
 import os
 import sys
 
+# Set Windows AppUserModelID so taskbar shows our icon (not Python's)
+try:
+    import ctypes
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("QuickCheck.1.0")
+except Exception:
+    pass
+
 # Ensure project root is on sys.path for direct imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 

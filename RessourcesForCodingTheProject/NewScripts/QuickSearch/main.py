@@ -19,6 +19,13 @@ import argparse
 import sys
 import os
 
+# Set Windows AppUserModelID so taskbar shows our icon (not Python's)
+try:
+    import ctypes
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("QuickSearch.1.0")
+except Exception:
+    pass
+
 # Handle PyInstaller splash screen
 try:
     import pyi_splash

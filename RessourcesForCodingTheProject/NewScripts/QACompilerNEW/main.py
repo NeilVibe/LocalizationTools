@@ -33,6 +33,13 @@ import time
 from pathlib import Path
 from typing import List
 
+# Set Windows AppUserModelID so taskbar shows our icon (not Python's)
+try:
+    import ctypes
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("QACompilerSuite.2.0")
+except Exception:
+    pass
+
 # Ensure package imports work
 sys.path.insert(0, str(Path(__file__).parent))
 

@@ -8,6 +8,13 @@ from __future__ import annotations
 import logging
 import sys
 import tkinter as tk
+
+# Set Windows AppUserModelID so taskbar shows our icon (not Python's)
+try:
+    import ctypes
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("ExtractAnything.1.0")
+except Exception:
+    pass
 from tkinter import messagebox
 from pathlib import Path
 

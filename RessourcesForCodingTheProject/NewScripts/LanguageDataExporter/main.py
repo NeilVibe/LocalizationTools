@@ -30,6 +30,13 @@ from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+# Set Windows AppUserModelID so taskbar shows our icon (not Python's)
+try:
+    import ctypes
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("LanguageDataExporter.1.0")
+except Exception:
+    pass
+
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
