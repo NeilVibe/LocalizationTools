@@ -127,9 +127,9 @@
 ### WOW -- XML Viewer Polish (Phase 37)
 
 - [x] **WOW-01**: XML attributes have semantic color highlighting — cross-refs blue, identity gold, editable green, stats cyan, media purple
-- [ ] **WOW-02**: Hovering a cross-ref attribute value for 300ms shows a mini-preview card with entity name, type badge, and thumbnail
+- [x] **WOW-02**: Hovering a cross-ref attribute value for 300ms shows a mini-preview card with entity name, type badge, and thumbnail
 - [ ] **WOW-03**: Panel entrance has slide-in animation, tab switch has crossfade, image load has shimmer-to-reveal
-- [ ] **WOW-04**: Clicking an attribute value copies to clipboard with visual ripple feedback
+- [x] **WOW-04**: Clicking an attribute value copies to clipboard with visual ripple feedback
 
 ### WOW -- Fantasy World Map (Phase 38)
 
