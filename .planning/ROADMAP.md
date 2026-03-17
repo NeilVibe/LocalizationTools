@@ -159,14 +159,16 @@ Plans:
 Plans:
 - [ ] 36-01: Playwright screenshots + performance benchmarks + regression test suite
 
-### v3.5 WOW Showcase (Phases 37-40)
+### v3.5 WOW Showcase (Phases 37-42)
 
-**Milestone Goal:** Transform LocaNext from functional to STUNNING with maximum demo WOW effect. Smart attribute highlighting in XML viewer, fantasy world map, codex relationship graph, and cross-cutting micro-interactions.
+**Milestone Goal:** Transform LocaNext from functional to STUNNING with maximum demo WOW effect. Smart attribute highlighting in XML viewer, fantasy world map, codex relationship graph, cross-cutting micro-interactions, TTS voice generation, and a showcase-ready LanguageData editor.
 
 - [x] **Phase 37: XML Viewer WOW Polish** - Smart attribute semantic colors, hover preview tooltips, smooth panel/tab animations, micro-interactions (completed 2026-03-17)
-- [ ] **Phase 38: Fantasy World Map** - Parchment aesthetic, region polygons, terrain icons, custom SVG markers, route animations, mini-map
+- [x] **Phase 38: Fantasy World Map** - Parchment aesthetic, region polygons, terrain icons, custom SVG markers, route animations, mini-map (completed 2026-03-17)
 - [x] **Phase 39: Codex Cards + Relationship Graph** - Glassmorphism entity cards, D3 force-directed relationship graph, parallax hover (completed 2026-03-17)
-- [ ] **Phase 40: Cross-cutting WOW Polish** - Page transitions, shimmer loading choreography, Ctrl+K command palette, micro-interactions
+- [x] **Phase 40: Cross-cutting WOW Polish** - Page transitions, shimmer loading choreography, Ctrl+K command palette, micro-interactions (completed 2026-03-17)
+- [ ] **Phase 41: Qwen3-TTS Korean Voice** - TTS backend service, 5 character voice profiles, frontend audio playback
+- [ ] **Phase 42: LanguageData Fix + WOW Showcase** - Fix grid regression, 3-format mock data, right panel TM/Image/Audio/AI showcase
 
 ### Phase 37: XML Viewer WOW Polish
 **Goal**: Every attribute in the XML viewer is semantically colored, hovering cross-refs shows entity previews, and all panel interactions have smooth animations
@@ -193,7 +195,7 @@ Plans:
   2. 10 regions render as semi-transparent polygons with glow-on-hover and Korean fantasy names
   3. Each node type has a distinct SVG icon (castle=Town, skull=Dungeon, shield=Fortress, tent=Wilderness, compass=Main, tree=Sub)
   4. Routes between regions animate on hover with a travel-path effect and danger-level coloring
-  5. Click region → smooth zoom-to-fit with d3 transition + detail panel
+  5. Click region -> smooth zoom-to-fit with d3 transition + detail panel
 **Plans**: 3 plans
 
 Plans:
@@ -208,7 +210,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Entity cards have glassmorphism effect (backdrop-filter blur, semi-transparent background) with AI portrait as card image
   2. Hovering a card produces parallax shift on the background image
-  3. D3 force-directed graph shows character→item, character→skill, character→faction relationships with typed link styles
+  3. D3 force-directed graph shows character->item, character->skill, character->faction relationships with typed link styles
   4. Hovering a graph node highlights all connected nodes and dims unconnected ones
 **Plans**: 2 plans
 
@@ -247,10 +249,27 @@ Plans:
 - [ ] 41-01-PLAN.md -- TTS backend service + API endpoints (TTSService, voice profiles, generate/serve routes)
 - [ ] 41-02-PLAN.md -- Frontend voice generation UI (CodexEntityDetail integration)
 
+### Phase 42: LanguageData Fix + WOW Showcase
+**Goal**: Fix the broken LDM grid editor regression, create 3-format mock localization data (Excel, TXT, XML) for format-agnostic showcase, and wire the right panel with TM 6-tier cascade, entity images, character voice audio, and AI context for a professional CAT tool demo
+**Depends on**: Phase 41
+**Requirements**: LDM-FIX-01, LDM-FIX-02, LDM-FIX-03, LDM-MOCK-01, LDM-MOCK-02, LDM-MOCK-03, LDM-MOCK-04, LDM-WOW-01, LDM-WOW-02, LDM-WOW-03, LDM-WOW-04
+**Success Criteria** (what must be TRUE):
+  1. All LDM API endpoints return 200 (no 422 validation errors in file navigation chain)
+  2. Double-clicking a file opens GridPage with rows visible
+  3. 3 mock files (xlsx, txt, xml) uploaded to a Showcase Demo project with 75+ game-themed strings
+  4. TM tab shows 6-tier cascade results when a row is selected
+  5. Image/Audio/AI Context tabs light up with entity content when editing cross-referenced strings
+**Plans**: 3 plans
+
+Plans:
+- [ ] 42-01-PLAN.md -- Debug and fix LDM grid regression (API 422 errors + frontend flow)
+- [ ] 42-02-PLAN.md -- Create 3-format mock localization data + TM entries
+- [ ] 42-03-PLAN.md -- Wire right panel tabs (TM cascade, Image, Audio, AI Context)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38 -> 39 -> 40 -> 41
+Phases execute in numeric order: 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38 -> 39 -> 40 -> 41 -> 42
 Note: Phase 38 and 39 can be partially parallelized after Phase 37.
 Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 
@@ -298,9 +317,11 @@ Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 | 39. Codex Cards + Relationship Graph | 2/2 | Complete   | 2026-03-17 | - |
 | 40. Cross-cutting WOW Polish | 1/2 | In Progress|  | - |
 | 41. Qwen3-TTS Korean Voice | 0/2 | Planned |  | - |
+| 42. LanguageData Fix + WOW Showcase | v3.5 | 0/3 | Planned | - |
 
 ---
 *Roadmap created: 2026-03-14*
 *v3.3 milestone added: 2026-03-17*
 *v3.5 WOW Showcase milestone added: 2026-03-17*
 *Phase 41 planned: 2026-03-18*
+*Phase 42 planned: 2026-03-18*

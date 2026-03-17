@@ -181,7 +181,49 @@
 | TTS-04 | Phase 41 | 41-01 | Pending |
 | TTS-05 | Phase 41 | 41-02 | Pending |
 
+## Phase 42 Requirements -- LanguageData Fix + WOW Showcase
+
+### LDM-FIX -- LDM Grid Regression Fix
+
+- [ ] **LDM-FIX-01**: API endpoint debugging -- identify and fix 422 validation errors on file list/open endpoints via curl testing
+- [ ] **LDM-FIX-02**: Frontend file selection flow restored -- double-clicking a file in FilesPage opens GridPage with VirtualGrid showing rows
+- [ ] **LDM-FIX-03**: Full CRUD cycle verified -- upload file, open file, edit cell, save works end-to-end
+
+### LDM-MOCK -- Multi-Format Mock Data
+
+- [ ] **LDM-MOCK-01**: Excel mock file (.xlsx) with 25+ game-themed strings including StringID, Source (ENG), Translation (KR), Status, Translator, ReviewState columns
+- [ ] **LDM-MOCK-02**: TXT tabulated mock file (.txt) with 25+ strings tab-separated: StringID, Source, Translation, metadata
+- [ ] **LDM-MOCK-03**: XML mock file (.loc.xml) with 25+ strings in LocStr format with StringID, Str, translation attributes, including <br/> tags
+- [ ] **LDM-MOCK-04**: Mock TM entries pre-loaded (30+ entries) with varying similarity scores matching the mock file strings
+
+### LDM-WOW -- Right Panel WOW Showcase
+
+- [ ] **LDM-WOW-01**: TM tab shows 6-tier cascade results (split-line exact/fuzzy/semantic + whole-string exact/fuzzy/semantic) when a row is selected
+- [ ] **LDM-WOW-02**: Image tab shows character/item portrait when editing a string that cross-references a Codex entity
+- [ ] **LDM-WOW-03**: Audio tab plays character voice (from TTS) when editing a character-related string
+- [ ] **LDM-WOW-04**: AI Context tab shows Korean AI summary for the selected string's entity context
+
+**Phase 42 Coverage:**
+- Phase 42 requirements: 11 total
+- Mapped to plans: 11/11 (LDM-FIX-01..03 -> Plan 01, LDM-MOCK-01..04 -> Plan 02, LDM-WOW-01..04 -> Plan 03)
+- Unmapped: 0
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| LDM-FIX-01 | Phase 42 | 42-01 | Pending |
+| LDM-FIX-02 | Phase 42 | 42-01 | Pending |
+| LDM-FIX-03 | Phase 42 | 42-01 | Pending |
+| LDM-MOCK-01 | Phase 42 | 42-02 | Pending |
+| LDM-MOCK-02 | Phase 42 | 42-02 | Pending |
+| LDM-MOCK-03 | Phase 42 | 42-02 | Pending |
+| LDM-MOCK-04 | Phase 42 | 42-02 | Pending |
+| LDM-WOW-01 | Phase 42 | 42-03 | Pending |
+| LDM-WOW-02 | Phase 42 | 42-03 | Pending |
+| LDM-WOW-03 | Phase 42 | 42-03 | Pending |
+| LDM-WOW-04 | Phase 42 | 42-03 | Pending |
+
 ---
 *Requirements defined: 2026-03-17*
 *v3.5 WOW Showcase requirements added: 2026-03-17*
 *Phase 41 TTS requirements added: 2026-03-18*
+*Phase 42 LanguageData requirements added: 2026-03-18*
