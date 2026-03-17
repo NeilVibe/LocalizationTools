@@ -857,6 +857,21 @@ class QuickTranslateApp:
         if role == "SOURCE":
             scan_result = scan_source_for_languages(folder)
             has_smart_scan = bool(scan_result.lang_files)
+            # Show skipped files with unsupported extensions (CRITICAL — user needs to know!)
+            if scan_result.skipped_files:
+                logger.warning("\n  [!!] SKIPPED FILES (%d) — unsupported file type:", len(scan_result.skipped_files))
+                for reason in scan_result.skipped_files[:10]:
+                    logger.warning("    - %s", reason)
+                if len(scan_result.skipped_files) > 10:
+                    logger.warning("    ... and %d more", len(scan_result.skipped_files) - 10)
+                logger.warning("  Only .xml, .xlsx, .xls files are accepted as source files.")
+            if scan_result.unrecognized:
+                logger.info("\n  UNRECOGNIZED ITEMS (%d) — no language suffix detected:", len(scan_result.unrecognized))
+                for item in scan_result.unrecognized[:10]:
+                    item_type = "folder" if item.is_dir() else "file"
+                    logger.info("    - %s (%s)", item.name, item_type)
+                if len(scan_result.unrecognized) > 10:
+                    logger.info("    ... and %d more", len(scan_result.unrecognized) - 10)
         elif role == "TARGET":
             target_scan_result = scan_target_for_languages(folder)
             has_smart_scan = bool(target_scan_result.lang_files)
@@ -886,6 +901,15 @@ class QuickTranslateApp:
                         logger.info("    ... and %d more", len(target_scan_result.unrecognized) - 5)
             elif not lang_files:
                 logger.warning("  No language files detected (no languagedata_*.xml, no language-suffixed files/folders)")
+
+            # Show skipped files OUTSIDE has_smart_scan guard — must display even when no valid files found
+            if target_scan_result.skipped_files:
+                logger.warning("\n  [!!] SKIPPED FILES (%d) — unsupported file type:", len(target_scan_result.skipped_files))
+                for reason in target_scan_result.skipped_files[:10]:
+                    logger.warning("    - %s", reason)
+                if len(target_scan_result.skipped_files) > 10:
+                    logger.warning("    ... and %d more", len(target_scan_result.skipped_files) - 10)
+                logger.warning("  Only .xml, .xlsx, .xls files are accepted as target files.")
 
         if non_lang_xml:
             if has_smart_scan:

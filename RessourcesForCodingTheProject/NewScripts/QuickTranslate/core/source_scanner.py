@@ -29,6 +29,16 @@ from .xml_parser import iter_locstr_elements
 
 logger = logging.getLogger(__name__)
 
+# Supported file extensions for source and target files
+_SUPPORTED_EXTENSIONS = (".xml", ".xlsx", ".xls")
+
+
+def _format_skip_reason(filename: str, suffix: str) -> str:
+    """Format a consistent skip reason for unsupported file types."""
+    ext_display = suffix if suffix else "(no extension)"
+    return f"{filename}: Unsupported file type '{ext_display}' — only .xml, .xlsx, .xls accepted"
+
+
 # Module-level cache for valid language codes (avoids repeated LOC folder globbing)
 _cached_valid_codes: Optional[Set[str]] = None
 
@@ -39,6 +49,7 @@ class SourceScanResult:
 
     lang_files: Dict[str, List[Path]] = field(default_factory=dict)  # {lang_code: [files]}
     unrecognized: List[Path] = field(default_factory=list)  # Items without lang suffix
+    skipped_files: List[str] = field(default_factory=list)  # Human-readable skip reasons
     warnings: List[str] = field(default_factory=list)
     stats: Dict[str, int] = field(default_factory=dict)
 
@@ -213,8 +224,14 @@ def scan_source_for_languages(source_path: Path) -> SourceScanResult:
                 # Collect ALL files inside (recursive) for this language
                 lang_files = []
                 for f in child.rglob("*"):
-                    if f.is_file() and f.suffix.lower() in (".xml", ".xlsx", ".xls"):
-                        lang_files.append(f)
+                    if f.is_file():
+                        if f.suffix.lower() in _SUPPORTED_EXTENSIONS:
+                            lang_files.append(f)
+                        else:
+                            reason = _format_skip_reason(f.name, f.suffix)
+                            result.skipped_files.append(reason)
+                            result.warnings.append(reason)
+                            logger.warning(f"[{lang}] {reason}")
 
                 if lang_files:
                     if lang not in result.lang_files:
@@ -227,7 +244,15 @@ def scan_source_for_languages(source_path: Path) -> SourceScanResult:
                 # No language suffix - mark as unrecognized
                 result.unrecognized.append(child)
 
-        elif child.is_file() and child.suffix.lower() in (".xml", ".xlsx", ".xls"):
+        elif child.is_file():
+            if child.suffix.lower() not in _SUPPORTED_EXTENSIONS:
+                # Wrong file extension — explicitly log and skip
+                reason = _format_skip_reason(child.name, child.suffix)
+                result.skipped_files.append(reason)
+                result.warnings.append(reason)
+                logger.warning(reason)
+                continue
+
             # Check file name for language suffix
             lang = extract_language_suffix(child.stem, valid_codes)
 
@@ -254,6 +279,7 @@ def scan_source_for_languages(source_path: Path) -> SourceScanResult:
         "languages_detected": len(result.lang_files),
         "total_files": result.total_files,
         "unrecognized_items": len(result.unrecognized),
+        "skipped_files": len(result.skipped_files),
     }
 
     for lang, files in result.lang_files.items():
@@ -329,12 +355,18 @@ def scan_target_for_languages(target_path: Path) -> TargetScanResult:
             if lang:
                 lang_files = []
                 for f in child.rglob("*"):
-                    if f.is_file() and f.suffix.lower() in (".xml", ".xlsx", ".xls"):
-                        lang_files.append(f)
-                        if f.suffix.lower() == ".xml":
-                            xml_count += 1
+                    if f.is_file():
+                        if f.suffix.lower() in _SUPPORTED_EXTENSIONS:
+                            lang_files.append(f)
+                            if f.suffix.lower() == ".xml":
+                                xml_count += 1
+                            else:
+                                excel_count += 1
                         else:
-                            excel_count += 1
+                            reason = _format_skip_reason(f.name, f.suffix)
+                            result.skipped_files.append(reason)
+                            result.warnings.append(reason)
+                            logger.warning(f"[{lang}] {reason}")
 
                 if lang_files:
                     if lang not in result.lang_files:
@@ -346,7 +378,15 @@ def scan_target_for_languages(target_path: Path) -> TargetScanResult:
             else:
                 result.unrecognized.append(child)
 
-        elif child.is_file() and child.suffix.lower() in (".xml", ".xlsx", ".xls"):
+        elif child.is_file():
+            if child.suffix.lower() not in _SUPPORTED_EXTENSIONS:
+                # Wrong file extension — explicitly log and skip
+                reason = _format_skip_reason(child.name, child.suffix)
+                result.skipped_files.append(reason)
+                result.warnings.append(reason)
+                logger.warning(reason)
+                continue
+
             lang = extract_language_suffix(child.stem, valid_codes)
 
             # Also handle standard languagedata_XXX.xml pattern
