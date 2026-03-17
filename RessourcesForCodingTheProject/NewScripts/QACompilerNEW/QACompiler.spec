@@ -17,6 +17,7 @@ a = Analysis(
         ('languageTOtester_list.example.txt', '.'),
         ('docs', 'docs'),
         ('README.md', '.'),
+        ('images', 'images'),
     ],
     hiddenimports=[
         'openpyxl',
@@ -56,6 +57,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='images/QACompilericon.ico',
 )
 
 coll = COLLECT(

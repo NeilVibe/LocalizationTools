@@ -29,6 +29,7 @@ DisableProgramGroupPage=yes
 ; Output
 OutputDir=..\installer_output
 OutputBaseFilename=ExtractAnything_v{#MyAppVersion}_Setup
+SetupIconFile=..\images\EAico.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 ; Compression
@@ -71,11 +72,11 @@ Name: "{app}\Output"
 
 [Icons]
 ; Start Menu
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\images\EAico.ico"
 Name: "{autoprograms}\{#MyAppName}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 
 ; Desktop
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\images\EAico.ico"; Tasks: desktopicon
 
 [Run]
 ; Launch after install

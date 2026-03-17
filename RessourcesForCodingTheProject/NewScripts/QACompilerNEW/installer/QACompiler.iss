@@ -33,8 +33,7 @@ DisableProgramGroupPage=yes
 ; Output
 OutputDir=..\installer_output
 OutputBaseFilename=QACompiler_v{#MyAppVersion}_Setup
-; Icon will be created if present, otherwise uses default
-; SetupIconFile=..\images\qacompiler.ico
+SetupIconFile=..\images\QACompilericon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 ; Compression
@@ -115,12 +114,12 @@ Name: "{app}\TrackerUpdateFolder\Masterfolder_CN"
 
 [Icons]
 ; Start Menu
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\images\QACompilericon.ico"
 Name: "{autoprograms}\{#MyAppName}\User Guide"; Filename: "{app}\USER_GUIDE.pdf"
 Name: "{autoprograms}\{#MyAppName}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 
 ; Desktop (checked by default for easy access)
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\images\QACompilericon.ico"; Tasks: desktopicon
 
 [Run]
 ; Launch after install

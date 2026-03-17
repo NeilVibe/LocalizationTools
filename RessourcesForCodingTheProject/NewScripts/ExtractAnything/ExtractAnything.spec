@@ -12,7 +12,7 @@ a = Analysis(
     ['main.py'],
     pathex=[spec_dir],
     binaries=[],
-    datas=[],
+    datas=[('images', 'images')],
     hiddenimports=[
         'openpyxl',
         'xlsxwriter',
@@ -51,6 +51,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='images/EAico.ico',
 )
 
 coll = COLLECT(
