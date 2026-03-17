@@ -497,18 +497,20 @@
           <path d={icon.path} fill={getNodeColor(node.region_type)} />
         </g>
 
-        <!-- Label -->
-        <text
-          x={node.svgPos.x}
-          y={node.svgPos.y + halfSize + 14}
-          text-anchor="middle"
-          fill="#d4c5a0"
-          font-size="11"
-          font-weight="500"
-          class="node-label"
-        >
-          {node.name}
-        </text>
+        <!-- Label (prefer Korean name, hide if polygon already shows it) -->
+        {#if !node.polygon_points || node.polygon_points.length === 0}
+          <text
+            x={node.svgPos.x}
+            y={node.svgPos.y + halfSize + 14}
+            text-anchor="middle"
+            fill="#d4c5a0"
+            font-size="11"
+            font-weight="500"
+            class="node-label"
+          >
+            {node.name_kr || node.name}
+          </text>
+        {/if}
       </g>
     {/each}
   </g>
