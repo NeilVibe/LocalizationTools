@@ -26,6 +26,14 @@ class ExtractAnythingApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title(f"ExtractAnything v{config.VERSION}")
+        import sys as _sys
+        _base = Path(getattr(_sys, '_MEIPASS', Path(__file__).resolve().parent.parent))
+        _icon = _base / "images" / "EAico.ico"
+        if _icon.exists():
+            try:
+                self.root.iconbitmap(str(_icon))
+            except Exception:
+                pass
         self.root.geometry("1100x700")
         self.root.minsize(900, 550)
 

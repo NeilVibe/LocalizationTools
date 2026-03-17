@@ -112,6 +112,13 @@ class QuickTranslateApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title(f"QuickTranslate v{config.VERSION}")
+        _base = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))
+        _icon = _base / "images" / "QTico.ico"
+        if _icon.exists():
+            try:
+                self.root.iconbitmap(str(_icon))
+            except Exception:
+                pass
         screen_w = self.root.winfo_screenwidth()
         screen_h = self.root.winfo_screenheight()
         win_w = max(1400, int(screen_w * 0.8))

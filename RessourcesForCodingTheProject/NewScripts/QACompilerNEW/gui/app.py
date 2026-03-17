@@ -54,6 +54,13 @@ class QACompilerSuiteGUI:
     def __init__(self, root):
         self.root = root
         self.root.title(WINDOW_TITLE)
+        _base = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))
+        _icon = _base / "images" / "QACompilericon.ico"
+        if _icon.exists():
+            try:
+                self.root.iconbitmap(str(_icon))
+            except Exception:
+                pass
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.root.resizable(True, True)
 

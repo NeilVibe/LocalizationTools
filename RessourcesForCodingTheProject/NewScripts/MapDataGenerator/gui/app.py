@@ -124,6 +124,13 @@ class MapDataGeneratorApp:
     def __init__(self, root: Optional[tk.Tk] = None):
         self.root = root or tk.Tk()
         self.root.title(f"{APP_NAME} v{VERSION}")
+        _base = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))
+        _icon = _base / "images" / "MDGico.ico"
+        if _icon.exists():
+            try:
+                self.root.iconbitmap(str(_icon))
+            except Exception:
+                pass
 
         # Load settings
         self.settings = load_settings()

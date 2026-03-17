@@ -61,6 +61,14 @@ class QuickCheckApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("QuickCheck")
+        import sys as _sys
+        _base = Path(getattr(_sys, '_MEIPASS', Path(__file__).resolve().parent.parent))
+        _icon = _base / "images" / "QCico.ico"
+        if _icon.exists():
+            try:
+                self.iconbitmap(str(_icon))
+            except Exception:
+                pass
         self.configure(bg=BG_MAIN)
         self.resizable(True, True)
         self.minsize(640, 700)

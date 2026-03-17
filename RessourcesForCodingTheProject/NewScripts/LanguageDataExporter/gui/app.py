@@ -71,6 +71,13 @@ class LanguageDataExporterGUI:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title(WINDOW_TITLE)
+        _base = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))
+        _icon = _base / "images" / "LDEico.ico"
+        if _icon.exists():
+            try:
+                self.root.iconbitmap(str(_icon))
+            except Exception:
+                pass
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.root.minsize(750, 560)
         self.root.resizable(True, True)
