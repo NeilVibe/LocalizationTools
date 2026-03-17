@@ -427,9 +427,15 @@ class CodexService:
         for etype in ["character", "item", "skill", "region", "gimmick"]:
             for strkey, entity in self._registry.get(etype, {}).items():
                 entity_index[strkey] = len(nodes)
+                # Prefer Korean name from attributes, then entity.name, then strkey
+                display_name = (
+                    entity.attributes.get("NameKR")
+                    or entity.name
+                    or strkey
+                )
                 nodes.append({
                     "id": strkey,
-                    "name": entity.name or strkey,
+                    "name": display_name,
                     "entity_type": etype,
                     "has_image": bool(entity.ai_image_url or entity.image_texture),
                     "image_url": f"/api/ldm/codex/image/{strkey}" if entity.ai_image_url else None,
