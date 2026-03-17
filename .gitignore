@@ -208,3 +208,29 @@ adminDashboard/node_modules/
 
 # GitHub Actions secrets (local testing)
 .github/secrets/
+
+# Local Netlify folder
+.netlify
+
+# Ruflo swarm data
+.swarm/
+
+# -------------------- Tool/Agent Directories --------------------
+.agents/
+.claude-flow/
+.playwright-mcp/
+.qwen/
+models/Model2Vec/
+
+# -------------------- Screenshots (dev captures) --------------------
+screenshots/
+# Prevent PNGs from landing in root (Playwright/nano-banana output)
+/*.png
+# Landing page generated images (deployed via Netlify, not git)
+landing-page/*.png
+
+# -------------------- Stale/Temp Artifacts --------------------
+cookies.txt
+query
+console_errors_report.json
+error_capture_report.json
