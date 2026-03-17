@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
     TRACKER_UPDATE_FOLDER, TRACKER_UPDATE_QA,
     TRACKER_UPDATE_MASTER_EN, TRACKER_UPDATE_MASTER_CN,
-    CATEGORIES, TRANSLATION_COLS,
+    CATEGORIES,
     load_tester_mapping
 )
 from core.discovery import IMAGE_EXTENSIONS
@@ -204,9 +204,9 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool, sheet_name: str = 
         _tracker_log(f"    SHEET '{sheet_name}': No STATUS column found", "WARN")
         return stats
 
-    # Get translation column for word counting
-    trans_col_key = "eng" if is_english else "other"
-    trans_col = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3}).get(trans_col_key, 2)
+    # Get translation column for word counting (header-name detection)
+    from core.matching import find_translation_col_in_ws
+    trans_col = find_translation_col_in_ws(qa_ws, is_english)
 
     _tracker_log(f"    SHEET '{sheet_name}': max_row={qa_ws.max_row}, STATUS_col={status_col}, trans_col={trans_col}")
 
@@ -244,7 +244,7 @@ def count_sheet_stats(qa_ws, category: str, is_english: bool, sheet_name: str = 
 
             # Count words/chars for all DONE rows (any valid status)
             if status_upper in ("ISSUE", "NO ISSUE", "NON-ISSUE", "NON ISSUE", "BLOCKED", "KOREAN"):
-                cell_value = qa_ws.cell(row, trans_col).value
+                cell_value = qa_ws.cell(row, trans_col).value if trans_col else None
                 if is_english:
                     stats["word_count"] += count_words_english(cell_value)
                 else:

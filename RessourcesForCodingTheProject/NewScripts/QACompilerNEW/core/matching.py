@@ -20,7 +20,7 @@ from datetime import datetime
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import TRANSLATION_COLS, SCRIPT_COLS, SCRIPT_TYPE_CATEGORIES
+from config import SCRIPT_COLS, SCRIPT_TYPE_CATEGORIES
 from core.excel_ops import find_column_by_header, preload_worksheet_data
 
 
@@ -98,50 +98,106 @@ def sanitize_stringid_for_match(value) -> str:
 # COLUMN DETECTION
 # =============================================================================
 
-def get_translation_column(category: str, is_english: bool) -> int:
+def find_translation_col_in_headers(col_idx: dict, is_english: bool) -> int:
     """
-    Get translation column index based on category and language.
+    Find translation column by header name prefix matching.
 
-    NOTE: For Script-type categories (Sequencer/Dialog), use get_translation_column_by_name()
-    instead, which finds the "Text" column by header name.
+    Works for ALL categories — no position-based fallback, no config lookup.
+    Scans the preloaded col_idx dict (from preload_worksheet_data) for headers
+    that match translation column patterns.
+
+    Detection order:
+    1. Script: "TEXT" header, then "TRANSLATION" exact
+    2. ENG workbooks: header starting with "ENGLISH" or exactly "TRANSLATION (ENG)"
+    3. OTHER workbooks: header starting with "TRANSLATION" (but not "TRANSLATION (ENG)")
+    4. Fallback: any header starting with "TRANSLATION"
 
     Args:
-        category: Category name
-        is_english: True for English files
+        col_idx: Dict of {HEADER_UPPER: 0-based index} from preload_worksheet_data()
+        is_english: True for English workbooks
 
     Returns:
-        Column index (1-based)
+        0-based column index, or None if not found
     """
-    cols = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3})
-    return cols["eng"] if is_english else cols["other"]
+    # Script-type: try "TEXT" first (exact), then any "TRANSLATION" prefix
+    if "TEXT" in col_idx:
+        return col_idx["TEXT"]
+
+    if is_english:
+        # ENG workbooks: look for "ENGLISH (...)" or "TRANSLATION (ENG)"
+        for header, idx in col_idx.items():
+            if header.startswith("ENGLISH"):
+                return idx
+        if "TRANSLATION (ENG)" in col_idx:
+            return col_idx["TRANSLATION (ENG)"]
+        # Fallback: any header starting with "TRANSLATION"
+        for header, idx in col_idx.items():
+            if header.startswith("TRANSLATION"):
+                return idx
+    else:
+        # OTHER workbooks: "TRANSLATION (...)" but NOT "TRANSLATION (ENG)"
+        for header, idx in col_idx.items():
+            if header.startswith("TRANSLATION") and header != "TRANSLATION (ENG)":
+                return idx
+        # Fallback: any "TRANSLATION" prefix (including ENG — better than nothing)
+        for header, idx in col_idx.items():
+            if header.startswith("TRANSLATION"):
+                return idx
+
+    # Last resort: exact "TRANSLATION"
+    if "TRANSLATION" in col_idx:
+        return col_idx["TRANSLATION"]
+
+    return None
 
 
-def get_translation_column_by_name(ws, category: str) -> int:
+def find_translation_col_in_ws(ws, is_english: bool) -> int:
     """
-    Get translation column index by searching for column header name.
+    Find translation column by header name in a worksheet (1-based).
 
-    For Script-type categories (Sequencer/Dialog), finds "Text" or "Translation" column.
-    NO position-based fallback for Script categories.
+    Scans row 1 headers using prefix matching. For use when preloaded col_idx
+    is not available (e.g., tracker_update.py, compiler.py).
 
     Args:
-        ws: Worksheet to search
-        category: Category name
+        ws: Worksheet to scan
+        is_english: True for English workbooks
 
     Returns:
-        Column index (1-based), or None if not found
+        1-based column index, or None if not found
     """
-    category_lower = category.lower()
+    max_col = ws.max_column or 0
+    headers = {}
+    for col in range(1, max_col + 1):
+        val = ws.cell(row=1, column=col).value
+        if val:
+            key = str(val).strip().upper()
+            if key not in headers:
+                headers[key] = col  # 1-based
 
-    if category_lower in SCRIPT_TYPE_CATEGORIES:
-        # Script-type: try "Text" first, then "Translation" (case-insensitive)
-        text_col = find_column_by_header(ws, "Text")
-        if text_col:
-            return text_col
-        # Fallback to "Translation"
-        trans_col = find_column_by_header(ws, "Translation")
-        return trans_col
+    # Reuse same logic but with 1-based indices
+    if "TEXT" in headers:
+        return headers["TEXT"]
 
-    # Other categories: not implemented (use position-based)
+    if is_english:
+        for header, col in headers.items():
+            if header.startswith("ENGLISH"):
+                return col
+        if "TRANSLATION (ENG)" in headers:
+            return headers["TRANSLATION (ENG)"]
+        for header, col in headers.items():
+            if header.startswith("TRANSLATION"):
+                return col
+    else:
+        for header, col in headers.items():
+            if header.startswith("TRANSLATION") and header != "TRANSLATION (ENG)":
+                return col
+        for header, col in headers.items():
+            if header.startswith("TRANSLATION"):
+                return col
+
+    if "TRANSLATION" in headers:
+        return headers["TRANSLATION"]
+
     return None
 
 
@@ -194,7 +250,7 @@ def extract_qa_row_data(qa_ws, row: int, category: str, is_english: bool, column
             if trans_col is None:
                 trans_col = column_cache.get("TRANSLATION")
         else:
-            trans_col = get_translation_column_by_name(qa_ws, category)
+            trans_col = find_translation_col_in_ws(qa_ws, is_english)
         translation = str(qa_ws.cell(row, trans_col).value or "").strip() if trans_col else ""
 
         # EventName column: primary identifier for Script
@@ -219,9 +275,9 @@ def extract_qa_row_data(qa_ws, row: int, category: str, is_english: bool, column
         }
 
     else:
-        # Standard: use Translation
-        trans_col = get_translation_column(category, is_english)
-        translation = str(qa_ws.cell(row, trans_col).value or "").strip()
+        # Standard: use Translation (header-name detection, no position fallback)
+        trans_col = find_translation_col_in_ws(qa_ws, is_english)
+        translation = str(qa_ws.cell(row, trans_col).value or "").strip() if trans_col else ""
         return {
             "translation": translation,
             "stringid": stringid,
@@ -293,13 +349,12 @@ def extract_qa_row_data_fast(
         }
 
     else:
-        # Standard: use Translation
-        translation = get_val("TRANSLATION")
-        if not translation:
-            # Fallback to position-based
-            trans_col = get_translation_column(category, is_english)
-            if trans_col and trans_col - 1 < len(row_tuple):
-                translation = str(row_tuple[trans_col - 1] or "").strip()
+        # Standard: use header-name detection (no position fallback)
+        trans_idx = find_translation_col_in_headers(col_idx, is_english)
+        translation = ""
+        if trans_idx is not None and trans_idx < len(row_tuple):
+            val = row_tuple[trans_idx]
+            translation = str(val).strip() if val else ""
 
         return {
             "translation": translation,
@@ -400,11 +455,16 @@ def build_master_index(master_ws, category: str, is_english: bool) -> Dict:
 
     else:
         # Standard: index by (STRINGID, Translation) and Translation only
-        trans_col = get_translation_column(category, is_english)
+        # Use header-name detection — no position fallback
+        trans_col_idx = find_translation_col_in_headers(col_idx, is_english)
+        _match_log(f"  Translation column (header-based): index={trans_col_idx}")
 
         for row_idx, row_tuple in enumerate(data_rows, start=2):
             stringid = sanitize_stringid_for_match(get_val(row_tuple, "STRINGID")) if stringid_idx is not None else ""
-            translation = get_val(row_tuple, "TRANSLATION", trans_col)
+            translation = ""
+            if trans_col_idx is not None and trans_col_idx < len(row_tuple):
+                val = row_tuple[trans_col_idx]
+                translation = str(val).strip() if val else ""
 
             if translation:
                 # Primary: stringid + trans
@@ -633,8 +693,11 @@ def find_matching_row_for_transfer(
     if not old_trans:
         return None, None
 
-    trans_col = get_translation_column(category, is_english)
+    trans_col = find_translation_col_in_ws(new_ws, is_english)
     stringid_col = find_column_by_header(new_ws, "STRINGID")
+
+    if not trans_col:
+        return None, None
 
     # Step 1: Try STRINGID + Translation match
     if old_stringid and stringid_col:

@@ -106,7 +106,7 @@ def _script_debug_clear():
 
 
 from config import (
-    CATEGORIES, CATEGORY_TO_MASTER, TRANSLATION_COLS, SCRIPT_TYPE_CATEGORIES,
+    CATEGORIES, CATEGORY_TO_MASTER, SCRIPT_TYPE_CATEGORIES,
     SCRIPT_COLS, FACE_TYPE_CATEGORIES,
     MASTER_FOLDER_EN, MASTER_FOLDER_CN,
     IMAGES_FOLDER_EN, IMAGES_FOLDER_CN,
@@ -829,11 +829,8 @@ def process_category(
     total_screenshots = 0
 
     # Get translation column for word counting (is_english already defined above)
-    # For Script-type: will be found by NAME ("Text") per worksheet
-    # For other categories: use position-based from config
+    # All categories use header-name detection — no position fallback
     is_script_category = category.lower() in SCRIPT_TYPE_CATEGORIES
-    trans_col_key = "eng" if is_english else "other"
-    trans_col_default = TRANSLATION_COLS.get(category, {"eng": 2, "other": 3}).get(trans_col_key, 2)
 
     # ==========================================================================
     # PERFORMANCE OPTIMIZATION: Build master indexes ONCE per sheet
@@ -941,35 +938,12 @@ def process_category(
                 # Get column indices from preloaded header map
                 wc_status_idx = wc_col_idx.get("STATUS")
 
-                # Script-type: find "Text" or "Translation" by NAME (no position fallback!)
-                # Other categories: use position-based from config
-                if is_script_category:
-                    wc_trans_idx = wc_col_idx.get("TEXT")
-                    if wc_trans_idx is None:
-                        wc_trans_idx = wc_col_idx.get("TRANSLATION")
-                    if wc_trans_idx is None:
-                        # Skip word counting for this sheet - no Text/Translation column found
-                        continue
-                else:
-                    # For non-Script categories, get index from trans_col_default (1-based column)
-                    # Convert 1-based column to 0-based index by finding the header
-                    trans_header = None
-                    if trans_col_default is not None:
-                        trans_header = qa_ws.cell(row=1, column=trans_col_default).value
-                        if trans_header:
-                            wc_trans_idx = wc_col_idx.get(str(trans_header).strip().upper())
-                        else:
-                            wc_trans_idx = None
-                    else:
-                        wc_trans_idx = None
-
-                    if wc_trans_idx is None:
-                        # Fallback: try common translation column names
-                        wc_trans_idx = wc_col_idx.get("TRANSLATION")
-                        if wc_trans_idx is None:
-                            wc_trans_idx = wc_col_idx.get("TEXT")
-                        if wc_trans_idx is None:
-                            continue
+                # All categories: find translation column by header name
+                from core.matching import find_translation_col_in_headers
+                wc_trans_idx = find_translation_col_in_headers(wc_col_idx, is_english)
+                if wc_trans_idx is None:
+                    # Skip word counting for this sheet - no translation column found
+                    continue
 
                 wc_label = "words" if is_english else "chars"
                 wc_before = user_wordcount[username]

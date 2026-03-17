@@ -267,27 +267,6 @@ WORKER_GROUPS = {
 }
 
 # =============================================================================
-# COLUMN POSITIONS BY CATEGORY
-# =============================================================================
-
-# Translation column positions (for row matching during transfer)
-TRANSLATION_COLS = {
-    "Quest": {"eng": 2, "other": 3},
-    "Knowledge": {"eng": 2, "other": 3},
-    "Character": {"eng": 4, "other": 4},  # Translation column (row-per-text format)
-    "Region": {"eng": 2, "other": 3},     # DataType | Original | English | Translation
-    "Item": {"eng": 4, "other": 4},       # Translation column (row-per-text format)
-    "ItemKnowledgeCluster": {"eng": 3, "other": 3},  # Translation column (mega-sheet format)
-    "System": {"eng": 1, "other": 1},  # CONTENT column (single column for all languages)
-    "Skill": {"eng": 4, "other": 4},  # Translation column (row-per-text, UIPosition ordered)
-    "Help": {"eng": 2, "other": 3},
-    "Gimmick": {"eng": 2, "other": 3},
-    "Contents": {"eng": 2, "other": 2},  # INSTRUCTIONS column (matching key, no localization)
-    "Sequencer": {"eng": 2, "other": 3},  # Text column → Master_Script
-    "Dialog": {"eng": 2, "other": 3},     # Text column → Master_Script
-}
-
-# =============================================================================
 # SCRIPT-TYPE CATEGORIES (Sequencer, Dialog)
 # =============================================================================
 # Script-type categories are special:

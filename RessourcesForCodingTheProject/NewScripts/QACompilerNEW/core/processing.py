@@ -18,7 +18,7 @@ from openpyxl.utils import get_column_letter
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
-    CATEGORIES, TRANSLATION_COLS, TRACKER_STYLES, SCRIPT_TYPE_CATEGORIES,
+    CATEGORIES, TRACKER_STYLES, SCRIPT_TYPE_CATEGORIES,
     get_target_master_category, load_tester_mapping
 )
 from core.excel_ops import (

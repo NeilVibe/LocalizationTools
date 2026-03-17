@@ -24,10 +24,24 @@
   // State
   let svgElement = $state(null);
   let transform = $state({ x: 0, y: 0, k: 1 });
+  let hoveredRoute = $state(null);
+  let zoomBehaviorRef = $state(null);
+  let svgSelectionRef = $state(null);
 
   // Constants
   const SVG_SIZE = 1000;
   const PADDING = 50;
+
+  // Route danger level colors
+  const DANGER_COLORS = {
+    1: '#24a148',  // safe - green
+    2: '#f1c21b',  // moderate - amber
+    3: '#da1e28',  // dangerous - red
+  };
+
+  function getDangerColor(level) {
+    return DANGER_COLORS[level] || '#6f6f6f';
+  }
 
   // Node colors by region_type
   const NODE_COLORS = {
@@ -107,6 +121,63 @@
     return points.join(' ');
   }
 
+  /** Convert polyline points string "x1,y1 x2,y2 ..." to SVG path "M x1 y1 L x2 y2 ..." */
+  function polylineToPath(points) {
+    const pairs = points.split(' ').filter(Boolean);
+    if (pairs.length === 0) return '';
+    return 'M ' + pairs.map((p, i) => {
+      const [x, y] = p.split(',');
+      return i === 0 ? `${x} ${y}` : `L ${x} ${y}`;
+    }).join(' ');
+  }
+
+  /** Get midpoint of a route for label positioning */
+  function getRouteMidpoint(route) {
+    const fromNode = nodes.find(n => n.strkey === route.from_node);
+    const toNode = nodes.find(n => n.strkey === route.to_node);
+    if (!fromNode || !toNode) return { x: 0, y: 0 };
+    const start = worldToSvg(fromNode.x, fromNode.z);
+    const end = worldToSvg(toNode.x, toNode.z);
+    return { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+  }
+
+  /** Smooth zoom-to-fit on a region node (500ms ease-out-quart) */
+  function zoomToRegion(node) {
+    if (!svgSelectionRef || !zoomBehaviorRef) return;
+
+    const svgPos = worldToSvg(node.x, node.z);
+    const svgRect = svgElement?.getBoundingClientRect();
+    if (!svgRect) return;
+    const scale = 2.5;
+
+    // Center the node in the viewport
+    const tx = svgRect.width / 2 - svgPos.x * scale;
+    const ty = svgRect.height / 2 - svgPos.y * scale;
+
+    const newTransform = zoomIdentity.translate(tx, ty).scale(scale);
+
+    svgSelectionRef
+      .transition()
+      .duration(500)
+      .ease(t => {
+        // ease-out-quart: 1 - (1-t)^4
+        return 1 - Math.pow(1 - t, 4);
+      })
+      .call(zoomBehaviorRef.transform, newTransform);
+  }
+
+  // Derived: viewport rectangle for mini-map
+  let viewportRect = $derived.by(() => {
+    const svgRect = svgElement?.getBoundingClientRect();
+    if (!svgRect) return null;
+    const miniScale = 150 / SVG_SIZE;
+    const vx = (-transform.x / transform.k) * miniScale;
+    const vy = (-transform.y / transform.k) * miniScale;
+    const vw = (svgRect.width / transform.k) * miniScale;
+    const vh = (svgRect.height / transform.k) * miniScale;
+    return { x: vx, y: vy, w: Math.min(vw, 150), h: Math.min(vh, 150) };
+  });
+
   /**
    * Handle node hover - pass mouse coordinates for tooltip positioning
    */
@@ -138,6 +209,7 @@
     if (!svgElement) return;
 
     const svgSelection = select(svgElement);
+    svgSelectionRef = svgSelection;
 
     const zoomBehavior = zoom()
       .scaleExtent([0.5, 4])
@@ -148,6 +220,7 @@
           k: event.transform.k
         };
       });
+    zoomBehaviorRef = zoomBehavior;
 
     svgSelection.call(zoomBehavior);
 
@@ -161,6 +234,7 @@
   });
 </script>
 
+<div class="map-canvas-wrapper">
 <svg
   bind:this={svgElement}
   viewBox="0 0 {SVG_SIZE} {SVG_SIZE}"
@@ -195,6 +269,12 @@
       <stop offset="50%" stop-color="#221a0c" />
       <stop offset="100%" stop-color="#1a1408" />
     </radialGradient>
+
+    <!-- Route direction arrow marker -->
+    <marker id="route-arrow" viewBox="0 0 10 10" refX="5" refY="5"
+      markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(212,154,92,0.6)" />
+    </marker>
 
     <!-- Vignette edges -->
     <radialGradient id="vignette" cx="50%" cy="50%" r="55%">
@@ -280,18 +360,49 @@
       />
     {/each}
 
-    <!-- Routes (dashed polylines) -->
-    {#each routes as route, i (`${route.from_node}-${route.to_node}-${i}`)}
+    <!-- Routes with danger coloring and hover animation -->
+    {#each routes as route, i (`route-${route.from_node}-${route.to_node}-${i}`)}
       {@const points = getRoutePoints(route)}
+      {@const dangerColor = getDangerColor(route.danger_level || 1)}
+      {@const isHovered = hoveredRoute === i}
       {#if points}
-        <polyline
-          {points}
-          fill="none"
-          stroke="#8b7355"
-          stroke-width="1.5"
-          stroke-dasharray="6 3"
-          opacity="0.5"
-        />
+        {@const pathD = polylineToPath(points)}
+        <g class="route-group"
+           onmouseenter={() => hoveredRoute = i}
+           onmouseleave={() => hoveredRoute = null}
+        >
+          <!-- Hit area (wider, invisible) -->
+          <path d={pathD} fill="none" stroke="transparent" stroke-width="12" />
+
+          <!-- Visible route line -->
+          <path
+            d={pathD}
+            fill="none"
+            stroke={dangerColor}
+            stroke-width={isHovered ? 3 : 2}
+            stroke-dasharray={isHovered ? "8 4" : "6 3"}
+            stroke-linecap="round"
+            opacity={isHovered ? 0.9 : 0.5}
+            marker-mid="url(#route-arrow)"
+            class="route-path"
+            class:route-animated={isHovered}
+            style="transition: stroke-width 200ms ease-out, opacity 200ms ease-out;"
+          />
+
+          <!-- Travel info label on hover -->
+          {#if isHovered && route.travel_time}
+            {@const midPoint = getRouteMidpoint(route)}
+            <text
+              x={midPoint.x} y={midPoint.y - 10}
+              text-anchor="middle" fill="rgba(240,184,120,0.9)"
+              font-size="10" font-weight="500"
+              style="text-shadow: 0 1px 3px rgba(0,0,0,0.9);"
+              class="route-label"
+            >
+              {route.travel_time}
+            </text>
+          {/if}
+        </g>
       {/if}
     {/each}
 
@@ -305,7 +416,7 @@
         onmouseenter={(e) => handleNodeHover(node, e)}
         onmousemove={(e) => handleNodeMove(node, e)}
         onmouseleave={() => onNodeLeave()}
-        onclick={() => onNodeClick(node)}
+        onclick={() => { zoomToRegion(node); onNodeClick(node); }}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNodeClick(node); }}
       >
         <!-- Glow effect for Main nodes -->
@@ -347,6 +458,34 @@
     {/each}
   </g>
 </svg>
+
+<!-- Mini-map overlay -->
+<div class="mini-map">
+  <svg viewBox="0 0 150 150" width="150" height="150">
+    <rect width="150" height="150" fill="rgba(26,20,8,0.85)" rx="4" />
+    <rect x="1" y="1" width="148" height="148" fill="none" stroke="rgba(212,154,92,0.3)" rx="4" />
+
+    <!-- Node dots -->
+    {#each nodePositions as node (node.strkey + '-mini')}
+      <circle
+        cx={node.svgPos.x * 150/SVG_SIZE}
+        cy={node.svgPos.y * 150/SVG_SIZE}
+        r="2"
+        fill={getNodeColor(node.region_type)}
+      />
+    {/each}
+
+    <!-- Viewport rectangle -->
+    {#if viewportRect}
+      <rect
+        x={viewportRect.x} y={viewportRect.y}
+        width={viewportRect.w} height={viewportRect.h}
+        fill="none" stroke="rgba(240,184,120,0.6)" stroke-width="1"
+      />
+    {/if}
+  </svg>
+</div>
+</div>
 
 <style>
   .map-canvas {
@@ -396,11 +535,59 @@
     font-family: 'Georgia', 'Times New Roman', serif;
   }
 
+  /* Map canvas wrapper for mini-map positioning */
+  .map-canvas-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Route animations */
+  .route-path {
+    pointer-events: none;
+  }
+
+  .route-group {
+    cursor: pointer;
+  }
+
+  .route-animated {
+    animation: routeFlow 1.5s linear infinite;
+  }
+
+  @keyframes routeFlow {
+    to {
+      stroke-dashoffset: -24;
+    }
+  }
+
+  .route-label {
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* Mini-map */
+  .mini-map {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(212, 154, 92, 0.25);
+    z-index: 10;
+    pointer-events: auto;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .map-canvas,
     .map-canvas * {
       transition: none !important;
       animation: none !important;
+    }
+
+    .route-animated {
+      animation: none;
     }
   }
 </style>

@@ -19,7 +19,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
     QA_FOLDER, QA_FOLDER_OLD, QA_FOLDER_NEW,
-    TRANSLATION_COLS, SCRIPT_COLS, SCRIPT_TYPE_CATEGORIES, CATEGORIES,
+    SCRIPT_COLS, SCRIPT_TYPE_CATEGORIES, CATEGORIES,
     load_tester_mapping
 )
 from core.discovery import discover_qa_folders_in
@@ -28,7 +28,7 @@ from core.excel_ops import safe_load_workbook, find_column_by_header
 # Import shared matching functions
 from core.matching import (
     sanitize_stringid_for_match,
-    get_translation_column,
+    find_translation_col_in_ws,
     find_matching_row_for_transfer,
     find_matching_row_for_contents_transfer,
 )
@@ -117,7 +117,7 @@ def transfer_sheet_data(
     new_screenshot_col = find_column_by_header(new_ws, "SCREENSHOT")
 
     # Get translation column for matching
-    old_trans_col = get_translation_column(category, is_english)
+    old_trans_col = find_translation_col_in_ws(old_ws, is_english)
 
     # Process each row with data
     for old_row in range(2, old_ws.max_row + 1):
@@ -195,7 +195,7 @@ def detect_duplicate_translations(old_wb, category: str, is_english: bool) -> Di
 
     for sheet_name in old_wb.sheetnames:
         old_ws = old_wb[sheet_name]
-        trans_col = get_translation_column(category, is_english)
+        trans_col = find_translation_col_in_ws(old_ws, is_english)
         comment_col = find_column_by_header(old_ws, "COMMENT")
 
         if not comment_col:
@@ -293,7 +293,6 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
         - script_full_index: {(trans, eventname): ...} (for Script category)
         - script_eventname_index: {eventname: [...]} (for Script category fallback)
     """
-    trans_col = get_translation_column(category, is_english)
     is_contents = category.lower() == "contents"
     is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
 
@@ -309,6 +308,7 @@ def build_new_workbook_index(new_wb, category: str, is_english: bool) -> Dict:
 
     for sheet_name in new_wb.sheetnames:
         ws = new_wb[sheet_name]
+        trans_col = find_translation_col_in_ws(ws, is_english)
         stringid_col = find_column_by_header(ws, "STRINGID")
 
         for row in range(2, ws.max_row + 1):
@@ -365,7 +365,6 @@ def collect_old_rows_with_data(old_wb, category: str, is_english: bool) -> List[
 
     Returns list of dicts with row data including sheet name.
     """
-    trans_col = get_translation_column(category, is_english)
     is_contents = category.lower() == "contents"
     is_script = category.lower() in SCRIPT_TYPE_CATEGORIES
 
@@ -373,6 +372,7 @@ def collect_old_rows_with_data(old_wb, category: str, is_english: bool) -> List[
 
     for sheet_name in old_wb.sheetnames:
         ws = old_wb[sheet_name]
+        trans_col = find_translation_col_in_ws(ws, is_english)
 
         # Script category uses MEMO instead of COMMENT, and has no SCREENSHOT
         if is_script:

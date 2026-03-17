@@ -28,7 +28,6 @@ from config import (
     IMAGES_FOLDER_EN, IMAGES_FOLDER_CN,
     CATEGORY_TO_MASTER, STATUS_OPTIONS, MANAGER_STATUS_OPTIONS,
     TRACKER_STYLES, get_target_master_category, SCRIPT_TYPE_CATEGORIES,
-    TRANSLATION_COLS
 )
 
 
@@ -398,12 +397,10 @@ def extract_tester_data_from_master(
             instructions_idx = col_map.get("INSTRUCTIONS")
 
             # For standard categories (Quest, Knowledge, Item, etc.)
-            # Translation column positions from config.
-            # Resolve per-sheet category for clustered masters (Item+Gimmick, System+Help)
-            from config import TRANSLATION_COLS, CATEGORIES
-            sheet_category = sheet_name if sheet_name in CATEGORIES else category
-            trans_col_config = TRANSLATION_COLS.get(sheet_category, {"eng": 2, "other": 3})
-            trans_col_idx = (trans_col_config["eng"] if is_english else trans_col_config["other"]) - 1  # 0-based
+            # Translation column detected by header name — no position-based config
+            from core.matching import find_translation_col_in_headers
+            trans_col_idx_resolved = find_translation_col_in_headers(col_map, is_english)
+            # find_translation_col_in_headers returns 0-based index (matching col_map format)
 
             sheet_data = {}
 
@@ -439,13 +436,9 @@ def extract_tester_data_from_master(
                     # Use header-name-first resolution to match build_master_index() key format
                     stringid = sanitize_stringid_for_match(row_tuple[stringid_idx]) if stringid_idx is not None and stringid_idx < len(row_tuple) else ""
                     translation = ""
-                    # Try "TRANSLATION" header first (matches build_master_index get_val logic)
-                    trans_header_idx = col_map.get("TRANSLATION")
-                    if trans_header_idx is not None and trans_header_idx < len(row_tuple):
-                        translation = str(row_tuple[trans_header_idx] or "").strip()
-                    # Fallback to position-based column from config
-                    if not translation and trans_col_idx < len(row_tuple):
-                        translation = str(row_tuple[trans_col_idx] or "").strip()
+                    # Use header-name detection (no position fallback)
+                    if trans_col_idx_resolved is not None and trans_col_idx_resolved < len(row_tuple):
+                        translation = str(row_tuple[trans_col_idx_resolved] or "").strip()
                     if translation:
                         content_key = (stringid, translation)
 
