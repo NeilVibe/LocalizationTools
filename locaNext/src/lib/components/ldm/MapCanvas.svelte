@@ -2,14 +2,16 @@
   /**
    * MapCanvas.svelte - Interactive SVG world map with d3-zoom
    *
-   * Renders region nodes at WorldPosition coordinates with pan/zoom,
-   * route connections as dashed polylines, and color-coded node circles.
+   * Renders region polygons, node icons, route connections, and Korean labels
+   * on a parchment-textured canvas with pan/zoom interaction.
    *
    * Phase 20: Interactive World Map (Plan 02)
+   * Phase 38: Fantasy World Map (Plan 01 parchment + Plan 02 polygons/icons)
    */
   import { onMount } from "svelte";
   import { zoom, zoomIdentity } from "d3-zoom";
   import { select } from "d3-selection";
+  import { getNodeIcon } from "./MapIcons.svelte";
 
   // Props
   let {
@@ -25,6 +27,7 @@
   let svgElement = $state(null);
   let transform = $state({ x: 0, y: 0, k: 1 });
   let hoveredRoute = $state(null);
+  let hoveredRegion = $state(null);
   let zoomBehaviorRef = $state(null);
   let svgSelectionRef = $state(null);
 
@@ -200,6 +203,22 @@
     }))
   );
 
+  // Derived: region polygon data (nodes that have polygon_points)
+  let polygonData = $derived(
+    nodes.filter(n => n.polygon_points && n.polygon_points.length >= 3).map(node => {
+      const svgPoints = node.polygon_points.map(([wx, wz]) => {
+        const p = worldToSvg(wx, wz);
+        return `${p.x},${p.y}`;
+      }).join(' ');
+
+      const center = node.center_x != null && node.center_y != null
+        ? worldToSvg(node.center_x, node.center_y)
+        : worldToSvg(node.x, node.z);
+
+      return { ...node, svgPoints, center };
+    })
+  );
+
   // Grid lines for visual reference
   let gridLines = $derived(
     Array.from({ length: 5 }, (_, i) => (i + 1) * 200)
@@ -360,6 +379,46 @@
       />
     {/each}
 
+    <!-- Region polygons (rendered between grid and routes) -->
+    {#each polygonData as region (region.strkey)}
+      <g class="region-polygon"
+         class:hovered={hoveredRegion === region.strkey}
+         onmouseenter={() => hoveredRegion = region.strkey}
+         onmouseleave={() => hoveredRegion = null}
+         role="button"
+         tabindex="0"
+         onclick={() => onNodeClick(region)}
+         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNodeClick(region); }}
+      >
+        <!-- Polygon fill -->
+        <polygon
+          points={region.svgPoints}
+          fill={getNodeColor(region.region_type)}
+          fill-opacity={hoveredRegion === region.strkey ? 0.3 : 0.12}
+          stroke={getNodeColor(region.region_type)}
+          stroke-opacity={hoveredRegion === region.strkey ? 0.6 : 0.3}
+          stroke-width={hoveredRegion === region.strkey ? 2 : 1}
+          filter={hoveredRegion === region.strkey ? 'url(#region-glow)' : 'none'}
+          style="transition: fill-opacity 200ms ease-out, stroke-opacity 200ms ease-out, stroke-width 200ms ease-out;"
+        />
+
+        <!-- Korean region name at center -->
+        <text
+          x={region.center.x}
+          y={region.center.y}
+          text-anchor="middle"
+          dominant-baseline="middle"
+          fill="rgba(240,184,120,0.9)"
+          font-size="13"
+          font-weight="600"
+          class="region-name-label"
+          style="text-shadow: 0 0 6px rgba(212,154,92,0.5), 0 1px 2px rgba(0,0,0,0.8);"
+        >
+          {region.name_kr || region.name}
+        </text>
+      </g>
+    {/each}
+
     <!-- Routes with danger coloring and hover animation -->
     {#each routes as route, i (`route-${route.from_node}-${route.to_node}-${i}`)}
       {@const points = getRoutePoints(route)}
@@ -406,8 +465,11 @@
       {/if}
     {/each}
 
-    <!-- Nodes -->
+    <!-- Nodes (icon markers replacing plain circles) -->
     {#each nodePositions as node (node.strkey)}
+      {@const icon = getNodeIcon(node.region_type)}
+      {@const iconScale = icon.size / 24}
+      {@const halfSize = icon.size / 2}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <g
         class="map-node"
@@ -419,33 +481,26 @@
         onclick={() => { zoomToRegion(node); onNodeClick(node); }}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNodeClick(node); }}
       >
-        <!-- Glow effect for Main nodes -->
-        {#if node.region_type === 'Main'}
-          <circle
-            cx={node.svgPos.x}
-            cy={node.svgPos.y}
-            r={getNodeRadius(node.region_type) + 4}
-            fill={getNodeColor(node.region_type)}
-            opacity="0.15"
-            filter="url(#region-glow)"
-          />
-        {/if}
-
-        <!-- Node circle -->
+        <!-- Icon background glow -->
         <circle
           cx={node.svgPos.x}
           cy={node.svgPos.y}
-          r={getNodeRadius(node.region_type)}
+          r={halfSize + 3}
           fill={getNodeColor(node.region_type)}
-          stroke="#d4c5a0"
-          stroke-width="1.5"
-          class="node-circle"
+          opacity="0.2"
+          class="icon-glow"
         />
+
+        <!-- Icon marker -->
+        <g transform="translate({node.svgPos.x - halfSize},{node.svgPos.y - halfSize}) scale({iconScale})">
+          <rect width="24" height="24" fill="rgba(26,20,8,0.7)" rx="4" />
+          <path d={icon.path} fill={getNodeColor(node.region_type)} />
+        </g>
 
         <!-- Label -->
         <text
           x={node.svgPos.x}
-          y={node.svgPos.y - getNodeRadius(node.region_type) - 6}
+          y={node.svgPos.y + halfSize + 14}
           text-anchor="middle"
           fill="#d4c5a0"
           font-size="11"
@@ -509,24 +564,45 @@
     pointer-events: none;
   }
 
+  /* Region polygon styles */
+  .region-polygon {
+    cursor: pointer;
+    outline: none;
+  }
+
+  .region-polygon:focus polygon {
+    stroke: var(--cds-focus, #ffffff);
+    stroke-width: 2.5;
+  }
+
+  .region-name-label {
+    pointer-events: none;
+    user-select: none;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  }
+
+  /* Node icon styles */
   .map-node {
     cursor: pointer;
     outline: none;
   }
 
-  .map-node:hover .node-circle,
-  .map-node:focus .node-circle {
-    stroke-width: 2.5;
-    filter: brightness(1.2);
+  .icon-glow {
+    transition: opacity 200ms ease-out;
+  }
+
+  .map-node:hover .icon-glow {
+    opacity: 0.4;
   }
 
   .map-node:focus {
     outline: none;
   }
 
-  .map-node:focus .node-circle {
-    stroke: #f0e6c8;
-    stroke-width: 3;
+  .map-node:focus .icon-glow {
+    opacity: 0.5;
+    stroke: var(--cds-focus, #ffffff);
+    stroke-width: 2;
   }
 
   .node-label {
