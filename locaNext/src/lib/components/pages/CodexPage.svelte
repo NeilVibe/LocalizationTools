@@ -7,13 +7,13 @@
    *
    * Phase 19: Game World Codex (Plan 02)
    */
-  import { InlineLoading, Tag, Button, ProgressBar, InlineNotification } from "carbon-components-svelte";
+  import { InlineLoading, Button, ProgressBar, InlineNotification } from "carbon-components-svelte";
   import { Book, ArrowLeft, ImageReference, Close } from "carbon-icons-svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
   import { logger } from "$lib/utils/logger.js";
   import { websocket } from "$lib/api/websocket.js";
   import CodexSearchBar from "$lib/components/ldm/CodexSearchBar.svelte";
-  import PlaceholderImage from "$lib/components/ldm/PlaceholderImage.svelte";
+  import CodexCard from "$lib/components/ldm/CodexCard.svelte";
   import CodexEntityDetail from "$lib/components/ldm/CodexEntityDetail.svelte";
   import InfiniteScroll from "$lib/components/common/InfiniteScroll.svelte";
   import SkeletonCard from "$lib/components/common/SkeletonCard.svelte";
@@ -357,15 +357,6 @@
     selectedEntity = null;
   }
 
-  /**
-   * Truncate description for card display
-   */
-  function truncate(text, maxLen = 60) {
-    if (!text) return '';
-    const clean = text.replace(/<br\s*\/?>/gi, ' ');
-    return clean.length > maxLen ? clean.slice(0, maxLen) + '...' : clean;
-  }
-
   onMount(() => {
     // Check image-gen availability
     fetch(`${API_BASE}/api/ldm/codex/image-gen/status`, { headers: getAuthHeaders() })
@@ -486,47 +477,19 @@
       {:else}
         <!-- Entity Grid -->
         <div class="entity-grid">
-          {#each entities as entity (entity.strkey)}
-            <button class="entity-card" onclick={() => selectEntity(entity)} aria-label="View {entity.name} ({entity.entity_type})">
-              <div class="card-image">
-                {#if entity.ai_image_url && !failedImages.has('ai_' + entity.strkey)}
-                  <img
-                    src="{API_BASE}{entity.ai_image_url}"
-                    alt={entity.name}
-                    class="card-thumb"
-                    loading="lazy"
-                    onerror={() => {
-                      const next = new Set(failedImages);
-                      next.add('ai_' + entity.strkey);
-                      failedImages = next;
-                    }}
-                  />
-                {:else if entity.image_texture && !failedImages.has(entity.strkey)}
-                  <img
-                    src="{API_BASE}/api/ldm/mapdata/thumbnail/{entity.image_texture}"
-                    alt={entity.name}
-                    class="card-thumb"
-                    loading="lazy"
-                    onerror={() => {
-                      const next = new Set(failedImages);
-                      next.add(entity.strkey);
-                      failedImages = next;
-                    }}
-                  />
-                {:else}
-                  <PlaceholderImage entityType={entity.entity_type} entityName={entity.name} />
-                {/if}
-              </div>
-              <div class="card-info">
-                <span class="card-name">{entity.name}</span>
-                <Tag type={TYPE_COLORS[entity.entity_type] || 'gray'} size="sm">
-                  {entity.entity_type}
-                </Tag>
-                {#if entity.description}
-                  <span class="card-desc">{truncate(entity.description)}</span>
-                {/if}
-              </div>
-            </button>
+          {#each entities as entity, i (entity.strkey)}
+            <CodexCard
+              {entity}
+              index={i}
+              apiBase={API_BASE}
+              {failedImages}
+              onclick={() => selectEntity(entity)}
+              onfailimage={(key) => {
+                const next = new Set(failedImages);
+                next.add(key);
+                failedImages = next;
+              }}
+            />
           {/each}
 
           {#if entities.length === 0 && !loadingList}
@@ -670,86 +633,8 @@
 
   .entity-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--card-gap, 12px);
-  }
-
-  @media (max-width: 1200px) {
-    .entity-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-
-  @media (max-width: 768px) {
-    .entity-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .entity-card {
-    display: flex;
-    gap: var(--card-gap, 10px);
-    padding: var(--card-padding, 10px);
-    background: var(--cds-layer-01);
-    border: 1px solid var(--cds-border-subtle-01);
-    border-radius: var(--card-radius, 6px);
-    cursor: pointer;
-    text-align: left;
-    color: var(--cds-text-01);
-    transition: background var(--transition-fast, 0.15s ease),
-                border-color var(--transition-fast, 0.15s ease);
-  }
-
-  .entity-card:hover {
-    background: var(--cds-layer-hover-01);
-    border-color: var(--cds-border-strong-01);
-  }
-
-  .entity-card:focus {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: 1px;
-  }
-
-  .card-image {
-    width: 48px;
-    height: 48px;
-    flex-shrink: 0;
-    border-radius: 4px;
-    overflow: hidden;
-    background: var(--cds-layer-02);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .card-thumb {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-
-  .card-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .card-name {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .card-desc {
-    font-size: 0.75rem;
-    color: var(--cds-text-02);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
   }
 
   .no-entities {
