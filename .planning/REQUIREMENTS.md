@@ -150,8 +150,8 @@
 
 - [ ] **WOW-14**: Page navigation has crossfade transition
 - [ ] **WOW-15**: All loading states use shimmer skeletons matching content dimensions
-- [ ] **WOW-16**: Ctrl+K opens command palette for global entity search
-- [ ] **WOW-17**: Toast notifications slide in from top-right with auto-dismiss
+- [x] **WOW-16**: Ctrl+K opens command palette for global entity search
+- [x] **WOW-17**: Toast notifications slide in from top-right with auto-dismiss
 
 **v3.5 Coverage:**
 - v3.5 requirements: 17 total

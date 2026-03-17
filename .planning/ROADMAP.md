@@ -280,7 +280,7 @@ Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 | 37. XML Viewer WOW Polish | 3/3 | Complete    | 2026-03-17 | - |
 | 38. Fantasy World Map | 2/3 | In Progress|  | - |
 | 39. Codex Cards + Relationship Graph | 2/2 | Complete   | 2026-03-17 | - |
-| 40. Cross-cutting WOW Polish | v3.5 | 0/2 | Planned | - |
+| 40. Cross-cutting WOW Polish | 1/2 | In Progress|  | - |
 
 ---
 *Roadmap created: 2026-03-14*
