@@ -75,6 +75,16 @@
   function initGraph(nodes, links) {
     const width = container.clientWidth;
     const height = container.clientHeight || 600;
+    const cx = width / 2;
+    const cy = height / 2;
+
+    // Set initial node positions in a circle around center
+    const angleStep = (2 * Math.PI) / nodes.length;
+    const radius = Math.min(width, height) * 0.3;
+    nodes.forEach((node, i) => {
+      node.x = cx + radius * Math.cos(angleStep * i);
+      node.y = cy + radius * Math.sin(angleStep * i);
+    });
 
     // Clear previous
     select(container).select('svg').remove();
@@ -106,8 +116,10 @@
     simulation = forceSimulation(nodes)
       .force("link", forceLink(links).id(d => d.id).distance(120).strength(0.5))
       .force("charge", forceManyBody().strength(-300))
-      .force("center", forceCenter(width / 2, height / 2))
-      .force("collision", forceCollide(40));
+      .force("center", forceCenter(cx, cy))
+      .force("collision", forceCollide(40))
+      .alpha(1)
+      .alphaDecay(0.02);
 
     // Links
     const link = g.append('g')
