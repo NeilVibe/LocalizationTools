@@ -286,7 +286,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 43-01-PLAN.md -- XML entity creation + cross-ref fixes + FactionNode standardization + waypoints
+- [x] 43-01-PLAN.md -- XML entity creation + cross-ref fixes + FactionNode standardization + waypoints (completed 2026-03-18)
 - [ ] 43-02-PLAN.md -- Localization string enrichment + TM expansion to ~50 entries
 - [ ] 43-03-PLAN.md -- KnowledgeInfo expansion to ~25 entries + 10 region textures
 
@@ -342,6 +342,7 @@ Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 | 40. Cross-cutting WOW Polish | v3.5 | 2/2 | Complete | 2026-03-17 |
 | 41. Qwen3-TTS Korean Voice | v3.5 | 2/2 | Complete | 2026-03-18 |
 | 42. LanguageData Fix + WOW Showcase | v3.5 | 3/3 | Complete | 2026-03-18 |
+| 43. Mockdata Quality Audit + WOW Amplification | v4.0 | 1/3 | In Progress | - |
 
 ---
 *Roadmap created: 2026-03-14*

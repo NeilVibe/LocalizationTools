@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.3
 milestone_name: UI/UX Polish + Performance
-status: planning
-stopped_at: Phase 43 context gathered
-last_updated: "2026-03-18T02:51:09.222Z"
-last_activity: 2026-03-18 -- v3.5 shipped, starting v4.0 mockdata audit
+status: executing
+stopped_at: Completed 43-01-PLAN.md
+last_updated: "2026-03-18T03:42:09.770Z"
+last_activity: 2026-03-18 -- Completed 43-01 XML entity & cross-ref audit
 progress:
   total_phases: 12
   completed_phases: 9
-  total_plans: 23
-  completed_plans: 20
-  percent: 0
+  total_plans: 26
+  completed_plans: 22
+  percent: 81
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 ## Current Position
 
 Phase: 43 (first phase of v4.0)
-Plan: 0 of TBD in milestone (planning)
-Status: Planning Phase 43
-Last activity: 2026-03-18 -- v3.5 shipped, starting v4.0 mockdata audit
+Plan: 1 of TBD in milestone (executing)
+Status: Executing Phase 43
+Last activity: 2026-03-18 -- Completed 43-01 XML entity & cross-ref audit
 
-Progress: [          ] 0%
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
@@ -80,6 +80,9 @@ Progress: [          ] 0%
 - [Phase 42]: TM suggest uses file_id instead of tm_id[0] (searches ALL active TMs)
 - [Phase 42]: PageTransition uses in:fade instead of transition:fade (no competing out-transition)
 - [Phase 42]: RightPanel data props are read-only (no $bindable), UI props keep $bindable
+- [Phase 43-01]: FactionNode StrKeys standardized to Region_ PascalCase to match character RegionKey refs
+- [Phase 43-01]: Grimjaw=Skill_HolyShield, Lune=Skill_SacredFlame (role-appropriate skill assignments)
+- [Phase 43-01]: 4 new map nodes (TradingPost, AncientTemple, Watchtower, MiningCamp) for spatial density
 
 ### Next Session Plan
 
@@ -88,6 +91,6 @@ Then decide on next milestone (v4.0?).
 
 ## Session Continuity
 
-Last session: 2026-03-18T02:51:09.219Z
-Stopped at: Phase 43 context gathered
-Resume file: .planning/phases/43-mockdata-quality-audit-wow-amplification/43-CONTEXT.md
+Last session: 2026-03-18T03:43:00Z
+Stopped at: Completed 43-01-PLAN.md
+Resume file: .planning/phases/43-mockdata-quality-audit-wow-amplification/43-01-SUMMARY.md
