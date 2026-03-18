@@ -271,6 +271,7 @@ Plans:
 **Milestone Goal:** Audit and elevate all mock/showcase data to maximize demo WOW factor. Ensure every page has rich, interconnected data that tells a compelling story and shows off every feature at its best.
 
 - [x] **Phase 43: Mockdata Quality Audit + WOW Amplification** - Deep audit of all mock data (gamedata, localization, codex, map, TM) for quality, completeness, and WOW-factor contribution (completed 2026-03-18)
+- [ ] **Phase 44: WOW Data Wiring** - Wire code to fully leverage Phase 43 mockdata: typed relationship graph links, Right Panel image/audio/context auto-detection, TM endpoint fix, codex description mapping
 
 ### Phase 43: Mockdata Quality Audit + WOW Amplification
 **Goal**: Audit every piece of mock data across all 5 pages to ensure it creates maximum WOW effect — rich entity relationships, compelling Korean translations, vivid character descriptions, meaningful TM matches, and interconnected cross-references that make the demo feel like a real game world
@@ -289,6 +290,18 @@ Plans:
 - [x] 43-01-PLAN.md -- XML entity creation + cross-ref fixes + FactionNode standardization + waypoints (completed 2026-03-18)
 - [ ] 43-02-PLAN.md -- Localization string enrichment + TM expansion to ~50 entries
 - [ ] 43-03-PLAN.md -- KnowledgeInfo expansion to ~25 entries + 10 region textures
+
+### Phase 44: WOW Data Wiring
+**Goal**: Wire the backend code to fully leverage Phase 43's rich mockdata — typed relationship links in codex graph, auto-detection of images/audio/context in the Right Panel, TM endpoint fix, and codex description mapping so every feature lights up during the demo
+**Depends on**: Phase 43
+**Requirements**: WOW-WIRE-01, WOW-WIRE-02, WOW-WIRE-03, WOW-WIRE-04
+**Success Criteria** (what must be TRUE):
+  1. Codex relationship graph shows 20+ typed links (owns, located_in, knows, member_of, enemy_of) instead of 130 generic "related" lines
+  2. Right Panel Image tab shows character/item portraits when selecting rows with entity cross-references
+  3. Right Panel Context tab detects entities from selected row text and shows cross-ref data
+  4. TM list endpoint returns 200 (not 500), all TMs visible
+  5. All 5 codex characters show Korean descriptions (no null descriptions for Lune/Drakmar)
+**Plans**: TBD
 
 ## Progress
 
