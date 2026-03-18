@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.3
 milestone_name: UI/UX Polish + Performance
 status: executing
-stopped_at: Completed 44-02-PLAN.md
-last_updated: "2026-03-18T07:31:51.097Z"
+stopped_at: Completed 44-01-PLAN.md
+last_updated: "2026-03-18T07:32:22.518Z"
 last_activity: 2026-03-18 -- Completed 43-02 localization string enrichment
 progress:
   total_phases: 13
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 28
-  completed_plans: 24
+  completed_plans: 25
   percent: 85
 ---
 
@@ -47,6 +47,7 @@ Progress: [█████████░] 85%
 | v3.5 | 6 | 16 | 12/12 |
 | Phase 43 P03 | 3min | 2 tasks | 11 files |
 | Phase 44 P02 | 2min | 2 tasks | 3 files |
+| Phase 44 P01 | 2min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,7 @@ Progress: [█████████░] 85%
 - [Phase 43-03]: HolyShield CharacterKey=Grimjaw (matching 43-01 skill assignments)
 - [Phase 43-03]: SealedLibrary UITextureName=region_sealed_library for naming consistency
 - [Phase 44]: Use or ready instead of .get(status, ready) to handle both missing key AND None value
+- [Phase 44]: Synthetic faction nodes for unresolved FactionKey refs; CharacterDesc fallback only for CharacterInfo
 
 ### Next Session Plan
 
@@ -97,6 +99,6 @@ Then decide on next milestone (v4.0?).
 
 ## Session Continuity
 
-Last session: 2026-03-18T07:31:51.093Z
-Stopped at: Completed 44-02-PLAN.md
+Last session: 2026-03-18T07:32:17.775Z
+Stopped at: Completed 44-01-PLAN.md
 Resume file: None
