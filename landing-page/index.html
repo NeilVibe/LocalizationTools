@@ -314,7 +314,29 @@
     .hero-canvas {
       position: absolute;
       inset: 0;
+      z-index: 1;
+    }
+
+    /* Ambient mesh gradient — Stripe-style drifting color wash */
+    @keyframes meshDrift {
+      0%   { transform: translate(0, 0) scale(1); }
+      33%  { transform: translate(5%, -3%) scale(1.05); }
+      66%  { transform: translate(-4%, 4%) scale(0.97); }
+      100% { transform: translate(3%, -2%) scale(1.03); }
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: -50%;
       z-index: 0;
+      opacity: 0.05;
+      filter: blur(120px);
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 600px 400px at 20% 30%, #d49a5c, transparent),
+        radial-gradient(ellipse 500px 500px at 70% 60%, #6c8cc8, transparent),
+        radial-gradient(ellipse 400px 600px at 50% 80%, #e88a3a, transparent);
+      animation: meshDrift 25s ease-in-out infinite alternate;
     }
 
     /* Radial vignette — deeper */
@@ -1927,11 +1949,11 @@
       overflow: visible;
     }
 
-    /* AI Swarm — interactive expanding web */
+    /* AI Swarm — dark luxury node graph */
     .swarm-container {
       position: relative;
       width: 100%;
-      max-width: 1000px;
+      max-width: 1100px;
       margin: 60px auto 0;
     }
     .swarm-hint {
@@ -4765,17 +4787,17 @@
         </div>
       </div>
 
-      <!-- Part C: LocaNext AI Engine — what powers the product -->
+      <!-- Part C: Claude Code AI Swarm — the development ecosystem -->
       <div style="margin-top:120px;text-align:center;">
-        <span class="t-label">LocaNext를 움직이는 AI</span>
-        <h2 class="t-display" style="margin-top:14px;font-size:clamp(28px,4vw,52px);">제품 내부의 <span class="t-accent">AI 엔진</span></h2>
-        <p style="font-size:16px;color:var(--text-dim);margin-top:12px;max-width:520px;margin-left:auto;margin-right:auto;font-weight:300;">번역 메모리 검색, 개체 감지, 시맨틱 매칭, 에셋 생성 — 모든 것이 이 6개 엔진의 시너지로 작동합니다.</p>
+        <span class="t-label">Claude Code AI 스웜</span>
+        <h2 class="t-display" style="margin-top:14px;font-size:clamp(28px,4vw,52px);">개발을 지휘하는 <span class="t-accent">AI 에이전트 군단</span></h2>
+        <p style="font-size:16px;color:var(--text-dim);margin-top:12px;max-width:600px;margin-left:auto;margin-right:auto;font-weight:300;">67개의 스킬, 175+ 도구, 11개 에이전트 — Queen이 지휘하고 Worker가 실행하는 자율 개발 시스템.</p>
       </div>
 
-      <!-- Interactive AI Swarm — click to expand clusters -->
+      <!-- Interactive AI Swarm — living agent ecosystem -->
       <div class="swarm-container" id="swarmContainer">
-        <canvas id="swarmCanvas" style="width:100%;height:600px;cursor:pointer;"></canvas>
-        <div class="swarm-hint" id="swarmHint">클릭하여 AI 생태계를 탐색하세요</div>
+        <canvas id="swarmCanvas" style="width:100%;height:700px;cursor:pointer;"></canvas>
+        <div class="swarm-hint" id="swarmHint">노드를 호버하여 AI 에이전트를 탐색하세요</div>
       </div>
       <script>
       (function(){
@@ -4783,282 +4805,593 @@
         if (!canvas) return;
         var ctx = canvas.getContext('2d');
         var W, H, cx, cy, dpr;
-        var nodes = [], lines = [], level = 0;
-        var hoveredNode = null, tooltip = null;
-        var warm = '#d49a5c', cold = '#6c8cc8', green = '#6caa7a', red = '#c87a6c', bright = '#dab070', muted = '#666', purple = '#9b7ed8';
+        var nodes = [], connections = [], particles = [], workerNodes = [];
+        var hoveredNode = null;
+        var activated = false;
+        var t = 0; // global time for animations
+
+        // Dark luxury palette
+        var copper = '#d49a5c', gold = '#e88a3a', blue = '#6c8cc8';
+        var queenRed = '#e8533a', ralphGreen = '#6caa7a', researchPurple = '#9b7ed8';
+        var gsdWarm = '#dab070', dimText = '#555';
 
         function resize() {
           dpr = window.devicePixelRatio || 1;
           W = canvas.offsetWidth; H = canvas.offsetHeight;
           canvas.width = W * dpr; canvas.height = H * dpr;
-          ctx.scale(dpr, dpr);
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           cx = W / 2; cy = H / 2;
+          // Reposition nodes on resize
+          if (nodes.length) repositionNodes();
         }
         resize();
         window.addEventListener('resize', resize);
 
-        // Node data — 3 expansion levels with hover details
-        var levels = [
-          // Level 0: Claude Code CLI hub
-          [{ x: 0, y: 0, r: 55, label: 'Claude Code', sub: 'CLI Orchestrator', color: warm, ring: true,
-             detail: '74 Skills · 11 Agents · 7 MCP Servers',
-             children: ['Model2Vec','FAISS','OpenViking','Superpowers','GSD'] }],
-          // Level 1: Core engines + orchestrators (5 main nodes, varied sizes)
-          [
-            { x: -220, y: -130, r: 34, label: 'Model2Vec', sub: '256-dim · 101 langs', color: warm,
-              detail: 'FAISS HNSW 벡터 인덱스로 <50ms 시맨틱 검색. 79x faster than SBERT.',
-              children: ['FAISS','Semantic Search','TM Matching'] },
-            { x: 220, y: -110, r: 30, label: 'FAISS HNSW', sub: 'Vector Index', color: bright,
-              detail: 'M=32, ef=500. Cosine similarity on L2-normed 256-dim vectors.',
-              children: ['Model2Vec','5-Tier Cascade'] },
-            { x: -250, y: 100, r: 32, label: 'OpenViking', sub: '93 docs · 727 embeddings', color: cold,
-              detail: '프로젝트 문서 시맨틱 검색 DB. Model2Vec + Qwen3-VL vision.',
-              children: ['Viking Search','Context Research'] },
-            { x: 250, y: 120, r: 36, label: 'Superpowers', sub: '13 workflow skills', color: bright,
-              detail: 'TDD, brainstorming, debugging, plans, code review — 구조화된 워크플로우.',
-              children: ['TDD','Brainstorm','Debug','Plans'] },
-            { x: 0, y: 210, r: 38, label: 'GSD', sub: '40 reqs · 7 phases', color: warm,
-              detail: 'Get Shit Done — 프로젝트 관리 시스템. 로드맵, 실행, 검증 자동화.',
-              children: ['Roadmap','Executor','Verifier','Planner'] },
-          ],
-          // Level 2: Agents, Skills, MCP servers (varied sizes by importance)
-          [
-            { x: -100, y: -220, r: 22, label: 'Nano Banana', sub: 'Gemini 3 Pro', color: green,
-              detail: 'AI 이미지 생성 · 2K+ 해상도 · 텍스트→이미지' },
-            { x: 130, y: -200, r: 20, label: 'ElevenLabs', sub: 'Voice AI', color: purple,
-              detail: 'AI 음성 합성 · 75ms 생성 · 음성 복제' },
-            { x: -370, y: -60, r: 18, label: 'Stitch MCP', sub: 'UI Proto', color: red,
-              detail: 'AI UI 프로토타이핑 · 2560px 생성' },
-            { x: 370, y: -40, r: 18, label: 'Playwright', sub: 'E2E Testing', color: cold,
-              detail: '자동 UI 테스트 · 스크린샷 검증' },
-            { x: -350, y: 200, r: 20, label: 'Code Review', sub: '5 Agents', color: cold,
-              detail: 'code-reviewer + simplifier + silent-failure-hunter + type-analyzer + comment-analyzer' },
-            { x: 350, y: 220, r: 18, label: 'Security', sub: 'OWASP', color: red,
-              detail: 'SAST 스캔 · 취약점 감사 · 의존성 검사' },
-            { x: -180, y: 250, r: 22, label: 'UI/UX Pro', sub: '67 styles', color: green,
-              detail: '96 palettes · 57 font pairings · 25 charts · 13 stacks' },
-            { x: 180, y: 260, r: 16, label: 'Aho-Corasick', sub: 'O(n+m)', color: cold,
-              detail: '글로서리 오토마톤 · 단일 패스 개체 감지' },
-            { x: -60, y: -260, r: 14, label: 'TDD', sub: '', color: muted },
-            { x: 60, y: -270, r: 14, label: 'Debug', sub: '', color: muted },
-            { x: -300, y: -180, r: 14, label: 'Brainstorm', sub: '', color: muted },
-            { x: 300, y: -170, r: 12, label: 'Critique', sub: '', color: muted },
-            { x: -400, y: 100, r: 12, label: 'Polish', sub: '', color: muted },
-            { x: 400, y: 110, r: 12, label: 'Animate', sub: '', color: muted },
-            { x: 0, y: 280, r: 12, label: 'Bolder', sub: '', color: muted },
-            { x: -250, y: -230, r: 10, label: 'Harden', sub: '', color: muted },
-            { x: 250, y: -240, r: 10, label: 'Distill', sub: '', color: muted },
-          ]
+        // === NODE DEFINITIONS — hierarchy order ===
+        var nodeDefs = [
+          // 0: CENTER — Claude Code CLI
+          { id: 'claude', ox: 0, oy: 0, r: 62, label: 'Claude Code', labelKR: 'CLI 오케스트레이터',
+            sub: '67 Skills · 11 Agents', color: copper, tier: 'center',
+            detail: '67개 스킬, 11개 프로젝트 에이전트, 8개 MCP 서버를 지휘하는 중앙 오케스트레이터. 모든 AI 에이전트가 이곳에서 시작됩니다.',
+            children: ['Ruflo Queen','Ralph','Autoresearch','GSD','Superpowers'] },
+
+          // 1: INNER RING — Tier 1 (the big 4)
+          { id: 'ruflo', ox: 0, oy: -175, r: 52, label: 'Ruflo Queen', labelKR: '퀸 · 하이브 마인드',
+            sub: '175+ Tools · WASM 352x', color: queenRed, tier: 'queen',
+            detail: 'Queen-Worker 계층 구조. 175+ 도구, 공유 벡터 메모리 (HNSW), WASM 부스터 352배 가속. 모든 에이전트를 검증·조율합니다.',
+            children: ['Worker 1','Worker 2','Worker 3','Vector Memory','WASM'] },
+
+          { id: 'ralph', ox: 175, oy: -80, r: 40, label: 'Ralph Wiggum', labelKR: '자율 루프 에이전트',
+            sub: 'Karpathy-inspired', color: ralphGreen, tier: 'inner',
+            detail: '자율 반복 에이전트 — 완료될 때까지 계속 작업합니다. max-iterations 설정, completion-promise로 종료 조건을 정의합니다.',
+            children: ['Loop','Iterate','Converge'] },
+
+          { id: 'autoresearch', ox: 175, oy: 80, r: 40, label: 'Autoresearch', labelKR: '경쟁 리서치 에이전트',
+            sub: '5+ 경쟁 에이전트', color: researchPurple, tier: 'inner',
+            detail: '5+ 리서치 에이전트가 경쟁적으로 탐색 → 최적 접근법으로 수렴. 코드 작성 전 반드시 리서치 우선.',
+            children: ['Agent A','Agent B','Agent C','Converge'] },
+
+          { id: 'gsd', ox: -175, oy: 80, r: 42, label: 'GSD', labelKR: '프로젝트 매니저',
+            sub: 'Get Shit Done', color: gsdWarm, tier: 'inner',
+            detail: '로드맵 → 계획 → 실행 → 검증. 7 버전 완료 (v1.0~v4.0), 200+ 요구사항 관리. 자동화된 프로젝트 관리.',
+            children: ['Roadmap','Planner','Executor','Verifier'] },
+
+          // 2: OUTER RING — Tier 2
+          { id: 'superpowers', ox: -175, oy: -80, r: 36, label: 'Superpowers', labelKR: '워크플로우 스킬',
+            sub: '13 Workflows', color: gold, tier: 'outer',
+            detail: 'Brainstorming, TDD, Debugging, Plans, Code Review — 구조화된 워크플로우 13종.',
+            children: ['TDD','Brainstorm','Debug'] },
+
+          { id: 'uiux', ox: -280, oy: -160, r: 30, label: 'UI/UX Pro Max', labelKR: '디자인 인텔리전스',
+            sub: '67 styles · 96 palettes', color: blue, tier: 'outer',
+            detail: '67개 스타일, 96개 팔레트, 57개 폰트 페어링, 25개 차트 — AI 디자인 시스템.' },
+
+          { id: 'banana', ox: 280, oy: -160, r: 28, label: 'Nano Banana', labelKR: 'AI 이미지 생성',
+            sub: 'Gemini 3 Pro', color: ralphGreen, tier: 'outer',
+            detail: 'Gemini 3 Pro 이미지 생성. 2K+ 해상도, 텍스트→이미지 변환.' },
+
+          { id: 'stitch', ox: 280, oy: 160, r: 28, label: 'Stitch MCP', labelKR: 'AI UI 프로토타입',
+            sub: 'UI Prototyping', color: queenRed, tier: 'outer',
+            detail: 'AI 기반 UI 프로토타이핑. 2560px 스크린 생성, variant 생성.' },
+
+          { id: 'viking', ox: -280, oy: 160, r: 32, label: 'OpenViking', labelKR: '시맨틱 검색 DB',
+            sub: '93 docs · 727 embeddings', color: blue, tier: 'outer',
+            detail: '프로젝트 문서 시맨틱 검색 DB. Model2Vec 임베딩 + Qwen3-VL 비전. 727개 임베딩 인덱스.' },
         ];
 
-        function addLevel(lvl) {
-          var items = levels[lvl];
-          items.forEach(function(item, i) {
-            var n = { x: cx + item.x, y: cy + item.y, tx: cx + item.x, ty: cy + item.y,
-                      r: item.r, label: item.label, sub: item.sub, color: item.color,
-                      ring: item.ring, alpha: 0, scale: 0 };
-            // Start from center
-            n.x = cx; n.y = cy;
-            nodes.push(n);
-            // Animate out
-            gsap.to(n, { x: n.tx, y: n.ty, alpha: 1, scale: 1,
-              duration: 0.8, delay: i * 0.06, ease: 'back.out(1.5)' });
-            // Add connection line to hub
-            if (lvl > 0) {
-              lines.push({ from: nodes[0], to: n, alpha: 0 });
-              gsap.to(lines[lines.length - 1], { alpha: 0.2, duration: 0.5, delay: 0.3 + i * 0.04 });
-            }
+        // === WORKER mini-nodes for Ruflo Queen ===
+        var workerDefs = [
+          { ox: -50, oy: -60, r: 10, label: 'W1', color: queenRed },
+          { ox: 0, oy: -70, r: 8, label: 'W2', color: queenRed },
+          { ox: 50, oy: -60, r: 10, label: 'W3', color: queenRed },
+          { ox: -35, oy: -85, r: 7, label: 'W4', color: queenRed },
+          { ox: 35, oy: -85, r: 7, label: 'W5', color: queenRed },
+        ];
+
+        // === CONNECTION DEFINITIONS ===
+        var connectionDefs = [
+          // Hub to inner ring
+          { from: 'claude', to: 'ruflo', width: 2.5, pulseSpeed: 0.8 },
+          { from: 'claude', to: 'ralph', width: 2, pulseSpeed: 1.0 },
+          { from: 'claude', to: 'autoresearch', width: 2, pulseSpeed: 0.9 },
+          { from: 'claude', to: 'gsd', width: 2, pulseSpeed: 0.7 },
+          { from: 'claude', to: 'superpowers', width: 1.8, pulseSpeed: 1.1 },
+          // Inner to outer
+          { from: 'superpowers', to: 'uiux', width: 1, pulseSpeed: 1.5 },
+          { from: 'ralph', to: 'banana', width: 1, pulseSpeed: 1.3 },
+          { from: 'autoresearch', to: 'stitch', width: 1, pulseSpeed: 1.4 },
+          { from: 'gsd', to: 'viking', width: 1.2, pulseSpeed: 1.2 },
+          // Cross-connections (subtle)
+          { from: 'ruflo', to: 'ralph', width: 0.6, pulseSpeed: 2.0 },
+          { from: 'ruflo', to: 'autoresearch', width: 0.6, pulseSpeed: 1.8 },
+          { from: 'gsd', to: 'superpowers', width: 0.8, pulseSpeed: 1.6 },
+          { from: 'viking', to: 'autoresearch', width: 0.7, pulseSpeed: 1.7 },
+        ];
+
+        function repositionNodes() {
+          nodes.forEach(function(n) {
+            n.tx = cx + n.ox;
+            n.ty = cy + n.oy;
+          });
+          workerNodes.forEach(function(w) {
+            w.tx = cx + w.ox;
+            w.ty = cy + w.oy;
           });
         }
 
-        // Start with hub only
-        addLevel(0);
-
-        canvas.addEventListener('click', function(e) {
-          var rect = canvas.getBoundingClientRect();
-          var clickX = e.clientX - rect.left, clickY = e.clientY - rect.top;
-
-          // Check if clicking on a specific node
-          var clickedNode = null;
-          for (var i = nodes.length - 1; i >= 0; i--) {
-            var dx = nodes[i].x - clickX, dy = nodes[i].y - clickY;
-            if (Math.sqrt(dx*dx + dy*dy) < nodes[i].r * nodes[i].scale + 5) {
-              clickedNode = nodes[i];
-              break;
-            }
+        function findNode(id) {
+          for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i].id === id) return nodes[i];
           }
+          return null;
+        }
 
-          if (clickedNode && clickedNode.ring && level === 0) {
-            // Click hub → expand level 1
-            level = 1;
-            addLevel(1);
-            gsap.to('#swarmHint', { opacity: 0, duration: 0.3 });
-            // Pulse the hub
-            gsap.to(clickedNode, { r: 60, duration: 0.2, yoyo: true, repeat: 1 });
-          } else if (level === 1) {
-            // Click anywhere → expand level 2
-            level = 2;
-            addLevel(2);
-            gsap.to('#swarmHint', { opacity: 0, duration: 0.5 });
-          }
+        // Initialize all nodes (hidden)
+        nodeDefs.forEach(function(def) {
+          nodes.push({
+            id: def.id, ox: def.ox, oy: def.oy,
+            x: cx, y: cy, tx: cx + def.ox, ty: cy + def.oy,
+            r: def.r, baseR: def.r,
+            label: def.label, labelKR: def.labelKR, sub: def.sub,
+            color: def.color, tier: def.tier,
+            detail: def.detail, children: def.children,
+            alpha: 0, scale: 0, breathPhase: Math.random() * Math.PI * 2
+          });
         });
 
-        // Mouse interaction — hover detection + repulsion
+        // Initialize worker nodes for Queen
+        workerDefs.forEach(function(def) {
+          workerNodes.push({
+            ox: def.ox, oy: def.oy,
+            x: cx, y: cy, tx: cx + def.ox, ty: cy + def.oy,
+            r: def.r, label: def.label, color: def.color,
+            alpha: 0, orbitAngle: Math.random() * Math.PI * 2,
+            orbitSpeed: 0.3 + Math.random() * 0.4
+          });
+        });
+
+        // Initialize connections
+        connectionDefs.forEach(function(def) {
+          connections.push({
+            fromId: def.from, toId: def.to,
+            width: def.width, pulseSpeed: def.pulseSpeed,
+            alpha: 0, pulsePhase: Math.random() * Math.PI * 2
+          });
+        });
+
+        // === DATA FLOW PARTICLES ===
+        function spawnParticle(conn) {
+          var fromN = findNode(conn.fromId);
+          var toN = findNode(conn.toId);
+          if (!fromN || !toN || fromN.alpha < 0.3 || toN.alpha < 0.3) return;
+          // Randomly choose direction
+          var reverse = Math.random() > 0.5;
+          particles.push({
+            from: reverse ? toN : fromN,
+            to: reverse ? fromN : toN,
+            progress: 0, speed: 0.004 + Math.random() * 0.006,
+            size: 1.5 + Math.random() * 2,
+            color: (reverse ? toN : fromN).color,
+            alpha: 0.8
+          });
+        }
+
+        // === ACTIVATION — staggered reveal ===
+        function activate() {
+          if (activated) return;
+          activated = true;
+          gsap.to('#swarmHint', { opacity: 0, duration: 0.5 });
+
+          // Phase 1: Center hub
+          var hub = nodes[0];
+          gsap.to(hub, { alpha: 1, scale: 1, duration: 1.0, ease: 'back.out(1.5)' });
+
+          // Phase 2: Inner ring (staggered)
+          for (var i = 1; i <= 5; i++) {
+            (function(idx) {
+              gsap.to(nodes[idx], {
+                alpha: 1, scale: 1, x: nodes[idx].tx, y: nodes[idx].ty,
+                duration: 0.9, delay: 0.5 + idx * 0.12, ease: 'back.out(1.4)',
+                onStart: function() { nodes[idx].x = cx; nodes[idx].y = cy; }
+              });
+            })(i);
+          }
+
+          // Phase 3: Outer ring
+          for (var j = 6; j < nodes.length; j++) {
+            (function(idx) {
+              gsap.to(nodes[idx], {
+                alpha: 1, scale: 1, x: nodes[idx].tx, y: nodes[idx].ty,
+                duration: 0.8, delay: 1.2 + (idx - 6) * 0.1, ease: 'back.out(1.3)',
+                onStart: function() { nodes[idx].x = cx; nodes[idx].y = cy; }
+              });
+            })(j);
+          }
+
+          // Phase 4: Connections fade in
+          connections.forEach(function(c, i) {
+            gsap.to(c, { alpha: 1, duration: 0.6, delay: 1.0 + i * 0.06 });
+          });
+
+          // Phase 5: Worker nodes orbit in
+          workerNodes.forEach(function(w, i) {
+            gsap.to(w, { alpha: 0.7, duration: 0.5, delay: 1.5 + i * 0.08 });
+          });
+        }
+
+        // === MOUSE INTERACTION ===
         var mx = -1000, my = -1000;
         canvas.addEventListener('mousemove', function(e) {
           var rect = canvas.getBoundingClientRect();
           mx = e.clientX - rect.left; my = e.clientY - rect.top;
-
-          // Find hovered node
           hoveredNode = null;
           for (var i = nodes.length - 1; i >= 0; i--) {
-            var dx = nodes[i].x - mx, dy = nodes[i].y - my;
-            if (Math.sqrt(dx*dx + dy*dy) < nodes[i].r * nodes[i].scale + 8) {
-              hoveredNode = nodes[i];
+            var n = nodes[i];
+            if (n.alpha < 0.1) continue;
+            var dx = n.x - mx, dy = n.y - my;
+            if (Math.sqrt(dx*dx + dy*dy) < n.r * n.scale + 12) {
+              hoveredNode = n;
               canvas.style.cursor = 'pointer';
-              break;
+              return;
             }
           }
-          if (!hoveredNode) canvas.style.cursor = level < 2 ? 'pointer' : 'default';
+          canvas.style.cursor = 'default';
         });
         canvas.addEventListener('mouseleave', function() { mx = -1000; my = -1000; hoveredNode = null; });
+        canvas.addEventListener('click', function() { activate(); });
 
-        function draw() {
-          ctx.clearRect(0, 0, W, H);
+        // === DRAW HELPERS ===
+        function hexToRgb(hex) {
+          var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+          return [r, g, b];
+        }
 
-          // Draw lines — highlight connections to hovered node
-          lines.forEach(function(l) {
-            if (l.alpha < 0.01) return;
-            var isHighlighted = hoveredNode && (l.from === hoveredNode || l.to === hoveredNode);
+        function drawConnection(c) {
+          var fromN = findNode(c.fromId), toN = findNode(c.toId);
+          if (!fromN || !toN) return;
+          var a = c.alpha * Math.min(fromN.alpha, toN.alpha);
+          if (a < 0.01) return;
+
+          var isHighlighted = hoveredNode && (hoveredNode === fromN || hoveredNode === toN);
+          var pulse = 0.3 + 0.15 * Math.sin(t * c.pulseSpeed + c.pulsePhase);
+          var finalAlpha = a * (isHighlighted ? 0.7 : pulse);
+
+          var rgb = hexToRgb(fromN.color);
+          ctx.beginPath();
+          ctx.moveTo(fromN.x, fromN.y);
+          ctx.lineTo(toN.x, toN.y);
+          ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + finalAlpha + ')';
+          ctx.lineWidth = isHighlighted ? c.width * 1.8 : c.width;
+          ctx.stroke();
+
+          // Glow line on highlight
+          if (isHighlighted) {
             ctx.beginPath();
-            ctx.moveTo(l.from.x, l.from.y);
-            ctx.lineTo(l.to.x, l.to.y);
-            ctx.strokeStyle = isHighlighted
-              ? 'rgba(212,154,92,' + (l.alpha * 1.2) + ')'
-              : 'rgba(212,154,92,' + (l.alpha * 0.3) + ')';
-            ctx.lineWidth = isHighlighted ? 2 : 0.8;
+            ctx.moveTo(fromN.x, fromN.y);
+            ctx.lineTo(toN.x, toN.y);
+            ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.12)';
+            ctx.lineWidth = c.width * 5;
             ctx.stroke();
-          });
+          }
+        }
 
-          // Draw nodes
-          nodes.forEach(function(n) {
-            if (n.alpha < 0.01) return;
-            var isHovered = hoveredNode === n;
-            // Mouse repulsion (gentler)
-            var dx = n.x - mx, dy = n.y - my;
-            var dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < 60 && dist > 0 && !n.ring && !isHovered) {
-              n.x += (dx / dist) * (60 - dist) * 0.08;
-              n.y += (dy / dist) * (60 - dist) * 0.08;
-            }
-            n.x += (n.tx - n.x) * 0.06;
-            n.y += (n.ty - n.y) * 0.06;
-
-            var r = n.r * n.scale;
-            var hoverScale = isHovered ? 1.15 : 1;
-            r *= hoverScale;
-
-            // Outer glow (bigger on hover)
-            ctx.beginPath();
-            ctx.arc(n.x, n.y, r + (isHovered ? 14 : 6), 0, Math.PI * 2);
-            var glowSize = isHovered ? 80 : 50;
-            var alphaHex = Math.round(n.alpha * glowSize).toString(16).padStart(2,'0');
-            try {
-              var grad = ctx.createRadialGradient(n.x, n.y, r * 0.3, n.x, n.y, r + (isHovered ? 14 : 6));
-              grad.addColorStop(0, n.color + alphaHex);
-              grad.addColorStop(1, n.color + '00');
-              ctx.fillStyle = grad;
-              ctx.fill();
-            } catch(e) {}
-
-            // Circle
-            ctx.beginPath();
-            ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(10,10,14,' + (n.alpha * 0.92) + ')';
-            ctx.fill();
-            ctx.strokeStyle = n.color;
-            ctx.globalAlpha = n.alpha * (isHovered ? 1 : 0.7);
-            ctx.lineWidth = isHovered ? 2.5 : (n.ring ? 2 : 1);
-            ctx.stroke();
-            ctx.globalAlpha = 1;
-
-            // Label
-            ctx.fillStyle = n.color;
-            ctx.globalAlpha = n.alpha;
-            ctx.font = (n.ring ? 'bold 14px' : (n.r > 24 ? 'bold 11px' : (n.r > 16 ? '10px' : '8px'))) + ' "JetBrains Mono", monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText(n.label, n.x, n.y + (n.sub ? -4 : 3));
-            if (n.sub) {
-              ctx.globalAlpha = n.alpha * 0.55;
-              ctx.font = (n.r > 24 ? '9px' : '7px') + ' "JetBrains Mono", monospace';
-              ctx.fillText(n.sub, n.x, n.y + 10);
-            }
-            ctx.globalAlpha = 1;
-          });
-
-          // Hover tooltip
-          if (hoveredNode && hoveredNode.detail) {
-            var n = hoveredNode;
-            var tw = 260, th = 70;
-            var tx = n.x + n.r * n.scale + 16;
-            var ty = n.y - th / 2;
-            // Keep on screen
-            if (tx + tw > W - 10) tx = n.x - n.r * n.scale - tw - 16;
-            if (ty < 10) ty = 10;
-            if (ty + th > H - 10) ty = H - th - 10;
-
-            // Tooltip bg
-            ctx.fillStyle = 'rgba(16,16,20,0.95)';
-            ctx.beginPath();
-            ctx.roundRect(tx, ty, tw, th, 8);
-            ctx.fill();
-            ctx.strokeStyle = n.color + '60';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-
-            // Tooltip text
-            ctx.fillStyle = n.color;
-            ctx.font = 'bold 11px "JetBrains Mono", monospace';
-            ctx.textAlign = 'left';
-            ctx.fillText(n.label, tx + 12, ty + 20);
-
-            ctx.fillStyle = 'rgba(200,190,180,0.7)';
-            ctx.font = '10px "Pretendard", sans-serif';
-            // Word-wrap detail text
-            var words = n.detail.split(' ');
-            var line = '', lineY = ty + 38;
-            words.forEach(function(w) {
-              var test = line + w + ' ';
-              if (ctx.measureText(test).width > tw - 24) {
-                ctx.fillText(line, tx + 12, lineY);
-                line = w + ' ';
-                lineY += 14;
-              } else { line = test; }
-            });
-            ctx.fillText(line, tx + 12, lineY);
-
-            // Show children tags
-            if (n.children) {
-              var tagX = tx + 12;
-              var tagY = Math.min(lineY + 18, ty + th - 4);
-              ctx.font = '8px "JetBrains Mono", monospace';
-              n.children.forEach(function(child) {
-                var cw = ctx.measureText(child).width + 10;
-                if (tagX + cw > tx + tw - 8) return;
-                ctx.fillStyle = n.color + '30';
-                ctx.beginPath();
-                ctx.roundRect(tagX, tagY - 8, cw, 14, 3);
-                ctx.fill();
-                ctx.fillStyle = n.color + 'aa';
-                ctx.fillText(child, tagX + 5, tagY + 2);
-                tagX += cw + 4;
-              });
+        function drawNode(n) {
+          if (n.alpha < 0.01) return;
+          var isHovered = hoveredNode === n;
+          var isConnectedToHovered = false;
+          if (hoveredNode && hoveredNode !== n) {
+            for (var ci = 0; ci < connections.length; ci++) {
+              var c = connections[ci];
+              if ((c.fromId === hoveredNode.id && c.toId === n.id) ||
+                  (c.toId === hoveredNode.id && c.fromId === n.id)) {
+                isConnectedToHovered = true; break;
+              }
             }
           }
+
+          // Breathing animation
+          var breath = Math.sin(t * 0.8 + n.breathPhase) * 0.04;
+          var r = n.baseR * n.scale * (1 + breath);
+          if (isHovered) r *= 1.18;
+
+          // Ease position
+          n.x += (n.tx - n.x) * 0.08;
+          n.y += (n.ty - n.y) * 0.08;
+
+          var rgb = hexToRgb(n.color);
+
+          // === QUEEN SPECIAL: hexagonal crown + extra glow ===
+          if (n.tier === 'queen') {
+            // Massive pulsing aura
+            var queenPulse = 0.4 + 0.3 * Math.sin(t * 1.2);
+            var auraR = r + 25 + 10 * Math.sin(t * 0.6);
+            var grad = ctx.createRadialGradient(n.x, n.y, r * 0.5, n.x, n.y, auraR);
+            grad.addColorStop(0, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (n.alpha * queenPulse * 0.35) + ')');
+            grad.addColorStop(0.6, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (n.alpha * queenPulse * 0.1) + ')');
+            grad.addColorStop(1, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0)');
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, auraR, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // Hexagonal ring (crown)
+            ctx.beginPath();
+            for (var hi = 0; hi < 6; hi++) {
+              var ha = (hi / 6) * Math.PI * 2 - Math.PI / 2 + t * 0.15;
+              var hx = n.x + (r + 8) * Math.cos(ha);
+              var hy = n.y + (r + 8) * Math.sin(ha);
+              if (hi === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+            }
+            ctx.closePath();
+            ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (n.alpha * 0.5) + ')';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+
+          // === RALPH SPECIAL: orbital loop ring ===
+          if (n.id === 'ralph') {
+            ctx.beginPath();
+            ctx.ellipse(n.x, n.y, r + 18, r + 10, t * 0.4, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (n.alpha * 0.25) + ')';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 6]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            // Orbiting dot
+            var loopAngle = t * 1.5;
+            var dotX = n.x + (r + 18) * Math.cos(loopAngle) * Math.cos(t * 0.4) - (r + 10) * Math.sin(loopAngle) * Math.sin(t * 0.4);
+            var dotY = n.x + (r + 18) * Math.cos(loopAngle) * Math.sin(t * 0.4) + (r + 10) * Math.sin(loopAngle) * Math.cos(t * 0.4);
+            // Simplified orbit dot
+            var odx = n.x + (r + 16) * Math.cos(loopAngle);
+            var ody = n.y + (r + 10) * Math.sin(loopAngle);
+            ctx.beginPath();
+            ctx.arc(odx, ody, 3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (n.alpha * 0.9) + ')';
+            ctx.fill();
+          }
+
+          // === AUTORESEARCH SPECIAL: competing agent arcs ===
+          if (n.id === 'autoresearch') {
+            for (var ai = 0; ai < 5; ai++) {
+              var arcStart = (ai / 5) * Math.PI * 2 + t * 0.3;
+              var arcLen = 0.3 + 0.15 * Math.sin(t * 1.5 + ai);
+              ctx.beginPath();
+              ctx.arc(n.x, n.y, r + 12 + ai * 3, arcStart, arcStart + arcLen);
+              ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (n.alpha * (0.15 + ai * 0.05)) + ')';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+            }
+          }
+
+          // Outer glow (all nodes)
+          var glowR = r + (isHovered ? 20 : 8);
+          var glowAlpha = isHovered ? 0.35 : (isConnectedToHovered ? 0.2 : 0.12);
+          try {
+            var grad2 = ctx.createRadialGradient(n.x, n.y, r * 0.4, n.x, n.y, glowR);
+            grad2.addColorStop(0, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (n.alpha * glowAlpha) + ')');
+            grad2.addColorStop(1, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0)');
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, glowR, 0, Math.PI * 2);
+            ctx.fillStyle = grad2;
+            ctx.fill();
+          } catch(e) {}
+
+          // Main circle body
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(8,8,12,' + (n.alpha * 0.94) + ')';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (n.alpha * (isHovered ? 1 : 0.65)) + ')';
+          ctx.lineWidth = isHovered ? 2.5 : (n.tier === 'center' ? 2 : (n.tier === 'queen' ? 1.8 : 1));
+          ctx.stroke();
+
+          // === CENTER NODE: double ring ===
+          if (n.tier === 'center') {
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r + 5, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (n.alpha * 0.25) + ')';
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+          }
+
+          // === LABELS ===
+          var dimFactor = (!isHovered && hoveredNode && !isConnectedToHovered) ? 0.35 : 1;
+          ctx.textAlign = 'center';
+
+          // English label
+          ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (n.alpha * 0.95 * dimFactor) + ')';
+          var fontSize = n.tier === 'center' ? 14 : (n.tier === 'queen' ? 13 : (n.r > 34 ? 11 : (n.r > 28 ? 10 : 9)));
+          ctx.font = 'bold ' + fontSize + 'px "JetBrains Mono", monospace';
+          ctx.fillText(n.label, n.x, n.y - (n.labelKR ? 6 : (n.sub ? -2 : 3)));
+
+          // Korean sub-label
+          if (n.labelKR) {
+            ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (n.alpha * 0.5 * dimFactor) + ')';
+            ctx.font = (n.r > 34 ? '9px' : '8px') + ' "Pretendard", sans-serif';
+            ctx.fillText(n.labelKR, n.x, n.y + 6);
+          }
+
+          // Tech sub-label (smaller, below Korean)
+          if (n.sub) {
+            ctx.fillStyle = 'rgba(180,170,160,' + (n.alpha * 0.4 * dimFactor) + ')';
+            ctx.font = (n.r > 34 ? '8px' : '7px') + ' "JetBrains Mono", monospace';
+            ctx.fillText(n.sub, n.x, n.y + (n.labelKR ? 17 : 12));
+          }
+        }
+
+        function drawWorkers() {
+          var queen = findNode('ruflo');
+          if (!queen || queen.alpha < 0.1) return;
+
+          workerNodes.forEach(function(w) {
+            if (w.alpha < 0.01) return;
+            // Orbit around queen
+            w.orbitAngle += w.orbitSpeed * 0.016;
+            var orbitR = 60 + 15 * Math.sin(w.orbitAngle * 0.5);
+            var wx = queen.x + orbitR * Math.cos(w.orbitAngle);
+            var wy = queen.y + orbitR * Math.sin(w.orbitAngle) * 0.5 - 25;
+
+            // Connection to queen
+            var rgb = hexToRgb(w.color);
+            ctx.beginPath();
+            ctx.moveTo(queen.x, queen.y);
+            ctx.lineTo(wx, wy);
+            ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (w.alpha * 0.15) + ')';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+
+            // Worker dot
+            ctx.beginPath();
+            ctx.arc(wx, wy, w.r * (0.8 + 0.2 * Math.sin(t * 2 + w.orbitAngle)), 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (w.alpha * 0.6) + ')';
+            ctx.fill();
+
+            // Tiny glow
+            var wGrad = ctx.createRadialGradient(wx, wy, 0, wx, wy, w.r + 4);
+            wGrad.addColorStop(0, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (w.alpha * 0.2) + ')');
+            wGrad.addColorStop(1, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0)');
+            ctx.beginPath();
+            ctx.arc(wx, wy, w.r + 4, 0, Math.PI * 2);
+            ctx.fillStyle = wGrad;
+            ctx.fill();
+          });
+        }
+
+        function drawParticles() {
+          for (var i = particles.length - 1; i >= 0; i--) {
+            var p = particles[i];
+            p.progress += p.speed;
+            if (p.progress >= 1) { particles.splice(i, 1); continue; }
+
+            var px = p.from.x + (p.to.x - p.from.x) * p.progress;
+            var py = p.from.y + (p.to.y - p.from.y) * p.progress;
+            // Fade in/out
+            var pa = p.alpha * Math.sin(p.progress * Math.PI);
+            var rgb = hexToRgb(p.color);
+
+            ctx.beginPath();
+            ctx.arc(px, py, p.size, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + pa + ')';
+            ctx.fill();
+          }
+        }
+
+        function drawTooltip() {
+          if (!hoveredNode || !hoveredNode.detail) return;
+          var n = hoveredNode;
+          var tw = 280, th = 90;
+          var tx = n.x + n.r * n.scale + 20;
+          var ty = n.y - th / 2;
+          if (tx + tw > W - 10) tx = n.x - n.r * n.scale - tw - 20;
+          if (ty < 10) ty = 10;
+          if (ty + th > H - 10) ty = H - th - 10;
+
+          var rgb = hexToRgb(n.color);
+
+          // Tooltip bg
+          ctx.fillStyle = 'rgba(12,12,16,0.96)';
+          ctx.beginPath();
+          ctx.roundRect(tx, ty, tw, th, 10);
+          ctx.fill();
+
+          // Border with node color
+          ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.4)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          // Accent line at top
+          ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.8)';
+          ctx.beginPath();
+          ctx.roundRect(tx, ty, tw, 3, [10, 10, 0, 0]);
+          ctx.fill();
+
+          // Title
+          ctx.fillStyle = n.color;
+          ctx.font = 'bold 12px "JetBrains Mono", monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText(n.label, tx + 14, ty + 22);
+
+          // Detail text — word wrapped
+          ctx.fillStyle = 'rgba(200,190,180,0.75)';
+          ctx.font = '10px "Pretendard", sans-serif';
+          var words = n.detail.split(' ');
+          var line = '', lineY = ty + 40;
+          words.forEach(function(w) {
+            var test = line + w + ' ';
+            if (ctx.measureText(test).width > tw - 28) {
+              ctx.fillText(line, tx + 14, lineY);
+              line = w + ' '; lineY += 14;
+            } else { line = test; }
+          });
+          ctx.fillText(line, tx + 14, lineY);
+
+          // Children tags
+          if (n.children) {
+            var tagX = tx + 14;
+            var tagY = Math.min(lineY + 18, ty + th - 6);
+            ctx.font = '8px "JetBrains Mono", monospace';
+            n.children.forEach(function(child) {
+              var cw = ctx.measureText(child).width + 10;
+              if (tagX + cw > tx + tw - 10) return;
+              ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.15)';
+              ctx.beginPath();
+              ctx.roundRect(tagX, tagY - 8, cw, 14, 3);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.7)';
+              ctx.fillText(child, tagX + 5, tagY + 2);
+              tagX += cw + 4;
+            });
+          }
+        }
+
+        // === AMBIENT BACKGROUND — subtle grid ===
+        function drawAmbient() {
+          // Radial rings from center (very subtle)
+          for (var ri = 1; ri <= 3; ri++) {
+            var ringR = ri * 140;
+            var ringAlpha = 0.04 + 0.02 * Math.sin(t * 0.3 + ri);
+            ctx.beginPath();
+            ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(212,154,92,' + ringAlpha + ')';
+            ctx.lineWidth = 0.5;
+            ctx.setLineDash([2, 8]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+        }
+
+        // === MAIN DRAW LOOP ===
+        var particleTimer = 0;
+        function draw() {
+          t += 0.016; // ~60fps time step
+          ctx.clearRect(0, 0, W, H);
+
+          drawAmbient();
+
+          // Spawn particles periodically
+          particleTimer += 0.016;
+          if (particleTimer > 0.15 && activated) {
+            particleTimer = 0;
+            var ci = Math.floor(Math.random() * connections.length);
+            spawnParticle(connections[ci]);
+          }
+
+          // Draw layers back-to-front
+          connections.forEach(drawConnection);
+          drawParticles();
+          drawWorkers();
+
+          // Draw nodes: outer first, then inner, then center (so center is on top)
+          for (var i = nodes.length - 1; i >= 0; i--) drawNode(nodes[i]);
+
+          drawTooltip();
 
           requestAnimationFrame(draw);
         }
         draw();
+
+        // Expose activate for scroll trigger
+        window._swarmActivate = activate;
       })();
       </script>
 
@@ -6033,20 +6366,16 @@
         });
       })();
 
-      // ---- AI SWARM — auto-expand on scroll ----
+      // ---- AI SWARM — auto-activate on scroll ----
       (function(){
         var swarm = document.getElementById('swarmCanvas');
         if (!swarm) return;
-        var swarmClicked = false;
 
-        // Auto-trigger first expansion on scroll
+        // Auto-trigger activation on scroll
         ScrollTrigger.create({
           trigger: '#swarmContainer', start: 'top 65%', once: true,
           onEnter: function(){
-            // Auto-click to show Level 1 after 1s
-            setTimeout(function(){ swarm.click(); }, 800);
-            // Auto-click Level 2 after 3s
-            setTimeout(function(){ swarm.click(); }, 3000);
+            setTimeout(function(){ if (window._swarmActivate) window._swarmActivate(); }, 600);
           }
         });
 
