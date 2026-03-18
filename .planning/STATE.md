@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.3
 milestone_name: UI/UX Polish + Performance
 status: executing
-stopped_at: Completed 43-03-PLAN.md
-last_updated: "2026-03-18T03:52:08.837Z"
+stopped_at: Completed 44-02-PLAN.md
+last_updated: "2026-03-18T07:31:51.097Z"
 last_activity: 2026-03-18 -- Completed 43-02 localization string enrichment
 progress:
-  total_phases: 12
+  total_phases: 13
   completed_phases: 10
-  total_plans: 26
-  completed_plans: 23
+  total_plans: 28
+  completed_plans: 24
   percent: 85
 ---
 
@@ -46,6 +46,7 @@ Progress: [█████████░] 85%
 | v3.3 | 5 | 8 | 32/32 |
 | v3.5 | 6 | 16 | 12/12 |
 | Phase 43 P03 | 3min | 2 tasks | 11 files |
+| Phase 44 P02 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,7 @@ Progress: [█████████░] 85%
 - [Phase 43-02]: Added SKILL_SACRED_FLAME_NAME entry to reach 40 LocStr target (original had 29 not 30)
 - [Phase 43-03]: HolyShield CharacterKey=Grimjaw (matching 43-01 skill assignments)
 - [Phase 43-03]: SealedLibrary UITextureName=region_sealed_library for naming consistency
+- [Phase 44]: Use or ready instead of .get(status, ready) to handle both missing key AND None value
 
 ### Next Session Plan
 
@@ -95,6 +97,6 @@ Then decide on next milestone (v4.0?).
 
 ## Session Continuity
 
-Last session: 2026-03-18T03:47:32.598Z
-Stopped at: Completed 43-03-PLAN.md
+Last session: 2026-03-18T07:31:51.093Z
+Stopped at: Completed 44-02-PLAN.md
 Resume file: None

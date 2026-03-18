@@ -271,7 +271,7 @@ Plans:
 **Milestone Goal:** Audit and elevate all mock/showcase data to maximize demo WOW factor. Ensure every page has rich, interconnected data that tells a compelling story and shows off every feature at its best.
 
 - [x] **Phase 43: Mockdata Quality Audit + WOW Amplification** - Deep audit of all mock data (gamedata, localization, codex, map, TM) for quality, completeness, and WOW-factor contribution (completed 2026-03-18)
-- [ ] **Phase 44: WOW Data Wiring** - Wire code to fully leverage Phase 43 mockdata: typed relationship graph links, Right Panel image/audio/context auto-detection, TM endpoint fix, codex description mapping
+- [x] **Phase 44: WOW Data Wiring** - Wire code to fully leverage Phase 43 mockdata: typed relationship graph links, Right Panel image/audio/context auto-detection, TM endpoint fix, codex description mapping (completed 2026-03-18)
 
 ### Phase 43: Mockdata Quality Audit + WOW Amplification
 **Goal**: Audit every piece of mock data across all 5 pages to ensure it creates maximum WOW effect — rich entity relationships, compelling Korean translations, vivid character descriptions, meaningful TM matches, and interconnected cross-references that make the demo feel like a real game world
