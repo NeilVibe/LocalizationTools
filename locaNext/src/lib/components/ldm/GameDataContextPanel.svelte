@@ -633,11 +633,13 @@
                 {/if}
                 {#if mediaData.has_audio}
                   <div class="media-audio-wrap">
-                    <audio controls preload="metadata" crossorigin="anonymous" class="media-audio-player"
-                      onerror={() => logger.warning('Audio playback failed', { url: mediaData.stream_url })}
-                    >
-                      <source src="{API_BASE}{mediaData.stream_url}" type="audio/wav" />
-                    </audio>
+                    {#key mediaData.stream_url}
+                      <audio controls preload="metadata" crossorigin="anonymous" class="media-audio-player"
+                        onerror={() => logger.warning('Audio playback failed', { url: mediaData.stream_url })}
+                        src="{API_BASE}{mediaData.stream_url}"
+                      >
+                      </audio>
+                    {/key}
                     <span class="media-label">{mediaData.voice_id || 'audio'}</span>
                   </div>
                 {/if}
