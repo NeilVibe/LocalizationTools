@@ -1749,7 +1749,7 @@ def transfer_folder_to_folder(
         match_mode: "strict", "strict_fuzzy", "stringid_only",
                     "strorigin_only", "strorigin_only_fuzzy",
                     "strorigin_descorigin", "strorigin_descorigin_fuzzy",
-                    or "strorigin_filename"
+                    "strorigin_filename", or "strorigin_filename_fuzzy"
         dry_run: If True, don't write changes
         progress_callback: Optional callback for progress updates
         threshold: Similarity threshold for fuzzy modes (defaults to config.FUZZY_THRESHOLD_DEFAULT)
@@ -2428,7 +2428,7 @@ def transfer_folder_to_folder(
         "strict", "strorigin_only", "stringid_only",
         "strict_fuzzy", "strorigin_only_fuzzy",
         "strorigin_descorigin", "strorigin_descorigin_fuzzy",
-        "strorigin_filename",
+        "strorigin_filename", "strorigin_filename_fuzzy",
     }
     _remaining_targets = {}  # Targets that need per-file processing (Excel only)
 

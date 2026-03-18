@@ -1653,15 +1653,7 @@ class QuickTranslateApp:
         if match_type != "stringid_only":
             self.stringid_all_frame.pack_forget()
 
-        if match_type == "strorigin_filename":
-            # strorigin_filename: no fuzzy, no unique-only, no non-script — just scope + transfer
-            self.precision_options_frame.pack_forget()
-            self.unique_only_frame.pack_forget()
-            self.strict_non_script_frame.pack_forget()
-            self.transfer_btn.config(state='normal')
-            self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
-            self._bind_mousewheel_recursive(self.transfer_scope_frame)
-        elif match_type in ("strict", "strorigin_only", "strorigin_descorigin"):
+        if match_type in ("strict", "strorigin_only", "strorigin_descorigin", "strorigin_filename"):
             self.precision_options_frame.pack(fill=tk.X, pady=(4, 0))
             # Show/hide the fuzzy sub-frame based on current precision
             self._on_precision_changed()
@@ -1676,7 +1668,7 @@ class QuickTranslateApp:
                 self._bind_mousewheel_recursive(self.unique_only_frame)
                 self.strict_non_script_frame.pack_forget()
             else:
-                # strict or strorigin_descorigin — both have StringID for category filtering
+                # strict, strorigin_descorigin, or strorigin_filename — show non-script filter
                 self.unique_only_frame.pack_forget()
                 self.strict_non_script_frame.pack(fill=tk.X, pady=(4, 0))
                 self._bind_mousewheel_recursive(self.strict_non_script_frame)
@@ -3216,8 +3208,8 @@ class QuickTranslateApp:
 
             only_untranslated = transfer_scope == "untranslated"
 
-            # For strict/strorigin_only with fuzzy precision, need model + FAISS index
-            if precision == "fuzzy" and match_type in ("strict", "strorigin_only", "strorigin_descorigin"):
+            # For modes with fuzzy precision, need model + FAISS index
+            if precision == "fuzzy" and match_type in ("strict", "strorigin_only", "strorigin_descorigin", "strorigin_filename"):
                 if not self._ensure_fuzzy_model():
                     return
                 if not self._ensure_fuzzy_index(str(target), stringid_filter=source_stringids, only_untranslated=only_untranslated):
@@ -3237,7 +3229,7 @@ class QuickTranslateApp:
             elif match_type == "strict":
                 transfer_match_mode = "strict_fuzzy" if precision == "fuzzy" else "strict"
             elif match_type == "strorigin_filename":
-                transfer_match_mode = "strorigin_filename"
+                transfer_match_mode = "strorigin_filename_fuzzy" if precision == "fuzzy" else "strorigin_filename"
             else:
                 transfer_match_mode = "strict"
 
@@ -3252,14 +3244,14 @@ class QuickTranslateApp:
             }
             if unique_only:
                 transfer_kwargs["unique_only"] = True
-            if non_script_only and match_type in ("strict", "strorigin_descorigin"):
+            if non_script_only and match_type in ("strict", "strorigin_descorigin", "strorigin_filename"):
                 transfer_kwargs["strict_non_script_only"] = True
             if stringid_all and match_type == "stringid_only":
                 transfer_kwargs["stringid_all_categories"] = True
 
             # Pass threshold AND pre-built fuzzy data for fuzzy modes
             # CRITICAL: Without this, transfer functions rebuild from scratch!
-            if precision == "fuzzy" and match_type in ("strict", "strorigin_only", "strorigin_descorigin"):
+            if precision == "fuzzy" and match_type in ("strict", "strorigin_only", "strorigin_descorigin", "strorigin_filename"):
                 transfer_kwargs["threshold"] = fuzzy_threshold
                 transfer_kwargs["fuzzy_model"] = self._fuzzy_model
                 transfer_kwargs["fuzzy_texts"] = self._fuzzy_texts
