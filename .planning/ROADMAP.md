@@ -317,7 +317,7 @@ Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 | 39. Codex Cards + Relationship Graph | v3.5 | 2/2 | Complete | 2026-03-17 |
 | 40. Cross-cutting WOW Polish | v3.5 | 2/2 | Complete | 2026-03-17 |
 | 41. Qwen3-TTS Korean Voice | v3.5 | 2/2 | Complete | 2026-03-18 |
-| 42. LanguageData Fix + WOW Showcase | v3.5 | 0/3 | Planned | - |
+| 42. LanguageData Fix + WOW Showcase | v3.5 | 3/3 | Complete | 2026-03-18 |
 
 ---
 *Roadmap created: 2026-03-14*

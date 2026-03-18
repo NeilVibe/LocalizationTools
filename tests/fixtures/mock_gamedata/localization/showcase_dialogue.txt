@@ -1,0 +1,28 @@
+DLG_VARON_001					The stars speak of a great darkness approaching.	별들이 다가오는 거대한 어둠에 대해 이야기합니다.
+DLG_VARON_002					I have guarded this village for three hundred years. I will not abandon it now.	나는 300년간 이 마을을 지켜왔습니다. 지금 포기하지 않겠습니다.
+DLG_VARON_003					The Blackstar Sword was forged in an age when gods still walked among mortals.	흑성검은 신들이 아직 필멸자들 사이를 걸어다니던 시대에 단조되었습니다.
+DLG_VARON_004					Trust is earned through deeds, not words, young one.	신뢰는 말이 아닌 행동으로 얻는 것이다, 젊은이여.
+DLG_VARON_005					When the last star falls, even the elders must fight.	마지막 별이 떨어질 때, 장로들도 싸워야 합니다.
+DLG_KIRA_001					My arrows never miss. Want me to prove it?	내 화살은 절대 빗나가지 않아. 증명해 볼까?
+DLG_KIRA_002					The forest has eyes, and they are watching us.	숲에는 눈이 있고, 그들이 우리를 지켜보고 있어.
+DLG_KIRA_003					I scout ahead. Stay close and stay quiet.	내가 앞서 정찰할게. 가까이 있고 조용히 해.
+DLG_KIRA_004					Drakmar's spells leave traces in the air. I can track him.	드라크마르의 주문은 공기 중에 흔적을 남겨. 추적할 수 있어.
+DLG_KIRA_005					Even the swiftest arrow cannot outrun fate.	가장 빠른 화살도 운명을 앞지를 수는 없어.
+DLG_GRIMJAW_001					This blade needs more fire. Bring me volcanic ore.	이 칼날에 불이 더 필요해. 화산 광석을 가져와.
+DLG_GRIMJAW_002					I forged the Moonstone Amulet during the Third Eclipse.	나는 세 번째 일식 때 월석 부적을 단조했다.
+DLG_GRIMJAW_003					Every weapon tells a story. This hammer has told a thousand.	모든 무기에는 이야기가 있어. 이 망치는 천 개의 이야기를 했지.
+DLG_GRIMJAW_004					Steel remembers the hand that shaped it.	강철은 자신을 만든 손을 기억한다.
+DLG_GRIMJAW_005					The forge burns eternal. As long as it does, hope remains.	대장간의 불은 영원히 타오른다. 그것이 타오르는 한, 희망은 남아 있다.
+DLG_LUNE_001					I mapped every shadow in the Forgotten Fortress.	나는 잊혀진 요새의 모든 그림자를 지도에 기록했어.
+DLG_LUNE_002					Information is the sharpest weapon. Remember that.	정보가 가장 날카로운 무기야. 기억해.
+DLG_LUNE_003					Three routes to the summit. Two are trapped. Choose wisely.	정상으로 가는 세 갈래 길. 둘은 함정이야. 현명하게 선택해.
+DLG_LUNE_004					The merchant guild knows more than they reveal.	상인 길드는 드러내는 것보다 더 많은 것을 알고 있어.
+DLG_LUNE_005					Every map I draw brings us closer to the truth.	내가 그리는 모든 지도는 우리를 진실에 더 가까이 데려다줘.
+DLG_DRAKMAR_001					The ancient spells are not lost. They are hidden.	고대의 주문은 잃어버린 것이 아니다. 숨겨져 있을 뿐이다.
+DLG_DRAKMAR_002					Power without wisdom is a curse, not a blessing.	지혜 없는 힘은 축복이 아니라 저주다.
+DLG_DRAKMAR_003					I sense dark magic emanating from the eastern ruins.	동쪽 폐허에서 어둠의 마법이 흘러나오는 것을 감지합니다.
+DLG_DRAKMAR_004					The Plague Cure requires ingredients from all five regions.	역병 치료제에는 다섯 지역 모두의 재료가 필요합니다.
+DLG_DRAKMAR_005					When magic fades from this world, so does all that we cherish.	이 세상에서 마법이 사라지면, 우리가 소중히 여기는 모든 것도 사라집니다.
+DLG_VARON_006					The Moonstone Amulet protects its bearer from shadow corruption.	월석 부적은 착용자를 그림자 부패로부터 보호합니다.
+DLG_KIRA_006					We move at dawn. Pack light — speed is our advantage.	새벽에 이동해. 가볍게 챙겨 — 속도가 우리의 장점이야.
+DLG_GRIMJAW_006					The Blackstar Sword... I forged it with tears of a dying star.	흑성검... 나는 그것을 죽어가는 별의 눈물로 단조했다.

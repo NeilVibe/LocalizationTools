@@ -1,7 +1,7 @@
 ---
 name: extractanything-specialist
 description: ExtractAnything project specialist. Use when working on extraction, diff, long string, no-voice, blacklist, string eraser, string add, file eraser tabs, or XML/Excel I/O operations.
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__openviking__*
 model: opus
 ---
 

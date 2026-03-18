@@ -8,6 +8,7 @@ save inline edits back to XML files.
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -25,6 +26,9 @@ from server.tools.ldm.schemas.gamedata import (
     BrowseRequest,
     CrossRefItem,
     CrossRefsResponse,
+    DictionaryLookupRequest,
+    DictionaryLookupResponse,
+    DictionaryMatch,
     FileColumnsRequest,
     FileColumnsResponse,
     FolderTreeDataRequest,
@@ -60,7 +64,7 @@ from server.tools.ldm.services.gamedata_browse_service import (
 from server.tools.ldm.services.gamedata_context_service import get_gamedata_context_service
 from server.tools.ldm.services.gamedata_edit_service import GameDataEditService
 from server.tools.ldm.services.gamedata_tree_service import GameDataTreeService
-from server.repositories import get_row_repository
+from server.repositories import get_row_repository, get_tm_repository
 
 
 router = APIRouter(tags=["GameData"])
@@ -621,4 +625,140 @@ async def get_ai_summary(
         summary=summary,
         model="qwen3",
         available=True,
+    )
+
+
+# =============================================================================
+# Dictionary Lookup endpoint (Phase 38A)
+# =============================================================================
+
+
+def _tier_to_match_type(tier: int) -> str:
+    """Map cascade tier number to match_type category."""
+    if tier <= 1:
+        return "exact"
+    elif tier <= 4:
+        return "similar"
+    return "fuzzy"
+
+
+@router.post("/gamedata/dictionary-lookup", response_model=DictionaryLookupResponse)
+async def dictionary_lookup(
+    request: DictionaryLookupRequest,
+    user=Depends(get_current_active_user_async),
+    row_repo=Depends(get_row_repository),
+    tm_repo=Depends(get_tm_repository),
+):
+    """Search for matching terms in loaded gamedata index + TM entries.
+
+    Combines results from the 6-tier cascade search (gamedata index) and
+    TM suggestion service (language data). Deduplicates by source text
+    and returns sorted by score descending.
+    """
+    start = time.perf_counter()
+    results: list[DictionaryMatch] = []
+    # Dedup within each category: gamedata entities vs TM translations
+    seen_gamedata: set[str] = set()
+    seen_tm: set[str] = set()
+
+    # --- 1. Gamedata index search (if index is built) ---
+    indexer = get_gamedata_indexer()
+    if indexer.is_ready:
+        try:
+            searcher = GameDataSearcher(indexer.indexes)
+            cascade = searcher.search(
+                request.text,
+                top_k=request.top_k,
+                threshold=request.threshold,
+            )
+            tier = cascade["tier"]
+            tier_name = cascade["tier_name"]
+
+            for r in cascade["results"]:
+                source = r.get("entity_name", "")
+                if not source or source in seen_gamedata:
+                    continue
+                seen_gamedata.add(source)
+                results.append(DictionaryMatch(
+                    source=source,
+                    target=r.get("entity_desc", ""),
+                    score=r.get("score", 0.0),
+                    tier=tier,
+                    tier_name=tier_name,
+                    match_type=_tier_to_match_type(tier),
+                ))
+        except Exception as e:
+            logger.warning(f"[DictionaryLookup] Gamedata search failed: {e}")
+
+    def _add_tm_result(source: str, target: str, similarity: float, tier_label: str):
+        """Add a TM translation result (deduped separately from gamedata)."""
+        if not source or source in seen_tm:
+            return
+        seen_tm.add(source)
+        if similarity >= 0.99:
+            match_type, tier = "exact", 1
+        elif similarity >= 0.90:
+            match_type, tier = "similar", 2
+        else:
+            match_type, tier = "fuzzy", 5
+        results.append(DictionaryMatch(
+            source=source,
+            target=target,
+            score=similarity,
+            tier=tier,
+            tier_name=tier_label,
+            match_type=match_type,
+        ))
+
+    # --- 2. TM suggestions from project rows (if loaded) ---
+    try:
+        tm_results = await row_repo.suggest_similar(
+            source=request.text,
+            threshold=request.threshold,
+            max_results=request.top_k,
+        )
+        for s in tm_results:
+            _add_tm_result(
+                s.get("source", ""),
+                s.get("target", ""),
+                s.get("similarity", 0.0),
+                "tm_suggestion",
+            )
+    except Exception as e:
+        logger.debug(f"[DictionaryLookup] TM suggest failed (expected offline): {e}")
+
+    # --- 3. TM entries search (Translation Memory databases) ---
+    try:
+        all_tms = await tm_repo.get_all()
+        for tm in all_tms:
+            tm_id = tm.get("id") if isinstance(tm, dict) else getattr(tm, "id", None)
+            if not tm_id:
+                continue
+            tm_entries = await tm_repo.search_similar(
+                tm_id=tm_id,
+                source=request.text,
+                threshold=request.threshold,
+                max_results=request.top_k,
+            )
+            tm_name = (tm.get("name") if isinstance(tm, dict) else getattr(tm, "name", "TM"))
+            for s in tm_entries:
+                _add_tm_result(
+                    s.get("source", ""),
+                    s.get("target", ""),
+                    s.get("similarity", 0.0),
+                    f"tm:{tm_name}",
+                )
+    except Exception as e:
+        logger.debug(f"[DictionaryLookup] TM entries search failed: {e}")
+
+    # --- 4. Sort by score descending, cap at top_k ---
+    results.sort(key=lambda m: m.score, reverse=True)
+    results = results[: request.top_k]
+
+    elapsed_ms = (time.perf_counter() - start) * 1000
+
+    return DictionaryLookupResponse(
+        results=results,
+        query=request.text,
+        search_time_ms=round(elapsed_ms, 2),
     )

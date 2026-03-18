@@ -1,7 +1,7 @@
 ---
 name: quicktranslate-specialist
 description: QuickTranslate project specialist. Use when working on the QuickTranslate tool - translation LOOKUP, multi-language search, TRANSFER corrections to XML, match types (Substring/StringID-only/Strict/Special Key), or Excel/XML I/O functionality.
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__openviking__*
 model: opus
 ---
 

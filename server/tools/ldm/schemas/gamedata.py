@@ -347,3 +347,35 @@ class AISummaryResponse(BaseModel):
     summary: str
     model: str = "qwen3"
     available: bool = True
+
+
+# =============================================================================
+# Dictionary Lookup schemas (Phase 38A)
+# =============================================================================
+
+
+class DictionaryLookupRequest(BaseModel):
+    """Request for dictionary lookup endpoint."""
+
+    text: str
+    threshold: float = 0.80
+    top_k: int = 10
+
+
+class DictionaryMatch(BaseModel):
+    """A single dictionary lookup result."""
+
+    source: str
+    target: str = ""
+    score: float
+    tier: int
+    tier_name: str
+    match_type: str  # "exact", "similar", "fuzzy"
+
+
+class DictionaryLookupResponse(BaseModel):
+    """Response for dictionary lookup endpoint."""
+
+    results: List[DictionaryMatch]
+    query: str
+    search_time_ms: float

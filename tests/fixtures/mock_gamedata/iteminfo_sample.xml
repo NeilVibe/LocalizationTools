@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<ItemInfoList>
-  <ItemInfo ItemName="Iron Sword" StrKey="STR_ITEM_IRON_SWORD" ItemType="Weapon" Grade="Common" />
-  <ItemInfo ItemName="Health Potion" StrKey="STR_ITEM_HEALTH_POTION" ItemType="Consumable" Grade="Common" />
-  <ItemInfo ItemName="Dragon Scale Armor" StrKey="STR_ITEM_DRAGON_SCALE" ItemType="Armor" Grade="Legendary" />
-  <ItemInfo ItemName="Shadow Dagger" StrKey="STR_ITEM_SHADOW_DAGGER" ItemType="Weapon" Grade="Rare" />
-  <ItemInfo ItemName="Elixir of Wisdom" StrKey="STR_ITEM_ELIXIR_WISDOM" ItemType="Consumable" Grade="Epic" />
-</ItemInfoList>

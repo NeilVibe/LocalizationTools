@@ -1,7 +1,7 @@
 ---
 name: security-auditor
 description: Security auditor for LocaNext. Use to check for vulnerabilities, OWASP top 10, secrets in code, injection risks, and authentication issues.
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, mcp__openviking__*
 model: opus
 ---
 

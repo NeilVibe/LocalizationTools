@@ -132,6 +132,29 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Redis cache initialization skipped: {e}")
 
+    # Auto-build gamedata index (in-memory, lost on restart)
+    try:
+        from server.tools.ldm.indexing.gamedata_indexer import get_gamedata_indexer
+        from server.tools.ldm.services.gamedata_tree_service import GameDataTreeService
+        from server.tools.ldm.services.gamedata_context_service import get_gamedata_context_service
+
+        base_dir = Path(__file__).parent.parent
+        mock_dir = base_dir / "tests" / "fixtures" / "mock_gamedata"
+        gd_base = mock_dir if mock_dir.is_dir() else base_dir
+
+        tree_service = GameDataTreeService(base_dir=gd_base)
+        folder_data = tree_service.parse_folder("StaticInfo")
+        if folder_data.total_nodes > 0:
+            indexer = get_gamedata_indexer()
+            result = indexer.build_from_folder_tree(folder_data)
+            context_service = get_gamedata_context_service()
+            context_service.build_reverse_index(folder_data)
+            logger.success(f"GameData index auto-built: {result.get('entity_count', 0)} entities")
+        else:
+            logger.info("GameData: no StaticInfo entities found, skipping auto-index")
+    except Exception as e:
+        logger.warning(f"GameData auto-index skipped: {e}")
+
     logger.success("Server startup complete")
 
     yield  # Server runs here

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<CharacterInfoList>
-  <CharacterInfo CharacterName="Varon" StrKey="STR_CHAR_VARON" KnowledgeKey="KNOW_CHAR_VARON" Gender="Male" Age="45" Job="Elder" Race="Human" />
-  <CharacterInfo CharacterName="Kira" StrKey="STR_CHAR_KIRA" KnowledgeKey="KNOW_CHAR_KIRA" Gender="Female" Age="28" Job="Warrior" Race="Human" />
-  <CharacterInfo CharacterName="Drakmar" StrKey="STR_CHAR_DRAKMAR" KnowledgeKey="KNOW_CHAR_DRAKMAR" Gender="Male" Age="300" Job="Sorcerer" Race="Elf" />
-  <CharacterInfo CharacterName="Lune" StrKey="STR_CHAR_LUNE" KnowledgeKey="KNOW_CHAR_LUNE" Gender="Female" Age="19" Job="Scout" Race="Human" />
-  <CharacterInfo CharacterName="Grimjaw" StrKey="STR_CHAR_GRIMJAW" KnowledgeKey="KNOW_CHAR_GRIMJAW" Gender="Male" Age="50" Job="Blacksmith" Race="Dwarf" />
-</CharacterInfoList>

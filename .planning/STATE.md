@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.5
 milestone_name: WOW Showcase + LanguageData
-status: in-progress
-stopped_at: Phase 41 TTS complete, Phase 42 context gathered
-last_updated: "2026-03-18T02:45:00.000Z"
-last_activity: 2026-03-18 -- Phase 42 context gathered (LanguageData Fix + WOW Showcase)
+status: complete
+stopped_at: v3.5 SHIPPED — all 6 phases done + full review + 28 fixes
+last_updated: "2026-03-18T10:40:00.000Z"
+last_activity: 2026-03-18 -- Full showcase review complete, 28+ fixes applied
 progress:
-  total_phases: 2
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 6
+  completed_phases: 6
+  total_plans: 16
+  completed_plans: 16
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** All 5 pages polished to production quality -- consistent, performant, beautiful, one unified app experience.
-**Current focus:** v3.5 WOW Showcase — Phase 41 TTS done, Phase 42 LanguageData next
+**Current focus:** v3.5 COMPLETE — ready for next milestone
 
 ## Current Position
 
-Phase: 42 of 42 (LanguageData Fix + WOW Showcase)
-Plan: 0 of 0 in current phase (not yet planned)
-Status: context gathered, ready for planning
-Last activity: 2026-03-18 -- Phase 42 context gathered
+Phase: 42 of 42 (all complete)
+Plan: 16 of 16 in milestone (all complete)
+Status: SHIPPED + reviewed + 28 fixes applied
+Last activity: 2026-03-18 -- Hive review complete
 
-Progress: [----------] 0%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
@@ -44,81 +44,50 @@ Progress: [----------] 0%
 | v3.1 | 4 | 19 | 48/48 |
 | v3.2 | 6 | 12 | 25/25 |
 | v3.3 | 5 | 8 | 32/32 |
-
-**Recent Execution:**
-
-| Phase-Plan | Duration | Tasks | Files |
-|------------|----------|-------|-------|
-| Phase 29 P01 | 5min | 2 tasks | 5 files |
-| Phase 29 P02 | 4min | 2 tasks | 3 files |
-| Phase 29 P03 | 3min | 2 tasks | 2 files |
-| Phase 30 P01 | 7min | 2 tasks | 5 files |
-| Phase 30 P02 | 5min | 2 tasks | 4 files |
-| Phase 31 P01 | 4min | 2 tasks | 4 files |
-| Phase 31 P02 | 3min | 3 tasks | 3 files |
-| Phase 32 P01 | 3min | 2 tasks | 7 files |
-| Phase 33 P01 | 3min | 2 tasks | 4 files |
-| Phase 33 P02 | 3min | 2 tasks | 2 files |
-| Phase 34 P03 | 3min | 2 tasks | 3 files |
-| Phase 34 P02 | 4min | 2 tasks | 3 files |
-| Phase 34 P01 | 5min | 2 tasks | 4 files |
-| Phase 35 P01 | 3min | 2 tasks | 4 files |
-| Phase 36 P01 | 15min | 4 tasks | 12 files |
-| Phase 37 P01 | 2min | 1 tasks | 1 files |
-| Phase 37 P02 | 3min | 2 tasks | 1 files |
-| Phase 37 P03 | 3min | 2 tasks | 1 files |
-| Phase 38 P03 | 286 | 2 tasks | 3 files |
-| Phase 39 P01 | 4min | 2 tasks | 2 files |
-| Phase 39 P02 | 234 | 3 tasks | 5 files |
-| Phase 40 P01 | 3min | 2 tasks | 5 files |
-| Phase 40 P02 | 3min | 2 tasks | 4 files |
+| v3.5 | 6 | 16 | 12/12 |
 
 ## Accumulated Context
 
-### Roadmap Evolution
+### v3.5 Session Summary (2026-03-18)
 
-- Phase 41 added: Qwen3-TTS Korean Voice Generation (2026-03-18)
-- Phase 42 added: LanguageData Fix + WOW Showcase (2026-03-18)
+**Phase 42 Execution:**
+- Plan 01: Fixed LDM grid regression (Svelte 5 $bindable race condition in GridPage)
+- Plan 02: Created 85 strings across 3 formats (XLSX, TXT, XML) + 90 TM entries in 3 TMs
+- Plan 03: Wired right panel TM search across all active TMs via file_id
+
+**Svelte 5 Deep Review:**
+- Removed $bindable from data props (RightPanel, TMTab) — eliminated ownership_invalid_binding warnings
+- Fixed deprecated <svelte:component> → dynamic syntax
+- Added {#each} keys across 5 files
+- Autofixer: 0 issues on all key files
+
+**Full Showcase Review (5 Hive Scouts, 28+ fixes):**
+- D3 cleanup: MapCanvas onDestroy, RelationshipGraph selectAll
+- AbortControllers: ContextTab, ImageTab, AudioTab
+- Voice generation race condition fix (CodexEntityDetail)
+- Timer cleanup on unmount (GameDataTree)
+- Parallax rAF throttle (CodexCard)
+- PageTransition: transition:fade → in:fade (eliminates rapid-nav stutter)
+- Focus restoration on CommandPalette close
+- CSS vars for dark mode (TMTab colors)
+- Cache bust removed (EntityCard)
+- Row selection debounced (GridPage)
+- a11y fixes (CommandPalette, MapCanvas, RightPanel)
 
 ### Decisions
 
-Recent decisions affecting current work:
+- [Phase 42]: GridPage derives fileId from $openFile store (fixes bind cleanup race)
+- [Phase 42]: TM suggest uses file_id instead of tm_id[0] (searches ALL active TMs)
+- [Phase 42]: PageTransition uses in:fade instead of transition:fade (no competing out-transition)
+- [Phase 42]: RightPanel data props are read-only (no $bindable), UI props keep $bindable
 
-- [v3.3 Roadmap]: Research says zero new production deps -- Carbon SkeletonText/SkeletonPlaceholder + native IntersectionObserver + loading="lazy" cover all needs
-- [v3.3 Roadmap]: Foundation-first build order: tokens -> components -> Codex revamp -> page polish -> cross-page -> verify
-- [v3.3 Roadmap]: Phase 34 plans fully parallelizable (3 plans across independent pages)
-- [v3.3 Roadmap]: VirtualGrid.svelte (1000+ lines) explicitly left unchanged -- polish around it, not in it
-- [v3.3 Roadmap]: Codex pagination via offset/limit params on existing codex list API (wrapper-layer change only)
-- [Phase 32]: Used Renew icon for retry (Restart unavailable); CSS-only shimmer animation; loadingSnippet prop for InfiniteScroll
-- [Phase 33 Planning]: 2 plans in 2 waves. Plan 01 (wave 1): backend pagination + InfiniteScroll + SkeletonCard + lazy images. Plan 02 (wave 2): tab caching + search polish + visual tokens.
-- [Phase 33]: Default page size 50, max 200 via query param validation; batch-generate backward compatible with limit=None
-- [Phase 33]: Map cache with shallow copy for Svelte 5 reactivity; 200ms debounce for snappier search
-- [Phase 34-03]: MapCanvas NODE_COLORS kept as hardcoded hex -- semantic region-type colors constant across themes
-- [Phase 34]: Left-border accent pattern for TM indicators (dark mode safe)
-- [Phase 34]: Skeleton rows match grid column dimensions for loading states
-- [Phase 34]: TYPE_COLORS kept as intentional hex accents; box-shadows removed for matte theme; tier badges use --cds-support-* tokens
-- [Phase 35]: GameDevPage/GridPage retain specialized toolbars (not page headers); CSS var() fallbacks are standard, not hardcoded colors
-- [Phase 35]: CodexPage box-shadow removed from entity card hover for matte consistency
-- [Phase 36]: Pre-existing test failures excluded from regression count; light mode uses CSS class swap; Playwright serial mode for auth
-- [Phase 37]: Dynamic CSS class via attr-val-{category} template interpolation for semantic attribute highlighting
-- [Phase 37]: LRU cache (plain Map, 100 entries) for preview tooltip API results; :global() for dynamically created ripple elements
-- [Phase 37]: CSS-only animations (panelSlideIn, staggerFadeIn, imageShimmer/imageReveal) for 60fps; Svelte {#key} blocks for transition triggers; Map-based image load state tracking
-- [Phase 38]: Used $derived.by() for viewportRect needing getBoundingClientRect
-- [Phase 39]: CSS transition with .visible class for staggered entrance (avoids animation replay)
-- [Phase 39]: Used ChartNetwork icon (Network unavailable); graph node click switches to grid view then navigates; entity tabs hidden in graph mode
-- [Phase 40]: PageTransition uses {#key $currentPage} + transition:fade (150ms); shimmer skeleton pattern reused from SkeletonCard
-- [Phase 40]: ToastContainer replaces GlobalToast preserving WebSocket subscriptions; toast duration stored per-object for progress bar
+### Next Session Plan
 
-### Pending Todos
-
-None yet.
-
-### Blockers/Concerns
-
-None yet.
+**Second review round with hive** — verify all 28 fixes in browser, check for regressions.
+Then decide on next milestone (v4.0?).
 
 ## Session Continuity
 
-Last session: 2026-03-17T10:25:02.112Z
-Stopped at: Completed 40-02-PLAN.md
+Last session: 2026-03-18T10:40:00.000Z
+Stopped at: v3.5 shipped + reviewed + 28 fixes applied
 Resume file: None

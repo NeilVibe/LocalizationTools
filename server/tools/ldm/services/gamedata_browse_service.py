@@ -23,7 +23,7 @@ from server.tools.ldm.schemas.gamedata import (
 # Attributes that are editable per entity type (from research)
 EDITABLE_ATTRS = {
     "ItemInfo": ["ItemName", "ItemDesc"],
-    "CharacterInfo": ["CharacterName"],
+    "CharacterInfo": ["CharacterName", "CharacterDesc"],
     "SkillInfo": ["SkillName", "SkillDesc"],
     "GimmickGroupInfo": ["GimmickName"],
     "GimmickInfo": ["GimmickName"],

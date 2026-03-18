@@ -14,11 +14,11 @@
   import { computeWordDiff } from "$lib/utils/wordDiff.js";
   import { logger } from "$lib/utils/logger.js";
 
-  // Props (Svelte 5 runes)
+  // Props — read-only data from GridPage, callbacks for actions
   let {
-    selectedRow = $bindable(null),
-    tmMatches = $bindable([]),
-    tmLoading = $bindable(false),
+    selectedRow = null,
+    tmMatches = [],
+    tmLoading = false,
     leverageStats = null,
     onApplyTM = undefined
   } = $props();
@@ -29,13 +29,13 @@
    */
   function getMatchColor(score) {
     if (score >= 1.0) {
-      return { color: '#24a148', label: 'Exact', type: 'green' };
+      return { color: 'var(--cds-support-success, #24a148)', label: 'Exact', type: 'green' };
     } else if (score >= 0.92) {
-      return { color: '#c6a300', label: 'High Fuzzy', type: 'yellow' };
+      return { color: 'var(--cds-support-warning, #c6a300)', label: 'High Fuzzy', type: 'yellow' };
     } else if (score >= 0.75) {
-      return { color: '#ff832b', label: 'Fuzzy', type: 'orange' };
+      return { color: 'var(--cds-support-caution-minor, #ff832b)', label: 'Fuzzy', type: 'orange' };
     } else {
-      return { color: '#da1e28', label: 'Low', type: 'red' };
+      return { color: 'var(--cds-support-error, #da1e28)', label: 'Low', type: 'red' };
     }
   }
 
@@ -120,7 +120,7 @@
             <span class="field-label">Source:</span>
             {#if diff}
               <span class="diff-text">
-                {#each diff.match as token}
+                {#each diff.match as token, i (i)}
                   {#if token.type === 'added'}
                     <span class="diff-added">{token.text}</span>
                   {:else}
@@ -138,7 +138,7 @@
             <div class="tm-source-current">
               <span class="field-label">Current:</span>
               <span class="diff-text">
-                {#each diff.original as token}
+                {#each diff.original as token, i (i)}
                   {#if token.type === 'removed'}
                     <span class="diff-removed">{token.text}</span>
                   {:else}

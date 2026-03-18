@@ -28,7 +28,7 @@
   let aiSummary = $state(null);
   let aiStatus = $state(null);
 
-  // Fetch context when selected row changes
+  // Fetch context when selected row changes (with AbortController for cleanup)
   $effect(() => {
     const stringId = selectedRow?.string_id;
     if (!stringId) {
@@ -45,11 +45,13 @@
     error = null;
     notConfigured = false;
 
+    const controller = new AbortController();
     const sourceText = selectedRow?.source || selectedRow?.eng || '';
     const params = sourceText ? `?source_text=${encodeURIComponent(sourceText)}` : '';
 
     fetch(`${API_BASE}/api/ldm/context/${encodeURIComponent(stringId)}${params}`, {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
+      signal: controller.signal
     })
       .then(async (response) => {
         if (response.ok) {
@@ -64,7 +66,6 @@
           aiSummary = null;
           aiStatus = null;
         } else if (response.status === 503) {
-          // Service not configured
           notConfigured = true;
           entities = [];
           detectedTerms = [];
@@ -75,6 +76,7 @@
         }
       })
       .catch((err) => {
+        if (err.name === 'AbortError') return;
         logger.error('Failed to fetch entity context', { error: err.message });
         error = err.message;
         entities = [];
@@ -85,6 +87,8 @@
       .finally(() => {
         loading = false;
       });
+
+    return () => controller.abort();
   });
 
   // Build highlighted source text from detected terms
@@ -147,7 +151,7 @@
         <div class="detected-text" data-testid="context-tab-highlights">
           <span class="detected-label">Detected in text</span>
           <p class="source-text">
-            {#each highlightedSource as part, i}
+            {#each highlightedSource as part, i (i)}
               {#if part.highlight}
                 <mark class="entity-highlight entity-{part.type}">{part.text}</mark>
               {:else}
@@ -161,16 +165,16 @@
       <!-- Entity cards -->
       <div class="entity-list">
         <span class="entity-count">{entities.length} {entities.length === 1 ? 'entity' : 'entities'}</span>
-        {#each entities as entity (entity.name + entity.entity_type)}
+        {#each entities as entity (entity.strkey || entity.name + entity.entity_type)}
           <EntityCard {entity} />
         {/each}
       </div>
 
       <!-- AI Summary -->
-      {#if aiStatus === 'unavailable'}
+      {#if aiStatus === 'unavailable' || aiStatus === 'error'}
         <div class="ai-badge-unavailable" data-testid="ai-unavailable-badge">
           <WarningAlt size={14} />
-          <span>AI unavailable</span>
+          <span>{aiStatus === 'error' ? 'AI summary failed' : 'AI unavailable'}</span>
         </div>
       {:else if aiSummary}
         <div class="ai-summary-section" data-testid="ai-summary">

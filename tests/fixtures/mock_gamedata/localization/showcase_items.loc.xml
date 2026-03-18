@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <LocStr StringID="ITEM_BLACKSTAR_SWORD_NAME" StrOrigin="Blackstar Sword" Str="흑성검"/>
+  <LocStr StringID="ITEM_MOONSTONE_AMULET_NAME" StrOrigin="Moonstone Amulet" Str="월석 부적"/>
+  <LocStr StringID="ITEM_PLAGUE_CURE_NAME" StrOrigin="Plague Cure" Str="역병 치료제"/>
+  <LocStr StringID="ITEM_VOLCANIC_ORE_NAME" StrOrigin="Volcanic Ore" Str="화산 광석"/>
+  <LocStr StringID="ITEM_SHADOW_ESSENCE_NAME" StrOrigin="Shadow Essence" Str="그림자 정수"/>
+  <LocStr StringID="ITEM_STARLIGHT_SHARD_NAME" StrOrigin="Starlight Shard" Str="별빛 파편"/>
+  <LocStr StringID="ITEM_ELDER_SCROLL_NAME" StrOrigin="Elder Scroll of Wisdom" Str="지혜의 장로 두루마리"/>
+  <LocStr StringID="ITEM_BLACKSTAR_SWORD_DESC" StrOrigin="A blade forged in the heart of a dying star.&lt;br/&gt;Its edge cuts through both flesh and shadow.&lt;br/&gt;Only those deemed worthy may wield it." Str="죽어가는 별의 심장에서 단조된 검.&lt;br/&gt;그 날은 살과 그림자를 모두 베어냅니다.&lt;br/&gt;자격이 있다고 인정된 자만이 휘두를 수 있습니다."/>
+  <LocStr StringID="ITEM_MOONSTONE_AMULET_DESC" StrOrigin="Crafted during the Third Eclipse by the master smith Grimjaw.&lt;br/&gt;Protects its bearer from shadow corruption.&lt;br/&gt;Glows faintly under starlight." Str="대장장이 그림죠가 세 번째 일식 때 만든 부적.&lt;br/&gt;착용자를 그림자 부패로부터 보호합니다.&lt;br/&gt;별빛 아래에서 희미하게 빛납니다."/>
+  <LocStr StringID="ITEM_PLAGUE_CURE_DESC" StrOrigin="A rare potion that cures the Shadow Plague.&lt;br/&gt;Requires ingredients from all five regions.&lt;br/&gt;Drakmar holds the only known recipe." Str="그림자 역병을 치료하는 희귀한 물약.&lt;br/&gt;다섯 지역 모두의 재료가 필요합니다.&lt;br/&gt;드라크마르만이 유일한 제조법을 가지고 있습니다."/>
+  <LocStr StringID="CHAR_VARON_NAME" StrOrigin="Elder Varon" Str="장로 바론"/>
+  <LocStr StringID="CHAR_VARON_TITLE" StrOrigin="Guardian of the Realm" Str="왕국의 수호자"/>
+  <LocStr StringID="CHAR_KIRA_NAME" StrOrigin="Kira" Str="키라"/>
+  <LocStr StringID="CHAR_KIRA_TITLE" StrOrigin="Shadow Ranger" Str="그림자 레인저"/>
+  <LocStr StringID="CHAR_GRIMJAW_NAME" StrOrigin="Grimjaw" Str="그림죠"/>
+  <LocStr StringID="CHAR_GRIMJAW_TITLE" StrOrigin="Master Blacksmith" Str="대장장이 장인"/>
+  <LocStr StringID="CHAR_LUNE_NAME" StrOrigin="Lune" Str="루네"/>
+  <LocStr StringID="CHAR_LUNE_TITLE" StrOrigin="Cartographer Scout" Str="지도 제작 정찰병"/>
+  <LocStr StringID="CHAR_DRAKMAR_NAME" StrOrigin="Drakmar" Str="드라크마르"/>
+  <LocStr StringID="CHAR_DRAKMAR_TITLE" StrOrigin="Arcane Scholar" Str="비전 학자"/>
+  <LocStr StringID="REGION_BLACKSTAR_NAME" StrOrigin="Blackstar Village" Str="흑성 마을"/>
+  <LocStr StringID="REGION_FORTRESS_NAME" StrOrigin="Forgotten Fortress" Str="잊혀진 요새"/>
+  <LocStr StringID="REGION_IRONPEAK_NAME" StrOrigin="Ironpeak Mountains" Str="철봉 산맥"/>
+  <LocStr StringID="REGION_SHADOWFEN_NAME" StrOrigin="Shadowfen Marshes" Str="그림자 늪지"/>
+  <LocStr StringID="REGION_STARFALL_NAME" StrOrigin="Starfall Crater" Str="별 떨어진 분화구"/>
+  <LocStr StringID="SKILL_STARFALL_STRIKE_NAME" StrOrigin="Starfall Strike" Str="별 떨어지는 일격"/>
+  <LocStr StringID="SKILL_STARFALL_STRIKE_DESC" StrOrigin="Channels the power of falling stars to deliver a devastating blow.&lt;br/&gt;Damage increases with each consecutive hit.&lt;br/&gt;Cooldown: 12 seconds." Str="떨어지는 별의 힘을 모아 파괴적인 일격을 가합니다.&lt;br/&gt;연속 타격마다 피해가 증가합니다.&lt;br/&gt;재사용 대기시간: 12초."/>
+  <LocStr StringID="SKILL_SHADOW_STEP_NAME" StrOrigin="Shadow Step" Str="그림자 걸음"/>
+  <LocStr StringID="SKILL_SHADOW_STEP_DESC" StrOrigin="Teleport through shadows to a nearby location.&lt;br/&gt;Grants brief invisibility after teleport." Str="그림자를 통해 근처 위치로 순간이동합니다.&lt;br/&gt;순간이동 후 짧은 투명 효과를 부여합니다."/>
+</LanguageData>

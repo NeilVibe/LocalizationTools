@@ -1,7 +1,7 @@
 ---
 name: languagedataexporter-specialist
 description: LanguageDataExporter project specialist. Use when working on language data export, category clustering, VRS ordering, word count reports, or GUI operations.
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__openviking__*
 model: opus
 ---
 

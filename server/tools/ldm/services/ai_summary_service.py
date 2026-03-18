@@ -43,8 +43,14 @@ class AISummaryService:
     """
 
     OLLAMA_URL = "http://localhost:11434/api/generate"
-    MODEL = "qwen3:4b"
-    TIMEOUT = 10.0
+    MODEL = "qwen3:8b"
+    TIMEOUT = 30.0
+    SYSTEM_PROMPT = (
+        "You are a game localization assistant. "
+        "Generate a concise 1-2 sentence contextual summary for translators. "
+        "Describe who/what the entity is and any relevant context for translation. "
+        "Do not add disclaimers or caveats. Output only the summary, nothing else. /no_think"
+    )
 
     def __init__(self) -> None:
         self._cache: Dict[str, str] = {}
@@ -81,11 +87,13 @@ class AISummaryService:
                     json={
                         "model": self.MODEL,
                         "prompt": prompt,
+                        "system": self.SYSTEM_PROMPT,
                         "stream": False,
                         "format": AISummaryResponse.model_json_schema(),
                         "options": {
                             "temperature": 0.3,
-                            "num_predict": 200,
+                            "num_predict": 150,
+                            "repeat_penalty": 1.1,
                         },
                     },
                 )
@@ -127,13 +135,9 @@ class AISummaryService:
         source_text = source_text[:500]
 
         return (
-            f"You are a game localization assistant. "
-            f"Generate a concise 1-2 sentence contextual summary for translators.\n\n"
             f"Entity name: {entity_name}\n"
             f"Entity type: {entity_type}\n"
-            f"Source text: {source_text}\n\n"
-            f"Provide a brief summary describing who/what this entity is and "
-            f"any relevant context for translation."
+            f"Source text: {source_text}"
         )
 
     def clear_cache(self) -> None:

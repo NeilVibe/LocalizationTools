@@ -36,10 +36,10 @@ CROSS_REF_ATTRS = {
 IDENTITY_ATTRS = {"Key", "NodeId", "Id", "StrKey"}
 
 # Attributes that indicate texture/image references
-TEXTURE_ATTRS = ("TextureName", "IconTexture", "Texture", "ImagePath")
+TEXTURE_ATTRS = ("TextureName", "IconTexture", "Texture", "ImagePath", "UITextureName", "TextureKey", "TexturePath", "SkillIcon")
 
 # Attributes that indicate audio/voice references
-VOICE_ATTRS = ("VoiceId", "SoundId", "AudioFile")
+VOICE_ATTRS = ("VoiceId", "SoundId", "AudioFile", "VoicePath", "VoiceKey", "VoicePath")
 
 
 def _is_cross_ref_attr(attr_name: str) -> bool:
@@ -64,6 +64,7 @@ class GameDataContextService:
     def __init__(self):
         self._reverse_index: Dict[str, List[Dict[str, Any]]] = {}
         self._entity_names: Dict[str, str] = {}  # node_id -> display name
+        self._ai_cache: Dict[str, str] = {}  # cache_key -> summary string
 
     # =========================================================================
     # 1. Reverse Index Builder
@@ -355,13 +356,16 @@ class GameDataContextService:
 
     OLLAMA_GENERATE_URL = "http://localhost:11434/api/generate"
     OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
-    AI_MODEL = "qwen3:latest"
-    AI_TIMEOUT = 10.0
+    AI_MODEL = "qwen3:8b"
+    AI_TIMEOUT = 30.0
+    AI_THINK = False  # Disable Qwen3 thinking mode for clean output
     AI_SYSTEM_PROMPT = (
-        "You are a game data analyst. Provide a concise 2-3 sentence summary "
-        "of this game entity based on its attributes and relationships. Focus on "
-        "what this entity is, what it does, and how it connects to other game "
-        "elements. Be factual and specific. /no_think"
+        "You are a game data analyst for an MMORPG. "
+        "Given entity data, write exactly 2-3 factual sentences explaining what this entity is, "
+        "what it does in the game, and how it connects to other entities. "
+        "Do not start with 'This entity' or 'Based on'. Do not add disclaimers or caveats. "
+        "Always write in Korean (한국어). "
+        "Output only the summary, nothing else."
     )
 
     async def generate_ai_summary(
@@ -383,6 +387,12 @@ class GameDataContextService:
         Returns:
             Summary string, or empty string on error.
         """
+        # Cache hit
+        cache_key = f"{node.node_id}_{node.tag}"
+        if cache_key in self._ai_cache:
+            logger.debug(f"[ContextService] AI cache hit for {cache_key}")
+            return self._ai_cache[cache_key]
+
         # Build entity name
         editable = EDITABLE_ATTRS.get(node.tag, [])
         entity_name = ""
@@ -432,6 +442,7 @@ class GameDataContextService:
             ]
             parts.append(f"Similar to: {', '.join(related_names)}")
 
+        parts.append("\n한국어로 작성하세요. 간결하고 사실적인 요약을 작성하세요.")
         prompt = "\n".join(parts)
 
         try:
@@ -445,8 +456,10 @@ class GameDataContextService:
                         "stream": False,
                         "options": {
                             "temperature": 0.3,
-                            "num_predict": 200,
+                            "num_predict": 150,
+                            "repeat_penalty": 1.1,
                         },
+                        "think": self.AI_THINK,
                     },
                 )
                 if response.status_code != 200:
@@ -456,10 +469,16 @@ class GameDataContextService:
                 data = response.json()
                 summary = data.get("response", "").strip()
 
-                # Strip /no_think artifacts if present
-                summary = summary.replace("/no_think", "").strip()
-
                 logger.debug(f"[ContextService] AI summary generated ({len(summary)} chars)")
+
+                # Cache the result
+                if summary:
+                    self._ai_cache[cache_key] = summary
+                    # Cap cache at 200 entries
+                    if len(self._ai_cache) > 200:
+                        oldest = next(iter(self._ai_cache))
+                        del self._ai_cache[oldest]
+
                 return summary
 
         except (httpx.ConnectError, httpx.TimeoutException) as exc:

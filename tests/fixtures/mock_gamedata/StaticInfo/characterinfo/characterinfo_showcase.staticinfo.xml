@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<CharacterInfoList>
+
+  <!-- Elder Varon — NPC Sage, Guardian of Sealed Library -->
+  <CharacterInfo Key="CHAR_001" StrKey="Character_ElderVaron"
+      CharacterName="장로 바론"
+      CharacterDesc="봉인된 도서관의 수호자인 장로 바론은 300년이 넘는 세월 동안 고대의 지식을 지켜왔다.&lt;br/&gt;그는 현자의 결사를 이끌며, 성스러운 불꽃의 비밀을 후대에 전수하고 있다.&lt;br/&gt;최근 어둠의 교단이 봉인된 도서관을 노리고 있다는 소문이 돌고 있어, 바론은 경계를 늦추지 않고 있다."
+      CharacterType="NPC" Level="85" Job="Sage" Race="Human" Gender="Male" Age="347" Title="봉인의 수호자"
+      UITextureName="character_varon" VoicePath="audio/characters/elder_varon_greeting.wem"
+      KnowledgeKey="Knowledge_ElderVaron" FactionKey="Faction_SageOrder"
+      RegionKey="Region_SealedLibrary" ItemKey="Item_SageStaff" SkillKey="Skill_SacredFlame">
+    <SkillRef SkillKey="Skill_SacredFlame" SkillName="성스러운 불꽃" />
+  </CharacterInfo>
+
+  <!-- Shadow Assassin Kira — Boss -->
+  <CharacterInfo Key="CHAR_002" StrKey="Character_ShadowKira"
+      CharacterName="그림자 암살자 키라"
+      CharacterDesc="어둠의 교단의 최정예 암살자인 키라는 봉인된 도서관의 비밀을 노린다.&lt;br/&gt;그녀의 그림자 일격은 한 번의 공격으로 적을 제압할 수 있는 치명적인 기술이다.&lt;br/&gt;장로 바론과는 오랜 숙적 관계이며, 두 사람의 대결은 게임의 핵심 스토리라인을 이끈다."
+      CharacterType="Boss" Level="90" Job="Assassin" Race="Human" Gender="Female" Title="어둠의 칼날"
+      UITextureName="character_kira" VoicePath="audio/characters/shadow_kira_taunt.wem"
+      KnowledgeKey="Knowledge_ShadowKira" FactionKey="Faction_DarkCult"
+      RegionKey="Region_SealedLibrary" ItemKey="Item_ShadowDagger" SkillKey="Skill_ShadowStrike">
+    <SkillRef SkillKey="Skill_ShadowStrike" SkillName="그림자 일격" />
+  </CharacterInfo>
+
+  <!-- Blacksmith Grimjaw — NPC Craftsman -->
+  <CharacterInfo Key="CHAR_003" StrKey="Character_Grimjaw"
+      CharacterName="대장장이 그림조"
+      CharacterDesc="전설의 검은별 금속을 다룰 수 있는 유일한 대장장이.&lt;br/&gt;현자의 결사에 소속되어 있으며, 장로 바론의 현자의 지팡이도 그가 제작한 것이다.&lt;br/&gt;최근 어둠의 교단이 검은별 금속을 노리고 있어 경계를 늦추지 않고 있다."
+      CharacterType="NPC" Level="60" Job="Blacksmith" Race="Dwarf" Gender="Male" Title="검은별의 장인"
+      UITextureName="character_grimjaw" VoicePath="audio/characters/grimjaw_forge.wem"
+      KnowledgeKey="Knowledge_Grimjaw" FactionKey="Faction_SageOrder"
+      ItemKey="Item_BlackstarSword">
+    <DialogueLine Speaker="Grimjaw" Text="검은별 대검은 내 필생의 역작이야. 이 검을 들 자격이 있는 자는 아직 나타나지 않았지." />
+  </CharacterInfo>
+
+  <!-- Scout Lune — NPC Guide -->
+  <CharacterInfo Key="CHAR_004" StrKey="Character_Lune"
+      CharacterName="정찰병 루네"
+      CharacterDesc="봉인된 도서관으로 가는 위험한 길을 안내하는 엘프 정찰병.&lt;br/&gt;숲의 모든 길을 꿰뚫고 있으며, 어둠의 교단의 움직임을 감시하고 있다.&lt;br/&gt;장로 바론을 깊이 존경하며, 그의 명령이라면 어떤 위험도 감수한다."
+      CharacterType="NPC" Level="45" Job="Scout" Race="Elf" Gender="Female" Title="숲의 안내자"
+      UITextureName="character_lune" VoicePath="audio/characters/lune_whisper.wem"
+      KnowledgeKey="Knowledge_Lune" FactionKey="Faction_SageOrder"
+      RegionKey="Region_SealedLibrary" />
+
+  <!-- Sorcerer Drakmar — NPC Scholar -->
+  <CharacterInfo Key="CHAR_005" StrKey="Character_Drakmar"
+      CharacterName="마법사 드라크마르"
+      CharacterDesc="봉인된 도서관의 고대 문서를 해독하는 학자 마법사.&lt;br/&gt;성스러운 방패 마법으로 도서관의 방어를 담당하며, 장로 바론의 오른팔 역할을 한다.&lt;br/&gt;최근 금지된 지식에 대한 연구를 시작하여 현자의 결사 내에서 논란이 되고 있다."
+      CharacterType="NPC" Level="75" Job="Sorcerer" Race="Human" Gender="Male" Title="고대 문서의 해독자"
+      UITextureName="character_drakmar" VoicePath="audio/characters/drakmar_chant.wem"
+      KnowledgeKey="Knowledge_Drakmar" FactionKey="Faction_SageOrder"
+      SkillKey="Skill_HolyShield" />
+
+</CharacterInfoList>

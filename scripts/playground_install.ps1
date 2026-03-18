@@ -68,9 +68,12 @@ function Get-LatestRelease {
             throw "No installer found in release assets"
         }
 
+        # Fix: Gitea may return localhost in URLs, replace with actual host
+        $downloadUrl = $installer.browser_download_url -replace "http://localhost:(\d+)", "http://${GiteaHost}:$GiteaPort"
+
         return @{
             Version = $latest.tag_name
-            InstallerUrl = $installer.browser_download_url
+            InstallerUrl = $downloadUrl
             InstallerName = $installer.name
         }
     }

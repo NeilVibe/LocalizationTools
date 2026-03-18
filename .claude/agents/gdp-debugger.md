@@ -1,7 +1,7 @@
 ---
 name: gdp-debugger
 description: EXTREME precision debugger for ALL platforms - DEV server (FastAPI), frontend (Svelte), Electron (Node.js), and Windows app. GDP = find the EXACT line, EXACT variable, EXACT moment of failure.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__openviking__*
 model: opus
 ---
 

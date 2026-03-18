@@ -200,10 +200,10 @@
         if (tid === d.id) connected.add(sid);
       });
       // Dim unconnected nodes
-      node.select('circle')
+      node.selectAll('circle')
         .transition().duration(200)
         .attr('opacity', n => connected.has(n.id) ? 1 : 0.2);
-      node.select('text')
+      node.selectAll('text')
         .transition().duration(200)
         .attr('opacity', n => connected.has(n.id) ? 1 : 0.2);
       // Dim unconnected links
@@ -217,8 +217,8 @@
 
     node.on('mouseleave', function() {
       hoveredNodeId = null;
-      node.select('circle').transition().duration(200).attr('opacity', 1);
-      node.select('text').transition().duration(200).attr('opacity', 1);
+      node.selectAll('circle').transition().duration(200).attr('opacity', 1);
+      node.selectAll('text').transition().duration(200).attr('opacity', 1);
       link.transition().duration(200).attr('opacity', 0.6);
     });
 

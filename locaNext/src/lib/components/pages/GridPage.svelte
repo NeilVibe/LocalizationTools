@@ -16,14 +16,20 @@
 
   // Props
   let {
-    fileId = null,
-    fileName = '',
+    fileId: propFileId = null,
+    fileName: propFileName = '',
     linkedTM = null,
     onShowGridColumns = () => {},
     onShowReferenceSettings = () => {},
     onShowBranchDriveSettings = () => {},
     onDismissQA = undefined
   } = $props();
+
+  // Derive fileId/fileName from prop OR openFile store (fixes bind cleanup race condition)
+  // When FilesPage unmounts, its $bindable cleanup can reset the prop to null.
+  // The openFile store is the authoritative source set by openFileInGrid().
+  let fileId = $derived(propFileId ?? $openFile?.id ?? null);
+  let fileName = $derived(propFileName || $openFile?.name || $openFile?.original_filename || '');
 
   // Derive file type from openFile store (Dual UI Mode - Phase 08)
   let fileType = $derived($openFile?.file_type || 'translator');
@@ -107,8 +113,11 @@
   });
 
 
+  // Debounce timer for TM loading on rapid row selection
+  let tmDebounceTimer = null;
+
   /**
-   * Handle row selection - load TM matches
+   * Handle row selection - load TM matches (debounced)
    */
   async function handleRowSelect(data) {
     const { row } = data;
@@ -118,7 +127,9 @@
 
     if (!row?.source) return;
 
-    await loadTMMatchesForRow(row);
+    // Debounce TM loading to avoid API spam on rapid row navigation
+    clearTimeout(tmDebounceTimer);
+    tmDebounceTimer = setTimeout(() => loadTMMatchesForRow(row), 200);
   }
 
   /**
@@ -138,16 +149,14 @@
       const params = new URLSearchParams({
         source: row.source,
         threshold: $preferences.tmThreshold.toString(),
-        max_results: '5',
-        tm_id: activeTMs[0].tm_id.toString()  // Use hierarchy TM, not preferences
+        max_results: '10',
+        file_id: fileId.toString()  // Search ALL active TMs for this file, not just the first
       });
 
-      // Exclude current row if it has an id
-      if (row.id) {
-        params.append('exclude_row_id', row.id.toString());
-      }
+      // Note: exclude_row_id removed — file_id search across all active TMs
+      // naturally handles dedup via different TM sources
 
-      logger.apiCall('/api/ldm/tm/suggest', 'GET', { tm_id: activeTMs[0].tm_id });
+      logger.apiCall('/api/ldm/tm/suggest', 'GET', { file_id: fileId });
       const response = await fetch(`${API_BASE}/api/ldm/tm/suggest?${params}`, {
         headers: getAuthHeaders()
       });

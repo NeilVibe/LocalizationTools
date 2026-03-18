@@ -1,7 +1,7 @@
 ---
 name: ci-specialist
 description: CI/CD workflow specialist. Use for build triggers, workflow debugging, release management, and understanding which platform (GitHub vs Gitea) to use.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__openviking__*
 model: haiku
 ---
 

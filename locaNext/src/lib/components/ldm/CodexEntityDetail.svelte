@@ -8,6 +8,7 @@
    *
    * Phase 19: Game World Codex (Plan 02)
    */
+  import { untrack } from "svelte";
   import { Tag, InlineLoading, Button } from "carbon-components-svelte";
   import { Music, ImageReference, Renew } from "carbon-icons-svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";
@@ -32,19 +33,30 @@
   let imageGenAvailable = $state(false);
   let aiImageUrl = $state(null);
 
-  // Check image-gen availability on mount
-  import { onMount } from "svelte";
+  // TTS Voice generation state
+  let generatingVoice = $state(false);
+  let voiceGenError = $state(null);
+  let ttsAvailable = $state(false);
+  let generatedAudioUrl = $state(null);
+  let voiceDuration = $state(null);
+
+  // Check image-gen and TTS availability on mount
   onMount(() => {
     fetch(`${API_BASE}/api/ldm/codex/image-gen/status`, { headers: getAuthHeaders() })
       .then(r => r.json())
       .then(data => { imageGenAvailable = data.available; })
       .catch((err) => { logger.warning('Image gen status check failed', { error: err?.message }); imageGenAvailable = false; });
+
+    fetch(`${API_BASE}/api/ldm/codex/tts/status`, { headers: getAuthHeaders() })
+      .then(r => r.json())
+      .then(data => { ttsAvailable = data.available; })
+      .catch((err) => { logger.warning('TTS status check failed', { error: err?.message }); ttsAvailable = false; });
   });
 
   // Update aiImageUrl when entity changes
   $effect(() => {
     if (entity?.ai_image_url) {
-      aiImageUrl = `${API_BASE}${entity.ai_image_url}`;
+      aiImageUrl = `${API_BASE}${entity.ai_image_url}?v=${Date.now()}`;
     } else {
       aiImageUrl = null;
     }
@@ -97,7 +109,7 @@
    */
   let imageUrl = $derived(
     entity?.image_texture
-      ? `${API_BASE}/api/ldm/mapdata/thumbnail/${entity.image_texture}`
+      ? `${API_BASE}/api/ldm/mapdata/thumbnail/${entity.image_texture}?v=${Date.now()}`
       : null
   );
 
@@ -166,13 +178,67 @@
     }
   });
 
-  // Reset image/audio error when entity changes
+  // Reset image/audio/voice state when entity changes, check for cached voice
   $effect(() => {
     if (entity) {
       imageError = false;
       audioError = false;
+      generatedAudioUrl = null;
+      voiceDuration = null;
+      voiceGenError = null;
+      generatingVoice = false;
+
+      // Check for cached TTS voice (lightweight HEAD — does NOT trigger generation)
+      // Use untrack for ttsAvailable to avoid re-running when availability changes
+      if (untrack(() => ttsAvailable)) {
+        const capturedStrkey = entity.strkey;
+        const voiceUrl = `${API_BASE}/api/ldm/codex/voice/${capturedStrkey}`;
+        fetch(voiceUrl, { method: 'HEAD', headers: getAuthHeaders() })
+          .then(r => {
+            if (r.ok && entity?.strkey === capturedStrkey) {
+              generatedAudioUrl = `${voiceUrl}?t=${Date.now()}`;
+            }
+          })
+          .catch((err) => {
+            logger.warning('TTS cache check failed', { strkey: capturedStrkey, error: err?.message });
+          });
+      }
     }
   });
+
+  /**
+   * Generate or regenerate TTS voice for current entity
+   */
+  async function generateVoice(force = false) {
+    if (!entity) return;
+    const targetStrkey = entity.strkey;
+    generatingVoice = true;
+    voiceGenError = null;
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/ldm/codex/generate-voice/${targetStrkey}?force=${force}`,
+        { method: 'POST', headers: getAuthHeaders() }
+      );
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${response.status}`);
+      }
+      // Guard: entity may have changed during generation
+      if (entity?.strkey !== targetStrkey) return;
+      const data = await response.json();
+      generatedAudioUrl = `${API_BASE}${data.audio_url}?t=${Date.now()}`;
+      voiceDuration = data.duration_ms;
+      audioError = false;
+      logger.info('Voice generated', { strkey: targetStrkey, status: data.status, duration: data.duration_ms });
+    } catch (err) {
+      if (entity?.strkey !== targetStrkey) return;
+      logger.error('Voice generation failed', { strkey: targetStrkey, error: err.message });
+      voiceGenError = err.message || 'Voice generation failed';
+    } finally {
+      // Always reset loading state — even if entity changed mid-generation
+      generatingVoice = false;
+    }
+  }
 </script>
 
 {#if entity}
@@ -248,7 +314,7 @@
         <!-- Character-specific attributes -->
         {#if entity.entity_type === 'character'}
           <div class="attr-grid">
-            {#each CHARACTER_ATTRS as attr}
+            {#each CHARACTER_ATTRS as attr (attr)}
               {#if entity.attributes?.[attr]}
                 <div class="attr-item">
                   <span class="attr-label">{attr}</span>
@@ -262,7 +328,7 @@
         <!-- Item-specific attributes -->
         {#if entity.entity_type === 'item'}
           <div class="attr-grid">
-            {#each ITEM_ATTRS as attr}
+            {#each ITEM_ATTRS as attr (attr)}
               {#if entity.attributes?.[attr]}
                 <div class="attr-item">
                   <span class="attr-label">{attr}</span>
@@ -289,7 +355,44 @@
 
     <!-- Audio section -->
     <div class="detail-section">
-      {#if audioUrl && !audioError}
+      {#if generatingVoice}
+        <div class="audio-section">
+          <div class="section-header">
+            <Music size={16} />
+            <span>Voice</span>
+          </div>
+          <InlineLoading description="Generating voice..." />
+        </div>
+      {:else if generatedAudioUrl}
+        <div class="audio-section">
+          <div class="section-header">
+            <Music size={16} />
+            <span>Voice {#if voiceDuration}({(voiceDuration / 1000).toFixed(1)}s){/if}</span>
+          </div>
+          <audio
+            controls
+            preload="auto"
+            class="audio-player"
+            src={generatedAudioUrl}
+            onerror={() => {
+              logger.warning('Generated voice audio failed to play', { strkey: entity?.strkey });
+              generatedAudioUrl = null;
+              voiceGenError = 'Audio playback failed -- try regenerating';
+            }}
+          >
+            Your browser does not support the audio element.
+          </audio>
+          {#if ttsAvailable}
+            <Button
+              kind="ghost"
+              size="small"
+              icon={Renew}
+              iconDescription="Regenerate voice"
+              onclick={() => generateVoice(true)}
+            >Regenerate</Button>
+          {/if}
+        </div>
+      {:else if audioUrl && !audioError}
         <div class="audio-section">
           <div class="section-header">
             <Music size={16} />
@@ -299,13 +402,33 @@
             controls
             preload="none"
             class="audio-player"
+            onerror={() => { audioError = true; logger.warning('Audio playback failed', { url: audioUrl }); }}
           >
-            <source src={audioUrl} onerror={() => { audioError = true; }} />
+            <source src={audioUrl} />
             Your browser does not support the audio element.
           </audio>
         </div>
+      {:else if ttsAvailable}
+        <div class="audio-section">
+          <div class="section-header">
+            <Music size={16} />
+            <span>Voice</span>
+          </div>
+          <Button
+            kind="tertiary"
+            size="small"
+            icon={Music}
+            onclick={() => generateVoice(false)}
+          >Generate Voice</Button>
+        </div>
       {:else}
         <PlaceholderAudio entityName={entity.name} />
+      {/if}
+
+      {#if voiceGenError}
+        <div class="gen-error" role="alert">
+          <span class="gen-error-text">Voice generation failed: {voiceGenError}</span>
+        </div>
       {/if}
     </div>
 

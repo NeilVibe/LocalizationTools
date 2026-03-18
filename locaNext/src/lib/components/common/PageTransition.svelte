@@ -26,7 +26,7 @@
 </script>
 
 {#key $currentPage}
-  <div class="page-transition-wrapper" transition:fade={{ duration }}>
+  <div class="page-transition-wrapper" in:fade={{ duration }}>
     {@render children()}
   </div>
 {/key}

@@ -229,7 +229,15 @@ screenshots/
 # Landing page generated images (deployed via Netlify, not git)
 landing-page/*.png
 
+# -------------------- Generated Audio (TTS) --------------------
+audio/
+
+# -------------------- Test Artifacts --------------------
+test-results/
+windows_tests/
+
 # -------------------- Stale/Temp Artifacts --------------------
+$installDir/
 cookies.txt
 query
 console_errors_report.json

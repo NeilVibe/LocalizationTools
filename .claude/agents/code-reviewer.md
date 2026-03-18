@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Expert code reviewer for LocaNext. Use after writing code to check for bugs, security issues, patterns violations, and Svelte 5 correctness.
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, mcp__openviking__*
 model: opus
 ---
 

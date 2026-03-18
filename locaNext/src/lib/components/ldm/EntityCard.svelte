@@ -40,9 +40,10 @@
 
   <!-- Image thumbnail -->
   {#if entity?.image?.has_image && entity.image.thumbnail_url}
+    {@const thumbUrl = entity.image.thumbnail_url}
     <div class="entity-thumbnail">
       <img
-        src={entity.image.thumbnail_url}
+        src={thumbUrl}
         alt={entity.image.texture_name || entity.name}
         class="thumbnail"
         onerror={(e) => { e.target.style.display = 'none'; }}

@@ -1,7 +1,7 @@
 ---
 name: qacompiler-specialist
 description: QACompilerNEW project specialist. Use when working on the QA Compiler Suite - generators, tracker, transfer workflow, or datasheet operations.
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__openviking__*
 model: opus
 ---
 

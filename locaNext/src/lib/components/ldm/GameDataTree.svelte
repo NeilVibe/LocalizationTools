@@ -48,6 +48,15 @@
   let searching = $state(false);
   let searchDebounceTimer = null;
 
+  // Cleanup all timers on component unmount
+  $effect(() => {
+    return () => {
+      clearTimeout(searchDebounceTimer);
+      clearTimeout(hoverTimer);
+      clearTimeout(copyToastTimer);
+    };
+  });
+
   // Flat visible rows for rendering + keyboard nav
   let visibleRows = $derived(buildVisibleRows());
 

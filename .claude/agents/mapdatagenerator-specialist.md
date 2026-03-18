@@ -1,7 +1,7 @@
 ---
 name: mapdatagenerator-specialist
 description: MapDataGenerator project specialist. Use when working on map data visualization, XML parsing, multi-language search, DDS image display, or GUI tkinter/ttk operations.
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__openviking__*
 model: opus
 ---
 

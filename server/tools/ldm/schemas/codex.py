@@ -65,3 +65,18 @@ class CodexListResponse(BaseModel):
     count: int
     total: int = 0
     has_more: bool = False
+
+
+# =============================================================================
+# Voice generation models (Phase 41)
+# =============================================================================
+
+
+class VoiceGenerationResponse(BaseModel):
+    """Response from voice generation endpoint."""
+
+    status: str  # "generated", "cached", "error"
+    audio_url: Optional[str] = None
+    duration_ms: Optional[int] = None
+    strkey: str
+    voice_profile: Optional[str] = None

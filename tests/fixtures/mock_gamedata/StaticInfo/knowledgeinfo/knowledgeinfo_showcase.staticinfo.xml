@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<KnowledgeInfoList>
+
+  <!-- 1. Elder Varon — Character Knowledge -->
+  <KnowledgeInfo StrKey="Knowledge_ElderVaron" Name="장로 바론" isDefault="False"
+                 CharacterKey="CHAR_001" QuestKey="Quest_SealedLibrary_Main"
+                 UITextureName="character_varon"
+                 Desc="고대 봉인의 수호자이자 현자의 결사 창립 멤버.&lt;br/&gt;수천 년간 봉인된 도서관을 지켜온 현자.&lt;br/&gt;그의 지혜는 세계의 균형을 유지하는 열쇠이다." />
+
+  <!-- 2. Shadow Kira — Character Knowledge -->
+  <KnowledgeInfo StrKey="Knowledge_ShadowKira" Name="그림자 암살자 키라" isDefault="False"
+                 CharacterKey="CHAR_002"
+                 UITextureName="character_kira"
+                 Desc="어둠의 교단에서 훈련받은 전설적인 암살자.&lt;br/&gt;그림자 속에서 움직이며 흔적을 남기지 않는다." />
+
+  <!-- 3. Sacred Flame — Skill Knowledge (with child LevelData) -->
+  <KnowledgeInfo StrKey="Knowledge_SacredFlame" Name="성스러운 불꽃" isDefault="True"
+                 LearnApplySkillKey="Skill_SacredFlame" CharacterKey="CHAR_001"
+                 UITextureName="skill_0001"
+                 Desc="현자의 결사에서 전승되는 신성한 화염 마법.&lt;br/&gt;어둠의 존재를 정화하는 힘을 지닌다.">
+    <LevelData Level="1" Learnable="True" RequiredLevel="10" ManaCost="25" />
+  </KnowledgeInfo>
+
+  <!-- 4. Shadow Strike — Skill Knowledge -->
+  <KnowledgeInfo StrKey="Knowledge_ShadowStrike" Name="그림자 일격" isDefault="True"
+                 LearnApplySkillKey="Skill_ShadowStrike" CharacterKey="CHAR_002"
+                 UITextureName="skill_0002"
+                 Desc="어둠의 힘을 응축하여 적에게 치명적인 일격을 가한다.&lt;br/&gt;그림자 암살자만이 사용할 수 있는 비전 기술." />
+
+  <!-- 5. Holy Shield — Skill Knowledge -->
+  <KnowledgeInfo StrKey="Knowledge_HolyShield" Name="성스러운 방패" isDefault="True"
+                 LearnApplySkillKey="Skill_HolyShield" CharacterKey="CHAR_005"
+                 UITextureName="skill_0003"
+                 Desc="신성한 빛으로 아군을 보호하는 방어 마법.&lt;br/&gt;모든 어둠의 공격을 일정 시간 무효화한다." />
+
+  <!-- 6. Sealed Library — Region Knowledge -->
+  <KnowledgeInfo StrKey="Knowledge_SealedLibrary" Name="봉인된 도서관" isDefault="False"
+                 RegionKey="Region_SealedLibrary"
+                 UITextureName="region_fortress"
+                 Desc="고대 현자들이 금지된 지식을 봉인한 장소.&lt;br/&gt;강력한 마법 결계로 보호되어 있으며&lt;br/&gt;오직 현자의 결사만이 출입할 수 있다." />
+
+  <!-- 7. Sage Order — Faction Knowledge -->
+  <KnowledgeInfo StrKey="Knowledge_SageOrder" Name="현자의 결사" isDefault="False"
+                 FactionKey="Faction_SageOrder" CharacterKey="CHAR_001"
+                 UITextureName="region_0001"
+                 Desc="세계의 균형을 수호하기 위해 설립된 비밀 조직.&lt;br/&gt;장로 바론이 이끄는 현자들의 연합체이다." />
+
+  <!-- 8. Dark Cult — Faction Knowledge -->
+  <KnowledgeInfo StrKey="Knowledge_DarkCult" Name="어둠의 교단" isDefault="False"
+                 FactionKey="Faction_DarkCult" CharacterKey="CHAR_002"
+                 UITextureName="region_0002"
+                 Desc="금지된 어둠의 힘을 숭배하는 비밀 교단.&lt;br/&gt;봉인된 도서관의 지식을 탈취하려 한다." />
+
+  <!-- 9. Blackstar Sword — Item Knowledge -->
+  <KnowledgeInfo StrKey="Knowledge_BlackstarSword" Name="검은별 대검" isDefault="False"
+                 ItemKey="Item_BlackstarSword" CharacterKey="CHAR_003"
+                 UITextureName="item_blackstar_sword"
+                 Desc="전설의 대장장이 그림조가 검은별 광석으로 단조한 대검.&lt;br/&gt;어둠을 베는 힘과 빛을 담는 힘을 동시에 지닌다." />
+
+  <!-- 10. Grimjaw — Character Knowledge -->
+  <KnowledgeInfo StrKey="Knowledge_Grimjaw" Name="대장장이 그림조" isDefault="False"
+                 CharacterKey="CHAR_003"
+                 UITextureName="character_grimjaw"
+                 Desc="드워프 종족 최고의 대장장이.&lt;br/&gt;검은별 대검을 비롯한 전설적인 무기들을 단조했다.&lt;br/&gt;현재 봉인된 도서관 근처에서 은둔 중이다." />
+
+</KnowledgeInfoList>

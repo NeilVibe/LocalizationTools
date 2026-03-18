@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from loguru import logger
 
 from server.utils.dependencies import get_current_active_user_async
@@ -23,9 +23,11 @@ from server.tools.ldm.schemas.codex import (
     CodexEntity,
     CodexListResponse,
     CodexSearchResponse,
+    VoiceGenerationResponse,
 )
 from server.tools.ldm.services.codex_service import CodexService
 from server.tools.ldm.services.ai_image_service import get_ai_image_service
+from server.tools.ldm.services.tts_service import get_tts_service, VOICE_PROFILES
 from server.utils.progress_tracker import TrackedOperation
 
 
@@ -316,6 +318,107 @@ async def cancel_batch_generate(
 
     cancel_event.set()
     return {"status": "cancelling", "operation_id": operation_id}
+
+
+# =============================================================================
+# TTS Voice Generation Endpoints (Phase 41)
+# =============================================================================
+
+
+@router.post("/generate-voice/{strkey}", response_model=VoiceGenerationResponse)
+async def generate_voice(
+    strkey: str,
+    force: bool = Query(False, description="Force regeneration even if cached"),
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Generate Korean voice audio for a Codex entity using Qwen3-TTS.
+
+    Uses character-specific voice profiles for distinct voices.
+    Returns audio URL for playback. Caches generated audio on disk.
+    """
+    tts = get_tts_service()
+    codex = _get_codex_service()
+
+    if not tts.available:
+        raise HTTPException(
+            status_code=503,
+            detail="TTS generation unavailable (qwen-tts not installed or GPU unavailable)",
+        )
+
+    # Find entity across all types
+    entity = None
+    for etype in ["character", "item", "skill", "region", "gimmick", "knowledge"]:
+        entity = codex.get_entity(etype, strkey)
+        if entity is not None:
+            break
+
+    if entity is None:
+        raise HTTPException(status_code=404, detail=f"Entity not found: {strkey}")
+
+    # Check cache
+    if not force:
+        cached = tts.get_cached_audio_path(strkey)
+        if cached:
+            duration = tts.get_audio_duration_ms(cached)
+            return VoiceGenerationResponse(
+                status="cached",
+                audio_url=f"/api/ldm/codex/voice/{strkey}",
+                duration_ms=duration,
+                strkey=strkey,
+                voice_profile=strkey if strkey in VOICE_PROFILES else "default",
+            )
+
+    # Generate voice (CPU/GPU-bound, run in thread)
+    try:
+        wav_path = await asyncio.to_thread(tts.generate_voice, entity)
+        duration = tts.get_audio_duration_ms(wav_path)
+        return VoiceGenerationResponse(
+            status="generated",
+            audio_url=f"/api/ldm/codex/voice/{strkey}",
+            duration_ms=duration,
+            strkey=strkey,
+            voice_profile=strkey if strkey in VOICE_PROFILES else "default",
+        )
+    except ValueError as exc:
+        logger.error(f"[Codex API] Voice generation error for {strkey}: {exc}")
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        logger.error(f"[Codex API] Voice generation failed for {strkey}: {exc}")
+        raise HTTPException(status_code=500, detail="Voice generation failed -- check server logs")
+
+
+@router.get("/voice/{strkey}")
+async def get_voice_audio(
+    strkey: str,
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Serve cached TTS-generated voice audio for a Codex entity.
+
+    Returns WAV audio with 7-day browser cache headers.
+    """
+    tts = get_tts_service()
+    cached = tts.get_cached_audio_path(strkey)
+
+    if not cached:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No generated voice for entity: {strkey}",
+        )
+
+    return FileResponse(
+        str(cached),
+        media_type="audio/wav",
+        headers={"Cache-Control": "public, max-age=604800"},
+    )
+
+
+@router.get("/tts/status")
+async def tts_status(
+    current_user: dict = Depends(get_current_active_user_async),
+):
+    """Check if TTS voice generation is available."""
+    tts = get_tts_service()
+    return {"available": tts.available}
 
 
 # =============================================================================

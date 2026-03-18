@@ -55,20 +55,25 @@
 
     const heroImg = el.querySelector('.card-hero-image');
 
+    let rafId = null;
     function onMouseMove(e) {
-      const rect = el.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const relX = (e.clientX - centerX) / (rect.width / 2); // -1 to 1
-      const relY = (e.clientY - centerY) / (rect.height / 2); // -1 to 1
+      if (rafId) return; // Throttle to one update per animation frame
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const rect = el.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const relX = (e.clientX - centerX) / (rect.width / 2);
+        const relY = (e.clientY - centerY) / (rect.height / 2);
 
-      const rotateY = relX * 5; // max +/-5deg
-      const rotateX = -relY * 5; // max +/-5deg (invert Y for natural tilt)
+        const rotateY = relX * 5;
+        const rotateX = -relY * 5;
 
-      el.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-      if (heroImg) {
-        heroImg.style.transform = `translate(${-rotateY * 2}px, ${rotateX * 2}px)`;
-      }
+        el.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+        if (heroImg) {
+          heroImg.style.transform = `translate(${-rotateY * 2}px, ${rotateX * 2}px)`;
+        }
+      });
     }
 
     function onMouseLeave() {
@@ -84,6 +89,7 @@
     return () => {
       el.removeEventListener('mousemove', onMouseMove);
       el.removeEventListener('mouseleave', onMouseLeave);
+      if (rafId) cancelAnimationFrame(rafId);
     };
   });
 

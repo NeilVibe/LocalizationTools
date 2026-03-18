@@ -124,7 +124,7 @@ OFFLINE: SQLite (single-user, auto-fallback)
 2. **ALWAYS CHOOSE HARD** — No shortcuts. EASY = tech debt. HARD = survives forever.
 3. **Sacred Scripts** — XLSTransfer, KR Similar, QuickSearch: never change a byte. Rest of RFC = reference to copy patterns from.
 4. **No Backend Mods** — Only wrapper layers (API, GUI)
-5. **Logger Only** — Never `print()`, always `logger`
+5. **Logger Only** — Never `print()`, always `from loguru import logger` (NOT stdlib `logging`)
 6. **Dual Push** — Always push to both GitHub and Gitea:
    ```
    git push origin main && ./scripts/gitea_control.sh start && git push gitea main && ./scripts/gitea_control.sh stop

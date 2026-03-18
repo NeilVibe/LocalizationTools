@@ -23,17 +23,17 @@
   import AISuggestionsTab from "$lib/components/ldm/AISuggestionsTab.svelte";
   import QAFooter from "$lib/components/ldm/QAFooter.svelte";
 
-  // Props (same as TMQAPanel for backward compat)
+  // Props — data props are read-only (owned by GridPage), UI props are $bindable
   let {
-    selectedRow = $bindable(null),
-    tmMatches = $bindable([]),
-    qaIssues = $bindable([]),
+    selectedRow = null,
+    tmMatches = [],
+    qaIssues = [],
     tmLoading = false,
     qaLoading = false,
-    collapsed = $bindable(false),
-    width = $bindable(300),
+    collapsed = $bindable(false),   // RightPanel owns collapse state
+    width = $bindable(300),         // RightPanel owns width state
     leverageStats = null,
-    // Callback props (Svelte 5 migration)
+    // Callback props (Svelte 5 pattern)
     onApplyTM = undefined,
     onApplySuggestion = undefined,
     onNavigateToRow = undefined
@@ -101,6 +101,7 @@
 <div class="right-panel" class:collapsed style="width: {collapsed ? '40px' : `${width}px`};">
   <!-- Resize handle -->
   {#if !collapsed}
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       class="resize-handle"
       onmousedown={startResize}
@@ -130,7 +131,7 @@
             title={tab.label}
             data-testid="tab-{tab.id}"
           >
-            <svelte:component this={tab.icon} size={14} />
+            <tab.icon size={14} />
             <span class="tab-label">{tab.label}</span>
           </button>
         {/each}
@@ -141,9 +142,9 @@
       <div class="tab-content">
         {#if activeTab === 'tm'}
           <TMTab
-            bind:selectedRow={selectedRow}
-            bind:tmMatches={tmMatches}
-            bind:tmLoading={tmLoading}
+            {selectedRow}
+            {tmMatches}
+            {tmLoading}
             {leverageStats}
             onApplyTM={handleApplyTM}
           />

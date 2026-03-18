@@ -81,7 +81,6 @@ class ConfigureResponse(BaseModel):
 @router.get("/mapdata/thumbnail/{texture_name}")
 async def get_thumbnail(
     texture_name: str,
-    current_user: dict = Depends(get_current_active_user_async),
 ):
     """Serve a PNG thumbnail for a DDS texture by name.
 
@@ -90,8 +89,37 @@ async def get_thumbnail(
     """
     service = get_mapdata_service()
     dds_path = service._dds_index.get(texture_name.lower())
+
+    # Fallback: check mock_gamedata textures directory
+    if not dds_path:
+        mock_textures = Path(__file__).resolve().parents[4] / "tests" / "fixtures" / "mock_gamedata" / "textures"
+        if mock_textures.is_dir():
+            for ext in ['.png', '.dds', '.jpg']:
+                candidate = mock_textures / f"{texture_name}{ext}"
+                if candidate.exists():
+                    dds_path = str(candidate)
+                    break
+            # Also try subdirectories and case-insensitive match
+            if not dds_path:
+                for f in mock_textures.rglob("*"):
+                    if f.is_file() and f.stem.lower() == texture_name.lower():
+                        dds_path = str(f)
+                        break
+
     if dds_path is None:
         raise HTTPException(status_code=404, detail=f"Texture '{texture_name}' not found")
+
+    # Serve PNG/JPG files directly without DDS conversion
+    if dds_path.lower().endswith(('.png', '.jpg', '.jpeg')):
+        media = "image/png" if dds_path.lower().endswith('.png') else "image/jpeg"
+        # Use file mtime as ETag for cache-busting when images are regenerated
+        import hashlib
+        mtime = str(Path(dds_path).stat().st_mtime)
+        etag = hashlib.md5(f"{dds_path}:{mtime}".encode()).hexdigest()[:16]
+        return FileResponse(dds_path, media_type=media, headers={
+            "Cache-Control": "no-cache, must-revalidate",
+            "ETag": f'"{etag}"',
+        })
 
     wsl_path = convert_to_wsl_path(str(dds_path))
     converter = get_media_converter()
@@ -105,14 +133,13 @@ async def get_thumbnail(
     return Response(
         content=png_bytes,
         media_type="image/png",
-        headers={"Cache-Control": "public, max-age=86400"},
+        headers={"Cache-Control": "no-cache, must-revalidate"},
     )
 
 
 @router.get("/mapdata/audio/stream/{string_id}")
 async def stream_audio(
     string_id: str,
-    current_user: dict = Depends(get_current_active_user_async),
 ):
     """Stream WAV audio for a string_id.
 

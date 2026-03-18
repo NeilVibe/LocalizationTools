@@ -1,7 +1,7 @@
 ---
 name: dev-tester
 description: DEV mode testing specialist with VISION capabilities. Use for running Playwright tests, taking screenshots, analyzing UI visually, verifying fixes in localhost:5173, and test-driven verification.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__openviking__*
 model: opus
 ---
 

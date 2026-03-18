@@ -1,7 +1,7 @@
 ---
 name: quicksearch-specialist
 description: QuickSearch project specialist. Use when working on the QuickSearch tool - LINE CHECK, TERM CHECK, dictionary creation, ENG/KR BASE modes, or XML search functionality.
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__openviking__*
 model: opus
 ---
 

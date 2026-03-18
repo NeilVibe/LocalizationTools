@@ -8,7 +8,7 @@
    * Phase 20: Interactive World Map (Plan 02)
    * Phase 38: Fantasy World Map (Plan 01 parchment + Plan 02 polygons/icons)
    */
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { zoom, zoomIdentity } from "d3-zoom";
   import { select } from "d3-selection";
   import { getNodeIcon } from "./MapIcons.svelte";
@@ -263,6 +263,19 @@
         .call(zoomBehavior.transform, zoomIdentity);
     });
   });
+
+  // Cleanup D3 event handlers on unmount
+  onDestroy(() => {
+    if (svgSelectionRef) {
+      svgSelectionRef.on('.zoom', null);
+      svgSelectionRef.on('dblclick.zoom', null);
+    }
+    if (zoomBehaviorRef) {
+      zoomBehaviorRef.on('zoom', null);
+    }
+    svgSelectionRef = null;
+    zoomBehaviorRef = null;
+  });
 </script>
 
 <div class="map-canvas-wrapper">
@@ -431,7 +444,7 @@
     {/each}
 
     <!-- Grid lines (subtle, over background) -->
-    {#each gridLines as pos}
+    {#each gridLines as pos (pos)}
       <line
         x1={pos} y1="0" x2={pos} y2={SVG_SIZE}
         stroke="#3d321e"
@@ -495,7 +508,10 @@
       {@const isHovered = hoveredRoute === i}
       {#if points}
         {@const pathD = polylineToPath(points)}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <g class="route-group"
+           role="img"
+           aria-label="Route"
            onmouseenter={() => hoveredRoute = i}
            onmouseleave={() => hoveredRoute = null}
         >

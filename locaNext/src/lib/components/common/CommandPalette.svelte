@@ -107,6 +107,11 @@
     selectedIndex = 0;
     isSearching = false;
     if (debounceTimer) clearTimeout(debounceTimer);
+    // Restore focus to main content for keyboard accessibility
+    requestAnimationFrame(() => {
+      const main = document.querySelector('[role="main"]') || document.querySelector('main');
+      main?.focus();
+    });
   }
 
   function selectResult(result) {
@@ -135,7 +140,7 @@
 </script>
 
 {#if isOpen}
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
   <div
     class="palette-backdrop"
     onclick={handleBackdropClick}
@@ -193,6 +198,7 @@
               class="palette-result"
               class:selected={i === selectedIndex}
               role="option"
+              tabindex="-1"
               aria-selected={i === selectedIndex}
               onclick={() => selectResult(result)}
               onmouseenter={() => { selectedIndex = i; }}

@@ -22,7 +22,7 @@
   let loading = $state(false);
   let error = $state(null);
 
-  // Fetch image context when selected row changes
+  // Fetch image context when selected row changes (with AbortController)
   $effect(() => {
     const stringId = selectedRow?.string_id;
     if (!stringId) {
@@ -33,9 +33,11 @@
 
     loading = true;
     error = null;
+    const controller = new AbortController();
 
     fetch(`${API_BASE}/api/ldm/mapdata/image/${encodeURIComponent(stringId)}`, {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
+      signal: controller.signal
     })
       .then(async (response) => {
         if (response.ok) {
@@ -47,6 +49,7 @@
         }
       })
       .catch((err) => {
+        if (err.name === 'AbortError') return;
         logger.error('Failed to fetch image context', { error: err.message });
         error = err.message;
         imageContext = null;
@@ -54,6 +57,8 @@
       .finally(() => {
         loading = false;
       });
+
+    return () => controller.abort();
   });
 </script>
 

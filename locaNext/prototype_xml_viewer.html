@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GameData XML Viewer - Prototype</title>
+<style>
+  /* ===== BASE ===== */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    /* One Dark Pro palette */
+    --bg: #1e1e1e;
+    --bg-hover: #2c313a;
+    --bg-selected: #264f78;
+    --bg-panel: #252526;
+    --bg-sidebar: #1e1e1e;
+    --border: #3c3c3c;
+    --border-subtle: #2d2d2d;
+
+    /* Syntax colors */
+    --tag: #e06c75;          /* XML tag names - coral */
+    --attr-name: #d19a66;    /* attribute names - orange */
+    --attr-value: #98c379;   /* attribute values (strings) - green */
+    --bracket: #636d83;      /* < > / = " - dim gray */
+    --comment: #5c6370;      /* comments - muted gray */
+    --text: #abb2bf;         /* default text */
+    --text-bright: #d4d4d4;  /* bright text */
+    --text-dim: #6b7280;     /* dim text */
+
+    /* UI colors */
+    --accent: #528bff;
+    --link: #61afef;
+    --badge-bg: rgba(255,255,255,0.06);
+    --indent-guide: rgba(255,255,255,0.06);
+    --indent-guide-active: rgba(255,255,255,0.15);
+
+    /* Entity type colors */
+    --skill-tree: #a855f7;
+    --skill-node: #c084fc;
+    --item: #06b6d4;
+    --character: #8b5cf6;
+    --gimmick: #f59e0b;
+    --knowledge: #10b981;
+    --quest: #f97316;
+    --region: #14b8a6;
+    --seal: #6366f1;
+    --faction: #ec4899;
+  }
+
+  body {
+    font-family: 'D2Coding', 'Noto Sans Mono CJK KR', 'IBM Plex Mono', 'Consolas', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ===== LAYOUT ===== */
+  .app {
+    display: flex;
+    height: 100vh;
+  }
+
+  /* Left sidebar - file explorer */
+  .sidebar {
+    width: 240px;
+    min-width: 180px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .sidebar-header svg { opacity: 0.6; }
+
+  .file-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text);
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+  }
+
+  .file-item:hover { background: var(--bg-hover); }
+  .file-item.active { background: var(--bg-selected); color: var(--text-bright); }
+
+  .file-icon {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  /* Main content - XML viewer */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex;
+    align-items: center;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    height: 35px;
+    padding: 0 8px;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: inherit;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text-bright); border-bottom-color: var(--accent); }
+
+  .tab-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Breadcrumb bar */
+  .breadcrumb-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 16px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 11px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .breadcrumb-sep { color: var(--bracket); }
+  .breadcrumb-item { color: var(--tag); cursor: pointer; }
+  .breadcrumb-item:hover { text-decoration: underline; }
+  .breadcrumb-item:last-child { color: var(--text-bright); }
+
+  /* XML tree content */
+  .xml-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+    counter-reset: line;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .xml-tree::-webkit-scrollbar { width: 8px; }
+  .xml-tree::-webkit-scrollbar-track { background: transparent; }
+  .xml-tree::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* ===== XML NODE ROWS ===== */
+  .xml-row {
+    display: flex;
+    align-items: flex-start;
+    min-height: 24px;
+    padding: 1px 0;
+    padding-right: 16px;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .xml-row:hover {
+    background: var(--bg-hover);
+  }
+
+  .xml-row.selected {
+    background: var(--bg-selected);
+  }
+
+  /* Line number gutter */
+  .line-gutter {
+    width: 50px;
+    min-width: 50px;
+    text-align: right;
+    padding-right: 12px;
+    color: var(--text-dim);
+    font-size: 12px;
+    user-select: none;
+    flex-shrink: 0;
+    opacity: 0.5;
+  }
+
+  /* Fold gutter */
+  .fold-gutter {
+    width: 16px;
+    min-width: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 10px;
+    user-select: none;
+  }
+
+  .fold-gutter:hover { color: var(--text-bright); }
+
+  .fold-arrow {
+    transition: transform 0.15s ease;
+    display: inline-block;
+  }
+
+  .fold-arrow.expanded { transform: rotate(90deg); }
+
+  /* Indent guides */
+  .indent-area {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .indent-guide {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--indent-guide);
+  }
+
+  .xml-row:hover .indent-guide,
+  .xml-row.selected .indent-guide {
+    background: var(--indent-guide-active);
+  }
+
+  /* XML content */
+  .xml-content {
+    flex: 1;
+    white-space: nowrap;
+    min-width: 0;
+    padding: 0 4px;
+  }
+
+  /* Syntax tokens */
+  .t-bracket { color: var(--bracket); }
+  .t-tag { color: var(--tag); font-weight: 500; }
+  .t-attr { color: var(--attr-name); }
+  .t-value { color: var(--attr-value); }
+  .t-value.editable {
+    cursor: text;
+    border-bottom: 1px dashed rgba(152, 195, 121, 0.3);
+    padding: 0 1px;
+    border-radius: 2px;
+  }
+  .t-value.editable:hover {
+    background: rgba(152, 195, 121, 0.1);
+    border-bottom-color: var(--attr-value);
+  }
+  .t-comment { color: var(--comment); font-style: italic; }
+  .t-text { color: var(--text); }
+  .t-entity-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    padding: 0 5px;
+    margin-left: 8px;
+    border-radius: 3px;
+    background: var(--badge-bg);
+    color: var(--text-dim);
+    font-weight: 400;
+    vertical-align: middle;
+  }
+
+  /* Cross-reference links */
+  .t-xref {
+    color: var(--link);
+    cursor: pointer;
+    text-decoration: none;
+    border-bottom: 1px dotted var(--link);
+  }
+  .t-xref:hover {
+    text-decoration: underline;
+    color: #8cc4f0;
+  }
+
+  /* Collapsed placeholder */
+  .collapsed-indicator {
+    display: inline-block;
+    padding: 0 6px;
+    margin: 0 2px;
+    background: var(--badge-bg);
+    border-radius: 3px;
+    color: var(--text-dim);
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid var(--border-subtle);
+  }
+  .collapsed-indicator:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text);
+  }
+
+  /* ===== RIGHT PANEL - DETAIL/INSPECTOR ===== */
+  .detail-panel {
+    width: 320px;
+    min-width: 280px;
+    max-width: 500px;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .detail-header {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .detail-tag {
+    color: var(--tag);
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  .detail-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: white;
+    font-weight: 500;
+  }
+
+  .detail-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .detail-tab {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 11px;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: inherit;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .detail-tab:hover { color: var(--text); }
+  .detail-tab.active { color: var(--text-bright); border-bottom-color: var(--accent); }
+
+  .detail-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+
+  /* Property rows */
+  .prop-group {
+    padding: 0 12px;
+    margin-bottom: 12px;
+  }
+
+  .prop-group-title {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    padding: 4px 0;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .prop-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 3px 0;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .prop-key {
+    color: var(--attr-name);
+    min-width: 100px;
+    flex-shrink: 0;
+    font-weight: 500;
+  }
+
+  .prop-value {
+    color: var(--attr-value);
+    flex: 1;
+    word-break: break-all;
+  }
+
+  .prop-value.editable-field {
+    background: rgba(152, 195, 121, 0.05);
+    border: 1px solid rgba(152, 195, 121, 0.2);
+    border-radius: 3px;
+    padding: 2px 6px;
+    cursor: text;
+    min-height: 24px;
+  }
+
+  .prop-value.editable-field:hover {
+    border-color: rgba(152, 195, 121, 0.4);
+    background: rgba(152, 195, 121, 0.08);
+  }
+
+  .prop-value.editable-field:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(82, 139, 255, 0.05);
+  }
+
+  .prop-value.long-text {
+    line-height: 1.5;
+    white-space: pre-wrap;
+    font-size: 12px;
+  }
+
+  .prop-value .br-tag {
+    display: inline-block;
+    background: rgba(224, 108, 117, 0.15);
+    color: var(--tag);
+    font-size: 10px;
+    padding: 0 3px;
+    border-radius: 2px;
+    font-family: monospace;
+    vertical-align: baseline;
+  }
+
+  /* Children section */
+  .children-section {
+    padding: 0 12px;
+  }
+
+  .child-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    margin: 2px;
+    background: var(--badge-bg);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--text);
+    font-family: inherit;
+  }
+
+  .child-chip:hover {
+    background: var(--bg-hover);
+    border-color: var(--border);
+  }
+
+  .child-chip .chip-tag { color: var(--tag); font-weight: 500; }
+  .child-chip .chip-label { color: var(--text-dim); }
+
+  /* ===== INLINE EDIT ===== */
+  .inline-edit {
+    display: inline-block;
+    background: rgba(152, 195, 121, 0.08);
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    color: var(--attr-value);
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1.4;
+    padding: 0 3px;
+    min-width: 80px;
+    outline: none;
+  }
+
+  .inline-edit.textarea-mode {
+    display: block;
+    width: 100%;
+    min-height: 60px;
+    margin: 4px 0;
+    padding: 6px 8px;
+    resize: vertical;
+    line-height: 1.6;
+  }
+
+  /* ===== STATUS BAR ===== */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 12px;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    height: 22px;
+  }
+
+  .status-left, .status-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* ===== ANIMATIONS ===== */
+  .xml-children-enter {
+    animation: slideDown 0.15s ease-out;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== SEARCH BAR ===== */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 16px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .search-input {
+    flex: 1;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    outline: none;
+  }
+
+  .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  .search-input::placeholder { color: var(--text-dim); }
+
+  .search-count {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #555; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- LEFT: File Explorer Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1h5l1 1H14.5l.5.5v3H1V1.5L1.5 1zM1 6h14v8.5l-.5.5h-13l-.5-.5V6z"/></svg>
+      GAME DATA
+    </div>
+    <div class="file-list">
+      <button class="file-item active">
+        <span class="file-icon" style="color: var(--skill-tree);">&#9889;</span>
+        skilltreeinfo.xml
+      </button>
+      <button class="file-item">
+        <span class="file-icon" style="color: var(--item);">&#128722;</span>
+        iteminfo_weapon.xml
+      </button>
+      <button class="file-item">
+        <span class="file-icon" style="color: var(--character);">&#128100;</span>
+        characterinfo.xml
+      </button>
+      <button class="file-item">
+        <span class="file-icon" style="color: var(--knowledge);">&#128214;</span>
+        knowledgeinfo.xml
+      </button>
+      <button class="file-item">
+        <span class="file-icon" style="color: var(--quest);">&#128203;</span>
+        questinfo.xml
+      </button>
+      <button class="file-item">
+        <span class="file-icon" style="color: var(--region);">&#127758;</span>
+        regioninfo.xml
+      </button>
+      <button class="file-item">
+        <span class="file-icon" style="color: var(--gimmick);">&#9881;</span>
+        gimmickgroupinfo.xml
+      </button>
+      <button class="file-item">
+        <span class="file-icon" style="color: var(--seal);">&#128274;</span>
+        sealdatainfo.xml
+      </button>
+    </div>
+  </div>
+
+  <!-- CENTER: XML Tree Viewer -->
+  <div class="main">
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <button class="tab active">
+        <span class="tab-dot" style="background: var(--skill-tree);"></span>
+        skilltreeinfo.xml
+      </button>
+      <button class="tab">
+        <span class="tab-dot" style="background: var(--knowledge);"></span>
+        knowledgeinfo.xml
+      </button>
+    </div>
+
+    <!-- Search bar -->
+    <div class="search-bar">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="var(--text-dim)"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
+      <input class="search-input" placeholder="Search 489 entities... (Ctrl+F)" />
+      <span class="search-count">489 entities indexed</span>
+    </div>
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb-bar">
+      <span class="breadcrumb-item">StaticInfo</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-item">skilltreeinfo</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-item">SkillTreeInfo[Key="50"]</span>
+      <span class="breadcrumb-sep">&gt;</span>
+      <span class="breadcrumb-item">SkillNode[Id="300"]</span>
+    </div>
+
+    <!-- XML Tree Content -->
+    <div class="xml-tree" id="xmlTree">
+      <!-- Line 1: Root element opening -->
+      <div class="xml-row">
+        <span class="line-gutter">1</span>
+        <span class="fold-gutter"><span class="fold-arrow expanded">&#9654;</span></span>
+        <div class="indent-area" style="width: 0px;"></div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillTreeInfo</span>
+          <span class="t-attr"> Key</span><span class="t-bracket">=</span><span class="t-value">"50"</span>
+          <span class="t-attr"> StrKey</span><span class="t-bracket">=</span><span class="t-value">"Skill_Kliff"</span>
+          <span class="t-attr"> CharacterKey</span><span class="t-bracket">=</span><span class="t-xref" title="Navigate to Character: Kliff">"Kliff"</span>
+          <span class="t-attr"> UIPageName</span><span class="t-bracket">=</span><span class="t-value editable">"&#53364;&#47532;&#54532; &#49828;&#53420;"</span>
+          <span class="t-bracket">&gt;</span>
+          <span class="t-entity-badge" style="color: var(--skill-tree);"><span style="font-size:11px">&#9889;</span> 8 children</span>
+        </div>
+      </div>
+
+      <!-- Line 2: Korean comment -->
+      <div class="xml-row">
+        <span class="line-gutter">2</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-comment">&lt;!-- &#47924;&#44592; (Weapon) --&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 3: Sword Mastery - leaf node -->
+      <div class="xml-row selected">
+        <span class="line-gutter">3</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-value">"100"</span>
+          <span class="t-attr"> SkillKey</span><span class="t-bracket">=</span><span class="t-xref" title="Navigate to Skill: Skill_SwordMastery">"Skill_SwordMastery"</span>
+          <span class="t-attr"> SkillLevel</span><span class="t-bracket">=</span><span class="t-value">"1"</span>
+          <span class="t-attr"> UIPositionXY</span><span class="t-bracket">=</span><span class="t-value">"640 270"</span>
+          <span class="t-bracket"> /&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 4: Comment -->
+      <div class="xml-row">
+        <span class="line-gutter">4</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-comment">&lt;!-- &#54924;&#51204; &#48288;&#44592; (Spin Slash) --&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 5: SkillNode with children - expanded -->
+      <div class="xml-row">
+        <span class="line-gutter">5</span>
+        <span class="fold-gutter"><span class="fold-arrow expanded">&#9654;</span></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-value">"250"</span>
+          <span class="t-attr"> SkillKey</span><span class="t-bracket">=</span><span class="t-xref">"Skill_TurnBash_I"</span>
+          <span class="t-attr"> SkillLevel</span><span class="t-bracket">=</span><span class="t-value">"1"</span>
+          <span class="t-attr"> UIPositionXY</span><span class="t-bracket">=</span><span class="t-value">"834 168"</span>
+          <span class="t-bracket">&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 6: ParentNode child -->
+      <div class="xml-row xml-children-enter">
+        <span class="line-gutter">6</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 40px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+          <div class="indent-guide" style="left: 30px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">ParentNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-xref" title="Navigate to SkillNode Id=300">"300"</span>
+          <span class="t-attr"> LinePoints</span><span class="t-bracket">=</span><span class="t-value">"834_168"</span>
+          <span class="t-bracket"> /&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 7: Closing tag -->
+      <div class="xml-row xml-children-enter">
+        <span class="line-gutter">7</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;/</span><span class="t-tag">SkillNode</span><span class="t-bracket">&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 8: Comment -->
+      <div class="xml-row">
+        <span class="line-gutter">8</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-comment">&lt;!-- &#52236;&#47476;&#44592; (Lunge) --&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 9: Lunge node - collapsed -->
+      <div class="xml-row">
+        <span class="line-gutter">9</span>
+        <span class="fold-gutter"><span class="fold-arrow">&#9654;</span></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-value">"300"</span>
+          <span class="t-attr"> SkillKey</span><span class="t-bracket">=</span><span class="t-xref">"Skill_Lunge_I"</span>
+          <span class="t-attr"> SkillLevel</span><span class="t-bracket">=</span><span class="t-value">"1"</span>
+          <span class="t-bracket">&gt;</span>
+          <span class="collapsed-indicator">1 child</span>
+          <span class="t-bracket">&lt;/</span><span class="t-tag">SkillNode</span><span class="t-bracket">&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 10: Comment -->
+      <div class="xml-row">
+        <span class="line-gutter">10</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-comment">&lt;!-- &#48731;&#48152;&#49324; (Light Reflection) --&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 11: Light Reflection - collapsed -->
+      <div class="xml-row">
+        <span class="line-gutter">11</span>
+        <span class="fold-gutter"><span class="fold-arrow">&#9654;</span></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-value">"650"</span>
+          <span class="t-attr"> SkillKey</span><span class="t-bracket">=</span><span class="t-xref">"Skill_LightReflection"</span>
+          <span class="t-bracket">&gt;</span>
+          <span class="collapsed-indicator">1 child</span>
+          <span class="t-bracket">&lt;/</span><span class="t-tag">SkillNode</span><span class="t-bracket">&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 12: Comment -->
+      <div class="xml-row">
+        <span class="line-gutter">12</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-comment">&lt;!-- &#51656;&#54413; &#48288;&#44592; (Sword Rush) --&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 13: Sword Rush leaf -->
+      <div class="xml-row">
+        <span class="line-gutter">13</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-value">"950"</span>
+          <span class="t-attr"> SkillKey</span><span class="t-bracket">=</span><span class="t-xref">"Skill_SwordRush"</span>
+          <span class="t-attr"> SkillLevel</span><span class="t-bracket">=</span><span class="t-value">"1"</span>
+          <span class="t-bracket"> /&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 14: Comment -->
+      <div class="xml-row">
+        <span class="line-gutter">14</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-comment">&lt;!-- &#51204;&#51652; &#48288;&#44592; (Move Cutting) --&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 15: Move Cutting - collapsed -->
+      <div class="xml-row">
+        <span class="line-gutter">15</span>
+        <span class="fold-gutter"><span class="fold-arrow">&#9654;</span></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-value">"150"</span>
+          <span class="t-attr"> SkillKey</span><span class="t-bracket">=</span><span class="t-xref">"Skill_MoveCutting_I"</span>
+          <span class="t-bracket">&gt;</span>
+          <span class="collapsed-indicator">1 child</span>
+          <span class="t-bracket">&lt;/</span><span class="t-tag">SkillNode</span><span class="t-bracket">&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 16: Unarmed leaf -->
+      <div class="xml-row">
+        <span class="line-gutter">16</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-value">"500"</span>
+          <span class="t-attr"> SkillKey</span><span class="t-bracket">=</span><span class="t-xref">"Skill_UnArmedMastery"</span>
+          <span class="t-attr"> SkillLevel</span><span class="t-bracket">=</span><span class="t-value">"1"</span>
+          <span class="t-bracket"> /&gt;</span>
+        </div>
+      </div>
+
+      <!-- Line 17: Closing root -->
+      <div class="xml-row">
+        <span class="line-gutter">17</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 0px;"></div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;/</span><span class="t-tag">SkillTreeInfo</span><span class="t-bracket">&gt;</span>
+        </div>
+      </div>
+
+      <!-- ===== SECOND TREE (different SkillTree in same file) ===== -->
+      <div class="xml-row" style="margin-top: 8px; border-top: 1px solid var(--border-subtle); padding-top: 8px;">
+        <span class="line-gutter">19</span>
+        <span class="fold-gutter"><span class="fold-arrow expanded">&#9654;</span></span>
+        <div class="indent-area" style="width: 0px;"></div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillTreeInfo</span>
+          <span class="t-attr"> Key</span><span class="t-bracket">=</span><span class="t-value">"8"</span>
+          <span class="t-attr"> StrKey</span><span class="t-bracket">=</span><span class="t-value">"MaterialArtSkill_Kliff"</span>
+          <span class="t-attr"> CharacterKey</span><span class="t-bracket">=</span><span class="t-xref">"Kliff"</span>
+          <span class="t-attr"> UIPageName</span><span class="t-bracket">=</span><span class="t-value editable">"&#52404;&#49696;"</span>
+          <span class="t-bracket">&gt;</span>
+          <span class="t-entity-badge" style="color: var(--skill-tree);"><span style="font-size:11px">&#9889;</span> 8 children</span>
+        </div>
+      </div>
+
+      <!-- Wrestle node -->
+      <div class="xml-row">
+        <span class="line-gutter">20</span>
+        <span class="fold-gutter"><span class="fold-arrow expanded">&#9654;</span></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-comment">&lt;!-- &#51105;&#50500; &#47700;&#52824;&#44592; / &#47112;&#49836;&#47553; --&gt;</span>
+        </div>
+      </div>
+
+      <div class="xml-row">
+        <span class="line-gutter">21</span>
+        <span class="fold-gutter"><span class="fold-arrow expanded">&#9654;</span></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-value">"450"</span>
+          <span class="t-attr"> SkillKey</span><span class="t-bracket">=</span><span class="t-xref">"Skill_Wrestle"</span>
+          <span class="t-attr"> ParentId</span><span class="t-bracket">=</span><span class="t-value">"—"</span>
+          <span class="t-bracket">&gt;</span>
+          <span class="t-entity-badge">3 children</span>
+        </div>
+      </div>
+
+      <!-- Children of Wrestle -->
+      <div class="xml-row xml-children-enter">
+        <span class="line-gutter">22</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 40px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+          <div class="indent-guide" style="left: 30px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-value">"455"</span>
+          <span class="t-attr"> SkillKey</span><span class="t-bracket">=</span><span class="t-xref">"Skill_Wrestle_Lariat"</span>
+          <span class="t-attr"> ParentId</span><span class="t-bracket">=</span><span class="t-xref" title="Navigate to Id=450">"450"</span>
+          <span class="t-bracket"> /&gt;</span>
+        </div>
+      </div>
+
+      <div class="xml-row xml-children-enter">
+        <span class="line-gutter">23</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 40px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+          <div class="indent-guide" style="left: 30px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-value">"460"</span>
+          <span class="t-attr"> SkillKey</span><span class="t-bracket">=</span><span class="t-xref">"Skill_Wrestle_AirBodySlam"</span>
+          <span class="t-attr"> ParentId</span><span class="t-bracket">=</span><span class="t-xref">"450"</span>
+          <span class="t-attr"> UISkillTreeNodeType</span><span class="t-bracket">=</span><span class="t-value" style="color: #e5c07b;">"Graymane_Abyss"</span>
+          <span class="t-bracket"> /&gt;</span>
+        </div>
+      </div>
+
+      <div class="xml-row xml-children-enter">
+        <span class="line-gutter">24</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 40px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+          <div class="indent-guide" style="left: 30px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-value">"465"</span>
+          <span class="t-attr"> SkillKey</span><span class="t-bracket">=</span><span class="t-xref">"Skill_Wrestle_GiantSwing"</span>
+          <span class="t-attr"> ParentId</span><span class="t-bracket">=</span><span class="t-xref">"450"</span>
+          <span class="t-bracket"> /&gt;</span>
+        </div>
+      </div>
+
+      <!-- Close Wrestle -->
+      <div class="xml-row xml-children-enter">
+        <span class="line-gutter">25</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;/</span><span class="t-tag">SkillNode</span><span class="t-bracket">&gt;</span>
+        </div>
+      </div>
+
+      <!-- Kick branch -->
+      <div class="xml-row">
+        <span class="line-gutter">27</span>
+        <span class="fold-gutter"><span class="fold-arrow">&#9654;</span></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">SkillNode</span>
+          <span class="t-attr"> Id</span><span class="t-bracket">=</span><span class="t-value">"500"</span>
+          <span class="t-attr"> SkillKey</span><span class="t-bracket">=</span><span class="t-xref">"Skill_UnArmedMastery"</span>
+          <span class="t-bracket">&gt;</span>
+          <span class="collapsed-indicator">4 children</span>
+          <span class="t-bracket">&lt;/</span><span class="t-tag">SkillNode</span><span class="t-bracket">&gt;</span>
+        </div>
+      </div>
+
+      <!-- Close second tree -->
+      <div class="xml-row">
+        <span class="line-gutter">32</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 0px;"></div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;/</span><span class="t-tag">SkillTreeInfo</span><span class="t-bracket">&gt;</span>
+        </div>
+      </div>
+
+      <!-- ===== KNOWLEDGE INFO SECTION ===== -->
+      <div class="xml-row" style="margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 8px;">
+        <span class="line-gutter">40</span>
+        <span class="fold-gutter"><span class="fold-arrow expanded">&#9654;</span></span>
+        <div class="indent-area" style="width: 0px;"></div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag" style="color: var(--knowledge);">KnowledgeInfo</span>
+          <span class="t-attr"> StrKey</span><span class="t-bracket">=</span><span class="t-value">"Knowledge_UnArmedMastery_I"</span>
+          <span class="t-attr"> Name</span><span class="t-bracket">=</span><span class="t-value editable">"&#53440;&#44201;"</span>
+          <span class="t-attr"> isDefault</span><span class="t-bracket">=</span><span class="t-value">"True"</span>
+          <span class="t-bracket">&gt;</span>
+          <span class="t-entity-badge" style="color: var(--knowledge);">&#128214; 2 children</span>
+        </div>
+      </div>
+
+      <!-- Knowledge Desc as multi-line attribute with br tags -->
+      <div class="xml-row xml-children-enter">
+        <span class="line-gutter">41</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-attr">Desc</span><span class="t-bracket">=</span><span class="t-value editable" style="display: inline-block; max-width: 600px; white-space: normal; line-height: 1.5;">
+            "&#49324;&#50857; &#48169;&#48277; : {Key:Key_FistAttack}<span class="br-tag">&lt;br/&gt;</span><span class="br-tag">&lt;br/&gt;</span>&#47611;&#51452;&#47673;&#51004;&#47196; &#51201;&#51012; &#53440;&#44201;&#54616;&#45716; &#44592;&#49696;&#51060;&#45796;."
+          </span>
+        </div>
+      </div>
+
+      <!-- Dev memo child -->
+      <div class="xml-row xml-children-enter">
+        <span class="line-gutter">42</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">Dev</span>
+          <span class="t-attr"> Memo</span><span class="t-bracket">=</span><span class="t-value">"&#44592;&#48376; &#49845;&#46301;"</span>
+          <span class="t-bracket"> /&gt;</span>
+        </div>
+      </div>
+
+      <!-- UseMacroNode child -->
+      <div class="xml-row xml-children-enter">
+        <span class="line-gutter">43</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 20px;">
+          <div class="indent-guide" style="left: 10px;"></div>
+        </div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;</span><span class="t-tag">UseMacroNode</span>
+          <span class="t-attr"> Name</span><span class="t-bracket">=</span><span class="t-value">"Macro_Skill_SkillPoint_Follow_Level5_Basic_01"</span>
+          <span class="t-bracket"> /&gt;</span>
+        </div>
+      </div>
+
+      <!-- Close KnowledgeInfo -->
+      <div class="xml-row xml-children-enter">
+        <span class="line-gutter">44</span>
+        <span class="fold-gutter"></span>
+        <div class="indent-area" style="width: 0px;"></div>
+        <div class="xml-content">
+          <span class="t-bracket">&lt;/</span><span class="t-tag" style="color: var(--knowledge);">KnowledgeInfo</span><span class="t-bracket">&gt;</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="status-bar">
+      <div class="status-left">
+        <span>skilltreeinfo.xml</span>
+        <span>&#183; 489 entities</span>
+        <span>&#183; Line 3, Col 12</span>
+      </div>
+      <div class="status-right">
+        <span>UTF-8</span>
+        <span>XML</span>
+        <span style="color: var(--knowledge);">&#9679; Index Ready</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Detail/Inspector Panel -->
+  <div class="detail-panel">
+    <div class="detail-header">
+      <span class="detail-tag">SkillNode</span>
+      <span class="detail-badge" style="background: var(--skill-node);">Id: 100</span>
+    </div>
+
+    <div class="detail-tabs">
+      <button class="detail-tab active">Attributes</button>
+      <button class="detail-tab">Cross-Refs</button>
+      <button class="detail-tab">Related</button>
+      <button class="detail-tab">QA</button>
+    </div>
+
+    <div class="detail-content">
+      <!-- Identity group -->
+      <div class="prop-group">
+        <div class="prop-group-title">Identity</div>
+        <div class="prop-row">
+          <span class="prop-key">Id</span>
+          <span class="prop-value">100</span>
+        </div>
+        <div class="prop-row">
+          <span class="prop-key">SkillKey</span>
+          <span class="prop-value" style="color: var(--link); cursor: pointer;">Skill_SwordMastery &#8599;</span>
+        </div>
+      </div>
+
+      <!-- Editable group -->
+      <div class="prop-group">
+        <div class="prop-group-title">Display</div>
+        <div class="prop-row">
+          <span class="prop-key">SkillLevel</span>
+          <span class="prop-value editable-field" contenteditable="true">1</span>
+        </div>
+        <div class="prop-row">
+          <span class="prop-key">UIPositionXY</span>
+          <span class="prop-value editable-field" contenteditable="true">640 270</span>
+        </div>
+        <div class="prop-row">
+          <span class="prop-key">UISkillTreeNode<br>Type</span>
+          <span class="prop-value editable-field" contenteditable="true">Graymane</span>
+        </div>
+      </div>
+
+      <!-- Long text example -->
+      <div class="prop-group">
+        <div class="prop-group-title">Description (from linked Knowledge)</div>
+        <div class="prop-row" style="flex-direction: column; gap: 4px;">
+          <span class="prop-key">Desc</span>
+          <span class="prop-value editable-field long-text" contenteditable="true">&#49324;&#50857; &#48169;&#48277; : {Key:Key_FistAttack}<span class="br-tag">&lt;br/&gt;</span><span class="br-tag">&lt;br/&gt;</span>&#47611;&#51452;&#47673;&#51004;&#47196; &#51201;&#51012; &#53440;&#44201;&#54616;&#45716; &#44592;&#49696;&#51060;&#45796;.</span>
+        </div>
+      </div>
+
+      <!-- Children section -->
+      <div class="prop-group">
+        <div class="prop-group-title">Parent Tree</div>
+        <div class="children-section" style="padding: 0;">
+          <button class="child-chip">
+            <span class="chip-tag">&#9889; SkillTreeInfo</span>
+            <span class="chip-label">Key=50 &#183; &#53364;&#47532;&#54532; &#49828;&#53420;</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="prop-group">
+        <div class="prop-group-title">Children (0)</div>
+        <div style="padding: 4px 0; color: var(--text-dim); font-size: 11px;">
+          Leaf node - no children
+        </div>
+      </div>
+
+      <!-- Sibling nodes -->
+      <div class="prop-group">
+        <div class="prop-group-title">Siblings (7)</div>
+        <div class="children-section" style="padding: 0;">
+          <button class="child-chip">
+            <span class="chip-tag">SkillNode</span>
+            <span class="chip-label">Id=250 &#183; TurnBash</span>
+          </button>
+          <button class="child-chip">
+            <span class="chip-tag">SkillNode</span>
+            <span class="chip-label">Id=300 &#183; Lunge</span>
+          </button>
+          <button class="child-chip">
+            <span class="chip-tag">SkillNode</span>
+            <span class="chip-label">Id=650 &#183; LightReflect</span>
+          </button>
+          <button class="child-chip">
+            <span class="chip-tag">SkillNode</span>
+            <span class="chip-label">Id=950 &#183; SwordRush</span>
+          </button>
+          <button class="child-chip">
+            <span class="chip-tag">SkillNode</span>
+            <span class="chip-label">Id=150 &#183; MoveCutting</span>
+          </button>
+          <button class="child-chip">
+            <span class="chip-tag">SkillNode</span>
+            <span class="chip-label">Id=500 &#183; UnArmed</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Fold/expand interaction
+  document.querySelectorAll('.fold-gutter').forEach(gutter => {
+    gutter.addEventListener('click', function() {
+      const arrow = this.querySelector('.fold-arrow');
+      if (arrow) {
+        arrow.classList.toggle('expanded');
+      }
+    });
+  });
+
+  // Row selection
+  document.querySelectorAll('.xml-row').forEach(row => {
+    row.addEventListener('click', function() {
+      document.querySelectorAll('.xml-row.selected').forEach(r => r.classList.remove('selected'));
+      this.classList.add('selected');
+    });
+  });
+
+  // File selection
+  document.querySelectorAll('.file-item').forEach(item => {
+    item.addEventListener('click', function() {
+      document.querySelectorAll('.file-item.active').forEach(r => r.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // Detail tab selection
+  document.querySelectorAll('.detail-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.detail-tab.active').forEach(r => r.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // Tab selection
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.tab.active').forEach(r => r.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
