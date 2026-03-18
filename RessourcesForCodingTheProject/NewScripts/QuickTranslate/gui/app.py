@@ -1653,7 +1653,15 @@ class QuickTranslateApp:
         if match_type != "stringid_only":
             self.stringid_all_frame.pack_forget()
 
-        if match_type in ("strict", "strorigin_only", "strorigin_descorigin", "strorigin_filename"):
+        if match_type == "strorigin_filename":
+            # strorigin_filename: no fuzzy, no unique-only, no non-script — just scope + transfer
+            self.precision_options_frame.pack_forget()
+            self.unique_only_frame.pack_forget()
+            self.strict_non_script_frame.pack_forget()
+            self.transfer_btn.config(state='normal')
+            self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
+            self._bind_mousewheel_recursive(self.transfer_scope_frame)
+        elif match_type in ("strict", "strorigin_only", "strorigin_descorigin"):
             self.precision_options_frame.pack(fill=tk.X, pady=(4, 0))
             # Show/hide the fuzzy sub-frame based on current precision
             self._on_precision_changed()
@@ -1667,14 +1675,6 @@ class QuickTranslateApp:
                 self.unique_only_frame.pack(fill=tk.X, pady=(4, 0))
                 self._bind_mousewheel_recursive(self.unique_only_frame)
                 self.strict_non_script_frame.pack_forget()
-            elif match_type == "strorigin_filename":
-                # No unique-only, no non-script filter, no fuzzy — but show scope + enable transfer
-                self.precision_options_frame.pack_forget()
-                self.unique_only_frame.pack_forget()
-                self.strict_non_script_frame.pack_forget()
-                self.transfer_btn.config(state='normal')
-                self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
-                self._bind_mousewheel_recursive(self.transfer_scope_frame)
             else:
                 # strict or strorigin_descorigin — both have StringID for category filtering
                 self.unique_only_frame.pack_forget()

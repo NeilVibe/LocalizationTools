@@ -1675,6 +1675,23 @@ def _fast_folder_merge(
                     )
                 result["unmatched_details"].append(detail)
 
+    elif match_mode == "strorigin_filename":
+        for i, c in enumerate(corrections):
+            if not correction_matched[i]:
+                origin_norm = normalize_for_matching(c.get("str_origin", ""))
+                if not origin_norm:
+                    continue
+                result["total_not_found"] += 1
+                result["unmatched_details"].append({
+                    "string_id": c.get("string_id", ""),
+                    "status": "NOT_FOUND",
+                    "old": c.get("str_origin", ""),
+                    "new": c["corrected"],
+                    "raw_attribs": c.get("raw_attribs", {}),
+                    "_original_eventname": c.get("_original_eventname", ""),
+                    "_original_dialogvoice": c.get("_original_dialogvoice", ""),
+                })
+
     result["total_matched"] = counters_matched
     result["total_updated"] = counters_updated
     result["total_skipped_translated"] = counters_skipped_translated
