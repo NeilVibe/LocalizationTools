@@ -189,3 +189,53 @@ def build_stringid_to_subfolder(
                 continue
 
     return stringid_to_subfolder
+
+
+def build_stringid_to_filepath(
+    export_folder: Path,
+    progress_callback: Optional[Callable[[str], None]] = None
+) -> Dict[str, str]:
+    """
+    Build StringID -> relative filepath mapping from export folder structure.
+
+    Maps each StringID (lowercased) to its relative file path within the export folder.
+    Example: "str_char_001" -> "UI/characterinfo.loc.xml"
+
+    Used by strorigin_filename match mode to add file-context to matching keys.
+
+    Args:
+        export_folder: Path to export__ folder
+        progress_callback: Optional callback for progress updates
+
+    Returns:
+        Dict mapping StringID (lowercased) to relative filepath string
+    """
+    if not export_folder.exists():
+        return {}
+
+    stringid_to_filepath = {}
+
+    xml_files = list(export_folder.rglob("*.loc.xml"))
+    total = max(len(xml_files), 1)
+
+    for i, xml_file in enumerate(xml_files, 1):
+        if progress_callback and (i == 1 or i % 200 == 0 or i == total):
+            progress_callback(f"Indexing filepaths ({i}/{total})...")
+
+        try:
+            rel_path = str(xml_file.relative_to(export_folder)).replace("\\", "/")
+        except ValueError:
+            continue
+
+        try:
+            root = parse_xml_file(xml_file)
+            for elem in iter_locstr_elements(root):
+                string_id = get_attr(elem, STRINGID_ATTRS).strip()
+                if string_id:
+                    sid_lower = string_id.lower()
+                    if sid_lower not in stringid_to_filepath:
+                        stringid_to_filepath[sid_lower] = rel_path
+        except Exception:
+            continue
+
+    return stringid_to_filepath

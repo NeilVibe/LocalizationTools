@@ -13,6 +13,7 @@ from .language_loader import (
     build_translation_lookup,
     build_stringid_to_category,
     build_stringid_to_subfolder,
+    build_stringid_to_filepath,
 )
 from .matching import format_multiple_matches
 from .excel_io import (
@@ -110,6 +111,7 @@ __all__ = [
     "build_translation_lookup",
     "build_stringid_to_category",
     "build_stringid_to_subfolder",
+    "build_stringid_to_filepath",
     # matching
     "format_multiple_matches",
     # excel_io
