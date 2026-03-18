@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
@@ -11,7 +12,7 @@ import config
 from . import xml_parser
 from .text_utils import normalize_text
 
-from loguru import logger
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
