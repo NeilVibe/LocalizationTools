@@ -636,7 +636,7 @@
                     {#key mediaData.stream_url}
                       <audio controls preload="metadata" crossorigin="anonymous" class="media-audio-player"
                         onerror={() => logger.warning('Audio playback failed', { url: mediaData.stream_url })}
-                        src="{API_BASE}{mediaData.stream_url}"
+                        src="{API_BASE}{mediaData.stream_url}?v={Date.now()}"
                       >
                       </audio>
                     {/key}
@@ -1281,14 +1281,16 @@
 
   .media-audio-player {
     width: 100%;
-    height: 36px;
+    min-height: 40px;
     border-radius: 4px;
+    display: block;
   }
 
   .media-audio-wrap {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    padding: 8px 0;
     width: 100%;
     margin-top: 8px;
   }
