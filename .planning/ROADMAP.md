@@ -301,7 +301,11 @@ Plans:
   3. Right Panel Context tab detects entities from selected row text and shows cross-ref data
   4. TM list endpoint returns 200 (not 500), all TMs visible
   5. All 5 codex characters show Korean descriptions (no null descriptions for Lune/Drakmar)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 44-01-PLAN.md -- Codex relationship graph typed links + CharacterDesc fallback + RegionInfo parsing
+- [ ] 44-02-PLAN.md -- TM status fix + DEV mode auto-init for MapDataService + GlossaryService
 
 ## Progress
 
