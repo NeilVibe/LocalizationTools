@@ -3,6 +3,33 @@
 > Ideas captured during planning sessions. Not in scope for current work, but documented so nothing gets lost.
 > **For GSD:** Use `/gsd:discuss-phase` with these ideas as input when planning future milestones.
 > **For Viking:** These ideas are indexed — `viking_search("game dev grid codex")` will find them.
+> **Last cleaned:** 2026-03-18
+
+## Status Key
+- DONE = implemented in a shipped milestone
+- PARTIAL = partially implemented
+- OPEN = not started
+- DROPPED = no longer needed
+
+---
+
+## Status of Original Ideas
+
+| # | Idea | Status | Where |
+|---|------|--------|-------|
+| 1 | AI Translation Suggestions | **DONE** | v3.0 Phase 17 |
+| 2 | AI Naming Suggestions | **DONE** | v3.0 Phase 21 |
+| 3 | Context Summary Generation | **DONE** | v2.0 Phase 13 |
+| 4 | AI Autocorrection & Writing Quality | **OPEN** | — |
+| 5 | Auto-Generate Missing Images | **PARTIAL** | v3.2 Phase 31 (Codex only) |
+| 6 | Auto-Generate Missing Audio (TTS) | **PARTIAL** | v3.5 Phase 41 (backend only) |
+| 7 | Auto Glossary Analysis | **PARTIAL** | v4.0 Phase 44 (33 entities, on row select) |
+| 8 | Game Dev Grid | **DONE** | v3.0 Phase 18 |
+| 9 | Codex Encyclopedia | **DONE** | v3.0 Phase 19 + v3.5 Phase 39 |
+| 10 | Interactive World Map | **DONE** | v3.0 Phase 20 + v3.5 Phase 38 |
+
+## DROPPED Ideas
+- ~~Multilingual stringtable (6 languages)~~ — NOT NEEDED. Architecture: 1 project per language, each with language-specific languagedata files.
 
 ---
 
