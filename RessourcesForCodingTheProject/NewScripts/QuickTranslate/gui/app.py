@@ -103,7 +103,7 @@ from core.fuzzy_matching import (
     get_cached_index_info,
     clear_cache as clear_fuzzy_cache,
 )
-from core.language_loader import build_stringid_to_category, build_stringid_to_subfolder
+from core.language_loader import build_stringid_to_category, build_stringid_to_subfolder, build_stringid_to_filepath
 
 
 class QuickTranslateApp:
@@ -182,6 +182,7 @@ class QuickTranslateApp:
         self.translation_lookup: Optional[Dict[str, Dict[str, str]]] = None
         self.stringid_to_category: Optional[Dict[str, str]] = None
         self.stringid_to_subfolder: Optional[Dict[str, str]] = None
+        self.stringid_to_filepath: Optional[Dict[str, str]] = None
         self.available_langs: Optional[List[str]] = None
         self.cached_paths: Optional[tuple] = None  # (loc_path, export_path)
 
@@ -351,6 +352,7 @@ class QuickTranslateApp:
             ("strict", "StringID + StrOrigin (STRICT)", "Requires BOTH to match exactly"),
             ("strorigin_only", "StrOrigin Only", "Match by StrOrigin text only - skips Dialog/Sequencer"),
             ("strorigin_descorigin", "StrOrigin + DescOrigin", "Requires BOTH StrOrigin AND DescOrigin to match"),
+            ("strorigin_filename", "StrOrigin + FileName (2-pass)", "Match by StrOrigin + export filepath (precise)"),
         ]
 
         for value, label, desc in match_types:
@@ -1651,7 +1653,7 @@ class QuickTranslateApp:
         if match_type != "stringid_only":
             self.stringid_all_frame.pack_forget()
 
-        if match_type in ("strict", "strorigin_only", "strorigin_descorigin"):
+        if match_type in ("strict", "strorigin_only", "strorigin_descorigin", "strorigin_filename"):
             self.precision_options_frame.pack(fill=tk.X, pady=(4, 0))
             # Show/hide the fuzzy sub-frame based on current precision
             self._on_precision_changed()
@@ -1665,6 +1667,14 @@ class QuickTranslateApp:
                 self.unique_only_frame.pack(fill=tk.X, pady=(4, 0))
                 self._bind_mousewheel_recursive(self.unique_only_frame)
                 self.strict_non_script_frame.pack_forget()
+            elif match_type == "strorigin_filename":
+                # No unique-only, no non-script filter, no fuzzy — but show scope + enable transfer
+                self.precision_options_frame.pack_forget()
+                self.unique_only_frame.pack_forget()
+                self.strict_non_script_frame.pack_forget()
+                self.transfer_btn.config(state='normal')
+                self.transfer_scope_frame.pack(fill=tk.X, pady=(4, 0))
+                self._bind_mousewheel_recursive(self.transfer_scope_frame)
             else:
                 # strict or strorigin_descorigin — both have StringID for category filtering
                 self.unique_only_frame.pack_forget()
@@ -1709,6 +1719,7 @@ class QuickTranslateApp:
             "strict": has_id and has_strorigin and has_correction,
             "strorigin_only": has_strorigin and has_correction,
             "strorigin_descorigin": has_strorigin and has_descorigin and has_correction,
+            "strorigin_filename": has_strorigin and has_correction,
         }
 
         reasons = {
@@ -1716,6 +1727,7 @@ class QuickTranslateApp:
             "strict": "Needs StringID/EventName + StrOrigin + Correction columns",
             "strorigin_only": "Needs StrOrigin + Correction columns",
             "strorigin_descorigin": "Needs StrOrigin + DescOrigin + Correction columns",
+            "strorigin_filename": "Needs StrOrigin + Correction columns + EXPORT folder",
         }
 
         for value, (rb, desc_lbl) in self._match_type_radios.items():
@@ -1727,6 +1739,7 @@ class QuickTranslateApp:
                     "strict": "Requires BOTH to match exactly",
                     "strorigin_only": "Match by StrOrigin text only - skips Dialog/Sequencer",
                     "strorigin_descorigin": "Requires BOTH StrOrigin AND DescOrigin to match",
+                    "strorigin_filename": "Match by StrOrigin + export filepath (precise, 2-pass)",
                 }
                 desc_lbl.config(text=orig_descs.get(value, ""), fg='#888')
             else:
@@ -2034,6 +2047,7 @@ class QuickTranslateApp:
         self.translation_lookup = None
         self.stringid_to_category = None
         self.stringid_to_subfolder = None
+        self.stringid_to_filepath = None
 
         # Clear fuzzy cache too
         self._fuzzy_model = None
@@ -2211,6 +2225,12 @@ class QuickTranslateApp:
             self.stringid_to_subfolder = build_stringid_to_subfolder(export_folder, self._update_status)
             self._log(f"Indexed {len(self.stringid_to_subfolder)} StringIDs to subfolders", 'success')
 
+            # Build filepath mapping for strorigin_filename mode
+            self._update_status("Building filepath index...")
+            self._log("Building filepath index...", 'info')
+            self.stringid_to_filepath = build_stringid_to_filepath(export_folder, self._update_status)
+            self._log(f"Indexed {len(self.stringid_to_filepath)} StringIDs to filepaths", 'success')
+
         # Load language files
         self._log("Discovering language files...", 'info')
         lang_files = discover_language_files(loc_folder)
@@ -2320,6 +2340,10 @@ class QuickTranslateApp:
         if mt == "strorigin_descorigin" and not (has_strorigin and cols.get("has_descorigin", False) and has_correction):
             messagebox.showerror("Error", "StrOrigin + DescOrigin mode requires StrOrigin + DescOrigin + Correction columns.\n\n"
                                  "Your source files don't have all required columns.")
+            return False
+        if mt == "strorigin_filename" and not (has_strorigin and has_correction):
+            messagebox.showerror("Error", "StrOrigin + FileName mode requires StrOrigin + Correction columns.\n\n"
+                                 "Your source files don't have these columns.")
             return False
         return True
 
@@ -3171,11 +3195,13 @@ class QuickTranslateApp:
             # StrOrigin Only: skips Dialog/Sequencer strings (complement safeguard)
             stringid_to_category = None
             stringid_to_subfolder = None
-            if match_type in ("stringid_only", "strorigin_only") or (match_type in ("strict", "strorigin_descorigin") and non_script_only):
+            stringid_to_filepath = None
+            if match_type in ("stringid_only", "strorigin_only", "strorigin_filename") or (match_type in ("strict", "strorigin_descorigin") and non_script_only):
                 if not self._load_data_if_needed(need_sequencer=True):
                     return
                 stringid_to_category = self.stringid_to_category
                 stringid_to_subfolder = self.stringid_to_subfolder
+                stringid_to_filepath = self.stringid_to_filepath
 
             # For fuzzy precision modes, extract StringIDs from source FIRST to filter index
             # NOTE: strorigin_only mode matches by StrOrigin text, NOT StringID.
@@ -3210,6 +3236,8 @@ class QuickTranslateApp:
                 transfer_match_mode = "strorigin_descorigin_fuzzy" if precision == "fuzzy" else "strorigin_descorigin"
             elif match_type == "strict":
                 transfer_match_mode = "strict_fuzzy" if precision == "fuzzy" else "strict"
+            elif match_type == "strorigin_filename":
+                transfer_match_mode = "strorigin_filename"
             else:
                 transfer_match_mode = "strict"
 
@@ -3217,6 +3245,7 @@ class QuickTranslateApp:
             transfer_kwargs = {
                 "stringid_to_category": stringid_to_category,
                 "stringid_to_subfolder": stringid_to_subfolder,
+                "stringid_to_filepath": stringid_to_filepath,
                 "match_mode": transfer_match_mode,
                 "dry_run": False,
                 "only_untranslated": only_untranslated,
