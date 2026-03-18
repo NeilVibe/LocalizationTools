@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.3
-milestone_name: UI/UX Polish + Performance
-status: executing
-stopped_at: Completed 44-01-PLAN.md
-last_updated: "2026-03-18T07:32:22.518Z"
-last_activity: 2026-03-18 -- Completed 43-02 localization string enrichment
+milestone: v4.0
+milestone_name: Mockdata Excellence + Next Level
+status: complete
+stopped_at: Phase 43+44 complete and verified
+last_updated: "2026-03-18T18:10:00.000Z"
+last_activity: 2026-03-18 -- Phase 44 WOW Data Wiring verified (28 typed links, TM 200, 33 glossary entities)
 progress:
-  total_phases: 13
-  completed_phases: 11
-  total_plans: 28
-  completed_plans: 25
-  percent: 85
+  total_phases: 44
+  completed_phases: 44
+  total_plans: 5
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** All 5 pages polished to production quality -- consistent, performant, beautiful, one unified app experience.
-**Current focus:** v4.0 Phase 43 — Mockdata Quality Audit + WOW Amplification
+**Current focus:** v4.0 COMPLETE — ready for next milestone
 
 ## Current Position
 
-Phase: 43 (first phase of v4.0)
-Plan: 2 of TBD in milestone (executing)
-Status: Executing Phase 43
-Last activity: 2026-03-18 -- Completed 43-02 localization string enrichment
+Phase: 44 of 44 (all complete)
+Plan: 5 of 5 in v4.0 milestone (all complete)
+Status: SHIPPED + verified
+Last activity: 2026-03-18 -- Full Hive verification passed
 
-Progress: [█████████░] 85%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
@@ -45,60 +45,39 @@ Progress: [█████████░] 85%
 | v3.2 | 6 | 12 | 25/25 |
 | v3.3 | 5 | 8 | 32/32 |
 | v3.5 | 6 | 16 | 12/12 |
-| Phase 43 P03 | 3min | 2 tasks | 11 files |
-| Phase 44 P02 | 2min | 2 tasks | 3 files |
-| Phase 44 P01 | 2min | 2 tasks | 1 files |
+| v4.0 | 2 | 5 | 8/8 |
 
 ## Accumulated Context
 
-### v3.5 Session Summary (2026-03-18)
+### v4.0 Session Summary (2026-03-18)
 
-**Phase 42 Execution:**
-- Plan 01: Fixed LDM grid regression (Svelte 5 $bindable race condition in GridPage)
-- Plan 02: Created 85 strings across 3 formats (XLSX, TXT, XML) + 90 TM entries in 3 TMs
-- Plan 03: Wired right panel TM search across all active TMs via file_id
+**Phase 43 — Mockdata Quality Audit:**
+- Plan 01: 3 new XML entity files (Skill/Region/Quest) + cross-ref fixes + 14 FactionNodes standardized
+- Plan 02: 40 LocStr entries + 32 dialogue lines + 50 TM entries
+- Plan 03: 59 KnowledgeInfo entries + 13 region PNG textures
 
-**Svelte 5 Deep Review:**
-- Removed $bindable from data props (RightPanel, TMTab) — eliminated ownership_invalid_binding warnings
-- Fixed deprecated <svelte:component> → dynamic syntax
-- Added {#each} keys across 5 files
-- Autofixer: 0 issues on all key files
+**Phase 44 — WOW Data Wiring:**
+- Plan 01: 28 typed relationship links (owns, located_in, knows, member_of, enemy_of) + synthetic faction nodes + CharacterDesc fallback + RegionInfo parsing
+- Plan 02: TM status=None fix (200 OK) + DEV auto-init MapDataService (31 images) + GlossaryService (33 entities)
 
-**Full Showcase Review (5 Hive Scouts, 28+ fixes):**
-- D3 cleanup: MapCanvas onDestroy, RelationshipGraph selectAll
-- AbortControllers: ContextTab, ImageTab, AudioTab
-- Voice generation race condition fix (CodexEntityDetail)
-- Timer cleanup on unmount (GameDataTree)
-- Parallax rAF throttle (CodexCard)
-- PageTransition: transition:fade → in:fade (eliminates rapid-nav stutter)
-- Focus restoration on CommandPalette close
-- CSS vars for dark mode (TMTab colors)
-- Cache bust removed (EntityCard)
-- Row selection debounced (GridPage)
-- a11y fixes (CommandPalette, MapCanvas, RightPanel)
+**Post-execution fixes:**
+- GlossaryService EntityInfo constructor field names fixed (type/name/strkey/knowledge_key/source_file)
+- Grimjaw Korean name "그림죠" standardized across ALL files
+- 4 missing KnowledgeInfo entries added (TradingPost, AncientTemple, Watchtower, MiningCamp)
+- Gitignore: added .claude/skills/, server/data/backups/, .ruff_cache/; removed tracked SQL dump
+- Screenshot rule: .claude/rules/screenshot-directory.md (Playwright saves to screenshots/)
 
 ### Decisions
 
-- [Phase 42]: GridPage derives fileId from $openFile store (fixes bind cleanup race)
-- [Phase 42]: TM suggest uses file_id instead of tm_id[0] (searches ALL active TMs)
-- [Phase 42]: PageTransition uses in:fade instead of transition:fade (no competing out-transition)
-- [Phase 42]: RightPanel data props are read-only (no $bindable), UI props keep $bindable
-- [Phase 43-01]: FactionNode StrKeys standardized to Region_ PascalCase to match character RegionKey refs
-- [Phase 43-01]: Grimjaw=Skill_HolyShield, Lune=Skill_SacredFlame (role-appropriate skill assignments)
-- [Phase 43-01]: 4 new map nodes (TradingPost, AncientTemple, Watchtower, MiningCamp) for spatial density
-- [Phase 43-02]: Added SKILL_SACRED_FLAME_NAME entry to reach 40 LocStr target (original had 29 not 30)
-- [Phase 43-03]: HolyShield CharacterKey=Grimjaw (matching 43-01 skill assignments)
-- [Phase 43-03]: SealedLibrary UITextureName=region_sealed_library for naming consistency
-- [Phase 44]: Use or ready instead of .get(status, ready) to handle both missing key AND None value
-- [Phase 44]: Synthetic faction nodes for unresolved FactionKey refs; CharacterDesc fallback only for CharacterInfo
-
-### Next Session Plan
-
-**Second review round with hive** — verify all 28 fixes in browser, check for regressions.
-Then decide on next milestone (v4.0?).
+- [Phase 43-01]: FactionNode StrKeys standardized to Region_ PascalCase
+- [Phase 43-01]: 4 new map nodes for spatial density
+- [Phase 44-01]: Synthetic faction nodes for unresolved FactionKey refs
+- [Phase 44-01]: CharacterDesc fallback for CharacterInfo descriptions
+- [Phase 44-02]: `status or "ready"` pattern for None handling in TMLike
+- [Phase 44-02]: DEV auto-init bypasses glossary_filter (min_occurrence kills single-file entities)
 
 ## Session Continuity
 
-Last session: 2026-03-18T07:32:17.775Z
-Stopped at: Completed 44-01-PLAN.md
+Last session: 2026-03-18T18:10:00.000Z
+Stopped at: v4.0 complete and verified
 Resume file: None

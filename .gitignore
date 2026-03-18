@@ -238,8 +238,14 @@ windows_tests/
 
 # -------------------- Claude Code Local Config --------------------
 .claude/settings.json
-.claude/skills/*/
+.claude/skills/
 !.claude/skills/ui-ux-pro-max/
+.claude/commands/
+.claude/contexts/
+
+# -------------------- Coverage Reports --------------------
+.coverage
+htmlcov/
 
 # -------------------- Database Backups --------------------
 server/data/backups/
