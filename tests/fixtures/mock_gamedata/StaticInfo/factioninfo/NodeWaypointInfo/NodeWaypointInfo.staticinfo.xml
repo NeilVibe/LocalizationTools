@@ -1,16 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <NodeWaypointInfoList>
-  <NodeWaypointInfo FromNodeKey="mist_forest" ToNodeKey="sealed_library" DangerLevel="2" TravelTime="3 hours" />
-  <NodeWaypointInfo FromNodeKey="sealed_library" ToNodeKey="blackstar_village" DangerLevel="1" TravelTime="2 hours" />
-  <NodeWaypointInfo FromNodeKey="blackstar_village" ToNodeKey="dark_cult_hq" DangerLevel="2" TravelTime="4 hours" />
-  <NodeWaypointInfo FromNodeKey="mist_forest" ToNodeKey="moonlight_lake" DangerLevel="1" TravelTime="1 hour" />
-  <NodeWaypointInfo FromNodeKey="moonlight_lake" ToNodeKey="dragon_tomb" DangerLevel="3" TravelTime="5 hours" />
-  <NodeWaypointInfo FromNodeKey="dragon_tomb" ToNodeKey="sage_tower" DangerLevel="2" TravelTime="3 hours" />
-  <NodeWaypointInfo FromNodeKey="sage_tower" ToNodeKey="blackstar_village" DangerLevel="1" TravelTime="2 hours" />
-  <NodeWaypointInfo FromNodeKey="sage_tower" ToNodeKey="wind_canyon" DangerLevel="2" TravelTime="4 hours" />
-  <NodeWaypointInfo FromNodeKey="wind_canyon" ToNodeKey="forgotten_fortress" DangerLevel="2" TravelTime="3 hours" />
-  <NodeWaypointInfo FromNodeKey="forgotten_fortress" ToNodeKey="volcanic_zone" DangerLevel="3" TravelTime="6 hours" />
-  <NodeWaypointInfo FromNodeKey="dark_cult_hq" ToNodeKey="forgotten_fortress" DangerLevel="2" TravelTime="3 hours" />
-  <NodeWaypointInfo FromNodeKey="blackstar_village" ToNodeKey="sage_tower" DangerLevel="1" TravelTime="2 hours" />
-  <NodeWaypointInfo FromNodeKey="volcanic_zone" ToNodeKey="dark_cult_hq" DangerLevel="3" TravelTime="5 hours" />
+  <!-- Routes with waypoints for curved paths -->
+  <NodeWaypointInfo FromNodeKey="Region_MistForest" ToNodeKey="Region_SealedLibrary" DangerLevel="2" TravelTime="3 hours">
+    <Waypoint Position="200,0,180" />
+    <Waypoint Position="280,0,160" />
+  </NodeWaypointInfo>
+  <NodeWaypointInfo FromNodeKey="Region_SealedLibrary" ToNodeKey="Region_BlackstarVillage" DangerLevel="1" TravelTime="2 hours" />
+  <NodeWaypointInfo FromNodeKey="Region_BlackstarVillage" ToNodeKey="Region_DarkCultHQ" DangerLevel="2" TravelTime="4 hours">
+    <Waypoint Position="560,0,260" />
+    <Waypoint Position="600,0,230" />
+  </NodeWaypointInfo>
+  <NodeWaypointInfo FromNodeKey="Region_MistForest" ToNodeKey="Region_MoonlightLake" DangerLevel="1" TravelTime="1 hour" />
+  <NodeWaypointInfo FromNodeKey="Region_MoonlightLake" ToNodeKey="Region_DragonTomb" DangerLevel="3" TravelTime="5 hours">
+    <Waypoint Position="130,0,430" />
+    <Waypoint Position="160,0,470" />
+  </NodeWaypointInfo>
+  <NodeWaypointInfo FromNodeKey="Region_DragonTomb" ToNodeKey="Region_SageTower" DangerLevel="2" TravelTime="3 hours" />
+  <NodeWaypointInfo FromNodeKey="Region_SageTower" ToNodeKey="Region_BlackstarVillage" DangerLevel="1" TravelTime="2 hours" />
+  <NodeWaypointInfo FromNodeKey="Region_SageTower" ToNodeKey="Region_WindCanyon" DangerLevel="2" TravelTime="4 hours">
+    <Waypoint Position="370,0,520" />
+    <Waypoint Position="340,0,580" />
+  </NodeWaypointInfo>
+  <NodeWaypointInfo FromNodeKey="Region_WindCanyon" ToNodeKey="Region_ForgottenFortress" DangerLevel="2" TravelTime="3 hours">
+    <Waypoint Position="400,0,640" />
+    <Waypoint Position="480,0,600" />
+  </NodeWaypointInfo>
+  <NodeWaypointInfo FromNodeKey="Region_ForgottenFortress" ToNodeKey="Region_VolcanicZone" DangerLevel="3" TravelTime="6 hours" />
+  <NodeWaypointInfo FromNodeKey="Region_DarkCultHQ" ToNodeKey="Region_ForgottenFortress" DangerLevel="2" TravelTime="3 hours" />
+  <NodeWaypointInfo FromNodeKey="Region_BlackstarVillage" ToNodeKey="Region_SageTower" DangerLevel="1" TravelTime="2 hours" />
+  <NodeWaypointInfo FromNodeKey="Region_VolcanicZone" ToNodeKey="Region_DarkCultHQ" DangerLevel="3" TravelTime="5 hours">
+    <Waypoint Position="720,0,380" />
+    <Waypoint Position="700,0,300" />
+  </NodeWaypointInfo>
+  <!-- New routes connecting new nodes -->
+  <NodeWaypointInfo FromNodeKey="Region_MoonlightLake" ToNodeKey="Region_TradingPost" DangerLevel="1" TravelTime="2 hours" />
+  <NodeWaypointInfo FromNodeKey="Region_TradingPost" ToNodeKey="Region_SageTower" DangerLevel="1" TravelTime="2 hours">
+    <Waypoint Position="300,0,380" />
+    <Waypoint Position="350,0,420" />
+  </NodeWaypointInfo>
+  <NodeWaypointInfo FromNodeKey="Region_SealedLibrary" ToNodeKey="Region_Watchtower" DangerLevel="2" TravelTime="1 hour" />
+  <NodeWaypointInfo FromNodeKey="Region_ForgottenFortress" ToNodeKey="Region_MiningCamp" DangerLevel="2" TravelTime="2 hours" />
 </NodeWaypointInfoList>
