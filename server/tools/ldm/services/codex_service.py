@@ -37,6 +37,7 @@ ENTITY_TAG_MAP: Dict[str, tuple] = {
     "GimmickGroupInfo": ("gimmick", "GimmickName", None),
     "KnowledgeInfo": ("knowledge", "Name", None),
     "FactionNode": ("region", None, "KnowledgeKey"),
+    "RegionInfo": ("region", "RegionName", "KnowledgeKey"),
 }
 
 # Attributes to skip when building the attributes dict (they're top-level fields)
@@ -53,6 +54,7 @@ class CodexService:
         self._registry: Dict[str, Dict[str, CodexEntity]] = {}
         self._faiss_index = None
         self._index_keys: List[tuple] = []  # [(entity_type, strkey), ...]
+        self._key_to_strkey: Dict[str, str] = {}  # Key attr -> StrKey mapping
         self._initialized = False
 
     # =========================================================================
@@ -154,6 +156,11 @@ class CodexService:
         if knowledge_key_attr:
             knowledge_key = element.get(knowledge_key_attr)
 
+        # Build Key -> StrKey mapping for cross-ref resolution
+        key_attr = element.get("Key")
+        if key_attr:
+            self._key_to_strkey[key_attr] = strkey
+
         # Build attributes dict (all other XML attributes)
         attributes: Dict[str, str] = {}
         for attr_name, attr_val in element.attrib.items():
@@ -182,6 +189,8 @@ class CodexService:
         display_name = attributes.get("NameKR") or name or strkey
         if not description:
             description = attributes.get("DescriptionKR")
+        if not description and tag == "CharacterInfo":
+            description = element.get("CharacterDesc")
 
         entity = CodexEntity(
             entity_type=entity_type,
