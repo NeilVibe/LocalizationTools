@@ -13,7 +13,7 @@ SID_CHAR_0001	장로 바론	Elder Varon	Guardian of the old village
 SID_CHAR_0002	전사 키라	Warrior Kira	Brave warrior from the northern outpost
 SID_CHAR_0003	마법사 드라크마르	Sorcerer Drakmar	A sorcerer exploring ancient knowledge
 SID_CHAR_0004	정찰병 루네	Scout Rune	A scout who knows the forest paths
-SID_CHAR_0005	대장장이 그림조	Blacksmith Grimjo	Legendary weaponsmith
+SID_CHAR_0005	대장장이 그림죠	Blacksmith Grimjo	Legendary weaponsmith
 SID_SKILL_0001	회전 베기	Spinning Slash	AoE melee attack skill
 SID_SKILL_0002	폭풍 찌르기	Storm Thrust	Piercing attack with storm damage
 SID_SKILL_0003	마력 폭발	Mana Explosion	Explosive magic burst

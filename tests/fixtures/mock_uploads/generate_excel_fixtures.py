@@ -60,7 +60,7 @@ def generate_sample() -> None:
         ("전사 키라", "Warrior Kira"),
         ("마법사 드라크마르", "Sorcerer Drakmar"),
         ("정찰병 루네", "Scout Rune"),
-        ("대장장이 그림조", "Blacksmith Grimjo"),
+        ("대장장이 그림죠", "Blacksmith Grimjo"),
         ("상인 하나", "Merchant Hana"),
         ("현자 미르", "Sage Mir"),
         ("궁수 세라", "Archer Sera"),

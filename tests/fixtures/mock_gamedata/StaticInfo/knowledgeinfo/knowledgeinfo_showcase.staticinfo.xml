@@ -163,4 +163,30 @@
                  UITextureName="item_0003"
                  Desc="봉인된 도서관의 출입 권한을 부여하는 고대 두루마리.&lt;br/&gt;현자의 결사의 문장이 새겨져 있으며&lt;br/&gt;정찰병 루네가 보관하고 있다." />
 
+  <!-- ===== NEW MAP NODE KNOWLEDGE (4) ===== -->
+
+  <KnowledgeInfo Key="KNOW_030" StrKey="Knowledge_TradingPost"
+                 KnowledgeName="교역소" KnowledgeType="Region"
+                 RegionKey="Region_TradingPost"
+                 UITextureName="region_0001"
+                 Desc="여러 지역의 상인들이 모여드는 교역 중심지.&lt;br/&gt;봉인된 도서관과 흑성 마을 사이에 위치하여&lt;br/&gt;모험가들의 보급 거점으로 활용되고 있다." />
+
+  <KnowledgeInfo Key="KNOW_031" StrKey="Knowledge_AncientTemple"
+                 KnowledgeName="고대 신전" KnowledgeType="Region"
+                 RegionKey="Region_AncientTemple"
+                 UITextureName="region_0002"
+                 Desc="잊힌 신들에게 바쳐진 고대 신전.&lt;br/&gt;현자의 결사가 비밀리에 관리하고 있으며&lt;br/&gt;성스러운 불꽃의 원천이 이곳에 잠들어 있다고 전해진다." />
+
+  <KnowledgeInfo Key="KNOW_032" StrKey="Knowledge_Watchtower"
+                 KnowledgeName="감시탑" KnowledgeType="Region"
+                 RegionKey="Region_Watchtower"
+                 UITextureName="region_fortress"
+                 Desc="어둠의 교단의 움직임을 감시하기 위한 전초 기지.&lt;br/&gt;정찰병 루네가 자주 방문하는 곳으로&lt;br/&gt;안개의 숲과 화산 지대를 한눈에 조망할 수 있다." />
+
+  <KnowledgeInfo Key="KNOW_033" StrKey="Knowledge_MiningCamp"
+                 KnowledgeName="광산 캠프" KnowledgeType="Region"
+                 RegionKey="Region_MiningCamp"
+                 UITextureName="region_0001"
+                 Desc="검은별 금속을 채굴하는 광산 캠프.&lt;br/&gt;대장장이 그림죠가 이곳에서 채굴된 광석으로&lt;br/&gt;전설적인 무기를 제작한다." />
+
 </KnowledgeInfoList>
