@@ -455,6 +455,23 @@ class CodexService:
                     "image_url": f"/api/ldm/codex/image/{strkey}" if entity.ai_image_url else None,
                 })
 
+        # Collect unique FactionKey values and create synthetic faction nodes
+        faction_keys = set()
+        for etype in ["character", "item", "skill", "region", "gimmick"]:
+            for strkey, entity in self._registry.get(etype, {}).items():
+                fk = entity.attributes.get("FactionKey")
+                if fk and fk not in entity_index:
+                    faction_keys.add(fk)
+        for fk in sorted(faction_keys):
+            entity_index[fk] = len(nodes)
+            nodes.append({
+                "id": fk,
+                "name": fk.replace("Region_", "").replace("_", " "),
+                "entity_type": "faction",
+                "has_image": False,
+                "image_url": None,
+            })
+
         # Relationship type classification based on attribute name
         REL_TYPE_MAP = {
             "ItemKey": "owns",
@@ -484,7 +501,12 @@ class CodexService:
                     # Find target in registry
                     target_strkey = str(attr_value)
                     if target_strkey not in entity_index:
-                        continue
+                        # Try Key -> StrKey fallback for CharacterKey refs
+                        resolved = self._key_to_strkey.get(target_strkey)
+                        if resolved and resolved in entity_index:
+                            target_strkey = resolved
+                        else:
+                            continue
                     # Dedup
                     link_key = (strkey, target_strkey, rel_type)
                     if link_key in seen_links:
@@ -495,6 +517,21 @@ class CodexService:
                         "target": target_strkey,
                         "rel_type": rel_type,
                     })
+
+        # Direct KnowledgeKey links (stripped from attributes by _SKIP_ATTRS)
+        for etype in ["character", "item", "skill", "region"]:
+            for strkey, entity in self._registry.get(etype, {}).items():
+                if strkey not in entity_index or not entity.knowledge_key:
+                    continue
+                target = entity.knowledge_key
+                if target not in entity_index:
+                    target = self._key_to_strkey.get(target, target)
+                if target not in entity_index:
+                    continue
+                link_key = (strkey, target, "knows")
+                if link_key not in seen_links:
+                    seen_links.add(link_key)
+                    links.append({"source": strkey, "target": target, "rel_type": "knows"})
 
         # Add related_entities links (from same-file grouping)
         for etype in ["character", "item", "skill", "region", "gimmick"]:
@@ -507,6 +544,13 @@ class CodexService:
                     if len(parts) == 2:
                         target_strkey = parts[1]
                         if target_strkey in entity_index:
+                            # Skip related link if ANY typed link exists for this pair
+                            has_typed = any(
+                                (strkey, target_strkey, rt) in seen_links
+                                for rt in REL_TYPE_MAP.values()
+                            )
+                            if has_typed:
+                                continue
                             link_key = (strkey, target_strkey, "related")
                             if link_key not in seen_links:
                                 seen_links.add(link_key)
