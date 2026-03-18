@@ -236,6 +236,17 @@ audio/
 test-results/
 windows_tests/
 
+# -------------------- Claude Code Local Config --------------------
+.claude/settings.json
+.claude/skills/*/
+!.claude/skills/ui-ux-pro-max/
+
+# -------------------- Database Backups --------------------
+server/data/backups/
+
+# -------------------- Linter Cache --------------------
+.ruff_cache/
+
 # -------------------- Stale/Temp Artifacts --------------------
 $installDir/
 cookies.txt

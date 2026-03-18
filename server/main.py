@@ -194,16 +194,40 @@ async def lifespan(app: FastAPI):
                 mapdata_svc._loaded = True
                 logger.success(f"[DEV] MapDataService auto-init: {len(mapdata_svc._strkey_to_image)} image entries, {len(mapdata_svc._dds_index)} texture index entries")
 
-            # Initialize GlossaryService with mock staticinfo paths
+            # Initialize GlossaryService with mock staticinfo entity names
+            # NOTE: bypass glossary_filter (min_occurrence=2 kills single-file entities)
             glossary_svc = get_glossary_service()
             mock_staticinfo = base_dir / "tests" / "fixtures" / "mock_gamedata" / "StaticInfo"
             if mock_staticinfo.is_dir():
-                paths = {
-                    "character_folder": str(mock_staticinfo / "characterinfo"),
-                    "item_folder": str(mock_staticinfo / "iteminfo"),
-                    "faction_folder": str(mock_staticinfo / "factioninfo"),
-                }
-                glossary_svc.initialize(paths)
+                from server.tools.ldm.services.glossary_service import EntityInfo
+                all_entities = []
+                # Extract entity names from all XML files
+                for folder_name in ["characterinfo", "iteminfo", "skillinfo", "regioninfo", "knowledgeinfo", "questinfo"]:
+                    folder = mock_staticinfo / folder_name
+                    if not folder.is_dir():
+                        continue
+                    for xml_file in folder.glob("*.xml"):
+                        try:
+                            from lxml import etree
+                            tree = etree.parse(str(xml_file))
+                            for elem in tree.getroot():
+                                # Extract Korean name from common name attributes
+                                name = None
+                                for attr in ["CharacterName", "ItemName", "SkillName", "RegionName", "KnowledgeName", "QuestName", "Name"]:
+                                    name = elem.get(attr)
+                                    if name:
+                                        break
+                                strkey = elem.get("StrKey", elem.get("Key", ""))
+                                if name and strkey:
+                                    entity_type = folder_name.replace("info", "")
+                                    all_entities.append((name, EntityInfo(
+                                        strkey=strkey,
+                                        entity_type=entity_type,
+                                        source_file=str(xml_file),
+                                    )))
+                        except Exception:
+                            pass
+                glossary_svc.build_from_entity_names(all_entities)
                 logger.success(f"[DEV] GlossaryService auto-init: {len(glossary_svc._entity_index)} entities")
 
         except Exception as e:
