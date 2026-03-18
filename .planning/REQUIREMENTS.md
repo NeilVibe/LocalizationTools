@@ -133,9 +133,9 @@
 
 ### WOW -- Fantasy World Map (Phase 38)
 
-- [ ] **WOW-05**: Map has parchment background via CSS gradients + ornamental SVG border frame
-- [ ] **WOW-06**: 10 regions render as semi-transparent polygons with glow-on-hover and Korean names
-- [ ] **WOW-07**: Each node type has a distinct SVG icon (castle, skull, shield, tent, compass, tree)
+- [x] **WOW-05**: Map has parchment background via CSS gradients + ornamental SVG border frame
+- [x] **WOW-06**: 10 regions render as semi-transparent polygons with glow-on-hover and Korean names
+- [x] **WOW-07**: Each node type has a distinct SVG icon (castle, skull, shield, tent, compass, tree)
 - [x] **WOW-08**: Routes animate on hover with travel-path effect and danger-level coloring
 - [x] **WOW-09**: Click region -> smooth zoom-to-fit via d3 transition + detail panel slides in
 
@@ -148,8 +148,8 @@
 
 ### WOW -- Cross-cutting Polish (Phase 40)
 
-- [ ] **WOW-14**: Page navigation has crossfade transition
-- [ ] **WOW-15**: All loading states use shimmer skeletons matching content dimensions
+- [x] **WOW-14**: Page navigation has crossfade transition
+- [x] **WOW-15**: All loading states use shimmer skeletons matching content dimensions
 - [x] **WOW-16**: Ctrl+K opens command palette for global entity search
 - [x] **WOW-17**: Toast notifications slide in from top-right with auto-dismiss
 
@@ -162,11 +162,11 @@
 
 ### TTS -- Text-to-Speech Voice Generation
 
-- [ ] **TTS-01**: TTSService singleton with lazy Qwen3-TTS model loading (loads on first request, not on startup)
-- [ ] **TTS-02**: 5 character voice profiles with distinct voice instructions (Elder Varon=wise/slow, Kira=cold/sharp, Grimjaw=gruff/strong, Lune=young/alert, Drakmar=mysterious/echoing)
-- [ ] **TTS-03**: POST /api/ldm/codex/generate-voice/{strkey} generates .wav audio and returns audio URL with duration
-- [ ] **TTS-04**: Generated audio cached on disk at mock_gamedata/audio/{strkey}.wav -- repeat calls return cached version without regeneration
-- [ ] **TTS-05**: Codex entity detail shows "Generate Voice" button, loading state during generation, audio player with auto-play after generation, and regenerate option
+- [x] **TTS-01**: TTSService singleton with lazy Qwen3-TTS model loading (loads on first request, not on startup)
+- [x] **TTS-02**: 5 character voice profiles with distinct voice instructions (Elder Varon=wise/slow, Kira=cold/sharp, Grimjaw=gruff/strong, Lune=young/alert, Drakmar=mysterious/echoing)
+- [x] **TTS-03**: POST /api/ldm/codex/generate-voice/{strkey} generates .wav audio and returns audio URL with duration
+- [x] **TTS-04**: Generated audio cached on disk at mock_gamedata/audio/{strkey}.wav -- repeat calls return cached version without regeneration
+- [x] **TTS-05**: Codex entity detail shows "Generate Voice" button, loading state during generation, audio player with auto-play after generation, and regenerate option
 
 **Phase 41 Coverage:**
 - Phase 41 requirements: 5 total
@@ -175,33 +175,33 @@
 
 | Requirement | Phase | Plan | Status |
 |-------------|-------|------|--------|
-| TTS-01 | Phase 41 | 41-01 | Pending |
-| TTS-02 | Phase 41 | 41-01 | Pending |
-| TTS-03 | Phase 41 | 41-01 | Pending |
-| TTS-04 | Phase 41 | 41-01 | Pending |
-| TTS-05 | Phase 41 | 41-02 | Pending |
+| TTS-01 | Phase 41 | 41-01 | Complete |
+| TTS-02 | Phase 41 | 41-01 | Complete |
+| TTS-03 | Phase 41 | 41-01 | Complete |
+| TTS-04 | Phase 41 | 41-01 | Complete |
+| TTS-05 | Phase 41 | 41-02 | Complete |
 
 ## Phase 42 Requirements -- LanguageData Fix + WOW Showcase
 
 ### LDM-FIX -- LDM Grid Regression Fix
 
-- [ ] **LDM-FIX-01**: API endpoint debugging -- identify and fix 422 validation errors on file list/open endpoints via curl testing
-- [ ] **LDM-FIX-02**: Frontend file selection flow restored -- double-clicking a file in FilesPage opens GridPage with VirtualGrid showing rows
-- [ ] **LDM-FIX-03**: Full CRUD cycle verified -- upload file, open file, edit cell, save works end-to-end
+- [x] **LDM-FIX-01**: API endpoint debugging -- identify and fix 422 validation errors on file list/open endpoints via curl testing
+- [x] **LDM-FIX-02**: Frontend file selection flow restored -- double-clicking a file in FilesPage opens GridPage with VirtualGrid showing rows
+- [x] **LDM-FIX-03**: Full CRUD cycle verified -- upload file, open file, edit cell, save works end-to-end
 
 ### LDM-MOCK -- Multi-Format Mock Data
 
-- [ ] **LDM-MOCK-01**: Excel mock file (.xlsx) with 25+ game-themed strings including StringID, Source (ENG), Translation (KR), Status, Translator, ReviewState columns
-- [ ] **LDM-MOCK-02**: TXT tabulated mock file (.txt) with 25+ strings tab-separated: StringID, Source, Translation, metadata
-- [ ] **LDM-MOCK-03**: XML mock file (.loc.xml) with 25+ strings in LocStr format with StringID, Str, translation attributes, including <br/> tags
-- [ ] **LDM-MOCK-04**: Mock TM entries pre-loaded (30+ entries) with varying similarity scores matching the mock file strings
+- [x] **LDM-MOCK-01**: Excel mock file (.xlsx) with 25+ game-themed strings including StringID, Source (ENG), Translation (KR), Status, Translator, ReviewState columns
+- [x] **LDM-MOCK-02**: TXT tabulated mock file (.txt) with 25+ strings tab-separated: StringID, Source, Translation, metadata
+- [x] **LDM-MOCK-03**: XML mock file (.loc.xml) with 25+ strings in LocStr format with StringID, Str, translation attributes, including <br/> tags
+- [x] **LDM-MOCK-04**: Mock TM entries pre-loaded (30+ entries) with varying similarity scores matching the mock file strings
 
 ### LDM-WOW -- Right Panel WOW Showcase
 
-- [ ] **LDM-WOW-01**: TM tab shows 6-tier cascade results (split-line exact/fuzzy/semantic + whole-string exact/fuzzy/semantic) when a row is selected
-- [ ] **LDM-WOW-02**: Image tab shows character/item portrait when editing a string that cross-references a Codex entity
-- [ ] **LDM-WOW-03**: Audio tab plays character voice (from TTS) when editing a character-related string
-- [ ] **LDM-WOW-04**: AI Context tab shows Korean AI summary for the selected string's entity context
+- [x] **LDM-WOW-01**: TM tab shows 6-tier cascade results (split-line exact/fuzzy/semantic + whole-string exact/fuzzy/semantic) when a row is selected
+- [x] **LDM-WOW-02**: Image tab shows character/item portrait when editing a string that cross-references a Codex entity
+- [x] **LDM-WOW-03**: Audio tab plays character voice (from TTS) when editing a character-related string
+- [x] **LDM-WOW-04**: AI Context tab shows Korean AI summary for the selected string's entity context
 
 **Phase 42 Coverage:**
 - Phase 42 requirements: 11 total
@@ -210,17 +210,49 @@
 
 | Requirement | Phase | Plan | Status |
 |-------------|-------|------|--------|
-| LDM-FIX-01 | Phase 42 | 42-01 | Pending |
-| LDM-FIX-02 | Phase 42 | 42-01 | Pending |
-| LDM-FIX-03 | Phase 42 | 42-01 | Pending |
-| LDM-MOCK-01 | Phase 42 | 42-02 | Pending |
-| LDM-MOCK-02 | Phase 42 | 42-02 | Pending |
-| LDM-MOCK-03 | Phase 42 | 42-02 | Pending |
-| LDM-MOCK-04 | Phase 42 | 42-02 | Pending |
-| LDM-WOW-01 | Phase 42 | 42-03 | Pending |
-| LDM-WOW-02 | Phase 42 | 42-03 | Pending |
-| LDM-WOW-03 | Phase 42 | 42-03 | Pending |
-| LDM-WOW-04 | Phase 42 | 42-03 | Pending |
+| LDM-FIX-01 | Phase 42 | 42-01 | Complete |
+| LDM-FIX-02 | Phase 42 | 42-01 | Complete |
+| LDM-FIX-03 | Phase 42 | 42-01 | Complete |
+| LDM-MOCK-01 | Phase 42 | 42-02 | Complete |
+| LDM-MOCK-02 | Phase 42 | 42-02 | Complete |
+| LDM-MOCK-03 | Phase 42 | 42-02 | Complete |
+| LDM-MOCK-04 | Phase 42 | 42-02 | Complete |
+| LDM-WOW-01 | Phase 42 | 42-03 | Complete |
+| LDM-WOW-02 | Phase 42 | 42-03 | Complete |
+| LDM-WOW-03 | Phase 42 | 42-03 | Complete |
+| LDM-WOW-04 | Phase 42 | 42-03 | Complete |
+
+## v4.0 Requirements -- Mockdata Excellence + Next Level
+
+### MOCK-AUDIT -- Mockdata Quality Audit (Phase 43)
+
+- [x] **MOCK-AUDIT-01**: 3 new XML entity types (Skill, Region, Quest) with cross-references to existing characters/items/factions
+- [x] **MOCK-AUDIT-02**: KnowledgeInfo expanded from 10 to 59 entries with 13 region PNG textures
+- [x] **MOCK-AUDIT-03**: TM expanded from 35 to 50 entries with game-themed translations
+- [x] **MOCK-AUDIT-04**: 14 FactionNodes standardized to PascalCase StrKeys, 4 new map waypoints
+
+### WOW-WIRE -- WOW Data Wiring (Phase 44)
+
+- [x] **WOW-WIRE-01**: Codex relationship graph shows 28 typed links (owns, located_in, knows, member_of, enemy_of)
+- [x] **WOW-WIRE-02**: TM list endpoint returns 200 (not 500), status=None fix
+- [x] **WOW-WIRE-03**: DEV auto-init for MapDataService (31 images) and GlossaryService (33 entities)
+- [x] **WOW-WIRE-04**: All 5 codex characters show Korean descriptions (CharacterDesc fallback)
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| MOCK-AUDIT-01 | Phase 43 | 43-01 | Complete |
+| MOCK-AUDIT-02 | Phase 43 | 43-03 | Complete |
+| MOCK-AUDIT-03 | Phase 43 | 43-02 | Complete |
+| MOCK-AUDIT-04 | Phase 43 | 43-01 | Complete |
+| WOW-WIRE-01 | Phase 44 | 44-01 | Complete |
+| WOW-WIRE-02 | Phase 44 | 44-02 | Complete |
+| WOW-WIRE-03 | Phase 44 | 44-02 | Complete |
+| WOW-WIRE-04 | Phase 44 | 44-01 | Complete |
+
+**v4.0 Coverage:**
+- v4.0 requirements: 8 total
+- Mapped to phases: 8/8
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-17*

@@ -8,6 +8,8 @@
 - v3.1 Debug + Polish + Svelte 5 Migration (Phases 22-25) -- SHIPPED 2026-03-16
 - v3.2 GameData Tree UI + Context Intelligence + Image Gen (Phases 26-31) -- SHIPPED 2026-03-16
 - v3.3 UI/UX Polish + Performance (Phases 32-36) -- SHIPPED 2026-03-17
+- v3.5 WOW Showcase + LanguageData (Phases 37-42) -- SHIPPED 2026-03-18
+- v4.0 Mockdata Excellence + Next Level (Phases 43-44) -- SHIPPED 2026-03-18
 
 ## Phases
 
@@ -97,7 +99,7 @@
 **Plans**: 1 plan
 
 Plans:
-- [ ] 32-01: CSS design tokens and shared micro-components
+- [x] 32-01: CSS design tokens and shared micro-components (completed 2026-03-16)
 
 ### Phase 33: Codex Revamp
 **Goal**: Codex transforms from a slow all-at-once entity dump into a polished, fast encyclopedia with paginated loading, skeleton states, and search-first UX
@@ -112,8 +114,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 33-01-PLAN.md -- Backend pagination + frontend InfiniteScroll + SkeletonCard + lazy images
-- [ ] 33-02-PLAN.md -- Search-first UX + category tab caching + visual polish
+- [x] 33-01-PLAN.md -- Backend pagination + frontend InfiniteScroll + SkeletonCard + lazy images (completed 2026-03-16)
+- [x] 33-02-PLAN.md -- Search-first UX + category tab caching + visual polish (completed 2026-03-16)
 
 ### Phase 34: Page-by-Page Polish
 **Goal**: GameData Tree, Language Data Grid, World Map, and TM Panel all pass UI/UX audits with consistent loading/empty/error states, proper dark mode, and polished spacing/typography
@@ -127,9 +129,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 34-01-PLAN.md -- GameData Tree polish (GameDevPage, GameDataTree, NodeDetailPanel, GameDataContextPanel)
-- [ ] 34-02-PLAN.md -- Language Data Grid + TM Panel polish (GridPage, TMPage, TMExplorerGrid)
-- [ ] 34-03-PLAN.md -- World Map polish (WorldMapPage, MapCanvas, MapTooltip, MapDetailPanel)
+- [x] 34-01-PLAN.md -- GameData Tree polish (completed 2026-03-16)
+- [x] 34-02-PLAN.md -- Language Data Grid + TM Panel polish (completed 2026-03-16)
+- [x] 34-03-PLAN.md -- World Map polish (completed 2026-03-16)
 
 ### Phase 35: Cross-Page Consistency
 **Goal**: All five pages feel like one unified application -- same header pattern, same dark mode behavior, same sidebar interactions, same error recovery pattern
@@ -143,7 +145,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 35-01: Cross-page consistency enforcement (PageHeader, dark mode, sidebar, error handling)
+- [x] 35-01: Cross-page consistency enforcement (completed 2026-03-17)
 
 ### Phase 36: Visual Verification
 **Goal**: The entire v3.3 milestone is validated with hard evidence -- screenshots, benchmarks, memory stability, and zero test regressions
@@ -157,7 +159,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 36-01: Playwright screenshots + performance benchmarks + regression test suite
+- [x] 36-01: Playwright screenshots + performance benchmarks + regression test suite (completed 2026-03-17)
 
 ### v3.5 WOW Showcase (Phases 37-42)
 
@@ -167,8 +169,8 @@ Plans:
 - [x] **Phase 38: Fantasy World Map** - Parchment aesthetic, region polygons, terrain icons, custom SVG markers, route animations, mini-map (completed 2026-03-17)
 - [x] **Phase 39: Codex Cards + Relationship Graph** - Glassmorphism entity cards, D3 force-directed relationship graph, parallax hover (completed 2026-03-17)
 - [x] **Phase 40: Cross-cutting WOW Polish** - Page transitions, shimmer loading choreography, Ctrl+K command palette, micro-interactions (completed 2026-03-17)
-- [ ] **Phase 41: Qwen3-TTS Korean Voice** - TTS backend service, 5 character voice profiles, frontend audio playback
-- [ ] **Phase 42: LanguageData Fix + WOW Showcase** - Fix grid regression, 3-format mock data, right panel TM/Image/Audio/AI showcase
+- [x] **Phase 41: Qwen3-TTS Korean Voice** - TTS backend service, 5 character voice profiles, frontend audio playback (completed 2026-03-18)
+- [x] **Phase 42: LanguageData Fix + WOW Showcase** - Fix grid regression, 3-format mock data, right panel TM/Image/Audio/AI showcase (completed 2026-03-18)
 
 ### Phase 37: XML Viewer WOW Polish
 **Goal**: Every attribute in the XML viewer is semantically colored, hovering cross-refs shows entity previews, and all panel interactions have smooth animations
@@ -182,9 +184,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 37-01-PLAN.md -- Smart attribute semantic highlighting (classifyAttr + 6 color categories)
-- [ ] 37-02-PLAN.md -- Hover preview tooltips + copy ripple + search highlight pulse
-- [ ] 37-03-PLAN.md -- Panel slide-in + tab crossfade + image shimmer + dict stagger animations
+- [x] 37-01-PLAN.md -- Smart attribute semantic highlighting (completed 2026-03-17)
+- [x] 37-02-PLAN.md -- Hover preview tooltips + copy ripple (completed 2026-03-17)
+- [x] 37-03-PLAN.md -- Panel slide-in + tab crossfade + image shimmer (completed 2026-03-17)
 
 ### Phase 38: Fantasy World Map
 **Goal**: The map page looks like a real fantasy game world map with parchment background, region polygons, terrain indicators, and smooth navigation
@@ -199,9 +201,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 38-01-PLAN.md -- Mock map data (10 regions, 13 routes) + parchment aesthetic
-- [ ] 38-02-PLAN.md -- Region polygons + terrain icons + node markers
-- [ ] 38-03-PLAN.md -- Route animations + zoom interactions + mini-map
+- [x] 38-01-PLAN.md -- Mock map data + parchment aesthetic (completed 2026-03-17)
+- [x] 38-02-PLAN.md -- Region polygons + terrain icons + node markers (completed 2026-03-17)
+- [x] 38-03-PLAN.md -- Route animations + zoom interactions + mini-map (completed 2026-03-17)
 
 ### Phase 39: Codex Cards + Relationship Graph
 **Goal**: Codex entity grid uses glassmorphism cards with parallax hover, and a D3 force-directed graph shows entity relationships
@@ -215,8 +217,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 39-01: Glassmorphism entity cards with parallax hover
-- [ ] 39-02: D3 force-directed relationship graph
+- [x] 39-01: Glassmorphism entity cards with parallax hover (completed 2026-03-17)
+- [x] 39-02: D3 force-directed relationship graph (completed 2026-03-17)
 
 ### Phase 40: Cross-cutting WOW Polish
 **Goal**: Every page transition, loading state, and interaction across the entire app feels polished and delightful
@@ -230,8 +232,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 40-01: Page transitions + shimmer loading choreography
-- [ ] 40-02: Ctrl+K command palette + toast system
+- [x] 40-01: Page transitions + shimmer loading choreography (completed 2026-03-17)
+- [x] 40-02: Ctrl+K command palette + toast system (completed 2026-03-17)
 
 ### Phase 41: Qwen3-TTS Korean Voice Generation
 **Goal**: Install Qwen3-TTS and integrate Korean voice generation into the Codex, with unique voice profiles for each of the 5 game characters and frontend audio playback
@@ -246,8 +248,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 41-01-PLAN.md -- TTS backend service + API endpoints (TTSService, voice profiles, generate/serve routes)
-- [ ] 41-02-PLAN.md -- Frontend voice generation UI (CodexEntityDetail integration)
+- [x] 41-01-PLAN.md -- TTS backend service + API endpoints (completed 2026-03-18)
+- [x] 41-02-PLAN.md -- Frontend voice generation UI (completed 2026-03-18)
 
 ### Phase 42: LanguageData Fix + WOW Showcase
 **Goal**: Fix the broken LDM grid editor regression, create 3-format mock localization data (Excel, TXT, XML) for format-agnostic showcase, and wire the right panel with TM 6-tier cascade, entity images, character voice audio, and AI context for a professional CAT tool demo
@@ -262,9 +264,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 42-01-PLAN.md -- Debug and fix LDM grid regression (API 422 errors + frontend flow)
-- [ ] 42-02-PLAN.md -- Create 3-format mock localization data + TM entries
-- [ ] 42-03-PLAN.md -- Wire right panel tabs (TM cascade, Image, Audio, AI Context)
+- [x] 42-01-PLAN.md -- Debug and fix LDM grid regression (completed 2026-03-18)
+- [x] 42-02-PLAN.md -- Create 3-format mock localization data + TM entries (completed 2026-03-18)
+- [x] 42-03-PLAN.md -- Wire right panel tabs (completed 2026-03-18)
 
 ### v4.0 Mockdata Excellence + Next Level (Phases 43+)
 
@@ -288,8 +290,8 @@ Plans:
 
 Plans:
 - [x] 43-01-PLAN.md -- XML entity creation + cross-ref fixes + FactionNode standardization + waypoints (completed 2026-03-18)
-- [ ] 43-02-PLAN.md -- Localization string enrichment + TM expansion to ~50 entries
-- [ ] 43-03-PLAN.md -- KnowledgeInfo expansion to ~25 entries + 10 region textures
+- [x] 43-02-PLAN.md -- Localization string enrichment + TM expansion (completed 2026-03-18)
+- [x] 43-03-PLAN.md -- KnowledgeInfo expansion + region textures (completed 2026-03-18)
 
 ### Phase 44: WOW Data Wiring
 **Goal**: Wire the backend code to fully leverage Phase 43's rich mockdata — typed relationship links in codex graph, auto-detection of images/audio/context in the Right Panel, TM endpoint fix, and codex description mapping so every feature lights up during the demo
@@ -304,15 +306,13 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 44-01-PLAN.md -- Codex relationship graph typed links + CharacterDesc fallback + RegionInfo parsing
-- [ ] 44-02-PLAN.md -- TM status fix + DEV mode auto-init for MapDataService + GlossaryService
+- [x] 44-01-PLAN.md -- Codex relationship graph typed links + CharacterDesc fallback (completed 2026-03-18)
+- [x] 44-02-PLAN.md -- TM status fix + DEV auto-init MapData + Glossary (completed 2026-03-18)
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 32 -> 33 -> 34 -> 35 -> 36 -> 37 -> 38 -> 39 -> 40 -> 41 -> 42
-Note: Phase 38 and 39 can be partially parallelized after Phase 37.
-Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
+All 44 phases executed in order (01 -> 44). All complete.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -350,16 +350,17 @@ Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 | 31. Codex AI Image Generation | v3.2 | 2/2 | Complete | 2026-03-16 |
 | 32. Design Token Foundation | v3.3 | 1/1 | Complete | 2026-03-16 |
 | 33. Codex Revamp | v3.3 | 2/2 | Complete | 2026-03-16 |
-| 34. Page-by-Page Polish | 3/3 | Complete   | 2026-03-16 | - |
+| 34. Page-by-Page Polish | v3.3 | 3/3 | Complete | 2026-03-16 |
 | 35. Cross-Page Consistency | v3.3 | 1/1 | Complete | 2026-03-17 |
 | 36. Visual Verification | v3.3 | 1/1 | Complete | 2026-03-17 |
-| 37. XML Viewer WOW Polish | 3/3 | Complete    | 2026-03-17 | - |
+| 37. XML Viewer WOW Polish | v3.5 | 3/3 | Complete | 2026-03-17 |
 | 38. Fantasy World Map | v3.5 | 3/3 | Complete | 2026-03-17 |
 | 39. Codex Cards + Relationship Graph | v3.5 | 2/2 | Complete | 2026-03-17 |
 | 40. Cross-cutting WOW Polish | v3.5 | 2/2 | Complete | 2026-03-17 |
 | 41. Qwen3-TTS Korean Voice | v3.5 | 2/2 | Complete | 2026-03-18 |
 | 42. LanguageData Fix + WOW Showcase | v3.5 | 3/3 | Complete | 2026-03-18 |
-| 43. Mockdata Quality Audit + WOW Amplification | 3/3 | Complete    | 2026-03-18 | - |
+| 43. Mockdata Quality Audit + WOW Amplification | v4.0 | 3/3 | Complete | 2026-03-18 |
+| 44. WOW Data Wiring | v4.0 | 2/2 | Complete | 2026-03-18 |
 
 ---
 *Roadmap created: 2026-03-14*
