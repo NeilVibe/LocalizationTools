@@ -12,7 +12,7 @@ class TMResponse(BaseModel):
     source_lang: str
     target_lang: str
     entry_count: int
-    status: str
+    status: str = "ready"
     created_at: Optional[datetime]
 
     class Config:

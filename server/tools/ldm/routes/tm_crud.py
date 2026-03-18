@@ -197,7 +197,7 @@ async def list_tms(
             self.source_lang = data.get("source_lang", "ko")
             self.target_lang = data.get("target_lang", "en")
             self.entry_count = data.get("entry_count", 0)
-            self.status = data.get("status", "ready")
+            self.status = data.get("status") or "ready"
             self.mode = data.get("mode", "standard")
             self.owner_id = data.get("owner_id") or current_user["user_id"]
             self.created_at = data.get("created_at")
@@ -235,7 +235,7 @@ async def get_tm(
             self.source_lang = data.get("source_lang", "ko")
             self.target_lang = data.get("target_lang", "en")
             self.entry_count = data.get("entry_count", 0)
-            self.status = data.get("status", "ready")
+            self.status = data.get("status") or "ready"
             self.mode = data.get("mode", "standard")
             self.owner_id = data.get("owner_id") or current_user["user_id"]
             self.created_at = data.get("created_at")
