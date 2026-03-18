@@ -120,7 +120,7 @@ def find_or_create_tm(token: str, name: str = "Showcase TM") -> int:
 
 
 def load_tm_entries(token: str, tm_id: int):
-    """Load 30+ TM entries with exact, fuzzy, and semantic matches."""
+    """Load 50+ TM entries with exact, fuzzy, semantic, dialogue, quest, and multi-line matches."""
     h = {**get_headers(token), "Content-Type": "application/json"}
 
     # Check existing entry count
@@ -128,7 +128,7 @@ def load_tm_entries(token: str, tm_id: int):
     if r.ok:
         info = r.json()
         count = info.get("entry_count", 0)
-        if count >= 30:
+        if count >= 45:
             logger.info(f"TM already has {count} entries, skipping")
             return
 
@@ -175,6 +175,29 @@ def load_tm_entries(token: str, tm_id: int):
         {"source": "Shadow Essence", "target": "그림자 정수", "context": "Item"},
         {"source": "Volcanic Ore", "target": "화산 광석", "context": "Item"},
         {"source": "Blackstar Village", "target": "흑성 마을", "context": "Region"},
+
+        # ── Multi-line content with <br/> (5) ──
+        {"source": "A blade forged in the heart of a dying star.<br/>Its edge cuts through both flesh and shadow.", "target": "죽어가는 별의 심장에서 단조된 검.<br/>그 날은 살과 그림자를 모두 베어냅니다.", "context": "Item"},
+        {"source": "The Sealed Library holds ancient knowledge.<br/>Only the Sage Order may enter its halls.", "target": "봉인된 도서관은 고대의 지식을 간직하고 있다.<br/>현자의 결사만이 그 전당에 들어갈 수 있다.", "context": "Region"},
+        {"source": "Sacred Flame purifies darkness.<br/>It has been passed down for generations.", "target": "성스러운 불꽃은 어둠을 정화한다.<br/>대대로 전승되어 온 마법이다.", "context": "Skill"},
+        {"source": "The mist never lifts in this ancient forest.<br/>Strange creatures lurk in the shadows.", "target": "이 고대 숲에서는 안개가 걷히지 않는다.<br/>기이한 생물들이 그림자 속에 도사리고 있다.", "context": "Region"},
+        {"source": "Grimjaw's forge burns day and night.<br/>The sound of his hammer echoes through the village.", "target": "그림죠의 대장간은 밤낮으로 타오른다.<br/>그의 망치 소리가 마을 전체에 울려 퍼진다.", "context": "Dialogue"},
+
+        # ── Dialogue-related entries (5) ──
+        {"source": "Welcome to the Sealed Library, traveler.", "target": "봉인된 도서관에 오신 것을 환영합니다, 여행자여.", "context": "Dialogue"},
+        {"source": "The Dark Cult grows stronger each day.", "target": "어둠의 교단은 날마다 강해지고 있습니다.", "context": "Dialogue"},
+        {"source": "Take this scroll to Elder Varon.", "target": "이 두루마리를 장로 바론에게 가져가세요.", "context": "Dialogue"},
+        {"source": "Be careful in the Mist Forest at night.", "target": "밤에 안개의 숲에서는 조심하세요.", "context": "Dialogue"},
+        {"source": "The blackstar ore can only be found in the volcanic zone.", "target": "검은별 광석은 화산 지대에서만 찾을 수 있습니다.", "context": "Dialogue"},
+
+        # ── Near-duplicate fuzzy pairs (3, 95%+ match with existing) ──
+        {"source": "Welcome to the Realm of the Stars!", "target": "별의 왕국에 오신 것을 환영합니다!", "context": "UI"},
+        {"source": "The Blackstar Sword", "target": "흑성검", "context": "Item"},
+        {"source": "Elder Varon the Sage", "target": "현자 장로 바론", "context": "Character"},
+
+        # ── Quest context entries (2) ──
+        {"source": "Find the ancient scroll in the Sealed Library.", "target": "봉인된 도서관에서 고대 두루마리를 찾으세요.", "context": "Quest"},
+        {"source": "Collect volcanic ore for the blacksmith.", "target": "대장장이를 위해 화산 광석을 수집하세요.", "context": "Quest"},
     ]
 
     success = 0
