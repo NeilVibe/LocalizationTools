@@ -348,6 +348,18 @@ class GameDataContextService:
                 result["stream_url"] = f"/api/ldm/mapdata/audio/stream/{value}"
                 break
 
+        # Fallback: check if StrKey has audio in MapDataService
+        if not result["has_audio"]:
+            strkey = str(node.attributes.get("StrKey", ""))
+            if strkey:
+                from server.tools.ldm.services.mapdata_service import get_mapdata_service
+                mapdata_svc = get_mapdata_service()
+                audio_ctx = mapdata_svc.get_audio_context(strkey)
+                if audio_ctx:
+                    result["has_audio"] = True
+                    result["voice_id"] = strkey
+                    result["stream_url"] = f"/api/ldm/mapdata/audio/stream/{strkey}"
+
         return result
 
     # =========================================================================

@@ -109,6 +109,9 @@ async def get_thumbnail(
     if dds_path is None:
         raise HTTPException(status_code=404, detail=f"Texture '{texture_name}' not found")
 
+    # Ensure dds_path is a string (DDS index may store Path objects)
+    dds_path = str(dds_path)
+
     # Serve PNG/JPG files directly without DDS conversion
     if dds_path.lower().endswith(('.png', '.jpg', '.jpeg')):
         media = "image/png" if dds_path.lower().endswith('.png') else "image/jpeg"
@@ -151,6 +154,12 @@ async def stream_audio(
     if audio_ctx is None:
         raise HTTPException(status_code=404, detail=f"No audio for '{string_id}'")
 
+    # If the path is already a WAV file, serve it directly
+    source_path = Path(audio_ctx.wem_path)
+    if source_path.suffix.lower() == ".wav" and source_path.exists():
+        return FileResponse(str(source_path), media_type="audio/wav")
+
+    # Otherwise convert WEM -> WAV
     wsl_path = convert_to_wsl_path(audio_ctx.wem_path)
     converter = get_media_converter()
 

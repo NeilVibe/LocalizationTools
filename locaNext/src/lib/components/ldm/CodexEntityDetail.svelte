@@ -39,6 +39,24 @@
   let ttsAvailable = $state(false);
   let generatedAudioUrl = $state(null);
   let voiceDuration = $state(null);
+  let audioExists = $state(false);
+
+  // Check if audio actually exists for this entity
+  $effect(() => {
+    const key = entity?.audio_key;
+    if (!key) {
+      audioExists = false;
+      return;
+    }
+    const controller = new AbortController();
+    fetch(`${API_BASE}/api/ldm/mapdata/audio/${encodeURIComponent(key)}`, {
+      headers: getAuthHeaders(),
+      signal: controller.signal,
+    })
+      .then(r => { audioExists = r.ok; })
+      .catch(() => { audioExists = false; });
+    return () => controller.abort();
+  });
 
   // Check image-gen and TTS availability on mount
   onMount(() => {
@@ -392,7 +410,7 @@
             >Regenerate</Button>
           {/if}
         </div>
-      {:else if audioUrl && !audioError}
+      {:else if audioUrl && audioExists && !audioError}
         <div class="audio-section">
           <div class="section-header">
             <Music size={16} />

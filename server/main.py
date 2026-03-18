@@ -158,7 +158,7 @@ async def lifespan(app: FastAPI):
     # DEV mode: auto-initialize Right Panel services with mock data
     if config.DEV_MODE:
         try:
-            from server.tools.ldm.services.mapdata_service import get_mapdata_service, ImageContext
+            from server.tools.ldm.services.mapdata_service import get_mapdata_service, ImageContext, AudioContext
             from server.tools.ldm.services.glossary_service import get_glossary_service
 
             mapdata_svc = get_mapdata_service()
@@ -166,33 +166,86 @@ async def lifespan(app: FastAPI):
             # Populate _strkey_to_image with mock texture PNGs
             mock_textures = base_dir / "tests" / "fixtures" / "mock_gamedata" / "textures"
             if mock_textures.is_dir():
-                # Map StrKey patterns to texture filenames
-                strkey_texture_map = {}
+                # Build texture stem index (lowercase stem -> Path)
+                texture_by_stem = {}
                 for png_file in mock_textures.glob("*.png"):
-                    # character_varon.png -> try "Character_Varon" StrKey pattern
-                    stem = png_file.stem  # e.g., "character_varon"
-                    parts = stem.split("_", 1)
-                    if len(parts) == 2:
-                        prefix = parts[0].capitalize()  # "Character"
-                        name = "_".join(p.capitalize() for p in parts[1].split("_"))
-                        strkey_candidate = f"{prefix}_{name}"
-                        strkey_texture_map[strkey_candidate] = png_file
-
-                # Also map exact texture stems for UITextureName lookups
-                for png_file in mock_textures.glob("*.png"):
+                    texture_by_stem[png_file.stem.lower()] = png_file
                     mapdata_svc._dds_index[png_file.stem.lower()] = png_file
 
-                # Build ImageContext entries for known StrKeys
-                for strkey, png_path in strkey_texture_map.items():
-                    mapdata_svc._strkey_to_image[strkey] = ImageContext(
-                        texture_name=png_path.stem,
-                        dds_path=str(png_path),
-                        thumbnail_url=f"/api/ldm/mapdata/thumbnail/{png_path.stem}",
-                        has_image=True,
-                    )
+                # Parse actual XMLs to get real StrKeys, then find matching textures
+                mock_staticinfo = base_dir / "tests" / "fixtures" / "mock_gamedata" / "StaticInfo"
+                if mock_staticinfo.is_dir():
+                    from lxml import etree
+                    for folder_name in ["characterinfo", "iteminfo", "skillinfo", "regioninfo", "factioninfo"]:
+                        folder = mock_staticinfo / folder_name
+                        if not folder.is_dir():
+                            continue
+                        for xml_file in folder.glob("*.xml"):
+                            try:
+                                tree = etree.parse(str(xml_file))
+                                for elem in tree.getroot():
+                                    strkey = elem.get("StrKey", elem.get("Key", ""))
+                                    if not strkey:
+                                        continue
+                                    # Try matching texture: StrKey "Character_ElderVaron" ->
+                                    # try "character_eldervaron", then partial match
+                                    tex_key = strkey.lower().replace("_", "_")
+                                    png_path = texture_by_stem.get(tex_key)
+                                    if not png_path:
+                                        # Partial match: find texture whose stem is contained in strkey or vice versa
+                                        sk_lower = strkey.lower()
+                                        for stem, path in texture_by_stem.items():
+                                            # e.g., "character_varon" matches "character_eldervaron"
+                                            parts = stem.split("_", 1)
+                                            sk_parts = sk_lower.split("_", 1)
+                                            if len(parts) == 2 and len(sk_parts) == 2:
+                                                if parts[0] == sk_parts[0] and parts[1] in sk_parts[1]:
+                                                    png_path = path
+                                                    break
+                                    if png_path:
+                                        img_ctx = ImageContext(
+                                            texture_name=png_path.stem,
+                                            dds_path=str(png_path),
+                                            thumbnail_url=f"/api/ldm/mapdata/thumbnail/{png_path.stem}",
+                                            has_image=True,
+                                        )
+                                        mapdata_svc._strkey_to_image[strkey] = img_ctx
+                            except Exception:
+                                pass
+
+                # Also index by filename-derived StrKey for backward compat
+                for png_file in mock_textures.glob("*.png"):
+                    stem = png_file.stem
+                    parts = stem.split("_", 1)
+                    if len(parts) == 2:
+                        prefix = parts[0].capitalize()
+                        name = "_".join(p.capitalize() for p in parts[1].split("_"))
+                        strkey_candidate = f"{prefix}_{name}"
+                        if strkey_candidate not in mapdata_svc._strkey_to_image:
+                            mapdata_svc._strkey_to_image[strkey_candidate] = ImageContext(
+                                texture_name=png_file.stem,
+                                dds_path=str(png_file),
+                                thumbnail_url=f"/api/ldm/mapdata/thumbnail/{png_file.stem}",
+                                has_image=True,
+                            )
+
+                # Populate _strkey_to_audio from TTS-generated WAV files
+                audio_dir = base_dir / "audio"
+                if audio_dir.is_dir():
+                    for wav_file in audio_dir.glob("*.wav"):
+                        # WAV filename = StrKey (e.g., Character_ElderVaron.wav)
+                        strkey = wav_file.stem
+                        mapdata_svc._strkey_to_audio[strkey] = AudioContext(
+                            event_name=f"Voice: {strkey.replace('_', ' ')}",
+                            wem_path=str(wav_file),
+                            script_kr="",
+                            script_eng="",
+                            duration_seconds=None,
+                        )
+                    logger.info(f"[DEV] Audio index: {len(mapdata_svc._strkey_to_audio)} entries from {audio_dir}")
 
                 mapdata_svc._loaded = True
-                logger.success(f"[DEV] MapDataService auto-init: {len(mapdata_svc._strkey_to_image)} image entries, {len(mapdata_svc._dds_index)} texture index entries")
+                logger.success(f"[DEV] MapDataService auto-init: {len(mapdata_svc._strkey_to_image)} image entries, {len(mapdata_svc._strkey_to_audio)} audio entries, {len(mapdata_svc._dds_index)} texture index entries")
 
             # Initialize GlossaryService with mock staticinfo entity names
             # NOTE: bypass glossary_filter (min_occurrence=2 kills single-file entities)

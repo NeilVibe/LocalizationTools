@@ -326,11 +326,26 @@ class MapDataService:
     def get_image_context(self, string_id: str) -> Optional[ImageContext]:
         """Look up image context by StrKey, StringID, or KnowledgeKey.
 
+        Tries exact match first, then fuzzy matching against indexed StrKeys
+        to handle mismatches between different key formats.
+
         Returns None if service is not loaded or key is unknown.
         """
         if not self._loaded:
             return None
-        return self._strkey_to_image.get(string_id)
+        # Exact match
+        result = self._strkey_to_image.get(string_id)
+        if result:
+            return result
+        # Fuzzy: try partial match (e.g., key contains or is contained in indexed keys)
+        sid_lower = string_id.lower().replace("_", "")
+        for key, ctx in self._strkey_to_image.items():
+            key_lower = key.lower().replace("_", "")
+            if sid_lower in key_lower or key_lower in sid_lower:
+                # Cache for future lookups
+                self._strkey_to_image[string_id] = ctx
+                return ctx
+        return None
 
     def get_knowledge_lookup(self, strkey: str) -> Optional[KnowledgeLookup]:
         """Look up raw KnowledgeLookup entry by StrKey.
@@ -350,10 +365,45 @@ class MapDataService:
         """Look up audio context by StrKey, StringID, or KnowledgeKey.
 
         Returns None if service is not loaded or key is unknown.
+        Lazily populates audio index from audio/ directory on first call.
         """
         if not self._loaded:
             return None
-        return self._strkey_to_audio.get(string_id)
+        # Lazy-populate audio index from TTS WAV files
+        if not self._strkey_to_audio:
+            self._lazy_load_audio()
+        result = self._strkey_to_audio.get(string_id)
+        if result:
+            return result
+        # Fuzzy match for audio (same partial strategy as images)
+        sid_lower = string_id.lower().replace("_", "")
+        for key, ctx in self._strkey_to_audio.items():
+            key_lower = key.lower().replace("_", "")
+            if sid_lower in key_lower or key_lower in sid_lower:
+                self._strkey_to_audio[string_id] = ctx
+                return ctx
+        return None
+
+    def _lazy_load_audio(self) -> None:
+        """Lazily scan audio/ directory for WAV files and populate _strkey_to_audio."""
+        # Try project root audio/ dir (TTS-generated files)
+        for candidate in [
+            Path(__file__).resolve().parents[3] / "audio",  # project root
+            Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "mock_gamedata" / "audio",
+        ]:
+            if candidate.is_dir():
+                for wav_file in candidate.glob("*.wav"):
+                    strkey = wav_file.stem
+                    if strkey not in self._strkey_to_audio:
+                        self._strkey_to_audio[strkey] = AudioContext(
+                            event_name=f"Voice: {strkey.replace('_', ' ')}",
+                            wem_path=str(wav_file),
+                            script_kr="",
+                            script_eng="",
+                            duration_seconds=None,
+                        )
+                if self._strkey_to_audio:
+                    logger.info(f"[MAPDATA] Lazy-loaded {len(self._strkey_to_audio)} audio entries from {candidate}")
 
     def get_status(self) -> dict:
         """Return service status info."""
