@@ -116,7 +116,7 @@ def _quick_scan_strorigins(filepath: Path) -> Optional[set]:
         return None
 
 
-def _build_correction_lookups(corrections, match_mode):
+def _build_correction_lookups(corrections, match_mode, stringid_to_filepath=None):
     """
     Build correction lookup dicts ONCE for reuse across all target files.
 
@@ -126,7 +126,7 @@ def _build_correction_lookups(corrections, match_mode):
 
     Args:
         corrections: List of correction dicts (already filtered/preprocessed)
-        match_mode: One of "strict", "strorigin_only", "stringid_only", "fuzzy"
+        match_mode: One of "strict", "strorigin_only", "stringid_only", "strorigin_filename", "fuzzy"
     """
     if match_mode == "strict":
         # (StringID, normalized_StrOrigin) -> list of (corrected_text, category, index)
@@ -181,6 +181,27 @@ def _build_correction_lookups(corrections, match_mode):
             correction_lookup_nospace[(origin_nospace, desc_nospace)].append((c["corrected"], category, i))
         return correction_lookup, correction_lookup_nospace
 
+    elif match_mode == "strorigin_filename":
+        # PASS1: (normalized_StrOrigin, filepath, normalized_DescOrigin) -> list of (corrected, category, index)
+        # PASS2: (normalized_StrOrigin, filepath) -> list of (corrected, category, index)
+        correction_lookup = defaultdict(list)       # PASS1
+        correction_lookup_nospace = defaultdict(list)  # PASS2 (repurposed)
+        _fp_index = stringid_to_filepath or {}
+        for i, c in enumerate(corrections):
+            origin_norm = normalize_for_matching(c.get("str_origin", ""))
+            if not origin_norm:
+                continue
+            sid_lower = c["string_id"].lower()
+            filepath = _fp_index.get(sid_lower, "")
+            desc_norm = normalize_for_matching(c.get("desc_origin", ""))
+            category = c.get("category", "Uncategorized")
+            # PASS1: full 3-tuple (only if descorigin is present)
+            if desc_norm:
+                correction_lookup[(origin_norm, filepath, desc_norm)].append((c["corrected"], category, i))
+            # PASS2: always add to 2-tuple dict
+            correction_lookup_nospace[(origin_norm, filepath)].append((c["corrected"], category, i))
+        return correction_lookup, correction_lookup_nospace
+
     elif match_mode == "fuzzy":
         # fuzzy_target_string_id.lower() -> full correction dict
         correction_lookup = {}
@@ -190,7 +211,7 @@ def _build_correction_lookups(corrections, match_mode):
                 correction_lookup[target_sid.lower()] = c
         return correction_lookup, None
 
-    return None, None
+    raise ValueError(f"Unknown match_mode: {match_mode}")
 
 
 def _preprocess_stringid_only(corrections, stringid_to_category, stringid_to_subfolder=None):

@@ -31,6 +31,7 @@ MATCHING_MODES = {
     "strict": "StringID + StrOrigin (Strict)",
     "strorigin_only": "StrOrigin Only (non-script, fills duplicates)",
     "strorigin_descorigin": "StrOrigin + DescOrigin",
+    "strorigin_filename": "StrOrigin + FileName (2-pass, export filepath)",
 }
 
 # SCRIPT categories - folder names where StrOrigin = raw KOR text
