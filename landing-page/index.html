@@ -4796,7 +4796,7 @@
 
       <!-- Interactive AI Swarm — living agent ecosystem -->
       <div class="swarm-container" id="swarmContainer">
-        <canvas id="swarmCanvas" style="width:100%;height:700px;cursor:pointer;"></canvas>
+        <canvas id="swarmCanvas" style="width:100%;height:850px;cursor:pointer;"></canvas>
         <div class="swarm-hint" id="swarmHint">노드를 호버하여 AI 에이전트를 탐색하세요</div>
       </div>
       <script>
@@ -4826,6 +4826,162 @@
         }
         resize();
         window.addEventListener('resize', resize);
+
+        // === GALAXY BACKGROUND — subtle animated star field ===
+        var galaxyStars = null; // lazy init
+
+        function initGalaxy() {
+          var seed = 42; // deterministic pseudo-random
+          function rng() { seed = (seed * 16807 + 0) % 2147483647; return (seed - 1) / 2147483646; }
+
+          var stars = [];
+          // --- Layer 1: Spiral arm stars (300 across 3 arms) ---
+          var numArms = 3;
+          var starsPerArm = 100;
+          for (var arm = 0; arm < numArms; arm++) {
+            var armAngle = (arm / numArms) * Math.PI * 2;
+            for (var si = 0; si < starsPerArm; si++) {
+              // Logarithmic spiral: r = a * e^(b*theta)
+              var progress = (si + rng() * 0.5) / starsPerArm; // 0..1
+              var theta = progress * Math.PI * 3.5; // spiral winds ~1.75 turns
+              var spiralR = 30 + progress * 320; // radius 30..350px from center
+              // Add spread perpendicular to arm
+              var spread = (rng() - 0.5) * (20 + progress * 60);
+              var angle = armAngle + theta * 0.15; // tightness of spiral
+              // Lag: stars further out lag behind (creates curve)
+              angle += progress * 1.2;
+              var sx = Math.cos(angle) * spiralR + (rng() - 0.5) * spread;
+              var sy = Math.sin(angle) * spiralR + (rng() - 0.5) * spread;
+              // Color: mix copper/gold/blue based on distance
+              var colorChoice = rng();
+              var col = colorChoice < 0.45 ? [212,154,92] : colorChoice < 0.75 ? [232,138,58] : [108,140,200];
+              var size = 0.3 + rng() * 1.0 + (1 - progress) * 0.5; // inner stars slightly bigger
+              var baseAlpha = 0.03 + rng() * 0.04; // 0.03-0.07
+              stars.push({
+                ox: sx, oy: sy, // offset from center
+                size: size,
+                col: col,
+                baseAlpha: baseAlpha,
+                layer: 'spiral',
+                depth: 0.6 + rng() * 0.4, // rotation speed factor
+                twinkleSpeed: 0.5 + rng() * 2.0,
+                twinklePhase: rng() * Math.PI * 2,
+                twinkle: rng() < 0.3 // 30% of stars twinkle
+              });
+            }
+          }
+
+          // --- Layer 2: Background scattered stars (150) ---
+          for (var bi = 0; bi < 150; bi++) {
+            // Uniform random across full canvas (relative to center, +-50% of max dim)
+            var bx = (rng() - 0.5) * 900;
+            var by = (rng() - 0.5) * 700;
+            var colorChoice2 = rng();
+            var col2 = colorChoice2 < 0.3 ? [212,154,92] : colorChoice2 < 0.5 ? [232,138,58] : [108,140,200];
+            stars.push({
+              ox: bx, oy: by,
+              size: 0.2 + rng() * 0.6,
+              col: col2,
+              baseAlpha: 0.02 + rng() * 0.03, // dimmer than spiral
+              layer: 'bg',
+              depth: 0.3 + rng() * 0.3, // slower rotation
+              twinkleSpeed: 0.3 + rng() * 1.5,
+              twinklePhase: rng() * Math.PI * 2,
+              twinkle: rng() < 0.4 // 40% twinkle
+            });
+          }
+
+          // --- Layer 3: Swimming stars with geometric paths (20) ---
+          for (var wi = 0; wi < 20; wi++) {
+            var pathType = rng() < 0.5 ? 'lissajous' : 'arc';
+            var baseDist = 80 + rng() * 280;
+            var baseAngle = rng() * Math.PI * 2;
+            var colorChoice3 = rng();
+            var col3 = colorChoice3 < 0.4 ? [212,154,92] : colorChoice3 < 0.7 ? [232,138,58] : [108,140,200];
+            stars.push({
+              ox: Math.cos(baseAngle) * baseDist,
+              oy: Math.sin(baseAngle) * baseDist,
+              size: 0.5 + rng() * 1.2,
+              col: col3,
+              baseAlpha: 0.04 + rng() * 0.04,
+              layer: 'swim',
+              depth: 0.8 + rng() * 0.2,
+              twinkle: true,
+              twinkleSpeed: 0.8 + rng() * 1.0,
+              twinklePhase: rng() * Math.PI * 2,
+              // Swimming params
+              pathType: pathType,
+              // Lissajous: x=A*sin(a*t+d), y=B*sin(b*t) — figure-8 when a=2,b=1
+              lissA: 15 + rng() * 30,  // x amplitude
+              lissB: 15 + rng() * 30,  // y amplitude
+              lissFreqA: pathType === 'lissajous' ? (rng() < 0.5 ? 2 : 3) : 1, // integer ratio for closed curves
+              lissFreqB: 1,
+              lissDelta: rng() * Math.PI, // phase offset
+              swimSpeed: 0.08 + rng() * 0.12, // radians per second
+              // Arc: orbit around a nearby point
+              arcRadius: 10 + rng() * 25,
+              arcSpeed: 0.15 + rng() * 0.25
+            });
+          }
+
+          return stars;
+        }
+
+        function drawGalaxyBackground() {
+          if (!galaxyStars) galaxyStars = initGalaxy();
+
+          var rotAngle = t * 0.04; // full rotation ~157s (very slow)
+          var cosR, sinR;
+
+          for (var i = 0; i < galaxyStars.length; i++) {
+            var s = galaxyStars[i];
+
+            // Base position (relative to center)
+            var px = s.ox;
+            var py = s.oy;
+
+            // Swimming stars: add geometric path offset
+            if (s.layer === 'swim') {
+              if (s.pathType === 'lissajous') {
+                px += s.lissA * Math.sin(s.lissFreqA * t * s.swimSpeed + s.lissDelta);
+                py += s.lissB * Math.sin(s.lissFreqB * t * s.swimSpeed);
+              } else {
+                px += Math.cos(t * s.arcSpeed) * s.arcRadius;
+                py += Math.sin(t * s.arcSpeed) * s.arcRadius;
+              }
+            }
+
+            // Rotate around center (galaxy spin) — depth affects speed
+            var angle = rotAngle * s.depth;
+            cosR = Math.cos(angle);
+            sinR = Math.sin(angle);
+            var rx = px * cosR - py * sinR;
+            var ry = px * sinR + py * cosR;
+
+            // Convert to screen coords
+            var screenX = cx + rx;
+            var screenY = cy + ry;
+
+            // Cull off-screen stars (with margin)
+            if (screenX < -5 || screenX > W + 5 || screenY < -5 || screenY > H + 5) continue;
+
+            // Calculate alpha with twinkle
+            var alpha = s.baseAlpha;
+            if (s.twinkle) {
+              var tw = Math.sin(t * s.twinkleSpeed + s.twinklePhase);
+              alpha *= 0.5 + 0.5 * tw; // pulse between 0..baseAlpha
+            }
+
+            // Skip near-invisible stars
+            if (alpha < 0.005) continue;
+
+            // Draw star
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, s.size, 0, 6.2832); // Math.PI*2 = 6.2832
+            ctx.fillStyle = 'rgba(' + s.col[0] + ',' + s.col[1] + ',' + s.col[2] + ',' + alpha + ')';
+            ctx.fill();
+          }
+        }
 
         // === NODE DEFINITIONS — hierarchy order ===
         var nodeDefs = [
@@ -4877,6 +5033,44 @@
           { id: 'viking', ox: -280, oy: 160, r: 32, label: 'OpenViking', labelKR: '시맨틱 검색 DB',
             sub: '93 docs · 727 embeddings', color: blue, tier: 'outer',
             detail: '프로젝트 문서 시맨틱 검색 DB. Model2Vec 임베딩 + Qwen3-VL 비전. 727개 임베딩 인덱스.' },
+
+          // === FAR OUTER RING — 12 specialist nodes ===
+          { id: 'critique', ox: 0, oy: -390, r: 22, label: 'Critique', labelKR: 'UI 비평 · 감사',
+            sub: 'Design Audit', color: blue, tier: 'far',
+            detail: 'UI 일관성, 접근성, 시각적 계층 감사. Polish → Critique → Harden 파이프라인.' },
+          { id: 'chromedevtools', ox: 200, oy: -335, r: 20, label: 'Chrome DevTools', labelKR: 'CDP MCP',
+            sub: 'Browser Automation', color: queenRed, tier: 'far',
+            detail: 'Chrome DevTools Protocol MCP. 콘솔, 네트워크, 스크린샷, Lighthouse 감사.' },
+          { id: 'playwright', ox: 345, oy: -195, r: 20, label: 'Playwright Pro', labelKR: 'E2E 테스트',
+            sub: 'Visual Regression', color: researchPurple, tier: 'far',
+            detail: 'Playwright E2E 테스트. 스크린샷 비교, 폼 자동화, 멀티브라우저 검증.' },
+          { id: 'security', ox: 395, oy: 0, r: 20, label: 'Security', labelKR: '보안 감사관',
+            sub: 'OWASP · SAST', color: researchPurple, tier: 'far',
+            detail: 'OWASP Top 10 검사, SAST 스캔, 인증/입력 검증 감사. 심각도 등급 + 수정 가이드.' },
+          { id: 'brainstrust', ox: 345, oy: 195, r: 22, label: 'brains-trust', labelKR: '42 패턴',
+            sub: '42 Agent Patterns', color: ralphGreen, tier: 'far',
+            detail: 'Fan-out, Pipeline, Swarm, Research→Implement — 42가지 에이전트 위임 패턴.' },
+          { id: 'deepresearch', ox: 200, oy: 335, r: 20, label: 'Deep Research', labelKR: '멀티소스 리서치',
+            sub: '10+ Sources', color: ralphGreen, tier: 'far',
+            detail: '10+ 소스 합성, 인용 추적, 교차 검증, 구조화된 리서치 보고서.' },
+          { id: 'fastapi', ox: 0, oy: 390, r: 20, label: 'FastAPI', labelKR: '백엔드 전문가',
+            sub: 'Pydantic · Async', color: gsdWarm, tier: 'far',
+            detail: 'FastAPI + Pydantic 전문가. 비동기 엔드포인트, OpenAPI 스펙 자동 생성.' },
+          { id: 'dboptimizer', ox: -200, oy: 335, r: 20, label: 'DB Optimizer', labelKR: 'PostgreSQL',
+            sub: 'EXPLAIN · VACUUM', color: gsdWarm, tier: 'far',
+            detail: 'PostgreSQL 최적화. EXPLAIN ANALYZE, 인덱스 전략, JSONB 패턴.' },
+          { id: 'sveltecw', ox: -345, oy: 195, r: 22, label: 'Svelte Writer', labelKR: '공식 Svelte',
+            sub: 'Official SvelteJS', color: blue, tier: 'far',
+            detail: '공식 SvelteJS 스킬. Svelte 5 Runes, $state/$derived/$effect 패턴.' },
+          { id: 'gsapmaster', ox: -395, oy: 0, r: 20, label: 'GSAP Master', labelKR: '애니메이션',
+            sub: 'ScrollTrigger', color: gold, tier: 'far',
+            detail: 'GSAP 애니메이션 전문가. ScrollTrigger, Timeline, SplitText.' },
+          { id: 'threejs', ox: -345, oy: -195, r: 18, label: 'Three.js', labelKR: '3D 시각화',
+            sub: 'WebGL · Shaders', color: gold, tier: 'far',
+            detail: 'Three.js 3D 씬. WebGL 렌더링, 파티클 시스템, 쉐이더 프로그래밍.' },
+          { id: 'testmaster', ox: -200, oy: -335, r: 18, label: 'Test Master', labelKR: '테스트 생성',
+            sub: 'TDD · Coverage', color: researchPurple, tier: 'far',
+            detail: '테스트 자동 생성. TDD 워크플로우, 커버리지 분석, 목/스텁 전략.' },
         ];
 
         // === WORKER mini-nodes for Ruflo Queen ===
@@ -4906,6 +5100,19 @@
           { from: 'ruflo', to: 'autoresearch', width: 0.6, pulseSpeed: 1.8 },
           { from: 'gsd', to: 'superpowers', width: 0.8, pulseSpeed: 1.6 },
           { from: 'viking', to: 'autoresearch', width: 0.7, pulseSpeed: 1.7 },
+          // Outer → Far outer connections
+          { from: 'uiux', to: 'critique', width: 0.6, pulseSpeed: 1.8 },
+          { from: 'stitch', to: 'chromedevtools', width: 0.6, pulseSpeed: 1.6 },
+          { from: 'superpowers', to: 'playwright', width: 0.6, pulseSpeed: 1.7 },
+          { from: 'superpowers', to: 'security', width: 0.5, pulseSpeed: 1.9 },
+          { from: 'autoresearch', to: 'brainstrust', width: 0.7, pulseSpeed: 1.5 },
+          { from: 'autoresearch', to: 'deepresearch', width: 0.6, pulseSpeed: 1.6 },
+          { from: 'viking', to: 'fastapi', width: 0.5, pulseSpeed: 1.7 },
+          { from: 'viking', to: 'dboptimizer', width: 0.5, pulseSpeed: 1.8 },
+          { from: 'uiux', to: 'sveltecw', width: 0.6, pulseSpeed: 1.6 },
+          { from: 'superpowers', to: 'gsapmaster', width: 0.5, pulseSpeed: 1.9 },
+          { from: 'banana', to: 'threejs', width: 0.5, pulseSpeed: 2.0 },
+          { from: 'superpowers', to: 'testmaster', width: 0.5, pulseSpeed: 1.7 },
         ];
 
         function repositionNodes() {
@@ -4997,8 +5204,8 @@
             })(i);
           }
 
-          // Phase 3: Outer ring
-          for (var j = 6; j < nodes.length; j++) {
+          // Phase 3: Outer ring (nodes 6-9)
+          for (var j = 6; j < Math.min(10, nodes.length); j++) {
             (function(idx) {
               gsap.to(nodes[idx], {
                 alpha: 1, scale: 1, x: nodes[idx].tx, y: nodes[idx].ty,
@@ -5008,9 +5215,20 @@
             })(j);
           }
 
-          // Phase 4: Connections fade in
+          // Phase 4: Far outer ring (nodes 10+) — wave expansion
+          for (var k = 10; k < nodes.length; k++) {
+            (function(idx) {
+              gsap.to(nodes[idx], {
+                alpha: 1, scale: 1, x: nodes[idx].tx, y: nodes[idx].ty,
+                duration: 0.7, delay: 2.0 + (idx - 10) * 0.07, ease: 'back.out(1.2)',
+                onStart: function() { nodes[idx].x = cx; nodes[idx].y = cy; }
+              });
+            })(k);
+          }
+
+          // Phase 5: Connections fade in (staggered by tier)
           connections.forEach(function(c, i) {
-            gsap.to(c, { alpha: 1, duration: 0.6, delay: 1.0 + i * 0.06 });
+            gsap.to(c, { alpha: 1, duration: 0.6, delay: 1.0 + i * 0.04 });
           });
 
           // Phase 5: Worker nodes orbit in
@@ -5366,6 +5584,7 @@
           t += 0.016; // ~60fps time step
           ctx.clearRect(0, 0, W, H);
 
+          drawGalaxyBackground();
           drawAmbient();
 
           // Spawn particles periodically
