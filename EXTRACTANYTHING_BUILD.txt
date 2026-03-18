@@ -21,3 +21,4 @@ Build 030: add ExtractAnything program icon (orange-amber gradient sphere)
 Build 031: add window/taskbar icon (EA icon in title bar + taskbar)
 Build 032: add AppUserModelID for taskbar icon
 Build 033: fix StrAdd silent log — show every language file processed
+Build 034: fix StrAdd nospace cascade — space-sensitive matching for Korean
