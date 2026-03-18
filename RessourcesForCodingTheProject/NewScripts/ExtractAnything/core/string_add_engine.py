@@ -223,7 +223,10 @@ def add_missing_folder(
             total_added += added
             full_report.extend(file_report)
             if log_fn:
-                log_fn(f"  {xml_path.name}: {added} added")
+                log_fn(f"  {xml_path.name}: {added} added", "success")
+        else:
+            if log_fn:
+                log_fn(f"  {xml_path.name}: nothing to add")
 
     return total_added, full_report
 
