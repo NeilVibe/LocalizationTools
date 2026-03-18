@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import logging
 import os
-import shutil
 from pathlib import Path
 
 from lxml import etree
@@ -13,7 +11,7 @@ import config
 from . import xml_parser
 from .text_utils import normalize_text
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +101,8 @@ def _add_to_target(
 
     # Skip files with no existing LocStr (likely not a languagedata file)
     if not target_keys:
+        if log_fn:
+            log_fn(f"  {target_path.name}: skipped (no LocStr entries)", "warning")
         return 0, []
 
     # Diff — exact match only (space-sensitive)
@@ -127,16 +127,6 @@ def _add_to_target(
 
     if existing:
         existing[-1].tail = child_tail
-
-    # Backup before write
-    bak_path = target_path.with_suffix(target_path.suffix + ".bak")
-    try:
-        shutil.copy2(target_path, bak_path)
-    except Exception as exc:
-        logger.error("CANNOT create backup of %s: %s — aborting write", target_path.name, exc)
-        if log_fn:
-            log_fn(f"  SKIPPED {target_path.name}: backup failed", "error")
-        return 0, []
 
     # Append missing entries
     report: list[dict] = []
