@@ -421,7 +421,8 @@
     if (audioEl) { audioEl.pause(); audioEl = null; audioPlaying = false; }
     audioEl = new Audio(url);
     audioEl.onended = () => { audioPlaying = false; };
-    audioEl.play();
+    audioEl.onerror = () => { audioPlaying = false; logger.warning('Audio playback failed', { url }); };
+    audioEl.play().catch(() => { audioPlaying = false; });
     audioPlaying = true;
   }
 
@@ -632,13 +633,11 @@
                 {/if}
                 {#if mediaData.has_audio}
                   <div class="media-audio-wrap">
-                    <button
-                      class="play-btn"
-                      class:playing={audioPlaying}
-                      onclick={() => audioPlaying ? stopAudio() : playAudio(`${API_BASE}${mediaData.stream_url}`)}
+                    <audio controls preload="metadata" crossorigin="anonymous" class="media-audio-player"
+                      onerror={() => logger.warning('Audio playback failed', { url: mediaData.stream_url })}
                     >
-                      {audioPlaying ? '\u23F9' : '\u25B6'}
-                    </button>
+                      <source src="{API_BASE}{mediaData.stream_url}" type="audio/wav" />
+                    </audio>
                     <span class="media-label">{mediaData.voice_id || 'audio'}</span>
                   </div>
                 {/if}
@@ -1278,10 +1277,16 @@
     white-space: nowrap;
   }
 
+  .media-audio-player {
+    width: 100%;
+    height: 36px;
+    border-radius: 4px;
+  }
+
   .media-audio-wrap {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 6px;
     width: 100%;
     margin-top: 8px;
   }
