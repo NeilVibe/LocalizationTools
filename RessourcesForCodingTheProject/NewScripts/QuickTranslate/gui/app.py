@@ -1741,7 +1741,7 @@ class QuickTranslateApp:
         # If current selection is now disabled, fall back to first valid mode
         current = self.match_type.get()
         if not valid.get(current, True):
-            for fb in ("strict", "strorigin_only", "strorigin_descorigin", "stringid_only"):
+            for fb in ("strict", "strorigin_filename", "strorigin_only", "strorigin_descorigin", "stringid_only"):
                 if valid.get(fb, False):
                     self.match_type.set(fb)
                     self._on_match_type_changed()

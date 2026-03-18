@@ -1899,7 +1899,7 @@ def transfer_folder_to_folder(
                 continue
         logger.info(f"Extracted {len(all_source_stringids):,} unique StringIDs from {len(all_sources)} source files")
 
-    if match_mode in ("strict_fuzzy", "strorigin_only_fuzzy", "strorigin_descorigin_fuzzy"):
+    if match_mode in ("strict_fuzzy", "strorigin_only_fuzzy", "strorigin_descorigin_fuzzy", "strorigin_filename_fuzzy"):
         # 2-pass fuzzy: Step 1 = exact match, Step 2 = FAISS fuzzy on unconsumed
         # Needs model + FAISS index for Step 2
         if _fuzzy_entries is not None and _fuzzy_model is not None and _fuzzy_index is not None:
