@@ -26,3 +26,7 @@ DLG_DRAKMAR_005					When magic fades from this world, so does all that we cheris
 DLG_VARON_006					The Moonstone Amulet protects its bearer from shadow corruption.	월석 부적은 착용자를 그림자 부패로부터 보호합니다.
 DLG_KIRA_006					We move at dawn. Pack light — speed is our advantage.	새벽에 이동해. 가볍게 챙겨 — 속도가 우리의 장점이야.
 DLG_GRIMJAW_006					The Blackstar Sword... I forged it with tears of a dying star.	흑성검... 나는 그것을 죽어가는 별의 눈물로 단조했다.
+DLG_GRIMJAW_007					The Blackstar Sword is my life's masterpiece.<br/>No one worthy of wielding it has appeared yet.<br/>But the time will come soon.	검은별 대검은 내 필생의 역작이야.<br/>이 검을 들 자격이 있는 자는 아직 나타나지 않았지.<br/>하지만 곧 그때가 올 거야.
+DLG_LUNE_006					I sense something suspicious from the east of the forest.<br/>The Dark Cult seems to have started moving.	숲의 동쪽에서 수상한 기운이 느껴져.<br/>어둠의 교단이 움직이기 시작한 것 같아.
+DLG_DRAKMAR_006					According to this ancient document, there are three keys to the seal.<br/>The Sacred Flame, the Blackstar Metal, and the Will of the Sage.	이 고대 문서에 따르면 봉인의 열쇠는 세 가지야.<br/>성스러운 불꽃, 검은별 금속, 그리고 현자의 의지.
+DLG_VARON_007					Welcome to the Sealed Library, {CharacterName}.<br/>Here lie the secrets of the world.	{CharacterName}, 봉인된 도서관에 오신 것을 환영합니다.<br/>여기에는 세계의 비밀이 담겨 있습니다.

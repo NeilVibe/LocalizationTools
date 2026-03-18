@@ -52,6 +52,10 @@ def generate_excel():
         ("UI_BADGE_NEW", "New", "신규", "Human-Reviewed", "Park_JH", "Approved"),
         ("UI_BADGE_REVIEWED", "Reviewed", "검토 완료", "Human-Reviewed", "Park_JH", "Approved"),
         ("UI_BADGE_LOCKED", "Locked by another translator", "다른 번역가가 잠금 중", "Machine-Translated", "DeepL", "Needs-Review"),
+        # Untranslated rows for demo
+        ("UI_NEW_FEATURE_LABEL", "New Feature Coming Soon", "", "Untranslated", "", "Pending"),
+        ("TOOLTIP_UNKNOWN_ITEM", "This item has not been identified yet.", "", "Untranslated", "", "Pending"),
+        ("QUEST_HIDDEN_OBJECTIVE", "Discover the hidden path to the Dragon's Tomb.", "", "Untranslated", "", "Pending"),
     ]
 
     for i, (sid, src, tgt, status, translator, review) in enumerate(rows, start=1):
@@ -111,6 +115,10 @@ def generate_txt():
         ("DLG_VARON_006", "", "", "", "", "The Moonstone Amulet protects its bearer from shadow corruption.", "월석 부적은 착용자를 그림자 부패로부터 보호합니다."),
         ("DLG_KIRA_006", "", "", "", "", "We move at dawn. Pack light — speed is our advantage.", "새벽에 이동해. 가볍게 챙겨 — 속도가 우리의 장점이야."),
         ("DLG_GRIMJAW_006", "", "", "", "", "The Blackstar Sword... I forged it with tears of a dying star.", "흑성검... 나는 그것을 죽어가는 별의 눈물로 단조했다."),
+        ("DLG_GRIMJAW_007", "", "", "", "", "The Blackstar Sword is my life's masterpiece.<br/>No one worthy of wielding it has appeared yet.<br/>But the time will come soon.", "검은별 대검은 내 필생의 역작이야.<br/>이 검을 들 자격이 있는 자는 아직 나타나지 않았지.<br/>하지만 곧 그때가 올 거야."),
+        ("DLG_LUNE_006", "", "", "", "", "I sense something suspicious from the east of the forest.<br/>The Dark Cult seems to have started moving.", "숲의 동쪽에서 수상한 기운이 느껴져.<br/>어둠의 교단이 움직이기 시작한 것 같아."),
+        ("DLG_DRAKMAR_006", "", "", "", "", "According to this ancient document, there are three keys to the seal.<br/>The Sacred Flame, the Blackstar Metal, and the Will of the Sage.", "이 고대 문서에 따르면 봉인의 열쇠는 세 가지야.<br/>성스러운 불꽃, 검은별 금속, 그리고 현자의 의지."),
+        ("DLG_VARON_007", "", "", "", "", "Welcome to the Sealed Library, {CharacterName}.<br/>Here lie the secrets of the world.", "{CharacterName}, 봉인된 도서관에 오신 것을 환영합니다.<br/>여기에는 세계의 비밀이 담겨 있습니다."),
     ]
 
     with open(path, "w", encoding="utf-8") as f:
@@ -161,6 +169,19 @@ def generate_xml():
         ("SKILL_STARFALL_STRIKE_DESC", "Channels the power of falling stars to deliver a devastating blow.&lt;br/&gt;Damage increases with each consecutive hit.&lt;br/&gt;Cooldown: 12 seconds.", "떨어지는 별의 힘을 모아 파괴적인 일격을 가합니다.&lt;br/&gt;연속 타격마다 피해가 증가합니다.&lt;br/&gt;재사용 대기시간: 12초."),
         ("SKILL_SHADOW_STEP_NAME", "Shadow Step", "그림자 걸음"),
         ("SKILL_SHADOW_STEP_DESC", "Teleport through shadows to a nearby location.&lt;br/&gt;Grants brief invisibility after teleport.", "그림자를 통해 근처 위치로 순간이동합니다.&lt;br/&gt;순간이동 후 짧은 투명 효과를 부여합니다."),
+        ("SKILL_SACRED_FLAME_NAME", "Sacred Flame", "성스러운 불꽃"),
+        # Quest strings
+        ("QUEST_SEALED_LIBRARY_NAME", "The Sealed Library", "봉인의 비밀"),
+        ("QUEST_SEALED_LIBRARY_OBJ", "Find Elder Varon in the Sealed Library and retrieve the ancient scroll.", "봉인된 도서관에서 장로 바론을 찾아 고대 두루마리를 되찾으세요."),
+        ("QUEST_SEALED_LIBRARY_DONE", "Thank you, {CharacterName}. The scroll is safe once more.", "{CharacterName}, 감사합니다. 두루마리가 다시 안전해졌습니다."),
+        ("QUEST_BLACKSTAR_FORGE_NAME", "The Blackstar Forge", "검은별의 단조"),
+        ("QUEST_BLACKSTAR_FORGE_OBJ", "Collect {0} pieces of volcanic ore from the Volcanic Zone for Grimjaw.", "그림죠를 위해 화산 지대에서 화산 광석 {0}개를 수집하세요."),
+        ("QUEST_SHADOW_INVESTIGATION_NAME", "Shadow Investigation", "그림자의 추적"),
+        ("QUEST_SHADOW_INVESTIGATION_OBJ", "Investigate the Dark Cult activity in the Mist Forest with Scout Lune.", "정찰병 루네와 함께 안개의 숲에서 어둠의 교단 활동을 조사하세요."),
+        ("QUEST_SHADOW_INVESTIGATION_DONE", "We found their hideout, {CharacterName}! Report back to Elder Varon immediately.", "은신처를 찾았습니다, {CharacterName}! 즉시 장로 바론에게 보고하세요."),
+        # Multi-line descriptions
+        ("REGION_SEALED_LIBRARY_DESC", "An ancient library sealed by the Sage Order.&lt;br/&gt;Contains forbidden knowledge too dangerous for mortals.&lt;br/&gt;Only those with the Sage Order's blessing may enter.", "현자의 결사가 봉인한 고대 도서관.&lt;br/&gt;필멸자에게는 너무 위험한 금지된 지식이 담겨 있다.&lt;br/&gt;현자의 결사의 축복을 받은 자만이 들어갈 수 있다."),
+        ("SKILL_SACRED_FLAME_LORE", "The Sacred Flame has been passed down through generations of the Sage Order.&lt;br/&gt;It purifies darkness and protects the innocent.&lt;br/&gt;Elder Varon is the current master of this ancient art.", "성스러운 불꽃은 현자의 결사에서 대대로 전승되어 왔다.&lt;br/&gt;어둠을 정화하고 무고한 자를 보호한다.&lt;br/&gt;장로 바론이 이 고대 기술의 현재 달인이다."),
     ]
 
     lines = ['<?xml version="1.0" encoding="utf-8"?>', "<LanguageData>"]
