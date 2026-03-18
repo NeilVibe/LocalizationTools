@@ -218,15 +218,18 @@ async def lifespan(app: FastAPI):
                                     if name:
                                         break
                                 strkey = elem.get("StrKey", elem.get("Key", ""))
+                                knowledge_key = elem.get("KnowledgeKey", "")
                                 if name and strkey:
-                                    entity_type = folder_name.replace("info", "")
+                                    etype = folder_name.replace("info", "")
                                     all_entities.append((name, EntityInfo(
+                                        type=etype,
+                                        name=name,
                                         strkey=strkey,
-                                        entity_type=entity_type,
+                                        knowledge_key=knowledge_key,
                                         source_file=str(xml_file),
                                     )))
-                        except Exception:
-                            pass
+                        except Exception as xml_err:
+                            logger.warning(f"[DEV] Failed to parse {xml_file.name}: {xml_err}")
                 glossary_svc.build_from_entity_names(all_entities)
                 logger.success(f"[DEV] GlossaryService auto-init: {len(glossary_svc._entity_index)} entities")
 
