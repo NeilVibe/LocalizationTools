@@ -652,7 +652,7 @@
   <!-- Content -->
   {#if loading}
     <div class="viewer-loading">
-      {#each Array(12) as _, i}
+      {#each Array(12) as _, i (i)}
         <div class="skeleton-row" style="padding-left: {(i % 4) * 20 + 66}px;">
           <SkeletonText width="{70 - (i % 4) * 12}%" />
         </div>
@@ -883,7 +883,7 @@
 {#snippet indentGuides(depth)}
   {#if depth > 0}
     <div class="indent-area" style="width: {depth * 20}px;">
-      {#each Array(depth) as _, i}
+      {#each Array(depth) as _, i (i)}
         <div class="indent-guide" style="left: {i * 20 + 10}px;"></div>
       {/each}
     </div>

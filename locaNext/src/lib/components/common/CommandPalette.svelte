@@ -5,6 +5,7 @@
    * Glassmorphism overlay with debounced search against dictionary-lookup API.
    * Arrow keys navigate results, Enter navigates to Codex, Escape closes.
    */
+  import { onDestroy } from "svelte";
   import { api } from "$lib/api/client.js";
   import { goToCodex } from "$lib/stores/navigation.js";
   import { currentApp, currentView } from "$lib/stores/app.js";
@@ -22,6 +23,10 @@
   // Refs
   let inputRef = $state(null);
   let debounceTimer = null; // NOT $state — used only in $effect, not rendered
+
+  onDestroy(() => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+  });
 
   // Keyboard shortcut: Ctrl+K / Cmd+K
   $effect(() => {
@@ -192,7 +197,7 @@
             <span>No matches found</span>
           </div>
         {:else}
-          {#each results as result, i (i)}
+          {#each results as result, i (result.source || i)}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
               class="palette-result"

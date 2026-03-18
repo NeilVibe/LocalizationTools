@@ -5,6 +5,7 @@
    * Full-page grid viewer for editing translation files.
    * Includes VirtualGrid and TM/QA side panel.
    */
+  import { onDestroy } from 'svelte';
   import { openFile, closeGrid } from '$lib/stores/navigation.js';
   import { preferences } from '$lib/stores/preferences.js';
   import { logger } from '$lib/utils/logger.js';
@@ -54,17 +55,21 @@
   // Leverage stats
   let leverageStats = $state(null);
 
+  // AbortController for cancelling in-flight fetches
+  let fetchController = null;
+
   /**
    * Load active TMs for the current file (TM Hierarchy cascade)
    */
-  async function loadActiveTMs() {
+  async function loadActiveTMs(signal) {
     if (!fileId) return;
 
     activeTMsLoading = true;
     try {
       logger.apiCall(`/api/ldm/files/${fileId}/active-tms`, 'GET');
       const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/active-tms`, {
-        headers: getAuthHeaders()
+        headers: getAuthHeaders(),
+        signal
       });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -72,6 +77,7 @@
       activeTMs = await response.json();
       logger.success('Active TMs loaded', { count: activeTMs.length });
     } catch (err) {
+      if (err.name === 'AbortError') return;
       logger.error('Failed to load active TMs', { error: err.message });
       activeTMs = [];
     } finally {
@@ -82,13 +88,14 @@
   /**
    * Load leverage stats for the current file (non-blocking)
    */
-  async function loadLeverageStats() {
+  async function loadLeverageStats(signal) {
     if (!fileId) return;
 
     try {
       logger.apiCall(`/api/ldm/files/${fileId}/leverage`, 'GET');
       const response = await fetch(`${API_BASE}/api/ldm/files/${fileId}/leverage`, {
-        headers: getAuthHeaders()
+        headers: getAuthHeaders(),
+        signal
       });
 
       if (!response.ok) {
@@ -99,6 +106,7 @@
       leverageStats = await response.json();
       logger.success('Leverage stats loaded', { exact: leverageStats.exact_pct, fuzzy: leverageStats.fuzzy_pct, new: leverageStats.new_pct });
     } catch (err) {
+      if (err.name === 'AbortError') return;
       logger.warning('Leverage stats unavailable', { error: err.message });
       leverageStats = null;
     }
@@ -107,14 +115,24 @@
   // Load active TMs and leverage when fileId changes
   $effect(() => {
     if (fileId) {
-      loadActiveTMs();
-      loadLeverageStats();
+      fetchController?.abort();
+      fetchController = new AbortController();
+      const { signal } = fetchController;
+      loadActiveTMs(signal);
+      loadLeverageStats(signal);
     }
+    return () => { fetchController?.abort(); };
   });
 
 
   // Debounce timer for TM loading on rapid row selection
   let tmDebounceTimer = null;
+
+  // Cleanup on destroy
+  onDestroy(() => {
+    clearTimeout(tmDebounceTimer);
+    fetchController?.abort();
+  });
 
   /**
    * Handle row selection - load TM matches (debounced)

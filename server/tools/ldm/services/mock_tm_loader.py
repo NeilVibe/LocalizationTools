@@ -14,6 +14,7 @@ import os
 import sys
 import json
 import requests
+from loguru import logger
 
 API_BASE = "http://localhost:8888"
 USERNAME = "admin"
@@ -30,7 +31,7 @@ def login() -> str:
     r = requests.post(f"{API_BASE}/api/auth/login", json={"username": USERNAME, "password": PASSWORD})
     r.raise_for_status()
     token = r.json()["access_token"]
-    print(f"  Authenticated as {USERNAME}")
+    logger.info(f"Authenticated as {USERNAME}")
     return token
 
 
@@ -44,7 +45,7 @@ def find_or_create_project(token: str, name: str = "Showcase Demo") -> int:
     projects = requests.get(f"{API_BASE}/api/ldm/projects", headers=h).json()
     for p in projects:
         if p.get("name") == name:
-            print(f"  Project '{name}' already exists (id={p['id']})")
+            logger.info(f"Project '{name}' already exists (id={p['id']})")
             return p["id"]
 
     # Get first platform
@@ -63,7 +64,7 @@ def find_or_create_project(token: str, name: str = "Showcase Demo") -> int:
     )
     r.raise_for_status()
     pid = r.json()["id"]
-    print(f"  Created project '{name}' (id={pid})")
+    logger.info(f"Created project '{name}' (id={pid})")
     return pid
 
 
@@ -76,7 +77,7 @@ def upload_file(token: str, project_id: int, filepath: str, **kwargs) -> int | N
     files = requests.get(f"{API_BASE}/api/ldm/projects/{project_id}/files", headers=h).json()
     for f in files:
         if f.get("original_filename") == filename or f.get("name") == filename:
-            print(f"  File '{filename}' already uploaded (id={f['id']})")
+            logger.info(f"File '{filename}' already uploaded (id={f['id']})")
             return f["id"]
 
     data = {"project_id": str(project_id), "storage": "server", **{k: str(v) for k, v in kwargs.items()}}
@@ -90,10 +91,10 @@ def upload_file(token: str, project_id: int, filepath: str, **kwargs) -> int | N
 
     if r.status_code == 200:
         fid = r.json().get("id")
-        print(f"  Uploaded '{filename}' (id={fid})")
+        logger.info(f"Uploaded '{filename}' (id={fid})")
         return fid
     else:
-        print(f"  FAILED to upload '{filename}': {r.status_code} {r.text[:200]}")
+        logger.error(f"FAILED to upload '{filename}': {r.status_code} {r.text[:200]}")
         return None
 
 
@@ -104,7 +105,7 @@ def find_or_create_tm(token: str, name: str = "Showcase TM") -> int:
     tm_list = tms if isinstance(tms, list) else tms.get("tms", [])
     for tm in tm_list:
         if tm.get("name") == name:
-            print(f"  TM '{name}' already exists (id={tm['id']})")
+            logger.info(f"TM '{name}' already exists (id={tm['id']})")
             return tm["id"]
 
     r = requests.post(
@@ -114,7 +115,7 @@ def find_or_create_tm(token: str, name: str = "Showcase TM") -> int:
     )
     r.raise_for_status()
     tid = r.json()["id"]
-    print(f"  Created TM '{name}' (id={tid})")
+    logger.info(f"Created TM '{name}' (id={tid})")
     return tid
 
 
@@ -128,7 +129,7 @@ def load_tm_entries(token: str, tm_id: int):
         info = r.json()
         count = info.get("entry_count", 0)
         if count >= 30:
-            print(f"  TM already has {count} entries, skipping")
+            logger.info(f"TM already has {count} entries, skipping")
             return
 
     entries = [
@@ -186,26 +187,26 @@ def load_tm_entries(token: str, tm_id: int):
         if r.ok:
             success += 1
         else:
-            print(f"    Entry failed: {r.status_code} - {entry['source'][:40]}")
+            logger.warning(f"Entry failed: {r.status_code} - {entry['source'][:40]}")
 
-    print(f"  Loaded {success}/{len(entries)} TM entries")
+    logger.info(f"Loaded {success}/{len(entries)} TM entries")
 
 
 def main():
-    print("=" * 60)
-    print("Phase 42 — Showcase Demo Data Loader")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("Phase 42 — Showcase Demo Data Loader")
+    logger.info("=" * 60)
 
     # 1. Auth
-    print("\n1. Authentication")
+    logger.info("1. Authentication")
     token = login()
 
     # 2. Project
-    print("\n2. Project Setup")
+    logger.info("2. Project Setup")
     project_id = find_or_create_project(token)
 
     # 3. Upload files
-    print("\n3. File Uploads")
+    logger.info("3. File Uploads")
     xlsx_path = os.path.join(FIXTURES_DIR, "showcase_ui_strings.xlsx")
     txt_path = os.path.join(FIXTURES_DIR, "showcase_dialogue.txt")
     xml_path = os.path.join(FIXTURES_DIR, "showcase_items.loc.xml")
@@ -215,24 +216,22 @@ def main():
     upload_file(token, project_id, xml_path)
 
     # 4. TM
-    print("\n4. Translation Memory")
+    logger.info("4. Translation Memory")
     tm_id = find_or_create_tm(token)
     load_tm_entries(token, tm_id)
 
     # 5. Verify
-    print("\n5. Verification")
+    logger.info("5. Verification")
     h = get_headers(token)
     files = requests.get(f"{API_BASE}/api/ldm/projects/{project_id}/files", headers=h).json()
-    print(f"  Files in project: {len(files)}")
+    logger.info(f"Files in project: {len(files)}")
     for f in files:
-        print(f"    - {f['name']} ({f.get('row_count', '?')} rows, {f.get('format', '?')})")
+        logger.info(f"  - {f['name']} ({f.get('row_count', '?')} rows, {f.get('format', '?')})")
 
     tm_info = requests.get(f"{API_BASE}/api/ldm/tm/{tm_id}", headers=h).json()
-    print(f"  TM entries: {tm_info.get('entry_count', '?')}")
+    logger.info(f"TM entries: {tm_info.get('entry_count', '?')}")
 
-    print("\n" + "=" * 60)
-    print("Showcase Demo data loaded successfully!")
-    print("=" * 60)
+    logger.success("Showcase Demo data loaded successfully!")
 
 
 if __name__ == "__main__":

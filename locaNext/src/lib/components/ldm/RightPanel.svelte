@@ -6,6 +6,7 @@
    * QA issues shown as persistent footer (always visible regardless of tab).
    * Preserves resize and collapse behavior from TMQAPanel.
    */
+  import { onDestroy } from "svelte";
   import {
     ChevronLeft,
     ChevronRight,
@@ -83,6 +84,16 @@
     document.body.style.userSelect = '';
     logger.userAction('Resized right panel', { width });
   }
+
+  // Cleanup document listeners if component unmounts during resize
+  onDestroy(() => {
+    if (isResizing) {
+      document.removeEventListener('mousemove', handleResize);
+      document.removeEventListener('mouseup', stopResize);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+  });
 
   function toggleCollapse() {
     collapsed = !collapsed;

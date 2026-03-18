@@ -25,7 +25,7 @@
 
   <!-- Blacksmith Grimjaw — NPC Craftsman -->
   <CharacterInfo Key="CHAR_003" StrKey="Character_Grimjaw"
-      CharacterName="대장장이 그림조"
+      CharacterName="대장장이 그림죠"
       CharacterDesc="전설의 검은별 금속을 다룰 수 있는 유일한 대장장이.&lt;br/&gt;현자의 결사에 소속되어 있으며, 장로 바론의 현자의 지팡이도 그가 제작한 것이다.&lt;br/&gt;최근 어둠의 교단이 검은별 금속을 노리고 있어 경계를 늦추지 않고 있다."
       CharacterType="NPC" Level="60" Job="Blacksmith" Race="Dwarf" Gender="Male" Title="검은별의 장인"
       UITextureName="character_grimjaw" VoicePath="audio/characters/grimjaw_forge.wem"

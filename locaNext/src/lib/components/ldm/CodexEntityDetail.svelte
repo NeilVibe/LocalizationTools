@@ -8,7 +8,7 @@
    *
    * Phase 19: Game World Codex (Plan 02)
    */
-  import { untrack } from "svelte";
+  import { untrack, onMount } from "svelte";
   import { Tag, InlineLoading, Button } from "carbon-components-svelte";
   import { Music, ImageReference, Renew } from "carbon-icons-svelte";
   import { getAuthHeaders, getApiBase } from "$lib/utils/api.js";

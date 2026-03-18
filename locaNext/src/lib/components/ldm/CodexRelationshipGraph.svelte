@@ -7,7 +7,7 @@
    *
    * Phase 39: Codex Cards + Relationship Graph (Plan 02)
    */
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { select } from "d3-selection";
   import { zoom, zoomIdentity } from "d3-zoom";
   import { forceSimulation, forceManyBody, forceLink, forceCenter, forceCollide, forceX, forceY } from "d3-force";
@@ -52,17 +52,21 @@
     return typeof endpoint === 'object' ? endpoint.id : endpoint;
   }
 
-  // Cleanup simulation on destroy
-  $effect(() => {
-    return () => {
-      if (simulation) simulation.stop();
-    };
+  let abortController = null;
+
+  // Cleanup simulation and D3 SVG on destroy
+  onDestroy(() => {
+    abortController?.abort();
+    if (simulation) simulation.stop();
+    if (container) select(container).selectAll(':scope > svg').remove();
   });
 
   onMount(async () => {
+    abortController = new AbortController();
     try {
       const response = await fetch(`${API_BASE}/api/ldm/codex/relationships`, {
         headers: getAuthHeaders(),
+        signal: abortController.signal,
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();

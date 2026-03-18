@@ -8,6 +8,7 @@
    *
    * Respects prefers-reduced-motion by setting duration to 0.
    */
+  import { onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import { currentPage } from '$lib/stores/navigation.js';
 
@@ -15,12 +16,19 @@
 
   // Respect prefers-reduced-motion
   let reducedMotion = $state(false);
+  let mql = null;
+  let mqlHandler = null;
 
   if (typeof window !== 'undefined') {
-    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    mql = window.matchMedia('(prefers-reduced-motion: reduce)');
     reducedMotion = mql.matches;
-    mql.addEventListener('change', (e) => { reducedMotion = e.matches; });
+    mqlHandler = (e) => { reducedMotion = e.matches; };
+    mql.addEventListener('change', mqlHandler);
   }
+
+  onDestroy(() => {
+    if (mql && mqlHandler) mql.removeEventListener('change', mqlHandler);
+  });
 
   let duration = $derived(reducedMotion ? 0 : 150);
 </script>
