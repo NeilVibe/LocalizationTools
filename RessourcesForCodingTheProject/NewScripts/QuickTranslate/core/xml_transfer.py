@@ -1138,6 +1138,7 @@ def _fast_folder_merge(
     only_untranslated: bool,
     log_callback=None,
     progress_callback=None,
+    stringid_to_filepath: Optional[Dict[str, str]] = None,
 ) -> Dict:
     """
     Merge ALL corrections into ALL target XML files in one tight loop.
@@ -1151,7 +1152,7 @@ def _fast_folder_merge(
         corrections: Full corrections list (for unmatched reporting)
         correction_lookup: Pre-built lookup dict (mode-specific)
         correction_lookup_nospace: Pre-built nospace fallback (strict/strorigin_only)
-        match_mode: "strict" | "strorigin_only" | "stringid_only"
+        match_mode: "strict" | "strorigin_only" | "stringid_only" | "strorigin_filename"
         dry_run: If True, don't write changes
         only_untranslated: If True, skip entries that already have non-Korean Str
         log_callback: Optional GUI log callback
@@ -1228,6 +1229,12 @@ def _fast_folder_merge(
             correction_origin_set.add(key[0])  # key = (norm_orig, norm_desc)
         target_origins_seen = set()
         target_attribs_cache_so = {}
+
+    elif match_mode == "strorigin_filename":
+        # correction_lookup: (norm_orig, filepath, norm_desc) -> list of (corrected, category, index)
+        # correction_lookup_nospace: (norm_orig, filepath) -> list of (corrected, category, index)
+        correction_matched = bytearray(len(corrections))
+        _fp_index = stringid_to_filepath or {}
 
     counters_matched = 0
     counters_updated = 0
@@ -1489,6 +1496,64 @@ def _fast_folder_merge(
                         target_origins_seen.add(orig)  # orig already normalized
                         if orig not in target_attribs_cache_so:
                             target_attribs_cache_so[orig] = dict(loc.attrib)
+
+            elif match_mode == "strorigin_filename":
+                orig = normalize_for_matching(orig_raw)
+                if not orig.strip():
+                    continue
+
+                sid_lower = sid.lower()
+                filepath = _fp_index.get(sid_lower, "")
+                desc_raw = get_attr(loc, DESCORIGIN_ATTRS)
+                desc = normalize_for_matching(desc_raw)
+
+                # PASS1: (StrOrigin, filepath, DescOrigin) — only if desc present
+                match_entries = []
+                if desc:
+                    match_entries = correction_lookup.get((orig, filepath, desc), [])
+
+                # PASS2 fallback: (StrOrigin, filepath)
+                if not match_entries:
+                    match_entries = correction_lookup_nospace.get((orig, filepath), [])
+
+                if match_entries:
+                    new_str, category, idx = match_entries[-1]
+                    for _, _, matched_idx in match_entries:
+                        correction_matched[matched_idx] = 1
+                    counters_matched += 1
+                    file_matched += 1
+
+                    old_str = get_attr(loc, STR_ATTRS)
+
+                    if only_untranslated and old_str and not is_korean_text(old_str):
+                        counters_skipped_translated += 1
+                        orig_correction = corrections[idx]
+                        result["unmatched_details"].append({
+                            "string_id": sid,
+                            "status": "SKIPPED_TRANSLATED",
+                            "old": orig_correction.get("str_origin", ""),
+                            "new": orig_correction.get("corrected", ""),
+                            "raw_attribs": orig_correction.get("raw_attribs", {}),
+                        })
+                        continue
+
+                    if _is_no_translation(new_str):
+                        logger.debug(f"Skipped 'no translation' for StringId={sid}, preserving existing Str")
+                        continue
+
+                    new_str = _convert_linebreaks_for_xml(new_str)
+                    if new_str != old_str:
+                        if not dry_run:
+                            loc.set("Str", new_str)
+                        counters_updated += 1
+                        file_updated += 1
+                        changed = True
+
+                    # Desc transfer
+                    orig_correction = corrections[idx]
+                    if _try_write_desc(loc, orig_correction, dry_run):
+                        counters_desc_updated += 1
+                        changed = True
 
         # ─── Combined postprocess (ONE pass) ─────────────────────────
         # Extract language from target filename for CJK-aware ellipsis step
