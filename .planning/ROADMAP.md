@@ -270,7 +270,7 @@ Plans:
 
 **Milestone Goal:** Audit and elevate all mock/showcase data to maximize demo WOW factor. Ensure every page has rich, interconnected data that tells a compelling story and shows off every feature at its best.
 
-- [ ] **Phase 43: Mockdata Quality Audit + WOW Amplification** - Deep audit of all mock data (gamedata, localization, codex, map, TM) for quality, completeness, and WOW-factor contribution
+- [x] **Phase 43: Mockdata Quality Audit + WOW Amplification** - Deep audit of all mock data (gamedata, localization, codex, map, TM) for quality, completeness, and WOW-factor contribution (completed 2026-03-18)
 
 ### Phase 43: Mockdata Quality Audit + WOW Amplification
 **Goal**: Audit every piece of mock data across all 5 pages to ensure it creates maximum WOW effect — rich entity relationships, compelling Korean translations, vivid character descriptions, meaningful TM matches, and interconnected cross-references that make the demo feel like a real game world
@@ -342,7 +342,7 @@ Note: Phase 34 plans (34-01, 34-02, 34-03) are fully parallelizable.
 | 40. Cross-cutting WOW Polish | v3.5 | 2/2 | Complete | 2026-03-17 |
 | 41. Qwen3-TTS Korean Voice | v3.5 | 2/2 | Complete | 2026-03-18 |
 | 42. LanguageData Fix + WOW Showcase | v3.5 | 3/3 | Complete | 2026-03-18 |
-| 43. Mockdata Quality Audit + WOW Amplification | 2/3 | In Progress|  | - |
+| 43. Mockdata Quality Audit + WOW Amplification | 3/3 | Complete   | 2026-03-18 | - |
 
 ---
 *Roadmap created: 2026-03-14*
