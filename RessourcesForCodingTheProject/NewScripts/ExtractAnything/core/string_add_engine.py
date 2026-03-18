@@ -11,7 +11,7 @@ from lxml import etree
 
 import config
 from . import xml_parser
-from .text_utils import normalize_text, normalize_nospace
+from .text_utils import normalize_text
 
 logger = logging.getLogger(__name__)
 
@@ -20,16 +20,14 @@ logger = logging.getLogger(__name__)
 # Key helpers
 # ---------------------------------------------------------------------------
 
-def _make_keys(sid: str, so: str) -> tuple[tuple, tuple]:
-    """Return (exact_key, nospace_key) for a StringID + StrOrigin pair."""
-    nt = normalize_text(so)
-    return (sid.lower(), nt), (sid.lower(), normalize_nospace(nt))
+def _make_key(sid: str, so: str) -> tuple:
+    """Return exact key for a StringID + StrOrigin pair (space-sensitive)."""
+    return (sid.lower(), normalize_text(so))
 
 
-def _collect_keys_from_root(root) -> tuple[set[tuple], set[tuple]]:
+def _collect_keys_from_root(root) -> set[tuple]:
     """Collect all (StringID, StrOrigin) keys from a parsed root element."""
     keys: set[tuple] = set()
-    nospace_keys: set[tuple] = set()
 
     for elem in xml_parser.iter_locstr(root):
         _, sid = xml_parser.get_attr(elem, config.STRINGID_ATTRS)
@@ -37,11 +35,9 @@ def _collect_keys_from_root(root) -> tuple[set[tuple], set[tuple]]:
             continue
         _, so = xml_parser.get_attr(elem, config.STRORIGIN_ATTRS)
         so = so or ""
-        k, nk = _make_keys(sid, so)
-        keys.add(k)
-        nospace_keys.add(nk)
+        keys.add(_make_key(sid, so))
 
-    return keys, nospace_keys
+    return keys
 
 
 def _collect_source_entries(source_path: Path) -> list[dict]:
@@ -60,11 +56,9 @@ def _collect_source_entries(source_path: Path) -> list[dict]:
         _, so = xml_parser.get_attr(elem, config.STRORIGIN_ATTRS)
         so = so or ""
         raw_attribs = dict(elem.attrib)
-        k, nk = _make_keys(sid, so)
         entries.append({
             "string_id": sid,
-            "key": k,
-            "nospace_key": nk,
+            "key": _make_key(sid, so),
             "raw_attribs": raw_attribs,
         })
 
@@ -72,15 +66,13 @@ def _collect_source_entries(source_path: Path) -> list[dict]:
 
 
 def _dedup_source_entries(entries: list[dict]) -> list[dict]:
-    """Remove source-internal duplicates (exact and nospace keys)."""
+    """Remove source-internal duplicates (exact key only, space-sensitive)."""
     deduped: list[dict] = []
     seen: set[tuple] = set()
-    seen_nospace: set[tuple] = set()
     for entry in entries:
-        if entry["key"] in seen or entry["nospace_key"] in seen_nospace:
+        if entry["key"] in seen:
             continue
         seen.add(entry["key"])
-        seen_nospace.add(entry["nospace_key"])
         deduped.append(entry)
     return deduped
 
@@ -107,16 +99,16 @@ def _add_to_target(
             log_fn(f"  Cannot parse {target_path.name}: {exc}", "warning")
         return 0, []
 
-    target_keys, target_nospace = _collect_keys_from_root(root)
+    target_keys = _collect_keys_from_root(root)
 
     # Skip files with no existing LocStr (likely not a languagedata file)
     if not target_keys:
         return 0, []
 
-    # Diff
+    # Diff — exact match only (space-sensitive)
     missing: list[dict] = []
     for entry in source_entries:
-        if entry["key"] in target_keys or entry["nospace_key"] in target_nospace:
+        if entry["key"] in target_keys:
             continue
         missing.append(entry)
 
