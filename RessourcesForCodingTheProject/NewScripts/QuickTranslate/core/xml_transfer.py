@@ -1694,6 +1694,7 @@ def transfer_folder_to_folder(
     target_folder: Path,
     stringid_to_category: Optional[Dict[str, str]] = None,
     stringid_to_subfolder: Optional[Dict[str, str]] = None,
+    stringid_to_filepath: Optional[Dict[str, str]] = None,
     match_mode: str = "strict",
     dry_run: bool = False,
     progress_callback=None,
@@ -1730,7 +1731,8 @@ def transfer_folder_to_folder(
         stringid_to_subfolder: Subfolder mapping (for exclusion filtering)
         match_mode: "strict", "strict_fuzzy", "stringid_only",
                     "strorigin_only", "strorigin_only_fuzzy",
-                    "strorigin_descorigin", or "strorigin_descorigin_fuzzy"
+                    "strorigin_descorigin", "strorigin_descorigin_fuzzy",
+                    or "strorigin_filename"
         dry_run: If True, don't write changes
         progress_callback: Optional callback for progress updates
         threshold: Similarity threshold for fuzzy modes (defaults to config.FUZZY_THRESHOLD_DEFAULT)
@@ -2347,6 +2349,16 @@ def transfer_folder_to_folder(
             _lookup_cache[_corr_id] = _build_correction_lookups(_corr, "strorigin_descorigin")
             logger.info(f"Built shared strorigin_descorigin lookup: {len(_lookup_cache[_corr_id][0]):,} keys")
 
+        elif _base_mode == "strorigin_filename":
+            _lookup_cache[_corr_id] = _build_correction_lookups(
+                _corr, "strorigin_filename", stringid_to_filepath=stringid_to_filepath
+            )
+            logger.info(
+                f"Built shared strorigin_filename lookup: "
+                f"PASS1={len(_lookup_cache[_corr_id][0]):,} keys, "
+                f"PASS2={len(_lookup_cache[_corr_id][1]):,} keys"
+            )
+
         elif _base_mode == "stringid_only":
             if stringid_all_categories:
                 # ALL categories: skip preprocessing, build lookup directly from all corrections
@@ -2399,6 +2411,7 @@ def transfer_folder_to_folder(
         "strict", "strorigin_only", "stringid_only",
         "strict_fuzzy", "strorigin_only_fuzzy",
         "strorigin_descorigin", "strorigin_descorigin_fuzzy",
+        "strorigin_filename",
     }
     _remaining_targets = {}  # Targets that need per-file processing (Excel only)
 
@@ -2457,6 +2470,7 @@ def transfer_folder_to_folder(
                 _fm_mode,
                 dry_run, only_untranslated,
                 log_callback, progress_callback,
+                stringid_to_filepath=stringid_to_filepath,
             )
 
             # Aggregate fast_result into results
@@ -2601,6 +2615,7 @@ def transfer_folder_to_folder(
                             "stringid_only",
                             dry_run, only_untranslated,
                             log_callback, progress_callback,
+                            stringid_to_filepath=stringid_to_filepath,
                         )
 
                         # Merge fuzzy results into totals
